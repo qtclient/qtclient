@@ -44,13 +44,14 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - name: Push host-sdk to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: ${{ runner.temp }}/host-sdk
+        working-directory: ${{ runner.temp }}
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          tar -czf "$RUNNER_TEMP/host-sdk.tgz" .
+          # oras rejects absolute layer paths — keep the tarball relative to cwd.
+          tar -czf host-sdk.tgz -C host-sdk .
           oras push "${{ env.REGISTRY }}/qtclient-host-sdk:${{ github.sha }}" \
-            "$RUNNER_TEMP/host-sdk.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+            "host-sdk.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
           oras tag "${{ env.REGISTRY }}/qtclient-host-sdk:${{ github.sha }}" \
             "${{ env.REGISTRY }}/qtclient-host-sdk:sha-${{ github.sha }}" || true
 
@@ -232,13 +233,13 @@ jobs:
       - name: Push host to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
-        working-directory: ${{ runner.temp }}/host-${{ matrix.plat }}
+        working-directory: ${{ runner.temp }}
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          tar -czf "$RUNNER_TEMP/host.tgz" .
+          tar -czf host.tgz -C "host-${{ matrix.plat }}" .
           oras push "${{ env.REGISTRY }}/qtclient-host-${{ matrix.plat }}:${{ github.sha }}" \
-            "$RUNNER_TEMP/host.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+            "host.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
 
   host-wasm:
     name: host-wasm
@@ -300,10 +301,10 @@ jobs:
           retention-days: 30
       - name: Push host-wasm to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: ${{ runner.temp }}/host-wasm
+        working-directory: ${{ runner.temp }}
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          tar -czf "$RUNNER_TEMP/host-wasm.tgz" .
+          tar -czf host-wasm.tgz -C host-wasm .
           oras push "${{ env.REGISTRY }}/qtclient-host-wasm:${{ github.sha }}" \
-            "$RUNNER_TEMP/host-wasm.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+            "host-wasm.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
