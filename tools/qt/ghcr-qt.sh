@@ -52,34 +52,42 @@ do_pull() {
     echo "[qt-ghcr] already present: $PREFIX"
     return 0
   fi
-  local tmp
-  tmp="$(mktemp -d)"
-  # shellcheck disable=SC2064
-  trap "rm -rf '$tmp'" EXIT
+  # Relative cwd path: Windows Git Bash `mktemp` (/tmp/…) vs native oras
+  # disagree on absolute paths — same class of bug as push.
+  local tmp=".qt-ghcr-pull-$$"
+  rm -rf "$tmp"
+  mkdir -p "$tmp"
   echo "[qt-ghcr] pulling $REF"
   if ! oras pull "$REF" -o "$tmp" 2>"$tmp/pull.err"; then
     echo "[qt-ghcr] pull miss: $REF ($(head -1 "$tmp/pull.err" 2>/dev/null || true))"
+    rm -rf "$tmp"
     return 1
   fi
   # oras preserves the push path; older pushes used .qt-ghcr-push-*/qt-prefix.tar.zst
   local archive
   archive="$(find "$tmp" -type f \( -name '*.tar.zst' -o -name '*.tar.gz' -o -name 'qt-prefix.tar*' \) | head -1)"
-  [[ -n "$archive" ]] || { echo "[qt-ghcr] no archive in artifact" >&2; return 1; }
+  if [[ -z "$archive" ]]; then
+    echo "[qt-ghcr] no archive in artifact" >&2
+    rm -rf "$tmp"
+    return 1
+  fi
   mkdir -p "$PREFIX"
   case "$archive" in
     *.zst)
-      # Git Bash / Windows often lack `tar --zstd`; prefer zstd|tar.
-      if tar --zstd -xf "$archive" -C "$PREFIX" 2>/dev/null; then
-        :
-      elif command -v zstd >/dev/null; then
+      # Prefer zstd|tar: Git Bash `tar --zstd` is unreliable on Windows runners.
+      if command -v zstd >/dev/null; then
         zstd -d -c "$archive" | tar -xf - -C "$PREFIX"
+      elif tar --zstd -xf "$archive" -C "$PREFIX"; then
+        :
       else
         echo "[qt-ghcr] need zstd to unpack $archive (install zstd)" >&2
+        rm -rf "$tmp"
         return 1
       fi
       ;;
     *) tar -xzf "$archive" -C "$PREFIX" ;;
   esac
+  rm -rf "$tmp"
   [[ -f "$PREFIX/lib/cmake/Qt6/Qt6Config.cmake" ]] || {
     echo "[qt-ghcr] unpack missing Qt6Config.cmake" >&2
     return 1
