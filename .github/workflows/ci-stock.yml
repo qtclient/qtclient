@@ -107,6 +107,9 @@ jobs:
             ccache-stock-${{ matrix.os_slug }}-
 
       - name: Configure + build stock tibia
+        env:
+          # macos-release defaults to arm64-osx-static; set explicitly for clarity.
+          VCPKG_TARGET_TRIPLET: ${{ matrix.os_slug == 'macos' && 'arm64-osx-static' || 'x64-linux-static' }}
         run: |
           set -euo pipefail
           mkdir -p "$CCACHE_DIR"
@@ -116,12 +119,19 @@ jobs:
           if [[ ! -d client/upstream/qml ]]; then
             echo "::warning::client/upstream missing — stock configure needs make sync (BYO Tibia.app)"
           fi
+          # Prefer Homebrew ninja on macOS when /usr/local vs /opt/homebrew differs.
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            brew_prefix="$(brew --prefix)"
+            export PATH="$brew_prefix/bin:$PATH"
+            command -v ninja >/dev/null || { echo "::error::ninja missing after brew install"; exit 1; }
+          fi
           cmake --preset ${{ matrix.preset }} \
             -DTOGGLE_BIN_FOLDER=ON \
             -DOPTIONS_ENABLE_IPO=OFF \
             -DTIBIA_BUILD_TESTS=OFF \
             -DQTCLIENT_ENABLE_MODS=OFF \
             -DOPTIONS_ENABLE_CCACHE=ON \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
             -DCMAKE_PREFIX_PATH="$QT_PREFIX"
           cmake --build --preset ${{ matrix.preset }} --target tibia
           ccache -s || true
