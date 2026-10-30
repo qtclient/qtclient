@@ -40,13 +40,6 @@ jobs:
           name: host-sdk-${{ github.sha }}
           path: ${{ runner.temp }}/host-sdk
           retention-days: 30
-      - name: Login GHCR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: oras-project/setup-oras@v1
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - name: Push host-sdk to GHCR
@@ -54,6 +47,7 @@ jobs:
         working-directory: ${{ runner.temp }}/host-sdk
         run: |
           set -euo pipefail
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
           tar -czf "$RUNNER_TEMP/host-sdk.tgz" .
           oras push "${{ env.REGISTRY }}/qtclient-host-sdk:${{ github.sha }}" \
             "$RUNNER_TEMP/host-sdk.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
@@ -235,20 +229,13 @@ jobs:
           path: ccache-${{ matrix.os_slug }}-${{ github.sha }}.tar.zst
           retention-days: 14
 
-      - name: Login GHCR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Push host to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
         working-directory: ${{ runner.temp }}/host-${{ matrix.plat }}
         run: |
           set -euo pipefail
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
           tar -czf "$RUNNER_TEMP/host.tgz" .
           oras push "${{ env.REGISTRY }}/qtclient-host-${{ matrix.plat }}:${{ github.sha }}" \
             "$RUNNER_TEMP/host.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
@@ -259,7 +246,8 @@ jobs:
     env:
       QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
       SOURCE_COMMIT: ${{ github.sha }}
-      CCACHE_DIR: ${{ runner.temp }}/ccache
+      # job-level env cannot use runner.*; set under workspace instead.
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
     steps:
       - uses: actions/checkout@v4
         with:
@@ -310,18 +298,12 @@ jobs:
           name: host-wasm-${{ github.sha }}
           path: ${{ runner.temp }}/host-wasm
           retention-days: 30
-      - name: Login GHCR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Push host-wasm to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: ${{ runner.temp }}/host-wasm
         run: |
           set -euo pipefail
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
           tar -czf "$RUNNER_TEMP/host-wasm.tgz" .
           oras push "${{ env.REGISTRY }}/qtclient-host-wasm:${{ github.sha }}" \
             "$RUNNER_TEMP/host-wasm.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
