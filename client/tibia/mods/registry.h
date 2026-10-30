@@ -68,6 +68,11 @@ void setEnsureModsHook(EnsureModsFn fn);
 void addPackQmlImportPath(const std::string& absolutePath);
 const std::vector<std::string>& packQmlImportPaths();
 
+/// Pack `overrides/` roots (mods/<id>/overrides). Remap qrc:/qt/qml/qmlcomponents/…
+/// onto FS files at runtime (same layout as configure-time CIP forks; live-reload friendly).
+void addPackOverrideRoot(const std::string& absolutePath);
+const std::vector<std::string>& packOverrideRoots();
+
 using EffectTintFn = uint8_t (*)(uint16_t effectId);
 using EffectVariantTintFn = uint8_t (*)(uint32_t variantId);
 using ApplyImageTintFn = void (*)(QImage& image, uint8_t tint);

@@ -39,10 +39,11 @@ target and no opentibiabr/otclient upstream. Check behavior against CIP.
   `qml/` / `overrides/`. Engine/Qt-only forks stay in `client/overrides/`
   (e.g. LegacyControls). Product stock-path forks go in the pack's `overrides/`
   (rel. to `client/upstream/qml/`) with a first line
-  `// cip-base: <sha256 of the cip file>`. The build merges engine + enabled pack
-  override roots into the `qmlcomponents` module. A CIP release that changes the
-  base fails `tibia-sync --check` until the override is re-merged. Drop an override
-  once C++ or the pack can carry the behavior instead.
+  `// cip-base: <sha256 of the cip file>`. Engine overrides still merge at
+  configure-time into `qmlcomponents` qrc; **pack** overrides remap at runtime
+  via `PackQmlInterceptor` so Soft hosts stay stock (F5 / live reload). A CIP
+  release that changes the base fails `tibia-sync --check` until the override is
+  re-merged. Drop an override once C++ or the pack can carry the behavior instead.
   **Overrides are global CipSoft forks** (classic + HUD both mount them — not
   HudChat-only). `cip-base` does not prove CipSoft gestures/shortcuts still work;
   before merge, run the CipSoft behavioral checklist in

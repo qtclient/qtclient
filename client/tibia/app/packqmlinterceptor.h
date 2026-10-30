@@ -5,10 +5,10 @@
 
 namespace tibia::app {
 
-/// Remap qrc:/qt/qml/<module>/… to pack filesystem modules under
-/// mods/<id>/qml/<module>/ (paths from ModLoader::packQmlImportPaths).
-/// Always installed so product C++ can keep qrc URLs without embedding QML
-/// in the native MODULE.
+/// Remap qrc:/qt/qml/… onto pack filesystem trees:
+/// - pack qml modules: mods/<id>/qml/<module>/… (packQmlImportPaths)
+/// - CIP stock forks: mods/<id>/overrides/<rel> for qmlcomponents/… (packOverrideRoots)
+/// Host qrc stays stock; product packs overlay at runtime (live-reload friendly).
 class PackQmlInterceptor final : public QQmlAbstractUrlInterceptor
 {
 public:

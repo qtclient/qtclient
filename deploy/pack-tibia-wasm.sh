@@ -77,4 +77,20 @@ cat >"${DEST}/.qtclient/wasm.json" <<EOF
 }
 EOF
 
+# Optional product pack (IdleOT): bake into tip next to tibia.wasm for /play OPFS.
+PACK_SRC="${QTCLIENT_PACK_DIR:-}"
+if [[ -z "$PACK_SRC" && -d "${SRC}/mods/idleot" ]]; then
+  PACK_SRC="${SRC}/mods/idleot"
+fi
+if [[ -n "$PACK_SRC" && -f "${PACK_SRC}/mod.json" ]]; then
+  rm -rf "${OUT}/mods/idleot"
+  mkdir -p "${OUT}/mods"
+  cp -a "$PACK_SRC" "${OUT}/mods/idleot"
+  (
+    cd "${OUT}/mods/idleot"
+    find . -type f | sed 's|^\./||' | sort
+  ) >"${OUT}/mods/idleot.files"
+  echo "[pack-tibia-wasm] merged pack → ${OUT}/mods/idleot ($(wc -l < "${OUT}/mods/idleot.files" | tr -d ' ') files)"
+fi
+
 echo "[pack-tibia-wasm] revision=${REV} engine=${ENGINE_SHA} → ${OUT}"

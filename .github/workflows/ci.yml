@@ -216,27 +216,5 @@ jobs:
     uses: ./.github/workflows/reusable-build-tibia-wasm.yml
     secrets: inherit
 
-  # Pre-warm GHCR client slices on main so release.yml can promote without a cold build.
-  warm-release-client:
-    name: Warm release client slices
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Dispatch warm-client
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: |
-          if [[ -z "${GH_TOKEN:-}" ]]; then
-            echo "::warning::RELEASE_TOKEN unset — skip warm-client dispatch"
-            exit 0
-          fi
-          owner="${{ github.repository_owner }}"
-          sha="${{ github.sha }}"
-          gh workflow run warm-client.yml -R "$owner/release" --ref main \
-            -f otclient_sha="$sha" || {
-            echo "::warning::warm-client dispatch failed (non-fatal)"
-            exit 0
-          }
-          echo "Dispatched warm-client for $sha" >> "$GITHUB_STEP_SUMMARY"
+  # Host artifacts are published by ci-host.yml (GHCR qtclient-host-* / host-sdk).
+  # idleot/release waits for those + idleot-client pack artifacts — no warm-client.

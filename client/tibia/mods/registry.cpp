@@ -13,6 +13,7 @@ namespace {
 std::vector<ModEntry> g_mods;
 std::vector<ModBootstrapFn> g_early;
 std::vector<std::string> g_packQmlImportPaths;
+std::vector<std::string> g_packOverrideRoots;
 EnsureModsFn g_ensureMods = nullptr;
 EffectTintFn g_effectTint = nullptr;
 EffectVariantTintFn g_effectVariantTint = nullptr;
@@ -79,6 +80,22 @@ void addPackQmlImportPath(const std::string& absolutePath)
 const std::vector<std::string>& packQmlImportPaths()
 {
     return g_packQmlImportPaths;
+}
+
+void addPackOverrideRoot(const std::string& absolutePath)
+{
+    if (absolutePath.empty())
+        return;
+    for (const std::string& existing : g_packOverrideRoots) {
+        if (existing == absolutePath)
+            return;
+    }
+    g_packOverrideRoots.push_back(absolutePath);
+}
+
+const std::vector<std::string>& packOverrideRoots()
+{
+    return g_packOverrideRoots;
 }
 
 const ModIdentity* primaryIdentity()

@@ -89,8 +89,6 @@ void registerPackQmlPaths(const PackMeta& meta)
     const QDir dir(meta.dir);
     // Import root is mods/<id>/qml so `import <qmlModule>` resolves
     // mods/<id>/qml/<qmlModule>/qmldir (filesystem QML module).
-    // Pack overrides/ are configure-time CIP merges only — not runtime import paths.
-    // Dev F5 uses TIBIA_QML_DISK DiskQmlInterceptor for override source trees.
     const QString qmlDir = dir.filePath(QStringLiteral("qml"));
     if (QDir(qmlDir).exists()) {
         addPackQmlImportPath(qmlDir.toStdString());
@@ -103,6 +101,11 @@ void registerPackQmlPaths(const PackMeta& meta)
                                    << moduleDir + QStringLiteral("/qmldir");
         }
     }
+    // Stock CIP path forks: mods/<id>/overrides/qmlcomponents/… remapped at runtime
+    // by PackQmlInterceptor (host stays stock; F5-friendly with DEV DiskQml).
+    const QString overridesDir = dir.filePath(QStringLiteral("overrides"));
+    if (QDir(overridesDir).exists())
+        addPackOverrideRoot(overridesDir.toStdString());
 }
 
 bool loadNativeEntry(const QString& native, const ModContext* earlyCtx)

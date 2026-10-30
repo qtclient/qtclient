@@ -117,6 +117,11 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   mkdir -p "$BUILD_DIR"
 
   HELPER="$MONOREPO/scripts/cmake-configure-if-needed.sh"
+  # STOCK_HOST=1 / QTCLIENT_ENABLE_MODS=0 → Soft MAIN_MODULE only (IdleOT pack separate).
+  _mods_flag=()
+  if [[ "${STOCK_HOST:-0}" == "1" || "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
+    _mods_flag=(-DQTCLIENT_ENABLE_MODS=OFF)
+  fi
   WASM_CMAKE_ARGS=(
     -G Ninja -S "$OTC" -B "$BUILD_DIR"
     -DCMAKE_MAKE_PROGRAM="$NINJA"
@@ -137,14 +142,17 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     -DTIBIA_WASM_GRAPHICS_RCC="$RCC"
     -DWASM_INITIAL_MEMORY="$WASM_INITIAL_MEMORY"
     -DWASM_USE_WASM_EXCEPTIONS=OFF
+    "${_mods_flag[@]}"
   )
   FP="$(
     {
-      echo "tibia-wasm-vcpkg-v2-fpic"
-      printf '%s\n' "${WASM_CMAKE_ARGS[@]}"
-      shasum -a 256 "$OTC/vcpkg.json" "$OTC/vcpkg-configuration.json" 2>/dev/null || true
-    } | shasum -a 256 2>/dev/null | awk '{print $1}'
-  )"
+    echo "tibia-wasm-vcpkg-v2-fpic"
+    echo "stock-host=${STOCK_HOST:-0}"
+    echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
+    printf '%s\n' "${WASM_CMAKE_ARGS[@]}"
+    shasum -a 256 "$OTC/vcpkg.json" "$OTC/vcpkg-configuration.json" 2>/dev/null || true
+  } | shasum -a 256 2>/dev/null | awk '{print $1}'
+)"
   if [[ -f "$HELPER" ]]; then
     bash "$HELPER" "$BUILD_DIR" "$FP" -- cmake "${WASM_CMAKE_ARGS[@]}"
   else
@@ -152,9 +160,12 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   fi
 
   cmake --build "$BUILD_DIR" --target tibia -j"$JOBS"
-  # Packs are MODULE/SIDE_MODULE — not linked into tibia; build them explicitly.
-  if grep -qE '(^|/)qtclient_mods:' "$BUILD_DIR/build.ninja" 2>/dev/null; then
-    cmake --build "$BUILD_DIR" --target qtclient_mods -j"$JOBS"
+  # Packs are MODULE/SIDE_MODULE — not linked into tibia; build them explicitly
+  # unless this is a stock Soft host (IdleOT SIDE_MODULE is a separate artifact).
+  if [[ "${STOCK_HOST:-0}" != "1" && ! "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
+    if grep -qE '(^|/)qtclient_mods:' "$BUILD_DIR/build.ninja" 2>/dev/null; then
+      cmake --build "$BUILD_DIR" --target qtclient_mods -j"$JOBS"
+    fi
   fi
   cmake --build "$BUILD_DIR" --target launcher -j"$JOBS"
 
@@ -288,28 +299,39 @@ FP="$(
     echo "qt=$QT_DESKTOP"
     echo "triplet=$VCPKG_TARGET_TRIPLET"
     echo "qml-disk=$DEV_BUILD"
+    echo "stock-host=${STOCK_HOST:-0}"
+    echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
     shasum -a 256 "$OTC/CMakePresets.json" "$OTC/vcpkg.json" 2>/dev/null || true
   } | shasum -a 256 2>/dev/null | awk '{print $1}'
 )"
+_mods_flag=()
+if [[ "${STOCK_HOST:-0}" == "1" || "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
+  _mods_flag=(-DQTCLIENT_ENABLE_MODS=OFF)
+fi
 if [[ -f "$HELPER" ]]; then
   bash "$HELPER" "$BUILD_DIR" "$FP" -- \
     cmake --preset "$PRESET" \
     -DTOGGLE_BIN_FOLDER=ON \
     -DCMAKE_PREFIX_PATH="$QT_DESKTOP" \
-    -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET"
+    -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+    "${_mods_flag[@]}"
 else
   cmake --preset "$PRESET" \
     -DTOGGLE_BIN_FOLDER=ON \
     -DCMAKE_PREFIX_PATH="$QT_DESKTOP" \
-    -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET"
+    -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+    "${_mods_flag[@]}"
 fi
 if [[ "$LAUNCHER_BUILD" -eq 1 ]]; then
   cmake --build --preset "$PRESET" --target launcher -j"$JOBS"
   BIN="$(find "$OTC/build/$PRESET" \( -path '*launcher.app/Contents/MacOS/launcher' -o -path '*/launcher/src/launcher' \) -type f 2>/dev/null | head -1)"
 else
   cmake --build --preset "$PRESET" --target tibia -j"$JOBS"
-  if grep -qE '(^|/)qtclient_mods:' "$BUILD_DIR/build.ninja" 2>/dev/null; then
-    cmake --build --preset "$PRESET" --target qtclient_mods -j"$JOBS"
+  # Stock Soft host skips in-tree packs (IdleOT builds out-of-tree against host-sdk).
+  if [[ "${STOCK_HOST:-0}" != "1" && ! "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
+    if grep -qE '(^|/)qtclient_mods:' "$BUILD_DIR/build.ninja" 2>/dev/null; then
+      cmake --build --preset "$PRESET" --target qtclient_mods -j"$JOBS"
+    fi
   fi
   # Drop pre-OUTPUT_NAME leftovers so finders never pick a stale binary.
   rm -rf "$OTC/build/$PRESET/client/tibia/tibia.app"

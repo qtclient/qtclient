@@ -1,0 +1,327 @@
+---
+# Stock Soft host builds (MODS=OFF) + publish host / host-sdk artifacts keyed by SHA.
+# idleot-client pack CI and idleot/release assemble consume these (no host rebuild).
+name: CI host
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+
+concurrency:
+  group: ci-host-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  host-sdk:
+    name: host-sdk
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Pack host-sdk
+        env:
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: bash deploy/pack-host-sdk.sh "$RUNNER_TEMP/host-sdk"
+      - name: Upload host-sdk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-sdk-${{ github.sha }}
+          path: ${{ runner.temp }}/host-sdk
+          retention-days: 30
+      - name: Login GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: oras-project/setup-oras@v1
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Push host-sdk to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: ${{ runner.temp }}/host-sdk
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/host-sdk.tgz" .
+          oras push "${{ env.REGISTRY }}/qtclient-host-sdk:${{ github.sha }}" \
+            "$RUNNER_TEMP/host-sdk.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+          oras tag "${{ env.REGISTRY }}/qtclient-host-sdk:${{ github.sha }}" \
+            "${{ env.REGISTRY }}/qtclient-host-sdk:sha-${{ github.sha }}" || true
+
+  host-desktop:
+    name: host-${{ matrix.plat }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - plat: linux-x64
+            runner: ubuntu-24.04
+            preset: linux-release
+            os_slug: linux
+            kit: linux-x64
+            triplet: x64-linux-static
+          - plat: macos-arm64
+            runner: macos-15
+            preset: macos-release
+            os_slug: macos
+            kit: macos-arm64
+            triplet: arm64-osx-static
+          - plat: windows-x64
+            runner: windows-latest
+            preset: windows-release
+            os_slug: windows
+            kit: windows-x64
+            triplet: x64-windows-static-md
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+      SOURCE_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Init LegacyControls
+        shell: bash
+        run: git submodule update --init third_party/Qt5LegacyControls
+
+      - name: Resolve CIP Qt SHA
+        id: cip
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD:third_party/qt5-cip 2>/dev/null || true)"
+          if [[ -z "$SHA" && -f third_party/SUBMODULE_PINS.txt ]]; then
+            SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt)"
+          fi
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "QT_CIP_SHA=$SHA" >> "$GITHUB_ENV"
+
+      - uses: lukka/get-cmake@v4.3.4
+      - uses: oras-project/setup-oras@v1
+
+      - name: Install Linux deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential ninja-build ccache \
+            libgl1-mesa-dev libxkbcommon-dev libfontconfig1-dev zstd patchelf
+
+      - name: Install macOS deps
+        if: runner.os == 'macOS'
+        run: brew install ninja ccache zstd
+
+      - name: Install Windows deps
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          choco install ccache ninja -y --no-progress
+          echo "/c/ProgramData/chocolatey/bin" >> "$GITHUB_PATH"
+
+      - name: MSVC environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Restore CIP Qt prefix
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/Qt
+          key: cip-qt-${{ matrix.kit }}-${{ steps.cip.outputs.sha }}
+
+      - name: Install CIP Qt (pull-only)
+        shell: bash
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
+          QT_PULL_ONLY: '1'
+          QT_PULL_WAIT_SECS: '7200'
+          QT_PULL_INTERVAL_SECS: '90'
+        run: |
+          set -euo pipefail
+          bash tools/qt/ci-setup-qt.sh --pull-only
+          echo "QT_PREFIX=$(bash tools/qt/qt-prefix.sh)" >> "$GITHUB_ENV"
+
+      - name: Setup vcpkg
+        shell: bash
+        run: source deploy/ci-setup-vcpkg.sh
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-host-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-${{ github.sha }}
+          restore-keys: |
+            ccache-host-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-
+            ccache-stock-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-
+            ccache-host-${{ matrix.os_slug }}-
+
+      - name: Configure + build stock host
+        shell: bash
+        env:
+          VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$CCACHE_DIR"
+          ccache -z || true
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            export PATH="$(brew --prefix)/bin:$PATH"
+          fi
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            export PATH="/c/ProgramData/chocolatey/bin:$PATH"
+          fi
+          cmake --preset ${{ matrix.preset }} \
+            -DTOGGLE_BIN_FOLDER=ON \
+            -DOPTIONS_ENABLE_IPO=OFF \
+            -DTIBIA_BUILD_TESTS=OFF \
+            -DQTCLIENT_ENABLE_MODS=OFF \
+            -DOPTIONS_ENABLE_CCACHE=ON \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+            -DCMAKE_PREFIX_PATH="$QT_PREFIX"
+          cmake --build --preset ${{ matrix.preset }} --target tibia
+          cmake --build --preset ${{ matrix.preset }} --target launcher || true
+          ccache -s || true
+
+      - name: Pack host desktop tip
+        shell: bash
+        env:
+          QT_PREFIX: ${{ env.QT_PREFIX }}
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          bin_dir="build/${{ matrix.preset }}/bin"
+          [[ -d "$bin_dir" ]] || bin_dir="build/${{ matrix.preset }}"
+          bash deploy/pack-host-desktop.sh \
+            --platform "${{ matrix.plat }}" \
+            --bin "$bin_dir" \
+            --out "$RUNNER_TEMP/host-${{ matrix.plat }}"
+
+      - name: Upload host artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-${{ matrix.plat }}-${{ github.sha }}
+          path: ${{ runner.temp }}/host-${{ matrix.plat }}
+          retention-days: 30
+
+      - name: Pack ccache (compat with mods-example)
+        if: matrix.plat == 'linux-x64' || matrix.plat == 'macos-arm64'
+        shell: bash
+        run: |
+          tar -C "$CCACHE_DIR" -cf - . | zstd -T0 -3 -o "ccache-${{ matrix.os_slug }}-${{ github.sha }}.tar.zst"
+
+      - name: Upload ccache artifact
+        if: matrix.plat == 'linux-x64' || matrix.plat == 'macos-arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccache-${{ matrix.os_slug }}-${{ github.sha }}
+          path: ccache-${{ matrix.os_slug }}-${{ github.sha }}.tar.zst
+          retention-days: 14
+
+      - name: Login GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push host to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        working-directory: ${{ runner.temp }}/host-${{ matrix.plat }}
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/host.tgz" .
+          oras push "${{ env.REGISTRY }}/qtclient-host-${{ matrix.plat }}:${{ github.sha }}" \
+            "$RUNNER_TEMP/host.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+
+  host-wasm:
+    name: host-wasm
+    runs-on: ubuntu-24.04
+    env:
+      QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+      SOURCE_COMMIT: ${{ github.sha }}
+      CCACHE_DIR: ${{ runner.temp }}/ccache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Init LegacyControls
+        run: git submodule update --init third_party/Qt5LegacyControls
+      - name: Resolve CIP Qt SHA
+        id: cip
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD:third_party/qt5-cip 2>/dev/null || true)"
+          if [[ -z "$SHA" && -f third_party/SUBMODULE_PINS.txt ]]; then
+            SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt)"
+          fi
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+      - uses: oras-project/setup-oras@v1
+      - name: Install deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build ccache libegl1-mesa-dev libfontconfig1-dev \
+            libxkbcommon-dev gzip brotli zstd git curl zip unzip tar
+      - name: Cache Qt wasm
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/Qt
+          key: cip-qt-wasm_multithread-${{ steps.cip.outputs.sha }}
+      - name: Setup vcpkg
+        run: source deploy/ci-setup-vcpkg.sh
+      - name: Install CIP Qt wasm
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
+        run: bash tools/qt/ci-setup-qt.sh --wasm
+      - name: Build stock wasm host
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          STOCK_HOST: '1'
+          QTCLIENT_ENABLE_MODS: 'OFF'
+        run: bash deploy/build-tibia.sh --wasm
+      - name: Pack host wasm
+        run: |
+          bash deploy/pack-host-wasm.sh build/tibia-wasm "$RUNNER_TEMP/host-wasm"
+      - name: Upload host-wasm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-wasm-${{ github.sha }}
+          path: ${{ runner.temp }}/host-wasm
+          retention-days: 30
+      - name: Login GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push host-wasm to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: ${{ runner.temp }}/host-wasm
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/host-wasm.tgz" .
+          oras push "${{ env.REGISTRY }}/qtclient-host-wasm:${{ github.sha }}" \
+            "$RUNNER_TEMP/host-wasm.tgz:application/vnd.oci.image.layer.v1.tar+gzip"

@@ -18,7 +18,7 @@ mods/<id>/
   mod.json              # id, QTCLIENT_MOD_API, autoload, priority, native, identity, qmlModule
   native/mod.*          # shared library / SIDE_MODULE (.so / .dylib / .dll / .wasm)
   qml/<qmlModule>/      # filesystem QML module (qmldir + *.qml)
-  overrides/…           # optional CIP stock-path forks (configure-time merge)
+  overrides/…           # optional CIP stock-path forks (runtime remap)
   resources/…           # optional assets
 ```
 
@@ -54,7 +54,7 @@ artifacts installed into `mods/<id>/` before Play (`make idleot install` for loc
 |------|------|------|
 | Runtime pack | `native/mod.*` + `qml/<uri>/` + `resources/` + `mod.json` | Post-compile; CDN / `make idleot install` |
 | Optional QML plugin | Shared `native/qmlplugin.*` for C++ types | Prefer over STATIC-into-`mod.*` |
-| Override pack | CIP forks under `overrides/` | **Configure-time** CMake merge into `qmlcomponents` |
+| Override pack | CIP forks under `overrides/` | **Runtime** `PackQmlInterceptor` remap (host stays stock) |
 
 ### Filesystem QML modules (F5 hot reload)
 
@@ -108,12 +108,13 @@ in-tree IdleOT deep engine includes. New packs must use `mod_api_v1.h` only
 | Layer | Path | When applied |
 |-------|------|----------------|
 | Engine / Qt-only | `client/overrides/` (e.g. LegacyControls) | Configure-time merge into `qmlcomponents` qrc |
-| Pack stock forks | `client/mods/<pack>/overrides/` (rel. to `client/upstream/qml/`) | Configure-time merge (pack wins on conflict) |
+| Pack stock forks | `mods/<pack>/overrides/` (rel. to `client/upstream/qml/`) | **Runtime** remap via `PackQmlInterceptor` (same URI → pack FS) |
 | Launcher | `launcher/overrides/` + `launcher/mods/<pack>/` | Launcher build |
-| Dev F5 | same override source roots | `TIBIA_QML_DISK` `DiskQmlInterceptor` remaps without a full qrc rebuild |
+| Dev F5 | pack `qml/` + `overrides/` on disk | `TIBIA_QML_DISK` / Pack interceptor; **F5** clears cache — no host rebuild |
 
-Production does **not** add `overrides/` as a runtime QML import path.
-`make tibia-sync --check` scans the same configure-time set.
+Stock Soft hosts publish once (`QTCLIENT_ENABLE_MODS=OFF`). Product packs overlay
+without baking forks into host qrc. `make tibia-sync --check` still scans pack
+`overrides/` for `cip-base` drift.
 
 ## CMake discovery (dev)
 
@@ -154,13 +155,19 @@ extern "C" void qtclient_mod_entry(const tibia::mods::ModContext* earlyCtx);
 Register mods, backends, WorldView drivers/overlays inside this function
 (prefer `qtclient_mod_host_api_v1()`).
 
+## Host + pack (FDW-style)
+
+- **qtclient CI** publishes Soft host artifacts (`qtclient-host-<plat>:<sha>`, `qtclient-host-sdk:<sha>`).
+- **idleot-client CI** builds MODULE/SIDE_MODULE against host-sdk; stamps `hostBuildId`.
+- **idleot/release** waits for both, merges `mods/idleot` into the Soft tip, brands IdleOT, promotes CDN.
+- Local: `make idleot client|wasm install` = Soft host (`STOCK_HOST=1`) → pack build → tip merge.
+
 ## Make CLI
 
 ```bash
-make qtclient client build    # umbrella (DEV=1)
-make qtclient client run
-make idleot client install    # link pack + desktop host/MODULE → dist/cdn desktop
-make idleot wasm install      # link pack + wasm host/MODULE → dist/cdn for /play
-make qtclient client run
-make -C apps/qtclient client build   # app-local / production
+make qtclient client build       # Soft host (stock or DEV disk QML)
+make idleot client install       # Soft host → IdleOT MODULE → tip merge → CDN desktop
+make idleot wasm install         # Soft MAIN_MODULE → SIDE_MODULE → tip merge → dist/cdn
+make idleot client run           # install + Soft Play (loads mods/idleot at startup)
+make -C apps/qtclient client build   # app-local Soft host
 ```

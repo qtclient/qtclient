@@ -186,12 +186,22 @@ target_sources(tibia PRIVATE
   mods/modloader.cpp mods/modloader.h
   mods/mod_entry.h)
 target_include_directories(tibia PRIVATE "${TIBIA_ROOT}/include")
-# Host build id for ModLoader / mod_api_v1 (empty when unknown).
-execute_process(
-  COMMAND git -C "${TIBIA_ROOT}" rev-parse --short HEAD
-  OUTPUT_VARIABLE _qtclient_host_sha
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  ERROR_QUIET)
+# Host build id for ModLoader / mod_api_v1 — full SHA for artifact pinning.
+# Prefer CI/env (SOURCE_COMMIT / GITHUB_SHA / QTCLIENT_HOST_BUILD_ID), else git HEAD.
+set(_qtclient_host_sha "$ENV{QTCLIENT_HOST_BUILD_ID}")
+if(NOT _qtclient_host_sha)
+  set(_qtclient_host_sha "$ENV{SOURCE_COMMIT}")
+endif()
+if(NOT _qtclient_host_sha)
+  set(_qtclient_host_sha "$ENV{GITHUB_SHA}")
+endif()
+if(NOT _qtclient_host_sha)
+  execute_process(
+    COMMAND git -C "${TIBIA_ROOT}" rev-parse HEAD
+    OUTPUT_VARIABLE _qtclient_host_sha
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
+endif()
 if(NOT _qtclient_host_sha)
   set(_qtclient_host_sha "unknown")
 endif()

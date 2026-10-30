@@ -66,6 +66,8 @@ function(qtclient_add_mod MOD_ID)
     "${CMAKE_CURRENT_SOURCE_DIR}")
 
   # Host import ABI. Prefer QtClient::Host / qtclient_host, else tibia.
+  # Out-of-tree packs (host-sdk): optional QTCLIENT_HOST_LIBRARY path, else
+  # allow unresolved host symbols until ModLoader dlopen (FDW-style).
   set(_host_target "")
   if(TARGET QtClient::Host)
     set(_host_target QtClient::Host)
@@ -77,6 +79,17 @@ function(qtclient_add_mod MOD_ID)
   endif()
   if(_host_target)
     target_link_libraries(${_target} PRIVATE ${_host_target})
+  elseif(QTCLIENT_HOST_LIBRARY)
+    target_link_libraries(${_target} PRIVATE "${QTCLIENT_HOST_LIBRARY}")
+  elseif(NOT EMSCRIPTEN AND NOT WASM)
+    if(APPLE)
+      target_link_options(${_target} PRIVATE "LINKER:-undefined,dynamic_lookup")
+    elseif(UNIX)
+      target_link_options(${_target} PRIVATE "LINKER:--allow-shlib-undefined")
+    endif()
+  endif()
+  if(QTCLIENT_HOST_INCLUDE_DIR)
+    target_include_directories(${_target} PRIVATE "${QTCLIENT_HOST_INCLUDE_DIR}")
   endif()
 
   # Include dirs for mod_api_v1.h → mods/*.h / sprites/hdscale.h.

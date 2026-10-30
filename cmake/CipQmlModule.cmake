@@ -30,21 +30,15 @@ function(_cip_ensure_stub stub src)
   file(COPY "${src}" DESTINATION "${parent}")
 endfunction()
 
-# Collect override roots: engine client/overrides + enabled pack overrides.
+# Collect override roots for configure-time qmlcomponents merge.
+# Engine client/overrides only — pack overrides/ are runtime (PackQmlInterceptor)
+# so stock hosts publish once and product packs overlay without rebuilding.
 # Sets CIP_QML_OVERRIDE_ROOTS in parent scope (qmlcomponents parent dirs).
 function(cip_collect_qml_override_roots)
   set(roots "")
   set(_engine "${CIP_ROOT}/client/overrides/qmlcomponents")
   if(EXISTS "${_engine}")
     list(APPEND roots "${_engine}")
-  endif()
-  if(DEFINED QTCLIENT_ENABLED_MODS AND QTCLIENT_MODS_DIR)
-    foreach(_mod IN LISTS QTCLIENT_ENABLED_MODS)
-      set(_pack "${QTCLIENT_MODS_DIR}/${_mod}/overrides/qmlcomponents")
-      if(EXISTS "${_pack}")
-        list(APPEND roots "${_pack}")
-      endif()
-    endforeach()
   endif()
   set(CIP_QML_OVERRIDE_ROOTS "${roots}" PARENT_SCOPE)
 endfunction()

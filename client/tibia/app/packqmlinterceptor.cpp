@@ -24,9 +24,18 @@ QUrl PackQmlInterceptor::intercept(const QUrl& url, const DataType type)
     if (!path.startsWith(kQmlPrefix))
         return url;
 
-    const QString rel = path.mid(kQmlPrefix.size()); // e.g. idleot/TopBar.qml
-    if (rel.isEmpty() || rel.startsWith(QLatin1String("qmlcomponents/"))
-        || rel.startsWith(QLatin1String("QtQuick/"))) {
+    const QString rel = path.mid(kQmlPrefix.size()); // e.g. idleot/TopBar.qml or qmlcomponents/qml/X.qml
+    if (rel.isEmpty() || rel.startsWith(QLatin1String("QtQuick/")))
+        return url;
+
+    // CIP stock-path forks from pack overrides/ (later packs win via load order).
+    if (rel.startsWith(QLatin1String("qmlcomponents/"))) {
+        const auto& roots = tibia::mods::packOverrideRoots();
+        for (auto it = roots.rbegin(); it != roots.rend(); ++it) {
+            const QString file = QDir(QString::fromStdString(*it)).filePath(rel);
+            if (QFileInfo::exists(file))
+                return QUrl::fromLocalFile(file);
+        }
         return url;
     }
 
