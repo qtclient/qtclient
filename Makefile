@@ -1,0 +1,164 @@
+# qtclient (otqt) — CipSoft-compatible Qt/QML Tibia client
+# Cargo-like: make [<component>] <lifecycle>
+#   components: client (default) | launcher | wasm
+#   lifecycles: build | run | check | test | clean | install | doc
+SHELL := /bin/bash
+.SHELLFLAGS := -eu -o pipefail -c
+
+HERE := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+
+UMBRELLA_TOOLS := $(abspath $(HERE)/../../tools)
+ifeq ($(wildcard $(UMBRELLA_TOOLS)/tibia_paths.py),)
+  TOOLS_DIR := $(HERE)/tools
+else
+  TOOLS_DIR := $(UMBRELLA_TOOLS)
+endif
+EXTRACT_PY := $(firstword $(wildcard $(TOOLS_DIR)/extract/cli.py $(HERE)/tools/extract/cli.py))
+SYNC_PY := $(firstword $(wildcard $(TOOLS_DIR)/tibia-sync/sync.py $(HERE)/tools/tibia-sync/sync.py))
+
+APP_COMPONENTS := client launcher wasm
+APP_LIFECYCLES := build run check test clean install doc
+APP_DEFAULT_COMPONENT := client
+
+.DEFAULT_GOAL := help
+
+.PHONY: help setup sync tibia-sync extract fetch-assets qt \
+	publish-assets cdn local-cdn tibia-dump-smoke tibia-android tibia-ios \
+	$(APP_COMPONENTS) $(APP_LIFECYCLES) _cargo
+
+help:
+	@echo "qtclient — cargo-like CLI"
+	@echo "  make <component> <lifecycle>   component: client|launcher|wasm (default client)"
+	@echo "  make <lifecycle>               same with default component"
+	@echo ""
+	@echo "  make client build     desktop tibia (DEV=1 → disk QML)"
+	@echo "  make client run       start client (ARGS=…)"
+	@echo "  make client check     --check-qml"
+	@echo "  make launcher build   CIP tip launcher"
+	@echo "  make launcher run     start launcher"
+	@echo "  make wasm build       browser client (needs make qt WASM=1)"
+	@echo "  make wasm install     build + stage into dist/cdn for portal /play"
+	@echo "  make client install   build + point dist/cdn desktop slice at this binary"
+	@echo "  make clean            wipe client+launcher+wasm build trees"
+	@echo "  make client clean     wipe desktop client trees only"
+	@echo ""
+	@echo "  make qt               CIP Qt (WASM=1 + emsdk)"
+	@echo "  make sync / extract   CIP vendor + assets"
+
+# --- cargo-like multi-word goals ---
+_cargo_words := $(filter $(APP_COMPONENTS) $(APP_LIFECYCLES),$(MAKECMDGOALS))
+_cargo_comp := $(firstword $(filter $(APP_COMPONENTS),$(_cargo_words)))
+_cargo_life := $(firstword $(filter $(APP_LIFECYCLES),$(_cargo_words)))
+_bare_clean := $(and $(filter clean,$(MAKECMDGOALS)),$(if $(filter $(APP_COMPONENTS),$(MAKECMDGOALS)),,1))
+ifeq ($(_cargo_comp),)
+  _cargo_comp := $(APP_DEFAULT_COMPONENT)
+endif
+
+ifneq ($(filter $(APP_COMPONENTS),$(MAKECMDGOALS)),)
+$(foreach c,$(filter $(APP_COMPONENTS),$(MAKECMDGOALS)),$(eval .PHONY: $(c))$(eval $(c): ; @:))
+endif
+
+ifneq ($(_bare_clean),)
+.PHONY: clean
+clean:
+	@$(MAKE) -f "$(HERE)/Makefile" _cargo COMP=client LIFE=clean
+	@$(MAKE) -f "$(HERE)/Makefile" _cargo COMP=launcher LIFE=clean
+	@$(MAKE) -f "$(HERE)/Makefile" _cargo COMP=wasm LIFE=clean
+else
+ifneq ($(_cargo_life),)
+.PHONY: $(_cargo_life)
+$(_cargo_life):
+	@$(MAKE) -f "$(HERE)/Makefile" _cargo COMP=$(_cargo_comp) LIFE=$(_cargo_life) \
+		$(if $(DEV),DEV=$(DEV),) $(if $(DEBUG),DEBUG=$(DEBUG),) $(if $(ARGS),ARGS="$(ARGS)",)
+endif
+endif
+
+_cargo:
+	@comp="$(COMP)"; life="$(LIFE)"; \
+	case "$$comp-$$life" in \
+	  client-build) \
+	    test -f "$${VCPKG_ROOT:-$$HOME/vcpkg}/scripts/buildsystems/vcpkg.cmake" || { echo "[qtclient] need VCPKG_ROOT"; exit 1; }; \
+	    bash "$(HERE)/deploy/build-tibia.sh" \
+	      $(if $(filter 1 true yes on,$(DEV)),--dev,) \
+	      $(if $(filter 1 true yes on,$(DEBUG)),--debug,) ;; \
+	  client-install) \
+	    $(MAKE) -f "$(HERE)/Makefile" _cargo COMP=client LIFE=build \
+	      $(if $(DEV),DEV=$(DEV),) $(if $(DEBUG),DEBUG=$(DEBUG),); \
+	    python3 "$(HERE)/tools/publish/dev_cdn.py" --desktop ;; \
+	  client-run) bash "$(HERE)/deploy/start-tibia.sh" $(ARGS) ;; \
+	  client-check) bash "$(HERE)/deploy/start-tibia.sh" --check-qml ;; \
+	  client-test) bash "$(HERE)/scripts/ci/check-session-dump-smoke.sh" ;; \
+	  client-clean) rm -rf "$(HERE)/build"/*-dev "$(HERE)/build"/macos "$(HERE)/build"/linux "$(HERE)/build"/windows 2>/dev/null; echo "[qtclient] cleaned client build trees" ;; \
+	  client-doc) echo "docs: $(HERE)/docs/mods.md $(HERE)/README.md" ;; \
+	  launcher-build) bash "$(HERE)/deploy/build-tibia.sh" --launcher ;; \
+	  launcher-run) \
+	    bin=$$(ls -1 "$(HERE)"/build/*/launcher/launcher "$(HERE)"/build/*/launcher/IdleOT 2>/dev/null | head -1); \
+	    if [[ -z "$$bin" ]]; then echo "[qtclient] launcher binary missing — make launcher build"; exit 1; fi; \
+	    exec "$$bin" $(ARGS) ;; \
+	  launcher-check) echo "[qtclient] launcher check: make launcher build" ;; \
+	  launcher-clean) rm -rf "$(HERE)/build"/*/launcher 2>/dev/null; echo "[qtclient] cleaned launcher" ;; \
+	  launcher-install|launcher-doc|launcher-test) echo "[qtclient] $$comp $$life: n/a" ;; \
+	  wasm-build) \
+	    test -f "$${VCPKG_ROOT:-$$HOME/vcpkg}/scripts/buildsystems/vcpkg.cmake" || { echo "[qtclient] need VCPKG_ROOT"; exit 1; }; \
+	    bash "$(HERE)/deploy/build-tibia.sh" --wasm $(if $(filter 1 true yes on,$(DEBUG) $(DEV)),--debug,) ;; \
+	  wasm-install) \
+	    $(MAKE) -f "$(HERE)/Makefile" _cargo COMP=wasm LIFE=build \
+	      $(if $(DEV),DEV=$(DEV),) $(if $(DEBUG),DEBUG=$(DEBUG),); \
+	    python3 "$(HERE)/tools/publish/dev_cdn.py" --web ;; \
+	  wasm-run) echo "[qtclient] after wasm install: make -C ../.. portal run → /play" ;; \
+	  wasm-check) echo "[qtclient] wasm check: scripts/ci/check-wasm-play-boot.sh" ;; \
+	  wasm-clean) rm -rf "$(HERE)/build"/wasm* 2>/dev/null; echo "[qtclient] cleaned wasm" ;; \
+	  wasm-doc|wasm-test) echo "[qtclient] $$comp $$life: n/a" ;; \
+	  *) echo "[qtclient] unknown $$comp $$life — try: make help"; exit 1 ;; \
+	esac
+
+setup:
+	@git submodule update --init third_party/Qt5LegacyControls 2>/dev/null || true
+	@$(MAKE) qt
+	@$(MAKE) sync
+	@$(MAKE) extract
+	@echo "[setup] done — make client build && make client run"
+
+sync tibia-sync:
+	@test -f "$(SYNC_PY)" || { echo "[sync] missing $(SYNC_PY)"; exit 1; }
+	@python3 "$(SYNC_PY)" \
+		$(if $(TIBIA),--tibia="$(TIBIA)",) \
+		$(if $(MSGMAP),--msgmap="$(MSGMAP)",) \
+		$(if $(CLIENT_VERSION),--things-dir="$(HERE)/data/assets",)
+
+extract:
+	@test -f "$(EXTRACT_PY)" || { echo "[extract] missing $(EXTRACT_PY)"; exit 1; }
+	@python3 "$(EXTRACT_PY)" \
+		$(if $(TIBIA),--tibia="$(TIBIA)",) \
+		--assets-dir="$(HERE)/data/assets" \
+		$(if $(CLIENT_VERSION),--client-version="$(CLIENT_VERSION)",) \
+		$(EXTRACT_FLAGS)
+	@python3 "$(HERE)/tools/publish/cli.py" assets things 2>/dev/null || true
+
+fetch-assets:
+	@python3 "$(HERE)/tools/fetch-assets/fetch_assets.py" \
+		$(if $(TIBIA),--tibia="$(TIBIA)",) \
+		--out="$(HERE)" \
+		$(ARGS)
+
+qt:
+	@bash "$(HERE)/tools/qt/install-qt.sh" $(if $(filter 1 true yes on,$(WASM)),--wasm,)
+
+tibia-dump-smoke:
+	@bash "$(HERE)/scripts/ci/check-session-dump-smoke.sh"
+
+tibia-android:
+	@bash "$(HERE)/deploy/build-tibia-android.sh" $(ARGS)
+
+tibia-ios:
+	@bash "$(HERE)/deploy/build-tibia-ios.sh" $(ARGS)
+
+cdn:
+	@python3 "$(HERE)/tools/publish/local_cdn.py" --desktop --wasm
+
+publish-assets:
+	@python3 "$(HERE)/tools/publish/cli.py" assets $(ARGS)
+	@python3 "$(HERE)/tools/publish/local_cdn.py"
+
+local-cdn:
+	@python3 "$(HERE)/tools/publish/local_cdn.py"

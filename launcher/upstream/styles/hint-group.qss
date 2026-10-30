@@ -1,0 +1,16 @@
+QGroupBox {
+          border-image: url(:/images/launcher/hint-background.png) 17 4 4 4 repeat;
+          border-top: 17px transparent;
+          border-left: 4px transparent;
+          border-bottom: 4px transparent;
+          border-right: 4px transparent;
+          background-attachment: fixed;
+          font-family: "Verdana";
+          font-size: 11px;
+          font-weight: bold;
+        }
+        QGroupBox::title {
+          color: #909090;
+          margin-top: 2px transparent;
+          background-color: transparent;
+        }

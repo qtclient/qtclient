@@ -1,0 +1,27 @@
+{
+  "name": "tibia",
+  "version-string": "1.0.0",
+  "description": "qtclient / tibia Qt client C++ dependencies (Qt comes from make qt)",
+  "dependencies": [
+    "zlib",
+    {
+      "name": "libpng",
+      "features": ["apng"]
+    },
+    "liblzma",
+    "fmt",
+    "nlohmann-json",
+    "parallel-hashmap",
+    "utfcpp",
+    "stduuid",
+    "bshoshany-thread-pool",
+    "protobuf"
+  ],
+  "features": {
+    "tests": {
+      "description": "Unit test dependencies (TIBIA_BUILD_TESTS)",
+      "dependencies": ["gtest"]
+    }
+  },
+  "builtin-baseline": "56bb2411609227288b70117ead2c47585ba07713"
+}

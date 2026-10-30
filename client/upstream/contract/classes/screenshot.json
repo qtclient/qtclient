@@ -1,0 +1,52 @@
+{
+ "tibia::screenshot::TOutstandingScreenshot": {
+  "chain": [
+   "tibia::screenshot::TOutstandingScreenshot",
+   "QObject"
+  ],
+  "class": "tibia::screenshot::TOutstandingScreenshot",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "ready": [
+    "void ready(uint Id)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::screenshot::TScreenshotManager": {
+  "chain": [
+   "tibia::screenshot::TScreenshotManager",
+   "QObject"
+  ],
+  "class": "tibia::screenshot::TScreenshotManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onBacklockUpdateTriggered": [
+    "void onBacklockUpdateTriggered()"
+   ],
+   "onScreenshotMangerOptionsChanged": [
+    "void onScreenshotMangerOptionsChanged()"
+   ],
+   "processReadyScreenshot": [
+    "void processReadyScreenshot(uint ScreenshotId)"
+   ],
+   "takeScreenshotIfEventIsWainting": [
+    "bool takeScreenshotIfEventIsWainting()"
+   ]
+  }
+ }
+}

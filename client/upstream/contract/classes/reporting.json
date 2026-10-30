@@ -1,0 +1,56 @@
+{
+ "tibia::reporting::TBugReportProtocolMessageHandler": {
+  "chain": [
+   "tibia::reporting::TBugReportProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::reporting::TBugReportProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendBugReport": [
+    "void sendBugReport(tibia::protobuf::protocol::GameclientMessageBugReport BugReportMessage)"
+   ]
+  },
+  "slots": {
+   "handleBugReportsAllowedMessage": [
+    "void handleBugReportsAllowedMessage(tibia::protobuf::protocol::GameserverMessageBugReportsAllowed Message)"
+   ]
+  }
+ },
+ "tibia::reporting::TRuleViolationProtocolMessageHandler": {
+  "chain": [
+   "tibia::reporting::TRuleViolationProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::reporting::TRuleViolationProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "ruleViolationReportConfirmed": [
+    "void ruleViolationReportConfirmed()"
+   ],
+   "sendGetTextForReport": [
+    "void sendGetTextForReport(tibia::protobuf::protocol::GameclientMessageGetTextForReport GetTextForReportMessage)"
+   ],
+   "sendRuleViolationReport": [
+    "void sendRuleViolationReport(tibia::protobuf::protocol::GameclientMessageRuleViolationReport RuleViolationReportMessage)"
+   ]
+  },
+  "slots": {
+   "handleMessageMessage": [
+    "void handleMessageMessage(tibia::protobuf::protocol::GameserverMessageMessage MessageMessage)"
+   ],
+   "handleTextForReportMessage": [
+    "void handleTextForReportMessage(tibia::protobuf::protocol::GameserverMessageTextForReport Message)"
+   ]
+  }
+ }
+}

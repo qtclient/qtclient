@@ -1,0 +1,2102 @@
+[
+ {
+  "dir": "client",
+  "opcode": 10,
+  "name": "Login",
+  "func": "sendLoginPacket"
+ },
+ {
+  "dir": "client",
+  "opcode": 11,
+  "name": "SecondaryLogin",
+  "func": "sendSecondaryLogin"
+ },
+ {
+  "dir": "client",
+  "opcode": 15,
+  "name": "EnterWorld",
+  "func": "sendEnterGame"
+ },
+ {
+  "dir": "client",
+  "opcode": 20,
+  "name": "QuitGame",
+  "func": "sendLogout"
+ },
+ {
+  "dir": "client",
+  "opcode": 28,
+  "name": "ConnectionPingBack",
+  "func": "sendConnectionPingBack"
+ },
+ {
+  "dir": "client",
+  "opcode": 29,
+  "name": "Ping",
+  "func": "sendPing"
+ },
+ {
+  "dir": "client",
+  "opcode": 30,
+  "name": "PingBack",
+  "func": "sendPingBack"
+ },
+ {
+  "dir": "client",
+  "opcode": 40,
+  "name": "StashAction",
+  "func": "sendStashWithdraw"
+ },
+ {
+  "dir": "client",
+  "opcode": 41,
+  "name": "DepotSearchRetrieve",
+  "func": "sendRetrieveDepotSearch"
+ },
+ {
+  "dir": "client",
+  "opcode": 42,
+  "name": "TrackBestiaryRace",
+  "func": "sendStatusTrackerBestiary"
+ },
+ {
+  "dir": "client",
+  "opcode": 43,
+  "name": "PartyHuntAnalyser",
+  "func": "sendPartyAnalyzerAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 44,
+  "name": "TeamFinderAssembleTeam",
+  "func": "sendTeamFinderLeaderAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 45,
+  "name": "TeamFinderJoinTeam",
+  "func": "sendTeamFinderMemberAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 46,
+  "name": "SetClientOptions",
+  "func": "sendSetClientOptions"
+ },
+ {
+  "dir": "client",
+  "opcode": 95,
+  "name": "Taskboard",
+  "func": "sendTaskBoardAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 96,
+  "name": "TrackImbuements",
+  "func": "sendImbuementDurations"
+ },
+ {
+  "dir": "client",
+  "opcode": 97,
+  "name": "RequestSkillWheel",
+  "func": "sendOpenWheel"
+ },
+ {
+  "dir": "client",
+  "opcode": 98,
+  "name": "ApplySkillWheel",
+  "func": "sendApplyWheelPoints"
+ },
+ {
+  "dir": "client",
+  "opcode": 99,
+  "name": "ClientCheck",
+  "func": "sendClientCheck"
+ },
+ {
+  "dir": "client",
+  "opcode": 100,
+  "name": "GoPath",
+  "func": "sendAutoWalk"
+ },
+ {
+  "dir": "client",
+  "opcode": 101,
+  "name": "GoNorth",
+  "func": "sendWalkNorth"
+ },
+ {
+  "dir": "client",
+  "opcode": 102,
+  "name": "GoEast",
+  "func": "sendWalkEast"
+ },
+ {
+  "dir": "client",
+  "opcode": 103,
+  "name": "GoSouth",
+  "func": "sendWalkSouth"
+ },
+ {
+  "dir": "client",
+  "opcode": 104,
+  "name": "GoWest",
+  "func": "sendWalkWest"
+ },
+ {
+  "dir": "client",
+  "opcode": 105,
+  "name": "Stop",
+  "func": "sendStop"
+ },
+ {
+  "dir": "client",
+  "opcode": 106,
+  "name": "GoNorthEast",
+  "func": "sendWalkNorthEast"
+ },
+ {
+  "dir": "client",
+  "opcode": 107,
+  "name": "GoSouthEast",
+  "func": "sendWalkSouthEast"
+ },
+ {
+  "dir": "client",
+  "opcode": 108,
+  "name": "GoSouthWest",
+  "func": "sendWalkSouthWest"
+ },
+ {
+  "dir": "client",
+  "opcode": 109,
+  "name": "GoNorthWest",
+  "func": "sendWalkNorthWest"
+ },
+ {
+  "dir": "client",
+  "opcode": 110,
+  "name": "SetVocation",
+  "func": "sendTutorialChangeVocation"
+ },
+ {
+  "dir": "client",
+  "opcode": 111,
+  "name": "RotateNorth",
+  "func": "sendTurnNorth"
+ },
+ {
+  "dir": "client",
+  "opcode": 112,
+  "name": "RotateEast",
+  "func": "sendTurnEast"
+ },
+ {
+  "dir": "client",
+  "opcode": 113,
+  "name": "RotateSouth",
+  "func": "sendTurnSouth"
+ },
+ {
+  "dir": "client",
+  "opcode": 114,
+  "name": "RotateWest",
+  "func": "sendTurnWest"
+ },
+ {
+  "dir": "client",
+  "opcode": 115,
+  "name": "Teleport",
+  "func": "sendTeleport"
+ },
+ {
+  "dir": "client",
+  "opcode": 116,
+  "name": "StartOfflineTraining",
+  "func": "sendStartOfflineTraining"
+ },
+ {
+  "dir": "client",
+  "opcode": 117,
+  "name": "ContainerAction",
+  "func": "sendContainerAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 118,
+  "name": "CharacterTradeConfigurationAction",
+  "func": "sendCharacterTradeConfigurationAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 119,
+  "name": "EquipObject",
+  "func": "sendEquipItemWithTier"
+ },
+ {
+  "dir": "client",
+  "opcode": 120,
+  "name": "MoveObject",
+  "func": "sendMove"
+ },
+ {
+  "dir": "client",
+  "opcode": 121,
+  "name": "LookNPCTrade",
+  "func": "sendInspectNpcTrade"
+ },
+ {
+  "dir": "client",
+  "opcode": 122,
+  "name": "BuyObject",
+  "func": "sendBuyItem"
+ },
+ {
+  "dir": "client",
+  "opcode": 123,
+  "name": "SellObject",
+  "func": "sendSellItem"
+ },
+ {
+  "dir": "client",
+  "opcode": 124,
+  "name": "CloseNPCTrade",
+  "func": "sendCloseNpcTrade"
+ },
+ {
+  "dir": "client",
+  "opcode": 125,
+  "name": "TradeObject",
+  "func": "sendRequestTrade"
+ },
+ {
+  "dir": "client",
+  "opcode": 126,
+  "name": "LookTrade",
+  "func": "sendInspectTrade"
+ },
+ {
+  "dir": "client",
+  "opcode": 127,
+  "name": "AcceptTrade",
+  "func": "sendAcceptTrade"
+ },
+ {
+  "dir": "client",
+  "opcode": 128,
+  "name": "RejectTrade",
+  "func": "sendRejectTrade"
+ },
+ {
+  "dir": "client",
+  "opcode": 129,
+  "name": "FriendSystemAction",
+  "func": "sendFriendSystemAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 130,
+  "name": "UseObject",
+  "func": "sendUseItem"
+ },
+ {
+  "dir": "client",
+  "opcode": 131,
+  "name": "UseTwoObjects",
+  "func": "sendUseItemWith"
+ },
+ {
+  "dir": "client",
+  "opcode": 132,
+  "name": "UseOnCreature",
+  "func": "sendUseOnCreature"
+ },
+ {
+  "dir": "client",
+  "opcode": 133,
+  "name": "TurnObject",
+  "func": "sendRotateItem"
+ },
+ {
+  "dir": "client",
+  "opcode": 134,
+  "name": "ConfigureShowOffSocket",
+  "func": "sendConfigureShowOffSocket"
+ },
+ {
+  "dir": "client",
+  "opcode": 135,
+  "name": "CloseContainer",
+  "func": "sendCloseContainer"
+ },
+ {
+  "dir": "client",
+  "opcode": 136,
+  "name": "UpContainer",
+  "func": "sendUpContainer"
+ },
+ {
+  "dir": "client",
+  "opcode": 137,
+  "name": "EditText",
+  "func": "sendEditText"
+ },
+ {
+  "dir": "client",
+  "opcode": 138,
+  "name": "EditList",
+  "func": "sendEditList"
+ },
+ {
+  "dir": "client",
+  "opcode": 139,
+  "name": "ToggleWrapState",
+  "func": "sendOnWrapItem"
+ },
+ {
+  "dir": "client",
+  "opcode": 140,
+  "name": "Look",
+  "func": "sendLook"
+ },
+ {
+  "dir": "client",
+  "opcode": 141,
+  "name": "LookAtCreature",
+  "func": "sendLookCreature"
+ },
+ {
+  "dir": "client",
+  "opcode": 142,
+  "name": "JoinAggression",
+  "func": "sendJoinAggression"
+ },
+ {
+  "dir": "client",
+  "opcode": 143,
+  "name": "QuickLoot",
+  "func": "sendQuickLoot"
+ },
+ {
+  "dir": "client",
+  "opcode": 144,
+  "name": "ManagedContainer",
+  "func": "openContainerQuickLoot"
+ },
+ {
+  "dir": "client",
+  "opcode": 145,
+  "name": "QuickLootBlackWhitelist",
+  "func": "requestQuickLootBlackWhiteList"
+ },
+ {
+  "dir": "client",
+  "opcode": 146,
+  "name": "OpenDepotSearch",
+  "func": "sendOpenDepotSearch"
+ },
+ {
+  "dir": "client",
+  "opcode": 147,
+  "name": "CloseDepotSearch",
+  "func": "sendCloseDepotSearch"
+ },
+ {
+  "dir": "client",
+  "opcode": 148,
+  "name": "DepotSearchType",
+  "func": "sendDepotSearchType"
+ },
+ {
+  "dir": "client",
+  "opcode": 149,
+  "name": "OpenParentContainer",
+  "func": "sendOpenParentContainer"
+ },
+ {
+  "dir": "client",
+  "opcode": 150,
+  "name": "Talk",
+  "func": "sendTalk"
+ },
+ {
+  "dir": "client",
+  "opcode": 151,
+  "name": "GetChannels",
+  "func": "sendRequestChannels"
+ },
+ {
+  "dir": "client",
+  "opcode": 152,
+  "name": "JoinChannel",
+  "func": "sendJoinChannel"
+ },
+ {
+  "dir": "client",
+  "opcode": 153,
+  "name": "LeaveChannel",
+  "func": "sendLeaveChannel"
+ },
+ {
+  "dir": "client",
+  "opcode": 154,
+  "name": "PrivateChannel",
+  "func": "sendOpenPrivateChannel"
+ },
+ {
+  "dir": "client",
+  "opcode": 155,
+  "name": "GuildMessage",
+  "func": "sendGetGuildMessage"
+ },
+ {
+  "dir": "client",
+  "opcode": 156,
+  "name": "EditGuildMessage",
+  "func": "sendEditGuildMessage"
+ },
+ {
+  "dir": "client",
+  "opcode": 157,
+  "name": "GetTextForReport",
+  "func": "sendGetTextForReport"
+ },
+ {
+  "dir": "client",
+  "opcode": 158,
+  "name": "CloseNPCChannel",
+  "func": "sendCloseNpcChannel"
+ },
+ {
+  "dir": "client",
+  "opcode": 159,
+  "name": "SetCreaturePodiumConfiguration",
+  "func": "sendSetCreaturePodiumConfiguration"
+ },
+ {
+  "dir": "client",
+  "opcode": 160,
+  "name": "SetTactics",
+  "func": "sendChangeFightModes"
+ },
+ {
+  "dir": "client",
+  "opcode": 161,
+  "name": "Attack",
+  "func": "sendAttack"
+ },
+ {
+  "dir": "client",
+  "opcode": 162,
+  "name": "Follow",
+  "func": "sendFollow"
+ },
+ {
+  "dir": "client",
+  "opcode": 163,
+  "name": "InviteToParty",
+  "func": "sendInviteToParty"
+ },
+ {
+  "dir": "client",
+  "opcode": 164,
+  "name": "JoinParty",
+  "func": "sendJoinParty"
+ },
+ {
+  "dir": "client",
+  "opcode": 165,
+  "name": "RevokeInvitation",
+  "func": "sendRevokeInvitation"
+ },
+ {
+  "dir": "client",
+  "opcode": 166,
+  "name": "PassLeadership",
+  "func": "sendPassLeadership"
+ },
+ {
+  "dir": "client",
+  "opcode": 167,
+  "name": "LeaveParty",
+  "func": "sendLeaveParty"
+ },
+ {
+  "dir": "client",
+  "opcode": 168,
+  "name": "ShareExperience",
+  "func": "sendShareExperience"
+ },
+ {
+  "dir": "client",
+  "opcode": 169,
+  "name": "DisbandParty",
+  "func": "sendDisbandParty"
+ },
+ {
+  "dir": "client",
+  "opcode": 170,
+  "name": "OpenChannel",
+  "func": "sendOpenOwnChannel"
+ },
+ {
+  "dir": "client",
+  "opcode": 171,
+  "name": "InviteToChannel",
+  "func": "sendInviteToOwnChannel"
+ },
+ {
+  "dir": "client",
+  "opcode": 172,
+  "name": "ExcludeFromChannel",
+  "func": "sendExcludeFromOwnChannel"
+ },
+ {
+  "dir": "client",
+  "opcode": 173,
+  "name": "CyclopediaHouseAction",
+  "func": "sendCyclopediaHouseAuction"
+ },
+ {
+  "dir": "client",
+  "opcode": 174,
+  "name": "OpenBosstiary",
+  "func": "sendRequestBosstiaryInfo"
+ },
+ {
+  "dir": "client",
+  "opcode": 175,
+  "name": "OpenBossSlots",
+  "func": "sendRequestBossSlootInfo"
+ },
+ {
+  "dir": "client",
+  "opcode": 176,
+  "name": "EditBossSlot",
+  "func": "sendRequestBossSlotAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 177,
+  "name": "Highscores",
+  "func": "sendHighscoreInfo"
+ },
+ {
+  "dir": "client",
+  "opcode": 178,
+  "name": "PickObjectToImbue",
+  "func": "sendImbuementWindowAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 179,
+  "name": "WeaponProficiencyCommand",
+  "func": "sendWeaponProficiencyAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 186,
+  "name": "SoulSealsFightMonster",
+  "func": "sendSoulSealsAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 190,
+  "name": "Cancel",
+  "func": "sendCancelAttackAndFollow"
+ },
+ {
+  "dir": "client",
+  "opcode": 191,
+  "name": "ExaltationAction",
+  "func": "sendForgeRequest"
+ },
+ {
+  "dir": "client",
+  "opcode": 192,
+  "name": "OpenExaltationHistory",
+  "func": "sendForgeBrowseHistoryRequest"
+ },
+ {
+  "dir": "client",
+  "opcode": 193,
+  "name": "ClientDetails",
+  "func": "sendClientDetails"
+ },
+ {
+  "dir": "client",
+  "opcode": 194,
+  "name": "BossDifficultySelection",
+  "func": "sendBossDifficultySelectionAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 200,
+  "name": "SpellTargetConfig",
+  "func": "sendSelectSpellAim"
+ },
+ {
+  "dir": "client",
+  "opcode": 201,
+  "name": "GetTransactionDetails",
+  "func": "sendGetTransactionDetails"
+ },
+ {
+  "dir": "client",
+  "opcode": 202,
+  "name": "UpdateExivaOptions",
+  "func": "sendExivaRestrictions"
+ },
+ {
+  "dir": "client",
+  "opcode": 203,
+  "name": "BrowseField",
+  "func": "sendBrowseField"
+ },
+ {
+  "dir": "client",
+  "opcode": 204,
+  "name": "SeekInContainer",
+  "func": "sendSeekInContainer"
+ },
+ {
+  "dir": "client",
+  "opcode": 205,
+  "name": "InspectObject",
+  "func": "sendInspectionObject"
+ },
+ {
+  "dir": "client",
+  "opcode": 206,
+  "name": "InspectPlayer",
+  "func": "sendInspectCharacter"
+ },
+ {
+  "dir": "client",
+  "opcode": 207,
+  "name": "BlessingsDialog",
+  "func": "sendRequestBless"
+ },
+ {
+  "dir": "client",
+  "opcode": 208,
+  "name": "TrackQuestFlags",
+  "func": "sendRequestTrackerQuestLog"
+ },
+ {
+  "dir": "client",
+  "opcode": 209,
+  "name": "MarketStatistics",
+  "func": "sendMarketStatistics"
+ },
+ {
+  "dir": "client",
+  "opcode": 210,
+  "name": "GetOutfit",
+  "func": "sendRequestOutfit"
+ },
+ {
+  "dir": "client",
+  "opcode": 211,
+  "name": "SetOutfit",
+  "func": "sendChangeOutfit"
+ },
+ {
+  "dir": "client",
+  "opcode": 212,
+  "name": "Mount",
+  "func": "sendMountStatus"
+ },
+ {
+  "dir": "client",
+  "opcode": 213,
+  "name": "ApplyImbuement",
+  "func": "sendApplyImbuement"
+ },
+ {
+  "dir": "client",
+  "opcode": 214,
+  "name": "ApplyClearingCharm",
+  "func": "sendClearImbuement"
+ },
+ {
+  "dir": "client",
+  "opcode": 215,
+  "name": "CloseImbuingDialog",
+  "func": "sendCloseImbuingWindow"
+ },
+ {
+  "dir": "client",
+  "opcode": 216,
+  "name": "OpenRewardWall",
+  "func": "sendOpenRewardWall"
+ },
+ {
+  "dir": "client",
+  "opcode": 217,
+  "name": "DailyRewardHistory",
+  "func": "sendOpenRewardHistory"
+ },
+ {
+  "dir": "client",
+  "opcode": 218,
+  "name": "CollectDailyReward",
+  "func": "sendGetRewardDaily"
+ },
+ {
+  "dir": "client",
+  "opcode": 219,
+  "name": "CyclopediaMapAction",
+  "func": "sendCyclopediaMapDonate"
+ },
+ {
+  "dir": "client",
+  "opcode": 220,
+  "name": "AddBuddy",
+  "func": "sendAddVip"
+ },
+ {
+  "dir": "client",
+  "opcode": 221,
+  "name": "RemoveBuddy",
+  "func": "sendRemoveVip"
+ },
+ {
+  "dir": "client",
+  "opcode": 222,
+  "name": "EditBuddy",
+  "func": "sendEditVip"
+ },
+ {
+  "dir": "client",
+  "opcode": 223,
+  "name": "BuddyGroup",
+  "func": "sendEditVipGroups"
+ },
+ {
+  "dir": "client",
+  "opcode": 225,
+  "name": "OpenMonsterCyclopedia",
+  "func": "sendRequestBestiary"
+ },
+ {
+  "dir": "client",
+  "opcode": 226,
+  "name": "OpenMonsterCyclopediaMonsters",
+  "func": "sendRequestBestiaryOverview"
+ },
+ {
+  "dir": "client",
+  "opcode": 227,
+  "name": "OpenMonsterCyclopediaRace",
+  "func": "sendRequestBestiarySearch"
+ },
+ {
+  "dir": "client",
+  "opcode": 228,
+  "name": "MonsterBonusEffectAction",
+  "func": "sendBuyCharmRune"
+ },
+ {
+  "dir": "client",
+  "opcode": 229,
+  "name": "OpenCyclopediaCharacterInfo",
+  "func": "sendCyclopediaRequestCharacterInfo"
+ },
+ {
+  "dir": "client",
+  "opcode": 230,
+  "name": "BugReport",
+  "func": "sendBugReport"
+ },
+ {
+  "dir": "client",
+  "opcode": 231,
+  "name": "GemAtelier",
+  "func": "sendWheelGemAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 232,
+  "name": "GetOfferDescription",
+  "func": "sendGetOfferDescription"
+ },
+ {
+  "dir": "client",
+  "opcode": 233,
+  "name": "StoreEvent",
+  "func": "sendStoreEvent"
+ },
+ {
+  "dir": "client",
+  "opcode": 235,
+  "name": "PreyAction",
+  "func": "sendPreyAction"
+ },
+ {
+  "dir": "client",
+  "opcode": 236,
+  "name": "SetHirelingName",
+  "func": "sendSetHirelingName"
+ },
+ {
+  "dir": "client",
+  "opcode": 237,
+  "name": "RequestResourceBalance",
+  "func": "sendRequestResourceBalance"
+ },
+ {
+  "dir": "client",
+  "opcode": 238,
+  "name": "Greet",
+  "func": "sendGreet"
+ },
+ {
+  "dir": "client",
+  "opcode": 239,
+  "name": "TransferCurrency",
+  "func": "sendTransferCoins"
+ },
+ {
+  "dir": "client",
+  "opcode": 240,
+  "name": "GetQuestLog",
+  "func": "sendRequestQuestLog"
+ },
+ {
+  "dir": "client",
+  "opcode": 241,
+  "name": "GetQuestLine",
+  "func": "sendRequestQuestLine"
+ },
+ {
+  "dir": "client",
+  "opcode": 242,
+  "name": "RuleViolationReport",
+  "func": "sendRuleViolationReport"
+ },
+ {
+  "dir": "client",
+  "opcode": 243,
+  "name": "GetObjectInfo",
+  "func": "sendRequestItemInfo"
+ },
+ {
+  "dir": "client",
+  "opcode": 244,
+  "name": "MarketLeave",
+  "func": "sendMarketLeave"
+ },
+ {
+  "dir": "client",
+  "opcode": 245,
+  "name": "MarketBrowse",
+  "func": "sendMarketBrowse"
+ },
+ {
+  "dir": "client",
+  "opcode": 246,
+  "name": "MarketCreate",
+  "func": "sendMarketCreateOffer"
+ },
+ {
+  "dir": "client",
+  "opcode": 247,
+  "name": "MarketCancel",
+  "func": "sendMarketCancelOffer"
+ },
+ {
+  "dir": "client",
+  "opcode": 248,
+  "name": "MarketAccept",
+  "func": "sendMarketAcceptOffer"
+ },
+ {
+  "dir": "client",
+  "opcode": 249,
+  "name": "AnswerModalDialog",
+  "func": "sendAnswerModalDialog"
+ },
+ {
+  "dir": "client",
+  "opcode": 250,
+  "name": "RequestStoreCategories",
+  "func": "sendOpenStore"
+ },
+ {
+  "dir": "client",
+  "opcode": 251,
+  "name": "RequestStoreOffers",
+  "func": "sendRequestStoreOffers"
+ },
+ {
+  "dir": "client",
+  "opcode": 252,
+  "name": "BuyStoreOffer",
+  "func": "sendBuyStoreOffer"
+ },
+ {
+  "dir": "client",
+  "opcode": 253,
+  "name": "OpenTransactionHistory",
+  "func": "sendOpenTransactionHistory"
+ },
+ {
+  "dir": "client",
+  "opcode": 254,
+  "name": "GetTransactionHistory",
+  "func": "sendRequestTransactionHistory"
+ },
+ {
+  "dir": "client",
+  "opcode": 255,
+  "name": "GatherAll",
+  "func": "sendGatherAll"
+ },
+ {
+  "dir": "server",
+  "opcode": 3,
+  "name": "CreatureData",
+  "call": "parseSessionCreatureData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 4,
+  "name": "SessionDumpStart",
+  "call": "parseSessionDumpStart(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 5,
+  "name": "SessionDumpMarker",
+  "call": "parseSessionDumpMarker(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 6,
+  "name": "PartyLeft",
+  "call": "parsePartyLeft(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 10,
+  "name": "PendingStateEntered",
+  "call": "if (g_game.getFeature(Otc::GameLoginPending)) {\n                            parsePendingGame(msg);\n                        } else {\n                            parseLogin(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 11,
+  "name": "ReadyForSecondaryConnection",
+  "call": "parseReadyForSecondaryConnection(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 15,
+  "name": "WorldEntered",
+  "call": "parseEnterGame(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 20,
+  "name": "LoginError",
+  "call": "parseLoginError(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 21,
+  "name": "LoginAdvice",
+  "call": "parseLoginAdvice(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 22,
+  "name": "LoginWait",
+  "call": "parseLoginWait(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 23,
+  "name": "LoginSuccess",
+  "call": "parseLogin(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 24,
+  "name": "SessionEndInformation",
+  "call": "parseSessionEnd(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 25,
+  "name": "StoreButtonIndicators",
+  "call": "parseStoreButtonIndicators(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 26,
+  "name": "BugReportsAllowed",
+  "call": "parseBugReport(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 27,
+  "name": "ShowMultiOfflineTrainingDialog",
+  "call": "parseMultiOfflineTrainingDialog(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 28,
+  "name": "NpcTalkParters",
+  "call": "parseNpcChatWindow(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 29,
+  "name": "Ping",
+  "call": "if (((opcode == Proto::GameServerPing) && (g_game.getFeature(Otc::GameClientPing))) ||\n                            ((opcode == Proto::GameServerPingBack) && !g_game.getFeature(Otc::GameClientPing))) {\n                            parsePingBack(msg);\n                        } else {\n                            parsePing(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 30,
+  "name": "PingBack",
+  "call": "if (((opcode == Proto::GameServerPing) && (g_game.getFeature(Otc::GameClientPing))) ||\n                            ((opcode == Proto::GameServerPingBack) && !g_game.getFeature(Otc::GameClientPing))) {\n                            parsePingBack(msg);\n                        } else {\n                            parsePing(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 31,
+  "name": "LoginChallenge",
+  "call": "parseLoginChallenge(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 40,
+  "name": "Dead",
+  "call": "parseDeath(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 41,
+  "name": "Stash",
+  "call": "parseSupplyStash(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 42,
+  "name": "SpecialContainersAvailable",
+  "call": "parseSpecialContainer(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 43,
+  "name": "PartyHuntAnalyser",
+  "call": "parsePartyAnalyzer(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 44,
+  "name": "TeamFinderTeamLeader",
+  "call": "parseTeamFinderLeader(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 45,
+  "name": "TeamFinderTeamMember",
+  "call": "parseTeamFinderList(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 46,
+  "name": "UnlockedSpells",
+  "call": "parseUnlockedSpells(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 47,
+  "name": "BossDifficultySelection",
+  "call": "parseBossDifficultySelection(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 91,
+  "name": "Taskboard",
+  "call": "parseTaskBoardData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 92,
+  "name": "WeaponProficiencyNotification",
+  "call": "parseWeaponProficiencyExperience(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 93,
+  "name": "ImbuementDurations",
+  "call": "parseImbuementDurations(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 94,
+  "name": "PassiveAbilityData",
+  "call": "parsePassiveCooldown(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 95,
+  "name": "SkillWheel",
+  "call": "parseOpenWheelWindow(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 96,
+  "name": "SpellDataModification",
+  "call": "parseSpellDataModification(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 97,
+  "name": "BosstiaryStaticData",
+  "call": "parseBosstiaryData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 98,
+  "name": "BossSlots",
+  "call": "parseBosstiarySlots(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 99,
+  "name": "ClientCheck",
+  "call": "parseClientCheck(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 100,
+  "name": "FullMap",
+  "call": "parseMapDescription(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 101,
+  "name": "TopRow",
+  "call": "parseMapMoveNorth(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 102,
+  "name": "RightColumn",
+  "call": "parseMapMoveEast(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 103,
+  "name": "BottomRow",
+  "call": "parseMapMoveSouth(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 104,
+  "name": "LeftColumn",
+  "call": "parseMapMoveWest(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 105,
+  "name": "FieldData",
+  "call": "parseUpdateTile(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 106,
+  "name": "CreateOnMap",
+  "call": "parseTileAddThing(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 107,
+  "name": "ChangeOnMap",
+  "call": "parseTileTransformThing(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 108,
+  "name": "DeleteOnMap",
+  "call": "parseTileRemoveThing(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 109,
+  "name": "MoveCreature",
+  "call": "parseCreatureMove(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 110,
+  "name": "Container",
+  "call": "parseOpenContainer(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 111,
+  "name": "CloseContainer",
+  "call": "parseCloseContainer(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 112,
+  "name": "CreateInContainer",
+  "call": "parseContainerAddItem(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 113,
+  "name": "ChangeInContainer",
+  "call": "parseContainerUpdateItem(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 114,
+  "name": "DeleteInContainer",
+  "call": "parseContainerRemoveItem(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 115,
+  "name": "Bosstiary",
+  "call": "parseBosstiaryInfo(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 116,
+  "name": "FriendSystemData",
+  "call": "parseFriendSystemData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 117,
+  "name": "GameEvent",
+  "call": "parseClientEvent(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 118,
+  "name": "InspectionList",
+  "call": "parseCyclopediaItemDetail(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 119,
+  "name": "InspectionState",
+  "call": "parseInspectionState(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 120,
+  "name": "SetInventory",
+  "call": "parseAddInventoryItem(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 121,
+  "name": "DeleteInventory",
+  "call": "parseRemoveInventoryItem(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 122,
+  "name": "NPCOffer",
+  "call": "parseOpenNpcTrade(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 123,
+  "name": "PlayerGoods",
+  "call": "parsePlayerGoods(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 124,
+  "name": "CloseNPCTrade",
+  "call": "parseCloseNpcTrade(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 125,
+  "name": "OwnOffer",
+  "call": "parseOwnTrade(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 126,
+  "name": "CounterOffer",
+  "call": "parseCounterTrade(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 127,
+  "name": "CloseTrade",
+  "call": "parseCloseTrade(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 128,
+  "name": "CharacterTradeConfiguration",
+  "call": "parseCharacterTradeConfiguration(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 129,
+  "name": "TextForReport",
+  "call": "parseTextForReport(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 130,
+  "name": "AmbientLight",
+  "call": "parseWorldLight(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 131,
+  "name": "GraphicalEffects",
+  "call": "parseMagicEffect(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 132,
+  "name": "RemoveGraphicalEffect",
+  "call": "if (g_game.getClientVersion() >= 1320) {\n                            parseRemoveMagicEffect(msg);\n                        } else {\n                            parseAnimatedText(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 133,
+  "name": "SoundTrigger",
+  "call": "if (g_game.getFeature(Otc::GameAnthem)) {\n                            parseAnthem(msg);\n                        } else {\n                            parseDistanceMissile(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 134,
+  "name": "ExaltationBaseData",
+  "call": "if (g_game.getClientVersion() >= 1281) {\n                            parseItemClasses(msg);\n                        } else {\n                            parseCreatureMark(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 135,
+  "name": "ExaltationDialogRefresh",
+  "call": "if (g_game.getClientVersion() >= 1281) {\n                            parseOpenForge(msg);\n                        } else {\n                            parseTrappers(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 136,
+  "name": "ExaltationHistory",
+  "call": "parseBrowseForgeHistory(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 137,
+  "name": "CloseExaltationDialog",
+  "call": "parseCloseForgeWindow(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 138,
+  "name": "ExaltationResult",
+  "call": "if (g_game.getClientVersion() >= 1281) {\n                            parseForgeResult(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 139,
+  "name": "CreatureUpdate",
+  "call": "parseCreatureData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 140,
+  "name": "CreatureHealth",
+  "call": "parseCreatureHealth(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 141,
+  "name": "CreatureLight",
+  "call": "parseCreatureLight(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 142,
+  "name": "CreatureOutfit",
+  "call": "parseCreatureOutfit(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 143,
+  "name": "CreatureSpeed",
+  "call": "parseCreatureSpeed(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 144,
+  "name": "CreatureSkull",
+  "call": "parseCreatureSkulls(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 145,
+  "name": "CreatureParty",
+  "call": "parseCreatureShields(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 146,
+  "name": "CreatureUnpass",
+  "call": "parseCreatureUnpass(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 147,
+  "name": "CreatureMarks",
+  "call": "parseCreaturesMark(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 148,
+  "name": "DepotSearchResult",
+  "call": "// Crystal: oldProtocol helpers; modern clients use 0x94 as DepotSearchResult.\n                        if (g_game.getClientVersion() > 1100)\n                            parseDepotSearchResults(msg);\n                        else\n                            parsePlayerHelpers(msg);\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 149,
+  "name": "CreatureType",
+  "call": "parseCreatureType(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 150,
+  "name": "EditText",
+  "call": "parseEditText(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 151,
+  "name": "EditList",
+  "call": "parseEditList(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 152,
+  "name": "ShowGameNews",
+  "call": "parseGameNews(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 153,
+  "name": "DepotSearchDetailList",
+  "call": "parseDepotSearchDetailList(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 154,
+  "name": "CloseDepotSearch",
+  "call": "parseCloseDepotSearch(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 155,
+  "name": "BlessingsDialog",
+  "call": "parseBlessDialog(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 156,
+  "name": "Blessings",
+  "call": "parseBlessings(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 157,
+  "name": "SwitchPreset",
+  "call": "parsePreset(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 158,
+  "name": "PremiumTrigger",
+  "call": "parsePremiumTrigger(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 159,
+  "name": "PlayerDataBasic",
+  "call": "parsePlayerInfo(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 160,
+  "name": "PlayerDataCurrent",
+  "call": "parsePlayerStats(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 161,
+  "name": "PlayerSkills",
+  "call": "parsePlayerSkills(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 162,
+  "name": "PlayerState",
+  "call": "parsePlayerState(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 163,
+  "name": "UpdateTarget",
+  "call": "parsePlayerCancelAttack(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 164,
+  "name": "SpellDelay",
+  "call": "parseSpellCooldown(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 165,
+  "name": "SpellGroupDelay",
+  "call": "parseSpellGroupCooldown(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 166,
+  "name": "MultiUseDelay",
+  "call": "parseMultiUseCooldown(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 167,
+  "name": "SetTactics",
+  "call": "parsePlayerModes(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 168,
+  "name": "SetStoreButtonDeeplink",
+  "call": "parseSetStoreDeepLink(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 169,
+  "name": "RestingAreaState",
+  "call": "parseRestingAreaState(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 170,
+  "name": "Talk",
+  "call": "parseTalk(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 171,
+  "name": "Channels",
+  "call": "parseChannelList(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 172,
+  "name": "OpenChannel",
+  "call": "parseOpenChannel(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 173,
+  "name": "PrivateChannel",
+  "call": "parseOpenPrivateChannel(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 174,
+  "name": "EditGuildMessage",
+  "call": "parseEditGuildMessage(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 175,
+  "name": "XpChanged",
+  "call": "parseExperienceTracker(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 176,
+  "name": "OutfitMemorial",
+  "call": "parseOutfitMemorial(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 177,
+  "name": "Highscores",
+  "call": "parseHighscores(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 178,
+  "name": "OpenOwnChannel",
+  "call": "parseOpenOwnPrivateChannel(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 179,
+  "name": "CloseChannel",
+  "call": "parseCloseChannel(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 180,
+  "name": "Message",
+  "call": "parseTextMessage(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 181,
+  "name": "SnapBack",
+  "call": "parseCancelWalk(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 182,
+  "name": "Wait",
+  "call": "parseWalkWait(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 183,
+  "name": "UnjustifiedPoints",
+  "call": "parseUnjustifiedStats(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 184,
+  "name": "PvpSituations",
+  "call": "parsePvpSituations(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 185,
+  "name": "BestiaryTracker",
+  "call": "parseBestiaryTracker(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 186,
+  "name": "SoulSealsDialog",
+  "call": "parseTaskHuntingBasicData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 187,
+  "name": "ShapedPerkReshapeOffers",
+  "call": "if (g_game.getClientVersion() >= 1530)\n                            parseWeaponProficiencyReshapeOffers(msg);\n                        else\n                            parseTaskHuntingData(msg);\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 188,
+  "name": "Stop",
+  "call": "parseServerStop(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 189,
+  "name": "BossTracking",
+  "call": "parseBosstiaryCooldownTimer(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 190,
+  "name": "TopFloor",
+  "call": "parseFloorChangeUp(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 191,
+  "name": "BottomFloor",
+  "call": "parseFloorChangeDown(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 192,
+  "name": "UpdateManagedContainers",
+  "call": "parseLootContainers(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 193,
+  "name": "VocationSpecificPlayerData",
+  "call": "parseMonkData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 194,
+  "name": "ConfigureCreaturePodium",
+  "call": "parseConfigureCreaturePodium(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 195,
+  "name": "CyclopediaHouseActionResult",
+  "call": "parseCyclopediaHouseAuctionMessage(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 196,
+  "name": "WeaponProficiency",
+  "call": "parseWeaponProficiencyInfo(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 197,
+  "name": "GemAtelierGemRevealed",
+  "call": "parseGemAtelierGemRevealed(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 198,
+  "name": "CyclopediaStaticHouseData",
+  "call": "parseCyclopediaHousesInfo(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 199,
+  "name": "CyclopediaCurrentHouseData",
+  "call": "parseCyclopediaHouseList(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 200,
+  "name": "Outfit",
+  "call": "parseOpenOutfitWindow(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 201,
+  "name": "ExivaSuppressed",
+  "call": "g_gameEvents.callGlobalField(\"g_game\", \"onExivaSuppressed\");\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 202,
+  "name": "UpdateExivaOptions",
+  "call": "parseExivaRestrictions(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 203,
+  "name": "TransactionDetails",
+  "call": "parseTransactionDetails(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 204,
+  "name": "ImpactTracking",
+  "call": "parseUpdateImpactTracker(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 205,
+  "name": "MarketStatistics",
+  "call": "parseItemsPrice(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 206,
+  "name": "ItemWasted",
+  "call": "parseUpdateSupplyTracker(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 207,
+  "name": "ItemLooted",
+  "call": "parseUpdateLootTracker(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 208,
+  "name": "TrackQuestFlags",
+  "call": "parseQuestTracker(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 209,
+  "name": "KillTracking",
+  "call": "parseKillTracker(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 210,
+  "name": "BuddyData",
+  "call": "parseVipAdd(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 211,
+  "name": "BuddyStatusChange",
+  "call": "parseVipState(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 212,
+  "name": "BuddyGroupData",
+  "call": "parseVipLogout(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 213,
+  "name": "MonsterCyclopedia",
+  "call": "parseBestiaryRaces(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 214,
+  "name": "MonsterCyclopediaMonsters",
+  "call": "parseBestiaryOverview(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 215,
+  "name": "MonsterCyclopediaRace",
+  "call": "parseBestiaryMonsterData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 216,
+  "name": "MonsterCyclopediaBonusEffects",
+  "call": "parseBestiaryCharmsData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 217,
+  "name": "MonsterCyclopediaNewDetails",
+  "call": "parseBestiaryEntryChanged(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 218,
+  "name": "CyclopediaCharacterInfo",
+  "call": "parseCyclopediaCharacterInfo(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 219,
+  "name": "HirelingNameChange",
+  "call": "parseHirelingNameChange(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 220,
+  "name": "TutorialHint",
+  "call": "parseTutorialHint(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 221,
+  "name": "CyclopediaMapData",
+  "call": "parseAutomapFlag(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 222,
+  "name": "DailyRewardCollectionState",
+  "call": "parseDailyRewardCollectionState(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 223,
+  "name": "CreditBalance",
+  "call": "parseCoinBalance(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 224,
+  "name": "StoreError",
+  "call": "parseStoreError(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 225,
+  "name": "RequestPurchaseData",
+  "call": "parseRequestPurchaseData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 226,
+  "name": "OpenRewardWall",
+  "call": "parseOpenRewardWall(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 227,
+  "name": "CloseRewardWall",
+  "call": "parseCloseRewardWall(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 228,
+  "name": "DailyRewardBasic",
+  "call": "parseDailyReward(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 229,
+  "name": "DailyRewardHistory",
+  "call": "parseRewardHistory(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 230,
+  "name": "BosstiaryHighlight",
+  "call": "// || Proto::GameServerSendBosstiaryEntryChanged\n                        if (g_game.getFeature(Otc::GameBosstiary)) {\n                            parseBosstiaryEntryChanged(msg);\n                        } else {\n                            parsePreyFreeRerolls(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 231,
+  "name": "PreyTimeLeft",
+  "call": "parsePreyTimeLeft(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 232,
+  "name": "PreyData",
+  "call": "parsePreyData(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 233,
+  "name": "PreyPrices",
+  "call": "parsePreyRerollPrice(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 234,
+  "name": "OfferDescription",
+  "call": "parseShowDescription(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 235,
+  "name": "ImbuingDialogRefresh",
+  "call": "parseImbuementWindow(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 236,
+  "name": "CloseImbuingDialog",
+  "call": "parseCloseImbuementWindow(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 237,
+  "name": "ShowMessageDialog",
+  "call": "parseError(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 238,
+  "name": "ResourceBalance",
+  "call": "parseResourceBalance(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 239,
+  "name": "TibiaTime",
+  "call": "parseWorldTime(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 240,
+  "name": "QuestLog",
+  "call": "parseQuestLog(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 241,
+  "name": "QuestLine",
+  "call": "parseQuestLine(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 242,
+  "name": "UpdatingShopBalance",
+  "call": "parseCoinBalanceUpdating(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 243,
+  "name": "ChannelEvent",
+  "call": "parseChannelEvent(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 244,
+  "name": "ObjectInfo",
+  "call": "parseItemInfo(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 245,
+  "name": "PlayerInventory",
+  "call": "parsePlayerInventory(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 246,
+  "name": "MarketEnter",
+  "call": "if (g_game.getClientVersion() >= 1281) {\n                            parseMarketEnter(msg);\n                        } else {\n                            parseMarketEnterOld(msg);\n                        }\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 247,
+  "name": "MarketLeave",
+  "call": "g_gameEvents.callGlobalField(\"g_game\", \"onMarketLeave\");\n"
+ },
+ {
+  "dir": "server",
+  "opcode": 248,
+  "name": "MarketDetail",
+  "call": "parseMarketDetail(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 249,
+  "name": "MarketBrowse",
+  "call": "parseMarketBrowse(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 250,
+  "name": "ShowModalDialog",
+  "call": "parseModalDialog(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 251,
+  "name": "StoreCategories",
+  "call": "parseStore(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 252,
+  "name": "StoreOffers",
+  "call": "parseStoreOffers(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 253,
+  "name": "TransactionHistory",
+  "call": "parseStoreTransactionHistory(msg);"
+ },
+ {
+  "dir": "server",
+  "opcode": 254,
+  "name": "StoreSuccess",
+  "call": "parseCompleteStorePurchase(msg);"
+ }
+]

@@ -1,0 +1,3905 @@
+{
+ "tibia::qmlcomponents::TAbstractItemModelHelper": {
+  "chain": [
+   "tibia::qmlcomponents::TAbstractItemModelHelper",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TAbstractItemModelHelper",
+  "classinfo": {
+   "QML.Element": "AbstractItemModelHelper",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {
+   "createDynamicAbstractListModel": [
+    "QObject* createDynamicAbstractListModel(QStringList Columns)"
+   ],
+   "createSortProxyModel": [
+    "QObject* createSortProxyModel(QAbstractItemModel* pAbstractListModel)"
+   ],
+   "loadJsonFromResource": [
+    "QJSValue loadJsonFromResource(QString ResourcePath)"
+   ],
+   "loadStringFromResource": [
+    "QString loadStringFromResource(QString ResourcePath)"
+   ],
+   "wrapInHelperProxyModel": [
+    "QObject* wrapInHelperProxyModel(QAbstractItemModel* pAbstractItemModel)"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TAppearanceInstanceInfoQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TAppearanceInstanceInfoQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TAppearanceInstanceInfoQmlType",
+  "classinfo": {
+   "QML.Creatable": "false",
+   "QML.Element": "AppearanceInstance",
+   "QML.UncreatableReason": "Can not instantiate AppearanceInstance in QML"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "boundingRect": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "spriteSizeChanged",
+    "type": "QRect"
+   },
+   "calculatedScaleFactorForZoom": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "spriteSizeChanged",
+    "type": "float"
+   },
+   "currentElevation": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "currentElevationChanged",
+    "type": "int"
+   },
+   "elevation": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "elevationChanged",
+    "type": "int"
+   },
+   "position": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "positionChanged",
+    "type": "QPoint"
+   },
+   "shift": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "shiftChanged",
+    "type": "QPoint"
+   },
+   "spriteSize": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "spriteSizeChanged",
+    "type": "QSize"
+   },
+   "typeid": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "typeIDChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "appearanceInstancePropertyChanged": [
+    "void appearanceInstancePropertyChanged()"
+   ],
+   "currentElevationChanged": [
+    "void currentElevationChanged()"
+   ],
+   "drawOnlySilhouetteChanged": [
+    "void drawOnlySilhouetteChanged()"
+   ],
+   "elevationChanged": [
+    "void elevationChanged()"
+   ],
+   "positionChanged": [
+    "void positionChanged()"
+   ],
+   "shiftChanged": [
+    "void shiftChanged()"
+   ],
+   "spriteSizeChanged": [
+    "void spriteSizeChanged()"
+   ],
+   "typeIDChanged": [
+    "void typeIDChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TAppearanceInstanceRenderer": {
+  "chain": [
+   "tibia::qmlcomponents::TAppearanceInstanceRenderer",
+   "tibia::qmlcomponents::TAppearanceInstanceRendererBase",
+   "tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TAppearanceInstanceRenderer",
+  "classinfo": {
+   "QML.Element": "AppearanceInstanceRenderer"
+  },
+  "enums": {},
+  "invokables": {
+   "createAppearanceInstanceByRaceID": [
+    "tibia::qmlcomponents::TAppearanceInstanceInfoQmlType* createAppearanceInstanceByRaceID(int RaceID)"
+   ],
+   "getRaceName": [
+    "QString getRaceName(int RaceID)"
+   ],
+   "refreshAppearanceInstances": [
+    "void refreshAppearanceInstances(bool KeepEffects)",
+    "void refreshAppearanceInstances()"
+   ],
+   "showGraphicalEffect": [
+    "void showGraphicalEffect(int AppearanceTypeID, QPoint SubfieldCoordinate)"
+   ],
+   "showMissileEffect": [
+    "void showMissileEffect(int AppearanceTypeID, QPoint SourceCoordinate, QPoint DestinationCoordinate)"
+   ]
+  },
+  "properties": {
+   "animated": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "rendererChanged",
+    "type": "bool"
+   },
+   "appearanceInstances": {
+    "flags": [
+     "READ",
+     "ENUM"
+    ],
+    "from": "TAppearanceInstanceRenderer",
+    "notify": null,
+    "type": "QQmlListProperty<tibia::qmlcomponents::TAppearanceInstanceInfoQmlType>"
+   },
+   "cameraPosition": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRenderer",
+    "notify": null,
+    "type": "QPoint"
+   },
+   "center": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRenderer",
+    "notify": null,
+    "type": "bool"
+   },
+   "completeBoundingRect": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "completeBoundingRectChanged",
+    "type": "QRect"
+   },
+   "rendererSupportsGraphicEffects": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": null,
+    "type": "bool"
+   },
+   "scaleFactor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "rendererChanged",
+    "type": "float"
+   },
+   "shrinkToFit": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRenderer",
+    "notify": null,
+    "type": "bool"
+   },
+   "smoothTextureFiltering": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "rendererChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "appearancesChanged": [
+    "void appearancesChanged(TAppearanceInstanceRenderer* pAppearanceInstanceRenderer)"
+   ],
+   "completeBoundingRectChanged": [
+    "void completeBoundingRectChanged()"
+   ],
+   "rendererChanged": [
+    "void rendererChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TAppearanceInstanceRendererBase": {
+  "chain": [
+   "tibia::qmlcomponents::TAppearanceInstanceRendererBase",
+   "tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TAppearanceInstanceRendererBase",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "refreshAppearanceInstances": [
+    "void refreshAppearanceInstances(bool KeepEffects)",
+    "void refreshAppearanceInstances()"
+   ],
+   "showGraphicalEffect": [
+    "void showGraphicalEffect(int AppearanceTypeID, QPoint SubfieldCoordinate)"
+   ],
+   "showMissileEffect": [
+    "void showMissileEffect(int AppearanceTypeID, QPoint SourceCoordinate, QPoint DestinationCoordinate)"
+   ]
+  },
+  "properties": {
+   "animated": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "rendererChanged",
+    "type": "bool"
+   },
+   "completeBoundingRect": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "completeBoundingRectChanged",
+    "type": "QRect"
+   },
+   "rendererSupportsGraphicEffects": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": null,
+    "type": "bool"
+   },
+   "scaleFactor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "rendererChanged",
+    "type": "float"
+   },
+   "smoothTextureFiltering": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "rendererChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "completeBoundingRectChanged": [
+    "void completeBoundingRectChanged()"
+   ],
+   "rendererChanged": [
+    "void rendererChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TAppearanceTypeHelperQmlService": {
+  "chain": [
+   "tibia::qmlcomponents::TAppearanceTypeHelperQmlService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TAppearanceTypeHelperQmlService",
+  "classinfo": {
+   "QML.Element": "AppearanceTypeHelper",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {
+   "getObjectAppearanceTypeDescriptionForID": [
+    "QString getObjectAppearanceTypeDescriptionForID(int ID)"
+   ],
+   "getObjectAppearanceTypeIDByName": [
+    "int getObjectAppearanceTypeIDByName(QString Name)"
+   ],
+   "getObjectAppearanceTypeNameForID": [
+    "QString getObjectAppearanceTypeNameForID(int ID)"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TAreaCaptionController": {
+  "chain": [
+   "tibia::qmlcomponents::TAreaCaptionController",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TAreaCaptionController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "onClicked": [
+    "void onClicked()"
+   ],
+   "onHovered": [
+    "void onHovered()"
+   ]
+  },
+  "properties": {
+   "caption": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TAreaCaptionController",
+    "notify": "propertyChanged",
+    "type": "QString"
+   },
+   "captionColor": {
+    "flags": [
+     "READ"
+    ],
+    "from": "TAreaCaptionController",
+    "notify": "propertyChanged",
+    "type": "QString"
+   },
+   "isImprovedRespawnActive": {
+    "flags": [
+     "READ"
+    ],
+    "from": "TAreaCaptionController",
+    "notify": "propertyChanged",
+    "type": "bool"
+   },
+   "numberOfImminentRaids": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TAreaCaptionController",
+    "notify": "propertyChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "clicked": [
+    "void clicked(tibia::cyclopedia::TAreaData AreaData)"
+   ],
+   "propertyChanged": [
+    "void propertyChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TCachedOutlineTextQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TCachedOutlineTextQuickItem",
+   "tibia::qmlcomponents::TOutlineTextQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TCachedOutlineTextQuickItem",
+  "classinfo": {
+   "QML.Element": "CachedOutlineText"
+  },
+  "enums": {
+   "ECacheMode": {
+    "NoCaching": 0,
+    "ReleaseImmediately": 1,
+    "ReleaseLater": 2
+   }
+  },
+  "invokables": {
+   "syncFromOther": [
+    "void syncFromOther(TOutlineTextQuickItem* pOutlineTextQuickItem)"
+   ]
+  },
+  "properties": {
+   "cacheMode": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TCachedOutlineTextQuickItem",
+    "notify": "cacheModeChanged",
+    "type": "ECacheMode"
+   },
+   "color": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "colorChanged",
+    "type": "QColor"
+   },
+   "debugOverlay": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "TCachedOutlineTextQuickItem",
+    "notify": "debugOverlayChanged",
+    "type": "bool"
+   },
+   "elide": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "elideModeChanged",
+    "type": "QQuickText::TextElideMode"
+   },
+   "font": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "fontChanged",
+    "type": "QFont"
+   },
+   "highQuality": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "TCachedOutlineTextQuickItem",
+    "notify": null,
+    "type": "bool"
+   },
+   "horizontalAlignment": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "horizontalAlignmentChanged",
+    "type": "QQuickText::HAlignment"
+   },
+   "lineHeight": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "lineHeightChanged",
+    "type": "double"
+   },
+   "lineHeightMode": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "lineHeightModeChanged",
+    "type": "QQuickText::LineHeightMode"
+   },
+   "renderType": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "renderTypeChanged",
+    "type": "QQuickText::RenderType"
+   },
+   "styleColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "styleColorChanged",
+    "type": "QColor"
+   },
+   "text": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "textChanged",
+    "type": "QString"
+   },
+   "textFormat": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "textFormatChanged",
+    "type": "QQuickText::TextFormat"
+   },
+   "truncated": {
+    "flags": [
+     "READ"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "truncatedChanged",
+    "type": "bool"
+   },
+   "verticalAlignment": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "verticalAlignmentChanged",
+    "type": "QQuickText::VAlignment"
+   },
+   "wrapMode": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "wrapModeChanged",
+    "type": "QQuickText::WrapMode"
+   }
+  },
+  "signals": {
+   "cacheModeChanged": [
+    "void cacheModeChanged()"
+   ],
+   "colorChanged": [
+    "void colorChanged()"
+   ],
+   "debugOverlayChanged": [
+    "void debugOverlayChanged()"
+   ],
+   "elideModeChanged": [
+    "void elideModeChanged(QQuickText::TextElideMode mode)"
+   ],
+   "fontChanged": [
+    "void fontChanged(QFont font)"
+   ],
+   "highQualityChanged": [
+    "void highQualityChanged()"
+   ],
+   "horizontalAlignmentChanged": [
+    "void horizontalAlignmentChanged(QQuickText::HAlignment alignment)"
+   ],
+   "lineHeightChanged": [
+    "void lineHeightChanged(double lineHeight)"
+   ],
+   "lineHeightModeChanged": [
+    "void lineHeightModeChanged(QQuickText::LineHeightMode mode)"
+   ],
+   "renderTypeChanged": [
+    "void renderTypeChanged()"
+   ],
+   "styleColorChanged": [
+    "void styleColorChanged()"
+   ],
+   "textChanged": [
+    "void textChanged(QString text)"
+   ],
+   "textFormatChanged": [
+    "void textFormatChanged(QQuickText::TextFormat textFormat)"
+   ],
+   "textPropertiesChanged": [
+    "void textPropertiesChanged()"
+   ],
+   "truncatedChanged": [
+    "void truncatedChanged()"
+   ],
+   "verticalAlignmentChanged": [
+    "void verticalAlignmentChanged(QQuickText::VAlignment alignment)"
+   ],
+   "wrapModeChanged": [
+    "void wrapModeChanged()"
+   ]
+  },
+  "slots": {
+   "onAntialiasingChanged": [
+    "void onAntialiasingChanged(bool Value)"
+   ],
+   "onImplicitSizeChanged": [
+    "void onImplicitSizeChanged()"
+   ],
+   "onSceneGraphInvalidated": [
+    "void onSceneGraphInvalidated()"
+   ],
+   "onTextPropertiesChanged": [
+    "void onTextPropertiesChanged()"
+   ],
+   "onWindowChanged": [
+    "void onWindowChanged(QQuickWindow* window)"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TCachedOutlineTextTextureManager": {
+  "chain": [
+   "tibia::qmlcomponents::TCachedOutlineTextTextureManager",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TCachedOutlineTextTextureManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onCleanupTimerTriggered": [
+    "void onCleanupTimerTriggered()"
+   ],
+   "onSceneGraphInvalidated": [
+    "void onSceneGraphInvalidated()"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TClipboardHelperQmlService": {
+  "chain": [
+   "tibia::qmlcomponents::TClipboardHelperQmlService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TClipboardHelperQmlService",
+  "classinfo": {
+   "QML.Element": "ClipboardHelper",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {
+   "convertBase64StringAsJsonObject": [
+    "QJsonObject convertBase64StringAsJsonObject(QString Base64String)"
+   ],
+   "convertJsonObjectToBase64String": [
+    "QString convertJsonObjectToBase64String(QJsonObject JsonObject)"
+   ],
+   "getBase64StringAsJsonObject": [
+    "QJsonObject getBase64StringAsJsonObject()"
+   ],
+   "getTextFromClipboard": [
+    "QString getTextFromClipboard()"
+   ],
+   "setJsonObjectAsBase64String": [
+    "void setJsonObjectAsBase64String(QJsonObject JsonObject)"
+   ],
+   "setTextInClipboard": [
+    "void setTextInClipboard(QString Text)"
+   ]
+  },
+  "properties": {},
+  "signals": {
+   "newClipboardTextAvailable": [
+    "void newClipboardTextAvailable()"
+   ]
+  },
+  "slots": {
+   "onDataChanged": [
+    "void onDataChanged()"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TColorHelperQmlService": {
+  "chain": [
+   "tibia::qmlcomponents::TColorHelperQmlService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TColorHelperQmlService",
+  "classinfo": {
+   "QML.Element": "ColorHelper",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {
+   "createColorForHealthPercent": [
+    "QColor createColorForHealthPercent(float HealthPercentNormalized)"
+   ],
+   "createColorFromEightBitHSV": [
+    "QColor createColorFromEightBitHSV(int ColorValue)"
+   ],
+   "createColorFromEightBitRGB": [
+    "QColor createColorFromEightBitRGB(int ColorValue)"
+   ],
+   "createColorFromName": [
+    "QColor createColorFromName(QString Name)"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem",
+   "QQuickPaintedItem"
+  ],
+  "class": "tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem",
+  "classinfo": {
+   "QML.Element": "DynamicallyLoadedImage"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "bigSize64": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDynamicallyLoadedImageQuickItem",
+    "notify": null,
+    "type": "int"
+   },
+   "dynamicallyLoadedImageManager": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TDynamicallyLoadedImageQuickItem",
+    "notify": "propertyChanged",
+    "type": "QObject*"
+   },
+   "imageKey": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TDynamicallyLoadedImageQuickItem",
+    "notify": "propertyChanged",
+    "type": "QString"
+   },
+   "scaleUp": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TDynamicallyLoadedImageQuickItem",
+    "notify": "propertyChanged",
+    "type": "bool"
+   },
+   "smallSize32": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDynamicallyLoadedImageQuickItem",
+    "notify": null,
+    "type": "int"
+   },
+   "sourceImageSize": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TDynamicallyLoadedImageQuickItem",
+    "notify": "propertyChanged",
+    "type": "int"
+   },
+   "tinySize13": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDynamicallyLoadedImageQuickItem",
+    "notify": null,
+    "type": "int"
+   }
+  },
+  "signals": {
+   "propertyChanged": [
+    "void propertyChanged()"
+   ]
+  },
+  "slots": {
+   "onImageDownloadOrDecodingError": [
+    "void onImageDownloadOrDecodingError(tibia::store::TImageRequest ImageRequest)"
+   ],
+   "onImageReady": [
+    "void onImageReady(tibia::store::TImageRequest ImageRequest, QImage Image)"
+   ],
+   "onLoadingDelayElapsedShowAppropriateIcon": [
+    "void onLoadingDelayElapsedShowAppropriateIcon()"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TGlobalConstantsService": {
+  "chain": [
+   "tibia::qmlcomponents::TGlobalConstantsService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TGlobalConstantsService",
+  "classinfo": {
+   "QML.Element": "GlobalConstants",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "isSoftwareRenderer": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TGlobalConstantsService",
+    "notify": null,
+    "type": "bool"
+   },
+   "operatingSystem": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TGlobalConstantsService",
+    "notify": null,
+    "type": "tibia::qmlcomponents::enums::EOperatingSystem"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::THelperProxyModel": {
+  "chain": [
+   "tibia::qmlcomponents::THelperProxyModel",
+   "QIdentityProxyModel"
+  ],
+  "class": "tibia::qmlcomponents::THelperProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "sourceDataByName": [
+    "QVariant sourceDataByName(QModelIndex pSourceModelIndex, QString RoleName)"
+   ],
+   "sourceItemData": [
+    "QVariant sourceItemData(QModelIndex pSourceModelIndex)"
+   ],
+   "sourceItemDataByRowIndex": [
+    "QVariant sourceItemDataByRowIndex(int RowIndex)"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TLenshelpManager": {
+  "chain": [
+   "tibia::qmlcomponents::TLenshelpManager",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TLenshelpManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "disableLenshelp": [
+    "void disableLenshelp()"
+   ],
+   "enableLenshelp": [
+    "void enableLenshelp()"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TLenshelpQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TLenshelpQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TLenshelpQuickItem",
+  "classinfo": {
+   "QML.Element": "Lenshelp"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "caption": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TLenshelpQuickItem",
+    "notify": "captionChanged",
+    "type": "QString"
+   },
+   "content": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TLenshelpQuickItem",
+    "notify": "contentChanged",
+    "type": "QString"
+   },
+   "triggerRect": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TLenshelpQuickItem",
+    "notify": "triggerRectChanged",
+    "type": "QRectF"
+   }
+  },
+  "signals": {
+   "captionChanged": [
+    "void captionChanged()"
+   ],
+   "contentChanged": [
+    "void contentChanged()"
+   ],
+   "triggerRectChanged": [
+    "void triggerRectChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TLightmapPaintedItem": {
+  "chain": [
+   "tibia::qmlcomponents::TLightmapPaintedItem",
+   "QQuickPaintedItem"
+  ],
+  "class": "tibia::qmlcomponents::TLightmapPaintedItem",
+  "classinfo": {
+   "QML.Element": "LightMap"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TMinimapQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TMinimapQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TMinimapQuickItem",
+  "classinfo": {
+   "QML.Element": "Minimap"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TMinimapRendererQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TMinimapRendererQuickItem",
+   "tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TMinimapRendererQuickItem",
+  "classinfo": {
+   "QML.Element": "MinimapRenderer"
+  },
+  "enums": {
+   "EMinimapTileType": {
+    "LocalMinimap": 2,
+    "Minimap": 1,
+    "Satellite": 0,
+    "_EMinimapTileType_AfterLast": 3
+   }
+  },
+  "invokables": {},
+  "properties": {
+   "camera": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": null,
+    "type": "tibia::qmlcomponents::TWorldMapCameraQmlType*"
+   },
+   "levelSeparator": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "int"
+   },
+   "minimapMarkersFilter": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "QList<bool>"
+   },
+   "showAreaCaptions": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "bool"
+   },
+   "showExploreOverlay": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "bool"
+   },
+   "showHouses": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "bool"
+   },
+   "showNPCMarkers": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "bool"
+   },
+   "showPassages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "bool"
+   },
+   "showZones": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "bool"
+   },
+   "tileType": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "tibia::qmlcomponents::TMinimapRendererQuickItem::EMinimapTileType"
+   },
+   "userSelectedTileType": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TMinimapRendererQuickItem",
+    "notify": "propertyChanged",
+    "type": "tibia::qmlcomponents::TMinimapRendererQuickItem::EMinimapTileType"
+   }
+  },
+  "signals": {
+   "areaClicked": [
+    "void areaClicked(tibia::cyclopedia::TAreaData AreaData)"
+   ],
+   "propertyChanged": [
+    "void propertyChanged()"
+   ]
+  },
+  "slots": {
+   "onCameraViewportChanged": [
+    "void onCameraViewportChanged()"
+   ],
+   "onRenderInfosChanged": [
+    "void onRenderInfosChanged()"
+   ],
+   "onRescalingTimerTimeout": [
+    "void onRescalingTimerTimeout()"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TMouseHoverEventFilter": {
+  "chain": [
+   "tibia::qmlcomponents::TMouseHoverEventFilter",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TMouseHoverEventFilter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "eventTriggered": [
+    "void eventTriggered(QObject* pObject, QEvent::Type EventType)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TNotMouseMoveEventFilter": {
+  "chain": [
+   "tibia::qmlcomponents::TNotMouseMoveEventFilter",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TNotMouseMoveEventFilter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "notMouseMoveEventHappend": [
+    "void notMouseMoveEventHappend()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TNumericEffectsItemController": {
+  "chain": [
+   "tibia::qmlcomponents::TNumericEffectsItemController",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TNumericEffectsItemController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "getColorForIndex": [
+    "QColor getColorForIndex(int Index)"
+   ],
+   "getEffectPercentForIndex": [
+    "double getEffectPercentForIndex(int Index)"
+   ],
+   "getTextForIndex": [
+    "QString getTextForIndex(int Index)"
+   ]
+  },
+  "properties": {
+   "itemCount": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TNumericEffectsItemController",
+    "notify": "itemsChanged",
+    "type": "int"
+   },
+   "text": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TNumericEffectsItemController",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "itemsChanged": [
+    "void itemsChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TNumericalEffectOverlayQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TNumericalEffectOverlayQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TNumericalEffectOverlayQuickItem",
+  "classinfo": {
+   "QML.Element": "NumericalEffectOverlay"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+   "tibia::qmlcomponents::TAppearanceInstanceInfoQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+  "classinfo": {
+   "QML.Creatable": "false",
+   "QML.Element": "ObjectAppearanceInstance",
+   "QML.UncreatableReason": "Can not instantiate AppearanceInstance in QML"
+  },
+  "enums": {
+   "EHookDirection": {
+    "EAST": 2,
+    "NONE": 0,
+    "SOUTH": 1,
+    "_EHookDirection_AfterLast": 3
+   },
+   "ELiquidType": {
+    "BEER": 3,
+    "BLOOD": 5,
+    "CACAO": 20,
+    "COCONUT_MILK": 15,
+    "EMPTY": 0,
+    "FRUIT_JUICE": 14,
+    "INK": 18,
+    "LEMONADE": 12,
+    "LIFEFLUID": 11,
+    "MANAFLUID": 10,
+    "MEAD": 16,
+    "MILK": 9,
+    "MUD": 4,
+    "OIL": 7,
+    "RUM": 13,
+    "SIRUP": 19,
+    "SLIME": 6,
+    "TEA": 17,
+    "URINE": 8,
+    "WATER": 1,
+    "WINE": 2,
+    "_ELiquidType_AfterLast": 21
+   }
+  },
+  "invokables": {},
+  "properties": {
+   "boundingRect": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "spriteSizeChanged",
+    "type": "QRect"
+   },
+   "calculatedScaleFactorForZoom": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "spriteSizeChanged",
+    "type": "float"
+   },
+   "cumulativeCount": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TObjectAppearanceInstanceInfoQmlType",
+    "notify": "propertyChanged",
+    "type": "int"
+   },
+   "currentElevation": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "currentElevationChanged",
+    "type": "int"
+   },
+   "decoItemObjectID": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TObjectAppearanceInstanceInfoQmlType",
+    "notify": "propertyChanged",
+    "type": "uint"
+   },
+   "elevation": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "elevationChanged",
+    "type": "int"
+   },
+   "hookDirection": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TObjectAppearanceInstanceInfoQmlType",
+    "notify": "propertyChanged",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection"
+   },
+   "liquidType": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TObjectAppearanceInstanceInfoQmlType",
+    "notify": "propertyChanged",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType"
+   },
+   "position": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "positionChanged",
+    "type": "QPoint"
+   },
+   "shift": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "shiftChanged",
+    "type": "QPoint"
+   },
+   "spriteSize": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "spriteSizeChanged",
+    "type": "QSize"
+   },
+   "typeid": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "typeIDChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "appearanceInstancePropertyChanged": [
+    "void appearanceInstancePropertyChanged()"
+   ],
+   "currentElevationChanged": [
+    "void currentElevationChanged()"
+   ],
+   "drawOnlySilhouetteChanged": [
+    "void drawOnlySilhouetteChanged()"
+   ],
+   "elevationChanged": [
+    "void elevationChanged()"
+   ],
+   "positionChanged": [
+    "void positionChanged()"
+   ],
+   "propertyChanged": [
+    "void propertyChanged()"
+   ],
+   "shiftChanged": [
+    "void shiftChanged()"
+   ],
+   "spriteSizeChanged": [
+    "void spriteSizeChanged()"
+   ],
+   "typeIDChanged": [
+    "void typeIDChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TOffscreenOutlineTextToImageService": {
+  "chain": [
+   "tibia::qmlcomponents::TOffscreenOutlineTextToImageService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TOffscreenOutlineTextToImageService",
+  "classinfo": {
+   "QML.Element": "OffscreenOutlineTextToImageService",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "imageReady": [
+    "void imageReady()"
+   ]
+  },
+  "slots": {
+   "onCleanupCacheTimerTimeout": [
+    "void onCleanupCacheTimerTimeout()"
+   ],
+   "onGrabResultReady": [
+    "void onGrabResultReady(QSharedPointer<QQuickItemGrabResult> pCurrentGrabResult)"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+   "tibia::qmlcomponents::TAppearanceInstanceInfoQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+  "classinfo": {
+   "QML.Creatable": "false",
+   "QML.Element": "OutfitAppearanceInstance",
+   "QML.UncreatableReason": "Can not instantiate AppearanceInstance in QML"
+  },
+  "enums": {
+   "ECreatureLookDirection": {
+    "EAST": 1,
+    "NORTH": 0,
+    "SOUTH": 2,
+    "WEST": 3,
+    "_ECreatureLookDirection_AfterLast": 4
+   }
+  },
+  "invokables": {},
+  "properties": {
+   "boundingRect": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "spriteSizeChanged",
+    "type": "QRect"
+   },
+   "calculatedScaleFactorForZoom": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "spriteSizeChanged",
+    "type": "float"
+   },
+   "currentElevation": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "currentElevationChanged",
+    "type": "int"
+   },
+   "detailColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "outfitConfigurationChanged",
+    "type": "QColor"
+   },
+   "elevation": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "elevationChanged",
+    "type": "int"
+   },
+   "firstAddOn": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "outfitConfigurationChanged",
+    "type": "bool"
+   },
+   "headColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "outfitConfigurationChanged",
+    "type": "QColor"
+   },
+   "legsColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "outfitConfigurationChanged",
+    "type": "QColor"
+   },
+   "lookDirection": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "outfitConfigurationChanged",
+    "type": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType::ECreatureLookDirection"
+   },
+   "mounted": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "mountedChanged",
+    "type": "bool"
+   },
+   "movementSpeedInMillisecondsPerField": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "movingChanged",
+    "type": "int"
+   },
+   "moving": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "movingChanged",
+    "type": "bool"
+   },
+   "position": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "positionChanged",
+    "type": "QPoint"
+   },
+   "secondAddOn": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "outfitConfigurationChanged",
+    "type": "bool"
+   },
+   "shift": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "shiftChanged",
+    "type": "QPoint"
+   },
+   "spriteSize": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "spriteSizeChanged",
+    "type": "QSize"
+   },
+   "torsoColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitAppearanceInstanceQmlType",
+    "notify": "outfitConfigurationChanged",
+    "type": "QColor"
+   },
+   "typeid": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceInfoQmlType",
+    "notify": "typeIDChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "appearanceInstancePropertyChanged": [
+    "void appearanceInstancePropertyChanged()"
+   ],
+   "currentElevationChanged": [
+    "void currentElevationChanged()"
+   ],
+   "drawOnlySilhouetteChanged": [
+    "void drawOnlySilhouetteChanged()"
+   ],
+   "elevationChanged": [
+    "void elevationChanged()"
+   ],
+   "mountedChanged": [
+    "void mountedChanged()"
+   ],
+   "movingChanged": [
+    "void movingChanged()"
+   ],
+   "outfitConfigurationChanged": [
+    "void outfitConfigurationChanged()"
+   ],
+   "positionChanged": [
+    "void positionChanged()"
+   ],
+   "shiftChanged": [
+    "void shiftChanged()"
+   ],
+   "spriteSizeChanged": [
+    "void spriteSizeChanged()"
+   ],
+   "typeIDChanged": [
+    "void typeIDChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TOutfitColorQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TOutfitColorQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TOutfitColorQmlType",
+  "classinfo": {
+   "QML.Element": "OutfitColor"
+  },
+  "enums": {},
+  "invokables": {
+   "canBeFilledFromJsonObject": [
+    "bool canBeFilledFromJsonObject(QJsonObject JsonObject)"
+   ],
+   "copyFrom": [
+    "void copyFrom(TOutfitColorQmlType* pOther)"
+   ],
+   "fromJsonObject": [
+    "void fromJsonObject(QJsonObject JsonObject)"
+   ],
+   "randomizeColors": [
+    "void randomizeColors()"
+   ],
+   "toJsonObject": [
+    "QJsonObject toJsonObject()"
+   ]
+  },
+  "properties": {
+   "detailColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitColorQmlType",
+    "notify": "colorChanged",
+    "type": "QColor"
+   },
+   "detailColorIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitColorQmlType",
+    "notify": "colorChanged",
+    "type": "int"
+   },
+   "headColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitColorQmlType",
+    "notify": "colorChanged",
+    "type": "QColor"
+   },
+   "headColorIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitColorQmlType",
+    "notify": "colorChanged",
+    "type": "int"
+   },
+   "legsColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitColorQmlType",
+    "notify": "colorChanged",
+    "type": "QColor"
+   },
+   "legsColorIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitColorQmlType",
+    "notify": "colorChanged",
+    "type": "int"
+   },
+   "torsoColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitColorQmlType",
+    "notify": "colorChanged",
+    "type": "QColor"
+   },
+   "torsoColorIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitColorQmlType",
+    "notify": "colorChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "colorChanged": [
+    "void colorChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TOutfitPresetQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TOutfitPresetQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TOutfitPresetQmlType",
+  "classinfo": {
+   "QML.Element": "OutfitPreset"
+  },
+  "enums": {},
+  "invokables": {
+   "canBeFilledFromJsonObject": [
+    "bool canBeFilledFromJsonObject(QJsonObject JsonObject)"
+   ],
+   "copyFrom": [
+    "void copyFrom(TOutfitPresetQmlType* pOther)"
+   ],
+   "fromJsonObject": [
+    "void fromJsonObject(QJsonObject JsonObject)"
+   ],
+   "isEqual": [
+    "bool isEqual(TOutfitPresetQmlType* pOther)"
+   ],
+   "toJsonObject": [
+    "QJsonObject toJsonObject()"
+   ]
+  },
+  "properties": {
+   "isObjectOutfit": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetQmlType",
+    "notify": "presetChanged",
+    "type": "bool"
+   },
+   "mountColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetQmlType",
+    "notify": "presetChanged",
+    "type": "TOutfitColorQmlType*"
+   },
+   "mountID": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetQmlType",
+    "notify": "presetChanged",
+    "type": "int"
+   },
+   "name": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetQmlType",
+    "notify": "presetChanged",
+    "type": "QString"
+   },
+   "outfitColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetQmlType",
+    "notify": "presetChanged",
+    "type": "TOutfitColorQmlType*"
+   },
+   "outfitFirstAddOn": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetQmlType",
+    "notify": "presetChanged",
+    "type": "bool"
+   },
+   "outfitID": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetQmlType",
+    "notify": "presetChanged",
+    "type": "int"
+   },
+   "outfitSecondAddOn": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetQmlType",
+    "notify": "presetChanged",
+    "type": "bool"
+   },
+   "summonID": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetQmlType",
+    "notify": "presetChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "presetChanged": [
+    "void presetChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TOutfitQmlModel": {
+  "chain": [
+   "tibia::qmlcomponents::TOutfitQmlModel",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TOutfitQmlModel",
+  "classinfo": {
+   "QML.Element": "Outfit"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "colors": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOutfitQmlModel",
+    "notify": "outfitChanged",
+    "type": "tibia::qmlcomponents::TOutfitColorQmlType*"
+   },
+   "firstAddOn": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitQmlModel",
+    "notify": "outfitChanged",
+    "type": "bool"
+   },
+   "isObjectOutfit": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitQmlModel",
+    "notify": "outfitChanged",
+    "type": "bool"
+   },
+   "outfitID": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitQmlModel",
+    "notify": "outfitChanged",
+    "type": "uint"
+   },
+   "secondAddOn": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TOutfitQmlModel",
+    "notify": "outfitChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "outfitChanged": [
+    "void outfitChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TOutlineTextQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TOutlineTextQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TOutlineTextQuickItem",
+  "classinfo": {
+   "QML.Element": "OutlineText"
+  },
+  "enums": {},
+  "invokables": {
+   "syncFromOther": [
+    "void syncFromOther(TOutlineTextQuickItem* pOutlineTextQuickItem)"
+   ]
+  },
+  "properties": {
+   "color": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "colorChanged",
+    "type": "QColor"
+   },
+   "elide": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "elideModeChanged",
+    "type": "QQuickText::TextElideMode"
+   },
+   "font": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "fontChanged",
+    "type": "QFont"
+   },
+   "highQuality": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "highQualityChanged",
+    "type": "bool"
+   },
+   "horizontalAlignment": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "horizontalAlignmentChanged",
+    "type": "QQuickText::HAlignment"
+   },
+   "lineHeight": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "lineHeightChanged",
+    "type": "double"
+   },
+   "lineHeightMode": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "lineHeightModeChanged",
+    "type": "QQuickText::LineHeightMode"
+   },
+   "renderType": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "renderTypeChanged",
+    "type": "QQuickText::RenderType"
+   },
+   "styleColor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "styleColorChanged",
+    "type": "QColor"
+   },
+   "text": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "textChanged",
+    "type": "QString"
+   },
+   "textFormat": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "textFormatChanged",
+    "type": "QQuickText::TextFormat"
+   },
+   "truncated": {
+    "flags": [
+     "READ"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "truncatedChanged",
+    "type": "bool"
+   },
+   "verticalAlignment": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "verticalAlignmentChanged",
+    "type": "QQuickText::VAlignment"
+   },
+   "wrapMode": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM"
+    ],
+    "from": "TOutlineTextQuickItem",
+    "notify": "wrapModeChanged",
+    "type": "QQuickText::WrapMode"
+   }
+  },
+  "signals": {
+   "colorChanged": [
+    "void colorChanged()"
+   ],
+   "elideModeChanged": [
+    "void elideModeChanged(QQuickText::TextElideMode mode)"
+   ],
+   "fontChanged": [
+    "void fontChanged(QFont font)"
+   ],
+   "highQualityChanged": [
+    "void highQualityChanged()"
+   ],
+   "horizontalAlignmentChanged": [
+    "void horizontalAlignmentChanged(QQuickText::HAlignment alignment)"
+   ],
+   "lineHeightChanged": [
+    "void lineHeightChanged(double lineHeight)"
+   ],
+   "lineHeightModeChanged": [
+    "void lineHeightModeChanged(QQuickText::LineHeightMode mode)"
+   ],
+   "renderTypeChanged": [
+    "void renderTypeChanged()"
+   ],
+   "styleColorChanged": [
+    "void styleColorChanged()"
+   ],
+   "textChanged": [
+    "void textChanged(QString text)"
+   ],
+   "textFormatChanged": [
+    "void textFormatChanged(QQuickText::TextFormat textFormat)"
+   ],
+   "textPropertiesChanged": [
+    "void textPropertiesChanged()"
+   ],
+   "truncatedChanged": [
+    "void truncatedChanged()"
+   ],
+   "verticalAlignmentChanged": [
+    "void verticalAlignmentChanged(QQuickText::VAlignment alignment)"
+   ],
+   "wrapModeChanged": [
+    "void wrapModeChanged()"
+   ]
+  },
+  "slots": {
+   "onAntialiasingChanged": [
+    "void onAntialiasingChanged(bool Value)"
+   ],
+   "onImplicitSizeChanged": [
+    "void onImplicitSizeChanged()"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TQmlDynamicAbstractListModel": {
+  "chain": [
+   "tibia::qmlcomponents::TQmlDynamicAbstractListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::qmlcomponents::TQmlDynamicAbstractListModel",
+  "classinfo": {
+   "QML.Element": "QmlDynamicAbstractListModel"
+  },
+  "enums": {},
+  "invokables": {
+   "appendRow": [
+    "void appendRow(QVariantMap ColumnData)"
+   ],
+   "appendRowArray": [
+    "void appendRowArray(QVariantList RowData)"
+   ],
+   "clear": [
+    "void clear()"
+   ],
+   "overwriteRowArrayByIndex": [
+    "void overwriteRowArrayByIndex(QVariantList RowData, int Index)"
+   ],
+   "removeRowByIndex": [
+    "void removeRowByIndex(int Index)"
+   ],
+   "rowData": [
+    "QVariantMap rowData(int Index)",
+    "QVariantMap rowData(QModelIndex Index)"
+   ]
+  },
+  "properties": {
+   "columns": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TQmlDynamicAbstractListModel",
+    "notify": "columnsChanged",
+    "type": "QStringList"
+   },
+   "count": {
+    "flags": [
+     "READ"
+    ],
+    "from": "TQmlDynamicAbstractListModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "columnsChanged": [
+    "void columnsChanged()"
+   ],
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TQmlJsonSettingsService": {
+  "chain": [
+   "tibia::qmlcomponents::TQmlJsonSettingsService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TQmlJsonSettingsService",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "load": [
+    "QJsonValue load(QString Setting, QJsonValue Default)"
+   ],
+   "save": [
+    "void save(QString Setting, QJsonValue Value)"
+   ]
+  },
+  "properties": {},
+  "signals": {
+   "settingsChanged": [
+    "void settingsChanged()"
+   ],
+   "settingsReloaded": [
+    "void settingsReloaded()"
+   ]
+  },
+  "slots": {
+   "onReloadSettingsFromDisk": [
+    "void onReloadSettingsFromDisk()"
+   ],
+   "onSaveJsonTimerTimeout": [
+    "void onSaveJsonTimerTimeout()"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TQmlSortFilterProxyModel": {
+  "chain": [
+   "tibia::qmlcomponents::TQmlSortFilterProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "tibia::qmlcomponents::TQmlSortFilterProxyModel",
+  "classinfo": {
+   "QML.Element": "QmlSortFilterProxyModel"
+  },
+  "enums": {},
+  "invokables": {
+   "get": [
+    "QVariantMap get(int index)"
+   ],
+   "invalidateFilter": [
+    "void invalidateFilter(QSortFilterProxyModel::Direction Direction)",
+    "void invalidateFilter()"
+   ],
+   "rowCount": [
+    "int rowCount(QModelIndex parent)",
+    "int rowCount()"
+   ],
+   "setFilterCallback": [
+    "void setFilterCallback(QJSValue Callback)"
+   ],
+   "setSortCallback": [
+    "void setSortCallback(QJSValue Callback)"
+   ]
+  },
+  "properties": {
+   "count": {
+    "flags": [
+     "READ"
+    ],
+    "from": "TQmlSortFilterProxyModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   },
+   "filterCallback": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TQmlSortFilterProxyModel",
+    "notify": "callbackChanged",
+    "type": "QJSValue"
+   },
+   "sortCallback": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TQmlSortFilterProxyModel",
+    "notify": "callbackChanged",
+    "type": "QJSValue"
+   },
+   "sourceModel": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TQmlSortFilterProxyModel",
+    "notify": "sourceModelChanged",
+    "type": "QObject*"
+   }
+  },
+  "signals": {
+   "callbackChanged": [
+    "void callbackChanged()"
+   ],
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ],
+   "sourceModelChanged": [
+    "void sourceModelChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TRenderDriver": {
+  "chain": [
+   "tibia::qmlcomponents::TRenderDriver",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TRenderDriver",
+  "classinfo": {
+   "QML.Element": "RenderDriver"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer": {
+  "chain": [
+   "tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer",
+   "tibia::qmlcomponents::TAppearanceInstanceRendererBase",
+   "tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer",
+  "classinfo": {
+   "QML.Element": "SingleObjectAppearanceInstanceRenderer"
+  },
+  "enums": {},
+  "invokables": {
+   "refreshAppearanceInstances": [
+    "void refreshAppearanceInstances(bool KeepEffects)",
+    "void refreshAppearanceInstances()"
+   ],
+   "showGraphicalEffect": [
+    "void showGraphicalEffect(int AppearanceTypeID, QPoint SubfieldCoordinate)"
+   ],
+   "showMissileEffect": [
+    "void showMissileEffect(int AppearanceTypeID, QPoint SourceCoordinate, QPoint DestinationCoordinate)"
+   ]
+  },
+  "properties": {
+   "animated": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "rendererChanged",
+    "type": "bool"
+   },
+   "completeBoundingRect": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "completeBoundingRectChanged",
+    "type": "QRect"
+   },
+   "cumulativeCount": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSingleObjectAppearanceInstanceRenderer",
+    "notify": "propertyChanged",
+    "type": "int"
+   },
+   "decoItemObjectID": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSingleObjectAppearanceInstanceRenderer",
+    "notify": "propertyChanged",
+    "type": "uint"
+   },
+   "hookDirection": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSingleObjectAppearanceInstanceRenderer",
+    "notify": "propertyChanged",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection"
+   },
+   "liquidType": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSingleObjectAppearanceInstanceRenderer",
+    "notify": "propertyChanged",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType"
+   },
+   "rendererSupportsGraphicEffects": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": null,
+    "type": "bool"
+   },
+   "scaleFactor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "rendererChanged",
+    "type": "float"
+   },
+   "smoothTextureFiltering": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAppearanceInstanceRendererBase",
+    "notify": "rendererChanged",
+    "type": "bool"
+   },
+   "typeid": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSingleObjectAppearanceInstanceRenderer",
+    "notify": "propertyChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "completeBoundingRectChanged": [
+    "void completeBoundingRectChanged()"
+   ],
+   "propertyChanged": [
+    "void propertyChanged()"
+   ],
+   "rendererChanged": [
+    "void rendererChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TSoundHelperService": {
+  "chain": [
+   "tibia::qmlcomponents::TSoundHelperService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TSoundHelperService",
+  "classinfo": {
+   "QML.Element": "SoundHelper",
+   "QML.Singleton": "true"
+  },
+  "enums": {
+   "ESound": {
+    "BUTTON_PRESS": 2774,
+    "BUTTON_RELEASE": 2775,
+    "CHAT_MESSAGE_ARRIVED": 2782,
+    "OPEN_DIALOG_OR_WIDGET": 2785,
+    "PRIVATE_MESSAGE_IN_LOCAL_CHAT": 2783,
+    "QUEST_TRACKER_ADD": 2854,
+    "QUEST_TRACKER_REMOVE": 2855,
+    "SCREENSHOT": 2773,
+    "SEND_CHAT_MESSAGE": 2784,
+    "STORE_ANIMATION_BUY": 2781,
+    "STORE_ANIMATION_RATTLING": 2780,
+    "VIP_LIST_LOGIN": 2807,
+    "VIP_LIST_LOGOUT": 2806
+   }
+  },
+  "invokables": {
+   "playSound": [
+    "void playSound(ESound Sound)"
+   ]
+  },
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TSpeechBubbleController": {
+  "chain": [
+   "tibia::qmlcomponents::TSpeechBubbleController",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TSpeechBubbleController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "calculatedSize": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSpeechBubbleController",
+    "notify": "sizeChanged",
+    "type": "QSize"
+   },
+   "isHtmlText": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSpeechBubbleController",
+    "notify": "formatChanged",
+    "type": "bool"
+   },
+   "isVisible": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSpeechBubbleController",
+    "notify": "visibleChanged",
+    "type": "bool"
+   },
+   "maximumWidth": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSpeechBubbleController",
+    "notify": "maximumWidthChanged",
+    "type": "int"
+   },
+   "position": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSpeechBubbleController",
+    "notify": "positionChanged",
+    "type": "QPoint"
+   },
+   "showBoundingRect": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TSpeechBubbleController",
+    "notify": null,
+    "type": "bool"
+   },
+   "styleColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSpeechBubbleController",
+    "notify": "formatChanged",
+    "type": "QColor"
+   },
+   "text": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSpeechBubbleController",
+    "notify": "textChanged",
+    "type": "QString"
+   },
+   "textColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSpeechBubbleController",
+    "notify": "formatChanged",
+    "type": "QColor"
+   }
+  },
+  "signals": {
+   "formatChanged": [
+    "void formatChanged()"
+   ],
+   "maximumWidthChanged": [
+    "void maximumWidthChanged()"
+   ],
+   "positionChanged": [
+    "void positionChanged()"
+   ],
+   "sizeChanged": [
+    "void sizeChanged()"
+   ],
+   "textChanged": [
+    "void textChanged()"
+   ],
+   "visibleChanged": [
+    "void visibleChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TSpeechBubbleOverlayQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TSpeechBubbleOverlayQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TSpeechBubbleOverlayQuickItem",
+  "classinfo": {
+   "QML.Element": "SpeechBubbleOverlay"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "triggerUpdate": [
+    "void triggerUpdate()"
+   ],
+   "updateTextOverlays": [
+    "void updateTextOverlays()"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TTargetSelectionQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TTargetSelectionQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TTargetSelectionQuickItem",
+  "classinfo": {
+   "QML.Element": "TibiaTargetSelection"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "targetSelected": [
+    "void targetSelected(int MouseX, int MouseY)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TTextHelperQmlService": {
+  "chain": [
+   "tibia::qmlcomponents::TTextHelperQmlService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TTextHelperQmlService",
+  "classinfo": {
+   "QML.Element": "TextHelper",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {
+   "capitalizeEachWordInString": [
+    "QString capitalizeEachWordInString(QString Text)"
+   ],
+   "createQmlMultiString": [
+    "QString createQmlMultiString(QString LongString, QString ShortString)"
+   ],
+   "formatDateTime": [
+    "QString formatDateTime(int Timestamp, bool WithSeconds)",
+    "QString formatDateTime(int Timestamp)"
+   ],
+   "formatDateTimeWithTimeZoneBerlin": [
+    "QString formatDateTimeWithTimeZoneBerlin(int Timestamp, bool WithSeconds)",
+    "QString formatDateTimeWithTimeZoneBerlin(int Timestamp)"
+   ],
+   "formatNumberToShortStringWithMax999k": [
+    "QString formatNumberToShortStringWithMax999k(qlonglong Number)"
+   ],
+   "formatNumberWithThousandSeparators": [
+    "QString formatNumberWithThousandSeparators(qlonglong Number)"
+   ],
+   "formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString": [
+    "QString formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString(qlonglong Number)",
+    "QString formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString(qlonglong Number, bool WithPlusForPositiveValues)"
+   ],
+   "formatNumberWithThousandSeparatorsShortestShortcut": [
+    "QString formatNumberWithThousandSeparatorsShortestShortcut(qlonglong Number)"
+   ],
+   "formatNumberWithThousandShortcutsAsMultiString": [
+    "QString formatNumberWithThousandShortcutsAsMultiString(qlonglong Number)"
+   ],
+   "formatSecondsToCompactHoursMinutesTimeString": [
+    "QString formatSecondsToCompactHoursMinutesTimeString(qlonglong Seconds)"
+   ],
+   "formatSecondsToMinutesTimeString": [
+    "QString formatSecondsToMinutesTimeString(qlonglong Seconds)"
+   ],
+   "formatSecondsToShortDaysHoursMinOrHoursMinOrMinSecondsOrSecondsTimeString": [
+    "QString formatSecondsToShortDaysHoursMinOrHoursMinOrMinSecondsOrSecondsTimeString(int Seconds)"
+   ],
+   "formatSecondsToShortHoursMinutesSecondsTimeString": [
+    "QString formatSecondsToShortHoursMinutesSecondsTimeString(qlonglong Seconds)"
+   ],
+   "formatSecondsToUltraShortDaysOrHoursOrMinsOrSecondsTimeString": [
+    "QString formatSecondsToUltraShortDaysOrHoursOrMinsOrSecondsTimeString(qlonglong Seconds)"
+   ],
+   "formatTwoNumbersWithThousandSeparatorsAndThousandShortcutsAsMultiString": [
+    "QString formatTwoNumbersWithThousandSeparatorsAndThousandShortcutsAsMultiString(QString FormatString, qlonglong FirstNumber, qlonglong SecondNumber, bool WithPlusForPositiveValues)"
+   ],
+   "replaceColorCodingsWithHtmlTags": [
+    "QString replaceColorCodingsWithHtmlTags(QString TextWithColorCodings)"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TTextureAtlasViewer": {
+  "chain": [
+   "tibia::qmlcomponents::TTextureAtlasViewer",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TTextureAtlasViewer",
+  "classinfo": {
+   "QML.Element": "TextureAtlasViewer"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "atlasHeight": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TTextureAtlasViewer",
+    "notify": null,
+    "type": "int"
+   },
+   "atlasWidth": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TTextureAtlasViewer",
+    "notify": null,
+    "type": "int"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TTextureAtlasViewerController": {
+  "chain": [
+   "tibia::qmlcomponents::TTextureAtlasViewerController",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TTextureAtlasViewerController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TTibiaObjectCreatorQmlService": {
+  "chain": [
+   "tibia::qmlcomponents::TTibiaObjectCreatorQmlService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TTibiaObjectCreatorQmlService",
+  "classinfo": {
+   "QML.Element": "TibiaObjects",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {
+   "createOutfitColor": [
+    "tibia::qmlcomponents::TOutfitColorQmlType* createOutfitColor(int HeadIndex, int TorsoIndex, int LegsIndex, int DetailIndex)",
+    "tibia::qmlcomponents::TOutfitColorQmlType* createOutfitColor(int HeadIndex, int TorsoIndex, int LegsIndex)",
+    "tibia::qmlcomponents::TOutfitColorQmlType* createOutfitColor(int HeadIndex, int TorsoIndex)",
+    "tibia::qmlcomponents::TOutfitColorQmlType* createOutfitColor(int HeadIndex)",
+    "tibia::qmlcomponents::TOutfitColorQmlType* createOutfitColor()"
+   ],
+   "outfitPreset": [
+    "tibia::qmlcomponents::TOutfitPresetQmlType* outfitPreset()"
+   ],
+   "worldMapCoordinate": [
+    "tibia::qmlcomponents::TWorldMapCoordinateQmlType* worldMapCoordinate(int x, int y, int z)",
+    "tibia::qmlcomponents::TWorldMapCoordinateQmlType* worldMapCoordinate(int x, int y)",
+    "tibia::qmlcomponents::TWorldMapCoordinateQmlType* worldMapCoordinate(int x)",
+    "tibia::qmlcomponents::TWorldMapCoordinateQmlType* worldMapCoordinate()"
+   ],
+   "worldMapSubfieldCoordinate": [
+    "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* worldMapSubfieldCoordinate(int x, int y, int z)",
+    "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* worldMapSubfieldCoordinate(int x, int y)",
+    "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* worldMapSubfieldCoordinate(int x)",
+    "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* worldMapSubfieldCoordinate()"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TTooltipEventWatcher": {
+  "chain": [
+   "tibia::qmlcomponents::TTooltipEventWatcher",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TTooltipEventWatcher",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "contained": [
+    "bool contained(QQuickItem* pParent)"
+   ],
+   "hoverPosition": [
+    "QPointF hoverPosition(QQuickItem* pParent)"
+   ],
+   "unregister": [
+    "void unregister()"
+   ]
+  },
+  "properties": {},
+  "signals": {
+   "hoverRefresh": [
+    "void hoverRefresh()"
+   ],
+   "mouseButtonPressed": [
+    "void mouseButtonPressed()"
+   ],
+   "unregistered": [
+    "void unregistered(TTooltipEventWatcher* pTooltipEventWacher)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TTooltipHelperQmlService": {
+  "chain": [
+   "tibia::qmlcomponents::TTooltipHelperQmlService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TTooltipHelperQmlService",
+  "classinfo": {
+   "QML.Element": "TooltipHelper",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {
+   "findWindowContentItemForQuickItem": [
+    "QQuickItem* findWindowContentItemForQuickItem(QQuickItem* pQuickItem)"
+   ],
+   "inWindow": [
+    "bool inWindow()"
+   ],
+   "registerTooltip": [
+    "TTooltipEventWatcher* registerTooltip(QQuickItem* pQuickItem)"
+   ]
+  },
+  "properties": {},
+  "signals": {
+   "hoverStateChanged": [
+    "void hoverStateChanged()"
+   ],
+   "mouseButtonPressed": [
+    "void mouseButtonPressed()"
+   ]
+  },
+  "slots": {
+   "onEventTriggered": [
+    "void onEventTriggered(QObject* pObject, QEvent::Type EventType)"
+   ],
+   "onTooltipEventWatcherUnregistered": [
+    "void onTooltipEventWatcherUnregistered(TTooltipEventWatcher* pTooltipEventWacher)"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TTutorialHelperQmlService": {
+  "chain": [
+   "tibia::qmlcomponents::TTutorialHelperQmlService",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TTutorialHelperQmlService",
+  "classinfo": {
+   "QML.Element": "TutorialHelper",
+   "QML.Singleton": "true"
+  },
+  "enums": {},
+  "invokables": {
+   "findSpellInfoForSpell": [
+    "QJSValue findSpellInfoForSpell(QString SpellName)"
+   ],
+   "findTutorialMarkerQuickItemWithID": [
+    "tibia::qmlcomponents::TTutorialMarkerQuickItem* findTutorialMarkerQuickItemWithID(tibia::tutorial::TTutorialMarkerID ID)"
+   ],
+   "nextUniqueTutorialMarkerID": [
+    "int nextUniqueTutorialMarkerID()"
+   ],
+   "setDebugOverlayVisible": [
+    "void setDebugOverlayVisible(bool Visible)"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TTutorialMarkerQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TTutorialMarkerQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TTutorialMarkerQuickItem",
+  "classinfo": {
+   "QML.Element": "TibiaTutorialMarker"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "debugOverlayVisible": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTutorialMarkerQuickItem",
+    "notify": "debugOverlayVisibleChanged",
+    "type": "bool"
+   },
+   "markerID": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TTutorialMarkerQuickItem",
+    "notify": "markerIDChanged",
+    "type": "tibia::tutorial::TTutorialMarkerID"
+   }
+  },
+  "signals": {
+   "debugOverlayVisibleChanged": [
+    "void debugOverlayVisibleChanged()"
+   ],
+   "markerIDChanged": [
+    "void markerIDChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TWorldMapCameraQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TWorldMapCameraQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TWorldMapCameraQmlType",
+  "classinfo": {
+   "QML.Creatable": "false",
+   "QML.Element": "WorldMapCamera",
+   "QML.UncreatableReason": "Cannot instantiate WorldMapCamera in QML"
+  },
+  "enums": {},
+  "invokables": {
+   "centerAtSubfieldCoordinateDelayed": [
+    "void centerAtSubfieldCoordinateDelayed(tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* pSubfieldCoordinate)"
+   ],
+   "changeLayerWithIsometricProjection": [
+    "void changeLayerWithIsometricProjection(int NewLayer)"
+   ],
+   "coordinateAtPoint": [
+    "tibia::qmlcomponents::TWorldMapCoordinateQmlType* coordinateAtPoint(QPoint Value)"
+   ],
+   "moveDistanceRelativeToReferencePoint": [
+    "void moveDistanceRelativeToReferencePoint(QPoint Distance)"
+   ]
+  },
+  "properties": {
+   "referencePoint": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraQmlType",
+    "notify": "cameraViewportChanged",
+    "type": "QPoint"
+   },
+   "scaleFactor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraQmlType",
+    "notify": "cameraViewportChanged",
+    "type": "float"
+   },
+   "topLeftSubfieldCoordinate": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraQmlType",
+    "notify": "cameraViewportChanged",
+    "type": "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType*"
+   }
+  },
+  "signals": {
+   "cameraViewportChanged": [
+    "void cameraViewportChanged()"
+   ]
+  },
+  "slots": {
+   "onTopLeftCoordinateChanged": [
+    "void onTopLeftCoordinateChanged()"
+   ]
+  }
+ },
+ "tibia::qmlcomponents::TWorldMapCameraViewportQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TWorldMapCameraViewportQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TWorldMapCameraViewportQmlType",
+  "classinfo": {
+   "QML.Element": "WorldMapCameraViewport"
+  },
+  "enums": {},
+  "invokables": {
+   "convertCoordinateToStretchedPixelCoordinate": [
+    "QPoint convertCoordinateToStretchedPixelCoordinate(tibia::qmlcomponents::TWorldMapCoordinateQmlType* WorldMapCoordinate)"
+   ],
+   "convertSubfieldCoordinateToStretchedPixelCoordinate": [
+    "QPoint convertSubfieldCoordinateToStretchedPixelCoordinate(tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* WorldMapSubfieldCoordinate)"
+   ],
+   "convertToWorldMapSubfieldCoordinate": [
+    "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* convertToWorldMapSubfieldCoordinate(QPoint StretchedPixelCoordinate)"
+   ],
+   "convertToWorldMapSubfieldCoordinateForLayer": [
+    "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* convertToWorldMapSubfieldCoordinateForLayer(QPoint StretchedPixelCoordinate, int Layer)"
+   ],
+   "moveWorldMapSubfieldCoordinateToStretchedPixelCoordinate": [
+    "void moveWorldMapSubfieldCoordinateToStretchedPixelCoordinate(tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* WorldMapSubfieldCoordinate, QPoint PixelCoordinate)"
+   ],
+   "setAdditionalColumnsAndRows": [
+    "void setAdditionalColumnsAndRows(int AdditionalColumsLeft, int AdditionalColumsRight, int AdditionalRowsTop, int AdditionalRowsBottom)"
+   ],
+   "setTopAndBottomLayer": [
+    "void setTopAndBottomLayer(int TopLayer, int BottomLayer)"
+   ],
+   "translateByStretchedPixelCoordinate": [
+    "void translateByStretchedPixelCoordinate(QPoint StretchedPixelCoordinate)"
+   ],
+   "translateBySubfieldOffset": [
+    "void translateBySubfieldOffset(QPoint SubfieldOffset)"
+   ],
+   "translateToLayer": [
+    "void translateToLayer(int NewLayer)"
+   ],
+   "zoomAtPoint": [
+    "void zoomAtPoint(float ScaleFactor, QPoint StretchedPixelCoordinate)"
+   ]
+  },
+  "properties": {
+   "bottomLayer": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraViewportQmlType",
+    "notify": "viewportChanged",
+    "type": "int"
+   },
+   "centerLayerBottomRightSubfieldCoordinate": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraViewportQmlType",
+    "notify": "viewportChanged",
+    "type": "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType*"
+   },
+   "centerLayerStretchedPixelOffset": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraViewportQmlType",
+    "notify": "viewportChanged",
+    "type": "QPoint"
+   },
+   "centerLayerTopLeftSubfieldCoordinate": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraViewportQmlType",
+    "notify": "viewportChanged",
+    "type": "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType*"
+   },
+   "centerSubfieldCoordinate": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraViewportQmlType",
+    "notify": "viewportChanged",
+    "type": "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType*"
+   },
+   "scaleFactor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraViewportQmlType",
+    "notify": "viewportChanged",
+    "type": "float"
+   },
+   "size": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraViewportQmlType",
+    "notify": "viewportChanged",
+    "type": "QSize"
+   },
+   "topLayer": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraViewportQmlType",
+    "notify": "viewportChanged",
+    "type": "int"
+   },
+   "volume": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TWorldMapCameraViewportQmlType",
+    "notify": "viewportChanged",
+    "type": "tibia::qmlcomponents::TWorldMapCuboidQmlType*"
+   }
+  },
+  "signals": {
+   "viewportChanged": [
+    "void viewportChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TWorldMapCoordinateQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TWorldMapCoordinateQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TWorldMapCoordinateQmlType",
+  "classinfo": {
+   "QML.Element": "WorldMapCoordinate"
+  },
+  "enums": {},
+  "invokables": {
+   "distanceTo": [
+    "int distanceTo(TWorldMapCoordinateQmlType* pOther)"
+   ],
+   "equals": [
+    "bool equals(TWorldMapCoordinateQmlType* pOther)"
+   ]
+  },
+  "properties": {
+   "x": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapCoordinateQmlType",
+    "notify": "coordinateChanged",
+    "type": "int"
+   },
+   "y": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapCoordinateQmlType",
+    "notify": "coordinateChanged",
+    "type": "int"
+   },
+   "z": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapCoordinateQmlType",
+    "notify": "coordinateChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "coordinateChanged": [
+    "void coordinateChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TWorldMapCuboidQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TWorldMapCuboidQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TWorldMapCuboidQmlType",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "calculateWorldMapCoordinateForIndexByColumnFirstAndSkyToGroundIncludingShearing": [
+    "tibia::qmlcomponents::TWorldMapCoordinateQmlType* calculateWorldMapCoordinateForIndexByColumnFirstAndSkyToGroundIncludingShearing(int index)"
+   ]
+  },
+  "properties": {
+   "extent": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TWorldMapCuboidQmlType",
+    "notify": null,
+    "type": "tibia::qmlcomponents::TWorldMapCoordinateQmlType*"
+   },
+   "highestTopLeftCoordinate": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TWorldMapCuboidQmlType",
+    "notify": null,
+    "type": "tibia::qmlcomponents::TWorldMapCoordinateQmlType*"
+   },
+   "lowestBottomRightCoordinate": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TWorldMapCuboidQmlType",
+    "notify": null,
+    "type": "tibia::qmlcomponents::TWorldMapCoordinateQmlType*"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TWorldMapQuickItem": {
+  "chain": [
+   "tibia::qmlcomponents::TWorldMapQuickItem",
+   "tibia::qmlcomponents::TScenegraphDrawCommandsRendererQuickItem",
+   "QQuickItem"
+  ],
+  "class": "tibia::qmlcomponents::TWorldMapQuickItem",
+  "classinfo": {
+   "QML.Element": "WorldMap"
+  },
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "renderScaleFactor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapQuickItem",
+    "notify": "scaleFactorChanged",
+    "type": "float"
+   },
+   "smoothTextureFiltering": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapQuickItem",
+    "notify": "smoothTextureFilteringChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "scaleFactorChanged": [
+    "void scaleFactorChanged()"
+   ],
+   "smoothTextureFilteringChanged": [
+    "void smoothTextureFilteringChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType": {
+  "chain": [
+   "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType",
+   "QObject"
+  ],
+  "class": "tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType",
+  "classinfo": {
+   "QML.Element": "WorldMapSubfieldCoordinate"
+  },
+  "enums": {},
+  "invokables": {
+   "equals": [
+    "bool equals(TWorldMapSubfieldCoordinateQmlType* pOther)"
+   ]
+  },
+  "properties": {
+   "subfieldX": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapSubfieldCoordinateQmlType",
+    "notify": "coordinateChanged",
+    "type": "int"
+   },
+   "subfieldY": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapSubfieldCoordinateQmlType",
+    "notify": "coordinateChanged",
+    "type": "int"
+   },
+   "z": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TWorldMapSubfieldCoordinateQmlType",
+    "notify": "coordinateChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "coordinateChanged": [
+    "void coordinateChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::qmlcomponents::enums": {
+  "chain": [
+   "tibia::qmlcomponents::enums"
+  ],
+  "class": "tibia::qmlcomponents::enums",
+  "classinfo": {
+   "QML.Element": "TibiaEnums"
+  },
+  "enums": {
+   "EActionBarPosition": {
+    "ActionBarPositionBottom": 0,
+    "ActionBarPositionLeft": 1,
+    "ActionBarPositionRight": 2
+   },
+   "EAntialiasingMode": {
+    "AntialiasingModeAntialiasing": 1,
+    "AntialiasingModeNone": 0,
+    "AntialiasingModeRetro": 2,
+    "_EAntialiasingMode_AfterLast": 3
+   },
+   "ECharmUnlockGrade": {
+    "GRADE1": 1,
+    "GRADE2": 2,
+    "GRADE3": 3,
+    "NOTUNLOCKED": 0
+   },
+   "ECreatureLookDirection": {
+    "EAST": 1,
+    "NORTH": 0,
+    "SOUTH": 2,
+    "WEST": 3,
+    "_ECreatureLookDirection_AfterLast": 4
+   },
+   "ECyclopediaMapSelectionType": {
+    "SelectionTypeArea": 0,
+    "SelectionTypePassage": 2,
+    "SelectionTypeSubArea": 1
+   },
+   "EDailyRewardState": {
+    "DailyRewardStateCollected": 0,
+    "DailyRewardStateNotAvailable": 2,
+    "DailyRewardStateNotCollected": 1,
+    "_EDailyRewardState_AfterLast": 3
+   },
+   "EDailyRewardStreakState": {
+    "AlreadyCollected": 0,
+    "Expired": 1,
+    "Frozen": 3,
+    "NeverCollected": 4,
+    "Running": 2,
+    "_EDailyRewardStreakState_AfterLast": 5
+   },
+   "EFragmentWorkshopFilter": {
+    "All": 0,
+    "BasicMods": 1,
+    "Grade1": 4,
+    "Grade2": 5,
+    "Grade3": 6,
+    "Grade4": 7,
+    "SocketedMods": 3,
+    "SupremeMods": 2
+   },
+   "EFusionBonusEffect": {
+    "FusionBonusEffectBackfillDust": 9,
+    "FusionBonusEffectDoubleUpgrade": 7,
+    "FusionBonusEffectDowngradeResourceObject": 4,
+    "FusionBonusEffectKeepResourceObject": 5,
+    "FusionBonusEffectNoCoreCost": 2,
+    "FusionBonusEffectNoDustCost": 1,
+    "FusionBonusEffectNoGoldCost": 3,
+    "FusionBonusEffectNone": 0,
+    "FusionBonusEffectTierLossPreventionTriggered": 8,
+    "FusionBonusEffectUpgradeResourceObject": 6,
+    "_FusionBonusEffect_AfterLast": 10
+   },
+   "EGameWindowResizingMode": {
+    "PreferBoth": 2,
+    "PreferChat": 1,
+    "PreferMapWindow": 0
+   },
+   "EGemAffinity": {
+    "BottomLeft": 2,
+    "BottomRight": 3,
+    "TopLeft": 0,
+    "TopRight": 1
+   },
+   "EGemModType": {
+    "GemModTypeBasic": 1,
+    "GemModTypeNone": 0,
+    "GemModTypeSupreme": 2
+   },
+   "EGemQuality": {
+    "Greater": 2,
+    "Lesser": 0,
+    "Regular": 1
+   },
+   "EHousSortOrder": {
+    "HouseSortByAuctionEnd": 4,
+    "HouseSortByBid": 3,
+    "HouseSortByName": 0,
+    "HouseSortByRent": 2,
+    "HouseSortBySize": 1,
+    "_EHousSortOrder_AfterLast": 5
+   },
+   "EHouseAction": {
+    "HouseActionAcceptTransfer": 6,
+    "HouseActionBid": 1,
+    "HouseActionCancelMoveOut": 4,
+    "HouseActionCancelTransfer": 5,
+    "HouseActionMoveOut": 2,
+    "HouseActionNone": -1,
+    "HouseActionRejectTransfer": 7,
+    "HouseActionTransfer": 3,
+    "_EHouseAction_AfterLast": 8
+   },
+   "EHouseState": {
+    "HouseStateAllStates": 5,
+    "HouseStateAuctioned": 0,
+    "HouseStateMoveOutPending": 4,
+    "HouseStateRented": 2,
+    "HouseStateTransferPending": 3,
+    "HouseStateUnknown": 6,
+    "HouseStateUnoccupied": 1,
+    "_EHouseState_AfterLast": 7
+   },
+   "EHouseType": {
+    "HouseTypeGuildHall": 1,
+    "HouseTypeHouseOrFlat": 0,
+    "_EHouseType_AfterLast": 2
+   },
+   "EInfoBannerType": {
+    "InfoBannerTypeAchievement": 11,
+    "InfoBannerTypeAdjacentTargetAttacked": 3,
+    "InfoBannerTypeAreaUnlocked": 22,
+    "InfoBannerTypeAutoAttackSpamming": 0,
+    "InfoBannerTypeBestiaryProgress": 8,
+    "InfoBannerTypeBosstiaryProgress": 9,
+    "InfoBannerTypeBountyTaskFinished": 15,
+    "InfoBannerTypeCapacityWarning": 1,
+    "InfoBannerTypeLeaderMonsterKilled": 20,
+    "InfoBannerTypeLeaveNewhaven": 5,
+    "InfoBannerTypeLevelUp": 6,
+    "InfoBannerTypeOutOfAmmunition": 2,
+    "InfoBannerTypeOutOfSoulpoints": 4,
+    "InfoBannerTypeOutfitPartUnlocked": 13,
+    "InfoBannerTypePromotionUnlocked": 19,
+    "InfoBannerTypeQuestProgress": 10,
+    "InfoBannerTypeSkillUp": 7,
+    "InfoBannerTypeSpellUnlocked": 18,
+    "InfoBannerTypeSubAreaUnlocked": 21,
+    "InfoBannerTypeTitle": 12,
+    "InfoBannerTypeWeaponProficency": 14,
+    "InfoBannerTypeWeeklyTaskAnyCreatureFinished": 16,
+    "InfoBannerTypeWeeklyTaskSpecificCreatureFinished": 17
+   },
+   "EMouseButtonHintText": {
+    "Click": 1,
+    "Drag": 2,
+    "Drop": 3,
+    "FirstClick": 4,
+    "NoHint": 0,
+    "SecondClick": 5
+   },
+   "EOfflineTrainingSkillType": {
+    "OfflineTrainingSkillTypeAxe": 2,
+    "OfflineTrainingSkillTypeClub": 3,
+    "OfflineTrainingSkillTypeDistance": 4,
+    "OfflineTrainingSkillTypeFist": 6,
+    "OfflineTrainingSkillTypeMagic": 5,
+    "OfflineTrainingSkillTypeSword": 1
+   },
+   "EOperatingSystem": {
+    "Linux": 3,
+    "Mac": 2,
+    "Unknown": 0,
+    "Windows": 1
+   },
+   "EOutfitSource": {
+    "OutfitSourceQuest": 1,
+    "OutfitSourceStandard": 0,
+    "OutfitSourceStore": 2
+   },
+   "EOutfitType": {
+    "OutfitTypeOwned": 0,
+    "OutfitTypeStoreSold": 1,
+    "OutfitTypeUnavailableGoldenOutfit": 2,
+    "OutfitTypeUnavailableTokenOutfit": 3
+   },
+   "EPosition": {
+    "BottomLeft": 2,
+    "BottomRight": 3,
+    "TopLeft": 0,
+    "TopRight": 1
+   },
+   "EPreyAutomaticExtendType": {
+    "BONUS_REROLL": 1,
+    "LOCK_PREY": 2,
+    "NOT_EXTENDING": 0
+   },
+   "EPreyUnlockOption": {
+    "UNLOCK_OPTION_NONE": 2,
+    "UNLOCK_OPTION_PREMIUM_OR_STORE": 0,
+    "UNLOCK_OPTION_STORE": 1
+   },
+   "ESkillGridTile": {
+    "QBL0": 20,
+    "QBL1": 19,
+    "QBL2": 18,
+    "QBL3": 26,
+    "QBL4": 25,
+    "QBL5": 24,
+    "QBL6": 32,
+    "QBL7": 31,
+    "QBL8": 30,
+    "QBR0": 21,
+    "QBR1": 22,
+    "QBR2": 23,
+    "QBR3": 27,
+    "QBR4": 28,
+    "QBR5": 29,
+    "QBR6": 33,
+    "QBR7": 34,
+    "QBR8": 35,
+    "QTL0": 14,
+    "QTL1": 13,
+    "QTL2": 12,
+    "QTL3": 8,
+    "QTL4": 7,
+    "QTL5": 6,
+    "QTL6": 2,
+    "QTL7": 1,
+    "QTL8": 0,
+    "QTR0": 15,
+    "QTR1": 16,
+    "QTR2": 17,
+    "QTR3": 9,
+    "QTR4": 10,
+    "QTR5": 11,
+    "QTR6": 3,
+    "QTR7": 4,
+    "QTR8": 5,
+    "_ESkillGridTile_AfterLast": 36
+   },
+   "ESortOrder": {
+    "AtoZ": 1,
+    "FinisheddOnBottom": 4,
+    "FinisheddOnTop": 3,
+    "LargestStockOnBottom": 14,
+    "LargestStockOnTop": 13,
+    "MarketExpensiveOnBottom": 6,
+    "MarketExpensiveOnTop": 5,
+    "MostProficiencyXPOnTop": 15,
+    "NoOrder": 0,
+    "SellExpensiveOnBottom": 10,
+    "SellExpensiveOnTop": 9,
+    "TotalMarketExpensiveOnBottom": 8,
+    "TotalMarketExpensiveOnTop": 7,
+    "TotalSellExpensiveOnBottom": 12,
+    "TotalSellExpensiveOnTop": 11,
+    "ZtoA": 2
+   },
+   "ESpellCastOptionalTargetType": {
+    "AtMousePosition": 2,
+    "AtTargetOrSelf": 3,
+    "Crosshair": 1,
+    "None": 0
+   },
+   "ESpellSource": {
+    "SpellSourceLevelUp": 1,
+    "SpellSourceThreeFoldPath": 3,
+    "SpellSourceUnknown": 0,
+    "SpellSourceWheelOfDestiny": 2
+   },
+   "ETeamFinderStatus": {
+    "TeamFinderStatusAccepted": 3,
+    "TeamFinderStatusInvited": 2,
+    "TeamFinderStatusNotInTeam": 0,
+    "TeamFinderStatusRejected": 4,
+    "TeamFinderStatusRequest": 1,
+    "_TeamFinderStatus_AfterLast": 5
+   },
+   "EVisualizationType": {
+    "AlmostGone": 2,
+    "AlmostNew": 0,
+    "Used": 1
+   },
+   "EVocation": {
+    "Druid": 4,
+    "Knight": 1,
+    "Monk": 5,
+    "None": 0,
+    "Paladin": 2,
+    "Sorcerer": 3,
+    "_EVocation_AfterLast": 6
+   },
+   "EWorldType": {
+    "WorldTypeHardcorePvP": 2,
+    "WorldTypeOpenPvP": 0,
+    "WorldTypeOptionalPvp": 1,
+    "WorldTypeRetroHardcorePvP": 4,
+    "WorldTypeRetroOpenPvP": 3
+   },
+   "EYesNoWarning": {
+    "No": 1,
+    "Warning": 2,
+    "Yes": 0
+   }
+  },
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ }
+}

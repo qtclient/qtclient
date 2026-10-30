@@ -1,0 +1,227 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "environment": {
+        "VCPKG_DEFAULT_BINARY_CACHE": "$penv{VCPKG_DEFAULT_BINARY_CACHE}",
+        "VCPKG_BINARY_SOURCES": "$penv{VCPKG_BINARY_SOURCES}",
+        "VCPKG_DOWNLOADS": "$penv{VCPKG_DOWNLOADS}",
+        "CCACHE_DIR": "$penv{CCACHE_DIR}",
+        "CCACHE_BASEDIR": "$penv{CCACHE_BASEDIR}",
+        "CCACHE_NOHASHDIR": "$penv{CCACHE_NOHASHDIR}"
+      },
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_COLOR_DIAGNOSTICS": "ON",
+        "SPEED_UP_BUILD_UNITY": "ON",
+        "VCPKG_INSTALL_OPTIONS": "--clean-packages-after-build;--clean-buildtrees-after-build;--x-buildtrees-root=${sourceDir}/build/${presetName}/vcpkg-buildtrees;--x-packages-root=${sourceDir}/build/${presetName}/vcpkg-packages"
+      }
+    },
+    {
+      "name": "windows-release",
+      "inherits": "base",
+      "displayName": "Windows - Release",
+      "description": "Windows release (static libs, /MD — matches Qt)",
+      "cacheVariables": {
+        "BUILD_STATIC_LIBRARY": "OFF",
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "OPTIONS_ENABLE_CCACHE": "ON",
+        "OPTIONS_ENABLE_SCCACHE": "OFF",
+        "TIBIA_BUILD_TESTS": "OFF",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static-md"
+      },
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-release-asan",
+      "inherits": "windows-release",
+      "displayName": "Windows - Release + ASAN",
+      "cacheVariables": {
+        "ASAN_ENABLED": "ON",
+        "TIBIA_BUILD_TESTS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "tests"
+      }
+    },
+    {
+      "name": "windows-debug",
+      "inherits": "windows-release",
+      "displayName": "Windows - Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "DEBUG_LOG": "ON",
+        "ASAN_ENABLED": "OFF",
+        "SPEED_UP_BUILD_UNITY": "OFF",
+        "TIBIA_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "windows-tests",
+      "inherits": "windows-debug",
+      "displayName": "Windows - Tests",
+      "cacheVariables": {
+        "TIBIA_BUILD_TESTS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "tests"
+      }
+    },
+    {
+      "name": "linux-release",
+      "inherits": "base",
+      "displayName": "Linux - Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "OPTIONS_ENABLE_CCACHE": "ON",
+        "TIBIA_BUILD_TESTS": "OFF",
+        "VCPKG_TARGET_TRIPLET": "x64-linux-static"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "inherits": "linux-release",
+      "displayName": "Linux - Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "DEBUG_LOG": "ON",
+        "SPEED_UP_BUILD_UNITY": "OFF",
+        "TIBIA_BUILD_TESTS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "tests"
+      }
+    },
+    {
+      "name": "linux-dev",
+      "inherits": "linux-release",
+      "displayName": "Linux - Dev (disk QML)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "TIBIA_QML_DISK": "ON",
+        "SPEED_UP_BUILD_UNITY": "OFF",
+        "TIBIA_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "macos-release",
+      "inherits": "base",
+      "displayName": "macOS - Release",
+      "cacheVariables": {
+        "BUILD_STATIC_LIBRARY": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "/usr/bin/cc",
+        "CMAKE_CXX_COMPILER": "/usr/bin/c++",
+        "OPTIONS_ENABLE_CCACHE": "ON",
+        "OPTIONS_ENABLE_SCCACHE": "OFF",
+        "OPTIONS_ENABLE_IPO": "OFF",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O2 -DNDEBUG",
+        "CMAKE_C_FLAGS_RELEASE": "-O2 -DNDEBUG",
+        "TIBIA_BUILD_TESTS": "OFF",
+        "VCPKG_TARGET_TRIPLET": "$env{VCPKG_TARGET_TRIPLET}"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "macos-debug",
+      "inherits": "macos-release",
+      "displayName": "macOS - Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "DEBUG_LOG": "ON",
+        "ASAN_ENABLED": "ON",
+        "BUILD_STATIC_LIBRARY": "OFF",
+        "SPEED_UP_BUILD_UNITY": "OFF",
+        "TIBIA_BUILD_TESTS": "ON",
+        "VCPKG_MANIFEST_FEATURES": "tests"
+      }
+    },
+    {
+      "name": "macos-dev",
+      "inherits": "macos-release",
+      "displayName": "macOS - Dev (disk QML)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "TIBIA_QML_DISK": "ON",
+        "ASAN_ENABLED": "OFF",
+        "SPEED_UP_BUILD_UNITY": "OFF",
+        "TIBIA_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "wasm-tibia",
+      "inherits": "base",
+      "displayName": "WebAssembly - tibia",
+      "description": "Qt wasm OS via chainload; see deploy/build-tibia.sh --wasm",
+      "binaryDir": "${sourceDir}/build/tibia-wasm",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "WASM": "ON",
+        "TIBIA_BUILD_APP": "ON",
+        "TIBIA_BUILD_TESTS": "OFF",
+        "TOGGLE_BIN_FOLDER": "ON",
+        "OPTIONS_ENABLE_IPO": "OFF",
+        "VCPKG_TARGET_TRIPLET": "wasm32-emscripten"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "wasm-tibia", "configurePreset": "wasm-tibia", "targets": ["tibia"] },
+    { "name": "linux-release", "configurePreset": "linux-release" },
+    { "name": "linux-debug", "configurePreset": "linux-debug" },
+    { "name": "linux-dev", "configurePreset": "linux-dev" },
+    { "name": "windows-release", "configurePreset": "windows-release" },
+    { "name": "windows-release-asan", "configurePreset": "windows-release-asan" },
+    { "name": "windows-debug", "configurePreset": "windows-debug" },
+    { "name": "windows-tests", "configurePreset": "windows-tests" },
+    { "name": "macos-release", "configurePreset": "macos-release" },
+    { "name": "macos-debug", "configurePreset": "macos-debug" },
+    { "name": "macos-dev", "configurePreset": "macos-dev" }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "windows-tests",
+      "configurePreset": "windows-tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "macos-debug",
+      "configurePreset": "macos-debug",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    }
+  ]
+}

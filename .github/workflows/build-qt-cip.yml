@@ -1,0 +1,189 @@
+# Build CipSoft Qt5 kits and publish install prefixes to
+# ghcr.io/qtclient/qt-cip (free public Actions). Trigger: manual, or when
+# third_party/qt5-cip gitlink changes on main.
+name: Build CIP Qt
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'third_party/qt5-cip'
+      - 'tools/qt/**'
+      - '.github/workflows/build-qt-cip.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: qt-cip-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  desktop:
+    name: desktop-${{ matrix.kit }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kit: macos-arm64
+            runner: macos-15
+          - kit: linux-x64
+            runner: ubuntu-24.04
+          - kit: windows-x64
+            runner: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Resolve + init qt5-cip (shallow)
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD:third_party/qt5-cip 2>/dev/null || true)"
+          if [[ -z "$SHA" && -f third_party/SUBMODULE_PINS.txt ]]; then
+            SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt)"
+          fi
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "CIP_SHA=$SHA" >> "$GITHUB_ENV"
+          echo "CIP_SHORT=${SHA:0:12}" >> "$GITHUB_ENV"
+          echo "QT_CIP_SHA=$SHA" >> "$GITHUB_ENV"
+          # update=none skips plain submodule update — force checkout or clone.
+          git -c submodule.third_party/qt5-cip.update=checkout \
+            submodule update --init --depth 1 third_party/qt5-cip \
+            || bash -c '
+              rm -rf third_party/qt5-cip
+              git clone --depth 1 https://github.com/CipSoft-Tibia/Qt5.git third_party/qt5-cip
+              git -C third_party/qt5-cip fetch --depth 1 origin "$0" || true
+              git -C third_party/qt5-cip checkout "$0" 2>/dev/null || git -C third_party/qt5-cip checkout FETCH_HEAD
+            ' "$SHA"
+          test -f third_party/qt5-cip/configure
+          echo "resolved CIP $(git -C third_party/qt5-cip rev-parse --short=12 HEAD)"
+
+      - name: Install Ninja / build deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev \
+            libx11-xcb-dev libxcb-cursor-dev libxcb-xinerama0-dev \
+            libfontconfig1-dev libfreetype6-dev libdbus-1-dev
+
+      - name: Install Ninja (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja zstd || true
+
+      - uses: lukka/get-cmake@v4.3.4
+
+      # Without this, Git Bash finds C:/mingw64 first and Qt builds with GNU —
+      # qsb.exe then crashes (0xC0000005 / 0xC0000139) mid-build.
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+
+      - name: Install oras
+        uses: oras-project/setup-oras@v1
+
+      - name: Restore QT_PREFIX cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/Qt/cip-${{ env.CIP_SHORT }}
+          key: cip-qt-${{ matrix.kit }}-${{ env.CIP_SHA }}
+
+      - name: Build + publish desktop kit
+        shell: bash
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          PUBLISH: '1'
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Wipe a stale MinGW-configured build dir if a previous attempt polluted the cache path's sibling.
+          CMAKE_BUILD_PARALLEL_LEVEL: '4'
+        run: |
+          set -euo pipefail
+          echo "${GHCR_TOKEN}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          # Host build lives under QT_ROOT/build/… — drop MinGW leftovers so we reconfigure for MSVC.
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            rm -rf "${QT_ROOT}/build/cip-${CIP_SHORT}-host" || true
+          fi
+          bash tools/qt/install-qt.sh
+
+      # idleot/release pulls with its own GITHUB_TOKEN — package must be public.
+      - name: Ensure qt-cip package is public
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            "/orgs/qtclient/packages/container/qt-cip" \
+            -f visibility=public \
+            || echo "::warning::could not set qt-cip visibility (create on first push, then re-run)"
+
+  wasm:
+    name: wasm_multithread
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Resolve + init qt5-cip (shallow)
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD:third_party/qt5-cip 2>/dev/null || true)"
+          if [[ -z "$SHA" && -f third_party/SUBMODULE_PINS.txt ]]; then
+            SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt)"
+          fi
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "CIP_SHA=$SHA" >> "$GITHUB_ENV"
+          echo "CIP_SHORT=${SHA:0:12}" >> "$GITHUB_ENV"
+          echo "QT_CIP_SHA=$SHA" >> "$GITHUB_ENV"
+          git -c submodule.third_party/qt5-cip.update=checkout \
+            submodule update --init --depth 1 third_party/qt5-cip \
+            || bash -c '
+              rm -rf third_party/qt5-cip
+              git clone --depth 1 https://github.com/CipSoft-Tibia/Qt5.git third_party/qt5-cip
+              git -C third_party/qt5-cip fetch --depth 1 origin "$0" || true
+              git -C third_party/qt5-cip checkout "$0" 2>/dev/null || git -C third_party/qt5-cip checkout FETCH_HEAD
+            ' "$SHA"
+          test -f third_party/qt5-cip/configure
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev \
+            libx11-xcb-dev libxcb-cursor-dev libfontconfig1-dev libfreetype6-dev zstd
+
+      - uses: lukka/get-cmake@v4.3.4
+      - uses: oras-project/setup-oras@v1
+
+      - name: Restore host + wasm cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/Qt/cip-${{ env.CIP_SHORT }}
+            ${{ runner.temp }}/Qt/emsdk
+          key: cip-qt-wasm-${{ env.CIP_SHA }}-${{ hashFiles('tools/qt/qt-version.sh') }}
+
+      - name: Build host + wasm + publish
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          PUBLISH: '1'
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "${GHCR_TOKEN}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          bash tools/qt/install-qt.sh --wasm
+
+      - name: Ensure qt-cip package is public
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            "/orgs/qtclient/packages/container/qt-cip" \
+            -f visibility=public \
+            || echo "::warning::could not set qt-cip visibility (create on first push, then re-run)"

@@ -1,0 +1,486 @@
+{
+ "tibia::market::TDisplayMarketOffer": {
+  "chain": [
+   "tibia::market::TDisplayMarketOffer",
+   "QObject"
+  ],
+  "class": "tibia::market::TDisplayMarketOffer",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "formatTotalValue": [
+    "QString formatTotalValue(int Amount)"
+   ]
+  },
+  "properties": {
+   "amountText": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "QString"
+   },
+   "auctionStatus": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "QString"
+   },
+   "bidder": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "QString"
+   },
+   "endsAtTime": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "QString"
+   },
+   "isDubious": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "bool"
+   },
+   "itemName": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "QString"
+   },
+   "itemNameWithTier": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "QString"
+   },
+   "maximumAcceptAmount": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "int"
+   },
+   "piecePriceText": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "QString"
+   },
+   "terminationTimestamp": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "int"
+   },
+   "terminationTimestampUniqueIdentifier": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "int"
+   },
+   "totalPriceText": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TDisplayMarketOffer",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::market::TMarketController": {
+  "chain": [
+   "tibia::market::TMarketController",
+   "tibia::gamewindow::TDialogControllerBase",
+   "QObject"
+  ],
+  "class": "tibia::market::TMarketController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "appearanceTypeListModel": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": null,
+    "type": "QVariant"
+   },
+   "availableClassifications": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "availableClassificationsChanged",
+    "type": "QStringList"
+   },
+   "availableTiers": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "availableTiersChanged",
+    "type": "QStringList"
+   },
+   "categories": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "categoriesModelChanged",
+    "type": "QList<QObject*>"
+   },
+   "enableTierAndClassificationSelection": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "enableTierAndClassificationSelectionChanged",
+    "type": "bool"
+   },
+   "enableTierSelection": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "enableTierSelectionChanged",
+    "type": "bool"
+   },
+   "indexOfSelectedClassification": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "indexOfSelectedClassificationChanged",
+    "type": "int"
+   },
+   "indexOfSelectedTier": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "indexOfSelectedTierChanged",
+    "type": "int"
+   },
+   "selectedCategoryName": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "selectedCategoryChanged",
+    "type": "QString"
+   },
+   "showLockerOnly": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "showLockerOnlyChanged",
+    "type": "bool"
+   },
+   "showStoreDeeplink": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TMarketController",
+    "notify": "selectedCategoryChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "abort": [
+    "void abort()"
+   ],
+   "availableClassificationsChanged": [
+    "void availableClassificationsChanged()"
+   ],
+   "availableTiersChanged": [
+    "void availableTiersChanged()"
+   ],
+   "categoriesModelChanged": [
+    "void categoriesModelChanged()"
+   ],
+   "dialogClosed": [
+    "void dialogClosed()"
+   ],
+   "disconnectFromControllerRequest": [
+    "void disconnectFromControllerRequest()"
+   ],
+   "enableTierAndClassificationSelectionChanged": [
+    "void enableTierAndClassificationSelectionChanged()"
+   ],
+   "enableTierSelectionChanged": [
+    "void enableTierSelectionChanged()"
+   ],
+   "indexOfSelectedClassificationChanged": [
+    "void indexOfSelectedClassificationChanged()"
+   ],
+   "indexOfSelectedTierChanged": [
+    "void indexOfSelectedTierChanged()"
+   ],
+   "itemListSelectionRequest": [
+    "void itemListSelectionRequest(int Index)"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "selectedCategoryChanged": [
+    "void selectedCategoryChanged()"
+   ],
+   "showLockerOnlyChanged": [
+    "void showLockerOnlyChanged()"
+   ]
+  },
+  "slots": {
+   "closeDialog": [
+    "void closeDialog()"
+   ],
+   "getMarketFeeMultistring": [
+    "QString getMarketFeeMultistring(int Amount, qlonglong PiecePrice)"
+   ],
+   "getPriceOrProfitMultistring": [
+    "QString getPriceOrProfitMultistring(int Amount, qlonglong PiecePrice)"
+   ],
+   "getTotalPriceOrProfitMultistring": [
+    "QString getTotalPriceOrProfitMultistring(QString OfferTypeString, int Amount, qlonglong PiecePrice)"
+   ],
+   "onActiveOfferCountChanged": [
+    "void onActiveOfferCountChanged(TActiveOfferCount NewOfferCount)"
+   ],
+   "onClassificationFilterWasSelected": [
+    "void onClassificationFilterWasSelected(int SelectedIndex, QString NameFilter, bool FilterByLevel, bool FilterByVocation, bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly)"
+   ],
+   "onCloseButtonPressed": [
+    "void onCloseButtonPressed()"
+   ],
+   "onGetCoinsButtonClicked": [
+    "void onGetCoinsButtonClicked()"
+   ],
+   "onMarketCategoryItemSelected": [
+    "void onMarketCategoryItemSelected(int AppearanceTypeID, int QmlUpgradeTier)"
+   ],
+   "onMarketCategorySelected": [
+    "void onMarketCategorySelected(int CategoryIdentifier, bool FilterByLevel, bool FilterByVocation, bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly)"
+   ],
+   "onMarketFilterSelected": [
+    "void onMarketFilterSelected(QString NameFilter, bool FilterByLevel, bool FilterByVocation, bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly)"
+   ],
+   "onMarketHistoryChanged": [
+    "void onMarketHistoryChanged(TMarketOfferList NewOffers)"
+   ],
+   "onMarketHistoryOpened": [
+    "void onMarketHistoryOpened()"
+   ],
+   "onMarketItemDetailsChanged": [
+    "void onMarketItemDetailsChanged(TMarketItemDetails ItemDetails)"
+   ],
+   "onMarketOfferAccept": [
+    "void onMarketOfferAccept(int OfferTimestamp, int OfferIdentifier, int Amount)"
+   ],
+   "onMarketOfferCancel": [
+    "void onMarketOfferCancel(int OfferTimestamp, int OfferIdentifier)"
+   ],
+   "onMarketOfferCreate": [
+    "void onMarketOfferCreate(QString OfferTypeString, int Amount, qlonglong PiecePrice, bool CreateAnonymousOffer)"
+   ],
+   "onMarketOfferMaximumAmountRequest": [
+    "void onMarketOfferMaximumAmountRequest(QString OfferTypeString, qlonglong PiecePrice)"
+   ],
+   "onMarketOffersChanged": [
+    "void onMarketOffersChanged(TMarketOfferList NewOffers)"
+   ],
+   "onMarketOptionsChagend": [
+    "void onMarketOptionsChagend()"
+   ],
+   "onMarketOwnOffersChanged": [
+    "void onMarketOwnOffersChanged(TMarketOfferList NewOffers)"
+   ],
+   "onMarketOwnOffersOpened": [
+    "void onMarketOwnOffersOpened()"
+   ],
+   "onMarketRefreshOffers": [
+    "void onMarketRefreshOffers()"
+   ],
+   "onMessageDialogOkay": [
+    "void onMessageDialogOkay()"
+   ],
+   "onShowLockerOnlyChanged": [
+    "void onShowLockerOnlyChanged()"
+   ],
+   "onStoreDeeplinkClicked": [
+    "void onStoreDeeplinkClicked()"
+   ],
+   "onTierFilterWasSelected": [
+    "void onTierFilterWasSelected(int SelectedIndex, QString NameFilter, bool FilterByLevel, bool FilterByVocation, bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly)"
+   ],
+   "showDialog": [
+    "void showDialog()"
+   ],
+   "showMarketMessage": [
+    "void showMarketMessage(QString Message)"
+   ]
+  }
+ },
+ "tibia::market::TMarketGameActionHandler": {
+  "chain": [
+   "tibia::market::TMarketGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::market::TMarketGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleMarketBrowseGameAction": [
+    "void handleMarketBrowseGameAction(std::shared_ptr<tibia::input::gameactions::TGameActionMarketBrowse> pGameActionMarketBrowse)"
+   ]
+  }
+ },
+ "tibia::market::TMarketProtocolMessageHandler": {
+  "chain": [
+   "tibia::market::TMarketProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::market::TMarketProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestCloseMarketDialog": [
+    "void requestCloseMarketDialog()"
+   ],
+   "requestMarketMessageDialog": [
+    "void requestMarketMessageDialog(QString Message)"
+   ],
+   "requestOpenMarketDialog": [
+    "void requestOpenMarketDialog()"
+   ],
+   "sendMarketAccept": [
+    "void sendMarketAccept(tibia::protobuf::protocol::GameclientMessageMarketAccept MarketAcceptMessage)"
+   ],
+   "sendMarketBrowse": [
+    "void sendMarketBrowse(tibia::protobuf::protocol::GameclientMessageMarketBrowse MarketBrowseMessage)"
+   ],
+   "sendMarketCancel": [
+    "void sendMarketCancel(tibia::protobuf::protocol::GameclientMessageMarketCancel MarketCancelMessage)"
+   ],
+   "sendMarketCreate": [
+    "void sendMarketCreate(tibia::protobuf::protocol::GameclientMessageMarketCreate MarketCreateMessage)"
+   ],
+   "sendMarketLeave": [
+    "void sendMarketLeave(tibia::protobuf::protocol::GameclientMessageMarketLeave MarketLeaveMessage)"
+   ]
+  },
+  "slots": {
+   "handleMarketBrowseMessage": [
+    "void handleMarketBrowseMessage(tibia::protobuf::protocol::GameserverMessageMarketBrowse MarketBrowseMessage)"
+   ],
+   "handleMarketDetailMessage": [
+    "void handleMarketDetailMessage(tibia::protobuf::protocol::GameserverMessageMarketDetail MarketDetailMessage)"
+   ],
+   "handleMarketEnterMessage": [
+    "void handleMarketEnterMessage(tibia::protobuf::protocol::GameserverMessageMarketEnter MarketEnterMessage)"
+   ],
+   "handleMarketLeaveMessage": [
+    "void handleMarketLeaveMessage(tibia::protobuf::protocol::GameserverMessageMarketLeave MarketLeaveMessage)"
+   ],
+   "handleMessageMessage": [
+    "void handleMessageMessage(tibia::protobuf::protocol::GameserverMessageMessage MessageMessage)"
+   ]
+  }
+ },
+ "tibia::market::TMarketStorage": {
+  "chain": [
+   "tibia::market::TMarketStorage",
+   "tibia::container::TObjectCountStorage",
+   "QObject"
+  ],
+  "class": "tibia::market::TMarketStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "activeOfferCountChanged": [
+    "void activeOfferCountChanged(TActiveOfferCount NewOfferCount)"
+   ],
+   "marketHistoryChanged": [
+    "void marketHistoryChanged(TMarketOfferList NewHistoryOffers)"
+   ],
+   "marketItemDetailsChanged": [
+    "void marketItemDetailsChanged(TMarketItemDetails NewItemDetails)"
+   ],
+   "marketOffersChanged": [
+    "void marketOffersChanged(TMarketOfferList NewMarketOffers)"
+   ],
+   "marketOwnOffersChanged": [
+    "void marketOwnOffersChanged(TMarketOfferList NewHistoryOffers)"
+   ],
+   "objectCountsChanged": [
+    "void objectCountsChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

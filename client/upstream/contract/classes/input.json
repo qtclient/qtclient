@@ -1,0 +1,603 @@
+{
+ "tibia::input::TActionButtonGameActionHandler": {
+  "chain": [
+   "tibia::input::TActionButtonGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TActionButtonGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleActionButtonTriggeredGameAction": [
+    "void handleActionButtonTriggeredGameAction(std::shared_ptr<TGameActionActionButtonTriggered> pGameAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::input::TClickAreaEventFilter": {
+  "chain": [
+   "tibia::input::TClickAreaEventFilter",
+   "QObject"
+  ],
+  "class": "tibia::input::TClickAreaEventFilter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "clickedInside": [
+    "void clickedInside()"
+   ],
+   "clickedOutside": [
+    "void clickedOutside()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::input::TClipboardGameActionHandler": {
+  "chain": [
+   "tibia::input::TClipboardGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TClipboardGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleCopyTextToClipboardGameAction": [
+    "void handleCopyTextToClipboardGameAction(std::shared_ptr<tibia::input::TGameActionCopyTextToClipboard> pGameAction)"
+   ],
+   "handleCopyTrustedTextToClipboardGameAction": [
+    "void handleCopyTrustedTextToClipboardGameAction(std::shared_ptr<tibia::input::TGameActionCopyTextToClipboard> pGameAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::input::TCrossHairSpellGameActionHandler": {
+  "chain": [
+   "tibia::input::TCrossHairSpellGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TCrossHairSpellGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendTalkMessage": [
+    "void sendTalkMessage(tibia::protobuf::protocol::GameclientMessageTalk Message)"
+   ],
+   "startTargetSelection": [
+    "void startTargetSelection()"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter": {
+  "chain": [
+   "tibia::input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter",
+   "QObject"
+  ],
+  "class": "tibia::input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "escapePressed": [
+    "void escapePressed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::input::TDiscardMouseWheelEventFilter": {
+  "chain": [
+   "tibia::input::TDiscardMouseWheelEventFilter",
+   "QObject"
+  ],
+  "class": "tibia::input::TDiscardMouseWheelEventFilter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::input::TDiscardUnhandledMouseButtonsEventFilter": {
+  "chain": [
+   "tibia::input::TDiscardUnhandledMouseButtonsEventFilter",
+   "QObject"
+  ],
+  "class": "tibia::input::TDiscardUnhandledMouseButtonsEventFilter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::input::TEventFilterManager": {
+  "chain": [
+   "tibia::input::TEventFilterManager",
+   "QObject"
+  ],
+  "class": "tibia::input::TEventFilterManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "keyboardShortcutRecorded": [
+    "void keyboardShortcutRecorded(QKeySequence KeySequence)"
+   ],
+   "releaseElementFocus": [
+    "void releaseElementFocus()"
+   ],
+   "requestElementFocus": [
+    "void requestElementFocus()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::input::TGatherAllGameActionHandler": {
+  "chain": [
+   "tibia::input::TGatherAllGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TGatherAllGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleGatherAllAction": [
+    "void handleGatherAllAction(std::shared_ptr<tibia::input::gameactions::TGameActionGatherAll> pAction)"
+   ]
+  }
+ },
+ "tibia::input::TGatherAllProtocolMessageHandler": {
+  "chain": [
+   "tibia::input::TGatherAllProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TGatherAllProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendGatherAll": [
+    "void sendGatherAll(tibia::protobuf::protocol::GameclientMessageGatherAll Message)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::input::TGenericGameActionHandler": {
+  "chain": [
+   "tibia::input::TGenericGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TGenericGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<IGameAction> pGameAction)"
+   ],
+   "sendBrowseField": [
+    "void sendBrowseField(tibia::protobuf::protocol::GameclientMessageBrowseField BrowseFieldMessage)"
+   ],
+   "sendConfigureShowOffSocket": [
+    "void sendConfigureShowOffSocket(tibia::protobuf::protocol::GameclientMessageConfigureShowOffSocket ConfigureShowOffSocketMessage)"
+   ],
+   "sendLook": [
+    "void sendLook(tibia::protobuf::protocol::GameclientMessageLook LookMessage)"
+   ],
+   "sendMoveObject": [
+    "void sendMoveObject(tibia::protobuf::protocol::GameclientMessageMoveObject MoveObjectMessage)"
+   ],
+   "sendQuitGame": [
+    "void sendQuitGame(tibia::protobuf::protocol::GameclientMessageQuitGame QuitGameMessage)"
+   ],
+   "sendRequestResourceBalance": [
+    "void sendRequestResourceBalance(tibia::protobuf::protocol::GameclientMessageRequestResourceBalance RequestResourceBalanceMessage)"
+   ],
+   "sendTeleport": [
+    "void sendTeleport(tibia::protobuf::protocol::GameclientMessageTeleport TeleportMessage)"
+   ],
+   "sendToggleWrapState": [
+    "void sendToggleWrapState(tibia::protobuf::protocol::GameclientMessageToggleWrapState ToggleWrapStateMessage)"
+   ],
+   "sendTurnObject": [
+    "void sendTurnObject(tibia::protobuf::protocol::GameclientMessageTurnObject TurnObjectMessage)"
+   ],
+   "sendUseObject": [
+    "void sendUseObject(tibia::protobuf::protocol::GameclientMessageUseObject UseObjectMessage)"
+   ],
+   "showCharacterSelectionDialog": [
+    "void showCharacterSelectionDialog()"
+   ]
+  },
+  "slots": {
+   "handleBrowseFieldAction": [
+    "void handleBrowseFieldAction(std::shared_ptr<TGameActionBrowseField> pBrowseFieldAction)"
+   ],
+   "handleChangeCharacterAction": [
+    "void handleChangeCharacterAction(std::shared_ptr<TGameActionChangeCharacter> pChangeCharacterAction)"
+   ],
+   "handleConfigureShowOffSocketAction": [
+    "void handleConfigureShowOffSocketAction(std::shared_ptr<TGameActionConfigureShowOffSocket> pConfigureShowOffSocketAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<IGameAction> pGameAction)"
+   ],
+   "handleLookAction": [
+    "void handleLookAction(std::shared_ptr<TGameActionLook> pGameActionLook)"
+   ],
+   "handleMoveUpAction": [
+    "void handleMoveUpAction(std::shared_ptr<TGameActionMoveUp> pMoveUpAction)"
+   ],
+   "handleQuitGameAction": [
+    "void handleQuitGameAction(std::shared_ptr<TGameActionQuitGame> pQuitGameAction)"
+   ],
+   "handleRequestResourceBalanceAction": [
+    "void handleRequestResourceBalanceAction(std::shared_ptr<TGameActionRequestResourceBalance> pRequestResourceBalanceAction)"
+   ],
+   "handleResetHuntingSessionAction": [
+    "void handleResetHuntingSessionAction()"
+   ],
+   "handleRotateAction": [
+    "void handleRotateAction(std::shared_ptr<TGameActionRotate> pRotateAction)"
+   ],
+   "handleSaveJsonDocumentToFile": [
+    "void handleSaveJsonDocumentToFile(std::shared_ptr<TGameActionSaveJsonDocumentToFile> pGameAction)"
+   ],
+   "handleSaveTextToFile": [
+    "void handleSaveTextToFile(std::shared_ptr<TGameActionSaveTextToFile> pGameAction)"
+   ],
+   "handleTeleportToCoordinateAction": [
+    "void handleTeleportToCoordinateAction(std::shared_ptr<TGameActionTeleportToCoordinate> pTeleportToCoordinateGameAction)"
+   ],
+   "handleToggleCreatureHudsVisibleGameAction": [
+    "void handleToggleCreatureHudsVisibleGameAction()"
+   ],
+   "handleToggleFpsLagIndecatorGameAction": [
+    "void handleToggleFpsLagIndecatorGameAction()"
+   ],
+   "handleToggleFullscreenAction": [
+    "void handleToggleFullscreenAction()"
+   ],
+   "handleToggleSoundGameAction": [
+    "void handleToggleSoundGameAction()"
+   ],
+   "handleUseAction": [
+    "void handleUseAction(std::shared_ptr<TGameActionUse> pGameActionUse)"
+   ],
+   "handleWrapAndUnwrapAction": [
+    "void handleWrapAndUnwrapAction(std::shared_ptr<TGameActionUse> pAction)"
+   ]
+  }
+ },
+ "tibia::input::TKeyEventHandler": {
+  "chain": [
+   "tibia::input::TKeyEventHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TKeyEventHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::input::TKeyboardInputToGameActionConverter": {
+  "chain": [
+   "tibia::input::TKeyboardInputToGameActionConverter",
+   "QObject"
+  ],
+  "class": "tibia::input::TKeyboardInputToGameActionConverter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::input::TKeyboardShortcutHandler": {
+  "chain": [
+   "tibia::input::TKeyboardShortcutHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TKeyboardShortcutHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "onHotkeyOptionsChanged": [
+    "void onHotkeyOptionsChanged()"
+   ]
+  }
+ },
+ "tibia::input::TKeyboardShortcutHandlerEventFilter": {
+  "chain": [
+   "tibia::input::TKeyboardShortcutHandlerEventFilter",
+   "QObject"
+  ],
+  "class": "tibia::input::TKeyboardShortcutHandlerEventFilter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "shortcutPressed": [
+    "void shortcutPressed(QKeySequence KeySequence, bool IsAutoRepeat)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::input::TKeyboardStatusStorage": {
+  "chain": [
+   "tibia::input::TKeyboardStatusStorage",
+   "QObject"
+  ],
+  "class": "tibia::input::TKeyboardStatusStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "changed": [
+    "void changed()"
+   ],
+   "checkForChangeAfterDelay": [
+    "void checkForChangeAfterDelay(::shared::TMilliseconds DelayMillis)"
+   ]
+  },
+  "slots": {
+   "onApplicationStateChanged": [
+    "void onApplicationStateChanged(Qt::ApplicationState NewState)"
+   ]
+  }
+ },
+ "tibia::input::TOpenWebsiteGameActionHandler": {
+  "chain": [
+   "tibia::input::TOpenWebsiteGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TOpenWebsiteGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<IGameAction> pGameAction)"
+   ],
+   "handleOpenGetPremiumUrlGameAction": [
+    "void handleOpenGetPremiumUrlGameAction(std::shared_ptr<TGameActionOpenGetPremiumUrl> pGameAction)"
+   ],
+   "handleOpenSurveyUrlGameAction": [
+    "void handleOpenSurveyUrlGameAction(std::shared_ptr<TGameActionOpenSurveyUrl> pGameAction)"
+   ]
+  }
+ },
+ "tibia::input::TPlayerMovementGameActionHandler": {
+  "chain": [
+   "tibia::input::TPlayerMovementGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TPlayerMovementGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendCancel": [
+    "void sendCancel()"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::input::TPlayerMovementInputInterpreter": {
+  "chain": [
+   "tibia::input::TPlayerMovementInputInterpreter",
+   "QObject"
+  ],
+  "class": "tibia::input::TPlayerMovementInputInterpreter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onHotkeyOptionsChanged": [
+    "void onHotkeyOptionsChanged()"
+   ]
+  }
+ },
+ "tibia::input::TPlayerMovementIntentHandler": {
+  "chain": [
+   "tibia::input::TPlayerMovementIntentHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TPlayerMovementIntentHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "requestTimedCallback": [
+    "void requestTimedCallback(::shared::TMilliseconds When)"
+   ],
+   "sendCancel": [
+    "void sendCancel()"
+   ],
+   "sendFollowZero": [
+    "void sendFollowZero()"
+   ],
+   "sendGoEast": [
+    "void sendGoEast()"
+   ],
+   "sendGoNorth": [
+    "void sendGoNorth()"
+   ],
+   "sendGoNorthEast": [
+    "void sendGoNorthEast()"
+   ],
+   "sendGoNorthWest": [
+    "void sendGoNorthWest()"
+   ],
+   "sendGoPath": [
+    "void sendGoPath(std::vector<tibia::creatures::ECreatureMoveDirection>)"
+   ],
+   "sendGoSouth": [
+    "void sendGoSouth()"
+   ],
+   "sendGoSouthEast": [
+    "void sendGoSouthEast()"
+   ],
+   "sendGoSouthWest": [
+    "void sendGoSouthWest()"
+   ],
+   "sendGoWest": [
+    "void sendGoWest()"
+   ],
+   "sendRotateEast": [
+    "void sendRotateEast()"
+   ],
+   "sendRotateNorth": [
+    "void sendRotateNorth()"
+   ],
+   "sendRotateSouth": [
+    "void sendRotateSouth()"
+   ],
+   "sendRotateWest": [
+    "void sendRotateWest()"
+   ],
+   "sendStop": [
+    "void sendStop()"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::input::TRecordKeyboardShortcutHandler": {
+  "chain": [
+   "tibia::input::TRecordKeyboardShortcutHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TRecordKeyboardShortcutHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "shortcutPressed": [
+    "void shortcutPressed(QKeySequence KeySequence)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::input::TUseWithGameActionHandler": {
+  "chain": [
+   "tibia::input::TUseWithGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::input::TUseWithGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendUseOnCreature": [
+    "void sendUseOnCreature(tibia::protobuf::protocol::GameclientMessageUseOnCreature UseOnCreatureMessage)"
+   ],
+   "sendUseTwoObjects": [
+    "void sendUseTwoObjects(tibia::protobuf::protocol::GameclientMessageUseTwoObjects UseTwoObjectsMessage)"
+   ],
+   "startTargetSelection": [
+    "void startTargetSelection()"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::input::TWindowFocusEventFilter": {
+  "chain": [
+   "tibia::input::TWindowFocusEventFilter",
+   "QObject"
+  ],
+  "class": "tibia::input::TWindowFocusEventFilter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "windowFocusLost": [
+    "void windowFocusLost()"
+   ]
+  },
+  "slots": {}
+ }
+}

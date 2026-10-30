@@ -1,0 +1,1523 @@
+{
+ "tibia::game::FPSDropsLogger": {
+  "chain": [
+   "tibia::game::FPSDropsLogger",
+   "QObject"
+  ],
+  "class": "tibia::game::FPSDropsLogger",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onDialogVisibleChanged": [
+    "void onDialogVisibleChanged(bool Visible)"
+   ]
+  }
+ },
+ "tibia::game::IGameSession": {
+  "chain": [
+   "tibia::game::IGameSession",
+   "QObject"
+  ],
+  "class": "tibia::game::IGameSession",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connected": [
+    "void connected()"
+   ],
+   "connectionError": [
+    "void connectionError(QString ErrorDescription)"
+   ],
+   "deadMessage": [
+    "void deadMessage()"
+   ],
+   "disconnected": [
+    "void disconnected()"
+   ],
+   "gameLoginAdviceMessage": [
+    "void gameLoginAdviceMessage(QString AdviceMessage)"
+   ],
+   "gameLoginChallengeMessage": [
+    "void gameLoginChallengeMessage()"
+   ],
+   "gameLoginErrorMessage": [
+    "void gameLoginErrorMessage(QString ErrorMessage, tibia::authentication::ELoginErrorAction Action)"
+   ],
+   "gameLoginSuccessful": [
+    "void gameLoginSuccessful()"
+   ],
+   "gameLoginWaitMessage": [
+    "void gameLoginWaitMessage(QString WaitMessage, ::shared::TSeconds WaitSeconds)"
+   ],
+   "loginRampUpFinished": [
+    "void loginRampUpFinished()"
+   ],
+   "pingTimeout": [
+    "void pingTimeout()"
+   ],
+   "pingTimeoutRecovered": [
+    "void pingTimeoutRecovered()"
+   ],
+   "playerCreatureAddedToCreatureStorage": [
+    "void playerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "sessionEndInformation": [
+    "void sessionEndInformation(tibia::game::ESessionEndInformation Reason)"
+   ],
+   "showCharacterSelectionDialog": [
+    "void showCharacterSelectionDialog()"
+   ],
+   "startTargetSelection": [
+    "void startTargetSelection()"
+   ],
+   "worldEntered": [
+    "void worldEntered()"
+   ],
+   "worldTypeSet": [
+    "void worldTypeSet()"
+   ]
+  },
+  "slots": {
+   "onPrepareNextFrameToRender": [
+    "void onPrepareNextFrameToRender(::shared::TMilliseconds NextFramePredictedTimestamp)"
+   ]
+  }
+ },
+ "tibia::game::TBlessingsProtocolMessageHandler": {
+  "chain": [
+   "tibia::game::TBlessingsProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TBlessingsProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestBlessingsDialog": [
+    "void requestBlessingsDialog(TBlessingDialogData BlessingDialogData)"
+   ],
+   "sendBlessingsDialog": [
+    "void sendBlessingsDialog(tibia::protobuf::protocol::GameclientMessageBlessingsDialog BlessingsDialogMessage)"
+   ]
+  },
+  "slots": {
+   "handleBlessingsDialogMessage": [
+    "void handleBlessingsDialogMessage(tibia::protobuf::protocol::GameserverMessageBlessingsDialog BlessingsDialogMessage)"
+   ]
+  }
+ },
+ "tibia::game::TBoostedCreatureRequestUploader": {
+  "chain": [
+   "tibia::game::TBoostedCreatureRequestUploader",
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "tibia::game::TBoostedCreatureRequestUploader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "boostedCreatureReceived": [
+    "void boostedCreatureReceived()"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(bool UploadSuccessful, QJsonDocument ReplyFromServerJD)",
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ],
+   "requestUpdate": [
+    "void requestUpdate()"
+   ]
+  }
+ },
+ "tibia::game::TBossDifficultySelectionProtocolMessageHandler": {
+  "chain": [
+   "tibia::game::TBossDifficultySelectionProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TBossDifficultySelectionProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "closeBossDifficultySelectionDialog": [
+    "void closeBossDifficultySelectionDialog()"
+   ],
+   "openBossDifficultySelectionDialog": [
+    "void openBossDifficultySelectionDialog(TBossDifficultySelectionDialogData BossDifficultySelectionDialogData)"
+   ],
+   "sendDifficultySelectionDataChanged": [
+    "void sendDifficultySelectionDataChanged(tibia::protobuf::protocol::GameclientMessageBossDifficultySelection BossDifficultySelectionCommandMessage)"
+   ],
+   "updateBossDifficultySelectionDialog": [
+    "void updateBossDifficultySelectionDialog(TBossDifficultySelectionDialogUpdateData BossDifficultySelectionDialogData)"
+   ]
+  },
+  "slots": {
+   "handleBossDifficultySelectionMessage": [
+    "void handleBossDifficultySelectionMessage(tibia::protobuf::protocol::GameserverMessageBossDifficultySelection BossDifficultySelectionMessage)"
+   ]
+  }
+ },
+ "tibia::game::TCooldownStorage": {
+  "chain": [
+   "tibia::game::TCooldownStorage",
+   "QObject"
+  ],
+  "class": "tibia::game::TCooldownStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "multiUseCooldownChanged": [
+    "void multiUseCooldownChanged()"
+   ],
+   "passiveAbilityCooldownChanged": [
+    "void passiveAbilityCooldownChanged()"
+   ],
+   "passiveAbilityCounterChanged": [
+    "void passiveAbilityCounterChanged()"
+   ],
+   "spellOrSpellGroupCooldownChanged": [
+    "void spellOrSpellGroupCooldownChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TEditTextProtocolMessageHandler": {
+  "chain": [
+   "tibia::game::TEditTextProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TEditTextProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestEditGuildMessageDialog": [
+    "void requestEditGuildMessageDialog(QString Text)"
+   ],
+   "requestEditListDialog": [
+    "void requestEditListDialog(tibia::game::TEditIdentifier EditIdentifier, QString Text, tibia::game::EEditListType EditListType)"
+   ],
+   "requestEditTextDialog": [
+    "void requestEditTextDialog(tibia::game::TEditIdentifier EditIdentifier, QString Text, size_t MaximumTextLength, std::shared_ptr<tibia::appearances::TObjectAppearanceInstance> pAppearanceInstance, QString TextAuthor, bool RecentlyTraded, QString TextDate)"
+   ],
+   "sendEditGuildMessage": [
+    "void sendEditGuildMessage(tibia::protobuf::protocol::GameclientMessageEditGuildMessage EditGuildMessageMessage)"
+   ],
+   "sendEditList": [
+    "void sendEditList(tibia::protobuf::protocol::GameclientMessageEditList EditListMessage)"
+   ],
+   "sendEditText": [
+    "void sendEditText(tibia::protobuf::protocol::GameclientMessageEditText EditTextMessage)"
+   ]
+  },
+  "slots": {
+   "handleEditGuildMessageMessage": [
+    "void handleEditGuildMessageMessage(tibia::protobuf::protocol::GameserverMessageEditGuildMessage EditGuildMessageMessage)"
+   ],
+   "handleEditListMessage": [
+    "void handleEditListMessage(tibia::protobuf::protocol::GameserverMessageEditList EditListMessage)"
+   ],
+   "handleEditTextMessage": [
+    "void handleEditTextMessage(tibia::protobuf::protocol::GameserverMessageEditText EditTextMessage)"
+   ]
+  }
+ },
+ "tibia::game::TGameActionRouter": {
+  "chain": [
+   "tibia::game::TGameActionRouter",
+   "QObject"
+  ],
+  "class": "tibia::game::TGameActionRouter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::game::TGameEventProtocolMessageHandler": {
+  "chain": [
+   "tibia::game::TGameEventProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TGameEventProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameEventMessage": [
+    "void handleGameEventMessage(tibia::protobuf::protocol::GameserverMessageGameEvent GameEventMessage)"
+   ]
+  }
+ },
+ "tibia::game::TGameProtocolMessageHandler": {
+  "chain": [
+   "tibia::game::TGameProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TGameProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "deadMessage": [
+    "void deadMessage()"
+   ],
+   "inspectObjectDataReceived": [
+    "void inspectObjectDataReceived(std::vector<tibia::gamewindow::TInspectObjectData> InspectObjectList, EInspectionListWindow ClientWindow)"
+   ],
+   "loginSuccess": [
+    "void loginSuccess()"
+   ],
+   "requestOpenDeathDialog": [
+    "void requestOpenDeathDialog(EDeathType DeathType, TFairFightFactor FairFightFactor, bool ApplicableForSubsequentBlessing)"
+   ],
+   "requestOpenInspectPlayerDialog": [
+    "void requestOpenInspectPlayerDialog(std::vector<tibia::gamewindow::TInspectObjectData> InspectObjectList, tibia::creatures::TCreatureID InspectedPlayerID)"
+   ],
+   "requestOpenOutfitMemorialDialog": [
+    "void requestOpenOutfitMemorialDialog(TOutfitMemorialData OutfitMemorialData)"
+   ],
+   "requestShowMultiOfflineTrainingDialog": [
+    "void requestShowMultiOfflineTrainingDialog()"
+   ],
+   "sendClientDetails": [
+    "void sendClientDetails(tibia::protobuf::protocol::GameclientMessageClientDetails ClientDetailsMessage)"
+   ],
+   "sendEnterWorldMessage": [
+    "void sendEnterWorldMessage(tibia::protobuf::protocol::GameclientMessageEnterWorld)"
+   ],
+   "sendInspectObject": [
+    "void sendInspectObject(tibia::protobuf::protocol::GameclientMessageInspectObject InspectObjectMessage)"
+   ],
+   "sendSetClientOptions": [
+    "void sendSetClientOptions(tibia::protobuf::protocol::GameclientMessageSetClientOptions Message)"
+   ],
+   "sendSetVocation": [
+    "void sendSetVocation(tibia::protobuf::protocol::GameclientMessageSetVocation Message)"
+   ],
+   "sendStartOfflineTraining": [
+    "void sendStartOfflineTraining(tibia::protobuf::protocol::GameclientMessageStartOfflineTraining Message)"
+   ],
+   "sessionEndInformation": [
+    "void sessionEndInformation(ESessionEndInformation Reason)"
+   ],
+   "settingHintsFromServer": [
+    "void settingHintsFromServer(bool CanChangePvPFrameSetting)"
+   ],
+   "worldTypeReceived": [
+    "void worldTypeReceived(EWorldType WorldType)"
+   ]
+  },
+  "slots": {
+   "emitSendEnterWorldMessage": [
+    "void emitSendEnterWorldMessage()"
+   ],
+   "handleDeadMessage": [
+    "void handleDeadMessage(tibia::protobuf::protocol::GameserverMessageDead DeadMessage)"
+   ],
+   "handleInspectionListMessage": [
+    "void handleInspectionListMessage(tibia::protobuf::protocol::GameserverMessageInspectionList InspectionListMessage)"
+   ],
+   "handleLoginSuccessMessage": [
+    "void handleLoginSuccessMessage(tibia::protobuf::protocol::GameserverMessageLoginSuccess LoginSuccessMessage)"
+   ],
+   "handleOutfitMemorialMessage": [
+    "void handleOutfitMemorialMessage(tibia::protobuf::protocol::GameserverMessageOutfitMemorial OutfitMemorialMessage)"
+   ],
+   "handlePendingStateEnteredMessage": [
+    "void handlePendingStateEnteredMessage(tibia::protobuf::protocol::GameserverMessagePendingStateEntered PendingStateEnteredMessage)"
+   ],
+   "handleSessionDumpStartMessage": [
+    "void handleSessionDumpStartMessage(tibia::protobuf::protocol::GameserverMessageSessionDumpStart SessionDumpStartMessage)"
+   ],
+   "handleSessionEndInformationMessage": [
+    "void handleSessionEndInformationMessage(tibia::protobuf::protocol::GameserverMessageSessionEndInformation Message)"
+   ],
+   "handleShowMultiOfflineTrainingDialogMessage": [
+    "void handleShowMultiOfflineTrainingDialogMessage(tibia::protobuf::protocol::GameserverMessageShowMultiOfflineTrainingDialog Message)"
+   ]
+  }
+ },
+ "tibia::game::TGameSessionBase": {
+  "chain": [
+   "tibia::game::TGameSessionBase",
+   "tibia::game::IGameSession",
+   "QObject"
+  ],
+  "class": "tibia::game::TGameSessionBase",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connected": [
+    "void connected()"
+   ],
+   "connectionError": [
+    "void connectionError(QString ErrorDescription)"
+   ],
+   "deadMessage": [
+    "void deadMessage()"
+   ],
+   "disconnected": [
+    "void disconnected()"
+   ],
+   "gameLoginAdviceMessage": [
+    "void gameLoginAdviceMessage(QString AdviceMessage)"
+   ],
+   "gameLoginChallengeMessage": [
+    "void gameLoginChallengeMessage()"
+   ],
+   "gameLoginErrorMessage": [
+    "void gameLoginErrorMessage(QString ErrorMessage, tibia::authentication::ELoginErrorAction Action)"
+   ],
+   "gameLoginSuccessful": [
+    "void gameLoginSuccessful()"
+   ],
+   "gameLoginWaitMessage": [
+    "void gameLoginWaitMessage(QString WaitMessage, ::shared::TSeconds WaitSeconds)"
+   ],
+   "loginRampUpFinished": [
+    "void loginRampUpFinished()"
+   ],
+   "pingTimeout": [
+    "void pingTimeout()"
+   ],
+   "pingTimeoutRecovered": [
+    "void pingTimeoutRecovered()"
+   ],
+   "playerCreatureAddedToCreatureStorage": [
+    "void playerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "sessionEndInformation": [
+    "void sessionEndInformation(tibia::game::ESessionEndInformation Reason)"
+   ],
+   "showCharacterSelectionDialog": [
+    "void showCharacterSelectionDialog()"
+   ],
+   "startTargetSelection": [
+    "void startTargetSelection()"
+   ],
+   "worldEntered": [
+    "void worldEntered()"
+   ],
+   "worldTypeSet": [
+    "void worldTypeSet()"
+   ]
+  },
+  "slots": {
+   "onCharacterConfigurationLoaded": [
+    "void onCharacterConfigurationLoaded()"
+   ],
+   "onMessageAtEndOfLoginRampUpReceived": [
+    "void onMessageAtEndOfLoginRampUpReceived()"
+   ],
+   "onPlayerCreatureAddedToCreatureStorage": [
+    "void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "onPrepareNextFrameToRender": [
+    "void onPrepareNextFrameToRender(::shared::TMilliseconds NextFramePredictedTimestamp)",
+    "void onPrepareNextFrameToRender(::shared::TMilliseconds NextFramePredictedTimestamp)"
+   ],
+   "onSettingHintsFromServerChanged": [
+    "void onSettingHintsFromServerChanged(bool CanChangePvPFrameSetting)"
+   ],
+   "onWorldTypeReceived": [
+    "void onWorldTypeReceived(EWorldType WorldType)"
+   ]
+  }
+ },
+ "tibia::game::TGameserverGameSession": {
+  "chain": [
+   "tibia::game::TGameserverGameSession",
+   "tibia::game::TGameSessionBase",
+   "tibia::game::IGameSession",
+   "QObject"
+  ],
+  "class": "tibia::game::TGameserverGameSession",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connected": [
+    "void connected()"
+   ],
+   "connectionError": [
+    "void connectionError(QString ErrorDescription)"
+   ],
+   "deadMessage": [
+    "void deadMessage()"
+   ],
+   "disconnected": [
+    "void disconnected()"
+   ],
+   "gameLoginAdviceMessage": [
+    "void gameLoginAdviceMessage(QString AdviceMessage)"
+   ],
+   "gameLoginChallengeMessage": [
+    "void gameLoginChallengeMessage()"
+   ],
+   "gameLoginErrorMessage": [
+    "void gameLoginErrorMessage(QString ErrorMessage, tibia::authentication::ELoginErrorAction Action)"
+   ],
+   "gameLoginSuccessful": [
+    "void gameLoginSuccessful()"
+   ],
+   "gameLoginWaitMessage": [
+    "void gameLoginWaitMessage(QString WaitMessage, ::shared::TSeconds WaitSeconds)"
+   ],
+   "loginRampUpFinished": [
+    "void loginRampUpFinished()"
+   ],
+   "pingTimeout": [
+    "void pingTimeout()"
+   ],
+   "pingTimeoutRecovered": [
+    "void pingTimeoutRecovered()"
+   ],
+   "playerCreatureAddedToCreatureStorage": [
+    "void playerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "sessionEndInformation": [
+    "void sessionEndInformation(tibia::game::ESessionEndInformation Reason)"
+   ],
+   "showCharacterSelectionDialog": [
+    "void showCharacterSelectionDialog()"
+   ],
+   "startTargetSelection": [
+    "void startTargetSelection()"
+   ],
+   "worldEntered": [
+    "void worldEntered()"
+   ],
+   "worldTypeSet": [
+    "void worldTypeSet()"
+   ]
+  },
+  "slots": {
+   "onCharacterConfigurationLoaded": [
+    "void onCharacterConfigurationLoaded()",
+    "void onCharacterConfigurationLoaded()"
+   ],
+   "onClientCheckTimerElapsed": [
+    "void onClientCheckTimerElapsed()"
+   ],
+   "onGameReadyForSecondaryConnection": [
+    "void onGameReadyForSecondaryConnection()"
+   ],
+   "onMessageAtEndOfLoginRampUpReceived": [
+    "void onMessageAtEndOfLoginRampUpReceived()"
+   ],
+   "onPlayerCreatureAddedToCreatureStorage": [
+    "void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "onPrepareNextFrameToRender": [
+    "void onPrepareNextFrameToRender(::shared::TMilliseconds NextFramePredictedTimestamp)",
+    "void onPrepareNextFrameToRender(::shared::TMilliseconds NextFramePredictedTimestamp)"
+   ],
+   "onSettingHintsFromServerChanged": [
+    "void onSettingHintsFromServerChanged(bool CanChangePvPFrameSetting)"
+   ],
+   "onWorldTypeReceived": [
+    "void onWorldTypeReceived(EWorldType WorldType)"
+   ]
+  }
+ },
+ "tibia::game::TInternalGameActionRouter": {
+  "chain": [
+   "tibia::game::TInternalGameActionRouter",
+   "QObject"
+  ],
+  "class": "tibia::game::TInternalGameActionRouter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameActionBetweenRouters": [
+    "void publishGameActionBetweenRouters(std::shared_ptr<tibia::input::IGameAction> pGameAction, std::set<size_t>& IDsOfRouters)"
+   ],
+   "publishGameActionInternal": [
+    "void publishGameActionInternal(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameActionFromOtherRouter": [
+    "void handleGameActionFromOtherRouter(std::shared_ptr<tibia::input::IGameAction> pGameAction, std::set<size_t>& IDsOfRouters)"
+   ],
+   "handleGameActionInternal": [
+    "void handleGameActionInternal(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::game::TLiveInformationRequestUploader": {
+  "chain": [
+   "tibia::game::TLiveInformationRequestUploader",
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "tibia::game::TLiveInformationRequestUploader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ],
+   "newLiveInformationReceived": [
+    "void newLiveInformationReceived()"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(bool UploadSuccessful, QJsonDocument ReplyFromServerJD)",
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ],
+   "requestUpdate": [
+    "void requestUpdate()"
+   ]
+  }
+ },
+ "tibia::game::TOutfitDialogStorage": {
+  "chain": [
+   "tibia::game::TOutfitDialogStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::game::TOutfitDialogStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "configureShowOffSocketPresetsChanged": [
+    "void configureShowOffSocketPresetsChanged()"
+   ],
+   "customizeCharacterPresetsChanged": [
+    "void customizeCharacterPresetsChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TPassiveAbilityInfoStorage": {
+  "chain": [
+   "tibia::game::TPassiveAbilityInfoStorage",
+   "QObject"
+  ],
+  "class": "tibia::game::TPassiveAbilityInfoStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::game::TPlayerData": {
+  "chain": [
+   "tibia::game::TPlayerData",
+   "QObject"
+  ],
+  "class": "tibia::game::TPlayerData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "playerDataChanged": [
+    "void playerDataChanged()"
+   ],
+   "playerLevelUp": [
+    "void playerLevelUp()"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "vocationChanged": [
+    "void vocationChanged()"
+   ],
+   "vocationSpecificPlayerDataChanged": [
+    "void vocationSpecificPlayerDataChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TPlayerGameActionHandler": {
+  "chain": [
+   "tibia::game::TPlayerGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TPlayerGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendGetOutfit": [
+    "void sendGetOutfit(tibia::protobuf::protocol::GameclientMessageGetOutfit GetOutfitMessage)"
+   ],
+   "sendInspectPlayer": [
+    "void sendInspectPlayer(tibia::protobuf::protocol::GameclientMessageInspectPlayer InspectPlayerMessage)"
+   ],
+   "sendMount": [
+    "void sendMount(tibia::protobuf::protocol::GameclientMessageMount MountMessage)"
+   ],
+   "sendSetCreaturePodiumConfiguration": [
+    "void sendSetCreaturePodiumConfiguration(tibia::protobuf::protocol::GameclientMessageSetCreaturePodiumConfiguration SetBossConfigurationMessage)"
+   ],
+   "sendSetHirelingName": [
+    "void sendSetHirelingName(tibia::protobuf::protocol::GameclientMessageSetHirelingName SetHirelingNameMessage)"
+   ],
+   "sendSetOutfit": [
+    "void sendSetOutfit(tibia::protobuf::protocol::GameclientMessageSetOutfit SetOutfitMessage)"
+   ],
+   "sendSetTactics": [
+    "void sendSetTactics(tibia::protobuf::protocol::GameclientMessageSetTactics SetTacticsMessage)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TPlayerProtocolMessageHandler": {
+  "chain": [
+   "tibia::game::TPlayerProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TPlayerProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendCancel": [
+    "void sendCancel(tibia::protobuf::protocol::GameclientMessageCancel CancelMessage)"
+   ],
+   "sendEnterWorld": [
+    "void sendEnterWorld(tibia::protobuf::protocol::GameclientMessageEnterWorld EnterWorldMessage)"
+   ],
+   "sendGoEast": [
+    "void sendGoEast(tibia::protobuf::protocol::GameclientMessageGoEast GoEastMessage)"
+   ],
+   "sendGoNorth": [
+    "void sendGoNorth(tibia::protobuf::protocol::GameclientMessageGoNorth GoNorthMessage)"
+   ],
+   "sendGoNorthEast": [
+    "void sendGoNorthEast(tibia::protobuf::protocol::GameclientMessageGoNorthEast GoNorthEastMessage)"
+   ],
+   "sendGoNorthWest": [
+    "void sendGoNorthWest(tibia::protobuf::protocol::GameclientMessageGoNorthWest GoNorthWestMessage)"
+   ],
+   "sendGoPath": [
+    "void sendGoPath(tibia::protobuf::protocol::GameclientMessageGoPath GoPathMessage)"
+   ],
+   "sendGoSouth": [
+    "void sendGoSouth(tibia::protobuf::protocol::GameclientMessageGoSouth GoSouthMessage)"
+   ],
+   "sendGoSouthEast": [
+    "void sendGoSouthEast(tibia::protobuf::protocol::GameclientMessageGoSouthEast GoSouthEastMessage)"
+   ],
+   "sendGoSouthWest": [
+    "void sendGoSouthWest(tibia::protobuf::protocol::GameclientMessageGoSouthWest GoSouthWestMessage)"
+   ],
+   "sendGoWest": [
+    "void sendGoWest(tibia::protobuf::protocol::GameclientMessageGoWest GoWestMessage)"
+   ],
+   "sendRotateEast": [
+    "void sendRotateEast(tibia::protobuf::protocol::GameclientMessageRotateEast RotateEastMessage)"
+   ],
+   "sendRotateNorth": [
+    "void sendRotateNorth(tibia::protobuf::protocol::GameclientMessageRotateNorth RotateNorthMessage)"
+   ],
+   "sendRotateSouth": [
+    "void sendRotateSouth(tibia::protobuf::protocol::GameclientMessageRotateSouth RotateSouthMessage)"
+   ],
+   "sendRotateWest": [
+    "void sendRotateWest(tibia::protobuf::protocol::GameclientMessageRotateWest RotateWestMessage)"
+   ],
+   "sendSetTactics": [
+    "void sendSetTactics(tibia::protobuf::protocol::GameclientMessageSetTactics SetTacticsMessage)"
+   ],
+   "sendStop": [
+    "void sendStop(tibia::protobuf::protocol::GameclientMessageStop StopMessage)"
+   ],
+   "showConfigureCreaturePodiumDialog": [
+    "void showConfigureCreaturePodiumDialog()"
+   ],
+   "showHirelingNameChangeConfiguration": [
+    "void showHirelingNameChangeConfiguration(tibia::creatures::TCreatureID CreatureID, tibia::appearances::TAppearanceInstanceUniqueID ObjectID)"
+   ],
+   "showSelectOutfitDialog": [
+    "void showSelectOutfitDialog()"
+   ],
+   "worldEntered": [
+    "void worldEntered()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TPlayerSkillStats": {
+  "chain": [
+   "tibia::game::TPlayerSkillStats",
+   "QObject"
+  ],
+  "class": "tibia::game::TPlayerSkillStats",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "playerSkillStatsChanged": [
+    "void playerSkillStatsChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TPremiumMessage": {
+  "chain": [
+   "tibia::game::TPremiumMessage",
+   "QObject"
+  ],
+  "class": "tibia::game::TPremiumMessage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "imageUrl": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TPremiumMessage",
+    "notify": null,
+    "type": "QString"
+   },
+   "message": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TPremiumMessage",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::game::TPremiumMessageRenewPremium": {
+  "chain": [
+   "tibia::game::TPremiumMessageRenewPremium",
+   "tibia::game::TPremiumMessage",
+   "QObject"
+  ],
+  "class": "tibia::game::TPremiumMessageRenewPremium",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "imageUrl": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TPremiumMessage",
+    "notify": null,
+    "type": "QString"
+   },
+   "message": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TPremiumMessage",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::game::TPremiumProtocolMessageHandler": {
+  "chain": [
+   "tibia::game::TPremiumProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TPremiumProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "newPremiumFeatureList": [
+    "void newPremiumFeatureList(std::vector<EPremiumFeature> PremiumFeatureList)"
+   ]
+  },
+  "slots": {
+   "handlePlayerDataBasicMessage": [
+    "void handlePlayerDataBasicMessage(tibia::protobuf::protocol::GameserverMessagePlayerDataBasic PlayerDataBasicMessage)"
+   ],
+   "handlePremiumTriggerMessage": [
+    "void handlePremiumTriggerMessage(tibia::protobuf::protocol::GameserverMessagePremiumTrigger PremiumTriggerMessage)"
+   ]
+  }
+ },
+ "tibia::game::TPremiumTimeStorage": {
+  "chain": [
+   "tibia::game::TPremiumTimeStorage",
+   "QObject"
+  ],
+  "class": "tibia::game::TPremiumTimeStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "premiumTimeChanged": [
+    "void premiumTimeChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TQmlBlessingDialogData": {
+  "chain": [
+   "tibia::game::TQmlBlessingDialogData",
+   "QObject"
+  ],
+  "class": "tibia::game::TQmlBlessingDialogData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "blessingHistory": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingDialogData",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "blessingsWithCharges": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingDialogData",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "deathPenaltyText": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingDialogData",
+    "notify": null,
+    "type": "QStringList"
+   },
+   "isPremium": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingDialogData",
+    "notify": "premiumStatusChanged",
+    "type": "bool"
+   },
+   "promotionLossReductionText": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingDialogData",
+    "notify": "premiumStatusChanged",
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "premiumStatusChanged": [
+    "bool premiumStatusChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TQmlBlessingHistoryEntry": {
+  "chain": [
+   "tibia::game::TQmlBlessingHistoryEntry",
+   "QObject"
+  ],
+  "class": "tibia::game::TQmlBlessingHistoryEntry",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "blessingWasGained": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingHistoryEntry",
+    "notify": null,
+    "type": "bool"
+   },
+   "description": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingHistoryEntry",
+    "notify": null,
+    "type": "QString"
+   },
+   "timestamp": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingHistoryEntry",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::game::TQmlBlessingWithCharges": {
+  "chain": [
+   "tibia::game::TQmlBlessingWithCharges",
+   "QObject"
+  ],
+  "class": "tibia::game::TQmlBlessingWithCharges",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "blessingCharges": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingWithCharges",
+    "notify": null,
+    "type": "int"
+   },
+   "blessingChargesFromStore": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingWithCharges",
+    "notify": null,
+    "type": "int"
+   },
+   "blessingId": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingWithCharges",
+    "notify": null,
+    "type": "int"
+   },
+   "blessingImage": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingWithCharges",
+    "notify": null,
+    "type": "QString"
+   },
+   "blessingName": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlBlessingWithCharges",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::game::TServerModalDialogProtocolMessageHandler": {
+  "chain": [
+   "tibia::game::TServerModalDialogProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TServerModalDialogProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "openModalDialog": [
+    "void openModalDialog(TServerModalDialogData RequestedDialog)"
+   ],
+   "sendAnswerModalDialog": [
+    "void sendAnswerModalDialog(tibia::protobuf::protocol::GameclientMessageAnswerModalDialog AnswerModalDialogMessage)"
+   ]
+  },
+  "slots": {
+   "handleShowModalDialogMessage": [
+    "void handleShowModalDialogMessage(tibia::protobuf::protocol::GameserverMessageShowModalDialog ShowModalDialogMessage)"
+   ]
+  }
+ },
+ "tibia::game::TSessiondumpGameSession": {
+  "chain": [
+   "tibia::game::TSessiondumpGameSession",
+   "tibia::game::TGameSessionBase",
+   "tibia::game::IGameSession",
+   "QObject"
+  ],
+  "class": "tibia::game::TSessiondumpGameSession",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connected": [
+    "void connected()"
+   ],
+   "connectionError": [
+    "void connectionError(QString ErrorDescription)"
+   ],
+   "deadMessage": [
+    "void deadMessage()"
+   ],
+   "disconnected": [
+    "void disconnected()"
+   ],
+   "gameLoginAdviceMessage": [
+    "void gameLoginAdviceMessage(QString AdviceMessage)"
+   ],
+   "gameLoginChallengeMessage": [
+    "void gameLoginChallengeMessage()"
+   ],
+   "gameLoginErrorMessage": [
+    "void gameLoginErrorMessage(QString ErrorMessage, tibia::authentication::ELoginErrorAction Action)"
+   ],
+   "gameLoginSuccessful": [
+    "void gameLoginSuccessful()"
+   ],
+   "gameLoginWaitMessage": [
+    "void gameLoginWaitMessage(QString WaitMessage, ::shared::TSeconds WaitSeconds)"
+   ],
+   "loginRampUpFinished": [
+    "void loginRampUpFinished()"
+   ],
+   "pingTimeout": [
+    "void pingTimeout()"
+   ],
+   "pingTimeoutRecovered": [
+    "void pingTimeoutRecovered()"
+   ],
+   "playerCreatureAddedToCreatureStorage": [
+    "void playerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "sessionEndInformation": [
+    "void sessionEndInformation(tibia::game::ESessionEndInformation Reason)"
+   ],
+   "showCharacterSelectionDialog": [
+    "void showCharacterSelectionDialog()"
+   ],
+   "startTargetSelection": [
+    "void startTargetSelection()"
+   ],
+   "worldEntered": [
+    "void worldEntered()"
+   ],
+   "worldTypeSet": [
+    "void worldTypeSet()"
+   ]
+  },
+  "slots": {
+   "onCharacterConfigurationLoaded": [
+    "void onCharacterConfigurationLoaded()"
+   ],
+   "onMessageAtEndOfLoginRampUpReceived": [
+    "void onMessageAtEndOfLoginRampUpReceived()"
+   ],
+   "onPlayerCreatureAddedToCreatureStorage": [
+    "void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "onPrepareNextFrameToRender": [
+    "void onPrepareNextFrameToRender(::shared::TMilliseconds NextFramePredictedTimestamp)",
+    "void onPrepareNextFrameToRender(::shared::TMilliseconds NextFramePredictedTimestamp)"
+   ],
+   "onRequestResetOfStorages": [
+    "void onRequestResetOfStorages()"
+   ],
+   "onSessiondumpFinished": [
+    "void onSessiondumpFinished()"
+   ],
+   "onSettingHintsFromServerChanged": [
+    "void onSettingHintsFromServerChanged(bool CanChangePvPFrameSetting)"
+   ],
+   "onWorldTypeReceived": [
+    "void onWorldTypeReceived(EWorldType WorldType)"
+   ]
+  }
+ },
+ "tibia::game::TSkillsWidgetEntryData": {
+  "chain": [
+   "tibia::game::TSkillsWidgetEntryData",
+   "QObject"
+  ],
+  "class": "tibia::game::TSkillsWidgetEntryData",
+  "classinfo": {},
+  "enums": {
+   "ESeparatorType": {
+    "BIGGER_SPACE": 1,
+    "CAPTION": 3,
+    "NONE": 0,
+    "SEPARATOR": 2,
+    "XP_BOOST_BUTTON": 4
+   },
+   "EValueColorType": {
+    "DEFAULT": 0,
+    "MODIFIER_NEGATIVE": 2,
+    "MODIFIER_POSITIVE": 1,
+    "MODIFIER_ZERO": 3
+   }
+  },
+  "invokables": {},
+  "properties": {
+   "additionalValueString": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "caption": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "changeHighlight": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "entryVisible": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "iconSource": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "iconTooltip": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "progressBarColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QColor"
+   },
+   "progressBarValue": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "double"
+   },
+   "progressBarVisible": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "separatorType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "ESeparatorType"
+   },
+   "showButton": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "tooltip": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "valueString": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "valueStringColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "EValueColorType"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TSpellBookProtocolMessageHandler": {
+  "chain": [
+   "tibia::game::TSpellBookProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::game::TSpellBookProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestShowSpellBookDialog": [
+    "void requestShowSpellBookDialog(std::string text, tibia::appearances::TAppearanceTypeID SpellBook)"
+   ]
+  },
+  "slots": {
+   "handleShowMessageDialogMessage": [
+    "void handleShowMessageDialogMessage(::tibia::protobuf::protocol::GameserverMessageShowMessageDialog Message)"
+   ]
+  }
+ },
+ "tibia::game::TStatusbarStorage": {
+  "chain": [
+   "tibia::game::TStatusbarStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::game::TStatusbarStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::game::TTutorialSessiondumpGameSession": {
+  "chain": [
+   "tibia::game::TTutorialSessiondumpGameSession",
+   "tibia::game::TSessiondumpGameSession",
+   "tibia::game::TGameSessionBase",
+   "tibia::game::IGameSession",
+   "QObject"
+  ],
+  "class": "tibia::game::TTutorialSessiondumpGameSession",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connected": [
+    "void connected()"
+   ],
+   "connectionError": [
+    "void connectionError(QString ErrorDescription)"
+   ],
+   "deadMessage": [
+    "void deadMessage()"
+   ],
+   "disconnected": [
+    "void disconnected()"
+   ],
+   "gameLoginAdviceMessage": [
+    "void gameLoginAdviceMessage(QString AdviceMessage)"
+   ],
+   "gameLoginChallengeMessage": [
+    "void gameLoginChallengeMessage()"
+   ],
+   "gameLoginErrorMessage": [
+    "void gameLoginErrorMessage(QString ErrorMessage, tibia::authentication::ELoginErrorAction Action)"
+   ],
+   "gameLoginSuccessful": [
+    "void gameLoginSuccessful()"
+   ],
+   "gameLoginWaitMessage": [
+    "void gameLoginWaitMessage(QString WaitMessage, ::shared::TSeconds WaitSeconds)"
+   ],
+   "loginRampUpFinished": [
+    "void loginRampUpFinished()"
+   ],
+   "pingTimeout": [
+    "void pingTimeout()"
+   ],
+   "pingTimeoutRecovered": [
+    "void pingTimeoutRecovered()"
+   ],
+   "playerCreatureAddedToCreatureStorage": [
+    "void playerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "sessionEndInformation": [
+    "void sessionEndInformation(tibia::game::ESessionEndInformation Reason)"
+   ],
+   "showCharacterSelectionDialog": [
+    "void showCharacterSelectionDialog()"
+   ],
+   "startTargetSelection": [
+    "void startTargetSelection()"
+   ],
+   "worldEntered": [
+    "void worldEntered()"
+   ],
+   "worldTypeSet": [
+    "void worldTypeSet()"
+   ]
+  },
+  "slots": {
+   "onCharacterConfigurationLoaded": [
+    "void onCharacterConfigurationLoaded()"
+   ],
+   "onDisconnected": [
+    "void onDisconnected()"
+   ],
+   "onMessageAtEndOfLoginRampUpReceived": [
+    "void onMessageAtEndOfLoginRampUpReceived()"
+   ],
+   "onPlayerCreatureAddedToCreatureStorage": [
+    "void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "onPrepareNextFrameToRender": [
+    "void onPrepareNextFrameToRender(::shared::TMilliseconds NextFramePredictedTimestamp)",
+    "void onPrepareNextFrameToRender(::shared::TMilliseconds NextFramePredictedTimestamp)"
+   ],
+   "onRequestResetOfStorages": [
+    "void onRequestResetOfStorages()"
+   ],
+   "onSessiondumpFinished": [
+    "void onSessiondumpFinished()"
+   ],
+   "onSettingHintsFromServerChanged": [
+    "void onSettingHintsFromServerChanged(bool CanChangePvPFrameSetting)"
+   ],
+   "onWorldTypeReceived": [
+    "void onWorldTypeReceived(EWorldType WorldType)"
+   ]
+  }
+ }
+}

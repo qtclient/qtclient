@@ -1,0 +1,61 @@
+QTextBrowser {
+          font-family: "Verdana";
+          font-size: 11px;
+          font-weight: bold;
+          color: #c0c0c0;
+          border-style: none;
+        }
+        /*inner area*/
+        QScrollBar::vertical  {
+          border-image: url(:/images/launcher/scrollbar-texture-vertical.png) 0 0 0 0 repeat;
+          border-top: 6px transparent;
+          border-left: 6px transparent;
+          border-bottom: 6px transparent;
+          border-right: 6px transparent;
+          border: 0px solid red;
+          background: none;
+          width: 12px;
+          margin: 12px 0 12px 0; /* match top/lower area*/
+        }
+        /*the knob*/
+        QScrollBar::handle:vertical {
+          border-image: url(:/images/launcher/scrollbar-handle-vertical.png) 6 6 6 6;
+          border-top: 6px transparent;
+          border-left: 6px transparent;
+          border-bottom: 6px transparent;
+          border-right: 6px transparent;
+          min-height: 12px;
+        }
+        /*lower arrow area*/
+        QScrollBar::add-line:vertical {
+          border: 0px solid red;
+          background: none;
+          height: 12px;
+          subcontrol-position: bottom;
+          subcontrol-origin: margin;
+        }
+        /*top arrow area*/
+        QScrollBar::sub-line:vertical {
+          border: 0px solid red;
+          background: none;
+          height: 12px;
+          subcontrol-position: top;
+          subcontrol-origin: margin;
+        }
+        /*arrows*/
+        QScrollBar::up-arrow:vertical  {
+          image:  url(:/images/launcher/scrollbar-buttonup-up.png);
+        }
+        /*pressed*/
+        QScrollBar::up-arrow:vertical::pressed  {
+          image:  url(:/images/launcher/scrollbar-buttonup-down.png);
+        }
+        QScrollBar::down-arrow:vertical::pressed  {
+          image:  url(:/images/launcher/scrollbar-buttondown-down.png);
+        }
+        QScrollBar::down-arrow:vertical {
+          image:  url(:/images/launcher/scrollbar-buttondown-up.png);
+        }
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+          background: none;
+        }

@@ -1,0 +1,36 @@
+{
+ "tibia::gameWidnow::TTextValueQmlObject": {
+  "chain": [
+   "tibia::gameWidnow::TTextValueQmlObject",
+   "QObject"
+  ],
+  "class": "tibia::gameWidnow::TTextValueQmlObject",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "text": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TTextValueQmlObject",
+    "notify": null,
+    "type": "QString"
+   },
+   "value": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TTextValueQmlObject",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ }
+}

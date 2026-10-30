@@ -1,0 +1,569 @@
+{
+ "tibia::worldmap::TAmbientLightStorage": {
+  "chain": [
+   "tibia::worldmap::TAmbientLightStorage",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TAmbientLightStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "interpolatedTibiaTimeOfDayChanged": [
+    "void interpolatedTibiaTimeOfDayChanged()"
+   ],
+   "normalizedTibiaTimeOfDayWasChanged": [
+    "void normalizedTibiaTimeOfDayWasChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::worldmap::TCacheForWorldmapStorageLookupMembers": {
+  "chain": [
+   "tibia::worldmap::TCacheForWorldmapStorageLookupMembers",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TCacheForWorldmapStorageLookupMembers",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::worldmap::TCreatureHUDController": {
+  "chain": [
+   "tibia::worldmap::TCreatureHUDController",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TCreatureHUDController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::worldmap::TCreatureHUDOverlayController": {
+  "chain": [
+   "tibia::worldmap::TCreatureHUDOverlayController",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TCreatureHUDOverlayController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "refreshCreatureHUDs": [
+    "void refreshCreatureHUDs()"
+   ],
+   "update": [
+    "void update()"
+   ]
+  }
+ },
+ "tibia::worldmap::TCreatureHUDQmlRenderInfo": {
+  "chain": [
+   "tibia::worldmap::TCreatureHUDQmlRenderInfo",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TCreatureHUDQmlRenderInfo",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "arcDistance": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showArcsChanged",
+    "type": "double"
+   },
+   "arcHeight": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showArcsChanged",
+    "type": "double"
+   },
+   "arcOpacity": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showArcsChanged",
+    "type": "double"
+   },
+   "arcWidth": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showArcsChanged",
+    "type": "uint"
+   },
+   "comboPoints": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "comboPointsOrSereneStateChanged",
+    "type": "int"
+   },
+   "creatureOtherIcons": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "healthColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "healthColorChanged",
+    "type": "QColor"
+   },
+   "healthPercent": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "healthPercentChanged",
+    "type": "double"
+   },
+   "horizontalCreatureIcons": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "horizontalCreatureIconsChanged",
+    "type": "QStringList"
+   },
+   "isFiendishMonster": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "fiendishMonsterChanged",
+    "type": "bool"
+   },
+   "isLeaderMinionMonster": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "statusEffectsChanged",
+    "type": "bool"
+   },
+   "isLeaderMonster": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "statusEffectsChanged",
+    "type": "bool"
+   },
+   "isSerene": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "comboPointsOrSereneStateChanged",
+    "type": "bool"
+   },
+   "lightness": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "healthColorChanged",
+    "type": "float"
+   },
+   "manaPercent": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "manaPercentChanged",
+    "type": "double"
+   },
+   "manaShieldPercent": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "manaShieldPercentChanged",
+    "type": "double"
+   },
+   "name": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "nameChanged",
+    "type": "QString"
+   },
+   "playerStates": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "scaleFactor": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "scaleFactorChanged",
+    "type": "float"
+   },
+   "showArcs": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showArcsChanged",
+    "type": "bool"
+   },
+   "showBars": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showBarsChanged",
+    "type": "bool"
+   },
+   "showCombopointsAndSerene": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "comboPointsOrSereneStateChanged",
+    "type": "bool"
+   },
+   "showCombopointsAndSereneLeft": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showArcsChanged",
+    "type": "bool"
+   },
+   "showCreatureName": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showCreatureNameChanged",
+    "type": "bool"
+   },
+   "showHealthBar": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showHealthBarChanged",
+    "type": "bool"
+   },
+   "showManaBar": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showManaBarChanged",
+    "type": "bool"
+   },
+   "showManaShieldBar": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showManaBarChanged",
+    "type": "bool"
+   },
+   "showSpecialConditions": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "showSpecialConditionsChanged",
+    "type": "bool"
+   },
+   "verticalCreatureIcons": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCreatureHUDQmlRenderInfo",
+    "notify": "verticalCreatureIconsChanged",
+    "type": "QStringList"
+   }
+  },
+  "signals": {
+   "comboPointsOrSereneStateChanged": [
+    "void comboPointsOrSereneStateChanged()"
+   ],
+   "fiendishMonsterChanged": [
+    "void fiendishMonsterChanged()"
+   ],
+   "healthColorChanged": [
+    "void healthColorChanged()"
+   ],
+   "healthPercentChanged": [
+    "void healthPercentChanged()"
+   ],
+   "horizontalCreatureIconsChanged": [
+    "void horizontalCreatureIconsChanged()"
+   ],
+   "manaPercentChanged": [
+    "void manaPercentChanged()"
+   ],
+   "manaShieldPercentChanged": [
+    "void manaShieldPercentChanged()"
+   ],
+   "nameChanged": [
+    "void nameChanged()"
+   ],
+   "scaleFactorChanged": [
+    "void scaleFactorChanged()"
+   ],
+   "showArcsChanged": [
+    "void showArcsChanged()"
+   ],
+   "showBarsChanged": [
+    "void showBarsChanged()"
+   ],
+   "showCreatureNameChanged": [
+    "void showCreatureNameChanged()"
+   ],
+   "showHealthBarChanged": [
+    "void showHealthBarChanged()"
+   ],
+   "showManaBarChanged": [
+    "void showManaBarChanged()"
+   ],
+   "showManaShieldBarChanged": [
+    "void showManaShieldBarChanged()"
+   ],
+   "showSpecialConditionsChanged": [
+    "void showSpecialConditionsChanged()"
+   ],
+   "statusEffectsChanged": [
+    "void statusEffectsChanged()"
+   ],
+   "verticalCreatureIconsChanged": [
+    "void verticalCreatureIconsChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::worldmap::TCreatureHUDRenderProvider": {
+  "chain": [
+   "tibia::worldmap::TCreatureHUDRenderProvider",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TCreatureHUDRenderProvider",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::worldmap::TWorldMapField": {
+  "chain": [
+   "tibia::worldmap::TWorldMapField",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TWorldMapField",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "appearanceInstancesChanged": [
+    "void appearanceInstancesChanged(const TWorldMapField* pWorldMapField)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::worldmap::TWorldMapGameActionHandler": {
+  "chain": [
+   "tibia::worldmap::TWorldMapGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TWorldMapGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendMoveObject": [
+    "void sendMoveObject(tibia::protobuf::protocol::GameclientMessageMoveObject MoveObjectMessage)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleMoveObjectGameAction": [
+    "void handleMoveObjectGameAction(std::shared_ptr<tibia::input::TGameActionMoveObject> pGameActionMoveObject)"
+   ]
+  }
+ },
+ "tibia::worldmap::TWorldMapStorage": {
+  "chain": [
+   "tibia::worldmap::TWorldMapStorage",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TWorldMapStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "informationAtWorldMapCoordinateHasChanged": [
+    "void informationAtWorldMapCoordinateHasChanged(TWorldMapCoordinate Coordinate)"
+   ],
+   "storedVolumeHasChanged": [
+    "void storedVolumeHasChanged(TShearedWorldMapCuboid NewStoredVolume)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::worldmap::TWorldMapTutorialMarkerOverlayController": {
+  "chain": [
+   "tibia::worldmap::TWorldMapTutorialMarkerOverlayController",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TWorldMapTutorialMarkerOverlayController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "update": [
+    "void update()"
+   ]
+  }
+ },
+ "tibia::worldmap::TWorldMapViewport": {
+  "chain": [
+   "tibia::worldmap::TWorldMapViewport",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TWorldMapViewport",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "worldMapVolumeChanged": [
+    "void worldMapVolumeChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::worldmap::TWorldmapProtocolMessageHandler": {
+  "chain": [
+   "tibia::worldmap::TWorldmapProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::worldmap::TWorldmapProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleAmbientLightMessage": [
+    "void handleAmbientLightMessage(tibia::protobuf::protocol::GameserverMessageAmbientLight AmbientLightMessage)"
+   ],
+   "handleBottomFloorMessage": [
+    "void handleBottomFloorMessage(tibia::protobuf::protocol::GameserverMessageBottomFloor BottomFloorMessage)"
+   ],
+   "handleBottomRowMessage": [
+    "void handleBottomRowMessage(tibia::protobuf::protocol::GameserverMessageBottomRow BottomRowMessage)"
+   ],
+   "handleChangeOnMapMessage": [
+    "void handleChangeOnMapMessage(tibia::protobuf::protocol::GameserverMessageChangeOnMap ChangeOnMapMessage)"
+   ],
+   "handleCreateOnMapMessage": [
+    "void handleCreateOnMapMessage(tibia::protobuf::protocol::GameserverMessageCreateOnMap CreateOnMapMessage)"
+   ],
+   "handleDeleteOnMapMessage": [
+    "void handleDeleteOnMapMessage(tibia::protobuf::protocol::GameserverMessageDeleteOnMap DeleteOnMapMessage)"
+   ],
+   "handleFieldDataMessage": [
+    "void handleFieldDataMessage(tibia::protobuf::protocol::GameserverMessageFieldData FieldDataMessage)"
+   ],
+   "handleFullMapMessage": [
+    "void handleFullMapMessage(tibia::protobuf::protocol::GameserverMessageFullMap FullMapMessage)"
+   ],
+   "handleLeftColumnMessage": [
+    "void handleLeftColumnMessage(tibia::protobuf::protocol::GameserverMessageLeftColumn LeftColumnMessage)"
+   ],
+   "handleRightColumnMessage": [
+    "void handleRightColumnMessage(tibia::protobuf::protocol::GameserverMessageRightColumn RightColumnMessage)"
+   ],
+   "handleTibiaTimeMessage": [
+    "void handleTibiaTimeMessage(tibia::protobuf::protocol::GameserverMessageTibiaTime TibiaTimeMessage)"
+   ],
+   "handleTopFloorMessage": [
+    "void handleTopFloorMessage(tibia::protobuf::protocol::GameserverMessageTopFloor TopFloorMessage)"
+   ],
+   "handleTopRowMessage": [
+    "void handleTopRowMessage(tibia::protobuf::protocol::GameserverMessageTopRow TopRowMessage)"
+   ]
+  }
+ }
+}

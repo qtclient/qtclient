@@ -1,0 +1,86 @@
+# Example: product / mod CI that reuses qtclient public Qt + stock ccache.
+# workflow_dispatch only — does not burn minutes on every push.
+name: CI mods (example)
+
+on:
+  workflow_dispatch:
+    inputs:
+      qtclient_sha:
+        description: qtclient/qtclient commit SHA whose stock ccache to restore
+        required: true
+      os_slug:
+        description: linux or macos (must match published ccache artifact)
+        default: linux
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  mods:
+    runs-on: ubuntu-24.04
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      QT_GHCR_IMAGE: ghcr.io/qtclient/qt-cip
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Init LegacyControls
+        run: git submodule update --init third_party/Qt5LegacyControls
+
+      - uses: lukka/get-cmake@v4.3.4
+      - uses: oras-project/setup-oras@v1
+
+      - name: Install deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build ccache zstd libgl1-mesa-dev \
+            libxkbcommon-dev libfontconfig1-dev
+
+      - name: Restore qtclient stock ccache
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          bash scripts/ci/fetch-qtclient-ccache.sh \
+            --sha "${{ inputs.qtclient_sha }}" \
+            --os "${{ inputs.os_slug }}" \
+            --out "$CCACHE_DIR"
+
+      - name: Install CIP Qt (qtclient GHCR, pull-only)
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QT_PULL_ONLY: '1'
+          QT_PULL_WAIT_SECS: '1800'
+        run: bash tools/qt/ci-setup-qt.sh --pull-only
+
+      - name: Setup vcpkg
+        run: |
+          export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
+          if [[ ! -d "$VCPKG_ROOT" ]]; then
+            git clone --depth 1 https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+            "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+          fi
+          echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
+
+      - name: Build stock host + sample mod pack
+        run: |
+          set -euo pipefail
+          cmake --preset linux-release \
+            -DQTCLIENT_ENABLE_MODS=ON \
+            -DQTCLIENT_MODS=_sample \
+            -DOPTIONS_ENABLE_CCACHE=ON \
+            -DTOGGLE_BIN_FOLDER=ON \
+            -DOPTIONS_ENABLE_IPO=OFF \
+            -DTIBIA_BUILD_TESTS=OFF \
+            -DCMAKE_PREFIX_PATH="$(bash tools/qt/qt-prefix.sh)"
+          cmake --build --preset linux-release --target tibia
+          cmake --build --preset linux-release --target qtclient_mod_sample
+          test -f build/linux-release/mods/sample/mod.json
+          test -e build/linux-release/mods/sample/native/mod.so \
+            -o -e build/linux-release/mods/sample/native/mod.dylib \
+            -o -e build/linux-release/mods/sample/native/libmod.so \
+            || ls -la build/linux-release/mods/sample/native/

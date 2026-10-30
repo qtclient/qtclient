@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Release / source helper: copy CIP assets from a local official Tibia install.
+set -euo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+exec python3 "$HERE/fetch_assets.py" "$@"

@@ -1,0 +1,342 @@
+{
+ "tibia::minimap::TMinimapDiskIO": {
+  "chain": [
+   "tibia::minimap::TMinimapDiskIO",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapDiskIO",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "loadingMinimapMarkersSucceeded": [
+    "void loadingMinimapMarkersSucceeded(tibia::protobuf::minimap::MinimapMarkerFileContent MinimapMarkersFileContent)"
+   ],
+   "loadingMinimapTileFailed": [
+    "void loadingMinimapTileFailed(TMinimapTileID MinimapTileID)"
+   ],
+   "loadingMinimapTileSucceeded": [
+    "void loadingMinimapTileSucceeded(TMinimapTile MinimapTile)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::minimap::TMinimapImagesChache": {
+  "chain": [
+   "tibia::minimap::TMinimapImagesChache",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapImagesChache",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onImageLoaded": [
+    "void onImageLoaded(QString Filepath, QImage Image)"
+   ]
+  }
+ },
+ "tibia::minimap::TMinimapManager": {
+  "chain": [
+   "tibia::minimap::TMinimapManager",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::minimap::TMinimapMarkerController": {
+  "chain": [
+   "tibia::minimap::TMinimapMarkerController",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapMarkerController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::minimap::TMinimapMarkerGameActionHandler": {
+  "chain": [
+   "tibia::minimap::TMinimapMarkerGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapMarkerGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::minimap::TMinimapMarkerOverlayController": {
+  "chain": [
+   "tibia::minimap::TMinimapMarkerOverlayController",
+   "tibia::gamewindow::TSidebarPanelControllerBase",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapMarkerOverlayController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "positionInSidebarChanged": [
+    "void positionInSidebarChanged()"
+   ],
+   "requestClose": [
+    "void requestClose()"
+   ]
+  },
+  "slots": {
+   "onPanelQuickItemDestroyed": [
+    "void onPanelQuickItemDestroyed()"
+   ],
+   "onSidebarDestroyed": [
+    "void onSidebarDestroyed()"
+   ],
+   "refreshMinimapMarkers": [
+    "void refreshMinimapMarkers()"
+   ],
+   "update": [
+    "void update()"
+   ]
+  }
+ },
+ "tibia::minimap::TMinimapMarkerQmlRenderInfo": {
+  "chain": [
+   "tibia::minimap::TMinimapMarkerQmlRenderInfo",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapMarkerQmlRenderInfo",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "lastModifiedTimestamp": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TMinimapMarkerQmlRenderInfo",
+    "notify": "lastModifiedTimestampChanged",
+    "type": "QDateTime"
+   },
+   "symbol": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TMinimapMarkerQmlRenderInfo",
+    "notify": "symbolChanged",
+    "type": "QString"
+   },
+   "tooltiptext": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TMinimapMarkerQmlRenderInfo",
+    "notify": "tooltiptextChanged",
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "lastModifiedTimestampChanged": [
+    "void lastModifiedTimestampChanged()"
+   ],
+   "symbolChanged": [
+    "void symbolChanged()"
+   ],
+   "tooltiptextChanged": [
+    "void tooltiptextChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::minimap::TMinimapMarkerStorage": {
+  "chain": [
+   "tibia::minimap::TMinimapMarkerStorage",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapMarkerStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "markersChanged": [
+    "void markersChanged()"
+   ],
+   "requestDelayedCallback": [
+    "void requestDelayedCallback()"
+   ],
+   "startSavingMinimapMarkerFileContentToDisk": [
+    "void startSavingMinimapMarkerFileContentToDisk(std::shared_ptr<tibia::protobuf::minimap::MinimapMarkerFileContent> pFileContent)"
+   ]
+  },
+  "slots": {
+   "onDelayedCallback": [
+    "void onDelayedCallback()"
+   ],
+   "setMarkersFromMinimapMarkerFile": [
+    "void setMarkersFromMinimapMarkerFile(tibia::protobuf::minimap::MinimapMarkerFileContent FileContent)"
+   ]
+  }
+ },
+ "tibia::minimap::TMinimapProtocolMessageHandler": {
+  "chain": [
+   "tibia::minimap::TMinimapProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleCyclopediaMapDataMessage": [
+    "void handleCyclopediaMapDataMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaMapData CyclopediaMapDataMessage)"
+   ]
+  }
+ },
+ "tibia::minimap::TMinimapRenderInfoStorage": {
+  "chain": [
+   "tibia::minimap::TMinimapRenderInfoStorage",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapRenderInfoStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "renderInfosChanged": [
+    "void renderInfosChanged()"
+   ]
+  },
+  "slots": {
+   "onActiveRaidsChanged": [
+    "void onActiveRaidsChanged()"
+   ],
+   "onCameraViewportChanged": [
+    "void onCameraViewportChanged()"
+   ],
+   "onClickedAreaChanged": [
+    "void onClickedAreaChanged()"
+   ],
+   "onMinimapMarkersChanged": [
+    "void onMinimapMarkersChanged()"
+   ],
+   "onPassagesChanged": [
+    "void onPassagesChanged()"
+   ],
+   "onPlayerPositionChanged": [
+    "void onPlayerPositionChanged()"
+   ],
+   "onViewpointsChanged": [
+    "void onViewpointsChanged()"
+   ]
+  }
+ },
+ "tibia::minimap::TMinimapTileManager": {
+  "chain": [
+   "tibia::minimap::TMinimapTileManager",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapTileManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onLoadingMinimapTileFailed": [
+    "void onLoadingMinimapTileFailed(TMinimapTileID MinimapTileID)"
+   ],
+   "onLoadingMinimapTileSucceeded": [
+    "void onLoadingMinimapTileSucceeded(TMinimapTile MinimapTile)"
+   ],
+   "onMinimapTileChangedInStorage": [
+    "void onMinimapTileChangedInStorage(std::shared_ptr<TMinimapTile> pMinimapTile)"
+   ]
+  }
+ },
+ "tibia::minimap::TMinimapTileStorage": {
+  "chain": [
+   "tibia::minimap::TMinimapTileStorage",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapTileStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "minimapTileChanged": [
+    "void minimapTileChanged(std::shared_ptr<TMinimapTile> pMinimapTile)"
+   ],
+   "reloadVisibleMinimap": [
+    "void reloadVisibleMinimap()"
+   ],
+   "startLoadingMinimapTileFromDisk": [
+    "void startLoadingMinimapTileFromDisk(TMinimapTileID MinimapTileID)"
+   ],
+   "startSavingMinimapTileToDisk": [
+    "void startSavingMinimapTileToDisk(std::shared_ptr<TMinimapTile> pMinimapTile)"
+   ]
+  },
+  "slots": {
+   "loadingMinimapTileFailed": [
+    "void loadingMinimapTileFailed(TMinimapTileID MinimapTileID)"
+   ],
+   "loadingMinimapTileSucceeded": [
+    "void loadingMinimapTileSucceeded(TMinimapTile MinimapTileFromDisk)"
+   ],
+   "onAsyncEmitTileChangedTimerTimeout": [
+    "void onAsyncEmitTileChangedTimerTimeout()"
+   ],
+   "saveAllTilesToDisk": [
+    "void saveAllTilesToDisk()"
+   ]
+  }
+ },
+ "tibia::minimap::TMinimapVisibleArea": {
+  "chain": [
+   "tibia::minimap::TMinimapVisibleArea",
+   "QObject"
+  ],
+  "class": "tibia::minimap::TMinimapVisibleArea",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "restoreZoomLevelFromOptions": [
+    "void restoreZoomLevelFromOptions()"
+   ]
+  }
+ }
+}

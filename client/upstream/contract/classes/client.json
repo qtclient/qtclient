@@ -1,0 +1,311 @@
+{
+ "tibia::client::IGamesessionManager": {
+  "chain": [
+   "tibia::client::IGamesessionManager",
+   "QObject"
+  ],
+  "class": "tibia::client::IGamesessionManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "changePrimaryGameSession": [
+    "void changePrimaryGameSession(std::shared_ptr<tibia::game::IGameSession> pGameSession)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::client::TAntiCheatController": {
+  "chain": [
+   "tibia::client::TAntiCheatController",
+   "QObject"
+  ],
+  "class": "tibia::client::TAntiCheatController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestCloseDueToClientCheck": [
+    "void requestCloseDueToClientCheck()"
+   ],
+   "sendClientCheckMessage": [
+    "void sendClientCheckMessage(tibia::protobuf::protocol::GameclientMessageClientCheck ClientCheckMessage)"
+   ]
+  },
+  "slots": {
+   "handleClientCheckMessage": [
+    "void handleClientCheckMessage(tibia::protobuf::protocol::GameserverMessageClientCheck ClientCheckMessage)"
+   ]
+  }
+ },
+ "tibia::client::TGameApplication": {
+  "chain": [
+   "tibia::client::TGameApplication",
+   "tibia::client::TGameApplicationBase",
+   "QApplication"
+  ],
+  "class": "tibia::client::TGameApplication",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onAboutToQuit": [
+    "void onAboutToQuit()"
+   ],
+   "onClientPluginReadyToClose": [
+    "void onClientPluginReadyToClose()"
+   ],
+   "onDelayedCliendWindowChanged": [
+    "void onDelayedCliendWindowChanged()"
+   ],
+   "onLeftAndRightStatusActionBarWidthChanged": [
+    "void onLeftAndRightStatusActionBarWidthChanged(int NewWidth)"
+   ],
+   "onNumberOfSidebarsChanged": [
+    "void onNumberOfSidebarsChanged(size_t NewNumber)"
+   ],
+   "onRequestClose": [
+    "void onRequestClose()"
+   ],
+   "screenGeometryChanged": [
+    "void screenGeometryChanged()"
+   ],
+   "showErrorAsPopupAndCriticalLog": [
+    "void showErrorAsPopupAndCriticalLog(QString ErrorMessage)"
+   ],
+   "startClientWindowChangedReactionTimer": [
+    "void startClientWindowChangedReactionTimer()"
+   ],
+   "windowSizeChanged": [
+    "void windowSizeChanged()"
+   ]
+  }
+ },
+ "tibia::client::TGameApplicationBase": {
+  "chain": [
+   "tibia::client::TGameApplicationBase",
+   "QApplication"
+  ],
+  "class": "tibia::client::TGameApplicationBase",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::client::TGameClient": {
+  "chain": [
+   "tibia::client::TGameClient",
+   "tibia::client::TGameClientBase",
+   "QObject"
+  ],
+  "class": "tibia::client::TGameClient",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "clientReadyToClose": [
+    "void clientReadyToClose()"
+   ],
+   "currentGamesessionDisconnected": [
+    "void currentGamesessionDisconnected(std::shared_ptr<tibia::game::IGameSession> pCurrentGameSession)"
+   ],
+   "initialized": [
+    "void initialized()"
+   ],
+   "mainWindowInitialized": [
+    "void mainWindowInitialized()"
+   ],
+   "newLeftAndRightStatusActionBarWidth": [
+    "void newLeftAndRightStatusActionBarWidth(int NewWidth)"
+   ],
+   "numberOfSidebarsChanged": [
+    "void numberOfSidebarsChanged(size_t NewNumber)"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "showErrorAsPopupAndCriticalLog": [
+    "void showErrorAsPopupAndCriticalLog(QString ErrorMessage)"
+   ]
+  },
+  "slots": {
+   "autoconnectNextGameSessionInQueue": [
+    "void autoconnectNextGameSessionInQueue()"
+   ],
+   "checkKeyboardStatusStorageAfterDelay": [
+    "void checkKeyboardStatusStorageAfterDelay(::shared::TMilliseconds Delay)"
+   ],
+   "connectClientToGameserverWithExistingCredentials": [
+    "void connectClientToGameserverWithExistingCredentials()"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onAbortConnectClientToGameserver": [
+    "void onAbortConnectClientToGameserver()"
+   ],
+   "onAssetFinishedLoading": [
+    "void onAssetFinishedLoading(tibia::assets::TAsset Asset, std::shared_ptr<::shared::TReadOnlyMemoryBlob> pData)"
+   ],
+   "onAssetsComplete": [
+    "void onAssetsComplete()",
+    "void onAssetsComplete()"
+   ],
+   "onAssetsError": [
+    "void onAssetsError()",
+    "void onAssetsError()"
+   ],
+   "onBeforeRenderFrameMainThread": [
+    "void onBeforeRenderFrameMainThread()"
+   ],
+   "onClientCheckDialogButtonClicked": [
+    "void onClientCheckDialogButtonClicked(tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier)"
+   ],
+   "onCloseDueToClientCheckRequested": [
+    "void onCloseDueToClientCheckRequested()"
+   ],
+   "onConfirmOrCancelExitGame": [
+    "void onConfirmOrCancelExitGame(tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier)"
+   ],
+   "onConnectClientToGameserver": [
+    "void onConnectClientToGameserver()"
+   ],
+   "onControlOrLootSchemeOptionsChanged": [
+    "void onControlOrLootSchemeOptionsChanged()"
+   ],
+   "onExitClientRequested": [
+    "void onExitClientRequested()"
+   ],
+   "onFpsTrackingActiveChanged": [
+    "void onFpsTrackingActiveChanged(bool FpsTrackingActive)"
+   ],
+   "onFullscreenModeEntered": [
+    "void onFullscreenModeEntered()"
+   ],
+   "onGameSessionConnected": [
+    "void onGameSessionConnected()"
+   ],
+   "onGameSessionDisconnected": [
+    "void onGameSessionDisconnected()"
+   ],
+   "onGameSessionLoginAdvice": [
+    "void onGameSessionLoginAdvice(QString LoginAdvice)"
+   ],
+   "onGameSessionLoginError": [
+    "void onGameSessionLoginError(QString LoginError, tibia::authentication::ELoginErrorAction Action)"
+   ],
+   "onGameSessionLoginSuccessful": [
+    "void onGameSessionLoginSuccessful()"
+   ],
+   "onKeyboardStatusStorageChanged": [
+    "void onKeyboardStatusStorageChanged()"
+   ],
+   "onOpenLauncherRequested": [
+    "void onOpenLauncherRequested()"
+   ],
+   "onOptionsTrackingActiveChanged": [
+    "void onOptionsTrackingActiveChanged(bool OptionsTrackingActive)"
+   ],
+   "onPatchClient": [
+    "void onPatchClient()"
+   ],
+   "onPlayerCreatureAddedToCreatureStorage": [
+    "void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "onRenderThreadFrameSwapped": [
+    "void onRenderThreadFrameSwapped()"
+   ],
+   "onRequestCreateAccount": [
+    "void onRequestCreateAccount()"
+   ],
+   "onRequestCreateCharacter": [
+    "void onRequestCreateCharacter()"
+   ],
+   "onRequestLoginWithCredentials": [
+    "void onRequestLoginWithCredentials(QString EMailAddress, QString Password)"
+   ],
+   "onSendCrashReportRequested": [
+    "void onSendCrashReportRequested(bool SendFullReport)"
+   ],
+   "onShowCharacterSelectionDialogRequested": [
+    "void onShowCharacterSelectionDialogRequested()"
+   ],
+   "onSpritesheetUncompressFailed": [
+    "void onSpritesheetUncompressFailed(tibia::sprites::TSpritesheetID SpritesheetID)",
+    "void onSpritesheetUncompressFailed(tibia::sprites::TSpritesheetID SpritesheetID)"
+   ],
+   "onStartTargetSelection": [
+    "void onStartTargetSelection()"
+   ],
+   "onTryToPatchClient": [
+    "void onTryToPatchClient()"
+   ],
+   "onUpdateWithTimestamp": [
+    "void onUpdateWithTimestamp(::shared::TMilliseconds TimestampMilliseconds)"
+   ],
+   "onWindowSizeChanged": [
+    "void onWindowSizeChanged()"
+   ],
+   "wakeUpPlayerMovementIntentHandler": [
+    "void wakeUpPlayerMovementIntentHandler()"
+   ]
+  }
+ },
+ "tibia::client::TGameClientBase": {
+  "chain": [
+   "tibia::client::TGameClientBase",
+   "QObject"
+  ],
+  "class": "tibia::client::TGameClientBase",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "initialized": [
+    "void initialized()"
+   ],
+   "mainWindowInitialized": [
+    "void mainWindowInitialized()"
+   ]
+  },
+  "slots": {
+   "onAssetsComplete": [
+    "void onAssetsComplete()"
+   ],
+   "onAssetsError": [
+    "void onAssetsError()"
+   ],
+   "onSpritesheetUncompressFailed": [
+    "void onSpritesheetUncompressFailed(tibia::sprites::TSpritesheetID SpritesheetID)"
+   ],
+   "onUpdateWithTimestamp": [
+    "void onUpdateWithTimestamp(::shared::TMilliseconds TimestampMilliseconds)"
+   ]
+  }
+ },
+ "tibia::client::TPreventCloseEventFilter": {
+  "chain": [
+   "tibia::client::TPreventCloseEventFilter",
+   "QObject"
+  ],
+  "class": "tibia::client::TPreventCloseEventFilter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "preventedClose": [
+    "void preventedClose()"
+   ]
+  },
+  "slots": {}
+ }
+}

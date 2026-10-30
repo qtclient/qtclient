@@ -1,0 +1,49 @@
+{
+ "tibia::appearances::TAppearanceInstanceGenericStorage": {
+  "chain": [
+   "tibia::appearances::TAppearanceInstanceGenericStorage",
+   "QObject"
+  ],
+  "class": "tibia::appearances::TAppearanceInstanceGenericStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "appearancesUpdated": [
+    "void appearancesUpdated()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::appearances::TAppearanceInstanceGenericStoragesManager": {
+  "chain": [
+   "tibia::appearances::TAppearanceInstanceGenericStoragesManager",
+   "QObject"
+  ],
+  "class": "tibia::appearances::TAppearanceInstanceGenericStoragesManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::appearances::TAppearanceInstanceTracker": {
+  "chain": [
+   "tibia::appearances::TAppearanceInstanceTracker",
+   "QObject"
+  ],
+  "class": "tibia::appearances::TAppearanceInstanceTracker",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "loadSpritesheetWithID": [
+    "void loadSpritesheetWithID(tibia::sprites::TSpritesheetID SpritesheetID)"
+   ]
+  },
+  "slots": {}
+ }
+}

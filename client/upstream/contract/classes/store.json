@@ -1,0 +1,1036 @@
+{
+ "tibia::store::TDynamicallyLoadedImageManager": {
+  "chain": [
+   "tibia::store::TDynamicallyLoadedImageManager",
+   "QObject"
+  ],
+  "class": "tibia::store::TDynamicallyLoadedImageManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "imageDownloadOrDecodingError": [
+    "void imageDownloadOrDecodingError(tibia::store::TImageRequest ImageRequest)"
+   ],
+   "imageReady": [
+    "void imageReady(tibia::store::TImageRequest ImageRequest, QImage Image)"
+   ]
+  },
+  "slots": {
+   "onDownloadError": [
+    "void onDownloadError(QUrl Url, QNetworkReply::NetworkError ErrorCode, QString ErrorString)"
+   ],
+   "onDownloadSuccess": [
+    "void onDownloadSuccess(QUrl Url, QByteArray ImageData)"
+   ],
+   "onImageDecompressionFinished": [
+    "void onImageDecompressionFinished(tibia::sprites::TSpritesheetID FullImageUrl, tibia::sprites::TSpritesheetPointer pImagePointer)"
+   ]
+  }
+ },
+ "tibia::store::TQmlStoreBalance": {
+  "chain": [
+   "tibia::store::TQmlStoreBalance",
+   "QObject"
+  ],
+  "class": "tibia::store::TQmlStoreBalance",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "confirmedBalance": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreBalance",
+    "notify": null,
+    "type": "qlonglong"
+   },
+   "confirmedBalanceString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreBalance",
+    "notify": null,
+    "type": "QString"
+   },
+   "isUpdating": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreBalance",
+    "notify": null,
+    "type": "bool"
+   },
+   "isValid": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreBalance",
+    "notify": null,
+    "type": "bool"
+   },
+   "reservedTibiaCoins": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreBalance",
+    "notify": null,
+    "type": "qlonglong"
+   },
+   "reservedTibiaCoinsString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreBalance",
+    "notify": null,
+    "type": "QString"
+   },
+   "totalBalance": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreBalance",
+    "notify": null,
+    "type": "qlonglong"
+   },
+   "totalBalanceString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreBalance",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::store::TQmlStoreCategory": {
+  "chain": [
+   "tibia::store::TQmlStoreCategory",
+   "QObject"
+  ],
+  "class": "tibia::store::TQmlStoreCategory",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "imageIdentifiers": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreCategory",
+    "notify": null,
+    "type": "QStringList"
+   },
+   "name": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreCategory",
+    "notify": null,
+    "type": "QString"
+   },
+   "subcategoryList": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreCategory",
+    "notify": null,
+    "type": "QList<QObject*>"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::store::TQmlStoreOffer": {
+  "chain": [
+   "tibia::store::TQmlStoreOffer",
+   "QObject"
+  ],
+  "class": "tibia::store::TQmlStoreOffer",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "canBeBought": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOffer",
+    "notify": null,
+    "type": "bool"
+   },
+   "canTryOn": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOffer",
+    "notify": null,
+    "type": "bool"
+   },
+   "description": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOffer",
+    "notify": "descriptionChanged",
+    "type": "QString"
+   },
+   "name": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOffer",
+    "notify": null,
+    "type": "QString"
+   },
+   "needsUserConfiguration": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOffer",
+    "notify": null,
+    "type": "bool"
+   },
+   "oneOrMoreQuantitiesDisabled": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOffer",
+    "notify": null,
+    "type": "bool"
+   },
+   "products": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOffer",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "quantities": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOffer",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "visualisation": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOffer",
+    "notify": "visualisationChanged",
+    "type": "QObject*"
+   }
+  },
+  "signals": {
+   "descriptionChanged": [
+    "void descriptionChanged()"
+   ],
+   "visualisationChanged": [
+    "void visualisationChanged()"
+   ]
+  },
+  "slots": {
+   "onOfferDescriptionLoaded": [
+    "void onOfferDescriptionLoaded(tibia::store::TOfferID OfferID)"
+   ]
+  }
+ },
+ "tibia::store::TQmlStoreOfferQuantityConfiguration": {
+  "chain": [
+   "tibia::store::TQmlStoreOfferQuantityConfiguration",
+   "QObject"
+  ],
+  "class": "tibia::store::TQmlStoreOfferQuantityConfiguration",
+  "classinfo": {},
+  "enums": {
+   "EQmlHighlightState": {
+    "STATE_NEW": 1,
+    "STATE_NONE": 0,
+    "STATE_SALE": 2,
+    "STATE_TIMED": 3
+   },
+   "EQmlStoreCurrency": {
+    "TIBIA_COINS": 0,
+    "TOURNAMENT_COINS": 2,
+    "TRUSTED_TIBIA_COINS": 1
+   }
+  },
+  "invokables": {},
+  "properties": {
+   "basePrice": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "int"
+   },
+   "basePriceString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "QString"
+   },
+   "canBeBought": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "bool"
+   },
+   "currencyType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "EQmlStoreCurrency"
+   },
+   "disabledReasons": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "QStringList"
+   },
+   "highlightState": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "EQmlHighlightState"
+   },
+   "isOnSale": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "bool"
+   },
+   "offerID": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "int"
+   },
+   "price": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "int"
+   },
+   "priceString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "QString"
+   },
+   "quantity": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "int"
+   },
+   "saleStringShort": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreOfferQuantityConfiguration",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::store::TQmlStoreProduct": {
+  "chain": [
+   "tibia::store::TQmlStoreProduct",
+   "QObject"
+  ],
+  "class": "tibia::store::TQmlStoreProduct",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "name": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreProduct",
+    "notify": null,
+    "type": "QString"
+   },
+   "visualisation": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreProduct",
+    "notify": null,
+    "type": "QObject*"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::store::TQmlStoreTransactionHistoryPage": {
+  "chain": [
+   "tibia::store::TQmlStoreTransactionHistoryPage",
+   "QObject"
+  ],
+  "class": "tibia::store::TQmlStoreTransactionHistoryPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "canLoadNextPage": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreTransactionHistoryPage",
+    "notify": null,
+    "type": "bool"
+   },
+   "canLoadPreviousPage": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreTransactionHistoryPage",
+    "notify": null,
+    "type": "bool"
+   },
+   "currentPage": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreTransactionHistoryPage",
+    "notify": null,
+    "type": "int"
+   },
+   "numberOfPages": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreTransactionHistoryPage",
+    "notify": null,
+    "type": "int"
+   },
+   "transactionEntries": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreTransactionHistoryPage",
+    "notify": null,
+    "type": "QList<QObject*>"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::store::TQmlStoreVisualisation": {
+  "chain": [
+   "tibia::store::TQmlStoreVisualisation",
+   "QObject"
+  ],
+  "class": "tibia::store::TQmlStoreVisualisation",
+  "classinfo": {},
+  "enums": {
+   "EQmlGender": {
+    "FEMALE": 1,
+    "MALE": 0
+   },
+   "EQmlVisualisationType": {
+    "VISUALISATION_BOTH_GENDER_OUTFITS": 4,
+    "VISUALISATION_IMAGE_IDENTIFIER": 0,
+    "VISUALISATION_MOUNT": 1,
+    "VISUALISATION_OBJECT": 3,
+    "VISUALISATION_OUTFIT": 2
+   }
+  },
+  "invokables": {},
+  "properties": {
+   "appearanceTypeForGenderToShow": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": "genderToShowChanged",
+    "type": "int"
+   },
+   "appearanceTypeID": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "int"
+   },
+   "detailColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "QColor"
+   },
+   "femaleAppearanceTypeID": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "int"
+   },
+   "genderToShow": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": "genderToShowChanged",
+    "type": "EQmlGender"
+   },
+   "hasAddon1": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "bool"
+   },
+   "hasAddon2": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "bool"
+   },
+   "headColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "QColor"
+   },
+   "imageIdentifier": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "QString"
+   },
+   "legsColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "QColor"
+   },
+   "maleAppearanceTypeID": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "int"
+   },
+   "torsoColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "QColor"
+   },
+   "visualisationType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStoreVisualisation",
+    "notify": null,
+    "type": "EQmlVisualisationType"
+   }
+  },
+  "signals": {
+   "genderToShowChanged": [
+    "void genderToShowChanged()"
+   ]
+  },
+  "slots": {
+   "setGenderToShow": [
+    "void setGenderToShow(EQmlGender Gender)"
+   ]
+  }
+ },
+ "tibia::store::TQmlTransactionHistoryEntry": {
+  "chain": [
+   "tibia::store::TQmlTransactionHistoryEntry",
+   "QObject"
+  ],
+  "class": "tibia::store::TQmlTransactionHistoryEntry",
+  "classinfo": {},
+  "enums": {
+   "EQmlStoreCurrency": {
+    "TIBIA_COINS": 0,
+    "TOURNAMENT_COINS": 2,
+    "TRUSTED_TIBIA_COINS": 1
+   },
+   "EQmlTransactionType": {
+    "TRANSACTION_TYPE_GIFT_OR_REFUND": 2,
+    "TRANSACTION_TYPE_NEGATIVE": 1,
+    "TRANSACTION_TYPE_POSITIVE": 0
+   }
+  },
+  "invokables": {},
+  "properties": {
+   "changeText": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlTransactionHistoryEntry",
+    "notify": null,
+    "type": "QString"
+   },
+   "changeValue": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlTransactionHistoryEntry",
+    "notify": null,
+    "type": "int"
+   },
+   "currencyType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlTransactionHistoryEntry",
+    "notify": null,
+    "type": "EQmlStoreCurrency"
+   },
+   "dateString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlTransactionHistoryEntry",
+    "notify": null,
+    "type": "QString"
+   },
+   "description": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlTransactionHistoryEntry",
+    "notify": null,
+    "type": "QString"
+   },
+   "detailsAvailable": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlTransactionHistoryEntry",
+    "notify": null,
+    "type": "bool"
+   },
+   "transactionID": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlTransactionHistoryEntry",
+    "notify": null,
+    "type": "int"
+   },
+   "transactionType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlTransactionHistoryEntry",
+    "notify": null,
+    "type": "EQmlTransactionType"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::store::TStoreDescriptionManager": {
+  "chain": [
+   "tibia::store::TStoreDescriptionManager",
+   "QObject"
+  ],
+  "class": "tibia::store::TStoreDescriptionManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "offerDescriptionLoaded": [
+    "void offerDescriptionLoaded(TOfferID OfferID)"
+   ]
+  },
+  "slots": {
+   "onOfferDescriptionReceived": [
+    "void onOfferDescriptionReceived(TOfferID OfferID, TStoreOfferDescription Description)"
+   ]
+  }
+ },
+ "tibia::store::TStoreGameActionHandler": {
+  "chain": [
+   "tibia::store::TStoreGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::store::TStoreGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleBuyHirelingNameOrSexChangeAction": [
+    "void handleBuyHirelingNameOrSexChangeAction(std::shared_ptr<tibia::input::TGameActionBuyHirelingNameOrSexChange> pGameAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleOpenStoreGameAction": [
+    "void handleOpenStoreGameAction(std::shared_ptr<tibia::input::TGameActionOpenStore> pGameAction)"
+   ],
+   "handleRequestTransactionDetailsGameAction": [
+    "void handleRequestTransactionDetailsGameAction(std::shared_ptr<tibia::input::TGameActionRequestTransactionDetailsFromServer> pGameAction)"
+   ]
+  }
+ },
+ "tibia::store::TStoreProtocolMessageHandler": {
+  "chain": [
+   "tibia::store::TStoreProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::store::TStoreProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestCharacterNameChangeInputDialog": [
+    "void requestCharacterNameChangeInputDialog(TOfferID OfferIDForCharacterNameChange)"
+   ],
+   "requestCharacterWorldChangeInputDialog": [
+    "void requestCharacterWorldChangeInputDialog(TOfferID OfferIDForWorldChange, TWorldTransferInformation WorldTransferInformation)"
+   ],
+   "requestConfirmationDialog": [
+    "void requestConfirmationDialog(TOfferID Offer, QString Message)"
+   ],
+   "requestHirelingInputDialog": [
+    "void requestHirelingInputDialog(TOfferID OfferIDForHireling)"
+   ],
+   "requestInformationNotification": [
+    "void requestInformationNotification(QString Message)"
+   ],
+   "requestMainCharacterChangeInputDialog": [
+    "void requestMainCharacterChangeInputDialog(TOfferID OfferIDForMainCharChange, std::vector<TPossibleMainCharacterInformation> PossibleMainCharInfo)"
+   ],
+   "requestOpenStoreDialog": [
+    "void requestOpenStoreDialog()"
+   ],
+   "requestPurchaseErrorNotification": [
+    "void requestPurchaseErrorNotification(QString Message)"
+   ],
+   "requestPurchaseSuccessNotification": [
+    "void requestPurchaseSuccessNotification(QString Message)"
+   ],
+   "requestTransactionHistoryErrorNotification": [
+    "void requestTransactionHistoryErrorNotification(QString Message)"
+   ],
+   "requestTransferErrorNotification": [
+    "void requestTransferErrorNotification(QString Message)"
+   ],
+   "requestTransferSuccessNotification": [
+    "void requestTransferSuccessNotification(QString Message)"
+   ],
+   "sendBuyStoreOffer": [
+    "void sendBuyStoreOffer(tibia::protobuf::protocol::GameclientMessageBuyStoreOffer BuyIngameShopOfferMessage)"
+   ],
+   "sendGetOfferDescription": [
+    "void sendGetOfferDescription(tibia::protobuf::protocol::GameclientMessageGetOfferDescription GetOfferDescriptionMessage)"
+   ],
+   "sendGetTransactionHistory": [
+    "void sendGetTransactionHistory(tibia::protobuf::protocol::GameclientMessageGetTransactionHistory GetTransactionHistoryMessage)"
+   ],
+   "sendOpenTransactionHistory": [
+    "void sendOpenTransactionHistory(tibia::protobuf::protocol::GameclientMessageOpenTransactionHistory OpenTransactionHistoryMessage)"
+   ],
+   "sendRequestStoreCategories": [
+    "void sendRequestStoreCategories(tibia::protobuf::protocol::GameclientMessageRequestStoreCategories RequestStoreCategoriesMessage)"
+   ],
+   "sendRequestStoreOffers": [
+    "void sendRequestStoreOffers(tibia::protobuf::protocol::GameclientMessageRequestStoreOffers RequestStoreOffersMessage)"
+   ],
+   "sendRequestTransactionDetails": [
+    "void sendRequestTransactionDetails(tibia::protobuf::protocol::GameclientMessageGetTransactionDetails GetTransactionDetailsMessage)"
+   ],
+   "sendStoreEvent": [
+    "void sendStoreEvent(tibia::protobuf::protocol::GameclientMessageStoreEvent StoreEventMessage)"
+   ],
+   "sendTransferCurrency": [
+    "void sendTransferCurrency(tibia::protobuf::protocol::GameclientMessageTransferCurrency TransferCurrencyMessage)"
+   ],
+   "storeButtonDeeplinkChanged": [
+    "void storeButtonDeeplinkChanged(tibia::store::TStoreOpenParameters StoreDeeplink)"
+   ],
+   "storeButtonIndicatorsChanged": [
+    "void storeButtonIndicatorsChanged(bool SaleFlag, bool NewFlag)"
+   ],
+   "storeImageBaseUrlChanged": [
+    "void storeImageBaseUrlChanged(QUrl BaseUrlForShopImages)"
+   ],
+   "storeOfferDescriptionReceived": [
+    "void storeOfferDescriptionReceived(TOfferID OfferID, TStoreOfferDescription Description)"
+   ]
+  },
+  "slots": {
+   "handleCreditBalanceMessage": [
+    "void handleCreditBalanceMessage(tibia::protobuf::protocol::GameserverMessageCreditBalance CreditBalanceMessage)"
+   ],
+   "handleLoginSuccessMessage": [
+    "void handleLoginSuccessMessage(tibia::protobuf::protocol::GameserverMessageLoginSuccess LoginSuccessMessage)"
+   ],
+   "handleOfferDescriptionMessage": [
+    "void handleOfferDescriptionMessage(tibia::protobuf::protocol::GameserverMessageOfferDescription OfferDescriptionMessage)"
+   ],
+   "handleRequestPurchaseDataMessage": [
+    "void handleRequestPurchaseDataMessage(tibia::protobuf::protocol::GameserverMessageRequestPurchaseData RequestPurchaseDataMessage)"
+   ],
+   "handleSetStoreButtonDeeplinkMessage": [
+    "void handleSetStoreButtonDeeplinkMessage(tibia::protobuf::protocol::GameserverMessageSetStoreButtonDeeplink SetStoreButtonDeeplinkMessage)"
+   ],
+   "handleStoreButtonIndicatorsMessage": [
+    "void handleStoreButtonIndicatorsMessage(tibia::protobuf::protocol::GameserverMessageStoreButtonIndicators StoreButtonIndicatorsMessage)"
+   ],
+   "handleStoreCategoriesMessage": [
+    "void handleStoreCategoriesMessage(tibia::protobuf::protocol::GameserverMessageStoreCategories StoreCategoriesMessage)"
+   ],
+   "handleStoreErrorMessage": [
+    "void handleStoreErrorMessage(tibia::protobuf::protocol::GameserverMessageStoreError StoreErrorMessage)"
+   ],
+   "handleStoreOffersMessage": [
+    "void handleStoreOffersMessage(tibia::protobuf::protocol::GameserverMessageStoreOffers StoreOffersMessage)"
+   ],
+   "handleStoreSuccessMessage": [
+    "void handleStoreSuccessMessage(tibia::protobuf::protocol::GameserverMessageStoreSuccess StoreSuccessMessage)"
+   ],
+   "handleTransactionDetailsMessage": [
+    "void handleTransactionDetailsMessage(tibia::protobuf::protocol::GameserverMessageTransactionDetails TransactionDetailsMessage)"
+   ],
+   "handleTransactionHistoryMessage": [
+    "void handleTransactionHistoryMessage(tibia::protobuf::protocol::GameserverMessageTransactionHistory TransactionHistoryMessage)"
+   ],
+   "handleUpdatingShopBalanceMessage": [
+    "void handleUpdatingShopBalanceMessage(tibia::protobuf::protocol::GameserverMessageUpdatingShopBalance UpdatingShopBalanceMessage)"
+   ]
+  }
+ },
+ "tibia::store::TStoreStorage": {
+  "chain": [
+   "tibia::store::TStoreStorage",
+   "QObject"
+  ],
+  "class": "tibia::store::TStoreStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "activeFilterTagChanged": [
+    "void activeFilterTagChanged()"
+   ],
+   "balanceChanged": [
+    "void balanceChanged()"
+   ],
+   "balanceUpdatingChanged": [
+    "void balanceUpdatingChanged()"
+   ],
+   "categoriesChanged": [
+    "void categoriesChanged()"
+   ],
+   "emptySearchResultReceived": [
+    "void emptySearchResultReceived()"
+   ],
+   "homePageChanged": [
+    "void homePageChanged()"
+   ],
+   "offersChanged": [
+    "void offersChanged(TOfferID PreselectedOfferID)"
+   ],
+   "searchResultsChanged": [
+    "void searchResultsChanged(bool MoreResultsAvailable)"
+   ],
+   "sortOrderChanged": [
+    "void sortOrderChanged()"
+   ],
+   "transactionDetailsLoaded": [
+    "void transactionDetailsLoaded()"
+   ],
+   "transactionHistoryChanged": [
+    "void transactionHistoryChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

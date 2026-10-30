@@ -1,0 +1,113 @@
+{
+ "tibia::assets::TAssetAsyncLoader": {
+  "chain": [
+   "tibia::assets::TAssetAsyncLoader",
+   "QObject"
+  ],
+  "class": "tibia::assets::TAssetAsyncLoader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "assetLoadError": [
+    "void assetLoadError(TAsset Asset, std::string ErrorText)"
+   ],
+   "assetLoaded": [
+    "void assetLoaded(TAsset Asset, std::shared_ptr<::shared::TReadOnlyMemoryBlob> MemoryBlob)"
+   ]
+  },
+  "slots": {
+   "onWorkerThreadAssetLoaded": [
+    "void onWorkerThreadAssetLoaded()"
+   ],
+   "priorityLoadOfSpritesheet": [
+    "void priorityLoadOfSpritesheet(tibia::sprites::TSpritesheetID SpritesheetID)"
+   ]
+  }
+ },
+ "tibia::assets::TAssetAsyncLoaderWorker": {
+  "chain": [
+   "tibia::assets::TAssetAsyncLoaderWorker",
+   "QObject"
+  ],
+  "class": "tibia::assets::TAssetAsyncLoaderWorker",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "assetLoaded": [
+    "void assetLoaded()"
+   ]
+  },
+  "slots": {
+   "startLoading": [
+    "void startLoading()"
+   ]
+  }
+ },
+ "tibia::assets::TAssetHandler": {
+  "chain": [
+   "tibia::assets::TAssetHandler",
+   "QObject"
+  ],
+  "class": "tibia::assets::TAssetHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "newAssetDataToLoad": [
+    "void newAssetDataToLoad(TAsset AssetToLoad, bool Prioritized)"
+   ]
+  },
+  "slots": {
+   "handleAssetData": [
+    "void handleAssetData(TAsset Asset, std::shared_ptr<::shared::TReadOnlyMemoryBlob> pData)"
+   ],
+   "handleSpritesheetMetadata": [
+    "void handleSpritesheetMetadata(std::shared_ptr<tibia::sprites::TSpritesheetsMetadataManager> pSpritesheetsMetadataManager)"
+   ]
+  }
+ },
+ "tibia::assets::TAssetManager": {
+  "chain": [
+   "tibia::assets::TAssetManager",
+   "QObject"
+  ],
+  "class": "tibia::assets::TAssetManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "assetDataAccessible": [
+    "void assetDataAccessible(TAsset Asset, std::shared_ptr<::shared::TReadOnlyMemoryBlob> pData)"
+   ],
+   "assetsComplete": [
+    "void assetsComplete()"
+   ],
+   "error": [
+    "void error(QString reason)"
+   ],
+   "normalizedProgress": [
+    "void normalizedProgress(::shared::NormalizedProgress Progress)"
+   ],
+   "spritesheetMetadataComplete": [
+    "void spritesheetMetadataComplete(tibia::sprites::TSpritesMetadataManagerPointer pSpritesheetsMetadataManager)"
+   ]
+  },
+  "slots": {
+   "assetLoadError": [
+    "void assetLoadError(TAsset Asset, std::string ErrorText)"
+   ],
+   "assetLoaded": [
+    "void assetLoaded(TAsset Asset, std::shared_ptr<::shared::TReadOnlyMemoryBlob> ReadOnlyMemoryBlob)"
+   ],
+   "onNewAdditionalAssetToLoad": [
+    "void onNewAdditionalAssetToLoad(TAsset AssetToLoad, bool Prioritized)"
+   ]
+  }
+ }
+}

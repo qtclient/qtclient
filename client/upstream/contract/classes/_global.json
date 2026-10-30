@@ -1,0 +1,2211 @@
+{
+ "TActivitiesModel": {
+  "chain": [
+   "TActivitiesModel",
+   "QAbstractListModel"
+  ],
+  "class": "TActivitiesModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TActivitiesSortProxyModel": {
+  "chain": [
+   "TActivitiesSortProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TActivitiesSortProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "nameFilter": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActivitiesSortProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   },
+   "showBosses": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActivitiesSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "showHunts": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActivitiesSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "showOther": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActivitiesSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "showQuests": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActivitiesSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "filterChanged": [
+    "void filterChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TAssignableBossModel": {
+  "chain": [
+   "TAssignableBossModel",
+   "QAbstractListModel"
+  ],
+  "class": "TAssignableBossModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TAssignableBossModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TAssignableBossSortProxyModel": {
+  "chain": [
+   "TAssignableBossSortProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TAssignableBossSortProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "resetFilter": [
+    "void resetFilter()"
+   ]
+  },
+  "properties": {
+   "nameFilter": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TAssignableBossSortProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   },
+   "raceIDRoleEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TAssignableBossSortProxyModel",
+    "notify": null,
+    "type": "int"
+   }
+  },
+  "signals": {
+   "filterChanged": [
+    "void filterChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TBlacklistModel": {
+  "chain": [
+   "TBlacklistModel",
+   "QAbstractListModel"
+  ],
+  "class": "TBlacklistModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TBlacklistModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TBossSkinModel": {
+  "chain": [
+   "TBossSkinModel",
+   "QAbstractListModel"
+  ],
+  "class": "TBossSkinModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TBossSkinModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TBossSkinSortProxyModel": {
+  "chain": [
+   "TBossSkinSortProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TBossSkinSortProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "resetFilter": [
+    "void resetFilter()"
+   ]
+  },
+  "properties": {
+   "outfitNameFilter": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBossSkinSortProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "filterChanged": [
+    "void filterChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TBossTrackerModel": {
+  "chain": [
+   "TBossTrackerModel",
+   "QAbstractListModel"
+  ],
+  "class": "TBossTrackerModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TBossesModel": {
+  "chain": [
+   "TBossesModel",
+   "QAbstractListModel"
+  ],
+  "class": "TBossesModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TButtonBarModel": {
+  "chain": [
+   "TButtonBarModel",
+   "QAbstractListModel"
+  ],
+  "class": "TButtonBarModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TCharacterTradeNotificationsAbstractListModel": {
+  "chain": [
+   "TCharacterTradeNotificationsAbstractListModel",
+   "QAbstractListModel"
+  ],
+  "class": "TCharacterTradeNotificationsAbstractListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCharacterTradeNotificationsAbstractListModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TCreatureOtherIconModel": {
+  "chain": [
+   "TCreatureOtherIconModel",
+   "QAbstractListModel"
+  ],
+  "class": "TCreatureOtherIconModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TCreatureTrackerModel": {
+  "chain": [
+   "TCreatureTrackerModel",
+   "QAbstractListModel"
+  ],
+  "class": "TCreatureTrackerModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TCustomiseCharacterModel": {
+  "chain": [
+   "TCustomiseCharacterModel",
+   "QAbstractListModel"
+  ],
+  "class": "TCustomiseCharacterModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TCustomiseCharacterModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TCustomizeCharacterSortProxyModel": {
+  "chain": [
+   "TCustomizeCharacterSortProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TCustomizeCharacterSortProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "resetFilter": [
+    "void resetFilter()"
+   ]
+  },
+  "properties": {
+   "numberOfOwnedOutfits": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TCustomizeCharacterSortProxyModel",
+    "notify": null,
+    "type": "int"
+   },
+   "outfitNameFilter": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TCustomizeCharacterSortProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   },
+   "showOnlyOwnOutfits": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TCustomizeCharacterSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "filterChanged": [
+    "void filterChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TDuePaymentModel": {
+  "chain": [
+   "TDuePaymentModel",
+   "QAbstractListModel"
+  ],
+  "class": "TDuePaymentModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TExaltationForgeConversionPageController": {
+  "chain": [
+   "TExaltationForgeConversionPageController",
+   "tibia::gamewindow::IDialogTabPage",
+   "QObject"
+  ],
+  "class": "TExaltationForgeConversionPageController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "convertDust": [
+    "void convertDust()"
+   ],
+   "convertSlivers": [
+    "void convertSlivers()"
+   ],
+   "increaseDustLimit": [
+    "void increaseDustLimit()"
+   ]
+  },
+  "properties": {
+   "convertDustToSliversCost": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeConversionPageController",
+    "notify": null,
+    "type": "int"
+   },
+   "convertDustToSliversResult": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeConversionPageController",
+    "notify": null,
+    "type": "int"
+   },
+   "convertSliversToCoresCost": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeConversionPageController",
+    "notify": null,
+    "type": "int"
+   },
+   "convertSliversToCoresResult": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeConversionPageController",
+    "notify": null,
+    "type": "int"
+   },
+   "currentDustLimit": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeConversionPageController",
+    "notify": "increaseDustLimitValueChanged",
+    "type": "int"
+   },
+   "increaseDustLimitCost": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeConversionPageController",
+    "notify": "increaseDustLimitValueChanged",
+    "type": "int"
+   },
+   "increaseDustLimitResult": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeConversionPageController",
+    "notify": "increaseDustLimitValueChanged",
+    "type": "int"
+   },
+   "maxDustLimitReached": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeConversionPageController",
+    "notify": "increaseDustLimitValueChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "increaseDustLimitValueChanged": [
+    "void increaseDustLimitValueChanged()"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "hideDialogTab": [
+    "void hideDialogTab()"
+   ],
+   "showDialogTab": [
+    "void showDialogTab()"
+   ]
+  }
+ },
+ "TExaltationForgeFusionPageController": {
+  "chain": [
+   "TExaltationForgeFusionPageController",
+   "tibia::gamewindow::IDialogTabPage",
+   "QObject"
+  ],
+  "class": "TExaltationForgeFusionPageController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "baseTierLoss": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": null,
+    "type": "uchar"
+   },
+   "convergenceFusionEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": "convergenceFusionEnabledChanged",
+    "type": "bool"
+   },
+   "dustCostForFusion": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": "fusionObjectChanged",
+    "type": "uchar"
+   },
+   "fusionGoldCost": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": "fusionObjectChanged",
+    "type": "qulonglong"
+   },
+   "fusionObjectTypeId": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": "fusionObjectChanged",
+    "type": "ushort"
+   },
+   "fusionObjectUpgradeTier": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": "fusionObjectChanged",
+    "type": "uchar"
+   },
+   "fusionObjectsModel": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": null,
+    "type": "QVariant"
+   },
+   "improvedTierLoss": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": null,
+    "type": "uchar"
+   },
+   "resourceObjectCount": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": "resourceObjectChanged",
+    "type": "uint"
+   },
+   "resourceObjectTypeId": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": "resourceObjectChanged",
+    "type": "ushort"
+   },
+   "resourceObjectsModel": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": null,
+    "type": "QVariant"
+   },
+   "sucessChance": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": null,
+    "type": "uchar"
+   },
+   "sucessChanceBonus": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeFusionPageController",
+    "notify": null,
+    "type": "uchar"
+   }
+  },
+  "signals": {
+   "convergenceFusionEnabledChanged": [
+    "void convergenceFusionEnabledChanged()"
+   ],
+   "fusionObjectChanged": [
+    "void fusionObjectChanged()"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "resourceObjectChanged": [
+    "void resourceObjectChanged()"
+   ]
+  },
+  "slots": {
+   "fusionObjectSelected": [
+    "void fusionObjectSelected(int TypeID, int UpgradeTier)"
+   ],
+   "hideDialogTab": [
+    "void hideDialogTab()"
+   ],
+   "onFusionGroupsChanged": [
+    "void onFusionGroupsChanged()"
+   ],
+   "prepareOpenDialog": [
+    "void prepareOpenDialog()"
+   ],
+   "requestConvergenceFusion": [
+    "void requestConvergenceFusion()"
+   ],
+   "requestFusion": [
+    "void requestFusion(bool SuccessChanceIncreased, bool TierLossImproved)"
+   ],
+   "resourceObjectSelected": [
+    "void resourceObjectSelected(int TypeID)"
+   ],
+   "setResourceModel": [
+    "void setResourceModel()"
+   ],
+   "showDialogTab": [
+    "void showDialogTab()"
+   ]
+  }
+ },
+ "TExaltationForgeHistoryPageController": {
+  "chain": [
+   "TExaltationForgeHistoryPageController",
+   "tibia::gamewindow::IDialogTabPage",
+   "QObject"
+  ],
+  "class": "TExaltationForgeHistoryPageController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "currentPageId": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeHistoryPageController",
+    "notify": "historyChanged",
+    "type": "ushort"
+   },
+   "exaltationHistoryModel": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeHistoryPageController",
+    "notify": null,
+    "type": "QVariant"
+   },
+   "numberOfPages": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeHistoryPageController",
+    "notify": "historyChanged",
+    "type": "ushort"
+   }
+  },
+  "signals": {
+   "historyChanged": [
+    "void historyChanged()"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "hideDialogTab": [
+    "void hideDialogTab()"
+   ],
+   "onHistoryChanged": [
+    "void onHistoryChanged()"
+   ],
+   "requestNextPage": [
+    "void requestNextPage()"
+   ],
+   "requestPreviousPage": [
+    "void requestPreviousPage()"
+   ],
+   "showDialogTab": [
+    "void showDialogTab()"
+   ]
+  }
+ },
+ "TExaltationForgeTransferPageController": {
+  "chain": [
+   "TExaltationForgeTransferPageController",
+   "tibia::gamewindow::IDialogTabPage",
+   "QObject"
+  ],
+  "class": "TExaltationForgeTransferPageController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "convergenceTransferEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "convergenceTransferEnabledChanged",
+    "type": "bool"
+   },
+   "dustCostForTransfer": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "sourceObjectChanged",
+    "type": "uchar"
+   },
+   "sourceObjectCount": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "sourceObjectChanged",
+    "type": "uint"
+   },
+   "sourceObjectName": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "sourceObjectChanged",
+    "type": "QString"
+   },
+   "sourceObjectTypeId": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "sourceObjectChanged",
+    "type": "ushort"
+   },
+   "sourceObjectUpgradeTier": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "sourceObjectChanged",
+    "type": "uchar"
+   },
+   "sourceObjectsModel": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": null,
+    "type": "QVariant"
+   },
+   "targetObjectTypeId": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "targetObjectChanged",
+    "type": "ushort"
+   },
+   "targetObjectUpgradeTier": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "targetObjectChanged",
+    "type": "uchar"
+   },
+   "targetObjectsModel": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": null,
+    "type": "QVariant"
+   },
+   "transferCoreCost": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "sourceObjectChanged",
+    "type": "ushort"
+   },
+   "transferGoldCost": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TExaltationForgeTransferPageController",
+    "notify": "sourceObjectChanged",
+    "type": "qulonglong"
+   }
+  },
+  "signals": {
+   "convergenceTransferEnabledChanged": [
+    "void convergenceTransferEnabledChanged()"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sourceObjectChanged": [
+    "void sourceObjectChanged()"
+   ],
+   "targetObjectChanged": [
+    "void targetObjectChanged()"
+   ]
+  },
+  "slots": {
+   "hideDialogTab": [
+    "void hideDialogTab()"
+   ],
+   "onTransferGroupsChanged": [
+    "void onTransferGroupsChanged()"
+   ],
+   "prepareOpenDialog": [
+    "void prepareOpenDialog()"
+   ],
+   "requestTransfer": [
+    "void requestTransfer()"
+   ],
+   "showDialogTab": [
+    "void showDialogTab()"
+   ],
+   "sourceSelected": [
+    "void sourceSelected(int TypeID, int UpgradeTier)"
+   ],
+   "targetSelected": [
+    "void targetSelected(int TypeID)"
+   ]
+  }
+ },
+ "TFriendListModel": {
+  "chain": [
+   "TFriendListModel",
+   "QAbstractListModel"
+  ],
+  "class": "TFriendListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TFriendListModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TGainWasteModel": {
+  "chain": [
+   "TGainWasteModel",
+   "QAbstractListModel"
+  ],
+  "class": "TGainWasteModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TImbuedObjectsModel": {
+  "chain": [
+   "TImbuedObjectsModel",
+   "QAbstractListModel"
+  ],
+  "class": "TImbuedObjectsModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TImbuedObjectsSortFilterProxyModel": {
+  "chain": [
+   "TImbuedObjectsSortFilterProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TImbuedObjectsSortFilterProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onOptionsChanged": [
+    "void onOptionsChanged()"
+   ]
+  }
+ },
+ "TInviteListModel": {
+  "chain": [
+   "TInviteListModel",
+   "QAbstractListModel"
+  ],
+  "class": "TInviteListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TInviteListModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TItemHighlightsAbstractListModel": {
+  "chain": [
+   "TItemHighlightsAbstractListModel",
+   "QAbstractListModel"
+  ],
+  "class": "TItemHighlightsAbstractListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TItemHighlightsAbstractListModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TItemHighlightsSortProxyModel": {
+  "chain": [
+   "TItemHighlightsSortProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TItemHighlightsSortProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "filterString": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TItemHighlightsSortProxyModel",
+    "notify": "filterStringChanged",
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "filterStringChanged": [
+    "void filterStringChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TNewsEntryModel": {
+  "chain": [
+   "TNewsEntryModel",
+   "QAbstractListModel"
+  ],
+  "class": "TNewsEntryModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "listUpdated": [
+    "void listUpdated()"
+   ]
+  },
+  "slots": {}
+ },
+ "TNewsEntrySortProxyModel": {
+  "chain": [
+   "TNewsEntrySortProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TNewsEntrySortProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "categoryIdEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TNewsEntrySortProxyModel",
+    "notify": null,
+    "type": "int"
+   },
+   "count": {
+    "flags": [
+     "READ"
+    ],
+    "from": "TNewsEntrySortProxyModel",
+    "notify": "countChanged",
+    "type": "int"
+   },
+   "headlineEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TNewsEntrySortProxyModel",
+    "notify": null,
+    "type": "int"
+   },
+   "isReadEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TNewsEntrySortProxyModel",
+    "notify": null,
+    "type": "int"
+   }
+  },
+  "signals": {
+   "countChanged": [
+    "void countChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TOfflineSkillTrainingData": {
+  "chain": [
+   "TOfflineSkillTrainingData",
+   "tibia::game::TSkillsWidgetEntryData",
+   "QObject"
+  ],
+  "class": "TOfflineSkillTrainingData",
+  "classinfo": {},
+  "enums": {
+   "ESeparatorType": {
+    "BIGGER_SPACE": 1,
+    "CAPTION": 3,
+    "NONE": 0,
+    "SEPARATOR": 2,
+    "XP_BOOST_BUTTON": 4
+   },
+   "EValueColorType": {
+    "DEFAULT": 0,
+    "MODIFIER_NEGATIVE": 2,
+    "MODIFIER_POSITIVE": 1,
+    "MODIFIER_ZERO": 3
+   }
+  },
+  "invokables": {},
+  "properties": {
+   "additionalValueString": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "caption": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "changeHighlight": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "entryVisible": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "iconSource": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "iconTooltip": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "progressBarColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QColor"
+   },
+   "progressBarValue": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "double"
+   },
+   "progressBarVisible": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "separatorType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "ESeparatorType"
+   },
+   "showButton": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "tooltip": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "trainingSkill": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TOfflineSkillTrainingData",
+    "notify": null,
+    "type": "tibia::qmlcomponents::enums::EOfflineTrainingSkillType"
+   },
+   "valueString": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "valueStringColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TSkillsWidgetEntryData",
+    "notify": "changed",
+    "type": "EValueColorType"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "TOutfitPresetsModel": {
+  "chain": [
+   "TOutfitPresetsModel",
+   "QAbstractListModel"
+  ],
+  "class": "TOutfitPresetsModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TOutfitPresetsModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TPerkInfoModel": {
+  "chain": [
+   "TPerkInfoModel",
+   "QAbstractListModel"
+  ],
+  "class": "TPerkInfoModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TPresetInfoModel": {
+  "chain": [
+   "TPresetInfoModel",
+   "QAbstractListModel"
+  ],
+  "class": "TPresetInfoModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "nameEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TPresetInfoModel",
+    "notify": null,
+    "type": "int"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "TPreyBestiarySelectionModel": {
+  "chain": [
+   "TPreyBestiarySelectionModel",
+   "QAbstractListModel"
+  ],
+  "class": "TPreyBestiarySelectionModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TPreyBestiarySelectionModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TQuestLinePartsModel": {
+  "chain": [
+   "TQuestLinePartsModel",
+   "QAbstractListModel"
+  ],
+  "class": "TQuestLinePartsModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TQuestLinePartsSortFilterProxyModel": {
+  "chain": [
+   "TQuestLinePartsSortFilterProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TQuestLinePartsSortFilterProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "questPartDescriptionEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TQuestLinePartsSortFilterProxyModel",
+    "notify": null,
+    "type": "int"
+   },
+   "questPartIdEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TQuestLinePartsSortFilterProxyModel",
+    "notify": null,
+    "type": "int"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "TQuestLinesModel": {
+  "chain": [
+   "TQuestLinesModel",
+   "QAbstractListModel"
+  ],
+  "class": "TQuestLinesModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TQuestLinesSortFilterProxyModel": {
+  "chain": [
+   "TQuestLinesSortFilterProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TQuestLinesSortFilterProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "resetFilter": [
+    "void resetFilter()"
+   ]
+  },
+  "properties": {
+   "nameFilter": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TQuestLinesSortFilterProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   },
+   "questLineIdEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TQuestLinesSortFilterProxyModel",
+    "notify": null,
+    "type": "int"
+   },
+   "questLineNameEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TQuestLinesSortFilterProxyModel",
+    "notify": null,
+    "type": "int"
+   },
+   "sortOrder": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TQuestLinesSortFilterProxyModel",
+    "notify": "sortingChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "filterChanged": [
+    "void filterChanged()"
+   ],
+   "sortingChanged": [
+    "void sortingChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TShapedPerkOptionsSortFilterProxyModel": {
+  "chain": [
+   "TShapedPerkOptionsSortFilterProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TShapedPerkOptionsSortFilterProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "filterChanged": [
+    "void filterChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TSkillWheelCornerQMLInfo": {
+  "chain": [
+   "TSkillWheelCornerQMLInfo",
+   "QObject"
+  ],
+  "class": "TSkillWheelCornerQMLInfo",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "fillPercent": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelCornerQMLInfo",
+    "notify": null,
+    "type": "double"
+   },
+   "gemImageSource": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelCornerQMLInfo",
+    "notify": null,
+    "type": "QUrl"
+   },
+   "id": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelCornerQMLInfo",
+    "notify": null,
+    "type": "tibia::qmlcomponents::enums::EPosition"
+   },
+   "largePerkId": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelCornerQMLInfo",
+    "notify": null,
+    "type": "int"
+   },
+   "level": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelCornerQMLInfo",
+    "notify": null,
+    "type": "int"
+   },
+   "socketBezelSource": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelCornerQMLInfo",
+    "notify": null,
+    "type": "QUrl"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "TSkillWheelTileQMLInfo": {
+  "chain": [
+   "TSkillWheelTileQMLInfo",
+   "QObject"
+  ],
+  "class": "TSkillWheelTileQMLInfo",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "fillPercent": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelTileQMLInfo",
+    "notify": null,
+    "type": "double"
+   },
+   "id": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelTileQMLInfo",
+    "notify": null,
+    "type": "tibia::qmlcomponents::enums::ESkillGridTile"
+   },
+   "largeImage": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelTileQMLInfo",
+    "notify": null,
+    "type": "QUrl"
+   },
+   "mediumPerkId": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelTileQMLInfo",
+    "notify": null,
+    "type": "int"
+   },
+   "modType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelTileQMLInfo",
+    "notify": null,
+    "type": "tibia::qmlcomponents::enums::EGemModType"
+   },
+   "smallPerkId": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelTileQMLInfo",
+    "notify": null,
+    "type": "int"
+   },
+   "unlocked": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TSkillWheelTileQMLInfo",
+    "notify": null,
+    "type": "bool"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "TSpellListModel": {
+  "chain": [
+   "TSpellListModel",
+   "QAbstractListModel"
+  ],
+  "class": "TSpellListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TTeamMembersModel": {
+  "chain": [
+   "TTeamMembersModel",
+   "QAbstractListModel"
+  ],
+  "class": "TTeamMembersModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TTeamMembersSortProxyModel": {
+  "chain": [
+   "TTeamMembersSortProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TTeamMembersSortProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "countAccepted": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamMembersSortProxyModel",
+    "notify": "countChanged",
+    "type": "uint"
+   },
+   "countDruid": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamMembersSortProxyModel",
+    "notify": "countChanged",
+    "type": "uint"
+   },
+   "countInvited": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamMembersSortProxyModel",
+    "notify": "countChanged",
+    "type": "uint"
+   },
+   "countKnight": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamMembersSortProxyModel",
+    "notify": "countChanged",
+    "type": "uint"
+   },
+   "countMonk": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamMembersSortProxyModel",
+    "notify": "countChanged",
+    "type": "uint"
+   },
+   "countPaladin": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamMembersSortProxyModel",
+    "notify": "countChanged",
+    "type": "uint"
+   },
+   "countPending": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamMembersSortProxyModel",
+    "notify": "countChanged",
+    "type": "uint"
+   },
+   "countRejected": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamMembersSortProxyModel",
+    "notify": "countChanged",
+    "type": "uint"
+   },
+   "countSorcerer": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamMembersSortProxyModel",
+    "notify": "countChanged",
+    "type": "uint"
+   }
+  },
+  "signals": {
+   "countChanged": [
+    "void countChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TTeamsListModel": {
+  "chain": [
+   "TTeamsListModel",
+   "QAbstractListModel"
+  ],
+  "class": "TTeamsListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TTeamsListSortProxyModel": {
+  "chain": [
+   "TTeamsListSortProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TTeamsListSortProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "druidWanted": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "filterLevel": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   },
+   "jitterTime": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "uint"
+   },
+   "knightWanted": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "maxTeamSize": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   },
+   "minTeamSize": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   },
+   "monkWanted": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "nameFilter": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   },
+   "numberOfTeams": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "numberOfTeamsChagned",
+    "type": "int"
+   },
+   "paladinWanted": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "showBosses": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "showHunts": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "showOther": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "showQuests": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "sorcererWanted": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   },
+   "startTimeManager": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TTeamsListSortProxyModel",
+    "notify": null,
+    "type": "QObject*"
+   }
+  },
+  "signals": {
+   "filterChanged": [
+    "void filterChanged()"
+   ],
+   "numberOfTeamsChagned": [
+    "void numberOfTeamsChagned()"
+   ]
+  },
+  "slots": {
+   "anouceFilterChanged": [
+    "void anouceFilterChanged()"
+   ],
+   "anouceFilterChangedAndEmitfilterchanged": [
+    "void anouceFilterChangedAndEmitfilterchanged()"
+   ],
+   "getUIntFilterAsString": [
+    "QString getUIntFilterAsString(uint UIntMember)"
+   ],
+   "setStringAsUIntFilter": [
+    "void setStringAsUIntFilter(QString NumberText, uint& UIntMember)"
+   ]
+  }
+ },
+ "TTextualHighlightsAbstractListModel": {
+  "chain": [
+   "TTextualHighlightsAbstractListModel",
+   "QAbstractListModel"
+  ],
+  "class": "TTextualHighlightsAbstractListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "count": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTextualHighlightsAbstractListModel",
+    "notify": "rowCountChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "rowCountChanged": [
+    "void rowCountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TTextualHighlightsSortProxyModel": {
+  "chain": [
+   "TTextualHighlightsSortProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TTextualHighlightsSortProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "filterString": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTextualHighlightsSortProxyModel",
+    "notify": "filterStringChanged",
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "filterStringChanged": [
+    "void filterStringChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "TTraderInventoryModel": {
+  "chain": [
+   "TTraderInventoryModel",
+   "QAbstractListModel"
+  ],
+  "class": "TTraderInventoryModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "TTraderInventorySortFilterProxyModel": {
+  "chain": [
+   "TTraderInventorySortFilterProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "TTraderInventorySortFilterProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "appearanceIDEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TTraderInventorySortFilterProxyModel",
+    "notify": null,
+    "type": "int"
+   },
+   "liquidTypeEnumValue": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TTraderInventorySortFilterProxyModel",
+    "notify": null,
+    "type": "int"
+   }
+  },
+  "signals": {
+   "filterOrSortingChanged": [
+    "void filterOrSortingChanged()"
+   ]
+  },
+  "slots": {
+   "onNPCTradeOptionsChanged": [
+    "void onNPCTradeOptionsChanged()"
+   ]
+  }
+ },
+ "TUnlockedPlayerGuideEntryListModel": {
+  "chain": [
+   "TUnlockedPlayerGuideEntryListModel",
+   "QAbstractListModel"
+  ],
+  "class": "TUnlockedPlayerGuideEntryListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "qmlcomponentsPlugin": {
+  "chain": [
+   "qmlcomponentsPlugin",
+   "QQmlEngineExtensionPlugin"
+  ],
+  "class": "qmlcomponentsPlugin",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "qmlcomponents_qmlPlugin": {
+  "chain": [
+   "qmlcomponents_qmlPlugin",
+   "QQmlEngineExtensionPlugin"
+  ],
+  "class": "qmlcomponents_qmlPlugin",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ }
+}

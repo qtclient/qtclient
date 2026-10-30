@@ -1,0 +1,12 @@
+QGroupBox {
+          border-image: url(:/images/launcher/clientpackage-background.png) 4 4 4 4 repeat;
+          border-top: 4px transparent;
+          border-left: 4px transparent;
+          border-bottom: 4px transparent;
+          border-right: 4px transparent;
+          background-attachment: fixed;
+          padding-top: -6px;
+          padding-left: -2px;
+          padding-bottom: -8px;
+          padding-right: -2px;
+        }

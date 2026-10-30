@@ -1,0 +1,496 @@
+{
+ "shared::QNetworkAccessManagerWrapper": {
+  "chain": [
+   "shared::QNetworkAccessManagerWrapper",
+   "QObject"
+  ],
+  "class": "shared::QNetworkAccessManagerWrapper",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* pReply, QAuthenticator* pAuthenticator)"
+   ]
+  },
+  "slots": {}
+ },
+ "shared::QNetworkReplyWrapper": {
+  "chain": [
+   "shared::QNetworkReplyWrapper",
+   "QObject"
+  ],
+  "class": "shared::QNetworkReplyWrapper",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "error": [
+    "void error(QNetworkReply::NetworkError code)"
+   ],
+   "finished": [
+    "void finished()"
+   ],
+   "progress": [
+    "void progress(qlonglong BytesReceivedFromRequest)"
+   ]
+  },
+  "slots": {}
+ },
+ "shared::QTextBrowserWithNetwork": {
+  "chain": [
+   "shared::QTextBrowserWithNetwork",
+   "QTextBrowser"
+  ],
+  "class": "shared::QTextBrowserWithNetwork",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onDownloadFailed": [
+    "void onDownloadFailed(QUrl Url, QNetworkReply::NetworkError Code, QString ErrorString)"
+   ],
+   "onDownloadFinished": [
+    "void onDownloadFinished(QUrl Url, QByteArray Data)"
+   ]
+  }
+ },
+ "shared::TCrashReportSender": {
+  "chain": [
+   "shared::TCrashReportSender",
+   "QObject"
+  ],
+  "class": "shared::TCrashReportSender",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onCrashReportSendingFinished": [
+    "void onCrashReportSendingFinished(const QNetworkReply* pServerReply)"
+   ]
+  }
+ },
+ "shared::TDownloadPool": {
+  "chain": [
+   "shared::TDownloadPool",
+   "QObject"
+  ],
+  "class": "shared::TDownloadPool",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "failed": [
+    "void failed(QUrl url, QNetworkReply::NetworkError code, QString errorString)"
+   ],
+   "progress": [
+    "void progress(QUrl Url, qlonglong BytesReceivedFromRequest)"
+   ],
+   "success": [
+    "void success(QUrl url, QByteArray data)"
+   ]
+  },
+  "slots": {}
+ },
+ "shared::TExecutor": {
+  "chain": [
+   "shared::TExecutor",
+   "QObject"
+  ],
+  "class": "shared::TExecutor",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "executed": [
+    "void executed(QRunnable* Task)"
+   ]
+  },
+  "slots": {
+   "emitExecutedSignal": [
+    "void emitExecutedSignal(QRunnable* Task)"
+   ],
+   "start": [
+    "void start(QRunnable* Task)"
+   ]
+  }
+ },
+ "shared::THighlightTimer": {
+  "chain": [
+   "shared::THighlightTimer",
+   "QObject"
+  ],
+  "class": "shared::THighlightTimer",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "highlighted": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "THighlightTimer",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ],
+   "timeout": [
+    "void timeout(bool Protected)"
+   ]
+  },
+  "slots": {}
+ },
+ "shared::TJsonDocumentHttpPostSender": {
+  "chain": [
+   "shared::TJsonDocumentHttpPostSender",
+   "QObject"
+  ],
+  "class": "shared::TJsonDocumentHttpPostSender",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "finished": [
+    "void finished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(QNetworkReply* Reply)"
+   ]
+  }
+ },
+ "shared::TJsonDocumentUploaderBase": {
+  "chain": [
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "shared::TJsonDocumentUploaderBase",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ]
+  }
+ },
+ "shared::TNetworkAccessManagerAuthenticationHandler": {
+  "chain": [
+   "shared::TNetworkAccessManagerAuthenticationHandler",
+   "QObject"
+  ],
+  "class": "shared::TNetworkAccessManagerAuthenticationHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "shared::TPaginationProxyModel": {
+  "chain": [
+   "shared::TPaginationProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "shared::TPaginationProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "rowData": [
+    "QVariantMap rowData(QModelIndex Index)"
+   ]
+  },
+  "properties": {
+   "currentPage": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TPaginationProxyModel",
+    "notify": "paginationDataChanged",
+    "type": "int"
+   },
+   "entriesPerPage": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TPaginationProxyModel",
+    "notify": "paginationDataChanged",
+    "type": "int"
+   },
+   "hasNextPage": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TPaginationProxyModel",
+    "notify": "paginationDataChanged",
+    "type": "bool"
+   },
+   "hasPreviousPage": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TPaginationProxyModel",
+    "notify": "paginationDataChanged",
+    "type": "bool"
+   },
+   "numberOfPages": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TPaginationProxyModel",
+    "notify": "paginationDataChanged",
+    "type": "int"
+   },
+   "sourceModel": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TPaginationProxyModel",
+    "notify": "sourceModelChanged",
+    "type": "QAbstractItemModel*"
+   }
+  },
+  "signals": {
+   "paginationDataChanged": [
+    "void paginationDataChanged()"
+   ],
+   "sourceModelChanged": [
+    "void sourceModelChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "shared::TQtConnectionWrapper": {
+  "chain": [
+   "shared::TQtConnectionWrapper",
+   "QObject"
+  ],
+  "class": "shared::TQtConnectionWrapper",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "signal": [
+    "void signal()"
+   ]
+  },
+  "slots": {
+   "onAsyncTimerTimeout": [
+    "void onAsyncTimerTimeout()"
+   ],
+   "onSignalEmitted": [
+    "void onSignalEmitted()"
+   ]
+  }
+ },
+ "shared::TRPCServiceClient": {
+  "chain": [
+   "shared::TRPCServiceClient",
+   "QObject"
+  ],
+  "class": "shared::TRPCServiceClient",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connectionDisconnected": [
+    "void connectionDisconnected()"
+   ],
+   "connectionError": [
+    "void connectionError(QAbstractSocket::SocketError SocketError, QString ErrorDescription)"
+   ],
+   "connectionEstablished": [
+    "void connectionEstablished(TRPCServiceConnection* pConnection)"
+   ]
+  },
+  "slots": {}
+ },
+ "shared::TRPCServiceConnection": {
+  "chain": [
+   "shared::TRPCServiceConnection",
+   "QObject"
+  ],
+  "class": "shared::TRPCServiceConnection",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connectionError": [
+    "void connectionError(TRPCServiceConnection* pConnection, QAbstractSocket::SocketError SocketError, QString ErrorMessage)"
+   ],
+   "disconnected": [
+    "void disconnected(TRPCServiceConnection* pConnection)"
+   ],
+   "newDataReceived": [
+    "void newDataReceived()"
+   ],
+   "receivedMessage": [
+    "void receivedMessage(TRPCServiceConnection* pConnection, QJsonDocument Message)"
+   ]
+  },
+  "slots": {}
+ },
+ "shared::TRPCServiceServer": {
+  "chain": [
+   "shared::TRPCServiceServer",
+   "QObject"
+  ],
+  "class": "shared::TRPCServiceServer",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connectionEstablished": [
+    "void connectionEstablished(TRPCServiceConnection* pConnection)"
+   ]
+  },
+  "slots": {}
+ },
+ "shared::TSingleThreadedLowPriorityExecutor": {
+  "chain": [
+   "shared::TSingleThreadedLowPriorityExecutor",
+   "shared::TExecutor",
+   "QObject"
+  ],
+  "class": "shared::TSingleThreadedLowPriorityExecutor",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "executed": [
+    "void executed(QRunnable* Task)"
+   ]
+  },
+  "slots": {
+   "emitExecutedSignal": [
+    "void emitExecutedSignal(QRunnable* Task)"
+   ],
+   "start": [
+    "void start(QRunnable* Task)",
+    "void start(QRunnable* Task)"
+   ]
+  }
+ },
+ "shared::TSynchronousExecutor": {
+  "chain": [
+   "shared::TSynchronousExecutor",
+   "shared::TExecutor",
+   "QObject"
+  ],
+  "class": "shared::TSynchronousExecutor",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "executed": [
+    "void executed(QRunnable* Task)"
+   ]
+  },
+  "slots": {
+   "emitExecutedSignal": [
+    "void emitExecutedSignal(QRunnable* Task)"
+   ],
+   "start": [
+    "void start(QRunnable* Task)",
+    "void start(QRunnable* Task)"
+   ]
+  }
+ },
+ "shared::executors_private::TaskExecutorObject": {
+  "chain": [
+   "shared::executors_private::TaskExecutorObject",
+   "QObject"
+  ],
+  "class": "shared::executors_private::TaskExecutorObject",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "execute": [
+    "void execute(QRunnable* Task, TExecutor* ExecutedSignalEmitter)"
+   ]
+  }
+ },
+ "tibia::shared::TDynamicResourcesHelper": {
+  "chain": [
+   "tibia::shared::TDynamicResourcesHelper",
+   "QObject"
+  ],
+  "class": "tibia::shared::TDynamicResourcesHelper",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "resourcesChanged": [
+    "void resourcesChanged()"
+   ]
+  },
+  "slots": {
+   "onResourceFileChanged": [
+    "void onResourceFileChanged(QString ResourceFileFilepath)"
+   ],
+   "onResourceFilesChangedTimerTimeout": [
+    "void onResourceFilesChangedTimerTimeout()"
+   ]
+  }
+ },
+ "tibia::shared::TPlayerStateDisplayInfoModel": {
+  "chain": [
+   "tibia::shared::TPlayerStateDisplayInfoModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::shared::TPlayerStateDisplayInfoModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ }
+}

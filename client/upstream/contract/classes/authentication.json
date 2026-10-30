@@ -1,0 +1,361 @@
+{
+ "tibia::authentication::TAuthenticationProcessController": {
+  "chain": [
+   "tibia::authentication::TAuthenticationProcessController",
+   "QStateMachine"
+  ],
+  "class": "tibia::authentication::TAuthenticationProcessController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "abort": [
+    "void abort()"
+   ],
+   "advanceStateMachine": [
+    "void advanceStateMachine()"
+   ],
+   "advanceStateMachineDirectlyToCharacterSelection": [
+    "void advanceStateMachineDirectlyToCharacterSelection()"
+   ],
+   "advanceStateMachineToLoginUpload": [
+    "void advanceStateMachineToLoginUpload()"
+   ],
+   "advanceStateMachineToWaitForAssetCompletion": [
+    "void advanceStateMachineToWaitForAssetCompletion()"
+   ],
+   "authenticatedChanged": [
+    "void authenticatedChanged(bool IsAuthenticated)"
+   ],
+   "fpsTrackingActiveChanged": [
+    "void fpsTrackingActiveChanged(bool FpsTrackingActive)"
+   ],
+   "optionsTrackingActiveChanged": [
+    "void optionsTrackingActiveChanged(bool OptionsTrackingActive)"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "quitAndPatchClient": [
+    "void quitAndPatchClient()"
+   ],
+   "requestCharacterGameserverLogin": [
+    "void requestCharacterGameserverLogin()"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onAlreadyRequestedEmailCodeRecently": [
+    "void onAlreadyRequestedEmailCodeRecently()"
+   ],
+   "onAlreadyRequestedLoginConfirmationCodeRecently": [
+    "void onAlreadyRequestedLoginConfirmationCodeRecently()"
+   ],
+   "onBeginPatchClientStateEntered": [
+    "void onBeginPatchClientStateEntered()"
+   ],
+   "onEMailCodeRequestCompleted": [
+    "void onEMailCodeRequestCompleted(bool Success)"
+   ],
+   "onInvalidLoginConfirmationToken": [
+    "void onInvalidLoginConfirmationToken()"
+   ],
+   "onLoginAbortedStateEntered": [
+    "void onLoginAbortedStateEntered()"
+   ],
+   "onLoginConfirmationCodeRequestSuccessful": [
+    "void onLoginConfirmationCodeRequestSuccessful(bool Value)"
+   ],
+   "onLoginFailedDueToMissingLoginConfirmation": [
+    "void onLoginFailedDueToMissingLoginConfirmation(QString ConfirmationToken, bool HasPendingCode)"
+   ],
+   "onLoginFailedStateEntered": [
+    "void onLoginFailedStateEntered()"
+   ],
+   "onLoginFailedStateLeft": [
+    "void onLoginFailedStateLeft()"
+   ],
+   "onLoginFinishedSuccessfullyEntered": [
+    "void onLoginFinishedSuccessfullyEntered()"
+   ],
+   "onLoginStateMachineStarted": [
+    "void onLoginStateMachineStarted()"
+   ],
+   "onLoginStateMachineStartedShortcutToCharacterSelection": [
+    "void onLoginStateMachineStartedShortcutToCharacterSelection()"
+   ],
+   "onPlayerDataChanged": [
+    "void onPlayerDataChanged()"
+   ],
+   "onPlayerLevelUp": [
+    "void onPlayerLevelUp()"
+   ],
+   "onRequestNewEMailCode": [
+    "void onRequestNewEMailCode()"
+   ],
+   "onRequestNewLoginConfirmationCode": [
+    "void onRequestNewLoginConfirmationCode(tibia::authentication::ELoginConfirmationMethod Method)"
+   ],
+   "onShowCharacterSelectionStateEntered": [
+    "void onShowCharacterSelectionStateEntered()"
+   ],
+   "onShowCharacterSelectionStateLeft": [
+    "void onShowCharacterSelectionStateLeft()"
+   ],
+   "onShowCharacterTradeDuePaymentEntered": [
+    "void onShowCharacterTradeDuePaymentEntered()"
+   ],
+   "onShowClientOutOfDateStateEntered": [
+    "void onShowClientOutOfDateStateEntered()"
+   ],
+   "onShowDeviceVerificationCodeInputStateEntered": [
+    "void onShowDeviceVerificationCodeInputStateEntered()"
+   ],
+   "onShowDeviceVerificationCodeInputStateLeft": [
+    "void onShowDeviceVerificationCodeInputStateLeft()"
+   ],
+   "onShowEmergencyDialogEntered": [
+    "void onShowEmergencyDialogEntered()"
+   ],
+   "onShowLoginConfirmationInputStateEntered": [
+    "void onShowLoginConfirmationInputStateEntered()"
+   ],
+   "onShowLoginConfirmationInputStateLeft": [
+    "void onShowLoginConfirmationInputStateLeft()"
+   ],
+   "onShowLoginWaitingDialogStateEntered": [
+    "void onShowLoginWaitingDialogStateEntered()"
+   ],
+   "onShowLoginWaitingDialogStateLeft": [
+    "void onShowLoginWaitingDialogStateLeft()"
+   ],
+   "onShowReturnerRewardStateEntered": [
+    "void onShowReturnerRewardStateEntered()"
+   ],
+   "onShowSurveyInvitationStateEntered": [
+    "void onShowSurveyInvitationStateEntered()"
+   ],
+   "onShowTwoFactorEMailInputStateEntered": [
+    "void onShowTwoFactorEMailInputStateEntered()"
+   ],
+   "onShowTwoFactorEMailInputStateLeft": [
+    "void onShowTwoFactorEMailInputStateLeft()"
+   ],
+   "onShowTwoFactorTokenInputStateEntered": [
+    "void onShowTwoFactorTokenInputStateEntered()"
+   ],
+   "onShowTwoFactorTokenInputStateLeft": [
+    "void onShowTwoFactorTokenInputStateLeft()"
+   ],
+   "onStartGameServerLoginStateEntered": [
+    "void onStartGameServerLoginStateEntered()"
+   ],
+   "onTooManyEMailCodeRequests": [
+    "void onTooManyEMailCodeRequests()"
+   ],
+   "onTooManyLoginConfirmationCodeRequests": [
+    "void onTooManyLoginConfirmationCodeRequests()"
+   ],
+   "onWaitForAssetsCompletionEntered": [
+    "void onWaitForAssetsCompletionEntered()"
+   ],
+   "onWaitForAssetsCompletionLeft": [
+    "void onWaitForAssetsCompletionLeft()"
+   ]
+  }
+ },
+ "tibia::authentication::TEmailCodeRequestUploader": {
+  "chain": [
+   "tibia::authentication::TEmailCodeRequestUploader",
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "tibia::authentication::TEmailCodeRequestUploader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "alreadyRequestedEMailCodeRecently": [
+    "void alreadyRequestedEMailCodeRecently()"
+   ],
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "emailCodeRequestCompleted": [
+    "void emailCodeRequestCompleted(bool Success)"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ],
+   "tooManyEmailCodeRequests": [
+    "void tooManyEmailCodeRequests()"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(bool UploadSuccessful, QJsonDocument ReplyFromServerJD)",
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ]
+  }
+ },
+ "tibia::authentication::TGameserverLoginProcessController": {
+  "chain": [
+   "tibia::authentication::TGameserverLoginProcessController",
+   "QObject"
+  ],
+  "class": "tibia::authentication::TGameserverLoginProcessController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connected": [
+    "void connected()"
+   ],
+   "connectionError": [
+    "void connectionError(QString SocketErrorDescription)"
+   ],
+   "disconnected": [
+    "void disconnected()"
+   ]
+  },
+  "slots": {
+   "onGameserverTCPConnectionConnected": [
+    "void onGameserverTCPConnectionConnected(QUrl Url)"
+   ],
+   "onGameserverTCPConnectionDisconnected": [
+    "void onGameserverTCPConnectionDisconnected()"
+   ],
+   "onGameserverTCPConnectionSecondaryConnected": [
+    "void onGameserverTCPConnectionSecondaryConnected(QUrl Url)"
+   ]
+  }
+ },
+ "tibia::authentication::TLoginConfirmationCodeRequestUploader": {
+  "chain": [
+   "tibia::authentication::TLoginConfirmationCodeRequestUploader",
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "tibia::authentication::TLoginConfirmationCodeRequestUploader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "alreadyRequestedLoginConfirmationCodeRecently": [
+    "void alreadyRequestedLoginConfirmationCodeRecently()"
+   ],
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ],
+   "invalidLoginConfirmationToken": [
+    "void invalidLoginConfirmationToken()"
+   ],
+   "loginConfirmationCodeRequestSuccessful": [
+    "void loginConfirmationCodeRequestSuccessful(bool Value)"
+   ],
+   "tooManyLoginConfirmationCodeRequests": [
+    "void tooManyLoginConfirmationCodeRequests()"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(bool UploadSuccessful, QJsonDocument ReplyFromServerJD)",
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ]
+  }
+ },
+ "tibia::authentication::TLoginProtocolMessageHandler": {
+  "chain": [
+   "tibia::authentication::TLoginProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::authentication::TLoginProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "gameLoginAdviceMessage": [
+    "void gameLoginAdviceMessage(QString AdviceMessage)"
+   ],
+   "gameLoginChallengeMessage": [
+    "void gameLoginChallengeMessage()"
+   ],
+   "gameLoginErrorMessage": [
+    "void gameLoginErrorMessage(QString ErrorMessage, ELoginErrorAction Action)"
+   ],
+   "gameLoginWaitMessage": [
+    "void gameLoginWaitMessage(QString WaitMessage, ::shared::TSeconds WaitSecondsUntilNextTry)"
+   ],
+   "gameReadyForSecondaryConnection": [
+    "void gameReadyForSecondaryConnection()"
+   ],
+   "sendLoginMessage": [
+    "void sendLoginMessage(tibia::protobuf::protocol::GameclientMessageLogin)"
+   ],
+   "sendSecondaryLoginMessage": [
+    "void sendSecondaryLoginMessage(tibia::protobuf::protocol::GameclientMessageSecondaryLogin)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::authentication::TLoginRequestUploader": {
+  "chain": [
+   "tibia::authentication::TLoginRequestUploader",
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "tibia::authentication::TLoginRequestUploader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ],
+   "loginFailed": [
+    "void loginFailed(QString ErrorMessage)"
+   ],
+   "loginFailedClientOutOfDate": [
+    "void loginFailedClientOutOfDate()"
+   ],
+   "loginFailedDueToInvalidDeviceCookie": [
+    "void loginFailedDueToInvalidDeviceCookie()"
+   ],
+   "loginFailedDueToInvalidServerResponse": [
+    "void loginFailedDueToInvalidServerResponse()"
+   ],
+   "loginFailedDueToMissingEMailLoginCode": [
+    "void loginFailedDueToMissingEMailLoginCode()"
+   ],
+   "loginFailedDueToMissingLoginConfirmation": [
+    "void loginFailedDueToMissingLoginConfirmation(QString ConfirmationToken, bool hasPendingCode)"
+   ],
+   "loginFailedDueToMissingTwoFactorToken": [
+    "void loginFailedDueToMissingTwoFactorToken()"
+   ],
+   "loginSuccessful": [
+    "void loginSuccessful(TCharacterList CharacterList, TWorldList Worlds, TPlaySessionData PlaySessionData)"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(bool UploadSuccessful, QJsonDocument ReplyFromServerJD)",
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ]
+  }
+ }
+}

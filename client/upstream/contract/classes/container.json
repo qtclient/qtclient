@@ -1,0 +1,574 @@
+{
+ "tibia::container::TContainerGameActionHandler": {
+  "chain": [
+   "tibia::container::TContainerGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::container::TContainerGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendCloseDepotSearch": [
+    "void sendCloseDepotSearch(tibia::protobuf::protocol::GameclientMessageCloseDepotSearch CloseDepotSearchMessage)"
+   ],
+   "sendDepotSearchRetrieve": [
+    "void sendDepotSearchRetrieve(tibia::protobuf::protocol::GameclientMessageDepotSearchRetrieve DepotSearchRetrieveMessage)"
+   ],
+   "sendDepotSearchType": [
+    "void sendDepotSearchType(tibia::protobuf::protocol::GameclientMessageDepotSearchType DepotSearchTypeMessage)"
+   ],
+   "sendEquipObject": [
+    "void sendEquipObject(tibia::protobuf::protocol::GameclientMessageEquipObject EquipObjectMessage)"
+   ],
+   "sendMoveObject": [
+    "void sendMoveObject(tibia::protobuf::protocol::GameclientMessageMoveObject MoveObjectMessage)"
+   ],
+   "sendOpenDepotSearch": [
+    "void sendOpenDepotSearch(tibia::protobuf::protocol::GameclientMessageOpenDepotSearch OpenDepotSearchMessage)"
+   ],
+   "sendOpenParentContainer": [
+    "void sendOpenParentContainer(tibia::protobuf::protocol::GameclientMessageOpenParentContainer OpenParentContainerMessage)"
+   ],
+   "sendStashAction": [
+    "void sendStashAction(tibia::protobuf::protocol::GameclientMessageStashAction StashActionMessage)"
+   ]
+  },
+  "slots": {
+   "handleAddGUITutorialMarkerGameAction": [
+    "void handleAddGUITutorialMarkerGameAction(std::shared_ptr<tibia::input::TGameActionAddGUITutorialMarker> pAddGUITutorialMarkerGameAction)"
+   ],
+   "handleDepotSearchClosedGameAction": [
+    "void handleDepotSearchClosedGameAction()"
+   ],
+   "handleDepotSearchRetrieveGameAction": [
+    "void handleDepotSearchRetrieveGameAction(std::shared_ptr<tibia::input::TGameActionDepotSearchRetrieve> pDepotSearchRetrieveGameAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleMoveObjectGameAction": [
+    "void handleMoveObjectGameAction(std::shared_ptr<tibia::input::TGameActionMoveObject> pGameActionMoveObject)"
+   ],
+   "handleOpenParentContainerGameAction": [
+    "void handleOpenParentContainerGameAction(std::shared_ptr<tibia::input::TGameActionOpenParentContainer> pOpenParentContainerGameAction)"
+   ],
+   "handleRemoveAllTutorialMarkersGameAction": [
+    "void handleRemoveAllTutorialMarkersGameAction(std::shared_ptr<tibia::input::TGameActionRemoveAllTutorialMarkers> pRemoveAllTutorialMarkersGameAction)"
+   ],
+   "handleRequestDepotSearchGameAction": [
+    "void handleRequestDepotSearchGameAction()"
+   ],
+   "handleRequestSearchTypeInDepotGameAction": [
+    "void handleRequestSearchTypeInDepotGameAction(std::shared_ptr<tibia::input::TGameActionRequestSearchTypeInDepot> pRequestSearchTypeInDepotGameAction)"
+   ],
+   "handleStashRetrieveGameAction": [
+    "void handleStashRetrieveGameAction(std::shared_ptr<tibia::input::TGameActionStashRetrieve> pStashRetrieveGameAction)"
+   ],
+   "handleStashStowStackGameAction": [
+    "void handleStashStowStackGameAction(std::shared_ptr<tibia::input::TGameActionStashStowStack> pStashStowStackGameAction)"
+   ],
+   "handleStashStowTypeGameAction": [
+    "void handleStashStowTypeGameAction(std::shared_ptr<tibia::input::TGameActionStashStowType> pStashStowTypeGameAction)"
+   ],
+   "handleStowContainerContentGameAction": [
+    "void handleStowContainerContentGameAction(std::shared_ptr<tibia::input::TGameActionStashStowContainerContent> pStowContainerContentGameAction)"
+   ],
+   "handleTryToEquipGameAction": [
+    "void handleTryToEquipGameAction(std::shared_ptr<tibia::input::TGameActionTryToEquip> pGameActioTryToEquip)"
+   ]
+  }
+ },
+ "tibia::container::TContainerProtocolMessageHandler": {
+  "chain": [
+   "tibia::container::TContainerProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::container::TContainerProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "requestCloseDepotSearchWidget": [
+    "void requestCloseDepotSearchWidget()"
+   ],
+   "requestCloseStashDialog": [
+    "void requestCloseStashDialog()"
+   ],
+   "requestOpenDepotSearchWidget": [
+    "void requestOpenDepotSearchWidget()"
+   ],
+   "requestShowOrRefreshStashDialog": [
+    "void requestShowOrRefreshStashDialog()"
+   ],
+   "requestShowStashMessageDialog": [
+    "void requestShowStashMessageDialog(QString Message)"
+   ],
+   "sendCloseContainerMessage": [
+    "void sendCloseContainerMessage(tibia::protobuf::protocol::GameclientMessageCloseContainer CloseContainerMessage)"
+   ],
+   "sendContainerActionMessage": [
+    "void sendContainerActionMessage(tibia::protobuf::protocol::GameclientMessageContainerAction ContainerActionMessage)"
+   ],
+   "sendGetObjectInfoMessage": [
+    "void sendGetObjectInfoMessage(tibia::protobuf::protocol::GameclientMessageGetObjectInfo GetObjectInfoMessage)"
+   ],
+   "sendSeekInContainerMessage": [
+    "void sendSeekInContainerMessage(tibia::protobuf::protocol::GameclientMessageSeekInContainer SeekInContainerMessage)"
+   ],
+   "sendUpContainerMessage": [
+    "void sendUpContainerMessage(tibia::protobuf::protocol::GameclientMessageUpContainer UpContainerMessage)"
+   ]
+  },
+  "slots": {
+   "handleChangeInContainerMessage": [
+    "void handleChangeInContainerMessage(tibia::protobuf::protocol::GameserverMessageChangeInContainer ChangeInContainerMessage)"
+   ],
+   "handleCloseContainerMessage": [
+    "void handleCloseContainerMessage(tibia::protobuf::protocol::GameserverMessageCloseContainer CloseContainerMessage)"
+   ],
+   "handleCloseDepotSearchMessage": [
+    "void handleCloseDepotSearchMessage(tibia::protobuf::protocol::GameserverMessageCloseDepotSearch CloseDepotSearchMessage)"
+   ],
+   "handleContainerMessage": [
+    "void handleContainerMessage(tibia::protobuf::protocol::GameserverMessageContainer ContainerMessage)"
+   ],
+   "handleCreateInContainerMessage": [
+    "void handleCreateInContainerMessage(tibia::protobuf::protocol::GameserverMessageCreateInContainer CreateInContainerMessage)"
+   ],
+   "handleDeleteInContainerMessage": [
+    "void handleDeleteInContainerMessage(tibia::protobuf::protocol::GameserverMessageDeleteInContainer DeleteInContainerMessage)"
+   ],
+   "handleDeleteInventoryMessage": [
+    "void handleDeleteInventoryMessage(tibia::protobuf::protocol::GameserverMessageDeleteInventory DeleteInventoryMessage)"
+   ],
+   "handleDepotSearchDetailListMessage": [
+    "void handleDepotSearchDetailListMessage(tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList DepotSearchDetailListMessage)"
+   ],
+   "handleDepotSearchResultMessage": [
+    "void handleDepotSearchResultMessage(tibia::protobuf::protocol::GameserverMessageDepotSearchResult DepotSearchResultMessage)"
+   ],
+   "handleObjectInfoMessage": [
+    "void handleObjectInfoMessage(tibia::protobuf::protocol::GameserverMessageObjectInfo ObjectInfoMessage)"
+   ],
+   "handlePlayerInventoryMessage": [
+    "void handlePlayerInventoryMessage(tibia::protobuf::protocol::GameserverMessagePlayerInventory PlayerInventoryMessage)"
+   ],
+   "handleSetInventoryMessage": [
+    "void handleSetInventoryMessage(tibia::protobuf::protocol::GameserverMessageSetInventory SetInventoryMessage)"
+   ],
+   "handleShowMessageDialogMessage": [
+    "void handleShowMessageDialogMessage(tibia::protobuf::protocol::GameserverMessageShowMessageDialog ShowMessageDialogMessage)"
+   ],
+   "handleSpecialContainersAvailableMessage": [
+    "void handleSpecialContainersAvailableMessage(tibia::protobuf::protocol::GameserverMessageSpecialContainersAvailable SpecialContainersAvailableMessage)"
+   ],
+   "handleStashMessage": [
+    "void handleStashMessage(tibia::protobuf::protocol::GameserverMessageStash StashMessage)"
+   ],
+   "requestCloseContainer": [
+    "void requestCloseContainer(tibia::container::TContainerID ContainerID)"
+   ],
+   "requestGetObjectInfo": [
+    "void requestGetObjectInfo(tibia::appearances::TObjectAppearanceInstanceTypeID ObjectInstanceType)"
+   ],
+   "requestGetObjectsInfo": [
+    "void requestGetObjectsInfo(std::set<tibia::appearances::TObjectAppearanceInstanceTypeID,tibia::appearances::TObjectAppearanceInstanceTypeID::TCompareWithoutCount> ObjectInstanceTypes)"
+   ],
+   "requestMoveContentToManagedContainers": [
+    "void requestMoveContentToManagedContainers(tibia::container::TContainerID ContainerID, bool MoveRecursive)"
+   ],
+   "requestNextPageForContainer": [
+    "void requestNextPageForContainer(tibia::container::TContainerID ContainerID)"
+   ],
+   "requestPreviousPageForContainer": [
+    "void requestPreviousPageForContainer(tibia::container::TContainerID ContainerID)"
+   ],
+   "requestSortContainer": [
+    "void requestSortContainer(tibia::container::TContainerID ContainerID, tibia::container::EContainerSortCriteria SortOption, bool SortBackpacksFirst, bool SortRecursive)"
+   ],
+   "requestUpContainer": [
+    "void requestUpContainer(tibia::container::TContainerID ContainerID)"
+   ],
+   "requestUpdateContainer": [
+    "void requestUpdateContainer(tibia::container::TContainerID ContainerID)"
+   ]
+  }
+ },
+ "tibia::container::TContainerSlotQmlInformation": {
+  "chain": [
+   "tibia::container::TContainerSlotQmlInformation",
+   "QObject"
+  ],
+  "class": "tibia::container::TContainerSlotQmlInformation",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "acceptsDrop": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "acceptsDropChanged",
+    "type": "bool"
+   },
+   "backgroundImage": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "backgroundImageChanged",
+    "type": "QString"
+   },
+   "decoItemObjectID": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "appearanceChanged",
+    "type": "uint"
+   },
+   "hasDualWielding": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "appearanceChanged",
+    "type": "bool"
+   },
+   "hookDirection": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "appearanceChanged",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection"
+   },
+   "isUpdatable": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "isUpdatableChanged",
+    "type": "bool"
+   },
+   "liquidType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "appearanceChanged",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType"
+   },
+   "managedContainerTooltip": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "managedContainerTooltipChanged",
+    "type": "QString"
+   },
+   "objectCount": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "appearanceChanged",
+    "type": "uint"
+   },
+   "objectID": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "appearanceChanged",
+    "type": "uint"
+   },
+   "slotID": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "slotIDChanged",
+    "type": "uint"
+   },
+   "text": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "textChanged",
+    "type": "QString"
+   },
+   "tutorialMarkerID": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "tutorialMarkerIDChanged",
+    "type": "tibia::tutorial::TTutorialMarkerID"
+   },
+   "upgradeTier": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TContainerSlotQmlInformation",
+    "notify": "appearanceChanged",
+    "type": "uint"
+   }
+  },
+  "signals": {
+   "acceptsDropChanged": [
+    "void acceptsDropChanged()"
+   ],
+   "appearanceChanged": [
+    "void appearanceChanged()"
+   ],
+   "backgroundImageChanged": [
+    "void backgroundImageChanged()"
+   ],
+   "isUpdatableChanged": [
+    "void isUpdatableChanged()"
+   ],
+   "managedContainerTooltipChanged": [
+    "void managedContainerTooltipChanged()"
+   ],
+   "slotIDChanged": [
+    "void slotIDChanged()"
+   ],
+   "textChanged": [
+    "void textChanged()"
+   ],
+   "tutorialMarkerIDChanged": [
+    "void tutorialMarkerIDChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::container::TContainerStorage": {
+  "chain": [
+   "tibia::container::TContainerStorage",
+   "QObject"
+  ],
+  "class": "tibia::container::TContainerStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "containerRemoved": [
+    "void containerRemoved(tibia::container::TContainerID ContainerID)"
+   ],
+   "containerUpdated": [
+    "void containerUpdated(tibia::container::TContainerID ContainerID, bool IsNewContainer)"
+   ],
+   "manualSortModeChanged": [
+    "void manualSortModeChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::container::TDepotSearchDetailListStorage": {
+  "chain": [
+   "tibia::container::TDepotSearchDetailListStorage",
+   "QObject"
+  ],
+  "class": "tibia::container::TDepotSearchDetailListStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "detailListChanged": [
+    "void detailListChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::container::TInventoryContainer": {
+  "chain": [
+   "tibia::container::TInventoryContainer",
+   "QObject"
+  ],
+  "class": "tibia::container::TInventoryContainer",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "inventoryChanged": [
+    "void inventoryChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::container::TObjectAppearanceInstanceInfoStorage": {
+  "chain": [
+   "tibia::container::TObjectAppearanceInstanceInfoStorage",
+   "QObject"
+  ],
+  "class": "tibia::container::TObjectAppearanceInstanceInfoStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "objectInfosChanged": [
+    "void objectInfosChanged()"
+   ]
+  },
+  "slots": {
+   "onAsyncEmitObjectInfosChanged": [
+    "void onAsyncEmitObjectInfosChanged()"
+   ]
+  }
+ },
+ "tibia::container::TObjectCountStorage": {
+  "chain": [
+   "tibia::container::TObjectCountStorage",
+   "QObject"
+  ],
+  "class": "tibia::container::TObjectCountStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "objectCountsChanged": [
+    "void objectCountsChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::container::TQMLItemSlotData": {
+  "chain": [
+   "tibia::container::TQMLItemSlotData",
+   "QObject"
+  ],
+  "class": "tibia::container::TQMLItemSlotData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "countString": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQMLItemSlotData",
+    "notify": "countChanged",
+    "type": "QString"
+   },
+   "cumulativeCount": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQMLItemSlotData",
+    "notify": "countChanged",
+    "type": "int"
+   },
+   "displayTypeID": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQMLItemSlotData",
+    "notify": "typeIDchanged",
+    "type": "int"
+   },
+   "lootvalueImageSourceOverItem": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQMLItemSlotData",
+    "notify": "lootvalueCategoryChanged",
+    "type": "QString"
+   },
+   "lootvalueImageSourceUnderItem": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQMLItemSlotData",
+    "notify": "lootvalueCategoryChanged",
+    "type": "QString"
+   },
+   "tooltipString": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQMLItemSlotData",
+    "notify": "countChanged",
+    "type": "QString"
+   },
+   "typeID": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TQMLItemSlotData",
+    "notify": "typeIDchanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "countChanged": [
+    "void countChanged()"
+   ],
+   "lootvalueCategoryChanged": [
+    "void lootvalueCategoryChanged()"
+   ],
+   "typeIDchanged": [
+    "void typeIDchanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::container::TStashStorage": {
+  "chain": [
+   "tibia::container::TStashStorage",
+   "tibia::container::TObjectCountStorage",
+   "QObject"
+  ],
+  "class": "tibia::container::TStashStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "objectCountsChanged": [
+    "void objectCountsChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

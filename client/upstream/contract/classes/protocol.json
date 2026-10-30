@@ -1,0 +1,1082 @@
+{
+ "tibia::protocol::TProtocolMessageQueue": {
+  "chain": [
+   "tibia::protocol::TProtocolMessageQueue",
+   "QObject"
+  ],
+  "class": "tibia::protocol::TProtocolMessageQueue",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "clientMessageReadyToProcess": [
+    "void clientMessageReadyToProcess(std::shared_ptr<tibia::protobuf::protocol::GameclientMessage> pClientMessage)"
+   ],
+   "receivedAmbientLightMessage": [
+    "void receivedAmbientLightMessage(tibia::protobuf::protocol::GameserverMessageAmbientLight AmbientLightMessage)"
+   ],
+   "receivedBestiaryTrackerMessage": [
+    "void receivedBestiaryTrackerMessage(tibia::protobuf::protocol::GameserverMessageBestiaryTracker BestiaryTrackerMessage)"
+   ],
+   "receivedBlessingsDialogMessage": [
+    "void receivedBlessingsDialogMessage(tibia::protobuf::protocol::GameserverMessageBlessingsDialog BlessingsDialogMessage)"
+   ],
+   "receivedBlessingsMessage": [
+    "void receivedBlessingsMessage(tibia::protobuf::protocol::GameserverMessageBlessings BlessingsMessage)"
+   ],
+   "receivedBossDifficultySelectionMessage": [
+    "void receivedBossDifficultySelectionMessage(tibia::protobuf::protocol::GameserverMessageBossDifficultySelection BossDifficultySelectionMessage)"
+   ],
+   "receivedBossSlotsMessage": [
+    "void receivedBossSlotsMessage(tibia::protobuf::protocol::GameserverMessageBossSlots BossSlotsMessage)"
+   ],
+   "receivedBossTrackingMessage": [
+    "void receivedBossTrackingMessage(tibia::protobuf::protocol::GameserverMessageBossTracking BossTrackingMessage)"
+   ],
+   "receivedBosstiaryHighlightMessage": [
+    "void receivedBosstiaryHighlightMessage(tibia::protobuf::protocol::GameserverMessageBosstiaryHighlight BosstiaryHighlightMessage)"
+   ],
+   "receivedBosstiaryMessage": [
+    "void receivedBosstiaryMessage(tibia::protobuf::protocol::GameserverMessageBosstiary BosstiaryMessage)"
+   ],
+   "receivedBosstiaryStaticDataMessage": [
+    "void receivedBosstiaryStaticDataMessage(tibia::protobuf::protocol::GameserverMessageBosstiaryStaticData BosstiaryStaticDataMessage)"
+   ],
+   "receivedBottomFloorMessage": [
+    "void receivedBottomFloorMessage(tibia::protobuf::protocol::GameserverMessageBottomFloor BottomFloorMessage)"
+   ],
+   "receivedBottomRowMessage": [
+    "void receivedBottomRowMessage(tibia::protobuf::protocol::GameserverMessageBottomRow BottomRowMessage)"
+   ],
+   "receivedBuddyDataMessage": [
+    "void receivedBuddyDataMessage(tibia::protobuf::protocol::GameserverMessageBuddyData BuddyDataMessage)"
+   ],
+   "receivedBuddyGroupDataMessage": [
+    "void receivedBuddyGroupDataMessage(tibia::protobuf::protocol::GameserverMessageBuddyGroupData BuddyGroupDataMessage)"
+   ],
+   "receivedBuddyStatusChangeMessage": [
+    "void receivedBuddyStatusChangeMessage(tibia::protobuf::protocol::GameserverMessageBuddyStatusChange BuddyStatusChangeMessage)"
+   ],
+   "receivedBugReportsAllowedMessage": [
+    "void receivedBugReportsAllowedMessage(tibia::protobuf::protocol::GameserverMessageBugReportsAllowed Message)"
+   ],
+   "receivedChangeInContainerMessage": [
+    "void receivedChangeInContainerMessage(tibia::protobuf::protocol::GameserverMessageChangeInContainer ChangeInContainerMessage)"
+   ],
+   "receivedChangeOnMapMessage": [
+    "void receivedChangeOnMapMessage(tibia::protobuf::protocol::GameserverMessageChangeOnMap ChangeOnMapMessage)"
+   ],
+   "receivedChannelEventMessage": [
+    "void receivedChannelEventMessage(tibia::protobuf::protocol::GameserverMessageChannelEvent ChannelEventMessage)"
+   ],
+   "receivedChannelsMessage": [
+    "void receivedChannelsMessage(tibia::protobuf::protocol::GameserverMessageChannels ChannelsMessage)"
+   ],
+   "receivedCharacterTradeConfigurationMessage": [
+    "void receivedCharacterTradeConfigurationMessage(tibia::protobuf::protocol::GameserverMessageCharacterTradeConfiguration CharacterTradeConfigurationMessage)"
+   ],
+   "receivedClientCheckMessage": [
+    "void receivedClientCheckMessage(tibia::protobuf::protocol::GameserverMessageClientCheck ClientCheckMessage)"
+   ],
+   "receivedCloseChannelMessage": [
+    "void receivedCloseChannelMessage(tibia::protobuf::protocol::GameserverMessageCloseChannel CloseChannelMessage)"
+   ],
+   "receivedCloseContainerMessage": [
+    "void receivedCloseContainerMessage(tibia::protobuf::protocol::GameserverMessageCloseContainer CloseContainerMessage)"
+   ],
+   "receivedCloseDepotSearchMessage": [
+    "void receivedCloseDepotSearchMessage(tibia::protobuf::protocol::GameserverMessageCloseDepotSearch CloseDepotSearchMessage)"
+   ],
+   "receivedCloseExaltationDialogMessage": [
+    "void receivedCloseExaltationDialogMessage(tibia::protobuf::protocol::GameserverMessageCloseExaltationDialog CloseExaltationDialogMessage)"
+   ],
+   "receivedCloseImbuingDialogMessage": [
+    "void receivedCloseImbuingDialogMessage(tibia::protobuf::protocol::GameserverMessageCloseImbuingDialog CloseImbuingDialogMessage)"
+   ],
+   "receivedCloseNPCTradeMessage": [
+    "void receivedCloseNPCTradeMessage(tibia::protobuf::protocol::GameserverMessageCloseNPCTrade CloseNPCTradeMessage)"
+   ],
+   "receivedCloseRewardWallMessage": [
+    "void receivedCloseRewardWallMessage(tibia::protobuf::protocol::GameserverMessageCloseRewardWall CloseRewardWalleMessage)"
+   ],
+   "receivedCloseTradeMessage": [
+    "void receivedCloseTradeMessage(tibia::protobuf::protocol::GameserverMessageCloseTrade CloseTradeMessage)"
+   ],
+   "receivedConfigureCreaturePodiumMessage": [
+    "void receivedConfigureCreaturePodiumMessage(tibia::protobuf::protocol::GameserverMessageConfigureCreaturePodium ConfirmCreaturePodiumMessage)"
+   ],
+   "receivedContainerMessage": [
+    "void receivedContainerMessage(tibia::protobuf::protocol::GameserverMessageContainer ContainerMessage)"
+   ],
+   "receivedCounterOfferMessage": [
+    "void receivedCounterOfferMessage(tibia::protobuf::protocol::GameserverMessageCounterOffer CounterOfferMessage)"
+   ],
+   "receivedCreateInContainerMessage": [
+    "void receivedCreateInContainerMessage(tibia::protobuf::protocol::GameserverMessageCreateInContainer CreateInContainerMessage)"
+   ],
+   "receivedCreateOnMapMessage": [
+    "void receivedCreateOnMapMessage(tibia::protobuf::protocol::GameserverMessageCreateOnMap CreateOnMapMessage)"
+   ],
+   "receivedCreatureDataMessage": [
+    "void receivedCreatureDataMessage(tibia::protobuf::protocol::GameserverMessageCreatureData CreatureDataMessage)"
+   ],
+   "receivedCreatureHealthMessage": [
+    "void receivedCreatureHealthMessage(tibia::protobuf::protocol::GameserverMessageCreatureHealth CreatureHealthMessage)"
+   ],
+   "receivedCreatureLightMessage": [
+    "void receivedCreatureLightMessage(tibia::protobuf::protocol::GameserverMessageCreatureLight CreatureLightMessage)"
+   ],
+   "receivedCreatureMarksMessage": [
+    "void receivedCreatureMarksMessage(tibia::protobuf::protocol::GameserverMessageCreatureMarks CreatureMarksMessage)"
+   ],
+   "receivedCreatureOutfitMessage": [
+    "void receivedCreatureOutfitMessage(tibia::protobuf::protocol::GameserverMessageCreatureOutfit CreatureOutfitMessage)"
+   ],
+   "receivedCreaturePartyMessage": [
+    "void receivedCreaturePartyMessage(tibia::protobuf::protocol::GameserverMessageCreatureParty CreaturePartyMessage)"
+   ],
+   "receivedCreatureSkullMessage": [
+    "void receivedCreatureSkullMessage(tibia::protobuf::protocol::GameserverMessageCreatureSkull CreatureSkullMessage)"
+   ],
+   "receivedCreatureSpeedMessage": [
+    "void receivedCreatureSpeedMessage(tibia::protobuf::protocol::GameserverMessageCreatureSpeed CreatureSpeedMessage)"
+   ],
+   "receivedCreatureTypeMessage": [
+    "void receivedCreatureTypeMessage(tibia::protobuf::protocol::GameserverMessageCreatureType CreatureTypeMessage)"
+   ],
+   "receivedCreatureUnpassMessage": [
+    "void receivedCreatureUnpassMessage(tibia::protobuf::protocol::GameserverMessageCreatureUnpass CreatureUnpassMessage)"
+   ],
+   "receivedCreatureUpdateMessage": [
+    "void receivedCreatureUpdateMessage(tibia::protobuf::protocol::GameserverMessageCreatureUpdate CreatureUpdateMessage)"
+   ],
+   "receivedCreditBalanceMessage": [
+    "void receivedCreditBalanceMessage(tibia::protobuf::protocol::GameserverMessageCreditBalance CreditBalanceMessage)"
+   ],
+   "receivedCyclopediaCharacterInfoMessage": [
+    "void receivedCyclopediaCharacterInfoMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaCharacterInfo CharacterInfoMessage)"
+   ],
+   "receivedCyclopediaCurrentHouseDataMessage": [
+    "void receivedCyclopediaCurrentHouseDataMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData CyclopediaCurrentHouseDataMessage)"
+   ],
+   "receivedCyclopediaHouseActionResultMessage": [
+    "void receivedCyclopediaHouseActionResultMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult CyclopediaHouseActionResultMessage)"
+   ],
+   "receivedCyclopediaMapDataMessage": [
+    "void receivedCyclopediaMapDataMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaMapData CyclopediaMapDataMessage)"
+   ],
+   "receivedCyclopediaStaticHouseDataMessage": [
+    "void receivedCyclopediaStaticHouseDataMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData CyclopediaStaticHouseDataMessage)"
+   ],
+   "receivedDailyRewardBasicMessage": [
+    "void receivedDailyRewardBasicMessage(tibia::protobuf::protocol::GameserverMessageDailyRewardBasic DailyRewardBasicMessage)"
+   ],
+   "receivedDailyRewardCollectionStateMessage": [
+    "void receivedDailyRewardCollectionStateMessage(tibia::protobuf::protocol::GameserverMessageDailyRewardCollectionState DailyRewardCollectionStateMessage)"
+   ],
+   "receivedDailyRewardHistoryMessage": [
+    "void receivedDailyRewardHistoryMessage(tibia::protobuf::protocol::GameserverMessageDailyRewardHistory DailyRewardHistoryMessage)"
+   ],
+   "receivedDeadMessage": [
+    "void receivedDeadMessage(tibia::protobuf::protocol::GameserverMessageDead DeadMessage)"
+   ],
+   "receivedDeleteInContainerMessage": [
+    "void receivedDeleteInContainerMessage(tibia::protobuf::protocol::GameserverMessageDeleteInContainer DeleteInContainerMessage)"
+   ],
+   "receivedDeleteInventoryMessage": [
+    "void receivedDeleteInventoryMessage(tibia::protobuf::protocol::GameserverMessageDeleteInventory DeleteInventoryMessage)"
+   ],
+   "receivedDeleteOnMapMessage": [
+    "void receivedDeleteOnMapMessage(tibia::protobuf::protocol::GameserverMessageDeleteOnMap DeleteOnMapMessage)"
+   ],
+   "receivedDepotSearchDetailListMessage": [
+    "void receivedDepotSearchDetailListMessage(tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList DepotSearchDetailListMessage)"
+   ],
+   "receivedDepotSearchResultMessage": [
+    "void receivedDepotSearchResultMessage(tibia::protobuf::protocol::GameserverMessageDepotSearchResult DepotSearchResultMessage)"
+   ],
+   "receivedEditGuildMessageMessage": [
+    "void receivedEditGuildMessageMessage(tibia::protobuf::protocol::GameserverMessageEditGuildMessage EditGuildMessageMessage)"
+   ],
+   "receivedEditListMessage": [
+    "void receivedEditListMessage(tibia::protobuf::protocol::GameserverMessageEditList EditListMessage)"
+   ],
+   "receivedEditTextMessage": [
+    "void receivedEditTextMessage(tibia::protobuf::protocol::GameserverMessageEditText EditTextMessage)"
+   ],
+   "receivedExaltationBaseDataMessage": [
+    "void receivedExaltationBaseDataMessage(tibia::protobuf::protocol::GameserverMessageExaltationBaseData ExaltationBaseDataMessage)"
+   ],
+   "receivedExaltationDialogRefreshMessage": [
+    "void receivedExaltationDialogRefreshMessage(tibia::protobuf::protocol::GameserverMessageExaltationDialogRefresh ExaltationDialogRefreshMessage)"
+   ],
+   "receivedExaltationHistoryMessage": [
+    "void receivedExaltationHistoryMessage(tibia::protobuf::protocol::GameserverMessageExaltationHistory xaltationHistoryhMessage)"
+   ],
+   "receivedExaltationResultMessage": [
+    "void receivedExaltationResultMessage(tibia::protobuf::protocol::GameserverMessageExaltationResult ExaltationResultMessage)"
+   ],
+   "receivedExivaSuppressedMessage": [
+    "void receivedExivaSuppressedMessage(tibia::protobuf::protocol::GameserverMessageExivaSuppressed ExivaSuppressedMessage)"
+   ],
+   "receivedFieldDataMessage": [
+    "void receivedFieldDataMessage(tibia::protobuf::protocol::GameserverMessageFieldData FieldDataMessage)"
+   ],
+   "receivedFriendSystemDataMessage": [
+    "void receivedFriendSystemDataMessage(tibia::protobuf::protocol::GameserverMessageFriendSystemData FriendSystemDataMessage)"
+   ],
+   "receivedFullMapMessage": [
+    "void receivedFullMapMessage(tibia::protobuf::protocol::GameserverMessageFullMap FullMapMessage)"
+   ],
+   "receivedGameEventMessage": [
+    "void receivedGameEventMessage(tibia::protobuf::protocol::GameserverMessageGameEvent GameEventMessage)"
+   ],
+   "receivedGemAtelierGemRevealedMessage": [
+    "void receivedGemAtelierGemRevealedMessage(tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed GemAtelierGemRevealedMessage)"
+   ],
+   "receivedGraphicalEffectsMessage": [
+    "void receivedGraphicalEffectsMessage(tibia::protobuf::protocol::GameserverMessageGraphicalEffects GraphicalEffectsMessage)"
+   ],
+   "receivedHighscoresMessage": [
+    "void receivedHighscoresMessage(tibia::protobuf::protocol::GameserverMessageHighscores HighscoresMessage)"
+   ],
+   "receivedHirelingNameChangeMessage": [
+    "void receivedHirelingNameChangeMessage(tibia::protobuf::protocol::GameserverMessageHirelingNameChange HirelingNameChangeMessage)"
+   ],
+   "receivedImbuementDurationsMessage": [
+    "void receivedImbuementDurationsMessage(tibia::protobuf::protocol::GameserverMessageImbuementDurations ImbuementDurationsMessage)"
+   ],
+   "receivedImbuingDialogRefreshMessage": [
+    "void receivedImbuingDialogRefreshMessage(tibia::protobuf::protocol::GameserverMessageImbuingDialogRefresh ImbuingDialogRefreshMessage)"
+   ],
+   "receivedImpactTrackingMessage": [
+    "void receivedImpactTrackingMessage(tibia::protobuf::protocol::GameserverMessageImpactTracking ImpactTrackingMessage)"
+   ],
+   "receivedInspectionListMessage": [
+    "void receivedInspectionListMessage(tibia::protobuf::protocol::GameserverMessageInspectionList InspectionListMessage)"
+   ],
+   "receivedInspectionStateMessage": [
+    "void receivedInspectionStateMessage(tibia::protobuf::protocol::GameserverMessageInspectionState InspectionStatetMessage)"
+   ],
+   "receivedItemLootedMessage": [
+    "void receivedItemLootedMessage(tibia::protobuf::protocol::GameserverMessageItemLooted ItemLootedMessage)"
+   ],
+   "receivedItemWastedMessage": [
+    "void receivedItemWastedMessage(tibia::protobuf::protocol::GameserverMessageItemWasted ItemWastedMessage)"
+   ],
+   "receivedKillTrackingMessage": [
+    "void receivedKillTrackingMessage(tibia::protobuf::protocol::GameserverMessageKillTracking LootTrackingMessage)"
+   ],
+   "receivedLeftColumnMessage": [
+    "void receivedLeftColumnMessage(tibia::protobuf::protocol::GameserverMessageLeftColumn LeftColumnMessage)"
+   ],
+   "receivedLoginAdviceMessage": [
+    "void receivedLoginAdviceMessage(tibia::protobuf::protocol::GameserverMessageLoginAdvice LoginAdviceMessage)"
+   ],
+   "receivedLoginChallengeMessage": [
+    "void receivedLoginChallengeMessage(tibia::protobuf::protocol::GameserverMessageLoginChallenge LoginChallengeMessage)"
+   ],
+   "receivedLoginErrorMessage": [
+    "void receivedLoginErrorMessage(tibia::protobuf::protocol::GameserverMessageLoginError LoginErrorMessage)"
+   ],
+   "receivedLoginSuccessMessage": [
+    "void receivedLoginSuccessMessage(tibia::protobuf::protocol::GameserverMessageLoginSuccess LoginSuccessMessage)"
+   ],
+   "receivedLoginWaitMessage": [
+    "void receivedLoginWaitMessage(tibia::protobuf::protocol::GameserverMessageLoginWait LoginWaitMessage)"
+   ],
+   "receivedMarketBrowseMessage": [
+    "void receivedMarketBrowseMessage(tibia::protobuf::protocol::GameserverMessageMarketBrowse MarketBrowseMessage)"
+   ],
+   "receivedMarketDetailMessage": [
+    "void receivedMarketDetailMessage(tibia::protobuf::protocol::GameserverMessageMarketDetail MarketDetailMessage)"
+   ],
+   "receivedMarketEnterMessage": [
+    "void receivedMarketEnterMessage(tibia::protobuf::protocol::GameserverMessageMarketEnter MarketEnterMessage)"
+   ],
+   "receivedMarketLeaveMessage": [
+    "void receivedMarketLeaveMessage(tibia::protobuf::protocol::GameserverMessageMarketLeave MarketLeaveMessage)"
+   ],
+   "receivedMarketStatisticsMessage": [
+    "void receivedMarketStatisticsMessage(tibia::protobuf::protocol::GameserverMessageMarketStatistics MarketStatisticsMessage)"
+   ],
+   "receivedMessage": [
+    "void receivedMessage(std::shared_ptr<tibia::protobuf::protocol::GameserverMessage> pGameserverMessage)"
+   ],
+   "receivedMessageMessage": [
+    "void receivedMessageMessage(tibia::protobuf::protocol::GameserverMessageMessage MessageMessage)"
+   ],
+   "receivedMonsterCyclopediaBonusEffectsMessage": [
+    "void receivedMonsterCyclopediaBonusEffectsMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects MonsterCyclopediaBonusEffectsMessage)"
+   ],
+   "receivedMonsterCyclopediaMessage": [
+    "void receivedMonsterCyclopediaMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopedia MonsterCyclopediaMessage)"
+   ],
+   "receivedMonsterCyclopediaMonstersMessage": [
+    "void receivedMonsterCyclopediaMonstersMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaMonsters MonsterCyclopediaMonstersMessage)"
+   ],
+   "receivedMonsterCyclopediaNewDetailsMessage": [
+    "void receivedMonsterCyclopediaNewDetailsMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaNewDetails MonsterCyclopediaNewDetailsMessage)"
+   ],
+   "receivedMonsterCyclopediaRaceMessage": [
+    "void receivedMonsterCyclopediaRaceMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaRace MonsterCyclopediaRaceMessage)"
+   ],
+   "receivedMoveCreatureMessage": [
+    "void receivedMoveCreatureMessage(tibia::protobuf::protocol::GameserverMessageMoveCreature MoveCreatureMessage)"
+   ],
+   "receivedMultiUseDelayMessage": [
+    "void receivedMultiUseDelayMessage(tibia::protobuf::protocol::GameserverMessageMultiUseDelay MultiUseDelayMessage)"
+   ],
+   "receivedNPCOfferMessage": [
+    "void receivedNPCOfferMessage(tibia::protobuf::protocol::GameserverMessageNPCOffer NPCOfferMessage)"
+   ],
+   "receivedNpcTalkPartersMessage": [
+    "void receivedNpcTalkPartersMessage(tibia::protobuf::protocol::GameserverMessageNpcTalkParters Message)"
+   ],
+   "receivedObjectInfoMessage": [
+    "void receivedObjectInfoMessage(tibia::protobuf::protocol::GameserverMessageObjectInfo ObjectInfoMessage)"
+   ],
+   "receivedOfferDescriptionMessage": [
+    "void receivedOfferDescriptionMessage(tibia::protobuf::protocol::GameserverMessageOfferDescription OfferDescriptionMessage)"
+   ],
+   "receivedOpenChannelMessage": [
+    "void receivedOpenChannelMessage(tibia::protobuf::protocol::GameserverMessageOpenChannel OpenChannelMessage)"
+   ],
+   "receivedOpenOwnChannelMessage": [
+    "void receivedOpenOwnChannelMessage(tibia::protobuf::protocol::GameserverMessageOpenOwnChannel OpenOwnChannelMessage)"
+   ],
+   "receivedOpenRewardWallMessage": [
+    "void receivedOpenRewardWallMessage(tibia::protobuf::protocol::GameserverMessageOpenRewardWall OpenRewardWalleMessage)"
+   ],
+   "receivedOutfitMemorialMessage": [
+    "void receivedOutfitMemorialMessage(tibia::protobuf::protocol::GameserverMessageOutfitMemorial OutfitMemorialMessage)"
+   ],
+   "receivedOutfitMessage": [
+    "void receivedOutfitMessage(tibia::protobuf::protocol::GameserverMessageOutfit OutfitMessage)"
+   ],
+   "receivedOwnOfferMessage": [
+    "void receivedOwnOfferMessage(tibia::protobuf::protocol::GameserverMessageOwnOffer OwnOfferMessage)"
+   ],
+   "receivedPartyHuntAnalyserMessage": [
+    "void receivedPartyHuntAnalyserMessage(tibia::protobuf::protocol::GameserverMessagePartyHuntAnalyser PartyHuntAnalyserMessage)"
+   ],
+   "receivedPassiveAbilityDataMessage": [
+    "void receivedPassiveAbilityDataMessage(tibia::protobuf::protocol::GameserverMessagePassiveAbilityData PassiveAbilityMessage)"
+   ],
+   "receivedPendingStateEnteredMessage": [
+    "void receivedPendingStateEnteredMessage(tibia::protobuf::protocol::GameserverMessagePendingStateEntered PendingStateEnteredMessage)"
+   ],
+   "receivedPingBackMessage": [
+    "void receivedPingBackMessage(tibia::protobuf::protocol::GameserverMessagePingBack PingBackMessage)"
+   ],
+   "receivedPingMessage": [
+    "void receivedPingMessage(tibia::protobuf::protocol::GameserverMessagePing PingMessage)"
+   ],
+   "receivedPlayerDataBasicMessage": [
+    "void receivedPlayerDataBasicMessage(tibia::protobuf::protocol::GameserverMessagePlayerDataBasic PlayerDataBasicMessage)"
+   ],
+   "receivedPlayerDataCurrentMessage": [
+    "void receivedPlayerDataCurrentMessage(tibia::protobuf::protocol::GameserverMessagePlayerDataCurrent PlayerDataCurrentMessage)"
+   ],
+   "receivedPlayerGoodsMessage": [
+    "void receivedPlayerGoodsMessage(tibia::protobuf::protocol::GameserverMessagePlayerGoods PlayerGoodsMessage)"
+   ],
+   "receivedPlayerInventoryMessage": [
+    "void receivedPlayerInventoryMessage(tibia::protobuf::protocol::GameserverMessagePlayerInventory PlayerInventoryMessage)"
+   ],
+   "receivedPlayerSkillsMessage": [
+    "void receivedPlayerSkillsMessage(tibia::protobuf::protocol::GameserverMessagePlayerSkills PlayerSkillsMessage)"
+   ],
+   "receivedPlayerStateMessage": [
+    "void receivedPlayerStateMessage(tibia::protobuf::protocol::GameserverMessagePlayerState PlayerStateMessage)"
+   ],
+   "receivedPremiumTriggerMessage": [
+    "void receivedPremiumTriggerMessage(tibia::protobuf::protocol::GameserverMessagePremiumTrigger PremiumTriggerMessage)"
+   ],
+   "receivedPreyDataMessage": [
+    "void receivedPreyDataMessage(tibia::protobuf::protocol::GameserverMessagePreyData PreyDatatMessage)"
+   ],
+   "receivedPreyPricesMessage": [
+    "void receivedPreyPricesMessage(tibia::protobuf::protocol::GameserverMessagePreyPrices PreyPricesMessage)"
+   ],
+   "receivedPreyTimeLeftMessage": [
+    "void receivedPreyTimeLeftMessage(tibia::protobuf::protocol::GameserverMessagePreyTimeLeft PreyTimeLeftMessage)"
+   ],
+   "receivedPrivateChannelMessage": [
+    "void receivedPrivateChannelMessage(tibia::protobuf::protocol::GameserverMessagePrivateChannel PrivateChannelMessage)"
+   ],
+   "receivedPvpSituationsMessage": [
+    "void receivedPvpSituationsMessage(tibia::protobuf::protocol::GameserverMessagePvpSituations PvpSituationsMessage)"
+   ],
+   "receivedQuestLineMessage": [
+    "void receivedQuestLineMessage(tibia::protobuf::protocol::GameserverMessageQuestLine QuestLineMessage)"
+   ],
+   "receivedQuestLogMessage": [
+    "void receivedQuestLogMessage(tibia::protobuf::protocol::GameserverMessageQuestLog QuestLogMessage)"
+   ],
+   "receivedReadyForSecondaryConnectionMessage": [
+    "void receivedReadyForSecondaryConnectionMessage(tibia::protobuf::protocol::GameserverMessageReadyForSecondaryConnection ReadyForSecondaryConnectionMessage)"
+   ],
+   "receivedRemoveGraphicalEffectMessage": [
+    "void receivedRemoveGraphicalEffectMessage(tibia::protobuf::protocol::GameserverMessageRemoveGraphicalEffect RemoveGraphicalEffectMessage)"
+   ],
+   "receivedRequestPurchaseDataMessage": [
+    "void receivedRequestPurchaseDataMessage(tibia::protobuf::protocol::GameserverMessageRequestPurchaseData RequestPurchaseDataMessage)"
+   ],
+   "receivedResourceBalanceMessage": [
+    "void receivedResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance ResourceBalanceMessage)"
+   ],
+   "receivedRestingAreaStateMessage": [
+    "void receivedRestingAreaStateMessage(tibia::protobuf::protocol::GameserverMessageRestingAreaState RestingAreaStateMessage)"
+   ],
+   "receivedRightColumnMessage": [
+    "void receivedRightColumnMessage(tibia::protobuf::protocol::GameserverMessageRightColumn RightColumnMessage)"
+   ],
+   "receivedSessionDumpStartMessage": [
+    "void receivedSessionDumpStartMessage(tibia::protobuf::protocol::GameserverMessageSessionDumpStart SessionDumpStartMessage)"
+   ],
+   "receivedSessionEndInformationMessage": [
+    "void receivedSessionEndInformationMessage(tibia::protobuf::protocol::GameserverMessageSessionEndInformation SessionEndInformationMessage)"
+   ],
+   "receivedSetInventoryMessage": [
+    "void receivedSetInventoryMessage(tibia::protobuf::protocol::GameserverMessageSetInventory SetInventoryMessage)"
+   ],
+   "receivedSetStoreButtonDeeplinkMessage": [
+    "void receivedSetStoreButtonDeeplinkMessage(tibia::protobuf::protocol::GameserverMessageSetStoreButtonDeeplink SetStoreButtonDeeplinkMessage)"
+   ],
+   "receivedSetTacticsMessage": [
+    "void receivedSetTacticsMessage(tibia::protobuf::protocol::GameserverMessageSetTactics SetTacticsMessage)"
+   ],
+   "receivedShapedPerkReshapeOffersMessage": [
+    "void receivedShapedPerkReshapeOffersMessage(tibia::protobuf::protocol::GameserverMessageShapedPerkReshapeOffers Message)"
+   ],
+   "receivedShowGameNewsMessage": [
+    "void receivedShowGameNewsMessage(tibia::protobuf::protocol::GameserverMessageShowGameNews ShowGameNewsMessage)"
+   ],
+   "receivedShowMessageDialogMessage": [
+    "void receivedShowMessageDialogMessage(tibia::protobuf::protocol::GameserverMessageShowMessageDialog ShowMessageDialogMessage)"
+   ],
+   "receivedShowModalDialogMessage": [
+    "void receivedShowModalDialogMessage(tibia::protobuf::protocol::GameserverMessageShowModalDialog ShowModalDialogMessage)"
+   ],
+   "receivedShowMultiOfflineTrainingDialogMessage": [
+    "void receivedShowMultiOfflineTrainingDialogMessage(tibia::protobuf::protocol::GameserverMessageShowMultiOfflineTrainingDialog Message)"
+   ],
+   "receivedSkillWheelMessage": [
+    "void receivedSkillWheelMessage(tibia::protobuf::protocol::GameserverMessageSkillWheel SkillGridMessage)"
+   ],
+   "receivedSnapBackMessage": [
+    "void receivedSnapBackMessage(tibia::protobuf::protocol::GameserverMessageSnapBack SnapBackMessage)"
+   ],
+   "receivedSoulSealsDialogMessage": [
+    "void receivedSoulSealsDialogMessage(tibia::protobuf::protocol::GameserverMessageSoulSealsDialog SoulSealsDialogMessage)"
+   ],
+   "receivedSoundTriggerMessage": [
+    "void receivedSoundTriggerMessage(tibia::protobuf::protocol::GameserverMessageSoundTrigger SoundTriggerMessage)"
+   ],
+   "receivedSpecialContainersAvailableMessage": [
+    "void receivedSpecialContainersAvailableMessage(tibia::protobuf::protocol::GameserverMessageSpecialContainersAvailable SpecialContainersAvailableMessage)"
+   ],
+   "receivedSpellDataModificationMessage": [
+    "void receivedSpellDataModificationMessage(tibia::protobuf::protocol::GameserverMessageSpellDataModification SpellDataModificationMessage)"
+   ],
+   "receivedSpellDelayMessage": [
+    "void receivedSpellDelayMessage(tibia::protobuf::protocol::GameserverMessageSpellDelay SpellDelayMessage)"
+   ],
+   "receivedSpellGroupDelayMessage": [
+    "void receivedSpellGroupDelayMessage(tibia::protobuf::protocol::GameserverMessageSpellGroupDelay SpellGroupDelayMessage)"
+   ],
+   "receivedStashMessage": [
+    "void receivedStashMessage(tibia::protobuf::protocol::GameserverMessageStash StashMessage)"
+   ],
+   "receivedStopMessage": [
+    "void receivedStopMessage(tibia::protobuf::protocol::GameserverMessageStop StopMessage)"
+   ],
+   "receivedStoreButtonIndicatorsMessage": [
+    "void receivedStoreButtonIndicatorsMessage(tibia::protobuf::protocol::GameserverMessageStoreButtonIndicators StoreButtonIndicatorsMessage)"
+   ],
+   "receivedStoreCategoriesMessage": [
+    "void receivedStoreCategoriesMessage(tibia::protobuf::protocol::GameserverMessageStoreCategories StoreCategoriesMessage)"
+   ],
+   "receivedStoreErrorMessage": [
+    "void receivedStoreErrorMessage(tibia::protobuf::protocol::GameserverMessageStoreError StoreErrorMessage)"
+   ],
+   "receivedStoreOffersMessage": [
+    "void receivedStoreOffersMessage(tibia::protobuf::protocol::GameserverMessageStoreOffers StoreOffersMessage)"
+   ],
+   "receivedStoreSuccessMessage": [
+    "void receivedStoreSuccessMessage(tibia::protobuf::protocol::GameserverMessageStoreSuccess StoreSuccessMessage)"
+   ],
+   "receivedSwitchPresetMessage": [
+    "void receivedSwitchPresetMessage(tibia::protobuf::protocol::GameserverMessageSwitchPreset SwitchPresetMessage)"
+   ],
+   "receivedTalkMessage": [
+    "void receivedTalkMessage(tibia::protobuf::protocol::GameserverMessageTalk TalkMessage)"
+   ],
+   "receivedTaskboardMessage": [
+    "void receivedTaskboardMessage(tibia::protobuf::protocol::GameserverMessageTaskboard Message)"
+   ],
+   "receivedTeamFinderTeamLeaderMessage": [
+    "void receivedTeamFinderTeamLeaderMessage(tibia::protobuf::protocol::GameserverMessageTeamFinderTeamLeader TeamFinderAssembleTeamMessage)"
+   ],
+   "receivedTeamFinderTeamMemberMessage": [
+    "void receivedTeamFinderTeamMemberMessage(tibia::protobuf::protocol::GameserverMessageTeamFinderTeamMember TeamFinderTeamMemberMessage)"
+   ],
+   "receivedTextForReportMessage": [
+    "void receivedTextForReportMessage(tibia::protobuf::protocol::GameserverMessageTextForReport TextForReportMessage)"
+   ],
+   "receivedTibiaTimeMessage": [
+    "void receivedTibiaTimeMessage(tibia::protobuf::protocol::GameserverMessageTibiaTime TibiaTimeMessage)"
+   ],
+   "receivedTopFloorMessage": [
+    "void receivedTopFloorMessage(tibia::protobuf::protocol::GameserverMessageTopFloor TopFloorMessage)"
+   ],
+   "receivedTopRowMessage": [
+    "void receivedTopRowMessage(tibia::protobuf::protocol::GameserverMessageTopRow TopRowMessage)"
+   ],
+   "receivedTrackedQuestFlagsMessage": [
+    "void receivedTrackedQuestFlagsMessage(tibia::protobuf::protocol::GameserverMessageTrackQuestFlags TrackedQuestFlagsMessage)"
+   ],
+   "receivedTransactionDetailsMessage": [
+    "void receivedTransactionDetailsMessage(tibia::protobuf::protocol::GameserverMessageTransactionDetails TransactionDetails)"
+   ],
+   "receivedTransactionHistoryMessage": [
+    "void receivedTransactionHistoryMessage(tibia::protobuf::protocol::GameserverMessageTransactionHistory TransactionHistoryMessage)"
+   ],
+   "receivedTutorialHintMessage": [
+    "void receivedTutorialHintMessage(tibia::protobuf::protocol::GameserverMessageTutorialHint TutorialHintMessage)"
+   ],
+   "receivedUnjustifiedPointsMessage": [
+    "void receivedUnjustifiedPointsMessage(tibia::protobuf::protocol::GameserverMessageUnjustifiedPoints UnjustifiedPointsMessage)"
+   ],
+   "receivedUnlockedSpellsMessage": [
+    "void receivedUnlockedSpellsMessage(tibia::protobuf::protocol::GameserverMessageUnlockedSpells Message)"
+   ],
+   "receivedUpdateExivaOptionsMessage": [
+    "void receivedUpdateExivaOptionsMessage(tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions ExivaUpdateOptionsMessage)"
+   ],
+   "receivedUpdateManagedContainersMessage": [
+    "void receivedUpdateManagedContainersMessage(tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers Message)"
+   ],
+   "receivedUpdateTargetMessage": [
+    "void receivedUpdateTargetMessage(tibia::protobuf::protocol::GameserverMessageUpdateTarget UpdateTargetMessage)"
+   ],
+   "receivedUpdatingShopBalanceMessage": [
+    "void receivedUpdatingShopBalanceMessage(tibia::protobuf::protocol::GameserverMessageUpdatingShopBalance UpdatingShopBalanceMessage)"
+   ],
+   "receivedVocationSpecificPlayerDataMessage": [
+    "void receivedVocationSpecificPlayerDataMessage(tibia::protobuf::protocol::GameserverMessageVocationSpecificPlayerData PlayerDataCurrentMessage)"
+   ],
+   "receivedWaitMessage": [
+    "void receivedWaitMessage(tibia::protobuf::protocol::GameserverMessageWait WaitMessage)"
+   ],
+   "receivedWeaponProficiencyMessage": [
+    "void receivedWeaponProficiencyMessage(tibia::protobuf::protocol::GameserverMessageWeaponProficiency WeaponProficiencyMessage)"
+   ],
+   "receivedWeaponProficiencyNotificationMessage": [
+    "void receivedWeaponProficiencyNotificationMessage(tibia::protobuf::protocol::GameserverMessageWeaponProficiencyNotification WeaponProficiencyNotificationMessage)"
+   ],
+   "receivedWorldEnteredMessage": [
+    "void receivedWorldEnteredMessage(tibia::protobuf::protocol::GameserverMessageWorldEntered WorldEnteredMessage)"
+   ],
+   "receivedXpChangedMessage": [
+    "void receivedXpChangedMessage(tibia::protobuf::protocol::GameserverMessageXpChanged XpChangedMessage)"
+   ],
+   "sendMessage": [
+    "void sendMessage(std::shared_ptr<tibia::protobuf::protocol::GameclientMessage> pGameclientMessage)"
+   ]
+  },
+  "slots": {
+   "fireEmitSignalForNewClientProtocolMessage": [
+    "void fireEmitSignalForNewClientProtocolMessage()"
+   ],
+   "fireEmitSignalForNewProtocolMessage": [
+    "void fireEmitSignalForNewProtocolMessage()"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "prepareAndEnqueueGameclientMessage": [
+    "void prepareAndEnqueueGameclientMessage(std::shared_ptr<tibia::protobuf::protocol::GameclientMessage> pGameclientMessage, tibia::protobuf::protocol::EGameclientMessageType GameclientMessageType)"
+   ],
+   "sendAcceptTrade": [
+    "void sendAcceptTrade(tibia::protobuf::protocol::GameclientMessageAcceptTrade AcceptTradeMessage)"
+   ],
+   "sendAddBuddy": [
+    "void sendAddBuddy(tibia::protobuf::protocol::GameclientMessageAddBuddy AddBuddyMessage)"
+   ],
+   "sendAnswerModalDialog": [
+    "void sendAnswerModalDialog(tibia::protobuf::protocol::GameclientMessageAnswerModalDialog AnswerModalDialogLineMessage)"
+   ],
+   "sendApplyClearingCharm": [
+    "void sendApplyClearingCharm(tibia::protobuf::protocol::GameclientMessageApplyClearingCharm ApplyClearingCharmMessage)"
+   ],
+   "sendApplyImbuement": [
+    "void sendApplyImbuement(tibia::protobuf::protocol::GameclientMessageApplyImbuement ApplyImbuementMessage)"
+   ],
+   "sendApplySkillWheel": [
+    "void sendApplySkillWheel(tibia::protobuf::protocol::GameclientMessageApplySkillWheel Message)"
+   ],
+   "sendAttack": [
+    "void sendAttack(tibia::protobuf::protocol::GameclientMessageAttack AttackMessage)"
+   ],
+   "sendBlessingsDialog": [
+    "void sendBlessingsDialog(tibia::protobuf::protocol::GameclientMessageBlessingsDialog BlessingsDialogMessage)"
+   ],
+   "sendBossDifficultySelectionChangedMessage": [
+    "void sendBossDifficultySelectionChangedMessage(tibia::protobuf::protocol::GameclientMessageBossDifficultySelection BossDifficultySelectionCommand)"
+   ],
+   "sendBrowseField": [
+    "void sendBrowseField(tibia::protobuf::protocol::GameclientMessageBrowseField BrowseFieldMessage)"
+   ],
+   "sendBuddyGroup": [
+    "void sendBuddyGroup(tibia::protobuf::protocol::GameclientMessageBuddyGroup BuddyGroupMessage)"
+   ],
+   "sendBugReport": [
+    "void sendBugReport(tibia::protobuf::protocol::GameclientMessageBugReport BugReportMessage)"
+   ],
+   "sendBuyObject": [
+    "void sendBuyObject(tibia::protobuf::protocol::GameclientMessageBuyObject BuyObjectMessage)"
+   ],
+   "sendBuyStoreOffer": [
+    "void sendBuyStoreOffer(tibia::protobuf::protocol::GameclientMessageBuyStoreOffer BuyStoreOfferMessage)"
+   ],
+   "sendCancel": [
+    "void sendCancel(tibia::protobuf::protocol::GameclientMessageCancel CancelMessage)"
+   ],
+   "sendCharacterTradeConfiguration": [
+    "void sendCharacterTradeConfiguration(tibia::protobuf::protocol::GameclientMessageCharacterTradeConfigurationAction CharacterTradeConfigurationActionMessage)"
+   ],
+   "sendClientCheck": [
+    "void sendClientCheck(tibia::protobuf::protocol::GameclientMessageClientCheck ClientCheckMessage)"
+   ],
+   "sendClientDetails": [
+    "void sendClientDetails(tibia::protobuf::protocol::GameclientMessageClientDetails Message)"
+   ],
+   "sendCloseContainer": [
+    "void sendCloseContainer(tibia::protobuf::protocol::GameclientMessageCloseContainer CloseContainerMessage)"
+   ],
+   "sendCloseDepotSearch": [
+    "void sendCloseDepotSearch(tibia::protobuf::protocol::GameclientMessageCloseDepotSearch CloseDepotSearchMessage)"
+   ],
+   "sendCloseImbuingDialog": [
+    "void sendCloseImbuingDialog(tibia::protobuf::protocol::GameclientMessageCloseImbuingDialog CloseImbuementDialogMessage)"
+   ],
+   "sendCloseNPCChannel": [
+    "void sendCloseNPCChannel(tibia::protobuf::protocol::GameclientMessageCloseNPCChannel CloseNPCChannelMessage)"
+   ],
+   "sendCloseNPCTrade": [
+    "void sendCloseNPCTrade(tibia::protobuf::protocol::GameclientMessageCloseNPCTrade CloseNPCTradeMessage)"
+   ],
+   "sendCollectDailyReward": [
+    "void sendCollectDailyReward(tibia::protobuf::protocol::GameclientMessageCollectDailyReward CollectDailyRewardMessage)"
+   ],
+   "sendConfigureShowOffSocket": [
+    "void sendConfigureShowOffSocket(tibia::protobuf::protocol::GameclientMessageConfigureShowOffSocket ConfigureShowOffSocketMessage)"
+   ],
+   "sendConnectionPingBack": [
+    "void sendConnectionPingBack(tibia::protobuf::protocol::GameclientMessageConnectionPingBack PingBackMessage)"
+   ],
+   "sendContainerActionMessage": [
+    "void sendContainerActionMessage(tibia::protobuf::protocol::GameclientMessageContainerAction Message)"
+   ],
+   "sendCyclopediaHouseAction": [
+    "void sendCyclopediaHouseAction(tibia::protobuf::protocol::GameclientMessageCyclopediaHouseAction CyclopediaHouseActionMessage)"
+   ],
+   "sendCyclopediaMapAction": [
+    "void sendCyclopediaMapAction(tibia::protobuf::protocol::GameclientMessageCyclopediaMapAction CyclopediaMapActionMessage)"
+   ],
+   "sendDailyRewardHistory": [
+    "void sendDailyRewardHistory(tibia::protobuf::protocol::GameclientMessageDailyRewardHistory DailyRewardHistoryMessage)"
+   ],
+   "sendDepotSearchRetrieve": [
+    "void sendDepotSearchRetrieve(tibia::protobuf::protocol::GameclientMessageDepotSearchRetrieve DepotSearchRetrieveMessage)"
+   ],
+   "sendDepotSearchType": [
+    "void sendDepotSearchType(tibia::protobuf::protocol::GameclientMessageDepotSearchType DepotSearchTypeMessage)"
+   ],
+   "sendEditBossSlot": [
+    "void sendEditBossSlot(tibia::protobuf::protocol::GameclientMessageEditBossSlot EditBossSlotMessage)"
+   ],
+   "sendEditBuddy": [
+    "void sendEditBuddy(tibia::protobuf::protocol::GameclientMessageEditBuddy EditBuddyMessage)"
+   ],
+   "sendEditGuildMessage": [
+    "void sendEditGuildMessage(tibia::protobuf::protocol::GameclientMessageEditGuildMessage EditGuildMessageMessage)"
+   ],
+   "sendEditList": [
+    "void sendEditList(tibia::protobuf::protocol::GameclientMessageEditList EditListMessage)"
+   ],
+   "sendEditText": [
+    "void sendEditText(tibia::protobuf::protocol::GameclientMessageEditText EditTextMessage)"
+   ],
+   "sendEnterWorld": [
+    "void sendEnterWorld(tibia::protobuf::protocol::GameclientMessageEnterWorld EnterWorldMessage)"
+   ],
+   "sendEquipObject": [
+    "void sendEquipObject(tibia::protobuf::protocol::GameclientMessageEquipObject EquipObjectMessage)"
+   ],
+   "sendExaltationAction": [
+    "void sendExaltationAction(tibia::protobuf::protocol::GameclientMessageExaltationAction ExaltationActionMessage)"
+   ],
+   "sendExcludeFromChannel": [
+    "void sendExcludeFromChannel(tibia::protobuf::protocol::GameclientMessageExcludeFromChannel ExcludeFromChannelMessage)"
+   ],
+   "sendFollow": [
+    "void sendFollow(tibia::protobuf::protocol::GameclientMessageFollow FollowMessage)"
+   ],
+   "sendFriendSystemAction": [
+    "void sendFriendSystemAction(tibia::protobuf::protocol::GameclientMessageFriendSystemAction FriendSystemActionMessage)"
+   ],
+   "sendGatherAll": [
+    "void sendGatherAll(tibia::protobuf::protocol::GameclientMessageGatherAll Message)"
+   ],
+   "sendGemAtelier": [
+    "void sendGemAtelier(tibia::protobuf::protocol::GameclientMessageGemAtelier Message)"
+   ],
+   "sendGetChanneList": [
+    "void sendGetChanneList(tibia::protobuf::protocol::GameclientMessageGetChannels GetChannelsMessage)"
+   ],
+   "sendGetObjectInfo": [
+    "void sendGetObjectInfo(tibia::protobuf::protocol::GameclientMessageGetObjectInfo GetObjectInfoMessage)"
+   ],
+   "sendGetOfferDescription": [
+    "void sendGetOfferDescription(tibia::protobuf::protocol::GameclientMessageGetOfferDescription GetOfferDescriptionMessage)"
+   ],
+   "sendGetOutfit": [
+    "void sendGetOutfit(tibia::protobuf::protocol::GameclientMessageGetOutfit GetOutfitMessage)"
+   ],
+   "sendGetQuestLine": [
+    "void sendGetQuestLine(tibia::protobuf::protocol::GameclientMessageGetQuestLine GetQuestLineMessage)"
+   ],
+   "sendGetQuestLog": [
+    "void sendGetQuestLog(tibia::protobuf::protocol::GameclientMessageGetQuestLog GetQuestLogMessage)"
+   ],
+   "sendGetTextForReport": [
+    "void sendGetTextForReport(tibia::protobuf::protocol::GameclientMessageGetTextForReport GetTextForReportMessage)"
+   ],
+   "sendGetTransactionHistory": [
+    "void sendGetTransactionHistory(tibia::protobuf::protocol::GameclientMessageGetTransactionHistory GetTransactionHistoryMessage)"
+   ],
+   "sendGoEast": [
+    "void sendGoEast(tibia::protobuf::protocol::GameclientMessageGoEast GoEastMessage)"
+   ],
+   "sendGoNorth": [
+    "void sendGoNorth(tibia::protobuf::protocol::GameclientMessageGoNorth GoNorthMessage)"
+   ],
+   "sendGoNorthEast": [
+    "void sendGoNorthEast(tibia::protobuf::protocol::GameclientMessageGoNorthEast GoNorthEastMessage)"
+   ],
+   "sendGoNorthWest": [
+    "void sendGoNorthWest(tibia::protobuf::protocol::GameclientMessageGoNorthWest GoNorthWestMessage)"
+   ],
+   "sendGoPath": [
+    "void sendGoPath(tibia::protobuf::protocol::GameclientMessageGoPath GoPathMessage)"
+   ],
+   "sendGoSouth": [
+    "void sendGoSouth(tibia::protobuf::protocol::GameclientMessageGoSouth GoSouthMessage)"
+   ],
+   "sendGoSouthEast": [
+    "void sendGoSouthEast(tibia::protobuf::protocol::GameclientMessageGoSouthEast GoSouthEastMessage)"
+   ],
+   "sendGoSouthWest": [
+    "void sendGoSouthWest(tibia::protobuf::protocol::GameclientMessageGoSouthWest GoSouthWestMessage)"
+   ],
+   "sendGoWest": [
+    "void sendGoWest(tibia::protobuf::protocol::GameclientMessageGoWest GoWestMessage)"
+   ],
+   "sendGreet": [
+    "void sendGreet(tibia::protobuf::protocol::GameclientMessageGreet GreetMessage)"
+   ],
+   "sendGuildMessage": [
+    "void sendGuildMessage(tibia::protobuf::protocol::GameclientMessageGuildMessage GuildMessageMessage)"
+   ],
+   "sendHighscoresMessage": [
+    "void sendHighscoresMessage(tibia::protobuf::protocol::GameclientMessageHighscores HighscoresMessage)"
+   ],
+   "sendInspectObject": [
+    "void sendInspectObject(tibia::protobuf::protocol::GameclientMessageInspectObject InspectObjectMessage)"
+   ],
+   "sendInspectPlayer": [
+    "void sendInspectPlayer(tibia::protobuf::protocol::GameclientMessageInspectPlayer InspectPlayerMessage)"
+   ],
+   "sendInviteToChannel": [
+    "void sendInviteToChannel(tibia::protobuf::protocol::GameclientMessageInviteToChannel InviteToChannelMessage)"
+   ],
+   "sendInviteToParty": [
+    "void sendInviteToParty(tibia::protobuf::protocol::GameclientMessageInviteToParty InviteToPartyMessage)"
+   ],
+   "sendJoinAggression": [
+    "void sendJoinAggression(tibia::protobuf::protocol::GameclientMessageJoinAggression JoinAggressionMessage)"
+   ],
+   "sendJoinChannel": [
+    "void sendJoinChannel(tibia::protobuf::protocol::GameclientMessageJoinChannel JoinChannelMessage)"
+   ],
+   "sendJoinParty": [
+    "void sendJoinParty(tibia::protobuf::protocol::GameclientMessageJoinParty JoinPartyMessage)"
+   ],
+   "sendLeaveChannel": [
+    "void sendLeaveChannel(tibia::protobuf::protocol::GameclientMessageLeaveChannel LeaveChannelMessage)"
+   ],
+   "sendLeaveParty": [
+    "void sendLeaveParty(tibia::protobuf::protocol::GameclientMessageLeaveParty LeavePartyMessage)"
+   ],
+   "sendLogin": [
+    "void sendLogin(tibia::protobuf::protocol::GameclientMessageLogin LoginMessage)"
+   ],
+   "sendLook": [
+    "void sendLook(tibia::protobuf::protocol::GameclientMessageLook LookMessage)"
+   ],
+   "sendLookAtCreature": [
+    "void sendLookAtCreature(tibia::protobuf::protocol::GameclientMessageLookAtCreature LookAtCreatureMessage)"
+   ],
+   "sendLookNPCTrade": [
+    "void sendLookNPCTrade(tibia::protobuf::protocol::GameclientMessageLookNPCTrade LookNPCTradeMessage)"
+   ],
+   "sendLookTrade": [
+    "void sendLookTrade(tibia::protobuf::protocol::GameclientMessageLookTrade LookTradeMessage)"
+   ],
+   "sendManagedContainer": [
+    "void sendManagedContainer(tibia::protobuf::protocol::GameclientMessageManagedContainer Message)"
+   ],
+   "sendMarketAccept": [
+    "void sendMarketAccept(tibia::protobuf::protocol::GameclientMessageMarketAccept MarketAcceptMessage)"
+   ],
+   "sendMarketBrowse": [
+    "void sendMarketBrowse(tibia::protobuf::protocol::GameclientMessageMarketBrowse MarketBrowseMessage)"
+   ],
+   "sendMarketCancel": [
+    "void sendMarketCancel(tibia::protobuf::protocol::GameclientMessageMarketCancel MarketCancelMessage)"
+   ],
+   "sendMarketCreate": [
+    "void sendMarketCreate(tibia::protobuf::protocol::GameclientMessageMarketCreate MarketCreateMessage)"
+   ],
+   "sendMarketLeave": [
+    "void sendMarketLeave(tibia::protobuf::protocol::GameclientMessageMarketLeave MarketLeaveMessage)"
+   ],
+   "sendMarketStatistics": [
+    "void sendMarketStatistics(tibia::protobuf::protocol::GameclientMessageMarketStatistics MarketStatisticsMessage)"
+   ],
+   "sendMonsterBonusEffectAction": [
+    "void sendMonsterBonusEffectAction(tibia::protobuf::protocol::GameclientMessageMonsterBonusEffectAction MonsterBonusEffectActionMessage)"
+   ],
+   "sendMount": [
+    "void sendMount(tibia::protobuf::protocol::GameclientMessageMount MountMessage)"
+   ],
+   "sendMoveObject": [
+    "void sendMoveObject(tibia::protobuf::protocol::GameclientMessageMoveObject MoveObjectMessage)"
+   ],
+   "sendOpenBossSlots": [
+    "void sendOpenBossSlots(tibia::protobuf::protocol::GameclientMessageOpenBossSlots OpenBossSlotsMessage)"
+   ],
+   "sendOpenBosstiary": [
+    "void sendOpenBosstiary(tibia::protobuf::protocol::GameclientMessageOpenBosstiary OpenBosstiaryMessage)"
+   ],
+   "sendOpenChannel": [
+    "void sendOpenChannel(tibia::protobuf::protocol::GameclientMessageOpenChannel OpenChannelMessage)"
+   ],
+   "sendOpenCyclopediaCharacterInfo": [
+    "void sendOpenCyclopediaCharacterInfo(tibia::protobuf::protocol::GameclientMessageOpenCyclopediaCharacterInfo OpenCyclopediaCharacterInfoMessage)"
+   ],
+   "sendOpenDepotSearch": [
+    "void sendOpenDepotSearch(tibia::protobuf::protocol::GameclientMessageOpenDepotSearch OpenDepotSearchMessage)"
+   ],
+   "sendOpenExaltationHistory": [
+    "void sendOpenExaltationHistory(tibia::protobuf::protocol::GameclientMessageOpenExaltationHistory OpenExaltationHistoryMessage)"
+   ],
+   "sendOpenMonsterCyclopedia": [
+    "void sendOpenMonsterCyclopedia(tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopedia OpenMonsterCyclopediaMessage)"
+   ],
+   "sendOpenMonsterCyclopediaMonsters": [
+    "void sendOpenMonsterCyclopediaMonsters(tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaMonsters OpenMonsterCyclopediaMonstersMessage)"
+   ],
+   "sendOpenMonsterCyclopediaRace": [
+    "void sendOpenMonsterCyclopediaRace(tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaRace OpenMonsterCyclopediaRaceMessage)"
+   ],
+   "sendOpenParentContainer": [
+    "void sendOpenParentContainer(tibia::protobuf::protocol::GameclientMessageOpenParentContainer OpenParentContainerMessage)"
+   ],
+   "sendOpenRewardWall": [
+    "void sendOpenRewardWall(tibia::protobuf::protocol::GameclientMessageOpenRewardWall OpenRewardWallMessage)"
+   ],
+   "sendOpenTransactionDetails": [
+    "void sendOpenTransactionDetails(tibia::protobuf::protocol::GameclientMessageGetTransactionDetails GetTransactionDetailsMessage)"
+   ],
+   "sendOpenTransactionHistory": [
+    "void sendOpenTransactionHistory(tibia::protobuf::protocol::GameclientMessageOpenTransactionHistory OpenTransactionHistoryMessage)"
+   ],
+   "sendPartyHuntAnalyser": [
+    "void sendPartyHuntAnalyser(tibia::protobuf::protocol::GameclientMessagePartyHuntAnalyser PartyHuntAnalyserMessage)"
+   ],
+   "sendPassLeadership": [
+    "void sendPassLeadership(tibia::protobuf::protocol::GameclientMessagePassLeadership PassLeadershipMessage)"
+   ],
+   "sendPickObjectToImbue": [
+    "void sendPickObjectToImbue(tibia::protobuf::protocol::GameclientMessagePickObjectToImbue Message)"
+   ],
+   "sendPing": [
+    "void sendPing(tibia::protobuf::protocol::GameclientMessagePing PingMessage)"
+   ],
+   "sendPingBack": [
+    "void sendPingBack(tibia::protobuf::protocol::GameclientMessagePingBack PingBackMessage)"
+   ],
+   "sendPreyAction": [
+    "void sendPreyAction(tibia::protobuf::protocol::GameclientMessagePreyAction PreyActionMessage)"
+   ],
+   "sendPrivateChannel": [
+    "void sendPrivateChannel(tibia::protobuf::protocol::GameclientMessagePrivateChannel PrivateChannelMessage)"
+   ],
+   "sendQuickLoot": [
+    "void sendQuickLoot(tibia::protobuf::protocol::GameclientMessageQuickLoot QuickLootMessage)"
+   ],
+   "sendQuickLootBlackWhitelist": [
+    "void sendQuickLootBlackWhitelist(tibia::protobuf::protocol::GameclientMessageQuickLootBlackWhitelist QuickLootBlackWhitelistMessage)"
+   ],
+   "sendQuitGame": [
+    "void sendQuitGame(tibia::protobuf::protocol::GameclientMessageQuitGame QuitGameMessage)"
+   ],
+   "sendRejectTrade": [
+    "void sendRejectTrade(tibia::protobuf::protocol::GameclientMessageRejectTrade RejectTradeMessage)"
+   ],
+   "sendRemoveBuddy": [
+    "void sendRemoveBuddy(tibia::protobuf::protocol::GameclientMessageRemoveBuddy RemoveBuddyMessage)"
+   ],
+   "sendRequestResourceBalance": [
+    "void sendRequestResourceBalance(tibia::protobuf::protocol::GameclientMessageRequestResourceBalance RequestResourceBalanceMessage)"
+   ],
+   "sendRequestSkillWheel": [
+    "void sendRequestSkillWheel(tibia::protobuf::protocol::GameclientMessageRequestSkillWheel Message)"
+   ],
+   "sendRequestStoreCategories": [
+    "void sendRequestStoreCategories(tibia::protobuf::protocol::GameclientMessageRequestStoreCategories RequestStoreCategoriesMessage)"
+   ],
+   "sendRequestStoreOffers": [
+    "void sendRequestStoreOffers(tibia::protobuf::protocol::GameclientMessageRequestStoreOffers RequestStoreOffersMessage)"
+   ],
+   "sendRevokeInvitation": [
+    "void sendRevokeInvitation(tibia::protobuf::protocol::GameclientMessageRevokeInvitation RevokeInvitationMessage)"
+   ],
+   "sendRotateEast": [
+    "void sendRotateEast(tibia::protobuf::protocol::GameclientMessageRotateEast RotateEastMessage)"
+   ],
+   "sendRotateNorth": [
+    "void sendRotateNorth(tibia::protobuf::protocol::GameclientMessageRotateNorth RotateNorthMessage)"
+   ],
+   "sendRotateSouth": [
+    "void sendRotateSouth(tibia::protobuf::protocol::GameclientMessageRotateSouth RotateSouthMessage)"
+   ],
+   "sendRotateWest": [
+    "void sendRotateWest(tibia::protobuf::protocol::GameclientMessageRotateWest RotateWestMessage)"
+   ],
+   "sendRuleViolationReport": [
+    "void sendRuleViolationReport(tibia::protobuf::protocol::GameclientMessageRuleViolationReport RuleViolationReportMessage)"
+   ],
+   "sendSecondaryLogin": [
+    "void sendSecondaryLogin(tibia::protobuf::protocol::GameclientMessageSecondaryLogin SecondaryLoginMessage)"
+   ],
+   "sendSeekInContainer": [
+    "void sendSeekInContainer(tibia::protobuf::protocol::GameclientMessageSeekInContainer SeekInContainerMessage)"
+   ],
+   "sendSellObject": [
+    "void sendSellObject(tibia::protobuf::protocol::GameclientMessageSellObject SellObjectMessage)"
+   ],
+   "sendSetClientOptions": [
+    "void sendSetClientOptions(tibia::protobuf::protocol::GameclientMessageSetClientOptions Message)"
+   ],
+   "sendSetCreaturePodiumConfiguration": [
+    "void sendSetCreaturePodiumConfiguration(tibia::protobuf::protocol::GameclientMessageSetCreaturePodiumConfiguration SetCreaturePodiumConfigurationMessage)"
+   ],
+   "sendSetExivaOptions": [
+    "void sendSetExivaOptions(tibia::protobuf::protocol::GameclientMessageUpdateExivaOptions UpdateExivaMessage)"
+   ],
+   "sendSetHirelingName": [
+    "void sendSetHirelingName(tibia::protobuf::protocol::GameclientMessageSetHirelingName SetHirelingNameMessage)"
+   ],
+   "sendSetOutfit": [
+    "void sendSetOutfit(tibia::protobuf::protocol::GameclientMessageSetOutfit SetOutfitMessage)"
+   ],
+   "sendSetTactics": [
+    "void sendSetTactics(tibia::protobuf::protocol::GameclientMessageSetTactics SetTacticsMessage)"
+   ],
+   "sendSetVocationMessage": [
+    "void sendSetVocationMessage(tibia::protobuf::protocol::GameclientMessageSetVocation Message)"
+   ],
+   "sendShareExperience": [
+    "void sendShareExperience(tibia::protobuf::protocol::GameclientMessageShareExperience ShareExperienceMessage)"
+   ],
+   "sendSoulSealsFightMonsterMessage": [
+    "void sendSoulSealsFightMonsterMessage(tibia::protobuf::protocol::GameclientMessageSoulSealsFightMonster SoulSealsFightMonsterMessage)"
+   ],
+   "sendSpellTargetConfig": [
+    "void sendSpellTargetConfig(tibia::protobuf::protocol::GameclientMessageSpellTargetConfig SpellTargetConfig)"
+   ],
+   "sendSpellTargetConfigurationOptions": [
+    "void sendSpellTargetConfigurationOptions(tibia::protobuf::protocol::GameclientMessageSpellTargetConfig SpellTargetConfigMessage)"
+   ],
+   "sendStartOfflineTrainingMessage": [
+    "void sendStartOfflineTrainingMessage(tibia::protobuf::protocol::GameclientMessageStartOfflineTraining Message)"
+   ],
+   "sendStashAction": [
+    "void sendStashAction(tibia::protobuf::protocol::GameclientMessageStashAction StashActionMessage)"
+   ],
+   "sendStop": [
+    "void sendStop(tibia::protobuf::protocol::GameclientMessageStop StopMessage)"
+   ],
+   "sendStoreEvent": [
+    "void sendStoreEvent(tibia::protobuf::protocol::GameclientMessageStoreEvent StoreEventMessage)"
+   ],
+   "sendTalkMessage": [
+    "void sendTalkMessage(tibia::protobuf::protocol::GameclientMessageTalk TalkMessage)"
+   ],
+   "sendTaskboardCommandMessage": [
+    "void sendTaskboardCommandMessage(tibia::protobuf::protocol::GameclientMessageTaskboard TaskboardCommand)"
+   ],
+   "sendTeamFinderAssembleTeam": [
+    "void sendTeamFinderAssembleTeam(tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam TeamFinderAssembleTeamMessage)"
+   ],
+   "sendTeamFinderJoinTeam": [
+    "void sendTeamFinderJoinTeam(tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam TeamFinderJoinTeamMessage)"
+   ],
+   "sendTeleport": [
+    "void sendTeleport(tibia::protobuf::protocol::GameclientMessageTeleport TeleportMessage)"
+   ],
+   "sendToggleWrapState": [
+    "void sendToggleWrapState(tibia::protobuf::protocol::GameclientMessageToggleWrapState ToggleWrapStateMessage)"
+   ],
+   "sendTrackBestiaryRace": [
+    "void sendTrackBestiaryRace(tibia::protobuf::protocol::GameclientMessageTrackBestiaryRace TrackBestiaryRaceMessage)"
+   ],
+   "sendTrackImbuementsMessage": [
+    "void sendTrackImbuementsMessage(tibia::protobuf::protocol::GameclientMessageTrackImbuements Message)"
+   ],
+   "sendTrackQuestFlags": [
+    "void sendTrackQuestFlags(tibia::protobuf::protocol::GameclientMessageTrackQuestFlags TrackQuestFlagsMessage)"
+   ],
+   "sendTradeObject": [
+    "void sendTradeObject(tibia::protobuf::protocol::GameclientMessageTradeObject TradeObjectMessage)"
+   ],
+   "sendTransferCurrency": [
+    "void sendTransferCurrency(tibia::protobuf::protocol::GameclientMessageTransferCurrency TransferCurrencyMessage)"
+   ],
+   "sendTurnObject": [
+    "void sendTurnObject(tibia::protobuf::protocol::GameclientMessageTurnObject TurnObjectMessage)"
+   ],
+   "sendUpContainer": [
+    "void sendUpContainer(tibia::protobuf::protocol::GameclientMessageUpContainer UpContainerMessage)"
+   ],
+   "sendUseObject": [
+    "void sendUseObject(tibia::protobuf::protocol::GameclientMessageUseObject UseObjectMessage)"
+   ],
+   "sendUseOnCreature": [
+    "void sendUseOnCreature(tibia::protobuf::protocol::GameclientMessageUseOnCreature UseOnCreatureMessage)"
+   ],
+   "sendUseTwoObjects": [
+    "void sendUseTwoObjects(tibia::protobuf::protocol::GameclientMessageUseTwoObjects UseTwoObjectsMessage)"
+   ],
+   "sendWeaponProficiencyCommandMessage": [
+    "void sendWeaponProficiencyCommandMessage(tibia::protobuf::protocol::GameclientMessageWeaponProficiencyCommand WeaponProficiencyCommand)"
+   ]
+  }
+ }
+}

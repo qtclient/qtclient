@@ -1,0 +1,41 @@
+{
+  "launcher": {
+    "builds": []
+  },
+  "packages": [
+    {
+      "name": "qtclient",
+      "variant": "regular",
+      "directoryname": "QtClient.app",
+      "installautomatically": true,
+      "logolinktarget": "",
+      "builds": [
+        {
+          "os": "macos",
+          "architecture": "arm64;x86_64",
+          "url": "https://github.com/qtclient/qtclient/releases/latest/download/macos-package.json",
+          "versionurl": "https://github.com/qtclient/qtclient/releases/latest/download/macos-package.json.version",
+          "assetsurl": "https://static.tibia.com/launcher/assets-current/assets-macos.json",
+          "assetsversionurl": "https://static.tibia.com/launcher/assets-current/assets.json.sha256"
+        },
+        {
+          "os": "linux",
+          "architecture": "x86_64",
+          "url": "https://github.com/qtclient/qtclient/releases/latest/download/linux-package.json",
+          "versionurl": "https://github.com/qtclient/qtclient/releases/latest/download/linux-package.json.version",
+          "assetsurl": "https://static.tibia.com/launcher/assets-current/assets.json",
+          "assetsversionurl": "https://static.tibia.com/launcher/assets-current/assets.json.sha256"
+        },
+        {
+          "os": "windows",
+          "architecture": "x86_64",
+          "url": "https://github.com/qtclient/qtclient/releases/latest/download/windows-package.json",
+          "versionurl": "https://github.com/qtclient/qtclient/releases/latest/download/windows-package.json.version",
+          "assetsurl": "https://static.tibia.com/launcher/assets-current/assets.json",
+          "assetsversionurl": "https://static.tibia.com/launcher/assets-current/assets.json.sha256"
+        }
+      ]
+    }
+  ],
+  "hints": "https://static.tibia.com/hints.json"
+}

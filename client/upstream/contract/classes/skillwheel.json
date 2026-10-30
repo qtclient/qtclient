@@ -1,0 +1,293 @@
+{
+ "tibia::skillwheel::TInventoryGemListModel": {
+  "chain": [
+   "tibia::skillwheel::TInventoryGemListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::skillwheel::TInventoryGemListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "rowData": [
+    "QVariantMap rowData(QModelIndex Index)"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::skillwheel::TInventoryGemSortFilterProxyModel": {
+  "chain": [
+   "tibia::skillwheel::TInventoryGemSortFilterProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "tibia::skillwheel::TInventoryGemSortFilterProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "rowData": [
+    "QVariantMap rowData(QModelIndex Index)"
+   ]
+  },
+  "properties": {
+   "filterDomainAffinity": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInventoryGemSortFilterProxyModel",
+    "notify": "filterChanged",
+    "type": "int"
+   },
+   "filterGemQuality": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInventoryGemSortFilterProxyModel",
+    "notify": "filterChanged",
+    "type": "int"
+   },
+   "filterModName": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInventoryGemSortFilterProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   },
+   "showLockedOnly": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInventoryGemSortFilterProxyModel",
+    "notify": "filterChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "filterChanged": [
+    "void filterChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::skillwheel::TModListModel": {
+  "chain": [
+   "tibia::skillwheel::TModListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::skillwheel::TModListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "rowData": [
+    "QVariantMap rowData(QModelIndex Index)"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::skillwheel::TModListSortFilterProxyModel": {
+  "chain": [
+   "tibia::skillwheel::TModListSortFilterProxyModel",
+   "QSortFilterProxyModel"
+  ],
+  "class": "tibia::skillwheel::TModListSortFilterProxyModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "rowData": [
+    "QVariantMap rowData(QModelIndex Index)"
+   ]
+  },
+  "properties": {
+   "filterModName": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TModListSortFilterProxyModel",
+    "notify": "filterChanged",
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "filterChanged": [
+    "void filterChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::skillwheel::TQmlSocketedGem": {
+  "chain": [
+   "tibia::skillwheel::TQmlSocketedGem",
+   "QObject"
+  ],
+  "class": "tibia::skillwheel::TQmlSocketedGem",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "gemId": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlSocketedGem",
+    "notify": null,
+    "type": "int"
+   },
+   "gemImageSource": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlSocketedGem",
+    "notify": null,
+    "type": "QUrl"
+   },
+   "socketBezelSource": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlSocketedGem",
+    "notify": null,
+    "type": "QUrl"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::skillwheel::TSkillWheelGameActionHandler": {
+  "chain": [
+   "tibia::skillwheel::TSkillWheelGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::skillwheel::TSkillWheelGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleCreatureGameAction": [
+    "void handleCreatureGameAction(std::shared_ptr<tibia::input::TGameActionCreature> pGameAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleRequestOnwSkillWheelGameAction": [
+    "void handleRequestOnwSkillWheelGameAction()"
+   ],
+   "handleSaveSkillWheelGameAction": [
+    "void handleSaveSkillWheelGameAction(std::shared_ptr<tibia::input::gameactions::TGameActionSaveSkillWheel> pGameAction)"
+   ],
+   "onPlayerCreatureAddedToCreatureStorage": [
+    "void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayerWeak)"
+   ]
+  }
+ },
+ "tibia::skillwheel::TSkillWheelProtocolMessageHandler": {
+  "chain": [
+   "tibia::skillwheel::TSkillWheelProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::skillwheel::TSkillWheelProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendApplySkillWheel": [
+    "void sendApplySkillWheel(tibia::protobuf::protocol::GameclientMessageApplySkillWheel Message)"
+   ],
+   "sendGemAtelierAction": [
+    "void sendGemAtelierAction(tibia::protobuf::protocol::GameclientMessageGemAtelier Message)"
+   ],
+   "sendRequestSkillWheel": [
+    "void sendRequestSkillWheel(tibia::protobuf::protocol::GameclientMessageRequestSkillWheel Message)"
+   ],
+   "sendRequestSkillWheelViaCyclopedia": [
+    "void sendRequestSkillWheelViaCyclopedia(tibia::protobuf::protocol::GameclientMessageOpenCyclopediaCharacterInfo Message)"
+   ]
+  },
+  "slots": {
+   "handleGemAtelierGemRevealedMessage": [
+    "void handleGemAtelierGemRevealedMessage(tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed Message)"
+   ],
+   "handleResourceBalanceMessage": [
+    "void handleResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance Message)"
+   ],
+   "handleSkillWheelMessage": [
+    "void handleSkillWheelMessage(tibia::protobuf::protocol::GameserverMessageSkillWheel Message)"
+   ]
+  }
+ },
+ "tibia::skillwheel::TSkillWheelStorage": {
+  "chain": [
+   "tibia::skillwheel::TSkillWheelStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::skillwheel::TSkillWheelStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "currentSkillWheelChanged": [
+    "void currentSkillWheelChanged()"
+   ],
+   "gemInventoryChanged": [
+    "void gemInventoryChanged()"
+   ],
+   "greaterFragmentsChanged": [
+    "void greaterFragmentsChanged()"
+   ],
+   "lesserFragmentsChanged": [
+    "void lesserFragmentsChanged()"
+   ],
+   "modGradesChanged": [
+    "void modGradesChanged()"
+   ],
+   "modListChanged": [
+    "void modListChanged()"
+   ],
+   "serverSkillWheelChanged": [
+    "void serverSkillWheelChanged()"
+   ],
+   "unrevealedGemsChanged": [
+    "void unrevealedGemsChanged()"
+   ],
+   "unspentSkillPointsChanged": [
+    "void unspentSkillPointsChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

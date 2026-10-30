@@ -1,0 +1,121 @@
+{
+ "tibia::quickloot::TManagedContainerStorage": {
+  "chain": [
+   "tibia::quickloot::TManagedContainerStorage",
+   "QObject"
+  ],
+  "class": "tibia::quickloot::TManagedContainerStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "managedContainersUpdated": [
+    "void managedContainersUpdated()"
+   ],
+   "useMainBackpackAsFallbackChanged": [
+    "void useMainBackpackAsFallbackChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::quickloot::TManagedContainersProtocolMessageHandler": {
+  "chain": [
+   "tibia::quickloot::TManagedContainersProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::quickloot::TManagedContainersProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendManagedContainer": [
+    "void sendManagedContainer(tibia::protobuf::protocol::GameclientMessageManagedContainer Message)"
+   ],
+   "sendQuickLoot": [
+    "void sendQuickLoot(tibia::protobuf::protocol::GameclientMessageQuickLoot QuickLootMessage)"
+   ],
+   "sendQuickLootBlackWhitelist": [
+    "void sendQuickLootBlackWhitelist(tibia::protobuf::protocol::GameclientMessageQuickLootBlackWhitelist QuickLootBlackWhitelistMessage)"
+   ]
+  },
+  "slots": {
+   "handleUpdateManagedContainersMessage": [
+    "void handleUpdateManagedContainersMessage(tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers Message)"
+   ],
+   "onQuickLootBlackWhitelistConfigurationChanged": [
+    "void onQuickLootBlackWhitelistConfigurationChanged()"
+   ]
+  }
+ },
+ "tibia::quickloot::TQuickLootBlackWhitelistStorage": {
+  "chain": [
+   "tibia::quickloot::TQuickLootBlackWhitelistStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::quickloot::TQuickLootBlackWhitelistStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::quickloot::TQuickLootGameActionHandler": {
+  "chain": [
+   "tibia::quickloot::TQuickLootGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::quickloot::TQuickLootGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleAddToBlackWhitelistStatusAction": [
+    "void handleAddToBlackWhitelistStatusAction(std::shared_ptr<tibia::input::TGameActionToggleBlackWhitelistStatus> pToggleBlackWhitelistStatusAction)"
+   ],
+   "handleClearLootContainerAction": [
+    "void handleClearLootContainerAction(std::shared_ptr<tibia::input::TGameActionManagedContainer> pLootContainerAction)"
+   ],
+   "handleClearObtainContainerAction": [
+    "void handleClearObtainContainerAction(std::shared_ptr<tibia::input::TGameActionManagedContainer> pAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleOpenLootContainerAction": [
+    "void handleOpenLootContainerAction(std::shared_ptr<tibia::input::TGameActionManagedContainer> pLootContainerAction)"
+   ],
+   "handleOpenObtainContainerAction": [
+    "void handleOpenObtainContainerAction(std::shared_ptr<tibia::input::TGameActionManagedContainer> pAction)"
+   ],
+   "handleQuickLootAction": [
+    "void handleQuickLootAction(std::shared_ptr<tibia::input::TGameActionQuickLoot> pQuickLootAction)"
+   ],
+   "handleRemoveFromBlackWhitelistStatusAction": [
+    "void handleRemoveFromBlackWhitelistStatusAction(std::shared_ptr<tibia::input::TGameActionToggleBlackWhitelistStatus> pToggleBlackWhitelistStatusAction)"
+   ],
+   "handleSelectLootContainerAction": [
+    "void handleSelectLootContainerAction(std::shared_ptr<tibia::input::TGameActionSelectLootContainer> pSelectLootContainerAction)"
+   ],
+   "handleSelectObtainContainerAction": [
+    "void handleSelectObtainContainerAction(std::shared_ptr<tibia::input::TGameActionSelectObtainContainer> pAction)"
+   ],
+   "handleSetLootContainerFallbackAction": [
+    "void handleSetLootContainerFallbackAction(std::shared_ptr<tibia::input::TGameActionSetLootContainerFallback> pSetLootContainerFallbackAction)"
+   ]
+  }
+ }
+}

@@ -1,0 +1,65 @@
+# Publish qtclient GitHub Releases (launcher + client, no CIP asset blobs).
+name: release-qtclient
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "qtclient-*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download packed artifacts from stock CI
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: qtclient-*
+          path: dist
+          merge-multiple: true
+
+      - name: Fallback note when no artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          if ! ls dist/qtclient-*.tar.gz >/dev/null 2>&1; then
+            echo "No qtclient-*.tar.gz artifacts attached to this workflow run."
+            echo "Tag releases after a main push that uploaded stock packs, or attach"
+            echo "manually built qtclient-{linux,macos}.tar.gz files."
+            {
+              echo "qtclient ${GITHUB_REF_NAME}"
+              echo
+              echo "Build from source or download Actions artifacts from main:"
+              echo "  make setup && make client-build"
+              echo "  See docs/public/hybrid-tip.md for CIP-hybrid launcher tip."
+            } > dist/README.txt
+          fi
+          ls -la dist || true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: qtclient ${{ github.ref_name }}
+          body: |
+            CipSoft-compatible Qt/QML client (**qtclient**).
+
+            - **Launcher** + **client** binaries (no CipSoft asset blobs)
+            - Hybrid tip: our `package.json` + CIP `assetsurl` — see `docs/public/hybrid-tip.md`
+            - Offline: `./qtclient-fetch-assets` after installing official Tibia
+
+            ```bash
+            tar xzf qtclient-<os>.tar.gz
+            export QTCLIENT_TIP_URL=https://github.com/${{ github.repository }}/releases/latest/download/tibiametadata.json
+            ./launcher
+            ```
+          files: |
+            dist/**
+          fail_on_unmatched_files: false
+          generate_release_notes: true

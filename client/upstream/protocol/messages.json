@@ -1,0 +1,2466 @@
+[
+ {
+  "dir": "server",
+  "opcode": 3,
+  "tibia": [
+   "CreatureData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 4,
+  "tibia": [
+   "SessionDumpStart"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 5,
+  "tibia": [
+   "SessionDumpMarker"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 6,
+  "tibia": [
+   "PartyLeft"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 10,
+  "tibia": [
+   "PendingStateEntered"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 11,
+  "tibia": [
+   "ReadyForSecondaryConnection"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 15,
+  "tibia": [
+   "WorldEntered"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 20,
+  "tibia": [
+   "LoginError"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 21,
+  "tibia": [
+   "LoginAdvice"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 22,
+  "tibia": [
+   "LoginWait"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 23,
+  "tibia": [
+   "LoginSuccess"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 24,
+  "tibia": [
+   "SessionEndInformation"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 25,
+  "tibia": [
+   "StoreButtonIndicators"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 26,
+  "tibia": [
+   "BugReportsAllowed"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 27,
+  "tibia": [
+   "ShowMultiOfflineTrainingDialog"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 28,
+  "tibia": [
+   "NpcTalkParters"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 29,
+  "tibia": [
+   "Ping"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 30,
+  "tibia": [
+   "PingBack"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 31,
+  "tibia": [
+   "LoginChallenge"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 40,
+  "tibia": [
+   "Dead"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 41,
+  "tibia": [
+   "Stash"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 42,
+  "tibia": [
+   "SpecialContainersAvailable"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 43,
+  "tibia": [
+   "PartyHuntAnalyser"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 44,
+  "tibia": [
+   "TeamFinderTeamLeader"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 45,
+  "tibia": [
+   "TeamFinderTeamMember"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 46,
+  "tibia": [
+   "UnlockedSpells"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 47,
+  "tibia": [
+   "BossDifficultySelection"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 91,
+  "tibia": [
+   "Taskboard"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 92,
+  "tibia": [
+   "WeaponProficiencyNotification"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 93,
+  "tibia": [
+   "ImbuementDurations"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 94,
+  "tibia": [
+   "PassiveAbilityData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 95,
+  "tibia": [
+   "SkillWheel"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 96,
+  "tibia": [
+   "SpellDataModification"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 97,
+  "tibia": [
+   "BosstiaryStaticData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 98,
+  "tibia": [
+   "BossSlots"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 99,
+  "tibia": [
+   "ClientCheck"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 100,
+  "tibia": [
+   "FullMap"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 101,
+  "tibia": [
+   "TopRow"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 102,
+  "tibia": [
+   "RightColumn"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 103,
+  "tibia": [
+   "BottomRow"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 104,
+  "tibia": [
+   "LeftColumn"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 105,
+  "tibia": [
+   "FieldData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 106,
+  "tibia": [
+   "CreateOnMap"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 107,
+  "tibia": [
+   "ChangeOnMap"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 108,
+  "tibia": [
+   "DeleteOnMap"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 109,
+  "tibia": [
+   "MoveCreature"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 110,
+  "tibia": [
+   "Container"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 111,
+  "tibia": [
+   "CloseContainer"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 112,
+  "tibia": [
+   "CreateInContainer"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 113,
+  "tibia": [
+   "ChangeInContainer"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 114,
+  "tibia": [
+   "DeleteInContainer"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 115,
+  "tibia": [
+   "Bosstiary"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 116,
+  "tibia": [
+   "FriendSystemData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 117,
+  "tibia": [
+   "GameEvent"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 118,
+  "tibia": [
+   "InspectionList"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 119,
+  "tibia": [
+   "InspectionState"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 120,
+  "tibia": [
+   "SetInventory"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 121,
+  "tibia": [
+   "DeleteInventory"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 122,
+  "tibia": [
+   "NPCOffer"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 123,
+  "tibia": [
+   "PlayerGoods"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 124,
+  "tibia": [
+   "CloseNPCTrade"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 125,
+  "tibia": [
+   "OwnOffer"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 126,
+  "tibia": [
+   "CounterOffer"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 127,
+  "tibia": [
+   "CloseTrade"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 128,
+  "tibia": [
+   "CharacterTradeConfiguration"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 129,
+  "tibia": [
+   "TextForReport"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 130,
+  "tibia": [
+   "AmbientLight"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 131,
+  "tibia": [
+   "GraphicalEffects"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 132,
+  "tibia": [
+   "RemoveGraphicalEffect"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 133,
+  "tibia": [
+   "SoundTrigger"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 134,
+  "tibia": [
+   "ExaltationBaseData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 135,
+  "tibia": [
+   "ExaltationDialogRefresh"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 136,
+  "tibia": [
+   "ExaltationHistory"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 137,
+  "tibia": [
+   "CloseExaltationDialog"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 138,
+  "tibia": [
+   "ExaltationResult"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 139,
+  "tibia": [
+   "CreatureUpdate"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 140,
+  "tibia": [
+   "CreatureHealth"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 141,
+  "tibia": [
+   "CreatureLight"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 142,
+  "tibia": [
+   "CreatureOutfit"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 143,
+  "tibia": [
+   "CreatureSpeed"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 144,
+  "tibia": [
+   "CreatureSkull"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 145,
+  "tibia": [
+   "CreatureParty"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 146,
+  "tibia": [
+   "CreatureUnpass"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 147,
+  "tibia": [
+   "CreatureMarks"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 148,
+  "tibia": [
+   "DepotSearchResult"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 149,
+  "tibia": [
+   "CreatureType"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 150,
+  "tibia": [
+   "EditText"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 151,
+  "tibia": [
+   "EditList"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 152,
+  "tibia": [
+   "ShowGameNews"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 153,
+  "tibia": [
+   "DepotSearchDetailList"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 154,
+  "tibia": [
+   "CloseDepotSearch"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 155,
+  "tibia": [
+   "BlessingsDialog"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 156,
+  "tibia": [
+   "Blessings"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 157,
+  "tibia": [
+   "SwitchPreset"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 158,
+  "tibia": [
+   "PremiumTrigger"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 159,
+  "tibia": [
+   "PlayerDataBasic"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 160,
+  "tibia": [
+   "PlayerDataCurrent"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 161,
+  "tibia": [
+   "PlayerSkills"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 162,
+  "tibia": [
+   "PlayerState"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 163,
+  "tibia": [
+   "UpdateTarget"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 164,
+  "tibia": [
+   "SpellDelay"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 165,
+  "tibia": [
+   "SpellGroupDelay"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 166,
+  "tibia": [
+   "MultiUseDelay"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 167,
+  "tibia": [
+   "SetTactics"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 168,
+  "tibia": [
+   "SetStoreButtonDeeplink"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 169,
+  "tibia": [
+   "RestingAreaState"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 170,
+  "tibia": [
+   "Talk"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 171,
+  "tibia": [
+   "Channels"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 172,
+  "tibia": [
+   "OpenChannel"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 173,
+  "tibia": [
+   "PrivateChannel"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 174,
+  "tibia": [
+   "EditGuildMessage"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 175,
+  "tibia": [
+   "XpChanged"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 176,
+  "tibia": [
+   "OutfitMemorial"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 177,
+  "tibia": [
+   "Highscores"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 178,
+  "tibia": [
+   "OpenOwnChannel"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 179,
+  "tibia": [
+   "CloseChannel"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 180,
+  "tibia": [
+   "Message"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 181,
+  "tibia": [
+   "SnapBack"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 182,
+  "tibia": [
+   "Wait"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 183,
+  "tibia": [
+   "UnjustifiedPoints"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 184,
+  "tibia": [
+   "PvpSituations"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 185,
+  "tibia": [
+   "BestiaryTracker"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 186,
+  "tibia": [
+   "SoulSealsDialog"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 187,
+  "tibia": [
+   "ShapedPerkReshapeOffers"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 188,
+  "tibia": [
+   "Stop"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 189,
+  "tibia": [
+   "BossTracking"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 190,
+  "tibia": [
+   "TopFloor"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 191,
+  "tibia": [
+   "BottomFloor"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 192,
+  "tibia": [
+   "UpdateManagedContainers"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 193,
+  "tibia": [
+   "VocationSpecificPlayerData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 194,
+  "tibia": [
+   "ConfigureCreaturePodium"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 195,
+  "tibia": [
+   "CyclopediaHouseActionResult"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 196,
+  "tibia": [
+   "WeaponProficiency"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 197,
+  "tibia": [
+   "GemAtelierGemRevealed"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 198,
+  "tibia": [
+   "CyclopediaStaticHouseData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 199,
+  "tibia": [
+   "CyclopediaCurrentHouseData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 200,
+  "tibia": [
+   "Outfit"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 201,
+  "tibia": [
+   "ExivaSuppressed"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 202,
+  "tibia": [
+   "UpdateExivaOptions"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 203,
+  "tibia": [
+   "TransactionDetails"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 204,
+  "tibia": [
+   "ImpactTracking"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 205,
+  "tibia": [
+   "MarketStatistics"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 206,
+  "tibia": [
+   "ItemWasted"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 207,
+  "tibia": [
+   "ItemLooted"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 208,
+  "tibia": [
+   "TrackQuestFlags"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 209,
+  "tibia": [
+   "KillTracking"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 210,
+  "tibia": [
+   "BuddyData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 211,
+  "tibia": [
+   "BuddyStatusChange"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 212,
+  "tibia": [
+   "BuddyGroupData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 213,
+  "tibia": [
+   "MonsterCyclopedia"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 214,
+  "tibia": [
+   "MonsterCyclopediaMonsters"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 215,
+  "tibia": [
+   "MonsterCyclopediaRace"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 216,
+  "tibia": [
+   "MonsterCyclopediaBonusEffects"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 217,
+  "tibia": [
+   "MonsterCyclopediaNewDetails"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 218,
+  "tibia": [
+   "CyclopediaCharacterInfo"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 219,
+  "tibia": [
+   "HirelingNameChange"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 220,
+  "tibia": [
+   "TutorialHint"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 221,
+  "tibia": [
+   "CyclopediaMapData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 222,
+  "tibia": [
+   "DailyRewardCollectionState"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 223,
+  "tibia": [
+   "CreditBalance"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 224,
+  "tibia": [
+   "StoreError"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 225,
+  "tibia": [
+   "RequestPurchaseData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 226,
+  "tibia": [
+   "OpenRewardWall"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 227,
+  "tibia": [
+   "CloseRewardWall"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 228,
+  "tibia": [
+   "DailyRewardBasic"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 229,
+  "tibia": [
+   "DailyRewardHistory"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 230,
+  "tibia": [
+   "BosstiaryHighlight"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 231,
+  "tibia": [
+   "PreyTimeLeft"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 232,
+  "tibia": [
+   "PreyData"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 233,
+  "tibia": [
+   "PreyPrices"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 234,
+  "tibia": [
+   "OfferDescription"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 235,
+  "tibia": [
+   "ImbuingDialogRefresh"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 236,
+  "tibia": [
+   "CloseImbuingDialog"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 237,
+  "tibia": [
+   "ShowMessageDialog"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 238,
+  "tibia": [
+   "ResourceBalance"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 239,
+  "tibia": [
+   "TibiaTime"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 240,
+  "tibia": [
+   "QuestLog"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 241,
+  "tibia": [
+   "QuestLine"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 242,
+  "tibia": [
+   "UpdatingShopBalance"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 243,
+  "tibia": [
+   "ChannelEvent"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 244,
+  "tibia": [
+   "ObjectInfo"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 245,
+  "tibia": [
+   "PlayerInventory"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 246,
+  "tibia": [
+   "MarketEnter"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 247,
+  "tibia": [
+   "MarketLeave"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 248,
+  "tibia": [
+   "MarketDetail"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 249,
+  "tibia": [
+   "MarketBrowse"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 250,
+  "tibia": [
+   "ShowModalDialog"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 251,
+  "tibia": [
+   "StoreCategories"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 252,
+  "tibia": [
+   "StoreOffers"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 253,
+  "tibia": [
+   "TransactionHistory"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 254,
+  "tibia": [
+   "StoreSuccess"
+  ]
+ },
+ {
+  "dir": "server",
+  "opcode": 300,
+  "tibia": [
+   "Unknown"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 10,
+  "tibia": [
+   "Login"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 11,
+  "tibia": [
+   "SecondaryLogin"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 15,
+  "tibia": [
+   "EnterWorld"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 20,
+  "tibia": [
+   "QuitGame"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 28,
+  "tibia": [
+   "ConnectionPingBack"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 29,
+  "tibia": [
+   "Ping"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 30,
+  "tibia": [
+   "PingBack"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 40,
+  "tibia": [
+   "StashAction"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 41,
+  "tibia": [
+   "DepotSearchRetrieve"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 42,
+  "tibia": [
+   "TrackBestiaryRace"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 43,
+  "tibia": [
+   "PartyHuntAnalyser"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 44,
+  "tibia": [
+   "TeamFinderAssembleTeam"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 45,
+  "tibia": [
+   "TeamFinderJoinTeam"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 46,
+  "tibia": [
+   "SetClientOptions"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 95,
+  "tibia": [
+   "Taskboard"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 96,
+  "tibia": [
+   "TrackImbuements"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 97,
+  "tibia": [
+   "RequestSkillWheel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 98,
+  "tibia": [
+   "ApplySkillWheel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 99,
+  "tibia": [
+   "ClientCheck"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 100,
+  "tibia": [
+   "GoPath"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 101,
+  "tibia": [
+   "GoNorth"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 102,
+  "tibia": [
+   "GoEast"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 103,
+  "tibia": [
+   "GoSouth"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 104,
+  "tibia": [
+   "GoWest"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 105,
+  "tibia": [
+   "Stop"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 106,
+  "tibia": [
+   "GoNorthEast"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 107,
+  "tibia": [
+   "GoSouthEast"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 108,
+  "tibia": [
+   "GoSouthWest"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 109,
+  "tibia": [
+   "GoNorthWest"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 110,
+  "tibia": [
+   "SetVocation"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 111,
+  "tibia": [
+   "RotateNorth"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 112,
+  "tibia": [
+   "RotateEast"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 113,
+  "tibia": [
+   "RotateSouth"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 114,
+  "tibia": [
+   "RotateWest"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 115,
+  "tibia": [
+   "Teleport"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 116,
+  "tibia": [
+   "StartOfflineTraining"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 117,
+  "tibia": [
+   "ContainerAction"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 118,
+  "tibia": [
+   "CharacterTradeConfigurationAction"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 119,
+  "tibia": [
+   "EquipObject"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 120,
+  "tibia": [
+   "MoveObject"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 121,
+  "tibia": [
+   "LookNPCTrade"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 122,
+  "tibia": [
+   "BuyObject"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 123,
+  "tibia": [
+   "SellObject"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 124,
+  "tibia": [
+   "CloseNPCTrade"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 125,
+  "tibia": [
+   "TradeObject"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 126,
+  "tibia": [
+   "LookTrade"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 127,
+  "tibia": [
+   "AcceptTrade"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 128,
+  "tibia": [
+   "RejectTrade"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 129,
+  "tibia": [
+   "FriendSystemAction"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 130,
+  "tibia": [
+   "UseObject"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 131,
+  "tibia": [
+   "UseTwoObjects"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 132,
+  "tibia": [
+   "UseOnCreature"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 133,
+  "tibia": [
+   "TurnObject"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 134,
+  "tibia": [
+   "ConfigureShowOffSocket"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 135,
+  "tibia": [
+   "CloseContainer"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 136,
+  "tibia": [
+   "UpContainer"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 137,
+  "tibia": [
+   "EditText"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 138,
+  "tibia": [
+   "EditList"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 139,
+  "tibia": [
+   "ToggleWrapState"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 140,
+  "tibia": [
+   "Look"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 141,
+  "tibia": [
+   "LookAtCreature"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 142,
+  "tibia": [
+   "JoinAggression"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 143,
+  "tibia": [
+   "QuickLoot"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 144,
+  "tibia": [
+   "ManagedContainer"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 145,
+  "tibia": [
+   "QuickLootBlackWhitelist"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 146,
+  "tibia": [
+   "OpenDepotSearch"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 147,
+  "tibia": [
+   "CloseDepotSearch"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 148,
+  "tibia": [
+   "DepotSearchType"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 149,
+  "tibia": [
+   "OpenParentContainer"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 150,
+  "tibia": [
+   "Talk"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 151,
+  "tibia": [
+   "GetChannels"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 152,
+  "tibia": [
+   "JoinChannel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 153,
+  "tibia": [
+   "LeaveChannel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 154,
+  "tibia": [
+   "PrivateChannel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 155,
+  "tibia": [
+   "GuildMessage"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 156,
+  "tibia": [
+   "EditGuildMessage"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 157,
+  "tibia": [
+   "GetTextForReport"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 158,
+  "tibia": [
+   "CloseNPCChannel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 159,
+  "tibia": [
+   "SetCreaturePodiumConfiguration"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 160,
+  "tibia": [
+   "SetTactics"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 161,
+  "tibia": [
+   "Attack"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 162,
+  "tibia": [
+   "Follow"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 163,
+  "tibia": [
+   "InviteToParty"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 164,
+  "tibia": [
+   "JoinParty"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 165,
+  "tibia": [
+   "RevokeInvitation"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 166,
+  "tibia": [
+   "PassLeadership"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 167,
+  "tibia": [
+   "LeaveParty"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 168,
+  "tibia": [
+   "ShareExperience"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 169,
+  "tibia": [
+   "DisbandParty"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 170,
+  "tibia": [
+   "OpenChannel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 171,
+  "tibia": [
+   "InviteToChannel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 172,
+  "tibia": [
+   "ExcludeFromChannel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 173,
+  "tibia": [
+   "CyclopediaHouseAction"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 174,
+  "tibia": [
+   "OpenBosstiary"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 175,
+  "tibia": [
+   "OpenBossSlots"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 176,
+  "tibia": [
+   "EditBossSlot"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 177,
+  "tibia": [
+   "Highscores"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 178,
+  "tibia": [
+   "PickObjectToImbue"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 179,
+  "tibia": [
+   "WeaponProficiencyCommand"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 186,
+  "tibia": [
+   "SoulSealsFightMonster"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 190,
+  "tibia": [
+   "Cancel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 191,
+  "tibia": [
+   "ExaltationAction"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 192,
+  "tibia": [
+   "OpenExaltationHistory"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 193,
+  "tibia": [
+   "ClientDetails"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 194,
+  "tibia": [
+   "BossDifficultySelection"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 200,
+  "tibia": [
+   "SpellTargetConfig"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 201,
+  "tibia": [
+   "GetTransactionDetails"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 202,
+  "tibia": [
+   "UpdateExivaOptions"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 203,
+  "tibia": [
+   "BrowseField"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 204,
+  "tibia": [
+   "SeekInContainer"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 205,
+  "tibia": [
+   "InspectObject"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 206,
+  "tibia": [
+   "InspectPlayer"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 207,
+  "tibia": [
+   "BlessingsDialog"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 208,
+  "tibia": [
+   "TrackQuestFlags"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 209,
+  "tibia": [
+   "MarketStatistics"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 210,
+  "tibia": [
+   "GetOutfit"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 211,
+  "tibia": [
+   "SetOutfit"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 212,
+  "tibia": [
+   "Mount"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 213,
+  "tibia": [
+   "ApplyImbuement"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 214,
+  "tibia": [
+   "ApplyClearingCharm"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 215,
+  "tibia": [
+   "CloseImbuingDialog"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 216,
+  "tibia": [
+   "OpenRewardWall"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 217,
+  "tibia": [
+   "DailyRewardHistory"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 218,
+  "tibia": [
+   "CollectDailyReward"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 219,
+  "tibia": [
+   "CyclopediaMapAction"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 220,
+  "tibia": [
+   "AddBuddy"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 221,
+  "tibia": [
+   "RemoveBuddy"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 222,
+  "tibia": [
+   "EditBuddy"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 223,
+  "tibia": [
+   "BuddyGroup"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 225,
+  "tibia": [
+   "OpenMonsterCyclopedia"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 226,
+  "tibia": [
+   "OpenMonsterCyclopediaMonsters"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 227,
+  "tibia": [
+   "OpenMonsterCyclopediaRace"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 228,
+  "tibia": [
+   "MonsterBonusEffectAction"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 229,
+  "tibia": [
+   "OpenCyclopediaCharacterInfo"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 230,
+  "tibia": [
+   "BugReport"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 231,
+  "tibia": [
+   "GemAtelier"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 232,
+  "tibia": [
+   "GetOfferDescription"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 233,
+  "tibia": [
+   "StoreEvent"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 235,
+  "tibia": [
+   "PreyAction"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 236,
+  "tibia": [
+   "SetHirelingName"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 237,
+  "tibia": [
+   "RequestResourceBalance"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 238,
+  "tibia": [
+   "Greet"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 239,
+  "tibia": [
+   "TransferCurrency"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 240,
+  "tibia": [
+   "GetQuestLog"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 241,
+  "tibia": [
+   "GetQuestLine"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 242,
+  "tibia": [
+   "RuleViolationReport"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 243,
+  "tibia": [
+   "GetObjectInfo"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 244,
+  "tibia": [
+   "MarketLeave"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 245,
+  "tibia": [
+   "MarketBrowse"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 246,
+  "tibia": [
+   "MarketCreate"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 247,
+  "tibia": [
+   "MarketCancel"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 248,
+  "tibia": [
+   "MarketAccept"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 249,
+  "tibia": [
+   "AnswerModalDialog"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 250,
+  "tibia": [
+   "RequestStoreCategories"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 251,
+  "tibia": [
+   "RequestStoreOffers"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 252,
+  "tibia": [
+   "BuyStoreOffer"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 253,
+  "tibia": [
+   "OpenTransactionHistory"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 254,
+  "tibia": [
+   "GetTransactionHistory"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 255,
+  "tibia": [
+   "GatherAll"
+  ]
+ },
+ {
+  "dir": "client",
+  "opcode": 300,
+  "tibia": [
+   "Unknown"
+  ]
+ }
+]

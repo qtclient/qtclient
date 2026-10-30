@@ -1,0 +1,63 @@
+{
+ "tibia::spells::TAimAtTargetConfigurationStorage": {
+  "chain": [
+   "tibia::spells::TAimAtTargetConfigurationStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::spells::TAimAtTargetConfigurationStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::spells::TSpellInfoStorage": {
+  "chain": [
+   "tibia::spells::TSpellInfoStorage",
+   "QObject"
+  ],
+  "class": "tibia::spells::TSpellInfoStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "activeSpellsChanged": [
+    "void activeSpellsChanged()"
+   ],
+   "spellModificationsApplied": [
+    "void spellModificationsApplied()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::spells::TSpellsProtocolMessageHandler": {
+  "chain": [
+   "tibia::spells::TSpellsProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::spells::TSpellsProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "receivedUnlockedSpell": [
+    "void receivedUnlockedSpell(int SpellNumber)"
+   ],
+   "sendSpellTargetConfigurationOptions": [
+    "void sendSpellTargetConfigurationOptions(tibia::protobuf::protocol::GameclientMessageSpellTargetConfig SpellTargetConfigMessage)"
+   ]
+  },
+  "slots": {}
+ }
+}

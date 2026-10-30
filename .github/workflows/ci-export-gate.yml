@@ -1,0 +1,31 @@
+name: ci-export-gate
+
+on:
+  pull_request:
+    paths:
+      - 'client/**'
+      - 'launcher/**'
+      - 'cmake/**'
+      - 'scripts/export-public-client.sh'
+      - 'scripts/push-qtclient.sh'
+      - '.github/workflows/ci-export-gate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'client/**'
+      - 'launcher/**'
+      - 'cmake/**'
+      - 'scripts/export-public-client.sh'
+
+jobs:
+  export-scrub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export public tree and scrub
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ripgrep
+          ./scripts/export-public-client.sh "$RUNNER_TEMP/qtclient-public"
+          test -f "$RUNNER_TEMP/qtclient-public/cmake/QtClientMod.cmake"
+          test -d "$RUNNER_TEMP/qtclient-public/client/mods/_sample"
+          test ! -d "$RUNNER_TEMP/qtclient-public/client/mods/idleot"

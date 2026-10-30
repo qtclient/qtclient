@@ -1,0 +1,214 @@
+# Stock CIP build (MODS=OFF) on free public runners. Publishes a ccache archive
+# so downstream mod CI can warm stock translation units.
+name: CI stock
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  actions: write
+
+concurrency:
+  group: ci-stock-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stock:
+    name: stock-${{ matrix.preset }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - preset: linux-release
+            runner: ubuntu-24.04
+            os_slug: linux
+            kit: linux-x64
+          - preset: macos-release
+            runner: macos-15
+            os_slug: macos
+            kit: macos-arm64
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Init LegacyControls
+        run: git submodule update --init third_party/Qt5LegacyControls
+
+      - name: Resolve CIP Qt SHA
+        id: cip
+        run: |
+          set -euo pipefail
+          SHA="$(git rev-parse HEAD:third_party/qt5-cip 2>/dev/null || true)"
+          if [[ -z "$SHA" && -f third_party/SUBMODULE_PINS.txt ]]; then
+            SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt)"
+          fi
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "short=${SHA:0:12}" >> "$GITHUB_OUTPUT"
+          echo "QT_CIP_SHA=$SHA" >> "$GITHUB_ENV"
+
+      - uses: lukka/get-cmake@v4.3.4
+      - uses: oras-project/setup-oras@v1
+
+      - name: Install Linux deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build ccache libgl1-mesa-dev \
+            libxkbcommon-dev libfontconfig1-dev zstd
+
+      - name: Install macOS deps
+        if: runner.os == 'macOS'
+        run: brew install ninja ccache zstd || true
+
+      - name: Restore CIP Qt prefix
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/Qt
+          key: cip-qt-${{ matrix.kit }}-${{ steps.cip.outputs.sha }}
+
+      - name: Install CIP Qt (pull-only — never compile)
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
+          QT_PULL_ONLY: '1'
+          # Wait for concurrent "Build CIP Qt" to publish GHCR (do not build twice).
+          QT_PULL_WAIT_SECS: '7200'
+          QT_PULL_INTERVAL_SECS: '90'
+        run: |
+          set -euo pipefail
+          bash tools/qt/ci-setup-qt.sh --pull-only
+          echo "QT_PREFIX=$(bash tools/qt/qt-prefix.sh)" >> "$GITHUB_ENV"
+
+      - name: Setup vcpkg
+        run: |
+          set -euo pipefail
+          export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
+          if [[ ! -d "$VCPKG_ROOT" ]]; then
+            git clone --depth 1 https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+            "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+          fi
+          echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-stock-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-${{ github.sha }}
+          restore-keys: |
+            ccache-stock-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-
+            ccache-stock-${{ matrix.os_slug }}-
+
+      - name: Configure + build stock tibia
+        run: |
+          set -euo pipefail
+          mkdir -p "$CCACHE_DIR"
+          ccache -z || true
+          # Stock CI expects a local CIP sync tree (BYO Tibia / maintainer cache).
+          # Public clones: make sync && make extract before configure.
+          if [[ ! -d client/upstream/qml ]]; then
+            echo "::warning::client/upstream missing — stock configure needs make sync (BYO Tibia.app)"
+          fi
+          cmake --preset ${{ matrix.preset }} \
+            -DTOGGLE_BIN_FOLDER=ON \
+            -DOPTIONS_ENABLE_IPO=OFF \
+            -DTIBIA_BUILD_TESTS=OFF \
+            -DQTCLIENT_ENABLE_MODS=OFF \
+            -DOPTIONS_ENABLE_CCACHE=ON \
+            -DCMAKE_PREFIX_PATH="$QT_PREFIX"
+          cmake --build --preset ${{ matrix.preset }} --target tibia
+          ccache -s || true
+
+      - name: Pack ccache archive
+        run: |
+          set -euo pipefail
+          tar -C "$CCACHE_DIR" -cf - . | zstd -T0 -3 -o "ccache-${{ matrix.os_slug }}-${{ github.sha }}.tar.zst"
+          ls -lh ccache-*.tar.zst
+
+      - name: Upload ccache artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccache-${{ matrix.os_slug }}-${{ github.sha }}
+          path: ccache-${{ matrix.os_slug }}-${{ github.sha }}.tar.zst
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Pack launcher + client + fetch-assets (no CIP blobs)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          OUT="qtclient-${{ matrix.os_slug }}"
+          rm -rf "$OUT"
+          mkdir -p "$OUT/tools"
+          find_bin() {
+            local name="$1"
+            local cand
+            for cand in \
+              "build/${{ matrix.preset }}/bin/${name}" \
+              "build/${{ matrix.preset }}/src/${name}/${name}" \
+              "build/${{ matrix.preset }}/client/tibia/${name}" \
+              "build/${{ matrix.preset }}/${name}"
+            do
+              if [[ -f "$cand" ]]; then echo "$cand"; return 0; fi
+            done
+            find "build/${{ matrix.preset }}" -type f -name "$name" 2>/dev/null | head -1 || true
+          }
+          CLIENT_BIN="$(find_bin client)"
+          if [[ -z "$CLIENT_BIN" ]]; then CLIENT_BIN="$(find_bin tibia)"; fi
+          LAUNCHER_BIN="$(find_bin launcher)"
+          [[ -n "$CLIENT_BIN" && -f "$CLIENT_BIN" ]] || { echo "client binary not found under build/${{ matrix.preset }}"; exit 1; }
+          [[ -n "$LAUNCHER_BIN" && -f "$LAUNCHER_BIN" ]] || { echo "launcher binary not found under build/${{ matrix.preset }}"; exit 1; }
+          cp "$CLIENT_BIN" "$OUT/client"
+          cp "$LAUNCHER_BIN" "$OUT/launcher"
+          chmod +x "$OUT/client" "$OUT/launcher"
+          cp tools/fetch-assets/fetch_assets.py "$OUT/fetch_assets.py"
+          cp tools/tibia_paths.py "$OUT/tools/tibia_paths.py" 2>/dev/null || true
+          [[ -f tools/tibia_paths.py ]] || cp ../../tools/tibia_paths.py "$OUT/tools/tibia_paths.py" 2>/dev/null || true
+          rsync -a --exclude '__pycache__' tools/extract/ "$OUT/tools/extract/"
+          printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' \
+            'HERE="$(cd "$(dirname "$0")" && pwd)"' \
+            'export PYTHONPATH="$HERE/tools${PYTHONPATH:+:$PYTHONPATH}"' \
+            'exec python3 "$HERE/fetch_assets.py" --out "$HERE" "$@"' \
+            > "$OUT/qtclient-fetch-assets"
+          chmod +x "$OUT/qtclient-fetch-assets"
+          if [[ -f docs/public/tibiametadata.hybrid.json ]]; then
+            cp docs/public/tibiametadata.hybrid.json "$OUT/tibiametadata.hybrid.json"
+          fi
+          {
+            echo "qtclient (${{ matrix.os_slug }})"
+            echo "================"
+            echo ""
+            echo "Hybrid tip (CIP assets + our binary):"
+            echo "  export QTCLIENT_TIP_URL=…/tibiametadata.json"
+            echo "  ./launcher"
+            echo ""
+            echo "Offline BYO assets:"
+            echo "  1. Install official Tibia (CipSoft)."
+            echo "  2. ./qtclient-fetch-assets"
+            echo "  3. ./client"
+            echo ""
+            echo "Override: ./qtclient-fetch-assets --tibia /path/to/Tibia.app"
+            echo "No CIP asset blobs are included in this archive."
+          } > "$OUT/README.txt"
+          tar -czf "qtclient-${{ matrix.os_slug }}.tar.gz" "$OUT"
+          ls -lh "qtclient-${{ matrix.os_slug }}.tar.gz"
+
+      - name: Upload release client zip
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: qtclient-${{ matrix.os_slug }}-${{ github.sha }}
+          path: qtclient-${{ matrix.os_slug }}.tar.gz
+          retention-days: 30
+          if-no-files-found: error

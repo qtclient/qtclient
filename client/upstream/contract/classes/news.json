@@ -1,0 +1,222 @@
+{
+ "tibia::news::TEventQMLEntry": {
+  "chain": [
+   "tibia::news::TEventQMLEntry",
+   "QObject"
+  ],
+  "class": "tibia::news::TEventQMLEntry",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "primaryColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TEventQMLEntry",
+    "notify": null,
+    "type": "QColor"
+   },
+   "secondaryColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TEventQMLEntry",
+    "notify": null,
+    "type": "QColor"
+   },
+   "startsOrEndsThatDay": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TEventQMLEntry",
+    "notify": null,
+    "type": "bool"
+   },
+   "title": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TEventQMLEntry",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::news::TEventsStorage": {
+  "chain": [
+   "tibia::news::TEventsStorage",
+   "QObject"
+  ],
+  "class": "tibia::news::TEventsStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onEventsUpdated": [
+    "void onEventsUpdated(EventList StortedEventList)"
+   ]
+  }
+ },
+ "tibia::news::TEventsUploader": {
+  "chain": [
+   "tibia::news::TEventsUploader",
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "tibia::news::TEventsUploader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ],
+   "updated": [
+    "void updated(std::vector<TEventInformation> EventList)"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(bool UploadSuccessful, QJsonDocument ReplyFromServerJD)",
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ],
+   "requestUpdate": [
+    "void requestUpdate()"
+   ]
+  }
+ },
+ "tibia::news::TNewsDiskIO": {
+  "chain": [
+   "tibia::news::TNewsDiskIO",
+   "QObject"
+  ],
+  "class": "tibia::news::TNewsDiskIO",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "loadingNewsDataSucceeded": [
+    "void loadingNewsDataSucceeded(TNewsData NewsData)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::news::TNewsProtocolMessageHandler": {
+  "chain": [
+   "tibia::news::TNewsProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::news::TNewsProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "showGameNewsMessage": [
+    "void showGameNewsMessage(ENewsType NewsType, bool NotificationOnly)"
+   ]
+  },
+  "slots": {
+   "handleShowGameNewsMessage": [
+    "void handleShowGameNewsMessage(tibia::protobuf::protocol::GameserverMessageShowGameNews ShowGameNewsMessage)"
+   ]
+  }
+ },
+ "tibia::news::TNewsRequestUploader": {
+  "chain": [
+   "tibia::news::TNewsRequestUploader",
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "tibia::news::TNewsRequestUploader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ],
+   "newsQueryFailed": [
+    "void newsQueryFailed(QString ErrorMessage)"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(bool UploadSuccessful, QJsonDocument ReplyFromServerJD)",
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ]
+  }
+ },
+ "tibia::news::TNewsStorage": {
+  "chain": [
+   "tibia::news::TNewsStorage",
+   "QObject"
+  ],
+  "class": "tibia::news::TNewsStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "contentsChanged": [
+    "void contentsChanged()"
+   ],
+   "returnerInformationChanged": [
+    "void returnerInformationChanged()"
+   ],
+   "startSavingNewsDataToDisk": [
+    "void startSavingNewsDataToDisk(TNewsData FileContent)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::news::TNewsViewsUploader": {
+  "chain": [
+   "tibia::news::TNewsViewsUploader",
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "tibia::news::TNewsViewsUploader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ]
+  }
+ }
+}

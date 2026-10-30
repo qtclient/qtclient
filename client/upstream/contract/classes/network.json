@@ -1,0 +1,211 @@
+{
+ "tibia::network::TGameserverDualConnection": {
+  "chain": [
+   "tibia::network::TGameserverDualConnection",
+   "QObject"
+  ],
+  "class": "tibia::network::TGameserverDualConnection",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connected": [
+    "void connected(QUrl Url)"
+   ],
+   "connectionsUsedChanged": [
+    "void connectionsUsedChanged(tibia::network::EConnectionsUsed ConnectionsUsed)"
+   ],
+   "disconnected": [
+    "void disconnected()"
+   ],
+   "error": [
+    "void error(QString ErrorDescription)"
+   ],
+   "packetReceived": [
+    "void packetReceived(TGameserverNetworkPacket NetworkPacket)"
+   ],
+   "secondaryConnected": [
+    "void secondaryConnected(QUrl Url)"
+   ]
+  },
+  "slots": {
+   "checkForStateChange": [
+    "void checkForStateChange()"
+   ],
+   "onGameserverNetworkPacketConnectionConnected": [
+    "void onGameserverNetworkPacketConnectionConnected(std::shared_ptr<tibia::network::TGameserverNetworkPacketConnection> pGameserverNetworkPacketConnection)"
+   ],
+   "onGameserverNetworkPacketConnectionDisconnected": [
+    "void onGameserverNetworkPacketConnectionDisconnected(std::shared_ptr<tibia::network::TGameserverNetworkPacketConnection> pGameserverNetworkPacketConnection)"
+   ],
+   "onGameserverNetworkPacketConnectionError": [
+    "void onGameserverNetworkPacketConnectionError(std::shared_ptr<tibia::network::TGameserverNetworkPacketConnection> pGameserverNetworkPacketConnection, QString ErrorDescription)"
+   ],
+   "onGameserverNetworkPacketReceived": [
+    "void onGameserverNetworkPacketReceived(std::shared_ptr<tibia::network::TGameserverNetworkPacketConnection> pGameserverNetworkPacketConnection, TGameserverNetworkPacket NetworkPacket)"
+   ],
+   "onOptimizeConnectionStabilityOptionChanged": [
+    "void onOptimizeConnectionStabilityOptionChanged()"
+   ],
+   "processDisconnectEvents": [
+    "void processDisconnectEvents()"
+   ]
+  }
+ },
+ "tibia::network::TGameserverNetworkPacketConnection": {
+  "chain": [
+   "tibia::network::TGameserverNetworkPacketConnection",
+   "QObject"
+  ],
+  "class": "tibia::network::TGameserverNetworkPacketConnection",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connected": [
+    "void connected()"
+   ],
+   "disconnected": [
+    "void disconnected()"
+   ],
+   "error": [
+    "void error(QString ErrorDescription)"
+   ],
+   "packetReceived": [
+    "void packetReceived(TGameserverNetworkPacket NetworkPacket)"
+   ]
+  },
+  "slots": {
+   "onConnected": [
+    "void onConnected()"
+   ],
+   "onDisconnected": [
+    "void onDisconnected()"
+   ],
+   "onError": [
+    "void onError(QString ErrorDescription)"
+   ],
+   "onPacketReceived": [
+    "void onPacketReceived(TGameserverNetworkPacket NetworkPacket)"
+   ]
+  }
+ },
+ "tibia::network::TGameserverNetworkPacketProcessor": {
+  "chain": [
+   "tibia::network::TGameserverNetworkPacketProcessor",
+   "QObject"
+  ],
+  "class": "tibia::network::TGameserverNetworkPacketProcessor",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "packetReceived": [
+    "void packetReceived(TGameserverNetworkPacket NetworkPacket)"
+   ]
+  },
+  "slots": {
+   "onNewPacketDataAvailable": [
+    "void onNewPacketDataAvailable()"
+   ]
+  }
+ },
+ "tibia::network::TGameserverNetworkPacketSequenceFlowProcessor": {
+  "chain": [
+   "tibia::network::TGameserverNetworkPacketSequenceFlowProcessor",
+   "QObject"
+  ],
+  "class": "tibia::network::TGameserverNetworkPacketSequenceFlowProcessor",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "packetForwarded": [
+    "void packetForwarded(TGameserverNetworkPacket NetworkPacket)"
+   ],
+   "sendConnectionPing": [
+    "void sendConnectionPing(EConnectionType ConnectionType)"
+   ]
+  },
+  "slots": {
+   "handleAnyMessage": [
+    "void handleAnyMessage(std::shared_ptr<tibia::protobuf::protocol::GameserverMessage> pGameserverMessage)"
+   ],
+   "onConnectionsUsedChanged": [
+    "void onConnectionsUsedChanged(EConnectionsUsed ConnectionsUsed)"
+   ]
+  }
+ },
+ "tibia::network::TGameserverTCPConnection": {
+  "chain": [
+   "tibia::network::TGameserverTCPConnection",
+   "QObject"
+  ],
+  "class": "tibia::network::TGameserverTCPConnection",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "connected": [
+    "void connected()"
+   ],
+   "disconnected": [
+    "void disconnected()"
+   ],
+   "error": [
+    "void error(QString ErrorDescription)"
+   ],
+   "readyRead": [
+    "void readyRead()"
+   ]
+  },
+  "slots": {
+   "onConnected": [
+    "void onConnected()"
+   ],
+   "onError": [
+    "void onError(QAbstractSocket::SocketError SocketError)"
+   ],
+   "onReadyRead": [
+    "void onReadyRead()"
+   ]
+  }
+ },
+ "tibia::network::TNetworkQualityProtocolMessageHandler": {
+  "chain": [
+   "tibia::network::TNetworkQualityProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::network::TNetworkQualityProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "pingMessageReceived": [
+    "void pingMessageReceived(TPacketSequenceNumber SequenceNumber, tibia::network::EConnectionType ConnectionType)"
+   ],
+   "pingTimeoutOccurred": [
+    "void pingTimeoutOccurred()"
+   ],
+   "pingTimeoutRecovered": [
+    "void pingTimeoutRecovered()"
+   ],
+   "sendConnectionPingBackMessage": [
+    "void sendConnectionPingBackMessage(tibia::protobuf::protocol::GameclientMessageConnectionPingBack)"
+   ],
+   "sendPingBackMessage": [
+    "void sendPingBackMessage(tibia::protobuf::protocol::GameclientMessagePingBack)"
+   ],
+   "sendPingMessage": [
+    "void sendPingMessage(tibia::protobuf::protocol::GameclientMessagePing)"
+   ]
+  },
+  "slots": {}
+ }
+}

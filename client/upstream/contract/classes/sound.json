@@ -1,0 +1,305 @@
+{
+ "tibia::sound::TActiveSoundPlayer": {
+  "chain": [
+   "tibia::sound::TActiveSoundPlayer",
+   "QObject"
+  ],
+  "class": "tibia::sound::TActiveSoundPlayer",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "currentSoundChanged": [
+    "void currentSoundChanged()"
+   ],
+   "finished": [
+    "void finished()"
+   ],
+   "loopingChanged": [
+    "void loopingChanged()"
+   ],
+   "pitchChanged": [
+    "void pitchChanged()"
+   ],
+   "playingChanged": [
+    "void playingChanged()"
+   ],
+   "playingOffsetChanged": [
+    "void playingOffsetChanged()"
+   ],
+   "volumeChanged": [
+    "void volumeChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::sound::TGameSessionSoundProvider": {
+  "chain": [
+   "tibia::sound::TGameSessionSoundProvider",
+   "QObject"
+  ],
+  "class": "tibia::sound::TGameSessionSoundProvider",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "soundsToPlayChanged": [
+    "void soundsToPlayChanged()"
+   ]
+  },
+  "slots": {
+   "onSoundsToPlayChanged": [
+    "void onSoundsToPlayChanged()"
+   ]
+  }
+ },
+ "tibia::sound::TObjectSoundController": {
+  "chain": [
+   "tibia::sound::TObjectSoundController",
+   "QObject"
+  ],
+  "class": "tibia::sound::TObjectSoundController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "ambienceObjectStreamCountChanged": [
+    "void ambienceObjectStreamCountChanged(tibia::sound::TSoundEffectID SoundEffectID, size_t Count, tibia::worldmap::TWorldMapExtentX NearestDistance)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::sound::TSoundConfiguration": {
+  "chain": [
+   "tibia::sound::TSoundConfiguration",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundConfiguration",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "soundConfigurationChanged": [
+    "void soundConfigurationChanged()"
+   ]
+  },
+  "slots": {
+   "onSoundOptionsChanged": [
+    "void onSoundOptionsChanged()"
+   ]
+  }
+ },
+ "tibia::sound::TSoundController": {
+  "chain": [
+   "tibia::sound::TSoundController",
+   "tibia::sound::TSoundControllerBase",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "connectToPlayerPositionWasUpdated": [
+    "void connectToPlayerPositionWasUpdated()"
+   ],
+   "deferredPlayChangedEffectSounds": [
+    "void deferredPlayChangedEffectSounds()"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onAmbienceObjectStreamCountChanged": [
+    "void onAmbienceObjectStreamCountChanged(TSoundEffectID SoundEffectID, size_t Count, tibia::worldmap::TWorldMapExtentX NearestDistance)"
+   ],
+   "onEffectSoundsChanged": [
+    "void onEffectSoundsChanged()"
+   ],
+   "onPlayerDataChanged": [
+    "void onPlayerDataChanged()"
+   ],
+   "onPlayerPositionChanged": [
+    "void onPlayerPositionChanged(tibia::worldmap::TWorldMapCoordinate)"
+   ],
+   "onQueuedSoundsTimerTriggered": [
+    "void onQueuedSoundsTimerTriggered()"
+   ]
+  }
+ },
+ "tibia::sound::TSoundControllerBase": {
+  "chain": [
+   "tibia::sound::TSoundControllerBase",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundControllerBase",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::sound::TSoundDecompressorThreadpool": {
+  "chain": [
+   "tibia::sound::TSoundDecompressorThreadpool",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundDecompressorThreadpool",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "convertingSoundDataFinished": [
+    "void convertingSoundDataFinished(tibia::sound::TSoundEffectID SoundID, TSoundData ProcessedSoundData)"
+   ],
+   "convertingToPlayableSoundDataFinished": [
+    "void convertingToPlayableSoundDataFinished(tibia::sound::TSoundEffectID SoundID, TPlayableSoundData PlayableSoundData)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::sound::TSoundEngine": {
+  "chain": [
+   "tibia::sound::TSoundEngine",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundEngine",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "availableSoundDevicesChanged": [
+    "void availableSoundDevicesChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::sound::TSoundManager": {
+  "chain": [
+   "tibia::sound::TSoundManager",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "playableSoundsChanged": [
+    "void playableSoundsChanged()"
+   ]
+  },
+  "slots": {
+   "addPlayableSoundData": [
+    "void addPlayableSoundData(tibia::sound::TSoundEffectID SoundID, TPlayableSoundData PlayableSoundData)"
+   ],
+   "cleanupCache": [
+    "void cleanupCache()"
+   ],
+   "onPreprocessingSoundDataFinished": [
+    "void onPreprocessingSoundDataFinished(tibia::sound::TSoundEffectID SoundID, TSoundData SoundData)"
+   ],
+   "onSoundMetadataChanged": [
+    "void onSoundMetadataChanged()"
+   ],
+   "updateWithTimestamp": [
+    "void updateWithTimestamp(::shared::TMilliseconds TimestampMilliseconds)"
+   ]
+  }
+ },
+ "tibia::sound::TSoundMetadataManager": {
+  "chain": [
+   "tibia::sound::TSoundMetadataManager",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundMetadataManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "metadataChanged": [
+    "void metadataChanged()"
+   ],
+   "newAssetDataToLoad": [
+    "void newAssetDataToLoad(tibia::assets::TAsset AssetToLoad, bool Prioritized)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::sound::TSoundPlayer": {
+  "chain": [
+   "tibia::sound::TSoundPlayer",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundPlayer",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::sound::TSoundPlayerManager": {
+  "chain": [
+   "tibia::sound::TSoundPlayerManager",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundPlayerManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onCheckPlayers": [
+    "void onCheckPlayers()"
+   ],
+   "onSoundManagerPlayableSoundsChanged": [
+    "void onSoundManagerPlayableSoundsChanged()"
+   ]
+  }
+ },
+ "tibia::sound::TSoundProtocolMessageHandler": {
+  "chain": [
+   "tibia::sound::TSoundProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleSoundTriggerMessage": [
+    "void handleSoundTriggerMessage(tibia::protobuf::protocol::GameserverMessageSoundTrigger SoundTriggerMessage)"
+   ]
+  }
+ },
+ "tibia::sound::TSoundStorage": {
+  "chain": [
+   "tibia::sound::TSoundStorage",
+   "QObject"
+  ],
+  "class": "tibia::sound::TSoundStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "soundsToPlayChanged": [
+    "void soundsToPlayChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

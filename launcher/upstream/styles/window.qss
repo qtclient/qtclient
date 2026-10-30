@@ -1,0 +1,7 @@
+QMainWindow {
+          border-image: url(:/images/launcher/BackgroundImage.jpg) 0 0 450 0;
+          border-top: 0px transparent;
+          border-left: 0px transparent;
+          border-bottom: 450px transparent;
+          border-right: 0px transparent;
+        }

@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""Point an existing dist/cdn at a local build without repacking other slices.
+
+`make cdn` still does the full assemble. These flags only rewrite
+`latest/dev.json` (desktop) or replace the wasm files already named by
+`latest/release.json` (browser).
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import lzma
+import os
+import shutil
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+OTC = HERE.parents[1]
+UMBRELLA = OTC.parent.parent if OTC.parent.name == "apps" else OTC.parent
+CDN = UMBRELLA / "dist" / "cdn"
+DEV = CDN / "latest" / "dev.json"
+RELEASE = CDN / "latest" / "release.json"
+
+WASM_FILES = (
+    "tibia.html",
+    "tibia.js",
+    "tibia.wasm",
+    "tibia.data",
+    "qtloader.js",
+    "qtlogo.svg",
+)
+
+LAUNCHER_WASM_FILES = (
+    "launcher.html",
+    "launcher.js",
+    "launcher.wasm",
+    "qtloader.js",
+    "qtlogo.svg",
+)
+
+
+def fail(message: str) -> int:
+    print(f"[dev-cdn] {message}", file=sys.stderr)
+    return 1
+
+
+def cdn_ready() -> bool:
+    if RELEASE.is_file():
+        return True
+    print("[dev-cdn] dist/cdn is missing — run make cdn once", file=sys.stderr)
+    return False
+
+
+def load_dev() -> dict:
+    try:
+        return json.loads(DEV.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def write_dev(doc: dict) -> None:
+    DEV.parent.mkdir(parents=True, exist_ok=True)
+    DEV.write_text(json.dumps(doc, indent=2) + "\n")
+
+
+def find_desktop_binary() -> Path | None:
+    """Soft Play binary `client` (same order as deploy/find-client-bin.sh)."""
+    build = OTC / "build"
+    if not build.is_dir():
+        return None
+    presets = (
+        "macos-dev",
+        "linux-dev",
+        "macos-release",
+        "macos-debug",
+        "linux-release",
+        "linux-debug",
+        "windows-release",
+    )
+    # QtClient.app = branded package; client.app = cmake OUTPUT_NAME client.
+    mac_bundles = (("QtClient.app", "client"), ("client.app", "client"))
+    for preset in presets:
+        root = build / preset
+        if not root.is_dir():
+            continue
+        for bundle, exe in mac_bundles:
+            for path in root.rglob(bundle):
+                if path.is_dir():
+                    candidate = path / "Contents" / "MacOS" / exe
+                    if candidate.is_file():
+                        return candidate
+        for path in root.rglob("client.exe"):
+            if path.is_file():
+                return path
+        for candidate in (root / "src" / "tibia" / "client", root / "bin" / "client"):
+            if candidate.is_file():
+                return candidate
+    return None
+
+
+def place(src: Path, dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists() or dest.is_symlink():
+        try:
+            if src.samefile(dest):
+                return
+        except OSError:
+            pass
+        dest.unlink()
+    try:
+        os.link(src, dest)
+    except OSError:
+        shutil.copy2(src, dest)
+
+
+def desktop() -> int:
+    if not cdn_ready():
+        return 0
+    binary = find_desktop_binary()
+    if binary is None:
+        return fail("no desktop client binary — run make client-build")
+    doc = load_dev()
+    doc["desktop"] = {
+        "exe": str(binary),
+        "cwd": str(OTC),
+        "revision": str(binary.stat().st_mtime_ns),
+    }
+    write_dev(doc)
+    print(f"[dev-cdn] desktop -> {binary}")
+    return 0
+
+
+def _wasm_src_dir() -> Path | None:
+    root = Path(os.environ.get("TIBIA_WASM_DIR", OTC / "build" / "tibia-wasm"))
+    for candidate in (root, root / "src" / "tibia"):
+        if (candidate / "tibia.wasm").is_file():
+            return candidate
+    return None
+
+
+def _cip_stamp(fallback_path: Path) -> str:
+    # Match CIP Play-button stamps (15.33.<6 hex>). Prefer SOURCE_COMMIT
+    # (CI), else content hash of the tip binary so CipSoft reinstalls after a
+    # local wasm rebuild even when git HEAD is unchanged.
+    cip = "15.33"
+    version_json = OTC / "cip" / "VERSION.json"
+    if version_json.is_file():
+        try:
+            cip = json.loads(version_json.read_text()).get("cip_version") or cip
+        except (OSError, ValueError):
+            pass
+    sha = os.environ.get("SOURCE_COMMIT", "").strip()
+    if not sha and fallback_path.is_file():
+        sha = hashlib.sha256(fallback_path.read_bytes()).hexdigest()
+    if not sha:
+        try:
+            import subprocess
+
+            sha = subprocess.run(
+                ["git", "-C", str(OTC), "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout.strip()
+        except (OSError, subprocess.CalledProcessError, ValueError):
+            sha = f"{int(fallback_path.stat().st_mtime_ns):x}"
+    return f"{cip}.{sha[:6]}"
+
+
+def wasm() -> int:
+    if not cdn_ready():
+        return 0
+    release = json.loads(RELEASE.read_text())
+    wasm_rel = (release.get("targets") or {}).get("web", {}).get("wasm")
+    if not wasm_rel:
+        return fail("release.json has no web wasm directory — run make cdn once")
+    src_dir = _wasm_src_dir()
+    if src_dir is None:
+        return fail("no wasm build — run make browser-build")
+    dest_dir = CDN / wasm_rel
+    for name in WASM_FILES:
+        src = src_dir / name
+        if src.is_file():
+            place(src, dest_dir / name)
+    wasm_bin = src_dir / "tibia.wasm"
+    for ext in ("gz", "br"):
+        src = wasm_bin.with_name(f"tibia.wasm.{ext}")
+        dest = dest_dir / src.name
+        js = src_dir / f"tibia.js.{ext}"
+        if src.is_file():
+            place(src, dest)
+        elif dest.exists():
+            dest.unlink()
+        js_dest = dest_dir / js.name
+        if js.is_file():
+            place(js, js_dest)
+        elif js_dest.exists():
+            js_dest.unlink()
+    stat = wasm_bin.stat()
+    doc = load_dev()
+    doc["web"] = {"stamp": f"{stat.st_size}-{stat.st_mtime_ns}"}
+    write_dev(doc)
+    print(f"[dev-cdn] wasm -> {dest_dir} ({doc['web']['stamp']})")
+    # CipSoft tip installs qtclient from tibiaclient-web-current — keep it in sync
+    # with the content-addressed slice (Play loads tibia from that package).
+    rc = tibia_client_web(src_dir)
+    if rc != 0:
+        return rc
+    return launcher()
+
+
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _cip_file_record(dest_dir: Path, localfile: str, data: bytes) -> dict:
+    """CIP package.json file entry + write <localfile>.lzma beside the unpacked blob."""
+    packed = lzma.compress(data, format=lzma.FORMAT_ALONE)
+    packed_hash = _sha256(packed)
+    lzma_name = f"{localfile}.lzma"
+    (dest_dir / lzma_name).write_bytes(packed)
+    return {
+        "url": lzma_name,
+        "localfile": localfile,
+        "packedhash": packed_hash,
+        "packedsize": len(packed),
+        "unpackedhash": _sha256(data),
+        "unpackedsize": len(data),
+    }
+
+
+def tibia_client_web(src_dir: Path | None = None) -> int:
+    """Hot-swap CipSoft tip client under launcher/tibiaclient-web-current."""
+    if not cdn_ready():
+        return 0
+    if src_dir is None:
+        src_dir = _wasm_src_dir()
+    if src_dir is None:
+        return fail("no tibia.wasm — run make browser-build")
+    dest_dir = CDN / "launcher" / "tibiaclient-web-current"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    files = []
+    for name in ("tibia.js", "tibia.wasm", "qtloader.js", "tibia.data"):
+        src = src_dir / name
+        if not src.is_file() and name == "qtloader.js":
+            src = src_dir.parent / name
+        if not src.is_file():
+            if name == "tibia.data":
+                continue
+            return fail(f"missing {name} in {src_dir}")
+        place(src, dest_dir / name)
+        files.append(_cip_file_record(dest_dir, name, src.read_bytes()))
+    for name in ("tibia.html", "qtlogo.svg"):
+        src = src_dir / name
+        if src.is_file():
+            place(src, dest_dir / name)
+    stamp = _cip_stamp(dest_dir / "tibia.wasm")
+    pkg = {
+        "version": stamp,
+        "files": files,
+        "executable": "tibia.js",
+        "creation_time": 0,
+        "generation": "second",
+    }
+    (dest_dir / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
+    (dest_dir / "package.json.version").write_text(stamp + "\n")
+    print(f"[dev-cdn] tibiaclient-web -> {dest_dir} ({stamp})")
+    return 0
+
+
+def launcher() -> int:
+    """Hot-swap /play's Qt launcher WASM under launcher/launcher-web-current."""
+    if not cdn_ready():
+        return 0
+    src_dir = Path(os.environ.get("TIBIA_WASM_DIR", OTC / "build" / "tibia-wasm"))
+    # Prefer the real binary dir (qt may nest under launcher/src/).
+    candidates = [
+        src_dir,
+        src_dir / "src" / "tibia" / "launcher",
+    ]
+    launch_src = next((d for d in candidates if (d / "launcher.wasm").is_file()), None)
+    if launch_src is None:
+        return fail(f"no launcher.wasm under {src_dir} — run make browser-build")
+    dest_dir = CDN / "launcher" / "launcher-web-current"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    files = []
+    for name in ("launcher.js", "launcher.wasm", "qtloader.js"):
+        src = launch_src / name
+        if not src.is_file() and name == "qtloader.js":
+            src = src_dir / name
+        if not src.is_file():
+            return fail(f"missing {name} in {launch_src}")
+        place(src, dest_dir / name)
+        files.append(_cip_file_record(dest_dir, name, src.read_bytes()))
+    for name in ("launcher.html", "qtlogo.svg"):
+        src = launch_src / name
+        if src.is_file():
+            place(src, dest_dir / name)
+    stamp = _cip_stamp(dest_dir / "launcher.wasm")
+    pkg = {
+        "version": stamp,
+        "executable": "launcher",
+        "files": files,
+    }
+    (dest_dir / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
+    (dest_dir / "package.json.version").write_text(stamp + "\n")
+    # /play stage backdrop (same files CIP packs under /images/launcher/).
+    chrome = OTC / "src" / "tibia" / "launcher" / "images" / "launcher"
+    tip_img = CDN / "images" / "launcher"
+    if chrome.is_dir():
+        tip_img.mkdir(parents=True, exist_ok=True)
+        for path in chrome.iterdir():
+            if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}:
+                place(path, tip_img / path.name)
+    # Mirror version URL used by tibiametadata for the web launcher build.
+    print(f"[dev-cdn] launcher-web -> {dest_dir} ({stamp})")
+    return 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    group = ap.add_mutually_exclusive_group(required=True)
+    group.add_argument("--desktop", action="store_true")
+    group.add_argument("--web", action="store_true")
+    group.add_argument("--launcher", action="store_true")
+    args = ap.parse_args()
+    if args.desktop:
+        return desktop()
+    if args.launcher:
+        return launcher()
+    return wasm()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

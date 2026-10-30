@@ -1,0 +1,240 @@
+#!/usr/bin/env python3
+"""Translate the client's module fragment shaders to WGSL for the WebGPU backend.
+
+GL compiles a module `.frag` as written. The WebGPU backend needs WGSL, which this tool
+writes next to each `.frag` (same name, `.wgsl`):
+
+  1. Rewrite the GLSL ES 1.0 source as Vulkan GLSL 4.50 against the backend's uniform
+     block (render/webgpubackend.cpp, `Globals`).
+  2. Compile it to SPIR-V with glslang.
+  3. Translate the SPIR-V to WGSL with naga.
+
+Usage:
+  glsl2wgsl              regenerate every missing or stale .wgsl (needs glslang and naga)
+  glsl2wgsl FILE.frag... regenerate the given shaders
+  glsl2wgsl --check      fail when a .wgsl is missing or stale (no tools needed; CI)
+
+Install the translators with `brew install glslang` and `cargo install naga-cli`.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+# Bump when the rewrite changes, so --check flags every output made by the old one.
+TOOL_VERSION = 1
+
+OTC_DIR = Path(__file__).resolve().parents[2]
+SEARCH_ROOTS = ("modules", "mods", "data")
+
+# The backend's per-draw uniform block, in std140 order. Must match DrawUniforms and the
+# WGSL Globals struct in src/framework/graphics/render/webgpubackend.cpp.
+UNIFORM_BLOCK = (
+    ("mat3", "u_ProjectionMatrix"),
+    ("mat3", "u_TransformMatrix"),
+    ("mat3", "u_TextureMatrix"),
+    ("vec4", "u_Color"),
+    ("vec2", "u_Resolution"),
+    ("vec2", "u_WalkOffset"),
+    ("vec2", "u_MapCenterCoord"),
+    ("vec2", "u_MapGlobalCoord"),
+    ("vec2", "u_Offset"),
+    ("vec2", "u_Center"),
+    ("float", "u_Time"),
+    ("float", "u_Opacity"),
+    ("float", "u_MapZoom"),
+    ("float", "u_ItemId"),
+    ("float", "u_OutfitId"),
+    ("float", "u_MountId"),
+    ("float", "u_ShaderId"),
+    ("float", "otc_Padding"),
+)
+UNIFORM_TYPES = {name: glsl_type for glsl_type, name in UNIFORM_BLOCK}
+TEXTURE_UNITS = 4
+
+PRECISION_RE = re.compile(r"^\s*precision\s+\w+\s+\w+\s*;\s*$", re.MULTILINE)
+QUALIFIER_RE = re.compile(r"\b(lowp|mediump|highp)\s+")
+DIRECTIVE_RE = re.compile(r"^\s*#\s*(version|extension)\b.*$", re.MULTILINE)
+UNIFORM_RE = re.compile(r"^\s*uniform\s+(\w+)\s+(\w+)\s*;[ \t]*(?://.*)?$", re.MULTILINE)
+VARYING_RE = re.compile(r"^\s*varying\s+(\w+)\s+(\w+)\s*;[ \t]*(?://.*)?$", re.MULTILINE)
+MAIN_RE = re.compile(r"\bvoid\s+main\s*\(\s*(void)?\s*\)")
+HEADER_RE = re.compile(r"^// glsl2wgsl v(\d+) source-sha256: ([0-9a-f]{64})$", re.MULTILINE)
+
+
+class ConvertError(Exception):
+    pass
+
+
+def module_shaders() -> list[Path]:
+    """Every module fragment shader. Files under a `vertex/` directory are vertex shaders
+    that happen to use the .frag extension; nothing loads them as fragment programs."""
+    found: list[Path] = []
+    for root in SEARCH_ROOTS:
+        base = OTC_DIR / root
+        if base.is_dir():
+            found.extend(p for p in base.rglob("*.frag") if "vertex" not in p.relative_to(base).parts)
+    return sorted(found)
+
+
+def wgsl_path(frag: Path) -> Path:
+    return frag.with_suffix(".wgsl")
+
+
+def source_hash(frag: Path) -> str:
+    return hashlib.sha256(frag.read_bytes()).hexdigest()
+
+
+def is_current(frag: Path) -> bool:
+    out = wgsl_path(frag)
+    if not out.exists():
+        return False
+    match = HEADER_RE.search(out.read_text(encoding="utf-8"))
+    return bool(match) and int(match.group(1)) == TOOL_VERSION and match.group(2) == source_hash(frag)
+
+
+def rewrite(source: str, name: str) -> str:
+    """GLSL ES 1.0 fragment source -> Vulkan GLSL 4.50 on the backend's binding layout."""
+    body = DIRECTIVE_RE.sub("", source)
+    body = PRECISION_RE.sub("", body)
+    body = QUALIFIER_RE.sub("", body)
+
+    textures: set[int] = set()
+
+    def uniform(match: re.Match[str]) -> str:
+        glsl_type, ident = match.group(1), match.group(2)
+        texture = re.fullmatch(r"u_Tex(\d)", ident)
+        if texture and glsl_type == "sampler2D" and int(texture.group(1)) < TEXTURE_UNITS:
+            textures.add(int(texture.group(1)))
+            return ""
+        if UNIFORM_TYPES.get(ident) == glsl_type:
+            return ""
+        raise ConvertError(f"{name}: uniform '{glsl_type} {ident}' is not in the WebGPU uniform block")
+
+    def varying(match: re.Match[str]) -> str:
+        if match.group(1) == "vec2" and match.group(2) == "v_TexCoord":
+            return "layout(location = 0) in vec2 v_TexCoord;"
+        raise ConvertError(f"{name}: varying '{match.group(1)} {match.group(2)}' has no vertex-stage output")
+
+    body = UNIFORM_RE.sub(uniform, body)
+    body = VARYING_RE.sub(varying, body)
+
+    body, mains = MAIN_RE.subn("void otc_main()", body)
+    if mains != 1:
+        raise ConvertError(f"{name}: expected exactly one main()")
+
+    members = "\n".join(f"    {glsl_type} {ident};" for glsl_type, ident in UNIFORM_BLOCK)
+    samplers = "\n".join(
+        f"layout(set = 1, binding = {unit * 2}) uniform texture2D otc_Tex{unit};\n"
+        f"layout(set = 1, binding = {unit * 2 + 1}) uniform sampler otc_Sampler{unit};\n"
+        f"#define u_Tex{unit} sampler2D(otc_Tex{unit}, otc_Sampler{unit})"
+        for unit in sorted(textures)
+    )
+
+    # texture2D becomes an explicit level-0 sample: WGSL forbids implicit-LOD sampling outside
+    # uniform control flow, which these shaders do freely (after discard, in loops). No module
+    # shader samples a mipmapped texture, so level 0 is exactly what GL samples.
+    #
+    # gl_FragCoord is GL's bottom-left window position; WebGPU's is top-left. Painter's
+    # resolution (u_Resolution) is the viewport height both are measured against.
+    return f"""#version 450
+
+layout(std140, set = 0, binding = 0) uniform Globals {{
+{members}
+}};
+
+{samplers}
+
+layout(location = 0) out vec4 otc_FragColor;
+vec4 otc_FragCoord;
+
+#define texture2D(s, uv) textureLod(s, uv, 0.0)
+#define gl_FragColor otc_FragColor
+#define gl_FragCoord otc_FragCoord
+
+{body.strip()}
+
+#undef gl_FragCoord
+#undef gl_FragColor
+
+void main()
+{{
+    otc_FragCoord = vec4(gl_FragCoord.x, u_Resolution.y - gl_FragCoord.y, gl_FragCoord.z, gl_FragCoord.w);
+    otc_main();
+}}
+"""
+
+
+def require(tool: str) -> str:
+    path = shutil.which(tool)
+    if not path:
+        hint = "brew install glslang" if tool == "glslang" else "cargo install naga-cli"
+        raise SystemExit(f"glsl2wgsl: '{tool}' not found ({hint})")
+    return path
+
+
+def convert(frag: Path, glslang: str, naga: str) -> None:
+    rel = frag.relative_to(OTC_DIR).as_posix()
+    glsl = rewrite(frag.read_text(encoding="utf-8"), rel)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / "shader.frag"
+        spv = Path(tmp) / "shader.spv"
+        out = Path(tmp) / "shader.wgsl"
+        src.write_text(glsl, encoding="utf-8")
+
+        compiled = subprocess.run(
+            [glslang, "-V", "--target-env", "vulkan1.0", "-S", "frag", "-o", str(spv), str(src)],
+            capture_output=True, text=True,
+        )
+        if compiled.returncode != 0:
+            raise ConvertError(f"{rel}: glslang failed\n{compiled.stdout}{compiled.stderr}\n--- rewritten source ---\n{glsl}")
+
+        translated = subprocess.run([naga, str(spv), str(out)], capture_output=True, text=True)
+        if translated.returncode != 0:
+            raise ConvertError(f"{rel}: naga failed\n{translated.stdout}{translated.stderr}")
+
+        wgsl = out.read_text(encoding="utf-8")
+
+    header = (
+        f"// Generated from {frag.name} by tools/shaders/glsl2wgsl - edit the .frag and regenerate.\n"
+        f"// glsl2wgsl v{TOOL_VERSION} source-sha256: {source_hash(frag)}\n\n"
+    )
+    wgsl_path(frag).write_text(header + wgsl, encoding="utf-8")
+    print(f"[glsl2wgsl] {wgsl_path(frag).relative_to(OTC_DIR).as_posix()}")
+
+
+def main(argv: list[str]) -> int:
+    if argv[:1] == ["--check"]:
+        stale = [f for f in module_shaders() if not is_current(f)]
+        for frag in stale:
+            print(f"::error::{wgsl_path(frag).relative_to(OTC_DIR).as_posix()} is missing or stale; "
+                  f"run apps/otclient/tools/shaders/glsl2wgsl")
+        if stale:
+            return 1
+        print(f"[ok] {len(module_shaders())} module shaders have current WGSL")
+        return 0
+
+    targets = [Path(a).resolve() for a in argv] if argv else [f for f in module_shaders() if not is_current(f)]
+    if not targets:
+        print("[glsl2wgsl] every .wgsl is current")
+        return 0
+
+    glslang, naga = require("glslang"), require("naga")
+    failed = 0
+    for frag in targets:
+        try:
+            convert(frag, glslang, naga)
+        except ConvertError as error:
+            failed += 1
+            print(f"::error::{error}", file=sys.stderr)
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

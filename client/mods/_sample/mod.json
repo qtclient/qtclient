@@ -1,0 +1,19 @@
+{
+  "id": "sample",
+  "name": "Sample Mod",
+  "version": "1.0.0",
+  "author": "qtclient",
+  "autoload": true,
+  "priority": 50,
+  "QTCLIENT_MOD_API": 1,
+  "qmlModule": "sample",
+  "native": "native/mod",
+  "identity": {
+    "displayName": "Sample",
+    "organization": "qtclient",
+    "organizationDomain": "example.invalid",
+    "bundleId": "com.qtclient.sample",
+    "cdnBaseUrl": ""
+  },
+  "description": "SDK sample pack. Build with qtclient_add_mod; drop mods/sample/ next to client."
+}

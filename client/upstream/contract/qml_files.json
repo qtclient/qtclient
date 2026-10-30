@@ -1,0 +1,6384 @@
+{
+ "AboutDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TAboutDialogController",
+    "matched": 7,
+    "score": 39.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ActionBar.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TActionBarController",
+    "matched": 5,
+    "score": 28.3
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ActionBarButton.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TActionButtonController",
+    "matched": 8,
+    "score": 47.6
+   },
+   {
+    "class": "tibia::config::TActionBarsQMLOptionsPage",
+    "matched": 6,
+    "score": 36.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TCachedOutlineTextQuickItem",
+    "matched": 4,
+    "score": 22.8
+   },
+   {
+    "class": "tibia::gamewindow::TActionBarController",
+    "matched": 3,
+    "score": 14.1
+   }
+  ],
+  "elements": [
+   "CachedOutlineText",
+   "TextHelper",
+   "TibiaTargetSelection",
+   "TibiaTutorialMarker"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "Drag",
+   "formatNumberToShortStringWithMax999k",
+   "isEmpty",
+   "isLocked",
+   "markerID",
+   "save",
+   "styleType"
+  ]
+ },
+ "ActionBarMultiActionButton.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "direction"
+  ]
+ },
+ "ActionBarMultiActionExpandable.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "multiActionIndex"
+  ]
+ },
+ "AnalyticsSelectorWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TAnalyticsSelectorWidgetController",
+    "matched": 19,
+    "score": 112.2
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "ArcProgressBar.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "AreaCaptionTemplate.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TAreaCaptionController",
+    "matched": 6,
+    "score": 34.2
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutlineTextQuickItem",
+    "matched": 4,
+    "score": 22.4
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "AssignObjectActionDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TAssignObjectActionDialogController",
+    "matched": 17,
+    "score": 82.2
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 5,
+    "score": 24.2
+   }
+  ],
+  "elements": [
+   "ObjectAppearanceInstance"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "AssignPassiveAbilityActionDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TAssignPassiveAbilityActionDialogController",
+    "matched": 10,
+    "score": 51.4
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "AssignSpellActionDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TAssignSpellActionDialogController",
+    "matched": 11,
+    "score": 56.4
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "rowCount",
+   "sourceItemDataByRowIndex",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "AssignTextActionDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TAssignTextActionDialogController",
+    "matched": 6,
+    "score": 27.4
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "BattleListEntry.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 6,
+    "score": 27.7
+   }
+  ],
+  "elements": [
+   "TibiaTutorialMarker"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "markerID",
+   "truncated"
+  ]
+ },
+ "BlessingsDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::game::TQmlBlessingWithCharges",
+    "matched": 5,
+    "score": 30.0
+   },
+   {
+    "class": "tibia::game::TQmlBlessingDialogData",
+    "matched": 5,
+    "score": 28.3
+   },
+   {
+    "class": "tibia::gamewindow::TBlessingsDialogController",
+    "matched": 4,
+    "score": 20.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "blessingWasGained",
+   "selected"
+  ]
+ },
+ "BossDifficultySelectionDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBossDifficultySelectionDialogController",
+    "matched": 13,
+    "score": 76.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "TopLeft",
+   "raceName",
+   "scaleFactor"
+  ]
+ },
+ "BossSlotNotActive.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "BossSlotsDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBossSlotQMLInformation",
+    "matched": 14,
+    "score": 81.9
+   },
+   {
+    "class": "tibia::gamewindow::TBossSlotsDialogController",
+    "matched": 10,
+    "score": 59.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "BossTrackingWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBossTrackerWidgetController",
+    "matched": 9,
+    "score": 48.1
+   },
+   {
+    "class": "tibia::store::TQmlStoreVisualisation",
+    "matched": 4,
+    "score": 17.6
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "outfit"
+  ]
+ },
+ "BosstiaryDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBosstiaryDialogController",
+    "matched": 19,
+    "score": 110.4
+   },
+   {
+    "class": "tibia::gamewindow::TBossSlotQMLInformation",
+    "matched": 5,
+    "score": 30.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "BosstiaryUnlockProgress.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "BugReportDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBugReportDialogController",
+    "matched": 5,
+    "score": 27.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clicked"
+  ]
+ },
+ "ButtonBarPanel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TButtonBarController",
+    "matched": 81,
+    "score": 484.3
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "buttonId",
+   "columns"
+  ]
+ },
+ "ButtonHighlightAnimation.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "CalendarDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCalendarDialogController",
+    "matched": 8,
+    "score": 46.5
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "onCloseClicked"
+  ]
+ },
+ "CharacterCombatStatBlock.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "tooltip"
+  ]
+ },
+ "CharacterInfoDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCharacterInfoDialogController",
+    "matched": 46,
+    "score": 267.8
+   },
+   {
+    "class": "tibia::gamewindow::TAchievementInfoController",
+    "matched": 18,
+    "score": 107.3
+   },
+   {
+    "class": "tibia::gamewindow::TStorePurchasesQmlData",
+    "matched": 12,
+    "score": 71.0
+   },
+   {
+    "class": "tibia::gamewindow::TItemSummaryModelSortFilterProxy",
+    "matched": 6,
+    "score": 36.0
+   }
+  ],
+  "elements": [
+   "AppearanceInstanceRenderer",
+   "ObjectAppearanceInstance",
+   "TextHelper"
+  ],
+  "type_refs": [
+   "AchievementController",
+   "CharacterInfoDialogController",
+   "OutfitsMountsSummonSkinsModel",
+   "TitlesModel"
+  ],
+  "uncovered_cpp_members": [
+   "Controls",
+   "Mounts",
+   "Outfits",
+   "SOUTH",
+   "ShowAllTitles",
+   "ShowLockedTitles",
+   "ShowPermanentTitles",
+   "ShowTemporaryTitles",
+   "ShowUnlockedTitles",
+   "Store",
+   "SummonSkins",
+   "appearanceInstances",
+   "appearanceTypeID",
+   "canShowAccountInfos",
+   "clear",
+   "currentTitle",
+   "currentTitleId",
+   "damageReductions",
+   "description",
+   "formatNumberWithThousandSeparators",
+   "formatNumberWithThousandShortcutsAsMultiString",
+   "formatSecondsToShortDaysHoursMinOrHoursMinOrMinSecondsOrSecondsTimeString",
+   "formatSecondsToUltraShortDaysOrHoursOrMinsOrSecondsTimeString",
+   "grade",
+   "hasCurrentTitle",
+   "hookDirection",
+   "iconSource",
+   "isCurrentTitleActive",
+   "isOnline",
+   "isPremium",
+   "loyaltyTitle",
+   "maximumWidth",
+   "outfitID",
+   "secondsRemaining",
+   "secret",
+   "selected",
+   "setDefaultCursor",
+   "setPointingHand",
+   "textColor",
+   "titlesModel",
+   "typeid",
+   "unjustifiedCode",
+   "unlockDateString",
+   "upgradeTier"
+  ]
+ },
+ "CharacterSelection.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCharacterSelectionController",
+    "matched": 23,
+    "score": 130.8
+   },
+   {
+    "class": "tibia::gamewindow::TCharacterInformationModelData",
+    "matched": 6,
+    "score": 36.0
+   },
+   {
+    "class": "tibia::game::TPremiumMessageRenewPremium",
+    "matched": 2,
+    "score": 10.7
+   },
+   {
+    "class": "tibia::gamewindow::TSelectOutfitDialogController",
+    "matched": 2,
+    "score": 9.8
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "DailyRewardStateNotAvailable",
+   "maximumWidth",
+   "rowCount",
+   "searchString",
+   "selected"
+  ]
+ },
+ "CharacterWorldTransferDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCharacterWorldTransferDialogController",
+    "matched": 7,
+    "score": 37.6
+   },
+   {
+    "class": "tibia::gamewindow::TQmlWorldTransferCondition",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "Chat.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TChatController",
+    "matched": 8,
+    "score": 48.0
+   },
+   {
+    "class": "tibia::gamewindow::TChatChannelFilterController",
+    "matched": 8,
+    "score": 44.7
+   },
+   {
+    "class": "tibia::gamewindow::TChatChannelTabController",
+    "matched": 7,
+    "score": 42.0
+   },
+   {
+    "class": "tibia::gamewindow::TNpcDialogController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "setResizeHorizontal"
+  ]
+ },
+ "ChatInput.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TChatController",
+    "matched": 6,
+    "score": 35.6
+   },
+   {
+    "class": "tibia::gamewindow::TChatChannelFilterController",
+    "matched": 2,
+    "score": 11.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "ChatOutput.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TChatChannelFilterController",
+    "matched": 7,
+    "score": 39.1
+   },
+   {
+    "class": "tibia::gamewindow::TChatTutorialMarkerRenderInfo",
+    "matched": 2,
+    "score": 11.1
+   }
+  ],
+  "elements": [
+   "TibiaTutorialMarker"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "markerID",
+   "sendKeyword"
+  ]
+ },
+ "CombatControls.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPlayerInventoryAndStatusController",
+    "matched": 13,
+    "score": 78.0
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "ComboPointsAndSereneState.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "maximumWidth"
+  ]
+ },
+ "ConfiguredBossSlot.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Effects",
+   "onClearClicked"
+  ]
+ },
+ "ConfirmMoveObjectToStashDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TGenericConfirmWithDontShowAgainDialogController",
+    "matched": 3,
+    "score": 15.8
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ContainerSlot.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TOutlineTextQuickItem",
+    "matched": 2,
+    "score": 11.2
+   },
+   {
+    "class": "tibia::gamewindow::TPlayerInventoryAndStatusController",
+    "matched": 2,
+    "score": 11.2
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 2,
+    "score": 10.9
+   },
+   {
+    "class": "tibia::gamewindow::TActionButtonController",
+    "matched": 2,
+    "score": 10.7
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "ObjectAppearanceInstance",
+   "SingleObjectAppearanceInstanceRenderer",
+   "TibiaTargetSelection",
+   "TibiaTutorialMarker"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clicked",
+   "dragDropped",
+   "markerID",
+   "setPointingHand",
+   "styleType",
+   "targetSelected"
+  ]
+ },
+ "ContextMenuTemplate.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TContextMenuEntryItem",
+    "matched": 6,
+    "score": 35.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "entries"
+  ]
+ },
+ "CooldownBar.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCooldownProgressDataForQML",
+    "matched": 4,
+    "score": 22.9
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "CrashReportDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCrashReportDialogController",
+    "matched": 4,
+    "score": 22.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "CreatureHUD.qml": {
+  "controllers": [
+   {
+    "class": "tibia::worldmap::TCreatureHUDQmlRenderInfo",
+    "matched": 28,
+    "score": 163.9
+   },
+   {
+    "class": "tibia::qmlcomponents::TCachedOutlineTextQuickItem",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "CachedOutlineText"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "CreatureTrackerWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCreatureTrackerWidgetController",
+    "matched": 7,
+    "score": 40.5
+   },
+   {
+    "class": "tibia::gamewindow::TQmlMonsterRace",
+    "matched": 2,
+    "score": 11.3
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [
+   "CreatureTrackerWidgetController"
+  ],
+  "uncovered_cpp_members": [
+   "setPointingHand"
+  ]
+ },
+ "CreatureUnlockProgress.qml": {
+  "controllers": [],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "CyclopediaDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCyclopediaDialogController",
+    "matched": 28,
+    "score": 161.0
+   },
+   {
+    "class": "tibia::gamewindow::TMagicalArchiveDialogController",
+    "matched": 5,
+    "score": 30.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "CyclopediaDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "hasGuildBankGoldBalance",
+   "requestOpenBestiaryTrackerWidget"
+  ]
+ },
+ "CyclopediaMapDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCyclopediaMapDialogController",
+    "matched": 20,
+    "score": 118.2
+   },
+   {
+    "class": "tibia::gamewindow::TCyclopediaMapSelectionInfoSubArea",
+    "matched": 17,
+    "score": 96.1
+   },
+   {
+    "class": "tibia::qmlcomponents::TMinimapRendererQuickItem",
+    "matched": 13,
+    "score": 78.0
+   },
+   {
+    "class": "tibia::gamewindow::TCyclopediaCreatureOccurrencesInfo",
+    "matched": 5,
+    "score": 29.2
+   }
+  ],
+  "elements": [
+   "MinimapRenderer",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "SelectionTypeArea",
+   "SelectionTypePassage",
+   "SelectionTypeSubArea",
+   "isUnknown",
+   "maximumWidth",
+   "raceID",
+   "raceName",
+   "reachableCreatureOccurrences"
+  ]
+ },
+ "DailyRewardPickItemsDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TDailyRewardPickItemsDialogController",
+    "matched": 10,
+    "score": 54.2
+   },
+   {
+    "class": "tibia::dailyreward::TQmlObjectToPick",
+    "matched": 5,
+    "score": 28.4
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "maximumWidth",
+   "styleType"
+  ]
+ },
+ "DamageInputWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TDamageInputWidgetController",
+    "matched": 14,
+    "score": 82.5
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "setPointingHand"
+  ]
+ },
+ "DepotSearchWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TDepotSearchWidgetController",
+    "matched": 47,
+    "score": 267.9
+   },
+   {
+    "class": "tibia::container::TQMLItemSlotData",
+    "matched": 6,
+    "score": 34.5
+   },
+   {
+    "class": "tibia::container::TContainerSlotQmlInformation",
+    "matched": 3,
+    "score": 15.7
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "DialogHeaderCrest.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "DialogHeaderDragon.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "DynamicallyLoadedMultiImage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem",
+    "matched": 3,
+    "score": 17.6
+   }
+  ],
+  "elements": [
+   "DynamicallyLoadedImage"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "imageIdentifiers"
+  ]
+ },
+ "EditMinimapMarkerDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TWhiteBlacklistDialogController",
+    "matched": 2,
+    "score": 8.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "EditTextDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TEditTextController",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 2,
+    "score": 10.9
+   }
+  ],
+  "elements": [
+   "ObjectAppearanceInstance",
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clicked"
+  ]
+ },
+ "EditVipDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TVipGroupInfo",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::gamewindow::TWhiteBlacklistDialogController",
+    "matched": 2,
+    "score": 8.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "EnergyBar.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ExaltationForgeConversionPage.qml": {
+  "controllers": [
+   {
+    "class": "TExaltationForgeConversionPageController",
+    "matched": 11,
+    "score": 66.0
+   },
+   {
+    "class": "tibia::gamewindow::TStoreAndResourceBalanceHelperController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "smoothTextureFiltering"
+  ]
+ },
+ "ExaltationForgeConversionPanel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TAreaCaptionController",
+    "matched": 2,
+    "score": 10.2
+   },
+   {
+    "class": "tibia::gamewindow::TGenericEnterTextDialogController",
+    "matched": 2,
+    "score": 10.2
+   }
+  ],
+  "elements": [
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "typeid"
+  ]
+ },
+ "ExaltationForgeDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TExaltationForgeDialogController",
+    "matched": 14,
+    "score": 75.4
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "ExaltationForgeDialogController"
+  ],
+  "uncovered_cpp_members": []
+ },
+ "ExaltationForgeFusionPage.qml": {
+  "controllers": [
+   {
+    "class": "TExaltationForgeFusionPageController",
+    "matched": 17,
+    "score": 102.0
+   },
+   {
+    "class": "tibia::gamewindow::TStoreAndResourceBalanceHelperController",
+    "matched": 3,
+    "score": 17.3
+   },
+   {
+    "class": "tibia::gamewindow::TExaltationForgeDialogController",
+    "matched": 2,
+    "score": 10.5
+   },
+   {
+    "class": "tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer",
+    "matched": 2,
+    "score": 9.6
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString",
+   "price",
+   "upgradeTier"
+  ]
+ },
+ "ExaltationForgeHistoryPage.qml": {
+  "controllers": [
+   {
+    "class": "TExaltationForgeHistoryPageController",
+    "matched": 5,
+    "score": 27.9
+   },
+   {
+    "class": "tibia::gamewindow::TBosstiaryDialogController",
+    "matched": 4,
+    "score": 20.8
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ExaltationForgeTransferPage.qml": {
+  "controllers": [
+   {
+    "class": "TExaltationForgeTransferPageController",
+    "matched": 15,
+    "score": 89.1
+   },
+   {
+    "class": "tibia::gamewindow::TStoreAndResourceBalanceHelperController",
+    "matched": 3,
+    "score": 17.3
+   },
+   {
+    "class": "tibia::gamewindow::TExaltationForgeDialogController",
+    "matched": 2,
+    "score": 10.5
+   },
+   {
+    "class": "tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer",
+    "matched": 2,
+    "score": 9.6
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString",
+   "price",
+   "upgradeTier"
+  ]
+ },
+ "ExaltationResultDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TExaltationResultDialogController",
+    "matched": 15,
+    "score": 85.0
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 10,
+    "score": 60.0
+   }
+  ],
+  "elements": [
+   "GlobalConstants",
+   "TextHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparators",
+   "isSoftwareRenderer"
+  ]
+ },
+ "ExivaOptionsDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TExivaOptionsDialogController",
+    "matched": 10,
+    "score": 58.1
+   },
+   {
+    "class": "tibia::gamewindow::TAssignTextActionDialogController",
+    "matched": 3,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 2,
+    "score": 11.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "FpsLatencyIndicator.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TFPSLatencyIndicatorController",
+    "matched": 4,
+    "score": 23.6
+   }
+  ],
+  "elements": [
+   "CachedOutlineText"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "NoCaching"
+  ]
+ },
+ "FriendsAccountSearchPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TFriendsAccountSearchPageController",
+    "matched": 20,
+    "score": 116.6
+   },
+   {
+    "class": "tibia::gamewindow::TCharacterBaseQmlInfo",
+    "matched": 7,
+    "score": 33.0
+   },
+   {
+    "class": "tibia::gamewindow::TCharacterInformationModelData",
+    "matched": 5,
+    "score": 26.8
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "setPointingHand"
+  ]
+ },
+ "FriendsBadgesPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TFriendsBadgesPageController",
+    "matched": 8,
+    "score": 47.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "FriendsBadgesController"
+  ],
+  "uncovered_cpp_members": [
+   "Controls",
+   "selected"
+  ]
+ },
+ "FriendsConfigurationPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSocialDialogController",
+    "matched": 4,
+    "score": 24.0
+   },
+   {
+    "class": "tibia::gamewindow::TFriendsConfigurationPageController",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::gamewindow::TFriendsAccountSearchPageController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "SocialDialogController"
+  ],
+  "uncovered_cpp_members": []
+ },
+ "FriendsFriendListPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TFriendsFriendListPageController",
+    "matched": 8,
+    "score": 47.6
+   },
+   {
+    "class": "tibia::gamewindow::TSocialDialogController",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutfitPresetQmlType",
+    "matched": 3,
+    "score": 17.3
+   },
+   {
+    "class": "tibia::gamewindow::TCharacterInformationModelData",
+    "matched": 3,
+    "score": 16.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "FriendsFriendListController",
+   "SocialDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "Controls",
+   "lastSelectedIndex",
+   "selected",
+   "setPointingHand"
+  ]
+ },
+ "FriendsInvitesPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TFriendsInvitesPageController",
+    "matched": 10,
+    "score": 60.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "FriendsInvitesController"
+  ],
+  "uncovered_cpp_members": [
+   "Controls",
+   "selected"
+  ]
+ },
+ "GamewindowSplitView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "layoutChanged",
+   "setResizeVertical"
+  ]
+ },
+ "GenericConfirmWithDontShowAgainDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TGenericConfirmWithDontShowAgainDialogController",
+    "matched": 5,
+    "score": 27.7
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "GenericEnterTextDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TGenericEnterTextDialogController",
+    "matched": 10,
+    "score": 51.4
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "GoldenHighlightTibiaTextDecorator.qml": {
+  "controllers": [],
+  "elements": [
+   "GlobalConstants"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "highlighted",
+   "isSoftwareRenderer"
+  ]
+ },
+ "HighscoreColumnContent.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "HighscorePage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::THighscoresDialogController",
+    "matched": 28,
+    "score": 164.1
+   },
+   {
+    "class": "tibia::gamewindow::TCharacterInformationModelData",
+    "matched": 3,
+    "score": 16.2
+   },
+   {
+    "class": "tibia::gamewindow::TCharacterBaseQmlInfo",
+    "matched": 3,
+    "score": 16.2
+   },
+   {
+    "class": "tibia::gamewindow::TFriendsAccountSearchPageController",
+    "matched": 2,
+    "score": 11.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "HighscoresDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "Controls",
+   "highscoreEntryModel",
+   "rowCount"
+  ]
+ },
+ "HirelingConfigurationDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::THirelingConfigurationDialogController",
+    "matched": 2,
+    "score": 9.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "HitpointsManaArcHud.qml": {
+  "controllers": [
+   {
+    "class": "tibia::worldmap::TCreatureHUDQmlRenderInfo",
+    "matched": 6,
+    "score": 34.5
+   },
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 4,
+    "score": 22.5
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "HitpointsManaPanel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 5,
+    "score": 27.3
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "HorizontalActionBarContainer.qml": {
+  "controllers": [],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "actionBarCount"
+  ]
+ },
+ "HousesInfoDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::THousesInfoDialogController",
+    "matched": 31,
+    "score": 184.4
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 16,
+    "score": 96.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TWorldMapCameraViewportQmlType",
+    "matched": 6,
+    "score": 34.7
+   },
+   {
+    "class": "tibia::qmlcomponents::TMinimapRendererQuickItem",
+    "matched": 4,
+    "score": 24.0
+   }
+  ],
+  "elements": [
+   "MinimapRenderer",
+   "TextHelper",
+   "TibiaEnums",
+   "WorldMap",
+   "WorldMapCameraViewport"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "bankGoldBalance",
+   "currentLayer",
+   "description",
+   "formatNumberWithThousandSeparators",
+   "formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString",
+   "formatNumberWithThousandSeparatorsShortestShortcut",
+   "guildBankGoldBalance",
+   "maximumWidth",
+   "notEnoughGold",
+   "update"
+  ]
+ },
+ "HuntingSessionWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::THuntingSessionWidgetController",
+    "matched": 17,
+    "score": 98.6
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ImbuementInfoLayout.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutlineTextQuickItem",
+    "matched": 2,
+    "score": 11.2
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "styleType"
+  ]
+ },
+ "ImbuementTrackerWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TImbuementTrackerWidgetController",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::container::TContainerSlotQmlInformation",
+    "matched": 3,
+    "score": 15.7
+   },
+   {
+    "class": "tibia::container::TQMLItemSlotData",
+    "matched": 2,
+    "score": 11.3
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ImbuingDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TImbuingDialogController",
+    "matched": 27,
+    "score": 155.7
+   },
+   {
+    "class": "tibia::imbuing::TQmlExistingImbuement",
+    "matched": 5,
+    "score": 30.0
+   },
+   {
+    "class": "tibia::imbuing::TQmlAstralSource",
+    "matched": 6,
+    "score": 29.0
+   },
+   {
+    "class": "tibia::imbuing::TQmlImbuementData",
+    "matched": 4,
+    "score": 23.6
+   }
+  ],
+  "elements": [
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "imageSource",
+   "premiumOnly",
+   "totalGoldBalance"
+  ]
+ },
+ "ImpactView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TLootAndWasteWidgetController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ImpactWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TImpactWidgetController",
+    "matched": 30,
+    "score": 178.4
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "valueString"
+  ]
+ },
+ "ImportantBalancingMessageDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TEmergencyDialogController",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::gamewindow::TMouseCursorController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clear",
+   "maximumWidth",
+   "raceName",
+   "selected"
+  ]
+ },
+ "InspectObjectDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TInspectObjectQMLData",
+    "matched": 9,
+    "score": 46.4
+   },
+   {
+    "class": "tibia::gamewindow::TInspectPlayerDialogController",
+    "matched": 5,
+    "score": 23.8
+   },
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 2,
+    "score": 10.9
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "InspectPlayerDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TInspectObjectQMLData",
+    "matched": 19,
+    "score": 98.5
+   },
+   {
+    "class": "tibia::gamewindow::TInspectPlayerDialogController",
+    "matched": 10,
+    "score": 51.7
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "setPointingHand",
+   "showInventory"
+  ]
+ },
+ "InspectPlayerLayout.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TInspectObjectQMLData",
+    "matched": 18,
+    "score": 91.4
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 5,
+    "score": 24.0
+   },
+   {
+    "class": "tibia::gamewindow::TAssignObjectActionDialogController",
+    "matched": 4,
+    "score": 17.1
+   },
+   {
+    "class": "tibia::gamewindow::TInspectPlayerDialogController",
+    "matched": 2,
+    "score": 10.1
+   }
+  ],
+  "elements": [
+   "ObjectAppearanceInstance"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "showInventory"
+  ]
+ },
+ "ItemInfoDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TItemInfoDialogController",
+    "matched": 30,
+    "score": 171.4
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "selected",
+   "setNameFilter"
+  ]
+ },
+ "LenshelpTemplate.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TLenshelpController",
+    "matched": 3,
+    "score": 15.8
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "LoginConfirmationCodeEnterDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TLoginConfirmationCodeEnterTextDialogController",
+    "matched": 7,
+    "score": 37.8
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "LootAndWasteWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TLootAndWasteWidgetController",
+    "matched": 16,
+    "score": 94.2
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 2,
+    "score": 10.9
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "ObjectAppearanceInstance"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "LootTrackingWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TQmlDroppedLoot",
+    "matched": 10,
+    "score": 53.7
+   },
+   {
+    "class": "tibia::gamewindow::TQmlTrackedItem",
+    "matched": 7,
+    "score": 38.4
+   },
+   {
+    "class": "tibia::gamewindow::TLootTrackingWidgetController",
+    "matched": 4,
+    "score": 22.9
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "MagicalArchiveDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMagicalArchiveDialogController",
+    "matched": 4,
+    "score": 23.1
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::gamewindow::TQmlPreviewCharm",
+    "matched": 2,
+    "score": 10.1
+   },
+   {
+    "class": "tibia::game::TSkillsWidgetEntryData",
+    "matched": 2,
+    "score": 9.1
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper",
+   "TextHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparators",
+   "rowCount",
+   "sourceItemDataByRowIndex",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "MagicalArchiveSpellPreview.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TAppearanceInstanceRenderer",
+    "matched": 5,
+    "score": 27.9
+   },
+   {
+    "class": "tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer",
+    "matched": 4,
+    "score": 21.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 3,
+    "score": 15.3
+   }
+  ],
+  "elements": [
+   "AppearanceInstanceRenderer",
+   "ColorHelper",
+   "ObjectAppearanceInstance",
+   "OutfitAppearanceInstance"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "createColorFromEightBitHSV"
+  ]
+ },
+ "MainCharacterChangeDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMainCharacterChangeDialogController",
+    "matched": 3,
+    "score": 15.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clear"
+  ]
+ },
+ "ManageLootContainerDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TManageLootContainerDialogController",
+    "matched": 14,
+    "score": 75.8
+   },
+   {
+    "class": "tibia::gamewindow::TLootContainerQMLInfo",
+    "matched": 12,
+    "score": 71.6
+   },
+   {
+    "class": "tibia::container::TQMLItemSlotData",
+    "matched": 5,
+    "score": 28.5
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "maximumWidth",
+   "setOpenContainer"
+  ]
+ },
+ "MapWindowPane.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMapWindowController",
+    "matched": 6,
+    "score": 35.2
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "LightMap",
+   "NumericalEffectOverlay",
+   "SpeechBubbleOverlay",
+   "TibiaEnums",
+   "TibiaTargetSelection",
+   "WorldMap"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "MarketCategorySelection.qml": {
+  "controllers": [
+   {
+    "class": "tibia::container::TQMLItemSlotData",
+    "matched": 6,
+    "score": 34.5
+   },
+   {
+    "class": "tibia::container::TContainerSlotQmlInformation",
+    "matched": 2,
+    "score": 10.9
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clear"
+  ]
+ },
+ "MarketCoinTransactionDetails.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMarketCoinTransactionDetailsDialogController",
+    "matched": 17,
+    "score": 98.5
+   },
+   {
+    "class": "tibia::gamewindow::TQmlChildTransaction",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [
+   "MarketCoinTransactionDetailsDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString",
+   "onCloseClicked",
+   "rowCount",
+   "selected"
+  ]
+ },
+ "MarketDetailsView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::market::TMarketController",
+    "matched": 3,
+    "score": 17.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "MarketHistoryView.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "MarketOffersView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::market::TMarketController",
+    "matched": 9,
+    "score": 53.6
+   },
+   {
+    "class": "tibia::market::TDisplayMarketOffer",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "formatNumberWithThousandSeparators",
+   "maximumWidth",
+   "selected"
+  ]
+ },
+ "MarketOwnOffers.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "onMarketOfferCancel"
+  ]
+ },
+ "MenuWithSubMenu.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 3,
+    "score": 16.6
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "categoryName",
+   "get"
+  ]
+ },
+ "MessageHistoryWidget.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "tooltip"
+  ]
+ },
+ "MinimapMarker.qml": {
+  "controllers": [
+   {
+    "class": "tibia::minimap::TMinimapMarkerQmlRenderInfo",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "MinimapPanel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMinimapController",
+    "matched": 10,
+    "score": 59.3
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "Minimap"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "MonsterBonusEffectsDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMonsterBonusEffectsDialogController",
+    "matched": 30,
+    "score": 179.5
+   },
+   {
+    "class": "tibia::gamewindow::TQmlMonsterBonusEffect",
+    "matched": 20,
+    "score": 110.8
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 6,
+    "score": 27.7
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 4,
+    "score": 24.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clear",
+   "selectedMonsterRaceID",
+   "selectionChanged"
+  ]
+ },
+ "MonstersDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TQmlMonsterRace",
+    "matched": 43,
+    "score": 251.5
+   },
+   {
+    "class": "tibia::gamewindow::TMonsterDialogController",
+    "matched": 27,
+    "score": 160.4
+   },
+   {
+    "class": "tibia::gamewindow::TQmlMonsterBonusEffect",
+    "matched": 11,
+    "score": 57.7
+   },
+   {
+    "class": "tibia::gamewindow::TQmlLoot",
+    "matched": 9,
+    "score": 47.4
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [
+   "MonsterDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "Effects",
+   "GRADE1",
+   "GRADE2",
+   "GRADE3",
+   "NOTUNLOCKED",
+   "charmID",
+   "clicked",
+   "currentPage",
+   "elementName",
+   "fillPercentage",
+   "icon",
+   "knownMonsters",
+   "lootColumns",
+   "lootItems",
+   "lootRows",
+   "rarityString",
+   "rarityTooltip",
+   "readableSensitivity",
+   "setDefaultCursor",
+   "setPointingHand",
+   "slotID",
+   "totalMonsters",
+   "totalPages"
+  ]
+ },
+ "MultiOfflineTrainingDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMultiOfflineTrainingDialogController",
+    "matched": 3,
+    "score": 14.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "trainingSkill"
+  ]
+ },
+ "NaggingMessageDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TNaggingMessageDialogController",
+    "matched": 4,
+    "score": 20.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "NewsButton.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TNewsButtonController",
+    "matched": 2,
+    "score": 10.7
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "newsButtonController"
+  ]
+ },
+ "NewsDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TNewsDialogController",
+    "matched": 15,
+    "score": 81.7
+   },
+   {
+    "class": "tibia::gamewindow::TPreyDialogController",
+    "matched": 4,
+    "score": 17.8
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "NewsDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "maximumWidth"
+  ]
+ },
+ "NpcDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TNpcDialogController",
+    "matched": 16,
+    "score": 93.8
+   },
+   {
+    "class": "tibia::store::TQmlStoreVisualisation",
+    "matched": 4,
+    "score": 17.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "maximumWidth",
+   "selectAll"
+  ]
+ },
+ "NpcTrade.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TNPCTradeController",
+    "matched": 23,
+    "score": 137.2
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 4,
+    "score": 19.1
+   },
+   {
+    "class": "tibia::trade::TPlayerTradeObject",
+    "matched": 3,
+    "score": 13.8
+   }
+  ],
+  "elements": [
+   "ObjectAppearanceInstance",
+   "SingleObjectAppearanceInstanceRenderer",
+   "TibiaTutorialMarker"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "markerID",
+   "maximumWidth",
+   "updateSelection"
+  ]
+ },
+ "NumericalEffectsTemplate.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TNumericEffectsItemController",
+    "matched": 5,
+    "score": 30.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "OpenChatChannelDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TOpenChatChannelDialogController",
+    "matched": 3,
+    "score": 16.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "Optimized1PixelBorderImage.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "refresh"
+  ]
+ },
+ "OptionsMenuDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 25,
+    "score": 147.2
+   },
+   {
+    "class": "tibia::gamewindow::TWeaponProficiencyDialogController",
+    "matched": 2,
+    "score": 8.7
+   },
+   {
+    "class": "tibia::gamewindow::TWhiteBlacklistDialogController",
+    "matched": 2,
+    "score": 8.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "OptionsMenuDialogController"
+  ],
+  "uncovered_cpp_members": []
+ },
+ "OptionsPageActionBars.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TActionBarsQMLOptionsPage",
+    "matched": 25,
+    "score": 149.9
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "actionBarsOptions"
+  ]
+ },
+ "OptionsPageActionBarsShowHideSection.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TActionBarsQMLOptionsPage",
+    "matched": 12,
+    "score": 72.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "OptionsPageBasic.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 8,
+    "score": 48.0
+   },
+   {
+    "class": "tibia::config::TControlsQMLOptionsPage",
+    "matched": 4,
+    "score": 24.0
+   },
+   {
+    "class": "tibia::config::TGraphicsQMLOptionsPage",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::config::TGameplayQMLOptionsPage",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "colorizeLootStyleIndex",
+   "colorizeLootStyleListModel",
+   "masterVolume",
+   "playerHudShowArcs",
+   "playerHudShowBars"
+  ]
+ },
+ "OptionsPageBattleSounds.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TBattleSoundsQMLOptionsPage",
+    "matched": 16,
+    "score": 96.0
+   },
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "soundEnabled"
+  ]
+ },
+ "OptionsPageButtonBar.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TButtonBarQMLOptionsPage",
+    "matched": 6,
+    "score": 36.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "buttonBarOptions",
+   "clear",
+   "rowCount"
+  ]
+ },
+ "OptionsPageConsole.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TConsoleQMLOptionsPage",
+    "matched": 8,
+    "score": 48.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "consoleOptions"
+  ]
+ },
+ "OptionsPageControls.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TControlsQMLOptionsPage",
+    "matched": 12,
+    "score": 72.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "controlsOptions"
+  ]
+ },
+ "OptionsPageEffects.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TEffectsQMLOptionsPage",
+    "matched": 9,
+    "score": 53.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "effectsOptions"
+  ]
+ },
+ "OptionsPageGameWindow.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TGameWindowQMLOptionsPage",
+    "matched": 19,
+    "score": 113.5
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "gameWindowOptions"
+  ]
+ },
+ "OptionsPageGameplay.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TGameplayQMLOptionsPage",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "gameplayOptions"
+  ]
+ },
+ "OptionsPageGraphics.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TGraphicsQMLOptionsPage",
+    "matched": 13,
+    "score": 77.6
+   },
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 2,
+    "score": 11.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "OptionsPageHelp.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 11,
+    "score": 66.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "OptionsPageHotkeys.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::THotkeysQMLOptionsPage",
+    "matched": 15,
+    "score": 87.8
+   },
+   {
+    "class": "tibia::config::TTibiaHotkeyActionSettingQmlWrapper",
+    "matched": 7,
+    "score": 35.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 6,
+    "score": 29.5
+   },
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 3,
+    "score": 17.6
+   }
+  ],
+  "elements": [
+   "ObjectAppearanceInstance",
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clear"
+  ]
+ },
+ "OptionsPageHud.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::THudQMLOptionsPage",
+    "matched": 27,
+    "score": 161.9
+   },
+   {
+    "class": "tibia::config::TSpecialConditionObject",
+    "matched": 7,
+    "score": 40.1
+   },
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clear",
+   "maximumWidth",
+   "rowCount"
+  ]
+ },
+ "OptionsPageInterface.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TInterfaceQMLOptionsPage",
+    "matched": 11,
+    "score": 66.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "interfaceOptions"
+  ]
+ },
+ "OptionsPageMisc.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TMiscQMLOptionsPage",
+    "matched": 7,
+    "score": 42.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "miscOptions"
+  ]
+ },
+ "OptionsPageScreenshots.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TScreenshotsQMLOptionsPage",
+    "matched": 20,
+    "score": 119.9
+   },
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "maximumWidth"
+  ]
+ },
+ "OptionsPageSound.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TSoundQMLOptionsPage",
+    "matched": 12,
+    "score": 72.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "soundOptions"
+  ]
+ },
+ "OptionsPageUISounds.qml": {
+  "controllers": [
+   {
+    "class": "tibia::config::TUISoundsQMLOptionsPage",
+    "matched": 14,
+    "score": 84.0
+   },
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "soundEnabled"
+  ]
+ },
+ "OutfitAppearanceInstanceRenderer.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 10,
+    "score": 50.1
+   }
+  ],
+  "elements": [
+   "AppearanceInstanceRenderer",
+   "ObjectAppearanceInstance",
+   "OutfitAppearanceInstance"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "OutfitMemorialDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TOutfitMemorialDialogController",
+    "matched": 16,
+    "score": 92.9
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "PartyHuntWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPartyHuntWidgetController",
+    "matched": 7,
+    "score": 40.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TTextHelperQmlService",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "isInParty"
+  ]
+ },
+ "PassiveAbilityList.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TAssignPassiveAbilityActionDialogController",
+    "matched": 2,
+    "score": 11.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "PlayerGuideWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPlayerGuideWidgetController",
+    "matched": 16,
+    "score": 96.0
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "PremiumPanel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPremiumPanelController",
+    "matched": 5,
+    "score": 30.0
+   },
+   {
+    "class": "tibia::game::TPremiumMessageRenewPremium",
+    "matched": 2,
+    "score": 10.7
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ProgressWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TProgressWidgetController",
+    "matched": 18,
+    "score": 104.0
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "QuestlogDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TQuestLogController",
+    "matched": 20,
+    "score": 119.1
+   },
+   {
+    "class": "tibia::qmlcomponents::TQmlSortFilterProxyModel",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::gamewindow::TCharacterInformationModelData",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "TextHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparators",
+   "selected"
+  ]
+ },
+ "RaceAppearanceInstanceRenderer.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TAppearanceInstanceRenderer",
+    "matched": 7,
+    "score": 37.6
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 2,
+    "score": 11.3
+   }
+  ],
+  "elements": [
+   "AppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Effects"
+  ]
+ },
+ "RecordKeyboardShortcutDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TRecordKeyboardShortcutDialogController",
+    "matched": 9,
+    "score": 53.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ReportViolationDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TReportViolationController",
+    "matched": 9,
+    "score": 54.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clicked"
+  ]
+ },
+ "ReturnerRewardNotificationDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TReturnerRewardDialogController",
+    "matched": 2,
+    "score": 11.3
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "RewardWallDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TRewardWallDialogController",
+    "matched": 29,
+    "score": 166.8
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 5,
+    "score": 30.0
+   },
+   {
+    "class": "tibia::dailyreward::TQmlDailyReward",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::dailyreward::TQmlRestingAreaBonus",
+    "matched": 3,
+    "score": 17.6
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "changedBySupport",
+   "selected"
+  ]
+ },
+ "ScalableObjectDisplay.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer",
+    "matched": 8,
+    "score": 38.1
+   },
+   {
+    "class": "tibia::container::TContainerSlotQmlInformation",
+    "matched": 4,
+    "score": 18.7
+   }
+  ],
+  "elements": [
+   "GlobalConstants",
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Effects",
+   "isSoftwareRenderer"
+  ]
+ },
+ "SelectBossView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBossSlotQMLInformation",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "nameFilter",
+   "onSelectClicked"
+  ]
+ },
+ "SelectObjectAmountDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSelectObjectAmountDialogController",
+    "matched": 7,
+    "score": 37.8
+   },
+   {
+    "class": "tibia::gamewindow::TGenericEnterTextDialogController",
+    "matched": 3,
+    "score": 12.4
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ServerModalDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TServerModalDialogController",
+    "matched": 7,
+    "score": 41.3
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ShowImageDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TShowImageDialogController",
+    "matched": 11,
+    "score": 61.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "ShowSpellBookDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TShowSpellBookDialogController",
+    "matched": 4,
+    "score": 21.0
+   }
+  ],
+  "elements": [
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clicked"
+  ]
+ },
+ "SidebarManager.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSidebarManager",
+    "matched": 5,
+    "score": 30.0
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "SkillWheel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 48,
+    "score": 287.9
+   },
+   {
+    "class": "tibia::gamewindow::TSkillWheelPageController",
+    "matched": 3,
+    "score": 17.1
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "modType"
+  ]
+ },
+ "SkillWheelCorner.qml": {
+  "controllers": [
+   {
+    "class": "TSkillWheelCornerQMLInfo",
+    "matched": 5,
+    "score": 27.9
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 4,
+    "score": 24.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "SkillWheelDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSkillWheelDialogController",
+    "matched": 15,
+    "score": 78.2
+   },
+   {
+    "class": "tibia::gamewindow::TSkillWheelPageController",
+    "matched": 6,
+    "score": 32.2
+   },
+   {
+    "class": "tibia::gamewindow::TPreyDialogController",
+    "matched": 3,
+    "score": 13.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "SkillWheelDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "SkillWheelFragmentWorkshopPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TFragmentWorkshopPageController",
+    "matched": 6,
+    "score": 35.2
+   },
+   {
+    "class": "tibia::qmlcomponents::TQmlSortFilterProxyModel",
+    "matched": 3,
+    "score": 17.6
+   },
+   {
+    "class": "tibia::gamewindow::TStoreAndResourceBalanceHelperController",
+    "matched": 3,
+    "score": 17.3
+   },
+   {
+    "class": "tibia::qmlcomponents::TTextHelperQmlService",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "TextHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [
+   "ItemSelectionModel"
+  ],
+  "uncovered_cpp_members": [
+   "filterModName",
+   "grade",
+   "isPremium"
+  ]
+ },
+ "SkillWheelGemAtelierPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TGemAtelierPageController",
+    "matched": 6,
+    "score": 35.2
+   },
+   {
+    "class": "tibia::skillwheel::TInventoryGemSortFilterProxyModel",
+    "matched": 4,
+    "score": 23.6
+   },
+   {
+    "class": "tibia::qmlcomponents::TQmlSortFilterProxyModel",
+    "matched": 3,
+    "score": 17.6
+   },
+   {
+    "class": "tibia::qmlcomponents::TTextHelperQmlService",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "SingleObjectAppearanceInstanceRenderer",
+   "TextHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [
+   "ItemSelectionModel"
+  ],
+  "uncovered_cpp_members": [
+   "bankBalance",
+   "gemId",
+   "gemImageSource",
+   "gemName",
+   "isLocked",
+   "isPremium",
+   "maximumWidth",
+   "setPointingHand",
+   "totalGoldBalance"
+  ]
+ },
+ "SkillWheelGemSocket.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "selected"
+  ]
+ },
+ "SkillWheelLargePerkInformation.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TLargePerkInformation",
+    "matched": 8,
+    "score": 47.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "SkillWheelPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSkillWheelPageController",
+    "matched": 53,
+    "score": 314.8
+   }
+  ],
+  "elements": [
+   "TextHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Knight",
+   "activeTab",
+   "formatNumberWithThousandSeparators",
+   "imageSource",
+   "isPremium",
+   "isSeparator",
+   "maximumWidth",
+   "rowCount"
+  ]
+ },
+ "SkillWheelPresetManagmentDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSkillWheelPresetManagmentDialogController",
+    "matched": 13,
+    "score": 72.8
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "SkillWheelPresetManagmentDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "SkillWheelTileInformation.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTileInformation",
+    "matched": 15,
+    "score": 88.7
+   },
+   {
+    "class": "tibia::gamewindow::TSkillWheelPageController",
+    "matched": 5,
+    "score": 29.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "isPremium"
+  ]
+ },
+ "SkillWheelVesselInformation.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TVesselInformation",
+    "matched": 14,
+    "score": 84.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "isLocalPlayer"
+  ]
+ },
+ "SkillWidgetEntry.qml": {
+  "controllers": [
+   {
+    "class": "tibia::game::TSkillsWidgetEntryData",
+    "matched": 19,
+    "score": 103.4
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "SlimProgressbar.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "SlimProgressbarRotated.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "SocialDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSocialDialogController",
+    "matched": 23,
+    "score": 130.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "SocialDialogController"
+  ],
+  "uncovered_cpp_members": []
+ },
+ "SpeechBubbleTemplate.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TSpeechBubbleController",
+    "matched": 8,
+    "score": 46.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "SpellList.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "selectedSpellID",
+   "spellIconUrl",
+   "spellSelected"
+  ]
+ },
+ "StashDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStashDialogController",
+    "matched": 10,
+    "score": 55.4
+   },
+   {
+    "class": "tibia::container::TQMLItemSlotData",
+    "matched": 5,
+    "score": 28.5
+   },
+   {
+    "class": "tibia::gamewindow::TDepotSearchWidgetController",
+    "matched": 2,
+    "score": 8.8
+   }
+  ],
+  "elements": [
+   "TextHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparators",
+   "get",
+   "setPointingHand",
+   "triggered"
+  ]
+ },
+ "StatesBar.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "StatusBar.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 28,
+    "score": 162.1
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [
+   "StatusBarController"
+  ],
+  "uncovered_cpp_members": [
+   "fillPercentage",
+   "formatNumberWithThousandSeparators",
+   "maximumWidth",
+   "valueString"
+  ]
+ },
+ "StatusBarHealthMana.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 4,
+    "score": 23.6
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "TextHelper"
+  ],
+  "type_refs": [
+   "StatusBarController"
+  ],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "StatusBarHealthManaParallel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "StatusBarHealthManaParallelSides.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "StatusBarHealthManaSides.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 4,
+    "score": 23.6
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "TextHelper"
+  ],
+  "type_refs": [
+   "StatusBarController"
+  ],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "StatusBarLeft.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 26,
+    "score": 150.1
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [
+   "StatusBarController"
+  ],
+  "uncovered_cpp_members": [
+   "fillPercentage",
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "StatusBarProficiencyButton.qml": {
+  "controllers": [],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "StatusBarRight.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 26,
+    "score": 150.1
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [
+   "StatusBarController"
+  ],
+  "uncovered_cpp_members": [
+   "fillPercentage",
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "StatusBarSkill.qml": {
+  "controllers": [
+   {
+    "class": "tibia::game::TSkillsWidgetEntryData",
+    "matched": 9,
+    "score": 48.6
+   },
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "StatusBarController"
+  ],
+  "uncovered_cpp_members": []
+ },
+ "StatusBarSkillLeft.qml": {
+  "controllers": [
+   {
+    "class": "tibia::game::TSkillsWidgetEntryData",
+    "matched": 9,
+    "score": 48.6
+   },
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "StatusBarController"
+  ],
+  "uncovered_cpp_members": []
+ },
+ "StatusBarSkillRight.qml": {
+  "controllers": [
+   {
+    "class": "tibia::game::TSkillsWidgetEntryData",
+    "matched": 9,
+    "score": 48.6
+   },
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "StatusBarController"
+  ],
+  "uncovered_cpp_members": []
+ },
+ "StoreButton.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStoreButtonController",
+    "matched": 4,
+    "score": 22.7
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "storeButtonController"
+  ]
+ },
+ "StoreCategoryWithSubcategory.qml": {
+  "controllers": [
+   {
+    "class": "tibia::store::TQmlStoreCategory",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem",
+    "matched": 2,
+    "score": 11.6
+   }
+  ],
+  "elements": [
+   "DynamicallyLoadedImage"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "StoreDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStoreDialogController",
+    "matched": 13,
+    "score": 73.7
+   },
+   {
+    "class": "tibia::gamewindow::TDepotSearchWidgetController",
+    "matched": 2,
+    "score": 8.8
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "StoreHighlightImage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::store::TQmlStoreOfferQuantityConfiguration",
+    "matched": 4,
+    "score": 24.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "StoreHighlightState.qml": {
+  "controllers": [
+   {
+    "class": "tibia::store::TQmlStoreOfferQuantityConfiguration",
+    "matched": 5,
+    "score": 30.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "StoreMainPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStoreDialogController",
+    "matched": 10,
+    "score": 58.1
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "quantities",
+   "setPointingHand"
+  ]
+ },
+ "StoreOfferDisplay.qml": {
+  "controllers": [
+   {
+    "class": "tibia::store::TQmlStoreOfferQuantityConfiguration",
+    "matched": 15,
+    "score": 88.3
+   },
+   {
+    "class": "tibia::store::TQmlStoreOffer",
+    "matched": 3,
+    "score": 17.2
+   },
+   {
+    "class": "tibia::store::TQmlStoreBalance",
+    "matched": 2,
+    "score": 11.3
+   },
+   {
+    "class": "tibia::gamewindow::TStoreDialogController",
+    "matched": 2,
+    "score": 10.1
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "setPointingHand",
+   "storeBalance"
+  ]
+ },
+ "StoreOfferPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::store::TQmlStoreOfferQuantityConfiguration",
+    "matched": 13,
+    "score": 75.9
+   },
+   {
+    "class": "tibia::gamewindow::TStoreDialogController",
+    "matched": 10,
+    "score": 57.7
+   },
+   {
+    "class": "tibia::store::TQmlStoreOffer",
+    "matched": 9,
+    "score": 51.3
+   },
+   {
+    "class": "tibia::store::TQmlStoreVisualisation",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "confirmedBalance",
+   "storeBalance",
+   "totalBalance"
+  ]
+ },
+ "StoreOfferVisualisation.qml": {
+  "controllers": [
+   {
+    "class": "tibia::store::TQmlStoreVisualisation",
+    "matched": 15,
+    "score": 82.6
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 8,
+    "score": 38.1
+   },
+   {
+    "class": "tibia::gamewindow::TInspectObjectQMLData",
+    "matched": 7,
+    "score": 31.8
+   },
+   {
+    "class": "tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem",
+    "matched": 4,
+    "score": 23.6
+   }
+  ],
+  "elements": [
+   "AppearanceInstanceRenderer",
+   "DynamicallyLoadedImage",
+   "ObjectAppearanceInstance",
+   "OutfitAppearanceInstance"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "smoothTextureFiltering",
+   "visualisation"
+  ]
+ },
+ "StorePurchaseConfirmationDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::store::TQmlStoreOfferQuantityConfiguration",
+    "matched": 12,
+    "score": 70.3
+   },
+   {
+    "class": "tibia::gamewindow::TStorePurchaseConfirmationDialogController",
+    "matched": 6,
+    "score": 33.3
+   },
+   {
+    "class": "tibia::store::TQmlStoreOffer",
+    "matched": 2,
+    "score": 11.6
+   },
+   {
+    "class": "tibia::gamewindow::TStoreDialogController",
+    "matched": 2,
+    "score": 10.1
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "StorePurchaseSuccessDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TSoundHelperService",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::gamewindow::TStorePurchaseSuccessDialogController",
+    "matched": 2,
+    "score": 8.1
+   }
+  ],
+  "elements": [
+   "SoundHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "StoreTransactionHistoryPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::store::TQmlTransactionHistoryEntry",
+    "matched": 11,
+    "score": 63.9
+   },
+   {
+    "class": "tibia::gamewindow::TStoreDialogController",
+    "matched": 5,
+    "score": 30.0
+   },
+   {
+    "class": "tibia::store::TQmlStoreTransactionHistoryPage",
+    "matched": 5,
+    "score": 27.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "rowCount",
+   "selected"
+  ]
+ },
+ "SurveyInvitatioDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSurveyInvitationDialogController",
+    "matched": 6,
+    "score": 33.5
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TeamAssemblePage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTeamAssemblePageController",
+    "matched": 13,
+    "score": 76.2
+   },
+   {
+    "class": "tibia::teamfinder::TTeamSettings",
+    "matched": 11,
+    "score": 65.6
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 5,
+    "score": 30.0
+   },
+   {
+    "class": "tibia::teamfinder::TTeamStartTimeManager",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clear",
+   "level",
+   "maximumWidth",
+   "rowCount",
+   "selected"
+  ]
+ },
+ "TeamJoinPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::teamfinder::TTeamStartTimeManager",
+    "matched": 6,
+    "score": 36.0
+   },
+   {
+    "class": "tibia::gamewindow::TTeamJoinPageController",
+    "matched": 4,
+    "score": 22.2
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "get",
+   "maximumWidth",
+   "selected"
+  ]
+ },
+ "Tibia2DRenderedText.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaAutorepeatIconButton.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaBalanceTextWithIcon.qml": {
+  "controllers": [],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "TibiaBreathingHighlight.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaButton.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TSoundHelperService",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "SoundHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "imageSource",
+   "styleType"
+  ]
+ },
+ "TibiaCachedOutlineText.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "truncated"
+  ]
+ },
+ "TibiaCachedOutlineTextBase.qml": {
+  "controllers": [],
+  "elements": [
+   "CachedOutlineText"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "NoCaching"
+  ]
+ },
+ "TibiaCalendarDatePicker.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "selected",
+   "setPointingHand"
+  ]
+ },
+ "TibiaCalendarDay.qml": {
+  "controllers": [
+   {
+    "class": "tibia::news::TEventQMLEntry",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "isValid",
+   "tooltip"
+  ]
+ },
+ "TibiaCalendarDayCaption.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaCheckBox.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "styleType"
+  ]
+ },
+ "TibiaClampSelection.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaClickableLink.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "setPointingHand"
+  ]
+ },
+ "TibiaClickableText.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "setPointingHand"
+  ]
+ },
+ "TibiaColorButton.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaComboBox.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "TibiaCurrencyView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::cyclopedia::TQmlStatWithSources",
+    "matched": 2,
+    "score": 10.7
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "maximumWidth"
+  ]
+ },
+ "TibiaCurrentBalanceView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TStoreAndResourceBalanceHelperController",
+    "matched": 16,
+    "score": 93.5
+   },
+   {
+    "class": "tibia::store::TQmlStoreBalance",
+    "matched": 4,
+    "score": 24.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TTextHelperQmlService",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaDailyRewardStatus.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaDatePicker.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMouseCursorController",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TSpeechBubbleController",
+    "matched": 2,
+    "score": 11.1
+   },
+   {
+    "class": "tibia::gamewindow::TShowImageDialogController",
+    "matched": 2,
+    "score": 10.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaDialogFrameWithCaption.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaDialogTabBar.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TSoundHelperService",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::gamewindow::TSocialDialogController",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::game::TSkillsWidgetEntryData",
+    "matched": 2,
+    "score": 9.1
+   }
+  ],
+  "elements": [
+   "SoundHelper"
+  ],
+  "type_refs": [
+   "SocialDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "icon",
+   "imageSource"
+  ]
+ },
+ "TibiaDirectionContainer.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaDisabledOverlay.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaFrame1PixelDown.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaFrame1PixelDownWithGuiHelp.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaFrame2PixelUpFilled.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaFrame2PixelUpFilledWithCaption.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "horizontalAlignment"
+  ]
+ },
+ "TibiaFrame3Pixel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaFrame3PixelFilled.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaFrame4Pic.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaFrame4Pixel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaFrame8Pic.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaGauge.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaGetCoinsButton.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaGraph.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "save"
+  ]
+ },
+ "TibiaGuiHelp.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaHorizontalSeparator.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaHouseActionButton.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clicked"
+  ]
+ },
+ "TibiaIconButton.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TSoundHelperService",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "SoundHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "TibiaIconSelectionButton.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TSoundHelperService",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "SoundHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaIntField.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "horizontalAlignment"
+  ]
+ },
+ "TibiaItemSelectionGrid.qml": {
+  "controllers": [
+   {
+    "class": "tibia::container::TQMLItemSlotData",
+    "matched": 5,
+    "score": 28.5
+   },
+   {
+    "class": "tibia::gamewindow::TDepotSearchWidgetController",
+    "matched": 3,
+    "score": 17.6
+   },
+   {
+    "class": "tibia::gamewindow::TQmlLoot",
+    "matched": 3,
+    "score": 15.3
+   },
+   {
+    "class": "tibia::container::TContainerSlotQmlInformation",
+    "matched": 3,
+    "score": 14.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clicked"
+  ]
+ },
+ "TibiaKeyValueRowLayout.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "horizontalAlignment",
+   "maximumWidth"
+  ]
+ },
+ "TibiaMapLayersSlider.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "currentLayer"
+  ]
+ },
+ "TibiaMenuOptionCheckBox.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clicked",
+   "styleType"
+  ]
+ },
+ "TibiaMenuSlider.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "styleType"
+  ]
+ },
+ "TibiaMessageDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMessageDialogController",
+    "matched": 9,
+    "score": 50.3
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "MessageDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "setPointingHand"
+  ]
+ },
+ "TibiaMinimapRose.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaMouseShield.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TMouseCursorController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaObjectDropArea.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaOptionsPage.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "requestResetCurrentPageToDefault"
+  ]
+ },
+ "TibiaPanel2PixelUpFilledWithCaption.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "horizontalAlignment"
+  ]
+ },
+ "TibiaPanelWithCaption.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "caption",
+   "setPointingHand"
+  ]
+ },
+ "TibiaPremiumStateButton.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "hasPremium"
+  ]
+ },
+ "TibiaProficiencyPerk.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TQMLProficiencyPerk",
+    "matched": 7,
+    "score": 40.9
+   },
+   {
+    "class": "tibia::gamewindow::TMouseCursorController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Effects",
+   "hasHighlight",
+   "isActive",
+   "scaleFactor"
+  ]
+ },
+ "TibiaProgressBar.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaProgressBarClassicRed.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaProgressBarDoubleBars.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaProgressBarOrangeToGreen.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaProgressBarSegmented.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "fillPercentage",
+   "get",
+   "isFullyUnlocked"
+  ]
+ },
+ "TibiaProgressBarWrapAround.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaRadioButton.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "TibiaRadiusedSemiTranspartentRectangle.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaRectangleHighlight.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaScrollBar.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "TibiaScrollBarHandle.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaScrollView.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "vertical"
+  ]
+ },
+ "TibiaSidebarPanel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Drag",
+   "identifier",
+   "objectName",
+   "positionInSidebarChanged"
+  ]
+ },
+ "TibiaSidebarWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TVipWidgetController",
+    "matched": 9,
+    "score": 30.7
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 2,
+    "score": 10.9
+   }
+  ],
+  "elements": [
+   "ObjectAppearanceInstance",
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "identifier",
+   "objectName",
+   "styleType"
+  ]
+ },
+ "TibiaSlider.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaSliderNonLinear.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "signal"
+  ]
+ },
+ "TibiaSpinBox.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaSplitView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TSpeechBubbleController",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::gamewindow::TMouseCursorController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "TibiaStyle.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaStyledSlider.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "TibiaSunkenPillLabel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaSunkenRectangle.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaTabBar.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "TibiaTabButton.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "TibiaTabCaption.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaTableView.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "selected"
+  ]
+ },
+ "TibiaTableViewRowDelegate.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "selected"
+  ]
+ },
+ "TibiaTeamFinderStatus.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 5,
+    "score": 30.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaText.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "truncated"
+  ]
+ },
+ "TibiaTextArea.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTextCopyController",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutlineTextQuickItem",
+    "matched": 2,
+    "score": 11.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "readOnly",
+   "showContextMenuForTextInputQmlItem",
+   "vertical"
+  ]
+ },
+ "TibiaTextBase.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaTextEdit.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaTextField.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTextCopyController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "showContextMenuForTextInputQmlItem"
+  ]
+ },
+ "TibiaTextInput.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTextCopyController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "showContextMenuForTextInputQmlItem"
+  ]
+ },
+ "TibiaTextSearchField.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaTiledImage.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "refresh"
+  ]
+ },
+ "TibiaTimePicker.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaUnjustifiedPointsProgressBar.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "fillPercentage"
+  ]
+ },
+ "TibiaUnjustifiedPointsSkull.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaVerticalSeparator.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaWheelHandler.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TibiaWhiteBlacklistTableView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TWhiteBlacklistQmlEntry",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clear",
+   "selected"
+  ]
+ },
+ "Tooltip.qml": {
+  "controllers": [],
+  "elements": [
+   "TooltipHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "findWindowContentItemForQuickItem",
+   "textFormat"
+  ]
+ },
+ "TooltipBase.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TTooltipHelperQmlService",
+    "matched": 4,
+    "score": 23.6
+   },
+   {
+    "class": "tibia::qmlcomponents::TTooltipEventWatcher",
+    "matched": 4,
+    "score": 23.6
+   }
+  ],
+  "elements": [
+   "TooltipHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TooltipTemplate.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TransferCreditsDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTransferCreditsDialogController",
+    "matched": 6,
+    "score": 35.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "TwoFactorTextEnterDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTwoFactorCodeEnterTextDialogController",
+    "matched": 9,
+    "score": 49.1
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "VerticalActionBarContainer.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TActionBarGroup",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "WaitDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TWaitDialogController",
+    "matched": 5,
+    "score": 28.5
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "WeaponProficiencyDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TWeaponProficiencyDialogController",
+    "matched": 26,
+    "score": 149.2
+   },
+   {
+    "class": "tibia::gamewindow::TQMLProficiencyPerk",
+    "matched": 9,
+    "score": 52.9
+   },
+   {
+    "class": "tibia::gamewindow::TQMLProficiencyLevelInformation",
+    "matched": 5,
+    "score": 30.0
+   },
+   {
+    "class": "tibia::gamewindow::TAppearanceTypeListModelSortFilterProxy",
+    "matched": 5,
+    "score": 27.9
+   }
+  ],
+  "elements": [
+   "SingleObjectAppearanceInstanceRenderer",
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "fillPercentage",
+   "formatNumberWithThousandSeparators",
+   "maximumWidth"
+  ]
+ },
+ "WeaponProficiencyPerkCard.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TQMLProficiencyPerk",
+    "matched": 7,
+    "score": 40.9
+   },
+   {
+    "class": "tibia::gamewindow::TOptionsMenuDialogController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "hasHighlight",
+   "isActive"
+  ]
+ },
+ "WeaponProficiencyReshapeDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TQMLProficiencyPerk",
+    "matched": 6,
+    "score": 34.9
+   },
+   {
+    "class": "tibia::gamewindow::TWeaponProficiencyReshapeDialogController",
+    "matched": 3,
+    "score": 17.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "WeaponProficiencyShapeDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TQMLProficiencyPerk",
+    "matched": 6,
+    "score": 34.9
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "columns",
+   "requestClose"
+  ]
+ },
+ "WeaponProficiencyShapeOptionsDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TWeaponProficiencyShapeOptionsDialogController",
+    "matched": 2,
+    "score": 9.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clear"
+  ]
+ },
+ "WhiteBlacklistDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TWhiteBlacklistDialogController",
+    "matched": 11,
+    "score": 62.2
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "rowCount"
+  ]
+ },
+ "battlelist.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBattleListController",
+    "matched": 22,
+    "score": 131.1
+   },
+   {
+    "class": "tibia::gamewindow::TQmlMonsterRace",
+    "matched": 7,
+    "score": 37.1
+   },
+   {
+    "class": "tibia::worldmap::TCreatureHUDQmlRenderInfo",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "TibiaTargetSelection",
+   "TooltipHelper"
+  ],
+  "type_refs": [
+   "BattleListController"
+  ],
+  "uncovered_cpp_members": [
+   "findWindowContentItemForQuickItem",
+   "showTooltip",
+   "tutorialMarkerID"
+  ]
+ },
+ "charactertrade/CharacterTradeAuctionEndDateTimePicker.qml": {
+  "controllers": [],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatDateTime",
+   "maximumWidth"
+  ]
+ },
+ "charactertrade/CharacterTradeCharacterOverview.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCharacterAuctionConfiguration",
+    "matched": 5,
+    "score": 30.0
+   },
+   {
+    "class": "tibia::gamewindow::TQMLCharacterData",
+    "matched": 5,
+    "score": 28.6
+   },
+   {
+    "class": "tibia::qmlcomponents::TTextHelperQmlService",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "amount",
+   "description"
+  ]
+ },
+ "charactertrade/CharacterTradeDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCharacterTradeDialogController",
+    "matched": 18,
+    "score": 104.9
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "dialogState"
+  ]
+ },
+ "charactertrade/CharacterTradeDuePaymentDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCharacterTradeDuePaymentDialogController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "characterName"
+  ]
+ },
+ "charactertrade/CharacterTradeEnums.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "charactertrade/CharacterTradeHighlightPicker.qml": {
+  "controllers": [],
+  "elements": [
+   "AbstractItemModelHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "filterString",
+   "onWidgetClicked",
+   "sourceItemDataByRowIndex",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "charactertrade/CharacterTradeHintText.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "charactertrade/CharacterTradeItemPicker.qml": {
+  "controllers": [],
+  "elements": [
+   "AbstractItemModelHelper",
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "amount",
+   "description",
+   "filterString",
+   "formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString",
+   "setPointingHand",
+   "sourceItemDataByRowIndex",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "charactertrade/CharacterTradeNotifications.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "clientwindow.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "container.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TContainerController",
+    "matched": 21,
+    "score": 112.0
+   },
+   {
+    "class": "tibia::container::TContainerSlotQmlInformation",
+    "matched": 8,
+    "score": 39.1
+   },
+   {
+    "class": "tibia::gamewindow::TDepotSearchWidgetController",
+    "matched": 6,
+    "score": 34.7
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 6,
+    "score": 29.3
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper",
+   "Lenshelp",
+   "ObjectAppearanceInstance"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "lootvalueImageSourceOverItem",
+   "lootvalueImageSourceUnderItem",
+   "nextPageClicked",
+   "rowCount",
+   "sourceItemDataByRowIndex",
+   "typeID",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "createaccountandcharacter/CreateAccountDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCreateAccountDialogController",
+    "matched": 51,
+    "score": 300.8
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clear",
+   "rowCount",
+   "setPointingHand",
+   "sourceItemDataByRowIndex",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "createaccountandcharacter/CreateCharacterDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TCreateCharacterDialogController",
+    "matched": 13,
+    "score": 73.3
+   },
+   {
+    "class": "tibia::gamewindow::TCreateAccountDialogController",
+    "matched": 10,
+    "score": 55.3
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "createaccountandcharacter/WorldSelection.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TWorldSelectionSortProxyModel",
+    "matched": 13,
+    "score": 76.9
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "rowCount"
+  ]
+ },
+ "gamewindow.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TGameWindowController",
+    "matched": 53,
+    "score": 316.2
+   },
+   {
+    "class": "tibia::gamewindow::TStatusBarController",
+    "matched": 4,
+    "score": 24.0
+   }
+  ],
+  "elements": [
+   "RenderDriver",
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [
+   "StatusBarController"
+  ],
+  "uncovered_cpp_members": [
+   "Controls",
+   "setPointingHand"
+  ]
+ },
+ "inventory.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPlayerInventoryAndStatusController",
+    "matched": 15,
+    "score": 86.4
+   },
+   {
+    "class": "tibia::container::TContainerSlotQmlInformation",
+    "matched": 11,
+    "score": 56.1
+   },
+   {
+    "class": "tibia::gamewindow::TDepotSearchWidgetController",
+    "matched": 5,
+    "score": 29.6
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "TooltipHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "findWindowContentItemForQuickItem",
+   "maximumWidth",
+   "showTooltip"
+  ]
+ },
+ "market.qml": {
+  "controllers": [
+   {
+    "class": "tibia::market::TMarketController",
+    "matched": 21,
+    "score": 118.7
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "maximumWidth"
+  ]
+ },
+ "massloginwidget.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "outfitdialog/BossOutfitSelection.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 6,
+    "score": 27.7
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 4,
+    "score": 24.0
+   },
+   {
+    "class": "tibia::gamewindow::TCharacterBaseQmlInfo",
+    "matched": 5,
+    "score": 22.9
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutfitQmlModel",
+    "matched": 4,
+    "score": 21.1
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "maximumWidth",
+   "resetFilter",
+   "rowCount",
+   "setPointingHand",
+   "sourceItemDataByRowIndex",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "outfitdialog/ConfigureCreaturePodiumDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TConfigureCreaturePodiumDialogController",
+    "matched": 13,
+    "score": 71.7
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutfitPresetQmlType",
+    "matched": 6,
+    "score": 35.3
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 4,
+    "score": 21.8
+   },
+   {
+    "class": "tibia::qmlcomponents::TTibiaObjectCreatorQmlService",
+    "matched": 2,
+    "score": 11.6
+   }
+  ],
+  "elements": [
+   "OutfitAppearanceInstance",
+   "TibiaObjects"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "clientSettingSmoothFiltering",
+   "scaleFactor"
+  ]
+ },
+ "outfitdialog/OutfitDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSelectOutfitDialogController",
+    "matched": 25,
+    "score": 146.9
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutfitPresetQmlType",
+    "matched": 8,
+    "score": 46.9
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 6,
+    "score": 33.8
+   },
+   {
+    "class": "tibia::gamewindow::TConfigureCreaturePodiumDialogController",
+    "matched": 5,
+    "score": 26.6
+   }
+  ],
+  "elements": [
+   "OutfitAppearanceInstance",
+   "TibiaEnums",
+   "TibiaObjects"
+  ],
+  "type_refs": [
+   "OutfitDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "Controls",
+   "caption",
+   "changed",
+   "clientSettingSmoothFiltering",
+   "filterString",
+   "numberOfOwnedOutfits",
+   "scaleFactor"
+  ]
+ },
+ "outfitdialog/OutfitDialogLayout.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "maximumWidth"
+  ]
+ },
+ "outfitdialog/OutfitPresetSelection.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TOutfitPresetQmlType",
+    "matched": 3,
+    "score": 17.6
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper",
+   "TibiaObjects"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "maximumWidth",
+   "outfitPreset",
+   "setPointingHand",
+   "sourceItemDataByRowIndex",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "outfitdialog/OutfitPreviewPanel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 11,
+    "score": 56.2
+   },
+   {
+    "class": "tibia::qmlcomponents::TAppearanceInstanceRenderer",
+    "matched": 3,
+    "score": 15.2
+   }
+  ],
+  "elements": [
+   "AppearanceInstanceRenderer",
+   "ObjectAppearanceInstance",
+   "OutfitAppearanceInstance",
+   "OutfitPreset"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "outfitPreset"
+  ]
+ },
+ "outfitdialog/OutfitSelection.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 6,
+    "score": 27.7
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 4,
+    "score": 24.0
+   },
+   {
+    "class": "tibia::gamewindow::TCharacterBaseQmlInfo",
+    "matched": 5,
+    "score": 22.9
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "maximumWidth",
+   "resetFilter",
+   "rowCount",
+   "setPointingHand",
+   "sourceItemDataByRowIndex",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "outfitdialog/TibiaColorSelectionGrid.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "colors"
+  ]
+ },
+ "playertrade.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPlayerTradeController",
+    "matched": 10,
+    "score": 60.0
+   },
+   {
+    "class": "tibia::trade::TPlayerTradeObject",
+    "matched": 6,
+    "score": 28.8
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "prey/KillTrackerWidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPreyRenderInfo",
+    "matched": 18,
+    "score": 104.0
+   },
+   {
+    "class": "tibia::gamewindow::TKillTrackerWidgetController",
+    "matched": 8,
+    "score": 47.6
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [
+   "Lenshelp",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "prey/PreyDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPreyDialogController",
+    "matched": 7,
+    "score": 35.4
+   },
+   {
+    "class": "tibia::qmlcomponents::TSoundHelperService",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::gamewindow::TTutorialHintDialogController",
+    "matched": 2,
+    "score": 7.2
+   }
+  ],
+  "elements": [
+   "SoundHelper"
+  ],
+  "type_refs": [
+   "PreyDialogController"
+  ],
+  "uncovered_cpp_members": [
+   "icon",
+   "imageSource"
+  ]
+ },
+ "prey/PreyPreyPage.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPreyPreyPageController",
+    "matched": 8,
+    "score": 46.1
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "prey/SinglePreyView.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TPreyRenderInfo",
+    "matched": 39,
+    "score": 230.0
+   },
+   {
+    "class": "tibia::gamewindow::TPreyPreyPageController",
+    "matched": 7,
+    "score": 40.5
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 5,
+    "score": 30.0
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clear",
+   "selected",
+   "selectedMonsterRaceID",
+   "sourceItemDataByRowIndex",
+   "wrapInHelperProxyModel"
+  ]
+ },
+ "questtrackerwidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TQuestTrackerWidgetController",
+    "matched": 6,
+    "score": 34.7
+   },
+   {
+    "class": "tibia::cyclopedia::TQmlStatWithSources",
+    "matched": 2,
+    "score": 10.5
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "description",
+   "isPinned",
+   "maximumWidth"
+  ]
+ },
+ "sidebar.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSidebarController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "identifier"
+  ]
+ },
+ "skillswidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSkillsWidgetController",
+    "matched": 7,
+    "score": 40.4
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "requestContextMenu"
+  ]
+ },
+ "spelllistwidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSpellListWidgetController",
+    "matched": 6,
+    "score": 27.2
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "taskboard/BountyTaskDialogTab.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBountyTasksController",
+    "matched": 47,
+    "score": 281.5
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "caption",
+   "raceId"
+  ]
+ },
+ "taskboard/BountyTaskPanel.qml": {
+  "controllers": [],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "taskboard/BountyTaskSetupPanel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "taskboard/DeliveryTask.qml": {
+  "controllers": [],
+  "elements": [
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clicked"
+  ]
+ },
+ "taskboard/DeliveryTaskPanel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "caption",
+   "slotClicked"
+  ]
+ },
+ "taskboard/HuntingTaskRewardPurchaseConfirmationDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController",
+    "matched": 12,
+    "score": 64.7
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "taskboard/MonsterKillTask.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "taskboard/MonsterKillTaskPanel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "caption",
+   "raceId"
+  ]
+ },
+ "taskboard/MonsterSelectionPanel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::taskboard::TMonsterListModelSortFilterProxy",
+    "matched": 2,
+    "score": 11.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clear",
+   "raceId"
+  ]
+ },
+ "taskboard/PreferredList.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBountyTasksController",
+    "matched": 8,
+    "score": 47.6
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "clearAssignableMonster",
+   "updateNameFilter"
+  ]
+ },
+ "taskboard/PreferredMonsterSlot.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "taskboard/PreferredMonsterSlotPanel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TBountyTasksController",
+    "matched": 6,
+    "score": 36.0
+   },
+   {
+    "class": "tibia::taskboard::TBountyTasksPreferredMonsterListModel",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "taskboard/SoulSealsDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TSoulSealsDialogController",
+    "matched": 11,
+    "score": 62.1
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "formatNumberWithThousandSeparators",
+   "getRaceIDAtIndex",
+   "raceId"
+  ]
+ },
+ "taskboard/TaskRingPanel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "taskboard/TaskRingPanelSection.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "taskboard/TaskboardDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTaskboardDialogController",
+    "matched": 12,
+    "score": 65.9
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "TaskboardDialogController"
+  ],
+  "uncovered_cpp_members": []
+ },
+ "taskboard/TaskboardRewardShopDialogTab.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController",
+    "matched": 9,
+    "score": 47.5
+   },
+   {
+    "class": "tibia::gamewindow::TTaskboardShopController",
+    "matched": 7,
+    "score": 35.5
+   },
+   {
+    "class": "tibia::taskboard::TTaskboardRewardListModel",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [
+   "TaskboardRewardListModel"
+  ],
+  "uncovered_cpp_members": [
+   "Controls",
+   "description"
+  ]
+ },
+ "taskboard/TaskboardShopOffer.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController",
+    "matched": 8,
+    "score": 41.5
+   },
+   {
+    "class": "tibia::qmlcomponents::TOutfitAppearanceInstanceQmlType",
+    "matched": 7,
+    "score": 32.8
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 6,
+    "score": 30.3
+   },
+   {
+    "class": "tibia::taskboard::TTaskboardRewardListModel",
+    "matched": 5,
+    "score": 30.0
+   }
+  ],
+  "elements": [
+   "AppearanceInstanceRenderer",
+   "ObjectAppearanceInstance",
+   "SingleObjectAppearanceInstanceRenderer"
+  ],
+  "type_refs": [
+   "TaskboardRewardListModel"
+  ],
+  "uncovered_cpp_members": [
+   "Controls",
+   "appearanceInstances"
+  ]
+ },
+ "taskboard/WeeklyTaskDialogTab.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TWeeklyTasksController",
+    "matched": 28,
+    "score": 167.9
+   }
+  ],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "taskboard/WeeklyTasksProgressPanel.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TWeeklyTasksController",
+    "matched": 2,
+    "score": 12.0
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "taskboard/WeeklyTasksResultsPanel.qml": {
+  "controllers": [],
+  "elements": [
+   "TextHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "formatNumberWithThousandSeparators"
+  ]
+ },
+ "taskboard/WeeklyTasksRewardsPanel.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls"
+  ]
+ },
+ "textureatlasviewer.qml": {
+  "controllers": [],
+  "elements": [
+   "CachedOutlineText",
+   "TextureAtlasViewer"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "NoCaching"
+  ]
+ },
+ "tutorial/DawnportTutorialPopup.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TVocationSelectionDialogController",
+    "matched": 2,
+    "score": 8.1
+   }
+  ],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "finished"
+  ]
+ },
+ "tutorial/InfoBanner.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Effects",
+   "caption",
+   "finished"
+  ]
+ },
+ "tutorial/InfoBannerAnimation.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Effects",
+   "caption"
+  ]
+ },
+ "tutorial/InfoBannerIcon.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 23,
+    "score": 137.9
+   }
+  ],
+  "elements": [
+   "ColorHelper",
+   "SingleObjectAppearanceInstanceRenderer",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Effects",
+   "createColorFromEightBitHSV",
+   "level"
+  ]
+ },
+ "tutorial/InfoBannerWrapper.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 23,
+    "score": 137.9
+   },
+   {
+    "class": "tibia::gamewindow::TCyclopediaMapSelectionInfoSubArea",
+    "matched": 2,
+    "score": 11.2
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Effects",
+   "caption",
+   "level",
+   "progress",
+   "shift",
+   "stage"
+  ]
+ },
+ "tutorial/TibiaTutorialMarkerTemplate.qml": {
+  "controllers": [],
+  "elements": [
+   "TibiaTutorialMarker"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "tutorial/TutorialAnimationCombat.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TActionButtonController",
+    "matched": 9,
+    "score": 49.8
+   },
+   {
+    "class": "tibia::qmlcomponents::TTutorialHelperQmlService",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "AppearanceTypeHelper",
+   "TutorialHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "NONE",
+   "entries",
+   "finished",
+   "getObjectAppearanceTypeIDByName",
+   "level",
+   "showGraphicalEffect",
+   "showTooltip"
+  ]
+ },
+ "tutorial/TutorialAnimationLoot.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TContainerController",
+    "matched": 7,
+    "score": 37.7
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TTutorialHelperQmlService",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType",
+    "matched": 2,
+    "score": 10.9
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper",
+   "AppearanceTypeHelper",
+   "ColorHelper",
+   "ObjectAppearanceInstance",
+   "TextHelper",
+   "TibiaEnums",
+   "TutorialHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "appearanceID",
+   "appendRow",
+   "createColorFromName",
+   "createDynamicAbstractListModel",
+   "entries",
+   "finished",
+   "getObjectAppearanceTypeIDByName",
+   "maximumWidth",
+   "nextPageClicked",
+   "replaceColorCodingsWithHtmlTags",
+   "traderInventoryModel"
+  ]
+ },
+ "tutorial/TutorialEnums.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "tutorial/TutorialHintDialog.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TTutorialHintDialogController",
+    "matched": 5,
+    "score": 23.3
+   },
+   {
+    "class": "tibia::gamewindow::TShowImageDialogController",
+    "matched": 3,
+    "score": 13.2
+   },
+   {
+    "class": "tibia::gamewindow::TActionBarController",
+    "matched": 2,
+    "score": 10.0
+   }
+  ],
+  "elements": [
+   "TibiaTutorialMarker"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Controls",
+   "TopLeft",
+   "markerID",
+   "setPointingHand"
+  ]
+ },
+ "tutorial/TutorialMouseCursor.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "tutorial/TutorialMouseCursorAnimation.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 6,
+    "score": 36.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "tutorial/TutorialOverlayMouseFilterTemplate.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "tutorial/TutorialOverlayMouseTrailAnimation.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 4,
+    "score": 24.0
+   }
+  ],
+  "elements": [
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "tutorial/TutorialOverlayTemplate.qml": {
+  "controllers": [],
+  "elements": [],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "tutorial/TutorialWorldmapCombat.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TColorHelperQmlService",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TAppearanceInstanceRenderer",
+    "matched": 3,
+    "score": 16.6
+   },
+   {
+    "class": "tibia::worldmap::TCreatureHUDQmlRenderInfo",
+    "matched": 2,
+    "score": 11.6
+   }
+  ],
+  "elements": [
+   "AppearanceInstanceRenderer",
+   "ColorHelper",
+   "ObjectAppearanceInstance",
+   "OutfitAppearanceInstance",
+   "TibiaTutorialMarker",
+   "TutorialHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "NORTH",
+   "markerID",
+   "nextUniqueTutorialMarkerID",
+   "update"
+  ]
+ },
+ "tutorial/TutorialWorldmapLoot.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::TColorHelperQmlService",
+    "matched": 3,
+    "score": 18.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TAppearanceInstanceRenderer",
+    "matched": 3,
+    "score": 16.6
+   },
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 2,
+    "score": 10.9
+   }
+  ],
+  "elements": [
+   "AppearanceInstanceRenderer",
+   "ColorHelper",
+   "ObjectAppearanceInstance",
+   "OutfitAppearanceInstance",
+   "TibiaTutorialMarker",
+   "TutorialHelper"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "healthPercent",
+   "markerID",
+   "nextUniqueTutorialMarkerID",
+   "update"
+  ]
+ },
+ "tutorial/VocationSelectionPopup.qml": {
+  "controllers": [
+   {
+    "class": "tibia::qmlcomponents::enums",
+    "matched": 5,
+    "score": 30.0
+   },
+   {
+    "class": "tibia::qmlcomponents::TAbstractItemModelHelper",
+    "matched": 2,
+    "score": 12.0
+   },
+   {
+    "class": "tibia::gamewindow::TVocationSelectionDialogController",
+    "matched": 2,
+    "score": 10.2
+   }
+  ],
+  "elements": [
+   "AbstractItemModelHelper",
+   "SingleObjectAppearanceInstanceRenderer",
+   "TibiaEnums"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "Effects",
+   "rowCount",
+   "setPointingHand",
+   "sourceItemDataByRowIndex",
+   "vocation"
+  ]
+ },
+ "unjustifiedpointswidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TUnjustifiedPointsWidgetController",
+    "matched": 10,
+    "score": 60.0
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": []
+ },
+ "vipwidget.qml": {
+  "controllers": [
+   {
+    "class": "tibia::gamewindow::TVipWidgetController",
+    "matched": 3,
+    "score": 18.0
+   }
+  ],
+  "elements": [
+   "Lenshelp"
+  ],
+  "type_refs": [],
+  "uncovered_cpp_members": [
+   "showGroups"
+  ]
+ }
+}

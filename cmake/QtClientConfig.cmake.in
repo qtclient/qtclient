@@ -1,0 +1,15 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/QtClientTargets.cmake" OPTIONAL)
+
+# Prefer an exported QtClient::Host; fall back to locating a build/prefix.
+if(NOT TARGET QtClient::Host)
+  if(DEFINED QTCLIENT_ROOT AND EXISTS "${QTCLIENT_ROOT}/cmake/QtClientHost.cmake")
+    # Consumer builds against a source/build tree (monorepo or SDK checkout).
+    include("${QTCLIENT_ROOT}/cmake/QtClientMod.cmake")
+  endif()
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/../QtClientMod.cmake" OPTIONAL)
+
+check_required_components(QtClient)

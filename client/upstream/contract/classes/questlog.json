@@ -1,0 +1,95 @@
+{
+ "tibia::questlog::TQuestLogGameActionHandler": {
+  "chain": [
+   "tibia::questlog::TQuestLogGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::questlog::TQuestLogGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendTrackQuestFlags": [
+    "void sendTrackQuestFlags(tibia::protobuf::protocol::GameclientMessageTrackQuestFlags Message)"
+   ]
+  },
+  "slots": {
+   "handleChangeQuesttrackerOptionsGameAction": [
+    "void handleChangeQuesttrackerOptionsGameAction(std::shared_ptr<tibia::input::TGameActionChangeQuesttrackerOptions> pGameAction)"
+   ],
+   "handleChangeTrackedQuestFlagsGameAction": [
+    "void handleChangeTrackedQuestFlagsGameAction(std::shared_ptr<tibia::input::TGameActionChangeTrackedQuestFlags> pGameAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::questlog::TQuestLogProtocolMessageHandler": {
+  "chain": [
+   "tibia::questlog::TQuestLogProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::questlog::TQuestLogProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendGetQuestLine": [
+    "void sendGetQuestLine(tibia::protobuf::protocol::GameclientMessageGetQuestLine GetQuestLineMessage)"
+   ],
+   "sendGetQuestLog": [
+    "void sendGetQuestLog(tibia::protobuf::protocol::GameclientMessageGetQuestLog GetQuestLogMessage)"
+   ]
+  },
+  "slots": {
+   "handleQuestLineMessage": [
+    "void handleQuestLineMessage(tibia::protobuf::protocol::GameserverMessageQuestLine QuestLineMessage)"
+   ],
+   "handleQuestLogMessage": [
+    "void handleQuestLogMessage(tibia::protobuf::protocol::GameserverMessageQuestLog QuestLogMessage)"
+   ],
+   "handleTrackedQuestFlagsMessage": [
+    "void handleTrackedQuestFlagsMessage(tibia::protobuf::protocol::GameserverMessageTrackQuestFlags TrackedQuestFlagsMessage)"
+   ]
+  }
+ },
+ "tibia::questlog::TQuestLogStorage": {
+  "chain": [
+   "tibia::questlog::TQuestLogStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::questlog::TQuestLogStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "filterOptionChanged": [
+    "void filterOptionChanged()"
+   ],
+   "hiddenQuesLinesChanged": [
+    "void hiddenQuesLinesChanged()"
+   ],
+   "pinnedQuesLinesChanged": [
+    "void pinnedQuesLinesChanged()"
+   ],
+   "questLinePartsChanged": [
+    "void questLinePartsChanged(TQuestLineID QuestLineId)"
+   ],
+   "questLinesChanged": [
+    "void questLinesChanged()"
+   ],
+   "trackedQuestFlagsChanged": [
+    "void trackedQuestFlagsChanged(bool QuestFlagAdded, bool QuestFlagRemoved)"
+   ]
+  },
+  "slots": {}
+ }
+}

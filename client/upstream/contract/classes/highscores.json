@@ -1,0 +1,79 @@
+{
+ "tibia::highscores::THighscoresData": {
+  "chain": [
+   "tibia::highscores::THighscoresData",
+   "QObject"
+  ],
+  "class": "tibia::highscores::THighscoresData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "highscoreEntryModel": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "THighscoresData",
+    "notify": null,
+    "type": "QObject*"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::highscores::THighscoresEntriesModel": {
+  "chain": [
+   "tibia::highscores::THighscoresEntriesModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::highscores::THighscoresEntriesModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::highscores::THighscoresProtocolMessageHandler": {
+  "chain": [
+   "tibia::highscores::THighscoresProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::highscores::THighscoresProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendHighscoresMessage": [
+    "void sendHighscoresMessage(tibia::protobuf::protocol::GameclientMessageHighscores HighscoresMessage)"
+   ]
+  },
+  "slots": {
+   "handleHighscoresMessage": [
+    "void handleHighscoresMessage(tibia::protobuf::protocol::GameserverMessageHighscores HighscoresMessage)"
+   ]
+  }
+ },
+ "tibia::highscores::THighscoresStorage": {
+  "chain": [
+   "tibia::highscores::THighscoresStorage",
+   "QObject"
+  ],
+  "class": "tibia::highscores::THighscoresStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "highScoresError": [
+    "void highScoresError()"
+   ],
+   "highScoresUpdated": [
+    "void highScoresUpdated()"
+   ]
+  },
+  "slots": {}
+ }
+}

@@ -1,0 +1,3049 @@
+{
+ "tibia::config::ICharacterConfigurationBase": {
+  "chain": [
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::config::ICharacterConfigurationBase",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TActionBarOptions": {
+  "chain": [
+   "tibia::config::TActionBarOptions",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TActionBarOptions",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TActionBarsQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TActionBarsQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TActionBarsQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "allowTooltip": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "autoInsertSpells": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "clearBottomActionBar1": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "clearBottomActionBar2": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "clearBottomActionBar3": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "clearLeftActionBar1": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "clearLeftActionBar2": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "clearLeftActionBar3": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "clearRightActionBar1": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "clearRightActionBar2": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "clearRightActionBar3": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showAmount": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showBottomActionBar1": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showBottomActionBar2": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showBottomActionBar3": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showBottomActionBars": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showCooldown": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showCooldownNumber": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showHotkey": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showLeftActionBar1": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showLeftActionBar2": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showLeftActionBar3": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showLeftActionBars": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showRightActionBar1": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showRightActionBar2": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showRightActionBar3": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showRightActionBars": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showSpellParameters": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TActionBarsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {
+   "onClearBottomActionBar1Clicked": [
+    "void onClearBottomActionBar1Clicked()"
+   ],
+   "onClearBottomActionBar2Clicked": [
+    "void onClearBottomActionBar2Clicked()"
+   ],
+   "onClearBottomActionBar3Clicked": [
+    "void onClearBottomActionBar3Clicked()"
+   ],
+   "onClearLeftActionBar1Clicked": [
+    "void onClearLeftActionBar1Clicked()"
+   ],
+   "onClearLeftActionBar2Clicked": [
+    "void onClearLeftActionBar2Clicked()"
+   ],
+   "onClearLeftActionBar3Clicked": [
+    "void onClearLeftActionBar3Clicked()"
+   ],
+   "onClearRightActionBar1Clicked": [
+    "void onClearRightActionBar1Clicked()"
+   ],
+   "onClearRightActionBar2Clicked": [
+    "void onClearRightActionBar2Clicked()"
+   ],
+   "onClearRightActionBar3Clicked": [
+    "void onClearRightActionBar3Clicked()"
+   ]
+  }
+ },
+ "tibia::config::TBattleSoundsQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TBattleSoundsQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TBattleSoundsQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "creaturesAttacksEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "creaturesDeathEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "creaturesNoisesEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "creaturesVolume": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "othersAttackSpellsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "othersHealingSpellsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "othersSpellsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "othersSupportSpellsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "othersVolume": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "othersWeaponsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "ownAttackSpellsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "ownHealingSpellsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "ownSpellsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "ownSupportSpellsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "ownVolume": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "ownWeaponsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBattleSoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TButtonBarQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TButtonBarQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TButtonBarQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "disableButton": [
+    "void disableButton(QString ButtonName)"
+   ],
+   "enableButton": [
+    "void enableButton(QString ButtonName)"
+   ],
+   "moveEnabledButtonDown": [
+    "void moveEnabledButtonDown(QString ButtonName)"
+   ],
+   "moveEnabledButtonUp": [
+    "void moveEnabledButtonUp(QString ButtonName)"
+   ]
+  },
+  "properties": {
+   "disabledButtons": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TButtonBarQMLOptionsPage",
+    "notify": "changed",
+    "type": "QStringList"
+   },
+   "enabledButtons": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TButtonBarQMLOptionsPage",
+    "notify": "changed",
+    "type": "QStringList"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TCharacterConfigurationManager": {
+  "chain": [
+   "tibia::config::TCharacterConfigurationManager",
+   "QObject"
+  ],
+  "class": "tibia::config::TCharacterConfigurationManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "configurationLoadedForCharacter": [
+    "void configurationLoadedForCharacter()"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "onConfigurationChanged": [
+    "void onConfigurationChanged()"
+   ],
+   "onPlayerCreatureLoaded": [
+    "void onPlayerCreatureLoaded(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ]
+  }
+ },
+ "tibia::config::TClientOptions": {
+  "chain": [
+   "tibia::config::TClientOptions",
+   "QObject"
+  ],
+  "class": "tibia::config::TClientOptions",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "actionBarsOptionsChanged": [
+    "void actionBarsOptionsChanged()"
+   ],
+   "appearanceTypeListModelOptionsChanged": [
+    "void appearanceTypeListModelOptionsChanged()"
+   ],
+   "buttonBarOptionsChanged": [
+    "void buttonBarOptionsChanged()"
+   ],
+   "characterSelectionControllerOptionsChanged": [
+    "void characterSelectionControllerOptionsChanged()"
+   ],
+   "chatChannelControllerOptionsChanged": [
+    "void chatChannelControllerOptionsChanged()"
+   ],
+   "chatOptionsChanged": [
+    "void chatOptionsChanged()"
+   ],
+   "chatProtocolMessageHandlerOptionsChanged": [
+    "void chatProtocolMessageHandlerOptionsChanged()"
+   ],
+   "clientWindowOptionsChanged": [
+    "void clientWindowOptionsChanged()"
+   ],
+   "containerOptionsChanged": [
+    "void containerOptionsChanged()"
+   ],
+   "containerStorageControllerOptionsChanged": [
+    "void containerStorageControllerOptionsChanged()"
+   ],
+   "controlOrLootSchemeOptionsChanged": [
+    "void controlOrLootSchemeOptionsChanged()"
+   ],
+   "creatureHUDRenderProviderOptionsChanged": [
+    "void creatureHUDRenderProviderOptionsChanged()"
+   ],
+   "creatureMarksOptionsChanged": [
+    "void creatureMarksOptionsChanged()"
+   ],
+   "failedToSaveClientOptions": [
+    "void failedToSaveClientOptions(QString ErrorString)"
+   ],
+   "fpsLagIndicatorOptionsChanged": [
+    "void fpsLagIndicatorOptionsChanged()"
+   ],
+   "gameWindowControllerOptionsChanged": [
+    "void gameWindowControllerOptionsChanged()"
+   ],
+   "hotkeyOptionsChanged": [
+    "void hotkeyOptionsChanged()"
+   ],
+   "itemTrackingStorageOptionsChanged": [
+    "void itemTrackingStorageOptionsChanged()"
+   ],
+   "mapWindowControllerOptionsChanged": [
+    "void mapWindowControllerOptionsChanged()"
+   ],
+   "marketOtpionsChanged": [
+    "void marketOtpionsChanged()"
+   ],
+   "mouseCursorControllerOptionsChanged": [
+    "void mouseCursorControllerOptionsChanged()"
+   ],
+   "newsOptionsChanged": [
+    "void newsOptionsChanged()"
+   ],
+   "npcDialogOptionsChanged": [
+    "void npcDialogOptionsChanged()"
+   ],
+   "optionChanged": [
+    "void optionChanged(EClientOption OptionID)"
+   ],
+   "rotateKeyOptionsChanged": [
+    "void rotateKeyOptionsChanged()"
+   ],
+   "screenshotMangerOptionsChanged": [
+    "void screenshotMangerOptionsChanged()"
+   ],
+   "soundOptionsChanged": [
+    "void soundOptionsChanged()"
+   ],
+   "specialConditionsOptionsChanged": [
+    "void specialConditionsOptionsChanged()"
+   ],
+   "statusBarEnabledChanged": [
+    "void statusBarEnabledChanged()"
+   ],
+   "statusPanelEnabledChanged": [
+    "void statusPanelEnabledChanged()"
+   ],
+   "surveyInvitationOptionsChanged": [
+    "void surveyInvitationOptionsChanged()"
+   ],
+   "whiteBlacklistOptionsChanged": [
+    "void whiteBlacklistOptionsChanged()"
+   ]
+  },
+  "slots": {
+   "consolidateSignalsAndEnqueueOptionSetSignalsForEmit": [
+    "void consolidateSignalsAndEnqueueOptionSetSignalsForEmit(EClientOption OptionID)"
+   ],
+   "saveToJsonFile": [
+    "void saveToJsonFile()"
+   ]
+  }
+ },
+ "tibia::config::TClientOptionsModeSwitcher": {
+  "chain": [
+   "tibia::config::TClientOptionsModeSwitcher",
+   "QObject"
+  ],
+  "class": "tibia::config::TClientOptionsModeSwitcher",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configureSidebarFromClientOptions": [
+    "void configureSidebarFromClientOptions()"
+   ]
+  },
+  "slots": {
+   "connectToGameSession": [
+    "void connectToGameSession(std::shared_ptr<tibia::game::IGameSession> pGameSession)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::config::TConsoleQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TConsoleQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TConsoleQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "openNewPrivateMessagesInNewTab": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TConsoleQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showEventMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TConsoleQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showInfoMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TConsoleQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showLevels": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TConsoleQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showStatusMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TConsoleQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showStatusMessagesOfOthers": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TConsoleQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showTimestamps": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TConsoleQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showTimestampsSeconds": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TConsoleQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TControlsQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TControlsQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TControlsQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "alwaysTurnTowardsMoveDirection": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "controlSchemeIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "controlSchemeListModel": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": null,
+    "type": "QStringList"
+   },
+   "ctrlToDragStacks": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "defaultKeyboardDelayMillis": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": null,
+    "type": "uint"
+   },
+   "keyboardDelayMillis": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "lootSchemeIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "lootSchemeListModel": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": null,
+    "type": "QStringList"
+   },
+   "rotateWithAlt": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "rotateWithCtrl": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "rotateWithShift": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "useDefaultKeyboardDelay": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TControlsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TEffectsQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TEffectsQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TEffectsQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "ambientLightLevel": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TEffectsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "levelSeparatorLevel": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TEffectsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "lightAttenuationCloudsIndoor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TEffectsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "lightEffects": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TEffectsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "monsterBossAreaEffectsOpacity": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TEffectsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "monsterEffectsOpacity": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TEffectsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "otherPlayersEffectsOpacity": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TEffectsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "ownEffectsOpacity": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TEffectsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "rendererLimitationsActive": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TEffectsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TGameWindowQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TGameWindowQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TGameWindowQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "setShowTargetFrameHighlight": [
+    "void setShowTargetFrameHighlight(bool ShowFrame, bool ShowHighlight)"
+   ]
+  },
+  "properties": {
+   "showAttackAnimation": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showBoostedCreatureMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showFrames": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showFramesPvp": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showHotkeyUsageMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showInfoBanner": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showLootHighlighting": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showLootMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showOfflineTrainingMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showOthersSpells": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showOwnSpells": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showPotionMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showPrivateMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showStoreMessages": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showTargetFrame": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showTargetHighlight": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showTextualEffects": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameWindowQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TGameplayQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TGameplayQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TGameplayQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "allowAllToInspectPlayer": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameplayQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "autoChaseOff": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameplayQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "quickLootAllCorpsesInArea": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGameplayQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TGraphicsQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TGraphicsQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TGraphicsQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "antialiasingModeIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "antialiasingModeListModel": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "QStringList"
+   },
+   "borderlessWindow": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "canChangeFpsLimitCheckbox": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": null,
+    "type": "bool"
+   },
+   "fpsLimit": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "isMetal": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": null,
+    "type": "bool"
+   },
+   "noFpsLimitEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "rendererIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "rendererLimitationsActive": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "rendererListModel": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "QStringList"
+   },
+   "scaleOnlyByEvenMultiples": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "tooltipTextDisabledRenderers": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "vSync": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TGraphicsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::THotkeysQMLOptionsPage": {
+  "chain": [
+   "tibia::config::THotkeysQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::THotkeysQMLOptionsPage",
+  "classinfo": {},
+  "enums": {
+   "EHotkeyMode": {
+    "ActionButtons": 1,
+    "CustomHotkeys": 2,
+    "DefaultHotkeys": 0
+   }
+  },
+  "invokables": {
+   "requestAddNewCustomHotkey": [
+    "void requestAddNewCustomHotkey()"
+   ],
+   "requestAddPreset": [
+    "void requestAddPreset()"
+   ],
+   "requestCloneCurrentPreset": [
+    "void requestCloneCurrentPreset()"
+   ],
+   "requestEditActionForHotkey": [
+    "void requestEditActionForHotkey(int HotkeyActionSettingIndex)"
+   ],
+   "requestEnterNewHotkeyForAction": [
+    "void requestEnterNewHotkeyForAction(int HotkeyActionSettingIndex, int KeySequenceIndex)"
+   ],
+   "requestRemoveCurrentPreset": [
+    "void requestRemoveCurrentPreset()"
+   ],
+   "requestRenameCurrentPreset": [
+    "void requestRenameCurrentPreset()"
+   ]
+  },
+  "properties": {
+   "autoSwitchHotkeyPreset": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THotkeysQMLOptionsPage",
+    "notify": "autoswitchHotkeyPresetChanged",
+    "type": "bool"
+   },
+   "chatModeOn": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THotkeysQMLOptionsPage",
+    "notify": "hotkeySetsChanged",
+    "type": "bool"
+   },
+   "hotkeyMode": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "THotkeysQMLOptionsPage",
+    "notify": "hotkeyModeChanged",
+    "type": "EHotkeyMode"
+   },
+   "hotkeyModel": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "THotkeysQMLOptionsPage",
+    "notify": "hotkeyListModelChanged",
+    "type": "QList<QObject*>"
+   },
+   "hotkeySetNamesIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THotkeysQMLOptionsPage",
+    "notify": "hotkeySetsChanged",
+    "type": "int"
+   },
+   "hotkeySetNamesModel": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "THotkeysQMLOptionsPage",
+    "notify": "hotkeySetsChanged",
+    "type": "QStringList"
+   },
+   "nameFilter": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THotkeysQMLOptionsPage",
+    "notify": "hotkeyListModelChanged",
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "autoswitchHotkeyPresetChanged": [
+    "void autoswitchHotkeyPresetChanged()"
+   ],
+   "hotkeyListModelChanged": [
+    "void hotkeyListModelChanged()"
+   ],
+   "hotkeyModeChanged": [
+    "void hotkeyModeChanged()"
+   ],
+   "hotkeySetsChanged": [
+    "void hotkeySetsChanged()"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onMessageDialogConfirmed": [
+    "void onMessageDialogConfirmed()"
+   ],
+   "onNewKeySequenceSelectedForCurrentHotkeyActionSetting": [
+    "void onNewKeySequenceSelectedForCurrentHotkeyActionSetting(QKeySequence NewKeySequence)"
+   ],
+   "onObjectAssignedToHotkeyAction": [
+    "void onObjectAssignedToHotkeyAction(tibia::gamewindow::TActionButtonID HotkeyActionSettingIndex, int MultiActionIndex, tibia::appearances::TObjectAppearanceInstanceTypeID ObjectAppearanceInstanceTypeID, tibia::config::EHotkeyUseObjectType UseObjectType, bool UseEquipSmartMode)"
+   ],
+   "onPresetTextEntered": [
+    "void onPresetTextEntered(QString EnteredText)"
+   ],
+   "onSpellAssignedToHotkeyAction": [
+    "void onSpellAssignedToHotkeyAction(tibia::gamewindow::TActionButtonID HotkeyActionSettingIndex, int MultiActionIndex, tibia::common::spells::ESpell Spell, QString Parameters, tibia::qmlcomponents::enums::ESpellCastOptionalTargetType CastType)"
+   ],
+   "onTextAssignedToHotkeyAction": [
+    "void onTextAssignedToHotkeyAction(tibia::gamewindow::TActionButtonID HotkeyActionSettingIndex, int MultiActionIndex, QString Text, bool SendAutomatically)"
+   ]
+  }
+ },
+ "tibia::config::THudQMLOptionsPage": {
+  "chain": [
+   "tibia::config::THudQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::THudQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "creatureHudEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "creatureNpcShowIcon": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "creatureShowHealth": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "creatureShowMarks": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "creatureShowName": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerHudArcDistance": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "double"
+   },
+   "playerHudArcHeight": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "double"
+   },
+   "playerHudArcOpacity": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "double"
+   },
+   "playerHudArcWidth": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "playerHudEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerHudShowArcs": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerHudShowBars": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerHudShowHarmonyLeft": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerShowHarmony": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerShowHealth": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerShowMana": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerShowMarks": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerShowName": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "specialConditionsModel": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "specialConditionsModelChanged",
+    "type": "QList<QObject*>"
+   },
+   "specialConditionsShowInBarEnabled": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "specialConditionsShowInHUDEnabled": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "statusBarEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "statusPanelEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "THudQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ],
+   "specialConditionsModelChanged": [
+    "void specialConditionsModelChanged()"
+   ]
+  },
+  "slots": {
+   "moveSpecialConditionDown": [
+    "void moveSpecialConditionDown(int SpecialConditionIndex)"
+   ],
+   "moveSpecialConditionUp": [
+    "void moveSpecialConditionUp(int SpecialConditionIndex)"
+   ],
+   "setSpecialConditionShowInBarEnabled": [
+    "void setSpecialConditionShowInBarEnabled(int SpecialConditionIndex, bool Enabled)"
+   ],
+   "setSpecialConditionShowInHUDEnabled": [
+    "void setSpecialConditionShowInHUDEnabled(int SpecialConditionIndex, bool Enabled)"
+   ]
+  }
+ },
+ "tibia::config::TInterfaceQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TInterfaceQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TInterfaceQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "animatedMouseCursor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "bigMouseCursor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "colorizeLootStyleIndex": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "colorizeLootStyleListModel": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "QStringList"
+   },
+   "highlightMouseTarget": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showCooldownBar": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showExpireInContainers": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showExpireInInventory": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showExpireWhenUnused": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showLinkCopyWarning": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "systemCursor": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TInterfaceQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TMiscQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TMiscQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TMiscQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "askBeforeBuyingStoreProducts": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMiscQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "askBeforeMoveContainerContentToManagedContainersRecursive": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMiscQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "askBeforeSortContainerRecursive": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMiscQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "askBeforeStowContainerContent": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMiscQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "isWindows": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscQMLOptionsPage",
+    "notify": null,
+    "type": "bool"
+   },
+   "optimizeConnectionStability": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMiscQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "quickLogin": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMiscQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "stayLoggedInByDefault": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMiscQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "useFreetypeFontRenderer": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TMiscQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TOptionPageQMLWrapperBase": {
+  "chain": [
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TOptionPageQMLWrapperBase",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::config::TScreenshotsQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TScreenshotsQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TScreenshotsQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "achievementEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "autoScreenshotsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "bestiaryFullEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "bestiaryPartlyEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "bossKillEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "deathPvEEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "deathPvPEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "giftOfLifeEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "levelUpEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "lowHitPointsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "newMaxDamageEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "newMaxHealingEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "onlyGameWindow": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerKillAssistEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "playerKillFullEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "pvPAttackEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "rewardChestEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "skillUpEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "trackedLootEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "useBacklog": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TScreenshotsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TSidebarOptions": {
+  "chain": [
+   "tibia::config::TSidebarOptions",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TSidebarOptions",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "analyticsSelectorWidgetOptionsChanged": [
+    "void analyticsSelectorWidgetOptionsChanged()"
+   ],
+   "battleListWidgetOptionsChanged": [
+    "void battleListWidgetOptionsChanged(tibia::gamewindow::TBattleListID BattleListID)"
+   ],
+   "bestiaryTrackerWidgetOptionsChanged": [
+    "void bestiaryTrackerWidgetOptionsChanged()"
+   ],
+   "bossTrackerWidgetOptionsChanged": [
+    "void bossTrackerWidgetOptionsChanged()"
+   ],
+   "bosstiaryTrackerWidgetOptionsChanged": [
+    "void bosstiaryTrackerWidgetOptionsChanged()"
+   ],
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "damageInputAnalyserWidgetOptionsChanged": [
+    "void damageInputAnalyserWidgetOptionsChanged()"
+   ],
+   "depotSearchWidgetOptionsChanged": [
+    "void depotSearchWidgetOptionsChanged()"
+   ],
+   "huntingSessionAnalyserWidgetOptionsChanged": [
+    "void huntingSessionAnalyserWidgetOptionsChanged()"
+   ],
+   "imbuementTrackerWidgetOptionsChanged": [
+    "void imbuementTrackerWidgetOptionsChanged()"
+   ],
+   "impactAnalyserWidgetOptionsChanged": [
+    "void impactAnalyserWidgetOptionsChanged()"
+   ],
+   "killTrackerWidgetOptionsChanged": [
+    "void killTrackerWidgetOptionsChanged()"
+   ],
+   "lootAnalyserWidgetOptionsChanged": [
+    "void lootAnalyserWidgetOptionsChanged()"
+   ],
+   "lootTrackerWidgetOptionsChanged": [
+    "void lootTrackerWidgetOptionsChanged()"
+   ],
+   "npcTradeOptionsChanged": [
+    "void npcTradeOptionsChanged()"
+   ],
+   "optionsForAllContainersChanged": [
+    "void optionsForAllContainersChanged()"
+   ],
+   "partyHuntAnalyserhWidgetOptionsChanged": [
+    "void partyHuntAnalyserhWidgetOptionsChanged()"
+   ],
+   "playerGuideWidgetOptionsChanged": [
+    "void playerGuideWidgetOptionsChanged()"
+   ],
+   "progressAnalyserWidgetOptionsChanged": [
+    "void progressAnalyserWidgetOptionsChanged()"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "questTrackerWidgetOptionsChanged": [
+    "void questTrackerWidgetOptionsChanged()"
+   ],
+   "sidebarPanelsManagerOptionsChanged": [
+    "void sidebarPanelsManagerOptionsChanged()"
+   ],
+   "sidebarPanelsOptionsChanged": [
+    "void sidebarPanelsOptionsChanged()"
+   ],
+   "sidebarWidgetsManagerOptionsChanged": [
+    "void sidebarWidgetsManagerOptionsChanged()"
+   ],
+   "skillsWidgetOptionsChanged": [
+    "void skillsWidgetOptionsChanged()"
+   ],
+   "spellListWidgetOptionsChanged": [
+    "void spellListWidgetOptionsChanged()"
+   ],
+   "unjustifiedPointsWidgetOptionsChanged": [
+    "void unjustifiedPointsWidgetOptionsChanged()"
+   ],
+   "vipWidgetOptionsChanged": [
+    "void vipWidgetOptionsChanged()"
+   ],
+   "wasteAnalyserWidgetOptionsChanged": [
+    "void wasteAnalyserWidgetOptionsChanged()"
+   ]
+  },
+  "slots": {
+   "onDelayOptionsForAllContainersChangedTriggerd": [
+    "void onDelayOptionsForAllContainersChangedTriggerd()"
+   ]
+  }
+ },
+ "tibia::config::TSoundQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TSoundQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TSoundQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "ambienceVolume": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "anthemEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "eatingEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "eventsVolume": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "itemsVolume": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "masterVolume": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "moveItemEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "musicVolume": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "soundDevice": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "soundDeviceListModel": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "QStringList"
+   },
+   "soundEnabled": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "soundEngineInitialized": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSoundQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TSpecialConditionObject": {
+  "chain": [
+   "tibia::config::TSpecialConditionObject",
+   "QObject"
+  ],
+  "class": "tibia::config::TSpecialConditionObject",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "conditionListEntryID": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TSpecialConditionObject",
+    "notify": null,
+    "type": "int"
+   },
+   "conditionListIndex": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSpecialConditionObject",
+    "notify": "changed",
+    "type": "int"
+   },
+   "iconSource": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TSpecialConditionObject",
+    "notify": null,
+    "type": "QString"
+   },
+   "iconTooltip": {
+    "flags": [
+     "READ",
+     "CONSTANT"
+    ],
+    "from": "TSpecialConditionObject",
+    "notify": null,
+    "type": "QString"
+   },
+   "showInBar": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "TSpecialConditionObject",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "showInHUD": {
+    "flags": [
+     "READ",
+     "WRITE"
+    ],
+    "from": "TSpecialConditionObject",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "specialConditionInfo": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TSpecialConditionObject",
+    "notify": "changed",
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TTibiaHotkeyActionSettingQmlWrapper": {
+  "chain": [
+   "tibia::config::TTibiaHotkeyActionSettingQmlWrapper",
+   "QObject"
+  ],
+  "class": "tibia::config::TTibiaHotkeyActionSettingQmlWrapper",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "canHaveSmartMode": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "chatText": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "descriptionColor": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "QColor"
+   },
+   "descriptionText": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "firstHotkeyText": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "hookDirection": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection"
+   },
+   "isChatText": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "isEmpty": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "isStaticAction": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "isUseObject": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "isUseWithObject": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "liquidType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType"
+   },
+   "objectCount": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "objectID": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "secondHotkeyText": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "sendAutomatically": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "smartModeEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "useObjectType": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTibiaHotkeyActionSettingQmlWrapper",
+    "notify": "changed",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::config::TUISoundsQMLOptionsPage": {
+  "chain": [
+   "tibia::config::TUISoundsQMLOptionsPage",
+   "tibia::config::TOptionPageQMLWrapperBase",
+   "QObject"
+  ],
+  "class": "tibia::config::TUISoundsQMLOptionsPage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "chatEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "globalMessagesEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "guildMessagesEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "npcMessageseEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "partyEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "partyMessagesEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "privateMessagesEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "privateMessagesWithoutTabEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "raidMessagesEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "systemMessagesEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "teamFinderMessagesEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "uiInteractionsEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "uiVolume": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "uint"
+   },
+   "vipEnabled": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TUISoundsQMLOptionsPage",
+    "notify": "changed",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ }
+}

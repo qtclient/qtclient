@@ -1,0 +1,362 @@
+{
+ "tibia::imbuing::TAvailableImbuementsListModel": {
+  "chain": [
+   "tibia::imbuing::TAvailableImbuementsListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::imbuing::TAvailableImbuementsListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::imbuing::TImbuementDurationsStorage": {
+  "chain": [
+   "tibia::imbuing::TImbuementDurationsStorage",
+   "QObject"
+  ],
+  "class": "tibia::imbuing::TImbuementDurationsStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "imbuedObjectsChanged": [
+    "void imbuedObjectsChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::imbuing::TImbuementSlotsListModel": {
+  "chain": [
+   "tibia::imbuing::TImbuementSlotsListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::imbuing::TImbuementSlotsListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::imbuing::TImbuingProtocolMessageHandler": {
+  "chain": [
+   "tibia::imbuing::TImbuingProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::imbuing::TImbuingProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestCloseImbuingDialog": [
+    "void requestCloseImbuingDialog()"
+   ],
+   "requestShowOrRefreshImbuingDialog": [
+    "void requestShowOrRefreshImbuingDialog()"
+   ],
+   "requestShowResultDialog": [
+    "void requestShowResultDialog(QString ResultMessage)"
+   ],
+   "sendApplyClearingCharm": [
+    "void sendApplyClearingCharm(tibia::protobuf::protocol::GameclientMessageApplyClearingCharm ApplyClearingCharmMessage)"
+   ],
+   "sendApplyImbuement": [
+    "void sendApplyImbuement(tibia::protobuf::protocol::GameclientMessageApplyImbuement ApplyImbuementMessage)"
+   ],
+   "sendCloseImbuingDialog": [
+    "void sendCloseImbuingDialog(tibia::protobuf::protocol::GameclientMessageCloseImbuingDialog CloseImbuingDialogCharmMessage)"
+   ],
+   "sendPickObjectToImbue": [
+    "void sendPickObjectToImbue(tibia::protobuf::protocol::GameclientMessagePickObjectToImbue Message)"
+   ],
+   "sendTrackImbuementsMessage": [
+    "void sendTrackImbuementsMessage(tibia::protobuf::protocol::GameclientMessageTrackImbuements Message)"
+   ]
+  },
+  "slots": {
+   "handleCloseImbuingDialogMessage": [
+    "void handleCloseImbuingDialogMessage(tibia::protobuf::protocol::GameserverMessageCloseImbuingDialog CloseImbuingDialogMessage)"
+   ],
+   "handleDeadMessage": [
+    "void handleDeadMessage(tibia::protobuf::protocol::GameserverMessageDead DeadMessage)"
+   ],
+   "handleImbuementDurationsMessage": [
+    "void handleImbuementDurationsMessage(tibia::protobuf::protocol::GameserverMessageImbuementDurations Message)"
+   ],
+   "handleImbuingDialogRefreshMessage": [
+    "void handleImbuingDialogRefreshMessage(tibia::protobuf::protocol::GameserverMessageImbuingDialogRefresh ImbuingDialogRefreshMessage)"
+   ],
+   "handleShowMessageDialogMessage": [
+    "void handleShowMessageDialogMessage(tibia::protobuf::protocol::GameserverMessageShowMessageDialog ShowMessageDialogMessage)"
+   ]
+  }
+ },
+ "tibia::imbuing::TImbuingStorage": {
+  "chain": [
+   "tibia::imbuing::TImbuingStorage",
+   "QObject"
+  ],
+  "class": "tibia::imbuing::TImbuingStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "imbuingDataChanged": [
+    "void imbuingDataChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::imbuing::TQmlAstralSource": {
+  "chain": [
+   "tibia::imbuing::TQmlAstralSource",
+   "QObject"
+  ],
+  "class": "tibia::imbuing::TQmlAstralSource",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "hasEnoughToImbue": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlAstralSource",
+    "notify": null,
+    "type": "bool"
+   },
+   "hookDirection": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlAstralSource",
+    "notify": null,
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection"
+   },
+   "liquidType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlAstralSource",
+    "notify": null,
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType"
+   },
+   "name": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlAstralSource",
+    "notify": null,
+    "type": "QString"
+   },
+   "objectCount": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlAstralSource",
+    "notify": null,
+    "type": "uint"
+   },
+   "objectID": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlAstralSource",
+    "notify": null,
+    "type": "uint"
+   },
+   "resourceString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlAstralSource",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::imbuing::TQmlExistingImbuement": {
+  "chain": [
+   "tibia::imbuing::TQmlExistingImbuement",
+   "QObject"
+  ],
+  "class": "tibia::imbuing::TQmlExistingImbuement",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "clearingGoldCost": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlExistingImbuement",
+    "notify": null,
+    "type": "int"
+   },
+   "clearingGoldCostString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlExistingImbuement",
+    "notify": null,
+    "type": "QString"
+   },
+   "imbuementID": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlExistingImbuement",
+    "notify": null,
+    "type": "tibia::imbuing::TImbuementID"
+   },
+   "name": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlExistingImbuement",
+    "notify": null,
+    "type": "QString"
+   },
+   "remainingDuration": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlExistingImbuement",
+    "notify": null,
+    "type": "QString"
+   },
+   "remainingDurationPercentage": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlExistingImbuement",
+    "notify": null,
+    "type": "double"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::imbuing::TQmlImbuementData": {
+  "chain": [
+   "tibia::imbuing::TQmlImbuementData",
+   "QObject"
+  ],
+  "class": "tibia::imbuing::TQmlImbuementData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "astralSources": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlImbuementData",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "description": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlImbuementData",
+    "notify": null,
+    "type": "QString"
+   },
+   "enoughAstralSourcesForImbuement": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlImbuementData",
+    "notify": null,
+    "type": "bool"
+   },
+   "goldCost": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlImbuementData",
+    "notify": null,
+    "type": "int"
+   },
+   "goldCostString": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlImbuementData",
+    "notify": null,
+    "type": "QString"
+   },
+   "isDummyWhenNoImbuementAvailable": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlImbuementData",
+    "notify": null,
+    "type": "bool"
+   },
+   "name": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlImbuementData",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ }
+}

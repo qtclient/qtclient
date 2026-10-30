@@ -1,0 +1,68 @@
+---
+# Mirror warm CIP Qt prefixes to a public GitHub Release so idleot/release
+# (and anyone) can download without GHCR package ACL. Trigger after Build CIP Qt
+# has pushed ghcr.io/qtclient/qt-cip:<sha12>-<kit>.
+name: Publish CIP Qt release assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      cip_sha:
+        description: Full qt5-cip SHA (default = HEAD gitlink)
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  packages: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kit: [linux-x64, macos-arm64, windows-x64, wasm_multithread]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - uses: oras-project/setup-oras@v1
+
+      - name: Resolve CIP short SHA
+        id: cip
+        run: |
+          set -euo pipefail
+          SHA="${{ inputs.cip_sha }}"
+          if [[ -z "$SHA" ]]; then
+            SHA="$(git rev-parse HEAD:third_party/qt5-cip)"
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "short=${SHA:0:12}" >> "$GITHUB_OUTPUT"
+
+      - name: Pull kit from private GHCR + upload release asset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHORT: ${{ steps.cip.outputs.short }}
+          KIT: ${{ matrix.kit }}
+        run: |
+          set -euo pipefail
+          echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          tag="${SHORT}-${KIT}"
+          ref="ghcr.io/qtclient/qt-cip:${tag}"
+          mkdir -p out
+          if ! oras pull "$ref" -o out; then
+            echo "::error::missing $ref — run Build CIP Qt first"
+            exit 1
+          fi
+          # oras preserves push paths (.qt-ghcr-push-*/qt-prefix.tar.zst on older tags)
+          archive="$(find out -type f \( -name '*.tar.zst' -o -name '*.tar.gz' \) | head -1)"
+          [[ -n "$archive" ]] || { echo "::error::no archive in $ref"; exit 1; }
+          asset="qt-cip-${tag}$( [[ "$archive" == *.zst ]] && echo .tar.zst || echo .tar.gz )"
+          mv "$archive" "$asset"
+          rel="cip-qt-${SHORT}"
+          gh release view "$rel" >/dev/null 2>&1 \
+            || gh release create "$rel" --title "$rel" --notes "Warm CIP Qt install prefixes for ${SHORT}."
+          gh release upload "$rel" "$asset" --clobber
+          echo "uploaded $asset → https://github.com/${{ github.repository }}/releases/tag/$rel"

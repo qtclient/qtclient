@@ -1,0 +1,15 @@
+QProgressBar {
+          border-image: url(:/images/launcher/ProgressBar_BG.png);
+          font-family: "Verdana";
+          font-size: 13px;
+          font-weight: bold;
+          color: #bfbfbf;
+          text-align: center;
+          border-top: 2px;
+          border-left: 2px;
+          border-bottom: 3px;
+          border-right: 3px;
+        }
+        QProgressBar::chunk {
+          border-image: url(:/images/launcher/ProgressBar.png);
+        }

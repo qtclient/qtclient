@@ -1,0 +1,182 @@
+# qtclient_add_mod — unified pack build for desktop + WASM.
+#
+#   qtclient_add_mod(<id>
+#     SOURCES …
+#     [QML_DIR dir]
+#     [OVERRIDES_DIR dir]
+#     [RESOURCES_DIR dir]
+#     [MOD_JSON path]
+#   )
+#
+# Installs / stages:
+#   mods/<id>/mod.json
+#   mods/<id>/native/<prefix>   (shared lib / SIDE_MODULE)
+#   mods/<id>/qml/<qmlModule>/… (optional FS QML module + qmldir)
+#   mods/<id>/overrides/ …      (optional)
+#   mods/<id>/resources/ …      (optional)
+#
+# Pack authors never choose PLUGIN vs SIDE_MODULE — this macro picks the toolchain.
+# Native packs link QtClient::Host / qtclient_host / tibia (ENABLE_EXPORTS).
+# QML is staged as a filesystem module (not STATIC-linked into the MODULE).
+
+include_guard(GLOBAL)
+
+function(qtclient_add_mod MOD_ID)
+  cmake_parse_arguments(ARG "" "QML_DIR;OVERRIDES_DIR;RESOURCES_DIR;MOD_JSON;QML_MODULE" "SOURCES" ${ARGN})
+  if(NOT ARG_SOURCES)
+    message(FATAL_ERROR "qtclient_add_mod(${MOD_ID}): SOURCES required")
+  endif()
+  if(NOT ARG_QML_MODULE)
+    set(ARG_QML_MODULE "${MOD_ID}")
+  endif()
+
+  set(_target "qtclient_mod_${MOD_ID}")
+  set(_outdir "${CMAKE_BINARY_DIR}/mods/${MOD_ID}")
+  file(MAKE_DIRECTORY "${_outdir}/native")
+
+  if(EMSCRIPTEN OR WASM)
+    add_library(${_target} SHARED ${ARG_SOURCES})
+    # Relocatable SIDE_MODULE (host is MAIN_MODULE=2). -fPIC also set
+    # project-wide for in-tree WASM; keep explicit for out-of-tree packs.
+    target_compile_options(${_target} PRIVATE -fPIC)
+    target_link_options(${_target} PRIVATE "SHELL:-sSIDE_MODULE=2")
+    set_target_properties(${_target} PROPERTIES
+      PREFIX ""
+      SUFFIX ".wasm"
+      OUTPUT_NAME "mod"
+      LIBRARY_OUTPUT_DIRECTORY "${_outdir}/native"
+      RUNTIME_OUTPUT_DIRECTORY "${_outdir}/native")
+    # Resolve Qt + host symbols from MAIN_MODULE at dlopen — do not link a
+    # second full Qt into the SIDE_MODULE.
+    target_link_options(${_target} PRIVATE "SHELL:-sERROR_ON_UNDEFINED_SYMBOLS=0")
+  else()
+    add_library(${_target} MODULE ${ARG_SOURCES})
+    set_target_properties(${_target} PROPERTIES
+      PREFIX ""
+      OUTPUT_NAME "mod"
+      LIBRARY_OUTPUT_DIRECTORY "${_outdir}/native"
+      RUNTIME_OUTPUT_DIRECTORY "${_outdir}/native")
+  endif()
+
+  target_compile_definitions(${_target} PRIVATE QTCLIENT_MOD_BUILD=1)
+  # Public Mod API surface (include/qtclient/mod_api_v1.h → mods/* via client/tibia).
+  target_include_directories(${_target} PRIVATE
+    "${TIBIA_ROOT}/include"
+    "${TIBIA_ROOT}/client/tibia"
+    "${CMAKE_CURRENT_SOURCE_DIR}")
+
+  # Host import ABI. Prefer QtClient::Host / qtclient_host, else tibia.
+  set(_host_target "")
+  if(TARGET QtClient::Host)
+    set(_host_target QtClient::Host)
+  elseif(TARGET qtclient_host)
+    set(_host_target qtclient_host)
+  elseif(TARGET tibia)
+    set_property(TARGET tibia PROPERTY ENABLE_EXPORTS ON)
+    set(_host_target tibia)
+  endif()
+  if(_host_target)
+    target_link_libraries(${_target} PRIVATE ${_host_target})
+  endif()
+
+  # Include dirs for mod_api_v1.h → mods/*.h / sprites/hdscale.h.
+  # Temporary migration bridge only (IdleOT). New packs must not set QTCLIENT_MOD_INTERNAL.
+  if(TARGET tibia)
+    target_include_directories(${_target} PRIVATE
+      "$<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>")
+    if(QTCLIENT_MOD_INTERNAL)
+      target_compile_definitions(${_target} PRIVATE QTCLIENT_MOD_INTERNAL=1)
+      target_compile_definitions(${_target} PRIVATE
+        "$<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>")
+      target_compile_options(${_target} PRIVATE
+        "$<TARGET_PROPERTY:tibia,COMPILE_OPTIONS>")
+    endif()
+  endif()
+
+  # Desktop MODULE still needs Qt headers / link for QObject etc. when host
+  # does not re-export Qt as a usable CMake dependency edge on all generators.
+  if(NOT EMSCRIPTEN AND NOT WASM)
+    if(TARGET Qt6::Core)
+      target_link_libraries(${_target} PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
+    endif()
+  endif()
+  # Match host language dialect (tibia uses gnu++23 on this tree).
+  set_target_properties(${_target} PROPERTIES
+    CXX_STANDARD 23
+    CXX_STANDARD_REQUIRED ON)
+
+  set(_mod_json "${ARG_MOD_JSON}")
+  if(NOT _mod_json)
+    set(_mod_json "${CMAKE_CURRENT_SOURCE_DIR}/mod.json")
+  endif()
+  if(EXISTS "${_mod_json}")
+    configure_file("${_mod_json}" "${_outdir}/mod.json" COPYONLY)
+  else()
+    file(WRITE "${_outdir}/mod.json" "{
+  \"id\": \"${MOD_ID}\",
+  \"QTCLIENT_MOD_API\": 1,
+  \"autoload\": true,
+  \"priority\": 50,
+  \"native\": \"native/mod\",
+  \"qmlModule\": \"${MOD_ID}\"
+}
+")
+  endif()
+
+  if(ARG_QML_DIR AND EXISTS "${ARG_QML_DIR}")
+    # Prefer source already laid out as qml/<module>/…; otherwise nest flat files.
+    set(_qml_src_module "${ARG_QML_DIR}/${ARG_QML_MODULE}")
+    if(EXISTS "${_qml_src_module}/qmldir" OR EXISTS "${_qml_src_module}")
+      set(_qml_stage_from "${ARG_QML_DIR}")
+    else()
+      set(_qml_stage_from "${CMAKE_CURRENT_BINARY_DIR}/qml-stage-${MOD_ID}")
+      file(MAKE_DIRECTORY "${_qml_stage_from}/${ARG_QML_MODULE}")
+      # Configure-time nest for flat pack trees (e.g. _sample).
+      file(GLOB _flat_qml LIST_DIRECTORIES false "${ARG_QML_DIR}/*")
+      foreach(_entry IN LISTS _flat_qml)
+        get_filename_component(_name "${_entry}" NAME)
+        if(_name STREQUAL "CMakeLists.txt")
+          continue()
+        endif()
+        file(COPY "${_entry}" DESTINATION "${_qml_stage_from}/${ARG_QML_MODULE}")
+      endforeach()
+    endif()
+    add_custom_command(TARGET ${_target} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E rm -rf "${_outdir}/qml"
+      COMMAND ${CMAKE_COMMAND} -E copy_directory "${_qml_stage_from}" "${_outdir}/qml"
+      COMMAND ${CMAKE_COMMAND}
+        -DMODULE_DIR="${_outdir}/qml/${ARG_QML_MODULE}"
+        -DMODULE_NAME="${ARG_QML_MODULE}"
+        -P "${TIBIA_ROOT}/cmake/GeneratePackQmldir.cmake"
+      COMMENT "stage ${MOD_ID} qml FS module ${ARG_QML_MODULE}")
+  endif()
+  if(ARG_OVERRIDES_DIR AND EXISTS "${ARG_OVERRIDES_DIR}")
+    add_custom_command(TARGET ${_target} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_directory "${ARG_OVERRIDES_DIR}" "${_outdir}/overrides"
+      COMMENT "stage ${MOD_ID} overrides")
+  endif()
+  if(ARG_RESOURCES_DIR AND EXISTS "${ARG_RESOURCES_DIR}")
+    add_custom_command(TARGET ${_target} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_directory "${ARG_RESOURCES_DIR}" "${_outdir}/resources"
+      COMMENT "stage ${MOD_ID} resources")
+  endif()
+
+  # Dev convenience: stage next to the client binary after the pack links.
+  # Link dependency on tibia (ENABLE_EXPORTS) orders host before the MODULE;
+  # do not add_dependencies(tibia → mod) — that would cycle with the link edge.
+  # Wipe destination first — copy_directory merges and leaves stale flat qml/.
+  if(TARGET tibia)
+    add_custom_command(TARGET ${_target} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:tibia>/mods/${MOD_ID}"
+      COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:tibia>/mods/${MOD_ID}"
+      COMMAND ${CMAKE_COMMAND} -E copy_directory "${_outdir}" "$<TARGET_FILE_DIR:tibia>/mods/${MOD_ID}"
+      COMMENT "install ${MOD_ID} next to client")
+  endif()
+
+  set(QTCLIENT_MOD_TARGET_${MOD_ID} "${_target}" PARENT_SCOPE)
+  if(NOT TARGET qtclient_mods)
+    add_custom_target(qtclient_mods COMMENT "all qtclient MODULE/SIDE_MODULE packs")
+  endif()
+  add_dependencies(qtclient_mods ${_target})
+  message(STATUS "qtclient_add_mod: ${MOD_ID} -> ${_outdir}")
+endfunction()

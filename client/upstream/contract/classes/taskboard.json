@@ -1,0 +1,250 @@
+{
+ "tibia::taskboard::TBountyTasksListModel": {
+  "chain": [
+   "tibia::taskboard::TBountyTasksListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::taskboard::TBountyTasksListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::taskboard::TBountyTasksPreferredMonsterListModel": {
+  "chain": [
+   "tibia::taskboard::TBountyTasksPreferredMonsterListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::taskboard::TBountyTasksPreferredMonsterListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "clearAssignableMonster": [
+    "void clearAssignableMonster()"
+   ],
+   "isMonsterRaceAssignable": [
+    "bool isMonsterRaceAssignable(int RaceId)"
+   ]
+  },
+  "properties": {
+   "assignableMonsterRaceId": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBountyTasksPreferredMonsterListModel",
+    "notify": "assignableMonsterRaceIdChanged",
+    "type": "int"
+   },
+   "clearCost": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TBountyTasksPreferredMonsterListModel",
+    "notify": "clearCostChanged",
+    "type": "int"
+   }
+  },
+  "signals": {
+   "assignableMonsterRaceIdChanged": [
+    "void assignableMonsterRaceIdChanged()"
+   ],
+   "clearCostChanged": [
+    "void clearCostChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::taskboard::TDeliveryTasksListModel": {
+  "chain": [
+   "tibia::taskboard::TDeliveryTasksListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::taskboard::TDeliveryTasksListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::taskboard::TMonsterKillTasksListModel": {
+  "chain": [
+   "tibia::taskboard::TMonsterKillTasksListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::taskboard::TMonsterKillTasksListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::taskboard::TMonsterListFilterModel": {
+  "chain": [
+   "tibia::taskboard::TMonsterListFilterModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::taskboard::TMonsterListFilterModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::taskboard::TMonsterListModelSortFilterProxy": {
+  "chain": [
+   "tibia::taskboard::TMonsterListModelSortFilterProxy",
+   "QSortFilterProxyModel"
+  ],
+  "class": "tibia::taskboard::TMonsterListModelSortFilterProxy",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "getRaceIDAtIndex": [
+    "QVariant getRaceIDAtIndex(int RowIndex)"
+   ],
+   "setNameFilter": [
+    "void setNameFilter(QString NameFilter)"
+   ]
+  },
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::taskboard::TTaskboardBountyTasksStorage": {
+  "chain": [
+   "tibia::taskboard::TTaskboardBountyTasksStorage",
+   "QObject"
+  ],
+  "class": "tibia::taskboard::TTaskboardBountyTasksStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "bountyTaskDataChanged": [
+    "void bountyTaskDataChanged(TBountyTaskData)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::taskboard::TTaskboardCurrenciesStorage": {
+  "chain": [
+   "tibia::taskboard::TTaskboardCurrenciesStorage",
+   "QObject"
+  ],
+  "class": "tibia::taskboard::TTaskboardCurrenciesStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "bountyPointsChanged": [
+    "void bountyPointsChanged()"
+   ],
+   "preyHuntingTaskTokensAmountChanged": [
+    "void preyHuntingTaskTokensAmountChanged()"
+   ],
+   "soulSealsAmountChanged": [
+    "void soulSealsAmountChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::taskboard::TTaskboardProtocolMessageHandler": {
+  "chain": [
+   "tibia::taskboard::TTaskboardProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::taskboard::TTaskboardProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "openSoulSealsDialog": [
+    "void openSoulSealsDialog(std::vector<tibia::cyclopedia::TMonsterRaceID> AnimusMasteryRaceIds)"
+   ],
+   "sendFightMonsterInSoulPitCommand": [
+    "void sendFightMonsterInSoulPitCommand(tibia::protobuf::protocol::GameclientMessageSoulSealsFightMonster Message)"
+   ],
+   "sendTaskboardCommand": [
+    "void sendTaskboardCommand(tibia::protobuf::protocol::GameclientMessageTaskboard TaskboardCommandMessage)"
+   ]
+  },
+  "slots": {
+   "handleResourceBalanceMessage": [
+    "void handleResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance ResourceBalanceMessage)"
+   ],
+   "handleSoulSealsDialogMessage": [
+    "void handleSoulSealsDialogMessage(tibia::protobuf::protocol::GameserverMessageSoulSealsDialog SoulSealsMessage)"
+   ],
+   "handleTaskboardMessage": [
+    "void handleTaskboardMessage(tibia::protobuf::protocol::GameserverMessageTaskboard TaskboardMessage)"
+   ]
+  }
+ },
+ "tibia::taskboard::TTaskboardRewardListModel": {
+  "chain": [
+   "tibia::taskboard::TTaskboardRewardListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::taskboard::TTaskboardRewardListModel",
+  "classinfo": {},
+  "enums": {
+   "EShopRewardType": {
+    "Bed": 3,
+    "Mount": 1,
+    "Object": 0,
+    "Outfit": 2,
+    "PromotionPoint": 4
+   }
+  },
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::taskboard::TTaskboardShopStorage": {
+  "chain": [
+   "tibia::taskboard::TTaskboardShopStorage",
+   "QObject"
+  ],
+  "class": "tibia::taskboard::TTaskboardShopStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "shopRewardDataChanged": [
+    "void shopRewardDataChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::taskboard::TTaskboardWeeklyTasksStorage": {
+  "chain": [
+   "tibia::taskboard::TTaskboardWeeklyTasksStorage",
+   "QObject"
+  ],
+  "class": "tibia::taskboard::TTaskboardWeeklyTasksStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "weeklyTaskDataChanged": [
+    "void weeklyTaskDataChanged(TWeeklyTaskData WeeklyTaskData)"
+   ]
+  },
+  "slots": {}
+ }
+}

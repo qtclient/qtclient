@@ -1,0 +1,91 @@
+{
+ "tibia::sprites::TResourceSpritesManager": {
+  "chain": [
+   "tibia::sprites::TResourceSpritesManager",
+   "QObject"
+  ],
+  "class": "tibia::sprites::TResourceSpritesManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::sprites::TSpriteResolver": {
+  "chain": [
+   "tibia::sprites::TSpriteResolver",
+   "QObject"
+  ],
+  "class": "tibia::sprites::TSpriteResolver",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::sprites::TSpritesheetDecompressor": {
+  "chain": [
+   "tibia::sprites::TSpritesheetDecompressor",
+   "QObject"
+  ],
+  "class": "tibia::sprites::TSpritesheetDecompressor",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "decompressingSpritesheetFinished": [
+    "void decompressingSpritesheetFinished(TSpritesheetID SpritesheetID, TSpritesheetPointer pDecompressedSpritesheet)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::sprites::TSpritesheetDecompressorThreadpool": {
+  "chain": [
+   "tibia::sprites::TSpritesheetDecompressorThreadpool",
+   "tibia::sprites::TSpritesheetDecompressor",
+   "QObject"
+  ],
+  "class": "tibia::sprites::TSpritesheetDecompressorThreadpool",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "decompressingSpritesheetFinished": [
+    "void decompressingSpritesheetFinished(TSpritesheetID SpritesheetID, TSpritesheetPointer pDecompressedSpritesheet)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::sprites::TSpritesheetManager": {
+  "chain": [
+   "tibia::sprites::TSpritesheetManager",
+   "QObject"
+  ],
+  "class": "tibia::sprites::TSpritesheetManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "spritesheetMissing": [
+    "void spritesheetMissing(TSpritesheetID SpritesheetID)"
+   ],
+   "spritesheetUncompressFailed": [
+    "void spritesheetUncompressFailed(TSpritesheetID SpritesheetID)"
+   ]
+  },
+  "slots": {}
+ }
+}
