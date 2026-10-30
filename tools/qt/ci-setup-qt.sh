@@ -35,8 +35,11 @@ if [[ -n "${GITHUB_ENV:-}" && -n "$SHA" ]]; then
   echo "CIP_SHORT=${SHA:0:12}" >> "$GITHUB_ENV"
 fi
 # Persist QT_ROOT so later steps (build-tibia.sh → qt-prefix.sh) find the kit.
+# Normalize Windows Actions paths (D:\a\_temp) before bash tar/mkdir see them.
+QT_ROOT="$(qt_unix_path "${QT_ROOT:-$HOME/Qt}")"
+export QT_ROOT
 if [[ -n "${GITHUB_ENV:-}" ]]; then
-  echo "QT_ROOT=${QT_ROOT:-$HOME/Qt}" >> "$GITHUB_ENV"
+  echo "QT_ROOT=$QT_ROOT" >> "$GITHUB_ENV"
 fi
 
 if [[ -n "${GITHUB_TOKEN:-}" ]] && command -v oras >/dev/null; then

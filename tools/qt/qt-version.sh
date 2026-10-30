@@ -89,3 +89,18 @@ qt_host_dir_name() {
     *) echo "host" ;;
   esac
 }
+
+# Git Bash `tar -C` / `mkdir` choke on Actions `D:\a\_temp\…` (backslash escapes).
+# Normalize to /d/a/_temp/… for bash tools; qt-prefix.sh still emits cygpath -m for CMake.
+qt_unix_path() {
+  local p="${1:-}"
+  [[ -n "$p" ]] || { echo "$p"; return 0; }
+  if command -v cygpath >/dev/null 2>&1; then
+    case "$p" in
+      [A-Za-z]:*|*\\*) cygpath -u "$p" ;;
+      *) echo "$p" ;;
+    esac
+  else
+    echo "$p"
+  fi
+}

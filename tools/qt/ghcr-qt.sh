@@ -11,7 +11,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=qt-version.sh
 source "$HERE/qt-version.sh"
-QT_ROOT="${QT_ROOT:-$HOME/Qt}"
+QT_ROOT="$(qt_unix_path "${QT_ROOT:-$HOME/Qt}")"
 
 CMD="${1:-}"
 KIT="${2:-}"
