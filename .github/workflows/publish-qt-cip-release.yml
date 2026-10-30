@@ -62,7 +62,12 @@ jobs:
           asset="qt-cip-${tag}$( [[ "$archive" == *.zst ]] && echo .tar.zst || echo .tar.gz )"
           mv "$archive" "$asset"
           rel="cip-qt-${SHORT}"
-          gh release view "$rel" >/dev/null 2>&1 \
-            || gh release create "$rel" --title "$rel" --notes "Warm CIP Qt install prefixes for ${SHORT}."
+          # Must be a published release: drafts serve as untagged-… URLs and
+          # break https://github.com/.../releases/download/<tag>/<asset>.
+          if ! gh release view "$rel" >/dev/null 2>&1; then
+            gh release create "$rel" --title "$rel" \
+              --notes "Warm CIP Qt install prefixes for ${SHORT}."
+          fi
+          gh release edit "$rel" --draft=false
           gh release upload "$rel" "$asset" --clobber
-          echo "uploaded $asset → https://github.com/${{ github.repository }}/releases/tag/$rel"
+          echo "uploaded $asset → https://github.com/${{ github.repository }}/releases/download/${rel}/${asset}"

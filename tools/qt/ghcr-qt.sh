@@ -141,23 +141,30 @@ do_pull_release() {
   asset="qt-cip-${TAG}.tar.zst"
   url="https://github.com/qtclient/qtclient/releases/download/${rel}/${asset}"
   echo "[qt-ghcr] pulling release $url"
-  local tmp
-  tmp="$(mktemp -d)"
-  # shellcheck disable=SC2064
-  trap "rm -rf '$tmp'" EXIT
+  local tmp=".qt-ghcr-rel-$$"
+  rm -rf "$tmp"
+  mkdir -p "$tmp"
   if ! curl -fsSL "$url" -o "$tmp/$asset"; then
     asset="qt-cip-${TAG}.tar.gz"
     url="https://github.com/qtclient/qtclient/releases/download/${rel}/${asset}"
     curl -fsSL "$url" -o "$tmp/$asset" || {
       echo "[qt-ghcr] release miss: $url"
+      rm -rf "$tmp"
       return 1
     }
   fi
   mkdir -p "$PREFIX"
   case "$asset" in
-    *.zst) tar --zstd -xf "$tmp/$asset" -C "$PREFIX" ;;
+    *.zst)
+      if command -v zstd >/dev/null; then
+        zstd -d -c "$tmp/$asset" | tar -xf - -C "$PREFIX"
+      else
+        tar --zstd -xf "$tmp/$asset" -C "$PREFIX"
+      fi
+      ;;
     *) tar -xzf "$tmp/$asset" -C "$PREFIX" ;;
   esac
+  rm -rf "$tmp"
   [[ -f "$PREFIX/lib/cmake/Qt6/Qt6Config.cmake" ]] || {
     echo "[qt-ghcr] release unpack missing Qt6Config.cmake" >&2
     return 1
