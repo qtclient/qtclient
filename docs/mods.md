@@ -157,9 +157,8 @@ Register mods, backends, WorldView drivers/overlays inside this function
 
 ## Host + pack (FDW-style)
 
-- **qtclient CI** publishes Soft host artifacts (`qtclient-host-<plat>:<sha>`, `qtclient-host-sdk:<sha>`).
-- **idleot-client CI** builds MODULE/SIDE_MODULE against host-sdk; stamps `hostBuildId`.
-- **idleot/release** waits for both, merges `mods/idleot` into the Soft tip, brands IdleOT, promotes CDN.
+- **qtclient CI** (public) publishes Soft host artifacts (`qtclient-host-<plat>:<sha>`, `qtclient-host-sdk:<sha>`).
+- **idleot/release** (public) builds IdleOT MODULE/SIDE_MODULE packs after Soft host is ready, merges `mods/idleot` into the tip, brands IdleOT, promotes CDN — private `idleot-client` is checked out with `RELEASE_TOKEN` (no private Actions compile).
 - Local: `make idleot client|wasm install` = Soft host (`STOCK_HOST=1`) → pack build → tip merge.
 
 ## Make CLI
