@@ -130,11 +130,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-host-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-${{ github.sha }}
+          # One warm slot per OS — always reuse / refresh (incl. fail/cancel).
+          key: ccache-host-${{ matrix.os_slug }}
           restore-keys: |
-            ccache-host-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-
-            ccache-host-${{ matrix.os_slug }}-
-          # Persist compile progress when the job fails or is cancelled.
+            ccache-host-${{ matrix.os_slug }}
           save-always: true
 
       - name: Configure + build stock host
@@ -249,10 +248,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-host-wasm-${{ steps.cip.outputs.sha }}-${{ github.sha }}
+          key: ccache-host-wasm
           restore-keys: |
-            ccache-host-wasm-${{ steps.cip.outputs.sha }}-
-            ccache-host-wasm-
+            ccache-host-wasm
           save-always: true
 
       - name: Soft host bootstrap (deps + vcpkg + CIP Qt wasm)
