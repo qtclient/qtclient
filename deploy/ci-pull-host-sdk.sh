@@ -1,1 +1,1 @@
-ci-pull-client-sdk.sh
+../scripts/ci/pull-client-sdk.sh

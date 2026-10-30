@@ -108,19 +108,19 @@ _cargo:
 	esac
 
 demo-pack:
-	@comp_bin=$$(bash -c 'source "$(HERE)/deploy/desktop-paths.sh"; qtclient_desktop_paths "$(HERE)"; dirname "$$QTCLIENT_CLIENT_BIN"'); \
+	@comp_bin=$$(bash -c 'source "$(HERE)/scripts/deploy/desktop-paths.sh"; qtclient_desktop_paths "$(HERE)"; dirname "$$QTCLIENT_CLIENT_BIN"'); \
 	  if [[ ! -d "$$comp_bin" ]]; then \
 	    echo "[demo-pack] missing client build — make client build && make launcher build" >&2; \
 	    exit 1; \
 	  fi; \
-	  bash "$(HERE)/deploy/pack-demo-release.sh" \
+	bash "$(HERE)/scripts/deploy/pack-demo-release.sh" \
 	    --platform "$(DEMO_PLATFORM)" \
 	    --bin "$$comp_bin" \
 	    --out "$(DEMO_OUT)" \
 	    $(if $(RELEASE_BASE),--release-base-url "$(RELEASE_BASE)",)
 
 demo-run:
-	@bash "$(HERE)/deploy/start-demo-launcher.sh" $(ARGS)
+	@bash "$(HERE)/scripts/deploy/start-demo-launcher.sh" $(ARGS)
 
 setup:
 	@git submodule update --init third_party/Qt5LegacyControls 2>/dev/null || true
@@ -158,10 +158,10 @@ tibia-dump-smoke:
 	@bash "$(HERE)/scripts/ci/check-session-dump-smoke.sh"
 
 tibia-android:
-	@bash "$(HERE)/deploy/build-tibia-android.sh" $(ARGS)
+	@bash "$(HERE)/scripts/deploy/build-tibia-android.sh" $(ARGS)
 
 tibia-ios:
-	@bash "$(HERE)/deploy/build-tibia-ios.sh" $(ARGS)
+	@bash "$(HERE)/scripts/deploy/build-tibia-ios.sh" $(ARGS)
 
 cdn:
 	@python3 "$(HERE)/tools/publish/local_cdn.py" --desktop --wasm
