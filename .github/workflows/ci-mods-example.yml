@@ -59,12 +59,8 @@ jobs:
 
       - name: Setup vcpkg
         run: |
-          export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
-          if [[ ! -d "$VCPKG_ROOT" ]]; then
-            git clone --depth 1 https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
-            "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
-          fi
-          echo "VCPKG_ROOT=$VCPKG_ROOT" >> "$GITHUB_ENV"
+          set -euo pipefail
+          source deploy/ci-setup-vcpkg.sh
 
       - name: Build stock host + sample mod pack
         run: |
