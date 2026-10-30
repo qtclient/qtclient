@@ -33,7 +33,9 @@ jobs:
         env:
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
-        run: bash deploy/pack-client-sdk.sh "$RUNNER_TEMP/client-sdk"
+          PACKAGE_KIND: sdk
+          PACKAGE_OUT: ${{ runner.temp }}/client-sdk
+        run: bash scripts/lifecycle/package.sh
       - name: Upload client-sdk artifact
         uses: actions/upload-artifact@v4
         with:
@@ -44,15 +46,15 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       - name: Push client-sdk to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: ${{ runner.temp }}
-        run: |
-          set -euo pipefail
-          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          tar -czf client-sdk.tgz -C client-sdk .
-          oras push "${{ env.REGISTRY }}/client-sdk:${{ github.sha }}" \
-            "client-sdk.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
-          oras tag "${{ env.REGISTRY }}/client-sdk:${{ github.sha }}" \
-            "${{ env.REGISTRY }}/client-sdk:sha-${{ github.sha }}" || true
+        env:
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_KIND: sdk
+          PACKAGE_OUT: ${{ runner.temp }}/client-sdk
+          REGISTRY: ${{ env.REGISTRY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: bash scripts/lifecycle/publish.sh
 
   client-desktop:
     name: client-${{ matrix.plat }}
@@ -169,14 +171,14 @@ jobs:
           QT_PREFIX: ${{ env.QT_PREFIX }}
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_KIND: desktop
+          PLATFORM: ${{ matrix.plat }}
+          PACKAGE_OUT: ${{ runner.temp }}/client-${{ matrix.plat }}
         run: |
           set -euo pipefail
           bin_dir="build/${{ matrix.preset }}/bin"
           [[ -d "$bin_dir" ]] || bin_dir="build/${{ matrix.preset }}"
-          bash deploy/pack-client-desktop.sh \
-            --platform "${{ matrix.plat }}" \
-            --bin "$bin_dir" \
-            --out "$RUNNER_TEMP/client-${{ matrix.plat }}"
+          BIN_DIR="$bin_dir" bash scripts/lifecycle/package.sh
 
       - name: Pack demo Release (myAAC + CipSoft assetsurl)
         shell: bash
@@ -235,15 +237,16 @@ jobs:
       - name: Push client to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
-        working-directory: ${{ runner.temp }}
-        run: |
-          set -euo pipefail
-          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          tar -czf client.tgz -C "client-${{ matrix.plat }}" .
-          oras push "${{ env.REGISTRY }}/client-${{ matrix.plat }}:${{ github.sha }}" \
-            "client.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
-          oras tag "${{ env.REGISTRY }}/client-${{ matrix.plat }}:${{ github.sha }}" \
-            "${{ env.REGISTRY }}/client-${{ matrix.plat }}:sha-${{ github.sha }}" || true
+        env:
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_KIND: desktop
+          PLATFORM: ${{ matrix.plat }}
+          PACKAGE_OUT: ${{ runner.temp }}/client-${{ matrix.plat }}
+          REGISTRY: ${{ env.REGISTRY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: bash scripts/lifecycle/publish.sh
 
   wasm:
     name: wasm
@@ -303,7 +306,13 @@ jobs:
           ccache -s || true
 
       - name: Pack client wasm
-        run: bash deploy/pack-client-wasm.sh build/tibia-wasm "$RUNNER_TEMP/client-wasm"
+        env:
+          PACKAGE_KIND: wasm
+          PACKAGE_OUT: ${{ runner.temp }}/client-wasm
+          WASM_BUILD: ${{ github.workspace }}/build/tibia-wasm
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: bash scripts/lifecycle/package.sh
 
       - name: Upload client-wasm artifact
         uses: actions/upload-artifact@v4
@@ -330,12 +339,12 @@ jobs:
 
       - name: Push client-wasm to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: ${{ runner.temp }}
-        run: |
-          set -euo pipefail
-          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          tar -czf client-wasm.tgz -C client-wasm .
-          oras push "${{ env.REGISTRY }}/client-wasm:${{ github.sha }}" \
-            "client-wasm.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
-          oras tag "${{ env.REGISTRY }}/client-wasm:${{ github.sha }}" \
-            "${{ env.REGISTRY }}/client-wasm:sha-${{ github.sha }}" || true
+        env:
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_KIND: wasm
+          PACKAGE_OUT: ${{ runner.temp }}/client-wasm
+          REGISTRY: ${{ env.REGISTRY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: bash scripts/lifecycle/publish.sh

@@ -24,5 +24,7 @@ cd "$DEST"
 layer="$(find . -type f \( -name '*.tgz' -o -name '*.tar.gz' -o -name 'client-sdk.tgz' -o -name 'host-sdk.tgz' \) | head -1 || true)"
 [[ -z "$layer" ]] && layer="$(find . -type f | head -1 || true)"
 [[ -n "$layer" ]] && tar -xzf "$layer" 2>/dev/null || true
-test -f cmake/QtClientMod.cmake -o -f host-sdk.json
+test -f cmake/QtClientMod.cmake
+test -f client-sdk.json -o -f host-sdk.json
+test -f cipgen/cip_gen.h || echo "[client-sdk] warning: missing cipgen/cip_gen.h (rebuild Soft package)" >&2
 echo "[client-sdk] ready in $DEST"

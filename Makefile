@@ -1,11 +1,12 @@
 # qtclient (otqt) — CipSoft-compatible Qt/QML Tibia client
 # Cargo-like: make [<component>] <lifecycle>
 #   components: client (default) | launcher | wasm
-#   lifecycles: build | run | check | test | clean | install | doc
+#   lifecycles: build | run | check | test | clean | install | doc | package | publish
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
 HERE := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+LIFEDIR := $(HERE)/scripts/lifecycle
 
 UMBRELLA_TOOLS := $(abspath $(HERE)/../../tools)
 ifeq ($(wildcard $(UMBRELLA_TOOLS)/tibia_paths.py),)
@@ -17,7 +18,7 @@ EXTRACT_PY := $(firstword $(wildcard $(TOOLS_DIR)/extract/cli.py $(HERE)/tools/e
 SYNC_PY := $(firstword $(wildcard $(TOOLS_DIR)/tibia-sync/sync.py $(HERE)/tools/tibia-sync/sync.py))
 
 APP_COMPONENTS := client launcher wasm
-APP_LIFECYCLES := build run check test clean install doc
+APP_LIFECYCLES := build run check test clean install doc package publish
 APP_DEFAULT_COMPONENT := client
 
 .DEFAULT_GOAL := help
@@ -53,6 +54,8 @@ help:
 	@echo "  make wasm build       qtclient MAIN_MODULE (needs make qt WASM=1)"
 	@echo "  make wasm install     build + stage into dist/cdn for portal /play"
 	@echo "  make client install   build + point dist/cdn desktop slice at this binary"
+	@echo "  make package          PACKAGE_KIND=sdk|desktop|wasm (client-sdk ships cipgen)"
+	@echo "  make publish          ORAS push PACKAGE_OUT to ghcr.io/…/client-*"
 	@echo "  Product pack: make -C ../idleot-client client|wasm install (client then pack)"
 	@echo "  make clean            wipe client+launcher+wasm build trees"
 	@echo "  make client clean     wipe desktop client trees only"
@@ -76,9 +79,7 @@ endif
 ifneq ($(_bare_clean),)
 .PHONY: clean
 clean:
-	@$(MAKE) -f "$(HERE)/Makefile" _cargo COMP=client LIFE=clean
-	@$(MAKE) -f "$(HERE)/Makefile" _cargo COMP=launcher LIFE=clean
-	@$(MAKE) -f "$(HERE)/Makefile" _cargo COMP=wasm LIFE=clean
+	@COMP=all bash "$(LIFEDIR)/clean.sh"
 else
 ifneq ($(_cargo_life),)
 .PHONY: $(_cargo_life)
@@ -90,40 +91,19 @@ endif
 
 _cargo:
 	@comp="$(COMP)"; life="$(LIFE)"; \
-	case "$$comp-$$life" in \
-	  client-build) \
-	    test -f "$${VCPKG_ROOT:-$$HOME/vcpkg}/scripts/buildsystems/vcpkg.cmake" || { echo "[qtclient] need VCPKG_ROOT"; exit 1; }; \
-	    bash "$(HERE)/deploy/build-tibia.sh" \
-	      $(if $(filter 1 true yes on,$(DEV)),--dev,) \
-	      $(if $(filter 1 true yes on,$(DEBUG)),--debug,) ;; \
-	  client-install) \
-	    $(MAKE) -f "$(HERE)/Makefile" _cargo COMP=client LIFE=build \
-	      $(if $(DEV),DEV=$(DEV),) $(if $(DEBUG),DEBUG=$(DEBUG),); \
-	    python3 "$(HERE)/tools/publish/dev_cdn.py" --desktop ;; \
-	  client-run) bash "$(HERE)/deploy/start-tibia.sh" --no-mods $(ARGS) ;; \
-	  client-check) bash "$(HERE)/deploy/start-tibia.sh" --check-qml ;; \
-	  client-test) bash "$(HERE)/scripts/ci/check-session-dump-smoke.sh" ;; \
-	  client-clean) rm -rf "$(HERE)/build"/*-dev "$(HERE)/build"/macos "$(HERE)/build"/linux "$(HERE)/build"/windows 2>/dev/null; echo "[qtclient] cleaned client build trees" ;; \
-	  client-doc) echo "docs: $(HERE)/docs/mods.md $(HERE)/README.md" ;; \
-	  launcher-build|launcher-install) \
-	    bash "$(HERE)/deploy/build-tibia.sh" --launcher \
-	      $(if $(filter 1 true yes on,$(DEV)),--dev,) \
-	      $(if $(filter 1 true yes on,$(DEBUG)),--debug,) ;; \
-	  launcher-run) bash "$(HERE)/deploy/start-launcher.sh" $(ARGS) ;; \
-	  launcher-check) echo "[qtclient] launcher check: make launcher build" ;; \
-	  launcher-clean) rm -rf "$(HERE)/build"/*/launcher 2>/dev/null; echo "[qtclient] cleaned launcher" ;; \
-	  launcher-doc|launcher-test) echo "[qtclient] $$comp $$life: n/a" ;; \
-	  wasm-build) \
-	    test -f "$${VCPKG_ROOT:-$$HOME/vcpkg}/scripts/buildsystems/vcpkg.cmake" || { echo "[qtclient] need VCPKG_ROOT"; exit 1; }; \
-	    bash "$(HERE)/deploy/build-tibia.sh" --wasm $(if $(filter 1 true yes on,$(DEBUG) $(DEV)),--debug,) ;; \
-	  wasm-install) \
-	    $(MAKE) -f "$(HERE)/Makefile" _cargo COMP=wasm LIFE=build \
-	      $(if $(DEV),DEV=$(DEV),) $(if $(DEBUG),DEBUG=$(DEBUG),); \
-	    python3 "$(HERE)/tools/publish/dev_cdn.py" --web ;; \
-	  wasm-run) echo "[qtclient] after wasm install: make -C ../.. portal run → /play" ;; \
-	  wasm-check) echo "[qtclient] wasm check: scripts/ci/check-wasm-play-boot.sh" ;; \
-	  wasm-clean) rm -rf "$(HERE)/build"/wasm* 2>/dev/null; echo "[qtclient] cleaned wasm" ;; \
-	  wasm-doc|wasm-test) echo "[qtclient] $$comp $$life: n/a" ;; \
+	case "$$life" in \
+	  build|run|check|test|clean|install|doc) \
+	    COMP="$$comp" DEV="$(DEV)" DEBUG="$(DEBUG)" ARGS="$(ARGS)" \
+	      bash "$(LIFEDIR)/$$life.sh" ;; \
+	  package) \
+	    COMP="$$comp" PACKAGE_KIND="$(if $(PACKAGE_KIND),$(PACKAGE_KIND),sdk)" \
+	      PLATFORM="$(PLATFORM)" BIN_DIR="$(BIN_DIR)" PACKAGE_OUT="$(PACKAGE_OUT)" \
+	      bash "$(LIFEDIR)/package.sh" ;; \
+	  publish) \
+	    COMP="$$comp" PACKAGE_KIND="$(if $(PACKAGE_KIND),$(PACKAGE_KIND),sdk)" \
+	      PLATFORM="$(PLATFORM)" PACKAGE_OUT="$(PACKAGE_OUT)" \
+	      REGISTRY="$(REGISTRY)" \
+	      bash "$(LIFEDIR)/publish.sh" ;; \
 	  *) echo "[qtclient] unknown $$comp $$life — try: make help"; exit 1 ;; \
 	esac
 

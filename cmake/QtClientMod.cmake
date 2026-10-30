@@ -105,7 +105,7 @@ function(qtclient_add_mod MOD_ID)
         "$<TARGET_PROPERTY:tibia,COMPILE_OPTIONS>")
     endif()
   elseif(QTCLIENT_MOD_INTERNAL)
-    # Out-of-tree pack against qtclient host source + build tree (cip_gen, engine).
+    # Out-of-tree pack against client-sdk or qtclient source + build (cip_gen, engine).
     # Matches otc_deps INTERFACE includes + FRAMEWORK_* defs from client/CMakeLists.txt.
     target_compile_definitions(${_target} PRIVATE
       QTCLIENT_MOD_INTERNAL=1
@@ -120,18 +120,23 @@ function(qtclient_add_mod MOD_ID)
       TIBIA_NO_OPENSSL)
     target_include_directories(${_target} PRIVATE
       "${TIBIA_ROOT}"
+      "${TIBIA_ROOT}/include"
+      "${TIBIA_ROOT}/include/engine"
       "${TIBIA_ROOT}/client"
       "${TIBIA_ROOT}/client/tibia"
       "${TIBIA_ROOT}/client/tibia/engine"
       "${TIBIA_ROOT}/client/tibia/engine/framework/graphics/glad/include")
-    if(QTCLIENT_HOST_BUILD)
+    # Prefer SDK-bundled cipgen (pack-client-sdk.sh), else a Soft host build tree.
+    if(EXISTS "${TIBIA_ROOT}/cipgen/cip_gen.h")
+      target_include_directories(${_target} PRIVATE "${TIBIA_ROOT}/cipgen")
+    elseif(QTCLIENT_HOST_BUILD)
       set(_host_build "${QTCLIENT_HOST_BUILD}")
     elseif(DEFINED ENV{QTCLIENT_HOST_BUILD} AND EXISTS "$ENV{QTCLIENT_HOST_BUILD}")
       set(_host_build "$ENV{QTCLIENT_HOST_BUILD}")
     else()
       set(_host_build "")
     endif()
-    if(_host_build)
+    if(DEFINED _host_build AND _host_build)
       if(EXISTS "${_host_build}/client/tibia/cipgen/cip_gen.h")
         target_include_directories(${_target} PRIVATE
           "${_host_build}/client/tibia/cipgen"
@@ -146,8 +151,8 @@ function(qtclient_add_mod MOD_ID)
           "${_inc}/stduuid"
           "${_inc}/utf8cpp")
       endforeach()
-    else()
-      message(WARNING "qtclient_add_mod(${MOD_ID}): QTCLIENT_MOD_INTERNAL without tibia target needs -DQTCLIENT_HOST_BUILD=… (qtclient host build dir with cipgen)")
+    elseif(NOT EXISTS "${TIBIA_ROOT}/cipgen/cip_gen.h")
+      message(WARNING "qtclient_add_mod(${MOD_ID}): QTCLIENT_MOD_INTERNAL needs client-sdk cipgen/ or -DQTCLIENT_HOST_BUILD=…")
     endif()
   endif()
 
