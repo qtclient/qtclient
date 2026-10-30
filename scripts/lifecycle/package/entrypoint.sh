@@ -11,7 +11,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="$(cd "$HERE/../.." && pwd)"
+OTC="$(cd "$HERE/../../.." && pwd)"
 KIND="${PACKAGE_KIND:-sdk}"
 OUT="${PACKAGE_OUT:-}"
 HOST_ID="${QTCLIENT_HOST_BUILD_ID:-${SOURCE_COMMIT:-${GITHUB_SHA:-}}}"
@@ -110,7 +110,7 @@ pack_wasm() {
   export TIBIA_ENGINE_SHA="$HOST_ID"
   rm -rf "$DEST"
   mkdir -p "$DEST"
-  bash "$OTC/scripts/deploy/pack-tibia-wasm.sh" "$SRC" "$DEST"
+  bash "$OTC/scripts/lifecycle/package/pack-tibia-wasm.sh" "$SRC" "$DEST"
   cat >"$DEST/host.json" <<EOF
 {
   "hostBuildId": "${HOST_ID}",
@@ -132,7 +132,7 @@ case "$KIND" in
     OUT="${OUT:-${RUNNER_TEMP:-$OTC/build/package}/client-$PLATFORM}"
     bin_dir="${BIN_DIR:-}"
     if [[ -z "$bin_dir" ]]; then
-      bin="$("$OTC/scripts/deploy/find-client-bin.sh" "$OTC")"
+      bin="$("$OTC/scripts/lifecycle/lib/find-client-bin.sh" "$OTC")"
       bin_dir="$(dirname "$bin")"
     fi
     pack_desktop "$PLATFORM" "$bin_dir" "$OUT"

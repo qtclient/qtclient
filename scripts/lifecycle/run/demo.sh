@@ -3,16 +3,16 @@
 # Unsets IdleOT DEV_JSON so Play uses real tip install (not local bypass).
 #
 # Usage (from apps/qtclient or via make demo-run):
-#   bash scripts/deploy/start-demo-launcher.sh
+#   bash scripts/lifecycle/lib/start-demo-launcher.sh
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../.." && pwd)}"
+OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
 ROOT="$(cd "$OTC/../.." && pwd)"
 TIP_DIR="${QTCLIENT_DEMO_TIP:-$ROOT/dist/demo/tip}"
 
 # shellcheck source=desktop-paths.sh
-source "$HERE/desktop-paths.sh"
+source "$HERE/../lib/desktop-paths.sh"
 qtclient_desktop_paths "$OTC"
 
 if [[ ! -x "$QTCLIENT_LAUNCHER_BIN" ]]; then

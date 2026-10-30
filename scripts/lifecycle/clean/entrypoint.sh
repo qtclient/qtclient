@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # qtclient clean — COMP=client|launcher|wasm (or COMP=all)
 set -euo pipefail
-OTC="$(cd "$(dirname "$0")/../.." && pwd)"
+OTC="$(cd "$(dirname "$0")/../../.." && pwd)"
 COMP="${COMP:-client}"
 case "$COMP" in
   client)

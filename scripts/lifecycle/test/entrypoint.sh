@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # qtclient test — COMP=client|launcher|wasm
 set -euo pipefail
-OTC="$(cd "$(dirname "$0")/../.." && pwd)"
+OTC="$(cd "$(dirname "$0")/../../.." && pwd)"
 COMP="${COMP:-client}"
 case "$COMP" in
   client) bash "$OTC/scripts/ci/check-session-dump-smoke.sh" ;;

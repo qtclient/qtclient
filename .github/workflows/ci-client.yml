@@ -35,7 +35,7 @@ jobs:
           SOURCE_COMMIT: ${{ github.sha }}
           PACKAGE_KIND: sdk
           PACKAGE_OUT: ${{ runner.temp }}/client-sdk
-        run: bash scripts/lifecycle/package.sh
+        run: bash scripts/lifecycle/package/entrypoint.sh
       - name: Upload client-sdk artifact
         uses: actions/upload-artifact@v4
         with:
@@ -54,7 +54,7 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
-        run: bash scripts/lifecycle/publish.sh
+        run: bash scripts/lifecycle/publish/entrypoint.sh
 
   client-desktop:
     name: client-${{ matrix.plat }}
@@ -178,7 +178,7 @@ jobs:
           set -euo pipefail
           bin_dir="build/${{ matrix.preset }}/bin"
           [[ -d "$bin_dir" ]] || bin_dir="build/${{ matrix.preset }}"
-          BIN_DIR="$bin_dir" bash scripts/lifecycle/package.sh
+          BIN_DIR="$bin_dir" bash scripts/lifecycle/package/entrypoint.sh
 
       - name: Pack demo Release (myAAC + CipSoft assetsurl)
         shell: bash
@@ -196,7 +196,7 @@ jobs:
             echo "[demo] launcher binary missing — skip demo pack"
             exit 0
           fi
-          bash deploy/pack-demo-release.sh \
+          bash scripts/lifecycle/package/demo.sh \
             --platform "${{ matrix.plat }}" \
             --bin "$bin_dir" \
             --out "$RUNNER_TEMP/demo-${{ matrix.plat }}" \
@@ -246,7 +246,7 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
-        run: bash scripts/lifecycle/publish.sh
+        run: bash scripts/lifecycle/publish/entrypoint.sh
 
   wasm:
     name: wasm
@@ -302,7 +302,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$CCACHE_DIR"
           ccache -z || true
-          bash deploy/build-tibia.sh --wasm
+          COMP=wasm bash scripts/lifecycle/build/entrypoint.sh
           ccache -s || true
 
       - name: Pack client wasm
@@ -312,7 +312,7 @@ jobs:
           WASM_BUILD: ${{ github.workspace }}/build/tibia-wasm
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
-        run: bash scripts/lifecycle/package.sh
+        run: bash scripts/lifecycle/package/entrypoint.sh
 
       - name: Upload client-wasm artifact
         uses: actions/upload-artifact@v4
@@ -347,4 +347,4 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
-        run: bash scripts/lifecycle/publish.sh
+        run: bash scripts/lifecycle/publish/entrypoint.sh

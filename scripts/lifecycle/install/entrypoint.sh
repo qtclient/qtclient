@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # qtclient install — build then stage into dist/cdn (dev tip-merge).
 set -euo pipefail
-OTC="$(cd "$(dirname "$0")/../.." && pwd)"
+OTC="$(cd "$(dirname "$0")/../../.." && pwd)"
 COMP="${COMP:-client}"
 export COMP DEV="${DEV:-}" DEBUG="${DEBUG:-}"
-bash "$OTC/scripts/lifecycle/build.sh"
+bash "$OTC/scripts/lifecycle/build/entrypoint.sh"
 case "$COMP" in
   client) python3 "$OTC/tools/publish/dev_cdn.py" --desktop ;;
   wasm) python3 "$OTC/tools/publish/dev_cdn.py" --web ;;

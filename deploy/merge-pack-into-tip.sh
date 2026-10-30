@@ -1,1 +1,0 @@
-../scripts/deploy/merge-pack-into-tip.sh

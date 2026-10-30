@@ -2,12 +2,12 @@
 # qtclient check — COMP=client|launcher|wasm
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="$(cd "$HERE/../.." && pwd)"
+OTC="$(cd "$HERE/../../.." && pwd)"
 COMP="${COMP:-client}"
 case "$COMP" in
   client)
-    # shellcheck source=../deploy/desktop-paths.sh
-    source "$OTC/scripts/deploy/desktop-paths.sh"
+    # shellcheck source=../lib/desktop-paths.sh
+    source "$OTC/scripts/lifecycle/lib/desktop-paths.sh"
     qtclient_desktop_paths "$OTC"
     if [[ ! -x "$QTCLIENT_CLIENT_BIN" ]]; then
       echo "[tibia] missing $QTCLIENT_CLIENT_BIN — make qtclient client build" >&2

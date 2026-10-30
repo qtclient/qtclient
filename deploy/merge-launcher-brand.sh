@@ -1,1 +1,0 @@
-../scripts/deploy/merge-launcher-brand.sh

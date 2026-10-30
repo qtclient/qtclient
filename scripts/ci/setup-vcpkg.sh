@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shared CI helper: pin VCPKG_ROOT, fetch manifest baseline, binary cache dirs.
-# Prefer: source deploy/ci-setup-vcpkg.sh  (so VCPKG_ROOT is in the caller).
+# Prefer: source scripts/ci/setup-vcpkg.sh  (so VCPKG_ROOT is in the caller).
 # Safe to bash when GITHUB_ENV is set (writes env for later steps).
 set -euo pipefail
 

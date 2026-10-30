@@ -94,8 +94,8 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
 fi
 
 if [[ "$WITH_VCPKG" == "1" ]]; then
-  # shellcheck source=../../deploy/ci-setup-vcpkg.sh
-  source "$OTC/deploy/ci-setup-vcpkg.sh"
+  # shellcheck source=../../scripts/ci/setup-vcpkg.sh
+  source "$OTC/scripts/ci/setup-vcpkg.sh"
 fi
 
 if [[ -n "${GITHUB_TOKEN:-}" ]] && command -v oras >/dev/null; then

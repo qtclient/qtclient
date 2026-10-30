@@ -79,7 +79,7 @@ endif
 ifneq ($(_bare_clean),)
 .PHONY: clean
 clean:
-	@COMP=all bash "$(LIFEDIR)/clean.sh"
+	@COMP=all bash "$(LIFEDIR)/clean/entrypoint.sh"
 else
 ifneq ($(_cargo_life),)
 .PHONY: $(_cargo_life)
@@ -92,35 +92,29 @@ endif
 _cargo:
 	@comp="$(COMP)"; life="$(LIFE)"; \
 	case "$$life" in \
-	  build|run|check|test|clean|install|doc) \
+	  build|run|check|test|clean|install|doc|package|publish) \
 	    COMP="$$comp" DEV="$(DEV)" DEBUG="$(DEBUG)" ARGS="$(ARGS)" \
-	      bash "$(LIFEDIR)/$$life.sh" ;; \
-	  package) \
-	    COMP="$$comp" PACKAGE_KIND="$(if $(PACKAGE_KIND),$(PACKAGE_KIND),sdk)" \
+	      PACKAGE_KIND="$(if $(PACKAGE_KIND),$(PACKAGE_KIND),sdk)" \
 	      PLATFORM="$(PLATFORM)" BIN_DIR="$(BIN_DIR)" PACKAGE_OUT="$(PACKAGE_OUT)" \
-	      bash "$(LIFEDIR)/package.sh" ;; \
-	  publish) \
-	    COMP="$$comp" PACKAGE_KIND="$(if $(PACKAGE_KIND),$(PACKAGE_KIND),sdk)" \
-	      PLATFORM="$(PLATFORM)" PACKAGE_OUT="$(PACKAGE_OUT)" \
 	      REGISTRY="$(REGISTRY)" \
-	      bash "$(LIFEDIR)/publish.sh" ;; \
+	      bash "$(LIFEDIR)/$$life/entrypoint.sh" ;; \
 	  *) echo "[qtclient] unknown $$comp $$life — try: make help"; exit 1 ;; \
 	esac
 
 demo-pack:
-	@comp_bin=$$(bash -c 'source "$(HERE)/scripts/deploy/desktop-paths.sh"; qtclient_desktop_paths "$(HERE)"; dirname "$$QTCLIENT_CLIENT_BIN"'); \
+	@comp_bin=$$(bash -c 'source "$(HERE)/scripts/lifecycle/lib/desktop-paths.sh"; qtclient_desktop_paths "$(HERE)"; dirname "$$QTCLIENT_CLIENT_BIN"'); \
 	  if [[ ! -d "$$comp_bin" ]]; then \
 	    echo "[demo-pack] missing client build — make client build && make launcher build" >&2; \
 	    exit 1; \
 	  fi; \
-	bash "$(HERE)/scripts/deploy/pack-demo-release.sh" \
+	bash "$(HERE)/scripts/lifecycle/package/demo.sh" \
 	    --platform "$(DEMO_PLATFORM)" \
 	    --bin "$$comp_bin" \
 	    --out "$(DEMO_OUT)" \
 	    $(if $(RELEASE_BASE),--release-base-url "$(RELEASE_BASE)",)
 
 demo-run:
-	@bash "$(HERE)/scripts/deploy/start-demo-launcher.sh" $(ARGS)
+	@bash "$(HERE)/scripts/lifecycle/run/demo.sh" $(ARGS)
 
 setup:
 	@git submodule update --init third_party/Qt5LegacyControls 2>/dev/null || true
@@ -158,10 +152,10 @@ tibia-dump-smoke:
 	@bash "$(HERE)/scripts/ci/check-session-dump-smoke.sh"
 
 tibia-android:
-	@bash "$(HERE)/scripts/deploy/build-tibia-android.sh" $(ARGS)
+	@bash "$(HERE)/scripts/lifecycle/build/android.sh" $(ARGS)
 
 tibia-ios:
-	@bash "$(HERE)/scripts/deploy/build-tibia-ios.sh" $(ARGS)
+	@bash "$(HERE)/scripts/lifecycle/build/ios.sh" $(ARGS)
 
 cdn:
 	@python3 "$(HERE)/tools/publish/local_cdn.py" --desktop --wasm

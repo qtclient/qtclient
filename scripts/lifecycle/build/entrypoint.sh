@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Build the Qt/QML tibia app (client/tibia: CIP's UI on Qt Quick).
 #
-#   scripts/lifecycle/build.sh (or COMP=client|launcher|wasm)            desktop production (embedded QML + qmlcachegen)
-#   scripts/lifecycle/build.sh (or COMP=client|launcher|wasm) --dev      desktop iteration: disk QML, NO_CACHEGEN, hot reload
-#   scripts/lifecycle/build.sh (or COMP=client|launcher|wasm) --debug    desktop Debug (asan presets; still embedded QML)
-#   scripts/lifecycle/build.sh (or COMP=client|launcher|wasm) --wasm     browser: tibia under Qt's emsdk (wasm OS)
-#   scripts/lifecycle/build.sh (or COMP=client|launcher|wasm) --launcher desktop CIP launcher (Qt Widgets) instead of the game
+#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm)            desktop production (embedded QML + qmlcachegen)
+#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm) --dev      desktop iteration: disk QML, NO_CACHEGEN, hot reload
+#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm) --debug    desktop Debug (asan presets; still embedded QML)
+#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm) --wasm     browser: tibia under Qt's emsdk (wasm OS)
+#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm) --launcher desktop CIP launcher (Qt Widgets) instead of the game
 #
 # Needs: VCPKG_ROOT, pinned Qt via make qt (WASM=1 for --wasm). C++ deps from vcpkg.json.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../.." && pwd)}"
+OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
 CACHE_ENV="$(cd "$OTC/../.." && pwd)/scripts/build-cache-env.sh"
 if [[ -f "$CACHE_ENV" ]]; then
   # shellcheck disable=SC1090
@@ -392,7 +392,7 @@ if [[ ! -x "$BIN" ]]; then
 fi
 echo "[tibia] ok → $BIN"
 if [[ "$LAUNCHER_BUILD" -eq 0 ]]; then
-  bash "$OTC/scripts/deploy/link-cip-resources.sh" "$BIN" "$OTC/data" || true
+  bash "$OTC/scripts/lifecycle/lib/link-cip-resources.sh" "$BIN" "$OTC/data" || true
 fi
 if [[ "$DEV_BUILD" -eq 1 ]]; then
   echo "[tibia] qml-disk: edit qml under client/upstream/qml, client/mods/<pack>/qml, client/overrides — no rebuild; F5 clears cache"

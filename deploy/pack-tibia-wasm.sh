@@ -1,1 +1,0 @@
-../scripts/deploy/pack-tibia-wasm.sh

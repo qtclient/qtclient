@@ -1,1 +1,0 @@
-../scripts/ci/pull-client-sdk.sh

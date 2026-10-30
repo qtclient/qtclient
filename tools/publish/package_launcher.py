@@ -56,7 +56,7 @@ def find_launcher(bin_dir: Path, platform: str) -> Path:
     if path.exists() and (path.is_dir() if want_dir else path.is_file()):
         return path
     raise SystemExit(
-        f"[launcher] missing {path} (build: deploy/build-tibia.sh --launcher)"
+        f"[launcher] missing {path} (build: scripts/lifecycle/build/entrypoint.sh --launcher)"
     )
 
 

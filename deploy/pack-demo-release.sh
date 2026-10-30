@@ -1,1 +1,0 @@
-../scripts/deploy/pack-demo-release.sh

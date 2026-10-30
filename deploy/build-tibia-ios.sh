@@ -1,1 +1,0 @@
-../scripts/deploy/build-tibia-ios.sh

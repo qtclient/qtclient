@@ -1,4 +1,4 @@
-# Retired. The Android client is built with deploy/build-tibia-android.sh
+# Retired. The Android client is built with scripts/lifecycle/build/android.sh
 # after `make qt ANDROID=1`. This image does not install vcpkg.
 FROM scratch
-COPY deploy/build-tibia-android.sh /build-tibia-android.sh
+COPY scripts/lifecycle/build/android.sh /build-tibia-android.sh

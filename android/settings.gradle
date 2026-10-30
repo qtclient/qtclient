@@ -12,6 +12,6 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-// Product Android package is Qt-driven under android/tibia (see deploy/build-tibia-android.sh).
+// Product Android package is Qt-driven under android/tibia (see scripts/lifecycle/build/android.sh).
 // Legacy OTC Gradle :app module removed.
 rootProject.name = "tibia"

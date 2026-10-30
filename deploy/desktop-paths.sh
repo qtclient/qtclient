@@ -1,1 +1,0 @@
-../scripts/deploy/desktop-paths.sh

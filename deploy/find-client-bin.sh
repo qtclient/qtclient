@@ -1,1 +1,0 @@
-../scripts/deploy/find-client-bin.sh

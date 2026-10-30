@@ -67,7 +67,7 @@ fi
 
 BIN="${QTCLIENT_CLIENT_BIN:-}"
 if [[ -z "$BIN" ]]; then
-  FIND_BIN="$(cd "$(dirname "$0")/../.." && pwd)/deploy/find-client-bin.sh"
+  FIND_BIN="$(cd "$(dirname "$0")/../.." && pwd)/scripts/lifecycle/lib/find-client-bin.sh"
   BIN="$("$FIND_BIN" "$OTC" 2>/dev/null || true)"
 fi
 if [[ -z "${BIN:-}" || ! -x "$BIN" ]]; then

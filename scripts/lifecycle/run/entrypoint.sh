@@ -3,10 +3,10 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../.." && pwd)}"
+OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
 COMP="${COMP:-client}"
-# shellcheck source=../deploy/desktop-paths.sh
-source "$OTC/scripts/deploy/desktop-paths.sh"
+# shellcheck source=../lib/desktop-paths.sh
+source "$OTC/scripts/lifecycle/lib/desktop-paths.sh"
 qtclient_desktop_paths "$OTC"
 
 case "$COMP" in
@@ -21,7 +21,7 @@ case "$COMP" in
     fi
     echo "[tibia] starting $QTCLIENT_CLIENT_BIN (cwd $OTC)"
     cd "$OTC"
-    bash "$OTC/scripts/deploy/link-cip-resources.sh" "$QTCLIENT_CLIENT_BIN" "$OTC/data" || true
+    bash "$OTC/scripts/lifecycle/lib/link-cip-resources.sh" "$QTCLIENT_CLIENT_BIN" "$OTC/data" || true
     # Stock default --no-mods; product packs set QTCLIENT_MODS_DIR / ARGS.
     if [[ -n "${ARGS+x}" ]]; then
       client_args=(${ARGS})

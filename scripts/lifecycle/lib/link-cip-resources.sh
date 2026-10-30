@@ -7,7 +7,7 @@ BIN=${1:?client binary}
 OTC_DATA=${2:-}
 if [[ -z "$OTC_DATA" ]]; then
   HERE="$(cd "$(dirname "$0")" && pwd)"
-  OTC_DATA="$(cd "$HERE/../../data" && pwd)"
+  OTC_DATA="$(cd "$HERE/../../../data" && pwd)"
 fi
 OTC_DATA="$(cd "$OTC_DATA" && pwd)"
 

@@ -10,7 +10,7 @@
 #   ORAS_USER / ORAS_PASSWORD or GITHUB_TOKEN + GITHUB_ACTOR (login)
 #   PUBLISH_LOGIN=1             login before push (default 1 when token present)
 set -euo pipefail
-OTC="$(cd "$(dirname "$0")/../.." && pwd)"
+OTC="$(cd "$(dirname "$0")/../../.." && pwd)"
 KIND="${PACKAGE_KIND:-sdk}"
 OUT="${PACKAGE_OUT:?PACKAGE_OUT required}"
 HOST_ID="${QTCLIENT_HOST_BUILD_ID:-${SOURCE_COMMIT:-${GITHUB_SHA:-}}}"
@@ -47,6 +47,6 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 tar -czf "$work/$tarball" -C "$OUT" .
 ref="$REGISTRY/$name:$HOST_ID"
-oras push "$ref" "$work/$tarball:application/vnd.oci.image.layer.v1.tar+gzip"
+( cd "$work" && oras push "$ref" "./$tarball:application/vnd.oci.image.layer.v1.tar+gzip" )
 oras tag "$ref" "$REGISTRY/$name:sha-$HOST_ID" || true
 echo "PUBLISHED=$ref"

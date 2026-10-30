@@ -3,12 +3,12 @@
 # tibiametadata.json (CipSoft assetsurl). Login via mods/default (not release_env).
 #
 # Usage:
-#   pack-demo-release.sh --platform linux-x64|windows-x64|macos-arm64 \
+#   demo.sh --platform linux-x64|windows-x64|macos-arm64 \
 #     --bin <build-bin-dir> --out <dest-dir> [--release-base-url URL]
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="$(cd "$HERE/../.." && pwd)"
+OTC="$(cd "$HERE/../../.." && pwd)"
 PLATFORM=""
 BIN=""
 OUT=""

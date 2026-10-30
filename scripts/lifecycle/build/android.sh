@@ -2,13 +2,13 @@
 # Build tibia for Android (Phase 6).
 # Needs: make qt ANDROID=1, ANDROID_SDK_ROOT, ANDROID_NDK_ROOT.
 #
-#   scripts/deploy/build-tibia-android.sh
-#   scripts/deploy/build-tibia-android.sh --abi arm64-v8a
+#   scripts/lifecycle/lib/build-tibia-android.sh
+#   scripts/lifecycle/lib/build-tibia-android.sh --abi arm64-v8a
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../.." && pwd)}"
-CACHE_ENV="$(cd "$HERE/../../../.." && pwd)/scripts/build-cache-env.sh"
+OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/../../.." && pwd)}"
+CACHE_ENV="$(cd "$OTC/../.." && pwd)/scripts/build-cache-env.sh"
 if [[ -f "$CACHE_ENV" ]]; then
   # shellcheck disable=SC1090
   source "$CACHE_ENV"

@@ -66,7 +66,7 @@ def write_dev(doc: dict) -> None:
 
 
 def find_desktop_binary() -> Path | None:
-    """qtclient Play binary at build/<preset>/bin/… (see deploy/desktop-paths.sh)."""
+    """qtclient Play binary at build/<preset>/bin/… (see scripts/lifecycle/lib/desktop-paths.sh)."""
     import os
     import platform as py_platform
 

@@ -178,7 +178,7 @@
       "name": "wasm-tibia",
       "inherits": "base",
       "displayName": "WebAssembly - tibia",
-      "description": "Qt wasm OS via chainload; see deploy/build-tibia.sh --wasm",
+      "description": "Qt wasm OS via chainload; see scripts/lifecycle/build/entrypoint.sh --wasm",
       "binaryDir": "${sourceDir}/build/tibia-wasm",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
