@@ -23,7 +23,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          # Full history fetch fails on this repo (GitHub pack: unresolved deltas).
           fetch-depth: 1
 
       - name: Convert repository name to lowercase

@@ -80,8 +80,7 @@ jobs:
       docker: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && 'true' || steps.filter.outputs.docker }}
       tibia: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && 'true' || steps.filter.outputs.tibia }}
     steps:
-      # Full history fetch fails on this repo (GitHub pack: unresolved deltas).
-      # Push path-filter only needs HEAD^; PRs use the merge commit (depth 1).
+      # Depth 2 is enough for push path-filter (HEAD^); PRs use the merge commit.
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
