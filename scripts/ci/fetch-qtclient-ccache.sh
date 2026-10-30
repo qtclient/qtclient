@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Download a stock ccache archive published by qtclient/qtclient "CI stock".
+# Download a Soft host ccache archive published by qtclient/qtclient "CI host".
 #
-#   scripts/ci/fetch-qtclient-ccache.sh --sha <qtclient_commit> --os linux|macos
+#   scripts/ci/fetch-qtclient-ccache.sh --sha <qtclient_commit> --os linux|macos|windows
 #   export CCACHE_DIR=$PWD/.ccache
 #
 # Requires: gh (authenticated), zstd, tar.
@@ -19,7 +19,7 @@ while [[ $# -gt 0 ]]; do
     --repo) REPO="$2"; shift 2 ;;
     --out) OUT_DIR="$2"; shift 2 ;;
     -h|--help)
-      echo "usage: $0 --sha <commit> --os linux|macos [--repo qtclient/qtclient] [--out DIR]"
+      echo "usage: $0 --sha <commit> --os linux|macos|windows [--repo qtclient/qtclient] [--out DIR]"
       exit 0
       ;;
     *) echo "unknown: $1" >&2; exit 2 ;;
@@ -40,11 +40,11 @@ trap "rm -rf '$TMP'" EXIT
 
 echo "[qtclient-ccache] fetching artifact $ART from $REPO @ $SHA"
 if ! gh run download -R "$REPO" -n "$ART" -D "$TMP" 2>/dev/null; then
-  # Fallback: find a successful CI stock run on that commit
-  RUN_ID="$(gh run list -R "$REPO" --commit "$SHA" --workflow "CI stock" --json databaseId,conclusion \
+  # Fallback: find a successful CI host run on that commit
+  RUN_ID="$(gh run list -R "$REPO" --commit "$SHA" --workflow "CI host" --json databaseId,conclusion \
     --jq '[.[]|select(.conclusion=="success")][0].databaseId' 2>/dev/null || true)"
   [[ -n "$RUN_ID" && "$RUN_ID" != "null" ]] || {
-    echo "[qtclient-ccache] no successful CI stock run for $SHA" >&2
+    echo "[qtclient-ccache] no successful CI host run for $SHA" >&2
     exit 1
   }
   gh run download -R "$REPO" "$RUN_ID" -n "$ART" -D "$TMP"

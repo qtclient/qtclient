@@ -49,6 +49,11 @@ qt_cip_sparse_checkout() {
 }
 
 qt_cip_sha() {
+  qt_resolve_cip_sha
+}
+
+# Resolve CIP Qt SHA: QT_CIP_SHA env → checked-out qt5-cip → gitlink → SUBMODULE_PINS.txt.
+qt_resolve_cip_sha() {
   if [[ -n "${QT_CIP_SHA:-}" ]]; then
     echo "$QT_CIP_SHA"
     return
@@ -56,8 +61,15 @@ qt_cip_sha() {
   if [[ -d "$QT_CIP_SRC/.git" ]] || [[ -f "$QT_CIP_SRC/.git" ]]; then
     git -C "$QT_CIP_SRC" rev-parse HEAD 2>/dev/null && return
   fi
-  # Recorded gitlink in the parent index (no checkout yet).
-  git -C "$_qt_otc" rev-parse "HEAD:third_party/qt5-cip" 2>/dev/null || true
+  local sha
+  sha="$(git -C "$_qt_otc" rev-parse "HEAD:third_party/qt5-cip" 2>/dev/null || true)"
+  if [[ -n "$sha" ]]; then
+    echo "$sha"
+    return
+  fi
+  if [[ -f "$_qt_otc/third_party/SUBMODULE_PINS.txt" ]]; then
+    awk '/^qt5-cip/{print $2; exit}' "$_qt_otc/third_party/SUBMODULE_PINS.txt"
+  fi
 }
 
 qt_kit_slug() {
@@ -103,4 +115,40 @@ qt_unix_path() {
   else
     echo "$p"
   fi
+}
+
+# Install directory under cip-<sha>/ for a GHCR kit slug.
+qt_install_dir_for_kit() {
+  case "${1:-}" in
+    wasm_multithread) echo "wasm_multithread" ;;
+    macos-arm64|macos-x64) echo "macos" ;;
+    linux-x64|linux-arm64) echo "gcc_64" ;;
+    windows-x64) echo "msvc2022_64" ;;
+    "") echo "host" ;;
+    *) echo "$1" ;;
+  esac
+}
+
+qt_prefix_has_qt6() {
+  [[ -f "${1:-}/lib/cmake/Qt6/Qt6Config.cmake" ]]
+}
+
+# Unpack a CIP Qt prefix archive into dest (shared by GHCR + release pulls).
+qt_unpack_prefix_archive() {
+  local archive="${1:-}" dest="${2:-}"
+  [[ -n "$archive" && -n "$dest" && -f "$archive" ]] || return 1
+  mkdir -p "$dest"
+  case "$archive" in
+    *.zst|*.tar.zst)
+      if command -v zstd >/dev/null; then
+        zstd -d -c "$archive" | tar -xf - -C "$dest"
+      elif tar --zstd -xf "$archive" -C "$dest"; then
+        :
+      else
+        echo "[qt] need zstd to unpack $archive" >&2
+        return 1
+      fi
+      ;;
+    *) tar -xzf "$archive" -C "$dest" ;;
+  esac
 }

@@ -34,7 +34,7 @@ Binary smoke: download a stock CI client tarball, `./qtclient-fetch-assets`, `./
 qtclient Actions publish shared warm state for downstream (e.g. private product) builds:
 
 1. **Qt:** `tools/qt/ci-setup-qt.sh` pulls `ghcr.io/qtclient/qt-cip:<sha>-<kit>` (override with `QT_GHCR_IMAGE` if needed).
-2. **ccache:** download the `ccache-<os>-<sha>` artifact from the latest successful `CI stock` workflow on this repo for the base commit you branched from; unpack into `CCACHE_DIR` before `cmake --build`.
+2. **ccache:** download the `ccache-<os>-<sha>` artifact from the latest successful `CI host` workflow on this repo for the base commit you branched from; unpack into `CCACHE_DIR` before `cmake --build`.
 
 Helper for consumers (from a checkout that vendors this tree):
 

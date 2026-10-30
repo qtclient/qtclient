@@ -1,150 +1,21 @@
-name: CI
+---
+# Fast checks only. Soft host compiles (linux/mac/windows/wasm + host-sdk)
+# publish from ci-host.yml on push/PR.
+name: CI checks
 
 on:
   workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "cmake/**"
-      - "android/**"
-      - "browser/**"
-      - "data/**"
-      - "mods/**"
-      - "modules/**"
-      - "tools/**"
-      - "cip/**"
-      - "qml/**"
-      - "deploy/build-tibia.sh"
-      - "vc18/**"
-      - "CMakeLists.txt"
-      - "CMakePresets.json"
-      - "vcpkg.json"
-      - "vcpkg-configuration.json"
-      - "Dockerfile"
-      - "cacert.pem"
-      - "config.ini"
-      - ".dockerignore"
-      - ".yamllint.yaml"
-      - ".reviewdog.yml"
-      - ".github/workflows/**"
   merge_group:
   push:
-    branches:
-      - main
-    paths:
-      - "src/**"
-      - "tests/**"
-      - "cmake/**"
-      - "android/**"
-      - "browser/**"
-      - "data/**"
-      - "mods/**"
-      - "modules/**"
-      - "tools/**"
-      - "cip/**"
-      - "qml/**"
-      - "deploy/build-tibia.sh"
-      - "vc18/**"
-      - "CMakeLists.txt"
-      - "CMakePresets.json"
-      - "vcpkg.json"
-      - "vcpkg-configuration.json"
-      - "Dockerfile"
-      - "cacert.pem"
-      - "config.ini"
-      - ".dockerignore"
-      - ".yamllint.yaml"
-      - ".reviewdog.yml"
-      - ".github/workflows/**"
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# Private repo billing (macOS 10x, Windows 2x): pushes to main only run the fast
-# checks. Linux builds on PRs; the other platforms build only on manual dispatch.
-# Release clients (WASM + desktop) are built by release build-client.yml.
-
 jobs:
-  changes:
-    name: Detect Build Scope
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      compile: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && 'true' || steps.filter.outputs.compile }}
-      macos: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && 'true' || steps.filter.outputs.macos }}
-      android: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && 'true' || steps.filter.outputs.android }}
-      docker: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && 'true' || steps.filter.outputs.docker }}
-      tibia: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group') && 'true' || steps.filter.outputs.tibia }}
-    steps:
-      # Depth 2 is enough for push path-filter (HEAD^); PRs use the merge commit.
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 2
-
-      - name: Detect changed paths
-        id: filter
-        if: github.event_name != 'workflow_dispatch' && github.event_name != 'merge_group'
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
-        with:
-          filters: |
-            compile:
-              - "src/**"
-              - "tests/**"
-              - "cmake/**"
-              - "cip/**"
-              - "qml/**"
-              - "tools/cip/**"
-              - "tools/qt/**"
-              - "vc18/**"
-              - "CMakeLists.txt"
-              - "CMakePresets.json"
-              - ".yamllint.yaml"
-              - ".reviewdog.yml"
-              - ".github/workflows/ci.yml"
-              - ".github/workflows/reusable-build-linux.yml"
-              - ".github/workflows/reusable-build-windows.yml"
-              - ".github/workflows/reusable-checks.yml"
-            macos:
-              - "src/**"
-              - "cmake/**"
-              - "CMakeLists.txt"
-              - "CMakePresets.json"
-              - ".github/workflows/ci.yml"
-              - ".github/workflows/reusable-build-macos.yml"
-            android:
-              - "src/**"
-              - "android/**"
-              - "cmake/**"
-              - "CMakeLists.txt"
-              - "setup_android_deps.sh"
-              - ".github/workflows/ci.yml"
-              - ".github/workflows/reusable-build-android-apk.yml"
-            docker:
-              - "Dockerfile"
-              - ".dockerignore"
-              - "src/**"
-              - "cmake/**"
-              - "CMakeLists.txt"
-              - "CMakePresets.json"
-              - ".yamllint.yaml"
-              - ".github/workflows/ci.yml"
-              - ".github/workflows/reusable-build-docker.yml"
-            tibia:
-              - "client/tibia/**"
-              - "cip/**"
-              - "qml/**"
-              - "cmake/CipCodegen.cmake"
-              - "tools/cip/**"
-              - "tools/qt/**"
-              - "deploy/build-tibia.sh"
-              - ".github/workflows/ci.yml"
-              - ".github/workflows/reusable-build-tibia-wasm.yml"
-
   checks:
     name: Fast Checks
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
@@ -154,67 +25,3 @@ jobs:
       pull-requests: read
     uses: ./.github/workflows/reusable-checks.yml
     secrets: inherit
-
-  build-linux:
-    name: Build - Linux
-    needs: [changes, checks]
-    if: github.event_name != 'push' && needs.changes.outputs.compile == 'true' && needs.checks.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    permissions:
-      contents: read
-      packages: read
-    uses: ./.github/workflows/reusable-build-linux.yml
-    secrets: inherit
-
-  build-windows:
-    name: Build - Windows
-    needs: [changes, checks]
-    if: github.event_name == 'workflow_dispatch' && needs.changes.outputs.compile == 'true' && needs.checks.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    permissions:
-      contents: read
-      packages: read
-    uses: ./.github/workflows/reusable-build-windows.yml
-    secrets: inherit
-
-  build-macos:
-    name: Build - macOS
-    needs: [changes, checks]
-    if: github.event_name == 'workflow_dispatch' && needs.changes.outputs.macos == 'true' && needs.checks.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    permissions:
-      contents: read
-      packages: read
-    uses: ./.github/workflows/reusable-build-macos.yml
-    secrets: inherit
-
-  build-android-apk:
-    name: Build - Android APK
-    needs: [changes, checks]
-    if: github.event_name == 'workflow_dispatch' && needs.changes.outputs.android == 'true' && needs.checks.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    permissions:
-      contents: read
-      packages: read
-    uses: ./.github/workflows/reusable-build-android-apk.yml
-    secrets: inherit
-
-  build-docker:
-    name: Build - Docker
-    needs: [changes, checks]
-    if: github.event_name == 'workflow_dispatch' && needs.changes.outputs.docker == 'true' && needs.checks.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/reusable-build-docker.yml
-    with:
-      push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    secrets: inherit
-
-  build-tibia-wasm:
-    name: Build - Tibia app (browser)
-    needs: [changes, checks]
-    if: github.event_name != 'push' && needs.changes.outputs.tibia == 'true' && needs.checks.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    permissions:
-      contents: read
-    uses: ./.github/workflows/reusable-build-tibia-wasm.yml
-    secrets: inherit
-
-  # Host artifacts are published by ci-host.yml (GHCR qtclient-host-* / host-sdk).
-  # idleot/release waits for those + idleot-client pack artifacts — no warm-client.

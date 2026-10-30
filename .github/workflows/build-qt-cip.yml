@@ -1,3 +1,4 @@
+---
 # Build CipSoft Qt5 kits and publish install prefixes to
 # ghcr.io/qtclient/qt-cip (free public Actions). Trigger: manual, or when
 # third_party/qt5-cip gitlink changes on main.
@@ -11,10 +12,12 @@ on:
       - 'third_party/qt5-cip'
       - 'tools/qt/**'
       - '.github/workflows/build-qt-cip.yml'
+      - '.github/workflows/publish-qt-cip-release.yml'
 
 permissions:
-  contents: read
+  contents: write
   packages: write
+  actions: write
 
 concurrency:
   group: qt-cip-${{ github.workflow }}-${{ github.ref }}
@@ -43,15 +46,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SHA="$(git rev-parse HEAD:third_party/qt5-cip 2>/dev/null || true)"
-          if [[ -z "$SHA" && -f third_party/SUBMODULE_PINS.txt ]]; then
-            SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt)"
-          fi
+          source tools/qt/qt-version.sh
+          SHA="$(qt_resolve_cip_sha)"
           [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "QT_CIP_SHA=$SHA" >> "$GITHUB_ENV"
+          echo "QT_CIP_SHORT=${SHA:0:12}" >> "$GITHUB_ENV"
+          # Back-compat for cache keys that still expand CIP_*
           echo "CIP_SHA=$SHA" >> "$GITHUB_ENV"
           echo "CIP_SHORT=${SHA:0:12}" >> "$GITHUB_ENV"
-          echo "QT_CIP_SHA=$SHA" >> "$GITHUB_ENV"
-          # update=none skips plain submodule update — force checkout or clone.
           git -c submodule.third_party/qt5-cip.update=checkout \
             submodule update --init --depth 1 third_party/qt5-cip \
             || bash -c '
@@ -67,13 +69,23 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev \
+          sudo apt-get install -y ninja-build zstd libgl1-mesa-dev libxkbcommon-dev \
             libx11-xcb-dev libxcb-cursor-dev libxcb-xinerama0-dev \
             libfontconfig1-dev libfreetype6-dev libdbus-1-dev
 
-      - name: Install Ninja (macOS)
+      - name: Install Ninja / zstd (macOS)
         if: runner.os == 'macOS'
-        run: brew install ninja zstd || true
+        run: brew install ninja zstd
+
+      - name: Install zstd (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          choco install zstandard -y --no-progress || true
+          export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
+          echo "/c/ProgramData/chocolatey/bin" >> "$GITHUB_PATH"
+          echo "/c/tools/zstd" >> "$GITHUB_PATH"
+          command -v zstd >/dev/null || { echo "::error::zstd required for CIP Qt push"; exit 1; }
 
       - uses: lukka/get-cmake@v4.3.4
 
@@ -89,8 +101,8 @@ jobs:
         id: cache
         uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/Qt/cip-${{ env.CIP_SHORT }}
-          key: cip-qt-${{ matrix.kit }}-${{ env.CIP_SHA }}
+          path: ${{ runner.temp }}/Qt/cip-${{ env.QT_CIP_SHORT }}
+          key: cip-qt-${{ matrix.kit }}-${{ env.QT_CIP_SHA }}
 
       - name: Build + publish desktop kit
         shell: bash
@@ -98,18 +110,17 @@ jobs:
           QT_ROOT: ${{ runner.temp }}/Qt
           PUBLISH: '1'
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Wipe a stale MinGW-configured build dir if a previous attempt polluted the cache path's sibling.
           CMAKE_BUILD_PARALLEL_LEVEL: '4'
         run: |
           set -euo pipefail
           echo "${GHCR_TOKEN}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          # Host build lives under QT_ROOT/build/… — drop MinGW leftovers so we reconfigure for MSVC.
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            rm -rf "${QT_ROOT}/build/cip-${CIP_SHORT}-host" || true
+            export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
+            rm -rf "${QT_ROOT}/build/cip-${QT_CIP_SHORT}-host" || true
           fi
+          command -v zstd >/dev/null || { echo "zstd required for publish" >&2; exit 1; }
           bash tools/qt/install-qt.sh
 
-      # idleot/release pulls with its own GITHUB_TOKEN — package must be public.
       - name: Ensure qt-cip package is public
         shell: bash
         env:
@@ -132,14 +143,13 @@ jobs:
       - name: Resolve + init qt5-cip (shallow)
         run: |
           set -euo pipefail
-          SHA="$(git rev-parse HEAD:third_party/qt5-cip 2>/dev/null || true)"
-          if [[ -z "$SHA" && -f third_party/SUBMODULE_PINS.txt ]]; then
-            SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt)"
-          fi
+          source tools/qt/qt-version.sh
+          SHA="$(qt_resolve_cip_sha)"
           [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "QT_CIP_SHA=$SHA" >> "$GITHUB_ENV"
+          echo "QT_CIP_SHORT=${SHA:0:12}" >> "$GITHUB_ENV"
           echo "CIP_SHA=$SHA" >> "$GITHUB_ENV"
           echo "CIP_SHORT=${SHA:0:12}" >> "$GITHUB_ENV"
-          echo "QT_CIP_SHA=$SHA" >> "$GITHUB_ENV"
           git -c submodule.third_party/qt5-cip.update=checkout \
             submodule update --init --depth 1 third_party/qt5-cip \
             || bash -c '
@@ -153,8 +163,8 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-dev \
-            libx11-xcb-dev libxcb-cursor-dev libfontconfig1-dev libfreetype6-dev zstd
+          sudo apt-get install -y ninja-build zstd libgl1-mesa-dev libxkbcommon-dev \
+            libx11-xcb-dev libxcb-cursor-dev libfontconfig1-dev libfreetype6-dev
 
       - uses: lukka/get-cmake@v4.3.4
       - uses: oras-project/setup-oras@v1
@@ -163,9 +173,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ runner.temp }}/Qt/cip-${{ env.CIP_SHORT }}
+            ${{ runner.temp }}/Qt/cip-${{ env.QT_CIP_SHORT }}
             ${{ runner.temp }}/Qt/emsdk
-          key: cip-qt-wasm-${{ env.CIP_SHA }}-${{ hashFiles('tools/qt/qt-version.sh') }}
+          key: cip-qt-wasm_multithread-${{ env.QT_CIP_SHA }}
 
       - name: Build host + wasm + publish
         env:
@@ -175,6 +185,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "${GHCR_TOKEN}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          command -v zstd >/dev/null || { echo "zstd required for publish" >&2; exit 1; }
           bash tools/qt/install-qt.sh --wasm
 
       - name: Ensure qt-cip package is public
@@ -187,3 +198,10 @@ jobs:
             "/orgs/qtclient/packages/container/qt-cip" \
             -f visibility=public \
             || echo "::warning::could not set qt-cip visibility (create on first push, then re-run)"
+
+  publish-release:
+    name: Mirror kits to GitHub Release
+    needs: [desktop, wasm]
+    if: always() && (needs.desktop.result == 'success' || needs.wasm.result == 'success')
+    uses: ./.github/workflows/publish-qt-cip-release.yml
+    secrets: inherit

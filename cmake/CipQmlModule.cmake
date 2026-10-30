@@ -7,9 +7,10 @@
 #   client/mods/<enabled>/overrides/qmlcomponents/<rel>
 # Product UI that is not a stock-path fork belongs in client/mods/<pack>/qml.
 #
-# TIBIA_QML_DISK: embed configure-time stubs (stable mtimes). DiskQmlInterceptor
-# hot-reloads qtclient + overrides only — qmlcomponents stays on qrc so the module
-# registration stays intact. Production keeps full QML_FILES + qmlcachegen.
+# Always stage QML into the build tree (qml-embed/) so qmlcachegen never emits
+# …/qmlcomponents_../upstream paths that ninja cannot mkdir on Windows.
+# TIBIA_QML_DISK: NO_CACHEGEN + non-CONFIGURE_DEPENDS glob; DiskQmlInterceptor
+# hot-reloads qtclient + overrides only — qmlcomponents stays on qrc.
 
 function(_cip_write_if_changed path content)
   if(EXISTS "${path}")
@@ -19,15 +20,6 @@ function(_cip_write_if_changed path content)
     endif()
   endif()
   file(WRITE "${path}" "${content}")
-endfunction()
-
-function(_cip_ensure_stub stub src)
-  if(EXISTS "${stub}")
-    return()
-  endif()
-  get_filename_component(parent "${stub}" DIRECTORY)
-  file(MAKE_DIRECTORY "${parent}")
-  file(COPY "${src}" DESTINATION "${parent}")
 endfunction()
 
 # Collect override roots for configure-time qmlcomponents merge.

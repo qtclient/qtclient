@@ -48,7 +48,6 @@ jobs:
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          # oras rejects absolute layer paths — keep the tarball relative to cwd.
           tar -czf host-sdk.tgz -C host-sdk .
           oras push "${{ env.REGISTRY }}/qtclient-host-sdk:${{ github.sha }}" \
             "host-sdk.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
@@ -75,7 +74,7 @@ jobs:
             kit: macos-arm64
             triplet: arm64-osx-static
           - plat: windows-x64
-            runner: windows-latest
+            runner: windows-2022
             preset: windows-release
             os_slug: windows
             kit: windows-x64
@@ -90,48 +89,8 @@ jobs:
         with:
           submodules: false
 
-      - name: Init LegacyControls
-        shell: bash
-        run: git submodule update --init third_party/Qt5LegacyControls
-
-      - name: Resolve CIP Qt SHA
-        id: cip
-        shell: bash
-        run: |
-          set -euo pipefail
-          SHA="$(git rev-parse HEAD:third_party/qt5-cip 2>/dev/null || true)"
-          if [[ -z "$SHA" && -f third_party/SUBMODULE_PINS.txt ]]; then
-            SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt)"
-          fi
-          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
-          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "QT_CIP_SHA=$SHA" >> "$GITHUB_ENV"
-
       - uses: lukka/get-cmake@v4.3.4
       - uses: oras-project/setup-oras@v1
-
-      - name: Install Linux deps
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq build-essential ninja-build ccache \
-            libgl1-mesa-dev libxkbcommon-dev libfontconfig1-dev zstd patchelf
-
-      - name: Install macOS deps
-        if: runner.os == 'macOS'
-        run: brew install ninja ccache zstd
-
-      - name: Install Windows deps
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          # Chocolatey package id is zstandard (provides zstd.exe). Needed for
-          # ccache .tar.zst upload; Windows CIP Qt kits are usually .tar.gz
-          # (Build CIP Qt has no zstd), but Soft host still packs ccache with zstd.
-          choco install ccache ninja zstandard -y --no-progress
-          export PATH="/c/ProgramData/chocolatey/bin:$PATH"
-          echo "/c/ProgramData/chocolatey/bin" >> "$GITHUB_PATH"
-          command -v zstd >/dev/null || { echo "::error::zstd missing after choco install zstandard"; exit 1; }
 
       - name: MSVC environment
         if: runner.os == 'Windows'
@@ -139,13 +98,24 @@ jobs:
         with:
           arch: x64
 
+      - name: Resolve CIP Qt SHA
+        id: cip
+        shell: bash
+        run: |
+          set -euo pipefail
+          # shellcheck source=tools/qt/qt-version.sh
+          source tools/qt/qt-version.sh
+          SHA="$(qt_resolve_cip_sha)"
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
       - name: Restore CIP Qt prefix
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/Qt
           key: cip-qt-${{ matrix.kit }}-${{ steps.cip.outputs.sha }}
 
-      - name: Install CIP Qt (pull-only)
+      - name: Soft host bootstrap (deps + vcpkg + CIP Qt)
         shell: bash
         env:
           QT_ROOT: ${{ runner.temp }}/Qt
@@ -154,14 +124,7 @@ jobs:
           QT_PULL_ONLY: '1'
           QT_PULL_WAIT_SECS: '7200'
           QT_PULL_INTERVAL_SECS: '90'
-        run: |
-          set -euo pipefail
-          bash tools/qt/ci-setup-qt.sh --pull-only
-          echo "QT_PREFIX=$(bash tools/qt/qt-prefix.sh)" >> "$GITHUB_ENV"
-
-      - name: Setup vcpkg
-        shell: bash
-        run: source deploy/ci-setup-vcpkg.sh
+        run: bash tools/qt/ci-setup.sh --pull-only --with-vcpkg --with-deps
 
       - name: Restore ccache
         uses: actions/cache@v4
@@ -170,10 +133,12 @@ jobs:
           key: ccache-host-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-${{ github.sha }}
           restore-keys: |
             ccache-host-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-
-            ccache-stock-${{ matrix.os_slug }}-${{ steps.cip.outputs.sha }}-
             ccache-host-${{ matrix.os_slug }}-
+          # Persist compile progress when the job fails or is cancelled.
+          save-always: true
 
       - name: Configure + build stock host
+        id: build
         shell: bash
         env:
           VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
@@ -185,7 +150,7 @@ jobs:
             export PATH="$(brew --prefix)/bin:$PATH"
           fi
           if [[ "$RUNNER_OS" == Windows ]]; then
-            export PATH="/c/ProgramData/chocolatey/bin:$PATH"
+            export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
           fi
           cmake --preset ${{ matrix.preset }} \
             -DTOGGLE_BIN_FOLDER=ON \
@@ -221,19 +186,22 @@ jobs:
           path: ${{ runner.temp }}/host-${{ matrix.plat }}
           retention-days: 30
 
-      - name: Pack ccache (compat with mods-example)
-        if: matrix.plat == 'linux-x64' || matrix.plat == 'macos-arm64'
+      - name: Pack ccache
+        if: always()
         shell: bash
         run: |
+          set -euo pipefail
+          mkdir -p "$CCACHE_DIR"
           tar -C "$CCACHE_DIR" -cf - . | zstd -T0 -3 -o "ccache-${{ matrix.os_slug }}-${{ github.sha }}.tar.zst"
 
       - name: Upload ccache artifact
-        if: matrix.plat == 'linux-x64' || matrix.plat == 'macos-arm64'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ccache-${{ matrix.os_slug }}-${{ github.sha }}
           path: ccache-${{ matrix.os_slug }}-${{ github.sha }}.tar.zst
           retention-days: 14
+          if-no-files-found: ignore
 
       - name: Push host to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -245,6 +213,8 @@ jobs:
           tar -czf host.tgz -C "host-${{ matrix.plat }}" .
           oras push "${{ env.REGISTRY }}/qtclient-host-${{ matrix.plat }}:${{ github.sha }}" \
             "host.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+          oras tag "${{ env.REGISTRY }}/qtclient-host-${{ matrix.plat }}:${{ github.sha }}" \
+            "${{ env.REGISTRY }}/qtclient-host-${{ matrix.plat }}:sha-${{ github.sha }}" || true
 
   host-wasm:
     name: host-wasm
@@ -252,58 +222,84 @@ jobs:
     env:
       QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
       SOURCE_COMMIT: ${{ github.sha }}
-      # job-level env cannot use runner.*; set under workspace instead.
       CCACHE_DIR: ${{ github.workspace }}/.ccache
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: false
-      - name: Init LegacyControls
-        run: git submodule update --init third_party/Qt5LegacyControls
+      - uses: lukka/get-cmake@v4.3.4
+      - uses: oras-project/setup-oras@v1
+
       - name: Resolve CIP Qt SHA
         id: cip
         run: |
           set -euo pipefail
-          SHA="$(git rev-parse HEAD:third_party/qt5-cip 2>/dev/null || true)"
-          if [[ -z "$SHA" && -f third_party/SUBMODULE_PINS.txt ]]; then
-            SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt)"
-          fi
+          source tools/qt/qt-version.sh
+          SHA="$(qt_resolve_cip_sha)"
           [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-      - uses: oras-project/setup-oras@v1
-      - name: Install deps
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ninja-build ccache libegl1-mesa-dev libfontconfig1-dev \
-            libxkbcommon-dev gzip brotli zstd git curl zip unzip tar
+
       - name: Cache Qt wasm
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/Qt
           key: cip-qt-wasm_multithread-${{ steps.cip.outputs.sha }}
-      - name: Setup vcpkg
-        run: source deploy/ci-setup-vcpkg.sh
-      - name: Install CIP Qt wasm
+
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-host-wasm-${{ steps.cip.outputs.sha }}-${{ github.sha }}
+          restore-keys: |
+            ccache-host-wasm-${{ steps.cip.outputs.sha }}-
+            ccache-host-wasm-
+          save-always: true
+
+      - name: Soft host bootstrap (deps + vcpkg + CIP Qt wasm)
         env:
           QT_ROOT: ${{ runner.temp }}/Qt
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
-        run: bash tools/qt/ci-setup-qt.sh --wasm
+        run: bash tools/qt/ci-setup.sh --wasm --with-vcpkg --with-deps
+
       - name: Build stock wasm host
         env:
           QT_ROOT: ${{ runner.temp }}/Qt
           STOCK_HOST: '1'
           QTCLIENT_ENABLE_MODS: 'OFF'
-        run: bash deploy/build-tibia.sh --wasm
-      - name: Pack host wasm
         run: |
-          bash deploy/pack-host-wasm.sh build/tibia-wasm "$RUNNER_TEMP/host-wasm"
+          set -euo pipefail
+          mkdir -p "$CCACHE_DIR"
+          ccache -z || true
+          bash deploy/build-tibia.sh --wasm
+          ccache -s || true
+
+      - name: Pack host wasm
+        run: bash deploy/pack-host-wasm.sh build/tibia-wasm "$RUNNER_TEMP/host-wasm"
+
       - name: Upload host-wasm artifact
         uses: actions/upload-artifact@v4
         with:
           name: host-wasm-${{ github.sha }}
           path: ${{ runner.temp }}/host-wasm
           retention-days: 30
+
+      - name: Pack ccache
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$CCACHE_DIR"
+          tar -C "$CCACHE_DIR" -cf - . | zstd -T0 -3 -o "ccache-wasm-${{ github.sha }}.tar.zst"
+
+      - name: Upload ccache artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccache-wasm-${{ github.sha }}
+          path: ccache-wasm-${{ github.sha }}.tar.zst
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Push host-wasm to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: ${{ runner.temp }}
@@ -313,3 +309,5 @@ jobs:
           tar -czf host-wasm.tgz -C host-wasm .
           oras push "${{ env.REGISTRY }}/qtclient-host-wasm:${{ github.sha }}" \
             "host-wasm.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+          oras tag "${{ env.REGISTRY }}/qtclient-host-wasm:${{ github.sha }}" \
+            "${{ env.REGISTRY }}/qtclient-host-wasm:sha-${{ github.sha }}" || true

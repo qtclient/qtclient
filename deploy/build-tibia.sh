@@ -45,6 +45,13 @@ if [[ "$DEV_BUILD" -eq 1 && "$WASM_BUILD" -eq 1 ]]; then
   exit 1
 fi
 
+# shellcheck source=../tools/qt/qt-version.sh
+source "$OTC/tools/qt/qt-version.sh"
+if [[ -n "${QT_ROOT:-}" ]]; then
+  QT_ROOT="$(qt_unix_path "$QT_ROOT")"
+  export QT_ROOT
+fi
+
 command -v cmake >/dev/null || { echo "[tibia] need cmake"; exit 1; }
 command -v ninja >/dev/null || { echo "[tibia] need ninja"; exit 1; }
 NINJA="$(command -v ninja)"

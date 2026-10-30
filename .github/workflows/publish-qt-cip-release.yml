@@ -5,6 +5,13 @@
 name: Publish CIP Qt release assets
 
 on:
+  workflow_call:
+    inputs:
+      cip_sha:
+        description: Full qt5-cip SHA (default = HEAD gitlink)
+        required: false
+        type: string
+        default: ""
   workflow_dispatch:
     inputs:
       cip_sha:
@@ -34,10 +41,12 @@ jobs:
         id: cip
         run: |
           set -euo pipefail
+          source tools/qt/qt-version.sh
           SHA="${{ inputs.cip_sha }}"
           if [[ -z "$SHA" ]]; then
-            SHA="$(git rev-parse HEAD:third_party/qt5-cip)"
+            SHA="$(qt_resolve_cip_sha)"
           fi
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "short=${SHA:0:12}" >> "$GITHUB_OUTPUT"
 
@@ -56,8 +65,9 @@ jobs:
             echo "::error::missing $ref — run Build CIP Qt first"
             exit 1
           fi
-          # oras preserves push paths (.qt-ghcr-push-*/qt-prefix.tar.zst on older tags)
-          archive="$(find out -type f \( -name '*.tar.zst' -o -name '*.tar.gz' \) | head -1)"
+          # Prefer flat qt-prefix.tar.zst (current push); accept legacy nested paths.
+          archive="$(find out -maxdepth 1 -type f \( -name 'qt-prefix.tar.zst' -o -name 'qt-prefix.tar.gz' \) | head -1)"
+          [[ -n "$archive" ]] || archive="$(find out -type f \( -name '*.tar.zst' -o -name '*.tar.gz' \) | head -1)"
           [[ -n "$archive" ]] || { echo "::error::no archive in $ref"; exit 1; }
           asset="qt-cip-${tag}$( [[ "$archive" == *.zst ]] && echo .tar.zst || echo .tar.gz )"
           mv "$archive" "$asset"
