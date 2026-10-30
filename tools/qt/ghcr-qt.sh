@@ -67,7 +67,17 @@ do_pull() {
   [[ -n "$archive" ]] || { echo "[qt-ghcr] no archive in artifact" >&2; return 1; }
   mkdir -p "$PREFIX"
   case "$archive" in
-    *.zst) tar --zstd -xf "$archive" -C "$PREFIX" ;;
+    *.zst)
+      # Git Bash / Windows often lack `tar --zstd`; prefer zstd|tar.
+      if tar --zstd -xf "$archive" -C "$PREFIX" 2>/dev/null; then
+        :
+      elif command -v zstd >/dev/null; then
+        zstd -d -c "$archive" | tar -xf - -C "$PREFIX"
+      else
+        echo "[qt-ghcr] need zstd to unpack $archive (install zstd)" >&2
+        return 1
+      fi
+      ;;
     *) tar -xzf "$archive" -C "$PREFIX" ;;
   esac
   [[ -f "$PREFIX/lib/cmake/Qt6/Qt6Config.cmake" ]] || {
