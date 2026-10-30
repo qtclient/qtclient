@@ -125,11 +125,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          # zstd required to unpack ghcr.io/qtclient/qt-cip *.tar.zst (same as
-          # linux/mac). Without it pull-only spins until QT_PULL_WAIT_SECS.
-          choco install ccache ninja zstd -y --no-progress
+          # Chocolatey package id is zstandard (provides zstd.exe). Needed for
+          # ccache .tar.zst upload; Windows CIP Qt kits are usually .tar.gz
+          # (Build CIP Qt has no zstd), but Soft host still packs ccache with zstd.
+          choco install ccache ninja zstandard -y --no-progress
+          export PATH="/c/ProgramData/chocolatey/bin:$PATH"
           echo "/c/ProgramData/chocolatey/bin" >> "$GITHUB_PATH"
-          command -v zstd >/dev/null || { echo "::error::zstd missing after choco install"; exit 1; }
+          command -v zstd >/dev/null || { echo "::error::zstd missing after choco install zstandard"; exit 1; }
 
       - name: MSVC environment
         if: runner.os == 'Windows'
