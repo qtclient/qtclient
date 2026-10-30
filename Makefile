@@ -79,7 +79,7 @@ endif
 ifneq ($(_bare_clean),)
 .PHONY: clean
 clean:
-	@COMP=all bash "$(LIFEDIR)/clean/entrypoint.sh"
+	@bash "$(LIFEDIR)/clean/all.sh"
 else
 ifneq ($(_cargo_life),)
 .PHONY: $(_cargo_life)
@@ -89,17 +89,21 @@ $(_cargo_life):
 endif
 endif
 
+# Map Make component → script name (client → desktop).
 _cargo:
 	@comp="$(COMP)"; life="$(LIFE)"; \
 	case "$$life" in \
-	  build|run|check|test|clean|install|doc|package|publish) \
-	    COMP="$$comp" DEV="$(DEV)" DEBUG="$(DEBUG)" ARGS="$(ARGS)" \
-	      PACKAGE_KIND="$(if $(PACKAGE_KIND),$(PACKAGE_KIND),sdk)" \
-	      PLATFORM="$(PLATFORM)" BIN_DIR="$(BIN_DIR)" PACKAGE_OUT="$(PACKAGE_OUT)" \
-	      REGISTRY="$(REGISTRY)" \
-	      bash "$(LIFEDIR)/$$life/entrypoint.sh" ;; \
-	  *) echo "[qtclient] unknown $$comp $$life — try: make help"; exit 1 ;; \
-	esac
+	  package|publish) target="$(if $(PACKAGE_KIND),$(PACKAGE_KIND),sdk)" ;; \
+	  doc) target=help ;; \
+	  *) case "$$comp" in client) target=desktop ;; *) target="$$comp" ;; esac ;; \
+	esac; \
+	script="$(LIFEDIR)/$$life/$$target.sh"; \
+	test -f "$$script" || { echo "[qtclient] missing $$script (comp=$$comp life=$$life)"; exit 1; }; \
+	COMP="$$comp" DEV="$(DEV)" DEBUG="$(DEBUG)" ARGS="$(ARGS)" \
+	  PACKAGE_KIND="$(if $(PACKAGE_KIND),$(PACKAGE_KIND),sdk)" \
+	  PLATFORM="$(PLATFORM)" BIN_DIR="$(BIN_DIR)" PACKAGE_OUT="$(PACKAGE_OUT)" \
+	  REGISTRY="$(REGISTRY)" \
+	  bash "$$script"
 
 demo-pack:
 	@comp_bin=$$(bash -c 'source "$(HERE)/scripts/lifecycle/lib/desktop-paths.sh"; qtclient_desktop_paths "$(HERE)"; dirname "$$QTCLIENT_CLIENT_BIN"'); \

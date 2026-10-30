@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Build the Qt/QML tibia app (client/tibia: CIP's UI on Qt Quick).
 #
-#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm)            desktop production (embedded QML + qmlcachegen)
-#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm) --dev      desktop iteration: disk QML, NO_CACHEGEN, hot reload
-#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm) --debug    desktop Debug (asan presets; still embedded QML)
-#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm) --wasm     browser: tibia under Qt's emsdk (wasm OS)
-#   scripts/lifecycle/build/entrypoint.sh (or COMP=client|launcher|wasm) --launcher desktop CIP launcher (Qt Widgets) instead of the game
+#   scripts/lifecycle/build/desktop.sh (or COMP=client|launcher|wasm)            desktop production (embedded QML + qmlcachegen)
+#   scripts/lifecycle/build/desktop.sh (or COMP=client|launcher|wasm) --dev      desktop iteration: disk QML, NO_CACHEGEN, hot reload
+#   scripts/lifecycle/build/desktop.sh (or COMP=client|launcher|wasm) --debug    desktop Debug (asan presets; still embedded QML)
+#   scripts/lifecycle/build/desktop.sh (or COMP=client|launcher|wasm) --wasm     browser: tibia under Qt's emsdk (wasm OS)
+#   scripts/lifecycle/build/desktop.sh (or COMP=client|launcher|wasm) --launcher desktop CIP launcher (Qt Widgets) instead of the game
 #
 # Needs: VCPKG_ROOT, pinned Qt via make qt (WASM=1 for --wasm). C++ deps from vcpkg.json.
 set -euo pipefail
@@ -23,13 +23,7 @@ DEV_BUILD=0
 WASM_BUILD=0
 LAUNCHER_BUILD=0
 
-# Cargo-like component (Make sets COMP=). Flags still win if passed explicitly.
-case "${COMP:-}" in
-  launcher) LAUNCHER_BUILD=1 ;;
-  wasm) WASM_BUILD=1 ;;
-  client|"") ;;
-  *) echo "[tibia] unknown COMP=$COMP (client|launcher|wasm)" >&2; exit 1 ;;
-esac
+# Named entry: build/desktop.sh (launcher/wasm wrappers pass --launcher/--wasm).
 case "${DEV:-}" in 1|true|yes|on) DEV_BUILD=1 ;; esac
 case "${DEBUG:-}" in 1|true|yes|on) DEBUG_BUILD=1 ;; esac
 

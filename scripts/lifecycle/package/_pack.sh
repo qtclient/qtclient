@@ -1,25 +1,6 @@
 #!/usr/bin/env bash
-# qtclient package — produce client-sdk or platform tip dirs for GHCR / local smoke.
-#
-# Env:
-#   PACKAGE_KIND=sdk|desktop|wasm   (default: sdk)
-#   PACKAGE_OUT=<dir>
-#   PLATFORM=linux-x64|macos-arm64|windows-x64  (desktop)
-#   BIN_DIR=<client bin dir>        (desktop; optional auto-detect)
-#   WASM_BUILD=<tibia-wasm dir>     (wasm; default build/tibia-wasm)
-#   QTCLIENT_HOST_BUILD_ID / SOURCE_COMMIT / GITHUB_SHA
-set -euo pipefail
-
-HERE="$(cd "$(dirname "$0")" && pwd)"
-OTC="$(cd "$HERE/../../.." && pwd)"
-KIND="${PACKAGE_KIND:-sdk}"
-OUT="${PACKAGE_OUT:-}"
-HOST_ID="${QTCLIENT_HOST_BUILD_ID:-${SOURCE_COMMIT:-${GITHUB_SHA:-}}}"
-if [[ -z "$HOST_ID" ]]; then
-  HOST_ID="$(git -C "$OTC" rev-parse HEAD 2>/dev/null || echo unknown)"
-fi
-export QTCLIENT_HOST_BUILD_ID="$HOST_ID" SOURCE_COMMIT="$HOST_ID"
-
+# shellcheck shell=bash
+# Shared pack_* helpers (HOST_ID, OTC must be set).
 pack_sdk() {
   local DEST="$1"
   rm -rf "$DEST"
@@ -122,29 +103,3 @@ EOF
   echo "[package] wasm hostBuildId=${HOST_ID} → ${DEST}"
 }
 
-case "$KIND" in
-  sdk)
-    OUT="${OUT:-${RUNNER_TEMP:-$OTC/build/package}/client-sdk}"
-    pack_sdk "$OUT"
-    ;;
-  desktop)
-    PLATFORM="${PLATFORM:?PLATFORM required for desktop package}"
-    OUT="${OUT:-${RUNNER_TEMP:-$OTC/build/package}/client-$PLATFORM}"
-    bin_dir="${BIN_DIR:-}"
-    if [[ -z "$bin_dir" ]]; then
-      bin="$("$OTC/scripts/lifecycle/lib/find-client-bin.sh" "$OTC")"
-      bin_dir="$(dirname "$bin")"
-    fi
-    pack_desktop "$PLATFORM" "$bin_dir" "$OUT"
-    ;;
-  wasm)
-    WASM_SRC="${WASM_BUILD:-$OTC/build/tibia-wasm}"
-    OUT="${OUT:-${RUNNER_TEMP:-$OTC/build/package}/client-wasm}"
-    pack_wasm "$WASM_SRC" "$OUT"
-    ;;
-  *)
-    echo "[qtclient] package: unknown PACKAGE_KIND=$KIND (sdk|desktop|wasm)" >&2
-    exit 1
-    ;;
-esac
-echo "PACKAGE_OUT=$OUT"

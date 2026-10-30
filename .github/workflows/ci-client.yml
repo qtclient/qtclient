@@ -35,7 +35,7 @@ jobs:
           SOURCE_COMMIT: ${{ github.sha }}
           PACKAGE_KIND: sdk
           PACKAGE_OUT: ${{ runner.temp }}/client-sdk
-        run: bash scripts/lifecycle/package/entrypoint.sh
+        run: bash scripts/lifecycle/package/sdk.sh
       - name: Upload client-sdk artifact
         uses: actions/upload-artifact@v4
         with:
@@ -54,7 +54,7 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
-        run: bash scripts/lifecycle/publish/entrypoint.sh
+        run: bash scripts/lifecycle/publish/sdk.sh
 
   client-desktop:
     name: client-${{ matrix.plat }}
@@ -171,14 +171,13 @@ jobs:
           QT_PREFIX: ${{ env.QT_PREFIX }}
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
-          PACKAGE_KIND: desktop
           PLATFORM: ${{ matrix.plat }}
           PACKAGE_OUT: ${{ runner.temp }}/client-${{ matrix.plat }}
         run: |
           set -euo pipefail
           bin_dir="build/${{ matrix.preset }}/bin"
           [[ -d "$bin_dir" ]] || bin_dir="build/${{ matrix.preset }}"
-          BIN_DIR="$bin_dir" bash scripts/lifecycle/package/entrypoint.sh
+          BIN_DIR="$bin_dir" bash scripts/lifecycle/package/desktop.sh
 
       - name: Pack demo Release (myAAC + CipSoft assetsurl)
         shell: bash
@@ -240,13 +239,12 @@ jobs:
         env:
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
-          PACKAGE_KIND: desktop
           PLATFORM: ${{ matrix.plat }}
           PACKAGE_OUT: ${{ runner.temp }}/client-${{ matrix.plat }}
           REGISTRY: ${{ env.REGISTRY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
-        run: bash scripts/lifecycle/publish/entrypoint.sh
+        run: bash scripts/lifecycle/publish/desktop.sh
 
   wasm:
     name: wasm
@@ -302,17 +300,16 @@ jobs:
           set -euo pipefail
           mkdir -p "$CCACHE_DIR"
           ccache -z || true
-          COMP=wasm bash scripts/lifecycle/build/entrypoint.sh
+          bash scripts/lifecycle/build/wasm.sh
           ccache -s || true
 
       - name: Pack client wasm
         env:
-          PACKAGE_KIND: wasm
           PACKAGE_OUT: ${{ runner.temp }}/client-wasm
           WASM_BUILD: ${{ github.workspace }}/build/tibia-wasm
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
-        run: bash scripts/lifecycle/package/entrypoint.sh
+        run: bash scripts/lifecycle/package/wasm.sh
 
       - name: Upload client-wasm artifact
         uses: actions/upload-artifact@v4
@@ -342,9 +339,8 @@ jobs:
         env:
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
-          PACKAGE_KIND: wasm
           PACKAGE_OUT: ${{ runner.temp }}/client-wasm
           REGISTRY: ${{ env.REGISTRY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
-        run: bash scripts/lifecycle/publish/entrypoint.sh
+        run: bash scripts/lifecycle/publish/wasm.sh
