@@ -289,7 +289,11 @@ jobs:
           QT_ROOT: ${{ runner.temp }}/Qt
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
-        run: bash tools/qt/ci-setup.sh --wasm --with-vcpkg --with-deps
+          QT_PULL_ONLY: '1'
+          QT_PULL_WAIT_SECS: '7200'
+          QT_PULL_INTERVAL_SECS: '90'
+        # Same as desktop: wait for Qt: build GHCR kits — never compile qtdeclarative here.
+        run: bash tools/qt/ci-setup.sh --wasm --pull-only --with-vcpkg --with-deps
 
       - name: Build stock wasm client
         env:
