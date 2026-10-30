@@ -2,6 +2,11 @@
 # Cargo-like: make [<component>] <lifecycle>
 #   components: client (default) | launcher | wasm
 #   lifecycles: build | run | check | test | clean | install | doc | package | publish
+#               (+ link when PRODUCT=1)
+#
+# Stock (default): CIP host only. Run passes --no-mods.
+# Product (PRODUCT=1 + QTCLIENT_PACK): stock install/run, then the configured pack.
+# Umbrella: make stock …  |  make qtclient … (sets PRODUCT=1).
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 
@@ -17,8 +22,12 @@ endif
 EXTRACT_PY := $(firstword $(wildcard $(TOOLS_DIR)/extract/cli.py $(HERE)/tools/extract/cli.py))
 SYNC_PY := $(firstword $(wildcard $(TOOLS_DIR)/tibia-sync/sync.py $(HERE)/tools/tibia-sync/sync.py))
 
+PRODUCT ?= 0
 APP_COMPONENTS := client launcher wasm
 APP_LIFECYCLES := build run check test clean install doc package publish
+ifeq ($(PRODUCT),1)
+  APP_LIFECYCLES += link
+endif
 APP_DEFAULT_COMPONENT := client
 
 .DEFAULT_GOAL := help
@@ -43,7 +52,18 @@ help:
 	@echo "  make <component> <lifecycle>   component: client|launcher|wasm (default client)"
 	@echo "  make <lifecycle>               same with default component"
 	@echo ""
-	@echo "  make client build     qtclient desktop tibia (DEV=1 → disk QML; STOCK_HOST=1 skips packs)"
+ifeq ($(PRODUCT),1)
+	@echo "  PRODUCT=1 mode (umbrella: make qtclient …)"
+	@echo "  QTCLIENT_PACK=$(QTCLIENT_PACK)"
+	@echo "  make client install   stock install, then pack MODULE → tip"
+	@echo "  make launcher install stock launcher install, then tip brand"
+	@echo "  make wasm install     stock wasm install, then SIDE_MODULE → tip"
+	@echo "  make package          pack MODULE only (independent of stock)"
+	@echo "  make client run       start packed client (QTCLIENT_MODS_DIR)"
+	@echo "  make link             optional symlink pack → client/mods/<id>"
+	@echo "  Stock-only smoke: umbrella make stock client run"
+else
+	@echo "  make client build     desktop tibia (DEV=1 → disk QML; STOCK_HOST=1 skips packs)"
 	@echo "  make client run       start stock client (--no-mods; ARGS=…)"
 	@echo "  make client check     --check-qml"
 	@echo "  make launcher build   CIP tip launcher (stock brand)"
@@ -51,14 +71,15 @@ help:
 	@echo "  make launcher run     start stock qtclient launcher (--no-mods; ARGS=…)"
 	@echo "  make demo-pack      stage demo Release (our package + CipSoft assetsurl + mods/default)"
 	@echo "  make demo-run       launcher with demo tip (Play → tip client + mods/default)"
-	@echo "  make wasm build       qtclient MAIN_MODULE (needs make qt WASM=1)"
+	@echo "  make wasm build       MAIN_MODULE (needs make qt WASM=1)"
 	@echo "  make wasm install     build + stage into dist/cdn for portal /play"
 	@echo "  make client install   build + point dist/cdn desktop slice at this binary"
 	@echo "  make package          PACKAGE_KIND=sdk|desktop|wasm (client-sdk ships cipgen)"
 	@echo "  make publish          ORAS push PACKAGE_OUT to ghcr.io/…/client-*"
-	@echo "  Product pack: make -C ../idleot-client client|wasm install (client then pack)"
+	@echo "  Product (umbrella): make qtclient … with QTCLIENT_PACK in .env"
 	@echo "  make clean            wipe client+launcher+wasm build trees"
 	@echo "  make client clean     wipe desktop client trees only"
+endif
 	@echo ""
 	@echo "  make qt               CIP Qt (WASM=1 + emsdk)"
 	@echo "  make sync / extract   CIP vendor + assets"
@@ -79,12 +100,19 @@ endif
 ifneq ($(_bare_clean),)
 .PHONY: clean
 clean:
+ifeq ($(PRODUCT),1)
+	@test -n "$(QTCLIENT_PACK)" || { echo "[qtclient] PRODUCT=1 needs QTCLIENT_PACK" >&2; exit 1; }
+	@bash "$(QTCLIENT_PACK)/scripts/lifecycle/clean/clean.sh"
+else
 	@bash "$(LIFEDIR)/clean/all.sh"
+endif
 else
 ifneq ($(_cargo_life),)
 .PHONY: $(_cargo_life)
 $(_cargo_life):
 	@$(MAKE) -f "$(HERE)/Makefile" _cargo COMP=$(_cargo_comp) LIFE=$(_cargo_life) \
+		PRODUCT="$(PRODUCT)" QTCLIENT_PACK="$(QTCLIENT_PACK)" \
+		$(if $(CLIENT_SDK),CLIENT_SDK="$(CLIENT_SDK)",) \
 		$(if $(DEV),DEV=$(DEV),) $(if $(DEBUG),DEBUG=$(DEBUG),) $(if $(ARGS),ARGS="$(ARGS)",)
 endif
 endif
@@ -92,6 +120,53 @@ endif
 # Map Make component → script name (client → desktop).
 _cargo:
 	@comp="$(COMP)"; life="$(LIFE)"; \
+	if [[ "$(PRODUCT)" == "1" ]]; then \
+	  pack="$(QTCLIENT_PACK)"; \
+	  if [[ -z "$$pack" || ! -f "$$pack/client/mod.json" ]]; then \
+	    echo "[qtclient] PRODUCT=1 needs QTCLIENT_PACK with client/mod.json" >&2; \
+	    exit 1; \
+	  fi; \
+	  case "$$life" in \
+	    build|install) \
+	      case "$$comp" in client) target=desktop ;; *) target="$$comp" ;; esac; \
+	      echo "[qtclient] stock $$comp $$life (PRODUCT pack on top)"; \
+	      STOCK_HOST=1 COMP="$$comp" DEV="$(DEV)" DEBUG="$(DEBUG)" \
+	        bash "$(LIFEDIR)/$$life/$$target.sh"; \
+	      COMP="$$comp" DEV="$(if $(DEV),$(DEV),1)" DEBUG="$(DEBUG)" \
+	        STOCK_ALREADY=1 QTCLIENT_ROOT="$(HERE)" \
+	        QTCLIENT_CLIENT_SDK="$(CLIENT_SDK)" \
+	        bash "$$pack/scripts/lifecycle/install/$$target.sh" ;; \
+	    package) \
+	      args=(); \
+	      [[ "$$comp" == "wasm" ]] && args+=(--wasm); \
+	      if [[ -n "$(CLIENT_SDK)" ]]; then \
+	        args+=(--client-sdk "$(CLIENT_SDK)"); \
+	      else \
+	        args+=(--qtclient "$(HERE)"); \
+	      fi; \
+	      bash "$$pack/scripts/lifecycle/package/module.sh" "$${args[@]}" ;; \
+	    run) \
+	      case "$$comp" in client) target=desktop ;; *) target="$$comp" ;; esac; \
+	      COMP="$$comp" ARGS="$(ARGS)" QTCLIENT_ROOT="$(HERE)" \
+	        bash "$$pack/scripts/lifecycle/run/$$target.sh" ;; \
+	    link) \
+	      mkdir -p "$(HERE)/client/mods" "$(HERE)/launcher/mods"; \
+	      id=$$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$$pack/client/mod.json"); \
+	      ln -sfn "$$pack/client" "$(HERE)/client/mods/$$id"; \
+	      if [[ -d "$$pack/launcher" ]]; then \
+	        ln -sfn "$$pack/launcher" "$(HERE)/launcher/mods/$$id"; \
+	      fi; \
+	      echo "[qtclient] linked client/mods/$$id -> $$pack/client" ;; \
+	    check) bash "$$pack/scripts/lifecycle/check/check.sh" ;; \
+	    clean) bash "$$pack/scripts/lifecycle/clean/clean.sh" ;; \
+	    doc) echo "[qtclient] PRODUCT pack: $$pack (mod.json + qml + overrides)" ;; \
+	    test|publish) \
+	      echo "[qtclient] PRODUCT=1: $$life is stock-only — use make stock $$comp $$life" >&2; \
+	      exit 1 ;; \
+	    *) echo "[qtclient] unknown PRODUCT $$comp $$life"; exit 1 ;; \
+	  esac; \
+	  exit 0; \
+	fi; \
 	case "$$life" in \
 	  package|publish) target="$(if $(PACKAGE_KIND),$(PACKAGE_KIND),sdk)" ;; \
 	  doc) target=help ;; \
@@ -150,7 +225,9 @@ fetch-assets:
 		$(ARGS)
 
 qt:
-	@bash "$(HERE)/tools/qt/install-qt.sh" $(if $(filter 1 true yes on,$(WASM)),--wasm,)
+	@bash "$(HERE)/tools/qt/install-qt.sh" \
+		$(if $(filter 1 true yes on,$(WASM)),--wasm,) \
+		$(if $(filter 1 true yes on,$(BUILD) $(QT_BUILD)),--build,)
 
 tibia-dump-smoke:
 	@bash "$(HERE)/scripts/ci/check-session-dump-smoke.sh"

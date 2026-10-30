@@ -3,7 +3,8 @@
 #
 #   tools/qt/ci-setup.sh [--wasm] [--pull-only] [--with-vcpkg] [--with-deps]
 #
-# Env: QT_ROOT, QT_CIP_SHA, PUBLISH, QT_PULL_*, GITHUB_TOKEN / GITHUB_ACTOR
+# Always pull-only for CIP Qt (never --build). Compiling Qt belongs in Qt: build.
+# Env: QT_ROOT, QT_CIP_SHA, QT_PULL_*, GITHUB_TOKEN / GITHUB_ACTOR
 # Writes GITHUB_ENV when set: QT_ROOT QT_CIP_SHA QT_CIP_SHORT QT_PREFIX [VCPKG_*]
 set -euo pipefail
 
@@ -15,18 +16,20 @@ cd "$OTC"
 source "$HERE/qt-version.sh"
 
 WASM=0
-PULL_ONLY=0
+# Consumer CI always waits/fails on miss — never falls through to a Qt compile.
+PULL_ONLY=1
 WITH_VCPKG=0
 WITH_DEPS=0
 [[ "${QT_PULL_ONLY:-0}" == "1" ]] && PULL_ONLY=1
 for arg in "$@"; do
   case "$arg" in
     --wasm) WASM=1 ;;
-    --pull-only) PULL_ONLY=1 ;;
+    --pull-only) PULL_ONLY=1 ;; # explicit; already the default
     --with-vcpkg) WITH_VCPKG=1 ;;
     --with-deps) WITH_DEPS=1 ;;
     -h|--help)
       echo "usage: $0 [--wasm] [--pull-only] [--with-vcpkg] [--with-deps]"
+      echo "  Always pulls CIP Qt (no source build). Use Soft Qt: build to compile."
       exit 0
       ;;
     *) echo "unknown: $arg" >&2; exit 2 ;;

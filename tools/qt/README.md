@@ -12,9 +12,13 @@ Warm prefixes are published by the public [qtclient](https://github.com/qtclient
 
 1. Use local `$QT_ROOT/cip-<sha>/<kit>` if already installed.
 2. Else pull via [oras](https://oras.land) (`QT_GHCR_IMAGE`, default above).
-3. Else `git submodule update --init --depth 1 third_party/qt5-cip`, configure, build, install.
+3. Else **fail** (no silent compile — that hid Soft Client:ci GHCR misses).
 
-`WASM=1` builds (or pulls) `wasm_multithread` after the host kit; emsdk pin is in
+Compile only with Soft **Qt: build**, or locally `make qt BUILD=1` /
+`install-qt.sh --build` (then `PUBLISH=1` to push). Soft Client:ci /
+`ci-setup.sh` always pull-only.
+
+`WASM=1` pulls `wasm_multithread` after the host kit; emsdk pin is in
 `qt-version.sh`. `ensure_emsdk` must not use a local named `EMSDK` (it would
 swallow `emsdk_env.sh`’s export and break `-platform wasm-emscripten`).
 
@@ -38,4 +42,5 @@ Do **not** commit Qt binaries into git — only GHCR / Actions cache.
 - After init, `install-qt.sh` applies a cone sparse-checkout (`QT_SPARSE_MODULES`)
   so skipped modules (e.g. `qtwebengine`) never sit in the worktree — otherwise
   IDE git status hits “too many active changes”.
-- Init sources only when compiling Qt locally: `make qt` does this on cache/GHCR miss.
+- Init sources only when compiling: `make qt BUILD=1` / Soft Qt: build.
+

@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# Install CipSoft-patched Qt from third_party/qt5-cip into $QT_ROOT.
+# Install CipSoft-patched Qt into $QT_ROOT.
 #
-#   tools/qt/install-qt.sh            host desktop kit
-#   tools/qt/install-qt.sh --wasm     + wasm_multithread kit + emsdk
+#   tools/qt/install-qt.sh              host desktop kit (pull only)
+#   tools/qt/install-qt.sh --wasm       + wasm_multithread kit + emsdk
+#   tools/qt/install-qt.sh --build      compile from third_party/qt5-cip (Qt: build CI)
 #
-# Resolve order per kit: local prefix → GHCR pull → (unless --pull-only) build.
-# Set PUBLISH=1 after a successful build to push the prefix to GHCR.
-# QT_PULL_ONLY=1 / --pull-only: never compile Qt; wait for GHCR then fail.
+# Default resolve order: local prefix → GHCR → GitHub Release → **fail**.
+# Never silently compile Qt — that hid Soft Client:ci GHCR/cache misses for hours.
+# Explicit --build (or QT_BUILD=1) is required to compile; PUBLISH=1 then pushes.
+# --pull-only / QT_PULL_ONLY=1: same as default, but wait up to QT_PULL_WAIT_SECS
+# for a concurrent Qt: build to publish (Soft Client:ci / release pack).
 #
 # Portable to macOS /bin/bash 3.2: no `local var=()`, no `local -a`, no
 # `read -a` — those parse/`set -u` differently and break after long builds.
@@ -19,7 +22,9 @@ source "$HERE/qt-version.sh"
 QT_ROOT="$(qt_unix_path "${QT_ROOT:-$HOME/Qt}")"
 WASM=0
 PULL_ONLY=0
+ALLOW_BUILD=0
 [[ "${QT_PULL_ONLY:-0}" == "1" ]] && PULL_ONLY=1
+[[ "${QT_BUILD:-0}" == "1" ]] && ALLOW_BUILD=1
 # Seconds to retry GHCR pulls when --pull-only (default 90m for concurrent Build CIP Qt).
 QT_PULL_WAIT_SECS="${QT_PULL_WAIT_SECS:-5400}"
 QT_PULL_INTERVAL_SECS="${QT_PULL_INTERVAL_SECS:-60}"
@@ -28,10 +33,12 @@ for arg in "$@"; do
   case "$arg" in
     --wasm) WASM=1 ;;
     --pull-only) PULL_ONLY=1 ;;
+    --build) ALLOW_BUILD=1 ;;
     -h|--help)
-      echo "Usage: $0 [--wasm] [--pull-only]"
-      echo "  Default: local → GHCR → build from third_party/qt5-cip (PUBLISH=1 pushes)."
-      echo "  --pull-only / QT_PULL_ONLY=1: never build; wait up to QT_PULL_WAIT_SECS for GHCR."
+      echo "Usage: $0 [--wasm] [--pull-only] [--build]"
+      echo "  Default: local → GHCR → fail (never compile)."
+      echo "  --pull-only / QT_PULL_ONLY=1: wait up to QT_PULL_WAIT_SECS for GHCR, then fail."
+      echo "  --build / QT_BUILD=1: compile from third_party/qt5-cip (PUBLISH=1 pushes)."
       exit 0
       ;;
     *)
@@ -180,19 +187,31 @@ windows_prefer_msvc() {
   HOST_CMAKE_EXTRA="-DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl"
 }
 
+fail_missing_kit() {
+  local kit_slug="$1"
+  echo "[qt] missing CIP Qt kit '$kit_slug' (local + GHCR + release mirror)" >&2
+  echo "[qt]   image ${QT_GHCR_IMAGE}:<sha12>-${kit_slug}" >&2
+  echo "[qt]   Client/pack CI must not compile Qt — run Soft 'Qt: build' (or: $0 --build)." >&2
+  return 1
+}
+
 build_host() {
   local kit_slug dir_name sha short prefix build
   HOST_PLATFORM_EXTRA=""
   HOST_CMAKE_EXTRA=""
   kit_slug="$(qt_kit_slug)"
   dir_name="$(qt_host_dir_name)"
-  if [[ "$PULL_ONLY" -eq 1 ]]; then
-    prefix="$(ensure_prefix_or_wait "$kit_slug" "$dir_name")" || exit 1
-    echo "[qt] desktop (pull-only): $prefix"
+  if [[ "$ALLOW_BUILD" -eq 0 ]]; then
+    if [[ "$PULL_ONLY" -eq 1 ]]; then
+      prefix="$(ensure_prefix_or_wait "$kit_slug" "$dir_name")" || exit 1
+    else
+      prefix="$(ensure_prefix "$kit_slug" "$dir_name")" || fail_missing_kit "$kit_slug" || exit 1
+    fi
+    echo "[qt] desktop (pull): $prefix"
     return 0
   fi
   if prefix="$(ensure_prefix "$kit_slug" "$dir_name")"; then
-    # Cache/local hit still publishes so idleot/release can pull from GHCR.
+    # Cache/local hit still publishes so Soft Client:ci can pull from GHCR.
     if [[ "${PUBLISH:-0}" == "1" ]]; then
       bash "$HERE/ghcr-qt.sh" push "$kit_slug"
     fi
@@ -261,10 +280,14 @@ ensure_emsdk() {
 build_wasm() {
   local kit_slug="wasm_multithread" dir_name="wasm_multithread"
   local sha short prefix host_prefix build
-  if [[ "$PULL_ONLY" -eq 1 ]]; then
-    prefix="$(ensure_prefix_or_wait "$kit_slug" "$dir_name")" || exit 1
+  if [[ "$ALLOW_BUILD" -eq 0 ]]; then
+    if [[ "$PULL_ONLY" -eq 1 ]]; then
+      prefix="$(ensure_prefix_or_wait "$kit_slug" "$dir_name")" || exit 1
+    else
+      prefix="$(ensure_prefix "$kit_slug" "$dir_name")" || fail_missing_kit "$kit_slug" || exit 1
+    fi
     ensure_emsdk
-    echo "[qt] wasm (pull-only): $prefix"
+    echo "[qt] wasm (pull): $prefix"
     return 0
   fi
   if prefix="$(ensure_prefix "$kit_slug" "$dir_name")"; then
@@ -274,6 +297,7 @@ build_wasm() {
     fi
     return 0
   fi
+  # Host desktop kit is required as -qt-host-path for wasm configure.
   build_host
   ensure_emsdk
   init_submodule
