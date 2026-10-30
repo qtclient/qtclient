@@ -94,16 +94,15 @@ function(cip_qml_module)
       set(src "${_override}")
     endif()
 
-    # Pack overrides live under client/mods/<pack>/… (outside client/tibia). Qt's
-    # qmlcachegen names cache dirs from the relative path → …/qmlcomponents_../mods/…
-    # which ninja cannot mkdir on Windows. Always stage into the build tree first.
-    if(_override OR TIBIA_QML_DISK)
-      set(stub "${embed_root}/${rel}")
-      get_filename_component(_stub_parent "${stub}" DIRECTORY)
-      file(MAKE_DIRECTORY "${_stub_parent}")
-      configure_file("${src}" "${stub}" COPYONLY)
-      set(src "${stub}")
-    endif()
+    # Sources live under client/upstream (or overrides/mods), outside
+    # client/tibia. Qt's qmlcachegen names cache dirs from the relative path
+    # → …/qmlcomponents_../upstream/… (or _../mods/…) which ninja cannot mkdir
+    # on Windows. Always stage into the build tree first.
+    set(stub "${embed_root}/${rel}")
+    get_filename_component(_stub_parent "${stub}" DIRECTORY)
+    file(MAKE_DIRECTORY "${_stub_parent}")
+    configure_file("${src}" "${stub}" COPYONLY)
+    set(src "${stub}")
 
     set(singleton OFF)
     if(rel MATCHES "\\.qml$")
