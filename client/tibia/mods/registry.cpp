@@ -11,6 +11,7 @@ namespace tibia::mods {
 namespace {
 
 std::vector<ModEntry> g_mods;
+std::vector<ModUrls> g_urls;
 std::vector<ModBootstrapFn> g_early;
 std::vector<std::string> g_packQmlImportPaths;
 std::vector<std::string> g_packOverrideRoots;
@@ -105,6 +106,24 @@ const ModIdentity* primaryIdentity()
             return &m.identity;
     }
     return g_mods.empty() ? nullptr : &g_mods.front().identity;
+}
+
+void registerModUrls(ModUrls urls)
+{
+    if (urls.empty())
+        return;
+    g_urls.push_back(std::move(urls));
+    std::stable_sort(g_urls.begin(), g_urls.end(),
+                     [](const ModUrls& a, const ModUrls& b) { return a.priority < b.priority; });
+}
+
+const ModUrls* primaryUrls()
+{
+    for (const ModUrls& u : g_urls) {
+        if (!u.empty())
+            return &u;
+    }
+    return nullptr;
 }
 
 void setEffectTintHook(const EffectTintFn fn) { g_effectTint = fn; }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Single Soft host / pack CI entrypoint for CIP Qt (+ optional deps/vcpkg).
+# Single qtclient / pack CI entrypoint for CIP Qt (+ optional deps/vcpkg).
 #
 #   tools/qt/ci-setup.sh [--wasm] [--pull-only] [--with-vcpkg] [--with-deps]
 #

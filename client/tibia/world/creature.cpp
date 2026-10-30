@@ -497,7 +497,7 @@ void Creature::setHealthPercent(const uint8_t healthPercent)
 
     callLuaField("onHealthPercentChange", healthPercent, oldHealthPercent);
 
-    // Soft-death clamps HP to 0 for vitals without a real death packet / death UI.
+    // qtclient-death clamps HP to 0 for vitals without a real death packet / death UI.
     if (isDead()) {
         if (isLocalPlayer() && static_self_cast<LocalPlayer>()->isSoftDead())
             return;

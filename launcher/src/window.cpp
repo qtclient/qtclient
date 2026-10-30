@@ -1,5 +1,6 @@
 #include "window.h"
 
+#include "brand.h"
 #include "textbrowserwithnetwork.h"
 
 #include <QCheckBox>
@@ -28,6 +29,7 @@
 #include <QPushButton>
 #include <QEventLoop>
 #include <QLoggingCategory>
+#include <QUrl>
 #include <QResizeEvent>
 #include <QScreen>
 #include <QSettings>
@@ -36,7 +38,6 @@
 #include <QTextEdit>
 #include <QTextOption>
 #include <QTimer>
-#include <QUrl>
 #include <QVBoxLayout>
 
 Q_LOGGING_CATEGORY(lcLauncher, "tibia.launcher")
@@ -97,7 +98,19 @@ QString vendoredStyle(const char* name)
     QFile file(QStringLiteral(":/styles/") + QLatin1String(name));
     if (!file.open(QIODevice::ReadOnly))
         return {};
-    return QString::fromUtf8(file.readAll());
+    QString css = QString::fromUtf8(file.readAll());
+    // qtclient qrc chrome; IdleOT tip pack can replace BackgroundImage / logos.
+    const LauncherBrand& brand = LauncherBrand::instance();
+    if (!brand.packRoot.isEmpty()) {
+        for (const char* img : {"BackgroundImage.jpg", "TibiaLogo_Classic.png", "CipSoftLogo.png"}) {
+            const QString disk = brand.chromePath(QLatin1String(img));
+            if (disk.isEmpty())
+                continue;
+            css.replace(QStringLiteral(":/images/launcher/") + QLatin1String(img),
+                        QUrl::fromLocalFile(disk).toString());
+        }
+    }
+    return css;
 }
 
 /// CIP footer left label: trailing hex of `15.33.c9e45e` → `c9e45e`.
@@ -114,6 +127,53 @@ QString shortVersionHash(const QString& version)
     return version;
 }
 
+bool readDevDesktop(QString* exeOut, QString* cwdOut, QString* revisionOut)
+{
+#ifndef __EMSCRIPTEN__
+    const QString path = qEnvironmentVariable("QTCLIENT_DEV_JSON");
+    if (path.isEmpty())
+        return false;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return false;
+    const QJsonObject desktop = QJsonDocument::fromJson(file.readAll()).object()
+                                    .value(QStringLiteral("desktop"))
+                                    .toObject();
+    const QString exe = desktop.value(QStringLiteral("exe")).toString();
+    if (exe.isEmpty() || !QFileInfo::exists(exe))
+        return false;
+    if (exeOut)
+        *exeOut = exe;
+    if (cwdOut)
+        *cwdOut = desktop.value(QStringLiteral("cwd")).toString();
+    if (revisionOut)
+        *revisionOut = desktop.value(QStringLiteral("revision")).toString();
+    return true;
+#else
+    Q_UNUSED(exeOut);
+    Q_UNUSED(cwdOut);
+    Q_UNUSED(revisionOut);
+    return false;
+#endif
+}
+
+/// Monorepo `make qtclient|idleot launcher run` — Play uses QTCLIENT_DEV_JSON, not tip AppData.
+bool devPlayAvailable()
+{
+    return readDevDesktop(nullptr, nullptr, nullptr);
+}
+
+bool cdnIsLoopback(const QString& cdn)
+{
+    const QUrl url(cdn);
+    if (!url.isValid())
+        return false;
+    const QString host = url.host();
+    return host == QLatin1String("127.0.0.1") || host == QLatin1String("localhost")
+        || host == QLatin1String("::1");
+}
+
+
 } // namespace
 
 LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
@@ -123,18 +183,19 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
     // TLauncherMainWindow: width 800, maximum height 600, background stylesheet
     // on the window. The package column, hint browser and footer are the same
     // widgets CIP builds; the browser build keeps this window.
-    setWindowTitle(QStringLiteral(TIBIA_PRODUCT_NAME));
+    setWindowTitle(LauncherBrand::instance().productName);
 #ifdef __EMSCRIPTEN__
     // Desktop stays CIP 800×600. Browser: fill the portal host (no fixed size —
-    // Qt WASM maps QScreen to #tibia-screen). Soft-stage scales CIP chrome to
+    // Qt WASM maps QScreen to #tibia-screen). soft-stage scales CIP chrome to
     // fit; do not force 640×480 — that dwarfs phone CSS widths and leaves a
     // postage-stamp launcher after the canvas is letterboxed.
     setMinimumSize(0, 0);
     if (QScreen* s = screen())
         resize(s->size());
 #else
-    setFixedWidth(800);
-    setMaximumHeight(600);
+    // CipSoft TLauncherMainWindow: fixed 800×600 chrome (browser soft-stage
+    // scales that same layout for mobile — see layoutSoftStage).
+    setFixedSize(800, 600);
 #endif
     auto* central = new QWidget(this);
     setCentralWidget(central);
@@ -240,17 +301,22 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
     m_buildLabel->setStyleSheet(vendoredStyle("label-11.qss"));
     m_buildLabel->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
 
-    const QPixmap markPixmap(QStringLiteral(":/images/launcher/CipSoftLogo.png"));
+    const LauncherBrand& brand = LauncherBrand::instance();
+    const QString markUrl = brand.chromeUrl(QStringLiteral("CipSoftLogo.png"));
+    const QPixmap markPixmap(brand.chromePath(QStringLiteral("CipSoftLogo.png")).isEmpty()
+                                 ? QStringLiteral(":/images/launcher/CipSoftLogo.png")
+                                 : brand.chromePath(QStringLiteral("CipSoftLogo.png")));
     m_mark = new QLabel;
     m_mark->setTextFormat(Qt::RichText);
     m_mark->setOpenExternalLinks(true);
     m_mark->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
     if (!markPixmap.isNull()) {
         m_mark->setFixedSize(markPixmap.size());
-        m_mark->setText(QStringLiteral(
-            "<a href=\"" TIBIA_PRODUCT_URL "\"><img src=\":/images/launcher/CipSoftLogo.png\"></a>"));
+        m_mark->setText(QStringLiteral("<a href=\"%1\"><img src=\"%2\"></a>")
+                            .arg(brand.productUrl, markUrl));
     } else {
-        m_mark->setText(QStringLiteral("<a href=\"" TIBIA_PRODUCT_URL "\">" TIBIA_PRODUCT_NAME "</a>"));
+        m_mark->setText(QStringLiteral("<a href=\"%1\">%2</a>")
+                            .arg(brand.productUrl, brand.productName));
     }
 
     auto* about = new QLabel(QStringLiteral(
@@ -260,8 +326,10 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
     about->setTextInteractionFlags(Qt::TextBrowserInteraction);
     about->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
     connect(about, &QLabel::linkActivated, this, [this] {
+        const LauncherBrand& b = LauncherBrand::instance();
         QMessageBox::about(this, QStringLiteral("About"),
-                           QStringLiteral(TIBIA_PRODUCT_NAME " launcher\n\nSource code, including modifications, at the " TIBIA_PRODUCT_NAME " repository."));
+                           b.productName + QStringLiteral(" launcher\n\nSource code, including modifications, at the ")
+                               + b.productName + QStringLiteral(" repository."));
     });
 
     auto* footer = new QHBoxLayout;
@@ -357,7 +425,18 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
     connect(m_action, &QPushButton::clicked, this, &LauncherWindow::onAction);
     connect(m_client, &PackageClient::progress, this, &LauncherWindow::onProgress);
     applyStyle();
-    setActionSkin(QStringLiteral("Blue"), QStringLiteral("Download"));
+    // CipSoft does not flash Download before metadata. DEV Play is known from
+    // QTCLIENT_DEV_JSON before tip stamps load — show Green Play immediately.
+    // Otherwise leave the action disabled until refresh() knows NotInstalled vs Play.
+    if (devPlayAvailable()) {
+        m_status->setText(LauncherBrand::instance().noMods ? QStringLiteral("Dev (qtclient)")
+                                                           : QStringLiteral("Dev (IdleOT)"));
+        setActionSkin(QStringLiteral("Green"), QStringLiteral("Play"));
+        m_action->setEnabled(true);
+    } else {
+        m_action->setEnabled(false);
+        m_action->setText({});
+    }
 }
 
 void LauncherWindow::acceptEula()
@@ -372,7 +451,10 @@ void LauncherWindow::paintBackground()
 #ifdef __EMSCRIPTEN__
     // Window border-image is unreliable on Qt WASM OpenGL; paint the CIP
     // background on the soft stage (800×600) and keep the host letterbox clear.
-    const QPixmap bg(QStringLiteral(":/images/launcher/BackgroundImage.jpg"));
+    const LauncherBrand& brand = LauncherBrand::instance();
+    const QString bgPath = brand.chromePath(QStringLiteral("BackgroundImage.jpg"));
+    const QPixmap bg(bgPath.isEmpty() ? QStringLiteral(":/images/launcher/BackgroundImage.jpg")
+                                      : bgPath);
     if (bg.isNull())
         return;
     if (m_softStage) {
@@ -512,11 +594,14 @@ void LauncherWindow::setLogoState(LogoState state)
     // Fixed logo box (see kLogoWidth/Height) — CIP Updating/Launching are taller
     // than Classic; resizing the pixmap box was jumping Play.
     m_logo->setFixedSize(kLogoWidth, kLogoHeight);
-    QString path = QStringLiteral(":/images/launcher/TibiaLogo_Classic.png");
+    const LauncherBrand& brand = LauncherBrand::instance();
+    QString file = QStringLiteral("TibiaLogo_Classic.png");
     if (state == LogoState::Updating)
-        path = QStringLiteral(":/images/launcher/TibiaLogo_UpdatingLauncher.png");
+        file = QStringLiteral("TibiaLogo_UpdatingLauncher.png");
     else if (state == LogoState::Launching)
-        path = QStringLiteral(":/images/launcher/TibiaLogo_LaunchingClient.png");
+        file = QStringLiteral("TibiaLogo_LaunchingClient.png");
+    const QString disk = brand.chromePath(file);
+    const QString path = disk.isEmpty() ? (QStringLiteral(":/images/launcher/") + file) : disk;
     const QPixmap pixmap(path);
     if (!pixmap.isNull()) {
         m_logo->setPixmap(pixmap.scaled(kLogoWidth, kLogoHeight, Qt::KeepAspectRatio,
@@ -525,7 +610,7 @@ void LauncherWindow::setLogoState(LogoState state)
         return;
     }
     if (state == LogoState::Classic)
-        m_logo->setText(QStringLiteral(TIBIA_PRODUCT_NAME));
+        m_logo->setText(brand.productName);
 }
 
 QString LauncherWindow::packageDir() const
@@ -534,7 +619,7 @@ QString LauncherWindow::packageDir() const
     // (regular → tip directoryname / TIBIA_CLIENT_PACKAGE_DIR).
     QString dirName = m_package.directoryname;
     if (dirName.isEmpty())
-        dirName = QString::fromUtf8(kClientPackageDir);
+        dirName = LauncherBrand::instance().clientPackageDir;
     return QDir(m_client->dataDir()).filePath(QStringLiteral("packages/") + dirName);
 }
 
@@ -561,13 +646,16 @@ QString LauncherWindow::localAssetsStamp() const
 
 bool LauncherWindow::thingsPacksStampPresent() const
 {
-    return QFileInfo::exists(QDir(packageDir()).filePath(QStringLiteral(".tibia-sprite-packs")));
+    const QDir tip(packageDir());
+    // Canonical stamp (portal + CIP-style); accept legacy IdleOT name once.
+    return QFileInfo::exists(tip.filePath(QStringLiteral(".tibia-sprite-packs")))
+        || QFileInfo::exists(tip.filePath(QStringLiteral(".idleot-sprite-packs")));
 }
 
 QString LauncherWindow::installStatusLabel() const
 {
     if (localVersion().isEmpty())
-        return QStringLiteral("Unknown");
+        return QStringLiteral("NotInstalled");
     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
         || localAssetsStamp() == m_remoteAssetsVersion;
     const bool versionOk = m_remoteVersion.isEmpty() || localVersion() == m_remoteVersion;
@@ -576,7 +664,11 @@ QString LauncherWindow::installStatusLabel() const
 #else
     const bool thingsOk = true;
 #endif
-    if (m_busy || !versionOk || m_hasGaps || !assetsOk || !thingsOk)
+    // CIP: PackageBeingInstalled / InstallationInProgress while busy; otherwise
+    // PartiallyInstalled until stamps + files match → InstalledAndUsable.
+    if (m_busy)
+        return QStringLiteral("InstallationInProgress");
+    if (!versionOk || m_hasGaps || !assetsOk || !thingsOk)
         return QStringLiteral("PartiallyInstalled");
     return QStringLiteral("InstalledAndUsable");
 }
@@ -651,6 +743,8 @@ void LauncherWindow::onProgress(qint64 bytes, qint64 total, int fileIndex, int f
     Q_UNUSED(fileCount);
 }
 
+
+
 void LauncherWindow::refresh()
 {
     const QString local = localVersion();
@@ -675,6 +769,7 @@ void LauncherWindow::refresh()
 #else
     const bool thingsStale = false;
 #endif
+    const bool devPlay = readDevDesktop(nullptr, nullptr, nullptr);
     const QString status = installStatusLabel();
     qCInfo(lcLauncher) << "install status" << status
                        << "local" << local
@@ -683,9 +778,21 @@ void LauncherWindow::refresh()
                        << "assetsStale" << assetsStale
                        << "thingsStale" << thingsStale
                        << "busy" << m_busy
+                       << "devPlay" << devPlay
                        << "assetsStamp" << localAssetsStamp()
                        << "remoteAssets" << m_remoteAssetsVersion
                        << "thingsStamp" << thingsPacksStampPresent();
+    if (devPlay) {
+        // Local monorepo: Play launches build/<preset>/bin/client (qtclient --no-mods
+        // or IdleOT pack). Tip Download/Update is skipped — use a tip-only
+        // launcher without QTCLIENT_DEV_JSON for CIP install rehearsal.
+        m_status->setText(LauncherBrand::instance().noMods
+                              ? QStringLiteral("Dev (qtclient)")
+                              : QStringLiteral("Dev (IdleOT)"));
+        setActionSkin(QStringLiteral("Green"), QStringLiteral("Play"));
+        m_action->setEnabled(true);
+        return;
+    }
     m_status->setText(status);
     if (local.isEmpty())
         setActionSkin(QStringLiteral("Blue"), QStringLiteral("Download"));
@@ -724,8 +831,24 @@ void LauncherWindow::considerSelfUpdate(const CipMetadata& metadata)
     Q_UNUSED(metadata);
     return;
 #else
+    // Local monorepo / CDN rehearsal must never replace this cmake-built binary
+    // with the product tip launcher (IdleOT.app). TIBIA_LAUNCHER_VERSION is a git
+    // short hash here, so it always differs from tip package.json.version and
+    // would otherwise download 80+ IdleOT.app files and startDetached that tip.
+    if (devPlayAvailable()) {
+        qInfo("launcher self-update skipped (QTCLIENT_DEV_JSON / Dev Play)");
+        return;
+    }
+    if (cdnIsLoopback(m_client->cdnBase())) {
+        qInfo("launcher self-update skipped (loopback CDN)");
+        return;
+    }
+    if (qEnvironmentVariableIntValue("QTCLIENT_DISABLE_SELF_UPDATE") == 1) {
+        qInfo("launcher self-update skipped (QTCLIENT_DISABLE_SELF_UPDATE=1)");
+        return;
+    }
     const QString local = QStringLiteral(TIBIA_LAUNCHER_VERSION);
-    if (local == QStringLiteral("dev"))
+    if (local == QStringLiteral("dev") || local == QStringLiteral("embedded"))
         return;
     const CipBuild* build = PackageClient::matchBuild(metadata.launcherBuilds, m_client->hostOs(), m_client->hostArch());
     if (!build)
@@ -1042,7 +1165,7 @@ void LauncherWindow::installIfNeededAsync(bool thenPlay)
             play();
         return;
     }
-    setBusy(true, QStringLiteral("UPDATING"));
+    setBusy(true, {});
     m_timer.start();
     if (packageOk) {
         qCInfo(lcLauncher) << "installIfNeededAsync → assets/things only";
@@ -1099,30 +1222,49 @@ void LauncherWindow::installIfNeeded(bool thenPlay)
             play();
         return;
     }
-    setBusy(true, QStringLiteral("UPDATING"));
+    setBusy(true, {});
     m_timer.start();
     QString error;
     CipPackageDoc doc = m_packageDoc;
     if (doc.files.isEmpty() || doc.version != m_remoteVersion)
         doc = m_client->fetchPackage(m_build.packageUrl, &error);
-    if (doc.version.isEmpty() || !m_client->installPackage(m_build.packageUrl, doc, packageDir(), &error)) {
+    if (doc.version.isEmpty()) {
+        setBusy(false, {});
+        m_status->setText(error.isEmpty() ? QStringLiteral("The installation of %1 failed.").arg(m_package.name) : error);
+        refresh();
+        return;
+    }
+
+    // One progress span across client package + assets so the bar does not
+    // snap back to 0% between phases (felt like two competing updates).
+    const QString tip = packageDir();
+    qint64 pkgBytes = m_client->pendingPackedBytes(doc.files, tip);
+    QVector<CipFile> assets;
+    qint64 assetBytes = 0;
+    QString assetsVersion;
+    if (!m_build.assetsUrl.isEmpty()) {
+        assetsVersion = m_client->fetchVersion(m_build.assetsVersionUrl, &error);
+        const QString have = readText(QDir(tip).filePath(QStringLiteral("assets.json.sha256")));
+        if (!assetsVersion.isEmpty() && assetsVersion != have) {
+            assets = m_client->fetchAssetFiles(m_build.assetsUrl, &error);
+            assetBytes = m_client->pendingPackedBytes(assets, tip);
+        }
+    }
+    const qint64 grandTotal = qMax(pkgBytes + assetBytes, qint64(1));
+
+    if (!m_client->installPackage(m_build.packageUrl, doc, tip, &error, 0, grandTotal)) {
         setBusy(false, {});
         m_status->setText(error.isEmpty() ? QStringLiteral("The installation of %1 failed.").arg(m_package.name) : error);
         refresh();
         return;
     }
     m_packageDoc = doc;
-    if (!m_build.assetsUrl.isEmpty()) {
-        const QString assetsVersion = m_client->fetchVersion(m_build.assetsVersionUrl, &error);
-        const QString have = readText(QDir(packageDir()).filePath(QStringLiteral("assets.json.sha256")));
-        if (!assetsVersion.isEmpty() && assetsVersion != have) {
-            const QVector<CipFile> assets = m_client->fetchAssetFiles(m_build.assetsUrl, &error);
-            if (!m_client->installAssets(m_build.assetsUrl, assets, assetsVersion, packageDir(), &error)) {
-                setBusy(false, {});
-                m_status->setText(error);
-                refresh();
-                return;
-            }
+    if (!assets.isEmpty()) {
+        if (!m_client->installAssets(m_build.assetsUrl, assets, assetsVersion, tip, &error, pkgBytes, grandTotal)) {
+            setBusy(false, {});
+            m_status->setText(error);
+            refresh();
+            return;
         }
     }
     m_remoteVersion = doc.version;
@@ -1137,6 +1279,14 @@ void LauncherWindow::installIfNeeded(bool thenPlay)
 
 void LauncherWindow::onAction()
 {
+#ifndef __EMSCRIPTEN__
+    // DEV Play must not fall through to tip Download/Update (constructor may
+    // still be waiting on metadata, or tip AppData may look NotInstalled).
+    if (devPlayAvailable()) {
+        play();
+        return;
+    }
+#endif
     const QString local = localVersion();
     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
         || localAssetsStamp() == m_remoteAssetsVersion;
@@ -1154,6 +1304,50 @@ void LauncherWindow::onAction()
 #else
     else
         installIfNeeded(false);
+#endif
+}
+
+bool LauncherWindow::tryPlayDevClient()
+{
+#ifdef __EMSCRIPTEN__
+    return false;
+#else
+    QString exe;
+    QString cwd;
+    QString revision;
+    if (!readDevDesktop(&exe, &cwd, &revision))
+        return false;
+
+    QStringList clientArgs = QProcess::splitCommand(qEnvironmentVariable("QTCLIENT_CLIENT_ARGS"));
+    const LauncherBrand& brand = LauncherBrand::instance();
+    if (brand.noMods) {
+        if (!clientArgs.contains(QStringLiteral("--no-mods")))
+            clientArgs.prepend(QStringLiteral("--no-mods"));
+        qInfo().noquote() << "Play → qtclient DEV client (--no-mods)" << exe;
+    } else if (brand.defaultMod) {
+        if (!clientArgs.contains(QStringLiteral("--default-mod")))
+            clientArgs.prepend(QStringLiteral("--default-mod"));
+        qInfo().noquote() << "Play → qtclient DEV client (--default-mod)" << exe;
+    } else {
+        const QString tipDir = QFileInfo(exe).absolutePath();
+        const QString idleot = QDir(tipDir).filePath(QStringLiteral("mods/idleot/mod.json"));
+        const QString envMods = qEnvironmentVariable("QTCLIENT_MODS_DIR");
+        const bool envPack = !envMods.isEmpty()
+            && (QFile::exists(QDir(envMods).filePath(QStringLiteral("mod.json")))
+                || QFile::exists(QDir(envMods).filePath(QStringLiteral("idleot/mod.json"))));
+        if (!QFileInfo::exists(idleot) && !envPack) {
+            m_status->setText(QStringLiteral("IdleOT pack missing — make idleot client install (or set QTCLIENT_MODS_DIR)"));
+            qWarning("Play: missing %s and QTCLIENT_MODS_DIR", qUtf8Printable(idleot));
+            setLogoState(LogoState::Classic);
+            refresh();
+            return true; // handled (do not fall through to tip package)
+        }
+        qInfo().noquote() << "Play → IdleOT DEV client" << exe;
+    }
+    if (cwd.isEmpty())
+        cwd = QFileInfo(exe).absolutePath();
+    spawn(exe, cwd, revision.isEmpty() ? m_remoteVersion : revision, clientArgs);
+    return true;
 #endif
 }
 
@@ -1179,10 +1373,14 @@ void LauncherWindow::play()
         m_inProcessPlay();
         return;
     }
-    // Full reload → portal takePlayHandoff → QTCLIENT_WASM_SKIP_LAUNCHER game boot.
+    // Browser stand-in for CIP QProcess::startDetached: remount into a game-only
+    // Module (portal takePlayHandoff → QTCLIENT_WASM_SKIP_LAUNCHER).
     {
         const QByteArray pkg = packageDir().toUtf8();
         const QByteArray data = m_client->dataDir().toUtf8();
+        const QString pkgName = m_package.name.isEmpty() ? QStringLiteral("Tibia") : m_package.name;
+        qInfo().noquote() << "Launching executable of Package " << pkgName << " : " << pkg
+                          << "(wasm remount)";
         EM_ASM({
             window.__qtclientPackageRoot = UTF8ToString($0);
             window.__qtclientDataDir = UTF8ToString($1);
@@ -1193,7 +1391,7 @@ void LauncherWindow::play()
             var go = function() {
                 try { sessionStorage.setItem("tibia.play", "1"); } catch (e) {}
                 try { sessionStorage.setItem("tibia.play.transition", "1"); } catch (e) {}
-                // Soft Widgets + ~70MB WASM still hold the heap. Drop canvas /
+                // qtclient Widgets + ~70MB WASM still hold the heap. Drop canvas /
                 // Module refs and yield so Safari can reclaim before the game
                 // Module compiles again — otherwise remount jetsams
                 // ("A problem repeatedly occurred").
@@ -1223,6 +1421,9 @@ void LauncherWindow::play()
         }, pkg.constData(), data.constData());
     }
 #else
+    // Local monorepo: qtclient/IdleOT build from dist/cdn/latest/dev.json (not tip AppData).
+    if (tryPlayDevClient())
+        return;
     const QString dir = packageDir();
     QString exe = readText(QDir(dir).filePath(QStringLiteral("package.json")));
     Q_UNUSED(exe);
@@ -1245,16 +1446,27 @@ void LauncherWindow::play()
         m_status->setText(QStringLiteral("Tibia cannot be started"));
         return;
     }
-    spawn(executable, dir, doc.version.isEmpty() ? m_remoteVersion : doc.version);
+    QStringList tipArgs = QProcess::splitCommand(qEnvironmentVariable("QTCLIENT_CLIENT_ARGS"));
+    const LauncherBrand& tipBrand = LauncherBrand::instance();
+    if (tipBrand.noMods) {
+        if (!tipArgs.contains(QStringLiteral("--no-mods")))
+            tipArgs.prepend(QStringLiteral("--no-mods"));
+    } else if (tipBrand.defaultMod) {
+        if (!tipArgs.contains(QStringLiteral("--default-mod")))
+            tipArgs.prepend(QStringLiteral("--default-mod"));
+    }
+    spawn(executable, dir, doc.version.isEmpty() ? m_remoteVersion : doc.version, tipArgs);
 #endif
 }
 
-void LauncherWindow::spawn(const QString& executable, const QString& workDir, const QString& revision)
+void LauncherWindow::spawn(const QString& executable, const QString& workDir, const QString& revision,
+                           const QStringList& clientArgs)
 {
 #ifdef __EMSCRIPTEN__
     Q_UNUSED(executable);
     Q_UNUSED(workDir);
     Q_UNUSED(revision);
+    Q_UNUSED(clientArgs);
 #else
     if (m_game)
         return;
@@ -1264,44 +1476,50 @@ void LauncherWindow::spawn(const QString& executable, const QString& workDir, co
     QFile::remove(showFile);
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    // Launcher → client contract uses TIBIA_* env vars.
+    // Launcher → client contract uses TIBIA_* / QTCLIENT_* env vars.
+    // Portal loginservice.php accepts latest/release.json.revision (errorCode 7 otherwise).
+    // Prefer that over tip package.json.version or DEV mtime stamps.
+    QString loginRevision = revision;
+    {
+        QEventLoop loop;
+        QString live;
+        m_client->getAsync(
+            QUrl(m_client->cdnBase() + QStringLiteral("/latest/release.json")),
+            [&](const QByteArray& body, const QString& err) {
+                if (err.isEmpty() && !body.isEmpty()) {
+                    live = QJsonDocument::fromJson(body)
+                               .object()
+                               .value(QStringLiteral("revision"))
+                               .toString()
+                               .trimmed();
+                }
+                loop.quit();
+            });
+        loop.exec();
+        if (!live.isEmpty())
+            loginRevision = live;
+    }
+    if (loginRevision != revision)
+        qInfo().noquote() << "Play → login revision" << loginRevision << "(spawn was" << revision << ")";
     env.insert(QStringLiteral("QTCLIENT_LAUNCHER"), QStringLiteral("1"));
-    env.insert(QStringLiteral("QTCLIENT_CLIENT_REVISION"), revision);
+    env.insert(QStringLiteral("QTCLIENT_CLIENT_REVISION"), loginRevision);
     env.insert(QStringLiteral("QTCLIENT_RESTART_FILE"), marker);
     env.insert(QStringLiteral("QTCLIENT_SHOW_FILE"), showFile);
     env.insert(QStringLiteral("QTCLIENT_LAUNCHER_BIN"), QCoreApplication::applicationFilePath());
+    // Tip CDN for assets; login URLs come from the client's mod.json `urls`
+    // (mods/myaac or mods/idleot) — do not inject OTC_LOGIN_* here.
     env.insert(QStringLiteral("QTCLIENT_ASSET_BASE"), m_client->cdnBase());
-    const QUrl portal(qEnvironmentVariable("QTCLIENT_PORTAL_URL"));
-    if (portal.isValid()) {
-        env.insert(QStringLiteral("OTC_LOGIN_SCHEME"), portal.scheme());
-        env.insert(QStringLiteral("OTC_LOGIN_HOST"), portal.host());
-        env.insert(QStringLiteral("OTC_LOGIN_PORT"), portal.port() > 0 ? QString::number(portal.port()) : QString());
-    }
 
     auto* process = new QProcess(this);
     m_game = process;
-#if defined(Q_OS_MACOS)
-    // Launch the .app via Launch Services so Dock/activation and frameworks resolve
-    // like CIP. open -W keeps QProcess::finished tied to the game lifetime.
-    QString appBundle = executable;
-    const int appIdx = executable.indexOf(QStringLiteral(".app/"));
-    if (appIdx >= 0)
-        appBundle = executable.left(appIdx + 4);
-    QStringList args;
-    args << QStringLiteral("-n") << QStringLiteral("-W");
-    for (const QString& key : env.keys()) {
-        if (key.startsWith(QLatin1String("TIBIA_")) || key.startsWith(QLatin1String("OTC_LOGIN_")))
-            args << QStringLiteral("--env") << (key + QLatin1Char('=') + env.value(key));
-    }
-    args << QStringLiteral("-a") << appBundle;
-    process->setProgram(QStringLiteral("/usr/bin/open"));
-    process->setArguments(args);
-    Q_UNUSED(workDir);
-#else
+    // CipSoft Play: QProcess on Contents/MacOS/<executable> (not `open -a`).
+    // Launch Services ignores workDir (cwd → "/") and breaks local DEV builds
+    // that resolve data/setup.otml relative to apps/qtclient.
     process->setProgram(executable);
+    process->setArguments(clientArgs);
     process->setWorkingDirectory(workDir);
     process->setProcessEnvironment(env);
-#endif
+    process->setProcessChannelMode(QProcess::ForwardedChannels);
     connect(process, &QProcess::started, this, [this] { hide(); });
     connect(process, &QProcess::finished, this, [this, marker](int code, QProcess::ExitStatus status) {
         const bool restart = QFile::remove(marker);

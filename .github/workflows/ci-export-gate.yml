@@ -1,4 +1,4 @@
-name: ci-export-gate
+name: 'CI: export-gate'
 
 on:
   pull_request:
@@ -28,4 +28,5 @@ jobs:
           ./scripts/export-public-client.sh "$RUNNER_TEMP/qtclient-public"
           test -f "$RUNNER_TEMP/qtclient-public/cmake/QtClientMod.cmake"
           test -d "$RUNNER_TEMP/qtclient-public/client/mods/_sample"
+          test -f "$RUNNER_TEMP/qtclient-public/client/mods/default/mod.json"
           test ! -d "$RUNNER_TEMP/qtclient-public/client/mods/idleot"

@@ -66,38 +66,31 @@ def write_dev(doc: dict) -> None:
 
 
 def find_desktop_binary() -> Path | None:
-    """Soft Play binary `client` (same order as deploy/find-client-bin.sh)."""
-    build = OTC / "build"
-    if not build.is_dir():
+    """qtclient Play binary at build/<preset>/bin/… (see deploy/desktop-paths.sh)."""
+    import os
+    import platform as py_platform
+
+    system = py_platform.system()
+    if system == "Darwin":
+        os_name = "macos"
+    elif system == "Linux":
+        os_name = "linux"
+    else:
         return None
-    presets = (
-        "macos-dev",
-        "linux-dev",
-        "macos-release",
-        "macos-debug",
-        "linux-release",
-        "linux-debug",
-        "windows-release",
-    )
-    # QtClient.app = branded package; client.app = cmake OUTPUT_NAME client.
-    mac_bundles = (("QtClient.app", "client"), ("client.app", "client"))
-    for preset in presets:
-        root = build / preset
-        if not root.is_dir():
-            continue
-        for bundle, exe in mac_bundles:
-            for path in root.rglob(bundle):
-                if path.is_dir():
-                    candidate = path / "Contents" / "MacOS" / exe
-                    if candidate.is_file():
-                        return candidate
-        for path in root.rglob("client.exe"):
-            if path.is_file():
-                return path
-        for candidate in (root / "src" / "tibia" / "client", root / "bin" / "client"):
-            if candidate.is_file():
-                return candidate
-    return None
+    base = "release"
+    dev = os.environ.get("DEV", "1")
+    if dev.lower() not in ("0", "false", "no", "off"):
+        base = "dev"
+    debug = os.environ.get("DEBUG", "")
+    if debug.lower() in ("1", "true", "yes", "on"):
+        base = "debug"
+    preset = os.environ.get("TIBIA_PRESET", f"{os_name}-{base}")
+    bin_dir = OTC / "build" / preset / "bin"
+    if system == "Darwin":
+        candidate = bin_dir / "client.app" / "Contents" / "MacOS" / "client"
+    else:
+        candidate = bin_dir / "client"
+    return candidate if candidate.is_file() else None
 
 
 def place(src: Path, dest: Path) -> None:
@@ -121,22 +114,27 @@ def desktop() -> int:
     binary = find_desktop_binary()
     if binary is None:
         return fail("no desktop client binary — run make client-build")
+    # AAC /api/login gates on latest/release.json revision (errorCode 7). Never
+    # stamp mtime here — that made every DEV Play look "out of date".
+    try:
+        release_rev = str(json.loads(RELEASE.read_text()).get("revision") or "").strip()
+    except (OSError, ValueError):
+        release_rev = ""
     doc = load_dev()
     doc["desktop"] = {
         "exe": str(binary),
         "cwd": str(OTC),
-        "revision": str(binary.stat().st_mtime_ns),
+        "revision": release_rev or "dev",
     }
     write_dev(doc)
-    print(f"[dev-cdn] desktop -> {binary}")
+    print(f"[dev-cdn] desktop -> {binary} revision={doc['desktop']['revision']}")
     return 0
 
 
 def _wasm_src_dir() -> Path | None:
     root = Path(os.environ.get("TIBIA_WASM_DIR", OTC / "build" / "tibia-wasm"))
-    for candidate in (root, root / "src" / "tibia"):
-        if (candidate / "tibia.wasm").is_file():
-            return candidate
+    if (root / "tibia.wasm").is_file():
+        return root
     return None
 
 

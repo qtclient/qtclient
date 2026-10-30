@@ -347,6 +347,11 @@ QString resolveCipResourcesDir()
 
 } // namespace
 
+QString cipResourcesDir()
+{
+    return resolveCipResourcesDir();
+}
+
 std::string assetsRoot(const int /*version*/)
 {
     const QString resources = resolveCipResourcesDir();

@@ -1,4 +1,4 @@
-name: Reusable Fast Checks
+name: 'CI: reusable-checks'
 
 on:
   workflow_call:

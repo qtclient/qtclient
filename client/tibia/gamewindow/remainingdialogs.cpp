@@ -842,7 +842,7 @@ TOutfitMemorialDialogController* TOutfitMemorialDialogController::instance()
 void TOutfitMemorialDialogController::showMemorial(const QString& title)
 {
     // Soft body: CIP lists/costs until GameserverMessageOutfitMemorial is fully parsed.
-    // Surface the Soft title as the golden base list so Soft QML is not empty.
+    // Surface the CipSoft title as the golden base list so Soft QML is not empty.
     m_baseGoldenOutfitOwners.clear();
     if (!title.isEmpty())
         m_baseGoldenOutfitOwners.append(title);

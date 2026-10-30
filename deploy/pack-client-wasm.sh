@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stage stock MAIN_MODULE wasm tip (no product pack) for GHCR / Release assemble.
-# Usage: pack-host-wasm.sh <build-tibia-wasm-dir> <dest-dir>
+# Usage: pack-client-wasm.sh <build-tibia-wasm-dir> <dest-dir>
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -22,4 +22,4 @@ cat >"$DEST/host.json" <<EOF
   "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF
-echo "[pack-host-wasm] hostBuildId=${HOST_ID} → ${DEST}"
+echo "[pack-client-wasm] hostBuildId=${HOST_ID} → ${DEST}"

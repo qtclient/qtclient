@@ -16,7 +16,7 @@ make client-build && make client-start
 Windows `%LOCALAPPDATA%\Tibia\…`, Linux XDG). Override with `TIBIA=…` when
 needed. New CIP `client_sha256` still requires `MSGMAP=…` for protocol regen.
 
-Binary users: download a release tarball, run `./launcher` with a hybrid tip or `./qtclient-fetch-assets`, then
+Binary users: download a release tarball, run `./launcher` with a demo tip or `./qtclient-fetch-assets`, then
 `./client` — see the root README.
 
 ## Toolchain
@@ -24,7 +24,7 @@ Binary users: download a release tarball, run `./launcher` with a hybrid tip or 
 **Prerequisites:** `VCPKG_ROOT`, CMake, Ninja, and Qt from `make qt` (add
 `WASM=1` for the browser OS). That builds CipSoft’s public
 [Qt5](https://github.com/CipSoft-Tibia/Qt5) tree (`third_party/qt5-cip`) or
-pulls a warm prefix from `ghcr.io/qtclient/qt-cip` / `ghcr.io/qtclient/qt-cip`
+pulls a warm prefix from `ghcr.io/qtclient/qt`
 (needs [oras](https://oras.land) for pulls). First local build without an
 artifact compiles Qt (large/slow).
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Pack the qtclient host SDK for out-of-tree MODULE/SIDE_MODULE builds.
-# Usage: pack-host-sdk.sh <dest-dir>
+# Pack the qtclient SDK for out-of-tree MODULE/SIDE_MODULE builds.
+# Usage: pack-client-sdk.sh <dest-dir>
 # Env: QTCLIENT_HOST_BUILD_ID (full SHA), SOURCE_COMMIT, GITHUB_SHA
 set -euo pipefail
 
@@ -31,7 +31,7 @@ cp -a "$OTC/cmake/GeneratePackQmldir.cmake" "$DEST/cmake/"
 cp -a "$OTC/cmake/QtClientConfig.cmake.in" "$DEST/cmake/" 2>/dev/null || true
 
 cat >"$DEST/cmake/QtClientConfig.cmake" <<EOF
-# qtclient host-sdk (hostBuildId=${HOST_ID})
+# qtclient client-sdk (hostBuildId=${HOST_ID})
 set(QTCLIENT_ROOT "\${CMAKE_CURRENT_LIST_DIR}/..")
 set(QTCLIENT_HOST_BUILD_ID "${HOST_ID}")
 set(TIBIA_ROOT "\${QTCLIENT_ROOT}" CACHE PATH "qtclient SDK root" FORCE)
@@ -53,4 +53,4 @@ cat >"$DEST/host-sdk.json" <<EOF
 }
 EOF
 
-echo "[pack-host-sdk] hostBuildId=${HOST_ID} → ${DEST}"
+echo "[pack-client-sdk] hostBuildId=${HOST_ID} → ${DEST}"

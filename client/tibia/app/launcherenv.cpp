@@ -1,5 +1,7 @@
 #include "launcherenv.h"
 
+#include "mods/registry.h"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QEventLoop>
@@ -15,6 +17,7 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTimer>
+#include <QUrl>
 
 namespace tibia::app {
 
@@ -178,49 +181,158 @@ void LauncherEnv::showLauncher()
 #endif
 }
 
+namespace {
+
+QString ensureLeadingSlash(QString path)
+{
+    if (!path.startsWith(u'/'))
+        path.prepend(u'/');
+    return path;
+}
+
+QUrl withPath(const QUrl& base, const QString& path)
+{
+    QUrl url = base;
+    url.setPath(path);
+    url.setQuery(QString());
+    url.setFragment(QString());
+    return url;
+}
+
+QString fromStd(const std::string& s)
+{
+    return QString::fromStdString(s);
+}
+
+} // namespace
+
 QUrl LauncherEnv::loginUrl() const
 {
-    QUrl url = loginBase;
-    url.setPath(loginPath);
-    return url;
+    return withPath(loginBase, loginPath);
+}
+
+QUrl LauncherEnv::clientServicesUrl() const
+{
+    return withPath(loginBase, clientServicesPath);
+}
+
+QUrl LauncherEnv::createAccountUrl() const
+{
+    return withPath(loginBase, createAccountPath);
 }
 
 LauncherEnv LauncherEnv::load(const QString& workDir)
 {
     const auto release = readReleaseEnv(workDir);
-    const auto env = [&release](const char* name, const QString& fallback = {}) {
+    const tibia::mods::ModUrls* modUrls = tibia::mods::primaryUrls();
+
+    // Precedence: process env > mod.json urls > release_env.lua > real CipSoft.
+    const auto pick = [&](const char* name, const QString& modVal, const QString& cipFallback) {
         QString v = qEnvironmentVariable(name);
-        if (v.isEmpty())
-            v = release.value(QString::fromLatin1(name));
-        return v.isEmpty() ? fallback : v;
+        if (!v.isEmpty())
+            return v;
+        if (!modVal.isEmpty())
+            return modVal;
+        v = release.value(QString::fromLatin1(name));
+        return v.isEmpty() ? cipFallback : v;
     };
 
     LauncherEnv e;
-    // The launcher passes the installed revision, which the portal checks against the live release.
     e.revision = qEnvironmentVariable("QTCLIENT_CLIENT_REVISION", release.value(QStringLiteral("QTCLIENT_REVISION")));
     e.fromLauncher = !qEnvironmentVariableIsEmpty("QTCLIENT_LAUNCHER");
 
-    const QString scheme = env("OTC_LOGIN_SCHEME", QStringLiteral("http"));
-    const QString host = env("OTC_LOGIN_HOST", QStringLiteral("127.0.0.1"));
-    bool portOk = false;
-    int port = env("OTC_LOGIN_PORT").toInt(&portOk);
-    if (!portOk)
-        port = 5173;
+    const QString modLoginBase = modUrls ? fromStd(modUrls->loginBase) : QString();
+    QString scheme = qEnvironmentVariable("OTC_LOGIN_SCHEME");
+    QString host = qEnvironmentVariable("OTC_LOGIN_HOST");
+    QString portStr = qEnvironmentVariable("OTC_LOGIN_PORT");
+    if (scheme.isEmpty() && host.isEmpty() && !modLoginBase.isEmpty()) {
+        const QUrl base(modLoginBase, QUrl::TolerantMode);
+        if (base.isValid() && !base.host().isEmpty()) {
+            scheme = base.scheme().isEmpty() ? QStringLiteral("https") : base.scheme();
+            host = base.host();
+            if (base.port() > 0)
+                portStr = QString::number(base.port());
+        }
+    }
+    if (scheme.isEmpty())
+        scheme = release.value(QStringLiteral("OTC_LOGIN_SCHEME"), QStringLiteral("https"));
+    if (host.isEmpty())
+        host = release.value(QStringLiteral("OTC_LOGIN_HOST"), QStringLiteral("www.tibia.com"));
+    if (portStr.isEmpty())
+        portStr = release.value(QStringLiteral("OTC_LOGIN_PORT"));
+
     e.loginBase.setScheme(scheme);
     e.loginBase.setHost(host);
-    e.loginBase.setPort(port);
+    bool portOk = false;
+    const int port = portStr.toInt(&portOk);
+    if (portOk)
+        e.loginBase.setPort(port);
 
-    e.loginPath = env("OTC_LOGIN_PATH", QStringLiteral("/api/login"));
-    if (!e.loginPath.startsWith(u'/'))
-        e.loginPath.prepend(u'/');
+    e.loginPath = ensureLeadingSlash(pick(
+        "OTC_LOGIN_PATH",
+        modUrls ? fromStd(modUrls->loginPath) : QString(),
+        QStringLiteral("/clientservices/loginservice.php")));
+    e.clientServicesPath = ensureLeadingSlash(pick(
+        "OTC_CLIENTSERVICES_PATH",
+        modUrls ? fromStd(modUrls->clientServicesPath) : QString(),
+        QStringLiteral("/clientservices/clientservices.php")));
+    e.createAccountPath = ensureLeadingSlash(pick(
+        "OTC_CREATE_ACCOUNT_PATH",
+        modUrls ? fromStd(modUrls->createAccountPath) : QString(),
+        QStringLiteral("/clientservices/accountcreationclientservices.php")));
 
-    QString assetBase = env("QTCLIENT_ASSET_BASE");
+    QString assetBase = pick(
+        "QTCLIENT_ASSET_BASE",
+        modUrls ? fromStd(modUrls->assetBase) : QString(),
+        QString());
     if (assetBase.isEmpty())
-        assetBase = e.loginBase.toString() + QStringLiteral("/cdn");
+        assetBase = release.value(QStringLiteral("TIBIA_ASSET_BASE"));
+    if (assetBase.isEmpty())
+        assetBase = QStringLiteral("https://static.tibia.com");
     while (assetBase.endsWith(u'/'))
         assetBase.chop(1);
     e.assetBase = QUrl(assetBase);
+
+    QString payments = pick(
+        "QTCLIENT_PAYMENTS_URL",
+        modUrls ? fromStd(modUrls->paymentsBase) : QString(),
+        QString());
+    if (payments.isEmpty())
+        payments = qEnvironmentVariable("OTC_PAYMENTS_BASE");
+    if (payments.isEmpty())
+        payments = release.value(QStringLiteral("OTC_PAYMENTS_BASE"));
+    while (payments.endsWith(u'/'))
+        payments.chop(1);
+    if (!payments.isEmpty())
+        e.paymentsBase = QUrl(payments);
+
+    static const char* const kUrlKeys[] = {
+        "OTC_URL_TIBIA_PAGE",       "OTC_URL_CIPSOFT",
+        "OTC_URL_MANUAL",           "OTC_URL_FAQ",
+        "OTC_URL_GET_PREMIUM",      "OTC_URL_PREMIUM_FEATURES",
+        "OTC_URL_GET_COINS",        "OTC_URL_CREATE_ACCOUNT",
+        "OTC_URL_ACCESS_ACCOUNT",   "OTC_URL_LOST_ACCOUNT",
+        "OTC_URL_SURVEY",           "OTC_URL_NEWS_ARCHIVE",
+        "OTC_URL_TWITCH",           "OTC_URL_YOUTUBE",
+    };
+    for (const char* key : kUrlKeys) {
+        QString v = qEnvironmentVariable(key);
+        if (v.isEmpty() && modUrls) {
+            const auto it = modUrls->pages.find(key);
+            if (it != modUrls->pages.end())
+                v = fromStd(it->second);
+        }
+        if (v.isEmpty())
+            v = release.value(QString::fromLatin1(key));
+        if (!v.isEmpty())
+            e.urlOverrides.insert(QString::fromLatin1(key), v);
+    }
     return e;
+}
+
+QString LauncherEnv::urlOverride(const char* envKey) const
+{
+    return urlOverrides.value(QString::fromLatin1(envKey));
 }
 
 }

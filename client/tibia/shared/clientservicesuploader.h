@@ -12,9 +12,9 @@ class QObject;
 
 namespace tibia::shared {
 
-/// POSTs `{ "type": <serviceType>, ... }` to the portal login/clientservices
-/// multiplex (`LauncherEnv::loginUrl` / `PortalUrls::clientServicesUrl`).
-/// Invokes `done(ok, doc)` on the GUI thread; `ok` is false on transport/parse failure.
+/// POSTs `{ "type": <serviceType>, ... }` to CIP clientservices.php
+/// (`LauncherEnv::clientServicesUrl`). Invokes `done(ok, doc)` on the GUI
+/// thread; `ok` is false on transport/parse failure.
 void postClientService(QNetworkAccessManager* network,
                        QObject* context,
                        const QUrl& url,

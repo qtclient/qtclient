@@ -24,22 +24,36 @@ APP_DEFAULT_COMPONENT := client
 
 .PHONY: help setup sync tibia-sync extract fetch-assets qt \
 	publish-assets cdn local-cdn tibia-dump-smoke tibia-android tibia-ios \
+	demo-pack demo-run \
 	$(APP_COMPONENTS) $(APP_LIFECYCLES) _cargo
+
+# Host platform for demo pack (override: make demo-pack DEMO_PLATFORM=linux-x64).
+ifeq ($(shell uname -s),Darwin)
+  DEMO_PLATFORM ?= macos-arm64
+else ifeq ($(OS),Windows_NT)
+  DEMO_PLATFORM ?= windows-x64
+else
+  DEMO_PLATFORM ?= linux-x64
+endif
+DEMO_OUT ?= $(abspath $(HERE)/../../dist/demo)
 
 help:
 	@echo "qtclient — cargo-like CLI"
 	@echo "  make <component> <lifecycle>   component: client|launcher|wasm (default client)"
 	@echo "  make <lifecycle>               same with default component"
 	@echo ""
-	@echo "  make client build     Soft desktop tibia (DEV=1 → disk QML; STOCK_HOST=1 skips packs)"
-	@echo "  make client run       start client (ARGS=…)"
+	@echo "  make client build     qtclient desktop tibia (DEV=1 → disk QML; STOCK_HOST=1 skips packs)"
+	@echo "  make client run       start stock client (--no-mods; ARGS=…)"
 	@echo "  make client check     --check-qml"
-	@echo "  make launcher build   CIP tip launcher"
-	@echo "  make launcher run     start launcher"
-	@echo "  make wasm build       Soft MAIN_MODULE (needs make qt WASM=1)"
+	@echo "  make launcher build   CIP tip launcher (stock brand)"
+	@echo "  make launcher install build the stock launcher"
+	@echo "  make launcher run     start stock qtclient launcher (--no-mods; ARGS=…)"
+	@echo "  make demo-pack      stage demo Release (our package + CipSoft assetsurl + mods/default)"
+	@echo "  make demo-run       launcher with demo tip (Play → tip client + mods/default)"
+	@echo "  make wasm build       qtclient MAIN_MODULE (needs make qt WASM=1)"
 	@echo "  make wasm install     build + stage into dist/cdn for portal /play"
 	@echo "  make client install   build + point dist/cdn desktop slice at this binary"
-	@echo "  Product pack: make -C ../idleot-client client|wasm install (host then pack)"
+	@echo "  Product pack: make -C ../idleot-client client|wasm install (client then pack)"
 	@echo "  make clean            wipe client+launcher+wasm build trees"
 	@echo "  make client clean     wipe desktop client trees only"
 	@echo ""
@@ -86,19 +100,19 @@ _cargo:
 	    $(MAKE) -f "$(HERE)/Makefile" _cargo COMP=client LIFE=build \
 	      $(if $(DEV),DEV=$(DEV),) $(if $(DEBUG),DEBUG=$(DEBUG),); \
 	    python3 "$(HERE)/tools/publish/dev_cdn.py" --desktop ;; \
-	  client-run) bash "$(HERE)/deploy/start-tibia.sh" $(ARGS) ;; \
+	  client-run) bash "$(HERE)/deploy/start-tibia.sh" --no-mods $(ARGS) ;; \
 	  client-check) bash "$(HERE)/deploy/start-tibia.sh" --check-qml ;; \
 	  client-test) bash "$(HERE)/scripts/ci/check-session-dump-smoke.sh" ;; \
 	  client-clean) rm -rf "$(HERE)/build"/*-dev "$(HERE)/build"/macos "$(HERE)/build"/linux "$(HERE)/build"/windows 2>/dev/null; echo "[qtclient] cleaned client build trees" ;; \
 	  client-doc) echo "docs: $(HERE)/docs/mods.md $(HERE)/README.md" ;; \
-	  launcher-build) bash "$(HERE)/deploy/build-tibia.sh" --launcher ;; \
-	  launcher-run) \
-	    bin=$$(ls -1 "$(HERE)"/build/*/launcher/launcher "$(HERE)"/build/*/launcher/IdleOT 2>/dev/null | head -1); \
-	    if [[ -z "$$bin" ]]; then echo "[qtclient] launcher binary missing — make launcher build"; exit 1; fi; \
-	    exec "$$bin" $(ARGS) ;; \
+	  launcher-build|launcher-install) \
+	    bash "$(HERE)/deploy/build-tibia.sh" --launcher \
+	      $(if $(filter 1 true yes on,$(DEV)),--dev,) \
+	      $(if $(filter 1 true yes on,$(DEBUG)),--debug,) ;; \
+	  launcher-run) bash "$(HERE)/deploy/start-launcher.sh" $(ARGS) ;; \
 	  launcher-check) echo "[qtclient] launcher check: make launcher build" ;; \
 	  launcher-clean) rm -rf "$(HERE)/build"/*/launcher 2>/dev/null; echo "[qtclient] cleaned launcher" ;; \
-	  launcher-install|launcher-doc|launcher-test) echo "[qtclient] $$comp $$life: n/a" ;; \
+	  launcher-doc|launcher-test) echo "[qtclient] $$comp $$life: n/a" ;; \
 	  wasm-build) \
 	    test -f "$${VCPKG_ROOT:-$$HOME/vcpkg}/scripts/buildsystems/vcpkg.cmake" || { echo "[qtclient] need VCPKG_ROOT"; exit 1; }; \
 	    bash "$(HERE)/deploy/build-tibia.sh" --wasm $(if $(filter 1 true yes on,$(DEBUG) $(DEV)),--debug,) ;; \
@@ -112,6 +126,21 @@ _cargo:
 	  wasm-doc|wasm-test) echo "[qtclient] $$comp $$life: n/a" ;; \
 	  *) echo "[qtclient] unknown $$comp $$life — try: make help"; exit 1 ;; \
 	esac
+
+demo-pack:
+	@comp_bin=$$(bash -c 'source "$(HERE)/deploy/desktop-paths.sh"; qtclient_desktop_paths "$(HERE)"; dirname "$$QTCLIENT_CLIENT_BIN"'); \
+	  if [[ ! -d "$$comp_bin" ]]; then \
+	    echo "[demo-pack] missing client build — make client build && make launcher build" >&2; \
+	    exit 1; \
+	  fi; \
+	  bash "$(HERE)/deploy/pack-demo-release.sh" \
+	    --platform "$(DEMO_PLATFORM)" \
+	    --bin "$$comp_bin" \
+	    --out "$(DEMO_OUT)" \
+	    $(if $(RELEASE_BASE),--release-base-url "$(RELEASE_BASE)",)
+
+demo-run:
+	@bash "$(HERE)/deploy/start-demo-launcher.sh" $(ARGS)
 
 setup:
 	@git submodule update --init third_party/Qt5LegacyControls 2>/dev/null || true

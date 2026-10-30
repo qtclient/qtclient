@@ -1,0 +1,36 @@
+---
+# Client GHCR packages are public so idleot/release can wait/pull without
+# cross-org package ACL (idleot product images stay private).
+name: 'Client: ensure-packages-public'
+
+on:
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  ensure-public:
+    name: Ensure client packages public
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Set visibility=public
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          for pkg in \
+            client-sdk \
+            client-wasm \
+            client-linux-x64 \
+            client-windows-x64 \
+            client-macos-arm64
+          do
+            echo "→ $OWNER/$pkg"
+            gh api --method PATCH \
+              -H "Accept: application/vnd.github+json" \
+              "/orgs/${OWNER}/packages/container/${pkg}" \
+              -f visibility=public \
+              || echo "::warning::could not set ${pkg} public (missing package or ACL)"
+          done

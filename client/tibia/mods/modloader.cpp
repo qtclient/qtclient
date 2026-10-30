@@ -9,6 +9,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonValue>
 #include <QLoggingCategory>
 
 #include <algorithm>
@@ -36,8 +37,29 @@ struct PackMeta {
     int api = 0;
     int priority = 100;
     bool autoload = true;
+    bool urlsOnly = false; ///< true when mod.json omits native (config/identity pack)
     ModIdentity identity;
+    ModUrls urls;
 };
+
+ModUrls readUrlsObject(const QJsonObject& urlsObj, int priority)
+{
+    ModUrls u;
+    u.priority = priority;
+    u.loginBase = urlsObj.value(QStringLiteral("loginBase")).toString().toStdString();
+    u.loginPath = urlsObj.value(QStringLiteral("loginPath")).toString().toStdString();
+    u.clientServicesPath = urlsObj.value(QStringLiteral("clientServicesPath")).toString().toStdString();
+    u.createAccountPath = urlsObj.value(QStringLiteral("createAccountPath")).toString().toStdString();
+    u.assetBase = urlsObj.value(QStringLiteral("assetBase")).toString().toStdString();
+    u.paymentsBase = urlsObj.value(QStringLiteral("paymentsBase")).toString().toStdString();
+    const QJsonObject pages = urlsObj.value(QStringLiteral("pages")).toObject();
+    for (auto it = pages.begin(); it != pages.end(); ++it) {
+        const QString v = it.value().toString();
+        if (!v.isEmpty())
+            u.pages.emplace(it.key().toStdString(), v.toStdString());
+    }
+    return u;
+}
 
 bool readMeta(const QString& packDir, PackMeta* out)
 {
@@ -52,7 +74,10 @@ bool readMeta(const QString& packDir, PackMeta* out)
     out->api = root.value(QStringLiteral("QTCLIENT_MOD_API")).toInt(0);
     out->priority = root.value(QStringLiteral("priority")).toInt(100);
     out->autoload = root.value(QStringLiteral("autoload")).toBool(true);
-    out->nativeRel = root.value(QStringLiteral("native")).toString(QStringLiteral("native/mod"));
+    out->nativeRel = root.value(QStringLiteral("native")).toString();
+    out->urlsOnly = out->nativeRel.isEmpty();
+    if (out->nativeRel.isEmpty())
+        out->nativeRel = QStringLiteral("native/mod");
     out->qmlModule = root.value(QStringLiteral("qmlModule")).toString();
     out->hostBuildId = root.value(QStringLiteral("hostBuildId")).toString();
     const QJsonObject id = root.value(QStringLiteral("identity")).toObject();
@@ -64,7 +89,13 @@ bool readMeta(const QString& packDir, PackMeta* out)
     out->identity.bundleId = id.value(QStringLiteral("bundleId")).toString().toStdString();
     out->identity.cdnBaseUrl = id.value(QStringLiteral("cdnBaseUrl")).toString().toStdString();
     out->identity.priority = out->priority;
+    out->urls = readUrlsObject(root.value(QStringLiteral("urls")).toObject(), out->priority);
     return !out->id.isEmpty();
+}
+
+bool nativeExists(const QString& native)
+{
+    return QFile::exists(native);
 }
 
 QString resolveNativePath(const PackMeta& meta)
@@ -87,8 +118,6 @@ QString resolveNativePath(const PackMeta& meta)
 void registerPackQmlPaths(const PackMeta& meta)
 {
     const QDir dir(meta.dir);
-    // Import root is mods/<id>/qml so `import <qmlModule>` resolves
-    // mods/<id>/qml/<qmlModule>/qmldir (filesystem QML module).
     const QString qmlDir = dir.filePath(QStringLiteral("qml"));
     if (QDir(qmlDir).exists()) {
         addPackQmlImportPath(qmlDir.toStdString());
@@ -101,8 +130,6 @@ void registerPackQmlPaths(const PackMeta& meta)
                                    << moduleDir + QStringLiteral("/qmldir");
         }
     }
-    // Stock CIP path forks: mods/<id>/overrides/qmlcomponents/… remapped at runtime
-    // by PackQmlInterceptor (host stays stock; F5-friendly with DEV DiskQml).
     const QString overridesDir = dir.filePath(QStringLiteral("overrides"));
     if (QDir(overridesDir).exists())
         addPackOverrideRoot(overridesDir.toStdString());
@@ -123,8 +150,6 @@ bool loadNativeEntry(const QString& native, const ModContext* earlyCtx)
     }
 
 #if defined(Q_OS_WASM)
-    // Static Qt builds return false from QLibrary::load on wasm; use emscripten
-    // dlopen for MAIN_MODULE ↔ SIDE_MODULE packs. Handles stay process-lifetime.
     void* handle = dlopen(native.toUtf8().constData(), RTLD_NOW | RTLD_GLOBAL);
     if (!handle) {
         qCWarning(lcModLoader) << "failed to load" << native << lib->errorString()
@@ -144,19 +169,125 @@ bool loadNativeEntry(const QString& native, const ModContext* earlyCtx)
 #endif
 }
 
+bool& skipLoadFlag()
+{
+    static bool skip = false;
+    return skip;
+}
+
+bool& forceDefaultFlag()
+{
+    static bool force = false;
+    return force;
+}
+
+QString findNamedPack(const QStringList& tipRoots, const QString& name)
+{
+    for (const QString& root : tipRoots) {
+        const QString path = QDir(root).filePath(name);
+        if (QFile::exists(QDir(path).filePath(QStringLiteral("mod.json"))))
+            return path;
+    }
+    return {};
+}
+
+/// Pick at most one pack directory under tip mods roots.
+QString pickTipPack(const QStringList& tipRoots)
+{
+    const QString idleot = findNamedPack(tipRoots, QStringLiteral("idleot"));
+    if (!idleot.isEmpty())
+        return idleot;
+    const QString def = findNamedPack(tipRoots, QStringLiteral("default"));
+    if (!def.isEmpty())
+        return def;
+
+    QStringList others;
+    for (const QString& root : tipRoots) {
+        QDir dir(root);
+        if (!dir.exists())
+            continue;
+        const QFileInfoList entries =
+            dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+        for (const QFileInfo& info : entries) {
+            if (info.fileName().startsWith(QLatin1Char('_')))
+                continue;
+            PackMeta meta;
+            if (!readMeta(info.absoluteFilePath(), &meta) || !meta.autoload)
+                continue;
+            others.append(info.absoluteFilePath());
+        }
+    }
+    others.removeDuplicates();
+    if (others.size() > 1) {
+        qCWarning(lcModLoader) << "multiple tip packs without idleot/default; using"
+                               << others.first() << "of" << others;
+    }
+    return others.isEmpty() ? QString() : others.first();
+}
+
+/// QTCLIENT_MODS_DIR: pack dir with mod.json, or parent with a single autoload child.
+QString resolveEnvPack(const QString& envPath)
+{
+    if (envPath.isEmpty())
+        return {};
+    if (QFile::exists(QDir(envPath).filePath(QStringLiteral("mod.json"))))
+        return envPath;
+    QDir dir(envPath);
+    if (!dir.exists()) {
+        qCWarning(lcModLoader) << "QTCLIENT_MODS_DIR missing" << envPath;
+        return {};
+    }
+    QStringList found;
+    const QFileInfoList entries =
+        dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const QFileInfo& info : entries) {
+        if (info.fileName().startsWith(QLatin1Char('_')))
+            continue;
+        PackMeta meta;
+        if (!readMeta(info.absoluteFilePath(), &meta) || !meta.autoload)
+            continue;
+        found.append(info.absoluteFilePath());
+    }
+    if (found.size() == 1)
+        return found.first();
+    if (found.isEmpty()) {
+        qCWarning(lcModLoader) << "QTCLIENT_MODS_DIR has no autoload pack" << envPath;
+        return {};
+    }
+    qCWarning(lcModLoader) << "QTCLIENT_MODS_DIR has multiple packs; using" << found.first();
+    return found.first();
+}
+
 } // namespace
+
+void ModLoader::setSkipLoad(bool skip)
+{
+    skipLoadFlag() = skip;
+}
+
+bool ModLoader::skipLoad()
+{
+    return skipLoadFlag();
+}
+
+void ModLoader::setForceDefaultMod(bool force)
+{
+    forceDefaultFlag() = force;
+}
+
+bool ModLoader::forceDefaultMod()
+{
+    return forceDefaultFlag();
+}
 
 std::vector<std::unique_ptr<QLibrary>>& ModLoader::keptLibraries()
 {
     return g_keptLibraries;
 }
 
-QStringList ModLoader::defaultRoots()
+QStringList ModLoader::tipModsRoots()
 {
     QStringList roots;
-    const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
-    if (!env.isEmpty())
-        roots << env;
     if (QCoreApplication::instance()) {
         const QDir app(QCoreApplication::applicationDirPath());
         roots << app.filePath(QStringLiteral("mods"));
@@ -165,6 +296,12 @@ QStringList ModLoader::defaultRoots()
     }
     roots.removeDuplicates();
     return roots;
+}
+
+QStringList ModLoader::defaultRoots()
+{
+    // Legacy helper: tip roots only (selection logic is in loadAll).
+    return tipModsRoots();
 }
 
 bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earlyCtx)
@@ -191,47 +328,62 @@ bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earl
                 return false;
         }
     }
-    // Identity comes from mod.json only — packs must not re-register a second identity.
     if (!meta.identity.displayName.empty()) {
         registerMod({ meta.identity, nullptr });
     }
+    if (!meta.urls.empty())
+        registerModUrls(meta.urls);
 
     registerPackQmlPaths(meta);
 
     const QString native = resolveNativePath(meta);
-    if (!loadNativeEntry(native, earlyCtx))
-        return false;
+    if (nativeExists(native)) {
+        if (!loadNativeEntry(native, earlyCtx))
+            return false;
+        qCInfo(lcModLoader) << "loaded mod" << meta.id << "from" << packDir;
+        return true;
+    }
 
-    qCInfo(lcModLoader) << "loaded mod" << meta.id << "from" << packDir;
-    return true;
+    if (meta.urlsOnly || !meta.urls.empty() || !meta.identity.displayName.empty()) {
+        qCInfo(lcModLoader) << "loaded urls/identity-only mod" << meta.id << "from" << packDir;
+        return true;
+    }
+
+    qCWarning(lcModLoader) << "mod" << meta.id << "missing native" << native;
+    return false;
 }
 
 int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
 {
-    std::vector<PackMeta> packs;
-    for (const QString& root : roots) {
-        QDir dir(root);
-        if (!dir.exists())
-            continue;
-        const QFileInfoList entries =
-            dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
-        for (const QFileInfo& info : entries) {
-            PackMeta meta;
-            if (!readMeta(info.absoluteFilePath(), &meta))
-                continue;
-            if (!meta.autoload)
-                continue;
-            packs.push_back(std::move(meta));
+    if (skipLoad())
+        return 0;
+
+    QString packDir;
+    const QStringList tipRoots = roots.isEmpty() ? tipModsRoots() : roots;
+
+    if (forceDefaultMod()) {
+        packDir = findNamedPack(tipRoots, QStringLiteral("default"));
+        if (packDir.isEmpty()) {
+            qCCritical(lcModLoader) << "--default-mod: tip mods/default/mod.json not found under"
+                                    << tipRoots;
+            return 0;
+        }
+        qCInfo(lcModLoader) << "--default-mod: loading" << packDir;
+    } else {
+        const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
+        if (!env.isEmpty()) {
+            packDir = resolveEnvPack(env);
+            if (packDir.isEmpty())
+                return 0;
+            qCInfo(lcModLoader) << "QTCLIENT_MODS_DIR exclusive:" << packDir;
+        } else {
+            packDir = pickTipPack(tipRoots);
         }
     }
-    std::stable_sort(packs.begin(), packs.end(),
-                     [](const PackMeta& a, const PackMeta& b) { return a.priority < b.priority; });
-    int loaded = 0;
-    for (const PackMeta& meta : packs) {
-        if (loadFromDirectory(meta.dir, earlyCtx))
-            ++loaded;
-    }
-    return loaded;
+
+    if (packDir.isEmpty())
+        return 0;
+    return loadFromDirectory(packDir, earlyCtx) ? 1 : 0;
 }
 
 } // namespace tibia::mods

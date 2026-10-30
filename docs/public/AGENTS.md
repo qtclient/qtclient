@@ -31,11 +31,11 @@ Product-higher: sibling `client/` and `launcher/` trees (plus `shared/` for
 ## Toolchain
 
 - CMake + Ninja + vcpkg (`VCPKG_ROOT`).
-- Qt: `third_party/qt5-cip` (`update = none`) — `make qt` / `make qt WASM=1`. Warm prefixes: `ghcr.io/qtclient/qt-cip`.
+- Qt: `third_party/qt5-cip` (`update = none`) — `make qt` / `make qt WASM=1`. Warm prefixes: `ghcr.io/qtclient/qt`.
 - LegacyControls: `third_party/Qt5LegacyControls`.
 
 ## Do not
 
 - Commit `upstream/`, CIP assets, or private mod packs.
 - Hand-edit generated CIP contract/QML under `upstream/`.
-- Host CipSoft game blobs on GitHub Releases (use hybrid tip or BYO extract).
+- Host CipSoft game blobs on GitHub Releases (use demo tip or BYO extract).

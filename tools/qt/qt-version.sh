@@ -4,12 +4,12 @@
 #   QT_ROOT          install root (default ~/Qt)
 #   QT_CIP_SHA       override submodule SHA (CI / testing)
 #   QT_EMSDK_VERSION emsdk for wasm kits (must match CIP / prior aqt pin)
-#   QT_GHCR_IMAGE    GHCR repository for warm prefixes (default ghcr.io/qtclient/qt-cip)
+#   QT_GHCR_IMAGE    GHCR repository for warm prefixes (default ghcr.io/qtclient/qt)
 QT_VERSION_LABEL="${QT_VERSION_LABEL:-6.10.3}"
 # Back-compat for scripts that still expand $QT_VERSION in paths/logs.
 QT_VERSION="${QT_VERSION:-$QT_VERSION_LABEL}"
 QT_EMSDK_VERSION="${QT_EMSDK_VERSION:-4.0.7}"
-QT_GHCR_IMAGE="${QT_GHCR_IMAGE:-ghcr.io/qtclient/qt-cip}"
+QT_GHCR_IMAGE="${QT_GHCR_IMAGE:-ghcr.io/qtclient/qt}"
 
 # Modules passed to configure -skip (everything else we do not need for tibia).
 # Keep in sync with find_package(Qt6 …) in client/tibia/CMakeLists.txt.

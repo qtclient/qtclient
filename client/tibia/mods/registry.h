@@ -31,6 +31,25 @@ struct ModIdentity {
     int priority = 100;
 };
 
+/// CIP `[URLS]`-shaped login/AAC config from mod.json `urls` (no host rebuild to change).
+struct ModUrls {
+    std::string loginBase; ///< Full origin, e.g. http://127.0.0.1 or http://127.0.0.1:5173
+    std::string loginPath;
+    std::string clientServicesPath;
+    std::string createAccountPath;
+    std::string assetBase;
+    std::string paymentsBase;
+    /// OTC_URL_* page overrides (path or absolute URL).
+    std::unordered_map<std::string, std::string> pages;
+    int priority = 100;
+    bool empty() const
+    {
+        return loginBase.empty() && loginPath.empty() && clientServicesPath.empty()
+            && createAccountPath.empty() && assetBase.empty() && paymentsBase.empty()
+            && pages.empty();
+    }
+};
+
 /// CIP objects product mods may need. Parent long-lived product objects to `host`.
 struct ModContext {
     QQmlEngine* engine = nullptr;
@@ -59,6 +78,10 @@ void bootstrapAll(const ModContext& ctx);
 void registerEarlyBootstrap(ModBootstrapFn fn);
 void earlyBootstrapAll(const ModContext& ctx);
 const ModIdentity* primaryIdentity();
+/// Register pack urls (sorted by priority ascending; lower wins like identity).
+void registerModUrls(ModUrls urls);
+/// First non-empty urls after priority sort (IdleOT priority 10 beats myaac 50).
+const ModUrls* primaryUrls();
 /// Call from mod static initializers so identity is ready before QApplication.
 void ensureModsRegistered();
 using EnsureModsFn = void (*)();

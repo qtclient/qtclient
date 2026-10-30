@@ -1,5 +1,5 @@
 ---
-name: Cleanup caches by branch
+name: 'Cache: cleanup'
 
 on:
   pull_request:

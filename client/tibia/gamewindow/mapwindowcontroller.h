@@ -18,14 +18,15 @@ namespace tibia::gamewindow {
 class TMapWindowController final : public cip::tibia::gamewindow::TMapWindowController
 {
     Q_OBJECT
-    /// product FOV in fields (OTUI MapViewport / setup visible-sqm); MapWindowPane binds these.
+    /// FOV in fields. Stock CIP MapWindowPane is always 15×11; packs that set
+    /// `packExpandsFov` on the pane (IdleOT HUD) get a pane-derived FOV.
     Q_PROPERTY(int fovWidth READ fovWidth NOTIFY fovChanged)
     Q_PROPERTY(int fovHeight READ fovHeight NOTIFY fovChanged)
-    /// CIP 15×11 pane (gutters). False is the full window: the same scale, extra tiles clipped.
-    /// Not tied to fovChanged: that signal fires on every pane resize, and the pane's
-    /// classicView binding then dirties the layout that caused the resize.
+    /// CIP 15×11 pane (gutters). False is the option for a fuller map window;
+    /// stock CIP QML still keeps the 15×11 world — only packs with packExpandsFov
+    /// grow the field count. Not tied to fovChanged (resize loop).
     Q_PROPERTY(bool classicView READ classicView NOTIFY classicViewChanged)
-    /// CIP map scale: snapped map height / 352.
+    /// CIP map scale: map window height / 352 (pack HUD may use cipScale instead).
     Q_PROPERTY(qreal viewScale READ viewScale NOTIFY fovChanged)
 public:
     /// `pane` is the MapWindowPane item.

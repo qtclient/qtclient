@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Wait for Soft host-sdk OCI tip and unpack into DEST.
-#   deploy/ci-pull-host-sdk.sh <oras-ref> <dest-dir>
+# Wait for qtclient client-sdk OCI tip and unpack into DEST.
+#   deploy/ci-pull-client-sdk.sh <oras-ref> <dest-dir>
 set -euo pipefail
 
 REF="${1:-}"
@@ -16,13 +16,13 @@ for i in $(seq 1 80); do
   if (cd "$DEST" && oras pull "$REF"); then
     break
   fi
-  echo "host-sdk not ready ($i/80): $REF"
+  echo "client-sdk not ready ($i/80): $REF"
   sleep 90
   rm -rf "${DEST:?}"/* || true
 done
 cd "$DEST"
-layer="$(find . -type f \( -name '*.tgz' -o -name '*.tar.gz' -o -name 'host-sdk.tgz' \) | head -1 || true)"
+layer="$(find . -type f \( -name '*.tgz' -o -name '*.tar.gz' -o -name 'client-sdk.tgz' -o -name 'host-sdk.tgz' \) | head -1 || true)"
 [[ -z "$layer" ]] && layer="$(find . -type f | head -1 || true)"
 [[ -n "$layer" ]] && tar -xzf "$layer" 2>/dev/null || true
 test -f cmake/QtClientMod.cmake -o -f host-sdk.json
-echo "[host-sdk] ready in $DEST"
+echo "[client-sdk] ready in $DEST"

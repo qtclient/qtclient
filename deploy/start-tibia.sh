@@ -1,32 +1,30 @@
 #!/usr/bin/env bash
-# Launch the Qt/QML tibia app (cwd = apps/qtclient so data/things is found).
+# Launch the qtclient tibia app (cwd = apps/qtclient so data/ is found).
+# Binary: build/<preset>/bin/client[.app]/…] — see desktop-paths.sh
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OTC="${TIBIA_CLIENT_DIR:-$(cd "$HERE/.." && pwd)}"
-FIND_BIN="$HERE/find-client-bin.sh"
+# shellcheck source=desktop-paths.sh
+source "$HERE/desktop-paths.sh"
+qtclient_desktop_paths "$OTC"
 
-BIN=""
-LAUNCHER=""
-# Prefer disk-QML dev builds (umbrella `make client-build`), then production/debug.
-# Soft OUTPUT_NAME is `client` → client.app; product pack brands the .app (QtClient.app when qtclient is linked).
-for preset in macos-dev linux-dev macos-release macos-debug linux-release linux-debug; do
-  BIN="$("$FIND_BIN" "$OTC/build/$preset" 2>/dev/null || true)"
-  LAUNCHER="$(find "$OTC/build/$preset" \( -path '*launcher.app/Contents/MacOS/launcher' -o -path '*/launcher/src/launcher' \) -type f 2>/dev/null | head -1 || true)"
-  [[ -n "$BIN" ]] && break
-done
-
-if [[ -z "$BIN" ]]; then
-  echo "[tibia] binary not found — run make client-build (umbrella, disk QML) or make -C apps/qtclient client-build (production)"
+if [[ ! -x "$QTCLIENT_CLIENT_BIN" ]]; then
+  echo "[tibia] missing $QTCLIENT_CLIENT_BIN — make qtclient client build (preset=$QTCLIENT_PRESET)" >&2
   exit 1
 fi
 
-echo "[tibia] starting $BIN (cwd $OTC)"
+LAUNCHER=""
+if [[ -x "$QTCLIENT_LAUNCHER_BIN" ]]; then
+  LAUNCHER="$QTCLIENT_LAUNCHER_BIN"
+fi
+
+# Login URLs: single tip pack / QTCLIENT_MODS_DIR / --default-mod, else real CipSoft.
+echo "[tibia] starting $QTCLIENT_CLIENT_BIN (cwd $OTC)"
 cd "$OTC"
-# CipSoft Resources shape for local: Contents/Resources → data/{assets,sounds}
-bash "$HERE/link-cip-resources.sh" "$BIN" "$OTC/data" || true
+bash "$HERE/link-cip-resources.sh" "$QTCLIENT_CLIENT_BIN" "$OTC/data" || true
 if [[ -n "$LAUNCHER" ]]; then
   export QTCLIENT_LAUNCHER_BIN="$LAUNCHER"
   echo "[tibia] Manage Clients → $LAUNCHER"
 fi
-exec "$BIN" "$@"
+exec "$QTCLIENT_CLIENT_BIN" "$@"

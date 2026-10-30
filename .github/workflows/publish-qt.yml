@@ -1,8 +1,8 @@
 ---
 # Mirror warm CIP Qt prefixes to a public GitHub Release so idleot/release
-# (and anyone) can download without GHCR package ACL. Trigger after Build CIP Qt
-# has pushed ghcr.io/qtclient/qt-cip:<sha12>-<kit>.
-name: Publish CIP Qt release assets
+# (and anyone) can download without GHCR package ACL. Trigger after Qt: build
+# has pushed ghcr.io/qtclient/qt:<sha12>-<kit>.
+name: 'Qt: publish'
 
 on:
   workflow_call:
@@ -59,19 +59,19 @@ jobs:
           set -euo pipefail
           echo "$GH_TOKEN" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
           tag="${SHORT}-${KIT}"
-          ref="ghcr.io/qtclient/qt-cip:${tag}"
+          ref="ghcr.io/qtclient/qt:${tag}"
           mkdir -p out
           if ! oras pull "$ref" -o out; then
-            echo "::error::missing $ref — run Build CIP Qt first"
+            echo "::error::missing $ref — run Qt: build first"
             exit 1
           fi
           # Prefer flat qt-prefix.tar.zst (current push); accept legacy nested paths.
           archive="$(find out -maxdepth 1 -type f \( -name 'qt-prefix.tar.zst' -o -name 'qt-prefix.tar.gz' \) | head -1)"
           [[ -n "$archive" ]] || archive="$(find out -type f \( -name '*.tar.zst' -o -name '*.tar.gz' \) | head -1)"
           [[ -n "$archive" ]] || { echo "::error::no archive in $ref"; exit 1; }
-          asset="qt-cip-${tag}$( [[ "$archive" == *.zst ]] && echo .tar.zst || echo .tar.gz )"
+          asset="qt-${tag}$( [[ "$archive" == *.zst ]] && echo .tar.zst || echo .tar.gz )"
           mv "$archive" "$asset"
-          rel="cip-qt-${SHORT}"
+          rel="qt-${SHORT}"
           # Must be a published release: drafts serve as untagged-… URLs and
           # break https://github.com/.../releases/download/<tag>/<asset>.
           if ! gh release view "$rel" >/dev/null 2>&1; then

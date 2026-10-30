@@ -157,7 +157,7 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
         push(A::OPEN_PREY_DIALOG);
     }
 
-    // Soft social / party / inspect for players (and Soft leave/share on self).
+    // Soft social / party / inspect for players (and CipSoft leave/share on self).
     if (creature->isPlayer()) {
         if (!own) {
             actions.push_back(namedCreatureAction(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, name));

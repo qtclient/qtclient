@@ -1,8 +1,8 @@
 ---
 # Build CipSoft Qt5 kits and publish install prefixes to
-# ghcr.io/qtclient/qt-cip (free public Actions). Trigger: manual, or when
+# ghcr.io/qtclient/qt (free public Actions). Trigger: manual, or when
 # third_party/qt5-cip gitlink changes on main.
-name: Build CIP Qt
+name: 'Qt: build'
 
 on:
   workflow_dispatch:
@@ -11,8 +11,8 @@ on:
     paths:
       - 'third_party/qt5-cip'
       - 'tools/qt/**'
-      - '.github/workflows/build-qt-cip.yml'
-      - '.github/workflows/publish-qt-cip-release.yml'
+      - '.github/workflows/build-qt.yml'
+      - '.github/workflows/publish-qt.yml'
 
 permissions:
   contents: write
@@ -20,7 +20,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: qt-cip-${{ github.workflow }}-${{ github.ref }}
+  group: build-qt-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -102,7 +102,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/Qt/cip-${{ env.QT_CIP_SHORT }}
-          key: cip-qt-${{ matrix.kit }}-${{ env.QT_CIP_SHA }}
+          key: qt-${{ matrix.kit }}-${{ env.QT_CIP_SHA }}
 
       - name: Build + publish desktop kit
         shell: bash
@@ -121,16 +121,16 @@ jobs:
           command -v zstd >/dev/null || { echo "zstd required for publish" >&2; exit 1; }
           bash tools/qt/install-qt.sh
 
-      - name: Ensure qt-cip package is public
+      - name: Ensure qt package is public
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api --method PATCH \
             -H "Accept: application/vnd.github+json" \
-            "/orgs/qtclient/packages/container/qt-cip" \
+            "/orgs/qtclient/packages/container/qt" \
             -f visibility=public \
-            || echo "::warning::could not set qt-cip visibility (create on first push, then re-run)"
+            || echo "::warning::could not set qt visibility (create on first push, then re-run)"
 
   wasm:
     name: wasm_multithread
@@ -175,7 +175,7 @@ jobs:
           path: |
             ${{ runner.temp }}/Qt/cip-${{ env.QT_CIP_SHORT }}
             ${{ runner.temp }}/Qt/emsdk
-          key: cip-qt-wasm_multithread-${{ env.QT_CIP_SHA }}
+          key: qt-wasm_multithread-${{ env.QT_CIP_SHA }}
 
       - name: Build host + wasm + publish
         env:
@@ -188,20 +188,20 @@ jobs:
           command -v zstd >/dev/null || { echo "zstd required for publish" >&2; exit 1; }
           bash tools/qt/install-qt.sh --wasm
 
-      - name: Ensure qt-cip package is public
+      - name: Ensure qt package is public
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh api --method PATCH \
             -H "Accept: application/vnd.github+json" \
-            "/orgs/qtclient/packages/container/qt-cip" \
+            "/orgs/qtclient/packages/container/qt" \
             -f visibility=public \
-            || echo "::warning::could not set qt-cip visibility (create on first push, then re-run)"
+            || echo "::warning::could not set qt visibility (create on first push, then re-run)"
 
   publish-release:
     name: Mirror kits to GitHub Release
     needs: [desktop, wasm]
     if: always() && (needs.desktop.result == 'success' || needs.wasm.result == 'success')
-    uses: ./.github/workflows/publish-qt-cip-release.yml
+    uses: ./.github/workflows/publish-qt.yml
     secrets: inherit

@@ -1,7 +1,7 @@
 ---
-# Fast checks only. Soft host compiles (linux/mac/windows/wasm + host-sdk)
-# publish from ci-host.yml on push/PR.
-name: CI checks
+# Fast checks only. Stock client compiles (linux/mac/windows/wasm + client-sdk)
+# publish from ci-client.yml on push/PR.
+name: 'CI: checks'
 
 on:
   workflow_dispatch:

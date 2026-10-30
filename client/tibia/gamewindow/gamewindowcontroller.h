@@ -32,7 +32,7 @@ class TNewsDialogController;
 /// mask is shown (`isAuthenticated` false); otherwise the launcher (or CLI)
 /// authenticates and the character list opens. Start-screen HTTP services
 /// (boosted creature, event schedule, live info / cacheinfo, news, showoff) are
-/// requested via CIP uploaders against the portal clientservices multiplex.
+/// requested via CIP uploaders against /clientservices/clientservices.php.
 class TGameWindowController final : public cip::tibia::gamewindow::TGameWindowController
 {
     Q_OBJECT
@@ -46,8 +46,8 @@ public:
     /// Button-bar Compendium / News button (CIP TNewsButtonController).
     TNewsButtonController* newsButton() const { return m_newsButton.get(); }
 
-    /// Portal login/clientservices URL (`LauncherEnv::loginUrl` /
-    /// `PortalUrls::clientServicesUrl`) and optional client revision header.
+    /// CIP clientservices URL (`LauncherEnv::clientServicesUrl`) and optional
+    /// client revision header.
     void configureClientServices(const QUrl& url, const QString& clientRevision = {});
 
     /// CIP 0x100b65820: state "INGAME", no background art, black window.

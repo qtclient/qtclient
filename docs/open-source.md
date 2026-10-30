@@ -34,7 +34,8 @@ Stock-only: `-DQTCLIENT_ENABLE_MODS=OFF`.
 
 ## First-time consumers
 
-Binary: release tarball → `./launcher` with `QTCLIENT_TIP_URL` (hybrid tip) **or**
+Binary: demo Release → `./launcher` (myAAC `http://127.0.0.1/login.php` +
+CipSoft `assetsurl`; see [public/demo-tip.md](public/demo-tip.md)) **or**
 `./qtclient-fetch-assets` → `./client` (BYO Tibia).
 
 Source: `make setup` (resolves the local Tibia install; optional `TIBIA=` /
@@ -43,5 +44,5 @@ Source: `make setup` (resolves the local Tibia install; optional `TIBIA=` /
 ## Related
 
 - [mods.md](mods.md) — pack format, ModLoader, WorldView customization
-- [public/hybrid-tip.md](public/hybrid-tip.md) — CIP assetsurl + package tip
+- [public/demo-tip.md](public/demo-tip.md) — CIP assetsurl + package tip
 - [public/CONTRIBUTING.md](public/CONTRIBUTING.md) — contributor guide

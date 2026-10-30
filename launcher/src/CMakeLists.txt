@@ -5,30 +5,20 @@ set(CMAKE_AUTOMOC ON)
 
 get_filename_component(TIBIA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
-# Stock CipSoft identity; first launcher pack with brand.cmake or mod.json overrides.
+# qtclient CipSoft identity (qrc). IdleOT brand + art load at runtime from
+# tip mods/<id>/brand.json (+ images/launcher) unless --no-mods — same as client.
 set(TIBIA_PRODUCT_NAME "Tibia")
 set(TIBIA_PRODUCT_ORG "CipSoft")
 set(TIBIA_PRODUCT_BUNDLE_ID "com.tibia.launcher")
 set(TIBIA_PRODUCT_URL "https://www.tibia.com/")
 set(TIBIA_DEFAULT_CDN "")
 set(TIBIA_CLIENT_PACKAGE_DIR "Tibia.app")
-
-set(_launcher_mod_art "")
-file(GLOB _launcher_mod_dirs LIST_DIRECTORIES true "${TIBIA_ROOT}/launcher/mods/*")
-foreach(_d IN LISTS _launcher_mod_dirs)
-  get_filename_component(_n "${_d}" NAME)
-  if(_n MATCHES "^_")
-    continue()
-  endif()
-  if(EXISTS "${_d}/brand.cmake")
-    include("${_d}/brand.cmake")
-  endif()
-  if(_launcher_mod_art STREQUAL "" AND EXISTS "${_d}/images/launcher")
-    set(_launcher_mod_art "${_d}")
-  endif()
-endforeach()
+# Kept for fingerprint compatibility; qtclient always embeds upstream chrome only.
+option(QTCLIENT_ENABLE_LAUNCHER_MODS "Deprecated: brand is runtime tip pack" OFF)
 
 qt_add_executable(launcher
+  brand.cpp
+  brand.h
   main.cpp
   package.cpp
   package.h
@@ -43,48 +33,23 @@ qt_add_executable(launcher
 
 # CIP chrome: launcher/upstream (vendored by launcher sync).
 # Stock forks: launcher/overrides/<rel>.
-# Product art: first launcher/mods/<pack>/ with images/launcher.
+# Product art is NOT baked in — tip mods/<id>/images/launcher at runtime.
 set(_chrome "${TIBIA_ROOT}/launcher/upstream")
 set(_overrides "${TIBIA_ROOT}/launcher/overrides")
-set(_mod_art "${_launcher_mod_art}")
 file(GLOB_RECURSE _chrome_files CONFIGURE_DEPENDS "${_chrome}/*")
 set(_launcher_resources)
-set(_product_art_names "BackgroundImage.jpg;TibiaLogo_Classic.png;CipSoftLogo.png")
 foreach(_file IN LISTS _chrome_files)
   file(RELATIVE_PATH _rel "${_chrome}" "${_file}")
-  get_filename_component(_name "${_file}" NAME)
+  if(_rel STREQUAL "FINGERPRINT.json" OR _rel STREQUAL "DRIFT.md")
+    continue()
+  endif()
   set(_src "${_file}")
   set(_override "${_overrides}/${_rel}")
-  if(NOT EXISTS "${_override}" AND _name IN_LIST _product_art_names AND NOT _mod_art STREQUAL "")
-    set(_override "${_mod_art}/images/launcher/${_name}")
-  endif()
   if(EXISTS "${_override}")
     set(_src "${_override}")
   endif()
   set_source_files_properties("${_src}" PROPERTIES QT_RESOURCE_ALIAS "${_rel}")
   list(APPEND _launcher_resources "${_src}")
-endforeach()
-foreach(_name IN ITEMS BackgroundImage.jpg TibiaLogo_Classic.png CipSoftLogo.png)
-  set(_override "${_overrides}/images/launcher/${_name}")
-  if(NOT EXISTS "${_override}" AND NOT _mod_art STREQUAL "")
-    set(_override "${_mod_art}/images/launcher/${_name}")
-  endif()
-  if(NOT EXISTS "${_override}")
-    continue()
-  endif()
-  set(_alias "images/launcher/${_name}")
-  set(_already FALSE)
-  foreach(_res IN LISTS _launcher_resources)
-    get_source_file_property(_res_alias "${_res}" QT_RESOURCE_ALIAS)
-    if(_res_alias STREQUAL _alias)
-      set(_already TRUE)
-      break()
-    endif()
-  endforeach()
-  if(NOT _already)
-    set_source_files_properties("${_override}" PROPERTIES QT_RESOURCE_ALIAS "${_alias}")
-    list(APPEND _launcher_resources "${_override}")
-  endif()
 endforeach()
 # CIP-shaped hints.json (title + richText with /images/news/*).
 set(_hints_json "${TIBIA_ROOT}/data/hints.json")
@@ -126,7 +91,7 @@ if(APPLE)
     MACOSX_BUNDLE_BUNDLE_NAME "${TIBIA_PRODUCT_NAME}"
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in")
 endif()
-# Match tibia: package_launcher --bin build/<preset>/bin finds the Soft launcher.
+# Match tibia: package_launcher --bin build/<preset>/bin finds the qtclient launcher.
 if(TOGGLE_BIN_FOLDER)
   set_target_properties(launcher PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
   if(APPLE)

@@ -14,9 +14,9 @@
 
 /**
  * Tip packages[].directoryname for variant `regular` (CipSoft-shaped packages/<name>/).
- * Stock default is CipSoft's `Tibia.app`. Product packs override via
- * `TIBIA_CLIENT_PACKAGE_DIR` (see launcher/mods/<pack>/brand.cmake). Must match
- * portal PACKAGE_CLIENT and cip_package.CLIENT_PACKAGE_DIR when branded.
+ * Stock default is CipSoft's `TIBIA_CLIENT_PACKAGE_DIR` (`Tibia.app`).
+ * Product tip packs override at runtime via mods/<id>/brand.json
+ * (`LauncherBrand::clientPackageDir`). Must match portal PACKAGE_CLIENT.
  */
 #ifndef TIBIA_CLIENT_PACKAGE_DIR
 #define TIBIA_CLIENT_PACKAGE_DIR "Tibia.app"
@@ -115,7 +115,7 @@ public:
     /**
      * Full URL to tibiametadata.json. Empty → cdnBase + "/launcher/tibiametadata.json".
      * Public / CIP-faithful builds set this to https://static.tibia.com/launcher/tibiametadata.json
-     * (or a hybrid tip) via QTCLIENT_TIP_URL.
+     * (or a demo tip) via QTCLIENT_TIP_URL.
      */
     void setTipUrl(const QUrl& url);
     QUrl tipUrl() const;
@@ -152,15 +152,19 @@ public:
      * Download and unpack every file into destDir. Writes partial.package.json.version
      * while running, then package.json and package.json.version.
      */
-    bool installPackage(const QUrl& packageUrl, const CipPackageDoc& doc, const QString& destDir, QString* error);
+    bool installPackage(const QUrl& packageUrl, const CipPackageDoc& doc, const QString& destDir, QString* error,
+                        qint64 progressBase = 0, qint64 progressTotal = -1);
     /** Same as installPackage, but chains getAsync (required on the WASM main thread). */
     void installPackageAsync(const QUrl& packageUrl, const CipPackageDoc& doc, const QString& destDir,
-                             InstallCallback done);
+                             InstallCallback done, qint64 progressBase = 0, qint64 progressTotal = -1);
     bool installAssets(const QUrl& assetsUrl, const QVector<CipFile>& files, const QString& assetsVersion,
-                       const QString& destDir, QString* error);
+                       const QString& destDir, QString* error, qint64 progressBase = 0, qint64 progressTotal = -1);
     /** Same as installAssets, but chains getAsync (required on the WASM main thread). */
     void installAssetsAsync(const QUrl& assetsUrl, const QVector<CipFile>& files, const QString& assetsVersion,
-                            const QString& destDir, InstallCallback done);
+                            const QString& destDir, InstallCallback done, qint64 progressBase = 0,
+                            qint64 progressTotal = -1);
+    /** Packed bytes still needed for files not already installed (progress totals). */
+    qint64 pendingPackedBytes(const QVector<CipFile>& files, const QString& destDir) const;
 
     static const CipBuild* matchBuild(const QVector<CipBuild>& builds, const QString& os, const QString& arch);
     static QString sha256Hex(const QByteArray& data);
@@ -179,7 +183,13 @@ private:
      */
     bool useCdnContentStore() const;
     QUrl fileDownloadUrl(const QUrl& packageUrl, const CipFile& file) const;
-    bool installFiles(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir, QString* error);
+    /**
+     * Download pool. progressBase/progressTotal span a multi-phase install
+     * (client package then assets) so the bar does not reset to 0 between phases.
+     * progressTotal <= 0 → use this batch's packed byte sum only.
+     */
+    bool installFiles(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir, QString* error,
+                      qint64 progressBase = 0, qint64 progressTotal = -1);
     void installFilesAsync(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir, int index,
                            qint64 donePacked, qint64 totalPacked, InstallCallback done);
     bool writePackageMarkers(const CipPackageDoc& doc, const QString& destDir, QString* error);

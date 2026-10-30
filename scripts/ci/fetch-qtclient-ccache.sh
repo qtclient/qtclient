@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Download a Soft host ccache archive published by qtclient/qtclient "CI host".
+# Download a qtclient ccache archive published by qtclient/qtclient "Client: ci".
 #
 #   scripts/ci/fetch-qtclient-ccache.sh --sha <qtclient_commit> --os linux|macos|windows
 #   export CCACHE_DIR=$PWD/.ccache
@@ -40,11 +40,11 @@ trap "rm -rf '$TMP'" EXIT
 
 echo "[qtclient-ccache] fetching artifact $ART from $REPO @ $SHA"
 if ! gh run download -R "$REPO" -n "$ART" -D "$TMP" 2>/dev/null; then
-  # Fallback: find a successful CI host run on that commit
-  RUN_ID="$(gh run list -R "$REPO" --commit "$SHA" --workflow "CI host" --json databaseId,conclusion \
+  # Fallback: find a successful Client: ci run on that commit
+  RUN_ID="$(gh run list -R "$REPO" --commit "$SHA" --workflow "Client: ci" --json databaseId,conclusion \
     --jq '[.[]|select(.conclusion=="success")][0].databaseId' 2>/dev/null || true)"
   [[ -n "$RUN_ID" && "$RUN_ID" != "null" ]] || {
-    echo "[qtclient-ccache] no successful CI host run for $SHA" >&2
+    echo "[qtclient-ccache] no successful Client: ci run for $SHA" >&2
     exit 1
   }
   gh run download -R "$REPO" "$RUN_ID" -n "$ART" -D "$TMP"

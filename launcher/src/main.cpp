@@ -1,3 +1,4 @@
+#include "brand.h"
 #include "package.h"
 #include "window.h"
 
@@ -41,7 +42,7 @@ QString cdnBase()
 #endif
     if (!env.isEmpty())
         return env;
-    return QStringLiteral(TIBIA_DEFAULT_CDN);
+    return LauncherBrand::instance().defaultCdn;
 }
 
 QUrl tipUrl()
@@ -49,6 +50,20 @@ QUrl tipUrl()
     const QString tip = qEnvironmentVariable("QTCLIENT_TIP_URL");
     if (!tip.isEmpty())
         return QUrl(tip);
+
+    // Hybrid Release sidecar: tibiametadata.json next to the launcher binary
+    // (or Contents/Resources on macOS) so double-click works without env.
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QStringList candidates = {
+        appDir + QStringLiteral("/tibiametadata.json"),
+        appDir + QStringLiteral("/../Resources/tibiametadata.json"),
+        appDir + QStringLiteral("/../tibiametadata.json"),
+    };
+    for (const QString& path : candidates) {
+        const QFileInfo info(path);
+        if (info.isFile())
+            return QUrl::fromLocalFile(info.canonicalFilePath());
+    }
     return QUrl();
 }
 
@@ -115,14 +130,18 @@ void mountWebHome()
 int main(int argc, char* argv[])
 {
     QApplication app(argc, argv);
+    // Tip mods/<id>/brand.json (unless --no-mods). qtclient CipSoft defaults otherwise.
+    LauncherBrand::load(argc, argv);
+    const LauncherBrand& brand = LauncherBrand::instance();
     if (QStyle* fusion = QStyleFactory::create(QStringLiteral("Fusion")))
         app.setStyle(fusion);
     // Same org/app as the game client so AppDataLocation matches CipSoft's one tree
     // (packages/, minimap/, log/ under …/<org>/<app> — not …/<org>/Launcher).
-    QCoreApplication::setOrganizationName(QStringLiteral(TIBIA_PRODUCT_ORG));
-    QCoreApplication::setApplicationName(QStringLiteral(TIBIA_PRODUCT_NAME));
+    // IdleOT brand.json overrides qtclient CipSoft defaults at runtime.
+    QCoreApplication::setOrganizationName(brand.productOrg);
+    QCoreApplication::setApplicationName(brand.productName);
     QCoreApplication::setApplicationVersion(QStringLiteral(TIBIA_LAUNCHER_VERSION));
-    app.setApplicationDisplayName(QStringLiteral(TIBIA_PRODUCT_NAME));
+    app.setApplicationDisplayName(brand.productName);
     QFile pathFile(tibia::app::LauncherEnv::launcherPathFile());
     if (pathFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
         pathFile.write(QCoreApplication::applicationFilePath().toUtf8());

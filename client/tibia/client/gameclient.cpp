@@ -179,8 +179,9 @@ TGameClient::TGameClient(QObject* parent)
         fail(tr("The login server sent an invalid response."));
     });
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailedClientOutOfDate, this, [this] {
+        // CIP enters ShowClientOutOfDate (info / client_too_old + Restart) —
+        // do not also fail() with a dismissible error toast.
         Q_EMIT clientOutOfDate();
-        fail(tr("This client is out of date. Start %1 from the launcher to update it.").arg(QCoreApplication::applicationName()));
     });
 
     connect(m_characterSelection.get(), &gamewindow::TCharacterSelectionController::characterChosen, this, &TGameClient::onCharacterChosen);
@@ -192,6 +193,13 @@ TGameClient::TGameClient(QObject* parent)
             return;
         Q_EMIT returnToLoginRequested();
     });
+    connect(this, &TGameClient::characterSelectionRequested, this, [this] {
+        if (g_game.isOnline())
+            m_characterSelectionOpen = true;
+    });
+    connect(this, &TGameClient::characterSelectionClosed, this, [this] {
+        m_characterSelectionOpen = false;
+    });
     // CIP CHARACER_SELECTION_AUTO_CLOSE: hide the list without treating it as Cancel.
     input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE,
                             [self = QPointer<TGameClient>(this)](const input::TGameAction&) {
@@ -199,10 +207,18 @@ TGameClient::TGameClient(QObject* parent)
                                     Q_EMIT self->characterSelectionClosed();
                                 return true;
                             });
+    // CIP Ctrl+G ChangeCharacter → in-game CharacterSelection (Cmd+G on macOS).
+    input::setActionHandler(input::EGameAction::CHANGE_CHARACTER,
+                            [self = QPointer<TGameClient>(this)](const input::TGameAction&) {
+                                if (self && g_game.isOnline())
+                                    self->toggleCharacterSelectionForSwitch();
+                                return true;
+                            });
 }
 
 TGameClient::~TGameClient()
 {
+    input::setActionHandler(input::EGameAction::CHANGE_CHARACTER, nullptr);
     input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE, nullptr);
     shutdown();
 }
@@ -518,6 +534,17 @@ void TGameClient::openCharacterSelectionForSwitch(const QJsonArray& alts)
 void TGameClient::closeCharacterSelection()
 {
     Q_EMIT characterSelectionClosed();
+}
+
+void TGameClient::toggleCharacterSelectionForSwitch()
+{
+    if (!g_game.isOnline())
+        return;
+    if (m_characterSelectionOpen) {
+        closeCharacterSelection();
+        return;
+    }
+    openCharacterSelectionForSwitch();
 }
 
 void TGameClient::ensureLoginSurface()

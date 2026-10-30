@@ -1173,12 +1173,12 @@ PathFindResult_ptr Map::newFindPath(const Position& start, const Position& goal,
     }
 
     const bool allowUnknownSoft = pathMode != Otc::AutoWalkPathMinimap;
-    // Soft 0xff neighbors stay impassable (Draconia Soft wall). Soft 0xff *goals*
-    // are allowed for Travel — climb/hub stands are often Soft-blocked; search still
+    // CipSoft 0xff neighbors stay impassable (Draconia CipSoft wall). CipSoft 0xff *goals*
+    // are allowed for Travel — climb/hub stands are often CipSoft-blocked; search still
     // reaches them via neighbor==goal once a Soft-walkable approach exists.
 
     // Goal walkability: live aware tile first, else Soft Indexed8 costs (CIP), else g_minimap.
-    // Cyclopedia/Travel: Soft-unknown (0xfe) goals OK; Travel also Soft-blocked (0xff) goals.
+    // Cyclopedia/Travel: Soft-unknown (0xfe) goals OK; Travel also CipSoft-blocked (0xff) goals.
     if (g_map.isAwareOfPosition(goal)) {
         const auto& goalTile = getTile(goal);
         if (!goalTile)
@@ -1195,7 +1195,7 @@ PathFindResult_ptr Map::newFindPath(const Position& start, const Position& goal,
             // Cyclopedia/Travel fog goal
         } else if (goalCost == tibia::minimap::TWaypointCosts::BlockedCost
             && pathMode == Otc::AutoWalkPathTravel) {
-            // Travel Soft-blocked hub/climb stand
+            // Travel CipSoft-blocked hub/climb stand
         } else {
             return ret;
         }
@@ -1251,7 +1251,7 @@ PathFindResult_ptr Map::newFindPath(const Position& start, const Position& goal,
                         it = nodes.emplace(neighbor, nullptr).first;
                     } else if (softCosts) {
                         // CIP TWaypointCostMap: 0..250 walkable, 0xfe unknown, 0xff blocked.
-                        // Cyclopedia/Travel: 0xfe expensive. Soft 0xff stays impassable.
+                        // Cyclopedia/Travel: 0xfe expensive. CipSoft 0xff stays impassable.
                         // Live aware tiles still win via visibleNodes.
                         const uint8_t wc = softCosts->costAt(neighbor.x, neighbor.y, neighbor.z);
                         const bool softFog = wc == tibia::minimap::TWaypointCosts::UnknownCost;

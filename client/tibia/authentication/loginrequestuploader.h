@@ -63,7 +63,8 @@ struct LoginResult
 };
 
 /// POSTs the login service's JSON (CIP's own uploader; the product's portal speaks
-/// the OTClient login format): CIP account/password login via portal /api/login.
+/// the OTClient login format): CIP account/password login via
+/// /clientservices/loginservice.php.
 class TLoginRequestUploader final : public cip::tibia::authentication::TLoginRequestUploader
 {
     Q_OBJECT

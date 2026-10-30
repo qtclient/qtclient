@@ -1,7 +1,7 @@
 ---
-# Stock Soft host builds (MODS=OFF) + publish host / host-sdk artifacts keyed by SHA.
-# idleot-client pack CI and idleot/release assemble consume these (no host rebuild).
-name: CI host
+# Stock qtclient builds (MODS=OFF) + publish client / client-sdk artifacts keyed by SHA.
+# idleot-client pack CI and idleot/release assemble consume these (no client rebuild).
+name: 'Client: ci'
 
 on:
   push:
@@ -15,47 +15,47 @@ permissions:
   actions: write
 
 concurrency:
-  group: ci-host-${{ github.workflow }}-${{ github.ref }}
+  group: ci-client-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io/${{ github.repository_owner }}
 
 jobs:
-  host-sdk:
-    name: host-sdk
+  sdk:
+    name: sdk
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: false
-      - name: Pack host-sdk
+      - name: Pack client-sdk
         env:
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
-        run: bash deploy/pack-host-sdk.sh "$RUNNER_TEMP/host-sdk"
-      - name: Upload host-sdk artifact
+        run: bash deploy/pack-client-sdk.sh "$RUNNER_TEMP/client-sdk"
+      - name: Upload client-sdk artifact
         uses: actions/upload-artifact@v4
         with:
-          name: host-sdk-${{ github.sha }}
-          path: ${{ runner.temp }}/host-sdk
+          name: client-sdk-${{ github.sha }}
+          path: ${{ runner.temp }}/client-sdk
           retention-days: 30
       - uses: oras-project/setup-oras@v1
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      - name: Push host-sdk to GHCR
+      - name: Push client-sdk to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: ${{ runner.temp }}
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          tar -czf host-sdk.tgz -C host-sdk .
-          oras push "${{ env.REGISTRY }}/qtclient-host-sdk:${{ github.sha }}" \
-            "host-sdk.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
-          oras tag "${{ env.REGISTRY }}/qtclient-host-sdk:${{ github.sha }}" \
-            "${{ env.REGISTRY }}/qtclient-host-sdk:sha-${{ github.sha }}" || true
+          tar -czf client-sdk.tgz -C client-sdk .
+          oras push "${{ env.REGISTRY }}/client-sdk:${{ github.sha }}" \
+            "client-sdk.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+          oras tag "${{ env.REGISTRY }}/client-sdk:${{ github.sha }}" \
+            "${{ env.REGISTRY }}/client-sdk:sha-${{ github.sha }}" || true
 
-  host-desktop:
-    name: host-${{ matrix.plat }}
+  client-desktop:
+    name: client-${{ matrix.plat }}
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -113,9 +113,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/Qt
-          key: cip-qt-${{ matrix.kit }}-${{ steps.cip.outputs.sha }}
+          key: qt-${{ matrix.kit }}-${{ steps.cip.outputs.sha }}
 
-      - name: Soft host bootstrap (deps + vcpkg + CIP Qt)
+      - name: qtclient bootstrap (deps + vcpkg + CIP Qt)
         shell: bash
         env:
           QT_ROOT: ${{ runner.temp }}/Qt
@@ -131,12 +131,12 @@ jobs:
         with:
           path: ${{ env.CCACHE_DIR }}
           # One warm slot per OS — always reuse / refresh (incl. fail/cancel).
-          key: ccache-host-${{ matrix.os_slug }}
+          key: ccache-client-${{ matrix.os_slug }}
           restore-keys: |
-            ccache-host-${{ matrix.os_slug }}
+            ccache-client-${{ matrix.os_slug }}
           save-always: true
 
-      - name: Configure + build stock host
+      - name: Configure + build stock client
         id: build
         shell: bash
         env:
@@ -163,7 +163,7 @@ jobs:
           cmake --build --preset ${{ matrix.preset }} --target launcher || true
           ccache -s || true
 
-      - name: Pack host desktop tip
+      - name: Pack client desktop tip
         shell: bash
         env:
           QT_PREFIX: ${{ env.QT_PREFIX }}
@@ -173,17 +173,47 @@ jobs:
           set -euo pipefail
           bin_dir="build/${{ matrix.preset }}/bin"
           [[ -d "$bin_dir" ]] || bin_dir="build/${{ matrix.preset }}"
-          bash deploy/pack-host-desktop.sh \
+          bash deploy/pack-client-desktop.sh \
             --platform "${{ matrix.plat }}" \
             --bin "$bin_dir" \
-            --out "$RUNNER_TEMP/host-${{ matrix.plat }}"
+            --out "$RUNNER_TEMP/client-${{ matrix.plat }}"
 
-      - name: Upload host artifact
+      - name: Pack demo Release (myAAC + CipSoft assetsurl)
+        shell: bash
+        env:
+          QT_PREFIX: ${{ env.QT_PREFIX }}
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          QTCLIENT_DEMO_RELEASE_URL: https://github.com/${{ github.repository }}/releases/latest/download
+        run: |
+          set -euo pipefail
+          bin_dir="build/${{ matrix.preset }}/bin"
+          [[ -d "$bin_dir" ]] || bin_dir="build/${{ matrix.preset }}"
+          # Launcher target may be optional — skip demo if missing.
+          if [[ ! -x "$bin_dir/launcher" && ! -x "$bin_dir/launcher.exe" && ! -d "$bin_dir/launcher.app" ]]; then
+            echo "[demo] launcher binary missing — skip demo pack"
+            exit 0
+          fi
+          bash deploy/pack-demo-release.sh \
+            --platform "${{ matrix.plat }}" \
+            --bin "$bin_dir" \
+            --out "$RUNNER_TEMP/demo-${{ matrix.plat }}" \
+            --release-base-url "$QTCLIENT_DEMO_RELEASE_URL"
+
+      - name: Upload client artifact
         uses: actions/upload-artifact@v4
         with:
-          name: host-${{ matrix.plat }}-${{ github.sha }}
-          path: ${{ runner.temp }}/host-${{ matrix.plat }}
+          name: client-${{ matrix.plat }}-${{ github.sha }}
+          path: ${{ runner.temp }}/client-${{ matrix.plat }}
           retention-days: 30
+
+      - name: Upload demo Release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-${{ matrix.plat }}-${{ github.sha }}
+          path: ${{ runner.temp }}/demo-${{ matrix.plat }}
+          retention-days: 30
+          if-no-files-found: ignore
 
       - name: Pack ccache
         if: always()
@@ -202,21 +232,21 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Push host to GHCR
+      - name: Push client to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
         working-directory: ${{ runner.temp }}
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          tar -czf host.tgz -C "host-${{ matrix.plat }}" .
-          oras push "${{ env.REGISTRY }}/qtclient-host-${{ matrix.plat }}:${{ github.sha }}" \
-            "host.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
-          oras tag "${{ env.REGISTRY }}/qtclient-host-${{ matrix.plat }}:${{ github.sha }}" \
-            "${{ env.REGISTRY }}/qtclient-host-${{ matrix.plat }}:sha-${{ github.sha }}" || true
+          tar -czf client.tgz -C "client-${{ matrix.plat }}" .
+          oras push "${{ env.REGISTRY }}/client-${{ matrix.plat }}:${{ github.sha }}" \
+            "client.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+          oras tag "${{ env.REGISTRY }}/client-${{ matrix.plat }}:${{ github.sha }}" \
+            "${{ env.REGISTRY }}/client-${{ matrix.plat }}:sha-${{ github.sha }}" || true
 
-  host-wasm:
-    name: host-wasm
+  wasm:
+    name: wasm
     runs-on: ubuntu-24.04
     env:
       QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
@@ -242,25 +272,25 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/Qt
-          key: cip-qt-wasm_multithread-${{ steps.cip.outputs.sha }}
+          key: qt-wasm_multithread-${{ steps.cip.outputs.sha }}
 
       - name: Restore ccache
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-host-wasm
+          key: ccache-client-wasm
           restore-keys: |
-            ccache-host-wasm
+            ccache-client-wasm
           save-always: true
 
-      - name: Soft host bootstrap (deps + vcpkg + CIP Qt wasm)
+      - name: qtclient bootstrap (deps + vcpkg + CIP Qt wasm)
         env:
           QT_ROOT: ${{ runner.temp }}/Qt
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
         run: bash tools/qt/ci-setup.sh --wasm --with-vcpkg --with-deps
 
-      - name: Build stock wasm host
+      - name: Build stock wasm client
         env:
           QT_ROOT: ${{ runner.temp }}/Qt
           STOCK_HOST: '1'
@@ -272,14 +302,14 @@ jobs:
           bash deploy/build-tibia.sh --wasm
           ccache -s || true
 
-      - name: Pack host wasm
-        run: bash deploy/pack-host-wasm.sh build/tibia-wasm "$RUNNER_TEMP/host-wasm"
+      - name: Pack client wasm
+        run: bash deploy/pack-client-wasm.sh build/tibia-wasm "$RUNNER_TEMP/client-wasm"
 
-      - name: Upload host-wasm artifact
+      - name: Upload client-wasm artifact
         uses: actions/upload-artifact@v4
         with:
-          name: host-wasm-${{ github.sha }}
-          path: ${{ runner.temp }}/host-wasm
+          name: client-wasm-${{ github.sha }}
+          path: ${{ runner.temp }}/client-wasm
           retention-days: 30
 
       - name: Pack ccache
@@ -298,14 +328,14 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Push host-wasm to GHCR
+      - name: Push client-wasm to GHCR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: ${{ runner.temp }}
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
-          tar -czf host-wasm.tgz -C host-wasm .
-          oras push "${{ env.REGISTRY }}/qtclient-host-wasm:${{ github.sha }}" \
-            "host-wasm.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
-          oras tag "${{ env.REGISTRY }}/qtclient-host-wasm:${{ github.sha }}" \
-            "${{ env.REGISTRY }}/qtclient-host-wasm:sha-${{ github.sha }}" || true
+          tar -czf client-wasm.tgz -C client-wasm .
+          oras push "${{ env.REGISTRY }}/client-wasm:${{ github.sha }}" \
+            "client-wasm.tgz:application/vnd.oci.image.layer.v1.tar+gzip"
+          oras tag "${{ env.REGISTRY }}/client-wasm:${{ github.sha }}" \
+            "${{ env.REGISTRY }}/client-wasm:sha-${{ github.sha }}" || true

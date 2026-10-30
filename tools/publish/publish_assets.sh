@@ -6,8 +6,10 @@
 #                                    (Contents/Resources/assets/… + fonts),
 #                                    added to the web + desktop targets by assemble.py
 #   content/<aa>/<sha256>          — its blobs; packs/<aa>/<sha256>.zip — its zip packs
-#   assets/store/                  — store icons (Crystal coinImagesURL), committed in
+#   images/store/                  — CIP store icons (coinImagesURL), from
 #                                    apps/portal/apps/web/static/images/store
+#   images/payment/                — webshop product art (optional placeholders)
+#   assets/store/                  — legacy alias (copied from images/store for old tips)
 #   assets/{outfits,items}/manifest.json — {"revision", "path": "<rev>/"} (portal)
 #   assets/outfits/<rev>/<looktype>/     — outfit frames rendered by `make extract`
 #   assets/items/<rev>/<client id>.png   — item sprites rendered by `make extract`
@@ -189,10 +191,21 @@ publish_store() {
     echo "[assets] store missing — expected committed $src" >&2
     exit 1
   fi
-  local dest="$SLICE/assets/store"
+  # CIP path: /images/store/{size}/…
+  local dest="$SLICE/images/store"
   mkdir -p "$dest"
   rsync -aL --delete --exclude '*.md' "$src/" "$dest/"
-  echo "[assets] store → $dest"
+  # Legacy tip path for one-release compatibility.
+  mkdir -p "$SLICE/assets"
+  rm -rf "$SLICE/assets/store"
+  ln -sfn ../images/store "$SLICE/assets/store" 2>/dev/null \
+    || rsync -aL --delete "$dest/" "$SLICE/assets/store/"
+  # Webshop payment art placeholders (CIP /images/payment/).
+  mkdir -p "$SLICE/images/payment"
+  if [[ -d "$ROOT/apps/portal/apps/web/static/images/payment" ]]; then
+    rsync -aL --exclude '*.md' "$ROOT/apps/portal/apps/web/static/images/payment/" "$SLICE/images/payment/"
+  fi
+  echo "[assets] store → $dest (+ assets/store alias, images/payment)"
 }
 
 # AAC sprite slice rendered by `make extract` (tools/extract/<name>.py) into
@@ -236,9 +249,9 @@ EOF
 
 push_image() {
   command -v docker >/dev/null || { echo "missing: docker" >&2; exit 1; }
-  if [[ ! -f "$SLICE/.qtclient/v3/content-things.json" || ! -d "$SLICE/assets/store" \
+  if [[ ! -f "$SLICE/.qtclient/v3/content-things.json" || ! -d "$SLICE/images/store" \
     || ! -f "$SLICE/assets/outfits/manifest.json" || ! -f "$SLICE/assets/items/manifest.json" ]]; then
-    echo "[assets] --push needs things, store, outfits and items published into $SLICE" >&2
+    echo "[assets] --push needs things, images/store, outfits and items published into $SLICE" >&2
     exit 1
   fi
   local rev

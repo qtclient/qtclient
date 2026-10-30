@@ -59,11 +59,23 @@ def wasm_slice() -> bool:
 
 
 def tibia_build_dir(plat: str) -> Path | None:
+    """Directory that contains qtclient client.app / client (…/build/<preset>/bin)."""
+    import os
+    import platform as py_platform
+
     name = package_desktop.TIBIA_BUILD[plat]
-    for preset in ("macos-release", "macos-debug", "linux-release", "linux-debug", "windows-release"):
-        tibia = OTC / "build" / preset / "src" / "tibia" / name
-        if tibia.exists():
-            return tibia.parent
+    system = py_platform.system()
+    os_name = "macos" if system == "Darwin" else "linux" if system == "Linux" else "windows"
+    base = "release"
+    if os.environ.get("DEV", "1").lower() not in ("0", "false", "no", "off"):
+        base = "dev"
+    if os.environ.get("DEBUG", "").lower() in ("1", "true", "yes", "on"):
+        base = "debug"
+    preset = os.environ.get("TIBIA_PRESET", f"{os_name}-{base}")
+    bin_dir = OTC / "build" / preset / "bin"
+    path = bin_dir / name
+    if path.exists():
+        return bin_dir
     return None
 
 

@@ -66,7 +66,7 @@ function(qtclient_add_mod MOD_ID)
     "${CMAKE_CURRENT_SOURCE_DIR}")
 
   # Host import ABI. Prefer QtClient::Host / qtclient_host, else tibia.
-  # Out-of-tree packs (host-sdk): optional QTCLIENT_HOST_LIBRARY path, else
+  # Out-of-tree packs (client-sdk): optional QTCLIENT_HOST_LIBRARY path, else
   # allow unresolved host symbols until ModLoader dlopen (FDW-style).
   set(_host_target "")
   if(TARGET QtClient::Host)
@@ -104,6 +104,51 @@ function(qtclient_add_mod MOD_ID)
       target_compile_options(${_target} PRIVATE
         "$<TARGET_PROPERTY:tibia,COMPILE_OPTIONS>")
     endif()
+  elseif(QTCLIENT_MOD_INTERNAL)
+    # Out-of-tree pack against qtclient host source + build tree (cip_gen, engine).
+    # Matches otc_deps INTERFACE includes + FRAMEWORK_* defs from client/CMakeLists.txt.
+    target_compile_definitions(${_target} PRIVATE
+      QTCLIENT_MOD_INTERNAL=1
+      QT_NO_KEYWORDS
+      FRAMEWORK_GRAPHICS
+      FRAMEWORK_NET
+      FRAMEWORK_PROTOBUF
+      FRAMEWORK_XML
+      OTC_LUA=0
+      OTC_NATIVE_WINDOW=0
+      TIBIA_WITH_GAMECORE
+      TIBIA_NO_OPENSSL)
+    target_include_directories(${_target} PRIVATE
+      "${TIBIA_ROOT}"
+      "${TIBIA_ROOT}/client"
+      "${TIBIA_ROOT}/client/tibia"
+      "${TIBIA_ROOT}/client/tibia/engine"
+      "${TIBIA_ROOT}/client/tibia/engine/framework/graphics/glad/include")
+    if(QTCLIENT_HOST_BUILD)
+      set(_host_build "${QTCLIENT_HOST_BUILD}")
+    elseif(DEFINED ENV{QTCLIENT_HOST_BUILD} AND EXISTS "$ENV{QTCLIENT_HOST_BUILD}")
+      set(_host_build "$ENV{QTCLIENT_HOST_BUILD}")
+    else()
+      set(_host_build "")
+    endif()
+    if(_host_build)
+      if(EXISTS "${_host_build}/client/tibia/cipgen/cip_gen.h")
+        target_include_directories(${_target} PRIVATE
+          "${_host_build}/client/tibia/cipgen"
+          "${_host_build}/client/tibia/protobuf")
+      else()
+        message(WARNING "qtclient_add_mod(${MOD_ID}): QTCLIENT_HOST_BUILD=${_host_build} missing cipgen/cip_gen.h")
+      endif()
+      file(GLOB _vcpkg_inc "${_host_build}/vcpkg_installed/*/include")
+      foreach(_inc IN LISTS _vcpkg_inc)
+        target_include_directories(${_target} PRIVATE
+          "${_inc}"
+          "${_inc}/stduuid"
+          "${_inc}/utf8cpp")
+      endforeach()
+    else()
+      message(WARNING "qtclient_add_mod(${MOD_ID}): QTCLIENT_MOD_INTERNAL without tibia target needs -DQTCLIENT_HOST_BUILD=… (qtclient host build dir with cipgen)")
+    endif()
   endif()
 
   # Desktop MODULE still needs Qt headers / link for QObject etc. when host
@@ -112,11 +157,20 @@ function(qtclient_add_mod MOD_ID)
     if(TARGET Qt6::Core)
       target_link_libraries(${_target} PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
     endif()
+    # rhi/qshader.h (weather overlays) lives on Gui private headers.
+    if(QTCLIENT_MOD_INTERNAL AND TARGET Qt6::GuiPrivate)
+      target_link_libraries(${_target} PRIVATE Qt6::GuiPrivate)
+    endif()
+    if(QTCLIENT_MOD_INTERNAL AND TARGET Qt6::QuickPrivate)
+      target_link_libraries(${_target} PRIVATE Qt6::QuickPrivate)
+    endif()
   endif()
   # Match host language dialect (tibia uses gnu++23 on this tree).
+  # AUTOMOC: packs with Q_OBJECT / #include "foo.moc" (IdleOT socialdialog).
   set_target_properties(${_target} PROPERTIES
     CXX_STANDARD 23
-    CXX_STANDARD_REQUIRED ON)
+    CXX_STANDARD_REQUIRED ON
+    AUTOMOC ON)
 
   set(_mod_json "${ARG_MOD_JSON}")
   if(NOT _mod_json)

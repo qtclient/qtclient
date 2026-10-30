@@ -2,7 +2,7 @@
 # Pull / push CIP Qt install prefixes as OCI artifacts on GHCR.
 #
 #   tools/qt/ghcr-qt.sh pull <kit-slug>   # unpack into $QT_ROOT/cip-<sha>/<dir>
-#   tools/qt/ghcr-qt.sh push <kit-slug>   # pack local prefix → ghcr.io/qtclient/qt-cip:<sha>-<kit>
+#   tools/qt/ghcr-qt.sh push <kit-slug>   # pack local prefix → ghcr.io/qtclient/qt:<sha>-<kit>
 #
 # Requires: oras (https://oras.land). Auth: docker/oras login to ghcr.io
 # (GITHUB_TOKEN with read:packages / write:packages in CI).
@@ -110,22 +110,22 @@ do_push() {
 }
 
 do_pull_release() {
-  local rel="cip-qt-$SHORT" asset url tmp
+  local rel="qt-$SHORT" asset url tmp
   if qt_prefix_has_qt6 "$PREFIX"; then
     echo "[qt-ghcr] already present: $PREFIX"
     return 0
   fi
-  asset="qt-cip-${TAG}.tar.zst"
+  asset="qt-${TAG}.tar.zst"
   url="https://github.com/qtclient/qtclient/releases/download/${rel}/${asset}"
   echo "[qt-ghcr] pulling release $url"
   tmp=".qt-ghcr-rel-$$"
   rm -rf "$tmp"
   mkdir -p "$tmp"
   if ! curl -fsSL "$url" -o "$tmp/$asset"; then
-    asset="qt-cip-${TAG}.tar.gz"
+    asset="qt-${TAG}.tar.gz"
     url="https://github.com/qtclient/qtclient/releases/download/${rel}/${asset}"
     curl -fsSL "$url" -o "$tmp/$asset" || {
-      echo "[qt-ghcr] release miss: $url (published non-draft cip-qt-* required)"
+      echo "[qt-ghcr] release miss: $url (published non-draft qt-* required)"
       rm -rf "$tmp"
       return 1
     }

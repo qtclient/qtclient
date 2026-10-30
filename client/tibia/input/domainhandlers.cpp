@@ -212,23 +212,29 @@ constexpr std::array<A, 13> OpenWebsiteActions = {
 
 }
 
-TOpenWebsiteGameActionHandler::TOpenWebsiteGameActionHandler(const QUrl& loginBase, QObject* parent)
+TOpenWebsiteGameActionHandler::TOpenWebsiteGameActionHandler(const app::LauncherEnv& env, QObject* parent)
     : cip::tibia::input::TOpenWebsiteGameActionHandler(parent)
-    , m_loginBase(loginBase)
+    , m_env(env)
 {
     const auto openNamed = [this](const TGameAction& action) {
-        app::PortalUrls::open(app::PortalUrls::urlFor(m_loginBase, action.type));
+        app::PortalUrls::open(app::PortalUrls::urlFor(m_env, action.type));
         return true;
     };
     for (const A type : OpenWebsiteActions)
         setActionHandler(type, openNamed);
     setActionHandler(A::OPEN_URL, [this](const TGameAction& action) {
-        QUrl url = action.text.isEmpty() ? m_loginBase : QUrl(action.text);
+        QUrl url = action.text.isEmpty() ? m_env.loginBase : QUrl(action.text);
         if (!url.isValid() || url.scheme().isEmpty())
-            url = app::PortalUrls::urlFor(m_loginBase, A::OPEN_URL_TIBIA_PAGE);
+            url = app::PortalUrls::urlFor(m_env, A::OPEN_URL_TIBIA_PAGE);
         app::PortalUrls::open(url);
         return true;
     });
+}
+
+TOpenWebsiteGameActionHandler::TOpenWebsiteGameActionHandler(const QUrl& loginBase, QObject* parent)
+    : TOpenWebsiteGameActionHandler(app::LauncherEnv{}, parent)
+{
+    m_env.loginBase = loginBase;
 }
 
 TOpenWebsiteGameActionHandler::~TOpenWebsiteGameActionHandler()

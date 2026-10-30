@@ -1,10 +1,12 @@
 #include "app/bootstrap.h"
+#include "mods/modloader.h"
 
 #include <exception>
 #include "app/clientoptions.h"
 #include "app/crashlog.h"
 #include "app/launcherenv.h"
 #include "app/portalurls.h"
+#include "app/sessionbootstrap.h"
 #ifdef TIBIA_WITH_GAMECORE
 #include "app/qtplatformwindow.h"
 #include "client/gameclient.h"
@@ -77,6 +79,7 @@
 #include "gamewindow/vipwidgetcontroller.h"
 #include "gamewindow/bugreportdialogcontroller.h"
 #include "gamewindow/deathdialogcontroller.h"
+#include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/naggingmessagedialogcontroller.h"
 #include "gamewindow/reportviolationcontroller.h"
 #include "exivaoptions/exivaoptionsdialogcontroller.h"
@@ -103,6 +106,7 @@
 #include <QDirIterator>
 #include <QEvent>
 #include <QEventLoop>
+#include <QSaveFile>
 #if defined(TIBIA_WASM_EMBED_LAUNCHER)
 #include <QApplication>
 // launcher/src is on the include path (TIBIA_WASM_EMBED_LAUNCHER).
@@ -127,6 +131,7 @@
 #include <algorithm>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <string>
 
 #ifdef Q_OS_WASM
@@ -352,15 +357,29 @@ int main(int argc, char** argv)
     app::configureProcess(options, rendererFromArgs(argc, argv));
 
 #if defined(TIBIA_WASM_EMBED_LAUNCHER)
-    // CipSoft /play: QApplication so the Soft launcher Widgets stage can run;
+    // CipSoft /play: QApplication so the qtclient launcher Widgets stage can run;
     // Play remounts into a game-only Module (QTCLIENT_WASM_SKIP_LAUNCHER).
     QApplication application(argc, argv);
 #else
     QGuiApplication application(argc, argv);
 #endif
-    // Runtime packs (desktop + WASM): load mods/<id>/ after QApp so defaultRoots work.
-    // Startup only — never on the world hot path.
-    tibia::mods::ModLoader::loadAll(tibia::mods::ModLoader::defaultRoots());
+    // Runtime packs: single tip pack after QApp. --no-mods → CipSoft; --default-mod → mods/default.
+    bool skipMods = false;
+    bool defaultMod = false;
+    for (int i = 1; i < argc; ++i) {
+        if (qstrcmp(argv[i], "--no-mods") == 0)
+            skipMods = true;
+        else if (qstrcmp(argv[i], "--default-mod") == 0)
+            defaultMod = true;
+    }
+    if (skipMods) {
+        tibia::mods::ModLoader::setSkipLoad(true);
+        qInfo("--no-mods: stock CipSoft client (no pack)");
+    } else {
+        if (defaultMod)
+            tibia::mods::ModLoader::setForceDefaultMod(true);
+        tibia::mods::ModLoader::loadAll();
+    }
     tibia::mods::ensureModsRegistered();
     if (const auto* id = tibia::mods::primaryIdentity(); id && !id->displayName.empty()) {
         application.setApplicationName(QString::fromStdString(id->displayName));
@@ -422,6 +441,7 @@ int main(int argc, char** argv)
     parser.addOption({ QStringLiteral("record"), QStringLiteral("Record the game session to this file."), QStringLiteral("file") });
     parser.addOption({ QStringLiteral("replay"), QStringLiteral("Play a recorded game session instead of logging in."), QStringLiteral("file") });
     parser.addOption({ QStringLiteral("screenshot-delay"), QStringLiteral("Milliseconds after entering the world before --screenshot (default 3000)."), QStringLiteral("ms") });
+    parser.addOption({ QStringLiteral("no-mods"), QStringLiteral("Do not load mods/<id> packs (stock qtclient).") });
     // Launcher settings may carry arguments of the Lua client; they are not fatal.
     if (!parser.parse(commandLine()))
         qWarning().noquote() << parser.errorText();
@@ -524,6 +544,28 @@ int main(int argc, char** argv)
     gameClient.setWindow(window);
     if (!preview)
         controller = gameClient.characterSelection();
+
+    // CIP ShowClientOutOfDate: caption "info", body client_too_old, single Restart
+    // (YES/Return). Restart writes QTCLIENT_RESTART_FILE so the launcher updates.
+    using OutOfDateBox = gamewindow::TMessageDialogController;
+    OutOfDateBox clientOutOfDateDialog;
+    clientOutOfDateDialog.setCloseOnButtonClicked(true);
+    clientOutOfDateDialog.setButtons(
+        { new gamewindow::TMessageDialogButton(qtTrId("restart"), OutOfDateBox::Button::YES,
+                                               QKeySequence(QStringLiteral("Return"))) });
+    QObject::connect(&gameClient, &client::TGameClient::clientOutOfDate, &clientOutOfDateDialog, [&] {
+        if (!clientOutOfDateDialog.dialog()->isInStack())
+            clientOutOfDateDialog.showMessage(qtTrId("info"), qtTrId("client_too_old"));
+    });
+    QObject::connect(&clientOutOfDateDialog, &OutOfDateBox::acceptClicked, &application, [] {
+        const QString marker = qEnvironmentVariable("QTCLIENT_RESTART_FILE");
+        if (!marker.isEmpty()) {
+            QSaveFile file(marker);
+            if (file.open(QIODevice::WriteOnly) && file.write("1") == 1)
+                file.commit();
+        }
+        QCoreApplication::quit();
+    });
 #endif
 
     // CIP's game window: the start screen until the world is entered, then the
@@ -575,11 +617,7 @@ int main(int argc, char** argv)
     }
     gameWindowItem->setParentItem(placeholder);
     gameWindowItem->setProperty("controller", QVariant::fromValue<QObject*>(&gameWindowController));
-#ifdef TIBIA_WITH_GAMECORE
-    gameWindowController.configureClientServices(app::PortalUrls::clientServicesUrl(env.loginBase, env.loginPath), env.revision);
-#else
-    gameWindowController.configureClientServices(env.loginUrl(), env.revision);
-#endif
+    gameWindowController.configureClientServices(env.clientServicesUrl(), env.revision);
     gameWindowController.showStartScreen();
     auto* dialogPlaceholder = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("dialogPlaceholder"));
     auto* mapWindowPane = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("mapWindowPane"));
@@ -699,6 +737,12 @@ int main(int argc, char** argv)
 
     gamewindow::TContextMenuController contextMenu(engine.get(), window->contentItem());
     gamewindow::TDialogStackController dialogStack(engine.get(), dialogPlaceholder);
+    // CIP session chrome (WaitDialog, errors, create account/character, keep_renderer).
+    // Must run after the dialog stack so MessageDialog / WaitDialog can show.
+    std::unique_ptr<app::TSessionBootstrap> sessionBootstrap;
+    if (!preview) {
+        sessionBootstrap = std::make_unique<app::TSessionBootstrap>(&gameClient, env, &gameWindowController, &productHost);
+    }
     QObject::connect(&gameClient, &client::TGameClient::sessionEmailAvailable, &gameWindowController,
                      &gamewindow::TGameWindowController::rememberLoginEmailIfEnabled);
     if (!preview) {
@@ -989,7 +1033,7 @@ int main(int argc, char** argv)
     optionsDialog.setWindow(window);
     optionsDialog.setGameClient(&gameClient);
     optionsDialog.setPortalBase(env.loginBase);
-    input::TOpenWebsiteGameActionHandler openWebsiteActions(env.loginBase);
+    input::TOpenWebsiteGameActionHandler openWebsiteActions(env);
     QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::optionsMenuRequested, &optionsDialog,
                      &gamewindow::TOptionsMenuDialogController::open);
     input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG, [&optionsDialog](const input::TGameAction& action) {
@@ -1073,6 +1117,8 @@ int main(int argc, char** argv)
         ctx.services["minimapController"] = minimapController;
         ctx.services["keyboardShortcuts"] = &keyboardShortcuts;
         ctx.services["playerMovement"] = &playerMovement;
+        if (sessionBootstrap)
+            ctx.services["sessionBootstrap"] = sessionBootstrap.get();
         tibia::mods::bootstrapAll(ctx);
     }
 

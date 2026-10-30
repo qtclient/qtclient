@@ -3,6 +3,7 @@
 #include "clientoptions.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/mousecursorcontroller.h"
+#include "mods/modloader.h"
 #include "mods/registry.h"
 #include "overrideinterceptor.h"
 #include "packqmlinterceptor.h"
@@ -280,15 +281,27 @@ std::unique_ptr<QQmlEngine> createEngine()
     }
 #if defined(TIBIA_QML_DISK)
     // DEV: also import from source pack qml/ so `import idleot` + disk remap stay in sync.
-    for (const QString& root :
-         QStringLiteral(TIBIA_QML_MOD_DIR).split(QLatin1Char(':'), Qt::SkipEmptyParts)) {
-        if (QDir(root).exists())
-            engine->addImportPath(root);
+    // --no-mods drops pack qml/ and pack overrides baked into the binary; engine
+    // client/overrides stay. Pack trees live under .../mods/.
+    QString diskModDirs = QStringLiteral(TIBIA_QML_MOD_DIR);
+    QString diskOverrideDirs = QStringLiteral(TIBIA_QML_OVERRIDES_DIR);
+    if (tibia::mods::ModLoader::skipLoad()) {
+        diskModDirs.clear();
+        QStringList keptOverrides;
+        for (const QString& root : diskOverrideDirs.split(QLatin1Char(':'), Qt::SkipEmptyParts)) {
+            if (!root.contains(QLatin1String("/mods/")))
+                keptOverrides.push_back(root);
+        }
+        diskOverrideDirs = keptOverrides.join(QLatin1Char(':'));
+    } else {
+        for (const QString& root : diskModDirs.split(QLatin1Char(':'), Qt::SkipEmptyParts)) {
+            if (QDir(root).exists())
+                engine->addImportPath(root);
+        }
     }
-    // Prefer source pack trees in DEV so edits apply without restaging.
     engine->addUrlInterceptor(new DiskQmlInterceptor(QStringLiteral(TIBIA_QML_CIP_DIR),
-                                                     QStringLiteral(TIBIA_QML_MOD_DIR),
-                                                     QStringLiteral(TIBIA_QML_OVERRIDES_DIR)));
+                                                     diskModDirs,
+                                                     diskOverrideDirs));
     installQmlDiskHotReload(engine.get(), engine.get());
 #endif
     // Production / fallback: qrc:/qt/qml/<module>/… → staged mods/<id>/qml/<module>/…

@@ -6,7 +6,7 @@ Product Qt is built from [CipSoft-Tibia/Qt5](https://github.com/CipSoft-Tibia/Qt
 
 Warm prefixes are published by the public [qtclient](https://github.com/qtclient/qtclient) CI:
 
-`ghcr.io/qtclient/qt-cip:<sha12>-<kit>`
+`ghcr.io/qtclient/qt:<sha12>-<kit>`
 
 ## `make qt`
 

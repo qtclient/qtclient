@@ -8,13 +8,23 @@ Stock CipSoft is **not** under `mods/` (`upstream/` + `client/tibia/`).
 | Customizing stock | `client/overrides/` |
 | `mods/<name>/` | `mods/<name>/` + `mod.json` + `qml/<uri>/` |
 
+## Tracked packs
+
+| Pack | Role |
+|------|------|
+| `_sample/` | SDK example |
+| `default/` | Demo tip myAAC urls (`/login.php`); staged by `make demo-pack` |
+
+IdleOT lives in `apps/idleot-client` — use `QTCLIENT_MODS_DIR` (no required symlink).
+Tip install replaces `mods/default` with `mods/idleot` (single slot).
+
 ## Inplace (gitignored)
 
-Only `_sample` and this README are tracked. Drop private packs here:
+Other packs under this directory are gitignored. Drop private packs here:
 
 ```bash
 ln -s ~/my-pack mods/my_pack
-# or product: make idleot install   # links + builds qtclient host/MODULE
+# or product: make idleot install   # links + builds stock qtclient/MODULE
 ```
 
 Enable with default `QTCLIENT_ENABLE_MODS=ON` (auto-discovers non-`_*` packs).

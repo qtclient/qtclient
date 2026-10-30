@@ -112,7 +112,7 @@ public:
                                               QObject* parent = nullptr);
     ~TCreateCharacterDialogController() override;
 
-    /// The account service (product: the portal's /api/auth/create-account).
+    /// The account service (CIP accountcreationclientservices.php on the portal).
     void setServiceUrl(const QUrl& url) { m_serviceUrl = url; }
     /// The login session the new character goes to.
     void setSessionKey(const QString& sessionKey) { m_sessionKey = sessionKey; }

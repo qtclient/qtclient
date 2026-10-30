@@ -147,6 +147,8 @@ public:
     void openCharacterSelectionForSwitch(const QJsonArray& alts = {});
     /// Hide CharacterSelection without logging out / quitting (in-game Switch toggle).
     void closeCharacterSelection();
+    /// CIP Ctrl/Cmd+G / sidebar Switch: toggle in-game CharacterSelection while online.
+    void toggleCharacterSelectionForSwitch();
     /// Start screen must show the character list or the login mask, never neither.
     void ensureLoginSurface();
     /// Abort on CIP's connecting dialog: drop the login HTTP request, or the
@@ -207,6 +209,8 @@ private:
     std::unique_ptr<authentication::TLoginRequestUploader> m_login;
     bool m_suppressConnectError = false;
     std::unique_ptr<gamewindow::TCharacterSelectionController> m_characterSelection;
+    /// True while CharacterSelection is open for an in-game Change Character switch.
+    bool m_characterSelectionOpen = false;
     std::unique_ptr<game::TGameserverGameSession> m_session;
     std::unique_ptr<game::TSessiondumpGameSession> m_sessiondump;
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;

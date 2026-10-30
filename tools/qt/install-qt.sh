@@ -131,7 +131,7 @@ ensure_prefix_or_wait() {
     echo "[qt] still waiting for $kit_slug (${now}s left)…" >&2
   done
   echo "[qt] pull-only: miss for $kit_slug after ${QT_PULL_WAIT_SECS}s" >&2
-  echo "[qt]   tried GHCR ${QT_GHCR_IMAGE}:<sha12>-${kit_slug} and GitHub Release cip-qt-<sha12>" >&2
+  echo "[qt]   tried GHCR ${QT_GHCR_IMAGE}:<sha12>-${kit_slug} and GitHub Release qt-<sha12>" >&2
   echo "[qt]   run Build CIP Qt + Publish CIP Qt release assets (non-draft), then retry" >&2
   return 1
 }

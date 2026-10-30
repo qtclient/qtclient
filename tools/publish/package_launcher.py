@@ -49,31 +49,15 @@ LINUX_LAUNCHER_PLUGINS = (
 
 
 def find_launcher(bin_dir: Path, platform: str) -> Path:
+    """qtclient launcher at <bin>/launcher[.app|/exe] (TOGGLE_BIN_FOLDER=ON)."""
     name = LAUNCHER_BUILD[platform]
+    path = bin_dir / name
     want_dir = name.endswith(".app")
-    # TOGGLE_BIN_FOLDER may put binaries in bin/; cmake also creates a
-    # build/.../launcher/ directory tree — never treat that dir as the ELF.
-    roots = [bin_dir]
-    if bin_dir.name == "bin" and bin_dir.parent.is_dir():
-        roots.append(bin_dir.parent)
-    candidates: list[Path] = []
-    for root in roots:
-        if not root.is_dir():
-            continue
-        direct = root / name
-        if direct.exists() and (direct.is_dir() if want_dir else direct.is_file()):
-            candidates.append(direct)
-            continue
-        candidates.extend(
-            p for p in root.rglob(name) if (p.is_dir() if want_dir else p.is_file())
-        )
-    if not candidates:
-        raise SystemExit(
-            f"[launcher] no {name} under {bin_dir} (build: deploy/build-tibia.sh --launcher)"
-        )
-    # Prefer …/bin/launcher over …/launcher/src/launcher when both exist.
-    candidates.sort(key=lambda p: (0 if "/bin/" in p.as_posix() else 1, len(p.parts), str(p)))
-    return candidates[0]
+    if path.exists() and (path.is_dir() if want_dir else path.is_file()):
+        return path
+    raise SystemExit(
+        f"[launcher] missing {path} (build: deploy/build-tibia.sh --launcher)"
+    )
 
 
 def brand_launcher_macos(app: Path) -> Path:

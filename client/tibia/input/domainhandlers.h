@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/launcherenv.h"
 #include "gameactionhandlers.h"
 
 #include <cip_gen.h>
@@ -74,18 +75,19 @@ public:
 };
 
 /// CIP input::TOpenWebsiteGameActionHandler: OPEN_URL_* → portal / absolute URL
-/// (product maps CIP tibia.com URLs via app::PortalUrls).
+/// (product maps CIP tibia.com URLs via app::PortalUrls + LauncherEnv overrides).
 class TOpenWebsiteGameActionHandler final : public cip::tibia::input::TOpenWebsiteGameActionHandler
 {
     Q_OBJECT
 public:
+    explicit TOpenWebsiteGameActionHandler(const app::LauncherEnv& env, QObject* parent = nullptr);
     explicit TOpenWebsiteGameActionHandler(const QUrl& loginBase, QObject* parent = nullptr);
     ~TOpenWebsiteGameActionHandler() override;
     TOpenWebsiteGameActionHandler(const TOpenWebsiteGameActionHandler&) = delete;
     TOpenWebsiteGameActionHandler& operator=(const TOpenWebsiteGameActionHandler&) = delete;
 
 private:
-    QUrl m_loginBase;
+    app::LauncherEnv m_env;
 };
 
 }

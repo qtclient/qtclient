@@ -94,7 +94,9 @@ qt_add_executable(tibia
   app/clientoptions.cpp app/clientoptions.h
   app/graphicsrestart.cpp app/graphicsrestart.h
   app/crashlog.cpp app/crashlog.h
+  app/cipdomainmap.cpp app/cipdomainmap.h
   app/launcherenv.cpp app/launcherenv.h
+  app/sessionbootstrap.cpp app/sessionbootstrap.h
   app/hints.cpp app/hints.h
   app/overrideinterceptor.cpp app/overrideinterceptor.h
   app/packqmlinterceptor.cpp app/packqmlinterceptor.h
@@ -233,7 +235,7 @@ set_target_properties(tibia PROPERTIES
   MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/macos/Info.plist.in"
   WIN32_EXECUTABLE ON
   QT_QML_ROOT_PATH "${CIP_ROOT}/client/upstream/qml")
-# Desktop Soft Play binary is `client` (Contents/MacOS/client). Browser CDN expects tibia.js + tibia.wasm.
+# Desktop qtclient Play binary is `client` (Contents/MacOS/client). Browser CDN expects tibia.js + tibia.wasm.
 if(EMSCRIPTEN)
   set_target_properties(tibia PROPERTIES OUTPUT_NAME tibia)
 else()

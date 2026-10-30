@@ -12,17 +12,46 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QHash>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QQueue>
 #include <QSaveFile>
 
+#include <functional>
+#include <memory>
+
 namespace {
+
+// CipSoft shared::TDownloadPool: queue every needed file, then run many GETs
+// concurrently (logs show 3520 files → InstalledAndUsable in ~21s). qtclient used
+// to GET+unpack one file at a time (~10k round-trips). Cap in-flight replies so
+// local Node /cdn and HTTP/1.1 stay healthy; HTTP/2 CDN multiplexes under this.
+constexpr int kCipDownloadPoolMaxInFlight = 32;
+
+void configureInstallRequest(QNetworkRequest* request)
+{
+    request->setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                          QNetworkRequest::NoLessSafeRedirectPolicy);
+    request->setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
+    // Multiplex many GETs on one connection to the tip CDN (IdleOT/CIP).
+    request->setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
+    // CipSoft TDownloadPool::StartDownload sets transfer timeout (ms).
+    request->setTransferTimeout(5 * 60 * 1000);
+}
 
 QString jsonString(const QJsonObject& obj, const char* key)
 {
     return obj.value(QLatin1String(key)).toString();
 }
+
+struct InstallJob {
+    CipFile file;
+    QUrl url;
+    QString destPath;
+    int ordinal = 0; // 1-based among files that need download
+};
 
 qint64 jsonInt(const QJsonValue& value)
 {
@@ -243,8 +272,7 @@ QByteArray PackageClient::getForInstall(const QUrl& url, qint64 donePacked, qint
     if (resolved.isRelative() && !m_cdn.isEmpty())
         resolved = QUrl(m_cdn).resolved(resolved);
     QNetworkRequest request(resolved);
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
-    request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
+    configureInstallRequest(&request);
     QNetworkReply* reply = m_nam->get(request);
     connect(reply, &QNetworkReply::downloadProgress, this,
             [this, donePacked, totalPacked, fileIndex, fileCount](qint64 received, qint64) {
@@ -448,63 +476,166 @@ bool PackageClient::hasFileGaps(const CipPackageDoc& doc, const QString& destDir
     return false;
 }
 
-bool PackageClient::installFiles(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir, QString* error)
+qint64 PackageClient::pendingPackedBytes(const QVector<CipFile>& files, const QString& destDir) const
+{
+    qint64 total = 0;
+    for (const CipFile& file : files) {
+        if (fileAlreadyInstalled(file, destDir))
+            continue;
+        total += qMax(file.packedsize, qint64(0));
+    }
+    return total;
+}
+
+bool PackageClient::installFiles(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir,
+                                 QString* error, qint64 progressBase, qint64 progressTotal)
 {
     QDir().mkpath(destDir);
-    QVector<bool> needDownload(files.size());
-    qint64 totalPacked = 0;
-    for (int i = 0; i < files.size(); ++i) {
-        needDownload[i] = !fileAlreadyInstalled(files.at(i), destDir);
-        if (needDownload[i])
-            totalPacked += qMax(files.at(i).packedsize, qint64(0));
-    }
-    if (totalPacked <= 0)
-        totalPacked = 1;
-    qint64 donePacked = 0;
-    const int fileCount = files.size();
-    int index = 0;
+    QQueue<InstallJob> pending;
+    qint64 batchPacked = 0;
+    int ordinal = 0;
     for (const CipFile& file : files) {
-        const bool download = needDownload.at(index);
-        ++index;
-        if (!download) {
-            Q_EMIT progress(donePacked, totalPacked, index, fileCount);
+        if (fileAlreadyInstalled(file, destDir))
             continue;
-        }
-        const QString destPath = QDir(destDir).filePath(file.localfile);
-        const QByteArray packed = getForInstall(fileDownloadUrl(packageUrl, file), donePacked, totalPacked, index,
-                                                fileCount, error);
-        if (packed.isEmpty() && file.packedsize != 0) {
-            if (error && error->isEmpty())
-                *error = QStringLiteral("Download failed");
+        InstallJob job;
+        job.file = file;
+        job.url = fileDownloadUrl(packageUrl, file);
+        job.destPath = QDir(destDir).filePath(file.localfile);
+        job.ordinal = ++ordinal;
+        batchPacked += qMax(file.packedsize, qint64(0));
+        pending.enqueue(job);
+    }
+    const int downloadCount = pending.size();
+    const qint64 spanTotal = progressTotal > 0 ? progressTotal : (batchPacked > 0 ? batchPacked : 1);
+    if (downloadCount == 0) {
+        Q_EMIT progress(progressBase + batchPacked, spanTotal, 0, 0);
+        return true;
+    }
+
+    // Match CipSoft tibia-launcher.log: queue first, then pool GETs.
+    qInfo().noquote() << QStringLiteral("Starting download of %1 files").arg(downloadCount);
+    for (const InstallJob& job : pending)
+        qInfo().noquote() << QStringLiteral("Queued file for download:") << job.url.toString();
+
+    qint64 donePacked = 0; // committed in this batch
+    QHash<QNetworkReply*, qint64> inflightReceived;
+    int finished = 0;
+    int inFlight = 0;
+    bool failed = false;
+    QString failError;
+    QEventLoop loop;
+
+    const auto emitAggregate = [&](int fileIndex) {
+        qint64 live = 0;
+        for (auto it = inflightReceived.constBegin(); it != inflightReceived.constEnd(); ++it)
+            live += it.value();
+        Q_EMIT progress(progressBase + donePacked + live, spanTotal, fileIndex, downloadCount);
+    };
+
+    const auto commitPacked = [&](const InstallJob& job, const QByteArray& packed) -> bool {
+        if ((packed.isEmpty() && job.file.packedsize != 0)) {
+            failError = QStringLiteral("Download failed");
             return false;
         }
-        if (sha256Hex(packed) != file.packedhash) {
-            if (error)
-                *error = QStringLiteral("Download failed: ") + file.localfile;
-            qWarning("packed hash mismatch for %s (%lld bytes)", qUtf8Printable(file.localfile), qint64(packed.size()));
+        if (sha256Hex(packed) != job.file.packedhash) {
+            failError = QStringLiteral("Download failed: ") + job.file.localfile;
+            qWarning("packed hash mismatch for %s (%lld bytes)", qUtf8Printable(job.file.localfile),
+                     qint64(packed.size()));
             return false;
         }
         QByteArray unpacked;
         QString unpackError;
         if (!unpackLzmaAlone(packed, unpacked, &unpackError)) {
-            if (error)
-                *error = unpackError + QStringLiteral(" ") + file.url;
+            failError = unpackError + QStringLiteral(" ") + job.file.url;
             return false;
         }
-        if (sha256Hex(unpacked) != file.unpackedhash || unpacked.size() != file.unpackedsize) {
-            if (error)
-                *error = QStringLiteral("Download failed: ") + file.localfile;
+        if (sha256Hex(unpacked) != job.file.unpackedhash || unpacked.size() != job.file.unpackedsize) {
+            failError = QStringLiteral("Download failed: ") + job.file.localfile;
             return false;
         }
-        QDir().mkpath(QFileInfo(destPath).path());
-        QSaveFile out(destPath);
+        QDir().mkpath(QFileInfo(job.destPath).path());
+        QSaveFile out(job.destPath);
         if (!out.open(QIODevice::WriteOnly) || out.write(unpacked) != unpacked.size() || !out.commit()) {
-            if (error)
-                *error = QStringLiteral("Failed to create folder: '%1'.").arg(destPath);
+            failError = QStringLiteral("Failed to create folder: '%1'.").arg(job.destPath);
             return false;
         }
-        donePacked += qMax(file.packedsize > 0 ? file.packedsize : qint64(packed.size()), qint64(0));
-        Q_EMIT progress(donePacked, totalPacked, index, fileCount);
+        donePacked += qMax(job.file.packedsize > 0 ? job.file.packedsize : qint64(packed.size()), qint64(0));
+        emitAggregate(job.ordinal);
+        return true;
+    };
+
+    std::function<void()> pump;
+    pump = [&]() {
+        while (!failed && inFlight < kCipDownloadPoolMaxInFlight && !pending.isEmpty()) {
+            const InstallJob job = pending.dequeue();
+            QUrl resolved = job.url.isRelative() ? job.url : resolve(QUrl(), job.url.toString());
+            if (resolved.isRelative() && !m_cdn.isEmpty())
+                resolved = QUrl(m_cdn).resolved(resolved);
+            QNetworkRequest request(resolved);
+            configureInstallRequest(&request);
+            QNetworkReply* reply = m_nam->get(request);
+            ++inFlight;
+            inflightReceived.insert(reply, 0);
+            connect(reply, &QNetworkReply::downloadProgress, this, [&, reply, job](qint64 received, qint64) {
+                if (failed || !inflightReceived.contains(reply))
+                    return;
+                inflightReceived[reply] = qMax(received, qint64(0));
+                emitAggregate(job.ordinal);
+            });
+            connect(reply, &QNetworkReply::finished, this, [&, reply, job]() {
+                const QByteArray body = reply->readAll();
+                const auto netError = reply->error();
+                const QString errString = reply->errorString();
+                inflightReceived.remove(reply);
+                reply->deleteLater();
+                --inFlight;
+                if (failed) {
+                    if (inFlight == 0 && pending.isEmpty())
+                        loop.quit();
+                    else
+                        pump();
+                    return;
+                }
+                if (netError != QNetworkReply::NoError) {
+                    failed = true;
+                    failError = QStringLiteral("Download failed: ") + errString;
+                    qWarning("Download failed: %s %s", qUtf8Printable(job.url.toString()),
+                             qUtf8Printable(errString));
+                    pending.clear();
+                    inflightReceived.clear();
+                    if (inFlight == 0)
+                        loop.quit();
+                    return;
+                }
+                // Refill the pool before LZMA/hash so network stays saturated while we unpack.
+                pump();
+                if (!commitPacked(job, body)) {
+                    failed = true;
+                    pending.clear();
+                    inflightReceived.clear();
+                    if (inFlight == 0)
+                        loop.quit();
+                    return;
+                }
+                ++finished;
+                if (finished >= downloadCount && inFlight == 0)
+                    loop.quit();
+                else
+                    pump();
+            });
+        }
+        if (!failed && finished >= downloadCount && inFlight == 0)
+            loop.quit();
+    };
+
+    pump();
+    if (inFlight > 0 || (!pending.isEmpty() && !failed))
+        loop.exec();
+
+    if (failed) {
+        if (error)
+            *error = failError;
+        return false;
     }
     return true;
 }
@@ -562,7 +693,8 @@ bool PackageClient::writePackageMarkers(const CipPackageDoc& doc, const QString&
     return true;
 }
 
-bool PackageClient::installPackage(const QUrl& packageUrl, const CipPackageDoc& doc, const QString& destDir, QString* error)
+bool PackageClient::installPackage(const QUrl& packageUrl, const CipPackageDoc& doc, const QString& destDir,
+                                   QString* error, qint64 progressBase, qint64 progressTotal)
 {
     QDir().mkpath(destDir);
     QFile partial(QDir(destDir).filePath(QStringLiteral("partial.package.json.version")));
@@ -570,82 +702,168 @@ bool PackageClient::installPackage(const QUrl& packageUrl, const CipPackageDoc& 
         partial.write(doc.version.toUtf8());
         partial.close();
     }
-    if (!installFiles(packageUrl, doc.files, destDir, error))
+    if (!installFiles(packageUrl, doc.files, destDir, error, progressBase, progressTotal))
         return false;
     return writePackageMarkers(doc, destDir, error);
 }
 
 void PackageClient::installFilesAsync(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir,
-                                      int index, qint64 donePacked, qint64 totalPacked, InstallCallback done)
+                                      int /*index*/, qint64 progressBase, qint64 progressTotal, InstallCallback done)
 {
-    if (index >= files.size()) {
-        m_emitProgress = false;
-        if (done)
-            done(true, {});
+    // CipSoft TDownloadPool on the browser main thread: queue needed files, keep
+    // up to kCipDownloadPoolMaxInFlight GETs in flight (no nested QEventLoop).
+    // Aggregate progress across in-flight replies — never share one m_progressDone
+    // baseline (that flickered the bar between concurrent files).
+    struct PoolState {
+        QQueue<InstallJob> pending;
+        QHash<QNetworkReply*, qint64> inflightReceived;
+        int downloadCount = 0;
+        int finished = 0;
+        int inFlight = 0;
+        qint64 progressBase = 0;
+        qint64 spanTotal = 1;
+        qint64 donePacked = 0;
+        bool failed = false;
+        InstallCallback done;
+    };
+    auto state = std::make_shared<PoolState>();
+    state->done = std::move(done);
+    state->progressBase = progressBase;
+
+    int ordinal = 0;
+    qint64 batchPacked = 0;
+    for (const CipFile& file : files) {
+        if (fileAlreadyInstalled(file, destDir))
+            continue;
+        InstallJob job;
+        job.file = file;
+        job.url = fileDownloadUrl(packageUrl, file);
+        job.destPath = QDir(destDir).filePath(file.localfile);
+        job.ordinal = ++ordinal;
+        batchPacked += qMax(file.packedsize, qint64(0));
+        state->pending.enqueue(job);
+    }
+    state->downloadCount = state->pending.size();
+    state->spanTotal = progressTotal > 0 ? progressTotal : (batchPacked > 0 ? batchPacked : 1);
+    if (state->downloadCount == 0) {
+        Q_EMIT progress(progressBase + batchPacked, state->spanTotal, 0, 0);
+        if (state->done)
+            state->done(true, {});
         return;
     }
-    const CipFile file = files.at(index);
-    const int fileIndex = index + 1;
-    const int fileCount = files.size();
-    if (fileAlreadyInstalled(file, destDir)) {
-        Q_EMIT progress(donePacked, totalPacked, fileIndex, fileCount);
-        installFilesAsync(packageUrl, files, destDir, index + 1, donePacked, totalPacked, std::move(done));
-        return;
-    }
-    const QString destPath = QDir(destDir).filePath(file.localfile);
-    m_emitProgress = true;
-    m_progressDone = donePacked;
-    m_progressTotal = totalPacked;
-    m_progressFileIndex = fileIndex;
-    m_progressFileCount = fileCount;
-    getAsync(fileDownloadUrl(packageUrl, file),
-             [this, packageUrl, files, destDir, index, file, fileIndex, fileCount, destPath, donePacked, totalPacked,
-              done = std::move(done)](const QByteArray& packed, const QString& error) {
-                 if ((packed.isEmpty() && file.packedsize != 0) || !error.isEmpty()) {
-                     m_emitProgress = false;
-                     if (done)
-                         done(false, error.isEmpty() ? QStringLiteral("Download failed") : error);
-                     return;
-                 }
-                 if (sha256Hex(packed) != file.packedhash) {
-                     m_emitProgress = false;
-                     qWarning("packed hash mismatch for %s (%lld bytes)", qUtf8Printable(file.localfile),
-                              qint64(packed.size()));
-                     if (done)
-                         done(false, QStringLiteral("Download failed: ") + file.localfile);
-                     return;
-                 }
-                 QByteArray unpacked;
-                 QString unpackError;
-                 if (!unpackLzmaAlone(packed, unpacked, &unpackError)) {
-                     m_emitProgress = false;
-                     if (done)
-                         done(false, unpackError + QStringLiteral(" ") + file.url);
-                     return;
-                 }
-                 if (sha256Hex(unpacked) != file.unpackedhash || unpacked.size() != file.unpackedsize) {
-                     m_emitProgress = false;
-                     if (done)
-                         done(false, QStringLiteral("Download failed: ") + file.localfile);
-                     return;
-                 }
-                 QDir().mkpath(QFileInfo(destPath).path());
-                 QSaveFile out(destPath);
-                 if (!out.open(QIODevice::WriteOnly) || out.write(unpacked) != unpacked.size() || !out.commit()) {
-                     m_emitProgress = false;
-                     if (done)
-                         done(false, QStringLiteral("Failed to create folder: '%1'.").arg(destPath));
-                     return;
-                 }
-                 const qint64 nextDone = donePacked
-                     + qMax(file.packedsize > 0 ? file.packedsize : qint64(packed.size()), qint64(0));
-                 Q_EMIT progress(nextDone, totalPacked, fileIndex, fileCount);
-                 installFilesAsync(packageUrl, files, destDir, index + 1, nextDone, totalPacked, done);
-             });
+
+    qInfo().noquote() << QStringLiteral("Starting download of %1 files").arg(state->downloadCount);
+    for (const InstallJob& job : state->pending)
+        qInfo().noquote() << QStringLiteral("Queued file for download:") << job.url.toString();
+
+    auto emitAggregate = [this, state](int fileIndex) {
+        qint64 live = 0;
+        for (auto it = state->inflightReceived.constBegin(); it != state->inflightReceived.constEnd(); ++it)
+            live += it.value();
+        Q_EMIT progress(state->progressBase + state->donePacked + live, state->spanTotal, fileIndex,
+                        state->downloadCount);
+    };
+
+    auto pump = std::make_shared<std::function<void()>>();
+    *pump = [this, state, pump, emitAggregate, packageUrl]() {
+        Q_UNUSED(packageUrl);
+        while (!state->failed && state->inFlight < kCipDownloadPoolMaxInFlight && !state->pending.isEmpty()) {
+            const InstallJob job = state->pending.dequeue();
+            QUrl resolved = job.url.isRelative() ? job.url : resolve(QUrl(), job.url.toString());
+            if (resolved.isRelative() && !m_cdn.isEmpty())
+                resolved = QUrl(m_cdn).resolved(resolved);
+            QNetworkRequest request(resolved);
+            configureInstallRequest(&request);
+            QNetworkReply* reply = m_nam->get(request);
+            ++state->inFlight;
+            state->inflightReceived.insert(reply, 0);
+            connect(reply, &QNetworkReply::downloadProgress, this, [state, reply, job, emitAggregate](qint64 received, qint64) {
+                if (state->failed || !state->inflightReceived.contains(reply))
+                    return;
+                state->inflightReceived[reply] = qMax(received, qint64(0));
+                emitAggregate(job.ordinal);
+            });
+            connect(reply, &QNetworkReply::finished, this, [this, state, pump, emitAggregate, reply, job]() {
+                const QByteArray packed = reply->readAll();
+                const auto netError = reply->error();
+                const QString errString = reply->errorString();
+                state->inflightReceived.remove(reply);
+                reply->deleteLater();
+                --state->inFlight;
+                if (state->failed) {
+                    if (state->inFlight == 0 && state->pending.isEmpty() && state->done) {
+                        auto cb = std::move(state->done);
+                        cb(false, QStringLiteral("Download failed"));
+                    } else {
+                        (*pump)();
+                    }
+                    return;
+                }
+                if (netError != QNetworkReply::NoError || (packed.isEmpty() && job.file.packedsize != 0)) {
+                    state->failed = true;
+                    state->pending.clear();
+                    state->inflightReceived.clear();
+                    qWarning("Download failed: %s %s", qUtf8Printable(job.url.toString()),
+                             qUtf8Printable(errString));
+                    if (state->done)
+                        state->done(false, errString.isEmpty() ? QStringLiteral("Download failed")
+                                                               : QStringLiteral("Download failed: ") + errString);
+                    return;
+                }
+                // Keep the pool full while this reply unpacks.
+                (*pump)();
+                if (sha256Hex(packed) != job.file.packedhash) {
+                    state->failed = true;
+                    state->pending.clear();
+                    qWarning("packed hash mismatch for %s (%lld bytes)", qUtf8Printable(job.file.localfile),
+                             qint64(packed.size()));
+                    if (state->done)
+                        state->done(false, QStringLiteral("Download failed: ") + job.file.localfile);
+                    return;
+                }
+                QByteArray unpacked;
+                QString unpackError;
+                if (!unpackLzmaAlone(packed, unpacked, &unpackError)) {
+                    state->failed = true;
+                    state->pending.clear();
+                    if (state->done)
+                        state->done(false, unpackError + QStringLiteral(" ") + job.file.url);
+                    return;
+                }
+                if (sha256Hex(unpacked) != job.file.unpackedhash || unpacked.size() != job.file.unpackedsize) {
+                    state->failed = true;
+                    state->pending.clear();
+                    if (state->done)
+                        state->done(false, QStringLiteral("Download failed: ") + job.file.localfile);
+                    return;
+                }
+                QDir().mkpath(QFileInfo(job.destPath).path());
+                QSaveFile out(job.destPath);
+                if (!out.open(QIODevice::WriteOnly) || out.write(unpacked) != unpacked.size() || !out.commit()) {
+                    state->failed = true;
+                    state->pending.clear();
+                    if (state->done)
+                        state->done(false, QStringLiteral("Failed to create folder: '%1'.").arg(job.destPath));
+                    return;
+                }
+                state->donePacked += qMax(job.file.packedsize > 0 ? job.file.packedsize : qint64(packed.size()),
+                                          qint64(0));
+                ++state->finished;
+                emitAggregate(job.ordinal);
+                if (state->finished >= state->downloadCount) {
+                    if (state->done)
+                        state->done(true, {});
+                    return;
+                }
+                (*pump)();
+            });
+        }
+    };
+    (*pump)();
 }
 
 void PackageClient::installPackageAsync(const QUrl& packageUrl, const CipPackageDoc& doc, const QString& destDir,
-                                        InstallCallback done)
+                                        InstallCallback done, qint64 progressBase, qint64 progressTotal)
 {
     QDir().mkpath(destDir);
     QFile partial(QDir(destDir).filePath(QStringLiteral("partial.package.json.version")));
@@ -653,16 +871,10 @@ void PackageClient::installPackageAsync(const QUrl& packageUrl, const CipPackage
         partial.write(doc.version.toUtf8());
         partial.close();
     }
-    qint64 totalPacked = 0;
-    for (const CipFile& file : doc.files) {
-        if (!fileAlreadyInstalled(file, destDir))
-            totalPacked += qMax(file.packedsize, qint64(0));
-    }
-    if (totalPacked <= 0)
-        totalPacked = 1;
-    installFilesAsync(packageUrl, doc.files, destDir, 0, 0, totalPacked,
+    const qint64 batch = pendingPackedBytes(doc.files, destDir);
+    const qint64 span = progressTotal > 0 ? progressTotal : (batch > 0 ? batch : 1);
+    installFilesAsync(packageUrl, doc.files, destDir, 0, progressBase, span,
                       [this, doc, destDir, done = std::move(done)](bool ok, const QString& error) {
-                          m_emitProgress = false;
                           if (!ok) {
                               if (done)
                                   done(false, error);
@@ -680,9 +892,9 @@ void PackageClient::installPackageAsync(const QUrl& packageUrl, const CipPackage
 }
 
 bool PackageClient::installAssets(const QUrl& assetsUrl, const QVector<CipFile>& files, const QString& assetsVersion,
-                                  const QString& destDir, QString* error)
+                                  const QString& destDir, QString* error, qint64 progressBase, qint64 progressTotal)
 {
-    if (!installFiles(assetsUrl, files, destDir, error))
+    if (!installFiles(assetsUrl, files, destDir, error, progressBase, progressTotal))
         return false;
     QFile stamp(QDir(destDir).filePath(QStringLiteral("assets.json.sha256")));
     if (!stamp.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -696,19 +908,14 @@ bool PackageClient::installAssets(const QUrl& assetsUrl, const QVector<CipFile>&
 }
 
 void PackageClient::installAssetsAsync(const QUrl& assetsUrl, const QVector<CipFile>& files,
-                                       const QString& assetsVersion, const QString& destDir, InstallCallback done)
+                                       const QString& assetsVersion, const QString& destDir, InstallCallback done,
+                                       qint64 progressBase, qint64 progressTotal)
 {
     QDir().mkpath(destDir);
-    qint64 totalPacked = 0;
-    for (const CipFile& file : files) {
-        if (!fileAlreadyInstalled(file, destDir))
-            totalPacked += qMax(file.packedsize, qint64(0));
-    }
-    if (totalPacked <= 0)
-        totalPacked = 1;
-    installFilesAsync(assetsUrl, files, destDir, 0, 0, totalPacked,
-                      [this, assetsVersion, destDir, done = std::move(done)](bool ok, const QString& error) {
-                          m_emitProgress = false;
+    const qint64 batch = pendingPackedBytes(files, destDir);
+    const qint64 span = progressTotal > 0 ? progressTotal : (batch > 0 ? batch : 1);
+    installFilesAsync(assetsUrl, files, destDir, 0, progressBase, span,
+                      [assetsVersion, destDir, done = std::move(done)](bool ok, const QString& error) {
                           if (!ok) {
                               if (done)
                                   done(false, error);

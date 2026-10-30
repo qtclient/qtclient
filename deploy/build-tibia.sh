@@ -124,11 +124,17 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   mkdir -p "$BUILD_DIR"
 
   HELPER="$MONOREPO/scripts/cmake-configure-if-needed.sh"
-  # STOCK_HOST=1 / QTCLIENT_ENABLE_MODS=0 → Soft MAIN_MODULE only (IdleOT pack separate).
-  _mods_flag=()
+  # Always pass one -D each — empty "${arr[@]}" trips `set -u`.
+  # STOCK_HOST=1 / QTCLIENT_ENABLE_MODS=0 → qtclient MAIN_MODULE only (IdleOT pack separate).
+  _mods_cmake=-DQTCLIENT_ENABLE_MODS=ON
   if [[ "${STOCK_HOST:-0}" == "1" || "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
-    _mods_flag=(-DQTCLIENT_ENABLE_MODS=OFF)
+    _mods_cmake=-DQTCLIENT_ENABLE_MODS=OFF
   fi
+  # OFF keeps the launcher CipSoft-branded. IdleOT launcher install sets ON.
+  _launcher_mods_cmake=-DQTCLIENT_ENABLE_LAUNCHER_MODS=OFF
+  case "${QTCLIENT_ENABLE_LAUNCHER_MODS:-}" in
+    1|ON|on|true|TRUE|yes|YES) _launcher_mods_cmake=-DQTCLIENT_ENABLE_LAUNCHER_MODS=ON ;;
+  esac
   WASM_CMAKE_ARGS=(
     -G Ninja -S "$OTC" -B "$BUILD_DIR"
     -DCMAKE_MAKE_PROGRAM="$NINJA"
@@ -149,13 +155,15 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     -DTIBIA_WASM_GRAPHICS_RCC="$RCC"
     -DWASM_INITIAL_MEMORY="$WASM_INITIAL_MEMORY"
     -DWASM_USE_WASM_EXCEPTIONS=OFF
-    "${_mods_flag[@]}"
+    "$_mods_cmake"
+    "$_launcher_mods_cmake"
   )
   FP="$(
     {
     echo "tibia-wasm-vcpkg-v2-fpic"
     echo "stock-host=${STOCK_HOST:-0}"
     echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
+    echo "launcher-mods=${QTCLIENT_ENABLE_LAUNCHER_MODS:-OFF}"
     printf '%s\n' "${WASM_CMAKE_ARGS[@]}"
     shasum -a 256 "$OTC/vcpkg.json" "$OTC/vcpkg-configuration.json" 2>/dev/null || true
   } | shasum -a 256 2>/dev/null | awk '{print $1}'
@@ -168,7 +176,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
 
   cmake --build "$BUILD_DIR" --target tibia -j"$JOBS"
   # Packs are MODULE/SIDE_MODULE — not linked into tibia; build them explicitly
-  # unless this is a stock Soft host (IdleOT SIDE_MODULE is a separate artifact).
+  # unless this is a stock qtclient host (IdleOT SIDE_MODULE is a separate artifact).
   if [[ "${STOCK_HOST:-0}" != "1" && ! "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
     if grep -qE '(^|/)qtclient_mods:' "$BUILD_DIR/build.ninja" 2>/dev/null; then
       cmake --build "$BUILD_DIR" --target qtclient_mods -j"$JOBS"
@@ -308,47 +316,68 @@ FP="$(
     echo "qml-disk=$DEV_BUILD"
     echo "stock-host=${STOCK_HOST:-0}"
     echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
+    echo "launcher-mods=${QTCLIENT_ENABLE_LAUNCHER_MODS:-OFF}"
     shasum -a 256 "$OTC/CMakePresets.json" "$OTC/vcpkg.json" 2>/dev/null || true
   } | shasum -a 256 2>/dev/null | awk '{print $1}'
 )"
-_mods_flag=()
+# Always pass one -D each — empty "${arr[@]}" trips `set -u`.
+_mods_cmake=-DQTCLIENT_ENABLE_MODS=ON
 if [[ "${STOCK_HOST:-0}" == "1" || "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
-  _mods_flag=(-DQTCLIENT_ENABLE_MODS=OFF)
+  _mods_cmake=-DQTCLIENT_ENABLE_MODS=OFF
 fi
+# OFF keeps the launcher CipSoft-branded. IdleOT launcher install sets ON.
+_launcher_mods_cmake=-DQTCLIENT_ENABLE_LAUNCHER_MODS=OFF
+case "${QTCLIENT_ENABLE_LAUNCHER_MODS:-}" in
+  1|ON|on|true|TRUE|yes|YES) _launcher_mods_cmake=-DQTCLIENT_ENABLE_LAUNCHER_MODS=ON ;;
+esac
 if [[ -f "$HELPER" ]]; then
   bash "$HELPER" "$BUILD_DIR" "$FP" -- \
     cmake --preset "$PRESET" \
     -DTOGGLE_BIN_FOLDER=ON \
     -DCMAKE_PREFIX_PATH="$QT_DESKTOP" \
     -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
-    "${_mods_flag[@]}"
+    "$_mods_cmake" \
+    "$_launcher_mods_cmake"
 else
   cmake --preset "$PRESET" \
     -DTOGGLE_BIN_FOLDER=ON \
     -DCMAKE_PREFIX_PATH="$QT_DESKTOP" \
     -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
-    "${_mods_flag[@]}"
+    "$_mods_cmake" \
+    "$_launcher_mods_cmake"
 fi
+# Expected qtclient outputs (TOGGLE_BIN_FOLDER=ON) — no multi-path search.
+case "$(uname -s)" in
+  Darwin)
+    CLIENT_BIN="$BUILD_DIR/bin/client.app/Contents/MacOS/client"
+    LAUNCHER_BIN="$BUILD_DIR/bin/launcher.app/Contents/MacOS/launcher"
+    ;;
+  *)
+    CLIENT_BIN="$BUILD_DIR/bin/client"
+    LAUNCHER_BIN="$BUILD_DIR/bin/launcher"
+    ;;
+esac
 if [[ "$LAUNCHER_BUILD" -eq 1 ]]; then
   cmake --build --preset "$PRESET" --target launcher -j"$JOBS"
-  BIN="$(find "$OTC/build/$PRESET" \( -path '*launcher.app/Contents/MacOS/launcher' -o -path '*/launcher/src/launcher' \) -type f 2>/dev/null | head -1)"
+  # Drop cmake's default-tree copy so only bin/launcher.app remains.
+  rm -rf "$BUILD_DIR/launcher/src/launcher.app" "$BUILD_DIR/launcher/src/launcher"
+  BIN="$LAUNCHER_BIN"
 else
   cmake --build --preset "$PRESET" --target tibia -j"$JOBS"
-  # Stock Soft host skips in-tree packs (IdleOT builds out-of-tree against host-sdk).
+  # Stock qtclient skips in-tree packs (IdleOT builds out-of-tree against client-sdk).
   if [[ "${STOCK_HOST:-0}" != "1" && ! "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
     if grep -qE '(^|/)qtclient_mods:' "$BUILD_DIR/build.ninja" 2>/dev/null; then
       cmake --build --preset "$PRESET" --target qtclient_mods -j"$JOBS"
     fi
   fi
-  # Drop pre-OUTPUT_NAME leftovers so finders never pick a stale binary.
-  rm -rf "$OTC/build/$PRESET/client/tibia/tibia.app"
-  rm -f "$OTC/build/$PRESET/client/tibia/tibia" \
-        "$OTC/build/$PRESET/bin/tibia" \
-        "$OTC/build/$PRESET/bin/tibia.exe"
-  BIN="$("$HERE/find-client-bin.sh" "$OTC/build/$PRESET" 2>/dev/null || true)"
+  # Drop pre-OUTPUT_NAME / non-bin leftovers so only build/<preset>/bin/… remains.
+  rm -rf "$BUILD_DIR/client/tibia/tibia.app" "$BUILD_DIR/client/tibia/client.app"
+  rm -f "$BUILD_DIR/client/tibia/tibia" "$BUILD_DIR/client/tibia/client" \
+        "$BUILD_DIR/bin/tibia" "$BUILD_DIR/bin/tibia.exe"
+  BIN="$CLIENT_BIN"
 fi
-if [[ -z "$BIN" ]]; then
-  echo "[tibia] build finished but binary missing under $OTC/build/$PRESET"
+if [[ ! -x "$BIN" ]]; then
+  echo "[tibia] build finished but missing $BIN" >&2
   exit 1
 fi
 echo "[tibia] ok → $BIN"

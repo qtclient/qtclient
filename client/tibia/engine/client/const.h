@@ -703,7 +703,7 @@ namespace Otc
     /// Client autoWalk Soft / live-tile policy.
     /// Minimap: CIP sidebar/minimap click — Soft Indexed8 strict (0xfe/0xff blocked).
     /// Cyclopedia: CIP cyclopedia Shift+click — Soft 0xfe fog is expensive-but-passable.
-    /// Travel: product TravelRouter — Cyclopedia + Soft 0xff fog + live soft blockers
+    /// Travel: product TravelRouter — Cyclopedia + CipSoft 0xff fog + live soft blockers
     /// (parcels, splash/poison fields, non-pathable) as expensive-but-passable.
     enum AutoWalkPathMode : uint8_t
     {

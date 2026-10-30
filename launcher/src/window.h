@@ -76,7 +76,10 @@ private:
     void installThingsPacksViaJs(bool thenPlay, const QString& version);
 #endif
     void play();
-    void spawn(const QString& executable, const QString& workDir, const QString& revision);
+    /// Local DEV: `QTCLIENT_DEV_JSON` desktop.exe (qtclient --no-mods / IdleOT pack).
+    bool tryPlayDevClient();
+    void spawn(const QString& executable, const QString& workDir, const QString& revision,
+               const QStringList& clientArgs = {});
     void considerSelfUpdate(const CipMetadata& metadata);
     QString packageDir() const;
     QString localVersion() const;

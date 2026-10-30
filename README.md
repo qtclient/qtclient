@@ -49,4 +49,4 @@ Build with `qtclient_add_mod` and drop the staged `mods/<id>/` tree next to `cli
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting |
 | [AGENTS.md](AGENTS.md) | CIP-as-upstream rules |
 
-C++ deps: **vcpkg**. Qt: CipSoft-Tibia/Qt5 (`third_party/qt5-cip`) via `make qt` — warm prefixes `ghcr.io/qtclient/qt-cip`. LegacyControls: `third_party/Qt5LegacyControls`.
+C++ deps: **vcpkg**. Qt: CipSoft-Tibia/Qt5 (`third_party/qt5-cip`) via `make qt` — warm prefixes `ghcr.io/qtclient/qt`. LegacyControls: `third_party/Qt5LegacyControls`.

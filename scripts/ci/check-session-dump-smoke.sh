@@ -68,10 +68,7 @@ fi
 BIN="${QTCLIENT_CLIENT_BIN:-}"
 if [[ -z "$BIN" ]]; then
   FIND_BIN="$(cd "$(dirname "$0")/../.." && pwd)/deploy/find-client-bin.sh"
-  for preset in macos-release macos-debug linux-release linux-debug macos-dev linux-dev; do
-    BIN="$("$FIND_BIN" "$OTC/build/$preset" 2>/dev/null || true)"
-    [[ -n "$BIN" ]] && break
-  done
+  BIN="$("$FIND_BIN" "$OTC" 2>/dev/null || true)"
 fi
 if [[ -z "${BIN:-}" || ! -x "$BIN" ]]; then
   echo "[session-dump-smoke] client binary not found — set QTCLIENT_CLIENT_BIN or run make client-build" >&2

@@ -276,7 +276,7 @@ public:
     bool isPathAvoided(const Position& pos) const;
 
     /// Soft Indexed8 waypoint snapshot factory (CIP TWaypointCostMap). Set from
-    /// TGameClient while the Soft minimap is live; cleared on world leave.
+    /// TGameClient while the CipSoft minimap is live; cleared on world leave.
     using WaypointCostFactory = std::function<std::shared_ptr<tibia::minimap::TWaypointCosts>()>;
     void setWaypointCostFactory(WaypointCostFactory factory);
     void clearWaypointCostFactory();

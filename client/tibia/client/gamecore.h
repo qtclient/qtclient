@@ -44,6 +44,10 @@ void resumeRealTime();
 /// (modules/game_features) and the server RSA key.
 void setClientVersion(int version);
 
+/// Absolute CipSoft Resources directory (tip AppData / bundle / monorepo data/).
+/// Empty when unresolved. Used for storeimages disk cache, etc.
+QString cipResourcesDir();
+
 /// CIP assets directory (contains catalog-content.json).
 ///
 /// Single layout for desktop + wasm: resolve Cip Resources

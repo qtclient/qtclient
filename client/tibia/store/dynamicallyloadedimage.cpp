@@ -1,6 +1,10 @@
 #include "dynamicallyloadedimage.h"
 
+#include "client/gamecore.h"
+
+#include <QDir>
 #include <QNetworkAccessManager>
+#include <QNetworkDiskCache>
 #include <QNetworkReply>
 #include <QPainter>
 
@@ -13,12 +17,30 @@ QString cacheKey(const QString& key, const int size)
     return QString::number(size) + QLatin1Char('/') + key;
 }
 
+/// CIP: QNetworkDiskCache under tip Resources/storeimages/ (data8/*.d).
+void attachStoreDiskCache(QNetworkAccessManager* network)
+{
+    if (!network)
+        return;
+    const QString resources = client::gamecore::cipResourcesDir();
+    if (resources.isEmpty())
+        return;
+    const QString cacheDir = QDir(resources).filePath(QStringLiteral("storeimages"));
+    QDir().mkpath(cacheDir);
+    auto* disk = new QNetworkDiskCache(network);
+    disk->setCacheDirectory(cacheDir);
+    // Qt default is 50 MiB; CIP size unrecovered from RE — keep default.
+    network->setCache(disk);
+}
+
 }
 
 TDynamicallyLoadedImageManager::TDynamicallyLoadedImageManager(QObject* parent)
     : cip::tibia::store::TDynamicallyLoadedImageManager(parent)
     , m_network(new QNetworkAccessManager(this))
-{}
+{
+    attachStoreDiskCache(m_network);
+}
 
 void TDynamicallyLoadedImageManager::setBaseUrl(const QUrl& baseUrl)
 {
@@ -50,7 +72,9 @@ void TDynamicallyLoadedImageManager::request(const QString& key, const int size)
     if (m_pending.contains(cached))
         return;
     m_pending.insert(cached);
-    QNetworkReply* reply = m_network->get(QNetworkRequest(url(cached)));
+    QNetworkRequest req(url(cached));
+    req.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);
+    QNetworkReply* reply = m_network->get(req);
     connect(reply, &QNetworkReply::finished, this, [this, reply, key, size] { onFinished(reply, key, size); });
 }
 

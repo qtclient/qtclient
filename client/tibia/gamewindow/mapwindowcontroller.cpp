@@ -97,13 +97,17 @@ void TMapWindowController::syncFov()
     if (paneW < 32 || paneH < 32)
         return;
 
-    int width = 15;
-    int height = 11;
-    qreal scale = paneH / (11 * 32.0);
-    if (classicView()) {
-        // The pane was already sized by CIP's height snap. The world stays 15×11.
-        scale = paneH / (11 * 32.0);
-    } else {
+    // CIP MapWindowPane is always a 15×11 world (480×352) scaled into the map
+    // window; unusedWidth beside the 15:11 frame feeds sidebars. Packs that grow
+    // the world (IdleOT HUD) set packExpandsFov on the pane.
+    constexpr int cipFieldsW = 15;
+    constexpr int cipFieldsH = 11;
+    int width = cipFieldsW;
+    int height = cipFieldsH;
+    // Matches CIP MapWindowPane.mapWindowScaleFactor (height / 352).
+    qreal scale = paneH / (cipFieldsH * 32.0);
+    const bool packExpands = m_pane->property("packExpandsFov").toBool();
+    if (!classicView() && packExpands) {
         scale = cipScale(paneW, paneH, m_mapWindowScaleOnlyByEvenMultiples);
         width = std::max(3, static_cast<int>(std::ceil(paneW / (32.0 * scale))));
         height = std::max(3, static_cast<int>(std::ceil(paneH / (32.0 * scale))));

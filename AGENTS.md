@@ -41,7 +41,7 @@ target and no opentibiabr/otclient upstream. Check behavior against CIP.
   (rel. to `client/upstream/qml/`) with a first line
   `// cip-base: <sha256 of the cip file>`. Engine overrides still merge at
   configure-time into `qmlcomponents` qrc; **pack** overrides remap at runtime
-  via `PackQmlInterceptor` so Soft hosts stay stock (F5 / live reload). A CIP
+  via `PackQmlInterceptor` so stock qtclient stays stock (F5 / live reload). A CIP
   release that changes the base fails `tibia-sync --check` until the override is
   re-merged. Drop an override once C++ or the pack can carry the behavior instead.
   **Overrides are global CipSoft forks** (classic + HUD both mount them — not
@@ -62,7 +62,7 @@ target and no opentibiabr/otclient upstream. Check behavior against CIP.
   including wasm as an OS triplet). Qt is **CipSoft-Tibia/Qt5** at
   `third_party/qt5-cip` (patched 6.10.3; `update = none` — init via `make qt`),
   plus `third_party/Qt5LegacyControls`. `make qt [WASM=1]` builds or pulls
-  GHCR `ghcr.io/qtclient/qt-cip:<sha>-<kit>` (never vcpkg Qt; emsdk 4.0.7 for
+  GHCR `ghcr.io/qtclient/qt:<sha>-<kit>` (never vcpkg Qt; emsdk 4.0.7 for
   wasm). Needs `VCPKG_ROOT`. Docs:
   [`docs/development/build-tooling.md`](docs/development/build-tooling.md).
   Umbrella `make qtclient client build` is **dev** (`TIBIA_QML_DISK`:
@@ -73,10 +73,19 @@ target and no opentibiabr/otclient upstream. Check behavior against CIP.
 - **Login smoke test** (portal + Crystal running): `make qtclient client run
   ARGS='--account=EMAIL --password=PW --character=NAME --play-for=20'` logs in,
   plays 20 s, logs out; exit 0 only if still online. Without `--character` it
-  shows CIP's character list. Auth is CipSoft launcher + CIP login /
-  `/api/login` only (no product play-bootstrap SSO). With `--character`,
+  shows CIP's character list. Auth is launcher + AAC login JSON only (no product
+  play-bootstrap SSO). **Login URLs:** single tip pack `urls` (env > mod >
+  `release_env.lua` > real CipSoft). Demo: `mods/default` → myAAC `/login.php`.
+  IdleOT → portal `/clientservices/*.php` (`QTCLIENT_MODS_DIR` or tip
+  `mods/idleot`). `--no-mods` → `https://www.tibia.com`. `--default-mod` → force
+  `mods/default`. With `--character`,
   `--screenshot=tmp/shots/x.png` shoots the world 3 s after login;
   `QT_LOGGING_RULES=tibia.worldmap.debug=true` logs sprite counts and sync cost.
+- **Web URLs (CIP `[URLS]`-style):** `LauncherEnv` + `PortalUrls` from pack
+  `urls` (see `docs/mods.md`). Escape hatch: `OTC_LOGIN_*`,
+  `QTCLIENT_ASSET_BASE`, `QTCLIENT_PAYMENTS_URL`, `OTC_URL_*`. Demo Release:
+  `make demo-pack` / `make demo-run` (see `docs/public/demo-tip.md`). Store
+  icons: CDN `/images/store/` + disk cache under tip `Resources/storeimages/`.
 - **CIP full clone.** Gap ledgers and status:
   [`docs/reverse-engineering/ledgers/`](../../docs/reverse-engineering/ledgers/),
   [`docs/reverse-engineering/cip-clone-status.md`](../../docs/reverse-engineering/cip-clone-status.md).
@@ -148,7 +157,7 @@ CIP tip protocol: `tibiametadata.json` → engine `package.json` → `assets.jso
 - **Browser (WASM):** tip layout is CipSoft
   `packages/<dir>/Contents/Resources/{assets,sounds,minimap}` under **OPFS**
   (same paths as desktop AppData disk) on **all** platforms. `/play` is always
-  portal progress + one game-only Module (never Soft Widgets). Portal installs
+  portal progress + one game-only Module (never qtclient Widgets). Portal installs
   essentials + sprite `/packs` via normal FS writes before `callMain`. Warm
   boot verifies the OPFS stamp; on miss installs in place. No IDBFS tip tree,
   Cache-as-packs VFS, or bulk MEMFS unzip. Do not download sprites after Play

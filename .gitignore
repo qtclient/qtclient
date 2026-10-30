@@ -49,6 +49,8 @@ vc18/
 !/client/mods/README.md
 !/client/mods/_sample/
 !/client/mods/_sample/**
+!/client/mods/default/
+!/client/mods/default/**
 /launcher/mods/*
 !/launcher/mods/.gitkeep
 

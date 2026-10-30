@@ -69,11 +69,12 @@ TIBIA_ENGINE_PATHS = (
 # gamecore finds its work dir by data/setup.otml (whose typing-icon it loads) and reads
 # config.ini; things come from content-things.
 TIBIA_RUNTIME_FILES = ("data/setup.otml", "data/images/game/console/typing.png", "config.ini")
-# Soft: OUTPUT_NAME client → client.app / client.exe / client; brand to APP_NAME.app.
+# qtclient: OUTPUT_NAME client → client.app / client.exe / client; brand to APP_NAME.app.
+# qtclient cmake OUTPUT_NAME under build/<preset>/bin (TOGGLE_BIN_FOLDER=ON).
 TIBIA_BUILD = {
-    "macos-arm64": (f"{APP_NAME}.app", "IdleOT.app", "QtClient.app", "client.app", "Tibia.app"),
-    "windows-x64": ("client.exe",),
-    "linux-x64": ("client",),
+    "macos-arm64": "client.app",
+    "windows-x64": "client.exe",
+    "linux-x64": "client",
 }
 # Linux: the Qt plugin directories the app may load (platform, GL, images, TLS).
 LINUX_QT_PLUGINS = ("platforms", "xcbglintegrations", "wayland-shell-integration", "wayland-graphics-integration-client",
@@ -128,17 +129,47 @@ def macos_app(bin_dir: Path) -> Path:
     return app
 
 
-def release_env_entry(site_url: str, asset_base: str, revision: str, tmpdir: Path) -> tuple[Path, str]:
+def release_env_entry(
+    site_url: str,
+    asset_base: str,
+    revision: str,
+    tmpdir: Path,
+    *,
+    login_profile: str = "mod",
+) -> tuple[Path, str]:
+    """Write release_env.lua (revision + optional origin/asset).
+
+    Login paths live in pack mod.json `urls` (demo myaac / IdleOT CIP).
+    login_profile legacy values myaac|cip still bake paths as a fallback when
+    the tip has no mod; prefer `mod` (default) — origin only for domain remap.
+    """
     url = urlsplit(site_url)
     if url.scheme not in ("http", "https") or not url.hostname:
         raise SystemExit(f"[desktop] invalid --site-url {site_url!r}")
     values = {
-        "OTC_LOGIN_SCHEME": url.scheme,
-        "OTC_LOGIN_HOST": url.hostname,
-        "OTC_LOGIN_PORT": str(url.port or (443 if url.scheme == "https" else 80)),
         "TIBIA_REVISION": revision,
+        "QTCLIENT_REVISION": revision,
     }
+    # Origin for LauncherEnv when mod.json omits loginBase (or as lower-precedence fallback).
+    if login_profile != "mod" or site_url:
+        values["OTC_LOGIN_SCHEME"] = url.scheme
+        values["OTC_LOGIN_HOST"] = url.hostname
+        if url.port:
+            values["OTC_LOGIN_PORT"] = str(url.port)
+        elif login_profile == "cip" and url.hostname in ("127.0.0.1", "localhost"):
+            values["OTC_LOGIN_PORT"] = "5173"
+
+    if login_profile == "cip":
+        values["OTC_LOGIN_PATH"] = "/clientservices/loginservice.php"
+        values["OTC_CLIENTSERVICES_PATH"] = "/clientservices/clientservices.php"
+        values["OTC_CREATE_ACCOUNT_PATH"] = "/clientservices/accountcreationclientservices.php"
+    elif login_profile == "myaac":
+        values["OTC_LOGIN_PATH"] = "/login.php"
+        values["OTC_CLIENTSERVICES_PATH"] = "/login.php"
+        values["OTC_CREATE_ACCOUNT_PATH"] = "/login.php"
+
     if asset_base:
+        values["QTCLIENT_ASSET_BASE"] = asset_base.rstrip("/")
         values["TIBIA_ASSET_BASE"] = asset_base.rstrip("/")
     body = "".join(f"    {k} = {json.dumps(v)},\n" for k, v in values.items())
     path = tmpdir / "release_env.lua"
@@ -206,26 +237,14 @@ def qt_prefix() -> Path:
 
 
 def tibia_build(bin_dir: Path, platform: str) -> Path:
-    # Prefer --bin as given; if it is …/bin (TOGGLE_BIN_FOLDER) and empty, search the preset root.
-    roots = [bin_dir]
-    if bin_dir.name == "bin" and bin_dir.parent.is_dir():
-        roots.append(bin_dir.parent)
-    names = TIBIA_BUILD[platform]
-    for root in roots:
-        if not root.is_dir():
-            continue
-        for name in names:
-            want_dir = name.endswith(".app")
-            direct = root / name
-            if direct.exists() and (direct.is_dir() if want_dir else direct.is_file()):
-                return direct
-            found = sorted(
-                p for p in root.rglob(name) if (p.is_dir() if want_dir else p.is_file())
-            )
-            if found:
-                return found[0]
+    """qtclient client at <bin_dir>/client[.app|/exe] (TOGGLE_BIN_FOLDER=ON)."""
+    name = TIBIA_BUILD[platform]
+    path = bin_dir / name
+    want_dir = name.endswith(".app")
+    if path.exists() and (path.is_dir() if want_dir else path.is_file()):
+        return path
     raise SystemExit(
-        f"[desktop] no {'/'.join(names)} under {bin_dir} (build it: make tibia-build)"
+        f"[desktop] missing {path} (build: make qtclient client build)"
     )
 
 
@@ -411,6 +430,12 @@ def main() -> int:
                         or ""
                     ),
                     help="CDN origin baked into release_env.lua, e.g. https://cdn.example.invalid")
+    ap.add_argument(
+        "--login-profile",
+        choices=("mod", "myaac", "cip"),
+        default=os.environ.get("QTCLIENT_LOGIN_PROFILE", "mod"),
+        help="release_env.lua: mod (revision/origin only; paths from pack urls) or legacy myaac|cip",
+    )
     ap.add_argument("--engine-bundle", type=Path, metavar="DIR",
                     help=f"macOS: copy the branded bundle without runtime to DIR/{APP_NAME}.app (sign it next), then exit")
     ap.add_argument("--engine-files", action="store_true",
@@ -448,7 +473,15 @@ def tibia_main(ap: argparse.ArgumentParser, args: argparse.Namespace, bin_dir: P
         with tempfile.TemporaryDirectory() as tmp:
             runtime = tibia_runtime_entries()
             if args.site_url:
-                runtime.append(release_env_entry(args.site_url, args.asset_base, revision, Path(tmp)))
+                runtime.append(
+                    release_env_entry(
+                        args.site_url,
+                        args.asset_base,
+                        revision,
+                        Path(tmp),
+                        login_profile=args.login_profile,
+                    )
+                )
             write_tibia_content_files(out, revision, engine, runtime)
     print(f"[desktop] tibia {args.platform} revision={revision} engine={engine} -> {out}")
     return 0

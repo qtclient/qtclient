@@ -13,19 +13,22 @@ CipSoft-compatible **Qt/QML Tibia client** (desktop + browser WASM) + **CIP laun
 | CIP vendor | `client/upstream/` | `launcher/upstream/` |
 
 BYO licensed Tibia install for offline assets — CIP blobs are never redistributed.
-Preferred path: **hybrid tip** (our binary + CipSoft `assetsurl`).
+Preferred path: **demo tip** (our binary + CipSoft `assetsurl` + `mods/default`).
+No pack / `--no-mods` → real CipSoft. Login URLs otherwise from the single tip pack.
 
 ## Use a release binary
 
-1. Download the qtclient release for your OS.
-2. **Hybrid (recommended):** point the tip at the Release `tibiametadata.json` (package = us, assets = CIP):
+1. Run [myAAC](https://github.com/slawkens/myaac) + your game server (Crystal, etc.).
+2. Download the qtclient demo Release for your OS.
+3. Start `./launcher` (sidecar `tibiametadata.json` or set `QTCLIENT_TIP_URL`). **Update** pulls CipSoft assets; **Play** uses myAAC login.
 
 ```bash
+# optional explicit tip
 export QTCLIENT_TIP_URL="https://github.com/qtclient/qtclient/releases/latest/download/tibiametadata.json"
 ./launcher
 ```
 
-3. **Offline BYO:** install official Tibia, then:
+4. **Offline BYO:** install official Tibia, then:
 
 ```bash
 ./qtclient-fetch-assets
@@ -33,7 +36,7 @@ export QTCLIENT_TIP_URL="https://github.com/qtclient/qtclient/releases/latest/do
 ./client
 ```
 
-See [hybrid-tip.md](hybrid-tip.md).
+See [demo-tip.md](demo-tip.md).
 
 ## Build from source
 
@@ -65,7 +68,7 @@ ln -s ~/my-mod client/mods/my_mod
 
 ## CI artifacts
 
-- **CIP Qt prefixes:** `ghcr.io/qtclient/qt-cip:<sha12>-<kit>`
+- **CIP Qt prefixes:** `ghcr.io/qtclient/qt:<sha12>-<kit>`
 - **ccache** from stock (`QTCLIENT_ENABLE_MODS=OFF`) builds
 - **launcher + client + qtclient-fetch-assets** tarballs (no CIP asset blobs)
 
@@ -73,7 +76,7 @@ ln -s ~/my-mod client/mods/my_mod
 
 | Doc | Topic |
 |-----|--------|
-| [hybrid-tip.md](hybrid-tip.md) | CIP assetsurl + our package |
+| [demo-tip.md](demo-tip.md) | CIP assetsurl + our package |
 | [../open-source.md](../open-source.md) | Public vs product packs |
 | [../mods.md](../mods.md) | Overrides + mods |
 | [AGENTS.md](AGENTS.md) | CIP-as-upstream rules |

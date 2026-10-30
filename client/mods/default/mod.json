@@ -1,0 +1,20 @@
+{
+  "id": "default",
+  "name": "myAAC login",
+  "version": "1.0.0",
+  "autoload": true,
+  "priority": 50,
+  "QTCLIENT_MOD_API": 1,
+  "description": "Demo/stock tip pack — myAAC http://127.0.0.1/login.php. IdleOT tip replaces this slot with mods/idleot.",
+  "urls": {
+    "loginBase": "http://127.0.0.1",
+    "loginPath": "/login.php",
+    "clientServicesPath": "/login.php",
+    "createAccountPath": "/login.php",
+    "pages": {
+      "OTC_URL_CREATE_ACCOUNT": "/?subtopic=createaccount",
+      "OTC_URL_ACCESS_ACCOUNT": "/?subtopic=accountmanagement",
+      "OTC_URL_LOST_ACCOUNT": "/?subtopic=lostaccount"
+    }
+  }
+}

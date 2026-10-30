@@ -26,7 +26,7 @@ export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
 # Qt — desktop kit, then WASM (builds host kit first)
 make qt          # desktop CIP Qt → ~/Qt/cip-<sha>/…
 make qt WASM=1   # + wasm_multithread + emsdk
-# CI publishers: PUBLISH=1 make qt   # pushes ghcr.io/qtclient/qt-cip:<sha>-<kit>
+# CI publishers: PUBLISH=1 make qt   # pushes ghcr.io/qtclient/qt:<sha>-<kit>
 ```
 
 ## Build
