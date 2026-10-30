@@ -4,18 +4,45 @@
 # Safe to bash when GITHUB_ENV is set (writes env for later steps).
 set -euo pipefail
 
-# MSVC / ilammy/msvc-dev-cmd sets VCPKG_ROOT to the VS-bundled tree, which has
-# vcpkg.cmake but no .git — unusable for manifest baseline fetch. Prefer a real
-# clone under $HOME/vcpkg (or VCPKG_FORCE_ROOT).
+_is_git_vcpkg() {
+  local root="$1"
+  [[ -f "$root/scripts/buildsystems/vcpkg.cmake" ]] \
+    && git -C "$root" rev-parse --git-dir >/dev/null 2>&1
+}
+
+_is_partial_clone() {
+  git -C "$1" config --get remote.origin.partialclonefilter >/dev/null 2>&1
+}
+
+# MSVC / ilammy/msvc-dev-cmd sets VCPKG_ROOT to the VS-bundled tree (cmake
+# toolchain, no .git). GitHub windows runners also ship C:\vcpkg as a full
+# clone — prefer that, then $HOME/vcpkg / VCPKG_FORCE_ROOT.
 _default_vcpkg="${VCPKG_FORCE_ROOT:-$HOME/vcpkg}"
+for candidate in \
+  "${VCPKG_FORCE_ROOT:-}" \
+  "/c/vcpkg" \
+  "C:/vcpkg" \
+  "${VCPKG_ROOT:-}" \
+  "$_default_vcpkg"
+do
+  [[ -n "$candidate" ]] || continue
+  if _is_git_vcpkg "$candidate" && ! _is_partial_clone "$candidate"; then
+    VCPKG_ROOT="$candidate"
+    break
+  fi
+done
 VCPKG_ROOT="${VCPKG_ROOT:-$_default_vcpkg}"
-if ! git -C "$VCPKG_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-  echo "[ci-vcpkg] ignoring non-git VCPKG_ROOT=$VCPKG_ROOT → $_default_vcpkg"
+
+if ! _is_git_vcpkg "$VCPKG_ROOT" || _is_partial_clone "$VCPKG_ROOT"; then
+  # Partial clones (--filter=blob:none) break vcpkg port checkouts on Windows
+  # Git ("Could not resolve host" / promisor fetch). Always use a full clone.
+  if [[ -e "$VCPKG_ROOT" ]]; then
+    echo "[ci-vcpkg] replacing unusable tree at $VCPKG_ROOT"
+    rm -rf "$VCPKG_ROOT"
+  fi
   VCPKG_ROOT="$_default_vcpkg"
-fi
-if [[ ! -f "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" ]]; then
-  echo "[ci-vcpkg] cloning vcpkg into $VCPKG_ROOT"
-  git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+  echo "[ci-vcpkg] cloning full vcpkg into $VCPKG_ROOT"
+  git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
   if [[ "${OS:-}" == "Windows_NT" ]] || uname -s 2>/dev/null | grep -qiE 'mingw|msys|cygwin'; then
     if [[ -f "$VCPKG_ROOT/bootstrap-vcpkg.bat" ]]; then
       (cd "$VCPKG_ROOT" && cmd.exe //c bootstrap-vcpkg.bat -disableMetrics) || \
@@ -28,7 +55,7 @@ if [[ ! -f "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" ]]; then
   fi
 fi
 
-# Manifest baseline must exist in the vcpkg git object store (shallow clone is not enough).
+# Manifest baseline must exist in the vcpkg git object store.
 if [[ -f vcpkg.json ]]; then
   baseline="$(python3 -c 'import json;print(json.load(open("vcpkg.json")).get("builtin-baseline",""))' 2>/dev/null || true)"
   if [[ -n "$baseline" ]]; then
@@ -37,6 +64,16 @@ if [[ -f vcpkg.json ]]; then
       git -C "$VCPKG_ROOT" fetch --depth 1 origin "$baseline"
     fi
   fi
+fi
+
+# CMake on Windows wants a drive path; keep Unix form for bash callers that
+# already tolerate /c/... (cmake accepts both via the toolchain include).
+if command -v cygpath >/dev/null 2>&1; then
+  case "$VCPKG_ROOT" in
+    [A-Za-z]:*|*\\*|/*)
+      VCPKG_ROOT="$(cygpath -m "$VCPKG_ROOT")"
+      ;;
+  esac
 fi
 
 export VCPKG_ROOT
