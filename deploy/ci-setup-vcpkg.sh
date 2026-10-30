@@ -4,7 +4,15 @@
 # Safe to bash when GITHUB_ENV is set (writes env for later steps).
 set -euo pipefail
 
-VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
+# MSVC / ilammy/msvc-dev-cmd sets VCPKG_ROOT to the VS-bundled tree, which has
+# vcpkg.cmake but no .git — unusable for manifest baseline fetch. Prefer a real
+# clone under $HOME/vcpkg (or VCPKG_FORCE_ROOT).
+_default_vcpkg="${VCPKG_FORCE_ROOT:-$HOME/vcpkg}"
+VCPKG_ROOT="${VCPKG_ROOT:-$_default_vcpkg}"
+if ! git -C "$VCPKG_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  echo "[ci-vcpkg] ignoring non-git VCPKG_ROOT=$VCPKG_ROOT → $_default_vcpkg"
+  VCPKG_ROOT="$_default_vcpkg"
+fi
 if [[ ! -f "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" ]]; then
   echo "[ci-vcpkg] cloning vcpkg into $VCPKG_ROOT"
   git clone --filter=blob:none https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
