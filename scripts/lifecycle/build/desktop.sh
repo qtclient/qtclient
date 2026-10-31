@@ -213,6 +213,10 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     exit 1
   fi
   OUT_DIR="$(dirname "$OUT_HTML")"
+  # MAIN_MODULE=2: attach .sig on GOT helpers before compress/publish.
+  if [[ -f "$OUT_DIR/tibia.js" ]]; then
+    bash "$HERE/../package/patch-tibia-js-main-module.sh" "$OUT_DIR/tibia.js"
+  fi
   for f in tibia.js tibia.wasm; do
     src="$OUT_DIR/$f"
     [[ -f "$src" ]] || continue
