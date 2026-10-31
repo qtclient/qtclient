@@ -18,7 +18,9 @@ vcpkg_installed/
 [Dd]ebug/
 [Rr]elease*/
 x64/
-build/
+# Root build tree only — do not use bare `build/` (it also matches
+# scripts/lifecycle/build/*.sh and drops wasm/launcher from git).
+/build/
 static/
 [Bb]in/
 [Oo]bj/
@@ -310,9 +312,10 @@ x32-bin/*
 #################
 ## OTClient Android
 #################
-# Gradle files
+# Gradle files (scoped — bare `build/` would ignore scripts/lifecycle/build/)
+android/.gradle/
+android/**/build/
 .gradle/
-build/
 
 # Local configuration file (sdk path, etc)
 local.properties
