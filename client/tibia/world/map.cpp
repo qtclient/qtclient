@@ -227,15 +227,6 @@ void Map::notificateTileUpdate(const Position& pos, const ThingPtr& thing, const
         m_observer->onTileChanged(pos);
 }
 
-void Map::takeStaticDirtyTiles(std::vector<Position>& out)
-{
-    if (m_coverInvalidateFlood)
-        invalidateAllCoverCaches();
-    // Caller reuses `out`; move leaves Map empty and replaces the caller's buffer.
-    out = std::move(m_staticDirty);
-    m_staticDirty.clear();
-}
-
 size_t Map::clearStaticDirtyTiles()
 {
     if (m_coverInvalidateFlood)

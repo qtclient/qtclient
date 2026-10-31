@@ -38,13 +38,9 @@ public:
 
     virtual bool beginFrame(const Position& camera, int drawWidth, int drawHeight, int firstFloor,
                             int lastFloor) = 0;
-    virtual void shiftFields(int dx, int dy, const Position& camera, const Point& walkDelta) = 0;
-    virtual void trimFloors(int firstFloor, int lastFloor) = 0;
-    virtual void dropCells(int firstFloor, const std::vector<uint8_t>& mask, int w, int h) = 0;
     virtual void beginFloor(int z) = 0;
     virtual void resetShade(Tile& tile, int ix, int iy) = 0;
     virtual void endFrame(const qmlcomponents::WorldGeometry* geometry) = 0;
-    virtual void keepFrame(const Point& walkDelta, const qmlcomponents::WorldGeometry* geometry) = 0;
 
     virtual void addCenterLight(const Point& center, uint8_t intensity, uint8_t color) = 0;
     virtual void addFrame(ThingType& type, const Point& anchor, uint32_t spriteId, int xPattern) = 0;

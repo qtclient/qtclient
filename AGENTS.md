@@ -91,8 +91,7 @@ target and no opentibiabr/otclient upstream. Check behavior against CIP.
 - **CIP full clone.** Gap ledgers and status:
   [`docs/reverse-engineering/ledgers/`](../../docs/reverse-engineering/ledgers/),
   [`docs/reverse-engineering/cip-clone-status.md`](../../docs/reverse-engineering/cip-clone-status.md).
-  Default world path is CIP every-frame emit. Transitional field-slide is opt-in
-  (`TIBIA_FIELD_SLIDE=1` / `TIBIA_FIELD_SLIDE=1`); `TIBIA_CIP_WORLD=1` forces full emit for oracle.
+  Default world path is CIP every-frame emit (no field-slide / standing-still reuse).
 - **World rendering** is CIP's. `renderer/TWorldMapRenderProvider` builds one
   frame per tick on the GUI thread: sprite records, the 1-pixel-per-field light
   image, and creature HUD anchors.

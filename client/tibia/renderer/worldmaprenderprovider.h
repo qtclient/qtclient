@@ -31,16 +31,6 @@ struct SpriteRecord
     /// Highlight drawn over the sprite (CIP: the record's byte at +0x15).
     enum Highlight : uint8_t { NoHighlight, MouseTarget, AttackTarget, FollowTarget };
     Highlight highlight = NoHighlight;
-    /// Anchor includes the local player's walk offset, so a retained frame can
-    /// slide that offset without rebuilding the tile list.
-    bool followsLocalWalk = false;
-    /// Draw-grid cell. A one-field camera step shifts these and drops the rest.
-    int cellX = -1;
-    int cellY = -1;
-    int cellZ = -1;
-    /// Creature / effect / missile / mark sprites. Dropped on field-slide so a
-    /// dynamicRevision bump (every walk step) does not force a full static rebuild.
-    bool ephemeral = false;
 };
 
 /// Turns the game model into the world's frame (CIP: TWorldMapRenderProvider):
@@ -141,7 +131,7 @@ public:
     qint64 raycastNs() const { return m_raycastNs; } // pack lighting phase
     /// addFrame / resetShade during the tile walk.
     qint64 raycastGatherNs() const { return m_raycastGatherNs; }
-    /// updateRoofs inside endFrame / keepFrame.
+    /// updateRoofs inside endFrame.
     qint64 raycastRoofsNs() const { return m_raycastRoofsNs; }
     /// Shared roof / outdoor geometry for the last frame (weather + lighting).
     const WorldGeometry& geometry() const { return m_frame.geometry; }
@@ -158,7 +148,7 @@ Q_SIGNALS:
     void frameAdvanced();
     /// Sprite list and camera pixel are unchanged. Highlight nodes still pulse.
     void highlightAdvanced();
-    /// HUD, speech, and light overlays. Emitted even when the sprite list is retained.
+    /// HUD, speech, and light overlays.
     void overlaysAdvanced();
     void visibleFieldsChanged();
 
@@ -178,22 +168,11 @@ private:
     };
 
     bool build();
-    /// True when the tile list can be reused. Fills the frame and returns true.
-    bool reuseStaticMap(const Point& walk, uint8_t first, uint8_t last, uint32_t coverRevision, uint32_t itemRevision);
-    void captureStaticMap(const Point& walk, uint8_t first, uint8_t last, uint32_t coverRevision, uint32_t itemRevision);
-    bool staticSceneStill(int stepX = 0, int stepY = 0) const;
-    /// The camera moved one field and the rest of the static scene still matches.
-    /// Shifts the retained sprites and stamps; the following draw adds the entered cells.
-    bool prepareFieldSlide(const Point& walk, uint8_t first, uint8_t last, uint32_t coverRevision, uint32_t itemRevision);
-    uint64_t missileStamp() const;
     void buildLight();
     /// Shared outdoor / roof gather when weather or raycast needs it.
     void updateWorldGeometry();
     /// Cool outdoor cells from active weather (D).
     void applyWeatherAmbientTint();
-    /// True when the classic light image can be reused (same FOV/lights; clouds
-    /// are refreshed on a short interval instead of every frame).
-    bool lightCacheValid() const;
     void loadLightOptions();
     void loadMarkOptions();
     /// Frames around a creature, outer to inner (CIP: TCreature v0x258 ->
@@ -275,37 +254,20 @@ private:
     std::vector<const Tile*> m_drawnLying;
     std::vector<light::PointLight> m_lights;
     light::LightOptions m_lightOptions;
-    light::LightOptions m_builtLightOptions;
     uint32_t m_coverRevision = 0;
-    uint32_t m_itemRevision = 0;
     qint64 m_buildNs = 0;
     qint64 m_tilesNs = 0;
     qint64 m_lightNs = 0;
     qint64 m_raycastNs = 0;
     qint64 m_raycastGatherNs = 0;
     qint64 m_raycastRoofsNs = 0;
-    /// Last build path, for slow-frame diagnostics (reuse / slide / retain / full).
-    const char* m_buildKind = "full";
     /// Why this build ran (for slow-tile / ~1 Hz dumps).
     bool m_cameraTileMoved = false;
     bool m_coverDirty = false;
-    int m_staticDirtyCount = 0;
-    /// After a field slide where first/last changed: gather newly visible z fully.
-    bool m_floorRepair = false;
-    uint8_t m_floorRepairPrevFirst = 0;
-    uint8_t m_floorRepairPrevLast = 0;
     /// Cached first/last floor while camera tile and cover revision hold.
     uint8_t m_cachedFirstFloor = 0;
     uint8_t m_cachedLastFloor = 0;
     bool m_floorsCached = false;
-    /// Light-image cache. Reused while the camera, floors, options, and lights match.
-    Position m_lightCamera;
-    int m_lightDrawWidth = 0;
-    int m_lightDrawHeight = 0;
-    uint8_t m_lightFirstFloor = 0;
-    uint8_t m_lightLastFloor = 0;
-    size_t m_lightCount = 0;
-    uint64_t m_lightFingerprint = 0;
     /// Classic light before weather tint (D); tint reapplies each frame from this.
     QImage m_lightUntinted;
     /// Cache key for shared world geometry.
@@ -318,62 +280,6 @@ private:
     int m_geometryOrigin = -1;
     /// Cached at advance() start — null when no pack registered a driver.
     tibia::mods::WorldLightingDriver* m_lighting = nullptr;
-    /// Retained static frame. Reused while the camera tile, floors, and map
-    /// revision hold and creatures, effects, missiles, and animations match.
-    bool m_held = false;
-    bool m_reused = false;
-    bool m_drawingLocal = false;
-    /// True while emitting creature/effect/missile/mark sprites (not slid as static).
-    bool m_emitEphemeral = false;
-    bool m_sliding = false;
-    /// Draw-grid cells that must be re-emitted after a static slide (edge + dynamics).
-    std::vector<uint8_t> m_rebuildCells;
-    /// Scratch: which slide cells already have a static sprite (hole-fill).
-    std::vector<uint8_t> m_occupiedCells;
-    /// Drained from Map::takeStaticDirtyTiles on slide/retain only (full emit clears).
-    std::vector<Position> m_staticDirty;
-    int m_cellX = -1;
-    int m_cellY = -1;
-    Position m_heldCamera;
-    Point m_heldWalk;
-    uint8_t m_heldFirst = 0;
-    uint8_t m_heldLast = 0;
-    uint32_t m_heldCover = 0;
-    uint32_t m_heldItem = 0;
-    uint32_t m_heldDynamic = 0;
-    int m_heldWidth = 0;
-    int m_heldHeight = 0;
-    const Thing* m_heldMouse = nullptr;
-    uint32_t m_heldAttack = 0;
-    uint32_t m_heldFollow = 0;
-    uint64_t m_heldMissiles = 0;
-    QPoint m_pictureCamera;
-    std::vector<SpriteRecord> m_heldSprites;
-    std::vector<CreatureHud> m_heldCreatures;
-    struct HeldCreature
-    {
-        CreaturePtr creature;
-        Position pos;
-        Point offset;
-        int direction = 0;
-        uint16_t phase = 0;
-        bool local = false;
-    };
-    struct HeldItem
-    {
-        ItemPtr item;
-        int phase = 0;
-    };
-    struct HeldEffect
-    {
-        EffectPtr effect;
-        int phase = 0;
-        int xPattern = 0;
-        int yPattern = 0;
-    };
-    std::vector<HeldCreature> m_heldCreatureState;
-    std::vector<HeldItem> m_heldItems;
-    std::vector<HeldEffect> m_heldEffects;
 };
 
 }

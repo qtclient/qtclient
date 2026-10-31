@@ -112,12 +112,9 @@ public:
     uint32_t getItemRevision() const { return m_itemRevision.load(std::memory_order_relaxed); }
     /// Creatures, effects, and missiles added or removed. Walk offsets do not bump it.
     uint32_t getDynamicRevision() const { return m_dynamicRevision.load(std::memory_order_relaxed); }
-    /// Positions whose static things changed since the last take (item add/remove,
-    /// field clean). The world renderer drains this each build to remits holes
-    /// left by field-slide while map descriptions stream in.
-    void takeStaticDirtyTiles(std::vector<Position>& out);
-    /// Drop pending static dirty without copying positions (full-emit path).
-    /// Returns how many were discarded (for PERF / reuse eligibility).
+    /// Drop pending static dirty (cover-flood coalescing counter). Full emit remits
+    /// the whole FOV, so positions are not consumed by the renderer.
+    /// Returns how many were discarded (for PERF).
     size_t clearStaticDirtyTiles();
     void notificateKeyRelease(const InputEvent& inputEvent) const;
 

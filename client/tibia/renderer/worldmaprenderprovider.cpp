@@ -56,20 +56,6 @@ namespace {
 
 constexpr int FieldSize = TWorldMapRenderProvider::FieldSize;
 
-uint64_t fingerprintLights(const std::vector<light::PointLight>& lights)
-{
-    uint64_t h = 1469598103934665603ull;
-    for (const light::PointLight& light : lights) {
-        h ^= static_cast<uint64_t>(light.center.x()) + 0x9e3779b97f4a7c15ull;
-        h *= 1099511628211ull;
-        h ^= static_cast<uint64_t>(light.center.y());
-        h *= 1099511628211ull;
-        h ^= (static_cast<uint64_t>(light.intensity) << 16) | light.color | (static_cast<uint64_t>(light.z) << 24);
-        h *= 1099511628211ull;
-    }
-    return h;
-}
-
 uint32_t outfitColors(const Outfit& outfit)
 {
     return outfit.getHead() | outfit.getBody() << 8 | outfit.getLegs() << 16 | static_cast<uint32_t>(outfit.getFeet()) << 24;
@@ -186,14 +172,12 @@ void TWorldMapRenderProvider::advance()
     if (m_tilesNs > 5'000'000) {
         // Always visible under QTCLIENT_PERF (category default is Warning).
         // tilesUs excludes gather; sum tiles+gather ≈ tile-walk wall time.
-        qCWarning(lcWorldMapBuild) << "slow tiles us" << m_tilesNs / 1000 << "kind" << m_buildKind
+        qCWarning(lcWorldMapBuild) << "slow tiles us" << m_tilesNs / 1000
                                    << "floors" << int(m_firstFloor) << ".." << int(m_lastFloor)
                                    << "sprites" << m_frame.sprites.size()
                                    << "gather us" << m_raycastGatherNs / 1000 << "light us" << m_lightNs / 1000
                                    << "roofs us" << m_raycastRoofsNs / 1000 << "raycast us" << m_raycastNs / 1000
-                                   << "cameraMoved" << m_cameraTileMoved << "coverDirty" << m_coverDirty
-                                   << "staticDirty" << m_staticDirtyCount
-                                   << (m_floorRepair ? "floorRepair" : "");
+                                   << "cameraMoved" << m_cameraTileMoved << "coverDirty" << m_coverDirty;
     } else if (lcWorldMapBuild().isDebugEnabled()) {
         static QElapsedTimer logged;
         if (!logged.isValid() || logged.elapsed() > 1000) {
@@ -201,44 +185,15 @@ void TWorldMapRenderProvider::advance()
             qCDebug(lcWorldMapBuild) << "build us" << m_buildNs / 1000 << "tiles us" << m_tilesNs / 1000
                                      << "gather us" << m_raycastGatherNs / 1000 << "light us" << m_lightNs / 1000
                                      << "roofs us" << m_raycastRoofsNs / 1000 << "raycast us" << m_raycastNs / 1000
-                                     << "kind" << m_buildKind << "sprites" << m_frame.sprites.size()
-                                     << "cameraMoved" << m_cameraTileMoved << "coverDirty" << m_coverDirty
-                                     << "staticDirty" << m_staticDirtyCount
-                                     << (m_reused ? "retained" : "");
+                                     << "sprites" << m_frame.sprites.size()
+                                     << "cameraMoved" << m_cameraTileMoved << "coverDirty" << m_coverDirty;
         }
     }
-    const bool pictureChanged = !m_frame.valid || !m_reused || m_frame.camera != m_pictureCamera;
-    m_pictureCamera = m_frame.camera;
-    bool pulse = false;
-    if (!pictureChanged) {
-        for (const SpriteRecord& sprite : m_frame.sprites) {
-            if (sprite.highlight != SpriteRecord::NoHighlight || sprite.sprite.isCreatureMark()
-                || sprite.sprite.isHighlightBaseplate()) {
-                pulse = true;
-                break;
-            }
-        }
-    }
-    if (pictureChanged)
+    // CIP rebuilds the sprite list every frame; QSG reconciles in place.
+    if (m_frame.valid) {
         Q_EMIT frameAdvanced();
-    else if (pulse)
-        Q_EMIT highlightAdvanced();
-    if (m_frame.valid)
         Q_EMIT overlaysAdvanced();
-}
-
-bool TWorldMapRenderProvider::lightCacheValid() const
-{
-    if (m_frame.light.isNull())
-        return false;
-    if (m_lightCamera != m_camera || m_lightDrawWidth != drawWidth() || m_lightDrawHeight != drawHeight()
-        || m_lightFirstFloor != m_firstFloor || m_lightLastFloor != m_lastFloor || m_lightCount != m_lights.size())
-        return false;
-    if (m_lightOptions.ambientLevel != m_builtLightOptions.ambientLevel || m_lightOptions.separator != m_builtLightOptions.separator
-        || m_lightOptions.attenuation != m_builtLightOptions.attenuation
-        || m_lightOptions.effectsEnabled != m_builtLightOptions.effectsEnabled)
-        return false;
-    return fingerprintLights(m_lights) == m_lightFingerprint;
+    }
 }
 
 bool TWorldMapRenderProvider::build()
@@ -256,30 +211,24 @@ bool TWorldMapRenderProvider::build()
     const size_t previousSprites = frame.sprites.size();
     const size_t previousCreatures = frame.creatures.size();
     m_tilesNs = m_lightNs = m_raycastNs = m_raycastGatherNs = m_raycastRoofsNs = 0;
-    m_floorRepair = false;
-    m_reused = false;
     m_cameraTileMoved = false;
     m_coverDirty = false;
-    m_staticDirtyCount = 0;
     const LocalPlayerPtr player = tibia::world::player();
     if (!player || !g_game.isOnline() || !player->getPosition().isValid()) {
         frame.sprites.clear();
         frame.creatures.clear();
         m_lights.clear();
-        m_held = false;
         return false;
     }
 
     // Cover caches invalidate per opaque cell (Map::invalidateCoverCachesFrom).
     const uint32_t coverRevision = tibia::world::fields().getCoverRevision();
-    const uint32_t itemRevision = tibia::world::fields().getItemRevision();
     const Position camera = player->getPosition();
     const bool cameraTileMoved = m_camera != camera;
     const bool coverDirty = coverRevision != m_coverRevision;
     m_cameraTileMoved = cameraTileMoved;
     m_coverDirty = coverDirty;
     m_coverRevision = coverRevision;
-    m_itemRevision = itemRevision;
     m_camera = camera;
     const Point walk = tibia::world::motion().offset(*player);
     frame.camera = QPoint((CenterX - (m_visibleWidth - 1) / 2) * FieldSize + walk.x,
@@ -310,228 +259,20 @@ bool TWorldMapRenderProvider::build()
 
     QElapsedTimer phase;
     phase.start();
-    // Walk emit: CIP full emit (classic and raycast). Field-slide is experimental
-    // opt-in only — retention caused frozen anims / missing upper-floor cells.
-    //   QTCLIENT_FIELD_SLIDE=1 → slide (not for production until proven)
-    //   QTCLIENT_CIP_WORLD=1 → full emit (oracle; disables slide)
-    static const bool cipWorld = qEnvironmentVariableIntValue("QTCLIENT_CIP_WORLD") != 0;
-    static const bool fieldSlide = !cipWorld
-        && qEnvironmentVariableIntValue("QTCLIENT_FIELD_SLIDE") != 0;
-    // Slide/retain need dirty positions for edge remits. Full emit remits everything —
-    // only clear the Map buffer (avoids moving thousands of Positions into m_staticDirty).
-    if (fieldSlide) {
-        tibia::world::fields().takeStaticDirtyTiles(m_staticDirty);
-        m_staticDirtyCount = static_cast<int>(m_staticDirty.size());
-    } else {
-        m_staticDirty.clear();
-        m_staticDirtyCount = static_cast<int>(tibia::world::fields().clearStaticDirtyTiles());
-    }
-    // Standing still: reuse only when nothing animateable is held. CIP advances
-    // appearance phases by redrawing; peeking phase without remiss freezes frames.
-    const bool animateablesHeld = !m_heldItems.empty() || !m_heldEffects.empty()
-        || !m_heldCreatureState.empty();
-    if (!cipWorld && m_staticDirtyCount == 0 && !animateablesHeld
-        && reuseStaticMap(walk, first, last, coverRevision, itemRevision)) {
-        m_buildKind = "reuse";
-        m_tilesNs = phase.nsecsElapsed();
-        m_raycastGatherNs = m_lighting ? m_lighting->gatherNs() : 0;
-        phase.restart();
-        buildLight();
-        m_lightNs = phase.nsecsElapsed();
-        phase.restart();
-        if (m_lighting) m_lighting->endFrame(m_frame.geometry.valid() ? &m_frame.geometry : nullptr);
-        m_raycastRoofsNs = m_lighting ? m_lighting->roofsNs() : 0;
-        m_raycastNs = phase.nsecsElapsed();
-        return true;
-    }
+    // CIP every-frame full emit (classic and raycast). Drain map dirty for cover-flood
+    // coalescing; positions are unused because the whole FOV is remitted.
+    tibia::world::fields().clearStaticDirtyTiles();
 
-    const bool floorRangeChanged = m_held && (first != m_heldFirst || last != m_heldLast);
-    m_sliding = fieldSlide && prepareFieldSlide(walk, first, last, coverRevision, itemRevision);
-    if (m_sliding)
-        m_buildKind = "slide";
-    if (fieldSlide && !m_sliding && m_held && m_camera == m_heldCamera && m_visibleWidth == m_heldWidth
-        && m_visibleHeight == m_heldHeight) {
-        Frame& retained = m_frame;
-        retained.sprites.clear();
-        retained.sprites.reserve(m_heldSprites.size());
-        const Point delta(walk.x - m_heldWalk.x, walk.y - m_heldWalk.y);
-        for (SpriteRecord sprite : m_heldSprites) {
-            if (sprite.ephemeral)
-                continue;
-            if (floorRangeChanged && (sprite.cellZ < first || sprite.cellZ > last))
-                continue;
-            if (sprite.followsLocalWalk)
-                sprite.anchor += QPoint(delta.x, delta.y);
-            retained.sprites.push_back(sprite);
-        }
-        m_heldWalk = walk;
-        m_sliding = true;
-        m_floorRepair = floorRangeChanged;
-        m_floorRepairPrevFirst = m_heldFirst;
-        m_floorRepairPrevLast = m_heldLast;
-        m_buildKind = floorRangeChanged ? "retainFloor" : "retain";
-    }
-    // Slide keeps shifted stamps (no beginFrame clear). Gather still runs on remitted cells.
+    frame.sprites.clear();
+    frame.creatures.clear();
+    frame.sprites.reserve(std::max(previousSprites, static_cast<size_t>(DrawWidth * DrawHeight)));
+    if (previousCreatures)
+        frame.creatures.reserve(previousCreatures);
+    m_lights.clear();
+
     const bool gatherRaycast = (m_lighting && m_lighting->enabled())
-        && (m_sliding || m_lighting->beginFrame(m_camera, DrawWidth, DrawHeight, first, last));
-    // retainFloor (camera still, first/last changed): trim stamps outside the new range.
-    if (m_sliding && gatherRaycast && m_floorRepair)
-        if (m_lighting) m_lighting->trimFloors(first, last);
-    if (!m_sliding) {
-        m_buildKind = "full";
-        frame.sprites.clear();
-        frame.creatures.clear();
-        // Prefer last emit size; grow headroom when the FOV was sparse.
-        frame.sprites.reserve(std::max(previousSprites, static_cast<size_t>(DrawWidth * DrawHeight)));
-        if (previousCreatures)
-            frame.creatures.reserve(previousCreatures);
-        m_lights.clear();
-        m_heldCreatureState.clear();
-        m_heldItems.clear();
-        m_heldEffects.clear();
-        m_floorRepair = false;
-        m_rebuildCells.clear();
-        m_staticDirty.clear(); // full walk remits everything
-    } else {
-        // Mark edge + dynamic + phase-changed + newly-visible cells; drop their
-        // retained static sprites/lights so re-emit does not duplicate them.
-        const int w = DrawWidth;
-        const int h = DrawHeight;
-        const int floorCount = last - first + 1;
-        m_rebuildCells.assign(static_cast<size_t>(std::max(0, floorCount) * w * h), 0);
-        const auto mark = [&](const int ix, const int iy, const int z) {
-            if (ix < 0 || iy < 0 || ix >= w || iy >= h || z < first || z > last)
-                return;
-            m_rebuildCells[static_cast<size_t>((z - first) * w * h + iy * w + ix)] = 1;
-        };
-        const int stepX = m_camera.x - m_heldCamera.x;
-        const int stepY = m_camera.y - m_heldCamera.y;
-        for (int z = first; z <= last; ++z) {
-            // Newly revealed floors after first/last change: every cell on this z.
-            const bool newlyVisibleFloor = m_floorRepair
-                && (z < m_floorRepairPrevFirst || z > m_floorRepairPrevLast);
-            if (newlyVisibleFloor) {
-                for (int iy = 0; iy < h; ++iy) {
-                    for (int ix = 0; ix < w; ++ix)
-                        mark(ix, iy, z);
-                }
-                continue;
-            }
-            for (int iy = 0; iy < h; ++iy) {
-                for (int ix = 0; ix < w; ++ix) {
-                    const bool column = (stepX > 0 && ix >= w - stepX) || (stepX < 0 && ix < -stepX);
-                    const bool row = (stepY > 0 && iy >= h - stepY) || (stepY < 0 && iy < -stepY);
-                    if (column || row)
-                        mark(ix, iy, z);
-                }
-            }
-        }
-        // Creatures / effects: mark from registries (not a full FOV×floor tile walk).
-        const auto markPos = [&](const Position& pos) {
-            if (!pos.isValid())
-                return;
-            const int floorShift = m_camera.z - pos.z;
-            mark(CenterX + pos.x - m_camera.x - floorShift, CenterY + pos.y - m_camera.y - floorShift, pos.z);
-        };
-        // CIP: animated appearances remiss every frame (do not gate on peeked phase —
-        // phases only advance when calculateAnimationPhase runs during emit).
-        for (const auto& [id, creature] : tibia::world::fields().getCreatures()) {
-            Q_UNUSED(id);
-            if (!creature)
-                continue;
-            markPos(creature->getPosition());
-            if (creature->isWalking())
-                markPos(creature->getLastStepFromPosition());
-        }
-        for (const HeldEffect& held : m_heldEffects) {
-            if (held.effect)
-                markPos(held.effect->getPosition());
-        }
-        for (const HeldItem& held : m_heldItems) {
-            if (held.item)
-                markPos(held.item->getPosition());
-        }
-        // Map-stream / item edits that landed behind the slide edge: remits those cells.
-        const bool hadStaticDirty = !m_staticDirty.empty();
-        for (const Position& pos : m_staticDirty) {
-            markPos(pos);
-            // Opaque cover changes also invalidate the field under this one.
-            if (pos.z < last) {
-                Position below = pos;
-                if (below.coveredDown())
-                    markPos(below);
-            }
-        }
-        // Hole-fill only near dirty cells (full-FOV scan was a multi-ms cliff every stream step).
-        if (hadStaticDirty) {
-            for (const Position& pos : m_staticDirty) {
-                for (int dz = 0; dz <= 1; ++dz) {
-                    Position base = pos;
-                    if (dz && (!base.coveredDown() || base.z > last))
-                        continue;
-                    for (int dy = -1; dy <= 1; ++dy) {
-                        for (int dx = -1; dx <= 1; ++dx) {
-                            Position neighbor = base.translated(dx, dy);
-                            const int floorShift = m_camera.z - neighbor.z;
-                            const int ix = CenterX + neighbor.x - m_camera.x - floorShift;
-                            const int iy = CenterY + neighbor.y - m_camera.y - floorShift;
-                            if (ix < 0 || iy < 0 || ix >= w || iy >= h || neighbor.z < first || neighbor.z > last)
-                                continue;
-                            const size_t index = static_cast<size_t>(
-                                (neighbor.z - first) * w * h + iy * w + ix);
-                            if (index < m_rebuildCells.size() && m_rebuildCells[index] != 0)
-                                continue;
-                            const TilePtr& tile = tibia::world::fields().getTile(neighbor);
-                            if (!tile || !tile->isDrawable())
-                                continue;
-                            mark(ix, iy, neighbor.z);
-                        }
-                    }
-                }
-            }
-        }
-        m_staticDirty.clear();
-        // Mouse highlight lives on static item sprites — rebuild old and new hover cells.
-        const auto markThing = [&](const Thing* thing) {
-            if (!thing)
-                return;
-            // Thing::getPosition() is non-const (virtual); value is still immutable here.
-            const Position pos = const_cast<Thing*>(thing)->getPosition();
-            if (!pos.isValid())
-                return;
-            const int floorShift = m_camera.z - pos.z;
-            mark(CenterX + pos.x - m_camera.x - floorShift, CenterY + pos.y - m_camera.y - floorShift, pos.z);
-        };
-        if (m_heldMouse != m_mouseTarget.get()) {
-            markThing(m_heldMouse);
-            markThing(m_mouseTarget.get());
-        }
-        std::erase_if(frame.sprites, [&](const SpriteRecord& sprite) {
-            if (sprite.cellX < 0 || sprite.cellY < 0 || sprite.cellZ < first || sprite.cellZ > last)
-                return true;
-            const size_t index = static_cast<size_t>((sprite.cellZ - first) * w * h + sprite.cellY * w + sprite.cellX);
-            return index < m_rebuildCells.size() && m_rebuildCells[index] != 0;
-        });
-        std::erase_if(m_lights, [&](const light::PointLight& light) {
-            const int ix = light.center.x() / FieldSize;
-            const int iy = light.center.y() / FieldSize;
-            if (light.z < first || light.z > last || ix < 0 || iy < 0 || ix >= w || iy >= h)
-                return true;
-            const size_t index = static_cast<size_t>((light.z - first) * w * h + iy * w + ix);
-            return index < m_rebuildCells.size() && m_rebuildCells[index] != 0;
-        });
-        // Remiss will addFrame again — drop shifted stamps/lights on rebuild cells first.
-        if (gatherRaycast)
-            if (m_lighting) m_lighting->dropCells(first, m_rebuildCells, w, h);
-        m_heldCreatureState.clear();
-        m_heldItems.clear();
-        m_heldEffects.clear();
-        frame.creatures.clear();
-    }
-    // Rebuild-mask / hole-fill cost is emit prep, not raycast (was miscounted as raycastUs).
-    const qint64 prepNs = phase.nsecsElapsed();
+        && m_lighting->beginFrame(m_camera, DrawWidth, DrawHeight, first, last);
 
-    phase.restart();
     // Share opaque/top-ground probes across FOV cover walks (cold-cache cliffs).
     tibia::world::fields().beginCoverProbeBatch();
     for (int z = last; z >= first; --z) {
@@ -542,8 +283,6 @@ bool TWorldMapRenderProvider::build()
             if (m_lighting) m_lighting->beginFloor(z);
             m_raycastNs += rayFloor.nsecsElapsed();
         }
-        // Sliding: only rebuild-marked cells (edge / dynamics / new floors). Full walk otherwise.
-        const bool rebuildOnly = m_sliding && !m_rebuildCells.empty();
         for (auto& order : m_orders) {
             const size_t kept = order.capacity();
             order.clear();
@@ -565,13 +304,6 @@ bool TWorldMapRenderProvider::build()
         for (int diagonal = 0; diagonal < diagLimit; ++diagonal) {
             const int advance = diagonal >= DrawHeight ? diagonal - DrawHeight : 0;
             for (int iy = diagonal - advance, ix = advance; iy >= 0 && ix < DrawWidth; --iy, ++ix) {
-                if (rebuildOnly) {
-                    const size_t index = static_cast<size_t>((z - first) * DrawWidth * DrawHeight + iy * DrawWidth + ix);
-                    if (index >= m_rebuildCells.size() || m_rebuildCells[index] == 0) {
-                        m_pending.clear();
-                        continue;
-                    }
-                }
                 if (ix < skirtLeft || iy < skirtTop || ix >= skirtRight || iy >= skirtBottom)
                     continue;
                 Position pos = m_camera.translated(ix - CenterX, iy - CenterY);
@@ -603,7 +335,6 @@ bool TWorldMapRenderProvider::build()
         m_pending.clear();
         flushLyingDeferred();
 
-        // Ephemeral sprites are not retained across slides — always re-emit missiles.
         for (const MissilePtr& missile : tibia::world::fields().getFloorMissiles(z))
             addMissile(*missile);
 
@@ -614,22 +345,9 @@ bool TWorldMapRenderProvider::build()
         }
     }
     tibia::world::fields().endCoverProbeBatch();
-    if (m_sliding) {
-        std::stable_sort(frame.sprites.begin(), frame.sprites.end(), [](const SpriteRecord& a, const SpriteRecord& b) {
-            if (a.cellZ != b.cellZ)
-                return a.cellZ > b.cellZ;
-            const int diagonalA = a.cellX + a.cellY;
-            const int diagonalB = b.cellX + b.cellY;
-            if (diagonalA != diagonalB)
-                return diagonalA < diagonalB;
-            return a.cellX < b.cellX;
-        });
-        m_sliding = false;
-        // Keep m_floorRepair until the next build() so slow-frame logs can report it.
-    }
     const qint64 walkNs = phase.nsecsElapsed();
     m_raycastGatherNs = m_lighting ? m_lighting->gatherNs() : 0;
-    m_tilesNs = std::max<qint64>(0, walkNs - m_raycastGatherNs) + prepNs;
+    m_tilesNs = std::max<qint64>(0, walkNs - m_raycastGatherNs);
 
     phase.restart();
     buildLight();
@@ -639,11 +357,6 @@ bool TWorldMapRenderProvider::build()
     if (m_lighting) m_lighting->endFrame(m_frame.geometry.valid() ? &m_frame.geometry : nullptr);
     m_raycastRoofsNs = m_lighting ? m_lighting->roofsNs() : 0;
     m_raycastNs += phase.nsecsElapsed();
-    // Hold sprites for standing reuse (classic slide and raycast). CIP_WORLD does not.
-    if (!cipWorld)
-        captureStaticMap(walk, first, last, coverRevision, itemRevision);
-    else
-        m_held = false;
     return true;
 }
 
@@ -883,17 +596,10 @@ void TWorldMapRenderProvider::applyWeatherAmbientTint()
 }
 
 /// TWorldMapRenderProvider::v7 (0x101056cd0) filling TLightMap (0x10107a2c0).
+/// CIP allocates a fresh TLightMap every frame — no idle light-image cache.
 void TWorldMapRenderProvider::buildLight()
 {
     updateWorldGeometry();
-
-    // A warm light image still has to fill the raycast ambient grid the first time.
-    // Reuse classic light unless pack lighting is on and still waiting for ambient.
-    if (lightCacheValid()
-        && !((m_lighting && m_lighting->enabled()) && !m_lighting->hasFieldAmbient())) {
-        applyWeatherAmbientTint();
-        return;
-    }
 
     const light::BuildInput in{
         .camera = m_camera,
@@ -911,14 +617,6 @@ void TWorldMapRenderProvider::buildLight()
         if (m_lighting) m_lighting->setFieldAmbient(light::toLightImage(built.ambient, in.drawWidth, in.drawHeight));
     m_lightUntinted = light::toLightImage(built.classic, in.drawWidth, in.drawHeight);
     m_frame.light = m_lightUntinted;
-    m_builtLightOptions = in.options;
-    m_lightCamera = m_camera;
-    m_lightDrawWidth = in.drawWidth;
-    m_lightDrawHeight = in.drawHeight;
-    m_lightFirstFloor = m_firstFloor;
-    m_lightLastFloor = m_lastFloor;
-    m_lightCount = m_lights.size();
-    m_lightFingerprint = fingerprintLights(m_lights);
     applyWeatherAmbientTint();
 }
 
@@ -1012,7 +710,7 @@ SpriteRecord::Highlight TWorldMapRenderProvider::highlightOf(Creature& creature)
 
 void TWorldMapRenderProvider::updateHighlightBaseplate()
 {
-    // Drop any previous baseplate so reuse/slide paths do not stack frames.
+    // Drop any previous baseplate so a second advance does not stack frames.
     std::erase_if(m_frame.sprites, [](const SpriteRecord& sprite) { return sprite.sprite.isHighlightBaseplate(); });
     if (!m_mouseHighlight || !m_mouseHighlightField.isValid())
         return;
@@ -1023,7 +721,6 @@ void TWorldMapRenderProvider::updateHighlightBaseplate()
     m_frame.sprites.push_back({
         .anchor = topLeft + QPoint(FieldSize, FieldSize),
         .sprite = info.key(),
-        .ephemeral = true,
     });
 }
 
@@ -1033,9 +730,6 @@ void TWorldMapRenderProvider::updateHighlightBaseplate()
 /// re-keys their creature and top records).
 void TWorldMapRenderProvider::addTile(const TilePtr& tile, const Point& dest)
 {
-    const int floorShift = m_camera.z - tile->getPosition().z;
-    m_cellX = centerX() + tile->getPosition().x - m_camera.x - floorShift;
-    m_cellY = centerY() + tile->getPosition().y - m_camera.y - floorShift;
     uint8_t elevation = 0;
     addTileBelow(tile, dest, elevation);
 
@@ -1224,8 +918,6 @@ void TWorldMapRenderProvider::addItem(const Order order, Item& item, const Point
     if (!item.canDraw() || item.isHided())
         return;
     ThingType* type = typeOf(item);
-    if (type && item.hasAnimationPhases() && item.canAnimate())
-        m_heldItems.push_back({ item.static_self_cast<Item>(), item.calculateAnimationPhase() });
     const auto highlight = m_mouseHighlight && m_mouseTarget.get() == &item ? SpriteRecord::MouseTarget : SpriteRecord::NoHighlight;
     addSprites(order, type, dest, item.getPatternX(), item.getPatternY(), item.getPatternZ(), item.calculateAnimationPhase(),
                false, 0, highlight);
@@ -1238,36 +930,10 @@ void TWorldMapRenderProvider::addItem(const Order order, Item& item, const Point
 
 void TWorldMapRenderProvider::addCreature(const Order order, Creature& creature, const Point& dest)
 {
-    struct Drawing
-    {
-        bool& flag;
-        explicit Drawing(bool& flag)
-            : flag(flag)
-        {
-        }
-        ~Drawing() { flag = false; }
-    } drawing(m_drawingLocal);
-    struct Ephemeral
-    {
-        bool& flag;
-        explicit Ephemeral(bool& flag)
-            : flag(flag)
-        {
-            flag = true;
-        }
-        ~Ephemeral() { flag = false; }
-    } ephemeral(m_emitEphemeral);
-    m_drawingLocal = creature.isLocalPlayer();
-
     if (creature.isLocalPlayer() && static_cast<LocalPlayer&>(creature).isSoftDead())
         return;
     if (!creature.canBeSeen() || !creature.canDraw() || (creature.isDead() && !creature.isHidden()) || creature.isHided())
         return;
-
-    m_heldCreatureState.push_back({ creature.static_self_cast<Creature>(), creature.getPosition(),
-                                    creature.isLocalPlayer() ? Point() : tibia::world::motion().offset(creature),
-                                    static_cast<int>(creature.getDirection()), creature.getCurrentAnimationPhase(),
-                                    creature.isLocalPlayer() });
 
     Point at = dest + tibia::world::motion().offset(creature);
     if (const PointF jump = creature.getJumpOffset(); !jump.isNull())
@@ -1301,12 +967,7 @@ void TWorldMapRenderProvider::addCreature(const Order order, Creature& creature,
         const appearances::TCreatureMarkAppearanceInstanceSpriteInfo markInfo(marks);
         const Point anchor = at - creature.getDisplacement() + Point(FieldSize);
         m_orders[order].push_back({ .anchor = QPoint(anchor.x, anchor.y),
-                                    .sprite = markInfo.key(),
-                                    .followsLocalWalk = m_drawingLocal,
-                                    .cellX = m_cellX,
-                                    .cellY = m_cellY,
-                                    .cellZ = m_floor,
-                                    .ephemeral = true });
+                                    .sprite = markInfo.key() });
     }
 
     const Outfit& outfit = creature.getOutfit();
@@ -1426,17 +1087,13 @@ void TWorldMapRenderProvider::addEffect(const Order order, Effect& effect, const
     // CIP appearances::TFieldEffectInstance / TDelayedEffectInstance / …
     const appearances::TAppearanceInstancePtr effectAppearance =
         appearances::TAppearanceInstanceFactory::fromEffect(effect);
-    m_heldEffects.push_back({ effect.static_self_cast<Effect>(), phase, xPattern, yPattern });
     ThingType* type = effectAppearance ? effectAppearance->thingType() : typeOf(effect);
     if (type && !type->getSprites().empty())
         (void)sprites::TEffectWrapperSpritesheetIdentifier(type->getSprites().front());
     uint8_t tint = 0;
     if (const auto hook = tibia::mods::effectVariantTintHook())
         tint = hook(effect.getVariantId());
-    const bool previousEphemeral = m_emitEphemeral;
-    m_emitEphemeral = true;
     addSprites(order, type, dest, xPattern, yPattern, 0, phase, false, 0, SpriteRecord::NoHighlight, opacity, tint);
-    m_emitEphemeral = previousEphemeral;
     if (type && type->hasLight()) {
         const Point center = dest + Point(FieldSize / 2);
         addLight(center, type->getLight().intensity, type->getLight().color);
@@ -1451,18 +1108,12 @@ void TWorldMapRenderProvider::addMissile(Missile& missile)
         return;
     std::optional<tibia::mods::WorldLightingDriver::ThingScope> raycastThing;
     if (m_lighting) raycastThing.emplace(m_lighting->thing(missile, 0));
-    const int floorShift = m_camera.z - missile.getPosition().z;
-    m_cellX = centerX() + missile.getPosition().x - m_camera.x - floorShift;
-    m_cellY = centerY() + missile.getPosition().y - m_camera.y - floorShift;
     // CIP appearances::TMissileEffectInstance; missiles share effects::TEffectStorage.
     const appearances::TAppearanceInstancePtr missileAppearance =
         appearances::TAppearanceInstanceFactory::fromMissile(missile);
     ThingType* type = missileAppearance ? missileAppearance->thingType() : typeOf(missile);
     const Point dest = toScreen(missile.getPosition()) + missile.getFlightOffset();
-    const bool previousEphemeral = m_emitEphemeral;
-    m_emitEphemeral = true;
     addSprites(OnTop, type, dest, missile.getPatternX(), missile.getPatternY(), 0, 0, false, 0, SpriteRecord::NoHighlight, opacity);
-    m_emitEphemeral = previousEphemeral;
     // TWorldMapRenderProvider::v11 (0x10105a180): missiles share TEffectStorage with field effects
     // and light the map from their current flight position.
     if (type && type->hasLight()) {
@@ -1509,12 +1160,7 @@ void TWorldMapRenderProvider::addSprites(const Order order, ThingType* type, con
         out.push_back({ .anchor = QPoint(at.x, at.y),
                         .sprite = key,
                         .opacity = opacity,
-                        .highlight = highlight,
-                        .followsLocalWalk = m_drawingLocal,
-                        .cellX = m_cellX,
-                        .cellY = m_cellY,
-                        .cellZ = m_floor,
-                        .ephemeral = m_emitEphemeral });
+                        .highlight = highlight });
     };
 
     // Protobuf sprites are the whole frame; .spr ones are 32x32 fields from the
@@ -1533,12 +1179,7 @@ void TWorldMapRenderProvider::addSprites(const Order order, ThingType* type, con
             out.push_back({ .anchor = QPoint(anchor.x, anchor.y),
                             .sprite = key,
                             .opacity = opacity,
-                            .highlight = highlight,
-                            .followsLocalWalk = m_drawingLocal,
-                            .cellX = m_cellX,
-                            .cellY = m_cellY,
-                            .cellZ = m_floor,
-                            .ephemeral = m_emitEphemeral });
+                            .highlight = highlight });
         }
         if (raycast) {
             const int stampPh = (m_lighting ? m_lighting->stampPhase(animationPhase) : 0);
@@ -1554,224 +1195,6 @@ void TWorldMapRenderProvider::addSprites(const Order order, ThingType* type, con
     for (int h = 0; h < size.height(); ++h) {
         for (int w = 0; w < size.width(); ++w)
             add(w, h, anchor - Point(w * FieldSize, h * FieldSize));
-    }
-}
-
-namespace {
-
-uint64_t mixStamp(uint64_t hash, uint64_t value)
-{
-    hash ^= value + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
-    return hash;
-}
-
-}
-
-uint64_t TWorldMapRenderProvider::missileStamp() const
-{
-    uint64_t hash = 0;
-    for (int z = m_firstFloor; z <= m_lastFloor; ++z) {
-        for (const MissilePtr& missile : tibia::world::fields().getFloorMissiles(static_cast<uint8_t>(z))) {
-            if (!missile)
-                continue;
-            const Point flight = missile->getFlightOffset();
-            const Position& pos = missile->getPosition();
-            hash = mixStamp(hash, missile->getId());
-            hash = mixStamp(hash, static_cast<uint64_t>(pos.x));
-            hash = mixStamp(hash, static_cast<uint64_t>(pos.y));
-            hash = mixStamp(hash, pos.z);
-            hash = mixStamp(hash, static_cast<uint32_t>(flight.x));
-            hash = mixStamp(hash, static_cast<uint32_t>(flight.y));
-        }
-    }
-    return hash;
-}
-
-bool TWorldMapRenderProvider::staticSceneStill(const int stepX, const int stepY) const
-{
-    if (missileStamp() != m_heldMissiles)
-        return false;
-    for (const HeldItem& held : m_heldItems) {
-        if (!held.item || held.item->peekAnimationPhase() != held.phase)
-            return false;
-    }
-    for (const HeldEffect& held : m_heldEffects) {
-        if (!held.effect)
-            return false;
-        int phase = 0;
-        int xPattern = 0;
-        int yPattern = 0;
-        if (!held.effect->getDrawFrame(phase, xPattern, yPattern) || phase != held.phase || xPattern != held.xPattern
-            || yPattern != held.yPattern)
-            return false;
-    }
-    for (const HeldCreature& held : m_heldCreatureState) {
-        if (!held.creature || static_cast<int>(held.creature->getDirection()) != held.direction
-            || held.creature->peekAnimationPhase() != held.phase)
-            return false;
-        const Position stepped = held.local ? held.pos.translated(stepX, stepY) : held.pos;
-        if (held.creature->getPosition() != stepped)
-            return false;
-        if (!held.local) {
-            const Point offset = tibia::world::motion().offset(*held.creature);
-            if (offset.x != held.offset.x || offset.y != held.offset.y)
-                return false;
-        }
-    }
-    return true;
-}
-
-bool TWorldMapRenderProvider::prepareFieldSlide(const Point& walk, const uint8_t first, const uint8_t last,
-                                                 const uint32_t coverRevision, const uint32_t itemRevision)
-{
-    if (!m_held || m_camera.z != m_heldCamera.z)
-        return false;
-    const int dx = m_camera.x - m_heldCamera.x;
-    const int dy = m_camera.y - m_heldCamera.y;
-    if (std::abs(dx) > 1 || std::abs(dy) > 1 || std::max(std::abs(dx), std::abs(dy)) != 1)
-        return false;
-    // Creatures/effects bump dynamicRevision every step; mouse/attack/follow change
-    // every hover; map streaming bumps itemRevision on every new field; opaque
-    // coverRevision churn at the stream edge is handled by coverDirty on the cells
-    // we re-emit — none of those may fail the static terrain slide or force a
-    // full-grid remit (that was the ~100ms coverRepair cliff).
-    if (m_visibleWidth != m_heldWidth || m_visibleHeight != m_heldHeight)
-        return false;
-    const bool floorRangeChanged = first != m_heldFirst || last != m_heldLast;
-    for (const SpriteRecord& sprite : m_heldSprites) {
-        if (sprite.ephemeral)
-            continue;
-        if (sprite.cellX < 0 || sprite.cellY < 0 || sprite.cellZ < 0)
-            return false;
-    }
-
-    m_floorRepair = floorRangeChanged;
-    m_floorRepairPrevFirst = m_heldFirst;
-    m_floorRepairPrevLast = m_heldLast;
-    Q_UNUSED(coverRevision);
-    Q_UNUSED(itemRevision);
-
-    Frame& frame = m_frame;
-    const QPoint field(-dx * FieldSize, -dy * FieldSize);
-    const QPoint local(walk.x - m_heldWalk.x, walk.y - m_heldWalk.y);
-    const int width = drawWidth();
-    const int height = drawHeight();
-    frame.sprites.clear();
-    frame.sprites.reserve(m_heldSprites.size());
-    for (SpriteRecord sprite : m_heldSprites) {
-        if (sprite.ephemeral)
-            continue;
-        sprite.cellX -= dx;
-        sprite.cellY -= dy;
-        if (sprite.cellX < 0 || sprite.cellY < 0 || sprite.cellX >= width || sprite.cellY >= height)
-            continue;
-        if (floorRangeChanged && (sprite.cellZ < first || sprite.cellZ > last))
-            continue;
-        sprite.anchor += field;
-        if (sprite.followsLocalWalk)
-            sprite.anchor += local;
-        frame.sprites.push_back(sprite);
-    }
-
-    const int mapW = width * FieldSize;
-    const int mapH = height * FieldSize;
-    frame.creatures.clear();
-    frame.creatures.reserve(m_heldCreatures.size());
-    for (CreatureHud hud : m_heldCreatures) {
-        hud.point += field;
-        if (hud.creature && hud.creature->isLocalPlayer())
-            hud.point += local;
-        if (hud.point.x() < -FieldSize || hud.point.y() < -FieldSize || hud.point.x() > mapW + FieldSize
-            || hud.point.y() > mapH + FieldSize)
-            continue;
-        frame.creatures.push_back(hud);
-    }
-    std::erase_if(m_lights, [&](light::PointLight& light) {
-        light.center += field;
-        return light.center.x() < -FieldSize || light.center.y() < -FieldSize || light.center.x() > mapW + FieldSize
-            || light.center.y() > mapH + FieldSize;
-    });
-    for (HeldCreature& held : m_heldCreatureState) {
-        if (held.local && held.creature)
-            held.pos = held.creature->getPosition();
-    }
-    if (m_lighting) m_lighting->shiftFields(dx, dy, m_camera, Point(local.x(), local.y()));
-    if (floorRangeChanged)
-        if (m_lighting) m_lighting->trimFloors(first, last);
-    return true;
-}
-
-bool TWorldMapRenderProvider::reuseStaticMap(const Point& walk, const uint8_t first, const uint8_t last,
-                                             const uint32_t coverRevision, const uint32_t itemRevision)
-{
-    // cover/item revisions stream every opaque/item packet; call site already
-    // requires m_staticDirtyCount == 0 so remits happen when fields actually change.
-    Q_UNUSED(coverRevision);
-    Q_UNUSED(itemRevision);
-    if (!m_held || m_camera != m_heldCamera || first != m_heldFirst || last != m_heldLast
-        || m_visibleWidth != m_heldWidth || m_visibleHeight != m_heldHeight
-        || m_mouseTarget.get() != m_heldMouse || m_attackTarget != m_heldAttack || m_followTarget != m_heldFollow
-        || tibia::world::fields().getDynamicRevision() != m_heldDynamic || !staticSceneStill())
-        return false; // hover/target/dynamic changes fall through to retain+partial rebuild
-
-    Frame& frame = m_frame;
-    // Field-slide path keeps a held copy. Default (raycast) path reuses m_frame in place
-    // after capture skipped the O(sprites) assign.
-    if (!m_heldSprites.empty()) {
-        frame.sprites = m_heldSprites;
-        frame.creatures = m_heldCreatures;
-    }
-    const Point delta(walk.x - m_heldWalk.x, walk.y - m_heldWalk.y);
-    if (delta.x != 0 || delta.y != 0) {
-        const QPoint shift(delta.x, delta.y);
-        for (SpriteRecord& sprite : frame.sprites) {
-            if (sprite.followsLocalWalk)
-                sprite.anchor += shift;
-        }
-        for (CreatureHud& hud : frame.creatures) {
-            if (hud.creature && hud.creature->isLocalPlayer())
-                hud.point += shift;
-        }
-        if (!m_heldSprites.empty()) {
-            m_heldSprites = frame.sprites;
-            m_heldCreatures = frame.creatures;
-        }
-    }
-    // Roofs prefer provider geometry; that is refreshed in buildLight after reuse returns.
-    // Pass nullptr here — endFrame after buildLight inserts roofs from the shared gather.
-    if (m_lighting) m_lighting->keepFrame(delta, nullptr);
-    m_heldWalk = walk;
-    m_reused = true;
-    return true;
-}
-
-void TWorldMapRenderProvider::captureStaticMap(const Point& walk, const uint8_t first, const uint8_t last,
-                                               const uint32_t coverRevision, const uint32_t itemRevision)
-{
-    m_held = true;
-    m_heldCamera = m_camera;
-    m_heldWalk = walk;
-    m_heldFirst = first;
-    m_heldLast = last;
-    m_heldCover = coverRevision;
-    m_heldItem = itemRevision;
-    m_heldDynamic = tibia::world::fields().getDynamicRevision();
-    m_heldWidth = m_visibleWidth;
-    m_heldHeight = m_visibleHeight;
-    m_heldMouse = m_mouseTarget.get();
-    m_heldAttack = m_attackTarget;
-    m_heldFollow = m_followTarget;
-    m_heldMissiles = missileStamp();
-    // Held sprite copy only when experimental field-slide is on. Full emit / standing
-    // reuse edits m_frame.sprites in place — skip the O(sprites) assign.
-    static const bool maySlide = qEnvironmentVariableIntValue("QTCLIENT_CIP_WORLD") == 0
-        && qEnvironmentVariableIntValue("QTCLIENT_FIELD_SLIDE") != 0;
-    if (maySlide) {
-        m_heldSprites = m_frame.sprites;
-        m_heldCreatures = m_frame.creatures;
-    } else {
-        m_heldSprites.clear();
-        m_heldCreatures.clear();
     }
 }
 
