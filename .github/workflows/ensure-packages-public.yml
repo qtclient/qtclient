@@ -25,7 +25,8 @@ jobs:
             client-wasm \
             client-linux-x64 \
             client-windows-x64 \
-            client-macos-arm64
+            client-macos-arm64 \
+            vcpkg-cache
           do
             echo "→ $OWNER/$pkg"
             gh api --method PATCH \

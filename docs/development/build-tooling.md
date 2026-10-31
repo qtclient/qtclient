@@ -45,4 +45,15 @@ Declared in [`vcpkg.json`](../../vcpkg.json). Product needs APNG → `libpng` fe
 
 ## Binary cache
 
-Presets set `VCPKG_BINARY_SOURCES` to `../../.cache/vcpkg/archives` (monorepo root). CI mirrors that with a GHA cache keyed on `vcpkg.json` + overlays + Qt pin.
+Local presets use monorepo `.cache/vcpkg/archives`. CI uses Soft composites
+[`.github/actions/cache-restore`](../../.github/actions/cache-restore/action.yml) /
+[`cache-save`](../../.github/actions/cache-save/action.yml):
+
+| Layer | Path | Persistence |
+|-------|------|-------------|
+| vcpkg archives | `workspace/.cache/vcpkg` | Actions `vcpkg-{triplet}-{baseline12}-{sha}` (+ restore-keys) and public GHCR `ghcr.io/qtclient/vcpkg-cache:{triplet}-{baseline12}` |
+| ccache | `workspace/.cache/ccache` | Actions `ccache-{scope}-{os}-{sha}` only (no GHCR; high churn) |
+
+Primary keys include `{sha}` so each run can **save** a new tip (Actions keys are immutable). Restore-keys warm from the previous tip. Do not use `save-always` on `actions/cache@v4` — it is broken; use restore + save.
+
+Release pack and Crystal call the same Soft actions (`uses: qtclient/qtclient/.github/actions/...` or `./_qtclient/.github/actions/...`). Qt prefixes stay on `ghcr.io/qtclient/qt:<sha>-<kit>` (not Actions).

@@ -79,9 +79,13 @@ fi
 export VCPKG_ROOT
 export PATH="$VCPKG_ROOT:$PATH"
 
-CACHE_ROOT="${VCPKG_BINARY_CACHE_DIR:-${RUNNER_TEMP:-/tmp}/vcpkg-binary-cache}"
+# Prefer workspace/.cache/vcpkg (composite cache-restore) over ephemeral RUNNER_TEMP.
+_default_cache="${GITHUB_WORKSPACE:+$GITHUB_WORKSPACE/.cache/vcpkg}"
+_default_cache="${_default_cache:-${RUNNER_TEMP:-/tmp}/vcpkg-binary-cache}"
+CACHE_ROOT="${VCPKG_BINARY_CACHE_DIR:-$_default_cache}"
 DOWNLOADS="${VCPKG_DOWNLOADS:-${RUNNER_TEMP:-/tmp}/vcpkg-downloads}"
 mkdir -p "$CACHE_ROOT" "$DOWNLOADS"
+export VCPKG_BINARY_CACHE_DIR="$CACHE_ROOT"
 export VCPKG_DEFAULT_BINARY_CACHE="$CACHE_ROOT"
 export VCPKG_BINARY_SOURCES="clear;files,$CACHE_ROOT,readwrite"
 export VCPKG_DOWNLOADS="$DOWNLOADS"
