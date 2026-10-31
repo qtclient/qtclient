@@ -144,15 +144,33 @@ function(qtclient_add_mod MOD_ID)
       else()
         message(WARNING "qtclient_add_mod(${MOD_ID}): QTCLIENT_HOST_BUILD=${_host_build} missing cipgen/cip_gen.h")
       endif()
-      file(GLOB _vcpkg_inc "${_host_build}/vcpkg_installed/*/include")
+    elseif(NOT EXISTS "${TIBIA_ROOT}/cipgen/cip_gen.h")
+      message(WARNING "qtclient_add_mod(${MOD_ID}): QTCLIENT_MOD_INTERNAL needs client-sdk cipgen/ or -DQTCLIENT_HOST_BUILD=…")
+    endif()
+    # Soft C++ deps (fmt, …). client-sdk is headers-only — packs must use vcpkg
+    # (manifest / host build / VCPKG_ROOT installed) the same way tibia does.
+    set(_vcpkg_inc_roots "")
+    if(DEFINED _host_build AND _host_build)
+      list(APPEND _vcpkg_inc_roots "${_host_build}/vcpkg_installed")
+    endif()
+    list(APPEND _vcpkg_inc_roots
+      "${CMAKE_BINARY_DIR}/vcpkg_installed"
+      "${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed")
+    if(DEFINED ENV{VCPKG_ROOT})
+      list(APPEND _vcpkg_inc_roots "$ENV{VCPKG_ROOT}/installed")
+    endif()
+    foreach(_root IN LISTS _vcpkg_inc_roots)
+      file(GLOB _vcpkg_inc "${_root}/*/include")
       foreach(_inc IN LISTS _vcpkg_inc)
         target_include_directories(${_target} PRIVATE
           "${_inc}"
           "${_inc}/stduuid"
           "${_inc}/utf8cpp")
       endforeach()
-    elseif(NOT EXISTS "${TIBIA_ROOT}/cipgen/cip_gen.h")
-      message(WARNING "qtclient_add_mod(${MOD_ID}): QTCLIENT_MOD_INTERNAL needs client-sdk cipgen/ or -DQTCLIENT_HOST_BUILD=…")
+    endforeach()
+    find_package(fmt CONFIG QUIET)
+    if(TARGET fmt::fmt)
+      target_link_libraries(${_target} PRIVATE fmt::fmt)
     endif()
   endif()
 
