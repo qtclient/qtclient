@@ -20,7 +20,9 @@ rsync -a \
   --exclude 'build/' \
   --exclude 'cmake-build-*/' \
   --exclude 'vcpkg_installed/' \
-  --exclude 'upstream/' \n  --exclude 'client/upstream/' \n  --exclude 'launcher/upstream/' \
+  --exclude 'upstream/' \
+  --exclude 'client/upstream/' \
+  --exclude 'launcher/upstream/' \
   --exclude 'cip/' \
   --exclude 'data/assets/' \
   --exclude 'data/things/' \
