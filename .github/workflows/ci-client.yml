@@ -84,6 +84,8 @@ jobs:
     env:
       CMAKE_BUILD_PARALLEL_LEVEL: 2
       CCACHE_DIR: ${{ github.workspace }}/.ccache
+      # Workspace path so actions/cache can persist across runs (RUNNER_TEMP is wiped).
+      VCPKG_BINARY_CACHE_DIR: ${{ github.workspace }}/.vcpkg-binary-cache
       QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
       SOURCE_COMMIT: ${{ github.sha }}
     steps:
@@ -117,6 +119,26 @@ jobs:
           path: ${{ runner.temp }}/Qt
           key: qt-${{ matrix.kit }}-${{ steps.cip.outputs.sha }}
 
+      - name: Restore vcpkg binary cache
+        id: vcpkg-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.VCPKG_BINARY_CACHE_DIR }}
+          key: vcpkg-bin-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-bin-${{ matrix.triplet }}-
+
+      - name: Restore ccache
+        id: ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          # SHA key so each green run can save; restore-keys warm from prior tips.
+          key: ccache-client-${{ matrix.os_slug }}-${{ github.sha }}
+          restore-keys: |
+            ccache-client-${{ matrix.os_slug }}-
+            ccache-client-${{ matrix.os_slug }}
+
       - name: qtclient bootstrap (deps + vcpkg + CIP Qt)
         shell: bash
         env:
@@ -126,17 +148,8 @@ jobs:
           QT_PULL_ONLY: '1'
           QT_PULL_WAIT_SECS: '7200'
           QT_PULL_INTERVAL_SECS: '90'
+          VCPKG_BINARY_CACHE_DIR: ${{ env.VCPKG_BINARY_CACHE_DIR }}
         run: bash tools/qt/ci-setup.sh --pull-only --with-vcpkg --with-deps
-
-      - name: Restore ccache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.CCACHE_DIR }}
-          # One warm slot per OS — always reuse / refresh (incl. fail/cancel).
-          key: ccache-client-${{ matrix.os_slug }}
-          restore-keys: |
-            ccache-client-${{ matrix.os_slug }}
-          save-always: true
 
       - name: Configure + build stock client
         id: build
@@ -164,6 +177,21 @@ jobs:
           cmake --build --preset ${{ matrix.preset }} --target tibia
           cmake --build --preset ${{ matrix.preset }} --target launcher || true
           ccache -s || true
+
+      # save-always on actions/cache@v4 is broken — restore + save is the supported pattern.
+      - name: Save vcpkg binary cache
+        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.VCPKG_BINARY_CACHE_DIR }}
+          key: vcpkg-bin-${{ matrix.triplet }}-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+
+      - name: Save ccache
+        if: always() && steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-client-${{ matrix.os_slug }}-${{ github.sha }}
 
       - name: Pack client desktop tip
         shell: bash
@@ -256,6 +284,7 @@ jobs:
       QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
       SOURCE_COMMIT: ${{ github.sha }}
       CCACHE_DIR: ${{ github.workspace }}/.ccache
+      VCPKG_BINARY_CACHE_DIR: ${{ github.workspace }}/.vcpkg-binary-cache
     steps:
       - uses: actions/checkout@v4
         with:
@@ -278,14 +307,24 @@ jobs:
           path: ${{ runner.temp }}/Qt
           key: qt-wasm_multithread-${{ steps.cip.outputs.sha }}
 
+      - name: Restore vcpkg binary cache
+        id: vcpkg-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.VCPKG_BINARY_CACHE_DIR }}
+          key: vcpkg-bin-wasm32-emscripten-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+          restore-keys: |
+            vcpkg-bin-wasm32-emscripten-
+
       - name: Restore ccache
-        uses: actions/cache@v4
+        id: ccache
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-client-wasm
+          key: ccache-client-wasm-${{ github.sha }}
           restore-keys: |
+            ccache-client-wasm-
             ccache-client-wasm
-          save-always: true
 
       - name: qtclient bootstrap (deps + vcpkg + CIP Qt wasm)
         env:
@@ -295,6 +334,7 @@ jobs:
           QT_PULL_ONLY: '1'
           QT_PULL_WAIT_SECS: '7200'
           QT_PULL_INTERVAL_SECS: '90'
+          VCPKG_BINARY_CACHE_DIR: ${{ env.VCPKG_BINARY_CACHE_DIR }}
         # Same as desktop: wait for Qt: build GHCR kits — never compile qtdeclarative here.
         run: bash tools/qt/ci-setup.sh --wasm --pull-only --with-vcpkg --with-deps
 
@@ -309,6 +349,20 @@ jobs:
           ccache -z || true
           bash scripts/lifecycle/build/wasm.sh
           ccache -s || true
+
+      - name: Save vcpkg binary cache
+        if: always() && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.VCPKG_BINARY_CACHE_DIR }}
+          key: vcpkg-bin-wasm32-emscripten-${{ hashFiles('vcpkg.json', 'vcpkg-configuration.json') }}
+
+      - name: Save ccache
+        if: always() && steps.ccache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-client-wasm-${{ github.sha }}
 
       - name: Pack client wasm
         env:
