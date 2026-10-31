@@ -209,18 +209,33 @@ function(qtclient_add_mod MOD_ID)
     endif()
   endif()
 
-  # Desktop MODULE still needs Qt headers / link for QObject etc. when host
-  # does not re-export Qt as a usable CMake dependency edge on all generators.
-  if(NOT EMSCRIPTEN AND NOT WASM)
-    if(TARGET Qt6::Core)
+  # Qt headers for QObject / QString / rhi. Desktop MODULE links Qt; WASM
+  # SIDE_MODULE only consumes includes/defs — symbols come from MAIN_MODULE.
+  if(TARGET Qt6::Core)
+    if(EMSCRIPTEN OR WASM)
+      set(_qt_mods Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
+      if(QTCLIENT_MOD_INTERNAL)
+        list(APPEND _qt_mods Qt6::GuiPrivate Qt6::QuickPrivate)
+      endif()
+      foreach(_qt IN LISTS _qt_mods)
+        if(TARGET ${_qt})
+          target_include_directories(${_target} PRIVATE
+            "$<TARGET_PROPERTY:${_qt},INTERFACE_INCLUDE_DIRECTORIES>")
+          target_compile_definitions(${_target} PRIVATE
+            "$<TARGET_PROPERTY:${_qt},INTERFACE_COMPILE_DEFINITIONS>")
+          target_compile_options(${_target} PRIVATE
+            "$<TARGET_PROPERTY:${_qt},INTERFACE_COMPILE_OPTIONS>")
+        endif()
+      endforeach()
+    else()
       target_link_libraries(${_target} PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
-    endif()
-    # rhi/qshader.h (weather overlays) lives on Gui private headers.
-    if(QTCLIENT_MOD_INTERNAL AND TARGET Qt6::GuiPrivate)
-      target_link_libraries(${_target} PRIVATE Qt6::GuiPrivate)
-    endif()
-    if(QTCLIENT_MOD_INTERNAL AND TARGET Qt6::QuickPrivate)
-      target_link_libraries(${_target} PRIVATE Qt6::QuickPrivate)
+      # rhi/qshader.h (weather overlays) lives on Gui private headers.
+      if(QTCLIENT_MOD_INTERNAL AND TARGET Qt6::GuiPrivate)
+        target_link_libraries(${_target} PRIVATE Qt6::GuiPrivate)
+      endif()
+      if(QTCLIENT_MOD_INTERNAL AND TARGET Qt6::QuickPrivate)
+        target_link_libraries(${_target} PRIVATE Qt6::QuickPrivate)
+      endif()
     endif()
   endif()
   # Match host language dialect (tibia uses gnu++23 on this tree).
