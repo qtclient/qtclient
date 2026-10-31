@@ -41,9 +41,9 @@ Or edit/reinstall `mods/default/mod.json` `urls` — no host rebuild.
 
 ## IdleOT portal
 
-Product pack in `apps/idleot-client` — local run sets `QTCLIENT_MODS_DIR` (no
-symlink into `apps/qtclient/client/mods`). Tip install: `make idleot client install`
-merges `mods/idleot` and removes `mods/default`.
+Product pack in `apps/idleot-client` (`QTCLIENT_PACK`). Tip install:
+`make qtclient client install` merges `mods/idleot` (with MODULE) and removes
+`mods/default`. Run loads that tip pack only.
 
 ## Running a tip
 

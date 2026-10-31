@@ -43,7 +43,7 @@ vc18/
 # /upstream/
 
 # Stock tracks _sample only. Product packs (e.g. idleot) are installed at
-# build time: local symlink via `make idleot link|install`, CI/release copy.
+# build time: local symlink via `make qtclient link|install`, CI/release copy.
 # Do not commit mods/idleot or launcher/mods/idleot.
 /client/mods/*
 !/client/mods/README.md

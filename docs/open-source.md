@@ -10,7 +10,7 @@ woven into stock `client/tibia`.
 | Launcher | `launcher/src` | Brand/art via `launcher/mods/<id>` |
 | `upstream/*` / CIP assets | Never commit — `make sync` + `make extract` | Same |
 | Mods API + `client/mods/_sample` | Yes | `mod.json` + native + FS QML `qml/<uri>/` + `mod_api_v1` |
-| Product packs | Not required to build stock | Drop in `mods/<id>/` or `make idleot install` |
+| Product packs | Not required to build stock | Drop in `mods/<id>/` or umbrella `make qtclient install` (`QTCLIENT_PACK`) |
 
 ## Inplace extension
 

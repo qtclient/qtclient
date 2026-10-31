@@ -29,9 +29,13 @@ Tip loads **at most one** pack under `mods/<id>/`:
 | Mode | Pack |
 |------|------|
 | `--no-mods` / empty tip | none → real CipSoft (`https://www.tibia.com`, `https://static.tibia.com`) |
-| `--default-mod` | force tip `mods/default/` (ignore `QTCLIENT_MODS_DIR` + `idleot`) |
-| `QTCLIENT_MODS_DIR` | exclusive out-of-tree pack (IdleOT local; no worktree symlink) |
+| `--default-mod` | force tip `mods/default/` (ignore tip `idleot`) |
 | tip default | prefer `mods/idleot`, else `mods/default` |
+
+**Product local path (single):** set `QTCLIENT_PACK` in root `.env`, then
+`make qtclient client|wasm install` merges the pack into tip `mods/<id>/`.
+`make qtclient client run` loads that tip pack (never `QTCLIENT_MODS_DIR`).
+`QTCLIENT_MODS_DIR` remains a Soft escape hatch for out-of-tree experiments only.
 
 Optional `urls` on `mod.json` merge into `LauncherEnv` (env > mod > `release_env.lua` > CipSoft).
 
@@ -50,8 +54,7 @@ Optional `urls` on `mod.json` merge into `LauncherEnv` (env > mod > `release_env
 | [`mods/default`](../client/mods/default/mod.json) | Demo tip myAAC (`/login.php`); `make demo-pack` |
 | IdleOT `mod.json` | Portal CIP `/clientservices/*.php`; tip **replaces** `default` |
 
-Urls-only packs omit `native`. Override without dirtying qtclient:  
-`export QTCLIENT_MODS_DIR=/path/to/apps/idleot-client/client`.
+Urls-only packs omit `native`. Product packs always install into the tip.
 
 Build with one CMake API:
 
@@ -77,13 +80,13 @@ mods/my_pack/qml/my_pack/qmldir
 ```
 
 Stock CDN ships host only (`client` / `tibia.wasm`). Product packs are separate
-artifacts installed into `mods/<id>/` before Play (`make idleot install` for local).
+artifacts installed into `mods/<id>/` before Play (`make qtclient install` for local).
 
 ## Pack tiers
 
 | Tier | What | When |
 |------|------|------|
-| Runtime pack | `native/mod.*` + `qml/<uri>/` + `resources/` + `mod.json` | Post-compile; CDN / `make idleot install` |
+| Runtime pack | `native/mod.*` + `qml/<uri>/` + `resources/` + `mod.json` | Post-compile; CDN / `make qtclient install` |
 | Optional QML plugin | Shared `native/qmlplugin.*` for C++ types | Prefer over STATIC-into-`mod.*` |
 | Override pack | CIP forks under `overrides/` | **Runtime** `PackQmlInterceptor` remap (host stays stock) |
 
@@ -102,6 +105,7 @@ desktop F5 / disk hot reload.
 | Build | QML source | Hot reload |
 |-------|------------|------------|
 | Umbrella `make qtclient client build` (`DEV=1` → `TIBIA_QML_DISK`) | Live pack `qml/` + override source trees via `DiskQmlInterceptor`; file watch + **F5** clears component cache | Yes (desktop) |
+| Umbrella `make stock client build` | Soft stock host (no pack merge) | — |
 | Production `make -C apps/qtclient client build` | Staged `mods/<id>/qml/<uri>/` via `PackQmlInterceptor` | Edit → restage / rebuild pack tree |
 
 ## Mod API v1
@@ -190,20 +194,20 @@ Register mods, backends, WorldView drivers/overlays inside this function
 
 - **`Client: ci`** (public) publishes stock client artifacts (`client-<plat>:<sha>`, `client-sdk:<sha>`).
 - **idleot/release** (public) builds IdleOT MODULE/SIDE_MODULE packs after qtclient client artifacts are ready, merges `mods/idleot` into the tip, brands IdleOT, promotes CDN — private `idleot-client` is checked out with `RELEASE_TOKEN` (no private Actions compile).
-- Local: `make idleot client|wasm install` calls `make qtclient … install` (stock client, `QTCLIENT_ENABLE_MODS=OFF`), then builds the pack and merges it next to the binary. `make qtclient client run` / `make qtclient launcher run` pass `--no-mods` so tip packs stay unloaded. Launcher IdleOT identity + art is a tip pack (`mods/<id>/brand.json` + `images/launcher`); `make idleot launcher install` stages it without recompiling qtclient. With `QTCLIENT_DEV_JSON` (`dist/cdn/latest/dev.json`), launcher **Play** starts the local qtclient build (`--no-mods`) or the packed IdleOT client — not an AppData tip install.
+- Local: `make qtclient client|wasm install` runs `make stock … install` then builds the pack from `QTCLIENT_PACK` and merges it next to the binary (`QTCLIENT_ENABLE_MODS=OFF` on the host). Run loads tip `mods/<id>` only. `make stock client run` / `make stock launcher run` pass `--no-mods`. Launcher brand is tip `mods/<id>/brand.json`; `make qtclient launcher install` stages it without recompiling Soft.
 
 ## Make CLI
 
 ```bash
-make qtclient client build       # stock qtclient (or DEV disk QML)
-make qtclient client run         # --no-mods (stock client)
-make qtclient launcher run       # --no-mods (stock qtclient launcher + CIP chrome)
-make idleot client install       # qtclient client install, then IdleOT MODULE → tip
-make idleot launcher install     # qtclient launcher install, then tip brand pack
-make idleot wasm install         # qtclient wasm install, then SIDE_MODULE → dist/cdn
-make idleot client run           # start the packed client; warns if mods/idleot is missing
-make demo-pack && make demo-run  # tip with mods/default + CipSoft assetsurl
-make qtclient client run ARGS='--default-mod'  # force myAAC tip pack
-make qtclient client run ARGS='--no-mods'      # real CipSoft URLs
-make -C apps/qtclient client build   # app-local stock qtclient
+make stock client build          # CIP host (or DEV disk QML)
+make stock client run            # --no-mods (stock client)
+make stock launcher run          # --no-mods (stock launcher + CIP chrome)
+make qtclient client install     # stock install, then QTCLIENT_PACK MODULE → tip
+make qtclient launcher install   # stock launcher install, then tip brand pack
+make qtclient wasm install       # stock wasm install, then SIDE_MODULE → tip
+make qtclient client run         # start the packed client; warns if mods/idleot is missing
+make stock demo-pack && make stock demo-run  # tip with mods/default + CipSoft assetsurl
+make stock client run ARGS='--default-mod'   # force myAAC tip pack
+make stock client run ARGS='--no-mods'       # real CipSoft URLs
+make -C apps/qtclient client build           # app-local Soft stock
 ```

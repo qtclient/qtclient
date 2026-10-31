@@ -59,8 +59,8 @@ ifeq ($(PRODUCT),1)
 	@echo "  make launcher install stock launcher install, then tip brand"
 	@echo "  make wasm install     stock wasm install, then SIDE_MODULE → tip"
 	@echo "  make package          pack MODULE only (independent of stock)"
-	@echo "  make client run       start packed client (QTCLIENT_MODS_DIR)"
-	@echo "  make link             optional symlink pack → client/mods/<id>"
+	@echo "  make client run       start tip-packed client (mods/<id> next to binary)"
+	@echo "  make link             optional FS symlink (not required for run)"
 	@echo "  Stock-only smoke: umbrella make stock client run"
 else
 	@echo "  make client build     desktop tibia (DEV=1 → disk QML; STOCK_HOST=1 skips packs)"
@@ -147,7 +147,8 @@ _cargo:
 	      bash "$$pack/scripts/lifecycle/package/module.sh" "$${args[@]}" ;; \
 	    run) \
 	      case "$$comp" in client) target=desktop ;; *) target="$$comp" ;; esac; \
-	      COMP="$$comp" ARGS="$(ARGS)" QTCLIENT_ROOT="$(HERE)" \
+	      COMP="$$comp" QTCLIENT_ROOT="$(HERE)" \
+	        $(if $(ARGS),ARGS="$(ARGS)",) \
 	        bash "$$pack/scripts/lifecycle/run/$$target.sh" ;; \
 	    link) \
 	      mkdir -p "$(HERE)/client/mods" "$(HERE)/launcher/mods"; \

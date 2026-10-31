@@ -17,12 +17,15 @@ fi
 echo "[tibia] starting $QTCLIENT_CLIENT_BIN (cwd $OTC)"
 cd "$OTC"
 bash "$OTC/scripts/lifecycle/lib/link-cip-resources.sh" "$QTCLIENT_CLIENT_BIN" "$OTC/data" || true
-if [[ -n "${ARGS+x}" ]]; then
-  client_args=(${ARGS})
-elif [[ -n "${QTCLIENT_MODS_DIR:-}" ]]; then
-  client_args=()
-else
-  client_args=(--no-mods)
-fi
+# Avoid empty-array "${arr[@]}" under bash 3.2 + set -u (macOS).
+# Stock default: --no-mods.
+# Product (make qtclient run): QTCLIENT_LOAD_TIP_MODS=1 → tip mods/<id>.
+# Soft escape hatch: QTCLIENT_MODS_DIR (exclusive; not used by IdleOT make path).
 # shellcheck disable=SC2086
-exec "$QTCLIENT_CLIENT_BIN" "${client_args[@]}" "$@"
+if [[ -n "${ARGS:-}" ]]; then
+  exec "$QTCLIENT_CLIENT_BIN" ${ARGS} "$@"
+elif [[ -n "${QTCLIENT_MODS_DIR:-}" || "${QTCLIENT_LOAD_TIP_MODS:-}" == "1" ]]; then
+  exec "$QTCLIENT_CLIENT_BIN" "$@"
+else
+  exec "$QTCLIENT_CLIENT_BIN" --no-mods "$@"
+fi

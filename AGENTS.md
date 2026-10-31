@@ -65,20 +65,22 @@ target and no opentibiabr/otclient upstream. Check behavior against CIP.
   GHCR `ghcr.io/qtclient/qt:<sha>-<kit>` (never vcpkg Qt; emsdk 4.0.7 for
   wasm). Needs `VCPKG_ROOT`. Docs:
   [`docs/development/build-tooling.md`](docs/development/build-tooling.md).
-  Umbrella `make qtclient client build` is **dev** (`TIBIA_QML_DISK`:
+  Umbrella `make qtclient client build` is **dev** product (`TIBIA_QML_DISK`:
   `qmlcomponents` stays on qrc; live reload for pack `qml/<uri>/` + override
-  roots; F5 clears cache). Production: `make -C apps/qtclient client build`.
-  Run: `make qtclient client run ARGS=…`, `make qtclient wasm build`. Flags:
+  roots; F5 clears cache; needs `QTCLIENT_PACK`). Soft-only: `make stock client build`.
+  Production Soft: `make -C apps/qtclient client build`.
+  Run packed: `make qtclient client run ARGS=…`; stock: `make stock client run`.
+  WASM: `make stock wasm build` or `make qtclient wasm install`. Flags:
   `--preview`, `--check-qml`, `--screenshot FILE`, `--renderer …`, `--data DIR`.
 - **Login smoke test** (portal + Crystal running): `make qtclient client run
-  ARGS='--account=EMAIL --password=PW --character=NAME --play-for=20'` logs in,
+  ARGS='--account=EMAIL --password=PW --character=NAME --play-for=20'` (packed) logs in,
   plays 20 s, logs out; exit 0 only if still online. Without `--character` it
   shows CIP's character list. Auth is launcher + AAC login JSON only (no product
   play-bootstrap SSO). **Login URLs:** single tip pack `urls` (env > mod >
   `release_env.lua` > real CipSoft). Demo: `mods/default` → myAAC `/login.php`.
-  IdleOT → portal `/clientservices/*.php` (`QTCLIENT_MODS_DIR` or tip
-  `mods/idleot`). `--no-mods` → `https://www.tibia.com`. `--default-mod` → force
-  `mods/default`. With `--character`,
+  IdleOT → portal `/clientservices/*.php` (tip `mods/idleot` after
+  `make qtclient client install`). `--no-mods` → `https://www.tibia.com`.
+  `--default-mod` → force `mods/default`. With `--character`,
   `--screenshot=tmp/shots/x.png` shoots the world 3 s after login;
   `QT_LOGGING_RULES=tibia.worldmap.debug=true` logs sprite counts and sync cost.
 - **Web URLs (CIP `[URLS]`-style):** `LauncherEnv` + `PortalUrls` from pack
@@ -168,5 +170,5 @@ CIP tip protocol: `tibiametadata.json` → engine `package.json` → `assets.jso
   `IdleOT.app` (see `launcher/mods/idleot/brand.cmake` → `apps/idleot-client/launcher`). Assemble with
   `TIBIA_TIP_VARIANT` / `TIBIA_TIP_VARIANT`; launcher selects with
   `TIBIA_VARIANT` / `TIBIA_VARIANT` (default `regular`). **Local** skips the
-  launcher: `make qtclient client run` links `Contents/Resources` → `data/`
-  (`assets/` + `sounds/` siblings).
+  launcher: `make stock client run` or `make qtclient client run` links
+  `Contents/Resources` → `data/` (`assets/` + `sounds/` siblings).

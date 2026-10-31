@@ -208,6 +208,8 @@ if(NOT _qtclient_host_sha)
   set(_qtclient_host_sha "unknown")
 endif()
 target_compile_definitions(tibia PRIVATE "QTCLIENT_HOST_BUILD_ID=\"${_qtclient_host_sha}\"")
+# Pack install stamps mod.json from this file (matches the binary, not a later git HEAD).
+file(WRITE "${CMAKE_BINARY_DIR}/hostBuildId" "${_qtclient_host_sha}\n")
 # Product identity: stock CipSoft defaults; enabled packs set these via PARENT_SCOPE
 # (see client/mods/*/CMakeLists.txt). Applied once after mods so -D is not redefined.
 set(TIBIA_PRODUCT_NAME "Tibia")

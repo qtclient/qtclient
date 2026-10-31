@@ -1336,8 +1336,8 @@ bool LauncherWindow::tryPlayDevClient()
             && (QFile::exists(QDir(envMods).filePath(QStringLiteral("mod.json")))
                 || QFile::exists(QDir(envMods).filePath(QStringLiteral("idleot/mod.json"))));
         if (!QFileInfo::exists(idleot) && !envPack) {
-            m_status->setText(QStringLiteral("IdleOT pack missing — make idleot client install (or set QTCLIENT_MODS_DIR)"));
-            qWarning("Play: missing %s and QTCLIENT_MODS_DIR", qUtf8Printable(idleot));
+            m_status->setText(QStringLiteral("IdleOT pack missing — make qtclient client install"));
+            qWarning("Play: missing tip pack %s", qUtf8Printable(idleot));
             setLogoState(LogoState::Classic);
             refresh();
             return true; // handled (do not fall through to tip package)
