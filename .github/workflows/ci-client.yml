@@ -181,6 +181,8 @@ jobs:
           BIN_DIR="$bin_dir" bash scripts/lifecycle/package/desktop.sh
 
       - name: Pack demo Release (myAAC + CipSoft assetsurl)
+        # Demo is optional — never block client tip / GHCR publish on pack glitches.
+        continue-on-error: true
         shell: bash
         env:
           QT_PREFIX: ${{ env.QT_PREFIX }}

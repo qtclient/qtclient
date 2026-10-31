@@ -275,7 +275,7 @@ def main() -> int:
 
     emit_metadata(out, args.release_base_url, platforms)
     # Sidecar tip next to out for local launcher tests.
-    print("[demo] CipSoft asset blobs are NOT included (assetsurl → static.tibia.com)")
+    print("[demo] CipSoft asset blobs are NOT included (assetsurl -> static.tibia.com)")
     return 0
 
 
