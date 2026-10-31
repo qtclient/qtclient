@@ -700,6 +700,7 @@ if(EMSCRIPTEN)
     endif()
   endforeach()
   target_sources(tibia PRIVATE
+    "${_tibia_launcher_dir}/brand.cpp" "${_tibia_launcher_dir}/brand.h"
     "${_tibia_launcher_dir}/stage.cpp" "${_tibia_launcher_dir}/stage.h"
     "${_tibia_launcher_dir}/package.cpp" "${_tibia_launcher_dir}/package.h"
     "${_tibia_launcher_dir}/unpack.cpp" "${_tibia_launcher_dir}/unpack.h"

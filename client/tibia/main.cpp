@@ -110,6 +110,7 @@
 #if defined(TIBIA_WASM_EMBED_LAUNCHER)
 #include <QApplication>
 // launcher/src is on the include path (TIBIA_WASM_EMBED_LAUNCHER).
+#include "brand.h"
 #include "stage.h"
 #include "window.h"
 #else
@@ -401,6 +402,7 @@ int main(int argc, char** argv)
     // the Widgets soft-stage and a hidden QQuickWindow share one Module. Play
     // remounts into a game-only boot (portal sets QTCLIENT_WASM_SKIP_LAUNCHER).
     if (!qEnvironmentVariableIsSet("QTCLIENT_WASM_SKIP_LAUNCHER")) {
+        LauncherBrand::load(argc, argv);
         QString cdn = qEnvironmentVariable("QTCLIENT_CDN_URL");
         if (cdn.startsWith(QLatin1Char('/'))) {
 #ifdef Q_OS_WASM
@@ -409,7 +411,10 @@ int main(int argc, char** argv)
 #endif
         }
         if (cdn.isEmpty()) {
-            if (const auto* id = tibia::mods::primaryIdentity(); id && !id->cdnBaseUrl.empty())
+            const QString brandCdn = LauncherBrand::instance().defaultCdn;
+            if (!brandCdn.isEmpty())
+                cdn = brandCdn;
+            else if (const auto* id = tibia::mods::primaryIdentity(); id && !id->cdnBaseUrl.empty())
                 cdn = QString::fromStdString(id->cdnBaseUrl);
         }
         while (cdn.endsWith(QLatin1Char('/')))
