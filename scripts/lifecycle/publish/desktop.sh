@@ -8,7 +8,9 @@ if [[ -z "$HOST_ID" ]]; then
 fi
 OWNER="${GITHUB_REPOSITORY_OWNER:-qtclient}"
 REGISTRY="${REGISTRY:-ghcr.io/$OWNER}"
-PLATFORM="${PLATFORM:?PLATFORM required for desktop publish}"
+# Prefer QTCLIENT_PLATFORM — MSVC Platform collides with PLATFORM on Windows.
+PLATFORM="${QTCLIENT_PLATFORM:-${PLATFORM:-}}"
+PLATFORM="${PLATFORM:?QTCLIENT_PLATFORM (or PLATFORM) required for desktop publish}"
 NAME="client-$PLATFORM"
 TARBALL="client.tgz"
 command -v oras >/dev/null || { echo "oras required" >&2; exit 1; }

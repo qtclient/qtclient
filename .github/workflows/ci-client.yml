@@ -171,7 +171,8 @@ jobs:
           QT_PREFIX: ${{ env.QT_PREFIX }}
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
-          PLATFORM: ${{ matrix.plat }}
+          # Not PLATFORM — MSVC Platform env swallows it on windows-2022.
+          QTCLIENT_PLATFORM: ${{ matrix.plat }}
           PACKAGE_OUT: ${{ runner.temp }}/client-${{ matrix.plat }}
         run: |
           set -euo pipefail
@@ -239,7 +240,7 @@ jobs:
         env:
           QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
           SOURCE_COMMIT: ${{ github.sha }}
-          PLATFORM: ${{ matrix.plat }}
+          QTCLIENT_PLATFORM: ${{ matrix.plat }}
           PACKAGE_OUT: ${{ runner.temp }}/client-${{ matrix.plat }}
           REGISTRY: ${{ env.REGISTRY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
