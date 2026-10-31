@@ -103,6 +103,8 @@ jobs:
         with:
           path: ${{ runner.temp }}/Qt/cip-${{ env.QT_CIP_SHORT }}
           key: qt-${{ matrix.kit }}-${{ env.QT_CIP_SHA }}
+          # Persist install prefix on fail/cancel (same as Client:ci ccache).
+          save-always: true
 
       - name: Build + publish desktop kit
         shell: bash
@@ -177,6 +179,8 @@ jobs:
             ${{ runner.temp }}/Qt/cip-${{ env.QT_CIP_SHORT }}
             ${{ runner.temp }}/Qt/emsdk
           key: qt-wasm_multithread-${{ env.QT_CIP_SHA }}
+          # Persist kits + emsdk on fail/cancel (same as Client:ci ccache).
+          save-always: true
 
       - name: Build host + wasm + publish
         env:
