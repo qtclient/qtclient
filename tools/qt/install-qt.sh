@@ -101,7 +101,7 @@ ensure_prefix() {
   [[ -n "$sha" ]] || { echo "[qt] no CIP SHA" >&2; exit 1; }
   short="${sha:0:12}"
   prefix="$QT_ROOT/cip-$short/$dir_name"
-  if [[ -f "$prefix/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
+  if qt_prefix_has_qt6 "$prefix"; then
     echo "[qt] $kit_slug: $prefix" >&2
     echo "$prefix"
     return 0
@@ -224,15 +224,24 @@ build_host() {
   prefix="$QT_ROOT/cip-$short/$dir_name"
   build="$QT_ROOT/build/cip-$short-host"
   mkdir -p "$prefix" "$build"
-  echo "[qt] configuring host CIP Qt $short → $prefix"
+  # configure.bat/cmake need D:/… — MSYS /d/… becomes a literal D:\d\… install root.
+  local prefix_arg build_cd
+  prefix_arg="$(qt_native_path "$prefix")"
+  build_cd="$build"
+  echo "[qt] configuring host CIP Qt $short → $prefix_arg"
   build_skip_args
   (
-    cd "$build"
+    cd "$build_cd"
+    # Drop caches that baked an MSYS CMAKE_INSTALL_PREFIX (/d/a/… → D:\d\a\…).
+    if [[ -f CMakeCache.txt ]] && grep -q 'CMAKE_INSTALL_PREFIX:PATH=/[a-z]/' CMakeCache.txt 2>/dev/null; then
+      echo "[qt] wiping host build cache (MSYS CMAKE_INSTALL_PREFIX)" >&2
+      rm -f CMakeCache.txt
+    fi
     if [[ ! -f CMakeCache.txt ]]; then
       # Intentional word-split of EXTRA / SKIP_ARGS (bash 3.2-safe, no arrays).
       # shellcheck disable=SC2086
       "$(qt_configure)" \
-        -prefix "$prefix" \
+        -prefix "$prefix_arg" \
         -release \
         -nomake examples \
         -nomake tests \
@@ -244,10 +253,12 @@ build_host() {
     cmake --build . --parallel "$JOBS"
     cmake --install .
   )
-  [[ -f "$prefix/lib/cmake/Qt6/Qt6Config.cmake" ]] || {
-    echo "[qt] host install failed" >&2
+  if ! qt_prefix_has_qt6 "$prefix"; then
+    echo "[qt] host install failed (no Qt6Config under $prefix)" >&2
+    echo "[qt]   native prefix was $prefix_arg" >&2
+    ls -la "$prefix" "$prefix/lib/cmake/Qt6" 2>&1 | head -40 >&2 || true
     exit 1
-  }
+  fi
   echo "[qt] desktop: $prefix"
   if [[ "${PUBLISH:-0}" == "1" ]]; then
     bash "$HERE/ghcr-qt.sh" push "$kit_slug"
@@ -307,15 +318,18 @@ build_wasm() {
   prefix="$QT_ROOT/cip-$short/$dir_name"
   build="$QT_ROOT/build/cip-$short-wasm"
   mkdir -p "$prefix" "$build"
-  echo "[qt] configuring wasm CIP Qt $short → $prefix (host $host_prefix)"
+  local prefix_arg host_arg
+  prefix_arg="$(qt_native_path "$prefix")"
+  host_arg="$(qt_native_path "$host_prefix")"
+  echo "[qt] configuring wasm CIP Qt $short → $prefix_arg (host $host_arg)"
   build_skip_args
   (
     cd "$build"
     if [[ ! -f CMakeCache.txt ]]; then
       # shellcheck disable=SC2086
       "$(qt_configure)" \
-        -prefix "$prefix" \
-        -qt-host-path "$host_prefix" \
+        -prefix "$prefix_arg" \
+        -qt-host-path "$host_arg" \
         -platform wasm-emscripten \
         -feature-thread \
         -release \
@@ -328,10 +342,10 @@ build_wasm() {
     cmake --build . --parallel "$JOBS"
     cmake --install .
   )
-  [[ -f "$prefix/lib/cmake/Qt6/Qt6Config.cmake" ]] || {
-    echo "[qt] wasm install failed" >&2
+  if ! qt_prefix_has_qt6 "$prefix"; then
+    echo "[qt] wasm install failed (no Qt6Config under $prefix)" >&2
     exit 1
-  }
+  fi
   echo "[qt] wasm: $prefix"
   if [[ "${PUBLISH:-0}" == "1" ]]; then
     bash "$HERE/ghcr-qt.sh" push "$kit_slug"

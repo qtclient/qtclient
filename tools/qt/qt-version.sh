@@ -130,7 +130,37 @@ qt_install_dir_for_kit() {
 }
 
 qt_prefix_has_qt6() {
-  [[ -f "${1:-}/lib/cmake/Qt6/Qt6Config.cmake" ]]
+  local p="${1:-}" cfg
+  [[ -n "$p" ]] || return 1
+  cfg="$p/lib/cmake/Qt6/Qt6Config.cmake"
+  [[ -f "$cfg" ]] && return 0
+  # After a native Windows cmake --install, Git Bash -f can miss the MSYS path
+  # briefly; also accept mixed/Windows forms from cygpath.
+  if command -v cygpath >/dev/null 2>&1; then
+    local w
+    w="$(cygpath -m "$p" 2>/dev/null || true)"
+    [[ -n "$w" && -f "$w/lib/cmake/Qt6/Qt6Config.cmake" ]] && return 0
+    w="$(cygpath -w "$p" 2>/dev/null || true)"
+    [[ -n "$w" && -f "$w\\lib\\cmake\\Qt6\\Qt6Config.cmake" ]] && return 0
+  fi
+  return 1
+}
+
+# Path for native Windows tools (configure.bat / cmake). MSYS /d/a/... must not
+# be passed through — cmake stores it literally and installs to D:\d\a\... while
+# bash /d/a/... maps to D:\a\... (Actions QT_ROOT), so the post-install check
+# false-negatives after a full Windows CIP Qt build.
+qt_native_path() {
+  local p="${1:-}"
+  [[ -n "$p" ]] || { echo "$p"; return 0; }
+  if command -v cygpath >/dev/null 2>&1; then
+    case "$(uname -s 2>/dev/null)" in
+      MINGW*|MSYS*|CYGWIN*) cygpath -m "$p" ;;
+      *) echo "$p" ;;
+    esac
+  else
+    echo "$p"
+  fi
 }
 
 # Unpack a CIP Qt prefix archive into dest (shared by GHCR + release pulls).

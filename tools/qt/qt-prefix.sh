@@ -14,7 +14,7 @@ SHORT="${SHA:0:12}"
 
 _print_if_qt() {
   local PREFIX="$1"
-  if [[ -f "$PREFIX/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
+  if qt_prefix_has_qt6 "$PREFIX"; then
     if command -v cygpath >/dev/null; then cygpath -m "$PREFIX"; else echo "$PREFIX"; fi
     return 0
   fi
