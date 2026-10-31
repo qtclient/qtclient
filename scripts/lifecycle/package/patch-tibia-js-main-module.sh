@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Attach .sig on Emscripten MAIN_MODULE=2 GOT helpers that upstream omits.
-# Without this, /play boots crash in generateFuncType (sig.slice on undefined).
-# Usage: patch-tibia-js-main-module.sh <tibia.js>
+# Without this, /play boots crash in generateFuncType (sig.slice) or missing
+# sig for jsHaveJspi. Usage: patch-tibia-js-main-module.sh <tibia.js>
 set -euo pipefail
 JS="${1:?tibia.js}"
 [[ -f "$JS" ]] || { echo "missing $JS" >&2; exit 1; }
@@ -36,12 +36,32 @@ cxa_fixed = (
 if cxa in text:
     text = text.replace(cxa, cxa_fixed, 1)
 
+jshave = (
+    'function jsHaveAsyncify(){return typeof Asyncify!=="undefined"}'
+    'function jsHaveJspi(){return typeof Asyncify!=="undefined"&&!!Asyncify.makeAsyncFunction'
+    '&&(!!WebAssembly.Function||!!WebAssembly.Suspending)}'
+)
+jshave_fixed = (
+    'function jsHaveAsyncify(){return typeof Asyncify!=="undefined"}jsHaveAsyncify.sig="i";'
+    'function jsHaveJspi(){return typeof Asyncify!=="undefined"&&!!Asyncify.makeAsyncFunction'
+    '&&(!!WebAssembly.Function||!!WebAssembly.Suspending)}jsHaveJspi.sig="i";'
+)
+if jshave in text and "jsHaveJspi.sig=" not in text:
+    text = text.replace(jshave, jshave_fixed, 1)
+
 report = 'if(typeof value=="function"){entry.value=addFunction(value,value.sig)}'
-report_fixed = (
+report_prior = (
     'if(typeof value=="function"){if(!value.sig){if(!entry.required)continue;'
     'throw new Error("missing sig for "+symName)}entry.value=addFunction(value,value.sig)}'
 )
-if report in text:
+report_fixed = (
+    'if(typeof value=="function"){var sig=value.sig;if(!sig&&/^jsHave/.test(symName))sig="i";'
+    'if(!sig){if(!entry.required)continue;throw new Error("missing sig for "+symName)}'
+    'entry.value=addFunction(value,sig)}'
+)
+if report_prior in text:
+    text = text.replace(report_prior, report_fixed, 1)
+elif report in text:
     text = text.replace(report, report_fixed, 1)
 
 if text == orig:
