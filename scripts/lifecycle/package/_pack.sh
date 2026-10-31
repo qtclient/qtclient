@@ -25,6 +25,33 @@ pack_sdk() {
     --qml "$OTC/client/upstream/qml/qmlcomponents"
   test -f "$DEST/cipgen/cip_gen.h"
 
+  # CIP protobuf C++ stubs for out-of-tree packs (#include <appearances.pb.h>).
+  # Source tree only has .proto; Soft host cmake generates into the build dir.
+  _proto_dir="$OTC/client/upstream/proto"
+  _proto_out="$DEST/include/protobuf"
+  mkdir -p "$_proto_out"
+  _protoc=""
+  if command -v protoc >/dev/null 2>&1; then
+    _protoc="$(command -v protoc)"
+  elif [[ -n "${VCPKG_ROOT:-}" ]]; then
+    for _cand in \
+      "$VCPKG_ROOT/installed/${VCPKG_TARGET_TRIPLET:-}/tools/protobuf/protoc" \
+      "$VCPKG_ROOT/installed/"*/tools/protobuf/protoc
+    do
+      [[ -x "$_cand" ]] && _protoc="$_cand" && break
+    done
+  fi
+  if [[ -z "$_protoc" ]]; then
+    echo "[package] warning: protoc missing — client-sdk will lack appearances.pb.h" >&2
+  else
+    "$_protoc" -I"$_proto_dir" --cpp_out="$_proto_out" \
+      appearances.proto shared.proto sounds.proto sounds-common.proto
+    test -f "$_proto_out/appearances.pb.h"
+    # Mirror under client/tibia/protobuf for Soft host-shaped include layouts.
+    mkdir -p "$DEST/client/tibia/protobuf"
+    cp -a "$_proto_out/." "$DEST/client/tibia/protobuf/"
+  fi
+
   cat >"$DEST/cmake/QtClientConfig.cmake" <<EOF
 # qtclient client-sdk (hostBuildId=${HOST_ID})
 set(QTCLIENT_ROOT "\${CMAKE_CURRENT_LIST_DIR}/..")

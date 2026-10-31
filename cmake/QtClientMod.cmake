@@ -147,6 +147,15 @@ function(qtclient_add_mod MOD_ID)
     elseif(NOT EXISTS "${TIBIA_ROOT}/cipgen/cip_gen.h")
       message(WARNING "qtclient_add_mod(${MOD_ID}): QTCLIENT_MOD_INTERNAL needs client-sdk cipgen/ or -DQTCLIENT_HOST_BUILD=…")
     endif()
+    # Generated CIP protobuf stubs (#include <appearances.pb.h>). client-sdk ships
+    # them under include/protobuf/; Soft host builds under client/tibia/protobuf/.
+    foreach(_pb_inc IN ITEMS
+        "${TIBIA_ROOT}/include/protobuf"
+        "${TIBIA_ROOT}/client/tibia/protobuf")
+      if(EXISTS "${_pb_inc}")
+        target_include_directories(${_target} PRIVATE "${_pb_inc}")
+      endif()
+    endforeach()
     # Soft C++ deps (fmt, …). client-sdk is headers-only — packs must use vcpkg
     # (manifest / host build / VCPKG_ROOT installed) the same way tibia does.
     set(_vcpkg_inc_roots "")
