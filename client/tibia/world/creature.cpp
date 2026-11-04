@@ -22,9 +22,12 @@
 
 #include "creature.h"
 
+#include <tibia/game/gamenotify.h>
+
 #include "client/animator.h"
 #include "attachedeffect.h"
 #include "client/const.h"
+#include "creatures/creaturestorage.h"
 #include "game.h"
 #include "client/gameconfig.h"
 #include "localplayer.h"
@@ -34,14 +37,14 @@
 #include "client/statictext.h"
 #include "tibia/assets/thingtype.h"
 #include "tibia/assets/things.h"
-#include "tile.h"
+#include "worldmap/worldmapfield.h"
 #include "paperdoll.h"
 #include "framework/core/clock.h"
-#include "framework/core/eventdispatcher.h"
+#include <tibia/schedule/schedule.h>
 #include "framework/core/scheduledevent.h"
-#include "framework/ui/uiwidget.h"
-#include <framework/core/graphicalapplication.h>
 #include <framework/util/stats.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 double Creature::speedA = 0;
 double Creature::speedB = 0;
@@ -55,7 +58,6 @@ Creature::Creature() :m_type(Proto::CreatureTypeUnknown)
 }
 
 Creature::~Creature() {
-    setWidgetInformation(nullptr);
     g_stats.removeCreature();
 }
 
@@ -66,9 +68,7 @@ bool Creature::isHidden() const {
     return g_game.getClientVersion() < 1273 && m_healthPercent == 0;
 }
 
-void Creature::onCreate() {
-    callLuaField("onCreate");
-}
+void Creature::onCreate() {}
 
 void Creature::draw(const Point& dest, const bool drawThings, LightSink* /*lightView*/)
 {
@@ -97,11 +97,15 @@ void Creature::internalDraw(Point dest, const Color& color)
 }
 
 
-void Creature::turn(const Otc::Direction direction)
+void Creature::turn(const tibia::client::Direction direction)
 {
     // schedules to set the new direction when walk ends
     if (m_walking) {
         m_walkTurnDirection = direction;
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (const auto row = storage->creatureAt(getId()))
+                row->setWalkTurnDirection(direction);
+        }
         return;
     }
 
@@ -122,21 +126,24 @@ void Creature::walk(const Position& oldPos, const Position& newPos)
     // set current walking direction
     setDirection(m_lastStepDirection);
 
-    // starts counting walk
+    // starts counting walk (keep-alive mirror; storage owns tween — Phase 5.0-B)
     m_walking = true;
     m_walkTimer.restart();
     m_walkedPixels = 0;
 
     // no direction need to be changed when the walk ends
-    m_walkTurnDirection = Otc::InvalidDirection;
+    m_walkTurnDirection = tibia::client::InvalidDirection;
 
     if (m_walkFinishAnimEvent) {
         m_walkFinishAnimEvent->cancel();
         m_walkFinishAnimEvent = nullptr;
     }
 
-    // starts updating walk
-    nextWalkUpdate();
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (const auto row = storage->getOrCreate(getId()))
+            row->beginWalk(oldPos, newPos);
+    }
+    // WalkCalculator advances `TCreature::advanceWalkTween` — no nextWalkUpdate tween loop.
 }
 
 void Creature::stopWalk()
@@ -208,7 +215,11 @@ void Creature::updateJump()
 
 void Creature::onPositionChange(const Position& newPos, const Position& oldPos)
 {
-    callLuaFieldUnchecked("onPositionChange", newPos, oldPos);
+    if (isLocalPlayer())
+        tibia::game::notify("onPositionChange", newPos, oldPos);
+    else
+        // Packs read creatureId (CIP-shaped); tip keeps no CreaturePtr consumers.
+        tibia::game::notify("onCreaturePositionChange", getId(), newPos, oldPos);
 }
 
 void Creature::onAppear()
@@ -225,20 +236,26 @@ void Creature::onAppear()
 
     // creature appeared the first time or wasn't seen for a long time
     if (m_removed) {
-        stopWalk();
+        // CIP tile refresh re-places the local creature id without cancelling an
+        // in-flight TCreatureMovementTween — only true first-seen clears walk.
+        if (!isWalking())
+            stopWalk();
         m_removed = false;
-        callLuaField("onAppear");
-    } // walk
-    else if (m_oldPosition != m_position && m_oldPosition.isInRange(m_position, 1, 1) && m_allowAppearWalk) {
+    } else if (m_oldPosition != m_position && m_oldPosition.isInRange(m_position, 1, 1) && m_allowAppearWalk) {
         m_allowAppearWalk = false;
         walk(m_oldPosition, m_position);
-        callLuaField("onWalk", m_oldPosition, m_position);
-    } // teleport
-    else if (m_oldPosition != m_position) {
-        stopWalk();
-        callLuaField("onDisappear");
-        callLuaField("onAppear");
-    } // else turn
+    } else if (m_oldPosition != m_position) {
+        // Map description / UpdateTile re-places stack entries and can move
+        // Thing::m_position while storage already owns a step. Stopping here
+        // froze feet + direction mid-walk (CIP keeps the tween).
+        if (isWalking()) {
+            m_oldPosition = m_position;
+        } else {
+            stopWalk();
+        }
+    }
+
+    tibia::game::notify("onCreatureAppear", getId());
 }
 
 void Creature::onDisappear()
@@ -250,12 +267,12 @@ void Creature::onDisappear()
 
     // a pair onDisappear and onAppear events are fired even when creatures walks or turns,
     // so we must filter
+    tibia::game::notify("onCreatureDisappear", getId());
+
     const auto self = static_self_cast<Creature>();
     m_disappearEvent = tibia::schedule::post([self] {
         self->m_removed = true;
         self->stopWalk();
-
-        self->callLuaField("onDisappear");
 
         // invalidate this creature position
         if (!self->isLocalPlayer())
@@ -264,19 +281,16 @@ void Creature::onDisappear()
         self->m_oldPosition = {};
         self->m_disappearEvent = nullptr;
 
-        if (g_game.getAttackingCreature() == self)
+        if (g_game.getAttackingCreatureId() == self->getId())
             g_game.cancelAttack();
-        else if (g_game.getFollowingCreature() == self)
+        else if (g_game.getFollowingCreatureId() == self->getId())
             g_game.cancelFollow();
     });
 
     Thing::onDisappear();
 }
 
-void Creature::onDeath()
-{
-    callLuaField("onDeath");
-}
+void Creature::onDeath() {}
 
 void Creature::updateWalkAnimation()
 {
@@ -285,7 +299,7 @@ void Creature::updateWalkAnimation()
 
     const auto mountType = getMountThingType();
     int footAnimPhases = mountType ? mountType->getAnimationPhases() : getAnimationPhases();
-    if (!g_game.getFeature(Otc::GameEnhancedAnimations) && footAnimPhases > 2) {
+    if (!g_game.getFeature(tibia::client::GameEnhancedAnimations) && footAnimPhases > 2) {
         --footAnimPhases;
     }
 
@@ -303,7 +317,7 @@ void Creature::updateWalkAnimation()
     const int maxFootDelay = footAnimPhases > 2 ? 80 : 205;
     int footAnimDelay = footAnimPhases;
 
-    if (g_game.getFeature(Otc::GameEnhancedAnimations) && footAnimPhases > 2) {
+    if (g_game.getFeature(tibia::client::GameEnhancedAnimations) && footAnimPhases > 2) {
         minFootDelay += 10;
         if (footAnimDelay > 1)
             footAnimDelay /= 1.5;
@@ -323,24 +337,25 @@ void Creature::updateWalkAnimation()
 void Creature::updateWalkOffset(const uint8_t totalPixelsWalked)
 {
     m_walkOffset = {};
-    if (m_direction == Otc::North || m_direction == Otc::NorthEast || m_direction == Otc::NorthWest)
+    if (m_direction == tibia::client::North || m_direction == tibia::client::NorthEast || m_direction == tibia::client::NorthWest)
         m_walkOffset.y = g_gameConfig.getSpriteSize() - totalPixelsWalked;
-    else if (m_direction == Otc::South || m_direction == Otc::SouthEast || m_direction == Otc::SouthWest)
+    else if (m_direction == tibia::client::South || m_direction == tibia::client::SouthEast || m_direction == tibia::client::SouthWest)
         m_walkOffset.y = totalPixelsWalked - g_gameConfig.getSpriteSize();
 
-    if (m_direction == Otc::East || m_direction == Otc::NorthEast || m_direction == Otc::SouthEast)
+    if (m_direction == tibia::client::East || m_direction == tibia::client::NorthEast || m_direction == tibia::client::SouthEast)
         m_walkOffset.x = totalPixelsWalked - g_gameConfig.getSpriteSize();
-    else if (m_direction == Otc::West || m_direction == Otc::NorthWest || m_direction == Otc::SouthWest)
+    else if (m_direction == tibia::client::West || m_direction == tibia::client::NorthWest || m_direction == tibia::client::SouthWest)
         m_walkOffset.x = g_gameConfig.getSpriteSize() - totalPixelsWalked;
 }
 
 void Creature::updateWalkingTile()
 {
-    // determine new walking tile
-    TilePtr newWalkingTile;
+    // determine new walking tile — must start null; an uninitialized pointer here is
+    // UB (clang may trap the whole updateWalk with brk after qtclient/autoWalk starts).
+    tibia::worldmap::TWorldMapField* newWalkingTile = nullptr;
 
-    const auto displacementX = g_game.getFeature(Otc::GameNegativeOffset) ? 0 : getDisplacementX();
-    const auto displacementY = g_game.getFeature(Otc::GameNegativeOffset) ? 0 : getDisplacementY();
+    const auto displacementX = g_game.getFeature(tibia::client::GameNegativeOffset) ? 0 : getDisplacementX();
+    const auto displacementY = g_game.getFeature(tibia::client::GameNegativeOffset) ? 0 : getDisplacementY();
 
     const Rect virtualCreatureRect(g_gameConfig.getSpriteSize() + (m_walkOffset.x - displacementX),
         g_gameConfig.getSpriteSize() + (m_walkOffset.y - displacementY),
@@ -359,9 +374,9 @@ void Creature::updateWalkingTile()
     // NW - for the effect of going behind the object west of it, walking creature will be drawn in front of the object for the half of the way, and after behind
     // SE - for the effect of going in front the object south of it, walking creature will be drawn behind the object for the half of the way, and after in front
     if (m_walkedPixels < g_gameConfig.getSpriteSize() / 2) {
-        if (m_direction == Otc::Direction::NorthWest)
+        if (m_direction == tibia::client::Direction::NorthWest)
             newWalkingTile = m_walkingTile ? m_walkingTile : getTile();
-        else if (m_direction == Otc::Direction::SouthEast)
+        else if (m_direction == tibia::client::Direction::SouthEast)
             newWalkingTile = g_map.getTile(getPosition().translated(-1, -1, 0));
     }
 
@@ -370,12 +385,12 @@ void Creature::updateWalkingTile()
     const auto& self = static_self_cast<Creature>();
 
     if (m_walkingTile)
-        m_walkingTile->removeWalkingCreature(self);
+        m_walkingTile->removeWalkingCreature(getId());
 
     if (newWalkingTile) {
-        newWalkingTile->addWalkingCreature(self);
+        newWalkingTile->addWalkingCreature(getId());
         if (isCameraFollowing())
-            g_map.notificateTileUpdate(newWalkingTile->getPosition(), self, Otc::OPERATION_CLEAN);
+            g_map.notificateTileUpdate(newWalkingTile->getPosition(), self, tibia::client::OPERATION_CLEAN);
     }
 
     m_walkingTile = newWalkingTile;
@@ -383,76 +398,71 @@ void Creature::updateWalkingTile()
 
 void Creature::nextWalkUpdate()
 {
-    // remove any previous scheduled walk updates
-    if (m_walkUpdateEvent)
+    // Phase 5.0-B: storage owns the tween loop. Keep only LocalPlayer onWalking side effects
+    // for callers that still hit nextWalkUpdate (e.g. setSpeed while walking).
+    if (m_walkUpdateEvent) {
         m_walkUpdateEvent->cancel();
-
-    // do the update
-    updateWalk();
+        m_walkUpdateEvent = nullptr;
+    }
     onWalking();
-
-    if (!m_walking) return;
-
-    auto action = [self = static_self_cast<Creature>()] {
-        self->m_walkUpdateEvent = nullptr;
-        self->nextWalkUpdate();
-    };
-
-    m_walkUpdateEvent = isCameraFollowing() ? tibia::schedule::post(action) : tibia::schedule::after(action, m_stepCache.walkDuration);
 }
 
 void Creature::advanceWalkTween()
 {
-    if (m_walking)
-        updateWalk();
+    // Phase 5.0-B: tween offset lives on TCreature; WalkCalculator advances storage.
 }
 
 void Creature::updateWalk()
 {
-    const auto stepDuration = getStepDuration(true);
-    if (stepDuration == 0)
-        return;
-
-    const float walkTicksPerPixel = stepDuration / static_cast<float>(g_gameConfig.getSpriteSize());
-    if (walkTicksPerPixel <= 0.f)
-        return;
-
-    const int totalPixelsWalked = std::min<int>(m_walkTimer.ticksElapsed() / walkTicksPerPixel, g_gameConfig.getSpriteSize());
-
-    // needed for paralyze effect
-    m_walkedPixels = std::max<int>(m_walkedPixels, totalPixelsWalked);
-
-    const auto oldWalkOffset = m_walkOffset;
-
-    updateWalkAnimation();
-    updateWalkOffset(m_walkedPixels);
-    updateWalkingTile();
-
-    if (isCameraFollowing() && oldWalkOffset != m_walkOffset) {
-        g_map.notificateCameraMove(m_walkOffset);
-    }
-
-    if (m_walkedPixels == g_gameConfig.getSpriteSize()) {
-        terminateWalk();
-    }
+    // Phase 5.0-B: no Map-side pixel tween — TCreature::advanceWalkTween is authoritative.
 }
 
 void Creature::terminateWalk()
 {
-    // remove any scheduled walk update
+    applyStorageWalkTerminated();
+
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (const auto row = storage->creatureAt(getId()); row && row->isWalking())
+            row->terminateWalk();
+    }
+}
+
+bool Creature::isWalking()
+{
+    if (isLocalPlayer()) {
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (const auto row = storage->creatureAt(getId()))
+                return row->isWalking();
+        }
+    }
+    return m_walking;
+}
+
+Point Creature::getWalkOffset()
+{
+    if (isLocalPlayer()) {
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (const auto row = storage->creatureAt(getId()))
+                return row->walkOffset();
+        }
+    }
+    return m_walkOffset;
+}
+
+void Creature::applyStorageWalkTerminated()
+{
     if (m_walkUpdateEvent) {
         m_walkUpdateEvent->cancel();
         m_walkUpdateEvent = nullptr;
     }
 
-    // now the walk has ended, do any scheduled turn
-    if (m_walkTurnDirection != Otc::InvalidDirection) {
+    if (m_walkTurnDirection != tibia::client::InvalidDirection) {
         setDirection(m_walkTurnDirection);
-        m_walkTurnDirection = Otc::InvalidDirection;
+        m_walkTurnDirection = tibia::client::InvalidDirection;
     }
 
     if (m_walkingTile) {
-        m_walkingTile->removeWalkingCreature(static_self_cast<Creature>());
+        m_walkingTile->removeWalkingCreature(getId());
         m_walkingTile = nullptr;
     }
 
@@ -461,6 +471,10 @@ void Creature::terminateWalk()
     m_walking = false;
 
     const auto self = static_self_cast<Creature>();
+    if (m_walkFinishAnimEvent) {
+        m_walkFinishAnimEvent->cancel();
+        m_walkFinishAnimEvent = nullptr;
+    }
     m_walkFinishAnimEvent = tibia::schedule::after([self] {
         self->m_walkAnimationPhase = 0;
         self->m_walkFinishAnimEvent = nullptr;
@@ -494,8 +508,7 @@ void Creature::setHealthPercent(const uint8_t healthPercent)
 
     const uint8_t oldHealthPercent = m_healthPercent;
     m_healthPercent = healthPercent;
-
-    callLuaField("onHealthPercentChange", healthPercent, oldHealthPercent);
+    tibia::game::notify("onHealthPercentChange", getId(), m_healthPercent, oldHealthPercent);
 
     // qtclient-death clamps HP to 0 for vitals without a real death packet / death UI.
     if (isDead()) {
@@ -505,26 +518,31 @@ void Creature::setHealthPercent(const uint8_t healthPercent)
     }
 }
 
-void Creature::setDirection(const Otc::Direction direction)
+void Creature::setDirection(const tibia::client::Direction direction, const bool syncFieldStack)
 {
-    if (direction == Otc::InvalidDirection)
+    if (direction == tibia::client::InvalidDirection)
         return;
 
     m_direction = direction;
 
     // xPattern => creature direction
-    if (direction == Otc::NorthEast || direction == Otc::SouthEast)
-        m_numPatternX = Otc::East;
-    else if (direction == Otc::NorthWest || direction == Otc::SouthWest)
-        m_numPatternX = Otc::West;
+    if (direction == tibia::client::NorthEast || direction == tibia::client::SouthEast)
+        m_numPatternX = tibia::client::East;
+    else if (direction == tibia::client::NorthWest || direction == tibia::client::SouthWest)
+        m_numPatternX = tibia::client::West;
     else
         m_numPatternX = direction;
 
-    setAttachedEffectDirection(static_cast<Otc::Direction>(m_numPatternX));
-    setPaperdollsDirection(static_cast<Otc::Direction>(m_numPatternX));
+    setAttachedEffectDirection(static_cast<tibia::client::Direction>(m_numPatternX));
+    setPaperdollsDirection(static_cast<tibia::client::Direction>(m_numPatternX));
+
+    if (syncFieldStack) {
+        if (tibia::worldmap::TWorldMapField* field = getTile())
+            field->syncCreatureStackAppearance(getId());
+    }
 }
 
-void Creature::setOutfit(const Outfit& outfit, bool fireEvent)
+void Creature::setOutfit(const Outfit& outfit, bool fireEvent, bool syncFieldStack)
 {
     if (m_outfit == outfit)
         return;
@@ -559,18 +577,22 @@ void Creature::setOutfit(const Outfit& outfit, bool fireEvent)
         m_numPatternZ = std::min<int>(1, getNumPatternZ() - 1);
     }
 
-    if ((g_game.getFeature(Otc::GameWingsAurasEffectsShader))) {
+    if ((g_game.getFeature(tibia::client::GameWingsAurasEffectsShader))) {
         m_outfit.setWing(0);
         m_outfit.setAura(0);
         m_outfit.setEffect(0);
         m_outfit.setShader("Outfit - Default");
     }
 
-    if (const auto& tile = getTile())
-        tile->checkForDetachableThing();
+    if (syncFieldStack) {
+        if (tibia::worldmap::TWorldMapField* field = getTile()) {
+            field->checkForDetachableThing();
+            field->syncCreatureStackAppearance(getId());
+        }
+    }
 
-    if (fireEvent)
-        callLuaField("onOutfitChange", m_outfit, oldOutfit);
+    (void)fireEvent;
+    (void)oldOutfit;
 }
 
 void Creature::setSpeed(uint16_t speed)
@@ -597,7 +619,8 @@ void Creature::setSpeed(uint16_t speed)
     if (m_walking)
         nextWalkUpdate();
 
-    callLuaField("onSpeedChange", m_speed, oldSpeed);
+    if (isLocalPlayer())
+        tibia::game::notify("onSpeedChange", m_speed, oldSpeed);
 }
 
 void Creature::setBaseSpeed(const uint16_t baseSpeed)
@@ -608,11 +631,12 @@ void Creature::setBaseSpeed(const uint16_t baseSpeed)
     const uint16_t oldBaseSpeed = m_baseSpeed;
     m_baseSpeed = baseSpeed;
 
-    callLuaField("onBaseSpeedChange", baseSpeed, oldBaseSpeed);
+    if (isLocalPlayer())
+        tibia::game::notify("onBaseSpeedChange", baseSpeed, oldBaseSpeed);
 }
 
-void Creature::setType(const uint8_t v) { if (m_type != v) callLuaField("onTypeChange", m_type = v); }
-void Creature::setIcon(const uint8_t v) { if (m_icon != v) callLuaField("onIconChange", m_icon = v); }
+void Creature::setType(const uint8_t v) { m_type = v; }
+void Creature::setIcon(const uint8_t v) { m_icon = v; }
 void Creature::setIcons(const std::vector<std::tuple<uint8_t, uint8_t, uint16_t>>& icons)
 {
     if (!m_icons) {
@@ -622,10 +646,6 @@ void Creature::setIcons(const std::vector<std::tuple<uint8_t, uint8_t, uint16_t>
 
     m_icons->atlasGroups.clear();
     m_icons->iconEntries = icons;
-
-    for (const auto& [icon, category, count] : icons) {
-        callLuaField("onIconsChange", icon, category, count);
-    }
 }
 
 void Creature::setEchoRaidColor(const int8_t color)
@@ -638,12 +658,31 @@ void Creature::setEchoRaidColor(const int8_t color)
         hideStaticSquare();
 
     m_echoRaidColor = color;
-    callLuaField("onEchoRaidColorChange", color);
 }
 
-void Creature::setSkull(const uint8_t v) { if (m_skull != v) callLuaField("onSkullChange", m_skull = v); }
-void Creature::setShield(const uint8_t v) { if (m_shield != v) callLuaField("onShieldChange", m_shield = v); }
-void Creature::setEmblem(const uint8_t v) { if (m_emblem != v) callLuaField("onEmblemChange", m_emblem = v); }
+void Creature::setSkull(const uint8_t v)
+{
+    if (m_skull == v)
+        return;
+    m_skull = v;
+    if (isLocalPlayer())
+        tibia::game::notify("onSkullChange", m_skull);
+}
+void Creature::setShield(const uint8_t v)
+{
+    if (m_shield == v)
+        return;
+    m_shield = v;
+    tibia::game::notify("onShieldChange", getId(), v);
+}
+void Creature::setEmblem(const uint8_t v)
+{
+    if (m_emblem == v)
+        return;
+    m_emblem = v;
+    if (isLocalPlayer())
+        tibia::game::notify("onEmblemChange", m_emblem);
+}
 
 void Creature::setTypeTexture(const std::string& filename) { m_typeTexture = g_textures.getTexture(filename); }
 void Creature::setIconTexture(const std::string& filename) { m_iconTexture = g_textures.getTexture(filename); }
@@ -697,7 +736,7 @@ void Creature::updateShield()
 {
     m_showShieldTexture = !m_showShieldTexture;
 
-    if (m_shield != Otc::ShieldNone && m_shieldBlink) {
+    if (m_shield != tibia::client::ShieldNone && m_shieldBlink) {
         auto self = static_self_cast<Creature>();
         tibia::schedule::after([self] {
             self->updateShield();
@@ -726,7 +765,7 @@ int Creature::getDrawElevation() {
     if (m_walkingTile) {
         int elevation = m_walkingTile->getDrawElevation();
 
-        if (g_game.getFeature(Otc::GameSmoothWalkElevation)) {
+        if (g_game.getFeature(tibia::client::GameSmoothWalkElevation)) {
             const auto stepDuration = m_stepCache.getDuration(m_lastStepDirection);
             if (stepDuration > 0) {
                 const float factor = std::clamp<float>(getWalkTicksElapsed() / static_cast<float>(stepDuration), .0f, 1.f);
@@ -743,14 +782,14 @@ int Creature::getDrawElevation() {
     return 0;
 }
 
-bool Creature::hasSpeedFormula() { return g_game.getFeature(Otc::GameNewSpeedLaw) && speedA != 0 && speedB != 0 && speedC != 0; }
+bool Creature::hasSpeedFormula() { return g_game.getFeature(tibia::client::GameNewSpeedLaw) && speedA != 0 && speedB != 0 && speedC != 0; }
 
-uint16_t Creature::getStepDuration(const bool ignoreDiagonal, const Otc::Direction dir)
+uint16_t Creature::getStepDuration(const bool ignoreDiagonal, const tibia::client::Direction dir)
 {
     if (m_speed < 1)
         return 0;
 
-    const auto& tilePos = dir == Otc::InvalidDirection ?
+    const auto& tilePos = dir == tibia::client::InvalidDirection ?
         m_lastStepToPosition : getPosition().translatedToDirection(dir);
 
     const auto& tile = g_map.getTile(tilePos.isValid() ? tilePos : getPosition());
@@ -841,11 +880,11 @@ const Light& Creature::getLight() const
 }
 
 ThingType* Creature::getThingType() const {
-    return g_things.getRawThingType(m_outfit.isCreature() ? m_outfit.getId() : m_outfit.getAuxId(), m_outfit.getCategory());
+    return tibia::game::rawThingType(m_outfit.isCreature() ? m_outfit.getId() : m_outfit.getAuxId(), m_outfit.getCategory());
 }
 
 ThingType* Creature::getMountThingType() const {
-    return m_outfit.hasMount() ? g_things.getRawThingType(m_outfit.getMount(), ThingCategoryCreature) : nullptr;
+    return m_outfit.hasMount() ? tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature) : nullptr;
 }
 
 uint16_t Creature::getCurrentAnimationPhase(const bool mount)
@@ -1026,20 +1065,13 @@ void Creature::setStaticWalking(const uint16_t v) {
     }, std::min<int>(v / g_gameConfig.getSpriteSize(), 16));
 }
 
-void Creature::setWidgetInformation(const UIWidgetPtr& info) {
-    if (m_widgetInformation == info)
-        return;
-
-    m_widgetInformation = info;
-}
-
 void Creature::setName(const std::string_view name) {
     if (name == m_name.getText())
         return;
 
     const auto& oldName = m_name.getText();
     m_name.setText(name);
-    callLuaField("onChangeName", name, oldName);
+    (void)oldName;
 }
 
 void Creature::setCovered(bool covered) {
@@ -1049,9 +1081,8 @@ void Creature::setCovered(bool covered) {
     const auto oldCovered = m_isCovered;
     m_isCovered = covered;
 
-    tibia::schedule::post([self = static_self_cast<Creature>(), covered, oldCovered] {
-        self->callLuaField("onCovered", covered, oldCovered);
-    });
+    (void)covered;
+    (void)oldCovered;
 }
 
 void Creature::setText(const std::string& text, const Color& color)
@@ -1098,10 +1129,6 @@ void Creature::attachPaperdoll(const PaperdollPtr& obj) {
     }
 
     m_paperdolls.insert(m_paperdolls.begin() + i, obj);
-
-    tibia::schedule::post([paperdoll = obj, self = static_self_cast<Thing>()] {
-        paperdoll->callLuaField("onAttach", self->asLuaObject());
-    });
 }
 
 bool Creature::detachPaperdollById(uint16_t id) {
@@ -1131,9 +1158,7 @@ bool Creature::detachPaperdollByPriority(uint8_t priority) {
     return finded;
 }
 
-void Creature::onDetachPaperdoll(const PaperdollPtr& paperdoll) {
-    paperdoll->callLuaField("onDetach", asLuaObject());
-}
+void Creature::onDetachPaperdoll(const PaperdollPtr& paperdoll) { (void)paperdoll; }
 
 void Creature::clearPaperdolls() {
     for (const auto& e : m_paperdolls)
@@ -1151,7 +1176,7 @@ PaperdollPtr Creature::getPaperdollById(uint16_t id) {
     return *it;
 }
 
-void Creature::setPaperdollsDirection(Otc::Direction dir) const
+void Creature::setPaperdollsDirection(tibia::client::Direction dir) const
 {
     for (const auto& paperdoll : m_paperdolls) {
         if (paperdoll->m_thingType)

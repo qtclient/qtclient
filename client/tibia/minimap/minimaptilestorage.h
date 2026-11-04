@@ -40,7 +40,7 @@ public:
 /// The minimap tiles near the visible area and the player (CIP:
 /// TMinimapTileStorage, vtable 0x10266ee70). Fields of the player's floor are
 /// recorded as the server describes them; tiles leaving the area are written
-/// to disk and dropped. Soft avoid tiles live on `g_map` (`setPathAvoid`); Soft
+/// to disk and dropped. pathfinder avoid tiles live on `g_map` (`setPathAvoid`); qtclient
 /// pathfinding reads Indexed8 waypoint costs via `TWaypointCosts` (CIP
 /// TWaypointCostMap) snapshotted into `Map::newFindPath`.
 class TMinimapTileStorage final : public cip::tibia::minimap::TMinimapTileStorage

@@ -2,6 +2,8 @@
 
 #include <cip_gen.h>
 
+#include <tibia/game/tgamenotify.h>
+
 #include <QByteArray>
 #include <QString>
 #include <QTimer>
@@ -83,7 +85,7 @@ private:
     std::array<uint32_t, 4> m_xteaKey{};
     QByteArray m_recvBuffer;
     QTimer m_pingTimer;
-    int m_readyHook = 0;
+    tibia::game::SoftHook m_readyHook;
 };
 
 }

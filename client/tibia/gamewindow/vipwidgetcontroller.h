@@ -124,8 +124,7 @@ private:
 
 /// The VIP widget, vipwidget.qml (CIP: TVipWidgetController, ctor
 /// 0x100be6550): the list, its add/edit dialogs, context menus and options.
-/// Not ported: the add-VIP hotkey from the chat
-/// (onPlayerNameToAddToVipListReceived only answers the dialog).
+/// Chat ADD_NEW_VIP / OPEN_ADD_VIP_DIALOG(text) add or prefill from speaker name.
 class TVipWidgetController final : public TSidebarWidgetController<cip::tibia::gamewindow::TVipWidgetController>
 {
     Q_OBJECT

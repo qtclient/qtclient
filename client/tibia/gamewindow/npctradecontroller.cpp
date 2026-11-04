@@ -4,7 +4,6 @@
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 
-#include <tibia/world/game.h>
 #include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
@@ -16,6 +15,8 @@
 #include <array>
 #include <functional>
 #include <set>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -267,12 +268,12 @@ TNPCTradeController::~TNPCTradeController()
 
 QString TNPCTradeController::bankBalance() const
 {
-    return g_game.getLocalPlayer() && m_storage ? formatNumber(m_storage->bankBalance()) : QStringLiteral("-");
+    return tibia::game::localPlayer() && m_storage ? formatNumber(m_storage->bankBalance()) : QStringLiteral("-");
 }
 
 QString TNPCTradeController::inventoryBalance() const
 {
-    return g_game.getLocalPlayer() && m_storage ? formatNumber(m_storage->inventoryBalance()) : QStringLiteral("-");
+    return tibia::game::localPlayer() && m_storage ? formatNumber(m_storage->inventoryBalance()) : QStringLiteral("-");
 }
 
 QString TNPCTradeController::totalBalance() const
@@ -307,7 +308,7 @@ QString TNPCTradeController::currencyName() const
 {
     if (!m_storage || m_storage->currencyIsName())
         return m_storage ? m_storage->currencyName() : QString();
-    const ThingTypePtr& type = g_things.getThingType(static_cast<uint16_t>(currencyTypeId()), ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(currencyTypeId()), ThingCategoryItem);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 
@@ -326,7 +327,7 @@ const TNPCTradeGood* TNPCTradeController::good(const int typeId, const uint liqu
     for (const TNPCTradeGood& good : m_goods) {
         if (good.typeId() != typeId)
             continue;
-        if (good.object && (good.object->isFluidContainer() || good.object->isSplash()) && good.liquidType() != liquidType)
+        if (good.appearance.fluidOrSplash && good.liquidType() != liquidType)
             continue;
         return &good;
     }
@@ -470,9 +471,9 @@ void TNPCTradeController::contextMenuForObject(const int TypeId, const uint Liqu
             if (m_storage)
                 m_storage->look(copy);
         });
-        if (copy.object && copy.object->isPickupable()) {
+        if (copy.isPickupable()) {
             connect(menu->addCustomEntry(qtTrId("context_inspect_object")), &TContextMenuEntryItem::triggered, this, [copy] {
-                g_game.inspectionObject(Otc::INSPECT_NPCTRADE, copy.typeId(), 1);
+                tibia::game::inspectionObject(tibia::client::INSPECT_NPCTRADE, copy.typeId(), 1);
             });
         }
         menu->addCustomSeparator();

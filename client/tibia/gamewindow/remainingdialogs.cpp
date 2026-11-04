@@ -9,11 +9,13 @@
 #include <client/outfit.h>
 #include <client/staticdata.h>
 #include <tibia/assets/things.h>
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 
 #include <QColor>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -351,12 +353,12 @@ void TCharacterTradeDialogController::removeItem(const int ItemID, const int Upg
 
 void TCharacterTradeDialogController::requestConditions()
 {
-    g_game.requestCharacterTradeConfiguration(0);
+    tibia::game::requestCharacterTradeConfiguration(0);
 }
 
 void TCharacterTradeDialogController::requestCheckConfiguration()
 {
-    g_game.requestCharacterTradeConfiguration(1);
+    tibia::game::requestCharacterTradeConfiguration(1);
 }
 
 void TCharacterTradeDialogController::requestConfirmConfiguration()
@@ -371,7 +373,7 @@ void TCharacterTradeDialogController::requestConfirmConfiguration()
     highlights.reserve(static_cast<size_t>(m_selectedHighlightIds.size()));
     for (const int id : m_selectedHighlightIds)
         highlights.push_back(static_cast<uint16_t>(id));
-    g_game.confirmCharacterTradeConfiguration(static_cast<uint32_t>(std::max(0, bid)),
+    tibia::game::confirmCharacterTradeConfiguration(static_cast<uint32_t>(std::max(0, bid)),
                                               static_cast<uint32_t>(std::max(0, endTs)), items, {}, highlights, true);
     closeDialog();
 }
@@ -796,6 +798,10 @@ TMultiOfflineTrainingDialogController::TMultiOfflineTrainingDialogController(QOb
     : TDialogController(QStringLiteral("MultiOfflineTrainingDialog.qml"), parent)
 {
     s_instance = this;
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onMultiOfflineTrainingDialog", [this](GameObject*, const Args&) {
+        showSkillsDialog();
+        return std::any{};
+    });
 }
 
 TMultiOfflineTrainingDialogController* TMultiOfflineTrainingDialogController::instance()
@@ -818,7 +824,7 @@ void TMultiOfflineTrainingDialogController::requestClose()
 void TMultiOfflineTrainingDialogController::startOfflineTraining(
     const cip::tibia::qmlcomponents::enums::EOfflineTrainingSkillType Skill)
 {
-    g_game.sendStartOfflineTraining(static_cast<uint8_t>(Skill));
+    tibia::game::sendStartOfflineTraining(static_cast<uint8_t>(Skill));
     requestClose();
 }
 
@@ -828,8 +834,9 @@ TOutfitMemorialDialogController::TOutfitMemorialDialogController(QObject* parent
     : TDialogController(QStringLiteral("OutfitMemorialDialog.qml"), parent)
 {
     s_instance = this;
-    m_hooks.emplace_back("g_game", "onOutfitMemorial", [this](LuaObject*, const Args& args) {
-        showMemorial(argString(args, 0));
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOutfitMemorial", [this](GameObject*, const Args& args) {
+        if (const auto* data = args.empty() ? nullptr : std::any_cast<OutfitMemorialData>(&args[0]))
+            showMemorial(*data);
         return std::any{};
     });
 }
@@ -839,13 +846,33 @@ TOutfitMemorialDialogController* TOutfitMemorialDialogController::instance()
     return s_instance;
 }
 
-void TOutfitMemorialDialogController::showMemorial(const QString& title)
+void TOutfitMemorialDialogController::showMemorial(const OutfitMemorialData& data)
 {
-    // Soft body: CIP lists/costs until GameserverMessageOutfitMemorial is fully parsed.
-    // Surface the CipSoft title as the golden base list so Soft QML is not empty.
-    m_baseGoldenOutfitOwners.clear();
-    if (!title.isEmpty())
-        m_baseGoldenOutfitOwners.append(title);
+    const auto toList = [](const std::vector<std::string>& names) {
+        QStringList list;
+        list.reserve(int(names.size()));
+        for (const std::string& name : names)
+            list.append(QString::fromStdString(name));
+        return list;
+    };
+
+    m_baseGoldenOutfitCost = int(data.baseGoldenOutfitCost);
+    m_oneAddonGoldenOutfitCost = int(data.oneAddonGoldenOutfitCost);
+    m_fullGoldenOutfitCost = int(data.fullGoldenOutfitCost);
+    m_baseGoldenOutfitOwners = toList(data.baseGoldenOutfitOwners);
+    m_oneAddonGoldenOutfitOwners = toList(data.oneAddonGoldenOutfitOwners);
+    m_fullGoldenOutfitOwners = toList(data.fullGoldenOutfitOwners);
+
+    m_baseTokenOutfitSilverToken = data.baseTokenOutfitSilverToken;
+    m_baseTokenOutfitGoldToken = data.baseTokenOutfitGoldToken;
+    m_oneAddonTokenOutfitSilverToken = data.oneAddonTokenOutfitSilverToken;
+    m_oneAddonTokenOutfitGoldToken = data.oneAddonTokenOutfitGoldToken;
+    m_fullTokenOutfitSilverToken = data.fullTokenOutfitSilverToken;
+    m_fullTokenOutfitGoldToken = data.fullTokenOutfitGoldToken;
+    m_baseTokenOutfitOwners = toList(data.baseTokenOutfitOwners);
+    m_oneAddonTokenOutfitOwners = toList(data.oneAddonTokenOutfitOwners);
+    m_fullTokenOutfitOwners = toList(data.fullTokenOutfitOwners);
+
     dialog()->create();
     dialog()->show();
 }
@@ -971,7 +998,7 @@ TSoulSealsDialogController::TSoulSealsDialogController(QObject* parent)
                                                   QStringLiteral("Hard"), QStringLiteral("Expert") };
     m_indexOfSelectedDifficulty = 0;
 
-    m_hooks.emplace_back("g_game", "onSoulsealsData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSoulsealsData", [this](GameObject*, const Args& args) {
         std::vector<TSoulSealsMonsterListModel::Entry> entries;
         if (const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<TaskBoardSoulsealEntryData>>(&args[0])) {
             entries.reserve(list->size());
@@ -980,7 +1007,7 @@ TSoulSealsDialogController::TSoulSealsDialogController(QObject* parent)
                 entry.raceId = static_cast<int>(row.raceId);
                 entry.name = QString::fromStdString(row.name);
                 if (entry.name.isEmpty()) {
-                    const RaceType& race = g_things.getRaceData(row.raceId);
+                    const RaceType& race = tibia::game::raceData(row.raceId);
                     entry.name = QString::fromStdString(race.name);
                     if (!entry.name.isEmpty())
                         entry.name[0] = entry.name[0].toUpper();
@@ -1085,7 +1112,7 @@ void TSoulSealsDialogController::requestClose()
 void TSoulSealsDialogController::fightselectedMonster()
 {
     if (m_selectedMonsterRaceID > 0)
-        g_game.soulsealFightAction(static_cast<uint16_t>(m_selectedMonsterRaceID));
+        tibia::game::soulsealFightAction(static_cast<uint16_t>(m_selectedMonsterRaceID));
     closeDialog();
 }
 

@@ -8,7 +8,6 @@
 #include "renderer/scenegraphnodeprovider.h"
 #include "renderer/spritetextureprovider.h"
 
-#include <framework/core/graphicalapplication.h>
 #include "sprites/hdscale.h"
 
 #include <algorithm>

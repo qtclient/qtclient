@@ -4,7 +4,6 @@
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QFile>
@@ -13,6 +12,7 @@
 #include <QLocale>
 
 #include <algorithm>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -209,7 +209,7 @@ QVariant TMagicalArchiveSpellListModel::data(const QModelIndex& index, const int
             return text;
         }
         case CastPossibleRole: {
-            if (const LocalPlayerPtr& player = g_game.getLocalPlayer()) {
+            if (const LocalPlayerPtr& player = tibia::game::localPlayer()) {
                 for (const uint16_t id : player->getSpells()) {
                     if (id == spell->id)
                         return true;
@@ -310,7 +310,7 @@ void TSpellListDataModelSortFilterProxy::syncPlayer()
     m_playerLevel = 0;
     m_playerVocationBase = -1;
     m_knownSpells.clear();
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer()) {
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer()) {
         m_playerLevel = player->getLevel();
         m_playerVocationBase = cipVocationBase(player->getVocation());
         for (const uint16_t id : player->getSpells())
@@ -486,7 +486,7 @@ void TMagicalArchiveDialogController::requestAimAtTargetOptionChange(const bool 
 {
     if (m_selectedSpellID <= 0)
         return;
-    g_game.sendSelectSpellAim({ static_cast<uint16_t>(m_selectedSpellID) }, Value);
+    tibia::game::sendSelectSpellAim({ static_cast<uint16_t>(m_selectedSpellID) }, Value);
     m_isAimAtTargetSpellSelectedAndActivated = Value;
     Q_EMIT selectedSpellIDChanged();
 }

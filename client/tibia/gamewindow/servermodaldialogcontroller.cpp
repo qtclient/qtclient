@@ -1,6 +1,6 @@
 #include "servermodaldialogcontroller.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -50,8 +50,8 @@ void TServerModalDialogController::answerButtonClicked(const int ButtonIndex, co
     const uint8_t button = ButtonIndex >= 0 && ButtonIndex < static_cast<int>(m_buttonIds.size()) ? m_buttonIds[ButtonIndex] : NoSelection;
     const uint8_t choice
         = SelectionIndex >= 0 && SelectionIndex < static_cast<int>(m_choiceIds.size()) ? m_choiceIds[SelectionIndex] : NoSelection;
-    if (g_game.isOnline())
-        g_game.answerModalDialog(m_id, button, choice);
+    if (tibia::game::isOnline())
+        tibia::game::answerModalDialog(m_id, button, choice);
     dialog()->close();
 }
 

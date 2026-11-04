@@ -132,4 +132,25 @@ public:
     }
 };
 
+/// Aware-range volume after a full map / floor window update (CIP:
+/// TShearedWorldMapCuboid — arg of TWorldMapStorage::storedVolumeHasChanged).
+class TShearedWorldMapCuboid : public ::tibia::CipTyped
+{
+public:
+    TWorldMapCoordinate topLeft;
+    TWorldMapExtent extent;
+
+    TShearedWorldMapCuboid() = default;
+    TShearedWorldMapCuboid(const TWorldMapCoordinate& topLeft_, const TWorldMapExtent& extent_)
+        : topLeft(topLeft_)
+        , extent(extent_)
+    {
+    }
+
+    bool operator==(const TShearedWorldMapCuboid& other) const
+    {
+        return topLeft == other.topLeft && extent == other.extent;
+    }
+};
+
 }

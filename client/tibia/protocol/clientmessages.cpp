@@ -29,9 +29,11 @@
 #include "tibia/assets/things.h"
 #include "tibia/assets/thingtype.h"
 #include "framework/util/crypt.h"
+#include <tibia/game/gamesession.h>
 
 #ifndef USE_PRECOMPILED_HEADERS
 #include <algorithm>
+#include <tibia/game/thingsession_forward.h>
 #endif
 
 void ProtocolGame::onSend() {}
@@ -56,7 +58,7 @@ void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint
     msg->addU16(g_game.getOs());
     msg->addU16(g_game.getProtocolVersion());
 
-    if (g_game.getFeature(Otc::GameClientVersion))
+    if (g_game.getFeature(tibia::client::GameClientVersion))
         msg->addU32(g_game.getClientVersion());
 
     if (g_game.getClientVersion() >= 1281) {
@@ -64,17 +66,17 @@ void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint
     }
 
     if (g_game.getClientVersion() >= 1334) {
-        msg->addString(g_things.getAssetIdentifier());
-    } else if (g_game.getFeature(Otc::GameContentRevision)) {
-        msg->addU16(g_things.getContentRevision());
+        msg->addString(tibia::game::assetIdentifier());
+    } else if (g_game.getFeature(tibia::client::GameContentRevision)) {
+        msg->addU16(tibia::game::contentRevision());
     }
 
-    if (g_game.getFeature(Otc::GamePreviewState))
+    if (g_game.getFeature(tibia::client::GamePreviewState))
         msg->addU8(0);
 
     const int offset = msg->getMessageSize();
 
-    if (g_game.getFeature(Otc::GameLoginPacketEncryption)) {
+    if (g_game.getFeature(tibia::client::GameLoginPacketEncryption)) {
         // first RSA byte must be 0
         msg->addU8(0);
         // xtea key
@@ -87,12 +89,12 @@ void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint
 
     msg->addU8(0); // is gm set?
 
-    if (g_game.getFeature(Otc::GameSessionKey)) {
+    if (g_game.getFeature(tibia::client::GameSessionKey)) {
         msg->addString(m_sessionKey);
         msg->addString(m_characterName);
 
     } else {
-        if (g_game.getFeature(Otc::GameAccountNames))
+        if (g_game.getFeature(tibia::client::GameAccountNames))
             msg->addString(m_accountName);
         else
             msg->addU32(stdext::from_string<uint32_t>(m_accountName));
@@ -100,18 +102,16 @@ void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint
         msg->addString(m_characterName);
         msg->addString(m_accountPassword);
 
-        if (g_game.getFeature(Otc::GameAuthenticator))
+        if (g_game.getFeature(tibia::client::GameAuthenticator))
             msg->addString(m_authenticatorToken);
     }
 
-    if (g_game.getFeature(Otc::GameChallengeOnLogin)) {
+    if (g_game.getFeature(tibia::client::GameChallengeOnLogin)) {
         msg->addU32(challengeTimestamp);
         msg->addU8(challengeRandom);
     }
 
-    const auto& extended = callLuaField<std::string>("getLoginExtendedData");
-    if (!extended.empty())
-        msg->addString(extended);
+    // qtclient tip: no pack login extension hook (OTC getLoginExtendedData retired).
 
     // complete the bytes for rsa encryption with zeros
     const int paddingBytes = g_crypt.rsaGetSize() - (msg->getMessageSize() - offset);
@@ -119,18 +119,18 @@ void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint
     msg->addPaddingBytes(paddingBytes);
 
     // encrypt with RSA
-    if (g_game.getFeature(Otc::GameLoginPacketEncryption))
+    if (g_game.getFeature(tibia::client::GameLoginPacketEncryption))
         msg->encryptRsa();
 
-    if (g_game.getFeature(Otc::GameProtocolChecksum))
+    if (g_game.getFeature(tibia::client::GameProtocolChecksum))
         enableChecksum();
 
     send(msg);
 
-    if (g_game.getFeature(Otc::GameLoginPacketEncryption))
+    if (g_game.getFeature(tibia::client::GameLoginPacketEncryption))
         enableXteaEncryption();
 
-    if (g_game.getFeature(Otc::GameSequencedPackets))
+    if (g_game.getFeature(tibia::client::GameSequencedPackets))
         enabledSequencedPackets();
 }
 
@@ -158,7 +158,7 @@ void ProtocolGame::sendCharacterSwitch(const std::string& characterName)
 
 void ProtocolGame::sendPing()
 {
-    if (g_game.getFeature(Otc::GameExtendedClientPing))
+    if (g_game.getFeature(tibia::client::GameExtendedClientPing))
         sendExtendedOpcode(2, "");
     else {
         const auto& msg = std::make_shared<OutputMessage>();
@@ -193,36 +193,36 @@ void ProtocolGame::sendConnectionPingBack()
     send(msg);
 }
 
-void ProtocolGame::sendAutoWalk(const std::vector<Otc::Direction>& path)
+void ProtocolGame::sendAutoWalk(const std::vector<tibia::client::Direction>& path)
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientAutoWalk);
     msg->addU8(path.size());
-    for (const Otc::Direction dir : path) {
+    for (const tibia::client::Direction dir : path) {
         uint8_t byte;
         switch (dir) {
-            case Otc::East:
+            case tibia::client::East:
                 byte = 1;
                 break;
-            case Otc::NorthEast:
+            case tibia::client::NorthEast:
                 byte = 2;
                 break;
-            case Otc::North:
+            case tibia::client::North:
                 byte = 3;
                 break;
-            case Otc::NorthWest:
+            case tibia::client::NorthWest:
                 byte = 4;
                 break;
-            case Otc::West:
+            case tibia::client::West:
                 byte = 5;
                 break;
-            case Otc::SouthWest:
+            case tibia::client::SouthWest:
                 byte = 6;
                 break;
-            case Otc::South:
+            case tibia::client::South:
                 byte = 7;
                 break;
-            case Otc::SouthEast:
+            case tibia::client::SouthEast:
                 byte = 8;
                 break;
             default:
@@ -335,7 +335,7 @@ void ProtocolGame::sendTeleport(const Position& pos)
 
 void ProtocolGame::sendStartOfflineTraining(const uint8_t skillType)
 {
-    if (std::cmp_greater(skillType, static_cast<uint8_t>(Otc::Fishing))) {
+    if (std::cmp_greater(skillType, static_cast<uint8_t>(tibia::client::Fishing))) {
         return;
     }
 
@@ -367,7 +367,7 @@ void ProtocolGame::sendEquipItemWithCountOrSubType(const uint16_t itemId, const 
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientEquipItem);
     msg->addU16(itemId);
-    if (g_game.getFeature(Otc::GameCountU16)) {
+    if (g_game.getFeature(tibia::client::GameCountU16)) {
         msg->addU16(countOrSubType);
     } else {
         msg->addU8(static_cast<uint8_t>(countOrSubType));
@@ -383,7 +383,7 @@ void ProtocolGame::sendMove(const Position& fromPos, const uint16_t thingId, con
     msg->addU16(thingId);
     msg->addU8(stackpos);
     addPosition(msg, toPos);
-    if (g_game.getFeature(Otc::GameCountU16))
+    if (g_game.getFeature(tibia::client::GameCountU16))
         msg->addU16(count);
     else
         msg->addU8(static_cast<uint8_t>(count));
@@ -395,7 +395,7 @@ void ProtocolGame::sendInspectNpcTrade(const uint16_t itemId, const uint16_t cou
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientInspectNpcTrade);
     msg->addU16(itemId);
-    if (g_game.getFeature(Otc::GameCountU16))
+    if (g_game.getFeature(tibia::client::GameCountU16))
         msg->addU16(count);
     else
         msg->addU8(static_cast<uint8_t>(count));
@@ -408,7 +408,7 @@ void ProtocolGame::sendBuyItem(const uint16_t itemId, const uint8_t subType, con
     msg->addU8(Proto::ClientBuyItem);
     msg->addU16(itemId);
     msg->addU8(subType);
-    if (g_game.getFeature(Otc::GameDoubleShopSellAmount))
+    if (g_game.getFeature(tibia::client::GameDoubleShopSellAmount))
         msg->addU16(amount);
     else
         msg->addU8(static_cast<uint8_t>(amount));
@@ -423,7 +423,7 @@ void ProtocolGame::sendSellItem(const uint16_t itemId, const uint8_t subType, co
     msg->addU8(Proto::ClientSellItem);
     msg->addU16(itemId);
     msg->addU8(subType);
-    if (g_game.getFeature(Otc::GameDoubleShopSellAmount))
+    if (g_game.getFeature(tibia::client::GameDoubleShopSellAmount))
         msg->addU16(amount);
     else
         msg->addU8(static_cast<uint8_t>(amount));
@@ -580,7 +580,7 @@ void ProtocolGame::sendLookCreature(const uint32_t creatureId)
     send(msg);
 }
 
-void ProtocolGame::sendTalk(const Otc::MessageMode mode, const uint16_t channelId, const std::string_view receiver, const std::string_view message)
+void ProtocolGame::sendTalk(const tibia::client::MessageMode mode, const uint16_t channelId, const std::string_view receiver, const std::string_view message)
 {
     // Consume any staged crosshair aim up front so an aborted/empty say never leaks it to the next one.
     const Position talkAimPos = g_game.takeNextTalkAim();
@@ -599,14 +599,14 @@ void ProtocolGame::sendTalk(const Otc::MessageMode mode, const uint16_t channelI
     msg->addU8(Proto::translateMessageModeToServer(mode));
 
     switch (mode) {
-        case Otc::MessagePrivateTo:
-        case Otc::MessageGamemasterPrivateTo:
+        case tibia::client::MessagePrivateTo:
+        case tibia::client::MessageGamemasterPrivateTo:
             msg->addString(receiver);
             break;
-        case Otc::MessageChannel:
-        case Otc::MessageChannelHighlight:
-        case Otc::MessageChannelManagement:
-        case Otc::MessageGamemasterChannel:
+        case tibia::client::MessageChannel:
+        case tibia::client::MessageChannelHighlight:
+        case tibia::client::MessageChannelManagement:
+        case tibia::client::MessageGamemasterChannel:
             msg->addU16(channelId);
             break;
         default:
@@ -679,12 +679,12 @@ void ProtocolGame::sendCloseNpcChannel()
     send(msg);
 }
 
-void ProtocolGame::sendChangeFightModes(const Otc::FightModes fightMode, const Otc::ChaseModes chaseMode, const bool safeFight, const Otc::PVPModes pvpMode)
+void ProtocolGame::sendChangeFightModes(const tibia::client::FightModes fightMode, const tibia::client::ChaseModes chaseMode, const bool safeFight, const tibia::client::PVPModes pvpMode)
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientChangeFightModes);
 
-    if (g_game.getFeature(Otc::GameTacticsWithoutFightMode)) {
+    if (g_game.getFeature(tibia::client::GameTacticsWithoutFightMode)) {
         msg->addU8(chaseMode);
         msg->addU8(safeFight);
         msg->addU8(pvpMode);
@@ -695,7 +695,7 @@ void ProtocolGame::sendChangeFightModes(const Otc::FightModes fightMode, const O
     msg->addU8(fightMode);
     msg->addU8(chaseMode);
     msg->addU8(safeFight);
-    if (g_game.getFeature(Otc::GamePVPMode))
+    if (g_game.getFeature(tibia::client::GamePVPMode))
         msg->addU8(pvpMode);
     send(msg);
 }
@@ -705,7 +705,7 @@ void ProtocolGame::sendAttack(const uint32_t creatureId, const uint32_t seq)
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientAttack);
     msg->addU32(creatureId);
-    if (g_game.getFeature(Otc::GameAttackSeq))
+    if (g_game.getFeature(tibia::client::GameAttackSeq))
         msg->addU32(seq);
     send(msg);
 }
@@ -715,7 +715,7 @@ void ProtocolGame::sendFollow(const uint32_t creatureId, const uint32_t seq)
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientFollow);
     msg->addU32(creatureId);
-    if (g_game.getFeature(Otc::GameAttackSeq))
+    if (g_game.getFeature(tibia::client::GameAttackSeq))
         msg->addU32(seq);
     send(msg);
 }
@@ -863,7 +863,7 @@ void ProtocolGame::sendDepotSearchType(const uint16_t itemId, const uint8_t tier
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientDepotSearchType);
     msg->addU16(itemId);
-    if (const auto& thing = g_things.getThingType(itemId, ThingCategoryItem)) {
+    if (const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem)) {
         if (thing->getClassification() > 0)
             msg->addU8(tier);
     }
@@ -875,7 +875,7 @@ void ProtocolGame::sendRetrieveDepotSearch(const uint16_t itemId, const uint8_t 
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientRetrieveDepotSearch);
     msg->addU16(itemId);
-    if (const auto& thing = g_things.getThingType(itemId, ThingCategoryItem)) {
+    if (const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem)) {
         if (thing->getClassification() > 0)
             msg->addU8(tier);
     }
@@ -998,7 +998,7 @@ namespace {
 
 void addOutfitLook(const OutputMessagePtr& msg, const Outfit& outfit)
 {
-    if (g_game.getFeature(Otc::GameLooktypeU16))
+    if (g_game.getFeature(tibia::client::GameLooktypeU16))
         msg->addU16(outfit.getId());
     else
         msg->addU8(static_cast<uint8_t>(outfit.getId()));
@@ -1008,7 +1008,7 @@ void addOutfitLook(const OutputMessagePtr& msg, const Outfit& outfit)
     msg->addU8(outfit.getLegs());
     msg->addU8(outfit.getFeet());
 
-    if (g_game.getFeature(Otc::GamePlayerAddons))
+    if (g_game.getFeature(tibia::client::GamePlayerAddons))
         msg->addU8(outfit.getAddons());
 }
 
@@ -1025,7 +1025,7 @@ void ProtocolGame::sendChangeOutfit(const Outfit& outfit, const bool mounted, co
 
     addOutfitLook(msg, outfit);
 
-    if (g_game.getFeature(Otc::GamePlayerMounts)) {
+    if (g_game.getFeature(tibia::client::GamePlayerMounts)) {
         msg->addU16(outfit.getMount());
         if (g_game.getClientVersion() >= 1281) {
             msg->addU8(outfit.getMountHead());
@@ -1039,14 +1039,14 @@ void ProtocolGame::sendChangeOutfit(const Outfit& outfit, const bool mounted, co
         msg->addU8(mounted);
     }
 
-    if (g_game.getFeature(Otc::GamePlayerFamiliars)) {
+    if (g_game.getFeature(tibia::client::GamePlayerFamiliars)) {
         msg->addU16(outfit.getFamiliar()); //familiars
     }
 
     if (g_game.getClientVersion() >= 1281) {
         msg->addU8(randomMount); //randomizeMount
     }
-    if (g_game.getFeature(Otc::GameWingsAurasEffectsShader)) {
+    if (g_game.getFeature(tibia::client::GameWingsAurasEffectsShader)) {
         msg->addU16(outfit.getWing());  // wings
         msg->addU16(outfit.getAura());  // auras
         msg->addU16(outfit.getEffect()); // effects
@@ -1091,7 +1091,7 @@ void ProtocolGame::sendSetHirelingOutfit(const Outfit& outfit, const uint32_t hi
 
 void ProtocolGame::sendMountStatus(const bool mount)
 {
-    if (g_game.getFeature(Otc::GamePlayerMounts)) {
+    if (g_game.getFeature(tibia::client::GamePlayerMounts)) {
         const auto& msg = std::make_shared<OutputMessage>();
         msg->addU8(Proto::ClientMount);
         msg->addU8(mount);
@@ -1125,7 +1125,7 @@ void ProtocolGame::sendEditVip(const uint32_t playerId, const std::string_view d
     msg->addString(description);
     msg->addU32(iconId);
     msg->addU8(notifyLogin);
-    if (g_game.getFeature(Otc::GameVipGroups)) {
+    if (g_game.getFeature(tibia::client::GameVipGroups)) {
         msg->addU8(static_cast<uint8_t>(groupIDs.size()));
         for (const uint8_t groupID : groupIDs) {
             msg->addU8(groupID);
@@ -1134,22 +1134,22 @@ void ProtocolGame::sendEditVip(const uint32_t playerId, const std::string_view d
     send(msg);
 }
 
-void ProtocolGame::sendEditVipGroups(const Otc::GroupsEditInfoType_t action, const uint8_t groupId, const std::string_view groupName)
+void ProtocolGame::sendEditVipGroups(const tibia::client::GroupsEditInfoType_t action, const uint8_t groupId, const std::string_view groupName)
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientEditVipGroups);
     msg->addU8(action);
     switch (action) {
-        case Otc::VIP_GROUP_ADD: {
+        case tibia::client::VIP_GROUP_ADD: {
             msg->addString(groupName);
             break;
         }
-        case Otc::VIP_GROUP_EDIT: {
+        case tibia::client::VIP_GROUP_EDIT: {
             msg->addU8(groupId);
             msg->addString(groupName);
             break;
         }
-        case Otc::VIP_GROUP_REMOVE: {
+        case tibia::client::VIP_GROUP_REMOVE: {
             msg->addU8(groupId);
             break;
         }
@@ -1180,7 +1180,7 @@ void ProtocolGame::sendWheelGemAction(uint8_t actionType, uint16_t param, uint8_
     send(msg);
 
     // 🔍 Log de envio bem-sucedido
-    g_logger.debug(fmt::format(
+    g_logger.debug(std::format(
         "[Client Gem Action] sendWheelGemAction enviado com sucesso -> actionType={} param={} pos={}",
         static_cast<int>(actionType),
         static_cast<int>(param),
@@ -1285,7 +1285,7 @@ void ProtocolGame::sendAnswerModalDialog(const uint32_t dialog, const uint8_t bu
 
 void ProtocolGame::sendBrowseField(const Position& position)
 {
-    if (!g_game.getFeature(Otc::GameBrowseField))
+    if (!g_game.getFeature(tibia::client::GameBrowseField))
         return;
 
     const auto& msg = std::make_shared<OutputMessage>();
@@ -1296,14 +1296,14 @@ void ProtocolGame::sendBrowseField(const Position& position)
 
 void ProtocolGame::sendSeekInContainer(const uint8_t containerId, const uint16_t index)
 {
-    if (!g_game.getFeature(Otc::GameContainerPagination))
+    if (!g_game.getFeature(tibia::client::GameContainerPagination))
         return;
 
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientSeekInContainer);
     msg->addU8(containerId);
     msg->addU16(index);
-    if (g_game.getFeature(Otc::GameContainerFilter)) {
+    if (g_game.getFeature(tibia::client::GameContainerFilter)) {
         msg->addU8(0); // Filter
     }
     send(msg);
@@ -1313,16 +1313,16 @@ void ProtocolGame::sendInspectionNormalObject(const Position& position)
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientInspectionObject);
-    msg->addU8(Otc::INSPECT_NORMALOBJECT);
+    msg->addU8(tibia::client::INSPECT_NORMALOBJECT);
     addPosition(msg, position);
     send(msg);
 }
 
-void ProtocolGame::sendInspectionObject(const Otc::InspectObjectTypes inspectionType, const uint16_t itemId, const uint8_t itemCount)
+void ProtocolGame::sendInspectionObject(const tibia::client::InspectObjectTypes inspectionType, const uint16_t itemId, const uint8_t itemCount)
 {
-    if (inspectionType != Otc::INSPECT_NPCTRADE &&
-        inspectionType != Otc::INSPECT_CYCLOPEDIA &&
-        inspectionType != Otc::INSPECT_PROFICIENCY) {
+    if (inspectionType != tibia::client::INSPECT_NPCTRADE &&
+        inspectionType != tibia::client::INSPECT_CYCLOPEDIA &&
+        inspectionType != tibia::client::INSPECT_PROFICIENCY) {
         return;
     }
 
@@ -1421,7 +1421,7 @@ void ProtocolGame::sendCharacterTradeConfigurationAction(
             msg->addU8(static_cast<uint8_t>(std::min<size_t>(list.size(), 255)));
             for (const auto& [itemId, tier] : list) {
                 msg->addU16(itemId);
-                const auto& thingType = g_things.getThingType(itemId, ThingCategoryItem);
+                const auto& thingType = tibia::game::thingType(itemId, ThingCategoryItem);
                 if (thingType && thingType->getClassification() > 0)
                     msg->addU8(tier);
             }
@@ -1542,14 +1542,14 @@ void ProtocolGame::sendSetHirelingName(const std::string_view name)
     send(msg);
 }
 
-void ProtocolGame::sendCyclopediaRequestCharacterInfo(const uint32_t playerId, const Otc::CyclopediaCharacterInfoType_t characterInfoType, const uint16_t entriesPerPage, const uint16_t page)
+void ProtocolGame::sendCyclopediaRequestCharacterInfo(const uint32_t playerId, const tibia::client::CyclopediaCharacterInfoType_t characterInfoType, const uint16_t entriesPerPage, const uint16_t page)
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientCyclopediaRequestCharacterInfo);
     msg->addU32(playerId);
     msg->addU8(characterInfoType);
 
-    if (characterInfoType == Otc::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS || characterInfoType == Otc::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS) {
+    if (characterInfoType == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS || characterInfoType == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS) {
         msg->addU16(entriesPerPage);
         msg->addU16(page);
     }
@@ -1557,40 +1557,40 @@ void ProtocolGame::sendCyclopediaRequestCharacterInfo(const uint32_t playerId, c
     send(msg);
 }
 
-void ProtocolGame::sendCyclopediaHouseAuction(const Otc::CyclopediaHouseAuctionType_t type, const uint32_t houseId, const uint32_t timestamp, const uint64_t bidValue, const std::string_view name)
+void ProtocolGame::sendCyclopediaHouseAuction(const tibia::client::CyclopediaHouseAuctionType_t type, const uint32_t houseId, const uint32_t timestamp, const uint64_t bidValue, const std::string_view name)
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientCyclopediaHouseAuction);
     msg->addU8(type);
 
     switch (type) {
-        case Otc::CYCLOPEDIA_HOUSE_TYPE_NONE:
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_NONE:
             msg->addString(name); // townName
             break;
-        case Otc::CYCLOPEDIA_HOUSE_TYPE_BID:
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_BID:
             msg->addU32(houseId);
             msg->addU64(bidValue);
             break;
-        case Otc::CYCLOPEDIA_HOUSE_TYPE_MOVEOUT:
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_MOVEOUT:
             msg->addU32(houseId);
             msg->addU32(timestamp);
             break;
-        case Otc::CYCLOPEDIA_HOUSE_TYPE_TRANSFER:
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_TRANSFER:
             msg->addU32(houseId);
             msg->addU32(timestamp);
             msg->addString(name); // newOwner
             msg->addU64(bidValue);
             break;
-        case Otc::CYCLOPEDIA_HOUSE_TYPE_CANCEL_MOVEOUT:
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_MOVEOUT:
             msg->addU32(houseId);
             break;
-        case Otc::CYCLOPEDIA_HOUSE_TYPE_CANCEL_TRANSFER:
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_TRANSFER:
             msg->addU32(houseId);
             break;
-        case Otc::CYCLOPEDIA_HOUSE_TYPE_ACCEPT_TRANSFER:
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_ACCEPT_TRANSFER:
             msg->addU32(houseId);
             break;
-        case Otc::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER:
+        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER:
             msg->addU32(houseId);
             break;
     }
@@ -1701,7 +1701,7 @@ void ProtocolGame::sendRequestStoreOffers(const std::string_view categoryName, c
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(Otc::Store_Type_Actions_t::OPEN_CATEGORY);
+    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_CATEGORY);
     msg->addString(categoryName);
     msg->addString(subCategory);
     msg->addU8(sortOrder);
@@ -1713,14 +1713,14 @@ void ProtocolGame::sendRequestStoreHome()
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(Otc::Store_Type_Actions_t::OPEN_HOME);
+    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_HOME);
     send(msg);
 }
 void ProtocolGame::sendRequestStorePremiumBoost()
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(Otc::Store_Type_Actions_t::OPEN_PREMIUM_BOOST);
+    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_PREMIUM_BOOST);
     msg->addU8(1);
     send(msg);
 }
@@ -1729,7 +1729,7 @@ void ProtocolGame::sendRequestUsefulThings(const uint8_t offerId)
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(Otc::Store_Type_Actions_t::OPEN_USEFUL_THINGS);
+    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_USEFUL_THINGS);
     msg->addU8(offerId);
     send(msg);
 }
@@ -1738,7 +1738,7 @@ void ProtocolGame::sendRequestStoreOfferById(uint32_t offerId, const uint8_t sor
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(Otc::Store_Type_Actions_t::OPEN_OFFER);
+    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_OFFER);
     msg->addU32(offerId);
     msg->addU8(sortOrder);
     msg->addU8(serviceType);
@@ -1749,7 +1749,7 @@ void ProtocolGame::sendRequestStoreSearch(const std::string_view searchText, con
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(Otc::Store_Type_Actions_t::OPEN_SEARCH);
+    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_SEARCH);
     msg->addString(searchText);
     msg->addU8(sortOrder);
     msg->addU8(serviceType);
@@ -1761,7 +1761,7 @@ void ProtocolGame::sendOpenStore(const uint8_t serviceType, const std::string_vi
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientOpenStore);
 
-    if (g_game.getFeature(Otc::GameIngameStoreServiceType)) {
+    if (g_game.getFeature(tibia::client::GameIngameStoreServiceType)) {
         msg->addU8(serviceType);
         msg->addString(category);
     }
@@ -1789,7 +1789,7 @@ void ProtocolGame::sendOpenTransactionHistory(const uint8_t entriesPerPage)
 
 void ProtocolGame::sendChangeMapAwareRange(const uint8_t xrange, const uint8_t yrange)
 {
-    if (!g_game.getFeature(Otc::GameChangeMapAwareRange))
+    if (!g_game.getFeature(tibia::client::GameChangeMapAwareRange))
         return;
 
     const auto& msg = std::make_shared<OutputMessage>();
@@ -1823,7 +1823,7 @@ void ProtocolGame::sendMarketBrowse(const uint8_t browseId, const uint16_t brows
             msg->addU16(browseType);
             // If browseId is 3 (browse item), send tier if item has classification
             if (browseId == 3) {
-                const auto& thing = g_things.getThingType(browseType, ThingCategoryItem);
+                const auto& thing = tibia::game::thingType(browseType, ThingCategoryItem);
                 if (thing && thing->getClassification() > 0) {
                     msg->addU8(tier);
                 }
@@ -1841,7 +1841,7 @@ void ProtocolGame::sendMarketCreateOffer(const uint8_t type, const uint16_t item
     msg->addU8(Proto::ClientMarketCreate);
     msg->addU8(type);
     msg->addU16(itemId);
-    if (const auto& thing = g_things.getThingType(itemId, ThingCategoryItem)) {
+    if (const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem)) {
         if (thing->getClassification() > 0) {
             msg->addU8(itemTier);
         }
@@ -1915,12 +1915,12 @@ void ProtocolGame::sendSetClientOptions(const uint8_t option, const bool value)
     send(msg);
 }
 
-void ProtocolGame::sendForgeRequest(Otc::ForgeAction_t actionType, bool convergence, uint16_t firstItemid, uint8_t firstItemTier, uint16_t secondItemId, bool improveChance, bool tierLoss) {
+void ProtocolGame::sendForgeRequest(tibia::client::ForgeAction_t actionType, bool convergence, uint16_t firstItemid, uint8_t firstItemTier, uint16_t secondItemId, bool improveChance, bool tierLoss) {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientForgeEnter);
     msg->addU8(static_cast<uint8_t>(actionType));
 
-    if (actionType == Otc::ForgeAction_t::FUSION || actionType == Otc::ForgeAction_t::TRANSFER) {
+    if (actionType == tibia::client::ForgeAction_t::FUSION || actionType == tibia::client::ForgeAction_t::TRANSFER) {
         msg->addU8(static_cast<uint8_t>(convergence));
         msg->addU16(firstItemid);
         msg->addU8(firstItemTier);
@@ -2013,7 +2013,7 @@ void ProtocolGame::sendImbuementWindowAction(const uint8_t type, const uint16_t 
     msg->addU8(Proto::ClientImbuementWindowAction);
     msg->addU8(type); // 1 = SELECT_ITEM, 2 = SCROLL
 
-    if (type == Otc::IMBUEMENT_WINDOW_SELECT_ITEM) {
+    if (type == tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM) {
         addPosition(msg, pos);
         msg->addU16(itemId);
         msg->addU8(stackpos);
@@ -2053,7 +2053,7 @@ void ProtocolGame::sendStashWithdraw(const uint16_t itemId, const uint32_t count
 {
     const auto& msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientUseStash);
-    msg->addU8(Otc::Supply_Stash_Actions_t::SUPPLY_STASH_ACTION_WITHDRAW);
+    msg->addU8(tibia::client::Supply_Stash_Actions_t::SUPPLY_STASH_ACTION_WITHDRAW);
     msg->addU16(itemId);
     msg->addU32(count);
     msg->addU8(stackpos);
@@ -2077,7 +2077,7 @@ void ProtocolGame::sendStashStow(const Position& position, const uint16_t itemId
     msg->addU16(itemId);
     msg->addU8(stackpos);
 
-    if (action == Otc::Supply_Stash_Actions_t::SUPPLY_STASH_ACTION_STOW_ITEM) {
+    if (action == tibia::client::Supply_Stash_Actions_t::SUPPLY_STASH_ACTION_STOW_ITEM) {
         msg->addU32(count);
     }
 
@@ -2106,33 +2106,33 @@ void ProtocolGame::sendTaskBoardAction(const uint8_t option, const uint16_t valu
     msg->addU8(Proto::ClientTaskBoardAction);
     msg->addU8(option);
     switch (option) {
-        case Otc::TASK_BOARD_OPTION_BOUNTY_CHANGE_DIFFICULTY:
-        case Otc::TASK_BOARD_OPTION_BOUNTY_SELECT_TASK:
-        case Otc::TASK_BOARD_OPTION_BOUNTY_TALISMAN_UPGRADE:
-        case Otc::TASK_BOARD_OPTION_WEEKLY_DELIVER:
-        case Otc::TASK_BOARD_OPTION_WEEKLY_SELECT_DIFFICULTY:
+        case tibia::client::TASK_BOARD_OPTION_BOUNTY_CHANGE_DIFFICULTY:
+        case tibia::client::TASK_BOARD_OPTION_BOUNTY_SELECT_TASK:
+        case tibia::client::TASK_BOARD_OPTION_BOUNTY_TALISMAN_UPGRADE:
+        case tibia::client::TASK_BOARD_OPTION_WEEKLY_DELIVER:
+        case tibia::client::TASK_BOARD_OPTION_WEEKLY_SELECT_DIFFICULTY:
             msg->addU8(static_cast<uint8_t>(std::clamp<uint16_t>(value, 0, std::numeric_limits<uint8_t>::max())));
             break;
-        case Otc::TASK_BOARD_OPTION_HUNTING_SHOP_BUY_OFFER:
+        case tibia::client::TASK_BOARD_OPTION_HUNTING_SHOP_BUY_OFFER:
             msg->addU8(static_cast<uint8_t>(std::clamp<uint16_t>(value, 0, std::numeric_limits<uint8_t>::max())));
             msg->addU8(static_cast<uint8_t>(std::clamp<uint16_t>(extraValue, 0, std::numeric_limits<uint8_t>::max())));
             break;
-        case Otc::TASK_BOARD_OPTION_PREFERRED_UNLOCK:
-        case Otc::TASK_BOARD_OPTION_PREFERRED_CLEAR:
-        case Otc::TASK_BOARD_OPTION_UNWANTED_CLEAR:
+        case tibia::client::TASK_BOARD_OPTION_PREFERRED_UNLOCK:
+        case tibia::client::TASK_BOARD_OPTION_PREFERRED_CLEAR:
+        case tibia::client::TASK_BOARD_OPTION_UNWANTED_CLEAR:
             msg->addU16(value);
             break;
-        case Otc::TASK_BOARD_OPTION_PREFERRED_ASSIGN:
-        case Otc::TASK_BOARD_OPTION_UNWANTED_ASSIGN:
+        case tibia::client::TASK_BOARD_OPTION_PREFERRED_ASSIGN:
+        case tibia::client::TASK_BOARD_OPTION_UNWANTED_ASSIGN:
             msg->addU16(value);
             msg->addU16(extraValue);
             break;
-        case Otc::TASK_BOARD_OPTION_OPEN_BOUNTY:
-        case Otc::TASK_BOARD_OPTION_OPEN_WEEKLY:
-        case Otc::TASK_BOARD_OPTION_BOUNTY_REROLL:
-        case Otc::TASK_BOARD_OPTION_BOUNTY_CLAIM_DAILY:
-        case Otc::TASK_BOARD_OPTION_BOUNTY_CLAIM_REWARD:
-        case Otc::TASK_BOARD_OPTION_OPEN_HUNTING_SHOP:
+        case tibia::client::TASK_BOARD_OPTION_OPEN_BOUNTY:
+        case tibia::client::TASK_BOARD_OPTION_OPEN_WEEKLY:
+        case tibia::client::TASK_BOARD_OPTION_BOUNTY_REROLL:
+        case tibia::client::TASK_BOARD_OPTION_BOUNTY_CLAIM_DAILY:
+        case tibia::client::TASK_BOARD_OPTION_BOUNTY_CLAIM_REWARD:
+        case tibia::client::TASK_BOARD_OPTION_OPEN_HUNTING_SHOP:
             break;
         default:
             g_logger.error("Unknown task board action option {}", static_cast<int>(option));
@@ -2201,7 +2201,7 @@ void ProtocolGame::sendWeaponProficiencyAction(const uint8_t actionType, const u
     const auto msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientWeaponProficiency);
     msg->addU8(actionType);
-    if (actionType == Otc::WEAPON_PROFICIENCY_ITEM_INFO || actionType == Otc::WEAPON_PROFICIENCY_RESET_PERKS) {
+    if (actionType == tibia::client::WEAPON_PROFICIENCY_ITEM_INFO || actionType == tibia::client::WEAPON_PROFICIENCY_RESET_PERKS) {
         msg->addU16(itemId);
     }
     send(msg);
@@ -2211,7 +2211,7 @@ void ProtocolGame::sendWeaponProficiencyApply(const uint16_t itemId, const std::
 {
     const auto msg = std::make_shared<OutputMessage>();
     msg->addU8(Proto::ClientWeaponProficiency);
-    msg->addU8(Otc::WEAPON_PROFICIENCY_APPLY_PERKS);
+    msg->addU8(tibia::client::WEAPON_PROFICIENCY_APPLY_PERKS);
     msg->addU16(itemId);
     const size_t count = std::min(levels.size(), perkPositions.size());
     msg->addU8(static_cast<uint8_t>(count));
@@ -2230,7 +2230,7 @@ void ProtocolGame::sendWeaponProficiencySlotAction(const uint8_t actionType, con
     msg->addU16(itemId);
     msg->addU8(level);
     msg->addU8(perkPosition);
-    if (actionType == Otc::WEAPON_PROFICIENCY_PICK_OFFER) {
+    if (actionType == tibia::client::WEAPON_PROFICIENCY_PICK_OFFER) {
         msg->addU8(static_cast<uint8_t>(offerIndex));
     }
     send(msg);
@@ -2267,31 +2267,31 @@ void ProtocolGame::sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints,
     for (int i = 0; i < 36; ++i) {
         uint16_t value = (i < static_cast<int>(slotPoints.size())) ? slotPoints[i] : 0;
         msg->addU16(value);
-        g_logger.debug(fmt::format("  [Slot {:02d}] pontos={}", i, value));
+        g_logger.debug(std::format("  [Slot {:02d}] pontos={}", i, value));
     }
 
     // Gem Green
     msg->addU8(greenGem != UINT16_MAX ? 1 : 0);
     if (greenGem != UINT16_MAX) msg->addU16(greenGem);
-    g_logger.debug(fmt::format("[Gem Green C++] hasGem={} gemId={}", greenGem != UINT16_MAX, greenGem));
+    g_logger.debug(std::format("[Gem Green C++] hasGem={} gemId={}", greenGem != UINT16_MAX, greenGem));
 
     // Gem Red
     msg->addU8(redGem != UINT16_MAX ? 1 : 0);
     if (redGem != UINT16_MAX) msg->addU16(redGem);
-    g_logger.debug(fmt::format("[Gem Red C++] hasGem={} gemId={}", redGem != UINT16_MAX, redGem));
+    g_logger.debug(std::format("[Gem Red C++] hasGem={} gemId={}", redGem != UINT16_MAX, redGem));
 
     // Gem Acqua
     msg->addU8(acquaGem != UINT16_MAX ? 1 : 0);
     if (acquaGem != UINT16_MAX) msg->addU16(acquaGem);
-    g_logger.debug(fmt::format("[Gem Acqua C++] hasGem={} gemId={}", acquaGem != UINT16_MAX, acquaGem));
+    g_logger.debug(std::format("[Gem Acqua C++] hasGem={} gemId={}", acquaGem != UINT16_MAX, acquaGem));
 
     // Gem Purple
     msg->addU8(purpleGem != UINT16_MAX ? 1 : 0);
     if (purpleGem != UINT16_MAX) msg->addU16(purpleGem);
-    g_logger.debug(fmt::format("[Gem Purple C++] hasGem={} gemId={}", purpleGem != UINT16_MAX, purpleGem));
+    g_logger.debug(std::format("[Gem Purple C++] hasGem={} gemId={}", purpleGem != UINT16_MAX, purpleGem));
     
     msg->addU8(0);
-    g_logger.debug(fmt::format(
+    g_logger.debug(std::format(
         "[Wheel C++ Send] Enviando apply: {} slots, gems(G={} R={} A={} P={})",
         slotPoints.size(), greenGem, redGem, acquaGem, purpleGem));
 
@@ -2300,9 +2300,9 @@ void ProtocolGame::sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints,
     const auto& buffer = msg->getBuffer();
     const size_t length = msg->getMessageSize(); // usa o método existente
     for (size_t i = 0; i < length; ++i) {
-        oss << fmt::format("{:02X} ", static_cast<uint8_t>(buffer[i]));
+        oss << std::format("{:02X} ", static_cast<uint8_t>(buffer[i]));
     }
-    g_logger.debug(fmt::format("[WheelDebugHex] Pacote completo ({} bytes): {}", length, oss.str()));
+    g_logger.debug(std::format("[WheelDebugHex] Pacote completo ({} bytes): {}", length, oss.str()));
     send(msg);
     g_logger.debug("[Wheel C++ Send] Pacote enviado com sucesso.");
 }

@@ -2,7 +2,6 @@
 
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/outfit.h>
 #include <tibia/assets/things.h>
@@ -11,6 +10,8 @@
 #include <QLocale>
 
 #include <algorithm>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::prey {
 
@@ -193,15 +194,15 @@ QString numberVariants(const qint64 value)
     return variants.join(MultiStringSeparator);
 }
 
-uint64_t balance(const Otc::ResourceTypes_t type)
+uint64_t balance(const tibia::client::ResourceTypes_t type)
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player ? player->getResourceBalance(type) : 0;
 }
 
-uint64_t totalGold() { return balance(Otc::RESOURCE_BANK_BALANCE) + balance(Otc::RESOURCE_GOLD_EQUIPPED); }
+uint64_t totalGold() { return balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED); }
 
-int wildcardBalance() { return static_cast<int>(std::min<uint64_t>(balance(Otc::RESOURCE_PREY_WILDCARDS), INT_MAX)); }
+int wildcardBalance() { return static_cast<int>(std::min<uint64_t>(balance(tibia::client::RESOURCE_PREY_WILDCARDS), INT_MAX)); }
 
 QColor outfitColor(const int index)
 {
@@ -270,7 +271,7 @@ void TPreyBestiarySelectionModel::setRaces(const QList<uint16_t>& races)
     m_entries.clear();
     m_entries.reserve(races.size());
     for (const uint16_t race : races)
-        m_entries.append({ .id = race, .name = capitalizeWords(QString::fromStdString(g_things.getRaceData(race).name)) });
+        m_entries.append({ .id = race, .name = capitalizeWords(QString::fromStdString(tibia::game::raceData(race).name)) });
     endResetModel();
     Q_EMIT rowCountChanged();
 }
@@ -773,7 +774,7 @@ void TPreyDialogController::clear()
 void TPreyDialogController::showDialog()
 {
     closeDialog();
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player || !player->hasReachedMain()) {
         m_notOnMain->setButtons(okButton());
         m_notOnMain->showMessage(qtTrId("prey_need_to_reach_main_caption"), qtTrId("prey_need_to_reach_main_text"));

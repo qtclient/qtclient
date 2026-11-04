@@ -2,10 +2,9 @@
 
 #include "soundplayback.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/world/map.h>
-#include <tibia/world/tile.h>
+#include "worldmap/worldmapfield.h"
 #include <framework/core/clock.h>
 #include <framework/core/gameevents.h>
 #include <framework/core/logger.h>
@@ -15,11 +14,12 @@
 #include <sounds.pb.h>
 #endif
 
-#include <nlohmann/json.hpp>
-
 #include <QByteArray>
 #include <QEvent>
 #include <QGuiApplication>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLoggingCategory>
 
 #if defined(Q_OS_WASM)
@@ -36,7 +36,11 @@
 #include <sstream>
 #include <unordered_set>
 
-#include "vendor/miniaudio.h"
+#include "miniaudio_vorbis_backend.h"
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/gamesession.h>
+#include "worldmap/worldmapstorage.h"
 
 Q_LOGGING_CATEGORY(lcSoundStorage, "tibia.sound.storage")
 
@@ -128,7 +132,7 @@ bool decodeOggBytes(const QByteArray& bytes, const std::shared_ptr<Pcm>& out)
     if (!out || bytes.isEmpty())
         return false;
     ma_decoder decoder;
-    const ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 0, 0);
+    const ma_decoder_config config = maDecoderConfigForCipOgg();
     if (ma_decoder_init_memory(bytes.constData(), static_cast<size_t>(bytes.size()), &config, &decoder) != MA_SUCCESS)
         return false;
     if (decoder.outputChannels == 0 || decoder.outputSampleRate == 0) {
@@ -327,18 +331,15 @@ TSoundStorage::TSoundStorage(QObject* parent)
 {
     g_soundStorage = this;
     ensureEngine();
-    m_gameEndHook = g_gameEvents.subscribe("g_game", "onGameEnd", [this](LuaObject*, const GameEvents::Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this] {
         stopAmbience();
         stopObjectAmbience();
         stopOneShots();
-        return std::any{};
     });
 }
 
 TSoundStorage::~TSoundStorage()
 {
-    if (m_gameEndHook)
-        g_gameEvents.unsubscribe(m_gameEndHook);
     stopAll();
     if (m_engine) {
         m_engine->releaseAll();
@@ -466,8 +467,11 @@ bool TSoundStorage::loadCatalog(const std::string& directory)
     if (!catalogBytes)
         return false;
     try {
-        using json = nlohmann::json;
-        const json document = json::parse(*catalogBytes);
+        const auto document = QJsonDocument::fromJson(
+            QByteArray::fromStdString(*catalogBytes));
+        if (!document.isArray())
+            return false;
+        const QJsonArray catalog = document.array();
 
         m_files.clear();
         m_effects.clear();
@@ -479,10 +483,11 @@ bool TSoundStorage::loadCatalog(const std::string& directory)
         stopObjectAmbience();
 
         bool loaded = false;
-        for (const auto& obj : document) {
-            if (obj.value("type", "") != "sounds")
+        for (const auto& entryValue : catalog) {
+            const auto obj = entryValue.toObject();
+            if (obj.value("type").toString() != QLatin1String("sounds"))
                 continue;
-            const std::string fileName = obj.value("file", "");
+            const std::string fileName = obj.value("file").toString().toStdString();
             if (fileName.empty())
                 continue;
 
@@ -1059,9 +1064,9 @@ bool TSoundStorage::recentlyPlayed(const uint16_t soundEffectId)
 
 std::optional<Position> TSoundStorage::listenerPosition() const
 {
-    if (!g_game.isOnline())
+    if (!tibia::game::isOnline())
         return std::nullopt;
-    const auto& player = g_game.getLocalPlayer();
+    const auto& player = tibia::game::localPlayer();
     if (!player)
         return std::nullopt;
     const Position pos = player->getPosition();
@@ -1154,14 +1159,14 @@ void TSoundStorage::pollObjectAmbience()
             const Position tilePos(listener->x + dx, listener->y + dy, listener->z);
             if (listener->distance(tilePos) > static_cast<double>(radius))
                 continue;
-            const auto& tile = g_map.getTile(tilePos);
+            const auto& tile = tibia::worldmap::fieldAt(tilePos);
             if (!tile)
                 continue;
             const double distance = listener->distance(tilePos);
-            for (const auto& thing : tile->getThings()) {
-                if (!thing || !thing->isItem())
+            for (const auto& appearance : tile->appearances()) {
+                if (!appearance || appearance->category() != ThingCategoryItem)
                     continue;
-                const auto effects = m_objectsByClientId.find(thing->getId());
+                const auto effects = m_objectsByClientId.find(appearance->id());
                 if (effects == m_objectsByClientId.end())
                     continue;
                 for (const uint32_t effectId : effects->second) {

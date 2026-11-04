@@ -1,5 +1,5 @@
 // cip-base: 10204c86d1b974e2f4e5a38be8ebcb97efe68ad8be382a6f6fb67448926fed69
-// Soft: re-bind the race list whenever the controller opens so an empty
+// qtclient: re-bind the race list whenever the controller opens so an empty
 // selection (chosenOutfit 0) clears the BossOutfitSelection highlight.
 import QtQuick
 import QtQuick.Layouts

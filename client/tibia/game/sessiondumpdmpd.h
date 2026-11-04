@@ -63,8 +63,9 @@ std::optional<TSessiondumpDmpdHeader> parseSessiondumpDmpdHeaderFile(const QStri
 std::optional<TSessiondumpDmpdFile> parseSessiondumpDmpd(const QByteArray& bytes);
 std::optional<TSessiondumpDmpdFile> parseSessiondumpDmpdFile(const QString& path);
 
-/// Map known protobuf opcodes into classic packet bodies for the live parser.
-/// Unknown types are skipped (caller may log counts).
+/// Phase 6.0-E: Parse each dmpd `GameserverMessage`, enqueue on the CIP
+/// protocol queue, then emit classic bodies for the replay bridge.
+/// Structured inverse is primary; `mapSimpleOpcode` remains fallback only.
 /// Returns timed packets: `<millis, body>` (opcode-first decoded messages).
 using DmpdClassicPacket = std::pair<int64_t, std::shared_ptr<std::vector<uint8_t>>>;
 std::deque<DmpdClassicPacket> dmpdToClassicPackets(const TSessiondumpDmpdFile& dump, int* mappedOut = nullptr, int* skippedOut = nullptr);

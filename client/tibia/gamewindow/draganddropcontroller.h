@@ -65,8 +65,8 @@ private:
     void finish();
     /// CIP 0x100bcfb80: the icon follows the mouse.
     void moveIcon();
-    /// CIP 0x100bd0410: the icon shows the dragged object.
-    void updateIcon(const ThingPtr& object);
+    /// CIP 0x100bd0410: the icon shows the dragged object (Thing or CIP typeId).
+    void updateIcon(uint16_t objectClientId, const Position& position, int stackPosition);
 
     QPointer<QQuickItem> m_root;
     QPointer<QQuickItem> m_icon;

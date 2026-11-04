@@ -5,7 +5,7 @@
 #include "chat/chatchannel.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
+#include "container/containerciptypes.h"
 #include <client/item.h>
 #include <tibia/world/localplayer.h>
 #include <client/staticdata.h>
@@ -26,6 +26,10 @@
 #include <array>
 #include <limits>
 #include <tuple>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::cyclopedia {
 
@@ -69,7 +73,7 @@ QString trackedItemName(const uint16_t typeId)
         case CrystalCoin: return qtTrId("crystal_coin");
         default: break;
     }
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (type && !type->getName().empty())
         return QString::fromStdString(type->getName());
     return qtTrId("dummy_unknown");
@@ -80,7 +84,7 @@ constexpr std::array<qint64, 6> LootValueCeilings{ 0, 999, 9999, 99999, 999999, 
 
 bool premium()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 
@@ -92,24 +96,20 @@ TItemInfoStorage::TItemInfoStorage(QObject* parent)
     cyclopedia::ownProductSurface(this);
     s_instance = this;
 
-    m_hooks.emplace_back("g_game", "onGameStart", [this](LuaObject*, const Args&) {
-        const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
+        const LocalPlayerPtr& player = tibia::game::localPlayer();
         setCharacter(player ? player->getId() : 0);
-        return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         setCharacter(0);
+    });
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
+        Q_EMIT premiumChanged();
+        Q_EMIT pricesChanged();
+        Q_EMIT trackingChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("object", "onPremiumChange", [this](LuaObject* self, const Args&) {
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && self == player.get()) {
-            Q_EMIT premiumChanged();
-            Q_EMIT pricesChanged();
-            Q_EMIT trackingChanged();
-        }
-        return std::any{};
-    });
-    m_hooks.emplace_back("g_game", "onItemsPrice", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onItemsPrice", [this](GameObject*, const Args& args) {
         const auto* prices = args.empty() ? nullptr : std::any_cast<std::map<uint16_t, uint64_t>>(&args[0]);
         if (!prices)
             return std::any{};
@@ -119,20 +119,15 @@ TItemInfoStorage::TItemInfoStorage(QObject* parent)
         Q_EMIT pricesChanged();
         return std::any{};
     });
-    // CIP ItemInfo (S 0xF1): typeId + description pairs CipSoft item info can cache later.
-    m_hooks.emplace_back("g_game", "onItemInfo", [this](LuaObject*, const Args& args) {
-        const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<std::tuple<ItemPtr, std::string>>>(&args[0]);
+    // Keep-alive; ProtocolGame::parseItemInfo prefers applyItemInfo.
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onItemInfo", [this](GameObject*, const Args& args) {
+        const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<std::tuple<uint16_t, std::string>>>(&args[0]);
         if (!list)
             return std::any{};
-        m_itemInfoDescriptions.clear();
-        for (const auto& [item, desc] : *list) {
-            if (item)
-                m_itemInfoDescriptions[static_cast<uint16_t>(item->getId())] = QString::fromStdString(desc);
-        }
-        Q_EMIT itemInfoChanged();
+        applyItemInfo(*list);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "forgeData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<ForgeConfigData>(&args[0]);
         if (!data)
             return std::any{};
@@ -145,8 +140,8 @@ TItemInfoStorage::TItemInfoStorage(QObject* parent)
     });
     // CIP KillTracking handler 0x100a4e110 builds the drops (0x100a630e0) for
     // the loot tracking storage (0x100a5c680).
-    m_hooks.emplace_back("g_game", "onKillTracker", [this](LuaObject*, const Args& args) {
-        const auto* items = args.size() > 2 ? std::any_cast<std::vector<ItemPtr>>(&args[2]) : nullptr;
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onKillTracker", [this](GameObject*, const Args& args) {
+        const auto* items = args.size() > 2 ? std::any_cast<std::vector<tibia::container::TInventorySlot>>(&args[2]) : nullptr;
         if (!items)
             return std::any{};
         const auto* outfit = args.size() > 1 ? std::any_cast<Outfit>(&args[1]) : nullptr;
@@ -154,11 +149,11 @@ TItemInfoStorage::TItemInfoStorage(QObject* parent)
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         std::vector<DroppedLoot> drops;
         drops.reserve(items->size());
-        for (const ItemPtr& item : *items) {
-            if (!item)
+        for (const tibia::container::TInventorySlot& slot : *items) {
+            if (slot.empty())
                 continue;
-            const int count = item->isStackable() ? std::max(1, static_cast<int>(item->getCount())) : 1;
-            drops.push_back({ static_cast<uint16_t>(item->getId()), count, monsterName, outfit ? *outfit : Outfit{},
+            const int count = slot.stackable ? std::max(1, static_cast<int>(slot.count)) : 1;
+            drops.push_back({ slot.typeId, count, monsterName, outfit ? *outfit : Outfit{},
                               now + RecentDropDurationMs, static_cast<quint32>(now / 1000) });
         }
         onKill(std::move(drops));
@@ -188,6 +183,16 @@ TItemInfoStorage::~TItemInfoStorage()
 
 TItemInfoStorage* TItemInfoStorage::instance() { return s_instance; }
 
+void TItemInfoStorage::applyItemInfo(const std::vector<std::tuple<uint16_t, std::string>>& itemList)
+{
+    m_itemInfoDescriptions.clear();
+    for (const auto& [typeId, desc] : itemList) {
+        if (typeId != 0)
+            m_itemInfoDescriptions[typeId] = QString::fromStdString(desc);
+    }
+    Q_EMIT itemInfoChanged();
+}
+
 qint64 TItemInfoStorage::npcBuyPrice(const uint16_t typeId)
 {
     switch (typeId) {
@@ -196,7 +201,7 @@ qint64 TItemInfoStorage::npcBuyPrice(const uint16_t typeId)
         case 3043: return 10000;
         default: break;
     }
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type)
         return 0;
     qint64 best = 0;
@@ -695,7 +700,7 @@ void TItemInfoStorage::sendLootList() const
 {
     const std::set<uint16_t>& list = m_lootLists[m_lootListType];
     const std::vector<uint16_t> items(list.begin(), list.end());
-    g_game.requestQuickLootBlackWhiteList(static_cast<uint8_t>(m_lootListType), static_cast<uint16_t>(items.size()), items);
+    tibia::game::requestQuickLootBlackWhiteList(static_cast<uint8_t>(m_lootListType), static_cast<uint16_t>(items.size()), items);
 }
 
 }

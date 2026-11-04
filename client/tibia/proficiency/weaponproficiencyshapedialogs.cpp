@@ -6,11 +6,13 @@
 #include "proficiency/proficiencycatalogue.h"
 #include "proficiency/proficiencyperks.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <array>
 #include <tuple>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::proficiency {
 
@@ -32,14 +34,14 @@ constexpr int KeepCurrentPerk = 3;
 
 int dustBalance()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
-    return player ? static_cast<int>(player->getResourceBalance(Otc::RESOURCE_FORGE_DUST)) : 0;
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
+    return player ? static_cast<int>(player->getResourceBalance(tibia::client::RESOURCE_FORGE_DUST)) : 0;
 }
 
 uint32_t lunarAscensionOrbs()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
-    return player ? static_cast<uint32_t>(player->getResourceBalance(static_cast<Otc::ResourceTypes_t>(LunarAscensionOrbsResource))) : 0;
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
+    return player ? static_cast<uint32_t>(player->getResourceBalance(static_cast<tibia::client::ResourceTypes_t>(LunarAscensionOrbsResource))) : 0;
 }
 
 /// CIP FUN_100e2e500.
@@ -69,7 +71,7 @@ void requestBalances()
 
 int profession()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player ? player->getVocation() % 10 : 0;
 }
 
@@ -87,18 +89,16 @@ TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController
             &TWeaponProficiencyShapeDialogController::onMessageDialogAccept);
     connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this, [this](const uint typeId) { update(static_cast<uint16_t>(typeId)); });
 
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args& args) {
-        const auto* type = args.size() > 2 ? std::any_cast<Otc::ResourceTypes_t>(&args[2]) : nullptr;
-        if (type && (*type == DustResource || *type == LunarAscensionOrbsResource))
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
+        if (type == static_cast<int>(DustResource) || type == static_cast<int>(LunarAscensionOrbsResource))
             onResourceBalanceChanged();
-        return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_message->dialog()->hide();
         if (dialog()->isShown())
             dialog()->close();
         m_typeId = 0;
-        return std::any{};
     });
 
     input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG, [this](const input::TGameAction& action) {
@@ -274,17 +274,17 @@ void TWeaponProficiencyShapeDialogController::onClearClicked()
 
 void TWeaponProficiencyShapeDialogController::sendSlotAction(const uint8_t type) const
 {
-    g_game.sendWeaponProficiencySlotAction(type, m_typeId, m_level, m_perk);
+    tibia::game::sendWeaponProficiencySlotAction(type, m_typeId, m_level, m_perk);
 }
 
 void TWeaponProficiencyShapeDialogController::onMessageDialogAccept()
 {
     switch (m_pending) {
-    case EConfirm::Refine: sendSlotAction(Otc::WEAPON_PROFICIENCY_REFINE_SLOT); break;
-    case EConfirm::Maximise: sendSlotAction(Otc::WEAPON_PROFICIENCY_MAXIMISE_SLOT); break;
-    case EConfirm::Reshape: sendSlotAction(Otc::WEAPON_PROFICIENCY_RESHAPE_SLOT); break;
+    case EConfirm::Refine: sendSlotAction(tibia::client::WEAPON_PROFICIENCY_REFINE_SLOT); break;
+    case EConfirm::Maximise: sendSlotAction(tibia::client::WEAPON_PROFICIENCY_MAXIMISE_SLOT); break;
+    case EConfirm::Reshape: sendSlotAction(tibia::client::WEAPON_PROFICIENCY_RESHAPE_SLOT); break;
     case EConfirm::Clear:
-        sendSlotAction(Otc::WEAPON_PROFICIENCY_CLEAR_SLOT);
+        sendSlotAction(tibia::client::WEAPON_PROFICIENCY_CLEAR_SLOT);
         closeDialog();
         break;
     }
@@ -320,11 +320,10 @@ TWeaponProficiencyReshapeDialogController::TWeaponProficiencyReshapeDialogContro
         m_message->dialog()->hide();
         dialog()->show();
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_message->dialog()->hide();
         if (dialog()->isShown())
             dialog()->close();
-        return std::any{};
     });
 }
 
@@ -345,7 +344,7 @@ void TWeaponProficiencyReshapeDialogController::rebuildOffers()
 void TWeaponProficiencyReshapeDialogController::pickOffer(const int index) const
 {
     if (const TReshapeOffers* offers = m_storage->reshapeOffers())
-        g_game.sendWeaponProficiencySlotAction(Otc::WEAPON_PROFICIENCY_PICK_OFFER, offers->typeId, offers->level, offers->perk, index);
+        tibia::game::sendWeaponProficiencySlotAction(tibia::client::WEAPON_PROFICIENCY_PICK_OFFER, offers->typeId, offers->level, offers->perk, index);
 }
 
 void TWeaponProficiencyReshapeDialogController::requestCancel()
@@ -470,10 +469,9 @@ TWeaponProficiencyShapeOptionsDialogController::TWeaponProficiencyShapeOptionsDi
     : TDialogController(QStringLiteral("WeaponProficiencyShapeOptionsDialog.qml"), parent)
 {
     m_perkOptionsModel = &m_proxy;
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         if (dialog()->isShown())
             dialog()->close();
-        return std::any{};
     });
     input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG, [this](const input::TGameAction& action) {
         const int profession = action.parameter;

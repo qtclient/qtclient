@@ -12,13 +12,13 @@
 #include "gamewindow/waitdialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 
 #include <QCoreApplication>
 #include <QLoggingCategory>
 #include <QPointer>
 #include <QProcess>
 #include <QTimer>
+#include <tibia/game/gamesession.h>
 
 Q_LOGGING_CATEGORY(lcSessionBootstrap, "tibia.session")
 
@@ -168,7 +168,7 @@ void TSessionBootstrap::bindLoginWait(gamewindow::TGameWindowController* gameWin
     connect(m_client, &client::TGameClient::characterSelectionRequested, this, [this] { m_loginWait->close(); });
     // Ok hides the character list before the game window exists.
     connect(m_client, &client::TGameClient::characterSelectionClosed, this, [this] {
-        if (g_game.isOnline() || g_game.isSwitchingCharacter())
+        if (tibia::game::isOnline() || tibia::game::isSwitchingCharacter())
             return;
         if (m_client->account().session.sessionKey.isEmpty())
             return;

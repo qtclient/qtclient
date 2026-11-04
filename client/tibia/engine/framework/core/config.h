@@ -23,14 +23,14 @@
 #pragma once
 
 #include "declarations.h"
-#include <framework/luaengine/luaobject.h>
+#include <framework/luaengine/gameobject.h>
 
 #include <string>
 #include <unordered_map>
 #include <vector>
 
  // @bindclass
-class Config final : public LuaObject
+class Config final : public GameObject
 {
 public:
     Config();

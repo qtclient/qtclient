@@ -7,8 +7,8 @@
 #include "input/gameactionhandlers.h"
 #include "quickloot/managedcontainerstorage.h"
 
-#include <tibia/world/container.h>
-#include <tibia/world/game.h>
+#include "container/containerciptypes.h"
+
 #include <client/item.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/thingtype.h>
@@ -19,6 +19,10 @@
 
 #include <algorithm>
 #include <set>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -51,7 +55,7 @@ QList<TMessageDialogButton*> yesNoButtons()
 
 ThingType* typeOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type && type->getId() != 0 ? type.get() : nullptr;
 }
 
@@ -187,15 +191,13 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QObje
         syncFallback();
     }
 
-    m_hooks.emplace_back("g_game", "onGameStart", [this](LuaObject*, const std::vector<std::any>&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         syncPremium();
         rebuildListItems();
-        return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const std::vector<std::any>&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         cancelPick();
         dialog()->close();
-        return std::any{};
     });
 
     rebuildListItems();
@@ -240,23 +242,27 @@ bool TManageLootContainerDialogController::handleGameAction(const input::TGameAc
         m_scrollOnShow = true;
         showDialog();
         return true;
-    case A::QUICK_LOOT:
-        if (action.object && action.object->isItem()) {
-            const ItemPtr item = action.object->static_self_cast<Item>();
-            g_game.sendQuickLoot(0, item);
-        }
+    case A::QUICK_LOOT: {
+        const uint16_t typeId = action.objectClientId;
+        if (typeId != 0)
+            tibia::game::sendQuickLootAt(0, action.position, typeId, action.stackPosition);
         return true;
+    }
     case A::QUICK_LOOT_AREA_AT_PLAYER:
-        g_game.sendQuickLoot(2, nullptr);
+        tibia::game::sendQuickLootAt(2, Position(0, 0, 0), 0, 0);
         return true;
-    case A::LOOT_ADD_TO_BLACKWHITELIST:
-        if (m_itemInfo && action.object && action.object->isItem())
-            m_itemInfo->setLootListed(action.object->getId(), true);
+    case A::LOOT_ADD_TO_BLACKWHITELIST: {
+        const uint16_t typeId = action.objectClientId;
+        if (m_itemInfo && typeId != 0)
+            m_itemInfo->setLootListed(typeId, true);
         return true;
-    case A::LOOT_REMOVE_FROM_BLACKWHITELIST:
-        if (m_itemInfo && action.object && action.object->isItem())
-            m_itemInfo->setLootListed(action.object->getId(), false);
+    }
+    case A::LOOT_REMOVE_FROM_BLACKWHITELIST: {
+        const uint16_t typeId = action.objectClientId;
+        if (m_itemInfo && typeId != 0)
+            m_itemInfo->setLootListed(typeId, false);
         return true;
+    }
     case A::LOOT_CONTAINER_FALLBACK:
         if (m_containers)
             m_containers->setUseMainBackpackAsFallback(action.enable);
@@ -437,7 +443,7 @@ void TManageLootContainerDialogController::rebuildListItems()
 
 void TManageLootContainerDialogController::syncPremium()
 {
-    const bool premium = g_game.getLocalPlayer() && g_game.getLocalPlayer()->isPremium();
+    const bool premium = tibia::game::localPlayer() && tibia::game::localPlayer()->isPremium();
     if (m_isPremium == premium)
         return;
     m_isPremium = premium;
@@ -499,21 +505,22 @@ void TManageLootContainerDialogController::finishPick(const input::TGameActionPt
     m_pickCategory = 0;
     if (mode == PickMode::None)
         return;
-    if (target && target->object && target->object->isItem()) {
-        const ItemPtr item = target->object->static_self_cast<Item>();
+    if (target && target->objectClientId) {
+        const uint16_t typeId = target->objectClientId;
+        ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
         if (mode == PickMode::ListItem) {
             if (m_itemInfo)
-                m_itemInfo->setLootListed(item->getId(), true);
-        } else if (item->isContainer()) {
-            sendContainerAction(mode == PickMode::LootContainer ? ActionSelectLoot : ActionSelectObtain, static_cast<uint8_t>(category),
-                                item);
+                m_itemInfo->setLootListed(typeId, true);
+        } else if (type && type->isContainer()) {
+            sendContainerAction(mode == PickMode::LootContainer ? ActionSelectLoot : ActionSelectObtain,
+                                static_cast<uint8_t>(category), typeId, target->position, target->stackPosition);
         } else {
             m_confirm->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
                                                              QKeySequence(QStringLiteral("Return"))) });
             m_confirm->showMessage(qtTrId("managecontainer_invalid_container_caption"), qtTrId("managecontainer_invalid_container_text"));
         }
     }
-    if (g_game.isOnline())
+    if (tibia::game::isOnline())
         dialog()->show();
 }
 
@@ -529,30 +536,33 @@ void TManageLootContainerDialogController::cancelPick()
         cursor->setTargetSelection(false);
 }
 
-void TManageLootContainerDialogController::sendContainerAction(const uint8_t action, const uint8_t category, const ItemPtr& item)
+void TManageLootContainerDialogController::sendContainerAction(const uint8_t action, const uint8_t category, const uint16_t typeId,
+                                                               const Position& position, const int stackPosition)
 {
-    if (!g_game.isOnline())
+    if (!tibia::game::isOnline())
         return;
     // Proto::ClientLootContainer = 144
     qInfo().nospace() << "tibia.loot: ClientLootContainer(144) action=" << int(action) << " category=" << int(category)
-                      << " itemId=" << (item ? int(item->getId()) : 0);
-    g_game.sendContainerAction(action, category);
-    if (item)
-        g_game.openContainerQuickLoot(action, category, item->getPosition(), item->getId(), item->getStackPos(), false);
+                      << " itemId=" << int(typeId);
+    tibia::game::sendContainerAction(action, category);
+    if (typeId)
+        tibia::game::openContainerQuickLoot(action, category, position, typeId, std::max(0, stackPosition), false);
     else
-        g_game.openContainerQuickLoot(action, category, {}, 0, 0, false);
+        tibia::game::openContainerQuickLoot(action, category, {}, 0, 0, false);
 }
 
 void TManageLootContainerDialogController::openAssignedContainer(const uint8_t category, const uint16_t typeId, const uint8_t action)
 {
-    if (!isSet(typeId) || !g_game.isOnline())
+    if (!isSet(typeId) || !tibia::game::isOnline())
         return;
-    for (const auto& entry : g_game.getContainers()) {
-        const ContainerPtr& container = entry.second;
-        if (container && container->getContainerItem() && container->getContainerItem()->getId() == typeId)
-            return;
+    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+        for (const container::TContainerID id : storage->openIds()) {
+            if (const container::TStoredContainer* row = storage->containerAt(id);
+                row && row->containerItem.typeId == typeId)
+                return;
+        }
     }
-    g_game.openContainerQuickLoot(action, category, {}, 0, 0, false);
+    tibia::game::openContainerQuickLoot(action, category, {}, 0, 0, false);
 }
 
 }

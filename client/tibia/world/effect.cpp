@@ -31,7 +31,9 @@
 #include "map.h"
 #include "tibia/assets/thingtype.h"
 #include "tibia/assets/things.h"
-#include "framework/core/eventdispatcher.h"
+#include <tibia/schedule/schedule.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 bool Effect::getDrawFrame(int& animationPhase, int& xPattern, int& yPattern)
 {
@@ -44,7 +46,7 @@ bool Effect::getDrawFrame(int& animationPhase, int& xPattern, int& yPattern)
 
     animationPhase = 0;
     if (canAnimate()) {
-        if (g_game.getFeature(Otc::GameEnhancedAnimations)) {
+        if (g_game.getFeature(tibia::client::GameEnhancedAnimations)) {
             const tibia::animation::TAnimator cipAnimator(getThingType()->getIdleAnimator());
             if (!cipAnimator.animator())
                 return false;
@@ -71,7 +73,7 @@ bool Effect::getDrawFrame(int& animationPhase, int& xPattern, int& yPattern)
 
     yPattern = static_cast<unsigned>(offsetY) % getNumPatternY();
 
-    if (g_game.getFeature(Otc::GameMapOldEffectRendering)) {
+    if (g_game.getFeature(tibia::client::GameMapOldEffectRendering)) {
         xPattern = offsetX % getNumPatternX();
         if (xPattern < 0)
             xPattern += getNumPatternX();
@@ -93,7 +95,7 @@ void Effect::draw(const Point& dest, const bool drawThings, LightSink* lightView
 
 void Effect::onAppear()
 {
-    if (g_game.getFeature(Otc::GameEnhancedAnimations)) {
+    if (g_game.getFeature(tibia::client::GameEnhancedAnimations)) {
         const auto* animator = getThingType()->getIdleAnimator();
         if (!animator)
             return;
@@ -139,7 +141,7 @@ bool Effect::waitFor(const EffectPtr& effect)
 
 void Effect::setId(const uint32_t id)
 {
-    if (!g_things.isValidDatId(id, ThingCategoryEffect))
+    if (!tibia::game::isValidDatId(id, ThingCategoryEffect))
         return;
 
     m_clientId = id;
@@ -163,5 +165,5 @@ void Effect::setPosition(const Position& position, const uint8_t stackPos)
 }
 
 ThingType* Effect::getThingType() const {
-    return g_things.getRawThingType(m_clientId, ThingCategoryEffect);
+    return tibia::game::rawThingType(m_clientId, ThingCategoryEffect);
 }

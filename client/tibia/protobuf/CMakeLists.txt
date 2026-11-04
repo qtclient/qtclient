@@ -23,11 +23,15 @@ set(_qtclient_proto_target cip_messages)
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
 set(CIP_PROTO_DIR "${CMAKE_SOURCE_DIR}/client/upstream/proto")
+# Tip-owned CIP protocol load-split scaffold (Phase 6.0-A). Not under upstream/
+# (vendored); regenerate with tools/re/gen_protocol_proto.py.
+set(TIP_PROTOCOL_PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(ProtoFiles
 	"${CIP_PROTO_DIR}/appearances.proto"
 	"${CIP_PROTO_DIR}/shared.proto"
 	"${CIP_PROTO_DIR}/sounds.proto"
 	"${CIP_PROTO_DIR}/sounds-common.proto"
+	"${TIP_PROTOCOL_PROTO_DIR}/protocol.proto"
 )
 
 if (MSVC)
@@ -83,6 +87,6 @@ endif()
 protobuf_generate(
 	TARGET ${_qtclient_proto_target}
 	LANGUAGE cpp
-	IMPORT_DIRS ${CIP_PROTO_DIR}
+	IMPORT_DIRS ${CIP_PROTO_DIR} ${TIP_PROTOCOL_PROTO_DIR}
 	DEPENDENCIES ${PROTOBUF_GENERATE_DEPENDENCIES}
 )

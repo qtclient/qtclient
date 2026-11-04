@@ -23,7 +23,7 @@
 #pragma once
 
 // Definitions of GameEvents::callGlobalField, kept out of gameevents.h because
-// they need the Lua interface, which itself depends on luaobject.h.
+// they need the Lua interface, which itself depends on gameobject.h.
 
 #include "gameevents.h"
 
@@ -36,7 +36,8 @@ namespace tibia::gameevents_detail {
 
 inline void warnOrphanOnce(const std::string_view global, const std::string_view field)
 {
-    if (global != "g_game")
+    // CIP notify bus only.
+    if (global != "cip")
         return;
     static std::mutex mu;
     static std::unordered_set<std::string> warned;
@@ -44,7 +45,7 @@ inline void warnOrphanOnce(const std::string_view global, const std::string_view
     std::lock_guard lock(mu);
     if (!warned.insert(key).second)
         return;
-    g_logger.warning("[g_game] orphan publish '{}' (no subscribers this session)", key);
+    g_logger.warning("[cip] orphan publish '{}' (no subscribers this session)", key);
 }
 
 } // namespace tibia::gameevents_detail

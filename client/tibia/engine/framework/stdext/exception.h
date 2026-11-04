@@ -27,9 +27,9 @@
 #include <string>
 #include <string_view>
 #include <utility>
-
-#include <fmt/format.h>
 #endif
+
+#include "format.h"
 
 namespace stdext
 {
@@ -41,7 +41,8 @@ namespace stdext
         exception(const std::string_view what) : m_what(std::string(what)) {}
 
         template<typename... Args>
-        exception(fmt::format_string<Args...> fmtStr, Args&&... args) : m_what(fmt::format(fmtStr, std::forward<Args>(args)...)) {}
+        exception(std::format_string<Args...> fmtStr, Args&&... args)
+            : m_what(std::format(fmtStr, std::forward<Args>(args)...)) {}
 
         ~exception() noexcept override = default;
         const char* what() const noexcept override { return m_what.data(); }

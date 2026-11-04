@@ -1,32 +1,76 @@
-/*
- * Copyright (c) 2024-2026 qtclient contributors
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
-
-#include <BS_thread_pool.hpp>
+#include <functional>
+#include <future>
 #include <memory>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
-using AsyncDispatcher = decltype(BS::thread_pool{ std::size_t{} });
+#include <QThreadPool>
+
+/// CIP async work queue — Qt `QThreadPool` (replaces BS::thread_pool).
+class AsyncDispatcher
+{
+public:
+    explicit AsyncDispatcher(int threadCount)
+    {
+        m_pool.setMaxThreadCount(std::max(1, threadCount));
+    }
+
+    template<typename F>
+    auto submit_task(F&& fn) -> std::future<std::invoke_result_t<std::decay_t<F>>>
+    {
+        using R = std::invoke_result_t<std::decay_t<F>>;
+        auto promise = std::make_shared<std::promise<R>>();
+        auto future = promise->get_future();
+        m_pool.start([promise, task = std::function<R()>(std::forward<F>(fn))]() mutable {
+            try {
+                if constexpr (std::is_void_v<R>) {
+                    task();
+                    promise->set_value();
+                } else {
+                    promise->set_value(task());
+                }
+            } catch (...) {
+                promise->set_exception(std::current_exception());
+            }
+        });
+        return future;
+    }
+
+    template<typename F>
+    void detach_task(F&& fn)
+    {
+        m_pool.start(std::function<void()>(std::forward<F>(fn)));
+    }
+
+    [[nodiscard]] size_t get_thread_count() const
+    {
+        return static_cast<size_t>(std::max(1, m_pool.maxThreadCount()));
+    }
+
+private:
+    QThreadPool m_pool;
+};
+
+/// Collects `submit_task` futures and waits (BS::multi_future stand-in).
+template<typename T = void>
+class AsyncMultiFuture
+{
+public:
+    void emplace_back(std::future<T> future) { m_futures.push_back(std::move(future)); }
+    void wait()
+    {
+        for (auto& future : m_futures)
+            future.wait();
+    }
+    void clear() { m_futures.clear(); }
+
+private:
+    std::vector<std::future<T>> m_futures;
+};
 
 extern std::unique_ptr<AsyncDispatcher> g_asyncDispatcher;

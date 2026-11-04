@@ -21,15 +21,16 @@
  */
 
 #pragma once
+#include "appearances/appearanceinstance.h"
 #include "client/declarations.h"
 #include "client/staticdata.h"
 #include "framework/core/inputevent.h"
-#include "framework/ui/declarations.h"
 
 #include <atomic>
 #include <functional>
 #include <memory>
 #include <unordered_set>
+#include <vector>
 
 namespace tibia::minimap {
 class TWaypointCosts;
@@ -40,23 +41,24 @@ class TileBlock
 public:
     TileBlock() { m_tiles.fill(nullptr); }
 
-    const TilePtr& create(const Position& pos);
-    const TilePtr& getOrCreate(const Position& pos);
-    const TilePtr& get(const Position& pos) { return m_tiles[getTileIndex(pos)]; }
+    tibia::worldmap::TWorldMapField* create(const Position& pos);
+    tibia::worldmap::TWorldMapField* getOrCreate(const Position& pos);
+    tibia::worldmap::TWorldMapField* get(const Position& pos) { return m_tiles[getTileIndex(pos)]; }
+    void assign(const Position& pos, tibia::worldmap::TWorldMapField* field) { m_tiles[getTileIndex(pos)] = field; }
     void remove(const Position& pos) { m_tiles[getTileIndex(pos)] = nullptr; }
 
     uint32_t getTileIndex(const Position& pos) { return ((pos.y % BLOCK_SIZE) * BLOCK_SIZE) + (pos.x % BLOCK_SIZE); }
 
-    const std::array<TilePtr, BLOCK_SIZE* BLOCK_SIZE>& getTiles() const { return m_tiles; }
+    const std::array<tibia::worldmap::TWorldMapField*, BLOCK_SIZE* BLOCK_SIZE>& getTiles() const { return m_tiles; }
 
 private:
-    std::array<TilePtr, BLOCK_SIZE* BLOCK_SIZE> m_tiles;
+    std::array<tibia::worldmap::TWorldMapField*, BLOCK_SIZE* BLOCK_SIZE> m_tiles;
 };
 
 struct PathFindResult
 {
-    Otc::PathFindResult status = Otc::PathFindResultNoWay;
-    std::vector<Otc::Direction> path;
+    tibia::client::PathFindResult status = tibia::client::PathFindResultNoWay;
+    std::vector<tibia::client::Direction> path;
     int complexity = 0;
     Position start;
     Position destination;
@@ -96,10 +98,14 @@ public:
     void init();
     void terminate();
 
-    void notificateTileUpdate(const Position& pos, const ThingPtr& thing, Otc::Operation operation);
-    void notificateWindowChanged(bool fullDescription) const { if (m_observer) m_observer->onWindowChanged(fullDescription); }
+    void notificateTileUpdate(const Position& pos, const ThingPtr& thing, tibia::client::Operation operation);
+    void notificateWindowChanged(bool fullDescription) const;
     void notificateCameraMove(const Point& offset) const;
-    void setObserver(MapObserver* observer) { m_observer = observer; }
+    /// CIP TWorldmapProtocolMessageHandler + minimap feed both listen.
+    void addObserver(MapObserver* observer);
+    void removeObserver(MapObserver* observer);
+    /// Legacy single-slot: clears the list then adds `observer` (or clears if null).
+    void setObserver(MapObserver* observer);
     /// Diagnostic counter: opaque add/remove / field clean. Cover *caches* are
     /// cleared per-cell via invalidateCoverCachesFrom — not by this revision.
     uint32_t getCoverRevision() const { return m_coverRevision.load(std::memory_order_relaxed); }
@@ -118,41 +124,6 @@ public:
     size_t clearStaticDirtyTiles();
     void notificateKeyRelease(const InputEvent& inputEvent) const;
 
-#ifdef FRAMEWORK_EDITOR
-    bool loadOtcm(const std::string& fileName);
-    void saveOtcm(const std::string& fileName);
-
-    void loadOtbm(const std::string& fileName);
-    void saveOtbm(const std::string& fileName);
-
-    // otbm attributes (description, size, etc.)
-    void setHouseFile(const std::string& file) { m_houseFile = file; }
-    void setSpawnFile(const std::string& file) { m_spawnFile = file; }
-    void setDescription(const std::string& desc) { m_desc = desc; }
-
-    void clearDescriptions() { m_desc.clear(); }
-    std::vector<std::string> getDescriptions() { return stdext::split(m_desc, "\n"); }
-    std::string getHouseFile() { return m_houseFile; }
-    std::string getSpawnFile() { return m_spawnFile; }
-
-    // tile zone related
-    void setShowZone(tileflags_t zone, bool show);
-    void setShowZones(bool show);
-    void setZoneColor(tileflags_t zone, const Color& color);
-    void setZoneOpacity(float opacity) { m_zoneOpacity = opacity; }
-
-    float getZoneOpacity() { return m_zoneOpacity; }
-    Color getZoneColor(tileflags_t flag);
-    tileflags_t getZoneFlags() { return static_cast<tileflags_t>(m_zoneFlags); }
-    bool showZones() { return m_zoneFlags != 0; }
-    bool showZone(tileflags_t zone) { return (m_zoneFlags & zone) == zone; }
-
-    void setForceShowAnimations(bool force);
-    bool isShowingAnimations() { return (m_animationFlags & Animation_Show) == Animation_Show; }
-    bool isForcingAnimations() { return (m_animationFlags & Animation_Force) == Animation_Force; }
-
-    void setShowAnimations(bool show);
-#endif
 
     void setWidth(const uint16_t w) { m_width = w; }
     void setHeight(const uint16_t h) { m_height = h; }
@@ -165,6 +136,9 @@ public:
     // thing related
     ThingPtr getThing(const Position& pos, int16_t stackPos);
     void addThing(const ThingPtr& thing, const Position& pos, int16_t stackPos = -1);
+    /// Place a protocol-decoded item appearance (no ephemeral Item).
+    bool placeAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& pos,
+                         int16_t stackPos = -1);
     bool removeThing(const ThingPtr& thing);
     bool removeThingByPos(const Position& pos, int16_t stackPos);
 
@@ -174,33 +148,55 @@ public:
     void addAnimatedText(const AnimatedTextPtr& txt, const Position& pos);
     bool removeAnimatedText(const AnimatedTextPtr& txt);
 
-    bool isWidgetAttached(const UIWidgetPtr& widget) const;
-    void addAttachedWidgetToObject(const UIWidgetPtr& widget, const AttachableObjectPtr& object);
-    bool removeAttachedWidgetFromObject(const UIWidgetPtr& widget);
-
-    void colorizeThing(const ThingPtr& thing, const Color& color);
-    void removeThingColor(const ThingPtr& thing);
-
     StaticTextPtr getStaticText(const Position& pos) const;
 
-    // tile related
-    const TilePtr& createTile(const Position& pos);
+    // field / tile related
+    tibia::worldmap::TWorldMapField* createTile(const Position& pos);
     template <typename... Items>
-    const TilePtr& createTileEx(const Position& pos, const Items&... items);
-    const TilePtr& getOrCreateTile(const Position& pos);
-    const TilePtr& getTile(const Position& pos);
-    TileList getTiles(int8_t floor = -1);
+    tibia::worldmap::TWorldMapField* createTileEx(const Position& pos, const Items&... items);
+    tibia::worldmap::TWorldMapField* getOrCreateTile(const Position& pos);
+    tibia::worldmap::TWorldMapField* getTile(const Position& pos);
+    /// CipSoft naming — same as getTile / getOrCreateTile.
+    tibia::worldmap::TWorldMapField* fieldAt(const Position& pos) { return getTile(pos); }
+    tibia::worldmap::TWorldMapField* getOrCreateField(const Position& pos) { return getOrCreateTile(pos); }
+    WorldMapFieldList getTiles(int8_t floor = -1);
+    void setFieldInBlock(const Position& pos, tibia::worldmap::TWorldMapField* field);
     void cleanTile(const Position& pos);
 
     void beginGhostMode(float opacity);
     void endGhostMode();
 
-    stdext::map<Position, ItemPtr, Position::Hasher> findItemsById(uint16_t clientId, uint32_t max);
-    std::vector<ItemPtr> findItemsInRange(const Position& center, int rangeX, int rangeY, const std::vector<uint16_t>& clientIds);
+    /// CIP-shaped map item scan hit (appearance/typeId + stack index — no ItemPtr).
+    struct TItemHit
+    {
+        Position pos;
+        uint16_t typeId = 0;
+        int stackPos = -1;
+    };
 
+    stdext::map<Position, uint16_t, Position::Hasher> findItemsById(uint16_t clientId, uint32_t max);
+    std::vector<TItemHit> findItemsInRange(const Position& center, int rangeX, int rangeY,
+                                           const std::vector<uint16_t>& clientIds);
+
+    /// Session LocalPlayer only — no Map creature registry (Phase 5.0-B).
     CreaturePtr getCreatureById(uint32_t id);
-    void addCreature(const CreaturePtr& creature);
-    void removeCreatureById(uint32_t id);
+
+    /// Field ops by creature id. Prefer `fieldPos` (CIP Move/Change/DeleteOnMap
+    /// coordinate) — storage position alone desyncs and leaves outfit trails.
+    bool removeCreatureFromFields(uint32_t creatureId, const Position& fieldPos = {});
+    bool placeCreatureId(uint32_t creatureId, const Position& pos, int16_t stackPos = -1);
+
+    /// Shared MoveCreature apply (classic parseCreatureMove + native H).
+    /// `byId` true when wire used 0xffff+creature_id (no from/stack scrub first).
+    /// Returns false when creatureId unresolved or remove failed for pos+stack form.
+    bool applyCreatureMove(uint32_t creatureId, const Position& oldPos, int oldStack,
+                           const Position& newPos, bool byId);
+
+    /// Shared MoveCreature apply (classic `parseCreatureMove` + native H peel).
+    /// `oldPos`/`oldStack` are wire source (invalid when mapped-thing is by-id);
+    /// `byId` is the creature id when the mapped-thing header used 0xffff+id.
+    void applyCreatureMove(uint32_t creatureId, const Position& oldPos, int oldStack, uint32_t byId,
+                           const Position& newPos);
 
     std::vector<CreaturePtr> getSpectators(const Position& centerPos, const bool multiFloor)
     {
@@ -251,28 +247,40 @@ public:
     Position getCentralPosition() { return m_centralPosition; }
     uint8_t getFirstAwareFloor() const;
     uint8_t getLastAwareFloor() const;
-    const std::vector<MissilePtr>& getFloorMissiles(const uint8_t z) { return m_floors[z].missiles; }
+    const std::vector<tibia::appearances::TAppearanceInstancePtr>& getFloorMissiles(const uint8_t z)
+    {
+        return m_floors[z].missileAppearances;
+    }
+    void addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
+    bool removeMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
+    /// Protocol magic effect → field `m_effectAppearances` (no Effect Thing).
+    void addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& pos);
 
     std::vector<AnimatedTextPtr> getAnimatedTexts() { return m_animatedTexts; }
     std::vector<StaticTextPtr> getStaticTexts() { return m_staticTexts; }
 
-    std::tuple<std::vector<Otc::Direction>, Otc::PathFindResult> findPath(const Position& start, const Position& goal,
+    std::tuple<std::vector<tibia::client::Direction>, tibia::client::PathFindResult> findPath(const Position& start, const Position& goal,
                                                                           int maxComplexity, int flags = 0);
-    /// `pathMode`: Minimap (strict Soft), Cyclopedia (Soft 0xfe fog), Travel (fog + soft blockers).
+    /// `pathMode`: Minimap (strict qtclient), Cyclopedia (qtclient 0xfe fog), Travel (fog + soft blockers).
     PathFindResult_ptr newFindPath(const Position& start, const Position& goal,
                                    const std::shared_ptr<std::list<Node*>>& visibleNodes,
                                    const std::shared_ptr<tibia::minimap::TWaypointCosts>& softCosts = nullptr,
-                                   Otc::AutoWalkPathMode pathMode = Otc::AutoWalkPathMinimap);
+                                   tibia::client::AutoWalkPathMode pathMode = tibia::client::AutoWalkPathMinimap,
+                                   int maxComplexity = 50000);
     void findPathAsync(const Position& start, const Position& goal,
                        const std::function<void(PathFindResult_ptr)>& callback,
-                       Otc::AutoWalkPathMode pathMode = Otc::AutoWalkPathMinimap);
+                       tibia::client::AutoWalkPathMode pathMode = tibia::client::AutoWalkPathMinimap);
+    /// Sync Travel-mode qtclient probe (same Indexed8 costs as findPathAsync). Used by
+    /// TravelRouter to skip path-unreachable hubs before arming autoWalk.
+    /// ``maxComplexity`` caps A* expansion so path-probe cannot freeze the GUI thread.
+    bool canTravelPath(const Position& start, const Position& goal, int maxComplexity = 8000);
 
-    /// Soft pathfinder avoid set (CIP minimap avoid): skipped by newFindPath.
+    /// pathfinder avoid set (CIP minimap avoid): skipped by newFindPath.
     void setPathAvoid(const Position& pos, bool avoid);
     void clearPathAvoids();
     bool isPathAvoided(const Position& pos) const;
 
-    /// Soft Indexed8 waypoint snapshot factory (CIP TWaypointCostMap). Set from
+    /// Indexed8 waypoint snapshot factory (CIP TWaypointCostMap). Set from
     /// TGameClient while the CipSoft minimap is live; cleared on world leave.
     using WaypointCostFactory = std::function<std::shared_ptr<tibia::minimap::TWaypointCosts>()>;
     void setWaypointCostFactory(WaypointCostFactory factory);
@@ -282,17 +290,15 @@ public:
     bool isDrawingFloatingEffects() { return m_floatingEffect; }
 
     std::map<std::string, std::tuple<int, int, int, std::string>> findEveryPath(const Position& start, int maxDistance, const std::map<std::string, std::string>& params);
-    std::vector<CreaturePtr> getSpectatorsByPattern(const Position& centerPos, const std::string& pattern, Otc::Direction direction);
+    std::vector<CreaturePtr> getSpectatorsByPattern(const Position& centerPos, const std::string& pattern, tibia::client::Direction direction);
 
     int getMinimapColor(const Position& pos);
     bool isSightClear(const Position& fromPos, const Position& toPos);
 
-    const auto& getCreatures() const { return m_knownCreatures; }
-
 private:
     struct FloorData
     {
-        std::vector<MissilePtr> missiles;
+        std::vector<tibia::appearances::TAppearanceInstancePtr> missileAppearances;
         std::unordered_map<uint32_t, TileBlock > tileBlocks;
     };
 
@@ -307,23 +313,6 @@ private:
     std::vector<AnimatedTextPtr> m_animatedTexts;
     std::vector<StaticTextPtr> m_staticTexts;
 
-    std::unordered_map<uint32_t, CreaturePtr> m_knownCreatures;
-
-    std::unordered_map<UIWidgetPtr, AttachableObjectPtr> m_attachedObjectWidgetMap;
-
-#ifdef FRAMEWORK_EDITOR
-    std::unordered_map<Position, std::string, Position::Hasher> m_waypoints;
-    std::unordered_map<uint32_t, Color> m_zoneColors;
-
-    std::string m_houseFile;
-    std::string m_spawnFile;
-    std::string m_desc;
-
-    uint8_t m_animationFlags{ 0 };
-    uint32_t m_zoneFlags{ 0 };
-
-    float m_zoneOpacity{ 1.f };
-#endif
 
     uint16_t m_width{ 0 };
     uint16_t m_height{ 0 };
@@ -333,7 +322,7 @@ private:
 
     AwareRange m_awareRange;
 
-    MapObserver* m_observer{ nullptr };
+    std::vector<MapObserver*> m_observers;
     bool m_removingUnawareThings{ false };
     std::atomic<uint32_t> m_coverRevision{ 0 };
     std::atomic<uint32_t> m_itemRevision{ 0 };
@@ -349,7 +338,7 @@ private:
 
     bool m_floatingEffect{ true };
 
-    /// Soft avoid tiles for newFindPath (CIP waypoint/avoid pathfinder subset).
+    /// pathfinder avoid tiles for newFindPath (CIP waypoint/avoid pathfinder subset).
     std::unordered_set<Position, Position::Hasher> m_pathAvoids;
     WaypointCostFactory m_waypointCostFactory;
 };

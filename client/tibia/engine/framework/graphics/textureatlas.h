@@ -27,6 +27,8 @@
 #include "render/atlasprogram.h"
 #include "render/renderhandles.h"
 
+#include <unordered_map>
+
 class AtlasRegion
 {
 public:
@@ -199,10 +201,10 @@ private:
         std::vector<Layer> layers;
         std::set<FreeRegion> freeRegions;
         std::map<int, std::set<FreeRegion>> freeRegionsBySize;
-        phmap::flat_hash_map<std::pair<int, int>, std::vector<std::unique_ptr<AtlasRegion>>, PairHash> inactiveTextures;
+        std::unordered_map<std::pair<int, int>, std::vector<std::unique_ptr<AtlasRegion>>, PairHash> inactiveTextures;
     } m_filterGroups[AtlasFilter::ATLAS_FILTER_COUNT];
 
-    phmap::flat_hash_map<uint32_t, std::unique_ptr<AtlasRegion>> m_texturesCached;
+    std::unordered_map<uint32_t, std::unique_ptr<AtlasRegion>> m_texturesCached;
 
     AtlasProgram m_program;
 };

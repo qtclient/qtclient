@@ -28,6 +28,7 @@
 #include <framework/util/point.h>
 
 #include <array>
+#include <format>
 #include <vector>
 
 class Position
@@ -37,35 +38,35 @@ public:
     Position(const int32_t x, const int32_t y, const uint8_t z) : x(x), y(y), z(z) {}
     Position(const Position& position) = default;
 
-    Position translatedToDirection(const Otc::Direction direction) const
+    Position translatedToDirection(const tibia::client::Direction direction) const
     {
         Position pos = *this;
         switch (direction) {
-            case Otc::North:
+            case tibia::client::North:
                 --pos.y;
                 break;
-            case Otc::East:
+            case tibia::client::East:
                 ++pos.x;
                 break;
-            case Otc::South:
+            case tibia::client::South:
                 ++pos.y;
                 break;
-            case Otc::West:
+            case tibia::client::West:
                 --pos.x;
                 break;
-            case Otc::NorthEast:
+            case tibia::client::NorthEast:
                 ++pos.x;
                 --pos.y;
                 break;
-            case Otc::SouthEast:
+            case tibia::client::SouthEast:
                 ++pos.x;
                 ++pos.y;
                 break;
-            case Otc::SouthWest:
+            case tibia::client::SouthWest:
                 --pos.x;
                 ++pos.y;
                 break;
-            case Otc::NorthWest:
+            case tibia::client::NorthWest:
                 --pos.x;
                 --pos.y;
                 break;
@@ -75,35 +76,35 @@ public:
         return pos;
     }
 
-    Position translatedToReverseDirection(const Otc::Direction direction)  const
+    Position translatedToReverseDirection(const tibia::client::Direction direction)  const
     {
         Position pos = *this;
         switch (direction) {
-            case Otc::North:
+            case tibia::client::North:
                 ++pos.y;
                 break;
-            case Otc::East:
+            case tibia::client::East:
                 --pos.x;
                 break;
-            case Otc::South:
+            case tibia::client::South:
                 --pos.y;
                 break;
-            case Otc::West:
+            case tibia::client::West:
                 ++pos.x;
                 break;
-            case Otc::NorthEast:
+            case tibia::client::NorthEast:
                 --pos.x;
                 ++pos.y;
                 break;
-            case Otc::SouthEast:
+            case tibia::client::SouthEast:
                 --pos.x;
                 --pos.y;
                 break;
-            case Otc::SouthWest:
+            case tibia::client::SouthWest:
                 ++pos.x;
                 --pos.y;
                 break;
-            case Otc::NorthWest:
+            case tibia::client::NorthWest:
                 ++pos.x;
                 ++pos.y;
                 break;
@@ -113,7 +114,7 @@ public:
         return pos;
     }
 
-    std::vector<Position> translatedToDirections(const std::vector<Otc::Direction>& dirs) const
+    std::vector<Position> translatedToDirections(const std::vector<tibia::client::Direction>& dirs) const
     {
         Position lastPos = *this;
         std::vector<Position> positions;
@@ -133,7 +134,7 @@ public:
         return positions;
     }
 
-    static bool isDiagonal(const Otc::Direction dir) { return dir == Otc::NorthWest || dir == Otc::NorthEast || dir == Otc::SouthWest || dir == Otc::SouthEast; };
+    static bool isDiagonal(const tibia::client::Direction dir) { return dir == tibia::client::NorthWest || dir == tibia::client::NorthEast || dir == tibia::client::SouthWest || dir == tibia::client::SouthEast; };
 
     static double getAngleFromPositions(const Position& fromPos, const Position& toPos)
     {
@@ -152,38 +153,38 @@ public:
 
     double getAngleFromPosition(const Position& position) const { return getAngleFromPositions(*this, position); }
 
-    static Otc::Direction getDirectionFromPositions(const Position& fromPos, const Position& toPos)
+    static tibia::client::Direction getDirectionFromPositions(const Position& fromPos, const Position& toPos)
     {
         const double angle = getAngleFromPositions(fromPos, toPos) * RAD_TO_DEC;
 
         if (angle >= 360 - 22.5 || angle < 0 + 22.5)
-            return Otc::East;
+            return tibia::client::East;
 
         if (angle >= 45 - 22.5 && angle < 45 + 22.5)
-            return Otc::NorthEast;
+            return tibia::client::NorthEast;
 
         if (angle >= 90 - 22.5 && angle < 90 + 22.5)
-            return Otc::North;
+            return tibia::client::North;
 
         if (angle >= 135 - 22.5 && angle < 135 + 22.5)
-            return Otc::NorthWest;
+            return tibia::client::NorthWest;
 
         if (angle >= 180 - 22.5 && angle < 180 + 22.5)
-            return Otc::West;
+            return tibia::client::West;
 
         if (angle >= 225 - 22.5 && angle < 225 + 22.5)
-            return Otc::SouthWest;
+            return tibia::client::SouthWest;
 
         if (angle >= 270 - 22.5 && angle < 270 + 22.5)
-            return Otc::South;
+            return tibia::client::South;
 
         if (angle >= 315 - 22.5 && angle < 315 + 22.5)
-            return Otc::SouthEast;
+            return tibia::client::SouthEast;
 
-        return Otc::InvalidDirection;
+        return tibia::client::InvalidDirection;
     }
 
-    Otc::Direction getDirectionFromPosition(const Position& position) const { return getDirectionFromPositions(*this, position); }
+    tibia::client::Direction getDirectionFromPosition(const Position& position) const { return getDirectionFromPositions(*this, position); }
 
     bool isMapPosition() const;
     bool isValid() const { return !(x == UINT16_MAX && y == UINT16_MAX && z == UINT8_MAX); }
@@ -291,9 +292,9 @@ inline std::istream& operator>>(std::istream& in, Position& pos)
 
 // Auto format Position
 template <>
-struct fmt::formatter<Position> : fmt::formatter<std::string>
+struct std::formatter<Position> : std::formatter<std::string>
 {
-    auto format(const Position& pos, fmt::format_context& ctx) const {
-        return fmt::formatter<std::string>::format(pos.toString(), ctx);
+    auto format(const Position& pos, std::format_context& ctx) const {
+        return std::formatter<std::string>::format(pos.toString(), ctx);
     }
 };

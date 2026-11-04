@@ -6,9 +6,9 @@
 #include "renderer/worldmaprenderprovider.h"
 #include "worldmap/nextframetimestamppredictor.h"
 
-#include <tibia/world/game.h>
 
 #include <QQuickWindow>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -141,7 +141,7 @@ void TFPSLatencyIndicatorController::tick()
 
 void TFPSLatencyIndicatorController::syncLatency()
 {
-    const int ping = g_game.isOnline() ? g_game.getPing() : -1;
+    const int ping = tibia::game::isOnline() ? tibia::game::getPing() : -1;
     if (ping != m_currentLatency) {
         m_currentLatency = ping;
         Q_EMIT currentLatencyChanged();

@@ -63,7 +63,7 @@ Q_SIGNALS:
     void requestShowResultDialog(const QString& message);
 
 private:
-    void refresh(EMode mode, uint16_t typeId, uint8_t tier, std::vector<TImbuementSlot> slots, std::vector<Imbuement> imbuements, const std::vector<ItemPtr>* owned);
+    void refresh(EMode mode, uint16_t typeId, uint8_t tier, std::vector<TImbuementSlot> slots, std::vector<Imbuement> imbuements, const std::vector<std::pair<uint16_t, uint16_t>>* owned);
 
     EMode m_mode = MODE_NONE;
     bool m_scrollAvailable = false;

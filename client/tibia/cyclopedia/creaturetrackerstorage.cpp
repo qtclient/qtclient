@@ -5,6 +5,9 @@
 #include <tibia/assets/things.h>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::cyclopedia {
 
@@ -17,7 +20,7 @@ QString raceDisplayName(const int raceId, const bool boss)
 {
     if (boss)
         return bossName(raceId);
-    QString name = QString::fromStdString(g_things.getRaceData(static_cast<uint32_t>(raceId)).name);
+    QString name = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name);
     if (!name.isEmpty())
         name[0] = name[0].toUpper();
     return name;
@@ -46,7 +49,7 @@ std::vector<TCreatureTrackerEntry> fromPacket(const std::vector<PacketEntry>& pa
 TCreatureTrackerStorage::TCreatureTrackerStorage(QObject* parent)
     : cip::tibia::cyclopedia::TCreatureTrackerStorage(parent)
 {
-    m_hooks.emplace_back("g_game", "onParseCyclopediaTracker", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaTracker", [this](GameObject*, const Args& args) {
         const int trackerType = client::gamecore::argInt(args, 0);
         const auto* packet = args.size() > 1 ? std::any_cast<std::vector<PacketEntry>>(&args[1]) : nullptr;
         if (!packet)
@@ -54,7 +57,7 @@ TCreatureTrackerStorage::TCreatureTrackerStorage(QObject* parent)
         applyTracker(trackerType, fromPacket(*packet, trackerType == 1));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         if (!m_monsters.empty()) {
             m_monsters.clear();
             Q_EMIT trackedMonstersChanged();
@@ -65,7 +68,6 @@ TCreatureTrackerStorage::TCreatureTrackerStorage(QObject* parent)
             Q_EMIT trackedBossesChanged();
             Q_EMIT canTrackMoreBossesChanged();
         }
-        return std::any{};
     });
 }
 

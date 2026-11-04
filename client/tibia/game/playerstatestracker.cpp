@@ -2,8 +2,10 @@
 
 #include "app/clientoptions.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::game {
 
@@ -21,14 +23,13 @@ TPlayerStatesTracker::TPlayerStatesTracker(const config::SpecialConditionsFilter
     , m_filter(filter)
     , m_options(config::SpecialConditionsOptions::load())
 {
-    const auto onPlayer = [this](LuaObject* self, const Args&) {
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && self == player.get())
-            refresh();
+    const auto onPlayer = [this](GameObject*, const Args&) {
+        refresh();
         return std::any{};
     };
     for (const char* event : { "onStatesChange", "onRegenerationChange", "onSkullChange", "onEmblemChange" })
-        m_hooks.emplace_back("object", event, onPlayer);
-    m_hooks.emplace_back("g_game", "onRestingAreaState", [this](LuaObject*, const Args& args) {
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRestingAreaState", [this](GameObject*, const Args& args) {
         const bool inRestingArea = client::gamecore::argBool(args, 0);
         const bool hasBonus = client::gamecore::argBool(args, 1);
         const QString text = client::gamecore::argString(args, 2);
@@ -41,11 +42,10 @@ TPlayerStatesTracker::TPlayerStatesTracker(const config::SpecialConditionsFilter
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_inRestingArea = m_restingAreaBonus = false;
         m_restingAreaText.clear();
         m_model.setEntries({});
-        return std::any{};
     });
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name != QLatin1String("specialConditionsOptions"))
@@ -64,7 +64,7 @@ void TPlayerStatesTracker::reloadOptions()
 
 void TPlayerStatesTracker::refresh()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player) {
         m_model.setEntries({});
         return;

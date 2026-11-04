@@ -23,13 +23,11 @@
 #pragma once
 
 // One OpenGL header path per platform family:
-//   ES/wasm  → GLES3
-//   macOS/Linux desktop → vendored glad (GL 3.3 core)
-//   Windows desktop → compile-only GL surface (Qt QRhi owns the GPU; no windows.h)
+//   ES/wasm/android → GLES3
+//   Desktop → compile-only GL 3.3 symbol surface (gl_win32.h); Qt Quick owns the
+//   GPU (Metal/Vulkan/D3D). Engine Graphics::isGL() stays false — no glad loader.
 #if defined(OPENGL_ES) || defined(__EMSCRIPTEN__) || defined(__ANDROID__)
 #include <GLES3/gl3.h>
-#elif defined(_WIN32)
-#include "gl_win32.h"
 #else
-#include <glad/gl.h>
+#include "gl_win32.h"
 #endif

@@ -23,11 +23,10 @@
 #include "animatedtext.h"
 #include "tibia/runtime/host.h"
 
-#include "tibia/world/game.h"
+#include <tibia/game/gamesession.h>
 #include "gameconfig.h"
 #include "tibia/world/map.h"
 #include "framework/core/eventdispatcher.h"
-#include "framework/core/graphicalapplication.h"
 
 AnimatedText::AnimatedText()
 {
@@ -66,7 +65,7 @@ bool AnimatedText::merge(const AnimatedTextPtr& other)
     try {
         const int number = stdext::safe_cast<int>(m_cachedText.getText());
         const int otherNumber = stdext::safe_cast<int>(other->getCachedText().getText());
-        m_cachedText.setText(fmt::format("{}", number + otherNumber));
+        m_cachedText.setText(std::format("{}", number + otherNumber));
         return true;
     } catch (...) {
         return false;

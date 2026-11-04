@@ -23,10 +23,10 @@
 #pragma once
 
 #include "declarations.h"
-#include <framework/luaengine/luaobject.h>
+#include <framework/luaengine/gameobject.h>
 
  // @bindclass
-class OutputMessage final : public LuaObject
+class OutputMessage final : public GameObject
 {
 public:
     enum

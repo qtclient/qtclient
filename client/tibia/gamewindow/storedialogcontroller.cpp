@@ -8,7 +8,6 @@
 #include "store/dynamicallyloadedimage.h"
 #include "store/qmlstoreobjects.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QLocale>
@@ -16,6 +15,9 @@
 
 #include <algorithm>
 #include <utility>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -225,7 +227,7 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
     });
     input::setActionHandler(input::EGameAction::SET_HIRELING_NAME, [](const input::TGameAction& action) {
         if (!action.text.isEmpty())
-            g_game.sendSetHirelingName(action.text.toStdString());
+            tibia::game::sendSetHirelingName(action.text.toStdString());
         return true;
     });
 }
@@ -449,7 +451,7 @@ void TStoreDialogController::tryOutfitForCurrentOffer()
     int typeId = visual.typeId;
     if (visual.type == store::TStoreVisual::BothGenderOutfits) {
         // CIP picks by the player's sex, which qtclient does not track.
-        const LocalPlayerPtr& player = g_game.getLocalPlayer();
+        const LocalPlayerPtr& player = tibia::game::localPlayer();
         const bool female = player && player->getOutfit().getId() == static_cast<uint16_t>(visual.femaleTypeId);
         typeId = female ? visual.femaleTypeId : visual.maleTypeId;
     }
@@ -533,9 +535,9 @@ void TStoreDialogController::onHirelingNameChangeRequested(const quint32 creatur
 
 void TStoreDialogController::onHirelingNameChangeEntered(const QString& name)
 {
-    if (name.trimmed().isEmpty() || !g_game.isOnline())
+    if (name.trimmed().isEmpty() || !tibia::game::isOnline())
         return;
-    g_game.sendSetHirelingName(name.trimmed().toStdString());
+    tibia::game::sendSetHirelingName(name.trimmed().toStdString());
 }
 
 void TStoreDialogController::showConfiguredConfirmation(const int offerId)
@@ -746,14 +748,13 @@ TStoreButtonController::TStoreButtonController(TStoreDialogController* dialog, Q
     m_highlightTimer.setSingleShot(true);
     m_highlightTimer.setInterval(600000);
     connect(&m_highlightTimer, &QTimer::timeout, this, [this] { onHighlightStoreButtonEnds(false); });
-    m_hooks.emplace_back("g_game", "onStoreButtonDeeplink", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreButtonDeeplink", [this](GameObject*, const std::vector<std::any>& args) {
         onStoreDeeplinkChanged(static_cast<int>(client::gamecore::argInt(args, 0)),
                                static_cast<int>(client::gamecore::argInt(args, 1)));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const std::vector<std::any>&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clearDeeplink();
-        return std::any{};
     });
 }
 

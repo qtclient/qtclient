@@ -5,9 +5,10 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/outfittypes.h"
 
-#include <tibia/world/game.h>
+#include <tibia/assets/thingtype.h>
 #include <tibia/world/localplayer.h>
 #include <client/outfit.h>
+#include <tibia/game/thingsession_forward.h>
 
 #include <QDir>
 #include <QFile>
@@ -16,6 +17,7 @@
 #include <QJsonDocument>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -266,7 +268,7 @@ void TSelectOutfitDialogController::open(const Outfit& current, QList<TCustomise
     if (dialog()->isShown())
         dialog()->close();
 
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     const quint32 characterId = player ? player->getId() : 0;
     if (characterId != m_characterId) {
         savePresets();
@@ -328,6 +330,46 @@ void TSelectOutfitDialogController::open(const Outfit& current, QList<TCustomise
     dialog()->show();
 }
 
+void TSelectOutfitDialogController::openCharacterInfoSelection(const int outfitId, const bool isOutfit, const bool isMount,
+                                                               const bool isSummonSkin)
+{
+    if (outfitId <= 0)
+        return;
+    TCustomiseCharacterModel::Entry entry;
+    entry.id = outfitId;
+    if (ThingType* type = tibia::game::rawThingType(static_cast<uint16_t>(outfitId), ThingCategoryCreature)) {
+        entry.name = QString::fromStdString(type->getName());
+        entry.canBeColorized = true;
+    } else {
+        entry.name = QString::number(outfitId);
+    }
+    Entries outfits;
+    Entries mounts;
+    Entries summons;
+    Outfit current;
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer())
+        current = player->getOutfit();
+    if (isOutfit) {
+        outfits << entry;
+        current.setId(outfitId);
+    } else if (isMount) {
+        mounts << entry;
+        current.setMount(outfitId);
+    } else if (isSummonSkin) {
+        summons << entry;
+        current.setFamiliar(outfitId);
+    } else {
+        outfits << entry;
+        current.setId(outfitId);
+    }
+    m_dialogMode = CharacterInfoShowSelection;
+    m_showOutfit = isOutfit || (!isMount && !isSummonSkin);
+    m_showSummon = isSummonSkin;
+    Q_EMIT dialogModeChanged();
+    Q_EMIT showChanged();
+    open(current, std::move(outfits), std::move(mounts), std::move(summons));
+}
+
 /// CIP 0x100bdebd0.
 void TSelectOutfitDialogController::onCancelClicked()
 {
@@ -379,7 +421,7 @@ void TSelectOutfitDialogController::setCharacterConfiguration(cip::tibia::qmlcom
                                                               const int LookDirectionRaw, const bool ShowSocket,
                                                               const bool MountCharacter)
 {
-    if (pOutfitPreset && g_game.isOnline()) {
+    if (pOutfitPreset && tibia::game::isOnline()) {
         const auto* outfitColor = pOutfitPreset->outfitColor();
         const auto* mountColor = pOutfitPreset->mountColor();
         Outfit outfit;
@@ -394,7 +436,9 @@ void TSelectOutfitDialogController::setCharacterConfiguration(cip::tibia::qmlcom
         outfit.setMountColors(mountColor->headColorIndex(), mountColor->torsoColorIndex(), mountColor->legsColorIndex(),
                               mountColor->detailColorIndex());
         outfit.setFamiliar(pOutfitPreset->summonID());
-        if (m_dialogMode == ConfigureShowOffSocket) {
+        if (m_dialogMode == CharacterInfoShowSelection) {
+            // Preview-only: Character Info never applies an outfit from this dialog.
+        } else if (m_dialogMode == ConfigureShowOffSocket) {
             auto action = input::mutableClone(*input::makeAction(input::EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION));
             action->outfit = outfit;
             action->position = m_windowOptions.podiumPosition;

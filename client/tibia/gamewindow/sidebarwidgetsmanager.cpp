@@ -65,9 +65,8 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
     // CipSoft DepotSearchWidget is owned by TDepotSearchWidgetManager (main.cpp).
     new TInspectObjectDialogController(this);
     new TInspectPlayerDialogController(this);
-    new TLargePerkInformation(this);
-    new TTileInformation(this);
-    new TVesselInformation(this);
+    // TLargePerkInformation / TTileInformation / TVesselInformation are owned and
+    // filled by TSkillWheelPageController (fillLargePerk / fillTile / fillVessel).
     connect(sidebars, &TSidebarManager::widgetConfigurationChanged, this, &TSidebarWidgetsManager::saveCurrentOpenWidgets);
     connect(m_battleLists.get(), &TBattleListControllerStorage::widgetVisible, this, &TSidebarWidgetsManager::widgetVisible);
     connect(m_battleLists.get(), &TBattleListControllerStorage::widgetHidden, this, &TSidebarWidgetsManager::widgetHidden);

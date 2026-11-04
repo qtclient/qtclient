@@ -107,7 +107,8 @@ private:
     void startListItemPick();
     void finishPick(const input::TGameActionPtr& target);
     void cancelPick();
-    void sendContainerAction(uint8_t action, uint8_t category, const ItemPtr& item = {});
+    void sendContainerAction(uint8_t action, uint8_t category, uint16_t typeId = 0, const Position& position = {},
+                             int stackPosition = -1);
     void openAssignedContainer(uint8_t category, uint16_t typeId, uint8_t action);
     void onClearConfirmed();
 

@@ -94,7 +94,7 @@ void Paperdoll::setOffset(int16_t x, int16_t y) {
         control.offset = { x, y };
 }
 
-void Paperdoll::setOnTopByDir(Otc::Direction direction, bool onTop) {
+void Paperdoll::setOnTopByDir(tibia::client::Direction direction, bool onTop) {
     m_offsetDirections[0][direction].onTop = onTop;
 }
 
@@ -103,6 +103,6 @@ void Paperdoll::setMountOffset(int16_t x, int16_t y) {
         control.offset = { x, y };
 }
 
-void Paperdoll::setMountOnTopByDir(Otc::Direction direction, bool onTop) {
+void Paperdoll::setMountOnTopByDir(tibia::client::Direction direction, bool onTop) {
     m_offsetDirections[1][direction].onTop = onTop;
 }

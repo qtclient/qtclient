@@ -12,7 +12,6 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include "news/eventqmlentry.h"
 #include "news/eventsuploader.h"
 #include "news/newsrequestuploader.h"
@@ -33,6 +32,7 @@
 #include <QLoggingCategory>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <tibia/game/gamesession.h>
 
 Q_LOGGING_CATEGORY(lcGameWindow, "tibia.gamewindow")
 
@@ -575,7 +575,7 @@ void TGameWindowController::quitPressed()
 {
     // CIP shows Exit / Logout / Cancel only while a character is in the world.
     // The login mask and the character list close with the window.
-    if (!g_game.isOnline()) {
+    if (!tibia::game::isOnline()) {
         Q_EMIT quitGameExitRequested();
         return;
     }

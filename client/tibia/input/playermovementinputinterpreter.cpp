@@ -7,8 +7,8 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "input/inputciptypes.h"
+#include "input/playermovementgameactionhandler.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/world/world.h>
 #include <framework/core/gameevents.h>
@@ -20,6 +20,8 @@
 
 #include <algorithm>
 #include <unordered_map>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::input {
 
@@ -27,13 +29,13 @@ namespace {
 
 using A = EGameAction;
 
-const std::unordered_map<QString, Otc::Direction>& goActions()
+const std::unordered_map<QString, tibia::client::Direction>& goActions()
 {
-    static const std::unordered_map<QString, Otc::Direction> actions{
-        { QStringLiteral("GoNorth"), Otc::North },         { QStringLiteral("GoEast"), Otc::East },
-        { QStringLiteral("GoSouth"), Otc::South },         { QStringLiteral("GoWest"), Otc::West },
-        { QStringLiteral("GoNorthEast"), Otc::NorthEast }, { QStringLiteral("GoSouthEast"), Otc::SouthEast },
-        { QStringLiteral("GoSouthWest"), Otc::SouthWest }, { QStringLiteral("GoNorthWest"), Otc::NorthWest },
+    static const std::unordered_map<QString, tibia::client::Direction> actions{
+        { QStringLiteral("GoNorth"), tibia::client::North },         { QStringLiteral("GoEast"), tibia::client::East },
+        { QStringLiteral("GoSouth"), tibia::client::South },         { QStringLiteral("GoWest"), tibia::client::West },
+        { QStringLiteral("GoNorthEast"), tibia::client::NorthEast }, { QStringLiteral("GoSouthEast"), tibia::client::SouthEast },
+        { QStringLiteral("GoSouthWest"), tibia::client::SouthWest }, { QStringLiteral("GoNorthWest"), tibia::client::NorthWest },
     };
     return actions;
 }
@@ -56,13 +58,13 @@ constexpr int RepeatDelayMs = 50;
 constexpr int TickMs = 10;
 
 /// CIP FUN_100a41430: the way a step makes the character face.
-Otc::Direction facing(const Otc::Direction direction)
+tibia::client::Direction facing(const tibia::client::Direction direction)
 {
     switch (direction) {
-        case Otc::NorthEast:
-        case Otc::SouthEast: return Otc::East;
-        case Otc::SouthWest:
-        case Otc::NorthWest: return Otc::West;
+        case tibia::client::NorthEast:
+        case tibia::client::SouthEast: return tibia::client::East;
+        case tibia::client::SouthWest:
+        case tibia::client::NorthWest: return tibia::client::West;
         default: return direction;
     }
 }
@@ -70,7 +72,7 @@ Otc::Direction facing(const Otc::Direction direction)
 void showSorryNotPossible()
 {
     const std::string text = qtTrId("sorry_not_possible").toStdString();
-    g_gameEvents.publish("g_game", "onTextMessage", nullptr, { std::any(Otc::MessageFailure), std::any(std::string_view(text)) });
+    tibia::game::notify("onTextMessage", tibia::client::MessageFailure, std::string_view(text));
 }
 
 }
@@ -93,8 +95,8 @@ TPlayerMovementInputInterpreter::TPlayerMovementInputInterpreter(QQuickWindow* w
             || name == QLatin1String("alwaysTurnTowardsMoveDirection"))
             onOptionsChanged();
     });
-    m_hooks.emplace_back("g_game", "onServerStop", [](LuaObject*, const std::vector<std::any>&) {
-        if (const LocalPlayerPtr player = g_game.getLocalPlayer())
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onServerStop", [](GameObject*, const std::vector<std::any>&) {
+        if (const LocalPlayerPtr player = tibia::game::localPlayer())
             player->stopPendingWalk();
         return std::any{};
     });
@@ -113,19 +115,19 @@ TPlayerMovementInputInterpreter::~TPlayerMovementInputInterpreter()
 void TPlayerMovementInputInterpreter::onHotkeyOptionsChanged()
 {
     // FUN_100e6cc40: the fixed keys, then the preset's Go* bindings.
-    const std::array<std::pair<Otc::Direction, TKey>, 12> fixed{ {
-        { Otc::West, { Qt::Key_Left, false } },
-        { Otc::West, { Qt::Key_Left, true } },
-        { Otc::East, { Qt::Key_Right, false } },
-        { Otc::East, { Qt::Key_Right, true } },
-        { Otc::North, { Qt::Key_Up, false } },
-        { Otc::North, { Qt::Key_Up, true } },
-        { Otc::South, { Qt::Key_Down, false } },
-        { Otc::South, { Qt::Key_Down, true } },
-        { Otc::NorthWest, { Qt::Key_Home, true } },
-        { Otc::NorthEast, { Qt::Key_PageUp, true } },
-        { Otc::SouthWest, { Qt::Key_End, true } },
-        { Otc::SouthEast, { Qt::Key_PageDown, true } },
+    const std::array<std::pair<tibia::client::Direction, TKey>, 12> fixed{ {
+        { tibia::client::West, { Qt::Key_Left, false } },
+        { tibia::client::West, { Qt::Key_Left, true } },
+        { tibia::client::East, { Qt::Key_Right, false } },
+        { tibia::client::East, { Qt::Key_Right, true } },
+        { tibia::client::North, { Qt::Key_Up, false } },
+        { tibia::client::North, { Qt::Key_Up, true } },
+        { tibia::client::South, { Qt::Key_Down, false } },
+        { tibia::client::South, { Qt::Key_Down, true } },
+        { tibia::client::NorthWest, { Qt::Key_Home, true } },
+        { tibia::client::NorthEast, { Qt::Key_PageUp, true } },
+        { tibia::client::SouthWest, { Qt::Key_End, true } },
+        { tibia::client::SouthEast, { Qt::Key_PageDown, true } },
     } };
     const config::THotkeySet& set = config::THotkeyOptions::instance()->currentSet();
     for (size_t mode = 0; mode < m_directions.size(); ++mode) {
@@ -202,7 +204,7 @@ bool TPlayerMovementInputInterpreter::rotates(const Qt::KeyboardModifiers modifi
     return enabledHeld;
 }
 
-Otc::Direction TPlayerMovementInputInterpreter::directionOf(const QKeyEvent* event) const
+tibia::client::Direction TPlayerMovementInputInterpreter::directionOf(const QKeyEvent* event) const
 {
     TKey key{ event->key(), event->modifiers().testFlag(Qt::KeypadModifier) };
     if (isArrow(key.key))
@@ -211,29 +213,29 @@ Otc::Direction TPlayerMovementInputInterpreter::directionOf(const QKeyEvent* eve
     const auto it = std::find_if(directions.begin(), directions.end(), [&key](const std::vector<TKey>& keys) {
         return std::find(keys.begin(), keys.end(), key) != keys.end();
     });
-    return it == directions.end() ? Otc::InvalidDirection : Otc::Direction(it - directions.begin());
+    return it == directions.end() ? tibia::client::InvalidDirection : tibia::client::Direction(it - directions.begin());
 }
 
 void TPlayerMovementInputInterpreter::onKeyPressed(const QKeyEvent* event)
 {
     if (event->isAutoRepeat())
         return;
-    const Otc::Direction direction = directionOf(event);
-    if (direction == Otc::InvalidDirection || !canWalk())
+    const tibia::client::Direction direction = directionOf(event);
+    if (direction == tibia::client::InvalidDirection || !canWalk())
         return;
     const Qt::KeyboardModifiers modifiers = event->modifiers() & ~Qt::KeypadModifier;
-    if (direction <= Otc::West && rotates(modifiers)) {
+    if (direction <= tibia::client::West && rotates(modifiers)) {
         // CIP TMovementIntentRotate / TPlayerMovementIntent::rotate.
         const TMovementIntentRotate rotateIntent(static_cast<int>(direction));
         const TPlayerMovementIntent intent = TPlayerMovementIntent::rotate(rotateIntent.direction());
-        tibia::world::session().turn(static_cast<Otc::Direction>(intent.direction()));
+        tibia::world::session().turn(static_cast<tibia::client::Direction>(intent.direction()));
         return;
     }
     if (modifiers != Qt::NoModifier)
         return;
     const TMovementIntentDirection walkIntent(static_cast<int>(direction));
     const TPlayerMovementIntent intent = TPlayerMovementIntent::direction(walkIntent.direction());
-    m_held = static_cast<Otc::Direction>(intent.direction());
+    m_held = static_cast<tibia::client::Direction>(intent.direction());
     m_heldKey = event->key();
     m_repeats = 0;
     m_elapsed.restart();
@@ -245,9 +247,9 @@ void TPlayerMovementInputInterpreter::onKeyReleased(const QKeyEvent* event)
 {
     if (event->isAutoRepeat() || event->key() != m_heldKey)
         return;
-    m_held = Otc::InvalidDirection;
+    m_held = tibia::client::InvalidDirection;
     m_heldKey = 0;
-    if (m_pending == Otc::InvalidDirection)
+    if (m_pending == tibia::client::InvalidDirection)
         m_timer->stop();
 }
 
@@ -255,7 +257,10 @@ void TPlayerMovementInputInterpreter::stopRepeat()
 {
     (void)TMovementIntentStop{};
     (void)TPlayerMovementIntent::stop();
-    m_held = m_pending = Otc::InvalidDirection;
+    // CIP TMovementIntentStop clears the live Target so IntentHandler stops replanning.
+    if (TPlayerMovementGameActionHandler* movement = TPlayerMovementGameActionHandler::instance())
+        movement->clearTargetIntent();
+    m_held = m_pending = tibia::client::InvalidDirection;
     m_heldKey = 0;
     m_timer->stop();
 }
@@ -266,18 +271,18 @@ void TPlayerMovementInputInterpreter::onTick()
         stopRepeat();
         return;
     }
-    if (m_held != Otc::InvalidDirection && m_elapsed.elapsed() > (m_repeats > 0 ? RepeatDelayMs : m_keyboardDelayMs)) {
+    if (m_held != tibia::client::InvalidDirection && m_elapsed.elapsed() > (m_repeats > 0 ? RepeatDelayMs : m_keyboardDelayMs)) {
         m_elapsed.restart();
         ++m_repeats;
         step(m_held);
-    } else if (m_pending != Otc::InvalidDirection) {
+    } else if (m_pending != tibia::client::InvalidDirection) {
         step(m_pending);
     }
-    if (m_held == Otc::InvalidDirection && m_pending == Otc::InvalidDirection)
+    if (m_held == tibia::client::InvalidDirection && m_pending == tibia::client::InvalidDirection)
         m_timer->stop();
 }
 
-void TPlayerMovementInputInterpreter::step(const Otc::Direction direction)
+void TPlayerMovementInputInterpreter::step(const tibia::client::Direction direction)
 {
     if (!tibia::world::player())
         return;
@@ -285,7 +290,7 @@ void TPlayerMovementInputInterpreter::step(const Otc::Direction direction)
         m_pending = direction;
         return;
     }
-    m_pending = Otc::InvalidDirection;
+    m_pending = tibia::client::InvalidDirection;
     if (tibia::world::motion().blocksStep(direction)) {
         if (m_turnTowardsMoveDirection && facing(direction) != tibia::world::player()->getDirection())
             tibia::world::session().turn(facing(direction));
@@ -296,17 +301,20 @@ void TPlayerMovementInputInterpreter::step(const Otc::Direction direction)
         }
         return;
     }
-    // Soft: keyboard walk cancels click-to-walk / follow and applies auto-chase.
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer()) {
-        if (player->isAutoWalking() || g_game.isFollowing()) {
+    // qtclient: keyboard walk cancels click-to-walk / follow and applies auto-chase.
+    // stopAutoWalk also clears the CIP Target intent (direction walk takes over).
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer()) {
+        if (player->isAutoWalking() || tibia::game::isFollowing()) {
             player->stopAutoWalk();
-            if (g_game.isFollowing())
-                g_game.cancelFollow();
+            if (tibia::game::isFollowing())
+                tibia::game::cancelFollow();
+        } else if (TPlayerMovementGameActionHandler* movement = TPlayerMovementGameActionHandler::instance()) {
+            movement->clearTargetIntent();
         }
     }
     publish(makeAction(A::APPLY_AUTOCHASE_SETTING));
     const TMovementIntentDirection walkIntent(static_cast<int>(direction));
-    tibia::world::session().walk(static_cast<Otc::Direction>(walkIntent.direction()));
+    tibia::world::session().walk(static_cast<tibia::client::Direction>(walkIntent.direction()));
 }
 
 }

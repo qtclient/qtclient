@@ -2,10 +2,12 @@
 
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <limits>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::skillwheel {
 
@@ -54,11 +56,11 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
         return true;
     });
     input::setActionHandler(A::REQUEST_SKILL_WHEEL, [this](const input::TGameAction& action) {
-        const LocalPlayerPtr& player = g_game.getLocalPlayer();
+        const LocalPlayerPtr& player = tibia::game::localPlayer();
         if (player && action.creatureId == player->getId())
             requestOwnWheel();
         else if (action.creatureId != 0)
-            g_game.openWheel(action.creatureId);
+            tibia::game::openWheel(action.creatureId);
         return true;
     });
     input::setActionHandler(A::REQUEST_OWN_SKILL_WHEEL, [this](const input::TGameAction&) {
@@ -91,14 +93,12 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
         });
     connect(m_storage, &TSkillWheelStorage::serverDataReceived, this, &TSkillWheelManager::onServerData);
 
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clearSkipNextOwnOpen();
         m_dialog->clear();
-        return std::any{};
     });
-    m_hooks.emplace_back("object", "onPremiumChange", [this](LuaObject* self, const Args&) {
-        if (self == g_game.getLocalPlayer().get())
-            m_dialog->onPremiumChanged();
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
+        m_dialog->onPremiumChanged();
         return std::any{};
     });
 }
@@ -114,11 +114,11 @@ TSkillWheelManager::~TSkillWheelManager()
 /// the preview (308), none only explains (307).
 void TSkillWheelManager::requestOwnWheel()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player || player->getId() == 0)
         return;
     if (player->getLevel() >= RequiredLevel && (player->isPremium() || !m_sessionPremium)) {
-        g_game.openWheel(player->getId());
+        tibia::game::openWheel(player->getId());
         return;
     }
     publish(hasVocation(player) ? A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE : A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE);
@@ -128,7 +128,7 @@ void TSkillWheelManager::requestOwnWheel()
 void TSkillWheelManager::onServerData(const bool canView)
 {
     if (!canView) {
-        const LocalPlayerPtr& player = g_game.getLocalPlayer();
+        const LocalPlayerPtr& player = tibia::game::localPlayer();
         publish(player && hasVocation(player) ? A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE : A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE);
         return;
     }
@@ -156,7 +156,7 @@ void TSkillWheelManager::saveWheel()
     uint16_t gems[DomainCount];
     for (int d = 0; d < DomainCount; ++d)
         gems[d] = wheel.gems[d] == NoGem ? std::numeric_limits<uint16_t>::max() : static_cast<uint16_t>(wheel.gems[d]);
-    g_game.sendApplyWheelPoints(points, gems[0], gems[1], gems[2], gems[3]);
+    tibia::game::sendApplyWheelPoints(points, gems[0], gems[1], gems[2], gems[3]);
 }
 
 }

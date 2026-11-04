@@ -11,6 +11,7 @@
 #include <any>
 #include <memory>
 #include <vector>
+#include <tibia/game/gamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -112,13 +113,13 @@ TSpellListWidgetManager::TSpellListWidgetManager(QQuickItem* gameWindowItem, QQm
     , m_engine(engine)
 {
     // CipSoft archive model: CastPossibleRole reads LocalPlayer spells; reload on unlock / mods.
-    const auto reload = [this](LuaObject*, const Args&) {
+    const auto reload = [this](GameObject*, const Args&) {
         if (m_controller)
             m_controller->reloadArchive();
         return std::any{};
     };
-    m_hooks.emplace_back("g_game", "onUnlockedSpells", reload);
-    m_hooks.emplace_back("g_game", "onSpellDataModification", reload);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUnlockedSpells", reload);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpellDataModification", reload);
 }
 
 TSpellListWidgetManager::~TSpellListWidgetManager() { delete m_controller; }

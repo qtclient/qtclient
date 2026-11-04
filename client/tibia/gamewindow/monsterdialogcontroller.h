@@ -92,6 +92,8 @@ public:
     Q_INVOKABLE void requestSwitchBackToRaceSummary() override;
     /// CIP 0x100cf8290.
     Q_INVOKABLE void requestSwitchToItemInfo(int AppearanceTypeID) override;
+    /// Right-click loot tile in MonstersDialog.qml.
+    void requestContextMenuForItem(int AppearanceTypeID) override;
     /// CIP 0x100cf8870.
     Q_INVOKABLE void requestToggleBestiaryTracking() override;
     /// CIP 0x100cf8990.

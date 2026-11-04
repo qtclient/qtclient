@@ -7,6 +7,9 @@
 
 #include <algorithm>
 #include <tuple>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::cyclopedia {
 
@@ -49,7 +52,7 @@ TBossSlot makeSlot(const bool unlocked, const uint32_t bossId, const std::option
 
 QString bossName(const int raceId)
 {
-    const QString name = QString::fromStdString(g_things.getRaceData(static_cast<uint32_t>(raceId)).name);
+    const QString name = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name);
     QStringList words = name.split(QStringLiteral(" "));
     for (QString& word : words) {
         if (!word.isEmpty())
@@ -71,7 +74,7 @@ QString bossRaritySource(const int category)
 TBosstiaryStorage::TBosstiaryStorage(QObject* parent)
     : QObject(parent)
 {
-    m_hooks.emplace_back("g_game", "onBosstiaryData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBosstiaryData", [this](GameObject*, const Args& args) {
         const auto* kills = arg<std::vector<uint16_t>>(args, 0);
         const auto* points = arg<std::vector<uint16_t>>(args, 1);
         if (!kills || !points || kills->size() < 9 || points->size() < 9)
@@ -84,7 +87,7 @@ TBosstiaryStorage::TBosstiaryStorage(QObject* parent)
         Q_EMIT pointsChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseSendBosstiary", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseSendBosstiary", [this](GameObject*, const Args& args) {
         const auto* bosses = arg<std::vector<BosstiaryData>>(args, 0);
         if (!bosses)
             return std::any{};
@@ -107,7 +110,7 @@ TBosstiaryStorage::TBosstiaryStorage(QObject* parent)
         Q_EMIT entriesChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseBosstiarySlots", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseBosstiarySlots", [this](GameObject*, const Args& args) {
         const auto* data = arg<BosstiarySlotsData>(args, 0);
         if (!data)
             return std::any{};
@@ -124,16 +127,16 @@ TBosstiaryStorage::TBosstiaryStorage(QObject* parent)
         Q_EMIT slotsChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onBosstiaryEntryChanged", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBosstiaryEntryChanged", [this](GameObject*, const Args& args) {
         const int raceId = client::gamecore::argInt(args, 0);
         if (raceId <= 0)
             return std::any{};
-        // Soft: an entry changed — refresh tracker notify so Soft bosstiary panels re-read.
+        // qtclient: an entry changed — refresh tracker notify so qtclient bosstiary panels re-read.
         Q_EMIT trackerChanged();
         Q_EMIT entriesChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseCyclopediaTracker", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaTracker", [this](GameObject*, const Args& args) {
         using Entry = std::tuple<uint16_t, uint32_t, uint16_t, uint16_t, uint16_t, uint8_t>;
         if (client::gamecore::argInt(args, 0) != 1)
             return std::any{};
@@ -146,11 +149,10 @@ TBosstiaryStorage::TBosstiaryStorage(QObject* parent)
         Q_EMIT trackerChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_entries.clear();
         m_slots = {};
         m_trackedBosses.clear();
-        return std::any{};
     });
 }
 

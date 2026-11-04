@@ -1,12 +1,11 @@
 #pragma once
 
+#include "container/containerciptypes.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "input/gameaction.h"
 #include "trade/playertradestorage.h"
 
 #include <cip_gen.h>
-
-#include <client/declarations.h>
 
 #include <QPointer>
 
@@ -15,11 +14,12 @@ namespace tibia::gamewindow {
 class TSidebarManager;
 
 /// One object of a trade offer (CIP: TPlayerTradeObject, ctor 0x10103e600).
+/// Appearance fields only — offers are CIP `TInventorySlot` lists in storage.
 class TPlayerTradeObject final : public cip::tibia::trade::TPlayerTradeObject
 {
     Q_OBJECT
 public:
-    TPlayerTradeObject(int slot, const ItemPtr& item, QObject* parent = nullptr);
+    TPlayerTradeObject(int slot, const container::TInventorySlot& appearance, QObject* parent = nullptr);
 };
 
 /// The trade window, playertrade.qml (CIP: TPlayerTradeController, ctor

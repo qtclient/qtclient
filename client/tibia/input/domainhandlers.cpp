@@ -4,8 +4,9 @@
 #include "app/portalurls.h"
 #include "gameaction.h"
 
+#include <creatures/creaturestorage.h>
 #include <tibia/world/creature.h>
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/item.h>
 #include <tibia/world/map.h>
 
@@ -79,11 +80,6 @@ void toggleSound()
     }
 }
 
-CreaturePtr creatureOf(const TGameAction& action)
-{
-    return action.creatureId ? g_map.getCreatureById(action.creatureId) : nullptr;
-}
-
 bool handleClipboard(const TGameAction& action)
 {
     switch (action.type) {
@@ -98,9 +94,15 @@ bool handleClipboard(const TGameAction& action)
         return true;
     case A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
     case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
-        if (const CreaturePtr creature = creatureOf(action))
-            QGuiApplication::clipboard()->setText(QString::fromStdString(creature->getName()));
-        else if (!action.text.isEmpty())
+        if (action.creatureId) {
+            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+                if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(action.creatureId)) {
+                    QGuiApplication::clipboard()->setText(row->name());
+                    return true;
+                }
+            }
+        }
+        if (!action.text.isEmpty())
             QGuiApplication::clipboard()->setText(action.text);
         return true;
     default:
@@ -182,12 +184,10 @@ TGatherAllGameActionHandler::TGatherAllGameActionHandler(QObject* parent)
     : cip::tibia::input::TGatherAllGameActionHandler(parent)
 {
     setActionHandler(A::GATHER_ALL, [](const TGameAction& action) {
-        if (action.object && action.object->isItem()) {
-            const ItemPtr item = action.object->static_self_cast<Item>();
-            const uint8_t stackpos = action.stackPosition >= 0
-                ? static_cast<uint8_t>(action.stackPosition)
-                : static_cast<uint8_t>(item->getStackPos());
-            g_game.gatherAll(action.position, item->getId(), stackpos);
+        const uint16_t typeId = action.objectClientId;
+        if (typeId != 0) {
+            const uint8_t stackpos = action.stackPosition >= 0 ? static_cast<uint8_t>(action.stackPosition) : 0;
+            tibia::game::gatherAll(action.position, typeId, stackpos);
         }
         return true;
     });

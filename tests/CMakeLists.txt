@@ -11,7 +11,8 @@ function(qtclient_add_gtest TARGET_NAME)
     )
 
     if(TOGGLE_PRE_COMPILED_HEADER)
-        target_precompile_headers(${TARGET_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/src/framework/pch.h)
+        target_precompile_headers(${TARGET_NAME} PRIVATE
+            ${CMAKE_SOURCE_DIR}/client/tibia/engine/framework/pch.h)
     endif()
 
     target_link_libraries(${TARGET_NAME}
@@ -62,5 +63,3 @@ endfunction()
 add_subdirectory(client)
 add_subdirectory(map)
 add_subdirectory(stdext)
-add_subdirectory(otml)
-add_subdirectory(ui)

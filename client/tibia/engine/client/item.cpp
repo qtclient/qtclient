@@ -23,31 +23,26 @@
 #include "item.h"
 
 #include "animator.h"
-#include "tibia/world/game.h"
 #include "gameconfig.h"
 
+#include "tibia/appearances/appearanceinstance.h"
 #include "tibia/assets/thingtype.h"
 #include "tibia/assets/things.h"
-#include "tibia/world/tile.h"
+#include "worldmap/worldmapfield.h"
 #include "framework/core/clock.h"
 
 namespace {
 
-bool podiumOutfitDrawn(const Outfit& outfit)
+Outfit& emptyPodiumOutfit()
 {
-    if (outfit.isCreature())
-        return outfit.getId() != 0;
-    if (outfit.isItem())
-        return outfit.getAuxId() != 0;
-    return outfit.hasMount();
+    static Outfit empty;
+    return empty;
 }
 
 }
 
-#ifdef FRAMEWORK_EDITOR
-#include <framework/core/binarytree.h>
-#include "itemtype.h"
-#endif
+#include <tibia/game/gamesession.h>
+
 
 ItemPtr Item::create(const int id)
 {
@@ -98,10 +93,108 @@ ItemPtr Item::clone()
         // Copy Vector
         item->getData()->attachedEffects = m_data->attachedEffects;
         item->getData()->attachedParticles = m_data->attachedParticles;
-        item->getData()->attachedWidgets = m_data->attachedWidgets;
+    }
+
+    // Deep-copy CIP show-off so cloned items do not share look state.
+    if (m_showOff) {
+        ThingType* type = static_cast<Thing&>(*item).getThingType();
+        item->m_showOff = std::make_shared<tibia::appearances::TShowOffSocketAppearanceInstance>(type);
+        item->m_showOff->setLook(m_showOff->outfit(), m_showOff->direction(), m_showOff->drawsSocket());
     }
 
     return item;
+}
+
+void Item::patternsFor(ThingType* type, const int countOrSubType, int& patternX, int& patternY, int& patternZ)
+{
+    patternX = patternY = patternZ = 0;
+    if (!type || type->isNull())
+        return;
+
+    const int numPatternX = type->getNumPatternX();
+    const int numPatternY = type->getNumPatternY();
+
+    if (type->isStackable() && numPatternX == 4 && numPatternY == 2) {
+        if (countOrSubType <= 0) {
+            patternX = 0;
+            patternY = 0;
+        } else if (countOrSubType < 5) {
+            patternX = countOrSubType - 1;
+            patternY = 0;
+        } else if (countOrSubType < 10) {
+            patternX = 0;
+            patternY = 1;
+        } else if (countOrSubType < 25) {
+            patternX = 1;
+            patternY = 1;
+        } else if (countOrSubType < 50) {
+            patternX = 2;
+            patternY = 1;
+        } else {
+            patternX = 3;
+            patternY = 1;
+        }
+        return;
+    }
+
+    if (!type->isSplash() && !type->isFluidContainer())
+        return;
+
+    int color = countOrSubType;
+    if (g_game.getFeature(tibia::client::GameNewFluids)) {
+        switch (countOrSubType) {
+            case tibia::client::FluidNone:
+                color = tibia::client::FluidTransparent;
+                break;
+            case tibia::client::FluidWater:
+                color = tibia::client::FluidBlue;
+                break;
+            case tibia::client::FluidMana:
+                color = tibia::client::FluidPurple;
+                break;
+            case tibia::client::FluidBeer:
+            case tibia::client::FluidOil:
+            case tibia::client::FluidMud:
+            case tibia::client::FluidRum:
+            case tibia::client::FluidTea:
+            case tibia::client::FluidMead:
+                color = tibia::client::FluidOrange;
+                break;
+            case tibia::client::FluidBlood:
+            case tibia::client::FluidHealth:
+                color = tibia::client::FluidRed;
+                break;
+            case tibia::client::FluidSlime:
+                color = tibia::client::FluidGreen;
+                break;
+            case tibia::client::FluidLemonade:
+            case tibia::client::FluidUrine:
+            case tibia::client::FluidFruitJuice:
+                color = tibia::client::FluidYellow;
+                break;
+            case tibia::client::FluidMilk:
+            case tibia::client::FluidCoconutMilk:
+                color = tibia::client::FluidWhite;
+                break;
+            case tibia::client::FluidWine:
+                color = tibia::client::FluidPurple;
+                break;
+            case tibia::client::FluidInk:
+                color = tibia::client::FluidBlack;
+                break;
+            case tibia::client::FluidCandy:
+                color = tibia::client::FluidPink;
+                break;
+            case tibia::client::FluidChocolate:
+                color = tibia::client::FluidBrown;
+                break;
+            default:
+                color = tibia::client::FluidTransparent;
+                break;
+        }
+    }
+    patternX = (color % 4) % std::max(1, numPatternX);
+    patternY = (color / 4) % std::max(1, numPatternY);
 }
 
 void Item::updatePatterns()
@@ -113,30 +206,9 @@ void Item::updatePatterns()
     if (!isValid())
         return;
 
-    const int numPatternX = getNumPatternX();
-    const int numPatternY = getNumPatternY();
-
-    if (isStackable() && numPatternX == 4 && numPatternY == 2) {
-        if (m_countOrSubType <= 0) {
-            m_numPatternX = 0;
-            m_numPatternY = 0;
-        } else if (m_countOrSubType < 5) {
-            m_numPatternX = m_countOrSubType - 1;
-            m_numPatternY = 0;
-        } else if (m_countOrSubType < 10) {
-            m_numPatternX = 0;
-            m_numPatternY = 1;
-        } else if (m_countOrSubType < 25) {
-            m_numPatternX = 1;
-            m_numPatternY = 1;
-        } else if (m_countOrSubType < 50) {
-            m_numPatternX = 2;
-            m_numPatternY = 1;
-        } else {
-            m_numPatternX = 3;
-            m_numPatternY = 1;
-        }
-    } else if (isHangable()) {
+    ThingType* type = getThingType();
+    if (isHangable()) {
+        const int numPatternX = getNumPatternX();
         const auto& tile = getTile();
         if (tile) {
             if (tile->mustHookSouth())
@@ -144,86 +216,25 @@ void Item::updatePatterns()
             else if (tile->mustHookEast())
                 m_numPatternX = numPatternX >= 3 ? 2 : 0;
         }
-    } else if (isSplash() || isFluidContainer()) {
-        int color = m_countOrSubType;
-        if (g_game.getFeature(Otc::GameNewFluids)) {
-            switch (m_countOrSubType) {
-                case Otc::FluidNone:
-                    color = Otc::FluidTransparent;
-                    break;
-                case Otc::FluidWater:
-                    color = Otc::FluidBlue;
-                    break;
-                case Otc::FluidMana:
-                    color = Otc::FluidPurple;
-                    break;
-                case Otc::FluidBeer:
-                    color = Otc::FluidOrange;
-                    break;
-                case Otc::FluidOil:
-                    color = Otc::FluidOrange;
-                    break;
-                case Otc::FluidBlood:
-                    color = Otc::FluidRed;
-                    break;
-                case Otc::FluidSlime:
-                    color = Otc::FluidGreen;
-                    break;
-                case Otc::FluidMud:
-                    color = Otc::FluidOrange;
-                    break;
-                case Otc::FluidLemonade:
-                    color = Otc::FluidYellow;
-                    break;
-                case Otc::FluidMilk:
-                    color = Otc::FluidWhite;
-                    break;
-                case Otc::FluidWine:
-                    color = Otc::FluidPurple;
-                    break;
-                case Otc::FluidHealth:
-                    color = Otc::FluidRed;
-                    break;
-                case Otc::FluidUrine:
-                    color = Otc::FluidYellow;
-                    break;
-                case Otc::FluidRum:
-                    color = Otc::FluidOrange;
-                    break;
-                case Otc::FluidFruitJuice:
-                    color = Otc::FluidYellow;
-                    break;
-                case Otc::FluidCoconutMilk:
-                    color = Otc::FluidWhite;
-                    break;
-                case Otc::FluidTea:
-                    color = Otc::FluidOrange;
-                    break;
-                case Otc::FluidMead:
-                    color = Otc::FluidOrange;
-                    break;
-                case Otc::FluidInk:
-                    color = Otc::FluidBlack;
-                    break;
-                case Otc::FluidCandy:
-                    color = Otc::FluidPink;
-                    break;
-                case Otc::FluidChocolate:
-                    color = Otc::FluidBrown;
-                    break;
-                default:
-                    color = Otc::FluidTransparent;
-                    break;
-            }
-        }
-
-        m_numPatternX = (color % 4) % numPatternX;
-        m_numPatternY = (color / 4) % numPatternY;
-    } else {
-        m_numPatternX = m_position.x % std::max<int>(1, numPatternX);
-        m_numPatternY = m_position.y % std::max<int>(1, numPatternY);
-        m_numPatternZ = m_position.z % std::max<int>(1, getNumPatternZ());
+        return;
     }
+
+    if (isStackable() || isSplash() || isFluidContainer()) {
+        int x = 0;
+        int y = 0;
+        int z = 0;
+        patternsFor(type, m_countOrSubType, x, y, z);
+        m_numPatternX = static_cast<uint8_t>(x);
+        m_numPatternY = static_cast<uint8_t>(y);
+        m_numPatternZ = static_cast<uint8_t>(z);
+        return;
+    }
+
+    const int numPatternX = getNumPatternX();
+    const int numPatternY = getNumPatternY();
+    m_numPatternX = m_position.x % std::max<int>(1, numPatternX);
+    m_numPatternY = m_position.y % std::max<int>(1, numPatternY);
+    m_numPatternZ = m_position.z % std::max<int>(1, getNumPatternZ());
 }
 
 int Item::calculateAnimationPhase()
@@ -269,9 +280,6 @@ void Item::setId(uint32_t id)
     if (!g_things.isValidDatId(id, ThingCategoryItem))
         id = 0;
 
-#ifdef FRAMEWORK_EDITOR
-    m_serverId = g_things.findItemTypeByClientId(id)->getServerId();
-#endif
 
     m_clientId = id;
 
@@ -286,183 +294,70 @@ void Item::setId(uint32_t id)
     */
 }
 
+std::shared_ptr<tibia::appearances::TShowOffSocketAppearanceInstance> Item::showOffSocket()
+{
+    if (!m_showOff) {
+        ThingType* type = static_cast<Thing&>(*this).getThingType();
+        m_showOff = std::make_shared<tibia::appearances::TShowOffSocketAppearanceInstance>(type);
+    }
+    return m_showOff;
+}
+
+std::shared_ptr<tibia::appearances::TShowOffSocketAppearanceInstance> Item::showOffSocket() const
+{
+    return m_showOff;
+}
+
 void Item::setPodiumOutfit(const Outfit& outfit)
 {
-    m_podiumOutfit = outfit;
-    if (m_podiumOutfit.isInvalid()) {
-        m_podiumOutfit.setCategory(m_podiumOutfit.getAuxId() > 0 ? ThingCategoryItem : ThingCategoryCreature);
-    }
+    Outfit look = outfit;
+    if (look.isInvalid())
+        look.setCategory(look.getAuxId() > 0 ? ThingCategoryItem : ThingCategoryCreature);
+    const auto socket = showOffSocket();
+    socket->setLook(look, socket->direction(), socket->drawsSocket());
 }
 
 void Item::clearPodiumOutfit()
 {
-    m_podiumOutfit = Outfit{};
-    m_podiumDirection = 2;
-    m_podiumVisible = true;
+    m_showOff.reset();
+}
+
+void Item::setPodiumDirection(const uint8_t direction)
+{
+    const auto socket = showOffSocket();
+    socket->setLook(socket->outfit(), direction, socket->drawsSocket());
+}
+
+void Item::setPodiumVisible(const bool visible)
+{
+    const auto socket = showOffSocket();
+    socket->setLook(socket->outfit(), socket->direction(), visible);
+}
+
+const Outfit& Item::getPodiumOutfit() const
+{
+    return m_showOff ? m_showOff->outfit() : emptyPodiumOutfit();
+}
+
+uint8_t Item::getPodiumDirection() const
+{
+    return m_showOff ? m_showOff->direction() : uint8_t(2);
+}
+
+bool Item::isPodiumVisible() const
+{
+    return m_showOff ? m_showOff->drawsSocket() : true;
 }
 
 bool Item::hasPodiumOutfit() const
 {
-    return podiumOutfitDrawn(m_podiumOutfit);
+    return m_showOff && m_showOff->hasFigure();
 }
 
 ThingType* Item::getThingType() const {
     return g_things.getRawThingType(m_clientId, ThingCategoryItem);
 }
 
-#ifdef FRAMEWORK_EDITOR
-
-std::string Item::getName()
-{
-    return g_things.findItemTypeByClientId(m_clientId)->getName();
-}
-
-ItemPtr Item::createFromOtb(int id)
-{
-    const auto& item = std::make_shared<Item>();
-    item->setOtbId(id);
-
-    return item;
-}
-
-void Item::setOtbId(uint16_t id)
-{
-    if (!g_things.isValidOtbId(id))
-        id = 0;
-
-    const auto& itemType = g_things.getItemType(id);
-    m_serverId = id;
-
-    id = itemType->getClientId();
-    if (!g_things.isValidDatId(id, ThingCategoryItem))
-        id = 0;
-
-    m_clientId = id;
-}
-
-void Item::unserializeItem(const BinaryTreePtr& in)
-{
-    try {
-        while (in->canRead()) {
-            ItemAttr attrib = static_cast<ItemAttr>(in->getU8());
-            if (attrib == 0)
-                break;
-
-            switch (attrib) {
-                case ATTR_COUNT:
-                case ATTR_RUNE_CHARGES:
-                    setCount(in->getU8());
-                    break;
-                case ATTR_CHARGES:
-                    setCount(in->getU16());
-                    break;
-                case ATTR_HOUSEDOORID:
-                case ATTR_SCRIPTPROTECTED:
-                case ATTR_DUALWIELD:
-                case ATTR_DECAYING_STATE:
-                    m_attribs.set(attrib, in->getU8());
-                    break;
-                case ATTR_ACTION_ID:
-                case ATTR_UNIQUE_ID:
-                case ATTR_DEPOT_ID:
-                    m_attribs.set(attrib, in->getU16());
-                    break;
-                case ATTR_CONTAINER_ITEMS:
-                case ATTR_ATTACK:
-                case ATTR_EXTRAATTACK:
-                case ATTR_DEFENSE:
-                case ATTR_EXTRADEFENSE:
-                case ATTR_ARMOR:
-                case ATTR_ATTACKSPEED:
-                case ATTR_HITCHANCE:
-                case ATTR_DURATION:
-                case ATTR_WRITTENDATE:
-                case ATTR_SLEEPERGUID:
-                case ATTR_SLEEPSTART:
-                case ATTR_ATTRIBUTE_MAP:
-                    m_attribs.set(attrib, in->getU32());
-                    break;
-                case ATTR_TELE_DEST:
-                {
-                    const uint16_t x = in->getU16();
-                    const uint16_t y = in->getU16();
-                    const uint8_t z = in->getU8();
-                    m_attribs.set(attrib, Position{ x, y, z });
-                    break;
-                }
-                case ATTR_NAME:
-                case ATTR_TEXT:
-                case ATTR_DESC:
-                case ATTR_ARTICLE:
-                case ATTR_WRITTENBY:
-                    m_attribs.set(attrib, in->getString());
-                    break;
-                default:
-                    throw Exception("invalid item attribute {}", attrib);
-            }
-        }
-    } catch (const stdext::exception& e) {
-        g_logger.error("Failed to unserialize OTBM item: {}", e.what());
-    }
-}
-
-void Item::serializeItem(const OutputBinaryTreePtr& out)
-{
-    out->startNode(OTBM_ITEM);
-    out->addU16(getServerId());
-
-    out->addU8(ATTR_COUNT);
-    out->addU8(getCount());
-
-    out->addU8(ATTR_CHARGES);
-    out->addU16(getCountOrSubType());
-
-    const auto& dest = getTeleportDestination();
-    if (dest.isValid()) {
-        out->addU8(ATTR_TELE_DEST);
-        out->addPos(dest.x, dest.y, dest.z);
-    }
-
-    if (isDepot()) {
-        out->addU8(ATTR_DEPOT_ID);
-        out->addU16(getDepotId());
-    }
-
-    if (isHouseDoor()) {
-        out->addU8(ATTR_HOUSEDOORID);
-        out->addU8(getDoorId());
-    }
-
-    const auto aid = getActionId();
-    const auto uid = getUniqueId();
-    if (aid) {
-        out->addU8(ATTR_ACTION_ID);
-        out->addU16(aid);
-    }
-
-    if (uid) {
-        out->addU8(ATTR_UNIQUE_ID);
-        out->addU16(uid);
-    }
-
-    const auto& text = getText();
-    if (g_things.getItemType(m_serverId)->isWritable() && !text.empty()) {
-        out->addU8(ATTR_TEXT);
-        out->addString(text);
-    }
-
-    const auto& desc = getDescription();
-    if (!desc.empty()) {
-        out->addU8(ATTR_DESC);
-        out->addString(desc);
-    }
-
-    out->endNode();
-    for (const auto& i : m_containerItems)
-        i->serializeItem(out);
-}
-
-#endif
 
 void Item::setDurationTime(uint32_t duration)
 {

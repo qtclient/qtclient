@@ -24,6 +24,9 @@ bool isRendererSupported(int rendererIndex);
 /// surface format. rendererOverride < 0 keeps the options' renderer.
 void configureProcess(const ClientOptions& options, int rendererOverride);
 
+/// After QGuiApplication exists: point VK loader at MoltenVK ICD in the tip bundle (macOS).
+void applyBundledMoltenVkIcd();
+
 /// Mounts CIP's art pack (graphics_resources.rcc, resource set "graphics")
 /// at qrc:/. Returns the mounted file, empty when none of dirs has it.
 QString mountGraphicsResources(const QStringList& dirs);

@@ -8,7 +8,6 @@ option(TOGGLE_FRAMEWORK_GRAPHICS "Use Graphics " ON)
 option(TOGGLE_FRAMEWORK_XML "Use XML " ON)
 option(TOGGLE_FRAMEWORK_NET "Use NET " ON)
 option(TOGGLE_FRAMEWORK_PROTOBUF "Use Protobuf" ON)
-option(TOGGLE_FRAMEWORK_EDITOR "Use Editor " OFF)
 option(TOGGLE_BIN_FOLDER "Use build/bin folder for generate compilation files" OFF)
 option(DEBUG_LOG "Enable Debug Log" OFF)
 option(ASAN_ENABLED "Build this target with AddressSanitizer" OFF)
@@ -63,9 +62,6 @@ if (TOGGLE_FRAMEWORK_PROTOBUF)
   set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DFRAMEWORK_PROTOBUF)
 endif()
 
-if (TOGGLE_FRAMEWORK_EDITOR)
-  set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DFRAMEWORK_EDITOR)
-endif()
 if (ANDROID)
   set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DOPENGL_ES=3)
 elseif(WASM)
@@ -149,15 +145,15 @@ endif()
 # *****************************************************************************
 # Engine / host source configuration
 # *****************************************************************************
+# Tip-linked engine TUs only (Phase 8.2). OTC host leftovers (application /
+# graphicalapplication / mouse / platform windows / proxy / discord) deleted.
 set(SOURCE_FILES
-        tibia/engine/framework/core/application.cpp
         tibia/engine/framework/core/asyncdispatcher.cpp
         tibia/engine/framework/core/binarytree.cpp
         tibia/engine/framework/core/clock.cpp
         tibia/engine/framework/core/config.cpp
         tibia/engine/framework/core/configmanager.cpp
         tibia/engine/framework/core/event.cpp
-        tibia/engine/framework/core/eventdispatcher.cpp
         tibia/engine/framework/core/gameevents.cpp
         tibia/engine/framework/core/filestream.cpp
         tibia/engine/framework/core/logger.cpp
@@ -166,24 +162,11 @@ set(SOURCE_FILES
         tibia/engine/framework/core/unzipper.cpp
         tibia/engine/framework/core/unzipper.h
         tibia/engine/framework/core/timer.cpp
-        tibia/engine/framework/discord/discord.cpp
         tibia/engine/framework/net/gamelink.cpp
         tibia/engine/framework/net/inputmessage.cpp
         tibia/engine/framework/net/outputmessage.cpp
         tibia/engine/framework/net/protocol.cpp
         tibia/engine/framework/net/protocolhttp.cpp
-        tibia/engine/framework/platform/androidgameactivity.cpp
-        tibia/engine/framework/platform/androidmanager.cpp
-        tibia/engine/framework/platform/androidmanager.h
-        tibia/engine/framework/platform/androidwindow.cpp
-        tibia/engine/framework/platform/androidwindow.h
-        tibia/engine/framework/platform/platform.cpp
-        tibia/engine/framework/platform/platformwindow.cpp
-        tibia/engine/framework/platform/unixcrashhandler.cpp
-        tibia/engine/framework/platform/unixplatform.cpp
-        tibia/engine/framework/platform/win32crashhandler.cpp
-        tibia/engine/framework/platform/win32platform.cpp
-        tibia/engine/framework/stdext/demangle.cpp
         tibia/engine/framework/stdext/math.cpp
         tibia/engine/framework/stdext/net.cpp
         tibia/engine/framework/stdext/string.cpp
@@ -193,29 +176,23 @@ set(SOURCE_FILES
         tibia/engine/framework/util/color.cpp
         tibia/engine/framework/util/crypt.cpp
         tibia/engine/framework/util/stats.cpp
-        tibia/engine/framework/proxy/proxy.cpp
-        tibia/engine/framework/proxy/proxy_client.cpp
 
         tibia/engine/client/animatedtext.cpp
         tibia/engine/client/animator.cpp
         tibia/engine/client/attachableobject.cpp
         tibia/engine/client/client.cpp
-        tibia/engine/client/creatures.cpp
         tibia/engine/client/gameconfig.cpp
         tibia/engine/client/heightstamp.cpp
-        tibia/engine/client/houses.cpp
         tibia/engine/client/item.cpp
         tibia/engine/client/itemtype.cpp
-        tibia/engine/client/lightfader.cpp
-        tibia/engine/client/mapio.cpp
         tibia/engine/client/minimap.cpp
-        tibia/engine/client/cyclopediamap.cpp
         tibia/engine/client/outfit.cpp
         tibia/engine/client/player.cpp
         tibia/engine/client/position.cpp
         tibia/engine/client/protocolgame.cpp
         tibia/protocol/messagemodes.cpp
         tibia/protocol/extendedopcode.cpp
+        tibia/protocol/extendedopcode_json.cpp
         tibia/protocol/servermessages.cpp
         tibia/protocol/clientmessages.cpp
         tibia/protocol/dispatch.gen.cpp
@@ -223,31 +200,24 @@ set(SOURCE_FILES
         tibia/assets/spritesheet.cpp
         tibia/assets/thingtype.cpp
         tibia/assets/things.cpp
-        tibia/world/container.cpp
         tibia/world/creature.cpp
         tibia/world/effect.cpp
-        tibia/world/game.cpp
+        tibia/game/game.cpp
         tibia/world/localplayer.cpp
         tibia/world/map.cpp
-        tibia/world/missile.cpp
         tibia/world/thing.cpp
-        tibia/world/tile.cpp
+        tibia/worldmap/worldmapfield.cpp
         tibia/world/attachedeffect.cpp
         tibia/world/attachedeffectmanager.cpp
         tibia/world/paperdoll.cpp
         tibia/world/paperdollmanager.cpp
         tibia/world/sessionhooks.cpp
-        tibia/engine/client/towns.cpp
         tibia/engine/client/satellitemap.cpp
 )
 
 if (TOGGLE_FRAMEWORK_GRAPHICS)
   set(SOURCE_FILES ${SOURCE_FILES}
-          tibia/engine/framework/core/adaptativeframecounter.cpp
-          tibia/engine/framework/core/graphicalapplication.cpp
-          tibia/engine/framework/input/mouse.cpp
           tibia/engine/framework/graphics/animatedtexture.cpp
-          tibia/engine/framework/graphics/apngloader.cpp
           tibia/engine/framework/graphics/coordsbuffer.cpp
           tibia/engine/framework/graphics/textureatlas.cpp
           tibia/engine/framework/graphics/render/resourceregistry.cpp
@@ -256,17 +226,10 @@ if (TOGGLE_FRAMEWORK_GRAPHICS)
           tibia/engine/framework/graphics/texture.cpp
           tibia/engine/framework/graphics/texturemanager.cpp
   )
-  if(WIN32)
+  if(NOT WASM)
     set(SOURCE_FILES ${SOURCE_FILES}
             tibia/engine/framework/graphics/gl_win32.cpp)
   endif()
-endif()
-
-if (WASM)
-  set(SOURCE_FILES ${SOURCE_FILES}
-          tibia/engine/framework/platform/browserplatform.cpp
-          tibia/engine/framework/platform/browserwindow.cpp
-  )
 endif()
 
 if(NOT WASM)
@@ -279,30 +242,9 @@ if(NOT WASM)
   )
 endif()
 
-if(WIN32)
-  set(SOURCE_FILES ${SOURCE_FILES} tibia/engine/framework/platform/win32window.cpp)
-elseif(APPLE AND NOT ANDROID AND NOT WASM)
-  set(SOURCE_FILES ${SOURCE_FILES}
-          tibia/engine/framework/platform/cocoawindow.mm
-          tibia/engine/framework/platform/cocoaview.mm
-  )
-  set_source_files_properties(
-    tibia/engine/framework/platform/cocoawindow.mm
-    tibia/engine/framework/platform/cocoaview.mm
-    PROPERTIES
-    SKIP_UNITY_BUILD_INCLUSION ON
-    SKIP_PRECOMPILE_HEADERS ON
-  )
-elseif(UNIX AND NOT ANDROID AND NOT WASM)
-  set(SOURCE_FILES ${SOURCE_FILES} tibia/engine/framework/platform/x11window.cpp)
-endif()
-
-# Engine for tibia (and wasm/mobile hosts): no Lua, OTUI, HTML, modules, or
-# native window (the host defines g_window). Script hooks reach GameEvents only.
+# Engine for tibia (and wasm/mobile hosts): no Lua, OTUI, HTML, modules.
+# Script hooks reach GameEvents only. Host is Qt (`tibia::host::app`).
 set(GAMECORE_SOURCES ${SOURCE_FILES})
-list(FILTER GAMECORE_SOURCES EXCLUDE REGEX
-  "^(tibia/engine/framework/luaengine/(luaexception|luainterface|luaobject|luavaluecasts)\.|tibia/engine/framework/luafunctions\.cpp|tibia/engine/client/luafunctions\.cpp|tibia/engine/client/luavaluecasts_client\.cpp|tibia/engine/framework/html/|tibia/engine/client/ui[a-z]*\.cpp|tibia/engine/framework/core/module(manager)?\.cpp|tibia/engine/framework/core/garbagecollection\.cpp|tools/datdump\.cpp\
-|tibia/engine/framework/platform/(cocoawindow|cocoaview|x11window|win32window|browserwindow|androidwindow|androidgameactivity)\.)")
 set_source_files_properties(
   tibia/assets/things.cpp
   tibia/assets/spritesheet.cpp
@@ -334,7 +276,6 @@ add_custom_command(
   VERBATIM
 )
 add_custom_target(protocol_dispatch_check DEPENDS "${_protocol_stamp}")
-list(FILTER GAMECORE_SOURCES EXCLUDE REGEX "/platform/|/proxy/|/discord/|/(application|graphicalapplication|consoleapplication|eventdispatcher|mouse)\\.cpp$")
 set(_tibia_engine_abs)
 foreach(_src IN LISTS GAMECORE_SOURCES)
   list(APPEND _tibia_engine_abs "${CMAKE_CURRENT_SOURCE_DIR}/${_src}")

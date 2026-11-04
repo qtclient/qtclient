@@ -4,13 +4,9 @@ game
   typing-icon: /images/game/console/typing
   
   map
-    // Short-axis visible SQM. Landscape: height = this, width from panel aspect.
-    // Portrait: width = this, height from panel aspect. Aware/stream radius is
-    // ceil((visible-1)/2)+1 on the longest 21:9 / 9:21 axis (must match Crystal
-    // MAP_VISIBLE_SQM → MAP_MAX_CLIENT_VIEW_PORT_*).
-    visible-sqm: 12
-    // HUD: full-bleed map + transparent overlay chrome by default
-    extended-view-ui: true
+    // 0 = legacy Crystal/CIP aware range (8×6 client viewport).
+    visible-sqm: 0
+    extended-view-ui: false
     max-z: 15
     sea-floor: 7
     underground-floor: 8

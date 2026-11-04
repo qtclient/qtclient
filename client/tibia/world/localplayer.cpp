@@ -24,93 +24,140 @@
 
 #include <framework/core/gamehooks.h>
 
-#include "container.h"
+#include "container/containerciptypes.h"
+#include "creatures/creaturestorage.h"
 #include "game.h"
 #include "client/item.h"
 #include "map.h"
-#include "tile.h"
+#include "worldmap/worldmapfield.h"
 #include "framework/core/clock.h"
-#include "framework/core/eventdispatcher.h"
+#include <tibia/schedule/schedule.h>
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "input/playermovementgameactionhandler.h"
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/gamesession.h>
+
+namespace {
+
+std::shared_ptr<tibia::creatures::TCreature> localWalkRow(LocalPlayer& player)
+{
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    if (!storage || player.getId() == 0)
+        return nullptr;
+    return storage->getOrCreate(player.getId());
+}
+
+}
 
 void LocalPlayer::lockWalk(const uint16_t millis)
 {
-    m_walkLockExpiration = std::max<ticks_t>(m_walkLockExpiration, g_clock.millis() + millis);
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this))
+        row->lockWalk(millis);
+}
+
+void LocalPlayer::unlockWalk()
+{
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this))
+        row->unlockWalk();
 }
 
 bool LocalPlayer::canWalk(const bool ignoreLock)
 {
-    // Prevent movement if the player is dead
-    if (isDead())
-        return false;
-
-    // Prevent movement if walking is locked, unless ignored
-    if (isWalkLocked() && !ignoreLock)
-        return false;
-
-    // Ensure movement synchronization with the server
-    if (g_game.getWalkMaxSteps() > 0) {
-        if (m_preWalks.size() > g_game.getWalkMaxSteps())
+    // Storage row is authority (same rules as WalkCalculator::canStep).
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this)) {
+        if (isDead())
             return false;
-    } else if (getPosition() != getServerPosition())
-        return false;
-
-    // Handle ongoing movement cases
-    if (isWalking()) {
-        if (isAutoWalking()) return true;  // Allow auto-walking
-        if (isPreWalking()) return false;  // Prevent pre-walk interruptions
+        if (row->isWalkLocked() && !ignoreLock)
+            return false;
+        if (g_game.getWalkMaxSteps() > 0) {
+            if (row->preWalkingSize() > g_game.getWalkMaxSteps())
+                return false;
+        } else if (row->position() != row->serverPosition()) {
+            return false;
+        }
+        if (row->isWalking()) {
+            if (row->isAutoWalking())
+                return true;
+            if (row->isPreWalking())
+                return false;
+        }
+        return row->walkTicksElapsed() >= row->stepDuration();
     }
 
-    // allow only if walk done, ex. diagonals may need additional ticks before taking another step
+    if (isDead())
+        return false;
+    if (isWalkLocked() && !ignoreLock)
+        return false;
+    if (g_game.getWalkMaxSteps() > 0) {
+        if (getPreWalkingSize() > g_game.getWalkMaxSteps())
+            return false;
+    } else if (getPosition() != getServerPosition()) {
+        return false;
+    }
+    if (isWalking()) {
+        if (isAutoWalking())
+            return true;
+        if (isPreWalking())
+            return false;
+    }
     return m_walkTimer.ticksElapsed() >= getStepDuration();
 }
 
 void LocalPlayer::walk(const Position& oldPos, const Position& newPos)
 {
-    m_autoWalkRetries = 0;
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this)) {
+        row->setAutoWalkRetries(0);
 
-    if (isPreWalking() && newPos == m_preWalks.front()) {
-        m_preWalks.pop_front();
+        if (row->isPreWalking() && !row->preWalks().empty() && newPos == row->preWalks().front()) {
+            row->popPreWalkFront();
+            return;
+        }
+
+        cancelAdjustInvalidPosEvent();
+        row->clearPreWalks();
+        m_serverWalk = true;
+
+        Creature::walk(oldPos, newPos);
         return;
     }
 
     cancelAdjustInvalidPosEvent();
-    m_preWalks.clear();
     m_serverWalk = true;
-
     Creature::walk(oldPos, newPos);
 }
 
-void LocalPlayer::preWalk(Otc::Direction direction)
+void LocalPlayer::preWalk(tibia::client::Direction direction)
 {
     m_lastMapDuration = -1;
 
     const auto& oldPos = getPosition();
-    Creature::walk(oldPos, m_preWalks.emplace_back(oldPos.translatedToDirection(direction)));
+    const Position predicted = oldPos.translatedToDirection(direction);
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this))
+        Creature::walk(oldPos, row->pushPreWalk(predicted));
+    else
+        Creature::walk(oldPos, predicted);
     Creature::onPositionChange(getLastStepToPosition(), getLastStepFromPosition());
     registerAdjustInvalidPosEvent();
 }
 
-void LocalPlayer::onWalking() {
-    if (isPreWalking()) {
-        if (const auto& tile = g_map.getTile(getPosition())) {
-            for (const auto& creature : tile->getWalkingCreatures()) {
-                // Cancel pre-walk movement if the local player tries to walk on an unwalkable tile.
-                if (creature.get() != this && creature->getPosition() == getPosition() && !creature->isPassable()) {
-                    cancelWalk();
-                    g_map.notificateTileUpdate(getPosition(), asLocalPlayer(), Otc::OPERATION_CLEAN);
-                    break;
-                }
-            }
-        }
-    }
+void LocalPlayer::onWalking()
+{
+    // Pre-walk impassable collision is owned by WalkCalculator::advance (storage check).
+}
+
+void LocalPlayer::cancelPreWalkCollision()
+{
+    cancelWalk();
+    g_map.notificateTileUpdate(getPosition(), asLocalPlayer(), tibia::client::OPERATION_CLEAN);
 }
 
 void LocalPlayer::registerAdjustInvalidPosEvent() {
     cancelAdjustInvalidPosEvent();
     m_adjustInvalidPosEvent = tibia::schedule::after([this, self = asLocalPlayer()] {
-        m_preWalks.clear();
+        if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*self))
+            row->clearPreWalks();
         g_game.resetMapUpdatedAt();
         m_adjustInvalidPosEvent = nullptr;
     }, std::min<int>(std::max<int>(getStepDuration(), g_game.getPing()) + 100, 1000));
@@ -124,13 +171,14 @@ void LocalPlayer::cancelAdjustInvalidPosEvent() {
 
 bool LocalPlayer::retryAutoWalk()
 {
-    if (!m_autoWalkDestination.isValid())
+    const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this);
+    if (!row || !row->isAutoWalking())
         return false;
 
-    // Soft keeps the destination across SnapBack and repaths with backoff.
-    // Do not call Game::stop() here — that clears Soft auto-walk intent.
+    // Client keeps the destination across SnapBack and repaths with backoff.
+    // Do not call Game::stop() here — that clears auto-walk intent.
     constexpr int MaxAutoWalkRetries = 100;
-    if (m_autoWalkRetries >= MaxAutoWalkRetries) {
+    if (row->autoWalkRetries() >= MaxAutoWalkRetries) {
         stopAutoWalk();
         return false;
     }
@@ -138,16 +186,16 @@ bool LocalPlayer::retryAutoWalk()
     if (m_autoWalkContinueEvent)
         m_autoWalkContinueEvent->cancel();
 
-    const Position autoWalkDest = m_autoWalkDestination;
-    const int delayMs = 200 + static_cast<int>(m_autoWalkRetries) * 100;
+    const Position autoWalkDest = row->autoWalkDestination();
+    const int delayMs = 200 + static_cast<int>(row->autoWalkRetries()) * 100;
     m_autoWalkContinueEvent = tibia::schedule::after(
         [thisPtr = asLocalPlayer(), autoWalkDest] { thisPtr->autoWalk(autoWalkDest, true); }, delayMs);
 
-    m_autoWalkRetries += 1;
+    row->setAutoWalkRetries(static_cast<uint8_t>(row->autoWalkRetries() + 1));
     return true;
 }
 
-void LocalPlayer::cancelWalk(const Otc::Direction direction)
+void LocalPlayer::cancelWalk(const tibia::client::Direction direction)
 {
     // only cancel client side walks
     if (isWalking() && isPreWalking())
@@ -163,50 +211,58 @@ void LocalPlayer::cancelWalk(const Otc::Direction direction)
     if (retryAutoWalk()) return;
 
     // turn to the cancel direction
-    if (direction != Otc::InvalidDirection)
+    if (direction != tibia::client::InvalidDirection)
         setDirection(direction);
 
-    callLuaField("onCancelWalk", direction);
+    (void)direction;
 }
 
-bool LocalPlayer::autoWalk(const Position& destination, const bool retry, const Otc::AutoWalkPathMode pathMode)
+bool LocalPlayer::autoWalk(const Position& destination, const bool retry, const tibia::client::AutoWalkPathMode pathMode)
 {
+    const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this);
+
     // reset state
-    m_autoWalkDestination = {};
-    m_lastAutoWalkPosition = {};
+    if (row) {
+        row->setAutoWalkDestination({});
+        row->setLastAutoWalkPosition({});
+    }
     if (m_autoWalkContinueEvent)
         m_autoWalkContinueEvent->cancel();
     m_autoWalkContinueEvent = nullptr;
 
-    if (!retry) {
-        m_autoWalkRetries = 0;
-        m_autoWalkPathMode = pathMode;
+    if (!retry && row) {
+        row->setAutoWalkRetries(0);
+        row->setAutoWalkPathMode(pathMode);
     }
 
     if (destination == m_position)
         return true;
 
-    m_autoWalkDestination = destination;
+    if (row)
+        row->setAutoWalkDestination(destination);
+
+    const tibia::client::AutoWalkPathMode findMode =
+        row ? row->autoWalkPathMode() : pathMode;
 
     g_map.findPathAsync(m_position, destination, [self = asLocalPlayer()](const auto& result) {
-        if (self->m_autoWalkDestination != result->destination)
+        const std::shared_ptr<tibia::creatures::TCreature> stored = localWalkRow(*self);
+        if (!stored || stored->autoWalkDestination() != result->destination)
             return;
 
-        if (result->status != Otc::PathFindResultOk) {
-            // Soft: keep destination and repath until arrival or user cancel.
+        if (result->status != tibia::client::PathFindResultOk) {
+            // qtclient: keep destination and repath until arrival or user cancel.
             constexpr int MaxAutoWalkRetries = 100;
-            if (self->m_autoWalkRetries < MaxAutoWalkRetries) {
+            if (stored->autoWalkRetries() < MaxAutoWalkRetries) {
                 if (self->m_autoWalkContinueEvent)
                     self->m_autoWalkContinueEvent->cancel();
                 const Position dest = result->destination;
-                const int delayMs = 200 + static_cast<int>(self->m_autoWalkRetries) * 100;
+                const int delayMs = 200 + static_cast<int>(stored->autoWalkRetries()) * 100;
                 self->m_autoWalkContinueEvent =
                     tibia::schedule::after([self, dest] { self->autoWalk(dest, true); }, delayMs);
-                self->m_autoWalkRetries += 1;
+                stored->setAutoWalkRetries(static_cast<uint8_t>(stored->autoWalkRetries() + 1));
                 return;
             }
-            self->m_autoWalkDestination = {};
-            self->callLuaField("onAutoWalkFail", result->status);
+            stored->setAutoWalkDestination({});
             return;
         }
 
@@ -214,34 +270,34 @@ bool LocalPlayer::autoWalk(const Position& destination, const bool retry, const 
             result->path.resize(127);
 
         if (result->path.empty()) {
-            // Soft/CIP: keep destination and repath — empty can be a transient
-            // Soft cost miss or a fog-truncated leftover, not a final failure.
+            // qtclient/CIP: keep destination and repath — empty can be a transient
+            // pathfinder cost miss or a fog-truncated leftover, not a final failure.
             constexpr int MaxAutoWalkRetries = 100;
-            if (self->m_autoWalkRetries < MaxAutoWalkRetries) {
+            if (stored->autoWalkRetries() < MaxAutoWalkRetries) {
                 if (self->m_autoWalkContinueEvent)
                     self->m_autoWalkContinueEvent->cancel();
                 const Position dest = result->destination;
-                const int delayMs = 200 + static_cast<int>(self->m_autoWalkRetries) * 100;
+                const int delayMs = 200 + static_cast<int>(stored->autoWalkRetries()) * 100;
                 self->m_autoWalkContinueEvent =
                     tibia::schedule::after([self, dest] { self->autoWalk(dest, true); }, delayMs);
-                self->m_autoWalkRetries += 1;
+                stored->setAutoWalkRetries(static_cast<uint8_t>(stored->autoWalkRetries() + 1));
                 return;
             }
-            self->m_autoWalkDestination = {};
-            self->callLuaField("onAutoWalkFail", result->status);
+            stored->setAutoWalkDestination({});
             return;
         }
 
-        // Soft continue: last tile of this ≤127 chunk, not the final goal.
+        // Client continue: last tile of this ≤127 chunk, not the final goal.
         // onPositionChange resumes autoWalk when the player reaches that tile.
         const std::vector<Position> waypoints = result->start.translatedToDirections(result->path);
         if (!waypoints.empty()) {
             const Position& last = waypoints.back();
-            self->m_lastAutoWalkPosition = (last != self->m_autoWalkDestination) ? last : Position{};
+            stored->setLastAutoWalkPosition(
+                (last != stored->autoWalkDestination()) ? last : Position{});
         }
 
         g_game.autoWalk(result->path, result->start);
-    }, m_autoWalkPathMode);
+    }, findMode);
 
     if (!retry)
         lockWalk();
@@ -249,38 +305,91 @@ bool LocalPlayer::autoWalk(const Position& destination, const bool retry, const 
     return true;
 }
 
-bool LocalPlayer::isWalkLocked() { return m_walkLockExpiration != 0 && g_clock.millis() < m_walkLockExpiration; }
+bool LocalPlayer::isWalkLocked()
+{
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this))
+        return row->isWalkLocked();
+    return false;
+}
+
+bool LocalPlayer::isPreWalking()
+{
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this))
+        return row->isPreWalking();
+    return false;
+}
+
+bool LocalPlayer::isAutoWalking()
+{
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this))
+        return row->isAutoWalking();
+    return false;
+}
+
+Position LocalPlayer::getPosition()
+{
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this)) {
+        if (row->isPreWalking())
+            return row->predictedPosition();
+    }
+    return m_position;
+}
+
+void LocalPlayer::resetPreWalk()
+{
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this))
+        row->clearPreWalks();
+}
+
+size_t LocalPlayer::getPreWalkingSize()
+{
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this))
+        return row->preWalkingSize();
+    return 0;
+}
 
 void LocalPlayer::stopAutoWalk()
 {
-    m_autoWalkDestination = {};
-    m_lastAutoWalkPosition = {};
-    m_autoWalkPathMode = Otc::AutoWalkPathMinimap;
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this))
+        row->clearAutoWalk();
     m_knownCompletePath = false;
 
     if (m_autoWalkContinueEvent)
         m_autoWalkContinueEvent->cancel();
+
+    // CIP: stopAutoWalk / arrival / server cancel clear the live Target intent so
+    // TPlayerMovementIntentHandler stops replanning.
+    if (tibia::input::TPlayerMovementGameActionHandler* movement =
+            tibia::input::TPlayerMovementGameActionHandler::instance())
+        movement->clearTargetIntent();
 }
 
 void LocalPlayer::terminateWalk()
 {
     Creature::terminateWalk();
     m_serverWalk = false;
-    callLuaField("onWalkFinish");
+}
+
+void LocalPlayer::applyStorageWalkTerminated()
+{
+    Creature::applyStorageWalkTerminated();
+    m_serverWalk = false;
 }
 
 void LocalPlayer::onPositionChange(const Position& newPos, const Position& oldPos)
 {
     // Pre-walk already emitted Creature::onPositionChange for the predicted step;
-    // still run Soft/CIP autoWalk continue against the confirmed tile.
+    // still run qtclient/CIP autoWalk continue against the confirmed tile.
     if (!isPreWalking())
         Creature::onPositionChange(newPos, oldPos);
 
-    if (newPos == m_autoWalkDestination)
-        stopAutoWalk();
-    else if (m_autoWalkDestination.isValid() && newPos == m_lastAutoWalkPosition)
-        // retry=true: do not lockWalk again mid-route (CIP Target replan).
-        autoWalk(m_autoWalkDestination, true);
+    if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this)) {
+        if (newPos == row->autoWalkDestination())
+            stopAutoWalk();
+        else if (row->isAutoWalking() && newPos == row->lastAutoWalkPosition())
+            // retry=true: do not lockWalk again mid-route (CIP Target replan).
+            autoWalk(row->autoWalkDestination(), true);
+    }
 
     if (!isPreWalking())
         m_serverWalk = false;
@@ -298,12 +407,12 @@ void LocalPlayer::setStatesAndRottenBlood(const uint64_t states, const uint8_t r
     if (isParalyzed() && isWalking() && m_serverWalk)
         updateWalk();
 
-    callLuaField("onStatesChange", states, oldStates);
+    publish("onStatesChange", states, oldStates);
 }
 
-void LocalPlayer::setSkill(const Otc::Skill skillId, const uint16_t level, const uint16_t levelPercent)
+void LocalPlayer::setSkill(const tibia::client::Skill skillId, const uint16_t level, const uint16_t levelPercent)
 {
-    if (skillId >= Otc::LastSkill) {
+    if (skillId >= tibia::client::LastSkill) {
         g_logger.traceError("invalid skill");
         return;
     }
@@ -319,20 +428,20 @@ void LocalPlayer::setSkill(const Otc::Skill skillId, const uint16_t level, const
     skill.level = level;
     skill.levelPercent = levelPercent;
 
-    callLuaField("onSkillChange", skillId, level, levelPercent, oldLevel, oldLevelPercent);
+    publish("onSkillChange", skillId, level, levelPercent, oldLevel, oldLevelPercent);
 }
 
-void LocalPlayer::setSkillDetail(const Otc::Skill skillId, const uint16_t loyaltyLevel, const uint16_t percentHundredths)
+void LocalPlayer::setSkillDetail(const tibia::client::Skill skillId, const uint16_t loyaltyLevel, const uint16_t percentHundredths)
 {
-    if (skillId >= Otc::LastSkill)
+    if (skillId >= tibia::client::LastSkill)
         return;
     m_skills[skillId].loyaltyLevel = loyaltyLevel;
     m_skills[skillId].percentHundredths = percentHundredths;
 }
 
-void LocalPlayer::setBaseSkill(const Otc::Skill skill, const uint16_t baseLevel)
+void LocalPlayer::setBaseSkill(const tibia::client::Skill skill, const uint16_t baseLevel)
 {
-    if (skill >= Otc::LastSkill) {
+    if (skill >= tibia::client::LastSkill) {
         g_logger.traceError("invalid skill");
         return;
     }
@@ -343,7 +452,7 @@ void LocalPlayer::setBaseSkill(const Otc::Skill skill, const uint16_t baseLevel)
 
     m_skills[skill].baseLevel = baseLevel;
 
-    callLuaField("onBaseSkillChange", skill, baseLevel, oldBaseLevel);
+    publish("onBaseSkillChange", skill, baseLevel, oldBaseLevel);
 }
 
 void LocalPlayer::setHealth(const uint32_t health, const uint32_t maxHealth)
@@ -354,7 +463,7 @@ void LocalPlayer::setHealth(const uint32_t health, const uint32_t maxHealth)
         m_health = health;
         m_maxHealth = maxHealth;
 
-        callLuaField("onHealthChange", health, maxHealth, oldHealth, oldMaxHealth);
+        publish("onHealthChange", health, maxHealth, oldHealth, oldMaxHealth);
 
         if (isDead()) {
             if (isPreWalking())
@@ -372,7 +481,7 @@ void LocalPlayer::setFreeCapacity(const uint32_t freeCapacity)
     const uint32_t oldFreeCapacity = m_freeCapacity;
     m_freeCapacity = freeCapacity;
 
-    callLuaField("onFreeCapacityChange", freeCapacity, oldFreeCapacity);
+    publish("onFreeCapacityChange", freeCapacity, oldFreeCapacity);
 }
 
 void LocalPlayer::setTotalCapacity(const uint32_t totalCapacity)
@@ -383,7 +492,7 @@ void LocalPlayer::setTotalCapacity(const uint32_t totalCapacity)
     const uint32_t oldTotalCapacity = m_totalCapacity;
     m_totalCapacity = totalCapacity;
 
-    callLuaField("onTotalCapacityChange", totalCapacity, oldTotalCapacity);
+    publish("onTotalCapacityChange", totalCapacity, oldTotalCapacity);
 }
 
 void LocalPlayer::setBaseCapacity(const uint32_t baseCapacity)
@@ -392,7 +501,7 @@ void LocalPlayer::setBaseCapacity(const uint32_t baseCapacity)
         return;
 
     m_baseCapacity = baseCapacity;
-    callLuaField("onBaseCapacityChange", baseCapacity);
+    publish("onBaseCapacityChange", baseCapacity);
 }
 
 void LocalPlayer::setExperience(const uint64_t experience)
@@ -403,7 +512,7 @@ void LocalPlayer::setExperience(const uint64_t experience)
     const uint64_t oldExperience = m_experience;
     m_experience = experience;
 
-    callLuaField("onExperienceChange", experience, oldExperience);
+    publish("onExperienceChange", experience, oldExperience);
 }
 
 void LocalPlayer::setLevel(const uint16_t level, const uint16_t levelPercent)
@@ -417,17 +526,17 @@ void LocalPlayer::setLevel(const uint16_t level, const uint16_t levelPercent)
     m_level = level;
     m_levelPercent = levelPercent;
 
-    callLuaField("onLevelChange", level, levelPercent, oldLevel, oldLevelPercent);
+    publish("onLevelChange", level, levelPercent, oldLevel, oldLevelPercent);
 }
 
 uint16_t LocalPlayer::getLevelPercent()
 {
-    return g_game.getFeature(Otc::GameLevelPercentU16) ? m_levelPercent / 100 : m_levelPercent;
+    return g_game.getFeature(tibia::client::GameLevelPercentU16) ? m_levelPercent / 100 : m_levelPercent;
 }
 
 uint16_t LocalPlayer::getLevelPercentHundredths()
 {
-    return g_game.getFeature(Otc::GameLevelPercentU16) ? m_levelPercent : m_levelPercent * 100;
+    return g_game.getFeature(tibia::client::GameLevelPercentU16) ? m_levelPercent : m_levelPercent * 100;
 }
 
 void LocalPlayer::setMana(const uint32_t mana, const uint32_t maxMana)
@@ -440,7 +549,7 @@ void LocalPlayer::setMana(const uint32_t mana, const uint32_t maxMana)
     m_mana = mana;
     m_maxMana = maxMana;
 
-    callLuaField("onManaChange", mana, maxMana, oldMana, oldMaxMana);
+    publish("onManaChange", mana, maxMana, oldMana, oldMaxMana);
 }
 
 void LocalPlayer::setManaShield(const uint32_t manaShield, const uint32_t maxManaShield)
@@ -453,7 +562,7 @@ void LocalPlayer::setManaShield(const uint32_t manaShield, const uint32_t maxMan
     m_manaShield = manaShield;
     m_maxManaShield = maxManaShield;
 
-    callLuaField("onManaShieldChange", manaShield, maxManaShield, oldManaShield, oldMaxManaShield);
+    publish("onManaShieldChange", manaShield, maxManaShield, oldManaShield, oldMaxManaShield);
 }
 
 void LocalPlayer::setMagicLevel(const uint16_t magicLevel, const uint16_t magicLevelPercent)
@@ -467,7 +576,7 @@ void LocalPlayer::setMagicLevel(const uint16_t magicLevel, const uint16_t magicL
     m_magicLevel = magicLevel;
     m_magicLevelPercent = magicLevelPercent;
 
-    callLuaField("onMagicLevelChange", magicLevel, magicLevelPercent, oldMagicLevel, oldMagicLevelPercent);
+    publish("onMagicLevelChange", magicLevel, magicLevelPercent, oldMagicLevel, oldMagicLevelPercent);
 }
 
 void LocalPlayer::setBaseMagicLevel(const uint16_t baseMagicLevel)
@@ -478,7 +587,7 @@ void LocalPlayer::setBaseMagicLevel(const uint16_t baseMagicLevel)
     const uint16_t oldBaseMagicLevel = m_baseMagicLevel;
     m_baseMagicLevel = baseMagicLevel;
 
-    callLuaField("onBaseMagicLevelChange", baseMagicLevel, oldBaseMagicLevel);
+    publish("onBaseMagicLevelChange", baseMagicLevel, oldBaseMagicLevel);
 }
 
 void LocalPlayer::setSoul(const uint8_t soul)
@@ -489,7 +598,7 @@ void LocalPlayer::setSoul(const uint8_t soul)
     const uint8_t oldSoul = m_soul;
     m_soul = soul;
 
-    callLuaField("onSoulChange", soul, oldSoul);
+    publish("onSoulChange", soul, oldSoul);
 }
 
 void LocalPlayer::setStamina(const uint16_t stamina)
@@ -500,30 +609,38 @@ void LocalPlayer::setStamina(const uint16_t stamina)
     const uint16_t oldStamina = m_stamina;
     m_stamina = stamina;
 
-    callLuaField("onStaminaChange", stamina, oldStamina);
+    publish("onStaminaChange", stamina, oldStamina);
 }
 
-void LocalPlayer::setInventoryItem(const Otc::InventorySlot inventory, const ItemPtr& item)
+void LocalPlayer::setInventoryItem(const tibia::client::InventorySlot inventory)
 {
-    if (inventory >= Otc::LastInventorySlot) {
+    if (inventory >= tibia::client::LastInventorySlot) {
         g_logger.traceError("invalid slot");
         return;
     }
 
-    if (m_inventoryItems[inventory] == item)
-        return;
+    // Phase 5.0-D: no LocalPlayer ItemPtr array — TInventoryContainer is authority.
+    publish("onInventoryChange", inventory);
+}
 
-    const auto& oldItem = m_inventoryItems[inventory];
-    m_inventoryItems[inventory] = item;
+const tibia::container::TInventorySlot& LocalPlayer::inventorySlot(const tibia::client::InventorySlot inventory) const
+{
+    static const tibia::container::TInventorySlot empty;
+    if (inventory >= tibia::client::LastInventorySlot)
+        return empty;
+    if (tibia::container::TInventoryContainer* storage = tibia::container::TInventoryContainer::instance())
+        return storage->slotAt(static_cast<int>(inventory));
+    return empty;
+}
 
-    if (item && g_game.getFeature(Otc::GameThingClock) && item->getDurationTime() > 0
-            && item->getClothSlot() == static_cast<int>(inventory)){
-        // expirestop-only items (e.g. toggled-off magic light wand) are paused
-        // server-side, so their countdown must not tick client-side either
-        item->setDecaying(item->hasExpire() || item->hasClockExpire());
-    }
-
-    callLuaField("onInventoryChange", inventory, item, oldItem);
+ItemPtr LocalPlayer::getInventoryItem(const tibia::client::InventorySlot inventory)
+{
+    const tibia::container::TInventorySlot& slot = inventorySlot(inventory);
+    if (slot.empty())
+        return nullptr;
+    return g_game.ephemeralItemForWire(slot.typeId, Position(UINT16_MAX, static_cast<uint16_t>(inventory), 0), 0,
+                                       slot.stackable ? slot.count : 0, slot.tier,
+                                       slot.fluidOrSplash ? slot.fluid : 0);
 }
 
 void LocalPlayer::setInventoryCountCache(std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts)
@@ -536,19 +653,14 @@ bool LocalPlayer::hasEquippedItemId(const uint16_t itemId, const uint8_t tier)
     if (itemId == 0)
         return false;
 
-    for (const auto& item : m_inventoryItems) {
-        if (!item)
-            continue;
-
-        if (item->getId() != itemId)
-            continue;
-
-        if (item->getTier() != tier)
-            continue;
-
-        return true;
+    tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance();
+    if (!inventory)
+        return false;
+    for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot) {
+        const tibia::container::TInventorySlot& row = inventory->slotAt(slot);
+        if (!row.empty() && row.typeId == itemId && row.tier == tier)
+            return true;
     }
-
     return false;
 }
 
@@ -565,21 +677,24 @@ uint32_t LocalPlayer::getInventoryCount(const uint16_t itemId, const uint8_t tie
 
     uint32_t total = 0;
 
-    const auto accumulate = [&](const ItemPtr& item) {
-        if (item && std::cmp_equal(item->getId(), itemId) && item->getTier() == tier) {
-            total += item->getCount();
+    if (tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance()) {
+        for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot) {
+            const tibia::container::TInventorySlot& row = inventory->slotAt(slot);
+            if (!row.empty() && row.typeId == itemId && row.tier == tier)
+                total += row.stackable ? std::max<uint16_t>(1, row.count) : 1;
         }
-    };
+    }
 
-    for (const auto& item : m_inventoryItems)
-        accumulate(item);
-
-    for (const auto& [containerId, container] : g_game.getContainers()) {
-        if (!container)
-            continue;
-
-        for (const auto& item : container->getItems())
-            accumulate(item);
+    if (tibia::container::TContainerStorage* storage = tibia::container::TContainerStorage::instance()) {
+        for (const tibia::container::TContainerID containerId : storage->openIds()) {
+            const tibia::container::TStoredContainer* row = storage->containerAt(containerId);
+            if (!row)
+                continue;
+            for (const tibia::container::TInventorySlot& slot : row->items) {
+                if (!slot.empty() && slot.typeId == itemId && slot.tier == tier)
+                    total += slot.stackable ? std::max<uint16_t>(1, slot.count) : 1;
+            }
+        }
     }
 
     if (const uint64_t maxUint32 = std::numeric_limits<uint32_t>::max(); total > maxUint32) {
@@ -596,7 +711,7 @@ void LocalPlayer::setPremium(const bool premium)
 
     m_premium = premium;
 
-    callLuaField("onPremiumChange", premium);
+    publish("onPremiumChange", premium);
 }
 
 void LocalPlayer::setRegenerationTime(const uint16_t regenerationTime)
@@ -607,7 +722,7 @@ void LocalPlayer::setRegenerationTime(const uint16_t regenerationTime)
     const uint16_t oldRegenerationTime = m_regenerationTime;
     m_regenerationTime = regenerationTime;
 
-    callLuaField("onRegenerationChange", regenerationTime, oldRegenerationTime);
+    publish("onRegenerationChange", regenerationTime, oldRegenerationTime);
 }
 
 void LocalPlayer::setOfflineTrainingTime(const uint16_t offlineTrainingTime)
@@ -618,7 +733,7 @@ void LocalPlayer::setOfflineTrainingTime(const uint16_t offlineTrainingTime)
     const uint16_t oldOfflineTrainingTime = m_offlineTrainingTime;
     m_offlineTrainingTime = offlineTrainingTime;
 
-    callLuaField("onOfflineTrainingChange", offlineTrainingTime, oldOfflineTrainingTime);
+    publish("onOfflineTrainingChange", offlineTrainingTime, oldOfflineTrainingTime);
 }
 
 void LocalPlayer::setSpells(const std::vector<uint16_t>& spells)
@@ -629,7 +744,7 @@ void LocalPlayer::setSpells(const std::vector<uint16_t>& spells)
     const std::vector<uint16_t> oldSpells = m_spells;
     m_spells = spells;
 
-    callLuaField("onSpellsChange", spells, oldSpells);
+    publish("onSpellsChange", spells, oldSpells);
 }
 
 void LocalPlayer::setBlessings(const uint16_t blessings, const uint8_t blessVisualState)
@@ -641,7 +756,7 @@ void LocalPlayer::setBlessings(const uint16_t blessings, const uint8_t blessVisu
     m_blessings = blessings;
     m_blessVisualState = blessVisualState;
 
-    callLuaField("onBlessingsChange", blessings, oldBlessings, blessVisualState);
+    publish("onBlessingsChange", blessings, oldBlessings, blessVisualState);
 }
 
 void LocalPlayer::takeScreenshot(const uint8_t type)
@@ -651,12 +766,7 @@ void LocalPlayer::takeScreenshot(const uint8_t type)
     tibia::input::publish(action);
 }
 
-void LocalPlayer::openMultiOfflineTrainingDialog()
-{
-    callLuaField("onMultiOfflineTrainingDialog");
-}
-
-void LocalPlayer::setResourceBalance(const Otc::ResourceTypes_t type, const uint64_t value)
+void LocalPlayer::setResourceBalance(const tibia::client::ResourceTypes_t type, const uint64_t value)
 {
     const auto it = m_resourcesBalance.find(type);
     const uint64_t oldBalance = it != m_resourcesBalance.end() ? it->second : 0;
@@ -666,7 +776,9 @@ void LocalPlayer::setResourceBalance(const Otc::ResourceTypes_t type, const uint
         return;
 
     m_resourcesBalance[type] = value;
-    g_gameEvents.callGlobalField("g_game", "onResourcesBalanceChange", value, oldBalance, type);
+    tibia::game::notify("onResourcesBalanceChange", value, oldBalance, type);
+    tibia::game::TGameNotify::instance()->emitResourcesBalanceChanged(
+        static_cast<qint64>(value), static_cast<qint64>(oldBalance), static_cast<int>(type));
 }
 
 bool LocalPlayer::hasSight(const Position& pos)
@@ -681,7 +793,7 @@ void LocalPlayer::setFlatDamageHealing(uint16_t flatBonus)
 
     m_flatDamageHealing = flatBonus;
 
-    callLuaField("onFlatDamageHealingChange", flatBonus);
+    publish("onFlatDamageHealingChange", flatBonus);
 }
 
 void LocalPlayer::setAttackInfo(uint16_t attackValue, uint8_t attackElement)
@@ -692,7 +804,7 @@ void LocalPlayer::setAttackInfo(uint16_t attackValue, uint8_t attackElement)
     m_attackValue = attackValue;
     m_attackElement = attackElement;
 
-    callLuaField("onAttackInfoChange", attackValue, attackElement);
+    publish("onAttackInfoChange", attackValue, attackElement);
 }
 
 void LocalPlayer::setConvertedDamage(double convertedDamage, uint8_t convertedElement)
@@ -703,7 +815,7 @@ void LocalPlayer::setConvertedDamage(double convertedDamage, uint8_t convertedEl
     m_convertedDamage = convertedDamage;
     m_convertedElement = convertedElement;
 
-    callLuaField("onConvertedDamageChange", convertedDamage, convertedElement);
+    publish("onConvertedDamageChange", convertedDamage, convertedElement);
 }
 
 void LocalPlayer::setImbuements(double lifeLeech, double manaLeech, double critChance, double critDamage, double onslaught)
@@ -718,7 +830,7 @@ void LocalPlayer::setImbuements(double lifeLeech, double manaLeech, double critC
     m_critDamage = critDamage;
     m_onslaught = onslaught;
 
-    callLuaField("onImbuementsChange", lifeLeech, manaLeech, critChance, critDamage, onslaught);
+    publish("onImbuementsChange", lifeLeech, manaLeech, critChance, critDamage, onslaught);
 }
 
 void LocalPlayer::setDefenseInfo(uint16_t defense, uint16_t armor, uint16_t mantra, double mitigation, double dodge, uint16_t damageReflection)
@@ -734,7 +846,7 @@ void LocalPlayer::setDefenseInfo(uint16_t defense, uint16_t armor, uint16_t mant
     m_dodge = dodge;
     m_damageReflection = damageReflection;
 
-    callLuaField("onDefenseInfoChange", defense, armor,mantra, mitigation, dodge, damageReflection);
+    publish("onDefenseInfoChange", defense, armor,mantra, mitigation, dodge, damageReflection);
 }
 
 void LocalPlayer::setCombatAbsorbValues(const std::map<uint8_t, double>& absorbValues)
@@ -744,7 +856,7 @@ void LocalPlayer::setCombatAbsorbValues(const std::map<uint8_t, double>& absorbV
 
     m_combatAbsorbValues = absorbValues;
 
-    callLuaField("onCombatAbsorbValuesChange", absorbValues);
+    publish("onCombatAbsorbValuesChange", absorbValues);
 }
 
 void LocalPlayer::setForgeBonuses(double momentum, double transcendence, double amplification)
@@ -756,17 +868,17 @@ void LocalPlayer::setForgeBonuses(double momentum, double transcendence, double 
     m_transcendence = transcendence;
     m_amplification = amplification;
 
-    callLuaField("onForgeBonusesChange", momentum, transcendence, amplification);
+    publish("onForgeBonusesChange", momentum, transcendence, amplification);
 }
 
-void LocalPlayer::setExperienceRate(Otc::ExperienceRate_t type, uint16_t value)
+void LocalPlayer::setExperienceRate(tibia::client::ExperienceRate_t type, uint16_t value)
 {
     if (m_experienceRates[type] == value)
         return;
 
     m_experienceRates[type] = value;
 
-    callLuaField("onExperienceRateChange", type, value);
+    publish("onExperienceRateChange", type, value);
 }
 
 void LocalPlayer::setStoreExpBoostTime(uint16_t value)
@@ -783,7 +895,7 @@ void LocalPlayer::setStoreExpBoostPurchasable(const bool purchasable)
         return;
 
     m_storeExpBoostPurchasable = purchasable;
-    callLuaField("onStoreExpBoostPurchasableChange", purchasable);
+    publish("onStoreExpBoostPurchasableChange", purchasable);
 }
 
 void LocalPlayer::setHarmony(const uint8_t harmony)
@@ -791,7 +903,7 @@ void LocalPlayer::setHarmony(const uint8_t harmony)
     const uint8_t oldHarmony = m_harmony;
     m_harmony = harmony;
 
-    callLuaField("onHarmonyChange", harmony, oldHarmony);
+    publish("onHarmonyChange", harmony, oldHarmony);
 }
 
 void LocalPlayer::setSerene(const bool serene)
@@ -799,7 +911,7 @@ void LocalPlayer::setSerene(const bool serene)
     const bool oldSerene = m_serene;
     m_serene = serene;
 
-    callLuaField("onSereneChange", serene, oldSerene);
+    publish("onSereneChange", serene, oldSerene);
 }
 
 void LocalPlayer::setInformationChannel(const uint32_t durationMs)

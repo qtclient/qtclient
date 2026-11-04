@@ -28,9 +28,10 @@ GameEvents g_gameEvents;
 
 std::string GameEvents::key(const std::string_view scope, const std::string_view field)
 {
+    const std::string_view s = scope;
     std::string k;
-    k.reserve(scope.size() + field.size() + 1);
-    k.append(scope).append(".").append(field);
+    k.reserve(s.size() + field.size() + 1);
+    k.append(s).append(".").append(field);
     return k;
 }
 
@@ -54,7 +55,7 @@ bool GameEvents::wants(const std::string_view scope, const std::string_view fiel
     return !m_handlers.empty() && m_handlers.contains(key(scope, field));
 }
 
-std::any GameEvents::publish(const std::string_view scope, const std::string_view field, LuaObject* self, const Args& args)
+std::any GameEvents::publish(const std::string_view scope, const std::string_view field, GameObject* self, const Args& args)
 {
     const auto it = m_handlers.find(key(scope, field));
     if (it == m_handlers.end())
@@ -69,21 +70,9 @@ std::any GameEvents::publish(const std::string_view scope, const std::string_vie
     return result;
 }
 
-#include <framework/luaengine/luaobject.h>
-#include <framework/stdext/demangle.h>
+#include <framework/luaengine/gameobject.h>
 
-int16_t g_luaThreadId = -1;
-
-std::string LuaObject::getClassName()
-{
-#ifdef _MSC_VER
-    return stdext::demangle_name(typeid(*this).name()) + 6;
-#else
-    return stdext::demangle_name(typeid(*this).name());
-#endif
-}
-
-int LuaObject::getUseCount()
+int GameObject::getUseCount()
 {
     try {
         const auto self = shared_from_this();

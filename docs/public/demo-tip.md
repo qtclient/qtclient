@@ -3,8 +3,9 @@
 CIP launcher protocol with **our** client package and **CipSoft** assets.
 Login comes from the single tip pack [`mods/default`](../../client/mods/default/mod.json)
 ([myAAC](https://github.com/slawkens/myaac) at `http://127.0.0.1/login.php`).
-`--no-mods` (no pack) talks to real CipSoft. product tip **replaces** `mods/default`
-with `mods/pack` (never stacked).
+`--no-mods` (no pack) talks to real CipSoft. Product tips usually ship `mods/<id>/`
+instead of `mods/default`; multiple autoload packs are supported (identity/urls
+still first-wins by priority — see [`docs/pack-architecture.md`](../../../docs/pack-architecture.md)).
 
 | Tip field | Points at |
 |-----------|-----------|
@@ -41,9 +42,9 @@ Or edit/reinstall `mods/default/mod.json` `urls` — no host rebuild.
 
 ## product portal
 
-Product pack in `apps/pack-client` (`QTCLIENT_PACK`). Tip install:
-`make qtclient client install` merges `mods/pack` (with MODULE) and removes
-`mods/default`. Run loads that tip pack only.
+Product pack via `QTCLIENT_PACK` (e.g. `apps/idleot-client`). Tip install:
+`make qtclient client install` STATIC-links pack C++ and stages `mods/<id>/`
+FS chrome (often replacing `mods/default`). Run loads all autoload tip packs.
 
 ## Running a tip
 

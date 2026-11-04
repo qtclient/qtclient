@@ -1,7 +1,5 @@
 #pragma once
 
-#include "client/gamecore.h"
-
 #include <cip_gen.h>
 
 #include <client/declarations.h>
@@ -34,6 +32,7 @@ class TSidebarWidget;
 /// (OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR). CIP creates the controller of a
 /// container that is not open yet; here its place waits for the container
 /// (servers that do not reopen containers on login would leave it empty).
+/// Listens to TContainerStorage signals only (no GameObject / callLuaField hooks).
 class TContainerStorageController final : public cip::tibia::gamewindow::TContainerStorageController
 {
     Q_OBJECT
@@ -84,8 +83,7 @@ Q_SIGNALS:
     void containerWidgetsChanged();
 
 private:
-    void onContainerOpened(const ContainerPtr& container);
-    /// qtclient closes a replaced container after opening its successor.
+    void onContainerUpdated(int containerId, bool isNewContainer);
     void onContainerClosed(int containerId);
     void scheduleUpdate(int containerId);
     void flushUpdates();
@@ -108,7 +106,6 @@ private:
     QTimer m_queueTimer;
     std::set<int> m_dirty;
     QTimer m_updateTimer;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

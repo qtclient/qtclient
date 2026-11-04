@@ -19,6 +19,7 @@ const qtclient::ModApiV1 g_api = {
     .setAttentionBackend = &tibia::mods::setAttentionBackend,
     .setInstanceBackend = &tibia::mods::setInstanceBackend,
     .setLoginSyncEnqueueHook = &tibia::mods::setLoginSyncEnqueueHook,
+    .setFeatureExtrasHook = &tibia::mods::setFeatureExtrasHook,
     .setWorldLightingDriver = &tibia::mods::setWorldLightingDriver,
     .addWorldOverlayFactory = &tibia::mods::addWorldOverlayFactory,
     .setWorldFrameHooks = &tibia::mods::setWorldFrameHooks,

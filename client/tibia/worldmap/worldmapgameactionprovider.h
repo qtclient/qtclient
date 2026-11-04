@@ -21,8 +21,19 @@ public:
 
     input::TGameActionList actionsAt(const QPoint& mapPixel) const;
 
-    /// What the hover highlights for an action (CIP: FUN_101074750).
-    static ThingPtr mouseTargetOf(const input::TGameActionPtr& action);
+    /// Item hover object for an action (CIP: FUN_101074750): objectClientId + field + stackpos.
+    /// Creature hover uses `mouseTargetCreatureIdOf` + setMouseTargetCreatureId.
+    struct TMouseTargetObject
+    {
+        uint16_t typeId = 0;
+        Position field;
+        int stackPos = -1;
+        explicit operator bool() const { return typeId != 0; }
+    };
+    static TMouseTargetObject mouseTargetObjectOf(const input::TGameActionPtr& action);
+    /// Deprecated shim — prefer `mouseTargetObjectOf` (returns null; item hover is id-based).
+    /// Creature id under the mouse for an action (0 when not a creature target).
+    static uint32_t mouseTargetCreatureIdOf(const input::TGameActionPtr& action);
     /// The map window's cursor shape for an action (TMouseCursorController shapes).
     static int cursorShapeOf(const input::TGameActionPtr& action);
 

@@ -34,7 +34,6 @@ rsync -a \
   --exclude '**/session*.dmp' \
   --exclude 'third_party/qt5-cip/' \
   --exclude 'third_party/Qt5LegacyControls/' \
-  --exclude 'docs/otc-cleanup-checklist.md' \
   --exclude 'IdleOT.app' \
   --exclude '**/idleot.entitlements' \
   --exclude 'tools/publish/installer/idleot.entitlements' \

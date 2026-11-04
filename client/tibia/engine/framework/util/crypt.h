@@ -28,7 +28,7 @@
 #include <string_view>
 #endif
 
-#include <uuid.h>
+#include <QUuid>
 
 #include <string>
 
@@ -66,7 +66,7 @@ private:
     std::string _decrypt(const std::string& encrypted_string, bool useMachineUUID);
     std::string getCryptKey(bool useMachineUUID) const;
 
-    uuids::uuid m_machineUUID;
+    QUuid m_machineUUID;
     std::string m_n;
     std::string m_e;
     std::string m_d;

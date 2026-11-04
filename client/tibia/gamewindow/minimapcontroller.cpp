@@ -10,13 +10,14 @@
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/worldmapgameactionprovider.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QGuiApplication>
 #include <QQuickItem>
 
 #include <cmath>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -25,7 +26,7 @@ namespace {
 using A = input::EGameAction;
 using Cursor = TMouseCursorController;
 
-/// Soft minimap field menu order (walk / marks). GOD_TELEPORT is Shift+Ctrl only.
+/// qtclient minimap field menu order (walk / marks). GOD_TELEPORT is Shift+Ctrl only.
 constexpr A SoftMinimapOrder[] = {
     A::SET_PLAYER_MOVEMENT_INTENT,
     A::CONTEXT_MENU_SEPARATOR,
@@ -57,9 +58,8 @@ TMinimapController::TMinimapController(QObject* parent)
     // CIP: Thais temple until the player is known.
     m_area.setCenter(Position(32369, 32215, 7));
 
-    m_positionHook = client::gamecore::Hook("object", "onPositionChange", [this](LuaObject* self, const std::vector<std::any>& args) {
-        const LocalPlayerPtr& player = g_game.getLocalPlayer();
-        if (player && self == player.get() && !args.empty())
+    m_positionHook = client::gamecore::Hook(tibia::game::kNotifyScope, "onPositionChange", [this](GameObject*, const std::vector<std::any>& args) {
+        if (!args.empty())
             if (const auto* position = std::any_cast<Position>(&args[0]))
                 onPlayerPositionChanged(*position);
         return std::any{};
@@ -84,7 +84,7 @@ void TMinimapController::setTileStorage(minimap::TMinimapTileStorage* storage)
         m_minimap->setRenderProvider(m_renderProvider.get());
     if (storage) {
         connect(storage, &minimap::TMinimapTileStorage::minimapTileChanged, this, &TMinimapController::onMinimapDataChanged);
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && player->getPosition().isValid())
+        if (const LocalPlayerPtr& player = tibia::game::localPlayer(); player && player->getPosition().isValid())
             onPlayerPositionChanged(player->getPosition());
     }
     refresh();
@@ -193,9 +193,50 @@ void TMinimapController::onCyclopediaMapButtonClicked()
     input::publish(action);
 }
 
+// CIP 0x100b93ed0: re-apply rose scroll from last normalised mouse on the rose
+// (same centre / 0.33 / 0.66 sectors as TibiaMinimapRose.qml). CipSoft stores
+// the coords at +0x118/+0x120 but nothing in QML writes them; qtclient fills them
+// from onMinimapRoseButtonClicked so hold-repeat / this slot can re-fire.
+void TMinimapController::emulateClickOnAutomapRose()
+{
+    const double nx = m_roseMouseNormalized.x();
+    const double ny = m_roseMouseNormalized.y();
+    const double sx = nx + nx - 1.0;
+    const double sy = ny + ny - 1.0;
+    if (std::sqrt(sx * sx + sy * sy) < 0.33) {
+        centerOnPlayer();
+        return;
+    }
+
+    int offsetX = 0;
+    int offsetY = 0;
+    if (nx >= 0.66)
+        offsetX = 1;
+    else if (nx <= 0.33)
+        offsetX = -1;
+    if (ny >= 0.66)
+        offsetY = 1;
+    else if (ny <= 0.33)
+        offsetY = -1;
+
+    if (offsetX == 0 && offsetY == 0) {
+        refresh();
+        return;
+    }
+    const int step = scrollStep();
+    if (offsetX != 0)
+        m_area.moveX(offsetX * step);
+    if (offsetY != 0)
+        m_area.moveY(step * offsetY);
+    refresh();
+}
+
 // CIP 0x100b94060: the rose's centre recentres, its arms scroll.
 void TMinimapController::onMinimapRoseButtonClicked(const int offsetX, const int offsetY)
 {
+    // Map discrete rose sectors onto the normalised bands emulateClick reads.
+    m_roseMouseNormalized = QPointF(offsetX < 0 ? 0.0 : offsetX > 0 ? 1.0 : 0.5,
+                                    offsetY < 0 ? 0.0 : offsetY > 0 ? 1.0 : 0.5);
     if (offsetX == 0 && offsetY == 0) {
         centerOnPlayer();
     } else {
@@ -241,7 +282,7 @@ void TMinimapController::onMinimapClick(const int x, const int y, const int trig
 void TMinimapController::onMinimapMarkerClick(QObject* /*pMinimapMarkerQmlRenderInfo*/, const int TriggeringMouseButton,
                                               const Qt::KeyboardModifiers Modifiers)
 {
-    // Soft: marker overlay clicks use the same Soft field candidates as the tile under the mouse.
+    // qtclient: marker overlay clicks use the same worldmap field candidates as the tile under the mouse.
     const input::TGameActionList candidates = actionsAtMouse();
     const input::TGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::MinimapContext,
                                                       static_cast<Qt::MouseButton>(TriggeringMouseButton), static_cast<int>(Modifiers));
@@ -327,7 +368,7 @@ void TMinimapController::refresh()
         m_storage->setVisibleArea(m_area.topLeft(), m_area.size());
 
     bool crosshairVisible = false;
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && m_minimap) {
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer(); player && m_minimap) {
         m_playerPosition = player->getPosition();
         if (m_playerPosition.z == m_area.topLeft().z) {
             const QPoint crosshair = m_area.worldToItem(m_playerPosition.x, m_playerPosition.y);
@@ -358,7 +399,7 @@ void TMinimapController::onPlayerPositionChanged(const Position& position)
 // CIP 0x100b93e40.
 void TMinimapController::centerOnPlayer()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return;
     m_playerPosition = player->getPosition();

@@ -24,15 +24,21 @@
 
 #include <cstdint>
 
-namespace Otc
+namespace tibia::client
 {
     enum OperatingSystem_t : uint16_t
     {
         CLIENTOS_NONE = 0,
-        // Wire values match historical OTC OS ids Crystal still accepts.
-        CLIENTOS_TIBIA_LINUX = 10,
-        CLIENTOS_TIBIA_WINDOWS = 11,
-        CLIENTOS_TIBIA_MAC = 12,
+        // CipSoft OS ids (Crystal CLIENTOS_NEW_*). qtclient tip default in Game::getOs().
+        CLIENTOS_TIBIA_NEW_LINUX = 4,
+        CLIENTOS_TIBIA_NEW_WINDOWS = 5,
+        CLIENTOS_TIBIA_NEW_MAC = 6,
+        // Crystal OTCR negotiation (wire ids 10/11/12). IdleOT pack setCustomOs()
+        // uses these so Crystal sets isOTCR and appends shader / attached-effect tails.
+        // Not CipSoft OS ids — see CLIENTOS_TIBIA_NEW_* above.
+        CLIENTOS_OTCR_LINUX = 10,
+        CLIENTOS_OTCR_WINDOWS = 11,
+        CLIENTOS_OTCR_MAC = 12,
     };
 
     enum Operation : uint8_t
@@ -560,11 +566,10 @@ namespace Otc
         GameChangeMapAwareRange = 30,
         GameMapMovePosition = 31,
         GameAttackSeq = 32,
-        GameBlueNpcNameColor = 33,
-        GameDiagonalAnimatedText = 34,
+        // 33–34 unused (OTC-only names retired)
         GameLoginPending = 35,
         GameNewSpeedLaw = 36,
-        GameForceFirstAutoWalkStep = 37,
+        // 37 unused
         GameMinimapRemove = 38,
         GameDoubleShopSellAmount = 39,
         GameContainerPagination = 40,
@@ -583,7 +588,7 @@ namespace Otc
         GameBaseSkillU16 = 53,
         GameCreatureIcons = 54,
         GameHideNpcNames = 55,
-        GameSpritesAlphaChannel = 56,
+        // 56 unused
         GamePremiumExpiration = 57,
         GameBrowseField = 58,
         GameEnhancedAnimations = 59,
@@ -648,7 +653,7 @@ namespace Otc
         GameItemTooltipV8 = 117,
         GameWingsAurasEffectsShader = 118,
         GameForgeConvergence = 119,
-        GameAllowCustomBotScripts = 120,
+        // 120 unused
         GameColorizedLootValue = 121,
         GameAllowPreWalk = 122,
         GamePlayerFamiliars = 123,
@@ -657,7 +662,7 @@ namespace Otc
         GameForgeSkillStats = 126,
         GameCharacterSkillStats = 127,
         GameCreaturePaperdoll = 128,
-        GameMultiSpr = 129,
+        // 129 unused
         GameVocationMonk = 130,
         GameLevelPercentU16 = 131,
         GameEffectSource = 132,
@@ -700,9 +705,9 @@ namespace Otc
         PathFindOrthogonalOnly = 32 // N/S/E/W only (no diagonals)
     };
 
-    /// Client autoWalk Soft / live-tile policy.
-    /// Minimap: CIP sidebar/minimap click — Soft Indexed8 strict (0xfe/0xff blocked).
-    /// Cyclopedia: CIP cyclopedia Shift+click — Soft 0xfe fog is expensive-but-passable.
+    /// Client autoWalk qtclient / live-tile policy.
+    /// Minimap: CIP sidebar/minimap click — Indexed8 strict (0xfe/0xff blocked).
+    /// Cyclopedia: CIP cyclopedia Shift+click — qtclient 0xfe fog is expensive-but-passable.
     /// Travel: product TravelRouter — Cyclopedia + CipSoft 0xff fog + live soft blockers
     /// (parcels, splash/poison fields, non-pathable) as expensive-but-passable.
     enum AutoWalkPathMode : uint8_t
@@ -1381,182 +1386,6 @@ enum SpriteMask :uint8_t
     SpriteMaskYellow
 };
 
-#ifdef FRAMEWORK_EDITOR
-enum tileflags_t : uint32_t
-{
-    TILESTATE_NONE = 0,
-    TILESTATE_PROTECTIONZONE = 1 << 0,
-    TILESTATE_TRASHED = 1 << 1,
-    TILESTATE_OPTIONALZONE = 1 << 2,
-    TILESTATE_NOLOGOUT = 1 << 3,
-    TILESTATE_HARDCOREZONE = 1 << 4,
-    TILESTATE_REFRESH = 1 << 5,
-
-    // internal usage
-    TILESTATE_HOUSE = 1 << 6,
-    TILESTATE_TELEPORT = 1 << 17,
-    TILESTATE_MAGICFIELD = 1 << 18,
-    TILESTATE_MAILBOX = 1 << 19,
-    TILESTATE_TRASHHOLDER = 1 << 20,
-    TILESTATE_BED = 1 << 21,
-    TILESTATE_DEPOT = 1 << 22,
-    TILESTATE_TRANSLUECENT_LIGHT = 1 << 23,
-
-    TILESTATE_LAST = 1 << 24
-};
-
-enum ItemTypeAttr : uint8_t
-{
-    ItemTypeAttrServerId = 16,
-    ItemTypeAttrClientId = 17,
-    ItemTypeAttrName = 18,   // deprecated
-    ItemTypeAttrDesc = 19,   // deprecated
-    ItemTypeAttrSpeed = 20,
-    ItemTypeAttrSlot = 21,   // deprecated
-    ItemTypeAttrMaxItems = 22,   // deprecated
-    ItemTypeAttrWeight = 23,   // deprecated
-    ItemTypeAttrWeapon = 24,   // deprecated
-    ItemTypeAttrAmmunition = 25,   // deprecated
-    ItemTypeAttrArmor = 26,   // deprecated
-    ItemTypeAttrMagicLevel = 27,   // deprecated
-    ItemTypeAttrMagicField = 28,   // deprecated
-    ItemTypeAttrWritable = 29,   // deprecated
-    ItemTypeAttrRotateTo = 30,   // deprecated
-    ItemTypeAttrDecay = 31,   // deprecated
-    ItemTypeAttrSpriteHash = 32,
-    ItemTypeAttrMinimapColor = 33,
-    ItemTypeAttr07 = 34,
-    ItemTypeAttr08 = 35,
-    ItemTypeAttrLight = 36,
-    ItemTypeAttrDecay2 = 37,   // deprecated
-    ItemTypeAttrWeapon2 = 38,   // deprecated
-    ItemTypeAttrAmmunition2 = 39,   // deprecated
-    ItemTypeAttrArmor2 = 40,   // deprecated
-    ItemTypeAttrWritable2 = 41,   // deprecated
-    ItemTypeAttrLight2 = 42,
-    ItemTypeAttrTopOrder = 43,
-    ItemTypeAttrWrtiable3 = 44,   // deprecated
-    ItemTypeAttrWareId = 45,
-    ItemTypeAttrLast = 46
-};
-
-enum ItemCategory : uint8_t
-{
-    ItemCategoryInvalid = 0,
-    ItemCategoryGround = 1,
-    ItemCategoryContainer = 2,
-    ItemCategoryWeapon = 3,
-    ItemCategoryAmmunition = 4,
-    ItemCategoryArmor = 5,
-    ItemCategoryCharges = 6,
-    ItemCategoryTeleport = 7,
-    ItemCategoryMagicField = 8,
-    ItemCategoryWritable = 9,
-    ItemCategoryKey = 10,
-    ItemCategorySplash = 11,
-    ItemCategoryFluid = 12,
-    ItemCategoryDoor = 13,
-    ItemCategoryDeprecated = 14
-};
-
-enum ClientVersion
-{
-    ClientVersion750 = 1,
-    ClientVersion755 = 2,
-    ClientVersion760 = 3,
-    ClientVersion770 = 3,
-    ClientVersion780 = 4,
-    ClientVersion790 = 5,
-    ClientVersion792 = 6,
-    ClientVersion800 = 7,
-    ClientVersion810 = 8,
-    ClientVersion811 = 9,
-    ClientVersion820 = 10,
-    ClientVersion830 = 11,
-    ClientVersion840 = 12,
-    ClientVersion841 = 13,
-    ClientVersion842 = 14,
-    ClientVersion850 = 15,
-    ClientVersion854_OLD = 16,
-    ClientVersion854 = 17,
-    ClientVersion855 = 18,
-    ClientVersion860_OLD = 19,
-    ClientVersion860 = 20,
-    ClientVersion861 = 21,
-    ClientVersion862 = 22,
-    ClientVersion870 = 23,
-    ClientVersion871 = 24,
-    ClientVersion872 = 25,
-    ClientVersion873 = 26,
-    ClientVersion900 = 27,
-    ClientVersion910 = 28,
-    ClientVersion920 = 29,
-    ClientVersion940 = 30,
-    ClientVersion944_V1 = 31,
-    ClientVersion944_V2 = 32,
-    ClientVersion944_V3 = 33,
-    ClientVersion944_V4 = 34,
-    ClientVersion946 = 35,
-    ClientVersion950 = 36,
-    ClientVersion952 = 37,
-    ClientVersion953 = 38,
-    ClientVersion954 = 39,
-    ClientVersion960 = 40,
-    ClientVersion961 = 41
-};
-
-enum OTBM_NodeTypes_t
-{
-    OTBM_ROOTV2 = 1,
-    OTBM_MAP_DATA = 2,
-    OTBM_ITEM_DEF = 3,
-    OTBM_TILE_AREA = 4,
-    OTBM_TILE = 5,
-    OTBM_ITEM = 6,
-    OTBM_TILE_SQUARE = 7,
-    OTBM_TILE_REF = 8,
-    OTBM_SPAWNS = 9,
-    OTBM_SPAWN_AREA = 10,
-    OTBM_MONSTER = 11,
-    OTBM_TOWNS = 12,
-    OTBM_TOWN = 13,
-    OTBM_HOUSETILE = 14,
-    OTBM_WAYPOINTS = 15,
-    OTBM_WAYPOINT = 16
-};
-
-enum OTBM_ItemAttr
-{
-    OTBM_ATTR_DESCRIPTION = 1,
-    OTBM_ATTR_EXT_FILE = 2,
-    OTBM_ATTR_TILE_FLAGS = 3,
-    OTBM_ATTR_ACTION_ID = 4,
-    OTBM_ATTR_UNIQUE_ID = 5,
-    OTBM_ATTR_TEXT = 6,
-    OTBM_ATTR_DESC = 7,
-    OTBM_ATTR_TELE_DEST = 8,
-    OTBM_ATTR_ITEM = 9,
-    OTBM_ATTR_DEPOT_ID = 10,
-    OTBM_ATTR_SPAWN_FILE = 11,
-    OTBM_ATTR_RUNE_CHARGES = 12,
-    OTBM_ATTR_HOUSE_FILE = 13,
-    OTBM_ATTR_HOUSEDOORID = 14,
-    OTBM_ATTR_COUNT = 15,
-    OTBM_ATTR_DURATION = 16,
-    OTBM_ATTR_DECAYING_STATE = 17,
-    OTBM_ATTR_WRITTENDATE = 18,
-    OTBM_ATTR_WRITTENBY = 19,
-    OTBM_ATTR_SLEEPERGUID = 20,
-    OTBM_ATTR_SLEEPSTART = 21,
-    OTBM_ATTR_CHARGES = 22,
-    OTBM_ATTR_CONTAINER_ITEMS = 23,
-    OTBM_ATTR_ATTRIBUTE_MAP = 128,
-    /// just random numbers, they're not actually used by the binary reader...
-    OTBM_ATTR_WIDTH = 129,
-    OTBM_ATTR_HEIGHT = 130
-};
-
-#endif
 
 enum class TileSelectType : uint8_t
 {

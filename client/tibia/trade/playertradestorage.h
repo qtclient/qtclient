@@ -1,10 +1,9 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "container/containerciptypes.h"
 
 #include <cip_gen.h>
-
-#include <client/declarations.h>
 
 #include <QString>
 
@@ -25,10 +24,10 @@ public:
     bool isOpen() const { return m_open; }
     /// v0x68 / v0x70.
     const QString& ownName() const { return m_ownName; }
-    const std::vector<ItemPtr>& ownOffer() const { return m_ownOffer; }
+    const std::vector<container::TInventorySlot>& ownOffer() const { return m_ownOffer; }
     /// v0x80 / v0x88.
     const QString& counterName() const { return m_counterName; }
-    const std::vector<ItemPtr>& counterOffer() const { return m_counterOffer; }
+    const std::vector<container::TInventorySlot>& counterOffer() const { return m_counterOffer; }
 
     /// CIP 0x10103f6e0 / 0x10103f730 (rejecting also forgets the trade) /
     /// 0x10103f790.
@@ -49,9 +48,9 @@ private:
 
     bool m_open = false;
     QString m_ownName;
-    std::vector<ItemPtr> m_ownOffer;
+    std::vector<container::TInventorySlot> m_ownOffer;
     QString m_counterName;
-    std::vector<ItemPtr> m_counterOffer;
+    std::vector<container::TInventorySlot> m_counterOffer;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 

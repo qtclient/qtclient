@@ -6,6 +6,7 @@
 #include <QCryptographicHash>
 #include <QDebug>
 #include <QDir>
+#include <QDirIterator>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
@@ -13,22 +14,21 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QHash>
+#include <QSet>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QQueue>
 #include <QSaveFile>
+#include <QtConcurrent>
 
 #include <functional>
 #include <memory>
 
 namespace {
 
-// CipSoft shared::TDownloadPool: queue every needed file, then run many GETs
-// concurrently (logs show 3520 files → InstalledAndUsable in ~21s). qtclient used
-// to GET+unpack one file at a time (~10k round-trips). Cap in-flight replies so
-// local Node /cdn and HTTP/1.1 stay healthy; HTTP/2 CDN multiplexes under this.
-constexpr int kCipDownloadPoolMaxInFlight = 32;
+// Cap in-flight replies so local Node /cdn and HTTP/1.1 stay healthy; HTTP/2 CDN
+// multiplexes under shared::TDownloadPool::kMaxInFlight.
 
 void configureInstallRequest(QNetworkRequest* request)
 {
@@ -37,7 +37,7 @@ void configureInstallRequest(QNetworkRequest* request)
     request->setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
     // Multiplex many GETs on one connection to the tip CDN.
     request->setAttribute(QNetworkRequest::Http2AllowedAttribute, true);
-    // CipSoft TDownloadPool::StartDownload sets transfer timeout (ms).
+    // shared::TDownloadPool::StartDownload sets transfer timeout (ms).
     request->setTransferTimeout(5 * 60 * 1000);
 }
 
@@ -469,24 +469,50 @@ bool PackageClient::fileAlreadyInstalled(const CipFile& file, const QString& des
     return sha256File(current) == file.unpackedhash;
 }
 
+QVector<CipFile> PackageClient::filesNeedingUpdate(const QVector<CipFile>& files, const QString& destDir) const
+{
+    // CipSoft FindFilesInPackageBasedOnHashAndSizeThatNeedUpdate (QtConcurrent).
+    return QtConcurrent::blockingFiltered(files, [this, &destDir](const CipFile& file) {
+        return !fileAlreadyInstalled(file, destDir);
+    });
+}
+
 bool PackageClient::hasFileGaps(const CipPackageDoc& doc, const QString& destDir) const
 {
-    for (const CipFile& file : doc.files) {
-        if (!fileAlreadyInstalled(file, destDir))
-            return true;
-    }
-    return false;
+    return !filesNeedingUpdate(doc.files, destDir).isEmpty();
 }
 
 qint64 PackageClient::pendingPackedBytes(const QVector<CipFile>& files, const QString& destDir) const
 {
     qint64 total = 0;
-    for (const CipFile& file : files) {
-        if (fileAlreadyInstalled(file, destDir))
-            continue;
+    for (const CipFile& file : filesNeedingUpdate(files, destDir))
         total += qMax(file.packedsize, qint64(0));
-    }
     return total;
+}
+
+int PackageClient::deleteOrphanLocalFiles(const CipPackageDoc& doc, const QString& destDir) const
+{
+    QSet<QString> keep;
+    keep.reserve(doc.files.size() + 8);
+    for (const CipFile& file : doc.files)
+        keep.insert(QDir::cleanPath(file.localfile));
+    // Package markers qtclient / CIP leave beside the tip tree.
+    for (const char* marker : { "package.json", "package.json.version", "partial.package.json.version",
+                                "assets.json", "assets.json.sha256", "mods.json.sha256",
+                                "things-packs.sha256" }) {
+        keep.insert(QLatin1String(marker));
+    }
+    int removed = 0;
+    QDirIterator it(destDir, QDir::Files, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        const QString path = it.next();
+        const QString rel = QDir::cleanPath(QDir(destDir).relativeFilePath(path));
+        if (keep.contains(rel))
+            continue;
+        if (QFile::remove(path))
+            ++removed;
+    }
+    return removed;
 }
 
 bool PackageClient::installFiles(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir,
@@ -496,9 +522,7 @@ bool PackageClient::installFiles(const QUrl& packageUrl, const QVector<CipFile>&
     QQueue<InstallJob> pending;
     qint64 batchPacked = 0;
     int ordinal = 0;
-    for (const CipFile& file : files) {
-        if (fileAlreadyInstalled(file, destDir))
-            continue;
+    for (const CipFile& file : filesNeedingUpdate(files, destDir)) {
         InstallJob job;
         job.file = file;
         job.url = fileDownloadUrl(packageUrl, file);
@@ -568,7 +592,7 @@ bool PackageClient::installFiles(const QUrl& packageUrl, const QVector<CipFile>&
 
     std::function<void()> pump;
     pump = [&]() {
-        while (!failed && inFlight < kCipDownloadPoolMaxInFlight && !pending.isEmpty()) {
+        while (!failed && inFlight < shared::TDownloadPool::kMaxInFlight && !pending.isEmpty()) {
             const InstallJob job = pending.dequeue();
             QUrl resolved = job.url.isRelative() ? job.url : resolve(QUrl(), job.url.toString());
             if (resolved.isRelative() && !m_cdn.isEmpty())
@@ -695,6 +719,74 @@ bool PackageClient::writePackageMarkers(const CipPackageDoc& doc, const QString&
     return true;
 }
 
+void PackageClient::ensureMacOsFrameworkVersionsCurrent(const QString& appBundleRoot)
+{
+#if defined(Q_OS_MACOS)
+    const QDir frameworks(QDir(appBundleRoot).filePath(QStringLiteral("Contents/Frameworks")));
+    if (!frameworks.exists())
+        return;
+    const QFileInfoList bundles = frameworks.entryInfoList({ QStringLiteral("*.framework") },
+                                                           QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QFileInfo& fw : bundles) {
+        const QDir versions(QDir(fw.absoluteFilePath()).filePath(QStringLiteral("Versions")));
+        if (!versions.exists())
+            continue;
+        const QString currentPath = versions.filePath(QStringLiteral("Current"));
+        if (QFileInfo::exists(currentPath))
+            continue;
+        QString target;
+        for (const QFileInfo& entry : versions.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+            if (entry.fileName() == QLatin1String("Current"))
+                continue;
+            if (entry.fileName() == QLatin1String("A")) {
+                target = QStringLiteral("A");
+                break;
+            }
+            if (target.isEmpty())
+                target = entry.fileName();
+        }
+        if (target.isEmpty())
+            continue;
+        if (!QFile::link(target, currentPath)) {
+            qWarning().noquote() << "Duplicating file failed: Failed to link"
+                                 << currentPath << "->" << target;
+            continue;
+        }
+        qInfo().noquote() << "Framework Versions/Current ->" << target << "in" << fw.fileName();
+        // Top-level Resources / Headers / binary stubs often expect Current.
+        const QString fwRoot = fw.absoluteFilePath();
+        const QString baseName = fw.completeBaseName();
+        const struct {
+            const char* leaf;
+            QString dest;
+        } links[] = {
+            { "Resources", QStringLiteral("Versions/Current/Resources") },
+            { "Headers", QStringLiteral("Versions/Current/Headers") },
+            { "Modules", QStringLiteral("Versions/Current/Modules") },
+        };
+        for (const auto& link : links) {
+            const QString atRoot = QDir(fwRoot).filePath(QLatin1String(link.leaf));
+            if (QFileInfo::exists(atRoot))
+                continue;
+            const QString dest = QDir(fwRoot).filePath(link.dest);
+            if (!QFileInfo::exists(dest))
+                continue;
+            if (!QFile::link(link.dest, atRoot))
+                qWarning().noquote() << "Duplicating file failed: Failed to link" << atRoot << "->" << link.dest;
+        }
+        const QString binaryAtRoot = QDir(fwRoot).filePath(baseName);
+        const QString binaryDest = QStringLiteral("Versions/Current/") + baseName;
+        if (!QFileInfo::exists(binaryAtRoot) && QFileInfo::exists(QDir(fwRoot).filePath(binaryDest))) {
+            if (!QFile::link(binaryDest, binaryAtRoot))
+                qWarning().noquote() << "Duplicating file failed: Failed to link" << binaryAtRoot << "->"
+                                     << binaryDest;
+        }
+    }
+#else
+    Q_UNUSED(appBundleRoot);
+#endif
+}
+
 bool PackageClient::installPackage(const QUrl& packageUrl, const CipPackageDoc& doc, const QString& destDir,
                                    QString* error, qint64 progressBase, qint64 progressTotal)
 {
@@ -706,14 +798,17 @@ bool PackageClient::installPackage(const QUrl& packageUrl, const CipPackageDoc& 
     }
     if (!installFiles(packageUrl, doc.files, destDir, error, progressBase, progressTotal))
         return false;
-    return writePackageMarkers(doc, destDir, error);
+    if (!writePackageMarkers(doc, destDir, error))
+        return false;
+    ensureMacOsFrameworkVersionsCurrent(destDir);
+    return true;
 }
 
 void PackageClient::installFilesAsync(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir,
                                       int /*index*/, qint64 progressBase, qint64 progressTotal, InstallCallback done)
 {
-    // CipSoft TDownloadPool on the browser main thread: queue needed files, keep
-    // up to kCipDownloadPoolMaxInFlight GETs in flight (no nested QEventLoop).
+    // shared::TDownloadPool on the browser main thread: queue needed files, keep
+    // up to TDownloadPool::kMaxInFlight GETs in flight (no nested QEventLoop).
     // Aggregate progress across in-flight replies — never share one m_progressDone
     // baseline (that flickered the bar between concurrent files).
     struct PoolState {
@@ -734,9 +829,7 @@ void PackageClient::installFilesAsync(const QUrl& packageUrl, const QVector<CipF
 
     int ordinal = 0;
     qint64 batchPacked = 0;
-    for (const CipFile& file : files) {
-        if (fileAlreadyInstalled(file, destDir))
-            continue;
+    for (const CipFile& file : filesNeedingUpdate(files, destDir)) {
         InstallJob job;
         job.file = file;
         job.url = fileDownloadUrl(packageUrl, file);
@@ -769,7 +862,7 @@ void PackageClient::installFilesAsync(const QUrl& packageUrl, const QVector<CipF
     auto pump = std::make_shared<std::function<void()>>();
     *pump = [this, state, pump, emitAggregate, packageUrl]() {
         Q_UNUSED(packageUrl);
-        while (!state->failed && state->inFlight < kCipDownloadPoolMaxInFlight && !state->pending.isEmpty()) {
+        while (!state->failed && state->inFlight < shared::TDownloadPool::kMaxInFlight && !state->pending.isEmpty()) {
             const InstallJob job = state->pending.dequeue();
             QUrl resolved = job.url.isRelative() ? job.url : resolve(QUrl(), job.url.toString());
             if (resolved.isRelative() && !m_cdn.isEmpty())

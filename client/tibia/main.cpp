@@ -1,8 +1,12 @@
 #include "app/bootstrap.h"
 #include "mods/modloader.h"
+#include <qtclient/pack_host.h>
 
 #include <exception>
 #include "app/clientoptions.h"
+#include "config/optionspages.h"
+#include "gamewindow/createcharacterdialogcontroller.h"
+#include "screenshot/screenshotciptypes.h"
 #include "app/crashlog.h"
 #include "app/launcherenv.h"
 #include "app/portalurls.h"
@@ -13,7 +17,6 @@
 #include "client/gamecore.h"
 #include <client/const.h>
 
-#include <tibia/world/game.h>
 #include "game/gameservergamesession.h"
 #include "game/sessiondumpgamesession.h"
 #include "gamewindow/actionbarmanager.h"
@@ -107,15 +110,7 @@
 #include <QEvent>
 #include <QEventLoop>
 #include <QSaveFile>
-#if defined(TIBIA_WASM_EMBED_LAUNCHER)
-#include <QApplication>
-// launcher/src is on the include path (TIBIA_WASM_EMBED_LAUNCHER).
-#include "brand.h"
-#include "stage.h"
-#include "window.h"
-#else
 #include <QGuiApplication>
-#endif
 #include <QStandardPaths>
 #include <QPointer>
 #include <QQmlComponent>
@@ -135,13 +130,22 @@
 #include <memory>
 #include <string>
 
+#include <tibia/game/gamesession.h>
+
 #ifdef Q_OS_WASM
 #include <emscripten/val.h>
 #endif
 
+#if defined(TIBIA_DESKTOP_WEBENGINE)
+#include <QtWebEngineQuick/qtwebenginequickglobal.h>
+Q_IMPORT_QML_PLUGIN(QtWebEngineQuickPlugin)
+#endif
+
 Q_IMPORT_QML_PLUGIN(QtQuick_LegacyControlsPlugin)
+#if defined(TIBIA_WEBENGINE_STUBS)
 Q_IMPORT_QML_PLUGIN(QtWebEnginePlugin)
 Q_IMPORT_QML_PLUGIN(QtWebChannelPlugin)
+#endif
 #ifdef TIBIA_QT_STATIC
 Q_IMPORT_QML_PLUGIN(QtQuickControls2UniversalStylePlugin)
 #endif
@@ -297,7 +301,7 @@ QStringList dataDirs(const QString& explicitDir)
 #endif
     };
     // Tip package (portal OPFS / desktop AppData): RCC + fonts live under
-    // Contents/Resources/assets, not ./data. Alias Soft Tibia.app ↔ IdleOT.app
+    // Contents/Resources/assets, not ./data. Alias qtclient Tibia.app ↔ IdleOT.app
     // is planted before callMain on /play.
     const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (!appData.isEmpty()) {
@@ -372,13 +376,12 @@ int main(int argc, char** argv)
     const auto options = app::ClientOptions::load();
     app::configureProcess(options, rendererFromArgs(argc, argv));
 
-#if defined(TIBIA_WASM_EMBED_LAUNCHER)
-    // CipSoft /play: QApplication so the qtclient launcher Widgets stage can run;
-    // Play remounts into a game-only Module (QTCLIENT_WASM_SKIP_LAUNCHER).
-    QApplication application(argc, argv);
-#else
-    QGuiApplication application(argc, argv);
+#if defined(TIBIA_DESKTOP_WEBENGINE)
+    QtWebEngineQuick::initialize();
 #endif
+
+    QGuiApplication application(argc, argv);
+    app::applyBundledMoltenVkIcd();
     // Runtime packs: single tip pack after QApp. --no-mods → CipSoft; --default-mod → mods/default.
     bool skipMods = false;
     bool defaultMod = false;
@@ -406,44 +409,6 @@ int main(int argc, char** argv)
     }
     application.setApplicationDisplayName(QCoreApplication::applicationName());
 
-#if defined(TIBIA_WASM_EMBED_LAUNCHER)
-    // CipSoft launcher UI first (skip with QTCLIENT_WASM_SKIP_LAUNCHER=1 after Play
-    // remount, or for smoke tests). Must not nest QEventLoop::exec — WASM main
-    // thread aborts without Asyncify, and Asyncify is incompatible with Qt
-    // wasm_multithread.
-    //
-    // Do NOT build the QML/WebGL game UI while the launcher is up. Mobile Safari
-    // kills the tab (reload loop / "A problem repeatedly occurred") when both
-    // the Widgets soft-stage and a hidden QQuickWindow share one Module. Play
-    // remounts into a game-only boot (portal sets QTCLIENT_WASM_SKIP_LAUNCHER).
-    if (!qEnvironmentVariableIsSet("QTCLIENT_WASM_SKIP_LAUNCHER")) {
-        LauncherBrand::load(argc, argv);
-        QString cdn = qEnvironmentVariable("QTCLIENT_CDN_URL");
-        if (cdn.startsWith(QLatin1Char('/'))) {
-#ifdef Q_OS_WASM
-            const emscripten::val loc = emscripten::val::global("location");
-            cdn = QString::fromStdString(loc["origin"].as<std::string>()) + cdn;
-#endif
-        }
-        if (cdn.isEmpty()) {
-            const QString brandCdn = LauncherBrand::instance().defaultCdn;
-            if (!brandCdn.isEmpty())
-                cdn = brandCdn;
-            else if (const auto* id = tibia::mods::primaryIdentity(); id && !id->cdnBaseUrl.empty())
-                cdn = QString::fromStdString(id->cdnBaseUrl);
-        }
-        while (cdn.endsWith(QLatin1Char('/')))
-            cdn.chop(1);
-        LauncherWindow* embedLauncher = tibia::launcher::createEmbeddedLauncher(application, cdn);
-        application.processEvents(QEventLoop::ExcludeUserInputEvents);
-        QObject::connect(embedLauncher, &QObject::destroyed, &application, [] {
-            QCoreApplication::exit(0);
-        });
-        QTimer::singleShot(0, embedLauncher, &LauncherWindow::start);
-        return application.exec();
-    }
-#endif
-
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addOption({ QStringLiteral("renderer"), QStringLiteral("auto, software, d3d11, vulkan, opengl, metal, d3d12 or a CIP renderer index."), QStringLiteral("renderer") });
@@ -462,6 +427,9 @@ int main(int argc, char** argv)
     parser.addOption({ QStringLiteral("replay"), QStringLiteral("Play a recorded game session instead of logging in."), QStringLiteral("file") });
     parser.addOption({ QStringLiteral("screenshot-delay"), QStringLiteral("Milliseconds after entering the world before --screenshot (default 3000)."), QStringLiteral("ms") });
     parser.addOption({ QStringLiteral("no-mods"), QStringLiteral("Do not load mods/<id> packs (stock qtclient).") });
+    // CIP tip Play: launcher asserts the package/assets stamps already match.
+    parser.addOption({ QStringLiteral("package-is-up-to-date"),
+                       QStringLiteral("Tip Play: package and assets stamps already match (CIP).") });
     // Launcher settings may carry arguments of the Lua client; they are not fatal.
     if (!parser.parse(commandLine()))
         qWarning().noquote() << parser.errorText();
@@ -671,9 +639,9 @@ int main(int argc, char** argv)
         earlyCtx.engine = engine.get();
         earlyCtx.rootItem = window->contentItem();
         earlyCtx.gameClient = &gameClient;
+        earlyCtx.gameHost = gameClient.gameHost();
         earlyCtx.host = &productHost;
         earlyCtx.launcherEnv = &env;
-        earlyCtx.services["gameWindowController"] = &gameWindowController;
         tibia::mods::earlyBootstrapAll(earlyCtx);
     }
     dialogComponent.completeCreate();
@@ -685,7 +653,7 @@ int main(int argc, char** argv)
         QObject::connect(&gameClient, &client::TGameClient::characterSelectionRequested, dialogItem, [dialogItem, &gameWindowController] {
             gameWindowController.setAuthenticated(true);
             dialogItem->setVisible(true);
-            if (g_game.isOnline()) {
+            if (tibia::game::isOnline()) {
                 if (auto* stack = gamewindow::TDialogStackController::instance())
                     stack->setCharacterListOpen(true);
             }
@@ -715,7 +683,7 @@ int main(int argc, char** argv)
                              if (!gameWindowController.property("gameWindowState").toString().isEmpty())
                                  return;
                              QTimer::singleShot(0, dialogItem, [dialogItem, &gameClient, &gameWindowController] {
-                                 if (g_game.isOnline() || g_game.isSwitchingCharacter() || dialogItem->isVisible())
+                                 if (tibia::game::isOnline() || tibia::game::isSwitchingCharacter() || dialogItem->isVisible())
                                      return;
                                  if (!gameWindowController.property("isAuthenticated").toBool())
                                      return;
@@ -817,15 +785,15 @@ int main(int argc, char** argv)
     // Reward-wall open/toggle is owned by TRewardWallDialogController (hooks +
     // REQUEST_OPEN_REWARD_WALL / OPEN_OR_UPDATE_REWARD_WALL_DIALOG).
     input::setActionHandler(input::EGameAction::REQUEST_DAILY_REWARD_HISTORY, [](const input::TGameAction&) {
-        g_game.requestOpenRewardHistory();
+        tibia::game::requestOpenRewardHistory();
         return true;
     });
     input::setActionHandler(input::EGameAction::COLLECT_FIXED_ITEMS_DAILY_REWARD, [](const input::TGameAction& action) {
-        g_game.requestGetRewardDaily(static_cast<uint8_t>(std::max(0, action.parameter)), {});
+        tibia::game::requestGetRewardDaily(static_cast<uint8_t>(std::max(0, action.parameter)), {});
         return true;
     });
     input::setActionHandler(input::EGameAction::COLLECT_PICK_ITEMS_DAILY_REWARD, [](const input::TGameAction& action) {
-        g_game.requestGetRewardDaily(static_cast<uint8_t>(std::max(0, action.parameter)), {});
+        tibia::game::requestGetRewardDaily(static_cast<uint8_t>(std::max(0, action.parameter)), {});
         return true;
     });
     input::setActionHandler(input::EGameAction::LENSHELP_ACTIVATE, [](const input::TGameAction&) {
@@ -838,53 +806,10 @@ int main(int argc, char** argv)
             minimap->loadDefaultTilesFromResources();
         return true;
     });
-    const auto automaticScreenshotAllowed = [](const QJsonObject& opts, const int eventType) -> bool {
-        if (!opts.value(QLatin1String("screenshotsAutoScreenshotsEnabled")).toBool(true))
-            return false;
-        // Otc::ClientEvent_t (simple screenshot events) + product valuable-loot (52).
-        const char* key = nullptr;
-        switch (eventType) {
-        case Otc::CLIENT_EVENT_BOSSDEFEATED: key = "screenshotsBossKillEnabled"; break;
-        case Otc::CLIENT_EVENT_DEATHPVE: key = "screenshotsDeathPvEEnabled"; break;
-        case Otc::CLIENT_EVENT_DEATHPVP: key = "screenshotsDeathPvPEnabled"; break;
-        case Otc::CLIENT_EVENT_PLAYERKILLASSIST: key = "screenshotsPlayerKillAssistEnabled"; break;
-        case Otc::CLIENT_EVENT_PLAYERKILL: key = "screenshotsPlayerKillFullEnabled"; break;
-        case Otc::CLIENT_EVENT_PLAYERATTACKING: key = "screenshotsPvPAttackEnabled"; break;
-        case Otc::CLIENT_EVENT_TREASUREFOUND: key = "screenshotsRewardChestEnabled"; break;
-        case Otc::CLIENT_EVENT_GIFTOFLIFE: key = "screenshotsGiftOfLifeEnabled"; break;
-        case 52: key = "screenshotsTrackedLootEnabled"; break; // valuable loot (CIP)
-        // Synthetic codes for 15.21+ ClientEventType screenshot gates (200 + type).
-        case 200 + Otc::CLIENT_EVENT_TYPE_ACHIEVEMENT: key = "screenshotsAchievementEnabled"; break;
-        case 200 + Otc::CLIENT_EVENT_TYPE_LEVEL: key = "screenshotsLevelUpEnabled"; break;
-        case 200 + Otc::CLIENT_EVENT_TYPE_SKILL: key = "screenshotsSkillUpEnabled"; break;
-        case 200 + Otc::CLIENT_EVENT_TYPE_BESTIARY: key = "screenshotsBestiaryFullEnabled"; break;
-        case 200 + Otc::CLIENT_EVENT_TYPE_BOSSTIARY: key = "screenshotsBossKillEnabled"; break;
-        case 101: key = "screenshotsBestiaryPartlyEnabled"; break;
-        case 102: key = "screenshotsLowHitPointsEnabled"; break;
-        case 103: key = "screenshotsNewMaxDamageEnabled"; break;
-        case 104: key = "screenshotsNewMaxHealingEnabled"; break;
-        default:
-            return true; // unknown event: keep master switch only
-        }
-        return opts.value(QLatin1String(key)).toBool(true);
-    };
-    const auto takeScreenshot = [window, mapWindowPane, automaticScreenshotAllowed](const input::TGameAction& action) {
-        const bool automatic = action.type == input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT;
-        const QJsonObject opts = app::ClientOptions::load().options();
-        if (automatic && !automaticScreenshotAllowed(opts, action.parameter))
-            return true;
-        const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/screenshots");
-        QDir().mkpath(directory);
-        const QString path = directory + QStringLiteral("/screenshot-%1.png")
-                                           .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-hhmmss-zzz")));
-        QImage image = window->grabWindow();
-        if (automatic && opts.value(QLatin1String("screnshotsOnlyGameWindow")).toBool(false) && mapWindowPane) {
-            const QRect crop = mapWindowPane->mapRectToScene(mapWindowPane->boundingRect()).toAlignedRect();
-            if (crop.isValid() && image.rect().intersects(crop))
-                image = image.copy(crop.intersected(image.rect()));
-        }
-        image.save(path);
-        return true;
+    screenshot::TScreenshotManager screenshotManager;
+    screenshotManager.configure(window, mapWindowPane);
+    const auto takeScreenshot = [&screenshotManager](const input::TGameAction& action) {
+        return screenshotManager.handleScreenshotAction(action);
     };
     input::setActionHandler(input::EGameAction::TAKE_MANUAL_SCREENSHOT, takeScreenshot);
     input::setActionHandler(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT, takeScreenshot);
@@ -897,7 +822,7 @@ int main(int argc, char** argv)
     input::setActionHandler(input::EGameAction::SHOW_OFFLINE_TRAINING_SKILLS, [](const input::TGameAction& action) {
         // CIP: parameter selects a skill immediately; otherwise open MultiOfflineTrainingDialog.
         if (action.parameter > 0) {
-            g_game.sendStartOfflineTraining(static_cast<uint8_t>(action.parameter));
+            tibia::game::sendStartOfflineTraining(static_cast<uint8_t>(action.parameter));
             return true;
         }
         if (auto* offline = gamewindow::TMultiOfflineTrainingDialogController::instance())
@@ -1110,35 +1035,89 @@ int main(int argc, char** argv)
     gamewindow::TPlayerTradeWidgetManager playerTrade(&sidebarManager, gameWindowItem, engine.get());
 
     {
+        qtclient::PackHostWire packHost;
+        packHost.bindQuestTracker = [&questTrackerWidget](tibia::mods::MissionBackend* backend,
+                                                          qtclient::BrowseOpenerFn browse) {
+            questTrackerWidget.setMissionBackend(backend);
+            questTrackerWidget.setBrowseOpener(std::move(browse));
+        };
+        packHost.bindQuestLog = [&informationDialogs](tibia::mods::MissionBackend* backend,
+                                                      qtclient::BrowseOpenerFn browse) {
+            if (auto* log = informationDialogs.questLog()) {
+                log->setMissionBackend(backend);
+                log->setBrowseOpener(std::move(browse));
+            }
+        };
+        packHost.bindInstanceToInfoDialogs = [&informationDialogs](tibia::mods::InstanceBackend* instance) {
+            informationDialogs.setInstanceStorage(instance);
+        };
+        packHost.bindAttentionToButtonBar = [&sidebarPanels](tibia::mods::AttentionBackend* attention) {
+            if (auto* buttonBar = sidebarPanels.buttonBar())
+                buttonBar->setAttentionStorage(attention);
+        };
+        packHost.addProductOptionsPage = [&optionsDialog](const int category, void* page) {
+            optionsDialog.addProductPage(category, static_cast<config::TOptionsPage*>(page));
+        };
+        packHost.openOptionsPage = [&optionsDialog](const int page) { optionsDialog.open(page); };
+        packHost.openStore = [&storeDialog] { storeDialog.open(); };
+        packHost.requestLogoutViaButtonBar = [&sidebarPanels, &gameClient] {
+            if (auto* buttonBar = sidebarPanels.buttonBar()) {
+                buttonBar->onLogoutButtonClicked();
+                return;
+            }
+            if (game::TGameserverGameSession* session = gameClient.session())
+                session->requestLogout();
+            else if (game::TSessiondumpGameSession* dump = gameClient.sessiondump())
+                dump->requestLogout();
+        };
+        packHost.setSocialButtonOnButtonBar = [&sidebarPanels](QObject* controller) {
+            if (auto* buttonBar = sidebarPanels.buttonBar())
+                buttonBar->setSocialButtonController(controller);
+        };
+        packHost.setActiveChatItem = [&chat, &keyboardShortcuts, &playerMovement](QQuickItem* item) {
+            if (!item)
+                return;
+            chat.setChatItem(item);
+            keyboardShortcuts.setChatItem(item);
+            playerMovement.setChatItem(item);
+        };
+        packHost.installCreateCharacterController = [&sessionBootstrap](QObject* controller) {
+            if (!sessionBootstrap || !controller)
+                return;
+            sessionBootstrap->installCreateCharacter(
+                qobject_cast<gamewindow::TCreateCharacterDialogController*>(controller));
+        };
+        packHost.blessingsDialog = [&blessingsDialog]() -> QObject* { return &blessingsDialog; };
+        packHost.npcDialog = [&npcDialog]() -> QObject* { return &npcDialog; };
+        packHost.chatController = [&chat]() -> QObject* { return &chat; };
+        packHost.chatStorage = [&chat]() -> QObject* { return &chat.storage(); };
+        packHost.storeMessages = [&storeMessages]() -> QObject* { return &storeMessages; };
+        packHost.storeImageManager = [&storeDialog]() -> QObject* {
+            return storeDialog.property("dynamicallyLoadedImageManager").value<QObject*>();
+        };
+        packHost.minimapController = [minimapController]() -> QObject* { return minimapController; };
+        packHost.sidebarManager = [&sidebarManager]() -> QObject* { return &sidebarManager; };
+        packHost.sidebarWidgets = [&sidebarWidgets]() -> QObject* { return &sidebarWidgets; };
+        packHost.containers = [&containers]() -> QObject* { return &containers; };
+        packHost.buttonBar = [&sidebarPanels]() -> QObject* { return sidebarPanels.buttonBar(); };
+        packHost.imbuingDialog = [&imbuingDialog]() -> QObject* { return &imbuingDialog; };
+        packHost.imbuingStorage = [&imbuingStorage]() -> QObject* { return &imbuingStorage; };
+        packHost.sessionBootstrap = [&sessionBootstrap]() -> QObject* { return sessionBootstrap.get(); };
+        packHost.minimapPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.minimapItem(); };
+        packHost.inventoryPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.inventoryItem(); };
+        packHost.buttonBarPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.buttonBarItem(); };
+
         tibia::mods::ModContext ctx;
         ctx.engine = engine.get();
         ctx.rootItem = window->contentItem();
         ctx.mapWindowPane = mapWindowPane;
         ctx.gameWindowItem = gameWindowItem;
         ctx.gameClient = &gameClient;
+        ctx.gameHost = gameClient.gameHost();
         ctx.dialogStack = &dialogStack;
         ctx.host = &productHost;
         ctx.launcherEnv = &env;
-        ctx.services["optionsDialog"] = &optionsDialog;
-        ctx.services["informationDialogs"] = &informationDialogs;
-        ctx.services["questTracker"] = &questTrackerWidget;
-        ctx.services["sidebarPanels"] = &sidebarPanels;
-        ctx.services["sidebarManager"] = &sidebarManager;
-        ctx.services["sidebarWidgets"] = &sidebarWidgets;
-        ctx.services["containers"] = &containers;
-        ctx.services["storeDialog"] = &storeDialog;
-        ctx.services["blessingsDialog"] = &blessingsDialog;
-        ctx.services["npcDialog"] = &npcDialog;
-        ctx.services["chat"] = &chat;
-        ctx.services["storeMessages"] = &storeMessages;
-        ctx.services["imbuingDialog"] = &imbuingDialog;
-        ctx.services["imbuingStorage"] = &imbuingStorage;
-        ctx.services["gameWindowController"] = &gameWindowController;
-        ctx.services["minimapController"] = minimapController;
-        ctx.services["keyboardShortcuts"] = &keyboardShortcuts;
-        ctx.services["playerMovement"] = &playerMovement;
-        if (sessionBootstrap)
-            ctx.services["sessionBootstrap"] = sessionBootstrap.get();
+        ctx.packHost = &packHost;
         tibia::mods::bootstrapAll(ctx);
     }
 

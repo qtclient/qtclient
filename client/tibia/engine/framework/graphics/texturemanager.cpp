@@ -23,18 +23,47 @@
 #include "texturemanager.h"
 
 #include "animatedtexture.h"
-#include "apngloader.h"
 #include "image.h"
 #include "texture.h"
 #include "framework/core/clock.h"
 #include "framework/core/eventdispatcher.h"
 #include "framework/core/resourcemanager.h"
 
+#include <algorithm>
+
 #ifdef FRAMEWORK_NET
 #include <framework/net/protocolhttp.h>
 #endif
 
 TextureManager g_textures;
+
+namespace {
+
+TexturePtr textureFromImage(const ImagePtr& image)
+{
+    if (!image)
+        return nullptr;
+
+    if (image->isAnimated()) {
+        const auto& frames = image->getAnimation();
+        std::vector<ImagePtr> frameImages;
+        std::vector<uint16_t> framesDelay;
+        frameImages.reserve(frames.size());
+        framesDelay.reserve(frames.size());
+        for (const auto& frame : frames) {
+            framesDelay.push_back(static_cast<uint16_t>(std::clamp(frame.delay, 0, 65535)));
+            frameImages.push_back(frame.image);
+        }
+
+        const auto& animatedTexture = std::make_shared<AnimatedTexture>(
+            frameImages.front()->getSize(), frameImages, framesDelay, image->animationLoopCount());
+        return animatedTexture;
+    }
+
+    return std::make_shared<Texture>(image, false, false);
+}
+
+} // namespace
 
 void TextureManager::init() { m_emptyTexture = std::make_shared<Texture>(); }
 
@@ -133,12 +162,7 @@ TexturePtr TextureManager::getTexture(const std::string& fileName, const bool sm
                     g_logger.error("Unable to load CIP texture '{}'", fileName);
                 }
             } else {
-                const auto& filePathEx = tibia::files::data().guessFilePath(filePath, "png");
-
-                // load texture file data
-                std::stringstream fin;
-                tibia::files::data().readFileStream(filePathEx, fin);
-                texture = loadTexture(fin);
+                texture = textureFromImage(Image::load(filePath));
             }
         } catch (const stdext::exception& e) {
             g_logger.error("Unable to load texture '{}': {}", fileName, e.what());;
@@ -149,6 +173,8 @@ TexturePtr TextureManager::getTexture(const std::string& fileName, const bool sm
             texture->setTime(stdext::time());
             texture->allowAtlasCache();
             std::unique_lock l(m_mutex);
+            if (texture->isAnimatedTexture())
+                texture = m_animatedTextures.emplace_back(std::static_pointer_cast<AnimatedTexture>(texture));
             m_textures[filePath] = texture;
         }
     }
@@ -165,40 +191,8 @@ TexturePtr TextureManager::getTexture(const std::string& fileName, const bool sm
 
 TexturePtr TextureManager::loadTexture(std::stringstream& file)
 {
-    TexturePtr texture;
-
-    apng_data apng;
-    if (load_apng(file, &apng) == 0) {
-        const Size imageSize(apng.width, apng.height);
-        const size_t frameSize = static_cast<size_t>(imageSize.area()) * apng.bpp;
-        const uint32_t availableFrames = apng.last_frame > apng.first_frame
-                                             ? apng.last_frame - apng.first_frame
-                                             : 0;
-        const uint32_t frameCount = std::min(apng.num_frames, availableFrames);
-        const uint32_t firstFrame = availableFrames > 0 ? apng.first_frame : 0;
-        if (frameCount > 1 && apng.frames_delay) { // animated texture
-            std::vector<ImagePtr> frames;
-            std::vector<uint16_t> framesDelay;
-            for (uint32_t i = 0; i < frameCount; ++i) {
-                uint8_t* frameData = apng.pdata +
-                                     (static_cast<size_t>(apng.first_frame + i) * frameSize);
-
-                framesDelay.push_back(apng.frames_delay[i]);
-                frames.emplace_back(std::make_shared<Image>(imageSize, apng.bpp, frameData));
-            }
-
-            const auto& animatedTexture = std::make_shared<AnimatedTexture>(imageSize, frames, framesDelay, apng.num_plays);
-            std::scoped_lock l(m_mutex);
-            texture = m_animatedTextures.emplace_back(animatedTexture);
-        } else {
-            const auto* firstFrameData = apng.pdata + (static_cast<size_t>(firstFrame) * frameSize);
-            const auto& image = std::make_shared<Image>(imageSize, apng.bpp, firstFrameData);
-            texture = std::make_shared<Texture>(image, false, false);
-        }
-        free_apng(&apng);
-    }
-
-    return texture;
+    const std::string buffer = file.str();
+    return textureFromImage(Image::loadPNG(buffer.data(), buffer.size()));
 }
 
 Matrix3 toMatrix(const Size& size, const bool upsideDown) {
@@ -227,6 +221,5 @@ uint16_t TextureManager::getMatrixId(const Size& size, bool upsidedown) {
     const auto id = m_matrixCache.objects.size();
     m_matrixCache.indexMap[hash] = id;
     m_matrixCache.objects.emplace_back(std::make_unique<Matrix3>(toMatrix(size, upsidedown)));
-
     return id;
 }

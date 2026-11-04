@@ -6,7 +6,6 @@
 
 #include <framework/core/logger.h>
 #include "sound/soundstorage.h"
-#include <tibia/world/game.h>
 
 #include <QJsonObject>
 #include <QObject>
@@ -15,6 +14,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::qmlcomponents {
 
@@ -119,7 +119,7 @@ void updateLoginAnthem(const QJsonObject& options)
     const int musicVol = std::clamp(optionInt(options, "soundMusicVolume", 50), 0, 100);
     const bool anthem = optionBool(options, "soundAnthemEnabled", true);
     auto* storage = sound::TSoundStorage::instance();
-    const bool online = g_game.isOnline();
+    const bool online = tibia::game::isOnline();
     // Login anthem only while offline. Entering the world must not stop music
     // the server already started on this channel.
     if (online || master <= 0 || musicVol <= 0 || !anthem) {

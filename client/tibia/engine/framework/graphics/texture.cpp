@@ -33,7 +33,6 @@
 #include "textureatlas.h"
 #include "texturemanager.h"
 #include "framework/core/eventdispatcher.h"
-#include <framework/core/graphicalapplication.h>
 #include <framework/util/stats.h>
 #include <mutex>
 #include <vector>
@@ -142,7 +141,7 @@ Texture::~Texture()
 
 void Texture::flushDeletedTextures()
 {
-    // Called from the main thread (GraphicalApplication::mainPoll), right after g_mainDispatcher.poll() -
+    // Called from the main/Qt render path after scheduled work drains -
     // that is EXACTLY the same spot in the frame where the old deletion events used to execute.
     // The behavior relative to drawing is therefore identical to before.
     static std::vector<PendingTextureDeletion> batch; // reused buffer - zero allocations in steady state

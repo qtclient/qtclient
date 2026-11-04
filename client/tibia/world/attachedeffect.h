@@ -23,10 +23,11 @@
 #pragma once
 #include "framework/core/timer.h"
 #include "framework/graphics/declarations.h"
-#include "framework/luaengine/luaobject.h"
 #include "client/staticdata.h"
 
-class AttachedEffect final : public LuaObject
+#include <memory>
+
+class AttachedEffect final : public std::enable_shared_from_this<AttachedEffect>
 {
 public:
     static AttachedEffectPtr create(uint16_t thingId, ThingCategory category);
@@ -75,8 +76,8 @@ public:
     void setName(std::string_view n) { m_name = n.data(); }
     std::string getName() { return m_name; }
 
-    Otc::Direction getDirection() { return m_direction; }
-    void setDirection(const Otc::Direction dir) { m_direction = std::min<Otc::Direction>(dir, Otc::NorthWest); }
+    tibia::client::Direction getDirection() { return m_direction; }
+    void setDirection(const tibia::client::Direction dir) { m_direction = std::min<tibia::client::Direction>(dir, tibia::client::NorthWest); }
 
     void setBounce(const uint8_t minHeight, const uint8_t height, const uint16_t speed) {
         m_bounce = { .minHeight = minHeight,.height = height, .speed = speed };
@@ -90,9 +91,9 @@ public:
 
     void setOnTop(const bool onTop) { for (auto& control : m_offsetDirections) control.onTop = onTop; }
     void setOffset(int16_t x, int16_t y) { for (auto& control : m_offsetDirections) control.offset = { x, y }; }
-    void setOnTopByDir(const Otc::Direction direction, const bool onTop) { m_offsetDirections[direction].onTop = onTop; }
+    void setOnTopByDir(const tibia::client::Direction direction, const bool onTop) { m_offsetDirections[direction].onTop = onTop; }
 
-    void setDirOffset(const Otc::Direction direction, int8_t x, int8_t y, const bool onTop = false) {
+    void setDirOffset(const tibia::client::Direction direction, int8_t x, int8_t y, const bool onTop = false) {
         m_offsetDirections[direction] = { .onTop = onTop,.offset = {x, y} };
     }
     void setShader(std::string_view name);
@@ -149,9 +150,9 @@ private:
 
     Timer m_animationTimer;
 
-    Otc::Direction m_direction{ Otc::North };
+    tibia::client::Direction m_direction{ tibia::client::North };
 
-    std::array<DirControl, Otc::Direction::NorthWest + 1> m_offsetDirections;
+    std::array<DirControl, tibia::client::Direction::NorthWest + 1> m_offsetDirections;
     std::string m_texturePath;
 
     Bounce m_bounce;

@@ -8,10 +8,9 @@
 #include "mods/registry.h"
 #include "sprites/sprite.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 #include <tibia/assets/spritesheet.h>
-#include <framework/core/graphicalapplication.h>
 #include <framework/graphics/image.h>
 #include "sprites/hdscale.h"
 
@@ -79,7 +78,7 @@ void colorize(QImage& image, const QImage& mask, const uint32_t colors)
 /// decompression is then queued.
 bool sheetReady(const uint32_t spriteId)
 {
-    if (!g_game.isUsingProtobuf())
+    if (!tibia::game::isUsingProtobuf())
         return true;
     // CIP sprites::TSpritesheetCache / TSpritesheetDecompressorThreadpool.
     const sprites::TSpriteInSpritesheet resolved =

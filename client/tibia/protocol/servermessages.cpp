@@ -21,45 +21,79 @@
 */
 
 #include "tibia/world/world.h"
+#include "appearances/appearanceinstance.h"
+#include "container/containerciptypes.h"
 #include "client/animatedtext.h"
 #include "client/gameconfig.h"
 #include "client/item.h"
 #include "client/protocolcodes.h"
 #include "client/protocolgame.h"
-#include "framework/core/eventdispatcher.h"
+#include <tibia/schedule/schedule.h>
 #include "framework/net/inputmessage.h"
 #include "framework/util/crypt.h"
 #include "tibia/protocol/extendedopcode.h"
+#include "tibia/protocol/inventoryitemwire.h"
+#include "tibia/protocol/protocolciptypes.h"
+#include "tibia/protocol/protocolclassicwire.h"
+
+#include <protocol.pb.h>
 
 #include <framework/core/gamehooks.h>
 #include "tibia/assets/thingtype.h"
 #include "tibia/assets/things.h"
-#include "framework/core/eventdispatcher.h"
 #include "framework/net/inputmessage.h"
 #include <algorithm>
 #include "tibia/sound/soundplayback.h"
-#include <fmt/format.h>
+#include "tibia/game/cooldownstorage.h"
+#include "tibia/gamewindow/newsdialogcontroller.h"
+#include "tibia/cyclopedia/iteminfostorage.h"
+#include <format>
 #include <framework/util/stats.h>
 #include <map>
 #include <sstream>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <creatures/creaturestorage.h>
+#include <worldmap/worldmapprotocolmessagehandler.h>
+
+#include <QString>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace {
 
-EffectPtr makeServerEffect(const uint16_t effectId)
+static void fillInspectionAppearance(auto& dest, const tibia::container::TInventorySlot& slot)
 {
-    const uint16_t drawId = g_things.resolveEffectId(effectId);
-    if (!g_things.isValidDatId(drawId, ThingCategoryEffect)) {
+    dest.typeId = slot.typeId;
+    dest.count = slot.stackable ? std::max<uint16_t>(1, slot.count) : 1;
+    dest.tier = slot.tier;
+    dest.fluidOrSubtype = slot.fluidOrSplash ? slot.fluid : 0;
+    dest.fluidOrSplash = slot.fluidOrSplash;
+    ThingType* type = slot.appearance ? slot.appearance->thingType()
+                                      : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
+    dest.hookSouth = type && type->isHookSouth();
+    dest.hookEast = type && type->isHookEast();
+    dest.hasProficiency = type && type->getProficiencyId() != 0;
+}
+
+
+tibia::appearances::TAppearanceInstancePtr makeServerEffectAppearance(const uint16_t effectId)
+{
+    const uint16_t drawId = tibia::game::resolveEffectId(effectId);
+    if (!tibia::game::isValidDatId(drawId, ThingCategoryEffect)) {
         g_logger.traceError("invalid effect id {}", effectId);
         return nullptr;
     }
-    const auto& effect = std::make_shared<Effect>();
-    effect->setId(drawId);
-    if (const auto* variant = g_things.findEffectVariant(effectId)) {
-        effect->setShader(variant->shader);
+    ThingType* type = tibia::game::rawThingType(drawId, ThingCategoryEffect);
+    const auto appearance = tibia::appearances::TAppearanceInstanceFactory::fromThingType(type);
+    auto* effect = dynamic_cast<tibia::appearances::TEffectInstance*>(appearance.get());
+    if (!effect)
+        return nullptr;
+    if (const auto* variant = tibia::game::findEffectVariant(effectId)) {
         effect->setUnderCreatures(variant->underCreatures);
         effect->setVariantId(effectId);
     }
-    return effect;
+    return appearance;
 }
 
 struct MappedThingPeek {
@@ -91,96 +125,140 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
 {
     int opcode = -1;
     int prevOpcode = -1;
+    const bool bridgePass = m_applyingClassicBridge;
+
+    const auto handleOpcode = [&](uint8_t op) {
+        // must be > so extended will be enabled before GameStart.
+        if (!g_game.getFeature(tibia::client::GameLoginPending)) {
+            if (!m_gameInitialized && op > Proto::GameServerFirstGameOpcode) {
+                g_game.processGameStart();
+                m_gameInitialized = true;
+            }
+        }
+
+        const int readPos = msg->getReadPos();
+        if (callLuaField<bool>("onOpcode", op, msg))
+            return;
+        msg->setReadPos(readPos);
+
+        if (dispatchServerMessage(op, msg))
+            return;
+
+        // Product / Mehah opcodes (not CIP protobuf). Keep off the CIP queue path
+        // via ExtendedOpcode when live; bridge may still see them.
+        switch (op) {
+            case Proto::GameServerCharacterSwitch:
+                parseCharacterSwitch(msg);
+                break;
+            case Proto::GameServerUpdateNeeded:
+                parseUpdateNeeded(msg);
+                break;
+            case Proto::GameServerExtendedOpcode:
+                parseExtendedOpcode(msg);
+                break;
+            case Proto::GameServerChangeMapAwareRange:
+                parseChangeMapAwareRange(msg);
+                break;
+            case Proto::GameServerAttchedEffect:
+                parseAttachedEffect(msg);
+                break;
+            case Proto::GameServerDetachEffect:
+                parseDetachEffect(msg);
+                break;
+            case Proto::GameServerCreatureShader:
+                parseCreatureShader(msg);
+                break;
+            case Proto::GameServerMapShader:
+                parseMapShader(msg);
+                break;
+            case Proto::GameServerCreatureTyping:
+                parseCreatureTyping(msg);
+                break;
+            case Proto::GameServerAttachedPaperdoll:
+                parseAttachedPaperdoll(msg);
+                break;
+            case Proto::GameServerDetachPaperdoll:
+                parseDetachPaperdoll(msg);
+                break;
+            case Proto::GameServerFeatures:
+                parseFeatures(msg);
+                break;
+            case Proto::GameServerFloorDescription:
+                parseFloorDescription(msg);
+                break;
+            default: {
+                const auto unreadSize = msg->getUnreadSize();
+                const auto previewSize = std::min<size_t>(unreadSize, 32);
+                const auto remainingBytes = msg->peekBytes(previewSize);
+                std::stringstream hexDump;
+                for (const auto byte : remainingBytes)
+                    hexDump << std::format("{:02X} ", byte);
+                g_logger.warning(
+                    "[{}] Unhandled opcode 0x{:02X} ({}) with {} unread bytes; previous opcode: 0x{:02X} ({}); next bytes: {}",
+                    g_game.getClientVersion(), op, op, unreadSize, prevOpcode, prevOpcode, hexDump.str());
+                msg->skipBytes(static_cast<uint16_t>(unreadSize));
+                break;
+            }
+        }
+    };
 
     try {
         while (!msg->eof()) {
+            // CIP order: TR → Q → H. Structured opcodes measure without side
+            // effects, enqueue, then classic bridge applies. Bridge re-entry
+            // (applyClassicServerFrame) only runs handleOpcode.
+            const int frameBegin = msg->getReadSize();
             opcode = msg->getU8();
-            AutoStat s(STATS_PACKETS, fmt::format("{} (0x{:02X})", opcode, opcode));
+            AutoStat s(STATS_PACKETS, std::format("{} (0x{:02X})", opcode, opcode));
 
-            // must be > so extended will be enabled before GameStart.
-            if (!g_game.getFeature(Otc::GameLoginPending)) {
-                if (!m_gameInitialized && opcode > Proto::GameServerFirstGameOpcode) {
-                    g_game.processGameStart();
-                    m_gameInitialized = true;
-                }
-            }
-
-            // try to parse in lua first
-            const int readPos = msg->getReadPos();
-            if (callLuaField<bool>("onOpcode", opcode, msg)) {
-                continue;
-            }
-            msg->setReadPos(readPos);
-            // restore read pos
-
-            if (dispatchServerMessage(static_cast<uint8_t>(opcode), msg)) {
+            if (bridgePass) {
+                handleOpcode(static_cast<uint8_t>(opcode));
                 prevOpcode = opcode;
                 continue;
             }
 
-            // qtclient / Mehah opcodes Tibia does not use. CIP opcodes are in
-            // dispatch.gen.cpp, generated from upstream/protocol/messages.json.
-            switch (opcode) {
-                case Proto::GameServerCharacterSwitch:
-                    parseCharacterSwitch(msg);
-                    break;
-                case Proto::GameServerUpdateNeeded:
-                    parseUpdateNeeded(msg);
-                    break;
-                case Proto::GameServerExtendedOpcode: // qtclient only
-                    parseExtendedOpcode(msg);
-                    break;
-                case Proto::GameServerChangeMapAwareRange:
-                    parseChangeMapAwareRange(msg);
-                    break;
-                case Proto::GameServerAttchedEffect:
-                    parseAttachedEffect(msg);
-                    break;
-                case Proto::GameServerDetachEffect:
-                    parseDetachEffect(msg);
-                    break;
-                case Proto::GameServerCreatureShader:
-                    parseCreatureShader(msg);
-                    break;
-                case Proto::GameServerMapShader:
-                    parseMapShader(msg);
-                    break;
-                case Proto::GameServerCreatureTyping:
-                    parseCreatureTyping(msg);
-                    break;
-                case Proto::GameServerAttachedPaperdoll:
-                    parseAttachedPaperdoll(msg);
-                    break;
-                case Proto::GameServerDetachPaperdoll:
-                    parseDetachPaperdoll(msg);
-                    break;
-                case Proto::GameServerFeatures:
-                    parseFeatures(msg);
-                    break;
-                case Proto::GameServerFloorDescription:
-                    parseFloorDescription(msg);
-                    break;
-                default: {
-                    const auto unreadSize = msg->getUnreadSize();
-                    const auto previewSize = std::min<size_t>(unreadSize, 32);
-                    const auto remainingBytes = msg->peekBytes(previewSize);
+            auto* xlat = tibia::protocol::serverMessageTranslator();
+            // Extended / product opcodes stay tip-local (IdleOT mods), not CIP queue.
+            const bool productOpcode = (opcode == Proto::GameServerExtendedOpcode);
+            // Structured measure (incl. LoginChallenge 1405+ pad) is length authority.
+            const bool cipTranslateFirst = xlat && xlat->hasStructuredLayout(opcode);
 
-                    std::stringstream hexDump;
-                    for (const auto byte : remainingBytes) {
-                        hexDump << fmt::format("{:02X} ", byte);
-                    }
-
-                    g_logger.warning(
-                        "[{}] Unhandled opcode 0x{:02X} ({}) with {} unread bytes; previous opcode: 0x{:02X} ({}); next bytes: {}",
-                        g_game.getClientVersion(), opcode, opcode, unreadSize, prevOpcode, prevOpcode, hexDump.str());
-                    // getMessageSize() is the message body length, not an absolute read position.
-                    // Passing it to setReadPos() leaves eof() permanently false (readPos - headerPos
-                    // stays below messageSize because headerPos > 0), so the enclosing while (!eof())
-                    // loop keeps parsing past the end of the message -> busy loop / OOM on any unknown
-                    // opcode. Skip the remaining bytes instead so eof() is reached and parsing stops.
-                    msg->skipBytes(static_cast<uint16_t>(unreadSize));
-                    break;
+            if (cipTranslateFirst) {
+                const auto unread = msg->peekBytes(msg->getUnreadSize());
+                const size_t measured = xlat->measureStructuredPayload(
+                    opcode, unread.empty() ? nullptr : unread.data(), unread.size());
+                // Empty structured bodies measure 0 on success — still TR→Q→H
+                // (do not fall through to classic length authority).
+                const bool measureOk = measured > 0
+                    || (measured == 0 && tibia::protocol::emptyStructuredServerOpcode(opcode));
+                if (measureOk) {
+                    if (measured > 0)
+                        msg->skipBytes(static_cast<uint16_t>(std::min(measured, size_t(0xffff))));
+                    const int frameEnd = msg->getReadSize();
+                    const auto buf = msg->getBuffer();
+                    const QByteArray classic(buf.data() + frameBegin, frameEnd - frameBegin);
+                    // CIP: TR → Q → H. Peeled opcodes have native handlers;
+                    // classic bridge skipped (see nativeApplySkipsClassic).
+                    const bool applyClassic = !tibia::protocol::nativeApplySkipsClassic(opcode);
+                    tibia::protocol::enqueueTranslatedServerFrame(classic, applyClassic);
+                } else {
+                    // Measure failed — classic length authority, queue observability only.
+                    handleOpcode(static_cast<uint8_t>(opcode));
+                    const int frameEnd = msg->getReadSize();
+                    const auto buf = msg->getBuffer();
+                    const QByteArray classic(buf.data() + frameBegin, frameEnd - frameBegin);
+                    tibia::protocol::enqueueTranslatedServerFrame(classic, false);
                 }
+            } else if (productOpcode) {
+                // IdleOT / tip mods: ExtendedOpcode stays tip-local (not CIP queue).
+                handleOpcode(static_cast<uint8_t>(opcode));
+            } else {
+                // Bridge layouts: classic length + behavior, then queue without re-apply.
+                handleOpcode(static_cast<uint8_t>(opcode));
+                const int frameEnd = msg->getReadSize();
+                const auto buf = msg->getBuffer();
+                const QByteArray classic(buf.data() + frameBegin, frameEnd - frameBegin);
+                tibia::protocol::enqueueTranslatedServerFrame(classic, false);
             }
 
             prevOpcode = opcode;
@@ -192,7 +270,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
 
         std::stringstream hexDump;
         for (const auto byte : remainingBytes) {
-            hexDump << fmt::format("{:02X} ", byte);
+            hexDump << std::format("{:02X} ", byte);
         }
 
         g_logger.error(
@@ -213,7 +291,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
             return;
         }
 
-        packet << fmt::format(
+        packet << std::format(
             "[EXCEPTION] {} unread bytes at pos: {}, protocol: {}, current: 0x{:02X} ({:d}), prev: 0x{:02X} ({:d}), error: {}\nBytes: {}\n",
             unread, readPos,
             g_game.getProtocolVersion(),
@@ -230,14 +308,14 @@ void ProtocolGame::parseLogin(const InputMessagePtr& msg) const
     const uint32_t playerId = msg->getU32();
     const uint16_t serverBeat = msg->getU16();
 
-    if (g_game.getFeature(Otc::GameNewSpeedLaw)) {
+    if (g_game.getFeature(tibia::client::GameNewSpeedLaw)) {
         Creature::speedA = msg->getDouble();
         Creature::speedB = msg->getDouble();
         Creature::speedC = msg->getDouble();
     }
 
     bool canReportBugs = false;
-    if (!g_game.getFeature(Otc::GameDynamicBugReporter)) {
+    if (!g_game.getFeature(tibia::client::GameDynamicBugReporter)) {
         canReportBugs = msg->getU8() > 0;
     }
 
@@ -250,20 +328,20 @@ void ProtocolGame::parseLogin(const InputMessagePtr& msg) const
         g_game.setExpertPvpMode(expertModeEnabled);
     }
 
-    if (g_game.getFeature(Otc::GameIngameStore)) {
+    if (g_game.getFeature(tibia::client::GameIngameStore)) {
         // URL to ingame store images
         std::string url = msg->getString();
 
         // premium coin package size
         // e.g you can only buy packs of 25, 50, 75, .. coins in the market
         const uint16_t coinsPacketSize = msg->getU16();
-        g_gameEvents.callGlobalField("g_game", "onStoreInit", url, coinsPacketSize);
+        tibia::game::notify("onStoreInit", url, coinsPacketSize);
     }
 
     if (g_game.getClientVersion() >= 1281) {
         const bool exivaEnabled = static_cast<bool>(msg->getU8());// exiva button enabled (bool)
         g_game.setCanExivaOptions(exivaEnabled);
-        if (g_game.getFeature(Otc::GameTournamentPackets)) {
+        if (g_game.getFeature(tibia::client::GameTournamentPackets)) {
             msg->getU8(); // Tournament button (bool)
         }
     }
@@ -280,7 +358,7 @@ void ProtocolGame::parseCharacterSwitch(const InputMessagePtr& msg)
     const auto characterName = msg->getString();
     g_game.processCharacterSwitch(characterName);
     // The server follows with a full login burst for the new body on this socket.
-    m_localPlayer = g_game.getLocalPlayer();
+    m_localPlayer = tibia::game::localPlayer();
     m_gameInitialized = false;
 }
 
@@ -297,19 +375,19 @@ void ProtocolGame::parseTextForReport(const InputMessagePtr& msg)
     const uint32_t id = msg->getU32();
     const auto text = msg->getString();
     const auto name = msg->getString();
-    g_gameEvents.callGlobalField("g_game", "onTextForReport", id, text, name);
+    tibia::game::notify("onTextForReport", id, text, name);
 }
 
 void ProtocolGame::parseMultiOfflineTrainingDialog(const InputMessagePtr& /*msg*/)
 {
-    m_localPlayer->openMultiOfflineTrainingDialog();
+    tibia::game::notify("onMultiOfflineTrainingDialog");
 }
 
 void ProtocolGame::parseNpcChatWindow(const InputMessagePtr& msg)
 {
     const uint8_t status = msg->getU8();
     if (status != 0) {
-        g_gameEvents.callGlobalField("g_game", "onNpcChatWindowClose");
+        tibia::game::notify("onNpcChatWindowClose");
         return;
     }
     NpcChatWindowData data;
@@ -329,7 +407,7 @@ void ProtocolGame::parseNpcChatWindow(const InputMessagePtr& msg)
         data.buttons.push_back(button);
     }
 
-    g_gameEvents.callGlobalField("g_game", "onNpcChatWindow", data);
+    tibia::game::notify("onNpcChatWindow", data);
 }
 
 void ProtocolGame::parsePendingGame(const InputMessagePtr&)
@@ -340,20 +418,15 @@ void ProtocolGame::parsePendingGame(const InputMessagePtr&)
 
 void ProtocolGame::parseEnterGame(const InputMessagePtr&)
 {
-    //set player to entered game state
-    g_game.processEnterGame();
-
-    if (!m_gameInitialized) {
-        g_game.processGameStart();
-        m_gameInitialized = true;
-    }
+    // Native H + classic bridge share Game::processWorldEntered (m_gameInitialized gate).
+    g_game.processWorldEntered();
 }
 
 void ProtocolGame::parseStoreButtonIndicators(const InputMessagePtr& msg)
 {
     const bool sale = msg->getU8() != 0;
     const bool isNew = msg->getU8() != 0;
-    g_gameEvents.callGlobalField("g_game", "onStoreButtonIndicators", sale, isNew);
+    tibia::game::notify("onStoreButtonIndicators", sale, isNew);
 }
 
 void ProtocolGame::parseSetStoreDeepLink(const InputMessagePtr& msg)
@@ -385,7 +458,7 @@ void ProtocolGame::parseSetStoreDeepLink(const InputMessagePtr& msg)
     }
     const uint8_t sortOrder = msg->getU8();
     const uint8_t serviceType = msg->getU8();
-    g_gameEvents.callGlobalField("g_game", "onStoreButtonDeeplink", openAction, detail, category, subCategory, sortOrder, serviceType);
+    tibia::game::notify("onStoreButtonDeeplink", openAction, detail, category, subCategory, sortOrder, serviceType);
 }
 
 void ProtocolGame::parseBlessings(const InputMessagePtr& msg) const
@@ -401,29 +474,29 @@ void ProtocolGame::parseBlessings(const InputMessagePtr& msg) const
 void ProtocolGame::parsePreset(const InputMessagePtr& msg)
 {
     const uint32_t preset = msg->getU32();
-    g_gameEvents.callGlobalField("g_game", "onPreset", preset);
+    tibia::game::notify("onPreset", preset);
 }
 
 void ProtocolGame::parseRequestPurchaseData(const InputMessagePtr& msg)
 {
     const uint32_t offerId = msg->getU32();
     const uint8_t productType = msg->getU8(); // 1 name change, 2 world transfer, 3 hireling, 4 main character
-    g_gameEvents.callGlobalField("g_game", "onRequestPurchaseData", offerId, productType);
+    tibia::game::notify("onRequestPurchaseData", offerId, productType);
 }
 
 void ProtocolGame::parseResourceBalance(const InputMessagePtr& msg) const
 {
-    const auto type = static_cast<Otc::ResourceTypes_t>(msg->getU8());
+    const auto type = static_cast<tibia::client::ResourceTypes_t>(msg->getU8());
     uint64_t value;
     switch (type) {
         // 14.10+
-        case Otc::RESOURCE_CHARM:
-        case Otc::RESOURCE_MINOR_CHARM:
-        case Otc::RESOURCE_MAX_CHARM:
-        case Otc::RESOURCE_MAX_MINOR_CHARM:
+        case tibia::client::RESOURCE_CHARM:
+        case tibia::client::RESOURCE_MINOR_CHARM:
+        case tibia::client::RESOURCE_MAX_CHARM:
+        case tibia::client::RESOURCE_MAX_MINOR_CHARM:
         // 15.13+
-        case Otc::RESOURCE_BOUNTY_POINTS:
-        case Otc::RESOURCE_SOULSEALS:
+        case tibia::client::RESOURCE_BOUNTY_POINTS:
+        case tibia::client::RESOURCE_SOULSEALS:
             value = msg->getU32();
             break;
         default:
@@ -438,7 +511,7 @@ void ProtocolGame::parseWorldTime(const InputMessagePtr& msg)
     const uint8_t hour = msg->getU8();
     const uint8_t min = msg->getU8();
     tibia::world::setWorldTime(hour, min);
-    g_gameEvents.callGlobalField("g_game", "onChangeWorldTime", hour, min);
+    tibia::game::notify("onChangeWorldTime", hour, min);
 }
 
 void ProtocolGame::parseStore(const InputMessagePtr& msg) const
@@ -458,7 +531,7 @@ void ProtocolGame::parseStore(const InputMessagePtr& msg) const
             msg->getString();
         }
 
-        if (g_game.getFeature(Otc::GameIngameStoreHighlights)) {
+        if (g_game.getFeature(tibia::client::GameIngameStoreHighlights)) {
             category.state = msg->getU8();
         } else {
             category.state = 0;
@@ -499,7 +572,7 @@ void ProtocolGame::parseStore(const InputMessagePtr& msg) const
         }
     }
 
-    g_gameEvents.callGlobalField("g_game", "onParseStoreGetCategories", organizedCategories);
+    tibia::game::notify("onParseStoreGetCategories", organizedCategories);
 }
 
 void ProtocolGame::parseCoinBalance(const InputMessagePtr& msg) const
@@ -509,19 +582,19 @@ void ProtocolGame::parseCoinBalance(const InputMessagePtr& msg) const
         // amount of coins that can be used to buy prodcuts
         // in the ingame store
         const uint32_t coins = msg->getU32(); // coins
-        m_localPlayer->setResourceBalance(Otc::RESOURE_COIN_NORMAL, coins);
+        m_localPlayer->setResourceBalance(tibia::client::RESOURE_COIN_NORMAL, coins);
 
         // amount of coins that can be sold in market
         // or be transfered to another player
         const uint32_t transferrableCoins = msg->getU32(); // transferableCoins
-        m_localPlayer->setResourceBalance(Otc::RESOURE_COIN_TRANSFERRABLE, transferrableCoins);
+        m_localPlayer->setResourceBalance(tibia::client::RESOURE_COIN_TRANSFERRABLE, transferrableCoins);
 
         if (g_game.getClientVersion() >= 1281) {
             const uint32_t auctionCoins = msg->getU32();
-            m_localPlayer->setResourceBalance(Otc::RESOURE_COIN_AUCTION, auctionCoins);
-            if (g_game.getFeature(Otc::GameTournamentPackets)) {
+            m_localPlayer->setResourceBalance(tibia::client::RESOURE_COIN_AUCTION, auctionCoins);
+            if (g_game.getFeature(tibia::client::GameTournamentPackets)) {
                 const uint32_t tournamentCoins = msg->getU32();
-                m_localPlayer->setResourceBalance(Otc::RESOURE_COIN_TOURNAMENT, tournamentCoins);
+                m_localPlayer->setResourceBalance(tibia::client::RESOURE_COIN_TOURNAMENT, tournamentCoins);
             }
         }
     }
@@ -542,20 +615,20 @@ void ProtocolGame::parseCoinBalanceUpdating(const InputMessagePtr& msg)
         const uint32_t getTibiaCoins = msg->getU32();
         const uint32_t getTransferableCoins = msg->getU32();
         if (m_localPlayer) {
-            m_localPlayer->setResourceBalance(Otc::RESOURE_COIN_NORMAL, getTibiaCoins);
-            m_localPlayer->setResourceBalance(Otc::RESOURE_COIN_TRANSFERRABLE, getTransferableCoins);
+            m_localPlayer->setResourceBalance(tibia::client::RESOURE_COIN_NORMAL, getTibiaCoins);
+            m_localPlayer->setResourceBalance(tibia::client::RESOURE_COIN_TRANSFERRABLE, getTransferableCoins);
         }
         if (g_game.getClientVersion() >= 1281) {
             const uint32_t auctionCoins = msg->getU32();
             if (m_localPlayer)
-                m_localPlayer->setResourceBalance(Otc::RESOURE_COIN_AUCTION, auctionCoins);
+                m_localPlayer->setResourceBalance(tibia::client::RESOURE_COIN_AUCTION, auctionCoins);
         }
-        if (g_game.getFeature(Otc::GameTournamentPackets)) {
+        if (g_game.getFeature(tibia::client::GameTournamentPackets)) {
             const uint32_t tournamentCoins = msg->getU32();
             if (m_localPlayer)
-                m_localPlayer->setResourceBalance(Otc::RESOURE_COIN_TOURNAMENT, tournamentCoins);
+                m_localPlayer->setResourceBalance(tibia::client::RESOURE_COIN_TOURNAMENT, tournamentCoins);
         }
-        g_gameEvents.callGlobalField("g_game", "onParseStoreGetCoin", getTibiaCoins, getTransferableCoins);
+        tibia::game::notify("onParseStoreGetCoin", getTibiaCoins, getTransferableCoins);
     } else {
         // coin balance can be updating and might not be accurate
         msg->getU8(); // == 1; // isUpdating
@@ -567,15 +640,15 @@ void ProtocolGame::parseCompleteStorePurchase(const InputMessagePtr& msg) const
     if (g_game.getClientVersion() >= 1291) {
         const uint8_t successType = msg->getU8(); // 0 purchase, 1 coin transfer
         const auto& purchaseStatus = msg->getString();
-        g_gameEvents.callGlobalField("g_game", "onParseStoreGetPurchaseStatus", purchaseStatus, successType);
+        tibia::game::notify("onParseStoreGetPurchaseStatus", purchaseStatus, successType);
     } else {
         msg->getU8(); // not used
 
         const auto& message = msg->getString();
         const uint32_t coins = msg->getU32();
         const uint32_t transferableCoins = msg->getU32();
-        g_gameEvents.callGlobalField("g_game", "onParseStoreGetCoin", coins, transferableCoins);
-        g_gameEvents.callGlobalField("g_game", "onParseStoreGetPurchaseStatus", message);
+        tibia::game::notify("onParseStoreGetCoin", coins, transferableCoins);
+        tibia::game::notify("onParseStoreGetPurchaseStatus", message);
     }
 }
 
@@ -621,7 +694,7 @@ void ProtocolGame::parseStoreTransactionHistory(const InputMessagePtr& msg) cons
         }
     }
 
-    g_gameEvents.callGlobalField("g_game", "onParseStoreGetHistory", currentPage, pageCount, historyData, historyDetails);
+    tibia::game::notify("onParseStoreGetHistory", currentPage, pageCount, historyData, historyDetails);
 }
 
 void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
@@ -671,7 +744,7 @@ void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
                 }
             }
             subOffer.state = msg->getU8();
-            if (subOffer.state == Otc::GameStoreInfoStatesType_t::STATE_SALE) {
+            if (subOffer.state == tibia::client::GameStoreInfoStatesType_t::STATE_SALE) {
                 subOffer.validUntil = msg->getU32();
                 subOffer.basePrice = msg->getU32();
             }
@@ -680,17 +753,17 @@ void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
         const auto parseVisual = [&msg](StoreProduct& visual) {
             visual.type = msg->getU8();
             switch (visual.type) {
-                case Otc::GameStoreInfoType_t::SHOW_NONE: visual.icon = msg->getString(); break;
-                case Otc::GameStoreInfoType_t::SHOW_MOUNT:
-                case Otc::GameStoreInfoType_t::SHOW_ITEM: visual.typeId = msg->getU16(); break;
-                case Otc::GameStoreInfoType_t::SHOW_OUTFIT:
+                case tibia::client::GameStoreInfoType_t::SHOW_NONE: visual.icon = msg->getString(); break;
+                case tibia::client::GameStoreInfoType_t::SHOW_MOUNT:
+                case tibia::client::GameStoreInfoType_t::SHOW_ITEM: visual.typeId = msg->getU16(); break;
+                case tibia::client::GameStoreInfoType_t::SHOW_OUTFIT:
                     visual.typeId = msg->getU16();
                     visual.outfitHead = msg->getU8();
                     visual.outfitBody = msg->getU8();
                     visual.outfitLegs = msg->getU8();
                     visual.outfitFeet = msg->getU8();
                     break;
-                case Otc::GameStoreInfoType_t::SHOW_HIRELING:
+                case tibia::client::GameStoreInfoType_t::SHOW_HIRELING:
                     visual.sex = msg->getU8();
                     visual.maleOutfitId = msg->getU16();
                     visual.femaleOutfitId = msg->getU16();
@@ -734,11 +807,11 @@ void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
                 parseVisual(visual);
                 offer.type = visual.type;
                 offer.icon = visual.icon;
-                if (visual.type == Otc::GameStoreInfoType_t::SHOW_MOUNT)
+                if (visual.type == tibia::client::GameStoreInfoType_t::SHOW_MOUNT)
                     offer.mountClientId = visual.typeId;
-                else if (visual.type == Otc::GameStoreInfoType_t::SHOW_ITEM)
+                else if (visual.type == tibia::client::GameStoreInfoType_t::SHOW_ITEM)
                     offer.itemType = visual.typeId;
-                else if (visual.type == Otc::GameStoreInfoType_t::SHOW_OUTFIT)
+                else if (visual.type == tibia::client::GameStoreInfoType_t::SHOW_OUTFIT)
                     offer.sexId = visual.typeId;
                 offer.sex = visual.sex;
                 offer.maleOutfitId = visual.maleOutfitId;
@@ -770,7 +843,7 @@ void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
 
             storeData.bannerDelay = msg->getU8();
 
-            g_gameEvents.callGlobalField("g_game", "onParseStoreCreateHome", storeData);
+            tibia::game::notify("onParseStoreCreateHome", storeData);
             return;
         }
 
@@ -783,19 +856,19 @@ void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
                 offer.subOffers.push_back(parseSubOffer());
 
             offer.type = msg->getU8();
-            if (offer.type == Otc::GameStoreInfoType_t::SHOW_NONE) {
+            if (offer.type == tibia::client::GameStoreInfoType_t::SHOW_NONE) {
                 offer.icon = msg->getString();
-            } else if (offer.type == Otc::GameStoreInfoType_t::SHOW_MOUNT) {
+            } else if (offer.type == tibia::client::GameStoreInfoType_t::SHOW_MOUNT) {
                 offer.mountId = msg->getU16();
-            } else if (offer.type == Otc::GameStoreInfoType_t::SHOW_ITEM) {
+            } else if (offer.type == tibia::client::GameStoreInfoType_t::SHOW_ITEM) {
                 offer.itemId = msg->getU16();
-            } else if (offer.type == Otc::GameStoreInfoType_t::SHOW_OUTFIT) {
+            } else if (offer.type == tibia::client::GameStoreInfoType_t::SHOW_OUTFIT) {
                 offer.outfitId = msg->getU16();
                 offer.outfitHead = msg->getU8();
                 offer.outfitBody = msg->getU8();
                 offer.outfitLegs = msg->getU8();
                 offer.outfitFeet = msg->getU8();
-            } else if (offer.type == Otc::GameStoreInfoType_t::SHOW_HIRELING) {
+            } else if (offer.type == tibia::client::GameStoreInfoType_t::SHOW_HIRELING) {
                 offer.sex = msg->getU8();
                 offer.maleOutfitId = msg->getU16();
                 offer.femaleOutfitId = msg->getU16();
@@ -825,7 +898,7 @@ void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
             storeData.tooManyResults = msg->getU8() == 1;
         }
 
-        g_gameEvents.callGlobalField("g_game", "onParseStoreCreateProducts", storeData);
+        tibia::game::notify("onParseStoreCreateProducts", storeData);
     } else {
         StoreData storeData;
         storeData.categoryName = msg->getString(); // categoryName
@@ -839,8 +912,8 @@ void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
             offer.price = msg->getU32(); // price
 
             const uint8_t highlightState = msg->getU8();
-            if (highlightState == 2 && g_game.getFeature(Otc::GameIngameStoreHighlights) && g_game.getClientVersion() >= 1097) {
-                offer.state = Otc::GameStoreInfoStatesType_t::STATE_SALE;
+            if (highlightState == 2 && g_game.getFeature(tibia::client::GameIngameStoreHighlights) && g_game.getClientVersion() >= 1097) {
+                offer.state = tibia::client::GameStoreInfoStatesType_t::STATE_SALE;
                 offer.stateNewUntil = msg->getU32(); // saleValidUntilTimestamp
                 offer.basePrice = msg->getU32(); // basePrice
             } else {
@@ -848,7 +921,7 @@ void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
             }
 
             offer.disabled = msg->getU8() == 1;
-            if (g_game.getFeature(Otc::GameIngameStoreHighlights) && offer.disabled) {
+            if (g_game.getFeature(tibia::client::GameIngameStoreHighlights) && offer.disabled) {
                 offer.reasonIdDisable = msg->getString(); // disabledReason
             }
 
@@ -875,7 +948,7 @@ void ProtocolGame::parseStoreOffers(const InputMessagePtr& msg)
             storeData.storeOffers.push_back(offer);
         }
 
-        g_gameEvents.callGlobalField("g_game", "onParseStoreCreateProducts", storeData);
+        tibia::game::notify("onParseStoreCreateProducts", storeData);
     }
 }
 
@@ -884,7 +957,7 @@ void ProtocolGame::parseStoreError(const InputMessagePtr& msg) const
     const uint8_t errorType = msg->getU8();
     const auto& message = msg->getString();
 
-    g_gameEvents.callGlobalField("g_game", "onParseStoreError", message, errorType);
+    tibia::game::notify("onParseStoreError", message, errorType);
 }
 
 void ProtocolGame::parseUnjustifiedStats(const InputMessagePtr& msg)
@@ -914,8 +987,13 @@ void ProtocolGame::parsePlayerHelpers(const InputMessagePtr& msg) const
     const uint32_t creatureId = msg->getU32();
     const uint16_t helpers = msg->getU16();
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
+    // Existence only — processPlayerHelpers does not use Creature methods.
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parsePlayerHelpers: could not get creature with id {}", creatureId);
+            return;
+        }
+    } else if (!g_map.getCreatureById(creatureId)) {
         g_logger.traceDebug("ProtocolGame::parsePlayerHelpers: could not get creature with id {}", creatureId);
         return;
     }
@@ -975,7 +1053,7 @@ void ProtocolGame::parseSessionCreatureData(const InputMessagePtr& msg)
         creatureId = msg->getU32();
     while (msg->getUnreadSize() > 0)
         msg->getU8();
-    g_gameEvents.callGlobalField("g_game", "onCreatureData", creatureId);
+    tibia::game::notify("onCreatureData", creatureId);
 }
 
 void ProtocolGame::parseSessionDumpStart(const InputMessagePtr& msg)
@@ -1008,7 +1086,7 @@ void ProtocolGame::parsePartyLeft(const InputMessagePtr&)
 {
     // CIP PartyLeft (S 0x06) — empty body (protobuf serializer writes no fields).
     // Crystal sendPartyLeft matches.
-    g_gameEvents.callGlobalField("g_game", "onPartyLeft");
+    tibia::game::notify("onPartyLeft");
 }
 
 void ProtocolGame::parsePing(const InputMessagePtr&) { g_game.processPing(); }
@@ -1029,13 +1107,13 @@ void ProtocolGame::parseLoginChallenge(const InputMessagePtr& msg)
 void ProtocolGame::parseDeath(const InputMessagePtr& msg)
 {
     uint8_t penality = 100;
-    uint8_t deathType = Otc::DeathRegular;
+    uint8_t deathType = tibia::client::DeathRegular;
 
-    if (g_game.getFeature(Otc::GameDeathType)) {
+    if (g_game.getFeature(tibia::client::GameDeathType)) {
         deathType = msg->getU8();
     }
 
-    if (g_game.getFeature(Otc::GamePenalityOnDeath) && deathType == Otc::DeathRegular) {
+    if (g_game.getFeature(tibia::client::GamePenalityOnDeath) && deathType == tibia::client::DeathRegular) {
         penality = msg->getU8();
     }
 
@@ -1066,12 +1144,12 @@ void ProtocolGame::parseFloorDescription(const InputMessagePtr& msg)
         g_map.setCentralPosition(pos);
 
         if (!m_mapKnown) {
-            tibia::schedule::post([] { g_gameEvents.callGlobalField("g_game", "onMapKnown"); });
+            tibia::schedule::post([] { tibia::game::notify("onMapKnown"); });
             m_mapKnown = true;
         }
 
-        tibia::schedule::post([] { g_gameEvents.callGlobalField("g_game", "onMapDescription"); });
-        g_gameEvents.callGlobalField("g_game", "onTeleport", m_localPlayer, pos, oldPos);
+        tibia::schedule::post([] { tibia::game::notify("onMapDescription"); });
+        tibia::game::notify("onTeleport", m_localPlayer, pos, oldPos);
     }
 
     const auto& range = g_map.getAwareRange();
@@ -1105,17 +1183,17 @@ void ProtocolGame::parseMapDescription(const InputMessagePtr& msg)
     g_map.notificateWindowChanged(true);
 
     if (!m_mapKnown) {
-        tibia::schedule::post([] { g_gameEvents.callGlobalField("g_game", "onMapKnown"); });
+        tibia::schedule::post([] { tibia::game::notify("onMapKnown"); });
         m_mapKnown = true;
     }
 
-    tibia::schedule::post([] { g_gameEvents.callGlobalField("g_game", "onMapDescription"); });
-    g_gameEvents.callGlobalField("g_game", "onTeleport", m_localPlayer, pos, oldPos);
+    tibia::schedule::post([] { tibia::game::notify("onMapDescription"); });
+    tibia::game::notify("onTeleport", m_localPlayer, pos, oldPos);
 }
 
 void ProtocolGame::parseMapMoveNorth(const InputMessagePtr& msg)
 {
-    auto pos = g_game.getFeature(Otc::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
+    auto pos = g_game.getFeature(tibia::client::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
     --pos.y;
 
     const auto& range = g_map.getAwareRange();
@@ -1131,7 +1209,7 @@ void ProtocolGame::parseMapMoveNorth(const InputMessagePtr& msg)
 
 void ProtocolGame::parseMapMoveEast(const InputMessagePtr& msg)
 {
-    auto pos = g_game.getFeature(Otc::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
+    auto pos = g_game.getFeature(tibia::client::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
     ++pos.x;
 
     const auto& range = g_map.getAwareRange();
@@ -1147,7 +1225,7 @@ void ProtocolGame::parseMapMoveEast(const InputMessagePtr& msg)
 
 void ProtocolGame::parseMapMoveSouth(const InputMessagePtr& msg)
 {
-    auto pos = g_game.getFeature(Otc::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
+    auto pos = g_game.getFeature(tibia::client::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
     ++pos.y;
 
     const auto& range = g_map.getAwareRange();
@@ -1163,7 +1241,7 @@ void ProtocolGame::parseMapMoveSouth(const InputMessagePtr& msg)
 
 void ProtocolGame::parseMapMoveWest(const InputMessagePtr& msg)
 {
-    auto pos = g_game.getFeature(Otc::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
+    auto pos = g_game.getFeature(tibia::client::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
     --pos.x;
 
     const auto& range = g_map.getAwareRange();
@@ -1191,14 +1269,23 @@ void ProtocolGame::parseUpdateTile(const InputMessagePtr& msg)
 void ProtocolGame::parseTileAddThing(const InputMessagePtr& msg)
 {
     const auto& pos = getPosition(msg);
-    const int stackPos = g_game.getFeature(Otc::GameTileAddThingWithStackpos) ? msg->getU8() : -1;
+    const int stackPos = g_game.getFeature(tibia::client::GameTileAddThingWithStackpos) ? msg->getU8() : -1;
     const auto& thing = getThing(msg);
 
     if (g_game.isSceneFrozen()) {
         return;
     }
 
-    g_map.addThing(thing, pos, stackPos);
+    if (lastParsedCreatureId() != 0)
+        g_map.placeCreatureId(lastParsedCreatureId(), pos, stackPos);
+    else if (lastParsedItemAppearance())
+        g_map.placeAppearance(lastParsedItemAppearance(), pos, stackPos);
+    else if (thing && thing->isCreature()) {
+        // LocalPlayer session keep-alive only (items return nullptr + appearance).
+        if (thing->isLocalPlayer())
+            thing->static_self_cast<LocalPlayer>()->resetPreWalk();
+        g_map.placeCreatureId(thing->getId(), pos, stackPos);
+    }
 }
 
 void ProtocolGame::parseTileTransformThing(const InputMessagePtr& msg)
@@ -1216,30 +1303,67 @@ void ProtocolGame::parseTileTransformThing(const InputMessagePtr& msg)
 
     const auto& thing = getMappedThing(msg);
     const auto& newThing = getThing(msg);
+    const uint32_t newCreatureId = lastParsedCreatureId();
+
+    auto placeReplacement = [&](const Position& at, const int stackPos) {
+        if (newCreatureId != 0)
+            g_map.placeCreatureId(newCreatureId, at, stackPos);
+        else if (lastParsedItemAppearance())
+            g_map.placeAppearance(lastParsedItemAppearance(), at, stackPos);
+        else if (newThing && newThing->isCreature()) {
+            if (newThing->isLocalPlayer())
+                newThing->static_self_cast<LocalPlayer>()->resetPreWalk();
+            g_map.placeCreatureId(newThing->getId(), at, stackPos);
+        }
+    };
+
+    // Id-resolved creature turns: getCreature already mutated storage.
+    if (byId) {
+        if (newCreatureId != 0 || (newThing && newThing->isCreature())) {
+            const uint32_t id = peek.creatureId;
+            Position fieldPos;
+            int stackPos = -1;
+            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+                if (const auto row = storage->creatureAt(id))
+                    fieldPos = row->position();
+            }
+            if (!fieldPos.isValid() && thing)
+                fieldPos = thing->getServerPosition();
+            if (tibia::worldmap::TWorldMapField* tile = fieldPos.isValid() ? g_map.getTile(fieldPos) : nullptr) {
+                stackPos = tile->creatureStackPos(id);
+                if (stackPos < 0 && thing)
+                    stackPos = tile->getThingStackPos(thing);
+                if (stackPos >= 0) {
+                    g_map.removeCreatureFromFields(id, fieldPos);
+                    placeReplacement(tile->getPosition(), stackPos);
+                }
+            }
+            return;
+        }
+        if (!thing)
+            return;
+        const auto& tile = thing->getTile();
+        if (!tile)
+            return;
+        const int stackPos = tile->getThingStackPos(thing);
+        if (stackPos < 0 || !g_map.removeThing(thing))
+            return;
+        placeReplacement(tile->getPosition(), stackPos);
+        return;
+    }
 
     if (!thing) {
         // 0x6B turns still carry id/direction in the replacement — getCreature already
         // applied the update when the body is known. Don't treat that as a hard miss.
-        if (newThing && newThing->isCreature()) {
+        if (newCreatureId != 0)
             return;
+        if (const auto& tile = g_map.getTile(peek.pos)) {
+            if (tile->removeThingAtStackPos(peek.stack)) {
+                placeReplacement(peek.pos, peek.stack);
+                return;
+            }
         }
         g_logger.traceError("ProtocolGame::parseTileTransformThing: no thing at {} stackpos {}", peek.pos, peek.stack);
-        return;
-    }
-
-    // Id-resolved turns: getCreature already mutated the live object. Only reshuffle
-    // the tile if the body is actually on the map (off-map known creatures have
-    // invalid stackpos after onDisappear cleared their position).
-    if (byId) {
-        const auto& tile = thing->getTile();
-        if (!tile) {
-            return;
-        }
-        const int stackPos = tile->getThingStackPos(thing);
-        if (stackPos < 0 || !g_map.removeThing(thing)) {
-            return;
-        }
-        g_map.addThing(newThing, tile->getPosition(), stackPos);
         return;
     }
 
@@ -1248,6 +1372,18 @@ void ProtocolGame::parseTileTransformThing(const InputMessagePtr& msg)
     int stackPos = -1;
     if (const auto& tile = g_map.getTile(mappedPos)) {
         stackPos = tile->getThingStackPos(thing);
+        if (stackPos < 0 && thing->isCreature())
+            stackPos = tile->creatureStackPos(thing->getId());
+    }
+
+    if (thing->isCreature()) {
+        if (!g_map.removeCreatureFromFields(thing->getId(), mappedPos.isValid() ? mappedPos : pos)) {
+            g_logger.traceError("ProtocolGame::parseTileTransformThing: unable to remove creature {} at {} stackpos {}",
+                                thing->getId(), peek.pos, peek.stack);
+            return;
+        }
+        placeReplacement(mappedPos.isValid() ? mappedPos : pos, stackPos >= 0 ? stackPos : mappedStack);
+        return;
     }
 
     if (!g_map.removeThing(thing)) {
@@ -1255,7 +1391,7 @@ void ProtocolGame::parseTileTransformThing(const InputMessagePtr& msg)
         return;
     }
 
-    g_map.addThing(newThing, mappedPos.isValid() ? mappedPos : pos, stackPos >= 0 ? stackPos : mappedStack);
+    placeReplacement(mappedPos.isValid() ? mappedPos : pos, stackPos >= 0 ? stackPos : mappedStack);
 }
 
 void ProtocolGame::parseTileRemoveThing(const InputMessagePtr& msg) const
@@ -1266,13 +1402,53 @@ void ProtocolGame::parseTileRemoveThing(const InputMessagePtr& msg) const
     }
 
     const auto peek = peekMappedThingHeader(msg);
+    if (peek.byId) {
+        skipMappedThing(msg); // consume id header (peek restored read pos)
+        const uint32_t creatureId = peek.creatureId;
+        if (!g_map.removeCreatureFromFields(creatureId)) {
+            g_logger.traceError("ProtocolGame::parseTileRemoveThing: no creature with id {}", creatureId);
+            return;
+        }
+        // CIP DeleteOnMap leaves KnownCreature identity (name/outfit); only the
+        // field slot goes away. Destroying the row blanked nameplates on the
+        // next KnownCreature reappear (wire has no name).
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+            storage->leaveMap(creatureId);
+        return;
+    }
+
+    // Consume mapped header (pos+stack). Items never need CreaturePtr; creatures prefer id path.
+    uint32_t stackCreatureId = 0;
+    if (const auto& tile = g_map.getTile(peek.pos))
+        stackCreatureId = tile->stackCreatureId(peek.stack);
+
     const auto& thing = getMappedThing(msg);
     if (!thing) {
-        if (!peek.byId && !g_map.isAwareOfPosition(peek.pos)) {
+        if (stackCreatureId != 0) {
+            if (g_map.removeCreatureFromFields(stackCreatureId, peek.pos)) {
+                if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+                    storage->leaveMap(stackCreatureId);
+                return;
+            }
+        }
+        if (const auto& tile = g_map.getTile(peek.pos)) {
+            if (tile->removeThingAtStackPos(peek.stack))
+                return;
+        }
+        if (!g_map.isAwareOfPosition(peek.pos)) {
             g_logger.debug("ProtocolGame::parseTileRemoveThing: no thing at unaware {} stackpos {}", peek.pos, peek.stack);
         } else {
             g_logger.traceError("ProtocolGame::parseTileRemoveThing: no thing at {} stackpos {}", peek.pos, peek.stack);
         }
+        return;
+    }
+
+    if (thing->isCreature()) {
+        const uint32_t creatureId = thing->getId();
+        if (!g_map.removeCreatureFromFields(creatureId, peek.pos.isValid() ? peek.pos : thing->getServerPosition()))
+            g_logger.traceError("ProtocolGame::parseTileRemoveThing: unable to remove creature {} at {}", creatureId, thing->getServerPosition());
+        else if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+            storage->leaveMap(creatureId);
         return;
     }
 
@@ -1288,37 +1464,37 @@ void ProtocolGame::parseCreatureMove(const InputMessagePtr& msg)
         return;
     }
 
-    // CrystalOTC / upstream stock: resolve via getMappedThing (pos+stackpos or id).
     const auto peek = peekMappedThingHeader(msg);
     const Position& oldPos = peek.pos;
     const int oldStack = peek.stack;
     const uint32_t byId = peek.byId ? peek.creatureId : 0;
 
+    // Resolve creature id without requiring Map Creature when possible.
+    uint32_t creatureId = byId;
+    if (!creatureId) {
+        if (const auto& tile = g_map.getTile(oldPos))
+            creatureId = tile->stackCreatureId(oldStack);
+    }
     const auto& thing = getMappedThing(msg);
+    if (!creatureId && thing && thing->isCreature())
+        creatureId = thing->getId();
+
     const auto& newPos = getPosition(msg);
 
-    if (!thing || !thing->isCreature()) {
+    if (!creatureId) {
         g_logger.traceError("ProtocolGame::parseCreatureMove: no creature found to move from {} stackpos {}", oldPos, oldStack);
         return;
     }
 
-    const auto& creature = thing->static_self_cast<Creature>();
-    // Id form can resolve a known creature that already left the client map
-    // (onDisappear cleared pos to 65535/65535/255). Re-place at newPos instead of aborting.
-    if (!g_map.removeThing(thing) && byId == 0) {
-        g_logger.traceError("ProtocolGame::parseCreatureMove: unable to remove creature {} from {} stackpos {}", creature->getId(), oldPos, oldStack);
-        return;
+    if (!g_map.applyCreatureMove(creatureId, oldPos, oldStack, newPos, byId != 0)) {
+        g_logger.traceError("ProtocolGame::parseCreatureMove: unable to remove creature {} from {} stackpos {}", creatureId, oldPos, oldStack);
     }
-
-    // Needed for both normal moves and by-id reappear (remove may have failed off-map).
-    creature->allowAppearWalk();
-    g_map.addThing(thing, newPos, -1);
 }
 
 void ProtocolGame::parseOpenContainer(const InputMessagePtr& msg)
 {
     const uint8_t containerId = msg->getU8();
-    const auto& containerItem = getItem(msg);
+    const auto containerItem = getInventorySlot(msg);
     const auto& name = msg->getString();
     const uint8_t capacity = msg->getU8();
     const bool hasParent = static_cast<bool>(msg->getU8());
@@ -1332,7 +1508,7 @@ void ProtocolGame::parseOpenContainer(const InputMessagePtr& msg)
         msg->getU8(); // (bool) show search icon
     }
 
-    if (g_game.getFeature(Otc::GameContainerPagination)) {
+    if (g_game.getFeature(tibia::client::GameContainerPagination)) {
         isUnlocked = static_cast<bool>(msg->getU8()); // drag and drop
         hasPages = static_cast<bool>(msg->getU8()); // pagination
         containerSize = msg->getU16(); // container size
@@ -1340,14 +1516,13 @@ void ProtocolGame::parseOpenContainer(const InputMessagePtr& msg)
     }
 
     const uint8_t itemCount = msg->getU8();
-    std::vector<ItemPtr> items;
+    std::vector<tibia::container::TInventorySlot> items;
     items.reserve(itemCount);
 
-    for (auto i = 0; i < itemCount; i++) {
-        items.push_back(getItem(msg));
-    }
+    for (auto i = 0; i < itemCount; i++)
+        items.push_back(getInventorySlot(msg));
 
-    if (g_game.getFeature(Otc::GameContainerFilter)) {
+    if (g_game.getFeature(tibia::client::GameContainerFilter)) {
         msg->getU8(); // category
         const uint8_t categoriesSize = msg->getU8();
         for (auto i = 0; i < categoriesSize; ++i) {
@@ -1373,19 +1548,15 @@ void ProtocolGame::parseCloseContainer(const InputMessagePtr& msg)
 void ProtocolGame::parseContainerAddItem(const InputMessagePtr& msg)
 {
     const uint8_t containerId = msg->getU8();
-    const uint16_t slot = g_game.getFeature(Otc::GameContainerPagination) ? msg->getU16() : 0;
-    const auto& item = getItem(msg);
-
-    g_game.processContainerAddItem(containerId, item, slot);
+    const uint16_t slot = g_game.getFeature(tibia::client::GameContainerPagination) ? msg->getU16() : 0;
+    g_game.processContainerAddItem(containerId, getInventorySlot(msg), slot);
 }
 
 void ProtocolGame::parseContainerUpdateItem(const InputMessagePtr& msg)
 {
     const uint8_t containerId = msg->getU8();
-    const uint16_t slot = g_game.getFeature(Otc::GameContainerPagination) ? msg->getU16() : msg->getU8();
-    const auto& item = getItem(msg);
-
-    g_game.processContainerUpdateItem(containerId, slot, item);
+    const uint16_t slot = g_game.getFeature(tibia::client::GameContainerPagination) ? msg->getU16() : msg->getU8();
+    g_game.processContainerUpdateItem(containerId, slot, getInventorySlot(msg));
 }
 
 void ProtocolGame::parseContainerRemoveItem(const InputMessagePtr& msg)
@@ -1393,14 +1564,13 @@ void ProtocolGame::parseContainerRemoveItem(const InputMessagePtr& msg)
     const uint8_t containerId = msg->getU8();
     uint16_t slot;
 
-    ItemPtr lastItem;
-    if (g_game.getFeature(Otc::GameContainerPagination)) {
+    tibia::container::TInventorySlot lastItem;
+    if (g_game.getFeature(tibia::client::GameContainerPagination)) {
         slot = msg->getU16();
 
         const uint16_t itemId = msg->getU16();
-        if (itemId != 0) {
-            lastItem = getItem(msg, itemId);
-        }
+        if (itemId != 0)
+            lastItem = getInventorySlot(msg, itemId);
     } else {
         slot = msg->getU8();
     }
@@ -1441,7 +1611,7 @@ static void readInspectionDescriptions(const InputMessagePtr& msg, std::vector<s
 static CyclopediaCharacterInspection readCyclopediaCharacterInspectionData(ProtocolGame& protocol, const InputMessagePtr& msg, const uint8_t inventoryCount, const uint32_t creatureId)
 {
     CyclopediaCharacterInspection data;
-    data.inspectionType = Otc::INSPECT_CYCLOPEDIA;
+    data.inspectionType = tibia::client::INSPECT_CYCLOPEDIA;
     data.creatureId = creatureId;
     data.inventoryItems.reserve(inventoryCount);
 
@@ -1449,7 +1619,7 @@ static CyclopediaCharacterInspection readCyclopediaCharacterInspectionData(Proto
         InspectionInventoryItem entry;
         entry.slot = msg->getU8();
         entry.name = msg->getString();
-        entry.item = protocol.getItem(msg);
+        fillInspectionAppearance(entry, protocol.getInventorySlot(msg));
 
         const uint8_t imbuementCount = msg->getU8();
         entry.imbuements.reserve(imbuementCount);
@@ -1465,7 +1635,7 @@ static CyclopediaCharacterInspection readCyclopediaCharacterInspectionData(Proto
     data.playerName = msg->getString();
     data.outfit = protocol.getOutfit(msg, false);
 
-    if (g_game.getFeature(Otc::GameWingsAurasEffectsShader)) {
+    if (g_game.getFeature(tibia::client::GameWingsAurasEffectsShader)) {
         data.outfit.setWing(msg->getU16());
         data.outfit.setAura(msg->getU16());
         data.outfit.setEffect(msg->getU16());
@@ -1489,8 +1659,8 @@ void ProtocolGame::parseCyclopediaItemDetail(const InputMessagePtr& msg)
         auto data = readCyclopediaCharacterInspectionData(*this, msg, inventoryCount, creatureId);
         // CipSoft InspectPlayerDialog hooks onParseCharacterInspection; Character Info
         // hooks onParseCyclopediaCharacterInspection — dual-emit so both paths receive.
-        g_gameEvents.callGlobalField("g_game", "onParseCharacterInspection", data);
-        g_gameEvents.callGlobalField("g_game", "onParseCyclopediaCharacterInspection", data);
+        tibia::game::notify("onParseCharacterInspection", data);
+        tibia::game::notify("onParseCyclopediaCharacterInspection", data);
         return;
     }
 
@@ -1499,7 +1669,7 @@ void ProtocolGame::parseCyclopediaItemDetail(const InputMessagePtr& msg)
     data.creatureId = creatureId;
     msg->getU8(); // 0x01 constant
     data.name = msg->getString();
-    data.item = getItem(msg);
+    fillInspectionAppearance(data, getInventorySlot(msg));
 
     const uint8_t imbuementCount = msg->getU8();
     data.imbuements.reserve(imbuementCount);
@@ -1522,21 +1692,19 @@ void ProtocolGame::parseInspectionState(const InputMessagePtr& msg)
 void ProtocolGame::parseAddInventoryItem(const InputMessagePtr& msg)
 {
     const uint8_t slot = msg->getU8();
-    const auto& item = getItem(msg);
-
-    g_game.processInventoryChange(slot, item);
+    g_game.processInventoryChange(slot, getInventorySlot(msg));
 }
 
 void ProtocolGame::parseRemoveInventoryItem(const InputMessagePtr& msg)
 {
     const uint8_t slot = msg->getU8();
-    g_game.processInventoryChange(slot, ItemPtr());
+    g_game.processInventoryChange(slot, {});
 }
 
 void ProtocolGame::parseOpenNpcTrade(const InputMessagePtr& msg)
 {
     std::string npcName;
-    if (g_game.getFeature(Otc::GameNameOnNpcTrade)) {
+    if (g_game.getFeature(tibia::client::GameNameOnNpcTrade)) {
         npcName = msg->getString();
     }
 
@@ -1546,10 +1714,10 @@ void ProtocolGame::parseOpenNpcTrade(const InputMessagePtr& msg)
         currencyId = msg->getU16();
         currencyName = msg->getString();
     }
-    g_gameEvents.callGlobalField("g_game", "onOpenNpcTradeHeader", npcName, currencyId, currencyName);
+    tibia::game::notify("onOpenNpcTradeHeader", npcName, currencyId, currencyName);
 
     const uint16_t listCount = g_game.getClientVersion() >= 900 ? msg->getU16() : msg->getU8();
-    std::vector<std::tuple<ItemPtr, std::string, uint32_t, uint32_t, uint32_t>> items;
+    std::vector<std::tuple<tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>> items;
 
     const auto normalizeNpcTradePrice = [](const uint32_t price) {
         return price == UINT32_MAX ? 0 : price;
@@ -1559,15 +1727,13 @@ void ProtocolGame::parseOpenNpcTrade(const InputMessagePtr& msg)
         const uint16_t itemId = msg->getU16();
         const uint8_t itemCount = msg->getU8();
 
-        const auto item = Item::create(itemId);
-        item->setCountOrSubType(itemCount);
-
         const auto& itemName = msg->getString();
         const uint32_t itemWeight = msg->getU32();
         const uint32_t itemBuyPrice = normalizeNpcTradePrice(msg->getU32());
         const uint32_t itemSellPrice = normalizeNpcTradePrice(msg->getU32());
 
-        items.emplace_back(item, itemName, itemWeight, itemBuyPrice, itemSellPrice);
+        items.emplace_back(tibia::container::TInventorySlot::fromTypeId(itemId, itemCount), itemName, itemWeight,
+                           itemBuyPrice, itemSellPrice);
     }
 
     g_game.processOpenNpcTrade(items);
@@ -1580,20 +1746,20 @@ void ProtocolGame::parsePlayerGoods(const InputMessagePtr& msg) const
     if (g_game.getClientVersion() >= 1281) {
         money = m_localPlayer->getTotalMoney();
     } else {
-        if (g_game.getFeature(Otc::GameDoublePlayerGoodsMoney))
+        if (g_game.getFeature(tibia::client::GameDoublePlayerGoodsMoney))
             money = msg->getU64();
         else
             money = msg->getU32();
     }
 
     const uint16_t itemsListSize = g_game.getClientVersion() >= 1334 ? msg->getU16() : msg->getU8();
-    std::vector<std::tuple<ItemPtr, uint16_t>> goods;
+    std::vector<std::pair<uint16_t, uint16_t>> goods;
 
     for (auto i = 0; i < itemsListSize; ++i) {
         const uint16_t itemId = msg->getU16();
-        const uint16_t itemAmount = g_game.getFeature(Otc::GameDoubleShopSellAmount) ? msg->getU16() : msg->getU8();
+        const uint16_t itemAmount = g_game.getFeature(tibia::client::GameDoubleShopSellAmount) ? msg->getU16() : msg->getU8();
 
-        goods.emplace_back(Item::create(itemId), itemAmount);
+        goods.emplace_back(itemId, itemAmount);
     }
 
     g_game.processPlayerGoods(money, goods);
@@ -1606,12 +1772,11 @@ void ProtocolGame::parseOwnTrade(const InputMessagePtr& msg)
     const auto& name = g_game.formatCreatureName(msg->getString());
 
     const uint8_t count = msg->getU8();
-    std::vector<ItemPtr> items;
+    std::vector<tibia::container::TInventorySlot> items;
     items.reserve(count);
 
-    for (auto i = 0; i < count; i++) {
-        items.push_back(getItem(msg));
-    }
+    for (auto i = 0; i < count; i++)
+        items.push_back(getInventorySlot(msg));
 
     g_game.processOwnTrade(name, items);
 }
@@ -1621,12 +1786,11 @@ void ProtocolGame::parseCounterTrade(const InputMessagePtr& msg)
     const auto& name = g_game.formatCreatureName(msg->getString());
 
     const uint8_t count = msg->getU8();
-    std::vector<ItemPtr> items;
+    std::vector<tibia::container::TInventorySlot> items;
     items.reserve(count);
 
-    for (auto i = 0; i < count; i++) {
-        items.push_back(getItem(msg));
-    }
+    for (auto i = 0; i < count; i++)
+        items.push_back(getInventorySlot(msg));
 
     g_game.processCounterTrade(name, items);
 }
@@ -1643,7 +1807,7 @@ void ProtocolGame::parseWorldLight(const InputMessagePtr& msg)
     g_map.setLight({ intensity , color });
 
     if (oldLight.color != color || oldLight.intensity != intensity) {
-        g_gameEvents.callGlobalField("g_game", "onWorldLightChange", g_map.getLight(), oldLight);
+        tibia::game::notify("onWorldLightChange", g_map.getLight(), oldLight);
     }
 }
 
@@ -1652,57 +1816,58 @@ void ProtocolGame::parseMagicEffect(const InputMessagePtr& msg)
     const auto& pos = getPosition(msg);
     if (g_game.getProtocolVersion() >= 1203) {
         uint8_t effectType = msg->getU8();
-        while (effectType != Otc::MAGIC_EFFECTS_END_LOOP) {
+        while (effectType != tibia::client::MAGIC_EFFECTS_END_LOOP) {
             switch (effectType) {
-                case Otc::MAGIC_EFFECTS_DELAY:
-                case Otc::MAGIC_EFFECTS_DELTA: {
+                case tibia::client::MAGIC_EFFECTS_DELAY:
+                case tibia::client::MAGIC_EFFECTS_DELTA: {
                     msg->getU8(); // ?
                     break;
                 }
 
-                case Otc::MAGIC_EFFECTS_CREATE_DISTANCEEFFECT:
-                case Otc::MAGIC_EFFECTS_CREATE_DISTANCEEFFECT_REVERSED: {
-                    const uint16_t shotId = g_game.getFeature(Otc::GameEffectU16) ? msg->getU16() : msg->getU8();
+                case tibia::client::MAGIC_EFFECTS_CREATE_DISTANCEEFFECT:
+                case tibia::client::MAGIC_EFFECTS_CREATE_DISTANCEEFFECT_REVERSED: {
+                    const uint16_t shotId = g_game.getFeature(tibia::client::GameEffectU16) ? msg->getU16() : msg->getU8();
                     const auto offsetX = static_cast<int8_t>(msg->getU8());
                     const auto offsetY = static_cast<int8_t>(msg->getU8());
-                    const uint16_t effectSource = g_game.getFeature(Otc::GameEffectSource) ? msg->getU8() : 0;
-                    if (!g_things.isValidDatId(shotId, ThingCategoryMissile)) {
+                    const uint16_t effectSource = g_game.getFeature(tibia::client::GameEffectSource) ? msg->getU8() : 0;
+                    if (!tibia::game::isValidDatId(shotId, ThingCategoryMissile)) {
                         g_logger.traceError("invalid missile id {}", shotId);
                         break;
                     }
 
-                    const auto& missile = std::make_shared<Missile>();
-                    missile->setId(shotId);
-                    missile->setSource(static_cast<Otc::MagicEffectSources>(effectSource));
-
-                    if (effectType == Otc::MAGIC_EFFECTS_CREATE_DISTANCEEFFECT) {
+                    ThingType* type = tibia::game::rawThingType(shotId, ThingCategoryMissile);
+                    const auto appearance = tibia::appearances::TAppearanceInstanceFactory::fromThingType(type);
+                    auto* missile = dynamic_cast<tibia::appearances::TMissileEffectInstance*>(appearance.get());
+                    if (!missile)
+                        break;
+                    missile->setSource(static_cast<tibia::client::MagicEffectSources>(effectSource));
+                    if (effectType == tibia::client::MAGIC_EFFECTS_CREATE_DISTANCEEFFECT)
                         missile->setPath(pos, Position(pos.x + offsetX, pos.y + offsetY, pos.z));
-                    } else {
+                    else
                         missile->setPath(Position(pos.x + offsetX, pos.y + offsetY, pos.z), pos);
-                    }
-
-                    g_map.addThing(missile, pos);
+                    g_map.addMissileAppearance(appearance);
                     break;
                 }
 
-                case Otc::MAGIC_EFFECTS_CREATE_EFFECT: {
-                    const uint16_t effectId = g_game.getFeature(Otc::GameEffectU16) ? msg->getU16() : msg->getU8();
-                    const uint16_t effectSource = g_game.getFeature(Otc::GameEffectSource) ? msg->getU8() : 0;
-                    if (const auto& effect = makeServerEffect(effectId)) {
-                        effect->setSource(static_cast<Otc::MagicEffectSources>(effectSource));
-                        g_map.addThing(effect, pos);
+                case tibia::client::MAGIC_EFFECTS_CREATE_EFFECT: {
+                    const uint16_t effectId = g_game.getFeature(tibia::client::GameEffectU16) ? msg->getU16() : msg->getU8();
+                    const uint16_t effectSource = g_game.getFeature(tibia::client::GameEffectSource) ? msg->getU8() : 0;
+                    if (const auto appearance = makeServerEffectAppearance(effectId)) {
+                        if (auto* effect = dynamic_cast<tibia::appearances::TEffectInstance*>(appearance.get()))
+                            effect->setSource(static_cast<tibia::client::MagicEffectSources>(effectSource));
+                        g_map.addEffectAppearance(appearance, pos);
                     }
                     break;
                 }
 
-                case Otc::MAGIC_EFFECTS_CREATE_SOUND_MAIN_EFFECT: {
+                case tibia::client::MAGIC_EFFECTS_CREATE_SOUND_MAIN_EFFECT: {
                     const uint8_t soundSource = msg->getU8(); // Source
                     const uint16_t soundId = msg->getU16(); // Sound ID
                     tibia::sound::playProtocolSoundMain(soundSource, soundId, pos);
                     break;
                 }
 
-                case Otc::MAGIC_EFFECTS_CREATE_SOUND_SECONDARY_EFFECT: {
+                case tibia::client::MAGIC_EFFECTS_CREATE_SOUND_SECONDARY_EFFECT: {
                     const uint8_t soundEnum = msg->getU8(); // ENUM
                     const uint8_t soundSource = msg->getU8(); // Source
                     const uint16_t soundId = msg->getU16(); // Sound ID
@@ -1719,22 +1884,22 @@ void ProtocolGame::parseMagicEffect(const InputMessagePtr& msg)
         return;
     }
 
-    uint16_t effectId = g_game.getFeature(Otc::GameMagicEffectU16) ? msg->getU16() : msg->getU8();
+    uint16_t effectId = g_game.getFeature(tibia::client::GameMagicEffectU16) ? msg->getU16() : msg->getU8();
 
     if (g_game.getClientVersion() <= 750) {
         effectId += 1; //hack to fix effects in earlier clients
     }
 
-    if (const auto& effect = makeServerEffect(effectId))
-        g_map.addThing(effect, pos);
+    if (const auto appearance = makeServerEffectAppearance(effectId))
+        g_map.addEffectAppearance(appearance, pos);
 }
 
 void ProtocolGame::parseRemoveMagicEffect(const InputMessagePtr& msg)
 {
     const auto& pos = getPosition(msg);
-    const uint16_t effectId = g_things.resolveEffectId(g_game.getFeature(Otc::GameEffectU16) ? msg->getU16() : msg->getU8());
+    const uint16_t effectId = tibia::game::resolveEffectId(g_game.getFeature(tibia::client::GameEffectU16) ? msg->getU16() : msg->getU8());
 
-    if (!g_things.isValidDatId(effectId, ThingCategoryEffect)) {
+    if (!tibia::game::isValidDatId(effectId, ThingCategoryEffect)) {
         g_logger.warning("[ProtocolGame::parseRemoveMagicEffect] - Invalid effectId type {}", effectId);
         return;
     }
@@ -1743,11 +1908,8 @@ void ProtocolGame::parseRemoveMagicEffect(const InputMessagePtr& msg)
     if (!tile)
         return;
 
-    const auto& effect = tile->getEffect(effectId);
-    if (!effect)
+    if (!tile->removeEffectByClientId(effectId))
         return;
-
-    g_map.removeThing(effect);
 }
 
 void ProtocolGame::parseAnimatedText(const InputMessagePtr& msg)
@@ -1778,17 +1940,19 @@ void ProtocolGame::parseDistanceMissile(const InputMessagePtr& msg)
     const auto& fromPos = getPosition(msg);
     const auto& toPos = getPosition(msg);
 
-    const uint16_t shotId = g_game.getFeature(Otc::GameDistanceEffectU16) ? msg->getU16() : msg->getU8();
-    if (!g_things.isValidDatId(shotId, ThingCategoryMissile)) {
+    const uint16_t shotId = g_game.getFeature(tibia::client::GameDistanceEffectU16) ? msg->getU16() : msg->getU8();
+    if (!tibia::game::isValidDatId(shotId, ThingCategoryMissile)) {
         g_logger.traceError("invalid missile id {}", shotId);
         return;
     }
 
-    const auto& missile = std::make_shared<Missile>();
-    missile->setId(shotId);
+    ThingType* type = tibia::game::rawThingType(shotId, ThingCategoryMissile);
+    const auto appearance = tibia::appearances::TAppearanceInstanceFactory::fromThingType(type);
+    auto* missile = dynamic_cast<tibia::appearances::TMissileEffectInstance*>(appearance.get());
+    if (!missile)
+        return;
     missile->setPath(fromPos, toPos);
-
-    g_map.addThing(missile, fromPos);
+    g_map.addMissileAppearance(appearance);
 }
 
 void ProtocolGame::parseForgeResult(const InputMessagePtr& msg)
@@ -1817,7 +1981,7 @@ void ProtocolGame::parseForgeResult(const InputMessagePtr& msg)
         }
     }
 
-    g_gameEvents.callGlobalField("g_game", "forgeResultData", forgeResult);
+    tibia::game::notify("forgeResultData", forgeResult);
 }
 
 void ProtocolGame::parseItemClasses(const InputMessagePtr& msg)
@@ -1843,8 +2007,8 @@ void ProtocolGame::parseItemClasses(const InputMessagePtr& msg)
         forgeConfig.classPrices.emplace_back(classEntry);
     }
 
-    const bool hasDynamicForgeVariables = g_game.getFeature(Otc::GameDynamicForgeVariables);
-    forgeConfig.hasConvergence = g_game.getFeature(Otc::GameForgeConvergence);
+    const bool hasDynamicForgeVariables = g_game.getFeature(tibia::client::GameDynamicForgeVariables);
+    forgeConfig.hasConvergence = g_game.getFeature(tibia::client::GameForgeConvergence);
 
     if (hasDynamicForgeVariables) {
         const uint8_t grades = msg->getU8();
@@ -1894,7 +2058,7 @@ void ProtocolGame::parseItemClasses(const InputMessagePtr& msg)
             forgeConfig.fusionChanceBase = 50;
             forgeConfig.fusionChanceImproved = 15;
             forgeConfig.fusionReduceTierLoss = 50;
-            g_gameEvents.callGlobalField("g_game", "forgeData", forgeConfig);
+            tibia::game::notify("forgeData", forgeConfig);
             return;
         }
         forgeConfig.dustPercent = msg->getU8();
@@ -1936,7 +2100,7 @@ void ProtocolGame::parseItemClasses(const InputMessagePtr& msg)
         }
     }
 
-    g_gameEvents.callGlobalField("g_game", "forgeData", forgeConfig);
+    tibia::game::notify("forgeData", forgeConfig);
 }
 
 void ProtocolGame::parseCreatureMark(const InputMessagePtr& msg)
@@ -1944,13 +2108,13 @@ void ProtocolGame::parseCreatureMark(const InputMessagePtr& msg)
     const uint32_t creatureId = msg->getU32();
     const uint8_t color = msg->getU8();
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureMark: could not get creature with id {}", creatureId);
-        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreatureMark: could not get creature with id {}", creatureId);
+            return;
+        }
     }
-
-    creature->addTimedSquare(color);
+    tibia::creatures::protocolAddTimedSquare(creatureId, color);
 }
 
 void ProtocolGame::parseTrappers(const InputMessagePtr& msg)
@@ -1963,8 +2127,12 @@ void ProtocolGame::parseTrappers(const InputMessagePtr& msg)
 
     for (auto i = 0; i < numTrappers; ++i) {
         const uint32_t creatureId = msg->getU32();
-        const auto& creature = g_map.getCreatureById(creatureId);
-        if (!creature) {
+        // Existence only — trapper mark not yet wired to Creature methods.
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (!storage->creatureAt(creatureId)) {
+                g_logger.traceDebug("ProtocolGame::parseTrappers: could not get creature with id {}", creatureId);
+            }
+        } else if (!g_map.getCreatureById(creatureId)) {
             g_logger.traceDebug("ProtocolGame::parseTrappers: could not get creature with id {}", creatureId);
         }
 
@@ -2054,19 +2222,13 @@ void ProtocolGame::parseOpenForge(const InputMessagePtr& msg)
     }
     data.dustLevel = (g_game.getClientVersion() >= 1530) ? msg->getU8() : msg->getU16();
 
-    return g_gameEvents.callGlobalField("g_game", "onOpenForge", data);
+    return tibia::game::notify("onOpenForge", data);
 }
 
 void ProtocolGame::setCreatureVocation(const InputMessagePtr& msg, const uint32_t creatureId) const
 {
     const uint8_t vocationId = msg->getU8();
-
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        return;
-    }
-
-    creature->setVocation(vocationId);
+    tibia::creatures::protocolSetVocation(creatureId, vocationId);
 }
 
 namespace {
@@ -2091,13 +2253,7 @@ void ProtocolGame::addCreatureIcon(const InputMessagePtr& msg, const uint32_t cr
     std::vector<std::tuple<uint8_t, uint8_t, uint16_t>> icons; // icon, category, count
     readCreatureIconList(msg, icons);
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::addCreatureIcon: could not get creature with id {}", creatureId);
-        return;
-    }
-
-    creature->setIcons(icons);
+    tibia::creatures::protocolSetIcons(creatureId, icons);
 }
 
 void ProtocolGame::parseBrowseForgeHistory(const InputMessagePtr& msg)
@@ -2116,12 +2272,12 @@ void ProtocolGame::parseBrowseForgeHistory(const InputMessagePtr& msg)
         historyList.emplace_back(history);
     }
 
-    g_gameEvents.callGlobalField("g_game", "onBrowseForgeHistory", pageNumber, lastPage, historyCount, historyList);
+    tibia::game::notify("onBrowseForgeHistory", pageNumber, lastPage, historyCount, historyList);
 }
 
 void ProtocolGame::parseCloseForgeWindow(const InputMessagePtr& /*msg*/)
 {
-    g_gameEvents.callGlobalField("g_game", "onCloseForgeCloseWindows");
+    tibia::game::notify("onCloseForgeCloseWindows");
 }
 
 void ProtocolGame::parseCreatureData(const InputMessagePtr& msg)
@@ -2129,9 +2285,13 @@ void ProtocolGame::parseCreatureData(const InputMessagePtr& msg)
     const uint32_t creatureId = msg->getU32();
     const uint8_t type = msg->getU8();
 
+    // Map keep-alive is LocalPlayer-only; prefer storage for existence / party notifies.
     const auto& creature = g_map.getCreatureById(creatureId);
     if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureData: could not get creature with id {}", creatureId);
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (!storage->creatureAt(creatureId))
+                g_logger.traceDebug("ProtocolGame::parseCreatureData: could not get creature with id {}", creatureId);
+        }
     }
 
     switch (type) {
@@ -2140,17 +2300,14 @@ void ProtocolGame::parseCreatureData(const InputMessagePtr& msg)
             break;
         case 11: { // creature mana percent
             const uint8_t manaPercent = msg->getU8();
-            if (creature) {
+            if (creature)
                 creature->setManaPercent(manaPercent);
-                g_gameEvents.callGlobalField("g_game", "onPartyMemberManaChange", creature, manaPercent);
-            }
+            tibia::game::notify("onPartyMemberManaChange", creature, manaPercent);
             break;
         }
         case 12: { // creature show status (party list / minimap)
             const uint8_t showStatus = msg->getU8();
-            if (creature) {
-                g_gameEvents.callGlobalField("g_game", "onPartyMemberShowStatusChange", creature, showStatus != 0);
-            }
+            tibia::game::notify("onPartyMemberShowStatusChange", creature, showStatus != 0);
             break;
         }
         case 13: // player vocation
@@ -2169,38 +2326,35 @@ void ProtocolGame::parseCreatureData(const InputMessagePtr& msg)
             for (uint8_t i = 0; i < n; ++i) {
                 state = msg->getU8();
             }
-            if (creature)
-                creature->setEchoRaidColor(static_cast<int8_t>(state));
+            tibia::creatures::protocolSetEchoRaidColor(creatureId, static_cast<int8_t>(state));
             break;
         }
         case 16: { // party health: percent + absolute (product; avoids overloading map 0x8C)
             const uint8_t healthPercent = msg->getU8();
             const uint32_t health = msg->getU32();
             const uint32_t maxHealth = msg->getU32();
-            if (creature) {
-                creature->setHealthPercent(healthPercent);
-                g_gameEvents.callGlobalField("g_game", "onPartyMemberHealthChange", creature, healthPercent, health, maxHealth);
-            }
+            tibia::creatures::protocolSetHealthPercent(creatureId, healthPercent);
+            tibia::game::notify("onPartyMemberHealthChange", creature, healthPercent, health, maxHealth);
             break;
         }
         case 17: { // party mana: percent + absolute (product)
             const uint8_t manaPercent = msg->getU8();
             const uint32_t mana = msg->getU32();
             const uint32_t maxMana = msg->getU32();
-            if (creature) {
+            if (creature)
                 creature->setManaPercent(manaPercent);
-                g_gameEvents.callGlobalField("g_game", "onPartyMemberManaChange", creature, manaPercent, mana, maxMana);
-            }
+            tibia::game::notify("onPartyMemberManaChange", creature, manaPercent, mana, maxMana);
             break;
         }
         case 18: { // party vocation + level (product)
             const uint8_t vocationId = msg->getU8();
             const uint16_t level = msg->getU16();
+            tibia::creatures::protocolSetVocation(creatureId, vocationId);
             if (creature) {
                 creature->setVocation(vocationId);
                 creature->setLevel(level);
-                g_gameEvents.callGlobalField("g_game", "onPartyMemberInfoChange", creature, vocationId, level);
             }
+            tibia::game::notify("onPartyMemberInfoChange", creature, vocationId, level);
             break;
         }
         default:
@@ -2214,13 +2368,13 @@ void ProtocolGame::parseCreatureHealth(const InputMessagePtr& msg)
     const uint32_t creatureId = msg->getU32();
     const uint8_t healthPercent = msg->getU8();
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureHealth: could not get creature with id {}", creatureId);
-        return;
+    // Existence check before protocolSet* (which getOrCreate) — storage is authority.
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreatureHealth: could not get creature with id {}", creatureId);
+        }
     }
-
-    creature->setHealthPercent(healthPercent);
+    tibia::creatures::protocolSetHealthPercent(creatureId, healthPercent);
 }
 
 void ProtocolGame::parseCreatureLight(const InputMessagePtr& msg)
@@ -2231,13 +2385,12 @@ void ProtocolGame::parseCreatureLight(const InputMessagePtr& msg)
     light.intensity = msg->getU8();
     light.color = msg->getU8();
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureLight: could not get creature with id {}", creatureId);
-        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreatureLight: could not get creature with id {}", creatureId);
+        }
     }
-
-    creature->setLight(light);
+    tibia::creatures::protocolSetLight(creatureId, light);
 }
 
 void ProtocolGame::parseCreatureOutfit(const InputMessagePtr& msg) const
@@ -2245,31 +2398,26 @@ void ProtocolGame::parseCreatureOutfit(const InputMessagePtr& msg) const
     const uint32_t creatureId = msg->getU32();
     const Outfit outfit = getOutfit(msg);
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureOutfit: could not get creature with id {}", creatureId);
-        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreatureOutfit: could not get creature with id {}", creatureId);
+        }
     }
-
-    creature->setOutfit(outfit);
+    tibia::creatures::protocolSetOutfit(creatureId, outfit);
 }
 
 void ProtocolGame::parseCreatureSpeed(const InputMessagePtr& msg)
 {
+    // CIP classic: u32 creatureId; u16 speed (no baseSpeed — that lives on PlayerData).
     const uint32_t creatureId = msg->getU32();
-    const uint16_t baseSpeed = g_game.getClientVersion() >= 1059 ? msg->getU16() : 0;
     const uint16_t speed = msg->getU16();
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureSpeed: could not get creature with id {}", creatureId);
-        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreatureSpeed: could not get creature with id {}", creatureId);
+        }
     }
-
-    creature->setSpeed(speed);
-    if (baseSpeed != 0) {
-        creature->setBaseSpeed(baseSpeed);
-    }
+    tibia::creatures::protocolSetSpeed(creatureId, speed, 0);
 }
 
 void ProtocolGame::parseCreatureSkulls(const InputMessagePtr& msg)
@@ -2277,13 +2425,12 @@ void ProtocolGame::parseCreatureSkulls(const InputMessagePtr& msg)
     const uint32_t creatureId = msg->getU32();
     const uint8_t skull = msg->getU8();
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureSkulls: could not get creature with id {}", creatureId);
-        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreatureSkulls: could not get creature with id {}", creatureId);
+        }
     }
-
-    creature->setSkull(skull);
+    tibia::creatures::protocolSetSkull(creatureId, skull);
 }
 
 void ProtocolGame::parseCreatureShields(const InputMessagePtr& msg)
@@ -2291,13 +2438,12 @@ void ProtocolGame::parseCreatureShields(const InputMessagePtr& msg)
     const uint32_t creatureId = msg->getU32();
     const uint8_t shield = msg->getU8();
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureShields: could not get creature with id {}", creatureId);
-        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreatureShields: could not get creature with id {}", creatureId);
+        }
     }
-
-    creature->setShield(shield);
+    tibia::creatures::protocolSetShield(creatureId, shield);
 }
 
 void ProtocolGame::parseCreatureUnpass(const InputMessagePtr& msg)
@@ -2305,13 +2451,12 @@ void ProtocolGame::parseCreatureUnpass(const InputMessagePtr& msg)
     const uint32_t creatureId = msg->getU32();
     const bool unpass = static_cast<bool>(msg->getU8());
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureUnpass: could not get creature with id {}", creatureId);
-        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreatureUnpass: could not get creature with id {}", creatureId);
+        }
     }
-
-    creature->setPassable(!unpass);
+    tibia::creatures::protocolSetPassable(creatureId, !unpass);
 }
 
 void ProtocolGame::parseEditText(const InputMessagePtr& msg)
@@ -2319,10 +2464,8 @@ void ProtocolGame::parseEditText(const InputMessagePtr& msg)
     const uint32_t id = msg->getU32();
 
     uint32_t itemId;
-    if (g_game.getClientVersion() >= 1010 || g_game.getFeature(Otc::GameItemShader)) {
-        // TODO: processEditText with ItemPtr as parameter
-        const auto& item = getItem(msg);
-        itemId = item->getId();
+    if (g_game.getClientVersion() >= 1010 || g_game.getFeature(tibia::client::GameItemShader)) {
+        itemId = getInventorySlot(msg).typeId;
     } else {
         itemId = msg->getU16();
     }
@@ -2338,7 +2481,7 @@ void ProtocolGame::parseEditText(const InputMessagePtr& msg)
     }
 
     std::string date;
-    if (g_game.getFeature(Otc::GameWritableDate)) {
+    if (g_game.getFeature(tibia::client::GameWritableDate)) {
         date = msg->getString();
     }
 
@@ -2367,7 +2510,7 @@ void ProtocolGame::parsePremiumTrigger(const InputMessagePtr& msg)
         msg->getU8(); // == 1; // something
     }
 
-    g_gameEvents.callGlobalField("g_game", "onPremiumTrigger", triggers);
+    tibia::game::notify("onPremiumTrigger", triggers);
 }
 
 void ProtocolGame::parsePlayerInfo(const InputMessagePtr& msg) const
@@ -2375,23 +2518,23 @@ void ProtocolGame::parsePlayerInfo(const InputMessagePtr& msg) const
     const bool premium = static_cast<bool>(msg->getU8()); // premium
 
     uint32_t premiumExpiration = 0;
-    if (g_game.getFeature(Otc::GamePremiumExpiration)) {
+    if (g_game.getFeature(tibia::client::GamePremiumExpiration)) {
         premiumExpiration = msg->getU32(); // premium expiration used for premium advertisement
     }
 
     const uint8_t vocation = msg->getU8(); // vocation
 
-    if (g_game.getFeature(Otc::GamePrey)) {
+    if (g_game.getFeature(tibia::client::GamePrey)) {
         const bool reachedMain = msg->getU8() != 0; // (bool) prey / mainland unlocked
         m_localPlayer->setHasReachedMain(reachedMain);
-        g_gameEvents.callGlobalField("g_game", "onHasReachedMain", reachedMain);
+        tibia::game::notify("onHasReachedMain", reachedMain);
     }
 
     const uint16_t spellCount = msg->getU16();
     std::vector<uint16_t> spells;
 
     for (auto i = 0; i < spellCount; ++i) {
-        if (g_game.getFeature(Otc::GameUshortSpell)) {
+        if (g_game.getFeature(tibia::client::GameUshortSpell)) {
             spells.push_back(msg->getU16()); // spell id
         } else {
             spells.push_back(msg->getU8()); // spell id
@@ -2408,59 +2551,59 @@ void ProtocolGame::parsePlayerInfo(const InputMessagePtr& msg) const
     m_localPlayer->setVocation(vocation);
     m_localPlayer->setSpells(spells);
 
-    g_gameEvents.callGlobalField("g_game", "onPremiumExpiration", premium, premiumExpiration);
+    tibia::game::notify("onPremiumExpiration", premium, premiumExpiration);
     // After hasReachedMain / vocation are applied — product chrome gates on mainland.
-    g_gameEvents.callGlobalField("g_game", "onPlayerInfo", premium, static_cast<int>(vocation),
+    tibia::game::notify("onPlayerInfo", premium, static_cast<int>(vocation),
                                  m_localPlayer->hasReachedMain());
 }
 
 void ProtocolGame::parsePlayerStats(const InputMessagePtr& msg) const
 {
-    const uint32_t health = g_game.getFeature(Otc::GameDoubleHealth) ? msg->getU32() : msg->getU16();
-    const uint32_t maxHealth = g_game.getFeature(Otc::GameDoubleHealth) ? msg->getU32() : msg->getU16();
-    uint32_t freeCapacity = g_game.getFeature(Otc::GameDoubleFreeCapacity) ? msg->getU32() : msg->getU16();
+    const uint32_t health = g_game.getFeature(tibia::client::GameDoubleHealth) ? msg->getU32() : msg->getU16();
+    const uint32_t maxHealth = g_game.getFeature(tibia::client::GameDoubleHealth) ? msg->getU32() : msg->getU16();
+    uint32_t freeCapacity = g_game.getFeature(tibia::client::GameDoubleFreeCapacity) ? msg->getU32() : msg->getU16();
     if (g_game.getClientVersion() > 772) {
         // todo: We only know scaling started some time after 7.72; the 772 cutoff is a placeholder until we find the exact version.
         freeCapacity /= 100;
     }
 
     uint32_t totalCapacity = 0;
-    if (g_game.getClientVersion() < 1281 && g_game.getFeature(Otc::GameTotalCapacity)) {
+    if (g_game.getClientVersion() < 1281 && g_game.getFeature(tibia::client::GameTotalCapacity)) {
         totalCapacity = msg->getU32() / 100.f;
     }
 
-    const uint64_t experience = g_game.getFeature(Otc::GameDoubleExperience) ? msg->getU64() : msg->getU32();
-    const uint16_t level = g_game.getFeature(Otc::GameLevelU16) ? msg->getU16() : msg->getU8();
-    const uint16_t levelPercent = g_game.getFeature(Otc::GameLevelPercentU16) ? msg->getU16() : static_cast<uint16_t>(msg->getU8());
+    const uint64_t experience = g_game.getFeature(tibia::client::GameDoubleExperience) ? msg->getU64() : msg->getU32();
+    const uint16_t level = g_game.getFeature(tibia::client::GameLevelU16) ? msg->getU16() : msg->getU8();
+    const uint16_t levelPercent = g_game.getFeature(tibia::client::GameLevelPercentU16) ? msg->getU16() : static_cast<uint16_t>(msg->getU8());
 
-    if (g_game.getFeature(Otc::GameExperienceBonus)) {
+    if (g_game.getFeature(tibia::client::GameExperienceBonus)) {
         if (g_game.getClientVersion() <= 1096) {
             const double experienceBonus = msg->getDouble();
-            m_localPlayer->setExperienceRate(Otc::EXP_BASE, experienceBonus * 100);
+            m_localPlayer->setExperienceRate(tibia::client::EXP_BASE, experienceBonus * 100);
         } else {
             const uint16_t baseXpGain = msg->getU16();
-            m_localPlayer->setExperienceRate(Otc::EXP_BASE, baseXpGain);
+            m_localPlayer->setExperienceRate(tibia::client::EXP_BASE, baseXpGain);
             if (g_game.getClientVersion() < 1281) {
                 const uint16_t voucherAddend = msg->getU16();
-                m_localPlayer->setExperienceRate(Otc::EXP_VOUCHER, voucherAddend);
+                m_localPlayer->setExperienceRate(tibia::client::EXP_VOUCHER, voucherAddend);
             }
             const uint16_t grindingAddend = msg->getU16();
-            m_localPlayer->setExperienceRate(Otc::EXP_LOWLEVEL, grindingAddend);
+            m_localPlayer->setExperienceRate(tibia::client::EXP_LOWLEVEL, grindingAddend);
             const uint16_t storeBoostAddend = msg->getU16();
-            m_localPlayer->setExperienceRate(Otc::EXP_XPBOOST, storeBoostAddend);
+            m_localPlayer->setExperienceRate(tibia::client::EXP_XPBOOST, storeBoostAddend);
             const uint16_t huntingBoostFactor = msg->getU16();
-            m_localPlayer->setExperienceRate(Otc::EXP_STANINAMULTIPLIER, huntingBoostFactor);
+            m_localPlayer->setExperienceRate(tibia::client::EXP_STANINAMULTIPLIER, huntingBoostFactor);
         }
     }
 
-    const uint32_t mana = g_game.getFeature(Otc::GameDoubleHealth) ? msg->getU32() : msg->getU16();
-    const uint32_t maxMana = g_game.getFeature(Otc::GameDoubleHealth) ? msg->getU32() : msg->getU16();
+    const uint32_t mana = g_game.getFeature(tibia::client::GameDoubleHealth) ? msg->getU32() : msg->getU16();
+    const uint32_t maxMana = g_game.getFeature(tibia::client::GameDoubleHealth) ? msg->getU32() : msg->getU16();
     uint32_t manaShield = 0;
     uint32_t maxManaShield = 0;
 
     if (g_game.getClientVersion() < 1281) {
         const uint8_t magicLevel = msg->getU8();
-        const uint8_t baseMagicLevel = g_game.getFeature(Otc::GameSkillsBase) ? msg->getU8() : magicLevel;
+        const uint8_t baseMagicLevel = g_game.getFeature(tibia::client::GameSkillsBase) ? msg->getU8() : magicLevel;
         const uint8_t magicLevelPercent = msg->getU8();
 
         m_localPlayer->setMagicLevelDetail(baseMagicLevel, magicLevelPercent * 100);
@@ -2468,11 +2611,11 @@ void ProtocolGame::parsePlayerStats(const InputMessagePtr& msg) const
         m_localPlayer->setBaseMagicLevel(baseMagicLevel);
     }
 
-    const uint8_t soul = g_game.getFeature(Otc::GameSoul) ? msg->getU8() : 0;
-    const uint16_t stamina = g_game.getFeature(Otc::GamePlayerStamina) ? msg->getU16() : 0;
-    const uint16_t baseSpeed = g_game.getFeature(Otc::GameSkillsBase) ? msg->getU16() : 0;
-    const uint16_t regeneration = g_game.getFeature(Otc::GamePlayerRegenerationTime) ? msg->getU16() : 0;
-    const uint16_t training = g_game.getFeature(Otc::GameOfflineTrainingTime) ? msg->getU16() : 0;
+    const uint8_t soul = g_game.getFeature(tibia::client::GameSoul) ? msg->getU8() : 0;
+    const uint16_t stamina = g_game.getFeature(tibia::client::GamePlayerStamina) ? msg->getU16() : 0;
+    const uint16_t baseSpeed = g_game.getFeature(tibia::client::GameSkillsBase) ? msg->getU16() : 0;
+    const uint16_t regeneration = g_game.getFeature(tibia::client::GamePlayerRegenerationTime) ? msg->getU16() : 0;
+    const uint16_t training = g_game.getFeature(tibia::client::GameOfflineTrainingTime) ? msg->getU16() : 0;
 
     if (g_game.getClientVersion() >= 1097) {
         m_localPlayer->setStoreExpBoostTime(msg->getU16()); // xp boost time (seconds)
@@ -2480,7 +2623,7 @@ void ProtocolGame::parsePlayerStats(const InputMessagePtr& msg) const
     }
 
     if (g_game.getClientVersion() >= 1281) {
-        if (g_game.getFeature(Otc::GameDoubleHealth)) {
+        if (g_game.getFeature(tibia::client::GameDoubleHealth)) {
             manaShield = msg->getU32(); // remaining mana shield
             maxManaShield = msg->getU32(); // total mana shield
         } else {
@@ -2491,7 +2634,7 @@ void ProtocolGame::parsePlayerStats(const InputMessagePtr& msg) const
 
     m_localPlayer->setHealth(health, maxHealth);
     m_localPlayer->setFreeCapacity(freeCapacity);
-    if (g_game.getClientVersion() < 1281 && g_game.getFeature(Otc::GameTotalCapacity)) {
+    if (g_game.getClientVersion() < 1281 && g_game.getFeature(tibia::client::GameTotalCapacity)) {
         m_localPlayer->setTotalCapacity(totalCapacity);
     }
     m_localPlayer->setExperience(experience);
@@ -2506,6 +2649,8 @@ void ProtocolGame::parsePlayerStats(const InputMessagePtr& msg) const
     m_localPlayer->setBaseSpeed(baseSpeed);
     m_localPlayer->setRegenerationTime(regeneration);
     m_localPlayer->setOfflineTrainingTime(training);
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+        storage->syncLocalPlayerStatsFromMap();
 }
 
 void ProtocolGame::parsePlayerSkills(const InputMessagePtr& msg) const
@@ -2522,12 +2667,12 @@ void ProtocolGame::parsePlayerSkills(const InputMessagePtr& msg) const
         m_localPlayer->setBaseMagicLevel(baseMagicLevel);
     }
 
-    for (int_fast32_t skill = Otc::Fist; skill <= Otc::Fishing; ++skill) {
-        const uint16_t level = g_game.getFeature(Otc::GameDoubleSkills) ? msg->getU16() : msg->getU8();
+    for (int_fast32_t skill = tibia::client::Fist; skill <= tibia::client::Fishing; ++skill) {
+        const uint16_t level = g_game.getFeature(tibia::client::GameDoubleSkills) ? msg->getU16() : msg->getU8();
 
         uint16_t baseLevel;
-        if (g_game.getFeature(Otc::GameSkillsBase)) {
-            baseLevel = g_game.getFeature(Otc::GameBaseSkillU16) ? msg->getU16() : msg->getU8();
+        if (g_game.getFeature(tibia::client::GameSkillsBase)) {
+            baseLevel = g_game.getFeature(tibia::client::GameBaseSkillU16) ? msg->getU16() : msg->getU8();
         } else {
             baseLevel = level;
         }
@@ -2545,38 +2690,38 @@ void ProtocolGame::parsePlayerSkills(const InputMessagePtr& msg) const
             percentHundredths = levelPercent * 100;
         }
 
-        m_localPlayer->setSkillDetail(static_cast<Otc::Skill>(skill), loyaltyLevel, percentHundredths);
-        m_localPlayer->setSkill(static_cast<Otc::Skill>(skill), level, levelPercent);
-        m_localPlayer->setBaseSkill(static_cast<Otc::Skill>(skill), baseLevel);
+        m_localPlayer->setSkillDetail(static_cast<tibia::client::Skill>(skill), loyaltyLevel, percentHundredths);
+        m_localPlayer->setSkill(static_cast<tibia::client::Skill>(skill), level, levelPercent);
+        m_localPlayer->setBaseSkill(static_cast<tibia::client::Skill>(skill), baseLevel);
     }
 
-    if (g_game.getFeature(Otc::GameAdditionalSkills)) {
+    if (g_game.getFeature(tibia::client::GameAdditionalSkills)) {
         // Critical, Life Leech, Mana Leech
-        for (int_fast32_t skill = Otc::CriticalChance; skill <= Otc::ManaLeechAmount; ++skill) {
-            if (!g_game.getFeature(Otc::GameLeechAmount)) {
-                if (skill == Otc::LifeLeechAmount || skill == Otc::ManaLeechAmount) {
+        for (int_fast32_t skill = tibia::client::CriticalChance; skill <= tibia::client::ManaLeechAmount; ++skill) {
+            if (!g_game.getFeature(tibia::client::GameLeechAmount)) {
+                if (skill == tibia::client::LifeLeechAmount || skill == tibia::client::ManaLeechAmount) {
                     continue;
                 }
             }
 
             const uint16_t level = msg->getU16();
             const uint16_t baseLevel = msg->getU16();
-            m_localPlayer->setSkill(static_cast<Otc::Skill>(skill), level, 0);
-            m_localPlayer->setBaseSkill(static_cast<Otc::Skill>(skill), baseLevel);
+            m_localPlayer->setSkill(static_cast<tibia::client::Skill>(skill), level, 0);
+            m_localPlayer->setBaseSkill(static_cast<tibia::client::Skill>(skill), baseLevel);
         }
     }
 
-    if (g_game.getFeature(Otc::GameConcotions)) {
+    if (g_game.getFeature(tibia::client::GameConcotions)) {
         msg->getU8();
     }
 
-    if (g_game.getFeature(Otc::GameForgeSkillStats)) {
-        const uint8_t lastSkill = g_game.getClientVersion() >= 1332 ? Otc::LastSkill : Otc::Momentum + 1;
-        for (int_fast32_t skill = Otc::Fatal; skill < lastSkill; ++skill) {
+    if (g_game.getFeature(tibia::client::GameForgeSkillStats)) {
+        const uint8_t lastSkill = g_game.getClientVersion() >= 1332 ? tibia::client::LastSkill : tibia::client::Momentum + 1;
+        for (int_fast32_t skill = tibia::client::Fatal; skill < lastSkill; ++skill) {
             const uint16_t level = msg->getU16();
             const uint16_t baseLevel = msg->getU16();
-            m_localPlayer->setSkill(static_cast<Otc::Skill>(skill), level, 0);
-            m_localPlayer->setBaseSkill(static_cast<Otc::Skill>(skill), baseLevel);
+            m_localPlayer->setSkill(static_cast<tibia::client::Skill>(skill), level, 0);
+            m_localPlayer->setBaseSkill(static_cast<tibia::client::Skill>(skill), baseLevel);
         }
 
         // bonus cap
@@ -2586,7 +2731,7 @@ void ProtocolGame::parsePlayerSkills(const InputMessagePtr& msg) const
         m_localPlayer->setTotalCapacity(capacity);
     }
 
-    if (g_game.getFeature(Otc::GameCharacterSkillStats)) {
+    if (g_game.getFeature(tibia::client::GameCharacterSkillStats)) {
         //msg->getU8(); //  GameConcotions ??
         const uint32_t capacity = msg->getU32() / 100; // base + bonus capacity
         const uint32_t baseCapacity = msg->getU32() / 100; // base capacity
@@ -2618,7 +2763,7 @@ void ProtocolGame::parsePlayerSkills(const InputMessagePtr& msg) const
         const uint16_t defense = msg->getU16();
         const uint16_t armor = msg->getU16();
         uint16_t mantra = 0;
-        if (g_game.getFeature(Otc::GameVocationMonk)) {
+        if (g_game.getFeature(tibia::client::GameVocationMonk)) {
             mantra = msg->getU16(); // monk voc
         }
         const double mitigation = msg->getDouble();
@@ -2650,11 +2795,11 @@ void ProtocolGame::parsePlayerState(const InputMessagePtr& msg) const
     uint8_t rottenBloodState = 0;
     if (g_game.getClientVersion() >= 1281) {
         states = g_game.getClientVersion() >= 1405 ? msg->getU64() : msg->getU32();
-        if (g_game.getFeature(Otc::GamePlayerStateCounter)) {
+        if (g_game.getFeature(tibia::client::GamePlayerStateCounter)) {
             rottenBloodState = msg->getU8();
         }
     } else {
-        states = g_game.getFeature(Otc::GamePlayerStateU16) ? msg->getU16() : msg->getU8();
+        states = g_game.getFeature(tibia::client::GamePlayerStateU16) ? msg->getU16() : msg->getU8();
     }
 
     m_localPlayer->setStatesAndRottenBlood(states, rottenBloodState);
@@ -2662,7 +2807,7 @@ void ProtocolGame::parsePlayerState(const InputMessagePtr& msg) const
 
 void ProtocolGame::parsePlayerCancelAttack(const InputMessagePtr& msg)
 {
-    const uint32_t seq = g_game.getFeature(Otc::GameAttackSeq) ? msg->getU32() : 0;
+    const uint32_t seq = g_game.getFeature(tibia::client::GameAttackSeq) ? msg->getU32() : 0;
     if (g_game.getClientVersion() >= 1530)
         msg->getU32(); // 15.25 second u32
     g_game.processAttackCancel(seq);
@@ -2672,20 +2817,23 @@ void ProtocolGame::parsePlayerModes(const InputMessagePtr& msg)
 {
     // GameTacticsWithoutFightMode only drops fightMode from the client->server packet:
     // CIP 15.25+ servers still send fight, chase, secure (and pvp) in 0xA7.
-    const auto fightMode = static_cast<Otc::FightModes>(msg->getU8());
-    const auto chaseMode = static_cast<Otc::ChaseModes>(msg->getU8());
+    const auto fightMode = static_cast<tibia::client::FightModes>(msg->getU8());
+    const auto chaseMode = static_cast<tibia::client::ChaseModes>(msg->getU8());
     const bool safeMode = static_cast<bool>(msg->getU8());
-    const auto pvpMode = static_cast<Otc::PVPModes>(g_game.getFeature(Otc::GamePVPMode) ? msg->getU8() : 0);
+    const auto pvpMode = static_cast<tibia::client::PVPModes>(g_game.getFeature(tibia::client::GamePVPMode) ? msg->getU8() : 0);
 
     g_game.processPlayerModes(fightMode, chaseMode, safeMode, pvpMode);
 }
 
 void ProtocolGame::parseSpellCooldown(const InputMessagePtr& msg)
 {
-    const uint16_t spellId = g_game.getFeature(Otc::GameUshortSpell) ? msg->getU16() : msg->getU8();
+    const uint16_t spellId = g_game.getFeature(tibia::client::GameUshortSpell) ? msg->getU16() : msg->getU8();
     const uint32_t delay = msg->getU32();
 
-    g_gameEvents.callGlobalField("g_game", "onSpellCooldown", spellId, delay);
+    if (auto* storage = tibia::game::TCooldownStorage::instance())
+        storage->applySpellCooldown(int(spellId), delay);
+    else
+        tibia::game::notify("onSpellCooldown", spellId, delay);
 }
 
 void ProtocolGame::parseSpellGroupCooldown(const InputMessagePtr& msg)
@@ -2693,19 +2841,25 @@ void ProtocolGame::parseSpellGroupCooldown(const InputMessagePtr& msg)
     const uint8_t groupId = msg->getU8();
     const uint32_t delay = msg->getU32();
 
-    g_gameEvents.callGlobalField("g_game", "onSpellGroupCooldown", groupId, delay);
+    if (auto* storage = tibia::game::TCooldownStorage::instance())
+        storage->applySpellGroupCooldown(int(groupId), delay);
+    else
+        tibia::game::notify("onSpellGroupCooldown", groupId, delay);
 }
 
 void ProtocolGame::parseMultiUseCooldown(const InputMessagePtr& msg)
 {
     const uint32_t delay = msg->getU32();
-    g_gameEvents.callGlobalField("g_game", "onMultiUseCooldown", delay);
+    if (auto* storage = tibia::game::TCooldownStorage::instance())
+        storage->applyMultiUseCooldown(delay);
+    else
+        tibia::game::notify("onMultiUseCooldown", delay);
 }
 
 void ProtocolGame::parseTalk(const InputMessagePtr& msg)
 {
     uint32_t statement = 0;
-    if (g_game.getFeature(Otc::GameMessageStatements)) {
+    if (g_game.getFeature(tibia::client::GameMessageStatements)) {
         statement = msg->getU32(); // channel statement guid
     }
 
@@ -2715,38 +2869,38 @@ void ProtocolGame::parseTalk(const InputMessagePtr& msg)
         msg->getU8(); // suffix
     }
 
-    const uint16_t level = g_game.getFeature(Otc::GameMessageLevel) ? msg->getU16() : 0;
+    const uint16_t level = g_game.getFeature(tibia::client::GameMessageLevel) ? msg->getU16() : 0;
 
     auto messageByte = msg->getU8();
-    const Otc::MessageMode mode = Proto::translateMessageModeFromServer(messageByte);
+    const tibia::client::MessageMode mode = Proto::translateMessageModeFromServer(messageByte);
     uint16_t channelId = 0;
     Position pos;
 
     switch (mode) {
-        case Otc::MessagePotion:
-        case Otc::MessageSay:
-        case Otc::MessageWhisper:
-        case Otc::MessageYell:
-        case Otc::MessageMonsterSay:
-        case Otc::MessageMonsterYell:
-        case Otc::MessageNpcTo:
-        case Otc::MessageBarkLow:
-        case Otc::MessageBarkLoud:
-        case Otc::MessageSpell:
-        case Otc::MessageNpcFromStartBlock:
+        case tibia::client::MessagePotion:
+        case tibia::client::MessageSay:
+        case tibia::client::MessageWhisper:
+        case tibia::client::MessageYell:
+        case tibia::client::MessageMonsterSay:
+        case tibia::client::MessageMonsterYell:
+        case tibia::client::MessageNpcTo:
+        case tibia::client::MessageBarkLow:
+        case tibia::client::MessageBarkLoud:
+        case tibia::client::MessageSpell:
+        case tibia::client::MessageNpcFromStartBlock:
             pos = getPosition(msg);
             break;
-        case Otc::MessageChannel:
-        case Otc::MessageChannelManagement:
-        case Otc::MessageChannelHighlight:
-        case Otc::MessageGamemasterChannel:
+        case tibia::client::MessageChannel:
+        case tibia::client::MessageChannelManagement:
+        case tibia::client::MessageChannelHighlight:
+        case tibia::client::MessageGamemasterChannel:
             channelId = msg->getU16();
             break;
-        case Otc::MessageNpcFrom:
-        case Otc::MessagePrivateTo:
-        case Otc::MessagePrivateFrom:
-        case Otc::MessageGamemasterBroadcast:
-        case Otc::MessageGamemasterPrivateFrom:
+        case tibia::client::MessageNpcFrom:
+        case tibia::client::MessagePrivateTo:
+        case tibia::client::MessagePrivateFrom:
+        case tibia::client::MessageGamemasterBroadcast:
+        case tibia::client::MessageGamemasterPrivateFrom:
             break;
         default:
             throw Exception("ProtocolGame::parseTalk: unknown message mode {}", messageByte);
@@ -2776,7 +2930,7 @@ void ProtocolGame::parseOpenChannel(const InputMessagePtr& msg)
     const uint16_t channelId = msg->getU16();
     const auto& channelName = msg->getString();
 
-    if (g_game.getFeature(Otc::GameChannelPlayerList)) {
+    if (g_game.getFeature(tibia::client::GameChannelPlayerList)) {
         const uint16_t joinedPlayers = msg->getU16();
         for (auto i = 0; i < joinedPlayers; ++i) {
             g_game.formatCreatureName(msg->getString()); // player name
@@ -2801,7 +2955,7 @@ void ProtocolGame::parseOpenOwnPrivateChannel(const InputMessagePtr& msg)
 {
     const uint16_t channelId = msg->getU16();
     const auto& channelName = msg->getString();
-    if (g_game.getFeature(Otc::GameChannelPlayerList)) {
+    if (g_game.getFeature(tibia::client::GameChannelPlayerList)) {
         const uint16_t joinedPlayers = msg->getU16();
         for (auto i = 0; i < joinedPlayers; ++i) {
             g_game.formatCreatureName(msg->getString()); // player name
@@ -2829,40 +2983,63 @@ void ProtocolGame::parseEditGuildMessage(const InputMessagePtr& msg)
 
 void ProtocolGame::parseOutfitMemorial(const InputMessagePtr& msg)
 {
-    // CIP GameserverMessageOutfitMemorial binary layout is not fully ported yet.
-    if (msg->getUnreadSize() >= 2) {
-        const auto& title = msg->getString();
-        g_game.processOutfitMemorial(title);
-    } else {
-        g_game.processOutfitMemorial({});
-    }
+    // Crystal outfit_memorial.lua / CIP S 0xB0:
+    // 3× u32 golden costs, 3× (u16 count + strings) golden owners,
+    // 3× (u16 silver, u16 gold) token prices, 3× (u16 count + strings) token owners.
+    // Owner list order matches storage value tiers: [1]=base, [2]=one addon, [3]=full.
+    OutfitMemorialData data;
+    const auto readOwners = [&msg](std::vector<std::string>& out) {
+        const uint16_t count = msg->getU16();
+        out.reserve(count);
+        for (uint16_t i = 0; i < count; ++i)
+            out.push_back(msg->getString());
+    };
+
+    data.baseGoldenOutfitCost = msg->getU32();
+    data.oneAddonGoldenOutfitCost = msg->getU32();
+    data.fullGoldenOutfitCost = msg->getU32();
+    readOwners(data.baseGoldenOutfitOwners);
+    readOwners(data.oneAddonGoldenOutfitOwners);
+    readOwners(data.fullGoldenOutfitOwners);
+
+    data.baseTokenOutfitSilverToken = msg->getU16();
+    data.baseTokenOutfitGoldToken = msg->getU16();
+    data.oneAddonTokenOutfitSilverToken = msg->getU16();
+    data.oneAddonTokenOutfitGoldToken = msg->getU16();
+    data.fullTokenOutfitSilverToken = msg->getU16();
+    data.fullTokenOutfitGoldToken = msg->getU16();
+    readOwners(data.baseTokenOutfitOwners);
+    readOwners(data.oneAddonTokenOutfitOwners);
+    readOwners(data.fullTokenOutfitOwners);
+
+    g_game.processOutfitMemorial(data);
 }
 
 void ProtocolGame::parseTextMessage(const InputMessagePtr& msg)
 {
     const uint8_t code = msg->getU8();
-    const Otc::MessageMode mode = Proto::translateMessageModeFromServer(code);
+    const tibia::client::MessageMode mode = Proto::translateMessageModeFromServer(code);
     std::string text;
     int channelId = -1;
 
     g_logger.debug("[ProtocolGame::parseTextMessage] code: {}, mode: {}", code, std::to_string(mode));
 
     switch (mode) {
-        case Otc::MessageChannelManagement:
+        case tibia::client::MessageChannelManagement:
             channelId = msg->getU16();
             text = msg->getString();
             break;
-        case Otc::MessageGuild:
-        case Otc::MessagePartyManagement:
-        case Otc::MessageParty:
+        case tibia::client::MessageGuild:
+        case tibia::client::MessagePartyManagement:
+        case tibia::client::MessageParty:
         {
             channelId = msg->getU16();
             text = msg->getString();
             break;
         }
-        case Otc::MessageDamageDealed:
-        case Otc::MessageDamageReceived:
-        case Otc::MessageDamageOthers:
+        case tibia::client::MessageDamageDealed:
+        case tibia::client::MessageDamageReceived:
+        case tibia::client::MessageDamageOthers:
         {
             const auto& pos = getPosition(msg);
             std::array<uint32_t, 2> value{};
@@ -2887,9 +3064,9 @@ void ProtocolGame::parseTextMessage(const InputMessagePtr& msg)
             }
             break;
         }
-        case Otc::MessageHeal:
-        case Otc::MessageMana:
-        case Otc::MessageHealOthers:
+        case tibia::client::MessageHeal:
+        case tibia::client::MessageMana:
+        case tibia::client::MessageHealOthers:
         {
             const auto& pos = getPosition(msg);
             const uint32_t value = msg->getU32();
@@ -2901,8 +3078,8 @@ void ProtocolGame::parseTextMessage(const InputMessagePtr& msg)
                 g_game.processNumericalEffect(mode, pos, value, color);
             break;
         }
-        case Otc::MessageExp:
-        case Otc::MessageExpOthers:
+        case tibia::client::MessageExp:
+        case tibia::client::MessageExpOthers:
         {
             const auto& pos = getPosition(msg);
             const uint64_t value = g_game.getClientVersion() >= 1332 ? msg->getU64() : msg->getU32();
@@ -2914,7 +3091,7 @@ void ProtocolGame::parseTextMessage(const InputMessagePtr& msg)
                 g_game.processNumericalEffect(mode, pos, value, color);
             break;
         }
-        case Otc::MessageInvalid:
+        case tibia::client::MessageInvalid:
             throw Exception("ProtocolGame::parseTextMessage: unknown message mode {}", code);
         default:
             break;
@@ -2925,13 +3102,13 @@ void ProtocolGame::parseTextMessage(const InputMessagePtr& msg)
     }
 
     if (channelId >= 0)
-        g_gameEvents.callGlobalField("g_game", "onChannelTextMessage", mode, static_cast<uint16_t>(channelId), text);
+        tibia::game::notify("onChannelTextMessage", mode, static_cast<uint16_t>(channelId), text);
     g_game.processTextMessage(mode, text);
 }
 
 void ProtocolGame::parseCancelWalk(const InputMessagePtr& msg)
 {
-    const auto direction = static_cast<Otc::Direction>(msg->getU8());
+    const auto direction = static_cast<tibia::client::Direction>(msg->getU8());
     g_game.processWalkCancel(direction);
 }
 
@@ -2945,7 +3122,7 @@ void ProtocolGame::parseFloorChangeUp(const InputMessagePtr& msg)
 {
     const AwareRange& range = g_map.getAwareRange();
 
-    auto pos = g_game.getFeature(Otc::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
+    auto pos = g_game.getFeature(tibia::client::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
     --pos.z;
 
     int skip = 0;
@@ -2963,14 +3140,14 @@ void ProtocolGame::parseFloorChangeUp(const InputMessagePtr& msg)
     g_map.setCentralPosition(newPos);
     g_map.notificateWindowChanged(true);
 
-    g_gameEvents.callGlobalField("g_game", "onTeleport", m_localPlayer, newPos, pos);
+    tibia::game::notify("onTeleport", m_localPlayer, newPos, pos);
 }
 
 void ProtocolGame::parseFloorChangeDown(const InputMessagePtr& msg)
 {
     const AwareRange& range = g_map.getAwareRange();
 
-    auto pos = g_game.getFeature(Otc::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
+    auto pos = g_game.getFeature(tibia::client::GameMapMovePosition) ? getPosition(msg) : g_map.getCentralPosition();
     ++pos.z;
 
     int skip = 0;
@@ -2990,7 +3167,7 @@ void ProtocolGame::parseFloorChangeDown(const InputMessagePtr& msg)
     g_map.setCentralPosition(newPos);
     g_map.notificateWindowChanged(true);
 
-    g_gameEvents.callGlobalField("g_game", "onTeleport", m_localPlayer, newPos, pos);
+    tibia::game::notify("onTeleport", m_localPlayer, newPos, pos);
 }
 
 void ProtocolGame::parseOpenOutfitWindow(const InputMessagePtr& msg) const
@@ -3016,7 +3193,7 @@ void ProtocolGame::parseOpenOutfitWindow(const InputMessagePtr& msg) const
     std::vector<uint32_t> mountOffers;
     std::vector<uint32_t> familiarOffers;
 
-    if (g_game.getFeature(Otc::GameNewOutfitProtocol)) {
+    if (g_game.getFeature(tibia::client::GameNewOutfitProtocol)) {
         const uint16_t outfitCount = g_game.getClientVersion() >= 1281 ? msg->getU16() : msg->getU8();
         for (auto i = 0; i < outfitCount; ++i) {
             const uint16_t outfitId = msg->getU16();
@@ -3037,7 +3214,7 @@ void ProtocolGame::parseOpenOutfitWindow(const InputMessagePtr& msg) const
     } else {
         uint16_t outfitStart;
         uint16_t outfitEnd;
-        if (g_game.getFeature(Otc::GameLooktypeU16)) {
+        if (g_game.getFeature(tibia::client::GameLooktypeU16)) {
             outfitStart = msg->getU16();
             outfitEnd = msg->getU16();
         } else {
@@ -3052,7 +3229,7 @@ void ProtocolGame::parseOpenOutfitWindow(const InputMessagePtr& msg) const
 
     std::vector<std::tuple<uint16_t, std::string, uint8_t>> mountList;
 
-    if (g_game.getFeature(Otc::GamePlayerMounts)) {
+    if (g_game.getFeature(tibia::client::GamePlayerMounts)) {
         const uint16_t mountCount = g_game.getClientVersion() >= 1281 ? msg->getU16() : msg->getU8();
         for (auto i = 0; i < mountCount; ++i) {
             const uint16_t mountId = msg->getU16(); // mount type
@@ -3072,7 +3249,7 @@ void ProtocolGame::parseOpenOutfitWindow(const InputMessagePtr& msg) const
     }
 
     std::vector<std::tuple<uint16_t, std::string> > familiarList;
-    if (g_game.getFeature(Otc::GamePlayerFamiliars)) {
+    if (g_game.getFeature(tibia::client::GamePlayerFamiliars)) {
         const uint16_t familiarCount = msg->getU16();
         for (auto i = 0; i < familiarCount; ++i) {
             const uint16_t familiarLookType = msg->getU16(); // familiar lookType
@@ -3122,7 +3299,7 @@ void ProtocolGame::parseOpenOutfitWindow(const InputMessagePtr& msg) const
                 podiumDirection = msg->getU8();
             }
         }
-        g_gameEvents.callGlobalField("g_game", "onOutfitWindowOptions", tryOutfitMode, mounted, randomMount, genderPairs, outfitOffers,
+        tibia::game::notify("onOutfitWindowOptions", tryOutfitMode, mounted, randomMount, genderPairs, outfitOffers,
                                      mountOffers, familiarOffers, podiumPos, podiumItemId, podiumStackpos, podiumVisible,
                                      podiumShowOutfit, podiumDirection);
     }
@@ -3132,7 +3309,7 @@ void ProtocolGame::parseOpenOutfitWindow(const InputMessagePtr& msg) const
     std::vector<std::tuple<uint16_t, std::string>> effectList;
     std::vector<std::tuple<uint16_t, std::string>> shaderList;
 
-    if (g_game.getFeature(Otc::GameWingsAurasEffectsShader)) {
+    if (g_game.getFeature(tibia::client::GameWingsAurasEffectsShader)) {
         const uint8_t wingCount = msg->getU8();
         for (auto i = 0; i < wingCount; ++i) {
             const uint16_t wingId = msg->getU16();
@@ -3202,7 +3379,7 @@ void ProtocolGame::parseExivaRestrictions(const InputMessagePtr& msg)
         removeGuild.emplace_back(msg->getString());
     }
 
-    g_gameEvents.callGlobalField("g_game", "onReceiveExivaOptions",
+    tibia::game::notify("onReceiveExivaOptions",
         allowAll, allowOwnGuild, allowOwnParty, allowVipList,
         allowPlayerWhitelist, allowGuildWhitelist,
         characterWhiteList, removeCharacter, guildWhiteList, removeGuild);
@@ -3227,7 +3404,7 @@ void ProtocolGame::parseQuestTracker(const InputMessagePtr& msg)
                 const std::string& missionDesc = msg->getString();
                 missions.emplace_back(questId, missionId, questName, missionName, missionDesc);
             }
-            return g_gameEvents.callGlobalField("g_game", "onQuestTracker", remainingQuests, missions);
+            return tibia::game::notify("onQuestTracker", remainingQuests, missions);
         }
         case 0: {
             // Same entry layout as the full list (CIP reader 0x100f08480): mission id first.
@@ -3242,7 +3419,7 @@ void ProtocolGame::parseQuestTracker(const InputMessagePtr& msg)
             }
             const std::string& missionName = msg->getString();
             const std::string& missionDesc = msg->getString();
-            return g_gameEvents.callGlobalField("g_game", "onUpdateQuestTracker", questId, missionId, questName, missionName, missionDesc);
+            return tibia::game::notify("onUpdateQuestTracker", questId, missionId, questName, missionName, missionDesc);
         }
     }
 }
@@ -3253,15 +3430,12 @@ void ProtocolGame::parseKillTracker(const InputMessagePtr& msg)
     const Outfit& monsterOutfit = getOutfit(msg, false);
     const uint8_t corpseItemsSize = msg->getU8();
 
-    std::vector<ItemPtr> dropItems;
-
+    std::vector<tibia::container::TInventorySlot> dropItems;
     dropItems.reserve(corpseItemsSize);
-    for (auto i = 0; i < corpseItemsSize; ++i) {
-        dropItems.push_back(getItem(msg));
-    }
+    for (auto i = 0; i < corpseItemsSize; ++i)
+        dropItems.push_back(getInventorySlot(msg));
 
-    // Fire the Lua callback with monster kill data
-    g_gameEvents.callGlobalField("g_game", "onKillTracker", monsterName, monsterOutfit, dropItems);
+    tibia::game::notify("onKillTracker", monsterName, monsterOutfit, dropItems);
 }
 
 void ProtocolGame::parseVipAdd(const InputMessagePtr& msg)
@@ -3273,14 +3447,14 @@ void ProtocolGame::parseVipAdd(const InputMessagePtr& msg)
 
     const uint32_t id = msg->getU32();
     const auto& name = g_game.formatCreatureName(msg->getString());
-    if (g_game.getFeature(Otc::GameAdditionalVipInfo)) {
+    if (g_game.getFeature(tibia::client::GameAdditionalVipInfo)) {
         desc = msg->getString();
         iconId = msg->getU32();
         notifyLogin = static_cast<bool>(msg->getU8());
     }
 
     const uint32_t status = msg->getU8();
-    if (g_game.getFeature(Otc::GameVipGroups)) {
+    if (g_game.getFeature(tibia::client::GameVipGroups)) {
         const uint8_t vipGroupSize = msg->getU8();
         groupIDs.reserve(vipGroupSize);
         for (auto i = 0; i < vipGroupSize; ++i) {
@@ -3295,7 +3469,7 @@ void ProtocolGame::parseVipAdd(const InputMessagePtr& msg)
 void ProtocolGame::parseVipState(const InputMessagePtr& msg)
 {
     const uint32_t id = msg->getU32();
-    const uint32_t status = g_game.getFeature(Otc::GameLoginPending) ? msg->getU8() : 1;
+    const uint32_t status = g_game.getFeature(tibia::client::GameLoginPending) ? msg->getU8() : 1;
 
     g_game.processVipStateChange(id, status);
 }
@@ -3303,7 +3477,7 @@ void ProtocolGame::parseVipState(const InputMessagePtr& msg)
 void ProtocolGame::parseVipLogout(const InputMessagePtr& msg)
 {
     // On QT client this operation is being processed on the 'parseVipState', now this opcode if for groups
-    if (g_game.getFeature(Otc::GameVipGroups)) {
+    if (g_game.getFeature(tibia::client::GameVipGroups)) {
         const uint8_t vipGroupSize = msg->getU8();
         std::vector<std::tuple<uint8_t, std::string, bool>> vipGroups;
         for (auto i = 0; i < vipGroupSize; ++i) {
@@ -3557,7 +3731,7 @@ void ProtocolGame::parseAutomapFlag(const InputMessagePtr& msg)
                     std::vector<int> discoverable;
                     for (int k = 0, n = msg->getU16(); k < n; ++k)
                         discoverable.push_back(msg->getU16());
-                    g_gameEvents.callGlobalField("g_game", "onCyclopediaMapDiscoveryData", mains, discovered, discoverable);
+                    tibia::game::notify("onCyclopediaMapDiscoveryData", mains, discovered, discoverable);
                     return;
                 }
                 case 5: { // SetDiscoveryArea
@@ -3570,7 +3744,7 @@ void ProtocolGame::parseAutomapFlag(const InputMessagePtr& msg)
                         const int state = msg->getU8();
                         points.push_back({ pos.x, pos.y, static_cast<int>(pos.z), state });
                     }
-                    g_gameEvents.callGlobalField("g_game", "onCyclopediaMapDiscoveryArea", areaId, active, poiTarget, points);
+                    tibia::game::notify("onCyclopediaMapDiscoveryArea", areaId, active, poiTarget, points);
                     return;
                 }
                 case 6: { // Passage — CIP CyclopediaMapDataPassage (coord + race ids)
@@ -3587,7 +3761,7 @@ void ProtocolGame::parseAutomapFlag(const InputMessagePtr& msg)
                             row.push_back(msg->getU16());
                         passages.push_back(std::move(row));
                     }
-                    g_gameEvents.callGlobalField("g_game", "onCyclopediaMapPassages", passages);
+                    tibia::game::notify("onCyclopediaMapPassages", passages);
                     return;
                 }
                 case 9: { // Donations
@@ -3599,17 +3773,17 @@ void ProtocolGame::parseAutomapFlag(const InputMessagePtr& msg)
                         const uint64_t donatedAmount = msg->getU64();
                         areas.push_back({ static_cast<double>(areaId), static_cast<double>(improvedRespawnActive), static_cast<double>(donatedAmount) });
                     }
-                    g_gameEvents.callGlobalField("g_game", "onCyclopediaMapDonations", goal, areas);
+                    tibia::game::notify("onCyclopediaMapDonations", goal, areas);
                     return;
                 }
                 case 10: { // SetCurrentArea
                     const int areaId = msg->getU16();
-                    g_gameEvents.callGlobalField("g_game", "onCyclopediaMapCurrentArea", areaId);
+                    tibia::game::notify("onCyclopediaMapCurrentArea", areaId);
                     return;
                 }
                 case 11: { // SetExploringArea
                     const int subAreaId = msg->getU16();
-                    g_gameEvents.callGlobalField("g_game", "onCyclopediaMapExploringArea", subAreaId);
+                    tibia::game::notify("onCyclopediaMapExploringArea", subAreaId);
                     return;
                 }
                 default:
@@ -3622,7 +3796,7 @@ void ProtocolGame::parseAutomapFlag(const InputMessagePtr& msg)
     const uint8_t icon = msg->getU8();
     const auto& description = msg->getString();
 
-    const bool remove = g_game.getFeature(Otc::GameMinimapRemove) ? static_cast<bool>(msg->getU8()) : false;
+    const bool remove = g_game.getFeature(tibia::client::GameMinimapRemove) ? static_cast<bool>(msg->getU8()) : false;
     if (!remove) {
         g_game.processAddAutomapFlag(pos, icon, description);
     } else {
@@ -3671,23 +3845,26 @@ void ProtocolGame::parseChannelEvent(const InputMessagePtr& msg)
     const auto& channelName = msg->getString();
     const uint8_t channelType = msg->getU8();
 
-    g_gameEvents.callGlobalField("g_game", "onChannelEvent", channelId, channelName, channelType);
+    tibia::game::notify("onChannelEvent", channelId, channelName, channelType);
 }
 
 void ProtocolGame::parseItemInfo(const InputMessagePtr& msg) const
 {
+    // CIP ObjectInfo (S 0xF4): qtclient always reads u16 countOrSubType (Crystal matches qtclient).
     const uint8_t listCount = msg->getU8();
-    std::vector<std::tuple<ItemPtr, std::string>> itemList;
+    std::vector<std::tuple<uint16_t, std::string>> itemList;
 
     for (auto i = 0; i < listCount; ++i) {
-        const auto& item = std::make_shared<Item>();
-        item->setId(msg->getU16());
-        item->setCountOrSubType(g_game.getFeature(Otc::GameCountU16) ? msg->getU16() : msg->getU8());
+        const uint16_t typeId = msg->getU16();
+        msg->getU16(); // countOrSubType — descriptions keyed by typeId
         const auto& desc = msg->getString();
-        itemList.emplace_back(item, desc);
+        itemList.emplace_back(typeId, desc);
     }
 
-    g_gameEvents.callGlobalField("g_game", "onItemInfo", itemList);
+    if (auto* storage = tibia::cyclopedia::TItemInfoStorage::instance())
+        storage->applyItemInfo(itemList);
+    else
+        tibia::game::notify("onItemInfo", itemList);
 }
 
 static inline uint32_t readPackedCount1500(const InputMessagePtr& msg) {
@@ -3724,7 +3901,7 @@ void ProtocolGame::parsePlayerInventory(const InputMessagePtr& msg)
         const uint32_t amount = g_game.getProtocolVersion() < 1500 ? msg->getU16() : readPackedCount1500(msg);
 
         uint8_t tier = 0;
-        if (const auto thingType = g_things.getThingType(itemId, ThingCategoryItem)) {
+        if (const auto thingType = tibia::game::thingType(itemId, ThingCategoryItem)) {
             if (std::cmp_greater(thingType->getClassification(), 0)) {
                 tier = attribute;
             }
@@ -3736,9 +3913,9 @@ void ProtocolGame::parsePlayerInventory(const InputMessagePtr& msg)
         entry = static_cast<uint32_t>(std::min<uint64_t>(sum, (std::numeric_limits<uint32_t>::max)()));
     }
 
-    if (const auto& localPlayer = g_game.getLocalPlayer()) {
+    if (const auto& localPlayer = tibia::game::localPlayer()) {
         localPlayer->setInventoryCountCache(std::move(inventoryCounts));
-        g_gameEvents.callGlobalField("g_game", "updateInventoryItems");
+        tibia::game::notify("updateInventoryItems");
     }
 }
 
@@ -3809,13 +3986,12 @@ void ProtocolGame::parseChangeMapAwareRange(const InputMessagePtr& msg)
         .bottom = static_cast<uint8_t>(yRange / 2)
                         });
 
-    g_gameEvents.callGlobalField("g_game", "onMapChangeAwareRange", xRange, yRange);
+    tibia::game::notify("onMapChangeAwareRange", xRange, yRange);
 }
 
 void ProtocolGame::parseCreaturesMark(const InputMessagePtr& msg)
 {
     const uint32_t creatureId = msg->getU32();
-    const auto& creature = g_map.getCreatureById(creatureId);
     const bool isLegacyProtocol = g_game.getClientVersion() < 1076;
     uint8_t squareType;
     uint8_t squareColor;
@@ -3828,26 +4004,29 @@ void ProtocolGame::parseCreaturesMark(const InputMessagePtr& msg)
         squareColor = msg->getU8();
     }
 
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreaturesMark: could not get creature with id {}", creatureId);
-        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreaturesMark: could not get creature with id {}", creatureId);
+            return;
+        }
     }
 
     if (isLegacyProtocol) {
-        creature->addTimedSquare(squareColor);
+        tibia::creatures::protocolAddTimedSquare(creatureId, squareColor);
         return;
     }
 
     if (squareType == 0) {
-        creature->hideStaticSquare();
-        creature->removeTimedSquare();
+        tibia::creatures::protocolHideStaticSquare(creatureId);
+        tibia::creatures::protocolRemoveTimedSquare(creatureId);
         return;
     }
 
     if (squareType == 2) {
-        creature->showStaticSquare(Color::from8bit(squareColor != 0 ? squareColor : 1));
+        tibia::creatures::protocolShowStaticSquare(creatureId,
+                                                    Color::from8bit(squareColor != 0 ? squareColor : 1));
     } else {
-        creature->addTimedSquare(squareColor);
+        tibia::creatures::protocolAddTimedSquare(creatureId, squareColor);
     }
 }
 
@@ -3856,13 +4035,15 @@ void ProtocolGame::parseCreatureType(const InputMessagePtr& msg)
     const uint32_t creatureId = msg->getU32();
     const uint8_t type = msg->getU8();
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureType: could not get creature with id {}", creatureId);
-        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (!storage->creatureAt(creatureId)) {
+            g_logger.traceDebug("ProtocolGame::parseCreatureType: could not get creature with id {}", creatureId);
+            return;
+        }
     }
-
-    creature->setType(type);
+    const bool isPlayer = type == Proto::CreatureTypePlayer;
+    const bool isNpc = type == Proto::CreatureTypeNpc;
+    tibia::creatures::ensureFromProtocol(creatureId, {}, {}, /*direction=*/2, type, isPlayer, isNpc);
 }
 
 void ProtocolGame::setMapDescription(const InputMessagePtr& msg, const int x, const int y, const int z, const int width, const int height, const bool apply)
@@ -3900,7 +4081,11 @@ int ProtocolGame::setFloorDescription(const InputMessagePtr& msg, const int x, c
                 skip = setTileDescription(msg, tilePos, apply);
             } else {
                 if (apply) {
-                    g_map.cleanTile(tilePos);
+                    if (tibia::worldmap::TWorldmapProtocolMessageHandler* handler =
+                            tibia::worldmap::TWorldmapProtocolMessageHandler::liveInstance())
+                        handler->clearField(tilePos);
+                    else
+                        g_map.cleanTile(tilePos);
                 }
                 --skip;
             }
@@ -3911,8 +4096,14 @@ int ProtocolGame::setFloorDescription(const InputMessagePtr& msg, const int x, c
 
 int ProtocolGame::setTileDescription(const InputMessagePtr& msg, const Position position, const bool apply)
 {
+    tibia::worldmap::TWorldmapProtocolMessageHandler* const worldmapHandler =
+        apply ? tibia::worldmap::TWorldmapProtocolMessageHandler::liveInstance() : nullptr;
+
     if (apply) {
-        g_map.cleanTile(position);
+        if (worldmapHandler)
+            worldmapHandler->clearField(position);
+        else
+            g_map.cleanTile(position);
     }
 
     bool gotEffect = false;
@@ -3921,7 +4112,7 @@ int ProtocolGame::setTileDescription(const InputMessagePtr& msg, const Position 
             return msg->getU16() & 0xff;
         }
 
-        if (g_game.getFeature(Otc::GameEnvironmentEffect) && !gotEffect) {
+        if (g_game.getFeature(tibia::client::GameEnvironmentEffect) && !gotEffect) {
             msg->getU16(); // environment effect
             gotEffect = true;
             continue;
@@ -3936,11 +4127,26 @@ int ProtocolGame::setTileDescription(const InputMessagePtr& msg, const Position 
             continue;
         }
 
-        if (thing->isLocalPlayer()) {
-            thing->static_self_cast<LocalPlayer>()->resetPreWalk();
+        if (lastParsedCreatureId() != 0) {
+            if (worldmapHandler)
+                worldmapHandler->applyCreatureIdToField(lastParsedCreatureId(), position, stackPos);
+            else
+                g_map.placeCreatureId(lastParsedCreatureId(), position, stackPos);
+        } else if (lastParsedItemAppearance()) {
+            if (worldmapHandler)
+                worldmapHandler->applyAppearanceToField(lastParsedItemAppearance(), position, stackPos);
+            else
+                g_map.placeAppearance(lastParsedItemAppearance(), position, stackPos);
+        } else if (thing && thing->isCreature()) {
+            // LocalPlayer session keep-alive only (Phase 9B.1 — no item ThingPtr field path).
+            if (worldmapHandler) {
+                worldmapHandler->applyThingToField(thing, position, stackPos);
+            } else {
+                if (thing->isLocalPlayer())
+                    thing->static_self_cast<LocalPlayer>()->resetPreWalk();
+                g_map.placeCreatureId(thing->getId(), position, stackPos);
+            }
         }
-
-        g_map.addThing(thing, position, stackPos);
     }
 
     return 0;
@@ -3950,7 +4156,7 @@ Outfit ProtocolGame::getOutfit(const InputMessagePtr& msg, const bool parseMount
 {
     Outfit outfit;
 
-    uint16_t lookType = g_game.getFeature(Otc::GameLooktypeU16) ? msg->getU16() : msg->getU8();
+    uint16_t lookType = g_game.getFeature(tibia::client::GameLooktypeU16) ? msg->getU16() : msg->getU8();
 
     if (lookType != 0) {
         outfit.setCategory(ThingCategoryCreature);
@@ -3958,9 +4164,9 @@ Outfit ProtocolGame::getOutfit(const InputMessagePtr& msg, const bool parseMount
         const uint8_t body = msg->getU8();
         const uint8_t legs = msg->getU8();
         const uint8_t feet = msg->getU8();
-        const uint8_t addons = g_game.getFeature(Otc::GamePlayerAddons) ? msg->getU8() : 0;
+        const uint8_t addons = g_game.getFeature(tibia::client::GamePlayerAddons) ? msg->getU8() : 0;
 
-        if (!g_things.isValidDatId(lookType, ThingCategoryCreature)) {
+        if (!tibia::game::isValidDatId(lookType, ThingCategoryCreature)) {
             g_logger.traceError("invalid outfit looktype {}", lookType);
             lookType = 0;
         }
@@ -3977,7 +4183,7 @@ Outfit ProtocolGame::getOutfit(const InputMessagePtr& msg, const bool parseMount
             outfit.setCategory(ThingCategoryEffect);
             outfit.setAuxId(13); // invisible effect id
         } else {
-            if (!g_things.isValidDatId(lookTypeEx, ThingCategoryItem)) {
+            if (!tibia::game::isValidDatId(lookTypeEx, ThingCategoryItem)) {
                 g_logger.traceError("invalid outfit looktypeex {}", lookTypeEx);
                 lookTypeEx = 0;
             }
@@ -3986,7 +4192,7 @@ Outfit ProtocolGame::getOutfit(const InputMessagePtr& msg, const bool parseMount
         }
     }
 
-    if (g_game.getFeature(Otc::GamePlayerMounts) && parseMount) {
+    if (g_game.getFeature(tibia::client::GamePlayerMounts) && parseMount) {
         const uint16_t mount = msg->getU16();
         if (g_game.getClientVersion() >= 1281 && mount != 0) {
             const uint8_t head = msg->getU8();
@@ -3998,7 +4204,7 @@ Outfit ProtocolGame::getOutfit(const InputMessagePtr& msg, const bool parseMount
         outfit.setMount(mount);
     }
 
-    if (g_game.getFeature(Otc::GameWingsAurasEffectsShader) && parseMount) {
+    if (g_game.getFeature(tibia::client::GameWingsAurasEffectsShader) && parseMount) {
         const uint16_t wings = msg->getU16();
         outfit.setWing(wings);
 
@@ -4016,6 +4222,8 @@ Outfit ProtocolGame::getOutfit(const InputMessagePtr& msg, const bool parseMount
 
 ThingPtr ProtocolGame::getThing(const InputMessagePtr& msg)
 {
+    m_lastParsedCreatureId = 0;
+    m_lastParsedItemAppearance.reset();
     const uint16_t id = msg->getU16();
     if (id == 0) {
         throw Exception("ProtocolGame::getThing: invalid thing id");
@@ -4025,7 +4233,9 @@ ThingPtr ProtocolGame::getThing(const InputMessagePtr& msg)
         return getCreature(msg, id);
     }
 
-    return getItem(msg, id); // item
+    // Item: decode appearance attrs into factory — no Item::create on the field path.
+    m_lastParsedItemAppearance = getItemAppearance(msg, id);
+    return nullptr;
 }
 
 ThingPtr ProtocolGame::getMappedThing(const InputMessagePtr& msg) const
@@ -4039,11 +4249,19 @@ ThingPtr ProtocolGame::getMappedThing(const InputMessagePtr& msg) const
         assert(stackpos != UINT8_MAX);
 
         const Position& pos{ x, y, z };
-        if (const auto& thing = g_map.getThing(pos, stackpos)) {
-            return thing;
+        const auto& tile = g_map.getTile(pos);
+        if (tile) {
+            // LocalPlayer Map keep-alive only (CIP field stack is appearance + creatureId).
+            if (const ThingPtr thing = tile->getThing(stackpos))
+                return thing;
+            // CIP ChangeOnMap/DeleteOnMap resolve by stackpos on TWorldMapField — items are
+            // appearances and non-local creatures are storage ids, not Map ThingPtrs.
+            // Occupied slots are not misses; callers use peek.stack + removeThingAtStackPos.
+            if (stackpos < tile->thingCount()
+                && (tile->appearanceAt(stackpos) || tile->stackCreatureId(stackpos) != 0))
+                return nullptr;
         }
 
-        const auto& tile = g_map.getTile(pos);
         const int thingCount = tile ? tile->getThingCount() : -1;
         // Far-teleport removes often target tiles the client already dropped.
         if (!g_map.isAwareOfPosition(pos)) {
@@ -4057,15 +4275,11 @@ ThingPtr ProtocolGame::getMappedThing(const InputMessagePtr& msg) const
         }
     } else {
         const uint32_t creatureId = msg->getU32();
-        if (const auto& thing = g_map.getCreatureById(creatureId)) {
+        // Id form: LocalPlayer keep-alive only. Callers must use peek.creatureId +
+        // removeCreatureFromFields / placeCreatureId for non-local creatures.
+        if (const auto& thing = g_map.getCreatureById(creatureId))
             return thing;
-        }
-
-        g_logger.traceError(
-            "ProtocolGame::getMappedThing: no creature with id {} (knownCreatures={}); playerPos:{} centralPos:{}",
-            creatureId, g_map.getCreatures().size(),
-            g_game.getLocalPlayer() ? g_game.getLocalPlayer()->getPosition().toString() : "none",
-            g_map.getCentralPosition());
+        return nullptr;
     }
 
     return nullptr;
@@ -4084,29 +4298,40 @@ void ProtocolGame::skipMappedThing(const InputMessagePtr& msg) const
     msg->getU32(); // creature id
 }
 
-CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type) const
+CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type)
 {
+    m_lastParsedCreatureId = 0;
     if (type == 0) {
         type = msg->getU16();
     }
 
     CreaturePtr creature;
+    uint32_t protocolCreatureId = 0;
     const bool known = type != Proto::UnknownCreature;
+    // Phase 5.0-B/C: storage is authority. LocalPlayer is a Game session Thing (no Map registry).
+    // Non-local: no Creature construction — callers use lastParsedCreatureId() + placeCreatureId.
     if (type == Proto::OutdatedCreature || type == Proto::UnknownCreature) {
         if (known) {
-            const uint32_t creatureId = msg->getU32();
-            creature = g_map.getCreatureById(creatureId);
+            protocolCreatureId = msg->getU32();
+            m_lastParsedCreatureId = protocolCreatureId;
+            creature = g_map.getCreatureById(protocolCreatureId); // LocalPlayer keep-alive or null
             if (!creature) {
-                g_logger.traceError("ProtocolGame::getCreature: server said that a creature is known, but it's not");
+                g_logger.traceDebug("ProtocolGame::getCreature: known id {} storage path (no Map keep-alive)",
+                                    protocolCreatureId);
             }
+            tibia::creatures::ensureFromProtocol(protocolCreatureId, {});
         } else {
             const uint32_t removeId = msg->getU32();
-            const uint32_t id = msg->getU32();
+            protocolCreatureId = msg->getU32();
+            const uint32_t id = protocolCreatureId;
+            m_lastParsedCreatureId = id;
 
             if (id == removeId) {
-                creature = g_map.getCreatureById(id);
+                creature = g_map.getCreatureById(id); // LocalPlayer session or null
             } else {
-                g_map.removeCreatureById(removeId);
+                g_map.removeCreatureFromFields(removeId);
+                if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+                    storage->remove(removeId);
             }
 
             uint8_t creatureType;
@@ -4130,50 +4355,30 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type) cons
             }
 
             const auto& name = g_game.formatCreatureName(msg->getString());
+            const bool isPlayer = creatureType == Proto::CreatureTypePlayer;
+            const bool isNpc = creatureType == Proto::CreatureTypeNpc;
 
-            if (!creature) {
-                if ((id == m_localPlayer->getId()) ||
-                    // fixes a bug server side bug where GameInit is not sent and local player id is unknown
-                    (creatureType == Proto::CreatureTypePlayer && !m_localPlayer->getId() && name == m_localPlayer->getName())) {
-                    creature = m_localPlayer;
-                } else {
-                    switch (creatureType) {
-                        case Proto::CreatureTypePlayer:
-                            creature = std::make_shared<Player>();
-                            break;
+            tibia::creatures::ensureFromProtocol(id, QString::fromStdString(name), {},
+                                                 /*direction=*/2, creatureType, isPlayer, isNpc);
 
-                        case Proto::CreatureTypeNpc:
-                            creature = std::make_shared<Npc>();
-                            break;
+            const bool isLocal = (id == m_localPlayer->getId()) ||
+                (creatureType == Proto::CreatureTypePlayer && !m_localPlayer->getId()
+                 && name == m_localPlayer->getName());
 
-                        case Proto::CreatureTypeHidden:
-                        case Proto::CreatureTypeMonster:
-                        case Proto::CreatureTypeSummonOwn:
-                        case Proto::CreatureTypeSummonOther:
-                            creature = std::make_shared<Monster>();
-                            break;
-
-                        default:
-                            g_logger.traceError("ProtocolGame::getCreature: creature type is invalid");
-                    }
-
-                    if (creature) {
-                        creature->onCreate();
-                    }
-                }
-            }
+            if (!creature && isLocal)
+                creature = m_localPlayer;
 
             if (creature) {
+                // LocalPlayer stays a Game session Thing — no Map registry (Phase 5.0-B).
                 creature->setId(id);
                 creature->setName(name);
                 creature->setMasterId(masterId);
-
-                g_map.addCreature(creature);
+                creature->setType(creatureType);
             }
         }
 
         const uint8_t healthPercent = msg->getU8();
-        const auto direction = static_cast<Otc::Direction>(msg->getU8());
+        const auto direction = static_cast<tibia::client::Direction>(msg->getU8());
         const auto& outfit = getOutfit(msg);
 
         Light light;
@@ -4183,17 +4388,23 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type) cons
         const uint16_t speed = msg->getU16();
 
         if (g_game.getClientVersion() >= 1281) {
-            addCreatureIcon(msg, creature->getId());
+            addCreatureIcon(msg, protocolCreatureId != 0 ? protocolCreatureId
+                                                         : (creature ? creature->getId() : 0));
         }
 
         if (g_game.getClientVersion() >= 1530) {
             // AddCreature sends a second icon list (count2) inline; 0x8B type 14 does not.
             std::vector<std::tuple<uint8_t, uint8_t, uint16_t>> icons2;
             readCreatureIconList(msg, icons2);
-            if (creature && !icons2.empty()) {
-                auto icons = creature->getIcons();
-                icons.insert(icons.end(), icons2.begin(), icons2.end());
-                creature->setIcons(icons);
+            if (protocolCreatureId != 0 && !icons2.empty()) {
+                std::vector<std::tuple<uint8_t, uint8_t, uint16_t>> merged = icons2;
+                if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+                    if (const auto row = storage->creatureAt(protocolCreatureId)) {
+                        merged = row->hudIcons();
+                        merged.insert(merged.end(), icons2.begin(), icons2.end());
+                    }
+                }
+                tibia::creatures::protocolSetIcons(protocolCreatureId, merged);
             }
         }
 
@@ -4206,11 +4417,11 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type) cons
         uint8_t icon = 0;
         bool unpass = true;
 
-        if (g_game.getFeature(Otc::GameCreatureEmblems) && !known) {
+        if (g_game.getFeature(tibia::client::GameCreatureEmblems) && !known) {
             emblem = msg->getU8();
         }
 
-        if (g_game.getFeature(Otc::GameThingMarks)) {
+        if (g_game.getFeature(tibia::client::GameThingMarks)) {
             creatureType = msg->getU8();
         }
 
@@ -4223,123 +4434,133 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type) cons
                 }
             } else if (creatureType == Proto::CreatureTypePlayer) {
                 uint8_t vocationId = msg->getU8();
-                creature->setVocation(vocationId);
+                if (protocolCreatureId != 0)
+                    tibia::creatures::protocolSetVocation(protocolCreatureId, vocationId);
             }
         }
 
-        if (g_game.getFeature(Otc::GameCreatureIcons)) {
+        if (g_game.getFeature(tibia::client::GameCreatureIcons)) {
             icon = msg->getU8();
         }
 
-        if (g_game.getFeature(Otc::GameThingMarks)) {
+        if (g_game.getFeature(tibia::client::GameThingMarks)) {
             const uint8_t mark = msg->getU8(); // mark
 
             if (g_game.getClientVersion() < 1281) {
                 msg->getU16(); // helpers
             }
 
-            if (creature) {
-                if (mark == 0xff) {
-                    creature->hideStaticSquare();
-                } else {
-                    creature->showStaticSquare(Color::from8bit(mark));
-                }
+            if (protocolCreatureId != 0) {
+                if (mark == 0xff)
+                    tibia::creatures::protocolHideStaticSquare(protocolCreatureId);
+                else
+                    tibia::creatures::protocolShowStaticSquare(protocolCreatureId, Color::from8bit(mark));
             }
         }
 
         if (g_game.getClientVersion() >= 1281) {
             const uint8_t inspectionType = msg->getU8();
-            if (creature)
-                creature->setInspectionType(inspectionType);
+            if (protocolCreatureId != 0)
+                tibia::creatures::protocolSetInspectionType(protocolCreatureId, inspectionType);
         }
 
         if (g_game.getClientVersion() >= 854) {
             unpass = static_cast<bool>(msg->getU8());
         }
 
-        if (g_game.getFeature(Otc::GameCreaturePaperdoll)) {
+        if (g_game.getFeature(tibia::client::GameCreaturePaperdoll)) {
             uint8_t size = msg->getU8();
             for (uint8_t i = 0; i < size; ++i) {
                 const auto& paperdoll = getPaperdoll(msg);
-                if (creature)
-                    creature->attachPaperdoll(paperdoll);
+                if (protocolCreatureId != 0)
+                    tibia::creatures::protocolAttachPaperdoll(protocolCreatureId, paperdoll);
             }
         }
 
         std::string shader;
-        if (g_game.getFeature(Otc::GameCreatureShader)) {
+        if (g_game.getFeature(tibia::client::GameCreatureShader)) {
             shader = msg->getString();
         }
 
         std::vector<uint16_t> attachedEffectList;
-        if (g_game.getFeature(Otc::GameCreatureAttachedEffect)) {
+        if (g_game.getFeature(tibia::client::GameCreatureAttachedEffect)) {
             const uint8_t listSize = msg->getU8();
             for (auto i = -1; ++i < listSize;) {
                 attachedEffectList.push_back(msg->getU16());
             }
         }
 
-        if (creature) {
-            creature->setHealthPercent(healthPercent);
-            creature->turn(direction);
-            creature->setOutfit(outfit);
-            creature->setSpeed(speed);
-            creature->setSkull(skull);
-            creature->setShield(shield);
-            creature->setPassable(!unpass);
-            creature->setLight(light);
-            creature->setMasterId(masterId);
-            creature->setShader(shader);
-            creature->clearTemporaryAttachedEffects();
-            std::unordered_set<uint16_t> currentAttachedEffectIds;
-            for (const auto& attachedEffect : creature->getAttachedEffects()) {
-                currentAttachedEffectIds.insert(attachedEffect->getId());
+        if (protocolCreatureId != 0) {
+            tibia::creatures::ensureFromProtocol(protocolCreatureId, {}, outfit,
+                                                 static_cast<uint8_t>(direction));
+            tibia::creatures::protocolSetHealthPercent(protocolCreatureId, healthPercent);
+            tibia::creatures::protocolSetDirection(protocolCreatureId, static_cast<uint8_t>(direction));
+            tibia::creatures::protocolSetOutfit(protocolCreatureId, outfit);
+            tibia::creatures::protocolSetSpeed(protocolCreatureId, speed, 0);
+            tibia::creatures::protocolSetSkull(protocolCreatureId, skull);
+            tibia::creatures::protocolSetShield(protocolCreatureId, shield);
+            tibia::creatures::protocolSetPassable(protocolCreatureId, !unpass);
+            tibia::creatures::protocolSetLight(protocolCreatureId, light);
+            if (!shader.empty())
+                tibia::creatures::protocolSetShader(protocolCreatureId, shader);
+            if (emblem > 0) {
+                if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+                    const auto row = storage->getOrCreate(protocolCreatureId);
+                    row->setEmblem(emblem);
+                    storage->publishCreatureUpdated(row);
+                }
             }
+            if (creatureType > 0) {
+                const bool isPlayer = creatureType == Proto::CreatureTypePlayer;
+                const bool isNpc = creatureType == Proto::CreatureTypeNpc;
+                tibia::creatures::ensureFromProtocol(protocolCreatureId, {}, {},
+                                                     static_cast<uint8_t>(direction), creatureType,
+                                                     isPlayer, isNpc);
+            }
+            if (icon > 0)
+                tibia::creatures::protocolSetIcon(protocolCreatureId, icon);
 
+            tibia::creatures::protocolClearTemporaryAttachedEffects(protocolCreatureId);
+            std::unordered_set<uint16_t> currentAttachedEffectIds;
+            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+                if (const auto row = storage->creatureAt(protocolCreatureId)) {
+                    for (const auto& attachedEffect : row->attachedEffects()) {
+                        if (attachedEffect)
+                            currentAttachedEffectIds.insert(attachedEffect->getId());
+                    }
+                }
+            }
             for (const auto effectId : attachedEffectList) {
                 const auto& effect = g_attachedEffects.getById(effectId);
                 if (effect && currentAttachedEffectIds.find(effectId) == currentAttachedEffectIds.end()) {
                     const auto& clonedEffect = effect->clone();
                     clonedEffect->setPermanent(false);
-                    creature->attachEffect(clonedEffect);
+                    tibia::creatures::protocolAttachEffect(protocolCreatureId, clonedEffect);
                 }
             }
+        }
 
-            if (emblem > 0) {
-                creature->setEmblem(emblem);
-            }
-
-            if (creatureType > 0) {
-                creature->setType(creatureType);
-            }
-
-            if (icon > 0) {
-                creature->setIcon(icon);
-            }
-
-            if (creature == m_localPlayer && !m_localPlayer->isKnown()) {
+        if (creature == m_localPlayer) {
+            creature->turn(direction);
+            creature->setOutfit(outfit, true, false);
+            creature->setMasterId(masterId);
+            if (!m_localPlayer->isKnown())
                 m_localPlayer->setKnown(true);
-            }
         }
     } else if (type == Proto::Creature) {
         // this is send creature turn
         const uint32_t creatureId = msg->getU32();
-        creature = g_map.getCreatureById(creatureId);
-        if (!creature) {
-            g_logger.traceError("ProtocolGame::getCreature: invalid creature");
-        }
+        m_lastParsedCreatureId = creatureId;
+        creature = g_map.getCreatureById(creatureId); // LocalPlayer keep-alive or null
 
-        const auto direction = static_cast<Otc::Direction>(msg->getU8());
-        if (creature) {
+        const auto direction = static_cast<tibia::client::Direction>(msg->getU8());
+        tibia::creatures::protocolSetDirection(creatureId, static_cast<uint8_t>(direction));
+        if (creature == m_localPlayer)
             creature->turn(direction);
-        }
 
         if (g_game.getClientVersion() >= 953) {
             const bool unpass = static_cast<bool>(msg->getU8());
-
-            if (creature) {
-                creature->setPassable(!unpass);
-            }
+            tibia::creatures::protocolSetPassable(creatureId, !unpass);
         }
     } else {
         throw Exception("ProtocolGame::getCreature: invalid creature opcode");
@@ -4348,190 +4569,25 @@ CreaturePtr ProtocolGame::getCreature(const InputMessagePtr& msg, int type) cons
     return creature;
 }
 
-ItemPtr ProtocolGame::getItem(const InputMessagePtr& msg, int id)
+tibia::container::TInventorySlot ProtocolGame::getInventorySlot(const InputMessagePtr& msg, int id)
 {
-    if (id == 0) {
-        id = msg->getU16();
+    // Shared wire reader with structured SetInventory fill (ProtocolInventoryItem).
+    const int unread = msg->getUnreadSize();
+    const auto bytes = msg->peekBytes(unread);
+    tibia::protocol::ClassicReader reader{ bytes.data(), bytes.size(), 0 };
+    ::tibia::protobuf::protocol::ProtocolInventoryItem wire;
+    if (!tibia::protocol::readInventoryItem(reader, &wire, id)) {
+        const uint16_t badId = id != 0 ? static_cast<uint16_t>(id)
+                                       : static_cast<uint16_t>(wire.item_id());
+        throw Exception("ProtocolGame::getInventorySlot: unable to resolve item with invalid id {}", badId);
     }
+    msg->skipBytes(static_cast<uint16_t>(reader.i));
+    return tibia::container::TInventorySlot::fromProtocolInventoryItem(wire);
+}
 
-    const auto& item = Item::create(id);
-
-    if (!item) {
-        throw Exception("ProtocolGame::getItem: unable to create item with invalid id {}", id);
-    }
-
-    if (item->getId() == 0) {
-        throw Exception("ProtocolGame::getItem: unable to create item with invalid id {}", id);
-    }
-
-    if (g_game.getClientVersion() < 1281 && g_game.getFeature(Otc::GameThingMarks)) {
-        msg->getU8(); // mark
-    }
-
-    if (item->isStackable() || item->isFluidContainer() || item->isSplash() || item->isChargeable()) {
-        item->setCountOrSubType(g_game.getFeature(Otc::GameCountU16) ? msg->getU16() : msg->getU8());
-    }
-
-    if (g_game.getFeature(Otc::GameItemAnimationPhase)) {
-        if (item->getAnimationPhases() > 1) {
-            // 0x00 => automatic phase
-            // 0xFE => random phase
-            // 0xFF => async phase
-            msg->getU8();
-            //item->setPhase(msg->getU8());
-        }
-    }
-
-    if (item->isContainer()) {
-        if (g_game.getFeature(Otc::GameContainerTypes)) {
-            const uint8_t containerType = msg->getU8(); // container type
-            switch (containerType) {
-                case 1: // Loot Container
-                    item->setManagedContainerFlags(msg->getU32(), 0);
-                    break;
-                case 2: // Content Counter
-                    item->setContainerAmmoTotal(msg->getU32());
-                    break;
-                case 3: // Manager Unknown
-                {
-                    const uint32_t lootFlags = msg->getU32();
-                    item->setManagedContainerFlags(lootFlags, msg->getU32());
-                    break;
-                }
-                case 4: // Loot Highlight
-                {
-                    const auto& attachedEffect = AttachedEffect::create(252, ThingCategoryEffect);
-                    if (attachedEffect) {
-                        attachedEffect->setPermanent(true);
-                        attachedEffect->setOnTop(true);
-                        attachedEffect->setDrawOrder(DrawOrder::FIFTH);
-                        item->attachEffect(attachedEffect);
-                    }
-                    break;
-                }
-                case 8: // Obtain
-                    item->setManagedContainerFlags(0, msg->getU32());
-                    break;
-                case 9: // Manager
-                {
-                    const uint32_t lootFlags = msg->getU32();
-                    item->setManagedContainerFlags(lootFlags, g_game.getClientVersion() >= 1332 ? msg->getU32() : 0);
-                    break;
-                }
-                case 11: // Quiver Loot
-                {
-                    const uint32_t lootFlags = msg->getU32();
-                    item->setContainerAmmoTotal(msg->getU32());
-                    item->setManagedContainerFlags(lootFlags, g_game.getClientVersion() >= 1332 ? msg->getU32() : 0);
-                    break;
-                }
-                default:
-                    break;
-            }
-        } else {
-            if (g_game.getFeature(Otc::GameThingQuickLoot)) {
-                const bool hasQuickLootFlags = static_cast<bool>(msg->getU8());
-                if (hasQuickLootFlags) {
-                    msg->getU32(); // quick loot flags
-                }
-            }
-
-            if (g_game.getFeature(Otc::GameThingQuiver)) {
-                const uint8_t hasQuiverAmmoCount = msg->getU8();
-                if (hasQuiverAmmoCount) {
-                    item->setContainerAmmoTotal(msg->getU32());
-                }
-            }
-        }
-    }
-
-    if (g_game.getFeature(Otc::GameThingPodium)) {
-        if (item->isPodium()) {
-            Outfit podiumOutfit;
-            const uint16_t looktype = msg->getU16();
-            if (looktype != 0) {
-                podiumOutfit.setCategory(ThingCategoryCreature);
-                const uint8_t head = msg->getU8();
-                const uint8_t body = msg->getU8();
-                const uint8_t legs = msg->getU8();
-                const uint8_t feet = msg->getU8();
-                const uint8_t addons = msg->getU8();
-                uint16_t id = looktype;
-                if (!g_things.isValidDatId(id, ThingCategoryCreature)) {
-                    g_logger.traceError("invalid podium looktype {}", id);
-                    id = 0;
-                }
-                podiumOutfit.setId(id);
-                podiumOutfit.setHead(head);
-                podiumOutfit.setBody(body);
-                podiumOutfit.setLegs(legs);
-                podiumOutfit.setFeet(feet);
-                podiumOutfit.setAddons(addons);
-            } else if (g_game.getFeature(Otc::GameThingPodiumItemType)) {
-                uint16_t lookTypeEx = msg->getU16();
-                if (lookTypeEx != 0) {
-                    if (!g_things.isValidDatId(lookTypeEx, ThingCategoryItem)) {
-                        g_logger.traceError("invalid podium looktypeex {}", lookTypeEx);
-                        lookTypeEx = 0;
-                    }
-                    if (lookTypeEx != 0) {
-                        podiumOutfit.setCategory(ThingCategoryItem);
-                        podiumOutfit.setAuxId(lookTypeEx);
-                    }
-                }
-            }
-
-            const uint16_t lookmount = msg->getU16();
-            if (lookmount != 0) {
-                const uint8_t head = msg->getU8();
-                const uint8_t body = msg->getU8();
-                const uint8_t legs = msg->getU8();
-                const uint8_t feet = msg->getU8();
-                podiumOutfit.setMount(lookmount);
-                podiumOutfit.setMountColors(head, body, legs, feet);
-            }
-
-            item->setPodiumOutfit(podiumOutfit);
-            item->setPodiumDirection(msg->getU8());
-            item->setPodiumVisible(msg->getU8() != 0);
-        }
-    }
-
-    if (g_game.getFeature(Otc::GameThingUpgradeClassification)) {
-        if (item->getClassification()) {
-            item->setTier(msg->getU8());
-        }
-    }
-
-    if (g_game.getFeature(Otc::GameThingClock)) {
-        if (item->hasClockExpire() || item->hasExpire() || item->hasExpireStop()) {
-            item->setDurationTime(msg->getU32());
-            item->setBrandNew(msg->getU8() != 0);
-        }
-    }
-
-    if (g_game.getFeature(Otc::GameThingCounter)) {
-        if (item->hasWearOut()) {
-            item->setCharges(msg->getU32());
-            item->setBrandNew(msg->getU8() != 0);
-        }
-    }
-
-    if (g_game.getFeature(Otc::GameWrapKit)) {
-        if (item->isDecoKit()) {
-            item->setDecoItemId(msg->getU16());
-        }
-    }
-
-    if (g_game.getFeature(Otc::GameItemShader)) {
-        item->setShader(msg->getString());
-    }
-
-    if (g_game.getFeature(Otc::GameItemTooltipV8)) {
-        item->setTooltip(msg->getString());
-    }
-
-    return item;
+tibia::appearances::TAppearanceInstancePtr ProtocolGame::getItemAppearance(const InputMessagePtr& msg, const int id)
+{
+    return getInventorySlot(msg, id).appearance;
 }
 
 Position ProtocolGame::getPosition(const InputMessagePtr& msg)
@@ -4548,7 +4604,7 @@ void ProtocolGame::parseShowDescription(const InputMessagePtr& msg)
     const uint32_t offerId = msg->getU32();
     const auto& offerdescription = msg->getString();
 
-    g_gameEvents.callGlobalField("g_game", "onParseStoreOfferDescriptions", offerId, offerdescription);
+    tibia::game::notify("onParseStoreOfferDescriptions", offerId, offerdescription);
 }
 
 void ProtocolGame::parseBestiaryTracker(const InputMessagePtr& msg)
@@ -4570,7 +4626,7 @@ void ProtocolGame::parseBestiaryTracker(const InputMessagePtr& msg)
         trackerData.emplace_back(raceID, killCount, firstUnlock, secondUnlock, lastUnlock, status);
     }
 
-    g_gameEvents.callGlobalField("g_game", "onParseCyclopediaTracker", trackerType, trackerData);
+    tibia::game::notify("onParseCyclopediaTracker", trackerType, trackerData);
 }
 
 namespace
@@ -4640,7 +4696,7 @@ namespace
 
     std::vector<uint16_t> getAllMonsterRaceIds()
     {
-        const auto& races = g_things.getAllRaces();
+        const auto& races = tibia::game::getAllRaces();
         std::vector<uint16_t> raceIds;
         raceIds.reserve(races.size());
 
@@ -4712,7 +4768,7 @@ namespace
 
     std::vector<TaskBoardSoulsealEntryData> buildTaskBoardSoulsealEntries(TaskBoardRaceIdSet&& masteredRaceIds)
     {
-        const auto& races = g_things.getAllRaces();
+        const auto& races = tibia::game::getAllRaces();
         std::vector<TaskBoardSoulsealEntryData> entries;
         entries.reserve(races.size());
 
@@ -4727,7 +4783,7 @@ namespace
         }
 
         for (const auto raceId : masteredRaceIds) {
-            entries.emplace_back(makeTaskBoardSoulsealEntry(raceId, g_things.getRaceData(raceId), true));
+            entries.emplace_back(makeTaskBoardSoulsealEntry(raceId, tibia::game::raceData(raceId), true));
         }
 
         return entries;
@@ -4841,15 +4897,15 @@ namespace
 
 void ProtocolGame::parseTaskBoardData(const InputMessagePtr& msg)
 {
-    const auto subtype = static_cast<Otc::TaskBoardType_t>(msg->getU8());
+    const auto subtype = static_cast<tibia::client::TaskBoardType_t>(msg->getU8());
     switch (subtype) {
-        case Otc::TASK_BOARD_BOUNTY:
+        case tibia::client::TASK_BOARD_BOUNTY:
             parseTaskBoardBountyData(msg);
             break;
-        case Otc::TASK_BOARD_WEEKLY:
+        case tibia::client::TASK_BOARD_WEEKLY:
             parseTaskBoardWeeklyData(msg);
             break;
-        case Otc::TASK_BOARD_HUNT_SHOP:
+        case tibia::client::TASK_BOARD_HUNT_SHOP:
             parseTaskBoardShopData(msg);
             break;
         default:
@@ -4885,8 +4941,8 @@ void ProtocolGame::parseTaskBoardBountyData(const InputMessagePtr& msg)
     }
 
     headerData.rerollPoints = msg->getU8();
-    const auto rerollMode = static_cast<Otc::TaskBoardBountyRerollMode_t>(msg->getU8());
-    headerData.claimDaily = rerollMode == Otc::TASK_BOARD_BOUNTY_REROLL_DAILY_CLAIMABLE ? 1 : 0;
+    const auto rerollMode = static_cast<tibia::client::TaskBoardBountyRerollMode_t>(msg->getU8());
+    headerData.claimDaily = rerollMode == tibia::client::TASK_BOARD_BOUNTY_REROLL_DAILY_CLAIMABLE ? 1 : 0;
     headerData.difficulty = std::clamp<uint8_t>(msg->getU8() + 1, 1, 4);
 
     talismans.reserve(TASK_BOARD_TALISMAN_PATHS);
@@ -4931,7 +4987,7 @@ void ProtocolGame::parseTaskBoardBountyData(const InputMessagePtr& msg)
         talismanData.emplace_back(toTalismanMap(talisman));
     }
 
-    g_gameEvents.callGlobalField("g_game", "onBountyTaskData", toBountyHeaderMap(headerData), monsterData, talismanData);
+    tibia::game::notify("onBountyTaskData", toBountyHeaderMap(headerData), monsterData, talismanData);
 
     std::vector<std::map<std::string, uint32_t>> preferredSlotData;
     preferredSlotData.reserve(preferredSlots.size());
@@ -4939,7 +4995,7 @@ void ProtocolGame::parseTaskBoardBountyData(const InputMessagePtr& msg)
         preferredSlotData.emplace_back(toPreferredSlotMap(slot));
     }
 
-    g_gameEvents.callGlobalField("g_game", "onBountyPreferredData", preferredSlotData, 0, getAllMonsterRaceIds());
+    tibia::game::notify("onBountyPreferredData", preferredSlotData, 0, getAllMonsterRaceIds());
 }
 
 void ProtocolGame::parseTaskBoardWeeklyData(const InputMessagePtr& msg)
@@ -5022,7 +5078,7 @@ void ProtocolGame::parseTaskBoardWeeklyData(const InputMessagePtr& msg)
         itemData.emplace_back(toWeeklyItemMap(item));
     }
 
-    g_gameEvents.callGlobalField("g_game", "onWeeklyTaskData", headerMap, monsterData, itemData);
+    tibia::game::notify("onWeeklyTaskData", headerMap, monsterData, itemData);
 }
 
 void ProtocolGame::parseTaskBoardShopData(const InputMessagePtr& msg)
@@ -5035,43 +5091,43 @@ void ProtocolGame::parseTaskBoardShopData(const InputMessagePtr& msg)
         TaskBoardShopItemData item;
         item.id = i;
 
-        const auto offerType = static_cast<Otc::TaskBoardShopOfferType_t>(msg->getU8());
+        const auto offerType = static_cast<tibia::client::TaskBoardShopOfferType_t>(msg->getU8());
         item.offerType = static_cast<uint8_t>(offerType);
 
-        if (offerType == Otc::TASK_BOARD_SHOP_OFFER_BONUS_PROMOTION) {
+        if (offerType == tibia::client::TASK_BOARD_SHOP_OFFER_BONUS_PROMOTION) {
             const uint16_t purchasedDisplayValue = msg->getU16();
             item.nextCost = msg->getU32();
             const uint8_t status = msg->getU8();
 
             item.price = item.nextCost;
             item.currentPurchases = purchasedDisplayValue > 0 ? purchasedDisplayValue - 1 : 0;
-            item.bought = (status == Otc::TASK_BOARD_SHOP_STATUS_BOUGHT || item.nextCost == 0) ? 1 : 0;
+            item.bought = (status == tibia::client::TASK_BOARD_SHOP_STATUS_BOUGHT || item.nextCost == 0) ? 1 : 0;
         } else {
             item.title = msg->getString();
             item.description = msg->getString();
             const uint32_t looktypeOrItemId = msg->getU32();
 
             uint8_t addons = 0;
-            if (offerType == Otc::TASK_BOARD_SHOP_OFFER_OUTFIT) {
+            if (offerType == tibia::client::TASK_BOARD_SHOP_OFFER_OUTFIT) {
                 addons = msg->getU8();
             }
 
-            if (offerType == Otc::TASK_BOARD_SHOP_OFFER_ITEM_DOUBLE)
+            if (offerType == tibia::client::TASK_BOARD_SHOP_OFFER_ITEM_DOUBLE)
                 item.optionalItemId = msg->getU32();
 
             item.price = msg->getU32();
             const uint8_t status = msg->getU8();
 
-            if (offerType == Otc::TASK_BOARD_SHOP_OFFER_OUTFIT) {
+            if (offerType == tibia::client::TASK_BOARD_SHOP_OFFER_OUTFIT) {
                 item.lookType = looktypeOrItemId;
                 item.lookAddons = addons;
-            } else if (offerType == Otc::TASK_BOARD_SHOP_OFFER_MOUNT) {
+            } else if (offerType == tibia::client::TASK_BOARD_SHOP_OFFER_MOUNT) {
                 item.lookType = looktypeOrItemId;
             } else {
                 item.itemId = looktypeOrItemId;
             }
 
-            item.bought = status == Otc::TASK_BOARD_SHOP_STATUS_BOUGHT ? 1 : 0;
+            item.bought = status == tibia::client::TASK_BOARD_SHOP_STATUS_BOUGHT ? 1 : 0;
         }
 
         shopItems.emplace_back(item);
@@ -5083,14 +5139,14 @@ void ProtocolGame::parseTaskBoardShopData(const InputMessagePtr& msg)
         shopData.emplace_back(toShopItemMap(item));
     }
 
-    g_gameEvents.callGlobalField("g_game", "onTaskHuntingShopData", shopData);
+    tibia::game::notify("onTaskHuntingShopData", shopData);
 }
 
 void ProtocolGame::parseTaskHuntingBasicData(const InputMessagePtr& msg)
 {
-    if (g_game.getFeature(Otc::GameTaskboard)) {
+    if (g_game.getFeature(tibia::client::GameTaskboard)) {
         auto soulsealEntries = buildTaskBoardSoulsealEntries(readTaskBoardMasteredRaceIds(msg));
-        g_gameEvents.callGlobalField("g_game", "onSoulsealsData", soulsealEntries);
+        tibia::game::notify("onSoulsealsData", soulsealEntries);
     } else {
         const uint16_t preys = msg->getU16();
         for (auto i = 0; std::cmp_less(i, preys); ++i) {
@@ -5112,17 +5168,17 @@ void ProtocolGame::parseTaskHuntingBasicData(const InputMessagePtr& msg)
 void ProtocolGame::parseTaskHuntingData(const InputMessagePtr& msg)
 {
     msg->getU8(); // slot
-    const auto state = static_cast<Otc::PreyTaskstate_t>(msg->getU8()); // slot state
+    const auto state = static_cast<tibia::client::PreyTaskstate_t>(msg->getU8()); // slot state
 
     switch (state) {
-        case Otc::PREY_TASK_STATE_LOCKED:
+        case tibia::client::PREY_TASK_STATE_LOCKED:
         {
             msg->getU8(); // task slot unlocked
             break;
         }
-        case Otc::PREY_TASK_STATE_INACTIVE:
+        case tibia::client::PREY_TASK_STATE_INACTIVE:
             break;
-        case Otc::PREY_TASK_STATE_SELECTION:
+        case tibia::client::PREY_TASK_STATE_SELECTION:
         {
             const uint16_t creatures = msg->getU16();
             for (auto i = 0; i < creatures; ++i) {
@@ -5131,7 +5187,7 @@ void ProtocolGame::parseTaskHuntingData(const InputMessagePtr& msg)
             }
             break;
         }
-        case Otc::PREY_TASK_STATE_LIST_SELECTION:
+        case tibia::client::PREY_TASK_STATE_LIST_SELECTION:
         {
             const uint16_t creatures = msg->getU16();
             for (auto i = 0; i < creatures; ++i) {
@@ -5140,7 +5196,7 @@ void ProtocolGame::parseTaskHuntingData(const InputMessagePtr& msg)
             }
             break;
         }
-        case Otc::PREY_TASK_STATE_ACTIVE:
+        case tibia::client::PREY_TASK_STATE_ACTIVE:
         {
             msg->getU16(); // RaceID
             msg->getU8(); // Upgraded
@@ -5149,7 +5205,7 @@ void ProtocolGame::parseTaskHuntingData(const InputMessagePtr& msg)
             msg->getU8(); // Stars
             break;
         }
-        case Otc::PREY_TASK_STATE_COMPLETED:
+        case tibia::client::PREY_TASK_STATE_COMPLETED:
         {
             msg->getU16(); // RaceID
             msg->getU8(); // Upgraded
@@ -5170,7 +5226,7 @@ void ProtocolGame::parseExperienceTracker(const InputMessagePtr& msg)
     const int64_t rawExp = msg->get64();
     const int64_t finalExp = msg->get64();
 
-    g_gameEvents.callGlobalField("g_game", "onUpdateExperience", rawExp, finalExp);
+    tibia::game::notify("onUpdateExperience", rawExp, finalExp);
 }
 
 void ProtocolGame::parseLootContainers(const InputMessagePtr& msg)
@@ -5191,23 +5247,27 @@ void ProtocolGame::parseLootContainers(const InputMessagePtr& msg)
         lootList.emplace_back(categoryType, lootContainerId, obtainerContainerId);
     }
 
-    g_gameEvents.callGlobalField("g_game", "onQuickLootContainers", quickLootFallbackToMainContainer, lootList);
+    tibia::game::notify("onQuickLootContainers", quickLootFallbackToMainContainer, lootList);
 }
 
 void ProtocolGame::parseMonkData(const InputMessagePtr& msg) {
-    const auto subtype = static_cast<Otc::VocationMonkTypes_t>(msg->getU8());
+    const auto subtype = static_cast<tibia::client::VocationMonkTypes_t>(msg->getU8());
     switch (subtype) {
-        case Otc::TYPES_MONK_HARMONY: {
+        case tibia::client::TYPES_MONK_HARMONY: {
             const uint8_t harmonyValue = msg->getU8();
             m_localPlayer->setHarmony(harmonyValue);
+            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+                storage->syncLocalPlayerStatsFromMap();
             break;
         }
-        case Otc::TYPES_MONK_SERENE: {
+        case tibia::client::TYPES_MONK_SERENE: {
             const auto hasSerene = static_cast<bool>(msg->getU8());
             m_localPlayer->setSerene(hasSerene);
+            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+                storage->syncLocalPlayerStatsFromMap();
             break;
         }
-        case Otc::TYPES_MONK_VIRTUE: {
+        case tibia::client::TYPES_MONK_VIRTUE: {
             // 15.25+: [u8 count]{u16 spellId} — stance highlight whole-replace list.
             // Emit onVirtuesYellowBorder for action bar / spell list / helper.
             const uint8_t virtueCount = msg->getU8();
@@ -5216,7 +5276,7 @@ void ProtocolGame::parseMonkData(const InputMessagePtr& msg) {
             for (uint8_t i = 0; i < virtueCount; ++i) {
                 spellIds.push_back(msg->getU16());
             }
-            g_gameEvents.callGlobalField("g_game", "onVirtuesYellowBorder", spellIds);
+            tibia::game::notify("onVirtuesYellowBorder", spellIds);
             break;
         }
         default:
@@ -5231,7 +5291,7 @@ void ProtocolGame::parseCyclopediaHouseAuctionMessage(const InputMessagePtr& msg
     const uint8_t errorCode = msg->getU8();
     // only a successful bid carries whether another bidder's limit was higher
     const bool outbidden = typeValue == 1 && errorCode == 0 && msg->getU8() != 0;
-    g_gameEvents.callGlobalField("g_game", "onCyclopediaHouseAuctionMessage", houseId, typeValue, errorCode, outbidden);
+    tibia::game::notify("onCyclopediaHouseAuctionMessage", houseId, typeValue, errorCode, outbidden);
 }
 
 void ProtocolGame::parseCyclopediaHousesInfo(const InputMessagePtr& msg)
@@ -5253,7 +5313,7 @@ void ProtocolGame::parseCyclopediaHousesInfo(const InputMessagePtr& msg)
     for (auto i = 0; i < housesList; ++i) {
         otherHouses.push_back(msg->getU32());
     }
-    g_gameEvents.callGlobalField("g_game", "onCyclopediaHousesInfo", excludedUntil, counts, shownHouses, otherHouses);
+    tibia::game::notify("onCyclopediaHousesInfo", excludedUntil, counts, shownHouses, otherHouses);
 }
 
 void ProtocolGame::parseCyclopediaHouseList(const InputMessagePtr& msg)
@@ -5266,8 +5326,8 @@ void ProtocolGame::parseCyclopediaHouseList(const InputMessagePtr& msg)
         house.isRentable = msg->getU8() != 0;
 
         house.state = msg->getU8();
-        switch (static_cast<Otc::CyclopediaHouseState_t>(house.state)) {
-            case Otc::CYCLOPEDIA_HOUSE_STATE_AVAILABLE: {
+        switch (static_cast<tibia::client::CyclopediaHouseState_t>(house.state)) {
+            case tibia::client::CYCLOPEDIA_HOUSE_STATE_AVAILABLE: {
                 house.bidderName = msg->getString();
                 house.isBidder = static_cast<bool>(msg->getU8());
                 house.bidDisableReason = msg->getU8();
@@ -5281,9 +5341,9 @@ void ProtocolGame::parseCyclopediaHouseList(const InputMessagePtr& msg)
                 }
                 break;
             }
-            case Otc::CYCLOPEDIA_HOUSE_STATE_RENTED:
-            case Otc::CYCLOPEDIA_HOUSE_STATE_TRANSFER:
-            case Otc::CYCLOPEDIA_HOUSE_STATE_MOVEOUT: {
+            case tibia::client::CYCLOPEDIA_HOUSE_STATE_RENTED:
+            case tibia::client::CYCLOPEDIA_HOUSE_STATE_TRANSFER:
+            case tibia::client::CYCLOPEDIA_HOUSE_STATE_MOVEOUT: {
                 house.ownerName = msg->getString();
                 house.paidUntil = msg->getU32();
                 house.isOwner = static_cast<bool>(msg->getU8());
@@ -5292,7 +5352,7 @@ void ProtocolGame::parseCyclopediaHouseList(const InputMessagePtr& msg)
                     house.transferDisableReason = msg->getU8();
                 }
 
-                if (house.state == Otc::CYCLOPEDIA_HOUSE_STATE_TRANSFER) {
+                if (house.state == tibia::client::CYCLOPEDIA_HOUSE_STATE_TRANSFER) {
                     house.transferDate = msg->getU32();
                     house.newOwnerName = msg->getString();
                     house.newOwnerAccepted = msg->getU8() != 0;
@@ -5305,7 +5365,7 @@ void ProtocolGame::parseCyclopediaHouseList(const InputMessagePtr& msg)
                     if (house.isOwner) {
                         house.cancelTransferDisableReason = msg->getU8();
                     }
-                } else if (house.state == Otc::CYCLOPEDIA_HOUSE_STATE_MOVEOUT) {
+                } else if (house.state == tibia::client::CYCLOPEDIA_HOUSE_STATE_MOVEOUT) {
                     house.moveOutDate = msg->getU32();
                     if (house.isOwner) {
                         house.cancelMoveOutDisableReason = msg->getU8();
@@ -5317,7 +5377,7 @@ void ProtocolGame::parseCyclopediaHouseList(const InputMessagePtr& msg)
                 break;
         }
     }
-    g_gameEvents.callGlobalField("g_game", "onCyclopediaHouseList", houses);
+    tibia::game::notify("onCyclopediaHouseList", houses);
 }
 
 void ProtocolGame::parseSupplyStash(const InputMessagePtr& msg)
@@ -5334,17 +5394,17 @@ void ProtocolGame::parseSupplyStash(const InputMessagePtr& msg)
         msg->getU16(); // free slots
     }
 
-    g_gameEvents.callGlobalField("g_game", "onSupplyStashEnter", stashItems);
+    tibia::game::notify("onSupplyStashEnter", stashItems);
 }
 
 void ProtocolGame::parseSpecialContainer(const InputMessagePtr& msg)
 {
-    const auto& player = g_game.getLocalPlayer();
+    const auto& player = tibia::game::localPlayer();
     const bool stash = msg->getU8();
     const bool market = g_game.getProtocolVersion() >= 1220 && msg->getU8();
     player->setSupplyStashAvailable(stash);
     player->setMarketAvailable(market);
-    g_gameEvents.callGlobalField("g_game", "onSpecialContainersAvailable", stash, market);
+    tibia::game::notify("onSpecialContainersAvailable", stash, market);
 }
 
 void ProtocolGame::parsePartyAnalyzer(const InputMessagePtr& msg)
@@ -5383,12 +5443,12 @@ void ProtocolGame::parsePartyAnalyzer(const InputMessagePtr& msg)
     }
 
     // Every update, for frontends that keep the latest state (the Lua callback below is throttled).
-    g_gameEvents.callGlobalField("g_game", "onPartyAnalyzerUpdate", startTime, leaderID, lootType, membersData, membersName);
+    tibia::game::notify("onPartyAnalyzerUpdate", startTime, leaderID, lootType, membersData, membersName);
 
     // Execute callback only if cooldown has expired
     if (shouldExecuteCallback) {
         m_lastPartyAnalyzerCall = currentTime;
-        g_gameEvents.callGlobalField("g_game", "onPartyAnalyzer", startTime, leaderID, lootType, membersData, membersName);
+        tibia::game::notify("onPartyAnalyzer", startTime, leaderID, lootType, membersData, membersName);
     }
 }
 
@@ -5399,7 +5459,13 @@ void ProtocolGame::parseImbuementDurations(const InputMessagePtr& msg)
 
     for (auto i = 0; i < itemListCount; ++i) {
         ImbuementTrackerItem item(msg->getU8()); // slot
-        item.item = getItem(msg);
+        {
+            const auto slot = getInventorySlot(msg);
+            item.typeId = slot.typeId;
+            item.count = slot.stackable ? slot.count : 1;
+            item.tier = slot.tier;
+            item.fluidOrSubtype = slot.fluidOrSplash ? slot.fluid : 0;
+        }
 
         std::map<uint8_t, ImbuementSlot> slots;
 
@@ -5428,21 +5494,26 @@ void ProtocolGame::parseImbuementDurations(const InputMessagePtr& msg)
         itemList.emplace_back(item);
     }
 
-    g_gameEvents.callGlobalField("g_game", "onUpdateImbuementTracker", itemList);
+    tibia::game::notify("onUpdateImbuementTracker", itemList);
 }
 
 void ProtocolGame::parsePassiveCooldown(const InputMessagePtr& msg)
 {
-    msg->getU8();
-    const uint8_t unknownType = msg->getU8();
-    if (unknownType == 0) {
-        uint32_t currentCooldown = msg->getU32(); // timestamp (partial) - current cooldown
-        uint32_t maxCooldown = msg->getU32();     // timestamp (total) - max cooldown
-        bool canDecay = msg->getU8();             // (bool) timer is running? => used as canDecay
-        g_gameEvents.callGlobalField("g_game", "onPassiveData", currentCooldown, maxCooldown, canDecay);
-    } else if (unknownType == 1) {
-        msg->getU8(); // unknown
-        msg->getU8(); // unknown
+    // CIP PassiveAbilityData (S 0x5E). Crystal must match this CIP layout
+    // (abilityId, cooldownEnum, remainingMs, totalMs, decaying) — do not bend qtclient.
+    const uint8_t abilityId = msg->getU8();
+    const uint8_t cooldownEnum = msg->getU8();
+    if (cooldownEnum == 0) {
+        const uint32_t remainingMs = msg->getU32();
+        const uint32_t totalMs = msg->getU32();
+        const bool decaying = msg->getU8() != 0;
+        if (auto* storage = tibia::game::TCooldownStorage::instance())
+            storage->applyPassiveAbilityData(int(abilityId), remainingMs, totalMs, decaying);
+        else
+            tibia::game::notify("onPassiveData", int(abilityId), remainingMs, totalMs, decaying);
+    } else if (cooldownEnum == 1) {
+        msg->getU8();
+        msg->getU8();
     }
 }
 
@@ -5456,7 +5527,7 @@ void ProtocolGame::parseClientCheck(const InputMessagePtr& msg)
         data.push_back(msg->getU8());
     // Acknowledge with the CIP client opcode (C 0x63).
     sendClientCheck(data);
-    g_gameEvents.callGlobalField("g_game", "onClientCheck", data);
+    tibia::game::notify("onClientCheck", data);
 }
 
 void ProtocolGame::parseSpellDataModification(const InputMessagePtr& msg)
@@ -5477,20 +5548,20 @@ void ProtocolGame::parseSpellDataModification(const InputMessagePtr& msg)
     }
     const uint16_t firstSpell = entries.empty() ? 0 : std::get<0>(entries[0]);
     const uint8_t firstFlags = entries.empty() ? 0 : std::get<1>(entries[0]);
-    g_gameEvents.callGlobalField("g_game", "onSpellDataModification", firstSpell, firstFlags);
+    tibia::game::notify("onSpellDataModification", firstSpell, firstFlags);
 }
 
 void ProtocolGame::parseServerStop(const InputMessagePtr&)
 {
     // CIP Stop (S 0xBC) — empty server-forced stop.
-    g_gameEvents.callGlobalField("g_game", "onServerStop");
+    tibia::game::notify("onServerStop");
 }
 
 void ProtocolGame::parseGemAtelierGemRevealed(const InputMessagePtr& msg)
 {
     // CIP GemAtelierGemRevealed (S 0xC5): u32 gem id (protobuf field 1).
     const uint32_t gemId = msg->getU32();
-    g_gameEvents.callGlobalField("g_game", "onGemAtelierGemRevealed", gemId);
+    tibia::game::notify("onGemAtelierGemRevealed", gemId);
 }
 
 void ProtocolGame::parseTransactionDetails(const InputMessagePtr& msg)
@@ -5506,7 +5577,7 @@ void ProtocolGame::parseTransactionDetails(const InputMessagePtr& msg)
         details = msg->getString();
     while (msg->getUnreadSize() > 0)
         msg->getU8();
-    g_gameEvents.callGlobalField("g_game", "onTransactionDetails", transactionId, details);
+    tibia::game::notify("onTransactionDetails", transactionId, details);
 }
 
 void ProtocolGame::parseHirelingNameChange(const InputMessagePtr& msg)
@@ -5519,15 +5590,19 @@ void ProtocolGame::parseHirelingNameChange(const InputMessagePtr& msg)
         creatureId = msg->getU32();
     if (msg->getUnreadSize() >= 4)
         objectId = msg->getU32();
-    g_gameEvents.callGlobalField("g_game", "onHirelingNameChange", creatureId, objectId);
+    tibia::game::notify("onHirelingNameChange", creatureId, objectId);
 }
 
 void ProtocolGame::parseGameNews(const InputMessagePtr& msg)
 {
-    msg->getU32(); // category id
-    msg->getU8(); // page number
-
-    // TODO: implement game news usage
+    // CIP GameserverMessageShowGameNews (Crystal must match qtclient):
+    // u32 news type (ENewsType / EDialogTab), u8 mode (0 = open dialog, 1 = highlight only).
+    const uint32_t newsType = msg->getU32();
+    const bool notificationOnly = msg->getU8() != 0;
+    if (auto* news = tibia::gamewindow::TNewsButtonController::instance())
+        news->onShowGameNews(static_cast<int>(newsType), notificationOnly);
+    else
+        tibia::game::notify("onGameNews", static_cast<int>(newsType), notificationOnly);
 }
 
 static void readTeamFinderTypeFields(const InputMessagePtr& msg, const uint8_t teamType, uint16_t& bossID, uint16_t& huntType, uint16_t& huntArea, uint16_t& questID)
@@ -5616,7 +5691,7 @@ void ProtocolGame::parseDepotSearchResults(const InputMessagePtr& msg)
     for (uint16_t i = 0; i < count; ++i) {
         DepotSearchResultItem item;
         item.itemId = msg->getU16();
-        if (const auto& thing = g_things.getThingType(item.itemId, ThingCategoryItem)) {
+        if (const auto& thing = tibia::game::thingType(item.itemId, ThingCategoryItem)) {
             if (thing->getClassification() > 0)
                 item.tier = msg->getU8();
         }
@@ -5631,7 +5706,7 @@ void ProtocolGame::parseDepotSearchDetailList(const InputMessagePtr& msg)
 {
     DepotSearchDetail detail;
     detail.itemId = msg->getU16();
-    if (const auto& thing = g_things.getThingType(detail.itemId, ThingCategoryItem)) {
+    if (const auto& thing = tibia::game::thingType(detail.itemId, ThingCategoryItem)) {
         if (thing->getClassification() > 0)
             detail.tier = msg->getU8();
     }
@@ -5639,14 +5714,18 @@ void ProtocolGame::parseDepotSearchDetailList(const InputMessagePtr& msg)
     detail.depotCount = msg->getU32();
     const uint8_t depotSize = msg->getU8();
     detail.depotItems.reserve(depotSize);
-    for (uint8_t i = 0; i < depotSize; ++i)
-        detail.depotItems.push_back(getItem(msg));
+    for (uint8_t i = 0; i < depotSize; ++i) {
+        const auto slot = getInventorySlot(msg);
+        detail.depotItems.emplace_back(slot.typeId, slot.tier);
+    }
 
     detail.inboxCount = msg->getU32();
     const uint8_t inboxSize = msg->getU8();
     detail.inboxItems.reserve(inboxSize);
-    for (uint8_t i = 0; i < inboxSize; ++i)
-        detail.inboxItems.push_back(getItem(msg));
+    for (uint8_t i = 0; i < inboxSize; ++i) {
+        const auto slot = getInventorySlot(msg);
+        detail.inboxItems.emplace_back(slot.typeId, slot.tier);
+    }
 
     detail.hasStash = msg->getU8() != 0;
     if (detail.hasStash) {
@@ -5694,7 +5773,7 @@ void ProtocolGame::parseBlessDialog(const InputMessagePtr& msg)
         data.logs.emplace_back(log);
     }
 
-    g_gameEvents.callGlobalField("g_game", "onUpdateBlessDialog", data);
+    tibia::game::notify("onUpdateBlessDialog", data);
 }
 
 void ProtocolGame::parseRestingAreaState(const InputMessagePtr& msg)
@@ -5703,7 +5782,7 @@ void ProtocolGame::parseRestingAreaState(const InputMessagePtr& msg)
     const uint8_t state = msg->getU8();
     const auto& message = msg->getString();
 
-    g_gameEvents.callGlobalField("g_game", "onRestingAreaState", zone, state, message);
+    tibia::game::notify("onRestingAreaState", zone, state, message);
 }
 
 void ProtocolGame::parseUpdateImpactTracker(const InputMessagePtr& msg)
@@ -5722,7 +5801,7 @@ void ProtocolGame::parseUpdateImpactTracker(const InputMessagePtr& msg)
     }
 
     // Call the onImpactTracker callback to expose the data to Lua
-    g_gameEvents.callGlobalField("g_game", "onImpactTracker", analyzerType, amount, effect, target);
+    tibia::game::notify("onImpactTracker", analyzerType, amount, effect, target);
 }
 
 void ProtocolGame::parseItemsPrice(const InputMessagePtr& msg)
@@ -5735,11 +5814,10 @@ void ProtocolGame::parseItemsPrice(const InputMessagePtr& msg)
         uint8_t tier = 0;
         uint64_t price = 0;
         if (g_game.getClientVersion() >= 1281) {
-            const auto& item = Item::create(itemId);
-
             // note: vanilla client allows made-up client ids
             // their classification is assumed as 0
-            if (item && item->getId() != 0 && item->getClassification() > 0) {
+            if (const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem);
+                thing && thing->getClassification() > 0) {
                 tier = msg->getU8();
             }
             price = msg->getU64(); // price
@@ -5750,7 +5828,7 @@ void ProtocolGame::parseItemsPrice(const InputMessagePtr& msg)
             prices[itemId] = price;
     }
 
-    g_gameEvents.callGlobalField("g_game", "onItemsPrice", prices);
+    tibia::game::notify("onItemsPrice", prices);
 }
 
 void ProtocolGame::parseUpdateSupplyTracker(const InputMessagePtr& msg)
@@ -5758,27 +5836,26 @@ void ProtocolGame::parseUpdateSupplyTracker(const InputMessagePtr& msg)
     const auto itemId = msg->getU16(); // item client ID
 
     // Call the onSupplyTracker callback to expose the data to Lua
-    g_gameEvents.callGlobalField("g_game", "onSupplyTracker", itemId);
+    tibia::game::notify("onSupplyTracker", itemId);
 }
 
 void ProtocolGame::parseUpdateLootTracker(const InputMessagePtr& msg)
 {
-    const auto& item = getItem(msg);
+    const auto slot = getInventorySlot(msg);
     const auto& itemName = msg->getString();
-
-    // Call the onLootStats callback to expose the data to Lua
-    g_gameEvents.callGlobalField("g_game", "onLootStats", item, itemName);
+    const uint16_t lootCount = slot.stackable ? std::max<uint16_t>(1, slot.count) : 1;
+    tibia::game::notify("onLootStats", slot.typeId, lootCount, itemName);
 }
 
 void ProtocolGame::parseBestiaryEntryChanged(const InputMessagePtr& msg)
 {
     const uint16_t raceId = msg->getU16();
-    g_gameEvents.callGlobalField("g_game", "onBestiaryEntryChanged", raceId);
+    tibia::game::notify("onBestiaryEntryChanged", raceId);
 }
 
 void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
 {
-    const auto type = static_cast<Otc::CyclopediaCharacterInfoType_t>(msg->getU8());
+    const auto type = static_cast<tibia::client::CyclopediaCharacterInfoType_t>(msg->getU8());
 
     // 0: Send no error
     // 1: No data available at the moment.
@@ -5786,33 +5863,33 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
     // 3: You are not allowed to inspect this character.
     const uint8_t errorCode = msg->getU8();
     if (errorCode > 0) {
-        g_gameEvents.callGlobalField("g_game", "onCyclopediaCharacterInfoError", static_cast<int>(type), static_cast<int>(errorCode));
+        tibia::game::notify("onCyclopediaCharacterInfoError", static_cast<int>(type), static_cast<int>(errorCode));
         return;
     }
 
     switch (type) {
-        case Otc::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION:
         {
             const auto& name = msg->getString();
             const auto& vocation = msg->getString();
             const uint16_t level = msg->getU16();
             const auto& outfit = getOutfit(msg, false);
             const bool ownCharacter = msg->getU8() != 0; // store summary & titles visible
-            if (g_game.getFeature(Otc::GameTournamentPackets)) {
+            if (g_game.getFeature(tibia::client::GameTournamentPackets)) {
                 msg->getU8(); // ???
             }
             const auto& title = msg->getString();
-            g_gameEvents.callGlobalField("g_game", "onCyclopediaCharacterBaseInformation", name, vocation, level, outfit, ownCharacter, title);
+            tibia::game::notify("onCyclopediaCharacterBaseInformation", name, vocation, level, outfit, ownCharacter, title);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_GENERALSTATS:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_GENERALSTATS:
         {
             CyclopediaCharacterGeneralStats stats;
             stats.experience = msg->getU64();
             stats.level = msg->getU16();
-            stats.levelPercent = g_game.getFeature(Otc::GameLevelPercentU16) ? msg->getU16() / 100 : msg->getU8();
+            stats.levelPercent = g_game.getFeature(tibia::client::GameLevelPercentU16) ? msg->getU16() / 100 : msg->getU8();
             stats.baseExpGain = msg->getU16();
-            if (g_game.getFeature(Otc::GameTournamentPackets)) {
+            if (g_game.getFeature(tibia::client::GameTournamentPackets)) {
                 msg->getU32(); // tournament exp(deprecated)
             }
             stats.lowLevelExpBonus = msg->getU16();
@@ -5842,7 +5919,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
 
             std::vector<std::vector<uint16_t>> skills;
 
-            for (int_fast32_t skill = Otc::Fist; skill <= Otc::Fishing; ++skill) {
+            for (int_fast32_t skill = tibia::client::Fist; skill <= tibia::client::Fishing; ++skill) {
                 msg->getU8(); // Hardcoded Skill Ids
                 const uint16_t skillLevel = msg->getU16();
                 const uint16_t baseSkill = msg->getU16();
@@ -5863,15 +5940,15 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterGeneralStats(stats, skills, combats);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_COMBATSTATS:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_COMBATSTATS:
         {
             std::vector<std::vector<uint16_t>> additionalSkillsArray;
 
-            if (g_game.getFeature(Otc::GameAdditionalSkills)) {
+            if (g_game.getFeature(tibia::client::GameAdditionalSkills)) {
                 // Critical, Life Leech, Mana Leech
-                for (uint16_t skill = Otc::CriticalChance; skill <= Otc::ManaLeechAmount; ++skill) {
-                    if (!g_game.getFeature(Otc::GameLeechAmount)) {
-                        if (skill == Otc::LifeLeechAmount || skill == Otc::ManaLeechAmount) {
+                for (uint16_t skill = tibia::client::CriticalChance; skill <= tibia::client::ManaLeechAmount; ++skill) {
+                    if (!g_game.getFeature(tibia::client::GameLeechAmount)) {
+                        if (skill == tibia::client::LifeLeechAmount || skill == tibia::client::ManaLeechAmount) {
                             continue;
                         }
                     }
@@ -5884,10 +5961,10 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
 
             std::vector<std::vector<uint16_t>> forgeSkillsArray;
 
-            if (g_game.getFeature(Otc::GameForgeSkillStats)) {
+            if (g_game.getFeature(tibia::client::GameForgeSkillStats)) {
                 // forge skill stats
-                const uint8_t lastSkill = g_game.getClientVersion() >= 1332 ? Otc::LastSkill : Otc::Momentum + 1;
-                for (uint16_t skill = Otc::Fatal; skill < lastSkill; ++skill) {
+                const uint8_t lastSkill = g_game.getClientVersion() >= 1332 ? tibia::client::LastSkill : tibia::client::Momentum + 1;
+                for (uint16_t skill = tibia::client::Fatal; skill < lastSkill; ++skill) {
                     const uint16_t skillLevel = msg->getU16();
                     msg->getU16();
                     forgeSkillsArray.push_back({ skill, skillLevel });
@@ -5940,12 +6017,12 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterCombatStats(data, mitigation, additionalSkillsArray, forgeSkillsArray, perfectShotDamageRangesArray, combatsArray, concoctionsArray);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS:
         {
             CyclopediaCharacterRecentDeaths data;
             const uint16_t currentPage = msg->getU16();
             const uint16_t pageCount = msg->getU16();
-            g_gameEvents.callGlobalField("g_game", "onCyclopediaCharacterPagination", static_cast<int>(type), static_cast<int>(currentPage), static_cast<int>(pageCount));
+            tibia::game::notify("onCyclopediaCharacterPagination", static_cast<int>(type), static_cast<int>(currentPage), static_cast<int>(pageCount));
 
             const uint16_t entriesCount = msg->getU16();
             for (auto i = 0; i < entriesCount; ++i) {
@@ -5958,12 +6035,12 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterRecentDeaths(data);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS:
         {
             CyclopediaCharacterRecentPvPKills data;
             const uint16_t currentPage = msg->getU16();
             const uint16_t pageCount = msg->getU16();
-            g_gameEvents.callGlobalField("g_game", "onCyclopediaCharacterPagination", static_cast<int>(type), static_cast<int>(currentPage), static_cast<int>(pageCount));
+            tibia::game::notify("onCyclopediaCharacterPagination", static_cast<int>(type), static_cast<int>(currentPage), static_cast<int>(pageCount));
 
             const uint16_t entriesCount = msg->getU16();
             for (auto i = 0; i < entriesCount; ++i) {
@@ -5977,7 +6054,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterRecentPvpKills(data);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_ACHIEVEMENTS:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_ACHIEVEMENTS:
         {
             const uint16_t points = msg->getU16();
             const uint16_t totalSecrets = msg->getU16();
@@ -5998,10 +6075,10 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
                 }
                 achievements.emplace_back(id, timestamp, secret, name, description, grade);
             }
-            g_gameEvents.callGlobalField("g_game", "onCyclopediaCharacterAchievements", static_cast<int>(points), static_cast<int>(totalSecrets), achievements);
+            tibia::game::notify("onCyclopediaCharacterAchievements", static_cast<int>(points), static_cast<int>(totalSecrets), achievements);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_ITEMSUMMARY:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_ITEMSUMMARY:
         {
             CyclopediaCharacterItemSummary data;
 
@@ -6009,8 +6086,8 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             for (auto i = 0; i < inventoryItemsCount; ++i) {
                 ItemSummary item;
                 const uint16_t itemId = msg->getU16();
-                const auto& itemCreated = Item::create(itemId);
-                const uint16_t classification = itemCreated->getClassification();
+                const auto& thingType = tibia::game::thingType(itemId, ThingCategoryItem);
+                const uint16_t classification = thingType ? thingType->getClassification() : 0;
 
                 uint8_t itemTier = 0;
                 if (classification > 0) {
@@ -6027,8 +6104,8 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             for (auto i = 0; i < storeItemsCount; ++i) {
                 ItemSummary item;
                 const uint16_t itemId = msg->getU16();
-                const auto& itemCreated = Item::create(itemId);
-                const uint16_t classification = itemCreated->getClassification();
+                const auto& thingType = tibia::game::thingType(itemId, ThingCategoryItem);
+                const uint16_t classification = thingType ? thingType->getClassification() : 0;
 
                 uint8_t itemTier = 0;
                 if (classification > 0) {
@@ -6045,7 +6122,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             for (auto i = 0; i < stashItemsCount; ++i) {
                 ItemSummary item;
                 const uint16_t itemId = msg->getU16();
-                const auto& thing = g_things.getThingType(itemId, ThingCategoryItem);
+                const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem);
                 if (!thing) {
                     continue;
                 }
@@ -6066,8 +6143,8 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             for (auto i = 0; i < depotItemsCount; ++i) {
                 ItemSummary item;
                 const uint16_t itemId = msg->getU16();
-                const auto& itemCreated = Item::create(itemId);
-                const uint16_t classification = itemCreated->getClassification();
+                const auto& thingType = tibia::game::thingType(itemId, ThingCategoryItem);
+                const uint16_t classification = thingType ? thingType->getClassification() : 0;
 
                 uint8_t itemTier = 0;
                 if (classification > 0) {
@@ -6084,8 +6161,8 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             for (auto i = 0; i < inboxItemsCount; ++i) {
                 ItemSummary item;
                 const uint16_t itemId = msg->getU16();
-                const auto& itemCreated = Item::create(itemId);
-                const uint16_t classification = itemCreated->getClassification();
+                const auto& thingType = tibia::game::thingType(itemId, ThingCategoryItem);
+                const uint16_t classification = thingType ? thingType->getClassification() : 0;
 
                 uint8_t itemTier = 0;
                 if (classification > 0) {
@@ -6101,7 +6178,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterItemSummary(data);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_OUTFITSMOUNTS:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_OUTFITSMOUNTS:
         {
             const uint16_t outfitsSize = msg->getU16();
             std::vector<CharacterInfoOutfits> outfits;
@@ -6158,7 +6235,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterAppearances(currentOutfit, outfits, mounts, familiars);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_STORESUMMARY:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_STORESUMMARY:
         {
             const uint32_t xpBoostTime = msg->getU32();
             const uint32_t dailyRewardXpBoostTime = msg->getU32();
@@ -6175,7 +6252,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             const uint8_t preySlotsUnlocked = msg->getU8();
             const uint8_t preyWildcards = msg->getU8();
             bool hasPermanentWeeklyTaskExpansion = false;
-            if (g_game.getFeature(Otc::GameTaskboard)) {
+            if (g_game.getFeature(tibia::client::GameTaskboard)) {
                 hasPermanentWeeklyTaskExpansion = static_cast<bool>(msg->getU8());
             }
             const uint8_t instantRewards = msg->getU8();
@@ -6205,17 +6282,17 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
                 houseItems.emplace_back(itemId, itemName, count);
             }
 
-            g_gameEvents.callGlobalField("g_game", "onParseCyclopediaStoreSummary", xpBoostTime, dailyRewardXpBoostTime, blessings, preySlotsUnlocked, preyWildcards, hasPermanentWeeklyTaskExpansion, instantRewards,hasCharmExpansion, hirelingsObtained, hirelingSkills, houseItems);
+            tibia::game::notify("onParseCyclopediaStoreSummary", xpBoostTime, dailyRewardXpBoostTime, blessings, preySlotsUnlocked, preyWildcards, hasPermanentWeeklyTaskExpansion, instantRewards,hasCharmExpansion, hirelingsObtained, hirelingSkills, houseItems);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_INSPECTION:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_INSPECTION:
         {
             const uint8_t inventoryCount = msg->getU8();
             auto data = readCyclopediaCharacterInspectionData(*this, msg, inventoryCount, 0);
             g_game.processCyclopediaCharacterInspection(data);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_BADGES:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES:
         {
             const uint8_t showAccountInformation = msg->getU8();
             const uint8_t playerOnline = msg->getU8();
@@ -6234,7 +6311,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterGeneralStatsBadge(showAccountInformation, playerOnline, playerPremium, loyaltyTitle, badgesVector);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_TITLES:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_TITLES:
         {
             const uint8_t currentTitle = msg->getU8();
             const uint8_t titlesSize = msg->getU8();
@@ -6248,14 +6325,14 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
                 const bool unlocked = msg->getU8() != 0;
                 titles.emplace_back(id, name, description, permanent, unlocked);
             }
-            g_gameEvents.callGlobalField("g_game", "onCyclopediaCharacterTitles", static_cast<int>(currentTitle), titles);
+            tibia::game::notify("onCyclopediaCharacterTitles", static_cast<int>(currentTitle), titles);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_WHEEL:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_WHEEL:
         {
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_OFFENCESTATS:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_OFFENCESTATS:
         {
             CyclopediaCharacterOffenceStats data;
 
@@ -6403,7 +6480,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterOffenceStats(data);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_DEFENCESTATS:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_DEFENCESTATS:
         {
             CyclopediaCharacterDefenceStats data;
 
@@ -6419,7 +6496,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
 
             data.reflectPhysical = msg->getU16();
             data.armor = msg->getU16();
-            if (g_game.getFeature(Otc::GameVocationMonk)) {
+            if (g_game.getFeature(tibia::client::GameVocationMonk)) {
                 msg->getU16(); // MANTRA
             }
 
@@ -6451,7 +6528,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
             g_game.processCyclopediaCharacterDefenceStats(data);
             break;
         }
-        case Otc::CYCLOPEDIA_CHARACTERINFO_MISCSTATS:
+        case tibia::client::CYCLOPEDIA_CHARACTERINFO_MISCSTATS:
         {
             CyclopediaCharacterMiscStats data;
 
@@ -6528,7 +6605,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(const InputMessagePtr& msg)
 void ProtocolGame::parseDailyRewardCollectionState(const InputMessagePtr& msg)
 {
     const uint8_t state = msg->getU8();
-    g_gameEvents.callGlobalField("g_game", "onDailyRewardCollectionState", state);
+    tibia::game::notify("onDailyRewardCollectionState", state);
 }
 
 void ProtocolGame::parseOpenRewardWall(const InputMessagePtr& msg)
@@ -6556,7 +6633,7 @@ void ProtocolGame::parseOpenRewardWall(const InputMessagePtr& msg)
 
     const uint16_t dayStreakLevel = msg->getU16(); // day streak level
 
-    g_gameEvents.callGlobalField("g_game", "onOpenRewardWall", bonusShrine, nextRewardTime, dayStreakDay,
+    tibia::game::notify("onOpenRewardWall", bonusShrine, nextRewardTime, dayStreakDay,
                           wasDailyRewardTaken, errorMessage, tokens, timeLeft, dayStreakLevel);
 }
 
@@ -6639,7 +6716,7 @@ void ProtocolGame::parseDailyReward(const InputMessagePtr& msg)
 
     data.maxUnlockableDragons = msg->getU8(); // max unlockable "dragons" for free accounts
 
-    g_gameEvents.callGlobalField("g_game", "onDailyReward", data);
+    tibia::game::notify("onDailyReward", data);
 }
 
 void ProtocolGame::parseRewardHistory(const InputMessagePtr& msg)
@@ -6654,7 +6731,7 @@ void ProtocolGame::parseRewardHistory(const InputMessagePtr& msg)
         rewardHistory.emplace_back(timestamp, isPremium, description, daystreak);
     }
 
-    g_gameEvents.callGlobalField("g_game", "onRewardHistory", rewardHistory);
+    tibia::game::notify("onRewardHistory", rewardHistory);
 }
 
 void ProtocolGame::parsePreyFreeRerolls(const InputMessagePtr& msg)
@@ -6662,7 +6739,7 @@ void ProtocolGame::parsePreyFreeRerolls(const InputMessagePtr& msg)
     const uint8_t slot = msg->getU8();
     const uint16_t timeLeft = msg->getU16();
 
-    g_gameEvents.callGlobalField("g_game", "onPreyFreeRerolls", slot, timeLeft);
+    tibia::game::notify("onPreyFreeRerolls", slot, timeLeft);
 }
 
 void ProtocolGame::parsePreyTimeLeft(const InputMessagePtr& msg)
@@ -6670,7 +6747,7 @@ void ProtocolGame::parsePreyTimeLeft(const InputMessagePtr& msg)
     const uint8_t slot = msg->getU8();
     const uint16_t timeLeft = msg->getU16();
 
-    g_gameEvents.callGlobalField("g_game", "onPreyTimeLeft", slot, timeLeft);
+    tibia::game::notify("onPreyTimeLeft", slot, timeLeft);
 }
 
 PreyMonster ProtocolGame::getPreyMonster(const InputMessagePtr& msg) const
@@ -6696,25 +6773,25 @@ std::vector<PreyMonster> ProtocolGame::getPreyMonsters(const InputMessagePtr& ms
 void ProtocolGame::parsePreyData(const InputMessagePtr& msg)
 {
     const uint8_t slot = msg->getU8(); // slot
-    const auto state = static_cast<Otc::PreyState_t>(msg->getU8()); // slot state
+    const auto state = static_cast<tibia::client::PreyState_t>(msg->getU8()); // slot state
 
     uint32_t nextFreeReroll = 0; // next free roll
     uint8_t wildcards = 0; // wildcards
     uint8_t option = 0; // prey option toggle state
 
     switch (state) {
-        case Otc::PREY_STATE_LOCKED:
+        case tibia::client::PREY_STATE_LOCKED:
         {
-            const auto unlockState = static_cast<Otc::PreyUnlockState_t>(msg->getU8()); // prey slot unlocked
+            const auto unlockState = static_cast<tibia::client::PreyUnlockState_t>(msg->getU8()); // prey slot unlocked
             if (g_game.getClientVersion() > 1149) { // correct unconfirmed version
                 nextFreeReroll = msg->getU32();
                 wildcards = msg->getU8();
             } else {
                 nextFreeReroll = msg->getU16();
             }
-            return g_gameEvents.callGlobalField("g_game", "onPreyLocked", slot, unlockState, nextFreeReroll, wildcards);
+            return tibia::game::notify("onPreyLocked", slot, unlockState, nextFreeReroll, wildcards);
         }
-        case Otc::PREY_STATE_INACTIVE:
+        case tibia::client::PREY_STATE_INACTIVE:
         {
             if (g_game.getClientVersion() > 1149) { // correct unconfirmed version
                 nextFreeReroll = msg->getU32();
@@ -6722,9 +6799,9 @@ void ProtocolGame::parsePreyData(const InputMessagePtr& msg)
             } else {
                 nextFreeReroll = msg->getU16();
             }
-            return g_gameEvents.callGlobalField("g_game", "onPreyInactive", slot, nextFreeReroll, wildcards);
+            return tibia::game::notify("onPreyInactive", slot, nextFreeReroll, wildcards);
         }
-        case Otc::PREY_STATE_ACTIVE:
+        case tibia::client::PREY_STATE_ACTIVE:
         {
             const auto& monster = getPreyMonster(msg);
             const uint8_t bonusType = msg->getU8(); // bonus type
@@ -6739,9 +6816,9 @@ void ProtocolGame::parsePreyData(const InputMessagePtr& msg)
                 nextFreeReroll = msg->getU16();
             }
 
-            return g_gameEvents.callGlobalField("g_game", "onPreyActive", slot, monster.name, monster.outfit, bonusType, bonusValue, bonusGrade, timeLeft, nextFreeReroll, wildcards, option);
+            return tibia::game::notify("onPreyActive", slot, monster.name, monster.outfit, bonusType, bonusValue, bonusGrade, timeLeft, nextFreeReroll, wildcards, option);
         }
-        case Otc::PREY_STATE_SELECTION:
+        case tibia::client::PREY_STATE_SELECTION:
         {
             const auto& monsters = getPreyMonsters(msg);
             std::vector<std::string> monsterNames;
@@ -6758,9 +6835,9 @@ void ProtocolGame::parsePreyData(const InputMessagePtr& msg)
             } else {
                 nextFreeReroll = msg->getU16();
             }
-            return g_gameEvents.callGlobalField("g_game", "onPreySelection", slot, monsterNames, monsterLooktypes, nextFreeReroll, wildcards);
+            return tibia::game::notify("onPreySelection", slot, monsterNames, monsterLooktypes, nextFreeReroll, wildcards);
         }
-        case Otc::PREY_STATE_SELECTION_CHANGE_MONSTER:
+        case tibia::client::PREY_STATE_SELECTION_CHANGE_MONSTER:
         {
             const uint8_t bonusType = msg->getU8(); // bonus type
             const uint16_t bonusValue = msg->getU16(); // bonus value
@@ -6781,9 +6858,9 @@ void ProtocolGame::parsePreyData(const InputMessagePtr& msg)
             } else {
                 nextFreeReroll = msg->getU16();
             }
-            return g_gameEvents.callGlobalField("g_game", "onPreySelectionChangeMonster", slot, names, outfits, bonusType, bonusValue, bonusGrade, nextFreeReroll, wildcards);
+            return tibia::game::notify("onPreySelectionChangeMonster", slot, names, outfits, bonusType, bonusValue, bonusGrade, nextFreeReroll, wildcards);
         }
-        case Otc::PREY_STATE_LIST_SELECTION:
+        case tibia::client::PREY_STATE_LIST_SELECTION:
         {
             const uint16_t raceListCount = msg->getU16();
             std::vector<uint16_t> raceList;
@@ -6798,9 +6875,9 @@ void ProtocolGame::parsePreyData(const InputMessagePtr& msg)
             } else {
                 nextFreeReroll = msg->getU16();
             }
-            return g_gameEvents.callGlobalField("g_game", "onPreyListSelection", slot, raceList, nextFreeReroll, wildcards);
+            return tibia::game::notify("onPreyListSelection", slot, raceList, nextFreeReroll, wildcards);
         }
-        case Otc::PREY_STATE_WILDCARD_SELECTION:
+        case tibia::client::PREY_STATE_WILDCARD_SELECTION:
         {
             const uint8_t bonusType = msg->getU8(); // bonus type
             const uint16_t bonusValue = msg->getU16(); // bonus value
@@ -6819,7 +6896,7 @@ void ProtocolGame::parsePreyData(const InputMessagePtr& msg)
             } else {
                 nextFreeReroll = msg->getU16();
             }
-            return g_gameEvents.callGlobalField("g_game", "onPreyWildcardSelection", slot, raceList, nextFreeReroll, wildcards, bonusType, bonusValue, bonusGrade);
+            return tibia::game::notify("onPreyWildcardSelection", slot, raceList, nextFreeReroll, wildcards, bonusType, bonusValue, bonusGrade);
         }
     }
 }
@@ -6833,7 +6910,7 @@ void ProtocolGame::parsePreyRerollPrice(const InputMessagePtr& msg)
     if (g_game.getProtocolVersion() >= 1230) {
         wildcard = msg->getU8();
         directly = msg->getU8();
-        if (!g_game.getFeature(Otc::GameTaskboard)) {
+        if (!g_game.getFeature(tibia::client::GameTaskboard)) {
             msg->getU32(); // task hunting reroll price
             msg->getU32(); // task hunting reroll price
             msg->getU8(); // task hunting selection list price
@@ -6841,7 +6918,7 @@ void ProtocolGame::parsePreyRerollPrice(const InputMessagePtr& msg)
         }
     }
 
-    g_gameEvents.callGlobalField("g_game", "onPreyRerollPrice", price, wildcard, directly);
+    tibia::game::notify("onPreyRerollPrice", price, wildcard, directly);
 }
 
 Imbuement ProtocolGame::getImbuementInfo(const InputMessagePtr& msg)
@@ -6879,9 +6956,7 @@ Imbuement ProtocolGame::getImbuementInfo(const InputMessagePtr& msg)
         const uint16_t itemId = msg->getU16();
         const auto& itemName = msg->getString();
         const uint16_t itemCount = msg->getU16();
-        const auto& item = Item::create(itemId);
-        item->setCount(itemCount);
-        imbuement.sources.emplace_back(item, itemName);
+        imbuement.sources.emplace_back(itemId, itemCount, itemName);
     }
 
     imbuement.cost = msg->getU32();
@@ -6900,25 +6975,25 @@ Imbuement ProtocolGame::getImbuementInfo(const InputMessagePtr& msg)
 void ProtocolGame::parseImbuementWindow(const InputMessagePtr& msg)
 {
     const bool isModernImbuementWindow = g_game.getClientVersion() >= 1510;
-    uint8_t windowType = Otc::IMBUEMENT_WINDOW_SELECT_ITEM;
+    uint8_t windowType = tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM;
     if (isModernImbuementWindow) {
-        windowType = static_cast<Otc::Imbuement_Window_t>(msg->getU8()); // window type
-        if (std::cmp_greater(windowType, static_cast<uint8_t>(Otc::IMBUEMENT_WINDOW_SCROLL))) {
-            g_logger.warning(fmt::format("ProtocolGame::parseImbuementWindow: unexpected windowType {}", windowType));
+        windowType = static_cast<tibia::client::Imbuement_Window_t>(msg->getU8()); // window type
+        if (std::cmp_greater(windowType, static_cast<uint8_t>(tibia::client::IMBUEMENT_WINDOW_SCROLL))) {
+            g_logger.warning(std::format("ProtocolGame::parseImbuementWindow: unexpected windowType {}", windowType));
             return;
         }
     }
     switch (windowType) {
-        case Otc::IMBUEMENT_WINDOW_CHOICE: {
+        case tibia::client::IMBUEMENT_WINDOW_CHOICE: {
             if (isModernImbuementWindow) {
                 msg->getU8(); // unknown
             }
             const uint16_t itemId = msg->getU16(); // item client ID
             const uint32_t unknown = msg->getU32(); // unknown
-            g_gameEvents.callGlobalField("g_game", "onOpenImbuementWindow", itemId, unknown);
+            tibia::game::notify("onOpenImbuementWindow", itemId, unknown);
             break;
         }
-        case Otc::IMBUEMENT_WINDOW_SCROLL: {
+        case tibia::client::IMBUEMENT_WINDOW_SCROLL: {
             msg->getU8(); // unknown byte
             msg->getU8(); // unknown byte
             if (isModernImbuementWindow) {
@@ -6931,26 +7006,24 @@ void ProtocolGame::parseImbuementWindow(const InputMessagePtr& msg)
                 imbuements.push_back(getImbuementInfo(msg));
             }
             const uint32_t neededItemsListCount = msg->getU32();
-            std::vector<ItemPtr> neededItemsList;
+            std::vector<std::pair<uint16_t, uint16_t>> neededItemsList;
             neededItemsList.reserve(neededItemsListCount);
             for (uint32_t i = 0; std::cmp_less(i, neededItemsListCount); ++i) {
                 const uint16_t needItemId = msg->getU16();
                 const uint16_t count = msg->getU16();
-                const auto& needItem = Item::create(needItemId);
-                needItem->setCount(count);
-                neededItemsList.push_back(needItem);
+                neededItemsList.emplace_back(needItemId, count);
             }
-            g_gameEvents.callGlobalField("g_game", "onImbuementScroll", imbuements, neededItemsList);
+            tibia::game::notify("onImbuementScroll", imbuements, neededItemsList);
             break;
         }
-        case Otc::IMBUEMENT_WINDOW_SELECT_ITEM: {
+        case tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM: {
             uint16_t itemId = 0;
             uint8_t tier = 0;
             if (isModernImbuementWindow) {
                 msg->getU8(); // unknown
             }
             itemId = msg->getU16(); // item client ID
-            const auto& thing = g_things.getThingType(itemId, ThingCategoryItem);
+            const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem);
             if (isModernImbuementWindow && !thing) {
                 throw Exception("ProtocolGame::parseImbuementWindow: unable to resolve thing type for item id {}", itemId);
             }
@@ -6978,16 +7051,14 @@ void ProtocolGame::parseImbuementWindow(const InputMessagePtr& msg)
                 imbuements.push_back(getImbuementInfo(msg));
             }
             const uint32_t neededItemsListCount = msg->getU32();
-            std::vector<ItemPtr> neededItemsList;
+            std::vector<std::pair<uint16_t, uint16_t>> neededItemsList;
             neededItemsList.reserve(neededItemsListCount);
             for (uint32_t i = 0; std::cmp_less(i, neededItemsListCount); ++i) {
                 const uint16_t needItemId = msg->getU16();
                 const uint16_t count = msg->getU16();
-                const auto& needItem = Item::create(needItemId);
-                needItem->setCount(count);
-                neededItemsList.push_back(needItem);
+                neededItemsList.emplace_back(needItemId, count);
             }
-            g_gameEvents.callGlobalField("g_game", "onImbuementItem", itemId, tier, slots, activeSlots, imbuements, neededItemsList);
+            tibia::game::notify("onImbuementItem", itemId, tier, slots, activeSlots, imbuements, neededItemsList);
             break;
         }
     }
@@ -6995,7 +7066,7 @@ void ProtocolGame::parseImbuementWindow(const InputMessagePtr& msg)
 
 void ProtocolGame::parseCloseImbuementWindow(const InputMessagePtr& /*msg*/)
 {
-    g_gameEvents.callGlobalField("g_game", "onCloseImbuementWindow");
+    tibia::game::notify("onCloseImbuementWindow");
 }
 
 void ProtocolGame::parseError(const InputMessagePtr& msg)
@@ -7007,7 +7078,8 @@ void ProtocolGame::parseError(const InputMessagePtr& msg)
         msg->getU32();
     else if (code == 0x5A)
         msg->getU8();
-    g_gameEvents.callGlobalField("g_game", "onServerError", code, error);
+    tibia::game::notify("onServerError", code, error);
+    tibia::game::TGameNotify::instance()->emitServerError(code, QString::fromStdString(error));
 }
 
 static uint8_t readMarketItemTier(const InputMessagePtr& msg, uint16_t itemId, int clientVersion)
@@ -7016,7 +7088,7 @@ static uint8_t readMarketItemTier(const InputMessagePtr& msg, uint16_t itemId, i
         return 0;
     }
 
-    const auto& thing = g_things.getThingType(itemId, ThingCategoryItem);
+    const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem);
     if (!thing) {
         return 0;
     }
@@ -7042,13 +7114,13 @@ void ProtocolGame::parseMarketEnter(const InputMessagePtr& msg)
         depotItems.push_back({ itemId, itemTier, count });
     }
 
-    g_gameEvents.callGlobalField("g_game", "onMarketEnter", depotItems, offers, -1, -1);
+    tibia::game::notify("onMarketEnter", depotItems, offers, -1, -1);
 }
 
 void ProtocolGame::parseMarketEnterOld(const InputMessagePtr& msg)
 {
     const uint64_t balance = g_game.getClientVersion() >= 981 ? msg->getU64() : msg->getU32();
-    const uint8_t vocation = g_game.getClientVersion() < 950 ? msg->getU8() : g_game.getLocalPlayer()->getVocation();
+    const uint8_t vocation = g_game.getClientVersion() < 950 ? msg->getU8() : tibia::game::localPlayer()->getVocation();
 
     const uint8_t offers = msg->getU8();
     const uint16_t itemsSent = msg->getU16();
@@ -7060,37 +7132,37 @@ void ProtocolGame::parseMarketEnterOld(const InputMessagePtr& msg)
         depotItems.push_back({ itemId, count });
     }
 
-    g_gameEvents.callGlobalField("g_game", "onMarketEnter", depotItems, offers, balance, vocation);
+    tibia::game::notify("onMarketEnter", depotItems, offers, balance, vocation);
 }
 
-static Otc::MarketItemDescription getMarketLastAttribute(int clientVersion)
+static tibia::client::MarketItemDescription getMarketLastAttribute(int clientVersion)
 {
     if (clientVersion >= 1510) {
-        return Otc::ITEM_DESC_LAST;
+        return tibia::client::ITEM_DESC_LAST;
     }
 
     if (clientVersion >= 1500) {
-        return Otc::ITEM_DESC_MANTRA;
+        return tibia::client::ITEM_DESC_MANTRA;
     }
 
     if (clientVersion >= 1282) {
-        return Otc::ITEM_DESC_CURRENTTIER;
+        return tibia::client::ITEM_DESC_CURRENTTIER;
     }
 
     if (clientVersion >= 1270) {
-        return Otc::ITEM_DESC_UPGRADECLASS;
+        return tibia::client::ITEM_DESC_UPGRADECLASS;
     }
 
     if (clientVersion >= 1100) {
-        return Otc::ITEM_DESC_IMBUINGSLOTS;
+        return tibia::client::ITEM_DESC_IMBUINGSLOTS;
     }
 
-    return Otc::ITEM_DESC_WEIGHT;
+    return tibia::client::ITEM_DESC_WEIGHT;
 }
 
 static bool shouldSkipMarketAttribute(int attr)
 {
-    if (attr == Otc::ITEM_DESC_AUGMENT && !g_game.getFeature(Otc::GameItemAugment)) {
+    if (attr == tibia::client::ITEM_DESC_AUGMENT && !g_game.getFeature(tibia::client::GameItemAugment)) {
         return true;
     }
 
@@ -7102,7 +7174,7 @@ static std::unordered_map<int, std::string> readMarketDescriptions(const InputMe
     std::unordered_map<int, std::string> descriptions;
     const auto lastAttribute = getMarketLastAttribute(clientVersion);
 
-    for (int_fast32_t attr = Otc::ITEM_DESC_FIRST; attr <= lastAttribute; ++attr) {
+    for (int_fast32_t attr = tibia::client::ITEM_DESC_FIRST; attr <= lastAttribute; ++attr) {
         if (shouldSkipMarketAttribute(attr)) {
             continue;
         }
@@ -7172,10 +7244,10 @@ void ProtocolGame::parseMarketDetail(const InputMessagePtr& msg)
 
     const uint32_t timeThing = (time(nullptr) / 1000) * 86400;
 
-    auto purchaseStatsList = readMarketStatsList(msg, Otc::MARKETACTION_BUY, timeThing, pricesAreU64);
-    auto saleStatsList = readMarketStatsList(msg, Otc::MARKETACTION_SELL, timeThing, pricesAreU64);
+    auto purchaseStatsList = readMarketStatsList(msg, tibia::client::MARKETACTION_BUY, timeThing, pricesAreU64);
+    auto saleStatsList = readMarketStatsList(msg, tibia::client::MARKETACTION_SELL, timeThing, pricesAreU64);
 
-    g_gameEvents.callGlobalField("g_game", "onMarketDetail", itemId, descriptions, purchaseStatsList, saleStatsList, itemTier);
+    tibia::game::notify("onMarketDetail", itemId, descriptions, purchaseStatsList, saleStatsList, itemTier);
 }
 
 MarketOffer ProtocolGame::readMarketOffer(const InputMessagePtr& msg, const uint8_t action, const uint16_t var)
@@ -7186,7 +7258,7 @@ MarketOffer ProtocolGame::readMarketOffer(const InputMessagePtr& msg, const uint
     uint8_t itemTier = 0;
 
     const int clientVersion = g_game.getClientVersion();
-    if (var == Otc::OLD_MARKETREQUEST_MY_OFFERS || var == Otc::MARKETREQUEST_OWN_OFFERS || var == Otc::OLD_MARKETREQUEST_MY_HISTORY || var == Otc::MARKETREQUEST_OWN_HISTORY) {
+    if (var == tibia::client::OLD_MARKETREQUEST_MY_OFFERS || var == tibia::client::MARKETREQUEST_OWN_OFFERS || var == tibia::client::OLD_MARKETREQUEST_MY_HISTORY || var == tibia::client::MARKETREQUEST_OWN_HISTORY) {
         itemId = msg->getU16();
         itemTier = readMarketItemTier(msg, itemId, clientVersion);
     } else {
@@ -7197,14 +7269,14 @@ MarketOffer ProtocolGame::readMarketOffer(const InputMessagePtr& msg, const uint
     const uint64_t price = clientVersion >= 1281 ? msg->getU64() : msg->getU32();
 
     std::string playerName;
-    uint8_t state = Otc::OFFER_STATE_ACTIVE;
-    if (var == Otc::OLD_MARKETREQUEST_MY_HISTORY || var == Otc::MARKETREQUEST_OWN_HISTORY) {
+    uint8_t state = tibia::client::OFFER_STATE_ACTIVE;
+    if (var == tibia::client::OLD_MARKETREQUEST_MY_HISTORY || var == tibia::client::MARKETREQUEST_OWN_HISTORY) {
         state = msg->getU8();
-    } else if (var == Otc::OLD_MARKETREQUEST_MY_OFFERS || var == Otc::MARKETREQUEST_OWN_OFFERS) {} else {
+    } else if (var == tibia::client::OLD_MARKETREQUEST_MY_OFFERS || var == tibia::client::MARKETREQUEST_OWN_OFFERS) {} else {
         playerName = msg->getString();
     }
 
-    g_gameEvents.callGlobalField("g_game", "onMarketReadOffer", action, amount, counter, itemId, playerName, price, state, timestamp, var, itemTier);
+    tibia::game::notify("onMarketReadOffer", action, amount, counter, itemId, playerName, price, state, timestamp, var, itemTier);
     return { .timestamp = timestamp, .counter = counter, .action = action, .itemId = itemId, .amount = amount, .price = price,
         .playerName = playerName, .state = state, .var = var, .itemTier = itemTier
     };
@@ -7217,7 +7289,7 @@ void ProtocolGame::parseMarketBrowse(const InputMessagePtr& msg)
         var = msg->getU8();
         if (var == 3) {
             var = msg->getU16(); // itemId
-            const auto& thing = g_things.getThingType(var, ThingCategoryItem);
+            const auto& thing = tibia::game::thingType(var, ThingCategoryItem);
             if (thing) {
                 const uint16_t classification = thing->getClassification();
                 if (classification > 0) {
@@ -7234,11 +7306,11 @@ void ProtocolGame::parseMarketBrowse(const InputMessagePtr& msg)
     std::vector<MarketOffer> offers;
 
     for (uint32_t i = 0; i < buyOfferCount; ++i) {
-        offers.push_back(readMarketOffer(msg, Otc::MARKETACTION_BUY, var));
+        offers.push_back(readMarketOffer(msg, tibia::client::MARKETACTION_BUY, var));
     }
     const uint32_t sellOfferCount = msg->getU32();
     for (uint32_t i = 0; i < sellOfferCount; ++i) {
-        offers.push_back(readMarketOffer(msg, Otc::MARKETACTION_SELL, var));
+        offers.push_back(readMarketOffer(msg, tibia::client::MARKETACTION_SELL, var));
     }
 
     std::vector<std::vector<uint64_t>> intOffers;
@@ -7251,7 +7323,7 @@ void ProtocolGame::parseMarketBrowse(const InputMessagePtr& msg)
         nameOffers.push_back(playerName);
     }
 
-    g_gameEvents.callGlobalField("g_game", "onMarketBrowse", intOffers, nameOffers);
+    tibia::game::notify("onMarketBrowse", intOffers, nameOffers);
 }
 
 void ProtocolGame::parseBosstiaryData(const InputMessagePtr& msg)
@@ -7266,7 +7338,7 @@ void ProtocolGame::parseBosstiaryData(const InputMessagePtr& msg)
     for (auto i = 0; i < 9; ++i) {
         pointsForStage.push_back(msg->getU16());
     }
-    g_gameEvents.callGlobalField("g_game", "onBosstiaryData", killsForStage, pointsForStage);
+    tibia::game::notify("onBosstiaryData", killsForStage, pointsForStage);
 }
 
 void ProtocolGame::parseBosstiarySlots(const InputMessagePtr& msg)
@@ -7335,13 +7407,13 @@ void ProtocolGame::parseBosstiaryCooldownTimer(const InputMessagePtr& msg)
     }
 
     // Call the Lua callback with the cooldown data
-    g_gameEvents.callGlobalField("g_game", "onBossCooldown", cooldownData);
+    tibia::game::notify("onBossCooldown", cooldownData);
 }
 
 void ProtocolGame::parseBosstiaryEntryChanged(const InputMessagePtr& msg)
 {
     const uint32_t bossId = msg->getU32();
-    g_gameEvents.callGlobalField("g_game", "onBosstiaryEntryChanged", bossId);
+    tibia::game::notify("onBosstiaryEntryChanged", bossId);
 }
 
 void ProtocolGame::parseClientEvent(const InputMessagePtr& msg)
@@ -7353,85 +7425,85 @@ void ProtocolGame::parseClientEvent(const InputMessagePtr& msg)
         return;
     }
 
-    const auto type = static_cast<Otc::ClientEventType_t>(msg->getU8());
+    const auto type = static_cast<tibia::client::ClientEventType_t>(msg->getU8());
     switch (type) {
-        case Otc::CLIENT_EVENT_TYPE_SIMPLE: {
-            const auto eventType = static_cast<Otc::ClientEvent_t>(msg->getU8());
-            if (eventType < Otc::CLIENT_EVENT_ATTACKSTOPPED) {
+        case tibia::client::CLIENT_EVENT_TYPE_SIMPLE: {
+            const auto eventType = static_cast<tibia::client::ClientEvent_t>(msg->getU8());
+            if (eventType < tibia::client::CLIENT_EVENT_ATTACKSTOPPED) {
                 m_localPlayer->takeScreenshot(eventType);
             } else {
-                g_gameEvents.callGlobalField("g_game", "onClientEvent", type, eventType);
+                tibia::game::notify("onClientEvent", type, eventType);
             }
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_ACHIEVEMENT:
-        case Otc::CLIENT_EVENT_TYPE_TITLE: {
+        case tibia::client::CLIENT_EVENT_TYPE_ACHIEVEMENT:
+        case tibia::client::CLIENT_EVENT_TYPE_TITLE: {
             const auto name = msg->getString();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, name);
+            tibia::game::notify("onClientEvent", type, name);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_LEVEL: {
+        case tibia::client::CLIENT_EVENT_TYPE_LEVEL: {
             const auto level = msg->getU16();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, level);
+            tibia::game::notify("onClientEvent", type, level);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_SKILL: {
+        case tibia::client::CLIENT_EVENT_TYPE_SKILL: {
             const auto skillId = msg->getU8();
             const auto level = msg->getU16();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, skillId, level);
+            tibia::game::notify("onClientEvent", type, skillId, level);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_BESTIARY:
-        case Otc::CLIENT_EVENT_TYPE_BOSSTIARY: {
+        case tibia::client::CLIENT_EVENT_TYPE_BESTIARY:
+        case tibia::client::CLIENT_EVENT_TYPE_BOSSTIARY: {
             const auto raceId = msg->getU16();
             const auto progressLevel = msg->getU8();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, raceId, progressLevel);
+            tibia::game::notify("onClientEvent", type, raceId, progressLevel);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_QUEST: {
+        case tibia::client::CLIENT_EVENT_TYPE_QUEST: {
             const auto questName = msg->getString();
             const auto isCompleted = msg->getU8();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, questName, isCompleted);
+            tibia::game::notify("onClientEvent", type, questName, isCompleted);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_COSMETIC: {
+        case tibia::client::CLIENT_EVENT_TYPE_COSMETIC: {
             const auto lookType = msg->getU16();
             const auto skinName = msg->getString();
             const auto skinType = msg->getU8();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, lookType, skinName, skinType);
+            tibia::game::notify("onClientEvent", type, lookType, skinName, skinType);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_PROFICIENCY: {
+        case tibia::client::CLIENT_EVENT_TYPE_PROFICIENCY: {
             const auto itemId = msg->getU16();
             const auto message = msg->getString();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, itemId, message);
+            tibia::game::notify("onClientEvent", type, itemId, message);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_BOUNTY_TASK: {
+        case tibia::client::CLIENT_EVENT_TYPE_BOUNTY_TASK: {
             const auto taskId = msg->getU16();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, taskId);
+            tibia::game::notify("onClientEvent", type, taskId);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_WEEKLY_TASK: {
+        case tibia::client::CLIENT_EVENT_TYPE_WEEKLY_TASK: {
             const auto raceId = msg->getU16();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, raceId);
+            tibia::game::notify("onClientEvent", type, raceId);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_SPELL_UNLOCKED: {
+        case tibia::client::CLIENT_EVENT_TYPE_SPELL_UNLOCKED: {
             const auto spellId = msg->getU32();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, spellId);
+            tibia::game::notify("onClientEvent", type, spellId);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_LEADER_MONSTER: {
+        case tibia::client::CLIENT_EVENT_TYPE_LEADER_MONSTER: {
             const auto raceId = msg->getU16();
             const auto charmPoints = msg->getU32();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, raceId, charmPoints);
+            tibia::game::notify("onClientEvent", type, raceId, charmPoints);
             break;
         }
-        case Otc::CLIENT_EVENT_TYPE_SUBAREA: {
+        case tibia::client::CLIENT_EVENT_TYPE_SUBAREA: {
             // Point of Interest / discovery viewpoint found (payload: uint16 areaId)
             const auto areaId = msg->getU16();
-            g_gameEvents.callGlobalField("g_game", "onClientEvent", type, areaId);
+            tibia::game::notify("onClientEvent", type, areaId);
             break;
         }
         default:
@@ -7445,46 +7517,26 @@ void ProtocolGame::parseAttachedEffect(const InputMessagePtr& msg)
     const uint32_t creatureId = msg->getU32();
     const uint16_t attachedEffectId = msg->getU16();
 
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseAttachedEffect: could not get creature with id {}", creatureId);
-        return;
-    }
-
     const auto& effect = g_attachedEffects.getById(attachedEffectId);
     if (!effect) {
         return;
     }
 
-    creature->attachEffect(effect->clone());
+    tibia::creatures::protocolAttachEffect(creatureId, effect->clone());
 }
 
 void ProtocolGame::parseDetachEffect(const InputMessagePtr& msg)
 {
     const uint32_t creatureId = msg->getU32();
     const uint16_t attachedEffectId = msg->getU16();
-
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseDetachEffect: could not get creature with id {}", creatureId);
-        return;
-    }
-
-    creature->detachEffectById(attachedEffectId);
+    tibia::creatures::protocolDetachEffect(creatureId, attachedEffectId);
 }
 
 void ProtocolGame::parseCreatureShader(const InputMessagePtr& msg)
 {
     const uint32_t creatureId = msg->getU32();
     const auto& shaderName = msg->getString();
-
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureShader: could not get creature with id {}", creatureId);
-        return;
-    }
-
-    creature->setShader(shaderName);
+    tibia::creatures::protocolSetShader(creatureId, shaderName);
 }
 
 void ProtocolGame::parseMapShader(const InputMessagePtr& msg)
@@ -7496,21 +7548,14 @@ void ProtocolGame::parseCreatureTyping(const InputMessagePtr& msg)
 {
     const uint32_t creatureId = msg->getU32();
     const bool typing = static_cast<bool>(msg->getU8());
-
-    const auto& creature = g_map.getCreatureById(creatureId);
-    if (!creature) {
-        g_logger.traceDebug("ProtocolGame::parseCreatureTyping: could not get creature with id {}", creatureId);
-        return;
-    }
-
-    creature->setTyping(typing);
+    tibia::creatures::protocolSetTyping(creatureId, typing);
 }
 
 void ProtocolGame::parseFeatures(const InputMessagePtr& msg)
 {
     const uint16_t features = msg->getU16();
     for (auto i = 0; i < features; ++i) {
-        const auto feature = static_cast<Otc::GameFeature>(msg->getU8());
+        const auto feature = static_cast<tibia::client::GameFeature>(msg->getU8());
         const auto enabled = static_cast<bool>(msg->getU8());
         if (enabled) {
             g_game.enableFeature(feature);
@@ -7524,7 +7569,7 @@ void ProtocolGame::parseHighscores(const InputMessagePtr& msg)
 {
     const bool isEmpty = static_cast<bool>(msg->getU8());
     if (isEmpty) {
-        g_gameEvents.callGlobalField("g_game", "onHighscoresNoData");
+        tibia::game::notify("onHighscoresNoData");
         return;
     }
 
@@ -7593,7 +7638,7 @@ void ProtocolGame::parseWeaponProficiencyExperience(const InputMessagePtr& msg)
     const uint16_t itemId = msg->getU16();
     const uint32_t experience = msg->getU32();
     const uint8_t hasUnusedPerk = msg->getU8();
-    g_gameEvents.callGlobalField("g_game", "onWeaponProficiencyExperience", itemId, experience, hasUnusedPerk != 0);
+    tibia::game::notify("onWeaponProficiencyExperience", itemId, experience, hasUnusedPerk != 0);
 }
 
 void ProtocolGame::parseWeaponProficiencyInfo(const InputMessagePtr& msg)
@@ -7629,8 +7674,8 @@ void ProtocolGame::parseWeaponProficiencyInfo(const InputMessagePtr& msg)
 
     constexpr uint16_t MarketCategoryWeaponsAll = 32;
     uint16_t marketCategory = MarketCategoryWeaponsAll;
-    if (g_things.isValidDatId(itemId, ThingCategoryItem)) {
-        const auto& itemType = g_things.getThingType(itemId, ThingCategoryItem);
+    if (tibia::game::isValidDatId(itemId, ThingCategoryItem)) {
+        const auto& itemType = tibia::game::thingType(itemId, ThingCategoryItem);
         if (itemType) {
             const auto& marketData = itemType->getMarketData();
             if (!marketData.name.empty()) {
@@ -7638,7 +7683,7 @@ void ProtocolGame::parseWeaponProficiencyInfo(const InputMessagePtr& msg)
             }
         }
     }
-    g_gameEvents.callGlobalField("g_game", "onWeaponProficiency", itemId, experience, perks, marketCategory, modifiedSlots);
+    tibia::game::notify("onWeaponProficiency", itemId, experience, perks, marketCategory, modifiedSlots);
 }
 
 void ProtocolGame::parseWeaponProficiencyReshapeOffers(const InputMessagePtr& msg)
@@ -7656,7 +7701,7 @@ void ProtocolGame::parseWeaponProficiencyReshapeOffers(const InputMessagePtr& ms
         offers.push_back({ { "modifierEnum", perkType }, { "refineLevel", value } });
     }
 
-    g_gameEvents.callGlobalField("g_game", "onWeaponProficiencyReshape", itemId, currentLevel, currentPosition, offers);
+    tibia::game::notify("onWeaponProficiencyReshape", itemId, currentLevel, currentPosition, offers);
 }
 
 void ProtocolGame::parseUnlockedSpells(const InputMessagePtr& msg)
@@ -7664,7 +7709,7 @@ void ProtocolGame::parseUnlockedSpells(const InputMessagePtr& msg)
     std::vector<uint16_t> spellIds;
     for (uint16_t i = 0, count = msg->getU16(); i < count; ++i)
         spellIds.push_back(msg->getU16());
-    g_gameEvents.callGlobalField("g_game", "onUnlockedSpells", spellIds);
+    tibia::game::notify("onUnlockedSpells", spellIds);
 }
 
 static std::string friendJsonEscape(const std::string& in)
@@ -7724,20 +7769,20 @@ void ProtocolGame::parseFriendSystemData(const InputMessagePtr& msg)
             while (msg->getUnreadSize() > 0)
                 msg->getU8();
             if (error.empty())
-                g_gameEvents.callGlobalField("g_game", "onFriendSystemCannotUse");
+                tibia::game::notify("onFriendSystemCannotUse");
             else
-                g_gameEvents.callGlobalField("g_game", "onFriendSystemError", error);
+                tibia::game::notify("onFriendSystemError", error);
             break;
         }
         case 1: // FRIENDINVITE_NOTICE
             while (msg->getUnreadSize() > 0)
                 msg->getU8();
-            g_gameEvents.callGlobalField("g_game", "onFriendSystemInviteNotice");
+            tibia::game::notify("onFriendSystemInviteNotice");
             break;
         case 7: // FRIENDSHIP_NOTICE
             while (msg->getUnreadSize() > 0)
                 msg->getU8();
-            g_gameEvents.callGlobalField("g_game", "onFriendSystemFriendshipNotice");
+            tibia::game::notify("onFriendSystemFriendshipNotice");
             break;
         case 2: { // FRIENDLIST
             std::string json = "{\"type\":\"friends\",\"friends\":[";
@@ -7759,7 +7804,7 @@ void ProtocolGame::parseFriendSystemData(const InputMessagePtr& msg)
                     + "\",\"outfit\":" + friendOutfitJson(msg) + "}";
             }
             json += "]}";
-            g_gameEvents.callGlobalField("g_game", "onFriendSystemJson", json);
+            tibia::game::notify("onFriendSystemJson", json);
             break;
         }
         case 3: { // INVITELIST
@@ -7780,7 +7825,7 @@ void ProtocolGame::parseFriendSystemData(const InputMessagePtr& msg)
             json += "],\"sent\":[";
             readInvites(json);
             json += "]}";
-            g_gameEvents.callGlobalField("g_game", "onFriendSystemJson", json);
+            tibia::game::notify("onFriendSystemJson", json);
             break;
         }
         case 4: { // BLACKLIST
@@ -7796,7 +7841,7 @@ void ProtocolGame::parseFriendSystemData(const InputMessagePtr& msg)
                     + "\",\"created\":" + std::to_string(created) + "}";
             }
             json += "]}";
-            g_gameEvents.callGlobalField("g_game", "onFriendSystemJson", json);
+            tibia::game::notify("onFriendSystemJson", json);
             break;
         }
         case 5: { // ACCOUNTSEARCH
@@ -7829,7 +7874,7 @@ void ProtocolGame::parseFriendSystemData(const InputMessagePtr& msg)
                     + ",\"outfit\":" + friendOutfitJson(msg) + "}";
             }
             json += "]}}";
-            g_gameEvents.callGlobalField("g_game", "onFriendSystemJson", json);
+            tibia::game::notify("onFriendSystemJson", json);
             break;
         }
         case 6: { // BADGELIST
@@ -7850,7 +7895,7 @@ void ProtocolGame::parseFriendSystemData(const InputMessagePtr& msg)
                     + ",\"visible\":" + (visible ? "true" : "false") + "}";
             }
             json += "]}";
-            g_gameEvents.callGlobalField("g_game", "onFriendSystemJson", json);
+            tibia::game::notify("onFriendSystemJson", json);
             break;
         }
         case 8: { // SETTINGS
@@ -7875,13 +7920,13 @@ void ProtocolGame::parseFriendSystemData(const InputMessagePtr& msg)
                     + ",\"enableAllowInspect\":" + (enableInspect ? "true" : "false") + "}";
             }
             json += "]}";
-            g_gameEvents.callGlobalField("g_game", "onFriendSystemJson", json);
+            tibia::game::notify("onFriendSystemJson", json);
             break;
         }
         default:
             while (msg->getUnreadSize() > 0)
                 msg->getU8();
-            g_gameEvents.callGlobalField("g_game", "onFriendSystemData", dataType);
+            tibia::game::notify("onFriendSystemData", dataType);
             break;
     }
 }
@@ -7903,7 +7948,7 @@ void ProtocolGame::parseCharacterTradeConfiguration(const InputMessagePtr& msg)
         std::vector<std::tuple<std::string, uint8_t>> conditions;
         for (uint8_t i = 0, n = msg->getU8(); i < n; ++i)
             conditions.emplace_back(msg->getString(), msg->getU8());
-        g_gameEvents.callGlobalField("g_game", "onCharacterTradeConditions", name, level, vocationClientId,
+        tibia::game::notify("onCharacterTradeConditions", name, level, vocationClientId,
                                      outfit, worldType, startTimestamp, endTimestamp, minimumBid, conditions);
         return;
     }
@@ -7913,13 +7958,13 @@ void ProtocolGame::parseCharacterTradeConfiguration(const InputMessagePtr& msg)
         for (uint16_t i = 0, n = msg->getU16(); i < n; ++i) {
             const uint16_t itemId = msg->getU16();
             uint8_t tier = 0;
-            const auto& thingType = g_things.getThingType(itemId, ThingCategoryItem);
+            const auto& thingType = tibia::game::thingType(itemId, ThingCategoryItem);
             if (thingType && thingType->getClassification() > 0)
                 tier = msg->getU8();
             const uint32_t count = msg->getU32();
             items.emplace_back(itemId, tier, count);
         }
-        g_gameEvents.callGlobalField("g_game", "onCharacterTradeItems", dataType, items);
+        tibia::game::notify("onCharacterTradeItems", dataType, items);
         return;
     }
     if (dataType == 3) {
@@ -7933,7 +7978,7 @@ void ProtocolGame::parseCharacterTradeConfiguration(const InputMessagePtr& msg)
                 entries.emplace_back(msg->getU16(), msg->getString());
             groups.emplace_back(category, groupName, entries);
         }
-        g_gameEvents.callGlobalField("g_game", "onCharacterTradeHighlights", groups);
+        tibia::game::notify("onCharacterTradeHighlights", groups);
         return;
     }
     if (dataType == 4) {
@@ -7942,7 +7987,7 @@ void ProtocolGame::parseCharacterTradeConfiguration(const InputMessagePtr& msg)
         std::vector<std::string> problems;
         for (uint8_t i = 0, n = msg->getU8(); i < n; ++i)
             problems.push_back(msg->getString());
-        g_gameEvents.callGlobalField("g_game", "onCharacterTradeSummary", fee, problems);
+        tibia::game::notify("onCharacterTradeSummary", fee, problems);
         return;
     }
     g_logger.warning("CharacterTradeConfiguration unknown dataType {}", dataType);
@@ -8003,21 +8048,21 @@ void ProtocolGame::parseConfigureCreaturePodium(const InputMessagePtr& msg)
     const uint8_t podiumVisible = msg->getU8();
     const uint8_t monsterSelected = msg->getU8();
     const uint8_t direction = msg->getU8();
-    g_gameEvents.callGlobalField("g_game", "onConfigureCreaturePodium", selected, isBossPodium, races,
+    tibia::game::notify("onConfigureCreaturePodium", selected, isBossPodium, races,
                                  pos, itemId, stackpos, podiumVisible, monsterSelected, direction);
 }
 
 void ProtocolGame::parseCloseRewardWall(const InputMessagePtr&)
 {
     // CIP CloseRewardWall (S 0xE3) — no fields; Crystal daily_reward defines the opcode.
-    g_gameEvents.callGlobalField("g_game", "onCloseRewardWall");
+    tibia::game::notify("onCloseRewardWall");
 }
 
 void ProtocolGame::parseBossDifficultySelection(const InputMessagePtr& msg)
 {
     const uint8_t disc = msg->getU8();
     if (disc == 1) {
-        g_gameEvents.callGlobalField("g_game", "onBossDifficultyClose");
+        tibia::game::notify("onBossDifficultyClose");
         return;
     }
 
@@ -8029,7 +8074,7 @@ void ProtocolGame::parseBossDifficultySelection(const InputMessagePtr& msg)
         std::vector<std::string> green;
         for (int i = 0, n = msg->getU8(); i < n; ++i)
             green.push_back(msg->getString());
-        g_gameEvents.callGlobalField("g_game", "onBossDifficultyUpdate", difficulty, red, green);
+        tibia::game::notify("onBossDifficultyUpdate", difficulty, red, green);
         return;
     }
 
@@ -8054,7 +8099,7 @@ void ProtocolGame::parseBossDifficultySelection(const InputMessagePtr& msg)
     for (int i = 0, n = msg->getU8(); i < n; ++i)
         green.push_back(msg->getString());
 
-    g_gameEvents.callGlobalField("g_game", "onBossDifficultySelection", lowestDifficulty, spinnerLocked == 0, raceId,
+    tibia::game::notify("onBossDifficultySelection", lowestDifficulty, spinnerLocked == 0, raceId,
                           selectedDifficulty, groupHighest, personalHighest, badLuck, banners, red, green);
 }
 
@@ -8063,16 +8108,16 @@ void ProtocolGame::parseOpenWheelWindow(const InputMessagePtr& msg)
 {
     // Player ID
     uint32_t playerId = msg->getU32();
-    g_logger.debug(fmt::format("[Wheel C++ Parse] parseOpenWheelWindow -> playerId={}", playerId));
+    g_logger.debug(std::format("[Wheel C++ Parse] parseOpenWheelWindow -> playerId={}", playerId));
 
     // CanView
     uint8_t canView = msg->getU8();
-    g_logger.debug(fmt::format("[Wheel C++ Parse] canView={}", static_cast<int>(canView)));
+    g_logger.debug(std::format("[Wheel C++ Parse] canView={}", static_cast<int>(canView)));
 
     // Se não pode visualizar, encerra e dispara callback "vazio"
     if (!canView) {
         g_logger.debug("[Wheel C++ Parse] Player não pode abrir a Wheel of Destiny.");
-        g_gameEvents.callGlobalField("g_game", "onDestinyWheel",
+        tibia::game::notify("onDestinyWheel",
             playerId, canView, 0, 0, 0, 0,
             std::vector<uint16_t>(), std::vector<uint16_t>(),
             std::vector<uint16_t>(), std::vector<GemData>(),
@@ -8084,14 +8129,14 @@ void ProtocolGame::parseOpenWheelWindow(const InputMessagePtr& msg)
     // Estado de mudança + vocation
     uint8_t changeState = msg->getU8();
     uint8_t vocationId = msg->getU8();
-    g_logger.debug(fmt::format("[Wheel C++ Parse] changeState={} vocationId={}",
+    g_logger.debug(std::format("[Wheel C++ Parse] changeState={} vocationId={}",
         static_cast<int>(changeState), static_cast<int>(vocationId)));
 
     // Pontos
     uint16_t points = msg->getU16();
     uint16_t extraPoints = msg->getU16();
 
-    g_logger.debug(fmt::format("[Wheel C++ Parse] points={} extraPoints={}",
+    g_logger.debug(std::format("[Wheel C++ Parse] points={} extraPoints={}",
         static_cast<int>(points),
         static_cast<int>(extraPoints)));
 
@@ -8104,18 +8149,18 @@ void ProtocolGame::parseOpenWheelWindow(const InputMessagePtr& msg)
         pointInvested.push_back(slotPoints);
     }
 
-    g_logger.debug(fmt::format("[Wheel C++ Parse] pointInvested ({} slots)", static_cast<int>(pointInvested.size())));
+    g_logger.debug(std::format("[Wheel C++ Parse] pointInvested ({} slots)", static_cast<int>(pointInvested.size())));
 
     // Log detalhado de cada slot
     for (int i = 0; i < static_cast<int>(pointInvested.size()); ++i) {
-        g_logger.debug(fmt::format("  [Slot {:>2}] points={}", i, pointInvested[i]));
+        g_logger.debug(std::format("  [Slot {:>2}] points={}", i, pointInvested[i]));
     }
 
     // Promotion scrolls
     std::vector<uint16_t> usedPromotionScrolls;
     std::vector<uint16_t> promotionScrollPoints;
     uint16_t scrollCount = msg->getU16();
-    g_logger.debug(fmt::format("[Wheel C++ Parse] scrollCount={}", static_cast<int>(scrollCount)));
+    g_logger.debug(std::format("[Wheel C++ Parse] scrollCount={}", static_cast<int>(scrollCount)));
 
     for (uint16_t i = 0; i < scrollCount; ++i) {
         uint16_t itemId = msg->getU16();
@@ -8127,35 +8172,35 @@ void ProtocolGame::parseOpenWheelWindow(const InputMessagePtr& msg)
         usedPromotionScrolls.push_back(itemId);
         promotionScrollPoints.push_back(extraPoints);
 
-        g_logger.debug(fmt::format("  [Scroll {}] id={} extraPoints={}",
+        g_logger.debug(std::format("  [Scroll {}] id={} extraPoints={}",
             static_cast<int>(i),
             static_cast<int>(itemId),
             static_cast<int>(extraPoints)));
     }
 
     uint8_t hasMonkQuest = 0;
-    if (g_game.getFeature(Otc::GameVocationMonk) && msg->getUnreadSize() > 0) {
+    if (g_game.getFeature(tibia::client::GameVocationMonk) && msg->getUnreadSize() > 0) {
         hasMonkQuest = msg->getU8();
-        g_logger.debug(fmt::format("[Wheel C++ Parse] hasMonkQuest lido (valor={})", static_cast<int>(hasMonkQuest)));
+        g_logger.debug(std::format("[Wheel C++ Parse] hasMonkQuest lido (valor={})", static_cast<int>(hasMonkQuest)));
     }
     uint16_t huntingTaskPoints = 0;
-    if (g_game.getFeature(Otc::GameTaskboard)) {
+    if (g_game.getFeature(tibia::client::GameTaskboard)) {
         huntingTaskPoints = msg->getU16(); // getExtraPointsFromHuntingTaskShop
     }
     // Gems ativas (equipadas)
     std::vector<uint16_t> equipedGems;
     uint8_t activeGemCount = msg->getU8();
-    g_logger.debug(fmt::format("[Wheel C++ Parse] activeGemCount={}", static_cast<int>(activeGemCount)));
+    g_logger.debug(std::format("[Wheel C++ Parse] activeGemCount={}", static_cast<int>(activeGemCount)));
     for (uint8_t i = 0; i < activeGemCount; ++i) {
         uint16_t gemIndex = msg->getU16();
         equipedGems.push_back(gemIndex);
-        g_logger.debug(fmt::format("  [ActiveGem {}] index={}", static_cast<int>(i), static_cast<int>(gemIndex)));
+        g_logger.debug(std::format("  [ActiveGem {}] index={}", static_cast<int>(i), static_cast<int>(gemIndex)));
     }
 
     // Gems reveladas (atelier)
     std::vector<GemData> atelierGems;
     uint16_t revealedCount = msg->getU16();
-    g_logger.debug(fmt::format("[Wheel C++ Parse] revealedGemCount={}", static_cast<int>(revealedCount)));
+    g_logger.debug(std::format("[Wheel C++ Parse] revealedGemCount={}", static_cast<int>(revealedCount)));
 
     for (uint16_t i = 0; i < revealedCount; ++i) {
         GemData gem;
@@ -8165,14 +8210,14 @@ void ProtocolGame::parseOpenWheelWindow(const InputMessagePtr& msg)
         gem.gemType = msg->getU8();         // Qualidade (Lesser, Regular, Greater, Supreme)
         gem.lesserBonus = msg->getU8();     // Primeiro modificador
 
-        if (gem.gemType >= Otc::WheelGemQuality_Regular)
+        if (gem.gemType >= tibia::client::WheelGemQuality_Regular)
             gem.regularBonus = msg->getU8();
-        if (gem.gemType >= Otc::WheelGemQuality_Greater)
+        if (gem.gemType >= tibia::client::WheelGemQuality_Greater)
             gem.supremeBonus = msg->getU8();
 
         atelierGems.push_back(gem);
 
-        g_logger.debug(fmt::format(
+        g_logger.debug(std::format(
             "  [RevealedGem {:02}] id={} locked={} domain={} type={} lesser={} regular={} supreme={}",
             static_cast<int>(i),
             static_cast<int>(gem.gemID),
@@ -8188,35 +8233,35 @@ void ProtocolGame::parseOpenWheelWindow(const InputMessagePtr& msg)
     // Basic upgrades
     std::map<uint8_t, uint8_t> basicUpgraded;
     uint8_t basicCount = msg->getU8(); // geralmente 0x2E (46)
-    g_logger.debug(fmt::format("[Wheel C++ Parse] basicUpgraded count={}", static_cast<int>(basicCount)));
+    g_logger.debug(std::format("[Wheel C++ Parse] basicUpgraded count={}", static_cast<int>(basicCount)));
     for (uint8_t i = 0; i < basicCount; ++i) {
         uint8_t pos = msg->getU8();
         uint8_t val = msg->getU8();
         basicUpgraded[pos] = val;
-        g_logger.debug(fmt::format("  [BasicUpgrade {}] pos={} val={}",
+        g_logger.debug(std::format("  [BasicUpgrade {}] pos={} val={}",
             static_cast<int>(i), static_cast<int>(pos), static_cast<int>(val)));
     }
 
     // Supreme upgrades
     std::map<uint8_t, uint8_t> supremeUpgraded;
     uint8_t supCount = msg->getU8(); // geralmente 0x17 (23)
-    g_logger.debug(fmt::format("[Wheel C++ Parse] supremeUpgraded count={}", static_cast<int>(supCount)));
+    g_logger.debug(std::format("[Wheel C++ Parse] supremeUpgraded count={}", static_cast<int>(supCount)));
     for (uint8_t i = 0; i < supCount; ++i) {
         uint8_t pos = msg->getU8();
         uint8_t val = msg->getU8();
         supremeUpgraded[pos] = val;
-        g_logger.debug(fmt::format("  [SupremeUpgrade {}] pos={} val={}",
+        g_logger.debug(std::format("  [SupremeUpgrade {}] pos={} val={}",
             static_cast<int>(i), static_cast<int>(pos), static_cast<int>(val)));
     }
 
     // Canary 15.10+ appends earnedFromAchievements; CrystalServer does not. Never drain the
     // unread bytes here: batched follow-up opcodes share this InputMessage.
     uint8_t earnedFromAchievements = 0;
-    if (g_game.getFeature(Otc::GameWheelAchievementPoints))
+    if (g_game.getFeature(tibia::client::GameWheelAchievementPoints))
         earnedFromAchievements = msg->getU8();
 
     // Callback Lua
-    g_gameEvents.callGlobalField("g_game", "onDestinyWheel",
+    tibia::game::notify("onDestinyWheel",
         playerId, canView, changeState, vocationId,
         points, extraPoints, pointInvested,
         usedPromotionScrolls, equipedGems, atelierGems,
@@ -8228,33 +8273,17 @@ void ProtocolGame::parseOpenWheelWindow(const InputMessagePtr& msg)
 void ProtocolGame::parseAttachedPaperdoll(const InputMessagePtr& msg) {
     const uint32_t id = msg->getU32();
     const auto& paperdoll = getPaperdoll(msg);
-
-    const auto& creature = g_map.getCreatureById(id);
-    if (!creature) {
-        g_logger.traceError(std::format("could not get creature with id %d", id));
-        return;
-    }
-
-    if (creature->hasPaperdoll(paperdoll->getId()))
-        return;
-
-    creature->attachPaperdoll(paperdoll);
+    tibia::creatures::protocolAttachPaperdoll(id, paperdoll);
 }
 void ProtocolGame::parseDetachPaperdoll(const InputMessagePtr& msg) {
     const uint32_t id = msg->getU32();
     const bool bySlot = msg->getU8();
     const uint16_t idOrSlot = msg->getU16();
 
-    const auto& creature = g_map.getCreatureById(id);
-    if (!creature) {
-        g_logger.traceError(std::format("could not get creature with id %d", id));
-        return;
-    }
-
     if (bySlot)
-        creature->detachPaperdollByPriority(idOrSlot);
+        tibia::creatures::protocolDetachPaperdollByPriority(id, static_cast<uint8_t>(idOrSlot));
     else
-        creature->detachPaperdollById(idOrSlot);
+        tibia::creatures::protocolDetachPaperdollById(id, idOrSlot);
 }
 
 PaperdollPtr ProtocolGame::getPaperdoll(const InputMessagePtr& msg) const {

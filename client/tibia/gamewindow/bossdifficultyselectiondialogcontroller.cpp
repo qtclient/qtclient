@@ -1,8 +1,10 @@
 #include "bossdifficultyselectiondialogcontroller.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 
 #include <string>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -31,26 +33,25 @@ TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogControll
     m_previewTimer.setSingleShot(true);
     m_previewTimer.setInterval(500);
     connect(&m_previewTimer, &QTimer::timeout, this, [this] {
-        g_game.sendBossDifficultyAction(Preview, static_cast<uint16_t>(m_selectedDifficulty));
+        tibia::game::sendBossDifficultyAction(Preview, static_cast<uint16_t>(m_selectedDifficulty));
     });
 
-    m_hooks.emplace_back("g_game", "onBossDifficultySelection", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossDifficultySelection", [this](GameObject*, const Args& args) {
         open(args);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onBossDifficultyUpdate", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossDifficultyUpdate", [this](GameObject*, const Args& args) {
         update(args);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onBossDifficultyClose", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossDifficultyClose", [this](GameObject*, const Args&) {
         m_previewTimer.stop();
         dialog()->close();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_previewTimer.stop();
         dialog()->destroy();
-        return std::any{};
     });
 }
 
@@ -104,13 +105,13 @@ void TBossDifficultySelectionDialogController::setSelectedDifficulty(const int v
 void TBossDifficultySelectionDialogController::onCancelClicked()
 {
     m_previewTimer.stop();
-    g_game.sendBossDifficultyAction(Cancel);
+    tibia::game::sendBossDifficultyAction(Cancel);
 }
 
 void TBossDifficultySelectionDialogController::onStartClicked()
 {
     m_previewTimer.stop();
-    g_game.sendBossDifficultyAction(Start, static_cast<uint16_t>(m_selectedDifficulty));
+    tibia::game::sendBossDifficultyAction(Start, static_cast<uint16_t>(m_selectedDifficulty));
 }
 
 }

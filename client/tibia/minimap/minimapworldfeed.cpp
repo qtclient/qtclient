@@ -1,11 +1,13 @@
 #include "minimapworldfeed.h"
 
-#include "worldmap/worldmapprotocolmessagehandler.h"
-
+#include <tibia/assets/thingtype.h>
 #include <tibia/world/world.h>
+
+#include "appearances/appearanceinstance.h"
 
 #include <algorithm>
 #include <ranges>
+#include "worldmap/worldmapstorage.h"
 
 namespace tibia::minimap {
 
@@ -19,39 +21,16 @@ TMinimapWorldFeed::TMinimapWorldFeed(TMinimapTileStorage& storage)
     : m_storage(storage)
 {
     m_storage.setWorld(this);
-    tibia::world::fields().setObserver(this);
-    // Created after the first map description arrived.
-    if (tibia::world::fields().getCentralPosition().isValid())
-        onWindowChanged(true);
 }
 
 TMinimapWorldFeed::~TMinimapWorldFeed()
 {
-    tibia::world::fields().setObserver(nullptr);
     m_storage.setWorld(nullptr);
-}
-
-void TMinimapWorldFeed::onTileChanged(const Position& pos)
-{
-    m_storage.onFieldChanged(pos);
-    if (m_protocol)
-        m_protocol->onTileChanged(pos);
-}
-
-void TMinimapWorldFeed::onWindowChanged(const bool fullDescription)
-{
-    // CIP: after a full map or a floor change (TWorldmapProtocolMessageHandler).
-    if (m_protocol)
-        m_protocol->onMapWindowChanged(fullDescription);
-    if (!fullDescription)
-        return;
-    m_storage.setPlayerZ(tibia::world::fields().getCentralPosition().z);
-    m_storage.markUnseen();
 }
 
 bool TMinimapWorldFeed::isKnown(const Position& coord) const
 {
-    const TilePtr& tile = tibia::world::fields().getTile(coord);
+    tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(coord);
     return tile && !tile->isEmpty();
 }
 
@@ -59,38 +38,43 @@ bool TMinimapWorldFeed::isKnown(const Position& coord) const
 TMinimapFieldData TMinimapWorldFeed::fieldData(const Position& coord) const
 {
     TMinimapFieldData data;
-    const TilePtr& tile = tibia::world::fields().getTile(coord);
+    tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(coord);
     if (!tile)
         return data;
-    const auto& things = tile->getThings();
+    const auto& appearances = tile->appearances();
 
     // The topmost object with an automap colour (FUN_10105e690).
     data.color = 0;
-    for (const ThingPtr& thing : std::views::reverse(things)) {
-        if (thing->hasMiniMapColor()) {
-            data.color = static_cast<uint8_t>(thing->getMinimapColor());
+    for (const auto& appearance : std::views::reverse(appearances)) {
+        const ThingType* type = appearance ? appearance->thingType() : nullptr;
+        if (type && type->hasMiniMapColor()) {
+            data.color = static_cast<uint8_t>(type->getMinimapColor());
             break;
         }
     }
 
     // The first object with a bank (FUN_10105e750), 0xff without one; at most 250.
     int cost = 0xff;
-    for (const ThingPtr& thing : things) {
-        if (thing->isGround()) {
-            cost = thing->getGroundSpeed();
+    for (const auto& appearance : appearances) {
+        const ThingType* type = appearance ? appearance->thingType() : nullptr;
+        if (type && type->isGround()) {
+            cost = type->getGroundSpeed();
             break;
         }
     }
     data.cost = static_cast<uint8_t>(std::min(cost, MaxCost));
 
     // Any unpassable object that is not a creature (FUN_10105d1a0).
-    data.blocked = std::ranges::any_of(things, [](const ThingPtr& thing) { return !thing->isCreature() && thing->isNotWalkable(); });
+    data.blocked = std::ranges::any_of(appearances, [](const appearances::TAppearanceInstancePtr& appearance) {
+        const ThingType* type = appearance ? appearance->thingType() : nullptr;
+        return type && type->getCategory() != ThingCategoryCreature && type->isNotWalkable();
+    });
     return data;
 }
 
 void TMinimapWorldFeed::forEachKnownField(const int z, const std::function<void(const Position&)>& visit) const
 {
-    for (const TilePtr& tile : tibia::world::fields().getTiles(static_cast<int8_t>(z))) {
+    for (tibia::worldmap::TWorldMapField* tile : tibia::world::fields().getTiles(static_cast<int8_t>(z))) {
         if (!tile->isEmpty())
             visit(tile->getPosition());
     }
@@ -102,7 +86,8 @@ QRect TMinimapWorldFeed::areaOn(const int z) const
     const Position center = tibia::world::fields().getCentralPosition();
     const AwareRange range = tibia::world::fields().getAwareRange();
     const int shift = center.z - z;
-    return QRect(center.x - range.left + shift, center.y - range.top + shift, range.horizontal(), range.vertical());
+    return QRect(center.x - range.left + shift, center.y - range.top + shift, range.horizontal(),
+                 range.vertical());
 }
 
 }

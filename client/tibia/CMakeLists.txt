@@ -27,6 +27,7 @@ include("${TIBIA_ROOT}/cmake/CipQmlModule.cmake")
 include("${TIBIA_ROOT}/cmake/TibiaMods.cmake")
 include("${TIBIA_ROOT}/cmake/QtClientMod.cmake")
 include("${TIBIA_ROOT}/cmake/QtClientHost.cmake")
+include("${TIBIA_ROOT}/cmake/TibiaDesktopTip.cmake")
 
 # Dev: load QML from the source tree (umbrella `make client-build`). Production
 # packaging leaves this OFF so QML stays embedded + qmlcachegen'd.
@@ -40,10 +41,6 @@ if(APPLE AND OPENGL_FRAMEWORK AND NOT IS_ABSOLUTE "${OPENGL_gl_LIBRARY}")
   set(_tibia_unset_gl ON)
 endif()
 find_package(Qt6 6.10 QUIET COMPONENTS Core Gui Network Qml Quick QuickPrivate QuickControls2 ShaderTools Core5Compat)
-# CipSoft launcher stage embedded in tibia.wasm (Widgets UI).
-if(EMSCRIPTEN OR WASM)
-  find_package(Qt6 6.10 QUIET COMPONENTS Widgets)
-endif()
 if(_tibia_unset_gl)
   unset(OPENGL_gl_LIBRARY)
 endif()
@@ -61,15 +58,7 @@ if(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
   add_compile_options("SHELL:-include arm_acle.h")
 endif()
 
-# Desktop OpenGL: macOS/Linux use vendored glad; Windows uses the compile-only
-# gl_win32 surface (Qt QRhi owns the GPU). ES/wasm use GLES3 (glutil.h).
-# Glad is wired after Qt so we never call find_package(OpenGL) before WrapOpenGL.
-if(NOT ANDROID AND NOT WASM AND NOT EMSCRIPTEN AND NOT WIN32)
-  add_subdirectory(engine/framework/graphics/glad)
-  if(TARGET qtclient_deps)
-    target_link_libraries(qtclient_deps INTERFACE tibia_glad)
-  endif()
-endif()
+# ES/wasm/android use GLES3 (glutil.h). Desktop uses compile-only gl_win32.h — no glad.
 
 get_target_property(_qt_core_type Qt6::Core TYPE)
 if(_qt_core_type STREQUAL "STATIC_LIBRARY")
@@ -77,7 +66,10 @@ if(_qt_core_type STREQUAL "STATIC_LIBRARY")
 endif()
 
 add_subdirectory(legacycontrols)
-add_subdirectory(qmlstubs)
+tibia_resolve_desktop_webengine(TIBIA_USE_WEBENGINE_STUBS)
+if(TIBIA_USE_WEBENGINE_STUBS)
+  add_subdirectory(qmlstubs)
+endif()
 # Resolve enabled packs before qmlcomponents so pack overrides/ layers apply.
 tibia_resolve_enabled_mods()
 cip_qml_module()
@@ -170,14 +162,17 @@ endif()
 # QuickPrivate: QQuickText, which CIP's outline text items wrap.
 target_link_libraries(tibia PRIVATE
   Qt6::Core Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::QuickPrivate Qt6::QuickControls2
-  tibia_legacycontrolsplugin tibia_webengineplugin tibia_webchannelplugin
+  tibia_legacycontrolsplugin
   qmlcomponentsplugin)
+tibia_link_desktop_webengine(tibia ${TIBIA_USE_WEBENGINE_STUBS})
 # Public HD scaler + mods registry / WorldView / ModLoader; packs via TibiaMods + QtClientMod.
 target_sources(tibia PRIVATE
   sprites/hdscale.cpp sprites/hdscale.h
+  sprites/spritesession.cpp sprites/spritesession.h
   mods/registry.cpp mods/registry.h
   mods/mod_api_v1.cpp
   mods/mission_backend.h mods/attention_backend.h mods/instance_backend.h mods/weather_driver.h
+  mods/lighting_types.h
   mods/worldview.cpp mods/worldview.h
   mods/modloader.cpp mods/modloader.h
   mods/mod_entry.h)
@@ -256,6 +251,9 @@ if(TIBIA_WITH_GAMECORE)
     sessiondump/sessiondumpciptypes.cpp sessiondump/sessiondumpciptypes.h
     network/networkciptypes.cpp network/networkciptypes.h
     protocol/protocolciptypes.cpp protocol/protocolciptypes.h
+    protocol/protocolclassicwire.h
+    protocol/inventoryitemwire.cpp protocol/inventoryitemwire.h
+    protocol/classicprotocolbridge.cpp protocol/classicprotocolbridge.h
     assets/assetsciptypes.cpp assets/assetsciptypes.h
     authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
@@ -289,6 +287,7 @@ if(TIBIA_WITH_GAMECORE)
     shared/tibiaurltools.cpp shared/tibiaurltools.h
     gamewindow/chatcontroller.cpp gamewindow/chatcontroller.h
     creatures/creaturesciptypes.cpp creatures/creaturesciptypes.h
+    creatures/creaturestorage.cpp creatures/creaturestorage.h
     friends/friendsciptypes.cpp friends/friendsciptypes.h
     gamewindow/gamewindowciptypes.cpp gamewindow/gamewindowciptypes.h
     gamewindow/remainingdialogs.cpp gamewindow/remainingdialogs.h
@@ -311,6 +310,11 @@ if(TIBIA_WITH_GAMECORE)
     config/hotkeyoptions.cpp config/hotkeyoptions.h
     app/portalurls.cpp app/portalurls.h
     game/gameciptypes.cpp game/gameciptypes.h
+    game/tgamenotify.cpp game/tgamenotify.h
+    game/gamesession.cpp game/gamesession.h
+    game/thingsession.cpp game/thingsession.h
+    game/creaturesession.cpp game/creaturesession.h
+    game/mapsession.cpp game/mapsession.h
     game/cooldownstorage.cpp game/cooldownstorage.h
     gamewindow/actionbarcontroller.cpp gamewindow/actionbarcontroller.h
     gamewindow/actionbarmanager.cpp gamewindow/actionbarmanager.h
@@ -543,6 +547,7 @@ if(TIBIA_WITH_GAMECORE)
     renderer/lightmappainteditem.cpp renderer/lightmappainteditem.h
     renderer/nextframeupdater.cpp renderer/nextframeupdater.h
     world/walkcalculator.cpp world/walkcalculator.h
+    world/creaturewalkmotion.cpp world/creaturewalkmotion.h
     renderer/rendervolumeprovider.cpp renderer/rendervolumeprovider.h
     renderer/scenegraphnodeprovider.cpp renderer/scenegraphnodeprovider.h
     renderer/spritetexturecache.cpp renderer/spritetexturecache.h
@@ -576,8 +581,9 @@ if(TIBIA_WITH_GAMECORE)
     worldmap/worldmapviewport.cpp worldmap/worldmapviewport.h)
   target_sources(tibia PRIVATE ${TIBIA_ENGINE_SOURCES}
     runtime/host.cpp
+    runtime/gamehost.h
     schedule/qtschedule.cpp)
-  # Engine translation units expect the old framework preamble (fmt, numbers,
+  # Engine translation units expect the old framework preamble (format, numbers,
   # asio). Force-include it here so it does not apply to Qt sources.
   set(_engine_cpp ${TIBIA_ENGINE_SOURCES})
   list(FILTER _engine_cpp INCLUDE REGEX "\\.cpp$")
@@ -588,8 +594,8 @@ if(TIBIA_WITH_GAMECORE)
   endif()
   target_link_libraries(tibia PRIVATE qtclient_deps protobuf)
   add_dependencies(tibia protocol_dispatch_check)
-  # miniaudio (CIP music/ambience/UI); Ogg decode uses stb_vorbis inside
-  # miniaudio_impl.cpp — no libvorbis.
+  # miniaudio (CIP music/ambience/UI); tip .ogg decode via libvorbis in
+  # miniaudio_impl.cpp (miniaudio custom backend).
   find_package(Threads REQUIRED)
   target_link_libraries(tibia PRIVATE Threads::Threads)
   target_compile_definitions(tibia PRIVATE TIBIA_WITH_GAMECORE)
@@ -678,77 +684,8 @@ endif()
 
 
 if(EMSCRIPTEN)
-  # CipSoft launcher stage in the same Module as the game (no /play remount).
-  if(NOT TARGET Qt6::Widgets)
-    message(FATAL_ERROR "tibia wasm CipSoft launcher stage needs Qt6::Widgets")
-  endif()
-  set(_tibia_launcher_dir "${TIBIA_ROOT}/launcher/src")
-  set(_launcher_chrome "${TIBIA_ROOT}/launcher/upstream")
-  set(_launcher_overrides "${TIBIA_ROOT}/launcher/overrides")
-  # First launcher pack with images/launcher wins (not hard-coded to mod).
-  set(_launcher_mod_art "")
-  file(GLOB _launcher_mod_dirs LIST_DIRECTORIES true "${TIBIA_ROOT}/launcher/mods/*")
-  foreach(_d IN LISTS _launcher_mod_dirs)
-    if(IS_DIRECTORY "${_d}" AND EXISTS "${_d}/images/launcher")
-      set(_launcher_mod_art "${_d}")
-      break()
-    endif()
-  endforeach()
-  target_sources(tibia PRIVATE
-    "${_tibia_launcher_dir}/brand.cpp" "${_tibia_launcher_dir}/brand.h"
-    "${_tibia_launcher_dir}/stage.cpp" "${_tibia_launcher_dir}/stage.h"
-    "${_tibia_launcher_dir}/package.cpp" "${_tibia_launcher_dir}/package.h"
-    "${_tibia_launcher_dir}/unpack.cpp" "${_tibia_launcher_dir}/unpack.h"
-    "${_tibia_launcher_dir}/window.cpp" "${_tibia_launcher_dir}/window.h"
-    "${_tibia_launcher_dir}/lzma/LzmaDec.c")
-  target_link_libraries(tibia PRIVATE qtclient_shared)
-  target_include_directories(tibia PRIVATE "${_tibia_launcher_dir}")
-  # CipSoft chrome QRC (same assets as the standalone launcher binary).
-  file(GLOB_RECURSE _embed_chrome CONFIGURE_DEPENDS "${_launcher_chrome}/*")
-  set(_embed_launcher_resources)
-  set(_product_art_names "BackgroundImage.jpg;TibiaLogo_Classic.png;CipSoftLogo.png")
-  foreach(_file IN LISTS _embed_chrome)
-    file(RELATIVE_PATH _rel "${_launcher_chrome}" "${_file}")
-    get_filename_component(_name "${_file}" NAME)
-    set(_src "${_file}")
-    if(_name IN_LIST _product_art_names)
-      set(_override "${_launcher_overrides}/images/launcher/${_name}")
-      if(NOT EXISTS "${_override}" AND NOT _launcher_mod_art STREQUAL "")
-        set(_override "${_launcher_mod_art}/images/launcher/${_name}")
-      endif()
-      if(EXISTS "${_override}")
-        set(_src "${_override}")
-      endif()
-    endif()
-    set_source_files_properties("${_src}" PROPERTIES QT_RESOURCE_ALIAS "${_rel}")
-    list(APPEND _embed_launcher_resources "${_src}")
-  endforeach()
-  foreach(_name IN ITEMS BackgroundImage.jpg TibiaLogo_Classic.png CipSoftLogo.png)
-    set(_override "${_launcher_overrides}/images/launcher/${_name}")
-    if(NOT EXISTS "${_override}" AND NOT _launcher_mod_art STREQUAL "")
-      set(_override "${_launcher_mod_art}/images/launcher/${_name}")
-    endif()
-    if(EXISTS "${_override}")
-      set_source_files_properties("${_override}" PROPERTIES QT_RESOURCE_ALIAS "images/launcher/${_name}")
-      list(APPEND _embed_launcher_resources "${_override}")
-    endif()
-  endforeach()
-  set(_hints_json "${TIBIA_ROOT}/data/hints.json")
-  if(EXISTS "${_hints_json}")
-    set_source_files_properties("${_hints_json}" PROPERTIES QT_RESOURCE_ALIAS "hints.json")
-    list(APPEND _embed_launcher_resources "${_hints_json}")
-  endif()
-  if(_embed_launcher_resources)
-    qt_add_resources(tibia tibia_launcher_assets PREFIX "/" FILES ${_embed_launcher_resources})
-  endif()
-  target_include_directories(tibia PRIVATE
-    "${_tibia_launcher_dir}/lzma"
-    "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${_tibia_launcher_dir}")
-  target_compile_definitions(tibia PRIVATE
-    TIBIA_WASM_EMBED_LAUNCHER=1
-    "TIBIA_LAUNCHER_VERSION=\"embedded\"")
-  target_link_libraries(tibia PRIVATE Qt6::Widgets)
+  # Browser qtclient is the separate Widgets `launcher` target (launcher.wasm).
+  # This tip is game-only QML — never embed qtclient / Widgets here.
   target_link_options(tibia PRIVATE "SHELL:-sFETCH=1")
   # Product packs STATIC-link into this tip — no MAIN_MODULE / host_exports.
 
@@ -758,7 +695,9 @@ if(EMSCRIPTEN)
   target_link_options(tibia PRIVATE
     "SHELL:--post-js=${TIBIA_ROOT}/browser/embind-ignore-dupes.js")
 
-  # Dev shell: the art pack is preloaded; release builds get it from the CDN sync.
+  # Optional local-dev only: preload graphics RCC into MEMFS.
+  # Release /play gets art from the CDN tip + OPFS (do not inflate tibia.data).
+  # Opt in: WASM_PRELOAD_GRAPHICS_RCC=1 make stock wasm build
   set(TIBIA_WASM_GRAPHICS_RCC "" CACHE FILEPATH "graphics_resources.rcc to preload into the wasm build")
   if(TIBIA_WASM_GRAPHICS_RCC)
     target_link_options(tibia PRIVATE "SHELL:--preload-file ${TIBIA_WASM_GRAPHICS_RCC}@/data/graphics_resources.rcc")
@@ -767,7 +706,7 @@ if(EMSCRIPTEN)
   # TIBIA_RUNTIME_FILES). Must live in MEMFS at `/` — /play has no disk tree.
   foreach(_rel IN ITEMS
       "data/setup.otml"
-      "data/images/game/console/typing.png"
+      "data/images/game/console/typing.webp"
       "config.ini")
     if(EXISTS "${TIBIA_ROOT}/${_rel}")
       target_link_options(tibia PRIVATE "SHELL:--preload-file ${TIBIA_ROOT}/${_rel}@/${_rel}")
@@ -787,9 +726,7 @@ if(EMSCRIPTEN)
       "SHELL:-fexceptions"
       "SHELL:-sSUPPORT_LONGJMP=emscripten")
   endif()
-  # Qt default 256MB is tight once CipSoft launcher + art are linked.
   # ENV/FS: CipSoft AppData under /home/web_user (portal mounts OPFS; no IDBFS).
-  # FETCH for tip downloads.
   set_target_properties(tibia PROPERTIES
     QT_WASM_INITIAL_MEMORY "512MB"
     QT_WASM_EXTRA_EXPORTED_METHODS "ENV,FS")
@@ -812,6 +749,10 @@ if(IOS)
     XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
     XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "16.0")
   target_compile_definitions(tibia PRIVATE TIBIA_MOBILE=1)
+endif()
+
+if(APPLE AND NOT IOS)
+  tibia_stage_moltenvk_macos_bundle(tibia)
 endif()
 
 # Tip host finalize (STATIC packs link into tibia; no ENABLE_EXPORTS ABI).

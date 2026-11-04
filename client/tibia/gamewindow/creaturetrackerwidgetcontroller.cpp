@@ -5,7 +5,7 @@
 #include "gamewindow/contextmenucontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 
 #include <QDateTime>
 #include <QJsonObject>
@@ -189,7 +189,7 @@ void TCreatureTrackerWidgetController::requestContextMenu(const uint RaceID, con
     menu->beginCustomMenu();
     menu->addCustomEntry(RaceName.isEmpty() ? QString::number(RaceID) : RaceName);
     connect(menu->addCustomEntry(qtTrId("quest_tracker_remove_tracked")), &TContextMenuEntryItem::triggered, this, [RaceID] {
-        g_game.sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), false);
+        tibia::game::sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), false);
     });
     menu->showCustomMenu();
 }

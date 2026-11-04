@@ -23,7 +23,7 @@
 #pragma once
 
 // Windows SDK must precede the C++ library when this header is force-included
-// (/FI): ImageHlp/wincrypt break if windows.h arrives after <mutex>/fmt/zlib.
+// (/FI): ImageHlp/wincrypt break if windows.h arrives after <mutex>/zlib.
 #ifdef _WIN32
 #include "win32_platform.h"
 #endif
@@ -60,6 +60,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <optional>
 #include <ostream>
 #include <queue>
@@ -86,16 +87,7 @@
 
 #include <zlib.h>
 
-#include <fmt/args.h>
-#include <fmt/chrono.h>
-#include <fmt/core.h>
-#include <fmt/format.h>
-#include <fmt/ranges.h>
+#include <format>
+#include "stdext/format.h"
 
 // ===== Utilities / Helpers =====
-// FMT Custom Formatter for Enums
-template <typename E>
-std::enable_if_t<std::is_enum_v<E>, std::underlying_type_t<E>>
-format_as(E e) {
-    return static_cast<std::underlying_type_t<E>>(e);
-}

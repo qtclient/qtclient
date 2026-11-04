@@ -4,7 +4,6 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <client/item.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/thingtype.h>
@@ -15,6 +14,9 @@
 #include <algorithm>
 #include <array>
 #include <utility>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::imbuing {
 
@@ -223,13 +225,13 @@ int sortKey(const uint32_t id)
 
 bool localPlayerPremium()
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 
 QString typeName(const uint typeId)
 {
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 
@@ -276,11 +278,9 @@ TImbuingDialogController::TImbuingDialogController(imbuing::TImbuingStorage* sto
     connect(m_storage, &TImbuingStorage::requestCloseImbuingDialog, this, &TImbuingDialogController::closeDialog);
     connect(m_storage, &TImbuingStorage::requestShowResultDialog, this, &TImbuingDialogController::onDisplayResultMessage);
 
-    m_hooks.emplace_back("object", "onPremiumChange", [this](LuaObject* self, const Args&) {
-        if (self == g_game.getLocalPlayer().get()) {
-            Q_EMIT premiumStatusChanged();
-            Q_EMIT imbuingQmlDataChanged();
-        }
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
+        Q_EMIT premiumStatusChanged();
+        Q_EMIT imbuingQmlDataChanged();
         return std::any{};
     });
 }
@@ -343,7 +343,7 @@ void TImbuingDialogController::closeDialog()
     m_clearConfirm->dialog()->close();
     Q_EMIT imbuingQmlDataChanged();
     dialog()->close();
-    g_game.closeImbuingWindow();
+    tibia::game::closeImbuingWindow();
     m_imbuedItemObjectID = 0;
     m_imbuedItemObjectCount = 0;
     m_imbuedItemObjectUpgradeTier = 0;
@@ -423,9 +423,9 @@ void TImbuingDialogController::handlePickItemToImbue()
     input::startTargetSelection([this](const input::TGameActionPtr& target) {
         if (!m_picking)
             return;
-        if (target && target->object && target->object->isItem()) {
-            const ItemPtr item = target->object->static_self_cast<Item>();
-            g_game.selectImbuementItem(static_cast<uint16_t>(item->getId()), item->getPosition(), static_cast<uint8_t>(item->getStackPos()));
+        if (target && target->objectClientId) {
+            const uint8_t stackpos = target->stackPosition >= 0 ? static_cast<uint8_t>(target->stackPosition) : 0;
+            tibia::game::selectImbuementItem(target->objectClientId, target->position, stackpos);
         }
         m_picking = false;
         if (dialog()->item() && !dialog()->isShown())
@@ -433,7 +433,7 @@ void TImbuingDialogController::handlePickItemToImbue()
     });
 }
 
-void TImbuingDialogController::handleImbueScroll() { g_game.selectImbuementScroll(); }
+void TImbuingDialogController::handleImbueScroll() { tibia::game::selectImbuementScroll(); }
 
 void TImbuingDialogController::onImbuingStorageDataChanged()
 {
@@ -452,12 +452,12 @@ void TImbuingDialogController::onDisplayResultMessage(const QString& message)
 
 void TImbuingDialogController::onImbueSlotConfirmed()
 {
-    g_game.applyImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex), static_cast<uint32_t>(m_selectedImbuementId), false);
+    tibia::game::applyImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex), static_cast<uint32_t>(m_selectedImbuementId), false);
 }
 
 void TImbuingDialogController::onClearSlotConfirmed()
 {
-    g_game.clearImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex));
+    tibia::game::clearImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex));
 }
 
 const imbuing::TImbuementSlot* TImbuingDialogController::selectedSlot() const
@@ -573,9 +573,9 @@ void TImbuingDialogController::select(const int imbuementId)
 
     QList<QObject*> sources;
     bool enough = true;
-    for (const auto& [item, name] : data->sources) {
-        const uint typeId = item ? item->getId() : 0;
-        const uint needed = item ? item->getCount() : 0;
+    for (const auto& [typeIdRaw, neededRaw, name] : data->sources) {
+        const uint typeId = typeIdRaw;
+        const uint needed = neededRaw;
         bool listed = false;
         const uint owned = m_storage->ownedCount(static_cast<uint16_t>(typeId), &listed);
         enough = enough && listed && needed <= owned;

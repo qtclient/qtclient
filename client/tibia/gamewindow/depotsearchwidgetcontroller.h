@@ -51,8 +51,19 @@ public Q_SLOTS:
     void requestItemSelect(int AppearanceId, int UpgradeTier) override;
     void requestItemChosen(int AppearanceId, int UpgradeTier) override;
     void onSearchedItemClicked(int AppearanceId, int UpgradeTier, int MouseButtonRaw, int KeyboardModifiersRaw) override;
+    void onClassificationFilterWasSelected(int SelectedIndex, const QString& NameFilter, bool FilterByLevel, bool FilterByVocation,
+                                           bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly) override;
+    void onTierFilterWasSelected(int SelectedIndex, const QString& NameFilter, bool FilterByLevel, bool FilterByVocation,
+                                  bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly) override;
+    void onNpcFilterWasSelected(int SelectedIndex, const QString& NameFilter, bool FilterByLevel, bool FilterByVocation,
+                                 bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly) override;
     void requestRetrieveFromStash(int TypeID) override;
     void requestRetrieveFromDepotInbox(int StorageLocation) override;
+    void slotClicked(int StorageLocation, int SlotIDRaw, int MouseButtonRaw, int KeyboardModifiersRaw) override;
+    void slotEntered(int StorageLocation, int SlotIDRaw) override;
+    void slotExited(int StorageLocation, int SlotIDRaw) override;
+    void slotStartDrag(int StorageLocation, int SlotIDRaw, QObject* pSource) override;
+    void slotTargetSelected(int StorageLocation, int SlotIDRaw) override;
     void onRequestClose() override;
     void onCloseClicked() override;
 
@@ -63,6 +74,9 @@ private:
     void applyDetail(const DepotSearchDetail& detail);
     void clearDetail();
     int countOf(uint16_t typeId, uint8_t tier) const;
+    TAppearanceTypeListModel* modelForStorage(int storageLocation) const;
+    uint8_t retrieveTypeForStorage(int storageLocation) const;
+    bool entryAt(int storageLocation, int slotId, uint16_t& typeId, uint8_t& tier) const;
 
     QPointer<TSidebarManager> m_sidebars;
     QPointer<config::TSidebarOptions> m_options;

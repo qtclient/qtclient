@@ -4,13 +4,15 @@
 #include "app/clientoptions.h"
 #include "client/gamecore.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/protocolgame.h>
 #include <framework/core/gameevents.h>
 
 #include <QLoggingCategory>
 #include <QTimer>
 #include <QUrl>
+
+#include <tibia/game/gamenotify.h>
 
 #if defined(Q_OS_WASM)
 #include <emscripten.h>
@@ -93,11 +95,11 @@ TGameserverDualConnection::TGameserverDualConnection(QObject* parent)
             onOptimizeConnectionStabilityOptionChanged();
     });
 
-    m_readyHook = g_gameEvents.subscribe("g_game", "onReadyForSecondaryConnection",
-                                         [this](LuaObject*, const GameEvents::Args& args) {
-                                             onReadyForSecondaryConnection(argString(args, 0).toStdString());
-                                             return std::any{};
-                                         });
+    m_readyHook = tibia::game::SoftHook(
+        "onReadyForSecondaryConnection", [this](const tibia::game::TGameNotify::Args& args) {
+            onReadyForSecondaryConnection(argString(args, 0).toStdString());
+            return std::any{};
+        });
 
     m_pingTimer.setInterval(5000);
     connect(&m_pingTimer, &QTimer::timeout, this, [this] {
@@ -108,8 +110,6 @@ TGameserverDualConnection::TGameserverDualConnection(QObject* parent)
 
 TGameserverDualConnection::~TGameserverDualConnection()
 {
-    if (m_readyHook)
-        g_gameEvents.unsubscribe(m_readyHook);
     closeSecondary();
 }
 

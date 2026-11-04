@@ -7,7 +7,6 @@
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <client/item.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/thingtype.h>
@@ -15,6 +14,10 @@
 
 #include <algorithm>
 #include <set>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -51,7 +54,7 @@ QString categoryText(const int category)
 
 ThingType* typeOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type && type->getId() != 0 ? type.get() : nullptr;
 }
 
@@ -194,42 +197,43 @@ TStashDialogController::TStashDialogController(QObject* parent)
     input::setActionHandler(A::STASH_RETRIEVE, [](const input::TGameAction& action) {
         if (action.parameter <= 0 || action.amount <= 0)
             return false;
-        g_game.stashWithdraw(static_cast<uint16_t>(action.parameter), static_cast<uint32_t>(action.amount), 0);
+        tibia::game::stashWithdraw(static_cast<uint16_t>(action.parameter), static_cast<uint32_t>(action.amount), 0);
         return true;
     });
     // CIP 0x100e64170 / 0x100e64290 / 0x100e643b0: the object's field, type
     // and stack position; Crystal stows the whole type for STOW_STACK and
     // the given count for STOW_ITEM.
     const auto stow = [](const input::TGameAction& action, const uint8_t mode, const uint32_t amount) {
-        if (!action.object || !action.object->isItem())
+        const uint16_t typeId = action.objectClientId;
+        if (typeId == 0)
             return false;
-        const ItemPtr item = action.object->static_self_cast<Item>();
-        g_game.stashStowItem(action.position, static_cast<uint16_t>(item->getId()), amount,
+        tibia::game::stashStowItem(action.position, typeId, amount,
                              static_cast<uint8_t>(std::max(action.stackPosition, 0)), mode);
         return true;
     };
     input::setActionHandler(A::STASH_STOW_TYPE, [stow](const input::TGameAction& action) {
-        return stow(action, Otc::SUPPLY_STASH_ACTION_STOW_STACK, 0);
+        return stow(action, tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
     });
     input::setActionHandler(A::STASH_STOW_CONTAINER_CONTENT, [stow](const input::TGameAction& action) {
-        return stow(action, Otc::SUPPLY_STASH_ACTION_STOW_CONTAINER, 0);
+        return stow(action, tibia::client::SUPPLY_STASH_ACTION_STOW_CONTAINER, 0);
     });
     input::setActionHandler(A::STASH_STOW_STACK, [stow](const input::TGameAction& action) {
-        return action.amount > 0 && stow(action, Otc::SUPPLY_STASH_ACTION_STOW_ITEM, static_cast<uint32_t>(action.amount));
+        return action.amount > 0 && stow(action, tibia::client::SUPPLY_STASH_ACTION_STOW_ITEM, static_cast<uint32_t>(action.amount));
     });
     // CIP SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG → TConfirmMoveObjectToStashDialogController (0x10087d320).
     m_confirmStow->setConfirmHandler([this, stow](bool) {
         if (m_pendingStow)
-            stow(*m_pendingStow, Otc::SUPPLY_STASH_ACTION_STOW_STACK, 0);
+            stow(*m_pendingStow, tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
         m_pendingStow.reset();
     });
     input::setActionHandler(A::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG, [this, stow](const input::TGameAction& action) {
-        if (!action.object || !action.object->isItem())
+        const uint16_t typeId = action.objectClientId;
+        if (typeId == 0)
             return true;
         m_pendingStow = input::mutableClone(action);
         const bool ask = app::ClientOptions::load().options().value(QLatin1String("askBeforeStowContainerContent")).toBool(true);
         if (!ask) {
-            stow(*m_pendingStow, Otc::SUPPLY_STASH_ACTION_STOW_STACK, 0);
+            stow(*m_pendingStow, tibia::client::SUPPLY_STASH_ACTION_STOW_STACK, 0);
             m_pendingStow.reset();
             return true;
         }
@@ -238,7 +242,7 @@ TStashDialogController::TStashDialogController(QObject* parent)
     });
 
     using Args = std::vector<std::any>;
-    m_hooks.emplace_back("g_game", "onSupplyStashEnter", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSupplyStashEnter", [this](GameObject*, const Args& args) {
         const auto* items = args.empty() ? nullptr : std::any_cast<std::vector<std::vector<uint32_t>>>(&args[0]);
         std::map<uint16_t, uint32_t> content;
         if (items) {
@@ -251,7 +255,7 @@ TStashDialogController::TStashDialogController(QObject* parent)
         showDialog();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onSpecialContainersAvailable", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpecialContainersAvailable", [this](GameObject*, const Args& args) {
         if (!client::gamecore::argBool(args, 0)) {
             setContent({});
             closeDialog();
@@ -259,15 +263,14 @@ TStashDialogController::TStashDialogController(QObject* parent)
         return std::any{};
     });
     // CIP 0x100a31a90: ShowMessageDialog type 0x1E is the stash's.
-    m_hooks.emplace_back("g_game", "onServerError", [this](LuaObject*, const Args& args) {
-        if (client::gamecore::argInt(args, 0) == 0x1e)
-            onRequestShowStashMessageDialog(client::gamecore::argString(args, 1));
-        return std::any{};
-    });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::serverError, this,
+            [this](int code, const QString& message) {
+                if (code == 0x1e)
+                    onRequestShowStashMessageDialog(message);
+            });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         setContent({});
         closeDialog();
-        return std::any{};
     });
 }
 
@@ -412,10 +415,12 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
     const auto stored = m_content.find(typeId);
     if (!type || stored == m_content.end())
         return actions;
-    const ItemPtr object = Item::create(typeId);
     actions.push_back(input::makeAction(A::CONTEXT_MENU));
-    if (type->hasCyclopediaItem())
-        actions.push_back(input::makeObjectAction(A::OPEN_CYCLOPEDIA, object, {}, -1));
+    if (type->hasCyclopediaItem()) {
+        auto cyclopedia = input::mutableClone(*input::makeObjectAction(A::OPEN_CYCLOPEDIA, {}, -1));
+        cyclopedia->objectClientId = typeId;
+        actions.push_back(cyclopedia);
+    }
 
     auto retrieve = input::mutableClone(*input::makeAction(A::STASH_RETRIEVE));
     retrieve->parameter = typeId;
@@ -425,9 +430,12 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
     retrieveDialog->inner = retrieve;
     actions.push_back(retrieveDialog);
 
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
-    if (player && player->isMarketAvailable() && type->isMarketable())
-        actions.push_back(input::makeObjectAction(A::MARKET_BROWSE, object, {}, -1));
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
+    if (player && player->isMarketAvailable() && type->isMarketable()) {
+        auto market = input::mutableClone(*input::makeObjectAction(A::MARKET_BROWSE, {}, -1));
+        market->objectClientId = typeId;
+        actions.push_back(market);
+    }
     return actions;
 }
 

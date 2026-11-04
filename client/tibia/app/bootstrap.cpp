@@ -110,6 +110,10 @@ bool isRendererSupported(const int rendererIndex)
         case QSGRendererInterface::OpenGL:
         case QSGRendererInterface::Metal:
             return true;
+#if defined(Q_OS_MACOS)
+        case QSGRendererInterface::Vulkan:
+            return true;
+#endif
 #elif defined(Q_OS_WIN)
         case QSGRendererInterface::OpenGL:
         case QSGRendererInterface::Direct3D11:
@@ -175,6 +179,15 @@ void configureProcess(const ClientOptions& options, const int rendererOverride)
     QSurfaceFormat format = QSurfaceFormat::defaultFormat();
     format.setSwapInterval(vsync ? 1 : 0);
     QSurfaceFormat::setDefaultFormat(format);
+}
+
+void applyBundledMoltenVkIcd()
+{
+#if defined(Q_OS_MACOS)
+    const QString moltenIcd = QCoreApplication::applicationDirPath() + QStringLiteral("/../Frameworks/MoltenVK_icd.json");
+    if (QFile::exists(moltenIcd))
+        qputenv("VK_ICD_FILENAMES", QFile::encodeName(moltenIcd));
+#endif
 }
 
 QString mountGraphicsResources(const QStringList& dirs)

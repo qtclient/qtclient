@@ -3,7 +3,6 @@
 #include "mods/mission_backend.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QDir>
@@ -16,6 +15,7 @@
 #include <QVariantMap>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -319,8 +319,8 @@ TQuestLogController::~TQuestLogController()
 void TQuestLogController::showDialog(const int parameter)
 {
     ensureStorage();
-    if (g_game.isOnline())
-        g_game.requestQuestLog();
+    if (tibia::game::isOnline())
+        tibia::game::requestQuestLog();
     const int questFlagId = parameter & 0xffff;
     const int questLineId = (parameter & 0xff0000) != 0 ? m_tracker.questLineOf(questFlagId) : 0;
     if (questLineId == 0) {
@@ -343,7 +343,7 @@ void TQuestLogController::showDialog(const int parameter)
 
 void TQuestLogController::ensureStorage()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     const quint32 characterId = player ? player->getId() : 0;
     if (characterId == m_characterId)
         return;
@@ -397,14 +397,14 @@ void TQuestLogController::requestQuestLineDetails(const int QuestLineID)
 {
     if (QuestLineID == m_selectedQuestLineId)
         return;
-    if (QuestLineID != 0 && g_game.isOnline())
-        g_game.requestQuestLine(QuestLineID);
+    if (QuestLineID != 0 && tibia::game::isOnline())
+        tibia::game::requestQuestLine(QuestLineID);
     m_selectedQuestLineId = QuestLineID;
     Q_EMIT selectedQuestLineChanged();
     Q_EMIT missionChanged();
     m_parts.setParts({});
-    if (m_expeditions && QuestLineID > 0)
-        m_expeditions->missionLookup(QuestLineID);
+    if (m_missionBackend && QuestLineID > 0)
+        m_missionBackend->missionLookup(QuestLineID);
 }
 
 /// CIP 0x100c187c0.
@@ -480,16 +480,16 @@ void TQuestLogController::setPinned(const int QuestLineId, const bool IsPinned)
 }
 
 /// CIP: TGameActionChangeTrackedQuestFlags (0x100e5ce90) through 0x100f72490.
-void TQuestLogController::setExpeditions(mods::MissionBackend* storage)
+void TQuestLogController::setMissionBackend(mods::MissionBackend* storage)
 {
-    if (m_expeditions == storage)
+    if (m_missionBackend == storage)
         return;
-    if (m_expeditions)
-        disconnect(m_expeditions, nullptr, this, nullptr);
-    m_expeditions = storage;
-    if (m_expeditions) {
-        connect(m_expeditions, &mods::MissionBackend::missionTrackerChanged, this, [this] { Q_EMIT missionChanged(); });
-        connect(m_expeditions, &mods::MissionBackend::missionOfferChanged, this, [this] { Q_EMIT missionChanged(); });
+    if (m_missionBackend)
+        disconnect(m_missionBackend, nullptr, this, nullptr);
+    m_missionBackend = storage;
+    if (m_missionBackend) {
+        connect(m_missionBackend, &mods::MissionBackend::missionTrackerChanged, this, [this] { Q_EMIT missionChanged(); });
+        connect(m_missionBackend, &mods::MissionBackend::missionOfferChanged, this, [this] { Q_EMIT missionChanged(); });
     }
     Q_EMIT missionChanged();
 }
@@ -505,20 +505,20 @@ QString TQuestLogController::selectedPartName() const
 
 QString TQuestLogController::missionCta() const
 {
-    return missionPayload(m_expeditions, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName())
+    return missionPayload(m_missionBackend, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName())
         .value(QLatin1String("cta"))
         .toString();
 }
 
 QString TQuestLogController::missionProgress() const
 {
-    return missionProgressText(missionPayload(m_expeditions, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName()));
+    return missionProgressText(missionPayload(m_missionBackend, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName()));
 }
 
 QVariantList TQuestLogController::missionChoices() const
 {
     QVariantList choices;
-    const QJsonObject payload = missionPayload(m_expeditions, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName());
+    const QJsonObject payload = missionPayload(m_missionBackend, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName());
     for (const QJsonValue& value : payload.value(QLatin1String("choices")).toArray()) {
         const QJsonObject choice = value.toObject();
         choices.append(QVariantMap{
@@ -536,7 +536,7 @@ void TQuestLogController::setBrowseOpener(std::function<void(const QString&)> op
 
 void TQuestLogController::startMission(const QString& taskEntryId)
 {
-    const QJsonObject payload = missionPayload(m_expeditions, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName());
+    const QJsonObject payload = missionPayload(m_missionBackend, m_selectedQuestLineId, m_selectedQuestFlagId, selectedPartName());
     const QString browseFilter = payload.value(QLatin1String("browseFilter")).toString();
     if (!browseFilter.isEmpty()) {
         if (m_browseOpener)
@@ -544,10 +544,10 @@ void TQuestLogController::startMission(const QString& taskEntryId)
         return;
     }
     const QString key = payload.value(QLatin1String("missionKey")).toString();
-    if (key.isEmpty() || !m_expeditions)
+    if (key.isEmpty() || !m_missionBackend)
         return;
     const QString entryId = !taskEntryId.isEmpty() ? taskEntryId : payload.value(QLatin1String("taskEntryId")).toString();
-    m_expeditions->missionAdvance(key, entryId, m_selectedQuestFlagId);
+    m_missionBackend->missionAdvance(key, entryId, m_selectedQuestFlagId);
 }
 
 

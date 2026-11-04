@@ -1,9 +1,7 @@
 #pragma once
 
+#include "mods/lighting_types.h"
 #include "renderer/worldgeometry.h"
-
-#include <client/position.h>
-#include <framework/util/point.h>
 
 #include <QImage>
 #include <QPoint>
@@ -13,15 +11,14 @@
 #include <cstdint>
 #include <vector>
 
-class ThingType;
-class Tile;
-class Thing;
-
 namespace tibia::mods {
 
 /// Optional product lighting that replaces/augments CIP classic light for a frame.
 /// Cached once at mod bootstrap — hot path is a null check then virtual calls only when set.
 /// Packs (e.g. product raycast) implement this; stock never links product lighting code.
+///
+/// POD-only surface (like HD scaler): no ThingType / Thing / TCreature / TWorldMapField /
+/// Position / Point in the driver API. Tip peels those into Lighting* PODs before calling.
 class WorldLightingDriver
 {
 public:
@@ -36,47 +33,50 @@ public:
 
     virtual void setFieldAmbient(QImage ambient) = 0;
 
-    virtual bool beginFrame(const Position& camera, int drawWidth, int drawHeight, int firstFloor,
+    virtual bool beginFrame(LightingMapPos camera, int drawWidth, int drawHeight, int firstFloor,
                             int lastFloor) = 0;
     virtual void beginFloor(int z) = 0;
-    virtual void resetShade(Tile& tile, int ix, int iy) = 0;
+    virtual void resetShade(int ix, int iy, bool canShade) = 0;
     virtual void endFrame(const qmlcomponents::WorldGeometry* geometry) = 0;
 
-    virtual void addCenterLight(const Point& center, uint8_t intensity, uint8_t color) = 0;
-    virtual void addFrame(ThingType& type, const Point& anchor, uint32_t spriteId, int xPattern) = 0;
+    virtual void addCenterLight(int x, int y, uint8_t intensity, uint8_t color) = 0;
+    virtual void addFrame(const LightingFrameDesc& frame) = 0;
     virtual int stampPhase(int animationPhase) const = 0;
 
-    virtual void beginThing(Thing& thing, uint8_t lift) = 0;
-    virtual void endThing() = 0;
+    virtual void beginContext(const LightingThingContext& ctx) = 0;
+    virtual void endContext() = 0;
 
-    class ThingScope
+    class ContextScope
     {
     public:
-        ThingScope(WorldLightingDriver* driver, Thing& thing, uint8_t lift)
+        ContextScope(WorldLightingDriver* driver, const LightingThingContext& ctx)
             : m_driver(driver)
         {
             if (m_driver)
-                m_driver->beginThing(thing, lift);
+                m_driver->beginContext(ctx);
         }
-        ~ThingScope()
+        ~ContextScope()
         {
             if (m_driver)
-                m_driver->endThing();
+                m_driver->endContext();
         }
-        ThingScope(const ThingScope&) = delete;
-        ThingScope& operator=(const ThingScope&) = delete;
-        ThingScope(ThingScope&& other) noexcept
+        ContextScope(const ContextScope&) = delete;
+        ContextScope& operator=(const ContextScope&) = delete;
+        ContextScope(ContextScope&& other) noexcept
             : m_driver(other.m_driver)
         {
             other.m_driver = nullptr;
         }
-        ThingScope& operator=(ThingScope&&) = delete;
+        ContextScope& operator=(ContextScope&&) = delete;
 
     private:
         WorldLightingDriver* m_driver = nullptr;
     };
 
-    [[nodiscard]] ThingScope thing(Thing& thing, uint8_t lift) { return ThingScope(this, thing, lift); }
+    [[nodiscard]] ContextScope context(const LightingThingContext& ctx)
+    {
+        return ContextScope(this, ctx);
+    }
 };
 
 /// Pack-owned scene-graph overlays after world sprites. Each factory owns its node pointer.

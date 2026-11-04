@@ -140,11 +140,25 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   export VCPKG_CHAINLOAD_TOOLCHAIN_FILE="$QT_WASM_TOOLCHAIN"
   export VCPKG_TARGET_TRIPLET=wasm32-emscripten
 
-  RCC="$(ls "$OTC"/data/things/*/graphics_resources.rcc 2>/dev/null | sort | tail -1 || true)"
-  # Flat CIP extract (make extract) lands at data/assets/.
-  [[ -z "$RCC" && -f "$OTC/data/assets/graphics_resources.rcc" ]] \
-    && RCC="$OTC/data/assets/graphics_resources.rcc"
-  [[ -z "$RCC" ]] && echo "[tibia] WARN: no graphics_resources.rcc (make extract); the UI will have no art"
+  # Do not preload graphics_resources.rcc into tibia.data by default — /play
+  # stages tip art from CDN/OPFS. Opt in for offline tibia.html smoke only.
+  RCC=""
+  case "${WASM_PRELOAD_GRAPHICS_RCC:-}" in
+    1|ON|on|true|TRUE|yes|YES)
+      RCC="$(ls "$OTC"/data/things/*/graphics_resources.rcc 2>/dev/null | sort | tail -1 || true)"
+      # Flat CIP extract (make extract) lands at data/assets/.
+      [[ -z "$RCC" && -f "$OTC/data/assets/graphics_resources.rcc" ]] \
+        && RCC="$OTC/data/assets/graphics_resources.rcc"
+      if [[ -z "$RCC" ]]; then
+        echo "[tibia] WARN: WASM_PRELOAD_GRAPHICS_RCC set but no graphics_resources.rcc (make extract)"
+      else
+        echo "[tibia] preloading graphics RCC into tibia.data: $RCC"
+      fi
+      ;;
+    *)
+      echo "[tibia] skipping graphics RCC preload (tip CDN/OPFS); WASM_PRELOAD_GRAPHICS_RCC=1 to opt in"
+      ;;
+  esac
 
   BUILD_DIR="$OTC/build/tibia-wasm"
   WASM_INITIAL_MEMORY="${WASM_INITIAL_MEMORY:-536870912}"
@@ -200,7 +214,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   )
   FP="$(
     {
-    echo "tibia-wasm-vcpkg-v3-linked-tip"
+    echo "tibia-wasm-vcpkg-v4-soft-split-no-rcc"
     echo "stock-host=${STOCK_HOST:-0}"
     echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
     echo "mods-list=${QTCLIENT_MODS:-}"
@@ -329,7 +343,7 @@ case "$(uname -s)" in
     [[ "$DEV_BUILD" -eq 1 ]] && PRESET=linux-dev
     ;;
   MINGW*|MSYS*|CYGWIN*)
-    # Git Bash / MSYS on Windows (Actions windows-2022). Soft CI uses the same
+    # Git Bash / MSYS on Windows (Actions windows-2022). qtclient CI uses the same
     # windows-release preset; DEV maps to release (no windows-dev preset).
     export VCPKG_TARGET_TRIPLET="${VCPKG_TARGET_TRIPLET:-x64-windows-static-md}"
     PRESET=windows-release

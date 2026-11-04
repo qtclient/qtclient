@@ -31,11 +31,12 @@ struct TGameAction
     virtual ~TGameAction() = default;
 
     EGameAction type = EGameAction::UNKNOWN;
-    /// Object actions: the object, and the world-map field and stack position
-    /// it is acted on at (CIP: TGameActionContext 0xb).
-    ThingPtr object;
+    /// Object actions: world-map / inventory field and stack position
+    /// (CIP: TGameActionContext 0xb) plus the item client id for wire.
     Position position;
     int stackPosition = -1;
+    /// Item client id at `position` / `stackPosition` (CIP stackpos + position wire).
+    uint16_t objectClientId = 0;
     /// Creature actions.
     uint32_t creatureId = 0;
     /// SMART_CLICK: the action a click runs.
@@ -84,7 +85,7 @@ struct TGameAction
     bool autoRepeat = false;
     /// SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT from a hotkey (CIP FUN_100e83f40, action +0x21 / +0x24),
     /// CROSSHAIR_SPELL, SPELL_AT_MOUSE_CURSOR: whether `text` casts a spell, its
-    /// ESpellCastOptionalTargetType, and the say's Otc::MessageMode.
+    /// ESpellCastOptionalTargetType, and the say's tibia::client::MessageMode.
     bool isSpell = false;
     int spellCastType = 0;
     int talkMode = 0;
@@ -125,7 +126,7 @@ struct TGameAction
     /// `instance` is the VIP id, `text` the description, `parameter` the icon,
     /// `enable` notify-on-login, and these the selected group ids.
     std::vector<uint8_t> vipGroups;
-    /// SET_PLAYER_MOVEMENT_INTENT: Minimap / Cyclopedia / Travel Soft policy.
+    /// SET_PLAYER_MOVEMENT_INTENT: Minimap / Cyclopedia / Travel qtclient policy.
     int autoWalkPathMode = 0;
 };
 
@@ -134,7 +135,7 @@ class TGameActionLook final : public TGameAction
 {
 public:
     TGameActionLook() { type = EGameAction::LOOK; }
-    TGameActionLook(ThingPtr object, Position position, int stackPosition);
+    TGameActionLook(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionUse (v0 0x100e56e50 → USE).
@@ -142,7 +143,7 @@ class TGameActionUse final : public TGameAction
 {
 public:
     TGameActionUse() { type = EGameAction::USE; }
-    TGameActionUse(ThingPtr object, Position position, int stackPosition);
+    TGameActionUse(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionUseWith (ctor 0x100e577b0); also USE_ON_*.
@@ -150,7 +151,7 @@ class TGameActionUseWith final : public TGameAction
 {
 public:
     TGameActionUseWith() { type = EGameAction::USE_WITH; }
-    TGameActionUseWith(ThingPtr object, Position position, int stackPosition);
+    TGameActionUseWith(Position position, int stackPosition, uint16_t objectClientId = 0);
     explicit TGameActionUseWith(const TGameAction& other);
 };
 
@@ -169,7 +170,7 @@ class TGameActionMoveObject final : public TGameAction
 {
 public:
     TGameActionMoveObject() { type = EGameAction::MOVE_OBJECT; }
-    TGameActionMoveObject(ThingPtr object, Position position, int stackPosition);
+    TGameActionMoveObject(Position position, int stackPosition, uint16_t objectClientId = 0);
     explicit TGameActionMoveObject(const TGameAction& other);
 };
 
@@ -227,7 +228,7 @@ class TGameActionOpen final : public TGameAction
 {
 public:
     TGameActionOpen() { type = EGameAction::OPEN; }
-    TGameActionOpen(ThingPtr object, Position position, int stackPosition);
+    TGameActionOpen(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionOpenInNewWindow (v0 0x100e571b0).
@@ -235,7 +236,7 @@ class TGameActionOpenInNewWindow final : public TGameAction
 {
 public:
     TGameActionOpenInNewWindow() { type = EGameAction::OPEN_IN_NEW_WINDOW; }
-    TGameActionOpenInNewWindow(ThingPtr object, Position position, int stackPosition);
+    TGameActionOpenInNewWindow(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionWrap (v0 0x100e57370).
@@ -243,7 +244,7 @@ class TGameActionWrap final : public TGameAction
 {
 public:
     TGameActionWrap() { type = EGameAction::WRAP; }
-    TGameActionWrap(ThingPtr object, Position position, int stackPosition);
+    TGameActionWrap(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionUnwrap (v0 0x100e574a0).
@@ -251,7 +252,7 @@ class TGameActionUnwrap final : public TGameAction
 {
 public:
     TGameActionUnwrap() { type = EGameAction::UNWRAP; }
-    TGameActionUnwrap(ThingPtr object, Position position, int stackPosition);
+    TGameActionUnwrap(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionRotate (v0 0x100e57530 → ROTATE_OBJECT).
@@ -259,7 +260,7 @@ class TGameActionRotate final : public TGameAction
 {
 public:
     TGameActionRotate() { type = EGameAction::ROTATE_OBJECT; }
-    TGameActionRotate(ThingPtr object, Position position, int stackPosition);
+    TGameActionRotate(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionQuickLoot (v0 0x100e5d140).
@@ -267,7 +268,7 @@ class TGameActionQuickLoot final : public TGameAction
 {
 public:
     TGameActionQuickLoot() { type = EGameAction::QUICK_LOOT; }
-    TGameActionQuickLoot(ThingPtr object, Position position, int stackPosition);
+    TGameActionQuickLoot(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionPlayerTradeItem (v0 0x100e5a290 → TRADE_ITEM).
@@ -275,7 +276,7 @@ class TGameActionPlayerTradeItem final : public TGameAction
 {
 public:
     TGameActionPlayerTradeItem() { type = EGameAction::TRADE_ITEM; }
-    TGameActionPlayerTradeItem(ThingPtr object, Position position, int stackPosition);
+    TGameActionPlayerTradeItem(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionSmartClick (v0 0x100e5b130).
@@ -320,7 +321,7 @@ class TGameActionUseAtMouseCursor final : public TGameAction
 {
 public:
     TGameActionUseAtMouseCursor() { type = EGameAction::USE_AT_MOUSECURSOR; }
-    TGameActionUseAtMouseCursor(ThingPtr object, Position position, int stackPosition);
+    TGameActionUseAtMouseCursor(Position position, int stackPosition, uint16_t objectClientId = 0);
     explicit TGameActionUseAtMouseCursor(const TGameAction& other);
 };
 
@@ -411,7 +412,7 @@ class TGameActionBrowseField final : public TGameAction
 {
 public:
     TGameActionBrowseField() { type = EGameAction::BROWSE_FIELD; }
-    TGameActionBrowseField(ThingPtr object, Position position, int stackPosition);
+    TGameActionBrowseField(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionBuyHirelingNameOrSexChange (0x100e64910).
@@ -531,7 +532,7 @@ class TGameActionConfigureShowOffSocket final : public TGameAction
 {
 public:
     TGameActionConfigureShowOffSocket() { type = EGameAction::CONFIGURE_SHOW_OFF_SOCKET; }
-    TGameActionConfigureShowOffSocket(ThingPtr object, Position position, int stackPosition);
+    TGameActionConfigureShowOffSocket(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionCopyChatEntryToClipboard (0x100e61ef0).
@@ -693,7 +694,7 @@ class TGameActionInspectObject final : public TGameAction
 {
 public:
     TGameActionInspectObject() { type = EGameAction::INSPECT_OBJECT; }
-    TGameActionInspectObject(ThingPtr object, Position position, int stackPosition);
+    TGameActionInspectObject(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionInvitePlayerToChatChannel (0x100e58840).
@@ -740,7 +741,7 @@ class TGameActionMoveUp final : public TGameAction
 {
 public:
     TGameActionMoveUp() { type = EGameAction::MOVE_UP; }
-    TGameActionMoveUp(ThingPtr object, Position position, int stackPosition);
+    TGameActionMoveUp(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionOpenAddVipDialog (0x100e626a0).
@@ -849,7 +850,7 @@ class TGameActionOpenParentContainer final : public TGameAction
 {
 public:
     TGameActionOpenParentContainer() { type = EGameAction::OPEN_PARENT_CONTAINER; }
-    TGameActionOpenParentContainer(ThingPtr object, Position position, int stackPosition);
+    TGameActionOpenParentContainer(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::TGameActionOpenPreyDialog (0x100e64cc0).
@@ -1268,7 +1269,7 @@ class TGameActionShowConfirmMoveObjectToStashDialog final : public TGameAction
 {
 public:
     TGameActionShowConfirmMoveObjectToStashDialog() { type = EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG; }
-    TGameActionShowConfirmMoveObjectToStashDialog(ThingPtr object, Position position, int stackPosition);
+    TGameActionShowConfirmMoveObjectToStashDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 /// CIP input::TGameActionShowDialogCreateMinimapMarker (0x100e58d50).
 class TGameActionShowDialogCreateMinimapMarker final : public TGameActionForMinimapMarkerUsingCoordinate
@@ -1312,7 +1313,7 @@ class TGameActionShowSplitStackDialog final : public TGameAction
 {
 public:
     TGameActionShowSplitStackDialog() { type = EGameAction::SHOW_SPLIT_STACK_DIALOG; }
-    TGameActionShowSplitStackDialog(ThingPtr object, Position position, int stackPosition);
+    TGameActionShowSplitStackDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 /// CIP input::TGameActionShowTutorialHint (0x100e62ea0).
 class TGameActionShowTutorialHint final : public TGameAction
@@ -1357,7 +1358,7 @@ class TGameActionStashOpenStowStackDialog final : public TGameAction
 {
 public:
     TGameActionStashOpenStowStackDialog() { type = EGameAction::STASH_OPEN_STOW_STACK_DIALOG; }
-    TGameActionStashOpenStowStackDialog(ThingPtr object, Position position, int stackPosition);
+    TGameActionStashOpenStowStackDialog(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 /// CIP input::TGameActionStashRetrieve (0x100e64580).
 class TGameActionStashRetrieve final : public TGameAction
@@ -1370,14 +1371,14 @@ class TGameActionStashStowContainerContent final : public TGameAction
 {
 public:
     TGameActionStashStowContainerContent() { type = EGameAction::STASH_STOW_CONTAINER_CONTENT; }
-    TGameActionStashStowContainerContent(ThingPtr object, Position position, int stackPosition);
+    TGameActionStashStowContainerContent(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 /// CIP input::TGameActionStashStowStack (0x100e643b0).
 class TGameActionStashStowStack final : public TGameAction
 {
 public:
     TGameActionStashStowStack() { type = EGameAction::STASH_STOW_STACK; }
-    TGameActionStashStowStack(ThingPtr object, Position position, int stackPosition);
+    TGameActionStashStowStack(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 /// CIP input::TGameActionStashStowType (0x100e64170).
 class TGameActionStashStowType final : public TGameAction
@@ -1470,7 +1471,7 @@ class TGameActionTryToEquip final : public TGameAction
 {
 public:
     TGameActionTryToEquip() { type = EGameAction::TRY_TO_EQUIP; }
-    TGameActionTryToEquip(ThingPtr object, Position position, int stackPosition);
+    TGameActionTryToEquip(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 /// CIP input::TGameActionTryToSwitchHotkeySet (0x100e62d60).
 class TGameActionTryToSwitchHotkeySet final : public TGameAction
@@ -1522,21 +1523,21 @@ class TGameActionUseOnCreature final : public TGameAction
 {
 public:
     TGameActionUseOnCreature() { type = EGameAction::USE_ON_CREATURE; }
-    TGameActionUseOnCreature(ThingPtr object, Position position, int stackPosition);
+    TGameActionUseOnCreature(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 /// CIP input::TGameActionUseOnTarget (0x100e592c0).
 class TGameActionUseOnTarget final : public TGameAction
 {
 public:
     TGameActionUseOnTarget() { type = EGameAction::USE_ON_TARGET; }
-    TGameActionUseOnTarget(ThingPtr object, Position position, int stackPosition);
+    TGameActionUseOnTarget(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 /// CIP input::TGameActionUseOnYourself (0x100e594f0).
 class TGameActionUseOnYourself final : public TGameAction
 {
 public:
     TGameActionUseOnYourself() { type = EGameAction::USE_ON_YOURSELF; }
-    TGameActionUseOnYourself(ThingPtr object, Position position, int stackPosition);
+    TGameActionUseOnYourself(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 /// CIP input::TGameActionVisibleChatChannel (0x100e5d380).
 class TGameActionVisibleChatChannel final : public TGameAction
@@ -1552,7 +1553,7 @@ class TGameActionGatherAll final : public TGameAction
 {
 public:
     TGameActionGatherAll() { type = EGameAction::GATHER_ALL; }
-    TGameActionGatherAll(ThingPtr object, Position position, int stackPosition);
+    TGameActionGatherAll(Position position, int stackPosition, uint16_t objectClientId = 0);
 };
 
 /// CIP input::gameactions::TGameActionGameEvent (0x100b602d0).
@@ -1631,7 +1632,7 @@ public:
 }
 
 TGameActionPtr makeAction(EGameAction type);
-TGameActionPtr makeObjectAction(EGameAction type, const ThingPtr& object, const Position& position, int stackPosition);
+TGameActionPtr makeObjectAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
 TGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
 TGameActionPtr makeMovementIntent(const Position& position, int pathMode = 0);
 TGameActionPtr makeSmartClick(const TGameActionPtr& inner);

@@ -5,19 +5,24 @@
 #include "gamewindow/characterinfomodels.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/messagedialogcontroller.h"
+#include "gamewindow/outfitdialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/world/game.h>
 #include <client/item.h>
+#include <tibia/assets/thingtype.h>
+#include <tibia/assets/things.h>
 #include <tibia/world/localplayer.h>
 #include <client/outfit.h>
 #include <client/staticdata.h>
 
 #include <QAbstractListModel>
 #include <QKeySequence>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -48,24 +53,24 @@ QString formatDateTime(const uint32_t timestamp)
 }
 
 /// CIP: the data type sent for each of its data types (1..13).
-Otc::CyclopediaCharacterInfoType_t protocolType(const int dataType)
+tibia::client::CyclopediaCharacterInfoType_t protocolType(const int dataType)
 {
     using T = TCharacterInfoDialogController;
     switch (dataType) {
-        case T::GeneralStats: return Otc::CYCLOPEDIA_CHARACTERINFO_GENERALSTATS;
-        case T::OffenceStats: return Otc::CYCLOPEDIA_CHARACTERINFO_OFFENCESTATS;
-        case T::DefenceStats: return Otc::CYCLOPEDIA_CHARACTERINFO_DEFENCESTATS;
-        case T::MiscStats: return Otc::CYCLOPEDIA_CHARACTERINFO_MISCSTATS;
-        case T::RecentDeaths: return Otc::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS;
-        case T::RecentKills: return Otc::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS;
-        case T::Achievements: return Otc::CYCLOPEDIA_CHARACTERINFO_ACHIEVEMENTS;
-        case T::ItemSummary: return Otc::CYCLOPEDIA_CHARACTERINFO_ITEMSUMMARY;
-        case T::OutfitsMounts: return Otc::CYCLOPEDIA_CHARACTERINFO_OUTFITSMOUNTS;
-        case T::StoreSummary: return Otc::CYCLOPEDIA_CHARACTERINFO_STORESUMMARY;
-        case T::Inspection: return Otc::CYCLOPEDIA_CHARACTERINFO_INSPECTION;
-        case T::Badges: return Otc::CYCLOPEDIA_CHARACTERINFO_BADGES;
-        case T::Titles: return Otc::CYCLOPEDIA_CHARACTERINFO_TITLES;
-        default: return Otc::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION;
+        case T::GeneralStats: return tibia::client::CYCLOPEDIA_CHARACTERINFO_GENERALSTATS;
+        case T::OffenceStats: return tibia::client::CYCLOPEDIA_CHARACTERINFO_OFFENCESTATS;
+        case T::DefenceStats: return tibia::client::CYCLOPEDIA_CHARACTERINFO_DEFENCESTATS;
+        case T::MiscStats: return tibia::client::CYCLOPEDIA_CHARACTERINFO_MISCSTATS;
+        case T::RecentDeaths: return tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS;
+        case T::RecentKills: return tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS;
+        case T::Achievements: return tibia::client::CYCLOPEDIA_CHARACTERINFO_ACHIEVEMENTS;
+        case T::ItemSummary: return tibia::client::CYCLOPEDIA_CHARACTERINFO_ITEMSUMMARY;
+        case T::OutfitsMounts: return tibia::client::CYCLOPEDIA_CHARACTERINFO_OUTFITSMOUNTS;
+        case T::StoreSummary: return tibia::client::CYCLOPEDIA_CHARACTERINFO_STORESUMMARY;
+        case T::Inspection: return tibia::client::CYCLOPEDIA_CHARACTERINFO_INSPECTION;
+        case T::Badges: return tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES;
+        case T::Titles: return tibia::client::CYCLOPEDIA_CHARACTERINFO_TITLES;
+        default: return tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION;
     }
 }
 
@@ -289,20 +294,20 @@ public:
     void setItem(const InspectionInventoryItem& entry)
     {
         setDetails(qstr(entry.name), entry.descriptions);
-        if (const ItemPtr& item = entry.item) {
-            m_appearanceID = item->getId();
-            m_objectCount = static_cast<uint>(std::max(1, item->getCount()));
+        if (entry.typeId != 0) {
+            m_appearanceID = entry.typeId;
+            m_objectCount = static_cast<uint>(std::max<uint16_t>(1, entry.count));
             // CIP 0x100adf660: the count on the sprite from 2 on.
             if (m_objectCount > 1)
                 m_textOnSprite = QString::number(m_objectCount);
-            m_objectUpgradeTier = item->getTier();
-            if (item->isFluidContainer() || item->isSplash())
-                m_liquidType = static_cast<decltype(m_liquidType)>(item->getSubType());
-            if (item->isHookSouth())
+            m_objectUpgradeTier = entry.tier;
+            if (entry.fluidOrSplash)
+                m_liquidType = static_cast<decltype(m_liquidType)>(entry.fluidOrSubtype);
+            if (entry.hookSouth)
                 m_hookDirection = static_cast<decltype(m_hookDirection)>(1);
-            else if (item->isHookEast())
+            else if (entry.hookEast)
                 m_hookDirection = static_cast<decltype(m_hookDirection)>(2);
-            m_hasProficiency = item->getProficiencyId() != 0;
+            m_hasProficiency = entry.hasProficiency;
         }
         for (const uint16_t icon : entry.imbuements)
             m_imbumentIcons << QStringLiteral("image://%1/%2").arg(QStringLiteral("imbuement-icons")).arg(icon);
@@ -364,7 +369,7 @@ cyclopedia::CombatStats toDefenceStats(const CyclopediaCharacterDefenceStats& da
     cyclopedia::CombatStats stats;
     stats.defence = data.defense;
     stats.armor = data.armor;
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer())
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer())
         stats.mantra = player->getMantra();
     stats.mitigation = data.mitigation;
     stats.dodge = data.dodgeTotal;
@@ -378,7 +383,7 @@ cyclopedia::CombatStats toMiscStats(const CyclopediaCharacterMiscStats& data)
 {
     cyclopedia::CombatStats stats;
     stats.momentum = data.momentumTotal;
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer()) {
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer()) {
         stats.transcendence = player->getTranscendence();
         stats.amplification = player->getAmplification();
     }
@@ -431,7 +436,7 @@ void TCharacterInfoDialogController::showDialogTab()
     m_shown = true;
     m_received.clear();
     replace(m_characterBaseInfo, static_cast<QObject*>(nullptr));
-    g_game.requestSendCharacterInfo(m_characterId, Otc::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION);
+    tibia::game::requestSendCharacterInfo(m_characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION);
     request(dataType, true);
 }
 
@@ -461,7 +466,7 @@ void TCharacterInfoDialogController::request(const int dataType, const bool forc
         // The general stats show the account infos of the badges answer.
         if (dataType == GeneralStats) {
             m_received.remove(Badges);
-            g_game.requestSendCharacterInfo(m_characterId, Otc::CYCLOPEDIA_CHARACTERINFO_BADGES);
+            tibia::game::requestSendCharacterInfo(m_characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES);
         }
     }
     Q_EMIT dialogCategoryChanged();
@@ -472,7 +477,7 @@ void TCharacterInfoDialogController::request(const int dataType, const bool forc
 void TCharacterInfoDialogController::sendRequest(const int dataType, const int page)
 {
     // CIP sends 23 entries per page (0x17).
-    g_game.requestSendCharacterInfo(m_characterId, protocolType(dataType), 23, static_cast<uint16_t>(page));
+    tibia::game::requestSendCharacterInfo(m_characterId, protocolType(dataType), 23, static_cast<uint16_t>(page));
 }
 
 void TCharacterInfoDialogController::received(const int dataType)
@@ -518,7 +523,7 @@ void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
     input::publish(input::makeAction(A::CLOSE_CYCLOPEDIA));
 }
 
-void TCharacterInfoDialogController::openBlessingsDialog() { g_game.requestBless(); }
+void TCharacterInfoDialogController::openBlessingsDialog() { tibia::game::requestBless(); }
 
 void TCharacterInfoDialogController::openItemInformation(const int TypeID)
 {
@@ -557,9 +562,17 @@ void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint Appe
     input::publish(action);
 }
 
+void TCharacterInfoDialogController::openOutfitDialog(const int OutfitID, const bool IsOutfit, const bool IsMount,
+                                                      const bool IsSummonSkin)
+{
+    if (!m_outfitDialog)
+        m_outfitDialog = new TSelectOutfitDialogController(this);
+    m_outfitDialog->openCharacterInfoSelection(OutfitID, IsOutfit, IsMount, IsSummonSkin);
+}
+
 void TCharacterInfoDialogController::rebuildStatsBlocks()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     const bool xpBoostPurchasable = player && player->isStoreExpBoostPurchasable();
     QList<QObject*> first;
     for (const SkillType type : FirstBlock) {
@@ -605,26 +618,26 @@ void TCharacterInfoDialogController::hookEvents()
     using client::gamecore::argInt;
     hookModelEvents();
 
-    m_hooks.emplace_back("g_game", "onInspectionState", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onInspectionState", [this](GameObject*, const Args& args) {
         m_inspectionState = client::gamecore::argInt(args, 1);
         Q_EMIT inspectionStateChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterBaseInformation", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterBaseInformation", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         replace(m_characterBaseInfo, static_cast<QObject*>(new TCharacterBaseQmlInfo(args, this)));
         Q_EMIT dataModelChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseCyclopediaCharacterGeneralStats", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterGeneralStats", [this](GameObject*, const Args&) {
         if (!m_shown)
             return std::any{};
         rebuildStatsBlocks();
         received(GeneralStats);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseCyclopediaCharacterBadges", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterBadges", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         replace(m_accountInfos, static_cast<QObject*>(new TAccountInfoQmlData(args, this)));
@@ -634,7 +647,7 @@ void TCharacterInfoDialogController::hookEvents()
     });
     // Older combined combat-stats packet (still published by CipSoft); map into
     // CipSoft offence / defence qml data until the split Offence/Defence/Misc msgs arrive.
-    m_hooks.emplace_back("g_game", "onParseCyclopediaCharacterCombatStats", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterCombatStats", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         const auto* data = arg<CyclopediaCharacterCombatStats>(args, 0);
@@ -652,7 +665,7 @@ void TCharacterInfoDialogController::hookEvents()
             defence.mitigation = *mitigation;
         else
             defence.mitigation = static_cast<double>(client::gamecore::argInt(args, 1));
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer())
+        if (const LocalPlayerPtr& player = tibia::game::localPlayer())
             defence.mantra = player->getMantra();
         replace(m_offenceStats, static_cast<QObject*>(new cyclopedia::TOffenceStatsQmlData(offence, this)));
         replace(m_defenceStats, static_cast<QObject*>(new cyclopedia::TDefenceStatsQmlData(defence, this)));
@@ -660,7 +673,7 @@ void TCharacterInfoDialogController::hookEvents()
         received(DefenceStats);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterOffenceStats", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterOffenceStats", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         if (const auto* data = arg<CyclopediaCharacterOffenceStats>(args, 0))
@@ -668,7 +681,7 @@ void TCharacterInfoDialogController::hookEvents()
         received(OffenceStats);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterDefenceStats", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterDefenceStats", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         if (const auto* data = arg<CyclopediaCharacterDefenceStats>(args, 0))
@@ -676,7 +689,7 @@ void TCharacterInfoDialogController::hookEvents()
         received(DefenceStats);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterMiscStats", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterMiscStats", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         if (const auto* data = arg<CyclopediaCharacterMiscStats>(args, 0))
@@ -684,16 +697,16 @@ void TCharacterInfoDialogController::hookEvents()
         received(MiscStats);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterPagination", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterPagination", [this](GameObject*, const Args& args) {
         const int type = static_cast<int>(argInt(args, 0));
-        const int index = type == Otc::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS ? 0 : type == Otc::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS ? 1 : -1;
+        const int index = type == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS ? 0 : type == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS ? 1 : -1;
         if (index < 0)
             return std::any{};
         m_page[index] = std::max<int>(1, static_cast<int>(argInt(args, 1)));
         m_pages[index] = std::max<int>(1, static_cast<int>(argInt(args, 2)));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterRecentDeaths", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterRecentDeaths", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         QList<QObject*> deaths;
@@ -705,7 +718,7 @@ void TCharacterInfoDialogController::hookEvents()
         received(RecentDeaths);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterRecentKills", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterRecentKills", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         QList<QObject*> kills;
@@ -717,7 +730,7 @@ void TCharacterInfoDialogController::hookEvents()
         received(RecentKills);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseCyclopediaStoreSummary", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaStoreSummary", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         replace(m_storePurchases, static_cast<QObject*>(new TStorePurchasesQmlData(args, this)));
@@ -725,7 +738,7 @@ void TCharacterInfoDialogController::hookEvents()
         return std::any{};
     });
     // CIP 0x100d13b70: slots 1..10 then the player (99), filled from the entries.
-    m_hooks.emplace_back("g_game", "onParseCyclopediaCharacterInspection", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterInspection", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         const auto* data = arg<CyclopediaCharacterInspection>(args, 0);
@@ -737,26 +750,29 @@ void TCharacterInfoDialogController::hookEvents()
         auto* player = new TInspectObjectQmlData(InspectPlayerSlot, this);
         objects.append(player);
         bool rightHandEmpty = true;
-        ItemPtr leftHand;
+        uint16_t leftHandTypeId = 0;
+        bool leftHandDualWield = false;
         for (const InspectionInventoryItem& entry : data->inventoryItems) {
             if (entry.slot < 1 || entry.slot > InspectSlots)
                 continue;
             static_cast<TInspectObjectQmlData*>(objects[entry.slot - 1])->setItem(entry);
-            if (entry.slot == InspectRightHandSlot && entry.item)
+            if (entry.slot == InspectRightHandSlot && entry.typeId != 0)
                 rightHandEmpty = false;
-            if (entry.slot == InspectLeftHandSlot)
-                leftHand = entry.item;
+            if (entry.slot == InspectLeftHandSlot && entry.typeId != 0) {
+                leftHandTypeId = entry.typeId;
+                if (ThingType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem))
+                    leftHandDualWield = type->isDualWield();
+            }
         }
         player->setPlayer(*data);
         // CIP 0x100d0f0f0 / 0x100d0f1b0.
-        const bool dualWield = leftHand && leftHand->isDualWield();
-        m_hasDualWielding = dualWield && rightHandEmpty;
-        m_dualWieldingObjectID = dualWield ? static_cast<int>(leftHand->getId()) : 0;
+        m_hasDualWielding = leftHandDualWield && rightHandEmpty;
+        m_dualWieldingObjectID = leftHandDualWield ? static_cast<int>(leftHandTypeId) : 0;
         replace(m_inspectPlayerList, std::move(objects));
         received(Inspection);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterInfoError", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterInfoError", [this](GameObject*, const Args& args) {
         if (m_shown && static_cast<int>(argInt(args, 0)) == protocolType(m_dataType))
             onErrorReceived(static_cast<int>(argInt(args, 1)));
         return std::any{};

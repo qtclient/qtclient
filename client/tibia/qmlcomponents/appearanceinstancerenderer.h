@@ -66,8 +66,13 @@ public:
     void setAnimated(bool v) override;
     void setScaleFactor(float v) override;
     void setSmoothTextureFiltering(bool v) override;
-    void refreshAppearanceInstances() override { polish(); }
-    void refreshAppearanceInstances(bool) override { polish(); }
+    void refreshAppearanceInstances() override;
+    void refreshAppearanceInstances(bool keepEffects) override;
+    /// Magical Archive / tutorial: CIP transient field effect (ThingCategoryEffect).
+    void showGraphicalEffect(int AppearanceTypeID, const QPoint& SubfieldCoordinate) override;
+    /// Magical Archive: CIP transient missile flight (ThingCategoryMissile).
+    void showMissileEffect(int AppearanceTypeID, const QPoint& SourceCoordinate,
+                           const QPoint& DestinationCoordinate) override;
     /// RaceAppearanceInstanceRenderer.qml: the race's outfit (or object) from the static race
     /// data. The previous instance this renderer made is released.
     cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType* createAppearanceInstanceByRaceID(int RaceID) override;
@@ -88,6 +93,22 @@ private:
         QSize size;
     };
 
+    /// Transient CIP preview FX (not in appearanceInstances; KeepEffects retains them).
+    struct TransientEffect
+    {
+        enum class Kind { Field, Missile };
+        Kind kind{ Kind::Field };
+        ThingType* type{ nullptr };
+        QPoint fieldTopLeft;
+        QPoint missileFrom;
+        QPoint missileTo;
+        QElapsedTimer timer;
+        float missileDurationMs{ 0.f };
+        int patternX{ 0 };
+        int patternY{ 0 };
+        int durationMs{ 0 };
+    };
+
     static void append(QQmlListProperty<cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType>* list, cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType* instance);
     static qsizetype count(QQmlListProperty<cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType>* list);
     static cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType* at(QQmlListProperty<cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType>* list, qsizetype index);
@@ -97,9 +118,13 @@ private:
     void addSprites(ThingType* type, const QPoint& fieldTopLeft, int xPattern, int yPattern, int zPattern, int phase, bool colorize, uint32_t colors);
     void addOutfit(const TOutfitAppearanceInstanceQmlType& instance);
     void addObject(const TObjectAppearanceInstanceInfoQmlType& instance);
+    void addTransientEffects();
+    void purgeExpiredEffects();
     int outfitPhase(ThingType* type, bool moving, int millisecondsPerField) const;
+    static void missilePatterns(const QPoint& from, const QPoint& to, int& patternX, int& patternY);
 
     QList<Sprite> m_sprites;
+    QList<TransientEffect> m_effects;
     /// Item pixel = (world pixel - m_origin) * m_scale.
     QPointF m_origin;
     float m_scale = 1.f;

@@ -5,13 +5,40 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
+#include <tibia/assets/things.h>
+
 #include <QJsonObject>
+#include <QString>
+
+#include <any>
+#include <map>
+#include <string>
+#include <vector>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
 namespace {
 
 constexpr auto OptionsKey = "preyWidgetOptions";
+
+using Args = std::vector<std::any>;
+
+uint32_t mapU32(const std::map<std::string, uint32_t>& row, const char* key)
+{
+    if (const auto it = row.find(key); it != row.end())
+        return it->second;
+    return 0;
+}
+
+QString raceName(const uint32_t raceId)
+{
+    const RaceType& race = tibia::game::raceData(raceId);
+    if (!race.name.empty())
+        return QString::fromStdString(race.name);
+    return QStringLiteral("Race %1").arg(raceId);
+}
 
 }
 
@@ -64,7 +91,68 @@ TKillTrackerWidgetController::TKillTrackerWidgetController(prey::TPreyStorage* s
         m_preyList.append(new TPreyRenderInfo(data, this));
     connect(m_storage, &prey::TPreyStorage::bonusRerollPossibleChanged, this, &TKillTrackerWidgetController::bonusRerollPossibleChanged);
     connect(m_storage, &prey::TPreyStorage::choosePreyPossibleChanged, this, &TKillTrackerWidgetController::lockPreyPossibleChanged);
+
+    // Task board → kill-tracker bounty/weekly rows (S task-board subtypes).
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBountyTaskData", [this](GameObject*, const Args& args) {
+        if (args.size() < 2)
+            return std::any{};
+        if (const auto* monsters = std::any_cast<std::vector<std::map<std::string, uint32_t>>>(&args[1]))
+            applyBountyMonsters(*monsters);
+        return std::any{};
+    });
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeeklyTaskData", [this](GameObject*, const Args& args) {
+        if (args.size() < 2)
+            return std::any{};
+        if (const auto* monsters = std::any_cast<std::vector<std::map<std::string, uint32_t>>>(&args[1]))
+            applyWeeklyMonsters(*monsters);
+        return std::any{};
+    });
+
     widget()->createItem(QStringLiteral("prey/KillTrackerWidget.qml"));
+}
+
+void TKillTrackerWidgetController::applyBountyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters)
+{
+    auto* model = qobject_cast<TTaskMonsterModel*>(m_bountyTasksModel);
+    if (!model)
+        return;
+    std::vector<TTaskMonsterModel::Entry> entries;
+    entries.reserve(monsters.size());
+    for (const auto& row : monsters) {
+        const uint32_t raceId = mapU32(row, "raceId");
+        const uint32_t current = mapU32(row, "currentKills");
+        const uint32_t total = mapU32(row, "totalKills");
+        TTaskMonsterModel::Entry entry;
+        entry.raceId = int(raceId);
+        entry.name = raceName(raceId);
+        entry.count = int(total > 0 ? current : current);
+        if (total > 0)
+            entry.name = QStringLiteral("%1 (%2/%3)").arg(entry.name).arg(current).arg(total);
+        entries.push_back(std::move(entry));
+    }
+    model->setEntries(std::move(entries));
+}
+
+void TKillTrackerWidgetController::applyWeeklyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters)
+{
+    auto* model = qobject_cast<TTaskMonsterModel*>(m_weeklyTasksModel);
+    if (!model)
+        return;
+    std::vector<TTaskMonsterModel::Entry> entries;
+    entries.reserve(monsters.size());
+    for (const auto& row : monsters) {
+        const uint32_t raceId = mapU32(row, "raceId");
+        const uint32_t current = mapU32(row, "current");
+        const uint32_t total = mapU32(row, "total");
+        TTaskMonsterModel::Entry entry;
+        entry.raceId = int(raceId);
+        entry.name = raceName(raceId);
+        entry.count = int(current);
+        if (total > 0)
+            entry.name = QStringLiteral("%1 (%2/%3)").arg(entry.name).arg(current).arg(total);
+        entries.push_back(std::move(entry));
+    }
+    model->setEntries(std::move(entries));
 }
 
 bool TKillTrackerWidgetController::bonusRerollpossible() const { return m_storage->bonusRerollPossible(); }

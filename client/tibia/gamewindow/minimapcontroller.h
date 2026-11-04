@@ -34,8 +34,8 @@ namespace tibia::gamewindow {
 /// MinimapPanel's controller (CIP: TMinimapController, 0x100b92750): the
 /// visible area follows the player; buttons, the rose, dragging, the wheel and
 /// the minimap hotkeys move, zoom and change its floor; clicks map to game
-/// actions in rule context 6. Modal hover gate (0x100c15470), Soft context
-/// menu / marks, and markers are ported. Not ported yet: emulateClickOnAutomapRose.
+/// actions in rule context 6. Modal hover gate (0x100c15470), qtclient context
+/// menu / marks, markers, and emulateClickOnAutomapRose are ported.
 class TMinimapController final : public cip::tibia::gamewindow::TMinimapController
 {
     Q_OBJECT
@@ -72,6 +72,8 @@ public Q_SLOTS:
     void onMoveUpButtonClicked() override;
     void onMoveDownButtonClicked() override;
     void onCenterButtonClicked() override;
+    /// CIP 0x100b93ed0: re-apply rose scroll from last normalised rose mouse.
+    void emulateClickOnAutomapRose() override;
     void onMinimapRoseButtonClicked(int offsetX, int offsetY) override;
     void onMinimapDragged(float deltaX, float deltaY) override;
     void onMinimapClick(int x, int y, int triggeringMouseButton, Qt::KeyboardModifiers modifiers) override;
@@ -107,6 +109,9 @@ private:
     Position m_playerPosition;
     QPoint m_mouse;
     QPointF m_dragRemainder;
+    /// CIP +0x118/+0x120: last normalised mouse on the rose (0..1). qtclient writes
+    /// these from rose clicks; CipSoft's QML never did.
+    QPointF m_roseMouseNormalized{0.5, 0.5};
     client::gamecore::Hook m_positionHook;
 };
 

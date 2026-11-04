@@ -1,5 +1,6 @@
 #pragma once
 
+#include "creatures/creaturestorage.h"
 #include "game/playerstatestracker.h"
 
 #include <cip_gen.h>
@@ -53,7 +54,7 @@ public:
     explicit TCreatureHUDQmlRenderInfo(QObject* parent = nullptr);
 
     /// Display options, by CIP option name (clientoptions.json "options").
-    void update(Creature& creature, float lightness, float scaleFactor, const QJsonObject& options);
+    void update(const tibia::creatures::TCreature& stored, float lightness, float scaleFactor, const QJsonObject& options);
     /// The own character's special conditions (CIP 0x101064c00: FUN_10101f1f0
     /// with the HUD filter); set before the HUD is created.
     void setPlayerStates(QObject* model) { m_playerStates = model; }
@@ -61,7 +62,7 @@ public:
     void setShowSpecialConditions(bool show);
 
 private:
-    void updateIcons(Creature& creature, const QJsonObject& options);
+    void updateIcons(const tibia::creatures::TCreature& stored, const QJsonObject& options);
 
     TCreatureOtherIconModel* m_otherIcons = nullptr;
 };

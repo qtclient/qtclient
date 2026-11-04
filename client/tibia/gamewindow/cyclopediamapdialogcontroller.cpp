@@ -11,13 +11,16 @@
 #include "worldmap/ambientlightstorage.h"
 
 #include <client/const.h>
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QLocale>
 
 #include <algorithm>
 #include <cmath>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -33,14 +36,14 @@ constexpr int TooltipDelayMs = 500;
 
 QString englishNumber(const qulonglong value) { return QLocale(QLocale::English).toString(value); }
 
-qulonglong balance(const Otc::ResourceTypes_t type)
+qulonglong balance(const tibia::client::ResourceTypes_t type)
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player ? player->getResourceBalance(type) : 0;
 }
 
-/// Soft cyclopedia-map field menu (select / walk). GOD_TELEPORT is Shift+Ctrl only.
-constexpr A SoftCyclopediaMapOrder[] = {
+/// qtclient cyclopedia-map field menu (select / walk). GOD_TELEPORT is Shift+Ctrl only.
+constexpr A CyclopediaMapOrder[] = {
     A::CYCLOPEDIA_MAP_SELECT_ITEM,
     A::SET_PLAYER_MOVEMENT_INTENT,
 };
@@ -104,12 +107,12 @@ TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
     m_confirmDialog->setYesNoButtons();
     connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this, [this] {
         if (m_resetSubAreaId > 0) {
-            g_game.sendCyclopediaMapResetViewpoints(static_cast<uint16_t>(m_resetSubAreaId));
+            tibia::game::sendCyclopediaMapResetViewpoints(static_cast<uint16_t>(m_resetSubAreaId));
             m_resetSubAreaId = 0;
             return;
         }
         if (m_donationAreaId > 0 && m_donationAmount > 0)
-            g_game.sendCyclopediaMapDonate(static_cast<uint16_t>(m_donationAreaId), static_cast<uint32_t>(m_donationAmount));
+            tibia::game::sendCyclopediaMapDonate(static_cast<uint16_t>(m_donationAreaId), static_cast<uint32_t>(m_donationAmount));
         m_donationAreaId = 0;
         m_donationAmount = 0;
     });
@@ -123,18 +126,16 @@ TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
         updatePlayerArea();
     });
 
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const std::vector<std::any>& args) {
-        const auto* type = args.size() > 2 ? std::any_cast<Otc::ResourceTypes_t>(&args[2]) : nullptr;
-        if (type && (*type == Otc::RESOURCE_BANK_BALANCE || *type == Otc::RESOURCE_GOLD_EQUIPPED)) {
-            m_totalGoldBalance = static_cast<qlonglong>(balance(Otc::RESOURCE_BANK_BALANCE) + balance(Otc::RESOURCE_GOLD_EQUIPPED));
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
+        if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED)) {
+            m_totalGoldBalance = static_cast<qlonglong>(balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED));
             Q_EMIT goldBalanceChanged();
         }
-        return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const std::vector<std::any>&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_selectedId = 0;
         rebuildSelection();
-        return std::any{};
     });
 }
 
@@ -165,7 +166,7 @@ void TCyclopediaMapDialogController::updateTimeDisplay()
 
 void TCyclopediaMapDialogController::showDialogTab()
 {
-    m_totalGoldBalance = static_cast<qlonglong>(balance(Otc::RESOURCE_BANK_BALANCE) + balance(Otc::RESOURCE_GOLD_EQUIPPED));
+    m_totalGoldBalance = static_cast<qlonglong>(balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED));
     Q_EMIT goldBalanceChanged();
     updateTimeDisplay();
     updatePlayerArea();
@@ -214,7 +215,7 @@ void TCyclopediaMapDialogController::setMinimapRendererQuickItem(QObject* pItem)
     onSelectedItemChanged();
     connect(m_renderer, &qmlcomponents::TMinimapRendererQuickItem::areaClicked, this, &TCyclopediaMapDialogController::onAreaClicked);
     m_renderer->setStorage(m_storage);
-    // House pins: g_things.getCyclopediaHouses() (staticdata.dat).
+    // House pins: tibia::game::cyclopediaHouses() (staticdata.dat).
     // Passage pins: 0xDD subtype 6 → TCyclopediaMapStorage::passages().
     if (m_pendingCenter) {
         const auto [position, scale] = *m_pendingCenter;
@@ -248,10 +249,10 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
     if (subareaId > 0) {
         candidates.push_back(std::make_shared<input::TGameActionCyclopediaMapSelectionItem>(subareaId));
     }
-    // Cyclopedia Shift+click: Soft fog (0xfe) is passable — longer-range than minimap Soft.
-    candidates.push_back(input::makeMovementIntent(position, Otc::AutoWalkPathCyclopedia));
-    // CIP: GOD_TELEPORT is a mapper candidate (Shift+Ctrl); Soft menus omit it.
-    candidates.push_back(input::makeObjectAction(A::GOD_TELEPORT, nullptr, position, -1));
+    // Cyclopedia Shift+click: pathfinder fog (0xfe) is passable — longer-range than minimap pathfinder.
+    candidates.push_back(input::makeMovementIntent(position, tibia::client::AutoWalkPathCyclopedia));
+    // CIP: GOD_TELEPORT is a mapper candidate (Shift+Ctrl); qtclient menus omit it.
+    candidates.push_back(input::makeObjectAction(A::GOD_TELEPORT, position, -1));
     candidates.push_back(input::makeAction(A::CONTEXT_MENU));
 
     const input::TGameActionPtr action = m_mapper.map(candidates, 9, static_cast<Qt::MouseButton>(TriggeringMouseButton), static_cast<int>(Modifiers));
@@ -259,7 +260,7 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
         return;
     if (action->type == A::CONTEXT_MENU) {
         if (TContextMenuController* menu = TContextMenuController::instance()) {
-            if (const input::TGameActionList entries = input::contextMenuActions(candidates, SoftCyclopediaMapOrder); !entries.empty())
+            if (const input::TGameActionList entries = input::contextMenuActions(candidates, CyclopediaMapOrder); !entries.empty())
                 menu->showGameActions(entries, 9, m_mapper);
         }
         return;
@@ -273,7 +274,7 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
 
 void TCyclopediaMapDialogController::centerToPlayer()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player || !m_renderer)
         return;
     const Position position = player->getPosition();

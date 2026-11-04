@@ -4,6 +4,7 @@
 #include <tibia/assets/things.h>
 
 #include <algorithm>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::skillwheel {
 
@@ -15,7 +16,7 @@ QString itemName(const int typeId)
 {
     if (typeId <= 0)
         return {};
-    const ThingTypePtr& type = g_things.getThingType(static_cast<uint16_t>(typeId), ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(typeId), ThingCategoryItem);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 

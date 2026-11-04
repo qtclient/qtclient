@@ -6,7 +6,6 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/item.h>
 #include <client/staticdata.h>
@@ -20,6 +19,10 @@
 #include <algorithm>
 #include <array>
 #include <tuple>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -46,7 +49,7 @@ ThingTypePtr itemType(const uint16_t typeId)
 {
     if (typeId == 0)
         return nullptr;
-    return g_things.getThingType(typeId, ThingCategoryItem);
+    return tibia::game::thingType(typeId, ThingCategoryItem);
 }
 
 /// CIP 0x100935520: the market category; the coins are "Gold", the rest "Unsorted".
@@ -173,17 +176,16 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
             Q_EMIT lootValueChanged();
     });
 
-    m_hooks.emplace_back("g_game", "onParseItemDetail", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseItemDetail", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<ItemInspectionData>(&args[0]);
         if (!data || data->inspectionType != CyclopediaInspection || !m_shown || m_typeId == 0)
             return std::any{};
         setInspectData(new TItemInspectData(QString::fromStdString(data->name), m_typeId, data->descriptions, this));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_entriesBuilt = false;
         resetInspect();
-        return std::any{};
     });
 
     resetInspect();
@@ -209,7 +211,7 @@ void TItemInfoDialogController::buildCategories()
 void TItemInfoDialogController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
-    for (const ThingTypePtr& type : g_things.getThingTypes(ThingCategoryItem)) {
+    for (const ThingTypePtr& type : tibia::game::thingTypes(ThingCategoryItem)) {
         if (!type || type->getId() == 0 || type->getCyclopediaType() != type->getId())
             continue;
         TAppearanceTypeEntry entry;
@@ -400,7 +402,7 @@ void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
         Q_EMIT itemSelectedChanged();
         Q_EMIT lootBlackWhitelistChanged();
     }
-    if (m_typeId != 0 && g_game.isOnline()) {
+    if (m_typeId != 0 && tibia::game::isOnline()) {
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         m_inspectTimer.start(static_cast<int>(std::max(InspectMinimumDelay, m_lastInspect + InspectInterval - now)));
     }
@@ -410,12 +412,11 @@ void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
 
 void TItemInfoDialogController::sendInspect()
 {
-    if (m_typeId == 0 || !g_game.isOnline())
+    if (m_typeId == 0 || !tibia::game::isOnline())
         return;
     m_lastInspect = QDateTime::currentMSecsSinceEpoch();
-    g_game.inspectionObject(Otc::INSPECT_CYCLOPEDIA, m_typeId, 1);
-    if (const ItemPtr item = Item::create(m_typeId))
-        g_game.requestItemInfo(item, 0);
+    tibia::game::inspectionObject(tibia::client::INSPECT_CYCLOPEDIA, m_typeId, 1);
+    tibia::game::requestItemInfo(static_cast<uint16_t>(m_typeId), 0, 0);
 }
 
 void TItemInfoDialogController::updateNpcData()
@@ -450,7 +451,7 @@ bool TItemInfoDialogController::hasWeaponProficiency() const
 
 bool TItemInfoDialogController::isPremium() const
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 

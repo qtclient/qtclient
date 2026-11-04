@@ -2,6 +2,9 @@
 
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::trade {
 
@@ -13,7 +16,7 @@ using client::gamecore::argString;
 
 QString itemNameOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || type->getId() == 0)
         return QString::number(typeId);
     const MarketData& market = type->getMarketData();
@@ -38,7 +41,7 @@ TCharacterTradeStorage::TCharacterTradeStorage(QObject* parent)
 {
     s_instance = this;
 
-    m_hooks.emplace_back("g_game", "onCharacterTradeConditions", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCharacterTradeConditions", [this](GameObject*, const Args& args) {
         m_characterName = argString(args, 0);
         m_characterLevel = static_cast<int>(argInt(args, 1));
         m_vocationClientId = static_cast<uint8_t>(argInt(args, 2));
@@ -62,7 +65,7 @@ TCharacterTradeStorage::TCharacterTradeStorage(QObject* parent)
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onCharacterTradeItems", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCharacterTradeItems", [this](GameObject*, const Args& args) {
         const int dataType = static_cast<int>(argInt(args, 0));
         std::vector<TCharacterTradeItemEntry> rows;
         if (const auto* list = args.size() > 1 ? std::any_cast<std::vector<std::tuple<uint16_t, uint8_t, uint32_t>>>(&args[1]) : nullptr) {
@@ -86,7 +89,7 @@ TCharacterTradeStorage::TCharacterTradeStorage(QObject* parent)
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onCharacterTradeHighlights", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCharacterTradeHighlights", [this](GameObject*, const Args& args) {
         m_highlights.clear();
         using Group = std::tuple<uint8_t, std::string, std::vector<std::tuple<uint16_t, std::string>>>;
         if (const auto* groups = args.empty() ? nullptr : std::any_cast<std::vector<Group>>(&args[0])) {
@@ -107,7 +110,7 @@ TCharacterTradeStorage::TCharacterTradeStorage(QObject* parent)
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onCharacterTradeSummary", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCharacterTradeSummary", [this](GameObject*, const Args& args) {
         m_summaryFee = static_cast<uint16_t>(argInt(args, 0));
         m_confirmations.clear();
         if (const auto* problems = args.size() > 1 ? std::any_cast<std::vector<std::string>>(&args[1]) : nullptr) {
@@ -123,7 +126,7 @@ TCharacterTradeStorage::TCharacterTradeStorage(QObject* parent)
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_characterName.clear();
         m_characterLevel = 0;
         m_vocationClientId = 0;
@@ -138,7 +141,6 @@ TCharacterTradeStorage::TCharacterTradeStorage(QObject* parent)
         m_highlights.clear();
         m_summaryFee = 0;
         m_confirmations.clear();
-        return std::any{};
     });
 }
 

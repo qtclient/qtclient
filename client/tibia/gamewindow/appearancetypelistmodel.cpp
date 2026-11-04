@@ -1,9 +1,9 @@
 #include "appearancetypelistmodel.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QLocale>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -242,7 +242,7 @@ bool TAppearanceTypeListModelSortFilterProxy::filterAcceptsRow(const int sourceR
         return false;
 
     // CIP 0x100cac240.
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (m_filterByLevel && player && player->getLevel() < entry.requiredLevel)
         return false;
     if (m_filterByVocation && entry.professions != 0) {

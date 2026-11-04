@@ -8,6 +8,7 @@
 #include <QQuickImageResponse>
 #include <QQuickTextureFactory>
 #include <QThread>
+#include <QImageReader>
 #include <QTimer>
 
 namespace tibia::imageproviders {
@@ -43,7 +44,30 @@ private:
 void TImagestrip::load() const
 {
     std::call_once(m_loaded, [this] {
-        m_image = QImage(m_file);
+        QImageReader reader(m_file);
+        reader.setAutoDetectImageFormat(true);
+        if (!reader.canRead()) {
+            qWarning("image strip %s failed to load", qPrintable(m_file));
+            return;
+        }
+
+        const int frameCount = reader.imageCount();
+        if (frameCount > 1) {
+            m_animationFrames.reserve(static_cast<size_t>(frameCount));
+            for (int i = 0; i < frameCount; ++i) {
+                if (!reader.jumpToImage(i))
+                    continue;
+                QImage frame = reader.read();
+                if (frame.isNull())
+                    continue;
+                m_animationFrames.push_back(std::move(frame));
+            }
+            if (!m_animationFrames.empty())
+                m_image = m_animationFrames.front();
+        } else {
+            m_image = reader.read();
+        }
+
         if (m_image.isNull())
             qWarning("image strip %s failed to load", qPrintable(m_file));
         m_cellHeight = m_image.height();
@@ -57,6 +81,8 @@ QImage TImagestrip::cell(const QString& id) const
     load();
     bool ok = false;
     const uint index = id.toUInt(&ok);
+    if (ok && !m_animationFrames.empty() && index < m_animationFrames.size())
+        return m_animationFrames[static_cast<size_t>(index)];
     if (ok && m_cellWidth > 0 && (qint64(index) + 1) * m_cellWidth <= m_image.width())
         return m_image.copy(int(index) * m_cellWidth, 0, m_cellWidth, m_cellHeight);
     QImage empty(std::max(m_cellWidth, 0), m_cellHeight, QImage::Format_ARGB32_Premultiplied);
@@ -67,6 +93,8 @@ QImage TImagestrip::cell(const QString& id) const
 int TImagestrip::cellCount() const
 {
     load();
+    if (!m_animationFrames.empty())
+        return static_cast<int>(m_animationFrames.size());
     return m_cellWidth > 0 ? m_image.width() / m_cellWidth : 0;
 }
 
@@ -137,10 +165,10 @@ void registerImageProviders(QQmlEngine* engine)
         { "icons-skillwheel-gem-suprememods", ":/images/skillwheel/icons-skillwheel-suprememods.png", 0 },
         { "backdrop-mod-grade", ":/images/skillwheel/backdrop_modgrades.png", 0 },
         { "overlay-mod-grade-potential", ":/images/skillwheel/icons-modgrades-potential.png", 0 },
-        { "backdrop-grades-circle-bottom", ":/images/skillwheel/backdrop_grades_circle_bottom_anim.png", 0 },
-        { "backdrop-grades-circle-mid", ":/images/skillwheel/backdrop_grades_circle_mid_anim.png", 0 },
-        { "backdrop-grades-circle-top", ":/images/skillwheel/backdrop_grades_circle_top_anim.png", 0 },
-        { "backdrop-grades-line", ":/images/skillwheel/backdrop_grades_line_anim.png", 4 },
+        { "backdrop-grades-circle-bottom", ":/images/skillwheel/backdrop_grades_circle_bottom_anim.webp", 0 },
+        { "backdrop-grades-circle-mid", ":/images/skillwheel/backdrop_grades_circle_mid_anim.webp", 0 },
+        { "backdrop-grades-circle-top", ":/images/skillwheel/backdrop_grades_circle_top_anim.webp", 0 },
+        { "backdrop-grades-line", ":/images/skillwheel/backdrop_grades_line_anim.webp", 4 },
         { "vocation-icons", ":/images/skin/classic/icons-vocations.png", 0 },
         { "proficiency-icons", ":/images/proficiency/icons-weaponmastery.png", 0 },
         { "proficiency-icons-critdamage-elements", ":/images/proficiency/icons-weaponmastery-criticalExtraDamageElement.png", 0 },
@@ -153,8 +181,8 @@ void registerImageProviders(QQmlEngine* engine)
         { "proficiency-icons-skilllevel-healing", ":/images/proficiency/icons-weaponmastery-gainExtraHealingSpells.png", 0 },
         { "proficiency-icons-skills", ":/images/proficiency/icons-weaponmastery-offensiveBonusSkill.png", 0 },
         { "proficiency-icons-specialized-magic-level", ":/images/proficiency/icon-weaponsmastery-specializedMagicLevel.png", 0 },
-        { "backdrop-weaponmastery-highlight", ":/images/proficiency/backdrop_weaponmastery_highlight.png", 0 },
-        { "backdrop-weaponmastery-shaped-highlight", ":/images/proficiency/backdrop_weaponmastery_manipulate_highlight.png", 0 },
+        { "backdrop-weaponmastery-highlight", ":/images/proficiency/backdrop_weaponmastery_highlight.webp", 0 },
+        { "backdrop-weaponmastery-shaped-highlight", ":/images/proficiency/backdrop_weaponmastery_manipulate_highlight.webp", 0 },
         { "icons-npcdialog", ":/images/icons-npcdialog.png", 0 },
     };
     for (const Strip& strip : strips) {

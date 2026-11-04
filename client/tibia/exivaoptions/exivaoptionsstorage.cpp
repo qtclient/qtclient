@@ -3,11 +3,13 @@
 #include "chat/chatchannel.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 
 #include <algorithm>
 #include <iterator>
 #include <string>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::exivaoptions {
 
@@ -56,7 +58,7 @@ TExivaOptionsStorage::Names difference(const TExivaOptionsStorage::Names& from, 
 TExivaOptionsStorage::TExivaOptionsStorage(QObject* parent)
     : QObject(parent)
 {
-    m_hooks.emplace_back("g_game", "onReceiveExivaOptions", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onReceiveExivaOptions", [this](GameObject*, const Args& args) {
         m_options = { client::gamecore::argBool(args, 0), client::gamecore::argBool(args, 1), client::gamecore::argBool(args, 2),
                       client::gamecore::argBool(args, 3), client::gamecore::argBool(args, 4), client::gamecore::argBool(args, 5) };
         apply(m_characterWhitelist, namesArg(args, 6), namesArg(args, 7));
@@ -67,18 +69,17 @@ TExivaOptionsStorage::TExivaOptionsStorage(QObject* parent)
         return std::any{};
     });
     // CIP TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage (0x100ad68d0): ExivaSuppressed (0xC9, no fields).
-    m_hooks.emplace_back("g_game", "onExivaSuppressed", [](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onExivaSuppressed", [](GameObject*, const Args&) {
         input::publish(input::makeAction(A::EXIVA_WAS_SUPPRESSED));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_options = {};
         m_characterWhitelist.clear();
         m_guildWhitelist.clear();
         Q_EMIT optionsChanged();
         Q_EMIT characterWhitelistChanged();
         Q_EMIT guildWhitelistChanged();
-        return std::any{};
     });
 
     for (const A type : Handled) {
@@ -112,7 +113,7 @@ TExivaOptionsStorage::~TExivaOptionsStorage()
 void TExivaOptionsStorage::send(const Options& options, const Names& addCharacters, const Names& removeCharacters, const Names& addGuilds,
                                 const Names& removeGuilds) const
 {
-    g_game.sendExivaOptions(options.allowAll, options.allowOwnGuild, options.allowOwnParty, options.allowVipList, options.allowPlayerWhitelist,
+    tibia::game::sendExivaOptions(options.allowAll, options.allowOwnGuild, options.allowOwnParty, options.allowVipList, options.allowPlayerWhitelist,
                             options.allowGuildWhitelist, wire(addCharacters), wire(removeCharacters), wire(addGuilds), wire(removeGuilds));
 }
 

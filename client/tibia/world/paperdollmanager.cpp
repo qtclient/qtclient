@@ -23,6 +23,7 @@
 #include "paperdollmanager.h"
 #include "paperdoll.h"
 #include "tibia/assets/things.h"
+#include <tibia/game/thingsession_forward.h>
 
 PaperdollManager g_paperdolls;
 
@@ -35,12 +36,12 @@ PaperdollPtr PaperdollManager::getById(uint16_t id) {
 
     const auto& obj = (*it).second;
     if (obj->m_thingId > 0 && obj->m_thingType == nullptr) {
-        if (!g_things.isValidDatId(obj->m_thingId, ThingCategoryCreature)) {
+        if (!tibia::game::isValidDatId(obj->m_thingId, ThingCategoryCreature)) {
             g_logger.error(std::format("PaperdollManager::getById(%d): invalid thing with id %d.", id, obj->m_thingId));
             return nullptr;
         }
 
-        obj->m_thingType = g_things.getThingType(obj->m_thingId, ThingCategoryCreature).get();
+        obj->m_thingType = tibia::game::thingType(obj->m_thingId, ThingCategoryCreature).get();
     }
 
     return obj;

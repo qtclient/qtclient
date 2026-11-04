@@ -3,12 +3,14 @@
 #include "chat/chatchannel.h"
 #include "input/gameactionhandlers.h"
 
+#include <creatures/creaturestorage.h>
 #include <tibia/world/creature.h>
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <tibia/world/map.h>
 #include <tibia/world/thing.h>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -25,8 +27,11 @@ QString nameOf(const input::TGameAction& action)
 {
     if (!action.text.isEmpty() || !action.creatureId)
         return action.text;
-    const CreaturePtr creature = g_map.getCreatureById(action.creatureId);
-    return creature ? QString::fromStdString(creature->getName()) : QString();
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(action.creatureId))
+            return row->name();
+    }
+    return {};
 }
 
 }
@@ -38,7 +43,7 @@ TReportViolationController::TReportViolationController(QObject* parent)
         input::setActionHandler(type, [this](const input::TGameAction& action) { return handleAction(action); });
     // CIP TRuleViolationProtocolMessageHandler::handleTextForReportMessage (0x100f87180): TextForReport (0x81) becomes
     // REPORT_TEXT with the name, the text id and the text (0x100e5a540).
-    m_hooks.emplace_back("g_game", "onTextForReport", [](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTextForReport", [](GameObject*, const std::vector<std::any>& args) {
         auto action = input::mutableClone(*input::makeAction(A::REPORT_TEXT));
         action->parameter = static_cast<int>(client::gamecore::argInt(args, 0));
         action->statement = client::gamecore::argString(args, 1);
@@ -76,8 +81,8 @@ bool TReportViolationController::handleAction(const input::TGameAction& action)
         open(Text, nameOf(action), action.statement, static_cast<uint32_t>(action.parameter));
         return true;
     case A::GET_TEXT_FOR_REPORT: {
-        const uint16_t typeId = action.object && action.object->isItem() ? static_cast<uint16_t>(action.object->getId()) : 0;
-        g_game.requestTextForReport(action.position, typeId, static_cast<uint8_t>(std::max(action.stackPosition, 0)));
+        const uint16_t typeId = action.objectClientId;
+        tibia::game::requestTextForReport(action.position, typeId, static_cast<uint8_t>(std::max(action.stackPosition, 0)));
         return true;
     }
     default:
@@ -132,7 +137,7 @@ void TReportViolationController::selectReportReason(const int ModelIndex)
 /// CIP 0x100c2e360.
 void TReportViolationController::submitReport(const QString& Comment, const QString& Translation)
 {
-    g_game.reportRuleViolationCip(static_cast<uint8_t>(m_type), static_cast<uint8_t>(m_reasonId), m_reportedCharacterName.toStdString(),
+    tibia::game::reportRuleViolationCip(static_cast<uint8_t>(m_type), static_cast<uint8_t>(m_reasonId), m_reportedCharacterName.toStdString(),
                                   Comment.toStdString(), Translation.toStdString(), m_id);
     m_lastReport = QDateTime::currentDateTime();
     dialog()->close();

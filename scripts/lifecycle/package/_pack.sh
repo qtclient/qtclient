@@ -6,19 +6,20 @@ pack_sdk() {
   rm -rf "$DEST"
   mkdir -p "$DEST/include/qtclient" "$DEST/cmake" "$DEST/client/tibia" "$DEST/cipgen"
 
-  cp -a "$OTC/include/qtclient/." "$DEST/include/qtclient/"
-  rsync -a --include '*/' --include '*.h' --include '*.hpp' --exclude '*' \
-    "$OTC/client/tibia/" "$DEST/client/tibia/"
-  mkdir -p "$DEST/include"
-  rsync -a --include '*/' --include '*.h' --include '*.hpp' --exclude '*' \
-    "$OTC/client/tibia/" "$DEST/include/"
+  # Public API = include/qtclient/. Tip closure is computed at pack time — no
+  # committed ALLOWLIST. See tools/cip/sdk_tip_closure.py.
+  python3 "$OTC/tools/cip/sdk_tip_closure.py" --copy "$DEST" \
+    || { echo "[package] error: sdk_tip_closure failed" >&2; return 1; }
+  test -f "$DEST/include/qtclient/mod_api_v1.h" \
+    || { echo "[package] error: public SDK missing after copy" >&2; return 1; }
 
   cp -a "$OTC/cmake/QtClientMod.cmake" "$DEST/cmake/"
   cp -a "$OTC/cmake/QtClientHost.cmake" "$DEST/cmake/"
   cp -a "$OTC/cmake/TibiaMods.cmake" "$DEST/cmake/" 2>/dev/null || true
   cp -a "$OTC/cmake/GeneratePackQmldir.cmake" "$DEST/cmake/"
+  cp -a "$OTC/cmake/GenerateLinkedMods.cmake" "$DEST/cmake/"
   cp -a "$OTC/cmake/QtClientConfig.cmake.in" "$DEST/cmake/" 2>/dev/null || true
-  # Linked tip: FS presence + tip merge helpers (no host_exports / SIDE_MODULE).
+  # Linked tip: FS presence + tip merge helpers (STATIC packs; no native/SIDE_MODULE).
   mkdir -p "$DEST/scripts/lifecycle/lib" "$DEST/cmake"
   cp -a "$OTC/scripts/lifecycle/lib/check-tip-pack-presence.sh" "$DEST/scripts/lifecycle/lib/"
   cp -a "$OTC/scripts/lifecycle/lib/merge-pack-into-tip.sh" "$DEST/scripts/lifecycle/lib/"
@@ -31,7 +32,6 @@ pack_sdk() {
   test -f "$DEST/cipgen/cip_gen.h"
 
   # CIP protobuf C++ stubs for out-of-tree packs (#include <appearances.pb.h>).
-  # Source tree only has .proto; Soft host cmake generates into the build dir.
   _proto_dir="$OTC/client/upstream/proto"
   _proto_out="$DEST/include/protobuf"
   mkdir -p "$_proto_out"
@@ -52,22 +52,24 @@ pack_sdk() {
     "$_protoc" -I"$_proto_dir" --cpp_out="$_proto_out" \
       appearances.proto shared.proto sounds.proto sounds-common.proto
     test -f "$_proto_out/appearances.pb.h"
-    # Mirror under client/tibia/protobuf for Soft host-shaped include layouts.
-    mkdir -p "$DEST/client/tibia/protobuf"
-    cp -a "$_proto_out/." "$DEST/client/tibia/protobuf/"
   fi
 
   cat >"$DEST/cmake/QtClientConfig.cmake" <<EOF
-# qtclient client-sdk (hostBuildId=${HOST_ID})
+# qtclient client-sdk (hostBuildId=${HOST_ID}) — public include/qtclient/ + tip closure
 set(QTCLIENT_ROOT "\${CMAKE_CURRENT_LIST_DIR}/..")
 set(QTCLIENT_HOST_BUILD_ID "${HOST_ID}")
 set(TIBIA_ROOT "\${QTCLIENT_ROOT}" CACHE PATH "qtclient SDK root" FORCE)
+# SDK include roots for QTCLIENT_PACK_SDK_ONLY packs (no full tip tree).
+# include/qtclient + tip closure + client/ (<tibia/…>) + engine (framework/) + cipgen + protobuf
+set(QTCLIENT_HOST_INCLUDE_DIR
+  "\${QTCLIENT_ROOT}/include;\${QTCLIENT_ROOT}/cipgen;\${QTCLIENT_ROOT}/client;\${QTCLIENT_ROOT}/client/tibia;\${QTCLIENT_ROOT}/client/tibia/engine;\${QTCLIENT_ROOT}/include/protobuf"
+  CACHE PATH "qtclient client-sdk include roots" FORCE)
 list(APPEND CMAKE_MODULE_PATH "\${QTCLIENT_ROOT}/cmake")
 include("\${QTCLIENT_ROOT}/cmake/QtClientMod.cmake")
 if(NOT TARGET QtClient::Host)
   add_library(QtClient::Host INTERFACE IMPORTED)
   set_target_properties(QtClient::Host PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "\${QTCLIENT_ROOT}/include;\${QTCLIENT_ROOT}/include/engine;\${QTCLIENT_ROOT}/cipgen;\${QTCLIENT_ROOT}/client/tibia;\${QTCLIENT_ROOT}/client/tibia/engine")
+    INTERFACE_INCLUDE_DIRECTORIES "\${QTCLIENT_HOST_INCLUDE_DIR}")
 endif()
 set(QtClient_FOUND TRUE)
 EOF
@@ -75,7 +77,8 @@ EOF
   cat >"$DEST/client-sdk.json" <<EOF
 {
   "hostBuildId": "${HOST_ID}",
-  "schema": 1,
+  "schema": 3,
+  "sdkInterface": "include/qtclient",
   "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 EOF

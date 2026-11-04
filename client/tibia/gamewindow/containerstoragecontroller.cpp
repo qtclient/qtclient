@@ -9,24 +9,9 @@
 #include <tibia/world/world.h>
 
 #include <algorithm>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
-
-namespace {
-
-using Args = std::vector<std::any>;
-
-/// The game's current container for a hook's object, null for other objects.
-ContainerPtr currentContainer(LuaObject* self)
-{
-    auto* container = dynamic_cast<Container*>(self);
-    if (!container)
-        return nullptr;
-    ContainerPtr current = tibia::world::session().getContainer(container->getId());
-    return current.get() == container ? current : nullptr;
-}
-
-}
 
 TContainerStorageController::TContainerStorageController(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
                                                          QObject* parent)
@@ -43,26 +28,14 @@ TContainerStorageController::TContainerStorageController(TSidebarManager* sideba
     m_updateTimer.setInterval(0);
     connect(&m_updateTimer, &QTimer::timeout, this, &TContainerStorageController::flushUpdates);
 
-    m_hooks.emplace_back("object", "onOpen", [this](LuaObject* self, const Args&) {
-        if (const ContainerPtr container = currentContainer(self))
-            onContainerOpened(container);
-        return std::any{};
-    });
-    m_hooks.emplace_back("object", "onClose", [this](LuaObject* self, const Args&) {
-        if (auto* container = dynamic_cast<Container*>(self); container && !tibia::world::session().getContainer(container->getId()))
-            onContainerClosed(container->getId());
-        return std::any{};
-    });
-    for (const char* event : { "onAddItem", "onUpdateItem", "onRemoveItem", "onSizeChange" }) {
-        m_hooks.emplace_back("object", event, [this](LuaObject* self, const Args&) {
-            if (const ContainerPtr container = currentContainer(self))
-                scheduleUpdate(container->getId());
-            return std::any{};
-        });
+    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+        connect(storage, &container::TContainerStorage::containerUpdated, this,
+                &TContainerStorageController::onContainerUpdated);
+        connect(storage, &container::TContainerStorage::containerRemoved, this,
+                &TContainerStorageController::onContainerClosed);
     }
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clear();
-        return std::any{};
     });
 
     input::setActionHandler(input::EGameAction::CLOSE_ALL_DISPLAYED_BUT_NOT_OPENED_CONTAINERS, [this](const input::TGameAction&) {
@@ -83,7 +56,6 @@ TContainerStorageController::~TContainerStorageController()
 {
     input::setActionHandler(input::EGameAction::CLOSE_ALL_DISPLAYED_BUT_NOT_OPENED_CONTAINERS, nullptr);
     input::setActionHandler(input::EGameAction::TOGGLE_MANUAL_SORT_MODE, nullptr);
-    m_hooks.clear();
     clear();
 }
 
@@ -114,22 +86,29 @@ void TContainerStorageController::onLoginRampUpFinished()
     addQueuedWidgets();
 }
 
-void TContainerStorageController::onContainerOpened(const ContainerPtr& container)
+void TContainerStorageController::onContainerUpdated(const int containerId, const bool isNewContainer)
 {
-    const int id = container->getId();
-    if (const auto it = m_controllers.find(id); it != m_controllers.end()) {
-        m_dirty.erase(id);
-        it->second->update(container, true);
+    // Open / replace-open: isNewContainer=true → create or reset scroll in place.
+    // Slot mutations: isNewContainer=false → coalesce into a deferred refresh.
+    if (!isNewContainer) {
+        if (m_controllers.find(containerId) != m_controllers.end())
+            scheduleUpdate(containerId);
         return;
     }
-    auto* controller = new TContainerController(id, m_gameWindowItem, m_engine, this);
+
+    if (const auto it = m_controllers.find(containerId); it != m_controllers.end()) {
+        m_dirty.erase(containerId);
+        it->second->update(true);
+        return;
+    }
+    auto* controller = new TContainerController(containerId, m_gameWindowItem, m_engine, this);
     controller->setControlScheme(m_controlScheme);
     controller->setLootScheme(m_lootScheme);
     controller->setSidebarOptions(m_options);
     controller->setManualSortMode(m_manualSort);
-    controller->update(container, false);
-    m_controllers.emplace(id, controller);
-    m_queuedWidgets.push_back(id);
+    controller->update(false);
+    m_controllers.emplace(containerId, controller);
+    m_queuedWidgets.push_back(containerId);
     if (m_loginRampUpFinished)
         m_queueTimer.start();
 }
@@ -164,8 +143,8 @@ void TContainerStorageController::flushUpdates()
         const auto it = m_controllers.find(id);
         if (it == m_controllers.end())
             continue;
-        if (const ContainerPtr container = tibia::world::session().getContainer(id))
-            it->second->update(container, false);
+        if (container::TContainerStorage::instance() && container::TContainerStorage::instance()->hasContainer(id))
+            it->second->update(false);
     }
 }
 
@@ -225,10 +204,8 @@ void TContainerStorageController::closeInSidebar(const uint sidebarId)
         if (TSidebarWidget* widget = controller->widget(); widget && widget->parentSidebarId() == sidebarId)
             ids.push_back(id);
     }
-    for (const int id : ids) {
-        if (const ContainerPtr container = tibia::world::session().getContainer(id))
-            tibia::world::session().close(container);
-    }
+    for (const int id : ids)
+        tibia::world::session().closeById(id);
 }
 
 bool TContainerStorageController::hasWidgetsInSidebar(const uint sidebarId) const

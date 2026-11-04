@@ -8,7 +8,8 @@ class LauncherWindow;
 namespace tibia::launcher {
 
 /**
- * Create + show the CipSoft launcher UI for wasm embed (TIBIA_WASM_EMBED_LAUNCHER).
+ * Create + show the CipSoft qtclient UI (desktop helper / tests).
+ * Browser /play boots the standalone launcher.wasm Module instead.
  * Does not block — WASM cannot nest QEventLoop::exec on the main thread without
  * Asyncify (incompatible with Qt wasm_multithread). Caller must:
  *   1. QTimer::singleShot(0, window, &LauncherWindow::start),

@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Widgets Network)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent)
 
 # Launcher is added before client/tibia (which sets CMAKE_AUTOMOC for tibia).
 set(CMAKE_AUTOMOC ON)
@@ -67,7 +67,7 @@ target_include_directories(launcher PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/lzma"
   "${TIBIA_ROOT}/client/tibia"
   "${TIBIA_ROOT}/shared/src")
-target_link_libraries(launcher PRIVATE Qt6::Widgets Qt6::Network qtclient_shared)
+target_link_libraries(launcher PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent qtclient_shared)
 # QStringLiteral(TIBIA_LAUNCHER_VERSION) in main.cpp / window.cpp (wasm + desktop).
 set(_launcher_version "dev")
 execute_process(

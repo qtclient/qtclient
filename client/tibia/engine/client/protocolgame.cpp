@@ -21,8 +21,13 @@
  */
 
 #include "framework/net/inputmessage.h"
-#include "tibia/world/game.h"
+#include "framework/net/outputmessage.h"
 #include "protocolgame.h"
+#include <tibia/game/gamesession.h>
+
+#include <QByteArray>
+#include <algorithm>
+#include <string_view>
 
 void ProtocolGame::login(const std::string_view accountName, const std::string_view accountPassword, const std::string_view host, uint16_t port,
                          const std::string_view characterName, const std::string_view authenticatorToken, const std::string_view sessionKey)
@@ -57,12 +62,12 @@ void ProtocolGame::onConnect()
     m_firstRecv = true;
     Protocol::onConnect();
 
-    m_localPlayer = g_game.getLocalPlayer();
+    m_localPlayer = tibia::game::localPlayer();
 
-    if (g_game.getFeature(Otc::GameProtocolChecksum))
+    if (g_game.getFeature(tibia::client::GameProtocolChecksum))
         enableChecksum();
 
-    if (!g_game.getFeature(Otc::GameChallengeOnLogin))
+    if (!g_game.getFeature(tibia::client::GameChallengeOnLogin))
         sendLoginPacket(0, 0);
 
     recv();
@@ -80,7 +85,7 @@ void ProtocolGame::onRecv(const InputMessagePtr& inputMessage)
         if (isReplay()) {
         } else if (g_game.getClientVersion() >= 1405) {
             inputMessage->getU8(); // padding
-        } else if (g_game.getFeature(Otc::GameMessageSizeCheck)) {
+        } else if (g_game.getFeature(tibia::client::GameMessageSizeCheck)) {
             const int size = inputMessage->getU16();
             if (size != inputMessage->getUnreadSize()) {
                 g_logger.traceError("invalid message size");
@@ -97,4 +102,27 @@ void ProtocolGame::onError(const std::error_code& error)
 {
     g_game.processConnectionError(error);
     disconnect();
+}
+
+void ProtocolGame::applyClassicServerFrame(const QByteArray& classicFrame)
+{
+    if (classicFrame.isEmpty())
+        return;
+    m_applyingClassicBridge = true;
+    const auto msg = std::make_shared<InputMessage>();
+    msg->assignBody(reinterpret_cast<const uint8_t*>(classicFrame.constData()),
+                    uint16_t(std::min(classicFrame.size(), qsizetype(0xffff))));
+    parseMessage(msg);
+    m_applyingClassicBridge = false;
+}
+
+void ProtocolGame::writeClassicClientFrame(const QByteArray& classicFrame)
+{
+    if (classicFrame.isEmpty() || m_replay)
+        return;
+    m_writingClientLoadSplit = true;
+    const auto msg = std::make_shared<OutputMessage>();
+    msg->addBytes(std::string_view(classicFrame.constData(), size_t(classicFrame.size())));
+    send(msg);
+    m_writingClientLoadSplit = false;
 }

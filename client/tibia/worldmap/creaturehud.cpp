@@ -1,5 +1,6 @@
 #include "creaturehud.h"
 
+#include "creatures/creaturestorage.h"
 #include "app/clientoptions.h"
 #include "renderer/mapscale.h"
 #include "renderer/worldmaprenderprovider.h"
@@ -102,31 +103,35 @@ TCreatureHUDQmlRenderInfo::TCreatureHUDQmlRenderInfo(QObject* parent)
 /// summons the summon flag and party. All but the NPC category (gated on
 /// creatueShowNpcIcon) hang on the marks option, playerShowMarks for the own
 /// character and creatureShowMarks for everyone else.
-void TCreatureHUDQmlRenderInfo::updateIcons(Creature& creature, const QJsonObject& options)
+void TCreatureHUDQmlRenderInfo::updateIcons(const tibia::creatures::TCreature& stored, const QJsonObject& options)
 {
     using Info = cip::tibia::worldmap::TCreatureHUDQmlRenderInfo;
 
     enum class Kind { Player, Monster, Npc, Summon };
-    const bool summonType = creature.getType() == Proto::CreatureTypeSummonOwn || creature.getType() == Proto::CreatureTypeSummonOther;
-    const Kind kind = creature.isNpc() ? Kind::Npc : summonType ? Kind::Summon : creature.isPlayer() ? Kind::Player : Kind::Monster;
+    const bool summonType = stored.creatureType() == Proto::CreatureTypeSummonOwn
+                            || stored.creatureType() == Proto::CreatureTypeSummonOther;
+    const Kind kind = stored.isNpc() ? Kind::Npc
+                                    : summonType ? Kind::Summon
+                                    : stored.isPlayer() ? Kind::Player
+                                                        : Kind::Monster;
     const bool marks = kind == Kind::Npc ? option(options, "creatueShowNpcIcon")
-                                         : option(options, creature.isLocalPlayer() ? "playerShowMarks" : "creatureShowMarks");
+                                         : option(options, stored.isLocalPlayer() ? "playerShowMarks" : "creatureShowMarks");
 
     uint8_t summon = 0, npcCategory = 0, guild = 0, party = 0, skull = 0;
     bool withOthers = false;
     if (marks) {
         switch (kind) {
             case Kind::Player:
-                guild = creature.getEmblem();
-                party = creature.getShield();
-                skull = creature.getSkull();
+                guild = stored.emblem();
+                party = stored.shield();
+                skull = stored.skull();
                 withOthers = true;
                 break;
             case Kind::Monster: withOthers = true; break;
-            case Kind::Npc: npcCategory = creature.getIcon(); break;
+            case Kind::Npc: npcCategory = stored.icon(); break;
             case Kind::Summon:
-                summon = creature.getType() == Proto::CreatureTypeSummonOwn ? 1 : 2;
-                party = creature.getShield();
+                summon = stored.creatureType() == Proto::CreatureTypeSummonOwn ? 1 : 2;
+                party = stored.shield();
                 break;
         }
     }
@@ -150,7 +155,7 @@ void TCreatureHUDQmlRenderInfo::updateIcons(Creature& creature, const QJsonObjec
     QList<TCreatureOtherIconModel::Icon> others;
     bool fiendish = false;
     if (withOthers) {
-        for (const auto& [icon, category, count] : creature.getIcons()) {
+        for (const auto& [icon, category, count] : stored.hudIcons()) {
             others.append({ stripIcon(category == 0 ? "otherplayericons" : "othercreatureicons", icon), count, count > 0 });
             fiendish |= category != 0 && icon == 5;
         }
@@ -161,7 +166,7 @@ void TCreatureHUDQmlRenderInfo::updateIcons(Creature& creature, const QJsonObjec
     // CIP FUN_101067ab0 / FUN_101067b00: status-mark types 0/1. On product/Crystal
     // the Echo Raid glow wire (0x8B type 15) carries the same: 0=warden/leader,
     // 1=empowered/minion (see Monster::getEchoGlow / Creature::getEchoRaidColor).
-    const int8_t echo = creature.getEchoRaidColor();
+    const int8_t echo = stored.echoRaidColor();
     const bool leader = echo == 0;
     const bool minion = echo == 1;
     assign(this, m_isLeaderMonster, leader, &Info::statusEffectsChanged);
@@ -173,18 +178,19 @@ void TCreatureHUDQmlRenderInfo::setShowSpecialConditions(const bool show)
     assign(this, m_showSpecialConditions, show, &cip::tibia::worldmap::TCreatureHUDQmlRenderInfo::showSpecialConditionsChanged);
 }
 
-void TCreatureHUDQmlRenderInfo::update(Creature& creature, float lightness, const float scaleFactor, const QJsonObject& options)
+void TCreatureHUDQmlRenderInfo::update(const tibia::creatures::TCreature& stored, float lightness, const float scaleFactor,
+                                       const QJsonObject& options)
 {
     using Info = cip::tibia::worldmap::TCreatureHUDQmlRenderInfo;
-    const bool local = creature.isLocalPlayer();
+    const bool local = stored.isLocalPlayer();
     // CIP keeps the own character's HUD readable in the dark (at least 0x66).
     if (local)
         lightness = std::max(lightness, 0x66 / 255.f);
 
-    assign(this, m_name, QString::fromStdString(creature.getName()), &Info::nameChanged);
-    assign(this, m_healthPercent, creature.getHealthPercent() / 100.0, &Info::healthPercentChanged);
+    assign(this, m_name, stored.name(), &Info::nameChanged);
+    assign(this, m_healthPercent, stored.healthPercent() / 100.0, &Info::healthPercentChanged);
 
-    const Color& base = creature.getInformationColor();
+    const Color& base = stored.informationColor();
     const QColor color = QColor::fromRgbF(base.rF() * lightness, base.gF() * lightness, base.bF() * lightness);
     if (m_healthColor != color || m_lightness != lightness) {
         m_healthColor = color;
@@ -200,16 +206,15 @@ void TCreatureHUDQmlRenderInfo::update(Creature& creature, float lightness, cons
     bool showCombo = false, showComboLeft = false, serene = false;
     int combo = 0;
     if (local) {
-        auto& player = static_cast<LocalPlayer&>(creature);
         const bool hud = option(options, "playerHudEnabled");
         showName = hud && option(options, "playerShowName");
         showHealth = hud && option(options, "playerShowHealth");
         showMana = hud && option(options, "playerShowMana");
-        showManaShield = showMana && player.getMaxManaShield() > 0;
+        showManaShield = showMana && stored.maxManaShield() > 0;
         showBars = option(options, "playerHudShowBars");
         showArcs = hud && option(options, "playerHudShowArcs");
-        assign(this, m_manaPercent, fraction(player.getMana(), player.getMaxMana()), &Info::manaPercentChanged);
-        assign(this, m_manaShieldPercent, fraction(player.getManaShield(), player.getMaxManaShield()), &Info::manaShieldPercentChanged);
+        assign(this, m_manaPercent, fraction(stored.mana(), stored.maxMana()), &Info::manaPercentChanged);
+        assign(this, m_manaShieldPercent, fraction(stored.manaShield(), stored.maxManaShield()), &Info::manaShieldPercentChanged);
 
         const double distance = numberOption(options, "playerHudArcDistance", 0.25);
         const double height = numberOption(options, "playerHudArcHeight", 0.21);
@@ -223,16 +228,16 @@ void TCreatureHUDQmlRenderInfo::update(Creature& creature, float lightness, cons
             Q_EMIT showArcsChanged();
         }
 
-        const bool monk = player.getVocation() % 10 == MonkProfession;
+        const bool monk = stored.vocation() % 10 == MonkProfession;
         showCombo = hud && monk && option(options, "playerShowHarmonySerene");
         showComboLeft = showCombo && option(options, "playerHudShowHarmonyLeft");
-        combo = showCombo ? static_cast<int>(player.getHarmony()) : 0;
-        serene = showCombo && player.isSerene();
+        combo = showCombo ? static_cast<int>(stored.harmony()) : 0;
+        serene = showCombo && stored.isSerene();
     } else {
         const bool hud = option(options, "creatureHudEnabled");
         showName = hud && option(options, "creatureShowName");
         // NPCs have shown no health since 11.00.
-        showHealth = hud && option(options, "creatureShowHealth") && !(creature.isNpc() && tibia::world::clientVersion() >= 1100);
+        showHealth = hud && option(options, "creatureShowHealth") && !(stored.isNpc() && tibia::world::clientVersion() >= 1100);
     }
     assign(this, m_showCreatureName, showName, &Info::showCreatureNameChanged);
     assign(this, m_showHealthBar, showHealth, &Info::showHealthBarChanged);
@@ -254,7 +259,7 @@ void TCreatureHUDQmlRenderInfo::update(Creature& creature, float lightness, cons
         m_showCombopointsAndSereneLeft = showComboLeft;
         Q_EMIT showArcsChanged();
     }
-    updateIcons(creature, options);
+    updateIcons(stored, options);
 }
 
 TCreatureHUDOverlayController::TCreatureHUDOverlayController(QQuickItem* overlay, Provider* provider, QObject* parent)
@@ -308,8 +313,10 @@ TCreatureHUDOverlayController::Hud TCreatureHUDOverlayController::create()
     hud.info = new TCreatureHUDQmlRenderInfo(hud.item);
     hud.info->setPlayerStates(m_playerStates.model());
     hud.item->setParentItem(m_overlay);
-    hud.item->setProperty("creatureHUDInfo", QVariant::fromValue<QObject*>(hud.info));
+    // completeCreate before binding creatureHUDInfo so CreatureHUD.qml's
+    // onCreatureHUDInfoChanged can wire name/bars onto fully built children.
     m_component->completeCreate();
+    hud.item->setProperty("creatureHUDInfo", QVariant::fromValue<QObject*>(hud.info));
     return hud;
 }
 
@@ -338,7 +345,13 @@ void TCreatureHUDOverlayController::update()
         const QRect field(record.point, QSize(Provider::FieldSize, Provider::FieldSize));
         if (!visible.intersects(field))
             continue;
-        const uint32_t id = record.creature->getId();
+        const uint32_t id = record.creatureId;
+        tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+        if (!storage)
+            continue;
+        const std::shared_ptr<tibia::creatures::TCreature> stored = storage->creatureAt(id);
+        if (!stored)
+            continue;
         auto it = m_huds.find(id);
         if (it == m_huds.end()) {
             Hud hud = create();
@@ -350,8 +363,8 @@ void TCreatureHUDOverlayController::update()
         hud.seen = true;
 
         const QPoint center = record.point + QPoint(Provider::FieldSize / 2, Provider::FieldSize / 2);
-        hud.info->update(*record.creature, m_provider->lightnessAt(center), hudScale, m_options);
-        hud.info->setShowSpecialConditions(record.creature->isLocalPlayer() && m_playerStates.options().showInHUD);
+        hud.info->update(*stored, m_provider->lightnessAt(center), hudScale, m_options);
+        hud.info->setShowSpecialConditions(stored->isLocalPlayer() && m_playerStates.options().showInHUD);
 
         // FUN_101066030: centred on the scaled field, standing on its top edge.
         const QPoint camera = frame.camera;
@@ -360,7 +373,7 @@ void TCreatureHUDOverlayController::update()
         const QPointF position(std::floor(mapped.x() + width * 0.5 - 16 + 0.5), std::floor(mapped.y()));
         if (hud.item->position() != position)
             hud.item->setPosition(position);
-        hud.item->setZ(record.creature->isLocalPlayer() ? 9999 : 0);
+        hud.item->setZ(stored->isLocalPlayer() ? 9999 : 0);
     }
 
     for (auto it = m_huds.begin(); it != m_huds.end();) {

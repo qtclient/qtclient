@@ -7,6 +7,8 @@
 #include <client/staticdata.h>
 
 #include <QJsonObject>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -138,12 +140,10 @@ void TImbuedObjectsModel::setItems(std::vector<ImbuementTrackerItem> items)
         Row row;
         row.inventoryPosition = item.slot;
         row.slotCount = item.totalSlots;
-        if (item.item) {
-            row.typeId = item.item->getId();
-            row.upgradeTier = item.item->getTier();
-            row.cumulativeCount = item.item->getCount();
-            row.liquidType = item.item->getCountOrSubType();
-        }
+        row.typeId = item.typeId;
+        row.upgradeTier = item.tier;
+        row.cumulativeCount = item.count;
+        row.liquidType = item.fluidOrSubtype;
         for (const auto& [slotIndex, slot] : item.slots) {
             if (slotIndex >= 3)
                 continue;
@@ -163,14 +163,13 @@ TImbuementTrackerWidgetController::TImbuementTrackerWidgetController(QQuickItem*
     , m_model(new TImbuedObjectsModel(this))
 {
     m_imbuedObjectsModel = m_model;
-    m_hooks.emplace_back("g_game", "onUpdateImbuementTracker", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateImbuementTracker", [this](GameObject*, const Args& args) {
         if (const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<ImbuementTrackerItem>>(&args[0]))
             m_model->setItems(*list);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_model->setItems({});
-        return std::any{};
     });
     widget()->createItem(QStringLiteral("ImbuementTrackerWidget.qml"));
 }

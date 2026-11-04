@@ -106,7 +106,7 @@ def dummy_expr(typ: str) -> str:
         return "0"
     if typ == "bool":
         return "false"
-    if typ.startswith("Otc::"):
+    if typ.startswith("tibia::client::"):
         return f"static_cast<{typ}>(0)"
     return f"{typ}{{}}"
 
@@ -166,7 +166,14 @@ def statement_from_body(body: str) -> str:
     for fn in fns:
         if fn not in unique:
             unique.append(fn)
-    if "getClientVersion" in body or "getFeature" in body or "callGlobalField" in body or len(unique) != 1:
+    if (
+        "getClientVersion" in body
+        or "getFeature" in body
+        or "cipFeature" in body
+        or "callGlobalField" in body
+        or "tibia::game::notify" in body
+        or len(unique) != 1
+    ):
         # Keep the existing case body, including version gates that are not
         # the CIP semantic conflicts (those are overridden by name).
         indented = "\n".join(("    " + line) if line else "" for line in body.splitlines())
@@ -324,8 +331,9 @@ def render(messages: list[dict], entries: list[dict], client_cpp: Path) -> str:
 
 #include "client/protocolgame.h"
 #include "client/protocolcodes.h"
-#include "tibia/world/game.h"
+#include <tibia/game/gamesession.h>
 #include "framework/core/gamehooks.h"
+#include <tibia/game/gamenotify.h>
 
 bool ProtocolGame::dispatchServerMessage(const uint8_t opcode, const InputMessagePtr& msg)
 {{

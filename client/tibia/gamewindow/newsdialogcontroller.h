@@ -1,5 +1,6 @@
 #pragma once
 
+#include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
 #include "news/newsstorage.h"
 
@@ -10,6 +11,8 @@
 #include <QString>
 #include <QTimer>
 #include <QVector>
+
+#include <vector>
 
 namespace tibia::news {
 class TNewsRequestUploader;
@@ -116,6 +119,9 @@ class TNewsButtonController final : public cip::tibia::gamewindow::TNewsButtonCo
     Q_OBJECT
 public:
     explicit TNewsButtonController(QObject* parent = nullptr);
+    ~TNewsButtonController() override;
+
+    static TNewsButtonController* instance();
 
     bool highlighted() const override { return m_highlightTimer.isActive(); }
     void onOpenNewsButtonClicked() override;
@@ -123,11 +129,15 @@ public:
 
     /// Highlight for ten minutes (CIP ShowGameNews / unread push).
     void highlight();
+    /// CIP onShowGameNewsMessage — open dialog or highlight from S 0x98 / onGameNews.
+    void onShowGameNews(int newsType, bool notificationOnly);
 
 private:
     void stopHighlight();
 
+    static TNewsButtonController* s_instance;
     QTimer m_highlightTimer;
+    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

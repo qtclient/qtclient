@@ -22,10 +22,10 @@
 
 #pragma once
 
-#include <framework/luaengine/luaobject.h>
+#include <framework/luaengine/gameobject.h>
 
  // @bindclass
-class Event : public LuaObject
+class Event : public GameObject
 {
 public:
     Event(std::function<void()> callback, std::string function = "Event");

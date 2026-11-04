@@ -1,44 +1,23 @@
-/*
- * Copyright (c) 2024-2026 qtclient contributors
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
 #pragma once
 
 #include "../pch.h"
 #include <any>
-#include <parallel_hashmap/phmap.h>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace stdext
 {
     template <class K, class V,
-        class Hash = phmap::priv::hash_default_hash<K>,
-        class Eq = phmap::priv::hash_default_eq<K>,
-        class Alloc = phmap::priv::Allocator<phmap::priv::Pair<const K, V>>>
-    using map = phmap::flat_hash_map<K, V, Hash, Eq, Alloc>;
+        class Hash = std::hash<K>,
+        class Eq = std::equal_to<K>,
+        class Alloc = std::allocator<std::pair<const K, V>>>
+    using map = std::unordered_map<K, V, Hash, Eq, Alloc>;
 
     template <class T,
-        class Hash = phmap::priv::hash_default_hash<T>,
-        class Eq = phmap::priv::hash_default_eq<T>,
-        class Alloc = phmap::priv::Allocator<T>>
-        using set = phmap::flat_hash_set<T, Hash, Eq, Alloc>;
+        class Hash = std::hash<T>,
+        class Eq = std::equal_to<T>,
+        class Alloc = std::allocator<T>>
+    using set = std::unordered_set<T, Hash, Eq, Alloc>;
 
     template<typename T>
     concept OnlyEnum = std::is_enum_v<T>;
@@ -68,7 +47,7 @@ namespace stdext
 
         bool has(const Key& k) const { return m_data.contains(k); }
 
-        size_t size() const { return m_data.count(); }
+        size_t size() const { return m_data.size(); }
 
         void clear() { m_data.clear(); }
 

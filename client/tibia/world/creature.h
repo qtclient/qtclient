@@ -59,8 +59,8 @@ public:
     void setName(std::string_view name);
     void setHealthPercent(uint8_t healthPercent);
     void setManaPercent(uint8_t value) { m_manaPercent = value; }
-    void setDirection(Otc::Direction direction);
-    void setOutfit(const Outfit& outfit, bool fireEvent = true);
+    void setDirection(tibia::client::Direction direction, bool syncFieldStack = true);
+    void setOutfit(const Outfit& outfit, bool fireEvent = true, bool syncFieldStack = true);
     void setLight(const Light& light) { m_light = light; }
     void setSpeed(uint16_t speed);
     void setBaseSpeed(uint16_t baseSpeed);
@@ -94,9 +94,10 @@ public:
     void hideStaticSquare() { m_showStaticSquare = false; }
 
     // walk related
-    void turn(Otc::Direction direction);
+    void turn(tibia::client::Direction direction);
     void jump(int height, int duration);
     void allowAppearWalk() { m_allowAppearWalk = true; }
+    bool isAllowAppearWalk() const { return m_allowAppearWalk; }
     virtual void walk(const Position& oldPos, const Position& newPos);
     virtual void stopWalk();
 
@@ -135,7 +136,7 @@ public:
 
     uint16_t getSpeed() { return m_speed; }
     uint16_t getBaseSpeed() { return m_baseSpeed; }
-    uint16_t getStepDuration(bool ignoreDiagonal = false, Otc::Direction dir = Otc::InvalidDirection);
+    uint16_t getStepDuration(bool ignoreDiagonal = false, tibia::client::Direction dir = tibia::client::InvalidDirection);
 
     uint32_t getId() override { return m_id; }
     uint32_t getMasterId() { return m_masterId; }
@@ -144,14 +145,14 @@ public:
     Point getDrawOffset() { return Point(-1, -1) * getDrawElevation() + m_walkOffset; }
     int getDrawElevation();
 
-    Otc::Direction getDirection() { return m_direction; }
+    tibia::client::Direction getDirection() const { return m_direction; }
     const auto& getOutfit() { return m_outfit; }
     const Light& getLight() const override;
     bool hasLight() const override { return Thing::hasLight() || getLight().intensity > 0; }
     bool hasMountShader() const { return m_mountShaderId > 0; }
 
     Point getDisplacement() const override;
-    Point getWalkOffset() { return m_walkOffset; }
+    Point getWalkOffset();
     PointF getJumpOffset() { return m_jumpOffset; }
     Position getLastStepFromPosition() const { return m_lastStepFromPosition; }
     Position getLastStepToPosition() const { return m_lastStepToPosition; }
@@ -163,9 +164,13 @@ public:
     ticks_t getWalkTicksElapsed() { return m_walkTimer.ticksElapsed(); }
 
     bool isPassable() const { return m_passable; }
-    bool isWalking() { return m_walking; }
+    bool isWalking();
     /// Steps the walk tween to the clock the frame calculator just set.
+    /// Phase 5.0-B: no-op — tween lives on `TCreature` (WalkCalculator advances storage).
     void advanceWalkTween();
+
+    /// Clear LocalPlayer Thing walk flags when storage terminates the tween (no storage re-entry).
+    virtual void applyStorageWalkTerminated();
 
     bool isRemoved() { return m_removed; }
     bool isRemoved() const { return m_removed; }
@@ -198,9 +203,6 @@ minHeight,
 .height = height, .speed = speed
         };
     }
-
-    void setWidgetInformation(const UIWidgetPtr& info);
-    UIWidgetPtr getWidgetInformation() { return m_widgetInformation; }
 
     void setNameShader(const std::string& name) { m_nameShader = name; }
     std::string getNameShader() { return m_nameShader; }
@@ -253,7 +255,7 @@ protected:
     void setRemovedSilently(const bool removed) { m_removed = removed; }
 
     void onDetachPaperdoll(const PaperdollPtr& paperdoll);
-    void setPaperdollsDirection(Otc::Direction dir) const;
+    void setPaperdollsDirection(tibia::client::Direction dir) const;
 
     ThingType* getThingType() const override;
 
@@ -263,7 +265,7 @@ protected:
     bool m_walking{ false };
 
     Point m_walkOffset;
-    Otc::Direction m_direction{ Otc::South };
+    tibia::client::Direction m_direction{ tibia::client::South };
 
     Timer m_walkTimer;
 
@@ -285,7 +287,7 @@ private:
         uint16_t walkDuration{ 0 };
         uint16_t diagonalDuration{ 0 };
 
-        uint16_t getDuration(const Otc::Direction dir) const { return Position::isDiagonal(dir) ? diagonalDuration : duration; }
+        uint16_t getDuration(const tibia::client::Direction dir) const { return Position::isDiagonal(dir) ? diagonalDuration : duration; }
     };
 
     struct IconRenderData
@@ -304,9 +306,7 @@ private:
 
     std::vector<PaperdollPtr> m_paperdolls;
 
-    UIWidgetPtr m_widgetInformation;
-
-    TilePtr m_walkingTile;
+    tibia::worldmap::TWorldMapField* m_walkingTile = nullptr;
 
     std::unique_ptr<IconRenderData> m_icons;
 
@@ -360,10 +360,10 @@ private:
     uint8_t m_type;
     uint8_t m_healthPercent{ 101 };
     uint8_t m_manaPercent{ 101 };
-    uint8_t m_skull{ Otc::SkullNone };
-    uint8_t m_icon{ Otc::NpcIconNone };
-    uint8_t m_shield{ Otc::ShieldNone };
-    uint8_t m_emblem{ Otc::EmblemNone };
+    uint8_t m_skull{ tibia::client::SkullNone };
+    uint8_t m_icon{ tibia::client::NpcIconNone };
+    uint8_t m_shield{ tibia::client::ShieldNone };
+    uint8_t m_emblem{ tibia::client::EmblemNone };
     int8_t m_echoRaidColor{ -1 };
 
     // walk related
@@ -377,8 +377,8 @@ private:
     // Mount Shader
     uint8_t m_mountShaderId{ 0 };
 
-    Otc::Direction m_walkTurnDirection{ Otc::InvalidDirection };
-    Otc::Direction m_lastStepDirection{ Otc::InvalidDirection };
+    tibia::client::Direction m_walkTurnDirection{ tibia::client::InvalidDirection };
+    tibia::client::Direction m_lastStepDirection{ tibia::client::InvalidDirection };
 
     bool m_shieldBlink{ false };
     bool m_passable{ false };

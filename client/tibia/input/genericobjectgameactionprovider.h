@@ -2,7 +2,13 @@
 
 #include "shared/cip_typed.h"
 
+#include "container/containerciptypes.h"
 #include "gameaction.h"
+#include "worldmap/worldmappicker.h"
+
+namespace tibia::creatures {
+class TCreature;
+}
 
 namespace tibia::input {
 
@@ -15,15 +21,16 @@ public:
     /// only TEMPORARY_SELECT_CREATURE(0).
     static TGameActionList creatureActions(uint32_t creatureId);
     /// v5: the SMART_CLICK on a creature.
-    static TGameActionPtr creatureSmartClick(const CreaturePtr& creature);
-    /// v6: what can be done to an object at a world-map field and stack position.
-    /// The stash actions need the supply stash and MARKET_BROWSE the market
-    /// to be available (CIP: v6's last two arguments, TContainerStorage +0x40
-    /// / +0x41 set from SpecialContainersAvailable by 0x100a31d30).
-    static TGameActionList objectActions(const ThingPtr& object, const Position& position, int stackPosition);
+    static TGameActionPtr creatureSmartClick(uint32_t creatureId);
+    /// CIP world-map field stack (appearance + stackpos; creatures from Map registry).
+    static TGameActionList objectActions(const worldmap::TFieldObject& object, const worldmap::TWorldMapField* field,
+                                         const Position& position);
+    /// Inventory/container slot from CIP storage (typeId path; no ThingPtr keep-alive).
+    static TGameActionList objectActions(const container::TInventorySlot& slot, const Position& position,
+                                         int stackPosition);
 };
 
 /// CIP's hireling: an NPC whose mapped inspection type is 4 (raw 7).
-bool isHireling(const CreaturePtr& creature);
+bool isHireling(const tibia::creatures::TCreature& stored);
 
 }

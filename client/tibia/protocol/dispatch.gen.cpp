@@ -3,8 +3,9 @@
 
 #include "client/protocolgame.h"
 #include "client/protocolcodes.h"
-#include "tibia/world/game.h"
+#include <tibia/game/gamesession.h>
 #include "framework/core/gamehooks.h"
+#include <tibia/game/gamenotify.h>
 
 bool ProtocolGame::dispatchServerMessage(const uint8_t opcode, const InputMessagePtr& msg)
 {
@@ -22,7 +23,7 @@ bool ProtocolGame::dispatchServerMessage(const uint8_t opcode, const InputMessag
         parsePartyLeft(msg);
         return true;
     case 10: // PendingStateEntered
-        if (g_game.getFeature(Otc::GameLoginPending)) {
+        if (tibia::game::cipFeature(tibia::client::GameLoginPending)) {
                                     parsePendingGame(msg);
                                 } else {
                                     parseLogin(msg);
@@ -62,16 +63,16 @@ bool ProtocolGame::dispatchServerMessage(const uint8_t opcode, const InputMessag
         parseNpcChatWindow(msg);
         return true;
     case 29: // Ping
-        if (((opcode == Proto::GameServerPing) && (g_game.getFeature(Otc::GameClientPing))) ||
-                                    ((opcode == Proto::GameServerPingBack) && !g_game.getFeature(Otc::GameClientPing))) {
+        if (((opcode == Proto::GameServerPing) && (tibia::game::cipFeature(tibia::client::GameClientPing))) ||
+                                    ((opcode == Proto::GameServerPingBack) && !tibia::game::cipFeature(tibia::client::GameClientPing))) {
                                     parsePingBack(msg);
                                 } else {
                                     parsePing(msg);
                                 }
         return true;
     case 30: // PingBack
-        if (((opcode == Proto::GameServerPing) && (g_game.getFeature(Otc::GameClientPing))) ||
-                                    ((opcode == Proto::GameServerPingBack) && !g_game.getFeature(Otc::GameClientPing))) {
+        if (((opcode == Proto::GameServerPing) && (tibia::game::cipFeature(tibia::client::GameClientPing))) ||
+                                    ((opcode == Proto::GameServerPingBack) && !tibia::game::cipFeature(tibia::client::GameClientPing))) {
                                     parsePingBack(msg);
                                 } else {
                                     parsePing(msg);
@@ -235,7 +236,7 @@ bool ProtocolGame::dispatchServerMessage(const uint8_t opcode, const InputMessag
                                 }
         return true;
     case 133: // SoundTrigger
-        if (g_game.getFeature(Otc::GameAnthem)) {
+        if (tibia::game::cipFeature(tibia::client::GameAnthem)) {
                                     parseAnthem(msg);
                                 } else {
                                     parseDistanceMissile(msg);
@@ -460,7 +461,7 @@ bool ProtocolGame::dispatchServerMessage(const uint8_t opcode, const InputMessag
         parseOpenOutfitWindow(msg);
         return true;
     case 201: // ExivaSuppressed
-        g_gameEvents.callGlobalField("g_game", "onExivaSuppressed");
+        tibia::game::notify("onExivaSuppressed");
         return true;
     case 202: // UpdateExivaOptions
         parseExivaRestrictions(msg);
@@ -548,7 +549,7 @@ bool ProtocolGame::dispatchServerMessage(const uint8_t opcode, const InputMessag
         return true;
     case 230: // BosstiaryHighlight
         // || Proto::GameServerSendBosstiaryEntryChanged
-                                if (g_game.getFeature(Otc::GameBosstiary)) {
+                                if (tibia::game::cipFeature(tibia::client::GameBosstiary)) {
                                     parseBosstiaryEntryChanged(msg);
                                 } else {
                                     parsePreyFreeRerolls(msg);
@@ -607,7 +608,7 @@ bool ProtocolGame::dispatchServerMessage(const uint8_t opcode, const InputMessag
                                 }
         return true;
     case 247: // MarketLeave
-        g_gameEvents.callGlobalField("g_game", "onMarketLeave");
+        tibia::game::notify("onMarketLeave");
         return true;
     case 248: // MarketDetail
         parseMarketDetail(msg);
@@ -850,7 +851,7 @@ bool ProtocolGame::dispatchClientMessage(const uint8_t opcode)
         self->sendOpenParentContainer(Position{});
         return true;
     case 150: // Talk
-        self->sendTalk(static_cast<Otc::MessageMode>(0), 0, std::string_view{}, std::string_view{});
+        self->sendTalk(static_cast<tibia::client::MessageMode>(0), 0, std::string_view{}, std::string_view{});
         return true;
     case 151: // GetChannels
         self->sendRequestChannels();
@@ -880,7 +881,7 @@ bool ProtocolGame::dispatchClientMessage(const uint8_t opcode)
         self->sendSetCreaturePodiumConfiguration(0, Position{}, 0, 0, 0, 0, 0);
         return true;
     case 160: // SetTactics
-        self->sendChangeFightModes(static_cast<Otc::FightModes>(0), static_cast<Otc::ChaseModes>(0), false, static_cast<Otc::PVPModes>(0));
+        self->sendChangeFightModes(static_cast<tibia::client::FightModes>(0), static_cast<tibia::client::ChaseModes>(0), false, static_cast<tibia::client::PVPModes>(0));
         return true;
     case 161: // Attack
         self->sendAttack(0, 0);
@@ -919,7 +920,7 @@ bool ProtocolGame::dispatchClientMessage(const uint8_t opcode)
         self->sendExcludeFromOwnChannel(std::string_view{});
         return true;
     case 173: // CyclopediaHouseAction
-        self->sendCyclopediaHouseAuction(static_cast<Otc::CyclopediaHouseAuctionType_t>(0), 0, 0, 0, std::string_view{});
+        self->sendCyclopediaHouseAuction(static_cast<tibia::client::CyclopediaHouseAuctionType_t>(0), 0, 0, 0, std::string_view{});
         return true;
     case 174: // OpenBosstiary
         self->sendRequestBosstiaryInfo();
@@ -946,7 +947,7 @@ bool ProtocolGame::dispatchClientMessage(const uint8_t opcode)
         self->sendCancelAttackAndFollow();
         return true;
     case 191: // ExaltationAction
-        self->sendForgeRequest(static_cast<Otc::ForgeAction_t>(0), false, 0, 0, 0, false, false);
+        self->sendForgeRequest(static_cast<tibia::client::ForgeAction_t>(0), false, 0, 0, 0, false, false);
         return true;
     case 192: // OpenExaltationHistory
         self->sendForgeBrowseHistoryRequest(0);
@@ -973,7 +974,7 @@ bool ProtocolGame::dispatchClientMessage(const uint8_t opcode)
         self->sendSeekInContainer(0, 0);
         return true;
     case 205: // InspectObject
-        self->sendInspectionObject(static_cast<Otc::InspectObjectTypes>(0), 0, 0);
+        self->sendInspectionObject(static_cast<tibia::client::InspectObjectTypes>(0), 0, 0);
         return true;
     case 206: // InspectPlayer
         self->sendInspectCharacter(0, 0);
@@ -1027,7 +1028,7 @@ bool ProtocolGame::dispatchClientMessage(const uint8_t opcode)
         self->sendEditVip(0, std::string_view{}, 0, false, {});
         return true;
     case 223: // BuddyGroup
-        self->sendEditVipGroups(static_cast<Otc::GroupsEditInfoType_t>(0), 0, std::string_view{});
+        self->sendEditVipGroups(static_cast<tibia::client::GroupsEditInfoType_t>(0), 0, std::string_view{});
         return true;
     case 225: // OpenMonsterCyclopedia
         self->sendRequestBestiary();
@@ -1042,7 +1043,7 @@ bool ProtocolGame::dispatchClientMessage(const uint8_t opcode)
         self->sendBuyCharmRune(0, 0, 0);
         return true;
     case 229: // OpenCyclopediaCharacterInfo
-        self->sendCyclopediaRequestCharacterInfo(0, static_cast<Otc::CyclopediaCharacterInfoType_t>(0), 0, 0);
+        self->sendCyclopediaRequestCharacterInfo(0, static_cast<tibia::client::CyclopediaCharacterInfoType_t>(0), 0, 0);
         return true;
     case 230: // BugReport
         self->sendBugReport(0, std::string_view{}, std::string_view{}, std::string_view{}, Position{});

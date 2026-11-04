@@ -1,7 +1,8 @@
 #include "playertradestorage.h"
 
-#include <tibia/world/game.h>
-#include <client/item.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::trade {
 
@@ -14,12 +15,12 @@ QString nameArg(const Args& args)
     return client::gamecore::argString(args, 0);
 }
 
-std::vector<ItemPtr> itemsArg(const Args& args)
+std::vector<container::TInventorySlot> slotsArg(const Args& args)
 {
     if (args.size() < 2)
         return {};
-    if (const auto* items = std::any_cast<std::vector<ItemPtr>>(&args[1]))
-        return *items;
+    if (const auto* slots = std::any_cast<std::vector<container::TInventorySlot>>(&args[1]))
+        return *slots;
     return {};
 }
 
@@ -29,9 +30,9 @@ TPlayerTradeStorage::TPlayerTradeStorage(QObject* parent)
     : cip::tibia::trade::TPlayerTradeStorage(parent)
 {
     // CIP 0x10103f880 / 0x101040430.
-    m_hooks.emplace_back("g_game", "onOwnTrade", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOwnTrade", [this](GameObject*, const Args& args) {
         m_ownName = nameArg(args);
-        m_ownOffer = itemsArg(args);
+        m_ownOffer = slotsArg(args);
         const bool opened = !m_open;
         m_open = true;
         Q_EMIT ownOfferChanged();
@@ -41,9 +42,9 @@ TPlayerTradeStorage::TPlayerTradeStorage(QObject* parent)
         return std::any{};
     });
     // CIP 0x10103fb40 / 0x1010404b0.
-    m_hooks.emplace_back("g_game", "onCounterTrade", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCounterTrade", [this](GameObject*, const Args& args) {
         m_counterName = nameArg(args);
-        m_counterOffer = itemsArg(args);
+        m_counterOffer = slotsArg(args);
         const bool opened = !m_open;
         m_open = true;
         Q_EMIT counterOfferChanged();
@@ -52,13 +53,12 @@ TPlayerTradeStorage::TPlayerTradeStorage(QObject* parent)
         return std::any{};
     });
     // CIP 0x10103fdf0.
-    m_hooks.emplace_back("g_game", "onCloseTrade", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseTrade", [this](GameObject*, const Args&) {
         close();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         close();
-        return std::any{};
     });
 }
 
@@ -83,18 +83,18 @@ void TPlayerTradeStorage::close()
 
 void TPlayerTradeStorage::accept() const
 {
-    g_game.acceptTrade();
+    tibia::game::acceptTrade();
 }
 
 void TPlayerTradeStorage::reject()
 {
-    g_game.rejectTrade();
+    tibia::game::rejectTrade();
     close();
 }
 
 void TPlayerTradeStorage::look(const bool counterOffer, const int index) const
 {
-    g_game.inspectTrade(counterOffer, static_cast<uint8_t>(index));
+    tibia::game::inspectTrade(counterOffer, static_cast<uint8_t>(index));
 }
 
 }

@@ -1,6 +1,6 @@
 #include "skillwheelstorage.h"
 
-#include <tibia/world/game.h>
+#include <creatures/creaturestorage.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/world/map.h>
 #include <client/staticdata.h>
@@ -16,6 +16,9 @@
 
 #include <algorithm>
 #include <numeric>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::skillwheel {
 
@@ -30,9 +33,9 @@ const T* arg(const Args& args, const size_t index)
     return index < args.size() ? std::any_cast<T>(&args[index]) : nullptr;
 }
 
-uint64_t balance(const Otc::ResourceTypes_t type)
+uint64_t balance(const tibia::client::ResourceTypes_t type)
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player ? player->getResourceBalance(type) : 0;
 }
 
@@ -42,29 +45,28 @@ QString toQString(const std::string& text) { return QString::fromStdString(text)
 
 TSkillWheelStorage::TSkillWheelStorage(QObject* parent) : QObject(parent)
 {
-    m_hooks.emplace_back("g_game", "onDestinyWheel", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onDestinyWheel", [this](GameObject*, const Args& args) {
         onDestinyWheel(args);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args& args) {
-        const auto* type = arg<Otc::ResourceTypes_t>(args, 2);
-        if (!type || (*type >= Otc::RESOURCE_LESSER_GEMS && *type <= Otc::RESOURCE_GREATER_FRAGMENT) || *type == Otc::RESOURCE_BANK_BALANCE
-            || *type == Otc::RESOURCE_GOLD_EQUIPPED)
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
+        if ((type >= static_cast<int>(tibia::client::RESOURCE_LESSER_GEMS) && type <= static_cast<int>(tibia::client::RESOURCE_GREATER_FRAGMENT))
+            || type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE)
+            || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED))
             Q_EMIT resourcesChanged();
-        return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPreset", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreset", [this](GameObject*, const Args& args) {
         const auto* id = arg<uint32_t>(args, 0);
         if (id && *id > 0 && static_cast<int>(*id) <= m_presets.size())
             selectPreset(m_presets.at(static_cast<int>(*id) - 1).name);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clear();
         m_presetsOwner = 0;
         m_presets.clear();
         m_currentPreset.clear();
-        return std::any{};
     });
 }
 
@@ -101,12 +103,14 @@ void TSkillWheelStorage::onDestinyWheel(const Args& args)
     clear();
     m_hasData = true;
     m_playerId = static_cast<uint32_t>(argInt(args, 0));
-    const LocalPlayerPtr& local = g_game.getLocalPlayer();
+    const LocalPlayerPtr& local = tibia::game::localPlayer();
     m_isLocal = local && local->getId() == m_playerId;
     if (m_isLocal)
         m_playerName = toQString(local->getName());
-    else if (const CreaturePtr creature = g_map.getCreatureById(m_playerId))
-        m_playerName = toQString(creature->getName());
+    else if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(m_playerId))
+            m_playerName = row->name();
+    }
     m_changeState = static_cast<int>(argInt(args, 2));
     m_vocation = std::clamp(static_cast<int>(argInt(args, 3)), 1, VocationCount);
     m_points = static_cast<int>(argInt(args, 4));
@@ -157,7 +161,7 @@ void TSkillWheelStorage::setPreview(const QString& name, const int vocation)
     m_isLocal = true;
     m_playerName = name;
     m_vocation = std::clamp(vocation, 1, VocationCount);
-    if (const LocalPlayerPtr& local = g_game.getLocalPlayer())
+    if (const LocalPlayerPtr& local = tibia::game::localPlayer())
         m_playerId = local->getId();
     Q_EMIT currentWheelChanged();
     Q_EMIT presetsChanged();
@@ -188,16 +192,16 @@ int TSkillWheelStorage::spentPoints() const { return std::accumulate(m_currentWh
 int TSkillWheelStorage::unrevealedGems(const int quality) const
 {
     switch (quality) {
-        case 0: return static_cast<int>(balance(Otc::RESOURCE_LESSER_GEMS));
-        case 1: return static_cast<int>(balance(Otc::RESOURCE_REGULAR_GEMS));
-        case 2: return static_cast<int>(balance(Otc::RESOURCE_GREATER_GEMS));
+        case 0: return static_cast<int>(balance(tibia::client::RESOURCE_LESSER_GEMS));
+        case 1: return static_cast<int>(balance(tibia::client::RESOURCE_REGULAR_GEMS));
+        case 2: return static_cast<int>(balance(tibia::client::RESOURCE_GREATER_GEMS));
         default: return 0;
     }
 }
 
-int TSkillWheelStorage::lesserFragments() const { return static_cast<int>(balance(Otc::RESOURCE_LESSER_FRAGMENT)); }
-int TSkillWheelStorage::greaterFragments() const { return static_cast<int>(balance(Otc::RESOURCE_GREATER_FRAGMENT)); }
-uint64_t TSkillWheelStorage::gold() const { return balance(Otc::RESOURCE_BANK_BALANCE) + balance(Otc::RESOURCE_GOLD_EQUIPPED); }
+int TSkillWheelStorage::lesserFragments() const { return static_cast<int>(balance(tibia::client::RESOURCE_LESSER_FRAGMENT)); }
+int TSkillWheelStorage::greaterFragments() const { return static_cast<int>(balance(tibia::client::RESOURCE_GREATER_FRAGMENT)); }
+uint64_t TSkillWheelStorage::gold() const { return balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED); }
 
 QString TSkillWheelStorage::presetsPath() const
 {

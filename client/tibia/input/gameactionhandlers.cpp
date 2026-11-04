@@ -1,14 +1,14 @@
 #include "gameactionhandlers.h"
 
 #include "app/clientoptions.h"
+#include "container/containerciptypes.h"
 #include "gamewindow/gamewindowcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "renderer/spritetextureprovider.h"
 
-#include <tibia/world/container.h>
+#include <creatures/creaturestorage.h>
 #include <tibia/world/creature.h>
-#include <tibia/world/game.h>
 #include <client/item.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/world/map.h>
@@ -29,6 +29,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <tibia/game/gamesession.h>
 
 Q_LOGGING_CATEGORY(lcGameActions, "tibia.gameactions")
 
@@ -80,52 +81,111 @@ bool notifyListeners(const TGameAction& action)
     return false;
 }
 
+/// CIP inventory/container slot count for stack moves (id + position path).
+int storageSlotCount(const Position& position, const int stackPosition)
+{
+    if (position.x != UINT16_MAX)
+        return 1;
+    if (position.y & 0x40) {
+        container::TContainerStorage* storage = container::TContainerStorage::instance();
+        if (!storage)
+            return 1;
+        const container::TStoredContainer* row = storage->containerAt(position.y & 0x3F);
+        if (!row)
+            return 1;
+        const container::TInventorySlot slot =
+            storage->slotAt(row->id, static_cast<int>(row->firstIndex) + std::max(0, stackPosition));
+        return slot.stackable ? std::max<int>(1, slot.count) : 1;
+    }
+    container::TInventoryContainer* inventory = container::TInventoryContainer::instance();
+    if (!inventory)
+        return 1;
+    const container::TInventorySlot& slot = inventory->slotAt(position.y);
+    return slot.stackable ? std::max<int>(1, slot.count) : 1;
+}
+
 /// A dragged object's count: the split dialog's amount, else the whole stack.
 int moveCount(const TGameAction& action)
 {
-    if (!action.object || !action.object->isItem())
-        return 1;
-    const ItemPtr item = action.object->static_self_cast<Item>();
-    if (!item->isStackable())
-        return 1;
-    const int count = std::max<int>(1, item->getCountOrSubType());
-    return action.amount > 0 ? std::min(action.amount, count) : count;
+    if (action.amount > 0)
+        return action.amount;
+    if (action.objectClientId && action.position.isValid())
+        return storageSlotCount(action.position, action.stackPosition);
+    return 1;
+}
+
+/// Ephemeral Item only where classic outbound wire still needs an ItemPtr.
+ItemPtr wireItem(const TGameAction& action)
+{
+    if (!action.objectClientId || !action.position.isValid() || action.stackPosition < 0)
+        return nullptr;
+    uint16_t count = 0;
+    uint8_t tier = 0;
+    uint8_t fluid = 0;
+    if (action.position.x == UINT16_MAX) {
+        if (action.position.y & 0x40) {
+            if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+                if (const container::TStoredContainer* row = storage->containerAt(action.position.y & 0x3F)) {
+                    const container::TInventorySlot slot =
+                        storage->slotAt(row->id, static_cast<int>(row->firstIndex) + action.stackPosition);
+                    count = slot.stackable ? slot.count : 0;
+                    tier = slot.tier;
+                    fluid = slot.fluidOrSplash ? slot.fluid : 0;
+                }
+            }
+        } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+            const container::TInventorySlot& slot = inventory->slotAt(action.position.y);
+            count = slot.stackable ? slot.count : 0;
+            tier = slot.tier;
+            fluid = slot.fluidOrSplash ? slot.fluid : 0;
+        }
+    }
+    return tibia::game::ephemeralItemForWire(action.objectClientId, action.position, action.stackPosition, count, tier, fluid);
+}
+
+uint16_t wireTypeId(const TGameAction& action)
+{
+    return action.objectClientId;
 }
 
 void moveObject(const TGameAction& action)
 {
-    if (action.object)
-        g_game.move(action.object, action.destination, moveCount(action));
+    if (action.objectClientId && action.position.isValid() && action.stackPosition >= 0)
+        tibia::game::moveMapObject(action.position, action.objectClientId, action.stackPosition, action.destination,
+                             moveCount(action));
 }
 
-/// The open container an object lies in: OPEN shows a container's object in
-/// that container's window (CIP: TContainerGameActionHandler).
-ContainerPtr parentContainer(const TGameAction& action)
+/// The open container window id an object lies in (-1 if none). OPEN reuses
+/// that window (CIP: TContainerGameActionHandler).
+int parentContainerId(const TGameAction& action)
 {
     const Position& position = action.position;
     if (position.x != UINT16_MAX || !(position.y & 0x40))
-        return nullptr;
-    return g_game.getContainer(position.y & 0x3F);
-}
-
-CreaturePtr creatureOf(const TGameAction& action)
-{
-    return action.creatureId ? g_map.getCreatureById(action.creatureId) : nullptr;
+        return -1;
+    const int id = position.y & 0x3F;
+    container::TContainerStorage* storage = container::TContainerStorage::instance();
+    if (!storage || !storage->hasContainer(id))
+        return -1;
+    return id;
 }
 
 /// CIP's NPC talk handler (0x100a478c0): greet NPCs closer than four fields
 /// on the player's floor.
 void startTalking(const TGameAction& action)
 {
-    const CreaturePtr npc = creatureOf(action);
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    if (!action.creatureId)
+        return;
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    const std::shared_ptr<tibia::creatures::TCreature> npc =
+        storage ? storage->creatureAt(action.creatureId) : nullptr;
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!npc || !player)
         return;
     const Position& from = player->getPosition();
-    const Position& to = npc->getPosition();
+    const Position& to = npc->position();
     if (from.z != to.z || std::abs(from.x - to.x) >= 4 || std::abs(from.y - to.y) >= 4)
         return;
-    g_game.greetNpc(npc->getId());
+    tibia::game::greetNpc(action.creatureId);
 }
 
 void openLauncher()
@@ -223,7 +283,7 @@ void publish(const TGameActionPtr& action)
     };
     const bool offlineOk = std::find(std::begin(OfflineActions), std::end(OfflineActions), action->type)
         != std::end(OfflineActions);
-    if (!g_game.isOnline() && !offlineOk)
+    if (!tibia::game::isOnline() && !offlineOk)
         return;
     if (notifyListeners(*action))
         return;
@@ -234,48 +294,53 @@ void publish(const TGameActionPtr& action)
         publish(action->inner);
         break;
     case A::LOOK:
-        if (action->object)
-            g_game.look(action->object);
+        if (action->objectClientId && action->position.isValid() && action->stackPosition >= 0)
+            tibia::game::lookMapObject(action->position, action->objectClientId, action->stackPosition);
         break;
     case A::LOOK_AT_CREATURE:
-        if (const CreaturePtr creature = creatureOf(*action))
-            g_game.look(creature);
+        if (action->creatureId)
+            tibia::game::lookCreature(action->creatureId);
         break;
     case A::USE:
-        if (action->object)
-            g_game.use(action->object);
+        if (action->objectClientId && action->position.isValid() && action->stackPosition >= 0)
+            tibia::game::useMapObject(action->position, action->objectClientId, action->stackPosition);
         break;
     case A::TRY_TO_EQUIP:
-        if (action->object && action->object->isItem())
-            g_game.equipItem(action->object->static_self_cast<Item>());
+        if (const uint16_t typeId = wireTypeId(*action); typeId != 0) {
+            uint8_t tier = 0;
+            if (const ItemPtr item = wireItem(*action))
+                tier = item->getTier();
+            tibia::game::equipItemId(typeId, tier);
+        }
         break;
     case A::OPEN:
     case A::OPEN_IN_NEW_WINDOW:
-        if (action->object && action->object->isItem())
-            g_game.open(action->object->static_self_cast<Item>(), action->type == A::OPEN ? parentContainer(*action) : nullptr);
+        if (const uint16_t typeId = wireTypeId(*action); typeId != 0 && action->stackPosition >= 0)
+            tibia::game::openAt(action->position, typeId, action->stackPosition,
+                          action->type == A::OPEN ? parentContainerId(*action) : -1);
         break;
     case A::OPEN_PARENT_CONTAINER:
-        if (const ContainerPtr container = parentContainer(*action))
-            g_game.openParent(container);
-        else if (action->object && action->object->isItem()) {
+        if (const int containerId = parentContainerId(*action); containerId >= 0)
+            tibia::game::openParentById(containerId);
+        else if (wireTypeId(*action) != 0) {
             // Depot-search parent: the object's field (CIP open parent from search).
-            g_game.openParentContainerFromDepotSearch(action->position);
+            tibia::game::openParentContainerFromDepotSearch(action->position);
         }
         break;
     case A::BROWSE_FIELD:
         if (action->position.isValid())
-            g_game.browseField(action->position);
+            tibia::game::browseField(action->position);
         break;
     case A::GATHER_ALL:
         // Handled by TGatherAllGameActionHandler when registered.
         break;
     case A::ROTATE_OBJECT:
-        if (action->object)
-            g_game.rotate(action->object);
+        if (action->objectClientId && action->position.isValid() && action->stackPosition >= 0)
+            tibia::game::rotateMapObject(action->position, action->objectClientId, action->stackPosition);
         break;
     case A::INSPECT_OBJECT:
         if (action->position.isValid())
-            g_game.inspectionNormalObject(action->position);
+            tibia::game::inspectionNormalObject(action->position);
         break;
     case A::INSPECT_PLAYER:
     case A::INVITE_TO_INSPECT_PLAYER:
@@ -283,57 +348,56 @@ void publish(const TGameActionPtr& action)
     case A::ALLOW_INSPECT_PLAYER:
     case A::REVOKE_INSPECT_PLAYER:
         if (action->creatureId)
-            g_game.inspectCharacter(action->creatureId, inspectPlayerAction(action->type));
+            tibia::game::inspectCharacter(action->creatureId, inspectPlayerAction(action->type));
         break;
     case A::ALLOW_ALL_TO_INSPECT_PLAYER:
         app::ClientOptions::store(QStringLiteral("inspectPlayerAllowAllEnabled"), true);
         // CIP InspectPlayer action 0 (no creature): allow everyone. Crystal no-ops today.
-        g_game.inspectCharacter(0, inspectPlayerAction(A::ALLOW_ALL_TO_INSPECT_PLAYER));
+        tibia::game::inspectCharacter(0, inspectPlayerAction(A::ALLOW_ALL_TO_INSPECT_PLAYER));
         break;
     case A::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER:
         app::ClientOptions::store(QStringLiteral("inspectPlayerAllowAllEnabled"), false);
-        g_game.inspectCharacter(0, inspectPlayerAction(A::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER));
+        tibia::game::inspectCharacter(0, inspectPlayerAction(A::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER));
         break;
     case A::INVITE_TO_PARTY:
         if (action->creatureId)
-            g_game.partyInvite(action->creatureId);
+            tibia::game::partyInvite(action->creatureId);
         break;
     case A::JOIN_PARTY:
         if (action->creatureId)
-            g_game.partyJoin(action->creatureId);
+            tibia::game::partyJoin(action->creatureId);
         break;
     case A::REVOKE_PARTY_INVITATION:
         if (action->creatureId)
-            g_game.partyRevokeInvitation(action->creatureId);
+            tibia::game::partyRevokeInvitation(action->creatureId);
         break;
     case A::PASS_PARTY_LEADERSHIP:
         if (action->creatureId)
-            g_game.partyPassLeadership(action->creatureId);
+            tibia::game::partyPassLeadership(action->creatureId);
         break;
     case A::LEAVE_PARTY:
-        if (const LocalPlayerPtr self = g_game.getLocalPlayer(); self && (self->getShield() == 1 || self->getShield() == 3))
-            g_game.partyDisband();
+        if (const LocalPlayerPtr self = tibia::game::localPlayer(); self && (self->getShield() == 1 || self->getShield() == 3))
+            tibia::game::partyDisband();
         else
-            g_game.partyLeave();
+            tibia::game::partyLeave();
         break;
     case A::SET_SHARED_EXPERIENCE:
-        g_game.partyShareExperience(action->enable);
+        tibia::game::partyShareExperience(action->enable);
         break;
     case A::REQUEST_DEPOT_SEARCH:
-        g_game.openDepotSearch();
+        tibia::game::openDepotSearch();
         break;
     case A::DEPOT_SEARCH_CLOSED:
-        g_game.closeDepotSearchRequest();
+        tibia::game::closeDepotSearchRequest();
         break;
     case A::REQUEST_SEARCH_TYPE_IN_DEPOT:
-        if (action->object)
-            g_game.requestDepotSearchItem(static_cast<uint16_t>(action->object->getId()),
-                                          static_cast<uint8_t>(std::max(0, action->parameter)));
+        if (const uint16_t typeId = wireTypeId(*action); typeId != 0)
+            tibia::game::requestDepotSearchItem(typeId, static_cast<uint8_t>(std::max(0, action->parameter)));
         else if (action->parameter > 0)
-            g_game.requestDepotSearchItem(static_cast<uint16_t>(action->parameter), 0);
+            tibia::game::requestDepotSearchItem(static_cast<uint16_t>(action->parameter), 0);
         break;
     case A::DEPOT_SERACH_RETRIEVE:
-        g_game.retrieveDepotSearch(static_cast<uint16_t>(action->exaltationTypeId ? action->exaltationTypeId : action->parameter),
+        tibia::game::retrieveDepotSearch(static_cast<uint16_t>(action->exaltationTypeId ? action->exaltationTypeId : action->parameter),
                                    action->exaltationTier, static_cast<uint8_t>(action->category >= 0 ? action->category : 0));
         break;
     case A::CANCEL_USE_WITH:
@@ -349,22 +413,22 @@ void publish(const TGameActionPtr& action)
         break;
     case A::WRAP:
     case A::UNWRAP:
-        if (action->object)
-            g_game.wrap(action->object);
+        if (action->objectClientId && action->position.isValid() && action->stackPosition >= 0)
+            tibia::game::wrapMapObject(action->position, action->objectClientId, action->stackPosition);
         break;
     case A::ATTACK_CREATURE:
-        if (const CreaturePtr creature = creatureOf(*action))
-            g_game.attack(creature);
+        if (action->creatureId)
+            tibia::game::attack(action->creatureId);
         break;
     case A::STOP_ATTACKING_CREATURE:
-        g_game.cancelAttack();
+        tibia::game::cancelAttack();
         break;
     case A::FOLLOW_CREATURE:
-        if (const CreaturePtr creature = creatureOf(*action))
-            g_game.follow(creature);
+        if (action->creatureId)
+            tibia::game::follow(action->creatureId);
         break;
     case A::STOP_FOLLOWING_CREATURE:
-        g_game.cancelFollow();
+        tibia::game::cancelFollow();
         break;
     case A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
     case A::COPY_CREATURE_NAME_TO_CLIPBOARD:
@@ -377,14 +441,14 @@ void publish(const TGameActionPtr& action)
         startTalking(*action);
         break;
     case A::MOUNT_PLAYER:
-        g_game.mount(true);
+        tibia::game::mount(true);
         break;
     case A::UNMOUNT_PLAYER:
-        g_game.mount(false);
+        tibia::game::mount(false);
         break;
     case A::TOGGLE_MOUNTED:
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer())
-            g_game.mount(!player->getOutfit().hasMount());
+        if (const LocalPlayerPtr& player = tibia::game::localPlayer())
+            tibia::game::mount(!player->getOutfit().hasMount());
         break;
     case A::MOVE_OBJECT:
     case A::MOVE_UP:
@@ -395,66 +459,57 @@ void publish(const TGameActionPtr& action)
             moveObject(*action->inner);
         break;
     case A::STOP_ATTACKING_FOLLOWING_WALKING:
-        g_game.stop();
+        tibia::game::stop();
         break;
     case A::SET_TACTICS:
-        g_game.setTactics(action->chase ? Otc::ChaseOpponent : Otc::DontChase, action->secure,
-                          static_cast<Otc::PVPModes>(action->pvpMode));
+        tibia::game::setTactics(action->chase ? tibia::client::ChaseOpponent : tibia::client::DontChase, action->secure,
+                          static_cast<tibia::client::PVPModes>(action->pvpMode));
         break;
     case A::GOD_TELEPORT:
         // CIP: TGameActionTeleportToCoordinate -> GameclientMessageTeleport.
-        g_game.sendTeleport(action->position);
+        tibia::game::sendTeleport(action->position);
         break;
     case A::REQUEST_RESOURCE_BALANCE:
         // CIP 0x100e669e0: GameclientMessageRequestResourceBalance with the action's resource type.
-        g_game.requestResourceBalance(static_cast<uint8_t>(action->parameter));
+        tibia::game::requestResourceBalance(static_cast<uint8_t>(action->parameter));
         break;
     case A::CONFIGURE_SHOW_OFF_SOCKET:
-        if (action->object && action->object->isItem()) {
-            const ItemPtr item = action->object->static_self_cast<Item>();
-            const uint8_t stackpos = action->stackPosition >= 0
-                ? static_cast<uint8_t>(action->stackPosition)
-                : static_cast<uint8_t>(item->getStackPos());
-            g_game.configureShowOffSocket(action->position, item->getId(), stackpos);
+        if (const uint16_t typeId = wireTypeId(*action); typeId != 0) {
+            const uint8_t stackpos = action->stackPosition >= 0 ? static_cast<uint8_t>(action->stackPosition) : 0;
+            tibia::game::configureShowOffSocket(action->position, typeId, stackpos);
         }
         break;
     case A::SET_PLAYER_OUTFIT:
         if (action->outfit.getId() != 0)
-            g_game.changeOutfitAndMount(action->outfit, action->mountCharacter, action->randomMount);
+            tibia::game::changeOutfitAndMount(action->outfit, action->mountCharacter, action->randomMount);
         break;
     case A::SET_HIRELING_OUTFIT:
         if (action->outfit.getId() != 0)
-            g_game.setHirelingOutfit(action->outfit, action->creatureId);
+            tibia::game::setHirelingOutfit(action->outfit, action->creatureId);
         break;
     case A::SET_SHOW_OFF_SOCKET_CONFIGURATION: {
         // Outfit id 0 is valid (clear the displayed look / hide outfit).
-        const uint16_t itemId = action->object && action->object->isItem()
-            ? static_cast<uint16_t>(action->object->getId())
-            : static_cast<uint16_t>(action->parameter);
+        const uint16_t typedId = wireTypeId(*action);
+        const uint16_t itemId = typedId ? typedId : static_cast<uint16_t>(action->parameter);
         if (itemId != 0) {
-            const uint8_t stackpos = action->stackPosition >= 0
-                ? static_cast<uint8_t>(action->stackPosition)
-                : (action->object && action->object->isItem()
-                       ? static_cast<uint8_t>(action->object->static_self_cast<Item>()->getStackPos())
-                       : 0);
-            g_game.setShowOffSocketConfiguration(action->outfit, action->position, itemId, stackpos,
+            const uint8_t stackpos = action->stackPosition >= 0 ? static_cast<uint8_t>(action->stackPosition) : 0;
+            tibia::game::setShowOffSocketConfiguration(action->outfit, action->position, itemId, stackpos,
                                                  static_cast<uint8_t>(action->lookDirection),
                                                  action->showSocket || action->enable ? 1 : 0);
         }
         break;
     }
     case A::SET_CREATURE_PODIUM_CONFIGURATION: {
-        const uint16_t itemId = action->object && action->object->isItem()
-            ? static_cast<uint16_t>(action->object->getId())
-            : static_cast<uint16_t>(action->parameter);
+        const uint16_t typedId = wireTypeId(*action);
+        const uint16_t itemId = typedId ? typedId : static_cast<uint16_t>(action->parameter);
         const uint8_t stackpos = action->stackPosition >= 0 ? static_cast<uint8_t>(action->stackPosition) : 0;
-        g_game.setCreaturePodiumConfiguration(action->creatureId, action->position, itemId, stackpos,
+        tibia::game::setCreaturePodiumConfiguration(action->creatureId, action->position, itemId, stackpos,
                                               static_cast<uint8_t>(action->lookDirection),
                                               action->enable ? 1 : 0, action->showSocket || action->chase ? 1 : 0);
         break;
     }
     case A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG:
-        g_game.sendOpenRewardWall();
+        tibia::game::sendOpenRewardWall();
         break;
     case A::CLOSE_REWARD_WALL_DIALOG:
         // Local dialog close is owned by the reward-wall controller; the server
@@ -462,11 +517,11 @@ void publish(const TGameActionPtr& action)
         publish(makeAction(A::DAILY_REWARD_NOT_COLLECTABLE));
         break;
     case A::REQUEST_DAILY_REWARD_HISTORY:
-        g_game.requestOpenRewardHistory();
+        tibia::game::requestOpenRewardHistory();
         break;
     case A::COLLECT_FIXED_ITEMS_DAILY_REWARD:
     case A::COLLECT_PICK_ITEMS_DAILY_REWARD:
-        g_game.requestGetRewardDaily(static_cast<uint8_t>(action->parameter > 0 ? action->parameter : 0), {});
+        tibia::game::requestGetRewardDaily(static_cast<uint8_t>(action->parameter > 0 ? action->parameter : 0), {});
         break;
     case A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE:
     case A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE: {
@@ -489,19 +544,19 @@ void publish(const TGameActionPtr& action)
     }
     case A::JOIN_AGGRESSION:
         if (action->creatureId)
-            g_game.joinAggression(action->creatureId);
+            tibia::game::joinAggression(action->creatureId);
         break;
     case A::REQUEST_TRANSACTION_DETAILS:
-        g_game.requestTransactionDetails(static_cast<uint32_t>(action->instance));
+        tibia::game::requestTransactionDetails(static_cast<uint32_t>(action->instance));
         break;
     case A::OPEN_TRADE_CHARACTER_DIALOG:
         // CIP → TCharacterTradeDialogController (CharacterTradeDialog.qml); action 0 = conditions.
         if (gamewindow::TCharacterTradeDialogController* trade =
                 gamewindow::TCharacterTradeDialogController::instance()) {
-            g_game.requestCharacterTradeConfiguration(0);
+            tibia::game::requestCharacterTradeConfiguration(0);
             trade->showDialog();
         } else {
-            g_game.requestCharacterTradeConfiguration(0);
+            tibia::game::requestCharacterTradeConfiguration(0);
         }
         break;
     case A::MINIMAP_ONE_FLOOR_UP:
@@ -532,7 +587,7 @@ void publish(const TGameActionPtr& action)
         setLenshelp(false);
         break;
     case A::REQUEST_SELECT_ALL_TEXT:
-        // Soft: Soft chat TextEdits are often not focusable — fall back to Soft chat select-all.
+        // qtclient: qtclient chat TextEdits are often not focusable — fall back to qtclient chat select-all.
         if (QObject* field = focusedTextField()) {
             if (QMetaObject::invokeMethod(field, "selectAll", Qt::DirectConnection))
                 break;

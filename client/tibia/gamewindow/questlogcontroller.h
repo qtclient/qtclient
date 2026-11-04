@@ -162,7 +162,7 @@ public:
     Q_PROPERTY(QString missionCta READ missionCta NOTIFY missionChanged)
     Q_PROPERTY(QString missionProgress READ missionProgress NOTIFY missionChanged)
     Q_PROPERTY(QVariantList missionChoices READ missionChoices NOTIFY missionChanged)
-    void setExpeditions(mods::MissionBackend* storage);
+    void setMissionBackend(mods::MissionBackend* storage);
     void setBrowseOpener(std::function<void(const QString& filter)> opener);
     Q_INVOKABLE void startMission(const QString& taskEntryId = {});
 
@@ -187,7 +187,7 @@ private:
     QSet<int> m_hiddenLines;
     QSet<int> m_pinnedLines;
     TQuestTrackerStorage m_tracker;
-    QPointer<mods::MissionBackend> m_expeditions;
+    QPointer<mods::MissionBackend> m_missionBackend;
     std::function<void(const QString&)> m_browseOpener;
     quint32 m_characterId = 0;
 };

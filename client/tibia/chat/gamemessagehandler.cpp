@@ -7,9 +7,10 @@
 #include "input/gameactionhandlers.h"
 #include "worldmap/numericaleffectstorage.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/protocolcodes.h>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::chat {
 
@@ -58,7 +59,7 @@ enum Mode : int
 int protocolMode(const Args& args, const size_t index)
 {
     if (index < args.size())
-        if (const auto* mode = std::any_cast<Otc::MessageMode>(&args[index]))
+        if (const auto* mode = std::any_cast<tibia::client::MessageMode>(&args[index]))
             return Proto::translateMessageModeToServer(*mode);
     return -1;
 }
@@ -97,15 +98,15 @@ TGameMessageHandler::TGameMessageHandler(TTextStorage& texts, worldmap::TNumeric
     , m_effects(effects)
 {
     using client::gamecore::Hook;
-    m_hooks.emplace_back("g_game", "onTalk", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTalk", [this](GameObject*, const Args& args) {
         onTalk(argString(args, 0), protocolMode(args, 2), argString(args, 3), argPosition(args, 5));
         return std::any();
     });
-    m_hooks.emplace_back("g_game", "onTextMessage", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTextMessage", [this](GameObject*, const Args& args) {
         onTextMessage(protocolMode(args, 0), argString(args, 1));
         return std::any();
     });
-    m_hooks.emplace_back("g_game", "onNumericalEffect", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onNumericalEffect", [this](GameObject*, const Args& args) {
         onNumericalEffect(argPosition(args, 1), argInt(args, 2), static_cast<int>(argInt(args, 3)));
         return std::any();
     });
@@ -195,7 +196,7 @@ void TGameMessageHandler::onTalk(const QString& name, const int mode, const QStr
                 m_texts.addPrivateMessage(name, text, overlayColor(mode));
             break;
         case Spell: {
-            const LocalPlayerPtr& player = g_game.getLocalPlayer();
+            const LocalPlayerPtr& player = tibia::game::localPlayer();
             const bool own = player && name.compare(QString::fromStdString(player->getName()), Qt::CaseInsensitive) == 0;
             if (own ? m_showOwnSpells : m_showOthersSpells)
                 addSpeech(name, mode, text, coordinate);

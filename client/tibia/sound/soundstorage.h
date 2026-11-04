@@ -209,7 +209,6 @@ private:
     float m_ambienceGain = 1.0f;
     float m_ambienceVoiceGain = 1.0f;
     float m_uiGain = 1.0f;
-    int m_gameEndHook = 0;
     uint32_t m_maxObjectDistance = 8;
     ProtocolSettings m_protocol;
     std::unordered_map<uint32_t, std::string> m_files;

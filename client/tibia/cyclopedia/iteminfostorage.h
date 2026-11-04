@@ -2,7 +2,11 @@
 
 #include "client/gamecore.h"
 
+#include <client/item.h>
 #include <client/outfit.h>
+
+#include <string>
+#include <tuple>
 
 #include <QJsonObject>
 #include <QObject>
@@ -134,6 +138,9 @@ public:
 
     /// forgeData's classes, sorted.
     const std::vector<int>& classifications() const { return m_classifications; }
+
+    /// CIP ObjectInfo (S 0xF4) → typeId description cache (prefer over g_game onItemInfo).
+    void applyItemInfo(const std::vector<std::tuple<uint16_t, std::string>>& itemList);
 
 Q_SIGNALS:
     void characterChanged();

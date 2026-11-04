@@ -23,17 +23,12 @@ bool Graphics::initEngine(const std::string&) { return false; }
 
 bool Graphics::initGL()
 {
-#if defined(_WIN32)
-    // Windows tibia host draws through Qt QRhi; engine GL is not loaded.
-    return false;
-#elif defined(OPENGL_ES) || defined(__EMSCRIPTEN__) || defined(__ANDROID__)
+#if defined(OPENGL_ES) || defined(__EMSCRIPTEN__) || defined(__ANDROID__)
     m_gl = true;
     return true;
 #else
-    if (gladLoaderLoadGL() == 0)
-        return false;
-    m_gl = true;
-    return true;
+    // Desktop host draws through Qt Quick (Metal/Vulkan/D3D); engine GL is not loaded.
+    return false;
 #endif
 }
 

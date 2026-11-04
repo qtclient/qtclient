@@ -1,5 +1,6 @@
 #pragma once
 
+#include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
 #include <cip_gen.h>
@@ -7,6 +8,8 @@
 #include <QAbstractListModel>
 #include <QPointer>
 
+#include <map>
+#include <string>
 #include <vector>
 
 namespace tibia::config {
@@ -46,9 +49,8 @@ private:
 
 /// The kill tracker widget, prey/KillTrackerWidget.qml (CIP:
 /// TKillTrackerWidgetController, ctor 0x100c00860, init 0x100c00e20): one
-/// render info per prey slot, built once from the storage, plus the bounty and
-/// weekly task lists. Not ported: the task lists stay empty (no task board
-/// data in qtclient).
+/// render info per prey slot, built once from the storage, plus bounty/weekly
+/// task lists from onBountyTaskData / onWeeklyTaskData.
 class TKillTrackerWidgetController final : public TSidebarWidgetController<cip::tibia::gamewindow::TKillTrackerWidgetController>
 {
     Q_OBJECT
@@ -70,8 +72,12 @@ public Q_SLOTS:
     void saveWidgetOptions() override;
 
 private:
+    void applyBountyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters);
+    void applyWeeklyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters);
+
     prey::TPreyStorage* m_storage;
     QPointer<config::TSidebarOptions> m_options;
+    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 /// Owns the kill tracker widget while it is open. The sidebar widgets manager

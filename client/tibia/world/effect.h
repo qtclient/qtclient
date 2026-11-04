@@ -31,8 +31,8 @@ public:
     void draw(const Point& /*dest*/, bool drawThings = true, LightSink* = nullptr) override;
     void setId(uint32_t id) override;
     void setPosition(const Position& position, uint8_t stackPos = 0) override;
-    void setSource(Otc::MagicEffectSources source) { m_source = source; }
-    Otc::MagicEffectSources getSource() const { return m_source; }
+    void setSource(tibia::client::MagicEffectSources source) { m_source = source; }
+    tibia::client::MagicEffectSources getSource() const { return m_source; }
     void setPermanent(bool permanent) { m_permanent = permanent; }
     void setUnderCreatures(bool underCreatures) { m_underCreatures = underCreatures; }
     // The server effect id it was made from when that is an effect variant (ThingTypeManager::
@@ -59,7 +59,7 @@ private:
     uint16_t m_duration{ 0 };
     uint16_t m_timeToStartDrawing{ 0 };
     uint16_t m_variantId{ 0 };
-    Otc::MagicEffectSources m_source{ Otc::ME_SOURCE_DEFAULT };
+    tibia::client::MagicEffectSources m_source{ tibia::client::ME_SOURCE_DEFAULT };
     bool m_permanent{ false };
     bool m_underCreatures{ false };
 };

@@ -18,15 +18,13 @@ namespace tibia::gamewindow {
 class TMapWindowController final : public cip::tibia::gamewindow::TMapWindowController
 {
     Q_OBJECT
-    /// FOV in fields. Stock CIP MapWindowPane is always 15×11; packs that set
-    /// `packExpandsFov` on the pane (IdleOT HUD) get a pane-derived FOV.
+    /// FOV in fields. Always CIP 15×11 (HUD and classic share the same world size).
     Q_PROPERTY(int fovWidth READ fovWidth NOTIFY fovChanged)
     Q_PROPERTY(int fovHeight READ fovHeight NOTIFY fovChanged)
-    /// CIP 15×11 pane (gutters). False is the option for a fuller map window;
-    /// stock CIP QML still keeps the 15×11 world — only packs with packExpandsFov
-    /// grow the field count. Not tied to fovChanged (resize loop).
+    /// Classic CIP chrome (sidebars from unusedWidth). False = IdleOT HUD chrome;
+    /// FOV stays 15×11 either way, with grey gutters filling leftover pane.
     Q_PROPERTY(bool classicView READ classicView NOTIFY classicViewChanged)
-    /// CIP map scale: map window height / 352 (pack HUD may use cipScale instead).
+    /// CIP map scale: map window height / 352.
     Q_PROPERTY(qreal viewScale READ viewScale NOTIFY fovChanged)
 public:
     /// `pane` is the MapWindowPane item.
@@ -47,9 +45,9 @@ public:
     void onMapWindowExited() override;
     /// CIP 0x100b6b820: re-emits the pane's unusedWidth.
     void onUnusedWidthChanged() override;
-    /// Recompute FOV from the map pane size (OTUI MapViewport / visible-sqm).
+    /// Keep FOV at CIP 15×11 and refresh viewScale from the map window height.
     void syncFov();
-    /// product classic game view (CIP 15×11). Independent of the engine extended-view flag.
+    /// Classic vs IdleOT HUD chrome layout (FOV unchanged).
     void refreshClassicView();
 
 Q_SIGNALS:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "client/staticdata.h"
 #include "gamewindow/dialogmanager.h"
 #include "trade/tradeciptypes.h"
 
@@ -394,6 +395,7 @@ public:
 
 private:
     static TMultiOfflineTrainingDialogController* s_instance;
+    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 /// CIP TOutfitMemorialDialogController — OutfitMemorialDialog.qml.
@@ -404,7 +406,7 @@ public:
     explicit TOutfitMemorialDialogController(QObject* parent = nullptr);
     static TOutfitMemorialDialogController* instance();
 
-    void showMemorial(const QString& title);
+    void showMemorial(const OutfitMemorialData& data);
 
     Q_INVOKABLE void requestClose() override;
 

@@ -1,11 +1,16 @@
 #include "tutorialhintdialogcontroller.h"
 
+#include "gamewindow/battlelistcontroller.h"
 #include "gamewindow/vocationselectiondialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "qmlcomponents/tutorialhelper.h"
+#include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 
 #include <QLoggingCategory>
 #include <QQuickItem>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -185,15 +190,14 @@ TTutorialShell::TTutorialShell(QObject* parent)
     , m_hint(new TTutorialHintDialogController(this))
     , m_vocation(new TVocationSelectionDialogController(this))
 {
-    m_hooks.emplace_back("g_game", "onTutorialHint", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTutorialHint", [this](GameObject*, const Args& args) {
         if (!args.empty())
             handleTutorialHintId(static_cast<int>(client::gamecore::argInt(args, 0)));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_hint->dialog()->destroy();
         m_vocation->dialog()->destroy();
-        return std::any{};
     });
 
     input::setActionHandler(A::SHOW_TUTORIAL_HINT, [this](const input::TGameAction& action) {
@@ -216,11 +220,30 @@ TTutorialShell::TTutorialShell(QObject* parent)
         return true;
     });
     input::setActionHandler(A::ADD_GUI_TUTORIAL_MARKER, [](const input::TGameAction& action) {
-        qCInfo(lcTutorial) << "ADD_GUI_TUTORIAL_MARKER" << action.parameter << action.text;
+        qCInfo(lcTutorial) << "ADD_GUI_TUTORIAL_MARKER" << action.parameter << action.text
+                           << action.creatureId;
+        if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
+                worldmap::TWorldMapTutorialMarkerOverlayController::instance())
+            overlay->addGuiMarker(action);
+        if (action.creatureId != 0 && action.parameter > 0) {
+            if (TBattleListControllerStorage* lists = TBattleListControllerStorage::instance())
+                lists->setCreatureTutorialMarker(action.creatureId, action.parameter);
+        }
+        if (qmlcomponents::TTutorialHelperQmlService* helper = qmlcomponents::TTutorialHelperQmlService::instance()) {
+            if (action.parameter > 0) {
+                if (auto* item = helper->findTutorialMarkerQuickItemWithID(action.parameter))
+                    item->setVisible(true);
+            }
+        }
         return true;
     });
     input::setActionHandler(A::REMOVE_ALL_TUTORIAL_MARKERS, [](const input::TGameAction&) {
         qCInfo(lcTutorial) << "REMOVE_ALL_TUTORIAL_MARKERS";
+        if (worldmap::TWorldMapTutorialMarkerOverlayController* overlay =
+                worldmap::TWorldMapTutorialMarkerOverlayController::instance())
+            overlay->removeAllMarkers();
+        if (TBattleListControllerStorage* lists = TBattleListControllerStorage::instance())
+            lists->clearCreatureTutorialMarkers();
         return true;
     });
     input::setActionHandler(A::FINISHED_TUTORIAL_FOR_CHARACTER, [this](const input::TGameAction&) {

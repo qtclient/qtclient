@@ -1,9 +1,11 @@
 #include "managedcontainerstorage.h"
 
-#include <tibia/world/game.h>
 #include <client/position.h>
 
 #include <any>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::quickloot {
 
@@ -17,7 +19,7 @@ TManagedContainerStorage::TManagedContainerStorage(QObject* parent)
     : cip::tibia::quickloot::TManagedContainerStorage(parent)
 {
     g_instance = this;
-    m_hooks.emplace_back("g_game", "onQuickLootContainers", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuickLootContainers", [this](GameObject*, const std::vector<std::any>& args) {
         if (args.size() < 2)
             return std::any{};
         const bool fallback = client::gamecore::argBool(args, 0);
@@ -25,12 +27,11 @@ TManagedContainerStorage::TManagedContainerStorage(QObject* parent)
         onContainers(fallback, list);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const std::vector<std::any>&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_fallback = false;
         m_assignments.clear();
         Q_EMIT useMainBackpackAsFallbackChanged();
         Q_EMIT managedContainersUpdated();
-        return std::any{};
     });
 }
 
@@ -47,8 +48,8 @@ void TManagedContainerStorage::setUseMainBackpackAsFallback(const bool value)
     if (m_fallback == value)
         return;
     m_fallback = value;
-    if (g_game.isOnline())
-        g_game.openContainerQuickLoot(3, 0, {}, 0, 0, value);
+    if (tibia::game::isOnline())
+        tibia::game::openContainerQuickLoot(3, 0, {}, 0, 0, value);
     Q_EMIT useMainBackpackAsFallbackChanged();
 }
 

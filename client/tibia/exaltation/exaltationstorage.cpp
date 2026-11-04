@@ -2,12 +2,14 @@
 
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/staticdata.h>
 
 #include <algorithm>
 #include <utility>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::exaltation {
 
@@ -56,9 +58,9 @@ void publish(const A type)
     input::publish(input::makeAction(type));
 }
 
-uint64_t resourceBalance(const Otc::ResourceTypes_t type)
+uint64_t resourceBalance(const tibia::client::ResourceTypes_t type)
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     return player ? player->getResourceBalance(type) : 0;
 }
 
@@ -68,7 +70,7 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
     : cip::tibia::exaltation::TExaltationStorage(parent)
 {
     // CIP 0x100acd380: base data, then the dust limit.
-    m_hooks.emplace_back("g_game", "forgeData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<ForgeConfigData>(&args[0]);
         if (!data)
             return std::any{};
@@ -89,12 +91,12 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
             m_transferCoreCosts[grade.tier] = grade.exaltedCores;
         Q_EMIT baseDataChanged();
         // The engine reports 15.25's raw dust limit byte as 100 + raw.
-        if (g_game.getClientVersion() >= 1530 && data->maxDustLevel >= 100)
+        if (tibia::game::clientRevision() >= 1530 && data->maxDustLevel >= 100)
             setDustLimitRaw(static_cast<uint8_t>(data->maxDustLevel - 100));
         return std::any{};
     });
     // CIP 0x100acdfe0. The engine reads each fusion group's single object.
-    m_hooks.emplace_back("g_game", "onOpenForge", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenForge", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<ForgeOpenData>(&args[0]);
         if (!data)
             return std::any{};
@@ -116,7 +118,7 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
         return std::any{};
     });
     // CIP 0x100acfec0.
-    m_hooks.emplace_back("g_game", "onBrowseForgeHistory", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBrowseForgeHistory", [this](GameObject*, const Args& args) {
         const auto* entries = args.size() < 4 ? nullptr : std::any_cast<std::vector<ForgeHistory>>(&args[3]);
         std::vector<THistoryEntry> history;
         if (entries) {
@@ -131,7 +133,7 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
     });
     // CIP 0x100ad0510. The engine puts a bonus object (bonuses 4-8) over the
     // left object, which Crystal sends again.
-    m_hooks.emplace_back("g_game", "forgeResultData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeResultData", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<ForgeResultData>(&args[0]);
         if (!data || data->bonus > 9)
             return std::any{};
@@ -153,24 +155,24 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
         return std::any{};
     });
     // CIP 0x100acdf00.
-    m_hooks.emplace_back("g_game", "onCloseForgeCloseWindows", [](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseForgeCloseWindows", [](GameObject*, const Args&) {
         publish(A::CLOSE_EXALTATION_FORGE_DIALOG);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onServerError", [](LuaObject*, const Args& args) {
-        if (client::gamecore::argInt(args, 0) != ExaltationErrorDialogType)
-            return std::any{};
-        auto action = input::mutableClone(*input::makeAction(A::SHOW_EXALTATION_ERROR_DIALOG));
-        action->text = client::gamecore::argString(args, 1);
-        input::publish(action);
-        return std::any{};
-    });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::serverError,
+            tibia::game::TGameNotify::instance(), [](int code, const QString& message) {
+                if (code != ExaltationErrorDialogType)
+                    return;
+                auto action = input::mutableClone(*input::makeAction(A::SHOW_EXALTATION_ERROR_DIALOG));
+                action->text = message;
+                input::publish(action);
+            });
     // CIP 0x100acd350.
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args& args) {
-        const auto* type = args.size() < 3 ? nullptr : std::any_cast<Otc::ResourceTypes_t>(&args[2]);
-        if (type && (*type == Otc::RESOURCE_FORGE_DUST || *type == Otc::RESOURCE_FORGE_SLIVER || *type == Otc::RESOURCE_FORGE_CORES))
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
+        if (type == static_cast<int>(tibia::client::RESOURCE_FORGE_DUST) || type == static_cast<int>(tibia::client::RESOURCE_FORGE_SLIVER)
+            || type == static_cast<int>(tibia::client::RESOURCE_FORGE_CORES))
             Q_EMIT exaltedCurrencyBalanceChanged();
-        return std::any{};
     });
 
     // CIP 0x100acc690.
@@ -179,31 +181,31 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
         return true;
     });
     input::setActionHandler(A::EXALTATION_FORGE_FUSION, [](const input::TGameAction& action) {
-        g_game.forgeRequest(Otc::ForgeAction_t::FUSION, false, action.exaltationTypeId, action.exaltationTier, action.exaltationSecondTypeId,
+        tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, false, action.exaltationTypeId, action.exaltationTier, action.exaltationSecondTypeId,
                             action.exaltationSuccessIncreased, action.exaltationTierLossImproved);
         return true;
     });
     input::setActionHandler(A::EXALTATION_FORGE_CONVERGENCE_FUSION, [](const input::TGameAction& action) {
-        g_game.forgeRequest(Otc::ForgeAction_t::FUSION, true, action.exaltationTypeId, action.exaltationTier, action.exaltationSecondTypeId);
+        tibia::game::forgeRequest(tibia::client::ForgeAction_t::FUSION, true, action.exaltationTypeId, action.exaltationTier, action.exaltationSecondTypeId);
         return true;
     });
     input::setActionHandler(A::EXALTATION_FORGE_TRANSFER, [](const input::TGameAction& action) {
-        g_game.forgeRequest(Otc::ForgeAction_t::TRANSFER, action.exaltationConvergence, action.exaltationTypeId, action.exaltationTier,
+        tibia::game::forgeRequest(tibia::client::ForgeAction_t::TRANSFER, action.exaltationConvergence, action.exaltationTypeId, action.exaltationTier,
                             action.exaltationSecondTypeId);
         return true;
     });
     input::setActionHandler(A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE, [](const input::TGameAction&) {
-        g_game.sendForgeBrowseHistoryRequest(0);
+        tibia::game::sendForgeBrowseHistoryRequest(0);
         return true;
     });
     input::setActionHandler(A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE, [this](const input::TGameAction&) {
         if (m_currentPage + 1 < m_numberOfPages)
-            g_game.sendForgeBrowseHistoryRequest(m_currentPage + 1);
+            tibia::game::sendForgeBrowseHistoryRequest(m_currentPage + 1);
         return true;
     });
     input::setActionHandler(A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE, [this](const input::TGameAction&) {
         if (m_currentPage != 0)
-            g_game.sendForgeBrowseHistoryRequest(m_currentPage - 1);
+            tibia::game::sendForgeBrowseHistoryRequest(m_currentPage - 1);
         return true;
     });
 }
@@ -248,9 +250,9 @@ uint16_t TExaltationStorage::transferCoreCost(const int tier) const
     return it == m_transferCoreCosts.end() ? 0 : it->second;
 }
 
-uint64_t TExaltationStorage::dustBalance() const { return resourceBalance(Otc::RESOURCE_FORGE_DUST); }
-uint64_t TExaltationStorage::sliversBalance() const { return resourceBalance(Otc::RESOURCE_FORGE_SLIVER); }
-uint64_t TExaltationStorage::coresBalance() const { return resourceBalance(Otc::RESOURCE_FORGE_CORES); }
+uint64_t TExaltationStorage::dustBalance() const { return resourceBalance(tibia::client::RESOURCE_FORGE_DUST); }
+uint64_t TExaltationStorage::sliversBalance() const { return resourceBalance(tibia::client::RESOURCE_FORGE_SLIVER); }
+uint64_t TExaltationStorage::coresBalance() const { return resourceBalance(tibia::client::RESOURCE_FORGE_CORES); }
 
 void TExaltationStorage::reset()
 {

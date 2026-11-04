@@ -1,6 +1,7 @@
 #include "playerinventoryandstatuscontroller.h"
 
 #include "app/clientoptions.h"
+#include "container/containerciptypes.h"
 #include "container/containerslotinformation.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/draganddropcontroller.h"
@@ -10,12 +11,13 @@
 #include "worldmap/worldmapgameactionprovider.h"
 
 #include <tibia/world/world.h>
-#include <client/item.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/thingtype.h>
 
 #include <QGuiApplication>
 #include <QQuickItem>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -80,12 +82,11 @@ constexpr auto AutoChaseOption = "autoChaseEnabled";
 
 LocalPlayerPtr player() { return tibia::world::player(); }
 
-ItemPtr slotItem(const int slotId)
+container::TInventorySlot slotAppearance(const int slotId)
 {
-    const LocalPlayerPtr p = player();
-    if (!p || slotId < Otc::InventorySlotHead || slotId >= Otc::LastInventorySlot)
-        return nullptr;
-    return p->getInventoryItem(static_cast<Otc::InventorySlot>(slotId));
+    if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance())
+        return inventory->slotAt(slotId);
+    return {};
 }
 
 input::TGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
@@ -118,39 +119,34 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
     readExpireOptions();
 
     const auto onPlayer = [this](auto method) {
-        return [this, method](LuaObject* self, const Args&) {
-            if (const LocalPlayerPtr& p = player(); p && self == p.get())
-                (this->*method)();
+        return [this, method](GameObject*, const Args&) {
+            (this->*method)();
             return std::any{};
         };
     };
-    m_hooks.emplace_back("object", "onInventoryChange", [this](LuaObject* self, const Args& args) {
-        if (const LocalPlayerPtr& p = player(); p && self == p.get()) {
-            const auto* slot = args.empty() ? nullptr : std::any_cast<Otc::InventorySlot>(&args[0]);
-            refreshSlot(slot ? static_cast<int>(*slot) : static_cast<int>(client::gamecore::argInt(args, 0)));
-            refreshDualWielding();
-            updateMouseCursorForCurrentSlot();
-        }
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onInventoryChange", [this](GameObject*, const Args& args) {
+        const auto* slot = args.empty() ? nullptr : std::any_cast<tibia::client::InventorySlot>(&args[0]);
+        refreshSlot(slot ? static_cast<int>(*slot) : static_cast<int>(client::gamecore::argInt(args, 0)));
+        refreshDualWielding();
+        updateMouseCursorForCurrentSlot();
         return std::any{};
     });
-    m_hooks.emplace_back("object", "onSoulChange", onPlayer(&TPlayerInventoryAndStatusController::refreshSoul));
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSoulChange", onPlayer(&TPlayerInventoryAndStatusController::refreshSoul));
     for (const char* event : { "onFreeCapacityChange", "onTotalCapacityChange", "onBaseCapacityChange" })
-        m_hooks.emplace_back("object", event, onPlayer(&TPlayerInventoryAndStatusController::refreshCapacity));
-    m_hooks.emplace_back("object", "onBlessingsChange", onPlayer(&TPlayerInventoryAndStatusController::refreshBlessings));
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TPlayerInventoryAndStatusController::refreshCapacity));
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBlessingsChange", onPlayer(&TPlayerInventoryAndStatusController::refreshBlessings));
     for (const char* event : { "onChaseModeChange", "onSafeFightChange", "onPVPModeChange" })
-        m_hooks.emplace_back("g_game", event, [this](LuaObject*, const Args&) {
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const Args&) {
             refreshTactics();
             return std::any{};
         });
-    m_hooks.emplace_back("g_game", "onGameStart", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         refreshExpertMode();
-        return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_hoveredSlot = -1;
         refreshSlots();
         Q_EMIT gamesessionDisconnected();
-        return std::any{};
     });
 
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
@@ -249,7 +245,7 @@ void TPlayerInventoryAndStatusController::applyPlayerTacticsAndInventorySizeFrom
     Q_EMIT inventoryMinimizedChanged();
     Q_EMIT chaseModeChanged();
     // CIP's login carries the tactics; CIP's server keeps its own until told.
-    if (tibia::world::session().isOnline() && m_chaseEnabled != (tibia::world::session().getChaseMode() == Otc::ChaseOpponent))
+    if (tibia::world::session().isOnline() && m_chaseEnabled != (tibia::world::session().getChaseMode() == tibia::client::ChaseOpponent))
         publishTactics();
 }
 
@@ -269,12 +265,12 @@ void TPlayerInventoryAndStatusController::setShowPlayerStatesInBar(const bool sh
 
 input::TGameActionList TPlayerInventoryAndStatusController::slotActions(const int slotId) const
 {
-    const ItemPtr item = slotItem(slotId);
-    if (!item)
+    const container::TInventorySlot slot = slotAppearance(slotId);
+    if (slot.empty())
         return {};
     const Position position(UINT16_MAX, static_cast<uint16_t>(slotId), 0);
     input::TGameActionList actions =
-        input::filterActions(input::TGenericObjectGameActionProvider::objectActions(item, position, 0), SlotActionTypes);
+        input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, 0), SlotActionTypes);
     actions.push_back(input::makeAction(A::CONTEXT_MENU));
     return actions;
 }
@@ -283,12 +279,12 @@ void TPlayerInventoryAndStatusController::refreshSlot(const int slotId)
 {
     if (slotId < 0 || slotId >= SlotCount)
         return;
-    const ItemPtr item = slotItem(slotId);
+    const container::TInventorySlot appearance = slotAppearance(slotId);
     container::TSlotInfo info;
     info.slotId = static_cast<uint>(slotId);
-    info.object = item;
-    info.text = container::slotText(item, m_showExpire, m_showExpireWhenUnused);
-    info.managedContainerTooltip = container::managedContainerTooltip(item);
+    info.appearance = appearance;
+    info.text = container::slotText(appearance, m_showExpire, m_showExpireWhenUnused);
+    info.managedContainerTooltip = container::managedContainerTooltip(appearance);
     m_slots[slotId]->assign(info);
 }
 
@@ -304,8 +300,9 @@ void TPlayerInventoryAndStatusController::refreshClocks()
     if (!m_showExpire)
         return;
     for (container::TContainerSlotQmlInformation* slot : m_slots) {
-        if (container::hasClock(slot->object()))
-            slot->setText(container::slotText(slot->object(), m_showExpire, m_showExpireWhenUnused));
+        if (!slot->hasClock())
+            continue;
+        slot->setText(container::slotText(slot->appearance(), m_showExpire, m_showExpireWhenUnused));
     }
 }
 
@@ -365,7 +362,7 @@ void TPlayerInventoryAndStatusController::refreshBlessings()
 
 void TPlayerInventoryAndStatusController::refreshTactics()
 {
-    const bool chase = tibia::world::session().getChaseMode() == Otc::ChaseOpponent;
+    const bool chase = tibia::world::session().getChaseMode() == tibia::client::ChaseOpponent;
     const bool secure = tibia::world::session().isSafeFight();
     const int pvpMode = tibia::world::session().getPVPMode();
     if (chase != m_chaseEnabled) {
@@ -388,10 +385,10 @@ void TPlayerInventoryAndStatusController::refreshTactics()
 
 void TPlayerInventoryAndStatusController::refreshDualWielding()
 {
-    const ItemPtr left = slotItem(LeftHandSlot);
-    const bool dualWield = left && left->isDualWield();
-    const bool hasDualWielding = dualWield && !slotItem(RightHandSlot);
-    const int objectId = dualWield ? static_cast<int>(left->getId()) : 0;
+    const container::TInventorySlot left = slotAppearance(LeftHandSlot);
+    const bool dualWield = !left.empty() && left.dualWield;
+    const bool hasDualWielding = dualWield && slotAppearance(RightHandSlot).empty();
+    const int objectId = dualWield ? static_cast<int>(left.typeId) : 0;
     if (hasDualWielding == m_hasDualWielding && objectId == m_dualWieldingObjectID)
         return;
     m_hasDualWielding = hasDualWielding;

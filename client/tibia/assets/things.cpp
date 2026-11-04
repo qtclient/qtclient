@@ -6,7 +6,7 @@
 #include "appearances/appearanceinstance.h"
 #include "sprites/sprite.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/gameconfig.h>
 
 #include <framework/core/logger.h>
@@ -14,11 +14,13 @@
 #include <framework/stdext/string.h>
 
 #include <appearances.pb.h>
-#include <nlohmann/json.hpp>
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QStringList>
 
 #include <algorithm>
@@ -338,7 +340,7 @@ void applyFlags(AppearanceRecord& record, const tibia::protobuf::appearances::Ap
         addFlag(record, ThingFlagAttrExpireStop);
     if (flags.deco_item_kit())
         addFlag(record, ThingFlagAttrDecoKit);
-    if (flags.has_proficiency() && g_game.getFeature(Otc::GameProficiency)) {
+    if (flags.has_proficiency() && tibia::game::cipFeature(tibia::client::GameProficiency)) {
         record.proficiencyId = flags.proficiency().proficiency_id();
         addFlag(record, ThingFlagAttrProficiency);
     }
@@ -526,17 +528,20 @@ RaceType creatureFrom(const WireField& field, const bool boss, const bool offici
     return race;
 }
 
-nlohmann::json catalogOf(const std::string& directory)
+QJsonArray catalogOf(const std::string& directory)
 {
     const auto path = tibia::files::data().resolvePath(tibia::files::data().guessFilePath(directory + "catalog-content", "json"));
-    return nlohmann::json::parse(tibia::files::data().readFileContents(path));
+    const auto bytes = tibia::files::data().readFileContents(path);
+    const auto doc = QJsonDocument::fromJson(QByteArray::fromStdString(bytes));
+    return doc.isArray() ? doc.array() : QJsonArray{};
 }
 
-std::string catalogFile(const nlohmann::json& catalog, const std::string& type)
+std::string catalogFile(const QJsonArray& catalog, const std::string& type)
 {
-    for (const auto& entry : catalog) {
-        if (entry.value("type", std::string{}) == type)
-            return entry.value("file", std::string{});
+    for (const auto& entryValue : catalog) {
+        const auto entry = entryValue.toObject();
+        if (entry.value("type").toString().toStdString() == type)
+            return entry.value("file").toString().toStdString();
     }
     return {};
 }
@@ -590,17 +595,18 @@ bool ThingTypeManager::loadAppearances(const std::string& directory)
         const auto catalog = catalogOf(directory);
         std::string appearancesFile;
         int spritesCount = 0;
-        for (const auto& entry : catalog) {
-            const auto type = entry.value("type", std::string{});
+        for (const auto& entryValue : catalog) {
+            const auto entry = entryValue.toObject();
+            const auto type = entry.value("type").toString().toStdString();
             if (type == "appearances") {
-                appearancesFile = entry.value("file", std::string{});
+                appearancesFile = entry.value("file").toString().toStdString();
             } else if (type == "sprite") {
-                int lastSpriteId = entry.value("lastspriteid", 0);
-                const std::string file = entry.value("file", std::string{});
+                int lastSpriteId = entry.value("lastspriteid").toInt(0);
+                const std::string file = entry.value("file").toString().toStdString();
                 // CIP sprites::TAssetSpritesheetIdentifier / TSpritesheetsMetadataManager.
                 const tibia::sprites::TAssetSpritesheetIdentifier sheetId(file);
-                auto sheet = std::make_shared<SpriteSheet>(entry.value("firstspriteid", 0), lastSpriteId,
-                                                           static_cast<SpriteLayout>(entry.value("spritetype", 0)),
+                auto sheet = std::make_shared<SpriteSheet>(entry.value("firstspriteid").toInt(0), lastSpriteId,
+                                                           static_cast<SpriteLayout>(entry.value("spritetype").toInt(0)),
                                                            sheetId.file());
                 const int maxSpriteId = sheet->firstId + sheet->getSpritesPerSheet() - 1;
                 if (lastSpriteId > maxSpriteId) {
@@ -748,7 +754,7 @@ bool ThingTypeManager::loadStaticData(const std::string& directory)
 bool ThingTypeManager::resolveProficienciesFile(const std::string& directory)
 {
     m_proficienciesFile.clear();
-    if (!g_game.getFeature(Otc::GameProficiency))
+    if (!tibia::game::cipFeature(tibia::client::GameProficiency))
         return false;
     try {
         const auto fileName = catalogFile(catalogOf(directory), "proficiencies");
@@ -849,7 +855,7 @@ std::string ThingTypeManager::getCyclopediaItemName(const uint16_t id)
 
 std::string ThingTypeManager::getProficienciesFile()
 {
-    if (!g_game.getFeature(Otc::GameProficiency))
+    if (!tibia::game::cipFeature(tibia::client::GameProficiency))
         return {};
     if (!m_proficienciesFile.empty() && tibia::files::data().fileExists(m_proficienciesFile))
         return m_proficienciesFile;

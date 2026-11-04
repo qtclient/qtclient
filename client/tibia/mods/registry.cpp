@@ -5,7 +5,11 @@
 #include "mods/mission_backend.h"
 #include "mods/weather_driver.h"
 
+#include <QLoggingCategory>
+
 #include <algorithm>
+
+Q_LOGGING_CATEGORY(lcModRegistry, "tibia.mods.registry")
 
 namespace tibia::mods {
 namespace {
@@ -23,6 +27,7 @@ MissionBackend* g_mission = nullptr;
 AttentionBackend* g_attention = nullptr;
 InstanceBackend* g_instance = nullptr;
 LoginSyncEnqueueFn g_loginSync = nullptr;
+FeatureExtrasFn g_featureExtras = nullptr;
 WeatherDriver* g_weather = nullptr;
 
 } // namespace
@@ -149,7 +154,22 @@ void enqueueLoginSync(std::function<void()> fn)
         fn();
 }
 
-void setWeatherDriver(WeatherDriver* driver) { g_weather = driver; }
+void setWeatherDriver(WeatherDriver* driver)
+{
+    // Exclusive hook: first non-null wins; log conflicts (pack-architecture).
+    if (driver && g_weather && g_weather != driver) {
+        qCWarning(lcModRegistry) << "WeatherDriver already set; keeping first";
+        return;
+    }
+    g_weather = driver;
+}
 WeatherDriver* weatherDriver() { return g_weather; }
+
+void setFeatureExtrasHook(const FeatureExtrasFn fn) { g_featureExtras = fn; }
+void applyFeatureExtras()
+{
+    if (g_featureExtras)
+        g_featureExtras();
+}
 
 } // namespace tibia::mods

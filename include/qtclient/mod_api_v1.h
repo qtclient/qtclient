@@ -4,12 +4,12 @@
 ///
 /// Packs should prefer this header over deep `client/tibia/**` includes.
 /// Resolve the table with `qtclient_mod_host_api_v1()` (exported from the host).
-/// IdleOT may still use QTCLIENT_MOD_INTERNAL for engine-deep hooks during migration.
+/// Types come from named SDK façades — not raw tip path includes.
 
-#include "mods/registry.h"
-#include "mods/weather_driver.h"
-#include "mods/worldview.h"
-#include "sprites/hdscale.h"
+#include "mod_registry.h"
+#include "weather.h"
+#include "worldview.h"
+#include "hdscale.h"
 
 #include <cstdint>
 
@@ -33,6 +33,7 @@ struct ModApiV1 {
     void (*setAttentionBackend)(tibia::mods::AttentionBackend* backend) = nullptr;
     void (*setInstanceBackend)(tibia::mods::InstanceBackend* backend) = nullptr;
     void (*setLoginSyncEnqueueHook)(tibia::mods::LoginSyncEnqueueFn fn) = nullptr;
+    void (*setFeatureExtrasHook)(tibia::mods::FeatureExtrasFn fn) = nullptr;
 
     void (*setWorldLightingDriver)(tibia::mods::WorldLightingDriver* driver) = nullptr;
     void (*addWorldOverlayFactory)(tibia::mods::WorldOverlayFactory* factory) = nullptr;

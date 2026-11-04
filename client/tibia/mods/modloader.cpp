@@ -122,61 +122,63 @@ QString findNamedPack(const QStringList& tipRoots, const QString& name)
     return {};
 }
 
-QString pickTipPack(const QStringList& tipRoots)
+/// Collect autoload packs under tip roots. Sorted by priority descending so
+/// lower priority numbers register overrides last (PackQmlInterceptor: later wins).
+QStringList collectTipPacks(const QStringList& tipRoots)
 {
-    struct Candidate { QString path; int priority = 100; };
+    struct Candidate {
+        QString path;
+        int priority = 100;
+    };
     QList<Candidate> found;
     for (const QString& root : tipRoots) {
         QDir dir(root);
-        if (!dir.exists()) continue;
+        if (!dir.exists())
+            continue;
         for (const QFileInfo& info : dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name)) {
-            if (info.fileName().startsWith(QLatin1Char('_'))) continue;
+            if (info.fileName().startsWith(QLatin1Char('_')))
+                continue;
             PackMeta meta;
-            if (!readMeta(info.absoluteFilePath(), &meta) || !meta.autoload) continue;
+            if (!readMeta(info.absoluteFilePath(), &meta) || !meta.autoload)
+                continue;
             found.append({info.absoluteFilePath(), meta.priority});
         }
     }
-    if (found.isEmpty()) return {};
     std::sort(found.begin(), found.end(), [](const Candidate& a, const Candidate& b) {
-        if (a.priority != b.priority) return a.priority < b.priority;
+        if (a.priority != b.priority)
+            return a.priority > b.priority; // higher number first
         return a.path < b.path;
     });
-    if (found.size() > 1)
-        qCWarning(lcModLoader) << "multiple tip packs; using" << found.first().path;
-    return found.first().path;
+    QStringList out;
+    out.reserve(found.size());
+    for (const Candidate& c : found)
+        out.append(c.path);
+    return out;
 }
 
-QString resolveEnvPack(const QString& envPath)
+QStringList collectEnvPacks(const QString& envPath)
 {
     if (envPath.isEmpty())
         return {};
     const QString cleaned = QDir::cleanPath(envPath);
     if (QFile::exists(QDir(cleaned).filePath(QStringLiteral("mod.json"))))
-        return cleaned;
+        return {cleaned};
     QDir dir(cleaned);
     if (!dir.exists()) {
         qCWarning(lcModLoader) << "QTCLIENT_MODS_DIR missing" << envPath;
         return {};
     }
-    QStringList found;
-    const QFileInfoList entries =
-        dir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
-    for (const QFileInfo& info : entries) {
-        if (info.fileName().startsWith(QLatin1Char('_')))
-            continue;
-        PackMeta meta;
-        if (!readMeta(info.absoluteFilePath(), &meta) || !meta.autoload)
-            continue;
-        found.append(info.absoluteFilePath());
-    }
-    if (found.size() == 1)
-        return found.first();
-    if (found.isEmpty()) {
-        qCWarning(lcModLoader) << "QTCLIENT_MODS_DIR has no autoload pack" << envPath;
-        return {};
-    }
-    qCWarning(lcModLoader) << "QTCLIENT_MODS_DIR has multiple packs; using" << found.first();
-    return found.first();
+    return collectTipPacks({cleaned});
+}
+
+void invokeLinkedEntries(const ModContext* earlyCtx)
+{
+#if defined(QTCLIENT_HAS_LINKED_PACK)
+    qCInfo(lcModLoader) << "invoking linked pack entries";
+    qtclient_invoke_linked_mods(earlyCtx);
+#else
+    Q_UNUSED(earlyCtx);
+#endif
 }
 
 } // namespace
@@ -227,6 +229,7 @@ QStringList ModLoader::defaultRoots()
 
 bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earlyCtx)
 {
+    Q_UNUSED(earlyCtx);
     const QString pack = QDir::cleanPath(packDir);
     PackMeta meta;
     if (!readMeta(pack, &meta)) {
@@ -244,13 +247,10 @@ bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earl
         const qtclient::ModApiV1* api = qtclient_mod_host_api_v1();
         const char* hostId = api && api->hostBuildId ? api->hostBuildId : "";
         if (std::strcmp(hostId, meta.hostBuildId.toUtf8().constData()) != 0) {
+            // Default strict on desktop + WASM; set QTCLIENT_MOD_STRICT_HOST=0 to relax (DEV).
             const bool strict = qEnvironmentVariableIsSet("QTCLIENT_MOD_STRICT_HOST")
                 ? qEnvironmentVariableIntValue("QTCLIENT_MOD_STRICT_HOST") != 0
-#if defined(Q_OS_WASM)
                 : true;
-#else
-                : false;
-#endif
             qCWarning(lcModLoader) << "mod" << meta.id << "hostBuildId" << meta.hostBuildId
                                    << "!= host" << hostId
                                    << (strict ? "(reject)" : "(continuing; set QTCLIENT_MOD_STRICT_HOST=1 to reject)");
@@ -259,34 +259,34 @@ bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earl
         }
     }
 
-#if defined(QTCLIENT_HAS_LINKED_PACK)
-    // Native C++ is already in this tip — invoke entry, then FS chrome.
-    qtclient_mod_entry(earlyCtx);
-#else
-    // Stock Soft: FS urls/identity packs only (no MODULE/SIDE_MODULE).
+#if !defined(QTCLIENT_HAS_LINKED_PACK)
+    // Stock tip: FS urls/identity/QML only — leftover native/ trees fail closed.
     if (QFile::exists(QDir(pack).filePath(QStringLiteral("native")))) {
         qCCritical(lcModLoader) << "mod" << meta.id
                                 << "has native/ but this tip was not built with a linked pack"
-                                << "(rebuild Soft with -DQTCLIENT_LINKED_PACK=…)";
+                                << "(rebuild qtclient with -DQTCLIENT_LINKED_PACK=… "
+                                   "or -DQTCLIENT_LINKED_PACKS=…)";
         return false;
     }
 #endif
 
     if (!meta.identity.displayName.empty())
-        registerMod({ meta.identity, nullptr });
+        registerMod({meta.identity, nullptr});
     if (!meta.urls.empty())
         registerModUrls(meta.urls);
     registerPackQmlPaths(meta);
 
 #if defined(QTCLIENT_HAS_LINKED_PACK)
-    qCInfo(lcModLoader) << "loaded linked tip pack" << meta.id << "from" << pack;
+    qCInfo(lcModLoader) << "loaded tip pack" << meta.id << "priority" << meta.priority << "from" << pack;
     return true;
 #else
-    if (!meta.urls.empty() || !meta.identity.displayName.empty()) {
-        qCInfo(lcModLoader) << "loaded urls/identity-only mod" << meta.id << "from" << pack;
+    if (!meta.urls.empty() || !meta.identity.displayName.empty()
+        || QDir(QDir(pack).filePath(QStringLiteral("qml"))).exists()
+        || QDir(QDir(pack).filePath(QStringLiteral("overrides"))).exists()) {
+        qCInfo(lcModLoader) << "loaded FS pack" << meta.id << "from" << pack;
         return true;
     }
-    qCWarning(lcModLoader) << "mod" << meta.id << "has no urls or identity";
+    qCWarning(lcModLoader) << "mod" << meta.id << "has no urls, identity, qml, or overrides";
     return false;
 #endif
 }
@@ -296,40 +296,69 @@ int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
     if (skipLoad())
         return 0;
 
-    QString packDir;
+    // Linked C++ once, before FS chrome (register-only when earlyCtx is null).
+    invokeLinkedEntries(earlyCtx);
+
     const QStringList tipRoots = roots.isEmpty() ? tipModsRoots() : roots;
+    QStringList packs;
 
     if (forceDefaultMod()) {
-        packDir = findNamedPack(tipRoots, QStringLiteral("default"));
+        const QString packDir = findNamedPack(tipRoots, QStringLiteral("default"));
         if (packDir.isEmpty()) {
             qCCritical(lcModLoader) << "--default-mod: tip mods/default/mod.json not found under"
                                     << tipRoots;
+#if defined(QTCLIENT_HAS_LINKED_PACK)
+            return 1; // entries already invoked
+#else
             return 0;
+#endif
         }
         qCInfo(lcModLoader) << "--default-mod: loading" << packDir;
+        packs = {packDir};
     } else {
         const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
         if (!env.isEmpty()) {
-            packDir = resolveEnvPack(env);
-            if (packDir.isEmpty())
+            packs = collectEnvPacks(env);
+            if (packs.isEmpty()) {
+#if defined(QTCLIENT_HAS_LINKED_PACK)
+                return 1;
+#else
                 return 0;
-            qCInfo(lcModLoader) << "QTCLIENT_MODS_DIR exclusive:" << packDir;
+#endif
+            }
+            qCInfo(lcModLoader) << "QTCLIENT_MODS_DIR packs:" << packs;
         } else {
-            packDir = pickTipPack(tipRoots);
+            packs = collectTipPacks(tipRoots);
+        }
+        // DEV: extra FS-only packs (no tip rebuild) — appended after tip packs.
+        const QString extra = qEnvironmentVariable("QTCLIENT_EXTRA_MODS_DIR");
+        if (!extra.isEmpty()) {
+            const QStringList more = collectEnvPacks(extra);
+            for (const QString& p : more) {
+                if (!packs.contains(p))
+                    packs.append(p);
+            }
+            if (!more.isEmpty())
+                qCInfo(lcModLoader) << "QTCLIENT_EXTRA_MODS_DIR packs:" << more;
         }
     }
 
-    if (packDir.isEmpty()) {
+    if (packs.isEmpty()) {
 #if defined(QTCLIENT_HAS_LINKED_PACK)
-        // Linked tip with no FS pack yet — still run entry so backends register.
-        qCInfo(lcModLoader) << "linked tip: no FS mods/; calling qtclient_mod_entry only";
-        qtclient_mod_entry(earlyCtx);
+        qCInfo(lcModLoader) << "linked tip: no FS mods/; linked entries already invoked";
         return 1;
 #else
         return 0;
 #endif
     }
-    return loadFromDirectory(packDir, earlyCtx) ? 1 : 0;
+
+    int loaded = 0;
+    for (const QString& packDir : packs) {
+        if (loadFromDirectory(packDir, earlyCtx))
+            ++loaded;
+    }
+    qCInfo(lcModLoader) << "loaded" << loaded << "of" << packs.size() << "tip packs";
+    return loaded;
 }
 
 } // namespace tibia::mods

@@ -15,7 +15,7 @@ namespace tibia::input {
 /// its ESpellCastOptionalTargetType: at the mouse cursor (2) publishes
 /// SPELL_AT_MOUSE_CURSOR, at target or self (3) talks with aim 3, else (0, 1)
 /// publishes CROSSHAIR_SPELL. Anything else is a plain talk.
-void say(Otc::MessageMode mode, const QString& text, int spellCastType);
+void say(tibia::client::MessageMode mode, const QString& text, int spellCastType);
 
 /// CIP's TUseWithGameActionHandler (0x100e77d20: USE_WITH, TARGET_SELECTED,
 /// CANCEL_USE_WITH) plus USE_ON_* from TCreaturesGameActionHandler.

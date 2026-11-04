@@ -43,17 +43,14 @@ class Map;
 class Game;
 class LightView;
 class LightSink;
-class Tile;
 class Thing;
 class Item;
-class Container;
 class Creature;
 class Monster;
 class Npc;
 class Player;
 class LocalPlayer;
 class Effect;
-class Missile;
 class AnimatedText;
 class StaticText;
 class Animator;
@@ -64,25 +61,22 @@ class AttachedEffect;
 class AttachableObject;
 class Paperdoll;
 
-#ifdef FRAMEWORK_EDITOR
-class House;
-class Town;
-class CreatureType;
-class Spawn;
-#endif
 
 using LightViewPtr = std::unique_ptr<LightView>;
-using TilePtr = std::shared_ptr<Tile>;
+
+namespace tibia::worldmap {
+class TWorldMapField;
+}
+using WorldMapFieldPtr = tibia::worldmap::TWorldMapField*;
+
 using ThingPtr = std::shared_ptr<Thing>;
 using ItemPtr = std::shared_ptr<Item>;
-using ContainerPtr = std::shared_ptr<Container>;
 using CreaturePtr = std::shared_ptr<Creature>;
 using MonsterPtr = std::shared_ptr<Monster>;
 using NpcPtr = std::shared_ptr<Npc>;
 using PlayerPtr = std::shared_ptr<Player>;
 using LocalPlayerPtr = std::shared_ptr<LocalPlayer>;
 using EffectPtr = std::shared_ptr<Effect>;
-using MissilePtr = std::shared_ptr<Missile>;
 using AnimatedTextPtr = std::shared_ptr<AnimatedText>;
 using StaticTextPtr = std::shared_ptr<StaticText>;
 using ThingTypePtr = std::shared_ptr<ThingType>;
@@ -91,23 +85,12 @@ using AttachedEffectPtr = std::shared_ptr<AttachedEffect>;
 using AttachableObjectPtr = std::shared_ptr<AttachableObject>;
 using PaperdollPtr = std::shared_ptr<Paperdoll>;
 
-#ifdef FRAMEWORK_EDITOR
-using HousePtr = std::shared_ptr<House>;
-using TownPtr = std::shared_ptr<Town>;
-using CreatureTypePtr = std::shared_ptr<CreatureType>;
-using SpawnPtr = std::shared_ptr<Spawn>;
-
-using HouseList = std::list<HousePtr>;
-using TownList = std::list<TownPtr>;
-using CreatureMap = std::unordered_map<Position, CreatureTypePtr, Position::Hasher>;
-using SpawnMap = std::unordered_map<Position, SpawnPtr, Position::Hasher>;
-#endif
 
 using ThingList = std::vector<ThingPtr>;
 using ThingTypeList = std::vector<ThingTypePtr>;
 using ItemTypeList = std::vector<ItemTypePtr>;
 
-using TileList = std::list<TilePtr>;
+using WorldMapFieldList = std::vector<tibia::worldmap::TWorldMapField*>;
 using ItemVector = std::vector<ItemPtr>;
 
 // net

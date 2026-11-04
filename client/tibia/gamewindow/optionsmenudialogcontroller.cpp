@@ -11,7 +11,7 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 
 #include <QDesktopServices>
 #include <QDir>
@@ -21,6 +21,8 @@
 #include <QQuickWindow>
 #include <QStandardPaths>
 #include <QUrl>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -154,9 +156,8 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     m_showAdvancedOptions = app::ClientOptions::load().options().value(QLatin1String("optionsShowAdvanced")).toBool(false);
 
     // FUN_100d36130 (connected when the game connection is set): the current value at login.
-    m_gameStartHook = client::gamecore::Hook("g_game", "onGameStart", [this](LuaObject*, const std::vector<std::any>&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this] {
         sendTurnTowardsMoveDirection(config::optionValue(app::ClientOptions::load().root(), O::alwaysTurnTowardsMoveDirection).toBool());
-        return std::any {};
     });
 
     input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, [this](const input::TGameAction&) {
@@ -346,7 +347,7 @@ void TOptionsMenuDialogController::applyButtonClicked()
 
 void TOptionsMenuDialogController::sendTurnTowardsMoveDirection(const bool enabled)
 {
-    g_game.setClientOption(TurnTowardsMoveDirectionOption, enabled);
+    tibia::game::setClientOption(TurnTowardsMoveDirectionOption, enabled);
 }
 
 void TOptionsMenuDialogController::okButtonClicked()

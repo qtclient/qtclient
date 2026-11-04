@@ -1,13 +1,13 @@
 #include "marketcontroller.h"
 
 #include "app/clientoptions.h"
+#include "container/containerciptypes.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
 #include <client/const.h>
-#include <tibia/world/game.h>
 #include <client/item.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/thingtype.h>
@@ -21,6 +21,8 @@
 #include <array>
 #include <cmath>
 #include <set>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -75,13 +77,13 @@ uint64_t maximumAmountByFee(const uint64_t gold, const uint64_t price)
 
 uint64_t playerGold()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player ? player->getTotalMoney() : 0;
 }
 
 QString typeName(const uint16_t typeId)
 {
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type)
         return {};
     const std::string& marketName = type->getMarketData().name;
@@ -90,7 +92,7 @@ QString typeName(const uint16_t typeId)
 
 int offerType(const QString& offerTypeString)
 {
-    return offerTypeString == QLatin1String("sell") ? Otc::MARKETACTION_SELL : Otc::MARKETACTION_BUY;
+    return offerTypeString == QLatin1String("sell") ? tibia::client::MARKETACTION_SELL : tibia::client::MARKETACTION_BUY;
 }
 
 /// CIP 0x100ea5590.
@@ -113,32 +115,32 @@ QString detailsText(const market::TMarketItemDetails& details)
         const char* id;
     };
     static constexpr std::array<Line, 26> Lines{ {
-        { Otc::ITEM_DESC_ARMOR, "market_stats_armor" },
-        { Otc::ITEM_DESC_ATTACK, "market_stats_attack" },
-        { Otc::ITEM_DESC_CONTAINTER, "market_stats_capacity" },
-        { Otc::ITEM_DESC_DEFENSE, "market_stats_defence" },
-        { Otc::ITEM_DESC_GENERAL, "market_stats_description" },
-        { Otc::ITEM_DESC_DECAY_TIME, "market_stats_expires_after" },
-        { Otc::ITEM_DESC_COMBAT, "market_stats_protection" },
-        { Otc::ITEM_DESC_MINLEVEL, "market_stats_minimum_level" },
-        { Otc::ITEM_DESC_MINMAGICLEVEL, "market_stats_minimum_magic_level" },
-        { Otc::ITEM_DESC_VOCATION, "market_stats_vocations" },
-        { Otc::ITEM_DESC_RUNE, "market_stats_spell" },
-        { Otc::ITEM_DESC_ABILITY, "market_stats_skill_boost" },
-        { Otc::ITEM_DESC_CHARGES, "market_stats_charges" },
-        { Otc::ITEM_DESC_WEAPONTYPE, "market_stats_weapon_type" },
-        { Otc::ITEM_DESC_WEIGHT, "market_stats_weight" },
-        { Otc::ITEM_DESC_AUGMENT, "market_stats_augments" },
-        { Otc::ITEM_DESC_IMBUINGSLOTS, "market_stats_imbuement_slots" },
-        { Otc::ITEM_DESC_MAGICSHIELD, "market_stats_magic_shield_capacity" },
-        { Otc::ITEM_DESC_CLEAVE, "market_stats_cleave" },
-        { Otc::ITEM_DESC_REFLECTION, "market_stats_damage_reflection" },
-        { Otc::ITEM_DESC_PERFECT, "market_stats_maximum_range_bonus" },
-        { Otc::ITEM_DESC_ELEMENTALBOND, "market_elemental_bond" },
-        { Otc::ITEM_DESC_MANTRA, "market_mantra" },
-        { Otc::ITEM_DESC_IMBUEMENTEFFECT, "market_imbuement_effect" },
-        { Otc::ITEM_DESC_UPGRADECLASS, "market_stats_classification" },
-        { Otc::ITEM_DESC_CURRENTTIER, "market_stats_tier" },
+        { tibia::client::ITEM_DESC_ARMOR, "market_stats_armor" },
+        { tibia::client::ITEM_DESC_ATTACK, "market_stats_attack" },
+        { tibia::client::ITEM_DESC_CONTAINTER, "market_stats_capacity" },
+        { tibia::client::ITEM_DESC_DEFENSE, "market_stats_defence" },
+        { tibia::client::ITEM_DESC_GENERAL, "market_stats_description" },
+        { tibia::client::ITEM_DESC_DECAY_TIME, "market_stats_expires_after" },
+        { tibia::client::ITEM_DESC_COMBAT, "market_stats_protection" },
+        { tibia::client::ITEM_DESC_MINLEVEL, "market_stats_minimum_level" },
+        { tibia::client::ITEM_DESC_MINMAGICLEVEL, "market_stats_minimum_magic_level" },
+        { tibia::client::ITEM_DESC_VOCATION, "market_stats_vocations" },
+        { tibia::client::ITEM_DESC_RUNE, "market_stats_spell" },
+        { tibia::client::ITEM_DESC_ABILITY, "market_stats_skill_boost" },
+        { tibia::client::ITEM_DESC_CHARGES, "market_stats_charges" },
+        { tibia::client::ITEM_DESC_WEAPONTYPE, "market_stats_weapon_type" },
+        { tibia::client::ITEM_DESC_WEIGHT, "market_stats_weight" },
+        { tibia::client::ITEM_DESC_AUGMENT, "market_stats_augments" },
+        { tibia::client::ITEM_DESC_IMBUINGSLOTS, "market_stats_imbuement_slots" },
+        { tibia::client::ITEM_DESC_MAGICSHIELD, "market_stats_magic_shield_capacity" },
+        { tibia::client::ITEM_DESC_CLEAVE, "market_stats_cleave" },
+        { tibia::client::ITEM_DESC_REFLECTION, "market_stats_damage_reflection" },
+        { tibia::client::ITEM_DESC_PERFECT, "market_stats_maximum_range_bonus" },
+        { tibia::client::ITEM_DESC_ELEMENTALBOND, "market_elemental_bond" },
+        { tibia::client::ITEM_DESC_MANTRA, "market_mantra" },
+        { tibia::client::ITEM_DESC_IMBUEMENTEFFECT, "market_imbuement_effect" },
+        { tibia::client::ITEM_DESC_UPGRADECLASS, "market_stats_classification" },
+        { tibia::client::ITEM_DESC_CURRENTTIER, "market_stats_tier" },
     } };
     QStringList lines;
     for (const Line& line : Lines) {
@@ -146,7 +148,7 @@ QString detailsText(const market::TMarketItemDetails& details)
         if (it == details.descriptions.end() || it->second.isEmpty())
             continue;
         QString text = qtTrId(line.id).arg(it->second);
-        if (line.attribute == Otc::ITEM_DESC_GENERAL)
+        if (line.attribute == tibia::client::ITEM_DESC_GENERAL)
             text += u'.';
         lines << text;
     }
@@ -181,17 +183,17 @@ TDisplayMarketOffer::TDisplayMarketOffer(const TMarketOffer& offer, const QStrin
     m_totalPriceText = multiString(static_cast<qlonglong>(offer.amount * offer.price));
     m_endsAtTime = textHelper().formatDateTime(static_cast<int>(offer.timestamp), true);
     switch (offer.state) {
-    case Otc::OFFER_STATE_ACTIVE:
+    case tibia::client::OFFER_STATE_ACTIVE:
         m_auctionStatus = qtTrId("market_status_active");
         break;
-    case Otc::OFFER_STATE_CANCELLED:
+    case tibia::client::OFFER_STATE_CANCELLED:
         m_auctionStatus = qtTrId("market_status_canceled");
         break;
-    case Otc::OFFER_STATE_EXPIRED:
+    case tibia::client::OFFER_STATE_EXPIRED:
         m_auctionStatus = qtTrId("expired");
         break;
-    case Otc::OFFER_STATE_ACCEPTED:
-        m_auctionStatus = qtTrId(offer.type == Otc::MARKETACTION_BUY ? "market_status_bought" : "market_status_sold");
+    case tibia::client::OFFER_STATE_ACCEPTED:
+        m_auctionStatus = qtTrId(offer.type == tibia::client::MARKETACTION_BUY ? "market_status_bought" : "market_status_sold");
         break;
     default:
         m_auctionStatus = QStringLiteral("unknown");
@@ -199,7 +201,7 @@ TDisplayMarketOffer::TDisplayMarketOffer(const TMarketOffer& offer, const QStrin
     }
 
     uint64_t maximum = 0;
-    if (offer.type == Otc::MARKETACTION_SELL)
+    if (offer.type == tibia::client::MARKETACTION_SELL)
         maximum = offer.price == 0 ? 0 : gold / offer.price;
     else
         maximum = static_cast<uint64_t>(std::max(depotCount, 0));
@@ -209,7 +211,7 @@ TDisplayMarketOffer::TDisplayMarketOffer(const TMarketOffer& offer, const QStrin
     if (details.typeId == offer.typeId && sell.transactions > 9 && sell.days > 4) {
         const uint64_t average = sell.total / sell.transactions;
         if (average != 0) {
-            m_isDubious = offer.type != Otc::MARKETACTION_BUY ? offer.price >= average + average / 4
+            m_isDubious = offer.type != tibia::client::MARKETACTION_BUY ? offer.price >= average + average / 4
                                                               : offer.price <= average - average / 4;
         }
     }
@@ -311,11 +313,21 @@ TMarketController::TMarketController(market::TMarketStorage* storage, QObject* p
             return false;
         uint16_t typeId = static_cast<uint16_t>(action.parameter);
         uint8_t tier = static_cast<uint8_t>(action.instance);
-        if (action.object && action.object->isItem()) {
-            const ItemPtr item = action.object->static_self_cast<Item>();
-            typeId = static_cast<uint16_t>(item->getId());
-            const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
-            tier = type && type->getClassification() > 0 ? item->getTier() : 0;
+        if (action.objectClientId) {
+            typeId = action.objectClientId;
+            uint8_t slotTier = 0;
+            if (action.position.x == UINT16_MAX) {
+                if (action.position.y & 0x40) {
+                    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+                        if (const container::TStoredContainer* row = storage->containerAt(action.position.y & 0x3F))
+                            slotTier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + action.stackPosition).tier;
+                    }
+                } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+                    slotTier = inventory->slotAt(action.position.y).tier;
+                }
+            }
+            const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+            tier = type && type->getClassification() > 0 ? slotTier : 0;
         }
         if (typeId == 0)
             return false;
@@ -342,7 +354,7 @@ void TMarketController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
     const auto& classTiers = m_storage ? m_storage->classificationTiers() : std::map<int, std::vector<int>>{};
-    for (const ThingTypePtr& type : g_things.getThingTypes(ThingCategoryItem)) {
+    for (const ThingTypePtr& type : tibia::game::thingTypes(ThingCategoryItem)) {
         if (!type || type->getId() == 0 || !type->isMarketable())
             continue;
         const MarketData& market = type->getMarketData();
@@ -565,7 +577,7 @@ void TMarketController::onMarketCategoryItemSelected(const int AppearanceTypeID,
     setItemProperty("selectedAppearanceTypeID", AppearanceTypeID);
     if (m_selectedType == 0 || !m_storage)
         return;
-    const ThingTypePtr& type = g_things.getThingType(m_selectedType, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(m_selectedType, ThingCategoryItem);
     if (type && type->getClassification() > 0) {
         m_hasSelectedTier = true;
         m_selectedTier = static_cast<uint8_t>(QmlUpgradeTier);
@@ -576,12 +588,12 @@ void TMarketController::onMarketCategoryItemSelected(const int AppearanceTypeID,
 
 void TMarketController::onMarketOfferCancel(const int OfferTimestamp, const int OfferIdentifier)
 {
-    g_game.cancelMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier));
+    tibia::game::cancelMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier));
 }
 
 void TMarketController::onMarketOfferAccept(const int OfferTimestamp, const int OfferIdentifier, const int Amount)
 {
-    g_game.acceptMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier), static_cast<uint16_t>(Amount));
+    tibia::game::acceptMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier), static_cast<uint16_t>(Amount));
 }
 
 void TMarketController::onMarketOfferMaximumAmountRequest(const QString& OfferTypeString, const qlonglong PiecePrice)
@@ -593,7 +605,7 @@ void TMarketController::onMarketOfferMaximumAmountRequest(const QString& OfferTy
         if (price > 0)
             limit = std::min(limit, MaximumTotalPrice / price);
         const uint64_t gold = playerGold();
-        if (offerType(OfferTypeString) == Otc::MARKETACTION_SELL) {
+        if (offerType(OfferTypeString) == tibia::client::MARKETACTION_SELL) {
             limit = std::min<uint64_t>(limit, static_cast<uint64_t>(std::max(m_storage->objectCount(m_selectedType, selectedTier()), 0)));
             limit = std::min(limit, maximumAmountByFee(gold, price));
         } else {
@@ -618,7 +630,7 @@ void TMarketController::onMarketOfferCreate(const QString& OfferTypeString, cons
 {
     if (m_selectedType == 0 || Amount <= 0 || PiecePrice <= 0)
         return;
-    g_game.createMarketOffer(static_cast<uint8_t>(offerType(OfferTypeString)), m_selectedType, selectedTier(), static_cast<uint16_t>(Amount),
+    tibia::game::createMarketOffer(static_cast<uint8_t>(offerType(OfferTypeString)), m_selectedType, selectedTier(), static_cast<uint16_t>(Amount),
                              static_cast<uint64_t>(PiecePrice), CreateAnonymousOffer ? 1 : 0);
 }
 
@@ -696,7 +708,7 @@ QString TMarketController::getTotalPriceOrProfitMultistring(const QString& Offer
 {
     qlonglong total = static_cast<qlonglong>(Amount) * PiecePrice;
     const qlonglong fee = PiecePrice == 0 ? 0 : static_cast<qlonglong>(marketFee(std::max(Amount, 1), static_cast<uint64_t>(PiecePrice)));
-    total = offerType(OfferTypeString) == Otc::MARKETACTION_BUY ? total + fee : total - fee;
+    total = offerType(OfferTypeString) == tibia::client::MARKETACTION_BUY ? total + fee : total - fee;
     return multiString(total);
 }
 
@@ -784,7 +796,7 @@ void TMarketController::setOfferLists(const char* buyProperty, const char* sellP
     for (const TMarketOffer& offer : offers) {
         auto* display = new TDisplayMarketOffer(offer, typeName(offer.typeId), gold, m_storage->objectCount(offer.typeId, offer.tier), details);
         created.push_back(display);
-        (offer.type == Otc::MARKETACTION_BUY ? buy : sell) << display;
+        (offer.type == tibia::client::MARKETACTION_BUY ? buy : sell) << display;
     }
     setItemProperty(buyProperty, QVariant::fromValue(buy));
     setItemProperty(sellProperty, QVariant::fromValue(sell));

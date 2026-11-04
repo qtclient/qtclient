@@ -23,11 +23,11 @@
 #pragma once
 
 #include "declarations.h"
-#include <framework/luaengine/luaobject.h>
+#include <framework/luaengine/gameobject.h>
 #include <algorithm>
 
  // @bindclass
-class InputMessage final : public LuaObject
+class InputMessage final : public GameObject
 {
 public:
     InputMessage();
@@ -43,6 +43,8 @@ public:
     }
 
     void setBuffer(const std::string& buffer);
+    /// Load a headerless opcode-first body for CIP classic-bridge replay.
+    void assignBody(const uint8_t* data, uint16_t size);
     std::string_view getBuffer() { return std::string_view{ (char*)m_buffer + m_headerPos, m_messageSize }; }
     std::string getBodyBuffer() { return std::string((char*)m_buffer + m_maxHeaderSize, m_messageSize - getHeaderSize()); }
 

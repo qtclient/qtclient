@@ -2,15 +2,15 @@
 #include "tibia/runtime/host.h"
 
 #include <client/client.h>
-#include <tibia/world/game.h>
 #include <client/gameconfig.h>
 #include <tibia/assets/loader.h>
 #include <tibia/assets/things.h>
 #include <framework/core/clock.h>
-#include <framework/core/eventdispatcher.h>
+#include <tibia/schedule/schedule.h>
 #include <framework/core/gameevents.h>
 #include <framework/core/resourcemanager.h>
 #include <framework/graphics/texturemanager.h>
+#include "mods/registry.h"
 #include "network/gameserverconnection.h"
 #include "sound/soundstorage.h"
 #include <framework/stdext/thread.h>
@@ -19,10 +19,14 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QMetaObject>
+#include <QObject>
 #include <QStandardPaths>
 
 #include <csignal>
 #include <map>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 #ifndef TIBIA_CLIENT_PACKAGE_DIR
 #define TIBIA_CLIENT_PACKAGE_DIR "Tibia.app"
@@ -56,11 +60,11 @@ void finishExit()
         QCoreApplication::quit();
 }
 
-/// modules/game_features/features.lua: the qtclient features of a protocol
-/// version, plus the Crystal OTCR features the server expects before 0x43.
+/// CIP tip wire features for `version` (historical CIP revision table).
+/// qtclient tip + Crystal both speak this layout — qtclient does not bend to OTC.
 void enableFeatures(const int version)
 {
-    using namespace Otc;
+    using namespace tibia::client;
     const auto on = [](const GameFeature f) { g_game.enableFeature(f); };
     const auto off = [](const GameFeature f) { g_game.disableFeature(f); };
 
@@ -142,13 +146,15 @@ void enableFeatures(const int version)
             off(f);
     }
 
-    on(GameItemShader);
-    on(GameCreatureAttachedEffect);
-    on(GameCreatureShader);
-    on(GameWingsAurasEffectsShader);
+    // qtclient tip = CipSoft wire only. OTCR extras (GameItemShader,
+    // GameCreatureShader, GameCreatureAttachedEffect,
+    // GameWingsAurasEffectsShader) belong in the IdleOT pack via
+    // mods::setFeatureExtrasHook — and require CLIENTOS_OTCR_* so Crystal
+    // sets isOTCR. parseFeatures(0x43) can also enable them.
+    tibia::mods::applyFeatureExtras();
 }
 
-int gameStartHook = 0;
+QMetaObject::Connection gameStartConnection;
 
 }
 
@@ -188,15 +194,14 @@ bool init(const QString& argv0, const QString& workDir)
     tibia::network::installGameServerConnection();
 
     // SIGINT/SIGTERM and engine-requested exits end the Qt event loop.
-    exitHook = g_gameEvents.subscribe("g_app", "onExit", [](LuaObject*, const GameEvents::Args&) {
+    exitHook = g_gameEvents.subscribe("g_app", "onExit", [](GameObject*, const GameEvents::Args&) {
         QCoreApplication::quit();
         return std::any{};
     });
-    // features.lua re-applies the table on game start as well.
-    gameStartHook = g_gameEvents.subscribe("g_game", "onGameStart", [](LuaObject*, const GameEvents::Args&) {
+    // CIP tip: re-apply wire features on each world enter (typed notify).
+    gameStartConnection = QObject::connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, [] {
         if (const int version = g_game.getClientVersion(); version > 0)
             enableFeatures(version);
-        return std::any{};
     });
 
     running = true;
@@ -212,7 +217,7 @@ void terminate()
     if (g_game.isOnline())
         g_game.forceLogout();
     g_gameEvents.unsubscribe(exitHook);
-    g_gameEvents.unsubscribe(gameStartHook);
+    QObject::disconnect(gameStartConnection);
 
     g_client.terminate();
     // Graphics never starts here, so nothing else drops the textures the engine
@@ -378,7 +383,7 @@ bool loadAssets(const int version, QString* error)
         errors << QStringLiteral("Couldn't load assets from %1").arg(QString::fromStdString(dir));
     if (!tibia::assets::loadStaticData(dir))
         errors << QStringLiteral("Couldn't load static data from %1").arg(QString::fromStdString(dir));
-    if (g_game.getFeature(Otc::GameProficiency) && !tibia::assets::resolveProficiencies(dir))
+    if (g_game.getFeature(tibia::client::GameProficiency) && !tibia::assets::resolveProficiencies(dir))
         qWarning().noquote() << "gamecore: no proficiencies-<hash>.json in" << QString::fromStdString(dir);
 
     const std::string soundsDir = soundsRoot(version);
@@ -388,69 +393,6 @@ bool loadAssets(const int version, QString* error)
     if (error)
         *error = errors.join(u'\n');
     return errors.isEmpty();
-}
-
-Hook::Hook(const std::string_view scope, const std::string_view field, Handler handler)
-    : m_id(g_gameEvents.subscribe(scope, field, std::move(handler)))
-{}
-
-Hook::Hook(Hook&& other) noexcept
-    : m_id(std::exchange(other.m_id, 0))
-{}
-
-Hook& Hook::operator=(Hook&& other) noexcept
-{
-    if (this != &other) {
-        if (m_id)
-            g_gameEvents.unsubscribe(m_id);
-        m_id = std::exchange(other.m_id, 0);
-    }
-    return *this;
-}
-
-Hook::~Hook()
-{
-    if (m_id)
-        g_gameEvents.unsubscribe(m_id);
-}
-
-QString argString(const std::vector<std::any>& args, const size_t index)
-{
-    if (index >= args.size())
-        return {};
-    const auto& a = args[index];
-    if (const auto* s = std::any_cast<std::string>(&a))
-        return QString::fromStdString(*s);
-    if (const auto* v = std::any_cast<std::string_view>(&a))
-        return QString::fromUtf8(v->data(), static_cast<qsizetype>(v->size()));
-    if (const auto* c = std::any_cast<const char*>(&a))
-        return QString::fromUtf8(*c);
-    return {};
-}
-
-qint64 argInt(const std::vector<std::any>& args, const size_t index)
-{
-    if (index >= args.size())
-        return 0;
-    const auto& a = args[index];
-    if (const auto* v = std::any_cast<int>(&a)) return *v;
-    if (const auto* v = std::any_cast<uint8_t>(&a)) return *v;
-    if (const auto* v = std::any_cast<uint16_t>(&a)) return *v;
-    if (const auto* v = std::any_cast<uint32_t>(&a)) return *v;
-    if (const auto* v = std::any_cast<int64_t>(&a)) return *v;
-    if (const auto* v = std::any_cast<uint64_t>(&a)) return static_cast<qint64>(*v);
-    if (const auto* v = std::any_cast<int8_t>(&a)) return *v;
-    if (const auto* v = std::any_cast<int16_t>(&a)) return *v;
-    if (const auto* v = std::any_cast<bool>(&a)) return *v ? 1 : 0;
-    return 0;
-}
-
-bool argBool(const std::vector<std::any>& args, const size_t index)
-{
-    if (index < args.size())
-        if (const auto* v = std::any_cast<bool>(&args[index]))
-            return *v;
-    return argInt(args, index) != 0;
 }
 
 }

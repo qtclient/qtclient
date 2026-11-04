@@ -10,6 +10,9 @@
 #include <QUrl>
 
 #include <algorithm>
+#include <any>
+#include <vector>
+#include <tibia/game/gamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -385,12 +388,34 @@ void TNewsDialogController::selectCategoryWithNewestEntryOrNewestUnreadEntryIfDa
     rebuildFromStorage();
 }
 
+TNewsButtonController* TNewsButtonController::s_instance = nullptr;
+
 TNewsButtonController::TNewsButtonController(QObject* parent)
     : cip::tibia::gamewindow::TNewsButtonController(parent)
 {
+    s_instance = this;
     m_highlightTimer.setSingleShot(true);
     m_highlightTimer.setInterval(600000);
     connect(&m_highlightTimer, &QTimer::timeout, this, &TNewsButtonController::changed);
+
+    // Keep-alive; ProtocolGame::parseGameNews prefers instance()->onShowGameNews.
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onGameNews", [this](GameObject*, const std::vector<std::any>& args) {
+        const int newsType = static_cast<int>(client::gamecore::argInt(args, 0));
+        const bool notificationOnly = args.size() > 1 && client::gamecore::argBool(args, 1);
+        onShowGameNews(newsType, notificationOnly);
+        return std::any{};
+    });
+}
+
+TNewsButtonController::~TNewsButtonController()
+{
+    if (s_instance == this)
+        s_instance = nullptr;
+}
+
+TNewsButtonController* TNewsButtonController::instance()
+{
+    return s_instance;
 }
 
 void TNewsButtonController::onOpenNewsButtonClicked()
@@ -408,6 +433,31 @@ void TNewsButtonController::highlight()
 {
     m_highlightTimer.start();
     Q_EMIT changed();
+}
+
+void TNewsButtonController::onShowGameNews(const int newsType, const bool notificationOnly)
+{
+    // Refresh portal gamenews so the dialog / unread badges stay current.
+    input::publish(input::makeAction(A::REFRESH_COMPENDIUM_NEWS));
+    if (notificationOnly) {
+        highlight();
+        return;
+    }
+    using ENewsTab = cip::tibia::gamewindow::TNewsDialogController::EDialogTab;
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_NEWS_CATEGORY));
+    switch (newsType) {
+    case int(ENewsTab::ClientFeatures):
+    case int(ENewsTab::UsefulInfo):
+    case int(ENewsTab::PlayerGuide):
+    case int(ENewsTab::MajorUpdates):
+    case int(ENewsTab::Support):
+        action->parameter = newsType;
+        break;
+    default:
+        action->parameter = int(ENewsTab::NoTabInitialState);
+        break;
+    }
+    input::publish(action);
 }
 
 void TNewsButtonController::stopHighlight()

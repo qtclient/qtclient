@@ -2,10 +2,12 @@
 
 // CIP-named creatures surfaces (promoted from cipwire).
 
+#include "creatures/creaturestorage.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
 
+#include <QByteArray>
 #include <QObject>
 
 namespace tibia::creatures {
@@ -23,29 +25,27 @@ public:
     using cip::tibia::creatures::TBattleListRenderProvider::TBattleListRenderProvider;
 };
 
-class TCreature final : public cip::tibia::creatures::TCreature
-{
-    Q_OBJECT
-public:
-    using cip::tibia::creatures::TCreature::TCreature;
-};
-
 class TCreatureMovementSpeedCalculator final : public ::tibia::CipTyped {};
 
 class TCreatureMovementTween final : public ::tibia::CipTyped {};
 
+/// CIP `creatures::TCreatureProtocolMessageHandler` — tip Q→H for filled creature
+/// attribute opcodes + MoveCreature (109). CIP contract has queue
+/// `receivedCreature*Message` / `receivedMoveCreatureMessage` only (no
+/// `handleCreature*Message` / `handleMoveCreatureMessage` moc slots) — apply via
+/// `protocolSet*` / `Map::applyCreatureMove` in `onServerMessageEnqueued`, do not
+/// invent handle* names.
 class TCreatureProtocolMessageHandler final : public cip::tibia::creatures::TCreatureProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::creatures::TCreatureProtocolMessageHandler::TCreatureProtocolMessageHandler;
-};
+    explicit TCreatureProtocolMessageHandler(QObject* parent = nullptr);
 
-class TCreatureStorage final : public cip::tibia::creatures::TCreatureStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::creatures::TCreatureStorage::TCreatureStorage;
+    static TCreatureProtocolMessageHandler* liveInstance();
+    static void setLiveInstance(TCreatureProtocolMessageHandler* handler);
+
+    /// Tip Q→H wire: peel structured creature-attribute opcodes from `serverMessageEnqueued`.
+    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TCreaturesGameActionHandler final : public cip::tibia::creatures::TCreaturesGameActionHandler

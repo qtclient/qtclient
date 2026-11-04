@@ -30,22 +30,21 @@ public:
 
     void init(std::vector<std::string>& args);
     void terminate();
-    static void registerLuaFunctions();
 
-    float getEffectAlpha() const { return getEffectAlpha(Otc::ME_SOURCE_OWN); }
-    void setEffectAlpha(const float v) { m_effectAlphas[Otc::ME_SOURCE_OWN] = v; }
+    float getEffectAlpha() const { return getEffectAlpha(tibia::client::ME_SOURCE_OWN); }
+    void setEffectAlpha(const float v) { m_effectAlphas[tibia::client::ME_SOURCE_OWN] = v; }
 
-    void setOwnSpellEffectAlpha(const float v) { m_effectAlphas[Otc::ME_SOURCE_OWN] = v; }
-    float getOwnSpellEffectAlpha() const { return m_effectAlphas[Otc::ME_SOURCE_OWN]; }
+    void setOwnSpellEffectAlpha(const float v) { m_effectAlphas[tibia::client::ME_SOURCE_OWN] = v; }
+    float getOwnSpellEffectAlpha() const { return m_effectAlphas[tibia::client::ME_SOURCE_OWN]; }
 
-    void setOtherPlayerSpellEffectAlpha(const float v) { m_effectAlphas[Otc::ME_SOURCE_OTHER_PLAYER] = v; }
-    float getOtherPlayerSpellEffectAlpha() const { return m_effectAlphas[Otc::ME_SOURCE_OTHER_PLAYER]; }
+    void setOtherPlayerSpellEffectAlpha(const float v) { m_effectAlphas[tibia::client::ME_SOURCE_OTHER_PLAYER] = v; }
+    float getOtherPlayerSpellEffectAlpha() const { return m_effectAlphas[tibia::client::ME_SOURCE_OTHER_PLAYER]; }
 
-    void setCreatureSpellEffectAlpha(const float v) { m_effectAlphas[Otc::ME_SOURCE_MONSTER] = v; }
-    float getCreatureSpellEffectAlpha() const { return m_effectAlphas[Otc::ME_SOURCE_MONSTER]; }
+    void setCreatureSpellEffectAlpha(const float v) { m_effectAlphas[tibia::client::ME_SOURCE_MONSTER] = v; }
+    float getCreatureSpellEffectAlpha() const { return m_effectAlphas[tibia::client::ME_SOURCE_MONSTER]; }
 
-    void setBossAreaCreatureEffectAlpha(const float v) { m_effectAlphas[Otc::ME_SOURCE_BOSS] = v; }
-    float getBossAreaCreatureEffectAlpha() const { return m_effectAlphas[Otc::ME_SOURCE_BOSS]; }
+    void setBossAreaCreatureEffectAlpha(const float v) { m_effectAlphas[tibia::client::ME_SOURCE_BOSS] = v; }
+    float getBossAreaCreatureEffectAlpha() const { return m_effectAlphas[tibia::client::ME_SOURCE_BOSS]; }
 
     // Helper to get by source directly
     float getEffectAlpha(uint8_t source) const {
@@ -57,7 +56,7 @@ public:
     void setMissileAlpha(const float v) { m_missileAlpha = v; }
 
 private:
-    std::array<float, Otc::ME_SOURCE_LAST + 1> m_effectAlphas{};
+    std::array<float, tibia::client::ME_SOURCE_LAST + 1> m_effectAlphas{};
     float m_missileAlpha{ 1.f };
 };
 

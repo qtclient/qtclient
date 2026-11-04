@@ -4,6 +4,7 @@
 #include "input/gameactionhandlers.h"
 #include "input/gameactionmapper.h"
 
+#include <creatures/creaturestorage.h>
 #include <tibia/world/creature.h>
 #include <tibia/world/map.h>
 
@@ -26,8 +27,10 @@ TContextMenuController* g_instance = nullptr;
 QString nameOf(const input::TGameAction& action)
 {
     if (action.creatureId) {
-        if (const CreaturePtr creature = g_map.getCreatureById(action.creatureId))
-            return QString::fromStdString(creature->getName());
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(action.creatureId))
+                return row->name();
+        }
     }
     return action.text;
 }

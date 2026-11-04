@@ -22,7 +22,6 @@
 
 #include "animatedtexture.h"
 
-#include "drawstub.h"
 #include "framework/core/eventdispatcher.h"
 
 AnimatedTexture::AnimatedTexture(const Size& size, const std::vector<ImagePtr>& frames, std::vector<uint16_t> framesDelay, const uint16_t numPlays, bool buildMipmaps, bool compress)
@@ -117,8 +116,5 @@ void AnimatedTexture::update()
     }
 
     m_id = getCurrentFrame()->getId();
-
-    if (isOnMap())
-        g_drawPool.repaint(DrawPoolType::MAP);
-    else g_drawPool.repaint(DrawPoolType::FOREGROUND);
+    // CIP QSG emit — OTC draw-pool repaint retired (drawstub was a no-op).
 }

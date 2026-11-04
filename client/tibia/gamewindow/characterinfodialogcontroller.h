@@ -75,6 +75,8 @@ public:
     Q_INVOKABLE void nextPaginatedPage() override;
     /// CIP 0x100d10df0.
     Q_INVOKABLE void openWeaponProficiencyDialog(uint AppearanceTypeID) override;
+    /// CIP CharacterInfoShowSelection outfit/mount/summon preview.
+    Q_INVOKABLE void openOutfitDialog(int OutfitID, bool IsOutfit, bool IsMount, bool IsSummonSkin) override;
     /// characterinfomodels.cpp.
     Q_INVOKABLE void resetCharacterTitle() override;
     Q_INVOKABLE void showContextMenuForCharacterTitleID(uint CharacerTitleId) override;
@@ -102,6 +104,7 @@ private:
 
     std::vector<client::gamecore::Hook> m_hooks;
     TMessageDialogController* m_errorMessage;
+    class TSelectOutfitDialogController* m_outfitDialog = nullptr;
     bool m_shown = false;
     int m_dataType = NoData;
     int m_nextDataType = GeneralStats;

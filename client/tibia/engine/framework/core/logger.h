@@ -24,6 +24,7 @@
 
 #include "../global.h"
 
+#include <format>
 #include <fstream>
 
 struct LogMessage
@@ -58,33 +59,33 @@ public:
 
     // fmt-compatible overloads (for C++ only)
     template<typename... Args>
-    inline void debug(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        debug(fmt::format(fmtStr, std::forward<Args>(args)...));
+    inline void debug(std::format_string<Args...> fmtStr, Args&&... args) {
+        debug(std::format(fmtStr, std::forward<Args>(args)...));
     }
 
     template<typename... Args>
-    inline void info(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        info(fmt::format(fmtStr, std::forward<Args>(args)...));
+    inline void info(std::format_string<Args...> fmtStr, Args&&... args) {
+        info(std::format(fmtStr, std::forward<Args>(args)...));
     }
 
     template<typename... Args>
-    inline void warning(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        warning(fmt::format(fmtStr, std::forward<Args>(args)...));
+    inline void warning(std::format_string<Args...> fmtStr, Args&&... args) {
+        warning(std::format(fmtStr, std::forward<Args>(args)...));
     }
 
     template<typename... Args>
-    inline void error(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        error(fmt::format(fmtStr, std::forward<Args>(args)...));
+    inline void error(std::format_string<Args...> fmtStr, Args&&... args) {
+        error(std::format(fmtStr, std::forward<Args>(args)...));
     }
 
     template<typename... Args>
-    inline void fatal(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        fatal(fmt::format(fmtStr, std::forward<Args>(args)...));
+    inline void fatal(std::format_string<Args...> fmtStr, Args&&... args) {
+        fatal(std::format(fmtStr, std::forward<Args>(args)...));
     }
 
     template<typename... Args>
-    inline void fine(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        fine(fmt::format(fmtStr, std::forward<Args>(args)...));
+    inline void fine(std::format_string<Args...> fmtStr, Args&&... args) {
+        fine(std::format(fmtStr, std::forward<Args>(args)...));
     }
 
     inline void trace() {
@@ -92,8 +93,8 @@ public:
     }
 
     template<typename... Args>
-    inline void traceDebug(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        logFunc(Fw::LogDebug, fmt::format(fmtStr, std::forward<Args>(args)...), __PRETTY_FUNCTION__);
+    inline void traceDebug(std::format_string<Args...> fmtStr, Args&&... args) {
+        logFunc(Fw::LogDebug, std::format(fmtStr, std::forward<Args>(args)...), __PRETTY_FUNCTION__);
     }
 
     inline void traceDebug(std::string_view what) {
@@ -101,8 +102,8 @@ public:
     }
 
     template<typename... Args>
-    inline void traceInfo(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        logFunc(Fw::LogInfo, fmt::format(fmtStr, std::forward<Args>(args)...), __PRETTY_FUNCTION__);
+    inline void traceInfo(std::format_string<Args...> fmtStr, Args&&... args) {
+        logFunc(Fw::LogInfo, std::format(fmtStr, std::forward<Args>(args)...), __PRETTY_FUNCTION__);
     }
 
     inline void traceInfo(std::string_view what) {
@@ -110,8 +111,8 @@ public:
     }
 
     template<typename... Args>
-    inline void traceWarning(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        logFunc(Fw::LogWarning, fmt::format(fmtStr, std::forward<Args>(args)...), __PRETTY_FUNCTION__);
+    inline void traceWarning(std::format_string<Args...> fmtStr, Args&&... args) {
+        logFunc(Fw::LogWarning, std::format(fmtStr, std::forward<Args>(args)...), __PRETTY_FUNCTION__);
     }
 
     inline void traceWarning(std::string_view what) {
@@ -119,8 +120,8 @@ public:
     }
 
     template<typename... Args>
-    inline void traceError(fmt::format_string<Args...> fmtStr, Args&&... args) {
-        logFunc(Fw::LogError, fmt::format(fmtStr, std::forward<Args>(args)...), __PRETTY_FUNCTION__);
+    inline void traceError(std::format_string<Args...> fmtStr, Args&&... args) {
+        logFunc(Fw::LogError, std::format(fmtStr, std::forward<Args>(args)...), __PRETTY_FUNCTION__);
     }
 
     inline void traceError(std::string_view what) {

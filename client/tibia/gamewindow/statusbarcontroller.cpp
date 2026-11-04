@@ -5,10 +5,11 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -53,7 +54,7 @@ constexpr std::array<const char*, Storage::EntryCount> EntryLabels = {
 /// CIP's profession: the vocation without its promotion.
 constexpr int MonkProfession = 5;
 
-LocalPlayerPtr player() { return g_game.getLocalPlayer(); }
+LocalPlayerPtr player() { return tibia::game::localPlayer(); }
 
 float ratio(const uint32_t value, const uint32_t max)
 {
@@ -78,17 +79,16 @@ TStatusBarController::TStatusBarController(QObject* parent)
     });
 
     const auto onPlayer = [this](auto method) {
-        return [this, method](LuaObject* self, const Args&) {
-            if (const LocalPlayerPtr& p = player(); p && self == p.get())
-                (this->*method)();
+        return [this, method](GameObject*, const Args&) {
+            (this->*method)();
             return std::any{};
         };
     };
     for (const char* event : { "onHealthChange", "onManaChange", "onManaShieldChange", "onHarmonyChange", "onSereneChange", "onVocationChange" })
-        m_hooks.emplace_back("object", event, onPlayer(&TStatusBarController::updateFromPlayer));
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TStatusBarController::updateFromPlayer));
     for (const char* event : { "onSkillChange", "onBaseSkillChange", "onMagicLevelChange", "onBaseMagicLevelChange", "onExperienceChange",
                                "onLevelChange" })
-        m_hooks.emplace_back("object", event, onPlayer(&TStatusBarController::refreshSkills));
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer(&TStatusBarController::refreshSkills));
 }
 
 void TStatusBarController::setStorage(game::TStatusbarStorage* storage)

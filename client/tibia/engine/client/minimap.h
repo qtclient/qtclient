@@ -108,7 +108,7 @@ public:
     Position getTilePosition(const Point& point, const Rect& screenRect, const Position& mapCenter, float scale);
     Rect getTileRect(const Position& pos, const Rect& screenRect, const Position& mapCenter, float scale);
 
-    void updateTile(const Position& pos, const TilePtr& tile);
+    void updateTile(const Position& pos, tibia::worldmap::TWorldMapField* tile);
     const MinimapTile& getTile(const Position& pos);
     std::pair<MinimapBlock_ptr, MinimapTile> threadGetTile(const Position& pos);
 

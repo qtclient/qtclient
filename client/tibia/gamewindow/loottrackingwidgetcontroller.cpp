@@ -12,6 +12,7 @@
 #include <QJsonObject>
 #include <QLocale>
 #include <QQuickItem>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -47,7 +48,7 @@ QString trackedItemName(const uint16_t typeId)
         case CrystalCoin: return qtTrId("crystal_coin");
         default: break;
     }
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (type && !type->getName().empty())
         return QString::fromStdString(type->getName());
     return qtTrId("dummy_unknown");

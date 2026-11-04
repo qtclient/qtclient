@@ -8,7 +8,6 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QJsonArray>
@@ -17,6 +16,7 @@
 #include <QTimer>
 
 #include <algorithm>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -336,7 +336,7 @@ input::TGameActionList TVipWidgetController::candidates(const QString& vipName, 
                                    input::makeAction(A::SORT_VIPS_BY_STATUS),
                                    input::makeAction(m_proxy->hideOffline() ? A::SHOW_OFFLINE_VIPS : A::HIDE_OFFLINE_VIPS),
                                    input::makeAction(m_proxy->showGroups() ? A::HIDE_VIPS_GROUPS : A::SHOW_VIPS_GROUPS) };
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && player->isPremium())
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer(); player && player->isPremium())
         result.push_back(input::makeAction(A::OPEN_ADD_VIP_GROUP_DIALOG));
     if (!groupName.isEmpty()) {
         if (const std::optional<TVipStorage::Group> group = m_storage->groupByName(groupName); group && group->editable) {
@@ -434,7 +434,9 @@ bool TVipWidgetController::handleAction(const input::TGameAction& action)
 {
     switch (action.type) {
         case A::OPEN_ADD_VIP_DIALOG:
-            m_addVipDialog->setText({});
+            // CIP chat/hotkey can open the dialog with a prefilled speaker name
+            // (action.text); empty text is the blank Add VIP path.
+            m_addVipDialog->setText(action.text);
             m_addVipDialog->dialog()->show();
             return true;
         case A::OPEN_EDIT_VIP_DIALOG: {

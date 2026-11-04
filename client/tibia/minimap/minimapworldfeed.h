@@ -4,27 +4,16 @@
 
 #include <tibia/world/map.h>
 
-namespace tibia::worldmap {
-class TWorldmapProtocolMessageHandler;
-}
-
 namespace tibia::minimap {
 
-/// The engine's map as the minimap's world: field data from qtclient tiles,
-/// and the engine's map notifications driving the storage the way CIP's map
-/// messages do (TMinimapTileStorage onFieldChanged / setPlayerZ / markUnseen).
-class TMinimapWorldFeed final : public MapObserver, public IMinimapWorld
+/// qtclient IMinimapWorld over engine tiles (CIP fieldData / isKnown / areaOn).
+/// Tile/volume churn is driven by TWorldMapStorage signals on TMinimapManager —
+/// this feed is not a MapObserver.
+class TMinimapWorldFeed final : public IMinimapWorld
 {
 public:
-    /// Observes g_map until destroyed.
     explicit TMinimapWorldFeed(TMinimapTileStorage& storage);
     ~TMinimapWorldFeed() override;
-
-    /// Optional CIP map-protocol bridge (forwards tile/window changes).
-    void setProtocolHandler(worldmap::TWorldmapProtocolMessageHandler* handler) { m_protocol = handler; }
-
-    void onTileChanged(const Position& pos) override;
-    void onWindowChanged(bool fullDescription) override;
 
     bool isKnown(const Position& coord) const override;
     TMinimapFieldData fieldData(const Position& coord) const override;
@@ -33,7 +22,6 @@ public:
 
 private:
     TMinimapTileStorage& m_storage;
-    worldmap::TWorldmapProtocolMessageHandler* m_protocol = nullptr;
 };
 
 }

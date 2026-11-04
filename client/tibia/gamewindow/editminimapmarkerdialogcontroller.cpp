@@ -39,7 +39,7 @@ void TEditMinimapMarkerDialogController::onCancelClicked() { dialog()->close(); 
 void TEditMinimapMarkerDialogController::onOkClicked(const QString& Text, const int SymbolID)
 {
     auto action = input::mutableClone(
-        *input::makeObjectAction(A::UPDATE_MINIMAP_MARKER, nullptr, m_position, -1));
+        *input::makeObjectAction(A::UPDATE_MINIMAP_MARKER, m_position, -1));
     action->text = Text;
     action->parameter = SymbolID;
     input::publish(action);

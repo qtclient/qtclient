@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stage a launcher brand pack next to qtclient launcher tip (mods/<id>/).
-# Soft binary stays CipSoft; product identity + art load at runtime unless --no-mods.
+# qtclient binary stays CipSoft; product identity + art load at runtime unless --no-mods.
 #
 # --tip is applicationDirPath (desktop binary dir / Contents/MacOS, or wasm dir
 # with tibia.wasm). When TIP is an engine root that contains *.app/Contents/MacOS,
@@ -27,7 +27,7 @@ done
 test -f "$PACK/brand.json" || { echo "missing $PACK/brand.json" >&2; exit 1; }
 test -d "$TIP" || { echo "missing tip dir $TIP" >&2; exit 1; }
 
-# Engine root → Contents/MacOS (macOS Soft tip).
+# Engine root → Contents/MacOS (macOS qtclient tip).
 macos="$(find "$TIP" -maxdepth 3 -path '*/Contents/MacOS' -type d 2>/dev/null | head -1 || true)"
 if [[ -n "$macos" && "$TIP" != "$macos" ]]; then
   echo "[merge-launcher-brand] tip → $macos (Contents/MacOS)"

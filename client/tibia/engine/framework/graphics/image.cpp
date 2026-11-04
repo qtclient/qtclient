@@ -22,15 +22,47 @@
 
 #include "image.h"
 
-#include "apngloader.h"
 #include "framework/core/filestream.h"
 #include "framework/core/logger.h"
 #include "framework/core/resourcemanager.h"
 
+#include <QBuffer>
+#include <QByteArray>
+#include <QImage>
+#include <QImageReader>
+
 #include <array>
+#include <cstring>
 #include <lzma.h>
 
 using namespace qrcodegen;
+
+namespace {
+
+std::string resolveRasterPath(const std::string& file)
+{
+    auto& data = tibia::files::data();
+    if (data.isFileType(file, "png") || data.isFileType(file, "webp") || data.isFileType(file, "gif"))
+        return file;
+    const auto webpPath = data.guessFilePath(file, "webp");
+    if (data.fileExists(webpPath))
+        return webpPath;
+    const auto pngPath = data.guessFilePath(file, "png");
+    if (data.fileExists(pngPath))
+        return pngPath;
+    return webpPath;
+}
+
+ImagePtr imageFromQImage(QImage qimg)
+{
+    if (qimg.isNull())
+        return nullptr;
+    qimg = qimg.convertToFormat(QImage::Format_RGBA8888);
+    auto image = std::make_shared<Image>(Size(qimg.width(), qimg.height()), 4, qimg.constBits());
+    return image;
+}
+
+} // namespace
 
 Image::Image(const Size& size, const int bpp, const uint8_t* pixels) : m_size(size), m_bpp(bpp)
 {
@@ -53,7 +85,7 @@ ImagePtr Image::load(const std::string& file)
     if (file.ends_with(".bmp.lzma") || file.ends_with(".BMP.LZMA")) {
         return loadCipBmp(file);
     }
-    const auto& path = tibia::files::data().guessFilePath(file, "png");
+    const auto& path = resolveRasterPath(file);
     try {
         return loadPNG(path);
     } catch (const stdext::exception& e) {
@@ -64,27 +96,43 @@ ImagePtr Image::load(const std::string& file)
 
 ImagePtr Image::loadPNG(const char* data, const size_t size)
 {
-    std::stringstream fin(std::string{ data, size });
+    QBuffer buffer;
+    buffer.setData(QByteArray::fromRawData(data, static_cast<int>(size)));
+    if (!buffer.open(QIODevice::ReadOnly))
+        return nullptr;
+
+    QImageReader reader(&buffer);
+    reader.setAutoDetectImageFormat(true);
+    if (!reader.canRead())
+        return nullptr;
+
+    int frameCount = reader.imageCount();
+    if (frameCount <= 0)
+        frameCount = 1;
+
     ImagePtr image;
-    if (apng_data apng; load_apng(fin, &apng) == 0) {
-        const size_t frameSize = static_cast<size_t>(apng.width) * apng.height * apng.bpp;
-        const uint32_t availableFrames = apng.last_frame > apng.first_frame
-                                             ? apng.last_frame - apng.first_frame
-                                             : 0;
-        const uint32_t frameCount = std::min(apng.num_frames, availableFrames);
-        const uint32_t firstFrame = availableFrames > 0 ? apng.first_frame : 0;
-        const auto* firstFrameData = apng.pdata + (static_cast<size_t>(firstFrame) * frameSize);
-        image = std::make_shared<Image>(Size(apng.width, apng.height), apng.bpp, firstFrameData);
-        if (frameCount > 1 && apng.frames_delay) {
-            for (uint32_t i = 0; i < frameCount; ++i) {
-                // Create a new Image for every frame to avoid circular reference (image -> m_animation -> image)
-                const size_t frameOffset = static_cast<size_t>(apng.first_frame + i) * frameSize;
-                ImagePtr frameImage = std::make_shared<Image>(Size(apng.width, apng.height), apng.bpp,
-                                                              apng.pdata + frameOffset);
-                image->addAnimationFrame(frameImage, apng.frames_delay[i]);
+    if (frameCount <= 1) {
+        image = imageFromQImage(reader.read());
+    } else {
+        const int loopCount = reader.loopCount();
+        ImagePtr base;
+        for (int i = 0; i < frameCount; ++i) {
+            if (!reader.jumpToImage(i))
+                continue;
+            ImagePtr frameImage = imageFromQImage(reader.read());
+            if (!frameImage)
+                continue;
+            if (!base) {
+                base = frameImage;
+                if (loopCount >= 0)
+                    base->setAnimationLoopCount(static_cast<uint16_t>(loopCount));
             }
+            int delayMs = reader.nextImageDelay();
+            if (delayMs <= 0)
+                delayMs = 100;
+            base->addAnimationFrame(frameImage, delayMs);
         }
-        free_apng(&apng);
+        image = base;
     }
 
     if (!image)
@@ -117,10 +165,16 @@ void Image::savePNG(const std::string& fileName)
     if (!fin)
         throw Exception("failed to open file '{}' for write", fileName);
 
+    QImage qimg(getPixelData(), m_size.width(), m_size.height(), m_size.width() * 4,
+                QImage::Format_RGBA8888);
+    QByteArray encoded;
+    QBuffer buffer(&encoded);
+    buffer.open(QIODevice::WriteOnly);
+    if (!qimg.save(&buffer, "PNG"))
+        throw Exception("failed to encode PNG for '{}'", fileName);
+
     fin->cache();
-    std::stringstream data;
-    save_png(data, m_size.width(), m_size.height(), 4, getPixelData());
-    fin->write(data.str().c_str(), data.str().length());
+    fin->write(encoded.constData(), static_cast<uint32_t>(encoded.size()));
     fin->flush();
     fin->close();
 }

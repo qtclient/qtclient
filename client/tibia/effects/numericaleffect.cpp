@@ -1,7 +1,6 @@
 #include "effects/numericaleffect.h"
 
 #include "tibia/world/effect.h"
-#include "tibia/world/missile.h"
 
 namespace tibia::effects {
 
@@ -28,19 +27,12 @@ TEffectStorage::TEffectStorage(QObject* parent)
 void TEffectStorage::clear()
 {
     m_fieldEffects.clear();
-    m_missiles.clear();
 }
 
 void TEffectStorage::trackFieldEffect(const EffectPtr& effect)
 {
     if (effect)
         m_fieldEffects.push_back(effect);
-}
-
-void TEffectStorage::trackMissile(const MissilePtr& missile)
-{
-    if (missile)
-        m_missiles.push_back(missile);
 }
 
 }

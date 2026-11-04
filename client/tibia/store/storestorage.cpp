@@ -2,12 +2,14 @@
 
 #include "store/storeciptypes.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/staticdata.h>
 
 #include <algorithm>
 #include <tuple>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::store {
 
@@ -80,7 +82,7 @@ TStoreQuantity quantity(const SubOffer& sub, const std::vector<std::string>& dis
     if (sub.disabled && sub.reasonIdDisable < disableReasons.size())
         result.disabledReasons.append(toQString(disableReasons[sub.reasonIdDisable]));
     result.state = sub.state;
-    if (sub.state == Otc::STATE_SALE) {
+    if (sub.state == tibia::client::STATE_SALE) {
         result.validUntil = sub.validUntil;
         result.basePrice = sub.basePrice;
     }
@@ -157,7 +159,7 @@ TStoreStorage::TStoreStorage(QObject* parent)
     : cip::tibia::store::TStoreStorage(parent)
 {
     store::ownProductSurface(this);
-    m_hooks.emplace_back("g_game", "onParseStoreGetCategories", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseStoreGetCategories", [this](GameObject*, const Args& args) {
         const auto* categories = args.empty() ? nullptr : std::any_cast<std::vector<StoreCategory>>(&args[0]);
         m_categories.clear();
         if (categories) {
@@ -173,7 +175,7 @@ TStoreStorage::TStoreStorage(QObject* parent)
         Q_EMIT categoriesChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseStoreCreateHome", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseStoreCreateHome", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<StoreData>(&args[0]);
         if (!data)
             return std::any{};
@@ -192,7 +194,7 @@ TStoreStorage::TStoreStorage(QObject* parent)
         Q_EMIT homePageChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseStoreCreateProducts", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseStoreCreateProducts", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<StoreData>(&args[0]);
         if (!data)
             return std::any{};
@@ -213,7 +215,7 @@ TStoreStorage::TStoreStorage(QObject* parent)
         Q_EMIT offersChanged(static_cast<int>(data->redirectId));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseStoreOfferDescriptions", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseStoreOfferDescriptions", [this](GameObject*, const Args& args) {
         const auto offerId = static_cast<uint32_t>(client::gamecore::argInt(args, 0));
         for (TStoreOfferData& data : m_offers) {
             if (data.hasQuantity(offerId)) {
@@ -223,7 +225,7 @@ TStoreStorage::TStoreStorage(QObject* parent)
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseStoreGetHistory", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseStoreGetHistory", [this](GameObject*, const Args& args) {
         m_historyPage = static_cast<uint32_t>(client::gamecore::argInt(args, 0));
         m_historyPageCount = static_cast<uint32_t>(client::gamecore::argInt(args, 1));
         m_history.clear();
@@ -240,7 +242,7 @@ TStoreStorage::TStoreStorage(QObject* parent)
         Q_EMIT transactionHistoryChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onTransactionDetails", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTransactionDetails", [this](GameObject*, const Args& args) {
         const uint32_t id = static_cast<uint32_t>(client::gamecore::argInt(args, 0));
         const QString details = client::gamecore::argString(args, 1);
         for (TStoreHistoryEntry& entry : m_history) {
@@ -252,18 +254,17 @@ TStoreStorage::TStoreStorage(QObject* parent)
         Q_EMIT transactionHistoryChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args& args) {
-        const auto* type = args.size() > 2 ? std::any_cast<Otc::ResourceTypes_t>(&args[2]) : nullptr;
-        if (type && (*type < Otc::RESOURE_COIN_NORMAL || *type > Otc::RESOURE_COIN_TOURNAMENT))
-            return std::any{};
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
+        if (type < static_cast<int>(tibia::client::RESOURE_COIN_NORMAL) || type > static_cast<int>(tibia::client::RESOURE_COIN_TOURNAMENT))
+            return;
+        readBalance();
+    });
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseStoreGetCoin", [this](GameObject*, const Args&) {
         readBalance();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseStoreGetCoin", [this](LuaObject*, const Args&) {
-        readBalance();
-        return std::any{};
-    });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_categories.clear();
         m_offers.clear();
         m_offersCategoryName.clear();
@@ -274,7 +275,6 @@ TStoreStorage::TStoreStorage(QObject* parent)
         m_balanceUpdating = false;
         Q_EMIT categoriesChanged();
         Q_EMIT balanceChanged();
-        return std::any{};
     });
 }
 
@@ -294,33 +294,33 @@ void TStoreStorage::setBalanceUpdating(const bool updating)
 
 void TStoreStorage::openStore()
 {
-    g_game.openStore(0, "");
+    tibia::game::openStore(0, "");
 }
 
 void TStoreStorage::requestHome()
 {
-    g_game.sendRequestStoreHome();
+    tibia::game::sendRequestStoreHome();
 }
 
 void TStoreStorage::requestCategory(const QString& name)
 {
-    g_game.requestStoreOffers(name.toStdString(), "", 0, 0);
+    tibia::game::requestStoreOffers(name.toStdString(), "", 0, 0);
 }
 
 void TStoreStorage::requestOffer(const uint32_t offerId)
 {
-    g_game.sendRequestStoreOfferById(offerId, 0, 0);
+    tibia::game::sendRequestStoreOfferById(offerId, 0, 0);
 }
 
 void TStoreStorage::requestSearch(const QString& text)
 {
-    g_game.sendRequestStoreSearch(text.toStdString(), 0, 0);
+    tibia::game::sendRequestStoreSearch(text.toStdString(), 0, 0);
 }
 
 void TStoreStorage::requestPremiumOrBoosts(const bool boosts)
 {
     if (boosts) {
-        g_game.sendRequestStorePremiumBoost();
+        tibia::game::sendRequestStorePremiumBoost();
         return;
     }
     const bool vipShop = std::any_of(m_categories.begin(), m_categories.end(),
@@ -330,32 +330,32 @@ void TStoreStorage::requestPremiumOrBoosts(const bool boosts)
 
 void TStoreStorage::requestUsefulThing(const int subAction)
 {
-    g_game.sendRequestUsefulThings(static_cast<uint8_t>(subAction));
+    tibia::game::sendRequestUsefulThings(static_cast<uint8_t>(subAction));
 }
 
 void TStoreStorage::buy(const uint32_t offerId)
 {
-    g_game.buyStoreOffer(offerId, 0, "", 0, "");
+    tibia::game::buyStoreOffer(offerId, 0, "", 0, "");
 }
 
 void TStoreStorage::buyConfigured(const uint32_t offerId, const uint8_t purchaseType, const QString& name, const uint8_t sex)
 {
-    g_game.buyStoreOffer(offerId, purchaseType, name.toStdString(), sex, "");
+    tibia::game::buyStoreOffer(offerId, purchaseType, name.toStdString(), sex, "");
 }
 
 void TStoreStorage::openTransactionHistory()
 {
-    g_game.openTransactionHistory(HistoryEntriesPerPage);
+    tibia::game::openTransactionHistory(HistoryEntriesPerPage);
 }
 
 void TStoreStorage::requestTransactionHistoryPage(const uint32_t page)
 {
-    g_game.requestTransactionHistory(page, HistoryEntriesPerPage);
+    tibia::game::requestTransactionHistory(page, HistoryEntriesPerPage);
 }
 
 void TStoreStorage::transferCoins(const QString& recipient, const uint32_t amount)
 {
-    g_game.transferCoins(recipient.toStdString(), amount);
+    tibia::game::transferCoins(recipient.toStdString(), amount);
 }
 
 void TStoreStorage::setOffers(const std::vector<TStoreOfferData>& offers, const QString& categoryName)
@@ -366,12 +366,12 @@ void TStoreStorage::setOffers(const std::vector<TStoreOfferData>& offers, const 
 
 void TStoreStorage::readBalance()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return;
-    m_coins = player->getResourceBalance(Otc::RESOURE_COIN_NORMAL);
-    m_transferableCoins = player->getResourceBalance(Otc::RESOURE_COIN_TRANSFERRABLE);
-    m_reservedCoins = player->getResourceBalance(Otc::RESOURE_COIN_AUCTION);
+    m_coins = player->getResourceBalance(tibia::client::RESOURE_COIN_NORMAL);
+    m_transferableCoins = player->getResourceBalance(tibia::client::RESOURE_COIN_TRANSFERRABLE);
+    m_reservedCoins = player->getResourceBalance(tibia::client::RESOURE_COIN_AUCTION);
     m_balanceValid = true;
     setBalanceUpdating(false);
     Q_EMIT balanceChanged();
@@ -380,14 +380,14 @@ void TStoreStorage::readBalance()
 TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(QObject* parent)
     : cip::tibia::store::TStoreProtocolMessageHandler(parent)
 {
-    m_hooks.emplace_back("g_game", "onStoreInit", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreInit", [this](GameObject*, const Args& args) {
         m_imageBaseUrl = QUrl(client::gamecore::argString(args, 0));
         m_creditPacketSize = std::max<qint64>(1, client::gamecore::argInt(args, 1));
         Q_EMIT storeImageBaseUrlChanged(m_imageBaseUrl);
         return std::any{};
     });
     // CIP 0x101004550: success type 0 a purchase, 1 a coin transfer.
-    m_hooks.emplace_back("g_game", "onParseStoreGetPurchaseStatus", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseStoreGetPurchaseStatus", [this](GameObject*, const Args& args) {
         const QString message = client::gamecore::argString(args, 0);
         if (args.size() > 1 && client::gamecore::argInt(args, 1) == 1)
             Q_EMIT requestTransferSuccessNotification(message);
@@ -398,7 +398,7 @@ TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(QObject* parent)
     // CIP 0x101003680: the purchase data an offer needs (1 a new character
     // name, 3 a hireling's name and sex; 2 world and 4 main character
     // changes have no server here).
-    m_hooks.emplace_back("g_game", "onRequestPurchaseData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRequestPurchaseData", [this](GameObject*, const Args& args) {
         const auto offerId = static_cast<int>(client::gamecore::argInt(args, 0));
         switch (client::gamecore::argInt(args, 1)) {
             case 1: Q_EMIT characterNameChangeRequested(offerId); break;
@@ -407,18 +407,18 @@ TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(QObject* parent)
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onHirelingNameChange", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onHirelingNameChange", [this](GameObject*, const Args& args) {
         Q_EMIT hirelingNameChangeRequested(static_cast<quint32>(client::gamecore::argInt(args, 0)),
                                            static_cast<quint32>(client::gamecore::argInt(args, 1)));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onStoreButtonIndicators", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreButtonIndicators", [this](GameObject*, const Args& args) {
         Q_EMIT storeButtonIndicatorsChanged(client::gamecore::argBool(args, 0), client::gamecore::argBool(args, 1));
         return std::any{};
     });
     // Crystal's GameStore.StoreErrors: 0 purchase, 1 network, 2 history,
     // 3 transfer, 4 information.
-    m_hooks.emplace_back("g_game", "onParseStoreError", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseStoreError", [this](GameObject*, const Args& args) {
         const QString message = client::gamecore::argString(args, 0);
         switch (client::gamecore::argInt(args, 1)) {
             case 2: Q_EMIT requestTransactionHistoryErrorNotification(message); break;

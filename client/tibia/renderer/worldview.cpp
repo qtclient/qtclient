@@ -19,7 +19,6 @@
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 #include "worldmap/worldmapviewport.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/thing.h>
 
 #include <QCursor>
@@ -31,6 +30,7 @@
 #include <QTouchEvent>
 
 #include <cmath>
+#include <tibia/game/gamesession.h>
 
 
 namespace tibia::qmlcomponents {
@@ -87,8 +87,10 @@ TWorldView::TWorldView(QQuickItem* pane, TWorldMapRenderProvider* provider, cons
         m_lightMap->setRenderProvider(provider);
     if (auto* overlay = pane->findChild<QQuickItem*>(QStringLiteral("worldmapCreatureHUDOverlay")))
         m_creatureHuds = new worldmap::TCreatureHUDController(overlay, provider, this);
-    if (auto* tutorialOverlay = pane->findChild<QQuickItem*>(QStringLiteral("tutorialMarkerOverlay")))
+    if (auto* tutorialOverlay = pane->findChild<QQuickItem*>(QStringLiteral("tutorialMarkerOverlay"))) {
         m_tutorialMarkers = new worldmap::TWorldMapTutorialMarkerOverlayController(tutorialOverlay, this);
+        m_tutorialMarkers->setRenderProvider(provider);
+    }
     if (m_speechBubbles && texts)
         m_speechBubbles->setSources(provider, texts);
     if (m_numericalEffects && numericalEffects)
@@ -132,7 +134,7 @@ void TWorldView::unbind()
 {
     if (m_provider) {
         disconnect(m_provider, nullptr, this, nullptr);
-        m_provider->setMouseTarget(nullptr);
+        m_provider->setMouseTargetObject(0, {}, -1);
         m_provider->setMouseHighlightField({});
     }
     m_provider = nullptr;
@@ -224,7 +226,7 @@ void TWorldView::updateMouseTarget()
         dialogs && !dialogs->isEmpty()) {
         if (cursor)
             cursor->setLayerShape(Cursor::MapWindow, Cursor::Default);
-        m_provider->setMouseTarget(nullptr);
+        m_provider->setMouseTargetObject(0, {}, -1);
         m_provider->setMouseHighlightField({});
         return;
     }
@@ -254,19 +256,24 @@ void TWorldView::updateMouseTarget()
     if (!action) {
         if (cursor)
             cursor->setLayerShape(Cursor::MapWindow, Cursor::Default);
-        m_provider->setMouseTarget(nullptr);
+        m_provider->setMouseTargetObject(0, {}, -1);
         // Keep the baseplate field — empty tiles still show the square.
         return;
     }
     if (cursor && m_animatedCursor)
         cursor->setLayerShape(Cursor::MapWindow, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
     m_provider->setMouseHighlightEnabled(m_highlightMouseTarget);
-    m_provider->setMouseTarget(worldmap::TWorldMapGameActionProvider::mouseTargetOf(action));
+    if (const uint32_t creatureId = worldmap::TWorldMapGameActionProvider::mouseTargetCreatureIdOf(action))
+        m_provider->setMouseTargetCreatureId(creatureId);
+    else if (const auto object = worldmap::TWorldMapGameActionProvider::mouseTargetObjectOf(action))
+        m_provider->setMouseTargetObject(object.typeId, object.field, object.stackPos);
+    else
+        m_provider->setMouseTargetObject(0, {}, -1);
 }
 
 void TWorldView::onMapWindowClicked(const int mouseX, const int mouseY, const int mouseButton, const int keyboardModifiers)
 {
-    if (!m_provider || !m_actions || !m_mapWindow || !m_worldMap || !g_game.isOnline())
+    if (!m_provider || !m_actions || !m_mapWindow || !m_worldMap || !tibia::game::isOnline())
         return;
     if (input::isSelectingTarget()) {
         input::finishTargetSelection(mouseButton == Qt::LeftButton ? targetAt(QPointF(mouseX, mouseY)) : nullptr);
@@ -289,7 +296,7 @@ void TWorldView::onMapWindowClicked(const int mouseX, const int mouseY, const in
 void TWorldView::onMapWindowStartDrag(const int mouseX, const int mouseY, QObject* source)
 {
     gamewindow::TDragAndDropController* dnd = gamewindow::TDragAndDropController::instance();
-    if (!dnd || !m_provider || !m_actions || !m_mapWindow || !m_worldMap || !g_game.isOnline())
+    if (!dnd || !m_provider || !m_actions || !m_mapWindow || !m_worldMap || !tibia::game::isOnline())
         return;
     for (const input::TGameActionPtr& action : m_actions->actionsAt(toMapPixel(QPointF(mouseX, mouseY)))) {
         if (action->type == input::EGameAction::MOVE_OBJECT) {
@@ -305,7 +312,7 @@ void TWorldView::onMapWindowDragDropped(const int mouseX, const int mouseY)
     if (!dnd || !m_provider || !m_mapWindow || !m_worldMap)
         return;
     const input::TGameActionPtr move = dnd->takeAction();
-    if (!move || !g_game.isOnline())
+    if (!move || !tibia::game::isOnline())
         return;
     const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, toMapPixel(QPointF(mouseX, mouseY)));
     if (!pick.isValid())
@@ -329,7 +336,7 @@ input::TGameActionPtr TWorldView::targetAt(const QPointF& mapWindowPoint) const
 
 void TWorldView::onMapWindowTargetSelected(const int mouseX, const int mouseY)
 {
-    if (!g_game.isOnline())
+    if (!tibia::game::isOnline())
         return;
     if (const input::TGameActionPtr target = targetAt(QPointF(mouseX, mouseY)))
         m_actionHandler->handleGameAction(target);
@@ -365,9 +372,9 @@ bool TWorldView::onAtMouseCursor(const input::TGameAction& action)
     const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, toMapPixel(point));
     if (!pick.isValid() || action.text.isEmpty())
         return true;
-    g_game.setNextTalkAim(pick.position);
-    g_game.setNextTalkAimMode(2);
-    g_game.talkChannel(static_cast<Otc::MessageMode>(action.talkMode), 0, action.text.toStdString());
+    tibia::game::setNextTalkAim(pick.position);
+    tibia::game::setNextTalkAimMode(2);
+    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode), 0, action.text.toStdString());
     return true;
 }
 

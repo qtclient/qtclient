@@ -1,6 +1,6 @@
 #include "housesstorage.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/staticdata.h>
 #include <tibia/assets/things.h>
 
@@ -8,6 +8,9 @@
 #include <QSet>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::cyclopedia {
 
@@ -58,19 +61,18 @@ THousesStorage::THousesStorage(QObject* parent)
 {
     loadStaticHouses();
 
-    m_hooks.emplace_back("g_game", "onGameStart", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         loadStaticHouses();
         m_characterInfo = {};
         m_limits = {};
         Q_EMIT houseInformationChanged();
         Q_EMIT characterHousesInfoChanged();
         Q_EMIT housesLimitsChanged();
-        return std::any{};
     });
 
     // CIP 0x100a549e0 (StaticHouseData): the character's houses, the limits and
     // two house lists the house preview uses.
-    m_hooks.emplace_back("g_game", "onCyclopediaHousesInfo", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaHousesInfo", [this](GameObject*, const Args& args) {
         const auto* excludedUntil = arg<uint32_t>(args, 0);
         const auto* counts = arg<std::vector<uint8_t>>(args, 1);
         if (!excludedUntil || !counts || counts->size() < 6)
@@ -83,7 +85,7 @@ THousesStorage::THousesStorage(QObject* parent)
     });
 
     // CIP 0x100a54b40 (CurrentHouseData) into vslots 0x90 to 0xd0.
-    m_hooks.emplace_back("g_game", "onCyclopediaHouseList", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaHouseList", [this](GameObject*, const Args& args) {
         const auto* list = arg<std::vector<CyclopediaHouseEntry>>(args, 0);
         if (!list || list->empty())
             return std::any{};
@@ -143,7 +145,7 @@ THousesStorage::THousesStorage(QObject* parent)
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onCyclopediaHouseAuctionMessage", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaHouseAuctionMessage", [this](GameObject*, const Args& args) {
         const auto* houseId = arg<uint32_t>(args, 0);
         const auto* action = arg<uint8_t>(args, 1);
         const auto* errorCode = arg<uint8_t>(args, 2);
@@ -156,7 +158,7 @@ THousesStorage::THousesStorage(QObject* parent)
 
 void THousesStorage::loadStaticHouses()
 {
-    const std::vector<CyclopediaHouseType>& houses = g_things.getCyclopediaHouses();
+    const std::vector<CyclopediaHouseType>& houses = tibia::game::cyclopediaHouses();
     if (houses.empty() || houses.size() == m_houses.size())
         return;
     m_houses.clear();
@@ -207,42 +209,42 @@ void THousesStorage::reset()
 void THousesStorage::requestTown(const QString& town)
 {
     const QString name = town == qtTrId("houses_my_houses_town_name") ? QString() : town;
-    g_game.requestSendCyclopediaHouseAuction(Otc::CYCLOPEDIA_HOUSE_TYPE_NONE, 0, 0, 0, name.toStdString());
+    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_NONE, 0, 0, 0, name.toStdString());
 }
 
 void THousesStorage::bid(const quint32 houseId, const quint64 limit)
 {
-    g_game.requestSendCyclopediaHouseAuction(Otc::CYCLOPEDIA_HOUSE_TYPE_BID, houseId, 0, limit);
+    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_BID, houseId, 0, limit);
 }
 
 void THousesStorage::moveOut(const quint32 houseId, const quint32 timestamp)
 {
-    g_game.requestSendCyclopediaHouseAuction(Otc::CYCLOPEDIA_HOUSE_TYPE_MOVEOUT, houseId, timestamp);
+    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_MOVEOUT, houseId, timestamp);
 }
 
 void THousesStorage::transfer(const quint32 houseId, const quint32 timestamp, const QString& newOwner, const quint64 price)
 {
-    g_game.requestSendCyclopediaHouseAuction(Otc::CYCLOPEDIA_HOUSE_TYPE_TRANSFER, houseId, timestamp, price, newOwner.toStdString());
+    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_TRANSFER, houseId, timestamp, price, newOwner.toStdString());
 }
 
 void THousesStorage::cancelMoveOut(const quint32 houseId)
 {
-    g_game.requestSendCyclopediaHouseAuction(Otc::CYCLOPEDIA_HOUSE_TYPE_CANCEL_MOVEOUT, houseId);
+    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_MOVEOUT, houseId);
 }
 
 void THousesStorage::cancelTransfer(const quint32 houseId)
 {
-    g_game.requestSendCyclopediaHouseAuction(Otc::CYCLOPEDIA_HOUSE_TYPE_CANCEL_TRANSFER, houseId);
+    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_TRANSFER, houseId);
 }
 
 void THousesStorage::acceptTransfer(const quint32 houseId)
 {
-    g_game.requestSendCyclopediaHouseAuction(Otc::CYCLOPEDIA_HOUSE_TYPE_ACCEPT_TRANSFER, houseId);
+    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_ACCEPT_TRANSFER, houseId);
 }
 
 void THousesStorage::rejectTransfer(const quint32 houseId)
 {
-    g_game.requestSendCyclopediaHouseAuction(Otc::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER, houseId);
+    tibia::game::requestSendCyclopediaHouseAuction(tibia::client::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER, houseId);
 }
 
 }

@@ -1,8 +1,10 @@
 #include "cooldownstorage.h"
 
 #include "spells/spellinfostorage.h"
+#include "game/tgamenotify.h"
 
 #include <QElapsedTimer>
+#include <tibia/game/gamenotify.h>
 
 namespace tibia::game {
 
@@ -23,25 +25,60 @@ TCooldownStorage::TCooldownStorage(QObject* parent)
     : cip::tibia::game::TCooldownStorage(parent)
 {
     g_instance = this;
-    m_hooks.emplace_back("g_game", "onSpellCooldown", [this](LuaObject*, const Args& args) {
-        m_spells[int(client::gamecore::argInt(args, 0))] = started(client::gamecore::argInt(args, 1));
-        Q_EMIT spellOrSpellGroupCooldownChanged();
+    // Keep-alive hooks for any residual publishers; ProtocolGame prefers apply*.
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpellCooldown", [this](GameObject*, const Args& args) {
+        applySpellCooldown(int(client::gamecore::argInt(args, 0)), client::gamecore::argInt(args, 1));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onSpellGroupCooldown", [this](LuaObject*, const Args& args) {
-        m_groups[int(client::gamecore::argInt(args, 0))] = started(client::gamecore::argInt(args, 1));
-        Q_EMIT spellOrSpellGroupCooldownChanged();
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpellGroupCooldown", [this](GameObject*, const Args& args) {
+        applySpellGroupCooldown(int(client::gamecore::argInt(args, 0)), client::gamecore::argInt(args, 1));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onMultiUseCooldown", [this](LuaObject*, const Args& args) {
-        m_multiUse = started(client::gamecore::argInt(args, 0));
-        Q_EMIT multiUseCooldownChanged();
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onMultiUseCooldown", [this](GameObject*, const Args& args) {
+        applyMultiUseCooldown(client::gamecore::argInt(args, 0));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
-        clear();
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPassiveData", [this](GameObject*, const Args& args) {
+        applyPassiveAbilityData(int(client::gamecore::argInt(args, 0)), client::gamecore::argInt(args, 1),
+                                client::gamecore::argInt(args, 2), client::gamecore::argBool(args, 3));
         return std::any{};
     });
+    connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] { applyGameEnd(); });
+}
+
+void TCooldownStorage::applySpellCooldown(const int spellId, const qint64 durationMs)
+{
+    m_spells[spellId] = started(durationMs);
+    Q_EMIT spellOrSpellGroupCooldownChanged();
+}
+
+void TCooldownStorage::applySpellGroupCooldown(const int groupId, const qint64 durationMs)
+{
+    m_groups[groupId] = started(durationMs);
+    Q_EMIT spellOrSpellGroupCooldownChanged();
+}
+
+void TCooldownStorage::applyMultiUseCooldown(const qint64 durationMs)
+{
+    m_multiUse = started(durationMs);
+    Q_EMIT multiUseCooldownChanged();
+}
+
+void TCooldownStorage::applyPassiveAbilityData(const int abilityId, const qint64 remainingMs, const qint64 totalMs,
+                                             const bool decaying)
+{
+    m_passiveAbilityId = abilityId;
+    m_passiveRemaining = remainingMs;
+    m_passiveDuration = totalMs;
+    m_passiveDecaying = decaying;
+    m_passiveRecvAt = now();
+    Q_EMIT passiveCooldownChanged();
+    Q_EMIT spellOrSpellGroupCooldownChanged();
+}
+
+void TCooldownStorage::applyGameEnd()
+{
+    clear();
 }
 
 TCooldownStorage::~TCooldownStorage()
@@ -90,10 +127,24 @@ TCooldown TCooldownStorage::groupCooldown(const int groupId) const
     return {};
 }
 
+TCooldown TCooldownStorage::passiveCooldown() const
+{
+    if (m_passiveDuration <= 0 && m_passiveRemaining <= 0)
+        return {};
+    qint64 remaining = m_passiveRemaining;
+    if (m_passiveDecaying)
+        remaining = std::max<qint64>(0, m_passiveRemaining - (now() - m_passiveRecvAt));
+    if (remaining <= 0 && m_passiveDuration <= 0)
+        return {};
+    return { std::max(m_passiveDuration, remaining), now() + remaining };
+}
+
 bool TCooldownStorage::anyRunning() const
 {
     const qint64 time = now();
     if (m_multiUse.end > time)
+        return true;
+    if (passiveCooldown().end > time)
         return true;
     for (const auto* map : { &m_spells, &m_groups })
         for (const auto& [id, cooldown] : *map)
@@ -107,8 +158,14 @@ void TCooldownStorage::clear()
     m_spells.clear();
     m_groups.clear();
     m_multiUse = {};
+    m_passiveAbilityId = 0;
+    m_passiveRemaining = 0;
+    m_passiveDuration = 0;
+    m_passiveRecvAt = 0;
+    m_passiveDecaying = false;
     Q_EMIT spellOrSpellGroupCooldownChanged();
     Q_EMIT multiUseCooldownChanged();
+    Q_EMIT passiveCooldownChanged();
 }
 
 }

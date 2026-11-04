@@ -26,10 +26,10 @@
 
 #include "framework/core/timer.h"
 #include <framework/graphics/cachedtext.h>
-#include <framework/luaengine/luaobject.h>
+#include <framework/luaengine/gameobject.h>
 
 // @bindclass
-class AnimatedText final : public LuaObject
+class AnimatedText final : public GameObject
 {
 public:
     AnimatedText();

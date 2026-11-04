@@ -12,8 +12,8 @@ class TActionBarController;
 /// One button of an action bar, or one slot of a multi-action button
 /// (CIP: TActionButtonController; setters FUN_100c8d480 spell, FUN_100c8d810
 /// text, FUN_100c8d6f0 object, FUN_100c8d8c0 passive ability; reset
-/// FUN_100c8d1d0 / FUN_100c8d530). Passive abilities show their CIP icon but
-/// qtclient has no passive ability cooldowns or counters.
+/// FUN_100c8d1d0 / FUN_100c8d530). Passive ability overlays use
+/// TCooldownStorage::passiveCooldown (S 0x5E / onPassiveData).
 class TActionButtonController final : public cip::tibia::gamewindow::TActionButtonController
 {
     Q_OBJECT

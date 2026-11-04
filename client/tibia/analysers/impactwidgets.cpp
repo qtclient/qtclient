@@ -7,7 +7,7 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamenotify.h>
 #include <tibia/world/localplayer.h>
 
 #include <QJsonObject>
@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::analysers {
 
@@ -25,7 +26,7 @@ using A = input::EGameAction;
 
 bool isPremiumPlayer()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 
@@ -198,9 +199,8 @@ TImpactWidgetController::TImpactWidgetController(TImpactStorage* storage, QQuick
         Q_EMIT healingValuesChanged();
         Q_EMIT sessionLengthChanged();
     });
-    m_hooks.emplace_back("object", "onPremiumChange", [this](LuaObject* self, const std::vector<std::any>&) {
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && self == player.get())
-            Q_EMIT optionsChanged();
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const std::vector<std::any>&) {
+        Q_EMIT optionsChanged();
         return std::any{};
     });
     updateTypedModel();
@@ -714,13 +714,13 @@ void TPartyHuntWidgetController::requestConfigurationContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     const bool leader = player && m_storage->leaderId() != 0 && player->getId() == m_storage->leaderId();
     if (leader) {
         connect(menu->addCustomEntry(qtTrId("partyhunt_rest_for_group")), &gamewindow::TContextMenuEntryItem::triggered, this,
-                [] { g_game.sendPartyAnalyzerReset(); });
+                [] { tibia::game::sendPartyAnalyzerReset(); });
         connect(menu->addCustomEntry(qtTrId(m_storage->priceType() == 1 ? "partyhunt_set_loot_type_market" : "partyhunt_set_loot_type_leader")),
-                &gamewindow::TContextMenuEntryItem::triggered, this, [] { g_game.sendPartyAnalyzerPriceType(); });
+                &gamewindow::TContextMenuEntryItem::triggered, this, [] { tibia::game::sendPartyAnalyzerPriceType(); });
     } else {
         connect(menu->addCustomEntry(qtTrId("partyhunt_rest_local")), &gamewindow::TContextMenuEntryItem::triggered, this,
                 [this] { m_storage->clear(); });

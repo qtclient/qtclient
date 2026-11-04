@@ -6,10 +6,10 @@
 #   tools/qt/install-qt.sh --build      compile from third_party/qt5-cip (Qt: build CI)
 #
 # Default resolve order: local prefix → GHCR → GitHub Release → **fail**.
-# Never silently compile Qt — that hid Soft Client:ci GHCR/cache misses for hours.
+# Never silently compile Qt — that hid qtclient Client:ci GHCR/cache misses for hours.
 # Explicit --build (or QT_BUILD=1) is required to compile; PUBLISH=1 then pushes.
 # --pull-only / QT_PULL_ONLY=1: same as default, but wait up to QT_PULL_WAIT_SECS
-# for a concurrent Qt: build to publish (Soft Client:ci / release pack).
+# for a concurrent Qt: build to publish (qtclient Client:ci / release pack).
 #
 # Portable to macOS /bin/bash 3.2: no `local var=()`, no `local -a`, no
 # `read -a` — those parse/`set -u` differently and break after long builds.
@@ -191,7 +191,7 @@ fail_missing_kit() {
   local kit_slug="$1"
   echo "[qt] missing CIP Qt kit '$kit_slug' (local + GHCR + release mirror)" >&2
   echo "[qt]   image ${QT_GHCR_IMAGE}:<sha12>-${kit_slug}" >&2
-  echo "[qt]   Client/pack CI must not compile Qt — run Soft 'Qt: build' (or: $0 --build)." >&2
+  echo "[qt]   Client/pack CI must not compile Qt — run qtclient 'Qt: build' (or: $0 --build)." >&2
   return 1
 }
 
@@ -211,7 +211,7 @@ build_host() {
     return 0
   fi
   if prefix="$(ensure_prefix "$kit_slug" "$dir_name")"; then
-    # Cache/local hit still publishes so Soft Client:ci can pull from GHCR.
+    # Cache/local hit still publishes so qtclient Client:ci can pull from GHCR.
     if [[ "${PUBLISH:-0}" == "1" ]]; then
       bash "$HERE/ghcr-qt.sh" push "$kit_slug"
     fi

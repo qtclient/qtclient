@@ -24,8 +24,12 @@
 
 #include "eventdispatcher.h"
 
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
+
 #include <cstdio>
-#include <iostream>
+#include <mutex>
 
 #ifdef ANDROID
 #include <android/log.h>
@@ -42,6 +46,42 @@ namespace
     bool s_ignoreLogs = false;
 #endif
 
+    std::mutex s_spdlogMutex;
+    std::shared_ptr<spdlog::logger> s_logger;
+    std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> s_consoleSink;
+    std::shared_ptr<spdlog::sinks::basic_file_sink_mt> s_fileSink;
+
+    void ensureSpdlog()
+    {
+        std::lock_guard lock(s_spdlogMutex);
+        if (s_logger)
+            return;
+        s_consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+        s_consoleSink->set_pattern("%v");
+        s_logger = std::make_shared<spdlog::logger>("tibia", s_consoleSink);
+        s_logger->set_level(spdlog::level::trace);
+        s_logger->flush_on(spdlog::level::warn);
+        spdlog::set_default_logger(s_logger);
+    }
+
+    spdlog::level::level_enum toSpdlogLevel(const Fw::LogLevel level)
+    {
+        switch (level) {
+            case Fw::LogFine:
+            case Fw::LogDebug:
+                return spdlog::level::debug;
+            case Fw::LogInfo:
+                return spdlog::level::info;
+            case Fw::LogWarning:
+                return spdlog::level::warn;
+            case Fw::LogError:
+                return spdlog::level::err;
+            case Fw::LogFatal:
+                return spdlog::level::critical;
+            default:
+                return spdlog::level::info;
+        }
+    }
 }
 
 void Logger::log(Fw::LogLevel level, const std::string_view message)
@@ -67,11 +107,13 @@ void Logger::log(Fw::LogLevel level, const std::string_view message)
     std::string outmsg{ s_logPrefixes[static_cast<std::size_t>(level)] };
     outmsg.append(message);
 
+    ensureSpdlog();
 #ifdef ANDROID
     __android_log_print(ANDROID_LOG_INFO, "QtClientMobile", "%s", outmsg.c_str());
 #endif // ANDROID
-    std::cerr << outmsg << std::endl;
+    s_logger->log(toSpdlogLevel(level), outmsg);
 
+    // Keep optional legacy file stream when set without going through spdlog file sink.
     if (m_outFile.good()) {
         m_outFile << outmsg << std::endl;
         m_outFile.flush();
@@ -83,7 +125,6 @@ void Logger::log(Fw::LogLevel level, const std::string_view message)
         m_logMessages.pop_front();
 
     if (m_onLog) {
-        // schedule log callback, because this callback can run lua code that may affect the current state
         tibia::schedule::post([this, level, outmsg, now] {
             if (m_onLog)
                 m_onLog(level, outmsg, now);
@@ -139,11 +180,25 @@ void Logger::setLogFile(const std::string_view file)
         return;
     }
 
+    ensureSpdlog();
+    try {
+        auto fileSink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(std::string{ file }, true);
+        fileSink->set_pattern("%v");
+        std::lock_guard lock(s_spdlogMutex);
+        s_fileSink = std::move(fileSink);
+        s_logger->sinks().clear();
+        s_logger->sinks().push_back(s_consoleSink);
+        s_logger->sinks().push_back(s_fileSink);
+    } catch (const spdlog::spdlog_ex&) {
+        g_logger.error("Unable to save log to '{}'", file);
+        return;
+    }
+
     m_outFile.close();
     m_outFile.open(stdext::utf8_to_latin1(file), std::ios::out | std::ios::app);
     if (!m_outFile.is_open() || !m_outFile.good()) {
-        g_logger.error("Unable to save log to '{}'", file);
-        return;
+        // spdlog file sink already owns the file; legacy stream is optional.
+        m_outFile.close();
     }
     m_outFile.flush();
 }

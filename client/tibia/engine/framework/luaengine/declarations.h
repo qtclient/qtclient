@@ -28,5 +28,5 @@
 #include <memory>
 #endif
 
-class LuaObject;
-using LuaObjectPtr = std::shared_ptr<LuaObject>;
+class GameObject;
+using GameObjectPtr = std::shared_ptr<GameObject>;

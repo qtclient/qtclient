@@ -10,12 +10,14 @@
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
-#include <client/item.h>
+#include "container/containerciptypes.h"
+
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 
 #include <QCoreApplication>
 #include <QKeyEvent>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -45,7 +47,7 @@ QString buttonName(const int actionBarId, const int buttonId)
 
 ThingTypePtr itemType(const int objectId)
 {
-    return objectId > 0 ? g_things.getThingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
+    return objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
 }
 
 bool isEquipable(const ThingTypePtr& type)
@@ -287,9 +289,19 @@ void TAssignObjectActionDialogController::startTargetSelection()
             cursor->setTargetSelection(false);
         if (!self)
             return;
-        if (target && target->object && target->object->isItem()) {
-            const ItemPtr item = target->object->static_self_cast<Item>();
-            self->setObject(item->getId(), item->getTier());
+        if (target && target->objectClientId) {
+            uint8_t tier = 0;
+            if (target->position.x == UINT16_MAX) {
+                if (target->position.y & 0x40) {
+                    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+                        if (const container::TStoredContainer* row = storage->containerAt(target->position.y & 0x3F))
+                            tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + target->stackPosition).tier;
+                    }
+                } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+                    tier = inventory->slotAt(target->position.y).tier;
+                }
+            }
+            self->setObject(target->objectClientId, tier);
         }
         self->dialog()->show();
     });

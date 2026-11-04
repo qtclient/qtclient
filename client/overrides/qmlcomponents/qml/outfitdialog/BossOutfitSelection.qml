@@ -1,5 +1,5 @@
 // cip-base: 5ab1b9b8bee5746bbcc2de4650fd72fe9cd3d2bd0e0947216d5d792d0c5678da
-// Soft: outfitID 0 must leave the list unselected (CIP defaulted to index 0,
+// qtclient: outfitID 0 must leave the list unselected (CIP defaulted to index 0,
 // which made empty Vigour/Tenacity configure look like the first race — e.g. Mushroom).
 import QtQuick
 import QtQuick.Layouts

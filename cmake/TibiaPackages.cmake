@@ -1,18 +1,14 @@
 # C++ libraries from vcpkg (see vcpkg.json). Qt comes from `make qt`.
 # Provides INTERFACE target tibia_thirdparty for engine/tibia link lines.
+# CIP prefers Qt/stdlib for JSON, UUID, threads, hashing, UTF-8, and formatting.
 
 find_package(ZLIB REQUIRED)
-find_package(PNG REQUIRED)
 find_package(LibLZMA REQUIRED)
-find_package(fmt CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(utf8cpp CONFIG REQUIRED)
-find_package(stduuid CONFIG REQUIRED)
 find_package(Threads REQUIRED)
-
-# Header-only ports without (or with minimal) imported targets.
-find_path(PHMAP_INCLUDE_DIR NAMES parallel_hashmap/phmap.h REQUIRED)
-find_path(BS_THREAD_POOL_INCLUDE_DIR NAMES BS_thread_pool.hpp REQUIRED)
+# CipSoft tip ships spdlog (+ private fmt). qtclient Logger stays the public façade.
+find_package(spdlog CONFIG REQUIRED)
+find_package(Ogg CONFIG REQUIRED)
+find_package(Vorbis CONFIG REQUIRED)
 
 find_package(Protobuf CONFIG REQUIRED)
 if(NOT TARGET protobuf::libprotobuf AND TARGET protobuf::protobuf)
@@ -32,25 +28,11 @@ endif()
 add_library(tibia_thirdparty INTERFACE)
 target_link_libraries(tibia_thirdparty INTERFACE
   ZLIB::ZLIB
-  PNG::PNG
   LibLZMA::LibLZMA
-  fmt::fmt
-  nlohmann_json::nlohmann_json
-  utf8cpp::utf8cpp
   Threads::Threads
+  spdlog::spdlog
+  Ogg::ogg
+  Vorbis::vorbis
+  Vorbis::vorbisfile
 )
-if(TARGET stduuid)
-  target_link_libraries(tibia_thirdparty INTERFACE stduuid)
-elseif(TARGET stduuid::stduuid)
-  target_link_libraries(tibia_thirdparty INTERFACE stduuid::stduuid)
-endif()
-target_include_directories(tibia_thirdparty INTERFACE
-  "${PHMAP_INCLUDE_DIR}"
-  "${BS_THREAD_POOL_INCLUDE_DIR}"
-)
-# code uses #include <uuid.h>; vcpkg installs stduuid/uuid.h
-find_path(_STDUUID_UUID_DIR NAMES uuid.h PATH_SUFFIXES stduuid)
-if(_STDUUID_UUID_DIR)
-  target_include_directories(tibia_thirdparty INTERFACE "${_STDUUID_UUID_DIR}")
-endif()
 target_compile_definitions(tibia_thirdparty INTERFACE TIBIA_NO_OPENSSL)

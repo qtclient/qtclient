@@ -14,7 +14,6 @@
 #include <vector>
 
 class Effect;
-class Missile;
 
 namespace tibia::effects {
 
@@ -34,22 +33,22 @@ public:
     bool isFinished(qint64 nowMs) const;
 };
 
-/// CIP effects::TEffectStorage — field effects + missiles the world map holds this frame.
+/// CIP effects::TEffectStorage — field effects the world map holds this frame.
+/// Missiles are floor appearance-only (`Map::missileAppearances`); trackMissile retired.
+/// Field magic effects are tile `m_effectAppearances` (`TEffectInstance`); Effect Thing play path retired.
 class TEffectStorage final : public cip::tibia::effects::TEffectStorage
 {
 public:
     explicit TEffectStorage(QObject* parent = nullptr);
 
     void clear();
+    /// Keep-alive bridge only — play path uses `TWorldMapField::effectAppearances()`.
     void trackFieldEffect(const EffectPtr& effect);
-    void trackMissile(const MissilePtr& missile);
 
     const std::vector<EffectPtr>& fieldEffects() const { return m_fieldEffects; }
-    const std::vector<MissilePtr>& missiles() const { return m_missiles; }
 
 private:
     std::vector<EffectPtr> m_fieldEffects;
-    std::vector<MissilePtr> m_missiles;
 };
 
 class TEffectGameActionHandler final : public cip::tibia::effects::TEffectGameActionHandler

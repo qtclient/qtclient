@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Vendor the official Tibia client's UI and API into apps/qtclient/upstream.
+"""Vendor the official Tibia client's UI and API into apps/qtclient/client/upstream.
 
   sync.py --tibia /path/to/Tibia.app [--msgmap msgmap.jsonl] [--things-dir DIR]
   sync.py --check
@@ -43,7 +43,7 @@ ROOT = HERE.parents[1]
 RE_TOOLS = HERE.parent / "re"
 if not (RE_TOOLS / "qt_rcc.py").is_file():
     RE_TOOLS = ROOT / "tools/re"
-# Monorepo: apps/qtclient/upstream. Standalone qtclient: upstream/ at repo root.
+# Monorepo: apps/qtclient/client/upstream. Standalone qtclient: client/upstream.
 _OTC = ROOT / "apps/qtclient"
 if (_OTC / "client/tibia").is_dir():
     DEFAULT_OUT = _OTC / "client/upstream"

@@ -1,7 +1,6 @@
 #include "gameconfig.h"
 
 #include "framework/core/configmanager.h"
-#include "mapviewport.h"
 
 GameConfig g_gameConfig;
 
@@ -13,9 +12,10 @@ void GameConfig::init()
     m_drawTyping = false;
     m_typingIcon = "/images/game/console/typing";
 
-    m_visibleSqm = 12;
-    m_mapViewPort = MapViewport::maxAwareViewPort(m_visibleSqm);
-    m_extendedViewUI = true;
+    // Stock Crystal / CIP-style aware range (client viewport radius 8×6).
+    m_visibleSqm = 0;
+    m_mapViewPort = { 8, 6 };
+    m_extendedViewUI = false;
     m_mapMaxZ = 15;
     m_mapSeaFloor = 7;
     m_mapUndergroundFloorRange = 8;

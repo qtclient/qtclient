@@ -3,11 +3,12 @@
 #include "renderer/lightmodel.h"
 
 #include <client/gameconfig.h>
-#include <tibia/world/tile.h>
+#include "worldmap/worldmapfield.h"
 #include <tibia/world/world.h>
 
 #include <algorithm>
 #include <array>
+#include "worldmap/worldmapstorage.h"
 
 namespace tibia::renderer {
 
@@ -21,19 +22,19 @@ uint8_t TRenderVolumeProvider::firstVisibleFloor(const Position& camera)
     static constexpr std::array<std::array<int, 2>, 5> Plus{ { { 0, 0 }, { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } } };
     for (const auto& [dx, dy] : Plus) {
         const Position field = camera.translated(dx, dy);
-        if (const TilePtr& tile = tibia::world::fields().getTile(field);
+        if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(field);
             tile && qmlcomponents::light::fieldFlags(*tile).unsight)
             continue;
         for (int floor = z; floor > 0 && floor > first; --floor) {
             const int up = z - floor + 1;
-            if (const TilePtr& tile = tibia::world::fields().getTile(Position(field.x + up, field.y + up, floor - 1))) {
+            if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(Position(field.x + up, field.y + up, floor - 1))) {
                 const qmlcomponents::light::FieldFlags flags = qmlcomponents::light::fieldFlags(*tile);
                 if ((flags.bank || flags.bottom) && !flags.dontHide) {
                     first = floor;
                     break;
                 }
             }
-            if (const TilePtr& tile = tibia::world::fields().getTile(Position(field.x, field.y, floor - 1))) {
+            if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(Position(field.x, field.y, floor - 1))) {
                 const qmlcomponents::light::FieldFlags flags = qmlcomponents::light::fieldFlags(*tile);
                 if (flags.bank && !flags.dontHide) {
                     first = floor;

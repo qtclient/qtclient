@@ -85,7 +85,7 @@ private:
 
     // Map
     Size m_mapViewPort{ 8,6 };
-    int m_visibleSqm{ 0 }; // 0 = use legacy viewport; product sets visible-sqm
+    int m_visibleSqm{ 0 }; // 0 = legacy Crystal/CIP aware range (8×6)
     uint8_t m_mapMaxZ{ 15 };
     uint8_t m_mapSeaFloor{ 7 };
     uint8_t m_mapUndergroundFloorRange{ 2 };

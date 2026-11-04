@@ -25,10 +25,11 @@
 #include "client/outfit.h"
 #include "client/declarations.h"
 #include <framework/core/timer.h>
-#include <framework/luaengine/luaobject.h>
 #include <framework/graphics/declarations.h>
 
-class Paperdoll : public LuaObject
+#include <memory>
+
+class Paperdoll : public std::enable_shared_from_this<Paperdoll>
 {
 public:
     void draw(const Point& /*dest*/, uint16_t animationPhase, bool mount, bool isOnTop, bool drawThings, const Color& color, LightSink* = nullptr);
@@ -62,10 +63,10 @@ public:
 
     void setOnTop(bool onTop);
     void setOffset(int16_t x, int16_t y);
-    void setOnTopByDir(Otc::Direction direction, bool onTop);
+    void setOnTopByDir(tibia::client::Direction direction, bool onTop);
 
     void setMountOffset(int16_t x, int16_t y);
-    void setMountOnTopByDir(Otc::Direction direction, bool onTop);
+    void setMountOnTopByDir(tibia::client::Direction direction, bool onTop);
 
     void setUseMountPattern(bool b) { m_useMountPattern = b; }
     bool isUsingMountPattern() { return m_useMountPattern; }
@@ -73,8 +74,8 @@ public:
     void setShowOnMount(bool b) { m_showOnMount = b; }
     bool isShowingOnMount() { return m_showOnMount; }
 
-    void setDirOffset(Otc::Direction direction, int8_t x, int8_t y, bool onTop = true) { m_offsetDirections[0][direction] = { onTop, {x, y} }; }
-    void setMountDirOffset(Otc::Direction direction, int8_t x, int8_t y, bool onTop = true) { m_offsetDirections[1][direction] = { onTop, {x, y} }; }
+    void setDirOffset(tibia::client::Direction direction, int8_t x, int8_t y, bool onTop = true) { m_offsetDirections[0][direction] = { onTop, {x, y} }; }
+    void setMountDirOffset(tibia::client::Direction direction, int8_t x, int8_t y, bool onTop = true) { m_offsetDirections[1][direction] = { onTop, {x, y} }; }
 
     void setShader(const std::string_view name);
     void setCanDrawOnUI(bool canDraw) { m_canDrawOnUI = canDraw; }
@@ -100,20 +101,21 @@ public:
     /// The creature pass draws this layer when it matches `onTop` (and the mount, when mounted).
     bool shows(bool mount, bool onTop) const
     {
-        if (!m_thingType || (mount && !m_showOnMount) || m_direction > Otc::West)
+        if (!m_thingType || (mount && !m_showOnMount) || m_direction > tibia::client::West)
             return false;
         const int layer = mount && m_useMountPattern ? 1 : 0;
         return m_offsetDirections[layer][m_direction].onTop == onTop;
     }
     Point layerOffset(bool mount) const
     {
-        if (m_direction > Otc::West)
+        if (m_direction > tibia::client::West)
             return {};
         const int layer = mount && m_useMountPattern ? 1 : 0;
         return m_offsetDirections[layer][m_direction].offset;
     }
     ThingType* thingType() const { return m_thingType; }
-    Otc::Direction direction() const { return m_direction; }
+    tibia::client::Direction direction() const { return m_direction; }
+    void setDirection(tibia::client::Direction direction) { m_direction = direction; }
     bool onlyAddon() const { return m_onlyAddon; }
     uint32_t addons() const { return m_addons; }
     uint32_t packedColors() const
@@ -161,9 +163,9 @@ private:
     float m_sizeFactor{ 1.0 };
     Timer m_animationTimer;
 
-    Otc::Direction m_direction{ Otc::North };
+    tibia::client::Direction m_direction{ tibia::client::North };
 
-    std::array<DirControl, Otc::Direction::West + 1> m_offsetDirections[2];
+    std::array<DirControl, tibia::client::Direction::West + 1> m_offsetDirections[2];
 
     std::string m_shader;
 

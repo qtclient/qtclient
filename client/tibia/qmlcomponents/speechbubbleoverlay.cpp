@@ -277,31 +277,21 @@ void TSpeechBubbleOverlayQuickItem::layout()
         controller->desiredPosition = QPoint(static_cast<int>(std::floor(x)), static_cast<int>(std::floor(y)));
     };
     const auto size = [](TSpeechBubbleController* controller) { return QSizeF(controller->calculatedSize()); };
-    // Classic: CIP bottom inset only. HUD: clear above SELL/NPC (ServicesBar) when
-    // those pills are up; otherwise clear the automation strip.
+    // Classic: CIP bottom inset only. Packs opt in via cipStatusTextInset on HUD chrome.
     double textH = size(m_fixed[Status]).height();
     if (m_fixed[Status]->item)
         textH = std::max(textH, m_fixed[Status]->item->height());
     double bottom = m_margin + m_statusBottomMargin;
     if (QQuickItem* host = parentItem()) {
-        const auto named = [](QQuickItem* parent, const char* objectName) -> QQuickItem* {
-            for (QQuickItem* child : parent->childItems()) {
-                if (child->objectName() == QLatin1String(objectName))
-                    return child;
-            }
-            return nullptr;
-        };
-        QQuickItem* pills = named(host, "modServicesBar");
-        if (pills && pills->isVisible() && pills->height() > 0) {
-            const double pillsTop = pills->mapToItem(this, QPointF(0, 0)).y();
-            if (pillsTop >= 0)
-                bottom = std::max(bottom, h - pillsTop + 12.0);
-        } else if (QQuickItem* automation = named(host, "modAutomationBar")) {
-            if (automation->isVisible() && automation->height() > 0) {
-                const double autoTop = automation->mapToItem(this, QPointF(0, 0)).y();
-                if (autoTop >= 0)
-                    bottom = std::max(bottom, h - autoTop + 12.0);
-            }
+        for (QQuickItem* child : host->childItems()) {
+            if (!child->isVisible() || child->height() <= 0)
+                continue;
+            const QVariant inset = child->property("cipStatusTextInset");
+            if (!inset.isValid() || !inset.toBool())
+                continue;
+            const double childTop = child->mapToItem(this, QPointF(0, 0)).y();
+            if (childTop >= 0)
+                bottom = std::max(bottom, h - childTop + 12.0);
         }
     }
     place(m_fixed[Status], w * 0.5 - size(m_fixed[Status]).width() * 0.5, h - textH - bottom);

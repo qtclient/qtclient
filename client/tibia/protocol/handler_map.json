@@ -981,7 +981,7 @@
   "dir": "server",
   "opcode": 10,
   "name": "PendingStateEntered",
-  "call": "if (g_game.getFeature(Otc::GameLoginPending)) {\n                            parsePendingGame(msg);\n                        } else {\n                            parseLogin(msg);\n                        }\n"
+  "call": "if (tibia::game::cipFeature(tibia::client::GameLoginPending)) {\n                            parsePendingGame(msg);\n                        } else {\n                            parseLogin(msg);\n                        }\n"
  },
  {
   "dir": "server",
@@ -1053,13 +1053,13 @@
   "dir": "server",
   "opcode": 29,
   "name": "Ping",
-  "call": "if (((opcode == Proto::GameServerPing) && (g_game.getFeature(Otc::GameClientPing))) ||\n                            ((opcode == Proto::GameServerPingBack) && !g_game.getFeature(Otc::GameClientPing))) {\n                            parsePingBack(msg);\n                        } else {\n                            parsePing(msg);\n                        }\n"
+  "call": "if (((opcode == Proto::GameServerPing) && (tibia::game::cipFeature(tibia::client::GameClientPing))) ||\n                            ((opcode == Proto::GameServerPingBack) && !tibia::game::cipFeature(tibia::client::GameClientPing))) {\n                            parsePingBack(msg);\n                        } else {\n                            parsePing(msg);\n                        }\n"
  },
  {
   "dir": "server",
   "opcode": 30,
   "name": "PingBack",
-  "call": "if (((opcode == Proto::GameServerPing) && (g_game.getFeature(Otc::GameClientPing))) ||\n                            ((opcode == Proto::GameServerPingBack) && !g_game.getFeature(Otc::GameClientPing))) {\n                            parsePingBack(msg);\n                        } else {\n                            parsePing(msg);\n                        }\n"
+  "call": "if (((opcode == Proto::GameServerPing) && (tibia::game::cipFeature(tibia::client::GameClientPing))) ||\n                            ((opcode == Proto::GameServerPingBack) && !tibia::game::cipFeature(tibia::client::GameClientPing))) {\n                            parsePingBack(msg);\n                        } else {\n                            parsePing(msg);\n                        }\n"
  },
  {
   "dir": "server",
@@ -1371,7 +1371,7 @@
   "dir": "server",
   "opcode": 133,
   "name": "SoundTrigger",
-  "call": "if (g_game.getFeature(Otc::GameAnthem)) {\n                            parseAnthem(msg);\n                        } else {\n                            parseDistanceMissile(msg);\n                        }\n"
+  "call": "if (tibia::game::cipFeature(tibia::client::GameAnthem)) {\n                            parseAnthem(msg);\n                        } else {\n                            parseDistanceMissile(msg);\n                        }\n"
  },
  {
   "dir": "server",
@@ -1779,7 +1779,7 @@
   "dir": "server",
   "opcode": 201,
   "name": "ExivaSuppressed",
-  "call": "g_gameEvents.callGlobalField(\"g_game\", \"onExivaSuppressed\");\n"
+  "call": "tibia::game::notify(\"onExivaSuppressed\");\n"
  },
  {
   "dir": "server",
@@ -1953,7 +1953,7 @@
   "dir": "server",
   "opcode": 230,
   "name": "BosstiaryHighlight",
-  "call": "// || Proto::GameServerSendBosstiaryEntryChanged\n                        if (g_game.getFeature(Otc::GameBosstiary)) {\n                            parseBosstiaryEntryChanged(msg);\n                        } else {\n                            parsePreyFreeRerolls(msg);\n                        }\n"
+  "call": "// || Proto::GameServerSendBosstiaryEntryChanged\n                        if (tibia::game::cipFeature(tibia::client::GameBosstiary)) {\n                            parseBosstiaryEntryChanged(msg);\n                        } else {\n                            parsePreyFreeRerolls(msg);\n                        }\n"
  },
  {
   "dir": "server",
@@ -2055,7 +2055,7 @@
   "dir": "server",
   "opcode": 247,
   "name": "MarketLeave",
-  "call": "g_gameEvents.callGlobalField(\"g_game\", \"onMarketLeave\");\n"
+  "call": "tibia::game::notify(\"onMarketLeave\");\n"
  },
  {
   "dir": "server",

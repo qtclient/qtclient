@@ -5,12 +5,14 @@
 #include "minimap/minimapmarkerstorage.h"
 #include "minimap/minimaptilestorage.h"
 #include "minimap/minimapworldfeed.h"
+#include "worldmap/coordinates.h"
 
 #include <cip_gen.h>
 
 #include <memory>
 
 namespace tibia::worldmap {
+class TWorldMapStorage;
 class TWorldmapProtocolMessageHandler;
 }
 
@@ -32,6 +34,8 @@ public:
 
     TMinimapTileStorage* tileStorage() { return &m_storage; }
     TMinimapMarkerStorage* markerStorage() { return m_markers.get(); }
+    /// CIP: consume TWorldMapStorage signals (not MapObserver) for tile/volume.
+    void setWorldMapStorage(worldmap::TWorldMapStorage* storage);
     void setProtocolHandler(worldmap::TWorldmapProtocolMessageHandler* handler);
 
     static QString minimapDir();
@@ -42,8 +46,12 @@ public:
     void loadDefaultTilesFromResources();
 
 private:
+    void onWorldMapCoordinateChanged(worldmap::TWorldMapCoordinate coordinate);
+    void onStoredVolumeChanged(worldmap::TShearedWorldMapCuboid volume);
+
     QString m_defaultTilesDir;
     TMinimapTileStorage m_storage;
+    worldmap::TWorldMapStorage* m_worldMapStorage = nullptr;
     TMinimapDiskIOAsync m_diskIO;
     TMinimapDiskIOMemoryOnly m_diskIOMemoryOnly;
     TMinimapDiskIOSynchronous m_diskIOSynchronous;

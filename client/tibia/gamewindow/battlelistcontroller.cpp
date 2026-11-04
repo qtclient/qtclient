@@ -1,6 +1,7 @@
 #include "battlelistcontroller.h"
 
 #include "config/sidebaroptions.h"
+#include "creatures/creaturestorage.h"
 #include "creatures/creaturesciptypes.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
@@ -12,8 +13,6 @@
 #include "renderer/worldmaprenderprovider.h"
 #include "worldmap/worldmapgameactionprovider.h"
 
-#include <tibia/world/creature.h>
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/world/map.h>
 #include <client/outfit.h>
@@ -26,6 +25,8 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -73,15 +74,23 @@ constexpr const char* SortMenuEntries[] = {
     "battlelist_configure_menuentry_sortby_name_ascending",      "battlelist_configure_menuentry_sortby_name_descending",
 };
 
+using TCreature = creatures::TCreature;
+using TCreaturePtr = std::shared_ptr<TCreature>;
+
 /// The party shields of members and leaders (3..10), as in the game action provider.
-bool isPartyMember(const CreaturePtr& creature)
+bool isPartyMember(const TCreature& creature)
 {
-    const uint8_t shield = creature->getShield();
+    const uint8_t shield = creature.shield();
     return shield >= 3 && shield <= 10;
 }
 
 /// The protocol's vocation without its promotion.
-int baseVocation(const CreaturePtr& creature) { return creature->getVocation() % 10; }
+int baseVocation(const TCreature& creature) { return creature.vocation() % 10; }
+
+bool isMonster(const TCreature& creature)
+{
+    return !creature.isPlayer() && !creature.isNpc();
+}
 
 QColor colorOf(const Color& c) { return QColor(c.r(), c.g(), c.b()); }
 
@@ -135,10 +144,10 @@ QJsonObject serializeOptions(const BattleListOptions& o)
 }
 
 /// CIP's filter keys on one creature (TBattleListGameActionHandler::filterDrawCommands).
-bool hiddenByFilter(const CreaturePtr& creature, const std::set<Filter>& filters)
+bool hiddenByFilter(const TCreature& creature, const std::set<Filter>& filters)
 {
     const auto has = [&filters](const Filter f) { return filters.contains(f); };
-    const bool player = creature->isPlayer();
+    const bool player = creature.isPlayer();
     if (player) {
         if (has(Filter::HIDE_PLAYERS))
             return true;
@@ -150,19 +159,19 @@ bool hiddenByFilter(const CreaturePtr& creature, const std::set<Filter>& filters
             case 5: if (has(Filter::HIDE_MONKS)) return true; break;
             default: break;
         }
-        if (has(Filter::HIDE_NON_SKULLED_PLAYERS) && creature->getSkull() == 0)
+        if (has(Filter::HIDE_NON_SKULLED_PLAYERS) && creature.skull() == 0)
             return true;
         if (has(Filter::HIDE_PARTY_MEMBERS) && isPartyMember(creature))
             return true;
-        if (has(Filter::HIDE_MEMBERS_OF_OWN_GUILD) && creature->getEmblem() == 1)
+        if (has(Filter::HIDE_MEMBERS_OF_OWN_GUILD) && creature.emblem() == 1)
             return true;
     }
-    if (creature->isNpc() && has(Filter::HIDE_NPCS))
+    if (creature.isNpc() && has(Filter::HIDE_NPCS))
         return true;
-    const uint8_t type = creature->getType();
+    const uint8_t type = creature.creatureType();
     if ((type == Proto::CreatureTypeSummonOwn || type == Proto::CreatureTypeSummonOther) && has(Filter::HIDE_PLAYER_SUMMONS))
         return true;
-    if (creature->isMonster() && type != Proto::CreatureTypeSummonOwn && type != Proto::CreatureTypeSummonOther && has(Filter::HIDE_MONSTERS))
+    if (isMonster(creature) && type != Proto::CreatureTypeSummonOwn && type != Proto::CreatureTypeSummonOther && has(Filter::HIDE_MONSTERS))
         return true;
     return false;
 }
@@ -215,7 +224,7 @@ QVariant TBattleListDataModel::data(const QModelIndex& index, const int role) co
         case 0x10e: return e.detailColor;
         case 0x10f: return e.firstAddOn;
         case 0x110: return e.secondAddOn;
-        case 0x111: return 0;
+        case 0x111: return e.tutorialMarkerId;
         case 0x112: return e.visibleOrder;
         case 0x113: return e.distance;
         case 0x114: return e.temporarySelected;
@@ -322,19 +331,20 @@ bool TBattleListController::onAtMouseCursor(const input::TGameAction& action)
         return false;
     if (action.type == A::USE_AT_MOUSECURSOR) {
         auto use = input::mutableClone(*input::makeAction(A::USE_ON_CREATURE));
-        use->object = action.object;
+        use->objectClientId = action.objectClientId;
         use->position = action.position;
         use->stackPosition = action.stackPosition;
         use->creatureId = target->creatureId;
         input::publish(use);
         return true;
     }
-    const CreaturePtr creature = g_map.getCreatureById(target->creatureId);
+    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+    const TCreaturePtr creature = storage ? storage->creatureAt(target->creatureId) : nullptr;
     if (!creature || action.text.isEmpty())
         return false;
-    g_game.setNextTalkAim(creature->getPosition());
-    g_game.setNextTalkAimMode(2);
-    g_game.talkChannel(static_cast<Otc::MessageMode>(action.talkMode), 0, action.text.toStdString());
+    tibia::game::setNextTalkAim(creature->position());
+    tibia::game::setNextTalkAimMode(2);
+    tibia::game::talkChannel(static_cast<tibia::client::MessageMode>(action.talkMode), 0, action.text.toStdString());
     return true;
 }
 
@@ -534,6 +544,10 @@ void TBattleListController::onCreatureTargetSelected(const int creatureId)
 
 // ---------------------------------------------------------------------------
 
+namespace {
+TBattleListControllerStorage* g_battleListStorage = nullptr;
+}
+
 TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
                                                            QObject* parent)
     : cip::tibia::gamewindow::TBattleListControllerStorage(parent)
@@ -541,6 +555,7 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
 {
+    g_battleListStorage = this;
     m_updateTimer.setInterval(UpdateIntervalMs);
     connect(&m_updateTimer, &QTimer::timeout, this, &TBattleListControllerStorage::refresh);
 
@@ -564,7 +579,7 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     input::setActionHandler(A::TEMPORARY_SELECT_CREATURE, [this](const input::TGameAction& action) {
         setTemporarySelectedCreature(action.creatureId);
         if (m_worldMapRenderProvider)
-            m_worldMapRenderProvider->setMouseTarget(action.creatureId ? g_map.getCreatureById(action.creatureId) : nullptr);
+            m_worldMapRenderProvider->setMouseTargetCreatureId(action.creatureId);
         return true;
     });
     m_gameActionHandler = new TBattleListGameActionHandler(this, this);
@@ -583,24 +598,31 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
 
     // Party list CipSoft publishes — creature fields are already updated; refresh rows.
     using Args = std::vector<std::any>;
-    const auto refreshParty = [this](LuaObject*, const Args&) {
+    const auto refreshParty = [this](GameObject*, const Args&) {
         triggerUpdate();
         return std::any{};
     };
-    m_hooks.emplace_back("g_game", "onPartyLeft", refreshParty);
-    m_hooks.emplace_back("g_game", "onPartyMemberHealthChange", refreshParty);
-    m_hooks.emplace_back("g_game", "onPartyMemberManaChange", refreshParty);
-    m_hooks.emplace_back("g_game", "onPartyMemberInfoChange", refreshParty);
-    m_hooks.emplace_back("g_game", "onPartyMemberShowStatusChange", refreshParty);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyLeft", refreshParty);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyMemberHealthChange", refreshParty);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyMemberManaChange", refreshParty);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyMemberInfoChange", refreshParty);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyMemberShowStatusChange", refreshParty);
 }
 
 TBattleListControllerStorage::~TBattleListControllerStorage()
 {
+    if (g_battleListStorage == this)
+        g_battleListStorage = nullptr;
     for (const A type : { A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, A::MAKE_BATTLE_LIST_PRIMARY, A::TEMPORARY_SELECT_CREATURE,
                           A::ATTACK_FIRST_TARGET, A::ATTACK_NEXT_TARGET, A::ATTACK_PREVIOUS_TARGET })
         input::setActionHandler(type, nullptr);
     for (auto& [id, controller] : m_controllers)
         delete controller;
+}
+
+TBattleListControllerStorage* TBattleListControllerStorage::instance()
+{
+    return g_battleListStorage;
 }
 
 void TBattleListControllerStorage::setSidebarOptions(config::TSidebarOptions* options)
@@ -686,7 +708,7 @@ void TBattleListControllerStorage::removeOptions(const int battleListId)
 
 bool TBattleListControllerStorage::hasPremium() const
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 
@@ -830,20 +852,22 @@ void TBattleListControllerStorage::onLoginRampUpFinished()
     refresh();
 }
 
-std::vector<CreaturePtr> TBattleListControllerStorage::creatures(const BattleListOptions& options) const
+std::vector<TCreaturePtr> TBattleListControllerStorage::creatures(const BattleListOptions& options) const
 {
-    std::vector<CreaturePtr> result;
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
-    if (!player)
+    std::vector<TCreaturePtr> result;
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
+    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+    if (!player || !storage)
         return result;
     const Position center = player->getPosition();
-    const AwareRange range = g_map.getAwareRange();
-    for (const CreaturePtr& creature : g_map.getSpectators(center, true)) {
-        if (!creature || creature->isRemoved())
+    const auto ar = tibia::game::awareRange();
+    const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
+    for (const TCreaturePtr& creature : storage->spectatorsNear(center, true, range.left, range.right, range.top, range.bottom)) {
+        if (!creature)
             continue;
-        const Position pos = creature->getPosition();
+        const Position pos = creature->position();
         if (options.isPartyView) {
-            if (!creature->isLocalPlayer() && !isPartyMember(creature))
+            if (!creature->isLocalPlayer() && !isPartyMember(*creature))
                 continue;
         } else {
             if (creature->isLocalPlayer() || pos.z != center.z)
@@ -851,20 +875,20 @@ std::vector<CreaturePtr> TBattleListControllerStorage::creatures(const BattleLis
             if (std::abs(pos.x - center.x) >= range.left || std::abs(pos.y - center.y) >= range.top)
                 continue;
         }
-        if (hiddenByFilter(creature, options.filters))
+        if (hiddenByFilter(*creature, options.filters))
             continue;
         result.push_back(creature);
     }
 
-    const auto order = [this](const CreaturePtr& c) {
-        const auto it = m_visibleOrder.find(c->getId());
+    const auto order = [this](const TCreaturePtr& c) {
+        const auto it = m_visibleOrder.find(c->creatureId());
         return it != m_visibleOrder.end() ? it->second : 0u;
     };
-    const auto distance = [&center](const CreaturePtr& c) {
-        const Position p = c->getPosition();
+    const auto distance = [&center](const TCreaturePtr& c) {
+        const Position& p = c->position();
         return std::max(std::abs(p.x - center.x), std::abs(p.y - center.y));
     };
-    const auto compare = [&](const CreaturePtr& a, const CreaturePtr& b) {
+    const auto compare = [&](const TCreaturePtr& a, const TCreaturePtr& b) {
         for (const BattleListOptions::Sort sort : options.sortOrder) {
             switch (sort) {
                 case BattleListOptions::ByAgeAscending:
@@ -879,57 +903,58 @@ std::vector<CreaturePtr> TBattleListControllerStorage::creatures(const BattleLis
                     break;
                 case BattleListOptions::ByHitpointsAscending:
                 case BattleListOptions::ByHitpointsDescending:
-                    if (a->getHealthPercent() != b->getHealthPercent())
-                        return (a->getHealthPercent() < b->getHealthPercent()) == (sort == BattleListOptions::ByHitpointsAscending);
+                    if (a->healthPercent() != b->healthPercent())
+                        return (a->healthPercent() < b->healthPercent()) == (sort == BattleListOptions::ByHitpointsAscending);
                     break;
                 case BattleListOptions::ByNameAscending:
                 case BattleListOptions::ByNameDescending: {
-                    const int c = QString::compare(QString::fromStdString(a->getName()), QString::fromStdString(b->getName()), Qt::CaseSensitive);
+                    const int c = QString::compare(a->name(), b->name(), Qt::CaseSensitive);
                     if (c != 0)
                         return (c < 0) == (sort == BattleListOptions::ByNameAscending);
                     break;
                 }
             }
         }
-        return a->getId() < b->getId();
+        return a->creatureId() < b->creatureId();
     };
     std::sort(result.begin(), result.end(), compare);
     return result;
 }
 
-BattleListEntry TBattleListControllerStorage::entryOf(const CreaturePtr& creature, const LocalPlayerPtr& player) const
+BattleListEntry TBattleListControllerStorage::entryOf(const TCreaturePtr& creature, const LocalPlayerPtr& player) const
 {
     BattleListEntry e;
     const Position center = player->getPosition();
-    const Position pos = creature->getPosition();
-    const AwareRange range = g_map.getAwareRange();
-    e.creatureId = creature->getId();
-    e.name = QString::fromStdString(creature->getName());
-    e.healthPercent = creature->getHealthPercent() / 100.f;
-    e.healthColor = colorOf(creature->getInformationColor());
-    e.manaPercent = creature->getManaPercent() / 100.f;
+    const Position& pos = creature->position();
+    const auto ar = tibia::game::awareRange();
+    const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
+    e.creatureId = creature->creatureId();
+    e.name = creature->name();
+    e.healthPercent = creature->healthPercent() / 100.f;
+    e.healthColor = colorOf(creature->informationColor());
+    e.manaPercent = creature->maxMana() > 0 ? creature->mana() / float(creature->maxMana()) : 0.f;
     e.showMana = creature->isPlayer();
-    if (g_game.getAttackingCreature() == creature)
+    if (tibia::game::attackingCreatureId() == creature->creatureId())
         e.frameColors.append(QColor(0xff, 0x00, 0x00));
-    else if (g_game.getFollowingCreature() == creature)
+    else if (tibia::game::getFollowingCreatureId() == creature->creatureId())
         e.frameColors.append(QColor(0x00, 0xff, 0x00));
-    for (const auto& [icon, category, count] : creature->getIcons()) {
+    for (const auto& [icon, category, count] : creature->hudIcons()) {
         if (category != 0 && icon != 0)
             e.statusIcons.append(stripIcon("othercreatureicons", icon));
         e.fiendish |= category != 0 && icon == 5;
     }
     // Echo Raid glow ↔ CIP leader/minion status marks (see creaturehud.cpp).
-    e.leader = creature->getEchoRaidColor() == 0;
-    e.leaderMinion = creature->getEchoRaidColor() == 1;
+    e.leader = creature->echoRaidColor() == 0;
+    e.leaderMinion = creature->echoRaidColor() == 1;
     uint8_t summon = 0;
-    if (creature->getType() == Proto::CreatureTypeSummonOwn)
+    if (creature->creatureType() == Proto::CreatureTypeSummonOwn)
         summon = 1;
-    else if (creature->getType() == Proto::CreatureTypeSummonOther)
+    else if (creature->creatureType() == Proto::CreatureTypeSummonOther)
         summon = 2;
     // Empty strings stay in: the QML Row skips the zero-sized images.
-    e.statusIcons << stripIcon("summon", summon) << stripIcon("guild", creature->getEmblem()) << stripIcon("party", creature->getShield())
-                  << stripIcon("playerkiller", creature->getSkull());
-    const Outfit& outfit = creature->getOutfit();
+    e.statusIcons << stripIcon("summon", summon) << stripIcon("guild", creature->emblem()) << stripIcon("party", creature->shield())
+                  << stripIcon("playerkiller", creature->skull());
+    const Outfit& outfit = creature->outfit();
     e.outfitIsObject = outfit.getCategory() == ThingCategoryItem;
     e.outfitId = e.outfitIsObject ? outfit.getAuxId() : outfit.getId();
     e.headColor = outfitColor(outfit.getHead());
@@ -944,30 +969,49 @@ BattleListEntry TBattleListControllerStorage::entryOf(const CreaturePtr& creatur
     e.temporarySelected = m_temporarySelected == e.creatureId;
     e.inViewport = pos.z == center.z && std::abs(pos.x - center.x) < range.left && std::abs(pos.y - center.y) < range.top;
     e.inSharedXpDistance = std::abs(pos.z - center.z) <= SharedXpFloors && static_cast<int>(e.distance) <= SharedXpRange;
-    e.vocation = creature->isPlayer() ? baseVocation(creature) : 0;
+    e.vocation = creature->isPlayer() ? baseVocation(*creature) : 0;
+    if (m_gameActionHandler)
+        e.tutorialMarkerId = m_gameActionHandler->creatureTutorialMarker(e.creatureId);
     return e;
+}
+
+void TBattleListControllerStorage::setCreatureTutorialMarker(const uint32_t creatureId, const int markerId)
+{
+    if (m_gameActionHandler)
+        m_gameActionHandler->setCreatureTutorialMarker(creatureId, markerId);
+    refresh();
+}
+
+void TBattleListControllerStorage::clearCreatureTutorialMarkers()
+{
+    if (m_gameActionHandler)
+        m_gameActionHandler->clearCreatureTutorialMarkers();
+    refresh();
 }
 
 void TBattleListControllerStorage::refresh()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
-    if (!player || m_controllers.empty())
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
+    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+    if (!player || !storage || m_controllers.empty())
         return;
 
     std::set<uint32_t> present;
-    for (const CreaturePtr& creature : g_map.getSpectators(player->getPosition(), true)) {
+    const auto ar = tibia::game::awareRange();
+    const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
+    for (const TCreaturePtr& creature : storage->spectatorsNear(player->getPosition(), true, range.left, range.right, range.top, range.bottom)) {
         if (!creature)
             continue;
-        present.insert(creature->getId());
-        if (!m_visibleOrder.contains(creature->getId()))
-            m_visibleOrder[creature->getId()] = m_nextVisibleOrder++;
+        present.insert(creature->creatureId());
+        if (!m_visibleOrder.contains(creature->creatureId()))
+            m_visibleOrder[creature->creatureId()] = m_nextVisibleOrder++;
     }
     std::erase_if(m_visibleOrder, [&present](const auto& entry) { return !present.contains(entry.first); });
 
     const bool premium = hasPremium();
     for (const auto& [id, controller] : m_controllers) {
         std::vector<BattleListEntry> entries;
-        for (const CreaturePtr& creature : creatures(options(id)))
+        for (const TCreaturePtr& creature : creatures(options(id)))
             entries.push_back(entryOf(creature, player));
         controller->setEntries(std::move(entries));
         controller->setPremium(premium);
@@ -976,11 +1020,11 @@ void TBattleListControllerStorage::refresh()
 
 bool TBattleListControllerStorage::attackFirstTarget()
 {
-    const CreaturePtr target = g_game.getAttackingCreature();
-    for (const CreaturePtr& creature : creatures(options(primaryId()))) {
-        if (creature->isNpc() || creature == target || creature->isLocalPlayer())
+    const uint32_t targetId = tibia::game::attackingCreatureId();
+    for (const TCreaturePtr& creature : creatures(options(primaryId()))) {
+        if (creature->isNpc() || creature->creatureId() == targetId || creature->isLocalPlayer())
             continue;
-        input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->getId()));
+        input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
         return true;
     }
     return true;
@@ -988,18 +1032,20 @@ bool TBattleListControllerStorage::attackFirstTarget()
 
 bool TBattleListControllerStorage::attackNextOrPreviousTarget(const bool previous)
 {
-    std::vector<CreaturePtr> list = creatures(options(primaryId()));
+    std::vector<TCreaturePtr> list = creatures(options(primaryId()));
     if (list.empty())
         return true;
     if (previous)
         std::reverse(list.begin(), list.end());
-    const CreaturePtr target = g_game.getAttackingCreature();
-    if (const auto it = std::find(list.begin(), list.end(), target); it != list.end())
+    const uint32_t targetId = tibia::game::attackingCreatureId();
+    if (const auto it = std::find_if(list.begin(), list.end(),
+                                     [targetId](const TCreaturePtr& c) { return c && c->creatureId() == targetId; });
+        it != list.end())
         std::rotate(list.begin(), it + 1, list.end());
-    for (const CreaturePtr& creature : list) {
-        if (creature->isNpc() || creature == target || creature->isLocalPlayer())
+    for (const TCreaturePtr& creature : list) {
+        if (creature->isNpc() || creature->creatureId() == targetId || creature->isLocalPlayer())
             continue;
-        input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->getId()));
+        input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
         return true;
     }
     return true;

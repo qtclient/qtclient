@@ -1,6 +1,6 @@
 #include "highscoresdialogcontroller.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 
 #include <QDateTime>
 #include <QLocale>
@@ -287,7 +287,7 @@ int THighscoresDialogController::selectedCategoryId() const
 void THighscoresDialogController::requestPage(const int page)
 {
     setShowLoadingComponent(true);
-    g_game.requestHighscore(0, static_cast<uint8_t>(selectedCategoryId()), static_cast<uint32_t>(selectedVocationId()),
+    tibia::game::requestHighscore(0, static_cast<uint8_t>(selectedCategoryId()), static_cast<uint32_t>(selectedVocationId()),
                             selectedWorldName().toStdString(), 0, static_cast<uint8_t>(selectedBattlEyeValue()),
                             static_cast<uint16_t>(page), EntriesPerPage);
 }
@@ -295,7 +295,7 @@ void THighscoresDialogController::requestPage(const int page)
 void THighscoresDialogController::requestOwnRank()
 {
     setShowLoadingComponent(true);
-    g_game.requestHighscore(1, static_cast<uint8_t>(selectedCategoryId()), static_cast<uint32_t>(selectedVocationId()),
+    tibia::game::requestHighscore(1, static_cast<uint8_t>(selectedCategoryId()), static_cast<uint32_t>(selectedVocationId()),
                             selectedWorldName().toStdString(), 0, 0xFF, static_cast<uint16_t>(m_answer.page), EntriesPerPage);
 }
 
@@ -313,7 +313,7 @@ void THighscoresDialogController::updateWorldTypes()
 void THighscoresDialogController::openDialog()
 {
     showDialog();
-    g_game.requestHighscore(0, 0, 0xFFFFFFFF, "OWN", 0, 0xFF, 1, EntriesPerPage);
+    tibia::game::requestHighscore(0, 0, 0xFFFFFFFF, "OWN", 0, 0xFF, 1, EntriesPerPage);
 }
 
 void THighscoresDialogController::setAnswer(Answer answer)

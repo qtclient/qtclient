@@ -8,7 +8,8 @@
 
 #include <client/item.h>
 #include <client/outfit.h>
-#include <tibia/world/game.h>
+#include <tibia/assets/thingtype.h>
+#include <tibia/assets/things.h>
 #include <tibia/world/localplayer.h>
 
 #include <QColor>
@@ -21,6 +22,9 @@
 #include <QQuickWindow>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -548,7 +552,28 @@ void TBattleListGameActionHandler::attackNextOrPreviousTarget(const bool Previou
         m_storage->attackNextOrPreviousTarget(Previous);
 }
 
-void TBattleListGameActionHandler::handleRemoveAllTutorialMarkersGameAction() {}
+void TBattleListGameActionHandler::setCreatureTutorialMarker(const uint32_t creatureId, const int markerId)
+{
+    if (creatureId == 0)
+        return;
+    if (markerId <= 0)
+        m_creatureMarkers.remove(creatureId);
+    else
+        m_creatureMarkers.insert(creatureId, markerId);
+}
+
+void TBattleListGameActionHandler::clearCreatureTutorialMarkers()
+{
+    m_creatureMarkers.clear();
+}
+
+void TBattleListGameActionHandler::handleRemoveAllTutorialMarkersGameAction()
+{
+    if (m_storage)
+        m_storage->clearCreatureTutorialMarkers();
+    else
+        clearCreatureTutorialMarkers();
+}
 
 TAssignActionDialogControllerBase::TAssignActionDialogControllerBase(QObject* parent)
     : cip::tibia::gamewindow::TAssignActionDialogControllerBase(parent)
@@ -777,19 +802,19 @@ public:
     void setFromItem(const ItemInspectionData& data)
     {
         setDetails(QString::fromStdString(data.name), data.descriptions);
-        if (data.item) {
-            m_appearanceID = data.item->getId();
-            m_objectCount = static_cast<uint>(std::max(1, data.item->getCount()));
+        if (data.typeId != 0) {
+            m_appearanceID = data.typeId;
+            m_objectCount = static_cast<uint>(std::max<uint16_t>(1, data.count));
             if (m_objectCount > 1)
                 m_textOnSprite = QString::number(m_objectCount);
-            m_objectUpgradeTier = data.item->getTier();
-            if (data.item->isFluidContainer() || data.item->isSplash())
-                m_liquidType = static_cast<decltype(m_liquidType)>(data.item->getSubType());
-            if (data.item->isHookSouth())
+            m_objectUpgradeTier = data.tier;
+            if (data.fluidOrSplash)
+                m_liquidType = static_cast<decltype(m_liquidType)>(data.fluidOrSubtype);
+            if (data.hookSouth)
                 m_hookDirection = static_cast<decltype(m_hookDirection)>(1);
-            else if (data.item->isHookEast())
+            else if (data.hookEast)
                 m_hookDirection = static_cast<decltype(m_hookDirection)>(2);
-            m_hasProficiency = data.item->getProficiencyId() != 0;
+            m_hasProficiency = data.hasProficiency;
         }
         for (const uint16_t icon : data.imbuements)
             m_imbumentIcons << QStringLiteral("image://imbuement-icons/%1").arg(icon);
@@ -798,19 +823,19 @@ public:
     void setFromInventory(const InspectionInventoryItem& entry)
     {
         setDetails(QString::fromStdString(entry.name), entry.descriptions);
-        if (entry.item) {
-            m_appearanceID = entry.item->getId();
-            m_objectCount = static_cast<uint>(std::max(1, entry.item->getCount()));
+        if (entry.typeId != 0) {
+            m_appearanceID = entry.typeId;
+            m_objectCount = static_cast<uint>(std::max<uint16_t>(1, entry.count));
             if (m_objectCount > 1)
                 m_textOnSprite = QString::number(m_objectCount);
-            m_objectUpgradeTier = entry.item->getTier();
-            if (entry.item->isFluidContainer() || entry.item->isSplash())
-                m_liquidType = static_cast<decltype(m_liquidType)>(entry.item->getSubType());
-            if (entry.item->isHookSouth())
+            m_objectUpgradeTier = entry.tier;
+            if (entry.fluidOrSplash)
+                m_liquidType = static_cast<decltype(m_liquidType)>(entry.fluidOrSubtype);
+            if (entry.hookSouth)
                 m_hookDirection = static_cast<decltype(m_hookDirection)>(1);
-            else if (entry.item->isHookEast())
+            else if (entry.hookEast)
                 m_hookDirection = static_cast<decltype(m_hookDirection)>(2);
-            m_hasProficiency = entry.item->getProficiencyId() != 0;
+            m_hasProficiency = entry.hasProficiency;
         }
         for (const uint16_t icon : entry.imbuements)
             m_imbumentIcons << QStringLiteral("image://imbuement-icons/%1").arg(icon);
@@ -844,7 +869,7 @@ TInspectObjectDialogController::TInspectObjectDialogController(QObject* parent)
     : TDialogController(QStringLiteral("InspectObjectDialog.qml"), parent)
 {
     s_instance = this;
-    m_hooks.emplace_back("g_game", "onParseItemDetail", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseItemDetail", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<ItemInspectionData>(&args[0]);
         if (!data || data->inspectionType == CyclopediaInspectionType)
             return std::any{};
@@ -892,6 +917,17 @@ void TInspectObjectDialogController::copyToClipboarClicked()
     input::publish(input::makeAction(A::COPY_TEXT_TO_CLIPBOARD));
 }
 
+void TInspectObjectDialogController::openWeaponProficiencyDialogClicked()
+{
+    if (m_inspectObjectList.isEmpty())
+        return;
+    if (auto* row = static_cast<TInspectObjectRow*>(m_inspectObjectList.front()); row && row->appearanceID() != 0) {
+        auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
+        action->instance = row->appearanceID();
+        input::publish(action);
+    }
+}
+
 TInspectPlayerDialogController* TInspectPlayerDialogController::s_instance = nullptr;
 
 TInspectPlayerDialogController::TInspectPlayerDialogController(QObject* parent)
@@ -900,7 +936,7 @@ TInspectPlayerDialogController::TInspectPlayerDialogController(QObject* parent)
     s_instance = this;
     // CipSoft Character Info keeps onParseCyclopediaCharacterInspection; look/inspect
     // packets publish onParseCharacterInspection (and dual-emit the Cyclopedia name).
-    m_hooks.emplace_back("g_game", "onParseCharacterInspection", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCharacterInspection", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterInspection>(&args[0]);
         if (data)
             showPlayer(*data);
@@ -922,21 +958,24 @@ void TInspectPlayerDialogController::showPlayer(const CyclopediaCharacterInspect
     m_inspectObjectList.append(player);
 
     bool rightHandEmpty = true;
-    ItemPtr leftHand;
+    uint16_t leftHandTypeId = 0;
+    bool leftHandDualWield = false;
     for (const InspectionInventoryItem& entry : data.inventoryItems) {
         if (entry.slot < 1 || entry.slot > InspectSlots)
             continue;
         static_cast<TInspectObjectRow*>(m_inspectObjectList[entry.slot - 1])->setFromInventory(entry);
-        if (entry.slot == InspectRightHandSlot && entry.item)
+        if (entry.slot == InspectRightHandSlot && entry.typeId != 0)
             rightHandEmpty = false;
-        if (entry.slot == InspectLeftHandSlot)
-            leftHand = entry.item;
+        if (entry.slot == InspectLeftHandSlot && entry.typeId != 0) {
+            leftHandTypeId = entry.typeId;
+            if (ThingType* type = tibia::game::rawThingType(entry.typeId, ThingCategoryItem))
+                leftHandDualWield = type->isDualWield();
+        }
     }
     player->setFromPlayer(data);
-    const bool dualWield = leftHand && leftHand->isDualWield();
-    m_hasDualWielding = dualWield && rightHandEmpty;
-    m_dualWieldingObjectID = dualWield ? static_cast<int>(leftHand->getId()) : 0;
-    m_isOwnPlayer = g_game.getLocalPlayer() && g_game.getLocalPlayer()->getId() == data.creatureId;
+    m_hasDualWielding = leftHandDualWield && rightHandEmpty;
+    m_dualWieldingObjectID = leftHandDualWield ? static_cast<int>(leftHandTypeId) : 0;
+    m_isOwnPlayer = tibia::game::localPlayer() && tibia::game::localPlayer()->getId() == data.creatureId;
     Q_EMIT inspectObjectListChanged();
     dialog()->create();
     dialog()->show();
@@ -958,6 +997,15 @@ void TInspectPlayerDialogController::copyToClipboarClicked(const QString& Text)
     if (QClipboard* clip = QGuiApplication::clipboard())
         clip->setText(Text);
     input::publish(input::makeAction(A::COPY_TEXT_TO_CLIPBOARD));
+}
+
+void TInspectPlayerDialogController::openWeaponProficiencyDialogClicked(const uint AppearanceTypeID)
+{
+    if (AppearanceTypeID == 0)
+        return;
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
+    action->instance = static_cast<int>(AppearanceTypeID);
+    input::publish(action);
 }
 
 TChatChannelFilterController::TChatChannelFilterController(QObject* parent)

@@ -1,12 +1,15 @@
 #include "marketstorage.h"
 
 #include <client/const.h>
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/staticdata.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::market {
 
@@ -46,7 +49,7 @@ bool offerLess(const TMarketOffer& a, const TMarketOffer& b)
     if (a.type != b.type)
         return a.type < b.type;
     if (a.price != b.price)
-        return a.type == Otc::MARKETACTION_BUY ? a.price > b.price : a.price < b.price;
+        return a.type == tibia::client::MARKETACTION_BUY ? a.price > b.price : a.price < b.price;
     if (a.timestamp != b.timestamp)
         return a.timestamp < b.timestamp;
     return a.counter < b.counter;
@@ -57,23 +60,23 @@ bool offerLess(const TMarketOffer& a, const TMarketOffer& b)
 TMarketStorage::TMarketStorage(QObject* parent)
     : cip::tibia::market::TMarketStorage(parent)
 {
-    m_hooks.emplace_back("g_game", "onMarketEnter", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onMarketEnter", [this](GameObject*, const Args& args) {
         const auto* items = args.empty() ? nullptr : std::any_cast<std::vector<std::vector<uint16_t>>>(&args[0]);
         onMarketEnter(items ? *items : std::vector<std::vector<uint16_t>>{}, static_cast<int>(client::gamecore::argInt(args, 1)));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onMarketLeave", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onMarketLeave", [this](GameObject*, const Args&) {
         if (m_open) {
             m_open = false;
             Q_EMIT requestCloseMarketDialog();
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onMarketDetail", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onMarketDetail", [this](GameObject*, const Args& args) {
         onMarketDetail(args);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onMarketBrowse", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onMarketBrowse", [this](GameObject*, const Args& args) {
         const auto* offers = args.empty() ? nullptr : std::any_cast<std::vector<std::vector<uint64_t>>>(&args[0]);
         const auto* names = args.size() > 1 ? std::any_cast<std::vector<std::string>>(&args[1]) : nullptr;
         if (offers && names)
@@ -81,17 +84,16 @@ TMarketStorage::TMarketStorage(QObject* parent)
         return std::any{};
     });
     // CIP MarketReadOffer — single-offer update merged into history / own / item lists.
-    m_hooks.emplace_back("g_game", "onMarketReadOffer", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onMarketReadOffer", [this](GameObject*, const Args& args) {
         onMarketReadOffer(args);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onTextMessage", [this](LuaObject*, const Args& args) {
-        const auto* mode = args.empty() ? nullptr : std::any_cast<Otc::MessageMode>(&args[0]);
-        if (mode && *mode == Otc::MessageMarket)
-            Q_EMIT requestMarketMessageDialog(client::gamecore::argString(args, 1));
-        return std::any{};
-    });
-    m_hooks.emplace_back("g_game", "forgeData", [this](LuaObject*, const Args& args) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::textMessage, this,
+            [this](int mode, const QString& text) {
+                if (mode == static_cast<int>(tibia::client::MessageMarket))
+                    Q_EMIT requestMarketMessageDialog(text);
+            });
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<ForgeConfigData>(&args[0]);
         if (!data)
             return std::any{};
@@ -106,11 +108,11 @@ TMarketStorage::TMarketStorage(QObject* parent)
         Q_EMIT classificationsChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onStoreInit", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreInit", [this](GameObject*, const Args& args) {
         m_coinsPacketSize = std::max(1, static_cast<int>(client::gamecore::argInt(args, 1)));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_open = false;
         m_objectCounts.clear();
         m_offers.clear();
@@ -118,7 +120,6 @@ TMarketStorage::TMarketStorage(QObject* parent)
         m_ownOffers.clear();
         m_details = {};
         m_lastBrowse = 0;
-        return std::any{};
     });
 }
 
@@ -126,7 +127,7 @@ int TMarketStorage::maximumOfferAmount(const uint16_t typeId)
 {
     if (typeId == 0)
         return 0;
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type && type->isStackable() ? 64000 : 2000;
 }
 
@@ -140,20 +141,20 @@ void TMarketStorage::browseItem(const uint16_t typeId, const uint8_t tier)
 {
     m_requestedBrowse = typeId;
     m_requestedTier = tier;
-    g_game.browseMarket(Otc::MARKETREQUEST_ITEM_BROWSE, typeId, tier);
-    g_game.requestMarketStatistics(typeId, tier);
+    tibia::game::browseMarket(tibia::client::MARKETREQUEST_ITEM_BROWSE, typeId, tier);
+    tibia::game::requestMarketStatistics(typeId, tier);
 }
 
 void TMarketStorage::browseHistory()
 {
     m_requestedBrowse = HistoryBrowse;
-    g_game.browseMarket(Otc::MARKETREQUEST_OWN_HISTORY, 0, 0);
+    tibia::game::browseMarket(tibia::client::MARKETREQUEST_OWN_HISTORY, 0, 0);
 }
 
 void TMarketStorage::browseOwnOffers()
 {
     m_requestedBrowse = OwnOffersBrowse;
-    g_game.browseMarket(Otc::MARKETREQUEST_OWN_OFFERS, 0, 0);
+    tibia::game::browseMarket(tibia::client::MARKETREQUEST_OWN_OFFERS, 0, 0);
 }
 
 void TMarketStorage::leave()
@@ -161,7 +162,7 @@ void TMarketStorage::leave()
     if (!m_open)
         return;
     m_open = false;
-    g_game.leaveMarket();
+    tibia::game::leaveMarket();
 }
 
 /// CIP (TMarketProtocolMessageHandler): the depot counts, the active offer
@@ -194,7 +195,7 @@ void TMarketStorage::onMarketDetail(const Args& args)
     TMarketItemDetails details;
     details.typeId = static_cast<uint16_t>(client::gamecore::argInt(args, 0));
     details.tier = static_cast<uint8_t>(client::gamecore::argInt(args, 4));
-    if (const ThingTypePtr& type = g_things.getThingType(details.typeId, ThingCategoryItem); type && type->getClassification() > 0)
+    if (const ThingTypePtr& type = tibia::game::thingType(details.typeId, ThingCategoryItem); type && type->getClassification() > 0)
         details.hasTier = true;
     if (const auto* descriptions = std::any_cast<std::unordered_map<int, std::string>>(&args[1])) {
         for (const auto& [attribute, text] : *descriptions)
@@ -227,9 +228,9 @@ void TMarketStorage::onMarketBrowse(const std::vector<std::vector<uint64_t>>& of
         if (i < names.size())
             offer.bidder = QString::fromStdString(names[i]);
         const uint64_t var = o[7];
-        if (var == Otc::MARKETREQUEST_OWN_HISTORY || var == Otc::OLD_MARKETREQUEST_MY_HISTORY)
+        if (var == tibia::client::MARKETREQUEST_OWN_HISTORY || var == tibia::client::OLD_MARKETREQUEST_MY_HISTORY)
             browse = HistoryBrowse;
-        else if (var == Otc::MARKETREQUEST_OWN_OFFERS || var == Otc::OLD_MARKETREQUEST_MY_OFFERS)
+        else if (var == tibia::client::MARKETREQUEST_OWN_OFFERS || var == tibia::client::OLD_MARKETREQUEST_MY_OFFERS)
             browse = OwnOffersBrowse;
         else
             browse = static_cast<int>(var);
@@ -274,10 +275,10 @@ void TMarketStorage::onMarketReadOffer(const Args& args)
     offer.tier = static_cast<uint8_t>(client::gamecore::argInt(args, 9));
 
     std::vector<TMarketOffer> received{ std::move(offer) };
-    if (var == Otc::MARKETREQUEST_OWN_HISTORY || var == Otc::OLD_MARKETREQUEST_MY_HISTORY) {
+    if (var == tibia::client::MARKETREQUEST_OWN_HISTORY || var == tibia::client::OLD_MARKETREQUEST_MY_HISTORY) {
         merge(m_history, std::move(received), false);
         Q_EMIT historyChanged();
-    } else if (var == Otc::MARKETREQUEST_OWN_OFFERS || var == Otc::OLD_MARKETREQUEST_MY_OFFERS) {
+    } else if (var == tibia::client::MARKETREQUEST_OWN_OFFERS || var == tibia::client::OLD_MARKETREQUEST_MY_OFFERS) {
         merge(m_ownOffers, std::move(received), false);
         Q_EMIT ownOffersChanged();
     } else {

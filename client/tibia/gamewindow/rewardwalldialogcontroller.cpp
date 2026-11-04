@@ -4,7 +4,6 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/staticdata.h>
 
@@ -12,6 +11,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -43,13 +45,13 @@ QString formatWeight(const uint32_t oz)
 
 bool localPlayerPremium()
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 
-uint64_t resourceBalance(const Otc::ResourceTypes_t type)
+uint64_t resourceBalance(const tibia::client::ResourceTypes_t type)
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     return player ? player->getResourceBalance(type) : 0;
 }
 
@@ -149,7 +151,7 @@ void TDailyRewardPickItemsDialogController::okButtonClicked()
         items[static_cast<uint16_t>(pick->objectID())] = static_cast<uint8_t>(pick->amount());
     }
     // Canary: 0 = shrine / 1 = panel (inverse of OpenRewardWall's bonusShrine).
-    g_game.requestGetRewardDaily(m_bonusShrine == 1 ? 0 : 1, items);
+    tibia::game::requestGetRewardDaily(m_bonusShrine == 1 ? 0 : 1, items);
     dialog()->close();
 }
 
@@ -168,7 +170,7 @@ void TDailyRewardPickItemsDialogController::refreshSelection()
     }
     m_currentPickCount = current;
     m_pickCountLeft = current >= m_totalPickCount ? 0 : m_totalPickCount - current;
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     const uint32_t freeCapacity = player ? player->getFreeCapacity() : 0;
     m_capacity = formatWeight(freeCapacity);
     m_currentTotalWeight = formatWeight(weightOz);
@@ -190,7 +192,7 @@ TRewardWallDialogController::TRewardWallDialogController(QObject* parent)
     m_timer.setInterval(1000);
     connect(&m_timer, &QTimer::timeout, this, [this] { refreshTimers(); });
 
-    m_hooks.emplace_back("g_game", "onOpenRewardWall", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenRewardWall", [this](GameObject*, const Args& args) {
         if (args.size() < 8)
             return std::any{};
         OpenWallState state;
@@ -205,41 +207,39 @@ TRewardWallDialogController::TRewardWallDialogController(QObject* parent)
         applyOpenWall(state);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onDailyReward", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onDailyReward", [this](GameObject*, const Args& args) {
         if (const auto* data = args.empty() ? nullptr : std::any_cast<DailyRewardData>(&args[0]))
             applyDailyReward(*data);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onRewardHistory", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRewardHistory", [this](GameObject*, const Args& args) {
         if (const auto* history =
                 args.empty() ? nullptr
                              : std::any_cast<std::vector<std::tuple<uint32_t, bool, std::string, uint16_t>>>(&args[0]))
             applyHistory(*history);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCloseRewardWall", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseRewardWall", [this](GameObject*, const Args&) {
         dialog()->close();
         m_timer.stop();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this]() {
         refreshResources();
+    });
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
+        onPremiumTimeChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("object", "onPremiumChange", [this](LuaObject* self, const Args&) {
-        if (self == g_game.getLocalPlayer().get())
-            onPremiumTimeChanged();
-        return std::any{};
-    });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         dialog()->destroy();
         m_timer.stop();
         m_dailyReward.reset();
-        return std::any{};
     });
 
     input::setActionHandler(input::EGameAction::REQUEST_OPEN_REWARD_WALL, [this](const input::TGameAction&) {
-        g_game.sendOpenRewardWall();
+        tibia::game::sendOpenRewardWall();
         m_pendingShow = true;
         return true;
     });
@@ -264,7 +264,7 @@ void TRewardWallDialogController::openOrUpdate()
         return;
     }
     m_pendingShow = true;
-    g_game.sendOpenRewardWall();
+    tibia::game::sendOpenRewardWall();
 }
 
 void TRewardWallDialogController::applyOpenWall(const OpenWallState& state)
@@ -365,12 +365,12 @@ void TRewardWallDialogController::rebuildRestingBonuses()
 void TRewardWallDialogController::refreshResources()
 {
     // OTC names: RESOURCE_DAILYREWARD_STREAK is IRA (0x14), JOKERS is 0x15.
-    const uint ira = static_cast<uint>(resourceBalance(Otc::RESOURCE_DAILYREWARD_STREAK));
+    const uint ira = static_cast<uint>(resourceBalance(tibia::client::RESOURCE_DAILYREWARD_STREAK));
     if (m_instantRewardAccessAmount != ira) {
         m_instantRewardAccessAmount = ira;
         Q_EMIT instantRewardAccessAmountChanged();
     }
-    const uint jokers = static_cast<uint>(resourceBalance(Otc::RESOURCE_DAILYREWARD_JOKERS));
+    const uint jokers = static_cast<uint>(resourceBalance(tibia::client::RESOURCE_DAILYREWARD_JOKERS));
     if (jokers != 0 && m_dailyRewardJokerAmount != jokers) {
         m_dailyRewardJokerAmount = jokers;
         Q_EMIT dailyRewardJokerAmountChanged();
@@ -472,7 +472,7 @@ void TRewardWallDialogController::getPremiumClicked()
     input::publish(action);
 }
 
-void TRewardWallDialogController::historyButtonClicked() { g_game.requestOpenRewardHistory(); }
+void TRewardWallDialogController::historyButtonClicked() { tibia::game::requestOpenRewardHistory(); }
 
 void TRewardWallDialogController::collectRewardButtonClicked()
 {
@@ -556,7 +556,7 @@ void TRewardWallDialogController::onCancelCollectReward() {}
 
 void TRewardWallDialogController::requestCollectFixedItemsReward()
 {
-    g_game.requestGetRewardDaily(m_wall.bonusShrine == 1 ? 0 : 1, {});
+    tibia::game::requestGetRewardDaily(m_wall.bonusShrine == 1 ? 0 : 1, {});
 }
 
 void TRewardWallDialogController::requestCollectPickItemsReward()

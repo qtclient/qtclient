@@ -1,6 +1,4 @@
-# Open-sourcing qtclient
-
-qtclient is a thin CipSoft-compatible Qt/QML client. Product features ship as
+# Open-sourcing qtclient is a thin CipSoft-compatible Qt/QML client. Product features ship as
 runtime packs under `client/mods/<id>/` and `launcher/mods/<id>/` — they are not
 woven into stock `client/tibia`.
 

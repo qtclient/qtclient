@@ -2,13 +2,15 @@
 
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/staticdata.h>
 
 #include <QDateTime>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -84,7 +86,7 @@ int itemsLoss(const int value)
 
 bool localPlayerPremium()
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 
@@ -154,19 +156,17 @@ QString TQmlBlessingDialogData::promotionText() const
 TBlessingsDialogController::TBlessingsDialogController(QObject* parent)
     : TDialogController(QStringLiteral("BlessingsDialog.qml"), parent)
 {
-    m_hooks.emplace_back("g_game", "onUpdateBlessDialog", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateBlessDialog", [this](GameObject*, const Args& args) {
         if (const auto* data = args.empty() ? nullptr : std::any_cast<BlessDialogData>(&args[0]))
             setData(*data);
         return std::any{};
     });
-    m_hooks.emplace_back("object", "onPremiumChange", [this](LuaObject* self, const Args&) {
-        if (self == g_game.getLocalPlayer().get())
-            onPremiumStatusChanged();
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
+        onPremiumStatusChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         dialog()->destroy();
-        return std::any{};
     });
 }
 

@@ -6,6 +6,7 @@
 
 #include <any>
 #include <vector>
+#include <tibia/game/gamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -64,7 +65,7 @@ TPlayerGuideWidgetManager::TPlayerGuideWidgetManager(QQuickItem* gameWindowItem,
     , m_engine(engine)
 {
     // Related CipSoft event while Newhaven guide packets are absent.
-    m_hooks.emplace_back("g_game", "onUnlockedSpells", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUnlockedSpells", [this](GameObject*, const Args& args) {
         const auto* spellIds = args.empty() ? nullptr : std::any_cast<std::vector<uint16_t>>(&args[0]);
         if (m_controller && spellIds)
             m_controller->onUnlockedSpells(*spellIds);

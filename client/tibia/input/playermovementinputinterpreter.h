@@ -40,8 +40,9 @@ namespace tibia::input {
 /// (FUN_100a41430: diagonals face east / west) if it does not already,
 /// otherwise "sorry_not_possible" shows.
 ///
-/// Absorbs CIP TKeyEventHandler + TPlayerMovementIntentHandler roles until
-/// those are split into separate runtime objects.
+/// Absorbs CIP TKeyEventHandler + TPlayerMovementIntentHandler direction-hold
+/// roles. Live Target intent + continuous replan tick live on
+/// TPlayerMovementGameActionHandler (CIP Target / 0x100e6adb0).
 class TPlayerMovementInputInterpreter final : public cip::tibia::input::TPlayerMovementInputInterpreter
 {
     Q_OBJECT
@@ -64,7 +65,7 @@ private:
         bool keypad = false;
         bool operator==(const TKey&) const = default;
     };
-    /// Otc::North .. Otc::NorthWest.
+    /// tibia::client::North .. tibia::client::NorthWest.
     using TDirectionKeys = std::array<std::vector<TKey>, 8>;
 
     void onHotkeyOptionsChanged();
@@ -72,14 +73,14 @@ private:
     void onKeyPressed(const QKeyEvent* key);
     void onKeyReleased(const QKeyEvent* key);
     /// The direction `event`'s key walks in the active chat mode, or InvalidDirection.
-    Otc::Direction directionOf(const QKeyEvent* event) const;
+    tibia::client::Direction directionOf(const QKeyEvent* event) const;
     bool canWalk() const;
     bool rotates(Qt::KeyboardModifiers modifiers) const;
     void stopRepeat();
     /// CIP 0x100e69730.
     void onTick();
     /// CIP vtable slot 0xd0: one step, deferred while the character cannot walk.
-    void step(Otc::Direction direction);
+    void step(tibia::client::Direction direction);
 
     QPointer<QQuickWindow> m_window;
     QPointer<QQuickItem> m_chatItem;
@@ -95,10 +96,10 @@ private:
     QTimer* m_timer = nullptr;
     std::vector<client::gamecore::Hook> m_hooks;
     QElapsedTimer m_elapsed;
-    Otc::Direction m_held = Otc::InvalidDirection;
+    tibia::client::Direction m_held = tibia::client::InvalidDirection;
     int m_heldKey = 0;
     int m_repeats = 0;
-    Otc::Direction m_pending = Otc::InvalidDirection;
+    tibia::client::Direction m_pending = tibia::client::InvalidDirection;
 };
 
 }

@@ -3,13 +3,13 @@
 
 Reads:
   - tmp/re/tibia/index/names.txt (RTTI/moc labels) OR --names
-  - apps/qtclient/upstream/contract/qml_files.json
+  - apps/qtclient/client/upstream/contract/qml_files.json
   - apps/qtclient/client/tibia/client/** handwritten subclasses
   - docs/reverse-engineering/qml-controllers-allowlist.txt
 
 Writes (default under docs/reverse-engineering/ledgers/):
-  - classes.json / classes.md
-  - qml_controllers.json / qml_controllers.md
+  - classes.json
+  - qml_controllers.json
 
 Status values for classes:
   ported | stub | missing | qtclient-only | out-of-scope
@@ -218,36 +218,6 @@ def write_class_ledger(classes: set[str], handwritten: dict, out_dir: Path) -> d
     }
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "classes.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    lines = [
-        "# CIP class obligation ledger",
-        "",
-        f"Generated `{payload['generated_at']}`. Total **{payload['total']}** classes from RTTI labels.",
-        "",
-        "| Status | Count |",
-        "|--------|------:|",
-    ]
-    for k in ("ported", "stub", "missing", "qtclient-only", "out-of-scope"):
-        lines.append(f"| {k} | {counts.get(k, 0)} |")
-    lines += [
-        "",
-        f"Incomplete (missing+stub, CI ceiling): **{incomplete_count(counts)}**",
-        "",
-        "## Missing (sample first 40)",
-        "",
-    ]
-    missing = [r["class"] for r in rows if r["status"] == "missing"]
-    for name in missing[:40]:
-        lines.append(f"- `{name}`")
-    if len(missing) > 40:
-        lines.append(f"- … +{len(missing) - 40} more (see classes.json)")
-    stubs = [r["class"] for r in rows if r["status"] == "stub"]
-    lines += ["", "## Stub / thin placeholders (sample first 40)", ""]
-    for name in stubs[:40]:
-        lines.append(f"- `{name}`")
-    if len(stubs) > 40:
-        lines.append(f"- … +{len(stubs) - 40} more (see classes.json / cip_ports/)")
-    lines.append("")
-    (out_dir / "classes.md").write_text("\n".join(lines), encoding="utf-8")
     return payload
 
 
@@ -281,23 +251,6 @@ def write_qml_ledger(
     (out_dir / "qml_controllers.json").write_text(
         json.dumps(payload, indent=2) + "\n", encoding="utf-8"
     )
-    lines = [
-        "# CIP QML controller obligation ledger",
-        "",
-        f"Generated `{payload['generated_at']}`. Controllers referenced by vendored QML: **{payload['total']}**.",
-        "",
-        "| Status | Count |",
-        "|--------|------:|",
-    ]
-    for k in ("ported", "allowlisted", "missing"):
-        lines.append(f"| {k} | {counts.get(k, 0)} |")
-    missing = [r["class"] for r in rows if r["status"] == "missing"]
-    if missing:
-        lines += ["", "## Missing", ""]
-        for name in missing:
-            lines.append(f"- `{name}`")
-    lines.append("")
-    (out_dir / "qml_controllers.md").write_text("\n".join(lines), encoding="utf-8")
     return payload
 
 
@@ -393,7 +346,7 @@ def main() -> int:
 
     rc = 0
     if args.check and qml_payload["counts"].get("missing", 0):
-        print("error: missing QML controllers (see qml_controllers.md)", file=sys.stderr)
+        print("error: missing QML controllers (see qml_controllers.json)", file=sys.stderr)
         rc = 1
     if args.check:
         committed = args.out / "classes.json"
@@ -491,7 +444,7 @@ def main() -> int:
             print("error: --fail-missing-classes needs names.txt", file=sys.stderr)
             rc = 1
         elif incomplete_count(class_payload["counts"]):
-            print("error: incomplete CIP classes (missing+stub; see classes.md)", file=sys.stderr)
+            print("error: incomplete CIP classes (missing+stub; see classes.json)", file=sys.stderr)
             rc = 1
     if tmp_ctx is not None:
         tmp_ctx.cleanup()

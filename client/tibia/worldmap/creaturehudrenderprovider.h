@@ -21,7 +21,7 @@ class TCreatureHUDRenderProvider final : public cip::tibia::worldmap::TCreatureH
 public:
     struct Record
     {
-        CreaturePtr creature;
+        uint32_t creatureId = 0;
         QPoint point;
     };
 

@@ -8,7 +8,6 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
@@ -16,6 +15,10 @@
 #include <QLocale>
 
 #include <limits>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -27,9 +30,9 @@ using Tab = cip::tibia::gamewindow::TCyclopediaDialogController::DialogTab;
 QString englishNumber(const qulonglong value) { return QLocale(QLocale::English).toString(value); }
 
 /// The local player's balance of `type`, or nothing outside the game.
-std::optional<qulonglong> balance(const Otc::ResourceTypes_t type)
+std::optional<qulonglong> balance(const tibia::client::ResourceTypes_t type)
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return std::nullopt;
     return player->getResourceBalance(type);
@@ -41,15 +44,16 @@ uint16_t cyclopediaTypeOf(const input::TGameAction& action)
 {
     if (action.instance > 0)
         return static_cast<uint16_t>(action.instance);
-    if (!action.object || !action.object->isItem())
+    const uint16_t typeId = action.objectClientId;
+    if (typeId == 0)
         return 0;
-    const ThingTypePtr& type = g_things.getThingType(action.object->getId(), ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || !type->hasCyclopediaItem())
         return 0;
     return static_cast<uint16_t>(type->getCyclopediaType() ? type->getCyclopediaType() : type->getId());
 }
 
-QString balanceString(const Otc::ResourceTypes_t type, const char* fallback)
+QString balanceString(const tibia::client::ResourceTypes_t type, const char* fallback)
 {
     const std::optional<qulonglong> value = balance(type);
     return value ? englishNumber(*value) : QString::fromLatin1(fallback);
@@ -82,23 +86,21 @@ TCyclopediaDialogController::TCyclopediaDialogController(QObject* parent)
     m_magicalArchiveDialogController = m_magicalArchive;
 
     hookActions();
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const std::vector<std::any>& args) {
-        const auto* type = args.size() > 2 ? std::any_cast<Otc::ResourceTypes_t>(&args[2]) : nullptr;
-        switch (type ? *type : -1) {
-            case Otc::RESOURCE_BANK_BALANCE:
-            case Otc::RESOURCE_GOLD_EQUIPPED: Q_EMIT goldBalanceChanged(); break;
-            case Otc::RESOURCE_CHARM: Q_EMIT availableCharmPointsChanged(); break;
-            case Otc::RESOURCE_MAX_CHARM: Q_EMIT unlockedCharmPointsChanged(); break;
-            case Otc::RESOURCE_MINOR_CHARM: Q_EMIT availableMinorCharmEchoesChanged(); break;
-            case Otc::RESOURCE_MAX_MINOR_CHARM: Q_EMIT unlockedMinorCharmEchoesChanged(); break;
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
+        switch (type) {
+            case tibia::client::RESOURCE_BANK_BALANCE:
+            case tibia::client::RESOURCE_GOLD_EQUIPPED: Q_EMIT goldBalanceChanged(); break;
+            case tibia::client::RESOURCE_CHARM: Q_EMIT availableCharmPointsChanged(); break;
+            case tibia::client::RESOURCE_MAX_CHARM: Q_EMIT unlockedCharmPointsChanged(); break;
+            case tibia::client::RESOURCE_MINOR_CHARM: Q_EMIT availableMinorCharmEchoesChanged(); break;
+            case tibia::client::RESOURCE_MAX_MINOR_CHARM: Q_EMIT unlockedMinorCharmEchoesChanged(); break;
             default: break;
         }
-        return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const std::vector<std::any>&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clearBacklog();
         closeDialog();
-        return std::any{};
     });
 }
 
@@ -120,19 +122,19 @@ TCyclopediaDialogController::~TCyclopediaDialogController()
 
 QString TCyclopediaDialogController::bankGoldBalanceString() const
 {
-    const std::optional<qulonglong> value = balance(Otc::RESOURCE_BANK_BALANCE);
+    const std::optional<qulonglong> value = balance(tibia::client::RESOURCE_BANK_BALANCE);
     return value ? englishNumber(*value) : qtTrId("dummy_unknown");
 }
 
 QString TCyclopediaDialogController::inventoryGoldBalanceString() const
 {
-    const std::optional<qulonglong> value = balance(Otc::RESOURCE_GOLD_EQUIPPED);
+    const std::optional<qulonglong> value = balance(tibia::client::RESOURCE_GOLD_EQUIPPED);
     return value ? englishNumber(*value) : qtTrId("dummy_unknown");
 }
 
 qulonglong TCyclopediaDialogController::totalGoldBalance() const
 {
-    return balance(Otc::RESOURCE_BANK_BALANCE).value_or(0) + balance(Otc::RESOURCE_GOLD_EQUIPPED).value_or(0);
+    return balance(tibia::client::RESOURCE_BANK_BALANCE).value_or(0) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED).value_or(0);
 }
 
 QString TCyclopediaDialogController::totalGoldBalanceString() const
@@ -141,10 +143,10 @@ QString TCyclopediaDialogController::totalGoldBalanceString() const
     return textHelper.formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString(static_cast<qlonglong>(totalGoldBalance()));
 }
 
-QString TCyclopediaDialogController::availableCharmPointsString() const { return balanceString(Otc::RESOURCE_CHARM, "0"); }
-QString TCyclopediaDialogController::unlockedCharmPointsString() const { return balanceString(Otc::RESOURCE_MAX_CHARM, "0"); }
-QString TCyclopediaDialogController::availableMinorCharmEchoesString() const { return balanceString(Otc::RESOURCE_MINOR_CHARM, "0"); }
-QString TCyclopediaDialogController::unlockedMinorCharmEchoesString() const { return balanceString(Otc::RESOURCE_MAX_MINOR_CHARM, "0"); }
+QString TCyclopediaDialogController::availableCharmPointsString() const { return balanceString(tibia::client::RESOURCE_CHARM, "0"); }
+QString TCyclopediaDialogController::unlockedCharmPointsString() const { return balanceString(tibia::client::RESOURCE_MAX_CHARM, "0"); }
+QString TCyclopediaDialogController::availableMinorCharmEchoesString() const { return balanceString(tibia::client::RESOURCE_MINOR_CHARM, "0"); }
+QString TCyclopediaDialogController::unlockedMinorCharmEchoesString() const { return balanceString(tibia::client::RESOURCE_MAX_MINOR_CHARM, "0"); }
 
 void TCyclopediaDialogController::hookActions()
 {
@@ -352,16 +354,15 @@ TCyclopediaButtonController::TCyclopediaButtonController(QObject* parent)
     m_highlightTimer.setSingleShot(true);
     m_highlightTimer.setInterval(600000);
     connect(&m_highlightTimer, &QTimer::timeout, this, &TCyclopediaButtonController::changed);
-    m_hooks.emplace_back("g_game", "onBestiaryEntryChanged", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBestiaryEntryChanged", [this](GameObject*, const std::vector<std::any>& args) {
         m_newDetailsRaceId = client::gamecore::argInt(args, 0);
         m_highlightTimer.start();
         Q_EMIT changed();
         return std::any{};
     });
     // CIP 0x100cf3db0: a new session clears the highlight.
-    m_hooks.emplace_back("g_game", "onGameStart", [this](LuaObject*, const std::vector<std::any>&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         stopHighlight();
-        return std::any{};
     });
 }
 

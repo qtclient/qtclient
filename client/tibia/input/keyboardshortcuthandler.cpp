@@ -6,7 +6,6 @@
 #include "input/inputciptypes.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 
 #include <QKeyEvent>
 #include <QQuickItem>
@@ -15,6 +14,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::input {
 
@@ -299,7 +299,7 @@ bool TKeyboardShortcutHandler::eventFilter(QObject* watched, QEvent* event)
 
 bool TKeyboardShortcutHandler::handleKey(const QKeyEvent* key)
 {
-    if (isModifierKey(key->key()) || !g_game.isOnline())
+    if (isModifierKey(key->key()) || !tibia::game::isOnline())
         return false;
     // CIP drops the key filter while the dialog stack blocks hotkeys (TEventFilterManager 0x100e87890).
     if (gamewindow::TDialogStackController* dialogs = gamewindow::TDialogStackController::instance(); dialogs && dialogs->hotkeysBlocked())

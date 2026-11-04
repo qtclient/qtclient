@@ -2,14 +2,19 @@
 
 #include "config/sidebaroptions.h"
 #include "gamewindow/sidebarmanager.h"
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
 
 #include <client/item.h>
 #include <client/staticdata.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 
 #include <QJsonObject>
+#include <Qt>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -17,7 +22,7 @@ namespace {
 
 QString nameOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || type->getId() == 0)
         return QString::number(typeId);
     const MarketData& market = type->getMarketData();
@@ -26,7 +31,7 @@ QString nameOf(const uint16_t typeId)
 
 int marketCategoryOf(const uint16_t typeId)
 {
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || type->getId() == 0)
         return 0;
     return static_cast<int>(type->getMarketData().category);
@@ -67,19 +72,19 @@ TDepotSearchWidgetController::TDepotSearchWidgetController(TSidebarManager* side
     m_depotAppearanceTypeListModel = QVariant::fromValue(static_cast<QObject*>(m_depotModel));
     m_inboxAppearanceTypeListModel = QVariant::fromValue(static_cast<QObject*>(m_inboxModel));
 
-    m_hooks.emplace_back("g_game", "onDepotSearchResults", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onDepotSearchResults", [this](GameObject*, const std::vector<std::any>& args) {
         if (const auto* items = args.empty() ? nullptr : std::any_cast<std::vector<DepotSearchResultItem>>(&args[0]))
             applyResults(*items);
         placeInSidebar();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onDepotSearchDetail", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onDepotSearchDetail", [this](GameObject*, const std::vector<std::any>& args) {
         if (const auto* detail = args.empty() ? nullptr : std::any_cast<DepotSearchDetail>(&args[0]))
             applyDetail(*detail);
         placeInSidebar();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCloseDepotSearch", [this](LuaObject*, const std::vector<std::any>&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseDepotSearch", [this](GameObject*, const std::vector<std::any>&) {
         clearDetail();
         m_resultsModel->reset({});
         m_counts.clear();
@@ -161,20 +166,14 @@ void TDepotSearchWidgetController::applyDetail(const DepotSearchDetail& detail)
 
     std::vector<TAppearanceTypeEntry> depot;
     depot.reserve(detail.depotItems.size());
-    for (const ItemPtr& item : detail.depotItems) {
-        if (!item)
-            continue;
-        depot.push_back(entryOf(item->getId(), item->getTier(), item->getTier() > 0));
-    }
+    for (const auto& [typeId, tier] : detail.depotItems)
+        depot.push_back(entryOf(typeId, tier, tier > 0));
     m_depotModel->reset(std::move(depot));
 
     std::vector<TAppearanceTypeEntry> inbox;
     inbox.reserve(detail.inboxItems.size());
-    for (const ItemPtr& item : detail.inboxItems) {
-        if (!item)
-            continue;
-        inbox.push_back(entryOf(item->getId(), item->getTier(), item->getTier() > 0));
-    }
+    for (const auto& [typeId, tier] : detail.inboxItems)
+        inbox.push_back(entryOf(typeId, tier, tier > 0));
     m_inboxModel->reset(std::move(inbox));
 
     std::vector<TAppearanceTypeEntry> stash;
@@ -208,8 +207,8 @@ int TDepotSearchWidgetController::countOf(const uint16_t typeId, const uint8_t t
     return m_counts.value({ typeId, tier }, 0);
 }
 
-void TDepotSearchWidgetController::requestSearch() { g_game.openDepotSearch(); }
-void TDepotSearchWidgetController::requestRefresh() { g_game.openDepotSearch(); }
+void TDepotSearchWidgetController::requestSearch() { tibia::game::openDepotSearch(); }
+void TDepotSearchWidgetController::requestRefresh() { tibia::game::openDepotSearch(); }
 
 void TDepotSearchWidgetController::requestCategorySelect(const int ClassificationIdentifier, const bool FilterByLevel,
                                                         const bool FilterByVocation, const bool OnlyOneHanWeapons,
@@ -234,7 +233,7 @@ void TDepotSearchWidgetController::requestNameSelect(const QString& NameFilter, 
 
 void TDepotSearchWidgetController::requestItemSelect(const int AppearanceId, const int UpgradeTier)
 {
-    g_game.requestDepotSearchItem(static_cast<uint16_t>(AppearanceId), static_cast<uint8_t>(UpgradeTier));
+    tibia::game::requestDepotSearchItem(static_cast<uint16_t>(AppearanceId), static_cast<uint8_t>(UpgradeTier));
 }
 
 void TDepotSearchWidgetController::requestItemChosen(const int AppearanceId, const int UpgradeTier)
@@ -247,23 +246,109 @@ void TDepotSearchWidgetController::onSearchedItemClicked(const int AppearanceId,
     requestItemSelect(AppearanceId, UpgradeTier);
 }
 
+void TDepotSearchWidgetController::onClassificationFilterWasSelected(const int SelectedIndex, const QString& NameFilter,
+                                                                    const bool FilterByLevel, const bool FilterByVocation,
+                                                                    const bool OnlyOneHandWeapons, const bool OnlyTwoHandWeapons,
+                                                                    const bool ShowLockerOnly)
+{
+    setIndexOfSelectedClassification(SelectedIndex);
+    if (NameFilter.isEmpty())
+        requestCategorySelect(SelectedIndex, FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons, ShowLockerOnly);
+    else
+        requestNameSelect(NameFilter, FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons, ShowLockerOnly);
+}
+
+void TDepotSearchWidgetController::onTierFilterWasSelected(const int SelectedIndex, const QString& NameFilter, const bool FilterByLevel,
+                                                           const bool FilterByVocation, const bool OnlyOneHandWeapons,
+                                                           const bool OnlyTwoHandWeapons, const bool ShowLockerOnly)
+{
+    setIndexOfSelectedTier(SelectedIndex);
+    onClassificationFilterWasSelected(indexOfSelectedClassification(), NameFilter, FilterByLevel, FilterByVocation, OnlyOneHandWeapons,
+                                       OnlyTwoHandWeapons, ShowLockerOnly);
+}
+
+void TDepotSearchWidgetController::onNpcFilterWasSelected(const int SelectedIndex, const QString& NameFilter, const bool FilterByLevel,
+                                                          const bool FilterByVocation, const bool OnlyOneHandWeapons,
+                                                          const bool OnlyTwoHandWeapons, const bool ShowLockerOnly)
+{
+    setIndexOfSelectedNPC(SelectedIndex);
+    onClassificationFilterWasSelected(indexOfSelectedClassification(), NameFilter, FilterByLevel, FilterByVocation, OnlyOneHandWeapons,
+                                       OnlyTwoHandWeapons, ShowLockerOnly);
+}
+
+TAppearanceTypeListModel* TDepotSearchWidgetController::modelForStorage(const int storageLocation) const
+{
+    switch (storageLocation) {
+        case 1:
+            return m_stashModel;
+        case 2:
+            return m_inboxModel;
+        default:
+            return m_depotModel;
+    }
+}
+
+uint8_t TDepotSearchWidgetController::retrieveTypeForStorage(const int storageLocation) const
+{
+    // QML selectedButtonIndex: 0 depot, 1 stash, 2 inbox.
+    switch (storageLocation) {
+        case 1:
+            return RetrieveStash;
+        case 2:
+            return RetrieveInbox;
+        default:
+            return RetrieveDepot;
+    }
+}
+
+bool TDepotSearchWidgetController::entryAt(const int storageLocation, const int slotId, uint16_t& typeId, uint8_t& tier) const
+{
+    TAppearanceTypeListModel* model = modelForStorage(storageLocation);
+    if (!model || slotId < 0 || slotId >= model->size())
+        return false;
+    const TAppearanceTypeEntry& entry = model->entry(slotId);
+    typeId = entry.typeId;
+    tier = entry.tier;
+    return typeId != 0;
+}
+
 void TDepotSearchWidgetController::requestRetrieveFromStash(int)
 {
     if (m_detailTypeId)
-        g_game.retrieveDepotSearch(m_detailTypeId, m_detailTier, RetrieveStash);
+        tibia::game::retrieveDepotSearch(m_detailTypeId, m_detailTier, RetrieveStash);
 }
 
 void TDepotSearchWidgetController::requestRetrieveFromDepotInbox(const int StorageLocation)
 {
     if (!m_detailTypeId)
         return;
-    const uint8_t type = StorageLocation == 1 ? RetrieveInbox : RetrieveDepot;
-    g_game.retrieveDepotSearch(m_detailTypeId, m_detailTier, type);
+    tibia::game::retrieveDepotSearch(m_detailTypeId, m_detailTier, retrieveTypeForStorage(StorageLocation));
 }
+
+void TDepotSearchWidgetController::slotClicked(const int StorageLocation, const int SlotIDRaw, const int MouseButtonRaw, int)
+{
+    uint16_t typeId = 0;
+    uint8_t tier = 0;
+    if (!entryAt(StorageLocation, SlotIDRaw, typeId, tier))
+        return;
+    if (MouseButtonRaw == Qt::RightButton) {
+        auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
+        action->parameter = 0;
+        action->instance = typeId;
+        input::publish(action);
+        return;
+    }
+    tibia::game::retrieveDepotSearch(typeId, tier, retrieveTypeForStorage(StorageLocation));
+}
+
+void TDepotSearchWidgetController::slotEntered(int, int) {}
+void TDepotSearchWidgetController::slotExited(int, int) {}
+void TDepotSearchWidgetController::slotStartDrag(int, int, QObject*) {}
+void TDepotSearchWidgetController::slotTargetSelected(int, int) {}
 
 void TDepotSearchWidgetController::onRequestClose()
 {
-    g_game.closeDepotSearchRequest();
+    tibia::game::closeDepotSearchRequest();
     widget()->hide();
 }
 
@@ -293,7 +378,7 @@ TSidebarWidget* TDepotSearchWidgetManager::open(config::TSidebarOptions* options
     if (!m_controller)
         m_controller = new TDepotSearchWidgetController(m_sidebars, m_gameWindowItem, m_engine);
     m_controller->setSidebarOptions(options);
-    g_game.openDepotSearch();
+    tibia::game::openDepotSearch();
     return m_controller->widget();
 }
 
@@ -302,7 +387,7 @@ void TDepotSearchWidgetManager::close()
     if (!m_controller)
         return;
     m_controller->saveWidgetOptions();
-    g_game.closeDepotSearchRequest();
+    tibia::game::closeDepotSearchRequest();
     m_controller->deleteLater();
     m_controller = nullptr;
 }

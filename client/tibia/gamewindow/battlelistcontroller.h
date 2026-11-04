@@ -19,6 +19,10 @@
 #include <set>
 #include <vector>
 
+namespace tibia::creatures {
+class TCreature;
+}
+
 namespace tibia::config {
 class TSidebarOptions;
 }
@@ -86,6 +90,8 @@ struct BattleListEntry
     bool leader = false;
     bool leaderMinion = false;
     int vocation = 0;
+    /// CIP tutorialMarkerID role 0x111 — set by ADD_GUI_TUTORIAL_MARKER.
+    int tutorialMarkerId = 0;
 
     bool operator==(const BattleListEntry&) const = default;
 };
@@ -192,6 +198,8 @@ public:
     TBattleListControllerStorage(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TBattleListControllerStorage() override;
 
+    static TBattleListControllerStorage* instance();
+
     void setSidebarOptions(config::TSidebarOptions* options);
     void setControlScheme(int controlScheme);
     /// Where TEMPORARY_SELECT_CREATURE puts the hovered creature.
@@ -217,13 +225,18 @@ public:
 
     /// The list's creatures, filtered and sorted (CIP: filterDrawCommands and
     /// 0x100d3ea90).
-    std::vector<CreaturePtr> creatures(const BattleListOptions& options) const;
+    std::vector<std::shared_ptr<creatures::TCreature>> creatures(const BattleListOptions& options) const;
     uint32_t temporarySelectedCreature() const { return m_temporarySelected; }
     void setTemporarySelectedCreature(uint32_t creatureId);
 
     /// CIP 0x100baabb0 / 0x100baae20 (TBattleListGameActionHandler slots).
     bool attackFirstTarget();
     bool attackNextOrPreviousTarget(bool previous);
+
+    /// CIP handleAddGUITutorialMarkerAction / REMOVE_ALL on the battle list.
+    void setCreatureTutorialMarker(uint32_t creatureId, int markerId);
+    void clearCreatureTutorialMarkers();
+    TBattleListGameActionHandler* gameActionHandler() const { return m_gameActionHandler; }
 
 public Q_SLOTS:
     void triggerUpdate() override;
@@ -239,7 +252,7 @@ private:
     void writeOptions();
     void refresh();
     void emitVisibility(int battleListId, bool visible);
-    BattleListEntry entryOf(const CreaturePtr& creature, const LocalPlayerPtr& player) const;
+    BattleListEntry entryOf(const std::shared_ptr<creatures::TCreature>& creature, const LocalPlayerPtr& player) const;
 
     QPointer<TSidebarManager> m_sidebars;
     QQuickItem* m_gameWindowItem;

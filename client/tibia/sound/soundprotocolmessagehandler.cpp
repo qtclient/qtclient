@@ -3,7 +3,6 @@
 #include "sound/soundstorage.h"
 
 #include <client/gamecore.h>
-#include <framework/core/gameevents.h>
 
 #include <QLoggingCategory>
 
@@ -15,19 +14,11 @@ using client::gamecore::argInt;
 
 TSoundProtocolMessageHandler::TSoundProtocolMessageHandler(QObject* parent)
     : cip::tibia::sound::TSoundProtocolMessageHandler(parent)
+    , m_hook("onSoundTrigger", [this](const tibia::game::TGameNotify::Args& args) {
+          handleSoundTrigger(static_cast<int>(argInt(args, 0)), static_cast<int>(argInt(args, 1)));
+          return std::any{};
+      })
 {
-    m_hook = g_gameEvents.subscribe("g_game", "onSoundTrigger",
-                                    [this](LuaObject*, const GameEvents::Args& args) {
-                                        handleSoundTrigger(static_cast<int>(argInt(args, 0)),
-                                                           static_cast<int>(argInt(args, 1)));
-                                        return std::any{};
-                                    });
-}
-
-TSoundProtocolMessageHandler::~TSoundProtocolMessageHandler()
-{
-    if (m_hook)
-        g_gameEvents.unsubscribe(m_hook);
 }
 
 void TSoundProtocolMessageHandler::handleSoundTrigger(const int type, const int soundId)
@@ -51,4 +42,4 @@ void TSoundProtocolMessageHandler::handleSoundTrigger(const int type, const int 
     }
 }
 
-}
+} // namespace tibia::sound

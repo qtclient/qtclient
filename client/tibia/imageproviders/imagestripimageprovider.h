@@ -5,6 +5,7 @@
 #include <QQuickImageProvider>
 
 #include <mutex>
+#include <vector>
 
 class QQmlEngine;
 
@@ -28,6 +29,7 @@ private:
     mutable int m_cellWidth;
     mutable int m_cellHeight = 0;
     mutable QImage m_image;
+    mutable std::vector<QImage> m_animationFrames;
     mutable std::once_flag m_loaded;
 };
 

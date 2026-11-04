@@ -460,6 +460,6 @@ namespace Proto
     };
 
     void buildMessageModesMap(int version);
-    Otc::MessageMode translateMessageModeFromServer(uint8_t mode);
-    uint8_t translateMessageModeToServer(Otc::MessageMode mode);
+    tibia::client::MessageMode translateMessageModeFromServer(uint8_t mode);
+    uint8_t translateMessageModeToServer(tibia::client::MessageMode mode);
 }

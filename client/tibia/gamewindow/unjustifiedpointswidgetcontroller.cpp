@@ -2,12 +2,14 @@
 
 #include "config/sidebaroptions.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/staticdata.h>
 
 #include <QJsonObject>
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -29,17 +31,16 @@ TUnjustifiedPointsWidgetController::TUnjustifiedPointsWidgetController(QQuickIte
                                                                        QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
 {
-    m_hooks.emplace_back("g_game", "onUnjustifiedPointsChange", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUnjustifiedPointsChange", [this](GameObject*, const Args&) {
         refresh();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onOpenPvpSituationsChange", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenPvpSituationsChange", [this](GameObject*, const Args&) {
         refresh();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         refresh();
-        return std::any{};
     });
     widget()->createItem(QStringLiteral("unjustifiedpointswidget.qml"));
     refresh();
@@ -68,7 +69,7 @@ void TUnjustifiedPointsWidgetController::saveWidgetOptions()
 
 void TUnjustifiedPointsWidgetController::refresh()
 {
-    const UnjustifiedPoints points = g_game.getUnjustifiedPoints();
+    const UnjustifiedPoints points = tibia::game::getUnjustifiedPoints();
     m_progressDay = std::clamp(points.killsDay / 100.0f, 0.0f, 1.0f);
     m_fullKillsToNextSkullDay = points.killsDayRemaining;
     m_progressWeek = std::clamp(points.killsWeek / 100.0f, 0.0f, 1.0f);
@@ -76,10 +77,10 @@ void TUnjustifiedPointsWidgetController::refresh()
     m_progressMonth = std::clamp(points.killsMonth / 100.0f, 0.0f, 1.0f);
     m_fullKillsToNextSkullMonth = points.killsMonthRemaining;
     m_skullDuration = points.skullTime;
-    m_openPvpSituationCount = static_cast<uint>(g_game.getOpenPvpSituations());
+    m_openPvpSituationCount = static_cast<uint>(tibia::game::getOpenPvpSituations());
 
     int skull = 0;
-    if (const LocalPlayerPtr player = g_game.getLocalPlayer())
+    if (const LocalPlayerPtr player = tibia::game::localPlayer())
         skull = player->getSkull();
     m_currentSkullSource = skullSource(skull);
     m_nextSkullSource = skullSource(skull > 0 ? std::min(skull + 1, 5) : 3);

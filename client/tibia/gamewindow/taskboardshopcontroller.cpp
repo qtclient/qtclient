@@ -1,7 +1,6 @@
 #include "taskboardshopcontroller.h"
 
 #include <client/const.h>
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/outfit.h>
 
@@ -10,6 +9,7 @@
 #include <algorithm>
 #include <climits>
 #include <cstdlib>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -39,21 +39,21 @@ QColor outfitColor(const int index)
 
 uint64_t huntingPoints()
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
-    return player ? player->getResourceBalance(Otc::RESOURCE_TASK_HUNTING) : 0;
+    const LocalPlayerPtr player = tibia::game::localPlayer();
+    return player ? player->getResourceBalance(tibia::client::RESOURCE_TASK_HUNTING) : 0;
 }
 
 int toRewardType(const uint8_t offerType)
 {
     using R = cip::tibia::taskboard::TTaskboardRewardListModel::EShopRewardType;
     switch (offerType) {
-    case Otc::TASK_BOARD_SHOP_OFFER_MOUNT:
+    case tibia::client::TASK_BOARD_SHOP_OFFER_MOUNT:
         return R::Mount;
-    case Otc::TASK_BOARD_SHOP_OFFER_OUTFIT:
+    case tibia::client::TASK_BOARD_SHOP_OFFER_OUTFIT:
         return R::Outfit;
-    case Otc::TASK_BOARD_SHOP_OFFER_ITEM_DOUBLE:
+    case tibia::client::TASK_BOARD_SHOP_OFFER_ITEM_DOUBLE:
         return R::Bed;
-    case Otc::TASK_BOARD_SHOP_OFFER_BONUS_PROMOTION:
+    case tibia::client::TASK_BOARD_SHOP_OFFER_BONUS_PROMOTION:
         return R::PromotionPoint;
     default:
         return R::Object;
@@ -80,7 +80,7 @@ void TTaskboardShopController::showDialogTab()
 {
     syncPlayerColors();
     refreshHuntingTaskPoints();
-    g_game.taskHuntingShopRequest();
+    tibia::game::taskHuntingShopRequest();
 }
 
 void TTaskboardShopController::hideDialogTab() {}
@@ -97,7 +97,7 @@ void TTaskboardShopController::requestBuyOffer(const int Index)
         return;
     if (huntingPoints() < static_cast<uint64_t>(row->cost))
         return;
-    g_game.taskHuntingShopPurchase(static_cast<uint8_t>(std::clamp(row->offerIndex, 0, 255)));
+    tibia::game::taskHuntingShopPurchase(static_cast<uint8_t>(std::clamp(row->offerIndex, 0, 255)));
 }
 
 void TTaskboardShopController::refreshHuntingTaskPoints()
@@ -111,7 +111,7 @@ void TTaskboardShopController::refreshHuntingTaskPoints()
 
 void TTaskboardShopController::syncPlayerColors()
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     if (!player)
         return;
     const Outfit& outfit = player->getOutfit();
@@ -150,7 +150,7 @@ void TTaskboardShopController::applyShopData(const std::vector<ShopMap>& offers)
         row.addOn2 = (addons & 2) != 0;
         row.optionalId = static_cast<int>(mapU32(raw, "optionalItemId"));
 
-        if (offerType == Otc::TASK_BOARD_SHOP_OFFER_BONUS_PROMOTION) {
+        if (offerType == tibia::client::TASK_BOARD_SHOP_OFFER_BONUS_PROMOTION) {
             const uint32_t current = mapU32(raw, "currentPurchases");
             row.title = QStringLiteral("Bonus Promotion Point");
             row.description = QStringLiteral(
@@ -158,7 +158,7 @@ void TTaskboardShopController::applyShopData(const std::vector<ShopMap>& offers)
                                   "Already purchased %1 / 50.")
                                   .arg(current);
             row.id = 0;
-        } else if (offerType == Otc::TASK_BOARD_SHOP_OFFER_OUTFIT || offerType == Otc::TASK_BOARD_SHOP_OFFER_MOUNT) {
+        } else if (offerType == tibia::client::TASK_BOARD_SHOP_OFFER_OUTFIT || offerType == tibia::client::TASK_BOARD_SHOP_OFFER_MOUNT) {
             row.id = static_cast<int>(lookType);
         } else {
             row.id = static_cast<int>(itemId);

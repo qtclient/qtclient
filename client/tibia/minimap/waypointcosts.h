@@ -16,7 +16,7 @@ namespace tibia::minimap {
 class TMinimapTileStorage;
 
 /// CIP minimap waypoint costs (0..250 walkable, 0xfe unknown, 0xff blocked).
-/// Prefer in-memory Soft tiles, then fall back to AppData/minimap PNGs.
+/// Prefer in-memory qtclient tiles, then fall back to AppData/minimap PNGs.
 /// Built on the GUI thread (image copies); safe for one async worker afterward.
 class TWaypointCosts
 {
@@ -39,7 +39,7 @@ private:
     QString m_dir;
 };
 
-/// Snapshot Soft in-memory tiles + disk dir for off-thread pathfinding (CIP
+/// Snapshot qtclient in-memory tiles + disk dir for off-thread pathfinding (CIP
 /// TWaypointCostMap feed into the movement path planner).
 std::shared_ptr<TWaypointCosts> snapshotWaypointCosts(TMinimapTileStorage* storage);
 

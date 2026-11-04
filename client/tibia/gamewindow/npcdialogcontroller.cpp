@@ -3,8 +3,8 @@
 #include "chat/chatchannel.h"
 #include "gamewindow/chatcontroller.h"
 
+#include <creatures/creaturestorage.h>
 #include <tibia/world/creature.h>
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/world/map.h>
 #include <client/outfit.h>
@@ -13,6 +13,9 @@
 #include <QMouseEvent>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -28,12 +31,15 @@ QColor outfitColor(const int index)
 
 void TNpcDialogOutfit::setFromCreatureNamed(const QString& name)
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
-    if (player && !name.isEmpty()) {
-        const std::string wanted = name.toStdString();
-        for (const CreaturePtr& creature : g_map.getSpectators(player->getPosition(), false)) {
-            if (creature && creature->getName() == wanted) {
-                setOutfit(creature->getOutfit());
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    if (player && storage && !name.isEmpty()) {
+        const auto ar = tibia::game::awareRange();
+    const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
+        for (const std::shared_ptr<tibia::creatures::TCreature>& creature :
+             storage->spectatorsNear(player->getPosition(), false, range.left, range.right, range.top, range.bottom)) {
+            if (creature && creature->name() == name) {
+                setOutfit(creature->outfit());
                 return;
             }
         }
@@ -84,7 +90,7 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
     });
 
     using Args = std::vector<std::any>;
-    m_hooks.emplace_back("g_game", "onNpcChatWindow", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onNpcChatWindow", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<NpcChatWindowData>(&args[0]);
         if (!data)
             return std::any{};
@@ -95,22 +101,22 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
         onNpcChatWindow(data->npcIds, std::move(buttons));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onNpcChatWindowClose", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onNpcChatWindowClose", [this](GameObject*, const Args&) {
         onNpcChatWindow({}, {});
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_talkPartners.clear();
-        return std::any{};
     });
 }
 
 QString TNpcDialogController::partnerNamesOf(const std::vector<uint32_t>& npcIds)
 {
     QStringList names;
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     for (const uint32_t id : npcIds) {
-        const CreaturePtr creature = g_map.getCreatureById(id);
-        names << (creature ? QString::fromStdString(creature->getName()) : qtTrId("npc_dialog_talk_partner_name_fallback"));
+        const std::shared_ptr<tibia::creatures::TCreature> row = storage ? storage->creatureAt(id) : nullptr;
+        names << (row ? row->name() : qtTrId("npc_dialog_talk_partner_name_fallback"));
     }
     if (names.size() <= 1)
         return names.isEmpty() ? qtTrId("npc_dialog_talk_partner_name_fallback") : names.front();
@@ -129,8 +135,10 @@ void TNpcDialogController::onNpcChatWindow(const std::vector<uint32_t>& npcIds, 
         dialog()->close();
         return;
     }
-    if (const CreaturePtr creature = g_map.getCreatureById(npcIds.front()))
-        m_outfit.setOutfit(creature->getOutfit());
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(npcIds.front()))
+            m_outfit.setOutfit(row->outfit());
+    }
     setTalkPartnerNames(partnerNamesOf(npcIds));
     dialog()->show();
 }
@@ -164,7 +172,7 @@ QString TNpcDialogController::sendChatMessage(const QString& Message, const bool
     if (text.isEmpty())
         return {};
     if (!sayToRemoteNpc(text))
-        g_game.talkChannel(Otc::MessageNpcTo, 0, text.toStdString());
+        tibia::game::talkChannel(tibia::client::MessageNpcTo, 0, text.toStdString());
     // As TChatController::sayInChannel: the server does not echo NPC-channel lines.
     if (m_chatStorage)
         m_chatStorage->addNpcEntry(chat::consoleColor(12), text, m_chatStorage->ownName());

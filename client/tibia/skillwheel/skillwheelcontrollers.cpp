@@ -3,7 +3,6 @@
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
@@ -11,6 +10,8 @@
 #include <QGuiApplication>
 
 #include <algorithm>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::skillwheel {
 
@@ -35,7 +36,7 @@ QString itemName(const int typeId)
 {
     if (typeId <= 0)
         return {};
-    const ThingTypePtr& type = g_things.getThingType(static_cast<uint16_t>(typeId), ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(typeId), ThingCategoryItem);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 
@@ -888,7 +889,7 @@ int TGemAtelierPageController::changeAffinityCost() const
 
 void TGemAtelierPageController::gemAction(const int type, const int param, const int pos)
 {
-    g_game.gemAction(static_cast<uint8_t>(type), static_cast<uint16_t>(param), static_cast<uint8_t>(pos));
+    tibia::game::gemAction(static_cast<uint8_t>(type), static_cast<uint16_t>(param), static_cast<uint8_t>(pos));
 }
 
 /// Vessels are part of the edited wheel: socketing changes the current wheel,
@@ -1018,7 +1019,7 @@ void TFragmentWorkshopPageController::enhanceModGrade(const bool isBasicMod, con
         return;
     m_pendingBasic = isBasicMod;
     m_pendingMod = ModID;
-    g_game.gemAction(4, isBasicMod ? 0 : 1, static_cast<uint8_t>(ModID));
+    tibia::game::gemAction(4, isBasicMod ? 0 : 1, static_cast<uint8_t>(ModID));
 }
 
 // ---------------------------------------------------------------------------
@@ -1158,7 +1159,7 @@ TSkillWheelDialogController::~TSkillWheelDialogController() = default;
 
 bool TSkillWheelDialogController::isPremium() const
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 
@@ -1237,7 +1238,7 @@ void TSkillWheelDialogController::requestCopyExportCodeToClipboarClicked() { m_p
 /// CIP 0x100ddc1f0 (308 accepted): an empty wheel of the own vocation.
 void TSkillWheelDialogController::requestSkillWheelPreview()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return;
     const int vocation = player->getVocation() % 10;

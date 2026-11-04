@@ -1,8 +1,8 @@
 #pragma once
 
-#include <cip_gen.h>
+#include "container/containerciptypes.h"
 
-#include <client/declarations.h>
+#include <cip_gen.h>
 
 #include <vector>
 
@@ -42,9 +42,9 @@ public:
     /// CIP FUN_100d6f290: every row goes and comes back.
     void setMinimumRows(int rows);
     /// CIP FUN_100d6f370: rows come and go at the end, and every row is
-    /// signalled as changed.
-    void setObjects(std::vector<ItemPtr> objects);
-    const std::vector<ItemPtr>& objects() const { return m_objects; }
+    /// signalled as changed. Appearance infos only — no ItemPtr.
+    void setObjects(std::vector<container::TInventorySlot> objects);
+    const std::vector<container::TInventorySlot>& objects() const { return m_objects; }
     /// Options showExpireInContainers and showExpireWhenUnused.
     void setExpireOptions(bool showExpire, bool whenUnused);
     /// The slots whose text counts down, as time passes.
@@ -53,7 +53,7 @@ public:
     void refreshLootValues();
 
 private:
-    std::vector<ItemPtr> m_objects;
+    std::vector<container::TInventorySlot> m_objects;
     int m_minimumRows = 0;
     bool m_showExpire = true;
     bool m_showExpireWhenUnused = false;

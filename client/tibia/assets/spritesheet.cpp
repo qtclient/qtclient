@@ -76,7 +76,7 @@ bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
         return false;
 
     try {
-        const auto path = fmt::format("{}{}", m_path, sheet->file);
+        const auto path = std::format("{}{}", m_path, sheet->file);
         if (!tibia::files::data().fileExists(path)) {
             sheet->m_loadingState.store(SpriteLoadState::NONE, std::memory_order_release);
             return false;

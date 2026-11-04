@@ -1,10 +1,9 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "container/containerciptypes.h"
 
 #include <cip_gen.h>
-
-#include <client/declarations.h>
 
 #include <QHash>
 #include <QString>
@@ -16,21 +15,24 @@ namespace tibia::trade {
 /// One good of the NPC's offer (CIP: the 0x38-byte entry of the open trade
 /// message: type +0x00, name +0x10, sell price +0x28, buy price +0x2c,
 /// weight +0x30). Prices are what the NPC pays (sell) and what the player
-/// pays (buy); weight is in 1/100 oz.
+/// pays (buy); weight is in 1/100 oz. Appearance slot only — no ItemPtr.
 struct TNPCTradeGood
 {
-    ItemPtr object;
+    container::TInventorySlot appearance;
     QString name;
     uint32_t sellPrice = 0;
     uint32_t buyPrice = 0;
     uint32_t weight = 0;
 
-    uint16_t typeId() const;
+    uint16_t typeId() const { return appearance.typeId; }
     /// The liquid of fluid containers and splashes, otherwise 0.
-    uint8_t liquidType() const;
-    bool isStackable() const;
+    uint8_t liquidType() const { return appearance.fluidOrSplash ? appearance.fluid : 0; }
+    bool isStackable() const { return appearance.stackable; }
     /// 0 none, 1 south, 2 east (EHookDirection).
     uint8_t hookDirection() const;
+    bool isPickupable() const;
+    /// Subtype for buy/sell wire (fluid or stack count pattern).
+    uint8_t countOrSubType() const;
 };
 
 enum class ENPCTradeDirection { BUY = 0, SELL = 1 };

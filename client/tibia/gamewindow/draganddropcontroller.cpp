@@ -1,9 +1,9 @@
 #include "draganddropcontroller.h"
 
+#include "container/containerciptypes.h"
 #include "gamewindow/mousecursorcontroller.h"
 
-#include <client/item.h>
-#include <tibia/world/thing.h>
+#include <client/position.h>
 
 #include <QCoreApplication>
 #include <QCursor>
@@ -180,7 +180,7 @@ void TDragAndDropController::startDrag(const input::TGameActionPtr& action, QObj
         return;
     m_action = action;
     m_source = qobject_cast<QQuickItem*>(source);
-    updateIcon(action->object);
+    updateIcon(action->objectClientId, action->position, action->stackPosition);
     if (m_icon)
         m_icon->setVisible(true);
     moveIcon();
@@ -211,7 +211,7 @@ void TDragAndDropController::finish()
         m_source->ungrabMouse();
         m_source = nullptr;
     }
-    updateIcon(nullptr);
+    updateIcon(0, {}, -1);
     if (m_icon)
         m_icon->setVisible(false);
 }
@@ -225,15 +225,32 @@ void TDragAndDropController::moveIcon()
     m_icon->setPosition(parent ? parent->mapFromScene(scene) : scene);
 }
 
-void TDragAndDropController::updateIcon(const ThingPtr& object)
+void TDragAndDropController::updateIcon(const uint16_t objectClientId, const Position& position, const int stackPosition)
 {
     if (!m_icon)
         return;
-    const ItemPtr item = object && object->isItem() ? object->static_self_cast<Item>() : nullptr;
-    const bool liquid = item && (item->isFluidContainer() || item->isSplash());
-    m_icon->setProperty("typeid", item ? static_cast<int>(item->getId()) : 0);
-    m_icon->setProperty("cumulativeCount", item && item->isStackable() ? static_cast<int>(item->getCountOrSubType()) : 0);
-    m_icon->setProperty("liquidType", QVariant::fromValue(static_cast<Info::ELiquidType>(liquid ? item->getCountOrSubType() : 0)));
+    uint16_t typeId = objectClientId;
+    int cumulative = 0;
+    int liquid = 0;
+    if (objectClientId && position.x == UINT16_MAX) {
+        container::TInventorySlot slot;
+        if (position.y & 0x40) {
+            if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+                if (const container::TStoredContainer* row = storage->containerAt(position.y & 0x3F))
+                    slot = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + std::max(0, stackPosition));
+            }
+        } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+            slot = inventory->slotAt(position.y);
+        }
+        if (!slot.empty()) {
+            typeId = slot.typeId;
+            cumulative = slot.stackable ? slot.count : 0;
+            liquid = slot.fluidOrSplash ? slot.fluid : 0;
+        }
+    }
+    m_icon->setProperty("typeid", static_cast<int>(typeId));
+    m_icon->setProperty("cumulativeCount", cumulative);
+    m_icon->setProperty("liquidType", QVariant::fromValue(static_cast<Info::ELiquidType>(liquid)));
     m_icon->setProperty("hookDirection", QVariant::fromValue(Info::EHookDirection::NONE));
 }
 

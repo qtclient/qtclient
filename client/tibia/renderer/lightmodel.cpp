@@ -2,17 +2,19 @@
 
 #include "app/clientoptions.h"
 
+#include "appearances/appearanceinstance.h"
 #include <client/gameconfig.h>
 #include <tibia/world/world.h>
 #include <tibia/world/thing.h>
 #include <tibia/assets/thingtype.h>
-#include <tibia/world/tile.h>
+#include "worldmap/worldmapfield.h"
 
 #include <QJsonObject>
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include "worldmap/worldmapstorage.h"
 
 namespace tibia::qmlcomponents::light {
 
@@ -44,15 +46,15 @@ QRgb lightColor(const uint8_t color, const float brightness)
     return qRgb(channel(color / 36 % 6), channel(color / 6 % 6), channel(color % 6));
 }
 
-FieldFlags fieldFlags(Tile& tile)
+FieldFlags fieldFlags(tibia::worldmap::TWorldMapField& field)
 {
     FieldFlags flags;
     bool roof = false;
-    for (const ThingPtr& thing : tile.getThings()) {
-        if (!thing->isItem())
+    for (const appearances::TAppearanceInstancePtr& appearance : field.appearances()) {
+        if (!appearance)
             continue;
-        ThingType* type = typeOf(*thing);
-        if (!type)
+        ThingType* type = appearance->thingType();
+        if (!type || type->getCategory() != ThingCategoryItem)
             continue;
         const bool bank = type->isGround();
         const bool bottom = type->isOnBottom();
@@ -77,7 +79,7 @@ uint8_t underRoofFloors(const Position& pos)
 {
     // Nearest cover above (highest z below pos.z in Tibia = first ceiling up).
     for (int z = static_cast<int>(pos.z) - 1; z >= 0; --z) {
-        const TilePtr& tile = tibia::world::fields().getTile(Position(pos.x, pos.y, static_cast<uint8_t>(z)));
+        tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(Position(pos.x, pos.y, static_cast<uint8_t>(z)));
         if (tile && fieldFlags(*tile).roof)
             return static_cast<uint8_t>(pos.z - z);
     }
@@ -132,7 +134,7 @@ ClassicLightBuild buildClassicLightPair(const BuildInput& in, const std::vector<
         for (int y = 0; y < in.drawHeight; ++y) {
             for (int x = 0; x < in.drawWidth; ++x) {
                 const Position field = lightField(in.camera, in.centerX, in.centerY, x, y, z);
-                const TilePtr& tile = tibia::world::fields().getTile(field);
+                tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(field);
                 if (tile && fieldFlags(*tile).roof)
                     underRoof[static_cast<size_t>(y * in.drawWidth + x)] = true;
             }
@@ -161,7 +163,7 @@ ClassicLightBuild buildClassicLightPair(const BuildInput& in, const std::vector<
             for (int x = 0; x < in.drawWidth; ++x) {
                 const int i = y * in.drawWidth + x;
                 const Position field = lightField(in.camera, in.centerX, in.centerY, x, y, z);
-                const TilePtr& tile = tibia::world::fields().getTile(field);
+                tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(field);
                 const FieldFlags flags = tile ? fieldFlags(*tile) : FieldFlags();
                 // TLightMap::v10: a sight-blocking field attenuates point lights.
                 blocked[i] = flags.unsight;
@@ -177,7 +179,7 @@ ClassicLightBuild buildClassicLightPair(const BuildInput& in, const std::vector<
                 for (int x = 0; x < in.drawWidth; ++x) {
                     const Position field = lightField(in.camera, in.centerX, in.centerY, x, y, z);
                     const Position above(field.x, field.y, sea);
-                    const TilePtr& tile = tibia::world::fields().getTile(above);
+                    tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(above);
                     if (!tile)
                         continue;
                     const FieldFlags flags = fieldFlags(*tile);

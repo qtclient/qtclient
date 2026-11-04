@@ -6,7 +6,6 @@
 #include "input/gameactionhandlers.h"
 
 #include <client/const.h>
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/outfit.h>
 #include <tibia/assets/things.h>
@@ -14,6 +13,10 @@
 #include <QLocale>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -34,10 +37,10 @@ QColor outfitColor(const int index)
 /// The charm points (major) or minor charm echoes (minor) of the player.
 quint64 charmResource(const bool minor)
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return 0;
-    return player->getResourceBalance(minor ? Otc::RESOURCE_MINOR_CHARM : Otc::RESOURCE_CHARM);
+    return player->getResourceBalance(minor ? tibia::client::RESOURCE_MINOR_CHARM : tibia::client::RESOURCE_CHARM);
 }
 
 class TQmlMonsterBonusEffect final : public cip::tibia::gamewindow::TQmlMonsterBonusEffect
@@ -61,7 +64,7 @@ public:
         m_assigned = charm.raceId != 0;
         m_assignedMonsterRaceID = charm.raceId;
         if (m_assigned) {
-            const Outfit& outfit = g_things.getRaceData(charm.raceId).outfit;
+            const Outfit& outfit = tibia::game::raceData(charm.raceId).outfit;
             m_hasAppearanceInstance = outfit.getId() != 0;
             m_creatureOutfitId = outfit.getId();
             m_creatureHeadColor = outfitColor(outfit.getHead());
@@ -117,17 +120,15 @@ TMonsterBonusEffectsDialogController::TMonsterBonusEffectsDialogController(TBest
         if (m_shown)
             refresh();
     });
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args& args) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
         if (!m_shown)
-            return std::any{};
-        const auto* type = args.size() > 2 ? std::any_cast<Otc::ResourceTypes_t>(&args[2]) : nullptr;
-        if (type
-            && (*type == Otc::RESOURCE_BANK_BALANCE || *type == Otc::RESOURCE_GOLD_EQUIPPED || *type == Otc::RESOURCE_CHARM
-                || *type == Otc::RESOURCE_MINOR_CHARM)) {
+            return;
+        if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED)
+            || type == static_cast<int>(tibia::client::RESOURCE_CHARM) || type == static_cast<int>(tibia::client::RESOURCE_MINOR_CHARM)) {
             rebuildBonusEffects();
             updatePlayerData();
         }
-        return std::any{};
     });
 }
 
@@ -182,7 +183,7 @@ void TMonsterBonusEffectsDialogController::setTemporarySelectedMonsterRaceID(con
     if (m_temporarySelectedMonsterRaceID == v)
         return;
     m_temporarySelectedMonsterRaceID = v;
-    const Outfit outfit = v != 0 ? g_things.getRaceData(v).outfit : Outfit();
+    const Outfit outfit = v != 0 ? tibia::game::raceData(v).outfit : Outfit();
     m_hasTemporarySelectedMonsterAppearanceInstance = v != 0 && outfit.getId() != 0;
     m_temporarySelectedMonsterOutfitId = outfit.getId();
     m_temporarySelectedMonsterHeadColor = outfitColor(outfit.getHead());
@@ -208,7 +209,7 @@ void TMonsterBonusEffectsDialogController::showDialogTab()
     m_shown = true;
     refresh();
     // Crystal answers the bestiary request with the charm data too.
-    g_game.requestBestiary();
+    tibia::game::requestBestiary();
 }
 
 void TMonsterBonusEffectsDialogController::hideDialogTab() { m_shown = false; }
@@ -268,7 +269,7 @@ void TMonsterBonusEffectsDialogController::rebuildMonsterInfos()
     for (const uint16_t raceId : m_storage.charmableRaces()) {
         if (!minorTab && m_storage.isRaceOnlyAssignableForMinorCharms(raceId))
             continue;
-        const QString name = QString::fromStdString(g_things.getRaceData(raceId).name);
+        const QString name = QString::fromStdString(tibia::game::raceData(raceId).name);
         if (!name.contains(m_unassignedMonstersNameFilter, Qt::CaseInsensitive))
             continue;
         if (m_storage.assignedCharm(raceId, minorTab))
@@ -300,7 +301,7 @@ void TMonsterBonusEffectsDialogController::updatePlayerData()
 
 void TMonsterBonusEffectsDialogController::updateStoreTooltip()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     const int slots = m_storage.availableCharmSlots();
     QStringList lines;
     if (slots == 0)
@@ -359,12 +360,12 @@ void TMonsterBonusEffectsDialogController::assignBonusEffectToMonster(const int 
 
 QString TMonsterBonusEffectsDialogController::findMonsterNameByRaceID(const int RaceID)
 {
-    return QString::fromStdString(g_things.getRaceData(RaceID).name);
+    return QString::fromStdString(tibia::game::raceData(RaceID).name);
 }
 
 void TMonsterBonusEffectsDialogController::onStoreButtonClicked()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     const bool expansionOrPremium = m_storage.availableCharmSlots() == 0xFF || (player && player->isPremium());
     auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
     action->parameter = expansionOrPremium ? 3 : 1;
@@ -394,7 +395,7 @@ bool TMonsterBonusEffectsDialogController::isMonsterOnlyAssignableForMinorCharms
 
 void TMonsterBonusEffectsDialogController::onConfirmDialogAccepted()
 {
-    g_game.requestSendBuyCharmRune(static_cast<uint8_t>(m_confirmAction), static_cast<uint8_t>(m_confirmCharm),
+    tibia::game::requestSendBuyCharmRune(static_cast<uint8_t>(m_confirmAction), static_cast<uint8_t>(m_confirmCharm),
                                    static_cast<uint16_t>(m_confirmRace));
 }
 

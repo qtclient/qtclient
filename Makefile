@@ -55,10 +55,10 @@ help:
 ifeq ($(PRODUCT),1)
 	@echo "  PRODUCT=1 mode (umbrella: make qtclient …)"
 	@echo "  QTCLIENT_PACK=$(QTCLIENT_PACK)"
-	@echo "  make client install   Soft tip with QTCLIENT_LINKED_PACK + FS mods/<id>"
+	@echo "  make client install   qtclient tip with QTCLIENT_LINKED_PACK + FS mods/<id>"
 	@echo "  make launcher install stock launcher install, then tip brand"
-	@echo "  make wasm install     Soft wasm tip with QTCLIENT_LINKED_PACK + FS mods/<id>"
-	@echo "  make package          Soft tip build with QTCLIENT_LINKED_PACK"
+	@echo "  make wasm install     qtclient wasm tip with QTCLIENT_LINKED_PACK + FS mods/<id>"
+	@echo "  make package          qtclient tip build with QTCLIENT_LINKED_PACK"
 	@echo "  make client run       start linked tip (mods/<id> FS chrome next to binary)"
 	@echo "  make link             optional FS symlink (not required for run)"
 	@echo "  Stock-only smoke: umbrella make stock client run"
@@ -71,7 +71,7 @@ else
 	@echo "  make launcher run     start stock qtclient launcher (--no-mods; ARGS=…)"
 	@echo "  make demo-pack      stage demo Release (our package + CipSoft assetsurl + mods/default)"
 	@echo "  make demo-run       launcher with demo tip (Play → tip client + mods/default)"
-	@echo "  make wasm build       Soft wasm tip (needs make qt WASM=1; optional LINKED_PACK)"
+	@echo "  make wasm build       qtclient wasm tip (needs make qt WASM=1; optional LINKED_PACK)"
 	@echo "  make wasm install     build + stage into dist/cdn for portal /play"
 	@echo "  make client install   build + point dist/cdn desktop slice at this binary"
 	@echo "  make package          PACKAGE_KIND=sdk|desktop|wasm (client-sdk ships cipgen)"
@@ -142,7 +142,7 @@ _cargo:
 	        STOCK_ALREADY=1 QTCLIENT_ROOT="$(HERE)" \
 	        bash "$$pack/scripts/lifecycle/install/$$target.sh" ;; \
 	    package) \
-	      echo "[qtclient] PRODUCT package: build Soft tip with QTCLIENT_LINKED_PACK=$$pack/client"; \
+	      echo "[qtclient] PRODUCT package: build qtclient tip with QTCLIENT_LINKED_PACK=$$pack/client"; \
 	      STOCK_HOST=0 QTCLIENT_LINKED_PACK="$$pack/client" \
 	        COMP="$$comp" DEV="$(DEV)" DEBUG="$(DEBUG)" \
 	        bash "$(LIFEDIR)/build/$$([[ $$comp == client ]] && echo desktop || echo $$comp).sh" ;; \

@@ -2,6 +2,10 @@
 
 #include "qmlcomponents/worldmapqmltypes.h"
 
+#ifdef TIBIA_WITH_GAMECORE
+#include "qmlcomponents/qmlcomponentsciptypes.h"
+#endif
+
 #include <QCborMap>
 #include <QCborValue>
 #include <QClipboard>
@@ -459,6 +463,20 @@ QObject* TAbstractItemModelHelper::wrapInHelperProxyModel(QAbstractItemModel* pA
     proxy->setSourceModel(pAbstractItemModel);
     QJSEngine::setObjectOwnership(proxy, QJSEngine::JavaScriptOwnership);
     return proxy;
+}
+
+/// CIP 0x1010c4c80.
+QObject* TAbstractItemModelHelper::createDynamicAbstractListModel(const QStringList& Columns)
+{
+#ifdef TIBIA_WITH_GAMECORE
+    auto* model = new TQmlDynamicAbstractListModel;
+    model->setColumns(Columns);
+    QJSEngine::setObjectOwnership(model, QJSEngine::JavaScriptOwnership);
+    return model;
+#else
+    Q_UNUSED(Columns);
+    return nullptr;
+#endif
 }
 
 /// CIP 0x1010c4d00.

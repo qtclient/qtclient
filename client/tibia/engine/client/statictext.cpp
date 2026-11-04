@@ -27,7 +27,6 @@
 #include "tibia/world/map.h"
 #include "framework/core/clock.h"
 #include "framework/core/eventdispatcher.h"
-#include "framework/core/graphicalapplication.h"
 
 StaticText::StaticText()
 {
@@ -43,7 +42,7 @@ void StaticText::drawText(const Point& dest, const Rect& parentRect)
 void StaticText::setText(const std::string_view text) { m_cachedText.setText(text); }
 void StaticText::setFont(const std::string_view) {}
 
-bool StaticText::addMessage(const std::string_view name, const Otc::MessageMode mode, const std::string_view text)
+bool StaticText::addMessage(const std::string_view name, const tibia::client::MessageMode mode, const std::string_view text)
 {
     //TODO: this could be moved to lua
     // first message
@@ -110,22 +109,22 @@ void StaticText::compose()
     //TODO: this could be moved to lua
     std::string text;
 
-    if (m_mode == Otc::MessageSay) {
+    if (m_mode == tibia::client::MessageSay) {
         text += m_name;
         text += " says:\n";
         m_color = MESSAGE_COLOR1;
-    } else if (m_mode == Otc::MessageWhisper) {
+    } else if (m_mode == tibia::client::MessageWhisper) {
         text += m_name;
         text += " whispers:\n";
         m_color = MESSAGE_COLOR1;
-    } else if (m_mode == Otc::MessageYell) {
+    } else if (m_mode == tibia::client::MessageYell) {
         text += m_name;
         text += " yells:\n";
         m_color = MESSAGE_COLOR1;
-    } else if (m_mode == Otc::MessageMonsterSay || m_mode == Otc::MessageMonsterYell || m_mode == Otc::MessageSpell
-               || m_mode == Otc::MessageBarkLow || m_mode == Otc::MessageBarkLoud || m_mode == Otc::MessagePotion) {
+    } else if (m_mode == tibia::client::MessageMonsterSay || m_mode == tibia::client::MessageMonsterYell || m_mode == tibia::client::MessageSpell
+               || m_mode == tibia::client::MessageBarkLow || m_mode == tibia::client::MessageBarkLoud || m_mode == tibia::client::MessagePotion) {
         m_color = MESSAGE_COLOR2;
-    } else if (m_mode == Otc::MessageNpcFrom || m_mode == Otc::MessageNpcFromStartBlock) {
+    } else if (m_mode == tibia::client::MessageNpcFrom || m_mode == tibia::client::MessageNpcFromStartBlock) {
         text += m_name;
         text += " says:\n";
         m_color = MESSAGE_COLOR3;

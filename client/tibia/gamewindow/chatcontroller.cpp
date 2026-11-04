@@ -9,7 +9,6 @@
 #include "input/crosshairgameactionhandlers.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QClipboard>
@@ -28,6 +27,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -138,18 +138,18 @@ input::TGameActionPtr textAction(const A type, const QString& text)
 
 int ownLevel()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player ? static_cast<int>(player->getLevel()) : 0;
 }
 
 QString ownName()
 {
-    return QString::fromStdString(g_game.getCharacterName());
+    return QString::fromStdString(tibia::game::characterName());
 }
 
 bool isVip(const QString& name)
 {
-    for (const auto& [id, vip] : g_game.getVips()) {
+    for (const auto& [id, vip] : tibia::game::getVips()) {
         if (QString::fromStdString(std::get<0>(vip)).compare(name, Qt::CaseInsensitive) == 0)
             return true;
     }
@@ -845,9 +845,9 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
             if (name.isEmpty() || !m_inviteTarget || !m_inviteTarget->isOwnChannel())
                 return;
             if (exclude)
-                g_game.excludeFromOwnChannel(name.toStdString());
+                tibia::game::excludeFromOwnChannel(name.toStdString());
             else
-                g_game.inviteToOwnChannel(name.toStdString());
+                tibia::game::inviteToOwnChannel(name.toStdString());
         });
     }
     m_messageDialog.setButtons(
@@ -880,12 +880,12 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
         case TChatChannelIdentifier::ChannelId:
             if (m_protocol)
                 m_protocol->openInForeground(channel.id);
-            g_game.joinChannel(channel.id);
+            tibia::game::joinChannel(channel.id);
             break;
         case TChatChannelIdentifier::OwnPrivateChannelToOpen:
             if (m_protocol)
                 m_protocol->openInForeground(chat::TChatProtocolMessageHandler::OwnChannelRequest);
-            g_game.openOwnChannel();
+            tibia::game::openOwnChannel();
             break;
         default:
             m_storage.open(channel, true);
@@ -893,7 +893,7 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
         }
     });
     connect(&m_openDialog, &TOpenChatChannelDialogController::privateChannelChosen, this,
-            [](const QString& name) { g_game.openPrivateChannel(name.toStdString()); });
+            [](const QString& name) { tibia::game::openPrivateChannel(name.toStdString()); });
 
     connect(&gameClient, &client::TGameClient::mainWindowInitialized, this, &TChatController::onWorldEntered);
     connect(&gameClient, &client::TGameClient::worldLeft, this, &TChatController::onWorldLeft);
@@ -1011,7 +1011,7 @@ void TChatController::openChannelsFromConfig()
     // product (game_chat): one join per login-sync tick, under the server's packets-per-second limit.
     for (const QJsonValue& id : chatOptions.value(QLatin1String("openChannels")).toArray()) {
         const auto channelId = static_cast<uint16_t>(id.toInt());
-        tibia::mods::enqueueLoginSync([channelId] { g_game.joinChannel(channelId); });
+        tibia::mods::enqueueLoginSync([channelId] { tibia::game::joinChannel(channelId); });
     }
     if (chatOptions.value(QLatin1String("lootChannelOpen")).toBool(true))
         m_storage.open({ TChatChannelIdentifier::Loot }, false);
@@ -1110,7 +1110,7 @@ void TChatController::saveChannel(chat::TChatChannel* channel)
         return;
     file.write(content.toUtf8());
     file.close();
-    if (g_game.isOnline())
+    if (tibia::game::isOnline())
         m_storage.addServerLogEntry(chat::consoleColor(30), qtTrId("chat_append_contents").arg(name, QDir::toNativeSeparators(path)));
 }
 
@@ -1150,10 +1150,10 @@ void TChatController::onChannelListReceived(const std::vector<std::pair<uint16_t
 
 void TChatController::requestChannelList()
 {
-    if (!g_game.isOnline())
+    if (!tibia::game::isOnline())
         return;
     m_channelListRequested = true;
-    g_game.requestChannels();
+    tibia::game::requestChannels();
 }
 
 TChatController::EInput TChatController::parseInput(QString& text, QString& recipient)
@@ -1247,15 +1247,15 @@ QString TChatController::sendChatMessage(const QString& chatMessage, const int c
     case EInput::RedPrivate: keep = QStringLiteral("@%1@ ").arg(recipient); break;
     case EInput::Invite:
         if (m_storage.ownChannel() && !text.isEmpty())
-            g_game.inviteToOwnChannel(text.toStdString());
+            tibia::game::inviteToOwnChannel(text.toStdString());
         return keep;
     case EInput::Exclude:
         if (m_storage.ownChannel() && !text.isEmpty())
-            g_game.excludeFromOwnChannel(text.toStdString());
+            tibia::game::excludeFromOwnChannel(text.toStdString());
         return keep;
     default: break;
     }
-    if (text.isEmpty() || !current || !g_game.isOnline())
+    if (text.isEmpty() || !current || !tibia::game::isOnline())
         return keep;
 
     const TChatChannelIdentifier& identifier = current->identifier();
@@ -1272,11 +1272,11 @@ QString TChatController::sendChatMessage(const QString& chatMessage, const int c
         sayInChannel(nullptr, text, volume, spellCastType);
         break;
     case EInput::Broadcast:
-        g_game.talkChannel(Otc::MessageGamemasterBroadcast, 0, text.toStdString());
+        tibia::game::talkChannel(tibia::client::MessageGamemasterBroadcast, 0, text.toStdString());
         break;
     case EInput::RedChannel:
         if (identifier.type == TChatChannelIdentifier::ChannelId && !current->writesToLocalChat())
-            g_game.talkChannel(Otc::MessageGamemasterChannel, identifier.id, text.toStdString());
+            tibia::game::talkChannel(tibia::client::MessageGamemasterChannel, identifier.id, text.toStdString());
         else
             m_storage.addSystemEntry(current, chat::systemRed(), qtTrId("chat_invalid_channel"));
         break;
@@ -1298,7 +1298,7 @@ void TChatController::sayInChannel(chat::TChatChannel* channel, const QString& t
 {
     const std::string message = text.toStdString();
     if (!channel) {
-        static constexpr Otc::MessageMode Modes[] = { Otc::MessageWhisper, Otc::MessageSay, Otc::MessageYell };
+        static constexpr tibia::client::MessageMode Modes[] = { tibia::client::MessageWhisper, tibia::client::MessageSay, tibia::client::MessageYell };
         // CIP FUN_100993990: crosshair spells by cast type.
         input::say(Modes[std::clamp(volume, 0, 2)], text, spellCastType);
         return;
@@ -1307,14 +1307,14 @@ void TChatController::sayInChannel(chat::TChatChannel* channel, const QString& t
     switch (identifier.type) {
     case TChatChannelIdentifier::Npc:
         if (!m_npcDialog || !m_npcDialog->sayToRemoteNpc(text))
-            g_game.talkChannel(Otc::MessageNpcTo, 0, message);
+            tibia::game::talkChannel(tibia::client::MessageNpcTo, 0, message);
         m_storage.addNpcEntry(chat::consoleColor(12), text, ownName());
         break;
     case TChatChannelIdentifier::MessageTo:
         sendPrivate(identifier.name, text, false);
         break;
     case TChatChannelIdentifier::ChannelId:
-        g_game.talkChannel(Otc::MessageChannel, identifier.id, message);
+        tibia::game::talkChannel(tibia::client::MessageChannel, identifier.id, message);
         break;
     default:
         break;
@@ -1323,7 +1323,7 @@ void TChatController::sayInChannel(chat::TChatChannel* channel, const QString& t
 
 void TChatController::sendPrivate(const QString& recipient, const QString& text, const bool gamemaster)
 {
-    g_game.talkPrivate(gamemaster ? Otc::MessageGamemasterPrivateTo : Otc::MessagePrivateTo, recipient.toStdString(), text.toStdString());
+    tibia::game::talkPrivate(gamemaster ? tibia::client::MessageGamemasterPrivateTo : tibia::client::MessagePrivateTo, recipient.toStdString(), text.toStdString());
     m_storage.addPrivateEntry(recipient, chat::consoleColor(5), text, ownName(), ownLevel(), 0);
 }
 
@@ -1420,9 +1420,9 @@ void TChatController::closeChannel(chat::TChatChannel* channel)
         return;
     const TChatChannelIdentifier identifier = channel->identifier();
     if (identifier.type == TChatChannelIdentifier::ChannelId && !channel->isClosedByServer())
-        g_game.leaveChannel(identifier.id);
+        tibia::game::leaveChannel(identifier.id);
     else if (identifier.type == TChatChannelIdentifier::Npc)
-        g_game.closeNpcChannel();
+        tibia::game::closeNpcChannel();
     m_storage.close(channel);
     if (identifier.type == TChatChannelIdentifier::ChannelId || identifier.type == TChatChannelIdentifier::Loot)
         storeOpenChannels();
@@ -1464,16 +1464,16 @@ bool TChatController::handleAction(const input::TGameAction& action)
         case TChatChannelIdentifier::ChannelId:
             if (makeCurrent && m_protocol)
                 m_protocol->openInForeground(identifier.id);
-            g_game.joinChannel(identifier.id);
+            tibia::game::joinChannel(identifier.id);
             break;
         case TChatChannelIdentifier::MessageTo:
             if (!identifier.name.isEmpty())
-                g_game.openPrivateChannel(identifier.name.toStdString());
+                tibia::game::openPrivateChannel(identifier.name.toStdString());
             break;
         case TChatChannelIdentifier::OwnPrivateChannelToOpen:
             if (makeCurrent && m_protocol)
                 m_protocol->openInForeground(chat::TChatProtocolMessageHandler::OwnChannelRequest);
-            g_game.openOwnChannel();
+            tibia::game::openOwnChannel();
             break;
         default:
             m_storage.open(identifier, makeCurrent);
@@ -1483,7 +1483,7 @@ bool TChatController::handleAction(const input::TGameAction& action)
     }
     case A::OPEN_MESSAGE_TO_CHAT_CHANNEL:
         if (!action.text.isEmpty())
-            g_game.openPrivateChannel(action.text.toStdString());
+            tibia::game::openPrivateChannel(action.text.toStdString());
         return true;
     case A::CLOSE_CURRENT_CHAT_CHANNEL:
         closeChannel(m_tabs.currentChannel());
@@ -1494,11 +1494,11 @@ bool TChatController::handleAction(const input::TGameAction& action)
     case A::INVITE_PLAYER_TO_CHAT_CHANNEL:
     case A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL:
         if (!action.text.isEmpty())
-            g_game.inviteToOwnChannel(action.text.toStdString());
+            tibia::game::inviteToOwnChannel(action.text.toStdString());
         return true;
     case A::EXCLUDE_PLAYER_FROM_CHAT_CHANNEL:
         if (!action.text.isEmpty())
-            g_game.excludeFromOwnChannel(action.text.toStdString());
+            tibia::game::excludeFromOwnChannel(action.text.toStdString());
         return true;
     case A::PRESS_ENTER_IN_CHAT:
         // product: while the NPC dialog is open, Enter drives that input (CIP
@@ -1548,11 +1548,11 @@ bool TChatController::handleAction(const input::TGameAction& action)
         return true;
     case A::SEND_CHAT_MESSAGE_AS_GAMEMASTER_BROADCAST:
         if (!action.text.isEmpty())
-            g_game.talkChannel(Otc::MessageGamemasterBroadcast, 0, action.text.toStdString());
+            tibia::game::talkChannel(tibia::client::MessageGamemasterBroadcast, 0, action.text.toStdString());
         return true;
     case A::SEND_CHAT_MESSAGE_WITH_CHANNEL_ID:
         if (!action.text.isEmpty())
-            g_game.talkChannel(Otc::MessageChannel, static_cast<uint16_t>(action.chatChannelId), action.text.toStdString());
+            tibia::game::talkChannel(tibia::client::MessageChannel, static_cast<uint16_t>(action.chatChannelId), action.text.toStdString());
         return true;
     case A::SEND_CHAT_MESSAGE_WITH_RECIPIENT:
         // CIP: recipient in `text`, message body in `statement` (hotkey private message).
@@ -1561,7 +1561,7 @@ bool TChatController::handleAction(const input::TGameAction& action)
         return true;
     case A::SEND_CHAT_MESSAGE_TO_NPC:
         if (!action.text.isEmpty())
-            g_game.talkChannel(Otc::MessageNpcTo, 0, action.text.toStdString());
+            tibia::game::talkChannel(tibia::client::MessageNpcTo, 0, action.text.toStdString());
         return true;
     case A::SWITCH_CHAT_MODE:
         // CIP Enter-from-chat-off → ChatModeTemporaryOn. With an NPC dialog open,
@@ -1588,7 +1588,7 @@ bool TChatController::handleAction(const input::TGameAction& action)
         showRecentlyTraded(action.text);
         return true;
     case A::GET_GUILD_MESSAGE:
-        g_game.requestGuildMessage();
+        tibia::game::requestGuildMessage();
         return true;
     case A::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES:
     case A::HIDE_CHANNEL_JOIN_LEAVE_MESSAGES:
@@ -1769,7 +1769,7 @@ void TChatController::runMenuAction(const input::TGameAction& action, TChatChann
         QGuiApplication::clipboard()->setText(action.text);
         return;
     case A::ADD_NEW_VIP:
-        g_game.addVip(action.text.toStdString());
+        tibia::game::addVip(action.text.toStdString());
         return;
     case A::CLOSE_CHAT_CHANNEL:
         closeChannel(channel);

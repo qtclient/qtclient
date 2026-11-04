@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <any>
 #include <vector>
+#include <tibia/game/gamenotify.h>
 
 namespace tibia::minimap {
 
@@ -48,7 +49,7 @@ TMinimapMarkerStorage::TMinimapMarkerStorage(const QString& bundledMarkersJson, 
     , m_dialog(std::make_unique<gamewindow::TEditMinimapMarkerDialogController>(this))
 {
     using Args = std::vector<std::any>;
-    m_hooks.emplace_back("g_game", "onAddAutomapFlag", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onAddAutomapFlag", [this](GameObject*, const Args& args) {
         const auto* pos = args.empty() ? nullptr : std::any_cast<Position>(&args[0]);
         if (!pos)
             return std::any{};
@@ -56,7 +57,7 @@ TMinimapMarkerStorage::TMinimapMarkerStorage(const QString& bundledMarkersJson, 
         createOrUpdate(*pos, icon, client::gamecore::argString(args, 2));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onRemoveAutomapFlag", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRemoveAutomapFlag", [this](GameObject*, const Args& args) {
         const auto* pos = args.empty() ? nullptr : std::any_cast<Position>(&args[0]);
         if (pos)
             remove(*pos);

@@ -14,5 +14,5 @@
     "bundleId": "com.qtclient.sample",
     "cdnBaseUrl": ""
   },
-  "description": "SDK sample pack. STATIC-linked into Soft tip via qtclient_add_mod; FS chrome under mods/sample/."
+  "description": "SDK sample pack. STATIC-linked into qtclient tip via qtclient_add_mod; FS chrome under mods/sample/."
 }

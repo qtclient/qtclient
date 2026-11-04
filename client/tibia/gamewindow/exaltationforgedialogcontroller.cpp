@@ -5,7 +5,7 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 
@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <functional>
 #include <optional>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::exaltation {
 
@@ -28,7 +29,7 @@ std::optional<int> classificationOf(const uint16_t typeId)
 {
     if (typeId == 0)
         return std::nullopt;
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     if (!type || type->getClassification() == 0)
         return std::nullopt;
     return type->getClassification();
@@ -460,7 +461,7 @@ uint TExaltationForgeTransferPageController::sourceObjectCount() const
 QString TExaltationForgeTransferPageController::sourceObjectName() const
 {
     if (m_sourceObjectTypeId != 0) {
-        if (const ThingTypePtr& type = g_things.getThingType(m_sourceObjectTypeId, ThingCategoryItem); type && type->getId() != 0)
+        if (const ThingTypePtr& type = tibia::game::thingType(m_sourceObjectTypeId, ThingCategoryItem); type && type->getId() != 0)
             return QString::fromStdString(type->getName());
     }
     return qtTrId("dummy_unknown");
@@ -617,17 +618,17 @@ bool TExaltationForgeConversionPageController::maxDustLimitReached() const
 
 void TExaltationForgeConversionPageController::convertDust()
 {
-    g_game.forgeRequest(Otc::ForgeAction_t::DUST2SLIVER);
+    tibia::game::forgeRequest(tibia::client::ForgeAction_t::DUST2SLIVER);
 }
 
 void TExaltationForgeConversionPageController::convertSlivers()
 {
-    g_game.forgeRequest(Otc::ForgeAction_t::SLIVER2CORE);
+    tibia::game::forgeRequest(tibia::client::ForgeAction_t::SLIVER2CORE);
 }
 
 void TExaltationForgeConversionPageController::increaseDustLimit()
 {
-    g_game.forgeRequest(Otc::ForgeAction_t::INCREASELIMIT);
+    tibia::game::forgeRequest(tibia::client::ForgeAction_t::INCREASELIMIT);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,17 +1,10 @@
 #pragma once
 
+#include "qmlcomponents/outfitpalette.h"
+
 #include <cip_gen.h>
 
 namespace tibia::qmlcomponents {
-
-/// The 133 outfit colours (19 hues x 7 saturation/value steps; CIP 0x10094df40).
-namespace outfitpalette {
-constexpr int HueSteps = 19;
-constexpr int Count = HueSteps * 7;
-QColor color(int index);
-/// The palette index of `color`, 0 when it is not a palette colour.
-int index(const QColor& color);
-}
 
 /// Four palette indices (QML OutfitColor; CIP: TOutfitColorQmlType, metacall 0x1010858e0).
 /// The colours are derived from the indices.
@@ -125,6 +118,7 @@ public:
     using cip::tibia::qmlcomponents::TAbstractItemModelHelper::TAbstractItemModelHelper;
 
     QObject* wrapInHelperProxyModel(QAbstractItemModel* pAbstractItemModel) override;
+    QObject* createDynamicAbstractListModel(const QStringList& Columns) override;
     QObject* createSortProxyModel(QAbstractItemModel* pAbstractListModel) override;
     QString loadStringFromResource(const QString& ResourcePath) override;
     QJSValue loadJsonFromResource(const QString& ResourcePath) override;

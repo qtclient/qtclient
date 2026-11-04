@@ -1,9 +1,11 @@
 #pragma once
 
 #include "shared/cip_typed.h"
+#include "worldmap/worldmapfield.h"
 
-#include <client/declarations.h>
 #include <client/position.h>
+
+#include <cstdint>
 
 #include <QPoint>
 
@@ -13,34 +15,29 @@ class TWorldMapRenderProvider;
 
 namespace tibia::worldmap {
 
-/// An object of a field and its stack position.
+/// An object of a field and its stack position (CipSoft: appearance + stackpos + creatureId).
 struct TFieldObject
 {
-    ThingPtr object;
     int stackPosition = -1;
+    uint32_t creatureId = 0;
+    appearances::TAppearanceInstancePtr appearance;
 
-    explicit operator bool() const { return object != nullptr; }
+    explicit operator bool() const { return stackPosition >= 0; }
+
+    uint16_t clientId() const;
 };
 
-/// CIP's TField object selectors over a field's stack (OTC's thing order,
-/// which is the protocol's stack order).
+/// CIP's TField object selectors over a CIP field's stack.
 namespace field {
-/// vt0xb8: what a use acts on.
-TFieldObject useObject(const TilePtr& field);
-/// vt0xc8: what a look describes.
-TFieldObject lookObject(const TilePtr& field);
-/// vt0xb0: what a drag moves.
-TFieldObject moveObject(const TilePtr& field);
-/// vt0xd0: the target of a use-with.
-TFieldObject multiUseObject(const TilePtr& field);
-/// vt0xc0: the corpse a quick loot empties.
-TFieldObject quickLootObject(const TilePtr& field);
-/// vt0xd8: the first creature.
-TFieldObject creature(const TilePtr& field);
-/// vt0xf8: the field shows ground or a bottom object that can be looked at.
-bool isPickable(const TilePtr& field);
-/// vt0x160: 0 walkable, 1 blocked, 2 not known to be walkable.
-int walkability(const TilePtr& field);
+TFieldObject useObject(const TWorldMapField* field);
+TFieldObject lookObject(const TWorldMapField* field);
+TFieldObject moveObject(const TWorldMapField* field);
+TFieldObject multiUseObject(const TWorldMapField* field);
+TFieldObject quickLootObject(const TWorldMapField* field);
+TFieldObject creature(const TWorldMapField* field);
+bool isPickable(const TWorldMapField* field);
+/// 0 walkable, 1 blocked, 2 not known to be walkable.
+int walkability(const TWorldMapField* field);
 }
 
 /// What the mouse points at on the world map (CIP: TWorldMapPicker::v6's result).
@@ -49,7 +46,7 @@ struct TWorldMapPick
     bool valid = false;
     /// The first pickable field top-down under the mouse.
     Position position;
-    TilePtr field;
+    TWorldMapField* field = nullptr;
     /// The field on the player's floor under the mouse.
     Position playerFloorPosition;
     /// Light at playerFloorPosition (fieldLightness).
@@ -74,7 +71,8 @@ public:
     /// The creature drawn under a map pixel: the player's floor's fields in
     /// x, y order, each field's first creature hit by its 32x32 box at its
     /// walk position (CIP: v7).
-    static CreaturePtr creatureAt(const qmlcomponents::TWorldMapRenderProvider& provider, const QPoint& mapPixel);
+    /// Creature id under a map pixel (0 if none). Walk offset from `TCreatureStorage`.
+    static uint32_t creatureAt(const qmlcomponents::TWorldMapRenderProvider& provider, const QPoint& mapPixel);
 };
 
 }

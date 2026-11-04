@@ -9,7 +9,6 @@
 #include "minimap/minimaptile.h"
 #include "minimap/minimaptilestorage.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/minimap.h>
 #include <tibia/assets/things.h>
@@ -30,6 +29,8 @@
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::qmlcomponents {
 
@@ -254,7 +255,7 @@ TMinimapRendererQuickItem::TMinimapRendererQuickItem(QQuickItem* parent)
             &TMinimapRendererQuickItem::scheduleUpdate);
     m_playerTimer.setInterval(250);
     connect(&m_playerTimer, &QTimer::timeout, this, [this] {
-        const LocalPlayerPtr& player = g_game.getLocalPlayer();
+        const LocalPlayerPtr& player = tibia::game::localPlayer();
         if (!player)
             return;
         const Position position = player->getPosition();
@@ -302,21 +303,21 @@ void TMinimapRendererQuickItem::setHighlightedSubareas(const std::set<int>& suba
     scheduleUpdate();
 }
 
-void TMinimapRendererQuickItem::setExpeditionZones(std::vector<TExpeditionZoneOverlay> zones)
+void TMinimapRendererQuickItem::setMissionZones(std::vector<TMissionZoneOverlay> zones)
 {
-    m_expeditionZones.clear();
-    m_expeditionZoneImages.clear();
-    for (TExpeditionZoneOverlay& zone : zones) {
+    m_missionZones.clear();
+    m_missionZoneImages.clear();
+    for (TMissionZoneOverlay& zone : zones) {
         if (zone.id <= 0 || zone.file.isEmpty())
             continue;
-        m_expeditionZones[zone.id] = std::move(zone);
+        m_missionZones[zone.id] = std::move(zone);
     }
     scheduleUpdate();
 }
 
-void TMinimapRendererQuickItem::setExpeditionCaptions(std::vector<TExpeditionCaption> captions)
+void TMinimapRendererQuickItem::setMissionCaptions(std::vector<TMissionCaption> captions)
 {
-    m_expeditionCaptions = std::move(captions);
+    m_missionCaptions = std::move(captions);
     scheduleUpdate();
 }
 
@@ -501,17 +502,17 @@ void TMinimapRendererQuickItem::addZones(TDraw& draw, const int layer)
             if (file.topLeft.z == layer)
                 continue; // CIP mask already drawn above.
         }
-        const auto zoneIt = m_expeditionZones.find(subareaId);
-        if (zoneIt == m_expeditionZones.end())
+        const auto zoneIt = m_missionZones.find(subareaId);
+        if (zoneIt == m_missionZones.end())
             continue;
-        const TExpeditionZoneOverlay& zone = zoneIt->second;
+        const TMissionZoneOverlay& zone = zoneIt->second;
         if (zone.z != layer || zone.w <= 0 || zone.h <= 0 || zone.file.isEmpty())
             continue;
         const QRectF target(m_worldCamera->pixelOf(zone.x, zone.y, layer),
                             m_worldCamera->pixelOf(zone.x + zone.w, zone.y + zone.h, layer));
         if (!target.intersects(viewport))
             continue;
-        const QImage mask = expeditionZoneImage(zone);
+        const QImage mask = missionZoneImage(zone);
         if (mask.isNull())
             continue;
         draw.images.push_back({ mask, target, QRectF(0, 0, zone.w, zone.h), true, opacity });
@@ -533,9 +534,9 @@ QImage TMinimapRendererQuickItem::zoneImage(const int subareaId, const QImage& m
     return colored;
 }
 
-QImage TMinimapRendererQuickItem::expeditionZoneImage(const TExpeditionZoneOverlay& zone)
+QImage TMinimapRendererQuickItem::missionZoneImage(const TMissionZoneOverlay& zone)
 {
-    if (const auto it = m_expeditionZoneImages.find(zone.id); it != m_expeditionZoneImages.end())
+    if (const auto it = m_missionZoneImages.find(zone.id); it != m_missionZoneImages.end())
         return it->second;
     const std::string path = client::gamecore::assetsRoot(client::TGameClient::ClientVersion)
         + zone.file.toStdString();
@@ -543,19 +544,19 @@ QImage TMinimapRendererQuickItem::expeditionZoneImage(const TExpeditionZoneOverl
     try {
         data = tibia::files::data().readFileContents(path);
     } catch (const std::exception& e) {
-        qWarning("expedition zone: %s: %s", path.c_str(), e.what());
-        m_expeditionZoneImages.emplace(zone.id, QImage{});
+        qWarning("mission zone: %s: %s", path.c_str(), e.what());
+        m_missionZoneImages.emplace(zone.id, QImage{});
         return {};
     }
     const ImagePtr image = Image::fromCipBmpData(data);
     if (!image || image->getBpp() != 4) {
-        m_expeditionZoneImages.emplace(zone.id, QImage{});
+        m_missionZoneImages.emplace(zone.id, QImage{});
         return {};
     }
     const Size size = image->getSize();
     const QImage mask = QImage(image->getPixelData(), size.width(), size.height(), size.width() * 4, QImage::Format_RGBA8888).copy();
     const QImage colored = zoneImage(zone.id, mask);
-    m_expeditionZoneImages[zone.id] = colored;
+    m_missionZoneImages[zone.id] = colored;
     return colored;
 }
 
@@ -626,7 +627,7 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
     }
     // CIP THouseMarkerWorldMapAreaData: house positions from staticdata.dat.
     if (m_showHouses) {
-        for (const CyclopediaHouseType& house : g_things.getCyclopediaHouses()) {
+        for (const CyclopediaHouseType& house : tibia::game::cyclopediaHouses()) {
             if (house.position.z != z)
                 continue;
             addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), house.position.x, house.position.y, z,
@@ -668,7 +669,7 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
         }
     }
     m_playerLayer = -1;
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer()) {
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer()) {
         const Position position = player->getPosition();
         m_playerField = QPoint(position.x, position.y);
         m_playerLayer = position.z;
@@ -761,7 +762,7 @@ void TMinimapRendererQuickItem::updateCaptions()
         // FO≥1 hunt pins only ("Name -N"). Never on the surface (z≤7) — even if the
         // catalog left center.z wrong — so "Edron Surroundings -1" cannot appear on z7.
         // FO0 / surface names come from CIP AreaData above (Cyclopolis, …).
-        for (const TExpeditionCaption& pin : m_expeditionCaptions) {
+        for (const TMissionCaption& pin : m_missionCaptions) {
             if (pin.id <= 0 || pin.name.isEmpty() || shown.contains(pin.id))
                 continue;
             if (pin.z <= GroundLayer || pin.z != layer)

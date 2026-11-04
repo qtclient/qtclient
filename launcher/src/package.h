@@ -104,7 +104,15 @@ struct CipPackageDoc
 
 class QNetworkAccessManager;
 
-/** CIP launcher protocol: tibiametadata.json, package.json, lzma files. */
+/// CipSoft `shared::TDownloadPool` limits (concurrent GETs while installing).
+namespace shared {
+struct TDownloadPool {
+    static constexpr int kMaxInFlight = 32;
+};
+} // namespace shared
+
+/** CIP launcher protocol: tibiametadata.json, package.json, lzma files.
+ *  Mirrors CipSoft package sync + `shared::TDownloadPool` install. */
 class PackageClient : public QObject
 {
     Q_OBJECT
@@ -179,10 +187,22 @@ public:
                           qint64 progressTotal = -1);
     /** Packed bytes still needed for files not already installed (progress totals). */
     qint64 pendingPackedBytes(const QVector<CipFile>& files, const QString& destDir) const;
+    /**
+     * CIP deleteFilesFromExistingInstallation: remove files under destDir whose
+     * relative path is not listed in doc.files (skips package markers).
+     * Returns how many files were removed.
+     */
+    int deleteOrphanLocalFiles(const CipPackageDoc& doc, const QString& destDir) const;
 
     static const CipBuild* matchBuild(const QVector<CipBuild>& builds, const QString& os, const QString& arch);
     static QString sha256Hex(const QByteArray& data);
     static QString sha256File(QFile& file);
+    /**
+     * CIP TLauncherFilesystemHelper: ensure each Contents/Frameworks Qt
+     * framework has Versions/Current (symlink to A / first version) after
+     * package extract. No-op off macOS or when Current already exists.
+     */
+    static void ensureMacOsFrameworkVersionsCurrent(const QString& appBundleRoot);
 
 Q_SIGNALS:
     void progress(qint64 bytes, qint64 totalBytes, int fileIndex, int fileCount);
@@ -209,6 +229,8 @@ private:
     bool writePackageMarkers(const CipPackageDoc& doc, const QString& destDir, QString* error);
     /** True when localfile already matches unpacked hash/size (CIP skip-if-hash-match). */
     bool fileAlreadyInstalled(const CipFile& file, const QString& destDir) const;
+    /** CipSoft FindFilesInPackageBasedOnHashAndSizeThatNeedUpdate (QtConcurrent). */
+    QVector<CipFile> filesNeedingUpdate(const QVector<CipFile>& files, const QString& destDir) const;
     QByteArray getForInstall(const QUrl& url, qint64 donePacked, qint64 totalPacked, int fileIndex, int fileCount,
                              QString* error);
 

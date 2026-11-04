@@ -29,7 +29,7 @@ for arg in "$@"; do
     --with-deps) WITH_DEPS=1 ;;
     -h|--help)
       echo "usage: $0 [--wasm] [--pull-only] [--with-vcpkg] [--with-deps]"
-      echo "  Always pulls CIP Qt (no source build). Use Soft Qt: build to compile."
+      echo "  Always pulls CIP Qt (no source build). Use qtclient Qt: build to compile."
       exit 0
       ;;
     *) echo "unknown: $arg" >&2; exit 2 ;;

@@ -7,7 +7,7 @@
 #include "input/gameactionhandlers.h"
 #include "shared/tibiaurltools.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <tibia/world/localplayer.h>
 #include <client/protocolcodes.h>
 
@@ -17,6 +17,8 @@
 
 #include <algorithm>
 #include <tuple>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::chat {
 
@@ -76,7 +78,7 @@ enum Mode : int
 int protocolMode(const Args& args, const size_t index)
 {
     if (index < args.size())
-        if (const auto* mode = std::any_cast<Otc::MessageMode>(&args[index]))
+        if (const auto* mode = std::any_cast<tibia::client::MessageMode>(&args[index]))
             return Proto::translateMessageModeToServer(*mode);
     return -1;
 }
@@ -214,23 +216,23 @@ TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& st
     , m_storage(storage)
     , m_blacklist(blacklist)
 {
-    m_hooks.emplace_back("g_game", "onTalk", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTalk", [this](GameObject*, const Args& args) {
         onTalk(argString(args, 0), static_cast<int>(argInt(args, 1)), protocolMode(args, 2),
                shared::TTibiaUrlTools::process(argString(args, 3)),
                static_cast<uint16_t>(argInt(args, 4)), static_cast<uint32_t>(argInt(args, 6)));
         return std::any();
     });
-    m_hooks.emplace_back("g_game", "onTextMessage", [this](LuaObject*, const Args& args) {
-        onTextMessage(protocolMode(args, 0), shared::TTibiaUrlTools::process(argString(args, 1)));
-        return std::any();
-    });
-    m_hooks.emplace_back("g_game", "onChannelTextMessage", [this](LuaObject*, const Args& args) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::textMessage, this,
+            [this](int mode, const QString& text) {
+                onTextMessage(mode, shared::TTibiaUrlTools::process(text));
+            });
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onChannelTextMessage", [this](GameObject*, const Args& args) {
         onChannelTextMessage(protocolMode(args, 0), static_cast<uint16_t>(argInt(args, 1)),
                              shared::TTibiaUrlTools::process(argString(args, 2)));
         return std::any();
     });
     // FUN_100998810: GameServerChannels.
-    m_hooks.emplace_back("g_game", "onChannelList", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onChannelList", [this](GameObject*, const Args& args) {
         std::vector<std::pair<uint16_t, QString>> channels;
         if (!args.empty()) {
             if (const auto* list = std::any_cast<std::vector<std::tuple<uint16_t, std::string>>>(&args[0])) {
@@ -242,13 +244,13 @@ TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& st
         return std::any();
     });
     // FUN_1009983c0: GameServerOpenChannel.
-    m_hooks.emplace_back("g_game", "onOpenChannel", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenChannel", [this](GameObject*, const Args& args) {
         const auto id = static_cast<uint16_t>(argInt(args, 0));
         m_storage.open(TChatChannelIdentifier::channel(id, argString(args, 1)), m_foregroundChannels.erase(id) > 0);
         return std::any();
     });
     // FUN_1009985d0: GameServerOpenOwnChannel.
-    m_hooks.emplace_back("g_game", "onOpenOwnPrivateChannel", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenOwnPrivateChannel", [this](GameObject*, const Args& args) {
         const bool requested = m_foregroundChannels.erase(OwnChannelRequest) > 0;
         TChatChannel* channel = m_storage.open(TChatChannelIdentifier::channel(static_cast<uint16_t>(argInt(args, 0)), argString(args, 1)), requested);
         channel->setOwnChannel(true);
@@ -256,15 +258,15 @@ TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& st
         return std::any();
     });
     // FUN_100998db0: GameServerPrivateChannel.
-    m_hooks.emplace_back("g_game", "onOpenPrivateChannel", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenPrivateChannel", [this](GameObject*, const Args& args) {
         m_storage.open(TChatChannelIdentifier::messageTo(argString(args, 0)), true);
         return std::any();
     });
-    m_hooks.emplace_back("g_game", "onCloseChannel", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseChannel", [this](GameObject*, const Args& args) {
         onCloseChannel(static_cast<uint16_t>(argInt(args, 0)));
         return std::any();
     });
-    m_hooks.emplace_back("g_game", "onChannelEvent", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onChannelEvent", [this](GameObject*, const Args& args) {
         onChannelEvent(static_cast<uint16_t>(argInt(args, 0)), argString(args, 1), static_cast<int>(argInt(args, 2)));
         return std::any();
     });

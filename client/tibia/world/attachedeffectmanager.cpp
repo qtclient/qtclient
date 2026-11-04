@@ -25,6 +25,7 @@
 #include "attachedeffect.h"
 #include "tibia/assets/things.h"
 #include "framework/core/resourcemanager.h"
+#include <tibia/game/thingsession_forward.h>
 
 AttachedEffectManager g_attachedEffects;
 
@@ -36,7 +37,7 @@ AttachedEffectPtr AttachedEffectManager::getById(const uint16_t id) {
     }
 
     const auto& obj = it->second;
-    if (obj->m_thingId > 0 && !g_things.isValidDatId(obj->m_thingId, obj->m_thingCategory)) {
+    if (obj->m_thingId > 0 && !tibia::game::isValidDatId(obj->m_thingId, obj->m_thingCategory)) {
         g_logger.error("AttachedEffectManager::getById({}): invalid thing with id {}.", id, obj->m_thingId);
         return nullptr;
     }
@@ -70,7 +71,9 @@ AttachedEffectPtr AttachedEffectManager::registerByImage(uint16_t id, const std:
     }
 
     const auto& filePath = tibia::files::data().resolvePath(path.data());
-    const auto& filePathEx = tibia::files::data().guessFilePath(filePath, "png");
+    std::string filePathEx = tibia::files::data().guessFilePath(filePath, "webp");
+    if (!tibia::files::data().fileExists(filePathEx))
+        filePathEx = tibia::files::data().guessFilePath(filePath, "png");
     if (!tibia::files::data().fileExists(filePathEx)) {
         g_logger.error("AttachedEffectManager::registerByImage({}, {}): Texture({}) not found.", id, name, path);
         return nullptr;

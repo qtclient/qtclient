@@ -109,7 +109,7 @@ public:
     /// The subareas filled with the zone colour (CIP: the selection's set).
     void setHighlightedSubareas(const std::set<int>& subareas);
     /// Catalog hunt masks (overviewFile + boundary), including underground floors.
-    struct TExpeditionZoneOverlay
+    struct TMissionZoneOverlay
     {
         int id = 0;
         QString name;
@@ -121,7 +121,7 @@ public:
         int h = 0;
     };
     /// Caption pin for a hunt that has no CIP AreaData label (generated floors).
-    struct TExpeditionCaption
+    struct TMissionCaption
     {
         int id = 0;
         QString name;
@@ -129,9 +129,9 @@ public:
         int y = 0;
         int z = 7;
     };
-    void setExpeditionZones(std::vector<TExpeditionZoneOverlay> zones);
-    void setExpeditionCaptions(std::vector<TExpeditionCaption> captions);
-    /// When false, CIP subarea captions are hidden (expedition uses catalog pins per floor).
+    void setMissionZones(std::vector<TMissionZoneOverlay> zones);
+    void setMissionCaptions(std::vector<TMissionCaption> captions);
+    /// When false, CIP subarea captions are hidden (packs use catalog mission pins per floor).
     void setShowCyclopediaSubareaCaptions(bool show);
     /// The local minimap tiles LocalMinimap draws (process-wide).
     static void setMinimapTileStorage(minimap::TMinimapTileStorage* storage);
@@ -182,7 +182,7 @@ private:
     void ensureMarkerIcons();
     void updateCaptions();
     QImage zoneImage(int subareaId, const QImage& mask);
-    QImage expeditionZoneImage(const TExpeditionZoneOverlay& zone);
+    QImage missionZoneImage(const TMissionZoneOverlay& zone);
     /// CIP FUN_100f7ffb0 / DAT_1077b32c8: (sin(t_ms/100)*0.15+0.65)*0.75.
     static float zoneHighlightOpacity();
 
@@ -201,11 +201,11 @@ private:
     QPointer<cyclopedia::TCyclopediaMapStorage> m_storage;
     bool m_showCyclopediaSubareaCaptions = true;
     std::set<int> m_highlighted;
-    std::unordered_map<int, TExpeditionZoneOverlay> m_expeditionZones;
-    std::vector<TExpeditionCaption> m_expeditionCaptions;
+    std::unordered_map<int, TMissionZoneOverlay> m_missionZones;
+    std::vector<TMissionCaption> m_missionCaptions;
     std::vector<TDraw> m_drawList;
     std::map<int, QImage> m_zoneImages;
-    std::map<int, QImage> m_expeditionZoneImages;
+    std::map<int, QImage> m_missionZoneImages;
     std::map<qint64, QImage> m_localTiles;
     QImage m_npcIcon;
     QImage m_playerIcon;

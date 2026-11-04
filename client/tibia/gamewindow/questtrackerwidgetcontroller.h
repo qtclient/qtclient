@@ -230,7 +230,7 @@ public:
     TSidebarWidget* open(config::TSidebarOptions* options);
     void close();
     TSidebarWidget* current() const;
-    void setExpeditions(mods::MissionBackend* storage);
+    void setMissionBackend(mods::MissionBackend* storage);
     void setBrowseOpener(std::function<void(const QString& filter)> opener);
 
 private:
@@ -240,7 +240,7 @@ private:
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TQuestTrackerWidgetController> m_controller;
-    QPointer<mods::MissionBackend> m_expeditions;
+    QPointer<mods::MissionBackend> m_missionBackend;
     std::function<void(const QString&)> m_browseOpener;
 };
 

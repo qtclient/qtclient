@@ -10,7 +10,9 @@
 #include <cstdint>
 #include <vector>
 
-class Tile;
+namespace tibia::worldmap {
+class TWorldMapField;
+}
 
 namespace tibia::qmlcomponents::light {
 
@@ -43,7 +45,7 @@ struct FieldFlags
     bool wall = false;
 };
 
-FieldFlags fieldFlags(Tile& tile);
+FieldFlags fieldFlags(tibia::worldmap::TWorldMapField& field);
 
 /// CIP roof mask: a floor above `pos` with `flags.roof` (bank / border / roof-edge,
 /// not translucent). Returns floors up to that cover, or 0 if open sky.

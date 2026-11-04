@@ -23,7 +23,7 @@
 #pragma once
 
 #include "declarations.h"
-#include <framework/luaengine/luaobject.h>
+#include <framework/luaengine/gameobject.h>
 
 #include <string>
 #include <system_error>
@@ -32,7 +32,7 @@
 const std::error_code& gameConnectionEof();
 
  // @bindclass
-class Protocol : public LuaObject
+class Protocol : public GameObject
 {
 public:
     Protocol();

@@ -1,11 +1,40 @@
 #include "selectobjectamountdialogcontroller.h"
 
+#include "container/containerciptypes.h"
 #include "container/qmlitemslotdata.h"
 #include "input/gameactionhandlers.h"
 
-#include <client/item.h>
+#include <algorithm>
 
 namespace tibia::gamewindow {
+
+namespace {
+
+using A = input::EGameAction;
+
+int storageSlotCount(const Position& position, const int stackPosition)
+{
+    if (position.x != UINT16_MAX)
+        return 1;
+    if (position.y & 0x40) {
+        container::TContainerStorage* storage = container::TContainerStorage::instance();
+        if (!storage)
+            return 1;
+        const container::TStoredContainer* row = storage->containerAt(position.y & 0x3F);
+        if (!row)
+            return 1;
+        const container::TInventorySlot slot =
+            storage->slotAt(row->id, static_cast<int>(row->firstIndex) + std::max(0, stackPosition));
+        return slot.stackable ? std::max<int>(1, slot.count) : 1;
+    }
+    container::TInventoryContainer* inventory = container::TInventoryContainer::instance();
+    if (!inventory)
+        return 1;
+    const container::TInventorySlot& slot = inventory->slotAt(position.y);
+    return slot.stackable ? std::max<int>(1, slot.count) : 1;
+}
+
+}
 
 using A = input::EGameAction;
 
@@ -27,14 +56,13 @@ TSelectObjectAmountDialogController::~TSelectObjectAmountDialogController()
 bool TSelectObjectAmountDialogController::handleSplitStack(const input::TGameAction& action)
 {
     const input::TGameActionPtr& move = action.inner;
-    if (!move || !move->object || !move->object->isItem())
+    if (!move || !move->objectClientId)
         return false;
-    const ItemPtr item = move->object->static_self_cast<Item>();
-    const int count = item->isStackable() ? item->getCountOrSubType() : 1;
+    const int count = move->amount > 0 ? move->amount : storageSlotCount(move->position, move->stackPosition);
     if (count <= 1)
         return false;
     m_inner = move;
-    open(static_cast<int>(item->getId()), static_cast<uint>(count));
+    open(static_cast<int>(move->objectClientId), static_cast<uint>(count));
     return true;
 }
 
@@ -47,9 +75,9 @@ bool TSelectObjectAmountDialogController::handleStash(const input::TGameAction& 
     if (action.type == A::STASH_OPEN_RETRIEVE_DIALOG) {
         typeId = inner->parameter;
     } else {
-        if (!inner->object || !inner->object->isItem())
+        if (!inner->objectClientId)
             return false;
-        typeId = static_cast<int>(inner->object->static_self_cast<Item>()->getId());
+        typeId = static_cast<int>(inner->objectClientId);
     }
     if (inner->amount == 1) {
         input::publish(inner);

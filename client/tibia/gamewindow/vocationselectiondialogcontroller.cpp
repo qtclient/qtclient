@@ -2,7 +2,7 @@
 
 #include "gamewindow/assignactiondialogs.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 
 #include <QLoggingCategory>
 #include <QQuickItem>
@@ -51,7 +51,7 @@ void TVocationSelectionDialogController::selectVocation(const cip::tibia::qmlcom
     qCInfo(lcVocation) << "selectVocation" << cipId;
     // EVocation matches Crystal VOCATION_*_CIP (Knight=1 … Monk=5).
     if (cipId >= 1 && cipId <= 5)
-        g_game.sendTutorialChangeVocation(cipId);
+        tibia::game::sendTutorialChangeVocation(cipId);
     requestClose();
 }
 

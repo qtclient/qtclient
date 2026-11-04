@@ -22,12 +22,14 @@
 
 #include "player.h"
 
+#include <tibia/game/gamenotify.h>
+
 bool Player::isMage() const {
     switch (m_vocation) {
-        case Otc::Vocations_t::SORCERER:
-        case Otc::Vocations_t::DRUID:
-        case Otc::Vocations_t::MASTER_SORCERER:
-        case Otc::Vocations_t::ELDER_DRUID:
+        case tibia::client::Vocations_t::SORCERER:
+        case tibia::client::Vocations_t::DRUID:
+        case tibia::client::Vocations_t::MASTER_SORCERER:
+        case tibia::client::Vocations_t::ELDER_DRUID:
             return true;
         default: return false;
     }
@@ -35,8 +37,8 @@ bool Player::isMage() const {
 
 bool Player::isMonk() const {
     switch (m_vocation) {
-        case Otc::Vocations_t::MONK:
-        case Otc::Vocations_t::EXALTED_MONK:
+        case tibia::client::Vocations_t::MONK:
+        case tibia::client::Vocations_t::EXALTED_MONK:
             return true;
         default: return false;
     }
@@ -50,5 +52,6 @@ void Player::setVocation(const uint8_t vocation)
     const uint8_t oldVocation = m_vocation;
     m_vocation = vocation;
 
-    callLuaField("onVocationChange", vocation, oldVocation);
+    if (isLocalPlayer())
+        tibia::game::notify("onVocationChange", vocation, oldVocation);
 }

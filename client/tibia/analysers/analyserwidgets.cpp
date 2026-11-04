@@ -11,7 +11,7 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamenotify.h>
 #include <tibia/world/localplayer.h>
 
 #include <QDateTime>
@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::analysers {
 
@@ -88,7 +89,7 @@ namespace {
 
 bool isPremiumPlayer()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 
@@ -179,9 +180,8 @@ TAnalyticsSelectorWidgetController::TAnalyticsSelectorWidgetController(gamewindo
         connect(m_widgets, &gamewindow::TSidebarWidgetsManager::widgetVisible, this, [this](const int type) { onWidgetVisibility(type, true); });
         connect(m_widgets, &gamewindow::TSidebarWidgetsManager::widgetHidden, this, [this](const int type) { onWidgetVisibility(type, false); });
     }
-    m_hooks.emplace_back("object", "onPremiumChange", [this](LuaObject* self, const std::vector<std::any>&) {
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && self == player.get())
-            Q_EMIT premiumTimeChanged();
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const std::vector<std::any>&) {
+        Q_EMIT premiumTimeChanged();
         return std::any{};
     });
     widget()->createItem(QStringLiteral("AnalyticsSelectorWidget.qml"));
@@ -531,15 +531,13 @@ TProgressWidgetController::TProgressWidgetController(TProgressStorage* storage, 
         onDataChanged();
     });
     connect(m_storage, &TProgressStorage::optionsChanged, this, &TProgressWidgetController::optionsChanged);
-    m_hooks.emplace_back("object", "onPremiumChange", [this](LuaObject* self, const std::vector<std::any>&) {
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && self == player.get())
-            Q_EMIT optionsChanged();
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const std::vector<std::any>&) {
+        Q_EMIT optionsChanged();
         return std::any{};
     });
     for (const char* event : { "onExperienceChange", "onLevelChange" }) {
-        m_hooks.emplace_back("object", event, [this](LuaObject* self, const std::vector<std::any>&) {
-            if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && self == player.get())
-                Q_EMIT experienceDataChangedForTexts();
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const std::vector<std::any>&) {
+            Q_EMIT experienceDataChangedForTexts();
             return std::any{};
         });
     }
@@ -611,7 +609,7 @@ qint64 experienceForLevel(const qint64 level)
 
 qint64 experienceToNextLevel()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return 0;
     return std::max<qint64>(0, experienceForLevel(player->getLevel() + 1) - static_cast<qint64>(player->getExperience()));
@@ -623,7 +621,7 @@ QString TProgressWidgetController::experiencePointsNeededForNextLevel() const { 
 
 double TProgressWidgetController::playerLevelProgress() const
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player ? player->getLevelPercent() / 100.0 : 0.0;
 }
 

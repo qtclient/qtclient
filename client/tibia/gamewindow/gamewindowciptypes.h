@@ -11,6 +11,7 @@
 
 #include <QAbstractListModel>
 #include <QEvent>
+#include <QHash>
 #include <QPointF>
 #include <QPointer>
 #include <QSortFilterProxyModel>
@@ -329,6 +330,11 @@ class TBattleListGameActionHandler final : public cip::tibia::gamewindow::TBattl
 public:
     explicit TBattleListGameActionHandler(TBattleListControllerStorage* storage, QObject* parent = nullptr);
 
+    /// qtclient ADD_GUI_TUTORIAL_MARKER with creatureId — CIP handleAddGUITutorialMarkerAction.
+    void setCreatureTutorialMarker(uint32_t creatureId, int markerId);
+    void clearCreatureTutorialMarkers();
+    int creatureTutorialMarker(uint32_t creatureId) const { return m_creatureMarkers.value(creatureId); }
+
 public Q_SLOTS:
     void attackFirstTarget() override;
     void attackNextOrPreviousTarget(bool Previous) override;
@@ -336,6 +342,8 @@ public Q_SLOTS:
 
 private:
     QPointer<TBattleListControllerStorage> m_storage;
+    /// creatureId → tutorial marker id (CIP battle-list ADD_GUI path).
+    QHash<uint32_t, int> m_creatureMarkers;
 };
 
 class TAssignActionDialogControllerBase : public cip::tibia::gamewindow::TAssignActionDialogControllerBase
@@ -430,6 +438,7 @@ public Q_SLOTS:
     void closeDialog() override;
     void okButtonClicked() override;
     void copyToClipboarClicked() override;
+    void openWeaponProficiencyDialogClicked() override;
 
 private:
     void showObject(const ItemInspectionData& data);
@@ -448,6 +457,7 @@ public Q_SLOTS:
     void closeDialog() override;
     void okButtonClicked() override;
     void copyToClipboarClicked(const QString& Text) override;
+    void openWeaponProficiencyDialogClicked(uint AppearanceTypeID) override;
 
 private:
     void showPlayer(const CyclopediaCharacterInspection& data);

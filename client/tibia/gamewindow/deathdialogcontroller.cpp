@@ -1,11 +1,13 @@
 #include "deathdialogcontroller.h"
 
-#include <tibia/world/game.h>
 
 #include <QKeySequence>
 
 #include <any>
 #include <cstdint>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -27,14 +29,12 @@ TDeathDialogController::TDeathDialogController(QObject* parent)
     });
     connect(m_box, &TMessageDialogController::acceptClicked, this, [this](bool) { finish(); });
 
-    m_hooks.emplace_back("g_game", "onDeath", [this](LuaObject*, const Args& args) {
-        present(static_cast<uint8_t>(client::gamecore::argInt(args, 0)),
-                static_cast<uint8_t>(client::gamecore::argInt(args, 1)));
-        return std::any{};
-    });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::death, this,
+            [this](int deathType, int penality) {
+                present(static_cast<uint8_t>(deathType), static_cast<uint8_t>(penality));
+            });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         close();
-        return std::any{};
     });
 }
 
@@ -44,7 +44,7 @@ void TDeathDialogController::present(const uint8_t deathType, const uint8_t pena
 {
     Q_UNUSED(deathType);
     close();
-    g_game.setSceneFrozen(true);
+    tibia::game::setSceneFrozen(true);
 
     QString message = QStringLiteral("You are dead.");
     // OT death packet omits penality when the feature is off; argInt then yields 0.
@@ -61,9 +61,9 @@ void TDeathDialogController::finish()
         return;
     m_finishing = true;
     close();
-    g_game.setSceneFrozen(false);
-    if (g_game.isOnline())
-        g_game.safeLogout();
+    tibia::game::setSceneFrozen(false);
+    if (tibia::game::isOnline())
+        tibia::game::safeLogout();
     m_finishing = false;
 }
 

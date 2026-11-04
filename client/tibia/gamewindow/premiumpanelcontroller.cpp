@@ -2,13 +2,15 @@
 
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 
 #include <QDateTime>
 #include <QQuickItem>
 
 #include <algorithm>
 #include <iterator>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -81,27 +83,26 @@ TPremiumPanelController::TPremiumPanelController()
     m_highlightTimer.setInterval(HighlightMs);
     connect(&m_highlightTimer, &QTimer::timeout, this, &TPremiumPanelController::stopHighlight);
 
-    m_hooks.emplace_back("g_game", "onPremiumTrigger", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumTrigger", [this](GameObject*, const Args& args) {
         if (const auto* features = args.empty() ? nullptr : std::any_cast<std::vector<uint8_t>>(&args[0]))
             setTriggers(*features);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPremiumExpiration", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumExpiration", [this](GameObject*, const Args& args) {
         const auto* premium = args.size() < 2 ? nullptr : std::any_cast<bool>(&args[0]);
         const auto* expiration = args.size() < 2 ? nullptr : std::any_cast<uint32_t>(&args[1]);
         if (premium && expiration)
             setPremiumTime(*premium, *expiration);
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onStoreButtonDeeplink", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreButtonDeeplink", [this](GameObject*, const Args& args) {
         onStoreDeeplinkChanged(static_cast<int>(client::gamecore::argInt(args, 0)),
                                static_cast<int>(client::gamecore::argInt(args, 1)));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         resetPremiumTime();
         applySessionVisibility();
-        return std::any{};
     });
 
     input::setActionHandler(input::EGameAction::TOGGLE_PREMIUM_PANEL, [this](const input::TGameAction&) {
@@ -164,7 +165,7 @@ bool TPremiumPanelController::advertisePremium() const
 
 void TPremiumPanelController::applySessionVisibility()
 {
-    if (!g_game.isOnline()) {
+    if (!tibia::game::isOnline()) {
         setPanelVisible(false);
         return;
     }

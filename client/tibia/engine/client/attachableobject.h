@@ -23,21 +23,25 @@
 #pragma once
 #include "declarations.h"
 #include "framework/graphics/declarations.h"
-#include "framework/luaengine/luaobject.h"
-#include "framework/ui/declarations.h"
 
-static const std::vector<UIWidgetPtr> EMPTY_ATTACHED_WIDGETS;
+#include <memory>
+
 static const std::vector<AttachedEffectPtr> EMPTY_ATTACHED_EFFECTS;
 
-class AttachableObject : public LuaObject
+#pragma pack(push, 1)
+class AttachableObject : public std::enable_shared_from_this<AttachableObject>
 {
 public:
     AttachableObject() = default;
-    ~AttachableObject() override;
+    virtual ~AttachableObject();
 
-    virtual LuaObjectPtr attachedObjectToLuaObject() = 0;
-    virtual bool isTile() { return false; }
     virtual bool isThing() { return false; }
+
+    template<typename T>
+    std::shared_ptr<T> static_self_cast() { return std::static_pointer_cast<T>(shared_from_this()); }
+
+    template<typename T>
+    std::shared_ptr<T> static_self_cast() const { return std::static_pointer_cast<T>(shared_from_this()); }
 
     void attachEffect(const AttachedEffectPtr& obj);
     void clearAttachedEffects(bool ignoreLuaEvent = false);
@@ -60,24 +64,14 @@ public:
     bool detachParticleEffectByName(const std::string& name);
     void updateAndAttachParticlesEffects(std::vector<std::string>& newElements);
 
-    const std::vector<UIWidgetPtr>& getAttachedWidgets() { return m_data ? m_data->attachedWidgets : EMPTY_ATTACHED_WIDGETS; };
-    bool hasAttachedWidgets() const { return m_data && !m_data->attachedWidgets.empty(); };
     bool hasAttachedEffects()  const { return m_data && !m_data->attachedEffects.empty(); };
     bool hasAttachedParticles()  const { return m_data && !m_data->attachedParticles.empty(); };
-
-    bool isWidgetAttached(const UIWidgetPtr& widget);
-    void attachWidget(const UIWidgetPtr& widget);
-    void clearAttachedWidgets(bool callEvent = true);
-    bool detachWidgetById(const std::string& id);
-    bool detachWidget(UIWidgetPtr widget);
-    UIWidgetPtr getAttachedWidgetById(const std::string& id);
 
 protected:
     struct Data
     {
         std::vector<AttachedEffectPtr> attachedEffects;
         std::vector<std::string> attachedParticles;
-        std::vector<UIWidgetPtr> attachedWidgets;
     };
 
     void drawAttachedEffect(const Point& originalDest, const Point& dest, LightSink* lightView, bool isOnTop);
@@ -96,3 +90,4 @@ protected:
 
     uint8_t m_ownerHidden{ 0 };
 };
+#pragma pack(pop)

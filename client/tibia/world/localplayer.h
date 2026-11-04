@@ -23,12 +23,17 @@
 #pragma once
 
 #include "client/player.h"
+#include "container/containerciptypes.h"
+
+#include <string_view>
+
+#include <tibia/game/gamenotify.h>
 
  // @bindclass
 class LocalPlayer final : public Player
 {
 public:
-    void unlockWalk() { m_walkLockExpiration = 0; }
+    void unlockWalk();
     void stopPendingWalk() { cancelWalk(); }
     void lockWalk(uint16_t millis = 250);
     bool isWalkLocked();
@@ -36,14 +41,14 @@ public:
 
     /// `pathMode`: Minimap (default click), Cyclopedia (Shift+map), Travel (TravelRouter).
     bool autoWalk(const Position& destination, bool retry = false,
-                  Otc::AutoWalkPathMode pathMode = Otc::AutoWalkPathMinimap);
+                  tibia::client::AutoWalkPathMode pathMode = tibia::client::AutoWalkPathMinimap);
     bool canWalk(bool ignoreLock = false);
 
     void setStates(uint64_t states) { setStatesAndRottenBlood(states, m_rottenBloodState); }
     void setStatesAndRottenBlood(uint64_t states, uint8_t rottenBloodState);
-    void setSkill(Otc::Skill skillId, uint16_t level, uint16_t levelPercent);
-    void setBaseSkill(Otc::Skill skill, uint16_t baseLevel);
-    void setSkillDetail(Otc::Skill skill, uint16_t loyaltyLevel, uint16_t percentHundredths);
+    void setSkill(tibia::client::Skill skillId, uint16_t level, uint16_t levelPercent);
+    void setBaseSkill(tibia::client::Skill skill, uint16_t baseLevel);
+    void setSkillDetail(tibia::client::Skill skill, uint16_t loyaltyLevel, uint16_t percentHundredths);
     /// PlayerDataBasic's flag: the vocation's mana bar is a magic shield pool.
     void setMagicShieldVocation(bool enabled) { m_magicShieldVocation = enabled; }
     bool isMagicShieldVocation() { return m_magicShieldVocation; }
@@ -69,16 +74,16 @@ public:
     void setStamina(uint16_t stamina);
     void setKnown(const bool known) { m_known = known; }
     void setPendingGame(const bool pending) { m_pending = pending; }
-    void setInventoryItem(Otc::InventorySlot inventory, const ItemPtr& item);
+    /// Phase 5.0-D: notify only — CIP `TInventoryContainer` owns slot data.
+    void setInventoryItem(tibia::client::InventorySlot inventory);
     void setInventoryCountCache(std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts);
     void setPremium(bool premium);
     void setRegenerationTime(uint16_t regenerationTime);
     void setOfflineTrainingTime(uint16_t offlineTrainingTime);
     void setSpells(const std::vector<uint16_t>& spells);
     void setBlessings(uint16_t blessings, uint8_t blessVisualState = 0);
-    void setResourceBalance(Otc::ResourceTypes_t type, uint64_t value);
+    void setResourceBalance(tibia::client::ResourceTypes_t type, uint64_t value);
     void takeScreenshot(uint8_t type);
-    void openMultiOfflineTrainingDialog();
     void setFlatDamageHealing(uint16_t flatBonus);
     void setAttackInfo(uint16_t attackValue, uint8_t attackElement);
     void setConvertedDamage(double convertedDamage, uint8_t convertedElement);
@@ -86,8 +91,8 @@ public:
     void setDefenseInfo(uint16_t defense, uint16_t armor, uint16_t mantra, double mitigation, double dodge, uint16_t damageReflection);
     void setCombatAbsorbValues(const std::map<uint8_t, double>& absorbValues);
     void setForgeBonuses(double momentum, double transcendence, double amplification);
-    void setExperienceRate(Otc::ExperienceRate_t type, uint16_t value);
-    uint16_t getExperienceRate(Otc::ExperienceRate_t type) const
+    void setExperienceRate(tibia::client::ExperienceRate_t type, uint16_t value);
+    uint16_t getExperienceRate(tibia::client::ExperienceRate_t type) const
     {
         const auto it = m_experienceRates.find(type);
         return it != m_experienceRates.end() ? it->second : 0;
@@ -119,13 +124,13 @@ public:
     uint8_t getHarmony() { return m_harmony; }
 
     uint16_t getLevel() { return m_level; }
-    uint16_t getSkillLevel(const Otc::Skill skill) { return m_skills[skill].level; }
-    uint16_t getSkillBaseLevel(const Otc::Skill skill) { return m_skills[skill].baseLevel; }
-    uint16_t getSkillLevelPercent(const Otc::Skill skill) { return m_skills[skill].levelPercent; }
+    uint16_t getSkillLevel(const tibia::client::Skill skill) { return m_skills[skill].level; }
+    uint16_t getSkillBaseLevel(const tibia::client::Skill skill) { return m_skills[skill].baseLevel; }
+    uint16_t getSkillLevelPercent(const tibia::client::Skill skill) { return m_skills[skill].levelPercent; }
     /// Base level plus the loyalty bonus, as sent with the skills.
-    uint16_t getSkillLoyaltyLevel(const Otc::Skill skill) { return m_skills[skill].loyaltyLevel; }
+    uint16_t getSkillLoyaltyLevel(const tibia::client::Skill skill) { return m_skills[skill].loyaltyLevel; }
     /// The skill progress in hundredths of a percent (getSkillLevelPercent truncates it).
-    uint16_t getSkillPercentHundredths(const Otc::Skill skill) { return m_skills[skill].percentHundredths; }
+    uint16_t getSkillPercentHundredths(const tibia::client::Skill skill) { return m_skills[skill].percentHundredths; }
     uint16_t getMagicLevelLoyalty() { return m_magicLevelLoyalty; }
     uint16_t getMagicLevelPercentHundredths() { return m_magicLevelPercentHundredths; }
     uint16_t getStamina() { return m_stamina; }
@@ -171,11 +176,14 @@ public:
     uint64_t getExperience() { return m_experience; }
 
     const std::vector<uint16_t>& getSpells() { return m_spells; }
-    ItemPtr getInventoryItem(const Otc::InventorySlot inventory) { return m_inventoryItems[inventory]; }
+    /// CIP slot appearance (authority: `TInventoryContainer`). Prefer over `getInventoryItem`.
+    const tibia::container::TInventorySlot& inventorySlot(tibia::client::InventorySlot inventory) const;
+    /// Phase 5.0-D: ephemeral Item from CIP `TInventoryContainer` for unretyped wire (not stored).
+    ItemPtr getInventoryItem(tibia::client::InventorySlot inventory);
     bool hasEquippedItemId(uint16_t itemId, uint8_t tier);
     uint32_t getInventoryCount(uint16_t itemId, uint8_t tier);
 
-    uint64_t getResourceBalance(const Otc::ResourceTypes_t type)
+    uint64_t getResourceBalance(const tibia::client::ResourceTypes_t type)
     {
         const auto it = m_resourcesBalance.find(type);
         return it != m_resourcesBalance.end() ? it->second : 0;
@@ -183,22 +191,22 @@ public:
 
     /// True after the server has sent this resource type at least once (CIP hasGuild
     /// for type 0x02 is set on receive even when the balance is 0).
-    bool hasResourceBalance(const Otc::ResourceTypes_t type) const
+    bool hasResourceBalance(const tibia::client::ResourceTypes_t type) const
     {
         return m_resourcesBalance.find(type) != m_resourcesBalance.end();
     }
 
     uint64_t getTotalMoney()
     {
-        const uint64_t bankBalance = getResourceBalance(Otc::RESOURCE_BANK_BALANCE);
-        const uint64_t equippedBalance = getResourceBalance(Otc::RESOURCE_GOLD_EQUIPPED);
+        const uint64_t bankBalance = getResourceBalance(tibia::client::RESOURCE_BANK_BALANCE);
+        const uint64_t equippedBalance = getResourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);
         return bankBalance + equippedBalance;
     }
 
     bool hasSight(const Position& pos);
     bool isKnown() { return m_known; }
     bool isServerWalking() { return m_serverWalk; }
-    bool isPreWalking() { return !m_preWalks.empty(); }
+    bool isPreWalking();
 
     bool isSupplyStashAvailable() const { return m_isSupplyStashAvailable; }
     void setSupplyStashAvailable(bool available) {
@@ -207,10 +215,10 @@ public:
     bool isMarketAvailable() const { return m_isMarketAvailable; }
     void setMarketAvailable(bool available) { m_isMarketAvailable = available; }
 
-    bool isAutoWalking() { return m_autoWalkDestination.isValid(); }
+    bool isAutoWalking();
     bool isPremium() { return m_premium; }
     bool isPendingGame() const { return m_pending; }
-    bool isParalyzed() const { return (m_states & Otc::IconParalyze) == Otc::IconParalyze; }
+    bool isParalyzed() const { return (m_states & tibia::client::IconParalyze) == tibia::client::IconParalyze; }
     bool isSerene() { return m_serene; }
 
     LocalPlayerPtr asLocalPlayer() { return static_self_cast<LocalPlayer>(); }
@@ -218,13 +226,21 @@ public:
 
     void onPositionChange(const Position& newPos, const Position& oldPos) override;
 
-    void preWalk(Otc::Direction direction);
+    void preWalk(tibia::client::Direction direction);
+    /// Cancel client pre-walk after WalkCalculator finds an impassable storage row on the tile.
+    void cancelPreWalkCollision();
 
-    Position getPosition() override { return isPreWalking() ? m_preWalks.back() : m_position; }
-    void resetPreWalk() { m_preWalks.clear(); }
-    auto getPreWalkingSize() { return m_preWalks.size(); }
+    Position getPosition() override;
+    void resetPreWalk();
+    size_t getPreWalkingSize();
 
 private:
+    template<typename... T>
+    void publish(const std::string_view field, const T&... args)
+    {
+        tibia::game::notify(field, args...);
+    }
+
     struct Skill
     {
         uint16_t level{ 0 };
@@ -238,21 +254,16 @@ private:
 
     void walk(const Position& oldPos, const Position& newPos) override;
     void terminateWalk() override;
-    void cancelWalk(Otc::Direction direction = Otc::InvalidDirection);
+    void applyStorageWalkTerminated() override;
+    void cancelWalk(tibia::client::Direction direction = tibia::client::InvalidDirection);
     void cancelAdjustInvalidPosEvent();
     void registerAdjustInvalidPosEvent();
 
     bool retryAutoWalk();
 
-    // walk related
-    Position m_lastAutoWalkPosition;
-    Position m_autoWalkDestination;
-    Otc::AutoWalkPathMode m_autoWalkPathMode{ Otc::AutoWalkPathMinimap };
-    std::deque<Position> m_preWalks;
-
+    // Walk mutation (preWalks / lock expiry / auto-walk) lives on TCreature storage.
     ScheduledEventPtr m_adjustInvalidPosEvent;
     ScheduledEventPtr m_autoWalkContinueEvent;
-    ticks_t m_walkLockExpiration{ 0 };
 
     bool m_knownCompletePath{ false };
     bool m_premium{ false };
@@ -268,22 +279,18 @@ private:
     bool m_isMarketAvailable{ false };
     bool m_storeExpBoostPurchasable{ false };
 
-    ItemPtr m_inventoryItems[Otc::LastInventorySlot];
-
-    std::array<Skill, Otc::LastSkill> m_skills;
+    std::array<Skill, tibia::client::LastSkill> m_skills;
     std::vector<uint16_t> m_spells;
 
-    stdext::map<Otc::ResourceTypes_t, uint64_t> m_resourcesBalance;
+    stdext::map<tibia::client::ResourceTypes_t, uint64_t> m_resourcesBalance;
     std::map<uint8_t, double> m_combatAbsorbValues;
-    std::map<Otc::ExperienceRate_t, uint16_t> m_experienceRates;
+    std::map<tibia::client::ExperienceRate_t, uint16_t> m_experienceRates;
     std::map<std::pair<uint16_t, uint8_t>, uint32_t> m_inventoryCountCache;
-
-    uint8_t m_autoWalkRetries{ 0 };
 
     uint64_t m_states{ 0 };
     uint8_t m_rottenBloodState{ 0 };
     uint8_t m_vocation{ 0 };
-    uint16_t m_blessings{ Otc::BlessingNone };
+    uint16_t m_blessings{ tibia::client::BlessingNone };
     uint8_t m_blessVisualState{ 0 };
 
     uint32_t m_freeCapacity{ 0 };

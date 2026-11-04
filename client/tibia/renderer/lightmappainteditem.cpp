@@ -3,7 +3,6 @@
 #include "renderer/wasnglsl.h"
 #include "renderer/worldmaprenderprovider.h"
 
-#include <framework/core/graphicalapplication.h>
 
 #include <QQuickWindow>
 #include <QSGRenderNode>

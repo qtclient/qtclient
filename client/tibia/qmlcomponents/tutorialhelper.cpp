@@ -1,7 +1,9 @@
 #include "tutorialhelper.h"
 
+#include <QColor>
 #include <QJSEngine>
 #include <QQmlEngine>
+#include <QSGSimpleRectNode>
 
 namespace tibia::qmlcomponents {
 
@@ -65,6 +67,8 @@ void TTutorialHelperQmlService::unregisterMarker(cip::tibia::qmlcomponents::TTut
 TTutorialMarkerQuickItem::TTutorialMarkerQuickItem(QQuickItem* parent)
     : cip::tibia::qmlcomponents::TTutorialMarkerQuickItem(parent)
 {
+    setFlag(ItemHasContents, true);
+    setAcceptedMouseButtons(Qt::NoButton);
 }
 
 TTutorialMarkerQuickItem::~TTutorialMarkerQuickItem()
@@ -80,11 +84,25 @@ void TTutorialMarkerQuickItem::setMarkerID(const int v)
     cip::tibia::qmlcomponents::TTutorialMarkerQuickItem::setMarkerID(v);
     if (TTutorialHelperQmlService* helper = TTutorialHelperQmlService::instance())
         helper->registerMarker(this);
+    update();
 }
 
 void TTutorialMarkerQuickItem::setDebugOverlayVisible(const bool v)
 {
     cip::tibia::qmlcomponents::TTutorialMarkerQuickItem::setDebugOverlayVisible(v);
+    update();
+}
+
+QSGNode* TTutorialMarkerQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
+{
+    auto* node = static_cast<QSGSimpleRectNode*>(oldNode);
+    if (!node)
+        node = new QSGSimpleRectNode;
+    // qtclient stand-in for CIP's tutorial arrow material — amber plate over the target.
+    const QColor fill = debugOverlayVisible() ? QColor(255, 200, 0, 160) : QColor(255, 180, 0, 110);
+    node->setColor(fill);
+    node->setRect(boundingRect());
+    return node;
 }
 
 }

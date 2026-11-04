@@ -1,19 +1,22 @@
 #include "monsterdialogcontroller.h"
 
 #include "cyclopedia/bestiarystorage.h"
+#include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
 #include <client/const.h>
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/outfit.h>
-#include <tibia/assets/things.h>
 
 #include <QLocale>
 
 #include <algorithm>
 #include <cmath>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -207,7 +210,7 @@ TQmlMonsterRace::TQmlMonsterRace(const int raceId, const int progress, const dou
     , m_storage(storage)
     , m_progress(progress)
 {
-    const RaceType& race = g_things.getRaceData(raceId);
+    const RaceType& race = tibia::game::raceData(raceId);
     m_raceID = raceId;
     m_name = qstr(race.name);
     m_hasAppearanceInstance = race.outfit.getId() != 0;
@@ -461,7 +464,7 @@ void TMonsterDialogController::showDialogTab()
     m_search.clear();
     m_selectedRace = 0;
     onClassificationSummaryChanged();
-    g_game.requestBestiary();
+    tibia::game::requestBestiary();
     if (!m_pendingContext)
         return;
     const Context context = *m_pendingContext;
@@ -470,11 +473,11 @@ void TMonsterDialogController::showDialogTab()
     m_search = context.search;
     m_selectedRace = context.raceId;
     if (context.state == SingleMonster && context.raceId != 0)
-        g_game.requestBestiarySearch(static_cast<uint16_t>(context.raceId));
+        tibia::game::requestBestiarySearch(static_cast<uint16_t>(context.raceId));
     else if (context.state == MonsterRaces && !context.search.isEmpty())
         requestMonsterSearch(context.search);
     else if (context.state == MonsterRaces && !context.classification.isEmpty())
-        g_game.requestBestiaryOverview(context.classification.toStdString());
+        tibia::game::requestBestiaryOverview(context.classification.toStdString());
 }
 
 void TMonsterDialogController::hideDialogTab() { m_shown = false; }
@@ -483,7 +486,7 @@ void TMonsterDialogController::requestClassificationSelection(const QString& Cla
 {
     m_selectedClassification = ClassificationID;
     m_search.clear();
-    g_game.requestBestiaryOverview(ClassificationID.toStdString());
+    tibia::game::requestBestiaryOverview(ClassificationID.toStdString());
 }
 
 void TMonsterDialogController::requestMonsterSearch(const QString& SearchString)
@@ -491,13 +494,13 @@ void TMonsterDialogController::requestMonsterSearch(const QString& SearchString)
     m_search = SearchString;
     const QString needle = SearchString.toLower();
     std::vector<uint16_t> raceIds;
-    for (const RaceType& race : g_things.getAllRaces()) {
+    for (const RaceType& race : tibia::game::getAllRaces()) {
         if (race.boss || race.raceId == 0)
             continue;
         if (qstr(race.name).toLower().contains(needle))
             raceIds.push_back(static_cast<uint16_t>(race.raceId));
     }
-    g_game.requestBestiaryOverview("", true, raceIds);
+    tibia::game::requestBestiaryOverview("", true, raceIds);
 }
 
 void TMonsterDialogController::requestClassificationPageSwitch(const int NewPage)
@@ -534,7 +537,7 @@ void TMonsterDialogController::requestMonsterPageSwitch(const int NewPage)
 void TMonsterDialogController::onMonsterRaceClicked(const uint MonsterRaceID)
 {
     m_selectedRace = static_cast<int>(MonsterRaceID);
-    g_game.requestBestiarySearch(static_cast<uint16_t>(MonsterRaceID));
+    tibia::game::requestBestiarySearch(static_cast<uint16_t>(MonsterRaceID));
 }
 
 void TMonsterDialogController::requestSwitchBackToClassificationSummary() { onClassificationSummaryChanged(); }
@@ -544,7 +547,7 @@ void TMonsterDialogController::requestSwitchBackToRaceSummary()
     if (!m_search.isEmpty())
         requestMonsterSearch(m_search);
     else
-        g_game.requestBestiaryOverview(m_selectedClassification.toStdString());
+        tibia::game::requestBestiaryOverview(m_selectedClassification.toStdString());
 }
 
 void TMonsterDialogController::requestSwitchToItemInfo(const int AppearanceTypeID)
@@ -555,11 +558,31 @@ void TMonsterDialogController::requestSwitchToItemInfo(const int AppearanceTypeI
     input::publish(action);
 }
 
+void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTypeID)
+{
+    TContextMenuController* menu = TContextMenuController::instance();
+    if (!menu || AppearanceTypeID <= 0)
+        return;
+    menu->beginCustomMenu();
+    connect(menu->addCustomEntry(qtTrId("context_open_in_cyclopedia")), &TContextMenuEntryItem::triggered, this,
+            [this, AppearanceTypeID] { requestSwitchToItemInfo(AppearanceTypeID); });
+    if (ThingType* type = tibia::game::rawThingType(static_cast<uint16_t>(AppearanceTypeID), ThingCategoryItem);
+        type && type->getProficiencyId() != 0) {
+        connect(menu->addCustomEntry(qtTrId("inspect_open_weapon_proficiency_dialog")), &TContextMenuEntryItem::triggered, this,
+                [AppearanceTypeID] {
+                    auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
+                    action->instance = AppearanceTypeID;
+                    input::publish(action);
+                });
+    }
+    menu->showCustomMenu();
+}
+
 void TMonsterDialogController::requestToggleBestiaryTracking()
 {
     if (!m_singleMonster)
         return;
-    g_game.sendStatusTrackerBestiary(static_cast<uint16_t>(m_selectedRace), !m_storage.isTracked(m_selectedRace));
+    tibia::game::sendStatusTrackerBestiary(static_cast<uint16_t>(m_selectedRace), !m_storage.isTracked(m_selectedRace));
 }
 
 void TMonsterDialogController::viewSelectedCharm(const int charmID)
@@ -597,8 +620,8 @@ void TMonsterDialogController::onConfirmDialogAccepted()
 {
     // Crystal's charm actions: 1 assign, 2 remove.
     const uint8_t action = m_confirmAction == 1 ? 2 : 1;
-    g_game.requestSendBuyCharmRune(action, static_cast<uint8_t>(m_confirmCharm), action == 1 ? static_cast<uint16_t>(m_selectedRace) : 0);
-    g_game.requestBestiarySearch(static_cast<uint16_t>(m_selectedRace));
+    tibia::game::requestSendBuyCharmRune(action, static_cast<uint8_t>(m_confirmCharm), action == 1 ? static_cast<uint16_t>(m_selectedRace) : 0);
+    tibia::game::requestBestiarySearch(static_cast<uint16_t>(m_selectedRace));
 }
 
 void TMonsterDialogController::setDialogState(const DialogState state)
@@ -659,7 +682,7 @@ void TMonsterDialogController::onMonsterRaceDetailsChanged()
 
 void TMonsterDialogController::hookEvents()
 {
-    m_hooks.emplace_back("g_game", "onParseBestiaryRaces", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseBestiaryRaces", [this](GameObject*, const Args& args) {
         const auto* races = arg<std::vector<CyclopediaBestiaryRace>>(args, 0);
         if (!m_shown || !races)
             return std::any{};
@@ -668,7 +691,7 @@ void TMonsterDialogController::hookEvents()
             onClassificationSummaryChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseBestiaryOverview", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseBestiaryOverview", [this](GameObject*, const Args& args) {
         const auto* races = arg<std::vector<BestiaryOverviewMonsters>>(args, 1);
         if (!races)
             return std::any{};
@@ -681,7 +704,7 @@ void TMonsterDialogController::hookEvents()
         onMonsterRacesChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onUpdateBestiaryMonsterData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateBestiaryMonsterData", [this](GameObject*, const Args& args) {
         const auto* data = arg<BestiaryMonsterData>(args, 0);
         if (!data)
             return std::any{};
@@ -692,13 +715,12 @@ void TMonsterDialogController::hookEvents()
         onMonsterRaceDetailsChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args& args) {
-        const auto* type = arg<Otc::ResourceTypes_t>(args, 2);
-        if (type && (*type == Otc::RESOURCE_BANK_BALANCE || *type == Otc::RESOURCE_GOLD_EQUIPPED)) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
+        if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED)) {
             if (TQmlMonsterRace* race = singleRace())
                 race->updateCanAfford();
         }
-        return std::any{};
     });
 }
 

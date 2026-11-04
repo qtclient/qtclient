@@ -1,6 +1,5 @@
 #include "analysers/analyserstorages.h"
 
-#include <tibia/world/game.h>
 #include <client/item.h>
 #include <tibia/world/localplayer.h>
 #include <client/staticdata.h>
@@ -13,6 +12,9 @@
 #include <QStandardPaths>
 
 #include <chrono>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::analysers {
 
@@ -123,43 +125,39 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
 {
     s_instance = this;
 
-    m_hooks.emplace_back("g_game", "onGameStart", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         resetAll();
         m_partyHunt.clear();
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer())
+        if (const LocalPlayerPtr& player = tibia::game::localPlayer())
             setCharacter(player->getId());
         m_timer.start();
-        return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_timer.stop();
         setCharacter(0);
-        return std::any{};
     });
     // CIP XpChanged handler 0x100a55670: (raw, final).
-    m_hooks.emplace_back("g_game", "onUpdateExperience", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateExperience", [this](GameObject*, const Args& args) {
         m_progress.onExperienceGained(argInt(args, 0), argInt(args, 1), nowMs());
         return std::any{};
     });
     // CIP ItemLooted handler 0x100a4f0b0.
-    m_hooks.emplace_back("g_game", "onLootStats", [this](LuaObject*, const Args& args) {
-        if (args.empty())
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onLootStats", [this](GameObject*, const Args& args) {
+        if (args.size() < 2)
             return std::any{};
-        const auto* item = std::any_cast<ItemPtr>(&args[0]);
-        if (!item || !*item)
-            return std::any{};
-        const quint32 count = static_cast<quint32>(std::max(1, static_cast<int>((*item)->getCount())));
-        m_gainWaste.addLoot(static_cast<uint16_t>((*item)->getId()), count, argString(args, 1), nowMs());
+        const uint16_t typeId = static_cast<uint16_t>(argInt(args, 0));
+        const quint32 count = static_cast<quint32>(std::max<qint64>(1, argInt(args, 1)));
+        m_gainWaste.addLoot(typeId, count, argString(args, 2), nowMs());
         return std::any{};
     });
     // CIP ItemWasted handler 0x100a4ee10: one item per message.
-    m_hooks.emplace_back("g_game", "onSupplyTracker", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSupplyTracker", [this](GameObject*, const Args& args) {
         m_gainWaste.addWaste(static_cast<uint16_t>(argInt(args, 0)), 1, nowMs());
         return std::any{};
     });
     // CIP ImpactTracking handler 0x100a4e9b0. Crystal sends one amount and its element for
     // damage dealt, which CIP takes as (primary 0, secondary amount, element).
-    m_hooks.emplace_back("g_game", "onImpactTracker", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onImpactTracker", [this](GameObject*, const Args& args) {
         const qint64 type = argInt(args, 0);
         const qint64 amount = argInt(args, 1);
         const int element = static_cast<int>(argInt(args, 2));
@@ -172,12 +170,12 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         return std::any{};
     });
     // CIP KillTracking handler 0x100a4e110.
-    m_hooks.emplace_back("g_game", "onKillTracker", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onKillTracker", [this](GameObject*, const Args& args) {
         m_huntingSession.addKill(argString(args, 0));
         return std::any{};
     });
     // CIP PartyHuntAnalyser handler 0x100a550e0 (every message; the Lua hook is throttled).
-    const auto applyPartyAnalyzer = [this](LuaObject*, const Args& args) {
+    const auto applyPartyAnalyzer = [this](GameObject*, const Args& args) {
         if (args.size() < 5)
             return std::any{};
         const auto* data = std::any_cast<std::vector<PartyMemberData>>(&args[3]);
@@ -206,11 +204,11 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
                            std::move(members));
         return std::any{};
     };
-    m_hooks.emplace_back("g_game", "onPartyAnalyzerUpdate", applyPartyAnalyzer);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyAnalyzerUpdate", applyPartyAnalyzer);
     // Throttled CipSoft publish (same payload as Update); keep both subscribed.
-    m_hooks.emplace_back("g_game", "onPartyAnalyzer", applyPartyAnalyzer);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyAnalyzer", applyPartyAnalyzer);
     // CIP market statistics (TItemPriceStorage +0x60).
-    m_hooks.emplace_back("g_game", "onItemsPrice", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onItemsPrice", [this](GameObject*, const Args& args) {
         if (args.empty())
             return std::any{};
         const auto* prices = std::any_cast<std::map<uint16_t, uint64_t>>(&args[0]);
@@ -226,8 +224,8 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
 
     m_timer.setInterval(TickIntervalMs);
     connect(&m_timer, &QTimer::timeout, this, &TAnalyserStorages::tick);
-    if (g_game.isOnline()) {
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer())
+    if (tibia::game::isOnline()) {
+        if (const LocalPlayerPtr& player = tibia::game::localPlayer())
             setCharacter(player->getId());
         m_timer.start();
     }

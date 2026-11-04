@@ -13,11 +13,14 @@
 #include "qmlcomponents/minimaprendererquickitem.h"
 
 #include <tibia/world/creature.h>
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 #include <client/position.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -35,9 +38,9 @@ const T* arg(const Args& args, const size_t index)
 
 bool canBeColorized(const int lookType)
 {
-    if (!g_things.isValidDatId(lookType, ThingCategoryCreature))
+    if (!tibia::game::isValidDatId(lookType, ThingCategoryCreature))
         return false;
-    const ThingTypePtr& type = g_things.getThingType(lookType, ThingCategoryCreature);
+    const ThingTypePtr& type = tibia::game::thingType(lookType, ThingCategoryCreature);
     return type && type->getLayers() > 1;
 }
 
@@ -116,11 +119,11 @@ void TInformationDialogs::setControlScheme(const int controlScheme) { m_cycloped
 void TInformationDialogs::hookOutfitDialog()
 {
     input::setActionHandler(A::REQUEST_OUTFITS_FROM_SERVER, [](const input::TGameAction&) {
-        g_game.requestOutfit();
+        tibia::game::requestOutfit();
         return true;
     });
 
-    m_hooks.emplace_back("g_game", "onOutfitWindowOptions", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOutfitWindowOptions", [this](GameObject*, const Args& args) {
         TSelectOutfitDialogController::WindowOptions options{
             .mounted = client::gamecore::argBool(args, 1),
             .randomMount = client::gamecore::argBool(args, 2),
@@ -150,7 +153,7 @@ void TInformationDialogs::hookOutfitDialog()
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onOpenOutfitWindow", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenOutfitWindow", [this](GameObject*, const Args& args) {
         const auto* creature = arg<CreaturePtr>(args, 0);
         if (!creature || !*creature)
             return std::any{};
@@ -175,19 +178,18 @@ void TInformationDialogs::hookOutfitDialog()
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_outfitDialog->setWindowOptions({});
         m_questLog->clear();
         m_highscores->clear();
         m_prey->clear();
-        return std::any{};
     });
 }
 
 void TInformationDialogs::hookCreaturePodium()
 {
     using RaceRows = std::vector<TConfigureCreaturePodiumDialogController::RaceRow>;
-    m_hooks.emplace_back("g_game", "onConfigureCreaturePodium", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onConfigureCreaturePodium", [this](GameObject*, const Args& args) {
         static const RaceRows emptyRaces;
         const Outfit selected = arg<Outfit>(args, 0) ? *arg<Outfit>(args, 0) : Outfit{};
         const bool bossPodium = client::gamecore::argInt(args, 1) != 0;
@@ -207,7 +209,7 @@ void TInformationDialogs::hookTextDialogs()
     using client::gamecore::argInt;
     using client::gamecore::argString;
 
-    m_hooks.emplace_back("g_game", "onModalDialog", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onModalDialog", [this](GameObject*, const Args& args) {
         using Options = TServerModalDialogController::Options;
         static const Options none;
         const auto* buttons = arg<Options>(args, 3);
@@ -217,18 +219,18 @@ void TInformationDialogs::hookTextDialogs()
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onEditText", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onEditText", [this](GameObject*, const Args& args) {
         m_editText->showItemText(argInt(args, 0), argInt(args, 1), argInt(args, 2), argString(args, 3), argString(args, 4),
                                  argString(args, 5), client::gamecore::argBool(args, 6));
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onEditGuildMessage", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onEditGuildMessage", [this](GameObject*, const Args& args) {
         m_editText->showEditGuildMessageDialog(argString(args, 0));
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onEditList", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onEditList", [this](GameObject*, const Args& args) {
         m_editText->showEditList(argInt(args, 0), argInt(args, 1), argString(args, 2));
         return std::any{};
     });
@@ -241,13 +243,13 @@ void TInformationDialogs::hookQuestLog()
         return true;
     });
 
-    m_hooks.emplace_back("g_game", "onQuestLog", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestLog", [this](GameObject*, const Args& args) {
         if (const auto* lines = arg<std::vector<std::tuple<uint16_t, std::string, bool>>>(args, 0))
             m_questLog->setQuestLines(*lines);
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onQuestLine", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestLine", [this](GameObject*, const Args& args) {
         if (const auto* missions = arg<std::vector<std::tuple<std::string, std::string, uint16_t>>>(args, 1))
             m_questLog->setQuestLineParts(client::gamecore::argInt(args, 0), *missions);
         return std::any{};
@@ -255,13 +257,12 @@ void TInformationDialogs::hookQuestLog()
 
     // CIP never sends its stored flags on login (0x100f728b0 only runs from the tracker game actions);
     // Crystal keeps none across sessions and only answers a sent list, so remaining stays 0 otherwise.
-    m_hooks.emplace_back("g_game", "onGameStart", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         m_questLog->ensureStorage();
         m_questLog->tracker()->sendStored();
-        return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onQuestTracker", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestTracker", [this](GameObject*, const Args& args) {
         using Missions = std::vector<std::tuple<uint16_t, uint16_t, std::string, std::string, std::string>>;
         const auto* missions = arg<Missions>(args, 1);
         if (!missions)
@@ -278,7 +279,7 @@ void TInformationDialogs::hookQuestLog()
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onUpdateQuestTracker", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateQuestTracker", [this](GameObject*, const Args& args) {
         using client::gamecore::argInt;
         using client::gamecore::argString;
         m_questLog->tracker()->updateQuestFlag({ .questFlagId = static_cast<int>(argInt(args, 1)),
@@ -301,7 +302,7 @@ void TInformationDialogs::hookHighscores()
         return true;
     });
 
-    m_hooks.emplace_back("g_game", "onProcessHighscores", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onProcessHighscores", [this](GameObject*, const Args& args) {
         THighscoresDialogController::Answer answer;
         if (const auto* worlds = arg<std::vector<std::string>>(args, 10))
             answer.worlds = *worlds;
@@ -327,7 +328,7 @@ void TInformationDialogs::hookHighscores()
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onHighscoresNoData", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onHighscoresNoData", [this](GameObject*, const Args&) {
         m_highscores->setNoData();
         return std::any{};
     });
@@ -388,7 +389,7 @@ void TInformationDialogs::hookPrey()
     // 5 automatic extension).
     const auto preyAction = [](const A type, const uint8_t actionType) {
         input::setActionHandler(type, [actionType](const input::TGameAction& action) {
-            g_game.preyAction(static_cast<uint8_t>(action.instance), actionType, static_cast<uint16_t>(action.parameter));
+            tibia::game::preyAction(static_cast<uint8_t>(action.instance), actionType, static_cast<uint16_t>(action.parameter));
             return true;
         });
     };
@@ -412,22 +413,22 @@ void TInformationDialogs::hookPrey()
     };
     const auto received = [this](const Args& args) { m_prey->storage()->markReceived(static_cast<int>(argInt(args, 0))); };
 
-    m_hooks.emplace_back("g_game", "onPreyLocked", [slotData, received](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreyLocked", [slotData, received](GameObject*, const Args& args) {
         if (prey::TPreyData* data = slotData(args, 2, 3)) {
-            const auto* unlock = arg<Otc::PreyUnlockState_t>(args, 1);
-            data->setLocked(unlock ? *unlock : Otc::PREY_UNLOCK_NONE);
+            const auto* unlock = arg<tibia::client::PreyUnlockState_t>(args, 1);
+            data->setLocked(unlock ? *unlock : tibia::client::PREY_UNLOCK_NONE);
             received(args);
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPreyInactive", [slotData, received](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreyInactive", [slotData, received](GameObject*, const Args& args) {
         if (prey::TPreyData* data = slotData(args, 1, 2)) {
             data->setInactive();
             received(args);
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPreyActive", [slotData, received](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreyActive", [slotData, received](GameObject*, const Args& args) {
         if (prey::TPreyData* data = slotData(args, 7, 9)) {
             const auto* outfit = arg<Outfit>(args, 2);
             data->setActive(preyBonus(args, 3), preyMonster(argString(args, 1).toStdString(), outfit ? *outfit : Outfit{}),
@@ -436,59 +437,59 @@ void TInformationDialogs::hookPrey()
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPreySelection", [slotData, received](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreySelection", [slotData, received](GameObject*, const Args& args) {
         if (prey::TPreyData* data = slotData(args, 3, 4)) {
             data->setSelection(preyMonsters(args, 1, 2));
             received(args);
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPreySelectionChangeMonster", [slotData, received](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreySelectionChangeMonster", [slotData, received](GameObject*, const Args& args) {
         if (prey::TPreyData* data = slotData(args, 6, 7)) {
             data->setSelectionChangeMonster(preyBonus(args, 3), preyMonsters(args, 1, 2));
             received(args);
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPreyListSelection", [slotData, received](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreyListSelection", [slotData, received](GameObject*, const Args& args) {
         if (prey::TPreyData* data = slotData(args, 2, 3)) {
             data->setListSelection(preyRaces(args, 1));
             received(args);
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPreyWildcardSelection", [slotData, received](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreyWildcardSelection", [slotData, received](GameObject*, const Args& args) {
         if (prey::TPreyData* data = slotData(args, 2, 3)) {
             data->setWildcardSelection(preyBonus(args, 4), preyRaces(args, 1));
             received(args);
         }
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPreyTimeLeft", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreyTimeLeft", [this](GameObject*, const Args& args) {
         if (prey::TPreyData* data = m_prey->storage()->slot(static_cast<int>(argInt(args, 0))))
             data->setTimeLeft(static_cast<int>(argInt(args, 1)));
         return std::any{};
     });
     // CIP PreyFreeRerolls (S 0xEE): next free list reroll countdown for one slot.
-    m_hooks.emplace_back("g_game", "onPreyFreeRerolls", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreyFreeRerolls", [this](GameObject*, const Args& args) {
         if (prey::TPreyData* data = m_prey->storage()->slot(static_cast<int>(argInt(args, 0))))
             data->setNextFreeListReroll(argInt(args, 1));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onPreyRerollPrice", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPreyRerollPrice", [this](GameObject*, const Args& args) {
         m_prey->storage()->setPrices(static_cast<int>(argInt(args, 0)), static_cast<int>(argInt(args, 1)), static_cast<int>(argInt(args, 2)));
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this]() {
         m_prey->onBalanceChanged();
-        return std::any{};
     });
     // CIP 0x100ee4ec0: ShowMessageDialog types 0x14 and 0x15 are the prey info box.
-    m_hooks.emplace_back("g_game", "onServerError", [this](LuaObject*, const Args& args) {
-        if ((argInt(args, 0) & ~1) == 0x14)
-            m_prey->onRequestShowMessageDialog(argString(args, 1));
-        return std::any{};
-    });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::serverError, this,
+            [this](int code, const QString& message) {
+                if ((code & ~1) == 0x14)
+                    m_prey->onRequestShowMessageDialog(message);
+            });
 }
 
 }

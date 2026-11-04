@@ -19,9 +19,7 @@ except ImportError:  # Keep --help and module imports usable without Pillow.
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SPELLS_LUA = ROOT / "apps/qtclient/modules/gamelib/spells.lua"
 SPELL_INFO_JSON = ROOT / "packages/asset-pipeline/data/spellInfo.generated.json"
-MAP_PY = ROOT / "apps/qtclient/docs/generate_spell_data.py"
 OUT32 = ROOT / "apps/qtclient/data/images/game/spells/spell-icons-32x32.png"
 OUT20 = ROOT / "apps/qtclient/data/images/game/spells/spell-icons-20x20.png"
 OUT_GROUP = (
@@ -247,43 +245,6 @@ def map_client_id(
     return remap.get(105, min(105, max_icon))
 
 
-def update_spells_lua(
-    remap: dict[int, int], max_icon: int, dry_run: bool = False
-) -> int:
-    # Legacy qtclient Lua module — retired with the Lua client. Keep the remap
-    # path for optional checkouts that still ship modules/gamelib/spells.lua.
-    if not SPELLS_LUA.is_file():
-        return 0
-    lua = SPELLS_LUA.read_text(encoding="utf-8")
-    changes = 0
-    entry_re = re.compile(r"(\['(?:[^']+)'\]\s*=\s*\{)(.*?)(\},)", re.DOTALL)
-
-    def replace_entry(match: re.Match[str]) -> str:
-        nonlocal changes
-        prefix, body, suffix = match.groups()
-        client_match = re.search(r"clientId\s*=\s*(-?\d+)", body)
-        if client_match is None:
-            return match.group(0)
-        words_match = re.search(r"words\s*=\s*'([^']*)'", body)
-        words = words_match.group(1) if words_match else ""
-        old = int(client_match.group(1))
-        mapped = map_client_id(old, words, remap, max_icon)
-        if mapped == old:
-            return match.group(0)
-        changes += 1
-        patched = (
-            body[: client_match.start()]
-            + f"clientId = {mapped}"
-            + body[client_match.end() :]
-        )
-        return f"{prefix}{patched}{suffix}"
-
-    updated = entry_re.sub(replace_entry, lua)
-    if not dry_run:
-        SPELLS_LUA.write_text(updated, encoding="utf-8")
-    return changes
-
-
 def update_spell_info_json(
     remap: dict[int, int], max_icon: int, dry_run: bool = False
 ) -> int:
@@ -307,46 +268,6 @@ def update_spell_info_json(
             json.dumps(info, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
-    return changes
-
-
-def update_map_icon_index(
-    remap: dict[int, int], max_icon: int, dry_run: bool = False
-) -> int:
-    source = MAP_PY.read_text(encoding="utf-8")
-    changes = 0
-    entry_re = re.compile(r'"([^"]+)":\s*\((\d+|None),\s*(\d+|None)\),')
-
-    def replace_entry(match: re.Match[str]) -> str:
-        nonlocal changes
-        words, icon_text, spell_id = match.groups()
-        if icon_text == "None":
-            return match.group(0)
-        old = int(icon_text)
-        mapped = map_client_id(old, words, remap, max_icon)
-        if mapped == old:
-            return match.group(0)
-        changes += 1
-        return f'"{words}": ({mapped}, {spell_id}),'
-
-    updated = entry_re.sub(replace_entry, source)
-    extras: list[str] = []
-    for words, client_id in STANCE_CLIENT_IDS.items():
-        marker = f'"{words}"'
-        if marker not in updated:
-            extras.append(f'    "{words}": ({client_id}, None),')
-            continue
-        stance_re = re.compile(
-            rf'("{re.escape(words)}":\s*\()(\d+|None)(,\s*(?:\d+|None)\),)'
-        )
-        updated = stance_re.sub(rf"\g<1>{client_id}\g<3>", updated)
-
-    if extras:
-        anchor = '    "exura tio sio":'
-        if anchor in updated:
-            updated = updated.replace(anchor, "\n".join(extras) + "\n" + anchor, 1)
-    if not dry_run:
-        MAP_PY.write_text(updated, encoding="utf-8")
     return changes
 
 
@@ -491,18 +412,9 @@ def sync_spell_icons(
 
     print(f"[spell-icons] wrote {OUT32}")
     print(f"[spell-icons] wrote {OUT20}")
-    lua_changes = update_spells_lua(remap, max_icon)
-    if SPELLS_LUA.is_file():
-        print(f"[spell-icons] spells.lua changes: {lua_changes}")
-    else:
-        print("[spell-icons] spells.lua skipped (Lua client module not present)")
     print(
         "[spell-icons] spellInfo.json changes: "
         f"{update_spell_info_json(remap, max_icon)}"
-    )
-    print(
-        "[spell-icons] MAP_ICON_INDEX changes: "
-        f"{update_map_icon_index(remap, max_icon)}"
     )
 
 

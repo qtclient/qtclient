@@ -366,5 +366,5 @@ void FileStream::addString(const std::string_view v)
 
 void FileStream::throwError(const std::string_view message) const
 {
-    throw Exception(fmt::format("in file '{}': {}", m_name, message));
+    throw Exception(std::format("in file '{}': {}", m_name, message));
 }

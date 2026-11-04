@@ -26,6 +26,9 @@
 
 #include "declarations.h"
 
+#include <shared_mutex>
+#include <unordered_map>
+
 class TextureManager
 {
 public:

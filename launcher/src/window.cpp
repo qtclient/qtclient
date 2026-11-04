@@ -49,13 +49,14 @@ Q_LOGGING_CATEGORY(lcLauncher, "tibia.launcher")
 
 namespace {
 
-/// CipSoft mock: `ETA hh:mm:ss XXXX kB/s XXX/XXX mB` — fixed columns so the
-/// package chrome does not reflow as digits change (and does not wrap).
-QString formatEta(qint64 bytes, qint64 total, qint64 elapsedMs)
+/// CipSoft-shaped ETA line: `ETA hh:mm:ss XXXX kB/s XXX/XXX mB` — fixed columns
+/// so the package chrome does not reflow (and does not wrap).
+/// `rateBytesPerSec` is the CipSoft-style measured window rate (not lifetime avg).
+QString formatEta(qint64 bytes, qint64 total, double rateBytesPerSec)
 {
-    const double seconds = qMax(elapsedMs, qint64(1)) / 1000.0;
-    const double rate = bytes / seconds;
-    const qint64 left = rate > 1.0 && total > bytes ? qint64((total - bytes) / rate) : 0;
+    const qint64 left = rateBytesPerSec > 1.0 && total > bytes
+        ? qint64((total - bytes) / rateBytesPerSec)
+        : 0;
     const qint64 hh = left / 3600;
     const qint64 mm = (left % 3600) / 60;
     const qint64 ss = left % 60;
@@ -63,7 +64,7 @@ QString formatEta(qint64 bytes, qint64 total, qint64 elapsedMs)
         const double v = n / 1000000.0;
         return QString::number(v, 'f', v >= 100.0 ? 0 : 1);
     };
-    const qint64 rateKb = qMax(qint64(0), qint64(rate / 1000.0));
+    const qint64 rateKb = qMax(qint64(0), qint64(rateBytesPerSec / 1000.0));
     return QStringLiteral("ETA %1:%2:%3 %4 kB/s %5/%6 mB")
         .arg(hh, 2, 10, QLatin1Char('0'))
         .arg(mm, 2, 10, QLatin1Char('0'))
@@ -211,6 +212,12 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
     m_action->setCursor(Qt::PointingHandCursor);
     m_action->setFocusPolicy(Qt::NoFocus);
 
+    m_delete = new QPushButton;
+    m_delete->setFixedSize(m_action->size());
+    m_delete->setCursor(Qt::PointingHandCursor);
+    m_delete->setFocusPolicy(Qt::NoFocus);
+    m_delete->hide();
+
     m_progress = new QProgressBar;
     m_progress->setRange(0, 100);
     m_progress->setValue(0);
@@ -258,6 +265,7 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
     pack->setSpacing(2);
     pack->setContentsMargins(10, 10, 10, 10);
     pack->addWidget(m_action, 0, Qt::AlignHCenter);
+    pack->addWidget(m_delete, 0, Qt::AlignHCenter);
     // CIP keeps a clear gap under Play before `15.33.c9e45e`.
     pack->addSpacing(12);
     pack->addWidget(m_version, 0, Qt::AlignHCenter);
@@ -423,6 +431,7 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
 #endif
 
     connect(m_action, &QPushButton::clicked, this, &LauncherWindow::onAction);
+    connect(m_delete, &QPushButton::clicked, this, &LauncherWindow::onDeleteOrphans);
     connect(m_client, &PackageClient::progress, this, &LauncherWindow::onProgress);
     applyStyle();
     // CipSoft does not flash Download before metadata. DEV Play is known from
@@ -675,10 +684,12 @@ QString LauncherWindow::installStatusLabel() const
 #else
     const bool thingsOk = true;
 #endif
-    // CIP: PackageBeingInstalled / InstallationInProgress while busy; otherwise
-    // PartiallyInstalled until stamps + files match → InstalledAndUsable.
-    if (m_busy)
-        return QStringLiteral("InstallationInProgress");
+    // CIP: PackageBeingInstalled (first install) / InstallationInProgress (update)
+    // while busy; otherwise PartiallyInstalled until stamps match → InstalledAndUsable.
+    if (m_busy) {
+        return localVersion().isEmpty() ? QStringLiteral("PackageBeingInstalled")
+                                        : QStringLiteral("InstallationInProgress");
+    }
     if (!versionOk || m_hasGaps || !assetsOk || !thingsOk || !modsStampOk())
         return QStringLiteral("PartiallyInstalled");
     return QStringLiteral("InstalledAndUsable");
@@ -686,8 +697,12 @@ QString LauncherWindow::installStatusLabel() const
 
 void LauncherWindow::fetchRemoteStampsParallel()
 {
-    // CipSoft GETs launcher/client/assets stamps concurrently before decide.
-    // Soft adds an optional mods stamp (third tip channel) when modsversionurl is set.
+    fetchRemoteStampsAndPackageParallel(false);
+}
+
+void LauncherWindow::fetchRemoteStampsAndPackageParallel(bool includePackage)
+{
+    // CipSoft GETs version stamps (+ package.json) concurrently before decide.
     int pending = 0;
     QEventLoop loop;
     auto oneDone = [&] {
@@ -722,6 +737,16 @@ void LauncherWindow::fetchRemoteStampsParallel()
             oneDone();
         });
     }
+    if (includePackage && m_build.packageUrl.isValid()) {
+        ++pending;
+        m_client->getAsync(m_build.packageUrl, [this, oneDone](const QByteArray& body, const QString& error) {
+            QString parseError = error;
+            m_packageDoc = m_client->parsePackage(body, &parseError);
+            if (!m_packageDoc.files.isEmpty())
+                m_hasGaps = m_client->hasFileGaps(m_packageDoc, packageDir());
+            oneDone();
+        });
+    }
     if (pending > 0)
         loop.exec();
 }
@@ -736,6 +761,10 @@ void LauncherWindow::setBusy(bool busy, const QString& label)
         m_action->setText({});
         setActionSkin(QStringLiteral("Orange"), QStringLiteral("Update"));
         setLogoState(LogoState::Updating);
+        m_timer.invalidate();
+        m_speedSampleBytes = 0;
+        m_speedSampleMs = 0;
+        m_downloadRateBytesPerSec = 0.0;
         if (!label.isEmpty())
             m_status->setText(label);
         else
@@ -751,8 +780,30 @@ void LauncherWindow::onProgress(qint64 bytes, qint64 total, int fileIndex, int f
 {
     if (!m_busy)
         return;
-    if (!m_timer.isValid())
+    if (!m_timer.isValid()) {
         m_timer.start();
+        m_speedSampleBytes = bytes;
+        m_speedSampleMs = 0;
+        m_downloadRateBytesPerSec = 0.0;
+    }
+    const qint64 elapsedMs = m_timer.elapsed();
+    // Sliding window (~1s): CIP onMeasureDownloadSpeed uses recent throughput,
+    // not bytes/lifetime, so ETA does not collapse after a slow start.
+    constexpr qint64 kSpeedWindowMs = 1000;
+    if (elapsedMs - m_speedSampleMs >= kSpeedWindowMs) {
+        const qint64 dBytes = bytes - m_speedSampleBytes;
+        const qint64 dMs = elapsedMs - m_speedSampleMs;
+        if (dMs > 0 && dBytes >= 0) {
+            const double instant = (dBytes * 1000.0) / double(dMs);
+            m_downloadRateBytesPerSec = m_downloadRateBytesPerSec > 1.0
+                ? (0.35 * m_downloadRateBytesPerSec + 0.65 * instant)
+                : instant;
+        }
+        m_speedSampleBytes = bytes;
+        m_speedSampleMs = elapsedMs;
+    } else if (m_downloadRateBytesPerSec < 1.0 && elapsedMs > 0 && bytes > 0) {
+        m_downloadRateBytesPerSec = (bytes * 1000.0) / double(elapsedMs);
+    }
     const qint64 overallTotal = total > 0 ? total : bytes;
     if (overallTotal > 0)
         m_progress->setValue(int(qMin(qint64(100), bytes * 100 / overallTotal)));
@@ -760,7 +811,7 @@ void LauncherWindow::onProgress(qint64 bytes, qint64 total, int fileIndex, int f
     if (overallTotal > 0 && bytes >= overallTotal)
         m_status->setText(QStringLiteral("Finishing…"));
     else
-        m_status->setText(formatEta(bytes, overallTotal, m_timer.elapsed()));
+        m_status->setText(formatEta(bytes, overallTotal, m_downloadRateBytesPerSec));
     Q_UNUSED(fileIndex);
     Q_UNUSED(fileCount);
 }
@@ -828,6 +879,31 @@ void LauncherWindow::refresh()
     else
         setActionSkin(QStringLiteral("Green"), QStringLiteral("Play"));
     m_action->setEnabled(true);
+    // CIP red DELETE: drop local tip files not listed in current package.json.
+    if (m_delete) {
+        const bool showDelete = !local.isEmpty() && !m_packageDoc.files.isEmpty() && !devPlay;
+        m_delete->setVisible(showDelete);
+        if (showDelete) {
+            const QPixmap red(QStringLiteral(":/images/launcher/Button_Red_idle.png"));
+            m_delete->setFixedSize(red.isNull() ? m_action->size() : red.size());
+            m_delete->setStyleSheet(QStringLiteral(
+                "QPushButton { background-image: url(:/images/launcher/Button_Red_idle.png); border: none; }"
+                "QPushButton:hover { background-image: url(:/images/launcher/Button_Red_hover.png); }"
+                "QPushButton:pressed { background-image: url(:/images/launcher/Button_Red_pressed.png); }"
+                "QPushButton:disabled { background-image: url(:/images/launcher/Button_Red_idle.png); }"));
+            m_delete->setEnabled(true);
+        }
+    }
+}
+
+void LauncherWindow::onDeleteOrphans()
+{
+    if (m_busy || m_packageDoc.files.isEmpty())
+        return;
+    const int removed = m_client->deleteOrphanLocalFiles(m_packageDoc, packageDir());
+    qInfo().noquote() << "Deleted" << removed << "orphan file(s) from" << packageDir();
+    m_hasGaps = m_client->hasFileGaps(m_packageDoc, packageDir());
+    refresh();
 }
 
 void LauncherWindow::applyHint(const QVector<tibia::app::Hint>& hints)
@@ -873,6 +949,10 @@ void LauncherWindow::considerSelfUpdate(const CipMetadata& metadata)
         qInfo("launcher self-update skipped (QTCLIENT_DISABLE_SELF_UPDATE=1)");
         return;
     }
+    if (QCoreApplication::arguments().contains(QStringLiteral("--skip-selfupdate"))) {
+        qInfo("launcher self-update skipped (--skip-selfupdate)");
+        return;
+    }
     const QString local = QStringLiteral(TIBIA_LAUNCHER_VERSION);
     if (local == QStringLiteral("dev") || local == QStringLiteral("embedded"))
         return;
@@ -886,6 +966,8 @@ void LauncherWindow::considerSelfUpdate(const CipMetadata& metadata)
     const CipPackageDoc doc = m_client->fetchPackage(build->packageUrl, &error);
     if (doc.version.isEmpty())
         return;
+    // CIP TLauncherSelfUpdater: stage under AppData, then overwrite the running
+    // qtclient bootstrap .app (never packages/<client>). DEV/loopback already skipped.
     const QString staging = QDir(m_client->dataDir()).filePath(QStringLiteral("self-update"));
     QDir(staging).removeRecursively();
     if (!m_client->installPackage(build->packageUrl, doc, staging, &error)) {
@@ -893,6 +975,7 @@ void LauncherWindow::considerSelfUpdate(const CipMetadata& metadata)
         return;
     }
 #if defined(Q_OS_MACOS)
+    // Contents/MacOS → .app root (CIP installs into /Applications/Tibia.app).
     const QString root = QDir(QCoreApplication::applicationDirPath() + QStringLiteral("/../..")).canonicalPath();
 #else
     const QString root = QCoreApplication::applicationDirPath();
@@ -909,10 +992,21 @@ void LauncherWindow::considerSelfUpdate(const CipMetadata& metadata)
         QFile::remove(dest);
         QFile::copy(path, dest);
     }
-    const QString exe = QDir(root).filePath(doc.executable);
-    QFile(exe).setPermissions(QFile::permissions(exe) | QFileDevice::ExeOwner | QFileDevice::ExeGroup | QFileDevice::ExeOther);
-    if (QProcess::startDetached(exe, {}, root))
+    PackageClient::ensureMacOsFrameworkVersionsCurrent(root);
+    // CIP: restart applicationFilePath() with rebuild argv + current cwd.
+    const QString exe = QCoreApplication::applicationFilePath();
+    QFile(exe).setPermissions(QFile::permissions(exe) | QFileDevice::ExeOwner | QFileDevice::ExeGroup
+                              | QFileDevice::ExeOther);
+    QStringList args = QCoreApplication::arguments();
+    if (!args.isEmpty())
+        args.removeFirst();
+    if (!args.contains(QStringLiteral("--skip-selfupdate")))
+        args.append(QStringLiteral("--skip-selfupdate"));
+    qInfo().noquote() << "Self update finished. Restarting" << exe;
+    if (QProcess::startDetached(exe, args, QDir::currentPath()))
         QCoreApplication::quit();
+    else
+        qWarning("Followup process failed to start.");
 #endif
 }
 
@@ -947,23 +1041,34 @@ void LauncherWindow::start()
         return;
     }
     m_build = *build;
-    fetchRemoteStampsParallel();
-    {
-        QString packageError;
-        m_packageDoc = m_client->fetchPackage(m_build.packageUrl, &packageError);
-        if (!m_packageDoc.files.isEmpty())
-            m_hasGaps = m_client->hasFileGaps(m_packageDoc, packageDir());
-    }
+    // CIP: stamps + package.json concurrently before decide.
+    fetchRemoteStampsAndPackageParallel();
     loadFeed();
     refresh();
     considerSelfUpdate(metadata);
-    const bool patch = QCoreApplication::arguments().contains(QStringLiteral("--patch"));
-    const bool forceSoft = QCoreApplication::arguments().contains(QStringLiteral("--show-launcher"))
+    const QStringList args = QCoreApplication::arguments();
+    const bool patch = args.contains(QStringLiteral("--patch"));
+    QString patchExecutable;
+    for (int i = 0; i + 1 < args.size(); ++i) {
+        if (args.at(i) == QLatin1String("--patchexecutable") || args.at(i) == QLatin1String("-patchexecutable")) {
+            patchExecutable = args.at(i + 1);
+            break;
+        }
+    }
+    const bool forceSoft = args.contains(QStringLiteral("--show-launcher"))
         || qEnvironmentVariableIntValue("QTCLIENT_FORCE_LAUNCHER") == 1;
     const QString local = localVersion();
     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
         || localAssetsStamp() == m_remoteAssetsVersion;
-    // Warm tip → auto-Play (CIP --patch when current). Soft chrome still used for
+    // CIP --patchexecutable: silent Update then startDetached that path (CI).
+    if (!patchExecutable.isEmpty()) {
+        qInfo().noquote() << "Start update of" << patchExecutable << "without user interaction.";
+        installIfNeeded(false);
+        if (QProcess::startDetached(patchExecutable, {}, QFileInfo(patchExecutable).absolutePath()))
+            QCoreApplication::quit();
+        return;
+    }
+    // Warm tip → auto-Play (CIP --patch when current). qtclient chrome still used for
     // Update / --show-launcher / QTCLIENT_FORCE_LAUNCHER=1.
     if (!forceSoft && !m_remoteVersion.isEmpty() && local == m_remoteVersion && !m_hasGaps
         && assetsOk && modsStampOk()) {
@@ -1030,7 +1135,7 @@ void LauncherWindow::startAsync()
                     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
                         || localAssetsStamp() == m_remoteAssetsVersion;
                     const bool thingsOk = thingsPacksStampPresent();
-                    // Warm tip → remount game-only (same as Soft Play / portal auto-skip).
+                    // Warm tip → remount game-only (same as qtclient Play / portal auto-skip).
                     if (!forceSoft && !m_remoteVersion.isEmpty() && local == m_remoteVersion
                         && !m_hasGaps && assetsOk && thingsOk && modsStampOk()) {
                         qInfo("launcher wasm warm tip InstalledAndUsable — auto Play remount");
@@ -1094,8 +1199,10 @@ void LauncherWindow::finishInstallAsync(bool thenPlay, const QString& version)
     m_remoteVersion = version;
     m_hasGaps = false;
     setBusy(false, {});
-    m_status->clear();
     m_progress->hide();
+    qInfo().noquote() << QStringLiteral("Package %1 with version %2 is now fully installed")
+                             .arg(m_package.name, version);
+    m_status->clear();
     refresh();
     if (thenPlay)
         play();
@@ -1390,8 +1497,11 @@ void LauncherWindow::installIfNeeded(bool thenPlay)
     m_remoteVersion = doc.version;
     m_hasGaps = false;
     setBusy(false, {});
-    m_status->clear();
     m_progress->hide();
+    // CIP TLauncherFilesystemHelper post-install log.
+    qInfo().noquote() << QStringLiteral("Package %1 with version %2 is now fully installed")
+                             .arg(m_package.name, doc.version);
+    m_status->clear();
     refresh();
     if (thenPlay)
         play();
@@ -1587,18 +1697,20 @@ void LauncherWindow::play()
         if (!tipArgs.contains(QStringLiteral("--default-mod")))
             tipArgs.prepend(QStringLiteral("--default-mod"));
     }
-    spawn(executable, dir, doc.version.isEmpty() ? m_remoteVersion : doc.version, tipArgs);
+    spawn(executable, dir, doc.version.isEmpty() ? m_remoteVersion : doc.version, tipArgs,
+          /*detachTip=*/true);
 #endif
 }
 
 void LauncherWindow::spawn(const QString& executable, const QString& workDir, const QString& revision,
-                           const QStringList& clientArgs)
+                           const QStringList& clientArgs, const bool detachTip)
 {
 #ifdef __EMSCRIPTEN__
     Q_UNUSED(executable);
     Q_UNUSED(workDir);
     Q_UNUSED(revision);
     Q_UNUSED(clientArgs);
+    Q_UNUSED(detachTip);
 #else
     if (m_game)
         return;
@@ -1642,13 +1754,41 @@ void LauncherWindow::spawn(const QString& executable, const QString& workDir, co
     // (tip mods/<id> urls) — do not inject QTCLIENT_LOGIN_* here.
     env.insert(QStringLiteral("QTCLIENT_ASSET_BASE"), m_client->cdnBase());
 
+    QStringList args = clientArgs;
+    // CIP tip Play passes --package-is-up-to-date when the install is fully usable.
+    if (detachTip && installStatusLabel() == QLatin1String("InstalledAndUsable")
+        && !args.contains(QStringLiteral("--package-is-up-to-date")))
+        args.append(QStringLiteral("--package-is-up-to-date"));
+
+    // CipSoft tip Play: startDetached with cwd = MacOS/ (exe dir), then close the
+    // launcher. DEV keeps a waited child so .restart / .show-launcher and monorepo
+    // cwd (data/setup.otml) keep working.
+    if (detachTip) {
+        const QString cwd = QFileInfo(executable).absolutePath();
+        QProcess process;
+        process.setProgram(executable);
+        process.setArguments(args);
+        process.setWorkingDirectory(cwd.isEmpty() ? workDir : cwd);
+        process.setProcessEnvironment(env);
+        qint64 pid = 0;
+        if (!process.startDetached(&pid)) {
+            setLogoState(LogoState::Classic);
+            refresh();
+            m_status->setText(QStringLiteral("Tibia cannot be started"));
+            return;
+        }
+        qInfo().noquote() << "Play detached pid" << pid << executable << "cwd" << process.workingDirectory();
+        QCoreApplication::quit();
+        return;
+    }
+
     auto* process = new QProcess(this);
     m_game = process;
     // CipSoft Play: QProcess on Contents/MacOS/<executable> (not `open -a`).
     // Launch Services ignores workDir (cwd → "/") and breaks local DEV builds
     // that resolve data/setup.otml relative to apps/qtclient.
     process->setProgram(executable);
-    process->setArguments(clientArgs);
+    process->setArguments(args);
     process->setWorkingDirectory(workDir);
     process->setProcessEnvironment(env);
     process->setProcessChannelMode(QProcess::ForwardedChannels);

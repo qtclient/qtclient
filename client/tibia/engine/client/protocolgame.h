@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include "appearances/appearanceinstance.h"
+#include "container/containerciptypes.h"
 #include "declarations.h"
 #include "framework/net/protocol.h"
 #include "staticdata.h"
@@ -45,7 +47,7 @@ public:
     void sendSecondaryLogin(std::string_view token);
     /// CIP ConnectionPingBack (C 0x1C) on the dual-connection socket.
     void sendConnectionPingBack();
-    void sendAutoWalk(const std::vector<Otc::Direction>& path);
+    void sendAutoWalk(const std::vector<tibia::client::Direction>& path);
     void sendWalkNorth();
     void sendWalkEast();
     void sendWalkSouth();
@@ -82,14 +84,14 @@ public:
     void sendEditList(uint32_t id, uint8_t doorId, std::string_view text);
     void sendLook(const Position& position, uint16_t itemId, uint8_t stackpos);
     void sendLookCreature(uint32_t creatureId);
-    void sendTalk(Otc::MessageMode mode, uint16_t channelId, std::string_view receiver, std::string_view message);
+    void sendTalk(tibia::client::MessageMode mode, uint16_t channelId, std::string_view receiver, std::string_view message);
     void sendRequestChannels();
     void sendJoinChannel(uint16_t channelId);
     void sendLeaveChannel(uint16_t channelId);
     void sendOpenPrivateChannel(std::string_view receiver);
     void sendEditGuildMessage(std::string_view text);
     void sendCloseNpcChannel();
-    void sendChangeFightModes(Otc::FightModes fightMode, Otc::ChaseModes chaseMode, bool safeFight, Otc::PVPModes pvpMode);
+    void sendChangeFightModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeFight, tibia::client::PVPModes pvpMode);
     void sendAttack(uint32_t creatureId, uint32_t seq);
     void sendFollow(uint32_t creatureId, uint32_t seq);
     void sendInviteToParty(uint32_t creatureId);
@@ -125,7 +127,7 @@ public:
     void sendAddVip(std::string_view name);
     void sendRemoveVip(uint32_t playerId);
     void sendEditVip(uint32_t playerId, std::string_view description, uint32_t iconId, bool notifyLogin, const std::vector<uint8_t>& groupIDs = {});
-    void sendEditVipGroups(Otc::GroupsEditInfoType_t action, uint8_t groupId, std::string_view groupName);
+    void sendEditVipGroups(tibia::client::GroupsEditInfoType_t action, uint8_t groupId, std::string_view groupName);
     /// CIP GetOfferDescription (C 0xE8): u32 offer id.
     void sendGetOfferDescription(uint32_t offerId);
     void sendRuleViolationReport(uint8_t type, uint8_t reason, std::string_view name, std::string_view comment, std::string_view translation, uint32_t id);
@@ -159,7 +161,7 @@ public:
     void sendOpenPortableForge();
     void sendRequestResourceBalance(uint8_t resourceType);
     void sendSetClientOptions(uint8_t option, bool value);
-    void sendForgeRequest(Otc::ForgeAction_t actionType, bool convergence = false, uint16_t firstItemid = 0, uint8_t firstItemTier = 0, uint16_t secondItemId = 0, bool improveChance = false, bool tierLoss = false);
+    void sendForgeRequest(tibia::client::ForgeAction_t actionType, bool convergence = false, uint16_t firstItemid = 0, uint8_t firstItemTier = 0, uint16_t secondItemId = 0, bool improveChance = false, bool tierLoss = false);
     void sendForgeBrowseHistoryRequest(uint16_t page);
     void sendExivaRestrictions(bool allowAll, bool allowOwnGuild, bool allowOwnParty, bool allowVipList,
                                bool allowPlayerWhitelist, bool allowGuildWhitelist,
@@ -187,7 +189,7 @@ public:
     void sendRequestBestiaryOverview(std::string_view catName, bool search = false, std::vector<uint16_t> raceIds = {});
     void sendRequestBestiarySearch(uint16_t raceId);
     void sendBuyCharmRune(uint8_t runeId, uint8_t action, uint16_t raceId);
-    void sendCyclopediaRequestCharacterInfo(uint32_t playerId, Otc::CyclopediaCharacterInfoType_t characterInfoType, uint16_t entriesPerPage, uint16_t page);
+    void sendCyclopediaRequestCharacterInfo(uint32_t playerId, tibia::client::CyclopediaCharacterInfoType_t characterInfoType, uint16_t entriesPerPage, uint16_t page);
     void sendFriendSystemAction(uint8_t action, uint8_t value = 0, const std::string& payload = {});
     void sendCharacterTradeConfigurationAction(uint8_t action,
                                                uint32_t price = 0,
@@ -206,7 +208,7 @@ public:
     void sendClientDetails(std::string_view details);
     void sendMarketStatistics(uint16_t itemId = 0, uint8_t tier = 0);
     void sendSetHirelingName(std::string_view name);
-    void sendCyclopediaHouseAuction(Otc::CyclopediaHouseAuctionType_t type, uint32_t houseId, uint32_t timestamp, uint64_t bidValue, std::string_view name);
+    void sendCyclopediaHouseAuction(tibia::client::CyclopediaHouseAuctionType_t type, uint32_t houseId, uint32_t timestamp, uint64_t bidValue, std::string_view name);
     void sendSelectSpellAim(const std::vector<uint16_t>& spellIds, bool enabled);
     void sendCyclopediaMapDonate(uint16_t areaId, uint32_t amount);
     void sendCyclopediaMapResetViewpoints(uint16_t subAreaId);
@@ -222,7 +224,7 @@ public:
 
     // inspection item / character
     void sendInspectionNormalObject(const Position& position);
-    void sendInspectionObject(Otc::InspectObjectTypes inspectionType, uint16_t itemId, uint8_t itemCount);
+    void sendInspectionObject(tibia::client::InspectObjectTypes inspectionType, uint16_t itemId, uint8_t itemCount);
     void sendInspectCharacter(uint32_t creatureId, uint8_t tab);
 
     // Wheel of Destiny
@@ -252,6 +254,13 @@ public:
 
     int getRecivedPacketsCount() { return m_recivedPackeds; }
     int getRecivedPacketsSize() { return m_recivedPackedsSize; }
+
+    /// CIP classic bridge: apply one opcode-first frame without re-entering the queue.
+    void applyClassicServerFrame(const QByteArray& classicFrame);
+    /// CIP outbound wire sink after client translator / queue.
+    void writeClassicClientFrame(const QByteArray& classicFrame);
+    bool isApplyingClassicBridge() const { return m_applyingClassicBridge; }
+    bool isWritingClientLoadSplit() const { return m_writingClientLoadSplit; }
 
 private:
     void parseStoreButtonIndicators(const InputMessagePtr& msg);
@@ -296,18 +305,18 @@ private:
     void parsePingBack(const InputMessagePtr& msg);
     void parseLoginChallenge(const InputMessagePtr& msg);
     void parseDeath(const InputMessagePtr& msg);
-    void parseFloorDescription(const InputMessagePtr& msg);
-    void parseMapDescription(const InputMessagePtr& msg);
+    void parseFloorDescription(const InputMessagePtr& msg); // CIP handleFloorDescription
+    void parseMapDescription(const InputMessagePtr& msg); // CIP handleFullMapDescription
     void parseCreatureTyping(const InputMessagePtr& msg);
     void parseFeatures(const InputMessagePtr& msg);
-    void parseMapMoveNorth(const InputMessagePtr& msg);
-    void parseMapMoveEast(const InputMessagePtr& msg);
-    void parseMapMoveSouth(const InputMessagePtr& msg);
-    void parseMapMoveWest(const InputMessagePtr& msg);
-    void parseUpdateTile(const InputMessagePtr& msg);
-    void parseTileAddThing(const InputMessagePtr& msg);
-    void parseTileTransformThing(const InputMessagePtr& msg);
-    void parseTileRemoveThing(const InputMessagePtr& msg) const;
+    void parseMapMoveNorth(const InputMessagePtr& msg); // CIP handleMapMove (N)
+    void parseMapMoveEast(const InputMessagePtr& msg); // CIP handleMapMove (E)
+    void parseMapMoveSouth(const InputMessagePtr& msg); // CIP handleMapMove (S)
+    void parseMapMoveWest(const InputMessagePtr& msg); // CIP handleMapMove (W)
+    void parseUpdateTile(const InputMessagePtr& msg); // CIP handleUpdateTile
+    void parseTileAddThing(const InputMessagePtr& msg); // CIP handleCreateOnMap
+    void parseTileTransformThing(const InputMessagePtr& msg); // CIP handleChangeOnMap
+    void parseTileRemoveThing(const InputMessagePtr& msg) const; // CIP handleDeleteOnMap
     void parseCreatureMove(const InputMessagePtr& msg);
     void parseOpenContainer(const InputMessagePtr& msg);
     void parseCloseContainer(const InputMessagePtr& msg);
@@ -527,15 +536,29 @@ private:
 public:
     void setMapDescription(const InputMessagePtr& msg, int x, int y, int z, int width, int height, bool apply = true);
     int setFloorDescription(const InputMessagePtr& msg, int x, int y, int z, int width, int height, int offset, int skip, bool apply = true);
+    /// Classic qtclient wire decode; when apply, mutations go through live
+    /// TWorldmapProtocolMessageHandler (else g_map for tests/editor).
     int setTileDescription(const InputMessagePtr& msg, Position position, bool apply = true);
 
     Outfit getOutfit(const InputMessagePtr& msg, bool parseMount = true) const;
     ThingPtr getThing(const InputMessagePtr& msg);
     ThingPtr getMappedThing(const InputMessagePtr& msg) const;
     void skipMappedThing(const InputMessagePtr& msg) const;
-    CreaturePtr getCreature(const InputMessagePtr& msg, int type = 0) const;
-    ItemPtr getItem(const InputMessagePtr& msg, int id = 0);
+    /// Storage upsert + LocalPlayer keep-alive return. Non-local: nullptr; id in
+    /// `lastParsedCreatureId()` for placeCreatureId (no ephemeral Map Creature).
+    CreaturePtr getCreature(const InputMessagePtr& msg, int type = 0);
+    /// Decode classic object-info into a CIP inventory slot (no Item::create).
+    tibia::container::TInventorySlot getInventorySlot(const InputMessagePtr& msg, int id = 0);
+    /// Field/tile appearance from the same wire as getInventorySlot.
+    tibia::appearances::TAppearanceInstancePtr getItemAppearance(const InputMessagePtr& msg, int id = 0);
     Position getPosition(const InputMessagePtr& msg);
+    /// Creature id from the most recent getCreature/getThing creature opcode (0 if none).
+    uint32_t lastParsedCreatureId() const { return m_lastParsedCreatureId; }
+    /// Item appearance from the most recent getThing item branch (null if creature/none).
+    const tibia::appearances::TAppearanceInstancePtr& lastParsedItemAppearance() const
+    {
+        return m_lastParsedItemAppearance;
+    }
 
 private:
     PaperdollPtr getPaperdoll(const InputMessagePtr& msg) const;
@@ -545,6 +568,10 @@ private:
     bool m_mapKnown{ false };
     bool m_firstRecv{ true };
     bool m_record{ false };
+    bool m_applyingClassicBridge{ false };
+    bool m_writingClientLoadSplit{ false };
+    uint32_t m_lastParsedCreatureId{ 0 };
+    tibia::appearances::TAppearanceInstancePtr m_lastParsedItemAppearance;
 
     ticks_t m_lastPartyAnalyzerCall{ 0 };
     int m_recivedPackeds = 0;

@@ -5,9 +5,9 @@
 #include "gamewindow/sidebarmanager.h"
 #include "input/gameactionhandlers.h"
 
+#include <creatures/creaturestorage.h>
 #include <tibia/world/creature.h>
-#include <tibia/world/game.h>
-#include <client/item.h>
+#include <tibia/game/gamesession.h>
 #include <tibia/world/map.h>
 
 #include <algorithm>
@@ -19,7 +19,7 @@ namespace {
 
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
-QList<QObject*> tradeObjects(const std::vector<ItemPtr>& items, QObject* parent)
+QList<QObject*> tradeObjects(const std::vector<container::TInventorySlot>& items, QObject* parent)
 {
     QList<QObject*> objects;
     objects.reserve(static_cast<qsizetype>(items.size()));
@@ -36,21 +36,17 @@ void replaceObjects(QList<QObject*>& objects, QList<QObject*> replacement)
 
 }
 
-TPlayerTradeObject::TPlayerTradeObject(const int slot, const ItemPtr& item, QObject* parent)
+TPlayerTradeObject::TPlayerTradeObject(const int slot, const container::TInventorySlot& appearance, QObject* parent)
     : cip::tibia::trade::TPlayerTradeObject(parent)
 {
     m_slotID = static_cast<uint>(slot);
-    if (!item)
+    if (appearance.empty())
         return;
-    m_appearanceID = item->getId();
-    m_objectCount = item->isStackable() ? std::max<uint>(1, item->getCountOrSubType()) : 1;
-    m_objectUpgradeTier = item->getTier();
-    if (item->isFluidContainer() || item->isSplash())
-        m_liquidType = static_cast<Info::ELiquidType>(item->getCountOrSubType());
-    if (item->isHookSouth())
-        m_hookDirection = static_cast<Info::EHookDirection>(1);
-    else if (item->isHookEast())
-        m_hookDirection = static_cast<Info::EHookDirection>(2);
+    m_appearanceID = appearance.typeId;
+    m_objectCount = appearance.stackable ? std::max<uint>(1, appearance.count) : 1;
+    m_objectUpgradeTier = appearance.tier;
+    if (appearance.fluidOrSplash)
+        m_liquidType = static_cast<Info::ELiquidType>(appearance.fluid);
 }
 
 TPlayerTradeController::TPlayerTradeController(trade::TPlayerTradeStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
@@ -150,14 +146,14 @@ void TPlayerTradeController::showContextMenu(const bool counterOffer, const int 
     // index), which Crystal does not parse; its item type inspection is the
     // closest it answers.
     connect(menu->addCustomEntry(qtTrId("context_inspect_object")), &TContextMenuEntryItem::triggered, this, [this, counterOffer, slotIndex] {
-        if (!m_storage)
+        const QList<QObject*>& offer = counterOffer ? m_counterOffer : m_ownOffer;
+        if (slotIndex < 0 || slotIndex >= offer.size())
             return;
-        const std::vector<ItemPtr>& items = counterOffer ? m_storage->counterOffer() : m_storage->ownOffer();
-        if (slotIndex < 0 || slotIndex >= static_cast<int>(items.size()) || !items[slotIndex])
+        auto* object = qobject_cast<TPlayerTradeObject*>(offer[slotIndex]);
+        if (!object || object->appearanceID() == 0)
             return;
-        const ItemPtr& item = items[slotIndex];
-        g_game.inspectionObject(Otc::INSPECT_NPCTRADE, static_cast<uint16_t>(item->getId()),
-                                static_cast<uint8_t>(std::clamp<int>(item->getCount(), 1, 255)));
+        tibia::game::inspectionObject(tibia::client::INSPECT_NPCTRADE, static_cast<uint16_t>(object->appearanceID()),
+                                static_cast<uint8_t>(std::clamp<int>(static_cast<int>(object->objectCount()), 1, 255)));
     });
     menu->showCustomMenu();
 }
@@ -204,19 +200,23 @@ void TPlayerTradeWidgetManager::close()
 /// player picked on the map gets the trade request.
 bool TPlayerTradeWidgetManager::tradeItem(const input::TGameAction& action)
 {
-    if (!action.object || !action.object->isItem())
+    const uint16_t typeId = action.objectClientId;
+    if (typeId == 0)
         return true;
-    const ItemPtr item = action.object->static_self_cast<Item>();
+    const Position position = action.position;
+    const int stackPosition = action.stackPosition >= 0 ? action.stackPosition : 0;
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->setTargetSelection(true);
-    input::startTargetSelection([item](const input::TGameActionPtr& target) {
+    input::startTargetSelection([position, typeId, stackPosition](const input::TGameActionPtr& target) {
         if (TMouseCursorController* cursor = TMouseCursorController::instance())
             cursor->setTargetSelection(false);
         if (!target || !target->creatureId)
             return;
-        const CreaturePtr creature = g_map.getCreatureById(target->creatureId);
-        if (creature && creature->isPlayer() && !creature->isLocalPlayer())
-            g_game.requestTrade(item, creature);
+        tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+        const std::shared_ptr<tibia::creatures::TCreature> row =
+            storage ? storage->creatureAt(target->creatureId) : nullptr;
+        if (row && row->isPlayer() && !row->isLocalPlayer())
+            tibia::game::requestTradeAt(position, typeId, stackPosition, target->creatureId);
     });
     return true;
 }

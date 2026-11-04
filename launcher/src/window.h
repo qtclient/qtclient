@@ -66,6 +66,7 @@ private:
     void setBusy(bool busy, const QString& label);
     void onProgress(qint64 bytes, qint64 total, int fileIndex, int fileCount);
     void onAction();
+    void onDeleteOrphans();
     void installIfNeeded(bool thenPlay);
 #ifdef __EMSCRIPTEN__
     void startAsync();
@@ -80,8 +81,9 @@ private:
     void play();
     /// Local DEV: `QTCLIENT_DEV_JSON` desktop.exe (stock --no-mods / tip pack).
     bool tryPlayDevClient();
+    /// `detachTip`: CIP tip Play (`startDetached` + quit). DEV keeps a waited child.
     void spawn(const QString& executable, const QString& workDir, const QString& revision,
-               const QStringList& clientArgs = {});
+               const QStringList& clientArgs = {}, bool detachTip = false);
     void considerSelfUpdate(const CipMetadata& metadata);
     QString packageDir() const;
     QString localVersion() const;
@@ -93,6 +95,8 @@ private:
     /// CipSoft install vocabulary: Unknown → PartiallyInstalled → InstalledAndUsable.
     QString installStatusLabel() const;
     void fetchRemoteStampsParallel();
+    /// Stamps (+ optional package.json) GETs in one EventLoop (CIP pre-decide).
+    void fetchRemoteStampsAndPackageParallel(bool includePackage = true);
 
     PackageClient* m_client = nullptr;
     std::function<void()> m_inProcessPlay;
@@ -106,6 +110,10 @@ private:
     bool m_hasGaps = false;
     bool m_busy = false;
     QElapsedTimer m_timer;
+    /// CipSoft onMeasureDownloadSpeed-shaped window (last sample → now).
+    qint64 m_speedSampleBytes = 0;
+    qint64 m_speedSampleMs = 0;
+    double m_downloadRateBytesPerSec = 0.0;
 
     QStackedLayout* m_stack = nullptr;
     shared::QTextBrowserWithNetwork* m_news = nullptr;
@@ -116,6 +124,7 @@ private:
     QLabel* m_mark = nullptr;
     QCheckBox* m_defaultClient = nullptr;
     QProgressBar* m_progress = nullptr;
+    QPushButton* m_delete = nullptr;
     QPushButton* m_action = nullptr;
     QGroupBox* m_packageBox = nullptr;
     QGroupBox* m_hintBox = nullptr;

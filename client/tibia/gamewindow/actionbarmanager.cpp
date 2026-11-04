@@ -2,6 +2,7 @@
 
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
+#include "container/containerciptypes.h"
 #include "gamewindow/actionbuttoncontroller.h"
 #include "gamewindow/assignactiondialogs.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -10,7 +11,6 @@
 #include "spells/spellinfostorage.h"
 
 #include <tibia/world/creature.h>
-#include <tibia/world/game.h>
 #include <client/item.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/world/map.h>
@@ -20,6 +20,9 @@
 #include <QQuickItem>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -137,30 +140,28 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
     m_objectsTimer.setSingleShot(true);
     m_objectsTimer.setInterval(0);
     connect(&m_objectsTimer, &QTimer::timeout, this, &TActionBarManager::refreshObjects);
-    m_hooks.emplace_back("object", "onInventoryChange", [this](LuaObject* self, const Args&) {
-        if (dynamic_cast<LocalPlayer*>(self))
-            scheduleObjectRefresh();
-        return std::any{};
-    });
-    m_hooks.emplace_back("g_game", "updateInventoryItems", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onInventoryChange", [this](GameObject*, const Args&) {
         scheduleObjectRefresh();
         return std::any{};
     });
-    for (const char* event : { "onAddItem", "onUpdateItem", "onRemoveItem" }) {
-        m_hooks.emplace_back("object", event, [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "updateInventoryItems", [this](GameObject*, const Args&) {
+        scheduleObjectRefresh();
+        return std::any{};
+    });
+    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+        connect(storage, &container::TContainerStorage::containerUpdated, this, [this](container::TContainerID, bool) {
             scheduleObjectRefresh();
-            return std::any{};
         });
     }
     // GameserverMessageUnlockedSpells 0x2E (CIP FUN_100ef72b0 reads u16 count, u16 ids;
     // FUN_100fe2150 emits receivedUnlockedSpell per id).
-    m_hooks.emplace_back("g_game", "onUnlockedSpells", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUnlockedSpells", [this](GameObject*, const Args& args) {
         if (const auto* spellIds = args.empty() ? nullptr : std::any_cast<std::vector<uint16_t>>(&args[0]))
             for (const uint16_t spellId : *spellIds)
                 onReceivedUnlockedSpell(spellId);
         return std::any{};
     });
-    m_hooks.emplace_back("object", "onSpellsChange", [this](LuaObject*, const Args&) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpellsChange", [this](GameObject*, const Args&) {
         // Learned spells decide which multi-action slot shows (CIP FUN_100e99ef0).
         scheduleObjectRefresh();
         return std::any{};
@@ -274,10 +275,10 @@ void TActionBarManager::onChatModeChanged()
 
 void TActionBarManager::onWorldEntered()
 {
-    if (g_game.getLocalPlayer()) {
+    if (tibia::game::localPlayer()) {
         config::THotkeyOptions::instance()->onCharacterLoggedIn();        // CIP FUN_1009111d0: TRY_TO_SWITCH_HOTKEYSET(character name, no status line).
         auto action = input::mutableClone(*input::makeAction(A::TRY_TO_SWITCH_HOTKEYSET));
-        action->text = QString::fromStdString(g_game.getCharacterName());
+        action->text = QString::fromStdString(tibia::game::characterName());
         input::publish(action);
     }
     applyMappings();
@@ -303,7 +304,7 @@ void TActionBarManager::onReceivedUnlockedSpell(const int spellId)
             if (casts(slot))
                 return;
     }
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     const bool newlyUnlocked = !spell->premium || (player && player->isPremium());
     for (const int actionBarId : { 1, 4, 7, 2, 5, 8, 3, 6, 9 }) {
         for (const auto& group : m_groups) {
@@ -385,7 +386,7 @@ void TActionBarManager::editHotkey(TActionBarController* bar, const int buttonId
 
 config::EUseType TActionBarManager::defaultUseType(const int objectId)
 {
-    const ThingTypePtr type = objectId > 0 ? g_things.getThingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
+    const ThingTypePtr type = objectId > 0 ? tibia::game::thingType(uint16_t(objectId), ThingCategoryItem) : nullptr;
     if (!type)
         return config::EUseType::Use;
     if ((type->isCloth() || type->getClothSlot() > 0) && !type->isMultiUse())
@@ -393,23 +394,23 @@ config::EUseType TActionBarManager::defaultUseType(const int objectId)
     return type->isMultiUse() ? config::EUseType::SelectUseTarget : config::EUseType::Use;
 }
 
-void TActionBarManager::assignDroppedObject(TActionBarController* bar, const int buttonId, const int multiActionIndex, const ItemPtr& item,
-                                            const bool alt)
+void TActionBarManager::assignDroppedObject(TActionBarController* bar, const int buttonId, const int multiActionIndex,
+                                            const uint16_t typeId, const uint8_t tier, const bool alt)
 {
-    if (!item)
+    if (typeId == 0)
         return;
     if (alt) {
         auto* controller = new TAssignObjectActionDialogController(bar, buttonId, multiActionIndex, this);
-        controller->setObject(item->getId(), item->getTier());
+        controller->setObject(typeId, tier);
         controller->dialog()->show();
         return;
     }
     Setting setting;
     setting.kind = Setting::OBJECT;
-    setting.objectId = item->getId();
-    setting.useType = defaultUseType(item->getId());
-    if (item->getTier())
-        setting.upgradeTier = item->getTier();
+    setting.objectId = typeId;
+    setting.useType = defaultUseType(typeId);
+    if (tier)
+        setting.upgradeTier = tier;
     bar->assign(buttonId, multiActionIndex, setting);
 }
 
@@ -421,7 +422,7 @@ void TActionBarManager::openSpellDialogFor(TActionBarController* bar, const int 
 bool TActionBarManager::onActionButtonTriggered(const input::TGameAction& action)
 {
     TActionBarController* target = bar(action.actionBarId);
-    if (!target || !g_game.isOnline())
+    if (!target || !tibia::game::isOnline())
         return true;
     TActionButtonController* button = target->button(action.actionButtonId);
     if (!button)
@@ -463,14 +464,14 @@ void TActionBarManager::execute(const Setting& setting, const bool autoRepeat)
 
 void TActionBarManager::useObject(const Setting& setting)
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     if (!player || setting.objectId <= 0)
         return;
     const auto id = uint16_t(setting.objectId);
     const auto tier = uint8_t(setting.upgradeTier.value_or(0));
     switch (setting.useType) {
     case config::EUseType::Use:
-        g_game.useInventoryItem(id);
+        tibia::game::useInventoryItem(id);
         break;
     case config::EUseType::UseOnYourself:
     case config::EUseType::UseOnTarget:
@@ -485,12 +486,13 @@ void TActionBarManager::useObject(const Setting& setting)
         case config::EUseType::SelectUseTarget: type = A::USE_WITH; break;
         default: break;
         }
-        auto use = input::mutableClone(*input::makeObjectAction(type, Item::create(id), {}, -1));
+        auto use = input::mutableClone(*input::makeObjectAction(type, {}, -1));
+        use->objectClientId = static_cast<uint16_t>(id);
         input::publish(use);
         break;
     }
     case config::EUseType::Equip:
-        g_game.equipItemId(id, tier);
+        tibia::game::equipItemId(id, tier);
         break;
     }
 }

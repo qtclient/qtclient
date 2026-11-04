@@ -14,6 +14,9 @@ class QImage;
 namespace tibia::client {
 class TGameClient;
 }
+namespace tibia::runtime {
+class TGameHost;
+}
 
 namespace tibia::mods {
 
@@ -56,12 +59,16 @@ struct ModContext {
     QQuickItem* rootItem = nullptr;
     QQuickItem* mapWindowPane = nullptr;
     QQuickItem* gameWindowItem = nullptr;
+    /// Tip client (stock wiring). Packs prefer `gameHost`.
     client::TGameClient* gameClient = nullptr;
+    /// Pack-facing façade (allowlisted `runtime/gamehost.h`).
+    runtime::TGameHost* gameHost = nullptr;
     QObject* dialogStack = nullptr;
     QObject* host = nullptr;
     /// Optional `app::LauncherEnv*` (typed void to keep registry free of app headers).
     const void* launcherEnv = nullptr;
-    std::unordered_map<std::string, QObject*> services;
+    /// Tip-filled pack wiring. See qtclient/pack_host.h.
+    const void* packHost = nullptr;
 };
 
 using ModBootstrapFn = void (*)(const ModContext& ctx);
@@ -117,5 +124,11 @@ InstanceBackend* instanceBackend();
 using LoginSyncEnqueueFn = void (*)(std::function<void()> fn);
 void setLoginSyncEnqueueHook(LoginSyncEnqueueFn fn);
 void enqueueLoginSync(std::function<void()> fn);
+
+/// Pack hook run at the end of qtclient `enableFeatures(tip)` (and again on each
+/// world enter). Use for OTCR-only wire flags the CipSoft tip must not set.
+using FeatureExtrasFn = void (*)();
+void setFeatureExtrasHook(FeatureExtrasFn fn);
+void applyFeatureExtras();
 
 } // namespace tibia::mods

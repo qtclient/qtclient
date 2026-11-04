@@ -10,6 +10,7 @@
 
 #include <QDateTime>
 #include <QJsonObject>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -27,7 +28,7 @@ QString formatCooldownEnd(const qint64 until)
 
 qmlcomponents::TOutfitQmlModel* outfitForRace(const int raceId, QObject* parent)
 {
-    const RaceType& race = g_things.getRaceData(static_cast<uint32_t>(raceId));
+    const RaceType& race = tibia::game::raceData(static_cast<uint32_t>(raceId));
     const Outfit& outfit = race.outfit;
     auto* model = new qmlcomponents::TOutfitQmlModel(parent);
     const bool objectOutfit = outfit.getId() == 0 && outfit.getAuxId() != 0;

@@ -5,27 +5,25 @@
 
 #include "attachedeffect.h"
 #include "attachedeffectmanager.h"
-#include "container.h"
 #include "creature.h"
 #include "effect.h"
 #include "game.h"
 #include "localplayer.h"
 #include "map.h"
-#include "missile.h"
 #include "paperdoll.h"
 #include "paperdollmanager.h"
-#include "tile.h"
+#include "worldmap/worldmapfield.h"
 #include "thing.h"
 
 #include <cstdint>
 #include <functional>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::world {
 
 inline Map& fields() { return g_map; }
 inline Game& session() { return g_game; }
-inline LocalPlayerPtr player() { return g_game.getLocalPlayer(); }
-inline ContainerPtr container(int id) { return g_game.getContainer(id); }
+inline LocalPlayerPtr player() { return tibia::game::localPlayer(); }
 inline int clientVersion() { return g_game.getClientVersion(); }
 
 void setWorldTime(int hour, int minute);
@@ -46,8 +44,9 @@ public:
     void resume();
     bool canStep(bool ignoreLock = false) const;
     /// True when the field in `direction` is known and not walkable.
-    bool blocksStep(Otc::Direction direction) const;
-    Point offset(const Creature& creature) const;
+    bool blocksStep(tibia::client::Direction direction) const;
+    /// Walk offset for world draw / camera (storage row; 0 if unknown).
+    Point offset(uint32_t creatureId) const;
 };
 
 WalkCalculator& motion();

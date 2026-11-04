@@ -6,13 +6,14 @@
 #include "worldmap/numericaleffectstorage.h"
 
 #include <tibia/world/map.h>
-#include <tibia/world/tile.h>
+#include "worldmap/worldmapfield.h"
 
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickItem>
 
 #include <cmath>
+#include "worldmap/worldmapstorage.h"
 
 namespace tibia::qmlcomponents {
 
@@ -83,7 +84,7 @@ bool TNumericalEffectOverlayQuickItem::isShown(const Position& coordinate) const
     while (above.z > top) {
         if (!above.coveredUp())
             return true;
-        if (const TilePtr& tile = g_map.getTile(above); tile && tile->limitsFloorsView())
+        if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(above); tile && tile->limitsFloorsView())
             return false;
     }
     return true;
@@ -170,7 +171,7 @@ void TNumericalEffectOverlayQuickItem::update()
 
         // FUN_101062940: (16, 8) into the field, lifted by its elevation.
         int elevation = 0;
-        if (const TilePtr& tile = g_map.getTile(coordinate))
+        if (tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(coordinate))
             elevation = tile->getDrawElevation();
         const QPoint camera = frame.camera;
         const QPoint pixel = m_provider->mapPixelOf(coordinate) + QPoint(16 - elevation, 8 - elevation) - camera;

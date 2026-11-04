@@ -7,13 +7,13 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 
 #include <QDateTime>
 #include <QJsonArray>
 #include <QJsonObject>
 
 #include <algorithm>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -201,13 +201,13 @@ void TQuestTrackerStorage::save(QJsonObject& root) const
 
 void TQuestTrackerStorage::sendTracked(const QSet<int>& ids) const
 {
-    if (!g_game.isOnline())
+    if (!tibia::game::isOnline())
         return;
     std::vector<uint16_t> sorted;
     for (const int id : ids)
         sorted.push_back(static_cast<uint16_t>(id));
     std::ranges::sort(sorted);
-    g_game.sendRequestTrackerQuestLog(sorted, m_autoTrackNewQuests, m_autoUntrackCompletedQuests);
+    tibia::game::sendRequestTrackerQuestLog(sorted, m_autoTrackNewQuests, m_autoUntrackCompletedQuests);
 }
 
 void TQuestTrackerListModel::setEntries(QList<TQuestTrackerStorage::Entry> entries, const QList<MissionAction>& actions)
@@ -558,15 +558,15 @@ QString missionProgressText(const QJsonObject& payload)
 
 }
 
-void TQuestTrackerWidgetManager::setExpeditions(mods::MissionBackend* storage)
+void TQuestTrackerWidgetManager::setMissionBackend(mods::MissionBackend* storage)
 {
-    if (m_expeditions == storage)
+    if (m_missionBackend == storage)
         return;
-    if (m_expeditions)
-        disconnect(m_expeditions, nullptr, this, nullptr);
-    m_expeditions = storage;
-    if (m_expeditions) {
-        connect(m_expeditions, &mods::MissionBackend::missionTrackerChanged, this, [this] { applyMissions(); });
+    if (m_missionBackend)
+        disconnect(m_missionBackend, nullptr, this, nullptr);
+    m_missionBackend = storage;
+    if (m_missionBackend) {
+        connect(m_missionBackend, &mods::MissionBackend::missionTrackerChanged, this, [this] { applyMissions(); });
     }
     applyMissions();
 }
@@ -602,10 +602,10 @@ void TQuestTrackerWidgetManager::applyMissions()
             return;
         actions.append(std::move(action));
     };
-    if (m_expeditions) {
-        for (auto it = m_expeditions->missionTrackersByFlag().cbegin(); it != m_expeditions->missionTrackersByFlag().cend(); ++it)
+    if (m_missionBackend) {
+        for (auto it = m_missionBackend->missionTrackersByFlag().cbegin(); it != m_missionBackend->missionTrackersByFlag().cend(); ++it)
             appendPayload(it.value(), 0);
-        for (auto it = m_expeditions->missionTrackers().cbegin(); it != m_expeditions->missionTrackers().cend(); ++it)
+        for (auto it = m_missionBackend->missionTrackers().cbegin(); it != m_missionBackend->missionTrackers().cend(); ++it)
             appendPayload(it.value(), it.key());
     }
     m_controller->setMissionActions(std::move(actions));
@@ -624,8 +624,8 @@ TSidebarWidget* TQuestTrackerWidgetManager::open(config::TSidebarOptions* option
         m_controller = new TQuestTrackerWidgetController(m_storage, m_gameWindowItem, m_engine);
         m_controller->setSidebarOptions(options);
         m_controller->setMissionInvoker([this](const QString& missionKey, const QString& taskEntryId, int questFlagId) {
-            if (m_expeditions)
-                m_expeditions->missionAdvance(missionKey, taskEntryId, questFlagId);
+            if (m_missionBackend)
+                m_missionBackend->missionAdvance(missionKey, taskEntryId, questFlagId);
         });
         m_controller->setBrowseOpener(m_browseOpener);
     }

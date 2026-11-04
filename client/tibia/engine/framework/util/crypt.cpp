@@ -34,6 +34,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <zlib.h>
 #endif
@@ -301,7 +302,7 @@ void Crypt::xorCrypt(std::string& buffer, const std::string& key)
 }
 
 std::string Crypt::genUUID() {
-    return uuids::to_string(uuids::uuid_random_generator{ stdext::random_gen() }());
+    return QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString();
 }
 
 bool Crypt::setMachineUUID(std::string uuidstr)
@@ -314,30 +315,32 @@ bool Crypt::setMachineUUID(std::string uuidstr)
     if (uuidstr.length() != 36)
         return false;
 
-    m_machineUUID = uuids::uuid::from_string(uuidstr).value();
-
+    const QUuid parsed = QUuid::fromString(QString::fromStdString(uuidstr));
+    if (parsed.isNull())
+        return false;
+    m_machineUUID = parsed;
     return true;
 }
 
 std::string Crypt::getMachineUUID()
 {
-    if (m_machineUUID.is_nil()) {
-        m_machineUUID = uuids::uuid_random_generator{ stdext::random_gen() }();
-    }
-    return _encrypt(uuids::to_string(m_machineUUID), false);
+    if (m_machineUUID.isNull())
+        m_machineUUID = QUuid::createUuid();
+    return _encrypt(m_machineUUID.toString(QUuid::WithoutBraces).toStdString(), false);
 }
 
 std::string Crypt::getCryptKey(const bool useMachineUUID) const
 {
-    static const uuids::uuid default_uuid{};
-    const uuids::uuid& uuid = useMachineUUID ? m_machineUUID : default_uuid;
+    static const QUuid defaultUuid;
+    const QUuid& ns = useMachineUUID ? m_machineUUID : defaultUuid;
 
-    const uuids::uuid u = uuids::uuid_name_generator(uuid)(
+    const QByteArray name = QByteArray::fromStdString(
         tibia::host::app().getCompactName() + QSysInfo::currentCpuArchitecture().toStdString()
-            + QSysInfo::productType().toStdString() + tibia::files::data().getUserDir()
-    );
-
-    const std::size_t hash = std::hash<uuids::uuid>{}(u);
+            + QSysInfo::productType().toStdString() + tibia::files::data().getUserDir());
+    const QUuid u = QUuid::createUuidV5(ns, name);
+    const QByteArray bytes = u.toRfc4122();
+    const std::size_t hash = std::hash<std::string_view>{}(
+        std::string_view(bytes.constData(), static_cast<size_t>(bytes.size())));
 
     return std::string(reinterpret_cast<const char*>(&hash), sizeof(hash));
 }

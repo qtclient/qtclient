@@ -4,36 +4,35 @@
 #include "container/containerslotinformation.h"
 #include "cyclopedia/iteminfostorage.h"
 
-#include <client/item.h>
-
 namespace tibia::gamewindow {
 
 namespace {
 
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
+using Slot = container::TInventorySlot;
 
 /// CIP's count for a cumulative object, 1 for any other.
-uint cumulativeCount(const ItemPtr& item)
+uint cumulativeCount(const Slot& slot)
 {
-    return item->isStackable() ? std::max<uint>(1, item->getCountOrSubType()) : 1;
+    return slot.stackable ? std::max<uint>(1, slot.count) : 1;
 }
 
 /// CIP case 4: with showExpireInContainers, the charges, else the time left.
-QString alternativeSlotString(const ItemPtr& item, const bool showExpire, const bool whenUnused)
+QString alternativeSlotString(const Slot& slot, const bool showExpire, const bool whenUnused)
 {
     if (!showExpire)
         return {};
-    if (item->hasWearOut()) {
-        if (QString charges = container::chargesText(item, whenUnused); !charges.isEmpty())
+    if (slot.hasWearOut) {
+        if (QString charges = container::chargesText(slot, whenUnused); !charges.isEmpty())
             return charges;
     }
-    return container::hasClock(item) ? container::clockText(item, whenUnused) : QString();
+    return container::hasClock(slot) ? container::clockText(slot, whenUnused) : QString();
 }
 
 /// CIP FUN_100927c50 / FUN_100927d10: loot-value frame under (style 1) or over (2).
-QString lootValueImageSource(const ItemPtr& item, const int style)
+QString lootValueImageSource(const Slot& slot, const int style)
 {
-    if (!item)
+    if (slot.empty())
         return {};
     // gameWindowShowLootHighlighting (CIP 0x42): master gate for loot-value tint frames.
     if (!app::ClientOptions::load().options().value(QLatin1String("gameWindowShowLootHighlighting")).toBool(true))
@@ -41,7 +40,7 @@ QString lootValueImageSource(const ItemPtr& item, const int style)
     const cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance();
     if (!prices || prices->colorizeLootStyle() != style)
         return {};
-    const int level = prices->lootValueLevel(item->getId());
+    const int level = prices->lootValueLevel(slot.typeId);
     if (level == 0)
         return {};
     return QStringLiteral("image://%1/%2")
@@ -71,34 +70,32 @@ QVariant TAppearanceInstanceListModel::data(const QModelIndex& index, const int 
 {
     if (!index.isValid() || index.row() >= rowCount())
         return {};
-    const ItemPtr item = index.row() < static_cast<int>(m_objects.size()) ? m_objects[index.row()] : nullptr;
+    const Slot slot = index.row() < static_cast<int>(m_objects.size()) ? m_objects[index.row()] : Slot{};
     // CIP gives empty slots no data; container.qml reads their strings' length.
     switch (role) {
     case TypeIdRole:
-        return item ? item->getId() : 0u;
+        return slot.typeId;
     case CumulativeCountRole:
     case TypeCountRole:
-        return item ? cumulativeCount(item) : 0u;
+        return slot.empty() ? 0u : cumulativeCount(slot);
     case CountStringRole:
-        return item ? QString::number(cumulativeCount(item)) : QString();
+        return slot.empty() ? QString() : QString::number(cumulativeCount(slot));
     case AlternativeSlotStringRole:
-        return item ? alternativeSlotString(item, m_showExpire, m_showExpireWhenUnused) : QString();
-    case LiquidTypeRole: {
-        const bool liquid = item && (item->isFluidContainer() || item->isSplash());
-        return QVariant::fromValue(static_cast<Info::ELiquidType>(liquid ? item->getCountOrSubType() : 0));
-    }
+        return slot.empty() ? QString() : alternativeSlotString(slot, m_showExpire, m_showExpireWhenUnused);
+    case LiquidTypeRole:
+        return QVariant::fromValue(static_cast<Info::ELiquidType>(slot.fluidOrSplash ? slot.fluid : 0));
     case HookDirectionRole:
         return QVariant::fromValue(Info::EHookDirection::NONE);
     case LootValueImageUnderItemRole:
-        return lootValueImageSource(item, 1);
+        return lootValueImageSource(slot, 1);
     case LootValueImageOverItemRole:
-        return lootValueImageSource(item, 2);
+        return lootValueImageSource(slot, 2);
     case ManagedContainerTooltipRole:
-        return container::managedContainerTooltip(item);
+        return container::managedContainerTooltip(slot);
     case UpgradeTierRole:
-        return item ? static_cast<uint>(item->getTier()) : 0u;
+        return static_cast<uint>(slot.tier);
     case DecoItemObjectIdRole:
-        return item ? static_cast<uint>(item->getDecoItemId()) : 0u;
+        return static_cast<uint>(slot.decoItemId);
     default:
         return {};
     }
@@ -131,10 +128,24 @@ void TAppearanceInstanceListModel::setMinimumRows(const int rows)
     endResetModel();
 }
 
-void TAppearanceInstanceListModel::setObjects(std::vector<ItemPtr> objects)
+void TAppearanceInstanceListModel::setObjects(std::vector<container::TInventorySlot> objects)
 {
-    if (objects == m_objects)
-        return;
+    if (objects.size() == m_objects.size()) {
+        bool same = true;
+        for (size_t i = 0; i < objects.size(); ++i) {
+            if (objects[i].typeId != m_objects[i].typeId || objects[i].count != m_objects[i].count
+                || objects[i].fluid != m_objects[i].fluid || objects[i].tier != m_objects[i].tier
+                || objects[i].decoItemId != m_objects[i].decoItemId
+                || objects[i].charges != m_objects[i].charges
+                || objects[i].durationEndMs != m_objects[i].durationEndMs
+                || objects[i].containerAmmoTotal != m_objects[i].containerAmmoTotal) {
+                same = false;
+                break;
+            }
+        }
+        if (same)
+            return;
+    }
     int count = rowCount();
     const int target = std::max(m_minimumRows, static_cast<int>(objects.size()));
     if (target < count) {

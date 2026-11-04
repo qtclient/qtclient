@@ -8,6 +8,8 @@
 
 #include <algorithm>
 #include <set>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::bossbestiary {
 
@@ -27,7 +29,7 @@ bool TBossTrackerEntry::cooldownExpired() const
 TBossTrackerStorage::TBossTrackerStorage(QObject* parent)
     : cip::tibia::bossbestiary::TBossTrackerStorage(parent)
 {
-    m_hooks.emplace_back("g_game", "onBossCooldown", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossCooldown", [this](GameObject*, const Args& args) {
         const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<BossCooldownData>>(&args[0]);
         m_cooldownUntil.clear();
         if (list) {
@@ -37,7 +39,7 @@ TBossTrackerStorage::TBossTrackerStorage(QObject* parent)
         rebuild();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseSendBosstiary", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseSendBosstiary", [this](GameObject*, const Args& args) {
         const auto* bosses = args.empty() ? nullptr : std::any_cast<std::vector<BosstiaryData>>(&args[0]);
         m_unlocked.clear();
         if (bosses) {
@@ -51,14 +53,13 @@ TBossTrackerStorage::TBossTrackerStorage(QObject* parent)
         rebuild();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_cooldownUntil.clear();
         m_unlocked.clear();
         if (!m_entries.empty()) {
             m_entries.clear();
             Q_EMIT bossEntriesChanged();
         }
-        return std::any{};
     });
 }
 

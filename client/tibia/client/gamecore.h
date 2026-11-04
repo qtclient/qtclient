@@ -3,13 +3,11 @@
 #include <QString>
 #include <QStringList>
 
-#include <any>
 #include <functional>
 #include <string>
-#include <string_view>
-#include <vector>
+#include <tibia/game/tgamenotify.h>
 
-class LuaObject;
+class GameObject;
 
 namespace tibia::client {
 
@@ -63,29 +61,12 @@ std::string soundsRoot(int version);
 /// sound bank from soundsRoot().
 bool loadAssets(int version, QString* error);
 
-/// GameEvents subscription that unsubscribes when destroyed.
-class Hook
-{
-public:
-    using Handler = std::function<std::any(LuaObject* self, const std::vector<std::any>& args)>;
-
-    Hook() = default;
-    Hook(std::string_view scope, std::string_view field, Handler handler);
-    Hook(Hook&& other) noexcept;
-    Hook& operator=(Hook&& other) noexcept;
-    Hook(const Hook&) = delete;
-    Hook& operator=(const Hook&) = delete;
-    ~Hook();
-
-private:
-    int m_id = 0;
-};
-
-/// Hook arguments are stored as the engine passed them (std::string,
-/// std::string_view, const char*, any integer type).
-QString argString(const std::vector<std::any>& args, size_t index);
-qint64 argInt(const std::vector<std::any>& args, size_t index);
-bool argBool(const std::vector<std::any>& args, size_t index);
+/// Pack / tip subscribe + arg helpers live on allowlisted `tibia/game/tgamenotify.h`.
+using Hook = tibia::game::Hook;
+using Args = tibia::game::Args;
+using tibia::game::argString;
+using tibia::game::argInt;
+using tibia::game::argBool;
 
 }
 

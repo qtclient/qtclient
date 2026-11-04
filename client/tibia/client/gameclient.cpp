@@ -28,6 +28,7 @@
 #include "shared/sharedciptypes.h"
 #include "game/gameciptypes.h"
 #include "trade/tradeciptypes.h"
+#include "tutorial/tutorialciptypes.h"
 
 #include "app/clientoptions.h"
 #include "chat/gamemessagehandler.h"
@@ -53,10 +54,12 @@
 #include "effects/numericaleffect.h"
 #include "worldmap/numericaleffectstorage.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
+#include "container/containerciptypes.h"
+#include "creatures/creaturesciptypes.h"
+#include "creatures/creaturestorage.h"
 #include "worldmap/worldmapstorage.h"
 
 #include <client/client.h>
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/world/map.h>
 #include <client/outfit.h>
@@ -75,6 +78,7 @@
 #include <QThread>
 
 #include <utility>
+#include <tibia/game/gamesession.h>
 
 Q_LOGGING_CATEGORY(lcGameClient, "tibia.client")
 Q_LOGGING_CATEGORY(lcFrameCost, "tibia.frame", QtWarningMsg)
@@ -115,6 +119,95 @@ QString premiumStatus(const authentication::PlaySessionData& session)
     return QStringLiteral("%1 (%2)").arg(qtTrId("characterselection_status_premium"), left);
 }
 
+/// Pack façade: composition under TGameClient (CIP base is already QObject).
+class GameHostImpl final : public runtime::TGameHost
+{
+public:
+    explicit GameHostImpl(TGameClient* client)
+        : runtime::TGameHost(client)
+        , m_client(client)
+    {
+    }
+
+    qint64 averageFrameNs() const override
+    {
+        if (worldmap::TFrameDurationRing* ring = m_client->frameDurations())
+            return ring->averageNs();
+        return 0;
+    }
+
+    qint64 worldmapBuildNs() const override
+    {
+        return provider() ? provider()->buildNs() : 0;
+    }
+    qint64 worldmapTilesNs() const override
+    {
+        return provider() ? provider()->tilesNs() : 0;
+    }
+    qint64 worldmapLightNs() const override
+    {
+        return provider() ? provider()->lightNs() : 0;
+    }
+    qint64 worldmapRaycastNs() const override
+    {
+        return provider() ? provider()->raycastNs() : 0;
+    }
+    qint64 worldmapRaycastGatherNs() const override
+    {
+        return provider() ? provider()->raycastGatherNs() : 0;
+    }
+    qint64 worldmapRaycastRoofsNs() const override
+    {
+        return provider() ? provider()->raycastRoofsNs() : 0;
+    }
+
+    void toggleCharacterSelectionForSwitch() override
+    {
+        m_client->toggleCharacterSelectionForSwitch();
+    }
+
+    bool requestCharacterSwitch(const QString& characterName) override
+    {
+        return m_client->requestCharacterSwitch(characterName);
+    }
+
+    QStringList characterNames() const override
+    {
+        QStringList names;
+        for (const authentication::LoginCharacter& c : m_client->account().characters) {
+            if (!c.name.isEmpty())
+                names.append(c.name);
+        }
+        return names;
+    }
+
+    void requestLogout() override
+    {
+        if (game::TGameserverGameSession* session = m_client->session())
+            session->requestLogout();
+        else if (game::TSessiondumpGameSession* dump = m_client->sessiondump())
+            dump->requestLogout();
+    }
+
+    network::ExtendedOpcodeRouter* opcodeRouter() const override
+    {
+        return m_client->opcodes();
+    }
+
+    qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider() const override
+    {
+        return m_client->worldMapRenderProvider();
+    }
+
+private:
+    qmlcomponents::TWorldMapRenderProvider* provider() const
+    {
+        return m_client->worldMapRenderProvider();
+    }
+
+    TGameClient* m_client = nullptr;
+};
+
 }
 
 TGameClient::TGameClient(QObject* parent)
@@ -131,12 +224,21 @@ TGameClient::TGameClient(QObject* parent)
     , m_sessiondumpCatalogLoader(this)
     , m_sessiondumpPlayer(this)
 {
+    m_gameHost = new GameHostImpl(this);
+    connect(this, &TGameClient::mainWindowInitialized, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
+    connect(this, &TGameClient::worldLeft, m_gameHost, &runtime::TGameHost::worldLeft);
+    connect(this, &TGameClient::characterSwitchRequested, m_gameHost, &runtime::TGameHost::characterSwitchRequested);
+    connect(this, &TGameClient::characterSelectionClosed, m_gameHost, &runtime::TGameHost::characterSelectionClosed);
+    connect(this, &TGameClient::characterSelectionRequested, m_gameHost, &runtime::TGameHost::characterSelectionRequested);
+
     shared::ownProductSurface(this);
     assets::ownProductSurface(this);
     authentication::ownProductSurface(this);
     bossbestiary::ownProductSurface(this);
     client::ownProductSurface(this);
     common::ownProductSurface(this);
+    container::ownProductSurface(this);
+    creatures::ownProductSurface(this);
     dailyreward::ownProductSurface(this);
     exaltation::ownProductSurface(this);
     exivaoptions::ownProductSurface(this);
@@ -150,6 +252,7 @@ TGameClient::TGameClient(QObject* parent)
     prey::ownProductSurface(this);
     proficiency::ownProductSurface(this);
     protocol::ownProductSurface(this);
+    tutorial::ownProductSurface(this);
     questlog::ownProductSurface(this);
     quickloot::ownProductSurface(this);
     reporting::ownProductSurface(this);
@@ -189,12 +292,12 @@ TGameClient::TGameClient(QObject* parent)
         Q_EMIT characterSelectionClosed();
         // CIP: Cancel while online (alt switch) only closes the dialog. From the
         // login / post-logout character list, return to the login mask — never quit.
-        if (g_game.isOnline())
+        if (tibia::game::isOnline())
             return;
         Q_EMIT returnToLoginRequested();
     });
     connect(this, &TGameClient::characterSelectionRequested, this, [this] {
-        if (g_game.isOnline())
+        if (tibia::game::isOnline())
             m_characterSelectionOpen = true;
     });
     connect(this, &TGameClient::characterSelectionClosed, this, [this] {
@@ -210,7 +313,7 @@ TGameClient::TGameClient(QObject* parent)
     // CIP Ctrl+G ChangeCharacter → in-game CharacterSelection (Cmd+G on macOS).
     input::setActionHandler(input::EGameAction::CHANGE_CHARACTER,
                             [self = QPointer<TGameClient>(this)](const input::TGameAction&) {
-                                if (self && g_game.isOnline())
+                                if (self && tibia::game::isOnline())
                                     self->toggleCharacterSelectionForSwitch();
                                 return true;
                             });
@@ -239,7 +342,50 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     m_soundStorage = std::make_unique<sound::TSoundStorage>();
     m_ambientLight = std::make_unique<worldmap::TAmbientLightStorage>();
     m_worldMapStorage = std::make_unique<worldmap::TWorldMapStorage>();
+    worldmap::TWorldMapStorage::setInstance(m_worldMapStorage.get());
+    m_creatureStorage = std::make_unique<creatures::TCreatureStorage>();
+    creatures::TCreatureStorage::setInstance(m_creatureStorage.get());
+    m_containerStorage = std::make_unique<container::TContainerStorage>();
+    container::TContainerStorage::setInstance(m_containerStorage.get());
+    m_inventoryContainer = std::make_unique<container::TInventoryContainer>();
+    container::TInventoryContainer::setInstance(m_inventoryContainer.get());
     m_worldmapProtocol = std::make_unique<worldmap::TWorldmapProtocolMessageHandler>(m_worldMapStorage.get());
+    worldmap::TWorldmapProtocolMessageHandler::setLiveInstance(m_worldmapProtocol.get());
+    // CIP Q→H: peeled structured opcodes → native handle*Message (skips classic).
+    if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue()) {
+        connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, m_worldmapProtocol.get(),
+                &worldmap::TWorldmapProtocolMessageHandler::onServerMessageEnqueued);
+        if (auto* tutorialHandler = tutorial::TTutorialProtocolMessageHandler::liveInstance()) {
+            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, tutorialHandler,
+                    &tutorial::TTutorialProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
+        }
+        if (auto* gameHandler = game::TGameProtocolMessageHandler::liveInstance()) {
+            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, gameHandler,
+                    &game::TGameProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
+        }
+        if (auto* skillWheelHandler = skillwheel::TSkillWheelProtocolMessageHandler::liveInstance()) {
+            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, skillWheelHandler,
+                    &skillwheel::TSkillWheelProtocolMessageHandler::onServerMessageEnqueued,
+                    Qt::UniqueConnection);
+        }
+        if (auto* containerHandler = container::TContainerProtocolMessageHandler::liveInstance()) {
+            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, containerHandler,
+                    &container::TContainerProtocolMessageHandler::onServerMessageEnqueued,
+                    Qt::UniqueConnection);
+        }
+        if (auto* creatureHandler = creatures::TCreatureProtocolMessageHandler::liveInstance()) {
+            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, creatureHandler,
+                    &creatures::TCreatureProtocolMessageHandler::onServerMessageEnqueued,
+                    Qt::UniqueConnection);
+        }
+        if (auto* bugReportHandler = reporting::TBugReportProtocolMessageHandler::liveInstance()) {
+            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, bugReportHandler,
+                    &reporting::TBugReportProtocolMessageHandler::onServerMessageEnqueued,
+                    Qt::UniqueConnection);
+        }
+    }
+    // CIP: protocol handler owns Map → TWorldMapStorage notify (minimap is sibling).
+    g_map.addObserver(m_worldmapProtocol.get());
     m_textStorage = std::make_unique<chat::TTextStorage>();
     m_numericalEffects = std::make_unique<worldmap::TNumericalEffectStorage>();
     m_effectStorage = std::make_unique<effects::TEffectStorage>();
@@ -375,6 +521,18 @@ void TGameClient::shutdown()
     m_numericalEffects.reset();
     m_textStorage.reset();
     m_ambientLight.reset();
+    if (m_worldmapProtocol)
+        g_map.removeObserver(m_worldmapProtocol.get());
+    worldmap::TWorldmapProtocolMessageHandler::setLiveInstance(nullptr);
+    m_worldmapProtocol.reset();
+    worldmap::TWorldMapStorage::setInstance(nullptr);
+    m_worldMapStorage.reset();
+    creatures::TCreatureStorage::setInstance(nullptr);
+    m_creatureStorage.reset();
+    container::TInventoryContainer::setInstance(nullptr);
+    m_inventoryContainer.reset();
+    container::TContainerStorage::setInstance(nullptr);
+    m_containerStorage.reset();
     m_opcodes.reset();
     m_dualConnection.reset();
     m_soundProtocol.reset();
@@ -400,7 +558,7 @@ void TGameClient::abortPendingEnter()
 {
     m_suppressConnectError = true;
     m_login->abort();
-    if (!g_game.isOnline()) {
+    if (!tibia::game::isOnline()) {
         if (m_session)
             m_session->disconnectNow();
         else if (m_sessiondump)
@@ -496,7 +654,7 @@ void TGameClient::openCharacterSelectionForSwitch(const QJsonArray& alts)
             continue;
         const bool online = alt.value(QLatin1String("playing")).toBool()
             || alt.value(QLatin1String("online")).toBool()
-            || name.compare(QString::fromStdString(g_game.getCharacterName()), Qt::CaseInsensitive) == 0;
+            || name.compare(QString::fromStdString(tibia::game::characterName()), Qt::CaseInsensitive) == 0;
         onlineByName.insert(name.toLower(), online);
     }
     QList<gamewindow::CharacterEntry> entries;
@@ -538,7 +696,7 @@ void TGameClient::closeCharacterSelection()
 
 void TGameClient::toggleCharacterSelectionForSwitch()
 {
-    if (!g_game.isOnline())
+    if (!tibia::game::isOnline())
         return;
     if (m_characterSelectionOpen) {
         closeCharacterSelection();
@@ -549,7 +707,7 @@ void TGameClient::toggleCharacterSelectionForSwitch()
 
 void TGameClient::ensureLoginSurface()
 {
-    if (g_game.isOnline() || g_game.isSwitchingCharacter() || !m_options.autoCharacter.isEmpty())
+    if (tibia::game::isOnline() || tibia::game::isSwitchingCharacter() || !m_options.autoCharacter.isEmpty())
         return;
     // A live account session reopens the character list (including an empty
     // account, which the bootstrap turns into Create Character). Otherwise the
@@ -563,13 +721,13 @@ void TGameClient::ensureLoginSurface()
 
 bool TGameClient::requestCharacterSwitch(const QString& characterName)
 {
-    if (characterName.isEmpty() || !g_game.isOnline())
+    if (characterName.isEmpty() || !tibia::game::isOnline())
         return false;
-    if (characterName.compare(QString::fromStdString(g_game.getCharacterName()), Qt::CaseInsensitive) == 0)
+    if (characterName.compare(QString::fromStdString(tibia::game::characterName()), Qt::CaseInsensitive) == 0)
         return false;
-    if (g_game.isSwitchingCharacter())
+    if (tibia::game::isSwitchingCharacter())
         return false;
-    const ProtocolGamePtr protocol = g_game.getProtocolGame();
+    const ProtocolGamePtr protocol = tibia::game::getProtocolGame();
     if (!protocol)
         return false;
     protocol->sendCharacterSwitch(characterName.toStdString());
@@ -579,7 +737,7 @@ bool TGameClient::requestCharacterSwitch(const QString& characterName)
 
 void TGameClient::onCharacterChosen(const gamewindow::CharacterEntry& character)
 {
-    if (g_game.isOnline()) {
+    if (tibia::game::isOnline()) {
         Q_EMIT characterSelectionClosed();
         if (!requestCharacterSwitch(character.name))
             fail(tr("Could not switch to %1.").arg(character.name));
@@ -682,7 +840,7 @@ void TGameClient::onWorldEntered()
     qCInfo(lcGameClient).noquote() << "in world" << world << "as" << character;
     // Entering a world dismisses the character list (login and alt switch).
     Q_EMIT characterSelectionClosed();
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer()) {
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer()) {
         m_sidebarOptions->loadForCharacter(player->getId());
         m_statusbarStorage->loadForCharacter(player->getId());
     }
@@ -698,7 +856,8 @@ void TGameClient::onWorldEntered()
     m_minimap = std::make_unique<minimap::TMinimapManager>(
         defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath),
         markersPath.empty() ? QString() : QString::fromStdString(markersPath));
-    m_minimap->setProtocolHandler(m_worldmapProtocol.get());
+    // CIP: minimap consumes TWorldMapStorage signals (not MapObserver).
+    m_minimap->setWorldMapStorage(m_worldMapStorage.get());
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs, not only
     // locally WasSeen g_minimap tiles — otherwise far clicks stop mid-path.
     g_map.setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
@@ -708,22 +867,23 @@ void TGameClient::onWorldEntered()
 
     for (qsizetype i = 0; i < m_options.say.size(); ++i) {
         QTimer::singleShot(1000 * (i + 1), this, [text = m_options.say[i].toStdString()] {
-            if (g_game.isOnline())
-                g_game.talk(text);
+            if (tibia::game::isOnline())
+                tibia::game::talk(text);
         });
     }
 
     if (m_options.playForSeconds > 0) {
         QTimer::singleShot(m_options.playForSeconds * 1000, this, [this] {
-            const auto player = g_game.getLocalPlayer();
+            const auto player = tibia::game::localPlayer();
             const Position pos = player ? player->getPosition() : Position();
+            const tibia::creatures::TCreatureStorage* creatures = tibia::creatures::TCreatureStorage::instance();
             qCInfo(lcGameClient).noquote() << "after" << m_options.playForSeconds << "s:"
                                            << QStringLiteral("at %1,%2,%3").arg(pos.x).arg(pos.y).arg(pos.z)
                                            << "level" << (player ? player->getLevel() : 0)
                                            << "hp" << (player ? player->getHealth() : 0) << "/" << (player ? player->getMaxHealth() : 0)
-                                           << "known creatures" << g_map.getCreatures().size()
-                                           << "online" << g_game.isOnline();
-            const bool online = g_game.isOnline();
+                                           << "known creatures" << (creatures ? creatures->creatureIds().size() : 0)
+                                           << "online" << tibia::game::isOnline();
+            const bool online = tibia::game::isOnline();
             if (m_session)
                 m_session->disconnectNow();
             else if (m_sessiondump)
@@ -820,7 +980,7 @@ void TGameClient::tick()
     gamecore::poll();
     if (m_soundStorage)
         m_soundStorage->poll();
-    m_idleTick.start(g_game.isOnline() ? 500 : 100);
+    m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
     if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros()))
         return;
 
@@ -869,7 +1029,7 @@ void TGameClient::fail(const QString& message)
         QCoreApplication::exit(2);
     // A refused reconnect closes the character list before the socket fails, and
     // the login mask stays hidden while the account is still authenticated.
-    if (!g_game.isOnline())
+    if (!tibia::game::isOnline())
         ensureLoginSurface();
 }
 

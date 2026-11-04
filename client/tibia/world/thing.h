@@ -36,7 +36,6 @@ public:
     virtual void draw(const Point& /*dest*/, bool /*drawThings*/ = true, LightSink* = nullptr) {}
     virtual void drawLight(const Point& /*dest*/, LightSink*) {}
 
-    LuaObjectPtr attachedObjectToLuaObject() override { return asLuaObject(); }
     bool isThing() override { return true; }
 
     virtual void setId(uint32_t /*id*/) {}
@@ -48,10 +47,10 @@ public:
     virtual Position getPosition() { return m_position; }
     Position getServerPosition() { return m_position; }
 
-    const TilePtr& getTile();
-    ContainerPtr getParentContainer();
+    tibia::worldmap::TWorldMapField* getTile();
 
     int getStackPos();
+    void clearStackPos() { m_stackPos = -1; }
     int getStackPriority();
 
     virtual bool isItem() const { return false; }
@@ -218,7 +217,7 @@ public:
 
 protected:
 
-    void setAttachedEffectDirection(const Otc::Direction dir) const;
+    void setAttachedEffectDirection(const tibia::client::Direction dir) const;
 
     Color m_markedColor{ Color::white };
     Color m_highlightColor{ Color::white };
@@ -250,6 +249,6 @@ private:
     bool m_animate{ true };
 
     friend class Client;
-    friend class Tile;
+    friend class tibia::worldmap::TWorldMapField;
 };
 #pragma pack(pop)

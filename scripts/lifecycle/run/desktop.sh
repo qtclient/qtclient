@@ -20,7 +20,7 @@ bash "$OTC/scripts/lifecycle/lib/link-cip-resources.sh" "$QTCLIENT_CLIENT_BIN" "
 # Avoid empty-array "${arr[@]}" under bash 3.2 + set -u (macOS).
 # Stock default: --no-mods.
 # Product (make qtclient run): QTCLIENT_LOAD_TIP_MODS=1 → tip mods/<id>.
-# Soft escape hatch: QTCLIENT_MODS_DIR (exclusive; not used by IdleOT make path).
+# qtclient escape hatch: QTCLIENT_MODS_DIR (exclusive; not used by IdleOT make path).
 # shellcheck disable=SC2086
 if [[ -n "${ARGS:-}" ]]; then
   exec "$QTCLIENT_CLIENT_BIN" ${ARGS} "$@"

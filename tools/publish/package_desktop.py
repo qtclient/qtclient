@@ -68,7 +68,7 @@ TIBIA_ENGINE_PATHS = (
 )
 # gamecore finds its work dir by data/setup.otml (whose typing-icon it loads) and reads
 # config.ini; things come from content-things.
-TIBIA_RUNTIME_FILES = ("data/setup.otml", "data/images/game/console/typing.png", "config.ini")
+TIBIA_RUNTIME_FILES = ("data/setup.otml", "data/images/game/console/typing.webp", "config.ini")
 # qtclient: OUTPUT_NAME client → client.app / client.exe / client; brand to APP_NAME.app.
 # qtclient cmake OUTPUT_NAME under build/<preset>/bin (TOGGLE_BIN_FOLDER=ON).
 TIBIA_BUILD = {
@@ -278,6 +278,45 @@ def without_qt_sqldrivers(qt: Path):
             hidden.rename(sql)
 
 
+def _find_moltenvk_dylib() -> Path | None:
+    roots: list[Path] = []
+    if os.environ.get("TIBIA_MOLTENVK_DIR"):
+        roots.append(Path(os.environ["TIBIA_MOLTENVK_DIR"]))
+    if os.environ.get("VULKAN_SDK"):
+        sdk = Path(os.environ["VULKAN_SDK"])
+        roots.extend([sdk / "MoltenVK" / "dylib" / "macOS", sdk / "macOS" / "lib"])
+    roots.extend([
+        Path("/opt/homebrew/opt/molten-vk/lib"),
+        Path("/usr/local/opt/molten-vk/lib"),
+    ])
+    for root in roots:
+        candidate = root / "libMoltenVK.dylib"
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def stage_moltenvk_frameworks(app: Path) -> None:
+    """CIP tip ships MoltenVK + ICD for rendererIndex Vulkan (see TibiaDesktopTip.cmake)."""
+    dylib = _find_moltenvk_dylib()
+    if not dylib:
+        print("[desktop] MoltenVK not found — skip Frameworks copy (set TIBIA_MOLTENVK_DIR or VULKAN_SDK)", file=sys.stderr)
+        return
+    fw = app / "Contents" / "Frameworks"
+    fw.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(dylib, fw / "libMoltenVK.dylib")
+    icd_src = dylib.parent / "MoltenVK_icd.json"
+    icd_dest = fw / "MoltenVK_icd.json"
+    if icd_src.is_file():
+        shutil.copy2(icd_src, icd_dest)
+    else:
+        icd_dest.write_text(
+            '{"file_format_version":"1.0.0","ICD":{"library_path":"libMoltenVK.dylib","api_version":"1.0.0"}}\n',
+            encoding="utf-8",
+        )
+    print(f"[desktop] staged MoltenVK from {dylib}")
+
+
 def tibia_macos_bundle(build: Path, dest: Path, qt: Path) -> Path:
     shutil.rmtree(dest / f"{APP_NAME}.app", ignore_errors=True)
     shutil.rmtree(dest / build.name, ignore_errors=True)
@@ -288,6 +327,7 @@ def tibia_macos_bundle(build: Path, dest: Path, qt: Path) -> Path:
     with without_qt_sqldrivers(qt):
         subprocess.run(deploy, check=True)
     shutil.rmtree(dest / build.name / "Contents" / "PlugIns" / "sqldrivers", ignore_errors=True)
+    stage_moltenvk_frameworks(dest / build.name)
     app = brand_bundle(dest)
     # arm64 refuses unsigned code; release signing re-signs over this ad-hoc seal.
     subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app)], check=True)

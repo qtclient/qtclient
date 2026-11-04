@@ -1,9 +1,11 @@
 #include "gameservergamesession.h"
 
 #include "game/gameciptypes.h"
+#include "game/tgamenotify.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamenotify.h>
 #include <client/protocolgame.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::game {
 
@@ -18,7 +20,7 @@ namespace {
 template<typename F>
 Hook gameHook(const char* field, F&& f)
 {
-    return Hook("g_game", field, [f = std::forward<F>(f)](LuaObject*, const Args& args) {
+    return Hook(tibia::game::kNotifyScope, field, [f = std::forward<F>(f)](GameObject*, const Args& args) {
         f(args);
         return std::any{};
     });
@@ -30,20 +32,27 @@ TGameserverGameSession::TGameserverGameSession(QObject* parent)
     : cip::tibia::game::TGameserverGameSession(parent)
 {
     game::ownProductSurface(this);
-    m_hooks.emplace_back("object", "onConnect", [this](LuaObject* self, const Args&) {
+    m_hooks.emplace_back("object", "onConnect", [this](GameObject* self, const Args&) {
         if (dynamic_cast<ProtocolGame*>(self))
             Q_EMIT connected();
         return std::any{};
     });
     m_hooks.push_back(gameHook("onLogin", [this](const Args&) { Q_EMIT gameLoginSuccessful(); }));
-    m_hooks.push_back(gameHook("onGameStart", [this](const Args&) { Q_EMIT worldEntered(); }));
-    m_hooks.push_back(gameHook("onGameEnd", [this](const Args&) {
+    // CIP typed lifecycle (TGameNotify) — prefer over string Hook for start/end/fail.
+    connect(TGameNotify::instance(), &TGameNotify::gameStarted, this, [this] { Q_EMIT worldEntered(); });
+    connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] {
         // Same-socket alt switch ends the session in-process. The socket stays
         // open, so this must not look like a logout (that reopens CharacterSelection).
         if (g_game.isSwitchingCharacter())
             return;
         Q_EMIT disconnected();
-    }));
+    });
+    connect(TGameNotify::instance(), &TGameNotify::connectionFailing, this, [this](bool failing) {
+        if (failing)
+            Q_EMIT pingTimeout();
+        else
+            Q_EMIT pingTimeoutRecovered();
+    });
     m_hooks.push_back(gameHook("onLoginError", [this](const Args& a) { Q_EMIT gameLoginErrorMessage(argString(a, 0)); }));
     m_hooks.push_back(gameHook("onLoginAdvice", [this](const Args& a) { Q_EMIT gameLoginAdviceMessage(argString(a, 0)); }));
     m_hooks.push_back(gameHook("onLoginWait", [this](const Args& a) {
@@ -51,13 +60,7 @@ TGameserverGameSession::TGameserverGameSession(QObject* parent)
     }));
     m_hooks.push_back(gameHook("onConnectionError", [this](const Args& a) { Q_EMIT connectionError(argString(a, 0)); }));
     m_hooks.push_back(gameHook("onSessionEnd", [this](const Args& a) { Q_EMIT sessionEndInformation(static_cast<int>(argInt(a, 0))); }));
-    m_hooks.push_back(gameHook("onConnectionFailing", [this](const Args& a) {
-        if (argBool(a, 0))
-            Q_EMIT pingTimeout();
-        else
-            Q_EMIT pingTimeoutRecovered();
-    }));
-    m_hooks.push_back(gameHook("onDeath", [this](const Args&) { Q_EMIT deadMessage(); }));
+    connect(TGameNotify::instance(), &TGameNotify::death, this, [this](int, int) { Q_EMIT deadMessage(); });
     m_hooks.push_back(gameHook("onUpdateNeeded", [this](const Args&) { Q_EMIT clientOutOfDate(); }));
 }
 

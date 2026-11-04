@@ -2,12 +2,12 @@
 
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QQuickItem>
 
 #include <iterator>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -132,9 +132,9 @@ QStringList TBugReportDialogController::classifications() const
 
 QString TBugReportDialogController::notAllowedReason() const
 {
-    if (!g_game.isOnline())
+    if (!tibia::game::isOnline())
         return qtTrId("bugreport_not_allowed_reason_not_yet_set");
-    switch (g_game.getBugReportState()) {
+    switch (tibia::game::getBugReportState()) {
     case 0: return {};
     case 1: return qtTrId("bugreport_not_allowed_reason_blacklisted");
     case 2: return qtTrId("bugreport_not_allowed_reason_not_enough_loyalty");
@@ -147,27 +147,27 @@ Position TBugReportDialogController::reportedPosition() const
 {
     if (m_position.isValid())
         return m_position;
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player ? player->getPosition() : Position();
 }
 
 /// A row outside the table reports "other"; the dialog closes either way.
 void TBugReportDialogController::requestSendBugReport(const int ClassificationIndex, const QString& Comment)
 {
-    if (g_game.isOnline()) {
+    if (tibia::game::isOnline()) {
         const ECategory category = ClassificationIndex >= 0 && ClassificationIndex < static_cast<int>(std::size(Classifications))
             ? Classifications[ClassificationIndex]
             : Other;
         const std::string comment = Comment.toStdString();
         switch (category) {
         case Map:
-            g_game.reportBugCip(Map, comment, {}, {}, reportedPosition());
+            tibia::game::reportBugCip(Map, comment, {}, {}, reportedPosition());
             break;
         case Typo:
-            g_game.reportBugCip(Typo, comment, m_speaker.toStdString(), m_text.toStdString(), {});
+            tibia::game::reportBugCip(Typo, comment, m_speaker.toStdString(), m_text.toStdString(), {});
             break;
         default:
-            g_game.reportBugCip(category, comment, {}, {}, {});
+            tibia::game::reportBugCip(category, comment, {}, {}, {});
             break;
         }
     }

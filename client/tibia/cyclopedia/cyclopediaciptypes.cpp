@@ -2,6 +2,7 @@
 
 #include <any>
 #include <vector>
+#include <tibia/game/gamenotify.h>
 
 namespace tibia::cyclopedia {
 
@@ -26,7 +27,7 @@ CipTypedKeep& typedKeep()
 
 TGeneralPlayerStatisticsProvider::TGeneralPlayerStatisticsProvider()
 {
-    m_hooks.emplace_back("g_game", "onParseCyclopediaCharacterCombatStats", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterCombatStats", [this](GameObject*, const Args& args) {
         if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterCombatStats>(&args[0]))
             m_combat = *data;
         if (const auto* mitigation = args.size() > 1 ? std::any_cast<double>(&args[1]) : nullptr)
@@ -39,7 +40,7 @@ TGeneralPlayerStatisticsProvider::TGeneralPlayerStatisticsProvider()
 
 TPlayerOffenceStatsProvider::TPlayerOffenceStatsProvider()
 {
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterOffenceStats", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterOffenceStats", [this](GameObject*, const Args& args) {
         if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterOffenceStats>(&args[0]))
             m_last = *data;
         return std::any{};
@@ -48,7 +49,7 @@ TPlayerOffenceStatsProvider::TPlayerOffenceStatsProvider()
 
 TPlayerDefenceStatsProvider::TPlayerDefenceStatsProvider()
 {
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterDefenceStats", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterDefenceStats", [this](GameObject*, const Args& args) {
         if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterDefenceStats>(&args[0]))
             m_last = *data;
         return std::any{};
@@ -57,7 +58,7 @@ TPlayerDefenceStatsProvider::TPlayerDefenceStatsProvider()
 
 TPlayerMiscStatsProvider::TPlayerMiscStatsProvider()
 {
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterMiscStats", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterMiscStats", [this](GameObject*, const Args& args) {
         if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterMiscStats>(&args[0]))
             m_last = *data;
         return std::any{};

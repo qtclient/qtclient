@@ -1,12 +1,14 @@
 #include "actionbarcontroller.h"
 
 #include "app/clientoptions.h"
+#include "container/containerciptypes.h"
 #include "gamewindow/actionbarmanager.h"
 #include "gamewindow/actionbuttoncontroller.h"
 #include "gamewindow/draganddropcontroller.h"
 #include "spells/spellinfostorage.h"
 
 #include <client/item.h>
+#include <client/position.h>
 #include <tibia/assets/thingtype.h>
 
 #include <QQmlComponent>
@@ -215,10 +217,24 @@ void TActionBarController::onDropped(const uint ButtonId, const int MultiActionI
     if (!dnd)
         return;
     const input::TGameActionPtr move = dnd->takeAction();
-    if (!move || !move->object || !move->object->isItem())
+    if (!move)
         return;
-    const ItemPtr item = move->object->static_self_cast<Item>();
-    m_manager->assignDroppedObject(this, int(ButtonId), MultiActionIndex, item, dnd->modifiers().testFlag(Qt::AltModifier));
+    uint16_t typeId = move->objectClientId;
+    uint8_t tier = 0;
+    if (typeId != 0 && move->position.x == UINT16_MAX) {
+        if (move->position.y & 0x40) {
+            if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+                if (const container::TStoredContainer* row = storage->containerAt(move->position.y & 0x3F))
+                    tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + move->stackPosition).tier;
+            }
+        } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+            tier = inventory->slotAt(move->position.y).tier;
+        }
+    }
+    if (typeId == 0)
+        return;
+    m_manager->assignDroppedObject(this, int(ButtonId), MultiActionIndex, typeId, tier,
+                                   dnd->modifiers().testFlag(Qt::AltModifier));
 }
 
 void TActionBarController::onSwapActions(const uint SourceActionBarId, const uint SourceButtonId, const int SourceMultiActionIndex,

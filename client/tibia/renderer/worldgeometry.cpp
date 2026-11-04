@@ -2,14 +2,17 @@
 
 #include "renderer/lightmodel.h"
 
+#include "appearances/appearanceinstance.h"
 #include <client/heightstamp.h>
+#include <client/position.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/world/thing.h>
-#include <tibia/world/tile.h>
+#include "worldmap/worldmapfield.h"
 #include <tibia/world/world.h>
 
 #include <algorithm>
 #include <cmath>
+#include "worldmap/worldmapstorage.h"
 
 namespace tibia::qmlcomponents {
 
@@ -42,16 +45,16 @@ uint8_t encodeThingShape(ThingType& type, const bool wallLike)
 }
 
 /// Map-pixel height + dominant ThingShape for outdoor ceilingMap / shapeMap.
-OutdoorSurface outdoorSurface(Tile& tile)
+OutdoorSurface outdoorSurface(tibia::worldmap::TWorldMapField& field)
 {
     OutdoorSurface out;
     int bestH = 0;
     uint8_t bestShape = 0;
-    for (const ThingPtr& thing : tile.getThings()) {
-        if (!thing || !thing->isItem())
+    for (const appearances::TAppearanceInstancePtr& appearance : field.appearances()) {
+        if (!appearance)
             continue;
-        ThingType* type = thing->getThingType();
-        if (!type)
+        ThingType* type = appearance->thingType();
+        if (!type || type->getCategory() != ThingCategoryItem)
             continue;
         int h = 0;
         // Stack elevation (crates, etc.) — CIP elevation units ≈ map px / 8.
@@ -121,18 +124,21 @@ WorldGeometry buildWorldGeometry(const WorldGeometryInput& in)
     if (geo.width <= 0 || geo.height <= 0)
         return geo;
 
+    const Position camera{ static_cast<uint16_t>(in.camera.x), static_cast<uint16_t>(in.camera.y),
+                           static_cast<uint8_t>(in.camera.z) };
+
     const size_t cells = static_cast<size_t>(geo.width * geo.height);
     geo.ceilingFloors.assign(cells, 0);
     geo.surfaceHeight.assign(cells, 0);
     geo.surfaceShape.assign(cells, 0);
     // Raycast indoor sun: roof marks across visible floors (CIP coveredUp screen cells).
     for (int z = in.firstFloor; z <= in.lastFloor; ++z) {
-        const int fromCamera = in.camera.z - z;
+        const int fromCamera = camera.z - z;
         if (in.heightOriginZ - z < 0)
             continue;
         for (int iy = 0; iy < geo.height; ++iy) {
             for (int ix = 0; ix < geo.width; ++ix) {
-                Position pos = in.camera.translated(ix - in.centerX, iy - in.centerY);
+                Position pos = camera.translated(ix - in.centerX, iy - in.centerY);
                 pos.coveredUp(static_cast<int8_t>(fromCamera));
                 if (const uint8_t cover = light::underRoofFloors(pos); cover > 0) {
                     const uint8_t mark = static_cast<uint8_t>(std::min(15, static_cast<int>(cover)));
@@ -151,16 +157,16 @@ WorldGeometry buildWorldGeometry(const WorldGeometryInput& in)
     for (int iy = 0; iy < geo.height; ++iy) {
         for (int ix = 0; ix < geo.width; ++ix) {
             const size_t i = static_cast<size_t>(iy * geo.width + ix);
-            const Position cameraPos = in.camera.translated(ix - in.centerX, iy - in.centerY);
+            const Position cameraPos = camera.translated(ix - in.centerX, iy - in.centerY);
 
             bool owned = false;
             uint8_t bestH = 0;
             uint8_t bestShape = 0;
-            for (int z = in.firstFloor; z <= in.camera.z; ++z) {
+            for (int z = in.firstFloor; z <= camera.z; ++z) {
                 Position field = cameraPos;
-                if (z < in.camera.z)
-                    field.coveredUp(static_cast<int8_t>(in.camera.z - z));
-                const TilePtr& tile = tibia::world::fields().getTile(field);
+                if (z < camera.z)
+                    field.coveredUp(static_cast<int8_t>(camera.z - z));
+                tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(field);
                 if (!tile || !tile->isDrawable())
                     continue; // void — keep descending
 
@@ -174,11 +180,11 @@ WorldGeometry buildWorldGeometry(const WorldGeometryInput& in)
                     bestShape = surf.shape;
                     // Outdoor faces below the owner still raise tip-splash height
                     // (multi-story E/S walls under an open terrace).
-                    for (int z2 = z + 1; z2 <= in.camera.z; ++z2) {
+                    for (int z2 = z + 1; z2 <= camera.z; ++z2) {
                         Position below = cameraPos;
-                        if (z2 < in.camera.z)
-                            below.coveredUp(static_cast<int8_t>(in.camera.z - z2));
-                        const TilePtr& lower = tibia::world::fields().getTile(below);
+                        if (z2 < camera.z)
+                            below.coveredUp(static_cast<int8_t>(camera.z - z2));
+                        tibia::worldmap::TWorldMapField* lower = tibia::worldmap::fieldAt(below);
                         if (!lower || !lower->isDrawable())
                             continue;
                         if (light::underRoofFloors(below) > 0)

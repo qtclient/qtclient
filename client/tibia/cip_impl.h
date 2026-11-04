@@ -28,6 +28,13 @@ CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TTutorialHelperQmlService, ::tibia::q
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TTutorialMarkerQuickItem, ::tibia::qmlcomponents::TTutorialMarkerQuickItem);
 
 #ifdef TIBIA_WITH_GAMECORE
+#include "qmlcomponents/qmlcomponentsciptypes.h"
+CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TColorHelperQmlService, ::tibia::qmlcomponents::TColorHelperQmlService);
+CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TAppearanceTypeHelperQmlService, ::tibia::qmlcomponents::TAppearanceTypeHelperQmlService);
+CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TQmlDynamicAbstractListModel, ::tibia::qmlcomponents::TQmlDynamicAbstractListModel);
+CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TQmlSortFilterProxyModel, ::tibia::qmlcomponents::TQmlSortFilterProxyModel);
+CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TQmlJsonSettingsService, ::tibia::qmlcomponents::TQmlJsonSettingsService);
+
 #include "qmlcomponents/soundhelper.h"
 CIP_IMPLEMENT(::cip::tibia::qmlcomponents::TSoundHelperService, ::tibia::qmlcomponents::TSoundHelperService);
 

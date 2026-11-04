@@ -22,7 +22,7 @@
 
 #include "gl_win32.h"
 
-// Unreachable at runtime: Graphics::isGL() stays false on the Windows tibia host.
+// Unreachable at runtime: Graphics::isGL() stays false on the desktop tibia host.
 void glBindTexture(GLenum, GLuint) {}
 void glDeleteTextures(GLsizei, const GLuint*) {}
 void glGenTextures(GLsizei, GLuint*) {}

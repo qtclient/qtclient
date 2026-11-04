@@ -2,6 +2,7 @@
 
 #include "app/clientoptions.h"
 #include "config/sidebaroptions.h"
+#include "container/containerciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/sidebarwidgetsmanager.h"
@@ -9,13 +10,13 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
-#include <client/item.h>
+#include <client/const.h>
 #include <tibia/world/localplayer.h>
 
 #include <QJsonArray>
 #include <QMetaObject>
 #include <QStringList>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -265,8 +266,13 @@ void TButtonBarController::onImbuementTrackerWidgetClicked() { toggleWidget(W::I
 void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
 {
     auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer())
-        action->object = player->getInventoryItem(Otc::InventorySlotLeft);
+    if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
+        const container::TInventorySlot& left = inventory->slotAt(tibia::client::InventorySlotLeft);
+        if (!left.empty()) {
+            action->objectClientId = left.typeId;
+            action->instance = left.typeId;
+        }
+    }
     input::publish(action);
 }
 void TButtonBarController::onTaskboardDialogButtonClicked() { publish(A::OPEN_TASKBOARD_DIALOG); }

@@ -25,7 +25,14 @@
 #include "heightstamp.h"
 #include "outfit.h"
 #include "position.h"
+#include "teamfinder_types.h"
 #include <framework/core/timer.h>
+
+#include <map>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 struct Bounce
 {
@@ -72,24 +79,24 @@ struct CreatureHudOptions
     {
         if (localPlayer) {
             if (!ownHud)
-                return drawFlags & ~Otc::DrawCreatureInfo;
+                return drawFlags & ~tibia::client::DrawCreatureInfo;
             if (!ownName)
-                drawFlags &= ~Otc::DrawNames;
+                drawFlags &= ~tibia::client::DrawNames;
             if (!(ownBars || ownHealth || ownMana))
-                drawFlags &= ~Otc::DrawBars;
+                drawFlags &= ~tibia::client::DrawBars;
             if (!ownMana)
-                drawFlags &= ~Otc::DrawManaBar;
+                drawFlags &= ~tibia::client::DrawManaBar;
             if (!ownHarmony)
-                drawFlags &= ~Otc::DrawHarmony;
+                drawFlags &= ~tibia::client::DrawHarmony;
             return drawFlags;
         }
         if (!otherHud)
-            return drawFlags & ~Otc::DrawCreatureInfo;
+            return drawFlags & ~tibia::client::DrawCreatureInfo;
         if (!otherName)
-            drawFlags &= ~Otc::DrawNames;
+            drawFlags &= ~tibia::client::DrawNames;
         if (!otherHealth)
-            drawFlags &= ~Otc::DrawBars;
-        return drawFlags & ~(Otc::DrawManaBar | Otc::DrawHarmony);
+            drawFlags &= ~tibia::client::DrawBars;
+        return drawFlags & ~(tibia::client::DrawManaBar | tibia::client::DrawHarmony);
     }
 };
 
@@ -191,65 +198,24 @@ struct PreyMonster
     Outfit outfit;
 };
 
-// Team Finder (S 0x2C leader / S 0x2D member list) — Crystal sendLeaderTeamFinder / sendTeamFinderList
-struct TeamFinderMember
+/// Crystal/CIP OutfitMemorial (S 0xB0) body — golden + token outfit tabs.
+struct OutfitMemorialData
 {
-    uint32_t guid{ 0 };
-    std::string name;
-    uint16_t level{ 0 };
-    uint8_t vocation{ 0 };
-    uint8_t status{ 0 };
-};
-
-struct TeamFinderLeaderData
-{
-    bool reset{ false };
-    uint16_t minLevel{ 0 };
-    uint16_t maxLevel{ 0 };
-    uint8_t vocationIDs{ 0 };
-    uint16_t teamSlots{ 0 };
-    uint16_t freeSlots{ 0 };
-    uint32_t timestamp{ 0 };
-    uint8_t teamType{ 0 };
-    uint16_t bossID{ 0 };
-    uint16_t huntType{ 0 };
-    uint16_t huntArea{ 0 };
-    uint16_t questID{ 0 };
-    std::vector<TeamFinderMember> members;
-};
-
-struct TeamFinderListEntry
-{
-    uint32_t leaderGuid{ 0 };
-    std::string leaderName;
-    uint16_t minLevel{ 0 };
-    uint16_t maxLevel{ 0 };
-    uint8_t vocationIDs{ 0 };
-    uint16_t teamSlots{ 0 };
-    uint16_t membersCount{ 0 };
-    uint32_t timestamp{ 0 };
-    uint8_t teamType{ 0 };
-    uint16_t bossID{ 0 };
-    uint16_t huntType{ 0 };
-    uint16_t huntArea{ 0 };
-    uint16_t questID{ 0 };
-    uint8_t status{ 0 };
-};
-
-struct TeamFinderAssemble
-{
-    uint16_t minLevel{ 0 };
-    uint16_t maxLevel{ 0 };
-    uint8_t vocationIDs{ 0 };
-    uint16_t teamSlots{ 0 };
-    uint16_t freeSlots{ 0 };
-    bool partyBool{ false };
-    uint32_t timestamp{ 0 };
-    uint8_t teamType{ 0 };
-    uint16_t bossID{ 0 };
-    uint16_t huntType{ 0 };
-    uint16_t huntArea{ 0 };
-    uint16_t questID{ 0 };
+    uint32_t baseGoldenOutfitCost{ 0 };
+    uint32_t oneAddonGoldenOutfitCost{ 0 };
+    uint32_t fullGoldenOutfitCost{ 0 };
+    std::vector<std::string> baseGoldenOutfitOwners;
+    std::vector<std::string> oneAddonGoldenOutfitOwners;
+    std::vector<std::string> fullGoldenOutfitOwners;
+    uint16_t baseTokenOutfitSilverToken{ 0 };
+    uint16_t baseTokenOutfitGoldToken{ 0 };
+    uint16_t oneAddonTokenOutfitSilverToken{ 0 };
+    uint16_t oneAddonTokenOutfitGoldToken{ 0 };
+    uint16_t fullTokenOutfitSilverToken{ 0 };
+    uint16_t fullTokenOutfitGoldToken{ 0 };
+    std::vector<std::string> baseTokenOutfitOwners;
+    std::vector<std::string> oneAddonTokenOutfitOwners;
+    std::vector<std::string> fullTokenOutfitOwners;
 };
 
 struct DepotSearchResultItem
@@ -264,9 +230,10 @@ struct DepotSearchDetail
     uint16_t itemId{ 0 };
     uint8_t tier{ 0 };
     uint32_t depotCount{ 0 };
-    std::vector<ItemPtr> depotItems;
+    /// typeId + tier rows (no ItemPtr)
+    std::vector<std::pair<uint16_t, uint8_t>> depotItems;
     uint32_t inboxCount{ 0 };
-    std::vector<ItemPtr> inboxItems;
+    std::vector<std::pair<uint16_t, uint8_t>> inboxItems;
     bool hasStash{ false };
     uint16_t stashItemId{ 0 };
     uint32_t stashCount{ 0 };
@@ -380,7 +347,8 @@ struct Imbuement
     uint16_t imageId;
     uint32_t duration;
     bool premiumOnly;
-    std::vector<std::pair<ItemPtr, std::string>> sources;
+    /// typeId, count, name — no ItemPtr
+    std::vector<std::tuple<uint16_t, uint16_t, std::string>> sources;
     uint32_t cost;
     uint8_t successRate;
     uint32_t protectionCost;
@@ -404,7 +372,10 @@ struct ImbuementTrackerItem
 
     uint8_t slot;
     uint8_t totalSlots = 0;
-    ItemPtr item;
+    uint16_t typeId = 0;
+    uint16_t count = 0;
+    uint8_t tier = 0;
+    uint8_t fluidOrSubtype = 0;
     std::map<uint8_t, ImbuementSlot> slots;
 };
 
@@ -958,7 +929,14 @@ struct ItemInspectionData
     uint8_t inspectionType;
     uint32_t creatureId;
     std::string name;
-    ItemPtr item;
+    uint16_t typeId = 0;
+    uint16_t count = 1;
+    uint8_t tier = 0;
+    uint8_t fluidOrSubtype = 0;
+    bool fluidOrSplash = false;
+    bool hookSouth = false;
+    bool hookEast = false;
+    bool hasProficiency = false;
     std::vector<uint16_t> imbuements;
     std::vector<std::pair<std::string, std::string>> descriptions;
 };
@@ -967,7 +945,14 @@ struct InspectionInventoryItem
 {
     uint8_t slot;
     std::string name;
-    ItemPtr item;
+    uint16_t typeId = 0;
+    uint16_t count = 1;
+    uint8_t tier = 0;
+    uint8_t fluidOrSubtype = 0;
+    bool fluidOrSplash = false;
+    bool hookSouth = false;
+    bool hookEast = false;
+    bool hasProficiency = false;
     std::vector<uint16_t> imbuements;
     std::vector<std::pair<std::string, std::string>> descriptions;
 };
@@ -1241,7 +1226,7 @@ struct WheelData
     uint16_t points;
     uint16_t extraPoints;
 
-    std::array<uint16_t, static_cast<size_t>(Otc::WheelSlots_t::SLOT_LAST)> wheelPoints;
+    std::array<uint16_t, static_cast<size_t>(tibia::client::WheelSlots_t::SLOT_LAST)> wheelPoints;
 
     std::vector<std::pair<uint16_t, uint8_t>> promotionScrolls;
     uint8_t extraPointsForMonkQuest;

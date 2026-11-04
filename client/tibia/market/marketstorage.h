@@ -47,7 +47,7 @@ struct TMarketItemDetails
     uint16_t typeId = 0;
     uint8_t tier = 0;
     bool hasTier = false;
-    /// CIP's Otc::MarketItemDescription -> text.
+    /// CIP's tibia::client::MarketItemDescription -> text.
     std::unordered_map<int, QString> descriptions;
     TMarketStatistics buy;
     TMarketStatistics sell;

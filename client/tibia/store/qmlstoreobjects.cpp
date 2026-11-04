@@ -50,7 +50,7 @@ QString saleTimeLeftShort(const uint32_t validUntil)
 /// CIP 0x10100aed0.
 bool isOnSale(const TStoreQuantity& quantity)
 {
-    return quantity.state == Otc::STATE_SALE && quantity.price < quantity.basePrice && quantity.validUntil != 0;
+    return quantity.state == tibia::client::STATE_SALE && quantity.price < quantity.basePrice && quantity.validUntil != 0;
 }
 
 /// CIP 0x10100c4e0.

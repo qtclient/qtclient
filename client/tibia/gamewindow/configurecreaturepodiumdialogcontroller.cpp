@@ -3,8 +3,11 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/assets/things.h>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -47,7 +50,7 @@ TBossSkinsModel::Entry entryFromRace(const uint16_t raceId, const std::string& n
         entry.outfit = outfit;
         return entry;
     }
-    const RaceType& race = g_things.getRaceData(raceId);
+    const RaceType& race = tibia::game::raceData(raceId);
     entry.name = QString::fromStdString(race.name);
     entry.outfit = race.outfit;
     return entry;
@@ -163,9 +166,8 @@ TConfigureCreaturePodiumDialogController::TConfigureCreaturePodiumDialogControll
     m_showSocket = true;
     m_direction = LookDir::SOUTH;
 
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         dialog()->destroy();
-        return std::any{};
     });
 }
 
@@ -296,7 +298,7 @@ void TConfigureCreaturePodiumDialogController::onCancelClicked()
 
 void TConfigureCreaturePodiumDialogController::onOkClicked()
 {
-    if (g_game.isOnline()) {
+    if (tibia::game::isOnline()) {
         const bool showCreature = m_showOutfit && m_chosenRace != 0;
         auto action = input::mutableClone(*input::makeAction(input::EGameAction::SET_CREATURE_PODIUM_CONFIGURATION));
         action->creatureId = showCreature ? static_cast<uint32_t>(m_chosenRace) : 0;

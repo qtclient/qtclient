@@ -22,16 +22,13 @@
 
 #include "client.h"
 
-#include "tibia/world/game.h"
+#include <tibia/game/gamesession.h>
 #include "gameconfig.h"
 #include "tibia/world/map.h"
 #include "minimap.h"
 #include "tibia/assets/things.h"
 #include "satellitemap.h"
 #include "framework/core/eventdispatcher.h"
-#ifdef FRAMEWORK_EDITOR
-#include "creatures.h"
-#endif
 #include "tibia/world/paperdollmanager.h"
 
 Client g_client;
@@ -54,9 +51,6 @@ void Client::init(std::vector<std::string>& /*args*/)
 
 void Client::terminate()
 {
-#ifdef FRAMEWORK_EDITOR
-    g_creatures.terminate();
-#endif
     g_game.terminate();
     g_map.terminate();
     g_minimap.terminate();

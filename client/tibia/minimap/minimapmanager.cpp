@@ -1,5 +1,8 @@
 #include "minimapmanager.h"
 
+#include "worldmap/coordinates.h"
+#include "worldmap/worldmapstorage.h"
+
 #include <QStandardPaths>
 
 namespace tibia::minimap {
@@ -24,18 +27,48 @@ TMinimapManager::TMinimapManager(const QString& defaultTilesDir, const QString& 
     connect(&m_diskIO, &TMinimapDiskIOAsync::loadingSucceeded, &m_storage, &TMinimapTileStorage::onLoadingSucceeded);
     connect(&m_diskIO, &TMinimapDiskIOAsync::loadingFailed, &m_storage, &TMinimapTileStorage::onLoadingFailed);
 
+    // Field data / isKnown / areaOn only — tile churn comes from TWorldMapStorage.
     m_worldFeed = std::make_unique<TMinimapWorldFeed>(m_storage);
     m_markers = std::make_unique<TMinimapMarkerStorage>(bundledMarkersJson, this);
 }
 
-void TMinimapManager::setProtocolHandler(worldmap::TWorldmapProtocolMessageHandler* handler)
+void TMinimapManager::setWorldMapStorage(worldmap::TWorldMapStorage* storage)
 {
-    if (m_worldFeed)
-        m_worldFeed->setProtocolHandler(handler);
+    if (m_worldMapStorage == storage)
+        return;
+    if (m_worldMapStorage) {
+        disconnect(m_worldMapStorage, nullptr, this, nullptr);
+    }
+    m_worldMapStorage = storage;
+    if (!m_worldMapStorage)
+        return;
+    connect(m_worldMapStorage, &worldmap::TWorldMapStorage::informationAtWorldMapCoordinateHasChanged, this,
+            &TMinimapManager::onWorldMapCoordinateChanged);
+    connect(m_worldMapStorage, &worldmap::TWorldMapStorage::storedVolumeHasChanged, this,
+            &TMinimapManager::onStoredVolumeChanged);
+    // Catch up if the first map description already landed.
+    onStoredVolumeChanged(m_worldMapStorage->storedVolume());
+}
+
+void TMinimapManager::onWorldMapCoordinateChanged(const worldmap::TWorldMapCoordinate coordinate)
+{
+    m_storage.onFieldChanged(coordinate.toPosition());
+}
+
+void TMinimapManager::onStoredVolumeChanged(const worldmap::TShearedWorldMapCuboid volume)
+{
+    m_storage.setPlayerZ(volume.topLeft.z);
+    m_storage.markUnseen();
+}
+
+void TMinimapManager::setProtocolHandler(worldmap::TWorldmapProtocolMessageHandler* /*handler*/)
+{
+    // Prefer setWorldMapStorage — CIP minimap consumes TWorldMapStorage signals.
 }
 
 TMinimapManager::~TMinimapManager()
 {
+    setWorldMapStorage(nullptr);
     m_worldFeed.reset();
     m_markers.reset();
     m_storage.saveAllTilesToDisk();

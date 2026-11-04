@@ -26,7 +26,6 @@
 
 #include "cast.h"
 #include "compiler.h"
-#include "demangle.h"
 #include "hash.h"
 #include "math.h"
 #include "qrcodegen.h"

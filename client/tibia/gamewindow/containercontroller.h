@@ -1,5 +1,6 @@
 #pragma once
 
+#include "container/containerciptypes.h"
 #include "gamewindow/appearanceinstancelistmodel.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "input/gameaction.h"
@@ -42,9 +43,9 @@ public:
     /// CIP 0x100b86350: restores the widget's size from the character's
     /// containersOptions and follows them.
     void setSidebarOptions(config::TSidebarOptions* options);
-    /// CIP 0x100b86650: the container's state, the scroll view back at the
-    /// top when it shows another container.
-    void update(const ContainerPtr& container, bool resetScrollView);
+    /// CIP 0x100b86650: the container's state from TContainerStorage; the scroll
+    /// view resets when it shows another container (replace-open).
+    void update(bool resetScrollView);
 
 public Q_SLOTS:
     /// CIP 0x100b8adb0.
@@ -72,15 +73,15 @@ private Q_SLOTS:
     void applyWidgetOptions();
 
 private:
-    ContainerPtr container() const;
-    ItemPtr slotItem(int slotId) const;
+    const container::TStoredContainer* stored() const;
     /// CIP's container game action provider: the slot's object's actions.
     input::TGameActionList slotActions(int slotId) const;
+    Position slotPosition(int pageSlot) const;
     void updateMouseCursorForCurrentSlot();
     void readExpireOptions();
     template <class T>
     void setProperty(T& member, const T& value);
-    void setIcon(const ItemPtr& item);
+    void setIcon(const container::TInventorySlot& slot);
 
     int m_containerId;
     TAppearanceInstanceListModel m_model;

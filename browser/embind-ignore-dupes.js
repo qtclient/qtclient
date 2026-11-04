@@ -1,5 +1,5 @@
 /**
- * Soft wasm --post-js: EMSCRIPTEN_BINDINGS(builtin) re-registers primitives
+ * qtclient wasm --post-js: EMSCRIPTEN_BINDINGS(builtin) re-registers primitives
  * after client/tibia/wasm_embind_bootstrap.cpp (constructor(101)). Treat
  * duplicate typeid registrations as no-ops so ctors can finish.
  */

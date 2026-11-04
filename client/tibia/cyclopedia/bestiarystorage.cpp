@@ -1,12 +1,14 @@
 #include "bestiarystorage.h"
 
 #include <client/const.h>
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <client/staticdata.h>
 
 #include <algorithm>
 #include <tuple>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::cyclopedia {
 
@@ -107,7 +109,7 @@ int TCharm::nextGradeCost() const { return grade >= 3 ? 0 : charmCost(id, grade 
 TBestiaryStorage::TBestiaryStorage(QObject* parent)
     : QObject(parent)
 {
-    m_hooks.emplace_back("g_game", "onUpdateBestiaryCharmsData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateBestiaryCharmsData", [this](GameObject*, const Args& args) {
         const auto* data = arg<BestiaryCharmsData>(args, 0);
         if (!data)
             return std::any{};
@@ -129,7 +131,7 @@ TBestiaryStorage::TBestiaryStorage(QObject* parent)
         Q_EMIT charmsChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onParseCyclopediaTracker", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaTracker", [this](GameObject*, const Args& args) {
         using Entry = std::tuple<uint16_t, uint32_t, uint16_t, uint16_t, uint16_t, uint8_t>;
         if (client::gamecore::argInt(args, 0) != 0)
             return std::any{};
@@ -142,13 +144,12 @@ TBestiaryStorage::TBestiaryStorage(QObject* parent)
         Q_EMIT trackerChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_charms.clear();
         m_charmableRaces.clear();
         m_raceProgress.clear();
         m_trackedRaces.clear();
         m_hasCharmData = false;
-        return std::any{};
     });
 }
 
@@ -182,10 +183,10 @@ void TBestiaryStorage::setRaceProgress(const int raceId, const int progress) { m
 
 quint64 TBestiaryStorage::goldBalance()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return 0;
-    return player->getResourceBalance(Otc::RESOURCE_BANK_BALANCE) + player->getResourceBalance(Otc::RESOURCE_GOLD_EQUIPPED);
+    return player->getResourceBalance(tibia::client::RESOURCE_BANK_BALANCE) + player->getResourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);
 }
 
 }

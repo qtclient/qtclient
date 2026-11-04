@@ -104,5 +104,11 @@ public:
     bool isAnimated() const { return !m_animation.empty(); }
     const std::vector<AnimationFrame>& getAnimation() const { return m_animation; }
     void addAnimationFrame(const std::shared_ptr<Image>& image, int delay) { m_animation.push_back({ image, delay }); }
+    /** 0 = loop forever (APNG/WebP convention). */
+    uint16_t animationLoopCount() const { return m_animationLoopCount; }
+    void setAnimationLoopCount(const uint16_t count) { m_animationLoopCount = count; }
+
+private:
+    uint16_t m_animationLoopCount{ 0 };
 };
 

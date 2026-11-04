@@ -34,7 +34,9 @@
 #include <ranges>
 #endif
 
-#include <utf8.h>
+#include <QByteArrayView>
+#include <QString>
+#include <QStringDecoder>
 
 #ifdef _MSC_VER
 #pragma warning(disable:4267) // '?' : conversion from 'A' to 'B', possible loss of data
@@ -95,71 +97,44 @@ namespace stdext
     }
 
     [[nodiscard]] bool is_valid_utf8(std::string_view src) {
-        return utf8::is_valid(src.begin(), src.end());
+        QStringDecoder decoder(QStringDecoder::Utf8);
+        (void)decoder.decode(QByteArrayView(src.data(), static_cast<qsizetype>(src.size())));
+        return decoder.hasError() == false;
     }
 
     [[nodiscard]] std::string utf8_to_latin1(std::string_view src) {
+        const QString unicode = QString::fromUtf8(src.data(), static_cast<int>(src.size()));
         std::string out;
-        out.reserve(src.size());
-
-        try {
-            auto it = src.begin();
-            const auto end = src.end();
-
-            while (it != end) {
-                const uint32_t codepoint = utf8::next(it, end);
-
-                if (codepoint <= 0xFF) {
-                    if ((codepoint >= 32 && codepoint < 128) || codepoint == 0x0d || codepoint == 0x0a || codepoint == 0x09 || codepoint >= 0xA0)
-                        out += static_cast<char>(codepoint);
-                }
+        out.reserve(static_cast<size_t>(unicode.size()));
+        for (const QChar ch : unicode) {
+            const uint32_t codepoint = ch.unicode();
+            if (codepoint <= 0xFF) {
+                if ((codepoint >= 32 && codepoint < 128) || codepoint == 0x0d || codepoint == 0x0a
+                    || codepoint == 0x09 || codepoint >= 0xA0)
+                    out += static_cast<char>(codepoint);
             }
-        } catch (const utf8::exception&) {
-            return "";
         }
-
         return out;
     }
 
     [[nodiscard]] std::string latin1_to_utf8(std::string_view src) {
-        std::string out;
-        out.reserve(src.size() * 2);
-
-        try {
-            for (const unsigned char c : src)
-                utf8::append(static_cast<uint32_t>(c), std::back_inserter(out));
-        } catch (const utf8::exception&) {
-            return "";
-        }
-
-        return out;
+        const QByteArray latin1(src.data(), static_cast<int>(src.size()));
+        const QByteArray utf8 = QString::fromLatin1(latin1).toUtf8();
+        return std::string(utf8.constData(), static_cast<size_t>(utf8.size()));
     }
 
 #ifdef WIN32
     std::wstring utf8_to_utf16(const std::string_view src)
     {
-        std::wstring out;
-
-        try {
-            utf8::utf8to16(src.begin(), src.end(), std::back_inserter(out));
-        } catch (const utf8::exception&) {
-            return L"";
-        }
-
-        return out;
+        const QString unicode = QString::fromUtf8(src.data(), static_cast<int>(src.size()));
+        return unicode.toStdWString();
     }
 
     std::string utf16_to_utf8(const std::wstring_view src)
     {
-        std::string out;
-
-        try {
-            utf8::utf16to8(src.begin(), src.end(), std::back_inserter(out));
-        } catch (const utf8::exception&) {
-            return "";
-        }
-
-        return out;
+        const QString unicode = QString::fromStdWString(std::wstring(src));
+        const QByteArray utf8 = unicode.toUtf8();
+        return std::string(utf8.constData(), static_cast<size_t>(utf8.size()));
     }
 
     std::wstring latin1_to_utf16(const std::string_view src) { return utf8_to_utf16(latin1_to_utf8(src)); }

@@ -1,13 +1,17 @@
-# Adding client versions
+# Client asset versions
 
-Create a version folder and drop your sprite files or assets in it.
+Create a version folder and drop sprite files or assets in it.
 
-For the list of supported client versions see `modules/gamelib/game.lua`
+Official CIP assets are produced by `make extract` into `data/assets/`
+(catalog, appearances, map, minimap, sounds). Legacy `data/things/<ver>/`
+layouts are still accepted as a bootstrap fallback.
 
-# Example configurations
+# Example layouts
 
 spr/dat:
-`data/things/860/ (spr and dat files there)`
+
+`data/things/860/` (`.spr` and `.dat` files)
 
 assets:
-`data/things/1340/ (catalog-content.json and all asset files)`
+
+`data/things/1340/` (`catalog-content.json` and asset files)

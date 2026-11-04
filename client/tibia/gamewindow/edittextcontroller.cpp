@@ -3,9 +3,10 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -57,12 +58,12 @@ void TEditTextController::showItemText(const uint32_t id, const uint itemId, con
 {
     bool editable = false;
     bool reportable = false;
-    if (g_things.isValidDatId(itemId, ThingCategoryItem)) {
-        const ThingTypePtr& type = g_things.getThingType(itemId, ThingCategoryItem);
+    if (tibia::game::isValidDatId(itemId, ThingCategoryItem)) {
+        const ThingTypePtr& type = tibia::game::thingType(itemId, ThingCategoryItem);
         editable = type->isWritable() || (type->isWritableOnce() && text.isEmpty());
         reportable = type->isReportable();
     }
-    const bool stampedLetter = itemId != 0 && itemId == g_things.getStampedLetterId();
+    const bool stampedLetter = itemId != 0 && itemId == tibia::game::stampedLetterId();
     m_mode = EMode::ItemText;
     m_id = id;
     m_author = author;
@@ -103,18 +104,18 @@ void TEditTextController::showReadOnlyText(const QString& DialogCaption, const Q
 void TEditTextController::submitNewText(const QString& NewText)
 {
     dialog()->close();
-    if (!g_game.isOnline())
+    if (!tibia::game::isOnline())
         return;
     switch (m_mode) {
         case EMode::ItemText:
             if (m_data.textIsEditable())
-                g_game.editText(m_id, NewText.toStdString());
+                tibia::game::editText(m_id, NewText.toStdString());
             break;
         case EMode::EditList:
-            g_game.editList(m_id, m_doorId, NewText.toStdString());
+            tibia::game::editList(m_id, m_doorId, NewText.toStdString());
             break;
         case EMode::GuildMessage:
-            g_game.editGuildMessage(NewText.toStdString());
+            tibia::game::editGuildMessage(NewText.toStdString());
             break;
     }
 }

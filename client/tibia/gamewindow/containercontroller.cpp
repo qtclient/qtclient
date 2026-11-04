@@ -2,6 +2,7 @@
 
 #include "app/clientoptions.h"
 #include "config/sidebaroptions.h"
+#include "container/containerciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/draganddropcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
@@ -9,12 +10,14 @@
 #include "input/genericobjectgameactionprovider.h"
 #include "worldmap/worldmapgameactionprovider.h"
 
-#include <tibia/world/container.h>
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/item.h>
+#include <tibia/assets/thingtype.h>
+#include <tibia/assets/things.h>
 
 #include <QGuiApplication>
 #include <QQuickItem>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -156,12 +159,12 @@ void TContainerController::setProperty(T& member, const T& value)
     m_propertyTimer.start();
 }
 
-void TContainerController::setIcon(const ItemPtr& item)
+void TContainerController::setIcon(const container::TInventorySlot& slot)
 {
-    const uint objectId = item ? item->getId() : 0;
-    const uint count = item && item->isStackable() ? std::max<uint>(1, item->getCountOrSubType()) : 1;
-    const auto liquid = static_cast<Info::ELiquidType>(item && (item->isFluidContainer() || item->isSplash()) ? item->getCountOrSubType() : 0);
-    const uint deco = item ? static_cast<uint>(item->getDecoItemId()) : 0;
+    const uint objectId = slot.typeId;
+    const uint count = slot.stackable ? std::max<uint>(1, slot.count) : 1;
+    const auto liquid = static_cast<Info::ELiquidType>(slot.fluidOrSplash ? slot.fluid : 0);
+    const uint deco = slot.decoItemId;
     if (objectId == m_objectID && count == m_objectCount && liquid == m_liquidType && deco == m_decoItemObjectID)
         return;
     m_objectID = objectId;
@@ -171,55 +174,72 @@ void TContainerController::setIcon(const ItemPtr& item)
     Q_EMIT containerIconChanged();
 }
 
-void TContainerController::update(const ContainerPtr& container, const bool resetScrollView)
+void TContainerController::update(const bool resetScrollView)
 {
-    if (!container)
+    const container::TStoredContainer* row = stored();
+    if (!row)
         return;
-    const uint capacity = std::max(1, container->getCapacity());
-    const uint pages = container->hasPages() ? (std::max(1, container->getSize()) + capacity - 1) / capacity : 0;
-    setProperty(m_indexOfFirstVisibleObject, static_cast<int>(container->getFirstIndex()));
-    setProperty(m_caption, captionOf(container->getName()));
-    setProperty(m_numberOfPages, pages);
-    setProperty(m_currentPage, static_cast<uint>(container->getFirstIndex()) / capacity + 1);
-    setProperty(m_numberOfContainerSlots, static_cast<uint>(container->getCapacity()));
-    setProperty(m_numberOfFilledContainerSlots, static_cast<uint>(container->getItemsCount()));
-    setProperty(m_levelUpButtonVisible, container->hasParent());
-    setProperty(m_isUpdatable, container->isUnlocked());
-    setIcon(container->getContainerItem());
 
-    m_model.setMinimumRows(container->getCapacity());
-    const auto& items = container->getItems();
-    m_model.setObjects(std::vector<ItemPtr>(items.begin(), items.end()));
+    const int capacity = std::max(1, static_cast<int>(row->capacity));
+    const int size = static_cast<int>(row->size);
+    const int firstIndex = static_cast<int>(row->firstIndex);
+    const bool hasPages = row->hasPages;
+    const bool hasParent = row->hasParent;
+    const bool unlocked = row->unlocked;
+    const int filled = static_cast<int>(row->items.size());
+    const QString& name = row->name;
+    const container::TInventorySlot& icon = row->containerItem;
+
+    const uint pages = hasPages ? (std::max(1, size) + capacity - 1) / capacity : 0;
+    setProperty(m_indexOfFirstVisibleObject, firstIndex);
+    setProperty(m_caption, captionOf(name.toStdString()));
+    setProperty(m_numberOfPages, pages);
+    setProperty(m_currentPage, static_cast<uint>(firstIndex) / static_cast<uint>(capacity) + 1);
+    setProperty(m_numberOfContainerSlots, static_cast<uint>(capacity));
+    setProperty(m_numberOfFilledContainerSlots, static_cast<uint>(filled));
+    setProperty(m_levelUpButtonVisible, hasParent);
+    setProperty(m_isUpdatable, unlocked);
+    setIcon(icon);
+
+    m_model.setMinimumRows(capacity);
+    m_model.setObjects(row->items);
 
     if (resetScrollView && quickItem())
         QMetaObject::invokeMethod(quickItem(), "resetScrollView");
     updateMouseCursorForCurrentSlot();
 }
 
-ContainerPtr TContainerController::container() const
+const container::TStoredContainer* TContainerController::stored() const
 {
-    return g_game.getContainer(m_containerId);
+    return container::TContainerStorage::instance()
+        ? container::TContainerStorage::instance()->containerAt(m_containerId)
+        : nullptr;
 }
 
-ItemPtr TContainerController::slotItem(const int slotId) const
+Position TContainerController::slotPosition(const int pageSlot) const
 {
-    const ContainerPtr c = container();
-    return c && slotId >= 0 ? c->getItem(slotId - c->getFirstIndex()) : nullptr;
+    return { 0xffff, static_cast<uint16_t>(m_containerId | 0x40), static_cast<uint8_t>(pageSlot) };
 }
 
 input::TGameActionList TContainerController::slotActions(const int slotId) const
 {
-    const ContainerPtr c = container();
-    const ItemPtr item = slotItem(slotId);
-    if (!c || !item)
+    const container::TStoredContainer* row = stored();
+    if (!row || slotId < 0)
         return {};
-    const int pageSlot = slotId - c->getFirstIndex();
-    const Position position = c->getSlotPosition(pageSlot);
+    const container::TInventorySlot slot = container::TContainerStorage::instance()->slotAt(m_containerId, slotId);
+    if (slot.empty())
+        return {};
+    const int pageSlot = slotId - static_cast<int>(row->firstIndex);
+    const Position position = slotPosition(pageSlot);
     input::TGameActionList actions;
-    if (c->hasParent()) {
-        actions.push_back(input::makeObjectAction(A::OPEN_PARENT_CONTAINER, item, position, pageSlot));
-        if (!item->isNotMoveable()) {
-            auto moveUp = input::mutableClone(*input::makeObjectAction(A::MOVE_UP, item, position, pageSlot));
+    if (row->hasParent) {
+        auto openParent = input::mutableClone(*input::makeObjectAction(A::OPEN_PARENT_CONTAINER, position, pageSlot));
+        openParent->objectClientId = slot.typeId;
+        actions.push_back(std::move(openParent));
+        ThingType* type = slot.appearance ? slot.appearance->thingType() : tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
+        if (!type || !type->isNotMoveable()) {
+            auto moveUp = input::mutableClone(*input::makeObjectAction(A::MOVE_UP, position, pageSlot));
+            moveUp->objectClientId = slot.typeId;
             moveUp->destination = Position(UINT16_MAX, static_cast<uint16_t>(0x40 | m_containerId), ParentContainerSlot);
             moveUp->moveAll = true;
             actions.push_back(std::move(moveUp));
@@ -227,7 +247,7 @@ input::TGameActionList TContainerController::slotActions(const int slotId) const
     }
     actions.push_back(input::makeAction(A::CONTEXT_MENU));
     for (input::TGameActionPtr& action :
-         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(item, position, pageSlot), SlotActionTypes))
+         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(slot, position, pageSlot), SlotActionTypes))
         actions.push_back(std::move(action));
     return actions;
 }
@@ -295,14 +315,15 @@ void TContainerController::onSlotStartDrag(const int slotId, QObject* source)
 void TContainerController::onSlotDragDropped(const int slotId)
 {
     TDragAndDropController* dnd = TDragAndDropController::instance();
-    const ContainerPtr c = container();
-    if (!dnd || !c)
+    const container::TStoredContainer* row = stored();
+    if (!dnd || !row)
         return;
     const input::TGameActionPtr move = dnd->takeAction();
     if (!move)
         return;
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String(MoveAllOption)).toBool(false);
-    const Position destination = c->getSlotPosition(slotId >= 0 ? slotId - c->getFirstIndex() : AnySlot);
+    const int pageSlot = slotId >= 0 ? slotId - static_cast<int>(row->firstIndex) : AnySlot;
+    const Position destination = slotPosition(pageSlot);
     input::publish(input::finalizeDrop(move, destination, static_cast<int>(dnd->modifiers()), moveAll));
 }
 
@@ -314,14 +335,16 @@ void TContainerController::onSlotTargetSelected(const int slotId)
 
 void TContainerController::onPreviousPageClicked()
 {
-    if (const ContainerPtr c = container(); c && c->getFirstIndex() > 0)
-        g_game.seekInContainer(m_containerId, std::max(0, c->getFirstIndex() - c->getCapacity()));
+    const container::TStoredContainer* row = stored();
+    if (row && row->firstIndex > 0)
+        tibia::game::seekInContainer(m_containerId, std::max(0, static_cast<int>(row->firstIndex) - static_cast<int>(row->capacity)));
 }
 
 void TContainerController::onNextPageClicked()
 {
-    if (const ContainerPtr c = container(); c && c->getFirstIndex() + c->getCapacity() < c->getSize())
-        g_game.seekInContainer(m_containerId, c->getFirstIndex() + c->getCapacity());
+    const container::TStoredContainer* row = stored();
+    if (row && static_cast<int>(row->firstIndex) + static_cast<int>(row->capacity) < static_cast<int>(row->size))
+        tibia::game::seekInContainer(m_containerId, static_cast<int>(row->firstIndex) + static_cast<int>(row->capacity));
 }
 
 void TContainerController::onSearchButtonClicked()
@@ -332,16 +355,14 @@ void TContainerController::onSearchButtonClicked()
 void TContainerController::onRequestClose()
 {
     removeThisContainersOptions();
-    if (const ContainerPtr c = container())
-        g_game.close(c);
+    tibia::game::closeById(m_containerId);
     widget()->hide();
     TSidebarWidgetController::onRequestClose();
 }
 
 void TContainerController::onLevelUpClicked()
 {
-    if (const ContainerPtr c = container())
-        g_game.openParent(c);
+    tibia::game::openParentById(m_containerId);
 }
 
 void TContainerController::readExpireOptions()

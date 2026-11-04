@@ -22,7 +22,7 @@
 
 #include "inputmessage.h"
 
-#include "tibia/world/game.h"
+#include <tibia/game/gamesession.h>
 #include "framework/util/crypt.h"
 
 InputMessage::InputMessage() {
@@ -47,6 +47,20 @@ void InputMessage::setBuffer(const std::string& buffer)
     memcpy(m_buffer + m_readPos, buffer.data(), len);
     m_readPos += len;
     m_messageSize += len;
+}
+
+void InputMessage::assignBody(const uint8_t* data, uint16_t size)
+{
+    reset();
+    m_maxHeaderSize = 0;
+    m_headerPos = 0;
+    m_readPos = 0;
+    m_messageSize = 0;
+    if (!data || size == 0)
+        return;
+    checkWrite(size);
+    memcpy(m_buffer, data, size);
+    m_messageSize = size;
 }
 
 uint8_t InputMessage::getU8()

@@ -4,6 +4,7 @@
 
 #include <QHash>
 #include <QPointer>
+#include <QSGNode>
 
 namespace tibia::qmlcomponents {
 
@@ -32,6 +33,7 @@ private:
 };
 
 /// Registers / unregisters with TutorialHelper when markerID is set.
+/// qtclient paints a CIP-style highlight plate until the full arrow material lands.
 /// Not `final`: QML registration subclasses via QQmlElement.
 class TTutorialMarkerQuickItem : public cip::tibia::qmlcomponents::TTutorialMarkerQuickItem
 {
@@ -42,6 +44,9 @@ public:
 
     void setMarkerID(int v) override;
     void setDebugOverlayVisible(bool v) override;
+
+protected:
+    QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
 };
 
 }

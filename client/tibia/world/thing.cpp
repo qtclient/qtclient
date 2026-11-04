@@ -28,6 +28,7 @@
 #include "tibia/assets/thingtype.h"
 #include "framework/core/clock.h"
 #include <framework/util/stats.h>
+#include <tibia/game/gamesession.h>
 
 Thing::Thing()
 {
@@ -74,19 +75,9 @@ int Thing::getStackPriority()
     return COMMON_ITEMS;
 }
 
-const TilePtr& Thing::getTile()
+tibia::worldmap::TWorldMapField* Thing::getTile()
 {
     return g_map.getTile(m_position);
-}
-
-ContainerPtr Thing::getParentContainer()
-{
-    if (m_position.x == 0xffff && m_position.y & 0x40) {
-        const int containerId = m_position.y ^ 0x40;
-        return g_game.getContainer(containerId);
-    }
-
-    return nullptr;
 }
 
 int Thing::getStackPos()
@@ -104,7 +95,7 @@ int Thing::getStackPos()
 void Thing::setShader(const std::string_view name) {
     m_shaderId = name.empty() ? 0 : 1;
 }
-void Thing::setAttachedEffectDirection(const Otc::Direction dir) const
+void Thing::setAttachedEffectDirection(const tibia::client::Direction dir) const
 {
     if (!hasAttachedEffects()) return;
 

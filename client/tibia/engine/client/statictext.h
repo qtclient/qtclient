@@ -26,10 +26,10 @@
 
 #include "declarations.h"
 #include "framework/core/declarations.h"
-#include "framework/luaengine/luaobject.h"
+#include "framework/luaengine/gameobject.h"
 
  // @bindclass
-class StaticText final : public LuaObject
+class StaticText final : public GameObject
 {
 public:
     StaticText();
@@ -41,14 +41,14 @@ public:
     Size getTextSize() { return m_cachedText.getTextSize(); }
     bool hasText() { return m_cachedText.hasText(); }
 
-    Otc::MessageMode getMessageMode() const { return m_mode; }
+    tibia::client::MessageMode getMessageMode() const { return m_mode; }
     std::string getFirstMessage() { return m_messages.empty() ? "" : m_messages[0].first; }
 
-    bool isYell() const { return m_mode == Otc::MessageYell || m_mode == Otc::MessageMonsterYell || m_mode == Otc::MessageBarkLoud; }
+    bool isYell() const { return m_mode == tibia::client::MessageYell || m_mode == tibia::client::MessageMonsterYell || m_mode == tibia::client::MessageBarkLoud; }
 
     void setText(std::string_view text);
     void setFont(std::string_view fontName);
-    bool addMessage(std::string_view name, Otc::MessageMode mode, std::string_view text);
+    bool addMessage(std::string_view name, tibia::client::MessageMode mode, std::string_view text);
 
     StaticTextPtr asStaticText() { return static_self_cast<StaticText>(); }
 
@@ -65,7 +65,7 @@ private:
 
     std::deque<std::pair<std::string, ticks_t>> m_messages;
     std::string m_name;
-    Otc::MessageMode m_mode{ Otc::MessageNone };
+    tibia::client::MessageMode m_mode{ tibia::client::MessageNone };
     Color m_color{ Color::white };
     CachedText m_cachedText;
     ScheduledEventPtr m_updateEvent;

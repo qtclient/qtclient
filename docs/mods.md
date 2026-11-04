@@ -1,5 +1,11 @@
 # Mods and WorldView customization
 
+Frozen tip extension hooks (CIP-neutral only):
+[pack-extension-contract.md](pack-extension-contract.md)
+(`scripts/ci/check-cip-tip-purity.py`).
+
+Architecture overview: [`docs/pack-architecture.md`](../../../docs/pack-architecture.md).
+
 ## Stock = CipSoft
 
 - `client/upstream/` — vendored CIP QML / shaders / strings (`make sync`)
@@ -11,26 +17,26 @@
 Do not invent an OTC-style `modules/` tree that re-hosts stock CIP.
 Keep the name **mods** / **pack** (not “plugins” — that collides with Qt QML plugins).
 
-## Linked tip (stock Soft + product pack)
+## Linked tip (stock qtclient + product packs)
 
-Product C++ **STATIC-links into Soft** at tip build time. Runtime FS chrome stays a
+Product C++ **STATIC-links into qtclient** at tip build time. Runtime FS chrome stays a
 drop-in tree next to the binary (F5 QML). There is **no** `native/mod.*`,
 `MAIN_MODULE`, `SIDE_MODULE`, or `host_exports.json`.
 
 ```text
-<linked Soft tip>/                 # desktop binary dir, or tip with tibia.wasm
-  tibia | tibia.js + tibia.wasm    # Soft + pack C++ in one binary
-  mods/<id>/
+<linked qtclient tip>/                 # desktop binary dir, or tip with tibia.wasm
+  tibia | tibia.js + tibia.wasm    # qtclient + N pack C++ in one binary
+  mods/<id>/                       # one or more packs
     mod.json                       # id, QTCLIENT_MOD_API, urls?, identity?, qmlModule?
     qml/…  overrides/…  resources/…
 ```
 
-| Soft build | Result |
+| qtclient build | Result |
 |------------|--------|
-| Stock (`STOCK_HOST=1` / no `QTCLIENT_LINKED_PACK`) | CIP tip; FS urls/identity packs only |
-| Product (`-DQTCLIENT_LINKED_PACK=<pack>/client`) | Soft⊃pack C++ + staged `mods/<id>/` |
+| Stock (`STOCK_HOST=1` / no linked packs) | CIP tip; FS urls/identity/QML packs only |
+| Product (`-DQTCLIENT_LINKED_PACK=` / `LINKED_PACKS=` / `LINKED_PACK_LIBS=`) | qtclient⊃N pack C++ + staged `mods/<id>/` |
 
-Local product path: `make qtclient client|wasm install` (Soft tip with
+Local product path: `make qtclient client|wasm install` (qtclient tip with
 `QTCLIENT_LINKED_PACK`, then FS sync onto `dist/cdn`). Portal tip is
 `IDLEOT_ASSET_BASE` (local nginx `:9080`).
 
@@ -44,20 +50,24 @@ mods/<id>/
   resources/…           # optional assets
 ```
 
-### Single tip pack + `urls`
+### Multi-pack tip + `urls`
 
-Tip loads **at most one** pack under `mods/<id>/`:
+Tip loads **all** autoload packs under `mods/<id>/` (priority descending so lower
+`priority` numbers win override remap). Identity / urls still first-wins after
+ascending priority sort.
 
-| Mode | Pack |
-|------|------|
+| Mode | Packs |
+|------|-------|
 | `--no-mods` / empty tip | none → real CipSoft (`https://www.tibia.com`, `https://static.tibia.com`) |
-| `--default-mod` | force tip `mods/default/` |
-| tip default | highest-priority autoload `mods/<id>/` (one product slot) |
+| `--default-mod` | force tip `mods/default/` only |
+| tip default | all autoload `mods/<id>/` |
+| `QTCLIENT_MODS_DIR` | all autoload packs under that root (or one dir with `mod.json`) |
+| `QTCLIENT_EXTRA_MODS_DIR` (DEV) | additional FS-only packs appended after tip packs |
 
-**Product local path (single):** set `QTCLIENT_PACK` in the umbrella `.env`, then
-`make qtclient client|wasm install` builds Soft with `QTCLIENT_LINKED_PACK` and
-stages FS under tip `mods/<id>/`. `make qtclient client run` loads that tip pack.
-`QTCLIENT_MODS_DIR` remains a Soft escape hatch for out-of-tree experiments only.
+**Product local path:** set `QTCLIENT_PACK` in the umbrella `.env`, then
+`make qtclient client|wasm install` builds qtclient with `QTCLIENT_LINKED_PACK` and
+stages FS under tip `mods/<id>/`. Multi source: `-DQTCLIENT_LINKED_PACKS=a;b`.
+`QTCLIENT_MODS_DIR` remains a qtclient escape hatch for out-of-tree experiments.
 
 Optional `urls` on `mod.json` merge into `LauncherEnv` (env > mod > `release_env.lua` > CipSoft).
 
@@ -76,20 +86,21 @@ Optional `urls` on `mod.json` merge into `LauncherEnv` (env > mod > `release_env
 | [`mods/default`](../client/mods/default/mod.json) | Demo tip myAAC (`/login.php`); `make demo-pack` |
 | Product `mods/<id>/` | Author pack (linked C++ + QML + optional `brand.json`); tip **replaces** `default` |
 
-Urls-only packs (stock Soft) omit linked C++. Product packs rebuild Soft with the pack.
+Urls-only packs (stock qtclient) omit linked C++. Product packs rebuild qtclient with the pack.
 
 ## Tip mods channel (CDN / launcher)
 
-Soft is a **generic CipSoft host**. Product chrome is a tip install channel next to
+qtclient is a **generic CipSoft host**. Product chrome is a tip install channel next to
 engine (`url`/`versionurl`) and assets (`assetsurl`):
 
 ```text
 packages/<directoryname>/
   Contents/…                 # CIP engine (unchanged)
-  mods/<id>/                 # ONE product pack (from mods.json)
-    brand.json               # optional launcher chrome
+  mods/<id>/                 # one or more product packs (from mods.json)
+    brand.json               # optional launcher chrome (at least one pack)
     mod.json
     qml/…  overrides/…  resources/…  images/launcher/…
+  mods.json                  # files[] across all packs + packs[] metadata
   mods.json.sha256           # stamp written by PackageClient::installMods
 ```
 
@@ -101,32 +112,34 @@ packages/<directoryname>/
 ```
 
 Empty / omitted = stock CIP (no tip pack). `mods.json` mirrors `assets.json`
-(`files[]` with `localfile` under `mods/<id>/…`). Launcher Play requires
-engine + assets + **mods** stamps to match when the channel is present.
+(`files[]` with `localfile` under `mods/<id>/…`; optional `packs[]` lists each
+id/priority). Launcher Play requires engine + assets + **mods** stamps to match
+when the channel is present. Emit with
+`apps/release/scripts/emit-mods-stamp.py <tip/mods> <tip>`.
 
 ### Atomic ModLoader
 
 When the tip was built with `QTCLIENT_HAS_LINKED_PACK`:
 
-1. Call linked `qtclient_mod_entry` **first**
-2. Then register identity / urls / QML from FS `mods/<id>/`
+1. Call `qtclient_invoke_linked_mods` **once** (every `qtclient_mod_<id>_entry`)
+2. Then register identity / urls / QML / overrides from **each** FS `mods/<id>/`
 
-Stock Soft (no linked pack): FS urls/identity only; a leftover `native/` tree fails closed.
+Stock qtclient (no linked pack): FS urls/identity/QML only; a leftover `native/` tree fails closed.
 
 ### Author path (any product)
 
-1. Pin Soft SHA
-2. `qtclient_add_mod(my_pack …)` under the pack `client/` (STATIC into Soft)
-3. Build Soft with `-DQTCLIENT_LINKED_PACK=<pack>/client`
+1. Pin qtclient SHA / client-sdk
+2. Export `qtclient_mod_<id>_entry` + `qtclient_add_mod(<id> …)` under pack `client/`
+3. Build tip with `-DQTCLIENT_LINKED_PACK=<pack>/client` (or `LINKED_PACKS` / `LINKED_PACK_LIBS`)
 4. Publish tip + `mods.json` lzma blobs on the CDN
 5. Point `tibiametadata` `modsurl` / `modsversionurl` at that tip
 
 Build with one CMake API:
 
 ```cmake
-include(cmake/QtClientMod.cmake)  # Soft tip already has target tibia
+include(cmake/QtClientMod.cmake)  # qtclient tip already has target tibia
 qtclient_add_mod(my_pack
-  SOURCES src/entry.cpp …
+  SOURCES src/entry.cpp …   # must export qtclient_mod_my_pack_entry
   QML_DIR qml
   QML_MODULE my_pack   # stages qml/<module>/ + generates qmldir
   OVERRIDES_DIR overrides
@@ -134,18 +147,19 @@ qtclient_add_mod(my_pack
 )
 ```
 
-Authors do **not** choose “plugin vs SIDE_MODULE”. Soft owns the tip link;
-`ModLoader::loadFromDirectory` invokes the linked entry then FS chrome.
+Authors do **not** choose “plugin vs SIDE_MODULE”. qtclient owns the tip link;
+`ModLoader::loadAll` invokes the linked entry table then FS chrome for every pack.
 
 ### WASM linked tip
 
-1. Soft tip is a normal Emscripten executable (no `MAIN_MODULE` / pack `SIDE_MODULE`).
-2. Product packs STATIC-link via `QTCLIENT_LINKED_PACK` (keep `qtclient_mod_entry` with
-   `LINKER:--undefined=` on WASM).
+1. qtclient tip is a normal Emscripten executable (no `MAIN_MODULE` / pack `SIDE_MODULE`).
+2. Product packs STATIC-link via `QTCLIENT_LINKED_PACK(S)` (keep each
+   `qtclient_mod_<id>_entry` + `qtclient_invoke_linked_mods` with `LINKER:--undefined=` on WASM).
 3. Gates:
-   - Soft CI: `_sample` STATIC linked canary + no `native/mod.wasm` under tip
+   - qtclient CI: `_sample` STATIC linked canary + no `native/mod.wasm` under tip
    - Tip presence: `check-tip-pack-presence.sh` (`mods/<id>/mod.json` + content-store)
-4. Optional `hostBuildId` on `mod.json` (strict on WASM by default).
+4. Optional `hostBuildId` on `mod.json` (strict by default on desktop + WASM;
+   set `QTCLIENT_MOD_STRICT_HOST=0` to warn-only).
 
 ```bash
 # next to client binary, or tip OPFS mods/
@@ -153,15 +167,33 @@ mods/my_pack/mod.json
 mods/my_pack/qml/my_pack/qmldir
 ```
 
-Stock Soft CDN ships host only. Product tips rebuild Soft with the pack linked, then
-stage FS chrome. Release refuses a tip whose `mod.json` still declares `native`.
+Stock qtclient CDN ships host only. Product tips rebuild qtclient with packs linked, then
+stage FS chrome. Release refuses a tip whose tree still contains `native/`.
 
 ## Pack tiers
 
 | Tier | What | When |
 |------|------|------|
-| Linked tip | Soft⊃pack C++ + FS `qml/` + `resources/` + `mod.json` | Tip build; CDN / `make qtclient install` |
-| Override pack | CIP forks under `overrides/` | **Runtime** `PackQmlInterceptor` remap |
+| Linked tip | qtclient⊃N pack C++ + FS `qml/` + `resources/` + `mod.json` | Tip build; CDN / `make qtclient install` |
+| Prebuilt archive | `libqtclient_mod_<id>.a` via `QTCLIENT_LINKED_PACK_LIBS` | Pack CI → tip link (`archive-mod.sh`) |
+| Override / FS-only pack | CIP forks + QML under `mods/<id>/` | **Runtime** remap (stock host OK) |
+
+### Pack archive
+
+```bash
+# After a linked tip build:
+bash apps/qtclient/scripts/lifecycle/package/archive-mod.sh \
+  --id idleot --build-dir apps/qtclient/build/<preset> \
+  --out /tmp/archive-idleot
+
+# Tip link without recompiling pack sources:
+cmake … -DQTCLIENT_LINKED_PACK_LIBS="idleot=/tmp/archive-idleot/lib/libqtclient_mod_idleot.a"
+# FS chrome still staged from archive mods/idleot/ (or QTCLIENT_LINKED_PACK sources).
+```
+
+Curated SDK-only packs (`_sample`): build with `-DQTCLIENT_PACK_SDK_ONLY=ON` and
+`QTCLIENT_HOST_INCLUDE_DIR` from `pack_sdk` (`client-sdk` artifact). Gate:
+`scripts/ci/check-pack-sdk-only.sh`.
 
 ### Filesystem QML modules (F5 hot reload)
 
@@ -177,7 +209,7 @@ Do **not** bake STATIC `qt_add_qml_module` into the tip — that fights desktop 
 | Build | QML source | Hot reload |
 |-------|------------|------------|
 | Umbrella `make qtclient client build` (`DEV=1` → `TIBIA_QML_DISK`) | Live pack `qml/` + override source trees via `DiskQmlInterceptor`; file watch + **F5** clears component cache | Yes (desktop) |
-| Umbrella `make stock client build` | Soft stock host (no pack) | — |
+| Umbrella `make stock client build` | qtclient stock host (no pack) | — |
 | Production `make -C apps/qtclient client build` | Staged `mods/<id>/qml/<uri>/` via `PackQmlInterceptor` | Edit → restage / rebuild tip |
 
 ## Mod API v1
@@ -199,16 +231,35 @@ Resolve with `qtclient_mod_host_api_v1()` (exported from the host). Surface:
 Brand identity comes from `mod.json` (`identity` + `priority`) via ModLoader.
 Packs register feature bootstraps only (do not re-register a second brand id).
 
-`QTCLIENT_MOD_INTERNAL=1` is a **temporary, non-public** migration bridge for
-in-tree deep engine includes. New packs must use `mod_api_v1.h` only
-(see [`client/mods/_sample`](../client/mods/_sample)). Do not rely on
-`QTCLIENT_MOD_INTERNAL` in out-of-tree packs.
+`QTCLIENT_MOD_INTERNAL=1` is a **temporary, non-public** `#ifdef` bridge for
+engine-deep hooks during migration — it is **not** the tip defs gate. Tip
+`INCLUDE_DIRECTORIES` and tip `COMPILE_DEFINITIONS`/`OPTIONS` (notably
+`QT_NO_KEYWORDS`) always flow via `QtClientMod.cmake` so packs that still
+compile tip headers get matching keyword/defs. New packs must use `mod_api_v1.h`
+only (see [`client/mods/_sample`](../client/mods/_sample)). Do not rely on
+`QTCLIENT_MOD_INTERNAL` in out-of-tree packs. IdleOT **INTERNAL unset Done**
+(`QTCLIENT_MOD_INTERNAL=0`). Pack includes are named / domain façades under
+`include/qtclient/` named / domain façades only (no `qtclient/tip/…` tree).
+`QTCLIENT_PACK_SDK_ONLY=ON` + tip closure is the pack include contract.
+`QTCLIENT_MOD_GUI_PRIVATE` remains the RHI opt-in.
+
+`QTCLIENT_MOD_GUI_PRIVATE=1` is a **narrow** opt-in that links `Qt6::GuiPrivate`
+(and `QuickPrivate` when present) for RHI headers (`rhi/qrhi.h`, `rhi/qshader.h`)
+without requiring deep tip includes. IdleOT keeps GuiPrivate after
+`MOD_INTERNAL` unset.
+
+Pack SDK: [`include/qtclient/`](../include/qtclient/README.md) (copied by
+`pack_sdk` + tip closure). Prefer
+[`include/qtclient/session.h`](../include/qtclient/session.h)
+(`localPlayer`, `isOnline`, `cipFeature`) over deep tip includes
+unless the TU needs wire helpers (`useMapObject`, `talk`, …).
 
 ### Versioning
 
 - `mod.json` → `QTCLIENT_MOD_API` must be in `[ModLoader::kMinApi, kSupportedApi]` (currently 1..1). Legacy key `modApi` is not read.
-- Optional `hostBuildId` — warn (or reject if `QTCLIENT_MOD_STRICT_HOST=1`) when it differs from the host SHA baked into `mod_api_v1`.
-- `qtclient_mod_entry(earlyCtx)` — **register-only** when `earlyCtx` is null (startup load); UI wiring runs in `earlyBootstrapAll` / `bootstrapAll`.
+- Optional `hostBuildId` — reject on mismatch by default (desktop + WASM). Set
+  `QTCLIENT_MOD_STRICT_HOST=0` to warn and continue (DEV).
+- `qtclient_mod_<id>_entry(earlyCtx)` / `qtclient_invoke_linked_mods` — **register-only** when `earlyCtx` is null (startup load); UI wiring runs in `earlyBootstrapAll` / `bootstrapAll`.
 
 ## Overrides
 
@@ -219,16 +270,26 @@ in-tree deep engine includes. New packs must use `mod_api_v1.h` only
 | Launcher | `launcher/overrides/` + `launcher/mods/<pack>/` | Launcher build |
 | Dev F5 | pack `qml/` + `overrides/` on disk | `TIBIA_QML_DISK` / Pack interceptor; **F5** clears cache — no client rebuild |
 
-Stock Soft publishes once. Product tips rebuild Soft with `QTCLIENT_LINKED_PACK`.
+Stock qtclient publishes once. Product tips rebuild qtclient with `QTCLIENT_LINKED_PACK`.
 `make tibia-sync --check` still scans pack `overrides/` for `cip-base` drift.
 
 ## CMake discovery (dev)
 
 - `QTCLIENT_ENABLE_MODS` (default ON)
 - `QTCLIENT_MODS_DIR` (CMake + runtime) default `${TIBIA_ROOT}/client/mods`
-- `QTCLIENT_LINKED_PACK` — out-of-tree pack `client/` STATIC into tip
+- `QTCLIENT_LINKED_PACK` — singular out-of-tree pack `client/` STATIC into tip
+- `QTCLIENT_LINKED_PACKS` — semicolon list of out-of-tree pack `client/` dirs
+- `QTCLIENT_LINKED_PACK_LIBS` — `id=/path/to/libqtclient_mod_<id>.a` prebuilt archives
+- `QTCLIENT_PACK_SDK_ONLY` — pack compile against client-sdk includes only
 - Empty `QTCLIENT_MODS` = all non-`_*` packs with `mod.json`
 - Sample: [`client/mods/_sample`](../client/mods/_sample) — enable with `-DQTCLIENT_MODS=_sample`
+
+## Protocol vs CIP spine
+
+Stock game frames follow CipSoft order: Net → TR → `TProtocolMessageQueue` →
+handlers (`TClassicProtocolBridgeHandler` → classic `parse*` today). Product
+extensions stay on **ExtendedOpcode** (tip-local); they must not hang new
+handlers on the CIP queue. Crystal remains classic binary wire.
 
 ## WorldView customization
 
@@ -237,33 +298,36 @@ cached hooks (null-check only on the hot path):
 
 | Extension | Role |
 |-----------|------|
-| `WorldLightingDriver` | Optional lighting (pack raycast / custom) |
+| `WorldLightingDriver` | Optional lighting (pack raycast / custom). **POD-only** like HD scaler: tip peels `ThingType`/`Thing`/`TCreature`/`TWorldMapField`/`Position`/`Point` into `LightingMapPos` / `LightingThingContext` / `LightingFrameDesc` (`mods/lighting_types.h`). Packs call `beginContext` → `addSprites`/`addFrame` → `endContext` (or `ContextScope`); no tip hub types on the driver API |
 | `WorldOverlayFactory` | QSGNode siblings after sprites |
 | `WorldFrameHooks` | Request shared outdoor/roof gather |
-| Sprite effect / HD hooks | `mods/registry` + `sprites/hdscale` |
+| Sprite effect / HD hooks | `mods/registry` + `sprites/hdscale` + `sprites/spritesession` (`QImage` peel) |
 | `ModContext.services` | Named `QObject*` for QML |
 
 ### Performance
 
-- Load mods only at startup / pre-play.
+- Load mods only at startup / pre-play (all tip packs once).
 - Per-frame: cached pointers + null checks; no `mod.json` I/O, no directory scans.
 - Stock with no packs: CIP path with no product lighting linked.
 - Oracle: see [development/mod-perf-oracle.md](development/mod-perf-oracle.md).
 
-## Entry symbol
+## Entry symbols
 
 ```c
-extern "C" void qtclient_mod_entry(const tibia::mods::ModContext* earlyCtx);
+// each pack
+extern "C" void qtclient_mod_<id>_entry(const tibia::mods::ModContext* earlyCtx);
+// tip-generated aggregator (+ back-compat alias qtclient_mod_entry)
+extern "C" void qtclient_invoke_linked_mods(const tibia::mods::ModContext* earlyCtx);
 ```
 
-Register mods, backends, WorldView drivers/overlays inside this function
-(prefer `qtclient_mod_host_api_v1()`). Linked tips keep this symbol past DCE.
+Register mods, backends, WorldView drivers/overlays inside the pack entry
+(prefer `qtclient_mod_host_api_v1()`). Linked tips keep entries past DCE.
 
 ## Client + pack
 
-- **`Client: ci`** (public) publishes stock Soft (`client-<plat>:<sha>`, `client-sdk:<sha>`).
-- Product release rebuilds Soft with `QTCLIENT_LINKED_PACK`, stages FS chrome, brands the tip, promotes CDN.
-- Local: `make qtclient client|wasm install` builds Soft with the pack linked and stages `mods/<id>`. Run loads tip `mods/<id>` only. `make stock client run` / `make stock launcher run` pass `--no-mods`.
+- **`Client: ci`** (public) publishes stock qtclient (`client-<plat>:<sha>`, `client-sdk:<sha>`).
+- Product release rebuilds qtclient with `QTCLIENT_LINKED_PACK`, stages FS chrome, brands the tip, promotes CDN.
+- Local: `make qtclient client|wasm install` builds qtclient with the pack linked and stages `mods/<id>`. Run loads tip `mods/<id>` only. `make stock client run` / `make stock launcher run` pass `--no-mods`.
 
 ## Make CLI
 
@@ -271,12 +335,12 @@ Register mods, backends, WorldView drivers/overlays inside this function
 make stock client build          # CIP host (or DEV disk QML)
 make stock client run            # --no-mods (stock client)
 make stock launcher run          # --no-mods (stock launcher + CIP chrome)
-make qtclient client install     # Soft tip + QTCLIENT_LINKED_PACK + FS chrome
-make qtclient launcher install   # Soft launcher + tip brand
-make qtclient wasm install       # Soft wasm tip + QTCLIENT_LINKED_PACK + FS chrome
+make qtclient client install     # qtclient tip + QTCLIENT_LINKED_PACK + FS chrome
+make qtclient launcher install   # qtclient launcher + tip brand
+make qtclient wasm install       # qtclient wasm tip + QTCLIENT_LINKED_PACK + FS chrome
 make qtclient client run         # start the linked tip; warns if tip mods/<id> missing
 make stock demo-pack && make stock demo-run  # tip with mods/default + CipSoft assetsurl
 make stock client run ARGS='--default-mod'   # force myAAC tip pack
 make stock client run ARGS='--no-mods'       # real CipSoft URLs
-make -C apps/qtclient client build           # app-local Soft stock
+make -C apps/qtclient client build           # app-local qtclient stock
 ```

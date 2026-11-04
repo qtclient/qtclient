@@ -29,7 +29,7 @@ test -f "$PACK/mod.json" || { echo "missing $PACK/mod.json" >&2; exit 1; }
 test -d "$TIP" || { echo "missing tip dir $TIP" >&2; exit 1; }
 
 # Engine root → Contents/MacOS so ModLoader sees mods next to the Play binary.
-# Callers often pass the Soft client tip root (…/engine) that contains *.app.
+# Callers often pass the qtclient tip root (…/engine) that contains *.app.
 macos="$(find "$TIP" -maxdepth 3 -path '*/Contents/MacOS' -type d 2>/dev/null | head -1 || true)"
 if [[ -n "$macos" && "$TIP" != "$macos" ]]; then
   echo "[merge-pack] tip → $macos (Contents/MacOS)"
@@ -52,9 +52,8 @@ rm -rf "$dest"
 mkdir -p "$mods_root"
 cp -a "$PACK" "$dest"
 test -f "$dest/mod.json"
-# Linked tip: C++ is STATIC in Soft — never ship leftover SIDE_MODULE native/.
+# Linked tip: C++ is STATIC in qtclient — drop any leftover native/ tree or key.
 rm -rf "$dest/native" "$dest/lib"
-# Drop legacy SIDE_MODULE key so portal staging / ModLoader stay FS-chrome-only.
 python3 - "$dest/mod.json" <<'PY'
 import json, sys
 path = sys.argv[1]

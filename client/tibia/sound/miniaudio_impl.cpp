@@ -1,13 +1,10 @@
-// miniaudio single-translation-unit. CIP banks are Ogg Vorbis. miniaudio does
-// not compile a Vorbis decoder unless stb_vorbis is included around it.
+// miniaudio single-translation-unit. CIP tip banks are Ogg Vorbis only — decode
+// via libvorbis + libvorbisfile (same family as CIP TSoundDecompressorThreadpool).
 #define MA_NO_FLAC
 #define MA_NO_MP3
-
-#define STB_VORBIS_HEADER_ONLY
-#include "vendor/stb_vorbis.c"
+#define MA_NO_VORBIS
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "vendor/miniaudio.h"
 
-#undef STB_VORBIS_HEADER_ONLY
-#include "vendor/stb_vorbis.c"
+#include "vendor/miniaudio_libvorbis.c"

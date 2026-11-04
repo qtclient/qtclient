@@ -6,7 +6,6 @@
 #include "gamewindow/weeklytaskscontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QLocale>
@@ -15,6 +14,9 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -27,9 +29,9 @@ using U32MapList = std::vector<U32Map>;
 using StrMap = std::map<std::string, std::string>;
 using StrMapList = std::vector<StrMap>;
 
-uint64_t resourceBalance(const Otc::ResourceTypes_t type)
+uint64_t resourceBalance(const tibia::client::ResourceTypes_t type)
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
+    const LocalPlayerPtr player = tibia::game::localPlayer();
     return player ? player->getResourceBalance(type) : 0;
 }
 
@@ -58,7 +60,7 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
     new TSoulSealsDialogController(this);
     new TTaskboardHuntingTaskRewardPurchaseConfirmationDialogController(this);
 
-    m_hooks.emplace_back("g_game", "onBountyTaskData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBountyTaskData", [this](GameObject*, const Args& args) {
         const auto* header = arg<U32Map>(args, 0);
         const auto* monsters = arg<U32MapList>(args, 1);
         const auto* talismans = arg<U32MapList>(args, 2);
@@ -67,14 +69,14 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
         refreshCurrencies();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onBountyPreferredData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBountyPreferredData", [this](GameObject*, const Args& args) {
         const auto* preferred = arg<U32MapList>(args, 0);
         const auto* raceIds = arg<std::vector<uint16_t>>(args, 2);
         if (preferred)
             m_bounty->applyPreferredData(*preferred, raceIds ? *raceIds : std::vector<uint16_t>{});
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onWeeklyTaskData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeeklyTaskData", [this](GameObject*, const Args& args) {
         const auto* header = arg<U32Map>(args, 0);
         const auto* monsters = arg<U32MapList>(args, 1);
         const auto* items = arg<U32MapList>(args, 2);
@@ -83,22 +85,21 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
         refreshCurrencies();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onTaskHuntingShopData", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTaskHuntingShopData", [this](GameObject*, const Args& args) {
         const auto* offers = arg<StrMapList>(args, 0);
         if (offers)
             m_shop->applyShopData(*offers);
         refreshCurrencies();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this]() {
         refreshCurrencies();
         m_bounty->refreshBountyPoints();
         m_shop->refreshHuntingTaskPoints();
-        return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         dialog()->destroy();
-        return std::any{};
     });
 
     input::setActionHandler(A::OPEN_TASKBOARD_DIALOG, [this](const input::TGameAction&) {
@@ -150,7 +151,7 @@ void TTaskboardDialogController::requestTabSwitch(const DialogTab& NewTab)
 
 void TTaskboardDialogController::requestDataForTab(const DialogTab tab)
 {
-    if (!g_game.canPerformGameAction())
+    if (!tibia::game::canPerformGameAction())
         return;
     switch (tab) {
     case BountyTasks:
@@ -169,17 +170,17 @@ void TTaskboardDialogController::requestDataForTab(const DialogTab tab)
 
 void TTaskboardDialogController::refreshCurrencies()
 {
-    const QString bounty = formatBalance(resourceBalance(Otc::RESOURCE_BOUNTY_POINTS));
+    const QString bounty = formatBalance(resourceBalance(tibia::client::RESOURCE_BOUNTY_POINTS));
     if (bounty != m_bountyPointsString) {
         m_bountyPointsString = bounty;
         Q_EMIT bountyPointsChanged();
     }
-    const QString tokens = formatBalance(resourceBalance(Otc::RESOURCE_TASK_HUNTING));
+    const QString tokens = formatBalance(resourceBalance(tibia::client::RESOURCE_TASK_HUNTING));
     if (tokens != m_preyHuntingTaskTokensString) {
         m_preyHuntingTaskTokensString = tokens;
         Q_EMIT preyHuntingTaskTokensChanged();
     }
-    const QString seals = formatBalance(resourceBalance(Otc::RESOURCE_SOULSEALS));
+    const QString seals = formatBalance(resourceBalance(tibia::client::RESOURCE_SOULSEALS));
     if (seals != m_soulSealsString) {
         m_soulSealsString = seals;
         Q_EMIT soulSealsChanged();

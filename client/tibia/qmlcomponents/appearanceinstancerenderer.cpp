@@ -9,19 +9,21 @@
 #include "sprites/sprite.h"
 
 #include <client/animator.h>
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/gameconfig.h>
 #include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 #include <framework/core/clock.h>
-#include <framework/core/graphicalapplication.h>
 #include "sprites/hdscale.h"
 
+#include <QLineF>
 #include <QQuickWindow>
 #include <QSGImageNode>
 
 #include <algorithm>
+#include <cmath>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::qmlcomponents {
 
@@ -33,9 +35,9 @@ constexpr int FieldSize = 32;
 
 ThingType* thingType(const int id, const ThingCategory category)
 {
-    if (id <= 0 || !g_things.isValidDatId(static_cast<uint16_t>(id), category))
+    if (id <= 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(id), category))
         return nullptr;
-    ThingType* type = g_things.getThingType(static_cast<uint16_t>(id), category).get();
+    ThingType* type = tibia::game::thingType(static_cast<uint16_t>(id), category).get();
     return type && !type->isNull() && type->getAnimationPhases() > 0 ? type : nullptr;
 }
 
@@ -182,7 +184,7 @@ InstanceBase* TAppearanceInstanceRenderer::createAppearanceInstanceByRaceID(cons
         m_raceInstance->deleteLater();
     if (RaceID <= 0)
         return nullptr;
-    const RaceType& race = g_things.getRaceData(static_cast<uint32_t>(RaceID));
+    const RaceType& race = tibia::game::raceData(static_cast<uint32_t>(RaceID));
     if (race.raceId == 0)
         return nullptr;
     const Outfit& outfit = race.outfit;
@@ -210,7 +212,7 @@ QString TAppearanceInstanceRenderer::getRaceName(const int RaceID)
 {
     if (RaceID <= 0)
         return {};
-    QString name = QString::fromStdString(g_things.getRaceData(static_cast<uint32_t>(RaceID)).name);
+    QString name = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(RaceID)).name);
     if (!name.isEmpty())
         name[0] = name[0].toUpper();
     return name;
@@ -337,9 +339,166 @@ void TAppearanceInstanceRenderer::watchFrames()
     if (!window() || !m_animated)
         return;
     m_frameConnection = connect(window(), &QQuickWindow::afterAnimating, this, [this] {
-        if (m_sinceLayout.elapsed() >= 50 && !m_appearanceInstances.isEmpty())
+        if (m_sinceLayout.elapsed() >= 50
+            && (!m_appearanceInstances.isEmpty() || !m_effects.isEmpty()))
             polish();
     });
+}
+
+void TAppearanceInstanceRenderer::refreshAppearanceInstances()
+{
+    refreshAppearanceInstances(false);
+}
+
+void TAppearanceInstanceRenderer::refreshAppearanceInstances(const bool keepEffects)
+{
+    // CIP KeepEffects: MagicalArchiveSpellPreview clears the instance list then
+    // calls refresh(true) so in-flight field/missile FX survive the layout pass.
+    if (!keepEffects)
+        m_effects.clear();
+    polish();
+}
+
+void TAppearanceInstanceRenderer::missilePatterns(const QPoint& from, const QPoint& to, int& patternX,
+                                                  int& patternY)
+{
+    const int dx = to.x() - from.x();
+    const int dy = to.y() - from.y();
+    // Same 3×3 missile pattern grid as TMissileEffectInstance::setDirection.
+    if (dx < 0 && dy < 0) {
+        patternX = 0;
+        patternY = 0;
+    } else if (dx == 0 && dy < 0) {
+        patternX = 1;
+        patternY = 0;
+    } else if (dx > 0 && dy < 0) {
+        patternX = 2;
+        patternY = 0;
+    } else if (dx > 0 && dy == 0) {
+        patternX = 2;
+        patternY = 1;
+    } else if (dx > 0 && dy > 0) {
+        patternX = 2;
+        patternY = 2;
+    } else if (dx == 0 && dy > 0) {
+        patternX = 1;
+        patternY = 2;
+    } else if (dx < 0 && dy > 0) {
+        patternX = 0;
+        patternY = 2;
+    } else if (dx < 0 && dy == 0) {
+        patternX = 0;
+        patternY = 1;
+    } else {
+        patternX = 1;
+        patternY = 1;
+    }
+}
+
+void TAppearanceInstanceRenderer::showGraphicalEffect(const int AppearanceTypeID,
+                                                      const QPoint& SubfieldCoordinate)
+{
+    const uint16_t id = tibia::game::resolveEffectId(static_cast<uint16_t>(std::max(0, AppearanceTypeID)));
+    ThingType* type = thingType(id, ThingCategoryEffect);
+    if (!type)
+        return;
+
+    TransientEffect effect;
+    effect.kind = TransientEffect::Kind::Field;
+    effect.type = type;
+    effect.fieldTopLeft = SubfieldCoordinate;
+    effect.timer.start();
+    int ticks = g_gameConfig.getEffectTicksPerFrame();
+    if (type->getId() == 33)
+        ticks <<= 2;
+    effect.durationMs = ticks * std::max(1, type->getAnimationPhases());
+    if (Animator* animator = type->getIdleAnimator())
+        effect.durationMs = static_cast<int>(animator->getTotalDuration());
+    // CIP field pattern tiling relative to the preview origin (player at 0,0).
+    const int offsetX = SubfieldCoordinate.x() / FieldSize;
+    const int offsetY = SubfieldCoordinate.y() / FieldSize;
+    effect.patternX = static_cast<unsigned>(offsetX) % std::max(1, type->getNumPatternX());
+    effect.patternX = 1 - effect.patternX - type->getNumPatternX();
+    if (effect.patternX < 0)
+        effect.patternX += type->getNumPatternX();
+    effect.patternY = static_cast<unsigned>(offsetY) % std::max(1, type->getNumPatternY());
+    m_effects.push_back(effect);
+    watchFrames();
+    polish();
+}
+
+void TAppearanceInstanceRenderer::showMissileEffect(const int AppearanceTypeID,
+                                                    const QPoint& SourceCoordinate,
+                                                    const QPoint& DestinationCoordinate)
+{
+    ThingType* type = thingType(AppearanceTypeID, ThingCategoryMissile);
+    if (!type)
+        return;
+
+    TransientEffect effect;
+    effect.kind = TransientEffect::Kind::Missile;
+    effect.type = type;
+    effect.missileFrom = SourceCoordinate;
+    effect.missileTo = DestinationCoordinate;
+    effect.timer.start();
+    missilePatterns(SourceCoordinate, DestinationCoordinate, effect.patternX, effect.patternY);
+    const QPoint delta = DestinationCoordinate - SourceCoordinate;
+    const float tileLength = QLineF(SourceCoordinate, DestinationCoordinate).length()
+        / static_cast<float>(FieldSize);
+    if (tileLength <= 0.f) {
+        effect.missileDurationMs = 0.f;
+        effect.durationMs = 0;
+    } else {
+        effect.missileDurationMs =
+            static_cast<float>(g_gameConfig.getMissileTicksPerFrame() * 2) * std::sqrt(tileLength);
+        effect.durationMs = static_cast<int>(effect.missileDurationMs);
+    }
+    m_effects.push_back(effect);
+    watchFrames();
+    polish();
+}
+
+void TAppearanceInstanceRenderer::purgeExpiredEffects()
+{
+    m_effects.erase(std::remove_if(m_effects.begin(), m_effects.end(),
+                                   [](const TransientEffect& effect) {
+                                       return effect.durationMs > 0
+                                           && effect.timer.elapsed() >= effect.durationMs;
+                                   }),
+                    m_effects.end());
+}
+
+void TAppearanceInstanceRenderer::addTransientEffects()
+{
+    purgeExpiredEffects();
+    for (TransientEffect& effect : m_effects) {
+        if (!effect.type)
+            continue;
+        QPoint field = effect.fieldTopLeft;
+        if (effect.kind == TransientEffect::Kind::Missile) {
+            if (effect.missileDurationMs <= 0.f) {
+                field = effect.missileTo;
+            } else {
+                const float t = std::clamp(static_cast<float>(effect.timer.elapsed())
+                                               / effect.missileDurationMs,
+                                           0.f, 1.f);
+                field = effect.missileFrom
+                    + QPoint(static_cast<int>(std::round((effect.missileTo.x() - effect.missileFrom.x()) * t)),
+                             static_cast<int>(std::round((effect.missileTo.y() - effect.missileFrom.y()) * t)));
+            }
+        }
+        int phase = 0;
+        const int phases = effect.type->getAnimationPhases();
+        if (m_animated && phases > 1) {
+            int ticks = effect.kind == TransientEffect::Kind::Missile
+                ? g_gameConfig.getMissileTicksPerFrame()
+                : g_gameConfig.getEffectTicksPerFrame();
+            if (effect.kind == TransientEffect::Kind::Field && effect.type->getId() == 33)
+                ticks <<= 2;
+            phase = std::min(phases - 1, static_cast<int>(effect.timer.elapsed() / std::max(1, ticks)));
+        }
+        addSprites(effect.type, field, effect.patternX, effect.patternY, 0, phase, false, 0);
+    }
 }
 
 /// Walking outfits step through their walk phases (1..n) about twice per field;
@@ -372,7 +531,7 @@ void TAppearanceInstanceRenderer::addSprites(ThingType* type, const QPoint& fiel
                                              const int zPattern, const int phase, const bool colorize, const uint32_t colors)
 {
     const auto& sprites = type->getSprites();
-    const bool protobuf = g_game.isUsingProtobuf();
+    const bool protobuf = tibia::game::isUsingProtobuf();
     // CIP UI renderer (and SingleObjectAppearanceInstanceRenderer): sprite ends at
     // the field's bottom-right. Do not subtract ThingType displacement here —
     // OutfitPreviewPanel already places outfits/mounts at position − shift so
@@ -451,11 +610,13 @@ void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQ
         type = appearance->thingType();
     if (!type)
         return;
-    const ItemPtr item = Item::create(instance.typeid_());
     const bool liquid = type->isFluidContainer() || type->isSplash();
-    item->setCountOrSubType(liquid ? static_cast<int>(instance.liquidType()) : instance.cumulativeCount());
-    int xPattern = item->getPatternX();
-    if (type->isHangable()) {
+    int xPattern = 0;
+    int yPattern = 0;
+    int zPattern = 0;
+    if (liquid) {
+        Item::patternsFor(type, static_cast<int>(instance.liquidType()), xPattern, yPattern, zPattern);
+    } else if (type->isHangable()) {
         const int patterns = type->getNumPatternX();
         if (instance.hookDirection() == ObjectInfo::EHookDirection::SOUTH)
             xPattern = patterns >= 2 ? 1 : 0;
@@ -471,7 +632,7 @@ void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQ
             phase = static_cast<int>((g_clock.millis() % (static_cast<long long>(ticks) * type->getAnimationPhases())) / ticks);
         }
     }
-    addSprites(type, instance.position(), xPattern, item->getPatternY(), item->getPatternZ(), phase, false, 0);
+    addSprites(type, instance.position(), xPattern, yPattern, zPattern, phase, false, 0);
 }
 
 /// CIP v54 0x1010b3610: draw commands of every instance, their union as
@@ -504,6 +665,8 @@ void TAppearanceInstanceRenderer::updatePolish()
             opaqueBounds |= opaqueLayoutBounds(object->type(), object->position(), xPattern);
         }
     }
+    // Magical Archive / tutorial FX sit above the static instance list.
+    addTransientEffects();
 
     QRect bounds = opaqueBounds;
     if (bounds.isEmpty()) {

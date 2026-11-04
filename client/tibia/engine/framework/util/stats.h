@@ -27,7 +27,6 @@
 #include <cstdint>
 #include <list>
 #include <mutex>
-#include <set>
 #include <string>
 #include <unordered_map>
 
@@ -69,8 +68,6 @@ struct StatsData
 using StatsMap = std::unordered_map<std::string, StatsData>;
 using StatsList = std::list<Stat*>;
 
-class UIWidget;
-
 class Stats
 {
 public:
@@ -95,10 +92,6 @@ public:
 
     int64_t m_sleepTime = 0;
 
-    void addWidget(UIWidget* widget);
-    void removeWidget(UIWidget* widget);
-    std::string getWidgetsInfo(int limit, bool pretty);
-
     inline void addTexture() { createdTextures += 1; }
     inline void removeTexture() { destroyedTextures += 1; }
 
@@ -120,9 +113,6 @@ private:
         int64_t start = 0;
     } stats[STATS_LAST + 1];
 
-    std::set<UIWidget*> widgets;
-    int createdWidgets = 0;
-    int destroyedWidgets = 0;
     int createdTextures = 0;
     int destroyedTextures = 0;
     int createdThings = 0;

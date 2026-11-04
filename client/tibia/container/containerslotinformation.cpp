@@ -1,8 +1,5 @@
 #include "containerslotinformation.h"
 
-#include <client/item.h>
-#include <tibia/assets/thingtype.h>
-
 #include <QLocale>
 #include <QStringList>
 
@@ -68,39 +65,39 @@ QString categoriesText(const char* captionId, const uint32_t flags)
 
 }
 
-QString managedContainerTooltip(const ItemPtr& item)
+QString managedContainerTooltip(const TInventorySlot& slot)
 {
-    if (!item)
+    if (slot.empty())
         return {};
     QString tooltip;
-    if (item->getLootFlags())
-        tooltip = categoriesText("loot_categories_tooltip_caption", item->getLootFlags());
-    if (item->getLootFlags() && item->getObtainFlags())
+    if (slot.lootFlags)
+        tooltip = categoriesText("loot_categories_tooltip_caption", slot.lootFlags);
+    if (slot.lootFlags && slot.obtainFlags)
         tooltip += QStringLiteral("<br><br>");
-    if (item->getObtainFlags())
-        tooltip += categoriesText("obtain_categories_tooltip_caption", item->getObtainFlags());
+    if (slot.obtainFlags)
+        tooltip += categoriesText("obtain_categories_tooltip_caption", slot.obtainFlags);
     return tooltip;
 }
 
-bool hasClock(const ItemPtr& item)
+bool hasClock(const TInventorySlot& slot)
 {
-    return item && (item->hasClockExpire() || item->hasExpire() || item->hasExpireStop());
+    return !slot.empty() && slot.hasClock;
 }
 
-QString chargesText(const ItemPtr& item, const bool whenUnused)
+QString chargesText(const TInventorySlot& slot, const bool whenUnused)
 {
-    if (item->isBrandNew() && !whenUnused)
+    if (slot.brandNew && !whenUnused)
         return {};
-    const uint charges = item->getCharges();
+    const uint charges = slot.charges;
     const QString longText = QLocale(QLocale::English).toString(charges);
     const QString shortText = chargesShortText(charges);
     return longText == shortText ? longText : lengthVariants(longText, shortText);
 }
 
-QString clockText(const ItemPtr& item, const bool whenUnused)
+QString clockText(const TInventorySlot& slot, const bool whenUnused)
 {
-    const qint64 seconds = item->getDurationTime();
-    if (seconds < 1 || (item->isBrandNew() && !whenUnused))
+    const qint64 seconds = slot.durationRemainingSeconds();
+    if (seconds < 1 || (slot.brandNew && !whenUnused))
         return {};
     return lengthVariants(durationLongText(seconds), durationShortText(seconds));
 }
@@ -147,21 +144,21 @@ QString durationShortText(const qint64 seconds)
     return QStringLiteral("%1s").arg(seconds);
 }
 
-QString slotText(const ItemPtr& item, const bool showExpire, const bool whenUnused)
+QString slotText(const TInventorySlot& slot, const bool showExpire, const bool whenUnused)
 {
-    if (!item)
+    if (slot.empty())
         return {};
     QString text;
     if (showExpire) {
-        if (item->hasWearOut())
-            text = chargesText(item, whenUnused);
-        if (hasClock(item))
-            text = clockText(item, whenUnused);
+        if (slot.hasWearOut)
+            text = chargesText(slot, whenUnused);
+        if (hasClock(slot))
+            text = clockText(slot, whenUnused);
     }
-    if (item->isStackable() && item->getCountOrSubType() > 1)
-        text = QString::number(item->getCountOrSubType());
-    if (item->hasContainerAmmoTotal())
-        text = ammoText(item->getContainerAmmoTotal());
+    if (slot.stackable && slot.count > 1)
+        text = QString::number(slot.count);
+    if (slot.containerAmmoTotal)
+        text = ammoText(slot.containerAmmoTotal);
     return text;
 }
 
@@ -196,16 +193,17 @@ void TContainerSlotQmlInformation::assign(const TSlotInfo& info)
     if (previousSlot != m_slotID)
         Q_EMIT slotIDChanged();
 
-    const ItemPtr& item = info.object;
-    const uint objectId = item ? item->getId() : 0;
-    const bool liquid = item && (item->isFluidContainer() || item->isSplash());
-    const uint count = item && item->isStackable() ? item->getCountOrSubType() : 0;
-    const auto liquidType = static_cast<Info::ELiquidType>(liquid ? item->getCountOrSubType() : 0);
-    const uint tier = item ? item->getTier() : 0;
-    const uint decoItem = item ? item->getDecoItemId() : 0;
-    if (item != m_object || objectId != m_objectID || count != m_objectCount || liquidType != m_liquidType || tier != m_upgradeTier
-        || decoItem != m_decoItemObjectID) {
-        m_object = item;
+    const TInventorySlot& slot = info.appearance;
+    const uint objectId = slot.typeId;
+    const uint count = slot.stackable ? slot.count : 0;
+    const auto liquidType = static_cast<Info::ELiquidType>(slot.fluidOrSplash ? slot.fluid : 0);
+    const uint tier = slot.tier;
+    const uint decoItem = slot.decoItemId;
+    if (slot.typeId != m_appearance.typeId || objectId != m_objectID || count != m_objectCount || liquidType != m_liquidType
+        || tier != m_upgradeTier || decoItem != m_decoItemObjectID || slot.count != m_appearance.count
+        || slot.fluid != m_appearance.fluid || slot.charges != m_appearance.charges
+        || slot.durationEndMs != m_appearance.durationEndMs) {
+        m_appearance = slot;
         m_objectID = objectId;
         m_objectCount = count;
         m_liquidType = liquidType;
@@ -213,6 +211,8 @@ void TContainerSlotQmlInformation::assign(const TSlotInfo& info)
         m_upgradeTier = tier;
         m_decoItemObjectID = decoItem;
         Q_EMIT appearanceChanged();
+    } else {
+        m_appearance = slot;
     }
     if (info.acceptsDrop != m_acceptsDrop) {
         m_acceptsDrop = info.acceptsDrop;

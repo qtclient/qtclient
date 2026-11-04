@@ -115,7 +115,7 @@ public:
     {
         bool mounted = false;
         bool randomMount = false;
-        /// Soft ChooseOutfit tryOutfitMode (0 own, 3 hireling, 5 show-off podium).
+        /// qtclient ChooseOutfit tryOutfitMode (0 own, 3 hireling, 5 show-off podium).
         int tryOutfitMode = 0;
         /// Male/female outfit pairs (only sent with the both-genders modes).
         QList<QPair<int, int>> genderPairs;
@@ -137,6 +137,8 @@ public:
     /// Fills the models from the outfit window message and shows the dialog.
     void open(const Outfit& current, QList<TCustomiseCharacterModel::Entry> outfits, QList<TCustomiseCharacterModel::Entry> mounts,
               QList<TCustomiseCharacterModel::Entry> summons);
+    /// Character-info outfit/mount/summon tile (CIP EDialogMode::CharacterInfoShowSelection).
+    void openCharacterInfoSelection(int outfitId, bool isOutfit, bool isMount, bool isSummonSkin);
 
     void onCancelClicked() override;
     void onClickedOpenStoreOffer(int offerID) override;

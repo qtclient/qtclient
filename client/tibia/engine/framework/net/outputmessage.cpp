@@ -22,7 +22,7 @@
 
 #include <framework/net/outputmessage.h>
 
-#include "tibia/world/game.h"
+#include <tibia/game/gamesession.h>
 #include "framework/util/crypt.h"
 
 OutputMessage::OutputMessage() {
@@ -85,7 +85,7 @@ void OutputMessage::addString(const std::string_view buffer)
 {
     const int len = buffer.length();
     if (len > MAX_STRING_LENGTH)
-        throw stdext::exception(fmt::format("string length > {}", MAX_STRING_LENGTH));
+        throw stdext::exception(std::format("string length > {}", static_cast<int>(MAX_STRING_LENGTH)));
     checkWrite(len + 2);
     addU16(len);
     memcpy(m_buffer + m_writePos, buffer.data(), len);

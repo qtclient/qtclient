@@ -3,7 +3,7 @@
 #include "framework/net/gamelink.h"
 #include "framework/net/protocol.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <framework/core/clock.h>
 #include <framework/stdext/math.h>
 #include <framework/util/crypt.h>

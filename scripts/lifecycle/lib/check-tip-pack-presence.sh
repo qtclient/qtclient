@@ -4,22 +4,19 @@
 #
 # Usage:
 #   check-tip-pack-presence.sh --tip <dir> [--id idleot] [--cdn <dist/cdn>]
-#   check-tip-pack-presence.sh --tip <dir> --require-native   # legacy SIDE_MODULE
-# Linked tip: FS chrome only (mod.json + qml/overrides) — default.
+# Linked tip: FS chrome only (mod.json + qml/overrides).
 set -euo pipefail
 
 TIP=""
 CDN=""
 PACK_ID="idleot"
-REQUIRE_NATIVE=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --tip) TIP="${2:?}"; shift 2 ;;
     --cdn) CDN="${2:?}"; shift 2 ;;
     --id) PACK_ID="${2:?}"; shift 2 ;;
-    --require-native) REQUIRE_NATIVE=1; shift ;;
-    --allow-urls-only) REQUIRE_NATIVE=0; shift ;;
+    --allow-urls-only) shift ;; # accepted for older callers; always FS-only
     *) echo "unknown arg: $1" >&2; exit 1 ;;
   esac
 done
@@ -36,23 +33,7 @@ if [[ ! -f "$pack/mod.json" ]]; then
   exit 1
 fi
 
-if [[ "$REQUIRE_NATIVE" == "1" ]]; then
-  native=""
-  for cand in "$pack/native/mod.wasm" "$pack/native/mod.so" \
-              "$pack/native/mod.dylib" "$pack/native/mod.dll"; do
-    if [[ -f "$cand" ]]; then
-      native="$cand"
-      break
-    fi
-  done
-  if [[ -z "$native" ]]; then
-    echo "::error::tip pack has no native module under $pack/native/" >&2
-    exit 1
-  fi
-  echo "[tip-presence] ok native=$native"
-else
-  echo "[tip-presence] ok urls-only mod.json=$pack/mod.json"
-fi
+echo "[tip-presence] ok mod.json=$pack/mod.json"
 
 if [[ -n "$CDN" ]]; then
   store="$CDN/content"

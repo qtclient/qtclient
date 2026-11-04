@@ -13,6 +13,8 @@
 
 #include <cstring>
 #include <limits>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
 
 namespace tibia::cyclopedia {
 
@@ -354,7 +356,7 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
     : QObject(parent)
 {
     using client::gamecore::argInt;
-    m_hooks.emplace_back("g_game", "onCyclopediaMapDiscoveryData", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapDiscoveryData", [this](GameObject*, const std::vector<std::any>& args) {
         const auto* mains = args.size() > 0 ? std::any_cast<std::vector<std::vector<int>>>(&args[0]) : nullptr;
         const auto* discovered = args.size() > 1 ? std::any_cast<std::vector<int>>(&args[1]) : nullptr;
         const auto* discoverable = args.size() > 2 ? std::any_cast<std::vector<int>>(&args[2]) : nullptr;
@@ -371,7 +373,7 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         return std::any{};
     });
     // CIP 0x100a774a0: an active area replaces the viewpoints (full session list + states).
-    m_hooks.emplace_back("g_game", "onCyclopediaMapDiscoveryArea", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapDiscoveryArea", [this](GameObject*, const std::vector<std::any>& args) {
         if (!argInt(args, 1))
             return std::any{};
         m_discoverySubarea = static_cast<int>(argInt(args, 0));
@@ -388,7 +390,7 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         Q_EMIT changed();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaMapPassages", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapPassages", [this](GameObject*, const std::vector<std::any>& args) {
         m_passages.clear();
         if (const auto* rows = args.size() > 0 ? std::any_cast<std::vector<std::vector<int>>>(&args[0]) : nullptr) {
             for (const std::vector<int>& row : *rows) {
@@ -405,7 +407,7 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         Q_EMIT changed();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaMapDonations", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapDonations", [this](GameObject*, const std::vector<std::any>& args) {
         if (const auto* goal = args.size() > 0 ? std::any_cast<uint64_t>(&args[0]) : nullptr)
             m_donationGoal = *goal;
         m_donations.clear();
@@ -418,17 +420,17 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         Q_EMIT changed();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaMapCurrentArea", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapCurrentArea", [this](GameObject*, const std::vector<std::any>& args) {
         m_currentArea = static_cast<int>(argInt(args, 0));
         Q_EMIT changed();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onCyclopediaMapExploringArea", [this](LuaObject*, const std::vector<std::any>& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapExploringArea", [this](GameObject*, const std::vector<std::any>& args) {
         m_exploringSubarea = static_cast<int>(argInt(args, 0));
         Q_EMIT changed();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const std::vector<std::any>&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_mainAreas.clear();
         m_discovered.clear();
         m_discoverable.clear();
@@ -441,7 +443,6 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         m_currentArea = 0;
         m_exploringSubarea = 0;
         Q_EMIT changed();
-        return std::any{};
     });
 }
 

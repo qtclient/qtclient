@@ -15,8 +15,9 @@ Stock CipSoft is **not** under `mods/` (`upstream/` + `client/tibia/`).
 | `_sample/` | SDK example |
 | `default/` | Demo tip myAAC urls (`/login.php`); staged by `make demo-pack` |
 
-product lives in `apps/pack-client` (`QTCLIENT_PACK` in root `.env`).
-`make qtclient client install` merges into tip `mods/pack` (replaces `default`).
+Product pack lives in [`apps/idleot-client`](../../../idleot-client/) (`QTCLIENT_PACK` in
+root `.env`). `make qtclient client install` merges into tip `mods/idleot`
+(replaces `default`).
 
 ## Inplace (gitignored)
 

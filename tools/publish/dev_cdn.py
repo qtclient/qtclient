@@ -135,9 +135,8 @@ def _wasm_src_dir() -> Path | None:
     """Prefer build/tibia-wasm/bin (TOGGLE_BIN_FOLDER) over stale root symlinks.
 
     Older cmake layouts left tibia.wasm at the build root (or a symlink into
-    client/tibia/). Linked-tip installs write the live tip under bin/; if we
-    pick the root first, make qtclient wasm install republishes the old Soft
-    and /play keeps SIDE_MODULE dlopen against native/mod.
+    client/tibia/). Linked-tip installs write the live tip under bin/; prefer
+    that over a stale root binary.
     """
     root = Path(os.environ.get("TIBIA_WASM_DIR", OTC / "build" / "tibia-wasm"))
     candidates = (root / "bin", root)
@@ -293,7 +292,7 @@ def tibia_client_web(src_dir: Path | None = None) -> int:
     }
     (dest_dir / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
     (dest_dir / "package.json.version").write_text(stamp + "\n")
-    # Keep tip pack when Soft wasm rebuild overwrites floating tip files.
+    # Keep tip pack when qtclient wasm rebuild overwrites floating tip files.
     _resync_tip_pack(src_dir, dest_dir)
     print(f"[dev-cdn] tibiaclient-web -> {dest_dir} ({stamp})")
     return 0
@@ -320,7 +319,7 @@ def _resync_tip_pack(src_dir: Path, dest_dir: Path) -> None:
         shutil.rmtree(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(pack, out)
-    # Linked tip: never ship SIDE_MODULE leftovers onto the CDN floating tip.
+    # Linked tip: never ship leftover native/ pack trees onto the CDN tip.
     for junk in ("native", "lib"):
         junk_path = out / junk
         if junk_path.exists():

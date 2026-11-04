@@ -26,6 +26,12 @@
 #include "framework/core/declarations.h"
 #include "outfit.h"
 
+#include <memory>
+
+namespace tibia::appearances {
+class TShowOffSocketAppearanceInstance;
+}
+
 enum ItemAttr : uint8_t
 {
     ATTR_END = 0,
@@ -76,6 +82,10 @@ class Item final : public Thing
 public:
     static ItemPtr create(int id);
 
+    /// Stackable/fluid pattern indices without constructing an Item (QML renderers).
+    /// Hangable hook is caller-owned (no tile). Position-based patterns stay 0.
+    static void patternsFor(ThingType* type, int countOrSubType, int& patternX, int& patternY, int& patternZ);
+
     void draw(const Point& dest, bool drawThings = true, LightSink* lightView = nullptr) override;
     void drawLight(const Point& dest, LightSink* lightView) override;
 
@@ -96,15 +106,18 @@ public:
     void setDecoItemId(const uint16_t id) { m_decoItemId = id; }
     void setManagedContainerFlags(const uint32_t lootFlags, const uint32_t obtainFlags) { m_lootFlags = lootFlags; m_obtainFlags = obtainFlags; }
 
-    /// Show-off socket (podium) look from AddItem — outfit may be creature or LookTypeEx item.
+    /// Show-off socket (podium) look — CIP `TShowOffSocketAppearanceInstance` owns storage.
     void setPodiumOutfit(const Outfit& outfit);
     void clearPodiumOutfit();
-    void setPodiumDirection(uint8_t direction) { m_podiumDirection = direction; }
-    void setPodiumVisible(bool visible) { m_podiumVisible = visible; }
-    const Outfit& getPodiumOutfit() const { return m_podiumOutfit; }
-    uint8_t getPodiumDirection() const { return m_podiumDirection; }
-    bool isPodiumVisible() const { return m_podiumVisible; }
+    void setPodiumDirection(uint8_t direction);
+    void setPodiumVisible(bool visible);
+    const Outfit& getPodiumOutfit() const;
+    uint8_t getPodiumDirection() const;
+    bool isPodiumVisible() const;
     bool hasPodiumOutfit() const;
+    /// Live CIP show-off instance (created on first podium wire write).
+    std::shared_ptr<tibia::appearances::TShowOffSocketAppearanceInstance> showOffSocket();
+    std::shared_ptr<tibia::appearances::TShowOffSocketAppearanceInstance> showOffSocket() const;
 
     int getCountOrSubType() { return m_countOrSubType; }
     int getSubType();
@@ -155,46 +168,6 @@ public:
 
     void onPositionChange(const Position& /*newPos*/, const Position& /*oldPos*/) override { updatePatterns(); }
 
-#ifdef FRAMEWORK_EDITOR
-    std::string getName();
-    static ItemPtr createFromOtb(int id);
-    uint16_t getServerId() { return m_serverId; }
-    void setOtbId(uint16_t id);
-    void unserializeItem(const BinaryTreePtr& in);
-    void serializeItem(const OutputBinaryTreePtr& out);
-
-    void setDepotId(uint16_t depotId) { m_attribs.set(ATTR_DEPOT_ID, depotId); }
-    uint16_t getDepotId() { return m_attribs.get<uint16_t>(ATTR_DEPOT_ID, 0); }
-
-    void setDoorId(uint8_t doorId) { m_attribs.set(ATTR_HOUSEDOORID, doorId); }
-    uint8_t getDoorId() { return m_attribs.get<uint8_t >(ATTR_HOUSEDOORID, 0); }
-
-    uint16_t getUniqueId() { return m_attribs.get<uint16_t>(ATTR_UNIQUE_ID, 0); }
-    uint16_t getActionId() { return m_attribs.get<uint16_t>(ATTR_ACTION_ID, 0); }
-    void setActionId(uint16_t actionId) { m_attribs.set(ATTR_ACTION_ID, actionId); }
-    void setUniqueId(uint16_t uniqueId) { m_attribs.set(ATTR_UNIQUE_ID, uniqueId); }
-
-    std::string getText() { return m_attribs.get<std::string>(ATTR_TEXT); }
-    std::string getDescription() { return m_attribs.get<std::string>(ATTR_DESC); }
-    void setDescription(const std::string& desc) { m_attribs.set(ATTR_DESC, desc); }
-    void setText(const std::string& txt) { m_attribs.set(ATTR_TEXT, txt); }
-
-    Position getTeleportDestination() { return m_attribs.get<Position>(ATTR_TELE_DEST); }
-    void setTeleportDestination(const Position& pos) { m_attribs.set(ATTR_TELE_DEST, pos); }
-
-    bool isHouseDoor() { return m_attribs.has(ATTR_HOUSEDOORID); }
-    bool isDepot() { return m_attribs.has(ATTR_DEPOT_ID); }
-    bool isContainer() const override { return m_attribs.has(ATTR_CONTAINER_ITEMS) || Thing::isContainer(); }
-    bool isDoor() { return m_attribs.has(ATTR_HOUSEDOORID); }
-    bool isTeleport() { return m_attribs.has(ATTR_TELE_DEST); }
-
-    ItemVector getContainerItems() { return m_containerItems; }
-    ItemPtr getContainerItem(int slot) { return m_containerItems[slot]; }
-    void addContainerItemIndexed(const ItemPtr& i, int slot) { m_containerItems[slot] = i; }
-    void addContainerItem(const ItemPtr& i) { m_containerItems.push_back(i); }
-    void removeContainerItem(int slot) { m_containerItems[slot] = nullptr; }
-    void clearContainerItems() { m_containerItems.clear(); }
-#endif
 
 private:
     ThingType* getThingType() const override;
@@ -215,9 +188,8 @@ private:
     uint32_t m_lootFlags{ 0 };
     uint32_t m_obtainFlags{ 0 };
 
-    Outfit m_podiumOutfit;
-    uint8_t m_podiumDirection{ 2 }; // Otc::South
-    bool m_podiumVisible{ true };
+    /// CIP show-off socket owns outfit / direction / pedestal visibility.
+    std::shared_ptr<tibia::appearances::TShowOffSocketAppearanceInstance> m_showOff;
 
     Color m_color{ Color::white };
 
@@ -226,11 +198,6 @@ private:
     bool m_async{ true };
     std::string m_tooltip;
 
-#ifdef FRAMEWORK_EDITOR
-    uint16_t m_serverId{ 0 };
-    stdext::dynamic_storage<ItemAttr> m_attribs;
-    ItemVector m_containerItems;
-#endif
 };
 
 #pragma pack(pop)

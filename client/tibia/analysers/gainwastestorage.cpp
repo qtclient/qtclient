@@ -1,12 +1,13 @@
 #include "analysers/analyserstorages.h"
 #include "cyclopedia/iteminfostorage.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 
 #include <algorithm>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::analysers {
 
@@ -48,19 +49,19 @@ bool paysInGold(const NPCData& offer)
 /// CIP TItemPriceStorage +0xa0: own values only count for premium players.
 bool premium()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     return player && player->isPremium();
 }
 
 const std::vector<NPCData>* npcOffers(const uint16_t itemId)
 {
-    const ThingTypePtr& type = g_things.getThingType(itemId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(itemId, ThingCategoryItem);
     return type ? &type->getNpcSaleData() : nullptr;
 }
 
 QString itemName(const uint16_t itemId)
 {
-    const ThingTypePtr& type = g_things.getThingType(itemId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(itemId, ThingCategoryItem);
     if (!type)
         return {};
     if (!type->getName().empty())

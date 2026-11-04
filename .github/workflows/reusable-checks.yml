@@ -35,9 +35,17 @@ jobs:
           test ! -f cmake/host_exports.json
           test ! -f scripts/lifecycle/lib/write_host_exports_rsp.py
           grep -q 'QTCLIENT_LINKED_PACK' cmake/TibiaMods.cmake
+          grep -q 'QTCLIENT_LINKED_PACKS' cmake/TibiaMods.cmake
+          grep -q 'qtclient_link_mod_archive' cmake/QtClientMod.cmake
+          test -f cmake/GenerateLinkedMods.cmake
           grep -q 'STATIC' cmake/QtClientMod.cmake
           grep -q 'qtclient_add_mod' cmake/QtClientMod.cmake
+          grep -q 'qtclient_invoke_linked_mods' client/tibia/mods/mod_entry.h
           grep -q 'QTCLIENT_HAS_LINKED_PACK' client/tibia/mods/modloader.cpp
+          grep -q 'qtclient_mod_sample_entry' client/mods/_sample/src/sample_mod.cpp
+          grep -q 'QTCLIENT_PACK_SDK_ONLY' cmake/QtClientMod.cmake
+          test -f scripts/lifecycle/package/archive-mod.sh
+          bash -n scripts/lifecycle/package/archive-mod.sh
           if grep -q 'SHELL:-sMAIN_MODULE=2' client/tibia/CMakeLists.txt; then
             echo "::error::MAIN_MODULE=2 must stay deleted (linked tip)" >&2
             exit 1
@@ -51,10 +59,5 @@ jobs:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REVIEWDOG_REPORTER: github-pr-check
         run: |
-          # luac/luacheck/xmllint no-op when data/modules absent (tibia-only Soft).
-          # Soft-fail luac if the runner itself errors with zero findings (legacy flake).
-          reviewdog -reporter="${REVIEWDOG_REPORTER}" -runners=luac -fail-level=error -filter-mode=added \
-            || { echo "::warning::luac reviewdog failed (often empty Lua tree); continuing"; true; }
-          reviewdog -reporter="${REVIEWDOG_REPORTER}" -runners=luacheck -filter-mode=added || true
           reviewdog -reporter="${REVIEWDOG_REPORTER}" -runners=xmllint -fail-level=error -filter-mode=added
           reviewdog -reporter="${REVIEWDOG_REPORTER}" -runners=cppcheck -filter-mode=added || true

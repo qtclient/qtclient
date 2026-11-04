@@ -3,8 +3,9 @@
 #include "app/clientoptions.h"
 #include "gamewindow/contextmenucontroller.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -22,19 +23,18 @@ THitpointManabarController::THitpointManabarController(QObject* parent)
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
             &THitpointManabarController::onOptionChanged);
 
-    const auto onPlayer = [this](LuaObject* self, const std::vector<std::any>&) {
-        if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && self == player.get())
-            updateFromPlayer();
+    const auto onPlayer = [this](GameObject*, const std::vector<std::any>&) {
+        updateFromPlayer();
         return std::any{};
     };
-    m_hooks.emplace_back("object", "onHealthChange", onPlayer);
-    m_hooks.emplace_back("object", "onManaChange", onPlayer);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onHealthChange", onPlayer);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onManaChange", onPlayer);
     updateFromPlayer();
 }
 
 void THitpointManabarController::updateFromPlayer()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return;
     const auto update = [this](int& field, const uint32_t value, void (THitpointManabarController::*signal)()) {

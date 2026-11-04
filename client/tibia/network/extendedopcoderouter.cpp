@@ -1,8 +1,9 @@
 #include "extendedopcoderouter.h"
 
 #include "tibia/protocol/extendedopcode.h"
+#include "tibia/protocol/extendedopcode_json.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/protocolgame.h>
 #include <framework/net/inputmessage.h>
 
@@ -88,7 +89,7 @@ void ExtendedOpcodeRouter::updateOpcodeHook()
         m_opcodeHook = {};
         return;
     }
-    m_opcodeHook = client::gamecore::Hook("object", "onOpcode", [this](LuaObject* self, const std::vector<std::any>& args) {
+    m_opcodeHook = client::gamecore::Hook("object", "onOpcode", [this](GameObject* self, const std::vector<std::any>& args) {
         if (!dynamic_cast<ProtocolGame*>(self) || args.size() < 2)
             return std::any{};
         const auto opcode = static_cast<uint8_t>(client::gamecore::argInt(args, 0));
@@ -148,19 +149,7 @@ bool ExtendedOpcodeRouter::sendExtendedOpcode(const uint8_t opcode, const std::s
 
 bool ExtendedOpcodeRouter::sendExtendedJsonOpcode(const uint8_t opcode, const QJsonValue& data)
 {
-    const QByteArray bytes = data.isArray() ? QJsonDocument(data.toArray()).toJson(QJsonDocument::Compact)
-                                            : QJsonDocument(data.toObject()).toJson(QJsonDocument::Compact);
-    // Crystal's NetworkMessage::getString decodes ISO-8859-1.
-    const std::string buffer = QString::fromUtf8(bytes).toLatin1().toStdString();
-    if (buffer.size() <= MaxPacketSize)
-        return sendExtendedOpcode(opcode, buffer);
-
-    for (size_t offset = 0; offset < buffer.size(); offset += MaxPacketSize) {
-        const char status = offset == 0 ? 'S' : (offset + MaxPacketSize >= buffer.size() ? 'E' : 'P');
-        if (!sendExtendedOpcode(opcode, status + buffer.substr(offset, MaxPacketSize)))
-            return false;
-    }
-    return true;
+    return tibia::protocol::sendExtendedJsonOpcode(opcode, data);
 }
 
 }

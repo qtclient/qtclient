@@ -23,10 +23,14 @@
 #include "protocol.h"
 #include "tibia/runtime/host.h"
 
-#include "tibia/world/game.h"
+#include <tibia/game/gamesession.h>
+#include "tibia/protocol/protocolciptypes.h"
+#include "client/protocolgame.h"
 #include "gamelink.h"
 #include "inputmessage.h"
 #include "outputmessage.h"
+
+#include <QByteArray>
 
 #include <algorithm>
 #include <ctime>
@@ -197,6 +201,20 @@ void Protocol::send(const OutputMessagePtr& outputMessage, const bool raw)
         outputMessage->reset();
         return;
     }
+
+    // CIP outbound: prepareAndEnqueueGameclientMessage → queue → wire sink.
+    // writeClassicClientFrame re-enters here with the load-split flag set.
+    if (auto* game = dynamic_cast<ProtocolGame*>(this);
+        game && !game->isWritingClientLoadSplit() && !raw) {
+        if (tibia::protocol::protocolMessageQueue()) {
+            const QByteArray classic(payload.data(), int(payload.size()));
+            outputMessage->reset();
+            tibia::protocol::prepareOutboundClientFrame(classic);
+            return;
+        }
+        // Pre-ownProductSurface: fall through to direct wire.
+    }
+
     gamelink::write(this, reinterpret_cast<const uint8_t*>(payload.data()), static_cast<uint16_t>(payload.size()), raw);
     onSend();
     outputMessage->reset();
@@ -238,12 +256,12 @@ void Protocol::onConnect()
 
 void Protocol::onRecv(const InputMessagePtr& inputMessage)
 {
-    callLuaField("onRecv", inputMessage);
+    (void)inputMessage;
 }
 
 void Protocol::onError(const std::error_code& err)
 {
-    callLuaField("onError", err.message(), err.value());
+    (void)err;
     disconnect();
 }
 

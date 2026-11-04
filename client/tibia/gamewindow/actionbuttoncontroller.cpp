@@ -5,7 +5,6 @@
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
@@ -13,6 +12,8 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -29,7 +30,7 @@ constexpr int MultiActionSlots = 3;
 QString objectDisplayName(const int objectId, const std::optional<int>& tier)
 {
     QString name;
-    if (const ThingTypePtr& type = g_things.getThingType(objectId, ThingCategoryItem); type && !type->getName().empty())
+    if (const ThingTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem); type && !type->getName().empty())
         name = QString::fromStdString(type->getName());
     if (name.isEmpty())
         name = qtTrId("actionbar_tooltip_object_name_dummy");
@@ -40,7 +41,7 @@ QString objectDisplayName(const int objectId, const std::optional<int>& tier)
 
 bool isMultiUse(const int objectId)
 {
-    const ThingTypePtr& type = g_things.getThingType(objectId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(objectId, ThingCategoryItem);
     return type && type->isMultiUse();
 }
 
@@ -262,7 +263,7 @@ void TActionButtonController::refreshObject()
         return;
     uint count = 0;
     bool equipped = false;
-    if (const LocalPlayerPtr& player = g_game.getLocalPlayer()) {
+    if (const LocalPlayerPtr& player = tibia::game::localPlayer()) {
         const uint8_t tier = uint8_t(m_setting.upgradeTier.value_or(0));
         count = player->getInventoryCount(uint16_t(m_setting.objectId), tier);
         equipped = player->hasEquippedItemId(uint16_t(m_setting.objectId), tier);
@@ -284,6 +285,8 @@ game::TCooldown TActionButtonController::currentCooldown() const
         return {};
     if (m_type == SPELL)
         return storage->spellCooldown(m_spellId);
+    if (m_type == PASSIVEABILITY)
+        return storage->passiveCooldown();
     if (m_type == OBJECT) {
         if (const spells::TSpellInfo* rune = spells::TSpellInfoStorage::instance()->runeSpellOfObject(m_setting.objectId))
             return storage->spellCooldown(rune->id);
@@ -296,7 +299,7 @@ game::TCooldown TActionButtonController::currentCooldown() const
 bool TActionButtonController::isUsable() const
 {
     if (m_type == SPELL) {
-        const LocalPlayerPtr& player = g_game.getLocalPlayer();
+        const LocalPlayerPtr& player = tibia::game::localPlayer();
         if (!player)
             return false;
         const std::vector<uint16_t>& learned = player->getSpells();
@@ -315,6 +318,8 @@ qint64 TActionButtonController::remainingCooldown(const qint64 now) const
     game::TCooldown cooldown;
     if (m_type == SPELL) {
         cooldown = storage->spellCooldown(m_spellId);
+    } else if (m_type == PASSIVEABILITY) {
+        cooldown = storage->passiveCooldown();
     } else if (m_type == OBJECT) {
         if (const spells::TSpellInfo* rune = spells::TSpellInfoStorage::instance()->runeSpellOfObject(m_setting.objectId)) {
             cooldown = storage->spellCooldown(rune->id);
@@ -336,7 +341,7 @@ qint64 TActionButtonController::remainingCooldown(const qint64 now) const
 
 TActionButtonController* TActionButtonController::currentMultiAction(const qint64 now) const
 {
-    const int ping = g_game.getPing();
+    const int ping = tibia::game::getPing();
     const qint64 window = std::min<qint64>(std::max(ping, 0) / 2, 400);
     qint64 best = std::numeric_limits<qint64>::max();
     TActionButtonController* candidate = nullptr;

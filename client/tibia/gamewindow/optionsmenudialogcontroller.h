@@ -141,7 +141,6 @@ private:
     /// CIP +0xbf0.
     QString m_importFile;
     client::TGameClient* m_gameClient = nullptr;
-    client::gamecore::Hook m_gameStartHook;
 
     QPointer<QQuickWindow> m_window;
     QMetaObject::Connection m_frameConnection;

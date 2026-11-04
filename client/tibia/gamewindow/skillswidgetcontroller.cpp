@@ -8,12 +8,13 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QQuickItem>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -112,9 +113,8 @@ TSkillsWidgetController::TSkillsWidgetController(QQuickItem* gameWindowItem, QQm
     m_updateTimer.setInterval(0);
     connect(&m_updateTimer, &QTimer::timeout, this, &TSkillsWidgetController::updateEntries);
     for (const char* event : PlayerEvents) {
-        m_hooks.emplace_back("object", event, [this](LuaObject* self, const std::vector<std::any>&) {
-            if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && self == player.get())
-                m_updateTimer.start();
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const std::vector<std::any>&) {
+            m_updateTimer.start();
             return std::any{};
         });
     }
@@ -124,9 +124,8 @@ TSkillsWidgetController::TSkillsWidgetController(QQuickItem* gameWindowItem, QQm
     m_combatStatsTimer.setInterval(0);
     connect(&m_combatStatsTimer, &QTimer::timeout, this, &TSkillsWidgetController::updateCombatStats);
     for (const char* event : CombatStatsEvents) {
-        m_hooks.emplace_back("object", event, [this](LuaObject* self, const std::vector<std::any>&) {
-            if (const LocalPlayerPtr& player = g_game.getLocalPlayer(); player && self == player.get())
-                m_combatStatsTimer.start();
+        m_hooks.emplace_back(tibia::game::kNotifyScope, event, [this](GameObject*, const std::vector<std::any>&) {
+            m_combatStatsTimer.start();
             return std::any{};
         });
     }
@@ -191,7 +190,7 @@ void TSkillsWidgetController::saveWidgetOptions() { writeOptions(); }
 
 void TSkillsWidgetController::updateEntries()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     const bool xpBoostPurchasable = player && player->isStoreExpBoostPurchasable();
     for (const Row& row : m_rows) {
         game::SkillsWidgetEntry entry;
@@ -212,7 +211,7 @@ void TSkillsWidgetController::updateEntries()
 
 void TSkillsWidgetController::updateCombatStats()
 {
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     const cyclopedia::CombatStats stats = player ? combatStats(*player) : cyclopedia::CombatStats{};
     QObject* const previous[] = { m_offenceStats, m_defenceStats, m_miscStats };
     m_offenceStats = new cyclopedia::TOffenceStatsQmlData(stats, this);

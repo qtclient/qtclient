@@ -41,11 +41,11 @@ Presets (`macos-dev`, `linux-release`, `windows-release`, `wasm-tibia`, …) all
 
 ## Dependencies
 
-Declared in [`vcpkg.json`](../../vcpkg.json). Product needs APNG → `libpng` feature `apng`. No host zlib/protobuf/fmt.
+Declared in [`vcpkg.json`](../../vcpkg.json). Raster I/O is Qt (`QImage` / `QImageReader`); animated UI assets are WebP (convert APNG with `tools/extract/apng_to_webp.py`). No vcpkg libpng.
 
 ## Binary cache
 
-Local presets use monorepo `.cache/vcpkg/archives`. CI uses Soft composites
+Local presets use monorepo `.cache/vcpkg/archives`. CI uses qtclient composites
 [`.github/actions/cache-restore`](../../.github/actions/cache-restore/action.yml) /
 [`cache-save`](../../.github/actions/cache-save/action.yml):
 
@@ -56,4 +56,4 @@ Local presets use monorepo `.cache/vcpkg/archives`. CI uses Soft composites
 
 Primary keys include `{sha}` so each run can **save** a new tip (Actions keys are immutable). Restore-keys warm from the previous tip. Do not use `save-always` on `actions/cache@v4` — it is broken; use restore + save.
 
-Release pack and Crystal call the same Soft actions (`uses: qtclient/qtclient/.github/actions/...` or `./_qtclient/.github/actions/...`). Qt prefixes stay on `ghcr.io/qtclient/qt:<sha>-<kit>` (not Actions).
+Release pack and Crystal call the same qtclient actions (`uses: qtclient/qtclient/.github/actions/...` or `./_qtclient/.github/actions/...`). Qt prefixes stay on `ghcr.io/qtclient/qt:<sha>-<kit>` (not Actions).

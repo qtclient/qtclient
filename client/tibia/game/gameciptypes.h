@@ -7,10 +7,23 @@
 
 #include <cip_gen.h>
 
+#include <QByteArray>
 #include <QObject>
 
 #include <cstdint>
 #include <vector>
+
+namespace tibia::protobuf::protocol {
+class GameserverMessageLoginAdvice;
+class GameserverMessageLoginError;
+class GameserverMessageLoginSuccess;
+class GameserverMessageLoginWait;
+class GameserverMessagePendingStateEntered;
+class GameserverMessageSessionDumpMarker;
+class GameserverMessageSessionDumpStart;
+class GameserverMessageSessionEndInformation;
+class GameserverMessageShowMultiOfflineTrainingDialog;
+}
 
 namespace tibia::gamewindow {
 class TPassiveAbilityListDataModel;
@@ -62,11 +75,38 @@ public:
     using cip::tibia::game::TGameEventProtocolMessageHandler::TGameEventProtocolMessageHandler;
 };
 
+/// CIP `game::TGameProtocolMessageHandler` — native Q→H for session dump/end.
 class TGameProtocolMessageHandler final : public cip::tibia::game::TGameProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::game::TGameProtocolMessageHandler::TGameProtocolMessageHandler;
+    explicit TGameProtocolMessageHandler(QObject* parent = nullptr);
+
+    static TGameProtocolMessageHandler* liveInstance();
+    static void setLiveInstance(TGameProtocolMessageHandler* handler);
+
+    /// CIP slot: SessionDumpStart (S 0x04 / 4) — native Q→H apply.
+    void handleSessionDumpStartMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageSessionDumpStart& SessionDumpStartMessage);
+
+    /// CIP slot: PendingStateEntered (S 0x0A / 10) — native Q→H apply.
+    void handlePendingStateEnteredMessage(
+        const ::tibia::protobuf::protocol::GameserverMessagePendingStateEntered& PendingStateEnteredMessage);
+
+    /// CIP slot: SessionEndInformation (S 0x18 / 24) — native Q→H apply.
+    void handleSessionEndInformationMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageSessionEndInformation& Message);
+
+    /// CIP slot: ShowMultiOfflineTrainingDialog (S 0x1B / 27) — native Q→H apply.
+    void handleShowMultiOfflineTrainingDialogMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageShowMultiOfflineTrainingDialog& Message);
+
+    /// CIP slot: LoginSuccess (S 0x17 / 23) — native Q→H apply.
+    void handleLoginSuccessMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& LoginSuccessMessage);
+
+    /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
+    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TGameSessionBase final : public cip::tibia::game::TGameSessionBase

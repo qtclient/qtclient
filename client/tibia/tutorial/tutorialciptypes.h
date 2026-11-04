@@ -6,7 +6,12 @@
 
 #include <cip_gen.h>
 
+#include <QByteArray>
 #include <QObject>
+
+namespace tibia::protobuf::protocol {
+class GameserverMessageTutorialHint;
+}
 
 namespace tibia::tutorial {
 
@@ -39,11 +44,22 @@ public:
     using cip::tibia::tutorial::TTutorialProgressUploader::TTutorialProgressUploader;
 };
 
+/// CIP `tutorial::TTutorialProtocolMessageHandler` — native Q→H for TutorialHint.
 class TTutorialProtocolMessageHandler final : public cip::tibia::tutorial::TTutorialProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::tutorial::TTutorialProtocolMessageHandler::TTutorialProtocolMessageHandler;
+    explicit TTutorialProtocolMessageHandler(QObject* parent = nullptr);
+
+    static TTutorialProtocolMessageHandler* liveInstance();
+    static void setLiveInstance(TTutorialProtocolMessageHandler* handler);
+
+    /// CIP slot: TutorialHint (S 0xDC / 220) — native Q→H apply (skips classic bridge).
+    void handleTutorialHintMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageTutorialHint& TutorialHintMessage);
+
+    /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
+    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TTutorialSessiondumpGameActionHandler final : public cip::tibia::tutorial::TTutorialSessiondumpGameActionHandler

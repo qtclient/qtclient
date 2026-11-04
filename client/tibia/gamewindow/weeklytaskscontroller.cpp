@@ -3,13 +3,14 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 
 #include <QString>
 
 #include <algorithm>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -25,7 +26,7 @@ QString raceCaption(const uint16_t raceId)
 {
     if (raceId == 0)
         return QStringLiteral("Any Creature");
-    const RaceType& race = g_things.getRaceData(raceId);
+    const RaceType& race = tibia::game::raceData(raceId);
     if (race.name.empty())
         return QStringLiteral("Unknown");
     QString name = QString::fromStdString(race.name);
@@ -36,7 +37,7 @@ QString raceCaption(const uint16_t raceId)
 
 QString itemCaption(const uint16_t itemId)
 {
-    const ThingTypePtr type = g_things.getThingType(itemId, ThingCategoryItem);
+    const ThingTypePtr type = tibia::game::thingType(itemId, ThingCategoryItem);
     if (!type)
         return QString::number(itemId);
     const std::string name = type->getName();
@@ -65,7 +66,7 @@ TWeeklyTasksController::TWeeklyTasksController(QObject* parent)
 
 void TWeeklyTasksController::showDialogTab()
 {
-    g_game.weeklyTaskAction(Otc::WEEKLY_ACTION_REFRESH_DATA);
+    tibia::game::weeklyTaskAction(tibia::client::WEEKLY_ACTION_REFRESH_DATA);
 }
 
 void TWeeklyTasksController::hideDialogTab() {}
@@ -185,12 +186,12 @@ void TWeeklyTasksController::openPermanentWeeklyTaskExpansionUnlockStore()
 
 void TWeeklyTasksController::deliverTask(const int taskIndex)
 {
-    g_game.weeklyTaskAction(Otc::WEEKLY_ACTION_DELIVER_ITEM, static_cast<uint16_t>(std::max(0, taskIndex)));
+    tibia::game::weeklyTaskAction(tibia::client::WEEKLY_ACTION_DELIVER_ITEM, static_cast<uint16_t>(std::max(0, taskIndex)));
 }
 
 void TWeeklyTasksController::selectDifficulty(const int difficulty)
 {
-    g_game.weeklyTaskAction(Otc::WEEKLY_ACTION_SELECT_DIFFICULTY, toLuaDifficulty(difficulty));
+    tibia::game::weeklyTaskAction(tibia::client::WEEKLY_ACTION_SELECT_DIFFICULTY, toLuaDifficulty(difficulty));
 }
 
 int TWeeklyTasksController::getRequiredLevelForDifficulty(const int difficulty)

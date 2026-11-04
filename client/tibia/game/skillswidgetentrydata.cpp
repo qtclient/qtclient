@@ -2,13 +2,13 @@
 
 #include "client/gamecore.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 
 #include <QLocale>
 
 #include <algorithm>
 #include <optional>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::game {
 
@@ -36,16 +36,16 @@ QString skillDetail(const qint64 value, const qint64 base, const qint64 loyaltyB
     return detail;
 }
 
-std::optional<Otc::Skill> otcSkill(const SkillType type)
+std::optional<tibia::client::Skill> otcSkill(const SkillType type)
 {
     switch (type) {
-        case SkillType::Fist: return Otc::Fist;
-        case SkillType::Club: return Otc::Club;
-        case SkillType::Sword: return Otc::Sword;
-        case SkillType::Axe: return Otc::Axe;
-        case SkillType::Distance: return Otc::Distance;
-        case SkillType::Shielding: return Otc::Shielding;
-        case SkillType::Fishing: return Otc::Fishing;
+        case SkillType::Fist: return tibia::client::Fist;
+        case SkillType::Club: return tibia::client::Club;
+        case SkillType::Sword: return tibia::client::Sword;
+        case SkillType::Axe: return tibia::client::Axe;
+        case SkillType::Distance: return tibia::client::Distance;
+        case SkillType::Shielding: return tibia::client::Shielding;
+        case SkillType::Fishing: return tibia::client::Fishing;
         default: return std::nullopt;
     }
 }
@@ -162,7 +162,7 @@ SkillsWidgetEntry buildSkillEntry(const SkillType type)
     entry.iconTooltip = entry.caption;
     entry.progressBarVisible = true;
 
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return entry;
 
@@ -243,11 +243,11 @@ Color compareColor(const qint64 value, const qint64 reference, const bool zero)
 /// CIP FUN_101020620: "%1%" of (base + low level + store boost) x stamina.
 void fillExperienceGain(SkillsWidgetEntry& entry, LocalPlayer& player)
 {
-    const auto rate = [&](const Otc::ExperienceRate_t type) { return player.getExperienceRate(type) / 100.0; };
-    const double base = player.getExperienceRate(Otc::EXP_BASE) ? rate(Otc::EXP_BASE) : 1.0;
-    const double lowLevel = rate(Otc::EXP_LOWLEVEL);
-    const double storeBoost = rate(Otc::EXP_XPBOOST);
-    const double stamina = player.getExperienceRate(Otc::EXP_STANINAMULTIPLIER) ? rate(Otc::EXP_STANINAMULTIPLIER) : 1.0;
+    const auto rate = [&](const tibia::client::ExperienceRate_t type) { return player.getExperienceRate(type) / 100.0; };
+    const double base = player.getExperienceRate(tibia::client::EXP_BASE) ? rate(tibia::client::EXP_BASE) : 1.0;
+    const double lowLevel = rate(tibia::client::EXP_LOWLEVEL);
+    const double storeBoost = rate(tibia::client::EXP_XPBOOST);
+    const double stamina = player.getExperienceRate(tibia::client::EXP_STANINAMULTIPLIER) ? rate(tibia::client::EXP_STANINAMULTIPLIER) : 1.0;
     const double gain = (base + lowLevel + storeBoost) * stamina * 100.0;
     constexpr double defaultGain = 100.0;
 
@@ -301,7 +301,7 @@ SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type)
     SkillsWidgetEntry entry;
     entry.caption = skillName(type);
     entry.progressBarVisible = skillHasProgressBar(type);
-    const LocalPlayerPtr& player = g_game.getLocalPlayer();
+    const LocalPlayerPtr& player = tibia::game::localPlayer();
     if (!player)
         return entry;
 

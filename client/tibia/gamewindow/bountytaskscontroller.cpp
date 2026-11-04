@@ -1,6 +1,5 @@
 #include "bountytaskscontroller.h"
 
-#include <tibia/world/game.h>
 #include <tibia/world/localplayer.h>
 #include <tibia/assets/things.h>
 
@@ -8,6 +7,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -25,7 +26,7 @@ QString raceCaption(const uint16_t raceId)
 {
     if (raceId == 0)
         return QStringLiteral("Any Creature");
-    const RaceType& race = g_things.getRaceData(raceId);
+    const RaceType& race = tibia::game::raceData(raceId);
     if (race.name.empty())
         return QStringLiteral("Unknown");
     QString name = QString::fromStdString(race.name);
@@ -48,8 +49,8 @@ QString tierImage(const uint8_t rarity)
 
 uint64_t bountyPoints()
 {
-    const LocalPlayerPtr player = g_game.getLocalPlayer();
-    return player ? player->getResourceBalance(Otc::RESOURCE_BOUNTY_POINTS) : 0;
+    const LocalPlayerPtr player = tibia::game::localPlayer();
+    return player ? player->getResourceBalance(tibia::client::RESOURCE_BOUNTY_POINTS) : 0;
 }
 
 /// CIP QML combo is 0..3; OTC Lua helpers expect 1..4.
@@ -78,7 +79,7 @@ TBountyTasksController::TBountyTasksController(QObject* parent)
 void TBountyTasksController::showDialogTab()
 {
     refreshBountyPoints();
-    g_game.bountyTaskAction(Otc::BOUNTY_ACTION_REQUEST);
+    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_REQUEST);
 }
 
 void TBountyTasksController::hideDialogTab() {}
@@ -242,34 +243,34 @@ void TBountyTasksController::setBountyTaskDifficulty(const int Difficulty)
         return;
     m_bountyTaskDifficulty = std::clamp(Difficulty, 0, 3);
     notifyChanged();
-    g_game.bountyTaskAction(Otc::BOUNTY_ACTION_CHANGE_DIFFICULTY, toLuaDifficulty(m_bountyTaskDifficulty));
+    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_CHANGE_DIFFICULTY, toLuaDifficulty(m_bountyTaskDifficulty));
 }
 
 void TBountyTasksController::rerollTasksAction()
 {
-    g_game.bountyTaskAction(Otc::BOUNTY_ACTION_REROLL);
+    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_REROLL);
 }
 
 void TBountyTasksController::claimRerollTokenAction()
 {
-    g_game.bountyTaskAction(Otc::BOUNTY_ACTION_CLAIM_DAILY);
+    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_CLAIM_DAILY);
 }
 
 void TBountyTasksController::acceptBountyTask(const int TaskIndex)
 {
-    g_game.bountyTaskAction(Otc::BOUNTY_ACTION_SELECT, static_cast<uint16_t>(std::max(0, TaskIndex)));
+    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_SELECT, static_cast<uint16_t>(std::max(0, TaskIndex)));
 }
 
 void TBountyTasksController::claimReward()
 {
-    g_game.bountyTaskAction(Otc::BOUNTY_ACTION_CLAIM_REWARD);
+    tibia::game::bountyTaskAction(tibia::client::BOUNTY_ACTION_CLAIM_REWARD);
 }
 
 void TBountyTasksController::upgradeBountyTalisman(const int BountyTalismanIndex)
 {
     if (BountyTalismanIndex < 0 || BountyTalismanIndex > 3)
         return;
-    g_game.bountyTalismanUpgrade(static_cast<uint8_t>(BountyTalismanIndex));
+    tibia::game::bountyTalismanUpgrade(static_cast<uint8_t>(BountyTalismanIndex));
 }
 
 void TBountyTasksController::unlockPreferredMonsterSlot()
@@ -285,28 +286,28 @@ void TBountyTasksController::unlockPreferredMonsterSlot()
             }
         }
     }
-    g_game.bountyPreferredAction(Otc::PREFERRED_ACTION_BUY_SLOT, static_cast<uint16_t>(std::max(1, slot)), 0);
+    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_BUY_SLOT, static_cast<uint16_t>(std::max(1, slot)), 0);
 }
 
 void TBountyTasksController::clearPreferredMonster(const int slotIndex)
 {
-    g_game.bountyPreferredAction(Otc::PREFERRED_ACTION_REMOVE_PREFERRED, static_cast<uint16_t>(std::max(0, slotIndex)), 0);
+    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_REMOVE_PREFERRED, static_cast<uint16_t>(std::max(0, slotIndex)), 0);
 }
 
 void TBountyTasksController::clearAvoidedMonster(const int slotIndex)
 {
-    g_game.bountyPreferredAction(Otc::PREFERRED_ACTION_REMOVE_UNWANTED, static_cast<uint16_t>(std::max(0, slotIndex)), 0);
+    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_REMOVE_UNWANTED, static_cast<uint16_t>(std::max(0, slotIndex)), 0);
 }
 
 void TBountyTasksController::assignPreferredMonster(const int slotIndex, const int RaceId)
 {
-    g_game.bountyPreferredAction(Otc::PREFERRED_ACTION_SET_PREFERRED, static_cast<uint16_t>(std::max(0, slotIndex)),
+    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_SET_PREFERRED, static_cast<uint16_t>(std::max(0, slotIndex)),
                                  static_cast<uint16_t>(std::max(0, RaceId)));
 }
 
 void TBountyTasksController::assignAvoidedMonster(const int slotIndex, const int RaceId)
 {
-    g_game.bountyPreferredAction(Otc::PREFERRED_ACTION_SET_UNWANTED, static_cast<uint16_t>(std::max(0, slotIndex)),
+    tibia::game::bountyPreferredAction(tibia::client::PREFERRED_ACTION_SET_UNWANTED, static_cast<uint16_t>(std::max(0, slotIndex)),
                                  static_cast<uint16_t>(std::max(0, RaceId)));
 }
 

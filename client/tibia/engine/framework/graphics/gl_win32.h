@@ -22,7 +22,7 @@
 
 #pragma once
 
-// Windows product host: Qt QRhi owns the GPU. The engine keeps a compile-only
+// Desktop product host: Qt Quick owns the GPU (Metal/Vulkan/D3D/OpenGL). Compile-only
 // GL 3.3 symbol surface so gated isGL() call sites type-check, without pulling
 // windows.h / wincrypt (which break under MSVC once the C++ preamble is in).
 // Values match the Khronos GL 3.3 core enumerants.

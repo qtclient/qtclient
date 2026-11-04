@@ -6,8 +6,6 @@
 
 #include <QQuickItem>
 
-#include <cmath>
-
 namespace tibia::gamewindow {
 
 TMapWindowController::TMapWindowController(QQuickItem* pane, const bool softwareRenderer, QObject* parent)
@@ -63,65 +61,25 @@ void TMapWindowController::refreshClassicView()
     syncFov();
 }
 
-namespace {
-
-/// CIP MapWindowPane: scale is the snapped map height over the 15×11 reference (352).
-double cipScale(const double paneW, const double paneH, const bool evenMultiples)
-{
-    constexpr double unscaled = 11 * 32;
-    constexpr double aspect = 15.0 / 11.0;
-    double maxH = std::floor(paneW / aspect);
-    if (evenMultiples) {
-        maxH = std::min(paneH, maxH);
-        maxH = std::floor(maxH / unscaled) * unscaled;
-    }
-    maxH = std::max(unscaled / 2, maxH);
-    double desired = paneH;
-    const double percent = desired / unscaled;
-    const double closest = std::round(percent);
-    if (std::abs(percent - closest) <= 0.05)
-        desired = closest * unscaled;
-    const double height = std::max(unscaled / 2, std::min(desired, maxH));
-    return height / unscaled;
-}
-
-}
-
 void TMapWindowController::syncFov()
 {
     if (!m_pane)
         return;
     QQuickItem* mapWindow = m_pane->findChild<QQuickItem*>(QStringLiteral("mapWindow"));
-    const qreal paneW = mapWindow ? mapWindow->width() : m_pane->width();
     const qreal paneH = mapWindow ? mapWindow->height() : m_pane->height();
-    if (paneW < 32 || paneH < 32)
+    if (paneH < 32)
         return;
 
     // CIP MapWindowPane is always a 15×11 world (480×352) scaled into the map
-    // window; unusedWidth beside the 15:11 frame feeds sidebars. Packs that grow
-    // the world (IdleOT HUD) set packExpandsFov on the pane.
+    // window; unusedWidth beside the 15:11 frame feeds sidebars / grey gutters.
     constexpr int cipFieldsW = 15;
     constexpr int cipFieldsH = 11;
-    int width = cipFieldsW;
-    int height = cipFieldsH;
     // Matches CIP MapWindowPane.mapWindowScaleFactor (height / 352).
-    qreal scale = paneH / (cipFieldsH * 32.0);
-    const bool packExpands = m_pane->property("packExpandsFov").toBool();
-    if (!classicView() && packExpands) {
-        scale = cipScale(paneW, paneH, m_mapWindowScaleOnlyByEvenMultiples);
-        width = std::max(3, static_cast<int>(std::ceil(paneW / (32.0 * scale))));
-        height = std::max(3, static_cast<int>(std::ceil(paneH / (32.0 * scale))));
-        // CIP's classic FOV is always odd (15×11). An even field count puts the
-        // local player a half-tile off the cover centre, so screen-centred look /
-        // status text (and the geometric mid of the pane) drift from the avatar.
-        if ((width & 1) == 0)
-            ++width;
-        if ((height & 1) == 0)
-            ++height;
-    }
-    const bool changed = width != m_fovWidth || height != m_fovHeight || !qFuzzyCompare(scale, m_viewScale);
-    m_fovWidth = width;
-    m_fovHeight = height;
+    const qreal scale = paneH / (cipFieldsH * 32.0);
+    const bool changed = cipFieldsW != m_fovWidth || cipFieldsH != m_fovHeight
+        || !qFuzzyCompare(scale, m_viewScale);
+    m_fovWidth = cipFieldsW;
+    m_fovHeight = cipFieldsH;
     m_viewScale = scale;
     if (m_provider) {
         m_provider->setVisibleFields(m_fovWidth, m_fovHeight);
@@ -161,7 +119,7 @@ void TMapWindowController::onMapWindowExited()
     if (auto* cursor = TMouseCursorController::instance())
         cursor->onMapWindowExited();
     if (m_provider)
-        m_provider->setMouseTarget(nullptr);
+        m_provider->setMouseTargetObject(0, {}, -1);
 }
 
 void TMapWindowController::onUnusedWidthChanged()

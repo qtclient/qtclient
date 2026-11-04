@@ -23,7 +23,7 @@
 #include "minimap.h"
 
 #include "gameconfig.h"
-#include "tibia/world/tile.h"
+#include "worldmap/worldmapfield.h"
 #include "framework/core/clock.h"
 #include "framework/core/filestream.h"
 #include "framework/core/resourcemanager.h"
@@ -231,7 +231,7 @@ Rect Minimap::calcMapRect(const Rect& screenRect, const Position& mapCenter, con
     return mapRect;
 }
 
-void Minimap::updateTile(const Position& pos, const TilePtr& tile)
+void Minimap::updateTile(const Position& pos, tibia::worldmap::TWorldMapField* tile)
 {
     MinimapTile minimapTile;
     if (tile) {

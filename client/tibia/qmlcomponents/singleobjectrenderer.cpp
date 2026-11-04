@@ -12,6 +12,7 @@
 #include <QSGTransformNode>
 
 #include <algorithm>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::qmlcomponents {
 
@@ -113,18 +114,20 @@ void TSingleObjectAppearanceInstanceRenderer::changed()
 {
     m_type = nullptr;
     m_patternX = m_patternY = m_patternZ = 0;
-    if (m_typeid > 0 && g_things.isValidDatId(static_cast<uint16_t>(m_typeid), ThingCategoryItem)) {
-        m_type = g_things.getThingType(static_cast<uint16_t>(m_typeid), ThingCategoryItem).get();
+    if (m_typeid > 0 && tibia::game::isValidDatId(static_cast<uint16_t>(m_typeid), ThingCategoryItem)) {
+        m_type = tibia::game::thingType(static_cast<uint16_t>(m_typeid), ThingCategoryItem).get();
         if (m_type && m_type->isNull())
             m_type = nullptr;
     }
     if (m_type) {
-        const ItemPtr item = Item::create(m_typeid);
         const bool liquid = m_type->isFluidContainer() || m_type->isSplash();
-        item->setCountOrSubType(liquid ? static_cast<int>(m_liquidType) : m_cumulativeCount);
-        m_patternX = item->getPatternX();
-        m_patternY = item->getPatternY();
-        m_patternZ = item->getPatternZ();
+        int x = 0;
+        int y = 0;
+        int z = 0;
+        Item::patternsFor(m_type, liquid ? static_cast<int>(m_liquidType) : m_cumulativeCount, x, y, z);
+        m_patternX = x;
+        m_patternY = y;
+        m_patternZ = z;
         if (m_type->isHangable()) {
             const int patterns = m_type->getNumPatternX();
             if (m_hookDirection == Info::EHookDirection::SOUTH)

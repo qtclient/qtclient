@@ -1,5 +1,7 @@
 #include "game/sessiondumpdmpd.h"
 
+#include "tibia/protocol/protocolciptypes.h"
+
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -782,8 +784,22 @@ std::deque<DmpdClassicPacket> dmpdToClassicPackets(const TSessiondumpDmpdFile& d
     const QByteArray characterName = dump.header.characterName.toUtf8();
 
     for (const auto& msg : dump.messages) {
-        const auto nested = protobufExtensionPayload(msg.protobuf, msg.opcode);
-        auto classic = mapSimpleOpcode(msg.opcode, nested, &playerId, characterName, &emittedFullMap);
+        // Phase 6.0-E primary: Parse GameserverMessage, enqueue on CIP queue,
+        // inverse to classic when structured. Fallback: legacy mapSimpleOpcode.
+        std::optional<std::vector<uint8_t>> classic;
+        // Parse/enqueue for CIP queue observability; applyClassic=false because
+        // replay still delivers classic via parseMessage (avoids double-apply).
+        const QByteArray structured = tibia::protocol::enqueueNativeServerProtobuf(msg.protobuf, false);
+        if (!structured.isEmpty()) {
+            classic = std::vector<uint8_t>(structured.begin(), structured.end());
+            if (msg.opcode == 0x17 && classic->size() >= 5) {
+                playerId = uint32_t((*classic)[1]) | (uint32_t((*classic)[2]) << 8)
+                    | (uint32_t((*classic)[3]) << 16) | (uint32_t((*classic)[4]) << 24);
+            }
+        } else {
+            const auto nested = protobufExtensionPayload(msg.protobuf, msg.opcode);
+            classic = mapSimpleOpcode(msg.opcode, nested, &playerId, characterName, &emittedFullMap);
+        }
         if (!classic) {
             ++skipped;
             qCInfo(lcDmpd) << "skip protobuf GameserverMessage opcode" << Qt::hex << msg.opcode

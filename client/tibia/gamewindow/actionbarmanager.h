@@ -49,7 +49,8 @@ public:
     void editHotkey(TActionBarController* bar, int buttonId);
     /// CIP 0x100c9bcc0: an object dragged onto a button. Alt opens the
     /// object dialog; otherwise it is assigned with its default use.
-    void assignDroppedObject(TActionBarController* bar, int buttonId, int multiActionIndex, const ItemPtr& item, bool alt);
+    void assignDroppedObject(TActionBarController* bar, int buttonId, int multiActionIndex, uint16_t typeId, uint8_t tier,
+                             bool alt);
     void openSpellDialogFor(TActionBarController* bar, int buttonId, int multiActionIndex, int spellId);
 
     /// The default use of an object on a button (CIP FUN_10101a250): Equip

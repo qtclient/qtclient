@@ -4,18 +4,11 @@
   "description": "qtclient / tibia Qt client C++ dependencies (Qt comes from make qt)",
   "dependencies": [
     "zlib",
-    {
-      "name": "libpng",
-      "features": ["apng"]
-    },
     "liblzma",
-    "fmt",
-    "nlohmann-json",
-    "parallel-hashmap",
-    "utfcpp",
-    "stduuid",
-    "bshoshany-thread-pool",
-    "protobuf"
+    "libogg",
+    "libvorbis",
+    "protobuf",
+    "spdlog"
   ],
   "features": {
     "tests": {

@@ -5,6 +5,7 @@
 #include "app/launcherenv.h"
 #include "authentication/loginrequestuploader.h"
 #include "game/gameservergamesession.h"
+#include "runtime/gamehost.h"
 
 #include <cip_gen.h>
 
@@ -65,6 +66,13 @@ class TEffectStorage;
 class TEffectGameActionHandler;
 class TEffectProtocolMessageHandler;
 }
+namespace tibia::creatures {
+class TCreatureStorage;
+}
+namespace tibia::container {
+class TContainerStorage;
+class TInventoryContainer;
+}
 
 namespace tibia::client {
 
@@ -108,10 +116,15 @@ public:
     game::TSessiondumpGameSession* sessiondump() const { return m_sessiondump.get(); }
     network::ExtendedOpcodeRouter* opcodes() const { return m_opcodes.get(); }
     qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider() const { return m_worldMapRenderProvider.get(); }
+    /// Pack-facing façade (signals + peels). Same instance for the process lifetime.
+    runtime::TGameHost* gameHost() const { return m_gameHost; }
     /// Tick-to-swap durations for the FPS indicator's currentFrameCount.
     worldmap::TFrameDurationRing* frameDurations() const { return m_frameDurations.get(); }
     worldmap::TAmbientLightStorage* ambientLight() const { return m_ambientLight.get(); }
     worldmap::TWorldMapStorage* worldMapStorage() const { return m_worldMapStorage.get(); }
+    creatures::TCreatureStorage* creatureStorage() const { return m_creatureStorage.get(); }
+    container::TContainerStorage* containerStorage() const { return m_containerStorage.get(); }
+    container::TInventoryContainer* inventoryContainer() const { return m_inventoryContainer.get(); }
     worldmap::TWorldmapProtocolMessageHandler* worldmapProtocol() const { return m_worldmapProtocol.get(); }
     /// Speech bubbles and screen messages; null before start().
     chat::TTextStorage* textStorage() const { return m_textStorage.get(); }
@@ -194,6 +207,7 @@ private:
     bool frameSlotReached(qint64 nowMicros);
 
     Options m_options;
+    runtime::TGameHost* m_gameHost = nullptr;
     /// Ticks while no frames come (a hidden window).
     QTimer m_idleTick;
     QTimer m_frameLimitTimer;
@@ -222,6 +236,9 @@ private:
     std::unique_ptr<game::TStatusbarStorage> m_statusbarStorage;
     std::unique_ptr<worldmap::TAmbientLightStorage> m_ambientLight;
     std::unique_ptr<worldmap::TWorldMapStorage> m_worldMapStorage;
+    std::unique_ptr<creatures::TCreatureStorage> m_creatureStorage;
+    std::unique_ptr<container::TContainerStorage> m_containerStorage;
+    std::unique_ptr<container::TInventoryContainer> m_inventoryContainer;
     std::unique_ptr<worldmap::TWorldmapProtocolMessageHandler> m_worldmapProtocol;
     std::unique_ptr<chat::TTextStorage> m_textStorage;
     std::unique_ptr<worldmap::TNumericalEffectStorage> m_numericalEffects;

@@ -2,7 +2,11 @@
 
 #include <framework/graphics/image.h>
 
+#include <QLoggingCategory>
+
 #include <cstring>
+
+Q_LOGGING_CATEGORY(lcHdScale, "tibia.sprites.hdscale")
 
 namespace tibia::sprites {
 namespace {
@@ -14,6 +18,12 @@ HdScaleFn g_fn = nullptr;
 
 void setHdScaler(const int factor, const HdScaleFn fn)
 {
+    // Exclusive hook: first non-null wins; log conflicts (pack-architecture).
+    // nullptr clears the scaler (factor resets to 1).
+    if (fn && g_fn && g_fn != fn) {
+        qCWarning(lcHdScale) << "HdScaler already set; keeping first";
+        return;
+    }
     g_factor = factor < 1 ? 1 : factor;
     g_fn = fn;
     if (!g_fn)

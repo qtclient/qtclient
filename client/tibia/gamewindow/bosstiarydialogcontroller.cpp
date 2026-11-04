@@ -2,12 +2,15 @@
 
 #include "cyclopedia/bestiarystorage.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <tibia/assets/things.h>
 
 #include <QLocale>
 
 #include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -143,7 +146,7 @@ void TBosstiaryDialogController::applyContext(const Context& context)
 void TBosstiaryDialogController::showRace(const int raceId)
 {
     Context context;
-    context.search = QString::fromStdString(g_things.getRaceData(static_cast<uint32_t>(raceId)).name);
+    context.search = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name);
     applyContext(context);
     rebuild();
 }
@@ -181,7 +184,7 @@ void TBosstiaryDialogController::showDialogTab()
         m_pendingContext.reset();
     }
     rebuild();
-    g_game.requestBosstiaryInfo();
+    tibia::game::requestBosstiaryInfo();
 }
 
 void TBosstiaryDialogController::hideDialogTab()
@@ -245,7 +248,7 @@ void TBosstiaryDialogController::requestNextPage()
 
 void TBosstiaryDialogController::requestToggleBosstiaryTracking(const int RaceID, const bool ShouldTrack)
 {
-    g_game.sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), ShouldTrack);
+    tibia::game::sendStatusTrackerBestiary(static_cast<uint16_t>(RaceID), ShouldTrack);
 }
 
 void TBossSlotInformation::update(const cyclopedia::TBossSlot& slot, const cyclopedia::TBosstiaryStorage& storage)
@@ -367,11 +370,10 @@ TBossSlotsDialogController::TBossSlotsDialogController(cyclopedia::TBosstiarySto
     connect(&m_storage, &cyclopedia::TBosstiaryStorage::slotsChanged, this, &TBossSlotsDialogController::update);
     connect(&m_storage, &cyclopedia::TBosstiaryStorage::pointsChanged, this, &TBossSlotsDialogController::update);
     connect(&m_storage, &cyclopedia::TBosstiaryStorage::killStagesChanged, this, &TBossSlotsDialogController::update);
-    m_hooks.emplace_back("g_game", "onResourcesBalanceChange", [this](LuaObject*, const Args& args) {
-        const auto* type = args.size() > 2 ? std::any_cast<Otc::ResourceTypes_t>(&args[2]) : nullptr;
-        if (type && (*type == Otc::RESOURCE_BANK_BALANCE || *type == Otc::RESOURCE_GOLD_EQUIPPED))
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
+        if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED))
             Q_EMIT goldBalanceChanged();
-        return std::any{};
     });
     update();
 }
@@ -387,17 +389,17 @@ void TBossSlotsDialogController::showDialogTab()
 {
     m_firstList->resetFilter();
     m_secondList->resetFilter();
-    g_game.requestBossSlootInfo();
+    tibia::game::requestBossSlootInfo();
 }
 
 void TBossSlotsDialogController::onClearClicked(const int SlotNumber)
 {
-    g_game.requestBossSlotAction(SlotNumber != 1 ? 2 : 1, 0);
+    tibia::game::requestBossSlotAction(SlotNumber != 1 ? 2 : 1, 0);
 }
 
 void TBossSlotsDialogController::onSelectClicked(const int SlotNumber, const int SelectedRaceID)
 {
-    g_game.requestBossSlotAction(SlotNumber != 1 ? 2 : 1, static_cast<uint32_t>(SelectedRaceID));
+    tibia::game::requestBossSlotAction(SlotNumber != 1 ? 2 : 1, static_cast<uint32_t>(SelectedRaceID));
     (SlotNumber != 1 ? m_secondList : m_firstList)->resetFilter();
 }
 

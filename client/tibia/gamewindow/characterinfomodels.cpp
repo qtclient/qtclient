@@ -4,7 +4,7 @@
 #include "gamewindow/characterinfodialogcontroller.h"
 #include "gamewindow/contextmenucontroller.h"
 
-#include <tibia/world/game.h>
+#include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 #include <client/staticdata.h>
 #include <tibia/assets/thingtype.h>
@@ -14,6 +14,8 @@
 
 #include <algorithm>
 #include <tuple>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::gamewindow {
 
@@ -21,7 +23,7 @@ namespace {
 
 QString appearanceName(const uint16_t typeId)
 {
-    const ThingTypePtr& type = g_things.getThingType(typeId, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
     return type ? QString::fromStdString(type->getName()) : QString();
 }
 
@@ -417,7 +419,7 @@ TQmlAchievement::TQmlAchievement(const AchievementEntry& entry, QObject* parent)
 namespace {
 
 /// CIP 0x100aaee40: the static achievements (staticdata).
-const std::vector<CyclopediaAchievementType>& staticAchievements() { return g_things.getCyclopediaAchievements(); }
+const std::vector<CyclopediaAchievementType>& staticAchievements() { return tibia::game::getCyclopediaAchievements(); }
 
 /// CIP 0x100aaee50.
 const CyclopediaAchievementType* staticAchievement(const uint16_t id)
@@ -552,7 +554,7 @@ int appearanceSource(const uint8_t type) { return type == 1 ? 1 : type == 2 ? 2 
 void TCharacterInfoDialogController::hookModelEvents()
 {
     // CIP 0x100d13520: a new proxy (inventory only) per answer, sorted.
-    m_hooks.emplace_back("g_game", "onUpdateCyclopediaCharacterItemSummary", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateCyclopediaCharacterItemSummary", [this](GameObject*, const Args& args) {
         if (!m_shown)
             return std::any{};
         if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterItemSummary>(&args[0]))
@@ -562,7 +564,7 @@ void TCharacterInfoDialogController::hookModelEvents()
     });
 
     // CIP 0x100d136f0: a new proxy (outfits, all sources) per answer.
-    m_hooks.emplace_back("g_game", "onParseCyclopediaCharacterAppearances", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterAppearances", [this](GameObject*, const Args& args) {
         if (!m_shown || args.size() < 4)
             return std::any{};
         const auto* colors = std::any_cast<OutfitColorStruct>(&args[0]);
@@ -592,7 +594,7 @@ void TCharacterInfoDialogController::hookModelEvents()
     });
 
     // CIP 0x100d14150.
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterTitles", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterTitles", [this](GameObject*, const Args& args) {
         using Wire = std::vector<std::tuple<uint8_t, std::string, std::string, bool, bool>>;
         if (!m_shown || args.size() < 2)
             return std::any{};
@@ -609,7 +611,7 @@ void TCharacterInfoDialogController::hookModelEvents()
         return std::any{};
     });
 
-    m_hooks.emplace_back("g_game", "onCyclopediaCharacterAchievements", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterAchievements", [this](GameObject*, const Args& args) {
         using Wire = std::vector<std::tuple<uint16_t, uint32_t, bool, std::string, std::string, uint8_t>>;
         if (!m_shown || args.size() < 3)
             return std::any{};
@@ -630,7 +632,7 @@ void TCharacterInfoDialogController::hookModelEvents()
 }
 
 /// CIP 0x100d108d0.
-void TCharacterInfoDialogController::resetCharacterTitle() { g_game.requestSetCharacterTitle(0); }
+void TCharacterInfoDialogController::resetCharacterTitle() { tibia::game::requestSetCharacterTitle(0); }
 
 void TCharacterInfoDialogController::setOrToggleCharacterTitle(const uint characterTitleId)
 {
@@ -638,9 +640,9 @@ void TCharacterInfoDialogController::setOrToggleCharacterTitle(const uint charac
     if (!titles || characterTitleId == 0)
         return;
     if (characterTitleId == titles->currentTitleId())
-        g_game.requestSetCharacterTitle(0);
+        tibia::game::requestSetCharacterTitle(0);
     else
-        g_game.requestSetCharacterTitle(static_cast<uint8_t>(characterTitleId));
+        tibia::game::requestSetCharacterTitle(static_cast<uint8_t>(characterTitleId));
 }
 
 /// CIP 0x100d10950.
@@ -653,10 +655,10 @@ void TCharacterInfoDialogController::showContextMenuForCharacterTitleID(const ui
     menu->beginCustomMenu();
     if (CharacerTitleId == titles->currentTitleId()) {
         connect(menu->addCustomEntry(qtTrId("charinfo_character_title_context_rest_title")), &TContextMenuEntryItem::triggered, this,
-                [] { g_game.requestSetCharacterTitle(0); });
+                [] { tibia::game::requestSetCharacterTitle(0); });
     } else {
         connect(menu->addCustomEntry(qtTrId("charinfo_character_title_context_set_title")), &TContextMenuEntryItem::triggered, this,
-                [CharacerTitleId] { g_game.requestSetCharacterTitle(static_cast<uint8_t>(CharacerTitleId)); });
+                [CharacerTitleId] { tibia::game::requestSetCharacterTitle(static_cast<uint8_t>(CharacerTitleId)); });
     }
     menu->showCustomMenu();
 }

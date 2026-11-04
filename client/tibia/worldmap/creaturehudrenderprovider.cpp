@@ -20,7 +20,7 @@ void TCreatureHUDRenderProvider::syncFrom(const qmlcomponents::TWorldMapRenderPr
     const auto& creatures = provider.frame().creatures;
     next.reserve(static_cast<int>(creatures.size()));
     for (const auto& hud : creatures)
-        next.push_back({ hud.creature, hud.point });
+        next.push_back({ hud.creatureId, hud.point });
     m_records = std::move(next);
 }
 

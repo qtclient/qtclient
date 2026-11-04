@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <array>
 #include <climits>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
 
 namespace tibia::proficiency {
 
@@ -30,9 +33,9 @@ constexpr int KnightProfession = 1;
 
 ThingTypePtr itemType(const uint16_t typeId)
 {
-    if (typeId == 0 || !g_things.isValidDatId(typeId, ThingCategoryItem))
+    if (typeId == 0 || !tibia::game::isValidDatId(typeId, ThingCategoryItem))
         return nullptr;
-    return g_things.getThingType(typeId, ThingCategoryItem);
+    return tibia::game::thingType(typeId, ThingCategoryItem);
 }
 
 const std::array<uint32_t, 10>& tableOf(const uint16_t typeId)
@@ -92,7 +95,7 @@ TProficiencyStorage::TProficiencyStorage(QObject* parent)
     : QObject(parent)
 {
     g_instance = this;
-    m_hooks.emplace_back("g_game", "onWeaponProficiency", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeaponProficiency", [this](GameObject*, const Args& args) {
         if (args.size() < 3)
             return std::any{};
         const auto typeId = static_cast<uint16_t>(client::gamecore::argInt(args, 0));
@@ -119,13 +122,13 @@ TProficiencyStorage::TProficiencyStorage(QObject* parent)
         Q_EMIT proficiencyXPChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onWeaponProficiencyExperience", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeaponProficiencyExperience", [this](GameObject*, const Args& args) {
         const auto typeId = static_cast<uint16_t>(client::gamecore::argInt(args, 0));
         m_data[typeId].xp = static_cast<uint32_t>(client::gamecore::argInt(args, 1));
         Q_EMIT proficiencyXPChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onWeaponProficiencyReshape", [this](LuaObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeaponProficiencyReshape", [this](GameObject*, const Args& args) {
         if (args.size() < 4)
             return std::any{};
         TReshapeOffers offers;
@@ -145,14 +148,13 @@ TProficiencyStorage::TProficiencyStorage(QObject* parent)
         Q_EMIT reshapeOffersChanged();
         return std::any{};
     });
-    m_hooks.emplace_back("g_game", "onGameEnd", [this](LuaObject*, const Args&) {
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_data.clear();
         m_reshapeOffers.reset();
         m_listRequested = false;
         m_tables.clear();
         m_tablesLoaded = false;
         Q_EMIT proficiencyXPChanged();
-        return std::any{};
     });
 }
 
@@ -168,7 +170,7 @@ void TProficiencyStorage::loadTables() const
 {
     if (m_tablesLoaded)
         return;
-    const std::string path = g_things.getProficienciesFile();
+    const std::string path = tibia::game::getProficienciesFile();
     if (path.empty())
         return;
     m_tablesLoaded = true;

@@ -26,13 +26,10 @@
 #include "client.h"
 #include "tibia/world/map.h"
 #include "framework/core/eventdispatcher.h"
-#include "framework/ui/uiwidget.h"
-
 AttachableObject::~AttachableObject()
 {
     clearAttachedEffects(true);
     clearAttachedParticlesEffect();
-    clearAttachedWidgets(false);
 }
 
 void AttachableObject::attachEffect(const AttachedEffectPtr& obj)
@@ -54,7 +51,6 @@ void AttachableObject::attachEffect(const AttachedEffectPtr& obj)
     getData()->attachedEffects.emplace_back(obj);
     tibia::schedule::post([effect = obj, self = std::static_pointer_cast<AttachableObject>(shared_from_this())] {
         self->onDispatcherAttachEffect(effect);
-        effect->callLuaField("onAttach", self->attachedObjectToLuaObject());
     });
 }
 
@@ -93,8 +89,7 @@ void AttachableObject::onDetachEffect(const AttachedEffectPtr& effect, const boo
 
     onStartDetachEffect(effect);
 
-    if (callEvent)
-        effect->callLuaField("onDetach", attachedObjectToLuaObject());
+    (void)callEvent;
 }
 
 void AttachableObject::clearAttachedEffects(const bool ignoreLuaEvent)
@@ -216,11 +211,3 @@ void AttachableObject::updateAndAttachParticlesEffects(std::vector<std::string>&
     for (const auto& name : newElements)
         attachParticleEffect(name);
 }
-
-// Without OTUI nothing can create widgets, so none are ever attached.
-bool AttachableObject::isWidgetAttached(const UIWidgetPtr&) { return false; }
-void AttachableObject::attachWidget(const UIWidgetPtr&) {}
-bool AttachableObject::detachWidgetById(const std::string&) { return false; }
-bool AttachableObject::detachWidget(const UIWidgetPtr) { return false; }
-void AttachableObject::clearAttachedWidgets(const bool) {}
-UIWidgetPtr AttachableObject::getAttachedWidgetById(const std::string&) { return nullptr; }

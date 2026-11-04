@@ -30,20 +30,18 @@
 #include <vector>
 
 
-class LuaObject;
+class GameObject;
 
-/// Engine hooks for frontends that are not Lua (the Qt app).
-/// Every engine-to-script hook is published here by scope and field: global
-/// hooks use the Lua global ("g_game", "onGameStart"); object hooks
-/// (LuaObject::callLuaField) use scope ObjectScope and pass the object, which
-/// handlers cast (Lua resolves them through the class chain the same way).
-/// Publishes engine hooks for the tibia (non-Lua) frontend.
+/// Engine hooks for CIP controllers (non-Lua).
+/// Every engine-to-script hook is published by scope and field. CIP
+/// session notifies use scope "cip" (see tibia::game::kNotifyScope).
+/// Object hooks (GameObject::callLuaField) use ObjectScope and pass the object.
 class GameEvents
 {
 public:
     using Args = std::vector<std::any>;
     /// Returns an empty std::any unless it handles a hook that expects a result.
-    using Handler = std::function<std::any(LuaObject* self, const Args& args)>;
+    using Handler = std::function<std::any(GameObject* self, const Args& args)>;
     static constexpr std::string_view ObjectScope = "object";
 
     int subscribe(std::string_view scope, std::string_view field, Handler handler);
@@ -51,7 +49,7 @@ public:
 
     bool wants(std::string_view scope, std::string_view field) const;
     /// Calls every handler; returns the last non-empty result.
-    std::any publish(std::string_view scope, std::string_view field, LuaObject* self, const Args& args);
+    std::any publish(std::string_view scope, std::string_view field, GameObject* self, const Args& args);
 
     template<typename... T>
     void callGlobalField(std::string_view global, std::string_view field, const T&... args);
@@ -60,7 +58,7 @@ public:
     R callGlobalField(std::string_view global, std::string_view field, const T&... args);
 
     template<typename... T>
-    std::any publishObject(LuaObject* self, std::string_view field, const T&... args)
+    std::any publishObject(GameObject* self, std::string_view field, const T&... args)
     {
         if (!wants(ObjectScope, field))
             return {};

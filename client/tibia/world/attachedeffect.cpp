@@ -21,7 +21,6 @@
  */
 
 #include "attachedeffect.h"
-#include <framework/graphics/drawstub.h>
 
 #include "client/animator.h"
 #include "client/gameconfig.h"
@@ -31,9 +30,10 @@
 #include "framework/graphics/animatedtexture.h"
 #include "framework/graphics/texture.h"
 #include "framework/graphics/texturemanager.h"
+#include <tibia/game/thingsession_forward.h>
 
 AttachedEffectPtr AttachedEffect::create(const uint16_t thingId, const ThingCategory category) {
-    if (!g_things.isValidDatId(thingId, category)) {
+    if (!tibia::game::isValidDatId(thingId, category)) {
         g_logger.error("AttachedEffectManager::getInstance({}, {}): invalid thing with id or category.", thingId, static_cast<uint8_t>(category));
         return nullptr;
     }
@@ -69,8 +69,8 @@ AttachedEffectPtr AttachedEffect::clone()
 }
 
 int getBounce(const Bounce& bounce) {
-    const auto minHeight = bounce.minHeight * g_drawPool.getScaleFactor();
-    const auto height = bounce.height * g_drawPool.getScaleFactor();
+    const auto minHeight = bounce.minHeight;
+    const auto height = bounce.height;
     return minHeight + (height - std::abs(height - static_cast<int>(bounce.timer.ticksElapsed() / (bounce.speed / 100.f)) % static_cast<int>(height * 2)));
 }
 
@@ -173,5 +173,5 @@ void AttachedEffect::move(const Position& fromPosition, const Position& toPositi
 }
 
 ThingType* AttachedEffect::getThingType() const {
-    return m_thingId > 0 ? g_things.getRawThingType(m_thingId, m_thingCategory) : nullptr;
+    return m_thingId > 0 ? tibia::game::rawThingType(m_thingId, m_thingCategory) : nullptr;
 }
