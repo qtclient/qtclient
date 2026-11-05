@@ -382,21 +382,16 @@ int main(int argc, char** argv)
 
     QGuiApplication application(argc, argv);
     app::applyBundledMoltenVkIcd();
-    // Runtime packs: single tip pack after QApp. --no-mods → CipSoft; --default-mod → mods/default.
+    // Runtime packs after QApp. --no-mods → CipSoft; else all tip mods/<id>/.
     bool skipMods = false;
-    bool defaultMod = false;
     for (int i = 1; i < argc; ++i) {
         if (qstrcmp(argv[i], "--no-mods") == 0)
             skipMods = true;
-        else if (qstrcmp(argv[i], "--default-mod") == 0)
-            defaultMod = true;
     }
     if (skipMods) {
         tibia::mods::ModLoader::setSkipLoad(true);
         qInfo("--no-mods: stock CipSoft client (no pack)");
     } else {
-        if (defaultMod)
-            tibia::mods::ModLoader::setForceDefaultMod(true);
         tibia::mods::ModLoader::loadAll();
     }
     tibia::mods::ensureModsRegistered();

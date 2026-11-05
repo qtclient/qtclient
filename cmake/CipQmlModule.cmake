@@ -2,15 +2,15 @@
 # (one qmlcache unit per file, qmldir generated at build time). upstream/ is vendored
 # and has no CMake of its own; this function feeds that tree in.
 #
-# Prefer leaving CIP QML alone. Overlay layers (later wins):
-#   client/overrides/qmlcomponents/<rel>
-#   client/mods/<enabled>/overrides/qmlcomponents/<rel>
-# Product UI that is not a stock-path fork belongs in client/mods/<pack>/qml.
+# Prefer leaving CIP QML alone. Host has no client/overrides/ — pack
+# overrides/ remap at runtime via PackQmlInterceptor / DiskQmlInterceptor.
+# Product UI that is not a stock-path fork belongs in client/mods/<pack>/qml
+# or QTCLIENT_PACK qml/.
 #
 # Always stage QML into the build tree (qml-embed/) so qmlcachegen never emits
 # …/qmlcomponents_../upstream paths that ninja cannot mkdir on Windows.
 # TIBIA_QML_DISK: NO_CACHEGEN + non-CONFIGURE_DEPENDS glob; DiskQmlInterceptor
-# hot-reloads qtclient + overrides only — qmlcomponents stays on qrc.
+# hot-reloads pack qml/overrides only — qmlcomponents stays on qrc.
 
 function(_cip_write_if_changed path content)
   if(EXISTS "${path}")
@@ -22,39 +22,15 @@ function(_cip_write_if_changed path content)
   file(WRITE "${path}" "${content}")
 endfunction()
 
-# Collect override roots for configure-time qmlcomponents merge.
-# Engine client/overrides only — pack overrides/ are runtime (PackQmlInterceptor)
-# so stock hosts publish once and product packs overlay without rebuilding.
-# Sets CIP_QML_OVERRIDE_ROOTS in parent scope (qmlcomponents parent dirs).
-function(cip_collect_qml_override_roots)
-  set(roots "")
-  set(_engine "${CIP_ROOT}/client/overrides/qmlcomponents")
-  if(EXISTS "${_engine}")
-    list(APPEND roots "${_engine}")
-  endif()
-  set(CIP_QML_OVERRIDE_ROOTS "${roots}" PARENT_SCOPE)
-endfunction()
-
-function(_cip_resolve_override rel out_var)
-  set(found "")
-  foreach(root IN LISTS CIP_QML_OVERRIDE_ROOTS)
-    set(candidate "${root}/${rel}")
-    if(EXISTS "${candidate}")
-      set(found "${candidate}")
-    endif()
-  endforeach()
-  set(${out_var} "${found}" PARENT_SCOPE)
-endfunction()
-
 function(cip_qml_module)
   set(root "${CIP_ROOT}/client/upstream/qml/qmlcomponents")
   if(NOT EXISTS "${root}")
     message(FATAL_ERROR "cip qmlcomponents tree missing: ${root}")
   endif()
-
-  cip_collect_qml_override_roots()
-  if(CIP_QML_OVERRIDE_ROOTS)
-    message(STATUS "cip qml overrides: ${CIP_QML_OVERRIDE_ROOTS}")
+  if(EXISTS "${CIP_ROOT}/client/overrides")
+    message(FATAL_ERROR
+      "tibia: host client/overrides/ must not exist (CIP Soft parity). "
+      "Put stock forks in the pack overrides/ tree.")
   endif()
 
   if(TIBIA_QML_DISK)
@@ -81,15 +57,10 @@ function(cip_qml_module)
     endif()
 
     set(src "${file}")
-    _cip_resolve_override("${rel}" _override)
-    if(_override)
-      set(src "${_override}")
-    endif()
 
-    # Sources live under client/upstream (or overrides/mods), outside
-    # client/tibia. Qt's qmlcachegen names cache dirs from the relative path
-    # → …/qmlcomponents_../upstream/… (or _../mods/…) which ninja cannot mkdir
-    # on Windows. Always stage into the build tree first.
+    # Sources live under client/upstream, outside client/tibia. Qt's qmlcachegen
+    # names cache dirs from the relative path → …/qmlcomponents_../upstream/…
+    # which ninja cannot mkdir on Windows. Always stage into the build tree first.
     set(stub "${embed_root}/${rel}")
     get_filename_component(_stub_parent "${stub}" DIRECTORY)
     file(MAKE_DIRECTORY "${_stub_parent}")

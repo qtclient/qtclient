@@ -6,7 +6,8 @@
 
 Sync extracts, from the installed client:
   qml/qmlcomponents/**          the embedded QML tree (all rcc roots merged)
-  (LegacyControls QML comes from third_party/Qt5LegacyControls — not carved)
+  qml/QtQuick/LegacyControls/** QML carved from the install LegacyControls plugin
+                                (C++ stays in third_party/Qt5LegacyControls)
   shaders/*.qsb                 the world shaders
   strings/client.en.qm          qsTrId translations
   conf/clientoptions.json       default options
@@ -21,7 +22,8 @@ A new client_sha256 without --msgmap is a hard error so protocol/ cannot silentl
 freeze across CIP releases. Raw decompiles stay in gitignored tmp/re/; commit upstream/.
 
 --check (CI) verifies the vendored tree against MANIFEST.json and that every
-client/overrides file still matches its cip-base sha.
+*pack* overrides/ file still matches its cip-base sha. The host has no
+client/overrides/ (CIP Soft parity — product forks live in the pack).
 """
 
 from __future__ import annotations
@@ -38,25 +40,31 @@ import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
-# Sibling tools/re (monorepo tools/ or qtclient tools/); fall back to ROOT/tools/re.
+_PARENT = HERE.parents[1]
+# tools/tibia-sync may live under the monorepo or under apps/qtclient.
+if (_PARENT / "apps" / "qtclient" / "client" / "tibia").is_dir():
+    MONOREPO_ROOT = _PARENT
+    QTCLIENT_ROOT = _PARENT / "apps" / "qtclient"
+elif (_PARENT / "client" / "tibia").is_dir():
+    QTCLIENT_ROOT = _PARENT
+    _mono = _PARENT.parent.parent
+    if (_mono / "apps" / "qtclient").resolve() == QTCLIENT_ROOT.resolve():
+        MONOREPO_ROOT = _mono
+    else:
+        MONOREPO_ROOT = QTCLIENT_ROOT  # standalone public qtclient tree
+else:
+    raise SystemExit(f"cannot locate qtclient from {HERE}")
+
+DEFAULT_OUT = QTCLIENT_ROOT / "client" / "upstream"
 RE_TOOLS = HERE.parent / "re"
 if not (RE_TOOLS / "qt_rcc.py").is_file():
-    RE_TOOLS = ROOT / "tools/re"
-# Monorepo: apps/qtclient/client/upstream. Standalone qtclient: client/upstream.
-_OTC = ROOT / "apps/qtclient"
-if (_OTC / "client/tibia").is_dir():
-    DEFAULT_OUT = _OTC / "client/upstream"
-    DEFAULT_OVERRIDES = _OTC / "client/overrides"
-    QTCLIENT_ROOT = _OTC
-else:
-    DEFAULT_OUT = ROOT / "client/upstream"
-    DEFAULT_OVERRIDES = ROOT / "client/overrides"
-    QTCLIENT_ROOT = ROOT
+    RE_TOOLS = MONOREPO_ROOT / "tools" / "re"
+if not (RE_TOOLS / "qt_rcc.py").is_file():
+    RE_TOOLS = QTCLIENT_ROOT / "tools" / "re"
 CACHE = QTCLIENT_ROOT / "tmp/re/tibia-sync"
 
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(MONOREPO_ROOT / "tools"))
 sys.path.insert(0, str(HERE.parent))  # standalone: tools/tibia_paths.py next to tibia-sync/
 import drift  # noqa: E402
 from tibia_paths import resolve_tibia, usage_hint  # noqa: E402
@@ -104,6 +112,31 @@ def merge_qml(roots: Path, module_path: str, dest: Path) -> int:
                 shutil.copy2(f, target)
                 count += 1
     return count
+
+
+def legacycontrols_plugin(contents: Path) -> Path:
+    """Install-tree QtQuick.LegacyControls plugin (QML baked into the binary)."""
+    lc_dir = contents / "Resources/qml/QtQuick/LegacyControls"
+    names = (
+        "libQt5LegacyControls.dylib",
+        "Qt5LegacyControls.dll",
+        "libQt5LegacyControls.so",
+        "libQt5LegacyControls.so.1",
+    )
+    for name in names:
+        candidate = lc_dir / name
+        if candidate.is_file():
+            return candidate
+    if lc_dir.is_dir():
+        for candidate in sorted(lc_dir.iterdir()):
+            if candidate.is_file() and candidate.suffix in {".dylib", ".dll", ".so"}:
+                return candidate
+            if candidate.is_file() and ".so." in candidate.name:
+                return candidate
+    raise SystemExit(
+        f"no LegacyControls plugin under {lc_dir} "
+        f"(expected libQt5LegacyControls.dylib / Qt5LegacyControls.dll)"
+    )
 
 
 def option_ids(binary: bytes) -> dict[str, str]:
@@ -187,7 +220,7 @@ def cip_version_int(dotted: str) -> int | None:
 
 
 def read_product_client_version() -> int | None:
-    path = ROOT / "apps/qtclient/client/tibia/client/gameclient.h"
+    path = QTCLIENT_ROOT / "client/tibia/client/gameclient.h"
     if not path.is_file():
         return None
     m = re.search(r"static\s+constexpr\s+int\s+ClientVersion\s*=\s*(\d+)\s*;", path.read_text())
@@ -195,7 +228,7 @@ def read_product_client_version() -> int | None:
 
 
 def read_server_client_version() -> int | None:
-    path = ROOT / "apps/crystalserver/src/core.hpp"
+    path = MONOREPO_ROOT / "apps/crystalserver/src/core.hpp"
     if not path.is_file():
         return None
     m = re.search(r"CLIENT_VERSION\s*=\s*(\d+)\s*;", path.read_text())
@@ -224,20 +257,20 @@ def sync_protocol_versions(cip_dotted: str, *, apply: bool) -> list[str]:
     if want is None:
         return [f"protocol: cannot parse cip_version `{cip_dotted}`"]
     lines: list[str] = []
-    client_path = ROOT / "apps/qtclient/client/tibia/client/gameclient.h"
-    server_path = ROOT / "apps/crystalserver/src/core.hpp"
+    client_path = QTCLIENT_ROOT / "client/tibia/client/gameclient.h"
+    server_path = MONOREPO_ROOT / "apps/crystalserver/src/core.hpp"
     have_client = read_product_client_version()
     have_server = read_server_client_version()
     if have_client is not None and have_client != want:
         lines.append(f"protocol bump client ClientVersion {have_client}→{want}")
         if apply:
             set_constexpr_int(client_path, "ClientVersion", want)
-            log(f"protocol: set ClientVersion={want} in {client_path.relative_to(ROOT)}")
+            log(f"protocol: set ClientVersion={want} in {client_path}")
     if have_server is not None and have_server != want:
         lines.append(f"protocol bump server CLIENT_VERSION {have_server}→{want}")
         if apply:
             set_constexpr_int(server_path, "CLIENT_VERSION", want)
-            log(f"protocol: set CLIENT_VERSION={want} in {server_path.relative_to(ROOT)}")
+            log(f"protocol: set CLIENT_VERSION={want} in {server_path}")
     if have_client == want and have_server == want:
         lines.append(f"protocol: ClientVersion/CLIENT_VERSION already {want} ({cip_dotted})")
     elif have_client is None:
@@ -272,7 +305,13 @@ def stage(contents: Path, work: Path, msgmap: Path | None) -> Path:
             (stage_dir / "shaders").mkdir(exist_ok=True)
             shutil.copy2(qsb, stage_dir / "shaders" / qsb.name)
 
-    # LegacyControls: CipSoft-Tibia/Qt5LegacyControls submodule (not carved)
+    lc_plugin = legacycontrols_plugin(contents)
+    lc_carved = carve(lc_plugin, work / "legacycontrols")
+    lc_n = merge_qml(lc_carved, "qt/qml/QtQuick/LegacyControls",
+                     stage_dir / "qml/QtQuick/LegacyControls")
+    if lc_n == 0:
+        raise SystemExit(f"LegacyControls carve from {lc_plugin} produced no QML")
+    log(f"LegacyControls: {lc_n} files from {lc_plugin.name}")
 
     (stage_dir / "strings").mkdir()
     shutil.copy2(contents / "MacOS/client.en.qm", stage_dir / "strings/client.en.qm")
@@ -307,7 +346,7 @@ def stage(contents: Path, work: Path, msgmap: Path | None) -> Path:
         (stage_dir / "protocol").mkdir()
         cov = work / "coverage.json"
         run(sys.executable, RE_TOOLS / "proto_coverage.py", "--msgmap", msgmap, "--binary", client,
-            "--root", ROOT, "--json", cov)
+            "--root", MONOREPO_ROOT, "--json", cov)
         messages = [{"dir": m["dir"], "opcode": m["opcode"], "tibia": m.get("tibia", [])}
                     for m in json.loads(cov.read_text()) if m.get("tibia")]
         (stage_dir / "protocol/messages.json").write_text(json.dumps(messages, indent=1) + "\n")
@@ -325,11 +364,20 @@ def manifest(root: Path) -> dict[str, str]:
             if p.is_file() and p.name not in GENERATED}
 
 
-def collect_override_roots(engine_overrides: Path) -> list[Path]:
-    """Product overrides/ plus enabled pack overrides/ (non-_template with mod.json)."""
-    roots = []
-    if engine_overrides.is_dir():
-        roots.append(engine_overrides)
+def collect_override_roots(extra: Path | None = None) -> list[Path]:
+    """Pack overrides only (host client/overrides/ is forbidden)."""
+    roots: list[Path] = []
+    seen: set[Path] = set()
+
+    def add(path: Path) -> None:
+        if not path.is_dir():
+            return
+        real = path.resolve()
+        if real in seen:
+            return
+        seen.add(real)
+        roots.append(path)
+
     mods_dir = QTCLIENT_ROOT / "client" / "mods"
     if mods_dir.is_dir():
         for mod in sorted(mods_dir.iterdir()):
@@ -337,26 +385,45 @@ def collect_override_roots(engine_overrides: Path) -> list[Path]:
                 continue
             if not (mod / "mod.json").is_file():
                 continue
-            ov = mod / "overrides"
-            if ov.is_dir():
-                roots.append(ov)
+            add(mod / "overrides")
+    pack = os.environ.get("QTCLIENT_PACK", "").strip()
+    if pack:
+        add(Path(pack) / "client" / "overrides")
+    add(MONOREPO_ROOT / "apps" / "idleot-client" / "client" / "overrides")
+    if extra is not None:
+        add(extra)
     return roots
 
 
-def check(out: Path, overrides: Path) -> int:
+def assert_no_host_overrides() -> list[str]:
+    """Host stock forks are forbidden — CIP Soft parity."""
+    host = QTCLIENT_ROOT / "client" / "overrides"
+    if not host.exists():
+        return []
+    qml = sorted(p.relative_to(host).as_posix() for p in host.rglob("*.qml"))
+    if qml:
+        return [f"host client/overrides/{rel}" for rel in qml]
+    # Empty dir / .gitkeep still forbidden
+    return ["host client/overrides/ (remove the directory; pack overrides only)"]
+
+
+def check(out: Path, extra_overrides: Path | None = None) -> int:
     expected = json.loads((out / "MANIFEST.json").read_text()) if (out / "MANIFEST.json").is_file() else None
     if expected is None:
         log(f"no {out}/MANIFEST.json; run make tibia-sync")
         return 1
     added, removed, changed = drift.keyed_diff(expected, manifest(out))
-    stale, orphan = drift.overrides_report(out, collect_override_roots(overrides))
+    host_bad = assert_no_host_overrides()
+    stale, orphan = drift.overrides_report(out, collect_override_roots(extra_overrides))
     for label, items in (("hand-added", added), ("missing", removed), ("hand-edited", changed),
+                         ("forbidden host override", host_bad),
                          ("override with stale cip-base", stale), ("override without CIP file", orphan)):
         for item in items:
             log(f"{label}: {item}")
-    bad = added or removed or changed or stale or orphan
+    bad = added or removed or changed or host_bad or stale or orphan
     log("upstream/ is clean" if not bad else "upstream/ is out of sync: never hand-edit upstream/ (re-run make tibia-sync); "
-        "rebase stale overrides onto the new CIP file and update their cip-base sha")
+        "rebase stale pack overrides onto the new CIP file and update their cip-base sha; "
+        "host client/overrides/ must not exist")
 
     ver = load_json_version(out)
     want = cip_version_int(ver.get("cip_version", ""))
@@ -408,7 +475,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--tibia", type=Path, help="Tibia.app (or its Contents)")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    ap.add_argument("--overrides", type=Path, default=DEFAULT_OVERRIDES)
+    ap.add_argument("--overrides", type=Path, default=None,
+                    help="extra pack overrides/ root (in-tree mods + QTCLIENT_PACK + idleot-client are scanned)")
     ap.add_argument("--msgmap", type=Path, help="TibiaMessageMap.java output (JSONL) for protocol/messages.json "
                     "(required when client_sha256 changes)")
     ap.add_argument("--things-dir", type=Path, help="assets dir for graphics_resources.rcc "
@@ -439,7 +507,7 @@ def main():
     cip_ver = json.loads((staged / "VERSION.json").read_text()).get("cip_version", "")
     proto_lines = sync_protocol_versions(cip_ver, apply=True)
 
-    text, changed = drift.report(args.out, staged, args.overrides)
+    text, changed = drift.report(args.out, staged, collect_override_roots(args.overrides))
     if proto_lines:
         # Prepend protocol section so DRIFT always names client+server bumps.
         text = text.replace(

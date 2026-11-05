@@ -24,10 +24,6 @@ public:
     static void setSkipLoad(bool skip);
     static bool skipLoad();
 
-    /// `--default-mod`: load only tip mods/default/ (ignore QTCLIENT_MODS_DIR + others).
-    static void setForceDefaultMod(bool force);
-    static bool forceDefaultMod();
-
     /// Resolve and load all selected packs. Returns count loaded (0 when skipLoad()).
     /// earlyCtx may be null: linked entries are register-only until bootstrapAll.
     static int loadAll(const QStringList& roots = {}, const ModContext* earlyCtx = nullptr);

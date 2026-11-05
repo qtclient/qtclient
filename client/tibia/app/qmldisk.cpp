@@ -144,7 +144,7 @@ void installQmlDiskHotReload(QQmlEngine* engine, QObject* context)
         return;
 
     auto* watcher = new QFileSystemWatcher(context);
-    // Watch product trees only (cip qmlcomponents stays on qrc stubs).
+    // Watch product trees only (linked pack + in-tree mods; qmlcomponents on qrc).
     QStringList roots = QStringLiteral(TIBIA_QML_MOD_DIR).split(QLatin1Char(':'), Qt::SkipEmptyParts);
     roots += QStringLiteral(TIBIA_QML_OVERRIDES_DIR).split(QLatin1Char(':'), Qt::SkipEmptyParts);
     const QStringList filters{ QStringLiteral("*.qml"), QStringLiteral("*.js") };

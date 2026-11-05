@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stock demo launcher: CipSoft assets via tip; login via tip client mods/default.
+# Stock demo launcher: CipSoft assets via tip; login via tip client mods/myaac.
 # Unsets IdleOT DEV_JSON so Play uses real tip install (not local bypass).
 #
 # Usage (from apps/qtclient or via make demo-run):
@@ -23,7 +23,7 @@ fi
 # Demo rehearsal: never use DEV Play bypass (that skips CipSoft asset install).
 unset QTCLIENT_DEV_JSON || true
 unset QTCLIENT_AUTOPLAY || true
-# Login comes from tip mods/default — do not force --no-mods on Play.
+# Login comes from tip mods/myaac — do not force --no-mods on Play.
 unset QTCLIENT_CLIENT_ARGS || true
 unset QTCLIENT_MODS_DIR || true
 # Clear any leftover IdleOT portal login env escape hatch.
@@ -43,7 +43,8 @@ else
   echo "[demo] launcher will still start (CDN/empty tip may apply)" >&2
 fi
 
-echo "[demo] starting $QTCLIENT_LAUNCHER_BIN (Play → tip client + mods/default)"
+echo "[demo] starting $QTCLIENT_LAUNCHER_BIN (Play → tip client + default mods)"
 cd "$OTC"
-# Launcher chrome stays stock CIP; tip client loads mods/default (myAAC).
+# Launcher chrome stays stock CIP (--no-mods); tip package still ships myaac/otclient
+# for installs that do not forward --no-mods to Play.
 exec "$QTCLIENT_LAUNCHER_BIN" --no-mods "$@"

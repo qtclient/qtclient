@@ -50,8 +50,13 @@ struct CipBuild
     QUrl assetsVersionUrl;
     /// Optional tip pack channel (mods/<id>/ under the client package).
     /// Same shape as assets: mods.json + mods.json.sha256. Empty = stock CIP.
+    /// Active only when tip has launcher mod capability "clientmods".
     QUrl modsUrl;
     QUrl modsVersionUrl;
+    /// Optional minimap channel → Contents/Resources/minimap.
+    /// Active only when tip has launcher mod capability "minimap".
+    QUrl minimapUrl;
+    QUrl minimapVersionUrl;
 };
 
 struct CipPackageInfo
@@ -185,6 +190,15 @@ public:
     void installModsAsync(const QUrl& modsUrl, const QVector<CipFile>& files, const QString& modsVersion,
                           const QString& destDir, InstallCallback done, qint64 progressBase = 0,
                           qint64 progressTotal = -1);
+    /**
+     * Minimap tiles into destDir (localfile under Contents/Resources/minimap/…).
+     * Writes minimap.json.sha256. No-op when minimapUrl is empty.
+     */
+    bool installMinimap(const QUrl& minimapUrl, const QVector<CipFile>& files, const QString& minimapVersion,
+                        const QString& destDir, QString* error, qint64 progressBase = 0, qint64 progressTotal = -1);
+    void installMinimapAsync(const QUrl& minimapUrl, const QVector<CipFile>& files, const QString& minimapVersion,
+                             const QString& destDir, InstallCallback done, qint64 progressBase = 0,
+                             qint64 progressTotal = -1);
     /** Packed bytes still needed for files not already installed (progress totals). */
     qint64 pendingPackedBytes(const QVector<CipFile>& files, const QString& destDir) const;
     /**

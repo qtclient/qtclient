@@ -1,4 +1,3 @@
-// cip-base: 7f16ba2e569ced263c1015dc9dd39273616bed17ed20c59743f59580b1b3eed9
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
@@ -373,6 +372,9 @@ ScrollViewOld {
     readonly property bool __isTreeView: __viewTypeName === "TreeView"
 
     /*! \internal */
+    default property alias __columns: root.data
+
+    /*! \internal */
     readonly property alias __currentRowItem: listView.currentItem
 
     /*! \internal
@@ -382,9 +384,6 @@ ScrollViewOld {
 
     /*! \internal */
     readonly property alias __listView: listView
-    // Qt 6.10.3 resolves a default alias to this object's own property to the
-    // next alias declared after it, so it stays after the other aliases.
-    default property alias __columns: root.data
 
     /*! \internal */
     property Component __itemDelegateLoader: null

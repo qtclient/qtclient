@@ -5,16 +5,15 @@
 | Path | Role |
 |------|------|
 | `client/upstream/` | CIP sync output (local only; gitignored in public) |
-| `client/overrides/` | Stock QML overrides |
 | `client/mods/_sample/` | Example mod pack (unified `mods/<id>/` layout) |
 | `client/mods/<your>/` | Your pack (gitignored; copy/symlink/submodule locally) |
 | `launcher/mods/<your>/` | Launcher brand / art pack |
 | `third_party/qt5-cip` | CipSoft Qt sources (submodule, `update = none`) |
-| `third_party/Qt5LegacyControls` | Controls 1 port (submodule) |
+| `third_party/Qt5LegacyControls` | LegacyControls C++ (LGPL, branch `main`); QML from sync |
 
 ## Overrides vs mods
 
-- **Overrides** change stock CIP UX → `client/overrides/`. Prefer small, upstreamable diffs.
+- **Overrides** change stock CIP Soft UX → pack `overrides/` only (host has none).
 - **Mods** add product features → `client/mods/<name>/` with `mod.json` + `qtclient_add_mod`.
 - Customize world rendering via **WorldView** hooks (`docs/mods.md`) — do not fork CIP lighting into stock.
 

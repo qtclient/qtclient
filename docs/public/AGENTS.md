@@ -15,7 +15,7 @@ Product-higher: sibling `client/` and `launcher/` trees (plus `shared/` for
 
 - `client/upstream/` — vendored from official `Tibia.app` (`make sync`). Never hand-edit; not committed in the public tree.
 - `launcher/upstream/` — CIP launcher chrome (`make` launcher sync). Never hand-edit.
-- `client/overrides/` — engine/Qt-only stock forks (e.g. LegacyControls).
+- Host has **no** `client/overrides/` (CIP Soft parity). Stock forks belong in pack `overrides/`.
 - `client/mods/<pack>/overrides/` — product stock-path forks.
 - `launcher/overrides/` — stock chrome forks.
 - `client/tibia/<area>/` — `tibia::<area>` C++/QML controllers and engine.
@@ -32,7 +32,8 @@ Product-higher: sibling `client/` and `launcher/` trees (plus `shared/` for
 
 - CMake + Ninja + vcpkg (`VCPKG_ROOT`).
 - Qt: `third_party/qt5-cip` (`update = none`) — `make qt` / `make qt WASM=1`. Warm prefixes: `ghcr.io/qtclient/qt`.
-- LegacyControls: `third_party/Qt5LegacyControls`.
+- LegacyControls QML: `client/upstream/qml/QtQuick/LegacyControls/` (`make sync`).
+- LegacyControls C++: `third_party/Qt5LegacyControls` branch `main` (LGPL; not hash-pinned).
 
 ## Do not
 

@@ -8,7 +8,8 @@ Blank-slate stack for `apps/qtclient`. Desktop and **wasm are equal target OSes*
 |-------|--------|
 | Build | CMake + Ninja + CMakePresets |
 | Qt / emsdk | CipSoft `third_party/qt5-cip` via `make qt` / `make qt WASM=1` (+ emsdk 4.0.7); warm GHCR prefixes |
-| LegacyControls | `third_party/Qt5LegacyControls` (LGPL submodule) |
+| LegacyControls QML | `client/upstream/qml/QtQuick/LegacyControls/` (`make tibia-sync`) |
+| LegacyControls C++ | `third_party/Qt5LegacyControls` (LGPL, branch `main`, not hash-pinned) |
 | C++ deps | vcpkg **manifest mode** (`vcpkg.json` + baseline) |
 | Dep cache | `VCPKG_BINARY_SOURCES` under monorepo `.cache/vcpkg/` |
 | Compile cache | ccache (preferred in CI) or sccache |

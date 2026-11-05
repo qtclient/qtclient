@@ -82,11 +82,61 @@ QString resolveEnvBrandPack(const QString& envPath)
     return {};
 }
 
+LauncherMods g_launcherMods;
+
+void scanLauncherCapabilities(const QString& modsRoot)
+{
+    QDir mods(modsRoot);
+    if (!mods.exists())
+        return;
+    const QFileInfoList entries = mods.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (const QFileInfo& info : entries) {
+        if (info.fileName().startsWith(QLatin1Char('_')))
+            continue;
+        const QString path = QDir(info.absoluteFilePath()).filePath(QStringLiteral("launcher.json"));
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly))
+            continue;
+        const QJsonObject obj = QJsonDocument::fromJson(file.readAll()).object();
+        const QJsonArray caps = obj.value(QStringLiteral("capabilities")).toArray();
+        for (const QJsonValue& v : caps) {
+            const QString c = v.toString();
+            if (c == QLatin1String("clientmods"))
+                g_launcherMods.clientModsChannel = true;
+            else if (c == QLatin1String("minimap"))
+                g_launcherMods.minimapChannel = true;
+        }
+    }
+    if (g_launcherMods.clientModsChannel || g_launcherMods.minimapChannel) {
+        qInfo().noquote() << "launcher mods capabilities:"
+                          << (g_launcherMods.clientModsChannel ? "clientmods" : "")
+                          << (g_launcherMods.minimapChannel ? "minimap" : "");
+    }
+}
+
 } // namespace
 
 LauncherBrand& LauncherBrand::instance()
 {
     return g_brand;
+}
+
+LauncherMods& LauncherMods::instance()
+{
+    return g_launcherMods;
+}
+
+void LauncherMods::load(bool noMods)
+{
+    g_launcherMods = LauncherMods{};
+    if (noMods)
+        return;
+    const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
+    if (!env.isEmpty()) {
+        scanLauncherCapabilities(env);
+        return;
+    }
+    scanLauncherCapabilities(tipModsRoot());
 }
 
 void LauncherBrand::load(int argc, char* argv[])
@@ -95,19 +145,10 @@ void LauncherBrand::load(int argc, char* argv[])
     for (int i = 1; i < argc; ++i) {
         if (qstrcmp(argv[i], "--no-mods") == 0)
             g_brand.noMods = true;
-        else if (qstrcmp(argv[i], "--default-mod") == 0)
-            g_brand.defaultMod = true;
     }
+    LauncherMods::load(g_brand.noMods);
     if (g_brand.noMods) {
         qInfo("--no-mods: stock qtclient launcher (Play → CipSoft client)");
-        return;
-    }
-
-    if (g_brand.defaultMod) {
-        const QString def = QDir(tipModsRoot()).filePath(QStringLiteral("default"));
-        if (tryLoadBrandDir(def))
-            return;
-        qInfo("--default-mod: no tip mods/default/brand.json (CIP chrome; client still loads default urls)");
         return;
     }
 
@@ -125,7 +166,7 @@ void LauncherBrand::load(int argc, char* argv[])
     if (!mods.exists())
         return;
 
-    // First tip pack with brand.json wins (product tips ship one mods/<id>/).
+    // First tip pack with brand.json wins (product tips ship one branded mods/<id>/).
     const QFileInfoList entries = mods.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
     for (const QFileInfo& info : entries) {
         if (info.fileName().startsWith(QLatin1Char('_')))

@@ -1,0 +1,7 @@
+{
+  "id": "clientmods",
+  "name": "Client mods channel",
+  "version": "1.0.0",
+  "description": "Default launcher mod — enable tip modsurl/modsversionurl download (not CipSoft stock).",
+  "capabilities": ["clientmods"]
+}

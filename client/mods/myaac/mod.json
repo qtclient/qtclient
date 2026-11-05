@@ -1,11 +1,11 @@
 {
-  "id": "default",
+  "id": "myaac",
   "name": "myAAC login",
   "version": "1.0.0",
   "autoload": true,
   "priority": 50,
   "QTCLIENT_MOD_API": 1,
-  "description": "Demo/stock tip pack — myAAC http://127.0.0.1/login.php. IdleOT tip replaces this slot with mods/idleot.",
+  "description": "Default tip pack — myAAC http://127.0.0.1/login.php. Product tips replace urls via idleot (lower priority).",
   "urls": {
     "loginBase": "http://127.0.0.1",
     "loginPath": "/login.php",

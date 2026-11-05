@@ -1,4 +1,3 @@
-// cip-base: faf51c2ab5175a48c91f9762f5fb473b789ccc991323dd57b6bcd5b46c8299b5
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
@@ -93,24 +92,9 @@ Loader {
         readonly property bool pressed: __mouseArea && row === __mouseArea.pressedRow && column === __mouseArea.pressedColumn
         readonly property color textColor: __rowItem ? __rowItem.itemTextColor : "black"
         readonly property string role: __column ? __column.role : ""
-        // Qt 6 model proxies (QQmlDMObjectData) lack hasOwnProperty, and a missing
-        // role reads back as null rather than undefined. OptionsPageHotkeys
-        // calls split() on this value, so null must not leak out.
-        readonly property var value: {
-            if (model && role.length) {
-                var fromModel = model[role]
-                if (fromModel !== undefined && fromModel !== null)
-                    return fromModel
-            }
-            if (modelData && role.length) {
-                var fromData = modelData[role]
-                if (fromData !== undefined && fromData !== null)
-                    return fromData
-            }
-            if (!role.length && modelData !== undefined && modelData !== null)
-                return modelData
-            return ""
-        }
+        readonly property var value: model && model.hasOwnProperty(role) ? model[role] // Qml ListModel and QAbstractItemModel
+                                     : modelData && modelData.hasOwnProperty(role) ? modelData[role] // QObjectList / QObject
+                                     : modelData != undefined ? modelData : "" // Models without role
         onRowChanged: if (row !== -1) itemDelegateLoader.isValid = true
     }
 }

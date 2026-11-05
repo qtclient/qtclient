@@ -8,7 +8,7 @@ CipSoft-compatible **Qt/QML Tibia client** (desktop + browser WASM) + **CIP laun
 |---------|--------|----------|
 | C++ | `client/tibia/` | `launcher/src/` |
 | Product UI | `client/qml/` | `launcher/qml/` |
-| Stock forks | `client/overrides/` | `launcher/overrides/` |
+| Stock forks | pack `overrides/` only | `launcher/overrides/` |
 | Packs | `client/mods/` | `launcher/mods/` |
 | CIP vendor | `client/upstream/` | `launcher/upstream/` |
 
@@ -82,4 +82,5 @@ ln -s ~/my-mod client/mods/my_mod
 | [AGENTS.md](AGENTS.md) | CIP-as-upstream rules |
 
 C++ deps: **vcpkg**. Qt: [CipSoft-Tibia/Qt5](https://github.com/CipSoft-Tibia/Qt5) via `make qt`.
-LegacyControls: [Qt5LegacyControls](https://github.com/CipSoft-Tibia/Qt5LegacyControls).
+LegacyControls QML: `make sync` from the install plugin. C++:
+[Qt5LegacyControls](https://github.com/CipSoft-Tibia/Qt5LegacyControls).

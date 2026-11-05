@@ -1,4 +1,3 @@
-// cip-base: fb41e9c22c88c558bc73e5527a530de68c784065732a66e890036929b9648e61
 /****************************************************************************
 **
 ** Copyright (C) 2016 The Qt Company Ltd.
@@ -66,20 +65,15 @@ BasicTableView {
 
     readonly property alias selection: selectionObject
 
-    // product: last modifiers from the click that selected a row (Cmd/Ctrl+click).
-    property int lastClickModifiers: 0
-
     // Internal stuff. Do not look
 
        onModelChanged: {
         Qt.callLater(function() {
             if (rowCount > 0) {
                currentRow = 0
-               if (root.selection && typeof root.selection.__selectOne === 'function')
-                   root.selection.__selectOne(0)
+               root.selection.__selectOne(0)
             } else {
-               if (root.selection && typeof root.selection.clear === 'function')
-                   root.selection.clear()
+               root.selection.clear()
                currentRow = -1;
             }
         })
@@ -228,7 +222,6 @@ BasicTableView {
         }
 
         onPressed: (mouse) => {
-            root.lastClickModifiers = mouse.modifiers
             pressedRow = model ? __listView.indexAt(0, mouseY + __listView.contentY) : -1
             pressedColumn = model ? __listView.columnAt(mouseX) : -1
             __listView.forceActiveFocus()

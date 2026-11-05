@@ -1,67 +1,43 @@
-# Demo tip (qtclient)
+# Demo tip (myAAC + CipSoft assets)
 
-CIP launcher protocol with **our** client package and **CipSoft** assets.
-Login comes from the single tip pack [`mods/default`](../../client/mods/default/mod.json)
+Login comes from the default tip pack [`mods/myaac`](../../client/mods/myaac/mod.json)
 ([myAAC](https://github.com/slawkens/myaac) at `http://127.0.0.1/login.php`).
-`--no-mods` (no pack) talks to real CipSoft. Product tips usually ship `mods/<id>/`
-instead of `mods/default`; multiple autoload packs are supported (identity/urls
-still first-wins by priority — see [`docs/pack-architecture.md`](../../../docs/pack-architecture.md)).
+Crystal wire features come from [`mods/otclient`](../../client/mods/otclient/mod.json).
+Product tips add `mods/idleot` (portal urls) alongside `otclient`; multiple
+autoload packs are supported (identity/urls: lower `priority` wins).
 
-| Tip field | Points at |
-|-----------|-----------|
-| `url` / `versionurl` | qtclient GitHub Release `package.json` (+ `.version`) |
-| `assetsurl` / `assetsversionurl` | `https://static.tibia.com/launcher/assets-current/…` |
-| `hints` | optional CIP hints |
-
-Example tip: [`tibiametadata.demo.json`](tibiametadata.demo.json).
-
-## Tester recipe (myAAC + Crystal)
+## Local demo
 
 1. Run [myAAC](https://github.com/slawkens/myaac) so `http://127.0.0.1/login.php` answers CIP JSON (`type: login`).
-2. Run Crystal (or another OT server) on the game port myAAC advertises (typically `7172`).
-3. Download the qtclient demo Release for your OS (launcher + tip). Do **not** need a local Tibia install or CIP assets in git.
-4. Start the launcher (sidecar `tibiametadata.json` or `QTCLIENT_TIP_URL=…`).
-5. **Update** installs our client package + CipSoft `assets-current` (package includes `mods/default`).
-6. **Play** logs in at `http://127.0.0.1/login.php` with no env tweaks.
+2. `make stock demo-pack` (or CI demo artifacts).
+3. Point the launcher tip at the emitted `tibiametadata.json`.
+4. **Update** installs our client package + CipSoft `assets-current` (package includes default mods + launcher channel gates).
+5. **Play** logs in at `http://127.0.0.1/login.php` with no env tweaks.
 
-Force the default pack from a tip that also has product (or with `QTCLIENT_MODS_DIR` set):
+Stock CipSoft URLs:
 
 ```bash
-./client --default-mod
-# or: make qtclient client run ARGS='--default-mod'
+./client --no-mods
+# or: make stock client run ARGS='--no-mods'
 ```
 
-Override AAC host/path without rebuilding (env escape hatch, wins over mod):
+Override login without rebuilding:
 
 ```bash
-export QTCLIENT_LOGIN_HOST=aac.example.com
+export QTCLIENT_LOGIN_BASE=http://127.0.0.1
 export QTCLIENT_LOGIN_PATH=/login.php
 ```
 
-Or edit/reinstall `mods/default/mod.json` `urls` — no host rebuild.
+Or edit/reinstall `mods/myaac/mod.json` `urls` — no host rebuild.
 
-## product portal
+## Product tip
 
-Product pack via `QTCLIENT_PACK` (e.g. `apps/idleot-client`). Tip install:
-`make qtclient client install` STATIC-links pack C++ and stages `mods/<id>/`
-FS chrome (often replacing `mods/default`). Run loads all autoload tip packs.
+`make qtclient client install` merges IdleOT FS chrome (portal urls; often
+without `myaac`). Run loads all autoload tip packs. Default launcher mods
+(`clientmods`, `minimap`) gate optional CDN channels.
 
-## Running a tip
+## Emitter
 
-```bash
-make demo-pack && make demo-run
-```
-
-**ToS:** Fetching CipSoft `assetsurl` content is subject to CipSoft Terms of
-Service and your licensed Tibia install. Do not redistribute CipSoft blobs.
-
-## Packaging a Release
-
-```bash
-make client build && make launcher build
-make demo-pack RELEASE_BASE=https://github.com/OWNER/REPO/releases/latest/download
-# artifacts under ../../dist/demo/
-```
-
-`emit_demo_tip.py` stages `mods/default` next to the Play binary and writes a
-revision-only `release_env.lua`.
+`emit_demo_tip.py` stages `mods/myaac`, `mods/otclient`, and launcher
+`clientmods`/`minimap` next to the Play binary and writes a
+CipSoft-shaped tip with CipSoft `assetsurl`.

@@ -33,9 +33,9 @@ namespace client {
         CLIENTOS_TIBIA_NEW_LINUX = 4,
         CLIENTOS_TIBIA_NEW_WINDOWS = 5,
         CLIENTOS_TIBIA_NEW_MAC = 6,
-        // Crystal OTCR negotiation (wire ids 10/11/12). IdleOT pack setCustomOs()
-        // uses these so Crystal sets isOTCR and appends shader / attached-effect tails.
-        // Not CipSoft OS ids — see CLIENTOS_TIBIA_NEW_* above.
+        // Crystal OTCR negotiation (wire ids 10/11/12). Default otclient pack
+        // setCustomOs() uses these so Crystal sets isOTCR and appends shader /
+        // attached-effect tails. Not CipSoft OS ids — see CLIENTOS_TIBIA_NEW_* above.
         CLIENTOS_OTCR_LINUX = 10,
         CLIENTOS_OTCR_WINDOWS = 11,
         CLIENTOS_OTCR_MAC = 12,

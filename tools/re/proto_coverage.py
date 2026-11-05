@@ -75,8 +75,22 @@ def extension_numbers(binary, msgmap):
     return {c: sorted(ns) for c, ns in found.items()}
 
 
+def _qtclient_file(root: Path, *parts: str) -> Path:
+    """Resolve a tip path whether --root is the monorepo or apps/qtclient."""
+    candidates = [
+        root.joinpath("apps", "qtclient", *parts),
+        root.joinpath(*parts),
+    ]
+    for path in candidates:
+        if path.is_file():
+            return path
+    raise FileNotFoundError(
+        "missing " + "/".join(parts) + " under " + " or ".join(str(c) for c in candidates)
+    )
+
+
 def otc_sets(root):
-    src = (root / "apps/qtclient/client/tibia/client/engine/client/protocolcodes.h").read_text()
+    src = _qtclient_file(root, "client", "tibia", "engine", "client", "protocolcodes.h").read_text()
 
     def enum(name):
         body = re.search(r"enum\s+" + name + r"[^{]*\{(.*?)\};", src, re.S).group(1)
@@ -88,8 +102,8 @@ def otc_sets(root):
     server, client = enum("GameServerOpcodes"), enum("ClientOpcodes")
     s_names = {n: op for op, ns in server.items() for n in ns}
     c_names = {n: op for op, ns in client.items() for n in ns}
-    parse = (root / "apps/qtclient/client/tibia/client/protocol/servermessages.cpp").read_text()
-    send = (root / "apps/qtclient/client/tibia/client/protocol/clientmessages.cpp").read_text()
+    parse = _qtclient_file(root, "client", "tibia", "protocol", "servermessages.cpp").read_text()
+    send = _qtclient_file(root, "client", "tibia", "protocol", "clientmessages.cpp").read_text()
     parsed = {s_names[n] for n in re.findall(r"case Proto::(\w+)\s*:", parse) if n in s_names}
     sent = {c_names[n] for n in re.findall(r"Proto::(Client\w+)", send) if n in c_names}
     return server, client, parsed, sent

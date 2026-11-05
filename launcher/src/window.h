@@ -73,8 +73,9 @@ private:
     void installIfNeededAsync(bool thenPlay);
     /** After engine package: CIP assets stamp + product things packs into OPFS tip. */
     void installAssetsAndThingsAsync(bool thenPlay);
-    /** After assets/things: optional tip mods channel, then finish. */
+    /** After assets/things: optional tip mods + minimap channels, then finish. */
     void installModsThenFinishAsync(bool thenPlay, const QString& version);
+    void installMinimapThenFinishAsync(bool thenPlay, const QString& version);
     void finishInstallAsync(bool thenPlay, const QString& version);
     void installThingsPacksViaJs(bool thenPlay, const QString& version);
 #endif
@@ -89,9 +90,14 @@ private:
     QString localVersion() const;
     QString localAssetsStamp() const;
     QString localModsStamp() const;
+    QString localMinimapStamp() const;
     bool thingsPacksStampPresent() const;
-    /// True when mods channel omitted or local mods.json.sha256 matches remote.
+    /// True when mods channel off/omitted or local mods.json.sha256 matches remote.
     bool modsStampOk() const;
+    /// True when minimap channel off/omitted or local minimap.json.sha256 matches remote.
+    bool minimapStampOk() const;
+    bool clientModsChannelActive() const;
+    bool minimapChannelActive() const;
     /// CipSoft install vocabulary: Unknown → PartiallyInstalled → InstalledAndUsable.
     QString installStatusLabel() const;
     void fetchRemoteStampsParallel();
@@ -107,6 +113,7 @@ private:
     QString m_remoteVersion;
     QString m_remoteAssetsVersion;
     QString m_remoteModsVersion;
+    QString m_remoteMinimapVersion;
     bool m_hasGaps = false;
     bool m_busy = false;
     QElapsedTimer m_timer;

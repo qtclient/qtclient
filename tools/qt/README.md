@@ -1,8 +1,16 @@
 # CipSoft Qt toolchain
 
 Product Qt is built from [CipSoft-Tibia/Qt5](https://github.com/CipSoft-Tibia/Qt5)
-(`third_party/qt5-cip`, patched 6.10.3). LegacyControls is
-[CipSoft-Tibia/Qt5LegacyControls](https://github.com/CipSoft-Tibia/Qt5LegacyControls).
+(`third_party/qt5-cip`, patched 6.10.3).
+
+### LegacyControls
+
+| Part | Source |
+|------|--------|
+| **QML** | `make tibia-sync` — carved from the install plugin (`libQt5LegacyControls.dylib` / `.dll`) into `client/upstream/qml/QtQuick/LegacyControls/` |
+| **C++** | LGPL submodule [`CipSoft-Tibia/Qt5LegacyControls`](https://github.com/CipSoft-Tibia/Qt5LegacyControls) on branch `main` (not hash-pinned) |
+
+The install tip owns QML. The GitHub repo is the **C++ reference** (`abstractstyle`, `calendarmodel`, `rangemodel`, `wheelarea`, …) compiled into `tibia_legacycontrols`. When sync QML drifts ahead of the submodule tip, bump `third_party/Qt5LegacyControls` to current `main` and adjust C++ if CIP Soft changed native types. Do not treat submodule QML as source of truth.
 
 Warm prefixes are published by the public [qtclient](https://github.com/qtclient/qtclient) CI:
 

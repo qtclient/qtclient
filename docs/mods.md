@@ -289,7 +289,7 @@ unless the TU needs wire helpers (`useMapObject`, `talk`, …).
 
 | Layer | Path | When applied |
 |-------|------|----------------|
-| Engine / Qt-only | `client/overrides/` (e.g. LegacyControls) | Configure-time merge into `qmlcomponents` qrc |
+| Engine host | No `client/overrides/` (CIP Soft parity); stock QML is `upstream/` from sync | Baked `qmlcomponents` / LegacyControls from sync |
 | Pack stock forks | `mods/<pack>/overrides/` (rel. to `client/upstream/qml/`) | **Runtime** remap via `PackQmlInterceptor` (same URI → pack FS) |
 | Launcher | `launcher/overrides/` + `launcher/mods/<pack>/` | Launcher build |
 | Dev F5 | `$QTCLIENT_PACK/client/{qml,overrides}` (+ in-tree mods) | `TIBIA_QML_DISK` / `DiskQmlInterceptor`; **F5** clears cache — no client rebuild |

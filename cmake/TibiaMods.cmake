@@ -87,7 +87,7 @@ function(tibia_add_mod_subdirectory mod_name)
     message(STATUS "qtclient mods: ${mod_name} has mod.json but no CMakeLists.txt — skip link")
     return()
   endif()
-  # Optional make link → client/mods/<id> symlink to a LINKED_PACK. Skip duplicate.
+  # Skip if the same pack is already QTCLIENT_LINKED_PACK(S) (same realpath).
   tibia_linked_pack_dirs(_linked_dirs)
   get_filename_component(_dir_abs "${dir}" ABSOLUTE)
   get_filename_component(_dir_real "${_dir_abs}" REALPATH)

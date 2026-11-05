@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stage a stock demo Release: launcher installer + client package tip +
-# tibiametadata.json (CipSoft assetsurl). Login via mods/default (not release_env).
+# tibiametadata.json (CipSoft assetsurl). Login via mods/myaac (not release_env).
 #
 # Usage:
 #   demo.sh --platform linux-x64|windows-x64|macos-arm64 \
@@ -66,13 +66,17 @@ esac
   exit 1
 }
 
-# Ensure default (myAAC) pack is present for staging into the client tree.
-[[ -f "$OTC/client/mods/default/mod.json" ]] || {
-  echo "[pack-demo] missing $OTC/client/mods/default/mod.json" >&2
+# Ensure default packs are present for staging into the client tree.
+[[ -f "$OTC/client/mods/myaac/mod.json" ]] || {
+  echo "[pack-demo] missing $OTC/client/mods/myaac/mod.json" >&2
+  exit 1
+}
+[[ -f "$OTC/client/mods/otclient/mod.json" ]] || {
+  echo "[pack-demo] missing $OTC/client/mods/otclient/mod.json" >&2
   exit 1
 }
 
-echo "[pack-demo] emit demo tip (mods/default + CipSoft assetsurl)…"
+echo "[pack-demo] emit demo tip (default mods + CipSoft assetsurl)…"
 python3 "$OTC/tools/publish/emit_demo_tip.py" \
   --platform "$PLATFORM" \
   --tree "$TREE" \

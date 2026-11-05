@@ -6,8 +6,9 @@ Writes under --out:
   <os>-package.json
   <os>-package.json.version
   <os>-package/          CIP package tree (localfile.lzma + optional unpacked)
-  mods/default           urls-only myAAC login pack (staged into the client tree)
-  release_env.lua        revision only (login URLs from mods/default)
+  mods/myaac + otclient  default client packs (staged into the client tree)
+  mods/clientmods+minimap default launcher channel gates
+  release_env.lua        revision only (login URLs from mods/myaac)
 
 Usage:
   emit_demo_tip.py --platform macos-arm64 --tree build/engine/QtClient.app \\
@@ -116,24 +117,47 @@ def executable_for(platform: str, tree: Path) -> str:
     return GAME_EXE
 
 
-def stage_default_mod(tree: Path, platform: str) -> None:
-    """Install urls-only mods/default (myAAC) next to the Play binary."""
-    src = OTC / "client" / "mods" / "default"
-    if not (src / "mod.json").is_file():
-        print(f"[demo] warning: missing {src}/mod.json")
-        return
+def _tip_mods_root(tree: Path, platform: str) -> Path:
     if platform == "macos-arm64":
-        dest = tree / "Contents" / "MacOS" / "mods" / "default"
-    else:
-        dest = tree / "mods" / "default"
-    if dest.exists():
-        shutil.rmtree(dest)
-    shutil.copytree(src, dest)
-    print(f"[demo] staged {dest}")
+        return tree / "Contents" / "MacOS" / "mods"
+    return tree / "mods"
+
+
+def stage_default_mods(tree: Path, platform: str) -> None:
+    """Install default client + launcher packs next to the Play binary."""
+    mods_root = _tip_mods_root(tree, platform)
+    mods_root.mkdir(parents=True, exist_ok=True)
+
+    for pack_id, src in (
+        ("myaac", OTC / "client" / "mods" / "myaac"),
+        ("otclient", OTC / "client" / "mods" / "otclient"),
+    ):
+        if not (src / "mod.json").is_file():
+            print(f"[demo] warning: missing {src}/mod.json")
+            continue
+        dest = mods_root / pack_id
+        if dest.exists():
+            shutil.rmtree(dest)
+        # FS chrome only (C++ is absorbed at tip link time).
+        dest.mkdir(parents=True)
+        shutil.copy2(src / "mod.json", dest / "mod.json")
+        print(f"[demo] staged {dest}")
+
+    for pack_id in ("clientmods", "minimap"):
+        src = OTC / "launcher" / "mods" / pack_id / "launcher.json"
+        if not src.is_file():
+            print(f"[demo] warning: missing {src}")
+            continue
+        dest = mods_root / pack_id
+        if dest.exists():
+            shutil.rmtree(dest)
+        dest.mkdir(parents=True)
+        shutil.copy2(src, dest / "launcher.json")
+        print(f"[demo] staged {dest}")
 
 
 def write_revision_release_env(tree: Path, revision: str) -> None:
-    """Drop release_env.lua with revision only (login URLs live in mods/default)."""
+    """Drop release_env.lua with revision only (login URLs live in mods/myaac)."""
     body = (
         "return {\n"
         f'    TIBIA_REVISION = {json.dumps(revision)},\n'
@@ -182,7 +206,7 @@ def emit_package(
     package_dir.mkdir(parents=True)
 
     tree = resolve_tree(platform, tree)
-    stage_default_mod(tree, platform)
+    stage_default_mods(tree, platform)
     write_revision_release_env(tree, revision)
 
     files = pack_tree(package_dir, tree)

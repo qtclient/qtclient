@@ -16,18 +16,18 @@ namespace app {
 /// Disk-QML interceptor for the macos-dev / linux-dev presets.
 ///
 /// Remaps only product trees to live files (dev / TIBIA_QML_DISK):
-///   qrc:/qt/qml/<module>/…         → pack qml/<module>/… (FS module)
-///   qrc:/qt/qml/… under overrides  → client/overrides/… and
-///                                    client/mods/<pack>/overrides/… (colon list)
+///   qrc:/qt/qml/<module>/…         → pack qml/<module>/… (FS module;
+///                                    in-tree mods and QTCLIENT_LINKED_PACK)
+///   qrc:/qt/qml/… under overrides  → pack overrides/ roots (colon list)
 /// Production always uses PackQmlInterceptor for pack qrc→file remaps.
 ///
-/// Never remaps stock qmlcomponents / LegacyControls off qrc — CIP QML stays
-/// the cmake module so `import qmlcomponents` works and upstream/ is not forked at
-/// runtime. Absolute /images/… from file:// documents rewrite to qrc.
+/// Never remaps stock qmlcomponents / LegacyControls off qrc — CIP Soft QML
+/// stays the cmake module so `import qmlcomponents` works and upstream/ is not
+/// forked at runtime. Absolute /images/… from file:// documents rewrite to qrc.
 class DiskQmlInterceptor final : public QQmlAbstractUrlInterceptor
 {
 public:
-    /// overridesDirs: colon-separated roots (engine + enabled pack overrides).
+    /// overridesDirs: colon-separated pack override roots.
     DiskQmlInterceptor(QString cipQmlDir, QString modQmlDir, QString overridesDirs);
 
     QUrl intercept(const QUrl& url, DataType type) override;

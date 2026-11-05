@@ -305,18 +305,13 @@ std::unique_ptr<QQmlEngine> createEngine()
     }
 #if defined(TIBIA_QML_DISK)
     // DEV: also import from source pack qml/ so `import idleot` + disk remap stay in sync.
-    // --no-mods drops pack qml/ and pack overrides baked into the binary; engine
-    // client/overrides stay. Pack trees live under .../mods/.
+    // --no-mods drops pack qml/ and pack overrides (host has no client/overrides/).
+    // Roots are in-tree mods/<id>/qml and QTCLIENT_LINKED_PACK qml/ (colon list).
     QString diskModDirs = QStringLiteral(TIBIA_QML_MOD_DIR);
     QString diskOverrideDirs = QStringLiteral(TIBIA_QML_OVERRIDES_DIR);
     if (tibia::mods::ModLoader::skipLoad()) {
         diskModDirs.clear();
-        QStringList keptOverrides;
-        for (const QString& root : diskOverrideDirs.split(QLatin1Char(':'), Qt::SkipEmptyParts)) {
-            if (!root.contains(QLatin1String("/mods/")))
-                keptOverrides.push_back(root);
-        }
-        diskOverrideDirs = keptOverrides.join(QLatin1Char(':'));
+        diskOverrideDirs.clear();
     } else {
         for (const QString& root : diskModDirs.split(QLatin1Char(':'), Qt::SkipEmptyParts)) {
             if (QDir(root).exists())

@@ -33,7 +33,7 @@ GuiPrivate/RHI link only (see [`mods.md`](mods.md)). Do not require
 `MOD_INTERNAL` just for RHI. Pack TUs use named / domain façades under
 `include/qtclient/` named / domain façades only. Prefer
 `QTCLIENT_PACK_SDK_ONLY=ON` (see [`docs/pack-architecture.md`](../../../docs/pack-architecture.md)).
-Third-party / `_sample` packs must `#include <qtclient/…>` only
+Third-party / default packs (`otclient`) must `#include <qtclient/…>` only
 (`check-pack-sdk-only.sh`). GuiPrivate remains for RHI packs.
 
 ## Public hooks

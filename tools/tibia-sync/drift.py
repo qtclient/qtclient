@@ -93,23 +93,20 @@ def section(lines, title, added, removed, changed=(), limit=60):
 def _override_base_file(upstream: Path, rel: str) -> Path | None:
     """Resolve the file an override's cip-base must match.
 
-    CIP stock forks live under upstream/qml/. Engine Qt forks under
-    QtQuick/LegacyControls/ are based on third_party/Qt5LegacyControls
-    (not carved into upstream/).
+    Pack stock forks (qmlcomponents + QtQuick/LegacyControls) live under
+    upstream/qml/ after tibia-sync. LegacyControls C++ stays in the
+    Qt5LegacyControls submodule and is not part of cip-base checks.
     """
-    if rel.startswith("QtQuick/LegacyControls/"):
-        # upstream = …/client/upstream → repo root is parents[1]
-        qt5lc = upstream.parent.parent / "third_party" / "Qt5LegacyControls" / rel
-        return qt5lc if qt5lc.is_file() else None
     target = upstream / "qml" / rel
     return target if target.is_file() else None
 
 
 def overrides_report(new: Path, overrides: Path | list[Path]):
-    """Check cip-base shas for engine + pack override trees.
+    """Check cip-base shas for pack override trees.
 
     Each overrides root mirrors paths under upstream/qml/ (e.g.
-    qmlcomponents/qml/Foo.qml) or QtQuick/LegacyControls/ (Qt5LegacyControls).
+    qmlcomponents/qml/Foo.qml or QtQuick/LegacyControls/Bar.qml).
+    Host client/overrides/ must not exist.
     """
     stale, orphan = [], []
     roots = overrides if isinstance(overrides, list) else [overrides]
@@ -132,7 +129,7 @@ def overrides_report(new: Path, overrides: Path | list[Path]):
     return stale, orphan
 
 
-def report(old: Path, new: Path, overrides: Path) -> tuple[str, bool]:
+def report(old: Path, new: Path, overrides: Path | list[Path]) -> tuple[str, bool]:
     old_v = load_json(old / "VERSION.json", {})
     new_v = load_json(new / "VERSION.json", {})
     lines = [

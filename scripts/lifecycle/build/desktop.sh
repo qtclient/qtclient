@@ -447,5 +447,5 @@ if [[ "$LAUNCHER_BUILD" -eq 0 ]]; then
   bash "$OTC/scripts/lifecycle/lib/link-cip-resources.sh" "$BIN" "$OTC/data" || true
 fi
 if [[ "$DEV_BUILD" -eq 1 ]]; then
-  echo "[tibia] qml-disk: edit qml under client/upstream/qml, client/mods/<pack>/qml, client/overrides — no rebuild; F5 clears cache"
+  echo "[tibia] qml-disk: edit QTCLIENT_LINKED_PACK qml/ + overrides/ (and in-tree client/mods/*/qml); F5 clears cache — reopen panels after structural edits"
 fi

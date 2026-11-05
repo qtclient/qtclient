@@ -106,22 +106,6 @@ bool& skipLoadFlag()
     return skip;
 }
 
-bool& forceDefaultFlag()
-{
-    static bool force = false;
-    return force;
-}
-
-QString findNamedPack(const QStringList& tipRoots, const QString& name)
-{
-    for (const QString& root : tipRoots) {
-        const QString path = QDir(root).filePath(name);
-        if (QFile::exists(QDir(path).filePath(QStringLiteral("mod.json"))))
-            return path;
-    }
-    return {};
-}
-
 /// Collect autoload packs under tip roots. Sorted by priority descending so
 /// lower priority numbers register overrides last (PackQmlInterceptor: later wins).
 QStringList collectTipPacks(const QStringList& tipRoots)
@@ -191,16 +175,6 @@ void ModLoader::setSkipLoad(bool skip)
 bool ModLoader::skipLoad()
 {
     return skipLoadFlag();
-}
-
-void ModLoader::setForceDefaultMod(bool force)
-{
-    forceDefaultFlag() = force;
-}
-
-bool ModLoader::forceDefaultMod()
-{
-    return forceDefaultFlag();
 }
 
 QStringList ModLoader::tipModsRoots()
@@ -302,45 +276,30 @@ int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
     const QStringList tipRoots = roots.isEmpty() ? tipModsRoots() : roots;
     QStringList packs;
 
-    if (forceDefaultMod()) {
-        const QString packDir = findNamedPack(tipRoots, QStringLiteral("default"));
-        if (packDir.isEmpty()) {
-            qCCritical(lcModLoader) << "--default-mod: tip mods/default/mod.json not found under"
-                                    << tipRoots;
+    const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
+    if (!env.isEmpty()) {
+        packs = collectEnvPacks(env);
+        if (packs.isEmpty()) {
 #if defined(QTCLIENT_HAS_LINKED_PACK)
-            return 1; // entries already invoked
+            return 1;
 #else
             return 0;
 #endif
         }
-        qCInfo(lcModLoader) << "--default-mod: loading" << packDir;
-        packs = {packDir};
+        qCInfo(lcModLoader) << "QTCLIENT_MODS_DIR packs:" << packs;
     } else {
-        const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
-        if (!env.isEmpty()) {
-            packs = collectEnvPacks(env);
-            if (packs.isEmpty()) {
-#if defined(QTCLIENT_HAS_LINKED_PACK)
-                return 1;
-#else
-                return 0;
-#endif
-            }
-            qCInfo(lcModLoader) << "QTCLIENT_MODS_DIR packs:" << packs;
-        } else {
-            packs = collectTipPacks(tipRoots);
+        packs = collectTipPacks(tipRoots);
+    }
+    // DEV: extra FS-only packs (no tip rebuild) — appended after tip packs.
+    const QString extra = qEnvironmentVariable("QTCLIENT_EXTRA_MODS_DIR");
+    if (!extra.isEmpty()) {
+        const QStringList more = collectEnvPacks(extra);
+        for (const QString& p : more) {
+            if (!packs.contains(p))
+                packs.append(p);
         }
-        // DEV: extra FS-only packs (no tip rebuild) — appended after tip packs.
-        const QString extra = qEnvironmentVariable("QTCLIENT_EXTRA_MODS_DIR");
-        if (!extra.isEmpty()) {
-            const QStringList more = collectEnvPacks(extra);
-            for (const QString& p : more) {
-                if (!packs.contains(p))
-                    packs.append(p);
-            }
-            if (!more.isEmpty())
-                qCInfo(lcModLoader) << "QTCLIENT_EXTRA_MODS_DIR packs:" << more;
-        }
+        if (!more.isEmpty())
+            qCInfo(lcModLoader) << "QTCLIENT_EXTRA_MODS_DIR packs:" << more;
     }
 
     if (packs.isEmpty()) {

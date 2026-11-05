@@ -42,11 +42,15 @@ jobs:
           grep -q 'qtclient_add_mod' cmake/QtClientMod.cmake
           grep -q 'qtclient_invoke_linked_mods' client/tibia/mods/mod_entry.h
           grep -q 'QTCLIENT_HAS_LINKED_PACK' client/tibia/mods/modloader.cpp
-          grep -q 'qtclient_mod_sample_register' client/mods/_sample/src/sample_mod.cpp
+          grep -q 'qtclient_mod_otclient_register' client/mods/otclient/src/otclient_mod.cpp
           grep -q 'qtclient_mod_.*_register' cmake/GenerateLinkedMods.cmake
           grep -q 'QTCLIENT_PACK_SDK_ONLY' cmake/QtClientMod.cmake
+          test -f client/mods/myaac/mod.json
+          test -f launcher/mods/clientmods/launcher.json
+          test -f launcher/mods/minimap/launcher.json
           test -f scripts/lifecycle/package/archive-mod.sh
           bash -n scripts/lifecycle/package/archive-mod.sh
+          bash -n scripts/lifecycle/lib/stage-default-launcher-mods.sh
           if grep -q 'SHELL:-sMAIN_MODULE=2' client/tibia/CMakeLists.txt; then
             echo "::error::MAIN_MODULE=2 must stay deleted (linked tip)" >&2
             exit 1

@@ -29,9 +29,10 @@ pulls a warm prefix from `ghcr.io/qtclient/qt`
 artifact compiles Qt (large/slow).
 
 C++ libraries come from the vcpkg manifest (`vcpkg.json`, Crystal-aligned
-baseline). Qt is never a vcpkg port. LegacyControls is the
+baseline). Qt is never a vcpkg port. LegacyControls QML is carved by
+`make tibia-sync`; C++ is the LGPL
 [Qt5LegacyControls](https://github.com/CipSoft-Tibia/Qt5LegacyControls)
-submodule (LGPL). Details:
+submodule on branch `main` (not hash-pinned). Details:
 [`docs/development/build-tooling.md`](development/build-tooling.md).
 
 Presets live in `CMakePresets.json` (`macos-dev`, `linux-release`,

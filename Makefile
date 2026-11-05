@@ -2,7 +2,6 @@
 # Cargo-like: make [<component>] <lifecycle>
 #   components: client (default) | launcher | wasm
 #   lifecycles: build | run | check | test | clean | install | doc | package | publish
-#               (+ link when PRODUCT=1)
 #
 # Stock (default): CIP host only. Run passes --no-mods.
 # Product (PRODUCT=1 + QTCLIENT_PACK): stock install/run, then the configured pack.
@@ -25,9 +24,6 @@ SYNC_PY := $(firstword $(wildcard $(TOOLS_DIR)/tibia-sync/sync.py $(HERE)/tools/
 PRODUCT ?= 0
 APP_COMPONENTS := client launcher wasm
 APP_LIFECYCLES := build run check test clean install doc package publish
-ifeq ($(PRODUCT),1)
-  APP_LIFECYCLES += link
-endif
 APP_DEFAULT_COMPONENT := client
 
 .DEFAULT_GOAL := help
@@ -60,7 +56,7 @@ ifeq ($(PRODUCT),1)
 	@echo "  make wasm install     qtclient wasm tip with QTCLIENT_LINKED_PACK + FS mods/<id>"
 	@echo "  make package          qtclient tip build with QTCLIENT_LINKED_PACK"
 	@echo "  make client run       start linked tip (mods/<id> FS chrome next to binary)"
-	@echo "  make link             optional FS symlink (not required for run)"
+	@echo "  DEV client: disk QML from QTCLIENT_PACK (edit qml/overrides; F5 clears cache)"
 	@echo "  Stock-only smoke: umbrella make stock client run"
 else
 	@echo "  make client build     desktop tibia (DEV=1 → disk QML; STOCK_HOST=1 skips packs)"
@@ -151,14 +147,6 @@ _cargo:
 	      COMP="$$comp" QTCLIENT_ROOT="$(HERE)" \
 	        $(if $(ARGS),ARGS="$(ARGS)",) \
 	        bash "$$pack/scripts/lifecycle/run/$$target.sh" ;; \
-	    link) \
-	      mkdir -p "$(HERE)/client/mods" "$(HERE)/launcher/mods"; \
-	      id=$$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["id"])' "$$pack/client/mod.json"); \
-	      ln -sfn "$$pack/client" "$(HERE)/client/mods/$$id"; \
-	      if [[ -d "$$pack/launcher" ]]; then \
-	        ln -sfn "$$pack/launcher" "$(HERE)/launcher/mods/$$id"; \
-	      fi; \
-	      echo "[qtclient] linked client/mods/$$id -> $$pack/client" ;; \
 	    check) bash "$$pack/scripts/lifecycle/check/check.sh" ;; \
 	    clean) bash "$$pack/scripts/lifecycle/clean/clean.sh" ;; \
 	    doc) echo "[qtclient] PRODUCT pack: $$pack (mod.json + qml + overrides)" ;; \

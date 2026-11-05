@@ -158,11 +158,8 @@ fi
   elif [[ -d "$ROOT/third_party/qt5-cip/.git" || -f "$ROOT/third_party/qt5-cip/.git" ]]; then
     echo "qt5-cip $(git -C "$ROOT/third_party/qt5-cip" rev-parse HEAD)"
   fi
-  if git -C "$ROOT" rev-parse "HEAD:third_party/Qt5LegacyControls" >/dev/null 2>&1; then
-    echo "Qt5LegacyControls $(git -C "$ROOT" rev-parse HEAD:third_party/Qt5LegacyControls)"
-  elif [[ -d "$ROOT/third_party/Qt5LegacyControls/.git" || -f "$ROOT/third_party/Qt5LegacyControls/.git" ]]; then
-    echo "Qt5LegacyControls $(git -C "$ROOT/third_party/Qt5LegacyControls" rev-parse HEAD)"
-  fi
+  # Qt5LegacyControls tracks branch main (C++ only; not a release pin).
+  echo "Qt5LegacyControls main"
 } >"$DEST/third_party/SUBMODULE_PINS.txt"
 
 # Bulk-scrub leftover product tokens in text sources (logging categories, comments).

@@ -658,6 +658,11 @@ QString LauncherWindow::localModsStamp() const
     return readText(QDir(packageDir()).filePath(QStringLiteral("mods.json.sha256")));
 }
 
+QString LauncherWindow::localMinimapStamp() const
+{
+    return readText(QDir(packageDir()).filePath(QStringLiteral("minimap.json.sha256")));
+}
+
 bool LauncherWindow::thingsPacksStampPresent() const
 {
     const QDir tip(packageDir());
@@ -666,10 +671,29 @@ bool LauncherWindow::thingsPacksStampPresent() const
         || QFileInfo::exists(tip.filePath(QStringLiteral(".idleot-sprite-packs")));
 }
 
+bool LauncherWindow::clientModsChannelActive() const
+{
+    return LauncherMods::instance().clientModsChannel && !m_build.modsUrl.isEmpty();
+}
+
+bool LauncherWindow::minimapChannelActive() const
+{
+    return LauncherMods::instance().minimapChannel && !m_build.minimapUrl.isEmpty();
+}
+
 bool LauncherWindow::modsStampOk() const
 {
-    // Empty remote = channel omitted (stock CIP) or stamp not fetched yet.
+    // Channel off (no launcher mod / no URL) → treat as satisfied (stock CIP).
+    if (!clientModsChannelActive())
+        return true;
     return m_remoteModsVersion.isEmpty() || localModsStamp() == m_remoteModsVersion;
+}
+
+bool LauncherWindow::minimapStampOk() const
+{
+    if (!minimapChannelActive())
+        return true;
+    return m_remoteMinimapVersion.isEmpty() || localMinimapStamp() == m_remoteMinimapVersion;
 }
 
 QString LauncherWindow::installStatusLabel() const
@@ -690,7 +714,7 @@ QString LauncherWindow::installStatusLabel() const
         return localVersion().isEmpty() ? QStringLiteral("PackageBeingInstalled")
                                         : QStringLiteral("InstallationInProgress");
     }
-    if (!versionOk || m_hasGaps || !assetsOk || !thingsOk || !modsStampOk())
+    if (!versionOk || m_hasGaps || !assetsOk || !thingsOk || !modsStampOk() || !minimapStampOk())
         return QStringLiteral("PartiallyInstalled");
     return QStringLiteral("InstalledAndUsable");
 }
@@ -727,13 +751,23 @@ void LauncherWindow::fetchRemoteStampsAndPackageParallel(bool includePackage)
             oneDone();
         });
     }
-    if (!m_build.modsVersionUrl.isEmpty()) {
+    if (clientModsChannelActive() && !m_build.modsVersionUrl.isEmpty()) {
         ++pending;
         m_client->getAsync(m_build.modsVersionUrl, [this, oneDone](const QByteArray& body, const QString& error) {
             if (!error.isEmpty() && body.isEmpty())
                 qCWarning(lcLauncher) << "mods stamp failed" << error;
             else
                 m_remoteModsVersion = QString::fromUtf8(body).trimmed();
+            oneDone();
+        });
+    }
+    if (minimapChannelActive() && !m_build.minimapVersionUrl.isEmpty()) {
+        ++pending;
+        m_client->getAsync(m_build.minimapVersionUrl, [this, oneDone](const QByteArray& body, const QString& error) {
+            if (!error.isEmpty() && body.isEmpty())
+                qCWarning(lcLauncher) << "minimap stamp failed" << error;
+            else
+                m_remoteMinimapVersion = QString::fromUtf8(body).trimmed();
             oneDone();
         });
     }
@@ -838,6 +872,7 @@ void LauncherWindow::refresh()
     const bool assetsStale = !m_remoteAssetsVersion.isEmpty()
         && localAssetsStamp() != m_remoteAssetsVersion;
     const bool modsStale = !modsStampOk();
+    const bool minimapStale = !minimapStampOk();
 #ifdef __EMSCRIPTEN__
     const bool thingsStale = !thingsPacksStampPresent();
 #else
@@ -851,6 +886,7 @@ void LauncherWindow::refresh()
                        << "gaps" << m_hasGaps
                        << "assetsStale" << assetsStale
                        << "modsStale" << modsStale
+                       << "minimapStale" << minimapStale
                        << "thingsStale" << thingsStale
                        << "busy" << m_busy
                        << "devPlay" << devPlay
@@ -858,6 +894,8 @@ void LauncherWindow::refresh()
                        << "remoteAssets" << m_remoteAssetsVersion
                        << "modsStamp" << localModsStamp()
                        << "remoteMods" << m_remoteModsVersion
+                       << "minimapStamp" << localMinimapStamp()
+                       << "remoteMinimap" << m_remoteMinimapVersion
                        << "thingsStamp" << thingsPacksStampPresent();
     if (devPlay) {
         // Local monorepo: Play launches build/<preset>/bin/client (stock --no-mods
@@ -1071,7 +1109,7 @@ void LauncherWindow::start()
     // Warm tip → auto-Play (CIP --patch when current). qtclient chrome still used for
     // Update / --show-launcher / QTCLIENT_FORCE_LAUNCHER=1.
     if (!forceSoft && !m_remoteVersion.isEmpty() && local == m_remoteVersion && !m_hasGaps
-        && assetsOk && modsStampOk()) {
+        && assetsOk && modsStampOk() && minimapStampOk()) {
         qInfo("launcher warm tip InstalledAndUsable — auto Play");
         play();
         return;
@@ -1137,7 +1175,7 @@ void LauncherWindow::startAsync()
                     const bool thingsOk = thingsPacksStampPresent();
                     // Warm tip → remount game-only (same as qtclient Play / portal auto-skip).
                     if (!forceSoft && !m_remoteVersion.isEmpty() && local == m_remoteVersion
-                        && !m_hasGaps && assetsOk && thingsOk && modsStampOk()) {
+                        && !m_hasGaps && assetsOk && thingsOk && modsStampOk() && minimapStampOk()) {
                         qInfo("launcher wasm warm tip InstalledAndUsable — auto Play remount");
                         play();
                         return;
@@ -1156,7 +1194,8 @@ void LauncherWindow::startAsync()
         auto* stamps = new StampState;
         stamps->pending = 1
             + (m_build.assetsVersionUrl.isEmpty() ? 0 : 1)
-            + (m_build.modsVersionUrl.isEmpty() ? 0 : 1);
+            + (clientModsChannelActive() && !m_build.modsVersionUrl.isEmpty() ? 1 : 0)
+            + (minimapChannelActive() && !m_build.minimapVersionUrl.isEmpty() ? 1 : 0);
         auto onStampDone = [this, stamps, continueWithPackage] {
             if (--stamps->pending > 0)
                 return;
@@ -1185,9 +1224,15 @@ void LauncherWindow::startAsync()
                 onStampDone();
             });
         }
-        if (!m_build.modsVersionUrl.isEmpty()) {
+        if (clientModsChannelActive() && !m_build.modsVersionUrl.isEmpty()) {
             m_client->getAsync(m_build.modsVersionUrl, [this, onStampDone](const QByteArray& modsBody, const QString&) {
                 m_remoteModsVersion = QString::fromUtf8(modsBody).trimmed();
+                onStampDone();
+            });
+        }
+        if (minimapChannelActive() && !m_build.minimapVersionUrl.isEmpty()) {
+            m_client->getAsync(m_build.minimapVersionUrl, [this, onStampDone](const QByteArray& body, const QString&) {
+                m_remoteMinimapVersion = QString::fromUtf8(body).trimmed();
                 onStampDone();
             });
         }
@@ -1290,8 +1335,8 @@ void LauncherWindow::installAssetsAndThingsAsync(bool thenPlay)
 
 void LauncherWindow::installModsThenFinishAsync(bool thenPlay, const QString& version)
 {
-    if (m_build.modsUrl.isEmpty() || modsStampOk()) {
-        finishInstallAsync(thenPlay, version);
+    if (!clientModsChannelActive() || modsStampOk()) {
+        installMinimapThenFinishAsync(thenPlay, version);
         return;
     }
     m_status->setText(QStringLiteral("Loading mods…"));
@@ -1316,9 +1361,43 @@ void LauncherWindow::installModsThenFinishAsync(bool thenPlay, const QString& ve
                                                                 : installError);
                                            return;
                                        }
-                                       finishInstallAsync(thenPlay, version);
+                                       installMinimapThenFinishAsync(thenPlay, version);
                                    },
                                    0, batch > 0 ? batch : 1);
+    });
+}
+
+void LauncherWindow::installMinimapThenFinishAsync(bool thenPlay, const QString& version)
+{
+    if (!minimapChannelActive() || minimapStampOk()) {
+        finishInstallAsync(thenPlay, version);
+        return;
+    }
+    m_status->setText(QStringLiteral("Loading minimap…"));
+    m_client->getAsync(m_build.minimapUrl, [this, thenPlay, version](const QByteArray& body, const QString& error) {
+        QString parseError = error;
+        const QVector<CipFile> files = m_client->parseAssetFiles(body, &parseError);
+        if (files.isEmpty() && !parseError.isEmpty()) {
+            setBusy(false, {});
+            refresh();
+            m_status->setText(parseError);
+            return;
+        }
+        const QString tip = packageDir();
+        const qint64 batch = m_client->pendingPackedBytes(files, tip);
+        m_client->installMinimapAsync(m_build.minimapUrl, files, m_remoteMinimapVersion, tip,
+                                      [this, thenPlay, version](bool ok, const QString& installError) {
+                                          if (!ok) {
+                                              setBusy(false, {});
+                                              refresh();
+                                              m_status->setText(installError.isEmpty()
+                                                                   ? QStringLiteral("The installation of minimap failed.")
+                                                                   : installError);
+                                              return;
+                                          }
+                                          finishInstallAsync(thenPlay, version);
+                                      },
+                                      0, batch > 0 ? batch : 1);
     });
 }
 
@@ -1348,23 +1427,25 @@ void LauncherWindow::installIfNeededAsync(bool thenPlay)
         || localAssetsStamp() == m_remoteAssetsVersion;
     const bool thingsOk = thingsPacksStampPresent();
     const bool modsOk = modsStampOk();
+    const bool minimapOk = minimapStampOk();
     qCInfo(lcLauncher) << "installIfNeededAsync"
                        << "thenPlay" << thenPlay
                        << "packageOk" << packageOk
                        << "assetsOk" << assetsOk
                        << "thingsOk" << thingsOk
                        << "modsOk" << modsOk
+                       << "minimapOk" << minimapOk
                        << "local" << local
                        << "remote" << m_remoteVersion;
-    if (packageOk && assetsOk && thingsOk && modsOk) {
+    if (packageOk && assetsOk && thingsOk && modsOk && minimapOk) {
         if (thenPlay)
             play();
         return;
     }
     setBusy(true, {});
     m_timer.start();
-    if (packageOk && assetsOk && thingsOk && !modsOk) {
-        qCInfo(lcLauncher) << "installIfNeededAsync → mods only";
+    if (packageOk && assetsOk && thingsOk && (!modsOk || !minimapOk)) {
+        qCInfo(lcLauncher) << "installIfNeededAsync → mods/minimap only";
         const QString version = m_remoteVersion.isEmpty() ? local : m_remoteVersion;
         installModsThenFinishAsync(thenPlay, version);
         return;
@@ -1420,7 +1501,7 @@ void LauncherWindow::installIfNeeded(bool thenPlay)
     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
         || localAssetsStamp() == m_remoteAssetsVersion;
     if (!m_remoteVersion.isEmpty() && local == m_remoteVersion && !m_hasGaps && assetsOk
-        && modsStampOk()) {
+        && modsStampOk() && minimapStampOk()) {
         if (thenPlay)
             play();
         return;
@@ -1456,7 +1537,7 @@ void LauncherWindow::installIfNeeded(bool thenPlay)
     QVector<CipFile> mods;
     qint64 modsBytes = 0;
     QString modsVersion;
-    if (!m_build.modsUrl.isEmpty()) {
+    if (clientModsChannelActive()) {
         modsVersion = m_remoteModsVersion.isEmpty()
             ? m_client->fetchVersion(m_build.modsVersionUrl, &error)
             : m_remoteModsVersion;
@@ -1468,7 +1549,22 @@ void LauncherWindow::installIfNeeded(bool thenPlay)
             modsBytes = m_client->pendingPackedBytes(mods, tip);
         }
     }
-    const qint64 grandTotal = qMax(pkgBytes + assetBytes + modsBytes, qint64(1));
+    QVector<CipFile> minimap;
+    qint64 minimapBytes = 0;
+    QString minimapVersion;
+    if (minimapChannelActive()) {
+        minimapVersion = m_remoteMinimapVersion.isEmpty()
+            ? m_client->fetchVersion(m_build.minimapVersionUrl, &error)
+            : m_remoteMinimapVersion;
+        if (!minimapVersion.isEmpty())
+            m_remoteMinimapVersion = minimapVersion;
+        const QString haveMinimap = localMinimapStamp();
+        if (!minimapVersion.isEmpty() && minimapVersion != haveMinimap) {
+            minimap = m_client->fetchAssetFiles(m_build.minimapUrl, &error);
+            minimapBytes = m_client->pendingPackedBytes(minimap, tip);
+        }
+    }
+    const qint64 grandTotal = qMax(pkgBytes + assetBytes + modsBytes + minimapBytes, qint64(1));
 
     if (!m_client->installPackage(m_build.packageUrl, doc, tip, &error, 0, grandTotal)) {
         setBusy(false, {});
@@ -1488,6 +1584,15 @@ void LauncherWindow::installIfNeeded(bool thenPlay)
     if (!mods.isEmpty()) {
         if (!m_client->installMods(m_build.modsUrl, mods, modsVersion, tip, &error,
                                    pkgBytes + assetBytes, grandTotal)) {
+            setBusy(false, {});
+            m_status->setText(error);
+            refresh();
+            return;
+        }
+    }
+    if (!minimap.isEmpty()) {
+        if (!m_client->installMinimap(m_build.minimapUrl, minimap, minimapVersion, tip, &error,
+                                      pkgBytes + assetBytes + modsBytes, grandTotal)) {
             setBusy(false, {});
             m_status->setText(error);
             refresh();
@@ -1526,7 +1631,7 @@ void LauncherWindow::onAction()
     const bool thingsOk = true;
 #endif
     if (!m_remoteVersion.isEmpty() && local == m_remoteVersion && !m_hasGaps && assetsOk && thingsOk
-        && modsStampOk())
+        && modsStampOk() && minimapStampOk())
         play();
 #ifdef __EMSCRIPTEN__
     else
@@ -1555,10 +1660,6 @@ bool LauncherWindow::tryPlayDevClient()
         if (!clientArgs.contains(QStringLiteral("--no-mods")))
             clientArgs.prepend(QStringLiteral("--no-mods"));
         qInfo().noquote() << "Play → qtclient DEV client (--no-mods)" << exe;
-    } else if (brand.defaultMod) {
-        if (!clientArgs.contains(QStringLiteral("--default-mod")))
-            clientArgs.prepend(QStringLiteral("--default-mod"));
-        qInfo().noquote() << "Play → qtclient DEV client (--default-mod)" << exe;
     } else {
         const QString tipDir = QFileInfo(exe).absolutePath();
         const QDir tipMods(QDir(tipDir).filePath(QStringLiteral("mods")));
@@ -1693,9 +1794,6 @@ void LauncherWindow::play()
     if (tipBrand.noMods) {
         if (!tipArgs.contains(QStringLiteral("--no-mods")))
             tipArgs.prepend(QStringLiteral("--no-mods"));
-    } else if (tipBrand.defaultMod) {
-        if (!tipArgs.contains(QStringLiteral("--default-mod")))
-            tipArgs.prepend(QStringLiteral("--default-mod"));
     }
     spawn(executable, dir, doc.version.isEmpty() ? m_remoteVersion : doc.version, tipArgs,
           /*detachTip=*/true);

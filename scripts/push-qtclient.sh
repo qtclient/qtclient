@@ -29,17 +29,14 @@ rm -rf .git
 find . -name '.git' -print -exec rm -rf {} + 2>/dev/null || true
 git init -b main
 
-LC_SHA="$(awk '/^Qt5LegacyControls/{print $2}' third_party/SUBMODULE_PINS.txt 2>/dev/null || true)"
 QT_SHA="$(awk '/^qt5-cip/{print $2}' third_party/SUBMODULE_PINS.txt 2>/dev/null || true)"
-[[ -n "$LC_SHA" ]] || LC_SHA=989ad584cf0abb89295d0d292e4ca4ab78734d0d
 [[ -n "$QT_SHA" ]] || { echo "missing qt5-cip pin" >&2; exit 1; }
 
 rm -rf third_party/Qt5LegacyControls third_party/qt5-cip 2>/dev/null || true
 mkdir -p third_party
 
-# Small submodule: full checkout OK
+# LegacyControls C++: track branch tip (QML comes from tibia-sync, not this pin)
 git submodule add -b main https://github.com/CipSoft-Tibia/Qt5LegacyControls.git third_party/Qt5LegacyControls
-git -C third_party/Qt5LegacyControls checkout "$LC_SHA"
 git add third_party/Qt5LegacyControls
 
 # Large submodule: gitlink + .gitmodules only (no working tree)
@@ -74,7 +71,7 @@ fi
 git -c user.email="noreply@qtclient.dev" -c user.name="qtclient" commit -m "$(cat <<'EOF'
 Initial public qtclient (otqt) tree.
 
-CipSoft-compatible Qt/QML client with mods API, CipSoft Qt5 + LegacyControls
+CipSoft-compatible Qt/QML client with mods API, CipSoft Qt5 + LegacyControls C++
 submodules, and stock CI / GHCR warm paths. No product packs or CIP assets.
 EOF
 )"

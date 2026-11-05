@@ -43,7 +43,7 @@ void installUiFonts(const QStringList& dirs);
 /// browser font engine as on the desktop. No effect outside wasm.
 void alignTextHinting(QQmlEngine* engine);
 
-/// QML engine with CIP's base URL, the qmlcomponents types and the client/overrides interceptor.
+/// QML engine with CIP Soft base URL, qmlcomponents types, and pack interceptors.
 std::unique_ptr<QQmlEngine> createEngine();
 
 }

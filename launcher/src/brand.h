@@ -6,8 +6,10 @@
 /**
  * qtclient defaults are CipSoft (compile-time). A tip pack under
  * applicationDirPath()/mods/<id>/ with brand.json (+ optional images/launcher)
- * overrides identity and chrome at runtime — same idea as client --no-mods /
- * --default-mod.
+ * overrides identity and chrome at runtime — same idea as client --no-mods.
+ *
+ * Non-CIP download channels are gated by launcher.json capabilities on tip
+ * mods/<id>/ (see LauncherMods): clientmods + minimap are default launcher mods.
  */
 struct LauncherBrand {
     QString id;
@@ -21,8 +23,6 @@ struct LauncherBrand {
     bool loaded = false;
     /// `--no-mods`: stock CIP chrome; Play forwards --no-mods to client.
     bool noMods = false;
-    /// `--default-mod`: tip mods/default only; Play forwards --default-mod.
-    bool defaultMod = false;
 
     static LauncherBrand& instance();
     /// Parse argv; scan tip mods/ (or QTCLIENT_MODS_DIR) for brand.json unless --no-mods.
@@ -31,4 +31,14 @@ struct LauncherBrand {
     /// Prefer pack images/launcher/<file>, else :/images/launcher/<file>.
     QString chromeUrl(const QString& fileName) const;
     QString chromePath(const QString& fileName) const;
+};
+
+/// Tip launcher mods (launcher.json capabilities). Stock CIP has neither channel.
+struct LauncherMods {
+    bool clientModsChannel = false;
+    bool minimapChannel = false;
+
+    static LauncherMods& instance();
+    /// Scan tip mods/<id>/launcher.json unless --no-mods.
+    static void load(bool noMods);
 };

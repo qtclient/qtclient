@@ -4,10 +4,10 @@ woven into stock `client/tibia`.
 
 | Layer | Stock (this tree) | Product pack |
 |-------|-------------------|--------------|
-| CIP engine + overrides | `client/tibia`, `client/overrides` | — |
+| CIP Soft engine | `client/tibia` (+ `upstream/` from sync) | — |
 | Launcher | `launcher/src` | Brand/art via `launcher/mods/<id>` |
 | `upstream/*` / CIP assets | Never commit — `make sync` + `make extract` | Same |
-| Mods API + `client/mods/_sample` | Yes | `mod.json` + native + FS QML `qml/<uri>/` + `mod_api_v1` |
+| Mods API + default packs (`myaac`, `otclient`) | Yes | `mod.json` + linked C++ / FS QML + `mod_api_v1` |
 | Product packs | Not required to build stock | Drop in `mods/<id>/` or umbrella `make qtclient install` (`QTCLIENT_PACK`) |
 
 ## Inplace extension

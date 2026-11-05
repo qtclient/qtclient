@@ -83,6 +83,8 @@ CipBuild buildFromJson(const QJsonObject& obj)
     build.assetsVersionUrl = QUrl(jsonString(obj, "assetsversionurl"));
     build.modsUrl = QUrl(jsonString(obj, "modsurl"));
     build.modsVersionUrl = QUrl(jsonString(obj, "modsversionurl"));
+    build.minimapUrl = QUrl(jsonString(obj, "minimapurl"));
+    build.minimapVersionUrl = QUrl(jsonString(obj, "minimapversionurl"));
     return build;
 }
 
@@ -1066,6 +1068,50 @@ void PackageClient::installModsAsync(const QUrl& modsUrl, const QVector<CipFile>
                               return;
                           }
                           stamp.write(modsVersion.toUtf8());
+                          stamp.close();
+                          if (done)
+                              done(true, {});
+                      });
+}
+
+bool PackageClient::installMinimap(const QUrl& minimapUrl, const QVector<CipFile>& files,
+                                   const QString& minimapVersion, const QString& destDir, QString* error,
+                                   qint64 progressBase, qint64 progressTotal)
+{
+    if (!installFiles(minimapUrl, files, destDir, error, progressBase, progressTotal))
+        return false;
+    QFile stamp(QDir(destDir).filePath(QStringLiteral("minimap.json.sha256")));
+    if (!stamp.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        if (error)
+            *error = QStringLiteral("The installation of %1 failed.").arg(destDir);
+        return false;
+    }
+    stamp.write(minimapVersion.toUtf8());
+    stamp.close();
+    return true;
+}
+
+void PackageClient::installMinimapAsync(const QUrl& minimapUrl, const QVector<CipFile>& files,
+                                        const QString& minimapVersion, const QString& destDir,
+                                        InstallCallback done, qint64 progressBase, qint64 progressTotal)
+{
+    QDir().mkpath(destDir);
+    const qint64 batch = pendingPackedBytes(files, destDir);
+    const qint64 span = progressTotal > 0 ? progressTotal : (batch > 0 ? batch : 1);
+    installFilesAsync(minimapUrl, files, destDir, 0, progressBase, span,
+                      [minimapVersion, destDir, done = std::move(done)](bool ok, const QString& error) {
+                          if (!ok) {
+                              if (done)
+                                  done(false, error);
+                              return;
+                          }
+                          QFile stamp(QDir(destDir).filePath(QStringLiteral("minimap.json.sha256")));
+                          if (!stamp.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+                              if (done)
+                                  done(false, QStringLiteral("The installation of %1 failed.").arg(destDir));
+                              return;
+                          }
+                          stamp.write(minimapVersion.toUtf8());
                           stamp.close();
                           if (done)
                               done(true, {});
