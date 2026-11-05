@@ -22,8 +22,8 @@
 
 #pragma once
 
-#include "appearances/appearanceinstance.h"
 #include "container/containerciptypes.h"
+#include "appearances/appearanceinstance.h"
 #include "declarations.h"
 #include "framework/net/protocol.h"
 #include "staticdata.h"

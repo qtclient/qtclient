@@ -21,12 +21,15 @@ class Item;
 class Creature;
 class Thing;
 
-namespace tibia::creatures {
+// Classic nested braces — MSVC C3083 when pack TUs (no /FI pch) parse compound
+// `namespace tibia::appearances` then look up sibling `tibia::container::*`.
+namespace tibia {
+namespace creatures {
 using TCreatureID = uint32_t;
 class TCreature;
-} // namespace tibia::creatures
+} // namespace creatures
 
-namespace tibia::appearances {
+namespace appearances {
 
 /// CIP appearances::TAppearanceInstance — thin view over a ThingType record.
 class TAppearanceInstance : public ::tibia::CipTyped
@@ -390,4 +393,5 @@ private:
     std::unique_ptr<TAppearanceInstanceGenericStorage> m_genericStorage;
 };
 
-}
+} // namespace appearances
+} // namespace tibia

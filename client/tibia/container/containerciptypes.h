@@ -21,15 +21,20 @@
 
 class ThingType;
 
-namespace tibia::protobuf::protocol {
+// Classic nested braces — same MSVC C3083 rationale as appearanceinstance.h
+// (pack TUs include these tip headers without engine /FI pch).
+namespace tibia {
+namespace protobuf {
+namespace protocol {
 class GameserverMessageCloseContainer;
 class GameserverMessageDeleteInventory;
 class GameserverMessageSetInventory;
 class GameserverMessageSpecialContainersAvailable;
 class ProtocolInventoryItem;
-}
+} // namespace protocol
+} // namespace protobuf
 
-namespace tibia::container {
+namespace container {
 
 using TContainerID = int;
 
@@ -232,4 +237,5 @@ public:
     using cip::tibia::container::TStashStorage::TStashStorage;
 };
 
-} // namespace tibia::container
+} // namespace container
+} // namespace tibia
