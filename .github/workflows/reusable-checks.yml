@@ -38,11 +38,12 @@ jobs:
           grep -q 'QTCLIENT_LINKED_PACKS' cmake/TibiaMods.cmake
           grep -q 'qtclient_link_mod_archive' cmake/QtClientMod.cmake
           test -f cmake/GenerateLinkedMods.cmake
-          grep -q 'STATIC' cmake/QtClientMod.cmake
+          grep -q 'target_sources(tibia PRIVATE' cmake/QtClientMod.cmake
           grep -q 'qtclient_add_mod' cmake/QtClientMod.cmake
           grep -q 'qtclient_invoke_linked_mods' client/tibia/mods/mod_entry.h
           grep -q 'QTCLIENT_HAS_LINKED_PACK' client/tibia/mods/modloader.cpp
-          grep -q 'qtclient_mod_sample_entry' client/mods/_sample/src/sample_mod.cpp
+          grep -q 'qtclient_mod_sample_register' client/mods/_sample/src/sample_mod.cpp
+          grep -q 'qtclient_mod_.*_register' cmake/GenerateLinkedMods.cmake
           grep -q 'QTCLIENT_PACK_SDK_ONLY' cmake/QtClientMod.cmake
           test -f scripts/lifecycle/package/archive-mod.sh
           bash -n scripts/lifecycle/package/archive-mod.sh

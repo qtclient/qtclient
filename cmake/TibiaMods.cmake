@@ -1,4 +1,4 @@
-# Mods/: optional packs with mod.json — STATIC-linked into tibia tip.
+# Mods/: optional packs with mod.json — C++ absorbed into tibia tip (CIP-shaped).
 #
 #   client/mods/<name>/mod.json + CMakeLists.txt
 #   -DQTCLIENT_LINKED_PACK=<pack>/client              # single out-of-tree pack
@@ -6,7 +6,7 @@
 #   -DQTCLIENT_LINKED_PACK_LIBS=id=/path/to.a;…       # prebuilt archives (Phase 3)
 #
 # Runtime FS chrome: mods/<id>/ next to the tip (qml/overrides). Native C++ is
-# linked at build time (qtclient_add_mod STATIC), not dlopen'd.
+# compiled as tip sources (qtclient_add_mod → target_sources(tibia)), not dlopen'd.
 
 option(QTCLIENT_ENABLE_MODS "Discover and link mods/ packs into tibia" ON)
 option(QTCLIENT_PACK_SDK_ONLY "Packs compile against client-sdk only (no tip includes)" OFF)

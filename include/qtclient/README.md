@@ -9,7 +9,7 @@ There is **no** `sdk/ALLOWLIST`. Extending the surface means adding a header her
 | Header | Role |
 |--------|------|
 | `mod_api_v1.h` / `mod.h` | Host Mod API (named façades only) |
-| `mod_entry.h` | Pack STATIC entry macros (`QTCLIENT_MOD_EXPORT`) |
+| `mod_entry.h` | Tip linked-pack entry / invoke decls (pack TUs use `…_register`) |
 | `mod_registry.h` | Identity / backends / effect hooks / pack QML paths |
 | `pack_host.h` | Tip-filled wiring surface |
 | `worldview.h` | Lighting driver, overlays, frame hooks, lighting PODs |

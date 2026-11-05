@@ -129,7 +129,7 @@ Stock qtclient (no linked pack): FS urls/identity/QML only; a leftover `native/`
 ### Author path (any product)
 
 1. Pin qtclient SHA / client-sdk
-2. Export `qtclient_mod_<id>_entry` + `qtclient_add_mod(<id> …)` under pack `client/`
+2. Define `qtclient_mod_<id>_register` (C++) + `qtclient_add_mod(<id> …)` under pack `client/` (tip generates `extern "C"` entry wrappers)
 3. Build tip with `-DQTCLIENT_LINKED_PACK=<pack>/client` (or `LINKED_PACKS` / `LINKED_PACK_LIBS`)
 4. Publish tip + `mods.json` lzma blobs on the CDN
 5. Point `tibiametadata` `modsurl` / `modsversionurl` at that tip
@@ -139,7 +139,7 @@ Build with one CMake API:
 ```cmake
 include(cmake/QtClientMod.cmake)  # qtclient tip already has target tibia
 qtclient_add_mod(my_pack
-  SOURCES src/entry.cpp …   # must export qtclient_mod_my_pack_entry
+  SOURCES src/entry.cpp …   # must define qtclient_mod_my_pack_register
   QML_DIR qml
   QML_MODULE my_pack   # stages qml/<module>/ + generates qmldir
   OVERRIDES_DIR overrides
@@ -154,7 +154,7 @@ Authors do **not** choose “plugin vs SIDE_MODULE”. qtclient owns the tip lin
 
 1. qtclient tip is a normal Emscripten executable (no `MAIN_MODULE` / pack `SIDE_MODULE`).
 2. Product packs STATIC-link via `QTCLIENT_LINKED_PACK(S)` (keep each
-   `qtclient_mod_<id>_entry` + `qtclient_invoke_linked_mods` with `LINKER:--undefined=` on WASM).
+   tip-generated `qtclient_mod_<id>_entry` + `qtclient_invoke_linked_mods` with `LINKER:--undefined=` on WASM).
 3. Gates:
    - qtclient CI: `_sample` STATIC linked canary + no `native/mod.wasm` under tip
    - Tip presence: `check-tip-pack-presence.sh` (`mods/<id>/mod.json` + content-store)
@@ -259,7 +259,7 @@ unless the TU needs wire helpers (`useMapObject`, `talk`, …).
 - `mod.json` → `QTCLIENT_MOD_API` must be in `[ModLoader::kMinApi, kSupportedApi]` (currently 1..1). Legacy key `modApi` is not read.
 - Optional `hostBuildId` — reject on mismatch by default (desktop + WASM). Set
   `QTCLIENT_MOD_STRICT_HOST=0` to warn and continue (DEV).
-- `qtclient_mod_<id>_entry(earlyCtx)` / `qtclient_invoke_linked_mods` — **register-only** when `earlyCtx` is null (startup load); UI wiring runs in `earlyBootstrapAll` / `bootstrapAll`.
+- Pack `qtclient_mod_<id>_register` + tip `qtclient_mod_<id>_entry` / `qtclient_invoke_linked_mods` — **register-only** when `earlyCtx` is null (startup load); UI wiring runs in `earlyBootstrapAll` / `bootstrapAll`.
 
 ## Overrides
 
@@ -314,9 +314,10 @@ cached hooks (null-check only on the hot path):
 ## Entry symbols
 
 ```c
-// each pack
+// each pack (C++, absorbed into tibia)
+void qtclient_mod_<id>_register(const tibia::mods::ModContext* earlyCtx);
+// tip-generated linked_mods.cpp
 extern "C" void qtclient_mod_<id>_entry(const tibia::mods::ModContext* earlyCtx);
-// tip-generated aggregator (+ back-compat alias qtclient_mod_entry)
 extern "C" void qtclient_invoke_linked_mods(const tibia::mods::ModContext* earlyCtx);
 ```
 
@@ -325,7 +326,7 @@ Register mods, backends, WorldView drivers/overlays inside the pack entry
 
 ## Client + pack
 
-- **`Client: ci`** (public) publishes qtclient (`client-<plat>:<sha>`, `client-sdk:<sha>`). Desktop and wasm both STATIC-link `_sample` as a pack canary so every kit exercises the CIP-shaped pack contract (`/FI`/`-include` `framework/pch.h` + `QTCLIENT_MOD_EXPORT`) on the host SHA — not only on release `pack-windows`.
+- **`Client: ci`** (public) publishes qtclient (`client-<plat>:<sha>`, `client-sdk:<sha>`). Desktop and wasm both absorb `_sample` into `tibia` as a pack canary (same tip `/FI` pch + tip-generated `extern "C"` wrappers) on every kit — including MSVC — before release `pack-windows`.
 - Product release rebuilds qtclient with `QTCLIENT_LINKED_PACK`, stages FS chrome, brands the tip, promotes CDN. When pack or host compile surface changed, dispatch `idleot/release` Build client and wait for **pack-windows** green before cutting a tag.
 - Local: `make qtclient client|wasm install` builds qtclient with the pack linked and stages `mods/<id>`. Run loads tip `mods/<id>` only. `make stock client run` / `make stock launcher run` pass `--no-mods`.
 

@@ -1,4 +1,4 @@
-# qtclient_add_mod — STATIC pack linked into the qtclient tip (desktop + WASM).
+# qtclient_add_mod — pack C++ absorbed into the `tibia` tip (CIP-shaped).
 #
 #   qtclient_add_mod(<id>
 #     SOURCES …
@@ -15,11 +15,12 @@
 #   mods/<id>/overrides/ …
 #   mods/<id>/resources/ …
 #
-# Pack C++ is STATIC-linked into `tibia`. Each pack exports
-# qtclient_mod_<id>_entry; tibia_finalize_linked_mods generates
-# qtclient_invoke_linked_mods. QML stays filesystem for F5.
+# Pack C++ is compiled as part of `tibia` (same /FI framework/pch.h preamble as
+# tip engine TUs — CipSoft monolithic client). Pack TUs export
+# `qtclient_mod_<id>_register` (C++). Tip-generated linked_mods.cpp owns the
+# only `extern "C"` wrappers + qtclient_invoke_linked_mods. QML stays FS for F5.
 #
-# Optional prebuilt archive (Phase 3):
+# Optional prebuilt archive (Phase 3, IMPORTED):
 #   -DQTCLIENT_LINKED_PACK_LIBS=<id>=/path/to/libqtclient_mod_<id>.a;…
 
 include_guard(GLOBAL)
@@ -36,107 +37,82 @@ function(qtclient_add_mod MOD_ID)
     message(FATAL_ERROR "qtclient_add_mod(${MOD_ID}): tibia target missing (linked tip)")
   endif()
 
-  set(_target "qtclient_mod_${MOD_ID}")
   set(_outdir "${CMAKE_BINARY_DIR}/mods/${MOD_ID}")
   file(MAKE_DIRECTORY "${_outdir}")
 
-  add_library(${_target} STATIC ${ARG_SOURCES})
-  set_target_properties(${_target} PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY "${_outdir}/lib"
-    POSITION_INDEPENDENT_CODE ON
-    OUTPUT_NAME "qtclient_mod_${MOD_ID}")
+  # Resolve sources to absolute paths for set_source_files_properties.
+  set(_abs_sources "")
+  foreach(_src IN LISTS ARG_SOURCES)
+    if(IS_ABSOLUTE "${_src}")
+      list(APPEND _abs_sources "${_src}")
+    else()
+      list(APPEND _abs_sources "${CMAKE_CURRENT_SOURCE_DIR}/${_src}")
+    endif()
+  endforeach()
 
-  target_compile_definitions(${_target} PRIVATE
-    QTCLIENT_MOD_BUILD=1
-    QTCLIENT_MOD_ID=${MOD_ID})
-  # Always see the pack's own sources.
-  target_include_directories(${_target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+  target_sources(tibia PRIVATE ${_abs_sources})
 
-  # Phase 2 SDK gate: curated roots only (include/qtclient + tip closure + engine
-  # for framework/ + cipgen + protobuf). No full tip INCLUDE_DIRECTORIES dump.
+  # Pack-local includes + SDK roots on the tip (sources compile as tibia TUs).
+  target_include_directories(tibia PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
   if(QTCLIENT_PACK_SDK_ONLY)
     if(QTCLIENT_HOST_INCLUDE_DIR)
-      target_include_directories(${_target} PRIVATE ${QTCLIENT_HOST_INCLUDE_DIR})
+      target_include_directories(tibia PRIVATE ${QTCLIENT_HOST_INCLUDE_DIR})
     else()
-      # In-tree linked tip: synthesize pack_sdk roots from TIBIA_ROOT + tip codegen.
-      # client/ is required for <tibia/…> includes (maps to client/tibia/…).
-      target_include_directories(${_target} PRIVATE
+      target_include_directories(tibia PRIVATE
         "${TIBIA_ROOT}/include"
         "${TIBIA_ROOT}/client"
         "${TIBIA_ROOT}/client/tibia"
         "${TIBIA_ROOT}/client/tibia/engine")
       if(DEFINED CMAKE_BINARY_DIR)
-        target_include_directories(${_target} PRIVATE
+        target_include_directories(tibia PRIVATE
           "${CMAKE_BINARY_DIR}/client/tibia/cipgen"
           "${CMAKE_BINARY_DIR}/client/tibia/protobuf"
           "${CMAKE_BINARY_DIR}/client/tibia/tibia_autogen/include")
       endif()
     endif()
   else()
-    target_include_directories(${_target} PRIVATE
+    target_include_directories(tibia PRIVATE
       "${TIBIA_ROOT}/include"
       "${TIBIA_ROOT}/client/tibia")
-    # Tip include dirs imply tip keyword/defs (QT_NO_KEYWORDS, …).
-    target_include_directories(${_target} PRIVATE
-      "$<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>")
     if(QTCLIENT_HOST_INCLUDE_DIR)
-      target_include_directories(${_target} PRIVATE ${QTCLIENT_HOST_INCLUDE_DIR})
+      target_include_directories(tibia PRIVATE ${QTCLIENT_HOST_INCLUDE_DIR})
     endif()
   endif()
-  target_compile_definitions(${_target} PRIVATE
-    "$<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>")
-  target_compile_options(${_target} PRIVATE
-    "$<TARGET_PROPERTY:tibia,COMPILE_OPTIONS>")
-  # Same force-include preamble as tip engine TUs (CMakeLists.txt tibia engine
-  # sources). CipSoft builds one monolithic client with one TU preamble; pack
-  # STATIC libs must not use a thinner Windows-only anchor (that caused
-  # C3083/C2039/C2144 only on pack-windows). Match tip on every platform.
-  if(MSVC)
-    target_compile_options(${_target} PRIVATE "/FIframework/pch.h")
-  else()
-    target_compile_options(${_target} PRIVATE "-include" "framework/pch.h")
-  endif()
-  # PACK_SDK_ONLY curated roots omit tip LINK_LIBRARIES. Engine headers on that
-  # include path (and tip PCH) still need zlib/lzma/spdlog includes — on Windows
-  # vcpkg those are not on the default include path (linux/mac system zlib often is).
-  if(TARGET tibia_thirdparty)
-    target_link_libraries(${_target} PRIVATE tibia_thirdparty)
-  elseif(TARGET ZLIB::ZLIB)
-    target_link_libraries(${_target} PRIVATE ZLIB::ZLIB)
-  endif()
-  # qtclient headers (e.g. eventfilters.h → <cip_gen.h>) need codegen before the
-  # pack compiles; include dirs alone do not order the custom command.
-  if(TARGET cip_codegen_tibia)
-    add_dependencies(${_target} cip_codegen_tibia)
-  endif()
-  # QTCLIENT_MOD_INTERNAL=1 define only — for any remaining #ifdef; not a defs gate.
+
+  # Per-pack defs (do not pollute the whole tip with QTCLIENT_MOD_ID).
+  set(_pack_defs "QTCLIENT_MOD_BUILD=1;QTCLIENT_MOD_ID=${MOD_ID}")
   if(QTCLIENT_MOD_INTERNAL)
-    target_compile_definitions(${_target} PRIVATE QTCLIENT_MOD_INTERNAL=1)
+    list(APPEND _pack_defs "QTCLIENT_MOD_INTERNAL=1")
   endif()
-  # Narrow RHI / private Qt link — independent of deep tip includes.
-  # Packs that only need GuiPrivate for weather/raycast set QTCLIENT_MOD_GUI_PRIVATE
-  # without QTCLIENT_MOD_INTERNAL once deep headers are gone.
   if(QTCLIENT_MOD_GUI_PRIVATE)
-    target_compile_definitions(${_target} PRIVATE QTCLIENT_MOD_GUI_PRIVATE=1)
+    list(APPEND _pack_defs "QTCLIENT_MOD_GUI_PRIVATE=1")
+  endif()
+  set_property(SOURCE ${_abs_sources} APPEND PROPERTY COMPILE_DEFINITIONS ${_pack_defs})
+
+  # Same force-include as tip engine .cpp (client/tibia/CMakeLists.txt).
+  set(_pack_cpp ${_abs_sources})
+  list(FILTER _pack_cpp INCLUDE REGEX "\\.cpp$")
+  if(_pack_cpp)
+    if(MSVC)
+      set_property(SOURCE ${_pack_cpp} APPEND PROPERTY COMPILE_OPTIONS "/FIframework/pch.h")
+    else()
+      set_property(SOURCE ${_pack_cpp} APPEND PROPERTY COMPILE_OPTIONS "-include" "framework/pch.h")
+    endif()
   endif()
 
-  if(TARGET Qt6::Core)
-    target_link_libraries(${_target} PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
-    if((QTCLIENT_MOD_GUI_PRIVATE OR QTCLIENT_MOD_INTERNAL) AND TARGET Qt6::GuiPrivate)
-      target_link_libraries(${_target} PRIVATE Qt6::GuiPrivate)
+  # GuiPrivate already linked on tibia when product needs it — ensure tip has it.
+  if(TARGET Qt6::Core AND (QTCLIENT_MOD_GUI_PRIVATE OR QTCLIENT_MOD_INTERNAL))
+    if(TARGET Qt6::GuiPrivate)
+      target_link_libraries(tibia PRIVATE Qt6::GuiPrivate)
     endif()
-    if((QTCLIENT_MOD_GUI_PRIVATE OR QTCLIENT_MOD_INTERNAL) AND TARGET Qt6::QuickPrivate)
-      target_link_libraries(${_target} PRIVATE Qt6::QuickPrivate)
+    if(TARGET Qt6::QuickPrivate)
+      target_link_libraries(tibia PRIVATE Qt6::QuickPrivate)
     endif()
   endif()
+  if(TARGET cip_codegen_tibia)
+    add_dependencies(tibia cip_codegen_tibia)
+  endif()
 
-  set_target_properties(${_target} PROPERTIES
-    CXX_STANDARD 23
-    CXX_STANDARD_REQUIRED ON
-    AUTOMOC ON)
-
-  # Tip links the pack; finalize step defines QTCLIENT_HAS_LINKED_PACK + entry table.
-  target_link_libraries(tibia PRIVATE ${_target})
   set_property(GLOBAL APPEND PROPERTY QTCLIENT_LINKED_MOD_IDS "${MOD_ID}")
 
   set(_mod_json "${ARG_MOD_JSON}")
@@ -156,6 +132,7 @@ function(qtclient_add_mod MOD_ID)
 ")
   endif()
 
+  # FS chrome at configure time (no separate pack target POST_BUILD).
   if(ARG_QML_DIR AND EXISTS "${ARG_QML_DIR}")
     set(_qml_src_module "${ARG_QML_DIR}/${ARG_QML_MODULE}")
     if(EXISTS "${_qml_src_module}/qmldir" OR EXISTS "${_qml_src_module}")
@@ -172,24 +149,23 @@ function(qtclient_add_mod MOD_ID)
         file(COPY "${_entry}" DESTINATION "${_qml_stage_from}/${ARG_QML_MODULE}")
       endforeach()
     endif()
-    add_custom_command(TARGET ${_target} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E rm -rf "${_outdir}/qml"
-      COMMAND ${CMAKE_COMMAND} -E copy_directory "${_qml_stage_from}" "${_outdir}/qml"
+    file(REMOVE_RECURSE "${_outdir}/qml")
+    file(COPY "${_qml_stage_from}/" DESTINATION "${_outdir}/qml")
+    execute_process(
       COMMAND ${CMAKE_COMMAND}
-        -DMODULE_DIR="${_outdir}/qml/${ARG_QML_MODULE}"
-        -DMODULE_NAME="${ARG_QML_MODULE}"
+        -DMODULE_DIR=${_outdir}/qml/${ARG_QML_MODULE}
+        -DMODULE_NAME=${ARG_QML_MODULE}
         -P "${TIBIA_ROOT}/cmake/GeneratePackQmldir.cmake"
-      COMMENT "stage ${MOD_ID} qml FS module ${ARG_QML_MODULE}")
+      RESULT_VARIABLE _qmldir_rc)
+    if(NOT _qmldir_rc EQUAL 0)
+      message(WARNING "qtclient_add_mod(${MOD_ID}): GeneratePackQmldir failed (${_qmldir_rc})")
+    endif()
   endif()
   if(ARG_OVERRIDES_DIR AND EXISTS "${ARG_OVERRIDES_DIR}")
-    add_custom_command(TARGET ${_target} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_directory "${ARG_OVERRIDES_DIR}" "${_outdir}/overrides"
-      COMMENT "stage ${MOD_ID} overrides")
+    file(COPY "${ARG_OVERRIDES_DIR}/" DESTINATION "${_outdir}/overrides")
   endif()
   if(ARG_RESOURCES_DIR AND EXISTS "${ARG_RESOURCES_DIR}")
-    add_custom_command(TARGET ${_target} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_directory "${ARG_RESOURCES_DIR}" "${_outdir}/resources"
-      COMMENT "stage ${MOD_ID} resources")
+    file(COPY "${ARG_RESOURCES_DIR}/" DESTINATION "${_outdir}/resources")
   endif()
 
   # Defer tip FS staging: add_custom_command(TARGET tibia) only works in the
@@ -197,12 +173,11 @@ function(qtclient_add_mod MOD_ID)
   set_property(GLOBAL APPEND PROPERTY QTCLIENT_MOD_TIP_STAGE
     "${MOD_ID}|${_outdir}")
 
-  set(QTCLIENT_MOD_TARGET_${MOD_ID} "${_target}" PARENT_SCOPE)
   if(NOT TARGET qtclient_mods)
-    add_custom_target(qtclient_mods COMMENT "all qtclient linked STATIC packs")
+    add_custom_target(qtclient_mods COMMENT "qtclient linked packs (absorbed into tibia)")
   endif()
-  add_dependencies(qtclient_mods ${_target})
-  message(STATUS "qtclient_add_mod: ${MOD_ID} STATIC → tibia + ${_outdir} (entry qtclient_mod_${MOD_ID}_entry)")
+  add_dependencies(qtclient_mods tibia)
+  message(STATUS "qtclient_add_mod: ${MOD_ID} → tibia sources + ${_outdir} (register qtclient_mod_${MOD_ID}_register)")
 endfunction()
 
 # Link a prebuilt pack archive (Phase 3) without compiling pack sources in-tree.
@@ -226,7 +201,7 @@ function(qtclient_link_mod_archive MOD_ID)
       "${MOD_ID}|${ARG_MOD_DIR}")
   endif()
   if(NOT TARGET qtclient_mods)
-    add_custom_target(qtclient_mods COMMENT "all qtclient linked STATIC packs")
+    add_custom_target(qtclient_mods COMMENT "qtclient linked packs (absorbed into tibia)")
   endif()
   message(STATUS "qtclient_link_mod_archive: ${MOD_ID} ← ${ARG_ARCHIVE}")
 endfunction()

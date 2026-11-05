@@ -17,24 +17,21 @@ void registerSample(const qtclient::ModApiV1* api)
         qWarning("sample mod: host API v1 missing");
         return;
     }
-    api->registerMod({
-        .identity =
-            {
-                .id = "sample",
-                .displayName = "Sample",
-                .organization = "qtclient",
-                .organizationDomain = "example.invalid",
-                .bundleId = "com.qtclient.sample",
-                .cdnBaseUrl = "",
-                .priority = 50,
-            },
-        .bootstrap = &bootstrapSample,
-    });
+    tibia::mods::ModEntry entry;
+    entry.identity.id = "sample";
+    entry.identity.displayName = "Sample";
+    entry.identity.organization = "qtclient";
+    entry.identity.organizationDomain = "example.invalid";
+    entry.identity.bundleId = "com.qtclient.sample";
+    entry.identity.cdnBaseUrl = "";
+    entry.identity.priority = 50;
+    entry.bootstrap = &bootstrapSample;
+    api->registerMod(entry);
 }
 
 } // namespace
 
-extern "C" QTCLIENT_MOD_EXPORT void qtclient_mod_sample_entry(const tibia::mods::ModContext* earlyCtx)
+void qtclient_mod_sample_register(const tibia::mods::ModContext* earlyCtx)
 {
     Q_UNUSED(earlyCtx);
     // earlyCtx is null on first load — register only; bootstrapAll runs later.

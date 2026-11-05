@@ -1,5 +1,6 @@
-# Generate linked_mods.cpp — calls every STATIC pack entry once.
-# Expects: LINKED_MOD_IDS (semicolon list), OUTPUT (path).
+# Generate linked_mods.cpp — tip-owned extern "C" wrappers around pack registrars.
+# Pack TUs export C++ `qtclient_mod_<id>_register`; this TU owns all `extern "C"`
+# (MSVC rejects pack-TU export macros). Expects: LINKED_MOD_IDS, OUTPUT.
 
 if(NOT DEFINED LINKED_MOD_IDS OR LINKED_MOD_IDS STREQUAL "")
   message(FATAL_ERROR "GenerateLinkedMods.cmake: LINKED_MOD_IDS empty")
@@ -15,10 +16,18 @@ set(_body [=[
 ]=])
 
 foreach(_id IN LISTS LINKED_MOD_IDS)
-  string(APPEND _body "extern \"C\" void qtclient_mod_${_id}_entry(const tibia::mods::ModContext* earlyCtx);\n")
+  string(APPEND _body "void qtclient_mod_${_id}_register(const tibia::mods::ModContext* earlyCtx);\n")
 endforeach()
 
-string(APPEND _body "\nextern \"C\" void qtclient_invoke_linked_mods(const tibia::mods::ModContext* earlyCtx)\n{\n")
+string(APPEND _body "\n")
+foreach(_id IN LISTS LINKED_MOD_IDS)
+  string(APPEND _body "extern \"C\" void qtclient_mod_${_id}_entry(const tibia::mods::ModContext* earlyCtx)\n")
+  string(APPEND _body "{\n")
+  string(APPEND _body "    qtclient_mod_${_id}_register(earlyCtx);\n")
+  string(APPEND _body "}\n\n")
+endforeach()
+
+string(APPEND _body "extern \"C\" void qtclient_invoke_linked_mods(const tibia::mods::ModContext* earlyCtx)\n{\n")
 foreach(_id IN LISTS LINKED_MOD_IDS)
   string(APPEND _body "    qtclient_mod_${_id}_entry(earlyCtx);\n")
 endforeach()

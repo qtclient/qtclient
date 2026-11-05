@@ -42,7 +42,7 @@ Third-party / `_sample` packs must `#include <qtclient/…>` only
 |------|-------|------|
 | `qtclient/mod_api_v1.h` | `mods/mod_api_v1.*`, `mods/modloader.*` | Stable C ABI for pack load / suite wire |
 | `qtclient/pack_host.h` | tip `main.cpp` fills `ModContext.packHost` | CIP-neutral wiring (quests, options, HUD panels) — prefer over stringly `services` |
-| `qtclient_mod_<id>_entry` | pack TU + `GenerateLinkedMods.cmake` | Per-pack STATIC entry; tip calls `qtclient_invoke_linked_mods` |
+| `qtclient_mod_<id>_register` / tip `…_entry` | pack TU + `GenerateLinkedMods.cmake` | Pack C++ registrar; tip-generated `extern "C"` entry; tip calls `qtclient_invoke_linked_mods` |
 | `qtclient/clientoptions.h` | `app/clientoptions.h` | Pack JSON options store / notifier |
 | `qtclient/dialog.h` | `gamewindow/dialogmanager.h` | Pack `TDialogController` / dialog stack |
 | `qtclient/outfitpalette.h` | `qmlcomponents/outfitpalette.h` | Outfit colour palette leaf (no QML types) |
