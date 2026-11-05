@@ -548,7 +548,7 @@ public:
     /// `lastParsedCreatureId()` for placeCreatureId (no ephemeral Map Creature).
     CreaturePtr getCreature(const InputMessagePtr& msg, int type = 0);
     /// Decode classic object-info into a CIP inventory slot (no Item::create).
-    tibia::container::TInventorySlot getInventorySlot(const InputMessagePtr& msg, int id = 0);
+    ::tibia::container::TInventorySlot getInventorySlot(const InputMessagePtr& msg, int id = 0);
     /// Field/tile appearance from the same wire as getInventorySlot.
     tibia::appearances::TAppearanceInstancePtr getItemAppearance(const InputMessagePtr& msg, int id = 0);
     Position getPosition(const InputMessagePtr& msg);

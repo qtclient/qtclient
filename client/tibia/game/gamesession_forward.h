@@ -216,7 +216,7 @@ inline void partyShareExperience(bool active)
 inline void preyAction(uint8_t slot, uint8_t actionType, uint16_t index)
 { g_game.preyAction(slot, actionType, index); }
 
-inline void processInventoryChange(uint8_t slot, const tibia::container::TInventorySlot& item)
+inline void processInventoryChange(uint8_t slot, const ::tibia::container::TInventorySlot& item)
 { g_game.processInventoryChange(slot, item); }
 
 inline void rejectTrade()

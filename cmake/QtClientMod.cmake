@@ -87,6 +87,13 @@ function(qtclient_add_mod MOD_ID)
     "$<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>")
   target_compile_options(${_target} PRIVATE
     "$<TARGET_PROPERTY:tibia,COMPILE_OPTIONS>")
+  # MSVC pack TUs: force-include a tibia nest anchor before any pack/tip header.
+  # Without this, sibling `tibia::container` lookup fails (C3083) after the
+  # appearanceinstance nest — tip engine TUs avoid it via /FI framework/pch.h
+  # plus a different include graph; packs do not.
+  if(MSVC)
+    target_compile_options(${_target} PRIVATE "/FIframework/pack_msvc_ns_anchor.h")
+  endif()
   # PACK_SDK_ONLY curated roots omit tip LINK_LIBRARIES. Engine headers on that
   # include path (and tip PCH) still need zlib/lzma/spdlog includes — on Windows
   # vcpkg those are not on the default include path (linux/mac system zlib often is).

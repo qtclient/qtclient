@@ -45,7 +45,7 @@ public:
     void processWorldEntered();
     /// Tip native H (SetInventory / DeleteInventory peels) — same side effects as
     /// classic parseAddInventoryItem / parseRemoveInventoryItem.
-    void processInventoryChange(uint8_t slot, const tibia::container::TInventorySlot& item);
+    void processInventoryChange(uint8_t slot, const ::tibia::container::TInventorySlot& item);
 
 private:
     void resetGameStates();
@@ -97,14 +97,14 @@ protected:
     static void processTalk(std::string_view name, uint16_t level, tibia::client::MessageMode mode, std::string_view text, uint16_t channelId, const Position& pos, uint32_t statement = 0);
 
     // container related (CIP TInventorySlot — no ItemPtr keep-alive)
-    void processOpenContainer(uint8_t containerId, const tibia::container::TInventorySlot& containerItem,
+    void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
                               std::string_view name, uint8_t capacity, bool hasParent,
-                              const std::vector<tibia::container::TInventorySlot>& items, bool isUnlocked, bool hasPages,
+                              const std::vector<::tibia::container::TInventorySlot>& items, bool isUnlocked, bool hasPages,
                               uint16_t containerSize, uint16_t firstIndex);
     void processCloseContainer(uint8_t containerId);
-    void processContainerAddItem(uint8_t containerId, const tibia::container::TInventorySlot& item, uint16_t slot);
-    void processContainerUpdateItem(uint8_t containerId, uint16_t slot, const tibia::container::TInventorySlot& item);
-    void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const tibia::container::TInventorySlot& lastItem);
+    void processContainerAddItem(uint8_t containerId, const ::tibia::container::TInventorySlot& item, uint16_t slot);
+    void processContainerUpdateItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& item);
+    void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& lastItem);
 
     // channel related
     static void processChannelList(const std::vector<std::tuple<uint16_t, std::string>>& channelList);
@@ -136,13 +136,13 @@ protected:
 
     // npc trade (Phase 5.0-D: appearance slots / typeId counts — no ItemPtr in notify)
     static void processOpenNpcTrade(
-        const std::vector<std::tuple<tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items);
+        const std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items);
     static void processPlayerGoods(uint64_t money, const std::vector<std::pair<uint16_t, uint16_t>>& goods);
     static void processCloseNpcTrade();
 
     // player trade
-    static void processOwnTrade(std::string_view name, const std::vector<tibia::container::TInventorySlot>& items);
-    static void processCounterTrade(std::string_view name, const std::vector<tibia::container::TInventorySlot>& items);
+    static void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
+    static void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
     static void processCloseTrade();
 
     // edit text/list
