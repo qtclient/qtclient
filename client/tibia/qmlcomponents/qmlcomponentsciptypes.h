@@ -22,7 +22,8 @@
 
 #include <vector>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -247,4 +248,5 @@ public:
     using cip::tibia::qmlcomponents::TTextureAtlasViewerController::TTextureAtlasViewerController;
 };
 
-} // namespace tibia::qmlcomponents
+}
+}

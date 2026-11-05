@@ -8,7 +8,8 @@
 class QObject;
 class QQmlEngine;
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 #if defined(TIBIA_QML_DISK)
 
@@ -46,4 +47,5 @@ void installQmlDiskHotReload(QQmlEngine* engine, QObject* context);
 
 #endif
 
+}
 }

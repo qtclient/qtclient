@@ -9,7 +9,8 @@
 
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// BossDifficultySelectionDialog.qml (CIP: gamewindow::TBossDifficultySelectionDialogController,
 /// ctor 0x100e488a0, protocol hookup 0x100e48ae0). The server opens it before a lever boss
@@ -45,4 +46,5 @@ private:
     QTimer m_previewTimer;
 };
 
+}
 }

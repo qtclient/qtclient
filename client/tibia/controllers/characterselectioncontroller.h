@@ -6,7 +6,8 @@
 #include <QList>
 #include <QString>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// One row of the account's character list (login service "characters").
 struct CharacterEntry
@@ -76,4 +77,5 @@ private:
     QString m_lastSelectedName;
 };
 
+}
 }

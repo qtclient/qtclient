@@ -11,12 +11,15 @@
 
 #include <memory>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 class TWorldMapStorage;
 class TWorldmapProtocolMessageHandler;
 }
+}
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 /// The session's minimap (CIP: TMinimapManager, 0x100ebe8c0): the tile
 /// storage fed by the world, and its tiles on disk under <app data>/minimap.
@@ -69,4 +72,5 @@ private:
     std::unique_ptr<TMinimapMarkerStorage> m_markers;
 };
 
+}
 }

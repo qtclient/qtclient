@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace tibia::mods {
+namespace tibia {
+namespace mods {
 
 /// Neutral weather state for the CIP worldmap (product mods fill via setWeatherDriver).
 struct WeatherStateView {
@@ -30,4 +31,5 @@ public:
 void setWeatherDriver(WeatherDriver* driver);
 WeatherDriver* weatherDriver();
 
-} // namespace tibia::mods
+}
+}

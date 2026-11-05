@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::network {
+namespace tibia {
+namespace network {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -54,5 +55,6 @@ public:
 
 class TUnencryptedRawMessageStream final : public ::tibia::CipTyped {};
 
-} // namespace tibia::network
+}
+}
 

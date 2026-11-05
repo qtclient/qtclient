@@ -4,7 +4,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// Four palette indices (QML OutfitColor; CIP: TOutfitColorQmlType, metacall 0x1010858e0).
 /// The colours are derived from the indices.
@@ -124,4 +125,5 @@ public:
     QJSValue loadJsonFromResource(const QString& ResourcePath) override;
 };
 
+}
 }

@@ -7,11 +7,14 @@
 
 #include <QPointer>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TGenericEnterTextDialogController;
 
@@ -96,4 +99,5 @@ private:
     QPointer<TLootTrackingWidgetController> m_controller;
 };
 
+}
 }

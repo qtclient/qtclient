@@ -11,7 +11,8 @@
 #include <cstdint>
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 
 /// One charm of the player (CIP: the 0x48-byte charm entries built by
 /// FUN_100a50ac0 from the charm message and the static table 0x1026e3bb0).
@@ -106,4 +107,5 @@ private:
     QSet<int> m_trackedRaces;
 };
 
+}
 }

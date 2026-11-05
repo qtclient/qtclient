@@ -5,7 +5,8 @@
 #include <QString>
 #include <QStringList>
 
-namespace tibia::mods {
+namespace tibia {
+namespace mods {
 
 /// Unified pack loader (desktop + WASM): directory layout
 ///   mods/<id>/mod.json + qml/ + overrides/ + resources/
@@ -42,4 +43,5 @@ public:
     static QStringList defaultRoots();
 };
 
-} // namespace tibia::mods
+}
+}

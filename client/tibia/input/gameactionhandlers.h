@@ -4,7 +4,8 @@
 
 #include <functional>
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// Runs an action on the game (CIP: publishing to the per-domain
 /// TGameActionHandlers). SMART_CLICK runs its inner action. Actions whose
@@ -41,4 +42,5 @@ void finishTargetSelection(const TGameActionPtr& target);
 /// TARGET_SELECTION_FINISHED). Null removes it.
 void setTargetSelectionListener(std::function<void(bool selecting)> listener);
 
+}
 }

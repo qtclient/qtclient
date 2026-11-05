@@ -7,7 +7,8 @@
 #include <QAbstractListModel>
 #include <QSortFilterProxyModel>
 
-namespace tibia::skillwheel {
+namespace tibia {
+namespace skillwheel {
 
 /// CIP's TPaginationProxyModel: the rows of one page (1-based) of its source.
 class TPaginationProxyModel final : public cip::shared::TPaginationProxyModel
@@ -193,4 +194,5 @@ private:
     TSkillWheelStorage* m_storage;
 };
 
+}
 }

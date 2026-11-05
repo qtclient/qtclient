@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::sound {
+namespace tibia {
+namespace sound {
 
 class TActiveSoundPlayer final : public cip::tibia::sound::TActiveSoundPlayer
 {
@@ -105,5 +106,6 @@ public:
     using cip::tibia::sound::TSoundPlayerManager::TSoundPlayerManager;
 };
 
-} // namespace tibia::sound
+}
+}
 

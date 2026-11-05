@@ -7,11 +7,14 @@
 
 #include <client/declarations.h>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
+}
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// Creature HUD anchors for one frame (CIP: TCreatureHUDRenderProvider records;
 /// filled by TWorldMapRenderProvider and consumed by TCreatureHUDOverlayController).
@@ -37,4 +40,5 @@ private:
     QVector<Record> m_records;
 };
 
+}
 }

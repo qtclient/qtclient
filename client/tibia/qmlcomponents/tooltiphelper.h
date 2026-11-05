@@ -6,7 +6,8 @@
 
 class QQuickWindow;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// Application event filter that reports hover-relevant events
 /// (CIP: TMouseHoverEventFilter::eventFilter 0x1010d7d60).
@@ -60,4 +61,5 @@ private:
     bool m_inWindow = false;
 };
 
+}
 }

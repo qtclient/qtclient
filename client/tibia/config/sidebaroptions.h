@@ -10,7 +10,8 @@
 #include <QList>
 #include <QString>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 
 /// TSidebarPanelsManager's panel types (sidebars.json names "minimap",
 /// "inventoryStatus", "hitpointManabar", "buttons"; CIP: FUN_1009fc600).
@@ -102,4 +103,5 @@ private:
     bool m_dirty = false;
 };
 
+}
 }

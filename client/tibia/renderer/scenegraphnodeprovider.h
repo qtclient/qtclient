@@ -5,7 +5,8 @@
 
 #include <QColor>
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 
 /// Highlight colours for sprite records (CIP: TScenegraphNodeProvider at
 /// 0x1010b6960 — mouse #ffe137, attack #ff0000, follow #00ff00).
@@ -15,4 +16,5 @@ public:
     static QColor highlightColor(qmlcomponents::SpriteRecord::Highlight highlight);
 };
 
+}
 }

@@ -5,7 +5,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TBountyTasksController;
 class TWeeklyTasksController;
@@ -40,4 +41,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

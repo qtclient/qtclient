@@ -19,16 +19,21 @@
 #include <memory>
 #include <vector>
 
-namespace tibia::appearances {
+namespace tibia {
+namespace appearances {
 class TAppearanceInstance;
 using TAppearanceInstancePtr = std::shared_ptr<TAppearanceInstance>;
 }
-
-namespace tibia::creatures {
-class TCreature;
 }
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace creatures {
+class TCreature;
+}
+}
+
+namespace tibia {
+namespace qmlcomponents {
 
 /// One sprite of the world, in draw order (CIP: the provider's 0x30-byte records).
 struct SpriteRecord
@@ -316,4 +321,5 @@ private:
     tibia::mods::WorldLightingDriver* m_lighting = nullptr;
 };
 
+}
 }

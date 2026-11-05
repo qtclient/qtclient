@@ -5,7 +5,8 @@
 #include <QObject>
 #include <QString>
 
-namespace tibia::mods {
+namespace tibia {
+namespace mods {
 
 /// Optional quest-mission backend (product mods). CIP quest UI talks only to this.
 class MissionBackend : public QObject
@@ -25,4 +26,5 @@ Q_SIGNALS:
     void missionOfferChanged();
 };
 
-} // namespace tibia::mods
+}
+}

@@ -4,5 +4,7 @@
 
 #include "cip_ports/native_port.h"
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
+}
 }

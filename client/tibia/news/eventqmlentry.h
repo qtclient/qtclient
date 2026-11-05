@@ -5,7 +5,8 @@
 #include <QColor>
 #include <QString>
 
-namespace tibia::news {
+namespace tibia {
+namespace news {
 
 /// Calendar-day row for gamewindow.qml (CIP: TEventQMLEntry).
 class TEventQMLEntry final : public cip::tibia::news::TEventQMLEntry
@@ -16,4 +17,5 @@ public:
                    QObject* parent = nullptr);
 };
 
+}
 }

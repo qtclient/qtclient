@@ -12,7 +12,8 @@
 #include <memory>
 #include <vector>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 
 /// What a chat channel is (CIP: TChatChannelIdentifierBase and its subclasses;
 /// vslot 3 is the type, vslot 2 the tab name).
@@ -293,4 +294,5 @@ QString formatLootRichText(QString text);
 /// group, a value below the minimum is stored back as the minimum.
 int chatSetting(const QString& key, int defaultValue, int minimum);
 
+}
 }

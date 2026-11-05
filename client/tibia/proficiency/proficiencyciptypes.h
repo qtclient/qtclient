@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::proficiency {
+namespace tibia {
+namespace proficiency {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -21,5 +22,6 @@ public:
     using cip::tibia::proficiency::TProficiencyProtocolMessageHandler::TProficiencyProtocolMessageHandler;
 };
 
-} // namespace tibia::proficiency
+}
+}
 

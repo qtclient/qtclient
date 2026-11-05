@@ -6,7 +6,8 @@
 
 #include <QTimer>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// NaggingMessageDialog.qml (CIP: TNaggingMessageDialogController): a warning
 /// with an optional countdown before OK unlocks (SHOW_NAGGING_DIALOG).
@@ -29,4 +30,5 @@ private:
     QTimer m_tick;
 };
 
+}
 }

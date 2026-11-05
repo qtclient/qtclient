@@ -7,7 +7,8 @@
 
 #include <vector>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// How long the last frames took from the GUI tick (afterAnimating) to the swap
 /// (CIP: FUN_100913dc0, 10 frames). start() runs on the GUI thread, finish() on
@@ -48,4 +49,5 @@ private:
     qint64 m_offsetMicros = 0;
 };
 
+}
 }

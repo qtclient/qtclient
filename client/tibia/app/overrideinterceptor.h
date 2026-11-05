@@ -4,7 +4,8 @@
 #include <QSet>
 #include <QUrl>
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// Legacy hook for a `<name>.override.qml` resource next to a CIP file.
 /// Current overrides are compiled into the qmlcomponents module at the CIP
@@ -23,4 +24,5 @@ private:
     QSet<QString> m_overridden;
 };
 
+}
 }

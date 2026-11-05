@@ -23,7 +23,8 @@
 
 class Protocol;
 
-namespace tibia::network {
+namespace tibia {
+namespace network {
 
 #if !defined(Q_OS_WASM)
 class GameSocketWorker final : public QObject
@@ -131,4 +132,5 @@ private:
 #endif
 };
 
+}
 }

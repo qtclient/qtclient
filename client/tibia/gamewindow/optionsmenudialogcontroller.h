@@ -18,11 +18,14 @@
 
 class QQuickWindow;
 
-namespace tibia::client {
+namespace tibia {
+namespace client {
 class TGameClient;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TAboutDialogController;
 class TMessageDialogController;
@@ -148,4 +151,5 @@ private:
     QTimer m_frameRateTimer;
 };
 
+}
 }

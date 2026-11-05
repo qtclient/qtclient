@@ -19,7 +19,8 @@
 #include <QTcpSocket>
 #endif
 
-namespace tibia::network {
+namespace tibia {
+namespace network {
 
 /// Second connection to the same game host for CIP connection-stability optimisation
 /// (CIP: TGameserverDualConnection). Opens the socket and sends SecondaryLogin
@@ -88,4 +89,5 @@ private:
     tibia::game::SoftHook m_readyHook;
 };
 
+}
 }

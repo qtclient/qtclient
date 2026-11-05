@@ -12,7 +12,8 @@
 
 class QNetworkAccessManager;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -64,4 +65,5 @@ private:
     int m_pending = 0;
 };
 
+}
 }

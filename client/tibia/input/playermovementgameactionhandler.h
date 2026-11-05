@@ -9,7 +9,8 @@
 
 class QTimer;
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// CIP TPlayerMovementGameActionHandler (0x100e79d60): SET_PLAYER_MOVEMENT_INTENT
 /// stops following (via Game::autoWalk) and walks to the action's coordinate.
@@ -46,4 +47,5 @@ private:
     bool m_targetLive = false;
 };
 
+}
 }

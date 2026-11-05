@@ -12,7 +12,8 @@
 #include <tuple>
 #include <vector>
 
-namespace tibia::highscores {
+namespace tibia {
+namespace highscores {
 
 /// One row of the highscore table (CIP: 0x78-byte entries of
 /// THighscoresEntriesModel).
@@ -57,8 +58,10 @@ private:
 };
 
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The world type check boxes of HighscorePage.qml (CIP: the model at
 /// controller +0xa0, vtable 0x1026616c0; types from 0x100e4ca30).
@@ -183,4 +186,5 @@ private:
     THighscoresWorldTypeModel m_worldTypes;
 };
 
+}
 }

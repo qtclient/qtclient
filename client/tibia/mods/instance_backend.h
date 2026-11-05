@@ -2,7 +2,8 @@
 
 #include <QObject>
 
-namespace tibia::mods {
+namespace tibia {
+namespace mods {
 
 /// Optional instance/place backend (cyclopedia map default selection, etc.).
 class InstanceBackend : public QObject
@@ -14,4 +15,5 @@ public:
     virtual int subareaId() const = 0;
 };
 
-} // namespace tibia::mods
+}
+}

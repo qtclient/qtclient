@@ -11,14 +11,19 @@ class QQuickItem;
 class QObject;
 class QImage;
 
-namespace tibia::client {
+namespace tibia {
+namespace client {
 class TGameClient;
 }
-namespace tibia::runtime {
+}
+namespace tibia {
+namespace runtime {
 class TGameHost;
 }
+}
 
-namespace tibia::mods {
+namespace tibia {
+namespace mods {
 
 class MissionBackend;
 class AttentionBackend;
@@ -131,4 +136,5 @@ using FeatureExtrasFn = void (*)();
 void setFeatureExtrasHook(FeatureExtrasFn fn);
 void applyFeatureExtras();
 
-} // namespace tibia::mods
+}
+}

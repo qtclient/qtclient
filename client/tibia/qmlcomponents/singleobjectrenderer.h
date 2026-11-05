@@ -8,7 +8,8 @@
 
 class ThingType;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// One object type as a slot shows it (QML SingleObjectAppearanceInstanceRenderer;
 /// CIP: TSingleObjectAppearanceInstanceRenderer, layout 0x1010c9e10). The sprite is
@@ -56,4 +57,5 @@ private:
     QMetaObject::Connection m_frameConnection;
 };
 
+}
 }

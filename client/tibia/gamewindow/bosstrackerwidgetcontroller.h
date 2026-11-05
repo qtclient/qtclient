@@ -10,15 +10,20 @@
 
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
-
-namespace tibia::qmlcomponents {
-class TOutfitQmlModel;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace qmlcomponents {
+class TOutfitQmlModel;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 /// Rows for BossTrackingWidget.qml (CIP: TBossTrackerModel).
 class TBossTrackerListModel final : public cip::TBossTrackerModel
@@ -101,4 +106,5 @@ private:
     TBossTrackerWidgetController* m_controller = nullptr;
 };
 
-} // namespace tibia::gamewindow
+}
+}

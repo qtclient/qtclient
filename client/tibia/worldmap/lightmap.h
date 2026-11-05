@@ -9,7 +9,8 @@
 
 #include <vector>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// Per-frame classic light grid (CIP: TLightMap, filled by TWorldMapRenderProvider::v7
 /// at 0x101056cd0; sample v7 at 0x10107ae40, point lights v10 at 0x10107aff0,
@@ -47,4 +48,5 @@ private:
     QImage m_image;
 };
 
+}
 }

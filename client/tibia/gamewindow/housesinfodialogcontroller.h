@@ -12,11 +12,14 @@
 
 #include <vector>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 class TAmbientLightStorage;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -231,4 +234,5 @@ private:
     QString m_pendingName;
 };
 
+}
 }

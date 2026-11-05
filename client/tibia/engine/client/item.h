@@ -28,8 +28,10 @@
 
 #include <memory>
 
-namespace tibia::appearances {
+namespace tibia {
+namespace appearances {
 class TShowOffSocketAppearanceInstance;
+}
 }
 
 enum ItemAttr : uint8_t

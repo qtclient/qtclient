@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::store {
+namespace tibia {
+namespace store {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -28,4 +29,5 @@ public:
     using cip::tibia::store::TStoreGameActionHandler::TStoreGameActionHandler;
 };
 
-} // namespace tibia::store
+}
+}

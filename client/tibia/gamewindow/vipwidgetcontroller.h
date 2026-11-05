@@ -16,15 +16,20 @@
 
 class QTimer;
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
-
-namespace tibia::exivaoptions {
-class TExivaOptionsStorage;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace exivaoptions {
+class TExivaOptionsStorage;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 class TEditVipDialogController;
 class TGenericEnterTextDialogController;
@@ -217,4 +222,5 @@ private:
     int m_worldType = -1;
 };
 
+}
 }

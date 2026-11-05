@@ -13,11 +13,14 @@
 #include <QPointer>
 #include <QTimer>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// One open container's sidebar widget, container.qml (CIP:
 /// TContainerController, vtable 0x102637588). CIP's protocol carries
@@ -92,4 +95,5 @@ private:
     int m_hoveredSlot = -1;
 };
 
+}
 }

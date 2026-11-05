@@ -2,7 +2,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// Field coordinate exposed to QML (CIP: TWorldMapCoordinateQmlType).
 class TWorldMapCoordinateQmlType : public cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType
@@ -40,4 +41,5 @@ public:
     calculateWorldMapCoordinateForIndexByColumnFirstAndSkyToGroundIncludingShearing(int index) override;
 };
 
+}
 }

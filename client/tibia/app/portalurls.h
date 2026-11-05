@@ -6,7 +6,8 @@
 #include <QString>
 #include <QUrl>
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// Product portal URLs for CIP OPEN_URL_* / OPEN_NEWS actions (CIP reads
 /// tibiaPageUrl and friends from the [URLS] blob). Defaults are CipSoft-shaped
@@ -24,4 +25,5 @@ public:
     static void open(const QUrl& url);
 };
 
+}
 }

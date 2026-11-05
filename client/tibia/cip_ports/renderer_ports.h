@@ -7,6 +7,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 
-} // namespace tibia::renderer
+}
+}

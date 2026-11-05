@@ -9,7 +9,8 @@
 
 class ThingType;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// An object placed in an AppearanceInstanceRenderer (QML ObjectAppearanceInstance;
 /// CIP: TObjectAppearanceInstanceInfoQmlType). shift is the type's displacement,
@@ -133,4 +134,5 @@ private:
     QPointer<QObject> m_raceInstance;
 };
 
+}
 }

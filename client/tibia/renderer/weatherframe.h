@@ -4,7 +4,8 @@
 #include <QPointF>
 #include <QSize>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// Neutral climate overlay inputs (map-pixel space). Packs fill via WeatherDriver
 /// / WorldOverlayFactory; stock only builds this when a weather driver is set.
@@ -30,4 +31,5 @@ struct WeatherFrame
     QImage shapeMap;
 };
 
-} // namespace tibia::qmlcomponents
+}
+}

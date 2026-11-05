@@ -8,7 +8,8 @@
 
 #include <client/const.h>
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// A local say (CIP FUN_100993990, the chat handler of
 /// SEND_CHAT_MESSAGE_WITH_SPEECH_VOLUME): a crossHairTarget spell is cast by
@@ -55,4 +56,5 @@ private:
     TCrossHairSpellGameActionHandler m_crossHairSpell;
 };
 
+}
 }

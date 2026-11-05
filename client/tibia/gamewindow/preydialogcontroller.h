@@ -14,7 +14,8 @@
 #include <set>
 #include <vector>
 
-namespace tibia::prey {
+namespace tibia {
+namespace prey {
 
 /// A creature of a prey slot (CIP: name and outfit of TPreyData's monster).
 struct TPreyMonster
@@ -126,8 +127,10 @@ private:
 };
 
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// One creature of a selection list (CIP: TListRerollEntryInfo).
 class TListRerollEntryInfo final : public cip::tibia::gamewindow::TListRerollEntryInfo
@@ -341,4 +344,5 @@ private:
     TMessageDialogController* m_info;
 };
 
+}
 }

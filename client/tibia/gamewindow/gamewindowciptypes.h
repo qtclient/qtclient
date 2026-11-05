@@ -25,7 +25,8 @@
 class QQuickItem;
 class QQmlEngine;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -507,4 +508,5 @@ public:
     TChatTutorialMarkerRenderInfo(int markerId, int startIndex, int length, QObject* parent = nullptr);
 };
 
+}
 }

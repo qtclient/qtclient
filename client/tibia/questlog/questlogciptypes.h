@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::questlog {
+namespace tibia {
+namespace questlog {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -35,5 +36,6 @@ public:
     using cip::tibia::questlog::TQuestLogStorage::TQuestLogStorage;
 };
 
-} // namespace tibia::questlog
+}
+}
 

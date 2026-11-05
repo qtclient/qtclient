@@ -12,7 +12,8 @@
 #include <utility>
 #include <vector>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 
 class TChatChannelStorage;
 
@@ -157,4 +158,5 @@ private:
     bool m_systemMessagesEnabled = true;
 };
 
+}
 }

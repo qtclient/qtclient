@@ -2,7 +2,8 @@
 
 #include <QString>
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// CipSoft keys under conf/clientoptions.json "options" for CIP's graphics-engine
 /// restart / keep-renderer flow (keep_renderer_after_restart).
@@ -26,4 +27,5 @@ void revertPending();
 
 }
 
+}
 }

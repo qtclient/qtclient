@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::friends {
+namespace tibia {
+namespace friends {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -49,4 +50,5 @@ public:
     using cip::tibia::friends::TFriendsStorage::TFriendsStorage;
 };
 
-} // namespace tibia::friends
+}
+}

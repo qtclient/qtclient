@@ -13,17 +13,22 @@
 #include <functional>
 #include <map>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 class TGenericEnterTextDialogController;
 class TSidebarWidget;
 class TSidebarWidgetsManager;
 }
+}
 
-namespace tibia::analysers {
+namespace tibia {
+namespace analysers {
 
 /// The text formats the analyser widgets share.
 namespace format {
@@ -276,4 +281,5 @@ private:
     std::map<int, Slot> m_slots;
 };
 
+}
 }

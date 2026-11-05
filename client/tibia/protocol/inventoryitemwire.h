@@ -4,11 +4,16 @@
 
 #include "protocol/protocolclassicwire.h"
 
-namespace tibia::protobuf::protocol {
+namespace tibia {
+namespace protobuf {
+namespace protocol {
 class ProtocolInventoryItem;
 }
+}
+}
 
-namespace tibia::protocol {
+namespace tibia {
+namespace protocol {
 
 /// Mirror ProtocolGame::getInventorySlot feature gates into `out`.
 /// When `presetItemId != 0`, skips reading u16 id (same as getInventorySlot id arg).
@@ -19,4 +24,5 @@ bool readInventoryItem(ClassicReader& r, ::tibia::protobuf::protocol::ProtocolIn
 /// Inverse of readInventoryItem for translateToClassic.
 void writeInventoryItem(ClassicWriter& w, const ::tibia::protobuf::protocol::ProtocolInventoryItem& item);
 
-} // namespace tibia::protocol
+}
+}

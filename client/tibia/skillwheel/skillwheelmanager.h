@@ -8,7 +8,8 @@
 
 #include <vector>
 
-namespace tibia::skillwheel {
+namespace tibia {
+namespace skillwheel {
 
 /// The Wheel of Destiny: its storage and dialog, and the game actions 306..313
 /// (CIP: TSkillWheelGameActionHandler 0x100f9fb80 and the dialog's handler
@@ -42,4 +43,5 @@ private:
     bool m_sessionPremium = false;
 };
 
+}
 }

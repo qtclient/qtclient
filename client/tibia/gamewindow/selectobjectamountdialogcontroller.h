@@ -3,11 +3,14 @@
 #include "gamewindow/dialogmanager.h"
 #include "input/gameaction.h"
 
-namespace tibia::container {
+namespace tibia {
+namespace container {
 class TQMLItemSlotData;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The split-stack dialog (CIP: TSelectObjectAmountDialogController, ctor
 /// 0x100d48f40, SelectObjectAmountDialog.qml). CIP handleGameAction
@@ -48,4 +51,5 @@ private:
     container::TQMLItemSlotData* m_slot = nullptr;
 };
 
+}
 }

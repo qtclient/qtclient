@@ -9,7 +9,8 @@
 class QMimeData;
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// While an object is dragged, turns the application's mouse events into drag
 /// events for the TibiaObjectDropArea under the mouse (CIP:
@@ -77,4 +78,5 @@ private:
     bool m_filterInstalled = false;
 };
 
+}
 }

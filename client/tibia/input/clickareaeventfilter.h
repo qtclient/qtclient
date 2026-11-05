@@ -6,7 +6,8 @@
 
 class QQuickItem;
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// CIP input::TClickAreaEventFilter (ctor 0x100e99320, eventFilter 0x100e99350):
 /// installed on the application, it reports every mouse press, release or
@@ -29,4 +30,5 @@ private:
     QPointer<QQuickItem> m_area;
 };
 
+}
 }

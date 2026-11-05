@@ -9,9 +9,11 @@
 
 #include <cstdint>
 
-namespace tibia::protocol {
+namespace tibia {
+namespace protocol {
 
 /// Crystal NetworkMessage::getString decodes ISO-8859-1; chunks at 65000 bytes.
 bool sendExtendedJsonOpcode(uint8_t opcode, const QJsonValue& data);
 
-} // namespace tibia::protocol
+}
+}

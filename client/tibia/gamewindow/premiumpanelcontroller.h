@@ -12,7 +12,8 @@
 
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// One premium feature line (CIP: game::TPremiumMessage, ctor 0x100b576c0):
 /// "premium_feature_*" / "premium_*" text and its premium-icons-20x20 cell.
@@ -129,4 +130,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

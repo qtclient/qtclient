@@ -28,11 +28,14 @@
 
 class QQuickItem;
 
-namespace tibia::client {
+namespace tibia {
+namespace client {
 class TGameClient;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TNpcDialogController;
 
@@ -357,4 +360,5 @@ private:
     int m_copySelectionListenerId = 0;
 };
 
+}
 }

@@ -15,7 +15,8 @@
 #include <span>
 #include <vector>
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 using EGameAction = cip::tibia::input::EGameAction;
 
@@ -1658,4 +1659,5 @@ TGameActionList contextMenuActions(const TGameActionList& candidates, std::span<
 /// dragAndDropDefaultActionIsMoveAll.
 TGameActionPtr finalizeDrop(const TGameActionPtr& move, const Position& destination, int modifiers, bool defaultIsMoveAll);
 
+}
 }

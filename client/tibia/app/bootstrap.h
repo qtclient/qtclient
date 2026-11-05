@@ -8,7 +8,8 @@
 
 class QQmlEngine;
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 class ClientOptions;
 
@@ -45,4 +46,5 @@ void alignTextHinting(QQmlEngine* engine);
 /// QML engine with CIP's base URL, the qmlcomponents types and the client/overrides interceptor.
 std::unique_ptr<QQmlEngine> createEngine();
 
+}
 }

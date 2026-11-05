@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::exaltation {
+namespace tibia {
+namespace exaltation {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -28,5 +29,6 @@ public:
     using cip::tibia::exaltation::TExaltationProtocolMessageHandler::TExaltationProtocolMessageHandler;
 };
 
-} // namespace tibia::exaltation
+}
+}
 

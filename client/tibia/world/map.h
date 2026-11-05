@@ -32,8 +32,10 @@
 #include <unordered_set>
 #include <vector>
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 class TWaypointCosts;
+}
 }
 
 class TileBlock

@@ -12,15 +12,20 @@
 #include <string>
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
-
-namespace tibia::prey {
-class TPreyStorage;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace prey {
+class TPreyStorage;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 /// CIP `TKillTrackerWidgetController::TTaskMonsterModel` (ledger short name
 /// TTaskMonsterModel) — bounty/weekly task monster rows.
@@ -102,4 +107,5 @@ private:
     QPointer<TKillTrackerWidgetController> m_controller;
 };
 
+}
 }

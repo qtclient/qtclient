@@ -79,7 +79,8 @@ public:
     Timer m_lastTimeUsage;
 };
 
-namespace tibia::assets {
+namespace tibia {
+namespace assets {
 
 class SpriteStore
 {
@@ -103,4 +104,5 @@ private:
 
 SpriteStore& sprites();
 
+}
 }

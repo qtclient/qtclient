@@ -8,7 +8,8 @@
 #include <QVariant>
 #include <QVector>
 
-namespace tibia::taskboard {
+namespace tibia {
+namespace taskboard {
 
 struct BountyTaskRow {
     int taskIndex = 0;
@@ -248,4 +249,5 @@ private:
     QString m_nameFilter;
 };
 
+}
 }

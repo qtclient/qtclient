@@ -9,14 +9,19 @@
 
 class QQuickWindow;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
-namespace tibia::worldmap {
+}
+namespace tibia {
+namespace worldmap {
 class TFrameDurationRing;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// FpsLatencyIndicator.qml (CIP TFPSLatencyIndicatorController): FPS from
 /// frameSwapped, effective FPS from TFrameDurationRing (currentFrameCount),
@@ -58,4 +63,5 @@ private:
     QString m_worldmapBuildUs { QStringLiteral("0") };
 };
 
+}
 }

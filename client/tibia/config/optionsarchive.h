@@ -5,7 +5,8 @@
 #include <QString>
 #include <QStringList>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 
 /// One file of an options / minimap export, its name relative to the
 /// client's data directory ("conf/clientoptions.json", "minimap/...").
@@ -29,4 +30,5 @@ QList<TArchiveEntry> read(const QString& path);
 
 }
 
+}
 }

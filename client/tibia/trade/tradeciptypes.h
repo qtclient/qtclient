@@ -16,7 +16,8 @@
 #include <tuple>
 #include <vector>
 
-namespace tibia::trade {
+namespace tibia {
+namespace trade {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -127,4 +128,5 @@ public:
     using cip::tibia::trade::TPlayerTradeProtocolMessageHandler::TPlayerTradeProtocolMessageHandler;
 };
 
-} // namespace tibia::trade
+}
+}

@@ -4,7 +4,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::store {
+namespace tibia {
+namespace store {
 
 /// storeAndResourceBalanceHelper.storeBalance (CIP: TQmlStoreBalance, ctor
 /// 0x1010087a0, metacall 0x10086e580): the coins, made anew on every change.
@@ -83,4 +84,5 @@ public:
 /// CIP 0x10100c3c0: "free" or the English-formatted price.
 QString storePriceString(qint64 price);
 
+}
 }

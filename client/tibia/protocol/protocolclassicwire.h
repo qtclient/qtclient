@@ -9,7 +9,8 @@
 #include <cstring>
 #include <string>
 
-namespace tibia::protocol {
+namespace tibia {
+namespace protocol {
 
 struct ClassicReader {
     const uint8_t* p = nullptr;
@@ -100,4 +101,5 @@ struct ClassicWriter {
     }
 };
 
-} // namespace tibia::protocol
+}
+}

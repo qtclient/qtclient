@@ -12,7 +12,8 @@
 #include <memory>
 #include <vector>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 
 using Millis = qint64;
 
@@ -194,4 +195,5 @@ private:
     std::vector<std::shared_ptr<TCreatureSpeechBubble>> m_creatureBubbles;
 };
 
+}
 }

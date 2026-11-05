@@ -11,7 +11,8 @@
 #include <unordered_map>
 #include <vector>
 
-namespace tibia::market {
+namespace tibia {
+namespace market {
 
 /// CIP: TMarketOffer (CIP's MarketOffer).
 struct TMarketOffer
@@ -121,4 +122,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

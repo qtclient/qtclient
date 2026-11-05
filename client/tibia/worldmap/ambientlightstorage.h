@@ -5,7 +5,8 @@
 #include <QElapsedTimer>
 #include <QTimer>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// The Tibia time of day (CIP: TAmbientLightStorage, 0x101054b80). One Tibia
 /// day lasts one real hour; the server's world time sets the clock's start.
@@ -30,4 +31,5 @@ private:
     int m_worldTimeHook = 0;
 };
 
+}
 }

@@ -8,7 +8,8 @@
 
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// HitpointsManaPanel's controller (CIP: THitpointManabarController, ctor
 /// 0x100b91760): the player's hit points and mana (0x100b91ae0), shown while
@@ -36,4 +37,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

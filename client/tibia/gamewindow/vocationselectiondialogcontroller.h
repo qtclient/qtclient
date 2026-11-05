@@ -4,7 +4,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// tutorial/VocationSelectionPopup.qml (CIP: TVocationSelectionDialogController).
 /// Newhaven vocation pick: server sends GameserverTutorialHint id 2; confirm
@@ -27,4 +28,5 @@ private:
     void setStage(uint stage);
 };
 
+}
 }

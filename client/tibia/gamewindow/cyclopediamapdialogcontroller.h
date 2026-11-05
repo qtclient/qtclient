@@ -13,23 +13,32 @@
 #include <utility>
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 class TCyclopediaMapStorage;
 }
+}
 
-namespace tibia::mods {
+namespace tibia {
+namespace mods {
 class InstanceBackend;
 }
+}
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TMinimapRendererQuickItem;
 }
-
-namespace tibia::worldmap {
-class TAmbientLightStorage;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace worldmap {
+class TAmbientLightStorage;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -146,4 +155,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

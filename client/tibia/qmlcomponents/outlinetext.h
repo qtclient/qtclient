@@ -5,7 +5,8 @@
 
 class QQuickText;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// The Qt Quick texts behind an outline text item (CIP: TOutlineTextQuickItem's
 /// children): an outlined text and, in high quality, a plain one over it.
@@ -61,4 +62,5 @@ private:
     TOutlineTextChildren m_children;
 };
 
+}
 }

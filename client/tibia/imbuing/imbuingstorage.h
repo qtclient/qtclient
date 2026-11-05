@@ -12,7 +12,8 @@
 #include <unordered_map>
 #include <vector>
 
-namespace tibia::imbuing {
+namespace tibia {
+namespace imbuing {
 
 /// One slot of the item being imbued (CIP: the storage's slot entries read
 /// by 0x100c68810).
@@ -75,4 +76,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

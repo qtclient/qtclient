@@ -7,7 +7,8 @@
 #include <QJsonArray>
 #include <QVariantMap>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// CalendarDialog.qml (CIP: TCalendarDialogController): event-schedule days
 /// from the portal `eventschedule` multiplex (TEventsUploader).
@@ -35,4 +36,5 @@ private:
     QList<QObject*> m_ownedEntries;
 };
 
+}
 }

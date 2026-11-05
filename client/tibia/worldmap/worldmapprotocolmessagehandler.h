@@ -10,11 +10,16 @@
 
 #include <QByteArray>
 
-namespace tibia::protobuf::protocol {
+namespace tibia {
+namespace protobuf {
+namespace protocol {
 class GameserverMessageAmbientLight;
 }
+}
+}
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 class TWorldMapStorage;
 
@@ -64,4 +69,5 @@ private:
     TWorldMapStorage* m_storage = nullptr;
 };
 
+}
 }

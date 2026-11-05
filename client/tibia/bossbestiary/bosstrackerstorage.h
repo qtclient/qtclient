@@ -8,7 +8,8 @@
 #include <QString>
 #include <vector>
 
-namespace tibia::bossbestiary {
+namespace tibia {
+namespace bossbestiary {
 
 /// One BossTrackingWidget row (unlocked boss + optional cooldown end).
 struct TBossTrackerEntry
@@ -42,4 +43,5 @@ private:
     std::vector<TBossTrackerEntry> m_entries;
 };
 
-} // namespace tibia::bossbestiary
+}
+}

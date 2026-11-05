@@ -7,12 +7,17 @@
 
 class ProtocolGame;
 
-namespace tibia::protobuf::protocol {
+namespace tibia {
+namespace protobuf {
+namespace protocol {
 class GameserverMessage;
 class GameclientMessage;
 }
+}
+}
 
-namespace tibia::protocol {
+namespace tibia {
+namespace protocol {
 
 /// CIP-shaped sink: `TProtocolMessageQueue` → classic `ProtocolGame` parsers.
 /// Temporary until each opcode has a native `*ProtocolMessageHandler` slot.
@@ -35,4 +40,5 @@ private:
 
 void ownClassicProtocolBridge(QObject* parent);
 
-} // namespace tibia::protocol
+}
+}

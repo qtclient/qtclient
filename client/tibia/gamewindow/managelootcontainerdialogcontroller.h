@@ -12,15 +12,20 @@
 #include <cstdint>
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 class TItemInfoStorage;
 }
-
-namespace tibia::quickloot {
-class TManagedContainerStorage;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace quickloot {
+class TManagedContainerStorage;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -123,4 +128,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

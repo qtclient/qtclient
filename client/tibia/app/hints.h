@@ -5,7 +5,8 @@
 
 class QByteArray;
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 struct Hint
 {
@@ -28,4 +29,5 @@ QString hintHtml(const Hint& hint, const QString& cdnBase);
 /// Bundled :/hints.json fallback when the CDN still ships the string stub.
 QVector<Hint> loadBundledHints();
 
+}
 }

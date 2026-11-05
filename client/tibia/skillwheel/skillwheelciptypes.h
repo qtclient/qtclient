@@ -9,11 +9,16 @@
 #include <QByteArray>
 #include <QObject>
 
-namespace tibia::protobuf::protocol {
+namespace tibia {
+namespace protobuf {
+namespace protocol {
 class GameserverMessageGemAtelierGemRevealed;
 }
+}
+}
 
-namespace tibia::skillwheel {
+namespace tibia {
+namespace skillwheel {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -51,4 +56,5 @@ public:
     void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
-} // namespace tibia::skillwheel
+}
+}

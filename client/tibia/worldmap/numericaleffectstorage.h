@@ -10,7 +10,8 @@
 
 #include <vector>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// Storage of rising numbers on the map (CIP: TEffectStorage's numerical part;
 /// entries are effects::TNumericalEffect).
@@ -33,4 +34,5 @@ private:
     std::vector<effects::TNumericalEffect> m_effects;
 };
 
+}
 }

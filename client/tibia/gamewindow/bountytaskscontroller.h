@@ -10,7 +10,8 @@
 #include <string>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TBountyTasksController final : public cip::tibia::gamewindow::TBountyTasksController
 {
@@ -56,4 +57,5 @@ private:
     int m_rerollPoints = 0;
 };
 
+}
 }

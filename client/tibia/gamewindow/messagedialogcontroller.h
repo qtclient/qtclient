@@ -7,7 +7,8 @@
 #include <QKeySequence>
 #include <QList>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// One button of TibiaMessageDialog.qml (CIP: TMessageDialogButton, built by
 /// 0x100b8ecb0, vtable 0x1026348d0).
@@ -70,4 +71,5 @@ private:
     bool m_textCentered = false;
 };
 
+}
 }

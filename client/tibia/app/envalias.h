@@ -3,7 +3,8 @@
 #include <QByteArray>
 #include <QString>
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// Read `primary`, optionally falling back to a second name (pack-local aliases).
 inline QString envAlias(const char* primary, const char* legacy = nullptr)
@@ -30,4 +31,5 @@ inline int envAliasInt(const char* primary, const char* legacy = nullptr, int de
     return def;
 }
 
-} // namespace tibia::app
+}
+}

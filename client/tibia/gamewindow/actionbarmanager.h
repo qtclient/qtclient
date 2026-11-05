@@ -24,7 +24,8 @@
 class QQmlEngine;
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The nine action bars around the map (CIP: TActionBarManager with its
 /// three TActionBarGroups, TActionBarStorage and the
@@ -103,4 +104,5 @@ private:
     QPointer<TTargetSelectionController> m_targetSelection;
 };
 
+}
 }

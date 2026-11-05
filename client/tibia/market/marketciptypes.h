@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::market {
+namespace tibia {
+namespace market {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -28,5 +29,6 @@ public:
     using cip::tibia::market::TMarketProtocolMessageHandler::TMarketProtocolMessageHandler;
 };
 
-} // namespace tibia::market
+}
+}
 

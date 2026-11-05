@@ -7,7 +7,8 @@
 #include <compare>
 #include <optional>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 
 /// One entry of clientoptions.json's specialConditionsOptions: CIP's
 /// std::variant<EPlayerStateFlag, EPlayerStateClient, ERottenBloodState,
@@ -61,4 +62,5 @@ struct SpecialConditionsOptions
     static std::optional<SpecialCondition> forStateBit(int bit);
 };
 
+}
 }

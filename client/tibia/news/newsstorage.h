@@ -7,7 +7,8 @@
 #include <QString>
 #include <QVector>
 
-namespace tibia::news {
+namespace tibia {
+namespace news {
 
 /// One CIP `gamenews[]` row (compendium / clientservices type=news).
 struct NewsItem {
@@ -63,4 +64,5 @@ private:
     bool m_showRewardNews = false;
 };
 
+}
 }

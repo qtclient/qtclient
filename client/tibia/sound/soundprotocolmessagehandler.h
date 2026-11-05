@@ -4,7 +4,8 @@
 
 #include <tibia/game/tgamenotify.h>
 
-namespace tibia::sound {
+namespace tibia {
+namespace sound {
 
 /// Bridges CIP SoundTrigger / OTC Anthem (S 0x85) qtclient notify to TSoundStorage.
 /// Magic-effect SFX call TSoundStorage from protocolgameparse; this handles
@@ -23,4 +24,5 @@ private:
     tibia::game::SoftHook m_hook;
 };
 
+}
 }

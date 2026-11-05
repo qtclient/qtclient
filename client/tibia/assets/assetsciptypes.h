@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::assets {
+namespace tibia {
+namespace assets {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -52,5 +53,6 @@ class TContentCatalog final : public ::tibia::CipTyped {};
 
 class TSoundCatalog final : public ::tibia::CipTyped {};
 
-} // namespace tibia::assets
+}
+}
 

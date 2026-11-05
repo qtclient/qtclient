@@ -7,7 +7,8 @@
 #include <QString>
 #include <QUrl>
 
-namespace tibia::proficiency {
+namespace tibia {
+namespace proficiency {
 
 /// CIP FUN_100ee6830 (GetWeaponProficiencyPerkType + the *_perk_name ids).
 QString perkName(const TProficiencyPerk& perk);
@@ -43,4 +44,5 @@ public:
                                     QObject* parent);
 };
 
+}
 }

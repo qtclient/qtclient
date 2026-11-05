@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::systemsurvey {
+namespace tibia {
+namespace systemsurvey {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -35,5 +36,6 @@ public:
     using cip::systemsurvey::TFPSHistoryController::TFPSHistoryController;
 };
 
-} // namespace tibia::systemsurvey
+}
+}
 

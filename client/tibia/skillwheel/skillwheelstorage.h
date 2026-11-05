@@ -11,7 +11,8 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::skillwheel {
+namespace tibia {
+namespace skillwheel {
 
 /// A wheel preset of the own character.
 struct TPreset
@@ -127,4 +128,5 @@ private:
     QString m_currentPreset;
 };
 
+}
 }

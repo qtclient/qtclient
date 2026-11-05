@@ -3,7 +3,8 @@
 #include <QQmlAbstractUrlInterceptor>
 #include <QUrl>
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// Remap qrc:/qt/qml/… onto pack filesystem trees:
 /// - pack qml modules: mods/<id>/qml/<module>/… (packQmlImportPaths)
@@ -15,4 +16,5 @@ public:
     QUrl intercept(const QUrl& url, DataType type) override;
 };
 
-} // namespace tibia::app
+}
+}

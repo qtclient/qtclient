@@ -9,7 +9,8 @@
 
 class GameObject;
 
-namespace tibia::client {
+namespace tibia {
+namespace client {
 
 /// CIP's engine (gamecore: protocol, game model, assets, net) hosted on the
 /// Qt GUI thread, the way CIP runs its logic: no qtclient window, graphics or
@@ -70,4 +71,5 @@ using tibia::game::argBool;
 
 }
 
+}
 }

@@ -11,11 +11,14 @@
 #include <QPointer>
 #include <QSize>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 /// The fields the minimap shows (CIP: TMinimapVisibleArea, vtable 0x10263d308):
 /// a floor rectangle sized by the item's pixels and the zoom (2^zoom pixels
@@ -74,4 +77,5 @@ private:
     QMatrix4x4 m_matrix;
 };
 
+}
 }

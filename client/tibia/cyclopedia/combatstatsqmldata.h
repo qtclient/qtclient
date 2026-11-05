@@ -5,7 +5,8 @@
 #include <map>
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 
 /// One source row of a stat (CIP: the 0x48-byte {name, value, tooltip} entries).
 struct StatSource
@@ -124,4 +125,5 @@ public:
     explicit TMiscStatsQmlData(const CombatStats& stats, QObject* parent = nullptr);
 };
 
+}
 }

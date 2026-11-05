@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::teamfinder {
+namespace tibia {
+namespace teamfinder {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -35,5 +36,6 @@ public:
     using cip::tibia::teamfinder::TTeamStartTimeManager::TTeamStartTimeManager;
 };
 
-} // namespace tibia::teamfinder
+}
+}
 

@@ -6,15 +6,20 @@
 
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
-
-namespace tibia::mods {
-class AttentionBackend;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace mods {
+class AttentionBackend;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -142,4 +147,5 @@ private:
     QPointer<mods::AttentionBackend> m_attention;
 };
 
+}
 }

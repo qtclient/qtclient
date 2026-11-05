@@ -11,7 +11,8 @@
 #include <functional>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -144,4 +145,5 @@ private:
     QPointer<TMessageDialogController> m_message;
 };
 
+}
 }

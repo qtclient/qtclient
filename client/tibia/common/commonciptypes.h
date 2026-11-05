@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::common {
+namespace tibia {
+namespace common {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -16,5 +17,6 @@ void ownProductSurface(QObject* parent);
 
 class TPluralException final : public ::tibia::CipTyped {};
 
-} // namespace tibia::common
+}
+}
 

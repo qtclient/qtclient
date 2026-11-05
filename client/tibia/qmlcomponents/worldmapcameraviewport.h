@@ -4,7 +4,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// House-preview / Cyclopedia WorldMap camera (CIP: TWorldMapCameraViewportQmlType).
 /// Owns centre / layer corner subfield coordinates so QML never sees null `.z`.
@@ -44,4 +45,5 @@ private:
     TWorldMapCuboidQmlType* m_cuboid = nullptr;
 };
 
+}
 }

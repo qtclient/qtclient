@@ -15,7 +15,8 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 /// User + bundled minimap pins (CIP: TMinimapMarkerStorage). Backed by
 /// `g_minimap`'s marker layer; user edits persist under AppData as JSON.
@@ -55,4 +56,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

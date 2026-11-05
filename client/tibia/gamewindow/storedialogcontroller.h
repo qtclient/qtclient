@@ -10,12 +10,15 @@
 #include <optional>
 #include <utility>
 
-namespace tibia::store {
+namespace tibia {
+namespace store {
 class TDynamicallyLoadedImageManager;
 class TQmlStoreOffer;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -282,4 +285,5 @@ private:
     int m_deeplinkDetail = -1;
 };
 
+}
 }

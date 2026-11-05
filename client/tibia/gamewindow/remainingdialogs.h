@@ -18,7 +18,8 @@
 #include <utility>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TQMLCharacterData;
 
@@ -583,4 +584,5 @@ Q_SIGNALS:
     void emailResendRequested();
 };
 
-} // namespace tibia::gamewindow
+}
+}

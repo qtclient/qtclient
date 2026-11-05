@@ -11,11 +11,14 @@
 
 struct ImbuementTrackerItem;
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// Rows for ImbuementTrackerWidget.qml (CIP: TImbuedObjectsModel).
 class TImbuedObjectsModel final : public cip::TImbuedObjectsModel
@@ -113,4 +116,5 @@ private:
     QPointer<TImbuementTrackerWidgetController> m_controller;
 };
 
+}
 }

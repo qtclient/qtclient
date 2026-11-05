@@ -13,13 +13,16 @@
 #include <utility>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
 }
+}
 
-namespace tibia::exaltation {
+namespace tibia {
+namespace exaltation {
 
 /// Object counts by type and tier (CIP: container::TObjectCountStorage,
 /// vtable 0x102625cf0: slot 12 sets them, 13 clears, 16 reads, 0 when absent).
@@ -124,8 +127,10 @@ private:
 };
 
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// CIP: (anonymous)::TExaltationForgeFusionPageController (vtable
 /// 0x102665470, init 0x100dced00).
@@ -286,4 +291,5 @@ private:
     TMessageDialogController* m_errorDialog;
 };
 
+}
 }

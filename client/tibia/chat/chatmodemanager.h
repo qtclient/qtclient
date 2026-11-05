@@ -2,7 +2,8 @@
 
 #include <QObject>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 
 /// Whether typing goes to the chat or to the hotkeys (CIP: TChatModeManager,
 /// vtable slots 12-19). The mode starts from chatOptions.chatModeOn.
@@ -42,4 +43,5 @@ private:
     int m_mode = CHAT_OFF;
 };
 
+}
 }

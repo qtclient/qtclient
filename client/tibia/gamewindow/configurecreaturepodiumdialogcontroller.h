@@ -17,7 +17,8 @@
 #include <tuple>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// Boss / bestiary skins for ConfigureCreaturePodiumDialog.qml (CIP: the
 /// list model behind TConfigureCreaturePodiumDialogController::bossSkinsModel).
@@ -118,4 +119,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

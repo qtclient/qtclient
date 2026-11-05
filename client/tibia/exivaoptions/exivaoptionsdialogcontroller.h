@@ -10,7 +10,8 @@
 
 #include <functional>
 
-namespace tibia::exivaoptions {
+namespace tibia {
+namespace exivaoptions {
 
 class TExivaOptionsStorage;
 
@@ -51,4 +52,5 @@ private:
     gamewindow::TMessageDialogController m_onlyOptionalPvp;
 };
 
+}
 }

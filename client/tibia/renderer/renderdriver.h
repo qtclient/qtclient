@@ -2,7 +2,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// Invisible item that keeps the scene graph rendering every frame (QML
 /// RenderDriver): each swapped frame polishes it, and polishing requests the next.
@@ -21,4 +22,5 @@ private:
     QMetaObject::Connection m_frameSwapped;
 };
 
+}
 }

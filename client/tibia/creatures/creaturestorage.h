@@ -24,7 +24,8 @@
 class Creature;
 class ThingType;
 
-namespace tibia::creatures {
+namespace tibia {
+namespace creatures {
 
 using TCreatureID = uint32_t;
 
@@ -409,4 +410,5 @@ void protocolRemoveTimedSquare(TCreatureID id);
 /// protocol-owned stats. No-op when storage is missing.
 void syncKeepAliveExtrasIfLive(::Creature& creature);
 
-} // namespace tibia::creatures
+}
+}

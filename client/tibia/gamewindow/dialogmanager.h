@@ -14,7 +14,8 @@
 class QQmlEngine;
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TDialog;
 
@@ -176,4 +177,5 @@ private:
     TDialog* m_dialog;
 };
 
+}
 }

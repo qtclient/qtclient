@@ -6,11 +6,14 @@
 
 #include <QList>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 class TWhiteBlacklist;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The ignore list dialog, WhiteBlacklistDialog.qml (CIP:
 /// TWhiteBlacklistDialogController, OPEN_WHITEBLACKLIST_DIALOG). The QML
@@ -55,4 +58,5 @@ private:
     Entries m_whitelistEntries;
 };
 
+}
 }

@@ -10,12 +10,15 @@
 
 class QQuickItem;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TTutorialMarkerQuickItem;
 class TWorldMapRenderProvider;
 }
+}
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// Tutorial arrows over the world map (CIP: TWorldMapTutorialMarkerOverlayController;
 /// MapWindowPane `tutorialMarkerOverlay`). Marker placement uses
@@ -58,4 +61,5 @@ private:
     static TWorldMapTutorialMarkerOverlayController* s_instance;
 };
 
+}
 }

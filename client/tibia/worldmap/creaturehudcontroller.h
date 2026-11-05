@@ -6,11 +6,14 @@
 
 class QQuickItem;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
+}
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 class TCreatureHUDOverlayController;
 class TCreatureHUDRenderProvider;
@@ -36,4 +39,5 @@ private:
     QMetaObject::Connection m_frameConnection;
 };
 
+}
 }

@@ -4,7 +4,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 
 /// One row of the HUD page's special conditions table (CIP: built by
 /// THudQMLOptionsPage FUN_100a1f560).
@@ -24,4 +25,5 @@ public:
     static QString icon(const SpecialCondition& condition);
 };
 
+}
 }

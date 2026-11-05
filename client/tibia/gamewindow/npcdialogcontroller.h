@@ -17,11 +17,14 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 class TChatChannelStorage;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TChatChannelController;
 class TChatController;
@@ -162,4 +165,5 @@ private:
     std::optional<TRemoteNpcSession> m_remote;
 };
 
+}
 }

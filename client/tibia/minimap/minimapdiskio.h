@@ -8,7 +8,8 @@
 #include <QString>
 #include <QThreadPool>
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 /// Minimap tiles on disk (CIP: TMinimapDiskIOAsync): Minimap_Color_x_y_z.png
 /// and Minimap_WaypointCost_x_y_z.png under `dir`, read and written on one
@@ -49,4 +50,5 @@ private:
     QThreadPool m_pool;
 };
 
+}
 }

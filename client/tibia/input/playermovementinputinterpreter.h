@@ -18,7 +18,8 @@ class QQuickItem;
 class QQuickWindow;
 class QTimer;
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// Keyboard walking (CIP: TKeyEventHandler 0x100e6f2a0 feeding the key
 /// status storage, read by TPlayerMovementInputInterpreter). The keys of a
@@ -102,4 +103,5 @@ private:
     tibia::client::Direction m_pending = tibia::client::InvalidDirection;
 };
 
+}
 }

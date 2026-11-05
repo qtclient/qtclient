@@ -9,11 +9,14 @@
 
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// PlayerGuideWidget.qml CipSoft shell (CIP: TPlayerGuideWidgetController).
 /// Newhaven / tutorial player-guide entries are not published on CipSoft today —
@@ -59,4 +62,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

@@ -4,7 +4,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// A one-line text prompt, GenericEnterTextDialog.qml (CIP:
 /// TGenericEnterTextDialogController). OK emits textEntered; both buttons close.
@@ -27,4 +28,5 @@ public Q_SLOTS:
     void onControllerFinished() override;
 };
 
+}
 }

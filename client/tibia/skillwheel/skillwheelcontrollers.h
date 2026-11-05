@@ -5,7 +5,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::skillwheel {
+namespace tibia {
+namespace skillwheel {
 
 /// One slice of SkillWheel.qml's skillParameters (CIP 0x100de5150).
 class TSkillWheelTileQMLInfo final : public cip::TSkillWheelTileQMLInfo
@@ -282,4 +283,5 @@ private:
     TSkillWheelPresetManagmentDialogController* m_presetDialog = nullptr;
 };
 
+}
 }

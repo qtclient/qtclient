@@ -6,18 +6,23 @@
 #include <QObject>
 #include <QUrl>
 
-namespace tibia::client {
+namespace tibia {
+namespace client {
 class TGameClient;
 }
-namespace tibia::gamewindow {
+}
+namespace tibia {
+namespace gamewindow {
 class TCreateAccountDialogController;
 class TCreateCharacterDialogController;
 class TGameWindowController;
 class TMessageDialogController;
 class TWaitDialogController;
 }
+}
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// CIP start-screen session chrome around TGameClient (stock qtclient host):
 /// - login / game errors → MessageDialog (showErrorAsPopupAndCriticalLog);
@@ -67,4 +72,5 @@ private:
     QMetaObject::Connection m_characterCreated;
 };
 
+}
 }

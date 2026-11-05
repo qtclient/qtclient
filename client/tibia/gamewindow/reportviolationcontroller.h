@@ -10,7 +10,8 @@
 
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The rule violation report, ReportViolationDialog.qml (CIP:
 /// TReportViolationController, vtable 0x102636c48, game actions 0x100c2d720:
@@ -60,4 +61,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

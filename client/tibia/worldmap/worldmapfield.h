@@ -12,11 +12,14 @@
 #include <memory>
 #include <vector>
 
-namespace tibia::creatures {
+namespace tibia {
+namespace creatures {
 class TCreature;
 }
+}
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// Stack row that references a live creature by id (outfit appearance on the field stack).
 struct TStackCreatureEntry
@@ -251,4 +254,5 @@ private:
     bool m_drawTopAndCreature{ true };
 };
 
-} // namespace tibia::worldmap
+}
+}

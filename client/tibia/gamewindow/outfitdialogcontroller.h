@@ -9,11 +9,14 @@
 
 class Outfit;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TOutfitPresetQmlType;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TGenericEnterTextDialogController;
 
@@ -173,4 +176,5 @@ private:
     WindowOptions m_windowOptions;
 };
 
+}
 }

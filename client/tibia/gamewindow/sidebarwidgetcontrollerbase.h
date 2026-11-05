@@ -8,7 +8,8 @@
 class QQmlEngine;
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// What CIP's TSidebarWidgetControllerBase (ctor 0x100b7bad0) adds to every
 /// sidebar widget: its TibiaSidebarWidget item, which knows the controller as
@@ -115,4 +116,5 @@ private:
     TSidebarWidget* m_widget;
 };
 
+}
 }

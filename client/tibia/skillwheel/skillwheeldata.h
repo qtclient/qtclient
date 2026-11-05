@@ -9,7 +9,8 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::skillwheel {
+namespace tibia {
+namespace skillwheel {
 
 constexpr int SlotCount = 36;
 constexpr int DomainCount = 4;
@@ -269,4 +270,5 @@ std::optional<TWheelCode> decodeWheelCode(const QString& code);
 /// CIP 0x101125c70: the slices respect their maximum and paths.
 bool isValidWheelCode(const TWheelCode& code);
 
+}
 }

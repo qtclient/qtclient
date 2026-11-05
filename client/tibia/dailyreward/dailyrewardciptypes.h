@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::dailyreward {
+namespace tibia {
+namespace dailyreward {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -39,5 +40,6 @@ public:
     using cip::tibia::dailyreward::TDailyRewardStorage::TDailyRewardStorage;
 };
 
-} // namespace tibia::dailyreward
+}
+}
 

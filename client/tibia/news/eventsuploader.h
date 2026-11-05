@@ -9,7 +9,8 @@
 
 class QNetworkAccessManager;
 
-namespace tibia::news {
+namespace tibia {
+namespace news {
 
 /// POSTs `{type:"eventschedule"}` to the portal clientservices multiplex
 /// (CIP: TEventsUploader). The CIP `updated(std::vector<TEventInformation>)`
@@ -41,4 +42,5 @@ private:
     qint64 m_lastUpdateTimestamp = 0;
 };
 
+}
 }

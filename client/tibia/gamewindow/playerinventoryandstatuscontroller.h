@@ -15,11 +15,14 @@
 
 class QQuickItem;
 
-namespace tibia::container {
+namespace tibia {
+namespace container {
 class TContainerSlotQmlInformation;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// inventory.qml's controller (CIP: TPlayerInventoryAndStatusController, ctor
 /// 0x100b779f0): the equipped objects, soul points and capacity, the combat
@@ -111,4 +114,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

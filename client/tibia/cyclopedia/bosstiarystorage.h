@@ -8,7 +8,8 @@
 
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 
 /// One boss of the bosstiary list (CIP: the 0x30-byte entries of
 /// TBosstiaryStorage +0x58, built by FUN_100983950).
@@ -107,4 +108,5 @@ private:
     QSet<int> m_trackedBosses;
 };
 
+}
 }

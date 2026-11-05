@@ -4,7 +4,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// Publishes world-map game actions (CIP: TWorldMapGameActionHandler::handleGameAction
 /// → input::publish; MOVE_OBJECT may emit sendMoveObject in full CIP).
@@ -18,4 +19,5 @@ public Q_SLOTS:
     void handleGameAction(const input::TGameActionPtr& action);
 };
 
+}
 }

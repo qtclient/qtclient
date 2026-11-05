@@ -6,11 +6,14 @@
 
 #include <QPoint>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
+}
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// The actions offered at a point of the world map (CIP:
 /// TWorldMapGameActionProvider::v2, 0x1010718a0).
@@ -41,4 +44,5 @@ private:
     const qmlcomponents::TWorldMapRenderProvider& m_provider;
 };
 
+}
 }

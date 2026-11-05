@@ -4,7 +4,8 @@
 
 #include <tibia/world/map.h>
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 /// qtclient IMinimapWorld over engine tiles (CIP fieldData / isKnown / areaOn).
 /// Tile/volume churn is driven by TWorldMapStorage signals on TMinimapManager —
@@ -24,4 +25,5 @@ private:
     TMinimapTileStorage& m_storage;
 };
 
+}
 }

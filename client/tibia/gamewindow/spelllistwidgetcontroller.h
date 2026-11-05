@@ -11,11 +11,14 @@
 
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// spelllistwidget.qml (CIP: TSpellListWidgetController). Reuses the Magical
 /// Archive spell model + filter proxy. Archive rows refresh on
@@ -62,4 +65,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

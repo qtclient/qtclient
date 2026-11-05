@@ -9,7 +9,8 @@
 
 #include <QPointer>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TSidebarManager;
 
@@ -79,4 +80,5 @@ private:
     QPointer<TPlayerTradeController> m_controller;
 };
 
+}
 }

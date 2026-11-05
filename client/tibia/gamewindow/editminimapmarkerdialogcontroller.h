@@ -8,7 +8,8 @@
 
 #include <QString>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// EditMinimapMarkerDialog.qml (CIP: TEditMinimapMarkerDialogController).
 class TEditMinimapMarkerDialogController final
@@ -31,4 +32,5 @@ private:
     Position m_position;
 };
 
+}
 }

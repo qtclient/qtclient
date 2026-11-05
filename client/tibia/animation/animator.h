@@ -9,7 +9,8 @@
 
 #include <cstdint>
 
-namespace tibia::animation {
+namespace tibia {
+namespace animation {
 
 /// CIP animation::TAnimator — phase clock over a ThingType Animator.
 class TAnimator final : public ::tibia::CipTyped
@@ -78,4 +79,5 @@ private:
     Animator* m_idle = nullptr;
 };
 
+}
 }

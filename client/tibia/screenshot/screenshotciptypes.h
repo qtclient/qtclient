@@ -18,7 +18,8 @@
 class QQuickItem;
 class QQuickWindow;
 
-namespace tibia::screenshot {
+namespace tibia {
+namespace screenshot {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -84,4 +85,5 @@ private:
     static TScreenshotManager* s_instance;
 };
 
-} // namespace tibia::screenshot
+}
+}

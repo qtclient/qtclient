@@ -64,8 +64,10 @@ class Paperdoll;
 
 using LightViewPtr = std::unique_ptr<LightView>;
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 class TWorldMapField;
+}
 }
 using WorldMapFieldPtr = tibia::worldmap::TWorldMapField*;
 

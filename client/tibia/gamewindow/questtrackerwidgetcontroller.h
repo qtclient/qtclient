@@ -15,15 +15,20 @@
 
 class QJsonObject;
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
-
-namespace tibia::mods {
-class MissionBackend;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace mods {
+class MissionBackend;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 /// The tracked quest flags (CIP: the quest-tracking half of
 /// questlog::TQuestLogStorage, vtable 0x10263e2c8). Pins and the two options
@@ -244,4 +249,5 @@ private:
     std::function<void(const QString&)> m_browseOpener;
 };
 
+}
 }

@@ -5,7 +5,8 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::proficiency {
+namespace tibia {
+namespace proficiency {
 
 /// CIP FUN_101559950: the perk of a shaping catalogue index (the server's
 /// "modifierEnum"), empty for an unused index.
@@ -18,4 +19,5 @@ std::vector<int> shapeOptions(int profession);
 /// The shaped perk of a catalogue index at a rank (CIP FUN_100eeaf60 / FUN_100eeba10).
 TProficiencyPerk shapedPerk(int index, int rank);
 
+}
 }

@@ -7,11 +7,14 @@
 
 class QSGImageNode;
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 class TMinimapRenderProvider;
 }
+}
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// The minimap (QML Minimap; CIP: TMinimapQuickItem, 0x1010d63b0). Every
 /// frame it rebuilds a transform node with the visible area's matrix and one
@@ -45,4 +48,5 @@ private:
     QMetaObject::Connection m_invalidatedConnection;
 };
 
+}
 }

@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::bossbestiary {
+namespace tibia {
+namespace bossbestiary {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -23,5 +24,6 @@ public:
 
 // TBossTrackerStorage — real implementation in bosstrackerstorage.h.
 
-} // namespace tibia::bossbestiary
+}
+}
 

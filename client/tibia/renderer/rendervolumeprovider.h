@@ -6,7 +6,8 @@
 
 #include <cstdint>
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 
 /// Which floors are drawn for the camera (CIP: TRenderVolumeProvider; cover scan
 /// v10 = FUN_101060450, underground clamp FUN_101055250). Logic lives with the
@@ -19,4 +20,5 @@ public:
     static uint8_t lastVisibleFloor(const Position& camera);
 };
 
+}
 }

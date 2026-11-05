@@ -15,21 +15,30 @@
 
 class QQuickItem;
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
-namespace tibia::minimap {
+}
+namespace tibia {
+namespace minimap {
 class TMinimapRenderProvider;
 class TMinimapTileStorage;
 }
-namespace tibia::qmlcomponents {
+}
+namespace tibia {
+namespace qmlcomponents {
 class TMinimapQuickItem;
 }
-namespace tibia::worldmap {
+}
+namespace tibia {
+namespace worldmap {
 class TAmbientLightStorage;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// MinimapPanel's controller (CIP: TMinimapController, 0x100b92750): the
 /// visible area follows the player; buttons, the rose, dragging, the wheel and
@@ -115,4 +124,5 @@ private:
     client::gamecore::Hook m_positionHook;
 };
 
+}
 }

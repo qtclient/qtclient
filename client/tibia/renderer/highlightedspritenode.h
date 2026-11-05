@@ -8,7 +8,8 @@
 
 class QSGTexture;
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 
 /// CIP's TSpriteDrawCommandHighlightShader (:/shaders/worldmap-highlight.{vert,frag}.qsb;
 /// FUN_100f7fc20 / names.txt 0x100f805b0).
@@ -52,4 +53,5 @@ private:
     TSpriteDrawCommandHighlightMaterial m_material;
 };
 
+}
 }

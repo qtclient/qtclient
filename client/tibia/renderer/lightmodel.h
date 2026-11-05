@@ -10,11 +10,15 @@
 #include <cstdint>
 #include <vector>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 class TWorldMapField;
 }
+}
 
-namespace tibia::qmlcomponents::light {
+namespace tibia {
+namespace qmlcomponents {
+namespace light {
 
 constexpr int FieldSize = 32;
 
@@ -100,4 +104,6 @@ QImage toLightImage(const std::vector<LightRgb>& cells, int width, int height);
 
 Position lightField(const Position& camera, int centerX, int centerY, int x, int y, int z);
 
+}
+}
 }

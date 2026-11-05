@@ -12,7 +12,8 @@
 class QQmlEngine;
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TActionBarManager;
 class TActionButtonController;
@@ -131,4 +132,5 @@ private:
     std::vector<TActionBarController*> m_bars;
 };
 
+}
 }

@@ -8,7 +8,8 @@
 #include <string>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TWeeklyTasksController final : public cip::tibia::gamewindow::TWeeklyTasksController
 {
@@ -43,4 +44,5 @@ private:
     taskboard::TDeliveryTasksListModel* m_deliveryModel = nullptr;
 };
 
+}
 }

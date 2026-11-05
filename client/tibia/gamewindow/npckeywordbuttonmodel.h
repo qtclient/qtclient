@@ -5,7 +5,8 @@
 
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// NpcDialog.qml's keyword buttons (CIP: the anonymous-namespace TKeywordButtonModel, a
 /// shared::TSimpleVectorAbstractListModel<chat::TKeywordButton>; roleNames 0x100e419a0,
@@ -44,4 +45,5 @@ private:
     std::vector<Button> m_buttons;
 };
 
+}
 }

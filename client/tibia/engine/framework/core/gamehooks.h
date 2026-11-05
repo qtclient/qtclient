@@ -32,7 +32,8 @@
 #include <mutex>
 #include <unordered_set>
 
-namespace tibia::gameevents_detail {
+namespace tibia {
+namespace gameevents_detail {
 
 inline void warnOrphanOnce(const std::string_view global, const std::string_view field)
 {
@@ -48,7 +49,8 @@ inline void warnOrphanOnce(const std::string_view global, const std::string_view
     g_logger.warning("[cip] orphan publish '{}' (no subscribers this session)", key);
 }
 
-} // namespace tibia::gameevents_detail
+}
+}
 
 template<typename... T>
 void GameEvents::callGlobalField(const std::string_view global, const std::string_view field, const T&... args)

@@ -8,7 +8,8 @@
 
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// CIP's TUiFocusManager (ctor 0x100e47d30, vtable 0x102639680): the keyboard
 /// focus of a part of the UI with its own text fields (the NPC trade pane,
@@ -44,4 +45,5 @@ private:
     QMetaObject::Connection m_keyboardConnection;
 };
 
+}
 }

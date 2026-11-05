@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::gameWidnow {
+namespace tibia {
+namespace gameWidnow {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -21,5 +22,6 @@ public:
     using cip::tibia::gameWidnow::TTextValueQmlObject::TTextValueQmlObject;
 };
 
-} // namespace tibia::gameWidnow
+}
+}
 

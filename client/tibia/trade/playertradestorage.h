@@ -9,7 +9,8 @@
 
 #include <vector>
 
-namespace tibia::trade {
+namespace tibia {
+namespace trade {
 
 /// The trade between two players (CIP: TPlayerTradeStorage, ctor
 /// 0x101040270, vtable 0x1026427d8) fed by CIP's OwnTrade /
@@ -54,4 +55,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

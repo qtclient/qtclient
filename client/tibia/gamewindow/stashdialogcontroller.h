@@ -16,7 +16,8 @@
 #include <memory>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TConfirmMoveObjectToStashDialogController;
 class TMessageDialogController;
@@ -106,4 +107,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

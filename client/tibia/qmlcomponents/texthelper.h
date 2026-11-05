@@ -2,7 +2,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// QML singleton TextHelper (CIP: TTextHelperQmlService, metacall 0x1010886d0).
 /// Multi strings join their longest-to-shortest variants with U+009C so QML
@@ -35,4 +36,5 @@ public:
     QString createQmlMultiString(const QString& LongString, const QString& ShortString) override;
 };
 
+}
 }

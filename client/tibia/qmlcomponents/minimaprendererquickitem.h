@@ -13,15 +13,20 @@
 
 class QQmlComponent;
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 class TCyclopediaMapStorage;
 }
-
-namespace tibia::minimap {
-class TMinimapTileStorage;
 }
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace minimap {
+class TMinimapTileStorage;
+}
+}
+
+namespace tibia {
+namespace qmlcomponents {
 
 /// The Cyclopedia map's camera (CIP: TWorldMapCameraQmlType): the top-left
 /// subfield coordinate (field * 32) of the viewport, its layer and the scale.
@@ -221,4 +226,5 @@ private:
     int m_playerLayer = -1;
 };
 
+}
 }

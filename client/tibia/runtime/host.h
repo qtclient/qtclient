@@ -11,7 +11,8 @@
 #define TIBIA_PRODUCT_ORG "CipSoft"
 #endif
 
-namespace tibia::host {
+namespace tibia {
+namespace host {
 
 /// Flags the world and renderer still read (HD scale, text, effect order).
 /// Qt owns the process; this is not a frame pump.
@@ -45,4 +46,5 @@ private:
 
 App& app();
 
+}
 }

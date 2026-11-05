@@ -11,7 +11,8 @@
 
 #include <array>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// StatusBar's controller (CIP: TStatusBarController; reads 0x100c0da10..
 /// 0x100c0ec50): the player's hit points, mana and magic shield, the XP bar
@@ -67,4 +68,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

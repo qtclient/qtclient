@@ -10,7 +10,8 @@
 class QNetworkAccessManager;
 class QNetworkReply;
 
-namespace tibia::authentication {
+namespace tibia {
+namespace authentication {
 
 /// The login service's "session" (CipSoft: TPlaySessionData — no email/ssoswitch).
 struct PlaySessionData
@@ -89,4 +90,5 @@ private:
     QNetworkReply* m_reply = nullptr;
 };
 
+}
 }

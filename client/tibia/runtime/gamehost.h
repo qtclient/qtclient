@@ -26,14 +26,19 @@
 #include <QString>
 #include <QStringList>
 
-namespace tibia::network {
+namespace tibia {
+namespace network {
 class ExtendedOpcodeRouter;
 }
-namespace tibia::qmlcomponents {
+}
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
+}
 
-namespace tibia::runtime {
+namespace tibia {
+namespace runtime {
 
 /// Pack-facing host façade for the live game client.
 /// Tip `client::TGameClient` owns a concrete subclass and forwards the signals
@@ -75,4 +80,5 @@ Q_SIGNALS:
     void characterSelectionRequested();
 };
 
-} // namespace tibia::runtime
+}
+}

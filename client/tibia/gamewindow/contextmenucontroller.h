@@ -15,11 +15,14 @@
 class QQmlEngine;
 class QQuickItem;
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 class TGameActionMapper;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// One line of a context menu (CIP: TContextMenuEntryItem, ctor 0x100b7df70).
 class TContextMenuEntryItem final : public cip::tibia::gamewindow::TContextMenuEntryItem
@@ -105,4 +108,5 @@ private:
     std::vector<std::pair<QPointer<QObject>, GameActionsExtension>> m_extensions;
 };
 
+}
 }

@@ -11,7 +11,8 @@
 #include <memory>
 #include <unordered_map>
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 class TMinimapTileStorage;
 
@@ -43,4 +44,5 @@ private:
 /// TWaypointCostMap feed into the movement path planner).
 std::shared_ptr<TWaypointCosts> snapshotWaypointCosts(TMinimapTileStorage* storage);
 
+}
 }

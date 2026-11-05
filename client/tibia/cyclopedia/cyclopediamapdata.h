@@ -14,7 +14,8 @@
 #include <unordered_map>
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 
 struct TMapCoordinate
 {
@@ -184,4 +185,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

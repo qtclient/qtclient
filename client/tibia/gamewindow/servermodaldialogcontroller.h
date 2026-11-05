@@ -8,7 +8,8 @@
 #include <tuple>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// A dialog the server opens (ServerModalDialog.qml; CIP:
 /// TServerModalDialogController).
@@ -32,4 +33,5 @@ private:
     std::vector<uint8_t> m_choiceIds;
 };
 
+}
 }

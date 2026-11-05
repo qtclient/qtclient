@@ -14,13 +14,16 @@ class QSGImageNode;
 class QSGNode;
 class QSGTexture;
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 class TChildrenScenegraphNode;
 class THighlightedSpriteScenegraphNode;
 class TSpriteTextureProvider;
 }
+}
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// The world view (QML WorldMap): the provider's sprites as pooled image nodes
 /// under the camera transform, batched by Qt's renderer. Drives the provider:
@@ -76,4 +79,5 @@ Q_SIGNALS:
     void framePictureChanged();
 };
 
+}
 }

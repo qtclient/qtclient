@@ -13,7 +13,8 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -156,4 +157,5 @@ private:
     bool m_pendingShow = false;
 };
 
+}
 }

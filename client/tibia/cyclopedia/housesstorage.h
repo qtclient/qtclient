@@ -9,7 +9,8 @@
 
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 
 /// One house of the Cyclopedia (CIP: the 0x140-byte records of THousesStorage
 /// +0x20; static part from staticdata, dynamic part from CurrentHouseData).
@@ -135,4 +136,5 @@ private:
     THouseLimits m_limits;
 };
 
+}
 }

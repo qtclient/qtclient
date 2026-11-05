@@ -11,7 +11,8 @@
 #include <array>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The application cursor (CIP: TMouseCursorController): the shape of the
 /// topmost region under the mouse unless a flag overrides it, drawn from
@@ -129,4 +130,5 @@ private:
     bool m_dragging = false;
 };
 
+}
 }

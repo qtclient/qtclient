@@ -13,11 +13,14 @@
 #include <set>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 class TMessageDialogController;
 }
+}
 
-namespace tibia::proficiency {
+namespace tibia {
+namespace proficiency {
 
 /// A weapon of the dialog's grid.
 struct TWeaponEntry
@@ -186,4 +189,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

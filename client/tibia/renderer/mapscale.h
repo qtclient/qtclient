@@ -7,7 +7,8 @@
 #include <algorithm>
 #include <cmath>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// CIP divides the camera translation by the render scale and rounds to whole pixels.
 inline QPoint roundedCamera(const QPoint camera, const double renderScale)
@@ -78,4 +79,5 @@ struct MapCoverScale
     }
 };
 
+}
 }

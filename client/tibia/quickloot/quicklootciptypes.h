@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::quickloot {
+namespace tibia {
+namespace quickloot {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -35,5 +36,6 @@ public:
     using cip::tibia::quickloot::TQuickLootGameActionHandler::TQuickLootGameActionHandler;
 };
 
-} // namespace tibia::quickloot
+}
+}
 

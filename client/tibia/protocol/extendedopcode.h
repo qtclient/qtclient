@@ -6,7 +6,8 @@
 #include <utility>
 #include <vector>
 
-namespace tibia::protocol {
+namespace tibia {
+namespace protocol {
 
 /// OT-only extended opcode (often 0x32). Parsers publish here. Subscribers are
 /// the extended-opcode router and product JSON opcodes — not Lua onExtendedOpcode.
@@ -33,4 +34,5 @@ private:
     int m_next = 1;
 };
 
+}
 }

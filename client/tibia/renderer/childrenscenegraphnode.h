@@ -2,7 +2,8 @@
 
 #include <QSGOpacityNode>
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 
 /// Opacity-grouped child sprites (CIP: TChildrenScenegraphNode; setAlphaF /
 /// setFlag in names.txt). product pools these as mark/opacity batches in
@@ -15,4 +16,5 @@ public:
     void setAlphaF(const qreal alpha) { setOpacity(alpha); }
 };
 
+}
 }

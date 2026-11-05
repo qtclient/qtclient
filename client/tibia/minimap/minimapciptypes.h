@@ -6,7 +6,8 @@
 
 #include <QObject>
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 /// CIP TMinimapDiskIOMemoryOnly — in-memory tile IO backend (no disk files).
 /// Product path uses TMinimapDiskIOAsync; this type is owned for CIP parity.
@@ -104,4 +105,5 @@ public:
     using cip::tibia::minimap::TMinimapTileManager::TMinimapTileManager;
 };
 
-} // namespace tibia::minimap
+}
+}

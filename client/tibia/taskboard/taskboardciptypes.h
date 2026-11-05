@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::taskboard {
+namespace tibia {
+namespace taskboard {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -52,5 +53,6 @@ public:
     using cip::tibia::taskboard::TTaskboardWeeklyTasksStorage::TTaskboardWeeklyTasksStorage;
 };
 
-} // namespace tibia::taskboard
+}
+}
 

@@ -19,19 +19,26 @@
 #include <set>
 #include <vector>
 
-namespace tibia::creatures {
+namespace tibia {
+namespace creatures {
 class TCreature;
 }
+}
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
-
-namespace tibia::qmlcomponents {
-class TWorldMapRenderProvider;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace qmlcomponents {
+class TWorldMapRenderProvider;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 class TSidebarManager;
 class TBattleListControllerStorage;
@@ -270,4 +277,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

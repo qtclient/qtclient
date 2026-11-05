@@ -7,7 +7,8 @@
 
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// CIP's TTargetSelectionController (slots 0x100bdb500 start / 0x100bdb1f0
 /// finish) owning TTargetSelectionEventFilter (0x100bdb630).
@@ -24,4 +25,5 @@ private:
     TTargetSelectionEventFilter* m_filter = nullptr;
 };
 
+}
 }

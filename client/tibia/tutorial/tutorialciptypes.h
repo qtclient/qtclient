@@ -9,11 +9,16 @@
 #include <QByteArray>
 #include <QObject>
 
-namespace tibia::protobuf::protocol {
+namespace tibia {
+namespace protobuf {
+namespace protocol {
 class GameserverMessageTutorialHint;
 }
+}
+}
 
-namespace tibia::tutorial {
+namespace tibia {
+namespace tutorial {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -69,4 +74,5 @@ public:
     using cip::tibia::tutorial::TTutorialSessiondumpGameActionHandler::TTutorialSessiondumpGameActionHandler;
 };
 
-} // namespace tibia::tutorial
+}
+}

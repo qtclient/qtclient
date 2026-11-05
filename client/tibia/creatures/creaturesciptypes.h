@@ -10,7 +10,8 @@
 #include <QByteArray>
 #include <QObject>
 
-namespace tibia::creatures {
+namespace tibia {
+namespace creatures {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -89,4 +90,5 @@ public:
 
 class TVipWidgetGameActionProvider final : public ::tibia::CipTyped {};
 
-} // namespace tibia::creatures
+}
+}

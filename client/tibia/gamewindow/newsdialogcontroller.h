@@ -14,11 +14,14 @@
 
 #include <vector>
 
-namespace tibia::news {
+namespace tibia {
+namespace news {
 class TNewsRequestUploader;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// Child rows under a GROUP HEADER (NewsDialog.qml `subEntryModel`).
 class TNewsSubEntryListModel final : public QAbstractListModel
@@ -140,4 +143,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

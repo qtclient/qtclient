@@ -9,11 +9,16 @@
 #include <QByteArray>
 #include <QObject>
 
-namespace tibia::protobuf::protocol {
+namespace tibia {
+namespace protobuf {
+namespace protocol {
 class GameserverMessageBugReportsAllowed;
 }
+}
+}
 
-namespace tibia::reporting {
+namespace tibia {
+namespace reporting {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -43,4 +48,5 @@ public:
     using cip::tibia::reporting::TRuleViolationProtocolMessageHandler::TRuleViolationProtocolMessageHandler;
 };
 
-} // namespace tibia::reporting
+}
+}

@@ -20,7 +20,8 @@
 #include <utility>
 #include <vector>
 
-namespace tibia::sound {
+namespace tibia {
+namespace sound {
 
 /**
  * CIP sound bank (catalog-sound.json + sounds-*.dat) and miniaudio playback.
@@ -222,4 +223,5 @@ private:
     std::mt19937 m_rng{ std::random_device{}() };
 };
 
+}
 }

@@ -17,7 +17,8 @@
 #include <unordered_map>
 #include <vector>
 
-namespace tibia::analysers {
+namespace tibia {
+namespace analysers {
 
 /// CIP FUN_10102c340(n): n linear weights w[i] = 2(i+1) / (n(n+1)), oldest first, summing to 1.
 std::vector<double> linearWeights(int n);
@@ -576,4 +577,5 @@ private:
     quint32 m_characterId = 0;
 };
 
+}
 }

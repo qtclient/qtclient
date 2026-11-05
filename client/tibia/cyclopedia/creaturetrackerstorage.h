@@ -7,7 +7,8 @@
 #include <QString>
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 
 /// One row of GameserverMessageBestiaryTracker / 0xB9 (CIP tracker storage).
 struct TCreatureTrackerEntry
@@ -45,4 +46,5 @@ private:
     std::vector<TCreatureTrackerEntry> m_bosses;
 };
 
-} // namespace tibia::cyclopedia
+}
+}

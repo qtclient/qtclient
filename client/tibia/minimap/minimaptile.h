@@ -12,7 +12,8 @@
 #include <cstdint>
 #include <memory>
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 /// Packs a tile id (or any field coordinate) into an ordered map key.
 inline uint64_t coordinateKey(const Position& p)
@@ -70,4 +71,5 @@ private:
 
 using TMinimapTilePtr = std::shared_ptr<TMinimapTile>;
 
+}
 }

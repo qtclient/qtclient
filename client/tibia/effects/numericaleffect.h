@@ -15,7 +15,8 @@
 
 class Effect;
 
-namespace tibia::effects {
+namespace tibia {
+namespace effects {
 
 /// CIP effects::TNumericalEffect — rising damage/heal/xp number (1 s TDurationTween).
 class TNumericalEffect final : public ::tibia::CipTyped
@@ -63,4 +64,5 @@ public:
     using cip::tibia::effects::TEffectProtocolMessageHandler::TEffectProtocolMessageHandler;
 };
 
+}
 }

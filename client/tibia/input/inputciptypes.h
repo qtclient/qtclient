@@ -9,7 +9,8 @@
 #include <cstdint>
 #include <string>
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// Own CIP-named types under `parent` (keyboard shortcut handler).
 void ownProductSurface(QObject* parent);
@@ -311,4 +312,5 @@ private:
     int m_x = 0, m_y = 0, m_z = 0;
 };
 
-} // namespace tibia::input
+}
+}

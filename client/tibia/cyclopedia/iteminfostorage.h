@@ -21,11 +21,14 @@
 #include <unordered_map>
 #include <vector>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 class TChatChannelStorage;
 }
+}
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 
 /// The client-side item settings the Cyclopedia's item page edits: the loot
 /// value settings (CIP: TItemPriceStorage, vtable 0x102627860), the drop
@@ -208,4 +211,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

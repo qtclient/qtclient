@@ -6,7 +6,8 @@
 
 #include <QObject>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 
 class TActionBarOptions final : public cip::tibia::config::TActionBarOptions
 {
@@ -148,9 +149,12 @@ public:
     using cip::tibia::config::TUISoundsQMLOptionsPage::TUISoundsQMLOptionsPage;
 };
 
-} // namespace tibia::config
+}
+}
 
-namespace tibia::config::TConfigBackupReader {
+namespace tibia {
+namespace config {
+namespace TConfigBackupReader {
 
 class TConfigBackupException final : public ::tibia::CipTyped
 {
@@ -158,4 +162,6 @@ public:
     TConfigBackupException() = default;
 };
 
-} // namespace tibia::config::TConfigBackupReader
+}
+}
+}

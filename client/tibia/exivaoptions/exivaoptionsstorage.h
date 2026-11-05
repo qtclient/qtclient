@@ -8,7 +8,8 @@
 #include <set>
 #include <vector>
 
-namespace tibia::exivaoptions {
+namespace tibia {
+namespace exivaoptions {
 
 /// The exiva restrictions (CIP: TExivaOptionsStorage, getters 0x100ad7200..
 /// 0x100ad7270, character whitelist 0x100ad72f0), fed by the server's 0xCA
@@ -68,4 +69,5 @@ private:
     Names m_guildWhitelist;
 };
 
+}
 }

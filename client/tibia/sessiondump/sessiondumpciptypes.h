@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::sessiondump {
+namespace tibia {
+namespace sessiondump {
 
 class TClientSessiondumpRecorder final : public cip::tibia::sessiondump::TClientSessiondumpRecorder
 {
@@ -60,5 +61,6 @@ class TSessiondumpReader final : public ::tibia::CipTyped {};
 
 class TSessiondumpReadersFactory final : public ::tibia::CipTyped {};
 
-} // namespace tibia::sessiondump
+}
+}
 

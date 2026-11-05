@@ -10,7 +10,8 @@
 
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TVocationSelectionDialogController;
 
@@ -63,4 +64,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

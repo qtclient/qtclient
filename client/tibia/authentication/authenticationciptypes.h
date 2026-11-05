@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::authentication {
+namespace tibia {
+namespace authentication {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -48,5 +49,6 @@ public:
     using cip::tibia::authentication::TLoginProtocolMessageHandler::TLoginProtocolMessageHandler;
 };
 
-} // namespace tibia::authentication
+}
+}
 

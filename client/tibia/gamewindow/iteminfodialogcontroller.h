@@ -11,11 +11,14 @@
 #include <utility>
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 class TItemInfoStorage;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The "Basic Item Details" of an inspected type (CIP: TInspectObjectQMLData
 /// as built by the item page, 0x100cb1630).
@@ -131,4 +134,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

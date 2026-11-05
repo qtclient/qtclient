@@ -7,7 +7,8 @@
 
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// Stock "You are dead" dialog. OT servers deliver death via opcode 0x28 →
 /// Game::processDeath → g_game.onDeath. CIP's TDeathDialogController /
@@ -29,4 +30,5 @@ private:
     bool m_finishing = false;
 };
 
+}
 }

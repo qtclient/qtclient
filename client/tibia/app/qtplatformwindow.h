@@ -3,7 +3,8 @@
 #include <QPointer>
 #include <QWindow>
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// Qt already owns the native window. This only remembers which window the
 /// process is using so later code can ask for it.
@@ -19,4 +20,5 @@ private:
 
 QtPlatformWindow& qtWindow();
 
+}
 }

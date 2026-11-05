@@ -6,11 +6,14 @@
 #include "gameaction.h"
 #include "worldmap/worldmappicker.h"
 
-namespace tibia::creatures {
+namespace tibia {
+namespace creatures {
 class TCreature;
 }
+}
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// The actions an object or creature offers (CIP: TGenericObjectGameActionProvider).
 /// World-map context only; container and inventory contexts come with their panels.
@@ -33,4 +36,5 @@ public:
 /// CIP's hireling: an NPC whose mapped inspection type is 4 (raw 7).
 bool isHireling(const tibia::creatures::TCreature& stored);
 
+}
 }

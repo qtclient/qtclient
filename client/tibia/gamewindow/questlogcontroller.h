@@ -14,11 +14,14 @@
 #include <tuple>
 #include <vector>
 
-namespace tibia::mods {
+namespace tibia {
+namespace mods {
 class MissionBackend;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// Whether a mission name carries the server's "(completed)" marker (CIP 0x100f701a0).
 bool hasCompletedMarker(const QString& name);
@@ -192,4 +195,5 @@ private:
     quint32 m_characterId = 0;
 };
 
+}
 }

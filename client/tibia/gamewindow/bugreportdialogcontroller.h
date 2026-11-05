@@ -7,7 +7,8 @@
 
 #include <client/position.h>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The bug report, BugReportDialog.qml (CIP: TBugReportDialogController,
 /// vtable 0x10262ddf0, game actions 0x100c4a040: REPORT_BUG_OTHER,
@@ -64,4 +65,5 @@ private:
     QString m_text;
 };
 
+}
 }

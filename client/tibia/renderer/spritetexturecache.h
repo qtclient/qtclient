@@ -12,7 +12,8 @@
 class QQuickWindow;
 class QSGTexture;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// A sprite as the world draws it: one sprite sheet entry, an outfit sprite
 /// colorized through its mask sprite, or a creature mark.
@@ -135,4 +136,5 @@ private:
     bool m_allowEvict = true;
 };
 
+}
 }

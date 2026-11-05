@@ -9,7 +9,8 @@
 
 struct BlessDialogData;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// One blessing row (CIP: game::TQmlBlessingWithCharges; name 0x100b53bf0,
 /// image 0x100b53da0 → 0x100927670).
@@ -75,4 +76,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

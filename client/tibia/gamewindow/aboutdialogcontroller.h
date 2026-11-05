@@ -6,7 +6,8 @@
 
 #include <QUrl>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -47,4 +48,5 @@ private:
     QUrl m_portalBase;
 };
 
+}
 }

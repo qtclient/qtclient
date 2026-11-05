@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::imbuing {
+namespace tibia {
+namespace imbuing {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -28,5 +29,6 @@ public:
     using cip::tibia::imbuing::TImbuingProtocolMessageHandler::TImbuingProtocolMessageHandler;
 };
 
-} // namespace tibia::imbuing
+}
+}
 

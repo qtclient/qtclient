@@ -4,7 +4,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// What EditTextDialog.qml shows (CIP: TEditTextUIData).
 class TEditTextUIData final : public cip::tibia::gamewindow::TEditTextUIData
@@ -50,4 +51,5 @@ private:
     QString m_author;
 };
 
+}
 }

@@ -12,11 +12,14 @@
 
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The skills widget, skillswidget.qml (CIP: TSkillsWidgetController, ctor
 /// 0x100bfcb90). The XP boost button publishes OPEN_STORE and "more details"
@@ -71,4 +74,5 @@ private:
     QTimer m_combatStatsTimer;
 };
 
+}
 }

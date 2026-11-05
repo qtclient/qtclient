@@ -10,10 +10,13 @@
 
 class QQuickItem;
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 class TTextStorage;
 }
-namespace tibia::worldmap {
+}
+namespace tibia {
+namespace worldmap {
 class TCreatureHUDController;
 class TNumericalEffectStorage;
 class TWorldMapGameActionHandler;
@@ -21,8 +24,10 @@ class TWorldMapGameActionProvider;
 class TWorldMapTutorialMarkerOverlayController;
 class TWorldMapViewport;
 }
+}
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 class TLightmapPaintedItem;
 class TNumericalEffectOverlayQuickItem;
@@ -91,4 +96,5 @@ private:
     int m_unhandledAtMouseFrames = -1;
 };
 
+}
 }

@@ -14,7 +14,8 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -144,4 +145,5 @@ private:
     std::optional<CyclopediaCharacterOffenceStats> m_last;
 };
 
-} // namespace tibia::cyclopedia
+}
+}

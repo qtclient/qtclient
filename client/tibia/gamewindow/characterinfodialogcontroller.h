@@ -9,7 +9,8 @@
 
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -119,4 +120,5 @@ Q_SIGNALS:
     void inspectionStateChanged();
 };
 
+}
 }

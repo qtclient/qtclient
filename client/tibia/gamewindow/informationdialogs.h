@@ -6,19 +6,26 @@
 
 #include <vector>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 class TAmbientLightStorage;
 }
+}
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 class TMinimapTileStorage;
 }
-
-namespace tibia::mods {
-class InstanceBackend;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace mods {
+class InstanceBackend;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 class TBosstiaryButtonController;
 class TConfigureCreaturePodiumDialogController;
@@ -71,4 +78,5 @@ private:
     TBosstiaryButtonController* m_bosstiaryButton;
 };
 
+}
 }

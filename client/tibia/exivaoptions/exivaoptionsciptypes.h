@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::exivaoptions {
+namespace tibia {
+namespace exivaoptions {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -28,5 +29,6 @@ public:
     using cip::tibia::exivaoptions::TExivaOptionsProtocolMessageHandler::TExivaOptionsProtocolMessageHandler;
 };
 
-} // namespace tibia::exivaoptions
+}
+}
 

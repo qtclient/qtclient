@@ -8,7 +8,8 @@
 #include <string>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TTaskboardShopController final : public cip::tibia::gamewindow::TTaskboardShopController
 {
@@ -31,4 +32,5 @@ private:
     taskboard::TTaskboardRewardListModel* m_rewardsModel = nullptr;
 };
 
+}
 }

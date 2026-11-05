@@ -8,7 +8,8 @@
 #include <cstdint>
 #include <vector>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// Shared roof / outdoor gather for classic light, raycast sun, and climate.
 /// Independent of which lighting *look* is active.
@@ -91,4 +92,5 @@ WorldGeometry buildWorldGeometry(const WorldGeometryInput& in);
 /// Weather rewrites outdoorMask for open-sky + outdoor upper faces (see buildWorldGeometry).
 void fillGeometryImages(WorldGeometry& geo);
 
+}
 }

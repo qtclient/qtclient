@@ -11,7 +11,8 @@
 class QNetworkAccessManager;
 class QNetworkReply;
 
-namespace tibia::store {
+namespace tibia {
+namespace store {
 
 /// The store's web images (CIP: TDynamicallyLoadedImageManager, ctor
 /// 0x101006f70, metacall 0x10086c900): `<base>/<size>/<key>` (0x1010079b0)
@@ -45,8 +46,10 @@ private:
 };
 
 }
+}
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// DynamicallyLoadedImage (CIP: TDynamicallyLoadedImageQuickItem, metacall
 /// 0x1010821e0): one image of the manager, sized 13, 32 or 64; a loading
@@ -87,4 +90,5 @@ private:
     QImage m_image;
 };
 
+}
 }

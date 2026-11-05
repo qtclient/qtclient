@@ -16,11 +16,14 @@
 #include <cstdint>
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TSidebarManager;
 
@@ -110,4 +113,5 @@ private:
     TDepotSearchWidgetController* m_controller = nullptr;
 };
 
+}
 }

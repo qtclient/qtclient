@@ -9,11 +9,14 @@
 
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// unjustifiedpointswidget.qml (CIP: TUnjustifiedPointsWidgetController).
 class TUnjustifiedPointsWidgetController final
@@ -52,4 +55,5 @@ private:
     QPointer<TUnjustifiedPointsWidgetController> m_controller;
 };
 
+}
 }

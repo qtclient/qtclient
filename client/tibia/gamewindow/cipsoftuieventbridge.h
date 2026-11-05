@@ -8,7 +8,8 @@
 #include <cstdint>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// CipSoft subscribers for CIP g_game publishes that have no dedicated CipSoft
 /// controller yet (gem atelier, player helpers, virtues yellow-border spell ids).
@@ -38,4 +39,5 @@ private:
     QVector<int> m_virtuesYellowBorder;
 };
 
+}
 }

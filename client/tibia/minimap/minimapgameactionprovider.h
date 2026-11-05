@@ -4,7 +4,8 @@
 
 #include "input/gameaction.h"
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 /// The actions a minimap field offers (CIP: TMinimapGameActionProvider,
 /// FUN_100ebb550): walk there, as a plain and a smart click, god teleport,
@@ -15,4 +16,5 @@ public:
     input::TGameActionList actionsAt(const Position& coord) const;
 };
 
+}
 }

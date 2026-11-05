@@ -19,7 +19,8 @@
 #include <functional>
 #include <tibia/game/gamesession.h>
 
-namespace tibia::world {
+namespace tibia {
+namespace world {
 
 inline Map& fields() { return g_map; }
 inline Game& session() { return g_game; }
@@ -51,4 +52,5 @@ public:
 
 WalkCalculator& motion();
 
+}
 }

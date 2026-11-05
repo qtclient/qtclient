@@ -11,7 +11,8 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::store {
+namespace tibia {
+namespace store {
 
 /// One price of an offer (CIP: the 0x40-byte quantity configuration of
 /// TStoreOffer; CIP's SubOffer).
@@ -204,4 +205,5 @@ private:
     qint64 m_creditPacketSize = 1;
 };
 
+}
 }

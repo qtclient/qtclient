@@ -5,7 +5,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TActionBarController;
 
@@ -111,4 +112,5 @@ private:
     TActionButtonController* m_shownSlot = nullptr;
 };
 
+}
 }

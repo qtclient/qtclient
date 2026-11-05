@@ -23,7 +23,8 @@ class GameclientMessage;
 } // namespace protobuf
 } // namespace tibia
 
-namespace tibia::protocol {
+namespace tibia {
+namespace protocol {
 
 void ownProductSurface(QObject* parent);
 
@@ -168,4 +169,5 @@ QByteArray enqueueNativeServerProtobuf(const QByteArray& gameserverProtobuf, boo
 
 const ::tibia::protobuf::protocol::GameserverMessage* lastShadowServerMessage();
 
-} // namespace tibia::protocol
+}
+}

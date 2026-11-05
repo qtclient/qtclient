@@ -11,7 +11,8 @@
 #include <map>
 #include <set>
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 /// What the minimap records of one field (CIP: the world field's minimap data).
 struct TMinimapFieldData
@@ -95,4 +96,5 @@ private:
     int m_playerZ = 0;
 };
 
+}
 }

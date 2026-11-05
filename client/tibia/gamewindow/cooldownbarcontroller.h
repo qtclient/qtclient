@@ -10,7 +10,8 @@
 
 class QQuickItem;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// One cooldown icon for CooldownBar.qml (CIP: TCooldownProgressDataForQML).
 class TCooldownProgressDataForQML final : public cip::tibia::gamewindow::TCooldownProgressDataForQML
@@ -44,4 +45,5 @@ private:
     QVariantList m_spellModels;
 };
 
+}
 }

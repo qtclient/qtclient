@@ -9,7 +9,8 @@
 #include <tuple>
 #include <vector>
 
-namespace tibia::quickloot {
+namespace tibia {
+namespace quickloot {
 
 /// Server-driven quick-loot container assignments (CIP: TManagedContainerStorage,
 /// vtable 0x10263c688 family, update 0x100f74e60, fallback 0x100f74fb0).
@@ -44,4 +45,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

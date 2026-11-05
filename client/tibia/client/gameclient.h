@@ -19,36 +19,53 @@
 
 class QQuickWindow;
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 class TNextFrameUpdater;
 }
-namespace tibia::gamewindow {
+}
+namespace tibia {
+namespace gamewindow {
 class TCharacterSelectionController;
 struct CharacterEntry;
 }
-namespace tibia::game {
+}
+namespace tibia {
+namespace game {
 class TGameserverGameSession;
 class TSessiondumpGameSession;
 class TStatusbarStorage;
 }
-namespace tibia::network {
+}
+namespace tibia {
+namespace network {
 class ExtendedOpcodeRouter;
 class TGameserverDualConnection;
 }
-namespace tibia::sound {
+}
+namespace tibia {
+namespace sound {
 class TSoundProtocolMessageHandler;
 class TSoundStorage;
 }
-namespace tibia::qmlcomponents {
+}
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
-namespace tibia::config {
+}
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
-namespace tibia::minimap {
+}
+namespace tibia {
+namespace minimap {
 class TMinimapManager;
 }
-namespace tibia::worldmap {
+}
+namespace tibia {
+namespace worldmap {
 class TAmbientLightStorage;
 class TFrameDurationRing;
 class TNextFrameTimestampPredictor;
@@ -56,25 +73,35 @@ class TNumericalEffectStorage;
 class TWorldMapStorage;
 class TWorldmapProtocolMessageHandler;
 }
-namespace tibia::chat {
+}
+namespace tibia {
+namespace chat {
 class TGameMessageHandler;
 class TWhiteBlacklist;
 class TTextStorage;
 }
-namespace tibia::effects {
+}
+namespace tibia {
+namespace effects {
 class TEffectStorage;
 class TEffectGameActionHandler;
 class TEffectProtocolMessageHandler;
 }
-namespace tibia::creatures {
+}
+namespace tibia {
+namespace creatures {
 class TCreatureStorage;
 }
-namespace tibia::container {
+}
+namespace tibia {
+namespace container {
 class TContainerStorage;
 class TInventoryContainer;
 }
+}
 
-namespace tibia::client {
+namespace tibia {
+namespace client {
 
 /// The client's top level (CIP: TGameClient): engine pump, assets, account
 /// login, character selection and the game server session.
@@ -270,4 +297,5 @@ private:
     bool m_tutorialCinematic = false;
 };
 
+}
 }

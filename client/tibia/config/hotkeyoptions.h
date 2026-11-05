@@ -10,7 +10,8 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 
 /// CIP's useType strings (FUN_100e5f460 order).
 enum class EUseType : int
@@ -160,4 +161,5 @@ private:
     bool m_loaded = false;
 };
 
+}
 }

@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::news {
+namespace tibia {
+namespace news {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -46,5 +47,6 @@ public:
     using cip::tibia::news::TNewsViewsUploader::TNewsViewsUploader;
 };
 
-} // namespace tibia::news
+}
+}
 

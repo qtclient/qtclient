@@ -7,7 +7,8 @@
 
 #include <QPointer>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TActionBarController;
 
@@ -158,4 +159,5 @@ private:
     QKeySequence m_keys;
 };
 
+}
 }

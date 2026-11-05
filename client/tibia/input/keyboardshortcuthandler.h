@@ -17,7 +17,8 @@ class QKeyEvent;
 class QQuickItem;
 class QQuickWindow;
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// The game's keyboard hotkeys (CIP: the application key filter 0x100e85b80
 /// with FUN_100e839f0). A key press looks up the current hotkey preset's
@@ -72,4 +73,5 @@ private:
     std::map<int, QElapsedTimer> m_lastRepeat;
 };
 
+}
 }

@@ -140,6 +140,8 @@ private:
     std::deque<std::string> m_searchPaths;
 };
 
-namespace tibia::files {
+namespace tibia {
+namespace files {
 ResourceManager& data();
+}
 }

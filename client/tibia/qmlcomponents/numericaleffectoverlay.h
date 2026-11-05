@@ -10,11 +10,14 @@
 
 #include <vector>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 class TNumericalEffectStorage;
 }
+}
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 class TWorldMapRenderProvider;
 
@@ -78,4 +81,5 @@ private:
     std::vector<Field> m_fields;
 };
 
+}
 }

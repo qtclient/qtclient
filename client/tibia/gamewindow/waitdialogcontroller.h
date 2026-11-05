@@ -6,7 +6,8 @@
 
 #include <QTimer>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// WaitDialog.qml (CIP: TWaitDialogController) — connecting / please-wait during login.
 class TWaitDialogController final : public TDialogController<cip::tibia::gamewindow::TWaitDialogController>
@@ -41,4 +42,5 @@ private:
     Phase m_abortedPhase = Phase::None;
 };
 
+}
 }

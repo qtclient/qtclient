@@ -9,11 +9,14 @@
 
 #include <QPoint>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
+}
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// An object of a field and its stack position (CipSoft: appearance + stackpos + creatureId).
 struct TFieldObject
@@ -75,4 +78,5 @@ public:
     static uint32_t creatureAt(const qmlcomponents::TWorldMapRenderProvider& provider, const QPoint& mapPixel);
 };
 
+}
 }

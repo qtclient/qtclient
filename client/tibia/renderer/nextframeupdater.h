@@ -4,17 +4,24 @@
 
 #include <QtGlobal>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 class TTextStorage;
 }
-namespace tibia::qmlcomponents {
+}
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
-namespace tibia::worldmap {
+}
+namespace tibia {
+namespace worldmap {
 class TNumericalEffectStorage;
 }
+}
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 
 /// Advances everything that moves to the time the next frame is shown (CIP:
 /// renderer::TNextFrameUpdater::v2 at 0x100f77a00).
@@ -42,4 +49,5 @@ private:
     worldmap::TNumericalEffectStorage& m_numericalEffects;
 };
 
+}
 }

@@ -6,11 +6,14 @@
 
 class QQuickItem;
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// MapWindowPane's mapWindowController (CIP: TMapWindowController, metacall
 /// 0x10082d6f0): the render options the pane reads, the cursor layer while the
@@ -64,4 +67,5 @@ private:
     bool m_classicView = false;
 };
 
+}
 }

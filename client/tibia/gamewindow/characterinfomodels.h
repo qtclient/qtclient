@@ -12,7 +12,8 @@
 
 struct CyclopediaCharacterItemSummary;
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// CIP: one 0x38-byte TCharacterInfoStorage item summary row (+0x98).
 struct ItemSummaryEntry
@@ -303,4 +304,5 @@ private:
     std::vector<AchievementEntry> m_unlocked;
 };
 
+}
 }

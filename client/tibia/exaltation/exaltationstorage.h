@@ -10,7 +10,8 @@
 #include <map>
 #include <vector>
 
-namespace tibia::exaltation {
+namespace tibia {
+namespace exaltation {
 
 /// One object of a fusion or transfer group (CIP: the 8-byte entries of
 /// TExaltationStorage's groups).
@@ -130,4 +131,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

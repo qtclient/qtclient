@@ -10,11 +10,14 @@
 
 #include <vector>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 class TTextStorage;
 }
+}
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 class TWorldMapRenderProvider;
 
@@ -89,4 +92,5 @@ private:
     std::vector<TSpeechBubbleController*> m_all;
 };
 
+}
 }

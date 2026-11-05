@@ -4,7 +4,8 @@
 
 #include <QImage>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 class TWorldMapRenderProvider;
 
@@ -33,4 +34,5 @@ private:
     QImage m_image;
 };
 
+}
 }

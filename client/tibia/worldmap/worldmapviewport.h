@@ -4,11 +4,14 @@
 
 #include <cip_gen.h>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
+}
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// Visible world volume driven by the render provider (CIP: TWorldMapViewport;
 /// worldMapVolumeChanged when FOV / floors change).
@@ -36,4 +39,5 @@ private:
     uint8_t m_lastFloor = 0;
 };
 
+}
 }

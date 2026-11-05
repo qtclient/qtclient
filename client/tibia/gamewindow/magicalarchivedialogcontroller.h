@@ -9,7 +9,8 @@
 #include <set>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// Full Magical Archive spell rows (CIP: TSpellListDataModel::data 0x100c94290).
 class TMagicalArchiveSpellListModel final : public cip::tibia::gamewindow::TSpellListDataModel
@@ -122,4 +123,5 @@ private:
     mutable QJSValue m_previewsJs;
 };
 
+}
 }

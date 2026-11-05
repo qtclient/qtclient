@@ -13,11 +13,14 @@
 
 #include <vector>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 class TNumericalEffectStorage;
 }
+}
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 
 class TTextStorage;
 class TWhiteBlacklist;
@@ -66,4 +69,5 @@ private:
     bool m_showOthersSpells = true;
 };
 
+}
 }

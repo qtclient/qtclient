@@ -2,7 +2,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// CIP TCacheForWorldmapStorageLookupMembers — empty moc surface (no properties /
 /// signals / slots in contract). Owned by TWorldMapStorage as the typed cache
@@ -15,4 +16,5 @@ public:
     using cip::tibia::worldmap::TCacheForWorldmapStorageLookupMembers::TCacheForWorldmapStorageLookupMembers;
 };
 
+}
 }

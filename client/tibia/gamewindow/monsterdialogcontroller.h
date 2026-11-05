@@ -11,11 +11,14 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 class TBestiaryStorage;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
@@ -134,4 +137,5 @@ private:
     int m_confirmCharm = 0;
 };
 
+}
 }

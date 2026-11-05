@@ -8,7 +8,8 @@
 #include <map>
 #include <optional>
 
-namespace tibia::spells {
+namespace tibia {
+namespace spells {
 
 /// One spell or rune of CIP's spells.json (CIP: the SpellInfo records
 /// FUN_100fe2e70 reads).
@@ -79,4 +80,5 @@ private:
     std::map<int, int> m_byRune;
 };
 
+}
 }

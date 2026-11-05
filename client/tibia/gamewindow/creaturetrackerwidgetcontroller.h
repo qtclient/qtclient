@@ -10,15 +10,20 @@
 
 #include <vector>
 
-namespace tibia::bossbestiary {
+namespace tibia {
+namespace bossbestiary {
 class TBossTrackerStorage;
 }
-
-namespace tibia::config {
-class TSidebarOptions;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace config {
+class TSidebarOptions;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 /// Rows for CreatureTrackerWidget.qml (CIP: TCreatureTrackerModel).
 class TCreatureTrackerListModel final : public cip::TCreatureTrackerModel
@@ -111,4 +116,5 @@ private:
     TCreatureTrackerWidgetController* m_controller = nullptr;
 };
 
-} // namespace tibia::gamewindow
+}
+}

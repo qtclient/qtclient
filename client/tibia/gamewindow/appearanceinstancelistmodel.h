@@ -6,7 +6,8 @@
 
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// A container's slots for container.qml's grid (CIP:
 /// TAppearanceInstanceListModel, vtable 0x10262c5e8, data FUN_100e09a00):
@@ -59,4 +60,5 @@ private:
     bool m_showExpireWhenUnused = false;
 };
 
+}
 }

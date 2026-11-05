@@ -9,7 +9,8 @@
 
 #if defined(Q_OS_WASM) || defined(__EMSCRIPTEN__)
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 
 /// Strip packed #version / precision lines and force one WebGL2 preamble so
 /// QRhi cannot pair mismatched GLSL families across stages.
@@ -90,11 +91,13 @@ inline QShader loadPackShader(const char* qrcModule, const char* name)
     return isolateGlslEs300(QShader::fromSerialized(file.readAll()));
 }
 
-} // namespace tibia::renderer
+}
+}
 
 #else
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 
 inline QShader loadStockShader(const char* name)
 {
@@ -114,6 +117,7 @@ inline QShader loadPackShader(const char* qrcModule, const char* name)
     return QShader::fromSerialized(file.readAll());
 }
 
-} // namespace tibia::renderer
+}
+}
 
 #endif

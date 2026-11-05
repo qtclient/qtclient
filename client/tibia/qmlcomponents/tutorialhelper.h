@@ -6,7 +6,8 @@
 #include <QPointer>
 #include <QSGNode>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// QML singleton TutorialHelper (CIP: TTutorialHelperQmlService).
 /// Not `final`: QML registration subclasses via QQmlElement.
@@ -49,4 +50,5 @@ protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data) override;
 };
 
+}
 }

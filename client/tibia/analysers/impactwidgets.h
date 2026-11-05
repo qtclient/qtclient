@@ -11,15 +11,20 @@
 
 #include <vector>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
-
-namespace tibia::gamewindow {
-class TGenericEnterTextDialogController;
 }
 
-namespace tibia::analysers {
+namespace tibia {
+namespace gamewindow {
+class TGenericEnterTextDialogController;
+}
+}
+
+namespace tibia {
+namespace analysers {
 
 /// The per damage type lists (CIP: the impact model at vtable 0x10265d440, data 0x100cd0d30, and
 /// the damage input type model at 0x10265da00, data 0x100cdeed0): roles 0x101 typeName,
@@ -243,4 +248,5 @@ private:
     QPointer<config::TSidebarOptions> m_options;
 };
 
+}
 }

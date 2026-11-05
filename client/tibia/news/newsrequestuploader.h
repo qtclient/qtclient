@@ -9,7 +9,8 @@
 
 class QNetworkAccessManager;
 
-namespace tibia::news {
+namespace tibia {
+namespace news {
 
 class TNewsStorage;
 
@@ -42,4 +43,5 @@ private:
     QJsonObject m_reply;
 };
 
+}
 }

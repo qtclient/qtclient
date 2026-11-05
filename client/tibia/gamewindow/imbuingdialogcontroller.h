@@ -10,13 +10,16 @@
 
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TMessageDialogController;
 
 }
+}
 
-namespace tibia::imbuing {
+namespace tibia {
+namespace imbuing {
 
 /// The imbuements to choose from (CIP: imbuing::TAvailableImbuementsListModel,
 /// data 0x10084f140's roles imbuementId, imageSource, category).
@@ -80,8 +83,10 @@ public:
 };
 
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// ImbuingDialog.qml (CIP: gamewindow::TImbuingDialogController, ctor
 /// 0x100c66bc0, metacall 0x100825e70). Opens when the server sends the
@@ -163,4 +168,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

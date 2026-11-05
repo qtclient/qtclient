@@ -10,7 +10,8 @@
 
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The `storeAndResourceBalanceHelper` context property (CIP:
 /// TStoreAndResourceBalanceHelperController, ctor 0x100d61af0, metacall
@@ -42,4 +43,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

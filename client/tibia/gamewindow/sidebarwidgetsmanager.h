@@ -12,11 +12,14 @@
 class QQmlEngine;
 class QQuickItem;
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 class TSidebarOptions;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TBattleListControllerStorage;
 class TContainerStorageController;
@@ -134,4 +137,5 @@ private:
     bool m_hudPlacement = false;
 };
 
+}
 }

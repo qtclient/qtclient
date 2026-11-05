@@ -2,7 +2,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// QML singleton SoundHelper (CIP: TSoundHelperService, playSound 0x1010c4870).
 /// Publishes SOUND_TRIGGER with the ESound id; the action handler plays via TSoundStorage.
@@ -20,4 +21,5 @@ void installSoundActionHandler();
 /// Re-apply ClientOptions volumes to TSoundStorage (and the login anthem).
 void applyOptionVolumes();
 
+}
 }

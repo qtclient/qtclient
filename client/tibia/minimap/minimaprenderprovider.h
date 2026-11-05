@@ -8,7 +8,8 @@
 
 #include <vector>
 
-namespace tibia::minimap {
+namespace tibia {
+namespace minimap {
 
 class TMinimapTileStorage;
 class TMinimapVisibleArea;
@@ -34,4 +35,5 @@ private:
     const TMinimapVisibleArea* m_area;
 };
 
+}
 }

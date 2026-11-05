@@ -7,7 +7,8 @@
 /// Default: factor 1, pass-through (stock CipSoft pixel size).
 /// Packs register an implementation — e.g. xBRZ 4× — without
 /// linking GPL code into the public default binary.
-namespace tibia::sprites {
+namespace tibia {
+namespace sprites {
 
 using HdScaleFn = ImagePtr (*)(const ImagePtr& src);
 
@@ -23,4 +24,5 @@ ImagePtr scaleHd(const ImagePtr& src);
 /// Hard nearest-neighbor upscale by `factor` (no GPL). Used as a public fallback helper.
 ImagePtr scaleNearest(const ImagePtr& src, int factor);
 
-} // namespace tibia::sprites
+}
+}

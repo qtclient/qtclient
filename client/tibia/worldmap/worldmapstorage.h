@@ -12,7 +12,8 @@
 
 #include <tibia/world/world.h>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 class TWorldMapField;
 
@@ -63,4 +64,5 @@ inline TWorldMapField* fieldAt(const Position& position)
     return TWorldMapStorage::ensureStorage()->fieldAt(position);
 }
 
-} // namespace tibia::worldmap
+}
+}

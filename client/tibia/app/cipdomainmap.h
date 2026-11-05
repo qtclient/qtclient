@@ -3,7 +3,8 @@
 #include <QString>
 #include <QUrl>
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// CipSoft host → IdleOT origin remap (paths stay CIP-faithful).
 /// www.tibia.com → portal, static.tibia.com → CDN, *.cipsoft.com → portal stubs.
@@ -19,4 +20,5 @@ public:
     static bool isCipHost(const QString& host);
 };
 
+}
 }

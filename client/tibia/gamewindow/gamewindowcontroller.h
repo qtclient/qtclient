@@ -10,18 +10,23 @@
 
 class QQuickItem;
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 class TBoostedCreatureRequestUploader;
 class TLiveInformationRequestUploader;
 class TShowOffRequestUploader;
 }
-namespace tibia::news {
+}
+namespace tibia {
+namespace news {
 class TEventsUploader;
 class TNewsRequestUploader;
 class TNewsStorage;
 }
+}
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 class TCalendarDialogController;
 class TNewsButtonController;
@@ -138,4 +143,5 @@ private:
     std::unique_ptr<TCalendarDialogController> m_calendarDialog;
 };
 
+}
 }

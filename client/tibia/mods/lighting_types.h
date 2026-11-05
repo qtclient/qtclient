@@ -2,7 +2,8 @@
 
 #include <cstdint>
 
-namespace tibia::mods {
+namespace tibia {
+namespace mods {
 
 /// CIP 6³ palette byte → RGB (same formula as framework `Color::from8bit`).
 /// Packs prefer this over `#include <framework/util/color.h>`.
@@ -69,4 +70,5 @@ struct LightingFrameDesc {
     uint8_t lightColor = 0;
 };
 
-} // namespace tibia::mods
+}
+}

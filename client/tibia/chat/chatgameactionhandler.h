@@ -8,7 +8,8 @@
 #include <QObject>
 #include <QString>
 
-namespace tibia::chat {
+namespace tibia {
+namespace chat {
 
 struct TChatEntry;
 
@@ -52,4 +53,5 @@ public:
     static TChatEntry systemEntry(const QString& text, const QColor& color);
 };
 
-} // namespace tibia::chat
+}
+}

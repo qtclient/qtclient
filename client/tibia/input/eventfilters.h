@@ -6,7 +6,8 @@
 
 class QQuickWindow;
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// CIP input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter
 /// (eventFilter 0x100e87530): while installed, every key press is eaten;
@@ -84,4 +85,5 @@ private:
     bool m_blocked = false;
 };
 
+}
 }

@@ -9,7 +9,8 @@
 
 class QQmlEngine;
 
-namespace tibia::imageproviders {
+namespace tibia {
+namespace imageproviders {
 
 /// A horizontal strip of equally wide cells; image://<name>/<index> is cell <index>.
 /// Cells are as wide as the image is high unless a cell width is given.
@@ -64,4 +65,5 @@ void registerImageProviders(QQmlEngine* engine);
 /// Number of cells in spell-icons-20x20 (CIP DAT_1077b0738).
 int spellIconCount();
 
+}
 }

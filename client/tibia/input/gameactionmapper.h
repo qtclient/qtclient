@@ -6,7 +6,8 @@
 
 #include <Qt>
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// Picks the action a mouse click runs from the candidates under the mouse
 /// (CIP: TGameActionMapper, FUN_100e7c040). Rules come from the control scheme
@@ -46,4 +47,5 @@ private:
     int m_lootScheme;
 };
 
+}
 }

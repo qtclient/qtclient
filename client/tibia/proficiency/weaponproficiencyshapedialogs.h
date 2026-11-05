@@ -11,11 +11,14 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 class TMessageDialogController;
 }
+}
 
-namespace tibia::proficiency {
+namespace tibia {
+namespace proficiency {
 
 /// WeaponProficiencyShapeDialog.qml (CIP: TWeaponProficiencyShapeDialogController,
 /// ctor 0x100e2af30, game action OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG 0x100e2c970).
@@ -181,4 +184,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

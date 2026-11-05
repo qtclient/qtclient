@@ -6,7 +6,8 @@
 
 #include <QPoint>
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// Field coordinate (CIP: TWorldMapCoordinate; stack layout used by TLightMap::v7
 /// at 0x10107ae40 — x/y as field indices, z as floor).
@@ -153,4 +154,5 @@ public:
     }
 };
 
+}
 }

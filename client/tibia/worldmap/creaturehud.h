@@ -12,11 +12,14 @@
 #include <QPointer>
 #include <QQmlComponent>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 class TWorldMapRenderProvider;
 }
+}
 
-namespace tibia::worldmap {
+namespace tibia {
+namespace worldmap {
 
 /// The quest / modification icons under a creature's state flags (CIP:
 /// TCreatureOtherIconModel, qt_static_metacall 0x101069650; roles image, value,
@@ -105,4 +108,5 @@ private:
     game::TPlayerStatesTracker m_playerStates;
 };
 
+}
 }

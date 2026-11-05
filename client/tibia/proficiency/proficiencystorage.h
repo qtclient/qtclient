@@ -11,7 +11,8 @@
 #include <unordered_map>
 #include <vector>
 
-namespace tibia::proficiency {
+namespace tibia {
+namespace proficiency {
 
 /// One perk of the proficiencies JSON (CIP: the std::variant of
 /// tibia::common::proficiency::T*ProficiencyPerk; `type` is the variant
@@ -145,4 +146,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

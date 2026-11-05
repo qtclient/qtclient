@@ -10,7 +10,8 @@
 #include <optional>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The bosses of the current bosstiary page (CIP: the list model at
 /// TBosstiaryDialogController +0xa8, vtable 0x102665810; data 0x100dd5900).
@@ -196,4 +197,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

@@ -9,7 +9,8 @@
 #include <functional>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// One object type of the list (CIP: the 0x148-byte entries of
 /// TAppearanceTypeListModel, one per type and upgrade tier).
@@ -134,4 +135,5 @@ private:
     QCollator m_collator;
 };
 
+}
 }

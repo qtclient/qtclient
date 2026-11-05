@@ -10,7 +10,8 @@
 
 class SpriteSheet;
 
-namespace tibia::sprites {
+namespace tibia {
+namespace sprites {
 
 /// CIP sprites::TSprite — one sprite id (possibly in a sheet).
 class TSprite : public ::tibia::CipTyped
@@ -189,4 +190,5 @@ public:
     using cip::tibia::sprites::TSpritesheetManager::TSpritesheetManager;
 };
 
+}
 }

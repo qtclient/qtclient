@@ -10,7 +10,8 @@
 
 #include <vector>
 
-namespace tibia::trade {
+namespace tibia {
+namespace trade {
 
 /// One good of the NPC's offer (CIP: the 0x38-byte entry of the open trade
 /// message: type +0x00, name +0x10, sell price +0x28, buy price +0x2c,
@@ -114,4 +115,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

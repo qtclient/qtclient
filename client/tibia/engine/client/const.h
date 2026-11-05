@@ -24,8 +24,8 @@
 
 #include <cstdint>
 
-namespace tibia::client
-{
+namespace tibia {
+namespace client {
     enum OperatingSystem_t : uint16_t
     {
         CLIENTOS_NONE = 0,
@@ -1175,6 +1175,7 @@ namespace tibia::client
         WheelGemQuality_Greater  = 2,
         WheelGemQuality_Supreme  = 3
     };
+}
 }
 
 enum FrameGroupType : uint8_t

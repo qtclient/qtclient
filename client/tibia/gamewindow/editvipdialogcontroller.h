@@ -7,7 +7,8 @@
 
 #include <QList>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// A group's check box in EditVipDialog.qml (CIP: TVipGroupInfo).
 class TVipGroupInfo final : public cip::tibia::gamewindow::TVipGroupInfo
@@ -45,4 +46,5 @@ private:
     QList<TVipGroupInfo*> m_groupInfos;
 };
 
+}
 }

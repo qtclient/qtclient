@@ -7,7 +7,8 @@
 #include <QTimer>
 #include <QVector>
 
-namespace tibia::tutorial {
+namespace tibia {
+namespace tutorial {
 
 /// Drives CIP `tutorial-sessiondump.hints` sidecar actions during a dmpd replay
 /// (CIP: TSessiondumpHintsProcessor). Timestamps are milliseconds from dump start.
@@ -36,4 +37,5 @@ private:
 /// Sibling path of a `.dmp` → `.hints` when present.
 QString hintsPathForDump(const QString& dumpPath);
 
+}
 }

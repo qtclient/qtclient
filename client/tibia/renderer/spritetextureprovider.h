@@ -8,7 +8,8 @@
 
 class QQuickWindow;
 
-namespace tibia::renderer {
+namespace tibia {
+namespace renderer {
 
 /// CIP TSpriteTextureProvider: textures for one window's world/UI sprites.
 /// Backed by qmlcomponents::TSpriteTextureCache.
@@ -36,4 +37,5 @@ public:
     static qmlcomponents::TSpriteTextureCache& sharedCache(QQuickWindow* window);
 };
 
+}
 }

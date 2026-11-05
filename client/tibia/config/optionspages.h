@@ -13,7 +13,8 @@
 
 #include <span>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 
 /// A page property and the option it edits (CIP: the pairs each page's load
 /// reads and its apply writes).
@@ -281,4 +282,5 @@ private:
     int m_editKey = 0;
 };
 
+}
 }

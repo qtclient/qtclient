@@ -11,7 +11,8 @@
 #include <unordered_map>
 #include <vector>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
 /// The VIP list and its groups (CIP: TVipStorage, fed by the VIP protocol
 /// messages, plus TVipGameActionHandler's VIP actions). VIPs come from
@@ -73,4 +74,5 @@ private:
     QTimer m_vipsChangedTimer;
 };
 
+}
 }

@@ -2,7 +2,8 @@
 
 #include <QQuickImageProvider>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// image://optimized1pixelborderimage/<image path>: a resource image with a
 /// 1 pixel border, pre-stretched to the requested size so Optimized1PixelBorderImage
@@ -19,4 +20,5 @@ public:
 /// The resource image an image provider id names ("/images/x.png" or "images/x.png").
 QImage loadResourceImage(const QString& id);
 
+}
 }

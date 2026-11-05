@@ -9,7 +9,8 @@
 
 #include <functional>
 
-namespace tibia::input {
+namespace tibia {
+namespace input {
 
 /// CIP input::TActionButtonGameActionHandler (FUN_100e83f40): owns the
 /// ACTION_BUTTON_TRIGGERED registration for the action-bar lifetime.
@@ -90,4 +91,5 @@ private:
     app::LauncherEnv m_env;
 };
 
+}
 }

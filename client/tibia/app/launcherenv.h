@@ -6,7 +6,8 @@
 #include <QString>
 #include <QUrl>
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// Login / AAC config for the tibia client.
 /// Precedence: process env > mod.json `urls` > release_env.lua > real CipSoft fallbacks.
@@ -66,4 +67,5 @@ struct LauncherEnv
     static LauncherEnv load(const QString& workDir);
 };
 
+}
 }

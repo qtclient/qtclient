@@ -8,6 +8,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace gamewindow {
 
-} // namespace tibia::gamewindow
+}
+}

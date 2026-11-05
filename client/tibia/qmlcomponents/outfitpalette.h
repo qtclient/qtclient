@@ -2,7 +2,8 @@
 
 #include <QColor>
 
-namespace tibia::qmlcomponents {
+namespace tibia {
+namespace qmlcomponents {
 
 /// The 133 outfit colours (19 hues x 7 saturation/value steps; CIP 0x10094df40).
 /// Pack-safe leaf — no QML types / cip_gen hubs.
@@ -14,4 +15,5 @@ QColor color(int index);
 int index(const QColor& color);
 }
 
-} // namespace tibia::qmlcomponents
+}
+}

@@ -12,7 +12,8 @@
 
 class InputMessage;
 
-namespace tibia::network {
+namespace tibia {
+namespace network {
 
 /// Server-to-client custom opcodes, what modules/gamelib/protocolgame.lua did
 /// for Lua: game opcodes the engine does not parse (ProtocolGame.registerOpcode),
@@ -52,4 +53,5 @@ private:
     client::gamecore::Hook m_opcodeHook;
 };
 
+}
 }

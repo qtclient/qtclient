@@ -14,15 +14,20 @@
 
 #include <vector>
 
-namespace tibia::cyclopedia {
+namespace tibia {
+namespace cyclopedia {
 class TBestiaryStorage;
 }
-
-namespace tibia::mods {
-class InstanceBackend;
 }
 
-namespace tibia::gamewindow {
+namespace tibia {
+namespace mods {
+class InstanceBackend;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
 
 class TCharacterInfoDialogController;
 class TCyclopediaMapDialogController;
@@ -145,4 +150,5 @@ public:
     void onOpenBosstiaryButtonClicked() override;
 };
 
+}
 }

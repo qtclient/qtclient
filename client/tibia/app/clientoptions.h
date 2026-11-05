@@ -4,7 +4,8 @@
 #include <QObject>
 #include <QString>
 
-namespace tibia::app {
+namespace tibia {
+namespace app {
 
 /// TClientOptions' change notification (CIP controllers' onOptionChanged).
 class ClientOptionsNotifier final : public QObject
@@ -46,4 +47,5 @@ private:
     QJsonObject m_root;
 };
 
+}
 }

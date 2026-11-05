@@ -2,7 +2,8 @@
 
 #include <QJsonObject>
 
-namespace tibia::config {
+namespace tibia {
+namespace config {
 
 /// CIP's default TClientOptions (FUN_1009bb440, filled by FUN_1009ad850): the
 /// "options" section the options dialog resets pages to. The control scheme
@@ -19,4 +20,5 @@ QJsonObject defaultControlButtonsOptions();
 /// appear in neither list are appended to enabledButtons in table order.
 QJsonObject reconcileControlButtons(const QJsonObject& section);
 
+}
 }
