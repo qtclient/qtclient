@@ -37,9 +37,10 @@ public:
                             int lastFloor) = 0;
     virtual void beginFloor(int z) = 0;
     virtual void resetShade(int ix, int iy, bool canShade) = 0;
-    // Fully qualify: MSVC does not resolve sibling `tibia::qmlcomponents` from
-    // inside `tibia::mods` the way clang/gcc do.
-    virtual void endFrame(const tibia::qmlcomponents::WorldGeometry* geometry) = 0;
+    // Leading :: is required: inside `namespace tibia::mods`, MSVC binds
+    // `tibia::` to the enclosing incomplete namespace (not ::tibia), so
+    // `tibia::qmlcomponents` fails with C3083. clang/gcc accept both.
+    virtual void endFrame(const ::tibia::qmlcomponents::WorldGeometry* geometry) = 0;
 
     virtual void addCenterLight(int x, int y, uint8_t intensity, uint8_t color) = 0;
     virtual void addFrame(const LightingFrameDesc& frame) = 0;
