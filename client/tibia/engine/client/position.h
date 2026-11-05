@@ -29,6 +29,7 @@
 
 #include <array>
 #include <format>
+#include <string>
 #include <vector>
 
 class Position
