@@ -87,6 +87,14 @@ function(qtclient_add_mod MOD_ID)
     "$<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>")
   target_compile_options(${_target} PRIVATE
     "$<TARGET_PROPERTY:tibia,COMPILE_OPTIONS>")
+  # PACK_SDK_ONLY curated roots omit tip LINK_LIBRARIES. Engine headers on that
+  # include path (and tip PCH) still need zlib/lzma/spdlog includes — on Windows
+  # vcpkg those are not on the default include path (linux/mac system zlib often is).
+  if(TARGET tibia_thirdparty)
+    target_link_libraries(${_target} PRIVATE tibia_thirdparty)
+  elseif(TARGET ZLIB::ZLIB)
+    target_link_libraries(${_target} PRIVATE ZLIB::ZLIB)
+  endif()
   # qtclient headers (e.g. eventfilters.h → <cip_gen.h>) need codegen before the
   # pack compiles; include dirs alone do not order the custom command.
   if(TARGET cip_codegen_tibia)
