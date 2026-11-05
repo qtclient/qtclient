@@ -166,7 +166,7 @@ jobs:
             export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
           fi
           # Linked tip canary: _sample STATIC into tibia (same contract as wasm).
-          # Exercises QtClientMod /FI pack_msvc_ns_anchor + QTCLIENT_MOD_EXPORT on
+          # Exercises QtClientMod /FI framework/pch.h + QTCLIENT_MOD_EXPORT on
           # every desktop platform — including MSVC — before release pack-windows.
           cmake --preset ${{ matrix.preset }} \
             -DTOGGLE_BIN_FOLDER=ON \

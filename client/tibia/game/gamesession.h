@@ -16,8 +16,7 @@
 #include <string_view>
 #include <vector>
 
-// Classic braces — pack TUs (no /FI pch) hit C3083 on sibling tibia::container
-// after compound `namespace tibia::game` in this session include graph.
+// Classic nested braces (readable; matches tip style after compound-ns cleanup).
 namespace tibia {
 namespace game {
 

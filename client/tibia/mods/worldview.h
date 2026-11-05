@@ -19,8 +19,8 @@ namespace mods {
 ///
 /// POD-only surface (like HD scaler): no ThingType / Thing / TCreature / TWorldMapField /
 /// Position / Point / WorldGeometry in the driver API. Tip peels those into Lighting* PODs
-/// (or opaque void*) before calling. Naming tip nested types here breaks MSVC (C3083)
-/// when this header is under `namespace tibia::mods` alongside other `tibia::*` compounds.
+/// (or opaque void*) before calling. Keep tip nested types out of this header so
+/// packs stay on the POD / façade surface (`include/qtclient/…`).
 class WorldLightingDriver
 {
 public:

@@ -21,8 +21,7 @@
 
 class ThingType;
 
-// Classic nested braces — same MSVC C3083 rationale as appearanceinstance.h
-// (pack TUs include these tip headers without engine /FI pch).
+// Classic nested braces (tip + pack TUs share /FI framework/pch.h).
 namespace tibia {
 namespace protobuf {
 namespace protocol {

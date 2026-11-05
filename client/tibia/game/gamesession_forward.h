@@ -5,7 +5,6 @@
 
 #include <tibia/game/game.h>
 
-// Classic braces — same MSVC C3083 rationale as gamesession.h (pack TUs).
 namespace tibia {
 namespace game {
 

@@ -21,8 +21,7 @@ class Item;
 class Creature;
 class Thing;
 
-// Classic nested braces — MSVC C3083 when pack TUs (no /FI pch) parse compound
-// `namespace tibia::appearances` then look up sibling `tibia::container::*`.
+// Classic nested braces (tip + pack TUs share /FI framework/pch.h).
 namespace tibia {
 namespace creatures {
 using TCreatureID = uint32_t;

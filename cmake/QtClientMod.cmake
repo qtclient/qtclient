@@ -87,12 +87,14 @@ function(qtclient_add_mod MOD_ID)
     "$<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>")
   target_compile_options(${_target} PRIVATE
     "$<TARGET_PROPERTY:tibia,COMPILE_OPTIONS>")
-  # MSVC pack TUs: force-include a tibia nest anchor before any pack/tip header.
-  # Without this, sibling `tibia::container` lookup fails (C3083) after the
-  # appearanceinstance nest — tip engine TUs avoid it via /FI framework/pch.h
-  # plus a different include graph; packs do not.
+  # Same force-include preamble as tip engine TUs (CMakeLists.txt tibia engine
+  # sources). CipSoft builds one monolithic client with one TU preamble; pack
+  # STATIC libs must not use a thinner Windows-only anchor (that caused
+  # C3083/C2039/C2144 only on pack-windows). Match tip on every platform.
   if(MSVC)
-    target_compile_options(${_target} PRIVATE "/FIframework/pack_msvc_ns_anchor.h")
+    target_compile_options(${_target} PRIVATE "/FIframework/pch.h")
+  else()
+    target_compile_options(${_target} PRIVATE "-include" "framework/pch.h")
   endif()
   # PACK_SDK_ONLY curated roots omit tip LINK_LIBRARIES. Engine headers on that
   # include path (and tip PCH) still need zlib/lzma/spdlog includes — on Windows
