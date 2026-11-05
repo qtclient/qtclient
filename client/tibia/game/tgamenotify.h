@@ -12,7 +12,8 @@
 
 class GameObject;
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// CIP session notify: typed Qt signals for high-traffic fields, plus a
 /// string-field qtclient subscribe bus that does not use GameObject.
@@ -110,4 +111,5 @@ QString argString(const Args& args, size_t index);
 qint64 argInt(const Args& args, size_t index);
 bool argBool(const Args& args, size_t index);
 
-} // namespace tibia::game
+}
+}

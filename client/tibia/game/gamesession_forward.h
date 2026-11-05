@@ -5,7 +5,9 @@
 
 #include <tibia/game/game.h>
 
-namespace tibia::game {
+// Classic braces — same MSVC C3083 rationale as gamesession.h (pack TUs).
+namespace tibia {
+namespace game {
 
 inline void acceptMarketOffer(uint32_t timestamp, uint16_t counter, uint16_t amount)
 { g_game.acceptMarketOffer(timestamp, counter, amount); }
@@ -583,4 +585,5 @@ inline void updateMapLatency()
     g_game.updateMapLatency();
 }
 
-} // namespace tibia::game
+} // namespace game
+} // namespace tibia

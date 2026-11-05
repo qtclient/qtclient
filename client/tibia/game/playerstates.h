@@ -7,7 +7,8 @@
 #include <QList>
 #include <QString>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// What the player-state icons are built from (CIP: TPlayerInventoryAndStatusController
 /// 0x100b779f0 gathers it from TPlayerData and the player's creature).
@@ -60,4 +61,5 @@ private:
     QList<PlayerStateDisplayInfo> m_entries;
 };
 
+}
 }

@@ -6,7 +6,8 @@
 
 #include <QString>
 
-namespace tibia::container {
+namespace tibia {
+namespace container {
 
 /// What one inventory or container slot shows (CIP: the info 0x100a362c0..
 /// 0x100a36390 build, assigned by 0x100a35750). Appearance fields only — no ItemPtr.
@@ -62,4 +63,5 @@ private:
     TInventorySlot m_appearance;
 };
 
+}
 }

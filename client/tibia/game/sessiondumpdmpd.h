@@ -11,7 +11,8 @@
 #include <utility>
 #include <vector>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// CIP tutorial / cinematic session-dump container (`dmpd`).
 ///
@@ -75,4 +76,5 @@ std::deque<DmpdClassicPacket> dmpdToClassicPackets(const TSessiondumpDmpdFile& d
 /// `tmp/re/tibia/*/tutorial/tutorial-sessiondump.dmp`.
 QString resolveTutorialSessiondumpPath();
 
+}
 }

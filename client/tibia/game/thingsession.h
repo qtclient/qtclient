@@ -8,7 +8,8 @@
 #include <string_view>
 #include <vector>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// Item appearance name when `id` is a valid item dat id; empty otherwise.
 std::string itemName(uint16_t id);
@@ -72,4 +73,5 @@ struct QuestInfo {
 std::vector<QuestInfo> allQuestInfos();
 QuestInfo questInfo(uint16_t id);
 
-} // namespace tibia::game
+}
+}

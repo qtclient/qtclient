@@ -8,7 +8,8 @@
 
 class QNetworkAccessManager;
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// POSTs `{type:"cacheinfo"}` to the portal clientservices multiplex
 /// (CIP: TLiveInformationRequestUploader).
@@ -33,4 +34,5 @@ private:
     QJsonObject m_reply;
 };
 
+}
 }

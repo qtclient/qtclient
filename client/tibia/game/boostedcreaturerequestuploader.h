@@ -8,7 +8,8 @@
 
 class QNetworkAccessManager;
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// POSTs `{type:"boostedcreature"}` to the portal clientservices multiplex
 /// (CIP: TBoostedCreatureRequestUploader).
@@ -34,4 +35,5 @@ private:
     QJsonObject m_reply;
 };
 
+}
 }

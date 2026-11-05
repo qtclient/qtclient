@@ -7,7 +7,8 @@
 #include <map>
 #include <vector>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// A running cooldown: its length and when it ends, in TCooldownStorage::now()
 /// milliseconds. A zero end is no cooldown.
@@ -71,4 +72,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

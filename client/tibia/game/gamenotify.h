@@ -5,7 +5,8 @@
 
 #include <string_view>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// CipSoft notify scope for session / protocol → controller hooks.
 inline constexpr std::string_view kNotifyScope = "cip";
@@ -27,4 +28,5 @@ inline R notifyR(const std::string_view field, const T&... args)
     return result;
 }
 
-} // namespace tibia::game
+}
+}

@@ -6,7 +6,8 @@
 
 #include <array>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// A character's status bar settings (CIP: TStatusbarStorage, ctor
 /// 0x100b4b230, read 0x100b4b700, write 0x100b4b410), kept in
@@ -52,4 +53,5 @@ private:
     bool m_dirty = false;
 };
 
+}
 }

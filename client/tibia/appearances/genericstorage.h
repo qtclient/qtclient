@@ -2,7 +2,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::appearances {
+namespace tibia {
+namespace appearances {
 
 /// CIP moc surfaces promoted out of cip_ports (QObject trackers / generic storage).
 class TAppearanceInstanceGenericStorage final : public cip::tibia::appearances::TAppearanceInstanceGenericStorage
@@ -24,4 +25,5 @@ public:
     using cip::tibia::appearances::TAppearanceInstanceTracker::TAppearanceInstanceTracker;
 };
 
+}
 }

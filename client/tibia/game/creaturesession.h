@@ -9,7 +9,8 @@
 #include <string>
 #include <vector>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// Pack-facing outfit peel (HUD chrome). No Outfit in the header.
 struct CreatureOutfitInfo {
@@ -56,4 +57,5 @@ CreatureSnapshot creatureAt(uint32_t id);
 /// True when `creatureType` is a summon (own or other). Prefer over `protocolcodes.h` Proto enums.
 bool creatureTypeIsSummon(uint8_t creatureType);
 
-} // namespace tibia::game
+}
+}

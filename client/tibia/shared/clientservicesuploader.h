@@ -10,7 +10,8 @@
 class QNetworkAccessManager;
 class QObject;
 
-namespace tibia::shared {
+namespace tibia {
+namespace shared {
 
 /// POSTs `{ "type": <serviceType>, ... }` to CIP clientservices.php
 /// (`LauncherEnv::clientServicesUrl`). Invokes `done(ok, doc)` on the GUI
@@ -23,4 +24,5 @@ void postClientService(QNetworkAccessManager* network,
                        const QString& clientRevision,
                        std::function<void(bool, QJsonDocument)> done);
 
+}
 }

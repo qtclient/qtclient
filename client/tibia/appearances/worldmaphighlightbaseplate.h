@@ -6,7 +6,8 @@
 
 #include <cstdint>
 
-namespace tibia::appearances {
+namespace tibia {
+namespace appearances {
 
 /// CIP TWorldmapHighlightBaseplateSpriteInfo — field-sized animated square with
 /// corner marks and a center crosshair under the mouse (Highlight Mouse Target).
@@ -37,4 +38,5 @@ private:
     uint8_t m_frame = 0;
 };
 
+}
 }

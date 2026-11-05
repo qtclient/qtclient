@@ -4,7 +4,8 @@
 
 #include <QString>
 
-namespace tibia::shared {
+namespace tibia {
+namespace shared {
 
 /// CIP shared::TTibiaUrlTools (vtable 0x10267ace0): the chat message text processor. Every talk and text message
 /// passes through process() (TChatProtocolMessageHandler +0xa8, FUN_100996120 / FUN_100997530) so dotted
@@ -22,4 +23,5 @@ public:
     static QString process(const QString& text);
 };
 
-} // namespace tibia::shared
+}
+}

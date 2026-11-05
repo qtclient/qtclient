@@ -10,7 +10,8 @@
 #include <cstdint>
 #include <memory>
 
-namespace tibia::appearances {
+namespace tibia {
+namespace appearances {
 
 using qmlcomponents::SpriteKey;
 
@@ -96,4 +97,5 @@ public:
     QImage raster() const override;
 };
 
+}
 }

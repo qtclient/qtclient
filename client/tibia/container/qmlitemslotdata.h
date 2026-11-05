@@ -4,7 +4,8 @@
 
 #include <QString>
 
-namespace tibia::container {
+namespace tibia {
+namespace container {
 
 /// CIP 0x100a3c5e0: a count as Qt length variants (U+009C separated): the
 /// English-grouped number, the plain number, then "Nk" from 1000 and "Nkk"
@@ -35,4 +36,5 @@ private:
     QString m_name;
 };
 
+}
 }

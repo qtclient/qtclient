@@ -5,7 +5,8 @@
 
 #include <QObject>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// Keeps a TPlayerStateDisplayInfoModel in step with the local player (CIP:
 /// TPlayerInventoryAndStatusController 0x100b779f0 and its resting-area
@@ -39,4 +40,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

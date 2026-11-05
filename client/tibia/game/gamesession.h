@@ -16,7 +16,10 @@
 #include <string_view>
 #include <vector>
 
-namespace tibia::game {
+// Classic braces — pack TUs (no /FI pch) hit C3083 on sibling tibia::container
+// after compound `namespace tibia::game` in this session include graph.
+namespace tibia {
+namespace game {
 
 /// CipSoft-shaped session / wire façade for tip + packs.
 /// Prefer this header over `#include <tibia/game/game.h>` at call sites.
@@ -293,4 +296,5 @@ inline void updateTeamFinderMember(const uint32_t memberId, const uint8_t status
     g_game.updateTeamFinderMember(memberId, status);
 }
 
-} // namespace tibia::game
+} // namespace game
+} // namespace tibia

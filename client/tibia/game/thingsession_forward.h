@@ -5,7 +5,8 @@
 
 #include <tibia/assets/things.h>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 inline const ThingTypePtr& thingType(uint16_t id, ThingCategory category)
 {
@@ -97,4 +98,5 @@ inline std::string getProficienciesFile()
     return g_things.getProficienciesFile();
 }
 
-} // namespace tibia::game
+}
+}

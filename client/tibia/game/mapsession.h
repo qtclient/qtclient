@@ -7,7 +7,8 @@
 #include <cstdint>
 #include <vector>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// Tiny POD so packs avoid tip `Position` / framework.
 struct MapPos {
@@ -65,4 +66,5 @@ std::vector<MapItemHit> findItemsInRange(MapPos center, int rangeX, int rangeY,
 /// Matches `Map::isSightClear`.
 bool isSightClear(MapPos from, MapPos to);
 
-} // namespace tibia::game
+}
+}

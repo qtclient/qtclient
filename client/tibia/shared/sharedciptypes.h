@@ -8,7 +8,8 @@
 
 #include <QObject>
 
-namespace tibia::shared {
+namespace tibia {
+namespace shared {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -157,9 +158,12 @@ public:
     TTibiaFileSystemHelper() = default;
 };
 
-} // namespace tibia::shared
+}
+}
 
-namespace tibia::shared::executors_private {
+namespace tibia {
+namespace shared {
+namespace executors_private {
 
 class TaskExecutorObject final : public cip::shared::executors_private::TaskExecutorObject
 {
@@ -168,5 +172,7 @@ public:
     using cip::shared::executors_private::TaskExecutorObject::TaskExecutorObject;
 };
 
-} // namespace tibia::shared::executors_private
+}
+}
+}
 

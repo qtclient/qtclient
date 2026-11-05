@@ -13,7 +13,9 @@
 #include <cstdint>
 #include <vector>
 
-namespace tibia::protobuf::protocol {
+namespace tibia {
+namespace protobuf {
+namespace protocol {
 class GameserverMessageLoginAdvice;
 class GameserverMessageLoginError;
 class GameserverMessageLoginSuccess;
@@ -24,12 +26,17 @@ class GameserverMessageSessionDumpStart;
 class GameserverMessageSessionEndInformation;
 class GameserverMessageShowMultiOfflineTrainingDialog;
 }
-
-namespace tibia::gamewindow {
-class TPassiveAbilityListDataModel;
+}
 }
 
-namespace tibia::game {
+namespace tibia {
+namespace gamewindow {
+class TPassiveAbilityListDataModel;
+}
+}
+
+namespace tibia {
+namespace game {
 
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
@@ -244,4 +251,5 @@ public:
     TTutorialSessiondumpGameSessionMetaInfo() = default;
 };
 
-} // namespace tibia::game
+}
+}

@@ -8,7 +8,8 @@
 
 #include <vector>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// What the game server needs to log a character in.
 struct GameserverCredentials
@@ -57,4 +58,5 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
+}
 }

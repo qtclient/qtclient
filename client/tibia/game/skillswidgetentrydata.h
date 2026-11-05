@@ -2,7 +2,8 @@
 
 #include <cip_gen.h>
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// One row of the skills widget and the status bar (CIP: TSkillsWidgetEntryData,
 /// ctor 0x100b4a7f0; one setter per field, each emitting changed()).
@@ -88,4 +89,5 @@ SkillsWidgetEntry buildSkillEntry(SkillType type);
 /// Experience needed for `level` (CIP: FUN_1010193a0).
 qint64 experienceForLevel(int level);
 
+}
 }

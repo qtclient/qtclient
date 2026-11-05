@@ -12,11 +12,14 @@
 #include <memory>
 #include <vector>
 
-namespace tibia::tutorial {
+namespace tibia {
+namespace tutorial {
 class TSessiondumpHintsProcessor;
 }
+}
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// CIP-shaped session that replays a recorded game world (CIP: TSessiondumpGameSession).
 ///
@@ -85,4 +88,5 @@ private:
     std::unique_ptr<tutorial::TSessiondumpHintsProcessor> m_hints;
 };
 
+}
 }

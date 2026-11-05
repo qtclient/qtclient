@@ -7,7 +7,8 @@
 
 class QNetworkAccessManager;
 
-namespace tibia::game {
+namespace tibia {
+namespace game {
 
 /// POSTs `{type:"showoff"}` to the portal clientservices multiplex (CipSoft
 /// start-screen promo / bottom-menu showoff). No cip_gen base class yet.
@@ -42,4 +43,5 @@ private:
     QString m_description;
 };
 
+}
 }
