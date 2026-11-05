@@ -1,5 +1,7 @@
 #include <qtclient/mod_api_v1.h>
 #include <qtclient/mod_entry.h>
+// MSVC absorb canary: session → game hubs need pack_msvc_ns_anchor (C3083).
+#include <qtclient/session.h>
 
 #include <QDebug>
 

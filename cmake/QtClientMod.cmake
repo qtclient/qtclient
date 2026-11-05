@@ -89,12 +89,16 @@ function(qtclient_add_mod MOD_ID)
   endif()
   set_property(SOURCE ${_abs_sources} APPEND PROPERTY COMPILE_DEFINITIONS ${_pack_defs})
 
-  # Same force-include as tip engine .cpp (client/tibia/CMakeLists.txt).
+  # Same force-include as tip engine .cpp (client/tibia/CMakeLists.txt), plus
+  # MSVC pack anchor that pre-parses containerciptypes (pch alone is not enough
+  # for session/game hubs — C3083 on ::tibia::container::TInventorySlot).
   set(_pack_cpp ${_abs_sources})
   list(FILTER _pack_cpp INCLUDE REGEX "\\.cpp$")
   if(_pack_cpp)
     if(MSVC)
-      set_property(SOURCE ${_pack_cpp} APPEND PROPERTY COMPILE_OPTIONS "/FIframework/pch.h")
+      set_property(SOURCE ${_pack_cpp} APPEND PROPERTY COMPILE_OPTIONS
+        "/FIframework/pch.h"
+        "/FIframework/pack_msvc_ns_anchor.h")
     else()
       set_property(SOURCE ${_pack_cpp} APPEND PROPERTY COMPILE_OPTIONS "-include" "framework/pch.h")
     endif()
