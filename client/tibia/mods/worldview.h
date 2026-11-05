@@ -11,7 +11,13 @@
 #include <cstdint>
 #include <vector>
 
-namespace tibia::mods {
+// MSVC (nested `namespace tibia::mods`): even `::tibia::qmlcomponents::…` is
+// rebound to the enclosing incomplete `tibia` (C3083). Alias at file scope so
+// the virtual signature never names a nested sibling from inside mods.
+using QtclientWorldGeometry = ::tibia::qmlcomponents::WorldGeometry;
+
+namespace tibia {
+namespace mods {
 
 /// Optional product lighting that replaces/augments CIP classic light for a frame.
 /// Cached once at mod bootstrap — hot path is a null check then virtual calls only when set.
@@ -37,10 +43,7 @@ public:
                             int lastFloor) = 0;
     virtual void beginFloor(int z) = 0;
     virtual void resetShade(int ix, int iy, bool canShade) = 0;
-    // Leading :: is required: inside `namespace tibia::mods`, MSVC binds
-    // `tibia::` to the enclosing incomplete namespace (not ::tibia), so
-    // `tibia::qmlcomponents` fails with C3083. clang/gcc accept both.
-    virtual void endFrame(const ::tibia::qmlcomponents::WorldGeometry* geometry) = 0;
+    virtual void endFrame(const QtclientWorldGeometry* geometry) = 0;
 
     virtual void addCenterLight(int x, int y, uint8_t intensity, uint8_t color) = 0;
     virtual void addFrame(const LightingFrameDesc& frame) = 0;
@@ -110,4 +113,5 @@ const std::vector<WorldOverlayFactory*>& worldOverlayFactories();
 void setWorldFrameHooks(WorldFrameHooks hooks);
 const WorldFrameHooks& worldFrameHooks();
 
-} // namespace tibia::mods
+} // namespace mods
+} // namespace tibia
