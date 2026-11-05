@@ -80,6 +80,10 @@ function(qtclient_add_mod MOD_ID)
   endif()
 
   # Per-pack defs (do not pollute the whole tip with QTCLIENT_MOD_ID).
+  # TARGET_DIRECTORY tibia is required: qtclient_add_mod runs from the pack's
+  # CMakeLists (e.g. mods/_sample or out-of-tree IdleOT), not the directory that
+  # created `tibia`. Without it, Ninja ignores SOURCE COMPILE_* properties and
+  # pack TUs miss /FI pch + QTCLIENT_MOD_* (MSVC C3083 on tibia::container).
   set(_pack_defs "QTCLIENT_MOD_BUILD=1;QTCLIENT_MOD_ID=${MOD_ID}")
   if(QTCLIENT_MOD_INTERNAL)
     list(APPEND _pack_defs "QTCLIENT_MOD_INTERNAL=1")
@@ -87,7 +91,8 @@ function(qtclient_add_mod MOD_ID)
   if(QTCLIENT_MOD_GUI_PRIVATE)
     list(APPEND _pack_defs "QTCLIENT_MOD_GUI_PRIVATE=1")
   endif()
-  set_property(SOURCE ${_abs_sources} APPEND PROPERTY COMPILE_DEFINITIONS ${_pack_defs})
+  set_property(SOURCE ${_abs_sources} TARGET_DIRECTORY tibia
+    APPEND PROPERTY COMPILE_DEFINITIONS ${_pack_defs})
 
   # Same force-include as tip engine .cpp (client/tibia/CMakeLists.txt), plus
   # MSVC pack anchor that pre-parses containerciptypes (pch alone is not enough
@@ -96,11 +101,13 @@ function(qtclient_add_mod MOD_ID)
   list(FILTER _pack_cpp INCLUDE REGEX "\\.cpp$")
   if(_pack_cpp)
     if(MSVC)
-      set_property(SOURCE ${_pack_cpp} APPEND PROPERTY COMPILE_OPTIONS
-        "/FIframework/pch.h"
-        "/FIframework/pack_msvc_ns_anchor.h")
+      set_property(SOURCE ${_pack_cpp} TARGET_DIRECTORY tibia
+        APPEND PROPERTY COMPILE_OPTIONS
+          "/FIframework/pch.h"
+          "/FIframework/pack_msvc_ns_anchor.h")
     else()
-      set_property(SOURCE ${_pack_cpp} APPEND PROPERTY COMPILE_OPTIONS "-include" "framework/pch.h")
+      set_property(SOURCE ${_pack_cpp} TARGET_DIRECTORY tibia
+        APPEND PROPERTY COMPILE_OPTIONS "-include" "framework/pch.h")
     endif()
   endif()
 
