@@ -325,8 +325,8 @@ Register mods, backends, WorldView drivers/overlays inside the pack entry
 
 ## Client + pack
 
-- **`Client: ci`** (public) publishes stock qtclient (`client-<plat>:<sha>`, `client-sdk:<sha>`).
-- Product release rebuilds qtclient with `QTCLIENT_LINKED_PACK`, stages FS chrome, brands the tip, promotes CDN.
+- **`Client: ci`** (public) publishes qtclient (`client-<plat>:<sha>`, `client-sdk:<sha>`). Desktop and wasm both STATIC-link `_sample` as a pack canary (MSVC `/FI` + `QTCLIENT_MOD_EXPORT` entry) so Windows pack footguns fail on the host SHA — not only on release `pack-windows`.
+- Product release rebuilds qtclient with `QTCLIENT_LINKED_PACK`, stages FS chrome, brands the tip, promotes CDN. When pack or host MSVC surface changed, dispatch `idleot/release` Build client and wait for **pack-windows** green before cutting a tag.
 - Local: `make qtclient client|wasm install` builds qtclient with the pack linked and stages `mods/<id>`. Run loads tip `mods/<id>` only. `make stock client run` / `make stock launcher run` pass `--no-mods`.
 
 ## Make CLI

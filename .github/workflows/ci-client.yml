@@ -165,16 +165,26 @@ jobs:
           if [[ "$RUNNER_OS" == Windows ]]; then
             export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
           fi
+          # Linked tip canary: _sample STATIC into tibia (same contract as wasm).
+          # Exercises QtClientMod /FI pack_msvc_ns_anchor + QTCLIENT_MOD_EXPORT on
+          # every desktop platform — including MSVC — before release pack-windows.
           cmake --preset ${{ matrix.preset }} \
             -DTOGGLE_BIN_FOLDER=ON \
             -DOPTIONS_ENABLE_IPO=OFF \
             -DTIBIA_BUILD_TESTS=OFF \
-            -DQTCLIENT_ENABLE_MODS=OFF \
+            -DQTCLIENT_ENABLE_MODS=ON \
+            -DQTCLIENT_MODS=_sample \
             -DOPTIONS_ENABLE_CCACHE=ON \
             -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
             -DCMAKE_PREFIX_PATH="$QT_PREFIX"
           cmake --build --preset ${{ matrix.preset }} --target tibia
           cmake --build --preset ${{ matrix.preset }} --target launcher || true
+          SAMPLE_FS="$(find "build/${{ matrix.preset }}" -path '*/mods/sample/mod.json' -type f 2>/dev/null | head -1 || true)"
+          if [[ -z "$SAMPLE_FS" || ! -f "$SAMPLE_FS" ]]; then
+            echo "::error::_sample FS pack mod.json missing under build/${{ matrix.preset }}" >&2
+            find "build/${{ matrix.preset }}" -path '*/mods/*' 2>/dev/null | head -40 || true
+            exit 1
+          fi
           ccache -s || true
 
       - name: Save vcpkg + ccache
