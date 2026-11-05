@@ -34,7 +34,7 @@ void registerSample(const qtclient::ModApiV1* api)
 
 } // namespace
 
-QTCLIENT_MOD_EXPORT void qtclient_mod_sample_entry(const tibia::mods::ModContext* earlyCtx)
+extern "C" QTCLIENT_MOD_EXPORT void qtclient_mod_sample_entry(const tibia::mods::ModContext* earlyCtx)
 {
     Q_UNUSED(earlyCtx);
     // earlyCtx is null on first load — register only; bootstrapAll runs later.

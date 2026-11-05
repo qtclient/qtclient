@@ -10,15 +10,18 @@ using QtClientModEntryFn = void (*)(const tibia::mods::ModContext* earlyCtx);
 
 #define QTCLIENT_MOD_ENTRY_FN(id) qtclient_mod_##id##_entry
 
-// C linkage only. Packs are STATIC — no Q_DECL_EXPORT / visibility attribute.
-// Putting `extern "C"` and `__declspec(dllexport)` in one macro makes MSVC
-// C2144 at `void` on pack TUs; GenerateLinkedMods already emits plain
-// `extern "C" void qtclient_mod_<id>_entry`.
-#define QTCLIENT_MOD_EXPORT extern "C"
+// Optional ELF visibility. Do NOT put `extern "C"` in this macro — MSVC C2144
+// when `extern "C"` arrives only via macro expansion before `void` (pack entry
+// TUs). Write `extern "C"` at the call site (GenerateLinkedMods already does).
+#if !defined(_WIN32) && (defined(__GNUC__) || defined(__clang__))
+#  define QTCLIENT_MOD_EXPORT __attribute__((visibility("default")))
+#else
+#  define QTCLIENT_MOD_EXPORT
+#endif
 
 #if defined(QTCLIENT_HAS_LINKED_PACK)
 /// Tip-generated aggregator (see cmake/GenerateLinkedMods.cmake).
-QTCLIENT_MOD_EXPORT void qtclient_invoke_linked_mods(const tibia::mods::ModContext* earlyCtx);
+extern "C" QTCLIENT_MOD_EXPORT void qtclient_invoke_linked_mods(const tibia::mods::ModContext* earlyCtx);
 /// Back-compat alias → qtclient_invoke_linked_mods (single- or multi-pack tips).
-QTCLIENT_MOD_EXPORT void qtclient_mod_entry(const tibia::mods::ModContext* earlyCtx);
+extern "C" QTCLIENT_MOD_EXPORT void qtclient_mod_entry(const tibia::mods::ModContext* earlyCtx);
 #endif
