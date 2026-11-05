@@ -1,7 +1,6 @@
 #pragma once
 
 #include "mods/lighting_types.h"
-#include "renderer/worldgeometry.h"
 
 #include <QImage>
 #include <QPoint>
@@ -11,11 +10,6 @@
 #include <cstdint>
 #include <vector>
 
-// MSVC (nested `namespace tibia::mods`): even `::tibia::qmlcomponents::…` is
-// rebound to the enclosing incomplete `tibia` (C3083). Alias at file scope so
-// the virtual signature never names a nested sibling from inside mods.
-using QtclientWorldGeometry = ::tibia::qmlcomponents::WorldGeometry;
-
 namespace tibia {
 namespace mods {
 
@@ -24,7 +18,9 @@ namespace mods {
 /// Packs (e.g. product raycast) implement this; stock never links product lighting code.
 ///
 /// POD-only surface (like HD scaler): no ThingType / Thing / TCreature / TWorldMapField /
-/// Position / Point in the driver API. Tip peels those into Lighting* PODs before calling.
+/// Position / Point / WorldGeometry in the driver API. Tip peels those into Lighting* PODs
+/// (or opaque void*) before calling. Naming tip nested types here breaks MSVC (C3083)
+/// when this header is under `namespace tibia::mods` alongside other `tibia::*` compounds.
 class WorldLightingDriver
 {
 public:
@@ -43,7 +39,8 @@ public:
                             int lastFloor) = 0;
     virtual void beginFloor(int z) = 0;
     virtual void resetShade(int ix, int iy, bool canShade) = 0;
-    virtual void endFrame(const QtclientWorldGeometry* geometry) = 0;
+    /// Tip passes `tibia::qmlcomponents::WorldGeometry*` (or null). Packs cast.
+    virtual void endFrame(const void* worldGeometry) = 0;
 
     virtual void addCenterLight(int x, int y, uint8_t intensity, uint8_t color) = 0;
     virtual void addFrame(const LightingFrameDesc& frame) = 0;
