@@ -1,6 +1,7 @@
 name: 'CI: export-gate'
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'client/**'
@@ -16,6 +17,7 @@ on:
       - 'launcher/**'
       - 'cmake/**'
       - 'scripts/export-public-client.sh'
+      - '.github/workflows/ci-export-gate.yml'
 
 jobs:
   export-scrub:
