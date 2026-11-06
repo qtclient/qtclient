@@ -79,6 +79,7 @@ using tibia::game::setCustomOs;
 using tibia::game::attackingCreatureId;
 using tibia::game::setAttackingCreatureId;
 using tibia::game::talk;
+using tibia::game::turn;
 using tibia::game::safeLogout;
 using tibia::game::requestBless;
 using tibia::game::partyJoin;

@@ -263,7 +263,7 @@ public:
 
     std::tuple<std::vector<tibia::client::Direction>, tibia::client::PathFindResult> findPath(const Position& start, const Position& goal,
                                                                           int maxComplexity, int flags = 0);
-    /// `pathMode`: Minimap (strict qtclient), Cyclopedia (qtclient 0xfe fog), Travel (fog + soft blockers).
+    /// `pathMode`: Minimap (strict), Cyclopedia/Travel (CIP 0xfe fog; Travel also 0xff goals).
     PathFindResult_ptr newFindPath(const Position& start, const Position& goal,
                                    const std::shared_ptr<std::list<Node*>>& visibleNodes,
                                    const std::shared_ptr<tibia::minimap::TWaypointCosts>& softCosts = nullptr,
@@ -272,12 +272,11 @@ public:
     void findPathAsync(const Position& start, const Position& goal,
                        const std::function<void(PathFindResult_ptr)>& callback,
                        tibia::client::AutoWalkPathMode pathMode = tibia::client::AutoWalkPathMinimap);
-    /// Sync Travel-mode qtclient probe (same Indexed8 costs as findPathAsync). Used by
-    /// TravelRouter to skip path-unreachable hubs before arming autoWalk.
-    /// ``maxComplexity`` caps A* expansion so path-probe cannot freeze the GUI thread.
+    /// Sync Travel path probe (CIP auto-path / AutoWalkPathTravel). Used by
+    /// TravelRouter before arming autoWalk. ``maxComplexity`` caps A* expansion.
     bool canTravelPath(const Position& start, const Position& goal, int maxComplexity = 8000);
 
-    /// pathfinder avoid set (CIP minimap avoid): skipped by newFindPath.
+    /// CIP pathfinder avoid set (FUN_100e94ff0 marks these 0xff): skipped by newFindPath.
     void setPathAvoid(const Position& pos, bool avoid);
     void clearPathAvoids();
     bool isPathAvoided(const Position& pos) const;

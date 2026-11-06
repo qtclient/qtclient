@@ -1,5 +1,6 @@
 #include "app/bootstrap.h"
 #include "mods/modloader.h"
+#include "mods/pack_host_abi.h"
 #include <qtclient/pack_host.h>
 
 #include <exception>
@@ -1103,6 +1104,8 @@ int main(int argc, char** argv)
     packHost.minimapPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.minimapItem(); };
     packHost.inventoryPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.inventoryItem(); };
     packHost.buttonBarPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.buttonBarItem(); };
+
+    tibia::mods::fillPackHostAbiFromPackHostWire(&packHost);
 
     {
         tibia::mods::ModContext ctx;

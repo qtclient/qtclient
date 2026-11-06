@@ -165,9 +165,7 @@ jobs:
           if [[ "$RUNNER_OS" == Windows ]]; then
             export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
           fi
-          # Default otclient pack absorbed into tibia (same contract as wasm).
-          # Exercises CIP-shaped tip compile + tip-generated extern C wrappers on
-          # every desktop platform — including MSVC — before release pack-windows.
+          # Default otclient runtime MODULE (host-pushed C ABI) + FS chrome.
           cmake --preset ${{ matrix.preset }} \
             -DTOGGLE_BIN_FOLDER=ON \
             -DOPTIONS_ENABLE_IPO=OFF \
@@ -183,6 +181,12 @@ jobs:
           if [[ -z "$OTC_FS" || ! -f "$OTC_FS" ]]; then
             echo "::error::otclient FS pack mod.json missing under build/${{ matrix.preset }}" >&2
             find "build/${{ matrix.preset }}" -path '*/mods/*' 2>/dev/null | head -40 || true
+            exit 1
+          fi
+          OTC_NATIVE="$(find "build/${{ matrix.preset }}" -path '*/mods/otclient/native/mod.*' -type f 2>/dev/null | head -1 || true)"
+          if [[ -z "$OTC_NATIVE" || ! -f "$OTC_NATIVE" ]]; then
+            echo "::error::otclient native/mod.* missing under build/${{ matrix.preset }}" >&2
+            find "build/${{ matrix.preset }}" -path '*/mods/otclient/*' 2>/dev/null | head -40 || true
             exit 1
           fi
           ccache -s || true
@@ -350,22 +354,16 @@ jobs:
             exit 1
           fi
           test -f build/tibia-wasm/bin/tibia.wasm
-          # Linked tip must not be MAIN_MODULE (no relocatable pack ABI).
-          if llvm-nm -u build/tibia-wasm/bin/tibia.wasm 2>/dev/null | head -1 >/dev/null; then
-            :
-          fi
-          if strings build/tibia-wasm/bin/tibia.js 2>/dev/null | grep -q 'isMainModule\|MAIN_MODULE'; then
-            echo "::warning::tibia.js still mentions MAIN_MODULE — verify link flags" >&2
-          fi
           OTC_FS="$(find build/tibia-wasm -path '*/mods/otclient/mod.json' -type f 2>/dev/null | head -1 || true)"
           if [[ -z "$OTC_FS" || ! -f "$OTC_FS" ]]; then
             echo "::error::otclient FS pack mod.json missing under build/tibia-wasm" >&2
             find build/tibia-wasm -path '*/mods/*' 2>/dev/null | head -40 || true
             exit 1
           fi
-          # No native/mod.wasm on linked tips.
-          if find build/tibia-wasm -path '*/mods/*/native/mod.wasm' -type f 2>/dev/null | grep -q .; then
-            echo "::error::native/mod.wasm present — SIDE_MODULE ship path must stay deleted" >&2
+          OTC_NATIVE="$(find build/tibia-wasm -path '*/mods/otclient/native/mod.wasm' -type f 2>/dev/null | head -1 || true)"
+          if [[ -z "$OTC_NATIVE" || ! -f "$OTC_NATIVE" ]]; then
+            echo "::error::otclient native/mod.wasm missing (runtime MODULE)" >&2
+            find build/tibia-wasm -path '*/mods/otclient/*' 2>/dev/null | head -40 || true
             exit 1
           fi
           ccache -s || true

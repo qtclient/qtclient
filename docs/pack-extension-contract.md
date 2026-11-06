@@ -40,9 +40,10 @@ Third-party / default packs (`otclient`) must `#include <qtclient/…>` only
 
 | Hook | Where | Role |
 |------|-------|------|
-| `qtclient/mod_api_v1.h` | `mods/mod_api_v1.*`, `mods/modloader.*` | Stable C ABI for pack load / suite wire |
-| `qtclient/pack_host.h` | tip `main.cpp` fills `ModContext.packHost` | CIP-neutral wiring (quests, options, HUD panels) — prefer over stringly `services` |
-| `qtclient_mod_<id>_register` / tip `…_entry` | pack TU + `GenerateLinkedMods.cmake` | Pack C++ registrar; tip-generated `extern "C"` entry; tip calls `qtclient_invoke_linked_mods` |
+| `qtclient/abi/host_api_v1.h` | `mods/host_api_v1.cpp`, `mods/modloader.*` | Host-pushed C ABI; ModLoader passes table into `qtclient_mod_register` |
+| `qtclient_mod_register` | pack MODULE export | Sole pack symbol; tip dlopens `native/mod.*` |
+| `qtclient/pack_host.h` | tip `main.cpp` fills `ModContext.packHost` | Transitional absorb-only wiring (IdleOT); peel onto abi/ |
+| `qtclient_mod_<id>_register` / tip `…_entry` | deprecated `ABSORB_INTO_TIP` | IdleOT peel WIP only |
 | `qtclient/clientoptions.h` | `app/clientoptions.h` | Pack JSON options store / notifier |
 | `qtclient/dialog.h` | `gamewindow/dialogmanager.h` | Pack `TDialogController` / dialog stack |
 | `qtclient/outfitpalette.h` | `qmlcomponents/outfitpalette.h` | Outfit colour palette leaf (no QML types) |

@@ -975,34 +975,6 @@ bool TWorldMapField::isWalkable(const bool ignoreCreatures) const
     return true;
 }
 
-bool TWorldMapField::isTravelSoftBlocker()
-{
-    // No ground → real void / hole, not a soft blocker.
-    if (!hasGround())
-        return false;
-
-    // Purely non-pathable (CIP fields often) but otherwise walkable.
-    if (!(m_thingTypeFlag & NOT_WALKABLE) && (m_thingTypeFlag & NOT_PATHABLE))
-        return true;
-
-    if (!(m_thingTypeFlag & NOT_WALKABLE))
-        return false;
-
-    // NOT_WALKABLE only from parcels / splash / top deco — not walls, stairs, furniture.
-    for (const auto& entry : m_stack) {
-        if (entry.creatureId != 0)
-            continue;
-        const ThingType* type = entryThingType(entry.appearance);
-        if (!type || type->isGround() || type->isGroundBorder())
-            continue;
-        if (type->isPickupable() || type->isSplash() || type->isOnTop())
-            continue;
-        if (type->isNotWalkable() || type->isFullGround() || type->hasFloorChange())
-            return false;
-    }
-    return true;
-}
-
 bool TWorldMapField::isCompletelyCovered(const uint8_t firstFloor, const bool resetCache)
 {
     if (getPosition().z == 0 || getPosition().z == firstFloor) return false;

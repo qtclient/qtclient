@@ -1,12 +1,12 @@
-# Mods/: optional packs with mod.json — C++ absorbed into tibia tip (CIP-shaped).
+# Mods/: optional packs with mod.json — runtime MODULE (host-pushed C ABI) or
+# deprecated ABSORB_INTO_TIP into tibia.
 #
 #   client/mods/<name>/mod.json + CMakeLists.txt
-#   -DQTCLIENT_LINKED_PACK=<pack>/client              # single out-of-tree pack
-#   -DQTCLIENT_LINKED_PACKS=<a>/client;<b>/client     # multi-pack (semicolon)
-#   -DQTCLIENT_LINKED_PACK_LIBS=id=/path/to.a;…       # prebuilt archives (Phase 3)
+#   -DQTCLIENT_LINKED_PACK=<pack>/client              # out-of-tree pack client/
+#   -DQTCLIENT_LINKED_PACKS=<a>/client;<b>/client     # multi-pack
 #
-# Runtime FS chrome: mods/<id>/ next to the tip (qml/overrides). Native C++ is
-# compiled as tip sources (qtclient_add_mod → target_sources(tibia)), not dlopen'd.
+# Runtime: mods/<id>/ (qml/overrides + native/mod.*). ModLoader dlopens native
+# and calls qtclient_mod_register(api, ctx). No tip export allowlist.
 
 option(QTCLIENT_ENABLE_MODS "Discover and link mods/ packs into tibia" ON)
 option(QTCLIENT_PACK_SDK_ONLY "Packs compile against client-sdk only (no tip includes)" OFF)
@@ -176,7 +176,7 @@ function(tibia_add_enabled_mods)
   set(QTCLIENT_ENABLED_MODS "${QTCLIENT_ENABLED_MODS}" PARENT_SCOPE)
 endfunction()
 
-# Generate qtclient_invoke_linked_mods + stage FS packs next to tip.
+# Generate deprecated linked_mods.cpp (ABSORB) + stage FS/native packs next to tip.
 # Must run from the directory that created target `tibia` (after tibia_add_enabled_mods).
 function(tibia_apply_linked_pack_staging)
   if(NOT TARGET tibia)
@@ -189,20 +189,32 @@ function(tibia_apply_linked_pack_staging)
     set(_gen_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
     file(MAKE_DIRECTORY "${_gen_dir}")
     set(_gen "${_gen_dir}/linked_mods.cpp")
-    # Configure-time generate so the TU is part of the tibia target.
     set(LINKED_MOD_IDS "${_ids}")
     set(OUTPUT "${_gen}")
     include("${TIBIA_ROOT}/cmake/GenerateLinkedMods.cmake")
     target_sources(tibia PRIVATE "${_gen}")
     target_compile_definitions(tibia PRIVATE QTCLIENT_HAS_LINKED_PACK=1)
-    # Keep entries past DCE on WASM (whole-program LTO).
     if(EMSCRIPTEN OR WASM)
       target_link_options(tibia PRIVATE "LINKER:--undefined=qtclient_invoke_linked_mods")
       foreach(_id IN LISTS _ids)
         target_link_options(tibia PRIVATE "LINKER:--undefined=qtclient_mod_${_id}_entry")
       endforeach()
     endif()
-    message(STATUS "qtclient mods: linked entry table ← ${_ids}")
+    message(STATUS "qtclient mods: linked entry table (deprecated absorb) ← ${_ids}")
+  endif()
+
+  get_property(_runtime_ids GLOBAL PROPERTY QTCLIENT_RUNTIME_MOD_IDS)
+  if(_runtime_ids AND (EMSCRIPTEN OR WASM))
+    # Runtime MODULE load via dlopen — tip must be MAIN_MODULE; packs are SIDE_MODULE.
+    # Packs import zero tip symbols (host-pushed API); no tip export allowlist.
+    target_link_options(tibia PRIVATE
+      "SHELL:-sMAIN_MODULE=2"
+      "SHELL:-sERROR_ON_UNDEFINED_SYMBOLS=0")
+    target_compile_definitions(tibia PRIVATE QTCLIENT_HAS_RUNTIME_MODS=1)
+    message(STATUS "qtclient mods: WASM MAIN_MODULE=2 for runtime packs ← ${_runtime_ids}")
+  elseif(_runtime_ids)
+    target_compile_definitions(tibia PRIVATE QTCLIENT_HAS_RUNTIME_MODS=1)
+    message(STATUS "qtclient mods: runtime MODULE packs ← ${_runtime_ids}")
   endif()
 
   get_property(_stages GLOBAL PROPERTY QTCLIENT_MOD_TIP_STAGE)
@@ -211,12 +223,14 @@ function(tibia_apply_linked_pack_staging)
     list(GET _parts 0 _mod_id)
     list(GET _parts 1 _outdir)
     set(_resources_dir "")
+    set(_mod_target "")
     list(LENGTH _parts _nparts)
     if(_nparts GREATER 2)
       list(GET _parts 2 _resources_dir)
     endif()
-    # Refresh pack resources from SoT before tip copy so travel.plan.bin edits
-    # land without a cmake reconfigure (configure-time file(COPY) alone is stale).
+    if(_nparts GREATER 3)
+      list(GET _parts 3 _mod_target)
+    endif()
     set(_refresh_res_cmds "")
     if(_resources_dir AND EXISTS "${_resources_dir}")
       set(_refresh_res_cmds
@@ -224,13 +238,20 @@ function(tibia_apply_linked_pack_staging)
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${_resources_dir}" "${_outdir}/resources"
       )
     endif()
+    # Ensure MODULE is built before tip staging copies native/.
+    if(_mod_target AND TARGET ${_mod_target})
+      add_dependencies(tibia ${_mod_target})
+    endif()
+    # Drop empty native/ left over from absorb packs (MODULE packs keep mod.*).
     add_custom_command(TARGET tibia POST_BUILD
       ${_refresh_res_cmds}
       COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:tibia>/mods/${_mod_id}"
       COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:tibia>/mods/${_mod_id}"
       COMMAND ${CMAKE_COMMAND} -E copy_directory "${_outdir}" "$<TARGET_FILE_DIR:tibia>/mods/${_mod_id}"
       COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:tibia>/mods/${_mod_id}/lib"
-      COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:tibia>/mods/${_mod_id}/native"
-      COMMENT "install ${_mod_id} FS pack next to tip")
+      COMMAND ${CMAKE_COMMAND}
+        -DNATIVE_DIR="$<TARGET_FILE_DIR:tibia>/mods/${_mod_id}/native"
+        -P "${TIBIA_ROOT}/cmake/ScrubEmptyNative.cmake"
+      COMMENT "install ${_mod_id} pack (FS + native) next to tip")
   endforeach()
 endfunction()

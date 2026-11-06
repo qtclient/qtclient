@@ -1,56 +1,57 @@
-#include <qtclient/const.h>
-#include <qtclient/host.h>
-#include <qtclient/mod_api_v1.h>
-#include <qtclient/mod_entry.h>
-#include <qtclient/session.h>
+#include <qtclient/abi/const.h>
+#include <qtclient/abi/host_api_v1.h>
+#include <qtclient/abi/mod_register.h>
 
-#include <QDebug>
+#include <cstdio>
+#include <cstring>
 
 namespace {
 
+const QtClientHostApiV1* g_api = nullptr;
+
 void enableOtcrWireFeatures()
 {
-    // Crystal only appends item/creature shader + wings tails when isOTCR
-    // (CLIENTOS_OTCR_*). Stock tip stays on CipSoft NEW_* OS + CIP wire;
-    // this default pack opts into OTCR after qtclient enableFeatures(tip).
-    using namespace tibia::client;
-    using qtclient::session::enableFeature;
-    using qtclient::session::setCustomOs;
-    const std::string hostOs = tibia::host::app().getOs();
-    if (hostOs == "windows")
-        setCustomOs(CLIENTOS_OTCR_WINDOWS);
-    else if (hostOs == "mac")
-        setCustomOs(CLIENTOS_OTCR_MAC);
-    else
-        setCustomOs(CLIENTOS_OTCR_LINUX);
+    if (!g_api || !g_api->host_os || !g_api->set_custom_os || !g_api->enable_feature)
+        return;
 
-    enableFeature(GameItemShader);
-    enableFeature(GameCreatureShader);
-    enableFeature(GameCreatureAttachedEffect);
-    enableFeature(GameWingsAurasEffectsShader);
+    char os[32] = {};
+    g_api->host_os(os, sizeof(os));
+    if (std::strcmp(os, "windows") == 0)
+        g_api->set_custom_os(QTCLIENT_OS_OTCR_WINDOWS);
+    else if (std::strcmp(os, "mac") == 0)
+        g_api->set_custom_os(QTCLIENT_OS_OTCR_MAC);
+    else
+        g_api->set_custom_os(QTCLIENT_OS_OTCR_LINUX);
+
+    g_api->enable_feature(QTCLIENT_FEATURE_ITEM_SHADER);
+    g_api->enable_feature(QTCLIENT_FEATURE_CREATURE_SHADER);
+    g_api->enable_feature(QTCLIENT_FEATURE_CREATURE_ATTACHED_EFFECT);
+    g_api->enable_feature(QTCLIENT_FEATURE_WINGS_AURAS_EFFECTS_SHADER);
 }
 
-void earlyBootstrapOtclient(const tibia::mods::ModContext& ctx)
+void earlyBootstrapOtclient(const QtClientModLoadCtx* ctx)
 {
-    Q_UNUSED(ctx);
-    if (const auto* api = qtclient_mod_host_api_v1(); api && api->setFeatureExtrasHook)
-        api->setFeatureExtrasHook(&enableOtcrWireFeatures);
+    (void)ctx;
+    if (g_api && g_api->set_feature_extras_hook)
+        g_api->set_feature_extras_hook(&enableOtcrWireFeatures);
     enableOtcrWireFeatures();
 }
 
-void registerOtclient(const qtclient::ModApiV1* api)
+void registerOtclient(const QtClientHostApiV1* api)
 {
-    if (!api || !api->registerEarlyBootstrap) {
-        qWarning("otclient mod: host API v1 missing");
+    if (!api || !api->register_early_bootstrap) {
+        std::fprintf(stderr, "otclient mod: host API v1 missing\n");
         return;
     }
-    api->registerEarlyBootstrap(&earlyBootstrapOtclient);
+    g_api = api;
+    api->register_early_bootstrap(&earlyBootstrapOtclient);
 }
 
 } // namespace
 
-void qtclient_mod_otclient_register(const tibia::mods::ModContext* earlyCtx)
+QTCLIENT_MOD_EXPORT void qtclient_mod_register(const QtClientHostApiV1* api,
+                                               const QtClientModLoadCtx* ctx)
 {
-    Q_UNUSED(earlyCtx);
-    registerOtclient(qtclient_mod_host_api_v1());
+    (void)ctx;
+    registerOtclient(api);
 }

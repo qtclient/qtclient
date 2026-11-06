@@ -1,10 +1,10 @@
 #pragma once
 
-/// Public Mod API v1 — narrow host surface for runtime packs.
+/// Deprecated C++ Mod API v1 (ABSORB_INTO_TIP / transitional).
 ///
-/// Packs should prefer this header over deep `client/tibia/**` includes.
-/// Resolve the table with `qtclient_mod_host_api_v1()` (exported from the host).
-/// Types come from named SDK façades — not raw tip path includes.
+/// New packs must use host-pushed C ABI: `#include <qtclient/abi/host_api_v1.h>`
+/// and export `qtclient_mod_register(api, ctx)`. Do not call
+/// `qtclient_mod_host_api_v1()` from a runtime MODULE (that reintroduces tip imports).
 
 #include "mod_registry.h"
 #include "weather.h"

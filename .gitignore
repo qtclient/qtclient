@@ -49,8 +49,6 @@ vc18/
 # Do not commit product packs under client/mods or launcher/mods.
 /client/mods/*
 !/client/mods/README.md
-!/client/mods/_sample/
-!/client/mods/_sample/**
 !/client/mods/myaac/
 !/client/mods/myaac/**
 !/client/mods/otclient/
@@ -384,3 +382,7 @@ out/
 /qtclient*.app/
 /Tibia.app/
 
+
+# Local CMake SDK downloads
+cmake-*.tar.gz
+tools/cmake-*-osx/

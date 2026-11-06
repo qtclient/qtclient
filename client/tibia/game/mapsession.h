@@ -46,10 +46,11 @@ struct MapItemHit {
     int stackPos = -1;
 };
 
-/// Sync Travel-mode path probe (`Map::canTravelPath`).
+/// Sync CIP auto-path probe (`Map::canTravelPath` / AutoWalkPathTravel).
 bool canTravelPath(MapPos from, MapPos to, int maxComplexity = 8000);
 
-/// Async Travel-mode path probe (`Map::findPathAsync` + AutoWalkPathTravel).
+/// Async CIP auto-path probe (`Map::findPathAsync` + AutoWalkPathTravel).
+/// Live blockers (fire, splash, parcels) fail when aware — no soft-blocker bypass.
 /// Callback runs on the GUI thread via schedule::post.
 void canTravelPathAsync(MapPos from, MapPos to, const std::function<void(bool ok)>& callback);
 

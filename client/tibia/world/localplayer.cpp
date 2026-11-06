@@ -207,14 +207,17 @@ void LocalPlayer::cancelWalk(const tibia::client::Direction direction)
         m_adjustInvalidPosEvent->execute();
     }
 
+    // CIP FUN_100e94ff0: SnapBack direction tile joins the pathfinder avoid set
+    // (forced 0xff) so retryAutoWalk / Target replan routes around it.
+    if (direction != tibia::client::InvalidDirection)
+        g_map.setPathAvoid(getPosition().translatedToDirection(direction), true);
+
     lockWalk();
     if (retryAutoWalk()) return;
 
     // turn to the cancel direction
     if (direction != tibia::client::InvalidDirection)
         setDirection(direction);
-
-    (void)direction;
 }
 
 bool LocalPlayer::autoWalk(const Position& destination, const bool retry, const tibia::client::AutoWalkPathMode pathMode)
@@ -230,9 +233,13 @@ bool LocalPlayer::autoWalk(const Position& destination, const bool retry, const 
         m_autoWalkContinueEvent->cancel();
     m_autoWalkContinueEvent = nullptr;
 
-    if (!retry && row) {
-        row->setAutoWalkRetries(0);
-        row->setAutoWalkPathMode(pathMode);
+    if (!retry) {
+        // Fresh click / new Travel hop — drop SnapBack avoids from the prior route.
+        g_map.clearPathAvoids();
+        if (row) {
+            row->setAutoWalkRetries(0);
+            row->setAutoWalkPathMode(pathMode);
+        }
     }
 
     if (destination == m_position)

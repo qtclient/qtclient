@@ -183,7 +183,7 @@ TNPCTradeStorage::TNPCTradeStorage(QObject* parent)
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         if (!m_open)
-            return std::any{};
+            return;
         reset();
         Q_EMIT requestCloseNpcTrade();
     });

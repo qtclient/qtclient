@@ -61,16 +61,8 @@ rm -rf "$dest"
 mkdir -p "$mods_root"
 cp -a "$PACK" "$dest"
 test -f "$dest/mod.json"
-# Linked tip: C++ is absorbed into qtclient — drop any leftover native/ tree or key.
-rm -rf "$dest/native" "$dest/lib"
-python3 - "$dest/mod.json" <<'PY'
-import json, sys
-path = sys.argv[1]
-doc = json.load(open(path))
-if "native" in doc:
-    doc.pop("native", None)
-    open(path, "w").write(json.dumps(doc, indent=2) + "\n")
-PY
+# Runtime MODULE packs ship native/mod.* (host-pushed C ABI). Drop only stale lib/.
+rm -rf "$dest/lib"
 (
   cd "$dest"
   find . -type f | sed 's|^\./||' | sort

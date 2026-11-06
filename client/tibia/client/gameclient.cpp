@@ -513,6 +513,12 @@ void TGameClient::shutdown()
     m_idleTick.stop();
     m_frameLimitTimer.stop();
     onWorldLeft();
+    // Force logout / Map::clean while TWorldMapStorage still owns the field
+    // QObjects. Map tileBlocks hold raw pointers into that tree; destroying
+    // storage first leaves terminate → removeUnawareThings dangling (SIGSEGV
+    // on quit Exit).
+    gamecore::terminate();
+    g_map.clean();
     m_updater.reset();
     m_messageHandler.reset();
     m_effectProtocolMessageHandler.reset();
@@ -538,7 +544,6 @@ void TGameClient::shutdown()
     m_soundProtocol.reset();
     m_sessiondump.reset();
     m_session.reset();
-    gamecore::terminate();
 }
 
 void TGameClient::login()

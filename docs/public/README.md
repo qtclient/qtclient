@@ -58,8 +58,7 @@ default CipSoft package path. Override with `TIBIA=` / `MSGMAP=` when needed.
 | Build | CMake |
 |-------|--------|
 | Stock CIP only | `-DQTCLIENT_ENABLE_MODS=OFF` |
-| Auto-enable packs in `client/mods/` (except `_sample`) | default `QTCLIENT_ENABLE_MODS=ON` |
-| Sample SDK pack | `-DQTCLIENT_MODS=_sample` |
+| Auto-enable packs in `client/mods/` (skips `_`-prefixed templates) | default `QTCLIENT_ENABLE_MODS=ON` |
 
 ```bash
 ln -s ~/my-mod client/mods/my_mod

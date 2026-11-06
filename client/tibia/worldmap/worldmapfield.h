@@ -109,7 +109,6 @@ public:
     int thingCount() const { return static_cast<int>(m_stack.size()); }
 
     bool isWalkable(bool ignoreCreatures = false) const;
-    bool isTravelSoftBlocker();
     bool isClickable();
     bool isPathable() { return (m_thingTypeFlag & NOT_PATHABLE) == 0; }
     bool isFullGround() const { return m_thingTypeFlag & FULL_GROUND; }

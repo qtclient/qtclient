@@ -19,7 +19,7 @@ pack_sdk() {
   cp -a "$OTC/cmake/GeneratePackQmldir.cmake" "$DEST/cmake/"
   cp -a "$OTC/cmake/GenerateLinkedMods.cmake" "$DEST/cmake/"
   cp -a "$OTC/cmake/QtClientConfig.cmake.in" "$DEST/cmake/" 2>/dev/null || true
-  # Linked tip: FS presence + tip merge helpers (STATIC packs; no native/SIDE_MODULE).
+  # Tip merge helpers (runtime MODULE packs ship native/mod.*; absorb packs do not).
   mkdir -p "$DEST/scripts/lifecycle/lib" "$DEST/cmake"
   cp -a "$OTC/scripts/lifecycle/lib/check-tip-pack-presence.sh" "$DEST/scripts/lifecycle/lib/"
   cp -a "$OTC/scripts/lifecycle/lib/merge-pack-into-tip.sh" "$DEST/scripts/lifecycle/lib/"

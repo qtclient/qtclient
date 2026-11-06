@@ -5,8 +5,8 @@
 | Path | Role |
 |------|------|
 | `client/upstream/` | CIP sync output (local only; gitignored in public) |
-| `client/mods/_sample/` | Example mod pack (unified `mods/<id>/` layout) |
-| `client/mods/<your>/` | Your pack (gitignored; copy/symlink/submodule locally) |
+| `client/mods/myaac/` · `otclient/` | Stock example packs (login urls; OTC wire) |
+| `client/mods/<your>/` | Your pack (gitignored; copy/symlink/submodule locally)
 | `launcher/mods/<your>/` | Launcher brand / art pack |
 | `third_party/qt5-cip` | CipSoft Qt sources (submodule, `update = none`) |
 | `third_party/Qt5LegacyControls` | LegacyControls C++ (LGPL, branch `main`); QML from sync |

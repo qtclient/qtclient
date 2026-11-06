@@ -1,0 +1,11 @@
+# Remove mods/<id>/native when it has no mod.* MODULE artifact (absorb packs).
+if(NOT DEFINED NATIVE_DIR OR NATIVE_DIR STREQUAL "")
+  return()
+endif()
+if(NOT IS_DIRECTORY "${NATIVE_DIR}")
+  return()
+endif()
+file(GLOB _mods "${NATIVE_DIR}/mod.*")
+if(_mods STREQUAL "")
+  file(REMOVE_RECURSE "${NATIVE_DIR}")
+endif()

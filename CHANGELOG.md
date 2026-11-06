@@ -14,8 +14,11 @@ Versioning follows semver for public tags (`vX.Y.Z`).
 - Public Mod API v1 (`include/qtclient/mod_api_v1.h` + `qtclient_mod_host_api_v1()`).
 - Filesystem QML modules (`qml/<uri>/qmldir`) + `PackQmlInterceptor` for
   `qrc:/qt/qml/<uri>/…` → pack files (no STATIC qml plugin in the MODULE).
-- Sample pack under `client/mods/_sample` demonstrating the SDK.
 - SECURITY.md and clarified NOTICE (non-affiliation, BYO CipSoft materials).
+
+### Removed
+
+- Sample SDK pack `client/mods/_sample` (`myaac` / `otclient` are enough examples).
 
 ### Changed
 

@@ -320,24 +320,14 @@ def _resync_tip_pack(src_dir: Path, dest_dir: Path) -> None:
         shutil.rmtree(out)
     out.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(pack, out)
-    # Linked tip: never ship leftover native/ pack trees onto the CDN tip.
-    for junk in ("native", "lib"):
-        junk_path = out / junk
-        if junk_path.exists():
-            shutil.rmtree(junk_path)
-    mod_json = out / "mod.json"
-    if mod_json.is_file():
-        try:
-            doc = json.loads(mod_json.read_text())
-        except (OSError, ValueError):
-            doc = None
-        if isinstance(doc, dict) and "native" in doc:
-            doc.pop("native", None)
-            mod_json.write_text(json.dumps(doc, indent=2) + "\n")
+    # Runtime MODULE packs ship native/mod.*; drop only stale lib/ archives.
+    lib_path = out / "lib"
+    if lib_path.exists():
+        shutil.rmtree(lib_path)
     files_list = [
         str(p.relative_to(out)).replace("\\", "/")
         for p in sorted(out.rglob("*"))
-        if p.is_file() and not str(p.relative_to(out)).startswith(("native/", "lib/"))
+        if p.is_file() and not str(p.relative_to(out)).startswith("lib/")
     ]
     (dest_dir / "mods" / f"{pack.name}.files").write_text(
         "\n".join(files_list) + ("\n" if files_list else "")

@@ -53,7 +53,7 @@ inline const std::vector<CyclopediaHouseType>& cyclopediaHouses()
     return g_things.getCyclopediaHouses();
 }
 
-inline auto getCyclopediaAchievements()
+inline const std::vector<CyclopediaAchievementType>& getCyclopediaAchievements()
 {
     return g_things.getCyclopediaAchievements();
 }

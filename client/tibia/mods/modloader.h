@@ -9,11 +9,11 @@ namespace tibia {
 namespace mods {
 
 /// Unified pack loader (desktop + WASM): directory layout
-///   mods/<id>/mod.json + qml/ + overrides/ + resources/
-/// Native C++ is STATIC-linked into the tip (QTCLIENT_HAS_LINKED_PACK).
+///   mods/<id>/mod.json + native/mod.* + qml/ + overrides/ + resources/
+/// Native MODULE: dlopen → qtclient_mod_register(hostApi, ctx) (host-pushed C ABI).
+/// Deprecated absorb: QTCLIENT_HAS_LINKED_PACK still invokes linked entries once.
 /// Loads all autoload tip packs (priority: lower number wins identity/urls;
 /// override remap: later load wins — packs load high-priority-number first).
-/// Linked C++ entries run once via qtclient_invoke_linked_mods.
 class ModLoader
 {
 public:
@@ -25,11 +25,10 @@ public:
     static bool skipLoad();
 
     /// Resolve and load all selected packs. Returns count loaded (0 when skipLoad()).
-    /// earlyCtx may be null: linked entries are register-only until bootstrapAll.
+    /// earlyCtx may be null: register-only until bootstrapAll.
     static int loadAll(const QStringList& roots = {}, const ModContext* earlyCtx = nullptr);
 
-    /// Load one pack directory containing mod.json (FS chrome only; linked C++
-    /// is invoked separately by loadAll).
+    /// Load one pack directory (native MODULE + FS chrome).
     static bool loadFromDirectory(const QString& packDir, const ModContext* earlyCtx = nullptr);
 
     /// Tip mods roots (applicationDirPath()/mods + macOS Resources siblings).

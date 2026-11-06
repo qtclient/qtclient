@@ -168,6 +168,11 @@ inline void talk(const std::string_view message)
     g_game.talk(message);
 }
 
+inline void turn(const tibia::client::Direction direction)
+{
+    g_game.turn(direction);
+}
+
 inline void safeLogout()
 {
     g_game.safeLogout();

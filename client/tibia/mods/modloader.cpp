@@ -1,10 +1,9 @@
 #include "mods/modloader.h"
+#include "mods/host_api.h"
 #include "mods/mod_entry.h"
 #include "mods/registry.h"
 
 #include "engine/framework/core/resourcemanager.h"
-
-#include "qtclient/mod_api_v1.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -12,11 +11,17 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonValue>
+#include <QLibrary>
 #include <QList>
 #include <QLoggingCategory>
 
 #include <algorithm>
 #include <cstring>
+#include <vector>
+
+#if defined(__EMSCRIPTEN__)
+#  include <dlfcn.h>
+#endif
 
 Q_LOGGING_CATEGORY(lcModLoader, "tibia.mods.loader")
 
@@ -34,6 +39,19 @@ struct PackMeta {
     ModIdentity identity;
     ModUrls urls;
 };
+
+struct LoadedNative {
+    QLibrary* lib = nullptr;
+#if defined(__EMSCRIPTEN__)
+    void* handle = nullptr;
+#endif
+};
+
+std::vector<LoadedNative>& loadedNatives()
+{
+    static std::vector<LoadedNative> libs;
+    return libs;
+}
 
 ModUrls readUrlsObject(const QJsonObject& urlsObj, int priority)
 {
@@ -108,8 +126,97 @@ bool& skipLoadFlag()
     return skip;
 }
 
-/// Collect autoload packs under tip roots. Sorted by priority descending so
-/// lower priority numbers register overrides last (PackQmlInterceptor: later wins).
+QString nativeModulePath(const QString& packDir)
+{
+    const QDir native(QDir(packDir).filePath(QStringLiteral("native")));
+#if defined(__EMSCRIPTEN__)
+    const QString wasm = native.filePath(QStringLiteral("mod.wasm"));
+    if (QFile::exists(wasm))
+        return wasm;
+#elif defined(_WIN32)
+    const QString dll = native.filePath(QStringLiteral("mod.dll"));
+    if (QFile::exists(dll))
+        return dll;
+#elif defined(__APPLE__)
+    const QString dylib = native.filePath(QStringLiteral("mod.dylib"));
+    if (QFile::exists(dylib))
+        return dylib;
+#else
+    const QString so = native.filePath(QStringLiteral("mod.so"));
+    if (QFile::exists(so))
+        return so;
+#endif
+    // Fallback: any libqtclient_mod_* in native/
+    const QStringList entries = native.entryList(QDir::Files);
+    for (const QString& name : entries) {
+        if (name.startsWith(QStringLiteral("libqtclient_mod_"))
+            || name.startsWith(QStringLiteral("qtclient_mod_")))
+            return native.filePath(name);
+    }
+    return {};
+}
+
+bool invokeNativeRegister(const PackMeta& meta, const ModContext* earlyCtx)
+{
+    const QString path = nativeModulePath(meta.dir);
+    if (path.isEmpty())
+        return false;
+
+    const QtClientHostApiV1* api = qtclient_host_api_v1();
+    if (!api) {
+        qCCritical(lcModLoader) << "mod" << meta.id << "host API v1 unavailable";
+        return false;
+    }
+
+    QtClientModLoadCtx ctx{};
+    const QByteArray idBytes = meta.id.toUtf8();
+    const QByteArray dirBytes = meta.dir.toUtf8();
+    ctx.pack_id = idBytes.constData();
+    ctx.pack_dir = dirBytes.constData();
+    ctx.host_build_id = api->host_build_id;
+    ctx.api_version = api->api_version;
+    ctx.early_ctx = const_cast<ModContext*>(earlyCtx);
+
+    QtClientModRegisterFn registerFn = nullptr;
+
+#if defined(__EMSCRIPTEN__)
+    void* handle = dlopen(path.toUtf8().constData(), RTLD_NOW | RTLD_LOCAL);
+    if (!handle) {
+        qCWarning(lcModLoader) << "mod" << meta.id << "dlopen failed" << path << dlerror();
+        return false;
+    }
+    registerFn = reinterpret_cast<QtClientModRegisterFn>(dlsym(handle, QTCLIENT_MOD_REGISTER_SYMBOL));
+    if (!registerFn) {
+        qCWarning(lcModLoader) << "mod" << meta.id << "missing" << QTCLIENT_MOD_REGISTER_SYMBOL;
+        dlclose(handle);
+        return false;
+    }
+    registerFn(api, &ctx);
+    loadedNatives().push_back(LoadedNative{nullptr, handle});
+#else
+    auto* lib = new QLibrary(path);
+    if (!lib->load()) {
+        qCWarning(lcModLoader) << "mod" << meta.id << "QLibrary load failed" << path << lib->errorString();
+        delete lib;
+        return false;
+    }
+    registerFn = reinterpret_cast<QtClientModRegisterFn>(
+        lib->resolve(QTCLIENT_MOD_REGISTER_SYMBOL));
+    if (!registerFn) {
+        qCWarning(lcModLoader) << "mod" << meta.id << "missing" << QTCLIENT_MOD_REGISTER_SYMBOL
+                               << lib->errorString();
+        lib->unload();
+        delete lib;
+        return false;
+    }
+    registerFn(api, &ctx);
+    loadedNatives().push_back(LoadedNative{lib});
+#endif
+
+    qCInfo(lcModLoader) << "mod" << meta.id << "native register ok" << path;
+    return true;
+}
+
 QStringList collectTipPacks(const QStringList& tipRoots)
 {
     struct Candidate {
@@ -132,7 +239,7 @@ QStringList collectTipPacks(const QStringList& tipRoots)
     }
     std::sort(found.begin(), found.end(), [](const Candidate& a, const Candidate& b) {
         if (a.priority != b.priority)
-            return a.priority > b.priority; // higher number first
+            return a.priority > b.priority;
         return a.path < b.path;
     });
     QStringList out;
@@ -160,7 +267,7 @@ QStringList collectEnvPacks(const QString& envPath)
 void invokeLinkedEntries(const ModContext* earlyCtx)
 {
 #if defined(QTCLIENT_HAS_LINKED_PACK)
-    qCInfo(lcModLoader) << "invoking linked pack entries";
+    qCInfo(lcModLoader) << "invoking linked pack entries (deprecated absorb path)";
     qtclient_invoke_linked_mods(earlyCtx);
 #else
     Q_UNUSED(earlyCtx);
@@ -205,7 +312,6 @@ QStringList ModLoader::defaultRoots()
 
 bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earlyCtx)
 {
-    Q_UNUSED(earlyCtx);
     const QString pack = QDir::cleanPath(packDir);
     PackMeta meta;
     if (!readMeta(pack, &meta)) {
@@ -219,11 +325,10 @@ bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earl
     }
     meta.dir = pack;
 
+    const QtClientHostApiV1* api = qtclient_host_api_v1();
     if (!meta.hostBuildId.isEmpty()) {
-        const qtclient::ModApiV1* api = qtclient_mod_host_api_v1();
-        const char* hostId = api && api->hostBuildId ? api->hostBuildId : "";
+        const char* hostId = api && api->host_build_id ? api->host_build_id : "";
         if (std::strcmp(hostId, meta.hostBuildId.toUtf8().constData()) != 0) {
-            // Default strict on desktop + WASM; set QTCLIENT_MOD_STRICT_HOST=0 to relax (DEV).
             const bool strict = qEnvironmentVariableIsSet("QTCLIENT_MOD_STRICT_HOST")
                 ? qEnvironmentVariableIntValue("QTCLIENT_MOD_STRICT_HOST") != 0
                 : true;
@@ -235,36 +340,36 @@ bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earl
         }
     }
 
-#if !defined(QTCLIENT_HAS_LINKED_PACK)
-    // Stock tip: FS urls/identity/QML only — leftover native/ trees fail closed.
-    if (QFile::exists(QDir(pack).filePath(QStringLiteral("native")))) {
-        qCCritical(lcModLoader) << "mod" << meta.id
-                                << "has native/ but this tip was not built with a linked pack"
-                                << "(rebuild qtclient with -DQTCLIENT_LINKED_PACK=… "
-                                   "or -DQTCLIENT_LINKED_PACKS=…)";
-        return false;
-    }
-#endif
+    const bool hasNative = QDir(QDir(pack).filePath(QStringLiteral("native"))).exists()
+        && !nativeModulePath(pack).isEmpty();
 
     if (!meta.identity.displayName.empty())
         registerMod({meta.identity, nullptr});
     if (!meta.urls.empty())
         registerModUrls(meta.urls);
     registerPackQmlPaths(meta);
-    // Pack root as VFS search path so `/resources/…` (sounds, data) resolve without tip data/.
     tibia::files::data().addSearchPath(pack.toStdString(), true);
 
+    bool nativeOk = true;
+    if (hasNative) {
+        nativeOk = invokeNativeRegister(meta, earlyCtx);
+        if (!nativeOk)
+            return false;
+    }
+
 #if defined(QTCLIENT_HAS_LINKED_PACK)
-    qCInfo(lcModLoader) << "loaded tip pack" << meta.id << "priority" << meta.priority << "from" << pack;
+    qCInfo(lcModLoader) << "loaded tip pack" << meta.id << "priority" << meta.priority << "from" << pack
+                        << (hasNative ? "(native+FS)" : "(FS; C++ via absorb)");
     return true;
 #else
-    if (!meta.urls.empty() || !meta.identity.displayName.empty()
+    if (hasNative || !meta.urls.empty() || !meta.identity.displayName.empty()
         || QDir(QDir(pack).filePath(QStringLiteral("qml"))).exists()
         || QDir(QDir(pack).filePath(QStringLiteral("overrides"))).exists()) {
-        qCInfo(lcModLoader) << "loaded FS pack" << meta.id << "from" << pack;
-        return true;
+        qCInfo(lcModLoader) << "loaded pack" << meta.id << "from" << pack
+                            << (hasNative ? "(native+FS)" : "(FS)");
+        return nativeOk;
     }
-    qCWarning(lcModLoader) << "mod" << meta.id << "has no urls, identity, qml, or overrides";
+    qCWarning(lcModLoader) << "mod" << meta.id << "has no native, urls, identity, qml, or overrides";
     return false;
 #endif
 }
@@ -274,7 +379,7 @@ int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
     if (skipLoad())
         return 0;
 
-    // Linked C++ once, before FS chrome (register-only when earlyCtx is null).
+    // Deprecated absorb path: linked C++ once before FS chrome.
     invokeLinkedEntries(earlyCtx);
 
     const QStringList tipRoots = roots.isEmpty() ? tipModsRoots() : roots;
@@ -294,7 +399,6 @@ int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
     } else {
         packs = collectTipPacks(tipRoots);
     }
-    // DEV: extra FS-only packs (no tip rebuild) — appended after tip packs.
     const QString extra = qEnvironmentVariable("QTCLIENT_EXTRA_MODS_DIR");
     if (!extra.isEmpty()) {
         const QStringList more = collectEnvPacks(extra);

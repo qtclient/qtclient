@@ -36,25 +36,25 @@ jobs:
           test ! -f scripts/lifecycle/lib/write_host_exports_rsp.py
           grep -q 'QTCLIENT_LINKED_PACK' cmake/TibiaMods.cmake
           grep -q 'QTCLIENT_LINKED_PACKS' cmake/TibiaMods.cmake
-          grep -q 'qtclient_link_mod_archive' cmake/QtClientMod.cmake
-          test -f cmake/GenerateLinkedMods.cmake
-          grep -q 'target_sources(tibia PRIVATE' cmake/QtClientMod.cmake
           grep -q 'qtclient_add_mod' cmake/QtClientMod.cmake
-          grep -q 'qtclient_invoke_linked_mods' client/tibia/mods/mod_entry.h
-          grep -q 'QTCLIENT_HAS_LINKED_PACK' client/tibia/mods/modloader.cpp
-          grep -q 'qtclient_mod_otclient_register' client/mods/otclient/src/otclient_mod.cpp
-          grep -q 'qtclient_mod_.*_register' cmake/GenerateLinkedMods.cmake
-          grep -q 'QTCLIENT_PACK_SDK_ONLY' cmake/QtClientMod.cmake
+          grep -q 'add_library(.*MODULE' cmake/QtClientMod.cmake
+          grep -q 'qtclient_mod_register' include/qtclient/abi/host_api_v1.h
+          grep -q 'qtclient_mod_register' client/mods/otclient/src/otclient_mod.cpp
+          grep -q 'qtclient_host_api_v1' client/tibia/mods/host_api_v1.cpp
+          grep -q 'QTCLIENT_MOD_REGISTER_SYMBOL' client/tibia/mods/modloader.cpp
+          test -f include/qtclient/abi/host_api_v1.h
+          test -f include/qtclient/abi/types.h
+          grep -q 'QTCLIENT_PACK_SDK_ONLY\|QTCLIENT_PACK_ABI\|ABSORB_INTO_TIP' cmake/QtClientMod.cmake
           test -f client/mods/myaac/mod.json
           test -f launcher/mods/clientmods/launcher.json
           test -f launcher/mods/minimap/launcher.json
-          test -f scripts/lifecycle/package/archive-mod.sh
-          bash -n scripts/lifecycle/package/archive-mod.sh
           bash -n scripts/lifecycle/lib/stage-default-launcher-mods.sh
+          # MAIN_MODULE only via TibiaMods when runtime packs exist (host-pushed API; no export list).
           if grep -q 'SHELL:-sMAIN_MODULE=2' client/tibia/CMakeLists.txt; then
-            echo "::error::MAIN_MODULE=2 must stay deleted (linked tip)" >&2
+            echo "::error::MAIN_MODULE must not be hard-coded in tibia CMakeLists (use TibiaMods)" >&2
             exit 1
           fi
+          grep -q 'MAIN_MODULE=2' cmake/TibiaMods.cmake
           bash -n scripts/lifecycle/lib/check-tip-pack-presence.sh
           bash -n scripts/lifecycle/lib/merge-pack-into-tip.sh
 

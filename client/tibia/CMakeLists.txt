@@ -196,6 +196,8 @@ target_sources(tibia PRIVATE
   sprites/spritesession.cpp sprites/spritesession.h
   mods/registry.cpp mods/registry.h
   mods/mod_api_v1.cpp
+  mods/host_api_v1.cpp mods/host_api.h
+  mods/pack_host_abi.cpp mods/pack_host_abi.h
   mods/mission_backend.h mods/attention_backend.h mods/instance_backend.h mods/weather_driver.h
   mods/lighting_types.h
   mods/worldview.cpp mods/worldview.h

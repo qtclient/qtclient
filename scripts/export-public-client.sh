@@ -23,7 +23,7 @@ rsync -a --delete \
 # Public gitignore: stock default packs only; ignore upstream when spinning out.
 GITIGNORE="$DEST/.gitignore"
 if [[ -f "$GITIGNORE" ]]; then
-  # Drop any product-pack allowlist leftovers; keep stock myaac/otclient/_sample.
+  # Drop any product-pack allowlist leftovers; keep stock myaac/otclient.
   sed -i.bak -E '/^!\/client\/mods\/[^_/]/d;/^!\/data\/sounds\//d' "$GITIGNORE" 2>/dev/null || true
   rm -f "$GITIGNORE.bak"
   if ! grep -q '^/upstream/' "$GITIGNORE" 2>/dev/null; then

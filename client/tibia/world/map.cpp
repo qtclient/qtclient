@@ -1361,26 +1361,22 @@ PathFindResult_ptr Map::newFindPath(const Position& start, const Position& goal,
     }
 
     const bool allowUnknownSoft = pathMode != tibia::client::AutoWalkPathMinimap;
-    // CipSoft 0xff neighbors stay impassable (Draconia CipSoft wall). CipSoft 0xff *goals*
-    // are allowed for Travel — climb/hub stands are often CipSoft-blocked; search still
-    // reaches them via neighbor==goal once a path-walkable approach exists.
+    // CIP FUN_100e95640 / FUN_100e94ff0: 0xff neighbors impassable; 0xfe fog walkable when
+    // allowUnknownSoft. Travel may still *goal* on Indexed8 0xff hub/climb stands.
 
     // Goal walkability: live aware tile first, else Indexed8 costs (CIP), else g_minimap.
     // Cyclopedia/Travel: path-unknown (0xfe) goals OK; Travel also CipSoft-blocked (0xff) goals.
+    // Live fire / splash / parcels: hard-block when aware (no soft-blocker bypass).
     if (g_map.isAwareOfPosition(goal)) {
         const auto& goalTile = getTile(goal);
-        if (!goalTile)
+        if (!goalTile || !goalTile->isWalkable())
             return ret;
-        if (!goalTile->isWalkable()) {
-            if (pathMode != tibia::client::AutoWalkPathTravel || !goalTile->isTravelSoftBlocker())
-                return ret;
-        }
     } else if (softCosts) {
         const uint8_t goalCost = softCosts->costAt(goal.x, goal.y, goal.z);
         if (goalCost <= tibia::minimap::TWaypointCosts::MaxCost) {
-            // walkable qtclient
+            // walkable Indexed8
         } else if (goalCost == tibia::minimap::TWaypointCosts::UnknownCost && allowUnknownSoft) {
-            // Cyclopedia/Travel fog goal
+            // Cyclopedia/Travel fog goal (CIP treats 0xfe as cost 254)
         } else if (goalCost == tibia::minimap::TWaypointCosts::BlockedCost
             && pathMode == tibia::client::AutoWalkPathTravel) {
             // Travel CipSoft-blocked hub/climb stand
@@ -1449,18 +1445,17 @@ PathFindResult_ptr Map::newFindPath(const Position& start, const Position& goal,
                         it = nodes.emplace(neighbor, nullptr).first;
                     } else if (softCosts) {
                         // CIP TWaypointCostMap: 0..250 walkable, 0xfe unknown, 0xff blocked.
-                        // Cyclopedia/Travel: 0xfe expensive. CipSoft 0xff stays impassable.
+                        // Cyclopedia/Travel: 0xfe expensive (CIP cost 254). 0xff impassable.
                         // Live aware tiles still win via visibleNodes.
                         const uint8_t wc = softCosts->costAt(neighbor.x, neighbor.y, neighbor.z);
                         const bool softFog = wc == tibia::minimap::TWaypointCosts::UnknownCost;
-                        const bool softBlocked = wc == tibia::minimap::TWaypointCosts::BlockedCost;
                         const bool passFog = (softFog && allowUnknownSoft) || neighbor == goal;
                         if (wc > tibia::minimap::TWaypointCosts::MaxCost && !passFog) {
                             it = nodes.emplace(neighbor, nullptr).first;
                         } else {
                             const float speed = wc <= tibia::minimap::TWaypointCosts::MaxCost
                                 ? static_cast<float>(std::max<uint8_t>(1, wc))
-                                : (softBlocked ? 2500.f : 2000.f);
+                                : 2000.f;
                             it = nodes.emplace(neighbor, new Node{ .cost = speed, .totalCost = 10000000.0f, .pos = neighbor,
                                                                    .prev = node, .distance = node->distance + 1, .unseen = 0 })
                                      .first;
@@ -1548,22 +1543,20 @@ void Map::clearWaypointCostFactory() { m_waypointCostFactory = {}; }
 namespace {
 
 std::shared_ptr<std::list<Node*>> buildTravelVisibleNodes(Map& map, const Position& start, const Position& goal,
-                                                          const tibia::client::AutoWalkPathMode pathMode)
+                                                          const tibia::client::AutoWalkPathMode /*pathMode*/)
 {
+    // CIP auto-path: aware tiles use live walkable/pathable (fire, splash, parcels
+    // block when in view). No soft-blocker bypass — path fails → SnapBack avoid /
+    // TravelRouter replan or stop.
     auto visibleNodes = std::make_shared<std::list<Node*>>();
     for (const auto& tile : map.getTiles(start.z)) {
         if (tile->getPosition() == start)
             continue;
         const bool isNotWalkable = !tile->isWalkable(false);
         const bool isNotPathable = !tile->isPathable();
-        const bool softBlocker = pathMode == tibia::client::AutoWalkPathTravel && tile->isTravelSoftBlocker();
         const float baseSpeed = static_cast<float>(tile->getGroundSpeed());
-        if (softBlocker) {
-            visibleNodes->push_back(new Node{ .cost = 2000.f, .totalCost = 10000000.0f, .pos = tile->getPosition(),
-                                              .prev = nullptr, .distance = 0, .unseen = 0 });
-        } else if ((isNotWalkable || isNotPathable) && tile->getPosition() != goal) {
-            // CipSoft: impassable aware tiles stay closed. cost < 0 marks a sentinel
-            // that newFindPath stores as nullptr (must not be expandable).
+        if ((isNotWalkable || isNotPathable) && tile->getPosition() != goal) {
+            // cost < 0 → newFindPath stores nullptr (must not expand).
             visibleNodes->push_back(new Node{ .cost = -1.f, .totalCost = 0, .pos = tile->getPosition(), .prev = nullptr,
                                               .distance = 0, .unseen = 0 });
         } else {

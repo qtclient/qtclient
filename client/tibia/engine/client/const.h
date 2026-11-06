@@ -705,11 +705,12 @@ namespace client {
         PathFindOrthogonalOnly = 32 // N/S/E/W only (no diagonals)
     };
 
-    /// Client autoWalk qtclient / live-tile policy.
-    /// Minimap: CIP sidebar/minimap click — Indexed8 strict (0xfe/0xff blocked).
-    /// Cyclopedia: CIP cyclopedia Shift+click — qtclient 0xfe fog is expensive-but-passable.
-    /// Travel: product TravelRouter — Cyclopedia + CipSoft 0xff fog + live soft blockers
-    /// (parcels, splash/poison fields, non-pathable) as expensive-but-passable.
+    /// Client autoWalk / live-tile policy (CIP FUN_100e95640 / TWaypointCostMap).
+    /// Minimap: CIP sidebar click — Indexed8 strict (0xfe and 0xff blocked).
+    /// Cyclopedia: CIP cyclopedia Shift+click — 0xfe fog expensive-but-passable; 0xff blocked.
+    /// Travel: IdleOT TravelRouter — same as Cyclopedia (CIP auto-path). Live fire /
+    /// splash / parcels block when aware; SnapBack tiles join `g_map` path avoids.
+    /// Indexed8 0xff *goals* stay reachable so climb/hub stands can be approached.
     enum AutoWalkPathMode : uint8_t
     {
         AutoWalkPathMinimap = 0,
