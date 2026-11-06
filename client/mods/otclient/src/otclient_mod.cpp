@@ -2,11 +2,16 @@
 #include <qtclient/abi/host_api_v1.h>
 #include <qtclient/abi/mod_register.h>
 
-#include "mods/host_api.h"
-#include "mods/mod_entry.h"
-
 #include <cstdio>
 #include <cstring>
+
+namespace tibia {
+namespace mods {
+struct ModContext;
+}
+}
+
+extern "C" const QtClientHostApiV1* qtclient_host_api_v1(void);
 
 namespace {
 
