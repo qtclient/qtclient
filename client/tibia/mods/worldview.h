@@ -34,6 +34,10 @@ public:
     virtual qint64 roofsNs() const { return 0; }
 
     virtual void setFieldAmbient(QImage ambient) = 0;
+    /// Classic TLightMap grid (ambient + point lights). Raycast samples it as open-floor SoT.
+    virtual void setFieldClassic(QImage classic) {}
+    /// Logout / character switch / lighting-mode off: drop gather + GPU-facing frame state.
+    virtual void clearSession() {}
 
     virtual bool beginFrame(LightingMapPos camera, int drawWidth, int drawHeight, int firstFloor,
                             int lastFloor) = 0;
@@ -93,6 +97,8 @@ public:
     virtual void updateScene(QQuickWindow* window, QSGNode* camera, QSGNode* afterSprites) = 0;
     /// Host is about to destroy the camera tree — drop dangling QSGNode*s.
     virtual void abandonNode() {}
+    /// Logout / mode off: remove and delete the overlay node if this factory still owns it.
+    virtual void dropNode() {}
 };
 
 struct WorldFrameHooks {
@@ -105,6 +111,7 @@ WorldLightingDriver* worldLightingDriver();
 void addWorldOverlayFactory(WorldOverlayFactory* factory);
 void clearWorldOverlayFactories();
 void abandonWorldOverlayNodes();
+void dropWorldOverlayNodes();
 const std::vector<WorldOverlayFactory*>& worldOverlayFactories();
 
 void setWorldFrameHooks(WorldFrameHooks hooks);

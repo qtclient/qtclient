@@ -389,7 +389,6 @@ def collect_override_roots(extra: Path | None = None) -> list[Path]:
     pack = os.environ.get("QTCLIENT_PACK", "").strip()
     if pack:
         add(Path(pack) / "client" / "overrides")
-    add(MONOREPO_ROOT / "apps" / "idleot-client" / "client" / "overrides")
     if extra is not None:
         add(extra)
     return roots
@@ -476,7 +475,7 @@ def main():
     ap.add_argument("--tibia", type=Path, help="Tibia.app (or its Contents)")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--overrides", type=Path, default=None,
-                    help="extra pack overrides/ root (in-tree mods + QTCLIENT_PACK + idleot-client are scanned)")
+                    help="extra pack overrides/ root (in-tree mods + QTCLIENT_PACK are scanned)")
     ap.add_argument("--msgmap", type=Path, help="TibiaMessageMap.java output (JSONL) for protocol/messages.json "
                     "(required when client_sha256 changes)")
     ap.add_argument("--things-dir", type=Path, help="assets dir for graphics_resources.rcc "

@@ -1,5 +1,5 @@
 ---
-# Mirror warm CIP Qt prefixes to a public GitHub Release so idleot/release
+# Mirror warm CIP Qt prefixes to a public GitHub Release so the product release repo
 # (and anyone) can download without GHCR package ACL. Trigger after Qt: build
 # has pushed ghcr.io/qtclient/qt:<sha12>-<kit>.
 name: 'Qt: publish'

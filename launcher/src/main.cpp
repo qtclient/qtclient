@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
         app.setStyle(fusion);
     // Same org/app as the game client so AppDataLocation matches CipSoft's one tree
     // (packages/, minimap/, log/ under …/<org>/<app> — not …/<org>/Launcher).
-    // IdleOT brand.json overrides qtclient CipSoft defaults at runtime.
+    // product pack brand.json overrides qtclient CipSoft defaults at runtime.
     QCoreApplication::setOrganizationName(brand.productOrg);
     QCoreApplication::setApplicationName(brand.productName);
     QCoreApplication::setApplicationVersion(QStringLiteral(TIBIA_LAUNCHER_VERSION));

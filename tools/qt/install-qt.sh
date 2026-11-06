@@ -110,7 +110,7 @@ ensure_prefix() {
     echo "$prefix"
     return 0
   fi
-  # Public GitHub Release mirror (idleot/release cannot read private GHCR packages).
+  # Public GitHub Release mirror (the product release repo cannot read private GHCR packages).
   if bash "$HERE/ghcr-qt.sh" pull-release "$kit_slug" >&2; then
     echo "$prefix"
     return 0

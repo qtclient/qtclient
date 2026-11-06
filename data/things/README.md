@@ -1,17 +1,9 @@
-# Client asset versions
+# Legacy `data/things/<ver>/`
 
-Create a version folder and drop sprite files or assets in it.
+**Unsupported for new work.** Official CIP assets land in flat
+`data/assets/` via `make extract` (catalog, appearances, map, minimap,
+`graphics_resources.rcc`, `spells.json`, `game-tables/` for the pipeline).
 
-Official CIP assets are produced by `make extract` into `data/assets/`
-(catalog, appearances, map, minimap, sounds). Legacy `data/things/<ver>/`
-layouts are still accepted as a bootstrap fallback.
-
-# Example layouts
-
-spr/dat:
-
-`data/things/860/` (`.spr` and `.dat` files)
-
-assets:
-
-`data/things/1340/` (`catalog-content.json` and asset files)
+Do not add new code that reads `data/things/<ver>/`. Older bootstrap trees
+may still exist locally; remove them after a successful extract into
+`data/assets/`.

@@ -33,7 +33,7 @@ namespace app {
 ///
 /// client_too_old / Restart is wired in main.cpp (ShowClientOutOfDate).
 /// Product packs may replace the create-character controller via
-/// installCreateCharacter (IdleOT pack QML).
+/// installCreateCharacter (product pack pack QML).
 class TSessionBootstrap final : public QObject
 {
     Q_OBJECT

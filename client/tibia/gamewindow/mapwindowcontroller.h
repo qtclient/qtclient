@@ -24,7 +24,7 @@ class TMapWindowController final : public cip::tibia::gamewindow::TMapWindowCont
     /// FOV in fields. Always CIP 15×11 (HUD and classic share the same world size).
     Q_PROPERTY(int fovWidth READ fovWidth NOTIFY fovChanged)
     Q_PROPERTY(int fovHeight READ fovHeight NOTIFY fovChanged)
-    /// Classic CIP chrome (sidebars from unusedWidth). False = IdleOT HUD chrome;
+    /// Classic CIP chrome (sidebars from unusedWidth). False = product pack HUD chrome;
     /// FOV stays 15×11 either way, with grey gutters filling leftover pane.
     Q_PROPERTY(bool classicView READ classicView NOTIFY classicViewChanged)
     /// CIP map scale: map window height / 352.
@@ -50,7 +50,7 @@ public:
     void onUnusedWidthChanged() override;
     /// Keep FOV at CIP 15×11 and refresh viewScale from the map window height.
     void syncFov();
-    /// Classic vs IdleOT HUD chrome layout (FOV unchanged).
+    /// Classic vs product pack HUD chrome layout (FOV unchanged).
     void refreshClassicView();
 
 Q_SIGNALS:

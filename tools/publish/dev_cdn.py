@@ -312,8 +312,9 @@ def _resync_tip_pack(src_dir: Path, dest_dir: Path) -> None:
     packs = [p for p in (build_root / "mods").iterdir() if p.is_dir() and (p / "mod.json").is_file()]
     if not packs:
         return
-    # Single tip pack slot — prefer idleot, else highest-priority name.
-    pack = next((p for p in packs if p.name == "idleot"), packs[0])
+    # Single tip pack slot — prefer QTCLIENT_PACK_ID, else first staged pack.
+    prefer = os.environ.get("QTCLIENT_PACK_ID", "").strip()
+    pack = next((p for p in packs if prefer and p.name == prefer), packs[0])
     out = dest_dir / "mods" / pack.name
     if out.exists():
         shutil.rmtree(out)

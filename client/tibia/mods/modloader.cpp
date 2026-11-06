@@ -2,6 +2,8 @@
 #include "mods/mod_entry.h"
 #include "mods/registry.h"
 
+#include "engine/framework/core/resourcemanager.h"
+
 #include "qtclient/mod_api_v1.h"
 
 #include <QCoreApplication>
@@ -249,6 +251,8 @@ bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earl
     if (!meta.urls.empty())
         registerModUrls(meta.urls);
     registerPackQmlPaths(meta);
+    // Pack root as VFS search path so `/resources/…` (sounds, data) resolve without tip data/.
+    tibia::files::data().addSearchPath(pack.toStdString(), true);
 
 #if defined(QTCLIENT_HAS_LINKED_PACK)
     qCInfo(lcModLoader) << "loaded tip pack" << meta.id << "priority" << meta.priority << "from" << pack;

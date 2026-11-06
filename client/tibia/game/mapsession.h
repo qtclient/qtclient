@@ -5,6 +5,7 @@
 /// (position.h pulls framework into pack_sdk).
 
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 namespace tibia {
@@ -47,6 +48,10 @@ struct MapItemHit {
 
 /// Sync Travel-mode path probe (`Map::canTravelPath`).
 bool canTravelPath(MapPos from, MapPos to, int maxComplexity = 8000);
+
+/// Async Travel-mode path probe (`Map::findPathAsync` + AutoWalkPathTravel).
+/// Callback runs on the GUI thread via schedule::post.
+void canTravelPathAsync(MapPos from, MapPos to, const std::function<void(bool ok)>& callback);
 
 /// Null-safe `getTile(pos)->isWalkable(ignoreCreatures)` — false when tile missing.
 bool isWalkable(MapPos pos, bool ignoreCreatures = true);

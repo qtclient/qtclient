@@ -301,7 +301,7 @@ QStringList dataDirs(const QString& explicitDir)
 #endif
     };
     // Tip package (portal OPFS / desktop AppData): RCC + fonts live under
-    // Contents/Resources/assets, not ./data. Alias qtclient Tibia.app ↔ IdleOT.app
+    // Contents/Resources/assets, not ./data. Alias qtclient Tibia.app ↔ the branded .app
     // is planted before callMain on /play.
     const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (!appData.isEmpty()) {
@@ -1029,79 +1029,82 @@ int main(int argc, char** argv)
     npcDialog.setChatController(&chat);
     gamewindow::TPlayerTradeWidgetManager playerTrade(&sidebarManager, gameWindowItem, engine.get());
 
-    {
-        qtclient::PackHostWire packHost;
-        packHost.bindQuestTracker = [&questTrackerWidget](tibia::mods::MissionBackend* backend,
-                                                          qtclient::BrowseOpenerFn browse) {
-            questTrackerWidget.setMissionBackend(backend);
-            questTrackerWidget.setBrowseOpener(std::move(browse));
-        };
-        packHost.bindQuestLog = [&informationDialogs](tibia::mods::MissionBackend* backend,
+    // Must outlive bootstrapAll: SuiteRuntime keeps PackHostWire* for deferred
+    // slots (HUD chat switch, store/options/logout). Destroying it at scope end
+    // dangling-pointer crashes on the first of those (SIGBUS on HUD toggle).
+    qtclient::PackHostWire packHost;
+    packHost.bindQuestTracker = [&questTrackerWidget](tibia::mods::MissionBackend* backend,
                                                       qtclient::BrowseOpenerFn browse) {
-            if (auto* log = informationDialogs.questLog()) {
-                log->setMissionBackend(backend);
-                log->setBrowseOpener(std::move(browse));
-            }
-        };
-        packHost.bindInstanceToInfoDialogs = [&informationDialogs](tibia::mods::InstanceBackend* instance) {
-            informationDialogs.setInstanceStorage(instance);
-        };
-        packHost.bindAttentionToButtonBar = [&sidebarPanels](tibia::mods::AttentionBackend* attention) {
-            if (auto* buttonBar = sidebarPanels.buttonBar())
-                buttonBar->setAttentionStorage(attention);
-        };
-        packHost.addProductOptionsPage = [&optionsDialog](const int category, void* page) {
-            optionsDialog.addProductPage(category, static_cast<config::TOptionsPage*>(page));
-        };
-        packHost.openOptionsPage = [&optionsDialog](const int page) { optionsDialog.open(page); };
-        packHost.openStore = [&storeDialog] { storeDialog.open(); };
-        packHost.requestLogoutViaButtonBar = [&sidebarPanels, &gameClient] {
-            if (auto* buttonBar = sidebarPanels.buttonBar()) {
-                buttonBar->onLogoutButtonClicked();
-                return;
-            }
-            if (game::TGameserverGameSession* session = gameClient.session())
-                session->requestLogout();
-            else if (game::TSessiondumpGameSession* dump = gameClient.sessiondump())
-                dump->requestLogout();
-        };
-        packHost.setSocialButtonOnButtonBar = [&sidebarPanels](QObject* controller) {
-            if (auto* buttonBar = sidebarPanels.buttonBar())
-                buttonBar->setSocialButtonController(controller);
-        };
-        packHost.setActiveChatItem = [&chat, &keyboardShortcuts, &playerMovement](QQuickItem* item) {
-            if (!item)
-                return;
-            chat.setChatItem(item);
-            keyboardShortcuts.setChatItem(item);
-            playerMovement.setChatItem(item);
-        };
-        packHost.installCreateCharacterController = [&sessionBootstrap](QObject* controller) {
-            if (!sessionBootstrap || !controller)
-                return;
-            sessionBootstrap->installCreateCharacter(
-                qobject_cast<gamewindow::TCreateCharacterDialogController*>(controller));
-        };
-        packHost.blessingsDialog = [&blessingsDialog]() -> QObject* { return &blessingsDialog; };
-        packHost.npcDialog = [&npcDialog]() -> QObject* { return &npcDialog; };
-        packHost.chatController = [&chat]() -> QObject* { return &chat; };
-        packHost.chatStorage = [&chat]() -> QObject* { return &chat.storage(); };
-        packHost.storeMessages = [&storeMessages]() -> QObject* { return &storeMessages; };
-        packHost.storeImageManager = [&storeDialog]() -> QObject* {
-            return storeDialog.property("dynamicallyLoadedImageManager").value<QObject*>();
-        };
-        packHost.minimapController = [minimapController]() -> QObject* { return minimapController; };
-        packHost.sidebarManager = [&sidebarManager]() -> QObject* { return &sidebarManager; };
-        packHost.sidebarWidgets = [&sidebarWidgets]() -> QObject* { return &sidebarWidgets; };
-        packHost.containers = [&containers]() -> QObject* { return &containers; };
-        packHost.buttonBar = [&sidebarPanels]() -> QObject* { return sidebarPanels.buttonBar(); };
-        packHost.imbuingDialog = [&imbuingDialog]() -> QObject* { return &imbuingDialog; };
-        packHost.imbuingStorage = [&imbuingStorage]() -> QObject* { return &imbuingStorage; };
-        packHost.sessionBootstrap = [&sessionBootstrap]() -> QObject* { return sessionBootstrap.get(); };
-        packHost.minimapPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.minimapItem(); };
-        packHost.inventoryPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.inventoryItem(); };
-        packHost.buttonBarPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.buttonBarItem(); };
+        questTrackerWidget.setMissionBackend(backend);
+        questTrackerWidget.setBrowseOpener(std::move(browse));
+    };
+    packHost.bindQuestLog = [&informationDialogs](tibia::mods::MissionBackend* backend,
+                                                  qtclient::BrowseOpenerFn browse) {
+        if (auto* log = informationDialogs.questLog()) {
+            log->setMissionBackend(backend);
+            log->setBrowseOpener(std::move(browse));
+        }
+    };
+    packHost.bindInstanceToInfoDialogs = [&informationDialogs](tibia::mods::InstanceBackend* instance) {
+        informationDialogs.setInstanceStorage(instance);
+    };
+    packHost.bindAttentionToButtonBar = [&sidebarPanels](tibia::mods::AttentionBackend* attention) {
+        if (auto* buttonBar = sidebarPanels.buttonBar())
+            buttonBar->setAttentionStorage(attention);
+    };
+    packHost.addProductOptionsPage = [&optionsDialog](const int category, void* page) {
+        optionsDialog.addProductPage(category, static_cast<config::TOptionsPage*>(page));
+    };
+    packHost.openOptionsPage = [&optionsDialog](const int page) { optionsDialog.open(page); };
+    packHost.openStore = [&storeDialog] { storeDialog.open(); };
+    packHost.requestLogoutViaButtonBar = [&sidebarPanels, &gameClient] {
+        if (auto* buttonBar = sidebarPanels.buttonBar()) {
+            buttonBar->onLogoutButtonClicked();
+            return;
+        }
+        if (game::TGameserverGameSession* session = gameClient.session())
+            session->requestLogout();
+        else if (game::TSessiondumpGameSession* dump = gameClient.sessiondump())
+            dump->requestLogout();
+    };
+    packHost.setSocialButtonOnButtonBar = [&sidebarPanels](QObject* controller) {
+        if (auto* buttonBar = sidebarPanels.buttonBar())
+            buttonBar->setSocialButtonController(controller);
+    };
+    packHost.setActiveChatItem = [&chat, &keyboardShortcuts, &playerMovement](QQuickItem* item) {
+        if (!item)
+            return;
+        chat.setChatItem(item);
+        keyboardShortcuts.setChatItem(item);
+        playerMovement.setChatItem(item);
+    };
+    packHost.installCreateCharacterController = [&sessionBootstrap](QObject* controller) {
+        if (!sessionBootstrap || !controller)
+            return;
+        sessionBootstrap->installCreateCharacter(
+            qobject_cast<gamewindow::TCreateCharacterDialogController*>(controller));
+    };
+    packHost.blessingsDialog = [&blessingsDialog]() -> QObject* { return &blessingsDialog; };
+    packHost.npcDialog = [&npcDialog]() -> QObject* { return &npcDialog; };
+    packHost.chatController = [&chat]() -> QObject* { return &chat; };
+    packHost.chatStorage = [&chat]() -> QObject* { return &chat.storage(); };
+    packHost.storeMessages = [&storeMessages]() -> QObject* { return &storeMessages; };
+    packHost.storeImageManager = [&storeDialog]() -> QObject* {
+        return storeDialog.property("dynamicallyLoadedImageManager").value<QObject*>();
+    };
+    packHost.minimapController = [minimapController]() -> QObject* { return minimapController; };
+    packHost.sidebarManager = [&sidebarManager]() -> QObject* { return &sidebarManager; };
+    packHost.sidebarWidgets = [&sidebarWidgets]() -> QObject* { return &sidebarWidgets; };
+    packHost.containers = [&containers]() -> QObject* { return &containers; };
+    packHost.buttonBar = [&sidebarPanels]() -> QObject* { return sidebarPanels.buttonBar(); };
+    packHost.imbuingDialog = [&imbuingDialog]() -> QObject* { return &imbuingDialog; };
+    packHost.imbuingStorage = [&imbuingStorage]() -> QObject* { return &imbuingStorage; };
+    packHost.sessionBootstrap = [&sessionBootstrap]() -> QObject* { return sessionBootstrap.get(); };
+    packHost.minimapPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.minimapItem(); };
+    packHost.inventoryPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.inventoryItem(); };
+    packHost.buttonBarPanelItem = [&sidebarPanels]() -> QQuickItem* { return sidebarPanels.buttonBarItem(); };
 
+    {
         tibia::mods::ModContext ctx;
         ctx.engine = engine.get();
         ctx.rootItem = window->contentItem();

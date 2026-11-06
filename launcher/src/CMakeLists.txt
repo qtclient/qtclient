@@ -5,7 +5,7 @@ set(CMAKE_AUTOMOC ON)
 
 get_filename_component(TIBIA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
-# qtclient CipSoft identity (qrc). IdleOT brand + art load at runtime from
+# qtclient CipSoft identity (qrc). product pack brand + art load at runtime from
 # tip mods/<id>/brand.json (+ images/launcher) unless --no-mods — same as client.
 set(TIBIA_PRODUCT_NAME "Tibia")
 set(TIBIA_PRODUCT_ORG "CipSoft")

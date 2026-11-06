@@ -54,6 +54,14 @@ void abandonWorldOverlayNodes()
     }
 }
 
+void dropWorldOverlayNodes()
+{
+    for (WorldOverlayFactory* factory : g_overlays) {
+        if (factory)
+            factory->dropNode();
+    }
+}
+
 const std::vector<WorldOverlayFactory*>& worldOverlayFactories()
 {
     return g_overlays;

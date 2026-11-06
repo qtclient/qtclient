@@ -304,7 +304,7 @@ std::unique_ptr<QQmlEngine> createEngine()
             engine->addImportPath(qpath);
     }
 #if defined(TIBIA_QML_DISK)
-    // DEV: also import from source pack qml/ so `import idleot` + disk remap stay in sync.
+    // DEV: also import from source pack qml/ so `import <pack qml module>` + disk remap stay in sync.
     // --no-mods drops pack qml/ and pack overrides (host has no client/overrides/).
     // Roots are in-tree mods/<id>/qml and QTCLIENT_LINKED_PACK qml/ (colon list).
     QString diskModDirs = QStringLiteral(TIBIA_QML_MOD_DIR);

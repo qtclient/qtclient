@@ -26,6 +26,29 @@ bool canTravelPath(const MapPos from, const MapPos to, const int maxComplexity)
     return g_map.canTravelPath(toPosition(from), toPosition(to), maxComplexity);
 }
 
+void canTravelPathAsync(const MapPos from, const MapPos to, const std::function<void(bool ok)>& callback)
+{
+    if (!callback) {
+        return;
+    }
+    if (from == to) {
+        callback(true);
+        return;
+    }
+    if (from.z != to.z) {
+        callback(false);
+        return;
+    }
+    g_map.findPathAsync(toPosition(from), toPosition(to),
+                        [callback](const PathFindResult_ptr& ret) {
+                            const bool ok = ret
+                                && (ret->status == tibia::client::PathFindResultOk
+                                    || ret->status == tibia::client::PathFindResultSamePosition);
+                            callback(ok);
+                        },
+                        tibia::client::AutoWalkPathTravel);
+}
+
 bool isWalkable(const MapPos pos, const bool ignoreCreatures)
 {
     if (const tibia::worldmap::TWorldMapField* tile = g_map.getTile(toPosition(pos)))

@@ -38,7 +38,7 @@ drop-in tree next to the binary (F5 QML). There is **no** `native/mod.*`,
 
 Local product path: `make qtclient client|wasm install` (qtclient tip with
 `QTCLIENT_LINKED_PACK`, then FS sync onto `dist/cdn`). Portal tip is
-`IDLEOT_ASSET_BASE` (local nginx `:9080`).
+`TIBIA_ASSET_BASE` (local nginx `:9080`).
 
 ## Pack format (desktop + WASM — same tree)
 
@@ -197,12 +197,12 @@ stage FS chrome. Release refuses a tip whose tree still contains `native/`.
 ```bash
 # After a linked tip build:
 bash apps/qtclient/scripts/lifecycle/package/archive-mod.sh \
-  --id idleot --build-dir apps/qtclient/build/<preset> \
-  --out /tmp/archive-idleot
+  --id <pack-id> --build-dir apps/qtclient/build/<preset> \
+  --out /tmp/archive-pack
 
 # Tip link without recompiling pack sources:
-cmake … -DQTCLIENT_LINKED_PACK_LIBS="idleot=/tmp/archive-idleot/lib/libqtclient_mod_idleot.a"
-# FS chrome still staged from archive mods/idleot/ (or QTCLIENT_LINKED_PACK sources).
+cmake … -DQTCLIENT_LINKED_PACK_LIBS="pack=/tmp/archive-pack/lib/libqtclient_mod_<id>.a"
+# FS chrome still staged from archive mods/<id>/ (or QTCLIENT_LINKED_PACK sources).
 ```
 
 Curated SDK-only packs (`otclient`): build with `-DQTCLIENT_PACK_SDK_ONLY=ON` and
@@ -261,7 +261,7 @@ engine-deep hooks during migration — it is **not** the tip defs gate. Tip
 `QT_NO_KEYWORDS`) always flow via `QtClientMod.cmake` so packs that still
 compile tip headers get matching keyword/defs. New packs must use `mod_api_v1.h`
 only (see [`client/mods/otclient`](../client/mods/otclient)). Do not rely on
-`QTCLIENT_MOD_INTERNAL` in out-of-tree packs. IdleOT **INTERNAL unset Done**
+`QTCLIENT_MOD_INTERNAL` in out-of-tree packs. out-of-tree packs: **INTERNAL unset Done**
 (`QTCLIENT_MOD_INTERNAL=0`). Pack includes are named / domain façades under
 `include/qtclient/` named / domain façades only (no `qtclient/tip/…` tree).
 `QTCLIENT_PACK_SDK_ONLY=ON` + tip closure is the pack include contract.
@@ -269,7 +269,7 @@ only (see [`client/mods/otclient`](../client/mods/otclient)). Do not rely on
 
 `QTCLIENT_MOD_GUI_PRIVATE=1` is a **narrow** opt-in that links `Qt6::GuiPrivate`
 (and `QuickPrivate` when present) for RHI headers (`rhi/qrhi.h`, `rhi/qshader.h`)
-without requiring deep tip includes. IdleOT keeps GuiPrivate after
+without requiring deep tip includes. product packs keep GuiPrivate after
 `MOD_INTERNAL` unset.
 
 Pack SDK: [`include/qtclient/`](../include/qtclient/README.md) (copied by
@@ -350,8 +350,8 @@ Register mods, backends, WorldView drivers/overlays inside the pack entry
 
 ## Client + pack
 
-- **`Client: ci`** (public) publishes qtclient (`client-<plat>:<sha>`, `client-sdk:<sha>`). Desktop and wasm both absorb `_sample` into `tibia` (tip `/FI` pch, MSVC `/FI` `pack_msvc_ns_anchor.h`, tip-generated `extern "C"` wrappers) on every kit — including MSVC — before release `pack-windows`. `_sample` includes `<qtclient/session.h>` so windows catches the IdleOT C3083 path.
-- Product release rebuilds qtclient with `QTCLIENT_LINKED_PACK`, stages FS chrome + default launcher mods, brands the tip, promotes CDN. When pack or host compile surface changed, dispatch `idleot/release` Build client and wait for **pack-windows** green before cutting a tag.
+- **`Client: ci`** (public) publishes qtclient (`client-<plat>:<sha>`, `client-sdk:<sha>`). Desktop and wasm both absorb `_sample` into `tibia` (tip `/FI` pch, MSVC `/FI` `pack_msvc_ns_anchor.h`, tip-generated `extern "C"` wrappers) on every kit — including MSVC — before release `pack-windows`. `_sample` includes `<qtclient/session.h>` so windows catches the pack MSVC C3083 path.
+- Product release rebuilds qtclient with `QTCLIENT_LINKED_PACK`, stages FS chrome + default launcher mods, brands the tip, promotes CDN. When pack or host compile surface changed, dispatch the product release Build client and wait for **pack-windows** green before cutting a tag.
 - Local: `make qtclient client|wasm install` builds qtclient with the pack linked and stages `mods/<id>`. Run loads all tip `mods/<id>`. `make stock client run` / `make stock launcher run` pass `--no-mods`.
 
 ## Make CLI

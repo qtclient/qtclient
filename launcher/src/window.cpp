@@ -666,9 +666,7 @@ QString LauncherWindow::localMinimapStamp() const
 bool LauncherWindow::thingsPacksStampPresent() const
 {
     const QDir tip(packageDir());
-    // Canonical stamp (portal + CIP-style); accept legacy product name once.
-    return QFileInfo::exists(tip.filePath(QStringLiteral(".tibia-sprite-packs")))
-        || QFileInfo::exists(tip.filePath(QStringLiteral(".idleot-sprite-packs")));
+    return QFileInfo::exists(tip.filePath(QStringLiteral(".tibia-sprite-packs")));
 }
 
 bool LauncherWindow::clientModsChannelActive() const

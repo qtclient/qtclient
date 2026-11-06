@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-"""Unified Tibia.app ingest for qtclient (CipSoft / CIP client).
+"""Unified Tibia.app ingest for IdleOT (CipSoft / CIP client).
 
-Default (CipSoft play path) — one read of a CipSoft install produces:
-  - packages/asset-pipeline/data/tibia-client/   CIP catalogs + masks (pipeline)
-  - packages/asset-pipeline/data/tibia-client/game-tables/
-                                                spells, charms, Wheel of Destiny
-                                                from the client binary
-  - apps/qtclient/data/assets/                  CIP-flat assets (catalog,
-                                                appearances, map, sprites,
-                                                Resources/minimap, graphics_resources.rcc)
-  - apps/qtclient/data/sounds/                  CIP sound bank (Resources sibling
-                                                of assets/, not nested under it)
+One read of a CipSoft install fills qtclient's CIP-flat tree (SoT for both
+the client and ``make generate``):
 
-CipSoft already mounts CIP art from graphics_resources.rcc and the bundled
-minimap; staticdata is loaded with official field numbers. Opt-in extras that
-used to always run (Lua-era / portal-only):
+  - apps/qtclient/data/assets/           CIP catalogs, appearances, map,
+                                         sprites, minimap, graphics_resources.rcc
+  - apps/qtclient/data/assets/game-tables/
+                                         spells/charms/wheel carved from the
+                                         CIP ``MacOS/client`` (pipeline only)
+  - apps/qtclient/data/assets/spells.json
+                                         CIP spell table next to assets (qtclient
+                                         disk load; same bytes as game-tables)
+  - apps/qtclient/data/sounds/           CIP sound bank (Resources sibling)
+
+``make generate`` reads ``data/assets/`` only — never opens Tibia.app.
+
+CipSoft mounts CIP art from graphics_resources.rcc and the bundled minimap;
+staticdata uses official field numbers. Legacy opt-in extras:
 
   --spells        carve spell icon strips + remap spellInfo.generated.json
   --otmm          build tibiamaps minimap.otmm (+ markers JSON)
@@ -39,21 +42,20 @@ from pathlib import Path
 _EXTRACT_DIR = Path(__file__).resolve().parent
 _TOOLS_DIR = _EXTRACT_DIR.parent
 _REPO = _TOOLS_DIR.parent
-# Monorepo: tools/extract → repo with apps/qtclient. Standalone qtclient: tools/ next to client/tibia.
+# Monorepo: tools/extract → repo with apps/qtclient. Standalone otquartz: tools/ next to client/tibia.
 if (_REPO / "apps/qtclient/client/tibia").is_dir():
     ROOT = _REPO
-    QTCLIENT_DIR = ROOT / "apps/qtclient"
+    OTC_DIR = ROOT / "apps/qtclient"
 elif (_REPO / "client/tibia").is_dir():
     ROOT = _REPO
-    QTCLIENT_DIR = ROOT
+    OTC_DIR = ROOT
 else:
     ROOT = _REPO
-    QTCLIENT_DIR = ROOT / "apps/qtclient" if (ROOT / "apps/qtclient").is_dir() else ROOT
+    OTC_DIR = ROOT / "apps/qtclient" if (ROOT / "apps/qtclient").is_dir() else ROOT
 
-TIBIA_CLIENT_DIR = ROOT / "packages/asset-pipeline/data/tibia-client"
 HAS_ASSET_PIPELINE = (ROOT / "packages/asset-pipeline").is_dir()
 DEFAULT_CLIENT_VERSION = os.environ.get("CLIENT_VERSION", "1533")
-DEFAULT_ASSETS_DIR = QTCLIENT_DIR / "data" / "assets"
+DEFAULT_ASSETS_DIR = OTC_DIR / "data" / "assets"
 
 # Shared OS defaults (CipSoft package paths).
 sys.path.insert(0, str(_TOOLS_DIR))
@@ -210,7 +212,11 @@ def copy_into(dest_dir: Path, src: Path) -> Path:
 
 
 def extract_cip(install: dict[str, Path | None], out_dir: Path) -> int:
-    """Copy CIP catalogs + official subarea masks into data/tibia-client/."""
+    """Copy CIP catalogs + official subarea masks into ``data/assets/``.
+
+    Used when ``--skip-things`` still needs catalog blobs for generate.
+    Full extract prefers ``extract_things`` (complete CIP assets tree).
+    """
     assets = install["assets"]
     assert assets is not None
     for key in ("map", "staticdata", "staticmapdata", "appearances", "proficiencies"):
@@ -433,22 +439,34 @@ def extract_spells(tibia: str) -> None:
     sync_spell_icons(tibia)
 
 
-def extract_game_tables(install: dict[str, Path | None], out_dir: Path) -> None:
-    """Spells, charms and Wheel of Destiny tables carried by the client binary."""
+def extract_game_tables(install: dict[str, Path | None], assets_dir: Path) -> None:
+    """Spells, charms and Wheel of Destiny tables carried by the client binary.
+
+    Writes ``assets/game-tables/`` for asset-pipeline / Crystal audits, and
+    copies ``spells.json`` to the assets root so qtclient can load it like a
+    CIP tip (disk next to catalog) without embedding pipeline paths at build.
+    """
     mac_os = install["mac_os"]
     client = mac_os / "client" if mac_os else None
     if client is None or not is_file(client):
         log("WARN: game tables skipped — no macOS client binary (Contents/MacOS/client)")
         return
+    if not HAS_ASSET_PIPELINE:
+        log("asset-pipeline absent — skipping game tables")
+        return
     sys.path.insert(0, str(ROOT / "packages/asset-pipeline/src"))
     from tibia.game_tables import GameTableError, write_game_tables
 
-    dest = out_dir / "game-tables"
+    dest = assets_dir / "game-tables"
     try:
         tables = write_game_tables(client, dest)
     except GameTableError as exc:
         log(f"WARN: game tables skipped — {exc} (see docs/reverse-engineering/game-data-tables.md)")
         return
+    spells_src = dest / "spells.json"
+    if spells_src.is_file():
+        shutil.copy2(spells_src, assets_dir / "spells.json")
+        log(f"spells.json → {assets_dir / 'spells.json'} (qtclient disk load)")
     log(
         f"game tables → {dest} ({len(tables['spells.json'])} spells, "
         f"{len(tables['charms.json'])} charms, "
@@ -496,17 +514,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--spells",
         action="store_true",
-        help="carve spell icon strips + remap spellInfo (CipSoft uses :/images/spells from RCC)",
+        help="LEGACY: carve spell icon strips + remap spellInfo "
+        "(CipSoft uses :/images/spells from RCC)",
     )
     parser.add_argument(
         "--otmm",
         action="store_true",
-        help="build tibiamaps minimap.otmm + markers (CipSoft uses CIP Resources/minimap)",
+        help="LEGACY: build tibiamaps minimap.otmm + markers "
+        "(CipSoft uses CIP Resources/minimap)",
     )
     parser.add_argument(
         "--aac-sprites",
         action="store_true",
-        help="render portal outfits_anim/ + items/ (website CDN; not needed for CipSoft)",
+        help="LEGACY/portal: render outfits_anim/ + items/ (website CDN; not CipSoft)",
     )
     # Compat aliases (default CipSoft path already skips these).
     parser.add_argument("--skip-spells", action="store_true", help=argparse.SUPPRESS)
@@ -515,8 +535,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--out-dir",
         type=Path,
-        default=TIBIA_CLIENT_DIR,
-        help="CIP catalog output (default: packages/asset-pipeline/data/tibia-client)",
+        default=None,
+        help=argparse.SUPPRESS,  # deprecated alias for --assets-dir
     )
     args = parser.parse_args(argv)
 
@@ -530,11 +550,14 @@ def main(argv: list[str] | None = None) -> int:
 
     version = str(args.client_version).strip()
     assets_dir = Path(args.assets_dir).resolve()
+    if args.out_dir is not None:
+        assets_dir = Path(args.out_dir).resolve()
+        log(f"WARN: --out-dir is deprecated; writing CIP assets to {assets_dir}")
     # CipSoft: Resources/{assets,sounds} siblings. Dev --data uses data/{assets,sounds}.
     if assets_dir.name == "assets":
         sounds_dir = assets_dir.parent / "sounds"
     else:
-        sounds_dir = QTCLIENT_DIR / "data" / "sounds" / version
+        sounds_dir = OTC_DIR / "data" / "sounds" / version
 
     install = resolve_tibia_install(tibia)
     log(f"Tibia install: {install['input']}")
@@ -542,21 +565,17 @@ def main(argv: list[str] | None = None) -> int:
     log(f"assets dest: {assets_dir}")
     log(f"sounds dest: {sounds_dir}")
 
-    if not args.skip_cip:
-        if HAS_ASSET_PIPELINE or args.out_dir != TIBIA_CLIENT_DIR:
-            extract_cip(install, args.out_dir.resolve())
-        else:
-            log("asset-pipeline absent — skipping CIP catalog copy (client assets only)")
-
-    if not args.skip_game_tables:
-        if HAS_ASSET_PIPELINE or args.out_dir != TIBIA_CLIENT_DIR:
-            extract_game_tables(install, args.out_dir.resolve())
-        else:
-            log("asset-pipeline absent — skipping game tables")
-
     if not args.skip_things:
         extract_things(install, assets_dir, skip_minimap=not args.otmm)
         stamp_assets_identifier(assets_dir)
+    elif not args.skip_cip:
+        # Catalog-only fill when the full assets tree is skipped (rare).
+        extract_cip(install, assets_dir)
+    else:
+        log("CIP catalogs skipped (--skip-things and --skip-cip)")
+
+    if not args.skip_game_tables:
+        extract_game_tables(install, assets_dir)
 
     extract_sounds(install, sounds_dir)
 
@@ -574,7 +593,7 @@ def main(argv: list[str] | None = None) -> int:
         log("portal outfits/items skipped (pass --aac-sprites for website CDN sprites)")
 
     log("done.")
-    log("next: make generate  # catalog pass (reads CIP + Crystal)")
+    log("next: make generate  # reads apps/qtclient/data/assets/ + Crystal")
     return 0
 
 

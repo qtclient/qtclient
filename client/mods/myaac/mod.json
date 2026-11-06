@@ -5,7 +5,7 @@
   "autoload": true,
   "priority": 50,
   "QTCLIENT_MOD_API": 1,
-  "description": "Default tip pack — myAAC http://127.0.0.1/login.php. Product tips replace urls via idleot (lower priority).",
+  "description": "Default tip pack — myAAC http://127.0.0.1/login.php. Product tips replace urls via pack (lower priority).",
   "urls": {
     "loginBase": "http://127.0.0.1",
     "loginPath": "/login.php",

@@ -26,12 +26,12 @@ int64_t itemMeanPrice(uint16_t id);
 /// Max gold NPC sale price (currencyObjectTypeId == 0, empty quest-flag currency); 0 when none.
 int64_t itemMaxNpcSaleGoldPrice(uint16_t id);
 
-/// Pack effect-variant registry (IdleOT custom_effects.json). No ThingType in the header.
+/// Pack effect-variant registry (product pack custom_effects.json). No ThingType in the header.
 void clearEffectVariants();
 void registerEffectVariant(uint16_t virtualId, uint16_t baseId, const std::string& shader,
                            bool underCreatures);
 
-/// Attached-effect registry peels (IdleOT custom_effects.json). No AttachedEffectPtr /
+/// Attached-effect registry peels (product pack custom_effects.json). No AttachedEffectPtr /
 /// ThingType in the header. `category` matches `ThingCategory` (`ThingCategoryEffect` = 2).
 /// Registration always applies permanent=false / onTop=false (server list resyncs).
 void removeAttachedEffect(uint16_t id);

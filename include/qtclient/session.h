@@ -60,6 +60,7 @@ using tibia::game::MapAwareRange;
 using tibia::game::MapUseHit;
 using tibia::game::MapItemHit;
 using tibia::game::canTravelPath;
+using tibia::game::canTravelPathAsync;
 using tibia::game::isWalkable;
 using tibia::game::awareRange;
 using tibia::game::itemHits;

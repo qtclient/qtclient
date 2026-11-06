@@ -3,7 +3,7 @@
 Login comes from the default tip pack [`mods/myaac`](../../client/mods/myaac/mod.json)
 ([myAAC](https://github.com/slawkens/myaac) at `http://127.0.0.1/login.php`).
 Crystal wire features come from [`mods/otclient`](../../client/mods/otclient/mod.json).
-Product tips add `mods/idleot` (portal urls) alongside `otclient`; multiple
+Product tips add `mods/<id>` (portal urls) alongside `otclient`; multiple
 autoload packs are supported (identity/urls: lower `priority` wins).
 
 ## Local demo
@@ -32,7 +32,7 @@ Or edit/reinstall `mods/myaac/mod.json` `urls` — no host rebuild.
 
 ## Product tip
 
-`make qtclient client install` merges IdleOT FS chrome (portal urls; often
+`make qtclient client install` merges product pack FS chrome (portal urls; often
 without `myaac`). Run loads all autoload tip packs. Default launcher mods
 (`clientmods`, `minimap`) gate optional CDN channels.
 

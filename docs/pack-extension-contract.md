@@ -1,6 +1,6 @@
 # Pack extension contract (CIP tip)
 
-**Frozen** tip surface for product packs (`apps/idleot-client` → `mods/<name>`).
+**Frozen** tip surface for product packs (out-of-tree `QTCLIENT_PACK` → `mods/<name>`).
 Stock tip (`make stock`, `--no-mods`) must run without these hooks.
 
 Public SDK: [`include/qtclient/`](../include/qtclient/README.md) — packs
@@ -8,7 +8,7 @@ Public SDK: [`include/qtclient/`](../include/qtclient/README.md) — packs
 tree plus tip closure (`tools/cip/sdk_tip_closure.py`).  
 CI: [`check-cip-tip-purity.py`](../../../scripts/ci/check-cip-tip-purity.py),
 [`check-cip-sdk-interface.py`](../../../scripts/ci/check-cip-sdk-interface.py),
-[`check-idleot-tip-includes.py`](../../../scripts/ci/check-idleot-tip-includes.py)
+the umbrella tip-include gate under `scripts/ci/`
 
 Session accessors for packs: [`include/qtclient/session.h`](../include/qtclient/session.h)
 → `game/gamesession.h` (`localPlayer` / `isOnline` / `cipFeature` / `millis` /
@@ -22,7 +22,7 @@ session-end subscribe / `requestBless`),
 `world/game.h` / `assets/things.h` / `world/creature.h` / `world/localplayer.h`;
 keep the Game hub include only for wire helpers. Raycast lighting uses the POD
 `WorldLightingDriver` + `setItemThingShape` / gamesession peels — no tip-deep
-`things.h` / `ThingType&` in IdleOT raycast TUs. Sprite peels:
+`things.h` / `ThingType&` in product pack raycast TUs. Sprite peels:
 `sprites/spritesession.h` (`QImage spriteImage`).
 
 CMake: tip `INCLUDE_DIRECTORIES` + tip `COMPILE_DEFINITIONS`/`OPTIONS`
@@ -58,7 +58,7 @@ Third-party / default packs (`otclient`) must `#include <qtclient/…>` only
 1. **No product HUD in** `client/tibia/` — packs only.
 2. Hooks are **CIP-neutral** (ids, backends, QML properties) — never reintroduce
    OTC `ThingPtr` / `ItemPtr` keep-alives as the pack API.
-3. Tip play path must not call into IdleOT symbols; packs plug hooks at load.
+3. Tip play path must not call into product pack symbols; packs plug hooks at load.
 4. New pack needs → add a tip hook here and ratchet this doc; do not fork tip UX.
 5. Do not add `TGameAction::object` / field UI `ThingPtr` / tip `UIWidget` — purity
    CI fails those regressions.
@@ -68,7 +68,7 @@ Third-party / default packs (`otclient`) must `#include <qtclient/…>` only
 ```bash
 python3 scripts/ci/check-cip-tip-purity.py
 make stock client build          # tip without requiring pack
-# with QTCLIENT_PACK / idleot linked:
+# with QTCLIENT_PACK / pack linked:
 cmake --build apps/qtclient/build/macos-dev --target tibia
 ```
 

@@ -62,7 +62,7 @@ QUrl PackQmlInterceptor::intercept(const QUrl& url, const DataType type)
     if (!path.startsWith(kQmlPrefix))
         return url;
 
-    const QString rel = path.mid(kQmlPrefix.size()); // e.g. idleot/TopBar.qml or qmlcomponents/qml/X.qml
+    const QString rel = path.mid(kQmlPrefix.size()); // e.g. pack/TopBar.qml or qmlcomponents/qml/X.qml
     if (rel.isEmpty() || rel.startsWith(QLatin1String("QtQuick/")))
         return url;
 

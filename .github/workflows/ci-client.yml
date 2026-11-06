@@ -1,7 +1,7 @@
 ---
 # Stock qtclient builds + publish client / client-sdk artifacts keyed by SHA.
 # PRs do NOT run this (see CI: checks for light gates). Builds only on main push
-# and idleot/release workflow_dispatch at the qtclient pin.
+# and the product release repo workflow_dispatch at the qtclient pin.
 #
 # Compile/dep cache: .github/actions/cache-{restore,save} → workspace/.cache/{vcpkg,ccache}
 # + public GHCR ghcr.io/qtclient/vcpkg-cache:{triplet}-{baseline12}.
@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       release_id:
-        description: Correlation id from idleot/release (for dispatch-and-wait)
+        description: Correlation id from the product release repo (for dispatch-and-wait)
         required: false
         default: ''
 

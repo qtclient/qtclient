@@ -3,9 +3,9 @@
 # QTCLIENT_LINKED_PACK_LIBS=<id>=/path/to/libqtclient_mod_<id>.a
 #
 # Usage:
-#   archive-mod.sh --id idleot --build-dir apps/qtclient/build/<preset> --out DIR
-#   archive-mod.sh --id idleot --archive /path/to/libqtclient_mod_idleot.a \
-#                  --fs /path/to/mods/idleot --out DIR
+#   archive-mod.sh --id <pack-id> --build-dir apps/qtclient/build/<preset> --out DIR
+#   archive-mod.sh --id <pack-id> --archive /path/to/libqtclient_mod_<id>.a \
+#                  --fs /path/to/mods/<id> --out DIR
 set -euo pipefail
 
 ID=""

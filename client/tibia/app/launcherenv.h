@@ -12,7 +12,7 @@ namespace app {
 /// Login / AAC config for the tibia client.
 /// Precedence: process env > mod.json `urls` > release_env.lua > real CipSoft fallbacks.
 /// No pack / `--no-mods`: https://www.tibia.com + https://static.tibia.com.
-/// Tip `mods/myaac` = myAAC; IdleOT pack = portal CIP urls.
+/// Tip `mods/myaac` = myAAC; product pack pack = portal CIP urls.
 struct LauncherEnv
 {
     /// Started by the desktop launcher (QTCLIENT_LAUNCHER=1).

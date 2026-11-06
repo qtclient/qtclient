@@ -21,7 +21,7 @@ namespace protocol {
 
 /// CIP-shaped sink: `TProtocolMessageQueue` → classic `ProtocolGame` parsers.
 /// Temporary until each opcode has a native `*ProtocolMessageHandler` slot.
-/// IdleOT / product mods must not hang here — they use ExtendedOpcodeRouter.
+/// product pack / product mods must not hang here — they use ExtendedOpcodeRouter.
 class TClassicProtocolBridgeHandler final : public QObject
 {
     Q_OBJECT

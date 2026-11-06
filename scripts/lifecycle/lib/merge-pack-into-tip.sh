@@ -8,7 +8,7 @@
 # (product urls replace it) and any other non-default siblings.
 #
 # Usage:
-#   merge-pack-into-tip.sh --pack <mods/idleot tree> --tip <applicationDirPath>
+#   merge-pack-into-tip.sh --pack <mods/<id> tree> --tip <applicationDirPath>
 set -euo pipefail
 
 PACK=""

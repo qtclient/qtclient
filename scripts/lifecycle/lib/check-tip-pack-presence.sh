@@ -3,13 +3,13 @@
 # package.json packedhashes are absent from the content-addressed store.
 #
 # Usage:
-#   check-tip-pack-presence.sh --tip <dir> [--id idleot] [--cdn <dist/cdn>]
+#   check-tip-pack-presence.sh --tip <dir> --id <pack-id> [--cdn <dist/cdn>]
 # Linked tip: FS chrome only (mod.json + qml/overrides).
 set -euo pipefail
 
 TIP=""
 CDN=""
-PACK_ID="idleot"
+PACK_ID=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -21,8 +21,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -n "$TIP" ]] || {
-  echo "usage: $0 --tip <dir> [--id idleot] [--cdn <dist/cdn>]" >&2
+[[ -n "$TIP" && -n "$PACK_ID" ]] || {
+  echo "usage: $0 --tip <dir> --id <pack-id> [--cdn <dist/cdn>]" >&2
   exit 1
 }
 

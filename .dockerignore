@@ -28,4 +28,4 @@ Dockerfile*
 /docs/
 **/*.md
 **/__pycache__
-src/framework/idleot_encryption.h
+src/framework/pack_encryption.h

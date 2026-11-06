@@ -27,7 +27,7 @@ Stock-only: `-DQTCLIENT_ENABLE_MODS=OFF`.
 | Prefix | Use |
 |--------|-----|
 | `QTCLIENT_*` | Stock qtclient / launcher process env and WASM hooks |
-| `IDLEOT_*` | product pack-only knobs (lighting, raycast/weather perf) |
+| `product pack env knobs` | product pack-only knobs (lighting, raycast/weather perf) |
 | `TIBIA_*` | CipSoft-shaped CMake/target names (`TIBIA_WITH_GAMECORE`, brand.cmake keys) — not invented process env |
 
 ## First-time consumers

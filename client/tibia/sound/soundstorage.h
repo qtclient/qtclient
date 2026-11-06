@@ -69,7 +69,7 @@ public:
     void endAmbienceHold(uint16_t fallbackRestoreId);
     /// Play/replace the loop while the channel is held (weather precip bed).
     bool playHeldAmbience(uint16_t ambientId, bool loop = true);
-    /// Held ambience from a product path (`/data/sounds/mod/weather/...`), not a CIP ambient id.
+    /// Held ambience from a pack VFS path (`/resources/sounds/…` on the pack root), not a CIP ambient id.
     bool playHeldAmbiencePath(const std::string& virtualPath, bool loop = true);
     /// Extra multiplier on the ambience loop voice (intensity swell). Resets to 1 on hold end.
     void setAmbienceVoiceGain(float gain);

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stock demo launcher: CipSoft assets via tip; login via tip client mods/myaac.
-# Unsets IdleOT DEV_JSON so Play uses real tip install (not local bypass).
+# Unsets product pack DEV_JSON so Play uses real tip install (not local bypass).
 #
 # Usage (from apps/qtclient or via make demo-run):
 #   bash scripts/lifecycle/lib/start-demo-launcher.sh
@@ -26,7 +26,7 @@ unset QTCLIENT_AUTOPLAY || true
 # Login comes from tip mods/myaac — do not force --no-mods on Play.
 unset QTCLIENT_CLIENT_ARGS || true
 unset QTCLIENT_MODS_DIR || true
-# Clear any leftover IdleOT portal login env escape hatch.
+# Clear any leftover product pack portal login env escape hatch.
 unset QTCLIENT_PORTAL_URL || true
 unset QTCLIENT_LOGIN_SCHEME QTCLIENT_LOGIN_HOST QTCLIENT_LOGIN_PORT || true
 unset QTCLIENT_LOGIN_PATH QTCLIENT_CLIENTSERVICES_PATH QTCLIENT_CREATE_ACCOUNT_PATH || true

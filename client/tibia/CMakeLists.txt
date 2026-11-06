@@ -80,7 +80,6 @@ qt_add_executable(tibia
   app/clientoptions.cpp app/clientoptions.h
   app/graphicsrestart.cpp app/graphicsrestart.h
   app/crashlog.cpp app/crashlog.h
-  app/cipdomainmap.cpp app/cipdomainmap.h
   app/launcherenv.cpp app/launcherenv.h
   app/sessionbootstrap.cpp app/sessionbootstrap.h
   app/hints.cpp app/hints.h
@@ -132,7 +131,7 @@ if(TIBIA_QML_DISK)
   message(STATUS "tibia: TIBIA_QML_DISK — QML from source tree, NO_CACHEGEN, F5 clears cache")
   # Colon-separated roots for DiskQmlInterceptor + F5 watcher.
   # Pack overrides only (host has no client/overrides/). In-tree mods/<id>/
-  # plus QTCLIENT_LINKED_PACK(S) (e.g. apps/idleot-client/client).
+  # plus QTCLIENT_LINKED_PACK(S) (e.g. the product pack/client).
   if(EXISTS "${TIBIA_ROOT}/client/overrides")
     message(FATAL_ERROR
       "tibia: host client/overrides/ must not exist (CIP Soft parity). "
@@ -694,19 +693,9 @@ if(TIBIA_WITH_GAMECORE)
       "${_stock_shader_base}/lightmap_overlay.vert")
 endif()
 
-# CIP's default hotkey presets and the spell table from `make extract`.
+# CIP's default hotkey presets. Spell table is CIP-native on disk after
+# `make extract` (`data/assets/spells.json`); do not embed pipeline game-tables.
 qt_add_resources(tibia tibia_hotkeys PREFIX / BASE "${CMAKE_CURRENT_SOURCE_DIR}" FILES config/defaulthotkeys.json)
-set(tibia_spells_json "${TIBIA_ROOT}/../../packages/asset-pipeline/data/tibia-client/game-tables/spells.json")
-set(tibia_spells_previews_json "${TIBIA_ROOT}/../../packages/asset-pipeline/data/tibia-client/game-tables/spells-previews.json")
-if(EXISTS "${tibia_spells_json}")
-  set_source_files_properties("${tibia_spells_json}" PROPERTIES QT_RESOURCE_ALIAS spells.json)
-  set(tibia_spells_files "${tibia_spells_json}")
-  if(EXISTS "${tibia_spells_previews_json}")
-    set_source_files_properties("${tibia_spells_previews_json}" PROPERTIES QT_RESOURCE_ALIAS spells-previews.json)
-    list(APPEND tibia_spells_files "${tibia_spells_previews_json}")
-  endif()
-  qt_add_resources(tibia tibia_spells PREFIX /spells FILES ${tibia_spells_files})
-endif()
 
 
 if(EMSCRIPTEN)

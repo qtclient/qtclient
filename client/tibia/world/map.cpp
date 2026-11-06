@@ -1405,8 +1405,17 @@ PathFindResult_ptr Map::newFindPath(const Position& start, const Position& goal,
     std::priority_queue<Node*, std::vector<Node*>, LessNode> searchList;
 
     if (visibleNodes) {
-        for (auto& node : *visibleNodes)
-            nodes.emplace(node->pos, node);
+        for (auto& node : *visibleNodes) {
+            // cost < 0: impassable aware-tile sentinel from buildTravelVisibleNodes.
+            // Emplacing a real Node here let A* expand through blocked live tiles and
+            // the server answered "Sorry, not possible."
+            if (node->cost < 0.f) {
+                nodes.emplace(node->pos, nullptr);
+                delete node;
+            } else {
+                nodes.emplace(node->pos, node);
+            }
+        }
     }
 
     const auto& initNode = new Node{ .cost = 1, .totalCost = 0, .pos = start, .prev = nullptr, .distance = 0, .unseen = 0 };
@@ -1553,7 +1562,9 @@ std::shared_ptr<std::list<Node*>> buildTravelVisibleNodes(Map& map, const Positi
             visibleNodes->push_back(new Node{ .cost = 2000.f, .totalCost = 10000000.0f, .pos = tile->getPosition(),
                                               .prev = nullptr, .distance = 0, .unseen = 0 });
         } else if ((isNotWalkable || isNotPathable) && tile->getPosition() != goal) {
-            visibleNodes->push_back(new Node{ .cost = baseSpeed, .totalCost = 0, .pos = tile->getPosition(), .prev = nullptr,
+            // CipSoft: impassable aware tiles stay closed. cost < 0 marks a sentinel
+            // that newFindPath stores as nullptr (must not be expandable).
+            visibleNodes->push_back(new Node{ .cost = -1.f, .totalCost = 0, .pos = tile->getPosition(), .prev = nullptr,
                                               .distance = 0, .unseen = 0 });
         } else {
             visibleNodes->push_back(new Node{ .cost = baseSpeed, .totalCost = 10000000.0f, .pos = tile->getPosition(),

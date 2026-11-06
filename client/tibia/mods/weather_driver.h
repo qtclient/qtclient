@@ -15,6 +15,8 @@ struct WeatherStateView {
     float windY = 0;
     float lightning = 0;
     bool hasAtmosphere = false;
+    /// Outdoor classic-light cool amount (0..1). Pack policy; tip applies a neutral curve.
+    float ambientTint = 0;
 };
 
 class WeatherDriver {

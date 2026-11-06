@@ -218,7 +218,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
             }
 
             auto* xlat = tibia::protocol::serverMessageTranslator();
-            // Extended / product opcodes stay tip-local (IdleOT mods), not CIP queue.
+            // Extended / product opcodes stay tip-local (product pack mods), not CIP queue.
             const bool productOpcode = (opcode == Proto::GameServerExtendedOpcode);
             // Structured measure (incl. LoginChallenge 1405+ pad) is length authority.
             const bool cipTranslateFirst = xlat && xlat->hasStructuredLayout(opcode);
@@ -250,7 +250,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                     tibia::protocol::enqueueTranslatedServerFrame(classic, false);
                 }
             } else if (productOpcode) {
-                // IdleOT / tip mods: ExtendedOpcode stays tip-local (not CIP queue).
+                // product pack / tip mods: ExtendedOpcode stays tip-local (not CIP queue).
                 handleOpcode(static_cast<uint8_t>(opcode));
             } else {
                 // Bridge layouts: classic length + behavior, then queue without re-apply.

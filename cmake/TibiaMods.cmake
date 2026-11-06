@@ -210,7 +210,22 @@ function(tibia_apply_linked_pack_staging)
     string(REPLACE "|" ";" _parts "${_entry}")
     list(GET _parts 0 _mod_id)
     list(GET _parts 1 _outdir)
+    set(_resources_dir "")
+    list(LENGTH _parts _nparts)
+    if(_nparts GREATER 2)
+      list(GET _parts 2 _resources_dir)
+    endif()
+    # Refresh pack resources from SoT before tip copy so travel.plan.bin edits
+    # land without a cmake reconfigure (configure-time file(COPY) alone is stale).
+    set(_refresh_res_cmds "")
+    if(_resources_dir AND EXISTS "${_resources_dir}")
+      set(_refresh_res_cmds
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${_outdir}/resources"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${_resources_dir}" "${_outdir}/resources"
+      )
+    endif()
     add_custom_command(TARGET tibia POST_BUILD
+      ${_refresh_res_cmds}
       COMMAND ${CMAKE_COMMAND} -E rm -rf "$<TARGET_FILE_DIR:tibia>/mods/${_mod_id}"
       COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:tibia>/mods/${_mod_id}"
       COMMAND ${CMAKE_COMMAND} -E copy_directory "${_outdir}" "$<TARGET_FILE_DIR:tibia>/mods/${_mod_id}"

@@ -81,7 +81,7 @@ function(qtclient_add_mod MOD_ID)
 
   # Per-pack defs (do not pollute the whole tip with QTCLIENT_MOD_ID).
   # TARGET_DIRECTORY tibia is required: qtclient_add_mod runs from the pack's
-  # CMakeLists (e.g. mods/_sample or out-of-tree IdleOT), not the directory that
+  # CMakeLists (e.g. mods/_sample or out-of-tree product pack), not the directory that
   # created `tibia`. Without it, Ninja ignores SOURCE COMPILE_* properties and
   # pack TUs miss /FI pch + QTCLIENT_MOD_* (MSVC C3083 on tibia::container).
   set(_pack_defs "QTCLIENT_MOD_BUILD=1;QTCLIENT_MOD_ID=${MOD_ID}")
@@ -175,14 +175,19 @@ function(qtclient_add_mod MOD_ID)
   if(ARG_OVERRIDES_DIR AND EXISTS "${ARG_OVERRIDES_DIR}")
     file(COPY "${ARG_OVERRIDES_DIR}/" DESTINATION "${_outdir}/overrides")
   endif()
+  # Configure-time seed only — travel.plan.bin / shaders change without reconfigure.
+  # POST_BUILD in tibia_apply_linked_pack_staging re-copies RESOURCES_DIR → tip.
+  set(_resources_dir "")
   if(ARG_RESOURCES_DIR AND EXISTS "${ARG_RESOURCES_DIR}")
     file(COPY "${ARG_RESOURCES_DIR}/" DESTINATION "${_outdir}/resources")
+    set(_resources_dir "${ARG_RESOURCES_DIR}")
   endif()
 
   # Defer tip FS staging: add_custom_command(TARGET tibia) only works in the
   # directory that created `tibia` (mods/ is a subdirectory).
+  # Format: id|outdir|resourcesDir (resourcesDir may be empty).
   set_property(GLOBAL APPEND PROPERTY QTCLIENT_MOD_TIP_STAGE
-    "${MOD_ID}|${_outdir}")
+    "${MOD_ID}|${_outdir}|${_resources_dir}")
 
   if(NOT TARGET qtclient_mods)
     add_custom_target(qtclient_mods COMMENT "qtclient linked packs (absorbed into tibia)")

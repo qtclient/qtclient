@@ -480,7 +480,7 @@ WeatherFrame TWorldMapRenderProvider::weatherFrame() const
     out.time = static_cast<float>(g_clock.millis()) * 0.001f;
     out.lightning = weather->lightningFlash();
     // Midday isometric SE fall (map px). Kept in stock so weather overlays work
-    // without linking the IdleOT raycast pack.
+    // without linking a raycast pack.
     out.fallX = 0.70710678f;
     out.fallY = 0.70710678f;
     out.outdoorFraction = m_frame.geometry.outdoorFraction();
@@ -666,13 +666,10 @@ void TWorldMapRenderProvider::applyWeatherAmbientTint()
     if (!weather || !weather->enabled() || !m_frame.geometry.valid())
         return;
     const auto state = weather->display();
-    // Clouds are a scrolling overlay only — do not dim ambient (rain/storm/fog handle mood).
-    const float mood = std::max(state.intensity * (state.kind == 3 /* Storm */ ? 1.f : 0.7f),
-                                state.fog * 0.6f);
-    if (mood < 0.01f)
+    // Pack sets ambientTint (mood policy). Tip only applies a neutral cool curve outdoors.
+    const float amount = std::clamp(state.ambientTint, 0.f, 1.f);
+    if (amount < 0.01f)
         return;
-    // Cool / desaturate outdoor light cells; indoor mask unchanged.
-    const float amount = mood * (state.kind == 3 /* Storm */ ? 0.45f : 0.28f);
     const float coolR = 1.f - amount * 0.35f;
     const float coolG = 1.f - amount * 0.15f;
     const float coolB = 1.f + amount * 0.08f;
@@ -708,11 +705,14 @@ void TWorldMapRenderProvider::buildLight()
     };
     // One CIP floor-walk: raycast ambient + classic TLightMap (shared fieldFlags / roofs).
     const light::ClassicLightBuild built = light::buildClassicLightPair(in, m_lights, (m_lighting && m_lighting->enabled()));
-    if ((m_lighting && m_lighting->enabled()))
-        if (m_lighting) m_lighting->setFieldAmbient(light::toLightImage(built.ambient, in.drawWidth, in.drawHeight));
     m_lightUntinted = light::toLightImage(built.classic, in.drawWidth, in.drawHeight);
     m_frame.light = m_lightUntinted;
     applyWeatherAmbientTint();
+    if (m_lighting && m_lighting->enabled()) {
+        m_lighting->setFieldAmbient(light::toLightImage(built.ambient, in.drawWidth, in.drawHeight));
+        // Same grid the LightMap multiplies (post weather tint) — raycast open-floor SoT.
+        m_lighting->setFieldClassic(m_frame.light);
+    }
 }
 
 float TWorldMapRenderProvider::lightnessAt(const QPoint& mapPixel) const

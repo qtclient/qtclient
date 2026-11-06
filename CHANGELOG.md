@@ -22,7 +22,7 @@ Versioning follows semver for public tags (`vX.Y.Z`).
 - Stock core is CIP classic lighting only; product raycast/weather live in
   packs via the WorldView API — no export/scrub pipeline.
 - Product identity and launcher brand resolve from `mod.json` at runtime.
-- Process env / WASM hooks: `QTCLIENT_*` in stock, `IDLEOT_*` in the product pack;
+- Process env / WASM hooks: `QTCLIENT_*` in stock, `product pack env knobs` in the product pack;
   `TIBIA_*` kept for CipSoft-shaped CMake/target names only.
 - Source roots match include prefixes (no symlinks): `client/tibia/`,
   `client/mods/pack/pack/`.

@@ -54,12 +54,12 @@ import content_store  # noqa: E402
 
 OTC = Path(__file__).resolve().parents[2]
 PLATFORMS = ("linux-x64", "windows-x64", "macos-arm64")
-# Stock host brands as qtclient; product release (IdleOT pack) sets QTCLIENT_APP_NAME=IdleOT.
+# Stock host brands as qtclient; product release sets QTCLIENT_APP_NAME.
 APP_NAME = os.environ.get("QTCLIENT_APP_NAME", "qtclient")
 # CipSoft in-package Play basename (Contents/MacOS/client).
 GAME_EXE = "client"
 BUNDLE_ID = os.environ.get("QTCLIENT_BUNDLE_ID", "com.qtclient.client")
-# CDN list dir: stock .qtclient; IdleOT assemble expects .idleot (QTCLIENT_STORE_META=.idleot).
+# CDN list dir: stock .qtclient; product assemble may set QTCLIENT_STORE_META.
 STORE_META = os.environ.get("QTCLIENT_STORE_META", ".qtclient")
 # The tibia app compiles its QML (CIP's and pack) and the Qt pin into the engine.
 TIBIA_ENGINE_PATHS = (
@@ -139,7 +139,7 @@ def release_env_entry(
 ) -> tuple[Path, str]:
     """Write release_env.lua (revision + optional origin/asset).
 
-    Login paths live in pack mod.json `urls` (demo myaac / IdleOT CIP).
+    Login paths live in pack mod.json `urls` (demo myaac / product CIP).
     login_profile legacy values myaac|cip still bake paths as a fallback when
     the tip has no mod; prefer `mod` (default) — origin only for domain remap.
     """
@@ -179,8 +179,8 @@ def release_env_entry(
 
 def brand_icns() -> Path | None:
     """Product pack ships resources/<App>.icns under client/mods/<pack>/."""
-    names = (APP_NAME, APP_NAME.lower(), "IdleOT", "qtclient")
-    packs = (APP_NAME.lower(), "idleot", "qtclient")
+    names = (APP_NAME, APP_NAME.lower(), "qtclient")
+    packs = (APP_NAME.lower(), "qtclient")
     for pack in packs:
         for name in names:
             path = OTC / "client" / "mods" / pack / "resources" / f"{name}.icns"
@@ -458,17 +458,9 @@ def main() -> int:
     ap.add_argument("--bin", type=Path, help="directory holding the built engine")
     ap.add_argument("--out", type=Path, default=OTC.parent.parent / "dist" / "slices" / "desktop")
     ap.add_argument("--revision", default=os.environ.get("TIBIA_DESKTOP_REVISION") or None)
-    ap.add_argument("--site-url", default=(
-                        os.environ.get("TIBIA_SITE_URL")
-                        or os.environ.get("IDLEOT_SITE_URL")
-                        or ""
-                    ),
+    ap.add_argument("--site-url", default=(os.environ.get("TIBIA_SITE_URL") or ""),
                     help="the portal origin baked into release_env.lua, e.g. https://www.example.invalid")
-    ap.add_argument("--asset-base", default=(
-                        os.environ.get("TIBIA_ASSET_BASE")
-                        or os.environ.get("IDLEOT_ASSET_BASE")
-                        or ""
-                    ),
+    ap.add_argument("--asset-base", default=(os.environ.get("TIBIA_ASSET_BASE") or ""),
                     help="CDN origin baked into release_env.lua, e.g. https://cdn.example.invalid")
     ap.add_argument(
         "--login-profile",

@@ -77,20 +77,29 @@ cat >"${DEST}/.qtclient/wasm.json" <<EOF
 }
 EOF
 
-# Optional product pack (IdleOT): bake into tip next to tibia.wasm for /play OPFS.
+# Optional product pack: bake into tip next to tibia.wasm for /play OPFS.
+# Prefer QTCLIENT_PACK_DIR; else the sole mods/<id> tree next to the wasm build (if any).
 PACK_SRC="${QTCLIENT_PACK_DIR:-}"
-if [[ -z "$PACK_SRC" && -d "${SRC}/mods/idleot" ]]; then
-  PACK_SRC="${SRC}/mods/idleot"
+if [[ -z "$PACK_SRC" && -d "${SRC}/mods" ]]; then
+  for cand in "${SRC}/mods"/*; do
+    [[ -d "$cand" && -f "$cand/mod.json" ]] || continue
+    base="$(basename "$cand")"
+    [[ "$base" == otclient || "$base" == myaac || "$base" == clientmods || "$base" == minimap ]] && continue
+    PACK_SRC="$cand"
+    break
+  done
 fi
 if [[ -n "$PACK_SRC" && -f "${PACK_SRC}/mod.json" ]]; then
-  rm -rf "${OUT}/mods/idleot"
+  pack_id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("id") or "")' "${PACK_SRC}/mod.json")"
+  [[ -n "$pack_id" ]] || pack_id="$(basename "$PACK_SRC")"
+  rm -rf "${OUT}/mods/${pack_id}"
   mkdir -p "${OUT}/mods"
-  cp -a "$PACK_SRC" "${OUT}/mods/idleot"
+  cp -a "$PACK_SRC" "${OUT}/mods/${pack_id}"
   (
-    cd "${OUT}/mods/idleot"
+    cd "${OUT}/mods/${pack_id}"
     find . -type f | sed 's|^\./||' | sort
-  ) >"${OUT}/mods/idleot.files"
-  echo "[pack-tibia-wasm] merged pack → ${OUT}/mods/idleot ($(wc -l < "${OUT}/mods/idleot.files" | tr -d ' ') files)"
+  ) >"${OUT}/mods/${pack_id}.files"
+  echo "[pack-tibia-wasm] merged pack → ${OUT}/mods/${pack_id} ($(wc -l < "${OUT}/mods/${pack_id}.files" | tr -d ' ') files)"
 fi
 
 echo "[pack-tibia-wasm] revision=${REV} engine=${ENGINE_SHA} → ${OUT}"

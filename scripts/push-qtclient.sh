@@ -60,14 +60,6 @@ git rm -rf --cached third_party/qt5-cip 2>/dev/null || true
 rm -rf third_party/qt5-cip
 git update-index --add --cacheinfo "160000,${QT_SHA},third_party/qt5-cip"
 
-# Brand gate before commit
-if command -v rg >/dev/null; then
-  if rg -n 'idleot::|#include\s*"idleot/' client/src 2>/dev/null; then
-    echo "abort: idleot types in client/src" >&2
-    exit 1
-  fi
-fi
-
 git -c user.email="noreply@qtclient.dev" -c user.name="qtclient" commit -m "$(cat <<'EOF'
 Initial public qtclient (otqt) tree.
 

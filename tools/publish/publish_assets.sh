@@ -117,10 +117,15 @@ publish_things() {
     cp "$src/minimap.otmm" "$tree/Contents/Resources/minimap/minimap.otmm"
   fi
 
-  local tables="$ROOT/packages/asset-pipeline/data/tibia-client/game-tables/spells.json"
-  if [[ -f "$tables" ]]; then
+  # Prefer CIP-flat assets/spells.json from extract; fall back to game-tables carve.
+  local tables="$OTC/data/assets/game-tables/spells.json"
+  if [[ -f "$assets_dir/spells.json" ]]; then
+    :
+  elif [[ -f "$src/spells.json" ]]; then
+    cp "$src/spells.json" "$assets_dir/spells.json"
+  elif [[ -f "$tables" ]]; then
     cp "$tables" "$assets_dir/spells.json"
-  elif [[ ! -f "$assets_dir/spells.json" ]]; then
+  else
     echo "[assets] WARN: no spells.json (make extract); the spell list stays empty" >&2
   fi
 
@@ -133,9 +138,12 @@ publish_things() {
   fi
 
   # CIP: Resources/sounds is a sibling of Resources/assets (not nested under assets).
+  # make extract writes the same layout to data/sounds/ (CIP-flat).
   local sounds=""
   if [[ -f "$src/sounds/catalog-sound.json" ]]; then
     sounds="$src/sounds"
+  elif [[ -f "$OTC/data/sounds/catalog-sound.json" ]]; then
+    sounds="$OTC/data/sounds"
   elif [[ -f "$OTC/data/assets/sounds/catalog-sound.json" ]]; then
     sounds="$OTC/data/assets/sounds"
   elif [[ -f "$OTC/data/sounds/$VERSION/catalog-sound.json" ]]; then

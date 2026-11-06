@@ -51,7 +51,7 @@ public:
     using QObject::QObject;
     ~TGameHost() override = default;
 
-    /// Frame-duration ring average (IDLEOT_PERF / FPS peels). 0 when unavailable.
+    /// Frame-duration ring average (QTCLIENT_PERF / FPS peels). 0 when unavailable.
     virtual qint64 averageFrameNs() const = 0;
     /// World-map build phase costs from the last advance (ns). 0 when unavailable.
     virtual qint64 worldmapBuildNs() const = 0;

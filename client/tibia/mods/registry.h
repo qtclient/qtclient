@@ -92,7 +92,7 @@ void earlyBootstrapAll(const ModContext& ctx);
 const ModIdentity* primaryIdentity();
 /// Register pack urls (sorted by priority ascending; lower wins like identity).
 void registerModUrls(ModUrls urls);
-/// First non-empty urls after priority sort (IdleOT priority 10 beats myaac 50).
+/// First non-empty urls after priority sort (product pack priority 10 beats myaac 50).
 const ModUrls* primaryUrls();
 /// Call from mod static initializers so identity is ready before QApplication.
 void ensureModsRegistered();

@@ -61,7 +61,7 @@ def find_launcher(bin_dir: Path, platform: str) -> Path:
 
 
 def brand_launcher_macos(app: Path) -> Path:
-    """Rename launcher.app → APP_NAME.app (IdleOT.app when product-branded)."""
+    """Rename launcher.app → APP_NAME.app (product brand via QTCLIENT_APP_NAME)."""
     target = app.parent / f"{APP_NAME}.app"
     if app != target:
         shutil.rmtree(target, ignore_errors=True)
@@ -150,8 +150,8 @@ def stage_windows(build: Path, dest: Path, qt: Path) -> Path:
 def stage_linux(build: Path, dest: Path, qt: Path) -> Path:
     shutil.rmtree(dest, ignore_errors=True)
     dest.mkdir(parents=True)
-    # CIP package.json executable: idleot-launcher (IdleOT) / qtclient-launcher (stock).
-    binary = dest / ("idleot-launcher" if APP_NAME == "IdleOT" else "qtclient-launcher")
+    # CIP package.json executable: <brand>-launcher (product) / qtclient-launcher (stock).
+    binary = dest / (f"{APP_NAME.lower()}-launcher" if APP_NAME.lower() != "qtclient" else "qtclient-launcher")
     shutil.copy2(build, binary)
     binary.chmod(0o755)
 
@@ -264,9 +264,7 @@ def main() -> int:
         )
     else:
         zip_path = out / "installers" / f"{platform}.zip"
-        arcroot = APP_NAME if platform == "windows-x64" else (
-            "idleot" if APP_NAME == "IdleOT" else "qtclient"
-        )
+        arcroot = APP_NAME if platform == "windows-x64" else APP_NAME.lower()
         write_zip(staged_dir, zip_path, arcroot=arcroot)
         print(f"[launcher] {platform} -> {staged} + {zip_path} ({zip_path.stat().st_size} bytes)")
     return 0

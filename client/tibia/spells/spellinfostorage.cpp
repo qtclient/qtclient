@@ -47,20 +47,22 @@ TSpellInfoStorage* TSpellInfoStorage::instance()
     return storage;
 }
 
-/// CI wasm builds do not embed the extract output. Extract / assets tip ships
-/// spells.json next to the CIP assets dump (or legacy things/<ver>/).
+/// CIP ships ``:/spells/spells.json`` in the client binary. Our tip / local
+/// extract places the same file next to CIP assets (`data/assets/spells.json`
+/// or ``Resources/assets/spells.json``). No pipeline/game-tables embeds.
 QString spellsJsonPath()
 {
     const QString embedded = QStringLiteral(":/spells/spells.json");
     if (QFileInfo::exists(embedded))
         return embedded;
-    // CIP: applicationDirPath/../Resources/assets/spells.json
+    // CIP package: applicationDirPath/../Resources/assets/spells.json
     const QString cipAssets = QDir(QDir(QCoreApplication::applicationDirPath())
                                        .absoluteFilePath(QStringLiteral("..")))
                                   .filePath(QStringLiteral("Resources/assets"));
     const QStringList dirs = {
         cipAssets,
         qEnvironmentVariable("QTCLIENT_DATA_DIR"),
+        QDir::current().filePath(QStringLiteral("data/assets")),
         QDir::current().filePath(QStringLiteral("data")),
         QStringLiteral("/data"),
         QDir::current().filePath(QStringLiteral("Contents/Resources/assets")),
@@ -75,13 +77,6 @@ QString spellsJsonPath()
         const QString assets = QDir(dir).filePath(QStringLiteral("assets/spells.json"));
         if (QFileInfo::exists(assets))
             return assets;
-        const QDir things(QDir(dir).filePath(QStringLiteral("things")));
-        const auto versions = things.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::Reversed);
-        for (const QString& version : versions) {
-            const QString path = things.filePath(version + QStringLiteral("/spells.json"));
-            if (QFileInfo::exists(path))
-                return path;
-        }
     }
     return {};
 }
@@ -91,7 +86,7 @@ TSpellInfoStorage::TSpellInfoStorage()
     const QString path = spellsJsonPath();
     QFile file(path);
     if (path.isEmpty() || !file.open(QIODevice::ReadOnly)) {
-        qWarning("spells.json not embedded (make extract): spells unknown");
+        qWarning("spells.json missing (make extract → data/assets/spells.json): spells unknown");
         return;
     }
     for (const QJsonValue& value : QJsonDocument::fromJson(file.readAll()).array()) {

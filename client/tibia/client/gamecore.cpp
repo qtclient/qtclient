@@ -148,7 +148,7 @@ void enableFeatures(const int version)
 
     // qtclient tip = CipSoft wire only. OTCR extras (GameItemShader,
     // GameCreatureShader, GameCreatureAttachedEffect,
-    // GameWingsAurasEffectsShader) belong in the IdleOT pack via
+    // GameWingsAurasEffectsShader) belong in the product pack pack via
     // mods::setFeatureExtrasHook — and require CLIENTOS_OTCR_* so Crystal
     // sets isOTCR. parseFeatures(0x43) can also enable them.
     tibia::mods::applyFeatureExtras();

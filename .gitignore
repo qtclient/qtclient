@@ -44,9 +44,9 @@ vc18/
 # This private qtclient fork keeps upstream/ tracked for convenience — see docs/open-source.md.
 # /upstream/
 
-# Stock tracks default packs only. Product packs (e.g. idleot) STATIC-link via
+# Stock tracks default packs only. Product packs STATIC-link via
 # QTCLIENT_LINKED_PACK and stage tip mods/<id>/ at build time — not under this tree.
-# Do not commit mods/idleot or launcher/mods/idleot.
+# Do not commit product packs under client/mods or launcher/mods.
 /client/mods/*
 !/client/mods/README.md
 !/client/mods/_sample/
