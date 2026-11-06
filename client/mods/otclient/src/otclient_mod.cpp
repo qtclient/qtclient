@@ -2,6 +2,9 @@
 #include <qtclient/abi/host_api_v1.h>
 #include <qtclient/abi/mod_register.h>
 
+#include "mods/host_api.h"
+#include "mods/mod_entry.h"
+
 #include <cstdio>
 #include <cstring>
 
@@ -54,4 +57,11 @@ QTCLIENT_MOD_EXPORT void qtclient_mod_register(const QtClientHostApiV1* api,
 {
     (void)ctx;
     registerOtclient(api);
+}
+
+// Deprecated absorb-into-tip entry (GenerateLinkedMods). Prefer qtclient_mod_register.
+void qtclient_mod_otclient_register(const tibia::mods::ModContext* earlyCtx)
+{
+    (void)earlyCtx;
+    registerOtclient(qtclient_host_api_v1());
 }
