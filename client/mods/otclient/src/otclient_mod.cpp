@@ -57,12 +57,14 @@ void registerOtclient(const QtClientHostApiV1* api)
 
 } // namespace
 
+#ifndef QTCLIENT_ABSORB_INTO_TIP
 QTCLIENT_MOD_EXPORT void qtclient_mod_register(const QtClientHostApiV1* api,
                                                const QtClientModLoadCtx* ctx)
 {
     (void)ctx;
     registerOtclient(api);
 }
+#endif
 
 // Deprecated absorb-into-tip entry (GenerateLinkedMods). Prefer qtclient_mod_register.
 void qtclient_mod_otclient_register(const tibia::mods::ModContext* earlyCtx)
