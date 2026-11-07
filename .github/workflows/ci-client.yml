@@ -165,7 +165,7 @@ jobs:
           if [[ "$RUNNER_OS" == Windows ]]; then
             export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
           fi
-          # Default otclient runtime MODULE (host-pushed C ABI) + FS chrome.
+          # Default otclient ABSORB_INTO_TIP + FS chrome (no native/mod.* / MAIN_MODULE=2).
           cmake --preset ${{ matrix.preset }} \
             -DTOGGLE_BIN_FOLDER=ON \
             -DOPTIONS_ENABLE_IPO=OFF \
@@ -184,9 +184,8 @@ jobs:
             exit 1
           fi
           OTC_NATIVE="$(find "build/${{ matrix.preset }}" -path '*/mods/otclient/native/mod.*' -type f 2>/dev/null | head -1 || true)"
-          if [[ -z "$OTC_NATIVE" || ! -f "$OTC_NATIVE" ]]; then
-            echo "::error::otclient native/mod.* missing under build/${{ matrix.preset }}" >&2
-            find "build/${{ matrix.preset }}" -path '*/mods/otclient/*' 2>/dev/null | head -40 || true
+          if [[ -n "$OTC_NATIVE" ]]; then
+            echo "::error::otclient must stay ABSORB_INTO_TIP (no native/mod.*): $OTC_NATIVE" >&2
             exit 1
           fi
           ccache -s || true
@@ -361,9 +360,8 @@ jobs:
             exit 1
           fi
           OTC_NATIVE="$(find build/tibia-wasm -path '*/mods/otclient/native/mod.wasm' -type f 2>/dev/null | head -1 || true)"
-          if [[ -z "$OTC_NATIVE" || ! -f "$OTC_NATIVE" ]]; then
-            echo "::error::otclient native/mod.wasm missing (runtime MODULE)" >&2
-            find build/tibia-wasm -path '*/mods/otclient/*' 2>/dev/null | head -40 || true
+          if [[ -n "$OTC_NATIVE" ]]; then
+            echo "::error::otclient must stay ABSORB_INTO_TIP (no native/mod.wasm): $OTC_NATIVE" >&2
             exit 1
           fi
           ccache -s || true
