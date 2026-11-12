@@ -212,6 +212,14 @@ public:
 };
 
 /// CIP movement intents consumed by TPlayerMovementInputInterpreter / pathing.
+/// Kind tags match CIP `TMovementIntent*::v2` return values (pin unit).
+enum class TMovementIntentKind : int {
+    Target = 0,
+    Direction = 1,
+    Rotate = 2,
+    Stop = 3,
+};
+
 class TMovementIntentDirection final : public ::tibia::CipTyped
 {
 public:
@@ -219,6 +227,8 @@ public:
         : m_direction(direction)
     {
     }
+    /// CIP `TMovementIntentDirection::v2` → 1.
+    static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Direction; }
     int direction() const { return m_direction; }
 
 private:
@@ -232,6 +242,8 @@ public:
         : m_direction(direction)
     {
     }
+    /// CIP `TMovementIntentRotate::v2` → 2.
+    static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Rotate; }
     int direction() const { return m_direction; }
 
 private:
@@ -242,6 +254,8 @@ class TMovementIntentStop final : public ::tibia::CipTyped
 {
 public:
     TMovementIntentStop() = default;
+    /// CIP `TMovementIntentStop::v2` → 3.
+    static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Stop; }
 };
 
 class TMovementIntentTargetCoordinate final : public ::tibia::CipTyped
@@ -251,6 +265,8 @@ public:
         : m_x(x), m_y(y), m_z(z)
     {
     }
+    /// CIP `TMovementIntentTargetCoordinate::v2` → 0.
+    static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Target; }
     int x() const { return m_x; }
     int y() const { return m_y; }
     int z() const { return m_z; }
@@ -275,7 +291,8 @@ private:
 class TPlayerMovementIntent final : public ::tibia::CipTyped
 {
 public:
-    enum class Kind { Stop, Direction, Rotate, Target };
+    /// Same numeric tags as CIP `TMovementIntent*::v2` / `TPlayerMovementIntent` compares.
+    using Kind = TMovementIntentKind;
     TPlayerMovementIntent() = default;
     static TPlayerMovementIntent stop()
     {
@@ -307,6 +324,7 @@ public:
         return intent;
     }
     Kind kind() const { return m_kind; }
+    int kindId() const { return static_cast<int>(m_kind); }
     int direction() const { return m_direction; }
     int x() const { return m_x; }
     int y() const { return m_y; }
