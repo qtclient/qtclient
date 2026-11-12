@@ -240,6 +240,23 @@ public:
     TTibiaClipboardHelper() = default;
 };
 
+/// CIP `shared::TClipboardHelper` (v2 setText / v3 text via QGuiApplication::clipboard).
+class TClipboardHelper final : public ::tibia::CipTyped
+{
+public:
+    TClipboardHelper() = default;
+    void setText(const QString& text) const;
+    QString text() const;
+};
+
+/// CIP `shared::THashHelper` — CryptoPP SHA256 in the binary; product uses Qt.
+class THashHelper final : public ::tibia::CipTyped
+{
+public:
+    THashHelper() = default;
+    static QByteArray sha256(const QByteArray& data);
+};
+
 class TTibiaFileSystemHelper final : public ::tibia::CipTyped {
 public:
     TTibiaFileSystemHelper() = default;
