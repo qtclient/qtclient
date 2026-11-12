@@ -53,7 +53,7 @@
 #include <QString>
 #include <tibia/game/thingsession_forward.h>
 
-Game s_tipGameHub;
+Game s_qtclientGameHub;
 
 Game::~Game() = default;
 

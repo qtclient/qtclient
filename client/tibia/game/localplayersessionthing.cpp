@@ -70,7 +70,7 @@ LocalPlayerSessionThing::~LocalPlayerSessionThing() = default;
 
 LocalPlayerGoPath& LocalPlayerSessionThing::goPath()
 {
-    LocalPlayerGoPath* path = tipGameHub().localPlayerGoPath();
+    LocalPlayerGoPath* path = qtclientGameHub().localPlayerGoPath();
     if (!path)
         throw Exception("LocalPlayerGoPath not bound to Game session");
     return *path;

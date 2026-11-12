@@ -197,255 +197,255 @@ void unsubscribeSessionEnd(const int id)
 
 LocalPlayerSessionThingPtr localPlayer()
 {
-    return tipGameHub().getLocalPlayer();
+    return qtclientGameHub().getLocalPlayer();
 }
 
 
 bool isOnline()
 {
-    return tipGameHub().isOnline();
+    return qtclientGameHub().isOnline();
 }
 
 bool isDead()
 {
-    return tipGameHub().isDead();
+    return qtclientGameHub().isDead();
 }
 
 bool isSceneFrozen()
 {
-    return tipGameHub().isSceneFrozen();
+    return qtclientGameHub().isSceneFrozen();
 }
 
 void setSceneFrozen(const bool frozen)
 {
-    tipGameHub().setSceneFrozen(frozen);
+    qtclientGameHub().setSceneFrozen(frozen);
 }
 
 bool isSwitchingCharacter()
 {
-    return tipGameHub().isSwitchingCharacter();
+    return qtclientGameHub().isSwitchingCharacter();
 }
 
 std::string characterName()
 {
-    return tipGameHub().getCharacterName();
+    return qtclientGameHub().getCharacterName();
 }
 
 int clientRevision()
 {
-    return tipGameHub().getClientVersion();
+    return qtclientGameHub().getClientVersion();
 }
 
 tibia::client::OperatingSystem_t clientOs()
 {
-    return tipGameHub().getOs();
+    return qtclientGameHub().getOs();
 }
 
 bool cipFeature(const tibia::client::GameFeature feature)
 {
-    return tipGameHub().getFeature(feature);
+    return qtclientGameHub().getFeature(feature);
 }
 
 void enableFeature(const tibia::client::GameFeature feature)
 {
-    tipGameHub().enableFeature(feature);
+    qtclientGameHub().enableFeature(feature);
 }
 
 void disableFeature(const tibia::client::GameFeature feature)
 {
-    tipGameHub().disableFeature(feature);
+    qtclientGameHub().disableFeature(feature);
 }
 
 void setProtocolVersion(const uint16_t version)
 {
-    tipGameHub().setProtocolVersion(version);
+    qtclientGameHub().setProtocolVersion(version);
 }
 
 void setClientRevision(const uint16_t version)
 {
-    tipGameHub().setClientVersion(version);
+    qtclientGameHub().setClientVersion(version);
 }
 
 void initGameHub()
 {
-    tipGameHub().init();
+    qtclientGameHub().init();
 }
 
 void terminateGameHub()
 {
-    tipGameHub().terminate();
+    qtclientGameHub().terminate();
 }
 
 void processConnectionError(const std::error_code& ec)
 {
-    tipGameHub().processConnectionError(ec);
+    qtclientGameHub().processConnectionError(ec);
 }
 
 void startDecodedReplay()
 {
-    tipGameHub().startDecodedReplay();
+    qtclientGameHub().startDecodedReplay();
 }
 
 void deliverReplayPacket(const uint8_t* data, size_t size)
 {
-    tipGameHub().deliverReplayPacket(data, size);
+    qtclientGameHub().deliverReplayPacket(data, size);
 }
 
 void finishDecodedReplay()
 {
-    tipGameHub().finishDecodedReplay();
+    qtclientGameHub().finishDecodedReplay();
 }
 
 std::string formatCreatureName(const std::string_view name)
 {
-    return tipGameHub().formatCreatureName(name);
+    return qtclientGameHub().formatCreatureName(name);
 }
 
 void setCustomOs(const tibia::client::OperatingSystem_t os)
 {
-    tipGameHub().setCustomOs(os);
+    qtclientGameHub().setCustomOs(os);
 }
 
 uint32_t attackingCreatureId()
 {
-    return tipGameHub().getAttackingCreatureId();
+    return qtclientGameHub().getAttackingCreatureId();
 }
 
 uint32_t followingCreatureId()
 {
-    return tipGameHub().getFollowingCreatureId();
+    return qtclientGameHub().getFollowingCreatureId();
 }
 
 void setAttackingCreatureId(const uint32_t creatureId)
 {
-    tipGameHub().setAttackingCreatureId(creatureId);
+    qtclientGameHub().setAttackingCreatureId(creatureId);
 }
 
 void talk(const std::string_view message)
 {
-    tipGameHub().talk(message);
+    qtclientGameHub().talk(message);
 }
 
 void turn(const tibia::client::Direction direction)
 {
-    tipGameHub().turn(direction);
+    qtclientGameHub().turn(direction);
 }
 
 bool walk(const tibia::client::Direction direction)
 {
-    return tipGameHub().walk(direction);
+    return qtclientGameHub().walk(direction);
 }
 
 void interruptAutoWalk()
 {
-    tipGameHub().interruptAutoWalk();
+    qtclientGameHub().interruptAutoWalk();
 }
 
 void safeLogout()
 {
-    tipGameHub().safeLogout();
+    qtclientGameHub().safeLogout();
 }
 
 void processLogin()
 {
-    tipGameHub().processLogin();
+    qtclientGameHub().processLogin();
 }
 
 void processGameStart()
 {
-    tipGameHub().processGameStart();
+    qtclientGameHub().processGameStart();
 }
 
 void processPendingGame()
 {
-    tipGameHub().processPendingGame();
+    qtclientGameHub().processPendingGame();
 }
 
 void processWorldEntered()
 {
-    tipGameHub().processWorldEntered();
+    qtclientGameHub().processWorldEntered();
 }
 
 void processPing()
 {
-    tipGameHub().processPing();
+    qtclientGameHub().processPing();
 }
 
 void processPingBack()
 {
-    tipGameHub().processPingBack();
+    qtclientGameHub().processPingBack();
 }
 
 void processDeath(uint8_t deathType, uint8_t penality)
 {
-    tipGameHub().processDeath(deathType, penality);
+    qtclientGameHub().processDeath(deathType, penality);
 }
 
 void processLoginError(std::string_view error)
 {
-    tipGameHub().processLoginError(error);
+    qtclientGameHub().processLoginError(error);
 }
 
 void processLoginAdvice(std::string_view message)
 {
-    tipGameHub().processLoginAdvice(message);
+    qtclientGameHub().processLoginAdvice(message);
 }
 
 void processLoginWait(std::string_view message, uint8_t time)
 {
-    tipGameHub().processLoginWait(message, time);
+    qtclientGameHub().processLoginWait(message, time);
 }
 
 void processSessionEnd(uint8_t reason)
 {
-    tipGameHub().processSessionEnd(reason);
+    qtclientGameHub().processSessionEnd(reason);
 }
 
 void processCharacterSwitch(std::string_view characterName)
 {
-    tipGameHub().processCharacterSwitch(characterName);
+    qtclientGameHub().processCharacterSwitch(characterName);
 }
 
 void processPlayerHelpers(uint16_t helpers)
 {
-    tipGameHub().processPlayerHelpers(helpers);
+    qtclientGameHub().processPlayerHelpers(helpers);
 }
 
 void processAttackCancel(uint32_t seq)
 {
-    tipGameHub().processAttackCancel(seq);
+    qtclientGameHub().processAttackCancel(seq);
 }
 
 void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
                         tibia::client::PVPModes pvpMode)
 {
-    tipGameHub().processPlayerModes(fightMode, chaseMode, safeMode, pvpMode);
+    qtclientGameHub().processPlayerModes(fightMode, chaseMode, safeMode, pvpMode);
 }
 
 void processNumericalEffect(tibia::client::MessageMode mode, const Position& pos, uint64_t value, uint8_t color)
 {
-    tipGameHub().processNumericalEffect(mode, pos, value, color);
+    qtclientGameHub().processNumericalEffect(mode, pos, value, color);
 }
 
 void processTextMessage(tibia::client::MessageMode mode, std::string_view text)
 {
-    tipGameHub().processTextMessage(mode, text);
+    qtclientGameHub().processTextMessage(mode, text);
 }
 
 void processTalk(std::string_view name, uint16_t level, tibia::client::MessageMode mode, std::string_view text,
                  uint16_t channelId, const Position& pos, uint32_t statement)
 {
-    tipGameHub().processTalk(name, level, mode, text, channelId, pos, statement);
+    qtclientGameHub().processTalk(name, level, mode, text, channelId, pos, statement);
 }
 
 void processVipStateChange(uint32_t id, uint32_t status)
 {
-    tipGameHub().processVipStateChange(id, status);
+    qtclientGameHub().processVipStateChange(id, status);
 }
 
 void processTeamFinderLeader(const TeamFinderLeaderData& data)
 {
-    tipGameHub().processTeamFinderLeader(data);
+    qtclientGameHub().processTeamFinderLeader(data);
 }
 
 void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
@@ -453,133 +453,133 @@ void processOpenContainer(uint8_t containerId, const ::tibia::container::TInvent
                           const std::vector<::tibia::container::TInventorySlot>& items, bool isUnlocked, bool hasPages,
                           bool showSearch, uint16_t containerSize, uint16_t firstIndex)
 {
-    tipGameHub().processOpenContainer(containerId, containerItem, name, capacity, hasParent, items, isUnlocked, hasPages, showSearch, containerSize, firstIndex);
+    qtclientGameHub().processOpenContainer(containerId, containerItem, name, capacity, hasParent, items, isUnlocked, hasPages, showSearch, containerSize, firstIndex);
 }
 
 void processCloseContainer(uint8_t containerId)
 {
-    tipGameHub().processCloseContainer(containerId);
+    qtclientGameHub().processCloseContainer(containerId);
 }
 
 void processContainerAddItem(uint8_t containerId, const ::tibia::container::TInventorySlot& item, uint16_t slot)
 {
-    tipGameHub().processContainerAddItem(containerId, item, slot);
+    qtclientGameHub().processContainerAddItem(containerId, item, slot);
 }
 
 void processContainerUpdateItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& item)
 {
-    tipGameHub().processContainerUpdateItem(containerId, slot, item);
+    qtclientGameHub().processContainerUpdateItem(containerId, slot, item);
 }
 
 void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& lastItem)
 {
-    tipGameHub().processContainerRemoveItem(containerId, slot, lastItem);
+    qtclientGameHub().processContainerRemoveItem(containerId, slot, lastItem);
 }
 
 void processUpdateNeeded(std::string_view signature)
 {
-    tipGameHub().processUpdateNeeded(signature);
+    qtclientGameHub().processUpdateNeeded(signature);
 }
 
 void processSessionDumpStart(std::string_view sessionKey)
 {
-    tipGameHub().processSessionDumpStart(sessionKey);
+    qtclientGameHub().processSessionDumpStart(sessionKey);
 }
 
 void processSessionDumpMarker(std::string_view marker)
 {
-    tipGameHub().processSessionDumpMarker(marker);
+    qtclientGameHub().processSessionDumpMarker(marker);
 }
 
 void processSoundTrigger(uint8_t type, uint16_t soundId)
 {
-    tipGameHub().processSoundTrigger(type, soundId);
+    qtclientGameHub().processSoundTrigger(type, soundId);
 }
 
 void processReadyForSecondaryConnection(std::string_view token)
 {
-    tipGameHub().processReadyForSecondaryConnection(token);
+    qtclientGameHub().processReadyForSecondaryConnection(token);
 }
 
 void processOutfitMemorial(const OutfitMemorialData& data)
 {
-    tipGameHub().processOutfitMemorial(data);
+    qtclientGameHub().processOutfitMemorial(data);
 }
 
 void processWalkCancel(tibia::client::Direction direction)
 {
-    tipGameHub().processWalkCancel(direction);
+    qtclientGameHub().processWalkCancel(direction);
 }
 
 void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEntry>& entries)
 {
-    tipGameHub().processTeamFinderList(rateLimited, entries);
+    qtclientGameHub().processTeamFinderList(rateLimited, entries);
 }
 
 void processDepotSearchResults(const std::vector<DepotSearchResultItem>& items)
 {
-    tipGameHub().processDepotSearchResults(items);
+    qtclientGameHub().processDepotSearchResults(items);
 }
 
 void processDepotSearchDetail(const DepotSearchDetail& detail)
 {
-    tipGameHub().processDepotSearchDetail(detail);
+    qtclientGameHub().processDepotSearchDetail(detail);
 }
 
 void processCloseDepotSearch()
 {
-    tipGameHub().processCloseDepotSearch();
+    qtclientGameHub().processCloseDepotSearch();
 }
 
 void processChannelList(const std::vector<std::tuple<uint16_t, std::string>>& channelList)
 {
-    tipGameHub().processChannelList(channelList);
+    qtclientGameHub().processChannelList(channelList);
 }
 
 void processOpenChannel(uint16_t channelId, std::string_view name)
 {
-    tipGameHub().processOpenChannel(channelId, name);
+    qtclientGameHub().processOpenChannel(channelId, name);
 }
 
 void processOpenPrivateChannel(std::string_view name)
 {
-    tipGameHub().processOpenPrivateChannel(name);
+    qtclientGameHub().processOpenPrivateChannel(name);
 }
 
 void processOpenOwnPrivateChannel(uint16_t channelId, std::string_view name)
 {
-    tipGameHub().processOpenOwnPrivateChannel(channelId, name);
+    qtclientGameHub().processOpenOwnPrivateChannel(channelId, name);
 }
 
 void processCloseChannel(uint16_t channelId)
 {
-    tipGameHub().processCloseChannel(channelId);
+    qtclientGameHub().processCloseChannel(channelId);
 }
 
 void processVipAdd(uint32_t id, std::string_view name, uint32_t status, std::string_view description, uint32_t iconId,
                   bool notifyLogin, const std::vector<uint8_t>& groupID)
 {
-    tipGameHub().processVipAdd(id, name, status, description, iconId, notifyLogin, groupID);
+    qtclientGameHub().processVipAdd(id, name, status, description, iconId, notifyLogin, groupID);
 }
 
 void processVipGroupChange(const std::vector<std::tuple<uint8_t, std::string, bool>>& vipGroups, uint8_t groupsAmountLeft)
 {
-    tipGameHub().processVipGroupChange(vipGroups, groupsAmountLeft);
+    qtclientGameHub().processVipGroupChange(vipGroups, groupsAmountLeft);
 }
 
 void processTutorialHint(uint8_t id)
 {
-    tipGameHub().processTutorialHint(id);
+    qtclientGameHub().processTutorialHint(id);
 }
 
 void processAddAutomapFlag(const Position& pos, uint8_t icon, std::string_view message)
 {
-    tipGameHub().processAddAutomapFlag(pos, icon, message);
+    qtclientGameHub().processAddAutomapFlag(pos, icon, message);
 }
 
 void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_view message)
 {
-    tipGameHub().processRemoveAutomapFlag(pos, icon, message);
+    qtclientGameHub().processRemoveAutomapFlag(pos, icon, message);
 }
 
 void processOpenOutfitWindow(const Outfit& currentOutfit,
@@ -591,82 +591,82 @@ void processOpenOutfitWindow(const Outfit& currentOutfit,
                              const std::vector<std::tuple<uint16_t, std::string>>& effectsList,
                              const std::vector<std::tuple<uint16_t, std::string>>& shaderList)
 {
-    tipGameHub().processOpenOutfitWindow(currentOutfit, outfitList, mountList, familiarList, wingsList, aurasList, effectsList, shaderList);
+    qtclientGameHub().processOpenOutfitWindow(currentOutfit, outfitList, mountList, familiarList, wingsList, aurasList, effectsList, shaderList);
 }
 
 void processOpenNpcTrade(const std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items)
 {
-    tipGameHub().processOpenNpcTrade(items);
+    qtclientGameHub().processOpenNpcTrade(items);
 }
 
 void processPlayerGoods(uint64_t money, const std::vector<std::pair<uint16_t, uint16_t>>& goods)
 {
-    tipGameHub().processPlayerGoods(money, goods);
+    qtclientGameHub().processPlayerGoods(money, goods);
 }
 
 void processCloseNpcTrade()
 {
-    tipGameHub().processCloseNpcTrade();
+    qtclientGameHub().processCloseNpcTrade();
 }
 
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items)
 {
-    tipGameHub().processOwnTrade(name, items);
+    qtclientGameHub().processOwnTrade(name, items);
 }
 
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items)
 {
-    tipGameHub().processCounterTrade(name, items);
+    qtclientGameHub().processCounterTrade(name, items);
 }
 
 void processCloseTrade()
 {
-    tipGameHub().processCloseTrade();
+    qtclientGameHub().processCloseTrade();
 }
 
 void processEditText(uint32_t id, uint32_t itemId, uint16_t maxLength, std::string_view text, std::string_view writer,
                      std::string_view date, bool recentlyTraded)
 {
-    tipGameHub().processEditText(id, itemId, maxLength, text, writer, date, recentlyTraded);
+    qtclientGameHub().processEditText(id, itemId, maxLength, text, writer, date, recentlyTraded);
 }
 
 void processEditList(uint32_t id, uint8_t doorId, std::string_view text)
 {
-    tipGameHub().processEditList(id, doorId, text);
+    qtclientGameHub().processEditList(id, doorId, text);
 }
 
 void processQuestLog(const std::vector<std::tuple<uint16_t, std::string, bool>>& questList)
 {
-    tipGameHub().processQuestLog(questList);
+    qtclientGameHub().processQuestLog(questList);
 }
 
 void processQuestLine(uint16_t questId, const std::vector<std::tuple<std::string, std::string, uint16_t>>& questMissions)
 {
-    tipGameHub().processQuestLine(questId, questMissions);
+    qtclientGameHub().processQuestLine(questId, questMissions);
 }
 
 void processModalDialog(uint32_t id, std::string_view title, std::string_view message,
                         const std::vector<std::tuple<uint8_t, std::string>>& buttonList, uint8_t enterButton,
                         uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>& choiceList, bool priority)
 {
-    tipGameHub().processModalDialog(id, title, message, buttonList, enterButton, escapeButton, choiceList, priority);
+    qtclientGameHub().processModalDialog(id, title, message, buttonList, enterButton, escapeButton, choiceList, priority);
 }
 
 void processItemDetail(const ItemInspectionData& data)
 {
-    tipGameHub().processItemDetail(data);
+    qtclientGameHub().processItemDetail(data);
 }
 
 void processInspectionState(uint32_t creatureId, uint8_t state)
 {
-    tipGameHub().processInspectionState(creatureId, state);
+    qtclientGameHub().processInspectionState(creatureId, state);
 }
 
 void processCyclopediaCharacterGeneralStats(const CyclopediaCharacterGeneralStats& stats,
                                             const std::vector<std::vector<uint16_t>>& skills,
                                             const std::vector<std::tuple<uint8_t, uint16_t>>& combats)
 {
-    tipGameHub().processCyclopediaCharacterGeneralStats(stats, skills, combats);
+    qtclientGameHub().processCyclopediaCharacterGeneralStats(stats, skills, combats);
 }
 
 void processCyclopediaCharacterCombatStats(const CyclopediaCharacterCombatStats& data, double mitigation,
@@ -676,24 +676,24 @@ void processCyclopediaCharacterCombatStats(const CyclopediaCharacterCombatStats&
                                            const std::vector<std::tuple<uint8_t, uint16_t>>& combatsArray,
                                            const std::vector<std::tuple<uint16_t, uint16_t>>& concoctionsArray)
 {
-    tipGameHub().processCyclopediaCharacterCombatStats(data, mitigation, additionalSkillsArray, forgeSkillsArray, perfectShotDamageRangesArray, combatsArray, concoctionsArray);
+    qtclientGameHub().processCyclopediaCharacterCombatStats(data, mitigation, additionalSkillsArray, forgeSkillsArray, perfectShotDamageRangesArray, combatsArray, concoctionsArray);
 }
 
 void processCyclopediaCharacterGeneralStatsBadge(uint8_t showAccountInformation, uint8_t playerOnline,
                                                  uint8_t playerPremium, std::string_view loyaltyTitle,
                                                  const std::vector<std::tuple<uint32_t, std::string>>& badgesVector)
 {
-    tipGameHub().processCyclopediaCharacterGeneralStatsBadge(showAccountInformation, playerOnline, playerPremium, loyaltyTitle, badgesVector);
+    qtclientGameHub().processCyclopediaCharacterGeneralStatsBadge(showAccountInformation, playerOnline, playerPremium, loyaltyTitle, badgesVector);
 }
 
 void processCyclopediaCharacterInspection(const CyclopediaCharacterInspection& data)
 {
-    tipGameHub().processCyclopediaCharacterInspection(data);
+    qtclientGameHub().processCyclopediaCharacterInspection(data);
 }
 
 void processCyclopediaCharacterItemSummary(const CyclopediaCharacterItemSummary& data)
 {
-    tipGameHub().processCyclopediaCharacterItemSummary(data);
+    qtclientGameHub().processCyclopediaCharacterItemSummary(data);
 }
 
 void processCyclopediaCharacterAppearances(const OutfitColorStruct& currentOutfit,
@@ -701,48 +701,48 @@ void processCyclopediaCharacterAppearances(const OutfitColorStruct& currentOutfi
                                            const std::vector<CharacterInfoMounts>& mounts,
                                            const std::vector<CharacterInfoFamiliar>& familiars)
 {
-    tipGameHub().processCyclopediaCharacterAppearances(currentOutfit, outfits, mounts, familiars);
+    qtclientGameHub().processCyclopediaCharacterAppearances(currentOutfit, outfits, mounts, familiars);
 }
 
 void processCyclopediaCharacterRecentDeaths(const CyclopediaCharacterRecentDeaths& data)
 {
-    tipGameHub().processCyclopediaCharacterRecentDeaths(data);
+    qtclientGameHub().processCyclopediaCharacterRecentDeaths(data);
 }
 
 void processCyclopediaCharacterRecentPvpKills(const CyclopediaCharacterRecentPvPKills& data)
 {
-    tipGameHub().processCyclopediaCharacterRecentPvpKills(data);
+    qtclientGameHub().processCyclopediaCharacterRecentPvpKills(data);
 }
 
 void processParseBestiaryRaces(const std::vector<CyclopediaBestiaryRace>& bestiaryData)
 {
-    tipGameHub().processParseBestiaryRaces(bestiaryData);
+    qtclientGameHub().processParseBestiaryRaces(bestiaryData);
 }
 
 void processParseBestiaryOverview(std::string_view raceName, const std::vector<BestiaryOverviewMonsters>& data,
                                   uint16_t animusMasteryPoints)
 {
-    tipGameHub().processParseBestiaryOverview(raceName, data, animusMasteryPoints);
+    qtclientGameHub().processParseBestiaryOverview(raceName, data, animusMasteryPoints);
 }
 
 void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data)
 {
-    tipGameHub().processUpdateBestiaryMonsterData(data);
+    qtclientGameHub().processUpdateBestiaryMonsterData(data);
 }
 
 void processUpdateBestiaryCharmsData(const BestiaryCharmsData& charmData)
 {
-    tipGameHub().processUpdateBestiaryCharmsData(charmData);
+    qtclientGameHub().processUpdateBestiaryCharmsData(charmData);
 }
 
 void processBosstiaryInfo(const std::vector<BosstiaryData>& boss)
 {
-    tipGameHub().processBosstiaryInfo(boss);
+    qtclientGameHub().processBosstiaryInfo(boss);
 }
 
 void processBosstiarySlots(const BosstiarySlotsData& data)
 {
-    tipGameHub().processBosstiarySlots(data);
+    qtclientGameHub().processBosstiarySlots(data);
 }
 
 void processHighscore(std::string_view serverName, std::string_view world, uint8_t worldType, uint8_t battlEye,
@@ -753,32 +753,32 @@ void processHighscore(std::string_view serverName, std::string_view world, uint8
                       uint32_t selectedVocation, uint8_t selectedCategory, uint8_t selectedIndex,
                       bool showLoyaltyTitle, uint8_t valueType)
 {
-    tipGameHub().processHighscore(serverName, world, worldType, battlEye, vocations, categories, page, totalPages, highscores, entriesTs, worlds, allVocationsName, selectedVocation, selectedCategory, selectedIndex, showLoyaltyTitle, valueType);
+    qtclientGameHub().processHighscore(serverName, world, worldType, battlEye, vocations, categories, page, totalPages, highscores, entriesTs, worlds, allVocationsName, selectedVocation, selectedCategory, selectedIndex, showLoyaltyTitle, valueType);
 }
 
 void processCyclopediaCharacterOffenceStats(const CyclopediaCharacterOffenceStats& data)
 {
-    tipGameHub().processCyclopediaCharacterOffenceStats(data);
+    qtclientGameHub().processCyclopediaCharacterOffenceStats(data);
 }
 
 void processCyclopediaCharacterDefenceStats(const CyclopediaCharacterDefenceStats& data)
 {
-    tipGameHub().processCyclopediaCharacterDefenceStats(data);
+    qtclientGameHub().processCyclopediaCharacterDefenceStats(data);
 }
 
 void processCyclopediaCharacterMiscStats(const CyclopediaCharacterMiscStats& data)
 {
-    tipGameHub().processCyclopediaCharacterMiscStats(data);
+    qtclientGameHub().processCyclopediaCharacterMiscStats(data);
 }
 
 void requestBless()
 {
-    tipGameHub().requestBless();
+    qtclientGameHub().requestBless();
 }
 
 int openAt(const Position& position, const uint16_t itemId, const int stackPos, const int previousContainerId)
 {
-    return tipGameHub().openAt(position, itemId, stackPos, previousContainerId);
+    return qtclientGameHub().openAt(position, itemId, stackPos, previousContainerId);
 }
 
 int openAt(const MapPos pos, const uint16_t itemId, const int stackPos, const int previousContainerId)
@@ -788,102 +788,102 @@ int openAt(const MapPos pos, const uint16_t itemId, const int stackPos, const in
 
 void partyJoin(const uint32_t creatureId)
 {
-    tipGameHub().partyJoin(creatureId);
+    qtclientGameHub().partyJoin(creatureId);
 }
 
 void openContainerQuickLoot(const uint8_t action, const uint8_t category, const Position& pos, const uint16_t itemId, const uint8_t stackpos, const bool useMainAsFallback)
 {
-    tipGameHub().openContainerQuickLoot(action, category, pos, itemId, stackpos, useMainAsFallback);
+    qtclientGameHub().openContainerQuickLoot(action, category, pos, itemId, stackpos, useMainAsFallback);
 }
 
 void useMapObject(const Position& position, const uint16_t itemId, const int stackPos)
 {
-    tipGameHub().useMapObject(position, itemId, stackPos);
+    qtclientGameHub().useMapObject(position, itemId, stackPos);
 }
 
 void useMapObject(const MapPos pos, const uint16_t itemId, const int stackPos)
 {
-    tipGameHub().useMapObject(Position(pos.x, pos.y, static_cast<uint8_t>(pos.z)), itemId, stackPos);
+    qtclientGameHub().useMapObject(Position(pos.x, pos.y, static_cast<uint8_t>(pos.z)), itemId, stackPos);
 }
 
 void useInventoryItemWithMapObject(const uint16_t itemId, const Position& to, const uint16_t toId, const int toStack)
 {
-    tipGameHub().useInventoryItemWithMapObject(itemId, to, toId, toStack);
+    qtclientGameHub().useInventoryItemWithMapObject(itemId, to, toId, toStack);
 }
 
 void useInventoryItemWithMapObject(const uint16_t itemId, const MapPos to, const uint16_t toId, const int toStack)
 {
-    tipGameHub().useInventoryItemWithMapObject(itemId, Position(to.x, to.y, static_cast<uint8_t>(to.z)), toId, toStack);
+    qtclientGameHub().useInventoryItemWithMapObject(itemId, Position(to.x, to.y, static_cast<uint8_t>(to.z)), toId, toStack);
 }
 
 void useInventoryItemOnCreature(const uint16_t itemId, const uint32_t creatureId)
 {
-    tipGameHub().useInventoryItemOnCreature(itemId, creatureId);
+    qtclientGameHub().useInventoryItemOnCreature(itemId, creatureId);
 }
 
 ItemPtr findPlayerItem(const uint32_t itemId, const int subType)
 {
-    return tipGameHub().findPlayerItem(itemId, subType);
+    return qtclientGameHub().findPlayerItem(itemId, subType);
 }
 
 void requestQuickLootBlackWhiteList(const uint8_t filter, const uint16_t size, const std::vector<uint16_t>& listedItems)
 {
-    tipGameHub().requestQuickLootBlackWhiteList(filter, size, listedItems);
+    qtclientGameHub().requestQuickLootBlackWhiteList(filter, size, listedItems);
 }
 
 void sendStatusTrackerBestiary(const uint16_t raceId, const bool status)
 {
-    tipGameHub().sendStatusTrackerBestiary(raceId, status);
+    qtclientGameHub().sendStatusTrackerBestiary(raceId, status);
 }
 
 void requestBestiarySearch(const uint16_t raceId)
 {
-    tipGameHub().requestBestiarySearch(raceId);
+    qtclientGameHub().requestBestiarySearch(raceId);
 }
 
 void sendFriendSystemPayload(const std::string& json)
 {
-    tipGameHub().sendFriendSystemPayload(json);
+    qtclientGameHub().sendFriendSystemPayload(json);
 }
 
 void openPrivateChannel(const std::string_view receiver)
 {
-    tipGameHub().openPrivateChannel(receiver);
+    qtclientGameHub().openPrivateChannel(receiver);
 }
 
 void requestTeamFinderList()
 {
-    tipGameHub().requestTeamFinderList();
+    qtclientGameHub().requestTeamFinderList();
 }
 
 void requestTeamFinderLeader()
 {
-    tipGameHub().requestTeamFinderLeader();
+    qtclientGameHub().requestTeamFinderLeader();
 }
 
 void joinTeamFinder(const uint32_t leaderId)
 {
-    tipGameHub().joinTeamFinder(leaderId);
+    qtclientGameHub().joinTeamFinder(leaderId);
 }
 
 void leaveTeamFinder(const uint32_t leaderId)
 {
-    tipGameHub().leaveTeamFinder(leaderId);
+    qtclientGameHub().leaveTeamFinder(leaderId);
 }
 
 void createTeamFinder(const TeamFinderAssemble& assemble)
 {
-    tipGameHub().createTeamFinder(assemble);
+    qtclientGameHub().createTeamFinder(assemble);
 }
 
 void resetTeamFinderLeader()
 {
-    tipGameHub().resetTeamFinderLeader();
+    qtclientGameHub().resetTeamFinderLeader();
 }
 
 void updateTeamFinderMember(const uint32_t memberId, const uint8_t status)
 {
-    tipGameHub().updateTeamFinderMember(memberId, status);
+    qtclientGameHub().updateTeamFinderMember(memberId, status);
 }
 
 Position localPlayerPosition()

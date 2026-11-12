@@ -32,7 +32,7 @@ namespace game {
 
 /// CipSoft-shaped session / wire façade for tip + packs.
 /// Prefer this header over `#include "gamehub_impl.h"` at call sites.
-/// Implementation peels the private OTC hub via `tipGameHub()` in `gamehub.*`.
+/// Implementation peels the private OTC hub via `qtclientGameHub()` in `gamehub.*`.
 /// migrates each method onto TGameClient / IGameSession / storages.
 
 /// Pack-facing monotonic ms (`g_clock.millis`). Header free of `framework/core/clock.h`.
@@ -542,7 +542,7 @@ Q_SIGNALS:
     /// CIP skipped `::shared::TSeconds` → `int` seconds.
     void gameLoginWaitMessage(const QString& WaitMessage, int WaitSeconds);
 
-    /// CIP base signals re-owned on tip for moc/tip_impl + SoftHook fan-out.
+    /// CIP base signals re-owned on qtclient for moc + SoftHook fan-out.
     /// Same signatures as `cip::tibia::game::IGameSession` (not login owners).
     void loginRampUpFinished();
     void connected();

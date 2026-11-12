@@ -22,7 +22,7 @@
 
 #pragma once
 
-/// Private qtclient wire hub (`s_tipGameHub`). Include only from `gamehub*.cpp` and
+/// Private qtclient wire hub (`s_qtclientGameHub`). Include only from `gamehub*.cpp` and
 /// hub bridge TUs that need friend access (e.g. `gameservergamesession.cpp`).
 /// Call sites use `gamesession.h` / `gamehub.h` peels — not this header.
 

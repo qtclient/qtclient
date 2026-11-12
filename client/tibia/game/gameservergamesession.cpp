@@ -87,7 +87,7 @@ void TGameserverGameSession::wireProcessSessionEnd(const uint8_t reason)
 
 void TGameserverGameSession::wireProcessWorldEntered()
 {
-    Game& hub = tipGameHub();
+    Game& hub = qtclientGameHub();
     hub.processEnterGame();
     if (hub.m_protocolGame && !hub.m_protocolGame->m_gameInitialized) {
         hub.processGameStart();
@@ -97,7 +97,7 @@ void TGameserverGameSession::wireProcessWorldEntered()
 
 void TGameserverGameSession::wireProcessDeath(const uint8_t deathType, const uint8_t penality)
 {
-    Game& hub = tipGameHub();
+    Game& hub = qtclientGameHub();
     hub.m_dead = true;
     if (hub.m_localPlayer)
         hub.m_localPlayer->stopWalk();
@@ -110,13 +110,13 @@ void TGameserverGameSession::wireProcessDeath(const uint8_t deathType, const uin
 void TGameserverGameSession::wireProcessPing()
 {
     tibia::game::notify("onPing");
-    if (Game& hub = tipGameHub(); hub.m_protocolGame)
+    if (Game& hub = qtclientGameHub(); hub.m_protocolGame)
         hub.m_protocolGame->sendPingBack();
 }
 
 void TGameserverGameSession::wireProcessPingBack()
 {
-    Game& hub = tipGameHub();
+    Game& hub = qtclientGameHub();
     ++hub.m_pingReceived;
 
     if (hub.m_pingReceived == hub.m_pingSent) {
@@ -128,7 +128,7 @@ void TGameserverGameSession::wireProcessPingBack()
         g_logger.error("Got an invalid ping from server");
 
     const int pingDelay = hub.m_pingDelay;
-    hub.m_pingEvent = tibia::schedule::after([] { tipGameHub().ping(); }, pingDelay);
+    hub.m_pingEvent = tibia::schedule::after([] { qtclientGameHub().ping(); }, pingDelay);
 }
 
 namespace {
@@ -147,9 +147,9 @@ SoftHook gameHook(const char* field, F&& f)
 void hubDisconnectNow()
 {
     if (tibia::game::isOnline())
-        tipGameHub().forceLogout();
+        qtclientGameHub().forceLogout();
     else
-        tipGameHub().cancelLogin();
+        qtclientGameHub().cancelLogin();
 }
 
 TGameserverGameSession::TGameserverGameSession(QObject* parent)
@@ -198,7 +198,7 @@ void TGameserverGameSession::connectToGameserver(const GameserverCredentials& c)
 {
     // Remaining hub call: loginWorld (session-owned; IGameSession tip twin does not mirror).
     try {
-        tipGameHub().loginWorld(c.account.toStdString(), c.password.toStdString(), c.worldName.toStdString(),
+        qtclientGameHub().loginWorld(c.account.toStdString(), c.password.toStdString(), c.worldName.toStdString(),
                           c.host.toStdString(), c.port, c.characterName.toStdString(),
                           c.authenticatorToken.toStdString(), c.sessionKey.toStdString(), c.recordTo.toStdString());
     } catch (const std::exception& e) {

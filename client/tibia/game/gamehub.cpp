@@ -1,7 +1,7 @@
 #include "gamehub.h"
 
-Game& tipGameHub()
+Game& qtclientGameHub()
 {
-    extern Game s_tipGameHub;
-    return s_tipGameHub;
+    extern Game s_qtclientGameHub;
+    return s_qtclientGameHub;
 }
