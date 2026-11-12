@@ -77,4 +77,24 @@ qtclient_desktop_paths() {
   export QTCLIENT_PRESET QTCLIENT_BUILD_DIR
   export QTCLIENT_CLIENT_BIN QTCLIENT_LAUNCHER_BIN
   export QTCLIENT_CLIENT_APP QTCLIENT_LAUNCHER_APP
+
+  # Dev client.app is not macdeployqt'd — QPA/QML only search the .app tree
+  # unless the kit paths below point at the Qt used to build.
+  local qt_prefix=""
+  if [[ -x "$otc/tools/qt/qt-prefix.sh" ]]; then
+    qt_prefix="$(bash "$otc/tools/qt/qt-prefix.sh" 2>/dev/null || true)"
+  fi
+  if [[ -n "$qt_prefix" ]]; then
+    if [[ -z "${QT_PLUGIN_PATH:-}" && -d "$qt_prefix/plugins" ]]; then
+      export QT_PLUGIN_PATH="$qt_prefix/plugins"
+    fi
+    if [[ -d "$qt_prefix/qml" ]]; then
+      if [[ -z "${QML2_IMPORT_PATH:-}" ]]; then
+        export QML2_IMPORT_PATH="$qt_prefix/qml"
+      fi
+      if [[ -z "${QML_IMPORT_PATH:-}" ]]; then
+        export QML_IMPORT_PATH="$qt_prefix/qml"
+      fi
+    fi
+  fi
 }
