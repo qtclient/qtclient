@@ -23,24 +23,24 @@ class TNumericalEffectStorage;
 namespace tibia {
 namespace renderer {
 
-/// Advances everything that moves to the time the next frame is shown (CipSoft
-/// stamped `v2` @).
+/// Advances everything that moves to the time the next frame is shown
+/// (CIP `renderer::TNextFrameUpdater::v2`).
 ///
-/// CipSoft constructs twelve shared_ptr members and advances them
-/// in fixed order. product collapses that inventory into:
-/// 1–N creature / effect / missile / outfit time via gamecore::advanceTo
-/// inside creatures::advanceAllMovementTweens (TCreatureMovementTween);
-/// next texts (TTextStorage) and numerical effects;
-/// then TWorldMapRenderProvider::advance (sprite list + classic/raycast light);
-/// finally resumeMovementClock returns the clock to real time.
-/// Minimap / ambient-light timers stay event-driven (data change / 10 s), matching
-/// CipSoft's non-hot-path refresh. See docs/reverse-engineering/tibia-world-rendering.md.
+/// Pin unit (`tmp/re/builds/f7a12491b5d5/units/renderer/TNextFrameUpdater.c`):
+/// CIP holds twelve `shared_ptr` slots at +0x08..+0xb8 (stride 0x10) and
+/// advances them in order via vtable offsets 0x120, 0xd8, 0x60, 0x90, 0x60,
+/// 0x78, 0x78, 0x80, 0x78, 0x78, 0x78, 0x60. Product collapses that inventory
+/// into: creature/effect/missile/outfit time via `gamecore::advanceTo` inside
+/// `creatures::advanceAllMovementTweens`; texts (`TTextStorage`) and numerical
+/// effects; `TWorldMapRenderProvider::advance` (sprite list + light); then
+/// `resumeMovementClock`. Minimap / ambient-light stay event-driven.
 class TNextFrameUpdater : public ::tibia::CipTyped
 {
 public:
     TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& provider, chat::TTextStorage& texts,
                       worldmap::TNumericalEffectStorage& numericalEffects);
 
+    /// CIP v2 — advance all frame-dependent systems to `timestampMs`.
     void v2(qint64 timestampMs);
 
 private:
