@@ -291,6 +291,74 @@ public:
     static qint64 nowMillis();
 };
 
+/// CIP `shared::TRandomNumberGenerator` (uniform int in [min,max]).
+class TRandomNumberGenerator final : public ::tibia::CipTyped
+{
+public:
+    TRandomNumberGenerator() = default;
+    /// CIP asserts Min <= Max (randomnumbergenerator.h).
+    static quint32 bounded(quint32 minInclusive, quint32 maxInclusive);
+};
+
+/// CIP `shared::TLocalFileInfo` — path holder (layout: QString at +0x8).
+class TLocalFileInfo final : public ::tibia::CipTyped
+{
+public:
+    TLocalFileInfo() = default;
+    explicit TLocalFileInfo(QString path)
+        : m_path(std::move(path))
+    {
+    }
+    const QString& path() const { return m_path; }
+    bool exists() const;
+
+private:
+    QString m_path;
+};
+
+/// CIP `shared::TFileSystemHelper`.
+class TFileSystemHelper final : public ::tibia::CipTyped
+{
+public:
+    TFileSystemHelper() = default;
+    static bool exists(const QString& path);
+};
+
+/// CIP `shared::TDecompressionError`.
+class TDecompressionError final : public ::tibia::CipTyped
+{
+public:
+    explicit TDecompressionError(QString message = {})
+        : m_message(std::move(message))
+    {
+    }
+    const QString& message() const { return m_message; }
+
+private:
+    QString m_message;
+};
+
+/// CIP `shared::TRPCServiceError`.
+class TRPCServiceError final : public ::tibia::CipTyped
+{
+public:
+    explicit TRPCServiceError(QString message = {})
+        : m_message(std::move(message))
+    {
+    }
+    const QString& message() const { return m_message; }
+
+private:
+    QString m_message;
+};
+
+/// CIP `shared::TCrashHandler` — product host owns real crash reporting.
+class TCrashHandler final : public ::tibia::CipTyped
+{
+public:
+    TCrashHandler() = default;
+};
+
 class TTibiaFileSystemHelper final : public ::tibia::CipTyped {
 public:
     TTibiaFileSystemHelper() = default;

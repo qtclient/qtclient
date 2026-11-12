@@ -6,7 +6,9 @@
 
 #include <QClipboard>
 #include <QCryptographicHash>
+#include <QFileInfo>
 #include <QGuiApplication>
+#include <QRandomGenerator>
 
 namespace tibia::shared {
 
@@ -25,6 +27,12 @@ struct CipTypedKeep {
     TRsaHelper tRsaHelper;
     TXteaHelper tXteaHelper;
     TClockService tClockService;
+    TRandomNumberGenerator tRandomNumberGenerator;
+    TLocalFileInfo tLocalFileInfo;
+    TFileSystemHelper tFileSystemHelper;
+    TDecompressionError tDecompressionError;
+    TRPCServiceError tRpcServiceError;
+    TCrashHandler tCrashHandler;
     TCoordinate tCoordinate;
     TExtent tExtent;
     QTextBrowserWithNetwork qTextBrowserWithNetwork;
@@ -96,6 +104,22 @@ qint64 TClockService::nowMicros()
 qint64 TClockService::nowMillis()
 {
     return nowMicros() / 1000;
+}
+
+quint32 TRandomNumberGenerator::bounded(quint32 minInclusive, quint32 maxInclusive)
+{
+    Q_ASSERT(minInclusive <= maxInclusive);
+    return QRandomGenerator::global()->bounded(minInclusive, maxInclusive + 1u);
+}
+
+bool TLocalFileInfo::exists() const
+{
+    return QFileInfo::exists(m_path);
+}
+
+bool TFileSystemHelper::exists(const QString& path)
+{
+    return QFileInfo::exists(path);
 }
 
 void ownProductSurface(QObject* parent)
