@@ -25,3 +25,5 @@ animation::TDurationTween::v3  11cbc82f1ebca5f6  # ported
 animation::TDurationTween::v4  9c9858b5c7907f27  # ported
 animation::TDurationTween::v5  5468181e0d5064ae  # ported
 animation::TDurationTween::v6  53d9694e6662b92f  # ported
+creatures::TCreatureStorage::v4  f1e41cfb4002b9ec  # ported
+worldmap::TWorldMapStorage::v4  bf4c823282d6515d  # ported
