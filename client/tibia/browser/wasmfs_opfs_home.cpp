@@ -68,7 +68,7 @@ bool tibiaMountWasmfsOpfsHome()
 {
     if (portalTipAlreadyOnHome()) {
         emscripten_console_log(
-            "tibia.wasm: portal tip already on /home/web_user — skip WasmFS remount");
+            "tibia.wasm: portal qtclient already on /home/web_user — skip WasmFS remount");
         EM_ASM({
             Module.qtclientPersistentFsMounted = 1;
             Module.qtclientWasmfsOpfs = 0;

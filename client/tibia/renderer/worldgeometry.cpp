@@ -176,7 +176,7 @@ WorldGeometry buildWorldGeometry(const WorldGeometryInput& in)
                     const OutdoorSurface surf = outdoorSurface(*tile);
                     bestH = surf.height;
                     bestShape = surf.shape;
-                    // Outdoor faces below the owner still raise tip-splash height
+                    // Outdoor faces below the owner still raise qtclient-splash height
                     // (multi-story E/S walls under an open terrace).
                     for (int z2 = z + 1; z2 <= camera.z; ++z2) {
                         Position below = cameraPos;

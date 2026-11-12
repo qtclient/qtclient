@@ -325,11 +325,11 @@ bool tryPackageResources(const QString& appData, QString* out)
         "IdleOT.app",
     };
     for (const char* packageName : packageNames) {
-        const QString tip = QDir(appData).filePath(
+        const QString packageResources = QDir(appData).filePath(
             QLatin1String("packages/") + QLatin1String(packageName)
             + QLatin1String("/Contents/Resources"));
-        if (resourcesDirUsable(tip)) {
-            *out = QDir(qtclient).absolutePath;
+        if (resourcesDirUsable(packageResources)) {
+            *out = QDir(packageResources).absolutePath();
             return true;
         }
     }

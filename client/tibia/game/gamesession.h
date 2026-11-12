@@ -506,7 +506,7 @@ void resetTeamFinderLeader();
 void updateTeamFinderMember(const uint32_t memberId, const uint8_t status);
 
 
-/// CIP `game::IGameSession` moc surface (contract signals + tip-safe skipped
+/// CIP `game::IGameSession` moc surface (contract signals + qtclient-safe skipped
 /// args + TGameSessionBase slot floor). Declared after free-function peels so
 /// qtclient scanners do not attribute those decls to this class. Live login/world
 /// still rides `TGameserverGameSession` / `g_game`; this qtclient twin re-emits the
@@ -524,7 +524,7 @@ public Q_SLOTS:
     /// CIP slot (skipped `::shared::TMilliseconds` → `qint64` ms).
     void onPrepareNextFrameToRender(qint64 nextFramePredictedTimestampMs);
 
-    /// CIP `TGameSessionBase` slots (skipped/weak types → tip-safe). Fan into
+    /// CIP `TGameSessionBase` slots (skipped/weak types → qtclient-safe). Fan into
     /// qtclient signals / `g_game` peels; do not own login.
     void onPlayerCreatureAddedToCreatureStorage();
     void onSettingHintsFromServerChanged(bool canChangePvPFrameSetting);
