@@ -44,14 +44,64 @@ Q_SIGNALS:
 };
 
 /// CipSoft QTextBrowserWithNetwork download slots (contract moc).
-/// Live QWidget implementation lives in apps/qtclient/shared/ (outside tip scan);
-/// tip stub owns Class::method keys for the client inventory walk.
+/// Live QWidget implementation lives in apps/qtclient/shared/;
+/// this stub owns Class::method keys for the client inventory walk.
 class QTextBrowserWithNetwork final : public ::tibia::CipTyped
 {
 public:
     QTextBrowserWithNetwork() = default;
     void onDownloadFailed(QUrl Url, QNetworkReply::NetworkError Code, QString ErrorString);
     void onDownloadFinished(QUrl Url, QByteArray Data);
+};
+
+/// CIP `shared::TCoordinate` (pin layout 0x10 + z at +0x10 in v2 add).
+class TCoordinate final : public ::tibia::CipTyped
+{
+public:
+    int x = 0;
+    int y = 0;
+    int z = 0;
+
+    TCoordinate() = default;
+    TCoordinate(int x_, int y_, int z_ = 0)
+        : x(x_)
+        , y(y_)
+        , z(z_)
+    {
+    }
+
+    /// CIP `TCoordinate::v2` — component-wise add.
+    TCoordinate operator+(const TCoordinate& other) const
+    {
+        return TCoordinate(x + other.x, y + other.y, z + other.z);
+    }
+
+    bool operator==(const TCoordinate& other) const
+    {
+        return x == other.x && y == other.y && z == other.z;
+    }
+};
+
+/// CIP `shared::TExtent` (width/height/depth volume).
+class TExtent final : public ::tibia::CipTyped
+{
+public:
+    int width = 0;
+    int height = 0;
+    int depth = 0;
+
+    TExtent() = default;
+    TExtent(int width_, int height_, int depth_ = 1)
+        : width(width_)
+        , height(height_)
+        , depth(depth_)
+    {
+    }
+
+    bool operator==(const TExtent& other) const
+    {
+        return width == other.width && height == other.height && depth == other.depth;
+    }
 };
 
 class TCrashReportSender final : public cip::shared::TCrashReportSender
