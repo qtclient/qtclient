@@ -76,7 +76,7 @@ uint32_t TImbuingStorage::ownedCount(const uint16_t typeId, bool* listed) const
 {
     const auto it = m_owned.find(typeId);
     if (listed)
-        *listed = it != m_owned.end;
+        *listed = it != m_owned.end();
     return it == m_owned.end() ? 0 : it->second;
 }
 
