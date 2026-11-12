@@ -18,3 +18,10 @@ animation::TWorldMapLinearMovementTween::v0  872d4faac408f6d5  # ported
 animation::TWorldMapLinearMovementTween::v1  e9caf669ab302182  # ported
 animation::TWorldMapLinearMovementTween::v2  a957ae59d742e08f  # ported
 animation::TWorldMapLinearMovementTween::v7  208b802d7c98f3ea  # ported
+animation::TDurationTween::v0  872d4faac408f6d5  # ported
+animation::TDurationTween::v1  e9caf669ab302182  # ported
+animation::TDurationTween::v2  3b829400f40d3a73  # ported
+animation::TDurationTween::v3  11cbc82f1ebca5f6  # ported
+animation::TDurationTween::v4  9c9858b5c7907f27  # ported
+animation::TDurationTween::v5  5468181e0d5064ae  # ported
+animation::TDurationTween::v6  53d9694e6662b92f  # ported
