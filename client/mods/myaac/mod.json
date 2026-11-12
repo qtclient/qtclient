@@ -1,0 +1,20 @@
+{
+  "id": "myaac",
+  "name": "myAAC login",
+  "version": "1.0.0",
+  "autoload": true,
+  "priority": 50,
+  "QTCLIENT_MOD_API": 1,
+  "description": "Default tip pack — myAAC http://127.0.0.1/login.php. Product tips replace urls via pack (lower priority).",
+  "urls": {
+    "loginBase": "http://127.0.0.1",
+    "loginPath": "/login.php",
+    "clientServicesPath": "/login.php",
+    "createAccountPath": "/login.php",
+    "pages": {
+      "QTCLIENT_URL_CREATE_ACCOUNT": "/?subtopic=createaccount",
+      "QTCLIENT_URL_ACCESS_ACCOUNT": "/?subtopic=accountmanagement",
+      "QTCLIENT_URL_LOST_ACCOUNT": "/?subtopic=lostaccount"
+    }
+  }
+}

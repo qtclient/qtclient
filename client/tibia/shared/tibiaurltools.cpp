@@ -1,0 +1,59 @@
+#include "tibiaurltools.h"
+
+#include <QRegularExpression>
+#include <QStringList>
+
+namespace tibia::shared {
+
+namespace {
+
+/// CIP (initialised by).
+const QRegularExpression& nonUrlCharacter()
+{
+    static const QRegularExpression expression(QStringLiteral("[^a-zA-Z0-9$+-_.;:/?&=]"));
+    return expression;
+}
+
+} // namespace
+
+// b1/89cf8816e9af187e
+bool TTibiaUrlTools::hasNonUrlCharacters(const QString& text) { return nonUrlCharacter().match(text).hasMatch(); }
+
+// b1/81a73412c455aeb3
+bool TTibiaUrlTools::containsUrl(const QString& text)
+{
+    static const QRegularExpression weight(QStringLiteral("[0-9]+\\.[0-9]{2} oz"));
+    static const QRegularExpression dotted(QStringLiteral("\\S+\\.\\S+"));
+    QString stripped = text;
+    stripped.replace(weight, QStringLiteral(" weight "));
+    return dotted.match(stripped).hasMatch();
+}
+
+// b1/79f8a61e97261bee
+void TTibiaUrlTools::sanitize(QString& text) { text.replace(nonUrlCharacter(), QStringLiteral("?")); }
+
+// b1/f1b9364a02324f15
+QString TTibiaUrlTools::process(const QString& text)
+{
+    if (!containsUrl(text))
+        return text;
+    static const QRegularExpression wordBoundary(QStringLiteral("\\b"), QRegularExpression::UseUnicodePropertiesOption);
+    const QStringList parts = text.split(wordBoundary);
+    if (parts.isEmpty())
+        return text;
+    QStringList result{ parts.first() };
+    for (qsizetype i = 1; i < parts.size(); ++i) {
+        if (parts[i] != QLatin1String(".")) {
+            result.append(parts[i]);
+            continue;
+        }
+        result.last().append(parts[i]);
+        if (++i < parts.size()) {
+            result.last().append(parts[i]);
+            sanitize(result.last());
+        }
+    }
+    return result.join(QString());
+}
+
+} // namespace tibia::shared

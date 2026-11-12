@@ -1,0 +1,6 @@
+QLabel {
+            font-family: "Verdana";
+            font-size: 11px;
+            font-weight: bold;
+            color: #909090;
+          }

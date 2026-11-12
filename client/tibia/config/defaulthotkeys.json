@@ -1,0 +1,225 @@
+
+    {
+      "hotkeySets": {
+        "GlobalShortcuts": {
+          "chatOff": [
+             { "keysequence": "Ctrl+B",        "actionsetting": { "action": "ToggleBattlelist" } }
+            ,{ "keysequence": "Ctrl+C",        "actionsetting": { "action": "Copy" } }
+            ,{ "keysequence": "Alt+D",         "actionsetting": { "action": "ShowDefaultChannel" } }
+            ,{ "keysequence": "Ctrl+E",        "actionsetting": { "action": "CloseCurrentChannel" } }
+            ,{ "keysequence": "Ctrl+F",        "actionsetting": { "action": "ToggleFullscreen" } }
+            ,{ "keysequence": "Ctrl+G",        "actionsetting": { "action": "ChangeCharacter" } }
+            ,{ "keysequence": "Ctrl+H",        "actionsetting": { "action": "ShowLenshelp" } }
+            ,{ "keysequence": "Ctrl+I",        "actionsetting": { "action": "ShowIgnorelist" } }
+            ,{ "keysequence": "Ctrl+J",        "actionsetting": { "action": "NextHotkeyPreset" } }
+            ,{ "keysequence": "Ctrl+K",        "actionsetting": { "action": "ShowOptionsHotkeys" } }
+            ,{ "keysequence": "Ctrl+L",        "actionsetting": { "action": "Logout" } }
+            ,{ "keysequence": "Ctrl+M",        "actionsetting": { "action": "ToggleShowServermessagesInCurrentChannel" } }
+            ,{ "keysequence": "Ctrl+N",        "actionsetting": { "action": "ToggleCreatureHudsVisible" } }
+            ,{ "keysequence": "Ctrl+O",        "actionsetting": { "action": "OpenChannelList" } }
+            ,{ "keysequence": "Ctrl+P",        "actionsetting": { "action": "ToggleVipWidget" } }
+            ,{ "keysequence": "Alt+Q",         "actionsetting": { "action": "QuickLootAreaAtPlayer" } }
+            ,{ "keysequence": "Ctrl+Q",        "actionsetting": { "action": "Logout" } }
+            ,{ "keysequence": "Ctrl+R",        "actionsetting": { "action": "ToggleMounted" } }
+            ,{ "keysequence": "Shift+S",       "actionsetting": { "action": "ToggleManualSortMode" } }
+            ,{ "keysequence": "Alt+S",         "actionsetting": { "action": "ToggleSkillsWidget" } }
+            ,{ "keysequence": "Alt+L",         "actionsetting": { "action": "ToggleSpellListWidget" } }
+            ,{ "keysequence": "Ctrl+T",        "actionsetting": { "action": "OpenHelpChannel" } }
+            ,{ "keysequence": "Ctrl+U",        "actionsetting": { "action": "ShowQuestlog" } }
+            ,{ "keysequence": "Alt+W",         "actionsetting": { "action": "ClearOldestMessage" } }
+            ,{ "keysequence": "Ctrl+Y",        "actionsetting": { "action": "ShowPrey" } }
+            ,{ "keysequence": "Ctrl+Z",        "actionsetting": { "action": "Bugreport" } }
+            ,{ "keysequence": "Esc",           "actionsetting": { "action": "StopPlayer" } }
+            ,{ "keysequence": "Tab",           "actionsetting": { "action": "NextChannel" } }
+            ,{ "keysequence": "Space"        , "actionsetting": { "action": "AttackNextTarget" } }
+            ,{ "keysequence": "Ctrl+Space"   , "actionsetting": { "action": "AttackPreviousTarget" } }
+            ,{ "keysequence": "Shift+Backtab", "actionsetting": { "action": "PreviousChannel" } }
+            ,{ "keysequence": "Alt+PgUp"     , "actionsetting": { "action": "MinimapFloorUp" } }
+            ,{ "keysequence": "Alt+PgDown"   , "actionsetting": { "action": "MinimapFloorDown" } }
+            ,{ "keysequence": "Alt+Home"     , "actionsetting": { "action": "MinimapZoomOut" } }
+            ,{ "keysequence": "Alt+End"      , "actionsetting": { "action": "MinimapZoomIn" } }
+            ,{ "keysequence": "Alt+Left"     , "actionsetting": { "action": "MinimapScrollWest" } }
+            ,{ "keysequence": "Alt+Right"    , "actionsetting": { "action": "MinimapScrollEast" } }
+            ,{ "keysequence": "Alt+Up"       , "actionsetting": { "action": "MinimapScrollNorth" } }
+            ,{ "keysequence": "Alt+Down"     , "actionsetting": { "action": "MinimapScrollSouth" } }
+            ,{ "keysequence": "Alt+F8"       , "actionsetting": { "action": "ToggleFPSLagIndicator" } }
+            ,{ "keysequence": "Alt+Return"   , "actionsetting": { "action": "ToggleFullscreen" } }
+            ,{ "keysequence": "Return"       , "actionsetting": { "action": "ChatModeTemporaryOn" } }
+            ,{ "keysequence": "Num+Enter"    , "actionsetting": { "action": "ChatModeTemporaryOn" } }
+            ,{ "keysequence": "W"            , "actionsetting": { "action": "GoNorth" } }
+            ,{ "keysequence": "A"            , "actionsetting": { "action": "GoWest" } }
+            ,{ "keysequence": "S"            , "actionsetting": { "action": "GoSouth" } }
+            ,{ "keysequence": "D"            , "actionsetting": { "action": "GoEast" } }
+            ,{ "keysequence": "M"            , "actionsetting": { "action": "ShowCyclopediaMap" } }
+            ,{ "keysequence": "Q"            , "actionsetting": { "action": "GoNorthWest" } }
+            ,{ "keysequence": "Z"            , "actionsetting": { "action": "GoSouthWest" } }
+            ,{ "keysequence": "E"            , "actionsetting": { "action": "GoNorthEast" } }
+            ,{ "keysequence": "C"            , "actionsetting": { "action": "GoSouthEast" } }
+            ,{ "keysequence": "F1"           , "actionsetting": { "action": "TriggerActionButton_1.1" } }
+            ,{ "keysequence": "F2"           , "actionsetting": { "action": "TriggerActionButton_1.2" } }
+            ,{ "keysequence": "F3"           , "actionsetting": { "action": "TriggerActionButton_1.3" } }
+            ,{ "keysequence": "F4"           , "actionsetting": { "action": "TriggerActionButton_1.4" } }
+            ,{ "keysequence": "F5"           , "actionsetting": { "action": "TriggerActionButton_1.5" } }
+            ,{ "keysequence": "F6"           , "actionsetting": { "action": "TriggerActionButton_1.6" } }
+            ,{ "keysequence": "F7"           , "actionsetting": { "action": "TriggerActionButton_1.7" } }
+            ,{ "keysequence": "F8"           , "actionsetting": { "action": "TriggerActionButton_1.8" } }
+            ,{ "keysequence": "F9"           , "actionsetting": { "action": "TriggerActionButton_1.9" } }
+            ,{ "keysequence": "F10"          , "actionsetting": { "action": "TriggerActionButton_1.10" } }
+            ,{ "keysequence": "F11"          , "actionsetting": { "action": "TriggerActionButton_1.11" } }
+            ,{ "keysequence": "F12"          , "actionsetting": { "action": "TriggerActionButton_1.12" } }
+
+
+          ],
+          "chatOn": [
+             { "keysequence": "Ctrl+A",        "actionsetting": { "action": "SelectAll" } }
+            ,{ "keysequence": "Ctrl+B",        "actionsetting": { "action": "ToggleBattlelist" } }
+            ,{ "keysequence": "Ctrl+C",        "actionsetting": { "action": "Copy" } }
+            ,{ "keysequence": "Alt+D",         "actionsetting": { "action": "ShowDefaultChannel" } }
+            ,{ "keysequence": "Ctrl+E",        "actionsetting": { "action": "CloseCurrentChannel" } }
+            ,{ "keysequence": "Ctrl+F",        "actionsetting": { "action": "ToggleFullscreen" } }
+            ,{ "keysequence": "Ctrl+G",        "actionsetting": { "action": "ChangeCharacter" } }
+            ,{ "keysequence": "Ctrl+H",        "actionsetting": { "action": "ShowLenshelp" } }
+            ,{ "keysequence": "Ctrl+I",        "actionsetting": { "action": "ShowIgnorelist" } }
+            ,{ "keysequence": "Ctrl+J",        "actionsetting": { "action": "NextHotkeyPreset" } }
+            ,{ "keysequence": "Ctrl+K",        "actionsetting": { "action": "ShowOptionsHotkeys" } }
+            ,{ "keysequence": "Ctrl+L",        "actionsetting": { "action": "Logout" } }
+            ,{ "keysequence": "Ctrl+M",        "actionsetting": { "action": "ToggleShowServermessagesInCurrentChannel" } }
+            ,{ "keysequence": "Ctrl+N",        "actionsetting": { "action": "ToggleCreatureHudsVisible" } }
+            ,{ "keysequence": "Ctrl+O",        "actionsetting": { "action": "OpenChannelList" } }
+            ,{ "keysequence": "Ctrl+P",        "actionsetting": { "action": "ToggleVipWidget" } }
+            ,{ "keysequence": "Alt+Q",         "actionsetting": { "action": "QuickLootAreaAtPlayer" } }
+            ,{ "keysequence": "Ctrl+Q",        "actionsetting": { "action": "Logout" } }
+            ,{ "keysequence": "Ctrl+R",        "actionsetting": { "action": "ToggleMounted" } }
+            ,{ "keysequence": "Alt+S",         "actionsetting": { "action": "ToggleSkillsWidget" } }
+            ,{ "keysequence": "Alt+L",         "actionsetting": { "action": "ToggleSpellListWidget" } }
+            ,{ "keysequence": "Ctrl+T",        "actionsetting": { "action": "OpenHelpChannel" } }
+            ,{ "keysequence": "Ctrl+U",        "actionsetting": { "action": "ShowQuestlog" } }
+            ,{ "keysequence": "Alt+W",         "actionsetting": { "action": "ClearOldestMessage" } }
+            ,{ "keysequence": "Ctrl+Y",        "actionsetting": { "action": "ShowPrey" } }
+            ,{ "keysequence": "Ctrl+Z",        "actionsetting": { "action": "Bugreport" } }
+            ,{ "keysequence": "Esc",           "actionsetting": { "action": "StopPlayer" } }
+            ,{ "keysequence": "Tab",           "actionsetting": { "action": "NextChannel" } }
+            ,{ "keysequence": "Shift+Backtab", "actionsetting": { "action": "PreviousChannel" } }
+            ,{ "keysequence": "Alt+PgUp"     , "actionsetting": { "action": "MinimapFloorUp" } }
+            ,{ "keysequence": "Alt+PgDown"   , "actionsetting": { "action": "MinimapFloorDown" } }
+            ,{ "keysequence": "Alt+Home"     , "actionsetting": { "action": "MinimapZoomOut" } }
+            ,{ "keysequence": "Alt+End"      , "actionsetting": { "action": "MinimapZoomIn" } }
+            ,{ "keysequence": "Alt+Left"     , "actionsetting": { "action": "MinimapScrollWest" } }
+            ,{ "keysequence": "Alt+Right"    , "actionsetting": { "action": "MinimapScrollEast" } }
+            ,{ "keysequence": "Alt+Up"       , "actionsetting": { "action": "MinimapScrollNorth" } }
+            ,{ "keysequence": "Alt+Down"     , "actionsetting": { "action": "MinimapScrollSouth" } }
+            ,{ "keysequence": "Alt+F8"       , "actionsetting": { "action": "ToggleFPSLagIndicator" } }
+            ,{ "keysequence": "Alt+Return"   , "actionsetting": { "action": "ToggleFullscreen" } }
+            ,{ "keysequence": "Return"       , "actionsetting": { "action": "PressEnterInChat" } }
+            ,{ "keysequence": "Num+Enter"    , "actionsetting": { "action": "PressEnterInChat" } }
+            ,{ "keysequence": "F1"           , "actionsetting": { "action": "TriggerActionButton_1.1" } }
+            ,{ "keysequence": "F2"           , "actionsetting": { "action": "TriggerActionButton_1.2" } }
+            ,{ "keysequence": "F3"           , "actionsetting": { "action": "TriggerActionButton_1.3" } }
+            ,{ "keysequence": "F4"           , "actionsetting": { "action": "TriggerActionButton_1.4" } }
+            ,{ "keysequence": "F5"           , "actionsetting": { "action": "TriggerActionButton_1.5" } }
+            ,{ "keysequence": "F6"           , "actionsetting": { "action": "TriggerActionButton_1.6" } }
+            ,{ "keysequence": "F7"           , "actionsetting": { "action": "TriggerActionButton_1.7" } }
+            ,{ "keysequence": "F8"           , "actionsetting": { "action": "TriggerActionButton_1.8" } }
+            ,{ "keysequence": "F9"           , "actionsetting": { "action": "TriggerActionButton_1.9" } }
+            ,{ "keysequence": "F10"          , "actionsetting": { "action": "TriggerActionButton_1.10" } }
+            ,{ "keysequence": "F11"          , "actionsetting": { "action": "TriggerActionButton_1.11" } }
+            ,{ "keysequence": "F12"          , "actionsetting": { "action": "TriggerActionButton_1.12" } }
+
+          ]
+        },
+        "Knight": {
+          "actionBarOptions": {
+            "firstVisibleButtons": {
+            },
+            "mappings":[
+               {"actionBar":1, "actionButton":1, "actionsetting": { "useObject": 266,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":2, "actionsetting": { "useObject":  268,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":3, "actionsetting": { "chatText": "exura infir ico",  "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":4, "actionsetting": { "chatText": "exori infir min",  "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":11, "actionsetting": { "useObject": 3003,              "useType":"SelectUseTarget" } }
+              ,{"actionBar":1, "actionButton":12, "actionsetting": { "useObject": 3457,              "useType":"SelectUseTarget" } }
+            ]
+          },
+          "chatOn": [
+          ],
+          "chatOff": [
+          ]
+        },
+        "Paladin": {
+          "actionBarOptions": {
+            "firstVisibleButtons": {
+            },
+            "mappings":[
+               {"actionBar":1, "actionButton":1, "actionsetting": { "useObject": 266,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":2, "actionsetting": { "useObject":  268,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":3, "actionsetting": { "chatText": "exura infir",      "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":4, "actionsetting": { "chatText": "exori infir con",  "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":5, "actionsetting": { "chatText": "exevo infir con",  "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":11, "actionsetting": { "useObject": 3003,              "useType":"SelectUseTarget" } }
+              ,{"actionBar":1, "actionButton":12, "actionsetting": { "useObject": 3457,              "useType":"SelectUseTarget" } }
+            ]
+          },
+          "chatOn": [
+          ],
+          "chatOff": [
+          ]
+        },
+        "Druid": {
+          "actionBarOptions": {
+            "firstVisibleButtons": {
+            },
+            "mappings":[
+               {"actionBar":1, "actionButton":1, "actionsetting": { "useObject": 266,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":2, "actionsetting": { "useObject":  268,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":3, "actionsetting": { "chatText": "exura infir",      "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":4, "actionsetting": { "chatText": "exori infir tera", "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":5, "actionsetting": { "chatText": "exevo infir frigo hur",  "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":11, "actionsetting": { "useObject": 3003,              "useType":"SelectUseTarget" } }
+              ,{"actionBar":1, "actionButton":12, "actionsetting": { "useObject": 3457,              "useType":"SelectUseTarget" } }
+            ]
+          },
+          "chatOn": [
+          ],
+          "chatOff": [
+          ]
+        },
+        "Sorcerer": {
+          "actionBarOptions": {
+            "firstVisibleButtons": {
+            },
+            "mappings":[
+               {"actionBar":1, "actionButton":1, "actionsetting": { "useObject": 266,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":2, "actionsetting": { "useObject":  268,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":3, "actionsetting": { "chatText": "exura infir",      "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":4, "actionsetting": { "chatText": "exori infir vis",  "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":5, "actionsetting": { "chatText": "exevo infir flam hur",  "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":11, "actionsetting": { "useObject": 3003,              "useType":"SelectUseTarget" } }
+              ,{"actionBar":1, "actionButton":12, "actionsetting": { "useObject": 3457,              "useType":"SelectUseTarget" } }
+            ]
+          },
+          "chatOn": [
+          ],
+          "chatOff": [
+          ]
+        },
+        "Monk": {
+          "actionBarOptions": {
+            "firstVisibleButtons": {
+            },
+            "mappings":[
+               {"actionBar":1, "actionButton":1, "actionsetting": { "useObject": 266,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":2, "actionsetting": { "useObject":  268,              "useType":"UseOnYourself" } }
+              ,{"actionBar":1, "actionButton":3, "actionsetting": { "chatText": "exura infir",      "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":4, "actionsetting": { "chatText": "exori infir pug",  "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":5, "actionsetting": { "chatText": "exori infir nia",  "sendAutomatically": true } }
+              ,{"actionBar":1, "actionButton":11, "actionsetting": { "useObject": 3003,              "useType":"SelectUseTarget" } }
+              ,{"actionBar":1, "actionButton":12, "actionsetting": { "useObject": 3457,              "useType":"SelectUseTarget" } }
+            ]
+          },
+          "chatOn": [
+          ],
+          "chatOff": [
+          ]
+        }
+      }
+    }

@@ -1,0 +1,122 @@
+[
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/qmldir",
+  "size": 3,
+  "flags": 0,
+  "root": "0x40ba0"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/Style.qml",
+  "size": 2175,
+  "flags": 0,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/calendarutils.js",
+  "size": 5577,
+  "flags": 0,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/ScrollViewHelper.qml",
+  "size": 8998,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/TableViewStyle.qml",
+  "size": 2070,
+  "flags": 0,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/TableViewOld.qml",
+  "size": 11614,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/ScrollViewStyle.qml",
+  "size": 17094,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/CalendarOld.qml",
+  "size": 14452,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/TableViewItemDelegateLoader.qml",
+  "size": 4465,
+  "flags": 0,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/CalendarHeaderModel.qml",
+  "size": 3728,
+  "flags": 0,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/ScrollViewOld.qml",
+  "size": 14161,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/TableViewSelection.qml",
+  "size": 6964,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/CalendarStyle.qml",
+  "size": 29425,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/BasicTableViewStyle.qml",
+  "size": 6312,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/BasicTableView.qml",
+  "size": 32384,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/TextSingleton.qml",
+  "size": 1973,
+  "flags": 0,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/ScrollBarOld.qml",
+  "size": 8917,
+  "flags": 1,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/FocusFrameStyle.qml",
+  "size": 2076,
+  "flags": 0,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/TableViewColumn.qml",
+  "size": 6627,
+  "flags": 0,
+  "root": "0x83890"
+ },
+ {
+  "path": "/qt/qml/QtQuick/LegacyControls/FocusFrame.qml",
+  "size": 2498,
+  "flags": 0,
+  "root": "0x83890"
+ }
+]

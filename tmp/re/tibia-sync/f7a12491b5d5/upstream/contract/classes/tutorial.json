@@ -1,0 +1,94 @@
+{
+ "tibia::tutorial::TSessiondumpHintsProcessor": {
+  "chain": [
+   "tibia::tutorial::TSessiondumpHintsProcessor",
+   "QObject"
+  ],
+  "class": "tibia::tutorial::TSessiondumpHintsProcessor",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::tutorial::TTutorialProgressUploader": {
+  "chain": [
+   "tibia::tutorial::TTutorialProgressUploader",
+   "shared::TJsonDocumentUploaderBase",
+   "QObject"
+  ],
+  "class": "tibia::tutorial::TTutorialProgressUploader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "authenticationRequired": [
+    "void authenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)"
+   ],
+   "finished": [
+    "void finished(bool UploadSuccessful, QJsonDocument ReplyFromServer)"
+   ],
+   "onTutorialProgressError": [
+    "void onTutorialProgressError()"
+   ]
+  },
+  "slots": {
+   "onFinished": [
+    "void onFinished(bool UploadSuccessful, QJsonDocument ReplyFromServerJD)",
+    "void onFinished(QNetworkReply::NetworkError NetworkErrorCode, QString NetworkErrorString, QByteArray ReplyFromServer)"
+   ]
+  }
+ },
+ "tibia::tutorial::TTutorialProtocolMessageHandler": {
+  "chain": [
+   "tibia::tutorial::TTutorialProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::tutorial::TTutorialProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleTutorialHintMessage": [
+    "void handleTutorialHintMessage(tibia::protobuf::protocol::GameserverMessageTutorialHint TutorialHintMessage)"
+   ]
+  }
+ },
+ "tibia::tutorial::TTutorialSessiondumpGameActionHandler": {
+  "chain": [
+   "tibia::tutorial::TTutorialSessiondumpGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::tutorial::TTutorialSessiondumpGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ }
+}

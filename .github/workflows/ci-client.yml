@@ -1,0 +1,424 @@
+---
+# Stock qtclient builds + publish client / client-sdk artifacts keyed by SHA.
+# PRs do NOT run this (see CI: checks for light gates). Builds only on main push
+# and the product release repo workflow_dispatch at the qtclient pin.
+#
+# Compile/dep cache: .github/actions/cache-{restore,save} → workspace/.cache/{vcpkg,ccache}
+# + public GHCR ghcr.io/qtclient/vcpkg-cache:{triplet}-{baseline12}.
+name: 'Client: ci'
+
+run-name: >-
+  Client:ci ${{ github.event_name == 'workflow_dispatch' && inputs.release_id != '' && inputs.release_id || github.sha }}
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Correlation id from the product release repo (for dispatch-and-wait)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+  actions: write
+
+concurrency:
+  group: ci-client-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  VCPKG_GHCR: ghcr.io/${{ github.repository_owner }}/vcpkg-cache
+  # main pushes and Release-owned dispatches publish host ORAS; PRs never do.
+  PUBLISH_HOST: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
+
+jobs:
+  sdk:
+    name: sdk
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - name: Pack client-sdk
+        env:
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_KIND: sdk
+          PACKAGE_OUT: ${{ runner.temp }}/client-sdk
+        run: bash scripts/lifecycle/package/sdk.sh
+      - name: Upload client-sdk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-sdk-${{ github.sha }}
+          path: ${{ runner.temp }}/client-sdk
+          retention-days: 30
+      - uses: oras-project/setup-oras@v1
+        if: env.PUBLISH_HOST == 'true'
+      - name: Push client-sdk to GHCR
+        if: env.PUBLISH_HOST == 'true'
+        env:
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_KIND: sdk
+          PACKAGE_OUT: ${{ runner.temp }}/client-sdk
+          REGISTRY: ${{ env.REGISTRY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: bash scripts/lifecycle/publish/sdk.sh
+
+  # Full desktop matrix on main / dispatch (PRs use CI: checks only).
+  client-desktop:
+    name: client-${{ matrix.plat }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - plat: linux-x64
+            runner: ubuntu-24.04
+            preset: linux-release
+            os_slug: linux
+            kit: linux-x64
+            triplet: x64-linux-static
+          - plat: macos-arm64
+            runner: macos-15
+            preset: macos-release
+            os_slug: macos
+            kit: macos-arm64
+            triplet: arm64-osx-static
+          - plat: windows-x64
+            runner: windows-2022
+            preset: windows-release
+            os_slug: windows
+            kit: windows-x64
+            triplet: x64-windows-static-md
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+      QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+      SOURCE_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - uses: lukka/get-cmake@v4.3.4
+      - uses: oras-project/setup-oras@v1
+
+      - name: MSVC environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Resolve CIP Qt SHA
+        id: cip
+        shell: bash
+        run: |
+          set -euo pipefail
+          # shellcheck source=tools/qt/qt-version.sh
+          source tools/qt/qt-version.sh
+          SHA="$(qt_resolve_cip_sha)"
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      # Qt comes from GHCR (tools/qt/ci-setup --pull-only) — do not Actions-cache
+      # $RUNNER_TEMP/Qt under qt-{kit}-{sha} (collides with Qt:build prefix path).
+
+      - name: Restore vcpkg + ccache
+        id: cache
+        uses: ./.github/actions/cache-restore
+        with:
+          kind: both
+          os: ${{ matrix.os_slug }}
+          triplet: ${{ matrix.triplet }}
+          scope: client
+          ghcr_vcpkg: ${{ env.VCPKG_GHCR }}
+          unique: ${{ github.sha }}
+
+      - name: qtclient bootstrap (deps + vcpkg + CIP Qt)
+        shell: bash
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
+          QT_PULL_ONLY: '1'
+          QT_PULL_WAIT_SECS: '7200'
+          QT_PULL_INTERVAL_SECS: '90'
+        run: bash tools/qt/ci-setup.sh --pull-only --with-vcpkg --with-deps
+
+      - name: Configure + build stock client
+        id: build
+        shell: bash
+        env:
+          VCPKG_TARGET_TRIPLET: ${{ matrix.triplet }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$CCACHE_DIR"
+          ccache -z || true
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            export PATH="$(brew --prefix)/bin:$PATH"
+          fi
+          if [[ "$RUNNER_OS" == Windows ]]; then
+            export PATH="/c/ProgramData/chocolatey/bin:/c/tools/zstd:$PATH"
+          fi
+          # Default otclient ABSORB_INTO_QTCLIENT + FS chrome (no native/mod.* / MAIN_MODULE=2).
+          cmake --preset ${{ matrix.preset }} \
+            -DTOGGLE_BIN_FOLDER=ON \
+            -DOPTIONS_ENABLE_IPO=OFF \
+            -DTIBIA_BUILD_TESTS=OFF \
+            -DQTCLIENT_ENABLE_MODS=ON \
+            -DQTCLIENT_MODS=otclient \
+            -DOPTIONS_ENABLE_CCACHE=ON \
+            -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
+            -DCMAKE_PREFIX_PATH="$QT_PREFIX"
+          cmake --build --preset ${{ matrix.preset }} --target tibia
+          cmake --build --preset ${{ matrix.preset }} --target launcher || true
+          OTC_FS="$(find "build/${{ matrix.preset }}" -path '*/mods/otclient/mod.json' -type f 2>/dev/null | head -1 || true)"
+          if [[ -z "$OTC_FS" || ! -f "$OTC_FS" ]]; then
+            echo "::error::otclient FS pack mod.json missing under build/${{ matrix.preset }}" >&2
+            find "build/${{ matrix.preset }}" -path '*/mods/*' 2>/dev/null | head -40 || true
+            exit 1
+          fi
+          OTC_NATIVE="$(find "build/${{ matrix.preset }}" -path '*/mods/otclient/native/mod.*' -type f 2>/dev/null | head -1 || true)"
+          if [[ -n "$OTC_NATIVE" ]]; then
+            echo "::error::otclient must stay ABSORB_INTO_QTCLIENT (no native/mod.*): $OTC_NATIVE" >&2
+            exit 1
+          fi
+          ccache -s || true
+
+      - name: Save vcpkg + ccache
+        if: always()
+        uses: ./.github/actions/cache-save
+        with:
+          kind: both
+          os: ${{ matrix.os_slug }}
+          triplet: ${{ matrix.triplet }}
+          scope: client
+          ghcr_vcpkg: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('ghcr.io/{0}/vcpkg-cache', github.repository_owner) || '' }}
+          unique: ${{ github.sha }}
+          vcpkg_cache_hit: ${{ steps.cache.outputs.vcpkg-cache-hit }}
+          ccache_hit: ${{ steps.cache.outputs.ccache-hit }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          actor: ${{ github.actor }}
+
+      - name: Pack client desktop tip
+        shell: bash
+        env:
+          QT_PREFIX: ${{ env.QT_PREFIX }}
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          # Not PLATFORM — MSVC Platform env swallows it on windows-2022.
+          QTCLIENT_PLATFORM: ${{ matrix.plat }}
+          PACKAGE_OUT: ${{ runner.temp }}/client-${{ matrix.plat }}
+        run: |
+          set -euo pipefail
+          bin_dir="build/${{ matrix.preset }}/bin"
+          [[ -d "$bin_dir" ]] || bin_dir="build/${{ matrix.preset }}"
+          BIN_DIR="$bin_dir" bash scripts/lifecycle/package/desktop.sh
+
+      - name: Pack demo Release (myAAC + CipSoft assetsurl)
+        # Demo is optional — never block client tip / GHCR publish on pack glitches.
+        continue-on-error: true
+        shell: bash
+        env:
+          QT_PREFIX: ${{ env.QT_PREFIX }}
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          QTCLIENT_DEMO_RELEASE_URL: https://github.com/${{ github.repository }}/releases/latest/download
+        run: |
+          set -euo pipefail
+          bin_dir="build/${{ matrix.preset }}/bin"
+          [[ -d "$bin_dir" ]] || bin_dir="build/${{ matrix.preset }}"
+          # Launcher target may be optional — skip demo if missing.
+          if [[ ! -x "$bin_dir/launcher" && ! -x "$bin_dir/launcher.exe" && ! -d "$bin_dir/launcher.app" ]]; then
+            echo "[demo] launcher binary missing — skip demo pack"
+            exit 0
+          fi
+          bash scripts/lifecycle/package/demo.sh \
+            --platform "${{ matrix.plat }}" \
+            --bin "$bin_dir" \
+            --out "$RUNNER_TEMP/demo-${{ matrix.plat }}" \
+            --release-base-url "$QTCLIENT_DEMO_RELEASE_URL"
+
+      - name: Upload client artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-${{ matrix.plat }}-${{ github.sha }}
+          path: ${{ runner.temp }}/client-${{ matrix.plat }}
+          retention-days: 30
+
+      - name: Upload demo Release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-${{ matrix.plat }}-${{ github.sha }}
+          path: ${{ runner.temp }}/demo-${{ matrix.plat }}
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Pack ccache
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$CCACHE_DIR"
+          tar -C "$CCACHE_DIR" -cf - . | zstd -T0 -3 -o "ccache-${{ matrix.os_slug }}-${{ github.sha }}.tar.zst"
+
+      - name: Upload ccache artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccache-${{ matrix.os_slug }}-${{ github.sha }}
+          path: ccache-${{ matrix.os_slug }}-${{ github.sha }}.tar.zst
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Push client to GHCR
+        if: env.PUBLISH_HOST == 'true'
+        shell: bash
+        env:
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          QTCLIENT_PLATFORM: ${{ matrix.plat }}
+          PACKAGE_OUT: ${{ runner.temp }}/client-${{ matrix.plat }}
+          REGISTRY: ${{ env.REGISTRY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: bash scripts/lifecycle/publish/desktop.sh
+
+  # Wasm + otclient linked default pack. ORAS when PUBLISH_HOST.
+  wasm:
+    name: wasm
+    runs-on: ubuntu-24.04
+    env:
+      QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+      SOURCE_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: lukka/get-cmake@v4.3.4
+      - uses: oras-project/setup-oras@v1
+
+      - name: Resolve CIP Qt SHA
+        id: cip
+        run: |
+          set -euo pipefail
+          source tools/qt/qt-version.sh
+          SHA="$(qt_resolve_cip_sha)"
+          [[ -n "$SHA" ]] || { echo "no qt5-cip SHA" >&2; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Restore vcpkg + ccache
+        id: cache
+        uses: ./.github/actions/cache-restore
+        with:
+          kind: both
+          os: wasm
+          triplet: wasm32-emscripten
+          scope: client
+          ghcr_vcpkg: ${{ env.VCPKG_GHCR }}
+          unique: ${{ github.sha }}
+
+      - name: qtclient bootstrap (deps + vcpkg + CIP Qt wasm)
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QT_CIP_SHA: ${{ steps.cip.outputs.sha }}
+          QT_PULL_ONLY: '1'
+          QT_PULL_WAIT_SECS: '7200'
+          QT_PULL_INTERVAL_SECS: '90'
+        # Same as desktop: wait for Qt: build GHCR kits — never compile qtdeclarative here.
+        run: bash tools/qt/ci-setup.sh --wasm --pull-only --with-vcpkg --with-deps
+
+      - name: Build wasm tip (+ otclient linked default pack)
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+          # Linked tip: otclient absorbed into tibia (no SIDE_MODULE / host_exports).
+          STOCK_HOST: '0'
+          QTCLIENT_ENABLE_MODS: 'ON'
+          QTCLIENT_MODS: 'otclient'
+        run: |
+          set -euo pipefail
+          mkdir -p "$CCACHE_DIR"
+          ccache -z || true
+          if ! bash scripts/lifecycle/build/wasm.sh; then
+            echo '::error::wasm build failed; last link recipe:' >&2
+            ninja -C build/tibia-wasm -t commands tibia 2>/dev/null | tail -n 5 || true
+            ninja -C build/tibia-wasm -v bin/tibia.js 2>&1 | tail -n 80 || true
+            ls -la build/tibia-wasm/bin/ 2>/dev/null || true
+            exit 1
+          fi
+          test -f build/tibia-wasm/bin/tibia.wasm
+          OTC_FS="$(find build/tibia-wasm -path '*/mods/otclient/mod.json' -type f 2>/dev/null | head -1 || true)"
+          if [[ -z "$OTC_FS" || ! -f "$OTC_FS" ]]; then
+            echo "::error::otclient FS pack mod.json missing under build/tibia-wasm" >&2
+            find build/tibia-wasm -path '*/mods/*' 2>/dev/null | head -40 || true
+            exit 1
+          fi
+          OTC_NATIVE="$(find build/tibia-wasm -path '*/mods/otclient/native/mod.wasm' -type f 2>/dev/null | head -1 || true)"
+          if [[ -n "$OTC_NATIVE" ]]; then
+            echo "::error::otclient must stay ABSORB_INTO_QTCLIENT (no native/mod.wasm): $OTC_NATIVE" >&2
+            exit 1
+          fi
+          ccache -s || true
+
+      - name: Save vcpkg + ccache
+        if: always()
+        uses: ./.github/actions/cache-save
+        with:
+          kind: both
+          os: wasm
+          triplet: wasm32-emscripten
+          scope: client
+          ghcr_vcpkg: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && format('ghcr.io/{0}/vcpkg-cache', github.repository_owner) || '' }}
+          unique: ${{ github.sha }}
+          vcpkg_cache_hit: ${{ steps.cache.outputs.vcpkg-cache-hit }}
+          ccache_hit: ${{ steps.cache.outputs.ccache-hit }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          actor: ${{ github.actor }}
+
+      - name: Pack client wasm
+        env:
+          PACKAGE_OUT: ${{ runner.temp }}/client-wasm
+          WASM_BUILD: ${{ github.workspace }}/build/tibia-wasm
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: bash scripts/lifecycle/package/wasm.sh
+
+      - name: Upload client-wasm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-wasm-${{ github.sha }}
+          path: ${{ runner.temp }}/client-wasm
+          retention-days: 30
+
+      - name: Pack ccache
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$CCACHE_DIR"
+          tar -C "$CCACHE_DIR" -cf - . | zstd -T0 -3 -o "ccache-wasm-${{ github.sha }}.tar.zst"
+
+      - name: Upload ccache artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccache-wasm-${{ github.sha }}
+          path: ccache-wasm-${{ github.sha }}.tar.zst
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Push client-wasm to GHCR
+        if: env.PUBLISH_HOST == 'true'
+        env:
+          QTCLIENT_HOST_BUILD_ID: ${{ github.sha }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          PACKAGE_OUT: ${{ runner.temp }}/client-wasm
+          REGISTRY: ${{ env.REGISTRY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: bash scripts/lifecycle/publish/wasm.sh

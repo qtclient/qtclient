@@ -1,0 +1,411 @@
+#include "monsterbonuseffectsdialogcontroller.h"
+
+#include "cyclopedia/bestiarystorage.h"
+#include "gamewindow/messagedialogcontroller.h"
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
+
+#include <client/const.h>
+#include <client/outfit.h>
+#include <tibia/assets/things.h>
+
+#include <QLocale>
+
+#include <algorithm>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+#include <tibia/game/thingsession_forward.h>
+
+namespace tibia::gamewindow {
+
+namespace {
+
+using A = input::EGameAction;
+using cyclopedia::TBestiaryStorage;
+using cyclopedia::TCharm;
+
+QString englishNumber(const qulonglong value) { return QLocale(QLocale::English).toString(value); }
+
+QColor outfitColor(const int index)
+{
+    const Color c = Outfit::getColor(index);
+    return QColor(c.r(), c.g(), c.b());
+}
+
+/// The charm points (major) or minor charm echoes (minor) of the player.
+quint64 charmResource(const bool minor)
+{
+    if (!tibia::game::localPlayer())
+        return 0;
+    return tibia::game::localPlayerResourceBalance(minor ? tibia::client::RESOURCE_MINOR_CHARM
+                                                         : tibia::client::RESOURCE_CHARM);
+}
+
+class TQmlMonsterBonusEffect final : public cip::tibia::gamewindow::TQmlMonsterBonusEffect
+{
+public:
+    TQmlMonsterBonusEffect(const TCharm& charm, QObject* parent)
+        : cip::tibia::gamewindow::TQmlMonsterBonusEffect(parent)
+    {
+        m_id = charm.id;
+        m_name = charm.name();
+        m_description = charm.description();
+        m_imageSource = cyclopedia::charmImageSource(charm.id);
+        m_isMinor = charm.isMinor();
+        const int nextCost = charm.nextGradeCost();
+        m_resourceCostString = englishNumber(nextCost);
+        m_notEnoughResource = charmResource(m_isMinor) < static_cast<quint64>(nextCost);
+        m_clearCostString = englishNumber(charm.removeCost);
+        m_notEnoughGold = TBestiaryStorage::goldBalance() < charm.removeCost;
+        m_unlocked = charm.grade > 0;
+        m_unlockGrade = static_cast<cip::tibia::qmlcomponents::enums::ECharmUnlockGrade>(charm.grade);
+        m_assigned = charm.raceId != 0;
+        m_assignedMonsterRaceID = charm.raceId;
+        if (m_assigned) {
+            const Outfit& outfit = tibia::game::raceData(charm.raceId).outfit;
+            m_hasAppearanceInstance = outfit.getId() != 0;
+            m_creatureOutfitId = outfit.getId();
+            m_creatureHeadColor = outfitColor(outfit.getHead());
+            m_creatureTorsoColor = outfitColor(outfit.getBody());
+            m_creatureLegsColor = outfitColor(outfit.getLegs());
+            m_creatureDetailColor = outfitColor(outfit.getFeet());
+            m_creatureFirstAddOn = (outfit.getAddons() & 1) != 0;
+            m_creatureSecondAddOn = (outfit.getAddons() & 2) != 0;
+        }
+        // CIP .
+        if (charm.grade >= 3)
+            m_upgradeButtonText = qtTrId("monster_bonus_effects_fully_unlocked_button_text");
+        else if (charm.grade > 0)
+            m_upgradeButtonText = qtTrId("monster_bonus_effects_upgrade_button_text")
+                                      .arg(cyclopedia::charmPercent(charm.id, charm.grade + 1) / 100.0, 0, 'g');
+        else
+            m_upgradeButtonText = qtTrId("monster_bonus_effects_not_unlocked_button_text");
+    }
+};
+
+class TQmlMonsterInfo final : public cip::tibia::gamewindow::TQmlMonsterInfo
+{
+public:
+    TQmlMonsterInfo(const int id, const QString& name, QObject* parent)
+        : cip::tibia::gamewindow::TQmlMonsterInfo(parent)
+    {
+        m_id = id;
+        m_name = name;
+    }
+};
+
+void deleteAll(QList<QObject*>& objects)
+{
+    for (QObject* object : objects)
+        object->deleteLater();
+    objects.clear();
+}
+
+}
+
+TMonsterBonusEffectsDialogController::TMonsterBonusEffectsDialogController(TBestiaryStorage& storage, QObject* parent)
+    : cip::tibia::gamewindow::TMonsterBonusEffectsDialogController(parent)
+    , m_storage(storage)
+    , m_confirmDialog(new TMessageDialogController(this))
+{
+    m_temporarySelectedMonsterIndex = -1;
+    m_resetCostString = QStringLiteral("0");
+    m_confirmDialog->setYesNoButtons();
+    m_confirmDialog->setCloseOnButtonClicked(true);
+    connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this,
+            &TMonsterBonusEffectsDialogController::onConfirmDialogAccepted);
+    connect(&m_storage, &TBestiaryStorage::charmsChanged, this, [this] {
+        if (m_shown)
+            refresh();
+    });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
+            [this](qint64, qint64, int type) {
+        if (!m_shown)
+            return;
+        if (type == static_cast<int>(tibia::client::RESOURCE_BANK_BALANCE) || type == static_cast<int>(tibia::client::RESOURCE_GOLD_EQUIPPED)
+            || type == static_cast<int>(tibia::client::RESOURCE_CHARM) || type == static_cast<int>(tibia::client::RESOURCE_MINOR_CHARM)) {
+            rebuildBonusEffects();
+            updatePlayerData();
+        }
+    });
+}
+
+TMonsterBonusEffectsDialogController::~TMonsterBonusEffectsDialogController() = default;
+
+TMonsterBonusEffectsDialogController::Context TMonsterBonusEffectsDialogController::captureContext() const
+{
+    return Context{ m_selectedCharm, m_activeTab };
+}
+
+// b1/bde8311aef8b44b6
+void TMonsterBonusEffectsDialogController::restoreContext(const Context& context)
+{
+    if (m_selectedCharm != context.charmId) {
+        m_selectedCharm = context.charmId;
+        Q_EMIT qmlSelectedBonusEffectIdChanged();
+    }
+    setActiveTab(context.activeTab);
+}
+
+// b1/9217bc81f2fcb713
+void TMonsterBonusEffectsDialogController::selectCharm(const int charmId)
+{
+    const TCharm probe{ charmId };
+    setActiveTab(probe.isMinor() ? 1 : 0);
+    if (m_shown)
+        refresh();
+    m_pendingCharm = charmId;
+}
+
+// b1/5cb84f8ffcee36a7
+int TMonsterBonusEffectsDialogController::selectedBonusEffectId() const
+{
+    for (int i = 0; i < m_monsterBonusEffects.size(); ++i) {
+        const auto* effect = qobject_cast<const cip::tibia::gamewindow::TQmlMonsterBonusEffect*>(m_monsterBonusEffects[i]);
+        if (effect && effect->id() == m_selectedCharm)
+            return i;
+    }
+    return 0;
+}
+
+// b1/46bf0c99d677d9f3
+void TMonsterBonusEffectsDialogController::setSelectedBonusEffectFromIndex(const int BonusEffectIndex)
+{
+    if (BonusEffectIndex < 0 || BonusEffectIndex >= m_monsterBonusEffects.size())
+        return;
+    const auto* effect = qobject_cast<const cip::tibia::gamewindow::TQmlMonsterBonusEffect*>(m_monsterBonusEffects[BonusEffectIndex]);
+    if (!effect || effect->id() == m_selectedCharm)
+        return;
+    m_selectedCharm = effect->id();
+    Q_EMIT qmlSelectedBonusEffectIdChanged();
+}
+
+void TMonsterBonusEffectsDialogController::setTemporarySelectedMonsterRaceID(const int v)
+{
+    if (m_temporarySelectedMonsterRaceID == v)
+        return;
+    m_temporarySelectedMonsterRaceID = v;
+    const Outfit outfit = v != 0 ? tibia::game::raceData(v).outfit : Outfit();
+    m_hasTemporarySelectedMonsterAppearanceInstance = v != 0 && outfit.getId() != 0;
+    m_temporarySelectedMonsterOutfitId = outfit.getId();
+    m_temporarySelectedMonsterHeadColor = outfitColor(outfit.getHead());
+    m_temporarySelectedMonsterTorsoColor = outfitColor(outfit.getBody());
+    m_temporarySelectedMonsterLegsColor = outfitColor(outfit.getLegs());
+    m_temporarySelectedMonsterDetailColor = outfitColor(outfit.getFeet());
+    m_temporarySelectedMonsterFirstAddOn = (outfit.getAddons() & 1) != 0;
+    m_temporarySelectedMonsterSecondAddOn = (outfit.getAddons() & 2) != 0;
+    Q_EMIT qmlTemporarySelectedMonsterOutfitChanged();
+}
+
+void TMonsterBonusEffectsDialogController::setUnassignedMonstersNameFilter(const QString& v)
+{
+    if (m_unassignedMonstersNameFilter == v)
+        return;
+    m_unassignedMonstersNameFilter = v;
+    Q_EMIT qmlUnassignedMonstersNameFilterChanged();
+    rebuildMonsterInfos();
+}
+
+void TMonsterBonusEffectsDialogController::showDialogTab()
+{
+    m_shown = true;
+    refresh();
+    // Crystal answers the bestiary request with the charm data too.
+    tibia::game::requestBestiary();
+}
+
+void TMonsterBonusEffectsDialogController::hideDialogTab() { m_shown = false; }
+
+// b1/f95a9ec3e896758b
+void TMonsterBonusEffectsDialogController::refresh()
+{
+    rebuildBonusEffects();
+    rebuildMonsterInfos();
+    updatePlayerData();
+    updateStoreTooltip();
+    if (!m_pendingCharm)
+        return;
+    const int charmId = *m_pendingCharm;
+    for (int i = 0; i < m_monsterBonusEffects.size(); ++i) {
+        const auto* effect = qobject_cast<const cip::tibia::gamewindow::TQmlMonsterBonusEffect*>(m_monsterBonusEffects[i]);
+        if (effect && effect->id() == charmId) {
+            setSelectedBonusEffectFromIndex(i);
+            break;
+        }
+    }
+    if (m_storage.hasCharmData())
+        m_pendingCharm.reset();
+}
+
+// b1/4151583f787376e2
+void TMonsterBonusEffectsDialogController::rebuildBonusEffects()
+{
+    QList<TCharm> charms;
+    const bool minorTab = m_activeTab == 1;
+    for (const TCharm& charm : m_storage.charms()) {
+        if (charm.isMinor() == minorTab)
+            charms.append(charm);
+    }
+    std::stable_sort(charms.begin(), charms.end(), [](const TCharm& a, const TCharm& b) {
+        if (a.grade != b.grade)
+            return a.grade > b.grade;
+        return a.name().compare(b.name(), Qt::CaseInsensitive) < 0;
+    });
+    QList<QObject*> previous = m_monsterBonusEffects;
+    m_monsterBonusEffects.clear();
+    for (const TCharm& charm : charms)
+        m_monsterBonusEffects.append(new TQmlMonsterBonusEffect(charm, this));
+    const int slots = m_storage.availableCharmSlots();
+    m_remainingCharms = slots;
+    m_canAssignMoreBonusEffects = slots != 0;
+    m_numberOfUnlockedCharms = static_cast<int>(
+        std::count_if(m_storage.charms().begin(), m_storage.charms().end(), [](const TCharm& charm) { return charm.grade > 0; }));
+    Q_EMIT qmlMonsterBonusEffectsChanged();
+    deleteAll(previous);
+}
+
+// b1/fb256438d5273984
+void TMonsterBonusEffectsDialogController::rebuildMonsterInfos()
+{
+    const bool minorTab = m_activeTab == 1;
+    QList<QObject*> previous = m_monsterInfos;
+    m_monsterInfos.clear();
+    std::vector<std::pair<QString, int>> races;
+    for (const uint16_t raceId : m_storage.charmableRaces()) {
+        if (!minorTab && m_storage.isRaceOnlyAssignableForMinorCharms(raceId))
+            continue;
+        const QString name = QString::fromStdString(tibia::game::raceData(raceId).name);
+        if (!name.contains(m_unassignedMonstersNameFilter, Qt::CaseInsensitive))
+            continue;
+        if (m_storage.assignedCharm(raceId, minorTab))
+            continue;
+        races.emplace_back(name, raceId);
+    }
+    std::sort(races.begin(), races.end(),
+              [](const auto& a, const auto& b) { return a.first.compare(b.first, Qt::CaseInsensitive) < 0; });
+    for (const auto& [name, raceId] : races)
+        m_monsterInfos.append(new TQmlMonsterInfo(raceId, name, this));
+    Q_EMIT qmlMonsterInfosChanged();
+    deleteAll(previous);
+    if (m_temporarySelectedMonsterRaceID != 0) {
+        const int raceId = m_temporarySelectedMonsterRaceID;
+        m_temporarySelectedMonsterRaceID = 0;
+        setTemporarySelectedMonsterRaceID(raceId);
+    }
+}
+
+void TMonsterBonusEffectsDialogController::updatePlayerData()
+{
+    const quint64 resetCost = m_storage.resetAllCharmsCost();
+    m_resetCostString = m_storage.hasCharmData() ? englishNumber(resetCost) : QStringLiteral("0");
+    m_notEnoughGoldReset = TBestiaryStorage::goldBalance() < resetCost;
+    m_enableResetButton = std::any_of(m_storage.charms().begin(), m_storage.charms().end(),
+                                      [](const TCharm& charm) { return charm.grade > 0; });
+    Q_EMIT playerDataChanged();
+}
+
+// b1/70ba47e2746d6971
+void TMonsterBonusEffectsDialogController::updateStoreTooltip()
+{
+    const int slots = m_storage.availableCharmSlots();
+    QStringList lines;
+    if (slots == 0)
+        lines << qtTrId("monster_bonus_effects_no_more_remaining_unassigned_bonus_effects");
+    else if (slots != 0xFF)
+        lines << qtTrId("monster_bonus_effects_remaining_unassigned_bonus_effects").arg(slots);
+    lines << (tibia::game::localPlayerIsPremium() ? qtTrId("monster_bonus_effects_no_cyclopedia_improved_charms")
+                                            : qtTrId("monster_bonus_effects_no_premium_tooltip"));
+    m_storeButtonTooltip = lines.join(u'\n');
+    m_showStoreButtonTooltip = slots != 0xFF;
+    Q_EMIT qmlStoreButtonTooltipChanged();
+}
+
+// b1/eb89def059cee10b
+void TMonsterBonusEffectsDialogController::unlockBonusEffect(const int BonusEffectID)
+{
+    const TCharm* charm = m_storage.charm(BonusEffectID);
+    if (!charm || charm->grade >= 3)
+        return;
+    m_confirmAction = 0;
+    m_confirmCharm = charm->id;
+    m_confirmRace = 0;
+    const QString cost = englishNumber(charm->nextGradeCost());
+    if (charm->grade == 0) {
+        m_confirmDialog->showMessage(qtTrId("monsters_confirm_unlock_charm_caption"),
+                                     qtTrId(charm->isMinor() ? "monsters_confirm_unlock_minor_charm" : "monsters_confirm_unlock_major_charm")
+                                         .arg(charm->name(), cost));
+    } else {
+        m_confirmDialog->showMessage(qtTrId("monsters_confirm_upgrade_charm_caption"),
+                                     qtTrId(charm->isMinor() ? "monsters_confirm_upgrade_minor_charm" : "monsters_confirm_upgrade_major_charm")
+                                         .arg(charm->name(), cost));
+    }
+}
+
+void TMonsterBonusEffectsDialogController::clearBonusEffect(const int BonusEffectID)
+{
+    const TCharm* charm = m_storage.charm(BonusEffectID);
+    if (!charm || charm->raceId == 0)
+        return;
+    m_confirmAction = 2;
+    m_confirmCharm = charm->id;
+    m_confirmRace = 0;
+    m_confirmDialog->showMessage(qtTrId("monsters_confirm_unassign_charm_caption"),
+                                 qtTrId("monsters_confirm_unassign_charm").arg(charm->name(), englishNumber(charm->removeCost)));
+}
+
+void TMonsterBonusEffectsDialogController::assignBonusEffectToMonster(const int BonusEffectID, const int monsterRaceID)
+{
+    const TCharm* charm = m_storage.charm(BonusEffectID);
+    if (!charm || monsterRaceID <= 0)
+        return;
+    m_confirmAction = 1;
+    m_confirmCharm = charm->id;
+    m_confirmRace = monsterRaceID;
+    m_confirmDialog->showMessage(qtTrId("monsters_confirm_assign_charm_caption"), qtTrId("monsters_confirm_assign_charm").arg(charm->name()));
+}
+
+QString TMonsterBonusEffectsDialogController::findMonsterNameByRaceID(const int RaceID)
+{
+    return QString::fromStdString(tibia::game::raceData(RaceID).name);
+}
+
+// b1/df3b6e007f9ae284
+void TMonsterBonusEffectsDialogController::onStoreButtonClicked()
+{
+    const bool expansionOrPremium = m_storage.availableCharmSlots() == 0xFF || tibia::game::localPlayerIsPremium();
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
+    action->parameter = expansionOrPremium ? 3 : 1;
+    action->instance = expansionOrPremium ? 3 : -1;
+    input::publish(action);
+}
+
+// b1/493c580628301d8c
+void TMonsterBonusEffectsDialogController::onResetAllCharmsClicked()
+{
+    m_confirmAction = 3;
+    m_confirmCharm = 0;
+    m_confirmRace = 0;
+    m_confirmDialog->showMessage(qtTrId("monsters_confirm_clear_all_charms_caption"),
+                                 qtTrId("monsters_confirm_clear_all_charms").arg(englishNumber(m_storage.resetAllCharmsCost())));
+}
+
+// b1/a7e756827cb77316
+void TMonsterBonusEffectsDialogController::onActiveTabChanged(const int activeTabId)
+{
+    setActiveTab(activeTabId);
+    refresh();
+}
+
+bool TMonsterBonusEffectsDialogController::isMonsterOnlyAssignableForMinorCharms(const int RaceID)
+{
+    return m_storage.isRaceOnlyAssignableForMinorCharms(RaceID);
+}
+
+void TMonsterBonusEffectsDialogController::onConfirmDialogAccepted()
+{
+    tibia::game::requestSendBuyCharmRune(static_cast<uint8_t>(m_confirmAction), static_cast<uint8_t>(m_confirmCharm),
+                                   static_cast<uint16_t>(m_confirmRace));
+}
+
+}

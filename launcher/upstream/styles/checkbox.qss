@@ -1,0 +1,12 @@
+QCheckBox {
+          font-family: "Verdana";
+          font-size: 13px;
+          font-weight: bold;
+          color: #bfbfbf;
+        }
+        QCheckBox::indicator:unchecked {
+          image: url(:/images/launcher/checkbox-unchecked.png);
+        }
+        QCheckBox::indicator:checked {
+          image: url(:/images/launcher/checkbox-checked.png);
+        }

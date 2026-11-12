@@ -1,0 +1,76 @@
+{
+ "tibia::exivaoptions::TExivaOptionsGameActionHandler": {
+  "chain": [
+   "tibia::exivaoptions::TExivaOptionsGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::exivaoptions::TExivaOptionsGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::exivaoptions::TExivaOptionsProtocolMessageHandler": {
+  "chain": [
+   "tibia::exivaoptions::TExivaOptionsProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::exivaoptions::TExivaOptionsProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendSetExivaOptions": [
+    "void sendSetExivaOptions(tibia::protobuf::protocol::GameclientMessageUpdateExivaOptions UpdateExivaOptionsMessage)"
+   ]
+  },
+  "slots": {
+   "handleExivaSuppressedMessage": [
+    "void handleExivaSuppressedMessage(tibia::protobuf::protocol::GameserverMessageExivaSuppressed ExivaSuppressedMessage)"
+   ],
+   "handleUpdateExivaOptionsMessage": [
+    "void handleUpdateExivaOptionsMessage(tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions UpdateExivaOptionsMessage)"
+   ]
+  }
+ },
+ "tibia::exivaoptions::TExivaOptionsStorage": {
+  "chain": [
+   "tibia::exivaoptions::TExivaOptionsStorage",
+   "QObject"
+  ],
+  "class": "tibia::exivaoptions::TExivaOptionsStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "allowEveryoneChanged": [
+    "void allowEveryoneChanged()"
+   ],
+   "allowedGroupsChanged": [
+    "void allowedGroupsChanged()"
+   ],
+   "characterWhitelistChanged": [
+    "void characterWhitelistChanged()"
+   ],
+   "guildWhitelistChanged": [
+    "void guildWhitelistChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

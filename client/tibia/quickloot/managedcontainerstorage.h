@@ -1,0 +1,49 @@
+#pragma once
+
+#include "client/gamecore.h"
+
+#include <cip_gen.h>
+
+#include <cstdint>
+#include <map>
+#include <tuple>
+#include <vector>
+
+namespace tibia {
+namespace quickloot {
+
+/// Server-driven quick-loot container assignments (CIP: TManagedContainerStorage,
+/// vtable family, update , fallback).
+class TManagedContainerStorage final : public cip::tibia::quickloot::TManagedContainerStorage
+{
+    Q_OBJECT
+public:
+    struct Assignment
+    {
+        uint16_t lootContainerId = 0;
+        uint16_t obtainContainerId = 0;
+        bool operator==(const Assignment& other) const = default;
+    };
+
+    explicit TManagedContainerStorage(QObject* parent = nullptr);
+    ~TManagedContainerStorage() override;
+
+    static TManagedContainerStorage* instance();
+
+    bool useMainBackpackAsFallback() const { return m_fallback; }
+    /// CIP + LOOT_CONTAINER_FALLBACK (action 3).
+    void setUseMainBackpackAsFallback(bool value);
+
+    Assignment assignment(uint8_t category) const;
+    const std::map<uint8_t, Assignment>& assignments() const { return m_assignments; }
+
+private:
+    void onContainers(bool fallback, const std::vector<std::tuple<uint8_t, uint16_t, uint16_t>>& list);
+
+    bool m_fallback = false;
+    std::map<uint8_t, Assignment> m_assignments;
+    std::vector<client::gamecore::Hook> m_hooks;
+};
+
+}
+}

@@ -1,0 +1,115 @@
+{
+ "tibia::friends::TFriendsAccountSearchStorage": {
+  "chain": [
+   "tibia::friends::TFriendsAccountSearchStorage",
+   "QObject"
+  ],
+  "class": "tibia::friends::TFriendsAccountSearchStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "receivedAccountSearchResults": [
+    "void receivedAccountSearchResults()"
+   ],
+   "receivedNoResultsFound": [
+    "void receivedNoResultsFound()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::friends::TFriendsFriendListStorage": {
+  "chain": [
+   "tibia::friends::TFriendsFriendListStorage",
+   "QObject"
+  ],
+  "class": "tibia::friends::TFriendsFriendListStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "friendListChanged": [
+    "void friendListChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::friends::TFriendsInviteStorage": {
+  "chain": [
+   "tibia::friends::TFriendsInviteStorage",
+   "QObject"
+  ],
+  "class": "tibia::friends::TFriendsInviteStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "blacklistChanged": [
+    "void blacklistChanged()"
+   ],
+   "inviteListChanged": [
+    "void inviteListChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::friends::TFriendsProtocolMessageHandler": {
+  "chain": [
+   "tibia::friends::TFriendsProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::friends::TFriendsProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "cannotUseFriendSystemError": [
+    "void cannotUseFriendSystemError()"
+   ],
+   "errorReceived": [
+    "void errorReceived()"
+   ],
+   "genericFriendSystemError": [
+    "void genericFriendSystemError(QString ErrorMessage)"
+   ],
+   "newFriendInviteReceived": [
+    "void newFriendInviteReceived()"
+   ],
+   "newFriendshipReceived": [
+    "void newFriendshipReceived()"
+   ],
+   "sendFriendSystemAction": [
+    "void sendFriendSystemAction(tibia::protobuf::protocol::GameclientMessageFriendSystemAction FriendSystemActionMessage)"
+   ]
+  },
+  "slots": {
+   "handleFriendSystemDataMessage": [
+    "void handleFriendSystemDataMessage(tibia::protobuf::protocol::GameserverMessageFriendSystemData FriendSystemDataMessage)"
+   ]
+  }
+ },
+ "tibia::friends::TFriendsStorage": {
+  "chain": [
+   "tibia::friends::TFriendsStorage",
+   "QObject"
+  ],
+  "class": "tibia::friends::TFriendsStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "accountBadgesChanged": [
+    "void accountBadgesChanged()"
+   ],
+   "visibilitySettingsChanged": [
+    "void visibilitySettingsChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

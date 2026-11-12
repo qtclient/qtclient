@@ -1,0 +1,228 @@
+{
+ "tibia::dailyreward::TDailyRewardGameActionHandler": {
+  "chain": [
+   "tibia::dailyreward::TDailyRewardGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::dailyreward::TDailyRewardGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleCollectFixedItemsDailyRewardGameAction": [
+    "void handleCollectFixedItemsDailyRewardGameAction()"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleRequestDailyRewardHistoryGameAction": [
+    "void handleRequestDailyRewardHistoryGameAction()"
+   ],
+   "handleRequestOpenRewardWallGameAction": [
+    "void handleRequestOpenRewardWallGameAction()"
+   ]
+  }
+ },
+ "tibia::dailyreward::TDailyRewardProtocolMessageHandler": {
+  "chain": [
+   "tibia::dailyreward::TDailyRewardProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::dailyreward::TDailyRewardProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "restingAreaStateChanged": [
+    "void restingAreaStateChanged(bool InRestingArea)"
+   ],
+   "sendCollectDailyReward": [
+    "void sendCollectDailyReward(tibia::protobuf::protocol::GameclientMessageCollectDailyReward CollectDailyRewardMessage)"
+   ],
+   "sendDailyRewardHistory": [
+    "void sendDailyRewardHistory(tibia::protobuf::protocol::GameclientMessageDailyRewardHistory DailyRewardHistoryMessage)"
+   ],
+   "sendOpenRewardWall": [
+    "void sendOpenRewardWall(tibia::protobuf::protocol::GameclientMessageOpenRewardWall OpenRewardWallMessage)"
+   ]
+  },
+  "slots": {
+   "handleCloseRewardWallMessage": [
+    "void handleCloseRewardWallMessage(tibia::protobuf::protocol::GameserverMessageCloseRewardWall CloseRewardWallMessage)"
+   ],
+   "handleDailyRewardBasicMessage": [
+    "void handleDailyRewardBasicMessage(tibia::protobuf::protocol::GameserverMessageDailyRewardBasic DailyRewardBasicMessage)"
+   ],
+   "handleDailyRewardCollectionStateMessage": [
+    "void handleDailyRewardCollectionStateMessage(tibia::protobuf::protocol::GameserverMessageDailyRewardCollectionState DailyRewardCollectionStateMessage)"
+   ],
+   "handleDailyRewardHistoryMessage": [
+    "void handleDailyRewardHistoryMessage(tibia::protobuf::protocol::GameserverMessageDailyRewardHistory DailyRewardHistoryMessage)"
+   ],
+   "handleLoginSuccessMessage": [
+    "void handleLoginSuccessMessage(tibia::protobuf::protocol::GameserverMessageLoginSuccess LoginSuccessMessage)"
+   ],
+   "handleOpenRewardWallMessage": [
+    "void handleOpenRewardWallMessage(tibia::protobuf::protocol::GameserverMessageOpenRewardWall OpenRewardWallMessage)"
+   ],
+   "handleResourceBalanceMessage": [
+    "void handleResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance ResourceBalanceMessage)"
+   ],
+   "handleRestingAreaStateMessage": [
+    "void handleRestingAreaStateMessage(tibia::protobuf::protocol::GameserverMessageRestingAreaState RestingAreaStateMessage)"
+   ],
+   "handleShowMessageDialogMessage": [
+    "void handleShowMessageDialogMessage(tibia::protobuf::protocol::GameserverMessageShowMessageDialog ShowMessageDialogMessage)"
+   ]
+  }
+ },
+ "tibia::dailyreward::TDailyRewardStorage": {
+  "chain": [
+   "tibia::dailyreward::TDailyRewardStorage",
+   "QObject"
+  ],
+  "class": "tibia::dailyreward::TDailyRewardStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "bountyTaskRerollTokenCountChanged": [
+    "void bountyTaskRerollTokenCountChanged()"
+   ],
+   "cosmeticTokenCountChanged": [
+    "void cosmeticTokenCountChanged()"
+   ],
+   "dailyRewardHistoryChanged": [
+    "void dailyRewardHistoryChanged()"
+   ],
+   "dailyRewardJokerAmountChanged": [
+    "void dailyRewardJokerAmountChanged()"
+   ],
+   "dailyRewardReadyToPickUpChanged": [
+    "void dailyRewardReadyToPickUpChanged()"
+   ],
+   "dailyRewardStreakStateChanged": [
+    "void dailyRewardStreakStateChanged()"
+   ],
+   "instantRewardAccessAmountChanged": [
+    "void instantRewardAccessAmountChanged()"
+   ],
+   "jokersNeededForCollectingChanged": [
+    "void jokersNeededForCollectingChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::dailyreward::TQmlDailyReward": {
+  "chain": [
+   "tibia::dailyreward::TQmlDailyReward",
+   "QObject"
+  ],
+  "class": "tibia::dailyreward::TQmlDailyReward",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::dailyreward::TQmlDailyRewardHistoryEntry": {
+  "chain": [
+   "tibia::dailyreward::TQmlDailyRewardHistoryEntry",
+   "QObject"
+  ],
+  "class": "tibia::dailyreward::TQmlDailyRewardHistoryEntry",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "changedBySupport": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlDailyRewardHistoryEntry",
+    "notify": null,
+    "type": "bool"
+   },
+   "description": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlDailyRewardHistoryEntry",
+    "notify": null,
+    "type": "QString"
+   },
+   "newRewardStreakLength": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlDailyRewardHistoryEntry",
+    "notify": null,
+    "type": "uint"
+   },
+   "timestamp": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlDailyRewardHistoryEntry",
+    "notify": null,
+    "type": "QString"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::dailyreward::TQmlRewardStreakBonus": {
+  "chain": [
+   "tibia::dailyreward::TQmlRewardStreakBonus",
+   "QObject"
+  ],
+  "class": "tibia::dailyreward::TQmlRewardStreakBonus",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "isLockedByRewardStreakLength": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlRewardStreakBonus",
+    "notify": null,
+    "type": "bool"
+   },
+   "neededRewardStreakLength": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlRewardStreakBonus",
+    "notify": null,
+    "type": "uint"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ }
+}

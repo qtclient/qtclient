@@ -1,0 +1,19 @@
+#pragma once
+
+#include <QColor>
+
+namespace tibia {
+namespace qmlcomponents {
+
+/// The 133 outfit colours (19 hues x 7 saturation/value steps; CIP).
+/// Pack-safe leaf — no QML types / cip_gen hubs.
+namespace outfitpalette {
+constexpr int HueSteps = 19;
+constexpr int Count = HueSteps * 7;
+QColor color(int index);
+/// The palette index of `color`, 0 when it is not a palette colour.
+int index(const QColor& color);
+}
+
+}
+}

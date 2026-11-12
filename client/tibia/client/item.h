@@ -1,0 +1,205 @@
+/*
+ * Copyright (c) 2024-2026 qtclient contributors
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+#pragma once
+
+#include "tibia/appearances/thing.h"
+#include "framework/core/declarations.h"
+#include "outfit.h"
+
+#include <memory>
+
+namespace tibia {
+namespace appearances {
+class TShowOffSocketAppearanceInstance;
+}
+}
+
+enum ItemAttr : uint8_t
+{
+    ATTR_END = 0,
+    //ATTR_DESCRIPTION = 1,
+    //ATTR_EXT_FILE = 2,
+    ATTR_TILE_FLAGS = 3,
+    ATTR_ACTION_ID = 4,
+    ATTR_UNIQUE_ID = 5,
+    ATTR_TEXT = 6,
+    ATTR_DESC = 7,
+    ATTR_TELE_DEST = 8,
+    ATTR_ITEM = 9,
+    ATTR_DEPOT_ID = 10,
+    //ATTR_EXT_SPAWN_FILE = 11,
+    ATTR_RUNE_CHARGES = 12,
+    //ATTR_EXT_HOUSE_FILE = 13,
+    ATTR_HOUSEDOORID = 14,
+    ATTR_COUNT = 15,
+    ATTR_DURATION = 16,
+    ATTR_DECAYING_STATE = 17,
+    ATTR_WRITTENDATE = 18,
+    ATTR_WRITTENBY = 19,
+    ATTR_SLEEPERGUID = 20,
+    ATTR_SLEEPSTART = 21,
+    ATTR_CHARGES = 22,
+    ATTR_CONTAINER_ITEMS = 23,
+    ATTR_NAME = 30,
+    ATTR_PLURALNAME = 31,
+    ATTR_ATTACK = 33,
+    ATTR_EXTRAATTACK = 34,
+    ATTR_DEFENSE = 35,
+    ATTR_EXTRADEFENSE = 36,
+    ATTR_ARMOR = 37,
+    ATTR_ATTACKSPEED = 38,
+    ATTR_HITCHANCE = 39,
+    ATTR_SHOOTRANGE = 40,
+    ATTR_ARTICLE = 41,
+    ATTR_SCRIPTPROTECTED = 42,
+    ATTR_DUALWIELD = 43,
+    ATTR_ATTRIBUTE_MAP = 128,
+    ATTR_LAST
+};
+
+// @bindclass
+#pragma pack(push,1) // disable memory alignment
+class Item final : public Thing
+{
+public:
+    static ItemPtr create(int id);
+
+    /// Stackable/fluid pattern indices without constructing an Item (QML renderers).
+    /// Hangable hook is caller-owned (no tile). Position-based patterns stay 0.
+    static void patternsFor(ThingType* type, int countOrSubType, int& patternX, int& patternY, int& patternZ);
+
+    void draw(const Point& dest, bool drawThings = true, LightSink* lightView = nullptr) override;
+    void drawLight(const Point& dest, LightSink* lightView) override;
+
+    void setId(uint32_t id) override;
+
+    void setCountOrSubType(const int value) { m_countOrSubType = value; updatePatterns(); }
+    void setCount(const int count) { m_countOrSubType = count; updatePatterns(); }
+    void setSubType(const int subType) { m_countOrSubType = subType; updatePatterns(); }
+    void setColor(const Color& c) { if (m_color != c) m_color = c; }
+    void setPosition(const Position& position, uint8_t stackPos = 0) override;
+    void setTooltip(const std::string& str) { m_tooltip = str; }
+    void setDurationTime(uint32_t duration);
+    void setDecaying(bool decaying);
+    void setCharges(const uint32_t charges) { m_charges = charges; }
+    void setTier(const uint8_t tier) { m_tier = tier; }
+    void setBrandNew(const bool brandNew) { m_brandNew = brandNew; }
+    void setContainerAmmoTotal(const uint32_t total) { m_containerAmmoTotal = total; m_hasContainerAmmoTotal = true; }
+    void setDecoItemId(const uint16_t id) { m_decoItemId = id; }
+    void setManagedContainerFlags(const uint32_t lootFlags, const uint32_t obtainFlags) { m_lootFlags = lootFlags; m_obtainFlags = obtainFlags; }
+
+    /// Show-off socket (podium) look — CIP `TShowOffSocketAppearanceInstance` owns storage.
+    void setPodiumOutfit(const Outfit& outfit);
+    void clearPodiumOutfit();
+    void setPodiumDirection(uint8_t direction);
+    void setPodiumVisible(bool visible);
+    const Outfit& getPodiumOutfit() const;
+    uint8_t getPodiumDirection() const;
+    bool isPodiumVisible() const;
+    bool hasPodiumOutfit() const;
+    /// Live CIP show-off instance (created on first podium wire write).
+    std::shared_ptr<tibia::appearances::TShowOffSocketAppearanceInstance> showOffSocket();
+    std::shared_ptr<tibia::appearances::TShowOffSocketAppearanceInstance> showOffSocket() const;
+
+    int getCountOrSubType() { return m_countOrSubType; }
+    int getSubType();
+    int getCount() { return isStackable() ? m_countOrSubType : 1; }
+    int getClothSlot();
+    std::string getTooltip() { return m_tooltip; }
+    uint32_t getDurationTime() const;
+    bool isDecaying() const { return m_decaying; }
+    uint32_t getCharges() { return m_charges; }
+    uint8_t getTier() { return m_tier; }
+    // Clock and counter items the server reports as never used.
+    bool isBrandNew() const { return m_brandNew; }
+    // The ammunition a quiver or content-counting container holds.
+    bool hasContainerAmmoTotal() const { return m_hasContainerAmmoTotal; }
+    uint32_t getContainerAmmoTotal() const { return m_containerAmmoTotal; }
+    // The decoration a deco kit unwraps into.
+    uint16_t getDecoItemId() const { return m_decoItemId; }
+    // Loot and obtain category bits of a managed container.
+    uint32_t getLootFlags() const { return m_lootFlags; }
+    uint32_t getObtainFlags() const { return m_obtainFlags; }
+
+    bool isValid() { return getThingType() != nullptr; }
+
+    bool hasWearOut() { return Thing::hasWearOut(); }
+    bool hasClockExpire() { return Thing::hasClockExpire(); }
+    bool hasExpire() { return Thing::hasExpire(); }
+    bool hasExpireStop() { return Thing::hasExpireStop(); }
+    uint32_t getCyclopediaType() const { return Thing::getCyclopediaType(); }
+    uint32_t getProficiencyId() const { return Thing::getProficiencyId(); }
+    uint32_t getWeaponType() const { return Thing::getWeaponType(); }
+    uint32_t getMinimumLevel() const { return Thing::getMinimumLevel(); }
+    uint32_t getImbueSlots() const { return Thing::getImbueSlots(); }
+    std::vector<uint32_t> getRestrictVocation() const { return Thing::getRestrictVocation(); }
+
+    void setAsync(const bool enable) { m_async = enable; }
+
+    ItemPtr clone();
+    ItemPtr asItem() { return static_self_cast<Item>(); }
+    bool isItem() const override { return true; }
+
+    void updatePatterns();
+    int calculateAnimationPhase();
+    /// The phase calculateAnimationPhase() would draw, without writing m_phase.
+    int peekAnimationPhase();
+    int getExactSize(const int layer = 0, int /*xPattern*/ = 0, int /*yPattern*/ = 0, int /*zPattern*/ = 0, int /*animationPhase*/ = 0) override {
+        return Thing::getExactSize(layer, m_numPatternX, m_numPatternY, m_numPatternZ, calculateAnimationPhase());
+    }
+
+    void onPositionChange(const Position& /*newPos*/, const Position& /*oldPos*/) override { updatePatterns(); }
+
+
+private:
+    ThingType* getThingType() const override;
+
+    void internalDraw(int animationPhase, const Point& dest, const Color& color, bool drawThings, bool replaceColorShader, LightSink* lightView = nullptr);
+
+    uint16_t m_countOrSubType{ 0 };
+    uint32_t m_duration{ 0 };
+    int64_t m_durationEnd{ 0 };
+    bool m_decaying{ false };
+    uint32_t m_charges{ 0 };
+    uint8_t m_tier{ 0 };
+    uint8_t m_phase{ 0 };
+    bool m_brandNew{ false };
+    bool m_hasContainerAmmoTotal{ false };
+    uint32_t m_containerAmmoTotal{ 0 };
+    uint16_t m_decoItemId{ 0 };
+    uint32_t m_lootFlags{ 0 };
+    uint32_t m_obtainFlags{ 0 };
+
+    /// CIP show-off socket owns outfit / direction / pedestal visibility.
+    std::shared_ptr<tibia::appearances::TShowOffSocketAppearanceInstance> m_showOff;
+
+    Color m_color{ Color::white };
+
+    ticks_t m_lastPhase{ 0 };
+
+    bool m_async{ true };
+    std::string m_tooltip;
+
+};
+
+#pragma pack(pop)

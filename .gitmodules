@@ -1,0 +1,10 @@
+[submodule "third_party/Qt5LegacyControls"]
+	path = third_party/Qt5LegacyControls
+	url = https://github.com/CipSoft-Tibia/Qt5LegacyControls.git
+	branch = main
+[submodule "third_party/qt5-cip"]
+	path = third_party/qt5-cip
+	url = https://github.com/CipSoft-Tibia/Qt5.git
+	branch = master
+	update = none
+	shallow = true

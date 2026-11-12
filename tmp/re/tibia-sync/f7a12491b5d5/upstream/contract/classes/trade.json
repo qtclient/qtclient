@@ -1,0 +1,281 @@
+{
+ "tibia::trade::TCharacterTradeProtocolMessageHandler": {
+  "chain": [
+   "tibia::trade::TCharacterTradeProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::trade::TCharacterTradeProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendCharacterTradeConfigurationAction": [
+    "void sendCharacterTradeConfigurationAction(tibia::protobuf::protocol::GameclientMessageCharacterTradeConfigurationAction ConfigurationMessage)"
+   ]
+  },
+  "slots": {
+   "handleCharacterTradeConfigurationMessage": [
+    "void handleCharacterTradeConfigurationMessage(tibia::protobuf::protocol::GameserverMessageCharacterTradeConfiguration CharacterTradeConfigurationMessage)"
+   ]
+  }
+ },
+ "tibia::trade::TCharacterTradeStorage": {
+  "chain": [
+   "tibia::trade::TCharacterTradeStorage",
+   "QObject"
+  ],
+  "class": "tibia::trade::TCharacterTradeStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "infoUpdated": [
+    "void infoUpdated(ECharacterTradeDataType DataType)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::trade::TNPCTradeProtocolMessageHandler": {
+  "chain": [
+   "tibia::trade::TNPCTradeProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::trade::TNPCTradeProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestCloseNpcTrade": [
+    "void requestCloseNpcTrade()"
+   ],
+   "requestOpenNpcTrade": [
+    "void requestOpenNpcTrade()"
+   ],
+   "sendBuyObject": [
+    "void sendBuyObject(tibia::protobuf::protocol::GameclientMessageBuyObject BuyObjectMessage)"
+   ],
+   "sendCloseNPCTrade": [
+    "void sendCloseNPCTrade(tibia::protobuf::protocol::GameclientMessageCloseNPCTrade CloseNPCTradeMessage)"
+   ],
+   "sendInspectObject": [
+    "void sendInspectObject(tibia::protobuf::protocol::GameclientMessageInspectObject InspectObjectMessage)"
+   ],
+   "sendLookNPCTrade": [
+    "void sendLookNPCTrade(tibia::protobuf::protocol::GameclientMessageLookNPCTrade LookNPCTradeMessage)"
+   ],
+   "sendSellObject": [
+    "void sendSellObject(tibia::protobuf::protocol::GameclientMessageSellObject SellObjectMessage)"
+   ]
+  },
+  "slots": {
+   "handleCloseNPCTradeMessage": [
+    "void handleCloseNPCTradeMessage(tibia::protobuf::protocol::GameserverMessageCloseNPCTrade CloseNPCTradeMessage)"
+   ],
+   "handleDeadMessage": [
+    "void handleDeadMessage(tibia::protobuf::protocol::GameserverMessageDead DeadMessage)"
+   ],
+   "handleNPCOfferMessage": [
+    "void handleNPCOfferMessage(tibia::protobuf::protocol::GameserverMessageNPCOffer NPCOfferMessage)"
+   ],
+   "handlePlayerGoodsMessage": [
+    "void handlePlayerGoodsMessage(tibia::protobuf::protocol::GameserverMessagePlayerGoods PlayerGoods)"
+   ],
+   "handleResourceBalanceMessage": [
+    "void handleResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance ResourceBalanceMessage)"
+   ]
+  }
+ },
+ "tibia::trade::TNPCTradeStorage": {
+  "chain": [
+   "tibia::trade::TNPCTradeStorage",
+   "QObject"
+  ],
+  "class": "tibia::trade::TNPCTradeStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "playerInventoryChanged": [
+    "void playerInventoryChanged()"
+   ],
+   "questFlagCurrencyBalanceChanged": [
+    "void questFlagCurrencyBalanceChanged()"
+   ],
+   "tradeCurrencyChanged": [
+    "void tradeCurrencyChanged()"
+   ],
+   "traderInventoryChanged": [
+    "void traderInventoryChanged()"
+   ]
+  },
+  "slots": {
+   "onPlayerDataChanged": [
+    "void onPlayerDataChanged()"
+   ]
+  }
+ },
+ "tibia::trade::TPlayerTradeGameActionHandler": {
+  "chain": [
+   "tibia::trade::TPlayerTradeGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::trade::TPlayerTradeGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendTradeObject": [
+    "void sendTradeObject(tibia::protobuf::protocol::GameclientMessageTradeObject TradeObjectMessage)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::trade::TPlayerTradeObject": {
+  "chain": [
+   "tibia::trade::TPlayerTradeObject",
+   "QObject"
+  ],
+  "class": "tibia::trade::TPlayerTradeObject",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "appearanceID": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TPlayerTradeObject",
+    "notify": "itemChanged",
+    "type": "uint"
+   },
+   "hookDirection": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TPlayerTradeObject",
+    "notify": "itemChanged",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection"
+   },
+   "liquidType": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "FINAL"
+    ],
+    "from": "TPlayerTradeObject",
+    "notify": "itemChanged",
+    "type": "tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType"
+   },
+   "objectCount": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TPlayerTradeObject",
+    "notify": "itemChanged",
+    "type": "uint"
+   },
+   "objectUpgradeTier": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TPlayerTradeObject",
+    "notify": "itemChanged",
+    "type": "uint"
+   },
+   "slotID": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TPlayerTradeObject",
+    "notify": "itemChanged",
+    "type": "uint"
+   }
+  },
+  "signals": {
+   "itemChanged": [
+    "void itemChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::trade::TPlayerTradeProtocolMessageHandler": {
+  "chain": [
+   "tibia::trade::TPlayerTradeProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::trade::TPlayerTradeProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestClosePlayerTradeWidget": [
+    "void requestClosePlayerTradeWidget()"
+   ],
+   "requestOpenPlayerTradeWidget": [
+    "void requestOpenPlayerTradeWidget()"
+   ],
+   "sendAcceptTrade": [
+    "void sendAcceptTrade(tibia::protobuf::protocol::GameclientMessageAcceptTrade AcceptTradeMessage)"
+   ],
+   "sendInspectObject": [
+    "void sendInspectObject(tibia::protobuf::protocol::GameclientMessageInspectObject InspectObjectMessage)"
+   ],
+   "sendLookTrade": [
+    "void sendLookTrade(tibia::protobuf::protocol::GameclientMessageLookTrade LookTradeMessage)"
+   ],
+   "sendRejectTrade": [
+    "void sendRejectTrade(tibia::protobuf::protocol::GameclientMessageRejectTrade RejectTradeMessage)"
+   ]
+  },
+  "slots": {
+   "handleCloseTradeMessage": [
+    "void handleCloseTradeMessage(tibia::protobuf::protocol::GameserverMessageCloseTrade CloseTradeMessage)"
+   ],
+   "handleCounterOfferMessage": [
+    "void handleCounterOfferMessage(tibia::protobuf::protocol::GameserverMessageCounterOffer CounterOfferMessage)"
+   ],
+   "handleOwnOfferMessage": [
+    "void handleOwnOfferMessage(tibia::protobuf::protocol::GameserverMessageOwnOffer OwnOfferMessage)"
+   ]
+  }
+ },
+ "tibia::trade::TPlayerTradeStorage": {
+  "chain": [
+   "tibia::trade::TPlayerTradeStorage",
+   "QObject"
+  ],
+  "class": "tibia::trade::TPlayerTradeStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "counterOfferChanged": [
+    "void counterOfferChanged()"
+   ],
+   "ownOfferChanged": [
+    "void ownOfferChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

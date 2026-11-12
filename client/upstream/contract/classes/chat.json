@@ -1,0 +1,325 @@
+{
+ "tibia::chat::TChatChannel": {
+  "chain": [
+   "tibia::chat::TChatChannel",
+   "QObject"
+  ],
+  "class": "tibia::chat::TChatChannel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "chatEntryAdded": [
+    "void chatEntryAdded(std::shared_ptr<TChatChannelIdentifierBase> pIdentifiere)"
+   ],
+   "idRangeChanged": [
+    "void idRangeChanged(TChatEntryID FirstId, TChatEntryID AfterLastId)"
+   ],
+   "isClosedChanged": [
+    "void isClosedChanged()"
+   ],
+   "serverLogSubscriptionChanged": [
+    "void serverLogSubscriptionChanged()"
+   ],
+   "tutorialMarkerChanged": [
+    "void tutorialMarkerChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::chat::TChatChannelStorage": {
+  "chain": [
+   "tibia::chat::TChatChannelStorage",
+   "QObject"
+  ],
+  "class": "tibia::chat::TChatChannelStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "chatChannelRemoved": [
+    "void chatChannelRemoved(std::shared_ptr<TChatChannelIdentifierBase> pIdentifier)"
+   ],
+   "chatChannelReopend": [
+    "void chatChannelReopend(std::shared_ptr<TChatChannelIdentifierBase> pIdentifier, bool ForceMakeCurrent)"
+   ],
+   "entryAddedToChatChannel": [
+    "void entryAddedToChatChannel(std::shared_ptr<TChatChannelIdentifierBase> pIdentifier)"
+   ],
+   "newChatChannelOpened": [
+    "void newChatChannelOpened(std::shared_ptr<TChatChannelIdentifierBase> pIdentifier, bool ForceMakeCurrent)"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "onPlayerCreatureAddedToCreatureStorage": [
+    "void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ]
+  }
+ },
+ "tibia::chat::TChatGameActionHandler": {
+  "chain": [
+   "tibia::chat::TChatGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::chat::TChatGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendCloseNPCChannel": [
+    "void sendCloseNPCChannel(tibia::protobuf::protocol::GameclientMessageCloseNPCChannel CloseNPCChannelMessage)"
+   ],
+   "sendExcludeFromChannel": [
+    "void sendExcludeFromChannel(tibia::protobuf::protocol::GameclientMessageExcludeFromChannel ExcludeFromChannelMessage)"
+   ],
+   "sendGetChanneList": [
+    "void sendGetChanneList(tibia::protobuf::protocol::GameclientMessageGetChannels GetChannelListMessage)"
+   ],
+   "sendGuildMessage": [
+    "void sendGuildMessage(tibia::protobuf::protocol::GameclientMessageGuildMessage GuildMessageMessage)"
+   ],
+   "sendInviteToChannel": [
+    "void sendInviteToChannel(tibia::protobuf::protocol::GameclientMessageInviteToChannel InviteToChannelMessage)"
+   ],
+   "sendJoinChannel": [
+    "void sendJoinChannel(tibia::protobuf::protocol::GameclientMessageJoinChannel JoinChannelMessage)"
+   ],
+   "sendLeaveChannel": [
+    "void sendLeaveChannel(tibia::protobuf::protocol::GameclientMessageLeaveChannel LeaveChannelMessage)"
+   ],
+   "sendOpenChannel": [
+    "void sendOpenChannel(tibia::protobuf::protocol::GameclientMessageOpenChannel OpenChannelMessage)"
+   ],
+   "sendPrivateChannel": [
+    "void sendPrivateChannel(tibia::protobuf::protocol::GameclientMessagePrivateChannel PrivateChannelMessage)"
+   ],
+   "sendTalkMessage": [
+    "void sendTalkMessage(tibia::protobuf::protocol::GameclientMessageTalk GuildMessageMessage)"
+   ]
+  },
+  "slots": {
+   "emitSendCloseNPCChannel": [
+    "void emitSendCloseNPCChannel()"
+   ],
+   "handleAddBeneathMiddleWorldmapMessageGameAction": [
+    "void handleAddBeneathMiddleWorldmapMessageGameAction(std::shared_ptr<tibia::input::TGameActionAddTextMessage> pGameAction)"
+   ],
+   "handleAddGUITutorialMarkerGameAction": [
+    "void handleAddGUITutorialMarkerGameAction(std::shared_ptr<tibia::input::TGameActionAddGUITutorialMarker> pGameAction)"
+   ],
+   "handleAddSystemChatMessageGameAction": [
+    "void handleAddSystemChatMessageGameAction(std::shared_ptr<tibia::input::TGameActionAddTextMessage> pGameAction)"
+   ],
+   "handleClearChatChannelGameAction": [
+    "void handleClearChatChannelGameAction(std::shared_ptr<tibia::input::TGameActionChatChannel> pGameAction)"
+   ],
+   "handleClearOldestMessageFromMapwindowGameAction": [
+    "void handleClearOldestMessageFromMapwindowGameAction()"
+   ],
+   "handleCloseChatChannelGameAction": [
+    "void handleCloseChatChannelGameAction(std::shared_ptr<tibia::input::TGameActionChatChannel> pGameAction)"
+   ],
+   "handleExcludePlayerFromChannelGameAction": [
+    "void handleExcludePlayerFromChannelGameAction(std::shared_ptr<tibia::input::TGameActionExcludePlayerFromChatChannel> pGameAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleGetChanneListGameAction": [
+    "void handleGetChanneListGameAction()"
+   ],
+   "handleGetGuildMessage": [
+    "void handleGetGuildMessage()"
+   ],
+   "handleIgnoreNameGameAction": [
+    "void handleIgnoreNameGameAction(std::shared_ptr<tibia::input::TGameActionIgnoreName> pGameAction)"
+   ],
+   "handleInvitePlayerToChannelGameAction": [
+    "void handleInvitePlayerToChannelGameAction(std::shared_ptr<tibia::input::TGameActionInvitePlayerToChatChannel> pGameAction)"
+   ],
+   "handleMuteChannelGameAction": [
+    "void handleMuteChannelGameAction(std::shared_ptr<tibia::input::TGameActionChatChannel> pGameAction)"
+   ],
+   "handleOpenChatChannelGameAction": [
+    "void handleOpenChatChannelGameAction(std::shared_ptr<tibia::input::TGameActionChatChannel> pGameAction, bool ForceMakeCurrent)"
+   ],
+   "handleRemoveAllTutorialMarkersGameAction": [
+    "void handleRemoveAllTutorialMarkersGameAction()"
+   ],
+   "handleSendTalkChatMessageAsGamemeasterBroadcastGameAction": [
+    "void handleSendTalkChatMessageAsGamemeasterBroadcastGameAction(std::shared_ptr<tibia::input::TGameActionSendChatMessage> pGameAction)"
+   ],
+   "handleSendTalkChatMessageToNpcGameAction": [
+    "void handleSendTalkChatMessageToNpcGameAction(std::shared_ptr<tibia::input::TGameActionSendChatMessageToNpc> pGameAction)"
+   ],
+   "handleSendTalkChatMessageWidthRecipientGameAction": [
+    "void handleSendTalkChatMessageWidthRecipientGameAction(std::shared_ptr<tibia::input::TGameActionSendChatMessageWithRecipient> pGameAction)"
+   ],
+   "handleSendTalkChatMessageWithChannelIDGameAction": [
+    "void handleSendTalkChatMessageWithChannelIDGameAction(std::shared_ptr<tibia::input::TGameActionSendChatMessageWithChannelID> pGameAction)"
+   ],
+   "handleSendTalkChatMessageWithSpeechVolumeGameAction": [
+    "void handleSendTalkChatMessageWithSpeechVolumeGameAction(std::shared_ptr<tibia::input::TGameActionSendChatMessageWithSpeechVolume> pGameAction)"
+   ],
+   "handleSetStatusLineGameAction": [
+    "void handleSetStatusLineGameAction(std::shared_ptr<tibia::input::TGameActionSetStatusLine> pGameAction)"
+   ],
+   "handleSubscripeToServerLogGameAction": [
+    "void handleSubscripeToServerLogGameAction(std::shared_ptr<tibia::input::TGameActionChatChannel> pGameAction)"
+   ],
+   "handleToggleChannelJoinLeaveMessagesGameAction": [
+    "void handleToggleChannelJoinLeaveMessagesGameAction(bool ShowJoinLeaveMessages)"
+   ],
+   "handleUnignoreNameGameAction": [
+    "void handleUnignoreNameGameAction(std::shared_ptr<tibia::input::TGameActionUnignoreName> pGameAction)"
+   ],
+   "handleUnmuteChannelGameAction": [
+    "void handleUnmuteChannelGameAction(std::shared_ptr<tibia::input::TGameActionChatChannel> pGameAction)"
+   ],
+   "handleUnsubscripeServerLogGameAction": [
+    "void handleUnsubscripeServerLogGameAction(std::shared_ptr<tibia::input::TGameActionChatChannel> pGameAction)"
+   ]
+  }
+ },
+ "tibia::chat::TChatModeManager": {
+  "chain": [
+   "tibia::chat::TChatModeManager",
+   "QObject"
+  ],
+  "class": "tibia::chat::TChatModeManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "chatModeChanged": [
+    "void chatModeChanged()"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onCurrentGamesessionDisconnected": [
+    "void onCurrentGamesessionDisconnected()"
+   ]
+  }
+ },
+ "tibia::chat::TChatProtocolMessageHandler": {
+  "chain": [
+   "tibia::chat::TChatProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::chat::TChatProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "currentlyAvailableChannels": [
+    "void currentlyAvailableChannels(TChatChannelIdentifierList ChannelList)"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleChannelEventMessage": [
+    "void handleChannelEventMessage(tibia::protobuf::protocol::GameserverMessageChannelEvent ChannelEvent)"
+   ],
+   "handleChannelsMessage": [
+    "void handleChannelsMessage(tibia::protobuf::protocol::GameserverMessageChannels ChannelsMessage)"
+   ],
+   "handleCloseChannelMessage": [
+    "void handleCloseChannelMessage(tibia::protobuf::protocol::GameserverMessageCloseChannel CloseChannelMessage)"
+   ],
+   "handleMessageMessage": [
+    "void handleMessageMessage(tibia::protobuf::protocol::GameserverMessageMessage MessageMessage)"
+   ],
+   "handleNpcTalkPartersMessage": [
+    "void handleNpcTalkPartersMessage(tibia::protobuf::protocol::GameserverMessageNpcTalkParters Message)"
+   ],
+   "handleOpenChannelMessage": [
+    "void handleOpenChannelMessage(tibia::protobuf::protocol::GameserverMessageOpenChannel OpenChannelMessage)"
+   ],
+   "handleOpenOwnChannelMessage": [
+    "void handleOpenOwnChannelMessage(tibia::protobuf::protocol::GameserverMessageOpenOwnChannel OpenChannelMessage)"
+   ],
+   "handlePrivateChannelMessage": [
+    "void handlePrivateChannelMessage(tibia::protobuf::protocol::GameserverMessagePrivateChannel PrivateChannel)"
+   ],
+   "handleTalkMessage": [
+    "void handleTalkMessage(tibia::protobuf::protocol::GameserverMessageTalk TalkMessage)"
+   ],
+   "onChatProtocolMessageHandlerOptionsChanged": [
+    "void onChatProtocolMessageHandlerOptionsChanged()"
+   ],
+   "onPlayerCreatureAddedToCreatureStorage": [
+    "void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ]
+  }
+ },
+ "tibia::chat::TChatStorage": {
+  "chain": [
+   "tibia::chat::TChatStorage",
+   "QObject"
+  ],
+  "class": "tibia::chat::TChatStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "keywordButtonsChanged": [
+    "void keywordButtonsChanged()"
+   ],
+   "npcTalkPartnersChanged": [
+    "void npcTalkPartnersChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::chat::TTextStorage": {
+  "chain": [
+   "tibia::chat::TTextStorage",
+   "QObject"
+  ],
+  "class": "tibia::chat::TTextStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "onPlayerCreatureAddedToGameSession": [
+    "void onPlayerCreatureAddedToGameSession(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ]
+  }
+ },
+ "tibia::chat::TWhiteBlacklist": {
+  "chain": [
+   "tibia::chat::TWhiteBlacklist",
+   "QObject"
+  ],
+  "class": "tibia::chat::TWhiteBlacklist",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "messageFiltered": [
+    "void messageFiltered()"
+   ]
+  },
+  "slots": {}
+ }
+}

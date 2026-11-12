@@ -1,0 +1,64 @@
+{
+ "tibia::proficiency::TProficiencyProtocolMessageHandler": {
+  "chain": [
+   "tibia::proficiency::TProficiencyProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::proficiency::TProficiencyProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendInspectObject": [
+    "void sendInspectObject(tibia::protobuf::protocol::GameclientMessageInspectObject InspectObjectMessage)"
+   ],
+   "sendWeaponProficiencyCommand": [
+    "void sendWeaponProficiencyCommand(tibia::protobuf::protocol::GameclientMessageWeaponProficiencyCommand WeaponProficiencyCommandMessage)"
+   ]
+  },
+  "slots": {
+   "handleResourceBalanceMessage": [
+    "void handleResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance Message)"
+   ],
+   "handleShapedPerkReshapeOffersMessage": [
+    "void handleShapedPerkReshapeOffersMessage(tibia::protobuf::protocol::GameserverMessageShapedPerkReshapeOffers Message)"
+   ],
+   "handleWeaponProficiencyMessage": [
+    "void handleWeaponProficiencyMessage(tibia::protobuf::protocol::GameserverMessageWeaponProficiency WeaponProficiencyMessage)"
+   ],
+   "handleWeaponProficiencyNotificationMessage": [
+    "void handleWeaponProficiencyNotificationMessage(tibia::protobuf::protocol::GameserverMessageWeaponProficiencyNotification WeaponProficiencyNotificationMessage)"
+   ]
+  }
+ },
+ "tibia::proficiency::TProficiencyStorage": {
+  "chain": [
+   "tibia::proficiency::TProficiencyStorage",
+   "QObject"
+  ],
+  "class": "tibia::proficiency::TProficiencyStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "currentProficiencyProgressChanged": [
+    "void currentProficiencyProgressChanged()"
+   ],
+   "proficiencyDataChanged": [
+    "void proficiencyDataChanged(tibia::appearances::TAppearanceTypeID AppearanceTypeID)"
+   ],
+   "resourceBalanceChanged": [
+    "void resourceBalanceChanged()"
+   ],
+   "shapedPerkReshapeOffersChanged": [
+    "void shapedPerkReshapeOffersChanged()"
+   ],
+   "unspentPerkChanged": [
+    "void unspentPerkChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

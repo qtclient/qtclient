@@ -1,0 +1,114 @@
+{
+ "tibia::exaltation::TExaltationGameActionHandler": {
+  "chain": [
+   "tibia::exaltation::TExaltationGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::exaltation::TExaltationGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleExaltationForgeConvergenceFusionGameAction": [
+    "void handleExaltationForgeConvergenceFusionGameAction(std::shared_ptr<tibia::input::TGameActionExaltationForgeConvergenceFusion> pGameAction)"
+   ],
+   "handleExaltationForgeDialogClosedGameAction": [
+    "void handleExaltationForgeDialogClosedGameAction()"
+   ],
+   "handleExaltationForgeFusionGameAction": [
+    "void handleExaltationForgeFusionGameAction(std::shared_ptr<tibia::input::TGameActionExaltationForgeFusion> pGameAction)"
+   ],
+   "handleExaltationForgeHistoryNextPageGameAction": [
+    "void handleExaltationForgeHistoryNextPageGameAction()"
+   ],
+   "handleExaltationForgeHistoryPreviousPageGameAction": [
+    "void handleExaltationForgeHistoryPreviousPageGameAction()"
+   ],
+   "handleExaltationForgeTransferGameAction": [
+    "void handleExaltationForgeTransferGameAction(std::shared_ptr<tibia::input::TGameActionExaltationForgeTransfer> pGameAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::exaltation::TExaltationProtocolMessageHandler": {
+  "chain": [
+   "tibia::exaltation::TExaltationProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::exaltation::TExaltationProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendExaltationAction": [
+    "void sendExaltationAction(tibia::protobuf::protocol::GameclientMessageExaltationAction ExaltationActionMessage)"
+   ],
+   "sendOpenExaltationHistory": [
+    "void sendOpenExaltationHistory(tibia::protobuf::protocol::GameclientMessageOpenExaltationHistory OpenExaltationHistoryMessage)"
+   ]
+  },
+  "slots": {
+   "handleCloseExaltationDialogMessage": [
+    "void handleCloseExaltationDialogMessage(tibia::protobuf::protocol::GameserverMessageCloseExaltationDialog Message)"
+   ],
+   "handleExaltationBaseDataMessage": [
+    "void handleExaltationBaseDataMessage(tibia::protobuf::protocol::GameserverMessageExaltationBaseData Message)"
+   ],
+   "handleExaltationDialogRefreshMessage": [
+    "void handleExaltationDialogRefreshMessage(tibia::protobuf::protocol::GameserverMessageExaltationDialogRefresh Message)"
+   ],
+   "handleExaltationHistoryMessage": [
+    "void handleExaltationHistoryMessage(tibia::protobuf::protocol::GameserverMessageExaltationHistory Message)"
+   ],
+   "handleExaltationResultMessage": [
+    "void handleExaltationResultMessage(tibia::protobuf::protocol::GameserverMessageExaltationResult Message)"
+   ],
+   "handleResourceBalanceMessage": [
+    "void handleResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance Message)"
+   ],
+   "handleShowMessageDialogMessage": [
+    "void handleShowMessageDialogMessage(tibia::protobuf::protocol::GameserverMessageShowMessageDialog Message)"
+   ]
+  }
+ },
+ "tibia::exaltation::TExaltationStorage": {
+  "chain": [
+   "tibia::exaltation::TExaltationStorage",
+   "QObject"
+  ],
+  "class": "tibia::exaltation::TExaltationStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "baseDataChanged": [
+    "void baseDataChanged()"
+   ],
+   "currentDustLimitChanged": [
+    "void currentDustLimitChanged()"
+   ],
+   "exaltedCurrencyBalanceChanged": [
+    "void exaltedCurrencyBalanceChanged()"
+   ],
+   "fusionGroupsChanged": [
+    "void fusionGroupsChanged()"
+   ],
+   "historyChanged": [
+    "void historyChanged()"
+   ],
+   "transferGroupsChanged": [
+    "void transferGroupsChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

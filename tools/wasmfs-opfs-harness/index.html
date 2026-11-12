@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>WasmFS OPFS harness</title>
+  <style>
+    body { font: 14px/1.4 ui-monospace, Menlo, monospace; margin: 1.5rem; }
+    #log { white-space: pre-wrap; }
+    .ok { color: #0a0; }
+    .err { color: #a00; }
+  </style>
+</head>
+<body>
+  <h1>WasmFS OPFS harness</h1>
+  <p>COOP/COEP required (use <code>tools/emscripten-web-serve.py</code>).</p>
+  <div id="log">loading…</div>
+  <script>
+    const logEl = document.getElementById('log');
+    const lines = [];
+    function log(msg, cls) {
+      lines.push(cls ? `[${cls}] ${msg}` : msg);
+      logEl.textContent = lines.join('\n');
+    }
+
+    async function listOpfs(dir, prefix = '') {
+      const out = [];
+      for await (const [name, handle] of dir.entries()) {
+        const path = prefix ? `${prefix}/${name}` : name;
+        if (handle.kind === 'directory') {
+          out.push({ path, kind: 'dir' });
+          out.push(...await listOpfs(handle, path));
+        } else {
+          const file = await handle.getFile();
+          out.push({ path, kind: 'file', size: file.size });
+        }
+      }
+      return out;
+    }
+
+    var Module = {
+      print: (t) => log(t),
+      printErr: (t) => log(t, 'err'),
+      onHarnessRoundtrip: async () => {
+        try {
+          const root = await navigator.storage.getDirectory();
+          const entries = await listOpfs(root);
+          const marker = entries.find((e) =>
+            e.path.endsWith('wasmfs-opfs-harness.txt'));
+          window.__WASMFS_OPFS_LAYOUT__ = {
+            note:
+              'WasmFS OPFS backend root == navigator.storage.getDirectory(). ' +
+              'Mount /home/web_user ⇒ VFS /home/web_user/X maps to OPFS X ' +
+              '(no idleot-cip-home prefix).',
+            markerPath: marker ? marker.path : null,
+            expectedRel:
+              '.local/share/IdleOT/IdleOT/packages/IdleOT.app/wasmfs-opfs-harness.txt',
+            entries,
+          };
+          log(JSON.stringify(window.__WASMFS_OPFS_LAYOUT__, null, 2), 'ok');
+          if (marker && marker.path === window.__WASMFS_OPFS_LAYOUT__.expectedRel)
+            log('LAYOUT_OK', 'ok');
+          else
+            log('LAYOUT_MISMATCH', 'err');
+        } catch (e) {
+          log(String(e), 'err');
+        }
+      },
+    };
+  </script>
+  <script async src="harness.js"></script>
+</body>
+</html>

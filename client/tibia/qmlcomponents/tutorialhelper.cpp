@@ -1,0 +1,115 @@
+#include "tutorialhelper.h"
+
+#include <QColor>
+#include <QJSEngine>
+#include <QQmlEngine>
+#include <QSGSimpleRectNode>
+
+namespace tibia::qmlcomponents {
+
+namespace {
+
+TTutorialHelperQmlService* g_instance = nullptr;
+
+}
+
+TTutorialHelperQmlService::TTutorialHelperQmlService(QObject* parent)
+    : cip::tibia::qmlcomponents::TTutorialHelperQmlService(parent)
+{
+    g_instance = this;
+}
+
+TTutorialHelperQmlService* TTutorialHelperQmlService::instance() { return g_instance; }
+
+int TTutorialHelperQmlService::nextUniqueTutorialMarkerID() { return m_nextId++; }
+
+void TTutorialHelperQmlService::setDebugOverlayVisible(const bool Visible)
+{
+    m_debugOverlay = Visible;
+    for (auto it = m_markers.begin(); it != m_markers.end(); ++it) {
+        if (cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* item = it.value())
+            item->setDebugOverlayVisible(Visible);
+    }
+}
+
+cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* TTutorialHelperQmlService::findTutorialMarkerQuickItemWithID(const int ID)
+{
+    return m_markers.value(ID);
+}
+
+QJSValue TTutorialHelperQmlService::findSpellInfoForSpell(const QString& SpellName)
+{
+    Q_UNUSED(SpellName);
+    return {};
+}
+
+void TTutorialHelperQmlService::registerMarker(cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* item)
+{
+    if (!item)
+        return;
+    const int id = item->markerID();
+    if (id != 0)
+        m_markers.insert(id, item);
+}
+
+void TTutorialHelperQmlService::unregisterMarker(cip::tibia::qmlcomponents::TTutorialMarkerQuickItem* item)
+{
+    if (!item)
+        return;
+    for (auto it = m_markers.begin(); it != m_markers.end();) {
+        if (it.value() == item)
+            it = m_markers.erase(it);
+        else
+            ++it;
+    }
+}
+
+TTutorialMarkerQuickItem::TTutorialMarkerQuickItem(QQuickItem* parent)
+    : cip::tibia::qmlcomponents::TTutorialMarkerQuickItem(parent)
+{
+    setFlag(ItemHasContents, true);
+    setAcceptedMouseButtons(Qt::NoButton);
+}
+
+TTutorialMarkerQuickItem::~TTutorialMarkerQuickItem()
+{
+    if (TTutorialHelperQmlService* helper = TTutorialHelperQmlService::instance())
+        helper->unregisterMarker(this);
+}
+
+void TTutorialMarkerQuickItem::setMarkerID(const int v)
+{
+    if (TTutorialHelperQmlService* helper = TTutorialHelperQmlService::instance())
+        helper->unregisterMarker(this);
+    cip::tibia::qmlcomponents::TTutorialMarkerQuickItem::setMarkerID(v);
+    if (TTutorialHelperQmlService* helper = TTutorialHelperQmlService::instance())
+        helper->registerMarker(this);
+    update();
+}
+
+void TTutorialMarkerQuickItem::setDebugOverlayVisible(const bool v)
+{
+    cip::tibia::qmlcomponents::TTutorialMarkerQuickItem::setDebugOverlayVisible(v);
+    update();
+}
+
+// b1/3f4d4a70c0c070f3
+void TTutorialMarkerQuickItem::componentComplete()
+{
+    cip::tibia::qmlcomponents::TTutorialMarkerQuickItem::componentComplete();
+}
+
+// b1/6adb37ff3ab6eadd
+QSGNode* TTutorialMarkerQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
+{
+    auto* node = static_cast<QSGSimpleRectNode*>(oldNode);
+    if (!node)
+        node = new QSGSimpleRectNode;
+    // qtclient stand-in for CIP's tutorial arrow material — amber plate over the target.
+    const QColor fill = debugOverlayVisible() ? QColor(255, 200, 0, 160) : QColor(255, 180, 0, 110);
+    node->setColor(fill);
+    node->setRect(boundingRect());
+    return node;
+}
+
+}

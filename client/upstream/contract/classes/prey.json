@@ -1,0 +1,149 @@
+{
+ "tibia::prey::TPreyData": {
+  "chain": [
+   "tibia::prey::TPreyData",
+   "QObject"
+  ],
+  "class": "tibia::prey::TPreyData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "automaticExtendTypeChanged": [
+    "void automaticExtendTypeChanged()"
+   ],
+   "bonusChanged": [
+    "void bonusChanged()"
+   ],
+   "huntingTaskRacesChanged": [
+    "void huntingTaskRacesChanged()"
+   ],
+   "monsterInformationChanged": [
+    "void monsterInformationChanged()"
+   ],
+   "monsterListChanged": [
+    "void monsterListChanged()"
+   ],
+   "monsterRaceListChanged": [
+    "void monsterRaceListChanged()"
+   ],
+   "stateChanged": [
+    "void stateChanged()"
+   ],
+   "timeLeftChanged": [
+    "void timeLeftChanged()"
+   ],
+   "timeUntilFreeListRerollChanged": [
+    "void timeUntilFreeListRerollChanged()"
+   ],
+   "unlockOptionChanged": [
+    "void unlockOptionChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::prey::TPreyGameActionHandler": {
+  "chain": [
+   "tibia::prey::TPreyGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::prey::TPreyGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleRequestBonusRerollGameAction": [
+    "void handleRequestBonusRerollGameAction(std::shared_ptr<tibia::input::TGameActionPreySystem> pGameAction)"
+   ],
+   "handleRequestChangeAutoPreyExtendTypeGameAction": [
+    "void handleRequestChangeAutoPreyExtendTypeGameAction(std::shared_ptr<tibia::input::TGameActionChangeAutoPreyExtendType> pGameAction)"
+   ],
+   "handleRequestFreezeAndShowBestiaryMonstersGameAction": [
+    "void handleRequestFreezeAndShowBestiaryMonstersGameAction(std::shared_ptr<tibia::input::TGameActionPreySystem> pGameAction)"
+   ],
+   "handleRequestListRerollGameAction": [
+    "void handleRequestListRerollGameAction(std::shared_ptr<tibia::input::TGameActionPreySystem> pGameAction)"
+   ],
+   "handleSelectMonsterFromListGameAction": [
+    "void handleSelectMonsterFromListGameAction(std::shared_ptr<tibia::input::TGameActionSelectPreyMonsterFromList> pGameAction)"
+   ],
+   "handleSelectPreyMonsterFromBestiaryGameAction": [
+    "void handleSelectPreyMonsterFromBestiaryGameAction(std::shared_ptr<tibia::input::TGameActionSelectPreyMonsterFromBestiary> pGameAction)"
+   ]
+  }
+ },
+ "tibia::prey::TPreyProtocolMessageHandler": {
+  "chain": [
+   "tibia::prey::TPreyProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::prey::TPreyProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "requestShowMessageDialog": [
+    "void requestShowMessageDialog(QString Message)"
+   ],
+   "sendPreyAction": [
+    "void sendPreyAction(tibia::protobuf::protocol::GameclientMessagePreyAction PreyActionMessage)"
+   ]
+  },
+  "slots": {
+   "handlePreyDataMessage": [
+    "void handlePreyDataMessage(tibia::protobuf::protocol::GameserverMessagePreyData PreyDataMessage)"
+   ],
+   "handlePreyPricesMessage": [
+    "void handlePreyPricesMessage(tibia::protobuf::protocol::GameserverMessagePreyPrices PreyPricesMessage)"
+   ],
+   "handlePreyTimeLeftMessage": [
+    "void handlePreyTimeLeftMessage(tibia::protobuf::protocol::GameserverMessagePreyTimeLeft PreyTimeLeftMessage)"
+   ],
+   "handleResourceBalanceMessage": [
+    "void handleResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance ResourceBalanceMessage)"
+   ],
+   "handleShowMessageDialogMessage": [
+    "void handleShowMessageDialogMessage(tibia::protobuf::protocol::GameserverMessageShowMessageDialog ShowMessageDialogMessage)"
+   ]
+  }
+ },
+ "tibia::prey::TPreyStorage": {
+  "chain": [
+   "tibia::prey::TPreyStorage",
+   "QObject"
+  ],
+  "class": "tibia::prey::TPreyStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "bonusRerollPossibleChanged": [
+    "void bonusRerollPossibleChanged()"
+   ],
+   "bonusRerollPriceChanged": [
+    "void bonusRerollPriceChanged()"
+   ],
+   "choosePreyPossibleChanged": [
+    "void choosePreyPossibleChanged()"
+   ],
+   "choosePreyPriceChanged": [
+    "void choosePreyPriceChanged()"
+   ],
+   "listRerollPriceChanged": [
+    "void listRerollPriceChanged()"
+   ],
+   "preyWildcardAmountChanged": [
+    "void preyWildcardAmountChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

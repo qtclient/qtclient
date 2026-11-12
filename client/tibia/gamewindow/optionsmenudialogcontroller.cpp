@@ -1,0 +1,607 @@
+#include "optionsmenudialogcontroller.h"
+
+#include "app/clientoptions.h"
+#include "app/graphicsrestart.h"
+#include "chat/chatchannel.h"
+#include "client/gameclient.h"
+#include "config/clientoptiondefaults.h"
+#include "config/hotkeyoptions.h"
+#include "gamewindow/aboutdialogcontroller.h"
+#include "gamewindow/messagedialogcontroller.h"
+#include "minimap/minimapmanager.h"
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
+#include "worldmap/nextframetimestamppredictor.h"
+
+#include <tibia/game/gamesession.h>
+
+#include <QDesktopServices>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QQuickWindow>
+#include <QStandardPaths>
+#include <QUrl>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/tgamenotify.h>
+
+namespace tibia::gamewindow {
+
+namespace {
+
+using O = cip::EClientOption;
+using EGameAction = input::EGameAction;
+using Button = TMessageDialogController::Button;
+
+constexpr auto ClientWindowSection = "clientWindowOptions";
+constexpr auto BorderlessKey = "clientWindowIsBorderless";
+
+/// The settings CIP's default TClientOptions holds .
+QJsonObject defaultSettings()
+{
+    return { { QStringLiteral("options"), config::defaultClientOptions() } };
+}
+
+/// : "OK" (Return) and "Cancel" (Escape).
+QList<TMessageDialogButton*> okCancelButtons()
+{
+    return { new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))),
+             new TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))) };
+}
+
+QList<TMessageDialogButton*> okButton()
+{
+    return { new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))) };
+}
+
+void publish(const EGameAction type)
+{
+    input::publish(input::makeAction(type));
+}
+
+/// CIP DAT_102793370 and the storage directories (,
+/// import list DAT_102793700 / DAT_102793800 / DAT_1027936a0).
+constexpr auto OptionsFile = "conf/clientoptions.json";
+constexpr auto ConfDirectory = "conf";
+constexpr auto CharacterDataDirectory = "characterdata";
+constexpr auto MinimapDirectory = "minimap";
+/// GameclientMessageSetClientOptions oneof case 1 .
+constexpr uint8_t TurnTowardsMoveDirectionOption = 1;
+
+QString dataDirectory()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+}
+
+QString localFile(const QString& url)
+{
+    const QUrl parsed(url);
+    return parsed.isLocalFile() ? parsed.toLocalFile() : url;
+}
+
+}
+
+TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
+    : TDialogController(QStringLiteral("OptionsMenuDialog.qml"), parent)
+    , m_actionBarOptions(this)
+    , m_characterConfigurationManager(this)
+    , m_clientOptions(this)
+    , m_clientOptionsModeSwitcher(this)
+    , m_optionPageQmlWrapperBase(this)
+{
+    (void)m_configBackupException;
+    auto* actionBars = new config::TActionBarsOptionsPage(config::actionBarsBindings(), this);
+    auto* buttonBar = new config::TButtonBarOptionsPage(this);
+    auto* console = new config::TConsoleOptionsPage(config::consoleBindings(), this);
+    auto* interfacePage = new config::TInterfaceOptionsPage(this);
+    auto* gameWindow = new config::TGameWindowOptionsPage(this);
+    auto* hud = new config::THudOptionsPage(this);
+    auto* misc = new config::TMiscOptionsPage(config::miscBindings(), this);
+    m_gameplay = new config::TGameplayOptionsPage(config::gameplayBindings(), this);
+    auto* graphics = new config::TGraphicsOptionsPage(this);
+    auto* effects = new config::TEffectsOptionsPage(this);
+    m_hotkeys = new config::THotkeysOptionsPage(this);
+    m_controls = new config::TControlsOptionsPage(this);
+    auto* screenshots = new config::TScreenshotsOptionsPage(config::screenshotsBindings(), this);
+    auto* sound = new config::TSoundOptionsPage(this);
+    auto* battleSounds = new config::TBattleSoundsOptionsPage(config::battleSoundsBindings(), this);
+    auto* uiSounds = new config::TUISoundsOptionsPage(config::uiSoundsBindings(), this);
+
+    m_actionBarsOptions = actionBars;
+    m_buttonBarOptions = buttonBar;
+    m_consoleOptions = console;
+    m_interfaceOptions = interfacePage;
+    m_gameWindowOptions = gameWindow;
+    m_hudOptions = hud;
+    m_miscOptions = misc;
+    m_gameplayOptions = m_gameplay;
+    m_graphicsOptions = graphics;
+    m_effectsOptions = effects;
+    m_hotkeyOptions = m_hotkeys;
+    m_controlsOptions = m_controls;
+    m_screenshotsOptions = screenshots;
+    m_soundOptions = sound;
+    m_battleSoundsOptions = battleSounds;
+    m_uiSoundsOptions = uiSounds;
+
+    m_pages = {
+        { ActionBars, actionBars },
+        { ButtonBar, buttonBar },
+        { Console, console },
+        { Interface, interfacePage },
+        { GameWindow, gameWindow },
+        { HUD, hud },
+        { Misc, misc },
+        { Gameplay, m_gameplay },
+        { Graphics, graphics },
+        { Effects, effects },
+        { DefaultHotkeys, m_hotkeys },
+        { Controls, m_controls },
+        { Screenshots, screenshots },
+        { Sound, sound },
+        { BattleSounds, battleSounds },
+        { UISounds, uiSounds },
+    };
+
+    m_resetPageMessage = makeMessageDialog();
+    m_resetAllMessage = makeMessageDialog();
+    m_restartMessage = makeMessageDialog();
+    m_infoMessage = makeMessageDialog();
+    m_importMessage = makeMessageDialog();
+    m_about = new TAboutDialogController(this);
+    connect(m_importMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::importArchive);
+    connect(m_resetPageMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetCurrentPageToDefault);
+    connect(m_resetAllMessage, &TMessageDialogController::acceptClicked, this, &TOptionsMenuDialogController::resetAllOptionsToDefault);
+    connect(m_restartMessage, &TMessageDialogController::buttonClicked, this, &TOptionsMenuDialogController::onResartMessageControllerClicked);
+
+    m_showAdvancedOptions = app::ClientOptions::load().options().value(QLatin1String("optionsShowAdvanced")).toBool(false);
+
+    // (connected when the game connection is set): the current value at login.
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this] {
+        sendTurnTowardsMoveDirection(config::optionValue(app::ClientOptions::load().root(), O::alwaysTurnTowardsMoveDirection).toBool());
+    });
+
+    input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, [this](const input::TGameAction&) {
+        setShowAdvancedOptions(!m_showAdvancedOptions);
+        return true;
+    });
+
+    m_frameRateTimer.setInterval(1000);
+    connect(&m_frameRateTimer, &QTimer::timeout, this, [this] {
+        // CipSoft / : ring-derived double, QString::number(d, 'f', 2).
+        (void)m_frames.exchange(0);
+        double fps = 0.0;
+        if (m_frameDurations) {
+            const qint64 averageNs = m_frameDurations->averageNs();
+            if (averageNs > 0)
+                fps = 1'000'000'000.0 / static_cast<double>(averageNs);
+        }
+        m_currentFrameRate = QString::number(fps, 'f', 2);
+        Q_EMIT frameRateChanged();
+    });
+}
+
+TOptionsMenuDialogController::~TOptionsMenuDialogController()
+{
+    input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, nullptr);
+    disconnect(m_frameConnection);
+}
+
+TMessageDialogController* TOptionsMenuDialogController::makeMessageDialog()
+{
+    auto* message = new TMessageDialogController(this);
+    message->setCloseOnButtonClicked(true);
+    return message;
+}
+
+void TOptionsMenuDialogController::open(const int category)
+{
+    m_showAdvancedOptions = app::ClientOptions::load().options().value(QLatin1String("optionsShowAdvanced")).toBool(false);
+    Q_EMIT showAdvancedOptionsChanged();
+    EDialogCategories target = m_dialogCategory;
+    switch (category) {
+    case 0:
+        target = m_showAdvancedOptions ? Controls : Basic;
+        break;
+    case 1:
+        target = m_showAdvancedOptions ? CustomHotkeys : DefaultHotkeys;
+        break;
+    case 2:
+        target = ButtonBar;
+        break;
+    default:
+        break;
+    }
+    setDialogCategory(target);
+
+    const QJsonObject settings = app::ClientOptions::load().root();
+    for (const Page& page : m_pages)
+        page.page->load(settings);
+    dialog()->show();
+}
+
+void TOptionsMenuDialogController::setInGame(const bool inGame)
+{
+    if (m_isInGame == inGame)
+        return;
+    m_isInGame = inGame;
+    Q_EMIT gameSessionChanged();
+}
+
+void TOptionsMenuDialogController::setWindow(QQuickWindow* window)
+{
+    disconnect(m_frameConnection);
+    m_window = window;
+    if (window)
+        m_frameConnection = connect(window, &QQuickWindow::frameSwapped, this, [this] { ++m_frames; }, Qt::DirectConnection);
+}
+
+void TOptionsMenuDialogController::setFrameDurations(worldmap::TFrameDurationRing* ring)
+{
+    m_frameDurations = ring;
+}
+
+void TOptionsMenuDialogController::addProductPage(const int category, config::TOptionsPage* page)
+{
+    m_pages.push_back({ static_cast<EDialogCategories>(category), page });
+}
+
+void TOptionsMenuDialogController::afterShow()
+{
+    m_frames = 0;
+    m_frameRateTimer.start();
+}
+
+void TOptionsMenuDialogController::afterHide()
+{
+    m_frameRateTimer.stop();
+}
+
+// b1/e5d14e15aab4fb92
+void TOptionsMenuDialogController::setDialogCategory(const EDialogCategories Category)
+{
+    if (m_dialogCategory == Category)
+        return;
+    m_dialogCategory = Category;
+    if (Category >= DefaultHotkeys && Category <= CustomHotkeys)
+        m_hotkeys->setHotkeyMode(static_cast<config::THotkeysOptionsPage::EHotkeyMode>(Category - DefaultHotkeys));
+    Q_EMIT dialogCategoryChanged();
+}
+
+// b1/cb47c26b23c15cf3
+void TOptionsMenuDialogController::setShowAdvancedOptions(const bool Show)
+{
+    if (m_showAdvancedOptions == Show)
+        return;
+    m_showAdvancedOptions = Show;
+    app::ClientOptions::store(QStringLiteral("optionsShowAdvanced"), Show);
+    const EDialogCategories category = Show ? Controls : Basic;
+    if (m_dialogCategory != category) {
+        m_dialogCategory = category;
+        Q_EMIT dialogCategoryChanged();
+    }
+    Q_EMIT showAdvancedOptionsChanged();
+}
+
+// b1/a72e8e67b5df42e1
+void TOptionsMenuDialogController::requestResetCurrentPageToDefault()
+{
+    m_resetPageMessage->setButtons(okCancelButtons());
+    m_resetPageMessage->showMessage(qtTrId("optionsmenu_reset_current_page_caption"),
+                                    qtTrId("optionsmenu_reset_current_page_warning") + QStringLiteral("\n\n") + qtTrId("optionsmenu_reset_confirmation"));
+}
+
+void TOptionsMenuDialogController::requestResetAllOptionsToDefault()
+{
+    m_resetAllMessage->setButtons(okCancelButtons());
+    m_resetAllMessage->showMessage(qtTrId("optionsmenu_reset_all_options"),
+                                   qtTrId("optionsmenu_reset_all_options_warning") + QStringLiteral("\n\n") + qtTrId("optionsmenu_reset_confirmation"));
+}
+
+// b1/8fc09f8094e2ffdc
+void TOptionsMenuDialogController::cancelButtonClicked()
+{
+    dialog()->close();
+}
+
+QJsonObject TOptionsMenuDialogController::pendingSettings() const
+{
+    QJsonObject settings = app::ClientOptions::load().root();
+    for (const Page& page : m_pages)
+        page.page->apply(settings);
+    return settings;
+}
+
+// b1/a5c41fed1c473581
+void TOptionsMenuDialogController::applyButtonClicked()
+{
+    const QJsonObject current = app::ClientOptions::load().root();
+    const auto currentOption = [&current](const O option) { return config::optionValue(current, option); };
+
+    // 
+    if (m_gameplay->allowAllToInspectPlayer() != currentOption(O::inspectPlayerAllowAllEnabled).toBool())
+        publish(m_gameplay->allowAllToInspectPlayer() ? EGameAction::ALLOW_ALL_TO_INSPECT_PLAYER : EGameAction::WITHDRAW_ALLOW_ALL_TO_INSPECT_PLAYER);
+
+    // 
+    if (!m_controls->rotateWithAlt() && !m_controls->rotateWithCtrl() && !m_controls->rotateWithShift()) {
+        m_infoMessage->setButtons(okButton());
+        m_infoMessage->showMessage(qtTrId("warning"), qtTrId("optionsmenu_keys_for_rotation_no_key_warning"));
+    }
+
+    QJsonObject changes;
+    for (const Page& page : m_pages)
+        page.page->apply(changes);
+
+    // 
+    const bool restartNeeded = config::optionValue(changes, O::rendererIndex) != currentOption(O::rendererIndex)
+                            || config::optionValue(changes, O::vSyncEnabled) != currentOption(O::vSyncEnabled)
+                            || config::optionValue(changes, O::useFreetypeRenderer) != currentOption(O::useFreetypeRenderer);
+
+    // : the server learns the option when it changes.
+    const QJsonValue turnTowards = config::optionValue(changes, O::alwaysTurnTowardsMoveDirection);
+    if (!turnTowards.isUndefined() && turnTowards != currentOption(O::alwaysTurnTowardsMoveDirection))
+        sendTurnTowardsMoveDirection(turnTowards.toBool());
+
+    if (restartNeeded) {
+        // Keep the previous graphics trio so keep_renderer_after_restart can revert.
+        app::graphicsrestart::markPendingConfirm(currentOption(O::rendererIndex).toInt(0),
+                                                 currentOption(O::vSyncEnabled).toBool(true),
+                                                 currentOption(O::useFreetypeRenderer).toBool(false));
+    }
+
+    app::ClientOptions::storeAll(changes);
+
+    if (restartNeeded) {
+        // Restart (Return) quits into the new engine; Cancel (Esc) keeps the new
+        // settings for the next manual restart — CIP builds Restart;
+        // Cancel matches the two-button UX (dismiss without quitting now).
+        m_restartMessage->setButtons({
+            new TMessageDialogButton(qtTrId("restart"), Button::USER_DEFINED, QKeySequence(QStringLiteral("Return"))),
+            new TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))),
+        });
+        m_restartMessage->showMessage(qtTrId("graphics_setting_requires_restart_caption"),
+                                      qtTrId("graphics_setting_requires_restart_text"));
+    }
+}
+
+void TOptionsMenuDialogController::sendTurnTowardsMoveDirection(const bool enabled)
+{
+    tibia::game::setClientOption(TurnTowardsMoveDirectionOption, enabled);
+}
+
+// b1/6d48fb1c1ab7fb36
+void TOptionsMenuDialogController::okButtonClicked()
+{
+    applyButtonClicked();
+    dialog()->close();
+}
+
+// b1/5e10263aaa1f7a6c
+void TOptionsMenuDialogController::activateLensehelp()
+{
+    applyButtonClicked();
+    dialog()->close();
+    publish(EGameAction::LENSHELP_ACTIVATE);
+}
+
+// b1/b835348c63656401
+void TOptionsMenuDialogController::showRuleViolationsText()
+{
+    m_infoMessage->setButtons(okButton());
+    m_infoMessage->showMessage(qtTrId("howtoruleviolationreport_caption"), qtTrId("howtoruleviolationreport_text"));
+}
+
+// b1/b4118bd45915c3b7
+void TOptionsMenuDialogController::openManuelUrl()
+{
+    publish(EGameAction::OPEN_URL_MANUAL);
+}
+
+void TOptionsMenuDialogController::openFaqUrl()
+{
+    publish(EGameAction::OPEN_URL_FAQ);
+}
+
+// b1/15dd085e1ccb0a65
+void TOptionsMenuDialogController::openScreenshotDirectory()
+{
+    const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/screenshots");
+    QDir().mkpath(directory);
+    QDesktopServices::openUrl(QUrl::fromLocalFile(directory));
+}
+
+// b1/2cf7643be4c029de
+void TOptionsMenuDialogController::openHelpChannel()
+{
+    // CIP : apply, close, publish OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT
+    // with THelpChannelIdentifier (server channel 7). Hotkey OpenHelpChannel
+    // (Ctrl+T default) uses the same make-current join path.
+    applyButtonClicked();
+    dialog()->close();
+    const chat::TChatChannelIdentifier help = chat::TChatChannelIdentifier::help();
+    auto action = input::mutableClone(*input::makeAction(EGameAction::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT));
+    action->chatChannelType = help.type;
+    action->chatChannelId = help.id;
+    input::publish(action);
+}
+
+void TOptionsMenuDialogController::setPortalBase(const QUrl& loginBase)
+{
+    if (m_about)
+        m_about->setPortalBase(loginBase);
+}
+
+// b1/774f8b050b37945a
+void TOptionsMenuDialogController::showAboutDialog()
+{
+    m_about->showDialog();
+}
+
+// b1/045e874224fb006a
+void TOptionsMenuDialogController::showCompendium()
+{
+    publish(EGameAction::OPEN_NEWS_DIALOG);
+}
+
+void TOptionsMenuDialogController::exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries)
+{
+    if (!config::optionsarchive::write(localFile(url), entries))
+        return;
+    m_infoMessage->setButtons(okButton());
+    m_infoMessage->showMessage(qtTrId("optionsmenu_file_export_success_caption"), qtTrId("optionsmenu_file_export_success_text"));
+}
+
+// b1/8dc1222cc7c9e5d6
+void TOptionsMenuDialogController::requestExportAllOptions(const QString& OutputFilename)
+{
+    QJsonObject root = app::ClientOptions::load().root();
+    QJsonObject options = root.value(QLatin1String("options")).toObject();
+    options.insert(QLatin1String("loginEmailAddress"), QString());
+    root.insert(QLatin1String("options"), options);
+    QList<config::TArchiveEntry> entries{ { QLatin1String(OptionsFile), QJsonDocument(root).toJson() } };
+    entries << config::optionsarchive::collect(dataDirectory(), { QLatin1String(CharacterDataDirectory) });
+    exportArchive(OutputFilename, entries);
+}
+
+// b1/160a8a93caa40036
+void TOptionsMenuDialogController::requestImportAllOptions(const QString& InputFilename)
+{
+    m_importFile = InputFilename;
+    m_importMessage->setButtons(okCancelButtons());
+    m_importMessage->showMessage(qtTrId("optionsmenu_confirm_options_import_caption"), qtTrId("optionsmenu_confirm_options_import_text"));
+}
+
+// b1/483b7c9ceb8e8ac4
+void TOptionsMenuDialogController::requestExportMinimap(const QString& OutputFilename)
+{
+    if (minimap::TMinimapManager* minimap = m_gameClient ? m_gameClient->minimap() : nullptr)
+        minimap->flushToDisk();
+    exportArchive(OutputFilename, config::optionsarchive::collect(dataDirectory(), { QLatin1String(MinimapDirectory) }));
+}
+
+// b1/763aecd41a672e20
+void TOptionsMenuDialogController::importArchive()
+{
+    const QDir root(dataDirectory());
+    const QJsonObject before = app::ClientOptions::load().root();
+    bool optionsImported = false;
+    for (const config::TArchiveEntry& entry : config::optionsarchive::read(localFile(m_importFile))) {
+        const QString name = QDir::cleanPath(entry.name);
+        const QString top = name.section(QLatin1Char('/'), 0, 0);
+        if (name.startsWith(QLatin1Char('/')) || name.contains(QLatin1String(".."))
+            || (top != QLatin1String(ConfDirectory) && top != QLatin1String(CharacterDataDirectory) && top != QLatin1String(MinimapDirectory)))
+            continue;
+        if (name == QLatin1String(OptionsFile)) {
+            const QJsonObject imported = QJsonDocument::fromJson(entry.data).object();
+            if (!imported.isEmpty()) {
+                app::ClientOptions::storeAll(imported);
+                optionsImported = true;
+            }
+            continue;
+        }
+        const QString path = root.filePath(name);
+        QDir().mkpath(QFileInfo(path).absolutePath());
+        QFile file(path);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+            file.write(entry.data);
+    }
+    if (!optionsImported)
+        return;
+
+    const QJsonObject after = app::ClientOptions::load().root();
+    for (const Page& page : m_pages)
+        page.page->load(after);
+    const bool same = config::optionValue(before, O::rendererIndex) == config::optionValue(after, O::rendererIndex)
+                   && config::optionValue(before, O::vSyncEnabled) == config::optionValue(after, O::vSyncEnabled)
+                   && config::optionValue(before, O::useFreetypeRenderer) == config::optionValue(after, O::useFreetypeRenderer);
+    m_infoMessage->setButtons(okButton());
+    if (same)
+        m_infoMessage->showMessage(qtTrId("optionsmenu_file_import_success_caption"), qtTrId("optionsmenu_file_import_success_text"));
+    else
+        m_infoMessage->showMessage(qtTrId("optionsmenu_file_import_info_caption"), qtTrId("optionsmenu_file_import_info_text"));
+}
+
+config::TOptionsPage* TOptionsMenuDialogController::pageOf(const EDialogCategories category) const
+{
+    for (const Page& page : m_pages)
+        if (page.category == category)
+            return page.page;
+    return nullptr;
+}
+
+// b1/060ea84abb937200
+void TOptionsMenuDialogController::resetCurrentPageToDefault()
+{
+    switch (m_dialogCategory) {
+    case Basic:
+        resetBasicPage();
+        return;
+    case DefaultHotkeys:
+    case ActionButtonsHotkeys:
+    case CustomHotkeys:
+        // CIP options Reset lives on Basic; tip also restores built-in hotkey
+        // presets when this path runs (e.g. Help reset-all callers / tests).
+        if (m_hotkeys)
+            m_hotkeys->load({ { QStringLiteral("hotkeyOptions"), config::THotkeyOptions::builtInSection() } });
+        return;
+    case NoCategoryInitialState:
+    case Help:
+        return;
+    default:
+        break;
+    }
+    if (config::TOptionsPage* page = pageOf(m_dialogCategory))
+        page->load(defaultSettings());
+}
+
+// b1/60e5a30864bf9135
+void TOptionsMenuDialogController::resetBasicPage()
+{
+    static constexpr O BasicOptions[] = {
+        O::controlSchemeIndex, O::lootSchemeIndex,
+        O::inspectPlayerAllowAllEnabled, O::autoChaseEnabled, O::quickLootAllCorpsesInAreaEnabled,
+        O::playerHudShowBars, O::playerHudShowArcs, O::playerHudShowHarmonyLeft,
+        O::actionBarShowBottom1, O::actionBarShowBottom2, O::actionBarShowBottom3, O::actionBarsShowBottom,
+        O::actionBarShowLeft1, O::actionBarShowLeft2, O::actionBarShowLeft3, O::actionBarsShowLeft,
+        O::actionBarShowRight1, O::actionBarShowRight2, O::actionBarShowRight3, O::actionBarsShowRight,
+        O::antialiasingMode, O::soundMasterVolume,
+    };
+    QJsonObject settings = pendingSettings();
+    const QJsonObject defaults = defaultSettings();
+    for (const O option : BasicOptions)
+        config::setOptionValue(settings, option, config::optionValue(defaults, option));
+    QJsonObject window = settings.value(QLatin1String(ClientWindowSection)).toObject();
+    window.insert(QLatin1String(BorderlessKey), false);
+    settings.insert(QLatin1String(ClientWindowSection), window);
+    for (const EDialogCategories category : { Controls, Gameplay, HUD, ActionBars, Graphics, Sound })
+        pageOf(category)->load(settings);
+}
+
+// b1/889604d12adaae94
+void TOptionsMenuDialogController::resetAllOptionsToDefault()
+{
+    const QJsonObject defaults = defaultSettings();
+    // CIP historically skipped sound pages; tip resets them too so
+    // Help → Reset all matches user expectation (volume / battle / UI sounds).
+    for (const EDialogCategories category : { Controls, Interface, HUD, Console, GameWindow, ActionBars, ButtonBar, Graphics,
+                                              Effects, Misc, Gameplay, Screenshots, Sound, BattleSounds, UISounds }) {
+        if (config::TOptionsPage* page = pageOf(category))
+            page->load(defaults);
+    }
+    // CIP also skipped hotkey pages; tip restores built-in vocation presets.
+    if (m_hotkeys)
+        m_hotkeys->load({ { QStringLiteral("hotkeyOptions"), config::THotkeyOptions::builtInSection() } });
+}
+
+// b1/cb5845be73a41034
+void TOptionsMenuDialogController::onResartMessageControllerClicked(const cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier)
+{
+    // CANCEL/NO: dismiss only — settings are already stored for the next launch.
+    if (ButtonIdentifier != Button::USER_DEFINED)
+        return;
+    // OPEN_LAUNCHER starts this client again and quits without the exit prompt.
+    publish(EGameAction::OPEN_LAUNCHER);
+}
+
+}

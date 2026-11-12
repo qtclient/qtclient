@@ -1,0 +1,9 @@
+{
+  "id": "otclient",
+  "name": "OTClient wire",
+  "version": "1.0.0",
+  "autoload": true,
+  "priority": 40,
+  "QTCLIENT_MOD_API": 1,
+  "description": "Default pack — Crystal isOTCR wire (CLIENTOS_OTCR_* + shader / attached-effect / wings-aura features)."
+}

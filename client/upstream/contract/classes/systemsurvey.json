@@ -1,0 +1,53 @@
+{
+ "systemsurvey::TFPSCounter": {
+  "chain": [
+   "systemsurvey::TFPSCounter",
+   "QObject"
+  ],
+  "class": "systemsurvey::TFPSCounter",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "startNewFrame": [
+    "void startNewFrame()"
+   ]
+  }
+ },
+ "systemsurvey::TFPSHistory": {
+  "chain": [
+   "systemsurvey::TFPSHistory",
+   "QObject"
+  ],
+  "class": "systemsurvey::TFPSHistory",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "sampleCurrentFPSInformationAndClearFPSCounter": [
+    "void sampleCurrentFPSInformationAndClearFPSCounter()"
+   ]
+  }
+ },
+ "systemsurvey::TFPSHistoryController": {
+  "chain": [
+   "systemsurvey::TFPSHistoryController",
+   "QObject"
+  ],
+  "class": "systemsurvey::TFPSHistoryController",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "uploadHistoryAndClearIt": [
+    "void uploadHistoryAndClearIt()"
+   ]
+  }
+ }
+}

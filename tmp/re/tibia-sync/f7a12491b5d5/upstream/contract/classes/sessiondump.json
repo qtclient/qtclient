@@ -1,0 +1,169 @@
+{
+ "tibia::sessiondump::TClientSessiondumpRecorder": {
+  "chain": [
+   "tibia::sessiondump::TClientSessiondumpRecorder",
+   "QObject"
+  ],
+  "class": "tibia::sessiondump::TClientSessiondumpRecorder",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleAnyMessage": [
+    "void handleAnyMessage(std::shared_ptr<tibia::protobuf::protocol::GameserverMessage> pGameserverMessage)"
+   ]
+  }
+ },
+ "tibia::sessiondump::TSessiondumpAsyncLoader": {
+  "chain": [
+   "tibia::sessiondump::TSessiondumpAsyncLoader",
+   "QObject"
+  ],
+  "class": "tibia::sessiondump::TSessiondumpAsyncLoader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "finished": [
+    "void finished()"
+   ],
+   "gameclientMessageAvailable": [
+    "void gameclientMessageAvailable(tibia::protobuf::TGameclientMessagePointer pGameclientMessage)"
+   ],
+   "gameserverMessageAvailable": [
+    "void gameserverMessageAvailable(tibia::protobuf::TGameserverMessagePointer pGameserverMessage)"
+   ],
+   "preprocessingMessageAvailable": [
+    "void preprocessingMessageAvailable(TSessiondumpPacketInfo PacketInfo, TSessiondumpMessageInfo MessageInfo, TLightweightSessiondumpMessageProcessor::TMessageRawBytesReaderFunction RawMessageBytesReaderFunction)"
+   ],
+   "sessiondumpFinished": [
+    "void sessiondumpFinished()"
+   ],
+   "sessiondumpLoadingError": [
+    "void sessiondumpLoadingError(QString ErrorMessage)"
+   ],
+   "sessiondumpMetadataLoaded": [
+    "void sessiondumpMetadataLoaded()"
+   ]
+  },
+  "slots": {
+   "downloadError": [
+    "void downloadError(QNetworkReply::NetworkError NetworkError)"
+   ],
+   "downloadFinished": [
+    "void downloadFinished()"
+   ],
+   "downloadProgress": [
+    "void downloadProgress(qlonglong BytesReceived, qlonglong BytesTotal)"
+   ],
+   "onSessiondumpNewMessage": [
+    "void onSessiondumpNewMessage(TSessiondumpPacketInfo PacketInfo, TSessiondumpMessageInfo MessageInfo, TLightweightSessiondumpMessageProcessor::TMessageRawBytesReaderFunction RawMessageBytesReaderFunction)"
+   ],
+   "processNextChunk": [
+    "void processNextChunk()"
+   ]
+  }
+ },
+ "tibia::sessiondump::TSessiondumpCatalogLoader": {
+  "chain": [
+   "tibia::sessiondump::TSessiondumpCatalogLoader",
+   "QObject"
+  ],
+  "class": "tibia::sessiondump::TSessiondumpCatalogLoader",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "catalogAvailable": [
+    "void catalogAvailable(std::shared_ptr<tibia::sessiondump::TSessiondumpCatalog> pSessiondumpCatalog)"
+   ]
+  },
+  "slots": {
+   "onDownloadFailed": [
+    "void onDownloadFailed(QUrl Url, QNetworkReply::NetworkError Code, QString ErrorString)"
+   ],
+   "onDownloadSuccess": [
+    "void onDownloadSuccess(QUrl Url, QByteArray Data)"
+   ]
+  }
+ },
+ "tibia::sessiondump::TSessiondumpPlayer": {
+  "chain": [
+   "tibia::sessiondump::TSessiondumpPlayer",
+   "QObject"
+  ],
+  "class": "tibia::sessiondump::TSessiondumpPlayer",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "currentPlayspeedChanged": [
+    "void currentPlayspeedChanged()"
+   ],
+   "finished": [
+    "void finished()"
+   ],
+   "finishedLoadingSessiondump": [
+    "void finishedLoadingSessiondump()"
+   ],
+   "gameclientMessageAvailable": [
+    "void gameclientMessageAvailable(tibia::protobuf::TGameclientMessagePointer pGameclientMessage)"
+   ],
+   "gameserverMessageAvailable": [
+    "void gameserverMessageAvailable(tibia::protobuf::TGameserverMessagePointer pGameserverMessage)"
+   ],
+   "paused": [
+    "void paused()"
+   ],
+   "preprocessingMessageAvailable": [
+    "void preprocessingMessageAvailable(TSessiondumpPacketInfo PacketInfo, TSessiondumpMessageInfo MessageInfo, std::function<QByteArray()> RawMessageBytesReaderFunction)"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "requestResetOfStorages": [
+    "void requestResetOfStorages()"
+   ],
+   "sessiondumpInfoChanged": [
+    "void sessiondumpInfoChanged()"
+   ],
+   "sessiondumpLoadingError": [
+    "void sessiondumpLoadingError(QString ErrorMessage)"
+   ],
+   "sessiondumpPacketsProcessed": [
+    "void sessiondumpPacketsProcessed()"
+   ],
+   "sessiondumpProcessingChanged": [
+    "void sessiondumpProcessingChanged()"
+   ],
+   "skipToMarkerChanged": [
+    "void skipToMarkerChanged()"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onGameserverMessageAvailable": [
+    "void onGameserverMessageAvailable(tibia::protobuf::TGameserverMessagePointer pGameserverMessage)"
+   ],
+   "onSessiondumpFinished": [
+    "void onSessiondumpFinished()"
+   ],
+   "onSessiondumpLoaded": [
+    "void onSessiondumpLoaded()"
+   ],
+   "onSessiondumpMetadataLoaded": [
+    "void onSessiondumpMetadataLoaded()"
+   ],
+   "onSkipToMarkerReached": [
+    "void onSkipToMarkerReached()"
+   ]
+  }
+ }
+}

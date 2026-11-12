@@ -1,0 +1,7 @@
+{
+  "id": "minimap",
+  "name": "Minimap channel",
+  "version": "1.0.0",
+  "description": "Default launcher mod — enable tip minimapurl/minimapversionurl download into Contents/Resources/minimap.",
+  "capabilities": ["minimap"]
+}

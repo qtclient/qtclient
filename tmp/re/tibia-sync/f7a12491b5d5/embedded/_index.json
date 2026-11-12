@@ -1,0 +1,2462 @@
+[
+ {
+  "path": "/conf/config.ini",
+  "size": 8,
+  "flags": 0,
+  "root": "0x18133b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/qmldir",
+  "size": 19773,
+  "flags": 1,
+  "root": "0x1813e90"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/prey/KillTrackerWidget.qml",
+  "size": 16315,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/prey/PreyDialog.qml",
+  "size": 6189,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/prey/PreyPreyPage.qml",
+  "size": 3077,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/prey/SinglePreyView.qml",
+  "size": 48503,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/container.qml",
+  "size": 14320,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaRadiusedSemiTranspartentRectangle.qml",
+  "size": 252,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/EnergyBar.qml",
+  "size": 1071,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaProficiencyPerk.qml",
+  "size": 8571,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/WeaponProficiencyShapeDialog.qml",
+  "size": 9913,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/BossSlotNotActive.qml",
+  "size": 926,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageEffects.qml",
+  "size": 7489,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/RewardWallDialog.qml",
+  "size": 28438,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SurveyInvitatioDialog.qml",
+  "size": 2337,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaSidebarPanel.qml",
+  "size": 6914,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreOfferDisplay.qml",
+  "size": 6753,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaMapLayersSlider.qml",
+  "size": 8747,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaFrame3PixelFilled.qml",
+  "size": 406,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageConsole.qml",
+  "size": 4112,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/GenericConfirmWithDontShowAgainDialog.qml",
+  "size": 1803,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ScalableObjectDisplay.qml",
+  "size": 2741,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/InspectPlayerDialog.qml",
+  "size": 13727,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaScrollView.qml",
+  "size": 4151,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarHealthManaParallelSides.qml",
+  "size": 4788,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageHud.qml",
+  "size": 30783,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ExaltationForgeHistoryPage.qml",
+  "size": 2556,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaCalendarDay.qml",
+  "size": 4223,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaSidebarWidget.qml",
+  "size": 29115,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/HuntingSessionWidget.qml",
+  "size": 8677,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaMessageDialog.qml",
+  "size": 4080,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/HitpointsManaArcHud.qml",
+  "size": 13088,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/DepotSearchWidget.qml",
+  "size": 23054,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/PlayerGuideWidget.qml",
+  "size": 9610,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaDialogFrameWithCaption.qml",
+  "size": 1284,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaItemSelectionGrid.qml",
+  "size": 4911,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ProgressWidget.qml",
+  "size": 7120,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ArcProgressBar.qml",
+  "size": 10177,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaCachedOutlineText.qml",
+  "size": 741,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/CharacterTradeNotifications.qml",
+  "size": 2600,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/CharacterTradeDialog.qml",
+  "size": 14076,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/CharacterTradeCharacterOverview.qml",
+  "size": 11718,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/CharacterTradeAuctionEndDateTimePicker.qml",
+  "size": 5200,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/CharacterTradeHighlightPicker.qml",
+  "size": 6111,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/CharacterTradeDuePaymentDialog.qml",
+  "size": 1958,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/CharacterTradeEnums.qml",
+  "size": 209,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/CharacterTradeItemPicker.qml",
+  "size": 4846,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/CharacterTradeHintText.qml",
+  "size": 380,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ConfiguredBossSlot.qml",
+  "size": 3886,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ExaltationForgeConversionPage.qml",
+  "size": 8142,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/market.qml",
+  "size": 10040,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/battlelist.qml",
+  "size": 18205,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/HousesInfoDialog.qml",
+  "size": 83727,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreTransactionHistoryPage.qml",
+  "size": 7530,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaScrollBarHandle.qml",
+  "size": 695,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MarketCategorySelection.qml",
+  "size": 21382,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageInterface.qml",
+  "size": 6973,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/AssignPassiveAbilityActionDialog.qml",
+  "size": 4028,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaProgressBarClassicRed.qml",
+  "size": 272,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaVerticalSeparator.qml",
+  "size": 432,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ComboPointsAndSereneState.qml",
+  "size": 2500,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarLeft.qml",
+  "size": 14504,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StashDialog.qml",
+  "size": 10597,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarHealthMana.qml",
+  "size": 9757,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaObjectDropArea.qml",
+  "size": 110,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreHighlightState.qml",
+  "size": 897,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaMenuOptionCheckBox.qml",
+  "size": 1465,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ImpactWidget.qml",
+  "size": 6751,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ExaltationForgeConversionPanel.qml",
+  "size": 6570,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ImbuingDialog.qml",
+  "size": 26096,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/LenshelpTemplate.qml",
+  "size": 1185,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/NewsButton.qml",
+  "size": 2468,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaDialog.qml",
+  "size": 18668,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SpeechBubbleTemplate.qml",
+  "size": 1948,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaIntField.qml",
+  "size": 2955,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OutfitMemorialDialog.qml",
+  "size": 5008,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreMainPage.qml",
+  "size": 6591,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/AssignObjectActionDialog.qml",
+  "size": 7153,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MenuWithSubMenu.qml",
+  "size": 5660,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/NumericalEffectsTemplate.qml",
+  "size": 3206,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaKeyValueRowLayout.qml",
+  "size": 1115,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/DialogHeaderCrest.qml",
+  "size": 376,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaStyle.qml",
+  "size": 30291,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaCheckBox.qml",
+  "size": 1465,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/WaitDialog.qml",
+  "size": 1461,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaClickableText.qml",
+  "size": 442,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaFrame2PixelUpFilledWithCaption.qml",
+  "size": 1248,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MultiOfflineTrainingDialog.qml",
+  "size": 1892,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CreatureUnlockProgress.qml",
+  "size": 3590,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/LootTrackingWidget.qml",
+  "size": 7145,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageScreenshots.qml",
+  "size": 10685,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/QuestlogDialog.qml",
+  "size": 17754,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/clientwindow.qml",
+  "size": 4242,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaComboBox.qml",
+  "size": 4159,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaColorButton.qml",
+  "size": 360,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaFrame1PixelDown.qml",
+  "size": 422,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ButtonBarPanel.qml",
+  "size": 35919,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ButtonHighlightAnimation.qml",
+  "size": 2496,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaClickableLink.qml",
+  "size": 545,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TeamJoinPage.qml",
+  "size": 23922,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarProficiencyButton.qml",
+  "size": 1130,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaSliderNonLinear.qml",
+  "size": 11540,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ChatInput.qml",
+  "size": 6854,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MarketOffersView.qml",
+  "size": 17883,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWheelFragmentWorkshopPage.qml",
+  "size": 56421,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWheelPresetManagmentDialog.qml",
+  "size": 6042,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CalendarDialog.qml",
+  "size": 5916,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarRight.qml",
+  "size": 14548,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWheelGemAtelierPage.qml",
+  "size": 42018,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/ConfigureCreaturePodiumDialog.qml",
+  "size": 8944,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/TibiaColorSelectionGrid.qml",
+  "size": 3020,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/OutfitDialogLayout.qml",
+  "size": 2575,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/outfitdialog.js",
+  "size": 25601,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/BossOutfitSelection.qml",
+  "size": 6931,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/OutfitPresetSelection.qml",
+  "size": 5523,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/OutfitSelection.qml",
+  "size": 6639,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/OutfitPreviewPanel.qml",
+  "size": 9772,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/OutfitDialog.qml",
+  "size": 35747,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SpellList.qml",
+  "size": 7546,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTextArea.qml",
+  "size": 4031,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/questtrackerwidget.qml",
+  "size": 6559,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ShowSpellBookDialog.qml",
+  "size": 3178,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTeamFinderStatus.qml",
+  "size": 1147,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTextBase.qml",
+  "size": 878,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/AssignSpellActionDialog.qml",
+  "size": 12389,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MonsterBonusEffectsDialog.qml",
+  "size": 38394,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaGauge.qml",
+  "size": 2004,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CooldownBar.qml",
+  "size": 3130,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MinimapPanel.qml",
+  "size": 6544,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TooltipBase.qml",
+  "size": 5410,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTextInput.qml",
+  "size": 1601,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ImbuementTrackerWidget.qml",
+  "size": 4769,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaDisabledOverlay.qml",
+  "size": 166,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ActionBarButton.qml",
+  "size": 24045,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaIconButton.qml",
+  "size": 2020,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageHelp.qml",
+  "size": 9350,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaBreathingHighlight.qml",
+  "size": 848,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/spelllistwidget.qml",
+  "size": 8324,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ExaltationForgeTransferPage.qml",
+  "size": 20001,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MarketCoinTransactionDetails.qml",
+  "size": 11431,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/InspectPlayerLayout.qml",
+  "size": 8886,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/BossDifficultySelectionDialog.qml",
+  "size": 17241,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/HighscorePage.qml",
+  "size": 16550,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreOfferVisualisation.qml",
+  "size": 4344,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageBattleSounds.qml",
+  "size": 11178,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/NaggingMessageDialog.qml",
+  "size": 2552,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/unjustifiedpointswidget.qml",
+  "size": 4950,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaBalanceTextWithIcon.qml",
+  "size": 916,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaCalendarDatePicker.qml",
+  "size": 2254,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/DynamicallyLoadedMultiImage.qml",
+  "size": 1594,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CharacterInfoDialog.qml",
+  "size": 112726,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/inventory.qml",
+  "size": 23759,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWidgetEntry.qml",
+  "size": 6284,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageButtonBar.qml",
+  "size": 7982,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/createaccountandcharacter/CreateAccountDialog.qml",
+  "size": 39978,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/createaccountandcharacter/CreateCharacterDialog.qml",
+  "size": 8197,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/createaccountandcharacter/WorldSelection.qml",
+  "size": 7569,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaDailyRewardStatus.qml",
+  "size": 1041,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/playertrade.qml",
+  "size": 7492,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaGetCoinsButton.qml",
+  "size": 278,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StorePurchaseConfirmationDialog.qml",
+  "size": 7128,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreButton.qml",
+  "size": 1477,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaAutorepeatIconButton.qml",
+  "size": 1527,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaGuiHelp.qml",
+  "size": 428,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/DialogHeaderDragon.qml",
+  "size": 1363,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/FriendsFriendListPage.qml",
+  "size": 13291,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ExaltationResultDialog.qml",
+  "size": 18280,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaProgressBarWrapAround.qml",
+  "size": 1648,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ImpactView.qml",
+  "size": 5177,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/LoginConfirmationCodeEnterDialog.qml",
+  "size": 6974,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTextEdit.qml",
+  "size": 297,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaSunkenRectangle.qml",
+  "size": 231,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CharacterWorldTransferDialog.qml",
+  "size": 6710,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ServerModalDialog.qml",
+  "size": 2579,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaGraph.qml",
+  "size": 6228,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageHotkeys.qml",
+  "size": 15400,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaRadioButton.qml",
+  "size": 970,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MinimapMarker.qml",
+  "size": 2620,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/FriendsBadgesPage.qml",
+  "size": 6509,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/RaceAppearanceInstanceRenderer.qml",
+  "size": 3714,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageGraphics.qml",
+  "size": 7346,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaSpinBox.qml",
+  "size": 2078,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/FriendsConfigurationPage.qml",
+  "size": 3352,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/vipwidget.qml",
+  "size": 5172,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/BosstiaryDialog.qml",
+  "size": 12603,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/textureatlasviewer.qml",
+  "size": 3991,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ActionBar.qml",
+  "size": 9086,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaCachedOutlineTextBase.qml",
+  "size": 1126,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWheelTileInformation.qml",
+  "size": 11856,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaUnjustifiedPointsSkull.qml",
+  "size": 256,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/InspectObjectDialog.qml",
+  "size": 5065,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CyclopediaDialog.qml",
+  "size": 11053,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/EditTextDialog.qml",
+  "size": 5454,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StorePurchaseSuccessDialog.qml",
+  "size": 5007,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaPanel2PixelUpFilledWithCaption.qml",
+  "size": 1968,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SelectObjectAmountDialog.qml",
+  "size": 4262,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SlimProgressbarRotated.qml",
+  "size": 597,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/WhiteBlacklistDialog.qml",
+  "size": 9852,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/sidebar.qml",
+  "size": 11830,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/EditVipDialog.qml",
+  "size": 4247,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarHealthManaSides.qml",
+  "size": 11518,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SelectBossView.qml",
+  "size": 4571,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/BugReportDialog.qml",
+  "size": 3158,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/HighscoreColumnContent.qml",
+  "size": 757,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CreatureTrackerWidget.qml",
+  "size": 5440,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarSkillLeft.qml",
+  "size": 3394,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/PassiveAbilityList.qml",
+  "size": 6541,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaHorizontalSeparator.qml",
+  "size": 480,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaFrame3Pixel.qml",
+  "size": 646,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaFrame4Pixel.qml",
+  "size": 347,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaWheelHandler.qml",
+  "size": 378,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaText.qml",
+  "size": 729,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaDirectionContainer.qml",
+  "size": 133,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTabButton.qml",
+  "size": 786,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaFrame1PixelDownWithGuiHelp.qml",
+  "size": 631,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageGameWindow.qml",
+  "size": 10135,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ManageLootContainerDialog.qml",
+  "size": 21372,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTabBar.qml",
+  "size": 193,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/WeaponProficiencyReshapeDialog.qml",
+  "size": 4372,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaMenuSlider.qml",
+  "size": 2330,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarSkill.qml",
+  "size": 3064,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/NpcDialog.qml",
+  "size": 8769,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MapWindowPane.qml",
+  "size": 15423,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TeamAssemblePage.qml",
+  "size": 31690,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/GenericEnterTextDialog.qml",
+  "size": 2609,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageMisc.qml",
+  "size": 4474,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWheelLargePerkInformation.qml",
+  "size": 2390,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CombatControls.qml",
+  "size": 10306,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ActionBarMultiActionExpandable.qml",
+  "size": 8840,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/HirelingConfigurationDialog.qml",
+  "size": 2715,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MagicalArchiveSpellPreview.qml",
+  "size": 9844,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageGameplay.qml",
+  "size": 1784,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/Tibia2DRenderedText.qml",
+  "size": 4304,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/HuntingTaskRewardPurchaseConfirmationDialog.qml",
+  "size": 2229,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/BountyTaskDialogTab.qml",
+  "size": 7392,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/WeeklyTaskDialogTab.qml",
+  "size": 4413,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/TaskboardRewardShopDialogTab.qml",
+  "size": 6594,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/BountyTaskSetupPanel.qml",
+  "size": 4401,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/BountyTaskPanel.qml",
+  "size": 3971,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/TaskRingPanelSection.qml",
+  "size": 2088,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/TaskRingPanel.qml",
+  "size": 4641,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/WeeklyTasksResultsPanel.qml",
+  "size": 4430,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/PreferredMonsterSlot.qml",
+  "size": 5573,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/MonsterKillTask.qml",
+  "size": 2476,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/PreferredMonsterSlotPanel.qml",
+  "size": 2872,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/TaskboardDialog.qml",
+  "size": 4703,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/PreferredList.qml",
+  "size": 2385,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/DeliveryTask.qml",
+  "size": 3649,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/TaskboardShopOffer.qml",
+  "size": 4739,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/MonsterKillTaskPanel.qml",
+  "size": 1576,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/SoulSealsDialog.qml",
+  "size": 9874,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/WeeklyTasksRewardsPanel.qml",
+  "size": 2810,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/MonsterSelectionPanel.qml",
+  "size": 2761,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/DeliveryTaskPanel.qml",
+  "size": 2112,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/WeeklyTasksProgressPanel.qml",
+  "size": 3879,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/WeaponProficiencyShapeOptionsDialog.qml",
+  "size": 4796,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaClampSelection.qml",
+  "size": 832,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaProgressBarOrangeToGreen.qml",
+  "size": 517,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTimePicker.qml",
+  "size": 1519,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaFrame2PixelUpFilled.qml",
+  "size": 868,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaProgressBarDoubleBars.qml",
+  "size": 3522,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageUISounds.qml",
+  "size": 10638,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/EditMinimapMarkerDialog.qml",
+  "size": 2662,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageSound.qml",
+  "size": 7573,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CreatureHUD.qml",
+  "size": 17929,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWheelPage.qml",
+  "size": 32359,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/HorizontalActionBarContainer.qml",
+  "size": 1485,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/NewsDialog.qml",
+  "size": 9352,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/LootAndWasteWidget.qml",
+  "size": 7328,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaButton.qml",
+  "size": 4718,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ChatOutput.qml",
+  "size": 10410,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreOfferPage.qml",
+  "size": 20985,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/FriendsAccountSearchPage.qml",
+  "size": 21489,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTextField.qml",
+  "size": 2803,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/gamewindow.qml",
+  "size": 49082,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/Optimized1PixelBorderImage.qml",
+  "size": 858,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OpenChatChannelDialog.qml",
+  "size": 3327,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaSlider.qml",
+  "size": 2875,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ShowImageDialog.qml",
+  "size": 4333,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaUnjustifiedPointsProgressBar.qml",
+  "size": 1119,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/FpsLatencyIndicator.qml",
+  "size": 2913,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageActionBarsShowHideSection.qml",
+  "size": 6792,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaFrame4Pic.qml",
+  "size": 1141,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaFrame8Pic.qml",
+  "size": 1491,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWheelCorner.qml",
+  "size": 12918,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MagicalArchiveDialog.qml",
+  "size": 38301,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SidebarManager.qml",
+  "size": 2678,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaDatePicker.qml",
+  "size": 2769,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/AnalyticsSelectorWidget.qml",
+  "size": 6216,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MainCharacterChangeDialog.qml",
+  "size": 3990,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaCalendarDayCaption.qml",
+  "size": 601,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SlimProgressbar.qml",
+  "size": 597,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/BossSlotsDialog.qml",
+  "size": 9580,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/skillswidget.qml",
+  "size": 8847,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/Tooltip.qml",
+  "size": 5000,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/AreaCaptionTemplate.qml",
+  "size": 3113,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/VerticalActionBarContainer.qml",
+  "size": 2578,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageBasic.qml",
+  "size": 12535,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ExaltationForgeFusionPage.qml",
+  "size": 35633,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CharacterCombatStatBlock.qml",
+  "size": 3372,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/massloginwidget.qml",
+  "size": 1789,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaOptionsPage.qml",
+  "size": 527,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/BosstiaryUnlockProgress.qml",
+  "size": 2857,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CrashReportDialog.qml",
+  "size": 3654,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ContextMenuTemplate.qml",
+  "size": 3686,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ContainerSlot.qml",
+  "size": 13054,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SocialDialog.qml",
+  "size": 7444,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTiledImage.qml",
+  "size": 1776,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaStyledSlider.qml",
+  "size": 987,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/AssignTextActionDialog.qml",
+  "size": 2619,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTableViewRowDelegate.qml",
+  "size": 446,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/VocationSelectionPopup.qml",
+  "size": 16518,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialMouseCursor.qml",
+  "size": 3530,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialAnimationCombat.qml",
+  "size": 21736,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialWorldmapLoot.qml",
+  "size": 9367,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/DawnportTutorialPopup.qml",
+  "size": 16631,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialOverlayTemplate.qml",
+  "size": 6494,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/InfoBannerIcon.qml",
+  "size": 6288,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialOverlayMouseFilterTemplate.qml",
+  "size": 795,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialMouseCursorAnimation.qml",
+  "size": 7575,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TibiaTutorialMarkerTemplate.qml",
+  "size": 68,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialHintDialog.qml",
+  "size": 9924,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/InfoBannerWrapper.qml",
+  "size": 9319,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialWorldmapCombat.qml",
+  "size": 7983,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialEnums.qml",
+  "size": 3204,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialOverlayMouseTrailAnimation.qml",
+  "size": 2580,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/InfoBanner.qml",
+  "size": 2487,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/TutorialAnimationLoot.qml",
+  "size": 30194,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/InfoBannerAnimation.qml",
+  "size": 5063,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/PremiumPanel.qml",
+  "size": 3724,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OutfitAppearanceInstanceRenderer.qml",
+  "size": 2883,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarSkillRight.qml",
+  "size": 3383,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/FriendsInvitesPage.qml",
+  "size": 7154,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWheelDialog.qml",
+  "size": 9890,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreCategoryWithSubcategory.qml",
+  "size": 4875,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreHighlightImage.qml",
+  "size": 474,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ReturnerRewardNotificationDialog.qml",
+  "size": 1815,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/NpcTrade.qml",
+  "size": 20193,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaWhiteBlacklistTableView.qml",
+  "size": 4413,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaCurrencyView.qml",
+  "size": 9360,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/RecordKeyboardShortcutDialog.qml",
+  "size": 3360,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ImbuementInfoLayout.qml",
+  "size": 2133,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ConfirmMoveObjectToStashDialog.qml",
+  "size": 1619,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaProgressBarSegmented.qml",
+  "size": 6671,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaSunkenPillLabel.qml",
+  "size": 480,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/GamewindowSplitView.qml",
+  "size": 13312,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaProgressBar.qml",
+  "size": 2054,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaScrollBar.qml",
+  "size": 4339,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ActionBarMultiActionButton.qml",
+  "size": 1126,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTableView.qml",
+  "size": 6093,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTabCaption.qml",
+  "size": 746,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaSplitView.qml",
+  "size": 25837,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ReportViolationDialog.qml",
+  "size": 12551,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaHouseActionButton.qml",
+  "size": 563,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatesBar.qml",
+  "size": 1524,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBar.qml",
+  "size": 15483,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaPremiumStateButton.qml",
+  "size": 593,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaDialogTabBar.qml",
+  "size": 10065,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/BlessingsDialog.qml",
+  "size": 10134,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/WeaponProficiencyPerkCard.qml",
+  "size": 1707,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ExivaOptionsDialog.qml",
+  "size": 8280,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StoreDialog.qml",
+  "size": 9043,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/StatusBarHealthManaParallel.qml",
+  "size": 3558,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TwoFactorTextEnterDialog.qml",
+  "size": 3799,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TooltipTemplate.qml",
+  "size": 1166,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaCurrentBalanceView.qml",
+  "size": 9552,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/Chat.qml",
+  "size": 23677,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/WeaponProficiencyDialog.qml",
+  "size": 23685,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CharacterSelection.qml",
+  "size": 20274,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaMinimapRose.qml",
+  "size": 3416,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaRectangleHighlight.qml",
+  "size": 344,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/AboutDialog.qml",
+  "size": 4604,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ItemInfoDialog.qml",
+  "size": 14099,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MarketHistoryView.qml",
+  "size": 3085,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageControls.qml",
+  "size": 7739,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ImportantBalancingMessageDialog.qml",
+  "size": 7063,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaMouseShield.qml",
+  "size": 881,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaPanelWithCaption.qml",
+  "size": 3206,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaIconSelectionButton.qml",
+  "size": 1007,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/HitpointsManaPanel.qml",
+  "size": 1466,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/PartyHuntWidget.qml",
+  "size": 9184,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MarketDetailsView.qml",
+  "size": 1466,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CloudflareChallengeDialog.qml",
+  "size": 611,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MessageHistoryWidget.qml",
+  "size": 5013,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MonstersDialog.qml",
+  "size": 43333,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TibiaTextSearchField.qml",
+  "size": 2223,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/MarketOwnOffers.qml",
+  "size": 4284,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/BossTrackingWidget.qml",
+  "size": 5721,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/DamageInputWidget.qml",
+  "size": 10860,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/BattleListEntry.qml",
+  "size": 5651,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/CyclopediaMapDialog.qml",
+  "size": 50736,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/ExaltationForgeDialog.qml",
+  "size": 6031,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsPageActionBars.qml",
+  "size": 8854,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/SkillWheel.qml",
+  "size": 24019,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/GoldenHighlightTibiaTextDecorator.qml",
+  "size": 1680,
+  "flags": 0,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/TransferCreditsDialog.qml",
+  "size": 2876,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/OptionsMenuDialog.qml",
+  "size": 11389,
+  "flags": 1,
+  "root": "0x21705b0"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/prey/qmldir",
+  "size": 35,
+  "flags": 0,
+  "root": "0x2234130"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/charactertrade/qmldir",
+  "size": 35,
+  "flags": 0,
+  "root": "0x2234130"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/outfitdialog/qmldir",
+  "size": 35,
+  "flags": 0,
+  "root": "0x2234130"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/createaccountandcharacter/qmldir",
+  "size": 35,
+  "flags": 0,
+  "root": "0x2234130"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/taskboard/qmldir",
+  "size": 35,
+  "flags": 0,
+  "root": "0x2234130"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qml/tutorial/qmldir",
+  "size": 35,
+  "flags": 0,
+  "root": "0x2234130"
+ },
+ {
+  "path": "/qt/qml/qmlcomponents/qmldir",
+  "size": 16,
+  "flags": 0,
+  "root": "0x234f9c0"
+ },
+ {
+  "path": "/shaders/simple.frag.qsb",
+  "size": 1216,
+  "flags": 0,
+  "root": "0x2353500"
+ },
+ {
+  "path": "/shaders/worldmap-highlight.frag.qsb",
+  "size": 1605,
+  "flags": 0,
+  "root": "0x2353500"
+ },
+ {
+  "path": "/shaders/simple.vert.qsb",
+  "size": 1470,
+  "flags": 0,
+  "root": "0x2353500"
+ },
+ {
+  "path": "/shaders/worldmap-highlight.vert.qsb",
+  "size": 1523,
+  "flags": 0,
+  "root": "0x2353500"
+ },
+ {
+  "path": "/spells/spells.json",
+  "size": 327706,
+  "flags": 1,
+  "root": "0x24b4670"
+ },
+ {
+  "path": "/spells/spells-previews.json",
+  "size": 392884,
+  "flags": 1,
+  "root": "0x24b4670"
+ }
+]

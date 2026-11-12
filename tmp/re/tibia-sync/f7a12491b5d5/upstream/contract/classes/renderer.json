@@ -1,0 +1,79 @@
+{
+ "tibia::renderer::TSpriteTextureProvider": {
+  "chain": [
+   "tibia::renderer::TSpriteTextureProvider",
+   "QObject"
+  ],
+  "class": "tibia::renderer::TSpriteTextureProvider",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onBeforeRenderNewFrame": [
+    "void onBeforeRenderNewFrame()"
+   ],
+   "onSceneGraphInvalidated": [
+    "void onSceneGraphInvalidated()"
+   ]
+  }
+ },
+ "tibia::renderer::TSpriteTextureProviderManager": {
+  "chain": [
+   "tibia::renderer::TSpriteTextureProviderManager",
+   "QObject"
+  ],
+  "class": "tibia::renderer::TSpriteTextureProviderManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::renderer::TWorldMapCamera": {
+  "chain": [
+   "tibia::renderer::TWorldMapCamera",
+   "QObject"
+  ],
+  "class": "tibia::renderer::TWorldMapCamera",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "cameraViewportChanged": [
+    "void cameraViewportChanged()"
+   ],
+   "geometryIntialized": [
+    "void geometryIntialized()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::renderer::TWorldMapCameraViewport": {
+  "chain": [
+   "tibia::renderer::TWorldMapCameraViewport",
+   "QObject"
+  ],
+  "class": "tibia::renderer::TWorldMapCameraViewport",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "viewportChanged": [
+    "void viewportChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

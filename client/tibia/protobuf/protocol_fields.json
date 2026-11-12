@@ -1,0 +1,2330 @@
+{
+  "_meta": {
+    "phase": "6.0-B",
+    "note": "All opcodes addressed: structured fields where recovered; empty = empty body; remaining messages listed with fields=[] and bridge=true (classic side-channel). Regenerate protocol.proto via tools/re/gen_protocol_proto.py."
+  },
+  "_types": {
+    "SpellDataModificationEntry": {
+      "fields": [
+        {
+          "name": "spell_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "mod",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP RE: wrapper repeated @ +0x18; classic u16 spellId + u8 mod + u8 value"
+    },
+    "ProtocolCoordinate": {
+      "fields": [
+        {
+          "name": "x",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "y",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "z",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "CIP Coordinate nested message"
+    },
+    "ProtocolInventoryItem": {
+      "fields": [
+        {
+          "name": "item_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "count_or_subtype",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "mark",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "animation_phase",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "container_type",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "loot_flags",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "obtain_flags",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "container_ammo_total",
+          "type": "uint32",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "look_type",
+          "type": "uint32",
+          "number": 9,
+          "label": "optional"
+        },
+        {
+          "name": "look_head",
+          "type": "uint32",
+          "number": 10,
+          "label": "optional"
+        },
+        {
+          "name": "look_body",
+          "type": "uint32",
+          "number": 11,
+          "label": "optional"
+        },
+        {
+          "name": "look_legs",
+          "type": "uint32",
+          "number": 12,
+          "label": "optional"
+        },
+        {
+          "name": "look_feet",
+          "type": "uint32",
+          "number": 13,
+          "label": "optional"
+        },
+        {
+          "name": "look_addons",
+          "type": "uint32",
+          "number": 14,
+          "label": "optional"
+        },
+        {
+          "name": "look_type_ex",
+          "type": "uint32",
+          "number": 15,
+          "label": "optional"
+        },
+        {
+          "name": "look_mount",
+          "type": "uint32",
+          "number": 16,
+          "label": "optional"
+        },
+        {
+          "name": "look_mount_head",
+          "type": "uint32",
+          "number": 17,
+          "label": "optional"
+        },
+        {
+          "name": "look_mount_body",
+          "type": "uint32",
+          "number": 18,
+          "label": "optional"
+        },
+        {
+          "name": "look_mount_legs",
+          "type": "uint32",
+          "number": 19,
+          "label": "optional"
+        },
+        {
+          "name": "look_mount_feet",
+          "type": "uint32",
+          "number": 20,
+          "label": "optional"
+        },
+        {
+          "name": "podium_direction",
+          "type": "uint32",
+          "number": 21,
+          "label": "optional"
+        },
+        {
+          "name": "podium_visible",
+          "type": "bool",
+          "number": 22,
+          "label": "optional"
+        },
+        {
+          "name": "tier",
+          "type": "uint32",
+          "number": 23,
+          "label": "optional"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "uint32",
+          "number": 24,
+          "label": "optional"
+        },
+        {
+          "name": "brand_new",
+          "type": "bool",
+          "number": 25,
+          "label": "optional"
+        },
+        {
+          "name": "charges",
+          "type": "uint32",
+          "number": 26,
+          "label": "optional"
+        },
+        {
+          "name": "deco_item_id",
+          "type": "uint32",
+          "number": 27,
+          "label": "optional"
+        },
+        {
+          "name": "shader",
+          "type": "string",
+          "number": 28,
+          "label": "optional"
+        },
+        {
+          "name": "tooltip",
+          "type": "string",
+          "number": 29,
+          "label": "optional"
+        },
+        {
+          "name": "has_podium",
+          "type": "bool",
+          "number": 30,
+          "label": "optional"
+        },
+        {
+          "name": "has_container_ammo",
+          "type": "bool",
+          "number": 31,
+          "label": "optional"
+        }
+      ],
+      "note": "RE from tip classic ProtocolGame::getInventorySlot — not invented CIP ProtocolObject names. Reusable for container/tile item opcodes later."
+    }
+  },
+  "GameserverMessagePartyLeft": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameserverMessageLoginError": {
+    "fields": [
+      {
+        "name": "error",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "reason",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "string error; optional u8 reason (1523+)"
+  },
+  "GameserverMessageLoginAdvice": {
+    "fields": [
+      {
+        "name": "message",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "string message"
+  },
+  "GameserverMessageLoginWait": {
+    "fields": [
+      {
+        "name": "message",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "time",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "string message; u8 time"
+  },
+  "GameserverMessageSessionEndInformation": {
+    "fields": [
+      {
+        "name": "reason",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 reason"
+  },
+  "GameserverMessagePing": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameserverMessagePingBack": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameserverMessageLoginChallenge": {
+    "fields": [
+      {
+        "name": "timestamp",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "random",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 timestamp; u8 random; (+1 pad byte 1405+ ignored)",
+    "note": "Pad not a pb field — fill/measure consume it for length authority (Crystal sends 0x71)."
+  },
+  "GameserverMessageSpellDataModification": {
+    "fields": [
+      {
+        "name": "entries",
+        "type": "SpellDataModificationEntry",
+        "number": 1,
+        "label": "repeated"
+      }
+    ],
+    "classic": "u16 count; count \u00d7 (u16 spellId, u8 mod, u8 value)"
+  },
+  "GameserverMessageStop": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameserverMessageGemAtelierGemRevealed": {
+    "fields": [
+      {
+        "name": "gem_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 gem_id",
+    "note": "CIP RE: field 1 @ +0x18 is GemId (not item id)"
+  },
+  "GameserverMessageHirelingNameChange": {
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creature_id; u32 object_id"
+  },
+  "GameserverMessageSessionDumpStart": {
+    "fields": [
+      {
+        "name": "session_key",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "optional string session_key"
+  },
+  "GameserverMessageSessionDumpMarker": {
+    "fields": [
+      {
+        "name": "marker",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "optional string marker"
+  },
+  "GameserverMessagePendingStateEntered": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameserverMessageWorldEntered": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameserverMessageLoginSuccess": {
+    "fields": [
+      {
+        "name": "player_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "beat_duration",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "speed_a",
+        "type": "double",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "speed_b",
+        "type": "double",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "speed_c",
+        "type": "double",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "can_report_bugs",
+        "type": "uint32",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "expert_pvp",
+        "type": "uint32",
+        "number": 7,
+        "label": "optional"
+      },
+      {
+        "name": "pvp_frame",
+        "type": "uint32",
+        "number": 8,
+        "label": "optional"
+      },
+      {
+        "name": "store_url",
+        "type": "string",
+        "number": 9,
+        "label": "optional"
+      },
+      {
+        "name": "coins_packet_size",
+        "type": "uint32",
+        "number": 10,
+        "label": "optional"
+      },
+      {
+        "name": "exiva_options",
+        "type": "uint32",
+        "number": 12,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 playerId; u16 beat; [GameNewSpeedLaw] 3\u00d7 double; [!GameDynamicBugReporter] u8 bugs; [v1054+] u8 pvp; [v1058+] u8 expert; [GameIngameStore] string store + u16 coins; [v1281+] u8 exiva [+ TournamentPackets u8]",
+    "note": "CIP RE via dmpd mapLoginSuccess (fields 1\u20135,8\u201310,12). Fields 6\u20137 tip classic-wire recovery for native apply (dmpd omits; modern CIP uses BugReportsAllowed). Measure must mirror parseLogin feature/version gates."
+  },
+  "GameserverMessageCreatureHealth": {
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "health_percent",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creatureId; u8 healthPercent"
+  },
+  "GameserverMessageCreatureLight": {
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "intensity",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "color",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creatureId; u8 intensity; u8 color(classic only)",
+    "note": "Field 3 tip recovery of classic color byte (dmpd may omit; measure includes it)."
+  },
+  "GameserverMessageCreatureSpeed": {
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "speed",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creatureId; u16 speed"
+  },
+  "GameserverMessageCreatureSkull": {
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "skull",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creatureId; u8 skull"
+  },
+  "GameserverMessageCreatureParty": {
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "party",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creatureId; u8 party"
+  },
+  "GameserverMessageCreatureUnpass": {
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "unpass",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creatureId; u8 unpass"
+  },
+  "GameserverMessageAmbientLight": {
+    "fields": [
+      {
+        "name": "intensity",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "color",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 intensity; u8 color",
+    "note": "WorldLight / AmbientLight S 0x82"
+  },
+  "GameserverMessageTutorialHint": {
+    "fields": [
+      {
+        "name": "hint_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 hint_id"
+  },
+  "GameserverMessageCloseRewardWall": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameserverMessageMarketLeave": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameserverMessageBugReportsAllowed": {
+    "fields": [
+      {
+        "name": "state",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 state"
+  },
+  "GameserverMessageShowMultiOfflineTrainingDialog": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameclientMessagePing": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameclientMessagePingBack": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameclientMessageStop": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameclientMessageMarketLeave": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameclientMessageLogout": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameclientMessageJoinAggression": {
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creatureId",
+    "note": "CIP RE maturity doc"
+  },
+  "GameclientMessageConnectionPingBack": {
+    "fields": [],
+    "classic": "empty"
+  },
+  "GameserverMessageMoveCreature": {
+    "fields": [
+      {
+        "name": "from_pos",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "stackpos",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "to_pos",
+        "type": "ProtocolCoordinate",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "classic": "mapped-thing (pos+stack OR 0xffff+u32 creature_id); pos to",
+    "note": "CIP dmpd maps pos+stack (fields 1/2/4). Field 3 tip recovery of classic mapped-thing id form (Crystal AddMappedCreatureRef prefers 0xffff+id when known)."
+  },
+  "GameserverMessageFullMap": {
+    "fields": [
+      {
+        "name": "player_coordinate",
+        "type": "ProtocolCoordinate",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "opaque tile description \u2014 bridge uses classic; CIP field2=player coord",
+    "note": "Tile payload not field-ported; classic bridge required for map apply",
+    "bridge": true
+  },
+  "GameserverMessageCreatureData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageReadyForSecondaryConnection": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageStoreButtonIndicators": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageNpcTalkParters": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageDead": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageStash": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSpecialContainersAvailable": {
+    "fields": [
+      {
+        "name": "stash",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "market",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 stash; [protocol>=1220] u8 market",
+    "note": "Tip classic-wire recovery for native apply (CIP handleSpecialContainersAvailableMessage)."
+  },
+  "GameserverMessagePartyHuntAnalyser": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTeamFinderTeamLeader": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTeamFinderTeamMember": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageUnlockedSpells": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBossDifficultySelection": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTaskboard": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageWeaponProficiencyNotification": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageImbuementDurations": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePassiveAbilityData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSkillWheel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBosstiaryStaticData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBossSlots": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageClientCheck": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTopRow": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageRightColumn": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBottomRow": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageLeftColumn": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageFieldData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCreateOnMap": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageChangeOnMap": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageDeleteOnMap": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageContainer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCloseContainer": {
+    "fields": [
+      {
+        "name": "container_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 containerId"
+  },
+  "GameserverMessageCreateInContainer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageChangeInContainer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageDeleteInContainer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBosstiary": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageFriendSystemData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageGameEvent": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageInspectionList": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageInspectionState": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSetInventory": {
+    "fields": [
+      {
+        "name": "slot",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "item",
+        "type": "ProtocolInventoryItem",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 slot + getInventorySlot (item_id, count/subtype, container/podium/tier/clock/wear/wrap/shader/tooltip feature tails)",
+    "note": "Schema source: tip classic ProtocolGame::getInventorySlot. CIP handleSetInventoryMessage moc slot exists (skipped until pb fields); tip implements handleSetInventoryMessage \u2192 processInventoryChange."
+  },
+  "GameserverMessageDeleteInventory": {
+    "fields": [
+      {
+        "name": "slot",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 slot"
+  },
+  "GameserverMessageNPCOffer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePlayerGoods": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCloseNPCTrade": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageOwnOffer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCounterOffer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCloseTrade": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCharacterTradeConfiguration": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTextForReport": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageGraphicalEffects": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageRemoveGraphicalEffect": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSoundTrigger": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageExaltationBaseData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageExaltationDialogRefresh": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageExaltationHistory": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCloseExaltationDialog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageExaltationResult": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCreatureUpdate": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCreatureOutfit": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCreatureMarks": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageDepotSearchResult": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCreatureType": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageEditText": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageEditList": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageShowGameNews": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageDepotSearchDetailList": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCloseDepotSearch": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBlessingsDialog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBlessings": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSwitchPreset": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePremiumTrigger": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePlayerDataBasic": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePlayerDataCurrent": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePlayerSkills": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePlayerState": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageUpdateTarget": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSpellDelay": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSpellGroupDelay": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMultiUseDelay": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSetTactics": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSetStoreButtonDeeplink": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageRestingAreaState": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTalk": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageChannels": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageOpenChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePrivateChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageEditGuildMessage": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageXpChanged": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageOutfitMemorial": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageHighscores": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageOpenOwnChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCloseChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMessage": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSnapBack": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageWait": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageUnjustifiedPoints": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePvpSituations": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBestiaryTracker": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageSoulSealsDialog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageShapedPerkReshapeOffers": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBossTracking": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTopFloor": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBottomFloor": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageUpdateManagedContainers": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageVocationSpecificPlayerData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageConfigureCreaturePodium": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCyclopediaHouseActionResult": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageWeaponProficiency": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCyclopediaStaticHouseData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCyclopediaCurrentHouseData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageOutfit": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageExivaSuppressed": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageUpdateExivaOptions": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTransactionDetails": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageImpactTracking": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMarketStatistics": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageItemWasted": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageItemLooted": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTrackQuestFlags": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageKillTracking": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBuddyData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBuddyStatusChange": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBuddyGroupData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMonsterCyclopedia": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMonsterCyclopediaMonsters": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMonsterCyclopediaRace": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMonsterCyclopediaBonusEffects": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMonsterCyclopediaNewDetails": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCyclopediaCharacterInfo": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCyclopediaMapData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageDailyRewardCollectionState": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCreditBalance": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageStoreError": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageRequestPurchaseData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageOpenRewardWall": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageDailyRewardBasic": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageDailyRewardHistory": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageBosstiaryHighlight": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePreyTimeLeft": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePreyData": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePreyPrices": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageOfferDescription": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageImbuingDialogRefresh": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageCloseImbuingDialog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageShowMessageDialog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageResourceBalance": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTibiaTime": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageQuestLog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageQuestLine": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageUpdatingShopBalance": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageChannelEvent": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageObjectInfo": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessagePlayerInventory": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMarketEnter": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMarketDetail": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageMarketBrowse": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageShowModalDialog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageStoreCategories": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageStoreOffers": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageTransactionHistory": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageStoreSuccess": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameserverMessageUnknown": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageLogin": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSecondaryLogin": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageEnterWorld": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageQuitGame": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageStashAction": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageDepotSearchRetrieve": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTrackBestiaryRace": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessagePartyHuntAnalyser": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTeamFinderAssembleTeam": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTeamFinderJoinTeam": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSetClientOptions": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTaskboard": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTrackImbuements": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRequestSkillWheel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageApplySkillWheel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageClientCheck": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGoPath": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGoNorth": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGoEast": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGoSouth": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGoWest": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGoNorthEast": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGoSouthEast": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGoSouthWest": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGoNorthWest": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSetVocation": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRotateNorth": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRotateEast": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRotateSouth": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRotateWest": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTeleport": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageStartOfflineTraining": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageContainerAction": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCharacterTradeConfigurationAction": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageEquipObject": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageMoveObject": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageLookNPCTrade": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageBuyObject": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSellObject": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCloseNPCTrade": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTradeObject": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageLookTrade": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageAcceptTrade": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRejectTrade": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageFriendSystemAction": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageUseObject": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageUseTwoObjects": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageUseOnCreature": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTurnObject": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageConfigureShowOffSocket": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCloseContainer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageUpContainer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageEditText": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageEditList": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageToggleWrapState": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageLook": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageLookAtCreature": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageQuickLoot": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageManagedContainer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageQuickLootBlackWhitelist": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenDepotSearch": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCloseDepotSearch": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageDepotSearchType": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenParentContainer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTalk": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGetChannels": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageJoinChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageLeaveChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessagePrivateChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGuildMessage": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageEditGuildMessage": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGetTextForReport": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCloseNPCChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSetCreaturePodiumConfiguration": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSetTactics": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageAttack": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageFollow": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageInviteToParty": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageJoinParty": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRevokeInvitation": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessagePassLeadership": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageLeaveParty": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageShareExperience": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageDisbandParty": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageInviteToChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageExcludeFromChannel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCyclopediaHouseAction": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenBosstiary": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenBossSlots": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageEditBossSlot": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageHighscores": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessagePickObjectToImbue": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageWeaponProficiencyCommand": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSoulSealsFightMonster": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCancel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageExaltationAction": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenExaltationHistory": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageClientDetails": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageBossDifficultySelection": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSpellTargetConfig": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGetTransactionDetails": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageUpdateExivaOptions": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageBrowseField": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSeekInContainer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageInspectObject": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageInspectPlayer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageBlessingsDialog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTrackQuestFlags": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageMarketStatistics": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGetOutfit": {
+    "fields": [],
+    "classic": "empty",
+    "bridge": false
+  },
+  "GameclientMessageSetOutfit": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageMount": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageApplyImbuement": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageApplyClearingCharm": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCloseImbuingDialog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenRewardWall": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageDailyRewardHistory": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCollectDailyReward": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageCyclopediaMapAction": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageAddBuddy": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRemoveBuddy": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageEditBuddy": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageBuddyGroup": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenMonsterCyclopedia": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenMonsterCyclopediaMonsters": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenMonsterCyclopediaRace": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageMonsterBonusEffectAction": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenCyclopediaCharacterInfo": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageBugReport": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGemAtelier": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGetOfferDescription": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageStoreEvent": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessagePreyAction": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageSetHirelingName": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRequestResourceBalance": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGreet": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageTransferCurrency": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGetQuestLog": {
+    "fields": [],
+    "classic": "empty",
+    "bridge": false
+  },
+  "GameclientMessageGetQuestLine": {
+    "fields": [],
+    "classic": "empty",
+    "bridge": false
+  },
+  "GameclientMessageRuleViolationReport": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGetObjectInfo": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageMarketBrowse": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageMarketCreate": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageMarketCancel": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageMarketAccept": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageAnswerModalDialog": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRequestStoreCategories": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageRequestStoreOffers": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageBuyStoreOffer": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageOpenTransactionHistory": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGetTransactionHistory": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageGatherAll": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  },
+  "GameclientMessageUnknown": {
+    "fields": [],
+    "classic": "bridge \u2014 classic side-channel until CIP field RE",
+    "bridge": true
+  }
+}

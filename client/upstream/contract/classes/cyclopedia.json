@@ -1,0 +1,1259 @@
+{
+ "tibia::cyclopedia::TBestiaryTrackerProtocolMessageHandler": {
+  "chain": [
+   "tibia::cyclopedia::TBestiaryTrackerProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TBestiaryTrackerProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendTrackBestiaryRace": [
+    "void sendTrackBestiaryRace(tibia::protobuf::protocol::GameclientMessageTrackBestiaryRace TrackBestiaryRaceMessage)"
+   ]
+  },
+  "slots": {
+   "handleBestiaryTrackerMessage": [
+    "void handleBestiaryTrackerMessage(tibia::protobuf::protocol::GameserverMessageBestiaryTracker BestiaryTrackerMessage)"
+   ]
+  }
+ },
+ "tibia::cyclopedia::TCharacterInfoStorage": {
+  "chain": [
+   "tibia::cyclopedia::TCharacterInfoStorage",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TCharacterInfoStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "errorReceived": [
+    "void errorReceived(ECharacterInfoDataType DataType, ECharacterInfoErrorType Error)"
+   ],
+   "infoUpdated": [
+    "void infoUpdated(ECharacterInfoDataType DataType)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::cyclopedia::TConcoctionQmlData": {
+  "chain": [
+   "tibia::cyclopedia::TConcoctionQmlData",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TConcoctionQmlData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "appearanceTypeID": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TConcoctionQmlData",
+    "notify": null,
+    "type": "int"
+   },
+   "name": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TConcoctionQmlData",
+    "notify": null,
+    "type": "QString"
+   },
+   "secondsRemaining": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TConcoctionQmlData",
+    "notify": null,
+    "type": "qlonglong"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::cyclopedia::TCreatureTrackerStorage": {
+  "chain": [
+   "tibia::cyclopedia::TCreatureTrackerStorage",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TCreatureTrackerStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "canTrackMoreBossesChanged": [
+    "void canTrackMoreBossesChanged()"
+   ],
+   "canTrackMoreMonstersChanged": [
+    "void canTrackMoreMonstersChanged()"
+   ],
+   "trackedBossesChanged": [
+    "void trackedBossesChanged()"
+   ],
+   "trackedMonstersChanged": [
+    "void trackedMonstersChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::cyclopedia::TCyclopediaMapCharacterConfigurationStorage": {
+  "chain": [
+   "tibia::cyclopedia::TCyclopediaMapCharacterConfigurationStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TCyclopediaMapCharacterConfigurationStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::cyclopedia::TCyclopediaMapStaticDataStorage": {
+  "chain": [
+   "tibia::cyclopedia::TCyclopediaMapStaticDataStorage",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TCyclopediaMapStaticDataStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "minimapMarkersChanged": [
+    "void minimapMarkersChanged()"
+   ],
+   "newAssetDataToLoad": [
+    "void newAssetDataToLoad(tibia::assets::TAsset AssetToLoad, bool Prioritized)"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "onGameClientMainWindowInitialized": [
+    "void onGameClientMainWindowInitialized()"
+   ]
+  }
+ },
+ "tibia::cyclopedia::TCyclopediaMapStorage": {
+  "chain": [
+   "tibia::cyclopedia::TCyclopediaMapStorage",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TCyclopediaMapStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "activeRaidAdded": [
+    "void activeRaidAdded(tibia::worldmap::TWorldMapCoordinate WorldMapCoordinate)"
+   ],
+   "activeRaidsChanged": [
+    "void activeRaidsChanged()"
+   ],
+   "areaAndSubAreaDataChanged": [
+    "void areaAndSubAreaDataChanged()"
+   ],
+   "areaDonationsChanged": [
+    "void areaDonationsChanged()"
+   ],
+   "clickedAreaChanged": [
+    "void clickedAreaChanged()"
+   ],
+   "explorationRewardAmountGoStrengthChanged": [
+    "void explorationRewardAmountGoStrengthChanged()"
+   ],
+   "imminentRaidAnnouncement": [
+    "void imminentRaidAnnouncement(tibia::worldmap::TWorldMapCoordinate WorldMapCoordinate, TMapScaleFactor MapScaleFactor)"
+   ],
+   "passagesChanged": [
+    "void passagesChanged()"
+   ],
+   "playerAreaChanged": [
+    "void playerAreaChanged()"
+   ],
+   "playerPositionChanged": [
+    "void playerPositionChanged()"
+   ],
+   "viewpointsChanged": [
+    "void viewpointsChanged()"
+   ]
+  },
+  "slots": {
+   "onPlayerCreatureAddedToGameSession": [
+    "void onPlayerCreatureAddedToGameSession(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ],
+   "onPlayerPositionWasUpdated": [
+    "void onPlayerPositionWasUpdated(tibia::worldmap::TWorldMapCoordinate WorldMapCoordinate)"
+   ]
+  }
+ },
+ "tibia::cyclopedia::TCyclopediaProtocolMessageHandler": {
+  "chain": [
+   "tibia::cyclopedia::TCyclopediaProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TCyclopediaProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "monsterCyclopediaNewDetailsForMonster": [
+    "void monsterCyclopediaNewDetailsForMonster(TMonsterRaceID UpdatedMonsterRaceID)"
+   ],
+   "requestCloseCyclopediaDialog": [
+    "void requestCloseCyclopediaDialog()"
+   ],
+   "requestHouseActionResultDialog": [
+    "void requestHouseActionResultDialog(tibia::cyclopedia::THouseID HouseID, tibia::cyclopedia::EHouseAction Action, tibia::cyclopedia::THouseActionErrorCode ErrorCode, bool HasBeenOutbidden)"
+   ],
+   "sendCyclopediaHouseAction": [
+    "void sendCyclopediaHouseAction(tibia::protobuf::protocol::GameclientMessageCyclopediaHouseAction CyclopediaHousActionMessage)"
+   ],
+   "sendCyclopediaMapAction": [
+    "void sendCyclopediaMapAction(tibia::protobuf::protocol::GameclientMessageCyclopediaMapAction CyclopediaMapAction)"
+   ],
+   "sendInspectObject": [
+    "void sendInspectObject(tibia::protobuf::protocol::GameclientMessageInspectObject InspectObjectMessage)"
+   ],
+   "sendMarketStatistics": [
+    "void sendMarketStatistics(tibia::protobuf::protocol::GameclientMessageMarketStatistics MarketStatisticsMessage)"
+   ],
+   "sendMonsterBonusEffectAction": [
+    "void sendMonsterBonusEffectAction(tibia::protobuf::protocol::GameclientMessageMonsterBonusEffectAction MonsterBonusEffectAction)"
+   ],
+   "sendOpenCyclopediaCharacterInfo": [
+    "void sendOpenCyclopediaCharacterInfo(tibia::protobuf::protocol::GameclientMessageOpenCyclopediaCharacterInfo OpenCyclopediaCharacterInfo)"
+   ],
+   "sendOpenMonsterCyclopedia": [
+    "void sendOpenMonsterCyclopedia(tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopedia MonsterCyclopediaMessage)"
+   ],
+   "sendOpenMonsterCyclopediaMonsters": [
+    "void sendOpenMonsterCyclopediaMonsters(tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaMonsters MonsterCyclopediaMonstersMessage)"
+   ],
+   "sendOpenMonsterCyclopediaRace": [
+    "void sendOpenMonsterCyclopediaRace(tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaRace MonsterCyclopediaRaceMessage)"
+   ],
+   "sendPartyHuntAnalyser": [
+    "void sendPartyHuntAnalyser(tibia::protobuf::protocol::GameclientMessagePartyHuntAnalyser Message)"
+   ]
+  },
+  "slots": {
+   "handleCyclopediaCharacterInfoMessage": [
+    "void handleCyclopediaCharacterInfoMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaCharacterInfo CyclopediaCharacterInfoMessage)"
+   ],
+   "handleCyclopediaCurrentHouseDataMessage": [
+    "void handleCyclopediaCurrentHouseDataMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaCurrentHouseData Message)"
+   ],
+   "handleCyclopediaHouseActionResulMessage": [
+    "void handleCyclopediaHouseActionResulMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult Message)"
+   ],
+   "handleCyclopediaMapMessage": [
+    "void handleCyclopediaMapMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaMapData CyclopediaMapDataMessage)"
+   ],
+   "handleCyclopediaStaticHouseDataMessage": [
+    "void handleCyclopediaStaticHouseDataMessage(tibia::protobuf::protocol::GameserverMessageCyclopediaStaticHouseData Message)"
+   ],
+   "handleDeadMessage": [
+    "void handleDeadMessage(tibia::protobuf::protocol::GameserverMessageDead DeadMessage)"
+   ],
+   "handleImpactTrackingMessage": [
+    "void handleImpactTrackingMessage(tibia::protobuf::protocol::GameserverMessageImpactTracking ImpactTrackingMessage)"
+   ],
+   "handleItemLootedMessage": [
+    "void handleItemLootedMessage(tibia::protobuf::protocol::GameserverMessageItemLooted ItemLootedMessage)"
+   ],
+   "handleItemWastedMessage": [
+    "void handleItemWastedMessage(tibia::protobuf::protocol::GameserverMessageItemWasted ItemWastedMessage)"
+   ],
+   "handleKillTrackingMessage": [
+    "void handleKillTrackingMessage(tibia::protobuf::protocol::GameserverMessageKillTracking LootTrackingMessage)"
+   ],
+   "handleMarketStatisticsMessage": [
+    "void handleMarketStatisticsMessage(tibia::protobuf::protocol::GameserverMessageMarketStatistics MarketStatisticsMessage)"
+   ],
+   "handleMonsterCyclopediaBonusEffectsMessage": [
+    "void handleMonsterCyclopediaBonusEffectsMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaBonusEffects BonusEffectsMessage)"
+   ],
+   "handleMonsterCyclopediaMessage": [
+    "void handleMonsterCyclopediaMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopedia MonsterCyclopediaMessage)"
+   ],
+   "handleMonsterCyclopediaMonstersMessage": [
+    "void handleMonsterCyclopediaMonstersMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaMonsters MonsterCyclopediaMonstersMessage)"
+   ],
+   "handleMonsterCyclopediaNewDetailsMessage": [
+    "void handleMonsterCyclopediaNewDetailsMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaNewDetails MonsterCyclopediaNewDetailsMessage)"
+   ],
+   "handleMonsterCyclopediaRaceMessage": [
+    "void handleMonsterCyclopediaRaceMessage(tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaRace MonsterCyclopediaRaceMessage)"
+   ],
+   "handlePartyHuntAnalyserMessage": [
+    "void handlePartyHuntAnalyserMessage(tibia::protobuf::protocol::GameserverMessagePartyHuntAnalyser Message)"
+   ],
+   "handleResourceBalanceMessage": [
+    "void handleResourceBalanceMessage(tibia::protobuf::protocol::GameserverMessageResourceBalance ResourceBalanceMessage)"
+   ],
+   "handleXpChangedMessage": [
+    "void handleXpChangedMessage(tibia::protobuf::protocol::GameserverMessageXpChanged XpChangedMessage)"
+   ]
+  }
+ },
+ "tibia::cyclopedia::TDamageInputStorage": {
+  "chain": [
+   "tibia::cyclopedia::TDamageInputStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TDamageInputStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "damageTakenDataChanged": [
+    "void damageTakenDataChanged()"
+   ],
+   "damageTakenGraphChanged": [
+    "void damageTakenGraphChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::cyclopedia::TDefenceStatsQmlData": {
+  "chain": [
+   "tibia::cyclopedia::TDefenceStatsQmlData",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TDefenceStatsQmlData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "armorValue": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDefenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "damageReductions": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDefenceStatsQmlData",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "damageReflection": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDefenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "defence": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDefenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "dodge": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDefenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "magicShield": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDefenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "mantraValue": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDefenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "mitigation": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TDefenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::cyclopedia::TGainWasteStorage": {
+  "chain": [
+   "tibia::cyclopedia::TGainWasteStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TGainWasteStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "lootedItemsChanged": [
+    "void lootedItemsChanged()"
+   ],
+   "lootedItemsMetricsChanged": [
+    "void lootedItemsMetricsChanged()"
+   ],
+   "requestGetObjectInfo": [
+    "void requestGetObjectInfo(tibia::appearances::TObjectAppearanceInstanceTypeID ObjectInstanceType)"
+   ],
+   "wastedItemsChanged": [
+    "void wastedItemsChanged()"
+   ],
+   "wastedItemsMetricsChanged": [
+    "void wastedItemsMetricsChanged()"
+   ]
+  },
+  "slots": {
+   "onItemPriceConfigurationChanged": [
+    "void onItemPriceConfigurationChanged()"
+   ],
+   "onObjectInfosChanged": [
+    "void onObjectInfosChanged()"
+   ]
+  }
+ },
+ "tibia::cyclopedia::THousesStorage": {
+  "chain": [
+   "tibia::cyclopedia::THousesStorage",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::THousesStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "characterHousesInfoChanged": [
+    "void characterHousesInfoChanged()"
+   ],
+   "houseInformationChanged": [
+    "void houseInformationChanged()"
+   ],
+   "housesLimitsChanged": [
+    "void housesLimitsChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::cyclopedia::THuntingSessionStorage": {
+  "chain": [
+   "tibia::cyclopedia::THuntingSessionStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::THuntingSessionStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "experienceChanged": [
+    "void experienceChanged()"
+   ],
+   "killedMonstersChanged": [
+    "void killedMonstersChanged()"
+   ],
+   "sessionLengthChanged": [
+    "void sessionLengthChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::cyclopedia::TImpactStorage": {
+  "chain": [
+   "tibia::cyclopedia::TImpactStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TImpactStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "allTimeMaxChanged": [
+    "void allTimeMaxChanged()"
+   ],
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "damageDataChanged": [
+    "void damageDataChanged()"
+   ],
+   "graphValuesChanged": [
+    "void graphValuesChanged()"
+   ],
+   "healingDataChanged": [
+    "void healingDataChanged()"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sessionLengthChanged": [
+    "void sessionLengthChanged()"
+   ]
+  },
+  "slots": {
+   "onTriggerUpdateImpactData": [
+    "void onTriggerUpdateImpactData(::shared::TMilliseconds CurrentTimestamp)"
+   ],
+   "onTriggerUpdateImpactGraphsValues": [
+    "void onTriggerUpdateImpactGraphsValues(::shared::TMilliseconds CurrentTimestamp)"
+   ]
+  }
+ },
+ "tibia::cyclopedia::TItemPriceStorage": {
+  "chain": [
+   "tibia::cyclopedia::TItemPriceStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TItemPriceStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "marketPricesAvailable": [
+    "void marketPricesAvailable()"
+   ],
+   "requestMarketStatistics": [
+    "void requestMarketStatistics()"
+   ]
+  },
+  "slots": {
+   "onPremiumTimeChanged": [
+    "void onPremiumTimeChanged()"
+   ]
+  }
+ },
+ "tibia::cyclopedia::TItemTrackingStorage": {
+  "chain": [
+   "tibia::cyclopedia::TItemTrackingStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TItemTrackingStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "itemDropTracked": [
+    "void itemDropTracked(TTrackedItem TrackedItem, TDroppedLoot Loot)"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "recentLootDropAddedOrRemoved": [
+    "void recentLootDropAddedOrRemoved()"
+   ]
+  },
+  "slots": {
+   "onItemTrackingStorageOptionsChanged": [
+    "void onItemTrackingStorageOptionsChanged()"
+   ],
+   "onMarketPricesAvailable": [
+    "void onMarketPricesAvailable()"
+   ],
+   "onUpdateSignalTimerExpired": [
+    "void onUpdateSignalTimerExpired()"
+   ]
+  }
+ },
+ "tibia::cyclopedia::TMiscStatsQmlData": {
+  "chain": [
+   "tibia::cyclopedia::TMiscStatsQmlData",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TMiscStatsQmlData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "activeConcoctions": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "amplification": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "blessingButtonColor": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "QString"
+   },
+   "consumableCooldowns": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "currentBlessings": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "int"
+   },
+   "equipmentSpellAugments": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "maxBlessings": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "int"
+   },
+   "momentum": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "skillwheelSpellAugments": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "spellAugments": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "QList<QObject*>"
+   },
+   "transcendence": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TMiscStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::cyclopedia::TMonsterBonusEffectStorage": {
+  "chain": [
+   "tibia::cyclopedia::TMonsterBonusEffectStorage",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TMonsterBonusEffectStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "availableCharmPointsChanged": [
+    "void availableCharmPointsChanged()"
+   ],
+   "availableMinorCharmEchoesChanged": [
+    "void availableMinorCharmEchoesChanged()"
+   ],
+   "bonusEffectsChanged": [
+    "void bonusEffectsChanged()"
+   ],
+   "remainingNumberOfAssignableBonusEffectsChanged": [
+    "void remainingNumberOfAssignableBonusEffectsChanged()"
+   ],
+   "resetAllCharmCostChanged": [
+    "void resetAllCharmCostChanged()"
+   ],
+   "unlockedCharmPointsChanged": [
+    "void unlockedCharmPointsChanged()"
+   ],
+   "unlockedMinorCharmEchoesChanged": [
+    "void unlockedMinorCharmEchoesChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::cyclopedia::TMonsterRaceStorage": {
+  "chain": [
+   "tibia::cyclopedia::TMonsterRaceStorage",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TMonsterRaceStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "monsterClassificationMonstersChanged": [
+    "void monsterClassificationMonstersChanged(TMonsterClassificationName MonsterClassificationID)"
+   ],
+   "monsterClassificationSummaryChanged": [
+    "void monsterClassificationSummaryChanged()"
+   ],
+   "monsterRaceDetailsChanged": [
+    "void monsterRaceDetailsChanged(TMonsterRace ChangedRace)"
+   ],
+   "monsterRacesUnlockedForCharmsChanged": [
+    "void monsterRacesUnlockedForCharmsChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::cyclopedia::TOffenceStatsQmlData": {
+  "chain": [
+   "tibia::cyclopedia::TOffenceStatsQmlData",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TOffenceStatsQmlData",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "alphaStrike": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "armorPenetration": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "attackValue": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "autoAttackBonusFromSkills": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "cleave": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "critChance": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "critExtraDamage": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "distanceFightingAccuracy": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "elementalPierce": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "flatDamageHealing": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "lifeLeech": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "lifeOnHit": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "lifeOnKill": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "manaLeech": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "manaOnHit": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "manaOnKill": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "omegaStrike": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "onslaught": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "perfectShot": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "specialAttackConversion": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "specialCritChances": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "specialCritDamages": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "specificTargetAttackBonus": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "spellBonusDamageFromSkills": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "spellBonusHealingFromSkills": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TOffenceStatsQmlData",
+    "notify": null,
+    "type": "QObject*"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::cyclopedia::TPartyHuntStorage": {
+  "chain": [
+   "tibia::cyclopedia::TPartyHuntStorage",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TPartyHuntStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "lootTypeChanged": [
+    "void lootTypeChanged()"
+   ],
+   "partyHuntDataChanged": [
+    "void partyHuntDataChanged()"
+   ],
+   "partyLeaderIDChanged": [
+    "void partyLeaderIDChanged()"
+   ],
+   "sessionStartChanged": [
+    "void sessionStartChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::cyclopedia::TProgressStorage": {
+  "chain": [
+   "tibia::cyclopedia::TProgressStorage",
+   "tibia::config::ICharacterConfigurationBase",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TProgressStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "configurationChangedFromUserInput": [
+    "void configurationChangedFromUserInput()"
+   ],
+   "experienceDataChanged": [
+    "void experienceDataChanged()"
+   ],
+   "experienceDataReset": [
+    "void experienceDataReset()"
+   ]
+  },
+  "slots": {
+   "onExperienceGained": [
+    "void onExperienceGained(tibia::game::TExperiencePoints BaseExperiencePoints, tibia::game::TExperiencePoints ActualExperiencePoints, ::shared::TMilliseconds CurrentTimestamp)"
+   ]
+  }
+ },
+ "tibia::cyclopedia::TQmlStatWithSources": {
+  "chain": [
+   "tibia::cyclopedia::TQmlStatWithSources",
+   "QObject"
+  ],
+  "class": "tibia::cyclopedia::TQmlStatWithSources",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "caption": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStatWithSources",
+    "notify": null,
+    "type": "QString"
+   },
+   "iconSource": {
+    "flags": [
+     "READ",
+     "ENUM",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStatWithSources",
+    "notify": null,
+    "type": "QUrl"
+   },
+   "iconTooltip": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStatWithSources",
+    "notify": null,
+    "type": "QString"
+   },
+   "sources": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStatWithSources",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "styleType": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStatWithSources",
+    "notify": null,
+    "type": "QString"
+   },
+   "tooltip": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStatWithSources",
+    "notify": null,
+    "type": "QString"
+   },
+   "total": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStatWithSources",
+    "notify": null,
+    "type": "QString"
+   },
+   "visible": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TQmlStatWithSources",
+    "notify": null,
+    "type": "bool"
+   }
+  },
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::cyclopedia::TStatSourcesListModel": {
+  "chain": [
+   "tibia::cyclopedia::TStatSourcesListModel",
+   "QAbstractListModel"
+  ],
+  "class": "tibia::cyclopedia::TStatSourcesListModel",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "tibia",
+  "version-string": "1.0.0",
+  "description": "qtclient / tibia Qt client C++ dependencies (Qt comes from make qt)",
+  "dependencies": [
+    "zlib",
+    "liblzma",
+    "libogg",
+    "libvorbis",
+    "protobuf",
+    "spdlog"
+  ],
+  "features": {
+    "tests": {
+      "description": "Unit test dependencies (TIBIA_BUILD_TESTS)",
+      "dependencies": ["gtest"]
+    }
+  },
+  "builtin-baseline": "56bb2411609227288b70117ead2c47585ba07713"
+}

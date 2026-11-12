@@ -1,0 +1,2948 @@
+// GENERATED — tip-owned CIP protocol message scaffold (Phase 6.0).
+// Do not hand-edit: regenerate with tools/re/gen_protocol_proto.py
+// Recovered fields: apps/qtclient/client/tibia/protobuf/protocol_fields.json
+// Extension field number == classic wire opcode (CIP load-split).
+syntax = "proto2";
+package tibia.protobuf.protocol;
+option optimize_for = LITE_RUNTIME;
+
+// Wrapper: classic opcode in `type`; payload is extension N==opcode.
+message GameserverMessage {
+  optional int32 type = 1;
+  extensions 2 to max;
+}
+
+message GameclientMessage {
+  optional int32 type = 1;
+  extensions 2 to max;
+}
+
+// CIP RE: wrapper repeated @ +0x18; classic u16 spellId + u8 mod + u8 value
+message SpellDataModificationEntry {
+  optional uint32 spell_id = 1;
+  optional uint32 mod = 2;
+  optional uint32 value = 3;
+}
+
+// CIP Coordinate nested message
+message ProtocolCoordinate {
+  optional uint32 x = 1;
+  optional uint32 y = 2;
+  optional uint32 z = 3;
+}
+
+// RE from tip classic ProtocolGame::getInventorySlot — not invented CIP ProtocolObject names. Reusable for container/tile item opcodes later.
+message ProtocolInventoryItem {
+  optional uint32 item_id = 1;
+  optional uint32 count_or_subtype = 2;
+  optional uint32 mark = 3;
+  optional uint32 animation_phase = 4;
+  optional uint32 container_type = 5;
+  optional uint32 loot_flags = 6;
+  optional uint32 obtain_flags = 7;
+  optional uint32 container_ammo_total = 8;
+  optional uint32 look_type = 9;
+  optional uint32 look_head = 10;
+  optional uint32 look_body = 11;
+  optional uint32 look_legs = 12;
+  optional uint32 look_feet = 13;
+  optional uint32 look_addons = 14;
+  optional uint32 look_type_ex = 15;
+  optional uint32 look_mount = 16;
+  optional uint32 look_mount_head = 17;
+  optional uint32 look_mount_body = 18;
+  optional uint32 look_mount_legs = 19;
+  optional uint32 look_mount_feet = 20;
+  optional uint32 podium_direction = 21;
+  optional bool podium_visible = 22;
+  optional uint32 tier = 23;
+  optional uint32 duration_seconds = 24;
+  optional bool brand_new = 25;
+  optional uint32 charges = 26;
+  optional uint32 deco_item_id = 27;
+  optional string shader = 28;
+  optional string tooltip = 29;
+  optional bool has_podium = 30;
+  optional bool has_container_ammo = 31;
+}
+
+// server opcode 0x03 (3) — CreatureData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCreatureData {
+  extend GameserverMessage {
+    optional GameserverMessageCreatureData gameserver_message_creature_data = 3;
+  }
+}
+
+// server opcode 0x04 (4) — SessionDumpStart
+// classic: optional string session_key
+message GameserverMessageSessionDumpStart {
+  optional string session_key = 1;
+  extend GameserverMessage {
+    optional GameserverMessageSessionDumpStart gameserver_message_session_dump_start = 4;
+  }
+}
+
+// server opcode 0x05 (5) — SessionDumpMarker
+// classic: optional string marker
+message GameserverMessageSessionDumpMarker {
+  optional string marker = 1;
+  extend GameserverMessage {
+    optional GameserverMessageSessionDumpMarker gameserver_message_session_dump_marker = 5;
+  }
+}
+
+// server opcode 0x06 (6) — PartyLeft
+// classic: empty
+message GameserverMessagePartyLeft {
+  extend GameserverMessage {
+    optional GameserverMessagePartyLeft gameserver_message_party_left = 6;
+  }
+}
+
+// server opcode 0x0A (10) — PendingStateEntered
+// classic: empty
+message GameserverMessagePendingStateEntered {
+  extend GameserverMessage {
+    optional GameserverMessagePendingStateEntered gameserver_message_pending_state_entered = 10;
+  }
+}
+
+// server opcode 0x0B (11) — ReadyForSecondaryConnection
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageReadyForSecondaryConnection {
+  extend GameserverMessage {
+    optional GameserverMessageReadyForSecondaryConnection gameserver_message_ready_for_secondary_connection = 11;
+  }
+}
+
+// server opcode 0x0F (15) — WorldEntered
+// classic: empty
+message GameserverMessageWorldEntered {
+  extend GameserverMessage {
+    optional GameserverMessageWorldEntered gameserver_message_world_entered = 15;
+  }
+}
+
+// server opcode 0x14 (20) — LoginError
+// classic: string error; optional u8 reason (1523+)
+message GameserverMessageLoginError {
+  optional string error = 1;
+  optional uint32 reason = 2;
+  extend GameserverMessage {
+    optional GameserverMessageLoginError gameserver_message_login_error = 20;
+  }
+}
+
+// server opcode 0x15 (21) — LoginAdvice
+// classic: string message
+message GameserverMessageLoginAdvice {
+  optional string message = 1;
+  extend GameserverMessage {
+    optional GameserverMessageLoginAdvice gameserver_message_login_advice = 21;
+  }
+}
+
+// server opcode 0x16 (22) — LoginWait
+// classic: string message; u8 time
+message GameserverMessageLoginWait {
+  optional string message = 1;
+  optional uint32 time = 2;
+  extend GameserverMessage {
+    optional GameserverMessageLoginWait gameserver_message_login_wait = 22;
+  }
+}
+
+// server opcode 0x17 (23) — LoginSuccess
+// classic: u32 playerId; u16 beat; [GameNewSpeedLaw] 3× double; [!GameDynamicBugReporter] u8 bugs; [v1054+] u8 pvp; [v1058+] u8 expert; [GameIngameStore] string store + u16 coins; [v1281+] u8 exiva [+ TournamentPackets u8]
+// CIP RE via dmpd mapLoginSuccess (fields 1–5,8–10,12). Fields 6–7 tip classic-wire recovery for native apply (dmpd omits; modern CIP uses BugReportsAllowed). Measure must mirror parseLogin feature/version gates.
+message GameserverMessageLoginSuccess {
+  optional uint32 player_id = 1;
+  optional uint32 beat_duration = 2;
+  optional double speed_a = 3;
+  optional double speed_b = 4;
+  optional double speed_c = 5;
+  optional uint32 can_report_bugs = 6;
+  optional uint32 expert_pvp = 7;
+  optional uint32 pvp_frame = 8;
+  optional string store_url = 9;
+  optional uint32 coins_packet_size = 10;
+  optional uint32 exiva_options = 12;
+  extend GameserverMessage {
+    optional GameserverMessageLoginSuccess gameserver_message_login_success = 23;
+  }
+}
+
+// server opcode 0x18 (24) — SessionEndInformation
+// classic: u8 reason
+message GameserverMessageSessionEndInformation {
+  optional uint32 reason = 1;
+  extend GameserverMessage {
+    optional GameserverMessageSessionEndInformation gameserver_message_session_end_information = 24;
+  }
+}
+
+// server opcode 0x19 (25) — StoreButtonIndicators
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageStoreButtonIndicators {
+  extend GameserverMessage {
+    optional GameserverMessageStoreButtonIndicators gameserver_message_store_button_indicators = 25;
+  }
+}
+
+// server opcode 0x1A (26) — BugReportsAllowed
+// classic: u8 state
+message GameserverMessageBugReportsAllowed {
+  optional uint32 state = 1;
+  extend GameserverMessage {
+    optional GameserverMessageBugReportsAllowed gameserver_message_bug_reports_allowed = 26;
+  }
+}
+
+// server opcode 0x1B (27) — ShowMultiOfflineTrainingDialog
+// classic: empty
+message GameserverMessageShowMultiOfflineTrainingDialog {
+  extend GameserverMessage {
+    optional GameserverMessageShowMultiOfflineTrainingDialog gameserver_message_show_multi_offline_training_dialog = 27;
+  }
+}
+
+// server opcode 0x1C (28) — NpcTalkParters
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageNpcTalkParters {
+  extend GameserverMessage {
+    optional GameserverMessageNpcTalkParters gameserver_message_npc_talk_parters = 28;
+  }
+}
+
+// server opcode 0x1D (29) — Ping
+// classic: empty
+message GameserverMessagePing {
+  extend GameserverMessage {
+    optional GameserverMessagePing gameserver_message_ping = 29;
+  }
+}
+
+// server opcode 0x1E (30) — PingBack
+// classic: empty
+message GameserverMessagePingBack {
+  extend GameserverMessage {
+    optional GameserverMessagePingBack gameserver_message_ping_back = 30;
+  }
+}
+
+// server opcode 0x1F (31) — LoginChallenge
+// classic: u32 timestamp; u8 random; (+1 pad byte 1405+ ignored)
+// Pad not a pb field — fill/measure consume it for length authority (Crystal sends 0x71).
+message GameserverMessageLoginChallenge {
+  optional uint32 timestamp = 1;
+  optional uint32 random = 2;
+  extend GameserverMessage {
+    optional GameserverMessageLoginChallenge gameserver_message_login_challenge = 31;
+  }
+}
+
+// server opcode 0x28 (40) — Dead
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageDead {
+  extend GameserverMessage {
+    optional GameserverMessageDead gameserver_message_dead = 40;
+  }
+}
+
+// server opcode 0x29 (41) — Stash
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageStash {
+  extend GameserverMessage {
+    optional GameserverMessageStash gameserver_message_stash = 41;
+  }
+}
+
+// server opcode 0x2A (42) — SpecialContainersAvailable
+// classic: u8 stash; [protocol>=1220] u8 market
+// Tip classic-wire recovery for native apply (CIP handleSpecialContainersAvailableMessage).
+message GameserverMessageSpecialContainersAvailable {
+  optional uint32 stash = 1;
+  optional uint32 market = 2;
+  extend GameserverMessage {
+    optional GameserverMessageSpecialContainersAvailable gameserver_message_special_containers_available = 42;
+  }
+}
+
+// server opcode 0x2B (43) — PartyHuntAnalyser
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePartyHuntAnalyser {
+  extend GameserverMessage {
+    optional GameserverMessagePartyHuntAnalyser gameserver_message_party_hunt_analyser = 43;
+  }
+}
+
+// server opcode 0x2C (44) — TeamFinderTeamLeader
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTeamFinderTeamLeader {
+  extend GameserverMessage {
+    optional GameserverMessageTeamFinderTeamLeader gameserver_message_team_finder_team_leader = 44;
+  }
+}
+
+// server opcode 0x2D (45) — TeamFinderTeamMember
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTeamFinderTeamMember {
+  extend GameserverMessage {
+    optional GameserverMessageTeamFinderTeamMember gameserver_message_team_finder_team_member = 45;
+  }
+}
+
+// server opcode 0x2E (46) — UnlockedSpells
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageUnlockedSpells {
+  extend GameserverMessage {
+    optional GameserverMessageUnlockedSpells gameserver_message_unlocked_spells = 46;
+  }
+}
+
+// server opcode 0x2F (47) — BossDifficultySelection
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBossDifficultySelection {
+  extend GameserverMessage {
+    optional GameserverMessageBossDifficultySelection gameserver_message_boss_difficulty_selection = 47;
+  }
+}
+
+// server opcode 0x5B (91) — Taskboard
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTaskboard {
+  extend GameserverMessage {
+    optional GameserverMessageTaskboard gameserver_message_taskboard = 91;
+  }
+}
+
+// server opcode 0x5C (92) — WeaponProficiencyNotification
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageWeaponProficiencyNotification {
+  extend GameserverMessage {
+    optional GameserverMessageWeaponProficiencyNotification gameserver_message_weapon_proficiency_notification = 92;
+  }
+}
+
+// server opcode 0x5D (93) — ImbuementDurations
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageImbuementDurations {
+  extend GameserverMessage {
+    optional GameserverMessageImbuementDurations gameserver_message_imbuement_durations = 93;
+  }
+}
+
+// server opcode 0x5E (94) — PassiveAbilityData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePassiveAbilityData {
+  extend GameserverMessage {
+    optional GameserverMessagePassiveAbilityData gameserver_message_passive_ability_data = 94;
+  }
+}
+
+// server opcode 0x5F (95) — SkillWheel
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageSkillWheel {
+  extend GameserverMessage {
+    optional GameserverMessageSkillWheel gameserver_message_skill_wheel = 95;
+  }
+}
+
+// server opcode 0x60 (96) — SpellDataModification
+// classic: u16 count; count × (u16 spellId, u8 mod, u8 value)
+message GameserverMessageSpellDataModification {
+  repeated SpellDataModificationEntry entries = 1;
+  extend GameserverMessage {
+    optional GameserverMessageSpellDataModification gameserver_message_spell_data_modification = 96;
+  }
+}
+
+// server opcode 0x61 (97) — BosstiaryStaticData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBosstiaryStaticData {
+  extend GameserverMessage {
+    optional GameserverMessageBosstiaryStaticData gameserver_message_bosstiary_static_data = 97;
+  }
+}
+
+// server opcode 0x62 (98) — BossSlots
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBossSlots {
+  extend GameserverMessage {
+    optional GameserverMessageBossSlots gameserver_message_boss_slots = 98;
+  }
+}
+
+// server opcode 0x63 (99) — ClientCheck
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageClientCheck {
+  extend GameserverMessage {
+    optional GameserverMessageClientCheck gameserver_message_client_check = 99;
+  }
+}
+
+// server opcode 0x64 (100) — FullMap
+// classic: opaque tile description — bridge uses classic; CIP field2=player coord
+// Tile payload not field-ported; classic bridge required for map apply
+message GameserverMessageFullMap {
+  optional ProtocolCoordinate player_coordinate = 2;
+  extend GameserverMessage {
+    optional GameserverMessageFullMap gameserver_message_full_map = 100;
+  }
+}
+
+// server opcode 0x65 (101) — TopRow
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTopRow {
+  extend GameserverMessage {
+    optional GameserverMessageTopRow gameserver_message_top_row = 101;
+  }
+}
+
+// server opcode 0x66 (102) — RightColumn
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageRightColumn {
+  extend GameserverMessage {
+    optional GameserverMessageRightColumn gameserver_message_right_column = 102;
+  }
+}
+
+// server opcode 0x67 (103) — BottomRow
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBottomRow {
+  extend GameserverMessage {
+    optional GameserverMessageBottomRow gameserver_message_bottom_row = 103;
+  }
+}
+
+// server opcode 0x68 (104) — LeftColumn
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageLeftColumn {
+  extend GameserverMessage {
+    optional GameserverMessageLeftColumn gameserver_message_left_column = 104;
+  }
+}
+
+// server opcode 0x69 (105) — FieldData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageFieldData {
+  extend GameserverMessage {
+    optional GameserverMessageFieldData gameserver_message_field_data = 105;
+  }
+}
+
+// server opcode 0x6A (106) — CreateOnMap
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCreateOnMap {
+  extend GameserverMessage {
+    optional GameserverMessageCreateOnMap gameserver_message_create_on_map = 106;
+  }
+}
+
+// server opcode 0x6B (107) — ChangeOnMap
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageChangeOnMap {
+  extend GameserverMessage {
+    optional GameserverMessageChangeOnMap gameserver_message_change_on_map = 107;
+  }
+}
+
+// server opcode 0x6C (108) — DeleteOnMap
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageDeleteOnMap {
+  extend GameserverMessage {
+    optional GameserverMessageDeleteOnMap gameserver_message_delete_on_map = 108;
+  }
+}
+
+// server opcode 0x6D (109) — MoveCreature
+// classic: mapped-thing (pos+stack OR 0xffff+u32 creature_id); pos to
+// CIP dmpd maps pos+stack (fields 1/2/4). Field 3 tip recovery of classic mapped-thing id form (Crystal AddMappedCreatureRef prefers 0xffff+id when known).
+message GameserverMessageMoveCreature {
+  optional ProtocolCoordinate from_pos = 1;
+  optional uint32 stackpos = 2;
+  optional uint32 creature_id = 3;
+  optional ProtocolCoordinate to_pos = 4;
+  extend GameserverMessage {
+    optional GameserverMessageMoveCreature gameserver_message_move_creature = 109;
+  }
+}
+
+// server opcode 0x6E (110) — Container
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageContainer {
+  extend GameserverMessage {
+    optional GameserverMessageContainer gameserver_message_container = 110;
+  }
+}
+
+// server opcode 0x6F (111) — CloseContainer
+// classic: u8 containerId
+message GameserverMessageCloseContainer {
+  optional uint32 container_id = 1;
+  extend GameserverMessage {
+    optional GameserverMessageCloseContainer gameserver_message_close_container = 111;
+  }
+}
+
+// server opcode 0x70 (112) — CreateInContainer
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCreateInContainer {
+  extend GameserverMessage {
+    optional GameserverMessageCreateInContainer gameserver_message_create_in_container = 112;
+  }
+}
+
+// server opcode 0x71 (113) — ChangeInContainer
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageChangeInContainer {
+  extend GameserverMessage {
+    optional GameserverMessageChangeInContainer gameserver_message_change_in_container = 113;
+  }
+}
+
+// server opcode 0x72 (114) — DeleteInContainer
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageDeleteInContainer {
+  extend GameserverMessage {
+    optional GameserverMessageDeleteInContainer gameserver_message_delete_in_container = 114;
+  }
+}
+
+// server opcode 0x73 (115) — Bosstiary
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBosstiary {
+  extend GameserverMessage {
+    optional GameserverMessageBosstiary gameserver_message_bosstiary = 115;
+  }
+}
+
+// server opcode 0x74 (116) — FriendSystemData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageFriendSystemData {
+  extend GameserverMessage {
+    optional GameserverMessageFriendSystemData gameserver_message_friend_system_data = 116;
+  }
+}
+
+// server opcode 0x75 (117) — GameEvent
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageGameEvent {
+  extend GameserverMessage {
+    optional GameserverMessageGameEvent gameserver_message_game_event = 117;
+  }
+}
+
+// server opcode 0x76 (118) — InspectionList
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageInspectionList {
+  extend GameserverMessage {
+    optional GameserverMessageInspectionList gameserver_message_inspection_list = 118;
+  }
+}
+
+// server opcode 0x77 (119) — InspectionState
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageInspectionState {
+  extend GameserverMessage {
+    optional GameserverMessageInspectionState gameserver_message_inspection_state = 119;
+  }
+}
+
+// server opcode 0x78 (120) — SetInventory
+// classic: u8 slot + getInventorySlot (item_id, count/subtype, container/podium/tier/clock/wear/wrap/shader/tooltip feature tails)
+// Schema source: tip classic ProtocolGame::getInventorySlot. CIP handleSetInventoryMessage moc slot exists (skipped until pb fields); tip implements handleSetInventoryMessage → processInventoryChange.
+message GameserverMessageSetInventory {
+  optional uint32 slot = 1;
+  optional ProtocolInventoryItem item = 2;
+  extend GameserverMessage {
+    optional GameserverMessageSetInventory gameserver_message_set_inventory = 120;
+  }
+}
+
+// server opcode 0x79 (121) — DeleteInventory
+// classic: u8 slot
+message GameserverMessageDeleteInventory {
+  optional uint32 slot = 1;
+  extend GameserverMessage {
+    optional GameserverMessageDeleteInventory gameserver_message_delete_inventory = 121;
+  }
+}
+
+// server opcode 0x7A (122) — NPCOffer
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageNPCOffer {
+  extend GameserverMessage {
+    optional GameserverMessageNPCOffer gameserver_message_n_p_c_offer = 122;
+  }
+}
+
+// server opcode 0x7B (123) — PlayerGoods
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePlayerGoods {
+  extend GameserverMessage {
+    optional GameserverMessagePlayerGoods gameserver_message_player_goods = 123;
+  }
+}
+
+// server opcode 0x7C (124) — CloseNPCTrade
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCloseNPCTrade {
+  extend GameserverMessage {
+    optional GameserverMessageCloseNPCTrade gameserver_message_close_n_p_c_trade = 124;
+  }
+}
+
+// server opcode 0x7D (125) — OwnOffer
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageOwnOffer {
+  extend GameserverMessage {
+    optional GameserverMessageOwnOffer gameserver_message_own_offer = 125;
+  }
+}
+
+// server opcode 0x7E (126) — CounterOffer
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCounterOffer {
+  extend GameserverMessage {
+    optional GameserverMessageCounterOffer gameserver_message_counter_offer = 126;
+  }
+}
+
+// server opcode 0x7F (127) — CloseTrade
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCloseTrade {
+  extend GameserverMessage {
+    optional GameserverMessageCloseTrade gameserver_message_close_trade = 127;
+  }
+}
+
+// server opcode 0x80 (128) — CharacterTradeConfiguration
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCharacterTradeConfiguration {
+  extend GameserverMessage {
+    optional GameserverMessageCharacterTradeConfiguration gameserver_message_character_trade_configuration = 128;
+  }
+}
+
+// server opcode 0x81 (129) — TextForReport
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTextForReport {
+  extend GameserverMessage {
+    optional GameserverMessageTextForReport gameserver_message_text_for_report = 129;
+  }
+}
+
+// server opcode 0x82 (130) — AmbientLight
+// classic: u8 intensity; u8 color
+// WorldLight / AmbientLight S 0x82
+message GameserverMessageAmbientLight {
+  optional uint32 intensity = 1;
+  optional uint32 color = 2;
+  extend GameserverMessage {
+    optional GameserverMessageAmbientLight gameserver_message_ambient_light = 130;
+  }
+}
+
+// server opcode 0x83 (131) — GraphicalEffects
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageGraphicalEffects {
+  extend GameserverMessage {
+    optional GameserverMessageGraphicalEffects gameserver_message_graphical_effects = 131;
+  }
+}
+
+// server opcode 0x84 (132) — RemoveGraphicalEffect
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageRemoveGraphicalEffect {
+  extend GameserverMessage {
+    optional GameserverMessageRemoveGraphicalEffect gameserver_message_remove_graphical_effect = 132;
+  }
+}
+
+// server opcode 0x85 (133) — SoundTrigger
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageSoundTrigger {
+  extend GameserverMessage {
+    optional GameserverMessageSoundTrigger gameserver_message_sound_trigger = 133;
+  }
+}
+
+// server opcode 0x86 (134) — ExaltationBaseData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageExaltationBaseData {
+  extend GameserverMessage {
+    optional GameserverMessageExaltationBaseData gameserver_message_exaltation_base_data = 134;
+  }
+}
+
+// server opcode 0x87 (135) — ExaltationDialogRefresh
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageExaltationDialogRefresh {
+  extend GameserverMessage {
+    optional GameserverMessageExaltationDialogRefresh gameserver_message_exaltation_dialog_refresh = 135;
+  }
+}
+
+// server opcode 0x88 (136) — ExaltationHistory
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageExaltationHistory {
+  extend GameserverMessage {
+    optional GameserverMessageExaltationHistory gameserver_message_exaltation_history = 136;
+  }
+}
+
+// server opcode 0x89 (137) — CloseExaltationDialog
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCloseExaltationDialog {
+  extend GameserverMessage {
+    optional GameserverMessageCloseExaltationDialog gameserver_message_close_exaltation_dialog = 137;
+  }
+}
+
+// server opcode 0x8A (138) — ExaltationResult
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageExaltationResult {
+  extend GameserverMessage {
+    optional GameserverMessageExaltationResult gameserver_message_exaltation_result = 138;
+  }
+}
+
+// server opcode 0x8B (139) — CreatureUpdate
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCreatureUpdate {
+  extend GameserverMessage {
+    optional GameserverMessageCreatureUpdate gameserver_message_creature_update = 139;
+  }
+}
+
+// server opcode 0x8C (140) — CreatureHealth
+// classic: u32 creatureId; u8 healthPercent
+message GameserverMessageCreatureHealth {
+  optional uint32 creature_id = 1;
+  optional uint32 health_percent = 2;
+  extend GameserverMessage {
+    optional GameserverMessageCreatureHealth gameserver_message_creature_health = 140;
+  }
+}
+
+// server opcode 0x8D (141) — CreatureLight
+// classic: u32 creatureId; u8 intensity; u8 color(classic only)
+// Field 3 tip recovery of classic color byte (dmpd may omit; measure includes it).
+message GameserverMessageCreatureLight {
+  optional uint32 creature_id = 1;
+  optional uint32 intensity = 2;
+  optional uint32 color = 3;
+  extend GameserverMessage {
+    optional GameserverMessageCreatureLight gameserver_message_creature_light = 141;
+  }
+}
+
+// server opcode 0x8E (142) — CreatureOutfit
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCreatureOutfit {
+  extend GameserverMessage {
+    optional GameserverMessageCreatureOutfit gameserver_message_creature_outfit = 142;
+  }
+}
+
+// server opcode 0x8F (143) — CreatureSpeed
+// classic: u32 creatureId; u16 speed
+message GameserverMessageCreatureSpeed {
+  optional uint32 creature_id = 1;
+  optional uint32 speed = 2;
+  extend GameserverMessage {
+    optional GameserverMessageCreatureSpeed gameserver_message_creature_speed = 143;
+  }
+}
+
+// server opcode 0x90 (144) — CreatureSkull
+// classic: u32 creatureId; u8 skull
+message GameserverMessageCreatureSkull {
+  optional uint32 creature_id = 1;
+  optional uint32 skull = 2;
+  extend GameserverMessage {
+    optional GameserverMessageCreatureSkull gameserver_message_creature_skull = 144;
+  }
+}
+
+// server opcode 0x91 (145) — CreatureParty
+// classic: u32 creatureId; u8 party
+message GameserverMessageCreatureParty {
+  optional uint32 creature_id = 1;
+  optional uint32 party = 2;
+  extend GameserverMessage {
+    optional GameserverMessageCreatureParty gameserver_message_creature_party = 145;
+  }
+}
+
+// server opcode 0x92 (146) — CreatureUnpass
+// classic: u32 creatureId; u8 unpass
+message GameserverMessageCreatureUnpass {
+  optional uint32 creature_id = 1;
+  optional uint32 unpass = 2;
+  extend GameserverMessage {
+    optional GameserverMessageCreatureUnpass gameserver_message_creature_unpass = 146;
+  }
+}
+
+// server opcode 0x93 (147) — CreatureMarks
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCreatureMarks {
+  extend GameserverMessage {
+    optional GameserverMessageCreatureMarks gameserver_message_creature_marks = 147;
+  }
+}
+
+// server opcode 0x94 (148) — DepotSearchResult
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageDepotSearchResult {
+  extend GameserverMessage {
+    optional GameserverMessageDepotSearchResult gameserver_message_depot_search_result = 148;
+  }
+}
+
+// server opcode 0x95 (149) — CreatureType
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCreatureType {
+  extend GameserverMessage {
+    optional GameserverMessageCreatureType gameserver_message_creature_type = 149;
+  }
+}
+
+// server opcode 0x96 (150) — EditText
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageEditText {
+  extend GameserverMessage {
+    optional GameserverMessageEditText gameserver_message_edit_text = 150;
+  }
+}
+
+// server opcode 0x97 (151) — EditList
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageEditList {
+  extend GameserverMessage {
+    optional GameserverMessageEditList gameserver_message_edit_list = 151;
+  }
+}
+
+// server opcode 0x98 (152) — ShowGameNews
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageShowGameNews {
+  extend GameserverMessage {
+    optional GameserverMessageShowGameNews gameserver_message_show_game_news = 152;
+  }
+}
+
+// server opcode 0x99 (153) — DepotSearchDetailList
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageDepotSearchDetailList {
+  extend GameserverMessage {
+    optional GameserverMessageDepotSearchDetailList gameserver_message_depot_search_detail_list = 153;
+  }
+}
+
+// server opcode 0x9A (154) — CloseDepotSearch
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCloseDepotSearch {
+  extend GameserverMessage {
+    optional GameserverMessageCloseDepotSearch gameserver_message_close_depot_search = 154;
+  }
+}
+
+// server opcode 0x9B (155) — BlessingsDialog
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBlessingsDialog {
+  extend GameserverMessage {
+    optional GameserverMessageBlessingsDialog gameserver_message_blessings_dialog = 155;
+  }
+}
+
+// server opcode 0x9C (156) — Blessings
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBlessings {
+  extend GameserverMessage {
+    optional GameserverMessageBlessings gameserver_message_blessings = 156;
+  }
+}
+
+// server opcode 0x9D (157) — SwitchPreset
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageSwitchPreset {
+  extend GameserverMessage {
+    optional GameserverMessageSwitchPreset gameserver_message_switch_preset = 157;
+  }
+}
+
+// server opcode 0x9E (158) — PremiumTrigger
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePremiumTrigger {
+  extend GameserverMessage {
+    optional GameserverMessagePremiumTrigger gameserver_message_premium_trigger = 158;
+  }
+}
+
+// server opcode 0x9F (159) — PlayerDataBasic
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePlayerDataBasic {
+  extend GameserverMessage {
+    optional GameserverMessagePlayerDataBasic gameserver_message_player_data_basic = 159;
+  }
+}
+
+// server opcode 0xA0 (160) — PlayerDataCurrent
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePlayerDataCurrent {
+  extend GameserverMessage {
+    optional GameserverMessagePlayerDataCurrent gameserver_message_player_data_current = 160;
+  }
+}
+
+// server opcode 0xA1 (161) — PlayerSkills
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePlayerSkills {
+  extend GameserverMessage {
+    optional GameserverMessagePlayerSkills gameserver_message_player_skills = 161;
+  }
+}
+
+// server opcode 0xA2 (162) — PlayerState
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePlayerState {
+  extend GameserverMessage {
+    optional GameserverMessagePlayerState gameserver_message_player_state = 162;
+  }
+}
+
+// server opcode 0xA3 (163) — UpdateTarget
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageUpdateTarget {
+  extend GameserverMessage {
+    optional GameserverMessageUpdateTarget gameserver_message_update_target = 163;
+  }
+}
+
+// server opcode 0xA4 (164) — SpellDelay
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageSpellDelay {
+  extend GameserverMessage {
+    optional GameserverMessageSpellDelay gameserver_message_spell_delay = 164;
+  }
+}
+
+// server opcode 0xA5 (165) — SpellGroupDelay
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageSpellGroupDelay {
+  extend GameserverMessage {
+    optional GameserverMessageSpellGroupDelay gameserver_message_spell_group_delay = 165;
+  }
+}
+
+// server opcode 0xA6 (166) — MultiUseDelay
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMultiUseDelay {
+  extend GameserverMessage {
+    optional GameserverMessageMultiUseDelay gameserver_message_multi_use_delay = 166;
+  }
+}
+
+// server opcode 0xA7 (167) — SetTactics
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageSetTactics {
+  extend GameserverMessage {
+    optional GameserverMessageSetTactics gameserver_message_set_tactics = 167;
+  }
+}
+
+// server opcode 0xA8 (168) — SetStoreButtonDeeplink
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageSetStoreButtonDeeplink {
+  extend GameserverMessage {
+    optional GameserverMessageSetStoreButtonDeeplink gameserver_message_set_store_button_deeplink = 168;
+  }
+}
+
+// server opcode 0xA9 (169) — RestingAreaState
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageRestingAreaState {
+  extend GameserverMessage {
+    optional GameserverMessageRestingAreaState gameserver_message_resting_area_state = 169;
+  }
+}
+
+// server opcode 0xAA (170) — Talk
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTalk {
+  extend GameserverMessage {
+    optional GameserverMessageTalk gameserver_message_talk = 170;
+  }
+}
+
+// server opcode 0xAB (171) — Channels
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageChannels {
+  extend GameserverMessage {
+    optional GameserverMessageChannels gameserver_message_channels = 171;
+  }
+}
+
+// server opcode 0xAC (172) — OpenChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageOpenChannel {
+  extend GameserverMessage {
+    optional GameserverMessageOpenChannel gameserver_message_open_channel = 172;
+  }
+}
+
+// server opcode 0xAD (173) — PrivateChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePrivateChannel {
+  extend GameserverMessage {
+    optional GameserverMessagePrivateChannel gameserver_message_private_channel = 173;
+  }
+}
+
+// server opcode 0xAE (174) — EditGuildMessage
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageEditGuildMessage {
+  extend GameserverMessage {
+    optional GameserverMessageEditGuildMessage gameserver_message_edit_guild_message = 174;
+  }
+}
+
+// server opcode 0xAF (175) — XpChanged
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageXpChanged {
+  extend GameserverMessage {
+    optional GameserverMessageXpChanged gameserver_message_xp_changed = 175;
+  }
+}
+
+// server opcode 0xB0 (176) — OutfitMemorial
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageOutfitMemorial {
+  extend GameserverMessage {
+    optional GameserverMessageOutfitMemorial gameserver_message_outfit_memorial = 176;
+  }
+}
+
+// server opcode 0xB1 (177) — Highscores
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageHighscores {
+  extend GameserverMessage {
+    optional GameserverMessageHighscores gameserver_message_highscores = 177;
+  }
+}
+
+// server opcode 0xB2 (178) — OpenOwnChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageOpenOwnChannel {
+  extend GameserverMessage {
+    optional GameserverMessageOpenOwnChannel gameserver_message_open_own_channel = 178;
+  }
+}
+
+// server opcode 0xB3 (179) — CloseChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCloseChannel {
+  extend GameserverMessage {
+    optional GameserverMessageCloseChannel gameserver_message_close_channel = 179;
+  }
+}
+
+// server opcode 0xB4 (180) — Message
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMessage {
+  extend GameserverMessage {
+    optional GameserverMessageMessage gameserver_message_message = 180;
+  }
+}
+
+// server opcode 0xB5 (181) — SnapBack
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageSnapBack {
+  extend GameserverMessage {
+    optional GameserverMessageSnapBack gameserver_message_snap_back = 181;
+  }
+}
+
+// server opcode 0xB6 (182) — Wait
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageWait {
+  extend GameserverMessage {
+    optional GameserverMessageWait gameserver_message_wait = 182;
+  }
+}
+
+// server opcode 0xB7 (183) — UnjustifiedPoints
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageUnjustifiedPoints {
+  extend GameserverMessage {
+    optional GameserverMessageUnjustifiedPoints gameserver_message_unjustified_points = 183;
+  }
+}
+
+// server opcode 0xB8 (184) — PvpSituations
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePvpSituations {
+  extend GameserverMessage {
+    optional GameserverMessagePvpSituations gameserver_message_pvp_situations = 184;
+  }
+}
+
+// server opcode 0xB9 (185) — BestiaryTracker
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBestiaryTracker {
+  extend GameserverMessage {
+    optional GameserverMessageBestiaryTracker gameserver_message_bestiary_tracker = 185;
+  }
+}
+
+// server opcode 0xBA (186) — SoulSealsDialog
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageSoulSealsDialog {
+  extend GameserverMessage {
+    optional GameserverMessageSoulSealsDialog gameserver_message_soul_seals_dialog = 186;
+  }
+}
+
+// server opcode 0xBB (187) — ShapedPerkReshapeOffers
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageShapedPerkReshapeOffers {
+  extend GameserverMessage {
+    optional GameserverMessageShapedPerkReshapeOffers gameserver_message_shaped_perk_reshape_offers = 187;
+  }
+}
+
+// server opcode 0xBC (188) — Stop
+// classic: empty
+message GameserverMessageStop {
+  extend GameserverMessage {
+    optional GameserverMessageStop gameserver_message_stop = 188;
+  }
+}
+
+// server opcode 0xBD (189) — BossTracking
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBossTracking {
+  extend GameserverMessage {
+    optional GameserverMessageBossTracking gameserver_message_boss_tracking = 189;
+  }
+}
+
+// server opcode 0xBE (190) — TopFloor
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTopFloor {
+  extend GameserverMessage {
+    optional GameserverMessageTopFloor gameserver_message_top_floor = 190;
+  }
+}
+
+// server opcode 0xBF (191) — BottomFloor
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBottomFloor {
+  extend GameserverMessage {
+    optional GameserverMessageBottomFloor gameserver_message_bottom_floor = 191;
+  }
+}
+
+// server opcode 0xC0 (192) — UpdateManagedContainers
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageUpdateManagedContainers {
+  extend GameserverMessage {
+    optional GameserverMessageUpdateManagedContainers gameserver_message_update_managed_containers = 192;
+  }
+}
+
+// server opcode 0xC1 (193) — VocationSpecificPlayerData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageVocationSpecificPlayerData {
+  extend GameserverMessage {
+    optional GameserverMessageVocationSpecificPlayerData gameserver_message_vocation_specific_player_data = 193;
+  }
+}
+
+// server opcode 0xC2 (194) — ConfigureCreaturePodium
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageConfigureCreaturePodium {
+  extend GameserverMessage {
+    optional GameserverMessageConfigureCreaturePodium gameserver_message_configure_creature_podium = 194;
+  }
+}
+
+// server opcode 0xC3 (195) — CyclopediaHouseActionResult
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCyclopediaHouseActionResult {
+  extend GameserverMessage {
+    optional GameserverMessageCyclopediaHouseActionResult gameserver_message_cyclopedia_house_action_result = 195;
+  }
+}
+
+// server opcode 0xC4 (196) — WeaponProficiency
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageWeaponProficiency {
+  extend GameserverMessage {
+    optional GameserverMessageWeaponProficiency gameserver_message_weapon_proficiency = 196;
+  }
+}
+
+// server opcode 0xC5 (197) — GemAtelierGemRevealed
+// classic: u32 gem_id
+// CIP RE: field 1 @ +0x18 is GemId (not item id)
+message GameserverMessageGemAtelierGemRevealed {
+  optional uint32 gem_id = 1;
+  extend GameserverMessage {
+    optional GameserverMessageGemAtelierGemRevealed gameserver_message_gem_atelier_gem_revealed = 197;
+  }
+}
+
+// server opcode 0xC6 (198) — CyclopediaStaticHouseData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCyclopediaStaticHouseData {
+  extend GameserverMessage {
+    optional GameserverMessageCyclopediaStaticHouseData gameserver_message_cyclopedia_static_house_data = 198;
+  }
+}
+
+// server opcode 0xC7 (199) — CyclopediaCurrentHouseData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCyclopediaCurrentHouseData {
+  extend GameserverMessage {
+    optional GameserverMessageCyclopediaCurrentHouseData gameserver_message_cyclopedia_current_house_data = 199;
+  }
+}
+
+// server opcode 0xC8 (200) — Outfit
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageOutfit {
+  extend GameserverMessage {
+    optional GameserverMessageOutfit gameserver_message_outfit = 200;
+  }
+}
+
+// server opcode 0xC9 (201) — ExivaSuppressed
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageExivaSuppressed {
+  extend GameserverMessage {
+    optional GameserverMessageExivaSuppressed gameserver_message_exiva_suppressed = 201;
+  }
+}
+
+// server opcode 0xCA (202) — UpdateExivaOptions
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageUpdateExivaOptions {
+  extend GameserverMessage {
+    optional GameserverMessageUpdateExivaOptions gameserver_message_update_exiva_options = 202;
+  }
+}
+
+// server opcode 0xCB (203) — TransactionDetails
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTransactionDetails {
+  extend GameserverMessage {
+    optional GameserverMessageTransactionDetails gameserver_message_transaction_details = 203;
+  }
+}
+
+// server opcode 0xCC (204) — ImpactTracking
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageImpactTracking {
+  extend GameserverMessage {
+    optional GameserverMessageImpactTracking gameserver_message_impact_tracking = 204;
+  }
+}
+
+// server opcode 0xCD (205) — MarketStatistics
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMarketStatistics {
+  extend GameserverMessage {
+    optional GameserverMessageMarketStatistics gameserver_message_market_statistics = 205;
+  }
+}
+
+// server opcode 0xCE (206) — ItemWasted
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageItemWasted {
+  extend GameserverMessage {
+    optional GameserverMessageItemWasted gameserver_message_item_wasted = 206;
+  }
+}
+
+// server opcode 0xCF (207) — ItemLooted
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageItemLooted {
+  extend GameserverMessage {
+    optional GameserverMessageItemLooted gameserver_message_item_looted = 207;
+  }
+}
+
+// server opcode 0xD0 (208) — TrackQuestFlags
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTrackQuestFlags {
+  extend GameserverMessage {
+    optional GameserverMessageTrackQuestFlags gameserver_message_track_quest_flags = 208;
+  }
+}
+
+// server opcode 0xD1 (209) — KillTracking
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageKillTracking {
+  extend GameserverMessage {
+    optional GameserverMessageKillTracking gameserver_message_kill_tracking = 209;
+  }
+}
+
+// server opcode 0xD2 (210) — BuddyData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBuddyData {
+  extend GameserverMessage {
+    optional GameserverMessageBuddyData gameserver_message_buddy_data = 210;
+  }
+}
+
+// server opcode 0xD3 (211) — BuddyStatusChange
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBuddyStatusChange {
+  extend GameserverMessage {
+    optional GameserverMessageBuddyStatusChange gameserver_message_buddy_status_change = 211;
+  }
+}
+
+// server opcode 0xD4 (212) — BuddyGroupData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBuddyGroupData {
+  extend GameserverMessage {
+    optional GameserverMessageBuddyGroupData gameserver_message_buddy_group_data = 212;
+  }
+}
+
+// server opcode 0xD5 (213) — MonsterCyclopedia
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMonsterCyclopedia {
+  extend GameserverMessage {
+    optional GameserverMessageMonsterCyclopedia gameserver_message_monster_cyclopedia = 213;
+  }
+}
+
+// server opcode 0xD6 (214) — MonsterCyclopediaMonsters
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMonsterCyclopediaMonsters {
+  extend GameserverMessage {
+    optional GameserverMessageMonsterCyclopediaMonsters gameserver_message_monster_cyclopedia_monsters = 214;
+  }
+}
+
+// server opcode 0xD7 (215) — MonsterCyclopediaRace
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMonsterCyclopediaRace {
+  extend GameserverMessage {
+    optional GameserverMessageMonsterCyclopediaRace gameserver_message_monster_cyclopedia_race = 215;
+  }
+}
+
+// server opcode 0xD8 (216) — MonsterCyclopediaBonusEffects
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMonsterCyclopediaBonusEffects {
+  extend GameserverMessage {
+    optional GameserverMessageMonsterCyclopediaBonusEffects gameserver_message_monster_cyclopedia_bonus_effects = 216;
+  }
+}
+
+// server opcode 0xD9 (217) — MonsterCyclopediaNewDetails
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMonsterCyclopediaNewDetails {
+  extend GameserverMessage {
+    optional GameserverMessageMonsterCyclopediaNewDetails gameserver_message_monster_cyclopedia_new_details = 217;
+  }
+}
+
+// server opcode 0xDA (218) — CyclopediaCharacterInfo
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCyclopediaCharacterInfo {
+  extend GameserverMessage {
+    optional GameserverMessageCyclopediaCharacterInfo gameserver_message_cyclopedia_character_info = 218;
+  }
+}
+
+// server opcode 0xDB (219) — HirelingNameChange
+// classic: u32 creature_id; u32 object_id
+message GameserverMessageHirelingNameChange {
+  optional uint32 creature_id = 1;
+  optional uint32 object_id = 2;
+  extend GameserverMessage {
+    optional GameserverMessageHirelingNameChange gameserver_message_hireling_name_change = 219;
+  }
+}
+
+// server opcode 0xDC (220) — TutorialHint
+// classic: u8 hint_id
+message GameserverMessageTutorialHint {
+  optional uint32 hint_id = 1;
+  extend GameserverMessage {
+    optional GameserverMessageTutorialHint gameserver_message_tutorial_hint = 220;
+  }
+}
+
+// server opcode 0xDD (221) — CyclopediaMapData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCyclopediaMapData {
+  extend GameserverMessage {
+    optional GameserverMessageCyclopediaMapData gameserver_message_cyclopedia_map_data = 221;
+  }
+}
+
+// server opcode 0xDE (222) — DailyRewardCollectionState
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageDailyRewardCollectionState {
+  extend GameserverMessage {
+    optional GameserverMessageDailyRewardCollectionState gameserver_message_daily_reward_collection_state = 222;
+  }
+}
+
+// server opcode 0xDF (223) — CreditBalance
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCreditBalance {
+  extend GameserverMessage {
+    optional GameserverMessageCreditBalance gameserver_message_credit_balance = 223;
+  }
+}
+
+// server opcode 0xE0 (224) — StoreError
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageStoreError {
+  extend GameserverMessage {
+    optional GameserverMessageStoreError gameserver_message_store_error = 224;
+  }
+}
+
+// server opcode 0xE1 (225) — RequestPurchaseData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageRequestPurchaseData {
+  extend GameserverMessage {
+    optional GameserverMessageRequestPurchaseData gameserver_message_request_purchase_data = 225;
+  }
+}
+
+// server opcode 0xE2 (226) — OpenRewardWall
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageOpenRewardWall {
+  extend GameserverMessage {
+    optional GameserverMessageOpenRewardWall gameserver_message_open_reward_wall = 226;
+  }
+}
+
+// server opcode 0xE3 (227) — CloseRewardWall
+// classic: empty
+message GameserverMessageCloseRewardWall {
+  extend GameserverMessage {
+    optional GameserverMessageCloseRewardWall gameserver_message_close_reward_wall = 227;
+  }
+}
+
+// server opcode 0xE4 (228) — DailyRewardBasic
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageDailyRewardBasic {
+  extend GameserverMessage {
+    optional GameserverMessageDailyRewardBasic gameserver_message_daily_reward_basic = 228;
+  }
+}
+
+// server opcode 0xE5 (229) — DailyRewardHistory
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageDailyRewardHistory {
+  extend GameserverMessage {
+    optional GameserverMessageDailyRewardHistory gameserver_message_daily_reward_history = 229;
+  }
+}
+
+// server opcode 0xE6 (230) — BosstiaryHighlight
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageBosstiaryHighlight {
+  extend GameserverMessage {
+    optional GameserverMessageBosstiaryHighlight gameserver_message_bosstiary_highlight = 230;
+  }
+}
+
+// server opcode 0xE7 (231) — PreyTimeLeft
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePreyTimeLeft {
+  extend GameserverMessage {
+    optional GameserverMessagePreyTimeLeft gameserver_message_prey_time_left = 231;
+  }
+}
+
+// server opcode 0xE8 (232) — PreyData
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePreyData {
+  extend GameserverMessage {
+    optional GameserverMessagePreyData gameserver_message_prey_data = 232;
+  }
+}
+
+// server opcode 0xE9 (233) — PreyPrices
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePreyPrices {
+  extend GameserverMessage {
+    optional GameserverMessagePreyPrices gameserver_message_prey_prices = 233;
+  }
+}
+
+// server opcode 0xEA (234) — OfferDescription
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageOfferDescription {
+  extend GameserverMessage {
+    optional GameserverMessageOfferDescription gameserver_message_offer_description = 234;
+  }
+}
+
+// server opcode 0xEB (235) — ImbuingDialogRefresh
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageImbuingDialogRefresh {
+  extend GameserverMessage {
+    optional GameserverMessageImbuingDialogRefresh gameserver_message_imbuing_dialog_refresh = 235;
+  }
+}
+
+// server opcode 0xEC (236) — CloseImbuingDialog
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageCloseImbuingDialog {
+  extend GameserverMessage {
+    optional GameserverMessageCloseImbuingDialog gameserver_message_close_imbuing_dialog = 236;
+  }
+}
+
+// server opcode 0xED (237) — ShowMessageDialog
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageShowMessageDialog {
+  extend GameserverMessage {
+    optional GameserverMessageShowMessageDialog gameserver_message_show_message_dialog = 237;
+  }
+}
+
+// server opcode 0xEE (238) — ResourceBalance
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageResourceBalance {
+  extend GameserverMessage {
+    optional GameserverMessageResourceBalance gameserver_message_resource_balance = 238;
+  }
+}
+
+// server opcode 0xEF (239) — TibiaTime
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTibiaTime {
+  extend GameserverMessage {
+    optional GameserverMessageTibiaTime gameserver_message_tibia_time = 239;
+  }
+}
+
+// server opcode 0xF0 (240) — QuestLog
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageQuestLog {
+  extend GameserverMessage {
+    optional GameserverMessageQuestLog gameserver_message_quest_log = 240;
+  }
+}
+
+// server opcode 0xF1 (241) — QuestLine
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageQuestLine {
+  extend GameserverMessage {
+    optional GameserverMessageQuestLine gameserver_message_quest_line = 241;
+  }
+}
+
+// server opcode 0xF2 (242) — UpdatingShopBalance
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageUpdatingShopBalance {
+  extend GameserverMessage {
+    optional GameserverMessageUpdatingShopBalance gameserver_message_updating_shop_balance = 242;
+  }
+}
+
+// server opcode 0xF3 (243) — ChannelEvent
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageChannelEvent {
+  extend GameserverMessage {
+    optional GameserverMessageChannelEvent gameserver_message_channel_event = 243;
+  }
+}
+
+// server opcode 0xF4 (244) — ObjectInfo
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageObjectInfo {
+  extend GameserverMessage {
+    optional GameserverMessageObjectInfo gameserver_message_object_info = 244;
+  }
+}
+
+// server opcode 0xF5 (245) — PlayerInventory
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessagePlayerInventory {
+  extend GameserverMessage {
+    optional GameserverMessagePlayerInventory gameserver_message_player_inventory = 245;
+  }
+}
+
+// server opcode 0xF6 (246) — MarketEnter
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMarketEnter {
+  extend GameserverMessage {
+    optional GameserverMessageMarketEnter gameserver_message_market_enter = 246;
+  }
+}
+
+// server opcode 0xF7 (247) — MarketLeave
+// classic: empty
+message GameserverMessageMarketLeave {
+  extend GameserverMessage {
+    optional GameserverMessageMarketLeave gameserver_message_market_leave = 247;
+  }
+}
+
+// server opcode 0xF8 (248) — MarketDetail
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMarketDetail {
+  extend GameserverMessage {
+    optional GameserverMessageMarketDetail gameserver_message_market_detail = 248;
+  }
+}
+
+// server opcode 0xF9 (249) — MarketBrowse
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageMarketBrowse {
+  extend GameserverMessage {
+    optional GameserverMessageMarketBrowse gameserver_message_market_browse = 249;
+  }
+}
+
+// server opcode 0xFA (250) — ShowModalDialog
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageShowModalDialog {
+  extend GameserverMessage {
+    optional GameserverMessageShowModalDialog gameserver_message_show_modal_dialog = 250;
+  }
+}
+
+// server opcode 0xFB (251) — StoreCategories
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageStoreCategories {
+  extend GameserverMessage {
+    optional GameserverMessageStoreCategories gameserver_message_store_categories = 251;
+  }
+}
+
+// server opcode 0xFC (252) — StoreOffers
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageStoreOffers {
+  extend GameserverMessage {
+    optional GameserverMessageStoreOffers gameserver_message_store_offers = 252;
+  }
+}
+
+// server opcode 0xFD (253) — TransactionHistory
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageTransactionHistory {
+  extend GameserverMessage {
+    optional GameserverMessageTransactionHistory gameserver_message_transaction_history = 253;
+  }
+}
+
+// server opcode 0xFE (254) — StoreSuccess
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageStoreSuccess {
+  extend GameserverMessage {
+    optional GameserverMessageStoreSuccess gameserver_message_store_success = 254;
+  }
+}
+
+// server opcode 0x12C (300) — Unknown
+// classic: bridge — classic side-channel until CIP field RE
+message GameserverMessageUnknown {
+  extend GameserverMessage {
+    optional GameserverMessageUnknown gameserver_message_unknown = 300;
+  }
+}
+
+// client opcode 0x0A (10) — Login
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageLogin {
+  extend GameclientMessage {
+    optional GameclientMessageLogin gameclient_message_login = 10;
+  }
+}
+
+// client opcode 0x0B (11) — SecondaryLogin
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSecondaryLogin {
+  extend GameclientMessage {
+    optional GameclientMessageSecondaryLogin gameclient_message_secondary_login = 11;
+  }
+}
+
+// client opcode 0x0F (15) — EnterWorld
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageEnterWorld {
+  extend GameclientMessage {
+    optional GameclientMessageEnterWorld gameclient_message_enter_world = 15;
+  }
+}
+
+// client opcode 0x14 (20) — QuitGame
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageQuitGame {
+  extend GameclientMessage {
+    optional GameclientMessageQuitGame gameclient_message_quit_game = 20;
+  }
+}
+
+// client opcode 0x1C (28) — ConnectionPingBack
+// classic: empty
+message GameclientMessageConnectionPingBack {
+  extend GameclientMessage {
+    optional GameclientMessageConnectionPingBack gameclient_message_connection_ping_back = 28;
+  }
+}
+
+// client opcode 0x1D (29) — Ping
+// classic: empty
+message GameclientMessagePing {
+  extend GameclientMessage {
+    optional GameclientMessagePing gameclient_message_ping = 29;
+  }
+}
+
+// client opcode 0x1E (30) — PingBack
+// classic: empty
+message GameclientMessagePingBack {
+  extend GameclientMessage {
+    optional GameclientMessagePingBack gameclient_message_ping_back = 30;
+  }
+}
+
+// client opcode 0x28 (40) — StashAction
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageStashAction {
+  extend GameclientMessage {
+    optional GameclientMessageStashAction gameclient_message_stash_action = 40;
+  }
+}
+
+// client opcode 0x29 (41) — DepotSearchRetrieve
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageDepotSearchRetrieve {
+  extend GameclientMessage {
+    optional GameclientMessageDepotSearchRetrieve gameclient_message_depot_search_retrieve = 41;
+  }
+}
+
+// client opcode 0x2A (42) — TrackBestiaryRace
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTrackBestiaryRace {
+  extend GameclientMessage {
+    optional GameclientMessageTrackBestiaryRace gameclient_message_track_bestiary_race = 42;
+  }
+}
+
+// client opcode 0x2B (43) — PartyHuntAnalyser
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessagePartyHuntAnalyser {
+  extend GameclientMessage {
+    optional GameclientMessagePartyHuntAnalyser gameclient_message_party_hunt_analyser = 43;
+  }
+}
+
+// client opcode 0x2C (44) — TeamFinderAssembleTeam
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTeamFinderAssembleTeam {
+  extend GameclientMessage {
+    optional GameclientMessageTeamFinderAssembleTeam gameclient_message_team_finder_assemble_team = 44;
+  }
+}
+
+// client opcode 0x2D (45) — TeamFinderJoinTeam
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTeamFinderJoinTeam {
+  extend GameclientMessage {
+    optional GameclientMessageTeamFinderJoinTeam gameclient_message_team_finder_join_team = 45;
+  }
+}
+
+// client opcode 0x2E (46) — SetClientOptions
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSetClientOptions {
+  extend GameclientMessage {
+    optional GameclientMessageSetClientOptions gameclient_message_set_client_options = 46;
+  }
+}
+
+// client opcode 0x5F (95) — Taskboard
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTaskboard {
+  extend GameclientMessage {
+    optional GameclientMessageTaskboard gameclient_message_taskboard = 95;
+  }
+}
+
+// client opcode 0x60 (96) — TrackImbuements
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTrackImbuements {
+  extend GameclientMessage {
+    optional GameclientMessageTrackImbuements gameclient_message_track_imbuements = 96;
+  }
+}
+
+// client opcode 0x61 (97) — RequestSkillWheel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRequestSkillWheel {
+  extend GameclientMessage {
+    optional GameclientMessageRequestSkillWheel gameclient_message_request_skill_wheel = 97;
+  }
+}
+
+// client opcode 0x62 (98) — ApplySkillWheel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageApplySkillWheel {
+  extend GameclientMessage {
+    optional GameclientMessageApplySkillWheel gameclient_message_apply_skill_wheel = 98;
+  }
+}
+
+// client opcode 0x63 (99) — ClientCheck
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageClientCheck {
+  extend GameclientMessage {
+    optional GameclientMessageClientCheck gameclient_message_client_check = 99;
+  }
+}
+
+// client opcode 0x64 (100) — GoPath
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGoPath {
+  extend GameclientMessage {
+    optional GameclientMessageGoPath gameclient_message_go_path = 100;
+  }
+}
+
+// client opcode 0x65 (101) — GoNorth
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGoNorth {
+  extend GameclientMessage {
+    optional GameclientMessageGoNorth gameclient_message_go_north = 101;
+  }
+}
+
+// client opcode 0x66 (102) — GoEast
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGoEast {
+  extend GameclientMessage {
+    optional GameclientMessageGoEast gameclient_message_go_east = 102;
+  }
+}
+
+// client opcode 0x67 (103) — GoSouth
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGoSouth {
+  extend GameclientMessage {
+    optional GameclientMessageGoSouth gameclient_message_go_south = 103;
+  }
+}
+
+// client opcode 0x68 (104) — GoWest
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGoWest {
+  extend GameclientMessage {
+    optional GameclientMessageGoWest gameclient_message_go_west = 104;
+  }
+}
+
+// client opcode 0x69 (105) — Stop
+// classic: empty
+message GameclientMessageStop {
+  extend GameclientMessage {
+    optional GameclientMessageStop gameclient_message_stop = 105;
+  }
+}
+
+// client opcode 0x6A (106) — GoNorthEast
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGoNorthEast {
+  extend GameclientMessage {
+    optional GameclientMessageGoNorthEast gameclient_message_go_north_east = 106;
+  }
+}
+
+// client opcode 0x6B (107) — GoSouthEast
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGoSouthEast {
+  extend GameclientMessage {
+    optional GameclientMessageGoSouthEast gameclient_message_go_south_east = 107;
+  }
+}
+
+// client opcode 0x6C (108) — GoSouthWest
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGoSouthWest {
+  extend GameclientMessage {
+    optional GameclientMessageGoSouthWest gameclient_message_go_south_west = 108;
+  }
+}
+
+// client opcode 0x6D (109) — GoNorthWest
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGoNorthWest {
+  extend GameclientMessage {
+    optional GameclientMessageGoNorthWest gameclient_message_go_north_west = 109;
+  }
+}
+
+// client opcode 0x6E (110) — SetVocation
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSetVocation {
+  extend GameclientMessage {
+    optional GameclientMessageSetVocation gameclient_message_set_vocation = 110;
+  }
+}
+
+// client opcode 0x6F (111) — RotateNorth
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRotateNorth {
+  extend GameclientMessage {
+    optional GameclientMessageRotateNorth gameclient_message_rotate_north = 111;
+  }
+}
+
+// client opcode 0x70 (112) — RotateEast
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRotateEast {
+  extend GameclientMessage {
+    optional GameclientMessageRotateEast gameclient_message_rotate_east = 112;
+  }
+}
+
+// client opcode 0x71 (113) — RotateSouth
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRotateSouth {
+  extend GameclientMessage {
+    optional GameclientMessageRotateSouth gameclient_message_rotate_south = 113;
+  }
+}
+
+// client opcode 0x72 (114) — RotateWest
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRotateWest {
+  extend GameclientMessage {
+    optional GameclientMessageRotateWest gameclient_message_rotate_west = 114;
+  }
+}
+
+// client opcode 0x73 (115) — Teleport
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTeleport {
+  extend GameclientMessage {
+    optional GameclientMessageTeleport gameclient_message_teleport = 115;
+  }
+}
+
+// client opcode 0x74 (116) — StartOfflineTraining
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageStartOfflineTraining {
+  extend GameclientMessage {
+    optional GameclientMessageStartOfflineTraining gameclient_message_start_offline_training = 116;
+  }
+}
+
+// client opcode 0x75 (117) — ContainerAction
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageContainerAction {
+  extend GameclientMessage {
+    optional GameclientMessageContainerAction gameclient_message_container_action = 117;
+  }
+}
+
+// client opcode 0x76 (118) — CharacterTradeConfigurationAction
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCharacterTradeConfigurationAction {
+  extend GameclientMessage {
+    optional GameclientMessageCharacterTradeConfigurationAction gameclient_message_character_trade_configuration_action = 118;
+  }
+}
+
+// client opcode 0x77 (119) — EquipObject
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageEquipObject {
+  extend GameclientMessage {
+    optional GameclientMessageEquipObject gameclient_message_equip_object = 119;
+  }
+}
+
+// client opcode 0x78 (120) — MoveObject
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageMoveObject {
+  extend GameclientMessage {
+    optional GameclientMessageMoveObject gameclient_message_move_object = 120;
+  }
+}
+
+// client opcode 0x79 (121) — LookNPCTrade
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageLookNPCTrade {
+  extend GameclientMessage {
+    optional GameclientMessageLookNPCTrade gameclient_message_look_n_p_c_trade = 121;
+  }
+}
+
+// client opcode 0x7A (122) — BuyObject
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageBuyObject {
+  extend GameclientMessage {
+    optional GameclientMessageBuyObject gameclient_message_buy_object = 122;
+  }
+}
+
+// client opcode 0x7B (123) — SellObject
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSellObject {
+  extend GameclientMessage {
+    optional GameclientMessageSellObject gameclient_message_sell_object = 123;
+  }
+}
+
+// client opcode 0x7C (124) — CloseNPCTrade
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCloseNPCTrade {
+  extend GameclientMessage {
+    optional GameclientMessageCloseNPCTrade gameclient_message_close_n_p_c_trade = 124;
+  }
+}
+
+// client opcode 0x7D (125) — TradeObject
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTradeObject {
+  extend GameclientMessage {
+    optional GameclientMessageTradeObject gameclient_message_trade_object = 125;
+  }
+}
+
+// client opcode 0x7E (126) — LookTrade
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageLookTrade {
+  extend GameclientMessage {
+    optional GameclientMessageLookTrade gameclient_message_look_trade = 126;
+  }
+}
+
+// client opcode 0x7F (127) — AcceptTrade
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageAcceptTrade {
+  extend GameclientMessage {
+    optional GameclientMessageAcceptTrade gameclient_message_accept_trade = 127;
+  }
+}
+
+// client opcode 0x80 (128) — RejectTrade
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRejectTrade {
+  extend GameclientMessage {
+    optional GameclientMessageRejectTrade gameclient_message_reject_trade = 128;
+  }
+}
+
+// client opcode 0x81 (129) — FriendSystemAction
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageFriendSystemAction {
+  extend GameclientMessage {
+    optional GameclientMessageFriendSystemAction gameclient_message_friend_system_action = 129;
+  }
+}
+
+// client opcode 0x82 (130) — UseObject
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageUseObject {
+  extend GameclientMessage {
+    optional GameclientMessageUseObject gameclient_message_use_object = 130;
+  }
+}
+
+// client opcode 0x83 (131) — UseTwoObjects
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageUseTwoObjects {
+  extend GameclientMessage {
+    optional GameclientMessageUseTwoObjects gameclient_message_use_two_objects = 131;
+  }
+}
+
+// client opcode 0x84 (132) — UseOnCreature
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageUseOnCreature {
+  extend GameclientMessage {
+    optional GameclientMessageUseOnCreature gameclient_message_use_on_creature = 132;
+  }
+}
+
+// client opcode 0x85 (133) — TurnObject
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTurnObject {
+  extend GameclientMessage {
+    optional GameclientMessageTurnObject gameclient_message_turn_object = 133;
+  }
+}
+
+// client opcode 0x86 (134) — ConfigureShowOffSocket
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageConfigureShowOffSocket {
+  extend GameclientMessage {
+    optional GameclientMessageConfigureShowOffSocket gameclient_message_configure_show_off_socket = 134;
+  }
+}
+
+// client opcode 0x87 (135) — CloseContainer
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCloseContainer {
+  extend GameclientMessage {
+    optional GameclientMessageCloseContainer gameclient_message_close_container = 135;
+  }
+}
+
+// client opcode 0x88 (136) — UpContainer
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageUpContainer {
+  extend GameclientMessage {
+    optional GameclientMessageUpContainer gameclient_message_up_container = 136;
+  }
+}
+
+// client opcode 0x89 (137) — EditText
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageEditText {
+  extend GameclientMessage {
+    optional GameclientMessageEditText gameclient_message_edit_text = 137;
+  }
+}
+
+// client opcode 0x8A (138) — EditList
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageEditList {
+  extend GameclientMessage {
+    optional GameclientMessageEditList gameclient_message_edit_list = 138;
+  }
+}
+
+// client opcode 0x8B (139) — ToggleWrapState
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageToggleWrapState {
+  extend GameclientMessage {
+    optional GameclientMessageToggleWrapState gameclient_message_toggle_wrap_state = 139;
+  }
+}
+
+// client opcode 0x8C (140) — Look
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageLook {
+  extend GameclientMessage {
+    optional GameclientMessageLook gameclient_message_look = 140;
+  }
+}
+
+// client opcode 0x8D (141) — LookAtCreature
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageLookAtCreature {
+  extend GameclientMessage {
+    optional GameclientMessageLookAtCreature gameclient_message_look_at_creature = 141;
+  }
+}
+
+// client opcode 0x8E (142) — JoinAggression
+// classic: u32 creatureId
+// CIP RE maturity doc
+message GameclientMessageJoinAggression {
+  optional uint32 creature_id = 1;
+  extend GameclientMessage {
+    optional GameclientMessageJoinAggression gameclient_message_join_aggression = 142;
+  }
+}
+
+// client opcode 0x8F (143) — QuickLoot
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageQuickLoot {
+  extend GameclientMessage {
+    optional GameclientMessageQuickLoot gameclient_message_quick_loot = 143;
+  }
+}
+
+// client opcode 0x90 (144) — ManagedContainer
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageManagedContainer {
+  extend GameclientMessage {
+    optional GameclientMessageManagedContainer gameclient_message_managed_container = 144;
+  }
+}
+
+// client opcode 0x91 (145) — QuickLootBlackWhitelist
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageQuickLootBlackWhitelist {
+  extend GameclientMessage {
+    optional GameclientMessageQuickLootBlackWhitelist gameclient_message_quick_loot_black_whitelist = 145;
+  }
+}
+
+// client opcode 0x92 (146) — OpenDepotSearch
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenDepotSearch {
+  extend GameclientMessage {
+    optional GameclientMessageOpenDepotSearch gameclient_message_open_depot_search = 146;
+  }
+}
+
+// client opcode 0x93 (147) — CloseDepotSearch
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCloseDepotSearch {
+  extend GameclientMessage {
+    optional GameclientMessageCloseDepotSearch gameclient_message_close_depot_search = 147;
+  }
+}
+
+// client opcode 0x94 (148) — DepotSearchType
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageDepotSearchType {
+  extend GameclientMessage {
+    optional GameclientMessageDepotSearchType gameclient_message_depot_search_type = 148;
+  }
+}
+
+// client opcode 0x95 (149) — OpenParentContainer
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenParentContainer {
+  extend GameclientMessage {
+    optional GameclientMessageOpenParentContainer gameclient_message_open_parent_container = 149;
+  }
+}
+
+// client opcode 0x96 (150) — Talk
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTalk {
+  extend GameclientMessage {
+    optional GameclientMessageTalk gameclient_message_talk = 150;
+  }
+}
+
+// client opcode 0x97 (151) — GetChannels
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGetChannels {
+  extend GameclientMessage {
+    optional GameclientMessageGetChannels gameclient_message_get_channels = 151;
+  }
+}
+
+// client opcode 0x98 (152) — JoinChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageJoinChannel {
+  extend GameclientMessage {
+    optional GameclientMessageJoinChannel gameclient_message_join_channel = 152;
+  }
+}
+
+// client opcode 0x99 (153) — LeaveChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageLeaveChannel {
+  extend GameclientMessage {
+    optional GameclientMessageLeaveChannel gameclient_message_leave_channel = 153;
+  }
+}
+
+// client opcode 0x9A (154) — PrivateChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessagePrivateChannel {
+  extend GameclientMessage {
+    optional GameclientMessagePrivateChannel gameclient_message_private_channel = 154;
+  }
+}
+
+// client opcode 0x9B (155) — GuildMessage
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGuildMessage {
+  extend GameclientMessage {
+    optional GameclientMessageGuildMessage gameclient_message_guild_message = 155;
+  }
+}
+
+// client opcode 0x9C (156) — EditGuildMessage
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageEditGuildMessage {
+  extend GameclientMessage {
+    optional GameclientMessageEditGuildMessage gameclient_message_edit_guild_message = 156;
+  }
+}
+
+// client opcode 0x9D (157) — GetTextForReport
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGetTextForReport {
+  extend GameclientMessage {
+    optional GameclientMessageGetTextForReport gameclient_message_get_text_for_report = 157;
+  }
+}
+
+// client opcode 0x9E (158) — CloseNPCChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCloseNPCChannel {
+  extend GameclientMessage {
+    optional GameclientMessageCloseNPCChannel gameclient_message_close_n_p_c_channel = 158;
+  }
+}
+
+// client opcode 0x9F (159) — SetCreaturePodiumConfiguration
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSetCreaturePodiumConfiguration {
+  extend GameclientMessage {
+    optional GameclientMessageSetCreaturePodiumConfiguration gameclient_message_set_creature_podium_configuration = 159;
+  }
+}
+
+// client opcode 0xA0 (160) — SetTactics
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSetTactics {
+  extend GameclientMessage {
+    optional GameclientMessageSetTactics gameclient_message_set_tactics = 160;
+  }
+}
+
+// client opcode 0xA1 (161) — Attack
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageAttack {
+  extend GameclientMessage {
+    optional GameclientMessageAttack gameclient_message_attack = 161;
+  }
+}
+
+// client opcode 0xA2 (162) — Follow
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageFollow {
+  extend GameclientMessage {
+    optional GameclientMessageFollow gameclient_message_follow = 162;
+  }
+}
+
+// client opcode 0xA3 (163) — InviteToParty
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageInviteToParty {
+  extend GameclientMessage {
+    optional GameclientMessageInviteToParty gameclient_message_invite_to_party = 163;
+  }
+}
+
+// client opcode 0xA4 (164) — JoinParty
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageJoinParty {
+  extend GameclientMessage {
+    optional GameclientMessageJoinParty gameclient_message_join_party = 164;
+  }
+}
+
+// client opcode 0xA5 (165) — RevokeInvitation
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRevokeInvitation {
+  extend GameclientMessage {
+    optional GameclientMessageRevokeInvitation gameclient_message_revoke_invitation = 165;
+  }
+}
+
+// client opcode 0xA6 (166) — PassLeadership
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessagePassLeadership {
+  extend GameclientMessage {
+    optional GameclientMessagePassLeadership gameclient_message_pass_leadership = 166;
+  }
+}
+
+// client opcode 0xA7 (167) — LeaveParty
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageLeaveParty {
+  extend GameclientMessage {
+    optional GameclientMessageLeaveParty gameclient_message_leave_party = 167;
+  }
+}
+
+// client opcode 0xA8 (168) — ShareExperience
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageShareExperience {
+  extend GameclientMessage {
+    optional GameclientMessageShareExperience gameclient_message_share_experience = 168;
+  }
+}
+
+// client opcode 0xA9 (169) — DisbandParty
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageDisbandParty {
+  extend GameclientMessage {
+    optional GameclientMessageDisbandParty gameclient_message_disband_party = 169;
+  }
+}
+
+// client opcode 0xAA (170) — OpenChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenChannel {
+  extend GameclientMessage {
+    optional GameclientMessageOpenChannel gameclient_message_open_channel = 170;
+  }
+}
+
+// client opcode 0xAB (171) — InviteToChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageInviteToChannel {
+  extend GameclientMessage {
+    optional GameclientMessageInviteToChannel gameclient_message_invite_to_channel = 171;
+  }
+}
+
+// client opcode 0xAC (172) — ExcludeFromChannel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageExcludeFromChannel {
+  extend GameclientMessage {
+    optional GameclientMessageExcludeFromChannel gameclient_message_exclude_from_channel = 172;
+  }
+}
+
+// client opcode 0xAD (173) — CyclopediaHouseAction
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCyclopediaHouseAction {
+  extend GameclientMessage {
+    optional GameclientMessageCyclopediaHouseAction gameclient_message_cyclopedia_house_action = 173;
+  }
+}
+
+// client opcode 0xAE (174) — OpenBosstiary
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenBosstiary {
+  extend GameclientMessage {
+    optional GameclientMessageOpenBosstiary gameclient_message_open_bosstiary = 174;
+  }
+}
+
+// client opcode 0xAF (175) — OpenBossSlots
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenBossSlots {
+  extend GameclientMessage {
+    optional GameclientMessageOpenBossSlots gameclient_message_open_boss_slots = 175;
+  }
+}
+
+// client opcode 0xB0 (176) — EditBossSlot
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageEditBossSlot {
+  extend GameclientMessage {
+    optional GameclientMessageEditBossSlot gameclient_message_edit_boss_slot = 176;
+  }
+}
+
+// client opcode 0xB1 (177) — Highscores
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageHighscores {
+  extend GameclientMessage {
+    optional GameclientMessageHighscores gameclient_message_highscores = 177;
+  }
+}
+
+// client opcode 0xB2 (178) — PickObjectToImbue
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessagePickObjectToImbue {
+  extend GameclientMessage {
+    optional GameclientMessagePickObjectToImbue gameclient_message_pick_object_to_imbue = 178;
+  }
+}
+
+// client opcode 0xB3 (179) — WeaponProficiencyCommand
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageWeaponProficiencyCommand {
+  extend GameclientMessage {
+    optional GameclientMessageWeaponProficiencyCommand gameclient_message_weapon_proficiency_command = 179;
+  }
+}
+
+// client opcode 0xBA (186) — SoulSealsFightMonster
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSoulSealsFightMonster {
+  extend GameclientMessage {
+    optional GameclientMessageSoulSealsFightMonster gameclient_message_soul_seals_fight_monster = 186;
+  }
+}
+
+// client opcode 0xBE (190) — Cancel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCancel {
+  extend GameclientMessage {
+    optional GameclientMessageCancel gameclient_message_cancel = 190;
+  }
+}
+
+// client opcode 0xBF (191) — ExaltationAction
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageExaltationAction {
+  extend GameclientMessage {
+    optional GameclientMessageExaltationAction gameclient_message_exaltation_action = 191;
+  }
+}
+
+// client opcode 0xC0 (192) — OpenExaltationHistory
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenExaltationHistory {
+  extend GameclientMessage {
+    optional GameclientMessageOpenExaltationHistory gameclient_message_open_exaltation_history = 192;
+  }
+}
+
+// client opcode 0xC1 (193) — ClientDetails
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageClientDetails {
+  extend GameclientMessage {
+    optional GameclientMessageClientDetails gameclient_message_client_details = 193;
+  }
+}
+
+// client opcode 0xC2 (194) — BossDifficultySelection
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageBossDifficultySelection {
+  extend GameclientMessage {
+    optional GameclientMessageBossDifficultySelection gameclient_message_boss_difficulty_selection = 194;
+  }
+}
+
+// client opcode 0xC8 (200) — SpellTargetConfig
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSpellTargetConfig {
+  extend GameclientMessage {
+    optional GameclientMessageSpellTargetConfig gameclient_message_spell_target_config = 200;
+  }
+}
+
+// client opcode 0xC9 (201) — GetTransactionDetails
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGetTransactionDetails {
+  extend GameclientMessage {
+    optional GameclientMessageGetTransactionDetails gameclient_message_get_transaction_details = 201;
+  }
+}
+
+// client opcode 0xCA (202) — UpdateExivaOptions
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageUpdateExivaOptions {
+  extend GameclientMessage {
+    optional GameclientMessageUpdateExivaOptions gameclient_message_update_exiva_options = 202;
+  }
+}
+
+// client opcode 0xCB (203) — BrowseField
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageBrowseField {
+  extend GameclientMessage {
+    optional GameclientMessageBrowseField gameclient_message_browse_field = 203;
+  }
+}
+
+// client opcode 0xCC (204) — SeekInContainer
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSeekInContainer {
+  extend GameclientMessage {
+    optional GameclientMessageSeekInContainer gameclient_message_seek_in_container = 204;
+  }
+}
+
+// client opcode 0xCD (205) — InspectObject
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageInspectObject {
+  extend GameclientMessage {
+    optional GameclientMessageInspectObject gameclient_message_inspect_object = 205;
+  }
+}
+
+// client opcode 0xCE (206) — InspectPlayer
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageInspectPlayer {
+  extend GameclientMessage {
+    optional GameclientMessageInspectPlayer gameclient_message_inspect_player = 206;
+  }
+}
+
+// client opcode 0xCF (207) — BlessingsDialog
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageBlessingsDialog {
+  extend GameclientMessage {
+    optional GameclientMessageBlessingsDialog gameclient_message_blessings_dialog = 207;
+  }
+}
+
+// client opcode 0xD0 (208) — TrackQuestFlags
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTrackQuestFlags {
+  extend GameclientMessage {
+    optional GameclientMessageTrackQuestFlags gameclient_message_track_quest_flags = 208;
+  }
+}
+
+// client opcode 0xD1 (209) — MarketStatistics
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageMarketStatistics {
+  extend GameclientMessage {
+    optional GameclientMessageMarketStatistics gameclient_message_market_statistics = 209;
+  }
+}
+
+// client opcode 0xD2 (210) — GetOutfit
+// classic: empty
+message GameclientMessageGetOutfit {
+  extend GameclientMessage {
+    optional GameclientMessageGetOutfit gameclient_message_get_outfit = 210;
+  }
+}
+
+// client opcode 0xD3 (211) — SetOutfit
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSetOutfit {
+  extend GameclientMessage {
+    optional GameclientMessageSetOutfit gameclient_message_set_outfit = 211;
+  }
+}
+
+// client opcode 0xD4 (212) — Mount
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageMount {
+  extend GameclientMessage {
+    optional GameclientMessageMount gameclient_message_mount = 212;
+  }
+}
+
+// client opcode 0xD5 (213) — ApplyImbuement
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageApplyImbuement {
+  extend GameclientMessage {
+    optional GameclientMessageApplyImbuement gameclient_message_apply_imbuement = 213;
+  }
+}
+
+// client opcode 0xD6 (214) — ApplyClearingCharm
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageApplyClearingCharm {
+  extend GameclientMessage {
+    optional GameclientMessageApplyClearingCharm gameclient_message_apply_clearing_charm = 214;
+  }
+}
+
+// client opcode 0xD7 (215) — CloseImbuingDialog
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCloseImbuingDialog {
+  extend GameclientMessage {
+    optional GameclientMessageCloseImbuingDialog gameclient_message_close_imbuing_dialog = 215;
+  }
+}
+
+// client opcode 0xD8 (216) — OpenRewardWall
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenRewardWall {
+  extend GameclientMessage {
+    optional GameclientMessageOpenRewardWall gameclient_message_open_reward_wall = 216;
+  }
+}
+
+// client opcode 0xD9 (217) — DailyRewardHistory
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageDailyRewardHistory {
+  extend GameclientMessage {
+    optional GameclientMessageDailyRewardHistory gameclient_message_daily_reward_history = 217;
+  }
+}
+
+// client opcode 0xDA (218) — CollectDailyReward
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCollectDailyReward {
+  extend GameclientMessage {
+    optional GameclientMessageCollectDailyReward gameclient_message_collect_daily_reward = 218;
+  }
+}
+
+// client opcode 0xDB (219) — CyclopediaMapAction
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageCyclopediaMapAction {
+  extend GameclientMessage {
+    optional GameclientMessageCyclopediaMapAction gameclient_message_cyclopedia_map_action = 219;
+  }
+}
+
+// client opcode 0xDC (220) — AddBuddy
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageAddBuddy {
+  extend GameclientMessage {
+    optional GameclientMessageAddBuddy gameclient_message_add_buddy = 220;
+  }
+}
+
+// client opcode 0xDD (221) — RemoveBuddy
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRemoveBuddy {
+  extend GameclientMessage {
+    optional GameclientMessageRemoveBuddy gameclient_message_remove_buddy = 221;
+  }
+}
+
+// client opcode 0xDE (222) — EditBuddy
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageEditBuddy {
+  extend GameclientMessage {
+    optional GameclientMessageEditBuddy gameclient_message_edit_buddy = 222;
+  }
+}
+
+// client opcode 0xDF (223) — BuddyGroup
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageBuddyGroup {
+  extend GameclientMessage {
+    optional GameclientMessageBuddyGroup gameclient_message_buddy_group = 223;
+  }
+}
+
+// client opcode 0xE1 (225) — OpenMonsterCyclopedia
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenMonsterCyclopedia {
+  extend GameclientMessage {
+    optional GameclientMessageOpenMonsterCyclopedia gameclient_message_open_monster_cyclopedia = 225;
+  }
+}
+
+// client opcode 0xE2 (226) — OpenMonsterCyclopediaMonsters
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenMonsterCyclopediaMonsters {
+  extend GameclientMessage {
+    optional GameclientMessageOpenMonsterCyclopediaMonsters gameclient_message_open_monster_cyclopedia_monsters = 226;
+  }
+}
+
+// client opcode 0xE3 (227) — OpenMonsterCyclopediaRace
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenMonsterCyclopediaRace {
+  extend GameclientMessage {
+    optional GameclientMessageOpenMonsterCyclopediaRace gameclient_message_open_monster_cyclopedia_race = 227;
+  }
+}
+
+// client opcode 0xE4 (228) — MonsterBonusEffectAction
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageMonsterBonusEffectAction {
+  extend GameclientMessage {
+    optional GameclientMessageMonsterBonusEffectAction gameclient_message_monster_bonus_effect_action = 228;
+  }
+}
+
+// client opcode 0xE5 (229) — OpenCyclopediaCharacterInfo
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenCyclopediaCharacterInfo {
+  extend GameclientMessage {
+    optional GameclientMessageOpenCyclopediaCharacterInfo gameclient_message_open_cyclopedia_character_info = 229;
+  }
+}
+
+// client opcode 0xE6 (230) — BugReport
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageBugReport {
+  extend GameclientMessage {
+    optional GameclientMessageBugReport gameclient_message_bug_report = 230;
+  }
+}
+
+// client opcode 0xE7 (231) — GemAtelier
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGemAtelier {
+  extend GameclientMessage {
+    optional GameclientMessageGemAtelier gameclient_message_gem_atelier = 231;
+  }
+}
+
+// client opcode 0xE8 (232) — GetOfferDescription
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGetOfferDescription {
+  extend GameclientMessage {
+    optional GameclientMessageGetOfferDescription gameclient_message_get_offer_description = 232;
+  }
+}
+
+// client opcode 0xE9 (233) — StoreEvent
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageStoreEvent {
+  extend GameclientMessage {
+    optional GameclientMessageStoreEvent gameclient_message_store_event = 233;
+  }
+}
+
+// client opcode 0xEB (235) — PreyAction
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessagePreyAction {
+  extend GameclientMessage {
+    optional GameclientMessagePreyAction gameclient_message_prey_action = 235;
+  }
+}
+
+// client opcode 0xEC (236) — SetHirelingName
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageSetHirelingName {
+  extend GameclientMessage {
+    optional GameclientMessageSetHirelingName gameclient_message_set_hireling_name = 236;
+  }
+}
+
+// client opcode 0xED (237) — RequestResourceBalance
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRequestResourceBalance {
+  extend GameclientMessage {
+    optional GameclientMessageRequestResourceBalance gameclient_message_request_resource_balance = 237;
+  }
+}
+
+// client opcode 0xEE (238) — Greet
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGreet {
+  extend GameclientMessage {
+    optional GameclientMessageGreet gameclient_message_greet = 238;
+  }
+}
+
+// client opcode 0xEF (239) — TransferCurrency
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageTransferCurrency {
+  extend GameclientMessage {
+    optional GameclientMessageTransferCurrency gameclient_message_transfer_currency = 239;
+  }
+}
+
+// client opcode 0xF0 (240) — GetQuestLog
+// classic: empty
+message GameclientMessageGetQuestLog {
+  extend GameclientMessage {
+    optional GameclientMessageGetQuestLog gameclient_message_get_quest_log = 240;
+  }
+}
+
+// client opcode 0xF1 (241) — GetQuestLine
+// classic: empty
+message GameclientMessageGetQuestLine {
+  extend GameclientMessage {
+    optional GameclientMessageGetQuestLine gameclient_message_get_quest_line = 241;
+  }
+}
+
+// client opcode 0xF2 (242) — RuleViolationReport
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRuleViolationReport {
+  extend GameclientMessage {
+    optional GameclientMessageRuleViolationReport gameclient_message_rule_violation_report = 242;
+  }
+}
+
+// client opcode 0xF3 (243) — GetObjectInfo
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGetObjectInfo {
+  extend GameclientMessage {
+    optional GameclientMessageGetObjectInfo gameclient_message_get_object_info = 243;
+  }
+}
+
+// client opcode 0xF4 (244) — MarketLeave
+// classic: empty
+message GameclientMessageMarketLeave {
+  extend GameclientMessage {
+    optional GameclientMessageMarketLeave gameclient_message_market_leave = 244;
+  }
+}
+
+// client opcode 0xF5 (245) — MarketBrowse
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageMarketBrowse {
+  extend GameclientMessage {
+    optional GameclientMessageMarketBrowse gameclient_message_market_browse = 245;
+  }
+}
+
+// client opcode 0xF6 (246) — MarketCreate
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageMarketCreate {
+  extend GameclientMessage {
+    optional GameclientMessageMarketCreate gameclient_message_market_create = 246;
+  }
+}
+
+// client opcode 0xF7 (247) — MarketCancel
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageMarketCancel {
+  extend GameclientMessage {
+    optional GameclientMessageMarketCancel gameclient_message_market_cancel = 247;
+  }
+}
+
+// client opcode 0xF8 (248) — MarketAccept
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageMarketAccept {
+  extend GameclientMessage {
+    optional GameclientMessageMarketAccept gameclient_message_market_accept = 248;
+  }
+}
+
+// client opcode 0xF9 (249) — AnswerModalDialog
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageAnswerModalDialog {
+  extend GameclientMessage {
+    optional GameclientMessageAnswerModalDialog gameclient_message_answer_modal_dialog = 249;
+  }
+}
+
+// client opcode 0xFA (250) — RequestStoreCategories
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRequestStoreCategories {
+  extend GameclientMessage {
+    optional GameclientMessageRequestStoreCategories gameclient_message_request_store_categories = 250;
+  }
+}
+
+// client opcode 0xFB (251) — RequestStoreOffers
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageRequestStoreOffers {
+  extend GameclientMessage {
+    optional GameclientMessageRequestStoreOffers gameclient_message_request_store_offers = 251;
+  }
+}
+
+// client opcode 0xFC (252) — BuyStoreOffer
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageBuyStoreOffer {
+  extend GameclientMessage {
+    optional GameclientMessageBuyStoreOffer gameclient_message_buy_store_offer = 252;
+  }
+}
+
+// client opcode 0xFD (253) — OpenTransactionHistory
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageOpenTransactionHistory {
+  extend GameclientMessage {
+    optional GameclientMessageOpenTransactionHistory gameclient_message_open_transaction_history = 253;
+  }
+}
+
+// client opcode 0xFE (254) — GetTransactionHistory
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGetTransactionHistory {
+  extend GameclientMessage {
+    optional GameclientMessageGetTransactionHistory gameclient_message_get_transaction_history = 254;
+  }
+}
+
+// client opcode 0xFF (255) — GatherAll
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageGatherAll {
+  extend GameclientMessage {
+    optional GameclientMessageGatherAll gameclient_message_gather_all = 255;
+  }
+}
+
+// client opcode 0x12C (300) — Unknown
+// classic: bridge — classic side-channel until CIP field RE
+message GameclientMessageUnknown {
+  extend GameclientMessage {
+    optional GameclientMessageUnknown gameclient_message_unknown = 300;
+  }
+}
+

@@ -1,0 +1,277 @@
+{
+ "tibia::creatures::TBattleListRenderProvider": {
+  "chain": [
+   "tibia::creatures::TBattleListRenderProvider",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TBattleListRenderProvider",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::creatures::TCreature": {
+  "chain": [
+   "tibia::creatures::TCreature",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TCreature",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "inspectionStateChanged": [
+    "void inspectionStateChanged()"
+   ],
+   "playerGuildFlagChanged": [
+    "void playerGuildFlagChanged()"
+   ],
+   "playerKillerMarkChanged": [
+    "void playerKillerMarkChanged()"
+   ],
+   "playerPartyFlagChanged": [
+    "void playerPartyFlagChanged()"
+   ],
+   "positionWasUpdated": [
+    "void positionWasUpdated(tibia::worldmap::TWorldMapCoordinate Coordinate)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::creatures::TCreatureProtocolMessageHandler": {
+  "chain": [
+   "tibia::creatures::TCreatureProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TCreatureProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {}
+ },
+ "tibia::creatures::TCreatureStorage": {
+  "chain": [
+   "tibia::creatures::TCreatureStorage",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TCreatureStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "creatureAppearanceUpdated": [
+    "void creatureAppearanceUpdated(std::weak_ptr<tibia::creatures::TCreature> pCreature, ECreatureUpdateAppearanceType AppearanceType)"
+   ],
+   "creatureUpdated": [
+    "void creatureUpdated(std::weak_ptr<tibia::creatures::TCreature> pCreature)"
+   ],
+   "playerAdded": [
+    "void playerAdded(std::weak_ptr<tibia::creatures::TCreature> pPlayer)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::creatures::TCreaturesGameActionHandler": {
+  "chain": [
+   "tibia::creatures::TCreaturesGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TCreaturesGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "sendAttack": [
+    "void sendAttack(tibia::protobuf::protocol::GameclientMessageAttack AttackMessage)"
+   ],
+   "sendFollow": [
+    "void sendFollow(tibia::protobuf::protocol::GameclientMessageFollow FollowMessage)"
+   ],
+   "sendGreet": [
+    "void sendGreet(tibia::protobuf::protocol::GameclientMessageGreet GreetMessage)"
+   ],
+   "sendInspectPlayer": [
+    "void sendInspectPlayer(tibia::protobuf::protocol::GameclientMessageInspectPlayer InspectPlayerMessage)"
+   ],
+   "sendInviteToParty": [
+    "void sendInviteToParty(tibia::protobuf::protocol::GameclientMessageInviteToParty PartyMessage)"
+   ],
+   "sendJoinAggression": [
+    "void sendJoinAggression(tibia::protobuf::protocol::GameclientMessageJoinAggression JoinAggressionMessage)"
+   ],
+   "sendJoinParty": [
+    "void sendJoinParty(tibia::protobuf::protocol::GameclientMessageJoinParty PartyMessage)"
+   ],
+   "sendLeaveParty": [
+    "void sendLeaveParty(tibia::protobuf::protocol::GameclientMessageLeaveParty PartyMessage)"
+   ],
+   "sendLookAtCreature": [
+    "void sendLookAtCreature(tibia::protobuf::protocol::GameclientMessageLookAtCreature LookAtCreatureMessage)"
+   ],
+   "sendPassLeadership": [
+    "void sendPassLeadership(tibia::protobuf::protocol::GameclientMessagePassLeadership PartyMessage)"
+   ],
+   "sendRevokeInvitation": [
+    "void sendRevokeInvitation(tibia::protobuf::protocol::GameclientMessageRevokeInvitation PartyMessage)"
+   ],
+   "sendShareExperience": [
+    "void sendShareExperience(tibia::protobuf::protocol::GameclientMessageShareExperience ShareExperienceMessage)"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::creatures::TUnjustifiedPointsProtocolMessageHandler": {
+  "chain": [
+   "tibia::creatures::TUnjustifiedPointsProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TUnjustifiedPointsProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handlePvpSituations": [
+    "void handlePvpSituations(tibia::protobuf::protocol::GameserverMessagePvpSituations PvpSituationsMessage)"
+   ],
+   "handleUnjustifiedPoints": [
+    "void handleUnjustifiedPoints(tibia::protobuf::protocol::GameserverMessageUnjustifiedPoints UnjustifiedPointsMessage)"
+   ]
+  }
+ },
+ "tibia::creatures::TUnjustifiedPointsStorage": {
+  "chain": [
+   "tibia::creatures::TUnjustifiedPointsStorage",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TUnjustifiedPointsStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "unjustifiedPointsDataChanged": [
+    "void unjustifiedPointsDataChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::creatures::TVipGameActionHandler": {
+  "chain": [
+   "tibia::creatures::TVipGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TVipGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "sendAddBuddy": [
+    "void sendAddBuddy(tibia::protobuf::protocol::GameclientMessageAddBuddy AddBuddyMessage)"
+   ],
+   "sendBuddyGroup": [
+    "void sendBuddyGroup(tibia::protobuf::protocol::GameclientMessageBuddyGroup BuddyGroupMessage)"
+   ],
+   "sendEditBuddy": [
+    "void sendEditBuddy(tibia::protobuf::protocol::GameclientMessageEditBuddy EditBuddyMessage)"
+   ],
+   "sendRemoveBuddy": [
+    "void sendRemoveBuddy(tibia::protobuf::protocol::GameclientMessageRemoveBuddy RemoveBuddyMessage)"
+   ]
+  },
+  "slots": {
+   "handleAddNewVipGameAction": [
+    "void handleAddNewVipGameAction(std::shared_ptr<tibia::input::TGameActionAddNewVip> pGameAction)"
+   ],
+   "handleAddNewVipGroupGameAction": [
+    "void handleAddNewVipGroupGameAction(std::shared_ptr<tibia::input::TGameActionAddNewVipGroup> pGameAction)"
+   ],
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "handleRemoveVipGameAction": [
+    "void handleRemoveVipGameAction(std::shared_ptr<tibia::input::TGameActionRemoveVip> pGameAction)"
+   ],
+   "handleRemoveVipGroupGameAction": [
+    "void handleRemoveVipGroupGameAction(std::shared_ptr<tibia::input::TGameActionRemoveVipGroup> pGameAction)"
+   ],
+   "handleRequestVipDataUpdateGameAction": [
+    "void handleRequestVipDataUpdateGameAction(std::shared_ptr<tibia::input::TGameActionRequestVipDataUpdate> pGameAction)"
+   ],
+   "handleRequestVipGroupUpdateGameAction": [
+    "void handleRequestVipGroupUpdateGameAction(std::shared_ptr<tibia::input::TGameActionRequestVipGroupUpdate> pGameAction)"
+   ]
+  }
+ },
+ "tibia::creatures::TVipProtocolMessageHandler": {
+  "chain": [
+   "tibia::creatures::TVipProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TVipProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleBuddyData": [
+    "void handleBuddyData(tibia::protobuf::protocol::GameserverMessageBuddyData BuddyDataMessage)"
+   ],
+   "handleBuddyGroupData": [
+    "void handleBuddyGroupData(tibia::protobuf::protocol::GameserverMessageBuddyGroupData BuddyGroupData)"
+   ],
+   "handleBuddyStatusChange": [
+    "void handleBuddyStatusChange(tibia::protobuf::protocol::GameserverMessageBuddyStatusChange BuddyStatusChangeMessage)"
+   ]
+  }
+ },
+ "tibia::creatures::TVipStorage": {
+  "chain": [
+   "tibia::creatures::TVipStorage",
+   "QObject"
+  ],
+  "class": "tibia::creatures::TVipStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "loginOrLogoutStateUpdate": [
+    "void loginOrLogoutStateUpdate(EVipState State)"
+   ],
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "vipDataChangedOrAdded": [
+    "void vipDataChangedOrAdded(TVipData NewVipData)"
+   ],
+   "vipDataRemoved": [
+    "void vipDataRemoved(TCharacterID CharacterID)"
+   ],
+   "vipGroupDataChanged": [
+    "void vipGroupDataChanged()"
+   ],
+   "vipStateChanged": [
+    "void vipStateChanged(TCharacterID CharacterID, EVipState State)"
+   ]
+  },
+  "slots": {}
+ }
+}

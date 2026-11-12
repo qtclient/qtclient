@@ -1,0 +1,56 @@
+{
+ "tibia::effects::TEffectGameActionHandler": {
+  "chain": [
+   "tibia::effects::TEffectGameActionHandler",
+   "QObject"
+  ],
+  "class": "tibia::effects::TEffectGameActionHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGameAction": [
+    "void handleGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  }
+ },
+ "tibia::effects::TEffectProtocolMessageHandler": {
+  "chain": [
+   "tibia::effects::TEffectProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::effects::TEffectProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {},
+  "slots": {
+   "handleGraphicalEffectsMessage": [
+    "void handleGraphicalEffectsMessage(tibia::protobuf::protocol::GameserverMessageGraphicalEffects GraphicalEffectsMessage)"
+   ],
+   "handleRemoveGraphicalEffectMessage": [
+    "void handleRemoveGraphicalEffectMessage(tibia::protobuf::protocol::GameserverMessageRemoveGraphicalEffect GraphicalEffectMessage)"
+   ]
+  }
+ },
+ "tibia::effects::TEffectStorage": {
+  "chain": [
+   "tibia::effects::TEffectStorage",
+   "QObject"
+  ],
+  "class": "tibia::effects::TEffectStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ]
+  },
+  "slots": {}
+ }
+}

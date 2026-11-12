@@ -1,0 +1,42 @@
+{
+ "tibia::spells::TSpellInfoStorage": {
+  "chain": [
+   "tibia::spells::TSpellInfoStorage",
+   "QObject"
+  ],
+  "class": "tibia::spells::TSpellInfoStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "activeSpellsChanged": [
+    "void activeSpellsChanged()"
+   ],
+   "spellModificationsApplied": [
+    "void spellModificationsApplied()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::spells::TSpellsProtocolMessageHandler": {
+  "chain": [
+   "tibia::spells::TSpellsProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::spells::TSpellsProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "receivedUnlockedSpell": [
+    "void receivedUnlockedSpell(int SpellNumber)"
+   ]
+  },
+  "slots": {}
+ }
+}

@@ -1,0 +1,68 @@
+name: 'CI: reusable-checks'
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: read
+
+jobs:
+  run-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup reviewdog
+        uses: reviewdog/action-setup@v1.5.0
+
+      - name: Setup dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck libxml2-utils lua-check luajit yamllint
+
+      - name: Run yamllint
+        run: yamllint -c .yamllint.yaml .github
+
+      - name: Linked-tip contracts (light)
+        run: |
+          set -euo pipefail
+          # No SIDE_MODULE / host_exports ship path. Prefer grep (rg often absent).
+          test ! -f cmake/host_exports.json
+          test ! -f scripts/lifecycle/lib/write_host_exports_rsp.py
+          grep -q 'QTCLIENT_LINKED_PACK' cmake/TibiaMods.cmake
+          grep -q 'QTCLIENT_LINKED_PACKS' cmake/TibiaMods.cmake
+          grep -q 'qtclient_add_mod' cmake/QtClientMod.cmake
+          grep -q 'add_library(.*MODULE' cmake/QtClientMod.cmake
+          grep -q 'qtclient_mod_register' include/qtclient/abi/host_api_v1.h
+          grep -q 'qtclient_mod_register' client/mods/otclient/src/otclient_mod.cpp
+          grep -q 'qtclient_host_api_v1' client/tibia/mods/host_api_v1.cpp
+          grep -q 'QTCLIENT_MOD_REGISTER_SYMBOL' client/tibia/mods/modloader.cpp
+          test -f include/qtclient/abi/host_api_v1.h
+          test -f include/qtclient/abi/types.h
+          grep -q 'QTCLIENT_PACK_SDK_ONLY\|QTCLIENT_PACK_ABI\|ABSORB_INTO_QTCLIENT' cmake/QtClientMod.cmake
+          test -f client/mods/myaac/mod.json
+          test -f launcher/mods/clientmods/launcher.json
+          test -f launcher/mods/minimap/launcher.json
+          bash -n scripts/lifecycle/lib/stage-default-launcher-mods.sh
+          # MAIN_MODULE only via TibiaMods when runtime packs exist (host-pushed API; no export list).
+          if grep -q 'SHELL:-sMAIN_MODULE=2' client/tibia/CMakeLists.txt; then
+            echo "::error::MAIN_MODULE must not be hard-coded in tibia CMakeLists (use TibiaMods)" >&2
+            exit 1
+          fi
+          grep -q 'MAIN_MODULE=2' cmake/TibiaMods.cmake
+          bash -n scripts/lifecycle/lib/check-tip-pack-presence.sh
+          bash -n scripts/lifecycle/lib/merge-pack-into-tip.sh
+
+      - name: Run analysis with reviewdog
+        if: github.event.pull_request != null && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REVIEWDOG_REPORTER: github-pr-check
+        run: |
+          reviewdog -reporter="${REVIEWDOG_REPORTER}" -runners=xmllint -fail-level=error -filter-mode=added
+          reviewdog -reporter="${REVIEWDOG_REPORTER}" -runners=cppcheck -filter-mode=added || true

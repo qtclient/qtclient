@@ -1,0 +1,270 @@
+{
+ "tibia::teamfinder::TTeamFinderProtocolMessageHandler": {
+  "chain": [
+   "tibia::teamfinder::TTeamFinderProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::teamfinder::TTeamFinderProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "ownTeamUpdateAvailable": [
+    "void ownTeamUpdateAvailable()"
+   ],
+   "sendTeamFinderAssembleTeam": [
+    "void sendTeamFinderAssembleTeam(tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam Message)"
+   ],
+   "sendTeamFinderJoinTeam": [
+    "void sendTeamFinderJoinTeam(tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam Message)"
+   ],
+   "teamLisUpdateAvailable": [
+    "void teamLisUpdateAvailable()"
+   ]
+  },
+  "slots": {
+   "handleTeamFinderTeamLeaderMessage": [
+    "void handleTeamFinderTeamLeaderMessage(tibia::protobuf::protocol::GameserverMessageTeamFinderTeamLeader Message)"
+   ],
+   "handleTeamFinderTeamMemberMessage": [
+    "void handleTeamFinderTeamMemberMessage(tibia::protobuf::protocol::GameserverMessageTeamFinderTeamMember Message)"
+   ]
+  }
+ },
+ "tibia::teamfinder::TTeamFinderStorage": {
+  "chain": [
+   "tibia::teamfinder::TTeamFinderStorage",
+   "QObject"
+  ],
+  "class": "tibia::teamfinder::TTeamFinderStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "membersChanged": [
+    "void membersChanged()"
+   ],
+   "teamParametersChanged": [
+    "void teamParametersChanged()"
+   ],
+   "teamsChanged": [
+    "void teamsChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::teamfinder::TTeamSettings": {
+  "chain": [
+   "tibia::teamfinder::TTeamSettings",
+   "QObject"
+  ],
+  "class": "tibia::teamfinder::TTeamSettings",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {
+   "druidNeeded": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "freeSlots": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "includeParty": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "knightNeeded": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "maxLevel": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "minLevel": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "QString"
+   },
+   "monkNeeded": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "paladinNeeded": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "sorcererNeeded": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "bool"
+   },
+   "startTimeManager": {
+    "flags": [
+     "READ",
+     "CONSTANT",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": null,
+    "type": "QObject*"
+   },
+   "teamSize": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamSettings",
+    "notify": "changed",
+    "type": "QString"
+   }
+  },
+  "signals": {
+   "changed": [
+    "void changed()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::teamfinder::TTeamStartTimeManager": {
+  "chain": [
+   "tibia::teamfinder::TTeamStartTimeManager",
+   "QObject"
+  ],
+  "class": "tibia::teamfinder::TTeamStartTimeManager",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {
+   "setTime": [
+    "void setTime(int Hour, int Minute)"
+   ]
+  },
+  "properties": {
+   "hour": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamStartTimeManager",
+    "notify": "timeChanged",
+    "type": "int"
+   },
+   "localDateString": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamStartTimeManager",
+    "notify": "timeChanged",
+    "type": "QString"
+   },
+   "localTimeString": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamStartTimeManager",
+    "notify": "timeChanged",
+    "type": "QString"
+   },
+   "minute": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamStartTimeManager",
+    "notify": "timeChanged",
+    "type": "int"
+   },
+   "serverTimeString": {
+    "flags": [
+     "READ",
+     "FINAL"
+    ],
+    "from": "TTeamStartTimeManager",
+    "notify": "timeChanged",
+    "type": "QString"
+   },
+   "startImmediately": {
+    "flags": [
+     "READ",
+     "WRITE",
+     "FINAL"
+    ],
+    "from": "TTeamStartTimeManager",
+    "notify": "timeChanged",
+    "type": "bool"
+   }
+  },
+  "signals": {
+   "timeChanged": [
+    "void timeChanged()"
+   ]
+  },
+  "slots": {
+   "getStartTime": [
+    "::shared::TUnixTimestamp getStartTime()"
+   ],
+   "setStartTime": [
+    "void setStartTime(::shared::TUnixTimestamp StartTime)"
+   ]
+  }
+ }
+}

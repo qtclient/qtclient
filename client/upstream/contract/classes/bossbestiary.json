@@ -1,0 +1,93 @@
+{
+ "tibia::bossbestiary::TBossBestiaryProtocolMessageHandler": {
+  "chain": [
+   "tibia::bossbestiary::TBossBestiaryProtocolMessageHandler",
+   "QObject"
+  ],
+  "class": "tibia::bossbestiary::TBossBestiaryProtocolMessageHandler",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "publishGameAction": [
+    "void publishGameAction(std::shared_ptr<tibia::input::IGameAction> pGameAction)"
+   ],
+   "requestBosstiaryButtonHighlight": [
+    "void requestBosstiaryButtonHighlight(tibia::cyclopedia::TMonsterRaceID BossRaceID)"
+   ],
+   "sendEditBossSlot": [
+    "void sendEditBossSlot(tibia::protobuf::protocol::GameclientMessageEditBossSlot EditBossSlotMessage)"
+   ],
+   "sendOpenBossSlots": [
+    "void sendOpenBossSlots(tibia::protobuf::protocol::GameclientMessageOpenBossSlots OpenBossSlotsMessage)"
+   ],
+   "sendOpenBosstiary": [
+    "void sendOpenBosstiary(tibia::protobuf::protocol::GameclientMessageOpenBosstiary OpenBosstiaryMessage)"
+   ]
+  },
+  "slots": {
+   "handleBossSlotsMessage": [
+    "void handleBossSlotsMessage(tibia::protobuf::protocol::GameserverMessageBossSlots BossSlotsMessage)"
+   ],
+   "handleBossTrackingMessage": [
+    "void handleBossTrackingMessage(tibia::protobuf::protocol::GameserverMessageBossTracking BossTrackingMessage)"
+   ],
+   "handleBosstiaryHighlightMessage": [
+    "void handleBosstiaryHighlightMessage(tibia::protobuf::protocol::GameserverMessageBosstiaryHighlight BosstiaryHighlightMessage)"
+   ],
+   "handleBosstiaryMessage": [
+    "void handleBosstiaryMessage(tibia::protobuf::protocol::GameserverMessageBosstiary BosstiaryMessage)"
+   ],
+   "handleBosstiaryStaticDataMessage": [
+    "void handleBosstiaryStaticDataMessage(tibia::protobuf::protocol::GameserverMessageBosstiaryStaticData BosstiaryStaticDataMessage)"
+   ],
+   "handleShowMessageDialogMessage": [
+    "void handleShowMessageDialogMessage(tibia::protobuf::protocol::GameserverMessageShowMessageDialog ShowMessageDialogMessage)"
+   ]
+  }
+ },
+ "tibia::bossbestiary::TBossTrackerStorage": {
+  "chain": [
+   "tibia::bossbestiary::TBossTrackerStorage",
+   "QObject"
+  ],
+  "class": "tibia::bossbestiary::TBossTrackerStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "bossEntriesChanged": [
+    "void bossEntriesChanged()"
+   ]
+  },
+  "slots": {}
+ },
+ "tibia::bossbestiary::TBosstiaryStorage": {
+  "chain": [
+   "tibia::bossbestiary::TBosstiaryStorage",
+   "QObject"
+  ],
+  "class": "tibia::bossbestiary::TBosstiaryStorage",
+  "classinfo": {},
+  "enums": {},
+  "invokables": {},
+  "properties": {},
+  "signals": {
+   "bossPointsGrantedChanged": [
+    "void bossPointsGrantedChanged()"
+   ],
+   "bossSlotsMessageData": [
+    "void bossSlotsMessageData()"
+   ],
+   "bosstiaryEntriesChanged": [
+    "void bosstiaryEntriesChanged()"
+   ],
+   "unlockKillRequirementsChanged": [
+    "void unlockKillRequirementsChanged()"
+   ]
+  },
+  "slots": {}
+ }
+}

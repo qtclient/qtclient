@@ -1,0 +1,128 @@
+#pragma once
+
+#include "client/gamecore.h"
+#include "input/gameaction.h"
+#include "input/gameactionmapper.h"
+#include "minimap/minimapgameactionprovider.h"
+#include "minimap/minimapvisiblearea.h"
+
+#include <cip_gen.h>
+
+#include <QPointF>
+#include <QPointer>
+
+#include <memory>
+
+class QQuickItem;
+
+namespace tibia {
+namespace config {
+class TSidebarOptions;
+}
+}
+namespace tibia {
+namespace minimap {
+class TMinimapRenderProvider;
+class TMinimapTileStorage;
+}
+}
+namespace tibia {
+namespace qmlcomponents {
+class TMinimapQuickItem;
+}
+}
+namespace tibia {
+namespace worldmap {
+class TAmbientLightStorage;
+}
+}
+
+namespace tibia {
+namespace gamewindow {
+
+/// MinimapPanel's controller (CIP: TMinimapController,): the
+/// visible area follows the player; buttons, the rose, dragging, the wheel and
+/// the minimap hotkeys move, zoom and change its floor; clicks map to game
+/// actions in rule context 6. Modal hover gate , qtclient context
+/// menu / marks, markers, and emulateClickOnAutomapRose are ported.
+class TMinimapController final : public cip::tibia::gamewindow::TMinimapController
+{
+    Q_OBJECT
+public:
+    explicit TMinimapController(QObject* parent = nullptr);
+    ~TMinimapController() override;
+
+    /// CIP : the minimap data to show; null shows nothing.
+    void setTileStorage(minimap::TMinimapTileStorage* storage);
+    void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
+    /// The character's options the zoom lives in.
+    void setSidebarOptions(config::TSidebarOptions* options);
+    /// CIP v14: the MinimapPanel instance (its "minimap" and "timedisplay" items).
+    void setPanelItem(QQuickItem* panel);
+    void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
+
+    /// The minimap hotkeys (CIP , actions 93-101).
+    void handleGameAction(const input::TGameAction& action);
+
+    int currentLayer() const override;
+    void setCurrentLayer(int layer) override;
+
+    /// The shown area and its item (overlays; currentLayerChanged fires on
+    /// every refresh).
+    const minimap::TMinimapVisibleArea& visibleArea() const { return m_area; }
+    qmlcomponents::TMinimapQuickItem* minimapItem() const;
+    minimap::TMinimapTileStorage* tileStorage() const;
+
+public Q_SLOTS:
+    void updateMinimapVisibleAreaFromQuickitemSize() override;
+    void onMinimapDataChanged() override;
+    void onZoomOutButtonClicked() override;
+    void onZoomInButtonClicked() override;
+    void onMoveUpButtonClicked() override;
+    void onMoveDownButtonClicked() override;
+    void onCenterButtonClicked() override;
+    /// CIP : re-apply rose scroll from last normalised rose mouse.
+    void emulateClickOnAutomapRose() override;
+    void onMinimapRoseButtonClicked(int offsetX, int offsetY) override;
+    void onMinimapDragged(float deltaX, float deltaY) override;
+    void onMinimapClick(int x, int y, int triggeringMouseButton, Qt::KeyboardModifiers modifiers) override;
+    void onMinimapMarkerClick(QObject* pMinimapMarkerQmlRenderInfo, int TriggeringMouseButton,
+                              Qt::KeyboardModifiers Modifiers) override;
+    void onMinimapMouseMoved(int x, int y) override;
+    void updateMouseCursor() override;
+    void updateTimeDisplay() override;
+    /// CIP : OPEN_CYCLOPEDIA, Map tab (4), at the visible area's
+    /// centre.
+    void onCyclopediaMapButtonClicked() override;
+
+private:
+    /// CIP : area to the storage, crosshair, repaint, cursor.
+    void refresh();
+    void onPlayerPositionChanged(const Position& position);
+    void centerOnPlayer();
+    /// Fields one rose click or scroll hotkey moves: round(12 / scale).
+    int scrollStep() const;
+    /// CIP : the player's field is light (blue 255) on the minimap.
+    bool crosshairIsDark() const;
+    input::TGameActionList actionsAtMouse() const;
+
+    minimap::TMinimapVisibleArea m_area;
+    minimap::TMinimapGameActionProvider m_actions;
+    input::TGameActionMapper m_mapper;
+    QPointer<minimap::TMinimapTileStorage> m_storage;
+    std::unique_ptr<minimap::TMinimapRenderProvider> m_renderProvider;
+    QPointer<worldmap::TAmbientLightStorage> m_ambientLight;
+    QPointer<QQuickItem> m_panel;
+    QPointer<qmlcomponents::TMinimapQuickItem> m_minimap;
+    QPointer<QQuickItem> m_timeDisplay;
+    Position m_playerPosition;
+    QPoint m_mouse;
+    QPointF m_dragRemainder;
+    /// CIP +0x118/+0x120: last normalised mouse on the rose (0..1). qtclient writes
+    /// these from rose clicks; CipSoft's QML never did.
+    QPointF m_roseMouseNormalized{0.5, 0.5};
+    client::gamecore::Hook m_positionHook;
+};
+
+}
+}
