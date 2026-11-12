@@ -509,13 +509,9 @@ public:
 /// CIP QML DTOs / list payloads (pin units); deepen fields from units as needed.
 class TAccountBadgeListData final : public ::tibia::CipTyped { public: TAccountBadgeListData() = default; };
 class TAccountCharacterListData final : public ::tibia::CipTyped { public: TAccountCharacterListData() = default; };
-class TAccountInfoQmlData final : public ::tibia::CipTyped { public: TAccountInfoQmlData() = default; };
 class TBossSlotQMLInformation final : public ::tibia::CipTyped { public: TBossSlotQMLInformation() = default; };
-class TCharacterBaseQmlInfo final : public ::tibia::CipTyped { public: TCharacterBaseQmlInfo() = default; };
 class TCharacterInformationModelData final : public ::tibia::CipTyped { public: TCharacterInformationModelData() = default; };
-class TDeathQmlData final : public ::tibia::CipTyped { public: TDeathQmlData() = default; };
 class TInspectObjectQMLData final : public ::tibia::CipTyped { public: TInspectObjectQMLData() = default; };
-class TKillQmlData final : public ::tibia::CipTyped { public: TKillQmlData() = default; };
 class TOutfitQMLInformation final : public ::tibia::CipTyped { public: TOutfitQMLInformation() = default; };
 class TQmlAvailableCharmFilter final : public ::tibia::CipTyped { public: TQmlAvailableCharmFilter() = default; };
 class TQmlLoot final : public ::tibia::CipTyped { public: TQmlLoot() = default; };
@@ -525,7 +521,6 @@ class TQmlMonsterClassificationSummary final : public ::tibia::CipTyped { public
 class TQmlMonsterInfo final : public ::tibia::CipTyped { public: TQmlMonsterInfo() = default; };
 class TQmlMonsterSensitivity final : public ::tibia::CipTyped { public: TQmlMonsterSensitivity() = default; };
 class TQmlPreviewCharm final : public ::tibia::CipTyped { public: TQmlPreviewCharm() = default; };
-class TStorePurchasesQmlData final : public ::tibia::CipTyped { public: TStorePurchasesQmlData() = default; };
 
 }
 }

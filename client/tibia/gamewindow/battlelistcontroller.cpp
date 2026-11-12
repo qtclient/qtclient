@@ -97,7 +97,7 @@ QColor outfitColor(const int index) { return colorOf(Outfit::getColor(index)); }
 
 QString stripIcon(const char* provider, const uint8_t value)
 {
-    return value ? QStringLiteral("image://creaturestateflags-%1/%2").arg(QLatin1String(provider)).arg(value - 1) : QString;
+    return value ? QStringLiteral("image://creaturestateflags-%1/%2").arg(QLatin1String(provider)).arg(value - 1) : QString();
 }
 
 BattleListOptions parseOptions(const QJsonObject& json)

@@ -47,7 +47,7 @@ double fraction(const uint32_t value, const uint32_t max)
 /// and siblings: one strip cell per value, none for 0.
 QString stripIcon(const char* provider, const uint8_t value)
 {
-    return value ? QStringLiteral("image://creaturestateflags-%1/%2").arg(QLatin1String(provider)).arg(value - 1) : QString;
+    return value ? QStringLiteral("image://creaturestateflags-%1/%2").arg(QLatin1String(provider)).arg(value - 1) : QString();
 }
 
 }

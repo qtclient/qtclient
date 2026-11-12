@@ -326,7 +326,7 @@ void TVipWidgetController::onSidebarDestroyed() { widget()->onSidebarDestroyed()
 void TVipWidgetController::onLevelUpClicked() {}
 void TVipWidgetController::setCursorToResizeVertical(const bool Enabled) { widget()->setCursorToResizeVertical(Enabled); }
 void TVipWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
-void TVipWidgetController::onVipDataEdited { /* TVipStorage signals rebuild the list model. */ }
+void TVipWidgetController::onVipDataEdited() { /* TVipStorage signals rebuild the list model. */ }
 void TVipWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
 void TVipWidgetController::onWidgetQuickItemDestroyed() {}
 

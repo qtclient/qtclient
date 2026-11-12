@@ -141,7 +141,7 @@ bool resolveCreatureMove(const TGameAction& action, Position* from, int* stackPo
         storage ? storage->creatureAt(action.creatureId) : nullptr;
     if (!row || !row->position().isValid())
         return false;
-    *from = row->position;
+    *from = row->position();
     *stackPos = -1;
     if (worldmap::TWorldMapStorage* map = worldmap::TWorldMapStorage::instance()) {
         if (worldmap::TWorldMapField* field = map->fieldAt(*from))
