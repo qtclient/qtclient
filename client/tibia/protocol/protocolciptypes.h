@@ -116,9 +116,24 @@ private:
     QByteArray m_pendingClientClassic;
 };
 
+/// CIP `protocol::TProtocolReader` (pin layout size 0x18).
 class TProtocolReader final : public ::tibia::CipTyped {
 public:
     TProtocolReader() = default;
+    explicit TProtocolReader(uint32_t a, uint32_t b, uint64_t c)
+        : m_a(a)
+        , m_b(b)
+        , m_c(c)
+    {
+    }
+    uint32_t a() const { return m_a; }
+    uint32_t b() const { return m_b; }
+    uint64_t c() const { return m_c; }
+
+private:
+    uint32_t m_a = 0; // +0x8
+    uint32_t m_b = 0; // +0xc
+    uint64_t m_c = 0; // +0x10
 };
 
 class TProtocolServerMessageProcessor final : public ::tibia::CipTyped {
@@ -126,6 +141,7 @@ public:
     TProtocolServerMessageProcessor() = default;
 };
 
+/// CIP `protocol::TProtocolWriter` — wire enqueue façade (bodies live on the queue).
 class TProtocolWriter final : public ::tibia::CipTyped {
 public:
     TProtocolWriter() = default;
