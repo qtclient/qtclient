@@ -399,7 +399,7 @@ bool canDecrease(const std::array<int, SlotCount>& points, const int slot)
     return isValid(cleared);
 }
 
-int resonance(const std::array<int, SlotCount>& /*points*, const int /*domain*)
+int resonance(const std::array<int, SlotCount>& /*points*/, const int /*domain*/)
 {
     // Vessel Resonance removed in CipSoft Winter 2026.
     return 0;
@@ -462,7 +462,7 @@ int effectiveGrade(const TGem& gem, const TGrades& basicGrades, const TGrades& s
     return gemGrade(gem, basicGrades, supremeGrades, modIndex);
 }
 
-int bonusBaseStats(const TGrades& basicGrades, const TGrades& supremeGrades, const int /*vocationIndex*)
+int bonusBaseStats(const TGrades& basicGrades, const TGrades& supremeGrades, const int /*vocationIndex*/)
 {
     int gradeSteps = 0;
     for (const TGrades* grades : { &basicGrades, &supremeGrades })
@@ -471,7 +471,7 @@ int bonusBaseStats(const TGrades& basicGrades, const TGrades& supremeGrades, con
     return BonusBaseStatsPerGrade * gradeSteps;
 }
 
-int bonusPromotionPoints(const TGrades& basicGrades, const TGrades& supremeGrades, const int /*vocationIndex*)
+int bonusPromotionPoints(const TGrades& basicGrades, const TGrades& supremeGrades, const int /*vocationIndex*/)
 {
     return modGradePoints(basicGrades, supremeGrades);
 }

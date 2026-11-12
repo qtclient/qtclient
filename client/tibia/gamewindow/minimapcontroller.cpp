@@ -283,7 +283,7 @@ void TMinimapController::onMinimapClick(const int x, const int y, const int trig
     input::publish(action);
 }
 
-void TMinimapController::onMinimapMarkerClick(QObject* /*pMinimapMarkerQmlRenderInfo*, const int TriggeringMouseButton,
+void TMinimapController::onMinimapMarkerClick(QObject* /*pMinimapMarkerQmlRenderInfo*/, const int TriggeringMouseButton,
                                               const Qt::KeyboardModifiers Modifiers)
 {
     // qtclient: marker overlay clicks use the same worldmap field candidates as the tile under the mouse.

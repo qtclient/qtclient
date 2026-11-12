@@ -2530,7 +2530,7 @@ void Game::sendQuickLootAt(const uint8_t variant, const Position& position, cons
     m_protocolGame->sendQuickLoot(variant, position, itemId, static_cast<uint8_t>(std::max(0, stackPos)));
 }
 
-void Game::requestQuickLootBlackWhiteList(const uint8_t filter, const uint16_t /*size*, const std::vector<uint16_t>& listedItems)
+void Game::requestQuickLootBlackWhiteList(const uint8_t filter, const uint16_t /*size*/, const std::vector<uint16_t>& listedItems)
 {
     if (!canPerformGameAction())
         return;

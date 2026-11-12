@@ -526,7 +526,7 @@ void TWorldMapSessionState::setFieldInBlock(const Position& pos, tibia::worldmap
     tibia::worldmap::TWorldMapStorage::ensureStorage()->bindFieldToSpatialIndex(pos, field);
 }
 
-WorldMapFieldList TWorldMapSessionState::getTiles(const int8_t floor/* = -1*)
+WorldMapFieldList TWorldMapSessionState::getTiles(const int8_t floor/* = -1*/)
 {
     return tibia::worldmap::TWorldMapStorage::ensureStorage()->spatialFieldList(floor);
 }
@@ -1489,7 +1489,7 @@ void TWorldMapSessionState::clearWaypointCostFactory() { m_waypointCostFactory =
 namespace {
 
 std::shared_ptr<std::list<Node*>> buildTravelVisibleNodes(const Position& start, const Position& goal,
- const tibia::client::AutoWalkPathMode /*pathMode*)
+ const tibia::client::AutoWalkPathMode /*pathMode*/)
 {
     // CIP auto-path: aware tiles use live walkable/pathable (fire, splash, parcels
     // block when in view). No soft-blocker bypass — path fails → SnapBack avoid /

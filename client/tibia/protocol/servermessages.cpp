@@ -392,7 +392,7 @@ void ProtocolGame::parseTextForReport(const InputMessagePtr& msg)
     tibia::game::notify("onTextForReport", id, text, name);
 }
 
-void ProtocolGame::parseMultiOfflineTrainingDialog(const InputMessagePtr& /*msg*)
+void ProtocolGame::parseMultiOfflineTrainingDialog(const InputMessagePtr& /*msg*/)
 {
     tibia::game::notify("onMultiOfflineTrainingDialog");
 }
@@ -2258,7 +2258,7 @@ void ProtocolGame::parseBrowseForgeHistory(const InputMessagePtr& msg)
     tibia::game::notify("onBrowseForgeHistory", pageNumber, lastPage, historyCount, historyList);
 }
 
-void ProtocolGame::parseCloseForgeWindow(const InputMessagePtr& /*msg*)
+void ProtocolGame::parseCloseForgeWindow(const InputMessagePtr& /*msg*/)
 {
     tibia::game::notify("onCloseForgeCloseWindows");
 }
@@ -4128,7 +4128,7 @@ int ProtocolGame::setTileDescription(const InputMessagePtr& msg, const Position 
     return 0;
 }
 
-Outfit ProtocolGame::getOutfit(const InputMessagePtr& msg, const bool parseMount/* = true*) const
+Outfit ProtocolGame::getOutfit(const InputMessagePtr& msg, const bool parseMount/* = true*/) const
 {
     Outfit outfit;
 
@@ -5712,7 +5712,7 @@ void ProtocolGame::parseDepotSearchDetailList(const InputMessagePtr& msg)
     tibia::game::processDepotSearchDetail(detail);
 }
 
-void ProtocolGame::parseCloseDepotSearch(const InputMessagePtr& /*msg*)
+void ProtocolGame::parseCloseDepotSearch(const InputMessagePtr& /*msg*/)
 {
     tibia::game::processCloseDepotSearch();
 }
@@ -7040,7 +7040,7 @@ void ProtocolGame::parseImbuementWindow(const InputMessagePtr& msg)
     }
 }
 
-void ProtocolGame::parseCloseImbuementWindow(const InputMessagePtr& /*msg*)
+void ProtocolGame::parseCloseImbuementWindow(const InputMessagePtr& /*msg*/)
 {
     tibia::game::notify("onCloseImbuementWindow");
 }

@@ -313,7 +313,7 @@ void TWorldMapField::addEffectAppearance(const appearances::TAppearanceInstanceP
         const std::weak_ptr<appearances::TAppearanceInstance> weakAppearance = appearance;
         // Life = optional start delay (waitForFieldEffect) + animator duration.
         const int waitMs = std::max(
- 1, static_cast<int>(effectInstance->duration) /* start delay applied inside isFieldEffectAlive *);
+ 1, static_cast<int>(effectInstance->duration) /* start delay applied inside isFieldEffectAlive */);
         tibia::schedule::after([pos, weakAppearance] {
             const auto locked = weakAppearance.lock();
             if (!locked)
@@ -796,7 +796,7 @@ uint8_t TWorldMapField::getMinimapColorByte()
     return 255;
 }
 
-CreaturePtr TWorldMapField::getTopCreature(const bool /*checkAround*)
+CreaturePtr TWorldMapField::getTopCreature(const bool /*checkAround*/)
 {
     return nullptr;
 }

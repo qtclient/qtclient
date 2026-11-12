@@ -912,7 +912,7 @@ void TGemAtelierPageController::selectGem(const int GemId, const bool NarrowDown
     Q_EMIT selectedGemIndexChanged();
 }
 
-void TGemAtelierPageController::showDomain(const int /*domain*, const int gemId)
+void TGemAtelierPageController::showDomain(const int /*domain*/, const int gemId)
 {
     // Domain affinity removed — open atelier on the gem / first unlocked vessel.
     if (gemId != NoGem) {
