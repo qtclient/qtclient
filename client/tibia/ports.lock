@@ -922,6 +922,7 @@ appearances::TCumulativeObjectAppearanceInstance::__ct_00949240  d5a0a0e1f74603f
 appearances::TCumulativeObjectAppearanceInstance::__ns_009496f0  37eb51a7654b7b4a  # ported
 appearances::TCumulativeObjectAppearanceInstance::v0  dc4584e15363e24c  # ported
 appearances::TCumulativeObjectAppearanceInstance::v1  87f95d7c71d4d5b9  # ported
+appearances::TCustomizableOutfitAppearanceInstance::__unitns_0093c580  958ba1d84badbfc4  # ported
 appearances::TCustomizableOutfitAppearanceInstance::v0  57e3dcf68987ab7e  # ported
 appearances::TCustomizableOutfitAppearanceInstance::v1  622fdfa6b618e9b2  # ported
 appearances::TCustomizableOutfitAppearanceInstance::v12  7fd814777544d6d8  # ported
@@ -4775,6 +4776,7 @@ container::TContainer::__ns_00a34250  9bf56982d000314e  # ported
 container::TContainer::__ns_00a343d0  b74187f3423ef44f  # ported
 container::TContainer::__ns_00a344a0  6e6714d485bafe42  # ported
 container::TContainer::__ns_00a34a60  246b9f24cffce141  # ported
+container::TContainer::__unitns_008c2150  bf71856e92e697a0  # ported
 container::TContainer::v0  6b587d2ff6c432ea  # ported
 container::TContainer::v1  22ce8378bb819a5c  # ported
 container::TContainer::v10  5ddb6210e5b45abd  # ported
@@ -6377,6 +6379,7 @@ game::TGameActionRouter::__cgns_008c1260  f8dc71c4e8792545  # ported
 game::TGameActionRouter::__get_deleter  1c573a76f2a88608  # ported
 game::TGameActionRouter::v4  3fec71c250111bc8  # ported
 game::TGameEventProtocolMessageHandler::__get_deleter  4a00f6b18d7ba357  # ported
+game::TGameEventProtocolMessageHandler::__unitns_00b552e0  2d17b08b7a5281f5  # ported
 game::TGameEventProtocolMessageHandler::v4  ca1ae45f16270212  # ported
 game::TGameProtocolMessageHandler::__cg_007f4a80  009bbf56240600e0  # ported
 game::TGameProtocolMessageHandler::__cg_007f4b30  ed15af38cc532a98  # ported
@@ -6939,6 +6942,7 @@ game::TGameSessionBase::__nb_00b28ae0  97e8f495bf9a20d5  # ported
 game::TGameSessionBase::__nb_00b28b10  7bbf90c4611617d6  # ported
 game::TGameSessionBase::__nb_00b28b40  a06f295a177e02ad  # ported
 game::TGameSessionBase::__si_class_type_info  d27124c2919e1f3f  # ported
+game::TGameSessionBase::__unitns_00b55280  4ec59bad12cf4a8b  # ported
 game::TGameSessionBase::__vmi_class_type_info  f65656cc571962ad  # ported
 game::TGameSessionBase::backward  cd815d481d86539b  # ported
 game::TGameSessionBase::canInsertFromMimeData  bd040678e85220e9  # ported
@@ -7184,6 +7188,7 @@ game::TPlayerData::__ns_00adb860  5994551490d70324  # ported
 game::TPlayerData::__ns_00adb8a0  5994551490d70324  # ported
 game::TPlayerData::__ns_00adb920  5994551490d70324  # ported
 game::TPlayerData::__si_class_type_info  048a3c008eb32e16  # ported
+game::TPlayerData::__unitns_008c18f0  3da50aad0da110a9  # ported
 game::TPlayerData::__vmi_class_type_info  b01a1349361fa47c  # ported
 game::TPlayerData::backward  e27f83b8dca1593f  # ported
 game::TPlayerData::canInsertFromMimeData  47eebb4e5c56efc8  # ported
@@ -8206,6 +8211,7 @@ gamewindow::TAppearanceTypeListModel::__helper_00d5f6d0  1163600eca386367  # por
 gamewindow::TAppearanceTypeListModel::__helper_00d5f890  f2c271b10d3e64e7  # ported
 gamewindow::TAppearanceTypeListModel::__helper_00d60b30  48b01b0de112f3ed  # ported
 gamewindow::TAppearanceTypeListModel::__si_class_type_info  ac4a9d5cef65912b  # ported
+gamewindow::TAppearanceTypeListModel::__unitns_008d4540  bf71856e92e697a0  # ported
 gamewindow::TAppearanceTypeListModel::v4  22ce8378bb819a5c  # ported
 gamewindow::TAppearanceTypeListModelSortFilterProxy::__cg_009396f0  2660733c116b35f3  # ported
 gamewindow::TAppearanceTypeListModelSortFilterProxy::__cg_00939ac0  bf71856e92e697a0  # ported
@@ -9668,6 +9674,8 @@ gamewindow::TCooldownBarController::__ns_00c0c6a0  26b6fe69b6b96e48  # ported
 gamewindow::TCooldownBarController::__ns_00c0c710  26b6fe69b6b96e48  # ported
 gamewindow::TCooldownBarController::__ns_00c0c780  cf5f9254a9799867  # ported
 gamewindow::TCooldownBarController::__si_class_type_info  8b9b0912089a0e3d  # ported
+gamewindow::TCooldownBarController::__unitns_000f51f0  4087fdb5705d8991  # ported
+gamewindow::TCooldownBarController::__unitns_000f55f0  10a035defa14a4df  # ported
 gamewindow::TCooldownBarController::v4  3bbb1d7a36019ea7  # ported
 gamewindow::TCooldownProgressDataForQML::__get_deleter  8e09944a1b52d175  # ported
 gamewindow::TCooldownProgressDataForQML::__helper_00c04040  e9b42b40dd22e228  # ported
@@ -9887,6 +9895,7 @@ gamewindow::TCyclopediaDialogController::__ns_00ce9b90  db540b91c4d36fbf  # port
 gamewindow::TCyclopediaDialogController::__ns_00ce9c00  0db5e579efdcd2e2  # ported
 gamewindow::TCyclopediaDialogController::__ns_00cea120  6b587d2ff6c432ea  # ported
 gamewindow::TCyclopediaDialogController::__si_class_type_info  07225a6c631c736d  # ported
+gamewindow::TCyclopediaDialogController::__unitns_00a6b6a0  c98b8695604e39e1  # ported
 gamewindow::TCyclopediaDialogController::v4  22ce8378bb819a5c  # ported
 gamewindow::TCyclopediaMapDialogController::__cg_00a703e0  ea42a351d85f9a99  # ported
 gamewindow::TCyclopediaMapDialogController::__cg_00a70f20  5416278659bbb78a  # ported
@@ -20285,6 +20294,8 @@ qmlcomponents::TCachedOutlineTextQuickItem::__ns_010cfab0  6371865f286aa0e1  # p
 qmlcomponents::TCachedOutlineTextQuickItem::__ns_010cfba0  47ed91f1d64cb61b  # ported
 qmlcomponents::TCachedOutlineTextQuickItem::__ns_010cfd90  26402820baa9275c  # ported
 qmlcomponents::TCachedOutlineTextQuickItem::__ns_010d16b0  8e193d1a4d015891  # ported
+qmlcomponents::TCachedOutlineTextQuickItem::__unitns_010d1da0  c287448d98d23e67  # ported
+qmlcomponents::TCachedOutlineTextQuickItem::__unitns_010d1db0  d42da8b416ed57fe  # ported
 qmlcomponents::TCachedOutlineTextQuickItem::componentComplete  fe4d09f3b4ad715e  # ported
 qmlcomponents::TCachedOutlineTextQuickItem::updatePaintNode  86c269908c4fa83d  # ported
 qmlcomponents::TCachedOutlineTextQuickItem::updatePolish  8c13b61c25a1389d  # ported
@@ -24287,6 +24298,7 @@ skillwheel::TInventoryGemSortFilterProxyModel::__ns_00f914c0  0548f76df79d7448  
 skillwheel::TInventoryGemSortFilterProxyModel::__ns_00f91510  7b472b0814ba879c  # ported
 skillwheel::TInventoryGemSortFilterProxyModel::__ns_00f917b0  a30f4d53dca67284  # ported
 skillwheel::TInventoryGemSortFilterProxyModel::__si_class_type_info  0747ef404f1b39b2  # ported
+skillwheel::TInventoryGemSortFilterProxyModel::__unitns_0112f850  6b587d2ff6c432ea  # ported
 skillwheel::TInventoryGemSortFilterProxyModel::filterAcceptsRow  6925aafe01d34f9b  # ported
 skillwheel::TModListModel::__get_deleter  090c5492f0b159eb  # ported
 skillwheel::TModListModel::__helper_00f914e0  5f561d591c1985b0  # ported
@@ -24352,6 +24364,7 @@ skillwheel::TSkillWheelProtocolMessageHandler::__helper_013029d0  f737f367eda138
 skillwheel::TSkillWheelProtocolMessageHandler::__helper_01328ba0  697ae7233566a3c9  # ported
 skillwheel::TSkillWheelProtocolMessageHandler::__helper_01328de0  a7a3124b33252d22  # ported
 skillwheel::TSkillWheelProtocolMessageHandler::__si_class_type_info  4dd1f7193c3e4e1c  # ported
+skillwheel::TSkillWheelProtocolMessageHandler::__unitns_01126c20  f35c732b0907cb3c  # ported
 skillwheel::TSkillWheelProtocolMessageHandler::v4  22ce8378bb819a5c  # ported
 skillwheel::TSkillWheelStorage::__cg_00861190  ad01f158caa99ab6  # ported
 skillwheel::TSkillWheelStorage::__cg_008611b0  3af20898a8cbe5cd  # ported
@@ -25478,6 +25491,7 @@ taskboard::TMonsterListFilterModel::__helper_0102aca0  213cd7f5c35fbcc5  # porte
 taskboard::TMonsterListFilterModel::__nb_010266f0  f6b90a4d4f260ac7  # ported
 taskboard::TMonsterListFilterModel::__ns_01026730  3d7a41129f1d3ca8  # ported
 taskboard::TMonsterListFilterModel::__ns_01026960  3ca635c0eac4c0ff  # ported
+taskboard::TMonsterListFilterModel::__unitns_00a6a0e0  bb20e97d06bdbf63  # ported
 taskboard::TMonsterListFilterModel::v15  2f363a986db163f9  # ported
 taskboard::TMonsterListFilterModel::v18  dffcfeaa90675323  # ported
 taskboard::TMonsterListFilterModel::v4  09300afef776ba90  # ported
@@ -26313,6 +26327,8 @@ worldmap::TWorldMapPicker::__helper_0106c270  02f8fe52bacd5f0a  # ported
 worldmap::TWorldMapPicker::__helper_01071b40  e71baf80a769426d  # ported
 worldmap::TWorldMapPicker::__nb_01063be0  2e316e1769fc02df  # ported
 worldmap::TWorldMapPicker::__ns_01064390  4e79aa35fdce0aa3  # ported
+worldmap::TWorldMapPicker::__unitns_01071d00  2915f9a3781ab509  # ported
+worldmap::TWorldMapPicker::__unitns_01071d70  b45ccbfcb8cc51e0  # ported
 worldmap::TWorldMapPicker::v0  1ae5e39682de0db4  # ported
 worldmap::TWorldMapPicker::v1  79ce8f3519cd2464  # ported
 worldmap::TWorldMapPicker::v2  804748b534045b96  # ported
