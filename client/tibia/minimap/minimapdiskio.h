@@ -29,7 +29,7 @@ public:
     /// has no tiles yet; queued before reads, so they see the copies. Stands in
     /// for CIP's LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES after the tutorial.
     void importDefaultTiles(const QString& sourceDir);
-    /// Tip/assets CipSoft tiles (wasm reads these on demand instead of bulk-copy).
+    /// CipSoft default tiles under assets (wasm reads on demand instead of bulk-copy).
     void setDefaultTilesDir(const QString& sourceDir);
     /// Blocks until every queued read and write is done.
     void waitForDone();
