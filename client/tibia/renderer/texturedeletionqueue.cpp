@@ -21,7 +21,7 @@ std::mutex pendingDeletionMutex;
 std::vector<PendingTextureDeletion> pendingDeletions;
 
 // Tip-infra diagnostics — atomic counts beside the queue; retirement rides on
-// the peel above. Kept as `g_*` names intentionally (catalogued tip-infra).
+// the peel above. Kept as `g_*` names intentionally (catalogued qtclient-infra).
 std::atomic_size_t g_deletedTextures{ 0 };
 std::atomic_size_t g_deletionBatches{ 0 };
 

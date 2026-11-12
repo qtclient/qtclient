@@ -358,7 +358,7 @@ bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earl
     }
 
 #if defined(QTCLIENT_HAS_LINKED_PACK)
-    qCInfo(lcModLoader) << "loaded tip pack" << meta.id << "priority" << meta.priority << "from" << pack
+    qCInfo(lcModLoader) << "loaded qtclient pack" << meta.id << "priority" << meta.priority << "from" << pack
                         << (hasNative ? "(native+FS)" : "(FS; C++ via absorb)");
     return true;
 #else
@@ -412,7 +412,7 @@ int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
 
     if (packs.isEmpty()) {
 #if defined(QTCLIENT_HAS_LINKED_PACK)
-        qCInfo(lcModLoader) << "linked tip: no FS mods/; linked entries already invoked";
+        qCInfo(lcModLoader) << "linked qtclient: no FS mods/; linked entries already invoked";
         return 1;
 #else
         return 0;
@@ -424,7 +424,7 @@ int ModLoader::loadAll(const QStringList& roots, const ModContext* earlyCtx)
         if (loadFromDirectory(packDir, earlyCtx))
             ++loaded;
     }
-    qCInfo(lcModLoader) << "loaded" << loaded << "of" << packs.size() << "tip packs";
+    qCInfo(lcModLoader) << "loaded" << loaded << "of" << packs.size() << "qtclient packs";
     return loaded;
 }
 
