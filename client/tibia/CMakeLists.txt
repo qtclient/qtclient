@@ -333,6 +333,7 @@ if(TIBIA_WITH_GAMECORE)
     friends/friendsciptypes.cpp friends/friendsciptypes.h
     friends/friendlistmodels.cpp friends/friendlistmodels.h
     gamewindow/gamewindowciptypes.cpp gamewindow/gamewindowciptypes.h
+    gamewindow/anonymousciptypes.h
     gamewindow/remainingdialogs.cpp gamewindow/remainingdialogs.h
     gamewindow/whiteblacklistdialogcontroller.cpp gamewindow/whiteblacklistdialogcontroller.h
     gamewindow/reportviolationcontroller.cpp gamewindow/reportviolationcontroller.h
