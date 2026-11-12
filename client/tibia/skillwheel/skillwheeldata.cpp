@@ -1252,7 +1252,7 @@ int modGradePoints(const TGrades& basicGrades, const TGrades& supremeGrades)
 }
 
 /// Pre-Winter Vessel Resonance activation labels were removed from CipSoft qm.
-/// Keep a tiny helper for any tip call sites that still key off gem quality tiers.
+/// Keep a tiny helper for any qtclient call sites that still key off gem quality tiers.
 QString vesselActivation(const int resonance, const bool plural)
 {
     Q_UNUSED(plural);

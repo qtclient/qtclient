@@ -302,7 +302,7 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
     }
     case 29: // CIP Ping (0x1D) — Proto::GameServerPingBack = 29
     case 30: { // CIP PingBack (0x1E) — Proto::GameServerPing = 30
-        // No CIP handlePing* on tip network H; queue has receivedPing(Back)Message only.
+        // No CIP handlePing* on qtclient network H; queue has receivedPing(Back)Message only.
         // Preserve dispatch.gen.cpp GameClientPing swap → processPing / processPingBack.
         if (opcode == 29) {
             if (!shadow->HasExtension(GameserverMessagePing::gameserver_message_ping))
@@ -430,7 +430,7 @@ void ownProductSurface(QObject* parent)
         return;
     owned = true;
     (void)typedKeep();
-    // Session-parented tip twin (QApp already exists). Dialog stack binds later.
+    // Session-parented qtclient twin (QApp already exists). Dialog stack binds later.
     if (!g_qtclientFpsDropsLogger)
         g_qtclientFpsDropsLogger = new FPSDropsLogger(parent);
     // Empty-moc / session-owned CIP QObject surfaces (live under the game session).

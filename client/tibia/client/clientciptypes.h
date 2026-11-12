@@ -28,7 +28,7 @@ public:
     explicit IGamesessionManager(QObject* parent = nullptr);
     ~IGamesessionManager() override;
 
-    /// Process-lifetime tip twin (moc/RTTI keep). Not GameClient's live session owner.
+    /// Process-lifetime qtclient twin (moc/RTTI keep). Not GameClient's live session owner.
     static IGamesessionManager* instance();
 
 Q_SIGNALS:

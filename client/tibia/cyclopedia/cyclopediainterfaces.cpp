@@ -12,7 +12,7 @@ IDialogTabPage::~IDialogTabPage() = default;
 void IDialogTabPage::showDialogTab()
 {
     // Live path: tip page controllers (friends / forge / prey / …) override
-    // cip::IDialogTabPage::showDialogTab. Tip twin keeps the moc/slot floor.
+    // cip::IDialogTabPage::showDialogTab. Qtclient twin keeps the moc/slot floor.
 }
 
 void IDialogTabPage::hideDialogTab()

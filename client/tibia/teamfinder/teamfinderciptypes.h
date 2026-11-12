@@ -56,7 +56,7 @@ private:
     QDateTime m_when;
 };
 
-/// CIP: TTeamSettings (Assemble Team settings pane) — tip twin only for
+/// CIP: TTeamSettings (Assemble Team settings pane) — qtclient twin only for
 /// startTimeManager wiring + sensible CIP defaults.
 class TTeamSettings final : public cip::tibia::teamfinder::TTeamSettings
 {

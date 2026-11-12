@@ -122,7 +122,7 @@ void ownProductSurface(QObject* parent)
         new TGameApplication(parent);
     else
         new TGameApplication(nullptr);
-    // Process-lifetime tip twin (linked below). Not GameClient session owner.
+    // Process-lifetime qtclient twin (linked below). Not GameClient session owner.
     (void)IGamesessionManager::instance();
 }
 

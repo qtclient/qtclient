@@ -54,7 +54,7 @@ private:
     QList<CreationWorld> m_worlds;
 };
 
-/// Back-compat alias for tip call sites still using the T-prefixed name.
+/// Back-compat alias for qtclient call sites still using the T-prefixed name.
 using TWorldSelectionModel = WorldSelectionModel;
 
 /// One option of WorldSelection.qml's region and PvP type combo boxes.

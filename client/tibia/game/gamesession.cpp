@@ -45,7 +45,7 @@ IGameSession::~IGameSession()
 
 void IGameSession::bindLiveNotifyFans()
 {
-    // Mirror TGameserverGameSession notify → signal wiring on the tip twin.
+    // Mirror TGameserverGameSession notify → signal wiring on the qtclient twin.
     // Does not call loginWorld / forceLogout / cancelLogin.
     auto* fans = m_liveFans;
     if (!fans)

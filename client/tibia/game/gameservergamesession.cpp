@@ -196,7 +196,7 @@ TGameserverGameSession::~TGameserverGameSession()
 
 void TGameserverGameSession::connectToGameserver(const GameserverCredentials& c)
 {
-    // Remaining hub call: loginWorld (session-owned; IGameSession tip twin does not mirror).
+    // Remaining hub call: loginWorld (session-owned; IGameSession qtclient twin does not mirror).
     try {
         qtclientGameHub().loginWorld(c.account.toStdString(), c.password.toStdString(), c.worldName.toStdString(),
                           c.host.toStdString(), c.port, c.characterName.toStdString(),

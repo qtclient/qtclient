@@ -30,7 +30,7 @@ class TCreatureStorage;
 }
 namespace game {
 
-/// CipSoft-shaped session / wire façade for tip + packs.
+/// CipSoft-shaped session / wire façade for qtclient + packs.
 /// Prefer this header over `#include "gamehub_impl.h"` at call sites.
 /// Implementation peels the private OTC hub via `qtclientGameHub()` in `gamehub.*`.
 /// migrates each method onto TGameClient / IGameSession / storages.
@@ -509,7 +509,7 @@ void updateTeamFinderMember(const uint32_t memberId, const uint8_t status);
 /// CIP `game::IGameSession` moc surface (contract signals + tip-safe skipped
 /// args + TGameSessionBase slot floor). Declared after free-function peels so
 /// tip scanners do not attribute those decls to this class. Live login/world
-/// still rides `TGameserverGameSession` / `g_game`; this tip twin re-emits the
+/// still rides `TGameserverGameSession` / `g_game`; this qtclient twin re-emits the
 /// same notify bus (no `loginWorld` / disconnect ownership). Frame prep stays
 /// on `TGameClient::tick` / `TNextFrameUpdater` — `onPrepareNextFrameToRender`
 /// is a CIP-named no-op so we never double-advance frames.

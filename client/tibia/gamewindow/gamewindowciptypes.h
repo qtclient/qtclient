@@ -344,7 +344,7 @@ public Q_SLOTS:
 
 /// CipSoft TDialogControllerBase signal surface (abort / dialogClosed).
 /// Live dialogs still use cip::…::TDialogControllerBase via TDialogController<>;
-/// tip twin owns the moc NOTIFY names for inventory (TDialog::close emits dialogClosed).
+/// qtclient twin owns the moc NOTIFY names for inventory (TDialog::close emits dialogClosed).
 class TDialogControllerBase : public cip::tibia::gamewindow::TDialogControllerBase
 {
     Q_OBJECT
