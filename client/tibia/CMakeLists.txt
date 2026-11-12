@@ -761,12 +761,12 @@ if(EMSCRIPTEN)
   target_link_options(tibia PRIVATE
     "SHELL:--post-js=${TIBIA_ROOT}/browser/embind-ignore-dupes.js")
 
-  # Game tip FS: WasmFS scaffolds /home/web_user; durable tip is Module.tipFs
+  # Game tip FS: WasmFS scaffolds /home/web_user; durable tip is Module.qtclientFs
   # (portal OPFS Worker + SAB) via browser/opfs_file_engine (QFile unchanged).
   # Soft launcher stays classic FS — do not add these flags to the launcher.
   #
   # Main-thread Qt + JSPI (no PROXY_TO_PTHREAD): PROXY broke Emval DOM.
-  # Unified Chrome/Safari tip-fs: EM_ASYNC_JS + -sJSPI so OPFS SyncAccessHandle
+  # Unified Chrome/Safari qtclient-fs: EM_ASYNC_JS + -sJSPI so OPFS SyncAccessHandle
   # can complete while the main thread yields. Requires wasm EH (not SJLJ).
   # Do not use Emscripten wasmfs_create_opfs_backend for product tip.
   target_sources(tibia PRIVATE
@@ -786,7 +786,7 @@ if(EMSCRIPTEN)
     "SHELL:-sPTHREAD_POOL_SIZE=1"
     "SHELL:-sPTHREAD_POOL_SIZE_STRICT=0"
     "SHELL:-sALLOW_MEMORY_GROWTH=0"
-    # Lazy tip-fs: native suspend across await tipFs.*Async (OPFS Worker).
+    # Lazy qtclient-fs: native suspend across await qtclientFs.*Async (OPFS Worker).
     # Qt kit with -feature-wasm-jspi also adds -sJSPI; duplicate is harmless.
     "SHELL:-sJSPI"
     # Qt Emval/timers re-enter wasm outside main — wrap table entries for JSPI.

@@ -2,7 +2,7 @@
  * JSPI: await __wasm_call_ctors under WebAssembly.promising.
  *
  * Stock glue calls the export bare from initRuntime(). With EM_ASYNC_JS
- * tip-fs, a suspending ctor makes that export suspending → Safari
+ * qtclient-fs, a suspending ctor makes that export suspending → Safari
  * SuspendError. Table wraps do not cover wasmExports ctors.
  *
  * Portal patchJspiPromisingWrap rewrites the same sites for /play. This

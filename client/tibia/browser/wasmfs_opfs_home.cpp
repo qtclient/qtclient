@@ -42,7 +42,7 @@ bool mountHome(backend_t backend, const char* kind)
 
 bool portalTipAlreadyOnHome()
 {
-    // Portal either hydrated CIP_HOME into Module.FS or installed Module.tipFs
+    // Portal either hydrated CIP_HOME into Module.FS or installed Module.qtclientFs
     // (Qt file engine). Remounting /home/web_user would hide qtclient or race the
     // engine — skip when either flag / packages/ is present.
     return EM_ASM_INT({
@@ -77,7 +77,7 @@ bool tibiaMountWasmfsOpfsHome()
         return true;
     }
 
-    // Tip durability is Module.tipFs (JS OPFS Worker) + Qt file engine — not
+    // Tip durability is Module.qtclientFs (JS OPFS Worker) + Qt file engine — not
     // Emscripten's wasmfs_create_opfs_backend (needs JSPI on the main thread;
     // we do not link -sJSPI). Memory-backed home is only a fallback scaffold.
     backend_t memory = wasmfs_create_memory_backend();
@@ -85,7 +85,7 @@ bool tibiaMountWasmfsOpfsHome()
         emscripten_console_error("tibia.wasm: wasmfs_create_memory_backend failed");
         return false;
     }
-    return mountHome(memory, "memory (tip via Module.tipFs when present)");
+    return mountHome(memory, "memory (tip via Module.qtclientFs when present)");
 }
 
 #endif // __EMSCRIPTEN__

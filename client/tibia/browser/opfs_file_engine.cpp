@@ -17,7 +17,7 @@
 
 namespace {
 
-bool tipFsPathOwned(const QString& path)
+bool qtclientFsPathOwned(const QString& path)
 {
     return path == QLatin1String("/home/web_user")
         || path.startsWith(QLatin1String("/home/web_user/"))
@@ -27,31 +27,31 @@ bool tipFsPathOwned(const QString& path)
         || path.startsWith(QLatin1String("/data/"));
 }
 
-bool tipFsLive()
+bool qtclientFsLive()
 {
     return EM_ASM_INT({
-        var tip = (typeof Module !== 'undefined' && Module.tipFs) ? Module.tipFs
-                  : (typeof tipFs !== 'undefined' ? tipFs : null);
+        var tip = (typeof Module !== 'undefined' && Module.qtclientFs) ? Module.qtclientFs
+                  : (typeof qtclientFs !== 'undefined' ? qtclientFs : null);
         return tip && tip.ready ? 1 : 0;
     }) != 0;
 }
 
-// Unified Chrome + Safari tip-fs: EM_ASYNC_JS + JSPI (-sJSPI, wasm EH).
+// Unified Chrome + Safari qtclient-fs: EM_ASYNC_JS + JSPI (-sJSPI, wasm EH).
 // Safari needs a main-thread yield for createSyncAccessHandle; JSPI suspends
 // without Asyncify's Emval corruption on Chromium.
 
-EM_ASYNC_JS(int, tipFsOpenJs, (const char* path, int flags), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsOpenJs, (const char* path, int flags), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     var p = UTF8ToString(path);
     // Size is NOT cached on Module — concurrent JSPI opens would race.
-    // TipFsEngine::open queries tipFsStat (single double return) instead.
+    // QtclientFsEngine::open queries qtclientFsStat (single double return) instead.
     return tip.openAsync ? await tip.openAsync(p, flags) : tip.open(p, flags);
 });
 
-EM_ASYNC_JS(int, tipFsCloseJs, (int fd), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsCloseJs, (int fd), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     if (tip.closeAsync)
@@ -59,8 +59,8 @@ EM_ASYNC_JS(int, tipFsCloseJs, (int fd), {
     return tip.close(fd);
 });
 
-EM_ASYNC_JS(int, tipFsSeekJs, (int fd, int pos), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsSeekJs, (int fd, int pos), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     if (tip.seekAsync)
@@ -68,8 +68,8 @@ EM_ASYNC_JS(int, tipFsSeekJs, (int fd, int pos), {
     return tip.seek(fd, pos);
 });
 
-EM_ASYNC_JS(int, tipFsFlushJs, (int fd), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsFlushJs, (int fd), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     if (tip.flushAsync)
@@ -77,8 +77,8 @@ EM_ASYNC_JS(int, tipFsFlushJs, (int fd), {
     return tip.flush(fd);
 });
 
-EM_ASYNC_JS(int, tipFsTruncateJs, (int fd, int size), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsTruncateJs, (int fd, int size), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     if (tip.truncateAsync)
@@ -86,8 +86,8 @@ EM_ASYNC_JS(int, tipFsTruncateJs, (int fd, int size), {
     return tip.truncate(fd, size);
 });
 
-EM_ASYNC_JS(int, tipFsReadJs, (int fd, uint8_t* data, int maxlen), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsReadJs, (int fd, uint8_t* data, int maxlen), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     var dest = data;
@@ -102,8 +102,8 @@ EM_ASYNC_JS(int, tipFsReadJs, (int fd, uint8_t* data, int maxlen), {
     return n;
 });
 
-EM_ASYNC_JS(int, tipFsWriteJs, (int fd, const uint8_t* data, int len), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsWriteJs, (int fd, const uint8_t* data, int len), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     var heap = (typeof HEAPU8 !== 'undefined' && HEAPU8) ? HEAPU8
@@ -115,10 +115,10 @@ EM_ASYNC_JS(int, tipFsWriteJs, (int fd, const uint8_t* data, int len), {
 });
 
 // Single return value — no out-pointers (JSPI stack restore) and no Module
-// scratch fields (concurrent tipFsStat would race). Encoding:
+// scratch fields (concurrent qtclientFsStat would race). Encoding:
 // -1 = missing, -2 = directory, >=0 = file size (double mantissa safe to 2^53).
-EM_ASYNC_JS(double, tipFsStatJs, (const char* path), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(double, qtclientFsStatJs, (const char* path), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     var p = UTF8ToString(path);
@@ -130,8 +130,8 @@ EM_ASYNC_JS(double, tipFsStatJs, (const char* path), {
     return s.size;
 });
 
-EM_ASYNC_JS(int, tipFsMkdirJs, (const char* path, int parents), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsMkdirJs, (const char* path, int parents), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     var p = UTF8ToString(path);
@@ -140,8 +140,8 @@ EM_ASYNC_JS(int, tipFsMkdirJs, (const char* path, int parents), {
     return tip.mkdir(p, !!parents);
 });
 
-EM_ASYNC_JS(int, tipFsRmdirJs, (const char* path), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsRmdirJs, (const char* path), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     var p = UTF8ToString(path);
@@ -150,8 +150,8 @@ EM_ASYNC_JS(int, tipFsRmdirJs, (const char* path), {
     return tip.rmdir(p);
 });
 
-EM_ASYNC_JS(int, tipFsUnlinkJs, (const char* path), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsUnlinkJs, (const char* path), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     var p = UTF8ToString(path);
@@ -160,8 +160,8 @@ EM_ASYNC_JS(int, tipFsUnlinkJs, (const char* path), {
     return tip.unlink(p);
 });
 
-EM_ASYNC_JS(int, tipFsRenameJs, (const char* from, const char* to), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(int, qtclientFsRenameJs, (const char* from, const char* to), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return -1;
     var a = UTF8ToString(from);
@@ -171,8 +171,8 @@ EM_ASYNC_JS(int, tipFsRenameJs, (const char* from, const char* to), {
     return tip.rename(a, b);
 });
 
-EM_ASYNC_JS(char*, tipFsReaddirJs, (const char* path), {
-    var tip = Module.tipFs;
+EM_ASYNC_JS(char*, qtclientFsReaddirJs, (const char* path), {
+    var tip = Module.qtclientFs;
     if (!tip)
         return 0;
     var p = UTF8ToString(path);
@@ -185,39 +185,39 @@ EM_ASYNC_JS(char*, tipFsReaddirJs, (const char* path), {
     return ptr;
 });
 
-int tipFsOpen(const QByteArray& pathUtf8, int flags)
+int qtclientFsOpen(const QByteArray& pathUtf8, int flags)
 {
-    return tipFsOpenJs(pathUtf8.constData(), flags);
+    return qtclientFsOpenJs(pathUtf8.constData(), flags);
 }
 
-int tipFsClose(int fd)
+int qtclientFsClose(int fd)
 {
-    return tipFsCloseJs(fd);
+    return qtclientFsCloseJs(fd);
 }
 
-int tipFsSeek(int fd, int pos)
+int qtclientFsSeek(int fd, int pos)
 {
-    return tipFsSeekJs(fd, pos);
+    return qtclientFsSeekJs(fd, pos);
 }
 
-int tipFsFlush(int fd)
+int qtclientFsFlush(int fd)
 {
-    return tipFsFlushJs(fd);
+    return qtclientFsFlushJs(fd);
 }
 
-int tipFsTruncate(int fd, int size)
+int qtclientFsTruncate(int fd, int size)
 {
-    return tipFsTruncateJs(fd, size);
+    return qtclientFsTruncateJs(fd, size);
 }
 
-int tipFsRead(int fd, char* data, int maxlen)
+int qtclientFsRead(int fd, char* data, int maxlen)
 {
-    return tipFsReadJs(fd, reinterpret_cast<uint8_t*>(data), maxlen);
+    return qtclientFsReadJs(fd, reinterpret_cast<uint8_t*>(data), maxlen);
 }
 
-int tipFsWrite(int fd, const char* data, int len)
+int qtclientFsWrite(int fd, const char* data, int len)
 {
-    return tipFsWriteJs(fd, reinterpret_cast<const uint8_t*>(data), len);
+    return qtclientFsWriteJs(fd, reinterpret_cast<const uint8_t*>(data), len);
 }
 
 struct TipStat {
@@ -226,9 +226,9 @@ struct TipStat {
     qint64 size = 0;
 };
 
-TipStat tipFsStat(const QByteArray& pathUtf8)
+TipStat qtclientFsStat(const QByteArray& pathUtf8)
 {
-    const double code = tipFsStatJs(pathUtf8.constData());
+    const double code = qtclientFsStatJs(pathUtf8.constData());
     TipStat st;
     if (code < 0) {
         if (code == -2) {
@@ -244,29 +244,29 @@ TipStat tipFsStat(const QByteArray& pathUtf8)
     return st;
 }
 
-int tipFsMkdir(const QByteArray& pathUtf8, bool parents)
+int qtclientFsMkdir(const QByteArray& pathUtf8, bool parents)
 {
-    return tipFsMkdirJs(pathUtf8.constData(), parents ? 1 : 0);
+    return qtclientFsMkdirJs(pathUtf8.constData(), parents ? 1 : 0);
 }
 
-int tipFsRmdir(const QByteArray& pathUtf8)
+int qtclientFsRmdir(const QByteArray& pathUtf8)
 {
-    return tipFsRmdirJs(pathUtf8.constData());
+    return qtclientFsRmdirJs(pathUtf8.constData());
 }
 
-int tipFsUnlink(const QByteArray& pathUtf8)
+int qtclientFsUnlink(const QByteArray& pathUtf8)
 {
-    return tipFsUnlinkJs(pathUtf8.constData());
+    return qtclientFsUnlinkJs(pathUtf8.constData());
 }
 
-int tipFsRename(const QByteArray& fromUtf8, const QByteArray& toUtf8)
+int qtclientFsRename(const QByteArray& fromUtf8, const QByteArray& toUtf8)
 {
-    return tipFsRenameJs(fromUtf8.constData(), toUtf8.constData());
+    return qtclientFsRenameJs(fromUtf8.constData(), toUtf8.constData());
 }
 
-QStringList tipFsReaddir(const QByteArray& pathUtf8)
+QStringList qtclientFsReaddir(const QByteArray& pathUtf8)
 {
-    char* joined = tipFsReaddirJs(pathUtf8.constData());
+    char* joined = qtclientFsReaddirJs(pathUtf8.constData());
     QStringList out;
     if (!joined)
         return out;
@@ -280,7 +280,7 @@ QStringList tipFsReaddir(const QByteArray& pathUtf8)
 
 int openFlagsFrom(QIODevice::OpenMode mode)
 {
-    // Match tip-fs TipFsOpen bits (Create=16, Truncate=4, Append=8).
+    // Match qtclient-fs QtclientFsOpen bits (Create=16, Truncate=4, Append=8).
     int flags = 0;
     const bool rd = mode.testFlag(QIODevice::ReadOnly);
     const bool wr = mode.testFlag(QIODevice::WriteOnly);
@@ -299,10 +299,10 @@ int openFlagsFrom(QIODevice::OpenMode mode)
     return flags;
 }
 
-class TipFsEngine final : public QAbstractFileEngine
+class QtclientFsEngine final : public QAbstractFileEngine
 {
 public:
-    explicit TipFsEngine(const QString& file)
+    explicit QtclientFsEngine(const QString& file)
         : m_file(file)
     {
     }
@@ -314,15 +314,15 @@ public:
     {
         if (m_fd >= 0)
             close();
-        const int fd = tipFsOpen(m_file.toUtf8(), openFlagsFrom(openMode));
+        const int fd = qtclientFsOpen(m_file.toUtf8(), openFlagsFrom(openMode));
         if (fd < 0) {
-            setError(QFile::OpenError, QStringLiteral("tip-fs open failed"));
+            setError(QFile::OpenError, QStringLiteral("qtclient-fs open failed"));
             return false;
         }
         m_fd = fd;
         m_pos = 0;
-        // tipFsStat returns size as a single double — JSPI-safe, no Module scratch.
-        const TipStat st = tipFsStat(m_file.toUtf8());
+        // qtclientFsStat returns size as a single double — JSPI-safe, no Module scratch.
+        const TipStat st = qtclientFsStat(m_file.toUtf8());
         m_size = (st.exists && !st.isDir) ? st.size : 0;
         return true;
     }
@@ -331,12 +331,12 @@ public:
     {
         if (m_fd < 0)
             return true;
-        const int rc = tipFsClose(m_fd);
+        const int rc = qtclientFsClose(m_fd);
         m_fd = -1;
         m_pos = 0;
         m_size = -1;
         if (rc != 0) {
-            setError(QFile::UnspecifiedError, QStringLiteral("tip-fs close failed"));
+            setError(QFile::UnspecifiedError, QStringLiteral("qtclient-fs close failed"));
             return false;
         }
         return true;
@@ -346,18 +346,18 @@ public:
     {
         if (m_fd < 0)
             return false;
-        return tipFsFlush(m_fd) == 0;
+        return qtclientFsFlush(m_fd) == 0;
     }
 
     bool syncToDisk() override { return flush(); }
 
     qint64 size() const override
     {
-        // Prefer size captured at open — avoids a second tip-fs round-trip and
+        // Prefer size captured at open — avoids a second qtclient-fs round-trip and
         // keeps QFile::readAll length correct for multi-MB appearances/RCC.
         if (m_fd >= 0 && m_size >= 0)
             return m_size;
-        return tipFsStat(m_file.toUtf8()).size;
+        return qtclientFsStat(m_file.toUtf8()).size;
     }
 
     qint64 pos() const override { return m_pos; }
@@ -366,7 +366,7 @@ public:
     {
         if (m_fd < 0 || pos < 0)
             return false;
-        const int rc = tipFsSeek(m_fd, static_cast<int>(pos));
+        const int rc = qtclientFsSeek(m_fd, static_cast<int>(pos));
         if (rc < 0)
             return false;
         m_pos = rc;
@@ -379,14 +379,14 @@ public:
     {
         if (m_fd >= 0)
             close();
-        return tipFsUnlink(m_file.toUtf8()) == 0;
+        return qtclientFsUnlink(m_file.toUtf8()) == 0;
     }
 
     bool rename(const QString& newName) override
     {
         if (m_fd >= 0)
             close();
-        if (tipFsRename(m_file.toUtf8(), newName.toUtf8()) != 0)
+        if (qtclientFsRename(m_file.toUtf8(), newName.toUtf8()) != 0)
             return false;
         m_file = newName;
         return true;
@@ -395,19 +395,19 @@ public:
     bool mkdir(const QString& dirName, bool createParentDirectories,
                std::optional<QFile::Permissions> = std::nullopt) const override
     {
-        return tipFsMkdir(dirName.toUtf8(), createParentDirectories) == 0;
+        return qtclientFsMkdir(dirName.toUtf8(), createParentDirectories) == 0;
     }
 
     bool rmdir(const QString& dirName, bool) const override
     {
-        return tipFsRmdir(dirName.toUtf8()) == 0;
+        return qtclientFsRmdir(dirName.toUtf8()) == 0;
     }
 
     bool setSize(qint64 size) override
     {
         if (m_fd < 0)
             return false;
-        return tipFsTruncate(m_fd, static_cast<int>(size)) == 0;
+        return qtclientFsTruncate(m_fd, static_cast<int>(size)) == 0;
     }
 
     bool caseSensitive() const override { return true; }
@@ -420,7 +420,7 @@ public:
     FileFlags fileFlags(FileFlags type = FileInfoAll) const override
     {
         FileFlags ret;
-        const TipStat st = tipFsStat(m_file.toUtf8());
+        const TipStat st = qtclientFsStat(m_file.toUtf8());
         if (!st.exists)
             return ret;
         ret |= ExistsFlag | LocalDiskFlag;
@@ -463,7 +463,7 @@ public:
     QStringList entryList(QDir::Filters filters,
                           const QStringList& filterNames) const override
     {
-        QStringList names = tipFsReaddir(m_file.toUtf8());
+        QStringList names = qtclientFsReaddir(m_file.toUtf8());
         QStringList out;
         for (const QString& name : names) {
             if (!filterNames.isEmpty()) {
@@ -488,7 +488,7 @@ public:
         if (m_fd < 0 || maxlen <= 0)
             return -1;
         const int n =
-            tipFsRead(m_fd, data, static_cast<int>(qMin(maxlen, qint64(1 << 20))));
+            qtclientFsRead(m_fd, data, static_cast<int>(qMin(maxlen, qint64(1 << 20))));
         if (n < 0)
             return -1;
         m_pos += n;
@@ -503,7 +503,7 @@ public:
         while (written < len) {
             const int chunk =
                 static_cast<int>(qMin(len - written, qint64(1 << 20)));
-            const int n = tipFsWrite(m_fd, data + written, chunk);
+            const int n = qtclientFsWrite(m_fd, data + written, chunk);
             if (n <= 0)
                 return written > 0 ? written : -1;
             written += n;
@@ -519,45 +519,45 @@ private:
     qint64 m_size = -1;
 };
 
-class TipFsHandler final : public QAbstractFileEngineHandler
+class QtclientFsHandler final : public QAbstractFileEngineHandler
 {
 public:
     std::unique_ptr<QAbstractFileEngine> create(const QString& fileName) const override
     {
-        if (!tipFsLive())
+        if (!qtclientFsLive())
             return {};
         QString path = fileName;
         if (path.startsWith(QLatin1String("file:")))
             path = QUrl(path).toLocalFile();
-        if (!tipFsPathOwned(path))
+        if (!qtclientFsPathOwned(path))
             return {};
-        return std::make_unique<TipFsEngine>(path);
+        return std::make_unique<QtclientFsEngine>(path);
     }
 };
 
-TipFsHandler* g_handler = nullptr;
+QtclientFsHandler* g_handler = nullptr;
 
 } // namespace
 
-bool tibiaRegisterTipFsFileEngine()
+bool tibiaRegisterQtclientFsFileEngine()
 {
-    if (!tipFsLive())
+    if (!qtclientFsLive())
         return false;
     if (!g_handler)
-        g_handler = new TipFsHandler();
+        g_handler = new QtclientFsHandler();
     EM_ASM({ Module.qtclientFsEngine = 1; });
     return true;
 }
 
 // Assemble the whole file in JS (proven hash-correct), then one HEAP copy.
-// Chunked tipFsReadJs across JSPI suspends left multi-MB appearances/RCC
+// Chunked qtclientFsReadJs across JSPI suspends left multi-MB appearances/RCC
 // truncated or zeroed for QFile::readAll even when the worker bytes were fine.
 //
 // Layout: [uint32 LE length][payload…] — length travels with the pointer so
-// concurrent JSPI readFileAll calls cannot race a Module.__tipFsReadFileLen
-// scratch field (same class of bug tipFsStat had with Module out-fields).
-EM_ASYNC_JS(char*, tipFsReadFileAllJs, (const char* path), {
-    var tip = Module.tipFs;
+// concurrent JSPI readFileAll calls cannot race a Module.__qtclientFsReadFileLen
+// scratch field (same class of bug qtclientFsStat had with Module out-fields).
+EM_ASYNC_JS(char*, qtclientFsReadFileAllJs, (const char* path), {
+    var tip = Module.qtclientFs;
     if (!tip || !tip.readFileAsync)
         return 0;
     var p = UTF8ToString(path);
@@ -580,11 +580,11 @@ EM_ASYNC_JS(char*, tipFsReadFileAllJs, (const char* path), {
     return ptr;
 });
 
-QByteArray tibiaTipFsReadFile(const QString& path)
+QByteArray tibiaQtclientFsReadFile(const QString& path)
 {
-    if (!tipFsLive() || !tipFsPathOwned(path))
+    if (!qtclientFsLive() || !qtclientFsPathOwned(path))
         return {};
-    char* ptr = tipFsReadFileAllJs(path.toUtf8().constData());
+    char* ptr = qtclientFsReadFileAllJs(path.toUtf8().constData());
     if (!ptr)
         return {};
     const auto* bytes = reinterpret_cast<const unsigned char*>(ptr);

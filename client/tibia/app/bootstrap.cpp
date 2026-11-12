@@ -197,7 +197,7 @@ void applyBundledMoltenVkIcd()
 QString mountGraphicsResources(const QStringList& dirs)
 {
     // Buffer must outlive every qrc:/images reference. Path-based
-    // QResource::registerResource mmap needs a POSIX fd — tip-fs QFile has
+    // QResource::registerResource mmap needs a POSIX fd — qtclient-fs QFile has
     // none on wasm, so always QFile::readAll + registerResource(bytes).
     static QByteArray mountedBytes;
     if (!mountedBytes.isEmpty()) {
@@ -226,7 +226,7 @@ QString mountGraphicsResources(const QStringList& dirs)
         for (const QString& file : candidates) {
             QByteArray bytes;
 #if defined(__EMSCRIPTEN__)
-            bytes = tibiaTipFsReadFile(file);
+            bytes = tibiaQtclientFsReadFile(file);
 #endif
             if (bytes.isEmpty()) {
                 QFile qf(file);

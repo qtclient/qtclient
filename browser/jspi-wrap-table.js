@@ -1,7 +1,7 @@
 /**
- * JSPI tip-fs post-js (SoT with portal patchJspiPromisingWrap):
+ * JSPI qtclient-fs post-js (SoT with portal patchJspiPromisingWrap):
  *
- * Qt app.exec() stays on promising(main); tipFs EM_ASYNC_JS suspends there.
+ * Qt app.exec() stays on promising(main); qtclientFs EM_ASYNC_JS suspends there.
  * NEVER promising-wrap via getWasmTableEntry / force isAsyncExport≡true —
  * invoke_* and Qt EH call table entries as sync wasm funcs; a cached
  * promising wrapper returns a Promise instead of an i32 → OOB / null function

@@ -288,7 +288,7 @@ ensure_emsdk() {
   echo "[qt] emsdk $QT_EMSDK_VERSION at $EMSDK (emcc=$(command -v emcc))"
 }
 
-# True when installed wasm kit has native EH + JSPI (required for unified tip-fs).
+# True when installed wasm kit has native EH + JSPI (required for unified qtclient-fs).
 wasm_kit_has_jspi() {
   local prefix="$1" cfg
   cfg="$prefix/include/QtCore/qconfig.h"
@@ -310,7 +310,7 @@ build_wasm() {
     ensure_emsdk
     if ! wasm_kit_has_jspi "$prefix"; then
       echo "[qt] wasm kit at $prefix lacks wasm-exceptions/jspi" >&2
-      echo "[qt]   tip-fs needs JSPI; rebuild with: make qt WASM=1 BUILD=1" >&2
+      echo "[qt]   qtclient-fs needs JSPI; rebuild with: make qt WASM=1 BUILD=1" >&2
       exit 1
     fi
     echo "[qt] wasm (pull): $prefix"

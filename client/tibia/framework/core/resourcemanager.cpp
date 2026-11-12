@@ -59,12 +59,12 @@ std::string readBytes(const std::string& path)
 {
     const QString qpath = QString::fromStdString(path);
 #if defined(__EMSCRIPTEN__)
-    // Multi-MB tip assets (appearances.dat, …): one-shot tip-fs read. Chunked
+    // Multi-MB tip assets (appearances.dat, …): one-shot qtclient-fs read. Chunked
     // QFile::readAll across JSPI suspends corrupted payloads on Chrome/Safari.
     if (qpath.startsWith(QLatin1String("/home/web_user"))
         || qpath.startsWith(QLatin1String("/mods"))
         || qpath.startsWith(QLatin1String("/data"))) {
-        const QByteArray tipBytes = tibiaTipFsReadFile(qpath);
+        const QByteArray tipBytes = tibiaQtclientFsReadFile(qpath);
         if (!tipBytes.isEmpty())
             return std::string(tipBytes.constData(), static_cast<size_t>(tipBytes.size()));
     }
@@ -153,7 +153,7 @@ bool ResourceManager::addSearchPath(const std::string& path, const bool pushFron
 {
     namespace fs = std::filesystem;
     std::error_code ec;
-    // Browser tip lives on Module.tipFs (QFile) — std::filesystem only sees WasmFS
+    // Browser tip lives on Module.qtclientFs (QFile) — std::filesystem only sees WasmFS
     // memory and rejects real OPFS tip directories.
     const bool isDir = fs::is_directory(path, ec)
         || QDir(QString::fromStdString(path)).exists();

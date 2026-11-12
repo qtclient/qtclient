@@ -30,7 +30,7 @@ Compile only with qtclient **Qt: build**, or locally `make qt BUILD=1` /
 `qt-version.sh`. `ensure_emsdk` must not use a local named `EMSDK` (it would
 swallow `emsdk_env.sh`’s export and break `-platform wasm-emscripten`).
 
-Wasm tip-fs (JSPI) needs the kit built with `-feature-wasm-exceptions` and
+Wasm qtclient-fs (JSPI) needs the kit built with `-feature-wasm-exceptions` and
 `-feature-wasm-jspi`. Local SJLJ kits are rebuilt via `make qt WASM=1 BUILD=1`
 (wipes wasm CMakeCache when those features are off). Pull fails if the kit
 lacks them — publish a JSPI kit with `PUBLISH=1` after building.

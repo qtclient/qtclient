@@ -107,7 +107,7 @@ endif()
 if(EMSCRIPTEN)
   set_target_properties(launcher PROPERTIES
     QT_WASM_EXTRA_EXPORTED_METHODS "ENV,FS")
-  # Same tip-fs Qt engine as tibia.wasm — soft QFile → Module.tipFs → OPFS.
+  # Same qtclient-fs Qt engine as tibia.wasm — soft QFile → Module.qtclientFs → OPFS.
   # JSPI + wasm EH (matches Qt -feature-wasm-exceptions / -feature-wasm-jspi).
   target_sources(launcher PRIVATE
     "${TIBIA_ROOT}/client/tibia/browser/opfs_file_engine.cpp"

@@ -306,8 +306,8 @@ bool resourcesDirUsable(const QString& cand)
     // Catalog only — never accept a bare existing dir. On wasm, viaApp
     // `applicationDirPath../Resources` can exist as an empty MEMFS folder
     // and would win over qtclient AppData, yielding empty catalog / failed assets.
-    // tip-fs QDir::exists on dirs is also flaky on Safari OPFS; the file probe
-    // goes through tipFs QFileInfo.
+    // qtclient-fs QDir::exists on dirs is also flaky on Safari OPFS; the file probe
+    // goes through qtclientFs QFileInfo.
     if (catalogAt(QDir(cand).filePath(QStringLiteral("assets"))))
         return true;
     const std::string abs = cand.toStdString();
@@ -356,7 +356,7 @@ QString resolveCipResourcesDir()
 #if defined(__EMSCRIPTEN__)
     // Portal CIP_APPDATA is IdleOT/IdleOT; stock Qt defaults are Tibia/Tibia until
     // pack identity applies (or when identity is missing). Probe both absolute
-    // roots so /play tip-fs assets resolve either way.
+    // roots so /play qtclient-fs assets resolve either way.
     const char* wasmAppDataRoots[] = {
         "/home/web_user/.local/share/IdleOT/IdleOT",
         "/home/web_user/.local/share/Tibia/Tibia",

@@ -48,10 +48,10 @@ QString cdnBase()
 
 QUrl tipUrl()
 {
-    // C6: QTCLIENT_URL; accept legacy QTCLIENT_TIP_URL for one release.
+    // C6: QTCLIENT_URL; accept legacy QTCLIENT_URL for one release.
     QString tip = qEnvironmentVariable("QTCLIENT_URL");
     if (tip.isEmpty())
-        tip = qEnvironmentVariable("QTCLIENT_TIP_URL");
+        tip = qEnvironmentVariable("QTCLIENT_URL");
     if (!tip.isEmpty())
         return QUrl(tip);
 
@@ -134,8 +134,8 @@ void mountWebHome()
 int main(int argc, char* argv[])
 {
 #ifdef __EMSCRIPTEN__
-    // Portal installs Module.tipFs before callMain — register before any tip QFile.
-    tibiaRegisterTipFsFileEngine();
+    // Portal installs Module.qtclientFs before callMain — register before any tip QFile.
+    tibiaRegisterQtclientFsFileEngine();
 #endif
     QApplication app(argc, argv);
     // Tip mods/<id>/brand.json (unless --no-mods). qtclient CipSoft defaults otherwise.

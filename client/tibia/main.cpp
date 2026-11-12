@@ -389,9 +389,9 @@ int main(int argc, char** argv)
     tibia::app::installCrashLog();
 
 #if defined(__EMSCRIPTEN__)
-    // Tip AppData: Module.tipFs (portal JS OPFS Worker) via Qt file engine when
+    // Tip AppData: Module.qtclientFs (portal JS OPFS Worker) via Qt file engine when
     // live; WasmFS only scaffolds /home/web_user (skip remount if portal ready).
-    tibiaRegisterTipFsFileEngine();
+    tibiaRegisterQtclientFsFileEngine();
     if (!tibiaMountWasmfsOpfsHome())
         qFatal("tibia.wasm: failed to prepare /home/web_user");
 #endif

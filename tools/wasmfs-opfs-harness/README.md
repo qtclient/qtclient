@@ -4,7 +4,7 @@ Smoke binary for stock Emscripten WasmFS OPFS: `-sWASMFS -pthread
 -sPROXY_TO_PTHREAD` with `wasmfs_create_opfs_backend()` at `/home/web_user`.
 
 **Product `/play` tip does not use this path.** tibia.wasm keeps main-thread Qt
-(no PROXY / no JSPI); durable tip is portal `Module.tipFs` (OPFS Worker + SAB)
+(no PROXY / no JSPI); durable tip is portal `Module.qtclientFs` (OPFS Worker + SAB)
 plus the Qt `QAbstractFileEngine` in `client/tibia/browser/opfs_file_engine.cpp`.
 
 ## Build / serve
