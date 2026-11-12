@@ -77,7 +77,7 @@ public:
     /// Current aware-range cuboid (central ± AwareRange), for storedVolumeHasChanged.
     TShearedWorldMapCuboid storedVolume() const;
 
-    /// Map observer + dynamic overlay peels (tip-bridge dual-write).
+    /// Map observer + dynamic overlay peels (qtclient-bridge dual-write).
     void notifyWindowChanged(bool fullDescription) const;
     void notifyTileUpdate(const Position& position, const std::shared_ptr<class Thing>& thing,
                           tibia::client::Operation operation);

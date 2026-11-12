@@ -163,7 +163,7 @@ TProficiencyStorage::TProficiencyStorage(QObject* parent)
         Q_EMIT proficiencyXPChanged();
         Q_EMIT currentProficiencyProgressChanged();
         Q_EMIT unspentPerkChanged();
-        // CipSoft moc: notify listeners the offers are gone. Do not emit tip
+        // CipSoft moc: notify listeners the offers are gone. Do not emit qtclient
         // reshapeOffersChanged — that alias opens WeaponProficiencyReshapeDialog.
         Q_EMIT shapedPerkReshapeOffersChanged();
     });

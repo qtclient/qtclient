@@ -22,7 +22,7 @@
 #include <string_view>
 #include <vector>
 
-// Classic nested braces (readable; matches tip style after compound-ns cleanup).
+// Classic nested braces (readable; matches qtclient style after compound-ns cleanup).
 namespace tibia {
 namespace creatures {
 class TCreature;
@@ -191,7 +191,7 @@ tibia::client::OperatingSystem_t clientOs();
 
 /// Feature flags / client & protocol revision peels. `Game` remains SoT until a
 /// dedicated session storage owns wire gates (peels read through here only).
-/// CIP tip wire gate (feature flags on the private hub).
+/// CIP client wire gate (feature flags on the private hub).
 bool cipFeature(const tibia::client::GameFeature feature);
 
 
@@ -207,7 +207,7 @@ void setProtocolVersion(const uint16_t version);
 void setClientRevision(const uint16_t version);
 
 
-/// Client bootstrap — `Client::init` / `terminate` (tip-bridge hub lifetime).
+/// Client bootstrap — `Client::init` / `terminate` (qtclient-bridge hub lifetime).
 void initGameHub();
 void terminateGameHub();
 
@@ -508,7 +508,7 @@ void updateTeamFinderMember(const uint32_t memberId, const uint8_t status);
 
 /// CIP `game::IGameSession` moc surface (contract signals + tip-safe skipped
 /// args + TGameSessionBase slot floor). Declared after free-function peels so
-/// tip scanners do not attribute those decls to this class. Live login/world
+/// qtclient scanners do not attribute those decls to this class. Live login/world
 /// still rides `TGameserverGameSession` / `g_game`; this qtclient twin re-emits the
 /// same notify bus (no `loginWorld` / disconnect ownership). Frame prep stays
 /// on `TGameClient::tick` / `TNextFrameUpdater` — `onPrepareNextFrameToRender`
@@ -525,7 +525,7 @@ public Q_SLOTS:
     void onPrepareNextFrameToRender(qint64 nextFramePredictedTimestampMs);
 
     /// CIP `TGameSessionBase` slots (skipped/weak types → tip-safe). Fan into
-    /// tip signals / `g_game` peels; do not own login.
+    /// qtclient signals / `g_game` peels; do not own login.
     void onPlayerCreatureAddedToCreatureStorage();
     void onSettingHintsFromServerChanged(bool canChangePvPFrameSetting);
     void onMessageAtEndOfLoginRampUpReceived();
@@ -533,7 +533,7 @@ public Q_SLOTS:
     void onCharacterConfigurationLoaded();
 
 Q_SIGNALS:
-    /// CIP skipped `weak_ptr<TCreature>` — tip emits name-only floor.
+    /// CIP skipped `weak_ptr<TCreature>` — qtclient emits name-only floor.
     void playerCreatureAddedToCreatureStorage();
     /// CIP skipped `ESessionEndInformation` → `int` (same as TGameserverGameSession).
     void sessionEndInformation(int Reason);
@@ -566,7 +566,7 @@ private:
     LiveFans* m_liveFans = nullptr;
 };
 
-/// Process-lifetime tip IGameSession (moc/RTTI keep). Not the live GameClient session.
+/// Process-lifetime qtclient IGameSession (moc/RTTI keep). Not the live GameClient session.
 IGameSession* tipIGameSession();
 
 } // namespace game

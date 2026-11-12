@@ -58,7 +58,7 @@ public:
     bool loggingSuppressed() const { return m_dialogVisible; }
 
 public Q_SLOTS:
-    /// CIP moc private slot — tip public for stack wiring.
+    /// CIP moc private slot — qtclient public for stack wiring.
     void onDialogVisibleChanged(bool Visible);
 
 private:

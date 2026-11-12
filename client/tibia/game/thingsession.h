@@ -1,6 +1,6 @@
 #pragma once
 
-/// CIP-neutral pack helpers over tip `g_things` — name / data peels only.
+/// CIP-neutral pack helpers over qtclient `g_things` — name / data peels only.
 /// Implementation includes `things.h` out-of-line; this header stays free of ThingTypePtr.
 
 #include <cstdint>

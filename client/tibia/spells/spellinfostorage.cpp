@@ -50,9 +50,9 @@ TSpellInfoStorage* TSpellInfoStorage::instance()
     return storage;
 }
 
-/// CIP ships ``:/spells/<file>`` in the client binary. Our tip / local extract
+/// CIP ships ``:/spells/<file>`` in the client binary. Our qtclient / local extract
 /// places the same files next to CIP assets (`data/assets/…` or
-/// ``Resources/assets/…``). Browser /play hydrates tip AppData
+/// ``Resources/assets/…``). Browser /play hydrates qtclient AppData
 /// ``packages/<IdleOT|Tibia>.app/Contents/Resources/assets/``.
 QString spellsAssetPath(const QString& fileName)
 {

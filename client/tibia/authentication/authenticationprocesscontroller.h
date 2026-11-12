@@ -19,7 +19,7 @@ enum ELoginConfirmationMethod : int
 };
 
 /// Account-login state machine surface (CIP: TAuthenticationProcessController,
-/// contract superclass QStateMachine — tip Qt build has no StateMachine module,
+/// contract superclass QStateMachine — qtclient Qt build has no StateMachine module,
 /// so the moc API lives on QObject). Live account login stays on
 /// client::TGameClient + TLoginRequestUploader; bindLoginUploader() overlays
 /// CIP slot names onto that uploader without replacing its GameClient sinks.
@@ -88,7 +88,7 @@ public Q_SLOTS:
     void onSolveCloudflareChallengeStateEntered();
     void onShowCloudflareChallengeFailedStateEntered();
     void onCloudflareSolverSuccess(tibia::authentication::TCloudflareChallengeClearanceInfo CloudflareClearanceInfo);
-    /// CIP moc handleGameAction(shared_ptr<IGameAction>) — tip skips the
+    /// CIP moc handleGameAction(shared_ptr<IGameAction>) — qtclient skips the
     /// shared_ptr arg (same pattern as friends search page).
     void handleGameAction();
 

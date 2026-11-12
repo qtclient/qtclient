@@ -65,7 +65,7 @@ public:
     void centerAtSubfieldCoordinateDelayed(cip::tibia::qmlcomponents::TWorldMapSubfieldCoordinateQmlType* pSubfieldCoordinate) override;
 
 Q_SIGNALS:
-    /// CIP NOTIFY deepen — tip owns emit sites on setScale / place / center.
+    /// CIP NOTIFY deepen — qtclient owns emit sites on setScale / place / center.
     void cameraViewportChanged();
     /// CIP renderer::TWorldMapCamera::geometryIntialized (CIP spelling) — first sized viewport.
     void geometryIntialized();

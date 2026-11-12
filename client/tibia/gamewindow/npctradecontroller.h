@@ -96,7 +96,7 @@ public Q_SLOTS:
     void onNPCTradeOptionsChanged() override;
 
 Q_SIGNALS:
-    /// CIP signal — tip owns emit (NpcTrade selection + amount refresh).
+    /// CIP signal — qtclient owns emit (NpcTrade selection + amount refresh).
     void filterOrSortingChanged();
 
 protected:

@@ -308,7 +308,7 @@ QStringList dataDirs(const QString& explicitDir)
     };
     // Tip package (portal OPFS / desktop AppData): RCC + fonts live under
     // Contents/Resources/assets, not ./data. Stock host looks for Tibia.app;
-    // IdleOT tip directoryname is IdleOT.app — probe both (same as gamecore).
+    // IdleOT qtclient directoryname is IdleOT.app — probe both (same as gamecore).
     auto appendPackageDirs = [&dirs](const QString& appData) {
         if (appData.isEmpty())
             return;
@@ -326,7 +326,7 @@ QStringList dataDirs(const QString& explicitDir)
     };
     appendPackageDirs(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
 #if defined(__EMSCRIPTEN__)
-    // Match gamecore: portal tip is under IdleOT/IdleOT even when Qt defaults
+    // Match gamecore: portal qtclient is under IdleOT/IdleOT even when Qt defaults
     // still report Tibia/Tibia AppDataLocation.
     appendPackageDirs(QStringLiteral("/home/web_user/.local/share/IdleOT/IdleOT"));
     appendPackageDirs(QStringLiteral("/home/web_user/.local/share/Tibia/Tibia"));
@@ -410,7 +410,7 @@ int main(int argc, char** argv)
 
     QGuiApplication application(argc, argv);
     app::applyBundledMoltenVkIcd();
-    // Runtime packs after QApp. --no-mods → CipSoft; else all tip mods/<id>.
+    // Runtime packs after QApp. --no-mods → CipSoft; else all qtclient mods/<id>.
     bool skipMods = false;
     for (int i = 1; i < argc; ++i) {
         if (qstrcmp(argv[i], "--no-mods") == 0)
@@ -450,7 +450,7 @@ int main(int argc, char** argv)
     parser.addOption({ QStringLiteral("replay"), QStringLiteral("Play a recorded game session instead of logging in."), QStringLiteral("file") });
     parser.addOption({ QStringLiteral("screenshot-delay"), QStringLiteral("Milliseconds after entering the world before --screenshot (default 3000)."), QStringLiteral("ms") });
     parser.addOption({ QStringLiteral("no-mods"), QStringLiteral("Do not load mods/<id> packs (stock qtclient).") });
-    // CIP tip Play: launcher asserts the package/assets stamps already match.
+    // CIP client Play: launcher asserts the package/assets stamps already match.
     parser.addOption({ QStringLiteral("package-is-up-to-date"),
                        QStringLiteral("Tip Play: package and assets stamps already match (CIP).") });
     // Launcher settings may carry arguments of the Lua client; they are not fatal.

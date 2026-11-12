@@ -112,7 +112,7 @@ void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint
         msg->addU8(challengeRandom);
     }
 
-    // qtclient tip: no pack login extension hook (OTC getLoginExtendedData retired).
+    // qtclient qtclient: no pack login extension hook (OTC getLoginExtendedData retired).
 
     // complete the bytes for rsa encryption with zeros
     const int paddingBytes = tibia::network::rsaBlockSize() - (msg->getMessageSize() - offset);

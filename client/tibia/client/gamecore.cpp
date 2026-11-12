@@ -59,8 +59,8 @@ void finishExit()
         QCoreApplication::quit();
 }
 
-/// CIP tip wire features for `version` (historical CIP revision table).
-/// qtclient tip + Crystal both speak this layout — qtclient does not bend to OTC.
+/// CIP client wire features for `version` (historical CIP revision table).
+/// qtclient qtclient + Crystal both speak this layout — qtclient does not bend to OTC.
 void enableFeatures(const int version)
 {
     using namespace tibia::client;
@@ -145,7 +145,7 @@ void enableFeatures(const int version)
             off(f);
     }
 
-    // qtclient tip = CipSoft wire only. OTCR extras (GameItemShader,
+    // qtclient qtclient = CipSoft wire only. OTCR extras (GameItemShader,
     // GameCreatureShader, GameCreatureAttachedEffect,
     // GameWingsAurasEffectsShader) belong in the product pack pack via
     // mods::setFeatureExtrasHook — and require CLIENTOS_OTCR_* so Crystal
@@ -192,8 +192,8 @@ bool init(const QString& argv0, const QString& workDir)
     tibia::files::data().setupUserWriteDir("tibia/");
     tibia::network::installGameServerConnection();
 
-    // Exit is tip schedule / Qt (SIGINT→finishExit, forceExitHandler) — not OTC g_app/onExit.
-    // CIP tip: re-apply wire features on each world enter (typed notify).
+    // Exit is qtclient schedule / Qt (SIGINT→finishExit, forceExitHandler) — not OTC g_app/onExit.
+    // CIP client: re-apply wire features on each world enter (typed notify).
     gameStartConnection = QObject::connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, [] {
         if (const int version = tibia::game::clientRevision(); version > 0)
             enableFeatures(version);
@@ -240,7 +240,7 @@ void poll()
 {
     if (!running)
         return;
-    // Main/Qt tick — tip renderer drains deferred OTC Texture GL deletes here.
+    // Main/Qt tick — qtclient renderer drains deferred OTC Texture GL deletes here.
     tibia::renderer::flushTextureDeletions();
     if (exitSignaled) {
         exitSignaled = 0;
@@ -305,7 +305,7 @@ bool resourcesDirUsable(const QString& cand)
         return false;
     // Catalog only — never accept a bare existing dir. On wasm, viaApp
     // `applicationDirPath../Resources` can exist as an empty MEMFS folder
-    // and would win over tip AppData, yielding empty catalog / failed assets.
+    // and would win over qtclient AppData, yielding empty catalog / failed assets.
     // tip-fs QDir::exists on dirs is also flaky on Safari OPFS; the file probe
     // goes through tipFs QFileInfo.
     if (catalogAt(QDir(cand).filePath(QStringLiteral("assets"))))
@@ -318,7 +318,7 @@ bool tryPackageResources(const QString& appData, QString* out)
 {
     if (appData.isEmpty() || !out)
         return false;
-    // Stock host compiles TIBIA_CLIENT_PACKAGE_DIR=Tibia.app; IdleOT tip
+    // Stock host compiles TIBIA_CLIENT_PACKAGE_DIR=Tibia.app; IdleOT qtclient
     // directoryname is IdleOT.app (portal PACKAGE_CLIENT). Probe both.
     const char* packageNames[] = {
         TIBIA_CLIENT_PACKAGE_DIR,
@@ -329,7 +329,7 @@ bool tryPackageResources(const QString& appData, QString* out)
             QLatin1String("packages/") + QLatin1String(packageName)
             + QLatin1String("/Contents/Resources"));
         if (resourcesDirUsable(tip)) {
-            *out = QDir(tip).absolutePath;
+            *out = QDir(qtclient).absolutePath;
             return true;
         }
     }
@@ -339,7 +339,7 @@ bool tryPackageResources(const QString& appData, QString* out)
 QString resolveCipResourcesDir()
 {
     // One Cip Resources layout everywhere — only the install root differs:
-    // bundled app, AppData tip package, or monorepo extract (`data/` == Resources).
+    // bundled app, AppData qtclient package, or monorepo extract (`data/` == Resources).
     const QString appDir = QCoreApplication::applicationDirPath();
     if (!appDir.isEmpty()) {
         const QString viaApp = QDir(QDir(appDir).absoluteFilePath(QStringLiteral("..")))

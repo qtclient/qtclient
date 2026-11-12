@@ -29,7 +29,7 @@ namespace client {
     enum OperatingSystem_t : uint16_t
     {
         CLIENTOS_NONE = 0,
-        // CipSoft OS ids (Crystal CLIENTOS_NEW_*). qtclient tip default in Game::getOs.
+        // CipSoft OS ids (Crystal CLIENTOS_NEW_*). qtclient qtclient default in Game::getOs.
         CLIENTOS_TIBIA_NEW_LINUX = 4,
         CLIENTOS_TIBIA_NEW_WINDOWS = 5,
         CLIENTOS_TIBIA_NEW_MAC = 6,

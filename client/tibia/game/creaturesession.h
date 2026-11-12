@@ -1,6 +1,6 @@
 #pragma once
 
-/// CIP-neutral pack helpers over tip creature storage — spectator / row peels only.
+/// CIP-neutral pack helpers over qtclient creature storage — spectator / row peels only.
 /// Implementation includes creature storage out-of-line; this header stays free of CreaturePtr.
 
 #include "mapsession.h"

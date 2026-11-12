@@ -8,7 +8,7 @@ struct PackHostWire;
 
 namespace tibia::mods {
 
-/// Fills the process-global C ABI table from tip `PackHostWire` (call before `bootstrapAll`).
+/// Fills the process-global C ABI table from qtclient `PackHostWire` (call before `bootstrapAll`).
 void fillPackHostAbiFromPackHostWire(qtclient::PackHostWire* wire);
 
 const QtClientPackHostApiV1* packHostAbiTable();

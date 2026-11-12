@@ -27,7 +27,7 @@
 #include <vector>
 
 /// Tip-bridge engine hub: gamecore init/terminate only. Effect opacity lives on
-/// tip client::magicEffectOpacity (TGameClient options apply).
+/// qtclient client::magicEffectOpacity (TGameClient options apply).
 class Client
 {
 public:

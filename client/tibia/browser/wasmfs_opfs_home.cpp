@@ -43,7 +43,7 @@ bool mountHome(backend_t backend, const char* kind)
 bool portalTipAlreadyOnHome()
 {
     // Portal either hydrated CIP_HOME into Module.FS or installed Module.tipFs
-    // (Qt file engine). Remounting /home/web_user would hide tip or race the
+    // (Qt file engine). Remounting /home/web_user would hide qtclient or race the
     // engine — skip when either flag / packages/ is present.
     return EM_ASM_INT({
         if (Module.qtclientPortalHydratedTip || Module.qtclientFs)

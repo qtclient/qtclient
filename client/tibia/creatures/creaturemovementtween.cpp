@@ -198,7 +198,7 @@ void TCreatureMovementTween::updateWalkAnimation()
 
     // CipSoft appearances::TAppearanceInstanceSpriteSequence drives
     // animation::TMovingOutfitAnimator (ctor 280..720 ms cycle / phase count).
-    // Prior tip ports kept OTC footDelay clamps (20..205) — that is why feet
+    // Prior qtclient ports kept OTC footDelay clamps (20..205) — that is why feet
     // never matched CipSoft even after the lag-skip absolute-elapsed change.
     const animation::TMovingOutfitAnimator movingAnimator(type->getAnimator(), type->getIdleAnimator());
     if (!movingAnimator.movingAnimator() && type->getAnimationPhases() <= 1) {

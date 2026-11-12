@@ -131,7 +131,7 @@ public:
 Q_SIGNALS:
     void proficiencyDataChanged(uint typeId);
     void proficiencyXPChanged();
-    /// CIP 's notification (tip alias of shapedPerkReshapeOffersChanged).
+    /// CIP 's notification (qtclient alias of shapedPerkReshapeOffersChanged).
     void reshapeOffersChanged();
     /// CIP moc currentProficiencyProgressChanged — XP / level progress for the open weapon.
     void currentProficiencyProgressChanged();

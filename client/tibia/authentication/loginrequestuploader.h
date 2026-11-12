@@ -85,7 +85,7 @@ public:
     QUrl lastMitigatedUrl() const { return m_lastMitigatedUrl; }
 
     void onFinished(bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD) override;
-    /// CIP slot (skipped in cipgen for QNetworkReply*/std::string); tip invokes it from post().
+    /// CIP slot (skipped in cipgen for QNetworkReply*/std::string); qtclient invokes it from post().
     void onCloudflareMitigated(QNetworkReply* Reply, const std::string& MitigatedHeaderValue);
 
     static LoginResult parse(const QJsonObject& reply);

@@ -44,7 +44,7 @@ int SpriteSheet::getSpritesPerSheet() const
 namespace tibia::assets {
 
 namespace {
-/// TU-private catalog — not a tip `g_*` hub; callers use `sprites()`.
+/// TU-private catalog — not a qtclient `g_*` hub; callers use `sprites()`.
 SpriteStore spriteStore;
 }
 

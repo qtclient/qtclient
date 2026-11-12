@@ -217,7 +217,7 @@ void TFriendsAccountSearchPageController::onBackButtonPressed()
 
 void TFriendsAccountSearchPageController::handleGameAction()
 {
-    // CIP moc handleGameAction(shared_ptr) — tip action path is the dialog controller.
+    // CIP moc handleGameAction(shared_ptr) — qtclient action path is the dialog controller.
 }
 
 void TFriendsAccountSearchPageController::onErrorLoadingCharacter()

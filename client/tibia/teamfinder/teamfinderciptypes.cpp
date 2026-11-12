@@ -93,7 +93,7 @@ void TTeamStartTimeManager::refreshStrings()
 {
     m_localDateString = m_when.date().toString(Qt::ISODate);
     m_localTimeString = m_when.time().toString(QStringLiteral("HH:mm"));
-    // Stock tip: server clock mirrors local until a live offset is wired.
+    // Stock qtclient: server clock mirrors local until a live offset is wired.
     m_serverTimeString = m_localTimeString;
 }
 

@@ -176,7 +176,7 @@ void TAuthenticationProcessController::onShowSurveyInvitationStateEntered()
 
 void TAuthenticationProcessController::onShowClientOutOfDateStateEntered()
 {
-    // CIP out-of-date path ends in patch/quit; tip GameClient still fails toast.
+    // CIP out-of-date path ends in patch/quit; qtclient GameClient still fails toast.
     Q_EMIT quitAndPatchClient();
 }
 
@@ -187,7 +187,7 @@ void TAuthenticationProcessController::onBeginPatchClientStateEntered()
 
 void TAuthenticationProcessController::onRequestNewEMailCode()
 {
-    // CIP → TEmailCodeRequestUploader; tip has no live email-code path yet.
+    // CIP → TEmailCodeRequestUploader; qtclient has no live email-code path yet.
 }
 
 void TAuthenticationProcessController::onRequestNewLoginConfirmationCode(const ELoginConfirmationMethod Method)
@@ -247,7 +247,7 @@ void TAuthenticationProcessController::onPlayerDataChanged()
 
 void TAuthenticationProcessController::onSolveCloudflareChallengeStateEntered()
 {
-    // CIP advances into the CloudflareChallengeDialog state; live tip solves
+    // CIP advances into the CloudflareChallengeDialog state; live qtclient solves
     // via TGameClient + TCloudflareChallengeController.
     Q_EMIT advanceStateMachine();
 }

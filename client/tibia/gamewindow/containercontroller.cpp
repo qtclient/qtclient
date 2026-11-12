@@ -87,7 +87,7 @@ TContainerController::TContainerController(const int containerId, QQuickItem* ga
 
     m_propertyTimer.setSingleShot(true);
     m_propertyTimer.setInterval(0);
-    // FINAL cip_gen Q_PROPERTY NOTIFY — emit the base signal (no tip redeclare).
+    // FINAL cip_gen Q_PROPERTY NOTIFY — emit the base signal (no qtclient redeclare).
     connect(&m_propertyTimer, &QTimer::timeout, this,
             &cip::tibia::gamewindow::TContainerController::containerPropertyChanged);
 
@@ -175,7 +175,7 @@ void TContainerController::startContentSizeChangedTimer() { widget()->startConte
 
 void TContainerController::onShowConfigurationMenu()
 {
-    // CIP opens view-filter / manual-sort entries; tip protocol has none yet.
+    // CIP opens view-filter / manual-sort entries; qtclient protocol has none yet.
 }
 
 void TContainerController::onWidgetQuickItemDestroyed() {}

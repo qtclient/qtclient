@@ -1,7 +1,7 @@
 #pragma once
 
 // World-time + session-end listener hub (CIP ambient clock / game-end hooks).
-// Lives under game/ (namespace tibia::world); not the retired world/ tip tree.
+// Lives under game/ (namespace tibia::world); not the retired world/ qtclient tree.
 
 #include <cstdint>
 #include <functional>

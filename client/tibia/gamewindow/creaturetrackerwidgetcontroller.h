@@ -97,12 +97,12 @@ public Q_SLOTS:
     void startContentSizeChangedTimer();
 
 Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — tip NOTIFY deepen.
+    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
     void contentSizeChanged();
     void positionInSidebarChanged();
     void sidebarIdChanged();
     void widgetClosed();
-    /// CIP chrome (shared_ptr / TSidebarID skipped) — tip NOTIFY deepen; drag/move
+    /// CIP chrome (shared_ptr / TSidebarID skipped) — qtclient NOTIFY deepen; drag/move
     /// forwarded via TSidebarWidget dynamic emit.
     void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);

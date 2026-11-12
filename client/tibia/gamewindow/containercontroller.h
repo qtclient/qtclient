@@ -24,7 +24,7 @@ namespace gamewindow {
 
 /// One open container's sidebar widget, container.qml (CIP:
 /// TContainerController, vtable). View-filter / manual-sort /
-/// "more pages" stay hidden until tip protocol carries those flags; depot
+/// "more pages" stay hidden until qtclient protocol carries those flags; depot
 /// search visibility comes from the open-container search-icon byte.
 class TContainerController final : public TSidebarWidgetController<cip::tibia::gamewindow::TContainerController>
 {
@@ -84,7 +84,7 @@ public Q_SLOTS:
     void saveWidgetOptions() override;
     /// CIP : a closed container forgets its size.
     void removeThisContainersOptions() override;
-    /// CIP config menu — no view-filter / sort options in tip protocol.
+    /// CIP config menu — no view-filter / sort options in qtclient protocol.
     void onShowConfigurationMenu() override;
     void onRequestMoveToSidebar(int TargetSidebar) override;
     void onSetDragActive(bool Active) override;
@@ -93,17 +93,17 @@ public Q_SLOTS:
     void startContentSizeChangedTimer();
 
 Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — tip NOTIFY deepen.
+    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
     void contentSizeChanged();
     void positionInSidebarChanged();
     void sidebarIdChanged();
     void widgetClosed();
-    /// CIP sidebar chrome (drag/move) — tip redeclare; forwarded from chrome slots.
+    /// CIP sidebar chrome (drag/move) — qtclient redeclare; forwarded from chrome slots.
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
-    /// CIP moc signal (shared_ptr arg skipped); tip name parity — live split via SHOW_SPLIT_STACK_DIALOG.
+    /// CIP moc signal (shared_ptr arg skipped); qtclient name parity — live split via SHOW_SPLIT_STACK_DIALOG.
     void showSplitStackDialog();
 
 private Q_SLOTS:

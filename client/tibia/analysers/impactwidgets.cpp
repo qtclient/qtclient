@@ -220,7 +220,7 @@ void TImpactWidgetController::onRequestClose() { Q_EMIT widgetClosed(); }
 void TImpactWidgetController::onRequestMoveToSidebar(const int TargetSidebar)
 {
     widget()->requestMoveToSidebar(TargetSidebar);
-    // Tip deepen: TSidebarWidget emits its own drag/move; also fire tip moc for SoftHook.
+    // Tip deepen: TSidebarWidget emits its own drag/move; also fire qtclient moc for SoftHook.
     if (TargetSidebar < 0)
         return;
     Q_EMIT widgetDragChanged(widget()->parentSidebarId(), false);

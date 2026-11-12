@@ -138,7 +138,7 @@ void TMinimapTileStorage::onLoadingSucceeded(const TMinimapTilePtr& loaded)
 
 void TMinimapTileStorage::onLoadingFailed(const Position& id)
 {
-    // Mark loaded (empty) so missing tip tiles do not spin forever. Wasm
+    // Mark loaded (empty) so missing qtclient tiles do not spin forever. Wasm
     // demand-page retries once inside TMinimapDiskIOAsync::loadTile before this.
     if (const auto it = m_tiles.find(coordinateKey(id)); it != m_tiles.end())
         it->second->setLoaded(true);

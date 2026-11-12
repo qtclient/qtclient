@@ -2,7 +2,7 @@
 
 #include "mods/registry.h"
 
-/// Pack C++ is absorbed into the tip (`target_sources(tibia)`). Each pack
+/// Pack C++ is absorbed into qtclient (`target_sources(tibia)`). Each pack
 /// defines `qtclient_mod_<id>_register` (C++). Tip-generated `linked_mods.cpp`
 /// owns `extern "C"` `qtclient_mod_<id>_entry` + `qtclient_invoke_linked_mods`.
 /// FS mods/<id>/ still supplies QML / overrides / urls.

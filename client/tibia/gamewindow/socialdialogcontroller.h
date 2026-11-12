@@ -29,7 +29,7 @@ public:
     explicit TSocialDialogController(QObject* parent = nullptr);
     ~TSocialDialogController() override;
 
-    /// Stock tip install: dialog + button bar controller under `parent`.
+    /// Stock qtclient install: dialog + button bar controller under `parent`.
     /// Pack (IdleOT) owns the live social surfaces when mods are on.
     static TSocialDialogController* ensureInstalled(QObject* parent);
 

@@ -910,7 +910,7 @@ void TGameClient::onWorldEntered()
         markersPath.empty() ? QString() : QString::fromStdString(markersPath));
     // CIP: minimap consumes TWorldMapStorage signals (not MapObserver).
     m_minimap->setWorldMapStorage(m_worldMapStorage.get());
-    // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (tip
+    // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
     // TWaypointCosts), not OTC WasSeen tile blocks — otherwise far clicks stop mid-path.
     tibia::game::setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
         return minimap::snapshotWaypointCosts(m_minimap ? m_minimap->tileStorage() : nullptr);

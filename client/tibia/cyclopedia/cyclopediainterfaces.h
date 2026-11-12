@@ -38,12 +38,12 @@ public Q_SLOTS:
     void hideDialogTab() override;
     /// CIP `restoreContext(TCyclopediaDialogContext)` — tip-safe map floor
     /// (CIP context type is not in cip_gen). Live backlog restore stays on the
-    /// concrete tip page controllers' `Context` structs.
+    /// concrete qtclient page controllers' `Context` structs.
     void restoreContext(const QVariantMap& CyclopediaContext = {});
 };
 
 /// Qtclient twin of CIP `gamewindow::ICyclopediaMapSelectionInfo` (`selectionType`).
-/// Live Area / SubArea / Passage tip classes set `m_selectionType` on the CIP base.
+/// Live Area / SubArea / Passage qtclient classes set `m_selectionType` on the CIP base.
 class ICyclopediaMapSelectionInfo : public cip::tibia::gamewindow::ICyclopediaMapSelectionInfo
 {
     Q_OBJECT

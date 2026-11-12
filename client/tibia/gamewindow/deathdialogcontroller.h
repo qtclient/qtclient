@@ -10,14 +10,14 @@ namespace tibia {
 namespace gamewindow {
 
 // Tip MessageDialog (not cip::…::TMessageDialogController). Inside
-// TDeathDialogController the CIP base injects that name and would shadow tip.
+// TDeathDialogController the CIP base injects that name and would shadow qtclient.
 using TDeathMessageDialog = ::tibia::gamewindow::TMessageDialogController;
 
 /// Stock "You are dead" dialog (CIP: TDeathDialogController, ctor —
 /// MessageDialog with close-on-click + centered text). OT servers deliver death
 /// via opcode 0x28 → Game::processDeath → TGameNotify::death; CIP's
 /// GameserverMessageDead / EDeathType + TFairFightFactor are cipgen-skipped, so
-/// tip slots take ints. Live QML path: composed TDeathMessageDialog →
+/// qtclient slots take ints. Live QML path: composed TDeathMessageDialog →
 /// TibiaMessageDialog.qml (main.cpp keeps a stack instance).
 class TDeathDialogController final : public cip::tibia::gamewindow::TDeathDialogController
 {

@@ -45,7 +45,7 @@ public Q_SLOTS:
     void onClickedInviteAsFriend() override;
     void onClickedSetOnBlacklist() override;
     void onBackButtonPressed() override;
-    /// CIP moc slot (skipped from cip_gen shared_ptr type); tip name parity.
+    /// CIP moc slot (skipped from cip_gen shared_ptr type); qtclient name parity.
     void handleGameAction();
     /// CIP moc slots (friend-system errors while the search tab is open).
     void onErrorLoadingCharacter();

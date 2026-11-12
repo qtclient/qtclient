@@ -104,7 +104,7 @@ private:
     std::string m_path;
 };
 
-/// Process-wide tip assets façade — catalog load/query for sprite sheets.
+/// Process-wide qtclient assets façade — catalog load/query for sprite sheets.
 SpriteStore& sprites();
 
 }

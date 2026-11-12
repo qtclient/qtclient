@@ -463,7 +463,7 @@ int TSummaryModel::rowCount(const QModelIndex& parent) const { return parent.isV
 
 QHash<int, QByteArray> TSummaryModel::roleNames() const
 {
-    // CIP QML (External) binds model.label; older tip used the misspelled "lable".
+    // CIP QML (External) binds model.label; older qtclient used the misspelled "lable".
     return { { Label, "label" }, { Effect, "effekt" }, { AdditionalInfo, "additionalInfo" }, { ImageSource, "imageSource" }, { IsSeparator, "isSeparator" } };
 }
 

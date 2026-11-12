@@ -540,7 +540,7 @@ void TOptionsMenuDialogController::resetCurrentPageToDefault()
     case DefaultHotkeys:
     case ActionButtonsHotkeys:
     case CustomHotkeys:
-        // CIP options Reset lives on Basic; tip also restores built-in hotkey
+        // CIP options Reset lives on Basic; qtclient also restores built-in hotkey
         // presets when this path runs (e.g. Help reset-all callers / tests).
         if (m_hotkeys)
             m_hotkeys->load({ { QStringLiteral("hotkeyOptions"), config::THotkeyOptions::builtInSection() } });
@@ -582,14 +582,14 @@ void TOptionsMenuDialogController::resetBasicPage()
 void TOptionsMenuDialogController::resetAllOptionsToDefault()
 {
     const QJsonObject defaults = defaultSettings();
-    // CIP historically skipped sound pages; tip resets them too so
+    // CIP historically skipped sound pages; qtclient resets them too so
     // Help → Reset all matches user expectation (volume / battle / UI sounds).
     for (const EDialogCategories category : { Controls, Interface, HUD, Console, GameWindow, ActionBars, ButtonBar, Graphics,
                                               Effects, Misc, Gameplay, Screenshots, Sound, BattleSounds, UISounds }) {
         if (config::TOptionsPage* page = pageOf(category))
             page->load(defaults);
     }
-    // CIP also skipped hotkey pages; tip restores built-in vocation presets.
+    // CIP also skipped hotkey pages; qtclient restores built-in vocation presets.
     if (m_hotkeys)
         m_hotkeys->load({ { QStringLiteral("hotkeyOptions"), config::THotkeyOptions::builtInSection() } });
 }

@@ -52,7 +52,7 @@ void IGameSession::bindLiveNotifyFans()
         return;
 
     // Same SoftHook fields as TGameserverGameSession (minus ProtocolGame
-    // onConnect — tip emits `connected` with `onLogin` as the closest g_game
+    // onConnect — qtclient emits `connected` with `onLogin` as the closest g_game
     // bus event without opening the socket path).
     fans->soft.emplace_back("onLogin", [this](const Args&) {
         Q_EMIT connected();
@@ -114,7 +114,7 @@ void IGameSession::onPlayerCreatureAddedToCreatureStorage()
 void IGameSession::onSettingHintsFromServerChanged(const bool canChangePvPFrameSetting)
 {
     // CIP gates PvP-frame option UI from this hint. Live options path owns the
-    // flag — tip does not write g_game (avoids fighting GameClient config).
+    // flag — qtclient does not write g_game (avoids fighting GameClient config).
     (void)canChangePvPFrameSetting;
 }
 

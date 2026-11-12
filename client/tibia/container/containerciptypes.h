@@ -21,7 +21,7 @@
 
 class ThingType;
 
-// Classic nested braces (tip + pack TUs share /FI framework/pch.h).
+// Classic nested braces (qtclient + pack TUs share /FI framework/pch.h).
 namespace tibia {
 namespace protobuf {
 namespace protocol {

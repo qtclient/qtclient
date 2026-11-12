@@ -130,8 +130,8 @@ using LoginSyncEnqueueFn = void (*)(std::function<void()> fn);
 void setLoginSyncEnqueueHook(LoginSyncEnqueueFn fn);
 void enqueueLoginSync(std::function<void()> fn);
 
-/// Pack hook run at the end of qtclient `enableFeatures(tip)` (and again on each
-/// world enter). Use for OTCR-only wire flags the CipSoft tip must not set.
+/// Pack hook run at the end of qtclient `enableFeatures(qtclient)` (and again on each
+/// world enter). Use for OTCR-only wire flags the CipSoft client must not set.
 using FeatureExtrasFn = void (*)();
 void setFeatureExtrasHook(FeatureExtrasFn fn);
 void applyFeatureExtras();

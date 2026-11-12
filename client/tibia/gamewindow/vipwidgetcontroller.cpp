@@ -332,7 +332,7 @@ void TVipWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TVipWidgetController::handleGameAction()
 {
-    // CIP moc shared_ptr dispatch; tip routes via setActionHandler → handleAction.
+    // CIP moc shared_ptr dispatch; qtclient routes via setActionHandler → handleAction.
 }
 
 void TVipWidgetController::setSidebarOptions(config::TSidebarOptions* options)

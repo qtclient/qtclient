@@ -146,12 +146,12 @@ public Q_SLOTS:
     void startContentSizeChangedTimer();
 
 Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — tip NOTIFY deepen.
+    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
     void contentSizeChanged();
     void positionInSidebarChanged();
     void sidebarIdChanged();
     void widgetClosed();
-    /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — tip deepen.
+    /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
     void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
@@ -222,16 +222,16 @@ public Q_SLOTS:
     void startContentSizeChangedTimer();
 
 Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — tip NOTIFY deepen.
+    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
     void contentSizeChanged();
     void positionInSidebarChanged();
     void sidebarIdChanged();
     void widgetClosed();
-    /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — tip deepen.
+    /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
     void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
-    /// CIP class NOTIFY — tip already emits.
+    /// CIP class NOTIFY — qtclient already emits.
     void damageTakenGraphChanged();
     void damageTakenValuesChanged();
     void detailedDamageSourceChanged();
@@ -325,12 +325,12 @@ public Q_SLOTS:
     void startContentSizeChangedTimer();
 
 Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — tip NOTIFY deepen.
+    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
     void contentSizeChanged();
     void positionInSidebarChanged();
     void sidebarIdChanged();
     void widgetClosed();
-    /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — tip deepen.
+    /// CIP chrome skipped from cip_gen (shared_ptr / TSidebarID) — qtclient deepen.
     void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);

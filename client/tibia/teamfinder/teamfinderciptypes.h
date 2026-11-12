@@ -90,7 +90,7 @@ public:
     TTeamStartTimeManager* startTime() const { return m_time; }
 
 Q_SIGNALS:
-    /// CIP NOTIFY for settings properties — tip redeclare; base setters emit.
+    /// CIP NOTIFY for settings properties — qtclient redeclare; base setters emit.
 
 private:
     TTeamStartTimeManager* m_time = nullptr;

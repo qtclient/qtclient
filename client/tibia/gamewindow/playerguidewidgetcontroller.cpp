@@ -113,7 +113,7 @@ void TPlayerGuideWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TPlayerGuideWidgetController::onNewsStorageContentsChanged()
 {
-    // CIP refreshes guide rows from TNewsStorage; tip has no Newhaven catalogue.
+    // CIP refreshes guide rows from TNewsStorage; qtclient has no Newhaven catalogue.
     Q_EMIT playerGuideEntriesChanged();
 }
 

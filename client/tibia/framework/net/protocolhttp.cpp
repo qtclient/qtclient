@@ -442,7 +442,7 @@ EM_BOOL Http::onWebSocketMessage(int, const EmscriptenWebSocketMessageEvent* eve
     auto* context = static_cast<WebSocketContext*>(userData);
     if (!context || !context->result || !event || !event->data || event->numBytes == 0)
         return EM_TRUE;
-    // OTC g_http onWsMessage bus retired — keep the socket alive without a tip notify fan-out.
+    // OTC g_http onWsMessage bus retired — keep the socket alive without a qtclient notify fan-out.
     return EM_TRUE;
 }
 

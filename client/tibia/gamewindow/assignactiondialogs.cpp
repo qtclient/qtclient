@@ -369,7 +369,7 @@ void TAssignObjectActionDialogController::onApplyClicked(const uint UseObjectTyp
 
 void TAssignObjectActionDialogController::handleGameAction()
 {
-    // CIP moc shared_ptr dispatch; tip routes via startTargetSelection.
+    // CIP moc shared_ptr dispatch; qtclient routes via startTargetSelection.
 }
 
 void TAssignObjectActionDialogController::startTargetSelection()
@@ -657,7 +657,7 @@ void TRecordKeyboardShortcutDialogController::onClearButtonClicked()
     m_keySequenceOccupied = false;
     m_keySequenceHardcoded = false;
     Q_EMIT keySequenceChanged(m_keys);
-    // Commit the empty binding (CIP keeps Clear + OK separate; tip applies so
+    // Commit the empty binding (CIP keeps Clear + OK separate; qtclient applies so
     // Clear alone removes the hotkey without a second confirm).
     onOkButtonClicked();
 }

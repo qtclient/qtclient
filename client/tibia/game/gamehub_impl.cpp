@@ -2141,7 +2141,7 @@ tibia::client::OperatingSystem_t Game::getOs()
     if (m_clientCustomOs > tibia::client::CLIENTOS_NONE)
         return m_clientCustomOs;
 
-    // qtclient tip speaks CipSoft NEW_* OS ids so Crystal keeps classic CIP wire
+    // qtclient qtclient speaks CipSoft NEW_* OS ids so Crystal keeps classic CIP wire
     // (isOTCR stays false). Product packs may setCustomOs(CLIENTOS_OTCR_*).
     if (tibia::host::app().getOs() == "windows")
         return tibia::client::CLIENTOS_TIBIA_NEW_WINDOWS;

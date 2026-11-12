@@ -1277,7 +1277,7 @@ PathFindResult_ptr TWorldMapSessionState::newFindPath(const Position& start, con
     // allowUnknownSoft (raw cost 254). Travel may still *goal* on Indexed8 0xff hub/climb stands.
     const auto costs = resolveSoftCosts(softCosts, m_waypointCostFactory);
 
-    // Goal walkability: live aware tile first, else Indexed8 costs (CIP tip minimap).
+    // Goal walkability: live aware tile first, else Indexed8 costs (CIP client minimap).
     // Cyclopedia/Travel: path-unknown (0xfe) goals OK; Travel also CipSoft-blocked (0xff) goals.
     // Live fire / splash / parcels: hard-block when aware (no soft-blocker bypass).
     if (isAwareOfPosition(goal)) {

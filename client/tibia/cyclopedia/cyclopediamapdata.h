@@ -128,7 +128,7 @@ private:
 
 /// The player's Cyclopedia map progress from the 0xDD packets (CIP:
 /// TCyclopediaMapStorage / cip_gen moc, fed by handleCyclopediaMapMessage
-/// → tip onCyclopediaMap* notifies).
+/// → qtclient onCyclopediaMap* notifies).
 class TCyclopediaMapStorage final : public cip::tibia::cyclopedia::TCyclopediaMapStorage
 {
     Q_OBJECT

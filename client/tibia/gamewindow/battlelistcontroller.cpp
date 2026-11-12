@@ -441,7 +441,7 @@ TBattleListController::~TBattleListController()
 
 void TBattleListController::handleGameAction()
 {
-    // CIP moc shared_ptr dispatch; tip routes via m_mapper / addActionListener.
+    // CIP moc shared_ptr dispatch; qtclient routes via m_mapper / addActionListener.
 }
 
 void TBattleListController::handleGameActionAtMouseCursor()

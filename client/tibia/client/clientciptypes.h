@@ -18,7 +18,7 @@ namespace client {
 void ownProductSurface(QObject* parent);
 
 /// CIP `client::IGamesessionManager` moc surface. Signal
-/// `changePrimaryGameSession(shared_ptr<IGameSession>)` is cip_skipped — tip
+/// `changePrimaryGameSession(shared_ptr<IGameSession>)` is cip_skipped — qtclient
 /// redeclares name-only floor. Does **not** own login / swap GameClient
 /// sessions; fans `TGameNotify` game start/end only.
 class IGamesessionManager : public cip::tibia::client::IGamesessionManager
@@ -32,7 +32,7 @@ public:
     static IGamesessionManager* instance();
 
 Q_SIGNALS:
-    /// CIP moc signal (shared_ptr<IGameSession> skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr<IGameSession> skipped from cip_gen); qtclient name parity.
     void changePrimaryGameSession();
 
 private:
@@ -49,7 +49,7 @@ public:
     using cip::tibia::client::TAntiCheatController::TAntiCheatController;
 };
 
-/// CIP chain is QApplication; tip must not construct a second QApplication
+/// CIP chain is QApplication; qtclient must not construct a second QApplication
 /// (login/host already owns one). Moc surface lives on QObject — same pattern
 /// as TAuthenticationProcessController vs QStateMachine.
 class TGameApplicationBase : public QObject

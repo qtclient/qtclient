@@ -1,6 +1,6 @@
 #pragma once
 
-// Classic getInventorySlot wire ↔ ProtocolInventoryItem (schema source: tip classic).
+// Classic getInventorySlot wire ↔ ProtocolInventoryItem (schema source: qtclient classic).
 
 #include "protocol/protocolclassicwire.h"
 

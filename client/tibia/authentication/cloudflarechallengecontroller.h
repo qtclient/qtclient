@@ -40,7 +40,7 @@ public:
     void startChallenge(const QUrl& url);
 
 Q_SIGNALS:
-    /// Skipped in cipgen (ClearanceInfo / Error types); tip owns these.
+    /// Skipped in cipgen (ClearanceInfo / Error types); qtclient owns these.
     void challengeSolveSuccess(const tibia::authentication::TCloudflareChallengeClearanceInfo& CloudflareClearanceResult);
     void challengeSolveFailed(tibia::authentication::TCloudflareChallengeError Error);
 

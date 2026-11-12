@@ -101,7 +101,7 @@ public:
 
     virtual void allowAtlasCache();
 
-    // Batched GL texture deletion — tip `tibia::renderer::flushTextureDeletions()`.
+    // Batched GL texture deletion — qtclient `tibia::renderer::flushTextureDeletions()`.
     // Call EXCLUSIVELY from the main thread (active OpenGL/RHI context).
     static void flushDeletedTextures();
 

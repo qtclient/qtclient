@@ -12,7 +12,7 @@ namespace mods {
 /// mods/<id>/mod.json + native/mod.* + qml/ + overrides/ + resources/
 /// Native MODULE: dlopen → qtclient_mod_register(hostApi, ctx) (host-pushed C ABI).
 /// Deprecated absorb: QTCLIENT_HAS_LINKED_PACK still invokes linked entries once.
-/// Loads all autoload tip packs (priority: lower number wins identity/urls;
+/// Loads all autoload qtclient packs (priority: lower number wins identity/urls;
 /// override remap: later load wins — packs load high-priority-number first).
 class ModLoader
 {

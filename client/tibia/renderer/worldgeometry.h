@@ -15,7 +15,7 @@ namespace qmlcomponents {
 /// Independent of which lighting *look* is active.
 struct WorldGeometryInput
 {
-    /// POD camera (no tip `Position` in this header — prefer mapsession `MapPos`).
+    /// POD camera (no qtclient `Position` in this header — prefer mapsession `MapPos`).
     tibia::game::MapPos camera;
     int drawWidth = 0;
     int drawHeight = 0;

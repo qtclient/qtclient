@@ -39,7 +39,7 @@
  // renderer boundary static_asserts against).
 static std::atomic_uint32_t UID(TEXTURE_UNIQUE_ID_SEED);
 
-// Batched GL texture deletion is owned by tip `tibia::renderer::texturedeletionqueue`
+// Batched GL texture deletion is owned by qtclient `tibia::renderer::texturedeletionqueue`
 // (Wave 2 B3). ~Texture may run off the GL thread; flush runs on the main/Qt path.
 
 size_t Texture::getDeletedCount() { return tibia::renderer::deletedTextureCount(); }
@@ -100,7 +100,7 @@ Texture::~Texture()
         std::ranges::any_of(m_atlas, [](const AtlasRegion* region) { return region != nullptr; });
 
     if (g_graphics.ok() && (m_id != 0 || holdsAtlasRegion)) {
-        // Identifiers only — tip renderer drains with one glDeleteTextures per frame.
+        // Identifiers only — qtclient renderer drains with one glDeleteTextures per frame.
         tibia::renderer::enqueueTextureDeletion(m_id, m_uniqueId, isSmooth());
     }
     ResourceRegistry::instance().unregisterTexture(m_uniqueId);

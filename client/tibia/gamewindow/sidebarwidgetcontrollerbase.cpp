@@ -32,7 +32,7 @@ TSidebarWidget::TSidebarWidget(Controller* controller, QQuickItem* gameWindowIte
     connect(&m_contentSizeTimer, &QTimer::timeout, controller, [controller] {
         emitSidebarControllerSignal(controller, "contentSizeChanged()");
     });
-    // Old-style lookup binds the tip (or cip::) contentSizeChanged at connect time.
+    // Old-style lookup binds the qtclient (or cip::) contentSizeChanged at connect time.
     connect(controller, SIGNAL(contentSizeChanged()), controller, SLOT(saveWidgetOptions()), Qt::QueuedConnection);
 }
 

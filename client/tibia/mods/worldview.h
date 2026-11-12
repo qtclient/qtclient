@@ -19,7 +19,7 @@ namespace mods {
 ///
 /// POD-only surface (like HD scaler): no ThingType / Thing / TCreature / TWorldMapField /
 /// Position / Point / WorldGeometry in the driver API. Tip peels those into Lighting* PODs
-/// (or opaque void*) before calling. Keep tip nested types out of this header so
+/// (or opaque void*) before calling. Keep qtclient nested types out of this header so
 /// packs stay on the POD / façade surface (`include/qtclient/…`).
 class WorldLightingDriver
 {

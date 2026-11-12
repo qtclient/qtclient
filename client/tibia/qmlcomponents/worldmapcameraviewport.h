@@ -37,7 +37,7 @@ public:
     void centerAtField(int x, int y, int z);
 
 Q_SIGNALS:
-    /// CIP renderer::TWorldMapCameraViewport::viewportChanged — tip owns emit sites.
+    /// CIP renderer::TWorldMapCameraViewport::viewportChanged — qtclient owns emit sites.
     void viewportChanged();
 
 private:

@@ -23,6 +23,6 @@
 #pragma once
 
 /// Compatibility shim: OTC `GameEvents` / `callGlobalField` is retired.
-/// CipSoft session / protocol notifies use tip helpers in gamenotify.h
+/// CipSoft session / protocol notifies use qtclient helpers in gamenotify.h
 /// (`tibia::game::notify` / `notifyR` → TGameNotify / SoftHooks).
 #include <tibia/game/gamenotify.h>

@@ -37,7 +37,7 @@ public:
     int rowOf(int spellId) const;
 
 public Q_SLOTS:
-    /// CIP moc private slot — tip rebuilds rows (Magical Archive notifies).
+    /// CIP moc private slot — qtclient rebuilds rows (Magical Archive notifies).
     void onSpellDataModificationsApplied();
 
 Q_SIGNALS:
@@ -52,7 +52,7 @@ private:
 };
 
 /// Shared action-bar bind/assign state for the CIP assign dialogs (not a QObject
-/// parent — each dialog inherits `TDialogController<cip::…>` so tip_inherited
+/// parent — each dialog inherits `TDialogController<cip::…>` so qtclient_inherited
 /// sees the CIP moc surface).
 class TAssignActionDialogState
 {
@@ -138,7 +138,7 @@ public Q_SLOTS:
     /// "Select Object": the next click on the map or an inventory slot picks it.
     void startTargetSelection() override;
     void onCloseClicked() override;
-    /// CIP moc handleGameAction(shared_ptr<IGameAction>) — tip live path is
+    /// CIP moc handleGameAction(shared_ptr<IGameAction>) — qtclient live path is
     /// startTargetSelection → input::startTargetSelection.
     void handleGameAction();
 
@@ -230,7 +230,7 @@ public:
     bool onlySingleKey() const override;
 
 public Q_SLOTS:
-    /// CIP moc showDialog — tip constructors seed the same fields, then show.
+    /// CIP moc showDialog — qtclient constructors seed the same fields, then show.
     void showDialog(bool ChatModeOn, bool OnlySingleKey, const QKeySequence& CurrentKeySequence, const QString& ActionDescription,
                     const std::set<QKeySequence>& OccupiedKeys);
     void onKeySequenceEntered(const QKeySequence& NewKeySequence) override;

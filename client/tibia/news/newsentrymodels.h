@@ -59,7 +59,7 @@ public:
     const news::NewsItem* itemByCategoryId(uint id) const;
 
 Q_SIGNALS:
-    /// CIP signal — tip owns emit (cip:: base also declares).
+    /// CIP signal — qtclient owns emit (cip:: base also declares).
     void listUpdated();
 
 private:

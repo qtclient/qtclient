@@ -17,7 +17,7 @@ QString cacheKey(const QString& key, const int size)
     return QString::number(size) + QLatin1Char('/') + key;
 }
 
-/// CIP: QNetworkDiskCache under tip Resources/storeimages/ (data8/*.d).
+/// CIP: QNetworkDiskCache under qtclient Resources/storeimages/ (data8/*.d).
 void attachStoreDiskCache(QNetworkAccessManager* network)
 {
     if (!network)

@@ -159,9 +159,9 @@ Q_SIGNALS:
     void messageFiltered();
     /// A private tab opened for an incoming message.
     void privateChannelOpened(const QString& name);
-    /// CIP moc signal (TChatChannelIdentifierList → tip channel pairs).
+    /// CIP moc signal (TChatChannelIdentifierList → qtclient channel pairs).
     void currentlyAvailableChannels(const std::vector<std::pair<uint16_t, QString>>& ChannelList);
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
 
 private:

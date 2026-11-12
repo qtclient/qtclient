@@ -43,14 +43,14 @@ void resumeRealTime();
 /// (modules/game_features) and the server RSA key.
 void setClientVersion(int version);
 
-/// Absolute CipSoft Resources directory (tip AppData / bundle / monorepo data/).
+/// Absolute CipSoft Resources directory (qtclient AppData / bundle / monorepo data/).
 /// Empty when unresolved. Used for storeimages disk cache, etc.
 QString cipResourcesDir();
 
 /// CIP assets directory (contains catalog-content.json).
 ///
 /// Single layout for desktop + wasm: resolve Cip Resources
-/// (`applicationDirPath()/../Resources`, AppData tip
+/// (`applicationDirPath()/../Resources`, AppData qtclient
 /// `packages/<TIBIA_CLIENT_PACKAGE_DIR>/Contents/Resources`, or monorepo
 /// `workDir/data`), register it as the search root, return short name `assets/`.
 std::string assetsRoot(int version);
@@ -62,7 +62,7 @@ std::string soundsRoot(int version);
 /// sound bank from soundsRoot().
 bool loadAssets(int version, QString* error);
 
-/// Pack / tip subscribe + arg helpers live on allowlisted `tibia/game/tgamenotify.h`.
+/// Pack / qtclient subscribe + arg helpers live on allowlisted `tibia/game/tgamenotify.h`.
 using Hook = tibia::game::Hook;
 using Args = tibia::game::Args;
 using tibia::game::argString;

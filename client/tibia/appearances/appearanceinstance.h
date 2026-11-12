@@ -20,7 +20,7 @@ class Item;
 class Creature;
 class Thing;
 
-// Classic nested braces (tip + pack TUs share /FI framework/pch.h).
+// Classic nested braces (qtclient + pack TUs share /FI framework/pch.h).
 namespace tibia {
 namespace creatures {
 using TCreatureID = uint32_t;
@@ -264,7 +264,7 @@ public:
     void setVariantId(const uint16_t variantId) { m_variantId = variantId; }
     tibia::client::MagicEffectSources source() const { return m_source; }
     void setSource(tibia::client::MagicEffectSources source);
-    /// Opacity baked at arrival from tip magicEffectOpacity (CIP instance +0x48).
+    /// Opacity baked at arrival from qtclient magicEffectOpacity (CIP instance +0x48).
     float opacity() const { return m_opacity; }
     int effectSize() const;
     bool isTopEffectType() const;

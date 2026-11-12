@@ -167,9 +167,9 @@ public Q_SLOTS:
     void setResourceModel() override;
 
 Q_SIGNALS:
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
-    /// CIP NOTIFY — tip shadows property + emit (cip:: base also declares).
+    /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
     void reset();
@@ -214,9 +214,9 @@ public Q_SLOTS:
     void onTransferGroupsChanged() override;
 
 Q_SIGNALS:
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
-    /// CIP NOTIFY — tip shadows property + emit (cip:: base also declares).
+    /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
     void reset();
@@ -256,9 +256,9 @@ public Q_SLOTS:
     void hideDialogTab() override;
 
 Q_SIGNALS:
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
-    /// CIP NOTIFY — tip shadows property + emit (cip:: base also declares).
+    /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
     exaltation::TExaltationStorage* m_storage;
@@ -284,9 +284,9 @@ public Q_SLOTS:
     void onHistoryChanged() override;
 
 Q_SIGNALS:
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
-    /// CIP NOTIFY — tip shadows property + emit (cip:: base also declares).
+    /// CIP NOTIFY — qtclient shadows property + emit (cip:: base also declares).
 
 private:
     exaltation::TExaltationStorage* m_storage;

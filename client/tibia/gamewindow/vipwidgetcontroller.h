@@ -65,7 +65,7 @@ public:
 public Q_SLOTS:
     /// CIP .
     void onVipGroupDataChanged() override;
-    /// CIP moc private rebuild hooks (tip rebuilds the full row list).
+    /// CIP moc private rebuild hooks (qtclient rebuilds the full row list).
     void onVipDataChangedOrAdded();
     void onVipRemoved(uint32_t characterId);
     void onVipRenderInfoChanged(uint32_t characterId);
@@ -177,20 +177,20 @@ public Q_SLOTS:
     void onLevelUpClicked() override;
     void setCursorToResizeVertical(bool Enabled) override;
     void startContentSizeChangedTimer();
-    /// CIP moc handleGameAction(shared_ptr<IGameAction>) — tip live path is
+    /// CIP moc handleGameAction(shared_ptr<IGameAction>) — qtclient live path is
     /// TVipWidgetManager action handlers → handleAction.
     void handleGameAction();
 
 Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — tip NOTIFY deepen.
+    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
     void contentSizeChanged();
     void positionInSidebarChanged();
     void sidebarIdChanged();
     void widgetClosed();
-    /// CIP sidebar chrome (drag/move) — tip redeclare; forwarded from chrome slots.
+    /// CIP sidebar chrome (drag/move) — qtclient redeclare; forwarded from chrome slots.
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
 
 private Q_SLOTS:

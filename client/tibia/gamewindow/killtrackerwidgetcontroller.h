@@ -94,22 +94,22 @@ public Q_SLOTS:
     void startContentSizeChangedTimer();
 
 Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — tip NOTIFY deepen.
+    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
     void contentSizeChanged();
     void positionInSidebarChanged();
     void sidebarIdChanged();
     void widgetClosed();
-    /// CIP chrome (shared_ptr / TSidebarID skipped) — tip NOTIFY deepen; drag/move
+    /// CIP chrome (shared_ptr / TSidebarID skipped) — qtclient NOTIFY deepen; drag/move
     /// forwarded via TSidebarWidget dynamic emit.
     void publishGameAction();
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, TSidebarWidget* widget);
-    /// CIP preyList NOTIFY — tip emits after slot render-info list is built.
+    /// CIP preyList NOTIFY — qtclient emits after slot render-info list is built.
 
 private Q_SLOTS:
-    /// CIP bountyTaskDataChanged — tip fills from onBountyTaskData notify.
+    /// CIP bountyTaskDataChanged — qtclient fills from onBountyTaskData notify.
     void bountyTaskDataChanged();
-    /// CIP weeklyTaskDataChanged — tip fills from onWeeklyTaskData notify.
+    /// CIP weeklyTaskDataChanged — qtclient fills from onWeeklyTaskData notify.
     void weeklyTaskDataChanged();
     /// CIP onWidgetOptionsChanged — persist contentHeight / contentMaximized.
     void onWidgetOptionsChanged();

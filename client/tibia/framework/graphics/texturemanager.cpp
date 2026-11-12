@@ -79,7 +79,7 @@ void TextureManager::terminate()
 
 void TextureManager::poll()
 {
-    // Drain deferred GL deletes every poll (main/GL thread) — tip renderer owns the queue.
+    // Drain deferred GL deletes every poll (main/GL thread) — qtclient renderer owns the queue.
     Texture::flushDeletedTextures();
 
     // update only every 16msec, this allows upto 60 fps for animated textures
@@ -140,7 +140,7 @@ TexturePtr TextureManager::getTexture(const std::string& fileName, const bool sm
         }
     }
 
-    // Load from tip FS when uncached. HTTP/CDN images use CIP QNAM uploaders
+    // Load from qtclient FS when uncached. HTTP/CDN images use CIP QNAM uploaders
     // (store DynamicallyLoadedImage, news/login/client-services) — not OTC Soft.
     if (!texture) {
         try {

@@ -11,13 +11,13 @@ IDialogTabPage::~IDialogTabPage() = default;
 
 void IDialogTabPage::showDialogTab()
 {
-    // Live path: tip page controllers (friends / forge / prey / …) override
+    // Live path: qtclient page controllers (friends / forge / prey / …) override
     // cip::IDialogTabPage::showDialogTab. Qtclient twin keeps the moc/slot floor.
 }
 
 void IDialogTabPage::hideDialogTab()
 {
-    // Live path: tip page controllers override hideDialogTab.
+    // Live path: qtclient page controllers override hideDialogTab.
 }
 
 ICyclopediaDialogTab::ICyclopediaDialogTab(QObject* parent)
@@ -40,7 +40,7 @@ void ICyclopediaDialogTab::hideDialogTab()
 void ICyclopediaDialogTab::restoreContext(const QVariantMap& CyclopediaContext)
 {
     // Live path: TCyclopediaDialogController::requestBack restores per-tab
-    // Context on the concrete tip controllers (item / monsters / houses / …).
+    // Context on the concrete qtclient controllers (item / monsters / houses / …).
     (void)CyclopediaContext;
 }
 

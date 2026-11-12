@@ -192,7 +192,7 @@ void TSidebarWidgetsManager::openWidget(const int widgetType, const uint sidebar
         if (!widget)
             return;
         if (QObject* controller = widget->controller()) {
-            // Tip NOTIFY deepen: bind widgetClosed on the dynamic (tip) moc.
+            // Tip NOTIFY deepen: bind widgetClosed on the dynamic (qtclient) moc.
             m_closeConnections[widgetType] =
                 connect(controller, SIGNAL(widgetClosed()), this, SLOT(onRegisteredWidgetClosed()));
         }

@@ -28,7 +28,7 @@ inline constexpr ColorRgb colorFrom8bit(const uint8_t color, const float brightn
     };
 }
 
-/// POD map cell for WorldLightingDriver / WorldGeometry (no tip `Position`).
+/// POD map cell for WorldLightingDriver / WorldGeometry (no qtclient `Position`).
 struct LightingMapPos {
     int x = 0;
     int y = 0;
@@ -41,7 +41,7 @@ struct LightingMapPos {
     friend bool operator!=(const LightingMapPos& a, const LightingMapPos& b) { return !(a == b); }
 };
 
-/// Peeled thing context for stamp / light gather (tip fills; pack never sees Thing&).
+/// Peeled thing context for stamp / light gather (qtclient fills; pack never sees Thing&).
 struct LightingThingContext {
     uint8_t lift = 0;
     bool creature = false;
@@ -54,7 +54,7 @@ struct LightingThingContext {
     uint32_t creatureId = 0;
 };
 
-/// Peeled frame desc for `addFrame` (tip peels ThingType; pack never sees ThingType&).
+/// Peeled frame desc for `addFrame` (qtclient peels ThingType; pack never sees ThingType&).
 struct LightingFrameDesc {
     uint32_t spriteId = 0;
     int anchorX = 0;

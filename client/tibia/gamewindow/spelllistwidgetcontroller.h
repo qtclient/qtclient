@@ -55,17 +55,17 @@ public Q_SLOTS:
     void startContentSizeChangedTimer();
 
 Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — tip NOTIFY deepen.
+    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
     void contentSizeChanged();
     void positionInSidebarChanged();
     void sidebarIdChanged();
     void widgetClosed();
-    /// CIP sidebar chrome (drag/move) — tip redeclare; forwarded from chrome slots.
+    /// CIP sidebar chrome (drag/move) — qtclient redeclare; forwarded from chrome slots.
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
-    /// CIP class NOTIFY — tip already emits.
+    /// CIP class NOTIFY — qtclient already emits.
     void focusChanged();
     void requestWidgetControlToTakeFocus();
 

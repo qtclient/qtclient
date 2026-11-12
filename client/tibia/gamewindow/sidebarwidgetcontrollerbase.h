@@ -14,7 +14,7 @@ class QQuickItem;
 namespace tibia {
 namespace gamewindow {
 
-/// Resolve a moc signal on the controller's dynamic (tip) metaobject so tip
+/// Resolve a moc signal on the controller's dynamic (qtclient) metaobject so qtclient
 /// NOTIFY deepen redeclares stay live when TSidebarWidget emits chrome.
 inline QMetaMethod sidebarControllerSignal(QObject* controller, const char* signature)
 {
@@ -27,8 +27,8 @@ inline QMetaMethod sidebarControllerSignal(QObject* controller, const char* sign
 
 /// Emit a cip_gen FINAL Q_PROPERTY NOTIFY on the *base* metaobject.
 /// Tip must not shadow FINAL properties (Qt ignores the override); QML listens
-/// to the cip_gen NOTIFY. Prefer inheriting the base signal (no tip redeclare)
-/// and Q_EMIT — this helper is for dual-emit when SoftHook still needs tip.
+/// to the cip_gen NOTIFY. Prefer inheriting the base signal (no qtclient redeclare)
+/// and Q_EMIT — this helper is for dual-emit when SoftHook still needs qtclient.
 inline void emitCipBaseNotify(QObject* object, const QMetaObject* cipMeta, const char* signalSignature)
 {
     if (!object || !cipMeta || !signalSignature)
@@ -72,7 +72,7 @@ public:
 
     /// `assignParentSidebarId` keeps CipSoft's FINAL `parentSidebarId` member
     /// (`TSidebarWidgetControllerBase::m_parentSidebarId`) in sync — QML reads
-    /// that FINAL property and ignores tip overrides.
+    /// that FINAL property and ignores qtclient overrides.
     TSidebarWidget(Controller* controller, QQuickItem* gameWindowItem, QQmlEngine* engine,
                    std::function<void(uint)> assignParentSidebarId = {});
 

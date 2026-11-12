@@ -266,7 +266,7 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
                     tibia::protocol::enqueueTranslatedServerFrame(classic, false);
                 }
             } else if (productOpcode) {
-                // product pack / tip mods: ExtendedOpcode stays tip-local (not CIP queue).
+                // product pack / qtclient mods: ExtendedOpcode stays tip-local (not CIP queue).
                 handleOpcode(static_cast<uint8_t>(opcode));
             } else {
                 // Bridge layouts: classic length + behavior, then queue without re-apply.

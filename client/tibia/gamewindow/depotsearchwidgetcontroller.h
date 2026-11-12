@@ -108,20 +108,20 @@ public Q_SLOTS:
     void releaseFocus() override;
 
 Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — tip NOTIFY deepen.
+    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
     void contentSizeChanged();
     void positionInSidebarChanged();
     void sidebarIdChanged();
     void widgetClosed();
-    /// CIP sidebar chrome (drag/move) — tip redeclare; forwarded from chrome slots.
+    /// CIP sidebar chrome (drag/move) — qtclient redeclare; forwarded from chrome slots.
     void widgetDragChanged(uint sidebarId, bool active);
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); tip name parity.
+    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
     void focusChanged();
     void requestWidgetControlToTakeFocus();
-    /// CIP index NOTIFYs — tip forwards after cip:: setters in filter slots.
-    /// CIP filter/list NOTIFYs — tip redeclare (members filled; no dynamic filter source yet).
+    /// CIP index NOTIFYs — qtclient forwards after cip:: setters in filter slots.
+    /// CIP filter/list NOTIFYs — qtclient redeclare (members filled; no dynamic filter source yet).
     void categoryListSelectionRequest();
 
 private Q_SLOTS:

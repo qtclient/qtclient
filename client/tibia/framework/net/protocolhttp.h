@@ -121,5 +121,5 @@ private:
     std::mutex m_mutex;
 };
 
-// OTC Soft hub retired — tip HTTP is QNetworkAccessManager + CIP *Uploader paths.
+// OTC Soft hub retired — qtclient HTTP is QNetworkAccessManager + CIP *Uploader paths.
 // Http TU remains under ticket-9b3-framework-net until framework/net peels.

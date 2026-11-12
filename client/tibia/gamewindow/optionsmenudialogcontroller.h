@@ -99,7 +99,7 @@ public:
     void requestExportMinimap(const QString& OutputFilename) override;
     /// CIP : the current page from CIP's defaults .
     void resetCurrentPageToDefault() override;
-    /// CIP base pages; tip also resets sound pages + built-in hotkeys.
+    /// CIP base pages; qtclient also resets sound pages + built-in hotkeys.
     void resetAllOptionsToDefault() override;
     /// CIP : "Restart" publishes OPEN_LAUNCHER.
     void onResartMessageControllerClicked(cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier) override;

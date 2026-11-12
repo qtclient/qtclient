@@ -280,7 +280,7 @@ Q_SIGNALS:
     void channelsReset();
     /// A channel got an entry someone else wrote (the tab flashes).
     void entryAddedToChannel(TChatChannel* channel, bool fromOthers);
-    /// CIP moc signals (shared_ptr identifier args skipped from cip_gen); tip name parity.
+    /// CIP moc signals (shared_ptr identifier args skipped from cip_gen); qtclient name parity.
     void newChatChannelOpened(bool ForceMakeCurrent);
     void chatChannelReopend(bool ForceMakeCurrent);
     void chatChannelRemoved();

@@ -331,7 +331,7 @@ void TBountyTasksController::setElite(const bool isElite)
         m_tasksModel->setEliteDust(m_isElite, m_bountyTaskDifficulty);
     notifyChanged();
     // External OTC CHANGE_DIFFICULTY carries only the difficulty byte — no elite field
-    // found in tip/server protocol or protobuf field names. Do not invent a wire byte.
+    // found in qtclient/server protocol or protobuf field names. Do not invent a wire byte.
 }
 
 void TBountyTasksController::acceptBountyTask(const int TaskIndex)

@@ -28,7 +28,7 @@ public:
 
 /// CipSoft motion types: composed on each `TCreature` (see creaturemovement*.h).
 
-/// CIP `creatures::TCreatureProtocolMessageHandler` — tip Q→H for filled creature
+/// CIP `creatures::TCreatureProtocolMessageHandler` — qtclient Q→H for filled creature
 /// attribute opcodes + MoveCreature (109). CIP contract has queue
 /// `receivedCreature*Message` / `receivedMoveCreatureMessage` only (no
 /// `handleCreature*Message` / `handleMoveCreatureMessage` moc slots) — apply via
