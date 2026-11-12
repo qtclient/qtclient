@@ -1,5 +1,6 @@
 #include "shared/sharedciptypes.h"
 
+#include "client/gamecore.h"
 #include "network/gameserverconnection.h"
 #include "network/logincrypt.h"
 
@@ -23,6 +24,7 @@ struct CipTypedKeep {
     THashHelper tHashHelper;
     TRsaHelper tRsaHelper;
     TXteaHelper tXteaHelper;
+    TClockService tClockService;
     TCoordinate tCoordinate;
     TExtent tExtent;
     QTextBrowserWithNetwork qTextBrowserWithNetwork;
@@ -84,6 +86,16 @@ int TRsaHelper::blockSize()
 bool TXteaHelper::decryptInPlace(const std::array<uint32_t, 4>& key, QByteArray& body)
 {
     return network::decryptGameXtea1405(key, body);
+}
+
+qint64 TClockService::nowMicros()
+{
+    return client::gamecore::nowMicros();
+}
+
+qint64 TClockService::nowMillis()
+{
+    return nowMicros() / 1000;
 }
 
 void ownProductSurface(QObject* parent)

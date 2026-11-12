@@ -11,6 +11,7 @@
 #include <QNetworkReply>
 #include <QObject>
 #include <QString>
+#include <QtGlobal>
 #include <QUrl>
 
 #include <array>
@@ -277,6 +278,17 @@ class TXteaHelper final : public ::tibia::CipTyped
 public:
     TXteaHelper() = default;
     static bool decryptInPlace(const std::array<uint32_t, 4>& key, QByteArray& body);
+};
+
+/// CIP `shared::TClockService` — engine clock in µs / ms (v2 = ns/1e6 → ms).
+class TClockService final : public ::tibia::CipTyped
+{
+public:
+    TClockService() = default;
+    /// Microseconds on the game clock (product: `gamecore::nowMicros`).
+    static qint64 nowMicros();
+    /// Milliseconds (`nowMicros / 1000`), matching CIP v2 scale from ns.
+    static qint64 nowMillis();
 };
 
 class TTibiaFileSystemHelper final : public ::tibia::CipTyped {
