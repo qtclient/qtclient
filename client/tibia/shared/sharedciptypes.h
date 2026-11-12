@@ -13,6 +13,9 @@
 #include <QString>
 #include <QUrl>
 
+#include <array>
+#include <cstdint>
+
 namespace tibia {
 namespace shared {
 
@@ -255,6 +258,25 @@ class THashHelper final : public ::tibia::CipTyped
 public:
     THashHelper() = default;
     static QByteArray sha256(const QByteArray& data);
+};
+
+/// CIP `shared::TRsaHelper` — wraps `network::` login RSA façade.
+class TRsaHelper final : public ::tibia::CipTyped
+{
+public:
+    TRsaHelper() = default;
+    static void installLoginKey();
+    static bool encrypt(uint8_t* msg, int size);
+    static bool decrypt(uint8_t* msg, int size);
+    static int blockSize();
+};
+
+/// CIP `shared::TXteaHelper` — wraps game-wire XTEA (`decryptGameXtea1405`).
+class TXteaHelper final : public ::tibia::CipTyped
+{
+public:
+    TXteaHelper() = default;
+    static bool decryptInPlace(const std::array<uint32_t, 4>& key, QByteArray& body);
 };
 
 class TTibiaFileSystemHelper final : public ::tibia::CipTyped {

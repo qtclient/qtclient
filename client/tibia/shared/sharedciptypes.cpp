@@ -1,5 +1,8 @@
 #include "shared/sharedciptypes.h"
 
+#include "network/gameserverconnection.h"
+#include "network/logincrypt.h"
+
 #include <QClipboard>
 #include <QCryptographicHash>
 #include <QGuiApplication>
@@ -18,6 +21,8 @@ struct CipTypedKeep {
     TTibiaFileSystemHelper tTibiaFileSystemHelper;
     TClipboardHelper tClipboardHelper;
     THashHelper tHashHelper;
+    TRsaHelper tRsaHelper;
+    TXteaHelper tXteaHelper;
     TCoordinate tCoordinate;
     TExtent tExtent;
     QTextBrowserWithNetwork qTextBrowserWithNetwork;
@@ -54,6 +59,31 @@ QString TClipboardHelper::text() const
 QByteArray THashHelper::sha256(const QByteArray& data)
 {
     return QCryptographicHash::hash(data, QCryptographicHash::Sha256);
+}
+
+void TRsaHelper::installLoginKey()
+{
+    network::installLoginRsa();
+}
+
+bool TRsaHelper::encrypt(uint8_t* msg, int size)
+{
+    return network::rsaEncrypt(msg, size);
+}
+
+bool TRsaHelper::decrypt(uint8_t* msg, int size)
+{
+    return network::rsaDecrypt(msg, size);
+}
+
+int TRsaHelper::blockSize()
+{
+    return network::rsaBlockSize();
+}
+
+bool TXteaHelper::decryptInPlace(const std::array<uint32_t, 4>& key, QByteArray& body)
+{
+    return network::decryptGameXtea1405(key, body);
 }
 
 void ownProductSurface(QObject* parent)

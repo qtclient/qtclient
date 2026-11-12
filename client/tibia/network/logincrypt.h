@@ -1,6 +1,6 @@
 #pragma once
 
-/// Tip login-wire crypto façade. Call sites prefer this over engine
+/// Login-wire crypto façade. Call sites prefer this over engine
 /// `framework/util/crypt.h` `g_crypt` (OTC hub peel).
 #include <cstdint>
 #include <string>
