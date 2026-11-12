@@ -474,6 +474,15 @@ public:
     TQtConnectionManager() = default;
 };
 
+/// CIP `shared::TSimpleVectorAbstractListModel<T>` primary template shell.
+/// Concrete QAbstractListModel instantiations live next to their feature models.
+template<typename T>
+class TSimpleVectorAbstractListModel : public ::tibia::CipTyped
+{
+public:
+    TSimpleVectorAbstractListModel() = default;
+};
+
 class TTibiaFileSystemHelper final : public ::tibia::CipTyped {
 public:
     TTibiaFileSystemHelper() = default;
