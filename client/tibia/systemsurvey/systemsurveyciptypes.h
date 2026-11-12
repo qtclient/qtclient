@@ -36,6 +36,24 @@ public:
     using cip::systemsurvey::TFPSHistoryController::TFPSHistoryController;
 };
 
+class TFPSHistoryToJsonConverter final : public ::tibia::CipTyped
+{
+public:
+    TFPSHistoryToJsonConverter() = default;
+};
+
+class TFPSHistoryUploader final : public ::tibia::CipTyped
+{
+public:
+    TFPSHistoryUploader() = default;
+};
+
+class TSystemSurveyValueRetriever final : public ::tibia::CipTyped
+{
+public:
+    TSystemSurveyValueRetriever() = default;
+};
+
 }
 }
 

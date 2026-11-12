@@ -24,7 +24,13 @@ namespace skillwheel {
 void ownProductSurface(QObject* parent);
 
 
-/// TModListSortFilterProxyModel tip twin lives in skillwheelmodels.h (FragmentWorkshop).
+/// TModListSortFilterProxyModel product twin lives in skillwheelmodels.h (FragmentWorkshop).
+
+class TGridConfiguration final : public ::tibia::CipTyped
+{
+public:
+    TGridConfiguration() = default;
+};
 
 class TSkillWheelGameActionHandler final : public cip::tibia::skillwheel::TSkillWheelGameActionHandler
 {
@@ -47,7 +53,7 @@ public:
     void handleGemAtelierGemRevealedMessage(
         const ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed& Message);
 
-    /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
+    /// Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
     void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 

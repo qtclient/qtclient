@@ -254,5 +254,9 @@ public:
     using cip::tibia::qmlcomponents::TTextureAtlasViewerController::TTextureAtlasViewerController;
 };
 
+/// CIP QML type names (product camera type: `TWorldMapCamera` in minimaprendererquickitem.h).
+using TWorldMapCameraQmlType = cip::tibia::qmlcomponents::TWorldMapCameraQmlType;
+using TWorldMapCameraViewportQmlType = cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType;
+
 }
 }

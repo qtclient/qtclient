@@ -16,5 +16,13 @@ public:
     static QColor highlightColor(qmlcomponents::SpriteRecord::Highlight highlight);
 };
 
+/// CIP `renderer::TQSGNodePool` — recycles QSG nodes across frames.
+template<typename NodeT>
+class TQSGNodePool final : public ::tibia::CipTyped
+{
+public:
+    TQSGNodePool() = default;
+};
+
 }
 }
