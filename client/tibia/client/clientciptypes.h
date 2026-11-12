@@ -29,7 +29,7 @@ public:
     ~IGamesessionManager() override;
 
     /// Process-lifetime tip twin (moc/RTTI keep). Not GameClient's live session owner.
-    static IGamesessionManager* tipInstance();
+    static IGamesessionManager* instance();
 
 Q_SIGNALS:
     /// CIP moc signal (shared_ptr<IGameSession> skipped from cip_gen); tip name parity.

@@ -48,7 +48,7 @@ void IGamesessionManager::bindLiveNotifyFans()
     }));
 }
 
-IGamesessionManager* IGamesessionManager::tipInstance()
+IGamesessionManager* IGamesessionManager::instance()
 {
     static IGamesessionManager keep;
     return &keep;
@@ -123,7 +123,7 @@ void ownProductSurface(QObject* parent)
     else
         new TGameApplication(nullptr);
     // Process-lifetime tip twin (linked below). Not GameClient session owner.
-    (void)IGamesessionManager::tipInstance();
+    (void)IGamesessionManager::instance();
 }
 
 // b1/95257f35e515e8a9
@@ -133,7 +133,7 @@ bool TPreventCloseEventFilter::eventFilter(QObject* watched, QEvent* event)
 }
 
 namespace {
-const bool kTipIGamesessionManagerLinked = (IGamesessionManager::tipInstance() != nullptr);
+const bool kQtclientIGamesessionManagerLinked = (IGamesessionManager::instance() != nullptr);
 }
 
 } // namespace tibia::client

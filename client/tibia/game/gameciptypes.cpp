@@ -63,7 +63,7 @@ void FPSDropsLogger::onDialogVisibleChanged(const bool Visible)
     m_dialogVisible = Visible;
 }
 
-FPSDropsLogger* FPSDropsLogger::tipInstance()
+FPSDropsLogger* FPSDropsLogger::instance()
 {
     return g_qtclientFpsDropsLogger;
 }

@@ -22,7 +22,7 @@ class TWaypointCosts;
 }
 namespace game {
 
-/// Tiny POD so packs avoid tip `Position` / framework.
+/// Tiny POD so packs avoid qtclient `Position` / framework.
 struct MapPos {
     int x = 0;
     int y = 0;
@@ -35,7 +35,7 @@ struct MapPos {
     friend bool operator!=(const MapPos& a, const MapPos& b) { return !(a == b); }
 };
 
-/// Aware viewport margins (matches tip `AwareRange` left/top/right/bottom).
+/// Aware viewport margins (matches qtclient `AwareRange` left/top/right/bottom).
 struct MapAwareRange {
     uint8_t left = 0;
     uint8_t top = 0;
@@ -46,7 +46,7 @@ struct MapAwareRange {
     uint8_t vertical() const { return static_cast<uint8_t>(top + bottom + 1); }
 };
 
-/// World ambient light (matches tip `Light` on Map).
+/// World ambient light (matches qtclient `Light` on Map).
 struct MapWorldLight {
     uint8_t intensity = 0;
     uint8_t color = 0;
@@ -59,7 +59,7 @@ struct MapUseHit {
     int stackPos = -1;
 };
 
-/// POD peel of session item scan hits (`typeId` matches tip appearance id — no ItemPtr).
+/// POD peel of session item scan hits (`typeId` matches qtclient appearance id — no ItemPtr).
 struct MapItemHit {
     MapPos pos;
     uint16_t typeId = 0;

@@ -25,7 +25,7 @@ bool isRendererSupported(int rendererIndex);
 /// surface format. rendererOverride < 0 keeps the options' renderer.
 void configureProcess(const ClientOptions& options, int rendererOverride);
 
-/// After QGuiApplication exists: point VK loader at MoltenVK ICD in the tip bundle (macOS).
+/// After QGuiApplication exists: point VK loader at MoltenVK ICD in the qtclient bundle (macOS).
 void applyBundledMoltenVkIcd();
 
 /// Mounts CIP's art pack (graphics_resources.rcc, resource set "graphics")

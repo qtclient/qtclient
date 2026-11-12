@@ -22,7 +22,7 @@
 
 #pragma once
 
-/// Private tip wire hub (`s_tipGameHub`). Include only from `gamehub*.cpp` and
+/// Private qtclient wire hub (`s_tipGameHub`). Include only from `gamehub*.cpp` and
 /// hub bridge TUs that need friend access (e.g. `gameservergamesession.cpp`).
 /// Call sites use `gamesession.h` / `gamehub.h` peels — not this header.
 
@@ -54,10 +54,10 @@ public:
     /// ProtocolGame socket error peel (`tibia::game::processConnectionError`).
     void processConnectionError(const std::error_code& ec);
 
-    /// Tip native H (Ping/PingBack peel) — same side effects as classic parsePing*.
+    /// Qtclient native H (Ping/PingBack peel) — same side effects as classic parsePing*.
     void processPing();
     void processPingBack();
-    /// Tip native H (WorldEntered peel) — same side effects as classic parseEnterGame
+    /// Qtclient native H (WorldEntered peel) — same side effects as classic parseEnterGame
     /// (enter notify + gated processGameStart / ProtocolGame::m_gameInitialized).
     void processWorldEntered();
     /// Login / session lifecycle peels (ProtocolGame + gamesession).
@@ -69,7 +69,7 @@ public:
     void processPendingGame();
     void processGameStart();
     void processDeath(uint8_t deathType, uint8_t penality);
-    /// Tip native H (SetInventory / DeleteInventory peels) — same side effects as
+    /// Qtclient native H (SetInventory / DeleteInventory peels) — same side effects as
     /// classic parseAddInventoryItem / parseRemoveInventoryItem.
     void processInventoryChange(uint8_t slot, const ::tibia::container::TInventorySlot& item);
     /// ProtocolGame peels (`tibia::game::process*` in gamesession).
@@ -420,7 +420,7 @@ public:
     // qtclient only
     void changeMapAwareRange(uint8_t xrange, uint8_t yrange);
 
-    // CIP tip wire features (see gamecore::enableFeatures). qtclient + Crystal match CIP.
+    // CIP qtclient wire features (see gamecore::enableFeatures). qtclient + Crystal match CIP.
     void enableFeature(const tibia::client::GameFeature feature) { m_features.set(feature, true); }
     void disableFeature(const tibia::client::GameFeature feature) { m_features.set(feature, false); }
     void setFeature(const tibia::client::GameFeature feature, const bool enabled) { m_features.set(feature, enabled); }

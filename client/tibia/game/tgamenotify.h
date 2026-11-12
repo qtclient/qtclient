@@ -29,7 +29,7 @@ public:
 
     static TGameNotify* instance();
 
-    /// CIP / tip field subscribe (replaces GameEvents Hook scopes).
+    /// CIP / qtclient field subscribe (replaces GameEvents Hook scopes).
     int subscribe(std::string_view field, FieldHandler handler);
     void unsubscribe(int id);
 
@@ -69,7 +69,7 @@ private:
 
 using Args = TGameNotify::Args;
 
-/// RAII CIP / tip field subscription (preferred when the handler needs no
+/// RAII CIP / qtclient field subscription (preferred when the handler needs no
 /// GameObject self).
 class SoftHook
 {

@@ -51,7 +51,7 @@ public:
     explicit FPSDropsLogger(QObject* parent = nullptr);
     ~FPSDropsLogger() override;
 
-    static FPSDropsLogger* tipInstance();
+    static FPSDropsLogger* instance();
 
     bool dialogVisible() const { return m_dialogVisible; }
     /// CIP: suppress drop samples while any stack dialog is visible.

@@ -22,7 +22,7 @@ public:
     explicit ICharacterConfigurationBase(QObject* parent = nullptr);
 
     /// Process-lifetime twin (moc/RTTI keep).
-    static ICharacterConfigurationBase* tipInstance();
+    static ICharacterConfigurationBase* instance();
 
     /// Mark dirty from a user gesture without owning disk IO.
     void notifyConfigurationChangedFromUserInput();

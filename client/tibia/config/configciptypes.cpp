@@ -12,7 +12,7 @@ void ICharacterConfigurationBase::notifyConfigurationChangedFromUserInput()
     Q_EMIT configurationChangedFromUserInput();
 }
 
-ICharacterConfigurationBase* ICharacterConfigurationBase::tipInstance()
+ICharacterConfigurationBase* ICharacterConfigurationBase::instance()
 {
     static ICharacterConfigurationBase keep;
     return &keep;
@@ -25,12 +25,12 @@ void ownProductSurface(QObject* parent)
         return;
     owned = true;
     (void)parent;
-    (void)ICharacterConfigurationBase::tipInstance();
+    (void)ICharacterConfigurationBase::instance();
 }
 
 namespace {
 const bool kTipICharacterConfigurationBaseLinked =
-    (ICharacterConfigurationBase::tipInstance() != nullptr);
+    (ICharacterConfigurationBase::instance() != nullptr);
 }
 
 } // namespace tibia::config
