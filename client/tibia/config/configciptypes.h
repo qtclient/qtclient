@@ -14,21 +14,21 @@ void ownProductSurface(QObject* parent);
 
 /// CIP `config::ICharacterConfigurationBase` moc surface. Live dirty/save still
 /// rides concrete storages (`TSidebarOptions`, analysers, statusbar, …); this
-/// tip twin re-owns the signal for tip_impl + keep-alive only.
+/// twin re-owns the signal for keep-alive only.
 class ICharacterConfigurationBase : public cip::tibia::config::ICharacterConfigurationBase
 {
     Q_OBJECT
 public:
     explicit ICharacterConfigurationBase(QObject* parent = nullptr);
 
-    /// Process-lifetime tip twin (moc/RTTI keep).
+    /// Process-lifetime twin (moc/RTTI keep).
     static ICharacterConfigurationBase* tipInstance();
 
-    /// Tip helper: mark dirty from a user gesture without owning disk IO.
+    /// Mark dirty from a user gesture without owning disk IO.
     void notifyConfigurationChangedFromUserInput();
 
 Q_SIGNALS:
-    /// CIP moc signal — tip redeclares for tip_impl (cip:: base also has it).
+    /// CIP moc signal — redeclared for product wiring (cip:: base also has it).
     void configurationChangedFromUserInput();
 };
 
@@ -177,14 +177,29 @@ public:
 
 namespace tibia {
 namespace config {
-namespace TConfigBackupReader {
 
-class TConfigBackupException final : public ::tibia::CipTyped
+/// CIP `config::TConfigBackupReader` with nested exception type.
+class TConfigBackupReader final : public ::tibia::CipTyped
 {
 public:
-    TConfigBackupException() = default;
+    TConfigBackupReader() = default;
+
+    class TConfigBackupException final : public ::tibia::CipTyped
+    {
+    public:
+        TConfigBackupException() = default;
+    };
 };
 
-}
+/// CIP generated options page name (product page: `THotkeysOptionsPage`).
+using THotkeysQMLOptionsPage = cip::tibia::config::THotkeysQMLOptionsPage;
+
+/// CIP `config::TTibiaHotkeyActionSettingQmlWrapper`.
+class TTibiaHotkeyActionSettingQmlWrapper final : public ::tibia::CipTyped
+{
+public:
+    TTibiaHotkeyActionSettingQmlWrapper() = default;
+};
+
 }
 }

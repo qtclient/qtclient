@@ -25,6 +25,9 @@ public:
     virtual QImage raster() const = 0;
 };
 
+/// CIP interface name used by some call sites / units.
+using IAppearanceInstanceSpriteInfo = TAppearanceInstanceSpriteInfo;
+
 using TAppearanceInstanceSpriteInfoPtr = std::shared_ptr<TAppearanceInstanceSpriteInfo>;
 
 /// CIP TCreatureMarkAppearanceInstanceSpriteInfo — field mark frames from colours.

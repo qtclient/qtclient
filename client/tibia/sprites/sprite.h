@@ -13,13 +13,21 @@ class SpriteSheet;
 namespace tibia {
 namespace sprites {
 
+/// CIP `sprites::IResourceSpriteIdentifier`.
+class IResourceSpriteIdentifier : public ::tibia::CipTyped
+{
+public:
+    virtual ~IResourceSpriteIdentifier() = default;
+    virtual uint32_t spriteId() const = 0;
+};
+
 /// CIP sprites::TSprite — one sprite id (possibly in a sheet).
-class TSprite : public ::tibia::CipTyped
+class TSprite : public IResourceSpriteIdentifier
 {
 public:
     explicit TSprite(uint32_t spriteId = 0);
 
-    uint32_t spriteId() const { return m_spriteId; }
+    uint32_t spriteId() const override { return m_spriteId; }
     bool isValid() const { return m_spriteId != 0; }
 
 private:
