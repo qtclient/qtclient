@@ -36,7 +36,7 @@ QImage TOptimized1PixelBorderImageProvider::requestImage(const QString& id, QSiz
     if (requestedSize.width() < 1 || requestedSize.height() < 1
         || (target.width() == src.width() && target.height() == src.height())) {
         if (size)
-            *size = src.size;
+            *size = src.size();
         return src;
     }
 
@@ -56,7 +56,7 @@ QImage TOptimized1PixelBorderImageProvider::requestImage(const QString& id, QSiz
         p.drawImage(QRect(0, 0, w, h), src);
         p.end();
         if (size)
-            *size = out.size;
+            *size = out.size();
         return out;
     }
 
@@ -76,7 +76,7 @@ QImage TOptimized1PixelBorderImageProvider::requestImage(const QString& id, QSiz
     p.drawImage(QRect(1, 1, w - 2, h - 2), src, QRect(1, 1, sw - 2, sh - 2));
     p.end();
     if (size)
-        *size = out.size;
+        *size = out.size();
     return out;
 }
 
