@@ -8,6 +8,7 @@
 
 #include <QAuthenticator>
 #include <QByteArray>
+#include <QElapsedTimer>
 #include <QNetworkReply>
 #include <QObject>
 #include <QString>
@@ -16,6 +17,7 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
 namespace tibia {
 namespace shared {
@@ -357,6 +359,119 @@ class TCrashHandler final : public ::tibia::CipTyped
 {
 public:
     TCrashHandler() = default;
+};
+
+/// CIP `shared::TReadOnlyMemoryBlob`.
+class TReadOnlyMemoryBlob final : public ::tibia::CipTyped
+{
+public:
+    TReadOnlyMemoryBlob() = default;
+    explicit TReadOnlyMemoryBlob(QByteArray data)
+        : m_data(std::move(data))
+    {
+    }
+    const QByteArray& data() const { return m_data; }
+    qsizetype size() const { return m_data.size(); }
+
+private:
+    QByteArray m_data;
+};
+
+/// CIP `shared::TLZMACompressedReadOnlyMemoryBlob`.
+class TLZMACompressedReadOnlyMemoryBlob final : public ::tibia::CipTyped
+{
+public:
+    TLZMACompressedReadOnlyMemoryBlob() = default;
+    explicit TLZMACompressedReadOnlyMemoryBlob(QByteArray compressed)
+        : m_compressed(std::move(compressed))
+    {
+    }
+    const QByteArray& compressed() const { return m_compressed; }
+
+private:
+    QByteArray m_compressed;
+};
+
+/// CIP `shared::TJsonValueValidator` / object / array — thin QJson wrappers.
+class TJsonValueValidator final : public ::tibia::CipTyped
+{
+public:
+    TJsonValueValidator() = default;
+    static bool isObject(const QByteArray& json);
+    static bool isArray(const QByteArray& json);
+};
+
+class TJsonObjectValidator final : public ::tibia::CipTyped
+{
+public:
+    TJsonObjectValidator() = default;
+    static bool validate(const QByteArray& json);
+};
+
+class TJsonArrayValidator final : public ::tibia::CipTyped
+{
+public:
+    TJsonArrayValidator() = default;
+    static bool validate(const QByteArray& json);
+};
+
+/// CIP zlib wrappers — game wire inflate lives on `TGameserverNetworkPacketConnection`.
+class TZlibBaseWrapper final : public ::tibia::CipTyped
+{
+public:
+    TZlibBaseWrapper() = default;
+};
+class TZlibInflateWrapper final : public ::tibia::CipTyped
+{
+public:
+    TZlibInflateWrapper() = default;
+};
+class TZlibDeflateWrapper final : public ::tibia::CipTyped
+{
+public:
+    TZlibDeflateWrapper() = default;
+};
+class TCompressionHelper final : public ::tibia::CipTyped
+{
+public:
+    TCompressionHelper() = default;
+};
+
+/// CIP `shared::TTimeLapseClockService` — offsettable clock over `TClockService`.
+class TTimeLapseClockService final : public ::tibia::CipTyped
+{
+public:
+    TTimeLapseClockService() = default;
+    void setOffsetMicros(qint64 offset) { m_offsetMicros = offset; }
+    qint64 nowMicros() const { return TClockService::nowMicros() + m_offsetMicros; }
+
+private:
+    qint64 m_offsetMicros = 0;
+};
+
+/// CIP `shared::TRingBufferStopWatch` — recent durations (see also worldmap frame ring).
+class TRingBufferStopWatch final : public ::tibia::CipTyped
+{
+public:
+    explicit TRingBufferStopWatch(size_t capacity = 10);
+    void start();
+    void stop();
+    qint64 averageNs() const;
+
+private:
+    QElapsedTimer m_clock;
+    qint64 m_startNs = 0;
+    bool m_running = false;
+    std::vector<qint64> m_samples;
+    size_t m_next = 0;
+    size_t m_count = 0;
+};
+
+/// CIP `shared::TQtConnectionManager` — host owns live QObject connections.
+class TQtConnectionManager final : public ::tibia::CipTyped
+{
+public:
+    TQtConnectionManager() = default;
 };
 
 class TTibiaFileSystemHelper final : public ::tibia::CipTyped {

@@ -6,9 +6,13 @@
 
 #include <QClipboard>
 #include <QCryptographicHash>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QJsonDocument>
 #include <QRandomGenerator>
+
+#include <numeric>
 
 namespace tibia::shared {
 
@@ -33,6 +37,18 @@ struct CipTypedKeep {
     TDecompressionError tDecompressionError;
     TRPCServiceError tRpcServiceError;
     TCrashHandler tCrashHandler;
+    TReadOnlyMemoryBlob tReadOnlyMemoryBlob;
+    TLZMACompressedReadOnlyMemoryBlob tLzmaBlob;
+    TJsonValueValidator tJsonValueValidator;
+    TJsonObjectValidator tJsonObjectValidator;
+    TJsonArrayValidator tJsonArrayValidator;
+    TZlibBaseWrapper tZlibBaseWrapper;
+    TZlibInflateWrapper tZlibInflateWrapper;
+    TZlibDeflateWrapper tZlibDeflateWrapper;
+    TCompressionHelper tCompressionHelper;
+    TTimeLapseClockService tTimeLapseClockService;
+    TRingBufferStopWatch tRingBufferStopWatch;
+    TQtConnectionManager tQtConnectionManager;
     TCoordinate tCoordinate;
     TExtent tExtent;
     QTextBrowserWithNetwork qTextBrowserWithNetwork;
@@ -120,6 +136,58 @@ bool TLocalFileInfo::exists() const
 bool TFileSystemHelper::exists(const QString& path)
 {
     return QFileInfo::exists(path);
+}
+
+bool TJsonValueValidator::isObject(const QByteArray& json)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isObject();
+}
+
+bool TJsonValueValidator::isArray(const QByteArray& json)
+{
+    const QJsonDocument doc = QJsonDocument::fromJson(json);
+    return doc.isArray();
+}
+
+bool TJsonObjectValidator::validate(const QByteArray& json)
+{
+    return TJsonValueValidator::isObject(json);
+}
+
+bool TJsonArrayValidator::validate(const QByteArray& json)
+{
+    return TJsonValueValidator::isArray(json);
+}
+
+TRingBufferStopWatch::TRingBufferStopWatch(size_t capacity)
+    : m_samples(capacity ? capacity : 1, 0)
+{
+    m_clock.start();
+}
+
+void TRingBufferStopWatch::start()
+{
+    m_startNs = m_clock.nsecsElapsed();
+    m_running = true;
+}
+
+void TRingBufferStopWatch::stop()
+{
+    if (!m_running || m_samples.empty())
+        return;
+    m_samples[m_next] = m_clock.nsecsElapsed() - m_startNs;
+    m_next = (m_next + 1) % m_samples.size();
+    m_count = std::min(m_count + 1, m_samples.size());
+    m_running = false;
+}
+
+qint64 TRingBufferStopWatch::averageNs() const
+{
+    if (m_count == 0)
+        return 0;
+    return std::accumulate(m_samples.begin(), m_samples.begin() + static_cast<std::ptrdiff_t>(m_count), qint64{ 0 })
+        / static_cast<qint64>(m_count);
 }
 
 void ownProductSurface(QObject* parent)
