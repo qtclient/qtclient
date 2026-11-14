@@ -461,7 +461,7 @@ def extract_game_tables(install: dict[str, Path | None], assets_dir: Path) -> No
     try:
         tables = write_game_tables(client, dest)
     except GameTableError as exc:
-        log(f"WARN: game tables skipped — {exc} (see docs/reverse-engineering/game-data-tables.md)")
+        log(f"WARN: game tables skipped — {exc} (see packages/asset-pipeline/AGENTS.md § CIP game tables)")
         return
     spells_src = dest / "spells.json"
     if spells_src.is_file():
