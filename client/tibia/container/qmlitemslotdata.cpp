@@ -31,7 +31,6 @@ TQMLItemSlotData::TQMLItemSlotData(const int typeId, const uint count, const QSt
     m_displayTypeID = typeId;
 }
 
-// b1/d6db2dda6351a121
 void TQMLItemSlotData::setCount(const uint count)
 {
     if (count == m_count)
@@ -40,19 +39,16 @@ void TQMLItemSlotData::setCount(const uint count)
     Q_EMIT countChanged();
 }
 
-// b1/2e06661686807eaa
 int TQMLItemSlotData::cumulativeCount() const
 {
     return static_cast<int>(std::min<uint>(m_count, 255));
 }
 
-// b1/97c7118feb2daa0e
 QString TQMLItemSlotData::countString() const
 {
     return countVariants(m_count);
 }
 
-// b1/de57f04c733cda73
 QString TQMLItemSlotData::tooltipString() const
 {
     if (m_name.isEmpty())

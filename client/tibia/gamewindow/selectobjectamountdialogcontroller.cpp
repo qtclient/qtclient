@@ -111,7 +111,6 @@ bool TSelectObjectAmountDialogController::handleStash(const input::TGameAction& 
     return true;
 }
 
-// b1/dfa49bef54a5b523
 void TSelectObjectAmountDialogController::open(const int typeId, const uint count)
 {
     dialog()->destroy();
@@ -132,7 +131,6 @@ void TSelectObjectAmountDialogController::open(const int typeId, const uint coun
     dialog()->show();
 }
 
-// b1/50810ab112b9ef98
 void TSelectObjectAmountDialogController::okButtonClicked()
 {
     if (m_inner && m_slot) {
@@ -143,7 +141,6 @@ void TSelectObjectAmountDialogController::okButtonClicked()
     finish();
 }
 
-// b1/3b6bbdceec26a19b
 void TSelectObjectAmountDialogController::cancelButtonClicked()
 {
     finish();
@@ -154,14 +151,12 @@ void TSelectObjectAmountDialogController::closeDialog()
     finish();
 }
 
-// b1/0d987f3caaa57f59
 void TSelectObjectAmountDialogController::setCurrentAmount(const uint amount)
 {
     if (m_slot)
         m_slot->setCount(amount);
 }
 
-// b1/04877bbebeb20d4f
 void TSelectObjectAmountDialogController::finish()
 {
     dialog()->close();

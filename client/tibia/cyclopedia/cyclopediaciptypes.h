@@ -26,6 +26,9 @@ class TBestiaryTrackerProtocolMessageHandler final : public cip::tibia::cycloped
     Q_OBJECT
 public:
     using cip::tibia::cyclopedia::TBestiaryTrackerProtocolMessageHandler::TBestiaryTrackerProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TCharacterInfoStorage final : public cip::tibia::cyclopedia::TCharacterInfoStorage
@@ -65,6 +68,9 @@ class TCyclopediaProtocolMessageHandler final : public cip::tibia::cyclopedia::T
     Q_OBJECT
 public:
     using cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler::TCyclopediaProtocolMessageHandler;
+public:
+    /// Tip Q→H wire: XpChanged, ItemWasted, MonsterCyclopediaNewDetails and ResourceBalance from `serverMessageEnqueued`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 /// CipSoft cache of the combined Cyclopedia combat-stats packet (also consumed by

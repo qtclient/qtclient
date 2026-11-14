@@ -43,6 +43,35 @@ struct ClassicReader {
         i += 4;
         return true;
     }
+    bool u64(uint64_t& out)
+    {
+        uint32_t low = 0, high = 0;
+        if (remaining() < 8 || !u32(low) || !u32(high))
+            return false;
+        out = uint64_t(low) | (uint64_t(high) << 32);
+        return true;
+    }
+    bool s16(int16_t& out)
+    {
+        uint16_t raw = 0;
+        if (!u16(raw))
+            return false;
+        out = int16_t(raw);
+        return true;
+    }
+    /// A u8 count of decimals, then the value plus 0x7fffffff as a u32.
+    bool real(double& out)
+    {
+        uint8_t decimals = 0;
+        uint32_t scaled = 0;
+        if (remaining() < 5 || !u8(decimals) || !u32(scaled))
+            return false;
+        double divisor = 1.0;
+        for (uint8_t k = 0; k < decimals; ++k)
+            divisor *= 10.0;
+        out = double(int64_t(scaled) - int64_t(0x7fffffff)) / divisor;
+        return true;
+    }
     bool string(std::string& out)
     {
         uint16_t len = 0;

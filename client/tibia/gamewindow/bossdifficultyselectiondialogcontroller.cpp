@@ -55,7 +55,6 @@ TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogControll
     });
 }
 
-// b1/6de0cd49cfeaeccc
 void TBossDifficultySelectionDialogController::open(const Args& args)
 {
     using client::gamecore::argBool;
@@ -85,7 +84,6 @@ void TBossDifficultySelectionDialogController::open(const Args& args)
     dialog()->show();
 }
 
-// b1/74b4a8636dbdb36a
 void TBossDifficultySelectionDialogController::update(const Args& args)
 {
     if (!m_isActiveUser)
@@ -95,7 +93,6 @@ void TBossDifficultySelectionDialogController::update(const Args& args)
     Q_EMIT selectionDataUpdated();
 }
 
-// b1/5fe5d1a7e2202ce7
 void TBossDifficultySelectionDialogController::setSelectedDifficulty(const int v)
 {
     if (v == m_selectedDifficulty)
@@ -105,14 +102,12 @@ void TBossDifficultySelectionDialogController::setSelectedDifficulty(const int v
     Q_EMIT selectionDataUpdated();
 }
 
-// b1/8d23692530c9ba76
 void TBossDifficultySelectionDialogController::onCancelClicked()
 {
     m_previewTimer.stop();
     tibia::game::sendBossDifficultyAction(Cancel);
 }
 
-// b1/340334120542aca2
 void TBossDifficultySelectionDialogController::onStartClicked()
 {
     m_previewTimer.stop();

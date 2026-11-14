@@ -2,8 +2,8 @@
 
 Login comes from the default tip pack [`mods/myaac`](../../client/mods/myaac/mod.json)
 ([myAAC](https://github.com/slawkens/myaac) at `http://127.0.0.1/login.php`).
-Crystal wire features come from [`mods/otclient`](../../client/mods/otclient/mod.json).
-Product tips add `mods/<id>` (portal urls) alongside `otclient`; multiple
+The client speaks the CIP wire (CIP OS ids), so Crystal keeps its CIP layouts.
+Product tips add `mods/<id>` (portal urls); multiple
 autoload packs are supported (identity/urls: lower `priority` wins).
 
 ## Local demo
@@ -38,6 +38,6 @@ without `myaac`). Run loads all autoload tip packs. Default launcher mods
 
 ## Emitter
 
-`emit_demo_tip.py` stages `mods/myaac`, `mods/otclient`, and launcher
+`emit_demo_tip.py` stages `mods/myaac` and launcher
 `clientmods`/`minimap` next to the Play binary and writes a
 CipSoft-shaped tip with CipSoft `assetsurl`.

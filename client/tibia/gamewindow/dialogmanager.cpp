@@ -84,7 +84,6 @@ TDialogStackController* TDialogStackController::instance()
     return g_instance;
 }
 
-// b1/b1692ab22557dda7
 void TDialogStackController::show(TDialog* dialog)
 {
     if (!dialog)
@@ -94,7 +93,6 @@ void TDialogStackController::show(TDialog* dialog)
     update();
 }
 
-// b1/b1f744b284e82457
 void TDialogStackController::hide(TDialog* dialog)
 {
     if (!contains(dialog))
@@ -109,13 +107,11 @@ void TDialogStackController::remove(TDialog* dialog)
         update();
 }
 
-// b1/852d14cd6c283d6c
 bool TDialogStackController::contains(const TDialog* dialog) const
 {
     return std::find(m_dialogs.begin(), m_dialogs.end(), dialog) != m_dialogs.end();
 }
 
-// b1/72c2afa92128b9dc
 void TDialogStackController::dialogTookFocus(const TDialog* dialog)
 {
     if (!m_dialogs.empty() && m_dialogs.back() == dialog)
@@ -165,7 +161,6 @@ void TDialogStackController::hideAll()
         m_dialogs.back()->hide();
 }
 
-// b1/7c00aa9b4dea919c
 void TDialogStackController::update()
 {
     m_hotkeysBlocked = m_characterListOpen || (!m_dialogs.empty() && !m_dialogs.back()->hooks()->hasPersonalMouseShield());
@@ -269,7 +264,6 @@ bool TDialog::isInStack() const
     return stack && stack->contains(this);
 }
 
-// b1/57667c47e895e492
 void TDialog::setVisibleByStack(const bool visible)
 {
     if (!m_item || m_item->isVisible() == visible)

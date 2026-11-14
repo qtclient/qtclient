@@ -321,7 +321,6 @@ void TChatChannelController::onChatChannelControllerOptionsChanged()
     rebuild();
 }
 
-// b1/9413d33dc3ad7ded
 void TChatChannelController::onEntryFormatChanged(const bool showTimestamp, const bool showTimestampSeconds, const bool showLevel)
 {
     if (m_showTimestamps == showTimestamp && m_showTimestampSeconds == showTimestampSeconds && m_showLevels == showLevel)
@@ -1047,7 +1046,6 @@ void TChatController::onMessageFiltered()
     m_ignoredFlashTimer.start();
 }
 
-// b1/60689e59c01ca6a0
 void TChatController::onExivaSuppressed()
 {
     if (!m_exivaSuppressedFlash) {
@@ -1057,19 +1055,16 @@ void TChatController::onExivaSuppressed()
     m_exivaSuppressedTimer.start();
 }
 
-// b1/860418f1c0cb6d9b
 bool TChatController::exivaOptionsAvailable() const
 {
     return m_gameClient.worldType() == WorldTypeOptionalPvp;
 }
 
-// b1/66a0337928372f35
 void TChatController::openWhiteBlacklistDialog()
 {
     input::publish(input::makeAction(A::OPEN_WHITEBLACKLIST_DIALOG));
 }
 
-// b1/0aaaf1ae517aeb0a
 void TChatController::openExivaOptionsDialog()
 {
     input::publish(input::makeAction(A::OPEN_EXIVA_OPTIONS_DIALOG));
@@ -1080,7 +1075,6 @@ void TChatController::addLogMessage(const QString& text)
     m_storage.addServerLogEntry(chat::systemWhite(), text);
 }
 
-// b1/1a9e5dba61cd49a1
 void TChatController::saveChannel(chat::TChatChannel* channel)
 {
     if (!channel)
@@ -1117,7 +1111,6 @@ void TChatController::saveChannel(chat::TChatChannel* channel)
         m_storage.addServerLogEntry(chat::consoleColor(30), qtTrId("chat_append_contents").arg(name, QDir::toNativeSeparators(path)));
 }
 
-// b1/91f95a04ba775bc6
 void TChatController::openInviteDialog(chat::TChatChannel* channel, const bool exclude)
 {
     if (!channel || !channel->isOwnChannel())
@@ -1129,7 +1122,6 @@ void TChatController::openInviteDialog(chat::TChatChannel* channel, const bool e
     prompt.dialog()->show();
 }
 
-// b1/25d5e8853a43daa6
 void TChatController::showRecentlyTraded(const QString& name)
 {
     m_messageDialog.showMessage(qtTrId("recently_traded_titel"), qtTrId("recently_traded_text").arg(name));
@@ -1201,7 +1193,6 @@ QString TChatController::sendChatMessage(const QString& chatMessage, const int c
     return sendChatMessage(chatMessage, chatVolume, false, 0);
 }
 
-// b1/2b027b8d3ab99d9d
 void TChatController::setNpcDialog(TNpcDialogController* dialog)
 {
     if (m_npcDialog == dialog)
@@ -1224,7 +1215,6 @@ bool TChatController::npcDialogShown() const
     return m_npcDialog && m_npcDialog->isShown();
 }
 
-// b1/f9040bf33959b5e0
 QString TChatController::sendChatMessageTo(chat::TChatChannel* channel, const QString& chatMessage, const bool isSpell, const int spellCastType)
 {
     return sendChatMessage(chatMessage, 0, isSpell, spellCastType, channel);

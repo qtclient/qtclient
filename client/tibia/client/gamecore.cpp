@@ -144,13 +144,6 @@ void enableFeatures(const int version)
         for (const auto f : step.disable)
             off(f);
     }
-
-    // qtclient qtclient = CipSoft wire only. OTCR extras (GameItemShader,
-    // GameCreatureShader, GameCreatureAttachedEffect,
-    // GameWingsAurasEffectsShader) belong in the product pack pack via
-    // mods::setFeatureExtrasHook — and require CLIENTOS_OTCR_* so Crystal
-    // sets isOTCR. parseFeatures(0x43) can also enable them.
-    tibia::mods::applyFeatureExtras();
 }
 
 QMetaObject::Connection gameStartConnection;
@@ -264,7 +257,11 @@ void advanceTo(const qint64 micros)
 {
     if (!running)
         return;
-    g_clock.set(std::max<qint64>(micros, g_clock.realMicros()));
+    // Never step the engine clock backward. Predicted time is now+offset; when the
+    // frame-duration offset shrinks, predict() can fall below the previous frame's
+    // predicted stamp. Allowing that rewind made DurationTween / foot clocks jump
+    // and compressed auto-walk steps while key-hold (real-time v9) stayed smooth.
+    g_clock.set(std::max<qint64>({ micros, g_clock.realMicros(), g_clock.micros() }));
 }
 
 void resumeRealTime()

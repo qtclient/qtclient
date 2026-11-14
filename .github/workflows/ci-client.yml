@@ -171,23 +171,11 @@ jobs:
             -DOPTIONS_ENABLE_IPO=OFF \
             -DTIBIA_BUILD_TESTS=OFF \
             -DQTCLIENT_ENABLE_MODS=ON \
-            -DQTCLIENT_MODS=otclient \
             -DOPTIONS_ENABLE_CCACHE=ON \
             -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
             -DCMAKE_PREFIX_PATH="$QT_PREFIX"
           cmake --build --preset ${{ matrix.preset }} --target tibia
           cmake --build --preset ${{ matrix.preset }} --target launcher || true
-          OTC_FS="$(find "build/${{ matrix.preset }}" -path '*/mods/otclient/mod.json' -type f 2>/dev/null | head -1 || true)"
-          if [[ -z "$OTC_FS" || ! -f "$OTC_FS" ]]; then
-            echo "::error::otclient FS pack mod.json missing under build/${{ matrix.preset }}" >&2
-            find "build/${{ matrix.preset }}" -path '*/mods/*' 2>/dev/null | head -40 || true
-            exit 1
-          fi
-          OTC_NATIVE="$(find "build/${{ matrix.preset }}" -path '*/mods/otclient/native/mod.*' -type f 2>/dev/null | head -1 || true)"
-          if [[ -n "$OTC_NATIVE" ]]; then
-            echo "::error::otclient must stay ABSORB_INTO_QTCLIENT (no native/mod.*): $OTC_NATIVE" >&2
-            exit 1
-          fi
           ccache -s || true
 
       - name: Save vcpkg + ccache
@@ -353,17 +341,6 @@ jobs:
             exit 1
           fi
           test -f build/tibia-wasm/bin/tibia.wasm
-          OTC_FS="$(find build/tibia-wasm -path '*/mods/otclient/mod.json' -type f 2>/dev/null | head -1 || true)"
-          if [[ -z "$OTC_FS" || ! -f "$OTC_FS" ]]; then
-            echo "::error::otclient FS pack mod.json missing under build/tibia-wasm" >&2
-            find build/tibia-wasm -path '*/mods/*' 2>/dev/null | head -40 || true
-            exit 1
-          fi
-          OTC_NATIVE="$(find build/tibia-wasm -path '*/mods/otclient/native/mod.wasm' -type f 2>/dev/null | head -1 || true)"
-          if [[ -n "$OTC_NATIVE" ]]; then
-            echo "::error::otclient must stay ABSORB_INTO_QTCLIENT (no native/mod.wasm): $OTC_NATIVE" >&2
-            exit 1
-          fi
           ccache -s || true
 
       - name: Save vcpkg + ccache

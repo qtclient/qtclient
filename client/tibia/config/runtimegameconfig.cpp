@@ -19,7 +19,6 @@ struct RuntimeGameConfigState {
     uint8_t tileMaxElevation{ 24 };
     uint8_t tileMaxThings{ 10 };
 
-    bool forceNewWalkingFormula{ false };
     uint16_t shieldBlinkTicks{ 500 };
     uint16_t volatileSquareDuration{ 1000 };
 
@@ -30,13 +29,6 @@ struct RuntimeGameConfigState {
     uint16_t animatedTextDuration{ 1000 };
     uint16_t staticDurationPerCharacter{ 60 };
     uint16_t minStaticTextDuration{ 3000 };
-
-    // Walk tween duration only (TCreatureMovementSpeedCalculator). CipSoft
-    // TCreatureMovementSpeedCalculator::v9 multiplies diagonal
-    // step duration by 3. Pathfinding uses the same 3× leaving-tile edge cost
-    // — separate from this knob.
-    double creatureDiagonalWalkSpeed{ 3 };
-    double playerDiagonalWalkSpeed{ 3 };
 };
 
 RuntimeGameConfigState& state()
@@ -64,11 +56,8 @@ void initRuntimeGameConfig()
     s.tileMaxElevation = 24;
     s.tileMaxThings = 10;
 
-    s.forceNewWalkingFormula = false;
     s.shieldBlinkTicks = 500;
     s.volatileSquareDuration = 1000;
-    s.creatureDiagonalWalkSpeed = 3;
-    s.playerDiagonalWalkSpeed = 3;
 
     s.invisibleTicksPerFrame = 75;
     s.itemTicksPerFrame = 75;
@@ -96,7 +85,6 @@ uint8_t mapAwareUndergroundFloorRange() { return state().mapAwareUndergroundFloo
 uint8_t tileMaxElevation() { return state().tileMaxElevation; }
 uint8_t tileMaxThings() { return state().tileMaxThings; }
 
-bool forcingNewWalkingFormula() { return state().forceNewWalkingFormula; }
 uint16_t shieldBlinkTicks() { return state().shieldBlinkTicks; }
 uint16_t volatileSquareDuration() { return state().volatileSquareDuration; }
 
@@ -107,9 +95,6 @@ uint16_t missileTicksPerFrame() { return state().missileTicksPerFrame; }
 uint16_t animatedTextDuration() { return state().animatedTextDuration; }
 uint16_t staticDurationPerCharacter() { return state().staticDurationPerCharacter; }
 uint16_t minStaticTextDuration() { return state().minStaticTextDuration; }
-
-double playerDiagonalWalkSpeed() { return state().playerDiagonalWalkSpeed; }
-double creatureDiagonalWalkSpeed() { return state().creatureDiagonalWalkSpeed; }
 
 } // namespace config
 } // namespace tibia

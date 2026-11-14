@@ -22,7 +22,6 @@
 
 #include "item.h"
 
-#include "animation/spriteanimator.h"
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/game/gamesession.h>
 
@@ -239,7 +238,13 @@ int Item::calculateAnimationPhase()
 {
     if (!hasAnimationPhases() || !canAnimate()) return 0;
 
-    if (getIdleAnimator()) return getIdleAnimator()->getPhase();
+    if (const ThingType* type = getThingType(); type && type->idleAnimation()) {
+        if (!m_animator)
+            m_animator.emplace(*type->idleAnimation(), 0);
+        m_animator->update(static_cast<qint64>(g_clock.millis()));
+        m_phase = static_cast<uint8_t>(m_animator->phase());
+        return m_phase;
+    }
 
     // CipSoft absolute elapsed (same class as walk/outfit / getPhaseAt): never
     // +1/frame under lag. Async and sync both index by wall-clock phase period.
@@ -257,8 +262,14 @@ int Item::peekAnimationPhase()
     if (!hasAnimationPhases() || !canAnimate())
         return 0;
 
-    if (const auto& animator = getIdleAnimator())
-        return animator->peekPhase();
+    if (const ThingType* type = getThingType(); type && type->idleAnimation()) {
+        if (!m_animator)
+            return 0;
+        // The animator's state at the last draw, advanced on a copy.
+        tibia::animation::TAnimator peek = *m_animator;
+        peek.update(static_cast<qint64>(g_clock.millis()));
+        return peek.phase();
+    }
 
     const int phases = std::max(1, getAnimationPhases());
     const int ticks = std::max<int>(1, tibia::config::itemTicksPerFrame());
@@ -275,13 +286,6 @@ void Item::setId(uint32_t id)
 
     if (!isPodium())
         clearPodiumOutfit();
-
-    // Shader example on only items that can be marketed.
-    /*
-    if (isMarketable()) {
-        m_shaderId = g_shaders.getShader("Outfit - Outline")->getId();
-    }
-    */
 }
 
 std::shared_ptr<tibia::appearances::TShowOffSocketAppearanceInstance> Item::showOffSocket()

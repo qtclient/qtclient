@@ -47,13 +47,6 @@ public:
     using cip::tibia::input::TKeyboardStatusStorage::TKeyboardStatusStorage;
 };
 
-class TPlayerMovementIntentHandler final : public cip::tibia::input::TPlayerMovementIntentHandler
-{
-    Q_OBJECT
-public:
-    using cip::tibia::input::TPlayerMovementIntentHandler::TPlayerMovementIntentHandler;
-};
-
 class TRecordKeyboardShortcutHandler final : public cip::tibia::input::TRecordKeyboardShortcutHandler
 {
     Q_OBJECT
@@ -229,6 +222,7 @@ public:
     }
     /// CIP `TMovementIntentDirection::v2` → 1.
     static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Direction; }
+    int v2() const { return static_cast<int>(kindTag()); }
     int direction() const { return m_direction; }
 
 private:
@@ -244,6 +238,7 @@ public:
     }
     /// CIP `TMovementIntentRotate::v2` → 2.
     static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Rotate; }
+    int v2() const { return static_cast<int>(kindTag()); }
     int direction() const { return m_direction; }
 
 private:
@@ -256,6 +251,7 @@ public:
     TMovementIntentStop() = default;
     /// CIP `TMovementIntentStop::v2` → 3.
     static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Stop; }
+    int v2() const { return static_cast<int>(kindTag()); }
 };
 
 class TMovementIntentTargetCoordinate final : public ::tibia::CipTyped
@@ -267,6 +263,7 @@ public:
     }
     /// CIP `TMovementIntentTargetCoordinate::v2` → 0.
     static constexpr TMovementIntentKind kindTag() { return TMovementIntentKind::Target; }
+    int v2() const { return static_cast<int>(kindTag()); }
     int x() const { return m_x; }
     int y() const { return m_y; }
     int z() const { return m_z; }

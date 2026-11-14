@@ -114,7 +114,6 @@ TContainerController::TContainerController(const int containerId, QQuickItem* ga
     connect(item, SIGNAL(searchButtonClicked()), this, SLOT(onSearchButtonClicked()));
 }
 
-// b1/3298987ba14ddb3c
 void TContainerController::setSidebarOptions(config::TSidebarOptions* options)
 {
     if (m_options)
@@ -126,7 +125,6 @@ void TContainerController::setSidebarOptions(config::TSidebarOptions* options)
     onWidgetOptionsChanged();
 }
 
-// b1/276e04dab0eadfd4
 void TContainerController::onWidgetOptionsChanged()
 {
     if (!m_options)
@@ -180,7 +178,6 @@ void TContainerController::onShowConfigurationMenu()
 
 void TContainerController::onWidgetQuickItemDestroyed() {}
 
-// b1/fbca85e805e49399
 void TContainerController::saveWidgetOptions()
 {
     if (!m_options)
@@ -190,7 +187,6 @@ void TContainerController::saveWidgetOptions()
     m_options->setContainersOptions(containers);
 }
 
-// b1/9382eee67e64ef84
 void TContainerController::removeThisContainersOptions()
 {
     if (!m_options)
@@ -227,7 +223,6 @@ void TContainerController::setIcon(const container::TInventorySlot& slot)
     Q_EMIT containerIconChanged();
 }
 
-// b1/115145b3e0fe01a2
 void TContainerController::update(const bool resetScrollView)
 {
     const container::TStoredContainer* row = stored();
@@ -389,7 +384,6 @@ void TContainerController::onSlotTargetSelected(const int slotId)
         input::publish(target);
 }
 
-// b1/f90825e4ec7ade1a
 void TContainerController::onPreviousPageClicked()
 {
     const container::TStoredContainer* row = stored();
@@ -404,13 +398,11 @@ void TContainerController::onNextPageClicked()
         tibia::game::seekInContainer(m_containerId, static_cast<int>(row->firstIndex) + static_cast<int>(row->capacity));
 }
 
-// b1/f5c750388a7baa56
 void TContainerController::onSearchButtonClicked()
 {
     input::publish(input::makeAction(A::REQUEST_DEPOT_SEARCH));
 }
 
-// b1/f8fc2ce8622a50c7
 void TContainerController::onRequestClose()
 {
     removeThisContainersOptions();
@@ -419,7 +411,6 @@ void TContainerController::onRequestClose()
     TSidebarWidgetController::onRequestClose();
 }
 
-// b1/a4348d2dee918c06
 void TContainerController::onLevelUpClicked()
 {
     tibia::game::openParentById(m_containerId);

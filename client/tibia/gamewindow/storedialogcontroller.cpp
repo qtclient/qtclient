@@ -57,7 +57,6 @@ void TStorePurchaseConfirmationDialogController::showDialog(const int offerId, c
     showDialog(offerId, offer, showAskAgainCheckbox, false);
 }
 
-// b1/28cadf84c8875751
 void TStorePurchaseConfirmationDialogController::showDialog(const int offerId, const store::TStoreOfferData& offer,
                                                            const bool showAskAgainCheckbox, const bool buyWithCosmeticTokens)
 {
@@ -92,7 +91,6 @@ void TStorePurchaseSuccessDialogController::requestClose()
     dialog()->close();
 }
 
-// b1/879bca3f56680f4f
 void TStorePurchaseSuccessDialogController::showDialog(const QString& Message)
 {
     dialog()->destroy();
@@ -106,7 +104,6 @@ TTransferCreditsDialogController::TTransferCreditsDialogController(QObject* pare
     m_maximumNameLength = 29;
 }
 
-// b1/19b755d531f0f9b7
 void TTransferCreditsDialogController::showDialog(const qint64 transferableCredits, const qint64 creditPacketSize)
 {
     dialog()->destroy();
@@ -115,20 +112,17 @@ void TTransferCreditsDialogController::showDialog(const qint64 transferableCredi
     dialog()->show();
 }
 
-// b1/91aa4cc6331ea853
 void TTransferCreditsDialogController::requestTransfer(const QString& Receipient, const int TransferAmount)
 {
     dialog()->close();
     Q_EMIT transferRequested(Receipient, TransferAmount);
 }
 
-// b1/b7cfd5015b64b338
 void TTransferCreditsDialogController::requestCancel()
 {
     dialog()->close();
 }
 
-// b1/e65203ee8d158a1a
 QString TTransferCreditsDialogController::formatCreditNumber(const int Value)
 {
     return QLocale(QLocale::English).toString(Value);
@@ -145,13 +139,11 @@ void THirelingConfigurationDialogController::showDialog(const int offerId)
     dialog()->show();
 }
 
-// b1/63f43af11ed56eda
 void THirelingConfigurationDialogController::requestClose()
 {
     dialog()->close();
 }
 
-// b1/5794907ffe2530a8
 void THirelingConfigurationDialogController::requestHireling(const QString& HirelingName, const int Sex)
 {
     if (HirelingName.isEmpty())
@@ -288,7 +280,6 @@ void TStoreDialogController::requestPendingOpen()
     }
 }
 
-// b1/f3a74d8a57ea2af5
 void TStoreDialogController::showDialog()
 {
     onCategoriesChanged();
@@ -301,7 +292,6 @@ void TStoreDialogController::closeDialog()
     dialog()->close();
 }
 
-// b1/f79f2bf457028c4f
 void TStoreDialogController::requestClose()
 {
     dialog()->close();
@@ -355,7 +345,6 @@ void TStoreDialogController::onFeaturedOfferClicked()
         requestJumpToOfferWithID(static_cast<int>(m_featuredOfferIds[m_featuredOfferIndex]));
 }
 
-// b1/152238c33a360b1c
 void TStoreDialogController::requestJumpToOfferWithID(const int QmlOfferID)
 {
     if (!m_storage)
@@ -364,7 +353,6 @@ void TStoreDialogController::requestJumpToOfferWithID(const int QmlOfferID)
     m_storage->requestOffer(static_cast<uint32_t>(QmlOfferID));
 }
 
-// b1/2a9f4e67019d699b
 void TStoreDialogController::selectCategory(const QString& CategoryName)
 {
     if (!m_storage)
@@ -375,7 +363,6 @@ void TStoreDialogController::selectCategory(const QString& CategoryName)
         m_storage->requestCategory(CategoryName);
 }
 
-// b1/d8ca36831700f642
 void TStoreDialogController::requestSearch(const QString& SearchString)
 {
     if (!m_storage)
@@ -384,13 +371,11 @@ void TStoreDialogController::requestSearch(const QString& SearchString)
     m_storage->requestSearch(SearchString);
 }
 
-// b1/903ba05aa05cf9c8
 void TStoreDialogController::openGetCoinsUrl()
 {
     input::publish(input::makeAction(input::EGameAction::OPEN_URL_GET_COINS));
 }
 
-// b1/2bba13e329686aa4
 void TStoreDialogController::openTransactionHistory()
 {
     if (!m_storage)
@@ -401,7 +386,6 @@ void TStoreDialogController::openTransactionHistory()
     Q_EMIT transactionHistoryLoadingChanged();
 }
 
-// b1/963dd02219d4e72b
 void TStoreDialogController::nextTransactionPage()
 {
     if (m_storage)
@@ -414,13 +398,11 @@ void TStoreDialogController::previousTransactionPage()
         m_storage->requestTransactionHistoryPage(m_storage->historyPage() - 1);
 }
 
-// b1/ba8f4d3ec904cc78
 void TStoreDialogController::buyOffer(const int QmlOfferID)
 {
     buyOffer(QmlOfferID, false);
 }
 
-// b1/ba8f4d3ec904cc78
 void TStoreDialogController::buyOffer(const int QmlOfferID, const bool BuyWithCosmeticTokens)
 {
     if (!m_storage)
@@ -444,7 +426,6 @@ void TStoreDialogController::buyOffer(const int QmlOfferID, const bool BuyWithCo
     purchase(QmlOfferID);
 }
 
-// b1/ebe05f7682b907dd
 void TStoreDialogController::onPurchaseConfirmed(const int offerId, const bool askAgain)
 {
     purchase(offerId);
@@ -452,7 +433,6 @@ void TStoreDialogController::onPurchaseConfirmed(const int offerId, const bool a
 }
 
 /// CIP : the buy carries the purchase data the server asked for.
-// b1/12f21f865e4baeca
 void TStoreDialogController::purchase(const int offerId)
 {
     if (!m_storage)
@@ -471,7 +451,6 @@ void TStoreDialogController::purchase(const int offerId)
     m_pendingJumpOfferId = offerId;
 }
 
-// b1/4a23d19548f21bd4
 void TStoreDialogController::tryOutfitForCurrentOffer()
 {
     if (m_selectedOfferIndex < 0 || m_selectedOfferIndex >= static_cast<int>(m_sortedOffers.size()))
@@ -501,7 +480,6 @@ void TStoreDialogController::tryOutfitForCurrentOffer()
     input::publish(action);
 }
 
-// b1/fdd382775e29b448
 void TStoreDialogController::requestTransferCredits()
 {
     if (!m_storage)
@@ -515,7 +493,6 @@ void TStoreDialogController::requestTransferCredits()
     m_transferDialog.showDialog(transferable, packetSize);
 }
 
-// b1/069098ffa42334a3
 void TStoreDialogController::requestTransactionDetailsAndShowPage(const int TransactionID)
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::REQUEST_TRANSACTION_DETAILS));
@@ -523,13 +500,11 @@ void TStoreDialogController::requestTransactionDetailsAndShowPage(const int Tran
     input::publish(action);
 }
 
-// b1/c8dfc553def00e66
 void TStoreDialogController::requestTradeCharacter()
 {
     input::publish(input::makeAction(input::EGameAction::OPEN_TRADE_CHARACTER_DIALOG));
 }
 
-// b1/41cf06960997352b
 void TStoreDialogController::onNewCharacterNameRequested(const int offerId)
 {
     m_messageDialog->dialog()->close();
@@ -546,7 +521,6 @@ void TStoreDialogController::onNewCharacterNameEntered(const QString& name)
     showConfiguredConfirmation(m_configuredOfferId);
 }
 
-// b1/14089aa415489f39
 void TStoreDialogController::onHirelingConfigurationRequested(const int offerId)
 {
     m_messageDialog->dialog()->close();
@@ -587,7 +561,6 @@ void TStoreDialogController::showConfiguredConfirmation(const int offerId)
     m_confirmationDialog.showDialog(offerId, *offer, ask);
 }
 
-// b1/fadf1be5dc489f49
 void TStoreDialogController::onTransferCoinsRecipientAndAmountSpecified(const QString& recipient, const int amount)
 {
     if (!m_storage || amount <= 0)
@@ -596,7 +569,6 @@ void TStoreDialogController::onTransferCoinsRecipientAndAmountSpecified(const QS
     m_storage->setBalanceUpdating(true);
 }
 
-// b1/01612db19028b0d6
 void TStoreDialogController::onTransferSuccessNotification(const QString& message)
 {
     showMessage(qtTrId("store_success_caption"), message);
@@ -609,7 +581,6 @@ void TStoreDialogController::onTransferErrorNotification(const QString& message)
         m_storage->setBalanceUpdating(false);
 }
 
-// b1/626f39f9e476a78e
 void TStoreDialogController::onCategoriesChanged()
 {
     if (!m_storage)
@@ -629,7 +600,6 @@ void TStoreDialogController::onCategoriesChanged()
         selectCategory(homeCategoryName());
 }
 
-// b1/77b42202fe6c898c
 void TStoreDialogController::onHomePageChanged()
 {
     setSelectedCategoryName(homeCategoryName());
@@ -637,7 +607,6 @@ void TStoreDialogController::onHomePageChanged()
     rebuildFeaturedOffers();
 }
 
-// b1/95b213cbdd8e59ce
 void TStoreDialogController::onOffersChanged(const int offerId)
 {
     if (!m_storage)
@@ -648,7 +617,6 @@ void TStoreDialogController::onOffersChanged(const int offerId)
         selectOffer(offerId != 0 ? offerId : m_pendingJumpOfferId);
 }
 
-// b1/38efc31e5438b8f2
 void TStoreDialogController::onSearchResultsChanged(const bool moreResultsAvailable)
 {
     setSelectedCategoryName(searchCategoryName());
@@ -659,14 +627,12 @@ void TStoreDialogController::onSearchResultsChanged(const bool moreResultsAvaila
         showMessage(qtTrId("store_information"), qtTrId("store_search_result_more_results_available").arg(m_lastSearch));
 }
 
-// b1/9018beaaae17b850
 void TStoreDialogController::onEmptySearchResult()
 {
     if (dialog()->isShown())
         showMessage(qtTrId("store_information"), qtTrId("store_search_result_empty").arg(m_lastSearch));
 }
 
-// b1/097b7f582a6f3d2e
 void TStoreDialogController::onTransactionHistoryChanged()
 {
     if (!m_storage)
@@ -682,14 +648,12 @@ void TStoreDialogController::onTransactionHistoryChanged()
     }
 }
 
-// b1/e4b955e81c14c7d6
 void TStoreDialogController::onPurchaseSuccessNotification(const QString& message)
 {
     m_messageDialog->dialog()->close();
     m_successDialog.showDialog(message.trimmed());
 }
 
-// b1/e757d2d4bc24d68e
 void TStoreDialogController::onPurchaseErrorNotification(const QString& message)
 {
     showMessage(qtTrId("store_purchase_failed"), message);
@@ -718,7 +682,6 @@ void TStoreDialogController::showMessage(const QString& caption, const QString& 
     m_messageDialog->showMessage(caption, message);
 }
 
-// b1/3d7a1a5c8161ce1b
 void TStoreDialogController::rebuildOffers()
 {
     if (!m_storage)
@@ -751,7 +714,6 @@ void TStoreDialogController::rebuildOffers()
     deleteObjectsLater(previous);
 }
 
-// b1/762f9dfe671e0bc5
 void TStoreDialogController::selectOffer(const int offerId)
 {
     for (int i = 0; i < m_availableOffers.size(); ++i) {
@@ -763,7 +725,6 @@ void TStoreDialogController::selectOffer(const int offerId)
     m_pendingJumpOfferId = 0;
 }
 
-// b1/946b0ac7d2d16e71
 void TStoreDialogController::rebuildFeaturedOffers()
 {
     if (!m_storage)
@@ -809,7 +770,6 @@ TStoreButtonController::TStoreButtonController(TStoreDialogController* dialog, Q
     });
 }
 
-// b1/51a9654f33399e5a
 void TStoreButtonController::onOpenStoreButtonClicked()
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
@@ -819,7 +779,6 @@ void TStoreButtonController::onOpenStoreButtonClicked()
     onRequestOpenStoreDialog();
 }
 
-// b1/e7a42ac26a112044
 void TStoreButtonController::onStoreDeeplinkChanged(const int openAction, const int detail)
 {
     if (openAction == 0) {
@@ -832,7 +791,6 @@ void TStoreButtonController::onStoreDeeplinkChanged(const int openAction, const 
     Q_EMIT changed();
 }
 
-// b1/d2c24f6e4ff984dc
 void TStoreButtonController::onHighlightStoreButtonEnds(bool)
 {
     clearDeeplink();
@@ -853,7 +811,6 @@ void TStoreButtonController::onStoreButtonIndicatorsChanged(const bool SaleFlag,
     Q_EMIT changed();
 }
 
-// b1/48ef7efb555aab4e
 void TStoreButtonController::onRequestOpenStoreDialog()
 {
     clearDeeplink();

@@ -215,7 +215,6 @@ TContextMenuController::~TContextMenuController()
     qDeleteAll(m_entries);
 }
 
-// b1/a54cb26b6aad0abf
 TContextMenuController* TContextMenuController::instance()
 {
     return g_instance;
@@ -246,7 +245,6 @@ QString TContextMenuController::labelOf(const input::TGameAction& action, QStrin
     }
 }
 
-// b1/36a8edc234f5d62d
 void TContextMenuController::showGameActions(const input::TGameActionList& actions, const int context, const input::TGameActionMapper& mapper)
 {
     clear();
@@ -281,7 +279,6 @@ void TContextMenuController::addGameActionsExtension(QObject* owner, GameActions
         m_extensions.emplace_back(owner, std::move(extension));
 }
 
-// b1/3ab58bf9bf7e3ff3
 void TContextMenuController::showContextMenuForTextInputQmlItem(QObject* textInput)
 {
     clear();
@@ -341,7 +338,6 @@ void TContextMenuController::showContextMenuForTextInputQmlItem(QObject* textInp
     requestShow();
 }
 
-// b1/5da18a6073cc7f7f
 void TContextMenuController::clear()
 {
     for (QObject* entry : std::as_const(m_entries))
@@ -350,7 +346,6 @@ void TContextMenuController::clear()
     Q_EMIT entriesChanged();
 }
 
-// b1/82854ba05cba6068
 void TContextMenuController::addSeparator()
 {
     if (m_entries.isEmpty() || m_entries.last()->property("isSeparator").toBool())
@@ -358,7 +353,6 @@ void TContextMenuController::addSeparator()
     m_entries.append(new TContextMenuEntryItem({}, {}, true, this));
 }
 
-// b1/7f7f90e25a263d80
 TContextMenuEntryItem* TContextMenuController::addEntry(const QString& text, const QString& shortcut)
 {
     auto* entry = new TContextMenuEntryItem(text, shortcut, false, this);

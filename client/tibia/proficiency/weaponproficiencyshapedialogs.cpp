@@ -231,7 +231,6 @@ void TWeaponProficiencyShapeDialogController::updateReshape(const std::optional<
     m_reshapeGuiHelp = qtTrId("weapon_proficiency_shape_dialog_reshape_general_information").arg(ReshapeOfferCount);
 }
 
-// b1/725cde23f2025a3a
 void TWeaponProficiencyShapeDialogController::showDialog()
 {
     m_message->dialog()->hide();
@@ -278,7 +277,6 @@ void TWeaponProficiencyShapeDialogController::sendSlotAction(const uint8_t type)
     tibia::game::sendWeaponProficiencySlotAction(type, m_typeId, m_level, m_perk);
 }
 
-// b1/50ab21798cd5555a
 void TWeaponProficiencyShapeDialogController::onMessageDialogAccept()
 {
     switch (m_pending) {
@@ -356,14 +354,12 @@ void TWeaponProficiencyReshapeDialogController::pickOffer(const int index) const
         tibia::game::sendWeaponProficiencySlotAction(tibia::client::WEAPON_PROFICIENCY_PICK_OFFER, offers->typeId, offers->level, offers->perk, index);
 }
 
-// b1/cd98b785817b4497
 void TWeaponProficiencyReshapeDialogController::requestCancel()
 {
     pickOffer(KeepCurrentPerk);
     closeDialog();
 }
 
-// b1/664a53a498b5ae92
 void TWeaponProficiencyReshapeDialogController::replacePerkSelected(const int PerkIndex)
 {
     m_selectedOffer = PerkIndex;
@@ -379,7 +375,6 @@ void TWeaponProficiencyReshapeDialogController::showDialog()
 
 void TWeaponProficiencyReshapeDialogController::closeDialog() { dialog()->close(); }
 
-// b1/4bd2f935378116a2
 void TWeaponProficiencyReshapeDialogController::onMessageDialogAccept()
 {
     if (m_storage->reshapeOffers() && m_selectedOffer >= 0 && m_selectedOffer < KeepCurrentPerk)

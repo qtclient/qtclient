@@ -420,7 +420,6 @@ TCharacterInfoDialogController::TCharacterInfoDialogController(QObject* parent)
 
 TCharacterInfoDialogController::~TCharacterInfoDialogController() = default;
 
-// b1/ae6acf377169ab83
 TCharacterInfoDialogController::EDialogCategory TCharacterInfoDialogController::dialogCategory() const
 {
     const int index = m_dataType - 2;
@@ -429,10 +428,8 @@ TCharacterInfoDialogController::EDialogCategory TCharacterInfoDialogController::
     return Category::GeneralStats;
 }
 
-// b1/4f3655e16c0ebedf
 bool TCharacterInfoDialogController::dataIsLoading() const { return !m_received.contains(m_dataType); }
 
-// b1/a623f2709c5ce758
 void TCharacterInfoDialogController::showDialogTab()
 {
     const int dataType = m_nextDataType > NoData ? m_nextDataType : GeneralStats;
@@ -444,7 +441,6 @@ void TCharacterInfoDialogController::showDialogTab()
     request(dataType, true);
 }
 
-// b1/a4ed6e2d89888ba4
 void TCharacterInfoDialogController::hideDialogTab()
 {
     m_shown = false;
@@ -452,7 +448,6 @@ void TCharacterInfoDialogController::hideDialogTab()
     replace(m_characterBaseInfo, static_cast<QObject*>(nullptr));
 }
 
-// b1/acead40c17b1a3ee
 void TCharacterInfoDialogController::setDialogCategory(const EDialogCategory Category)
 {
     const int index = static_cast<int>(Category) - 1;
@@ -461,7 +456,6 @@ void TCharacterInfoDialogController::setDialogCategory(const EDialogCategory Cat
     request(DataTypeOfCategory[index], false);
 }
 
-// b1/dae75f659c6dad6b
 void TCharacterInfoDialogController::request(const int dataType, const bool force)
 {
     m_dataType = dataType;
@@ -521,7 +515,6 @@ void TCharacterInfoDialogController::onErrorReceived(const int errorCode)
         Q_EMIT noPermissionsToInspectCharacter();
 }
 
-// b1/f6028420f99e57d1
 void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
 {
     auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
@@ -531,10 +524,8 @@ void TCharacterInfoDialogController::openStoreWithXpBoostCategory()
     input::publish(input::makeAction(A::CLOSE_CYCLOPEDIA));
 }
 
-// b1/702baf7820698ae4
 void TCharacterInfoDialogController::openBlessingsDialog() { tibia::game::requestBless(); }
 
-// b1/9b7f7ba37a0356ef
 void TCharacterInfoDialogController::openItemInformation(const int TypeID)
 {
     auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
@@ -543,7 +534,6 @@ void TCharacterInfoDialogController::openItemInformation(const int TypeID)
     input::publish(action);
 }
 
-// b1/fb890ba4ca3fa84e
 void TCharacterInfoDialogController::previousPaginatedPage()
 {
     if (m_dataType != RecentDeaths && m_dataType != RecentKills)
@@ -566,7 +556,6 @@ void TCharacterInfoDialogController::nextPaginatedPage()
     }
 }
 
-// b1/01bb51fa93536a90
 void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint AppearanceTypeID)
 {
     auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));

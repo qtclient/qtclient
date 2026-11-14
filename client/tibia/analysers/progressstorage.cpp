@@ -46,7 +46,6 @@ TExperienceChangeTracker::TExperienceChangeTracker()
     : m_bins(BinCount, 0.0)
 {}
 
-// b1/5d64050b471bb9f2
 bool TExperienceChangeTracker::tick(const qint64 nowMs)
 {
     const qint64 second = nowMs / 1000;
@@ -89,7 +88,6 @@ double TExperienceChangeTracker::perSecond(const int offsetSeconds) const
     return value;
 }
 
-// b1/039d0cb16de77f23
 TProgressStorage::TProgressStorage(QObject* parent)
     : cip::tibia::cyclopedia::TProgressStorage(parent)
 {}
@@ -179,7 +177,6 @@ void TProgressStorage::setShowBaseXp(const bool show)
     Q_EMIT configurationChangedFromUserInput();
 }
 
-// b1/ab9a21199898a25d
 void TProgressStorage::computeHistory(QVariantList& history, double& maxY) const
 {
     const qsizetype points = history.size();

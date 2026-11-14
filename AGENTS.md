@@ -20,6 +20,17 @@ upstream. Do not treat other open clients as upstream or as a behavioral source.
 - Packs export `qtclient_mod_<id>_entry` (STATIC tip); see [`docs/pack-architecture.md`](../../docs/pack-architecture.md).
 - **No Lua gameplay host** — QML + C++ only.
 
+## Porting CipSoft code (mandatory)
+
+- Every class with a CipSoft counterpart is written from its port unit (the
+  decompiled class), never from memory, OTClient or invention. Recipe: skill
+  `cip-port` in the umbrella (`.cursor/skills/cip-port/SKILL.md`).
+- `client/tibia/ports.lock` and `launcher/ports.lock` record which CipSoft
+  functions are ported, tested or skipped, each pointing at the qtclient
+  symbol. Edit them only with the umbrella's `tools/re/port.py`; never lock a
+  function you did not compare with its unit.
+- No addresses, `sub_…`/`FUN_…` ids or build shas in comments or names.
+
 ## Do not
 
 - Commit `upstream/` or CipSoft asset blobs.

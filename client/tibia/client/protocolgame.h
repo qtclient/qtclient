@@ -124,7 +124,6 @@ public:
     void sendRequestBless();
     void sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, bool autoTrackNewQuests, bool autoUntrackCompletedQuests, uint8_t extra);
     void sendRequestOutfit();
-    void sendTyping(bool typing);
     void sendChangeOutfit(const Outfit& outfit, bool mounted, bool randomMount);
     void sendSetShowOffSocketConfiguration(const Outfit& outfit, const Position& pos, uint16_t itemId, uint8_t stackpos,
                                            uint8_t direction, uint8_t podiumVisible);
@@ -270,142 +269,15 @@ public:
     bool isWritingClientLoadSplit() const { return m_writingClientLoadSplit; }
 
 private:
-    void parseStoreButtonIndicators(const InputMessagePtr& msg);
-    void parseSetStoreDeepLink(const InputMessagePtr& msg);
-    void parseStore(const InputMessagePtr& msg) const;
-    void parseStoreError(const InputMessagePtr& msg) const;
-    void parseStoreTransactionHistory(const InputMessagePtr& msg) const;
-    void parseStoreOffers(const InputMessagePtr& msg);
-    void parseCompleteStorePurchase(const InputMessagePtr& msg) const;
-    void parseRequestPurchaseData(const InputMessagePtr& msg);
-    void parseResourceBalance(const InputMessagePtr& msg) const;
-    void parseWorldTime(const InputMessagePtr& msg);
-    void parseCoinBalance(const InputMessagePtr& msg) const;
-    void parseCoinBalanceUpdating(const InputMessagePtr& msg);
-    void parseBlessings(const InputMessagePtr& msg) const;
-    void parseUnjustifiedStats(const InputMessagePtr& msg);
-    void parsePvpSituations(const InputMessagePtr& msg);
-    void parsePreset(const InputMessagePtr& msg);
-    void parseCreatureType(const InputMessagePtr& msg);
-    void parsePlayerHelpers(const InputMessagePtr& msg) const;
     void parseMessage(const InputMessagePtr& msg);
-    void parseBugReport(const InputMessagePtr& msg);
-    void parseTextForReport(const InputMessagePtr& msg);
     void parsePendingGame(const InputMessagePtr& msg);
-    void parseEnterGame(const InputMessagePtr& msg);
-    void parseLogin(const InputMessagePtr& msg) const;
     void parseCharacterSwitch(const InputMessagePtr& msg);
-    void parseReadyForSecondaryConnection(const InputMessagePtr& msg);
     bool dispatchServerMessage(uint8_t opcode, const InputMessagePtr& msg);
     bool dispatchClientMessage(uint8_t opcode);
-    void parseOutfitMemorial(const InputMessagePtr& msg);
-    void parseUpdateNeeded(const InputMessagePtr& msg);
-    void parseLoginError(const InputMessagePtr& msg);
-    void parseLoginAdvice(const InputMessagePtr& msg);
-    void parseLoginWait(const InputMessagePtr& msg);
-    void parseSessionEnd(const InputMessagePtr& msg);
-    void parseSessionCreatureData(const InputMessagePtr& msg);
-    void parseSessionDumpStart(const InputMessagePtr& msg);
-    void parseSessionDumpMarker(const InputMessagePtr& msg);
-    void parsePartyLeft(const InputMessagePtr& msg);
     void parsePing(const InputMessagePtr& msg);
-    void parsePingBack(const InputMessagePtr& msg);
-    void parseLoginChallenge(const InputMessagePtr& msg);
-    void parseDeath(const InputMessagePtr& msg);
-    void parseFloorDescription(const InputMessagePtr& msg); // CIP handleFloorDescription
-    void parseMapDescription(const InputMessagePtr& msg); // CIP handleFullMapDescription
-    void parseCreatureTyping(const InputMessagePtr& msg);
-    void parseFeatures(const InputMessagePtr& msg);
-    void parseMapMoveNorth(const InputMessagePtr& msg); // CIP handleMapMove (N)
-    void parseMapMoveEast(const InputMessagePtr& msg); // CIP handleMapMove (E)
-    void parseMapMoveSouth(const InputMessagePtr& msg); // CIP handleMapMove (S)
-    void parseMapMoveWest(const InputMessagePtr& msg); // CIP handleMapMove (W)
-    void parseUpdateTile(const InputMessagePtr& msg); // CIP handleUpdateTile
-    void parseTileAddThing(const InputMessagePtr& msg); // CIP handleCreateOnMap
-    void parseTileTransformThing(const InputMessagePtr& msg); // CIP handleChangeOnMap
-    void parseTileRemoveThing(const InputMessagePtr& msg) const; // CIP handleDeleteOnMap
-    void parseCreatureMove(const InputMessagePtr& msg);
-    void parseOpenContainer(const InputMessagePtr& msg);
-    void parseCloseContainer(const InputMessagePtr& msg);
-    void parseContainerAddItem(const InputMessagePtr& msg);
-    void parseContainerUpdateItem(const InputMessagePtr& msg);
-    void parseContainerRemoveItem(const InputMessagePtr& msg);
-    void parseBosstiaryInfo(const InputMessagePtr& msg);
-    void parseClientEvent(const InputMessagePtr& msg);
-    void parseCyclopediaItemDetail(const InputMessagePtr& msg);
-    void parseInspectionState(const InputMessagePtr& msg);
-    void parseAddInventoryItem(const InputMessagePtr& msg);
-    void parseRemoveInventoryItem(const InputMessagePtr& msg);
-    void parseOpenNpcTrade(const InputMessagePtr& msg);
-    void parsePlayerGoods(const InputMessagePtr& msg) const;
-    void parseCloseNpcTrade(const InputMessagePtr&);
-    void parseWorldLight(const InputMessagePtr& msg);
-    void parseMagicEffect(const InputMessagePtr& msg);
-    void parseRemoveMagicEffect(const InputMessagePtr& msg);
+    void parsePingBack(const InputMessagePtr& msg); // CIP handleFloorDescription
     void parseAnimatedText(const InputMessagePtr& msg);
-    void parseDistanceMissile(const InputMessagePtr& msg);
-    void parseAnthem(const InputMessagePtr& msg);
-    void parseItemClasses(const InputMessagePtr& msg);
-    void parseForgeResult(const InputMessagePtr& msg);
-    void parseCreatureMark(const InputMessagePtr& msg);
-    void parseTrappers(const InputMessagePtr& msg);
-    void parseOpenForge(const InputMessagePtr& msg);
-    void setCreatureVocation(const InputMessagePtr& msg, const uint32_t creatureId) const;
-    void addCreatureIcon(const InputMessagePtr& msg, const uint32_t creatureId) const;
-    void parseBrowseForgeHistory(const InputMessagePtr& msg);
-    void parseCloseForgeWindow(const InputMessagePtr& msg);
-    void parseCreatureData(const InputMessagePtr& msg);
-    void parseCreatureHealth(const InputMessagePtr& msg);
-    void parseCreatureLight(const InputMessagePtr& msg);
-    void parseCreatureOutfit(const InputMessagePtr& msg) const;
-    void parseCreatureSpeed(const InputMessagePtr& msg);
-    void parseCreatureSkulls(const InputMessagePtr& msg);
-    void parseCreatureShields(const InputMessagePtr& msg);
-    void parseCreatureUnpass(const InputMessagePtr& msg);
-    void parseEditText(const InputMessagePtr& msg);
-    void parseEditList(const InputMessagePtr& msg);
-    void parsePremiumTrigger(const InputMessagePtr& msg);
-    void parsePlayerInfo(const InputMessagePtr& msg) const;
-    void parsePlayerStats(const InputMessagePtr& msg) const;
-    void parsePlayerSkills(const InputMessagePtr& msg) const;
-    void parsePlayerState(const InputMessagePtr& msg) const;
-    void parsePlayerCancelAttack(const InputMessagePtr& msg);
-    void parsePlayerModes(const InputMessagePtr& msg);
-    void parseSpellCooldown(const InputMessagePtr& msg);
-    void parseSpellGroupCooldown(const InputMessagePtr& msg);
-    void parseMultiUseCooldown(const InputMessagePtr& msg);
-    void parseTalk(const InputMessagePtr& msg);
-    void parseChannelList(const InputMessagePtr& msg);
-    void parseOpenChannel(const InputMessagePtr& msg);
-    void parseOpenPrivateChannel(const InputMessagePtr& msg);
-    void parseOpenOwnPrivateChannel(const InputMessagePtr& msg);
-    void parseCloseChannel(const InputMessagePtr& msg);
-    void parseEditGuildMessage(const InputMessagePtr& msg);
-    void parseOwnTrade(const InputMessagePtr& msg);
-    void parseCounterTrade(const InputMessagePtr& msg);
-    void parseCloseTrade(const InputMessagePtr&);
-    void parseTextMessage(const InputMessagePtr& msg);
-    void parseCancelWalk(const InputMessagePtr& msg);
-    void parseWalkWait(const InputMessagePtr& msg) const;
-    void parseFloorChangeUp(const InputMessagePtr& msg);
-    void parseFloorChangeDown(const InputMessagePtr& msg);
-    void parseQuestTracker(const InputMessagePtr& msg);
-    void parseKillTracker(const InputMessagePtr& msg);
-    void parseOpenOutfitWindow(const InputMessagePtr& msg) const;
-    void parseExivaRestrictions(const InputMessagePtr& msg);
-    void parseVipAdd(const InputMessagePtr& msg);
-    void parseVipState(const InputMessagePtr& msg);
-    void parseVipLogout(const InputMessagePtr& msg);
-    void parseTutorialHint(const InputMessagePtr& msg);
-    void parseAutomapFlag(const InputMessagePtr& msg);
-    void parseQuestLog(const InputMessagePtr& msg);
-    void parseQuestLine(const InputMessagePtr& msg);
-    void parseChannelEvent(const InputMessagePtr& msg);
-    void parseItemInfo(const InputMessagePtr& msg) const;
-    void parsePlayerInventory(const InputMessagePtr& msg);
-    void parseModalDialog(const InputMessagePtr& msg);
     void parseExtendedOpcode(const InputMessagePtr& msg);
-    void parseChangeMapAwareRange(const InputMessagePtr& msg);
 
     /**
      * @brief Parses and applies the creature mark (square) received from the server.
@@ -440,147 +312,51 @@ private:
      * - For clientVersion < 1076, any single byte value is treated as legacy
      *   timed-square color; @c markType == 0 uses the default color.
      */
-    void parseCreaturesMark(const InputMessagePtr& msg);
 
     // 12x
-    void parseShowDescription(const InputMessagePtr& msg);
-    void parseBestiaryTracker(const InputMessagePtr& msg);
     void parseTaskHuntingBasicData(const InputMessagePtr& msg);
-    void parseTaskHuntingData(const InputMessagePtr& msg);
-    void parseExperienceTracker(const InputMessagePtr& msg);
-    void parseLootContainers(const InputMessagePtr& msg);
-    void parseMonkData(const InputMessagePtr& msg);
-    void parseCyclopediaHouseAuctionMessage(const InputMessagePtr& msg);
-    void parseCyclopediaHousesInfo(const InputMessagePtr& msg);
-    void parseCyclopediaHouseList(const InputMessagePtr& msg);
 
-    void parseSupplyStash(const InputMessagePtr& msg);
-    void parseSpecialContainer(const InputMessagePtr& msg);
-    void parsePartyAnalyzer(const InputMessagePtr& msg);
-    void parseTeamFinderLeader(const InputMessagePtr& msg);
-    void parseTeamFinderList(const InputMessagePtr& msg);
-    void parseDepotSearchResults(const InputMessagePtr& msg);
-    void parseDepotSearchDetailList(const InputMessagePtr& msg);
-    void parseImbuementDurations(const InputMessagePtr& msg);
-    void parsePassiveCooldown(const InputMessagePtr& msg);
     void parseClientCheck(const InputMessagePtr& msg);
-    void parseSpellDataModification(const InputMessagePtr& msg);
-    void parseServerStop(const InputMessagePtr& msg);
-    void parseGemAtelierGemRevealed(const InputMessagePtr& msg);
-    void parseTransactionDetails(const InputMessagePtr& msg);
-    void parseHirelingNameChange(const InputMessagePtr& msg);
-    void parseGameNews(const InputMessagePtr& msg);
-    void parseCloseDepotSearch(const InputMessagePtr& /*msg*/);
-    void parseBlessDialog(const InputMessagePtr& msg);
     void parseRestingAreaState(const InputMessagePtr& msg);
-    void parseUpdateImpactTracker(const InputMessagePtr& msg);
-    void parseItemsPrice(const InputMessagePtr& msg);
-    void parseUpdateSupplyTracker(const InputMessagePtr& msg);
-    void parseUpdateLootTracker(const InputMessagePtr& msg);
-    void parseBestiaryEntryChanged(const InputMessagePtr& msg);
     void parseCyclopediaCharacterInfo(const InputMessagePtr& msg);
-    void parseDailyRewardCollectionState(const InputMessagePtr& msg);
-    void parseOpenRewardWall(const InputMessagePtr& msg);
     void parseDailyReward(const InputMessagePtr& msg);
-    void parseRewardHistory(const InputMessagePtr& msg);
-    void parsePreyFreeRerolls(const InputMessagePtr& msg);
-    void parsePreyTimeLeft(const InputMessagePtr& msg);
-    void parsePreyData(const InputMessagePtr& msg);
-    void parsePreyRerollPrice(const InputMessagePtr& msg);
-    void parseImbuementWindow(const InputMessagePtr& msg);
-    void parseCloseImbuementWindow(const InputMessagePtr& msg);
-    void parseError(const InputMessagePtr& msg);
-    void parseMarketEnter(const InputMessagePtr& msg);
-    void parseMarketEnterOld(const InputMessagePtr& msg);
-    void parseMarketDetail(const InputMessagePtr& msg);
-    void parseMarketBrowse(const InputMessagePtr& msg);
 
     // 13x
-    void parseBosstiaryData(const InputMessagePtr& msg);
-    void parseBosstiarySlots(const InputMessagePtr& msg);
-    void parseBosstiaryCooldownTimer(const InputMessagePtr& msg);
-    void parseBosstiaryEntryChanged(const InputMessagePtr& msg);
-    void parseBestiaryRaces(const InputMessagePtr& msg);
-    void parseBestiaryOverview(const InputMessagePtr& msg);
-    void parseBestiaryMonsterData(const InputMessagePtr& msg);
     void parseBestiaryCharmsData(const InputMessagePtr& msg);
 
     // 15x
-    void parseWeaponProficiencyExperience(const InputMessagePtr& msg);
-    void parseWeaponProficiencyInfo(const InputMessagePtr& msg);
-    void parseWeaponProficiencyReshapeOffers(const InputMessagePtr& msg);
-    void parseBossDifficultySelection(const InputMessagePtr& msg);
-    void parseUnlockedSpells(const InputMessagePtr& msg);
     void parseFriendSystemData(const InputMessagePtr& msg);
-    void parseCharacterTradeConfiguration(const InputMessagePtr& msg);
-    void parseConfigureCreaturePodium(const InputMessagePtr& msg);
-    void parseCloseRewardWall(const InputMessagePtr& msg);
 
     // 15.2x
     void parseTaskBoardData(const InputMessagePtr& msg);
     void parseTaskBoardBountyData(const InputMessagePtr& msg);
     void parseTaskBoardWeeklyData(const InputMessagePtr& msg);
     void parseTaskBoardShopData(const InputMessagePtr& msg);
-    void parseMultiOfflineTrainingDialog(const InputMessagePtr& msg);
-    void parseNpcChatWindow(const InputMessagePtr& msg);
     
-    void parseHighscores(const InputMessagePtr& msg);
-    void parseAttachedEffect(const InputMessagePtr& msg);
-    void parseDetachEffect(const InputMessagePtr& msg);
-    void parseCreatureShader(const InputMessagePtr& msg);
-    void parseMapShader(const InputMessagePtr& msg);
-    void parseOpenWheelWindow(const InputMessagePtr& msg);
 
-    void parseAttachedPaperdoll(const InputMessagePtr& msg);
-    void parseDetachPaperdoll(const InputMessagePtr& msg);
 
-    MarketOffer readMarketOffer(const InputMessagePtr& msg, uint8_t action, uint16_t var);
 
-    Imbuement getImbuementInfo(const InputMessagePtr& msg);
-    PreyMonster getPreyMonster(const InputMessagePtr& msg) const;
-    std::vector<PreyMonster> getPreyMonsters(const InputMessagePtr& msg);
 
 public:
-    void setMapDescription(const InputMessagePtr& msg, int x, int y, int z, int width, int height, bool apply = true);
-    int setFloorDescription(const InputMessagePtr& msg, int x, int y, int z, int width, int height, int offset, int skip, bool apply = true);
     /// Classic qtclient wire decode; when apply, mutations go through live
     /// TWorldmapProtocolMessageHandler (else ensureStorage fallback for tests/editor).
-    int setTileDescription(const InputMessagePtr& msg, Position position, bool apply = true);
 
     Outfit getOutfit(const InputMessagePtr& msg, bool parseMount = true) const;
-    ThingPtr getThing(const InputMessagePtr& msg);
-    ThingPtr getMappedThing(const InputMessagePtr& msg) const;
-    void skipMappedThing(const InputMessagePtr& msg) const;
-    /// Storage upsert + LocalPlayerSessionThing keep-alive return. Non-local: nullptr; id in
-    /// `lastParsedCreatureId()` for placeCreatureId (no ephemeral Map Creature).
-    CreaturePtr getCreature(const InputMessagePtr& msg, int type = 0);
+    /// A creature (u16 kind first) read with the map reader and applied to the creature storage.
     /// Decode classic object-info into a CIP inventory slot (no Item::create).
     ::tibia::container::TInventorySlot getInventorySlot(const InputMessagePtr& msg, int id = 0);
     /// Field/tile appearance from the same wire as getInventorySlot.
-    tibia::appearances::TAppearanceInstancePtr getItemAppearance(const InputMessagePtr& msg, int id = 0);
     Position getPosition(const InputMessagePtr& msg);
-    /// Creature id from the most recent getCreature/getThing creature opcode (0 if none).
-    uint32_t lastParsedCreatureId() const { return m_lastParsedCreatureId; }
-    /// Item appearance from the most recent getThing item branch (null if creature/none).
-    const tibia::appearances::TAppearanceInstancePtr& lastParsedItemAppearance() const
-    {
-        return m_lastParsedItemAppearance;
-    }
 
 private:
-    PaperdollPtr getPaperdoll(const InputMessagePtr& msg) const;
 
     bool m_enableSendExtendedOpcode{ false };
     bool m_gameInitialized{ false };
-    bool m_mapKnown{ false };
     bool m_firstRecv{ true };
     bool m_record{ false };
     bool m_applyingClassicBridge{ false };
     bool m_writingClientLoadSplit{ false };
-    uint32_t m_lastParsedCreatureId{ 0 };
-    tibia::appearances::TAppearanceInstancePtr m_lastParsedItemAppearance;
 
-    ticks_t m_lastPartyAnalyzerCall{ 0 };
     int m_recivedPackeds = 0;
     int m_recivedPackedsSize = 0;
 

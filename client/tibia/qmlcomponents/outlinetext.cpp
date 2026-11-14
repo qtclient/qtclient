@@ -129,14 +129,12 @@ void TOutlineTextQuickItem::syncFromOther(cip::tibia::qmlcomponents::TOutlineTex
         copyProperties(*this, *other);
 }
 
-// b1/6a74c87b0f0fc9d9
 void TOutlineTextQuickItem::componentComplete()
 {
     cip::tibia::qmlcomponents::TOutlineTextQuickItem::componentComplete();
     m_children.sync();
 }
 
-// b1/090ecbbf151666fc
 void TOutlineTextQuickItem::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)
 {
     cip::tibia::qmlcomponents::TOutlineTextQuickItem::geometryChange(newGeometry, oldGeometry);
@@ -163,7 +161,6 @@ void TCachedOutlineTextQuickItem::syncFromOther(cip::tibia::qmlcomponents::TOutl
         copyProperties(*this, *other);
 }
 
-// b1/bce36119efcba106
 void TCachedOutlineTextQuickItem::componentComplete()
 {
     cip::tibia::qmlcomponents::TCachedOutlineTextQuickItem::componentComplete();
@@ -176,14 +173,12 @@ void TCachedOutlineTextQuickItem::geometryChange(const QRectF& newGeometry, cons
     m_children.resize();
 }
 
-// b1/2bbf757d3aafd2c7
 void TCachedOutlineTextQuickItem::updatePolish()
 {
     cip::tibia::qmlcomponents::TCachedOutlineTextQuickItem::updatePolish();
     m_children.sync();
 }
 
-// b1/aea345a5e3702e15
 QSGNode* TCachedOutlineTextQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData* data)
 {
     return cip::tibia::qmlcomponents::TCachedOutlineTextQuickItem::updatePaintNode(oldNode, data);

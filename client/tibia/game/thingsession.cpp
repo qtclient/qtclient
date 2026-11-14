@@ -3,6 +3,7 @@
 #include <tibia/assets/things.h>
 #include <tibia/creatures/attachedeffect.h>
 #include <tibia/creatures/attachedeffectmanager.h>
+#include <tibia/creatures/creaturestorage.h>
 
 #include <algorithm>
 
@@ -172,6 +173,29 @@ void registerAttachedEffectByThing(const uint16_t id, const std::string_view not
         effect->setPermanent(false);
         effect->setOnTop(false);
     }
+}
+
+void attachCreatureEffect(const uint32_t creatureId, const uint16_t effectId)
+{
+    const AttachedEffectPtr& effect = g_attachedEffects.getById(effectId);
+    if (!effect)
+        return;
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (const auto row = storage->creatureAt(creatureId)) {
+            for (const auto& attached : row->attachedEffects()) {
+                if (attached && attached->getId() == effectId)
+                    return;
+            }
+        }
+    }
+    const auto clone = effect->clone();
+    clone->setPermanent(false);
+    tibia::creatures::protocolAttachEffect(creatureId, clone);
+}
+
+void detachCreatureEffect(const uint32_t creatureId, const uint16_t effectId)
+{
+    tibia::creatures::protocolDetachEffect(creatureId, effectId);
 }
 
 } // namespace tibia::game

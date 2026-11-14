@@ -99,7 +99,6 @@ QString stripCompletedMarker(const QString& name)
     return QString(name).replace(CompletedMarker, QString()).trimmed();
 }
 
-// b1/be39a99f5359c6cd
 void TQuestLinesModel::setLines(QList<Line> lines)
 {
     const int oldCount = m_lines.size();
@@ -345,7 +344,6 @@ TQuestLogController::~TQuestLogController()
     saveStorage();
 }
 
-// b1/641ca4356287e554
 void TQuestLogController::showDialog(const int parameter)
 {
     ensureStorage();
@@ -484,7 +482,6 @@ void TQuestLogController::setShowHidden(const bool Show)
     Q_EMIT filterOptionsChanged();
 }
 
-// b1/f5eb704f09e4e83e
 void TQuestLogController::setHidden(const int QuestLineId, const bool IsHidden)
 {
     if (IsHidden == m_hiddenLines.contains(QuestLineId))
@@ -497,7 +494,6 @@ void TQuestLogController::setHidden(const int QuestLineId, const bool IsHidden)
     rebuildLines();
 }
 
-// b1/e3481191ccfb1d83
 void TQuestLogController::setPinned(const int QuestLineId, const bool IsPinned)
 {
     if (IsPinned == m_pinnedLines.contains(QuestLineId))
@@ -582,7 +578,6 @@ void TQuestLogController::startMission(const QString& taskEntryId)
 }
 
 
-// b1/17110983aca709f0
 void TQuestLogController::setTrackingOfQuestFlag(const int QuestFlagId, const bool IsTracked)
 {
     if (IsTracked == m_tracker.trackedIds().contains(QuestFlagId))

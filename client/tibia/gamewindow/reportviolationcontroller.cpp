@@ -88,7 +88,6 @@ bool TReportViolationController::handleAction(const input::TGameAction& action)
     }
 }
 
-// b1/c28fcb7385a85059
 void TReportViolationController::open(const EType type, const QString& name, const QString& statement, const uint32_t id)
 {
     const QDateTime now = QDateTime::currentDateTime();
@@ -148,7 +147,6 @@ void TReportViolationController::cancelReport()
     dialog()->close();
 }
 
-// b1/1c31e24146262f7d
 std::vector<TReportViolationController::Reason> TReportViolationController::reasons(const EType type)
 {
     static const std::vector<Reason> NameReasons = {

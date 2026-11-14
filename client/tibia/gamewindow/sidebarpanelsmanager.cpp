@@ -137,7 +137,6 @@ QList<SidebarPanelType> TSidebarPanelsManager::fullPanelsOrder() const
     return order;
 }
 
-// b1/7cd38e3ae6816c0b
 void TSidebarPanelsManager::reorderPanelsFromOptions()
 {
     if (!m_options || !m_sidebars)
@@ -148,7 +147,6 @@ void TSidebarPanelsManager::reorderPanelsFromOptions()
         m_sidebars->movePanelToEnd(m_premiumPanelItem);
 }
 
-// b1/e490c7fb5995a65d
 void TSidebarPanelsManager::saveCurrentOpenPanels()
 {
     if (!m_options)

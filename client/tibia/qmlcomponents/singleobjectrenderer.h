@@ -2,9 +2,12 @@
 
 #include <cip_gen.h>
 
+#include "animation/animator.h"
 #include "renderer/spritetexturecache.h"
 
 #include <QPointer>
+
+#include <optional>
 
 class ThingType;
 
@@ -47,6 +50,9 @@ private:
     int currentPhase() const;
 
     ThingType* m_type = nullptr;
+    /// The shown object's own animator, started at time 0; rebuilt with the type.
+    mutable std::optional<tibia::animation::TAnimator> m_animator;
+    mutable const ThingType* m_animatorType = nullptr;
     int m_patternX = 0;
     int m_patternY = 0;
     int m_patternZ = 0;

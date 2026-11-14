@@ -25,7 +25,11 @@ class ThingType;
 namespace tibia {
 namespace protobuf {
 namespace protocol {
+class GameserverMessageChangeInContainer;
 class GameserverMessageCloseContainer;
+class GameserverMessageContainer;
+class GameserverMessageCreateInContainer;
+class GameserverMessageDeleteInContainer;
 class GameserverMessageDeleteInventory;
 class GameserverMessageSetInventory;
 class GameserverMessageSpecialContainersAvailable;
@@ -121,6 +125,21 @@ public:
     /// CIP slot: CloseContainer (S 0x6F / 111) — native Q→H apply.
     void handleCloseContainerMessage(
         const ::tibia::protobuf::protocol::GameserverMessageCloseContainer& CloseContainerMessage);
+
+    /// CIP slot: Container (S 0x6E / 110) — native Q→H apply.
+    void handleContainerMessage(const ::tibia::protobuf::protocol::GameserverMessageContainer& ContainerMessage);
+
+    /// CIP slot: CreateInContainer (S 0x70 / 112) — native Q→H apply.
+    void handleCreateInContainerMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageCreateInContainer& CreateInContainerMessage);
+
+    /// CIP slot: ChangeInContainer (S 0x71 / 113) — native Q→H apply.
+    void handleChangeInContainerMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageChangeInContainer& ChangeInContainerMessage);
+
+    /// CIP slot: DeleteInContainer (S 0x72 / 114) — native Q→H apply.
+    void handleDeleteInContainerMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageDeleteInContainer& DeleteInContainerMessage);
 
     /// CIP slot: SetInventory (S 0x78 / 120) — native Q→H apply.
     void handleSetInventoryMessage(

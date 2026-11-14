@@ -60,15 +60,837 @@ message ProtocolInventoryItem {
   optional bool brand_new = 25;
   optional uint32 charges = 26;
   optional uint32 deco_item_id = 27;
-  optional string shader = 28;
-  optional string tooltip = 29;
   optional bool has_podium = 30;
   optional bool has_container_ammo = 31;
 }
 
+// CIP TProtobufServerMessageTranslator::v29 entries: kind 0 graphical (coordinate, id, delay, source), 1 missile (coordinate→destination, id, source), 2 main sound (coordinate, source, id), 3 secondary sound (coordinate, enum, source, id). Coordinates are absolute (deltas applied).
+message GraphicalEffectEntry {
+  optional uint32 kind = 1;
+  optional ProtocolCoordinate coordinate = 2;
+  optional uint32 appearance_id = 3;
+  optional uint32 delay = 4;
+  optional uint32 source = 5;
+  optional ProtocolCoordinate destination = 6;
+  optional uint32 sound_id = 7;
+  optional uint32 sound_source = 8;
+  optional uint32 sound_enum = 9;
+}
+
+// CIP TProtobufServerMessageTranslator::v23: u16 look type; non-zero → 4 colours (+ u8 addons for outfits); zero → u16 item (outfit only).
+message ProtocolOutfit {
+  optional uint32 look_type = 1;
+  optional uint32 head = 2;
+  optional uint32 body = 3;
+  optional uint32 legs = 4;
+  optional uint32 feet = 5;
+  optional uint32 addons = 6;
+  optional uint32 look_type_ex = 7;
+}
+
+// CIP v19 first icon list: u8 icon, u8 category, u16 value, u8 flag.
+message ProtocolCreatureIcon {
+  optional uint32 icon = 1;
+  optional uint32 category = 2;
+  optional uint32 value = 3;
+  optional bool flag = 4;
+}
+
+// CIP v19: kind 0x61 new (remove id, id, type, master for own summons, name), 0x62 known (id), 0x63 turn (id, direction, unpassable). Fields 24-31 are product server features (not in CIP).
+message ProtocolCreature {
+  optional uint32 kind = 1;
+  optional uint32 remove_id = 2;
+  optional uint32 id = 3;
+  optional uint32 type = 4;
+  optional uint32 master_id = 5;
+  optional string name = 6;
+  optional uint32 health_percent = 7;
+  optional uint32 direction = 8;
+  optional ProtocolOutfit outfit = 9;
+  optional ProtocolOutfit mount = 10;
+  optional uint32 light_intensity = 11;
+  optional uint32 light_color = 12;
+  optional uint32 speed = 13;
+  repeated ProtocolCreatureIcon icons = 14;
+  repeated uint32 extra_icons = 15;
+  optional uint32 skull = 16;
+  optional uint32 shield = 17;
+  optional uint32 emblem = 18;
+  optional uint32 vocation = 19;
+  optional uint32 icon = 20;
+  optional uint32 mark = 21;
+  optional uint32 inspection_type = 22;
+  optional bool unpassable = 23;
+}
+
+// CIP v16: u16 id; 0x61-0x63 creature, else object.
+message ProtocolMapObject {
+  optional ProtocolInventoryItem item = 1;
+  optional ProtocolCreature creature = 2;
+}
+
+// One described field; a field without objects is cleared (skipped in the classic area).
+message ProtocolMapField {
+  optional ProtocolCoordinate coordinate = 1;
+  repeated ProtocolMapObject objects = 2;
+  optional uint32 environment_effect = 3;
+}
+
+// CIP TProtobufServerMessageTranslator::v207: u8 id, string name.
+message ProtocolContainerCategory {
+  optional uint32 id = 1;
+  optional string name = 2;
+}
+
+// CIP TProtobufServerMessageTranslator::v70: u16 level, base, loyalty, percent in hundredths.
+message ProtocolSkill {
+  optional uint32 level = 1;
+  optional uint32 base = 2;
+  optional uint32 loyalty = 3;
+  optional uint32 percent_hundredths = 4;
+}
+
+// CIP v69 list: u8 type, s16 value.
+message ProtocolSkillModifier {
+  optional uint32 type = 1;
+  optional int32 value = 2;
+}
+
+// CIP v69 list: u8 combat type, double value.
+message ProtocolCombatAbsorb {
+  optional uint32 combat = 1;
+  optional double value = 2;
+}
+
+// CIP channel entry: u16 id, string name.
+message ProtocolChannel {
+  optional uint32 id = 1;
+  optional string name = 2;
+}
+
+// CIP NPC offer: u16 object, u8 data (amount or fluid), string name, u32 weight, u32 buy, u32 sell.
+message ProtocolNpcOffer {
+  optional uint32 object_id = 1;
+  optional uint32 data = 2;
+  optional string name = 3;
+  optional uint32 weight = 4;
+  optional uint32 buy_price = 5;
+  optional uint32 sell_price = 6;
+}
+
+// CIP player good: u16 object, u16 amount.
+message ProtocolPlayerGood {
+  optional uint32 object_id = 1;
+  optional uint32 amount = 2;
+}
+
+// CIP TProtobufServerMessageTranslator::v183: one house of the current house data.
+message ProtocolHouse {
+  optional uint32 house_id = 1;
+  optional bool rentable = 2;
+  optional uint32 state = 3;
+  optional string bidder_name = 4;
+  optional bool is_bidder = 5;
+  optional uint32 bid_disable_reason = 6;
+  optional uint32 bid_end = 7;
+  optional uint64 highest_bid = 8;
+  optional uint64 bid_limit = 9;
+  optional string owner_name = 10;
+  optional uint32 paid_until = 11;
+  optional bool is_owner = 12;
+  optional uint32 move_out_disable_reason = 13;
+  optional uint32 transfer_disable_reason = 14;
+  optional uint32 transfer_date = 15;
+  optional string new_owner_name = 16;
+  optional bool new_owner_accepted = 17;
+  optional uint64 transfer_price = 18;
+  optional bool is_new_owner = 19;
+  optional uint32 accept_transfer_disable_reason = 20;
+  optional uint32 reject_transfer_disable_reason = 21;
+  optional uint32 cancel_transfer_disable_reason = 22;
+  optional uint32 move_out_date = 23;
+  optional uint32 cancel_move_out_disable_reason = 24;
+}
+
+// CIP TProtobufServerMessageTranslator::v163: u32 time, u8 premium, string text, u16 streak.
+message ProtocolDailyRewardHistoryEntry {
+  optional uint32 timestamp = 1;
+  optional bool premium = 2;
+  optional string description = 3;
+  optional uint32 streak = 4;
+}
+
+// CIP TProtobufServerMessageTranslator::v196: u32 time, u8 action, string text, bool bonus.
+message ProtocolExaltationHistoryEntry {
+  optional uint32 timestamp = 1;
+  optional uint32 action_type = 2;
+  optional string description = 3;
+  optional bool bonus = 4;
+}
+
+// u32 race, u64 cooldown seconds.
+message ProtocolBossCooldown {
+  optional uint32 race_id = 1;
+  optional uint64 cooldown = 2;
+}
+
+// u16 object, u32 amount.
+message ProtocolStashEntry {
+  optional uint32 object_id = 1;
+  optional uint32 amount = 2;
+}
+
+// CIP v194 (u16 object, u8 tier for classified items) + u16 count.
+message ProtocolDepotSearchEntry {
+  optional uint32 object_id = 1;
+  optional uint32 tier = 2;
+  optional uint32 count = 3;
+}
+
+// u8 category, u16 loot container, u16 obtainer container.
+message ProtocolManagedContainer {
+  optional uint32 category = 1;
+  optional uint32 loot_container_id = 2;
+  optional uint32 obtainer_container_id = 3;
+}
+
+// u16 object, u8 tier for classified items, u64 average price.
+message ProtocolMarketStatistic {
+  optional uint32 object_id = 1;
+  optional uint32 tier = 2;
+  optional uint64 price = 3;
+}
+
+// CIP v68: u8 progress percent, u8 remaining kills.
+message ProtocolUnjustifiedProgress {
+  optional uint32 progress = 1;
+  optional uint32 remaining = 2;
+}
+
+// u16 race, u32 kills, u16 x3 stage thresholds, bool completed.
+message ProtocolBestiaryTrackerEntry {
+  optional uint32 race_id = 1;
+  optional uint32 kills = 2;
+  optional uint32 first_unlock = 3;
+  optional uint32 second_unlock = 4;
+  optional uint32 last_unlock = 5;
+  optional bool completed = 6;
+}
+
+// CIP v17 (u16 object, u8 tier) + var-int count.
+message ProtocolInventoryCount {
+  optional uint32 object_id = 1;
+  optional uint32 tier = 2;
+  optional uint32 count = 3;
+}
+
+// string class name, u16 races, u16 known races.
+message ProtocolMonsterClass {
+  optional string name = 1;
+  optional uint32 total = 2;
+  optional uint32 known = 3;
+}
+
+// u16 id, string name, bool completed.
+message ProtocolQuest {
+  optional string name = 1;
+  optional uint32 quest_id = 2;
+  optional bool completed = 3;
+}
+
+// CIP v17 (u16 object, u8 data), string description.
+message ProtocolObjectInfo {
+  optional string description = 1;
+  optional uint32 object_id = 2;
+  optional uint32 data = 3;
+}
+
+// u8 id, string name, bool editable.
+message ProtocolBuddyGroup {
+  optional string name = 1;
+  optional uint32 group_id = 2;
+  optional bool editable = 3;
+}
+
+// CIP v194: u16 object, u8 tier for tiered objects.
+message ProtocolTieredObject {
+  optional uint32 object_id = 1;
+  optional uint32 tier = 2;
+}
+
+// u32 race, u8 category, u32 kills, u8 (meaning not recovered), bool tracked.
+message ProtocolBosstiaryEntry {
+  optional uint32 race_id = 1;
+  optional uint32 category = 2;
+  optional uint32 kills = 3;
+  optional uint32 reserved = 4;
+  optional bool tracked = 5;
+}
+
+// u16 id, string name, string description.
+message ProtocolQuestMission {
+  optional string name = 1;
+  optional string description = 2;
+  optional uint32 mission_id = 3;
+}
+
+// u16 race, bool known, u8 progress; progress > 0: u8 occurrence, u8 (meaning not recovered); u16 animus bonus / 1000.
+message ProtocolMonsterCyclopediaEntry {
+  optional uint32 race_id = 1;
+  optional uint32 progress = 2;
+  optional double animus_mastery_bonus = 3;
+  optional uint32 extra = 4;
+  optional bool known = 5;
+  optional uint32 occurrence = 6;
+}
+
+// u32 id, u32 time, u8 mode, u32 amount (signed), u8 coin type, string, bool details.
+message ProtocolStoreTransaction {
+  optional string description = 1;
+  optional uint32 transaction_id = 2;
+  optional uint32 timestamp = 3;
+  optional uint32 mode = 4;
+  optional int32 amount = 5;
+  optional uint32 coin_type = 6;
+  optional bool has_details = 7;
+}
+
+// u32 boss, u8 race.
+message ProtocolBossSlotBoss {
+  optional uint32 boss_id = 1;
+  optional uint32 race = 2;
+}
+
+// CIP v27: bool unlocked; locked: u32; unlocked: boss (u32, stop when 0), u8 race, u32 kills, u16 loot bonus, u8 kill bonus, u8 race repeat, u32 remove price, bool inactive.
+message ProtocolBossSlot {
+  optional ProtocolBossSlotBoss boss = 1;
+  optional uint32 kill_count = 2;
+  optional uint32 loot_bonus = 3;
+  optional bool unlocked = 4;
+  optional bool inactive = 5;
+  optional uint32 kill_bonus = 6;
+  optional uint32 race_repeat = 7;
+  optional uint32 remove_price = 8;
+  optional uint32 locked_value = 9;
+}
+
+// u8 type; 1: u16 boss; 2: u16 hunt type, u16 area; 3: u16 quest.
+message ProtocolTeamType {
+  optional uint32 team_type = 1;
+  optional uint32 hunt_type = 2;
+  optional uint32 hunt_area = 3;
+  optional uint32 boss_id = 4;
+  optional uint32 quest_id = 5;
+}
+
+// CIP v190: u16 min, u16 max, u8 vocations, u16 slots, u16 free, u32 time, type.
+message ProtocolTeamSettings {
+  optional ProtocolTeamType type = 1;
+  optional uint32 min_level = 2;
+  optional uint32 max_level = 3;
+  optional uint32 vocations = 4;
+  optional uint32 team_slots = 5;
+  optional uint32 free_slots = 6;
+  optional uint32 timestamp = 7;
+}
+
+// u32 guid, string name, u16 level, u8 vocation, u8 status.
+message ProtocolTeamMember {
+  optional string name = 1;
+  optional uint32 guid = 2;
+  optional uint32 level = 3;
+  optional uint32 vocation = 4;
+  optional uint32 status = 5;
+}
+
+// u32 leader, string name, settings, u8 status.
+message ProtocolTeamListing {
+  optional string leader_name = 1;
+  optional ProtocolTeamSettings settings = 2;
+  optional uint32 leader_guid = 3;
+  optional uint32 status = 4;
+}
+
+// u16 mission, u16 quest, string quest, string mission, string description.
+message ProtocolTrackedMission {
+  optional string quest_name = 1;
+  optional string mission_name = 2;
+  optional string description = 3;
+  optional uint32 mission_id = 4;
+  optional uint32 quest_id = 5;
+}
+
+// u8 level, u8 position.
+message ProtocolProficiencyPerk {
+  optional uint32 level = 1;
+  optional uint32 position = 2;
+}
+
+// u8 level, u8 position, u16 modifier, u8 refine level.
+message ProtocolProficiencyModifiedPerk {
+  optional uint32 level = 1;
+  optional uint32 position = 2;
+  optional uint32 modifier = 3;
+  optional uint32 refine_level = 4;
+}
+
+// u8 id, string text.
+message ProtocolNpcTalkButton {
+  optional string text = 1;
+  optional uint32 button_id = 2;
+}
+
+// u32 id, bool highlight, u64 loot, supplies, damage, healing.
+message ProtocolPartyHuntMember {
+  optional uint32 member_id = 1;
+  optional bool highlighted = 2;
+  optional uint64 loot = 3;
+  optional uint64 supplies = 4;
+  optional uint64 damage = 5;
+  optional uint64 healing = 6;
+}
+
+// u32 id, string name.
+message ProtocolPartyHuntName {
+  optional string name = 1;
+  optional uint32 member_id = 2;
+}
+
+// u16 modifier, u8 refine level.
+message ProtocolReshapeOffer {
+  optional uint32 modifier = 1;
+  optional uint32 refine_level = 2;
+}
+
+// u8 level, u8 position, u8 count x offer.
+message ProtocolReshapeSlot {
+  repeated ProtocolReshapeOffer offers = 1;
+  optional uint32 level = 2;
+  optional uint32 position = 3;
+}
+
+// string name, u8 state, u8 count x string icon, string parent.
+message ProtocolStoreCategory {
+  optional string name = 1;
+  repeated string icons = 2;
+  optional string parent = 3;
+  optional uint32 state = 4;
+}
+
+// string, u8 id.
+message ProtocolModalChoice {
+  optional string text = 1;
+  optional uint32 choice_id = 2;
+}
+
+// u16 bit, u8 count, u8 store count.
+message ProtocolBlessing {
+  optional uint32 blessing = 1;
+  optional uint32 count = 2;
+  optional uint32 store_count = 3;
+}
+
+// u32 time, u8 colour, string.
+message ProtocolBlessingHistoryEntry {
+  optional string text = 1;
+  optional uint32 timestamp = 2;
+  optional uint32 color = 3;
+}
+
+// bool imbued; imbued: string, u16 icon, u32 seconds, bool decaying.
+message ProtocolImbuementTrackerSlot {
+  optional string name = 1;
+  optional bool imbued = 2;
+  optional uint32 icon_id = 3;
+  optional uint32 duration = 4;
+  optional bool decaying = 5;
+}
+
+// u8 slot, item, u8 count x slot.
+message ProtocolImbuementTrackerItem {
+  optional ProtocolInventoryItem item = 1;
+  repeated ProtocolImbuementTrackerSlot slots = 2;
+  optional uint32 inventory_slot = 3;
+}
+
+// u8 tier, u64 price.
+message ProtocolTierPrice {
+  optional uint32 tier = 1;
+  optional uint64 price = 2;
+}
+
+// u8 class, u8 count x tier price.
+message ProtocolClassTierPrices {
+  repeated ProtocolTierPrice tiers = 1;
+  optional uint32 class_id = 2;
+}
+
+// u8 tier, u8 cores.
+message ProtocolFusionGrade {
+  optional uint32 tier = 1;
+  optional uint32 cores = 2;
+}
+
+// string x3, u16.
+message ProtocolMainCharacterOption {
+  optional string name = 1;
+  optional string world = 2;
+  optional string vocation = 3;
+  optional uint32 level = 4;
+}
+
+// string, bool, bool, u8 (meaning of the flags not recovered).
+message ProtocolTransferWorld {
+  optional string name = 1;
+  optional bool first_flag = 2;
+  optional bool second_flag = 3;
+  optional uint32 pvp_type = 4;
+}
+
+// bool; u8 count x world; bool x5.
+message ProtocolWorldTransferInformation {
+  repeated ProtocolTransferWorld worlds = 1;
+  optional bool flag = 2;
+  repeated bool flags = 3;
+}
+
+// u16 race; boss podium: string name, outfit.
+message ProtocolPodiumRace {
+  optional string name = 1;
+  optional ProtocolOutfit outfit = 2;
+  optional uint32 race_id = 3;
+}
+
+// u32, string, u8, s64 (meaning of the numbers not recovered).
+message ProtocolTransactionItem {
+  optional string text = 1;
+  optional uint32 first_value = 2;
+  optional uint32 second_value = 3;
+  optional int64 amount = 4;
+}
+
+// type 1: string, u32 x3, u64 x2, u16 count x item (meaning of the numbers not recovered).
+message ProtocolTransactionPurchase {
+  optional string text = 1;
+  repeated ProtocolTransactionItem items = 2;
+  optional uint32 first_value = 3;
+  optional uint32 second_value = 4;
+  optional uint32 third_value = 5;
+  optional uint64 fourth_value = 6;
+  optional uint64 fifth_value = 7;
+}
+
+// type 0: u32, string, string, s32, u64, s64 (meaning of the numbers not recovered).
+message ProtocolTransactionTransfer {
+  optional string first_text = 1;
+  optional string second_text = 2;
+  optional uint32 first_value = 3;
+  optional int32 second_value = 4;
+  optional uint64 third_value = 5;
+  optional int64 fourth_value = 6;
+}
+
+// CIP v149: string name, outfit.
+message ProtocolPreyMonster {
+  optional string name = 1;
+  optional ProtocolOutfit outfit = 2;
+}
+
+// u16 object, string name, u16 count.
+message ProtocolImbuementSource {
+  optional string name = 1;
+  optional uint32 object_id = 2;
+  optional uint32 count = 3;
+}
+
+// CIP v153: u32 id, string name, string description, u8 tier, u16 icon, u32 duration, u8 n x source, u32 cost.
+message ProtocolImbuement {
+  optional string name = 1;
+  optional string description = 2;
+  repeated ProtocolImbuementSource sources = 3;
+  optional uint32 imbuement_id = 4;
+  optional uint32 tier = 5;
+  optional uint32 icon_id = 6;
+  optional uint32 duration = 7;
+  optional uint32 cost = 8;
+}
+
+// bool occupied; occupied: imbuement, u32 duration, u32 removal cost.
+message ProtocolImbuingSlot {
+  optional ProtocolImbuement imbuement = 1;
+  optional bool occupied = 2;
+  optional uint32 duration = 3;
+  optional uint32 removal_cost = 4;
+}
+
+// u16 object, u16 count.
+message ProtocolNeededObject {
+  optional uint32 object_id = 1;
+  optional uint32 count = 2;
+}
+
+// CIP v20: u16 look, string, u8 addons (outfits only), u8 mode; mode 1: u32 store offer.
+message ProtocolOutfitOption {
+  optional string name = 1;
+  optional uint32 look_type = 2;
+  optional uint32 addons = 3;
+  optional uint32 mode = 4;
+  optional uint32 offer_id = 5;
+}
+
+// u16 male, u16 female.
+message ProtocolGenderPair {
+  optional uint32 male = 1;
+  optional uint32 female = 2;
+}
+
+// u16 object, u8 rarity, bool event; object != 0: string name, u8 amount.
+message ProtocolMonsterLoot {
+  optional string name = 1;
+  optional uint32 object_id = 2;
+  optional uint32 rarity = 3;
+  optional bool special_event = 4;
+  optional uint32 amount = 5;
+}
+
+// u8 element, s16 value.
+message ProtocolElementModifier {
+  optional uint32 element = 1;
+  optional int32 value = 2;
+}
+
+// u32 time, u16 counter; own lists: object; u16 amount, u64 price; own history: u8 state; item browse: string name.
+message ProtocolMarketOffer {
+  optional string character_name = 1;
+  optional ProtocolTieredObject object = 2;
+  optional uint32 timestamp = 3;
+  optional uint32 counter = 4;
+  optional uint32 amount = 5;
+  optional uint64 price = 6;
+  optional uint32 state = 7;
+}
+
+// s32 id (-1: all), string name.
+message ProtocolHighscoreVocation {
+  optional string name = 1;
+  optional int32 vocation_id = 2;
+}
+
+// u8 id, string name.
+message ProtocolHighscoreCategory {
+  optional string name = 1;
+  optional uint32 category_id = 2;
+}
+
+// u32 rank, string name, string title, u8 vocation, string world, u16 level, bool own, u64 points.
+message ProtocolHighscoreEntry {
+  optional string name = 1;
+  optional string title = 2;
+  optional string world = 3;
+  optional uint32 rank = 4;
+  optional uint32 vocation = 5;
+  optional uint32 level = 6;
+  optional bool is_player = 7;
+  optional uint64 points = 8;
+}
+
+// CIP v25: u8 action; 1/3: u8; 2: string category, string sub category; 4: u32 offer; 5: string search; u8 sort, u8 service type.
+message ProtocolStoreOpenParameters {
+  optional string category = 1;
+  optional string sub_category = 2;
+  optional string search_text = 3;
+  optional uint32 open_action = 4;
+  optional uint32 detail = 5;
+  optional uint32 offer_id = 6;
+  optional uint32 sort_order = 7;
+  optional uint32 service_type = 8;
+}
+
+// string, string.
+message ProtocolInspectionDetail {
+  optional string label = 1;
+  optional string value = 2;
+}
+
+// character window: u8 slot; string name; item; u8 n x u16 imbuement icon; u8 n x detail.
+message ProtocolInspectedObject {
+  optional string name = 1;
+  optional ProtocolInventoryItem item = 2;
+  repeated uint32 imbuement_icons = 3;
+  repeated ProtocolInspectionDetail details = 4;
+  optional uint32 slot = 5;
+}
+
+// string, bool.
+message ProtocolTradeCondition {
+  optional string text = 1;
+  optional bool fulfilled = 2;
+}
+
+// object (tier when tiered), u32 count.
+message ProtocolTradeHighlightItem {
+  optional ProtocolTieredObject object = 1;
+  optional uint32 count = 2;
+}
+
+// u16 id, string.
+message ProtocolTradeHighlightEntry {
+  optional string text = 1;
+  optional uint32 entry_id = 2;
+}
+
+// u8 category, string name, u16 n x entry.
+message ProtocolTradeHighlightGroup {
+  optional string name = 1;
+  repeated ProtocolTradeHighlightEntry entries = 2;
+  optional uint32 category = 3;
+}
+
+// u16 object, u8 extra points.
+message ProtocolWheelScroll {
+  optional uint32 object_id = 1;
+  optional uint32 points = 2;
+}
+
+// u16 id, bool locked, u8 domain, u8 quality, u8 modifier; quality 1-2: u8; quality 2: u8 supreme.
+message ProtocolWheelGem {
+  optional uint32 gem_id = 1;
+  optional bool locked = 2;
+  optional uint32 domain = 3;
+  optional uint32 quality = 4;
+  optional uint32 first_modifier = 5;
+  optional uint32 second_modifier = 6;
+  optional uint32 supreme_modifier = 7;
+}
+
+// u8 modifier, u8 grade.
+message ProtocolWheelGrade {
+  optional uint32 modifier = 1;
+  optional uint32 grade = 2;
+}
+
+// object (tier when tiered), u16 count.
+message ProtocolForgeObject {
+  optional ProtocolTieredObject object = 1;
+  optional uint32 count = 2;
+}
+
+// u8 count x forge object.
+message ProtocolForgeGroup {
+  repeated ProtocolForgeObject objects = 1;
+}
+
+// u16 object, u16 count.
+message ProtocolForgeReceiver {
+  optional uint32 object_id = 1;
+  optional uint32 count = 2;
+}
+
+// u16 n x donor, u16 n x receiver.
+message ProtocolForgeTransfer {
+  repeated ProtocolForgeObject donors = 1;
+  repeated ProtocolForgeReceiver receivers = 2;
+}
+
+// u16 area, u8 status, u8 progress.
+message ProtocolMapMainArea {
+  optional uint32 area_id = 1;
+  optional uint32 status = 2;
+  optional uint32 progress = 3;
+}
+
+// position, u8 state.
+message ProtocolMapPoint {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 state = 2;
+}
+
+// u16 race, bool, u8.
+message ProtocolSubAreaMonster {
+  optional uint32 race_id = 1;
+  optional bool known = 2;
+  optional uint32 stage = 3;
+}
+
+// u16 sub area, u8 n x monster.
+message ProtocolSubAreaMonsters {
+  repeated ProtocolSubAreaMonster monsters = 1;
+  optional uint32 sub_area_id = 2;
+}
+
+// u16 area, bool, u64.
+message ProtocolMapDonation {
+  optional uint32 area_id = 1;
+  optional bool improved_respawn = 2;
+  optional uint64 donated = 3;
+}
+
+// CIP v146: u32 transactions, u64 total, u64 highest, u64 lowest.
+message ProtocolMarketTradeStatistics {
+  optional uint32 transactions = 1;
+  optional uint64 total_price = 2;
+  optional uint64 highest_price = 3;
+  optional uint64 lowest_price = 4;
+}
+
+// CIP v26: u8 type; 0: string; 1/3: u16; 2: u16, u8 x4; 4: u8, u16, u16, u8 x4.
+message ProtocolStoreVisual {
+  optional string icon = 1;
+  optional uint32 type = 2;
+  optional uint32 type_id = 3;
+  optional uint32 sex = 4;
+  optional uint32 male_outfit = 5;
+  optional uint32 female_outfit = 6;
+  optional uint32 head = 7;
+  optional uint32 body = 8;
+  optional uint32 legs = 9;
+  optional uint32 feet = 10;
+}
+
+// u32, u16, u32, u8, bool disabled (u8 n x u16), u8 state (2: u32, u32), bool.
+message ProtocolStoreSubOffer {
+  repeated uint32 disable_reasons = 1;
+  optional uint32 offer_id = 2;
+  optional uint32 count = 3;
+  optional uint32 price = 4;
+  optional uint32 coin_type = 5;
+  optional bool disabled = 6;
+  optional uint32 state = 7;
+  optional uint32 valid_until = 8;
+  optional uint32 base_price = 9;
+  optional bool flag = 10;
+}
+
+// string, visual.
+message ProtocolStoreProduct {
+  optional string name = 1;
+  optional ProtocolStoreVisual visual = 2;
+}
+
+// string, u8 n x sub offer, visual, u8 try-on, string collection, u16 popularity, u32 new until, bool, u16 n x product.
+message ProtocolStoreOffer {
+  optional string name = 1;
+  repeated ProtocolStoreSubOffer sub_offers = 2;
+  optional ProtocolStoreVisual visual = 3;
+  optional string collection = 4;
+  repeated ProtocolStoreProduct products = 5;
+  optional uint32 try_on_type = 6;
+  optional uint32 popularity = 7;
+  optional uint32 new_until = 8;
+  optional bool configurable = 9;
+}
+
+// string, store open parameters.
+message ProtocolStoreBanner {
+  optional string image = 1;
+  optional ProtocolStoreOpenParameters parameters = 2;
+}
+
 // server opcode 0x03 (3) — CreatureData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: creature (new creature layout)
+// CIP TProtobufServerMessageTranslator::v52 (v19 kind 0x61).
 message GameserverMessageCreatureData {
+  optional ProtocolCreature creature = 1;
   extend GameserverMessage {
     optional GameserverMessageCreatureData gameserver_message_creature_data = 3;
   }
@@ -109,8 +931,10 @@ message GameserverMessagePendingStateEntered {
 }
 
 // server opcode 0x0B (11) — ReadyForSecondaryConnection
-// classic: bridge — classic side-channel until CIP field RE
+// classic: string token
+// CIP TProtobufServerMessageTranslator::v157.
 message GameserverMessageReadyForSecondaryConnection {
+  optional string token = 1;
   extend GameserverMessage {
     optional GameserverMessageReadyForSecondaryConnection gameserver_message_ready_for_secondary_connection = 11;
   }
@@ -183,8 +1007,11 @@ message GameserverMessageSessionEndInformation {
 }
 
 // server opcode 0x19 (25) — StoreButtonIndicators
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool sale; bool new
+// CIP TProtobufServerMessageTranslator::v80.
 message GameserverMessageStoreButtonIndicators {
+  optional bool sale = 1;
+  optional bool new_offers = 2;
   extend GameserverMessage {
     optional GameserverMessageStoreButtonIndicators gameserver_message_store_button_indicators = 25;
   }
@@ -208,8 +1035,12 @@ message GameserverMessageShowMultiOfflineTrainingDialog {
 }
 
 // server opcode 0x1C (28) — NpcTalkParters
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool closed; open: u8 count x u32 npc; u8 count x (u8, string)
+// CIP TProtobufServerMessageTranslator::v208.
 message GameserverMessageNpcTalkParters {
+  repeated uint32 npc_ids = 1;
+  repeated ProtocolNpcTalkButton buttons = 2;
+  optional bool closed = 3;
   extend GameserverMessage {
     optional GameserverMessageNpcTalkParters gameserver_message_npc_talk_parters = 28;
   }
@@ -243,16 +1074,22 @@ message GameserverMessageLoginChallenge {
 }
 
 // server opcode 0x28 (40) — Dead
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; u8 penalty when type is 0; bool death redemption
+// CIP TProtobufServerMessageTranslator::v81.
 message GameserverMessageDead {
+  optional uint32 death_type = 1;
+  optional uint32 penalty = 2;
+  optional bool death_redemption = 3;
   extend GameserverMessage {
     optional GameserverMessageDead gameserver_message_dead = 40;
   }
 }
 
 // server opcode 0x29 (41) — Stash
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x (u16 object, u32 amount)
+// CIP TProtobufServerMessageTranslator::v176.
 message GameserverMessageStash {
+  repeated ProtocolStashEntry entries = 1;
   extend GameserverMessage {
     optional GameserverMessageStash gameserver_message_stash = 41;
   }
@@ -270,40 +1107,68 @@ message GameserverMessageSpecialContainersAvailable {
 }
 
 // server opcode 0x2B (43) — PartyHuntAnalyser
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 start; u32 leader; u8 price; u8 count x member; bool names: u8 count x (u32, string)
+// CIP TProtobufServerMessageTranslator::v185.
 message GameserverMessagePartyHuntAnalyser {
+  repeated ProtocolPartyHuntMember members = 1;
+  repeated ProtocolPartyHuntName names = 2;
+  optional uint32 session_start = 3;
+  optional uint32 leader_id = 4;
+  optional uint32 price_type = 5;
   extend GameserverMessage {
     optional GameserverMessagePartyHuntAnalyser gameserver_message_party_hunt_analyser = 43;
   }
 }
 
 // server opcode 0x2C (44) — TeamFinderTeamLeader
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 reset; 0: settings, u16 count x member
+// CIP TProtobufServerMessageTranslator::v188.
 message GameserverMessageTeamFinderTeamLeader {
+  optional ProtocolTeamSettings settings = 1;
+  repeated ProtocolTeamMember members = 2;
+  optional uint32 reset = 3;
   extend GameserverMessage {
     optional GameserverMessageTeamFinderTeamLeader gameserver_message_team_finder_team_leader = 44;
   }
 }
 
 // server opcode 0x2D (45) — TeamFinderTeamMember
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 limited; 0: u16 count x listing
+// CIP TProtobufServerMessageTranslator::v189.
 message GameserverMessageTeamFinderTeamMember {
+  repeated ProtocolTeamListing teams = 1;
+  optional uint32 rate_limited = 2;
   extend GameserverMessage {
     optional GameserverMessageTeamFinderTeamMember gameserver_message_team_finder_team_member = 45;
   }
 }
 
 // server opcode 0x2E (46) — UnlockedSpells
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x u16 spell
+// CIP TProtobufServerMessageTranslator::v209.
 message GameserverMessageUnlockedSpells {
+  repeated uint32 spell_ids = 1;
   extend GameserverMessage {
     optional GameserverMessageUnlockedSpells gameserver_message_unlocked_spells = 46;
   }
 }
 
 // server opcode 0x2F (47) — BossDifficultySelection
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 state; 0: u32, bool, u16 x4, u32, string x5; 0/2: u16, u8 n x string, u8 n x string
+// CIP TProtobufServerMessageTranslator::v210.
 message GameserverMessageBossDifficultySelection {
+  repeated string banners = 1;
+  repeated string red_entries = 2;
+  repeated string green_entries = 3;
+  optional uint32 state = 4;
+  optional uint32 lowest_difficulty = 5;
+  optional bool spinner_locked = 6;
+  optional uint32 race_id = 7;
+  optional uint32 selected_difficulty = 8;
+  optional uint32 group_highest = 9;
+  optional uint32 personal_highest = 10;
+  optional uint32 bad_luck = 11;
+  optional uint32 difficulty = 12;
   extend GameserverMessage {
     optional GameserverMessageBossDifficultySelection gameserver_message_boss_difficulty_selection = 47;
   }
@@ -318,32 +1183,61 @@ message GameserverMessageTaskboard {
 }
 
 // server opcode 0x5C (92) — WeaponProficiencyNotification
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object; u32 experience; bool unused perk
+// CIP TProtobufServerMessageTranslator::v204.
 message GameserverMessageWeaponProficiencyNotification {
+  optional uint32 object_id = 1;
+  optional uint32 experience = 2;
+  optional bool unused_perk = 3;
   extend GameserverMessage {
     optional GameserverMessageWeaponProficiencyNotification gameserver_message_weapon_proficiency_notification = 92;
   }
 }
 
 // server opcode 0x5D (93) — ImbuementDurations
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 count x item
+// CIP TProtobufServerMessageTranslator::v201.
 message GameserverMessageImbuementDurations {
+  repeated ProtocolImbuementTrackerItem items = 1;
   extend GameserverMessage {
     optional GameserverMessageImbuementDurations gameserver_message_imbuement_durations = 93;
   }
 }
 
 // server opcode 0x5E (94) — PassiveAbilityData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 ability; u8 kind; kind 0: u32, u32, bool; kind 1: u8, u8
+// CIP TProtobufServerMessageTranslator::v200.
 message GameserverMessagePassiveAbilityData {
+  optional uint32 ability = 1;
+  optional uint32 kind = 2;
+  optional uint32 remaining_ms = 3;
+  optional uint32 total_ms = 4;
+  optional bool decaying = 5;
+  optional uint32 first_value = 6;
+  optional uint32 second_value = 7;
   extend GameserverMessage {
     optional GameserverMessagePassiveAbilityData gameserver_message_passive_ability_data = 94;
   }
 }
 
 // server opcode 0x5F (95) — SkillWheel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32; bool view; u8; u8; u16; u16; u16 x36; u16 n x scroll; bool; u16; u8 vessel mask x u16 gem; u16 n x gem; u8 n x grade; u8 n x grade
+// CIP TProtobufServerMessageTranslator::v199. equipped_gems: eight vessels, -1 when empty.
 message GameserverMessageSkillWheel {
+  repeated uint32 slot_points = 1;
+  repeated int32 equipped_gems = 2;
+  repeated ProtocolWheelScroll scrolls = 3;
+  repeated ProtocolWheelGem gems = 4;
+  repeated ProtocolWheelGrade basic_grades = 5;
+  repeated ProtocolWheelGrade supreme_grades = 6;
+  optional uint32 player_id = 7;
+  optional bool can_view = 8;
+  optional uint32 change_state = 9;
+  optional uint32 vocation = 10;
+  optional uint32 points = 11;
+  optional uint32 extra_points = 12;
+  optional bool monk_quest = 13;
+  optional uint32 hunting_task_points = 14;
   extend GameserverMessage {
     optional GameserverMessageSkillWheel gameserver_message_skill_wheel = 95;
   }
@@ -359,16 +1253,29 @@ message GameserverMessageSpellDataModification {
 }
 
 // server opcode 0x61 (97) — BosstiaryStaticData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 x9 kills; u16 x9 points
+// CIP TProtobufServerMessageTranslator::v166.
 message GameserverMessageBosstiaryStaticData {
+  repeated uint32 kills_for_stage = 1;
+  repeated uint32 points_for_stage = 2;
   extend GameserverMessage {
     optional GameserverMessageBosstiaryStaticData gameserver_message_bosstiary_static_data = 97;
   }
 }
 
 // server opcode 0x62 (98) — BossSlots
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32, u32, u16, u16; slot x3; bool; u16 count x (u32, u8)
+// CIP TProtobufServerMessageTranslator::v169.
 message GameserverMessageBossSlots {
+  repeated ProtocolBossSlotBoss unlocked_bosses = 1;
+  optional ProtocolBossSlot first_slot = 2;
+  optional ProtocolBossSlot second_slot = 3;
+  optional ProtocolBossSlot boosted_slot = 4;
+  optional uint32 points = 5;
+  optional uint32 points_next_bonus = 6;
+  optional uint32 current_bonus = 7;
+  optional uint32 next_bonus = 8;
+  optional bool has_unlocked_bosses = 9;
   extend GameserverMessage {
     optional GameserverMessageBossSlots gameserver_message_boss_slots = 98;
   }
@@ -383,74 +1290,93 @@ message GameserverMessageClientCheck {
 }
 
 // server opcode 0x64 (100) — FullMap
-// classic: opaque tile description — bridge uses classic; CIP field2=player coord
-// Tile payload not field-ported; classic bridge required for map apply
+// classic: area of fields (skip counts) from the translator viewport
 message GameserverMessageFullMap {
-  optional ProtocolCoordinate player_coordinate = 2;
+  optional ProtocolCoordinate coordinate = 1;
+  repeated ProtocolMapField fields = 2;
   extend GameserverMessage {
     optional GameserverMessageFullMap gameserver_message_full_map = 100;
   }
 }
 
 // server opcode 0x65 (101) — TopRow
-// classic: bridge — classic side-channel until CIP field RE
+// classic: area of fields (skip counts) from the translator viewport
 message GameserverMessageTopRow {
+  optional ProtocolCoordinate coordinate = 1;
+  repeated ProtocolMapField fields = 2;
   extend GameserverMessage {
     optional GameserverMessageTopRow gameserver_message_top_row = 101;
   }
 }
 
 // server opcode 0x66 (102) — RightColumn
-// classic: bridge — classic side-channel until CIP field RE
+// classic: area of fields (skip counts) from the translator viewport
 message GameserverMessageRightColumn {
+  optional ProtocolCoordinate coordinate = 1;
+  repeated ProtocolMapField fields = 2;
   extend GameserverMessage {
     optional GameserverMessageRightColumn gameserver_message_right_column = 102;
   }
 }
 
 // server opcode 0x67 (103) — BottomRow
-// classic: bridge — classic side-channel until CIP field RE
+// classic: area of fields (skip counts) from the translator viewport
 message GameserverMessageBottomRow {
+  optional ProtocolCoordinate coordinate = 1;
+  repeated ProtocolMapField fields = 2;
   extend GameserverMessage {
     optional GameserverMessageBottomRow gameserver_message_bottom_row = 103;
   }
 }
 
 // server opcode 0x68 (104) — LeftColumn
-// classic: bridge — classic side-channel until CIP field RE
+// classic: area of fields (skip counts) from the translator viewport
 message GameserverMessageLeftColumn {
+  optional ProtocolCoordinate coordinate = 1;
+  repeated ProtocolMapField fields = 2;
   extend GameserverMessage {
     optional GameserverMessageLeftColumn gameserver_message_left_column = 104;
   }
 }
 
 // server opcode 0x69 (105) — FieldData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: coordinate; field
 message GameserverMessageFieldData {
+  optional ProtocolMapField field = 1;
   extend GameserverMessage {
     optional GameserverMessageFieldData gameserver_message_field_data = 105;
   }
 }
 
 // server opcode 0x6A (106) — CreateOnMap
-// classic: bridge — classic side-channel until CIP field RE
+// classic: coordinate; u8 stack; object
 message GameserverMessageCreateOnMap {
+  optional ProtocolCoordinate coordinate = 1;
+  optional uint32 stackpos = 2;
+  optional ProtocolMapObject object = 3;
   extend GameserverMessage {
     optional GameserverMessageCreateOnMap gameserver_message_create_on_map = 106;
   }
 }
 
 // server opcode 0x6B (107) — ChangeOnMap
-// classic: bridge — classic side-channel until CIP field RE
+// classic: mapped thing (pos+stack or 0xffff+id); object
 message GameserverMessageChangeOnMap {
+  optional ProtocolCoordinate coordinate = 1;
+  optional uint32 stackpos = 2;
+  optional uint32 creature_id = 3;
+  optional ProtocolMapObject object = 4;
   extend GameserverMessage {
     optional GameserverMessageChangeOnMap gameserver_message_change_on_map = 107;
   }
 }
 
 // server opcode 0x6C (108) — DeleteOnMap
-// classic: bridge — classic side-channel until CIP field RE
+// classic: mapped thing (pos+stack or 0xffff+id)
 message GameserverMessageDeleteOnMap {
+  optional ProtocolCoordinate coordinate = 1;
+  optional uint32 stackpos = 2;
+  optional uint32 creature_id = 3;
   extend GameserverMessage {
     optional GameserverMessageDeleteOnMap gameserver_message_delete_on_map = 108;
   }
@@ -470,8 +1396,24 @@ message GameserverMessageMoveCreature {
 }
 
 // server opcode 0x6E (110) — Container
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 id; object; string name; u8 capacity; bool parent, search, unlocked, pages; u16 size, first index; u8 count x object; u8 category; u8 count x (u8 id, string name); bool moveable, holding
+// CIP TProtobufServerMessageTranslator::v82.
 message GameserverMessageContainer {
+  optional uint32 container_id = 1;
+  optional ProtocolInventoryItem item = 2;
+  optional string name = 3;
+  optional uint32 capacity = 4;
+  optional bool has_parent = 5;
+  optional bool show_search = 6;
+  optional bool is_unlocked = 7;
+  optional bool has_pages = 8;
+  optional uint32 container_size = 9;
+  optional uint32 first_index = 10;
+  repeated ProtocolInventoryItem items = 11;
+  optional uint32 category = 12;
+  repeated ProtocolContainerCategory categories = 13;
+  optional bool is_moveable = 14;
+  optional bool is_holding = 15;
   extend GameserverMessage {
     optional GameserverMessageContainer gameserver_message_container = 110;
   }
@@ -487,32 +1429,46 @@ message GameserverMessageCloseContainer {
 }
 
 // server opcode 0x70 (112) — CreateInContainer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 id; u16 slot; u16 object id, the object when not 0
+// CIP TProtobufServerMessageTranslator::v84.
 message GameserverMessageCreateInContainer {
+  optional uint32 container_id = 1;
+  optional uint32 slot = 2;
+  optional ProtocolInventoryItem item = 3;
   extend GameserverMessage {
     optional GameserverMessageCreateInContainer gameserver_message_create_in_container = 112;
   }
 }
 
 // server opcode 0x71 (113) — ChangeInContainer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 id; u16 slot; object
+// CIP TProtobufServerMessageTranslator::v85.
 message GameserverMessageChangeInContainer {
+  optional uint32 container_id = 1;
+  optional uint32 slot = 2;
+  optional ProtocolInventoryItem item = 3;
   extend GameserverMessage {
     optional GameserverMessageChangeInContainer gameserver_message_change_in_container = 113;
   }
 }
 
 // server opcode 0x72 (114) — DeleteInContainer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 id; u16 slot; u16 object id, the object when not 0
+// CIP TProtobufServerMessageTranslator::v86.
 message GameserverMessageDeleteInContainer {
+  optional uint32 container_id = 1;
+  optional uint32 slot = 2;
+  optional ProtocolInventoryItem item = 3;
   extend GameserverMessage {
     optional GameserverMessageDeleteInContainer gameserver_message_delete_in_container = 114;
   }
 }
 
 // server opcode 0x73 (115) — Bosstiary
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x (u32, u8, u32, u8, bool)
+// CIP TProtobufServerMessageTranslator::v168.
 message GameserverMessageBosstiary {
+  repeated ProtocolBosstiaryEntry bosses = 1;
   extend GameserverMessage {
     optional GameserverMessageBosstiary gameserver_message_bosstiary = 115;
   }
@@ -527,24 +1483,40 @@ message GameserverMessageFriendSystemData {
 }
 
 // server opcode 0x75 (117) — GameEvent
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; 1: u8; 2/3: string; 4/11/12/15/16: u16; 5: u8, u16; 6/7: u16, u8; 8: string, u8; 9: u16, string, u8; 10: u16, string; 13: s32; 14: u16, s32
+// CIP TProtobufServerMessageTranslator::v175. small_value: the u8 field, value: the u16 field, large_value: the s32 field.
 message GameserverMessageGameEvent {
+  optional string text = 1;
+  optional uint32 event_type = 2;
+  optional uint32 small_value = 3;
+  optional uint32 value = 4;
+  optional int32 large_value = 5;
   extend GameserverMessage {
     optional GameserverMessageGameEvent gameserver_message_game_event = 117;
   }
 }
 
 // server opcode 0x76 (118) — InspectionList
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 window; u8 type; u32 creature; u8 n x object; character window: string name, u8 n x detail
+// CIP TProtobufServerMessageTranslator::v56.
 message GameserverMessageInspectionList {
+  repeated ProtocolInspectedObject objects = 1;
+  optional string player_name = 2;
+  repeated ProtocolInspectionDetail player_details = 3;
+  optional uint32 window_type = 4;
+  optional uint32 inspection_type = 5;
+  optional uint32 creature_id = 6;
   extend GameserverMessage {
     optional GameserverMessageInspectionList gameserver_message_inspection_list = 118;
   }
 }
 
 // server opcode 0x77 (119) — InspectionState
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creature; u8 state
+// CIP TProtobufServerMessageTranslator::v57.
 message GameserverMessageInspectionState {
+  optional uint32 creature_id = 1;
+  optional uint32 state = 2;
   extend GameserverMessage {
     optional GameserverMessageInspectionState gameserver_message_inspection_state = 119;
   }
@@ -571,23 +1543,30 @@ message GameserverMessageDeleteInventory {
 }
 
 // server opcode 0x7A (122) — NPCOffer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: string npc; u16 currency object; string currency name; u16 count x offer
+// CIP TProtobufServerMessageTranslator::v88.
 message GameserverMessageNPCOffer {
+  optional string npc_name = 1;
+  optional uint32 currency_object_id = 2;
+  optional string currency_name = 3;
+  repeated ProtocolNpcOffer offers = 4;
   extend GameserverMessage {
     optional GameserverMessageNPCOffer gameserver_message_n_p_c_offer = 122;
   }
 }
 
 // server opcode 0x7B (123) — PlayerGoods
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x (u16 object, u16 amount)
+// CIP TProtobufServerMessageTranslator::v89.
 message GameserverMessagePlayerGoods {
+  repeated ProtocolPlayerGood goods = 1;
   extend GameserverMessage {
     optional GameserverMessagePlayerGoods gameserver_message_player_goods = 123;
   }
 }
 
 // server opcode 0x7C (124) — CloseNPCTrade
-// classic: bridge — classic side-channel until CIP field RE
+// classic: empty body
 message GameserverMessageCloseNPCTrade {
   extend GameserverMessage {
     optional GameserverMessageCloseNPCTrade gameserver_message_close_n_p_c_trade = 124;
@@ -595,23 +1574,29 @@ message GameserverMessageCloseNPCTrade {
 }
 
 // server opcode 0x7D (125) — OwnOffer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: string name; u8 count x item
+// CIP TProtobufServerMessageTranslator::v90.
 message GameserverMessageOwnOffer {
+  optional string name = 1;
+  repeated ProtocolInventoryItem items = 2;
   extend GameserverMessage {
     optional GameserverMessageOwnOffer gameserver_message_own_offer = 125;
   }
 }
 
 // server opcode 0x7E (126) — CounterOffer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: string name; u8 count x item
+// CIP TProtobufServerMessageTranslator::v91.
 message GameserverMessageCounterOffer {
+  optional string name = 1;
+  repeated ProtocolInventoryItem items = 2;
   extend GameserverMessage {
     optional GameserverMessageCounterOffer gameserver_message_counter_offer = 126;
   }
 }
 
 // server opcode 0x7F (127) — CloseTrade
-// classic: bridge — classic side-channel until CIP field RE
+// classic: empty body
 message GameserverMessageCloseTrade {
   extend GameserverMessage {
     optional GameserverMessageCloseTrade gameserver_message_close_trade = 127;
@@ -619,16 +1604,35 @@ message GameserverMessageCloseTrade {
 }
 
 // server opcode 0x80 (128) — CharacterTradeConfiguration
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; 0: string, u16, u8, outfit, u8, u32, u32, u16, u8 n x (string, bool); 1/2: u16 n x item; 3: u8 n x group; 4: u16 fee, u8 n x string
+// CIP TProtobufServerMessageTranslator::v191.
 message GameserverMessageCharacterTradeConfiguration {
+  optional string name = 1;
+  optional ProtocolOutfit outfit = 2;
+  repeated ProtocolTradeCondition conditions = 3;
+  repeated ProtocolTradeHighlightItem items = 4;
+  repeated ProtocolTradeHighlightGroup groups = 5;
+  repeated string problems = 6;
+  optional uint32 data_type = 7;
+  optional uint32 level = 8;
+  optional uint32 vocation = 9;
+  optional uint32 world_type = 10;
+  optional uint32 start_time = 11;
+  optional uint32 end_time = 12;
+  optional uint32 minimum_bid = 13;
+  optional uint32 fee = 14;
   extend GameserverMessage {
     optional GameserverMessageCharacterTradeConfiguration gameserver_message_character_trade_configuration = 128;
   }
 }
 
 // server opcode 0x81 (129) — TextForReport
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 id; string text; string name
+// CIP TProtobufServerMessageTranslator::v192.
 message GameserverMessageTextForReport {
+  optional string text = 1;
+  optional string name = 2;
+  optional uint32 statement_id = 3;
   extend GameserverMessage {
     optional GameserverMessageTextForReport gameserver_message_text_for_report = 129;
   }
@@ -646,55 +1650,77 @@ message GameserverMessageAmbientLight {
 }
 
 // server opcode 0x83 (131) — GraphicalEffects
-// classic: bridge — classic side-channel until CIP field RE
+// classic: coordinate; entries until 0: 1 u8 delta, 2 u16 delay, 3 u16 id u8 source, 4/5 u16 id s8 dx s8 dy u8 source, 6 u8 source u16 id, 7 u8 enum u8 source u16 id
 message GameserverMessageGraphicalEffects {
+  repeated GraphicalEffectEntry entries = 1;
   extend GameserverMessage {
     optional GameserverMessageGraphicalEffects gameserver_message_graphical_effects = 131;
   }
 }
 
 // server opcode 0x84 (132) — RemoveGraphicalEffect
-// classic: bridge — classic side-channel until CIP field RE
+// classic: coordinate; u16 appearance id
 message GameserverMessageRemoveGraphicalEffect {
+  optional ProtocolCoordinate coordinate = 1;
+  optional uint32 appearance_id = 2;
   extend GameserverMessage {
     optional GameserverMessageRemoveGraphicalEffect gameserver_message_remove_graphical_effect = 132;
   }
 }
 
 // server opcode 0x85 (133) — SoundTrigger
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; u16 id for types 0-2
+// CIP TProtobufServerMessageTranslator::v206.
 message GameserverMessageSoundTrigger {
+  optional uint32 type = 1;
+  optional uint32 sound_id = 2;
   extend GameserverMessage {
     optional GameserverMessageSoundTrigger gameserver_message_sound_trigger = 133;
   }
 }
 
 // server opcode 0x86 (134) — ExaltationBaseData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 n x class prices; u8 n x grade; u8 n x price; u8 n x price; u8 dust level
+// CIP TProtobufServerMessageTranslator::v193.
 message GameserverMessageExaltationBaseData {
+  repeated ProtocolClassTierPrices class_prices = 1;
+  repeated ProtocolFusionGrade fusion_grades = 2;
+  repeated ProtocolTierPrice convergence_fusion_prices = 3;
+  repeated ProtocolTierPrice convergence_transfer_prices = 4;
+  optional uint32 dust_level = 5;
   extend GameserverMessage {
     optional GameserverMessageExaltationBaseData gameserver_message_exaltation_base_data = 134;
   }
 }
 
 // server opcode 0x87 (135) — ExaltationDialogRefresh
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 n x group; u16 n x group; u8 n x transfer; u8 n x transfer; u8 dust
+// CIP TProtobufServerMessageTranslator::v195.
 message GameserverMessageExaltationDialogRefresh {
+  repeated ProtocolForgeGroup fusion_groups = 1;
+  repeated ProtocolForgeGroup convergence_fusion_groups = 2;
+  repeated ProtocolForgeTransfer transfers = 3;
+  repeated ProtocolForgeTransfer convergence_transfers = 4;
+  optional uint32 dust_level = 5;
   extend GameserverMessage {
     optional GameserverMessageExaltationDialogRefresh gameserver_message_exaltation_dialog_refresh = 135;
   }
 }
 
 // server opcode 0x88 (136) — ExaltationHistory
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 page; u16 last page; u8 count x entry
+// CIP TProtobufServerMessageTranslator::v197.
 message GameserverMessageExaltationHistory {
+  optional uint32 page = 1;
+  optional uint32 last_page = 2;
+  repeated ProtocolExaltationHistoryEntry entries = 3;
   extend GameserverMessage {
     optional GameserverMessageExaltationHistory gameserver_message_exaltation_history = 136;
   }
 }
 
 // server opcode 0x89 (137) — CloseExaltationDialog
-// classic: bridge — classic side-channel until CIP field RE
+// classic: empty body
 message GameserverMessageCloseExaltationDialog {
   extend GameserverMessage {
     optional GameserverMessageCloseExaltationDialog gameserver_message_close_exaltation_dialog = 137;
@@ -702,16 +1728,40 @@ message GameserverMessageCloseExaltationDialog {
 }
 
 // server opcode 0x8A (138) — ExaltationResult
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 action; bool convergence; bool success; object x2; u8 bonus; bonus 4-8: object; bonus 2: u8 cores
+// CIP TProtobufServerMessageTranslator::v198.
 message GameserverMessageExaltationResult {
+  optional ProtocolTieredObject first_object = 1;
+  optional ProtocolTieredObject second_object = 2;
+  optional ProtocolTieredObject bonus_object = 3;
+  optional uint32 action_type = 4;
+  optional uint32 bonus = 5;
+  optional bool success = 6;
+  optional bool convergence = 7;
+  optional uint32 core_count = 8;
   extend GameserverMessage {
     optional GameserverMessageExaltationResult gameserver_message_exaltation_result = 138;
   }
 }
 
 // server opcode 0x8B (139) — CreatureUpdate
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creatureId; u8 type: 0 u16 kind + creature (0x61-0x63), 11 u8 mana percent, 12 bool show status, 13 u8 vocation (kept % 10), 14 u8 count x (u8 icon, u8 category, u16 value, bool flag), 15 u8 count x u8
+// CIP TProtobufServerMessageTranslator::v42. Types 16 (u8 health percent, u32 health, u32 max), 17 (u8 mana percent, u32 mana, u32 max) and 18 (u8 vocation, u16 level) are product server party extensions (not in CIP).
 message GameserverMessageCreatureUpdate {
+  optional uint32 creature_id = 1;
+  optional uint32 type = 2;
+  optional ProtocolCreature creature = 3;
+  optional uint32 mana_percent = 4;
+  optional bool show_status = 5;
+  optional uint32 vocation = 6;
+  repeated ProtocolCreatureIcon icons = 7;
+  repeated uint32 extra_icons = 8;
+  optional uint32 health_percent = 9;
+  optional uint32 health = 10;
+  optional uint32 max_health = 11;
+  optional uint32 mana = 12;
+  optional uint32 max_mana = 13;
+  optional uint32 level = 14;
   extend GameserverMessage {
     optional GameserverMessageCreatureUpdate gameserver_message_creature_update = 139;
   }
@@ -740,8 +1790,12 @@ message GameserverMessageCreatureLight {
 }
 
 // server opcode 0x8E (142) — CreatureOutfit
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creatureId; outfit (colours, addons, item); mount (colours)
+// CIP TProtobufServerMessageTranslator::v44. Fields 4-8 are product server outfit extras (not in CIP).
 message GameserverMessageCreatureOutfit {
+  optional uint32 creature_id = 1;
+  optional ProtocolOutfit outfit = 2;
+  optional ProtocolOutfit mount = 3;
   extend GameserverMessage {
     optional GameserverMessageCreatureOutfit gameserver_message_creature_outfit = 142;
   }
@@ -788,63 +1842,95 @@ message GameserverMessageCreatureUnpass {
 }
 
 // server opcode 0x93 (147) — CreatureMarks
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creatureId; u8 kind: 1 timed mark u8 colour, 2 static mark u8 colour (0xff hides it), 3 attacked u8 weapon type; other kinds carry nothing
+// CIP TProtobufServerMessageTranslator::v49 (a oneof: mark with mode 1/2 and colour, or attack with weapon type).
 message GameserverMessageCreatureMarks {
+  optional uint32 creature_id = 1;
+  optional uint32 kind = 2;
+  optional uint32 value = 3;
   extend GameserverMessage {
     optional GameserverMessageCreatureMarks gameserver_message_creature_marks = 147;
   }
 }
 
 // server opcode 0x94 (148) — DepotSearchResult
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x (u16 object, u8 tier if classified, u16 count)
+// CIP TProtobufServerMessageTranslator::v178.
 message GameserverMessageDepotSearchResult {
+  repeated ProtocolDepotSearchEntry entries = 1;
   extend GameserverMessage {
     optional GameserverMessageDepotSearchResult gameserver_message_depot_search_result = 148;
   }
 }
 
 // server opcode 0x95 (149) — CreatureType
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creatureId; u8 type; type 3 (summon) u32 master
+// CIP TProtobufServerMessageTranslator::v92.
 message GameserverMessageCreatureType {
+  optional uint32 creature_id = 1;
+  optional uint32 type = 2;
+  optional uint32 master_id = 3;
   extend GameserverMessage {
     optional GameserverMessageCreatureType gameserver_message_creature_type = 149;
   }
 }
 
 // server opcode 0x96 (150) — EditText
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 id; item; u16 max; string text; string author; bool traded; string date
+// CIP TProtobufServerMessageTranslator::v93.
 message GameserverMessageEditText {
+  optional string text = 1;
+  optional string author = 2;
+  optional string date = 3;
+  optional ProtocolInventoryItem object = 4;
+  optional uint32 edit_id = 5;
+  optional uint32 max_length = 6;
+  optional bool recently_traded = 7;
   extend GameserverMessage {
     optional GameserverMessageEditText gameserver_message_edit_text = 150;
   }
 }
 
 // server opcode 0x97 (151) — EditList
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; u32 id; string text
+// CIP TProtobufServerMessageTranslator::v94.
 message GameserverMessageEditList {
+  optional string text = 1;
+  optional uint32 list_type = 2;
+  optional uint32 list_id = 3;
   extend GameserverMessage {
     optional GameserverMessageEditList gameserver_message_edit_list = 151;
   }
 }
 
 // server opcode 0x98 (152) — ShowGameNews
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 type; bool notification only
+// CIP TProtobufServerMessageTranslator::v95.
 message GameserverMessageShowGameNews {
+  optional uint32 news_type = 1;
+  optional bool notification_only = 2;
   extend GameserverMessage {
     optional GameserverMessageShowGameNews gameserver_message_show_game_news = 152;
   }
 }
 
 // server opcode 0x99 (153) — DepotSearchDetailList
-// classic: bridge — classic side-channel until CIP field RE
+// classic: object; u32 depot; u8 n x item; u32 inbox; u8 n x item; u8 n x (u16, u32)
+// CIP TProtobufServerMessageTranslator::v179.
 message GameserverMessageDepotSearchDetailList {
+  optional ProtocolTieredObject object = 1;
+  repeated ProtocolInventoryItem depot_objects = 2;
+  repeated ProtocolInventoryItem inbox_objects = 3;
+  repeated ProtocolStashEntry stash = 4;
+  optional uint32 depot_count = 5;
+  optional uint32 inbox_count = 6;
   extend GameserverMessage {
     optional GameserverMessageDepotSearchDetailList gameserver_message_depot_search_detail_list = 153;
   }
 }
 
 // server opcode 0x9A (154) — CloseDepotSearch
-// classic: bridge — classic side-channel until CIP field RE
+// classic: empty body
 message GameserverMessageCloseDepotSearch {
   extend GameserverMessage {
     optional GameserverMessageCloseDepotSearch gameserver_message_close_depot_search = 154;
@@ -852,112 +1938,210 @@ message GameserverMessageCloseDepotSearch {
 }
 
 // server opcode 0x9B (155) — BlessingsDialog
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 n x blessing; bool premium; u8 x4; u8 equip pvp, u8 equip pve (0xff = 100); bool skull; bool aol; u8 n x history
+// CIP TProtobufServerMessageTranslator::v60.
 message GameserverMessageBlessingsDialog {
+  repeated ProtocolBlessing blessings = 1;
+  repeated ProtocolBlessingHistoryEntry history = 2;
+  optional bool premium = 3;
+  optional uint32 promotion = 4;
+  optional uint32 pvp_min_xp_loss = 5;
+  optional uint32 pvp_max_xp_loss = 6;
+  optional uint32 pve_xp_loss = 7;
+  optional uint32 equip_pvp_loss = 8;
+  optional uint32 equip_pve_loss = 9;
+  optional uint32 equip_pvp_loss_tenth = 10;
+  optional uint32 equip_pve_loss_tenth = 11;
+  optional bool skull = 12;
+  optional bool amulet_of_loss = 13;
   extend GameserverMessage {
     optional GameserverMessageBlessingsDialog gameserver_message_blessings_dialog = 155;
   }
 }
 
 // server opcode 0x9C (156) — Blessings
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 mask; u8 state
+// CIP TProtobufServerMessageTranslator::v61.
 message GameserverMessageBlessings {
+  optional uint32 blessings = 1;
+  optional uint32 visual_state = 2;
   extend GameserverMessage {
     optional GameserverMessageBlessings gameserver_message_blessings = 156;
   }
 }
 
 // server opcode 0x9D (157) — SwitchPreset
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 preset
+// CIP TProtobufServerMessageTranslator::v96.
 message GameserverMessageSwitchPreset {
+  optional uint32 preset_id = 1;
   extend GameserverMessage {
     optional GameserverMessageSwitchPreset gameserver_message_switch_preset = 157;
   }
 }
 
 // server opcode 0x9E (158) — PremiumTrigger
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 count x u8
+// CIP TProtobufServerMessageTranslator::v62.
 message GameserverMessagePremiumTrigger {
+  repeated uint32 triggers = 1;
   extend GameserverMessage {
     optional GameserverMessagePremiumTrigger gameserver_message_premium_trigger = 158;
   }
 }
 
 // server opcode 0x9F (159) — PlayerDataBasic
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool premium; u32 premium until; u8 vocation (kept % 10, promoted above 9); bool reached main; u16 count x u16 spell; bool magic shield
+// CIP TProtobufServerMessageTranslator::v58.
 message GameserverMessagePlayerDataBasic {
+  optional bool premium = 1;
+  optional uint32 premium_until = 2;
+  optional uint32 vocation = 3;
+  optional bool promoted = 4;
+  optional bool reached_main = 5;
+  repeated uint32 spells = 6;
+  optional bool magic_shield = 7;
   extend GameserverMessage {
     optional GameserverMessagePlayerDataBasic gameserver_message_player_data_basic = 159;
   }
 }
 
 // server opcode 0xA0 (160) — PlayerDataCurrent
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 health, max health, free capacity; u64 experience; u16 level, level percent (hundredths); u16 base xp gain, low level bonus, store boost, stamina factor (percent); u32 mana, max mana; u8 soul; u16 stamina, base speed, regeneration, offline training, store boost time; bool store boost purchasable; u32 mana shield, max mana shield; u16 daily reward boost (percent), daily reward boost time
+// CIP TProtobufServerMessageTranslator::v50.
 message GameserverMessagePlayerDataCurrent {
+  optional uint32 health = 1;
+  optional uint32 max_health = 2;
+  optional uint32 free_capacity = 3;
+  optional uint64 experience = 4;
+  optional uint32 level = 5;
+  optional uint32 level_percent_hundredths = 6;
+  optional uint32 base_xp_gain = 7;
+  optional uint32 low_level_xp_bonus = 8;
+  optional uint32 store_xp_boost = 9;
+  optional uint32 stamina_xp_factor = 10;
+  optional uint32 mana = 11;
+  optional uint32 max_mana = 12;
+  optional uint32 soul = 13;
+  optional uint32 stamina_minutes = 14;
+  optional uint32 base_speed = 15;
+  optional uint32 regeneration_seconds = 16;
+  optional uint32 offline_training_minutes = 17;
+  optional uint32 store_xp_boost_seconds = 18;
+  optional bool store_xp_boost_purchasable = 19;
+  optional uint32 mana_shield = 20;
+  optional uint32 max_mana_shield = 21;
+  optional uint32 daily_reward_xp_boost = 22;
+  optional uint32 daily_reward_xp_boost_seconds = 23;
   extend GameserverMessage {
     optional GameserverMessagePlayerDataCurrent gameserver_message_player_data_current = 160;
   }
 }
 
 // server opcode 0xA1 (161) — PlayerSkills
-// classic: bridge — classic side-channel until CIP field RE
+// classic: 8 skills (magic, fist, club, sword, axe, distance, shielding, fishing); u8 count x (u8, s16); u32 capacity, base capacity; u16 flat; u16 attack, u8 element; double converted, u8 element; 5 doubles; u16 defense, armor, mantra; 2 doubles; u16 reflection; u8 count x (u8, double); 3 doubles
+// CIP TProtobufServerMessageTranslator::v69.
 message GameserverMessagePlayerSkills {
+  repeated ProtocolSkill skills = 1;
+  repeated ProtocolSkillModifier modifiers = 2;
+  optional uint32 capacity = 3;
+  optional uint32 base_capacity = 4;
+  optional uint32 flat_damage_healing = 5;
+  optional uint32 attack = 6;
+  optional uint32 attack_element = 7;
+  optional double converted_damage = 8;
+  optional uint32 converted_element = 9;
+  optional double life_leech = 10;
+  optional double mana_leech = 11;
+  optional double critical_chance = 12;
+  optional double critical_damage = 13;
+  optional double onslaught = 14;
+  optional uint32 defense = 15;
+  optional uint32 armor = 16;
+  optional uint32 mantra = 17;
+  optional double mitigation = 18;
+  optional double dodge = 19;
+  optional uint32 damage_reflection = 20;
+  repeated ProtocolCombatAbsorb absorbs = 21;
+  optional double momentum = 22;
+  optional double transcendence = 23;
+  optional double amplification = 24;
   extend GameserverMessage {
     optional GameserverMessagePlayerSkills gameserver_message_player_skills = 161;
   }
 }
 
 // server opcode 0xA2 (162) — PlayerState
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u64 states; u8 counter
+// CIP TProtobufServerMessageTranslator::v64.
 message GameserverMessagePlayerState {
+  optional uint64 states = 1;
+  optional uint32 counter = 2;
   extend GameserverMessage {
     optional GameserverMessagePlayerState gameserver_message_player_state = 162;
   }
 }
 
 // server opcode 0xA3 (163) — UpdateTarget
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 sequence; u32
+// CIP TProtobufServerMessageTranslator::v97.
 message GameserverMessageUpdateTarget {
+  optional uint32 sequence = 1;
+  optional uint32 target = 2;
   extend GameserverMessage {
     optional GameserverMessageUpdateTarget gameserver_message_update_target = 163;
   }
 }
 
 // server opcode 0xA4 (164) — SpellDelay
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 spell; u32 delay
+// CIP TProtobufServerMessageTranslator::v98.
 message GameserverMessageSpellDelay {
+  optional uint32 spell_id = 1;
+  optional uint32 delay = 2;
   extend GameserverMessage {
     optional GameserverMessageSpellDelay gameserver_message_spell_delay = 164;
   }
 }
 
 // server opcode 0xA5 (165) — SpellGroupDelay
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 group; u32 delay
+// CIP TProtobufServerMessageTranslator::v99.
 message GameserverMessageSpellGroupDelay {
+  optional uint32 group_id = 1;
+  optional uint32 delay = 2;
   extend GameserverMessage {
     optional GameserverMessageSpellGroupDelay gameserver_message_spell_group_delay = 165;
   }
 }
 
 // server opcode 0xA6 (166) — MultiUseDelay
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 delay
+// CIP TProtobufServerMessageTranslator::v100.
 message GameserverMessageMultiUseDelay {
+  optional uint32 delay = 1;
   extend GameserverMessage {
     optional GameserverMessageMultiUseDelay gameserver_message_multi_use_delay = 166;
   }
 }
 
 // server opcode 0xA7 (167) — SetTactics
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool chase opponents; bool secure mode; u8 pvp mode
+// CIP TProtobufServerMessageTranslator::v101.
 message GameserverMessageSetTactics {
+  optional bool chase_opponents = 1;
+  optional bool secure_mode = 2;
+  optional uint32 pvp_mode = 3;
   extend GameserverMessage {
     optional GameserverMessageSetTactics gameserver_message_set_tactics = 167;
   }
 }
 
 // server opcode 0xA8 (168) — SetStoreButtonDeeplink
-// classic: bridge — classic side-channel until CIP field RE
+// classic: store open parameters
+// CIP TProtobufServerMessageTranslator::v63 (v25).
 message GameserverMessageSetStoreButtonDeeplink {
+  optional ProtocolStoreOpenParameters parameters = 1;
   extend GameserverMessage {
     optional GameserverMessageSetStoreButtonDeeplink gameserver_message_set_store_button_deeplink = 168;
   }
@@ -972,144 +2156,235 @@ message GameserverMessageRestingAreaState {
 }
 
 // server opcode 0xAA (170) — Talk
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 statement; string speaker; bool traded (when statement is set); u16 level; u8 mode; position for modes 1,2,3,9,10,36,37,52,53; u16 channel for modes 7,8,14; string text
+// CIP TProtobufServerMessageTranslator::v37.
 message GameserverMessageTalk {
+  optional uint32 statement_id = 1;
+  optional string speaker = 2;
+  optional bool traded = 3;
+  optional uint32 speaker_level = 4;
+  optional uint32 mode = 5;
+  optional ProtocolCoordinate position = 6;
+  optional uint32 channel_id = 7;
+  optional string text = 8;
   extend GameserverMessage {
     optional GameserverMessageTalk gameserver_message_talk = 170;
   }
 }
 
 // server opcode 0xAB (171) — Channels
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 count x (u16 id, string name)
+// CIP TProtobufServerMessageTranslator::v102.
 message GameserverMessageChannels {
+  repeated ProtocolChannel channels = 1;
   extend GameserverMessage {
     optional GameserverMessageChannels gameserver_message_channels = 171;
   }
 }
 
 // server opcode 0xAC (172) — OpenChannel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 id; string name; u16 count x string joined; u16 count x string invited
+// CIP TProtobufServerMessageTranslator::v76 (names: v66).
 message GameserverMessageOpenChannel {
+  optional uint32 channel_id = 1;
+  optional string name = 2;
+  repeated string joined_players = 3;
+  repeated string invited_players = 4;
   extend GameserverMessage {
     optional GameserverMessageOpenChannel gameserver_message_open_channel = 172;
   }
 }
 
 // server opcode 0xAD (173) — PrivateChannel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: string name
+// CIP TProtobufServerMessageTranslator::v103.
 message GameserverMessagePrivateChannel {
+  optional string name = 1;
   extend GameserverMessage {
     optional GameserverMessagePrivateChannel gameserver_message_private_channel = 173;
   }
 }
 
 // server opcode 0xAE (174) — EditGuildMessage
-// classic: bridge — classic side-channel until CIP field RE
+// classic: string text
+// CIP TProtobufServerMessageTranslator::v104.
 message GameserverMessageEditGuildMessage {
+  optional string text = 1;
   extend GameserverMessage {
     optional GameserverMessageEditGuildMessage gameserver_message_edit_guild_message = 174;
   }
 }
 
 // server opcode 0xAF (175) — XpChanged
-// classic: bridge — classic side-channel until CIP field RE
+// classic: s64 raw; s64 final
+// CIP TProtobufServerMessageTranslator::v105.
 message GameserverMessageXpChanged {
+  optional int64 raw_experience = 1;
+  optional int64 final_experience = 2;
   extend GameserverMessage {
     optional GameserverMessageXpChanged gameserver_message_xp_changed = 175;
   }
 }
 
 // server opcode 0xB0 (176) — OutfitMemorial
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 x3; (u16 n x string) x3; u16 x6; (u16 n x string) x3
+// CIP TProtobufServerMessageTranslator::v186.
 message GameserverMessageOutfitMemorial {
+  repeated string base_golden_owners = 1;
+  repeated string one_addon_golden_owners = 2;
+  repeated string full_golden_owners = 3;
+  repeated string base_token_owners = 4;
+  repeated string one_addon_token_owners = 5;
+  repeated string full_token_owners = 6;
+  optional uint32 base_golden_cost = 7;
+  optional uint32 one_addon_golden_cost = 8;
+  optional uint32 full_golden_cost = 9;
+  optional uint32 base_silver_tokens = 10;
+  optional uint32 base_gold_tokens = 11;
+  optional uint32 one_addon_silver_tokens = 12;
+  optional uint32 one_addon_gold_tokens = 13;
+  optional uint32 full_silver_tokens = 14;
+  optional uint32 full_gold_tokens = 15;
   extend GameserverMessage {
     optional GameserverMessageOutfitMemorial gameserver_message_outfit_memorial = 176;
   }
 }
 
 // server opcode 0xB1 (177) — Highscores
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 no data; 0: u8 n x string; string; u8 n x u8; s8; u8 n x (s32, string); s32; u8 n x (u8, string); u8; u16; u16; u8 n x entry; s8; bool; u8; u32
+// CIP TProtobufServerMessageTranslator::v187.
 message GameserverMessageHighscores {
+  repeated string worlds = 1;
+  optional string selected_world = 2;
+  repeated uint32 world_categories = 3;
+  repeated ProtocolHighscoreVocation vocations = 4;
+  repeated ProtocolHighscoreCategory categories = 5;
+  repeated ProtocolHighscoreEntry entries = 6;
+  optional uint32 no_data = 7;
+  optional int32 battleye_type = 8;
+  optional int32 selected_vocation = 9;
+  optional uint32 selected_category = 10;
+  optional uint32 page = 11;
+  optional uint32 page_count = 12;
+  optional int32 selected_index = 13;
+  optional bool show_loyalty_title = 14;
+  optional uint32 value_type = 15;
+  optional uint32 last_update = 16;
   extend GameserverMessage {
     optional GameserverMessageHighscores gameserver_message_highscores = 177;
   }
 }
 
 // server opcode 0xB2 (178) — OpenOwnChannel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 id; string name; u16 count x string joined; u16 count x string invited
+// CIP TProtobufServerMessageTranslator::v65 (names: v66).
 message GameserverMessageOpenOwnChannel {
+  optional uint32 channel_id = 1;
+  optional string name = 2;
+  repeated string joined_players = 3;
+  repeated string invited_players = 4;
   extend GameserverMessage {
     optional GameserverMessageOpenOwnChannel gameserver_message_open_own_channel = 178;
   }
 }
 
 // server opcode 0xB3 (179) — CloseChannel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 id
+// CIP TProtobufServerMessageTranslator::v106.
 message GameserverMessageCloseChannel {
+  optional uint32 channel_id = 1;
   extend GameserverMessage {
     optional GameserverMessageCloseChannel gameserver_message_close_channel = 179;
   }
 }
 
 // server opcode 0xB4 (180) — Message
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 mode; u16 channel for 6,33,34,35; position, s32 value, u8 color, s32 value, u8 color for 23,24,27; position, s32 value, u8 color for 25,28,43; position, s64 value, u8 color for 26,29; string text
+// CIP TProtobufServerMessageTranslator::v39.
 message GameserverMessageMessage {
+  optional uint32 mode = 1;
+  optional uint32 channel_id = 2;
+  optional ProtocolCoordinate position = 3;
+  optional int64 value = 4;
+  optional uint32 color = 5;
+  optional int64 second_value = 6;
+  optional uint32 second_color = 7;
+  optional string text = 8;
   extend GameserverMessage {
     optional GameserverMessageMessage gameserver_message_message = 180;
   }
 }
 
 // server opcode 0xB5 (181) — SnapBack
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 direction
+// CIP TProtobufServerMessageTranslator::v77.
 message GameserverMessageSnapBack {
+  optional uint32 direction = 1;
   extend GameserverMessage {
     optional GameserverMessageSnapBack gameserver_message_snap_back = 181;
   }
 }
 
 // server opcode 0xB6 (182) — Wait
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 time
+// CIP TProtobufServerMessageTranslator::v107.
 message GameserverMessageWait {
+  optional uint32 time = 1;
   extend GameserverMessage {
     optional GameserverMessageWait gameserver_message_wait = 182;
   }
 }
 
 // server opcode 0xB7 (183) — UnjustifiedPoints
-// classic: bridge — classic side-channel until CIP field RE
+// classic: (u8, u8) x3; u8 skull duration
+// CIP TProtobufServerMessageTranslator::v67.
 message GameserverMessageUnjustifiedPoints {
+  optional ProtocolUnjustifiedProgress day = 1;
+  optional ProtocolUnjustifiedProgress week = 2;
+  optional ProtocolUnjustifiedProgress month = 3;
+  optional uint32 skull_duration = 4;
   extend GameserverMessage {
     optional GameserverMessageUnjustifiedPoints gameserver_message_unjustified_points = 183;
   }
 }
 
 // server opcode 0xB8 (184) — PvpSituations
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 open situations
+// CIP TProtobufServerMessageTranslator::v73.
 message GameserverMessagePvpSituations {
+  optional uint32 open_situations = 1;
   extend GameserverMessage {
     optional GameserverMessagePvpSituations gameserver_message_pvp_situations = 184;
   }
 }
 
 // server opcode 0xB9 (185) — BestiaryTracker
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; u8 count x entry
+// CIP TProtobufServerMessageTranslator::v74.
 message GameserverMessageBestiaryTracker {
+  repeated ProtocolBestiaryTrackerEntry entries = 1;
+  optional uint32 tracker_type = 2;
   extend GameserverMessage {
     optional GameserverMessageBestiaryTracker gameserver_message_bestiary_tracker = 185;
   }
 }
 
 // server opcode 0xBA (186) — SoulSealsDialog
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x u16 race
+// CIP TProtobufServerMessageTranslator::v75.
 message GameserverMessageSoulSealsDialog {
+  repeated uint32 race_ids = 1;
   extend GameserverMessage {
     optional GameserverMessageSoulSealsDialog gameserver_message_soul_seals_dialog = 186;
   }
 }
 
 // server opcode 0xBB (187) — ShapedPerkReshapeOffers
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object; slot
+// CIP TProtobufServerMessageTranslator::v203.
 message GameserverMessageShapedPerkReshapeOffers {
+  optional ProtocolReshapeSlot slot = 1;
+  optional uint32 object_id = 2;
   extend GameserverMessage {
     optional GameserverMessageShapedPerkReshapeOffers gameserver_message_shaped_perk_reshape_offers = 187;
   }
@@ -1124,64 +2399,99 @@ message GameserverMessageStop {
 }
 
 // server opcode 0xBD (189) — BossTracking
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x (u32 race, u64 cooldown)
+// CIP TProtobufServerMessageTranslator::v31.
 message GameserverMessageBossTracking {
+  repeated ProtocolBossCooldown cooldowns = 1;
   extend GameserverMessage {
     optional GameserverMessageBossTracking gameserver_message_boss_tracking = 189;
   }
 }
 
 // server opcode 0xBE (190) — TopFloor
-// classic: bridge — classic side-channel until CIP field RE
+// classic: area of fields (skip counts) from the translator viewport
 message GameserverMessageTopFloor {
+  optional ProtocolCoordinate coordinate = 1;
+  repeated ProtocolMapField fields = 2;
   extend GameserverMessage {
     optional GameserverMessageTopFloor gameserver_message_top_floor = 190;
   }
 }
 
 // server opcode 0xBF (191) — BottomFloor
-// classic: bridge — classic side-channel until CIP field RE
+// classic: area of fields (skip counts) from the translator viewport
 message GameserverMessageBottomFloor {
+  optional ProtocolCoordinate coordinate = 1;
+  repeated ProtocolMapField fields = 2;
   extend GameserverMessage {
     optional GameserverMessageBottomFloor gameserver_message_bottom_floor = 191;
   }
 }
 
 // server opcode 0xC0 (192) — UpdateManagedContainers
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool fallback; u8 count x (u8, u16, u16)
+// CIP TProtobufServerMessageTranslator::v172.
 message GameserverMessageUpdateManagedContainers {
+  repeated ProtocolManagedContainer containers = 1;
+  optional bool fallback_to_main_container = 2;
   extend GameserverMessage {
     optional GameserverMessageUpdateManagedContainers gameserver_message_update_managed_containers = 192;
   }
 }
 
 // server opcode 0xC1 (193) — VocationSpecificPlayerData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; 0: u8 harmony; 1: bool serene; 2: u8 count x u16 spell
+// CIP TProtobufServerMessageTranslator::v51.
 message GameserverMessageVocationSpecificPlayerData {
+  repeated uint32 virtue_spell_ids = 1;
+  optional uint32 data_type = 2;
+  optional uint32 harmony = 3;
+  optional bool serene = 4;
   extend GameserverMessage {
     optional GameserverMessageVocationSpecificPlayerData gameserver_message_vocation_specific_player_data = 193;
   }
 }
 
 // server opcode 0xC2 (194) — ConfigureCreaturePodium
-// classic: bridge — classic side-channel until CIP field RE
+// classic: outfit; u16; bool boss; u16 count x race; position; u16 object; u8 stack; bool; bool; u8 direction
+// CIP TProtobufServerMessageTranslator::v109.
 message GameserverMessageConfigureCreaturePodium {
+  repeated ProtocolPodiumRace races = 1;
+  optional ProtocolOutfit outfit = 2;
+  optional ProtocolCoordinate position = 3;
+  optional uint32 reserved = 4;
+  optional bool boss_podium = 5;
+  optional uint32 object_id = 6;
+  optional uint32 stack_position = 7;
+  optional bool podium_visible = 8;
+  optional bool monster_visible = 9;
+  optional uint32 direction = 10;
   extend GameserverMessage {
     optional GameserverMessageConfigureCreaturePodium gameserver_message_configure_creature_podium = 194;
   }
 }
 
 // server opcode 0xC3 (195) — CyclopediaHouseActionResult
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 house; u8 type; u8 error; bool outbid when type 1 succeeded
+// CIP TProtobufServerMessageTranslator::v184.
 message GameserverMessageCyclopediaHouseActionResult {
+  optional uint32 house_id = 1;
+  optional uint32 action_type = 2;
+  optional uint32 error_code = 3;
+  optional bool outbidden = 4;
   extend GameserverMessage {
     optional GameserverMessageCyclopediaHouseActionResult gameserver_message_cyclopedia_house_action_result = 195;
   }
 }
 
 // server opcode 0xC4 (196) — WeaponProficiency
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object; u32 xp; u8 count x (u8, u8); u8 count x (u8, u8, u16, u8)
+// CIP TProtobufServerMessageTranslator::v202.
 message GameserverMessageWeaponProficiency {
+  repeated ProtocolProficiencyPerk perks = 1;
+  repeated ProtocolProficiencyModifiedPerk modified_perks = 2;
+  optional uint32 object_id = 3;
+  optional uint32 experience = 4;
   extend GameserverMessage {
     optional GameserverMessageWeaponProficiency gameserver_message_weapon_proficiency = 196;
   }
@@ -1198,31 +2508,62 @@ message GameserverMessageGemAtelierGemRevealed {
 }
 
 // server opcode 0xC6 (198) — CyclopediaStaticHouseData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32; u8 x6; u8 count x u32; u16 count x u32
+// CIP TProtobufServerMessageTranslator::v181.
 message GameserverMessageCyclopediaStaticHouseData {
+  repeated uint32 shown_houses = 1;
+  repeated uint32 other_houses = 2;
+  optional uint32 excluded_until = 3;
+  optional uint32 first_count = 4;
+  optional uint32 second_count = 5;
+  optional uint32 third_count = 6;
+  optional uint32 fourth_count = 7;
+  optional uint32 fifth_count = 8;
+  optional uint32 sixth_count = 9;
   extend GameserverMessage {
     optional GameserverMessageCyclopediaStaticHouseData gameserver_message_cyclopedia_static_house_data = 198;
   }
 }
 
 // server opcode 0xC7 (199) — CyclopediaCurrentHouseData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x house
+// CIP TProtobufServerMessageTranslator::v182.
 message GameserverMessageCyclopediaCurrentHouseData {
+  repeated ProtocolHouse houses = 1;
   extend GameserverMessage {
     optional GameserverMessageCyclopediaCurrentHouseData gameserver_message_cyclopedia_current_house_data = 199;
   }
 }
 
 // server opcode 0xC8 (200) — Outfit
-// classic: bridge — classic side-channel until CIP field RE
+// classic: outfit (no item look); u16 mount; u8 x4 mount colours; u16 familiar; u16 n x outfit option (x3); u8 mode; bool mounted; 0: bool random; 3: u32; 4/5: u16 n x pair; 5: podium
+// CIP TProtobufServerMessageTranslator::v108.
 message GameserverMessageOutfit {
+  optional ProtocolOutfit outfit = 1;
+  optional ProtocolOutfit mount_colors = 2;
+  repeated ProtocolOutfitOption outfits = 3;
+  repeated ProtocolOutfitOption mounts = 4;
+  repeated ProtocolOutfitOption familiars = 5;
+  repeated ProtocolGenderPair gender_pairs = 6;
+  optional ProtocolCoordinate podium_position = 7;
+  optional uint32 mount = 8;
+  optional uint32 familiar = 9;
+  optional uint32 window_mode = 10;
+  optional bool mounted = 11;
+  optional bool random_mount = 12;
+  optional uint32 hireling_id = 13;
+  optional uint32 podium_object = 14;
+  optional uint32 podium_stack_position = 15;
+  optional bool podium_visible = 16;
+  optional bool podium_show_outfit = 17;
+  optional uint32 podium_direction = 18;
   extend GameserverMessage {
     optional GameserverMessageOutfit gameserver_message_outfit = 200;
   }
 }
 
 // server opcode 0xC9 (201) — ExivaSuppressed
-// classic: bridge — classic side-channel until CIP field RE
+// classic: empty body
 message GameserverMessageExivaSuppressed {
   extend GameserverMessage {
     optional GameserverMessageExivaSuppressed gameserver_message_exiva_suppressed = 201;
@@ -1230,112 +2571,194 @@ message GameserverMessageExivaSuppressed {
 }
 
 // server opcode 0xCA (202) — UpdateExivaOptions
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool x6; u16 n x string (x4)
+// CIP TProtobufServerMessageTranslator::v173.
 message GameserverMessageUpdateExivaOptions {
+  repeated string character_whitelist = 1;
+  repeated string removed_characters = 2;
+  repeated string guild_whitelist = 3;
+  repeated string removed_guilds = 4;
+  optional bool allow_all = 5;
+  optional bool allow_own_guild = 6;
+  optional bool allow_own_party = 7;
+  optional bool allow_vip_list = 8;
+  optional bool allow_character_whitelist = 9;
+  optional bool allow_guild_whitelist = 10;
   extend GameserverMessage {
     optional GameserverMessageUpdateExivaOptions gameserver_message_update_exiva_options = 202;
   }
 }
 
 // server opcode 0xCB (203) — TransactionDetails
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 id; u8 type; 0: transfer; 1: purchase
+// CIP TProtobufServerMessageTranslator::v113.
 message GameserverMessageTransactionDetails {
+  optional ProtocolTransactionTransfer transfer = 1;
+  optional ProtocolTransactionPurchase purchase = 2;
+  optional uint32 transaction_id = 3;
+  optional uint32 detail_type = 4;
   extend GameserverMessage {
     optional GameserverMessageTransactionDetails gameserver_message_transaction_details = 203;
   }
 }
 
 // server opcode 0xCC (204) — ImpactTracking
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; u32 amount; type 2: u8 element, string source; type 1: u32 elemental amount, u8 element
+// CIP TProtobufServerMessageTranslator::v114.
 message GameserverMessageImpactTracking {
+  optional string source = 1;
+  optional uint32 type = 2;
+  optional uint32 amount = 3;
+  optional uint32 element = 4;
+  optional uint32 elemental_amount = 5;
+  optional uint32 elemental_type = 6;
   extend GameserverMessage {
     optional GameserverMessageImpactTracking gameserver_message_impact_tracking = 204;
   }
 }
 
 // server opcode 0xCD (205) — MarketStatistics
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x (u16 object, u8 tier if classified, u64 price)
+// CIP TProtobufServerMessageTranslator::v115.
 message GameserverMessageMarketStatistics {
+  repeated ProtocolMarketStatistic entries = 1;
   extend GameserverMessage {
     optional GameserverMessageMarketStatistics gameserver_message_market_statistics = 205;
   }
 }
 
 // server opcode 0xCE (206) — ItemWasted
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object
+// CIP TProtobufServerMessageTranslator::v110.
 message GameserverMessageItemWasted {
+  optional uint32 object_id = 1;
   extend GameserverMessage {
     optional GameserverMessageItemWasted gameserver_message_item_wasted = 206;
   }
 }
 
 // server opcode 0xCF (207) — ItemLooted
-// classic: bridge — classic side-channel until CIP field RE
+// classic: item; string name
+// CIP TProtobufServerMessageTranslator::v111.
 message GameserverMessageItemLooted {
+  optional string name = 1;
+  optional ProtocolInventoryItem item = 2;
   extend GameserverMessage {
     optional GameserverMessageItemLooted gameserver_message_item_looted = 207;
   }
 }
 
 // server opcode 0xD0 (208) — TrackQuestFlags
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool full; full: u8 remaining, u8 count; entries (one when not full)
+// CIP TProtobufServerMessageTranslator::v171.
 message GameserverMessageTrackQuestFlags {
+  repeated ProtocolTrackedMission missions = 1;
+  optional bool full_list = 2;
+  optional uint32 remaining = 3;
   extend GameserverMessage {
     optional GameserverMessageTrackQuestFlags gameserver_message_track_quest_flags = 208;
   }
 }
 
 // server opcode 0xD1 (209) — KillTracking
-// classic: bridge — classic side-channel until CIP field RE
+// classic: string name; outfit; u8 count x item
+// CIP TProtobufServerMessageTranslator::v112.
 message GameserverMessageKillTracking {
+  optional string name = 1;
+  optional ProtocolOutfit outfit = 2;
+  repeated ProtocolInventoryItem items = 3;
   extend GameserverMessage {
     optional GameserverMessageKillTracking gameserver_message_kill_tracking = 209;
   }
 }
 
 // server opcode 0xD2 (210) — BuddyData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32; string; string; u32 icon; bool notify; u8 status; u8 n x u8 group
+// CIP TProtobufServerMessageTranslator::v116.
 message GameserverMessageBuddyData {
+  optional string name = 1;
+  optional string description = 2;
+  repeated uint32 group_ids = 3;
+  optional uint32 buddy_id = 4;
+  optional uint32 icon = 5;
+  optional bool notify_login = 6;
+  optional uint32 status = 7;
   extend GameserverMessage {
     optional GameserverMessageBuddyData gameserver_message_buddy_data = 210;
   }
 }
 
 // server opcode 0xD3 (211) — BuddyStatusChange
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 buddy; u8 status
+// CIP TProtobufServerMessageTranslator::v117.
 message GameserverMessageBuddyStatusChange {
+  optional uint32 buddy_id = 1;
+  optional uint32 status = 2;
   extend GameserverMessage {
     optional GameserverMessageBuddyStatusChange gameserver_message_buddy_status_change = 211;
   }
 }
 
 // server opcode 0xD4 (212) — BuddyGroupData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 count x (u8, string, bool); u8 groups left
+// CIP TProtobufServerMessageTranslator::v118.
 message GameserverMessageBuddyGroupData {
+  repeated ProtocolBuddyGroup groups = 1;
+  optional uint32 groups_left = 2;
   extend GameserverMessage {
     optional GameserverMessageBuddyGroupData gameserver_message_buddy_group_data = 212;
   }
 }
 
 // server opcode 0xD5 (213) — MonsterCyclopedia
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x (string, u16, u16)
+// CIP TProtobufServerMessageTranslator::v119.
 message GameserverMessageMonsterCyclopedia {
+  repeated ProtocolMonsterClass classes = 1;
   extend GameserverMessage {
     optional GameserverMessageMonsterCyclopedia gameserver_message_monster_cyclopedia = 213;
   }
 }
 
 // server opcode 0xD6 (214) — MonsterCyclopediaMonsters
-// classic: bridge — classic side-channel until CIP field RE
+// classic: string class; u16 count x entry; u16 animus points
+// CIP TProtobufServerMessageTranslator::v120.
 message GameserverMessageMonsterCyclopediaMonsters {
+  repeated ProtocolMonsterCyclopediaEntry monsters = 1;
+  optional string class_name = 2;
+  optional uint32 animus_mastery_points = 3;
   extend GameserverMessage {
     optional GameserverMessageMonsterCyclopediaMonsters gameserver_message_monster_cyclopedia_monsters = 214;
   }
 }
 
 // server opcode 0xD7 (215) — MonsterCyclopediaRace
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 race; string; u8 progress; u16 bonus/1000; u16 points; u32 kills; u16 x3; bool; >0: u8, u8, u8 n x loot; >1: u16, u8, bool, u32, u32, u16, u16, double; >2: u8 n x (u8, s16), u16 n x string
+// CIP TProtobufServerMessageTranslator::v121.
 message GameserverMessageMonsterCyclopediaRace {
+  optional string class_name = 1;
+  repeated ProtocolMonsterLoot loot = 2;
+  repeated ProtocolElementModifier elements = 3;
+  repeated string locations = 4;
+  optional uint32 race_id = 5;
+  optional uint32 progress = 6;
+  optional double animus_mastery_bonus = 7;
+  optional uint32 animus_mastery_points = 8;
+  optional uint32 kills = 9;
+  optional uint32 first_unlock = 10;
+  optional uint32 second_unlock = 11;
+  optional uint32 last_unlock = 12;
+  optional bool difficulty = 13;
+  optional uint32 occurrence = 14;
+  optional uint32 leader_killed = 15;
+  optional uint32 charm_value = 16;
+  optional uint32 attack_mode = 17;
+  optional bool casts_spells = 18;
+  optional uint32 max_health = 19;
+  optional uint32 experience = 20;
+  optional uint32 speed = 21;
+  optional uint32 armor = 22;
+  optional double mitigation = 23;
   extend GameserverMessage {
     optional GameserverMessageMonsterCyclopediaRace gameserver_message_monster_cyclopedia_race = 215;
   }
@@ -1350,8 +2773,10 @@ message GameserverMessageMonsterCyclopediaBonusEffects {
 }
 
 // server opcode 0xD9 (217) — MonsterCyclopediaNewDetails
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 race
+// CIP TProtobufServerMessageTranslator::v123.
 message GameserverMessageMonsterCyclopediaNewDetails {
+  optional uint32 race_id = 1;
   extend GameserverMessage {
     optional GameserverMessageMonsterCyclopediaNewDetails gameserver_message_monster_cyclopedia_new_details = 217;
   }
@@ -1385,48 +2810,91 @@ message GameserverMessageTutorialHint {
 }
 
 // server opcode 0xDD (221) — CyclopediaMapData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; 0: position, u8, string; 1: discovery data; 2: position, u8; 3: u16; 4: u16, u8; 5: u16, bool, u8, u8 n x (position, u8); 6: position, u8 n x u16; 7: u8 n x sub area; 8: u16, bool; 9: u64, u8 n x donation; 10/11: u16
+// CIP TProtobufServerMessageTranslator::v127. Passage (6) carries one passage per message.
 message GameserverMessageCyclopediaMapData {
+  optional string text = 1;
+  optional ProtocolCoordinate position = 2;
+  repeated ProtocolMapMainArea main_areas = 3;
+  repeated uint32 discovered_areas = 4;
+  repeated uint32 discoverable_areas = 5;
+  repeated ProtocolMapPoint points = 6;
+  repeated uint32 race_ids = 7;
+  repeated ProtocolSubAreaMonsters sub_area_monsters = 8;
+  repeated ProtocolMapDonation donations = 9;
+  optional uint32 data_type = 10;
+  optional uint32 icon = 11;
+  optional uint32 area_id = 12;
+  optional bool flag = 13;
+  optional uint32 target = 14;
+  optional uint64 donation_goal = 15;
   extend GameserverMessage {
     optional GameserverMessageCyclopediaMapData gameserver_message_cyclopedia_map_data = 221;
   }
 }
 
 // server opcode 0xDE (222) — DailyRewardCollectionState
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool state
+// CIP TProtobufServerMessageTranslator::v170.
 message GameserverMessageDailyRewardCollectionState {
+  optional bool collected = 1;
   extend GameserverMessage {
     optional GameserverMessageDailyRewardCollectionState gameserver_message_daily_reward_collection_state = 222;
   }
 }
 
 // server opcode 0xDF (223) — CreditBalance
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool update; if update: u32 total, u32 transferable, u32 auction reserve
+// CIP TProtobufServerMessageTranslator::v141.
 message GameserverMessageCreditBalance {
+  optional bool update = 1;
+  optional uint32 total = 2;
+  optional uint32 transferable = 3;
+  optional uint32 reserved_auction = 4;
   extend GameserverMessage {
     optional GameserverMessageCreditBalance gameserver_message_credit_balance = 223;
   }
 }
 
 // server opcode 0xE0 (224) — StoreError
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; string message
+// CIP TProtobufServerMessageTranslator::v145.
 message GameserverMessageStoreError {
+  optional uint32 error_type = 1;
+  optional string message = 2;
   extend GameserverMessage {
     optional GameserverMessageStoreError gameserver_message_store_error = 224;
   }
 }
 
 // server opcode 0xE1 (225) — RequestPurchaseData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 offer; bool tokens; u8 type; 6: string; 4: u8 n x main character; 2: world transfer
+// CIP TProtobufServerMessageTranslator::v140.
 message GameserverMessageRequestPurchaseData {
+  optional string message = 1;
+  repeated ProtocolMainCharacterOption main_characters = 2;
+  optional ProtocolWorldTransferInformation world_transfer = 3;
+  optional uint32 offer_id = 4;
+  optional uint32 purchase_type = 5;
+  optional bool cosmetic_tokens = 6;
   extend GameserverMessage {
     optional GameserverMessageRequestPurchaseData gameserver_message_request_purchase_data = 225;
   }
 }
 
 // server opcode 0xE2 (226) — OpenRewardWall
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool shrine; u32 next; u8 day; u8 collected (+ string); u8 state: 2 → u32 time left, u16 jokers; 1 → u16 jokers; u16 streak
+// CIP TProtobufServerMessageTranslator::v159.
 message GameserverMessageOpenRewardWall {
+  optional string message = 1;
+  optional bool from_shrine = 2;
+  optional uint32 next_reward_time = 3;
+  optional uint32 day_streak_day = 4;
+  optional uint32 collected = 5;
+  optional uint32 pickup_state = 6;
+  optional uint32 time_left = 7;
+  optional uint32 jokers = 8;
+  optional uint32 streak_level = 9;
   extend GameserverMessage {
     optional GameserverMessageOpenRewardWall gameserver_message_open_reward_wall = 226;
   }
@@ -1449,63 +2917,99 @@ message GameserverMessageDailyRewardBasic {
 }
 
 // server opcode 0xE5 (229) — DailyRewardHistory
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 count x entry
+// CIP TProtobufServerMessageTranslator::v164.
 message GameserverMessageDailyRewardHistory {
+  repeated ProtocolDailyRewardHistoryEntry entries = 1;
   extend GameserverMessage {
     optional GameserverMessageDailyRewardHistory gameserver_message_daily_reward_history = 229;
   }
 }
 
 // server opcode 0xE6 (230) — BosstiaryHighlight
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 boss
+// CIP TProtobufServerMessageTranslator::v165.
 message GameserverMessageBosstiaryHighlight {
+  optional uint32 boss_id = 1;
   extend GameserverMessage {
     optional GameserverMessageBosstiaryHighlight gameserver_message_bosstiary_highlight = 230;
   }
 }
 
 // server opcode 0xE7 (231) — PreyTimeLeft
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 slot; u16 time left
+// CIP TProtobufServerMessageTranslator::v147.
 message GameserverMessagePreyTimeLeft {
+  optional uint32 slot = 1;
+  optional uint32 time_left = 2;
   extend GameserverMessage {
     optional GameserverMessagePreyTimeLeft gameserver_message_prey_time_left = 231;
   }
 }
 
 // server opcode 0xE8 (232) — PreyData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 slot; u8 state; 0: u8 unlock; 2: monster, u8 bonus, u16 value, u8 grade, u16 time; 4/6: u8 bonus, u16 value, u8 grade; 3/4: u8 n x monster; 5/6: u16 n x u16 race; u32 next reroll; u8 option
+// CIP TProtobufServerMessageTranslator::v148.
 message GameserverMessagePreyData {
+  repeated ProtocolPreyMonster monsters = 1;
+  repeated uint32 race_ids = 2;
+  optional uint32 slot = 3;
+  optional uint32 state = 4;
+  optional uint32 unlock_state = 5;
+  optional uint32 bonus_type = 6;
+  optional uint32 bonus_value = 7;
+  optional uint32 bonus_grade = 8;
+  optional uint32 time_left = 9;
+  optional uint32 next_free_reroll = 10;
+  optional uint32 option = 11;
   extend GameserverMessage {
     optional GameserverMessagePreyData gameserver_message_prey_data = 232;
   }
 }
 
 // server opcode 0xE9 (233) — PreyPrices
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 reroll; u8 bonus reroll; u8 selection
+// CIP TProtobufServerMessageTranslator::v150.
 message GameserverMessagePreyPrices {
+  optional uint32 reroll_price = 1;
+  optional uint32 wildcard_price = 2;
+  optional uint32 selection_price = 3;
   extend GameserverMessage {
     optional GameserverMessagePreyPrices gameserver_message_prey_prices = 233;
   }
 }
 
 // server opcode 0xEA (234) — OfferDescription
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 offer; string description
+// CIP TProtobufServerMessageTranslator::v151.
 message GameserverMessageOfferDescription {
+  optional uint32 offer_id = 1;
+  optional string description = 2;
   extend GameserverMessage {
     optional GameserverMessageOfferDescription gameserver_message_offer_description = 234;
   }
 }
 
 // server opcode 0xEB (235) — ImbuingDialogRefresh
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; bool; 1: u16 object, u8 tier if tiered, u8 n x slot; 2: bool, bool; u16 n x imbuement; u32 n x (u16, u16)
+// CIP TProtobufServerMessageTranslator::v152.
 message GameserverMessageImbuingDialogRefresh {
+  repeated ProtocolImbuingSlot slots = 1;
+  repeated ProtocolImbuement imbuements = 2;
+  repeated ProtocolNeededObject needed_objects = 3;
+  optional uint32 window_type = 4;
+  optional uint32 object_id = 5;
+  optional uint32 tier = 6;
+  optional bool flag = 7;
+  optional bool first_scroll_flag = 8;
+  optional bool second_scroll_flag = 9;
   extend GameserverMessage {
     optional GameserverMessageImbuingDialogRefresh gameserver_message_imbuing_dialog_refresh = 235;
   }
 }
 
 // server opcode 0xEC (236) — CloseImbuingDialog
-// classic: bridge — classic side-channel until CIP field RE
+// classic: empty body
 message GameserverMessageCloseImbuingDialog {
   extend GameserverMessage {
     optional GameserverMessageCloseImbuingDialog gameserver_message_close_imbuing_dialog = 236;
@@ -1513,80 +3017,110 @@ message GameserverMessageCloseImbuingDialog {
 }
 
 // server opcode 0xED (237) — ShowMessageDialog
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; string; type 0x50: u32; type 0x5A: u8
+// CIP TProtobufServerMessageTranslator::v155.
 message GameserverMessageShowMessageDialog {
+  optional string message = 1;
+  optional uint32 dialog_type = 2;
+  optional uint32 extra_byte = 3;
+  optional uint32 extra_value = 4;
   extend GameserverMessage {
     optional GameserverMessageShowMessageDialog gameserver_message_show_message_dialog = 237;
   }
 }
 
 // server opcode 0xEE (238) — ResourceBalance
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; s32 for types 30-33, 60, 80, 86-89, else u64
+// CIP TProtobufServerMessageTranslator::v156.
 message GameserverMessageResourceBalance {
+  optional uint64 value = 1;
+  optional uint32 resource_type = 2;
+  optional int32 small_value = 3;
   extend GameserverMessage {
     optional GameserverMessageResourceBalance gameserver_message_resource_balance = 238;
   }
 }
 
 // server opcode 0xEF (239) — TibiaTime
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 hour; u8 minute
+// CIP TProtobufServerMessageTranslator::v128.
 message GameserverMessageTibiaTime {
+  optional uint32 hour = 1;
+  optional uint32 minute = 2;
   extend GameserverMessage {
     optional GameserverMessageTibiaTime gameserver_message_tibia_time = 239;
   }
 }
 
 // server opcode 0xF0 (240) — QuestLog
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x (u16, string, bool)
+// CIP TProtobufServerMessageTranslator::v129.
 message GameserverMessageQuestLog {
+  repeated ProtocolQuest quests = 1;
   extend GameserverMessage {
     optional GameserverMessageQuestLog gameserver_message_quest_log = 240;
   }
 }
 
 // server opcode 0xF1 (241) — QuestLine
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 quest; u8 count x (u16, string, string)
+// CIP TProtobufServerMessageTranslator::v130.
 message GameserverMessageQuestLine {
+  repeated ProtocolQuestMission missions = 1;
+  optional uint32 quest_id = 2;
   extend GameserverMessage {
     optional GameserverMessageQuestLine gameserver_message_quest_line = 241;
   }
 }
 
 // server opcode 0xF2 (242) — UpdatingShopBalance
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool updating (stored negated)
+// CIP TProtobufServerMessageTranslator::v142.
 message GameserverMessageUpdatingShopBalance {
+  optional bool balance_final = 1;
   extend GameserverMessage {
     optional GameserverMessageUpdatingShopBalance gameserver_message_updating_shop_balance = 242;
   }
 }
 
 // server opcode 0xF3 (243) — ChannelEvent
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 id; string name; u8 type
+// CIP TProtobufServerMessageTranslator::v131.
 message GameserverMessageChannelEvent {
+  optional uint32 channel_id = 1;
+  optional string name = 2;
+  optional uint32 event_type = 3;
   extend GameserverMessage {
     optional GameserverMessageChannelEvent gameserver_message_channel_event = 243;
   }
 }
 
 // server opcode 0xF4 (244) — ObjectInfo
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 count x (u16 object, u8 data, string)
+// CIP TProtobufServerMessageTranslator::v132.
 message GameserverMessageObjectInfo {
+  repeated ProtocolObjectInfo objects = 1;
   extend GameserverMessage {
     optional GameserverMessageObjectInfo gameserver_message_object_info = 244;
   }
 }
 
 // server opcode 0xF5 (245) — PlayerInventory
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x (u16 object, u8 tier, var-int count)
+// CIP TProtobufServerMessageTranslator::v133.
 message GameserverMessagePlayerInventory {
+  repeated ProtocolInventoryCount entries = 1;
   extend GameserverMessage {
     optional GameserverMessagePlayerInventory gameserver_message_player_inventory = 245;
   }
 }
 
 // server opcode 0xF6 (246) — MarketEnter
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 offers; u16 count x (u16 object, u8 tier if tiered, u16 count)
+// CIP TProtobufServerMessageTranslator::v134.
 message GameserverMessageMarketEnter {
+  repeated ProtocolDepotSearchEntry depot_objects = 1;
+  optional uint32 active_offers = 2;
   extend GameserverMessage {
     optional GameserverMessageMarketEnter gameserver_message_market_enter = 246;
   }
@@ -1601,56 +3135,95 @@ message GameserverMessageMarketLeave {
 }
 
 // server opcode 0xF8 (248) — MarketDetail
-// classic: bridge — classic side-channel until CIP field RE
+// classic: object; string x26; u8 n x statistics; u8 n x statistics
+// CIP TProtobufServerMessageTranslator::v135.
 message GameserverMessageMarketDetail {
+  optional ProtocolTieredObject object = 1;
+  repeated string descriptions = 2;
+  repeated ProtocolMarketTradeStatistics buy_statistics = 3;
+  repeated ProtocolMarketTradeStatistics sell_statistics = 4;
   extend GameserverMessage {
     optional GameserverMessageMarketDetail gameserver_message_market_detail = 248;
   }
 }
 
 // server opcode 0xF9 (249) — MarketBrowse
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; 3: object; u32 n x buy offer; u32 n x sell offer
+// CIP TProtobufServerMessageTranslator::v136.
 message GameserverMessageMarketBrowse {
+  repeated ProtocolMarketOffer buy_offers = 1;
+  repeated ProtocolMarketOffer sell_offers = 2;
+  optional ProtocolTieredObject object = 3;
+  optional uint32 request_type = 4;
   extend GameserverMessage {
     optional GameserverMessageMarketBrowse gameserver_message_market_browse = 249;
   }
 }
 
 // server opcode 0xFA (250) — ShowModalDialog
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32; string; string; u8 n x (string, u8); u8 n x (string, u8); u8 escape; u8 enter; bool
+// CIP TProtobufServerMessageTranslator::v137.
 message GameserverMessageShowModalDialog {
+  optional string title = 1;
+  optional string message = 2;
+  repeated ProtocolModalChoice buttons = 3;
+  repeated ProtocolModalChoice choices = 4;
+  optional uint32 dialog_id = 5;
+  optional uint32 escape_button = 6;
+  optional uint32 enter_button = 7;
+  optional bool priority = 8;
   extend GameserverMessage {
     optional GameserverMessageShowModalDialog gameserver_message_show_modal_dialog = 250;
   }
 }
 
 // server opcode 0xFB (251) — StoreCategories
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 count x category
+// CIP TProtobufServerMessageTranslator::v138.
 message GameserverMessageStoreCategories {
+  repeated ProtocolStoreCategory categories = 1;
   extend GameserverMessage {
     optional GameserverMessageStoreCategories gameserver_message_store_categories = 251;
   }
 }
 
 // server opcode 0xFC (252) — StoreOffers
-// classic: bridge — classic side-channel until CIP field RE
+// classic: string; u32; u8; u8 n x string; string; u16 n x string; u16 n x offer; Home: u8 n x banner, u8 delay; Search: bool
+// CIP TProtobufServerMessageTranslator::v139.
 message GameserverMessageStoreOffers {
+  optional string category_name = 1;
+  repeated string menu_filters = 2;
+  optional string collection_name = 3;
+  repeated string disable_reasons = 4;
+  repeated ProtocolStoreOffer offers = 5;
+  repeated ProtocolStoreBanner banners = 6;
+  optional uint32 redirect_id = 7;
+  optional uint32 sort_order = 8;
+  optional uint32 banner_delay = 9;
+  optional bool too_many_results = 10;
   extend GameserverMessage {
     optional GameserverMessageStoreOffers gameserver_message_store_offers = 252;
   }
 }
 
 // server opcode 0xFD (253) — TransactionHistory
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 page; u32 pages; u8 count x entry
+// CIP TProtobufServerMessageTranslator::v143.
 message GameserverMessageTransactionHistory {
+  repeated ProtocolStoreTransaction transactions = 1;
+  optional uint32 current_page = 2;
+  optional uint32 page_count = 3;
   extend GameserverMessage {
     optional GameserverMessageTransactionHistory gameserver_message_transaction_history = 253;
   }
 }
 
 // server opcode 0xFE (254) — StoreSuccess
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; string message
+// CIP TProtobufServerMessageTranslator::v144.
 message GameserverMessageStoreSuccess {
+  optional uint32 success_type = 1;
+  optional string message = 2;
   extend GameserverMessage {
     optional GameserverMessageStoreSuccess gameserver_message_store_success = 254;
   }
@@ -2503,14 +4076,6 @@ message GameclientMessageClientDetails {
 message GameclientMessageBossDifficultySelection {
   extend GameclientMessage {
     optional GameclientMessageBossDifficultySelection gameclient_message_boss_difficulty_selection = 194;
-  }
-}
-
-// client opcode 0xC8 (200) — SpellTargetConfig
-// classic: bridge — classic side-channel until CIP field RE
-message GameclientMessageSpellTargetConfig {
-  extend GameclientMessage {
-    optional GameclientMessageSpellTargetConfig gameclient_message_spell_target_config = 200;
   }
 }
 

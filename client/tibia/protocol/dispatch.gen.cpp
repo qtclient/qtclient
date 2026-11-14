@@ -11,625 +11,577 @@ bool ProtocolGame::dispatchServerMessage(const uint8_t opcode, const InputMessag
 {
     switch (opcode) {
     case 3: // CreatureData
-        parseSessionCreatureData(msg);
+        // Native: creatures::TCreatureProtocolMessageHandler.
         return true;
     case 4: // SessionDumpStart
-        parseSessionDumpStart(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 5: // SessionDumpMarker
-        parseSessionDumpMarker(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 6: // PartyLeft
-        parsePartyLeft(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 10: // PendingStateEntered
-        if (tibia::game::cipFeature(tibia::client::GameLoginPending)) {
-                                    parsePendingGame(msg);
-                                } else {
-                                    parseLogin(msg);
-                                }
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 11: // ReadyForSecondaryConnection
-        parseReadyForSecondaryConnection(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 15: // WorldEntered
-        parseEnterGame(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 20: // LoginError
-        parseLoginError(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 21: // LoginAdvice
-        parseLoginAdvice(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 22: // LoginWait
-        parseLoginWait(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 23: // LoginSuccess
-        parseLogin(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 24: // SessionEndInformation
-        parseSessionEnd(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 25: // StoreButtonIndicators
-        parseStoreButtonIndicators(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 26: // BugReportsAllowed
-        parseBugReport(msg);
+        // Native: reporting::TBugReportProtocolMessageHandler.
         return true;
     case 27: // ShowMultiOfflineTrainingDialog
-        parseMultiOfflineTrainingDialog(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 28: // NpcTalkParters
-        parseNpcChatWindow(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 29: // Ping
-        if (((opcode == Proto::GameServerPing) && (tibia::game::cipFeature(tibia::client::GameClientPing))) ||
-                                    ((opcode == Proto::GameServerPingBack) && !tibia::game::cipFeature(tibia::client::GameClientPing))) {
-                                    parsePingBack(msg);
-                                } else {
-                                    parsePing(msg);
-                                }
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 30: // PingBack
-        if (((opcode == Proto::GameServerPing) && (tibia::game::cipFeature(tibia::client::GameClientPing))) ||
-                                    ((opcode == Proto::GameServerPingBack) && !tibia::game::cipFeature(tibia::client::GameClientPing))) {
-                                    parsePingBack(msg);
-                                } else {
-                                    parsePing(msg);
-                                }
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 31: // LoginChallenge
-        parseLoginChallenge(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 40: // Dead
-        parseDeath(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 41: // Stash
-        parseSupplyStash(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 42: // SpecialContainersAvailable
-        parseSpecialContainer(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 43: // PartyHuntAnalyser
-        parsePartyAnalyzer(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 44: // TeamFinderTeamLeader
-        parseTeamFinderLeader(msg);
+        // Native: teamfinder::TTeamFinderProtocolMessageHandler.
         return true;
     case 45: // TeamFinderTeamMember
-        parseTeamFinderList(msg);
+        // Native: teamfinder::TTeamFinderProtocolMessageHandler.
         return true;
     case 46: // UnlockedSpells
-        parseUnlockedSpells(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 47: // BossDifficultySelection
-        parseBossDifficultySelection(msg);
+        // Native: game::TBossDifficultySelectionProtocolMessageHandler.
         return true;
     case 91: // Taskboard
         parseTaskBoardData(msg);
         return true;
     case 92: // WeaponProficiencyNotification
-        parseWeaponProficiencyExperience(msg);
+        // Native: proficiency::TProficiencyProtocolMessageHandler.
         return true;
     case 93: // ImbuementDurations
-        parseImbuementDurations(msg);
+        // Native: imbuing::TImbuingProtocolMessageHandler.
         return true;
     case 94: // PassiveAbilityData
-        parsePassiveCooldown(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 95: // SkillWheel
-        parseOpenWheelWindow(msg);
+        // Native: skillwheel::TSkillWheelProtocolMessageHandler.
         return true;
     case 96: // SpellDataModification
-        parseSpellDataModification(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 97: // BosstiaryStaticData
-        parseBosstiaryData(msg);
+        // Native: bossbestiary::TBossBestiaryProtocolMessageHandler.
         return true;
     case 98: // BossSlots
-        parseBosstiarySlots(msg);
+        // Native: bossbestiary::TBossBestiaryProtocolMessageHandler.
         return true;
     case 99: // ClientCheck
         parseClientCheck(msg);
         return true;
     case 100: // FullMap
-        parseMapDescription(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 101: // TopRow
-        parseMapMoveNorth(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 102: // RightColumn
-        parseMapMoveEast(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 103: // BottomRow
-        parseMapMoveSouth(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 104: // LeftColumn
-        parseMapMoveWest(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 105: // FieldData
-        parseUpdateTile(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 106: // CreateOnMap
-        parseTileAddThing(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 107: // ChangeOnMap
-        parseTileTransformThing(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 108: // DeleteOnMap
-        parseTileRemoveThing(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 109: // MoveCreature
-        parseCreatureMove(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 110: // Container
-        parseOpenContainer(msg);
+        // Native: TContainerProtocolMessageHandler (Container)
         return true;
     case 111: // CloseContainer
-        parseCloseContainer(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 112: // CreateInContainer
-        parseContainerAddItem(msg);
+        // Native: TContainerProtocolMessageHandler (CreateInContainer)
         return true;
     case 113: // ChangeInContainer
-        parseContainerUpdateItem(msg);
+        // Native: TContainerProtocolMessageHandler (ChangeInContainer)
         return true;
     case 114: // DeleteInContainer
-        parseContainerRemoveItem(msg);
+        // Native: TContainerProtocolMessageHandler (DeleteInContainer)
         return true;
     case 115: // Bosstiary
-        parseBosstiaryInfo(msg);
+        // Native: bossbestiary::TBossBestiaryProtocolMessageHandler.
         return true;
     case 116: // FriendSystemData
         parseFriendSystemData(msg);
         return true;
     case 117: // GameEvent
-        parseClientEvent(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 118: // InspectionList
-        parseCyclopediaItemDetail(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 119: // InspectionState
-        parseInspectionState(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 120: // SetInventory
-        parseAddInventoryItem(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 121: // DeleteInventory
-        parseRemoveInventoryItem(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 122: // NPCOffer
-        parseOpenNpcTrade(msg);
+        // Native: trade::TNPCTradeProtocolMessageHandler.
         return true;
     case 123: // PlayerGoods
-        parsePlayerGoods(msg);
+        // Native: trade::TNPCTradeProtocolMessageHandler.
         return true;
     case 124: // CloseNPCTrade
-        parseCloseNpcTrade(msg);
+        // Native: trade::TNPCTradeProtocolMessageHandler.
         return true;
     case 125: // OwnOffer
-        parseOwnTrade(msg);
+        // Native: trade::TPlayerTradeProtocolMessageHandler.
         return true;
     case 126: // CounterOffer
-        parseCounterTrade(msg);
+        // Native: trade::TPlayerTradeProtocolMessageHandler.
         return true;
     case 127: // CloseTrade
-        parseCloseTrade(msg);
+        // Native: trade::TPlayerTradeProtocolMessageHandler.
         return true;
     case 128: // CharacterTradeConfiguration
-        parseCharacterTradeConfiguration(msg);
+        // Native: trade::TCharacterTradeProtocolMessageHandler.
         return true;
     case 129: // TextForReport
-        parseTextForReport(msg);
+        // Native: reporting::TRuleViolationProtocolMessageHandler.
         return true;
     case 130: // AmbientLight
-        parseWorldLight(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 131: // GraphicalEffects
-        parseMagicEffect(msg);
+        // Native: effects::TEffectProtocolMessageHandler.
         return true;
     case 132: // RemoveGraphicalEffect
-        if (tibia::game::clientRevision() >= 1320) {
-                                    parseRemoveMagicEffect(msg);
-                                } else {
-                                    parseAnimatedText(msg);
-                                }
+        // Native: effects::TEffectProtocolMessageHandler.
         return true;
     case 133: // SoundTrigger
-        if (tibia::game::cipFeature(tibia::client::GameAnthem)) {
-                                    parseAnthem(msg);
-                                } else {
-                                    parseDistanceMissile(msg);
-                                }
+        // Native: sound::TSoundProtocolMessageHandler.
         return true;
     case 134: // ExaltationBaseData
-        if (tibia::game::clientRevision() >= 1281) {
-                                    parseItemClasses(msg);
-                                } else {
-                                    parseCreatureMark(msg);
-                                }
+        // Native: exaltation::TExaltationProtocolMessageHandler.
         return true;
     case 135: // ExaltationDialogRefresh
-        if (tibia::game::clientRevision() >= 1281) {
-                                    parseOpenForge(msg);
-                                } else {
-                                    parseTrappers(msg);
-                                }
+        // Native: exaltation::TExaltationProtocolMessageHandler.
         return true;
     case 136: // ExaltationHistory
-        parseBrowseForgeHistory(msg);
+        // Native: exaltation::TExaltationProtocolMessageHandler.
         return true;
     case 137: // CloseExaltationDialog
-        parseCloseForgeWindow(msg);
+        // Native: exaltation::TExaltationProtocolMessageHandler.
         return true;
     case 138: // ExaltationResult
-        if (tibia::game::clientRevision() >= 1281) {
-                                    parseForgeResult(msg);
-                                }
+        // Native: exaltation::TExaltationProtocolMessageHandler.
         return true;
     case 139: // CreatureUpdate
-        parseCreatureData(msg);
+        // Native: TCreatureProtocolMessageHandler (CreatureUpdate)
         return true;
     case 140: // CreatureHealth
-        parseCreatureHealth(msg);
+        // Native: creatures::TCreatureProtocolMessageHandler.
         return true;
     case 141: // CreatureLight
-        parseCreatureLight(msg);
+        // Native: creatures::TCreatureProtocolMessageHandler.
         return true;
     case 142: // CreatureOutfit
-        parseCreatureOutfit(msg);
+        // Native: TCreatureProtocolMessageHandler (CreatureOutfit)
         return true;
     case 143: // CreatureSpeed
-        parseCreatureSpeed(msg);
+        // Native: creatures::TCreatureProtocolMessageHandler.
         return true;
     case 144: // CreatureSkull
-        parseCreatureSkulls(msg);
+        // Native: creatures::TCreatureProtocolMessageHandler.
         return true;
     case 145: // CreatureParty
-        parseCreatureShields(msg);
+        // Native: creatures::TCreatureProtocolMessageHandler.
         return true;
     case 146: // CreatureUnpass
-        parseCreatureUnpass(msg);
+        // Native: creatures::TCreatureProtocolMessageHandler.
         return true;
     case 147: // CreatureMarks
-        parseCreaturesMark(msg);
+        // Native: TCreatureProtocolMessageHandler (CreatureMarks)
         return true;
     case 148: // DepotSearchResult
-        // Crystal: oldProtocol helpers; modern clients use 0x94 as DepotSearchResult.
-                                if (tibia::game::clientRevision() > 1100)
-                                    parseDepotSearchResults(msg);
-                                else
-                                    parsePlayerHelpers(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 149: // CreatureType
-        parseCreatureType(msg);
+        // Native: TCreatureProtocolMessageHandler (CreatureType)
         return true;
     case 150: // EditText
-        parseEditText(msg);
+        // Native: game::TEditTextProtocolMessageHandler.
         return true;
     case 151: // EditList
-        parseEditList(msg);
+        // Native: game::TEditTextProtocolMessageHandler.
         return true;
     case 152: // ShowGameNews
-        parseGameNews(msg);
+        // Native: news::TNewsProtocolMessageHandler.
         return true;
     case 153: // DepotSearchDetailList
-        parseDepotSearchDetailList(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 154: // CloseDepotSearch
-        parseCloseDepotSearch(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 155: // BlessingsDialog
-        parseBlessDialog(msg);
+        // Native: game::TBlessingsProtocolMessageHandler.
         return true;
     case 156: // Blessings
-        parseBlessings(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 157: // SwitchPreset
-        parsePreset(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 158: // PremiumTrigger
-        parsePremiumTrigger(msg);
+        // Native: game::TPremiumProtocolMessageHandler.
         return true;
     case 159: // PlayerDataBasic
-        parsePlayerInfo(msg);
+        // Native: TPlayerProtocolMessageHandler (PlayerDataBasic)
         return true;
     case 160: // PlayerDataCurrent
-        parsePlayerStats(msg);
+        // Native: game::TPlayerProtocolMessageHandler.
         return true;
     case 161: // PlayerSkills
-        parsePlayerSkills(msg);
+        // Native: TPlayerProtocolMessageHandler (PlayerSkills)
         return true;
     case 162: // PlayerState
-        parsePlayerState(msg);
+        // Native: TPlayerProtocolMessageHandler (PlayerState)
         return true;
     case 163: // UpdateTarget
-        parsePlayerCancelAttack(msg);
+        // Native: TPlayerProtocolMessageHandler (UpdateTarget)
         return true;
     case 164: // SpellDelay
-        parseSpellCooldown(msg);
+        // Native: TPlayerProtocolMessageHandler (SpellDelay)
         return true;
     case 165: // SpellGroupDelay
-        parseSpellGroupCooldown(msg);
+        // Native: TPlayerProtocolMessageHandler (SpellGroupDelay)
         return true;
     case 166: // MultiUseDelay
-        parseMultiUseCooldown(msg);
+        // Native: TPlayerProtocolMessageHandler (MultiUseDelay)
         return true;
     case 167: // SetTactics
-        parsePlayerModes(msg);
+        // Native: game::TPlayerProtocolMessageHandler.
         return true;
     case 168: // SetStoreButtonDeeplink
-        parseSetStoreDeepLink(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 169: // RestingAreaState
         parseRestingAreaState(msg);
         return true;
     case 170: // Talk
-        parseTalk(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 171: // Channels
-        parseChannelList(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 172: // OpenChannel
-        parseOpenChannel(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 173: // PrivateChannel
-        parseOpenPrivateChannel(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 174: // EditGuildMessage
-        parseEditGuildMessage(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 175: // XpChanged
-        parseExperienceTracker(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 176: // OutfitMemorial
-        parseOutfitMemorial(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 177: // Highscores
-        parseHighscores(msg);
+        // Native: highscores::THighscoresProtocolMessageHandler.
         return true;
     case 178: // OpenOwnChannel
-        parseOpenOwnPrivateChannel(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 179: // CloseChannel
-        parseCloseChannel(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 180: // Message
-        parseTextMessage(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 181: // SnapBack
-        parseCancelWalk(msg);
+        // Native: TGameProtocolMessageHandler (SnapBack)
         return true;
     case 182: // Wait
-        parseWalkWait(msg);
+        // Native: TGameProtocolMessageHandler (Wait)
         return true;
     case 183: // UnjustifiedPoints
-        parseUnjustifiedStats(msg);
+        // Native: creatures::TUnjustifiedPointsProtocolMessageHandler.
         return true;
     case 184: // PvpSituations
-        parsePvpSituations(msg);
+        // Native: creatures::TUnjustifiedPointsProtocolMessageHandler.
         return true;
     case 185: // BestiaryTracker
-        parseBestiaryTracker(msg);
+        // Native: cyclopedia::TBestiaryTrackerProtocolMessageHandler.
         return true;
     case 186: // SoulSealsDialog
         parseTaskHuntingBasicData(msg);
         return true;
     case 187: // ShapedPerkReshapeOffers
-        if (tibia::game::clientRevision() >= 1530)
-                                    parseWeaponProficiencyReshapeOffers(msg);
-                                else
-                                    parseTaskHuntingData(msg);
+        // Native: proficiency::TProficiencyProtocolMessageHandler.
         return true;
     case 188: // Stop
-        parseServerStop(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 189: // BossTracking
-        parseBosstiaryCooldownTimer(msg);
+        // Native: bossbestiary::TBossBestiaryProtocolMessageHandler.
         return true;
     case 190: // TopFloor
-        parseFloorChangeUp(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 191: // BottomFloor
-        parseFloorChangeDown(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 192: // UpdateManagedContainers
-        parseLootContainers(msg);
+        // Native: quickloot::TManagedContainersProtocolMessageHandler.
         return true;
     case 193: // VocationSpecificPlayerData
-        parseMonkData(msg);
+        // Native: game::TPlayerProtocolMessageHandler.
         return true;
     case 194: // ConfigureCreaturePodium
-        parseConfigureCreaturePodium(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 195: // CyclopediaHouseActionResult
-        parseCyclopediaHouseAuctionMessage(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 196: // WeaponProficiency
-        parseWeaponProficiencyInfo(msg);
+        // Native: proficiency::TProficiencyProtocolMessageHandler.
         return true;
     case 197: // GemAtelierGemRevealed
-        parseGemAtelierGemRevealed(msg);
+        // Native: skillwheel::TSkillWheelProtocolMessageHandler.
         return true;
     case 198: // CyclopediaStaticHouseData
-        parseCyclopediaHousesInfo(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 199: // CyclopediaCurrentHouseData
-        parseCyclopediaHouseList(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 200: // Outfit
-        parseOpenOutfitWindow(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 201: // ExivaSuppressed
-        tibia::game::notify("onExivaSuppressed");
+        // Native: exivaoptions::TExivaOptionsProtocolMessageHandler.
         return true;
     case 202: // UpdateExivaOptions
-        parseExivaRestrictions(msg);
+        // Native: exivaoptions::TExivaOptionsProtocolMessageHandler.
         return true;
     case 203: // TransactionDetails
-        parseTransactionDetails(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 204: // ImpactTracking
-        parseUpdateImpactTracker(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 205: // MarketStatistics
-        parseItemsPrice(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 206: // ItemWasted
-        parseUpdateSupplyTracker(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 207: // ItemLooted
-        parseUpdateLootTracker(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 208: // TrackQuestFlags
-        parseQuestTracker(msg);
+        // Native: questlog::TQuestLogProtocolMessageHandler.
         return true;
     case 209: // KillTracking
-        parseKillTracker(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 210: // BuddyData
-        parseVipAdd(msg);
+        // Native: creatures::TVipProtocolMessageHandler.
         return true;
     case 211: // BuddyStatusChange
-        parseVipState(msg);
+        // Native: creatures::TVipProtocolMessageHandler.
         return true;
     case 212: // BuddyGroupData
-        parseVipLogout(msg);
+        // Native: creatures::TVipProtocolMessageHandler.
         return true;
     case 213: // MonsterCyclopedia
-        parseBestiaryRaces(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 214: // MonsterCyclopediaMonsters
-        parseBestiaryOverview(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 215: // MonsterCyclopediaRace
-        parseBestiaryMonsterData(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 216: // MonsterCyclopediaBonusEffects
         parseBestiaryCharmsData(msg);
         return true;
     case 217: // MonsterCyclopediaNewDetails
-        parseBestiaryEntryChanged(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 218: // CyclopediaCharacterInfo
         parseCyclopediaCharacterInfo(msg);
         return true;
     case 219: // HirelingNameChange
-        parseHirelingNameChange(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 220: // TutorialHint
-        parseTutorialHint(msg);
+        // Native: tutorial::TTutorialProtocolMessageHandler.
         return true;
     case 221: // CyclopediaMapData
-        parseAutomapFlag(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 222: // DailyRewardCollectionState
-        parseDailyRewardCollectionState(msg);
+        // Native: dailyreward::TDailyRewardProtocolMessageHandler.
         return true;
     case 223: // CreditBalance
-        parseCoinBalance(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 224: // StoreError
-        parseStoreError(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 225: // RequestPurchaseData
-        parseRequestPurchaseData(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 226: // OpenRewardWall
-        parseOpenRewardWall(msg);
+        // Native: dailyreward::TDailyRewardProtocolMessageHandler.
         return true;
     case 227: // CloseRewardWall
-        parseCloseRewardWall(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 228: // DailyRewardBasic
         parseDailyReward(msg);
         return true;
     case 229: // DailyRewardHistory
-        parseRewardHistory(msg);
+        // Native: dailyreward::TDailyRewardProtocolMessageHandler.
         return true;
     case 230: // BosstiaryHighlight
-        // || Proto::GameServerSendBosstiaryEntryChanged
-                                if (tibia::game::cipFeature(tibia::client::GameBosstiary)) {
-                                    parseBosstiaryEntryChanged(msg);
-                                } else {
-                                    parsePreyFreeRerolls(msg);
-                                }
+        // Native: bossbestiary::TBossBestiaryProtocolMessageHandler.
         return true;
     case 231: // PreyTimeLeft
-        parsePreyTimeLeft(msg);
+        // Native: prey::TPreyProtocolMessageHandler.
         return true;
     case 232: // PreyData
-        parsePreyData(msg);
+        // Native: prey::TPreyProtocolMessageHandler.
         return true;
     case 233: // PreyPrices
-        parsePreyRerollPrice(msg);
+        // Native: prey::TPreyProtocolMessageHandler.
         return true;
     case 234: // OfferDescription
-        parseShowDescription(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 235: // ImbuingDialogRefresh
-        parseImbuementWindow(msg);
+        // Native: imbuing::TImbuingProtocolMessageHandler.
         return true;
     case 236: // CloseImbuingDialog
-        parseCloseImbuementWindow(msg);
+        // Native: imbuing::TImbuingProtocolMessageHandler.
         return true;
     case 237: // ShowMessageDialog
-        parseError(msg);
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 238: // ResourceBalance
-        parseResourceBalance(msg);
+        // Native: cyclopedia::TCyclopediaProtocolMessageHandler.
         return true;
     case 239: // TibiaTime
-        parseWorldTime(msg);
+        // Native: worldmap::TWorldmapProtocolMessageHandler.
         return true;
     case 240: // QuestLog
-        parseQuestLog(msg);
+        // Native: questlog::TQuestLogProtocolMessageHandler.
         return true;
     case 241: // QuestLine
-        parseQuestLine(msg);
+        // Native: questlog::TQuestLogProtocolMessageHandler.
         return true;
     case 242: // UpdatingShopBalance
-        parseCoinBalanceUpdating(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 243: // ChannelEvent
-        parseChannelEvent(msg);
+        // Native: chat::TChatProtocolMessageHandler.
         return true;
     case 244: // ObjectInfo
-        parseItemInfo(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 245: // PlayerInventory
-        parsePlayerInventory(msg);
+        // Native: container::TContainerProtocolMessageHandler.
         return true;
     case 246: // MarketEnter
-        if (tibia::game::clientRevision() >= 1281) {
-                                    parseMarketEnter(msg);
-                                } else {
-                                    parseMarketEnterOld(msg);
-                                }
+        // Native: market::TMarketProtocolMessageHandler.
         return true;
     case 247: // MarketLeave
-        tibia::game::notify("onMarketLeave");
+        // Native: game::TGameProtocolMessageHandler.
         return true;
     case 248: // MarketDetail
-        parseMarketDetail(msg);
+        // Native: market::TMarketProtocolMessageHandler.
         return true;
     case 249: // MarketBrowse
-        parseMarketBrowse(msg);
+        // Native: market::TMarketProtocolMessageHandler.
         return true;
     case 250: // ShowModalDialog
-        parseModalDialog(msg);
+        // Native: game::TServerModalDialogProtocolMessageHandler.
         return true;
     case 251: // StoreCategories
-        parseStore(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 252: // StoreOffers
-        parseStoreOffers(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 253: // TransactionHistory
-        parseStoreTransactionHistory(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     case 254: // StoreSuccess
-        parseCompleteStorePurchase(msg);
+        // Native: store::TStoreProtocolMessageHandler.
         return true;
     default:
         return false;

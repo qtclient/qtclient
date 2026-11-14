@@ -252,7 +252,6 @@ void TImpactWidgetController::onDamageValuesChanged()
     Q_EMIT damageValuesChanged();
 }
 
-// b1/bc5d7d55e60a46b8
 void TImpactWidgetController::updateTypedModel()
 {
     const TImpactStorage::Summary& summary =
@@ -266,7 +265,6 @@ void TImpactWidgetController::updateTypedModel()
     m_typedModel->setEntries(std::move(entries));
 }
 
-// b1/1b68cb25dd00eb11
 void TImpactWidgetController::updateGraphs()
 {
     const bool session = m_storage->showSessionValues();
@@ -576,7 +574,6 @@ double TDamageInputWidgetController::damageTakenGraphMaxY() const { return m_gra
 
 QString TDamageInputWidgetController::detailedDamageSource() const { return m_detailedSource; }
 
-// b1/837c0748c4c05bfa
 void TDamageInputWidgetController::updateLists()
 {
     const double total = static_cast<double>(m_storage->total());
@@ -596,7 +593,6 @@ void TDamageInputWidgetController::updateLists()
     Q_EMIT damageTakenValuesChanged();
 }
 
-// b1/edde9d3328a662a5
 void TDamageInputWidgetController::updateDetail()
 {
     if (!m_detailedSource.isEmpty()) {

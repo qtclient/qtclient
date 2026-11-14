@@ -47,10 +47,6 @@ public:
         m_mountLegs = legs;
         m_mountFeet = feet;
     }
-    void setWing(const uint16_t Wing) { m_wing = Wing; }
-    void setAura(const uint16_t Aura) { m_aura = Aura; }
-    void setEffect(const uint16_t Effect) { m_effect = Effect; }
-    void setShader(const std::string& shader) { m_shader = shader; }
 
     void setHead(uint8_t head);
     void setBody(uint8_t body);
@@ -71,10 +67,6 @@ public:
     uint8_t getMountBody() const { return m_mountBody; }
     uint8_t getMountLegs() const { return m_mountLegs; }
     uint8_t getMountFeet() const { return m_mountFeet; }
-    uint16_t getWing() const { return m_wing; }
-    uint16_t getAura() const { return m_aura; }
-    uint16_t getEffect() const { return m_effect; }
-    std::string getShader() const { return m_shader; }
 
     uint8_t getHead() const { return m_head; }
     uint8_t getBody() const { return m_body; }
@@ -107,11 +99,7 @@ public:
             m_feet == other.m_feet &&
             m_addons == other.m_addons &&
             m_mount == other.m_mount &&
-            m_familiar == other.m_familiar &&
-            m_wing == other.m_wing &&
-            m_aura == other.m_aura &&
-            m_effect == other.m_effect &&
-            m_shader == other.m_shader;
+            m_familiar == other.m_familiar;
     }
     bool operator!=(const Outfit& other) const { return !(*this == other); }
 
@@ -124,10 +112,6 @@ private:
     uint16_t m_auxId{ 0 };
     uint16_t m_mount{ 0 };
     uint16_t m_familiar{ 0 };
-    uint16_t m_wing{ 0 };
-    uint16_t m_aura{ 0 };
-    uint16_t m_effect{ 0 };
-    std::string m_shader;
 
     uint8_t m_head{ 0 };
     uint8_t m_body{ 0 };

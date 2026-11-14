@@ -121,7 +121,6 @@ void TExivaOptionsStorage::send(const Options& options, const Names& addCharacte
                             options.allowGuildWhitelist, wire(addCharacters), wire(removeCharacters), wire(addGuilds), wire(removeGuilds));
 }
 
-// b1/35f9fbe2b41d6fe2
 void TExivaOptionsStorage::toggleAllowEveryone() const
 {
     Options options = m_options;
@@ -133,7 +132,6 @@ void TExivaOptionsStorage::toggleAllowEveryone() const
     input::publish(status);
 }
 
-// b1/ca2e14af23614ecb
 void TExivaOptionsStorage::requestWhitelistChange(const QString& name, const bool add) const
 {
     if (name.isEmpty())
@@ -142,7 +140,6 @@ void TExivaOptionsStorage::requestWhitelistChange(const QString& name, const boo
     send(m_options, add ? names : Names{}, add ? Names{} : names, {}, {});
 }
 
-// b1/08eb6e5ff5a60fa5
 void TExivaOptionsStorage::update(const Options& options, const Names& characters, const Names& guilds) const
 {
     send(options, difference(characters, m_characterWhitelist), difference(m_characterWhitelist, characters), difference(guilds, m_guildWhitelist),

@@ -105,28 +105,34 @@ void openLocalPlayerInventory(tibia::client::InventorySlot slot);
 /// Wire form for inventory open/use: `Position(UINT16_MAX, slot, 0)` as `MapPos`.
 MapPos inventoryWireMapPos(tibia::client::InventorySlot slot);
 
-/// Auto-walk peels (TravelRouter). Prefer over LocalPlayerSessionThing::autoWalk / stopAutoWalk.
+/// Walking goes through the movement intent handler.
 void localPlayerStopAutoWalk();
+/// A walk goal is live.
 bool localPlayerIsAutoWalking();
 bool localPlayerHasAutoWalkDirs();
 bool localPlayerIsWalking();
+/// A predicted step awaits the server.
 bool localPlayerIsPreWalking();
-void localPlayerResetPreWalk();
-/// Predicted-step collision cancel (TCreatureMovementTween). Prefer over LocalPlayerSessionThing::cancelPredictedStepCollision.
-void localPlayerCancelPredictedStepCollision();
-/// Chain next GoPath client prediction at tween end / NFU. Prefer over LocalPlayerSessionThing::tryBeginNextGoPathStep.
-void localPlayerTryBeginNextGoPathStep();
-/// CipSoft: TCreatureMovementTween terminate → GoPath chain / deferred chunk continue.
-void onLocalPlayerMovementTweenTerminated();
-/// CipSoft client prediction: push prewalk + begin TCreatureMovementTween (no Map Creature clock).
-bool predictLocalPlayerStep(tibia::client::Direction direction);
-/// Arm remaining GoPath dirs for client-side step prediction.
-void armLocalPlayerGoPathDirs(const std::vector<tibia::client::Direction>& dirs);
+/// Walk to `goal` (map click, travel). `retry` and `pathMode` are kept for the pack ABI;
+/// `enterUnwalkableGoal` lets the path end on a goal that cannot be stood on.
 bool localPlayerAutoWalk(const Position& goal, bool retry = false,
-                         tibia::client::AutoWalkPathMode pathMode = tibia::client::AutoWalkPathMinimap);
-/// Pack-facing autoWalk (`MapPos` — prefer for travel / packs).
+                         tibia::client::AutoWalkPathMode pathMode = tibia::client::AutoWalkPathMinimap,
+                         bool enterUnwalkableGoal = true);
 bool localPlayerAutoWalk(MapPos goal, bool retry = false,
                          tibia::client::AutoWalkPathMode pathMode = tibia::client::AutoWalkPathMinimap);
+/// Held direction keys (keyboard walking).
+void localPlayerHoldDirection(tibia::client::Direction direction);
+void localPlayerReleaseDirection();
+void localPlayerRotate(tibia::client::Direction direction);
+/// Drop the walk goal and path (attacking or following a creature).
+void localPlayerClearMovementGoal();
+/// Per-frame movement step.
+void localPlayerMovementTick();
+/// The server moved or placed the local player.
+void onLocalPlayerPositionChanged(const Position& position);
+/// The server rejected a step; the player looks in `direction`.
+void localPlayerCancelWalk(tibia::client::Direction direction);
+/// The server asks to wait `ms` before the next step.
 
 /// Bless chrome (attention). Matches LocalPlayerSessionThing::getBlessVisualState.
 uint8_t localPlayerBlessVisualState();
@@ -139,9 +145,6 @@ uint16_t localPlayerBaseMagicLevel();
 uint16_t localPlayerMagicLevelPercent();
 const std::vector<uint16_t>& localPlayerSpells();
 tibia::client::Direction localPlayerDirection();
-void localPlayerStopPendingWalk();
-void localPlayerHandleTeleport();
-void localPlayerRegisterAdjustInvalidPosEvent();
 bool localPlayerIsSoftDead();
 /// Keep-alive Map Creature → TCreature HUD mirror (Phase 5.0-C).
 void syncLocalPlayerStorageRow(tibia::creatures::TCreature& row);
@@ -222,7 +225,6 @@ void finishDecodedReplay();
 std::string formatCreatureName(const std::string_view name);
 
 
-void setCustomOs(const tibia::client::OperatingSystem_t os);
 
 
 uint32_t attackingCreatureId();
@@ -266,7 +268,9 @@ void processSessionEnd(uint8_t reason);
 /// Wire handlers (ProtocolGame) — thin forwards until storages own the paths.
 void processCharacterSwitch(std::string_view characterName);
 void processPlayerHelpers(uint16_t helpers);
-void processAttackCancel(uint32_t seq);
+void processUpdateTarget(uint32_t seq, uint32_t targetId);
+/// CIP 15.33 SetTactics: chase, secure and PvP mode (no fight mode on the wire).
+void processPlayerTactics(tibia::client::ChaseModes chaseMode, bool safeMode, tibia::client::PVPModes pvpMode);
 void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
                         tibia::client::PVPModes pvpMode);
 void processNumericalEffect(tibia::client::MessageMode mode, const Position& pos, uint64_t value, uint8_t color);
@@ -309,11 +313,7 @@ void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_vie
 void processOpenOutfitWindow(const Outfit& currentOutfit,
                              const std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>& outfitList,
                              const std::vector<std::tuple<uint16_t, std::string, uint8_t>>& mountList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& familiarList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& wingsList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& aurasList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& effectsList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& shaderList);
+                             const std::vector<std::tuple<uint16_t, std::string>>& familiarList);
 void processOpenNpcTrade(
     const std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items);
 void processPlayerGoods(uint64_t money, const std::vector<std::pair<uint16_t, uint16_t>>& goods);
@@ -404,6 +404,7 @@ void localPlayerSetBaseSpeed(uint16_t baseSpeed);
 void localPlayerSetRegenerationTime(uint16_t regenerationTime);
 void localPlayerSetOfflineTrainingTime(uint16_t offlineTrainingTime);
 void localPlayerSetStoreExpBoostTime(uint16_t storeExpBoostTime);
+void localPlayerSetDailyRewardExpBoostTime(uint16_t dailyRewardExpBoostTime);
 void localPlayerSetStoreExpBoostPurchasable(bool purchasable);
 void localPlayerSetStatesAndRottenBlood(uint64_t states, uint8_t rottenBloodState);
 void localPlayerSetTotalCapacity(uint32_t totalCapacity);
@@ -435,6 +436,7 @@ uint16_t localPlayerBaseSpeed();
 uint16_t localPlayerRegenerationTime();
 uint16_t localPlayerOfflineTrainingTime();
 uint16_t localPlayerStoreExpBoostTime();
+uint16_t localPlayerDailyRewardExpBoostTime();
 uint8_t localPlayerRottenBloodState();
 
 void requestBless();

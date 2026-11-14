@@ -129,6 +129,9 @@ struct TGameAction
     std::vector<uint8_t> vipGroups;
     /// SET_PLAYER_MOVEMENT_INTENT: Minimap / Cyclopedia / Travel qtclient policy.
     int autoWalkPathMode = 0;
+    /// SET_PLAYER_MOVEMENT_INTENT: the path may end on an unwalkable goal
+    /// (clicks on the world map or an object; not the minimap or cyclopedia map).
+    bool enterUnwalkableGoal = true;
 };
 
 /// CIP input::TGameActionLook (v0 → LOOK).
@@ -181,7 +184,9 @@ class TGameActionPlayerMovementIntent final : public TGameAction
 {
 public:
     TGameActionPlayerMovementIntent() { type = EGameAction::SET_PLAYER_MOVEMENT_INTENT; }
-    explicit TGameActionPlayerMovementIntent(Position position, int pathMode = 0);
+    explicit TGameActionPlayerMovementIntent(Position position, int pathMode = 0, bool enterUnwalkableGoal = true);
+    /// CIP `TGameActionPlayerMovementIntent::v0` → action type id `0x2b`.
+    int v0() const { return static_cast<int>(type); }
 };
 /// CIP input::TGameActionManagedContainer .
 class TGameActionManagedContainer : public TGameAction
@@ -1629,7 +1634,7 @@ public:
 TGameActionPtr makeAction(EGameAction type);
 TGameActionPtr makeObjectAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
 TGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
-TGameActionPtr makeMovementIntent(const Position& position, int pathMode = 0);
+TGameActionPtr makeMovementIntent(const Position& position, int pathMode = 0, bool enterUnwalkableGoal = true);
 TGameActionPtr makeSmartClick(const TGameActionPtr& inner);
 
 /// Typed mutable copy: factory dynamic type + field assign (CIP handler reshapes).

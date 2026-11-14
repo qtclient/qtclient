@@ -6,6 +6,7 @@
 #include "config/specialconditionobject.h"
 #include "gamewindow/actionbarcontroller.h"
 #include "gamewindow/assignactiondialogs.h"
+#include "gamewindow/buttonbarcontroller.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "input/keyboardshortcuthandler.h"
 
@@ -134,7 +135,8 @@ QString buttonLabel(const QString& id)
     for (const auto& button : ButtonBarButtons)
         if (id == QLatin1String(button.id))
             return qtTrId(button.label);
-    return id;
+    const QString product = gamewindow::TButtonBarController::productShortcutLabel(id);
+    return product.isEmpty() ? id : product;
 }
 
 /// : the button a label names.
@@ -143,7 +145,8 @@ QString buttonId(const QString& label)
     for (const auto& button : ButtonBarButtons)
         if (label == qtTrId(button.label))
             return QString::fromLatin1(button.id);
-    return label;
+    const QString product = gamewindow::TButtonBarController::productShortcutIdFromLabel(label);
+    return product.isEmpty() ? label : product;
 }
 
 QStringList stringList(const QJsonValue& value)
@@ -444,20 +447,17 @@ void applyBindings(const QObject* page, const std::span<const TOptionBinding> bi
     settings.insert(QLatin1String("options"), options);
 }
 
-// b1/e4cb5c0fa909eca0
 TInterfaceOptionsPage::TInterfaceOptionsPage(QObject* parent)
     : TBoundOptionsPage(InterfaceBindings, parent)
 {
     m_colorizeLootStyleListModel = { qtTrId("colorizelootstyle_none"), qtTrId("colorizelootstyle_normal"), qtTrId("colorizelootstyle_compact") };
 }
 
-// b1/56415d4865cdd99f
 TGameWindowOptionsPage::TGameWindowOptionsPage(QObject* parent)
     : TBoundOptionsPage(GameWindowBindings, parent)
 {
 }
 
-// b1/1cd10bd8dac0182f
 void TGameWindowOptionsPage::setShowTargetFrameHighlight(const bool ShowFrame, const bool ShowHighlight)
 {
     if (m_showTargetFrame == ShowFrame && m_showTargetHighlight == ShowHighlight)
@@ -467,7 +467,6 @@ void TGameWindowOptionsPage::setShowTargetFrameHighlight(const bool ShowFrame, c
     Q_EMIT changed();
 }
 
-// b1/33a98079892f1282
 THudOptionsPage::THudOptionsPage(QObject* parent)
     : TBoundOptionsPage(HudBindings, parent)
 {
@@ -493,7 +492,6 @@ void THudOptionsPage::apply(QJsonObject& settings) const
     settings.insert(QLatin1String(SpecialConditionsSection), conditions.toJson());
 }
 
-// b1/a8bf87bb3d96f1e6
 void THudOptionsPage::setSpecialConditionShowInHUDEnabled(const int SpecialConditionIndex, const bool Enabled)
 {
     if (SpecialConditionIndex < 0 || SpecialConditionIndex >= m_specialConditions.specialConditionsOrder.size())
@@ -518,7 +516,6 @@ void THudOptionsPage::setSpecialConditionShowInBarEnabled(const int SpecialCondi
     rebuildSpecialConditionsModel();
 }
 
-// b1/f81cae99c2f6af5f
 void THudOptionsPage::moveSpecialConditionUp(const int SpecialConditionIndex)
 {
     QList<SpecialCondition>& order = m_specialConditions.specialConditionsOrder;
@@ -550,7 +547,6 @@ void THudOptionsPage::rebuildSpecialConditionsModel()
         object->deleteLater();
 }
 
-// b1/7c2401858b0258f1
 TGraphicsOptionsPage::TGraphicsOptionsPage(QObject* parent)
     : TBoundOptionsPage(GraphicsBindings, parent)
 {
@@ -599,7 +595,6 @@ void TGraphicsOptionsPage::apply(QJsonObject& settings) const
     settings.insert(QLatin1String(ClientWindowSection), window);
 }
 
-// b1/539536ceb451330a
 uint TGraphicsOptionsPage::rendererIndex() const
 {
     return static_cast<uint>(std::max<qsizetype>(0, m_rendererIds.indexOf(m_rendererId)));
@@ -614,7 +609,6 @@ void TGraphicsOptionsPage::setRendererIndex(const uint index)
     Q_EMIT changed();
 }
 
-// b1/583877a60c9982bf
 bool TGraphicsOptionsPage::vSync() const
 {
     return m_vSync && !rendererLimitationsActive();
@@ -628,7 +622,6 @@ void TGraphicsOptionsPage::setVSync(const bool enabled)
     Q_EMIT changed();
 }
 
-// b1/9963dc28fb889c79
 TEffectsOptionsPage::TEffectsOptionsPage(QObject* parent)
     : TBoundOptionsPage(EffectsBindings, parent)
 {
@@ -656,7 +649,6 @@ void TEffectsOptionsPage::setLightEffects(const bool enabled)
     Q_EMIT changed();
 }
 
-// b1/5630c8392579c64b
 TControlsOptionsPage::TControlsOptionsPage(QObject* parent)
     : TBoundOptionsPage(ControlsBindings, parent)
 {
@@ -667,7 +659,6 @@ TControlsOptionsPage::TControlsOptionsPage(QObject* parent)
     m_defaultKeyboardDelayMillis = 250;
 }
 
-// b1/bffe6b9089aa75ff
 TButtonBarOptionsPage::TButtonBarOptionsPage(QObject* parent)
     : TBoundOptionsPage({}, parent)
 {
@@ -682,6 +673,20 @@ void TButtonBarOptionsPage::load(const QJsonObject& settings)
     } else {
         m_enabled = defaultControlButtonIds();
         m_disabled.clear();
+    }
+    // Pack shortcuts registered after first ClientOptions::load — surface them here.
+    QSet<QString> seen(m_enabled.begin(), m_enabled.end());
+    for (const QString& id : m_disabled)
+        seen.insert(id);
+    for (const QString& id : gamewindow::TButtonBarController::defaultEnabledProductShortcutIds()) {
+        if (!seen.contains(id))
+            m_enabled << id;
+    }
+    for (const QString& id : gamewindow::TButtonBarController::productShortcutIds()) {
+        if (seen.contains(id))
+            continue;
+        if (!gamewindow::TButtonBarController::defaultEnabledProductShortcutIds().contains(id))
+            m_disabled << id;
     }
     Q_EMIT changed();
 }
@@ -710,7 +715,6 @@ QStringList TButtonBarOptionsPage::disabledButtons() const
     return labels;
 }
 
-// b1/f97a2f55b26c1c68
 void TButtonBarOptionsPage::enableButton(const QString& ButtonName)
 {
     const QString id = buttonId(ButtonName);
@@ -761,7 +765,6 @@ void TSoundOptionsPage::refreshSoundDevices()
         m_soundDevice = autoLabel;
 }
 
-// b1/1dbe5b805433a488
 TSoundOptionsPage::TSoundOptionsPage(QObject* parent)
     : TBoundOptionsPage(SoundBindings, parent)
 {
@@ -864,7 +867,6 @@ public:
 
 } // namespace
 
-// b1/4e09b5050a6aa7c2
 THotkeysOptionsPage::THotkeysOptionsPage(QObject* parent)
     : cip::tibia::config::THotkeysQMLOptionsPage(parent)
 {

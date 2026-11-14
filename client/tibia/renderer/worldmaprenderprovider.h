@@ -164,7 +164,30 @@ public:
 
 public Q_SLOTS:
     /// Builds the next frame from the game model; emits frameAdvanced.
+    /// CIP `TWorldMapRenderProvider::v6` — sprite list + light + HUD anchors.
     void advance();
+
+public:
+    /// CIP slot aliases (tip names stay for QML/callers).
+    void v6() { advance(); }
+    void v7() { buildLight(); }
+    /// CIP v8 — FOV/skirt field walk that drives per-tile draw (inside `build`).
+    void v8() { (void)build(); }
+    /// CIP v9 — one field's sprites, keyed for the floor sort.
+    void v9(tibia::worldmap::TWorldMapField* tile, int x, int y) { addTile(tile, x, y); }
+    /// CIP v10 — item stack entry + mouse-target tint.
+    SpriteRecord::Highlight v10(const Position& field, int stackIndex, uint16_t typeId) const
+    {
+        return itemHighlightOf(field, stackIndex, typeId);
+    }
+    /// CIP v11 — missile appearances on the floor.
+    void v11(const appearances::TAppearanceInstancePtr& appearance) { addMissile(appearance); }
+    int v14(const Position& field) const { return fieldLightness(field); }
+    void v17(uint16_t typeId, const Position& field, int stackPos)
+    {
+        setMouseTargetObject(typeId, field, stackPos);
+    }
+    void v21() { updateHighlightBaseplate(); }
 
 Q_SIGNALS:
     void frameAdvanced();
@@ -175,7 +198,42 @@ Q_SIGNALS:
     void visibleFieldsChanged();
 
 private:
-    enum Order { Ground, GroundBorder, Common, OnTop, OrderCount };
+    /// Where a sprite sorts on its floor (CIP: the record's 64-bit sort key,
+    /// TWorldMapRenderProvider). A floor's sprites are emitted in any order and
+    /// stable-sorted by group, then field x+y, field x, layer, draw index.
+    struct DrawKey
+    {
+        /// 1 bank/clip, 2 bottom/common/creature/top, 3 effect, 4 topeffect, 5 missile.
+        uint8_t group = 2;
+        /// Draw-grid field the sprite sorts with.
+        int x = 0;
+        int y = 0;
+        /// Layer within the field: 0 bank, 1 clip, 2 bottom, 3 common,
+        /// 5 creature, 6 top, 7 effect (and the mouse baseplate), 8 missile.
+        uint8_t layer = 3;
+        /// Position in the field's draw list (stack with everything after the
+        /// bank/clip/bottom prefix reversed); inverted for group 4.
+        uint8_t index = 0;
+        /// A creature or top object moved to a lying object's slot keeps its
+        /// own draw index here.
+        uint8_t own = 0;
+        uint64_t packed() const;
+    };
+    /// A lying object's slot taken by the creatures and top objects of the
+    /// fields up, left and up-left of it.
+    struct LyingSlot
+    {
+        bool set = false;
+        int x = 0;
+        int y = 0;
+        uint8_t index = 0;
+    };
+    struct VisibleField
+    {
+        tibia::worldmap::TWorldMapField* tile;
+        int x;
+        int y;
+    };
 
     /// Which creature mark frames show (CIP: copies the options
     /// into DAT_102734bd8..bda).
@@ -206,47 +264,49 @@ private:
     /// The field drawn at light map cell (x, y) of floor z.
     Position lightField(int x, int y, int z) const;
 
-    /// Draws a field, then the creatures and top objects deferred to it.
-    void addTile(tibia::worldmap::TWorldMapField* tile, const Point& dest);
-    void flushLyingDeferred();
+    /// Emits every sprite of one field with its CIP sort key.
+    void addTile(tibia::worldmap::TWorldMapField* tile, int x, int y);
     void addTileBelow(tibia::worldmap::TWorldMapField* tile, const Point& dest, uint8_t& elevation);
     void addTileCreatures(tibia::worldmap::TWorldMapField* tile, const Point& dest, uint8_t elevation);
     void addTileEffects(tibia::worldmap::TWorldMapField* tile, const Point& dest);
     void addTileTop(tibia::worldmap::TWorldMapField* tile, const Point& dest);
-    /// The field with a lying object whose draw slot `tile`'s creatures and top
-    /// objects take (CIP:), or null.
-    const tibia::worldmap::TWorldMapField* lyingObjectField(const tibia::worldmap::TWorldMapField& field) const;
+    /// Index of `stackIndex` in the field's draw list.
+    static uint8_t drawIndex(const tibia::worldmap::TWorldMapField& tile, int stackIndex);
+    /// Draw-grid cell of a field on the current floor.
+    QPoint gridCell(const Position& field) const;
+    /// Rebuilds m_lyingSlots for the visible fields of the current floor.
+    void mapLyingObjects();
+    /// Key for a creature or top object at draw-grid (x, y): moved into the
+    /// slot of a lying object down or right of it.
+    DrawKey slotKey(int x, int y, uint8_t layer, uint8_t index) const;
     /// Item layer draw: appearance instance drives ThingType/layers; optional Item for marked/animation.
     void addFieldStackItem(tibia::worldmap::TWorldMapField* tile, int stackIndex, const Point& dest, uint8_t& elevation);
-    void addItemFromAppearance(Order order, const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
+    void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
                                SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight);
-    void addItemFromAppearance(Order order, const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
+    void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
                                SpriteRecord::Highlight highlight, uint8_t lift, tibia::worldmap::TWorldMapField* tile);
     /// CIP v10: mouse-target tint when stack entry matches hover object id (not creature).
     SpriteRecord::Highlight itemHighlightOf(const Position& field, int stackIndex, uint16_t typeId) const;
-    void addEffectFromAppearance(Order order, const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
+    void addEffectFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
                                  uint8_t& elevation);
     /// Draw the show-off socket (podium) creature/outfit on top of the socket item.
-    void addPodiumOutfit(Order order, Item& item, const Point& dest, SpriteRecord::Highlight highlight);
+    void addPodiumOutfit(Item& item, const Point& dest, SpriteRecord::Highlight highlight);
     /// World-map creature sprites from field/storage outfit appearance + `TCreature` draw snapshot.
-    void addCreatureFromOutfitAppearance(Order order, const appearances::TAppearanceInstancePtr& appearance,
+    void addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                          const tibia::creatures::TCreature& creature, const Point& dest);
     void addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, int stackIndex, const Point& dest, uint8_t elevation);
     void addMissile(const appearances::TAppearanceInstancePtr& appearance);
     /// Effects below this opacity are not shown at all (CIP:).
     /// Opacity itself is baked on the appearance at arrival (CIP).
     static constexpr float MinEffectOpacity = 0.01f;
-    void addSprites(Order order, ThingType* type, const Point& dest, int xPattern, int yPattern, int zPattern,
+    void addSprites(ThingType* type, const Point& dest, int xPattern, int yPattern, int zPattern,
                     int animationPhase, bool colorize = false, uint32_t colors = 0,
                     SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight, float opacity = 1.f, uint8_t tint = 0);
     /// The creature's attached effects on one side of its outfit (product
     /// Creature::internalDraw): at its walked field, or where it is drawn
     /// (`jumped`) for those following it.
-    void addAttachedEffects(Order order, const tibia::creatures::TCreature& stored, const Point& walked, const Point& jumped,
+    void addAttachedEffects(const tibia::creatures::TCreature& stored, const Point& walked, const Point& jumped,
                             bool onTop);
-    /// Paperdoll layers beside the outfit (they used to be drawn only from Creature::draw).
-    void addPaperdolls(Order order, const tibia::creatures::TCreature& stored, const Point& at, bool mount, bool onTop,
-                       SpriteRecord::Highlight highlight);
     SpriteRecord::Highlight highlightOf(uint32_t creatureId) const;
     void addLight(const Point& center, uint8_t intensity, uint8_t color);
     /// CIP TWorldMapRenderProvider::v21: animated field square under the mouse.
@@ -270,25 +330,15 @@ private:
     MarkOptions m_markOptions;
     uint32_t m_attackTarget = 0;
     uint32_t m_followTarget = 0;
-    std::array<std::vector<SpriteRecord>, OrderCount> m_orders;
-    /// Tile + draw-grid screen dest (ix/iy × FieldSize) for walk-creature deferral.
-    struct Pending
-    {
-        tibia::worldmap::TWorldMapField* tile;
-        Point dest;
-    };
-    std::vector<Pending> m_pending;
-    /// A field drawn in the slot of the lying object down-right of it.
-    struct Deferred
-    {
-        const tibia::worldmap::TWorldMapField* lyingField;
-        tibia::worldmap::TWorldMapField* tile;
-        Point dest;
-        uint8_t elevation;
-    };
-    std::vector<Deferred> m_lyingDeferred;
-    /// Fields with a lying object already drawn on the current floor.
-    std::vector<const tibia::worldmap::TWorldMapField*> m_drawnLying;
+    /// The current floor's sprites and their packed sort keys.
+    std::vector<SpriteRecord> m_floorSprites;
+    std::vector<uint64_t> m_floorKeys;
+    std::vector<uint32_t> m_floorOrder;
+    /// Key given to the sprites emitted next.
+    DrawKey m_key;
+    std::vector<VisibleField> m_visibleFields;
+    /// Lying-object slots by draw-grid cell (y * drawWidth() + x).
+    std::vector<LyingSlot> m_lyingSlots;
     std::vector<light::PointLight> m_lights;
     light::LightOptions m_lightOptions;
     uint32_t m_coverRevision = 0;

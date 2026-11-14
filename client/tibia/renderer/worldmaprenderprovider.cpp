@@ -18,15 +18,14 @@
 #include <QJsonObject>
 #include <QLoggingCategory>
 
-#include "animation/spriteanimator.h"
 #include <tibia/creatures/attachedeffect.h>
-#include <tibia/creatures/paperdoll.h>
 #include <tibia/creatures/movementtweens.h>
 #include <tibia/config/runtimegameconfig.h>
 #include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 #include "creatures/creaturestorage.h"
+#include "creatures/walkdebug.h"
 #include "worldmap/worldmapfield.h"
 #include <framework/core/clock.h>
 
@@ -34,6 +33,7 @@
 
 #include <algorithm>
 #include <array>
+#include <numeric>
 #include <optional>
 #include <cmath>
 #include <cstdlib>
@@ -62,22 +62,6 @@ uint32_t outfitColors(const Outfit& outfit)
 ThingType* typeOf(const Thing& thing)
 {
     return thing.getThingType();
-}
-
-bool walksDiagonallyAcross(const tibia::creatures::TCreature& creature)
-{
-    const auto dir = static_cast<tibia::client::Direction>(creature.direction());
-    return dir == tibia::client::NorthEast || dir == tibia::client::SouthWest;
-}
-
-bool hasLyingObject(tibia::worldmap::TWorldMapField& field)
-{
-    for (const auto& appearance : field.appearances()) {
-        const ThingType* type = appearance ? appearance->thingType() : nullptr;
-        if (type && type->getCategory() == ThingCategoryItem && type->isLyingCorpse())
-            return true;
-    }
-    return false;
 }
 
 tibia::mods::LightingMapPos lightingCamera(const Position& camera)
@@ -262,6 +246,15 @@ void TWorldMapRenderProvider::advance()
     if (!m_frame.valid) {
         m_frame.sprites.clear();
         m_frame.creatures.clear();
+        if (tibia::creatures::lcWalk().isDebugEnabled()) {
+            static QElapsedTimer s_invalidFrameLog;
+            if (tibia::creatures::walkDebugShouldLog(s_invalidFrameLog, 500)) {
+                qCDebug(tibia::creatures::lcWalk)
+                    << "frame-invalid" << "buildUs" << (m_buildNs / 1000)
+                    << "camera" << tibia::creatures::walkPos(m_camera)
+                    << "floors" << int(m_firstFloor) << ".." << int(m_lastFloor);
+            }
+        }
     }
     if (m_tilesNs > 5'000'000) {
         // Always visible under QTCLIENT_PERF (category default is Warning).
@@ -374,13 +367,9 @@ bool TWorldMapRenderProvider::build()
             if (m_lighting) m_lighting->beginFloor(z);
             m_raycastNs += rayFloor.nsecsElapsed();
         }
-        for (auto& order : m_orders) {
-            const size_t kept = order.capacity();
-            order.clear();
-            if (kept)
-                order.reserve(kept);
-        }
-        m_drawnLying.clear();
+        m_floorSprites.clear();
+        m_floorKeys.clear();
+        m_visibleFields.clear();
 
         // CIP volume masks keep the visible window plus a two-field skirt
         // (draw size is visible + 3). Hoisted out of the per-cell loop.
@@ -407,33 +396,41 @@ bool TWorldMapRenderProvider::build()
                 // Shade grid only for tiles that will draw (skip covered / empty).
                 if (gatherRaycast)
                     if (m_lighting) m_lighting->resetShade(ix, iy, tile->canShade());
-
-                // Draw-grid cell == toScreen after coveredUp (ix/iy × FieldSize).
-                const Point dest{ ix * FieldSize, iy * FieldSize };
-                // A field is drawn after the one up-right of it while a creature walks
-                // there, so creatures walking down-left stay above it.
-                m_pending.push_back({ tile, dest });
-                tibia::worldmap::TWorldMapField* upRight = tibia::worldmap::fieldAt(pos.translated(1, -1));
-                if (upRight && upRight->hasWalkingCreature())
-                    continue;
-                for (auto it = m_pending.rbegin(); it != m_pending.rend(); ++it)
-                    addTile(it->tile, it->dest);
-                m_pending.clear();
+                m_visibleFields.push_back({ tile, ix, iy });
             }
         }
-        for (auto it = m_pending.rbegin(); it != m_pending.rend(); ++it)
-            addTile(it->tile, it->dest);
-        m_pending.clear();
-        flushLyingDeferred();
 
-        for (const appearances::TAppearanceInstancePtr& missile : tibia::worldmap::floorMissiles(z))
+        // CIP: every sprite of the floor gets a sort key; the floor is drawn in
+        // key order, so emission order only breaks ties within one appearance.
+        mapLyingObjects();
+        for (const VisibleField& field : m_visibleFields)
+            addTile(field.tile, field.x, field.y);
+
+        int missileIndex = 0;
+        for (const appearances::TAppearanceInstancePtr& missile : tibia::worldmap::floorMissiles(z)) {
+            m_key = DrawKey{ .group = 5, .layer = 8, .index = static_cast<uint8_t>(std::min(missileIndex++, 0xff)) };
             addMissile(missile);
-
-        for (auto& order : m_orders) {
-            frame.sprites.insert(frame.sprites.end(), std::make_move_iterator(order.begin()),
-                                 std::make_move_iterator(order.end()));
-            order.clear();
         }
+
+        // CIP v21: the animated square under the mouse is layer 2 like a field
+        // effect (group 3); its frame is refreshed by updateHighlightBaseplate.
+        if (m_mouseHighlight && m_mouseHighlightField.isValid() && m_mouseHighlightField.z == z) {
+            const QPoint cell = gridCell(m_mouseHighlightField);
+            m_key = DrawKey{ .group = 3, .x = cell.x(), .y = cell.y(), .layer = 7 };
+            const appearances::TWorldmapHighlightBaseplateSpriteInfo info(
+                appearances::TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(g_clock.millis()));
+            const QPoint topLeft = mapPixelOf(m_mouseHighlightField);
+            m_floorSprites.push_back({ .anchor = topLeft + QPoint(FieldSize, FieldSize), .sprite = info.key() });
+            m_floorKeys.push_back(m_key.packed());
+        }
+
+        m_floorOrder.resize(m_floorSprites.size());
+        std::iota(m_floorOrder.begin(), m_floorOrder.end(), 0u);
+        std::stable_sort(m_floorOrder.begin(), m_floorOrder.end(),
+                         [this](const uint32_t a, const uint32_t b) { return m_floorKeys[a] < m_floorKeys[b]; });
+        frame.sprites.reserve(frame.sprites.size() + m_floorOrder.size());
+        for (const uint32_t i : m_floorOrder)
+            frame.sprites.push_back(std::move(m_floorSprites[i]));
     }
     tibia::game::endCoverProbeBatch();
     const qint64 walkNs = phase.nsecsElapsed();
@@ -722,7 +719,8 @@ float TWorldMapRenderProvider::lightnessAt(const QPoint& mapPixel) const
 
 int TWorldMapRenderProvider::fieldLightness(const Position& field) const
 {
-    if (!m_lightOptions.effectsEnabled)
+    // CIP v14: no light map → 0xff; else TLightMap sample.
+    if (!m_lightOptions.effectsEnabled || m_frame.light.isNull())
         return 255;
     const Point pixel = toScreen(field);
     if (pixel.x < 0 || pixel.y < 0)
@@ -811,84 +809,136 @@ SpriteRecord::Highlight TWorldMapRenderProvider::itemHighlightOf(const Position&
 
 void TWorldMapRenderProvider::updateHighlightBaseplate()
 {
-    // Drop any previous baseplate so a second advance does not stack frames.
-    std::erase_if(m_frame.sprites, [](const SpriteRecord& sprite) { return sprite.sprite.isHighlightBaseplate(); });
-    if (!m_mouseHighlight || !m_mouseHighlightField.isValid())
-        return;
+    // CIP v21: the square's frame follows the wall clock (& 7). build() keys it
+    // into its field's slot; this refreshes the frame in place.
     const appearances::TWorldmapHighlightBaseplateSpriteInfo info(
         appearances::TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(g_clock.millis()));
-    const QPoint topLeft = mapPixelOf(m_mouseHighlightField);
-    // Sprites anchor at bottom-right (same as creature marks on a field).
-    m_frame.sprites.push_back({
-        .anchor = topLeft + QPoint(FieldSize, FieldSize),
-        .sprite = info.key(),
-    });
+    for (SpriteRecord& sprite : m_frame.sprites) {
+        if (sprite.sprite.isHighlightBaseplate())
+            sprite.sprite = info.key();
+    }
 }
 
-/// A field next to a lying object (a 2x2 corpse) draws its creatures and top
-/// objects in the lying object's slot, after it (CIP: maps the
-/// fields up, left and up-left of each lying object to it; 
-/// re-keys their creature and top records).
-void TWorldMapRenderProvider::addTile(tibia::worldmap::TWorldMapField* tile, const Point& dest)
+namespace {
+
+int floorDiv(const int value, const int divisor)
 {
+    return value >= 0 ? value / divisor : -((-value + divisor - 1) / divisor);
+}
+
+/// CIP layer of an object: top, then bottom, clip and bank; common otherwise.
+uint8_t objectLayer(const ThingType& type)
+{
+    if (type.isOnTop())
+        return 6;
+    if (type.isOnBottom())
+        return 2;
+    if (type.isGroundBorder())
+        return 1;
+    if (type.isGround())
+        return 0;
+    return 3;
+}
+
+} // namespace
+
+/// CIP sort key: group, field x+y and field x (offset into 12 bits), layer,
+/// draw index, then the index kept by a record moved to a lying object.
+uint64_t TWorldMapRenderProvider::DrawKey::packed() const
+{
+    const uint64_t column = static_cast<uint64_t>(x + 0x380) & 0xfff;
+    const uint64_t diagonal = (static_cast<uint64_t>(y + 0x700) & 0xfff) + column;
+    const uint64_t field = column | diagonal << 12 | static_cast<uint64_t>(group & 7) << 25;
+    return (field << 12 | static_cast<uint64_t>(layer & 0xf) << 8 | index) << 6 | static_cast<uint64_t>(own & 0xf) << 2;
+}
+
+/// CIP TWorldMapField draw list: the stack with everything after its leading
+/// bank, clip and bottom objects reversed (commons oldest first, creatures and
+/// top objects bottom of the stack first).
+uint8_t TWorldMapRenderProvider::drawIndex(const tibia::worldmap::TWorldMapField& tile, const int stackIndex)
+{
+    const auto& appearances = tile.appearances();
+    const int count = static_cast<int>(appearances.size());
+    int prefix = 0;
+    while (prefix < count) {
+        const ThingType* type = appearances[prefix] ? appearances[prefix]->thingType() : nullptr;
+        if (!type || (!type->isGround() && !type->isGroundBorder() && !type->isOnBottom()))
+            break;
+        ++prefix;
+    }
+    const int index = stackIndex < prefix ? stackIndex : prefix + (count - 1 - stackIndex);
+    return static_cast<uint8_t>(std::clamp(index, 0, 0xff));
+}
+
+QPoint TWorldMapRenderProvider::gridCell(const Position& field) const
+{
+    const Point pixel = toScreen(field);
+    return { floorDiv(pixel.x, FieldSize), floorDiv(pixel.y, FieldSize) };
+}
+
+/// CIP v12/v13: every lying object of a visible field lends its slot to the
+/// fields up, left and up-left of it; a later lying object in field order
+/// overwrites an earlier one.
+void TWorldMapRenderProvider::mapLyingObjects()
+{
+    const int width = drawWidth();
+    const int height = drawHeight();
+    m_lyingSlots.assign(static_cast<size_t>(width * height), LyingSlot{});
+    for (const VisibleField& field : m_visibleFields) {
+        const auto& appearances = field.tile->appearances();
+        for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
+            const ThingType* type = appearances[i] ? appearances[i]->thingType() : nullptr;
+            if (!type || type->getCategory() != ThingCategoryItem || !type->isLyingCorpse())
+                continue;
+            const LyingSlot slot{ .set = true, .x = field.x, .y = field.y, .index = drawIndex(*field.tile, i) };
+            static constexpr std::array<std::array<int, 2>, 3> Lent{ { { 0, -1 }, { -1, 0 }, { -1, -1 } } };
+            for (const auto& [dx, dy] : Lent) {
+                const int x = field.x + dx;
+                const int y = field.y + dy;
+                if (x < 0 || y < 0 || x >= width || y >= height)
+                    continue;
+                LyingSlot& lent = m_lyingSlots[static_cast<size_t>(y * width + x)];
+                // Draw-list order: the object with the higher draw index comes later.
+                if (lent.set && lent.x == field.x && lent.y == field.y && lent.index > slot.index)
+                    continue;
+                lent = slot;
+            }
+        }
+    }
+}
+
+/// CIP: creatures and top objects (layers 5 and 6) of a field with a lent
+/// lying-object slot sort at that object's field and draw index.
+TWorldMapRenderProvider::DrawKey TWorldMapRenderProvider::slotKey(const int x, const int y, const uint8_t layer,
+                                                                  const uint8_t index) const
+{
+    DrawKey key{ .group = 2, .x = x, .y = y, .layer = layer, .index = index };
+    const int width = drawWidth();
+    if (x < 0 || y < 0 || x >= width || y >= drawHeight())
+        return key;
+    const LyingSlot& slot = m_lyingSlots[static_cast<size_t>(y * width + x)];
+    if (!slot.set)
+        return key;
+    key.x = slot.x;
+    key.y = slot.y;
+    key.own = index;
+    key.index = slot.index;
+    return key;
+}
+
+void TWorldMapRenderProvider::addTile(tibia::worldmap::TWorldMapField* tile, const int x, const int y)
+{
+    const Point dest{ x * FieldSize, y * FieldSize };
+    m_key = DrawKey{ .group = 2, .x = x, .y = y };
     uint8_t elevation = 0;
     addTileBelow(tile, dest, elevation);
-
-    if (const tibia::worldmap::TWorldMapField* lying = lyingObjectField(*tile);
-        lying && std::find(m_drawnLying.begin(), m_drawnLying.end(), lying) == m_drawnLying.end()) {
-        addTileEffects(tile, dest);
-        m_lyingDeferred.push_back({ lying, tile, dest, elevation });
-        return;
-    }
-
-    const auto deferredHere = [this, &tile](auto draw) {
-        for (const Deferred& deferred : m_lyingDeferred) {
-            if (deferred.lyingField == tile)
-                draw(deferred);
-        }
-    };
-    const bool lyingHere = hasLyingObject(*tile);
-    if (lyingHere) {
-        m_drawnLying.push_back(tile);
-        deferredHere([this](const Deferred& deferred) { addTileCreatures(deferred.tile, deferred.dest, deferred.elevation); });
-    }
     addTileCreatures(tile, dest, elevation);
     addTileEffects(tile, dest);
-    if (lyingHere) {
-        deferredHere([this](const Deferred& deferred) { addTileTop(deferred.tile, deferred.dest); });
-        std::erase_if(m_lyingDeferred, [tile](const Deferred& deferred) { return deferred.lyingField == tile; });
-    }
     addTileTop(tile, dest);
-}
-
-void TWorldMapRenderProvider::flushLyingDeferred()
-{
-    for (const Deferred& deferred : m_lyingDeferred) {
-        addTileCreatures(deferred.tile, deferred.dest, deferred.elevation);
-        addTileTop(deferred.tile, deferred.dest);
-    }
-    m_lyingDeferred.clear();
-}
-
-const tibia::worldmap::TWorldMapField* TWorldMapRenderProvider::lyingObjectField(const tibia::worldmap::TWorldMapField& tile) const
-{
-    auto& field = const_cast<tibia::worldmap::TWorldMapField&>(tile);
-    if (!field.hasCreatures() && !field.hasTopItem() && field.walkingCreatureIds().empty())
-        return nullptr;
-    // The last lying object in draw order wins: down-right, right, down.
-    static constexpr std::array<std::array<int, 2>, 3> Neighbours{ { { 1, 1 }, { 1, 0 }, { 0, 1 } } };
-    const Position& pos = field.getPosition();
-    for (const auto& [dx, dy] : Neighbours) {
-        tibia::worldmap::TWorldMapField* neighbour = tibia::worldmap::fieldAt(pos.translated(dx, dy));
-        if (neighbour && neighbour->isDrawable() && !neighbour->isCompletelyCovered(m_firstFloor, false) && hasLyingObject(*neighbour))
-            return neighbour;
-    }
-    return nullptr;
 }
 
 void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile, const Point& dest, uint8_t& elevation)
 {
-    const Position& tilePos = tile->getPosition();
     const auto& appearances = tile->appearances();
 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
@@ -896,26 +946,6 @@ void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile
         if (!type || (!type->isGround() && !type->isGroundBorder()))
             break;
         addFieldStackItem(tile, i, dest, elevation);
-    }
-
-    // Walking diagonally past a blocking thing (a tree), the creature is behind it.
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-    for (const uint32_t creatureId : tile->walkingCreatureIds()) {
-        if (!storage)
-            break;
-        const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId);
-        if (!row || !row->isWalking())
-            continue;
-        if (walksDiagonallyAcross(*row) && row->lastStepToPosition() != tilePos) {
-            const Position& pos = row->position();
-            const int lift = row->drawElevation();
-            appearances::TAppearanceInstancePtr appearance = row->outfitAppearance();
-            if (!appearance)
-                continue;
-            addCreatureFromOutfitAppearance(
-                Common, appearance, *row,
-                Point(dest.x + (pos.x - tilePos.x) * FieldSize - lift, dest.y + (pos.y - tilePos.y) * FieldSize - lift));
-        }
     }
 
     for (int i = 0; i < static_cast<int>(appearances.size()); ++i) {
@@ -937,13 +967,19 @@ void TWorldMapRenderProvider::addTileBelow(tibia::worldmap::TWorldMapField* tile
         }
     }
 
+    // Product effect variants drawn under creatures sort between the commons
+    // and the creatures of their field.
     uint8_t effectElevation = 0;
-    tile->purgeExpiredEffects();
-    for (const appearances::TAppearanceInstancePtr& appearance : tile->effectAppearances()) {
-        const auto* effect = dynamic_cast<const appearances::TEffectInstance*>(appearance.get());
+    const auto& effects = tile->effectAppearances();
+    for (int i = 0; i < static_cast<int>(effects.size()); ++i) {
+        const auto* effect = dynamic_cast<const appearances::TEffectInstance*>(effects[i].get());
         if (!effect || !effect->underCreatures())
             continue;
-        addEffectFromAppearance(Common, appearance, dest, effectElevation);
+        m_key.group = 2;
+        m_key.layer = 4;
+        m_key.index = static_cast<uint8_t>(std::min(i, 0xff));
+        m_key.own = 0;
+        addEffectFromAppearance(effects[i], dest, effectElevation);
     }
 }
 
@@ -959,76 +995,79 @@ void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapFi
     if (!storage)
         return;
     const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId);
-    if (!row || row->isWalking())
-        return;
-    if (row->isLocalPlayer() && row->position() != tile->getPosition())
+    if (!row || row->isDisplaced() || row->position() != tile->getPosition())
         return;
     const Point at(dest.x - elevation, dest.y - elevation);
     appearances::TAppearanceInstancePtr appearance = tile->appearanceAt(stackIndex);
     if (!appearance)
         appearance = row->outfitAppearance();
-    addCreatureFromOutfitAppearance(Common, appearance, *row, at);
+    addCreatureFromOutfitAppearance(appearance, *row, at);
 }
 
+/// A creature sorts with the field its step covers (CIP: the placeholder's
+/// covered field, its offset kept in (-32, 0]) and keeps the draw index of its
+/// placeholder on the field it stands on.
 void TWorldMapRenderProvider::addTileCreatures(tibia::worldmap::TWorldMapField* tile, const Point& dest, uint8_t elevation)
 {
     const Position& tilePos = tile->getPosition();
-    bool localPlayerDrawn = false;
     tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     if (!storage)
         return;
+    const int x = m_key.x;
+    const int y = m_key.y;
 
     for (const tibia::worldmap::TStackCreatureEntry& entry : tile->stackCreatureEntries()) {
-        const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(entry.creatureId);
-        if (!row || row->isWalking())
-            continue;
-        if (row->isLocalPlayer()) {
-            if (row->position() != tilePos)
-                continue;
-            localPlayerDrawn = true;
-        }
+        m_key = slotKey(x, y, 5, drawIndex(*tile, entry.stackIndex));
         addFieldStackCreature(tile, entry.stackIndex, dest, elevation);
     }
 
     for (const uint32_t creatureId : tile->walkingCreatureIds()) {
         const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId);
-        if (!row || !row->isWalking())
-            continue;
-        if (walksDiagonallyAcross(*row) && row->lastStepToPosition() != tilePos)
+        if (!row || !row->isDisplaced())
             continue;
         const Position& pos = row->position();
+        const tibia::worldmap::TWorldMapField* own = tibia::worldmap::fieldAt(pos);
+        const int stackPos = own ? own->creatureStackPos(creatureId) : -1;
+        if (stackPos < 0)
+            continue;
         const int lift = row->drawElevation();
         appearances::TAppearanceInstancePtr appearance = row->outfitAppearance();
         if (!appearance)
             continue;
+        m_key = slotKey(x, y, 5, drawIndex(*own, stackPos));
         addCreatureFromOutfitAppearance(
-            Common, appearance, *row,
+            appearance, *row,
             Point(dest.x + (pos.x - tilePos.x) * FieldSize - lift, dest.y + (pos.y - tilePos.y) * FieldSize - lift));
     }
-
-    // The player stands here while the server still has them elsewhere (pre-walk).
-    if (!localPlayerDrawn && tibia::game::localPlayer() && !tibia::game::localPlayerIsWalking()
-        && tibia::game::localPlayerPosition() == tilePos) {
-        if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(tibia::game::localPlayerId())) {
-            appearances::TAppearanceInstancePtr appearance = row->outfitAppearance();
-            if (appearance) {
-                const Point at(dest.x - elevation, dest.y - elevation);
-                addCreatureFromOutfitAppearance(Common, appearance, *row, at);
-            }
-        }
-    }
+    m_key = DrawKey{ .group = 2, .x = x, .y = y };
 }
 
+/// CIP: a field effect is layer 2, group 3: drawn after every object, creature
+/// and top object of the floor, in field order. With the topeffect flag it is
+/// layer 1, group 4: after all group-3 effects, newest first within a field.
+/// Effects never take a lying object's slot.
 void TWorldMapRenderProvider::addTileEffects(tibia::worldmap::TWorldMapField* tile, const Point& dest)
 {
     uint8_t elevation = 0;
-    tile->purgeExpiredEffects();
-    for (const appearances::TAppearanceInstancePtr& appearance : tile->effectAppearances()) {
-        const auto* effect = dynamic_cast<const appearances::TEffectInstance*>(appearance.get());
+    const auto& effects = tile->effectAppearances();
+    for (int i = 0; i < static_cast<int>(effects.size()); ++i) {
+        const auto* effect = dynamic_cast<const appearances::TEffectInstance*>(effects[i].get());
         if (!effect || effect->underCreatures())
             continue;
-        addEffectFromAppearance(Common, appearance, dest, elevation);
+        const uint8_t index = static_cast<uint8_t>(std::min(i, 0xff));
+        if (effect->isTopEffectType()) {
+            m_key.group = 4;
+            m_key.layer = 0;
+            m_key.index = static_cast<uint8_t>(~index);
+        } else {
+            m_key.group = 3;
+            m_key.layer = 7;
+            m_key.index = index;
+        }
+        m_key.own = 0;
+        addEffectFromAppearance(effects[i], dest, elevation);
     }
+    m_key.group = 2;
 }
 
 void TWorldMapRenderProvider::addTileTop(tibia::worldmap::TWorldMapField* tile, const Point& dest)
@@ -1056,27 +1095,36 @@ void TWorldMapRenderProvider::addFieldStackItem(tibia::worldmap::TWorldMapField*
     if (!type || type->getCategory() == ThingCategoryCreature)
         return;
 
-    const Point at(dest.x - elevation, dest.y - elevation);
-    Order order = Common;
-    if (type->isGround())
-        order = Ground;
-    else if (type->isGroundBorder())
-        order = GroundBorder;
+    // Bank and clip objects are group 1 (under every object of the floor)
+    // unless their sprite is larger than a field.
+    const int x = m_key.x;
+    const int y = m_key.y;
+    const uint8_t layer = objectLayer(*type);
+    const uint8_t index = drawIndex(*tile, stackIndex);
+    if (layer == 6) {
+        m_key = slotKey(x, y, layer, index);
+    } else {
+        const bool large = type->getWidth() > 1 || type->getHeight() > 1;
+        m_key = DrawKey{ .group = static_cast<uint8_t>(layer <= 1 && !large ? 1 : 2), .x = x, .y = y, .layer = layer,
+                         .index = index };
+    }
 
+    const Point at(dest.x - elevation, dest.y - elevation);
     const SpriteRecord::Highlight highlight = itemHighlightOf(tile->getPosition(), stackIndex, appearance->id());
-    addItemFromAppearance(order, appearance, at, highlight, elevation, tile);
+    addItemFromAppearance(appearance, at, highlight, elevation, tile);
+    m_key = DrawKey{ .group = 2, .x = x, .y = y };
 
     if (type->hasElevation())
         elevation = static_cast<uint8_t>(std::min<int>(elevation + type->getElevation(), tibia::config::tileMaxElevation()));
 }
 
-void TWorldMapRenderProvider::addItemFromAppearance(const Order order, const appearances::TAppearanceInstancePtr& appearance,
+void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                                       const Point& dest, const SpriteRecord::Highlight highlight)
 {
-    addItemFromAppearance(order, appearance, dest, highlight, 0, nullptr);
+    addItemFromAppearance(appearance, dest, highlight, 0, nullptr);
 }
 
-void TWorldMapRenderProvider::addItemFromAppearance(const Order order, const appearances::TAppearanceInstancePtr& appearance,
+void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                                       const Point& dest, const SpriteRecord::Highlight highlight,
                                                       const uint8_t lift, tibia::worldmap::TWorldMapField* tile)
 {
@@ -1115,7 +1163,7 @@ void TWorldMapRenderProvider::addItemFromAppearance(const Order order, const app
 
     if (const auto* showOff = dynamic_cast<const appearances::TShowOffSocketAppearanceInstance*>(appearance.get())) {
         if (showOff->drawsSocket()) {
-            addSprites(order, type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
+            addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
             if (type->hasLight())
                 addLight(dest + Point(FieldSize / 2), type->getLight().intensity, type->getLight().color);
         }
@@ -1123,19 +1171,19 @@ void TWorldMapRenderProvider::addItemFromAppearance(const Order order, const app
             for (const auto& layer : showOff->figureLayers()) {
                 if (!layer.type)
                     continue;
-                addSprites(order, layer.type, dest + Point(layer.dx, layer.dy), layer.xPattern, layer.yPattern,
+                addSprites(layer.type, dest + Point(layer.dx, layer.dy), layer.xPattern, layer.yPattern,
                            layer.zPattern, layer.phase, layer.colorize, layer.colors, highlight);
             }
         }
         return;
     }
 
-    addSprites(order, type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
+    addSprites(type, dest, xPattern, yPattern, zPattern, phase, false, 0, highlight);
     if (type->hasLight())
         addLight(dest + Point(FieldSize / 2), type->getLight().intensity, type->getLight().color);
 }
 
-void TWorldMapRenderProvider::addPodiumOutfit(const Order order, Item& item, const Point& dest,
+void TWorldMapRenderProvider::addPodiumOutfit(Item& item, const Point& dest,
                                              const SpriteRecord::Highlight highlight)
 {
     const auto showOff = appearances::TShowOffSocketAppearanceInstance::fromItem(item);
@@ -1145,13 +1193,12 @@ void TWorldMapRenderProvider::addPodiumOutfit(const Order order, Item& item, con
     for (const auto& layer : showOff->figureLayers()) {
         if (!layer.type)
             continue;
-        addSprites(order, layer.type, dest + Point(layer.dx, layer.dy), layer.xPattern, layer.yPattern, layer.zPattern,
+        addSprites(layer.type, dest + Point(layer.dx, layer.dy), layer.xPattern, layer.yPattern, layer.zPattern,
                    layer.phase, layer.colorize, layer.colors, highlight);
     }
 }
 
-void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const Order order,
-                                                              const appearances::TAppearanceInstancePtr& appearance,
+void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                                               const tibia::creatures::TCreature& stored, const Point& dest)
 {
     if (stored.isLocalPlayer() && stored.isSoftDead())
@@ -1194,8 +1241,8 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const Order order,
     if (const std::array<uint32_t, 3> marks = creatureMarks(stored); marks[0]) {
         const appearances::TCreatureMarkAppearanceInstanceSpriteInfo markInfo(marks);
         const Point anchor = at - stored.displacement() + Point(FieldSize);
-        m_orders[order].push_back({ .anchor = QPoint(anchor.x, anchor.y),
-                                    .sprite = markInfo.key() });
+        m_floorSprites.push_back({ .anchor = QPoint(anchor.x, anchor.y), .sprite = markInfo.key() });
+        m_floorKeys.push_back(m_key.packed());
     }
 
     appearances::TAppearanceInstancePtr outfitAppearance = appearance;
@@ -1216,14 +1263,13 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const Order order,
     const Point walked = dest + stored.walkOffset();
     const Point jumped = at;
     const bool mounted = outfit.hasMount();
-    addAttachedEffects(order, stored, walked, jumped, false);
-    addPaperdolls(order, stored, at, mounted, false, highlight);
+    addAttachedEffects(stored, walked, jumped, false);
 
     if (outfit.isCreature()) {
         ThingType* mount = outfit.hasMount() ? tibia::game::rawThingType(outfit.getMount(), ThingCategoryCreature) : nullptr;
         if (mount) {
             at -= mount->getDisplacement();
-            addSprites(order, mount, at, stored.patternX(), 0, 0, stored.mountAnimationPhase(), false, 0, highlight);
+            addSprites(mount, at, stored.drawnPatternX(), 0, 0, stored.mountAnimationPhase(), false, 0, highlight);
             at += stored.displacement();
         }
         const int phase = stored.animationPhase();
@@ -1232,10 +1278,9 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const Order order,
         for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
             if (addon > 0 && !(outfit.getAddons() & (1 << (addon - 1))))
                 continue;
-            addSprites(order, type, at, stored.patternX(), addon, stored.patternZ(), phase, colorize, colors, highlight);
+            addSprites(type, at, stored.drawnPatternX(), addon, stored.patternZ(), phase, colorize, colors, highlight);
         }
-        addPaperdolls(order, stored, at, mounted, true, highlight);
-        addAttachedEffects(order, stored, walked, jumped, true);
+        addAttachedEffects(stored, walked, jumped, true);
         return;
     }
 
@@ -1246,45 +1291,17 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const Order order,
         ticks = tibia::config::invisibleTicksPerFrame();
     }
     int phase = 0;
-    if (auto* animator = type->getIdleAnimator(); animator && outfit.isItem())
-        phase = animator->getPhase();
+    if (outfit.isItem() && type->idleAnimation())
+        phase = stored.idleAnimationPhase();
     else if (phases > 1)
         phase = static_cast<int>((g_clock.millis() % (static_cast<long long>(ticks) * phases)) / ticks);
     if (outfit.isEffect())
         phase = std::min(phase + 1, phases);
-    addSprites(order, type, at - stored.displacement(), 0, 0, 0, phase, false, 0, highlight);
-    addPaperdolls(order, stored, at, mounted, true, highlight);
-    addAttachedEffects(order, stored, walked, jumped, true);
+    addSprites(type, at - stored.displacement(), 0, 0, 0, phase, false, 0, highlight);
+    addAttachedEffects(stored, walked, jumped, true);
 }
 
-void TWorldMapRenderProvider::addPaperdolls(const Order order, const tibia::creatures::TCreature& stored, const Point& at,
-                                            const bool mount, const bool onTop, const SpriteRecord::Highlight highlight)
-{
-    for (const PaperdollPtr& paperdoll : stored.paperdolls()) {
-        if (!paperdoll || !paperdoll->shows(mount, onTop))
-            continue;
-        ThingType* type = paperdoll->thingType();
-        if (!type)
-            continue;
-        const Point dest = at + paperdoll->layerOffset(mount);
-        const int phase = paperdoll->animationPhase();
-        const bool colorize = type->getLayers() > 1;
-        const uint32_t colors = colorize ? paperdoll->packedColors() : 0;
-        const int dir = static_cast<int>(paperdoll->direction()) % std::max(1, type->getNumPatternX());
-        const int z = stored.patternZ();
-        if (paperdoll->onlyAddon()) {
-            for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
-                if (addon > 0 && !(paperdoll->addons() & (1u << (addon - 1))))
-                    continue;
-                addSprites(order, type, dest, dir, addon, z, phase, colorize, colors, highlight);
-            }
-        } else {
-            addSprites(order, type, dest, dir, 0, z, phase, colorize, colors, highlight);
-        }
-    }
-}
-
-void TWorldMapRenderProvider::addAttachedEffects(const Order order, const tibia::creatures::TCreature& stored,
+void TWorldMapRenderProvider::addAttachedEffects(const tibia::creatures::TCreature& stored,
                                                  const Point& walked, const Point& jumped, const bool onTop)
 {
     if (!stored.hasAttachedEffects())
@@ -1301,7 +1318,7 @@ void TWorldMapRenderProvider::addAttachedEffects(const Order order, const tibia:
         uint8_t tint = 0;
         if (const auto hook = tibia::mods::effectTintHook())
             tint = hook(effect->getId());
-        addSprites(order, type, point, xPattern, 0, 0, phase, false, 0, SpriteRecord::NoHighlight, opacity, tint);
+        addSprites(type, point, xPattern, 0, 0, phase, false, 0, SpriteRecord::NoHighlight, opacity, tint);
         if (const Light& light = effect->getLight(); light.intensity > 0) {
             addLight(walked + Point(FieldSize / 2), light.intensity, light.color);
             if (m_lighting) {
@@ -1319,8 +1336,7 @@ void TWorldMapRenderProvider::addAttachedEffects(const Order order, const tibia:
     }
 }
 
-void TWorldMapRenderProvider::addEffectFromAppearance(const Order order,
-                                                      const appearances::TAppearanceInstancePtr& appearance,
+void TWorldMapRenderProvider::addEffectFromAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                                       const Point& dest, uint8_t& elevation)
 {
     auto* effect = dynamic_cast<appearances::TEffectInstance*>(appearance.get());
@@ -1342,7 +1358,7 @@ void TWorldMapRenderProvider::addEffectFromAppearance(const Order order,
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(transientLightingContext()))
         : std::nullopt;
-    addSprites(order, type, at, xPattern, yPattern, 0, phase, false, 0, SpriteRecord::NoHighlight, opacity, tint);
+    addSprites(type, at, xPattern, yPattern, 0, phase, false, 0, SpriteRecord::NoHighlight, opacity, tint);
     if (type && type->hasLight()) {
         const Point center = at + Point(FieldSize / 2);
         addLight(center, type->getLight().intensity, type->getLight().color);
@@ -1354,7 +1370,7 @@ void TWorldMapRenderProvider::addEffectFromAppearance(const Order order,
 void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstancePtr& appearance)
 {
     auto* missile = dynamic_cast<appearances::TMissileEffectInstance*>(appearance.get());
-    if (!missile || !missile->canDrawEffect())
+    if (!missile)
         return;
     const float opacity = missile->opacity();
     if (opacity < MinEffectOpacity)
@@ -1362,10 +1378,14 @@ void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstanceP
     // CIP appearances::TMissileEffectInstance; missiles share effects::TEffectStorage.
     ThingType* type = appearance->thingType();
     const Point dest = toScreen(missile->pathFrom()) + missile->flightOffset();
+    // CIP v11: a missile sorts with the field under its flight position.
+    m_key.x = floorDiv(dest.x, FieldSize);
+    m_key.y = floorDiv(dest.y, FieldSize);
     const auto lightingScope = m_lighting
         ? std::optional(m_lighting->context(transientLightingContext()))
         : std::nullopt;
-    addSprites(OnTop, type, dest, missile->patternX(), missile->patternY(), 0, 0, false, 0, SpriteRecord::NoHighlight, opacity);
+    addSprites(type, dest, missile->patternX(), missile->patternY(), 0, missile->phase(), false, 0, SpriteRecord::NoHighlight,
+               opacity);
     // TWorldMapRenderProvider::v11 : missiles share TEffectStorage with field effects
     // and light the map from their current flight position.
     if (type && type->hasLight()) {
@@ -1376,7 +1396,7 @@ void TWorldMapRenderProvider::addMissile(const appearances::TAppearanceInstanceP
     }
 }
 
-void TWorldMapRenderProvider::addSprites(const Order order, ThingType* type, const Point& dest, const int xPattern, const int yPattern,
+void TWorldMapRenderProvider::addSprites(ThingType* type, const Point& dest, const int xPattern, const int yPattern,
                                          const int zPattern, const int animationPhase, const bool colorize, const uint32_t colors,
                                          const SpriteRecord::Highlight highlight, const float opacity, const uint8_t tint)
 {
@@ -1386,7 +1406,11 @@ void TWorldMapRenderProvider::addSprites(const Order order, ThingType* type, con
     const auto& sprites = type->getSprites();
     // A thing's frame ends at the bottom-right of its field, less its displacement.
     const Point anchor = dest - type->getDisplacement() + Point(FieldSize);
-    auto& out = m_orders[order];
+    const uint64_t drawKey = m_key.packed();
+    const auto push = [&](SpriteRecord&& record) {
+        m_floorSprites.push_back(std::move(record));
+        m_floorKeys.push_back(drawKey);
+    };
     const bool protobuf = tibia::game::isUsingProtobuf();
     const bool raycast = (m_lighting && m_lighting->frameActive());
 
@@ -1405,7 +1429,7 @@ void TWorldMapRenderProvider::addSprites(const Order order, ThingType* type, con
             }
         }
         key.tint = tint;
-        out.push_back({ .anchor = QPoint(at.x, at.y),
+        push({ .anchor = QPoint(at.x, at.y),
                         .sprite = key,
                         .opacity = opacity,
                         .highlight = highlight });
@@ -1424,7 +1448,7 @@ void TWorldMapRenderProvider::addSprites(const Order order, ThingType* type, con
                     key.colors = colors;
                 }
             }
-            out.push_back({ .anchor = QPoint(anchor.x, anchor.y),
+            push({ .anchor = QPoint(anchor.x, anchor.y),
                             .sprite = key,
                             .opacity = opacity,
                             .highlight = highlight });

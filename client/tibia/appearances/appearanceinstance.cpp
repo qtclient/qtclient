@@ -1,4 +1,5 @@
 #include "appearances/appearanceinstance.h"
+#include "config/clientsettings.h"
 
 #include "tibia/assets/things.h"
 #include "tibia/assets/thingtype.h"
@@ -11,7 +12,6 @@
 #include "animation/animator.h"
 #include <client/const.h>
 
-#include "animation/spriteanimator.h"
 #include <client/const.h>
 #include <tibia/config/runtimegameconfig.h>
 #include <framework/core/clock.h>
@@ -186,8 +186,13 @@ int TObjectAppearanceInstance::calculateAnimationPhase() const
     if (!m_type || m_type->getAnimationPhases() <= 1)
         return 0;
 
-    if (Animator* animator = m_type->getIdleAnimator())
-        return animator->getPhase();
+    // Objects start their animation at time 0 (TAppearanceInstanceFactory).
+    if (const animation::TAnimationInfo* info = m_type->idleAnimation()) {
+        if (!m_animator)
+            m_animator.emplace(*info, 0);
+        m_animator->update(static_cast<qint64>(g_clock.millis()));
+        return m_animator->phase();
+    }
 
     // CipSoft absolute elapsed — sync (!m_async) used to +1/frame under lag.
     const int phases = std::max(1, m_type->getAnimationPhases());
@@ -196,11 +201,6 @@ int TObjectAppearanceInstance::calculateAnimationPhase() const
 }
 
 namespace {
-
-bool effectCanAnimate(const ThingType* type)
-{
-    return type && type->getAnimationPhases() > 1;
-}
 
 float spellEffectOpacityFor(const tibia::client::MagicEffectSources source)
 {
@@ -215,114 +215,45 @@ void TEffectInstance::setSource(const tibia::client::MagicEffectSources source)
     m_opacity = spellEffectOpacityFor(source);
 }
 
-void TEffectInstance::beginFieldEffectLife(const Position& fieldPosition)
+void TEffectInstance::start(const Position& field, const qint64 nowMs, const qint64 delayMs)
 {
-    m_fieldPosition = fieldPosition;
-    m_animationTimer.restart();
-
-    if (tibia::game::cipFeature(tibia::client::GameEnhancedAnimations)) {
-        if (const auto* animator = m_type ? m_type->getIdleAnimator() : nullptr) {
-            m_duration = animator->getTotalDuration();
-            if (animator->isInfiniteLoop())
-                m_permanent = true;
-        }
+    m_fieldPosition = field;
+    m_startMs = nowMs;
+    m_nowMs = nowMs;
+    m_delayMs = std::max<qint64>(0, delayMs);
+    if (const animation::TAnimationInfo* info = m_type ? m_type->idleAnimation() : nullptr)
+        m_animator.emplace(*info, nowMs);
+    // The pattern follows the field's coordinate.
+    if (m_type) {
+        m_patternX = static_cast<int>(static_cast<uint32_t>(field.x) % static_cast<uint32_t>(std::max(1, m_type->getNumPatternX())));
+        m_patternY = static_cast<int>(static_cast<uint32_t>(field.y) % static_cast<uint32_t>(std::max(1, m_type->getNumPatternY())));
     }
-    // CIP always has a finite life unless the animator marks infinite. Fall back to
-    // classic ticks×phases when enhanced data is missing so effects cannot stick forever.
-    if (m_duration == 0 && m_type && !m_permanent) {
-        m_duration = tibia::config::effectTicksPerFrame();
-        if (m_type->getId() == 33)
-            m_duration <<= 2;
-        m_duration = static_cast<uint16_t>(m_duration * std::max(1, m_type->getAnimationPhases()));
-    }
-
-    (void)fieldPosition;
 }
 
-bool TEffectInstance::isFieldEffectAlive() const
+void TEffectInstance::update(const qint64 nowMs)
 {
-    // CIP appearances::TFieldEffectInstance::v14 → animator active byte .
-    if (!m_canDraw)
-        return false;
-    if (m_permanent)
-        return true;
-    if (m_duration == 0)
-        return false;
-    return m_animationTimer.ticksElapsed() < static_cast<ticks_t>(m_timeToStartDrawing) + m_duration;
+    m_nowMs = nowMs;
+    if (!m_animator)
+        return;
+    if (m_delayMs == 0)
+        m_animator->update(nowMs);
+    else if (m_startMs + m_delayMs < nowMs)
+        m_animator->update(nowMs - m_delayMs);
 }
 
-bool TEffectInstance::getFieldDrawFrame(int& animationPhase, int& xPattern, int& yPattern)
+bool TEffectInstance::isFinished() const
 {
-    if (!m_canDraw || !m_type || m_type->isNull())
-        return false;
-
-    if (!isFieldEffectAlive())
-        return false;
-
-    if (m_animationTimer.ticksElapsed() < m_timeToStartDrawing)
-        return false;
-
-    animationPhase = 0;
-    if (effectCanAnimate(m_type)) {
-        if (tibia::game::cipFeature(tibia::client::GameEnhancedAnimations)) {
-            const tibia::animation::TAnimator cipAnimator(m_type->getIdleAnimator());
-            if (!cipAnimator.animator())
-                return false;
-            animationPhase = cipAnimator.phaseAt(m_animationTimer);
-        } else {
-            int ticks = tibia::config::effectTicksPerFrame();
-            if (m_type->getId() == 33)
-                ticks <<= 2;
-            animationPhase = std::min<int>(static_cast<int>(m_animationTimer.ticksElapsed() / ticks),
-                                           m_type->getAnimationPhases() - 1);
-        }
-    }
-
-    const tibia::game::MapPos center = tibia::game::centralPosition();
-    const int offsetX = m_fieldPosition.x - center.x;
-    const int offsetY = m_fieldPosition.y - center.y;
-
-    xPattern = static_cast<unsigned>(offsetX) % std::max(1, m_type->getNumPatternX());
-    xPattern = 1 - xPattern - m_type->getNumPatternX();
-    if (xPattern < 0)
-        xPattern += m_type->getNumPatternX();
-
-    yPattern = static_cast<unsigned>(offsetY) % std::max(1, m_type->getNumPatternY());
-
-    if (tibia::game::cipFeature(tibia::client::GameMapOldEffectRendering)) {
-        xPattern = offsetX % std::max(1, m_type->getNumPatternX());
-        if (xPattern < 0)
-            xPattern += m_type->getNumPatternX();
-        yPattern = offsetY % std::max(1, m_type->getNumPatternY());
-        if (yPattern < 0)
-            yPattern += m_type->getNumPatternY();
-    }
-
-    return m_type->getAnimationPhases() > 0;
+    return !m_animator || m_animator->isFinished();
 }
 
-bool TEffectInstance::waitForFieldEffect(const TEffectInstance& previous) const
+bool TEffectInstance::getFieldDrawFrame(int& animationPhase, int& xPattern, int& yPattern) const
 {
-    const ticks_t ticksElapsed = previous.m_animationTimer.ticksElapsed();
-    uint16_t minDuration = m_type && m_type->getIdleAnimator() ? m_type->getIdleAnimator()->getMinDuration()
-                                                               : tibia::config::effectTicksPerFrame();
-    minDuration = static_cast<uint16_t>(minDuration * std::max<uint8_t>(
-        m_type ? m_type->getAnimationPhases() / 3 : 1, 1));
-
-    if (ticksElapsed <= minDuration)
+    if (!m_type || m_type->isNull() || !isShown() || isFinished())
         return false;
-
-    const int divisor = tibia::host::app().mustOptimize() || tibia::host::app().isForcedEffectOptimization() ? 2 : 3;
-    const int duration = previous.m_duration / divisor;
-    const_cast<TEffectInstance*>(this)->m_timeToStartDrawing =
-        static_cast<uint16_t>(std::max<int>(0, duration - static_cast<int>(previous.m_animationTimer.ticksElapsed())));
-
+    animationPhase = m_animator->phase();
+    xPattern = m_patternX;
+    yPattern = m_patternY;
     return true;
-}
-
-int TEffectInstance::effectSize() const
-{
-    return m_type ? m_type->getSize().area() : 0;
 }
 
 bool TEffectInstance::isTopEffectType() const
@@ -338,63 +269,78 @@ void TFieldEffectInstance::setDrawState(const int animationPhase, const int patt
     m_opacity = opacity;
 }
 
-float TMissileEffectInstance::setPath(const Position& from, const Position& to)
+float TMissileEffectInstance::setPath(const Position& from, const Position& to, const qint64 nowMs)
 {
     m_pathFrom = from;
     m_pathTo = to;
+    m_fieldPosition = from;
+    m_startMs = nowMs;
+    m_nowMs = nowMs;
+    if (const animation::TAnimationInfo* info = m_type ? m_type->idleAnimation() : nullptr)
+        m_animator.emplace(*info, nowMs);
     m_delta = Point(to.x - from.x, to.y - from.y);
-
-    const float deltaLength = m_delta.length();
-    if (deltaLength == 0) {
-        m_flightDuration = 0.f;
-        return 0.f;
-    }
-
-    setDirection(from.getDirectionFromPosition(to));
-    m_flightDuration = (tibia::config::missileTicksPerFrame() * 2) * std::sqrt(deltaLength);
+    // GRAPHICS/missileFlyDelayMsec per whole unit of the square root of the distance in fields.
+    static const qint64 flyDelay = tibia::config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("missileFlyDelayMsec"), 150);
+    const double distance = std::sqrt(static_cast<double>(m_delta.x * m_delta.x + m_delta.y * m_delta.y));
+    m_flightDuration = static_cast<float>(static_cast<qint64>(std::sqrt(distance)) * flyDelay);
+    directionPattern(fieldDirection(m_delta.x, m_delta.y), m_patternX, m_patternY);
     m_delta *= tibia::config::spriteSize();
-    m_animationTimer.restart();
     return m_flightDuration;
+}
+
+void TMissileEffectInstance::update(const qint64 nowMs)
+{
+    m_nowMs = nowMs;
+    if (m_animator)
+        m_animator->update(nowMs);
 }
 
 Point TMissileEffectInstance::flightOffset() const
 {
     const tibia::animation::TWorldMapLinearMovementTween tween(m_delta, m_flightDuration);
-    return tween.offsetAt(static_cast<float>(m_animationTimer.ticksElapsed()));
+    return tween.offsetAt(static_cast<float>(std::max<qint64>(0, m_nowMs - m_startMs)));
 }
 
-void TMissileEffectInstance::setDirection(const tibia::client::Direction dir)
+int fieldDirection(const int dx, const int dy)
 {
-    m_direction = dir;
+    const double angle = std::atan2(static_cast<double>(-dy), static_cast<double>(dx)) * 57.29577951308232;
+    if (angle >= 112.5 && angle <= 157.5)
+        return 0;
+    if (angle >= 67.5 && angle <= 112.5)
+        return 1;
+    if (angle >= 22.5 && angle <= 67.6)
+        return 2;
+    if ((angle >= 157.5 && angle <= 180.0) || (angle >= -180.0 && angle <= -157.5))
+        return 3;
+    if (angle >= -22.5 && angle <= 22.5)
+        return 5;
+    if (angle >= -157.5 && angle <= -112.5)
+        return 6;
+    if (angle >= -112.5 && angle <= -67.5)
+        return 7;
+    if (angle < -67.5 || angle > -22.5)
+        return 1;
+    return 8;
+}
 
-    if (m_direction == tibia::client::NorthWest) {
-        m_patternX = 0;
-        m_patternY = 0;
-    } else if (m_direction == tibia::client::North) {
-        m_patternX = 1;
-        m_patternY = 0;
-    } else if (m_direction == tibia::client::NorthEast) {
-        m_patternX = 2;
-        m_patternY = 0;
-    } else if (m_direction == tibia::client::East) {
-        m_patternX = 2;
-        m_patternY = 1;
-    } else if (m_direction == tibia::client::SouthEast) {
-        m_patternX = 2;
-        m_patternY = 2;
-    } else if (m_direction == tibia::client::South) {
-        m_patternX = 1;
-        m_patternY = 2;
-    } else if (m_direction == tibia::client::SouthWest) {
-        m_patternX = 0;
-        m_patternY = 2;
-    } else if (m_direction == tibia::client::West) {
-        m_patternX = 0;
-        m_patternY = 1;
-    } else {
-        m_patternX = 1;
-        m_patternY = 1;
+void directionPattern(const int direction, int& patternX, int& patternY)
+{
+    switch (direction) {
+    case 1: patternX = 1; patternY = 0; break;
+    case 2: patternX = 2; patternY = 0; break;
+    case 3: patternX = 0; patternY = 1; break;
+    case 5: patternX = 2; patternY = 1; break;
+    case 6: patternX = 0; patternY = 2; break;
+    case 7: patternX = 1; patternY = 2; break;
+    case 8: patternX = 2; patternY = 2; break;
+    default: patternX = 0; patternY = 0; break;
     }
+}
+
+void TDirectionalFieldEffectInstance::start(const Position& field, const qint64 nowMs, const int direction)
+{
+    TEffectInstance::start(field, nowMs);
+    directionPattern(direction, m_patternX, m_patternY);
 }
 
 TAppearanceInstanceSpriteSequence::TAppearanceInstanceSpriteSequence(std::vector<uint32_t> spriteIds)
@@ -413,8 +359,6 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(ThingType* type
                 return std::make_shared<TCustomizableOutfitAppearanceInstance>(type);
             return std::make_shared<TOutfitAppearanceInstance>(type);
         case ThingCategoryEffect:
-            if (type->getNumPatternX() > 1 || type->getNumPatternY() > 1)
-                return std::make_shared<TDirectionalFieldEffectInstance>(type);
             return std::make_shared<TFieldEffectInstance>(type);
         case ThingCategoryMissile:
             return std::make_shared<TMissileEffectInstance>(type);
@@ -613,8 +557,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
                 dx -= mount->getDisplacement().x;
                 dy -= mount->getDisplacement().y;
                 int mountPhase = 0;
-                if (auto* idle = mount->getIdleAnimator())
-                    mountPhase = idle->getPhase();
+                mountPhase = m_idleAnimators.phaseAt(mount, mount->idleAnimation(), g_clock.millis());
                 layers.push_back(FigureLayer{ mount, dx, dy, direction, 0, 0, mountPhase, false, 0 });
                 dx += type->getDisplacement().x;
                 dy += type->getDisplacement().y;
@@ -623,8 +566,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
 
         const int zPattern = mounted ? std::min(1, std::max(0, type->getNumPatternZ() - 1)) : 0;
         int phase = 0;
-        if (auto* idle = type->getIdleAnimator())
-            phase = idle->getPhase();
+        phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), g_clock.millis());
         const bool colorize = type->getLayers() > 1;
         const uint32_t colors = colorize ? packColors(m_outfit) : 0;
         for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
@@ -643,8 +585,8 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
         return layers;
 
     int phase = 0;
-    if (auto* animator = type->getIdleAnimator())
-        phase = animator->getPhase();
+    if (type->idleAnimation())
+        phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), g_clock.millis());
     else if (const int phases = type->getAnimationPhases(); phases > 1) {
         const int ticks = tibia::config::itemTicksPerFrame();
         phase = static_cast<int>((g_clock.millis() % (static_cast<long long>(ticks) * phases)) / ticks);

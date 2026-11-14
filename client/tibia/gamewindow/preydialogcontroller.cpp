@@ -119,7 +119,6 @@ TPreyData* TPreyStorage::slot(const int preyId) const
     return preyId >= 0 && preyId < SlotCount ? m_slots[preyId] : nullptr;
 }
 
-// b1/b72b2b36f47282fa
 void TPreyStorage::markReceived(const int preyId) { m_pendingSlots.erase(preyId); }
 
 void TPreyStorage::reset()
@@ -129,7 +128,6 @@ void TPreyStorage::reset()
         m_pendingSlots.insert(i);
 }
 
-// b1/10df6c308e1e939d
 void TPreyStorage::setPrices(const int listReroll, const int bonusReroll, const int choosePrey)
 {
     const bool bonusPossible = bonusRerollPossible();
@@ -146,7 +144,6 @@ void TPreyStorage::setPrices(const int listReroll, const int bonusReroll, const 
         Q_EMIT choosePreyPossibleChanged();
 }
 
-// b1/2ff2d5736357b53b
 void TPreyStorage::setPreyWildcards(const int amount)
 {
     if (amount == m_preyWildcards)
@@ -632,7 +629,6 @@ void TPreyPreyPageController::closeMessages()
         box->dialog()->close();
 }
 
-// b1/6d5931bbb4e32c07
 void TPreyPreyPageController::showDialogTab()
 {
     m_bonusReroll->dialog()->close();
@@ -658,7 +654,6 @@ void TPreyPreyPageController::showDialogTab()
         Q_EMIT static_cast<TPreyRenderInfo*>(info)->timeUntilFreeListRerollChanged();
 }
 
-// b1/dc52fe646a598328
 void TPreyPreyPageController::hideDialogTab() { m_freeRerollTimer.stop(); }
 
 void TPreyPreyPageController::askToUseWildcards(TMessageDialogController* box, const int price)
@@ -679,7 +674,6 @@ void TPreyPreyPageController::askToUseWildcards(TMessageDialogController* box, c
     box->showMessage(qtTrId("prey_confirm_using_prey_wildcard_caption"), text);
 }
 
-// b1/a500653f9ea8df56
 void TPreyPreyPageController::onRequestBonusReroll(const uint preyId)
 {
     m_pendingPreyId = preyId;
@@ -781,7 +775,6 @@ void TPreyDialogController::clear()
     m_storage->reset();
 }
 
-// b1/80aecca2e7645944
 void TPreyDialogController::showDialog()
 {
     closeDialog();
@@ -806,7 +799,6 @@ void TPreyDialogController::showDialog()
     }
 }
 
-// b1/98088233e0df54cd
 void TPreyDialogController::closeDialog()
 {
     if (m_activeTab == PreyCreatures)
@@ -823,7 +815,6 @@ void TPreyDialogController::getMorePreyWildcardsClicked() { openStore(3, 1); }
 
 void TPreyDialogController::requestClose() { closeDialog(); }
 
-// b1/27794afe7b858219
 void TPreyDialogController::requestTabSwitch(const EDialogTab NewTab)
 {
     if (m_activeTab == NewTab)
@@ -838,7 +829,6 @@ void TPreyDialogController::requestTabSwitch(const EDialogTab NewTab)
     Q_EMIT activeTabChanged();
 }
 
-// b1/a236035d989f6cf1
 void TPreyDialogController::onRequestShowMessageDialog(const QString& Message)
 {
     m_info->setButtons(okButton());

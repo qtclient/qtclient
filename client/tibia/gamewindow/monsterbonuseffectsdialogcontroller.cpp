@@ -138,7 +138,6 @@ TMonsterBonusEffectsDialogController::Context TMonsterBonusEffectsDialogControll
     return Context{ m_selectedCharm, m_activeTab };
 }
 
-// b1/bde8311aef8b44b6
 void TMonsterBonusEffectsDialogController::restoreContext(const Context& context)
 {
     if (m_selectedCharm != context.charmId) {
@@ -148,7 +147,6 @@ void TMonsterBonusEffectsDialogController::restoreContext(const Context& context
     setActiveTab(context.activeTab);
 }
 
-// b1/9217bc81f2fcb713
 void TMonsterBonusEffectsDialogController::selectCharm(const int charmId)
 {
     const TCharm probe{ charmId };
@@ -158,7 +156,6 @@ void TMonsterBonusEffectsDialogController::selectCharm(const int charmId)
     m_pendingCharm = charmId;
 }
 
-// b1/5cb84f8ffcee36a7
 int TMonsterBonusEffectsDialogController::selectedBonusEffectId() const
 {
     for (int i = 0; i < m_monsterBonusEffects.size(); ++i) {
@@ -169,7 +166,6 @@ int TMonsterBonusEffectsDialogController::selectedBonusEffectId() const
     return 0;
 }
 
-// b1/46bf0c99d677d9f3
 void TMonsterBonusEffectsDialogController::setSelectedBonusEffectFromIndex(const int BonusEffectIndex)
 {
     if (BonusEffectIndex < 0 || BonusEffectIndex >= m_monsterBonusEffects.size())
@@ -217,7 +213,6 @@ void TMonsterBonusEffectsDialogController::showDialogTab()
 
 void TMonsterBonusEffectsDialogController::hideDialogTab() { m_shown = false; }
 
-// b1/f95a9ec3e896758b
 void TMonsterBonusEffectsDialogController::refresh()
 {
     rebuildBonusEffects();
@@ -238,7 +233,6 @@ void TMonsterBonusEffectsDialogController::refresh()
         m_pendingCharm.reset();
 }
 
-// b1/4151583f787376e2
 void TMonsterBonusEffectsDialogController::rebuildBonusEffects()
 {
     QList<TCharm> charms;
@@ -265,7 +259,6 @@ void TMonsterBonusEffectsDialogController::rebuildBonusEffects()
     deleteAll(previous);
 }
 
-// b1/fb256438d5273984
 void TMonsterBonusEffectsDialogController::rebuildMonsterInfos()
 {
     const bool minorTab = m_activeTab == 1;
@@ -305,7 +298,6 @@ void TMonsterBonusEffectsDialogController::updatePlayerData()
     Q_EMIT playerDataChanged();
 }
 
-// b1/70ba47e2746d6971
 void TMonsterBonusEffectsDialogController::updateStoreTooltip()
 {
     const int slots = m_storage.availableCharmSlots();
@@ -321,7 +313,6 @@ void TMonsterBonusEffectsDialogController::updateStoreTooltip()
     Q_EMIT qmlStoreButtonTooltipChanged();
 }
 
-// b1/eb89def059cee10b
 void TMonsterBonusEffectsDialogController::unlockBonusEffect(const int BonusEffectID)
 {
     const TCharm* charm = m_storage.charm(BonusEffectID);
@@ -370,7 +361,6 @@ QString TMonsterBonusEffectsDialogController::findMonsterNameByRaceID(const int 
     return QString::fromStdString(tibia::game::raceData(RaceID).name);
 }
 
-// b1/df3b6e007f9ae284
 void TMonsterBonusEffectsDialogController::onStoreButtonClicked()
 {
     const bool expansionOrPremium = m_storage.availableCharmSlots() == 0xFF || tibia::game::localPlayerIsPremium();
@@ -380,7 +370,6 @@ void TMonsterBonusEffectsDialogController::onStoreButtonClicked()
     input::publish(action);
 }
 
-// b1/493c580628301d8c
 void TMonsterBonusEffectsDialogController::onResetAllCharmsClicked()
 {
     m_confirmAction = 3;
@@ -390,7 +379,6 @@ void TMonsterBonusEffectsDialogController::onResetAllCharmsClicked()
                                  qtTrId("monsters_confirm_clear_all_charms").arg(englishNumber(m_storage.resetAllCharmsCost())));
 }
 
-// b1/a7e756827cb77316
 void TMonsterBonusEffectsDialogController::onActiveTabChanged(const int activeTabId)
 {
     setActiveTab(activeTabId);

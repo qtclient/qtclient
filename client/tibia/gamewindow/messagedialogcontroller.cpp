@@ -17,7 +17,6 @@ TMessageDialogController::TMessageDialogController(QObject* parent)
 {
 }
 
-// b1/c1ca0d89339f920e
 void TMessageDialogController::setYesNoButtons()
 {
     qDeleteAll(m_buttons);
@@ -58,7 +57,6 @@ void TMessageDialogController::applyProperties()
         item->setProperty(it.key().toUtf8().constData(), it.value());
 }
 
-// b1/d238b89919af7cd1
 void TMessageDialogController::showMessage(const QString& caption, const QString& message)
 {
     m_caption = caption;
@@ -67,7 +65,6 @@ void TMessageDialogController::showMessage(const QString& caption, const QString
     dialog()->show();
 }
 
-// b1/b1fddd460b5193c3
 void TMessageDialogController::showMessageWithCheckBox(const QString& caption, const QString& message, const QString& checkBoxText, const bool checked)
 {
     m_checkBoxText = checkBoxText;
@@ -75,7 +72,6 @@ void TMessageDialogController::showMessageWithCheckBox(const QString& caption, c
     showMessage(caption, message);
 }
 
-// b1/206f05096185838b
 void TMessageDialogController::onDialogButtonClicked(const QVariant& Identifier, const bool CheckBoxIsChecked)
 {
     const auto identifier = static_cast<Button>(Identifier.toInt());
@@ -108,7 +104,6 @@ void TMessageDialogController::pressButtonWithKey(const QKeySequence& key)
     }
 }
 
-// b1/5eb7875430ec323e
 void TMessageDialogController::onDialogReturnKeyPressed()
 {
     pressButtonWithKey(QKeySequence(QStringLiteral("Return")));

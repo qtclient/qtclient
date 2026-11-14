@@ -27,7 +27,6 @@ MissionBackend* g_mission = nullptr;
 AttentionBackend* g_attention = nullptr;
 InstanceBackend* g_instance = nullptr;
 LoginSyncEnqueueFn g_loginSync = nullptr;
-FeatureExtrasFn g_featureExtras = nullptr;
 WeatherDriver* g_weather = nullptr;
 
 } // namespace
@@ -165,11 +164,5 @@ void setWeatherDriver(WeatherDriver* driver)
 }
 WeatherDriver* weatherDriver() { return g_weather; }
 
-void setFeatureExtrasHook(const FeatureExtrasFn fn) { g_featureExtras = fn; }
-void applyFeatureExtras()
-{
-    if (g_featureExtras)
-        g_featureExtras();
-}
 
 } // namespace tibia::mods

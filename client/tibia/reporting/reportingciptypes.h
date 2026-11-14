@@ -46,6 +46,9 @@ class TRuleViolationProtocolMessageHandler final : public cip::tibia::reporting:
     Q_OBJECT
 public:
     using cip::tibia::reporting::TRuleViolationProtocolMessageHandler::TRuleViolationProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 }

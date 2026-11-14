@@ -417,7 +417,6 @@ void TWeaponProficiencyDialogController::sendItemInfo(const uint16_t typeId) con
     tibia::game::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_ITEM_INFO, typeId);
 }
 
-// b1/23787bf3f082ba3d
 void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
 {
     m_onAccept = m_onDiscard = nullptr;
@@ -452,7 +451,6 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
     dialog()->show();
 }
 
-// b1/ca5c727da07ec821
 void TWeaponProficiencyDialogController::select(const uint16_t typeId)
 {
     if (typeId == 0 || m_proxy.rowOf(typeId) == -1)
@@ -474,7 +472,6 @@ void TWeaponProficiencyDialogController::select(const uint16_t typeId)
     rebuildModel();
 }
 
-// b1/9f51d08dc31c9155
 void TWeaponProficiencyDialogController::rebuildModel()
 {
     const QList<QObject*> old = m_proficiencyModel;
@@ -506,7 +503,6 @@ bool TWeaponProficiencyDialogController::localDiffersFromServer() const
     return flaggedPicks(m_local) != flaggedPicks(reference) || m_local.shaped != reference.shaped;
 }
 
-// b1/558ace90a95b861d
 void TWeaponProficiencyDialogController::confirmUnsavedChanges(std::function<void()> next)
 {
     if (m_currentTypeId != 0 && m_storage->data(static_cast<uint16_t>(m_currentTypeId)) && localDiffersFromServer()) {
@@ -602,7 +598,6 @@ void TWeaponProficiencyDialogController::selectPerk(const int LevelIndex, const 
     updateSelectedPerk();
 }
 
-// b1/9a372495ce993168
 void TWeaponProficiencyDialogController::updateSelectedPerk()
 {
     m_selectedPerkCanBeShaped = false;
@@ -657,7 +652,6 @@ void TWeaponProficiencyDialogController::updateSelectedPerk()
     Q_EMIT selectedPerkChanged();
 }
 
-// b1/f6b33757d03d5309
 bool TWeaponProficiencyDialogController::hasEnoughDust() const
 {
     const size_t shaped = m_local.shaped.size();

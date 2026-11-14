@@ -43,7 +43,6 @@ TManagedContainerStorage::~TManagedContainerStorage()
 
 TManagedContainerStorage* TManagedContainerStorage::instance() { return g_instance; }
 
-// b1/0e87d3c4bf29d0ab
 void TManagedContainerStorage::setUseMainBackpackAsFallback(const bool value)
 {
     if (m_fallback == value)

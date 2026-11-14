@@ -1,6 +1,5 @@
 #include "singleobjectrenderer.h"
 
-#include "animation/spriteanimator.h"
 #include <tibia/config/runtimegameconfig.h>
 #include <client/item.h>
 #include <tibia/assets/thingtype.h>
@@ -88,10 +87,8 @@ void TSingleObjectAppearanceInstanceRenderer::setSmoothTextureFiltering(const bo
     update();
 }
 
-// b1/cce789ce251d8cb0
 void TSingleObjectAppearanceInstanceRenderer::componentComplete()
 {
-    // b1/cce789ce251d8cb0
     cip::tibia::qmlcomponents::TSingleObjectAppearanceInstanceRenderer::componentComplete();
     changed();
 }
@@ -161,8 +158,14 @@ int TSingleObjectAppearanceInstanceRenderer::currentPhase() const
 {
     if (!m_animated || !m_type)
         return 0;
-    if (Animator* animator = m_type->getIdleAnimator())
-        return animator->getPhase();
+    if (const tibia::animation::TAnimationInfo* info = m_type->idleAnimation()) {
+        if (!m_animator || m_animatorType != m_type) {
+            m_animator.emplace(*info, 0);
+            m_animatorType = m_type;
+        }
+        m_animator->update(static_cast<qint64>(g_clock.millis()));
+        return m_animator->phase();
+    }
     const int phases = m_type->getAnimationPhases();
     if (phases <= 1)
         return 0;

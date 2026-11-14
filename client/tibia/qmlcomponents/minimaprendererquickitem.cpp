@@ -143,7 +143,6 @@ void TWorldMapCamera::setTopLeftSubfieldCoordinate(cip::tibia::qmlcomponents::TW
     Q_EMIT cameraViewportChanged();
 }
 
-// b1/5c74b32c17014f70
 void TWorldMapCamera::setScaleFactor(const float v)
 {
     if (v <= 0 || v == m_scaleFactor)
@@ -154,7 +153,6 @@ void TWorldMapCamera::setScaleFactor(const float v)
     Q_EMIT cameraViewportChanged();
 }
 
-// b1/ae2297670b51bf59
 void TWorldMapCamera::setReferencePoint(const QPoint& v)
 {
     m_referenceSubfield = subfieldAt(v);
@@ -175,7 +173,6 @@ cip::tibia::qmlcomponents::TWorldMapCoordinateQmlType* TWorldMapCamera::coordina
     return coordinate;
 }
 
-// b1/ef803e7b834127b1
 void TWorldMapCamera::changeLayerWithIsometricProjection(int NewLayer)
 {
     NewLayer = std::clamp(NewLayer, 0, MaxLayer);
@@ -188,7 +185,6 @@ void TWorldMapCamera::changeLayerWithIsometricProjection(int NewLayer)
     Q_EMIT cameraViewportChanged();
 }
 
-// b1/502907df07bd002f
 void TWorldMapCamera::moveDistanceRelativeToReferencePoint(const QPoint& Distance)
 {
     placeAt(m_referenceSubfield + (subfieldAt(Distance) - topLeft()), m_referencePoint);
@@ -238,7 +234,6 @@ void TAreaCaptionController::set(const QString& caption, const QColor& color, co
     Q_EMIT propertyChanged();
 }
 
-// b1/ee6148910063e086
 void TAreaCaptionController::onClicked() { Q_EMIT clicked(m_id, m_isArea); }
 
 void TAreaCaptionController::activate() { onClicked(); }
@@ -358,20 +353,16 @@ float TMinimapRendererQuickItem::zoneHighlightOpacity()
 
 void TMinimapRendererQuickItem::setMinimapTileStorage(minimap::TMinimapTileStorage* storage) { g_minimapTiles = storage; }
 
-// b1/9f3c0c4fc69347fc
 void TMinimapRendererQuickItem::componentComplete()
 {
-    // b1/9f3c0c4fc69347fc
     cip::tibia::qmlcomponents::TMinimapRendererQuickItem::componentComplete();
     if (QQmlEngine* engine = qmlEngine(this))
         m_captionComponent = new QQmlComponent(engine, QUrl(QStringLiteral("qrc:/qt/qml/qmlcomponents/qml/AreaCaptionTemplate.qml")), this);
     scheduleUpdate();
 }
 
-// b1/5e421c0c2a872897
 void TMinimapRendererQuickItem::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)
 {
-    // b1/5e421c0c2a872897
     cip::tibia::qmlcomponents::TMinimapRendererQuickItem::geometryChange(newGeometry, oldGeometry);
     m_worldCamera->setViewportSize(newGeometry.size());
     scheduleUpdate();
@@ -382,7 +373,6 @@ void TMinimapRendererQuickItem::scheduleUpdate()
     polish();
 }
 
-// b1/387ee112d0b2fb89
 void TMinimapRendererQuickItem::updatePolish()
 {
     m_worldCamera->applyPendingCenter();
@@ -834,7 +824,6 @@ void TMinimapRendererQuickItem::updateCaptions()
     }
 }
 
-// b1/169caf2a8acaaf8b
 QSGNode* TMinimapRendererQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
     auto* root = oldNode ? static_cast<TRendererNode*>(oldNode) : new TRendererNode;

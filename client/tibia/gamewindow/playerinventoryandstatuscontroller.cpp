@@ -235,7 +235,6 @@ void TPlayerInventoryAndStatusController::setInventoryMinimized(const bool minim
     Q_EMIT inventoryMinimizedChanged();
 }
 
-// b1/f7cb656882a6d952
 void TPlayerInventoryAndStatusController::applyPlayerTacticsAndInventorySizeFromOptions()
 {
     if (m_options)
@@ -405,7 +404,6 @@ void TPlayerInventoryAndStatusController::refreshExpertMode()
     Q_EMIT exportModeButtonEnableChanged();
 }
 
-// b1/6f68c23f705fac7b
 void TPlayerInventoryAndStatusController::publishTactics()
 {
     auto action = input::mutableClone(*input::makeAction(A::SET_TACTICS));
@@ -484,20 +482,17 @@ bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::TGame
     return true;
 }
 
-// b1/c653207583c4e15a
 void TPlayerInventoryAndStatusController::onBlessingsButtonClicked()
 {
     tibia::game::requestBless();
 }
 
-// b1/1c3716b847682431
 void TPlayerInventoryAndStatusController::onStoreInboxButtonClicked()
 {
     if (const input::TGameActionPtr open = firstOfType(slotActions(StoreInboxSlot), A::OPEN_IN_NEW_WINDOW))
         input::publish(open);
 }
 
-// b1/51589e27f37e091e
 void TPlayerInventoryAndStatusController::onSlotClicked(const int slotId, const int mouseButton, const int keyboardModifiers)
 {
     const input::TGameActionList candidates = input::filterActions(slotActions(slotId), ClickActionTypes);
@@ -534,7 +529,6 @@ void TPlayerInventoryAndStatusController::onSlotExited(int)
         cursor->onContainerExited();
 }
 
-// b1/dba50b75b414188c
 void TPlayerInventoryAndStatusController::updateMouseCursorForCurrentSlot()
 {
     Cursor* cursor = Cursor::instance();
@@ -545,7 +539,6 @@ void TPlayerInventoryAndStatusController::updateMouseCursorForCurrentSlot()
     cursor->setLayerShape(Cursor::Container, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
 }
 
-// b1/cdec68bcfe9725e6
 void TPlayerInventoryAndStatusController::onSlotStartDrag(const int slotId, QObject* source)
 {
     TDragAndDropController* dnd = TDragAndDropController::instance();
@@ -555,7 +548,6 @@ void TPlayerInventoryAndStatusController::onSlotStartDrag(const int slotId, QObj
         dnd->startDrag(move, source);
 }
 
-// b1/227ec782144e5d3b
 void TPlayerInventoryAndStatusController::onSlotDragDropped(const int slotId)
 {
     TDragAndDropController* dnd = TDragAndDropController::instance();

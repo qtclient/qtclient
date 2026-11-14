@@ -112,7 +112,6 @@ TSkillWheelManager::~TSkillWheelManager()
 /// CIP : from level 51 the server is asked when the player data
 /// says Premium or the login session does not; otherwise a vocation offers
 /// the preview (308), none only explains (307).
-// b1/1f374a4fe9f2124a
 void TSkillWheelManager::requestOwnWheel()
 {
     if (!tibia::game::localPlayer() || tibia::game::localPlayerId() == 0)

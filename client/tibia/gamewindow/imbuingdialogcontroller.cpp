@@ -293,7 +293,6 @@ bool TImbuingDialogController::imbueModeItem() const { return m_storage->mode() 
 bool TImbuingDialogController::imbueModeScroll() const { return m_storage->mode() == TImbuingStorage::MODE_SCROLL; }
 bool TImbuingDialogController::isPremium() const { return localPlayerPremium(); }
 
-// b1/13cfad41ecfb7f79
 QString TImbuingDialogController::imbuementFilter() const
 {
     switch (m_filter) {
@@ -304,7 +303,6 @@ QString TImbuingDialogController::imbuementFilter() const
     }
 }
 
-// b1/71fa3b83b4cc6019
 void TImbuingDialogController::setImbuementFilter(const QString& v)
 {
     int filter = 0;
@@ -321,7 +319,6 @@ void TImbuingDialogController::setImbuementFilter(const QString& v)
     Q_EMIT imbuingQmlDataChanged();
 }
 
-// b1/332964d8cd197985
 QString TImbuingDialogController::selectedItemText() const
 {
     switch (m_storage->mode()) {
@@ -331,14 +328,12 @@ QString TImbuingDialogController::selectedItemText() const
     }
 }
 
-// b1/608e05c74fb6928a
 void TImbuingDialogController::showDialog()
 {
     if (!dialog()->item())
         dialog()->show();
 }
 
-// b1/0b12b8a8f6b65af8
 void TImbuingDialogController::closeDialog()
 {
     m_resultMessage->dialog()->close();
@@ -358,7 +353,6 @@ void TImbuingDialogController::closeDialog()
 
 void TImbuingDialogController::requestClose() { closeDialog(); }
 
-// b1/7b020417f2881a41
 void TImbuingDialogController::requestImbue()
 {
     if (m_selectedImbuementId == 0)
@@ -372,7 +366,6 @@ void TImbuingDialogController::requestImbue()
                                 qtTrId("imbuing_confirm_imbuing_text").arg(QString::fromStdString(it->name)).arg(imbuing::goldText(it->cost)));
 }
 
-// b1/0150cedd244c3162
 void TImbuingDialogController::requestClearImbuement()
 {
     const auto* existing = qobject_cast<imbuing::TQmlExistingImbuement*>(m_existingImbuement);
@@ -384,17 +377,14 @@ void TImbuingDialogController::requestClearImbuement()
                                 qtTrId("imbuing_confirm_clearing_text").arg(imbuing::goldText(existing->clearingGoldCost())).arg(selected->name()));
 }
 
-// b1/17831e40ffcdb4e3
 void TImbuingDialogController::requestOpenStoreWithPremiumCategory() { publishOpenPremiumStore(); }
 
-// b1/5d272dfb86cafb75
 void TImbuingDialogController::openPremiumStore()
 {
     publishOpenPremiumStore();
     closeDialog();
 }
 
-// b1/e9ba75bc90586c18
 void TImbuingDialogController::handleSelectImbuementSlot(const uint SlotIndex)
 {
     if (SlotIndex == m_selectedImbuementSlotIndex)
@@ -407,14 +397,12 @@ void TImbuingDialogController::handleSelectImbuementSlot(const uint SlotIndex)
     Q_EMIT imbuingQmlDataChanged();
 }
 
-// b1/a5d28bf8feb749e7
 void TImbuingDialogController::handleSelectImbuement(const uint ImbuementId)
 {
     select(static_cast<int>(ImbuementId));
     Q_EMIT imbuingQmlDataChanged();
 }
 
-// b1/12da1a994e471897
 void TImbuingDialogController::handlePickFilterBasic() { setFilter(0); }
 void TImbuingDialogController::handlePickFilterIntricate() { setFilter(1); }
 void TImbuingDialogController::handlePickFilterPowerful() { setFilter(2); }
@@ -426,7 +414,6 @@ void TImbuingDialogController::setFilter(const int filter)
     Q_EMIT imbuingQmlDataChanged();
 }
 
-// b1/17bca60c03ba79a1
 void TImbuingDialogController::handlePickItemToImbue()
 {
     m_picking = true;
@@ -444,10 +431,8 @@ void TImbuingDialogController::handlePickItemToImbue()
     });
 }
 
-// b1/1ff3716d9e532345
 void TImbuingDialogController::handleImbueScroll() { tibia::game::selectImbuementScroll(); }
 
-// b1/72d5b70262ebf816
 void TImbuingDialogController::onImbuingStorageDataChanged()
 {
     updateItem();
@@ -457,14 +442,12 @@ void TImbuingDialogController::onImbuingStorageDataChanged()
     Q_EMIT imbuingQmlDataChanged();
 }
 
-// b1/14382bf15694b278
 void TImbuingDialogController::onDisplayResultMessage(const QString& message)
 {
     m_resultMessage->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
     m_resultMessage->showMessage(qtTrId("info"), message);
 }
 
-// b1/4b1bf7284fdc9d7c
 void TImbuingDialogController::onImbueSlotConfirmed()
 {
     tibia::game::applyImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex), static_cast<uint32_t>(m_selectedImbuementId), false);
@@ -481,7 +464,6 @@ const imbuing::TImbuementSlot* TImbuingDialogController::selectedSlot() const
     return m_selectedImbuementSlotIndex < slots.size() ? &slots[m_selectedImbuementSlotIndex] : nullptr;
 }
 
-// b1/e84c66e5b4c4f21e
 void TImbuingDialogController::updateItem()
 {
     switch (m_storage->mode()) {
@@ -507,7 +489,6 @@ void TImbuingDialogController::updateItem()
     }
 }
 
-// b1/b76287510ebd9085
 void TImbuingDialogController::updateExisting()
 {
     QObject* existing = nullptr;
@@ -530,7 +511,6 @@ void TImbuingDialogController::updateExisting()
     replaceObject(m_existingImbuement, existing);
 }
 
-// b1/54840fe342348933
 void TImbuingDialogController::updateAvailable()
 {
     const auto byTier = [this] {
@@ -574,7 +554,6 @@ void TImbuingDialogController::updateAvailable()
     }
 }
 
-// b1/0624e0cbdd321603
 void TImbuingDialogController::select(const int imbuementId)
 {
     m_selectedImbuementId = imbuementId;

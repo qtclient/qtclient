@@ -81,7 +81,6 @@ TItemSummaryModel::TItemSummaryModel(std::vector<ItemSummaryEntry> entries, QObj
     , m_entries(std::move(entries))
 {}
 
-// b1/43e68c48eb7ffb0c
 int TItemSummaryModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_entries.size()); }
 
 QVariant TItemSummaryModel::data(const QModelIndex& index, const int role) const
@@ -140,14 +139,12 @@ void TItemSummaryModelSortFilterProxy::setFlag(bool& flag, const bool value)
     Q_EMIT filterChanged();
 }
 
-// b1/6ed6e4dff1e9558d
 void TItemSummaryModelSortFilterProxy::setShowInventory(const bool v) { setFlag(m_showInventory, v); }
 void TItemSummaryModelSortFilterProxy::setShowStash(const bool v) { setFlag(m_showStash, v); }
 void TItemSummaryModelSortFilterProxy::setShowDepot(const bool v) { setFlag(m_showDepot, v); }
 void TItemSummaryModelSortFilterProxy::setShowInbox(const bool v) { setFlag(m_showInbox, v); }
 void TItemSummaryModelSortFilterProxy::setShowStoreInbox(const bool v) { setFlag(m_showStoreInbox, v); }
 
-// b1/51fb07b5e0632107
 void TItemSummaryModelSortFilterProxy::updateNameFilter(const QString& NameFilter)
 {
     if (m_nameFilter == NameFilter)
@@ -157,7 +154,6 @@ void TItemSummaryModelSortFilterProxy::updateNameFilter(const QString& NameFilte
     endFilterChange(QSortFilterProxyModel::Direction::Rows);
 }
 
-// b1/3160effeeb81a2a6
 bool TItemSummaryModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     const QModelIndex index = m_model->index(sourceRow, 0, sourceParent);
@@ -171,7 +167,6 @@ bool TItemSummaryModelSortFilterProxy::filterAcceptsRow(const int sourceRow, con
     return m_nameFilter.isEmpty() || index.data(R::Name).toString().contains(m_nameFilter, Qt::CaseInsensitive);
 }
 
-// b1/b3f1fc904a870a7c
 bool TItemSummaryModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     using R = TItemSummaryModel::Role;
@@ -243,7 +238,6 @@ void TTitlesSortProxyModel::setTitleFilter(const EQmlTitleFilter v)
     Q_EMIT filterChanged();
 }
 
-// b1/e76d63a82895ef38
 bool TTitlesSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     const QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
@@ -261,7 +255,6 @@ bool TTitlesSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIn
     }
 }
 
-// b1/fa1df4dfb919f037
 bool TTitlesSortProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     using R = TTitlesModel::Role;
@@ -332,7 +325,6 @@ TOutfitMountSummonSkinsListDataModelSortFilterProxy::TOutfitMountSummonSkinsList
     setSourceModel(m_model);
 }
 
-// b1/886f3ceb0c9c0963
 void TOutfitMountSummonSkinsListDataModelSortFilterProxy::setTypeFilter(const EQmlOutfitMountTypeFilter v)
 {
     if (m_typeFilter == v)
@@ -342,7 +334,6 @@ void TOutfitMountSummonSkinsListDataModelSortFilterProxy::setTypeFilter(const EQ
     Q_EMIT typeFilterChanged();
 }
 
-// b1/6eac3818730bab0c
 void TOutfitMountSummonSkinsListDataModelSortFilterProxy::setSourceFilter(const EQmlOutfitMountSourceFilter v)
 {
     if (m_sourceFilter == v || (v == Standard && m_typeFilter == Mounts) || (v == Store && m_typeFilter == SummonSkins))
@@ -360,7 +351,6 @@ QColor TOutfitMountSummonSkinsListDataModelSortFilterProxy::color(const int part
     return QColor(c.r(), c.g(), c.b());
 }
 
-// b1/2382a41f4faf9948
 bool TOutfitMountSummonSkinsListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     const QModelIndex index = m_model->index(sourceRow, 0, sourceParent);
@@ -461,7 +451,6 @@ void TAchievementInfoController::setData(const int points, const int totalSecret
     Q_EMIT achievementsChanged();
 }
 
-// b1/2a28409e72719f14
 void TAchievementInfoController::setSortingCriterion(const EAchievmentSortingCriteria v)
 {
     if (m_sortingCriterion == v)
@@ -480,7 +469,6 @@ void TAchievementInfoController::setFilterCriterion(const EAchievmentFilterCrite
     Q_EMIT filterCriterionChanged();
 }
 
-// b1/cffa17f2b2f663c7
 void TAchievementInfoController::updateCounts()
 {
     int grades[5] = {};
@@ -507,7 +495,6 @@ void TAchievementInfoController::updateCounts()
     Q_EMIT unlockedGrade4AchievementsChanged();
 }
 
-// b1/7d3b6435ea6cebde
 void TAchievementInfoController::rebuildList()
 {
     std::vector<AchievementEntry> rows;

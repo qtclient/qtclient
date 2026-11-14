@@ -6,6 +6,7 @@
 
 #include <cip_gen.h>
 
+#include <QByteArray>
 #include <QObject>
 
 namespace tibia {
@@ -27,6 +28,9 @@ class TMarketProtocolMessageHandler final : public cip::tibia::market::TMarketPr
     Q_OBJECT
 public:
     using cip::tibia::market::TMarketProtocolMessageHandler::TMarketProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 }

@@ -75,7 +75,6 @@ using tibia::game::isSwitchingCharacter;
 using tibia::game::characterName;
 using tibia::game::cipFeature;
 using tibia::game::enableFeature;
-using tibia::game::setCustomOs;
 using tibia::game::attackingCreatureId;
 using tibia::game::setAttackingCreatureId;
 using tibia::game::talk;

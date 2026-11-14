@@ -22,11 +22,10 @@
 
 #include "game/localplayersessionthing.h"
 
-#include "game/localplayergopath.h"
 #include <framework/core/gamehooks.h>
 
 #include "container/containerciptypes.h"
-#include "creatures/creaturespeedformula.h"
+#include "creatures/creaturemovementspeedcalculator.h"
 #include "creatures/creaturestorage.h"
 #include "framework/core/scheduledevent.h"
 #include <tibia/game/playerdata.h>
@@ -47,6 +46,7 @@
 #include "gamehub.h"
 #include "gamehub_impl.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -68,58 +68,25 @@ LocalPlayerSessionThing::LocalPlayerSessionThing()
 }
 LocalPlayerSessionThing::~LocalPlayerSessionThing() = default;
 
-LocalPlayerGoPath& LocalPlayerSessionThing::goPath()
-{
-    LocalPlayerGoPath* path = qtclientGameHub().localPlayerGoPath();
-    if (!path)
-        throw Exception("LocalPlayerGoPath not bound to Game session");
-    return *path;
-}
-
-void LocalPlayerSessionThing::lockWalk(const uint16_t millis) { goPath().lockWalk(millis); }
-void LocalPlayerSessionThing::unlockWalk() { goPath().unlockWalk(); }
-bool LocalPlayerSessionThing::canWalk(const bool ignoreLock) { return goPath().canWalk(ignoreLock); }
-
 void LocalPlayerSessionThing::walk(const Position& oldPos, const Position& newPos)
 {
     (void)oldPos;
     (void)newPos;
 }
 
-void LocalPlayerSessionThing::predictStep(const tibia::client::Direction direction) { goPath().predictStep(direction); }
-void LocalPlayerSessionThing::armGoPathDirs(const std::vector<tibia::client::Direction>& dirs) { goPath().armGoPathDirs(dirs); }
-bool LocalPlayerSessionThing::tryBeginNextGoPathStep() { return goPath().tryBeginNextGoPathStep(); }
-void LocalPlayerSessionThing::onWalking() { goPath().onWalking(); }
-void LocalPlayerSessionThing::registerAdjustInvalidPosEvent() { goPath().registerAdjustInvalidPosEvent(); }
-
-void LocalPlayerSessionThing::cancelPredictedStepCollision()
-{
-    cancelWalk();
-    tibia::worldmap::notifyTileUpdate(getPosition(), nullptr, tibia::client::OPERATION_CLEAN);
-}
-
-void LocalPlayerSessionThing::cancelWalk(const tibia::client::Direction direction) { goPath().cancelWalk(direction); }
-bool LocalPlayerSessionThing::autoWalk(const Position& destination, const bool retry, const tibia::client::AutoWalkPathMode pathMode)
-{
-    return goPath().autoWalk(destination, retry, pathMode);
-}
-
-bool LocalPlayerSessionThing::isWalkLocked() { return goPath().isWalkLocked(); }
-bool LocalPlayerSessionThing::isPreWalking() { return goPath().isPreWalking(); }
-bool LocalPlayerSessionThing::isAutoWalking() { return goPath().isAutoWalking(); }
+bool LocalPlayerSessionThing::isPreWalking() { return tibia::game::localPlayerIsPreWalking(); }
+bool LocalPlayerSessionThing::isAutoWalking() { return tibia::game::localPlayerIsAutoWalking(); }
+bool LocalPlayerSessionThing::hasAutoWalkDirs() { return tibia::game::localPlayerHasAutoWalkDirs(); }
 
 Position LocalPlayerSessionThing::getPosition()
 {
     if (const std::shared_ptr<tibia::creatures::TCreature> row = localWalkRow(*this)) {
-        if (row->isPreWalking())
-            return row->predictedPosition();
         if (row->position().isValid())
             return row->position();
     }
     return m_position;
 }
 
-void LocalPlayerSessionThing::resetPreWalk() { goPath().resetPreWalk(); }
 
 void LocalPlayerSessionThing::syncStorageRow(tibia::creatures::TCreature& row)
 {
@@ -135,41 +102,44 @@ void LocalPlayerSessionThing::syncStorageRow(tibia::creatures::TCreature& row)
     }
     if (const std::string& name = getName(); !name.empty())
         row.m_name = QString::fromStdString(name);
-  // Walk mutation (preWalks / lock expiry / auto-walk) is storage-owned — do not
-    // overwrite from LocalPlayerSessionThing. Keep-alive still mirrors confirmed server tile.
-    row.m_serverPosition = getServerPosition();
-    if (!row.m_walking)
-        row.m_stepDuration = getStepDuration();
 }
 
-void LocalPlayerSessionThing::handleTeleport() { goPath().handleTeleport(); }
-size_t LocalPlayerSessionThing::getPreWalkingSize() { return goPath().getPreWalkingSize(); }
-void LocalPlayerSessionThing::stopAutoWalk(const bool notifyServer) { goPath().stopAutoWalk(notifyServer); }
-bool LocalPlayerSessionThing::hasAutoWalkDirs() { return goPath().hasAutoWalkDirs(); }
-void LocalPlayerSessionThing::stopPendingWalk() { goPath().stopPendingWalk(); }
+void LocalPlayerSessionThing::handleTeleport()
+{
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (const auto row = storage->creatureAt(getId()))
+            row->resetMovement();
+    }
+    tibia::game::localPlayerStopAutoWalk();
+    goPathClearWalkSessionMirror();
+    tibia::game::notifyCameraMove({});
+}
 
 void LocalPlayerSessionThing::terminateWalk()
 {
-    onMovementTweenTerminated();
-
+    // Storage terminate owns the GoPath chain (onLocalPlayerMovementTweenTerminated).
+    // Calling onMovementTweenTerminated here first double-fired tween-end and could
+    // predict while the storage tween was still marked walking.
     if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
         if (const auto row = storage->creatureAt(getId()); row && row->isWalking())
-            row->terminateWalk();
+            row->stopMovement();
     }
     goPathSetServerWalk(false);
 }
 
-void LocalPlayerSessionThing::onMovementTweenTerminated() { goPath().onMovementTweenTerminated(); }
+void LocalPlayerSessionThing::cancelPendingDisappear()
+{
+    if (!m_disappearEvent)
+        return;
+    m_disappearEvent->cancel();
+    m_disappearEvent = nullptr;
+}
 
 void LocalPlayerSessionThing::onPositionChange(const Position& newPos, const Position& oldPos)
 {
-    if (!isPreWalking())
-        tibia::game::notify("onPositionChange", newPos, oldPos);
-
-    goPath().onConfirmedPosition(newPos);
-
-    if (!isPreWalking())
-        goPathSetServerWalk(false);
+    tibia::game::notify("onPositionChange", newPos, oldPos);
+    tibia::game::onLocalPlayerPositionChanged(newPos);
+    goPathSetServerWalk(false);
 }
 
 void LocalPlayerSessionThing::setStates(const uint64_t states)
@@ -370,13 +340,8 @@ void LocalPlayerSessionThing::setDirection(const tibia::client::Direction direct
 void LocalPlayerSessionThing::turn(const tibia::client::Direction direction)
 {
     if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-        if (const auto row = storage->creatureAt(getId())) {
-            if (row->isWalking()) {
-                m_walkTurnDirection = direction;
-                row->setWalkTurnDirection(direction);
-                return;
-            }
-        }
+        if (const auto row = storage->creatureAt(getId()))
+            row->setDirection(static_cast<uint8_t>(direction));
     }
     if (m_walking) {
         m_walkTurnDirection = direction;
@@ -434,7 +399,6 @@ void LocalPlayerSessionThing::setBaseSpeed(const uint16_t baseSpeed)
     if (m_baseSpeed == baseSpeed)
         return;
     m_baseSpeed = baseSpeed;
-    m_calculatedStepSpeed = tibia::creatures::calculatedStepSpeed(m_speed > 0 ? m_speed : baseSpeed);
 }
 
 void LocalPlayerSessionThing::setSpeed(const uint16_t speed)
@@ -442,10 +406,6 @@ void LocalPlayerSessionThing::setSpeed(const uint16_t speed)
     if (speed == m_speed)
         return;
     m_speed = speed;
-
-    m_calculatedStepSpeed = tibia::creatures::calculatedStepSpeed(speed);
-
-    tibia::game::localPlayerRegisterAdjustInvalidPosEvent();
 }
 
 void LocalPlayerSessionThing::setHealthPercent(const uint8_t healthPercent)
@@ -487,48 +447,21 @@ uint16_t LocalPlayerSessionThing::getStepDuration(const bool ignoreDiagonal, con
 {
     if (m_speed < 1)
         return 0;
-
-    const auto& tilePos = dir == tibia::client::InvalidDirection ? m_position
-                                                                 : getPosition().translatedToDirection(dir);
-
-    auto* tile = tibia::worldmap::fieldAt(tilePos.isValid() ? tilePos : getPosition());
-
-    const int serverBeat = tibia::game::getServerBeat();
-
-    int groundSpeed = 0;
-    if (tile)
-        groundSpeed = tile->getGroundSpeed();
-    if (groundSpeed == 0)
-        groundSpeed = 150;
-
-    if (groundSpeed != static_cast<int>(m_stepCache.groundSpeed) || m_speed != m_stepCache.speed) {
-        m_stepCache.speed = m_speed;
-        m_stepCache.groundSpeed = static_cast<uint16_t>(groundSpeed);
-
-        uint32_t stepDuration = 1000 * groundSpeed;
-        if (tibia::creatures::hasWireSpeedFormula())
-            stepDuration /= std::max<uint16_t>(1, m_calculatedStepSpeed);
-        else
-            stepDuration /= m_speed;
-
-        stepDuration = (stepDuration / serverBeat) * serverBeat;
-        if (stepDuration == 0)
-            stepDuration = serverBeat;
-
-        m_stepCache.duration = static_cast<uint16_t>(stepDuration);
-        m_stepCache.walkDuration = static_cast<uint16_t>(std::max<int>(stepDuration, serverBeat * 2));
-
-        m_stepCache.diagonalDuration = stepDuration *
-            (ignoreDiagonal ? 1
-                            : (tibia::game::clientRevision() > 810 || tibia::config::forcingNewWalkingFormula()
-                                   ? tibia::config::playerDiagonalWalkSpeed()
-                                   : 3));
-    }
-
-    return m_stepCache.getDuration(dir);
+    const Position from = getPosition();
+    const Position to = from.translatedToDirection(dir == tibia::client::InvalidDirection ? tibia::client::South : dir);
+    tibia::worldmap::TWorldMapStorage* map = tibia::worldmap::TWorldMapStorage::ensureStorage();
+    const tibia::worldmap::TWorldMapExtent step(to.x - from.x, to.y - from.y, 0);
+    const int groundSpeed = map->groundSpeedAt(dir == tibia::client::InvalidDirection ? from : to);
+    const qint64 duration = map->speedCalculator().stepDuration(m_speed, step, groundSpeed, !ignoreDiagonal);
+    return static_cast<uint16_t>(std::clamp<qint64>(duration, 0, 65535));
 }
 
 namespace tibia::game {
+
+bool isOneStep(const Position& from, const Position& to)
+{
+    return from.z == to.z && std::abs(from.x - to.x) <= 1 && std::abs(from.y - to.y) <= 1;
+}
 
 void wireLocalPlayerOnAppear(LocalPlayerSessionThing& player)
 {
@@ -543,11 +476,12 @@ void wireLocalPlayerOnAppear(LocalPlayerSessionThing& player)
             player.stopWalk();
         player.m_removed = false;
     } else if (player.m_oldPosition != pos) {
-        if (player.isWalking() && player.m_oldPosition.z == pos.z
-            && player.m_oldPosition.isInRange(pos, 1, 1, /*ignoreZ=*/true)) {
+        // Unset oldPosition (first place after login) is not a teleport.
+        if (!player.m_oldPosition.isValid()) {
             player.m_oldPosition = pos;
         } else {
-            localPlayerHandleTeleport();
+            if (!isOneStep(player.m_oldPosition, pos))
+                player.handleTeleport();
             player.m_oldPosition = pos;
         }
     }

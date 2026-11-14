@@ -248,7 +248,7 @@ Color compareColor(const qint64 value, const qint64 reference, const bool zero)
     return Color::DEFAULT;
 }
 
-/// CIP : "%1%" of (base + low level + store boost) x stamina.
+/// CIP : "%1%" of (base + low level + store boost + daily reward boost) x stamina.
 void fillExperienceGain(SkillsWidgetEntry& entry)
 {
     const auto rate = [&](const tibia::client::ExperienceRate_t type) {
@@ -257,10 +257,11 @@ void fillExperienceGain(SkillsWidgetEntry& entry)
     const double base = tibia::game::localPlayerExperienceRate(tibia::client::EXP_BASE) ? rate(tibia::client::EXP_BASE) : 1.0;
     const double lowLevel = rate(tibia::client::EXP_LOWLEVEL);
     const double storeBoost = rate(tibia::client::EXP_XPBOOST);
+    const double dailyRewardBoost = rate(tibia::client::EXP_DAILYREWARD);
     const double stamina = tibia::game::localPlayerExperienceRate(tibia::client::EXP_STANINAMULTIPLIER)
                                ? rate(tibia::client::EXP_STANINAMULTIPLIER)
                                : 1.0;
-    const double gain = (base + lowLevel + storeBoost) * stamina * 100.0;
+    const double gain = (base + lowLevel + storeBoost + dailyRewardBoost) * stamina * 100.0;
     constexpr double defaultGain = 100.0;
 
     entry.valueString = QStringLiteral("%1%").arg(gain, 0, 'g', -1);
@@ -281,6 +282,15 @@ void fillExperienceGain(SkillsWidgetEntry& entry)
                            .arg(clockMinutes((boostSeconds + 59) / 60));
         else
             tooltip += qtTrId("xp_gain_storeboost_paused_tooltip").arg(static_cast<int>(storeBoost * 100.0 + 0.5));
+    }
+    if (const qint64 boostSeconds = tibia::game::localPlayerDailyRewardExpBoostTime(); boostSeconds > 0) {
+        if (dailyRewardBoost != 0.0)
+            tooltip += qtTrId("xp_gain_dailyrewardboost_running_tooltip")
+                           .arg(static_cast<int>(dailyRewardBoost * 100.0 + 0.5))
+                           .arg(clockMinutes((boostSeconds + 59) / 60));
+        else
+            tooltip += qtTrId("xp_gain_dailyrewardboost_paused_tooltip")
+                           .arg(static_cast<int>(dailyRewardBoost * 100.0 + 0.5));
     }
     if (stamina > 1.0)
         tooltip += qtTrId("xp_gain_hunting_bonus_tooltip")

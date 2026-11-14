@@ -79,7 +79,6 @@ void TCreateAccountDialogController::showDialog()
     post({ { QStringLiteral("type"), QStringLiteral("getaccountcreationstatus") } }, [this](const QJsonObject& reply) { onStatus(reply); });
 }
 
-// b1/2223d72de7ae2926
 bool TCreateAccountDialogController::eventFilter(QObject* watched, QEvent* event)
 {
     return cip::tibia::gamewindow::TCreateAccountDialogController::eventFilter(watched, event);

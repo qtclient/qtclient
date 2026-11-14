@@ -104,7 +104,6 @@ void TDragAndDropControllerEventFilter::moveTo(const QPointF& scenePosition, con
     }
 }
 
-// b1/390f3908ed1e4e16
 bool TDragAndDropControllerEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     // Mouse and key events reach the window first, then its items; only the
@@ -176,7 +175,6 @@ TDragAndDropController* TDragAndDropController::instance()
     return s_instance;
 }
 
-// b1/149e90aa15fd3bab
 void TDragAndDropController::startDrag(const input::TGameActionPtr& action, QObject* source)
 {
     if (!action)
@@ -204,7 +202,6 @@ void TDragAndDropController::startDrag(const input::TGameActionPtr& action, QObj
     }
 }
 
-// b1/c61bbd408b7c36ef
 input::TGameActionPtr TDragAndDropController::takeAction()
 {
     input::TGameActionPtr action = std::move(m_action);
@@ -216,7 +213,6 @@ input::TGameActionPtr TDragAndDropController::takeAction()
     return action;
 }
 
-// b1/fa09be661e017d6f
 void TDragAndDropController::finish()
 {
     QCoreApplication::instance()->removeEventFilter(m_filter);
@@ -232,7 +228,6 @@ void TDragAndDropController::finish()
         m_icon->setVisible(false);
 }
 
-// b1/dfe8cf065c02ee6c
 void TDragAndDropController::moveIcon()
 {
     if (!m_icon || !m_icon->window())

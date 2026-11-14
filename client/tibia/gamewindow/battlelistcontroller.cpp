@@ -260,7 +260,6 @@ void TBattleListDataModelSortFilterProxy::setSortOrder(std::array<int, 2> order)
     sort(0);
 }
 
-// b1/46876bdcccb0a9e1
 bool TBattleListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     QAbstractItemModel* source = sourceModel();
@@ -281,7 +280,6 @@ bool TBattleListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, 
     return !hiddenByFilter(*creature, m_filters);
 }
 
-// b1/e45137a1184e032e
 bool TBattleListDataModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     QAbstractItemModel* source = sourceModel();
@@ -454,7 +452,6 @@ void TBattleListController::handleGameActionCastSpellAtMouseCursor()
     // Live path: SPELL_AT_MOUSE_CURSOR listener → onAtMouseCursor.
 }
 
-// b1/96efa0113d56c24b
 bool TBattleListController::onAtMouseCursor(const input::TGameAction& action)
 {
     if (!m_hoveredCreature)
@@ -568,7 +565,6 @@ void TBattleListController::saveWidgetOptions()
 
 void TBattleListController::onRequestClose() { Q_EMIT battleListClosed(m_id); }
 
-// b1/99bcca1b6628ea53
 void TBattleListController::requestOpenSecondaryBattleList()
 {
     if (m_hasPremiumStatus) {
@@ -589,7 +585,6 @@ void TBattleListController::requestEditName()
     m_renameDialog->dialog()->show();
 }
 
-// b1/aa102b1bbf1aa7eb
 void TBattleListController::onNewNameEntered(const QString& EnteredName)
 {
     BattleListOptions options = m_options;
@@ -622,7 +617,6 @@ void TBattleListController::onThisWidgetOptionsChanged(const int BattleListID)
 
 void TBattleListController::onWidgetQuickItemDestroyed() {}
 
-// b1/dbf94434aef8baef
 void TBattleListController::onShowConfigurationMenu()
 {
     TContextMenuController* menu = TContextMenuController::instance();
@@ -666,7 +660,6 @@ void TBattleListController::temporarySelect(const uint32_t creatureId)
     }
 }
 
-// b1/a0d7c3898eb924a2
 void TBattleListController::onCurrentlyHoveredCreatureChanged(const int creatureId)
 {
     const bool entered = m_hoveredCreature == 0 && creatureId != 0;
@@ -687,7 +680,6 @@ void TBattleListController::onCurrentlyHoveredCreatureChanged(const int creature
     temporarySelect(m_lockedCreature ? m_lockedCreature : m_hoveredCreature);
 }
 
-// b1/d150c456206861d7
 void TBattleListController::onCreatureClicked(const int creatureId, const int mouseButton, const int keyboardModifiers)
 {
     const input::TGameActionList candidates = input::TGenericObjectGameActionProvider::creatureActions(static_cast<uint32_t>(creatureId));
@@ -1163,7 +1155,6 @@ void TBattleListControllerStorage::refresh()
     }
 }
 
-// b1/1c66f7eeb1ce6a63
 bool TBattleListControllerStorage::attackFirstTarget()
 {
     const uint32_t targetId = tibia::game::attackingCreatureId();

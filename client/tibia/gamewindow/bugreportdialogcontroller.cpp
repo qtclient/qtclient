@@ -57,14 +57,12 @@ bool TBugReportDialogController::handleAction(const input::TGameAction& action)
     }
 }
 
-// b1/ba274560d523ed0a
 void TBugReportDialogController::showReportOtherDialog()
 {
     closeDialog();
     show();
 }
 
-// b1/c3deacb777fe8abb
 void TBugReportDialogController::showReportTypoDialog(const QString& SpeakerName, const QString& Text)
 {
     closeDialog();
@@ -74,7 +72,6 @@ void TBugReportDialogController::showReportTypoDialog(const QString& SpeakerName
     show();
 }
 
-// b1/a26601fe1b32ab1d
 void TBugReportDialogController::showReportMapDialog(const Position& position)
 {
     closeDialog();
@@ -94,7 +91,6 @@ void TBugReportDialogController::show()
     dialog()->show();
 }
 
-// b1/41e21d8683626d52
 void TBugReportDialogController::closeDialog()
 {
     dialog()->close();
@@ -104,13 +100,11 @@ void TBugReportDialogController::closeDialog()
     m_text.clear();
 }
 
-// b1/c61b6e9585d892b1
 void TBugReportDialogController::requestClose()
 {
     closeDialog();
 }
 
-// b1/7e74e0b12b31f69d
 int TBugReportDialogController::preselectedClassificationIndex() const
 {
     for (int row = 0; row < static_cast<int>(std::size(Classifications)); ++row) {
@@ -120,7 +114,6 @@ int TBugReportDialogController::preselectedClassificationIndex() const
     return -1;
 }
 
-// b1/6d7d1473d8f79b63
 QStringList TBugReportDialogController::classifications() const
 {
     QStringList list;
@@ -135,7 +128,6 @@ QStringList TBugReportDialogController::classifications() const
     return list;
 }
 
-// b1/bade0b3208860910
 QString TBugReportDialogController::notAllowedReason() const
 {
     if (!tibia::game::isOnline())
@@ -149,7 +141,6 @@ QString TBugReportDialogController::notAllowedReason() const
     }
 }
 
-// b1/f787f049dfd5540d
 Position TBugReportDialogController::reportedPosition() const
 {
     if (m_position.isValid())
@@ -158,7 +149,6 @@ Position TBugReportDialogController::reportedPosition() const
 }
 
 /// A row outside the table reports "other"; the dialog closes either way.
-// b1/669b2063bf7c7eba
 void TBugReportDialogController::requestSendBugReport(const int ClassificationIndex, const QString& Comment)
 {
     if (tibia::game::isOnline()) {

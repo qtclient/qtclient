@@ -170,11 +170,12 @@ TGameActionMoveObject::TGameActionMoveObject(const TGameAction& other)
     type = EGameAction::MOVE_OBJECT;
 }
 
-TGameActionPlayerMovementIntent::TGameActionPlayerMovementIntent(Position pos, const int pathMode)
+TGameActionPlayerMovementIntent::TGameActionPlayerMovementIntent(Position pos, const int pathMode, const bool enterUnwalkable)
 {
     type = EGameAction::SET_PLAYER_MOVEMENT_INTENT;
     position = pos;
     autoWalkPathMode = pathMode;
+    enterUnwalkableGoal = enterUnwalkable;
 }
 
 TGameActionOpen::TGameActionOpen(Position position, int stackPosition, const uint16_t objectClientId)
@@ -1178,9 +1179,9 @@ TGameActionPtr makeCreatureAction(const EGameAction type, const uint32_t creatur
     return action;
 }
 
-TGameActionPtr makeMovementIntent(const Position& position, const int pathMode)
+TGameActionPtr makeMovementIntent(const Position& position, const int pathMode, const bool enterUnwalkableGoal)
 {
-    return std::make_shared<TGameActionPlayerMovementIntent>(position, pathMode);
+    return std::make_shared<TGameActionPlayerMovementIntent>(position, pathMode, enterUnwalkableGoal);
 }
 
 TGameActionPtr makeSmartClick(const TGameActionPtr& inner)

@@ -29,16 +29,10 @@ namespace client {
     enum OperatingSystem_t : uint16_t
     {
         CLIENTOS_NONE = 0,
-        // CipSoft OS ids (Crystal CLIENTOS_NEW_*). qtclient qtclient default in Game::getOs.
+        // CipSoft OS ids (Crystal CLIENTOS_NEW_*).
         CLIENTOS_TIBIA_NEW_LINUX = 4,
         CLIENTOS_TIBIA_NEW_WINDOWS = 5,
         CLIENTOS_TIBIA_NEW_MAC = 6,
-        // Crystal OTCR negotiation (wire ids 10/11/12). Default otclient pack
-        // setCustomOs uses these so Crystal sets isOTCR and appends shader /
-        // attached-effect tails. Not CipSoft OS ids — see CLIENTOS_TIBIA_NEW_* above.
-        CLIENTOS_OTCR_LINUX = 10,
-        CLIENTOS_OTCR_WINDOWS = 11,
-        CLIENTOS_OTCR_MAC = 12,
     };
 
     enum Operation : uint8_t
@@ -634,9 +628,6 @@ namespace client {
 
         // others
         GameLoadSprInsteadProtobuf = 100,
-        GameItemShader = 101,
-        GameCreatureShader = 102,
-        GameCreatureAttachedEffect = 103,
         GameCountU16 = 104,
         GameEffectU16 = 105,
         GameContainerTypes = 106,
@@ -650,8 +641,6 @@ namespace client {
         GameEnterGameShowAppearance = 114,
         GameSmoothWalkElevation = 115,
         GameNegativeOffset = 116,
-        GameItemTooltipV8 = 117,
-        GameWingsAurasEffectsShader = 118,
         GameForgeConvergence = 119,
         // 120 unused
         GameColorizedLootValue = 121,
@@ -661,7 +650,6 @@ namespace client {
         GameMapCache = 125,
         GameForgeSkillStats = 126,
         GameCharacterSkillStats = 127,
-        GameCreaturePaperdoll = 128,
         // 129 unused
         GameVocationMonk = 130,
         GameLevelPercentU16 = 131,
@@ -843,7 +831,8 @@ namespace client {
         EXP_VOUCHER = 1,
         EXP_LOWLEVEL = 2,
         EXP_XPBOOST = 3,
-        EXP_STANINAMULTIPLIER = 4
+        EXP_STANINAMULTIPLIER = 4,
+        EXP_DAILYREWARD = 5
     };
 
     enum MarketItemDescription : uint8_t

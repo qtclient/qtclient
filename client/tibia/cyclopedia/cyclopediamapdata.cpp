@@ -1,4 +1,5 @@
 #include "cyclopediamapdata.h"
+#include <algorithm>
 
 #include "client/gameclient.h"
 #include "client/gamecore.h"
@@ -226,7 +227,6 @@ const std::vector<TCyclopediaMapStaticData::TFile>& TCyclopediaMapStaticData::fi
     return m_files;
 }
 
-// b1/ed8924f37e3a1f4a
 double TCyclopediaMapStaticData::levelOfDetail(const EFileType type, const double scale)
 {
     ensureLoaded();
@@ -354,7 +354,6 @@ int TCyclopediaMapStaticData::subareaFile(const int subareaId)
     return it == m_subareaFiles.end() ? -1 : static_cast<int>(it->second);
 }
 
-// b1/26d48b3b57883b5c
 TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
     : cip::tibia::cyclopedia::TCyclopediaMapStorage(parent)
 {
@@ -397,20 +396,23 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
         Q_EMIT changed();
         return std::any{};
     });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapPassages", [this](GameObject*, const std::vector<std::any>& args) {
-        m_passages.clear();
-        if (const auto* rows = args.size() > 0 ? std::any_cast<std::vector<std::vector<int>>>(&args[0]) : nullptr) {
-            for (const std::vector<int>& row : *rows) {
-                if (row.size() < 4)
-                    continue;
-                TPassage passage;
-                passage.coordinate = { row[0], row[1], row[2] };
-                const int raceCount = row[3];
-                for (int i = 0; i < raceCount && 4 + i < static_cast<int>(row.size()); ++i)
-                    passage.raceIds.push_back(row[4 + i]);
-                m_passages.push_back(std::move(passage));
-            }
-        }
+    // CIP sends one passage per message; a passage at a known coordinate replaces it.
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapPassage", [this](GameObject*, const std::vector<std::any>& args) {
+        const auto* row = args.size() > 0 ? std::any_cast<std::vector<int>>(&args[0]) : nullptr;
+        if (!row || row->size() < 4)
+            return std::any{};
+        TPassage passage;
+        passage.coordinate = { (*row)[0], (*row)[1], (*row)[2] };
+        const int raceCount = (*row)[3];
+        for (int i = 0; i < raceCount && 4 + i < static_cast<int>(row->size()); ++i)
+            passage.raceIds.push_back((*row)[4 + i]);
+        const auto it = std::ranges::find_if(m_passages, [&](const TPassage& p) {
+            return p.coordinate.x == passage.coordinate.x && p.coordinate.y == passage.coordinate.y && p.coordinate.z == passage.coordinate.z;
+        });
+        if (it != m_passages.end())
+            *it = std::move(passage);
+        else
+            m_passages.push_back(std::move(passage));
         Q_EMIT passagesChanged();
         Q_EMIT changed();
         return std::any{};
@@ -512,7 +514,6 @@ const TCyclopediaMapStorage::TMainArea* TCyclopediaMapStorage::mainArea(const in
     return it == m_mainAreas.end() ? nullptr : &it->second;
 }
 
-// b1/e1be6c1f453903eb
 bool TCyclopediaMapStorage::isAreaCompleted(const int areaId) const
 {
     const TMainArea* main = mainArea(areaId);
@@ -525,14 +526,12 @@ quint64 TCyclopediaMapStorage::donated(const int areaId) const
     return it == m_donations.end() ? 0 : it->second.second;
 }
 
-// b1/212d432d288807e5
 bool TCyclopediaMapStorage::isImprovedRespawnActive(const int areaId) const
 {
     const auto it = m_donations.find(areaId);
     return it != m_donations.end() && it->second.first;
 }
 
-// b1/06516f8fb88f7b85
 void TCyclopediaMapStorage::setSelectedId(const int id)
 {
     if (m_selectedId == id)
@@ -557,7 +556,6 @@ void TCyclopediaMapStorage::onPlayerPositionWasUpdated(worldmap::TWorldMapCoordi
     Q_EMIT changed();
 }
 
-// b1/8ec73915c81be7f5
 QColor TCyclopediaMapStorage::subareaColor(const int subareaId) const
 {
     if (m_selectedId == subareaId)

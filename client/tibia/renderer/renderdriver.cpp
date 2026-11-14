@@ -10,13 +10,11 @@ TRenderDriver::TRenderDriver(QQuickItem* parent)
     setFlag(ItemHasContents);
 }
 
-// b1/e996d84545129eb9
 void TRenderDriver::updatePolish()
 {
     update();
 }
 
-// b1/5b1ee01dedea0fcb
 QSGNode* TRenderDriver::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
     delete oldNode;

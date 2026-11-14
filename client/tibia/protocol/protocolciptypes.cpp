@@ -1,6 +1,12 @@
 #include "protocol/protocolciptypes.h"
 #include "protocol/classicprotocolbridge.h"
 #include "protocol/inventoryitemwire.h"
+#include "protocol/mapwire.h"
+#include "protocol/chatwire.h"
+#include "protocol/playerwire.h"
+#include "protocol/featurewire.h"
+#include "protocol/miscwire.h"
+#include "protocol/tradewire.h"
 #include "protocol/protocolclassicwire.h"
 
 #include <client/const.h>
@@ -69,6 +75,20 @@ void writeCoordinate(ClassicWriter& w, const ProtocolCoordinate& c)
 size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r)
 {
     using namespace ::tibia::protobuf::protocol;
+    if (isMapMessage(opcode))
+        return fillMapMessage(msg, opcode, r);
+    if (isCreatureMessage(opcode))
+        return fillCreatureMessage(msg, opcode, r);
+    if (isPlayerMessage(opcode))
+        return fillPlayerMessage(msg, opcode, r);
+    if (isChatMessage(opcode))
+        return fillChatMessage(msg, opcode, r);
+    if (isTradeMessage(opcode))
+        return fillTradeMessage(msg, opcode, r);
+    if (isMiscMessage(opcode))
+        return fillMiscMessage(msg, opcode, r);
+    if (isFeatureMessage(opcode))
+        return fillFeatureMessage(msg, opcode, r);
     switch (opcode) {
     case 4: {
         auto* m = msg.MutableExtension(GameserverMessageSessionDumpStart::gameserver_message_session_dump_start);
@@ -287,6 +307,115 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
             m->set_slot(slot);
         return r.i;
     }
+    case 131: {
+        // Entries from a base coordinate: a delta moves the current coordinate
+        // over rows of 18 fields from the base, a delay holds back the next
+        // graphical effect, then effects, missiles and sounds.
+        auto* m = msg.MutableExtension(GameserverMessageGraphicalEffects::gameserver_message_graphical_effects);
+        uint16_t baseX = 0, baseY = 0;
+        uint8_t baseZ = 0;
+        if (!r.u16(baseX) || !r.u16(baseY) || !r.u8(baseZ))
+            return 0;
+        uint32_t x = baseX, y = baseY;
+        uint32_t deltaIndex = 0;
+        uint16_t delay = 0;
+        const auto setCoordinate = [](ProtocolCoordinate* c, const uint32_t cx, const uint32_t cy, const uint32_t cz) {
+            c->set_x(cx);
+            c->set_y(cy);
+            c->set_z(cz);
+        };
+        for (;;) {
+            uint8_t entry = 0;
+            if (!r.u8(entry))
+                return 0;
+            if (entry == 0)
+                return r.i;
+            switch (entry) {
+            case 1: {
+                uint8_t delta = 0;
+                if (!r.u8(delta))
+                    return 0;
+                deltaIndex += delta;
+                x = baseX + deltaIndex % 18;
+                y = baseY + deltaIndex / 18;
+                break;
+            }
+            case 2:
+                if (!r.u16(delay))
+                    return 0;
+                break;
+            case 3: {
+                uint16_t id = 0;
+                uint8_t source = 0;
+                if (!r.u16(id) || !r.u8(source))
+                    return 0;
+                auto* e = m->add_entries();
+                e->set_kind(0);
+                setCoordinate(e->mutable_coordinate(), x, y, baseZ);
+                e->set_appearance_id(id);
+                e->set_delay(delay);
+                e->set_source(source);
+                delay = 0;
+                break;
+            }
+            case 4:
+            case 5: {
+                uint16_t id = 0;
+                uint8_t dx = 0, dy = 0, source = 0;
+                if (!r.u16(id) || !r.u8(dx) || !r.u8(dy) || !r.u8(source))
+                    return 0;
+                const uint32_t ox = x + static_cast<int8_t>(dx);
+                const uint32_t oy = y + static_cast<int8_t>(dy);
+                auto* e = m->add_entries();
+                e->set_kind(1);
+                // 4 flies from the current coordinate, 5 towards it.
+                setCoordinate(e->mutable_coordinate(), entry == 4 ? x : ox, entry == 4 ? y : oy, baseZ);
+                setCoordinate(e->mutable_destination(), entry == 4 ? ox : x, entry == 4 ? oy : y, baseZ);
+                e->set_appearance_id(id);
+                e->set_source(source);
+                delay = 0;
+                break;
+            }
+            case 6: {
+                uint8_t source = 0;
+                uint16_t id = 0;
+                if (!r.u8(source) || !r.u16(id))
+                    return 0;
+                auto* e = m->add_entries();
+                e->set_kind(2);
+                setCoordinate(e->mutable_coordinate(), x, y, baseZ);
+                e->set_sound_source(source);
+                e->set_sound_id(id);
+                break;
+            }
+            case 7: {
+                uint8_t soundEnum = 0, source = 0;
+                uint16_t id = 0;
+                if (!r.u8(soundEnum) || !r.u8(source) || !r.u16(id))
+                    return 0;
+                auto* e = m->add_entries();
+                e->set_kind(3);
+                setCoordinate(e->mutable_coordinate(), x, y, baseZ);
+                e->set_sound_enum(soundEnum);
+                e->set_sound_source(source);
+                e->set_sound_id(id);
+                break;
+            }
+            default:
+                return 0;
+            }
+        }
+    }
+    case 132: {
+        auto* m = msg.MutableExtension(
+            GameserverMessageRemoveGraphicalEffect::gameserver_message_remove_graphical_effect);
+        readCoordinate(r, m->mutable_coordinate());
+        uint16_t id = 0;
+        if (!r.u16(id))
+            return 0;
+        m->set_appearance_id(id);
+        return r.i;
+    }
     case 130: {
         auto* m = msg.MutableExtension(GameserverMessageAmbientLight::gameserver_message_ambient_light);
         uint8_t intensity = 0, color = 0;
@@ -294,6 +423,84 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
             m->set_intensity(intensity);
         if (r.u8(color))
             m->set_color(color);
+        return r.i;
+    }
+    case 110: {
+        auto* m = msg.MutableExtension(GameserverMessageContainer::gameserver_message_container);
+        uint8_t id = 0, capacity = 0, parent = 0, search = 0, unlocked = 0, pages = 0, count = 0;
+        uint16_t size = 0, first = 0;
+        std::string name;
+        if (!r.u8(id) || !readInventoryItem(r, m->mutable_item()) || !r.string(name) || !r.u8(capacity) || !r.u8(parent)
+            || !r.u8(search) || !r.u8(unlocked) || !r.u8(pages) || !r.u16(size) || !r.u16(first) || !r.u8(count))
+            return 0;
+        m->set_container_id(id);
+        m->set_name(name);
+        m->set_capacity(capacity);
+        m->set_has_parent(parent != 0);
+        m->set_show_search(search != 0);
+        m->set_is_unlocked(unlocked != 0);
+        m->set_has_pages(pages != 0);
+        m->set_container_size(size);
+        m->set_first_index(first);
+        for (uint8_t i = 0; i < count; ++i) {
+            if (!readInventoryItem(r, m->add_items()))
+                return 0;
+        }
+        uint8_t category = 0, categories = 0;
+        if (!r.u8(category) || !r.u8(categories))
+            return 0;
+        m->set_category(category);
+        for (uint8_t i = 0; i < categories; ++i) {
+            uint8_t categoryId = 0;
+            std::string categoryName;
+            if (!r.u8(categoryId) || !r.string(categoryName))
+                return 0;
+            auto* entry = m->add_categories();
+            entry->set_id(categoryId);
+            entry->set_name(categoryName);
+        }
+        uint8_t moveable = 0, holding = 0;
+        if (!r.u8(moveable) || !r.u8(holding))
+            return 0;
+        m->set_is_moveable(moveable != 0);
+        m->set_is_holding(holding != 0);
+        return r.i;
+    }
+    case 112:
+    case 114: {
+        // The object follows when its id is not 0.
+        auto* m = opcode == 112
+            ? msg.MutableExtension(GameserverMessageCreateInContainer::gameserver_message_create_in_container)
+            : nullptr;
+        auto* d = opcode == 114
+            ? msg.MutableExtension(GameserverMessageDeleteInContainer::gameserver_message_delete_in_container)
+            : nullptr;
+        uint8_t id = 0;
+        uint16_t slot = 0, objectId = 0;
+        if (!r.u8(id) || !r.u16(slot) || !r.u16(objectId))
+            return 0;
+        ProtocolInventoryItem* item = nullptr;
+        if (m) {
+            m->set_container_id(id);
+            m->set_slot(slot);
+            item = objectId ? m->mutable_item() : nullptr;
+        } else {
+            d->set_container_id(id);
+            d->set_slot(slot);
+            item = objectId ? d->mutable_item() : nullptr;
+        }
+        if (item && !readInventoryItem(r, item, objectId))
+            return 0;
+        return r.i;
+    }
+    case 113: {
+        auto* m = msg.MutableExtension(GameserverMessageChangeInContainer::gameserver_message_change_in_container);
+        uint8_t id = 0;
+        uint16_t slot = 0;
+        if (!r.u8(id) || !r.u16(slot) || !readInventoryItem(r, m->mutable_item()))
+            return 0;
+        m->set_container_id(id);
+        m->set_slot(slot);
         return r.i;
     }
     case 140: {
@@ -682,8 +889,14 @@ bool emptyStructuredServerOpcode(int opcode)
     case 29:  // Ping
     case 30:  // PingBack
     case 188: // Stop
+    case 124: // CloseNPCTrade
+    case 127: // CloseTrade
     case 227:
     case 247:
+    case 137: // CloseExaltationDialog
+    case 154: // CloseDepotSearch
+    case 201: // ExivaSuppressed
+    case 236: // CloseImbuingDialog
         return true;
     default:
         return false;
@@ -711,16 +924,165 @@ bool nativeApplySkipsClassic(int opcode)
     case 42:  // SpecialContainersAvailable
     case 96:  // SpellDataModification
     case 109: // MoveCreature
+    case 110: // Container
     case 111: // CloseContainer
+    case 112: // CreateInContainer
+    case 113: // ChangeInContainer
+    case 114: // DeleteInContainer
     case 120: // SetInventory
     case 121: // DeleteInventory
+    case 100: // FullMap
+    case 101: // TopRow
+    case 102: // RightColumn
+    case 103: // BottomRow
+    case 104: // LeftColumn
+    case 105: // FieldData
+    case 106: // CreateOnMap
+    case 107: // ChangeOnMap
+    case 108: // DeleteOnMap
+    case 190: // TopFloor
+    case 191: // BottomFloor
     case 130: // AmbientLight
+    case 131: // GraphicalEffects
+    case 132: // RemoveGraphicalEffect
     case 140: // CreatureHealth
     case 141: // CreatureLight
     case 143: // CreatureSpeed
     case 144: // CreatureSkull
     case 145: // CreatureParty
     case 146: // CreatureUnpass
+    case 159: // PlayerDataBasic
+    case 160: // PlayerDataCurrent
+    case 161: // PlayerSkills
+    case 162: // PlayerState
+    case 163: // UpdateTarget
+    case 164: // SpellDelay
+    case 165: // SpellGroupDelay
+    case 166: // MultiUseDelay
+    case 167: // SetTactics
+    case 170: // Talk
+    case 171: // Channels
+    case 172: // OpenChannel
+    case 173: // PrivateChannel
+    case 174: // EditGuildMessage
+    case 178: // OpenOwnChannel
+    case 179: // CloseChannel
+    case 180: // Message
+    case 243: // ChannelEvent
+    case 122: // NPCOffer
+    case 123: // PlayerGoods
+    case 124: // CloseNPCTrade
+    case 125: // OwnOffer
+    case 126: // CounterOffer
+    case 127: // CloseTrade
+    case 25: // StoreButtonIndicators
+    case 40: // Dead
+    case 92: // WeaponProficiencyNotification
+    case 152: // ShowGameNews
+    case 157: // SwitchPreset
+    case 175: // XpChanged
+    case 184: // PvpSituations
+    case 206: // ItemWasted
+    case 217: // MonsterCyclopediaNewDetails
+    case 222: // DailyRewardCollectionState
+    case 230: // BosstiaryHighlight
+    case 231: // PreyTimeLeft
+    case 233: // PreyPrices
+    case 238: // ResourceBalance
+    case 239: // TibiaTime
+    case 242: // UpdatingShopBalance
+    case 11: // ReadyForSecondaryConnection
+    case 41: // Stash
+    case 119: // InspectionState
+    case 136: // ExaltationHistory
+    case 189: // BossTracking
+    case 195: // CyclopediaHouseActionResult
+    case 199: // CyclopediaCurrentHouseData
+    case 211: // BuddyStatusChange
+    case 224: // StoreError
+    case 229: // DailyRewardHistory
+    case 234: // OfferDescription
+    case 254: // StoreSuccess
+    case 139: // CreatureUpdate
+    case 142: // CreatureOutfit
+    case 46: // UnlockedSpells
+    case 94: // PassiveAbilityData
+    case 129: // TextForReport
+    case 133: // SoundTrigger
+    case 148: // DepotSearchResult
+    case 151: // EditList
+    case 158: // PremiumTrigger
+    case 183: // UnjustifiedPoints
+    case 185: // BestiaryTracker
+    case 192: // UpdateManagedContainers
+    case 204: // ImpactTracking
+    case 205: // MarketStatistics
+    case 207: // ItemLooted
+    case 209: // KillTracking
+    case 223: // CreditBalance
+    case 237: // ShowMessageDialog
+    case 245: // PlayerInventory
+    case 137: // CloseExaltationDialog
+    case 154: // CloseDepotSearch
+    case 201: // ExivaSuppressed
+    case 212: // BuddyGroupData
+    case 213: // MonsterCyclopedia
+    case 236: // CloseImbuingDialog
+    case 240: // QuestLog
+    case 244: // ObjectInfo
+    case 246: // MarketEnter
+    case 115: // Bosstiary
+    case 138: // ExaltationResult
+    case 153: // DepotSearchDetailList
+    case 193: // VocationSpecificPlayerData
+    case 214: // MonsterCyclopediaMonsters
+    case 226: // OpenRewardWall
+    case 241: // QuestLine
+    case 44: // TeamFinderTeamLeader
+    case 45: // TeamFinderTeamMember
+    case 98: // BossSlots
+    case 150: // EditText
+    case 196: // WeaponProficiency
+    case 208: // TrackQuestFlags
+    case 253: // TransactionHistory
+    case 28: // NpcTalkParters
+    case 43: // PartyHuntAnalyser
+    case 187: // ShapedPerkReshapeOffers
+    case 198: // CyclopediaStaticHouseData
+    case 155: // BlessingsDialog
+    case 210: // BuddyData
+    case 250: // ShowModalDialog
+    case 251: // StoreCategories
+    case 93: // ImbuementDurations
+    case 134: // ExaltationBaseData
+    case 202: // UpdateExivaOptions
+    case 225: // RequestPurchaseData
+    case 156: // Blessings
+    case 194: // ConfigureCreaturePodium
+    case 203: // TransactionDetails
+    case 232: // PreyData
+    case 235: // ImbuingDialogRefresh
+    case 47: // BossDifficultySelection
+    case 176: // OutfitMemorial
+    case 200: // Outfit
+    case 215: // MonsterCyclopediaRace
+    case 249: // MarketBrowse
+    case 177: // Highscores
+    case 168: // SetStoreButtonDeeplink
+    case 3: // CreatureData
+    case 118: // InspectionList
+    case 128: // CharacterTradeConfiguration
+    case 117: // GameEvent
+    case 95: // SkillWheel
+    case 135: // ExaltationDialogRefresh
+    case 221: // CyclopediaMapData
+    case 248: // MarketDetail
+    case 252: // StoreOffers
+    case 97: // BosstiaryStaticData
+    case 147: // CreatureMarks
+    case 149: // CreatureType
+    case 181: // SnapBack
+    case 182: // Wait
     case 188: // Stop
     case 197: // GemAtelierGemRevealed
     case 219: // HirelingNameChange
@@ -792,9 +1154,28 @@ bool TProtobufServerMessageTranslator::hasStructuredLayout(int opcode)
     case 20: case 21: case 22: case 23: case 24:
     case 26: case 27: case 29: case 30: case 31:
     case 42:
-    case 96: case 109: case 111: case 120: case 121: case 130:
+    case 96: case 109: case 110: case 111: case 112: case 113: case 114: case 120: case 121: case 130: case 131: case 132:
+    case 100: case 101: case 102: case 103: case 104: case 105: case 106: case 107: case 108:
+    case 190: case 191:
     case 140: case 141: case 143: case 144: case 145: case 146:
+    case 139: case 142: case 147: case 149: case 181: case 182:
+    case 159: case 160: case 161: case 162: case 163: case 164: case 165: case 166: case 167:
+    case 170: case 171: case 172: case 173: case 174: case 178: case 179: case 180: case 243:
+    case 122: case 123: case 124: case 125: case 126: case 127:
+    case 25: case 40: case 92: case 152: case 157: case 175: case 184: case 206: case 217: case 222: case 230:
+    case 231: case 233: case 238: case 239: case 242:
+    case 11: case 41: case 119: case 136: case 189: case 195: case 199: case 211: case 224: case 229: case 234: case 254:
     case 188: case 197: case 219: case 220: case 227: case 247:
+    case 46: case 94: case 129: case 133: case 148: case 151: case 158: case 183: case 185: case 192:
+    case 204: case 205: case 207: case 209: case 223: case 237: case 245:
+    case 137: case 154: case 201: case 212: case 213: case 236: case 240: case 244: case 246:
+    case 115: case 138: case 153: case 193: case 214: case 226: case 241:
+    case 44: case 45: case 98: case 150: case 196: case 208: case 253:
+    case 28: case 43: case 187: case 198:
+    case 155: case 210: case 250: case 251:
+    case 93: case 134: case 202: case 225:
+    case 156: case 194: case 203: case 232: case 235:
+    case 47: case 97: case 176: case 200: case 215: case 249: case 177: case 168: case 3: case 118: case 128: case 117: case 95: case 135: case 221: case 248: case 252:
         return true;
     default:
         return false;
@@ -836,7 +1217,8 @@ TProtobufServerMessageTranslator::translateFromClassic(const uint8_t* data, size
     if (!mutableServerExtensionGenerated(*out, opcode))
         return out;
     ClassicReader reader{ data + 1, len > 0 ? len - 1 : 0, 0 };
-    fillStructuredServer(*out, opcode, reader);
+    if (fillStructuredServer(*out, opcode, reader) > 0 && isMapMessage(opcode))
+        advanceMapViewport(*out);
     return out;
 }
 
@@ -944,6 +1326,13 @@ QByteArray enqueueNativeServerProtobuf(const QByteArray& gameserverProtobuf, boo
 const GameserverMessage* lastShadowServerMessage()
 {
     return g_lastServerMessage.get();
+}
+
+const GameserverMessage* nativeServerMessage(const int opcode, const bool applyClassic)
+{
+    if (applyClassic || !nativeApplySkipsClassic(opcode))
+        return nullptr;
+    return lastShadowServerMessage();
 }
 
 } // namespace tibia::protocol

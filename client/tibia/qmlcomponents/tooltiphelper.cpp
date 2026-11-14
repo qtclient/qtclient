@@ -10,7 +10,6 @@
 
 namespace tibia::qmlcomponents {
 
-// b1/374accb33d147b41
 bool TMouseHoverEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     switch (event->type()) {

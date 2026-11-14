@@ -16,10 +16,8 @@ const QRegularExpression& nonUrlCharacter()
 
 } // namespace
 
-// b1/89cf8816e9af187e
 bool TTibiaUrlTools::hasNonUrlCharacters(const QString& text) { return nonUrlCharacter().match(text).hasMatch(); }
 
-// b1/81a73412c455aeb3
 bool TTibiaUrlTools::containsUrl(const QString& text)
 {
     static const QRegularExpression weight(QStringLiteral("[0-9]+\\.[0-9]{2} oz"));
@@ -29,10 +27,8 @@ bool TTibiaUrlTools::containsUrl(const QString& text)
     return dotted.match(stripped).hasMatch();
 }
 
-// b1/79f8a61e97261bee
 void TTibiaUrlTools::sanitize(QString& text) { text.replace(nonUrlCharacter(), QStringLiteral("?")); }
 
-// b1/f1b9364a02324f15
 QString TTibiaUrlTools::process(const QString& text)
 {
     if (!containsUrl(text))

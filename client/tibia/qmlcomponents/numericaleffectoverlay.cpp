@@ -53,7 +53,6 @@ TNumericalEffectOverlayQuickItem::~TNumericalEffectOverlayQuickItem()
     clear();
 }
 
-// b1/9f69964059d7622c
 void TNumericalEffectOverlayQuickItem::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)
 {
     cip::tibia::qmlcomponents::TNumericalEffectOverlayQuickItem::geometryChange(newGeometry, oldGeometry);

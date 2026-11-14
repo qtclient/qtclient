@@ -51,7 +51,6 @@ QSet<int> TQuestTrackerStorage::trackedIds() const
     return ids;
 }
 
-// b1/07833496d978772a
 QList<int> TQuestTrackerStorage::completedIds() const
 {
     QList<int> ids;
@@ -71,7 +70,6 @@ int TQuestTrackerStorage::questLineOf(const int questFlagId) const
     return 0;
 }
 
-// b1/ecc6f9f4436c0ae4
 void TQuestTrackerStorage::setTrackedQuestFlags(QList<Entry> entries, const int remaining)
 {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
@@ -132,7 +130,6 @@ void TQuestTrackerStorage::setPinned(const int questFlagId, const bool pinned)
     Q_EMIT storageChanged();
 }
 
-// b1/cab9c9421b49437f
 void TQuestTrackerStorage::changeTrackedQuestFlags(const QList<int>& ids, const bool remove)
 {
     QSet<int> tracked = trackedIds();
@@ -145,7 +142,6 @@ void TQuestTrackerStorage::changeTrackedQuestFlags(const QList<int>& ids, const 
     sendTracked(tracked);
 }
 
-// b1/259bed6b70933100
 void TQuestTrackerStorage::setOption(const int option, const bool value)
 {
     if (option == 0)
@@ -203,7 +199,6 @@ void TQuestTrackerStorage::save(QJsonObject& root) const
     root.insert(QStringLiteral("questtracking"), QJsonObject{ { QStringLiteral("trackedQuests"), tracked }, { QStringLiteral("options"), options } });
 }
 
-// b1/21b16b00028ab8c5
 void TQuestTrackerStorage::sendTracked(const QSet<int>& ids) const
 {
     if (!tibia::game::isOnline())
@@ -215,7 +210,6 @@ void TQuestTrackerStorage::sendTracked(const QSet<int>& ids) const
     tibia::game::sendRequestTrackerQuestLog(sorted, m_autoTrackNewQuests, m_autoUntrackCompletedQuests);
 }
 
-// b1/663aeae1c1424990
 void TQuestTrackerListModel::setEntries(QList<TQuestTrackerStorage::Entry> entries, const QList<MissionAction>& actions)
 {
     auto partMatchesName = [](const QString& part, const QString& matchName) {
@@ -476,7 +470,6 @@ void TQuestTrackerWidgetController::missionAction(const int questFlagId, const Q
     m_missionInvoker(matched->missionKey, entryId, questFlagId > 0 ? questFlagId : matched->questFlagId);
 }
 
-// b1/571db2feb5c1672f
 void TQuestTrackerWidgetController::onTrackedQuestFlagsChanged(const bool added, const bool removed)
 {
     if (!added && !removed)
@@ -498,7 +491,6 @@ void TQuestTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* o
                                                        json.value(QLatin1String("contentMaximized")).toBool(true));
 }
 
-// b1/c7d6dfe1dccd13be
 void TQuestTrackerWidgetController::onShowContextMenuForQuestFlag(const int QuestFlagIDRaw)
 {
     TContextMenuController* menu = TContextMenuController::instance();
@@ -528,7 +520,6 @@ void TQuestTrackerWidgetController::requestOpenQuestLogDialog()
     input::publish(input::makeAction(input::EGameAction::OPEN_QUESTLOG_DIALOG));
 }
 
-// b1/94675e58640910f6
 void TQuestTrackerWidgetController::requestConfigurationContextMenu()
 {
     TContextMenuController* menu = TContextMenuController::instance();

@@ -2,13 +2,13 @@
 #include "tibia/runtime/host.h"
 
 #include "animation/animator.h"
+#include "animation/movingoutfitanimator.h"
 #include "appearances/appearanceinstance.h"
 #include "appearances/spriteinfo.h"
 #include "qmlcomponents/qmlcomponentsciptypes.h"
 #include "qmlcomponents/outfittypes.h"
 #include "sprites/sprite.h"
 
-#include "animation/spriteanimator.h"
 #include <tibia/game/gamesession.h>
 #include <tibia/config/runtimegameconfig.h>
 #include <client/item.h>
@@ -179,7 +179,6 @@ TAppearanceInstanceRenderer::TAppearanceInstanceRenderer(QQuickItem* parent)
     m_sinceLayout.start();
 }
 
-// b1/4edbfd8105262290
 void TAppearanceInstanceRenderer::componentComplete()
 {
     cip::tibia::qmlcomponents::TAppearanceInstanceRenderer::componentComplete();
@@ -414,21 +413,13 @@ void TAppearanceInstanceRenderer::showGraphicalEffect(const int AppearanceTypeID
     effect.kind = TransientEffect::Kind::Field;
     effect.type = type;
     effect.fieldTopLeft = SubfieldCoordinate;
-    effect.timer.start();
-    int ticks = tibia::config::effectTicksPerFrame();
-    if (type->getId() == 33)
-        ticks <<= 2;
-    effect.durationMs = ticks * std::max(1, type->getAnimationPhases());
-    if (Animator* animator = type->getIdleAnimator())
-        effect.durationMs = static_cast<int>(animator->getTotalDuration());
-    // CIP field pattern tiling relative to the preview origin (player at 0,0).
-    const int offsetX = SubfieldCoordinate.x() / FieldSize;
-    const int offsetY = SubfieldCoordinate.y() / FieldSize;
-    effect.patternX = static_cast<unsigned>(offsetX) % std::max(1, type->getNumPatternX());
-    effect.patternX = 1 - effect.patternX - type->getNumPatternX();
-    if (effect.patternX < 0)
-        effect.patternX += type->getNumPatternX();
-    effect.patternY = static_cast<unsigned>(offsetY) % std::max(1, type->getNumPatternY());
+    effect.instance = std::dynamic_pointer_cast<tibia::appearances::TEffectInstance>(
+        tibia::appearances::TAppearanceInstanceFactory::fromThingType(type));
+    if (!effect.instance)
+        return;
+    // The field pattern follows the preview field, the player standing at 0,0.
+    effect.instance->start(Position(SubfieldCoordinate.x() / FieldSize, SubfieldCoordinate.y() / FieldSize, 0),
+                           static_cast<qint64>(g_clock.millis()));
     m_effects.push_back(effect);
     watchFrames();
     polish();
@@ -447,19 +438,15 @@ void TAppearanceInstanceRenderer::showMissileEffect(const int AppearanceTypeID,
     effect.type = type;
     effect.missileFrom = SourceCoordinate;
     effect.missileTo = DestinationCoordinate;
-    effect.timer.start();
     missilePatterns(SourceCoordinate, DestinationCoordinate, effect.patternX, effect.patternY);
-    const QPoint delta = DestinationCoordinate - SourceCoordinate;
-    const float tileLength = QLineF(SourceCoordinate, DestinationCoordinate).length()
-        / static_cast<float>(FieldSize);
-    if (tileLength <= 0.f) {
-        effect.missileDurationMs = 0.f;
-        effect.durationMs = 0;
-    } else {
-        effect.missileDurationMs =
-            static_cast<float>(tibia::config::missileTicksPerFrame() * 2) * std::sqrt(tileLength);
-        effect.durationMs = static_cast<int>(effect.missileDurationMs);
-    }
+    auto missile = std::dynamic_pointer_cast<tibia::appearances::TMissileEffectInstance>(
+        tibia::appearances::TAppearanceInstanceFactory::fromThingType(type));
+    if (!missile)
+        return;
+    missile->setPath(Position(SourceCoordinate.x() / FieldSize, SourceCoordinate.y() / FieldSize, 0),
+                     Position(DestinationCoordinate.x() / FieldSize, DestinationCoordinate.y() / FieldSize, 0),
+                     static_cast<qint64>(g_clock.millis()));
+    effect.instance = std::move(missile);
     m_effects.push_back(effect);
     watchFrames();
     polish();
@@ -467,12 +454,12 @@ void TAppearanceInstanceRenderer::showMissileEffect(const int AppearanceTypeID,
 
 void TAppearanceInstanceRenderer::purgeExpiredEffects()
 {
-    m_effects.erase(std::remove_if(m_effects.begin(), m_effects.end(),
-                                   [](const TransientEffect& effect) {
-                                       return effect.durationMs > 0
-                                           && effect.timer.elapsed() >= effect.durationMs;
-                                   }),
-                    m_effects.end());
+    const qint64 now = static_cast<qint64>(g_clock.millis());
+    for (TransientEffect& effect : m_effects) {
+        if (effect.instance)
+            effect.instance->update(now);
+    }
+    m_effects.removeIf([](const TransientEffect& effect) { return !effect.instance || effect.instance->isFinished(); });
 }
 
 void TAppearanceInstanceRenderer::addTransientEffects()
@@ -481,49 +468,40 @@ void TAppearanceInstanceRenderer::addTransientEffects()
     for (TransientEffect& effect : m_effects) {
         if (!effect.type)
             continue;
-        QPoint field = effect.fieldTopLeft;
         if (effect.kind == TransientEffect::Kind::Missile) {
-            if (effect.missileDurationMs <= 0.f) {
-                field = effect.missileTo;
-            } else {
-                const float t = std::clamp(static_cast<float>(effect.timer.elapsed())
-                                               / effect.missileDurationMs,
-                                           0.f, 1.f);
-                field = effect.missileFrom
-                    + QPoint(static_cast<int>(std::round((effect.missileTo.x() - effect.missileFrom.x()) * t)),
-                             static_cast<int>(std::round((effect.missileTo.y() - effect.missileFrom.y()) * t)));
-            }
+            const auto* missile = static_cast<const tibia::appearances::TMissileEffectInstance*>(effect.instance.get());
+            const Point offset = missile->flightOffset();
+            addSprites(effect.type, effect.missileFrom + QPoint(offset.x, offset.y), effect.patternX, effect.patternY, 0,
+                       m_animated ? missile->phase() : 0, false, 0);
+            continue;
         }
         int phase = 0;
-        const int phases = effect.type->getAnimationPhases();
-        if (m_animated && phases > 1) {
-            int ticks = effect.kind == TransientEffect::Kind::Missile
-                ? tibia::config::missileTicksPerFrame()
-                : tibia::config::effectTicksPerFrame();
-            if (effect.kind == TransientEffect::Kind::Field && effect.type->getId() == 33)
-                ticks <<= 2;
-            phase = std::min(phases - 1, static_cast<int>(effect.timer.elapsed() / std::max(1, ticks)));
-        }
-        addSprites(effect.type, field, effect.patternX, effect.patternY, 0, phase, false, 0);
+        int xPattern = 0;
+        int yPattern = 0;
+        if (!effect.instance->getFieldDrawFrame(phase, xPattern, yPattern))
+            continue;
+        addSprites(effect.type, effect.fieldTopLeft, xPattern, yPattern, 0, m_animated ? phase : 0, false, 0);
     }
 }
 
-/// Walking outfits use CipSoft TMovingOutfitAnimator (720 ms cycle / phase count);
-/// standing ones show phase 0 or their idle animation.
+/// Walking outfits pace their phases by the step duration; standing ones show
+/// phase 0 or their idle animation.
 int TAppearanceInstanceRenderer::outfitPhase(ThingType* type, const bool moving, const int millisecondsPerField) const
 {
     const int phases = type->getAnimationPhases();
     if (!m_animated || phases <= 1)
         return 0;
-    // CipSoft animation::TMovingOutfitAnimator (v3 / ctor 280..720).
-    const animation::TMovingOutfitAnimator movingAnimator(type->getAnimator(), type->getIdleAnimator());
-    if (moving) {
-        const int walkPhases = std::max(1, phases - 1);
+    const animation::TAnimationInfo* walk = type->movingAnimation();
+    if (moving && walk && walk->phaseCount() > 0) {
+        animation::TMovingOutfitAnimator animator(
+            walk->phaseCount(), walk->loopType == animation::TAnimationInfo::ELoopType::PingPong);
+        animator.setKey(millisecondsPerField > 0 ? millisecondsPerField : animation::TMovingOutfitAnimator::kMaximumCycleMs, 0);
+        animator.update(g_clock.millis());
         // Sprite phase 0 is idle; walk art is 1..walkPhases.
-        return 1 + (movingAnimator.phase(true, millisecondsPerField) % walkPhases);
+        return 1 + static_cast<int>(animator.phase()) % std::max(1, phases - 1);
     }
-    if (Animator* idle = movingAnimator.idleAnimator())
-        return idle->getPhase();
+    if (type->idleAnimation())
+        return m_idleAnimators.phaseAt(type, type->idleAnimation(), g_clock.millis());
     // Outfits with multi-phase idle art but no Animator (common for monsters in
     // expedition / cyclopedia cells): cycle phases so the preview is animated.
     constexpr int MsPerPhase = 200;
@@ -631,8 +609,8 @@ void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQ
     }
     int phase = 0;
     if (m_animated && type->getAnimationPhases() > 1) {
-        if (Animator* animator = type->getIdleAnimator()) {
-            phase = animator->getPhase();
+        if (type->idleAnimation()) {
+            phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), g_clock.millis());
         } else {
             const int ticks = tibia::config::itemTicksPerFrame();
             phase = static_cast<int>((g_clock.millis() % (static_cast<long long>(ticks) * type->getAnimationPhases())) / ticks);

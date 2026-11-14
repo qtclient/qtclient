@@ -29,7 +29,6 @@ void TPlayerData::setLiveInstance(TPlayerData* data)
     g_livePlayerData = data;
 }
 
-// b1/25629e06a39166a2
 void TPlayerData::name()
 {
 }
@@ -145,13 +144,8 @@ void TPlayerData::setHealth(const uint32_t health, const uint32_t maxHealth)
     m_maxHealth = maxHealth;
     notifyPlayerDataChanged();
     notify("onHealthChange", health, maxHealth, oldHealth, oldMaxHealth);
-    if (health == 0) {
-        if (const LocalPlayerSessionThingPtr player = localPlayer()) {
-            if (player->isPreWalking())
-                player->stopWalk();
-            player->lockWalk();
-        }
-    }
+    if (health == 0)
+        tibia::game::localPlayerStopAutoWalk();
 }
 
 void TPlayerData::setMana(const uint32_t mana, const uint32_t maxMana)
@@ -512,6 +506,13 @@ void TPlayerData::setStoreExpBoostTime(const uint16_t storeExpBoostTime)
     m_storeExpBoostTime = storeExpBoostTime;
 }
 
+void TPlayerData::setDailyRewardExpBoostTime(const uint16_t dailyRewardExpBoostTime)
+{
+    if (m_dailyRewardExpBoostTime == dailyRewardExpBoostTime)
+        return;
+    m_dailyRewardExpBoostTime = dailyRewardExpBoostTime;
+}
+
 void TPlayerData::setRottenBloodState(const uint8_t rottenBloodState)
 {
     if (m_rottenBloodState == rottenBloodState)
@@ -558,6 +559,7 @@ void TPlayerData::clear()
     m_regenerationTime = 0;
     m_offlineTrainingTime = 0;
     m_storeExpBoostTime = 0;
+    m_dailyRewardExpBoostTime = 0;
     m_rottenBloodState = 0;
     m_resourcesBalance.clear();
     notifyPlayerDataChanged();

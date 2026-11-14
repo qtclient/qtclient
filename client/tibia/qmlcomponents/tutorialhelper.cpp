@@ -93,13 +93,11 @@ void TTutorialMarkerQuickItem::setDebugOverlayVisible(const bool v)
     update();
 }
 
-// b1/3f4d4a70c0c070f3
 void TTutorialMarkerQuickItem::componentComplete()
 {
     cip::tibia::qmlcomponents::TTutorialMarkerQuickItem::componentComplete();
 }
 
-// b1/6adb37ff3ab6eadd
 QSGNode* TTutorialMarkerQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
     auto* node = static_cast<QSGSimpleRectNode*>(oldNode);

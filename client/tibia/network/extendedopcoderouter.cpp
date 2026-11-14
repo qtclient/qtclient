@@ -4,7 +4,6 @@
 #include "tibia/protocol/extendedopcode_json.h"
 
 #include <tibia/game/gamesession.h>
-#include <framework/net/inputmessage.h>
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -15,45 +14,36 @@
 
 namespace tibia::network {
 
-using SoftHook = tibia::game::SoftHook;
 using Args = tibia::game::Args;
-using tibia::game::argInt;
 
 namespace {
 
 constexpr size_t MaxPacketSize = 65000;
 
-std::any toAny(const bool handled)
-{
-    return handled ? std::any(true) : std::any{};
 }
 
-}
-
-ExtendedOpcodeRouter::ExtendedOpcodeRouter()
-{
-    m_readerSubscription = tibia::protocol::ExtendedOpcodeReader::instance().subscribe(
-        [this](const uint8_t opcode, const std::string& buffer) { onExtendedOpcode(opcode, buffer); });
-}
+ExtendedOpcodeRouter::ExtendedOpcodeRouter() = default;
 
 ExtendedOpcodeRouter::~ExtendedOpcodeRouter()
 {
-    tibia::protocol::ExtendedOpcodeReader::instance().unsubscribe(m_readerSubscription);
+    if (m_readerSubscription)
+        tibia::protocol::ExtendedOpcodeReader::instance().unsubscribe(m_readerSubscription);
 }
 
-bool ExtendedOpcodeRouter::registerOpcode(const uint8_t opcode, OpcodeHandler handler)
+// The reader subscription doubles as the login request for extended opcodes,
+// so it is only held while a raw or JSON handler is registered.
+void ExtendedOpcodeRouter::updateReaderSubscription()
 {
-    if (m_opcode[opcode] || !handler)
-        return false;
-    m_opcode[opcode] = std::move(handler);
-    updateOpcodeHook();
-    return true;
-}
-
-void ExtendedOpcodeRouter::unregisterOpcode(const uint8_t opcode)
-{
-    m_opcode[opcode] = nullptr;
-    updateOpcodeHook();
+    const bool needed = std::ranges::any_of(m_raw, [](const auto& h) { return static_cast<bool>(h); })
+        || std::ranges::any_of(m_json, [](const auto& h) { return static_cast<bool>(h); });
+    auto& reader = tibia::protocol::ExtendedOpcodeReader::instance();
+    if (needed && !m_readerSubscription) {
+        m_readerSubscription = reader.subscribe(
+            [this](const uint8_t opcode, const std::string& buffer) { onExtendedOpcode(opcode, buffer); });
+    } else if (!needed && m_readerSubscription) {
+        reader.unsubscribe(m_readerSubscription);
+        m_readerSubscription = 0;
+    }
 }
 
 bool ExtendedOpcodeRouter::registerExtendedOpcode(const uint8_t opcode, RawHandler handler)
@@ -61,12 +51,14 @@ bool ExtendedOpcodeRouter::registerExtendedOpcode(const uint8_t opcode, RawHandl
     if (m_raw[opcode] || !handler)
         return false;
     m_raw[opcode] = std::move(handler);
+    updateReaderSubscription();
     return true;
 }
 
 void ExtendedOpcodeRouter::unregisterExtendedOpcode(const uint8_t opcode)
 {
     m_raw[opcode] = nullptr;
+    updateReaderSubscription();
 }
 
 bool ExtendedOpcodeRouter::registerExtendedJsonOpcode(const uint8_t opcode, JsonHandler handler)
@@ -74,6 +66,7 @@ bool ExtendedOpcodeRouter::registerExtendedJsonOpcode(const uint8_t opcode, Json
     if (m_json[opcode] || !handler)
         return false;
     m_json[opcode] = std::move(handler);
+    updateReaderSubscription();
     return true;
 }
 
@@ -81,29 +74,7 @@ void ExtendedOpcodeRouter::unregisterExtendedJsonOpcode(const uint8_t opcode)
 {
     m_json[opcode] = nullptr;
     m_jsonParts[opcode].reset();
-}
-
-// Every game opcode passes through ProtocolGame's onOpcode hook, so it is only
-// subscribed while a handler needs it.
-void ExtendedOpcodeRouter::updateOpcodeHook()
-{
-    const bool needed = std::ranges::any_of(m_opcode, [](const auto& h) { return static_cast<bool>(h); });
-    if (!needed) {
-        m_opcodeHook = {};
-        return;
-    }
-    // ProtocolGame::callLuaField("onOpcode") → SoftHooks (self filter retired).
-    m_opcodeHook = SoftHook("onOpcode", [this](const Args& args) {
-        if (args.size() < 2)
-            return std::any{};
-        const auto opcode = static_cast<uint8_t>(argInt(args, 0));
-        const auto& handler = m_opcode[opcode];
-        const auto* msg = std::any_cast<InputMessagePtr>(&args[1]);
-        if (!handler || !msg)
-            return std::any{};
-        handler(opcode, *msg);
-        return toAny(true);
-    });
+    updateReaderSubscription();
 }
 
 void ExtendedOpcodeRouter::onExtendedOpcode(const uint8_t opcode, const std::string& buffer)

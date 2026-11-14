@@ -6,6 +6,8 @@
 #include <QImage>
 #include <QtGlobal>
 
+#include <algorithm>
+
 namespace tibia::appearances {
 
 SpriteKey TWorldmapHighlightBaseplateSpriteInfo::key() const
@@ -20,9 +22,12 @@ QImage TWorldmapHighlightBaseplateSpriteInfo::raster() const
 
 uint8_t TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(const qint64 millis)
 {
-    // CIP v21 @ 1010581f0: SEXT816(ms << 4) * 0x20c49ba5e353f7cf → high bits & 7.
-    // Empirically ~8 frames over ~500ms; a simple ms/62 keeps the pulse readable.
-    return static_cast<uint8_t>((millis / 62) & 7);
+    // CIP TWorldMapRenderProvider::v21:
+    //   SEXT816(ms << 4) * 0x20c49ba5e353f7cf → (hi32 >> 7) - sign & 7
+    // Equivalent integer form: floor(ms / 62.5) & 7 == ((ms * 2) / 125) & 7.
+    // Period 500 ms across 8 frames (dwell alternates 62/63 ms).
+    const qint64 ms = std::max<qint64>(0, millis);
+    return static_cast<uint8_t>(((ms * 2) / 125) & 7);
 }
 
 QImage TWorldmapHighlightBaseplateSpriteInfo::imageForFrame(const uint8_t frame)

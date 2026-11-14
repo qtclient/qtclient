@@ -70,7 +70,6 @@ input::TGameActionPtr makeNamed(const A type, const QString& text, const int ins
 
 }
 
-// b1/e2a7be0a53f30566
 TVipWidgetDataModel::TVipWidgetDataModel(TVipStorage* storage, QObject* parent)
     : cip::tibia::gamewindow::TVipWidgetDataModel(parent)
     , m_storage(storage)
@@ -81,7 +80,6 @@ TVipWidgetDataModel::TVipWidgetDataModel(TVipStorage* storage, QObject* parent)
     onVipGroupDataChanged();
 }
 
-// b1/6dc215293452750e
 void TVipWidgetDataModel::onVipStateChanged(const uint32_t id, const int previousState, const int state)
 {
     TVipRenderInfo*& info = m_renderInfos[id];
@@ -116,7 +114,6 @@ void TVipWidgetDataModel::emitHighlightChanged(const uint32_t id)
 
 int TVipWidgetDataModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_rows.size()); }
 
-// b1/783f0b1c97dba067
 QVariant TVipWidgetDataModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= rowCount())
@@ -148,7 +145,6 @@ QHash<int, QByteArray> TVipWidgetDataModel::roleNames() const
     };
 }
 
-// b1/53e62a67e3ee7e73
 void TVipWidgetDataModel::onVipGroupDataChanged()
 {
     beginResetModel();
@@ -191,7 +187,6 @@ TVipWidgetDataModelSortFilterProxy::TVipWidgetDataModelSortFilterProxy(QObject* 
 
 bool TVipWidgetDataModelSortFilterProxy::showGroups() const { return m_showGroups; }
 
-// b1/88bb8a3e16a4e1f0
 void TVipWidgetDataModelSortFilterProxy::setHideOffline(const bool hide, const bool silent)
 {
     m_hideOffline = hide;
@@ -209,14 +204,12 @@ void TVipWidgetDataModelSortFilterProxy::setShowGroups(const bool show, const bo
         Q_EMIT configChanged();
 }
 
-// b1/5182c38bc22f500a
 void TVipWidgetDataModelSortFilterProxy::setSortOrder(const std::vector<int>& order)
 {
     m_sortOrder = order;
     invalidate();
 }
 
-// b1/066cc1100f6aeadb
 void TVipWidgetDataModelSortFilterProxy::sortBy(const int key)
 {
     std::erase(m_sortOrder, key);
@@ -226,7 +219,6 @@ void TVipWidgetDataModelSortFilterProxy::sortBy(const int key)
     Q_EMIT configChanged();
 }
 
-// b1/ca45fec93b8a56e4
 bool TVipWidgetDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     const QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
@@ -235,7 +227,6 @@ bool TVipWidgetDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, c
     return m_showGroups || index.data(TVipWidgetDataModel::PrimaryRole).toBool();
 }
 
-// b1/26cde54b3894f746
 bool TVipWidgetDataModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     if (m_showGroups) {
@@ -430,35 +421,29 @@ void TVipWidgetController::runClick(const input::TGameActionList& candidates, co
         menu->showGameActions(entries, VipWidgetContext, m_mapper);
 }
 
-// b1/c4316c8600c4ccaf
 void TVipWidgetController::onVipDoubleClicked(const QString& VipName) { input::publish(makeNamed(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, VipName)); }
 
-// b1/a034e79693c33847
 void TVipWidgetController::onVipOrGroupClicked(const QString& VipName, const QString& GroupName, const int MouseButtonRaw,
                                                const int KeyboardModifiersRaw)
 {
     runClick(candidates(VipName, GroupName), MouseButtonRaw, KeyboardModifiersRaw);
 }
 
-// b1/5f6e53e1a2e6fcad
 void TVipWidgetController::onWidgetClicked(const int MouseButtonRaw, const int KeyboardModifiersRaw)
 {
     runClick(candidates({}, {}), MouseButtonRaw, KeyboardModifiersRaw);
 }
 
-// b1/e808c2095d54a1f7
 void TVipWidgetController::onPlayerNameToAddToVipListReceived(const QString& PlayerName)
 {
     input::publish(makeNamed(A::ADD_NEW_VIP, PlayerName));
 }
 
-// b1/67e26866a966dcc7
 void TVipWidgetController::onGroupNameToAddToVipListReceived(const QString& GroupName)
 {
     input::publish(makeNamed(A::ADD_NEW_VIP_GROUP, GroupName));
 }
 
-// b1/048f73c5e7920d78
 void TVipWidgetController::onGroupNameEditedReceived(const QString& GroupName)
 {
     if (m_editedGroupId < 0)
@@ -482,7 +467,6 @@ void TVipWidgetController::openAddGroupDialog()
     m_messageDialog->showMessage(qtTrId("no_more_userdefined_groups_caption"), qtTrId("no_more_userdefined_groups_text"));
 }
 
-// b1/19675bba2e526bba
 bool TVipWidgetController::handleAction(const input::TGameAction& action)
 {
     switch (action.type) {

@@ -31,7 +31,6 @@ THitpointManabarController::THitpointManabarController(QObject* parent)
     updateFromPlayer();
 }
 
-// b1/4519a356916e9e7d
 void THitpointManabarController::updateFromPlayer()
 {
     if (!tibia::game::localPlayer())
@@ -58,7 +57,6 @@ void THitpointManabarController::onOptionChanged(const QString& name)
 }
 
 // CIP .
-// b1/d212c222008f1ce6
 void THitpointManabarController::requestContextMenu()
 {
     TContextMenuController* menu = TContextMenuController::instance();

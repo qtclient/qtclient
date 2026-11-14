@@ -333,9 +333,9 @@ def _resync_tip_pack(src_dir: Path, dest_dir: Path) -> None:
     if not packs:
         return
     # Single tip pack slot — prefer QTCLIENT_PACK_ID, else branded product, else
-    # skip stock otclient/clientmods/minimap placeholders.
+    # skip stock clientmods/minimap placeholders.
     prefer = os.environ.get("QTCLIENT_PACK_ID", "").strip()
-    skip = {"otclient", "clientmods", "minimap", "myaac"}
+    skip = {"clientmods", "minimap", "myaac"}
     pack = next((p for p in packs if prefer and p.name == prefer), None)
     if pack is None:
         pack = next((p for p in packs if (p / "brand.json").is_file()), None)

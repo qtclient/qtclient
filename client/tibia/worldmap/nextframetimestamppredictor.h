@@ -42,8 +42,10 @@ class TNextFrameTimestampPredictor : public ::tibia::CipTyped
 public:
     /// Milliseconds on the engine clock (CIP: v2).
     qint64 predict() const;
+    qint64 v2() const { return predict(); }
     /// CIP: v3.
     void setOffset(qint64 micros) { m_offsetMicros = micros; }
+    void v3(qint64 micros) { setOffset(micros); }
 
 private:
     qint64 m_offsetMicros = 0;

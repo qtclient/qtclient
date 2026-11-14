@@ -326,10 +326,8 @@ void TSpeechBubbleOverlayQuickItem::triggerUpdate()
     layout();
 }
 
-// b1/eaec21475bda2889
 void TSpeechBubbleOverlayQuickItem::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)
 {
-    // b1/eaec21475bda2889
     cip::tibia::qmlcomponents::TSpeechBubbleOverlayQuickItem::geometryChange(newGeometry, oldGeometry);
     triggerUpdate();
 }

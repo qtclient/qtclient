@@ -1,74 +1,75 @@
 #include "creatures/creaturemovementspeedcalculator.h"
 
-#include "creatures/creaturespeedformula.h"
-#include "creatures/creaturestorage.h"
-#include <tibia/config/runtimegameconfig.h>
-#include <tibia/game/gamesession.h>
-#include "worldmap/worldmapstorage.h"
-#include "worldmap/worldmapfield.h"
-
-#include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace tibia::creatures {
 
-// b1/732ebf229d0725dc
-uint16_t TCreatureMovementSpeedCalculator::v9(TCreature& creature,
-                                              const bool ignoreDiagonal)
+namespace {
+
+// Out-of-range and NaN conversions yield the integer minimum, as the x86
+// truncating conversions do; the original relies on that before login, when
+// the formula and the beat are still zero.
+qint32 truncateToInt32(const double value)
 {
-    // CipSoft always divides by a positive speed.
-    // A transient 0 (parse gap / paralyze edge) must not freeze the tween.
-    const uint16_t speed = std::max<uint16_t>(1, creature.m_speed);
-
-    const Position& tilePos = creature.m_lastStepTo.isValid() ? creature.m_lastStepTo
-                                                             : creature.m_position;
-    tibia::worldmap::TWorldMapField* tile =
-        tibia::worldmap::fieldAt(tilePos.isValid() ? tilePos : creature.m_position);
-
-    const int serverBeat = tibia::game::getServerBeat();
-
-    int groundSpeed = 0;
-    if (tile)
-        groundSpeed = tile->getGroundSpeed();
-    if (groundSpeed == 0)
-        groundSpeed = 150;
-
-    if (groundSpeed != m_cache.groundSpeed || speed != m_cache.speed) {
-        m_cache.speed = speed;
-        m_cache.groundSpeed = static_cast<uint16_t>(groundSpeed);
-
-        uint32_t stepDuration = 1000u * static_cast<uint32_t>(groundSpeed);
-        if (hasWireSpeedFormula()) {
-            stepDuration /= std::max<uint16_t>(1, creature.m_calculatedStepSpeed);
-        } else {
-            stepDuration /= speed;
-        }
-
-        if (tibia::config::forcingNewWalkingFormula() || tibia::game::clientRevision() >= 860) {
-            stepDuration = ((stepDuration + static_cast<uint32_t>(serverBeat) - 1u)
-                            / static_cast<uint32_t>(serverBeat))
-                * static_cast<uint32_t>(serverBeat);
-        }
-
-        m_cache.duration = static_cast<uint16_t>(stepDuration);
-        m_cache.walkDuration = static_cast<uint16_t>(
-            std::min<int>(static_cast<int>(stepDuration) / tibia::config::spriteSize(), 16));
-
-        // Diagonal dirs (bitmask 0xaa → NE/SE/SW/NW) multiply the ground duration
-        // by 3 before beat rounding. Not the walk-tween continue scale.
-        const double diagonalFactor =
-            (tibia::game::clientRevision() > 810 || tibia::config::forcingNewWalkingFormula())
-            ? (creature.m_isPlayer ? tibia::config::playerDiagonalWalkSpeed()
-                                   : tibia::config::creatureDiagonalWalkSpeed())
-            : 3.0;
-        m_cache.diagonalDuration = static_cast<uint16_t>(stepDuration * diagonalFactor);
-    }
-
-    uint16_t duration = ignoreDiagonal ? m_cache.duration
-                                       : m_cache.getDuration(creature.m_lastStepDirection);
-
-    // Duration is fixed when TCreatureMovementTween::v9 installs the tween.
-    creature.m_stepDuration = duration;
-    return duration;
+    if (!(value > -2147483649.0 && value < 2147483648.0))
+        return std::numeric_limits<qint32>::min();
+    return static_cast<qint32>(value);
 }
 
-} // namespace tibia::creatures
+qint64 truncateToInt64(const double value)
+{
+    if (!(value >= -9223372036854775808.0 && value < 9223372036854775808.0))
+        return std::numeric_limits<qint64>::min();
+    return static_cast<qint64>(value);
+}
+
+}
+
+quint16 TCreatureMovementSpeedCalculator::effectiveSpeed(const quint16 speed) const
+{
+    const double value = std::log(static_cast<double>(speed) + m_b) * m_a + m_c + 0.5;
+    return static_cast<quint16>(truncateToInt32(value) & 0xffff);
+}
+
+void TCreatureMovementSpeedCalculator::setSpeedFormula(const double a, const double b, const double c)
+{
+    m_a = a;
+    m_b = b;
+    m_c = c;
+}
+
+qint64 TCreatureMovementSpeedCalculator::beatRoundedDuration(const int effectiveSpeed, const quint32 groundSpeed,
+                                                            const int beatMs)
+{
+    const double floored = std::floor(static_cast<double>(groundSpeed) * 1000.0 / static_cast<double>(effectiveSpeed));
+    const double beats = std::ceil(floored / static_cast<double>(beatMs));
+    return truncateToInt64(beats * static_cast<double>(beatMs));
+}
+
+qint64 TCreatureMovementSpeedCalculator::stepDuration(const quint16 speed, const worldmap::TWorldMapExtent& step,
+                                                     const int groundSpeed, const bool diagonalCost) const
+{
+    const EMovementDirection direction = directionOfStep(step);
+    int ground = groundSpeed;
+    if (diagonalCost && isDiagonal(direction))
+        ground *= 3;
+    return beatRoundedDuration(effectiveSpeed(speed), static_cast<quint32>(ground), static_cast<qint16>(m_serverBeat));
+}
+
+qint64 TCreatureMovementSpeedCalculator::stepDuration(const quint16 speed, const worldmap::TWorldMapExtent& step,
+                                                     const int groundSpeed) const
+{
+    directionOfStep(step); // only one-field steps have a duration
+    return beatRoundedDuration(effectiveSpeed(speed), static_cast<quint32>(groundSpeed),
+                               static_cast<qint16>(m_serverBeat));
+}
+
+qint64 TCreatureMovementSpeedCalculator::stepDurationWithDiagonalCost(const quint16 speed,
+                                                                     const worldmap::TWorldMapExtent& step,
+                                                                     const int groundSpeed) const
+{
+    return stepDuration(speed, step, groundSpeed, true);
+}
+
+}

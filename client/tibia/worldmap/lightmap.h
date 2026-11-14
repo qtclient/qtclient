@@ -37,8 +37,9 @@ public:
         return lightnessAt(subfield.toMapPixel());
     }
     static float lightnessAt(const QImage& image, const QPoint& mapPixel);
+    float v7(const QPoint& mapPixel) const { return lightnessAt(mapPixel); }
 
-    /// QColor::lightness of a field cell, 0 outside the grid (CIP:).
+    /// QColor::lightness of a field cell, 0 outside the grid (CIP sample used by WMP::v14).
     int fieldLightness(int fieldX, int fieldY) const { return fieldLightness(m_image, fieldX, fieldY); }
     static int fieldLightness(const QImage& image, int fieldX, int fieldY);
 

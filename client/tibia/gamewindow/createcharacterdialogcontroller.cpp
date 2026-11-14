@@ -163,7 +163,6 @@ void TWorldSelectionSortProxyModel::resetFilter()
     Q_EMIT filterChanged();
 }
 
-// b1/b911cdc82bd82d0d
 bool TWorldSelectionSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
     if (sourceRow >= m_source->worlds().size())
@@ -255,7 +254,6 @@ void TCreateCharacterDialogController::open(const bool accountHasNoCharacters)
     showDialog();
 }
 
-// b1/a30707c470973d33
 void TCreateCharacterDialogController::showDialog()
 {
     m_canCancelCharacterCreation = !m_noCharacters;
@@ -296,7 +294,6 @@ void TCreateCharacterDialogController::resetForm()
     Q_EMIT characterCreationDataChanged();
 }
 
-// b1/df16f5ccfc7c1313
 void TCreateCharacterDialogController::cancel()
 {
     resetForm();
@@ -304,7 +301,6 @@ void TCreateCharacterDialogController::cancel()
         dialog()->close();
 }
 
-// b1/1b52567c4b868d30
 void TCreateCharacterDialogController::suggestCharacterName()
 {
     post({ { QStringLiteral("Type"), QStringLiteral("GenerateCharacterName") } }, [this](const QJsonObject& reply) {
@@ -322,7 +318,6 @@ void TCreateCharacterDialogController::suggestCharacterName()
     });
 }
 
-// b1/e7eb80cd26a8c432
 void TCreateCharacterDialogController::updateCharacterName(const QString& Name)
 {
     m_characterName = Name;
@@ -345,7 +340,6 @@ void TCreateCharacterDialogController::updateCharacterName(const QString& Name)
     });
 }
 
-// b1/90b0996736766290
 void TCreateCharacterDialogController::createCharacter(const QString& CharacterName, const bool CharacterSexMale, const bool PlayTutorial,
                                                        const QString& WorldName)
 {
@@ -379,7 +373,6 @@ void TCreateCharacterDialogController::createCharacter(const QString& CharacterN
     });
 }
 
-// b1/1aaaf65a90133a19
 void TCreateCharacterDialogController::post(const QJsonObject& request, ReplyHandler onReply)
 {
     QNetworkRequest httpRequest(m_serviceUrl);
@@ -409,7 +402,6 @@ void TCreateCharacterDialogController::setPending(const int pending)
     Q_EMIT asyncOperationStatusChanged();
 }
 
-// b1/e384163a3f7cf721
 void TCreateCharacterDialogController::showError(const QString& message)
 {
     m_error->showMessage(qtTrId("create_character_dialog_caption"), message);

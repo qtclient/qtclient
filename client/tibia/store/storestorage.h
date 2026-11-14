@@ -203,6 +203,9 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
     QUrl m_imageBaseUrl;
     qint64 m_creditPacketSize = 1;
+public:
+    /// Tip Q→H wire: StoreButtonIndicators and UpdatingShopBalance from `serverMessageEnqueued`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 }

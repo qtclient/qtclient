@@ -4,7 +4,7 @@
 #
 # --tip is the applicationDirPath (desktop) or the directory that contains
 # tibia.wasm (wasm). Destination: <tip>/mods/<pack-id>
-# Keeps default packs (otclient, launcher clientmods/minimap); drops myaac
+# Keeps default packs (launcher clientmods/minimap); drops myaac
 # (product urls replace it) and any other non-default siblings.
 #
 # Usage:
@@ -44,7 +44,7 @@ pack_id="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("
 
 mods_root="$TIP/mods"
 # Keep default client + launcher packs; drop myaac (product urls) and unknowns.
-keep="otclient|clientmods|minimap|${pack_id}"
+keep="clientmods|minimap|${pack_id}"
 if [[ -d "$mods_root" ]]; then
   for sibling in "$mods_root"/*; do
     [[ -e "$sibling" ]] || continue

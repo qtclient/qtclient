@@ -60,7 +60,6 @@ TSidebarController::~TSidebarController()
     delete m_item;
 }
 
-// b1/148e92aaa4db9daa
 void TSidebarController::addPanel(QQuickItem* panel)
 {
     panel->setProperty("identifier", m_nextIdentifier++);
@@ -68,13 +67,11 @@ void TSidebarController::addPanel(QQuickItem* panel)
     panel->setParent(m_upperPane);
 }
 
-// b1/9a4bd4a09d6c797c
 void TSidebarController::movePanelToEnd(QQuickItem* panel)
 {
     panel->setProperty("identifier", m_nextIdentifier++);
 }
 
-// b1/792965b49348607c
 void TSidebarController::addWidget(TSidebarWidget* widget, const uint identifier)
 {
     QQuickItem* item = widget->quickItem();
@@ -86,7 +83,6 @@ void TSidebarController::addWidget(TSidebarWidget* widget, const uint identifier
     item->setParentItem(m_lowerPane);
 }
 
-// b1/b45617d0d16d3b31
 bool TSidebarController::removeWidget(TSidebarWidget* widget, const bool keepParentItem)
 {
     QQuickItem* item = widget->quickItem();
@@ -100,13 +96,11 @@ bool TSidebarController::removeWidget(TSidebarWidget* widget, const bool keepPar
     return true;
 }
 
-// b1/3e74d459c1de32a0
 int TSidebarController::remainingHeight() const
 {
     return m_item ? m_item->property("remainingHeight").toInt() : 0;
 }
 
-// b1/6b768282e83b1e89
 void TSidebarController::setAcceptsWidgetDrops(const bool accepts)
 {
     if (accepts == m_acceptsWidgetDrops)
@@ -141,7 +135,6 @@ TSidebarController* TSidebarManager::sidebar(const uint sidebarId) const
     return it != m_sidebars.end() ? it->second.get() : nullptr;
 }
 
-// b1/3948f15292eb5456
 void TSidebarManager::setSidebarCount(const Side side, const int count)
 {
     int& current = side == Right ? m_rightCount : m_leftCount;
@@ -156,7 +149,6 @@ void TSidebarManager::setSidebarCount(const Side side, const int count)
     Q_EMIT sidebarMangerOptionsChanged();
 }
 
-// b1/779ecc8bfeafd36a
 void TSidebarManager::addSidebar(const Side side)
 {
     int& count = side == Right ? m_rightCount : m_leftCount;
@@ -176,7 +168,6 @@ void TSidebarManager::removeSidebar(const Side side)
     enqueueWidgetConfigurationChangedToBeEmitted();
 }
 
-// b1/61908bfd1ec6462b
 void TSidebarManager::addPanel(cip::tibia::gamewindow::TSidebarPanelControllerBase* controller, QQuickItem* panel)
 {
     TSidebarController* main = sidebar(0);
@@ -188,14 +179,12 @@ void TSidebarManager::addPanel(cip::tibia::gamewindow::TSidebarPanelControllerBa
     m_panelConfigurationTimer.start();
 }
 
-// b1/3329f5b9c390df7c
 void TSidebarManager::movePanelToEnd(QQuickItem* panel)
 {
     if (TSidebarController* main = sidebar(0); main && panel)
         main->movePanelToEnd(panel);
 }
 
-// b1/0a7b90212a3636af
 void TSidebarManager::addWidget(TSidebarWidget* widget)
 {
     if (!widget || m_sidebars.empty())
@@ -211,7 +200,6 @@ void TSidebarManager::addWidget(TSidebarWidget* widget)
     addWidget(target, widget);
 }
 
-// b1/0a7b90212a3636af
 void TSidebarManager::addWidget(const uint sidebarId, TSidebarWidget* widget, const uint identifier)
 {
     TSidebarController* target = sidebar(sidebarId);
@@ -229,7 +217,6 @@ void TSidebarManager::addWidget(const uint sidebarId, TSidebarWidget* widget, co
     enqueueWidgetConfigurationChangedToBeEmitted();
 }
 
-// b1/a70a0b5b07eccf6e
 bool TSidebarManager::removeWidget(TSidebarWidget* widget)
 {
     if (!widget)
@@ -252,7 +239,6 @@ std::vector<uint> TSidebarManager::sidebarIds() const
     return ids;
 }
 
-// b1/191094d035b742e4
 void TSidebarManager::moveWidgetToSidebar(const int targetSidebar, TSidebarWidget* widget)
 {
     if (targetSidebar < 0 || !hasSidebar(static_cast<uint>(targetSidebar)) || !widget)
@@ -267,7 +253,6 @@ void TSidebarManager::moveWidgetToSidebar(const int targetSidebar, TSidebarWidge
     addWidget(static_cast<uint>(targetSidebar), widget);
 }
 
-// b1/918d19ccf0ebb117
 void TSidebarManager::onWidgetDragChanged(const uint sourceSidebar, const bool active)
 {
     for (const auto& [id, sidebar] : m_sidebars)

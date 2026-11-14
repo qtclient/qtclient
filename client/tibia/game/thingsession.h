@@ -37,6 +37,9 @@ void registerEffectVariant(uint16_t virtualId, uint16_t baseId, const std::strin
 void removeAttachedEffect(uint16_t id);
 void registerAttachedEffectByThing(uint16_t id, std::string_view note, uint16_t baseId,
                                    uint8_t category);
+/// Show / hide a registered attached effect on a creature (product transport).
+void attachCreatureEffect(uint32_t creatureId, uint16_t effectId);
+void detachCreatureEffect(uint32_t creatureId, uint16_t effectId);
 
 /// Race catalog peels (expedition / lobby / teamfinder name lookup).
 std::string raceName(uint32_t raceId);

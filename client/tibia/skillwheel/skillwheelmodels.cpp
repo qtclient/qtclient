@@ -206,7 +206,6 @@ void TInventoryGemSortFilterProxyModel::refilter()
     Q_EMIT filterChanged();
 }
 
-// b1/39b944cebe78d846
 void TInventoryGemSortFilterProxyModel::setFilterModName(const QString& v)
 {
     if (v == m_filterModName)

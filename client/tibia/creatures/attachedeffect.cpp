@@ -22,7 +22,6 @@
 
 #include "attachedeffect.h"
 
-#include "animation/spriteanimator.h"
 #include <tibia/config/runtimegameconfig.h>
 #include "tibia/assets/thingtype.h"
 #include "tibia/assets/things.h"
@@ -115,12 +114,17 @@ int AttachedEffect::getCurrentAnimationPhase()
     const auto thingType = getThingType();
     if (!thingType) return 0;
 
-    const auto* animator = thingType->getIdleAnimator();
-    if (!animator && thingType->isAnimateAlways())
-        animator = thingType->getAnimator();
-
-    if (animator)
-        return animator->getPhaseAt(m_animationTimer, getSpeed());
+    const tibia::animation::TAnimationInfo* info = thingType->idleAnimation();
+    if (!info && thingType->isAnimateAlways())
+        info = thingType->movingAnimation();
+    if (info) {
+        if (!m_phaseAnimator || m_phaseAnimatorType != thingType) {
+            m_phaseAnimator.emplace(*info, 0);
+            m_phaseAnimatorType = thingType;
+        }
+        m_phaseAnimator->update(static_cast<qint64>(static_cast<double>(m_animationTimer.ticksElapsed()) * getSpeed()));
+        return m_phaseAnimator->phase();
+    }
 
     if (thingType->isEffect()) {
         const int animationPhases = thingType->getAnimationPhases();

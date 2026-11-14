@@ -126,7 +126,6 @@ void ownProductSurface(QObject* parent)
     (void)IGamesessionManager::instance();
 }
 
-// b1/95257f35e515e8a9
 bool TPreventCloseEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     return cip::tibia::client::TPreventCloseEventFilter::eventFilter(watched, event);

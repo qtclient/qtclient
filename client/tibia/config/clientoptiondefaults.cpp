@@ -1,5 +1,7 @@
 #include "clientoptiondefaults.h"
 
+#include "gamewindow/buttonbarcontroller.h"
+
 #include <QJsonArray>
 #include <QSet>
 
@@ -263,6 +265,8 @@ QStringList defaultControlButtonIds()
     QStringList ids;
     for (const char* id : ControlButtonIds)
         ids << QString::fromLatin1(id);
+    // Pack Display Shortcuts registered via addProductShortcut (default-enabled).
+    ids += gamewindow::TButtonBarController::defaultEnabledProductShortcutIds();
     return ids;
 }
 

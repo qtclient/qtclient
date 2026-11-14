@@ -4,6 +4,7 @@
  */
 
 #include "worldmapfield.h"
+#include "effects/effectstorage.h"
 #include "tibia/runtime/host.h"
 
 #include "appearances/appearanceinstance.h"
@@ -114,7 +115,7 @@ void TWorldMapField::recalculateThingFlag()
             }
         }
     }
-    for (const auto& appearance : m_effectAppearances) {
+    for (const auto& appearance : effectAppearances()) {
         if (appearance && appearance->thingType() && appearance->thingType()->hasLight())
             m_thingTypeFlag |= HAS_LIGHT;
     }
@@ -234,7 +235,6 @@ void TWorldMapField::clean()
     // onDisappear/onAppear here — that cancelled walk tweens and could leave
     // item appearances behind if removeThing short-circuited the erase loop.
     m_highlightThingStackPos = -1;
-    m_effectAppearances.clear();
     m_stack.clear();
     rebuildAppearanceCache();
 
@@ -250,6 +250,10 @@ void TWorldMapField::addWalkingCreature(const uint32_t creatureId)
 {
     if (!creatureId)
         return;
+    // One walking slot per id — duplicate pushes drew the same creature twice
+    // when covered-field updates raced a failed remove.
+    if (std::ranges::find(m_walkingCreatureIds, creatureId) != m_walkingCreatureIds.end())
+        return;
     m_walkingCreatureIds.push_back(creatureId);
     if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
         if (const auto row = storage->creatureAt(creatureId)) {
@@ -263,11 +267,9 @@ void TWorldMapField::removeWalkingCreature(const uint32_t creatureId)
 {
     if (!creatureId)
         return;
-    const auto it = std::ranges::find(m_walkingCreatureIds, creatureId);
-    if (it == m_walkingCreatureIds.end())
+    const auto erased = std::erase(m_walkingCreatureIds, creatureId);
+    if (erased == 0)
         return;
-
-    m_walkingCreatureIds.erase(it);
     recalculateThingFlag();
 }
 
@@ -275,60 +277,19 @@ void TWorldMapField::updateThingStackPos() {
     // Map Creature keep-alive retired — stack rows are appearance + creatureId only.
 }
 
-void TWorldMapField::addEffectAppearance(const appearances::TAppearanceInstancePtr& appearance)
+const std::vector<appearances::TAppearanceInstancePtr>& TWorldMapField::effectAppearances() const
 {
-    if (!appearance || appearance->category() != ThingCategoryEffect)
-        return;
+    return effects::TEffectStorage::instance().effectsAt(getPosition());
+}
 
-    auto* effectInstance = dynamic_cast<appearances::TEffectInstance*>(appearance.get());
-    if (!effectInstance)
-        return;
+bool TWorldMapField::hasEffect() const
+{
+    return effects::TEffectStorage::instance().hasEffectsAt(getPosition());
+}
 
-    const bool mustOptimize = tibia::host::app().mustOptimize() || tibia::host::app().isForcedEffectOptimization();
-
-    for (const auto& prevAppearance : m_effectAppearances) {
-        const auto* prevEffect = dynamic_cast<const appearances::TEffectInstance*>(prevAppearance.get());
-        if (!prevEffect || !prevEffect->canDrawEffect())
-            continue;
-
-        if (mustOptimize && effectInstance->effectSize() > prevEffect->effectSize()) {
-            const_cast<appearances::TEffectInstance*>(prevEffect)->setCanDrawEffect(false);
-        } else if (mustOptimize || appearance->id() == prevAppearance->id()) {
-            if (!effectInstance->waitForFieldEffect(*prevEffect))
-                return;
-        }
-    }
-
-    if (!effectInstance->isTopEffectType())
-        m_effectAppearances.insert(m_effectAppearances.begin(), appearance);
-    else
-        m_effectAppearances.push_back(appearance);
-
-    effectInstance->beginFieldEffectLife(getPosition());
-    // CIP removes the specific field appearance when its animator goes inactive
-    // (TFieldEffectInstance::v14 →). Schedule by instance, not clientId
-    // (same-id effects on one tile must not kill each other / leave orphans).
-    if (!effectInstance->permanent() || tibia::game::isSceneFrozen()) {
-        const Position pos = getPosition();
-        const std::weak_ptr<appearances::TAppearanceInstance> weakAppearance = appearance;
-        // Life = optional start delay (waitForFieldEffect) + animator duration.
-        const int waitMs = std::max(
-            1, static_cast<int>(effectInstance->duration()) /* start delay applied inside isFieldEffectAlive */);
-        tibia::schedule::after([pos, weakAppearance] {
-            const auto locked = weakAppearance.lock();
-            if (!locked)
-                return;
-            if (const auto& tile = fieldAt(pos)) {
-                // Purge path also drops expired peers; remove this instance when due.
-                tile->purgeExpiredEffects();
-                tile->removeEffectAppearance(locked);
-            }
-        }, waitMs);
-    }
-
-    if (ThingType* effectType = appearance->thingType(); effectType && effectType->hasLight())
-        m_thingTypeFlag |= HAS_LIGHT;
-
+void TWorldMapField::effectsChanged()
+{
+    recalculateThingFlag();
     notifyAppearanceInstancesChanged();
 }
 
@@ -403,13 +364,16 @@ void TWorldMapField::addCreatureId(const uint32_t creatureId, int stackPos)
 
     // CIP field stack holds at most one slot per creature id — re-place replaces
     // the existing entry (MoveCreature after a partial remove must not trail).
+    const auto setStoredPosition = [this](const uint32_t id) {
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (const auto row = storage->getOrCreate(id))
+                row->setPosition(getPosition());
+        }
+    };
     if (const int existing = creatureStackPos(creatureId); existing >= 0) {
         if (stackPos < 0 || stackPos == 255 || stackPos == existing) {
             syncCreatureStackAppearance(creatureId);
-            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-                if (const auto row = storage->getOrCreate(creatureId))
-                    row->setPosition(getPosition());
-            }
+            setStoredPosition(creatureId);
             return;
         }
         removeCreatureById(creatureId);
@@ -543,39 +507,6 @@ bool TWorldMapField::removeCreatureById(const uint32_t creatureId)
     checkForDetachableThing();
     notifyAppearanceInstancesChanged();
     return true;
-}
-
-bool TWorldMapField::removeEffectByClientId(const uint16_t clientId)
-{
-    for (auto it = m_effectAppearances.begin(); it != m_effectAppearances.end(); ++it) {
-        if (*it && (*it)->id() == clientId) {
-            m_effectAppearances.erase(it);
-            notifyAppearanceInstancesChanged();
-            return true;
-        }
-    }
-    return false;
-}
-
-bool TWorldMapField::removeEffectAppearance(const appearances::TAppearanceInstancePtr& appearance)
-{
-    const auto it = std::find(m_effectAppearances.begin(), m_effectAppearances.end(), appearance);
-    if (it == m_effectAppearances.end())
-        return false;
-    m_effectAppearances.erase(it);
-    notifyAppearanceInstancesChanged();
-    return true;
-}
-
-void TWorldMapField::purgeExpiredEffects()
-{
-    const auto before = m_effectAppearances.size();
-    std::erase_if(m_effectAppearances, [](const appearances::TAppearanceInstancePtr& appearance) {
-        const auto* effect = dynamic_cast<const appearances::TEffectInstance*>(appearance.get());
-        return !effect || !effect->isFieldEffectAlive();
-    });
-    if (m_effectAppearances.size() != before)
-        notifyAppearanceInstancesChanged();
 }
 
 ThingPtr TWorldMapField::getThing(const int stackPos) const
@@ -778,6 +709,16 @@ int TWorldMapField::getGroundSpeed()
     return 100;
 }
 
+int TWorldMapField::movementGroundSpeed() const
+{
+    for (const auto& entry : m_stack) {
+        const ThingType* type = entryThingType(entry.appearance);
+        if (type && type->isGround())
+            return type->getGroundSpeed();
+    }
+    return 255;
+}
+
 uint8_t TWorldMapField::getMinimapColorByte()
 {
     if (m_minimapColor != 0)
@@ -820,6 +761,34 @@ bool TWorldMapField::isWalkable(const bool ignoreCreatures) const
     }
 
     return true;
+}
+
+int TWorldMapField::walkState() const
+{
+    // An unpassable item blocks and an item without a movement animation is
+    // unsure. The first creature ends the scan: an unpassable one blocks, or is
+    // unsure when it is a player. Otherwise the field is free once a ground
+    // item was seen.
+    bool ground = false;
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    for (const auto& entry : m_stack) {
+        if (entry.creatureId != 0) {
+            const std::shared_ptr<tibia::creatures::TCreature> row = storage ? storage->creatureAt(entry.creatureId) : nullptr;
+            if (row && !row->isPassable())
+                return row->creatureType() != 0 ? 1 : 2;
+            return ground ? 0 : 2;
+        }
+        const ThingType* type = entryThingType(entry.appearance);
+        if (!type)
+            continue;
+        if (type->isGround())
+            ground = true;
+        if (type->isNotWalkable())
+            return 1;
+        if (type->hasNoMovementAnimation())
+            return 2;
+    }
+    return ground ? 0 : 2;
 }
 
 bool TWorldMapField::isCompletelyCovered(const uint8_t firstFloor, const bool resetCache)

@@ -17,6 +17,9 @@ namespace tibia {
 namespace protobuf {
 namespace protocol {
 class GameserverMessageLoginAdvice;
+class GameserverMessagePlayerDataBasic;
+class GameserverMessagePlayerSkills;
+class GameserverMessagePlayerDataCurrent;
 class GameserverMessageLoginError;
 class GameserverMessageLoginSuccess;
 class GameserverMessageLoginWait;
@@ -75,6 +78,9 @@ class TBlessingsProtocolMessageHandler final : public cip::tibia::game::TBlessin
     Q_OBJECT
 public:
     using cip::tibia::game::TBlessingsProtocolMessageHandler::TBlessingsProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TBossDifficultySelectionProtocolMessageHandler final : public cip::tibia::game::TBossDifficultySelectionProtocolMessageHandler
@@ -82,6 +88,9 @@ class TBossDifficultySelectionProtocolMessageHandler final : public cip::tibia::
     Q_OBJECT
 public:
     using cip::tibia::game::TBossDifficultySelectionProtocolMessageHandler::TBossDifficultySelectionProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TEditTextProtocolMessageHandler final : public cip::tibia::game::TEditTextProtocolMessageHandler
@@ -89,6 +98,9 @@ class TEditTextProtocolMessageHandler final : public cip::tibia::game::TEditText
     Q_OBJECT
 public:
     using cip::tibia::game::TEditTextProtocolMessageHandler::TEditTextProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TExperienceCalculator final : public ::tibia::CipTyped {
@@ -208,11 +220,23 @@ public:
     using cip::tibia::game::TPlayerGameActionHandler::TPlayerGameActionHandler;
 };
 
+/// CIP `game::TPlayerProtocolMessageHandler` — native Q→H for the player's own data.
 class TPlayerProtocolMessageHandler final : public cip::tibia::game::TPlayerProtocolMessageHandler
 {
     Q_OBJECT
 public:
     using cip::tibia::game::TPlayerProtocolMessageHandler::TPlayerProtocolMessageHandler;
+
+    static TPlayerProtocolMessageHandler* liveInstance();
+    static void setLiveInstance(TPlayerProtocolMessageHandler* handler);
+
+    /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
+    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+
+private:
+    void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
+    void handlePlayerSkillsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerSkills& message);
+    void handlePlayerDataCurrentMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataCurrent& message);
 };
 
 class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler
@@ -220,6 +244,9 @@ class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumPr
     Q_OBJECT
 public:
     using cip::tibia::game::TPremiumProtocolMessageHandler::TPremiumProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TPremiumTimeStorage final : public cip::tibia::game::TPremiumTimeStorage
@@ -234,6 +261,9 @@ class TServerModalDialogProtocolMessageHandler final : public cip::tibia::game::
     Q_OBJECT
 public:
     using cip::tibia::game::TServerModalDialogProtocolMessageHandler::TServerModalDialogProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TSessiondumpGameSessionMetaInfo final : public ::tibia::CipTyped {

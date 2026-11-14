@@ -107,7 +107,6 @@ void TStatusBarController::setStorage(game::TStatusbarStorage* storage)
     updateFromPlayer();
 }
 
-// b1/d31a0e5af7b44d86
 void TStatusBarController::applyStorage()
 {
     rebuildSkillLists();
@@ -123,7 +122,6 @@ void TStatusBarController::applyStorage()
     setAnchorAndStyle(anchor, style >= Compact && style <= Parallel ? style : Default, true);
 }
 
-// b1/fa1be10694512d59
 void TStatusBarController::onStorageChanged()
 {
     if (!m_storage)
@@ -147,7 +145,6 @@ void TStatusBarController::setAnchorAndStyle(const int anchor, const int style, 
     Q_EMIT dialogStyleChanged();
 }
 
-// b1/23e9d42aaf38e529
 void TStatusBarController::rebuildSkillLists()
 {
     refreshSkills();
@@ -172,14 +169,12 @@ void TStatusBarController::rebuildSkillLists()
     Q_EMIT skillsChanged();
 }
 
-// b1/0d267881b25584e5
 void TStatusBarController::refreshSkills()
 {
     for (size_t i = 0; i < m_entries.size(); ++i)
         m_entries[i]->assign(game::buildSkillEntry(EntryTypes[i]));
 }
 
-// b1/a1dd4f23f7c7110e
 void TStatusBarController::updateFromPlayer()
 {
     Q_EMIT hitpiontManaValuesChanged();
@@ -231,7 +226,6 @@ void TStatusBarController::onClickedOpenStoreXPBoost()
     input::publish(action);
 }
 
-// b1/18ae5edcf471c479
 void TStatusBarController::requestContextMenu()
 {
     TContextMenuController* menu = TContextMenuController::instance();

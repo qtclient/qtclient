@@ -219,16 +219,6 @@ bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetI
             out->set_deco_item_id(deco);
     }
 
-    if (tibia::game::cipFeature(tibia::client::GameItemShader)) {
-        std::string shader;
-        if (r.string(shader))
-            out->set_shader(shader);
-    }
-    if (tibia::game::cipFeature(tibia::client::GameItemTooltipV8)) {
-        std::string tooltip;
-        if (r.string(tooltip))
-            out->set_tooltip(tooltip);
-    }
 
     return true;
 }
@@ -348,10 +338,6 @@ void writeInventoryItem(ClassicWriter& w, const ProtocolInventoryItem& item)
     if (tibia::game::cipFeature(tibia::client::GameWrapKit) && type->isDecoKit())
         w.u16(uint16_t(item.has_deco_item_id() ? item.deco_item_id() : 0));
 
-    if (tibia::game::cipFeature(tibia::client::GameItemShader))
-        w.string(item.has_shader() ? item.shader() : std::string());
-    if (tibia::game::cipFeature(tibia::client::GameItemTooltipV8))
-        w.string(item.has_tooltip() ? item.tooltip() : std::string());
 }
 
 } // namespace tibia::protocol

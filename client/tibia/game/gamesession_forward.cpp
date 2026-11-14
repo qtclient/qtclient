@@ -645,11 +645,6 @@ void sendTeleport(const Position& pos)
     qtclientGameHub().sendTeleport(pos);
 }
 
-void sendTyping(const bool typing)
-{
-    qtclientGameHub().sendTyping(typing);
-}
-
 void sendTutorialChangeVocation(uint8_t vocationClientId)
 {
     qtclientGameHub().sendTutorialChangeVocation(vocationClientId);
@@ -925,10 +920,6 @@ void requestStop()
     qtclientGameHub().requestStop();
 }
 
-void wireAutoWalk(const std::vector<tibia::client::Direction>& dirs, const Position& startPos)
-{
-    qtclientGameHub().autoWalk(dirs, startPos);
-}
 
 } // namespace game
 } // namespace tibia

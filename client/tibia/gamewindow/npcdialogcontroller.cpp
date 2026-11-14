@@ -7,6 +7,7 @@
 #include <client/outfit.h>
 
 #include <QGuiApplication>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -108,7 +109,6 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
     });
 }
 
-// b1/b0d55cb4cf20313a
 QString TNpcDialogController::partnerNamesOf(const std::vector<uint32_t>& npcIds)
 {
     QStringList names;
@@ -123,7 +123,6 @@ QString TNpcDialogController::partnerNamesOf(const std::vector<uint32_t>& npcIds
     return names.join(QStringLiteral(", ")) + qtTrId("connecting_and") + last;
 }
 
-// b1/917726ce358b945a
 void TNpcDialogController::onNpcChatWindow(const std::vector<uint32_t>& npcIds, std::vector<TNpcKeywordButtonModel::Button> buttons)
 {
     if (m_remote)
@@ -150,7 +149,6 @@ TNpcDialogController::~TNpcDialogController()
         m_chatControl->setNpcDialog(nullptr);
 }
 
-// b1/86a8e33d5e268485
 void TNpcDialogController::closeButtonPressed()
 {
     if (m_remote) {
@@ -193,7 +191,6 @@ void TNpcDialogController::sendKeyword(const QString& Keyword)
         item->setProperty("currentChatInput", QString());
 }
 
-// b1/824f3b531d897f36
 void TNpcDialogController::pressEnter()
 {
     QQuickItem* item = dialog()->item();
@@ -205,7 +202,6 @@ void TNpcDialogController::pressEnter()
     item->setProperty("currentChatInput", rest);
 }
 
-// b1/c1c2823b02876348
 void TNpcDialogController::setInputText(const QString& text, const bool send, const bool isSpell, int)
 {
     QQuickItem* item = dialog()->item();
@@ -375,6 +371,15 @@ void TNpcDialogController::afterHide()
 
 bool TNpcDialogController::eventFilter(QObject* watched, QEvent* event)
 {
+    // product remote sessions: ESC closes (CIP in-world NPC keeps Escape for game hotkeys;
+    // NpcDialog.qml's onCancelPressedFunction is never reached for that reason).
+    if (m_remote && dialog()->isShown() && event->type() == QEvent::KeyPress) {
+        const auto* key = static_cast<QKeyEvent*>(event);
+        if (key->key() == Qt::Key_Escape && !key->isAutoRepeat()) {
+            closeButtonPressed();
+            return true;
+        }
+    }
     if (event->type() == QEvent::MouseButtonPress && qobject_cast<QQuickWindow*>(watched)) {
         if (QQuickItem* item = dialog()->item()) {
             const auto* press = static_cast<QMouseEvent*>(event);

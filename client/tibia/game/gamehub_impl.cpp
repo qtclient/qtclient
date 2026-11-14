@@ -31,7 +31,12 @@
 #include <tibia/config/runtimegameconfig.h>
 #include "client/item.h"
 #include <tibia/game/localplayersessionthing.h>
-#include "game/localplayergopath.h"
+#include "input/playermovementintenthandler.h"
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
+#include "app/clientoptions.h"
+#include "config/clientoptiondefaults.h"
+#include "minimap/waypointcosts.h"
 #include <tibia/game/mapsession.h>
 #include "client/protocolgame.h"
 #include "protocol/protocolcodes.h"
@@ -41,7 +46,9 @@
 #include "worldmap/worldmapfield.h"
 #include "container/containerciptypes.h"
 #include "creatures/creaturestorage.h"
+#include "creatures/walkdebug.h"
 #include "framework/core/clock.h"
+#include <QStringList>
 #include <tibia/schedule/schedule.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gameservergamesession.h>
@@ -87,11 +94,158 @@ void Game::terminate()
     m_protocolGame = nullptr;
 }
 
-void Game::rebindLocalPlayerGoPath()
+namespace {
+
+struct TMovementOptions
 {
-    m_localPlayerGoPath.reset();
-    if (m_localPlayer)
-        m_localPlayerGoPath = std::make_unique<LocalPlayerGoPath>(*m_localPlayer);
+    bool alwaysTurnTowardsMoveDirection = false;
+    bool autoChaseEnabled = false;
+    int keyboardDelayMs = 250;
+
+    void load()
+    {
+        const QJsonObject options = tibia::app::ClientOptions::load().options();
+        const QJsonObject& defaults = tibia::config::defaultClientOptions();
+        const auto value = [&](const char* name) {
+            const QLatin1String key(name);
+            return options.contains(key) ? options.value(key) : defaults.value(key);
+        };
+        alwaysTurnTowardsMoveDirection = value("alwaysTurnTowardsMoveDirection").toBool();
+        autoChaseEnabled = value("autoChaseEnabled").toBool();
+        keyboardDelayMs = value("keyboardDelayUseDefault").toBool(true) ? 250 : value("keyboardDelayMs").toInt(250);
+    }
+};
+
+/// A field the planner avoids: not free (blocked or unsure) or marked avoid.
+bool isAvoidedField(tibia::worldmap::TWorldMapField& field)
+{
+    return field.walkState() != 0 || !field.isPathable();
+}
+
+/// Minimap costs, overridden by the fields the client sees: an avoided field or
+/// one with an unpassable item is blocked, else the first ground item's step
+/// cost (blocked when there is none), at most 250.
+tibia::input::WaypointCost snapshotWaypointCost()
+{
+    std::shared_ptr<tibia::minimap::TWaypointCosts> minimap = tibia::game::waypointCosts();
+    return [minimap](const int x, const int y, const int z) -> quint8 {
+        tibia::worldmap::TWorldMapStorage* map = tibia::worldmap::TWorldMapStorage::ensureStorage();
+        if (tibia::worldmap::TWorldMapField* field = map->fieldAt(tibia::worldmap::TWorldMapCoordinate(x, y, z))) {
+            if (isAvoidedField(*field) || !field->isWalkable(true))
+                return tibia::minimap::TWaypointCosts::BlockedCost;
+            if (const int cost = field->movementGroundSpeed(); cost > 0)
+                return static_cast<quint8>(std::min(cost, 250));
+            return minimap ? minimap->costAt(x, y, z) : tibia::minimap::TWaypointCosts::UnknownCost;
+        }
+        // The server sends nothing for a field without ground, so an aware coordinate
+        // with no field is void, as the minimap records it once the area is seen.
+        if (tibia::game::isAwareOf({ x, y, z }))
+            return tibia::minimap::TWaypointCosts::BlockedCost;
+        return minimap ? minimap->costAt(x, y, z) : tibia::minimap::TWaypointCosts::UnknownCost;
+    };
+}
+
+/// The avoided fields in view on the player's floor.
+std::vector<tibia::worldmap::TWorldMapCoordinate> avoidedFieldsInView()
+{
+    std::vector<tibia::worldmap::TWorldMapCoordinate> fields;
+    const Position center = tibia::game::localPlayerPosition();
+    if (!center.isValid())
+        return fields;
+    tibia::worldmap::TWorldMapStorage* map = tibia::worldmap::TWorldMapStorage::ensureStorage();
+    for (int dy = -8; dy <= 8; ++dy) {
+        for (int dx = -10; dx <= 10; ++dx) {
+            const tibia::worldmap::TWorldMapCoordinate c(center.x + dx, center.y + dy, center.z);
+            if (!tibia::game::isAwareOf({ c.x, c.y, c.z }))
+                continue;
+            if (tibia::worldmap::TWorldMapField* field = map->fieldAt(c); field && isAvoidedField(*field))
+                fields.push_back(c);
+        }
+    }
+    return fields;
+}
+
+}
+
+void Game::createMovementIntent()
+{
+    using tibia::input::TPlayerMovementIntentHandler;
+    m_movementIntent.reset();
+    if (!m_localPlayer)
+        return;
+    auto options = std::make_shared<TMovementOptions>();
+    options->load();
+    TPlayerMovementIntentHandler::Environment env;
+    env.now = [] { return static_cast<qint64>(g_clock.millis()); };
+    env.player = [this]() -> tibia::creatures::TCreature* {
+        tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+        if (!storage || !m_localPlayer || m_localPlayer->getId() == 0)
+            return nullptr;
+        const auto row = storage->creatureAt(m_localPlayer->getId());
+        return row && row->position().isValid() ? row.get() : nullptr;
+    };
+    env.map = [] { return tibia::worldmap::TWorldMapStorage::ensureStorage(); };
+    env.waypointCost = snapshotWaypointCost;
+    env.blockedFields = avoidedFieldsInView;
+    env.alwaysTurnTowardsMoveDirection = [options] { return options->alwaysTurnTowardsMoveDirection; };
+    env.keyboardDelayMs = [options] { return options->keyboardDelayMs; };
+    env.stopChaseAndFollow = [this, options] {
+        if (!options->autoChaseEnabled && isAttacking() && m_chaseMode == tibia::client::ChaseOpponent)
+            setChaseMode(tibia::client::DontChase);
+        if (isFollowing()) {
+            tibia::input::publish(tibia::input::makeAction(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE));
+            tibia::input::publish(tibia::input::makeAction(tibia::input::EGameAction::STOP_ATTACKING_CREATURE));
+        }
+    };
+    env.stopFollowing = [] {
+        tibia::input::publish(tibia::input::makeAction(tibia::input::EGameAction::STOP_FOLLOWING_CREATURE));
+    };
+    env.isInView = [](const tibia::worldmap::TWorldMapCoordinate& coordinate) {
+        return tibia::game::isAwareOf({ coordinate.x, coordinate.y, coordinate.z });
+    };
+    env.playerStates = [] { return static_cast<quint64>(tibia::game::localPlayerStates()); };
+    env.showFailure = [](const QString& textId) {
+        const std::string text = qtTrId(textId.toLatin1().constData()).toStdString();
+        tibia::game::notify("onTextMessage", tibia::client::MessageFailure, std::string_view(text));
+    };
+    m_movementIntent = std::make_unique<TPlayerMovementIntentHandler>(std::move(env));
+    TPlayerMovementIntentHandler* intent = m_movementIntent.get();
+    QObject::connect(tibia::app::ClientOptionsNotifier::instance(), &tibia::app::ClientOptionsNotifier::optionChanged, intent,
+                     [options](const QString& name) {
+                         if (name.startsWith(QLatin1String("keyboardDelay")) || name == QLatin1String("alwaysTurnTowardsMoveDirection")
+                             || name == QLatin1String("autoChaseEnabled"))
+                             options->load();
+                     });
+    const auto wire = [this](void (ProtocolGame::*send)()) {
+        return [this, send] {
+            if (canPerformGameAction() && m_protocolGame)
+                (m_protocolGame.get()->*send)();
+        };
+    };
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoNorth, intent, wire(&ProtocolGame::sendWalkNorth));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoNorthEast, intent, wire(&ProtocolGame::sendWalkNorthEast));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoEast, intent, wire(&ProtocolGame::sendWalkEast));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoSouthEast, intent, wire(&ProtocolGame::sendWalkSouthEast));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoSouth, intent, wire(&ProtocolGame::sendWalkSouth));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoSouthWest, intent, wire(&ProtocolGame::sendWalkSouthWest));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoWest, intent, wire(&ProtocolGame::sendWalkWest));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoNorthWest, intent, wire(&ProtocolGame::sendWalkNorthWest));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendRotateNorth, intent, wire(&ProtocolGame::sendTurnNorth));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendRotateEast, intent, wire(&ProtocolGame::sendTurnEast));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendRotateSouth, intent, wire(&ProtocolGame::sendTurnSouth));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendRotateWest, intent, wire(&ProtocolGame::sendTurnWest));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendStop, intent, wire(&ProtocolGame::sendStop));
+    QObject::connect(intent, &TPlayerMovementIntentHandler::sendGoPath, intent,
+                     [this](const std::vector<tibia::creatures::EMovementDirection>& path) {
+                         if (!canPerformGameAction() || !m_protocolGame)
+                             return;
+                         std::vector<tibia::client::Direction> dirs;
+                         dirs.reserve(path.size());
+                         for (const auto direction : path)
+                             dirs.push_back(tibia::input::toClientDirection(direction));
+                         tibia::game::notify("onAutoWalk", m_localPlayer, dirs);
+                         m_protocolGame->sendAutoWalk(dirs);
+                     });
 }
 
 void Game::resetGameStates()
@@ -113,7 +267,7 @@ void Game::resetGameStates()
     m_safeFight = true;
     m_followingCreatureId = 0;
     m_attackingCreatureId = 0;
-    m_localPlayerGoPath.reset();
+    m_movementIntent.reset();
     m_localPlayer = nullptr;
     m_pingSent = 0;
     m_pingReceived = 0;
@@ -279,7 +433,7 @@ void Game::processCharacterSwitch(const std::string_view characterName)
     tibia::game::cleanMapDynamicThings();
 
     m_localPlayer = std::make_shared<LocalPlayerSessionThing>();
-    rebindLocalPlayerGoPath();
+    createMovementIntent();
     m_localPlayer->onCreate();
     m_localPlayer->setName(characterName);
     m_characterName = characterName;
@@ -547,13 +701,9 @@ void Game::processRemoveAutomapFlag(const Position& pos, const uint8_t icon, con
 
 void Game::processOpenOutfitWindow(const Outfit& currentOutfit, const std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>& outfitList,
                                    const std::vector<std::tuple<uint16_t, std::string, uint8_t>>& mountList,
-                                   const std::vector<std::tuple<uint16_t, std::string>>& familiarList,
-                                   const std::vector<std::tuple<uint16_t, std::string>>& wingsList,
-                                   const std::vector<std::tuple<uint16_t, std::string>>& aurasList,
-                                   const std::vector<std::tuple<uint16_t, std::string>>& effectList,
-                                   const std::vector<std::tuple<uint16_t, std::string>>& shaderList)
+                                   const std::vector<std::tuple<uint16_t, std::string>>& familiarList)
 {
-    tibia::game::notify("onOpenOutfitWindow", currentOutfit, outfitList, mountList, familiarList, wingsList, aurasList, effectList, shaderList);
+    tibia::game::notify("onOpenOutfitWindow", currentOutfit, outfitList, mountList, familiarList);
 }
 
 void Game::processOpenNpcTrade(
@@ -699,17 +849,21 @@ void Game::processUpdateBestiaryCharmsData(const BestiaryCharmsData& charmData)
     tibia::game::notify("onUpdateBestiaryCharmsData", charmData);
 }
 
-void Game::processAttackCancel(const uint32_t seq)
+void Game::processUpdateTarget(const uint32_t seq, const uint32_t targetId)
 {
-    if (isAttacking() && (seq == 0 || m_seq == seq)) {
-        cancelAttack();
+    // CIP UpdateTarget: the server's current attack target. It only updates the
+    // local target; answering with an Attack message would echo the server.
+    if (seq != 0 && seq != m_seq)
+        return;
+    const bool cancelled = targetId == 0 && isAttacking();
+    setAttackingCreatureId(targetId);
+    if (cancelled)
         tibia::game::notify("onAttackCancel");
-    }
 }
 
 void Game::processWalkCancel(const tibia::client::Direction direction)
 {
-    m_localPlayer->cancelWalk(direction);
+    tibia::game::localPlayerCancelWalk(direction);
 }
 
 void Game::loginWorld(const std::string_view account, const std::string_view password, const std::string_view worldName, const std::string_view worldHost, const int worldPort, const std::string_view characterName, const std::string_view authenticatorToken, const std::string_view sessionKey, const std::string_view& recordTo)
@@ -724,7 +878,7 @@ void Game::loginWorld(const std::string_view account, const std::string_view pas
     resetGameStates();
 
     m_localPlayer = std::make_shared<LocalPlayerSessionThing>();
-    rebindLocalPlayerGoPath();
+    createMovementIntent();
     m_localPlayer->onCreate();
     m_localPlayer->setName(characterName);
 
@@ -748,7 +902,7 @@ void Game::startDecodedReplay()
     resetGameStates();
 
     m_localPlayer = std::make_shared<LocalPlayerSessionThing>();
-    rebindLocalPlayerGoPath();
+    createMovementIntent();
     m_localPlayer->setName("Player");
 
     m_protocolGame = std::make_shared<ProtocolGame>();
@@ -799,53 +953,14 @@ void Game::safeLogout()
 
 bool Game::walk(const tibia::client::Direction direction)
 {
-    if (!canPerformGameAction() || direction == tibia::client::InvalidDirection)
+    if (!canPerformGameAction() || direction == tibia::client::InvalidDirection || !m_movementIntent)
         return false;
-
-    // CipSoft TPlayerMovementGameActionHandler : direction intent
-    // publishes stop-auto-walk (0x94) + APPLY_AUTOCHASE before the step.
-    interruptAutoWalk();
-
     tibia::game::notify("onWalk", direction);
-
-    // CipSoft client prediction: start TCreatureMovementTween before the wire
-    // MoveCreature confirms (gamesession → storage; no Map Creature clock).
-    tibia::game::predictLocalPlayerStep(direction);
-
-    if (m_mapUpdateTimer.first || m_localPlayer->getPreWalkingSize() == 1) {
+    if (m_mapUpdateTimer.first) {
         m_mapUpdateTimer.second.restart();
         m_mapUpdateTimer.first = false;
     }
-
-    switch (direction) {
-        case tibia::client::North:
-            m_protocolGame->sendWalkNorth();
-            break;
-        case tibia::client::East:
-            m_protocolGame->sendWalkEast();
-            break;
-        case tibia::client::South:
-            m_protocolGame->sendWalkSouth();
-            break;
-        case tibia::client::West:
-            m_protocolGame->sendWalkWest();
-            break;
-        case tibia::client::NorthEast:
-            m_protocolGame->sendWalkNorthEast();
-            break;
-        case tibia::client::SouthEast:
-            m_protocolGame->sendWalkSouthEast();
-            break;
-        case tibia::client::SouthWest:
-            m_protocolGame->sendWalkSouthWest();
-            break;
-        case tibia::client::NorthWest:
-            m_protocolGame->sendWalkNorthWest();
-            break;
-        default:
-            break;
-    }
-
+    m_movementIntent->step(tibia::input::toMovementDirection(direction));
     return true;
 }
 
@@ -860,45 +975,12 @@ void Game::interruptAutoWalk()
 {
     if (!m_localPlayer)
         return;
-    const bool hadPath =
-        tibia::game::localPlayerIsAutoWalking() || tibia::game::localPlayerHasAutoWalkDirs();
-    // Client clear + Target; sendStop only when a GoPath was live.
+    const bool hadPath = m_movementIntent && m_movementIntent->hasGoal();
     tibia::game::localPlayerStopAutoWalk();
     if (isFollowing())
         cancelFollow();
     if (hadPath)
         requestStop();
-}
-
-void Game::autoWalk(const std::vector<tibia::client::Direction>& dirs, const Position& startPos)
-{
-    if (!canPerformGameAction())
-        return;
-
-    if (dirs.size() == 0)
-        return;
-
-    // protocol limits walk path
-    if (dirs.size() > 127) {
-        g_logger.error("Auto walk path too great");
-        return;
-    }
-
-    // must cancel follow before any new walk
-    if (isFollowing()) {
-        cancelFollow();
-    }
-
-    // CIP GoPath: arm remaining dirs and predict the first step while idle so
-    // matching MoveCreature confirms the in-flight TCreatureMovementTween.
-    // Further steps are chained at tween end / NFU (gamesession helpers).
-    if (startPos == m_localPlayer->getServerPosition()) {
-        tibia::game::armLocalPlayerGoPathDirs(dirs);
-        tibia::game::localPlayerTryBeginNextGoPathStep();
-    }
-
-    tibia::game::notify("onAutoWalk", m_localPlayer, dirs);
-    m_protocolGame->sendAutoWalk(dirs);
 }
 
 void Game::turn(const tibia::client::Direction direction)
@@ -929,14 +1011,8 @@ void Game::stop()
     if (!canPerformGameAction())
         return;
 
-    // qtclient STOP_ATTACKING_FOLLOWING_WALKING: clear attack, follow, and auto-walk.
-    if (isAttacking())
-        cancelAttack();
-    if (isFollowing())
-        cancelFollow();
-    tibia::game::localPlayerStopAutoWalk();
-
-    m_protocolGame->sendStop();
+    // STOP_ATTACKING_FOLLOWING_WALKING: clear attack, follow and the path, then Cancel.
+    cancelAttackAndFollow();
 }
 
 void Game::lookCreature(const uint32_t creatureId, const bool isBattleList)
@@ -1555,14 +1631,6 @@ void Game::changeOutfitAndMount(const Outfit& outfit, const bool mounted, const 
     m_protocolGame->sendChangeOutfit(outfit, mounted, randomMount);
 }
 
-void Game::sendTyping(const bool typing)
-{
-    if (!canPerformGameAction())
-        return;
-
-    m_protocolGame->sendTyping(typing);
-}
-
 void Game::addVip(const std::string_view name)
 {
     if (!canPerformGameAction() || name.empty())
@@ -2138,11 +2206,7 @@ int Game::findEmptyContainerId()
 
 tibia::client::OperatingSystem_t Game::getOs()
 {
-    if (m_clientCustomOs > tibia::client::CLIENTOS_NONE)
-        return m_clientCustomOs;
-
-    // qtclient qtclient speaks CipSoft NEW_* OS ids so Crystal keeps classic CIP wire
-    // (isOTCR stays false). Product packs may setCustomOs(CLIENTOS_OTCR_*).
+    // The client speaks CipSoft NEW_* OS ids, so Crystal keeps the CIP wire.
     if (tibia::host::app().getOs() == "windows")
         return tibia::client::CLIENTOS_TIBIA_NEW_WINDOWS;
 

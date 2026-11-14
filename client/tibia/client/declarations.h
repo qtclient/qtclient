@@ -49,13 +49,11 @@ class Creature;
 class LocalPlayerSessionThing;
 class AnimatedText;
 class StaticText;
-class Animator;
 class ThingType;
 class ItemType;
 class TileBlock;
 class AttachedEffect;
 class AttachableObject;
-class Paperdoll;
 
 
 using LightViewPtr = std::unique_ptr<LightView>;
@@ -77,7 +75,6 @@ using ThingTypePtr = std::shared_ptr<ThingType>;
 using ItemTypePtr = std::shared_ptr<ItemType>;
 using AttachedEffectPtr = std::shared_ptr<AttachedEffect>;
 using AttachableObjectPtr = std::shared_ptr<AttachableObject>;
-using PaperdollPtr = std::shared_ptr<Paperdoll>;
 
 
 using ThingList = std::vector<ThingPtr>;

@@ -40,7 +40,9 @@ namespace tibia::game {
 class TGameserverGameSession;
 }
 
-class LocalPlayerGoPath;
+namespace tibia::input {
+class TPlayerMovementIntentHandler;
+}
 
 class Game
 {
@@ -75,7 +77,7 @@ public:
     /// ProtocolGame peels (`tibia::game::process*` in gamesession).
     void processCharacterSwitch(std::string_view characterName);
     static void processPlayerHelpers(uint16_t helpers);
-    void processAttackCancel(uint32_t seq);
+    void processUpdateTarget(uint32_t seq, uint32_t targetId);
     void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
                             tibia::client::PVPModes pvpMode);
     static void processNumericalEffect(tibia::client::MessageMode mode, const Position& pos, uint64_t value,
@@ -136,11 +138,7 @@ public:
     // outfit
     void processOpenOutfitWindow(const Outfit& currentOutfit, const std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>& outfitList,
                                 const std::vector<std::tuple<uint16_t, std::string, uint8_t>>& mountList,
-                                const std::vector<std::tuple<uint16_t, std::string>>& familiarList,
-                                const std::vector<std::tuple<uint16_t, std::string>>& wingsList,
-                                const std::vector<std::tuple<uint16_t, std::string>>& aurasList,
-                                const std::vector<std::tuple<uint16_t, std::string>>& effectsList,
-                                const std::vector<std::tuple<uint16_t, std::string>>& shaderList);
+                                const std::vector<std::tuple<uint16_t, std::string>>& familiarList);
 
     // npc trade (Phase 5.0-D: appearance slots / typeId counts — no ItemPtr in notify)
     static void processOpenNpcTrade(
@@ -219,12 +217,10 @@ public:
 
     // walk related
     bool walk(tibia::client::Direction direction);
-    void autoWalk(const std::vector<tibia::client::Direction>& dirs, const Position& startPos);
     void turn(tibia::client::Direction direction);
     void stop();
-    /// Wire Stop only (CipSoft sendStop). Used by LocalPlayerSessionThing::stopAutoWalk(notifyServer).
     void requestStop();
-    /// CipSoft direction takeover: clear Target/GoPath and sendStop when a path was live.
+    /// Drop the walk goal; sends Stop when a path was live.
     void interruptAutoWalk();
 
     // item related (map/inventory by id + pos + stack — no ThingPtr play API)
@@ -333,7 +329,6 @@ public:
     /// changeOutfit with the outfit window's ride and random-mount choices.
     void changeOutfitAndMount(const Outfit& outfit, bool mounted, bool randomMount);
 
-    void sendTyping(bool typing);
 
     // vip related
     void addVip(std::string_view name);
@@ -441,7 +436,6 @@ public:
     void setClientVersion(uint16_t version);
     int getClientVersion() { return m_clientVersion; }
 
-    void setCustomOs(const tibia::client::OperatingSystem_t os) { m_clientCustomOs = os; }
     tibia::client::OperatingSystem_t getOs();
 
     bool canPerformGameAction() const;
@@ -479,8 +473,8 @@ public:
     void setExpertPvpMode(const bool enable) { m_expertPvpMode = enable; }
     bool getExpertPvpMode() { return m_expertPvpMode; }
     LocalPlayerSessionThingPtr getLocalPlayer() { return m_localPlayer; }
-    LocalPlayerGoPath* localPlayerGoPath() { return m_localPlayerGoPath.get(); }
-    void rebindLocalPlayerGoPath();
+    tibia::input::TPlayerMovementIntentHandler* movementIntent() { return m_movementIntent.get(); }
+    void createMovementIntent();
     ProtocolGamePtr getProtocolGame() { return m_protocolGame; }
     std::string getCharacterName() { return m_characterName; }
     std::string getWorldName() { return m_worldName; }
@@ -635,7 +629,7 @@ private:
     void setFollowingCreatureId(uint32_t creatureId);
 
     LocalPlayerSessionThingPtr m_localPlayer;
-    std::unique_ptr<LocalPlayerGoPath> m_localPlayerGoPath;
+    std::unique_ptr<tibia::input::TPlayerMovementIntentHandler> m_movementIntent;
     uint32_t m_attackingCreatureId{ 0 };
     uint32_t m_followingCreatureId{ 0 };
     ProtocolGamePtr m_protocolGame;
@@ -643,7 +637,6 @@ private:
     tibia::client::FightModes m_fightMode{ tibia::client::FightBalanced };
     tibia::client::ChaseModes m_chaseMode{ tibia::client::DontChase };
     tibia::client::PVPModes m_pvpMode{ tibia::client::WhiteDove };
-    tibia::client::OperatingSystem_t m_clientCustomOs{ tibia::client::CLIENTOS_NONE };
     UnjustifiedPoints m_unjustifiedPoints;
     ScheduledEventPtr m_pingEvent;
     ScheduledEventPtr m_checkConnectionEvent;

@@ -124,7 +124,6 @@ TCyclopediaDialogController::~TCyclopediaDialogController()
     input::setActionHandler(A::CLOSE_CYCLOPEDIA, nullptr);
 }
 
-// b1/4f3236c8aee9b189
 QString TCyclopediaDialogController::bankGoldBalanceString() const
 {
     const std::optional<qulonglong> value = balance(tibia::client::RESOURCE_BANK_BALANCE);
@@ -203,7 +202,6 @@ void TCyclopediaDialogController::hookActions()
     });
 }
 
-// b1/45b56365d5daba87
 void TCyclopediaDialogController::showDialog(const DialogTab& Tab)
 {
     closeDialog();
@@ -223,14 +221,12 @@ void TCyclopediaDialogController::showDialog(const DialogTab& Tab)
     Q_EMIT unlockedMinorCharmEchoesChanged();
 }
 
-// b1/0be5436a07781166
 void TCyclopediaDialogController::captureNavigationBacklogContextIfNeedAndShowDialog(const DialogTab& NewTab)
 {
     pushBacklog();
     showDialog(NewTab);
 }
 
-// b1/c2106d10a33e2abc
 void TCyclopediaDialogController::closeDialog()
 {
     hideCurrentPage();
@@ -239,14 +235,12 @@ void TCyclopediaDialogController::closeDialog()
     dialog()->close();
 }
 
-// b1/3fa7eaaa3fe6943e
 void TCyclopediaDialogController::requestClose()
 {
     clearBacklog();
     closeDialog();
 }
 
-// b1/28ccd0518d935e5d
 void TCyclopediaDialogController::requestTabSwitch(const DialogTab& NewTab)
 {
     if (NewTab == m_dialogTab)
@@ -255,7 +249,6 @@ void TCyclopediaDialogController::requestTabSwitch(const DialogTab& NewTab)
     switchTab(NewTab);
 }
 
-// b1/563815d06acd6fdc
 void TCyclopediaDialogController::requestOpenManageLootContainerDialog()
 {
     clearBacklog();
@@ -263,7 +256,6 @@ void TCyclopediaDialogController::requestOpenManageLootContainerDialog()
     input::publish(input::makeAction(A::OPEN_MANAGE_LOOT_CONTAINER));
 }
 
-// b1/a6aa83729d308d8d
 void TCyclopediaDialogController::requestBack()
 {
     if (m_backlog.empty())
@@ -289,7 +281,6 @@ void TCyclopediaDialogController::requestBack()
         m_itemInfo->restoreContext(context.itemInfo);
 }
 
-// b1/1b124c3676f52813
 void TCyclopediaDialogController::switchTab(const DialogTab tab)
 {
     hideCurrentPage();
@@ -347,7 +338,6 @@ void TCyclopediaDialogController::pushBacklog()
     Q_EMIT navigationBacklogChanged();
 }
 
-// b1/43cec30ea9e3938c
 void TCyclopediaDialogController::clearBacklog()
 {
     if (m_backlog.empty())
@@ -395,7 +385,6 @@ void TCyclopediaButtonController::onCyclopediaButtonClicked()
     stopHighlight();
 }
 
-// b1/b038cb96861bbff7
 void TCyclopediaButtonController::onHighlightCyclopediaButtonEnds() { stopHighlight(); }
 
 void TCyclopediaButtonController::stopHighlight()

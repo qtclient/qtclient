@@ -35,7 +35,7 @@ host API table (SDK headers under `include/qtclient/abi/` define the surface).
 | qtclient build | Result |
 |------------|--------|
 | Stock (`--no-mods`) | CIP tip; no packs |
-| Default tip mods | `otclient` MODULE + `myaac` FS urls |
+| Default tip mods | `myaac` FS urls |
 | Product (`-DQTCLIENT_LINKED_PACK=`) | stages pack; IdleOT still `ABSORB_INTO_QTCLIENT` until abi peel |
 
 Local product path: `make qtclient client|wasm install`.
@@ -85,7 +85,6 @@ Optional `urls` on `mod.json` merge into `LauncherEnv`.
 | Pack | Role |
 |------|------|
 | [`mods/myaac`](../client/mods/myaac/mod.json) | Default tip myAAC |
-| [`mods/otclient`](../client/mods/otclient/mod.json) | Crystal `isOTCR` wire (runtime MODULE) |
 | Product `mods/<id>/` | Author pack |
 
 ### WASM
@@ -110,5 +109,4 @@ Unchanged: ModLoader adds `mods/<id>/qml`; F5 clears QML cache on desktop DEV.
 ```bash
 python3 scripts/ci/check-pack-abi-headers.py
 make stock client build
-# with QTCLIENT_MODS=otclient — expect mods/otclient/native/mod.*
 ```

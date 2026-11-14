@@ -66,11 +66,77 @@ void publish(const A type, const int parameter = 0)
     input::publish(action);
 }
 
+struct TProductShortcut {
+    QString id;
+    QString label;
+    QString imageSource;
+    std::function<void()> run;
+    bool defaultEnabled = true;
+    int buttonId = 0;
+};
+
+std::vector<TProductShortcut>& productShortcutList()
+{
+    static std::vector<TProductShortcut> list;
+    return list;
+}
+
+/// Packs register after TButtonBarModel's first reload. When the id is already
+/// in controlButtonsOptions, ensureProductShortcutInOptions is a no-op and
+/// optionChanged never fires — wake every live button bar model instead.
+std::vector<QPointer<TButtonBarModel>>& liveProductShortcutModels()
+{
+    static std::vector<QPointer<TButtonBarModel>> models;
+    return models;
+}
+
+void notifyProductShortcutModels()
+{
+    auto& models = liveProductShortcutModels();
+    for (auto it = models.begin(); it != models.end();) {
+        if (!*it) {
+            it = models.erase(it);
+            continue;
+        }
+        (*it)->reload();
+        ++it;
+    }
+}
+
+void ensureProductShortcutInOptions(const TProductShortcut& shortcut)
+{
+    constexpr auto Section = "controlButtonsOptions";
+    const QJsonObject root = app::ClientOptions::load().root();
+    QJsonObject section = root.value(QLatin1String(Section)).toObject();
+    QStringList enabled;
+    QStringList disabled;
+    for (const QJsonValue& value : section.value(QLatin1String("enabledButtons")).toArray()) {
+        const QString id = value.toString();
+        if (!id.isEmpty())
+            enabled << id;
+    }
+    for (const QJsonValue& value : section.value(QLatin1String("disabledButtons")).toArray()) {
+        const QString id = value.toString();
+        if (!id.isEmpty())
+            disabled << id;
+    }
+    if (enabled.contains(shortcut.id) || disabled.contains(shortcut.id))
+        return;
+    if (shortcut.defaultEnabled)
+        enabled << shortcut.id;
+    else
+        disabled << shortcut.id;
+    section.insert(QLatin1String("enabledButtons"), QJsonArray::fromStringList(enabled));
+    section.insert(QLatin1String("disabledButtons"), QJsonArray::fromStringList(disabled));
+    app::ClientOptions::storeAll({ { QLatin1String(Section), section } });
+}
+
 }
 
 TButtonBarModel::TButtonBarModel(QObject* parent)
     : cip::TButtonBarModel(parent)
 {
+    liveProductShortcutModels().push_back(this);
     reload();
 }
 
@@ -80,11 +146,18 @@ void TButtonBarModel::reload()
     const QJsonObject options = app::ClientOptions::load().root().value(QLatin1String("controlButtonsOptions")).toObject();
     for (const QJsonValue& value : options.value(QLatin1String("enabledButtons")).toArray()) {
         const QString name = value.toString();
+        bool found = false;
         for (const auto& [buttonName, id] : ButtonNames) {
             if (name == QLatin1String(buttonName)) {
                 buttons.push_back(id);
+                found = true;
                 break;
             }
+        }
+        if (!found) {
+            const int productId = TButtonBarController::productShortcutButtonId(name);
+            if (productId >= 0)
+                buttons.push_back(productId);
         }
     }
     if (buttons == m_buttons)
@@ -92,6 +165,126 @@ void TButtonBarModel::reload()
     beginResetModel();
     m_buttons = std::move(buttons);
     endResetModel();
+}
+
+void TButtonBarController::addProductShortcut(const QString& id, const QString& label, std::function<void()> run,
+                                              const bool defaultEnabled, const QString& imageSource)
+{
+    if (id.isEmpty() || !run)
+        return;
+    auto& list = productShortcutList();
+    for (TProductShortcut& existing : list) {
+        if (existing.id == id) {
+            existing.label = label;
+            existing.imageSource = imageSource;
+            existing.run = std::move(run);
+            existing.defaultEnabled = defaultEnabled;
+            ensureProductShortcutInOptions(existing);
+            notifyProductShortcutModels();
+            return;
+        }
+    }
+    TProductShortcut shortcut;
+    shortcut.id = id;
+    shortcut.label = label.isEmpty() ? id : label;
+    shortcut.imageSource = imageSource;
+    shortcut.run = std::move(run);
+    shortcut.defaultEnabled = defaultEnabled;
+    shortcut.buttonId = ProductShortcutIdBase + static_cast<int>(list.size());
+    list.push_back(shortcut);
+    ensureProductShortcutInOptions(list.back());
+    notifyProductShortcutModels();
+}
+
+QStringList TButtonBarController::productShortcutIds()
+{
+    QStringList ids;
+    for (const TProductShortcut& shortcut : productShortcutList())
+        ids << shortcut.id;
+    return ids;
+}
+
+QStringList TButtonBarController::defaultEnabledProductShortcutIds()
+{
+    QStringList ids;
+    for (const TProductShortcut& shortcut : productShortcutList()) {
+        if (shortcut.defaultEnabled)
+            ids << shortcut.id;
+    }
+    return ids;
+}
+
+QString TButtonBarController::productShortcutLabel(const QString& id)
+{
+    for (const TProductShortcut& shortcut : productShortcutList()) {
+        if (shortcut.id == id)
+            return shortcut.label;
+    }
+    return {};
+}
+
+QString TButtonBarController::productShortcutImage(const QString& id)
+{
+    for (const TProductShortcut& shortcut : productShortcutList()) {
+        if (shortcut.id == id)
+            return shortcut.imageSource;
+    }
+    return {};
+}
+
+QString TButtonBarController::productShortcutIdFromLabel(const QString& label)
+{
+    for (const TProductShortcut& shortcut : productShortcutList()) {
+        if (shortcut.label == label)
+            return shortcut.id;
+    }
+    return {};
+}
+
+int TButtonBarController::productShortcutButtonId(const QString& id)
+{
+    for (const TProductShortcut& shortcut : productShortcutList()) {
+        if (shortcut.id == id)
+            return shortcut.buttonId;
+    }
+    return -1;
+}
+
+QString TButtonBarController::productShortcutIdFromButtonId(const int buttonId)
+{
+    for (const TProductShortcut& shortcut : productShortcutList()) {
+        if (shortcut.buttonId == buttonId)
+            return shortcut.id;
+    }
+    return {};
+}
+
+bool TButtonBarController::isProductShortcutButtonId(const int buttonId)
+{
+    return buttonId >= ProductShortcutIdBase;
+}
+
+QString TButtonBarController::productShortcutLabelForButtonId(const int buttonId) const
+{
+    const QString id = productShortcutIdFromButtonId(buttonId);
+    const QString label = productShortcutLabel(id);
+    return label.isEmpty() ? id : label;
+}
+
+QString TButtonBarController::productShortcutImageForButtonId(const int buttonId) const
+{
+    return productShortcutImage(productShortcutIdFromButtonId(buttonId));
+}
+
+void TButtonBarController::onProductShortcutClicked(const int buttonId)
+{
+    const QString id = productShortcutIdFromButtonId(buttonId);
+    for (const TProductShortcut& shortcut : productShortcutList()) {
+        if (shortcut.id == id && shortcut.run) {
+            shortcut.run();
+            return;
+        }
+    }
 }
 
 int TButtonBarModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_buttons.size()); }
@@ -203,7 +396,6 @@ void TButtonBarController::setSidebarOptions(config::TSidebarOptions* options)
     apply();
 }
 
-// b1/ba1b1f8a0cb39cc7
 void TButtonBarController::onDropdownButtonClicked()
 {
     setShortcutsVisible(!m_shortcutsVisible);
@@ -214,7 +406,6 @@ void TButtonBarController::onDropdownButtonClicked()
     }
 }
 
-// b1/0db0527277134631
 void TButtonBarController::toggleWidget(const int widgetType)
 {
     auto action = input::mutableClone(*input::makeAction(A::TOGGLE_WIDGET));
@@ -234,7 +425,6 @@ void TButtonBarController::onUnjustifiedPointsButtonClicked() { toggleWidget(W::
 void TButtonBarController::onKillTrackerWidgetButtonClicked() { toggleWidget(W::Prey); }
 void TButtonBarController::onPreyDialogButtonClicked() { publish(A::OPEN_PREY_DIALOG); }
 void TButtonBarController::onSpellListWidgetButtonClicked() { toggleWidget(W::SpellList); }
-// b1/18e9d2595935e24c
 void TButtonBarController::onOptionsButtonClicked()
 {
     publish(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS);
@@ -246,7 +436,6 @@ void TButtonBarController::onSwitchCharacterButtonClicked()
     publish(A::CHANGE_CHARACTER);
 }
 
-// b1/f628a6fb6947d3db
 void TButtonBarController::onLogoutButtonClicked()
 {
     if (!m_logoutQuestion) {
@@ -266,7 +455,6 @@ void TButtonBarController::onExaltationForgeDialogButtonClicked() { publish(A::R
 void TButtonBarController::onBossSlotsDialogButtonClicked() { publish(A::OPEN_CYCLOPEDIA, 7); }
 void TButtonBarController::onSkillWheelDialogButtonClicked() { publish(A::REQUEST_OWN_SKILL_WHEEL); }
 void TButtonBarController::onImbuementTrackerWidgetClicked() { toggleWidget(W::ImbuementTracker); }
-// b1/f88b2ff6b1d9f4c5
 void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
 {
     auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
@@ -279,11 +467,8 @@ void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
     }
     input::publish(action);
 }
-// b1/1201fc5cbe70c3f5
 void TButtonBarController::onTaskboardDialogButtonClicked() { publish(A::OPEN_TASKBOARD_DIALOG); }
-// b1/aeed9c27919d4ec8
 void TButtonBarController::onPlayerGuideWidgetClicked() { toggleWidget(W::PlayerGuide); }
-// b1/dcde019b1526df6c
 void TButtonBarController::onManageShortcutsClicked() { publish(A::OPEN_OPTIONS_MENU_DIALOG, 2); }
 
 QStringList TButtonBarController::enabledShortcutIds() const
@@ -332,10 +517,17 @@ void TButtonBarController::activateShortcutByName(const QString& name)
             return;
         }
     }
+    const int productId = productShortcutButtonId(name);
+    if (productId >= 0)
+        activateShortcut(productId);
 }
 
 void TButtonBarController::activateShortcut(const int buttonId)
 {
+    if (isProductShortcutButtonId(buttonId)) {
+        onProductShortcutClicked(buttonId);
+        return;
+    }
     using B = Buttons;
     switch (buttonId) {
     case B::SKILLS_WIDGET:
@@ -433,7 +625,6 @@ void TButtonBarController::activateShortcut(const int buttonId)
     }
 }
 
-// b1/33c1503437063412
 void TButtonBarController::onShowContextMenu()
 {
     TContextMenuController* menu = TContextMenuController::instance();

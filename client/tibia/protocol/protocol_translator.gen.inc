@@ -905,8 +905,8 @@ inline bool mutableClientExtensionGenerated(::tibia::protobuf::protocol::Gamecli
         msg.MutableExtension(GameclientMessageBossDifficultySelection::gameclient_message_boss_difficulty_selection);
         return true;
     case 200:
-        msg.MutableExtension(GameclientMessageSpellTargetConfig::gameclient_message_spell_target_config);
-        return true;
+        // GameclientMessageSpellTargetConfig not in protocol.pb yet — skip until proto regen.
+        return false;
     case 201:
         msg.MutableExtension(GameclientMessageGetTransactionDetails::gameclient_message_get_transaction_details);
         return true;

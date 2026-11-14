@@ -6,7 +6,7 @@ Writes under --out:
   <os>-package.json
   <os>-package.json.version
   <os>-package/          CIP package tree (localfile.lzma + optional unpacked)
-  mods/myaac + otclient  default client packs (staged into the client tree)
+  mods/myaac             default client pack (staged into the client tree)
   mods/clientmods+minimap default launcher channel gates
   release_env.lua        revision only (login URLs from mods/myaac)
 
@@ -130,7 +130,6 @@ def stage_default_mods(tree: Path, platform: str) -> None:
 
     for pack_id, src in (
         ("myaac", OTC / "client" / "mods" / "myaac"),
-        ("otclient", OTC / "client" / "mods" / "otclient"),
     ):
         if not (src / "mod.json").is_file():
             print(f"[demo] warning: missing {src}/mod.json")

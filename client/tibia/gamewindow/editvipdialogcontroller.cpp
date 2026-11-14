@@ -30,7 +30,6 @@ TEditVipDialogController::TEditVipDialogController(TVipStorage* storage, QObject
 {
 }
 
-// b1/fb2b1e50d03b448e
 void TEditVipDialogController::open(const TVipStorage::Vip& vip)
 {
     dialog()->destroy();
@@ -74,7 +73,6 @@ void TEditVipDialogController::onOkClicked(const int VipIconId, const QString& D
     dialog()->close();
 }
 
-// b1/9f38ec67d5a3a8ec
 void TEditVipDialogController::onControllerFinished() { dialog()->close(); }
 
 void TEditVipDialogController::clearGroupInfos()

@@ -951,163 +951,163 @@
   "dir": "server",
   "opcode": 3,
   "name": "CreatureData",
-  "call": "parseSessionCreatureData(msg);"
+  "call": "// Native: creatures::TCreatureProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 4,
   "name": "SessionDumpStart",
-  "call": "parseSessionDumpStart(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 5,
   "name": "SessionDumpMarker",
-  "call": "parseSessionDumpMarker(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 6,
   "name": "PartyLeft",
-  "call": "parsePartyLeft(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 10,
   "name": "PendingStateEntered",
-  "call": "if (tibia::game::cipFeature(tibia::client::GameLoginPending)) {\n                            parsePendingGame(msg);\n                        } else {\n                            parseLogin(msg);\n                        }\n"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 11,
   "name": "ReadyForSecondaryConnection",
-  "call": "parseReadyForSecondaryConnection(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 15,
   "name": "WorldEntered",
-  "call": "parseEnterGame(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 20,
   "name": "LoginError",
-  "call": "parseLoginError(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 21,
   "name": "LoginAdvice",
-  "call": "parseLoginAdvice(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 22,
   "name": "LoginWait",
-  "call": "parseLoginWait(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 23,
   "name": "LoginSuccess",
-  "call": "parseLogin(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 24,
   "name": "SessionEndInformation",
-  "call": "parseSessionEnd(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 25,
   "name": "StoreButtonIndicators",
-  "call": "parseStoreButtonIndicators(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 26,
   "name": "BugReportsAllowed",
-  "call": "parseBugReport(msg);"
+  "call": "// Native: reporting::TBugReportProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 27,
   "name": "ShowMultiOfflineTrainingDialog",
-  "call": "parseMultiOfflineTrainingDialog(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 28,
   "name": "NpcTalkParters",
-  "call": "parseNpcChatWindow(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 29,
   "name": "Ping",
-  "call": "if (((opcode == Proto::GameServerPing) && (tibia::game::cipFeature(tibia::client::GameClientPing))) ||\n                            ((opcode == Proto::GameServerPingBack) && !tibia::game::cipFeature(tibia::client::GameClientPing))) {\n                            parsePingBack(msg);\n                        } else {\n                            parsePing(msg);\n                        }\n"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 30,
   "name": "PingBack",
-  "call": "if (((opcode == Proto::GameServerPing) && (tibia::game::cipFeature(tibia::client::GameClientPing))) ||\n                            ((opcode == Proto::GameServerPingBack) && !tibia::game::cipFeature(tibia::client::GameClientPing))) {\n                            parsePingBack(msg);\n                        } else {\n                            parsePing(msg);\n                        }\n"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 31,
   "name": "LoginChallenge",
-  "call": "parseLoginChallenge(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 40,
   "name": "Dead",
-  "call": "parseDeath(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 41,
   "name": "Stash",
-  "call": "parseSupplyStash(msg);"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 42,
   "name": "SpecialContainersAvailable",
-  "call": "parseSpecialContainer(msg);"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 43,
   "name": "PartyHuntAnalyser",
-  "call": "parsePartyAnalyzer(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 44,
   "name": "TeamFinderTeamLeader",
-  "call": "parseTeamFinderLeader(msg);"
+  "call": "// Native: teamfinder::TTeamFinderProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 45,
   "name": "TeamFinderTeamMember",
-  "call": "parseTeamFinderList(msg);"
+  "call": "// Native: teamfinder::TTeamFinderProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 46,
   "name": "UnlockedSpells",
-  "call": "parseUnlockedSpells(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 47,
   "name": "BossDifficultySelection",
-  "call": "parseBossDifficultySelection(msg);"
+  "call": "// Native: game::TBossDifficultySelectionProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1119,43 +1119,43 @@
   "dir": "server",
   "opcode": 92,
   "name": "WeaponProficiencyNotification",
-  "call": "parseWeaponProficiencyExperience(msg);"
+  "call": "// Native: proficiency::TProficiencyProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 93,
   "name": "ImbuementDurations",
-  "call": "parseImbuementDurations(msg);"
+  "call": "// Native: imbuing::TImbuingProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 94,
   "name": "PassiveAbilityData",
-  "call": "parsePassiveCooldown(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 95,
   "name": "SkillWheel",
-  "call": "parseOpenWheelWindow(msg);"
+  "call": "// Native: skillwheel::TSkillWheelProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 96,
   "name": "SpellDataModification",
-  "call": "parseSpellDataModification(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 97,
   "name": "BosstiaryStaticData",
-  "call": "parseBosstiaryData(msg);"
+  "call": "// Native: bossbestiary::TBossBestiaryProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 98,
   "name": "BossSlots",
-  "call": "parseBosstiarySlots(msg);"
+  "call": "// Native: bossbestiary::TBossBestiaryProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1167,97 +1167,97 @@
   "dir": "server",
   "opcode": 100,
   "name": "FullMap",
-  "call": "parseMapDescription(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 101,
   "name": "TopRow",
-  "call": "parseMapMoveNorth(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 102,
   "name": "RightColumn",
-  "call": "parseMapMoveEast(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 103,
   "name": "BottomRow",
-  "call": "parseMapMoveSouth(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 104,
   "name": "LeftColumn",
-  "call": "parseMapMoveWest(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 105,
   "name": "FieldData",
-  "call": "parseUpdateTile(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 106,
   "name": "CreateOnMap",
-  "call": "parseTileAddThing(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 107,
   "name": "ChangeOnMap",
-  "call": "parseTileTransformThing(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 108,
   "name": "DeleteOnMap",
-  "call": "parseTileRemoveThing(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 109,
   "name": "MoveCreature",
-  "call": "parseCreatureMove(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 110,
   "name": "Container",
-  "call": "parseOpenContainer(msg);"
+  "call": "// Native: TContainerProtocolMessageHandler (Container)"
  },
  {
   "dir": "server",
   "opcode": 111,
   "name": "CloseContainer",
-  "call": "parseCloseContainer(msg);"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 112,
   "name": "CreateInContainer",
-  "call": "parseContainerAddItem(msg);"
+  "call": "// Native: TContainerProtocolMessageHandler (CreateInContainer)"
  },
  {
   "dir": "server",
   "opcode": 113,
   "name": "ChangeInContainer",
-  "call": "parseContainerUpdateItem(msg);"
+  "call": "// Native: TContainerProtocolMessageHandler (ChangeInContainer)"
  },
  {
   "dir": "server",
   "opcode": 114,
   "name": "DeleteInContainer",
-  "call": "parseContainerRemoveItem(msg);"
+  "call": "// Native: TContainerProtocolMessageHandler (DeleteInContainer)"
  },
  {
   "dir": "server",
   "opcode": 115,
   "name": "Bosstiary",
-  "call": "parseBosstiaryInfo(msg);"
+  "call": "// Native: bossbestiary::TBossBestiaryProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1269,313 +1269,313 @@
   "dir": "server",
   "opcode": 117,
   "name": "GameEvent",
-  "call": "parseClientEvent(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 118,
   "name": "InspectionList",
-  "call": "parseCyclopediaItemDetail(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 119,
   "name": "InspectionState",
-  "call": "parseInspectionState(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 120,
   "name": "SetInventory",
-  "call": "parseAddInventoryItem(msg);"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 121,
   "name": "DeleteInventory",
-  "call": "parseRemoveInventoryItem(msg);"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 122,
   "name": "NPCOffer",
-  "call": "parseOpenNpcTrade(msg);"
+  "call": "// Native: trade::TNPCTradeProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 123,
   "name": "PlayerGoods",
-  "call": "parsePlayerGoods(msg);"
+  "call": "// Native: trade::TNPCTradeProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 124,
   "name": "CloseNPCTrade",
-  "call": "parseCloseNpcTrade(msg);"
+  "call": "// Native: trade::TNPCTradeProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 125,
   "name": "OwnOffer",
-  "call": "parseOwnTrade(msg);"
+  "call": "// Native: trade::TPlayerTradeProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 126,
   "name": "CounterOffer",
-  "call": "parseCounterTrade(msg);"
+  "call": "// Native: trade::TPlayerTradeProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 127,
   "name": "CloseTrade",
-  "call": "parseCloseTrade(msg);"
+  "call": "// Native: trade::TPlayerTradeProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 128,
   "name": "CharacterTradeConfiguration",
-  "call": "parseCharacterTradeConfiguration(msg);"
+  "call": "// Native: trade::TCharacterTradeProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 129,
   "name": "TextForReport",
-  "call": "parseTextForReport(msg);"
+  "call": "// Native: reporting::TRuleViolationProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 130,
   "name": "AmbientLight",
-  "call": "parseWorldLight(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 131,
   "name": "GraphicalEffects",
-  "call": "parseMagicEffect(msg);"
+  "call": "// Native: effects::TEffectProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 132,
   "name": "RemoveGraphicalEffect",
-  "call": "if (tibia::game::clientRevision() >= 1320) {\n                            parseRemoveMagicEffect(msg);\n                        } else {\n                            parseAnimatedText(msg);\n                        }\n"
+  "call": "// Native: effects::TEffectProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 133,
   "name": "SoundTrigger",
-  "call": "if (tibia::game::cipFeature(tibia::client::GameAnthem)) {\n                            parseAnthem(msg);\n                        } else {\n                            parseDistanceMissile(msg);\n                        }\n"
+  "call": "// Native: sound::TSoundProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 134,
   "name": "ExaltationBaseData",
-  "call": "if (tibia::game::clientRevision() >= 1281) {\n                            parseItemClasses(msg);\n                        } else {\n                            parseCreatureMark(msg);\n                        }\n"
+  "call": "// Native: exaltation::TExaltationProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 135,
   "name": "ExaltationDialogRefresh",
-  "call": "if (tibia::game::clientRevision() >= 1281) {\n                            parseOpenForge(msg);\n                        } else {\n                            parseTrappers(msg);\n                        }\n"
+  "call": "// Native: exaltation::TExaltationProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 136,
   "name": "ExaltationHistory",
-  "call": "parseBrowseForgeHistory(msg);"
+  "call": "// Native: exaltation::TExaltationProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 137,
   "name": "CloseExaltationDialog",
-  "call": "parseCloseForgeWindow(msg);"
+  "call": "// Native: exaltation::TExaltationProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 138,
   "name": "ExaltationResult",
-  "call": "if (tibia::game::clientRevision() >= 1281) {\n                            parseForgeResult(msg);\n                        }\n"
+  "call": "// Native: exaltation::TExaltationProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 139,
   "name": "CreatureUpdate",
-  "call": "parseCreatureData(msg);"
+  "call": "// Native: TCreatureProtocolMessageHandler (CreatureUpdate)"
  },
  {
   "dir": "server",
   "opcode": 140,
   "name": "CreatureHealth",
-  "call": "parseCreatureHealth(msg);"
+  "call": "// Native: creatures::TCreatureProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 141,
   "name": "CreatureLight",
-  "call": "parseCreatureLight(msg);"
+  "call": "// Native: creatures::TCreatureProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 142,
   "name": "CreatureOutfit",
-  "call": "parseCreatureOutfit(msg);"
+  "call": "// Native: TCreatureProtocolMessageHandler (CreatureOutfit)"
  },
  {
   "dir": "server",
   "opcode": 143,
   "name": "CreatureSpeed",
-  "call": "parseCreatureSpeed(msg);"
+  "call": "// Native: creatures::TCreatureProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 144,
   "name": "CreatureSkull",
-  "call": "parseCreatureSkulls(msg);"
+  "call": "// Native: creatures::TCreatureProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 145,
   "name": "CreatureParty",
-  "call": "parseCreatureShields(msg);"
+  "call": "// Native: creatures::TCreatureProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 146,
   "name": "CreatureUnpass",
-  "call": "parseCreatureUnpass(msg);"
+  "call": "// Native: creatures::TCreatureProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 147,
   "name": "CreatureMarks",
-  "call": "parseCreaturesMark(msg);"
+  "call": "// Native: TCreatureProtocolMessageHandler (CreatureMarks)"
  },
  {
   "dir": "server",
   "opcode": 148,
   "name": "DepotSearchResult",
-  "call": "// Crystal: oldProtocol helpers; modern clients use 0x94 as DepotSearchResult.\n                        if (tibia::game::clientRevision() > 1100)\n                            parseDepotSearchResults(msg);\n                        else\n                            parsePlayerHelpers(msg);\n"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 149,
   "name": "CreatureType",
-  "call": "parseCreatureType(msg);"
+  "call": "// Native: TCreatureProtocolMessageHandler (CreatureType)"
  },
  {
   "dir": "server",
   "opcode": 150,
   "name": "EditText",
-  "call": "parseEditText(msg);"
+  "call": "// Native: game::TEditTextProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 151,
   "name": "EditList",
-  "call": "parseEditList(msg);"
+  "call": "// Native: game::TEditTextProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 152,
   "name": "ShowGameNews",
-  "call": "parseGameNews(msg);"
+  "call": "// Native: news::TNewsProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 153,
   "name": "DepotSearchDetailList",
-  "call": "parseDepotSearchDetailList(msg);"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 154,
   "name": "CloseDepotSearch",
-  "call": "parseCloseDepotSearch(msg);"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 155,
   "name": "BlessingsDialog",
-  "call": "parseBlessDialog(msg);"
+  "call": "// Native: game::TBlessingsProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 156,
   "name": "Blessings",
-  "call": "parseBlessings(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 157,
   "name": "SwitchPreset",
-  "call": "parsePreset(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 158,
   "name": "PremiumTrigger",
-  "call": "parsePremiumTrigger(msg);"
+  "call": "// Native: game::TPremiumProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 159,
   "name": "PlayerDataBasic",
-  "call": "parsePlayerInfo(msg);"
+  "call": "// Native: TPlayerProtocolMessageHandler (PlayerDataBasic)"
  },
  {
   "dir": "server",
   "opcode": 160,
   "name": "PlayerDataCurrent",
-  "call": "parsePlayerStats(msg);"
+  "call": "// Native: game::TPlayerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 161,
   "name": "PlayerSkills",
-  "call": "parsePlayerSkills(msg);"
+  "call": "// Native: TPlayerProtocolMessageHandler (PlayerSkills)"
  },
  {
   "dir": "server",
   "opcode": 162,
   "name": "PlayerState",
-  "call": "parsePlayerState(msg);"
+  "call": "// Native: TPlayerProtocolMessageHandler (PlayerState)"
  },
  {
   "dir": "server",
   "opcode": 163,
   "name": "UpdateTarget",
-  "call": "parsePlayerCancelAttack(msg);"
+  "call": "// Native: TPlayerProtocolMessageHandler (UpdateTarget)"
  },
  {
   "dir": "server",
   "opcode": 164,
   "name": "SpellDelay",
-  "call": "parseSpellCooldown(msg);"
+  "call": "// Native: TPlayerProtocolMessageHandler (SpellDelay)"
  },
  {
   "dir": "server",
   "opcode": 165,
   "name": "SpellGroupDelay",
-  "call": "parseSpellGroupCooldown(msg);"
+  "call": "// Native: TPlayerProtocolMessageHandler (SpellGroupDelay)"
  },
  {
   "dir": "server",
   "opcode": 166,
   "name": "MultiUseDelay",
-  "call": "parseMultiUseCooldown(msg);"
+  "call": "// Native: TPlayerProtocolMessageHandler (MultiUseDelay)"
  },
  {
   "dir": "server",
   "opcode": 167,
   "name": "SetTactics",
-  "call": "parsePlayerModes(msg);"
+  "call": "// Native: game::TPlayerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 168,
   "name": "SetStoreButtonDeeplink",
-  "call": "parseSetStoreDeepLink(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1587,97 +1587,97 @@
   "dir": "server",
   "opcode": 170,
   "name": "Talk",
-  "call": "parseTalk(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 171,
   "name": "Channels",
-  "call": "parseChannelList(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 172,
   "name": "OpenChannel",
-  "call": "parseOpenChannel(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 173,
   "name": "PrivateChannel",
-  "call": "parseOpenPrivateChannel(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 174,
   "name": "EditGuildMessage",
-  "call": "parseEditGuildMessage(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 175,
   "name": "XpChanged",
-  "call": "parseExperienceTracker(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 176,
   "name": "OutfitMemorial",
-  "call": "parseOutfitMemorial(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 177,
   "name": "Highscores",
-  "call": "parseHighscores(msg);"
+  "call": "// Native: highscores::THighscoresProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 178,
   "name": "OpenOwnChannel",
-  "call": "parseOpenOwnPrivateChannel(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 179,
   "name": "CloseChannel",
-  "call": "parseCloseChannel(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 180,
   "name": "Message",
-  "call": "parseTextMessage(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 181,
   "name": "SnapBack",
-  "call": "parseCancelWalk(msg);"
+  "call": "// Native: TGameProtocolMessageHandler (SnapBack)"
  },
  {
   "dir": "server",
   "opcode": 182,
   "name": "Wait",
-  "call": "parseWalkWait(msg);"
+  "call": "// Native: TGameProtocolMessageHandler (Wait)"
  },
  {
   "dir": "server",
   "opcode": 183,
   "name": "UnjustifiedPoints",
-  "call": "parseUnjustifiedStats(msg);"
+  "call": "// Native: creatures::TUnjustifiedPointsProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 184,
   "name": "PvpSituations",
-  "call": "parsePvpSituations(msg);"
+  "call": "// Native: creatures::TUnjustifiedPointsProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 185,
   "name": "BestiaryTracker",
-  "call": "parseBestiaryTracker(msg);"
+  "call": "// Native: cyclopedia::TBestiaryTrackerProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1689,175 +1689,175 @@
   "dir": "server",
   "opcode": 187,
   "name": "ShapedPerkReshapeOffers",
-  "call": "if (tibia::game::clientRevision() >= 1530)\n                            parseWeaponProficiencyReshapeOffers(msg);\n                        else\n                            parseTaskHuntingData(msg);\n"
+  "call": "// Native: proficiency::TProficiencyProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 188,
   "name": "Stop",
-  "call": "parseServerStop(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 189,
   "name": "BossTracking",
-  "call": "parseBosstiaryCooldownTimer(msg);"
+  "call": "// Native: bossbestiary::TBossBestiaryProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 190,
   "name": "TopFloor",
-  "call": "parseFloorChangeUp(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 191,
   "name": "BottomFloor",
-  "call": "parseFloorChangeDown(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 192,
   "name": "UpdateManagedContainers",
-  "call": "parseLootContainers(msg);"
+  "call": "// Native: quickloot::TManagedContainersProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 193,
   "name": "VocationSpecificPlayerData",
-  "call": "parseMonkData(msg);"
+  "call": "// Native: game::TPlayerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 194,
   "name": "ConfigureCreaturePodium",
-  "call": "parseConfigureCreaturePodium(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 195,
   "name": "CyclopediaHouseActionResult",
-  "call": "parseCyclopediaHouseAuctionMessage(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 196,
   "name": "WeaponProficiency",
-  "call": "parseWeaponProficiencyInfo(msg);"
+  "call": "// Native: proficiency::TProficiencyProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 197,
   "name": "GemAtelierGemRevealed",
-  "call": "parseGemAtelierGemRevealed(msg);"
+  "call": "// Native: skillwheel::TSkillWheelProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 198,
   "name": "CyclopediaStaticHouseData",
-  "call": "parseCyclopediaHousesInfo(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 199,
   "name": "CyclopediaCurrentHouseData",
-  "call": "parseCyclopediaHouseList(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 200,
   "name": "Outfit",
-  "call": "parseOpenOutfitWindow(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 201,
   "name": "ExivaSuppressed",
-  "call": "tibia::game::notify(\"onExivaSuppressed\");\n"
+  "call": "// Native: exivaoptions::TExivaOptionsProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 202,
   "name": "UpdateExivaOptions",
-  "call": "parseExivaRestrictions(msg);"
+  "call": "// Native: exivaoptions::TExivaOptionsProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 203,
   "name": "TransactionDetails",
-  "call": "parseTransactionDetails(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 204,
   "name": "ImpactTracking",
-  "call": "parseUpdateImpactTracker(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 205,
   "name": "MarketStatistics",
-  "call": "parseItemsPrice(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 206,
   "name": "ItemWasted",
-  "call": "parseUpdateSupplyTracker(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 207,
   "name": "ItemLooted",
-  "call": "parseUpdateLootTracker(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 208,
   "name": "TrackQuestFlags",
-  "call": "parseQuestTracker(msg);"
+  "call": "// Native: questlog::TQuestLogProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 209,
   "name": "KillTracking",
-  "call": "parseKillTracker(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 210,
   "name": "BuddyData",
-  "call": "parseVipAdd(msg);"
+  "call": "// Native: creatures::TVipProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 211,
   "name": "BuddyStatusChange",
-  "call": "parseVipState(msg);"
+  "call": "// Native: creatures::TVipProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 212,
   "name": "BuddyGroupData",
-  "call": "parseVipLogout(msg);"
+  "call": "// Native: creatures::TVipProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 213,
   "name": "MonsterCyclopedia",
-  "call": "parseBestiaryRaces(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 214,
   "name": "MonsterCyclopediaMonsters",
-  "call": "parseBestiaryOverview(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 215,
   "name": "MonsterCyclopediaRace",
-  "call": "parseBestiaryMonsterData(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1869,7 +1869,7 @@
   "dir": "server",
   "opcode": 217,
   "name": "MonsterCyclopediaNewDetails",
-  "call": "parseBestiaryEntryChanged(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1881,55 +1881,55 @@
   "dir": "server",
   "opcode": 219,
   "name": "HirelingNameChange",
-  "call": "parseHirelingNameChange(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 220,
   "name": "TutorialHint",
-  "call": "parseTutorialHint(msg);"
+  "call": "// Native: tutorial::TTutorialProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 221,
   "name": "CyclopediaMapData",
-  "call": "parseAutomapFlag(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 222,
   "name": "DailyRewardCollectionState",
-  "call": "parseDailyRewardCollectionState(msg);"
+  "call": "// Native: dailyreward::TDailyRewardProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 223,
   "name": "CreditBalance",
-  "call": "parseCoinBalance(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 224,
   "name": "StoreError",
-  "call": "parseStoreError(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 225,
   "name": "RequestPurchaseData",
-  "call": "parseRequestPurchaseData(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 226,
   "name": "OpenRewardWall",
-  "call": "parseOpenRewardWall(msg);"
+  "call": "// Native: dailyreward::TDailyRewardProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 227,
   "name": "CloseRewardWall",
-  "call": "parseCloseRewardWall(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1941,156 +1941,156 @@
   "dir": "server",
   "opcode": 229,
   "name": "DailyRewardHistory",
-  "call": "parseRewardHistory(msg);"
+  "call": "// Native: dailyreward::TDailyRewardProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 230,
   "name": "BosstiaryHighlight",
-  "call": "// || Proto::GameServerSendBosstiaryEntryChanged\n                        if (tibia::game::cipFeature(tibia::client::GameBosstiary)) {\n                            parseBosstiaryEntryChanged(msg);\n                        } else {\n                            parsePreyFreeRerolls(msg);\n                        }\n"
+  "call": "// Native: bossbestiary::TBossBestiaryProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 231,
   "name": "PreyTimeLeft",
-  "call": "parsePreyTimeLeft(msg);"
+  "call": "// Native: prey::TPreyProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 232,
   "name": "PreyData",
-  "call": "parsePreyData(msg);"
+  "call": "// Native: prey::TPreyProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 233,
   "name": "PreyPrices",
-  "call": "parsePreyRerollPrice(msg);"
+  "call": "// Native: prey::TPreyProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 234,
   "name": "OfferDescription",
-  "call": "parseShowDescription(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 235,
   "name": "ImbuingDialogRefresh",
-  "call": "parseImbuementWindow(msg);"
+  "call": "// Native: imbuing::TImbuingProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 236,
   "name": "CloseImbuingDialog",
-  "call": "parseCloseImbuementWindow(msg);"
+  "call": "// Native: imbuing::TImbuingProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 237,
   "name": "ShowMessageDialog",
-  "call": "parseError(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 238,
   "name": "ResourceBalance",
-  "call": "parseResourceBalance(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 239,
   "name": "TibiaTime",
-  "call": "parseWorldTime(msg);"
+  "call": "// Native: worldmap::TWorldmapProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 240,
   "name": "QuestLog",
-  "call": "parseQuestLog(msg);"
+  "call": "// Native: questlog::TQuestLogProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 241,
   "name": "QuestLine",
-  "call": "parseQuestLine(msg);"
+  "call": "// Native: questlog::TQuestLogProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 242,
   "name": "UpdatingShopBalance",
-  "call": "parseCoinBalanceUpdating(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 243,
   "name": "ChannelEvent",
-  "call": "parseChannelEvent(msg);"
+  "call": "// Native: chat::TChatProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 244,
   "name": "ObjectInfo",
-  "call": "parseItemInfo(msg);"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 245,
   "name": "PlayerInventory",
-  "call": "parsePlayerInventory(msg);"
+  "call": "// Native: container::TContainerProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 246,
   "name": "MarketEnter",
-  "call": "if (tibia::game::clientRevision() >= 1281) {\n                            parseMarketEnter(msg);\n                        } else {\n                            parseMarketEnterOld(msg);\n                        }\n"
+  "call": "// Native: market::TMarketProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 247,
   "name": "MarketLeave",
-  "call": "tibia::game::notify(\"onMarketLeave\");\n"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 248,
   "name": "MarketDetail",
-  "call": "parseMarketDetail(msg);"
+  "call": "// Native: market::TMarketProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 249,
   "name": "MarketBrowse",
-  "call": "parseMarketBrowse(msg);"
+  "call": "// Native: market::TMarketProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 250,
   "name": "ShowModalDialog",
-  "call": "parseModalDialog(msg);"
+  "call": "// Native: game::TServerModalDialogProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 251,
   "name": "StoreCategories",
-  "call": "parseStore(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 252,
   "name": "StoreOffers",
-  "call": "parseStoreOffers(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 253,
   "name": "TransactionHistory",
-  "call": "parseStoreTransactionHistory(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  },
  {
   "dir": "server",
   "opcode": 254,
   "name": "StoreSuccess",
-  "call": "parseCompleteStorePurchase(msg);"
+  "call": "// Native: store::TStoreProtocolMessageHandler."
  }
 ]

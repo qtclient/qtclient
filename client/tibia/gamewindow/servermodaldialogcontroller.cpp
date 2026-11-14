@@ -45,7 +45,6 @@ void TServerModalDialogController::open(const uint32_t id, const QString& title,
 }
 
 /// CIP : out-of-range indices answer 0xff.
-// b1/d6025631864f6cb1
 void TServerModalDialogController::answerButtonClicked(const int ButtonIndex, const int SelectionIndex)
 {
     const uint8_t button = ButtonIndex >= 0 && ButtonIndex < static_cast<int>(m_buttonIds.size()) ? m_buttonIds[ButtonIndex] : NoSelection;

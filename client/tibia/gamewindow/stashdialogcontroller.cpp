@@ -313,7 +313,6 @@ void TStashDialogController::setContent(std::map<uint16_t, uint32_t> content)
     onStashContentChanged();
 }
 
-// b1/975fe14a1288813e
 void TStashDialogController::onStashContentChanged()
 {
     // CIP: the categories of the stored types and "all weapons", "all" first.
@@ -411,7 +410,6 @@ void TStashDialogController::persistSortOrder(const int order)
     app::ClientOptions::store(QLatin1String(StashSortOrderOption), order);
 }
 
-// b1/59c1ee62aee46457
 void TStashDialogController::showDialog()
 {
     if (!dialog()->isShown())
@@ -436,7 +434,6 @@ void TStashDialogController::resetAllFilters()
     setSortOrder(static_cast<int>(Order::AtoZ));
 }
 
-// b1/57fe50b14717d100
 void TStashDialogController::closeButtonClicked()
 {
     closeDialog();
@@ -472,7 +469,6 @@ input::TGameActionList TStashDialogController::typeActions(const uint16_t typeId
     return actions;
 }
 
-// b1/a136c0a6f16211aa
 void TStashDialogController::slotClicked(const int TypeID, const int MouseButtonRaw, const int KeyboardModifiersRaw)
 {
     const input::TGameActionList candidates = typeActions(static_cast<uint16_t>(TypeID));
@@ -515,7 +511,6 @@ void TStashDialogController::onManageLootContainerDialogClosed()
     input::publish(input::makeAction(A::STASH_REQUEST_REOPEN));
 }
 
-// b1/c8d936b5038c4ce1
 void TStashDialogController::onRequestShowStashMessageDialog(const QString& Message)
 {
     m_info->setButtons(okButton());

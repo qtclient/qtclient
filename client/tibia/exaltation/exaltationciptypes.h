@@ -27,6 +27,9 @@ class TExaltationProtocolMessageHandler final : public cip::tibia::exaltation::T
     Q_OBJECT
 public:
     using cip::tibia::exaltation::TExaltationProtocolMessageHandler::TExaltationProtocolMessageHandler;
+public:
+    /// Tip Q→H wire: ExaltationHistory from `serverMessageEnqueued`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 }

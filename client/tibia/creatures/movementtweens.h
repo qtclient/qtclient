@@ -12,10 +12,6 @@ namespace creatures {
 void advanceAllMovementTweens(int64_t timestampMs);
 void resumeMovementClock();
 
-/// Step gate for keyboard / GoPath prediction (storage-authoritative).
-bool canBeginStep(bool ignoreLock = false);
-bool blocksStep(tibia::client::Direction direction);
-
 /// Walk offset for world draw / camera (storage row; 0 if unknown).
 Point walkOffsetFor(uint32_t creatureId);
 

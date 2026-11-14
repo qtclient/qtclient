@@ -2,6 +2,8 @@
 
 #include <cip_gen.h>
 
+#include <QByteArray>
+
 #include <tibia/game/tgamenotify.h>
 
 namespace tibia {
@@ -19,6 +21,9 @@ public:
 
     /// type: 0 ambient, 1 music (0 = stop), 2 anthem.
     void handleSoundTrigger(int type, int soundId);
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 
 private:
     tibia::game::SoftHook m_hook;

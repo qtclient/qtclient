@@ -54,8 +54,8 @@ public:
     void addWalkingCreature(uint32_t creatureId);
     void removeWalkingCreature(uint32_t creatureId);
 
-    /// Protocol magic effect: CIP field appearance-only (no Effect Thing).
-    void addEffectAppearance(const appearances::TAppearanceInstancePtr& appearance);
+    /// The effect storage changed the effects on this field.
+    void effectsChanged();
     /// Protocol item place: appearance-only stack entry (no Item::create / ItemPtr).
     void addAppearance(const appearances::TAppearanceInstancePtr& appearance, int stackPos);
     /// Phase 5.0-C: place creature from storage id + outfit appearance (no CreaturePtr).
@@ -79,13 +79,10 @@ public:
     uint16_t itemClientIdAt(int stackPos) const;
     uint32_t stackCreatureId(int stackPos) const;
     bool removeThingAtStackPos(int stackPos);
-    bool removeEffectByClientId(uint16_t clientId);
-    bool removeEffectAppearance(const appearances::TAppearanceInstancePtr& appearance);
-    /// Drop finished field effects (CIP animator active flag / duration).
-    void purgeExpiredEffects();
     /// Refresh outfit/direction appearance entries when the live creature changes look.
     void syncCreatureStackAppearance(uint32_t creatureId);
-    const std::vector<appearances::TAppearanceInstancePtr>& effectAppearances() const { return m_effectAppearances; }
+    /// The graphical effects on this field, from the effect storage.
+    const std::vector<appearances::TAppearanceInstancePtr>& effectAppearances() const;
     /// LocalPlayerSessionThing-only CreaturePtr list; Map spectators + tests still call this.
     std::vector<CreaturePtr> getCreatures() const;
     /// CipSoft path: creature ids on this field resolved through `TCreatureStorage`.
@@ -103,11 +100,18 @@ public:
     /// Top use target as typeId + stackPos (CIP use / rope / ladder; no ThingPtr).
     TFieldItemHit topUseHit() const;
     int getGroundSpeed();
+    /// Speed of the first ground item in the stack, 255 without one.
+    int movementGroundSpeed() const;
+    /// An item with a ground speed lies here.
+    bool hasBank() const { return movementGroundSpeed() != 255; }
     uint8_t getMinimapColorByte();
     int getThingCount() { return static_cast<int>(m_stack.size()); }
     int thingCount() const { return static_cast<int>(m_stack.size()); }
 
     bool isWalkable(bool ignoreCreatures = false) const;
+    /// Whether the field can be stepped onto, from its stack in order: 0 free,
+    /// 1 blocked, 2 unsure.
+    int walkState() const;
     bool isClickable();
     bool isPathable() { return (m_thingTypeFlag & NOT_PATHABLE) == 0; }
     bool isFullGround() const { return m_thingTypeFlag & FULL_GROUND; }
@@ -124,7 +128,7 @@ public:
     bool hasBlockingCreature() const;
     bool hasBlockingBottomItem() const;
 
-    bool hasEffect() const { return !m_effectAppearances.empty(); }
+    bool hasEffect() const;
     bool hasGround() const;
     bool hasTopGround(const bool ignoreBorder = false) const;
 
@@ -220,7 +224,6 @@ private:
     std::vector<TFieldStackEntry> m_stack;
     std::vector<appearances::TAppearanceInstancePtr> m_appearanceCache;
 
-    std::vector<appearances::TAppearanceInstancePtr> m_effectAppearances;
 
     std::unique_ptr<StaticText> m_timerText;
     std::unique_ptr<StaticText> m_text;

@@ -78,7 +78,6 @@ QList<QObject*> TPlayerTradeController::counterOffer() const { return m_counterO
 QQuickItem* TPlayerTradeController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
 
 
-// b1/55535be174678d82
 void TPlayerTradeController::onOwnOfferChanged()
 {
     if (!m_storage)
@@ -97,7 +96,6 @@ void TPlayerTradeController::onCounterOfferChanged()
     Q_EMIT counterOfferChanged();
 }
 
-// b1/45f27bcc59826712
 void TPlayerTradeController::onCloseClicked()
 {
     rejectTrade();

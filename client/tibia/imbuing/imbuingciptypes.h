@@ -6,6 +6,7 @@
 
 #include <cip_gen.h>
 
+#include <QByteArray>
 #include <QObject>
 
 namespace tibia {
@@ -27,6 +28,9 @@ class TImbuingProtocolMessageHandler final : public cip::tibia::imbuing::TImbuin
     Q_OBJECT
 public:
     using cip::tibia::imbuing::TImbuingProtocolMessageHandler::TImbuingProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 }

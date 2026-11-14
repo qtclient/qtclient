@@ -106,6 +106,7 @@ private:
     void uninstallHandlers();
     bool handleGameAction(const input::TGameAction& action);
     void rebuildListItems();
+    void applyListFilter();
     void syncPremium();
     void syncFallback();
     void startContainerPick(int category, bool lootColumn);

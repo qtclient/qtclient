@@ -188,7 +188,6 @@ TAnalyticsSelectorWidgetController::TAnalyticsSelectorWidgetController(gamewindo
         connect(item, &QObject::destroyed, this, &TAnalyticsSelectorWidgetController::onWidgetQuickItemDestroyed);
 }
 
-// b1/7db6f3d35540cd64
 void TAnalyticsSelectorWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
@@ -500,7 +499,6 @@ QString THuntingSessionWidgetController::exportFileName(const char* extension) c
 }
 
 /// CIP : "label: value" lines with grouped numbers, then the kills and the loot.
-// b1/8a1a57734a40c2fa
 QString THuntingSessionWidgetController::exportText() const
 {
     QStringList lines;
@@ -542,7 +540,6 @@ QString THuntingSessionWidgetController::exportText() const
 }
 
 /// CIP .
-// b1/35973c9d29b3061f
 QJsonObject THuntingSessionWidgetController::exportJson() const
 {
     QJsonObject json;
@@ -662,7 +659,6 @@ void TProgressWidgetController::saveWidgetOptions() { storeContentHeight(widget(
 
 void TProgressWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
 
-// b1/822d579f59d34f23
 void TProgressWidgetController::onExperienceInProgressStorageChanged()
 {
     const qint64 now = TAnalyserStorages::nowMs();
@@ -680,7 +676,6 @@ void TProgressWidgetController::onExperienceInProgressStorageChanged()
     }
 }
 
-// b1/f4bbefa330208d48
 void TProgressWidgetController::updateXPGraphData()
 {
     m_storage->computeHistory(m_xpHistory, m_xpGraphMaxY);
@@ -872,7 +867,6 @@ QHash<int, QByteArray> TGainWasteModel::roleNames() const
     };
 }
 
-// b1/1189aff411a4e991
 void TGainWasteModel::setItems(std::vector<TGainWasteStorage::Item> items)
 {
     size_t row = 0;
@@ -979,7 +973,6 @@ void TLootAndWasteWidgetController::onItemsChanged()
 }
 
 /// The history points: the first at -n, then one per minute ending at 0.
-// b1/bcf88103dfa1c3ed
 void TLootAndWasteWidgetController::onItemsMetricsChanged()
 {
     const std::vector<double> values = m_storage->history(m_side, m_maxY);

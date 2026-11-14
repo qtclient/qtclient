@@ -310,11 +310,10 @@ void TManageLootContainerDialogController::setFilterString(const QString& v)
     if (::cip::unchanged(m_filterString, v))
         return;
     m_filterString = v;
-    m_listProxy.setNameFilter(v, false, false, false, false, {}, false);
+    applyListFilter();
     Q_EMIT filterStringChanged();
 }
 
-// b1/8b63b68736d18ce5
 void TManageLootContainerDialogController::showDialog()
 {
     syncPremium();
@@ -346,13 +345,11 @@ void TManageLootContainerDialogController::closeDialog()
 
 void TManageLootContainerDialogController::closeButtonClicked() { closeDialog(); }
 
-// b1/8d152a0853470b28
 void TManageLootContainerDialogController::getPremiumClicked()
 {
     input::publish(input::makeAction(A::OPEN_URL_GET_PREMIUM));
 }
 
-// b1/dd9614b86fe6ec4c
 void TManageLootContainerDialogController::requestClearItemBlackWhitelist()
 {
     if (!m_itemInfo)
@@ -376,7 +373,6 @@ void TManageLootContainerDialogController::onClearConfirmed()
     m_itemInfo->replaceLootLists(m_itemInfo->lootListType(), std::move(black), std::move(white));
 }
 
-// b1/710ebecd872fd28b
 void TManageLootContainerDialogController::requestLootBlackWhitelistSwitch(const int NewListMode)
 {
     if (!m_itemInfo)
@@ -393,17 +389,14 @@ void TManageLootContainerDialogController::requestLootBlackWhitelistSwitch(const
     rebuildListItems();
 }
 
-// b1/d4ca737e577d2fc1
 void TManageLootContainerDialogController::requestAddItemBlackWhitelist() { startListItemPick(); }
 
-// b1/e59733ef01c593c6
 void TManageLootContainerDialogController::removeItemFromList(const int AppearanceTypeIDRaw)
 {
     if (m_itemInfo)
         m_itemInfo->setLootListed(static_cast<uint16_t>(std::clamp(AppearanceTypeIDRaw, 0, 0xffff)), false);
 }
 
-// b1/07d42fa959226081
 void TManageLootContainerDialogController::showItemDetails(const int AppearanceTypeIDRaw)
 {
     auto action = input::makeAction(A::OPEN_CYCLOPEDIA);
@@ -415,7 +408,6 @@ void TManageLootContainerDialogController::showItemDetails(const int AppearanceT
 
 void TManageLootContainerDialogController::onPremiumTimeChanged() { syncPremium(); }
 
-// b1/9be67dbe2a117077
 void TManageLootContainerDialogController::onLootContainersUpdated()
 {
     if (!m_containers)
@@ -445,6 +437,18 @@ void TManageLootContainerDialogController::rebuildListItems()
     }
     std::ranges::sort(entries, [](const TAppearanceTypeEntry& a, const TAppearanceTypeEntry& b) { return a.name < b.name; });
     m_listModel.reset(std::move(entries));
+    applyListFilter();
+}
+
+void TManageLootContainerDialogController::applyListFilter()
+{
+    // Appearance proxy's empty name+category rejects every row (Item Info "pick a
+    // category" behaviour). Loot lists must show all entries until the player types.
+    if (m_filterString.isEmpty()) {
+        m_listProxy.setCategoryFilter(TAppearanceTypeListModelSortFilterProxy::AllCategories, false, false, false, false, {},
+                                      false);
+        return;
+    }
     m_listProxy.setNameFilter(m_filterString, false, false, false, false, {}, false);
 }
 

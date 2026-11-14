@@ -188,7 +188,6 @@ void TAppearanceTypeListModelSortFilterProxy::setNameFilter(const QString& name,
         Q_EMIT showLockerOnlyChanged();
 }
 
-// b1/e8099b2d6ec825d6
 void TAppearanceTypeListModelSortFilterProxy::setTypeFilter(const uint16_t typeId)
 {
     m_category = -1;
@@ -199,7 +198,6 @@ void TAppearanceTypeListModelSortFilterProxy::setTypeFilter(const uint16_t typeI
     Q_EMIT filterChanged();
 }
 
-// b1/698e207d891ef977
 int TAppearanceTypeListModelSortFilterProxy::rowOf(const uint16_t typeId, const uint8_t tier) const
 {
     for (int row = 0; row < rowCount(); ++row) {
@@ -224,7 +222,6 @@ uint8_t TAppearanceTypeListModelSortFilterProxy::tierAt(const int row) const
     return entry.hasTier ? entry.tier : 0;
 }
 
-// b1/c7cfbc7de54d25af
 bool TAppearanceTypeListModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
     if (sourceRow < 0 || sourceRow >= m_model->size())
@@ -277,7 +274,6 @@ bool TAppearanceTypeListModelSortFilterProxy::filterAcceptsRow(const int sourceR
     return true;
 }
 
-// b1/7e364b709594c6ca
 bool TAppearanceTypeListModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     const TAppearanceTypeEntry& a = m_model->entry(left.row());

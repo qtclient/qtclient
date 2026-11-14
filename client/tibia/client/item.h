@@ -25,8 +25,10 @@
 #include "tibia/appearances/thing.h"
 #include "framework/core/declarations.h"
 #include "outfit.h"
+#include "animation/animator.h"
 
 #include <memory>
+#include <optional>
 
 namespace tibia {
 namespace appearances {
@@ -183,6 +185,7 @@ private:
     uint32_t m_charges{ 0 };
     uint8_t m_tier{ 0 };
     uint8_t m_phase{ 0 };
+    std::optional<tibia::animation::TAnimator> m_animator;
     bool m_brandNew{ false };
     bool m_hasContainerAmmoTotal{ false };
     uint32_t m_containerAmmoTotal{ 0 };

@@ -6,9 +6,8 @@
 #include "framework/core/clock.h"
 #include <tibia/schedule/schedule.h>
 #include "tibia/creatures/attachedeffect.h"
-#include "creatures/creaturespeedformula.h"
+#include "creatures/walkdebug.h"
 #include "game/localplayersessionthing.h"
-#include "tibia/creatures/paperdoll.h"
 #include "worldmap/worldmapfield.h"
 #include <tibia/game/gamesession.h>
 #include <tibia/worldmap/worldmapstorage.h>
@@ -33,9 +32,231 @@ TCreatureStorage* g_creatureStorage = nullptr;
 
 TCreature::TCreature(const TCreatureID id, QObject* parent)
     : cip::tibia::creatures::TCreature(parent)
-    , m_movementTween(*this)
     , m_creatureId(id)
 {
+}
+
+ThingType* TCreature::outfitThingType() const
+{
+    if (!m_outfit.isCreature())
+        return nullptr;
+    return tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory());
+}
+
+ThingType* TCreature::mountThingType() const
+{
+    return m_outfit.hasMount() ? tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature) : nullptr;
+}
+
+namespace {
+
+std::optional<animation::TMovingOutfitAnimator> walkAnimatorFor(const ThingType* type)
+{
+    const animation::TAnimationInfo* moving = type ? type->movingAnimation() : nullptr;
+    if (!moving || moving->phaseCount() == 0)
+        return std::nullopt;
+    return animation::TMovingOutfitAnimator(moving->phaseCount(),
+                                            moving->loopType == animation::TAnimationInfo::ELoopType::PingPong);
+}
+
+// A rebuilt sprite sequence keeps its walk animator, so the leg cycle runs on;
+// the divisor becomes the plain phase count even for a ping-pong animation.
+void refreshWalkAnimator(std::optional<animation::TMovingOutfitAnimator>& walk, const ThingType* type)
+{
+    const animation::TAnimationInfo* moving = type ? type->movingAnimation() : nullptr;
+    if (walk && moving && moving->phaseCount() > 0)
+        walk->setDivisor(moving->phaseCount());
+    else
+        walk = walkAnimatorFor(type);
+}
+
+}
+
+static std::optional<animation::TAnimator> idleAnimatorFor(const ThingType* type)
+{
+    if (const animation::TAnimationInfo* info = type ? type->idleAnimation() : nullptr)
+        return animation::TAnimator(*info, 0);
+    return std::nullopt;
+}
+
+void TCreature::restartWalkAnimators()
+{
+    m_outfitWalkAnimator = walkAnimatorFor(outfitThingType());
+    m_mountWalkAnimator = walkAnimatorFor(mountThingType());
+    m_outfitIdleAnimator = idleAnimatorFor(tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory()));
+    m_mountIdleAnimator = idleAnimatorFor(mountThingType());
+}
+
+void TCreature::refreshWalkAnimators()
+{
+    refreshWalkAnimator(m_outfitWalkAnimator, outfitThingType());
+    refreshWalkAnimator(m_mountWalkAnimator, mountThingType());
+    // A rebuilt standing sequence gets a new animator.
+    m_outfitIdleAnimator = idleAnimatorFor(tibia::game::rawThingType(m_outfit.getId(), m_outfit.getCategory()));
+    m_mountIdleAnimator = idleAnimatorFor(mountThingType());
+}
+
+void TCreature::move(const qint64 startMs, const qint64 endMs, const worldmap::TWorldMapCoordinate& origin,
+                     const EMovementDirection direction, const int elevationFrom, const int elevationTo)
+{
+    const auto look = lookDirectionAfter(static_cast<ECreatureLookDirection>(m_movementLook), direction);
+    const bool lookChanged = static_cast<uint8_t>(look) != m_patternX;
+    m_movementLook = static_cast<uint8_t>(look);
+    const qint64 restartAfter = m_movementTween.endTime() + 1000;
+    setDirection(static_cast<uint8_t>(look));
+    // Keep the session camera Thing facing the step — otherwise idle
+    // syncWorldDrawFrom used to be the only bridge and could race.
+    if (m_isLocalPlayer) {
+        if (const LocalPlayerSessionThingPtr local = tibia::game::localPlayer()) {
+            if (local->getId() == m_creatureId)
+                local->setDirection(static_cast<tibia::client::Direction>(m_patternX), false);
+        }
+    }
+
+    const bool atOrigin = worldmap::TWorldMapCoordinate(m_position) == origin;
+    const bool ended = m_movementTween.isFinished();
+    const worldmap::TWorldMapExtent step = stepOffset(direction);
+    const bool sameStep = m_movementTween.origin() == origin
+        && m_movementTween.destination()
+            == worldmap::TWorldMapCoordinate(origin.x + step.width, origin.y + step.height, origin.z + step.depth);
+
+    bool started = false;
+    if (!atOrigin) {
+        if (!ended && sameStep && m_movementTween.mode() == 0) {
+            m_movementTween.setMode(1);
+        } else {
+            m_movementTween.start(startMs, endMs, origin, direction, elevationFrom, elevationTo, 1);
+            started = true;
+        }
+    } else if (ended) {
+        m_movementTween.start(startMs, endMs, origin, direction, elevationFrom, elevationTo, 0);
+        started = true;
+    }
+    if (started && (lookChanged || restartAfter < startMs))
+        refreshWalkAnimators();
+    if (m_outfitWalkAnimator)
+        m_outfitWalkAnimator->setKey(endMs - startMs, startMs);
+    if (m_mountWalkAnimator)
+        m_mountWalkAnimator->setKey(endMs - startMs, startMs);
+    if (lcWalk().isDebugEnabled()) {
+        qCDebug(lcWalk) << "move" << "id" << m_creatureId << "local" << m_isLocalPlayer
+                        << "origin" << origin.x << origin.y << origin.z << "dir" << int(direction)
+                        << "pos" << walkPos(m_position) << "ms" << (endMs - startMs) << "mode"
+                        << m_movementTween.mode() << "started" << started << "scale"
+                        << m_movementTween.continueScale();
+    }
+    updateCoveredField();
+}
+
+void TCreature::resetMovement()
+{
+    m_movementTween = TCreatureMovementTween();
+    m_suppressMovingSprite = true;
+    refreshWalkAnimators();
+    updateCoveredField();
+}
+
+void TCreature::update(const qint64 nowMs)
+{
+    m_movementTween.advance(nowMs);
+    m_lastFrameMs = nowMs;
+    if (isMoving()) {
+        m_lastMovingFrameMs = nowMs;
+        m_suppressMovingSprite = false;
+    }
+    if (m_outfitWalkAnimator)
+        m_outfitWalkAnimator->update(nowMs);
+    if (m_mountWalkAnimator)
+        m_mountWalkAnimator->update(nowMs);
+    if (m_outfitIdleAnimator)
+        m_outfitIdleAnimator->update(nowMs);
+    if (m_mountIdleAnimator)
+        m_mountIdleAnimator->update(nowMs);
+    m_animationPhase = animationPhaseFor(outfitThingType(), m_outfitWalkAnimator, m_outfitIdleAnimator);
+    m_mountAnimationPhase = animationPhaseFor(mountThingType(), m_mountWalkAnimator, m_mountIdleAnimator);
+    updateCoveredField();
+    if (m_isLocalPlayer && walkDebugVerbose()) {
+        const Point offset = walkOffset();
+        qCDebug(lcWalk) << "frame" << nowMs << "pos" << walkPos(m_position) << "drawn"
+                        << (m_position.x * 32 + offset.x) << (m_position.y * 32 + offset.y) << "moving" << isMoving()
+                        << "phase" << m_animationPhase;
+    }
+}
+
+uint16_t TCreature::animationPhaseFor(const ThingType* type,
+                                      const std::optional<animation::TMovingOutfitAnimator>& walk,
+                                      const std::optional<animation::TAnimator>& idle) const
+{
+    if (!type)
+        return 0;
+    if (showsMovingSprite() && walk)
+        return static_cast<uint16_t>(type->getIdleAnimationPhases() + static_cast<int>(walk->phase()));
+    return idle ? static_cast<uint16_t>(idle->phase()) : 0;
+}
+
+bool TCreature::showsMovingSprite() const
+{
+    if (!m_isLocalPlayer)
+        return isMoving();
+    const bool recentlyMoving = m_lastFrameMs <= m_lastMovingFrameMs + 75 && m_holdsMovementIntent;
+    return (isMoving() || recentlyMoving) && !m_suppressMovingSprite;
+}
+
+int TCreature::drawElevation() const
+{
+    if (isMoving())
+        return m_movementTween.elevation();
+    return m_position.isValid() ? tibia::worldmap::TWorldMapStorage::ensureStorage()->elevationAt(m_position) : 0;
+}
+
+Position TCreature::coveredField() const
+{
+    const worldmap::TWorldMapExtent covered = m_movementTween.coveredFieldOffset();
+    const worldmap::TWorldMapSubfieldExtent offset = m_movementTween.drawOffset();
+    return Position(m_position.x + covered.width + (offset.width > 0 ? 1 : 0),
+                    m_position.y + covered.height + (offset.height > 0 ? 1 : 0), m_position.z);
+}
+
+Point TCreature::walkOffset() const
+{
+    const worldmap::TWorldMapExtent covered = m_movementTween.coveredFieldOffset();
+    const worldmap::TWorldMapSubfieldExtent offset = m_movementTween.drawOffset();
+    return Point(covered.width * 32 + offset.width, covered.height * 32 + offset.height);
+}
+
+bool TCreature::isDisplaced() const
+{
+    const worldmap::TWorldMapExtent covered = m_movementTween.coveredFieldOffset();
+    const worldmap::TWorldMapSubfieldExtent offset = m_movementTween.drawOffset();
+    return covered.width != 0 || covered.height != 0 || offset.width != 0 || offset.height != 0;
+}
+
+void TCreature::updateCoveredField()
+{
+    const bool moving = isDisplaced() && m_position.isValid();
+    const Position field = moving ? coveredField() : Position{};
+    if (m_hasWalkingTile) {
+        if (!moving || field != m_walkingTilePos) {
+            if (tibia::worldmap::TWorldMapField* old = tibia::worldmap::fieldAt(m_walkingTilePos))
+                old->removeWalkingCreature(m_creatureId);
+            m_hasWalkingTile = false;
+            m_walkingTilePos = {};
+        } else if (tibia::worldmap::TWorldMapField* cur = tibia::worldmap::fieldAt(m_walkingTilePos)) {
+            // MoveCreature scrubs walking slots before place; re-claim if still
+            // on this covered field so the outfit does not vanish mid-step.
+            cur->addWalkingCreature(m_creatureId);
+        } else {
+            m_hasWalkingTile = false;
+            m_walkingTilePos = {};
+        }
+    }
+    if (moving && !m_hasWalkingTile) {
+        if (tibia::worldmap::TWorldMapField* covered = tibia::worldmap::getOrCreateField(field)) {
+            covered->addWalkingCreature(m_creatureId);
+            m_walkingTilePos = field;
+            m_hasWalkingTile = true;
+        }
+    }
 }
 
 void TCreature::rebuildOutfitAppearance()
@@ -49,45 +270,18 @@ void TCreature::rebuildOutfitAppearance()
 
 void TCreature::syncWorldDrawFrom(LocalPlayerSessionThing& player)
 {
-    if (!m_walking) {
+    if (!isDisplaced()) {
         m_position = player.getPosition();
-        setDirection(static_cast<uint8_t>(player.getDirection()));
-        refreshAnimationPhases();
+        // Do not pull facing from the session Thing: move()/CancelWalk update
+        // storage look, while session can lag until turn() runs. Copying session
+        // here snapped the outfit back to an old cardinal after every step.
+        const auto face = static_cast<tibia::client::Direction>(m_patternX);
+        if (face <= tibia::client::West && player.getDirection() != face)
+            player.setDirection(face, false);
     }
     m_isLocalPlayer = true;
     m_softDead = tibia::game::localPlayerIsSoftDead();
     tibia::game::syncLocalPlayerStorageRow(*this);
-}
-
-bool TCreature::isWalkLocked() const
-{
-    return m_walkLockExpiration != 0 && g_clock.millis() < m_walkLockExpiration;
-}
-
-void TCreature::lockWalk(const uint16_t millis)
-{
-    m_walkLockExpiration = std::max<ticks_t>(m_walkLockExpiration, g_clock.millis() + millis);
-}
-
-const Position& TCreature::pushPreWalk(const Position& pos)
-{
-    m_preWalks.push_back(pos);
-    return m_preWalks.back();
-}
-
-void TCreature::popPreWalkFront()
-{
-    if (!m_preWalks.empty())
-        m_preWalks.pop_front();
-}
-
-void TCreature::clearAutoWalk()
-{
-    m_autoWalkDestination = {};
-    m_lastAutoWalkPosition = {};
-    m_autoWalkPathMode = tibia::client::AutoWalkPathMinimap;
-    m_autoWalkRetries = 0;
-    m_autoWalkDirs.clear();
 }
 
 Color TCreature::informationColorForHealthPercent(const uint8_t healthPercent)
@@ -120,7 +314,10 @@ void TCreature::setName(const QString& name)
 
 void TCreature::setPosition(const Position& position)
 {
+    const bool floorChanged = m_position.z != position.z;
     m_position = position;
+    if (floorChanged)
+        resetMovement();
 }
 
 void TCreature::setCreatureType(const uint8_t creatureType)
@@ -158,6 +355,7 @@ void TCreature::setOutfit(const Outfit& outfit)
         return;
     m_outfit = outfit;
     rebuildOutfitAppearance();
+    restartWalkAnimators();
 }
 
 void TCreature::setLight(const Light& light)
@@ -167,11 +365,7 @@ void TCreature::setLight(const Light& light)
 
 void TCreature::setSpeed(const uint16_t speed)
 {
-    if (m_speed == speed)
-        return;
     m_speed = speed;
-    m_calculatedStepSpeed = calculatedStepSpeed(speed);
-    m_speedCalculator.invalidateCache();
 }
 
 void TCreature::setSkull(const uint8_t skull)
@@ -226,10 +420,6 @@ void TCreature::setDirection(const uint8_t direction)
                 std::dynamic_pointer_cast<appearances::TOutfitAppearanceInstance>(m_outfitAppearance))
             outfitInstance->setOutfitLook(m_outfit, m_patternX);
     }
-    for (const PaperdollPtr& paperdoll : m_paperdolls) {
-        if (paperdoll)
-            paperdoll->setDirection(static_cast<tibia::client::Direction>(m_patternX));
-    }
 }
 
 void TCreature::setEchoRaidColor(const int8_t color)
@@ -245,60 +435,6 @@ void TCreature::setIcons(const std::vector<std::tuple<uint8_t, uint8_t, uint16_t
 void TCreature::setVocation(const uint8_t vocation)
 {
     m_vocation = vocation;
-}
-
-void TCreature::setShader(const std::string& shader)
-{
-    m_shader = shader;
-}
-
-void TCreature::setTyping(const bool typing)
-{
-    m_typing = typing;
-}
-
-bool TCreature::hasPaperdoll(const uint16_t id) const
-{
-    return std::any_of(m_paperdolls.begin(), m_paperdolls.end(),
-                       [id](const PaperdollPtr& pd) { return pd && pd->getId() == id; });
-}
-
-void TCreature::attachPaperdoll(const PaperdollPtr& paperdoll)
-{
-    if (!paperdoll)
-        return;
-    paperdoll->setDirection(static_cast<tibia::client::Direction>(m_patternX));
-    uint_fast8_t i = 0;
-    for (const auto& pd : m_paperdolls) {
-        if (paperdoll->getPriority() < pd->getPriority())
-            break;
-        ++i;
-    }
-    m_paperdolls.insert(m_paperdolls.begin() + i, paperdoll);
-}
-
-bool TCreature::detachPaperdollById(const uint16_t id)
-{
-    const auto it = std::find_if(m_paperdolls.begin(), m_paperdolls.end(),
-                                 [id](const PaperdollPtr& obj) { return obj && obj->getId() == id; });
-    if (it == m_paperdolls.end())
-        return false;
-    m_paperdolls.erase(it);
-    return true;
-}
-
-bool TCreature::detachPaperdollByPriority(const uint8_t priority)
-{
-    bool found = false;
-    for (auto it = m_paperdolls.begin(); it != m_paperdolls.end();) {
-        if (*it && (*it)->getPriority() == priority) {
-            it = m_paperdolls.erase(it);
-            found = true;
-        } else {
-            ++it;
-        }
-    }
-    return found;
 }
 
 void TCreature::attachEffect(const AttachedEffectPtr& effect)
@@ -487,31 +623,6 @@ void TCreatureStorage::publishCreatureUpdated(const std::shared_ptr<TCreature>& 
     Q_EMIT creatureUpdated(weak);
     if (appearanceType != ECreatureUpdateAppearanceType::Health)
         Q_EMIT creatureAppearanceUpdated(weak, appearanceType);
-}
-
-void TCreatureStorage::applyMoveCreature(const TCreatureID id, const Position& from, const Position& to)
-{
-    if (id == 0 || !to.isValid())
-        return;
-
-    const auto row = getOrCreate(id);
-    if (!row)
-        return;
-
-    // Local predicted-step confirm: matching prewalk keeps the in-flight tween.
-    if (row->isLocalPlayer()) {
-        row->setAutoWalkRetries(0);
-        if (row->isPreWalking() && !row->preWalks().empty() && to == row->preWalks().front()) {
-            row->popPreWalkFront();
-            return;
-        }
-        row->clearPreWalks();
-    }
-
-    if (from.isValid() && from.isInRange(to, 1, 1))
-        row->beginWalk(from, to);
-    else
-        row->setPosition(to);
 }
 
 std::shared_ptr<TCreature> TCreatureStorage::ensureFromProtocol(const TCreatureID id,
@@ -729,58 +840,6 @@ void protocolDetachEffect(const TCreatureID id, const uint16_t effectId)
         return;
     const auto row = storage->getOrCreate(id);
     row->detachEffectById(effectId);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolAttachPaperdoll(const TCreatureID id, const PaperdollPtr& paperdoll)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage || !paperdoll)
-        return;
-    const auto row = storage->getOrCreate(id);
-    if (row->hasPaperdoll(paperdoll->getId()))
-        return;
-    row->attachPaperdoll(paperdoll);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolDetachPaperdollById(const TCreatureID id, const uint16_t paperdollId)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->detachPaperdollById(paperdollId);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolDetachPaperdollByPriority(const TCreatureID id, const uint8_t priority)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->detachPaperdollByPriority(priority);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetShader(const TCreatureID id, const std::string& shader)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setShader(shader);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetTyping(const TCreatureID id, const bool typing)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setTyping(typing);
     storage->publishCreatureUpdated(row);
 }
 

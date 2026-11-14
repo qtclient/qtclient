@@ -9,13 +9,11 @@ TClickAreaEventFilter::TClickAreaEventFilter(QObject* parent)
     : cip::tibia::input::TClickAreaEventFilter(parent)
 {}
 
-// b1/2126a9cefe685f9c
 void TClickAreaEventFilter::setClickArea(QQuickItem* item)
 {
     m_area = item;
 }
 
-// b1/84056afb87184ad2
 bool TClickAreaEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     switch (event->type()) {

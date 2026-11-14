@@ -6,6 +6,7 @@
 
 #include <cip_gen.h>
 
+#include <QByteArray>
 #include <QDateTime>
 #include <QObject>
 
@@ -21,6 +22,9 @@ class TTeamFinderProtocolMessageHandler final : public cip::tibia::teamfinder::T
     Q_OBJECT
 public:
     using cip::tibia::teamfinder::TTeamFinderProtocolMessageHandler::TTeamFinderProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TTeamFinderStorage final : public cip::tibia::teamfinder::TTeamFinderStorage

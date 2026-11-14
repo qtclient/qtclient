@@ -10,7 +10,6 @@ constexpr int IconCells[] = { 1, 2, 3, 0, 5, 6, 4, 7, 8, 9 };
 
 }
 
-// b1/d00728bd4b805913
 void TNpcKeywordButtonModel::setButtons(std::vector<Button> buttons)
 {
     const int oldCount = int(m_buttons.size());
@@ -55,7 +54,6 @@ QHash<int, QByteArray> TNpcKeywordButtonModel::roleNames() const
     return { { ButtonImageRole, "buttonImage" }, { KeywordRole, "keyword" } };
 }
 
-// b1/81a58a402cf4ebba
 QString TNpcKeywordButtonModel::imageOf(const int icon)
 {
     if (icon < 0 || icon >= int(std::size(IconCells)))

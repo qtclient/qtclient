@@ -168,7 +168,6 @@ void TContainerStorageController::addQueuedWidgets()
         Q_EMIT containerWidgetsChanged();
 }
 
-// b1/0e0e48d27a31670b
 void TContainerStorageController::openInSidebar(const int containerId, const uint sidebarId, const int position)
 {
     const auto it = m_controllers.find(containerId);

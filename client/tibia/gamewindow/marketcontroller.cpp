@@ -215,7 +215,6 @@ TDisplayMarketOffer::TDisplayMarketOffer(const TMarketOffer& offer, const QStrin
     }
 }
 
-// b1/71b88b7f6f4b921e
 QString TDisplayMarketOffer::formatTotalValue(const int Amount)
 {
     return multiString(static_cast<qlonglong>(Amount) * static_cast<qlonglong>(m_price));
@@ -228,7 +227,6 @@ TQmlObjectCategory::TQmlObjectCategory(const int identifier, QObject* parent)
     m_text = translate(identifier);
 }
 
-// b1/d324d6d7c25c6dc2
 QString TQmlObjectCategory::translate(const int identifier)
 {
     static const std::array<const char*, 32> Ids{
@@ -272,7 +270,6 @@ QString TQmlObjectCategory::translate(const int identifier)
     return qtTrId(Ids[identifier]);
 }
 
-// b1/f2f5433da9afe831
 bool TQmlObjectCategory::isHandWeaponCategory()
 {
     return TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(m_categoryIdentifier);
@@ -351,7 +348,6 @@ void TMarketController::setItemProperty(const char* name, const QVariant& value)
         item->setProperty(name, value);
 }
 
-// b1/831f169850ff1510
 void TMarketController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
@@ -442,7 +438,6 @@ TAppearanceTypeFilter TMarketController::currentFilter() const
     return filter;
 }
 
-// b1/f49430d957b52d3d
 void TMarketController::updateFilterLists()
 {
     QStringList classifications;
@@ -494,7 +489,6 @@ void TMarketController::setSelectedCategory(const int category)
     Q_EMIT selectedCategoryChanged();
 }
 
-// b1/d4987ddc34520958
 void TMarketController::clearDetails()
 {
     setItemProperty("buyOffersModel", QVariant::fromValue(QList<QObject*>{}));
@@ -503,7 +497,6 @@ void TMarketController::clearDetails()
     setItemProperty("itemStatisticsModel", QString());
 }
 
-// b1/f6ce49e5249782e8
 void TMarketController::reselect()
 {
     m_proxy.invalidate();
@@ -573,7 +566,6 @@ void TMarketController::onMarketFilterSelected(const QString& NameFilter, const 
     setSelectedCategory(-1);
 }
 
-// b1/061188b5d04c8255
 void TMarketController::onMarketCategoryItemSelected(const int AppearanceTypeID, const int QmlUpgradeTier)
 {
     if (!dialog()->item())
@@ -592,7 +584,6 @@ void TMarketController::onMarketCategoryItemSelected(const int AppearanceTypeID,
     setItemProperty("tradePacketSize", m_selectedType == TibiaCoinTypeId ? m_storage->coinsPacketSize() : 1);
 }
 
-// b1/30112cd1281ebb7b
 void TMarketController::onMarketOfferCancel(const int OfferTimestamp, const int OfferIdentifier)
 {
     tibia::game::cancelMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier));
@@ -603,7 +594,6 @@ void TMarketController::onMarketOfferAccept(const int OfferTimestamp, const int 
     tibia::game::acceptMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier), static_cast<uint16_t>(Amount));
 }
 
-// b1/a8f84485f50cb77d
 void TMarketController::onMarketOfferMaximumAmountRequest(const QString& OfferTypeString, const qlonglong PiecePrice)
 {
     int maximum = 0;
@@ -633,7 +623,6 @@ void TMarketController::onMarketOfferMaximumAmountRequest(const QString& OfferTy
     setItemProperty("maximumOfferCreationAmount", maximum);
 }
 
-// b1/4986ee76582acc26
 void TMarketController::onMarketOfferCreate(const QString& OfferTypeString, const int Amount, const qlonglong PiecePrice,
                                             const bool CreateAnonymousOffer)
 {
@@ -665,7 +654,6 @@ void TMarketController::onTierFilterWasSelected(const int SelectedIndex, const Q
     clearDetails();
 }
 
-// b1/7a80206fec6d8cc0
 void TMarketController::onMarketHistoryOpened()
 {
     if (m_storage)
@@ -678,25 +666,21 @@ void TMarketController::onMarketOwnOffersOpened()
         m_storage->browseOwnOffers();
 }
 
-// b1/9a462606c36cca7f
 void TMarketController::onMarketRefreshOffers()
 {
     onMarketCategoryItemSelected(m_selectedType, selectedTier());
 }
 
-// b1/68bd13bda8b59a77
 void TMarketController::onCloseButtonPressed()
 {
     close(true);
 }
 
-// b1/222d5a37fc3bde84
 void TMarketController::onGetCoinsButtonClicked()
 {
     input::publish(input::makeAction(input::EGameAction::OPEN_URL_GET_COINS));
 }
 
-// b1/eef14a6f06f00107
 void TMarketController::onStoreDeeplinkClicked()
 {
     if (m_selectedCategory != RunesCategory && m_selectedCategory != PotionsCategory)
@@ -706,7 +690,6 @@ void TMarketController::onStoreDeeplinkClicked()
         m_openStore();
 }
 
-// b1/122b8178d6565578
 QString TMarketController::getPriceOrProfitMultistring(const int Amount, const qlonglong PiecePrice)
 {
     return multiString(static_cast<qlonglong>(Amount) * PiecePrice);
@@ -727,7 +710,6 @@ QString TMarketController::getTotalPriceOrProfitMultistring(const QString& Offer
     return multiString(total);
 }
 
-// b1/9f2ebd009c01608d
 void TMarketController::showDialog()
 {
     if (!dialog()->item()) {
@@ -746,7 +728,6 @@ void TMarketController::closeDialog()
     close(false);
 }
 
-// b1/4c173d4787a9c5fb
 void TMarketController::close(const bool leave)
 {
     if (leave && m_storage)
@@ -770,7 +751,6 @@ void TMarketController::close(const bool leave)
     updateFilterLists();
 }
 
-// b1/ccb7c67de18a7942
 void TMarketController::showMarketMessage(const QString& Message)
 {
     if (!m_message) {
@@ -781,7 +761,6 @@ void TMarketController::showMarketMessage(const QString& Message)
     m_message->showMessage(qtTrId("market_message_caption"), Message);
 }
 
-// b1/33706ebfdba4963e
 void TMarketController::onItemDetailsChanged()
 {
     if (!dialog()->item() || !m_storage)
@@ -824,7 +803,6 @@ void TMarketController::setOfferLists(const char* buyProperty, const char* sellP
     owned = std::move(created);
 }
 
-// b1/fb90b24de812ec35
 void TMarketController::onOffersChanged()
 {
     if (!m_storage)
@@ -849,7 +827,6 @@ void TMarketController::onOwnOffersChanged()
         setOfferLists("ownBuyOffersModel", "ownSellOffersModel", m_storage->ownOffers(), m_ownOfferObjects);
 }
 
-// b1/266ab13e2ef18d2b
 void TMarketController::onActiveOfferCountChanged()
 {
     if (m_storage)

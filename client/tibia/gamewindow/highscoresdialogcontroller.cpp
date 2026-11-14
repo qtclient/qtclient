@@ -253,7 +253,6 @@ void THighscoresDialogController::setIndexOfSelectedCategory(const int v)
     Q_EMIT indexOfSelectedCategoryChanged();
 }
 
-// b1/953e28f83fbbcbbc
 QString THighscoresDialogController::selectedWorldName() const
 {
     const int index = m_indexOfSelectedWorld;
@@ -262,7 +261,6 @@ QString THighscoresDialogController::selectedWorldName() const
     return {};
 }
 
-// b1/ac99cdfc031a66f8
 int THighscoresDialogController::selectedBattlEyeValue() const
 {
     const QList<BattlEyeType> types = battlEyeTypes();
@@ -286,7 +284,6 @@ int THighscoresDialogController::selectedCategoryId() const
     return 0;
 }
 
-// b1/082e22368bc82288
 void THighscoresDialogController::requestPage(const int page)
 {
     setShowLoadingComponent(true);
@@ -313,14 +310,12 @@ void THighscoresDialogController::updateWorldTypes()
     m_worldTypes.setEntries(std::move(entries));
 }
 
-// b1/e370ca4e7a4335d8
 void THighscoresDialogController::openDialog()
 {
     showDialog();
     tibia::game::requestHighscore(0, 0, 0xFFFFFFFF, "OWN", 0, 0xFF, 1, EntriesPerPage);
 }
 
-// b1/d10a1fd04a10acca
 void THighscoresDialogController::setAnswer(Answer answer)
 {
     m_answer = std::move(answer);
@@ -383,7 +378,6 @@ void THighscoresDialogController::setAnswer(Answer answer)
     Q_EMIT dataChanged();
 }
 
-// b1/9a758a7519aa6dc9
 void THighscoresDialogController::setNoData()
 {
     setDataAvailable(false);

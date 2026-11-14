@@ -192,14 +192,12 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
 
 TItemInfoDialogController::~TItemInfoDialogController() = default;
 
-// b1/21cac172333753bb
 void TItemInfoDialogController::buildCategories()
 {
     std::vector<int> identifiers(CategoryOrder.begin(), CategoryOrder.end());
     for (const int extra : { GoldCategory, UnsortedCategory }) {
         const QString name = TQmlObjectCategory::translate(extra);
         const auto it = std::ranges::find_if(identifiers, [&name](const int identifier) {
-            // b1/d324d6d7c25c6dc2
             return TQmlObjectCategory::translate(identifier).compare(name, Qt::CaseInsensitive) >= 0;
         });
         identifiers.insert(it, extra);
@@ -209,7 +207,6 @@ void TItemInfoDialogController::buildCategories()
         m_categories << new TQmlObjectCategory(identifier, this);
 }
 
-// b1/8a1c4a37bc785991
 void TItemInfoDialogController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
@@ -236,7 +233,6 @@ void TItemInfoDialogController::rebuildEntries()
     setEnableTier(false);
 }
 
-// b1/1b2a36c97563ff5e
 bool TItemInfoDialogController::categorySupportsTiers(const int category) const
 {
     for (int row = 0; row < m_model.size(); ++row) {
@@ -251,7 +247,6 @@ bool TItemInfoDialogController::categorySupportsTiers(const int category) const
     return false;
 }
 
-// b1/3ae8381cee9417fc
 TAppearanceTypeFilter TItemInfoDialogController::currentFilter() const
 {
     TAppearanceTypeFilter filter;
@@ -269,7 +264,6 @@ TAppearanceTypeFilter TItemInfoDialogController::currentFilter() const
     return filter;
 }
 
-// b1/6d4fde6c9c53d621
 void TItemInfoDialogController::updateAvailableClassifications()
 {
     QStringList classes;
@@ -305,7 +299,6 @@ void TItemInfoDialogController::setButtons(const bool level, const bool vocation
     m_buttons[3] = twoHand;
 }
 
-// b1/b39d8e6e20e72341
 void TItemInfoDialogController::showDialogTab()
 {
     if (!m_entriesBuilt)
@@ -378,7 +371,6 @@ void TItemInfoDialogController::onClassificationFilterWasSelected(const int Sele
                               ShowLockerOnly);
 }
 
-// b1/7454c32c6fdb5760
 void TItemInfoDialogController::resetInspect()
 {
     setInspectData(new TItemInspectData(QString(), 0, { { qtTrId("status").toStdString(), qtTrId("iteminfo_loading_second_column").toStdString() } },
@@ -397,7 +389,6 @@ void TItemInfoDialogController::setInspectData(TItemInspectData* data)
         previous->deleteLater();
 }
 
-// b1/0f158815c2066460
 void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
 {
     const auto typeId = static_cast<uint16_t>(std::clamp(AppearanceId, 0, 0xffff));
@@ -418,7 +409,6 @@ void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
     updateNpcData();
 }
 
-// b1/399b52d466ff52e5
 void TItemInfoDialogController::sendInspect()
 {
     if (m_typeId == 0 || !tibia::game::isOnline())
@@ -428,7 +418,6 @@ void TItemInfoDialogController::sendInspect()
     tibia::game::requestItemInfo(static_cast<uint16_t>(m_typeId), 0, 0);
 }
 
-// b1/6fb1c91387d5299f
 void TItemInfoDialogController::updateNpcData()
 {
     m_npcBuyData.clear();
@@ -453,14 +442,12 @@ void TItemInfoDialogController::updateNpcData()
     Q_EMIT npcDataChanged();
 }
 
-// b1/b1dfbcbae7554636
 bool TItemInfoDialogController::hasWeaponProficiency() const
 {
     const ThingTypePtr type = itemType(m_typeId);
     return type && type->getProficiencyId() != 0;
 }
 
-// b1/816663c7f58d7bc6
 bool TItemInfoDialogController::isPremium() const
 {
     return tibia::game::localPlayer() && tibia::game::localPlayerIsPremium();
@@ -468,7 +455,6 @@ bool TItemInfoDialogController::isPremium() const
 
 int TItemInfoDialogController::primaryLootValueSource() const { return m_typeId ? m_storage->lootValueSource(m_typeId) : 0; }
 
-// b1/1eca01561faf8876
 QString TItemInfoDialogController::userDefinedValueString() const
 {
     return m_typeId ? QString::number(m_storage->customPrice(m_typeId)) : QStringLiteral("0");
@@ -496,19 +482,16 @@ QString TItemInfoDialogController::lootValueBackgroundUrlSource() const
     return QStringLiteral("image://%1/%2").arg(QStringLiteral("containerslot-glowingborders")).arg(level - 1);
 }
 
-// b1/3ee631ca1c4e9c34
 bool TItemInfoDialogController::isTracked() const { return m_typeId && m_storage->isTracked(m_typeId); }
 
 bool TItemInfoDialogController::canTrackAdditionalItems() const { return m_storage->canTrackMore(); }
 
-// b1/79e0aa8d8bf2f2fa
 bool TItemInfoDialogController::isLootBlackWhitelisted() const { return m_typeId && m_storage->isLootListed(m_typeId); }
 
 bool TItemInfoDialogController::canBlackWhitelistAdditionalItems() const { return !m_storage->isLootListFull(); }
 
 int TItemInfoDialogController::blackWhiteListType() const { return m_storage->lootListType(); }
 
-// b1/edb93cd15cf32aad
 void TItemInfoDialogController::requestPrimaryLootValueSelect(const int PrimaryLootValueSource)
 {
     if (m_typeId == 0 || !m_storage->hasCharacter())
@@ -536,7 +519,6 @@ void TItemInfoDialogController::requestOpenStoreWithPremiumTime()
     input::publish(action);
 }
 
-// b1/daf8a36766fd87c2
 void TItemInfoDialogController::requestItemTracking(const bool TrackItem)
 {
     if (m_typeId != 0)
@@ -551,7 +533,6 @@ void TItemInfoDialogController::requestItemBlackWhitelisting(const bool BlackWhi
     Q_EMIT lootBlackWhitelistChanged();
 }
 
-// b1/348946b9ed2f6c07
 void TItemInfoDialogController::onWeaponProficiencyDialogButtonClicked()
 {
     if (m_typeId == 0)
@@ -561,7 +542,6 @@ void TItemInfoDialogController::onWeaponProficiencyDialogButtonClicked()
     input::publish(action);
 }
 
-// b1/8ed08081427cb5e8
 void TItemInfoDialogController::showType(const uint16_t typeId)
 {
     m_category = -1;
@@ -581,7 +561,6 @@ TItemInfoDialogController::Context TItemInfoDialogController::captureContext() c
     return context;
 }
 
-// b1/234d2b3766b023d9
 void TItemInfoDialogController::restoreContext(const Context& context)
 {
     Q_EMIT filterOptionsUpdateRequest(context.buttons[0], context.buttons[1], context.buttons[2], context.buttons[3]);

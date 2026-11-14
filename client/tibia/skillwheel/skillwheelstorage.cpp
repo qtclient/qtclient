@@ -186,7 +186,6 @@ void TSkillWheelStorage::emitResourceSignals()
 }
 
 /// CIP : vt0x128 with change state 0, no points and no gems.
-// b1/e2000713ed4c5185
 void TSkillWheelStorage::setPreview(const QString& name, const int vocation)
 {
     clear();

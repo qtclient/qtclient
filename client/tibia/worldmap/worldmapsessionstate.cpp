@@ -21,6 +21,7 @@
  */
 
 #include "worldmap/worldmapsessionstate.h"
+#include "effects/effectstorage.h"
 #include "tibia/runtime/host.h"
 
 #include "client/animatedtext.h"
@@ -32,6 +33,7 @@
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 #include "creatures/creaturestorage.h"
+#include "creatures/walkdebug.h"
 #include "minimap/waypointcosts.h"
 
 #include <framework/core/asyncdispatcher.h>
@@ -277,7 +279,6 @@ void TWorldMapSessionState::cleanDynamicThings()
     }
 
     for (auto& floor : m_floors)
-        floor.missileAppearances.clear();
 
     cleanTexts();
 
@@ -297,27 +298,16 @@ bool TWorldMapSessionState::placeAppearance(const tibia::appearances::TAppearanc
     return false;
 }
 
+const std::vector<tibia::appearances::TAppearanceInstancePtr>& TWorldMapSessionState::getFloorMissiles(const uint8_t z) const
+{
+    return tibia::effects::TEffectStorage::instance().missilesOn(z);
+}
+
 void TWorldMapSessionState::addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance)
 {
-    auto* missile = dynamic_cast<tibia::appearances::TMissileEffectInstance*>(appearance.get());
-    if (!missile)
-        return;
-
-    // Death-scene freeze still allows transient missiles (former Thing isMissile path).
-    const uint8_t z = missile->pathFrom().z;
-    if (z >= m_floors.size())
-        return;
-
-    m_floors[z].missileAppearances.push_back(appearance);
-    m_dynamicRevision.fetch_add(1, std::memory_order_relaxed);
-
-    const float duration = missile->flightDuration();
-    if (duration <= 0.f) {
-        tibia::schedule::post([appearance, this] { removeMissileAppearance(appearance); });
-    } else {
-        tibia::schedule::after([appearance, this] { removeMissileAppearance(appearance); },
-                               static_cast<int>(duration));
-    }
+    if (dynamic_cast<tibia::appearances::TMissileEffectInstance*>(appearance.get())
+        && tibia::effects::TEffectStorage::instance().add(appearance))
+        m_dynamicRevision.fetch_add(1, std::memory_order_relaxed);
 }
 
 void TWorldMapSessionState::addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& pos)
@@ -325,13 +315,14 @@ void TWorldMapSessionState::addEffectAppearance(const tibia::appearances::TAppea
     if (!appearance || appearance->category() != ThingCategoryEffect)
         return;
 
-    // Death-scene freeze still allows transient field effects (former Thing isEffect path).
-    if (const auto& tile = getOrCreateTile(pos)) {
-        if (m_floatingEffect || tile->hasGround()) {
-            tile->addEffectAppearance(appearance);
-            notificateTileUpdate(pos, nullptr, tibia::client::OPERATION_ADD);
-            m_dynamicRevision.fetch_add(1, std::memory_order_relaxed);
-        }
+    auto* effect = dynamic_cast<tibia::appearances::TEffectInstance*>(appearance.get());
+    if (!effect)
+        return;
+    // The effect shows on its field even before the field has content.
+    (void)getOrCreateTile(pos);
+    if (tibia::effects::TEffectStorage::instance().add(appearance)) {
+        notificateTileUpdate(pos, nullptr, tibia::client::OPERATION_ADD);
+        m_dynamicRevision.fetch_add(1, std::memory_order_relaxed);
     }
 }
 
@@ -414,29 +405,6 @@ bool TWorldMapSessionState::removeThing(const ThingPtr& thing)
     }
 
     return false;
-}
-
-bool TWorldMapSessionState::removeMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance)
-{
-    if (!appearance)
-        return false;
-
-    auto* missile = dynamic_cast<tibia::appearances::TMissileEffectInstance*>(appearance.get());
-    if (!missile)
-        return false;
-
-    const uint8_t z = missile->pathFrom().z;
-    if (z >= m_floors.size())
-        return false;
-
-    auto& missiles = m_floors[z].missileAppearances;
-    const auto it = std::ranges::find(missiles, appearance);
-    if (it == missiles.end())
-        return false;
-
-    missiles.erase(it);
-    m_dynamicRevision.fetch_add(1, std::memory_order_relaxed);
-    return true;
 }
 
 bool TWorldMapSessionState::removeThingByPos(const Position& pos, const int16_t stackPos)
@@ -635,45 +603,40 @@ CreaturePtr TWorldMapSessionState::getCreatureById(const uint32_t id)
     return tibia::game::creatureThingById(id);
 }
 
-bool TWorldMapSessionState::removeCreatureFromFields(const uint32_t creatureId, const Position& fieldPos)
+bool TWorldMapSessionState::removeCreatureFromFields(const uint32_t creatureId, const Position& fieldPos,
+                                                     const bool fireLocalDisappear)
 {
     if (creatureId == 0)
         return false;
 
-    auto tryRemoveAt = [this, creatureId](const Position& pos) -> bool {
-        if (!pos.isValid())
-            return false;
-        tibia::worldmap::TWorldMapField* tile = getTile(pos);
+    const LocalPlayerSessionThingPtr local = tibia::game::localPlayer();
+    const bool isLocal = local && creatureId == local->getId();
+    bool removed = false;
+    const auto removeAt = [&](const Position& at) {
+        tibia::worldmap::TWorldMapField* tile = at.isValid() ? getTile(at) : nullptr;
         if (!tile || !tile->removeCreatureById(creatureId))
-            return false;
-        if (const LocalPlayerSessionThingPtr local = tibia::game::localPlayer(); local && creatureId == local->getId()) {
+            return;
+        removed = true;
+        if (isLocal)
             local->setMarked(Color::white);
-            local->onDisappear();
-            notificateTileUpdate(pos, local, tibia::client::OPERATION_REMOVE);
-        } else {
-            notificateTileUpdate(pos, nullptr, tibia::client::OPERATION_REMOVE);
-        }
-        return true;
+        notificateTileUpdate(at, isLocal ? local : nullptr, tibia::client::OPERATION_REMOVE);
     };
 
-    // CIP MoveCreature / ChangeOnMap / DeleteOnMap: remove from the wire field
-    // coordinate first. Storage position can already be the destination (or stale).
-    bool removed = tryRemoveAt(fieldPos);
-
-    Position storagePos;
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-        if (const auto row = storage->creatureAt(creatureId))
-            storagePos = row->position();
+    // The field the message names, else the field the creature stands on.
+    removeAt(fieldPos);
+    if (!removed) {
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+            if (const auto row = storage->creatureAt(creatureId); row && row->position() != fieldPos)
+                removeAt(row->position());
+        }
     }
-    if (storagePos.isValid() && storagePos != fieldPos)
-        removed = tryRemoveAt(storagePos) || removed;
+
+    if (removed && fireLocalDisappear && isLocal)
+        local->onDisappear();
 
     // Fallback: LocalPlayerSessionThing session Thing may still sit on a tile.
-    if (!removed) {
-        if (const LocalPlayerSessionThingPtr local = tibia::game::localPlayer(); local && creatureId == local->getId())
-            return removeThing(local);
-        (void)creatureId;
-    }
+    if (!removed && isLocal)
+        return removeThing(local);
     return removed;
 }
 
@@ -681,98 +644,69 @@ bool TWorldMapSessionState::placeCreatureId(const uint32_t creatureId, const Pos
 {
     if (creatureId == 0 || !pos.isValid())
         return false;
+    tibia::worldmap::TWorldMapField* tile = getOrCreateTile(pos);
+    if (!tile)
+        return false;
 
-    if (tibia::worldmap::TWorldMapField* tile = getOrCreateTile(pos)) {
-        tile->addCreatureId(creatureId, stackPos);
+    // A field stack holds creature ids, so a creature re-placed by a map
+    // description leaves the field it was standing on.
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
+        if (const auto row = storage->creatureAt(creatureId); row && row->position().isValid() && row->position() != pos)
+            removeCreatureFromFields(creatureId, row->position(), false);
+    }
+
+    tile->addCreatureId(creatureId, stackPos);
+    const LocalPlayerSessionThingPtr local = tibia::game::localPlayer();
+    if (local && creatureId == local->getId()) {
         const int placedStack = tile->creatureStackPos(creatureId);
-        if (const LocalPlayerSessionThingPtr local = tibia::game::localPlayer(); local && creatureId == local->getId()) {
-            // Tile description refresh re-binds LocalPlayerSessionThing without MoveCreature.
-            local->setPosition(pos, placedStack >= 0 ? placedStack : stackPos);
-            local->onAppear();
-            notificateTileUpdate(pos, local, tibia::client::OPERATION_ADD);
-        } else {
-            notificateTileUpdate(pos, nullptr, tibia::client::OPERATION_ADD);
-        }
-        return true;
+        local->setPosition(pos, placedStack >= 0 ? placedStack : stackPos);
+        local->onAppear();
+        notificateTileUpdate(pos, local, tibia::client::OPERATION_ADD);
+    } else {
+        notificateTileUpdate(pos, nullptr, tibia::client::OPERATION_ADD);
     }
-    return false;
-}
-
-bool TWorldMapSessionState::applyCreatureMove(const uint32_t creatureId, const Position& oldPos, const int oldStack,
-                            const Position& newPos, const bool byId)
-{
-    if (!creatureId)
-        return false;
-
-    // CIP MoveCreature removes from the wire source field (oldPos/stack), then
-    // places on newPos. Prefer packet coordinate over storage (storage can lag
-    // or already be the destination — that left outfit trails / stacked ghosts).
-    Position fromPos = oldPos;
-    if (!fromPos.isValid()) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const auto row = storage->creatureAt(creatureId); row && row->position().isValid())
-                fromPos = row->position();
-        }
-    }
-
-    if (oldPos.isValid() && oldStack >= 0) {
-        if (tibia::worldmap::TWorldMapField* fromTile = getTile(oldPos)) {
-            if (fromTile->stackCreatureId(oldStack) == creatureId)
-                fromTile->removeThingAtStackPos(oldStack);
-        }
-    }
-    // Scrub any remaining id slot on source + storage fields (CIP never leaves ghosts).
-    const bool removed = removeCreatureFromFields(creatureId, oldPos);
-    if (!removed && !byId && oldPos.isValid())
-        return false;
-
-    placeCreatureId(creatureId, newPos, -1);
-
-    // CipSoft: TCreatureStorage owns walk for local and non-local (no Creature::walk).
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
-        storage->applyMoveCreature(creatureId, fromPos, newPos);
     return true;
 }
 
-void TWorldMapSessionState::applyCreatureMove(const uint32_t creatureId, const Position& oldPos, const int oldStack,
-                            const uint32_t byId, const Position& newPos)
+bool TWorldMapSessionState::applyCreatureMove(const uint32_t creatureId, const Position& oldPos, const int oldStack,
+                                              const Position& newPos, const bool byId)
 {
-    if (!creatureId) {
-        g_logger.traceError("TWorldMapSessionState::applyCreatureMove: no creature found to move from {} stackpos {}", oldPos,
-                            oldStack);
-        return;
-    }
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    if (!creatureId || !newPos.isValid() || !storage)
+        return false;
+    const auto row = storage->getOrCreate(creatureId);
+    if (!row)
+        return false;
+    tibia::worldmap::TWorldMapStorage* map = tibia::worldmap::TWorldMapStorage::ensureStorage();
 
-    // CIP MoveCreature removes from the wire source field (oldPos/stack), then
-    // places on newPos. Prefer packet coordinate over storage (storage can lag
-    // or already be the destination — that left outfit trails / stacked ghosts).
-    Position fromPos = oldPos;
-    if (!fromPos.isValid()) {
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const auto row = storage->creatureAt(creatureId); row && row->position().isValid())
-                fromPos = row->position();
-        }
+    // The position form names the field and slot the creature leaves; the id
+    // form moves it from where it stands.
+    const Position from = byId ? row->position() : oldPos;
+    int elevationFrom = 0;
+    int elevationTo = 0;
+    if (byId) {
+        placeCreatureId(creatureId, newPos, -1);
+        elevationFrom = map->elevationAt(from);
+        elevationTo = map->elevationAt(newPos);
+    } else {
+        tibia::worldmap::TWorldMapField* fromTile = getTile(oldPos);
+        if (!fromTile || fromTile->stackCreatureId(oldStack) != creatureId)
+            return false;
+        elevationFrom = map->elevationAt(oldPos);
+        elevationTo = map->elevationAt(newPos);
+        fromTile->removeThingAtStackPos(oldStack);
+        const LocalPlayerSessionThingPtr local = tibia::game::localPlayer();
+        notificateTileUpdate(oldPos, local && creatureId == local->getId() ? local : nullptr,
+                             tibia::client::OPERATION_REMOVE);
+        placeCreatureId(creatureId, newPos, -1);
+        const auto look = tibia::creatures::lookDirectionAfter(
+            static_cast<tibia::creatures::ECreatureLookDirection>(row->patternX()),
+            tibia::creatures::directionBetween(tibia::worldmap::TWorldMapCoordinate(from),
+                                               tibia::worldmap::TWorldMapCoordinate(newPos)));
+        row->setDirection(static_cast<uint8_t>(look));
     }
-
-    if (oldPos.isValid() && oldStack >= 0) {
-        if (tibia::worldmap::TWorldMapField* fromTile = getTile(oldPos)) {
-            if (fromTile->stackCreatureId(oldStack) == creatureId)
-                fromTile->removeThingAtStackPos(oldStack);
-        }
-    }
-    // Scrub any remaining id slot on source + storage fields (CIP never leaves ghosts).
-    const bool removed = removeCreatureFromFields(creatureId, oldPos);
-    if (!removed && byId == 0 && oldPos.isValid()) {
-        g_logger.traceError("TWorldMapSessionState::applyCreatureMove: unable to remove creature {} from {} stackpos {}",
-                            creatureId, oldPos, oldStack);
-        return;
-    }
-
-    placeCreatureId(creatureId, newPos, -1);
-
-    // CipSoft: TCreatureStorage owns walk for local and non-local (no Creature::walk).
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
-        storage->applyMoveCreature(creatureId, fromPos, newPos);
+    map->moveCreature(*row, from, newPos, elevationFrom, elevationTo);
+    return true;
 }
 
 void TWorldMapSessionState::removeUnawareThings()

@@ -306,7 +306,6 @@ void TItemInfoStorage::setTracked(const uint16_t typeId, const bool tracked)
     Q_EMIT recentLootDropsChanged();
 }
 
-// b1/acfc8880dc2aeed6
 void TItemInfoStorage::removeAllTracked()
 {
     m_tracked.clear();
@@ -326,7 +325,6 @@ bool TItemInfoStorage::track(const uint16_t typeId, const bool temporary)
     return true;
 }
 
-// b1/9e48e6995936cf9d
 bool TItemInfoStorage::untrack(const uint16_t typeId)
 {
     const auto it = std::ranges::find(m_tracked, typeId, &TrackedItem::typeId);
@@ -346,14 +344,12 @@ std::deque<TItemInfoStorage::TrackedItem>::iterator TItemInfoStorage::findActive
     return it == end ? m_tracked.end() : it;
 }
 
-// b1/b68f3fdf1e235359
 std::vector<TItemInfoStorage::TrackedItem> TItemInfoStorage::activeTrackedItems() const
 {
     const auto count = std::min<std::ptrdiff_t>(trackLimit(), static_cast<std::ptrdiff_t>(m_tracked.size()));
     return { m_tracked.begin(), m_tracked.begin() + count };
 }
 
-// b1/c83f490988147dbe
 std::vector<TItemInfoStorage::DroppedLoot> TItemInfoStorage::lootDropsForTrackedItem(const uint16_t typeId) const
 {
     std::vector<DroppedLoot> drops;
@@ -364,7 +360,6 @@ std::vector<TItemInfoStorage::DroppedLoot> TItemInfoStorage::lootDropsForTracked
     return drops;
 }
 
-// b1/1f526f420ea95f21
 void TItemInfoStorage::setAutoTrackAboveValue(const quint32 value)
 {
     if (m_autoTrackAboveValue == value)

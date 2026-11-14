@@ -61,25 +61,21 @@ void TAboutDialogController::setPortalBase(const QUrl& loginBase)
     m_portalBase = loginBase;
 }
 
-// b1/e89a991ee3e04377
 void TAboutDialogController::showDialog()
 {
     dialog()->show();
 }
 
-// b1/100f1c418ddcb380
 void TAboutDialogController::requestClose()
 {
     dialog()->close();
 }
 
-// b1/2d5b3e76377e2ad6
 void TAboutDialogController::requestOpenWebsite()
 {
     input::publish(input::makeAction(input::EGameAction::OPEN_URL_TIBIA_PAGE));
 }
 
-// b1/ba94664cad165526
 void TAboutDialogController::requestShowLicensesDialog()
 {
     // CIP : message caption aboutdialog_licenses; body from

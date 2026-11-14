@@ -276,7 +276,6 @@ TNPCTradeController::~TNPCTradeController()
         m_confirmation->dialog()->close();
 }
 
-// b1/c9ceb232e41b6331
 QString TNPCTradeController::bankBalance() const
 {
     return tibia::game::localPlayer() && m_storage ? formatNumber(m_storage->bankBalance()) : QStringLiteral("-");
@@ -292,13 +291,11 @@ QString TNPCTradeController::totalBalance() const
     return formatNumber(m_storage ? m_storage->money() : 0);
 }
 
-// b1/e2ccb3caf14000f5
 bool TNPCTradeController::npcIsBuying() const
 {
     return !m_storage || m_storage->direction() == ENPCTradeDirection::BUY;
 }
 
-// b1/babe808b031f5720
 QString TNPCTradeController::buyOrSellPrice() const
 {
     const TNPCTradeGood* good = selectedGood();
@@ -310,7 +307,6 @@ QString TNPCTradeController::buyOrSellPrice() const
     return formatNumberVariants(trade::buyPrice(*good, amount, m_options.buyWithBackpacks && !m_storage->hasCurrency()));
 }
 
-// b1/f37470e9486d1982
 int TNPCTradeController::currencyTypeId() const
 {
     if (!m_storage || !m_storage->hasCurrency())
@@ -331,13 +327,11 @@ bool TNPCTradeController::currencyIsGold() const
     return !m_storage || !m_storage->hasCurrency();
 }
 
-// b1/f7f4bac9bb934b63
 bool TNPCTradeController::showNameFilter() const
 {
     return m_options.showNameFilter;
 }
 
-// b1/3cb5567745e0a8ce
 const TNPCTradeGood* TNPCTradeController::good(const int typeId, const uint liquidType) const
 {
     for (const TNPCTradeGood& good : m_goods) {
@@ -355,7 +349,6 @@ const TNPCTradeGood* TNPCTradeController::selectedGood() const
     return good(m_selectedTypeId, m_selectedLiquidType);
 }
 
-// b1/2cfb04ae9f3a19c2
 int TNPCTradeController::maximumAmount(const TNPCTradeGood* good) const
 {
     if (!good || !m_storage)
@@ -366,7 +359,6 @@ int TNPCTradeController::maximumAmount(const TNPCTradeGood* good) const
                                    m_options.buyWithBackpacks && !m_storage->hasCurrency());
 }
 
-// b1/cd5fc1404729ca2f
 void TNPCTradeController::refresh()
 {
     if (!m_storage)
@@ -405,7 +397,6 @@ void TNPCTradeController::refresh()
     Q_EMIT buyOrSellPriceChanged();
 }
 
-// b1/95c70105f45eecb1
 void TNPCTradeController::onAvailableCurrencyBalanceMightHaveChanged()
 {
     Q_EMIT currencyBalanceChanged();
@@ -416,7 +407,6 @@ void TNPCTradeController::onAvailableCurrencyBalanceMightHaveChanged()
     m_refreshTimer.start();
 }
 
-// b1/8ee989bff1dff912
 void TNPCTradeController::onNpcTradeOptionsChanged()
 {
     m_options = TNPCTradeOptions::load();
@@ -433,7 +423,6 @@ void TNPCTradeController::setOptions(const TNPCTradeOptions& options)
     onNpcTradeOptionsChanged();
 }
 
-// b1/a3599c101cabd98c
 void TNPCTradeController::updateAmount(const bool force)
 {
     const TNPCTradeGood* selected = selectedGood();
@@ -459,7 +448,6 @@ void TNPCTradeController::switchDirection(const ENPCTradeDirection direction)
         m_storage->setDirection(direction);
 }
 
-// b1/674d5183ce749c69
 void TNPCTradeController::switchToBuyItems()
 {
     switchDirection(ENPCTradeDirection::BUY);
@@ -470,7 +458,6 @@ void TNPCTradeController::switchToSellItems()
     switchDirection(ENPCTradeDirection::SELL);
 }
 
-// b1/07d1d209bbe67341
 void TNPCTradeController::traderObjectSelected(const int TypeId, const uint LiquidType)
 {
     if (TypeId == m_selectedTypeId && LiquidType == m_selectedLiquidType)
@@ -482,7 +469,6 @@ void TNPCTradeController::traderObjectSelected(const int TypeId, const uint Liqu
     updateAmount(true);
 }
 
-// b1/1e0ece2bdd610985
 void TNPCTradeController::contextMenuForObject(const int TypeId, const uint LiquidType)
 {
     TContextMenuController* menu = TContextMenuController::instance();
@@ -538,14 +524,12 @@ void TNPCTradeController::contextMenuForObject(const int TypeId, const uint Liqu
     menu->showCustomMenu();
 }
 
-// b1/7324b8a6de4ed001
 void TNPCTradeController::lookSelectedGoods()
 {
     if (const TNPCTradeGood* selected = selectedGood(); selected && m_storage)
         m_storage->look(*selected);
 }
 
-// b1/a2e2c9b538c3116c
 void TNPCTradeController::buyOrSellSelectedGoods(const int Amount)
 {
     if (Amount < 1 || Amount > MaxTradeAmount)
@@ -567,7 +551,6 @@ void TNPCTradeController::buyOrSellSelectedGoods(const int Amount)
                                             qtTrId("confirmation_do_not_show_again"), false);
 }
 
-// b1/a5ff8869c0451c83
 void TNPCTradeController::onLargeTradeConfirmed(const bool DoNotShowDialogAgain)
 {
     trade(m_amountPreselected);
@@ -576,7 +559,6 @@ void TNPCTradeController::onLargeTradeConfirmed(const bool DoNotShowDialogAgain)
     setOptions(options);
 }
 
-// b1/0edb638faf722da6
 void TNPCTradeController::trade(const int amount)
 {
     const TNPCTradeGood* selected = selectedGood();
@@ -588,14 +570,12 @@ void TNPCTradeController::trade(const int amount)
         m_storage->buy(*selected, amount, m_options.ignoreCapacity, m_options.buyWithBackpacks && !m_storage->hasCurrency());
 }
 
-// b1/81f336795df40e0c
 void TNPCTradeController::onRequestCloseNpcTrade()
 {
     if (m_storage)
         m_storage->close();
 }
 
-// b1/d6f05623606fec40
 void TNPCTradeController::setAmountPreselected(const int Count)
 {
     const int amount = std::min(Count, maximumAmount(selectedGood()));
@@ -605,7 +585,6 @@ void TNPCTradeController::setAmountPreselected(const int Count)
     Q_EMIT amountPreselectedChanged();
 }
 
-// b1/de8ca56ab57d35cd
 void TNPCTradeController::requestFilterByName(const QString& NameFilter)
 {
     m_proxy.setNameFilter(NameFilter);

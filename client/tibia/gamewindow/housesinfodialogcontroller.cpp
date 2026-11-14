@@ -431,7 +431,6 @@ void THousesSortProxyModel::setSortOrder(const int order)
     Q_EMIT sortOrderChanged();
 }
 
-// b1/0dce4520584c0a86
 void THousesSortProxyModel::clearFilters()
 {
     changeFilter([this] {
@@ -441,7 +440,6 @@ void THousesSortProxyModel::clearFilters()
     });
 }
 
-// b1/44aa8de4c4a21e66
 bool THousesSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     const QModelIndex index = m_houses->index(sourceRow, 0, sourceParent);
@@ -466,7 +464,6 @@ bool THousesSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIn
     }
 }
 
-// b1/7e0f593007225842
 bool THousesSortProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     // CIP DAT_1022e344c: auctioned first, then rented, empty, unknown.
@@ -916,7 +913,6 @@ void THousesInfoDialogController::onActionRejectTransferClicked()
     confirmAction(7, qtTrId("houses_action_confirm_reject_transfer_message").arg(house->name, house->renterName));
 }
 
-// b1/bfc3a8ba628f0c6c
 void THousesInfoDialogController::onHouseActionConfirmed()
 {
     switch (m_pendingAction) {
@@ -942,7 +938,6 @@ void THousesInfoDialogController::resetHouseActionData()
     m_pendingName.clear();
 }
 
-// b1/39d366a5a59dac7e
 void THousesInfoDialogController::onHouseActionResult(const quint32 houseId, const int action, const int errorCode, const bool hasBeenOutbidden)
 {
     static const char* const names[] = { "bid", "move_out", "transfer", "cancel_move_out", "cancel_transfer", "accept_transfer", "reject_transfer" };

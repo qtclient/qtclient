@@ -1,3 +1,5 @@
+#include "config/clientsettings.h"
+#include "effects/effectstorage.h"
 #include "numericaleffectstorage.h"
 
 #include <algorithm>
@@ -6,7 +8,12 @@ namespace tibia::worldmap {
 
 namespace {
 
-constexpr qint64 MergeWindow = 100;
+/// GRAPHICS/numericalEffectMergeDurationMsec: a number joins one started this recently.
+qint64 mergeWindow()
+{
+    static const qint64 window = config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("numericalEffectMergeDurationMsec"), 100);
+    return window;
+}
 
 }
 
@@ -21,11 +28,14 @@ void TNumericalEffectStorage::add(const Position& coordinate, const qint64 value
 {
     for (effects::TNumericalEffect& effect : m_effects) {
         if (effect.color == color && effect.coordinate == coordinate
-            && now < effect.tween.start() + MergeWindow) {
+            && now < effect.tween.start() + mergeWindow()) {
             effect.value += value;
             return;
         }
     }
+    // A new number counts towards the effect limit.
+    if (!effects::TEffectStorage::instance().hasRoom())
+        return;
     effects::TNumericalEffect effect;
     effect.coordinate = coordinate;
     effect.value = value;

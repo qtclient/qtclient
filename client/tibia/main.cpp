@@ -445,6 +445,7 @@ int main(int argc, char** argv)
     parser.addOption({ QStringLiteral("password"), QStringLiteral("Account password (or QTCLIENT_PASSWORD)."), QStringLiteral("password") });
     parser.addOption({ QStringLiteral("character"), QStringLiteral("Enter the game with this character without showing the list."), QStringLiteral("name") });
     parser.addOption({ QStringLiteral("play-for"), QStringLiteral("Log out and quit this many seconds after entering the world."), QStringLiteral("seconds") });
+    parser.addOption({ QStringLiteral("walk"), QStringLiteral("Walk these directions (n,ne,e,se,s,sw,w,nw, comma-separated; dx:dy walks to a field relative to the character) two seconds after entering the world, each as soon as the previous walk ends (smoke tests)."), QStringLiteral("directions") });
     parser.addOption({ QStringLiteral("say"), QStringLiteral("Say this a second after entering the world (smoke tests; repeatable)."), QStringLiteral("text") });
     parser.addOption({ QStringLiteral("record"), QStringLiteral("Record the game session to this file."), QStringLiteral("file") });
     parser.addOption({ QStringLiteral("replay"), QStringLiteral("Play a recorded game session instead of logging in."), QStringLiteral("file") });
@@ -725,6 +726,7 @@ int main(int argc, char** argv)
         clientOptions.autoCharacter = parser.value(QStringLiteral("character"));
         clientOptions.playForSeconds = parser.value(QStringLiteral("play-for")).toInt();
         clientOptions.say = parser.values(QStringLiteral("say"));
+        clientOptions.walk = parser.value(QStringLiteral("walk")).split(QLatin1Char(','), Qt::SkipEmptyParts);
         clientOptions.recordTo = parser.value(QStringLiteral("record"));
         if (clientOptions.recordTo.isEmpty())
             clientOptions.recordTo = qEnvironmentVariable("QTCLIENT_RECORD");
@@ -1062,9 +1064,10 @@ int main(int argc, char** argv)
     input::TGatherAllGameActionHandler gatherAllActions;
     [[maybe_unused]] input::TGatherAllProtocolMessageHandler gatherAllProtocol;
     input::TWindowFocusEventFilter windowFocus(window);
-    input::TDiscardMouseWheelEventFilter discardWheel;
+    // Do not install TDiscardMouseWheelEventFilter on the window: that eats every
+    // Wheel event (containers, chat, options lists). Dialogs that need it install
+    // the filter on themselves.
     input::TDiscardUnhandledMouseButtonsEventFilter discardMouseButtons;
-    window->installEventFilter(&discardWheel);
     window->installEventFilter(&discardMouseButtons);
 
     trade::TNPCTradeStorage npcTrade;

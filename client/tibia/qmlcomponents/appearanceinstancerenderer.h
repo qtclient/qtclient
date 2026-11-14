@@ -2,6 +2,8 @@
 
 #include <cip_gen.h>
 
+#include "animation/animator.h"
+#include "appearances/appearanceinstance.h"
 #include "renderer/spritetexturecache.h"
 
 #include <QElapsedTimer>
@@ -104,11 +106,10 @@ private:
         QPoint fieldTopLeft;
         QPoint missileFrom;
         QPoint missileTo;
-        QElapsedTimer timer;
-        float missileDurationMs{ 0.f };
+        /// The field effect or the missile, advanced each frame.
+        std::shared_ptr<tibia::appearances::TEffectInstance> instance;
         int patternX{ 0 };
         int patternY{ 0 };
-        int durationMs{ 0 };
     };
 
     static void append(QQmlListProperty<cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType>* list, cip::tibia::qmlcomponents::TAppearanceInstanceInfoQmlType* instance);
@@ -127,6 +128,8 @@ private:
 
     QList<Sprite> m_sprites;
     QList<TransientEffect> m_effects;
+    /// Standing animators of the shown types, started at time 0.
+    mutable tibia::animation::TIdleAnimators m_idleAnimators;
     /// Item pixel = (world pixel - m_origin) * m_scale.
     QPointF m_origin;
     float m_scale = 1.f;

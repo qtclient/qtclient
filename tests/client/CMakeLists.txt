@@ -14,6 +14,33 @@ if(Qt6_FOUND)
     target_link_libraries(client_weather_tests PRIVATE Qt6::Core Qt6::Gui)
 endif()
 
+# Ported CipSoft classes that only need QtCore: built from their own sources.
+find_package(Qt6 REQUIRED COMPONENTS Core)
+include(GoogleTest)
+function(qtclient_add_port_test TARGET_NAME)
+    add_executable(${TARGET_NAME} ${ARGN})
+    set_target_properties(${TARGET_NAME} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/client/tibia ${CMAKE_SOURCE_DIR}/client)
+    target_link_libraries(${TARGET_NAME} PRIVATE GTest::gtest GTest::gtest_main Qt6::Core)
+    gtest_discover_tests(${TARGET_NAME})
+endfunction()
+
+qtclient_add_port_test(client_durationtween_tests durationtween_test.cpp)
+qtclient_add_port_test(client_creaturemovement_tests
+    creaturemovement_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/creatures/creaturemovementspeedcalculator.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/creatures/creaturemovementtween.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/animation/movingoutfitanimator.cpp
+)
+qtclient_add_port_test(client_phaseanimator_tests
+    phaseanimator_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/animation/phaseanimator.cpp
+)
+qtclient_add_port_test(client_movementpathplanner_tests
+    movementpathplanner_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/input/movementpathplanner.cpp
+)
+
 # CIP TGameActionMapper Classic + Loot: Right. Compiles mapper.cpp alone; the
 # test stubs filterActions so gameaction.cpp is not required.
 find_package(Qt6 QUIET COMPONENTS Core Gui)

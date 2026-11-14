@@ -166,7 +166,6 @@ int TBosstiaryStorage::pointsForStage(const int category, const int stage) const
     return stage >= 1 && stage <= 3 ? m_pointsForStage[categoryIndex(category)][stage - 1] : 0;
 }
 
-// b1/6b427bf88676e491
 QString TBosstiaryStorage::rarityTooltip(const int category) const
 {
     const char* name = category == 2 ? "bosstiary_nemesis" : category == 1 ? "bosstiary_archfoe" : "bosstiary_bane";

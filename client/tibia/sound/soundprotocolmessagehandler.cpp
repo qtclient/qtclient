@@ -1,4 +1,7 @@
 #include "soundprotocolmessagehandler.h"
+#include <protocol.pb.h>
+#include <tibia/game/gamesession.h>
+#include "protocol/protocolciptypes.h"
 
 #include "sound/soundstorage.h"
 
@@ -40,6 +43,18 @@ void TSoundProtocolMessageHandler::handleSoundTrigger(const int type, const int 
             qCDebug(lcSoundProto) << "unknown sound trigger type" << type << "id" << soundId;
             break;
     }
+}
+
+void TSoundProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
+                                                           const bool applyClassic)
+{
+    using namespace ::tibia::protobuf::protocol;
+    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    if (!shadow || opcode != 133 || !shadow->HasExtension(GameserverMessageSoundTrigger::gameserver_message_sound_trigger))
+        return;
+    const auto& m = shadow->GetExtension(GameserverMessageSoundTrigger::gameserver_message_sound_trigger);
+    if (m.type() <= 2)
+        tibia::game::processSoundTrigger(static_cast<uint8_t>(m.type()), static_cast<uint16_t>(m.sound_id()));
 }
 
 } // namespace tibia::sound

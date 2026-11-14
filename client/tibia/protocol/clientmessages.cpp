@@ -20,6 +20,7 @@
  * THE SOFTWARE.
  */
 
+#include "protocol/extendedopcode.h"
 #include <tibia/game/localplayersessionthing.h>
 #include <tibia/appearances/thing.h>
 #include "client/item.h"
@@ -112,7 +113,10 @@ void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint
         msg->addU8(challengeRandom);
     }
 
-    // qtclient qtclient: no pack login extension hook (OTC getLoginExtendedData retired).
+    // A pack that listens for extended opcodes asks for the product transport in
+    // the RSA padding; the CIP client leaves the padding zero.
+    if (tibia::protocol::ExtendedOpcodeReader::instance().hasListeners())
+        msg->addString("ExtendedOpcodes");
 
     // complete the bytes for rsa encryption with zeros
     const int paddingBytes = tibia::network::rsaBlockSize() - (msg->getMessageSize() - offset);
@@ -987,14 +991,6 @@ void ProtocolGame::sendRequestOutfit()
     send(msg);
 }
 
-void ProtocolGame::sendTyping(const bool typing)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::GameServerCreatureTyping);
-    msg->addU8(typing);
-    send(msg);
-}
-
 namespace {
 
 void addOutfitLook(const OutputMessagePtr& msg, const Outfit& outfit)
@@ -1046,12 +1042,6 @@ void ProtocolGame::sendChangeOutfit(const Outfit& outfit, const bool mounted, co
 
     if (tibia::game::clientRevision() >= 1281) {
         msg->addU8(randomMount); //randomizeMount
-    }
-    if (tibia::game::cipFeature(tibia::client::GameWingsAurasEffectsShader)) {
-        msg->addU16(outfit.getWing());  // wings
-        msg->addU16(outfit.getAura());  // auras
-        msg->addU16(outfit.getEffect()); // effects
-        msg->addString(outfit.getShader()); // shader
     }
 
     send(msg);

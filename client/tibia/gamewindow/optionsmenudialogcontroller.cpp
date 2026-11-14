@@ -258,7 +258,6 @@ void TOptionsMenuDialogController::afterHide()
     m_frameRateTimer.stop();
 }
 
-// b1/e5d14e15aab4fb92
 void TOptionsMenuDialogController::setDialogCategory(const EDialogCategories Category)
 {
     if (m_dialogCategory == Category)
@@ -269,7 +268,6 @@ void TOptionsMenuDialogController::setDialogCategory(const EDialogCategories Cat
     Q_EMIT dialogCategoryChanged();
 }
 
-// b1/cb47c26b23c15cf3
 void TOptionsMenuDialogController::setShowAdvancedOptions(const bool Show)
 {
     if (m_showAdvancedOptions == Show)
@@ -284,7 +282,6 @@ void TOptionsMenuDialogController::setShowAdvancedOptions(const bool Show)
     Q_EMIT showAdvancedOptionsChanged();
 }
 
-// b1/a72e8e67b5df42e1
 void TOptionsMenuDialogController::requestResetCurrentPageToDefault()
 {
     m_resetPageMessage->setButtons(okCancelButtons());
@@ -299,7 +296,6 @@ void TOptionsMenuDialogController::requestResetAllOptionsToDefault()
                                    qtTrId("optionsmenu_reset_all_options_warning") + QStringLiteral("\n\n") + qtTrId("optionsmenu_reset_confirmation"));
 }
 
-// b1/8fc09f8094e2ffdc
 void TOptionsMenuDialogController::cancelButtonClicked()
 {
     dialog()->close();
@@ -313,7 +309,6 @@ QJsonObject TOptionsMenuDialogController::pendingSettings() const
     return settings;
 }
 
-// b1/a5c41fed1c473581
 void TOptionsMenuDialogController::applyButtonClicked()
 {
     const QJsonObject current = app::ClientOptions::load().root();
@@ -370,14 +365,12 @@ void TOptionsMenuDialogController::sendTurnTowardsMoveDirection(const bool enabl
     tibia::game::setClientOption(TurnTowardsMoveDirectionOption, enabled);
 }
 
-// b1/6d48fb1c1ab7fb36
 void TOptionsMenuDialogController::okButtonClicked()
 {
     applyButtonClicked();
     dialog()->close();
 }
 
-// b1/5e10263aaa1f7a6c
 void TOptionsMenuDialogController::activateLensehelp()
 {
     applyButtonClicked();
@@ -385,14 +378,12 @@ void TOptionsMenuDialogController::activateLensehelp()
     publish(EGameAction::LENSHELP_ACTIVATE);
 }
 
-// b1/b835348c63656401
 void TOptionsMenuDialogController::showRuleViolationsText()
 {
     m_infoMessage->setButtons(okButton());
     m_infoMessage->showMessage(qtTrId("howtoruleviolationreport_caption"), qtTrId("howtoruleviolationreport_text"));
 }
 
-// b1/b4118bd45915c3b7
 void TOptionsMenuDialogController::openManuelUrl()
 {
     publish(EGameAction::OPEN_URL_MANUAL);
@@ -403,7 +394,6 @@ void TOptionsMenuDialogController::openFaqUrl()
     publish(EGameAction::OPEN_URL_FAQ);
 }
 
-// b1/15dd085e1ccb0a65
 void TOptionsMenuDialogController::openScreenshotDirectory()
 {
     const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/screenshots");
@@ -411,7 +401,6 @@ void TOptionsMenuDialogController::openScreenshotDirectory()
     QDesktopServices::openUrl(QUrl::fromLocalFile(directory));
 }
 
-// b1/2cf7643be4c029de
 void TOptionsMenuDialogController::openHelpChannel()
 {
     // CIP : apply, close, publish OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT
@@ -432,13 +421,11 @@ void TOptionsMenuDialogController::setPortalBase(const QUrl& loginBase)
         m_about->setPortalBase(loginBase);
 }
 
-// b1/774f8b050b37945a
 void TOptionsMenuDialogController::showAboutDialog()
 {
     m_about->showDialog();
 }
 
-// b1/045e874224fb006a
 void TOptionsMenuDialogController::showCompendium()
 {
     publish(EGameAction::OPEN_NEWS_DIALOG);
@@ -452,7 +439,6 @@ void TOptionsMenuDialogController::exportArchive(const QString& url, const QList
     m_infoMessage->showMessage(qtTrId("optionsmenu_file_export_success_caption"), qtTrId("optionsmenu_file_export_success_text"));
 }
 
-// b1/8dc1222cc7c9e5d6
 void TOptionsMenuDialogController::requestExportAllOptions(const QString& OutputFilename)
 {
     QJsonObject root = app::ClientOptions::load().root();
@@ -464,7 +450,6 @@ void TOptionsMenuDialogController::requestExportAllOptions(const QString& Output
     exportArchive(OutputFilename, entries);
 }
 
-// b1/160a8a93caa40036
 void TOptionsMenuDialogController::requestImportAllOptions(const QString& InputFilename)
 {
     m_importFile = InputFilename;
@@ -472,7 +457,6 @@ void TOptionsMenuDialogController::requestImportAllOptions(const QString& InputF
     m_importMessage->showMessage(qtTrId("optionsmenu_confirm_options_import_caption"), qtTrId("optionsmenu_confirm_options_import_text"));
 }
 
-// b1/483b7c9ceb8e8ac4
 void TOptionsMenuDialogController::requestExportMinimap(const QString& OutputFilename)
 {
     if (minimap::TMinimapManager* minimap = m_gameClient ? m_gameClient->minimap() : nullptr)
@@ -480,7 +464,6 @@ void TOptionsMenuDialogController::requestExportMinimap(const QString& OutputFil
     exportArchive(OutputFilename, config::optionsarchive::collect(dataDirectory(), { QLatin1String(MinimapDirectory) }));
 }
 
-// b1/763aecd41a672e20
 void TOptionsMenuDialogController::importArchive()
 {
     const QDir root(dataDirectory());
@@ -530,7 +513,6 @@ config::TOptionsPage* TOptionsMenuDialogController::pageOf(const EDialogCategori
     return nullptr;
 }
 
-// b1/060ea84abb937200
 void TOptionsMenuDialogController::resetCurrentPageToDefault()
 {
     switch (m_dialogCategory) {
@@ -555,7 +537,6 @@ void TOptionsMenuDialogController::resetCurrentPageToDefault()
         page->load(defaultSettings());
 }
 
-// b1/60e5a30864bf9135
 void TOptionsMenuDialogController::resetBasicPage()
 {
     static constexpr O BasicOptions[] = {
@@ -578,7 +559,6 @@ void TOptionsMenuDialogController::resetBasicPage()
         pageOf(category)->load(settings);
 }
 
-// b1/889604d12adaae94
 void TOptionsMenuDialogController::resetAllOptionsToDefault()
 {
     const QJsonObject defaults = defaultSettings();
@@ -594,7 +574,6 @@ void TOptionsMenuDialogController::resetAllOptionsToDefault()
         m_hotkeys->load({ { QStringLiteral("hotkeyOptions"), config::THotkeyOptions::builtInSection() } });
 }
 
-// b1/cb5845be73a41034
 void TOptionsMenuDialogController::onResartMessageControllerClicked(const cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier)
 {
     // CANCEL/NO: dismiss only — settings are already stored for the next launch.

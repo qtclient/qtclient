@@ -1,4 +1,5 @@
 #include "reporting/reportingciptypes.h"
+#include <tibia/game/gamenotify.h>
 
 #include "protocol/protocolciptypes.h"
 
@@ -69,6 +70,17 @@ void ownProductSurface(QObject* parent)
     owned = true;
     auto* handler = new TBugReportProtocolMessageHandler(parent);
     TBugReportProtocolMessageHandler::setLiveInstance(handler);
+}
+
+void TRuleViolationProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
+                                                                   const bool applyClassic)
+{
+    using namespace ::tibia::protobuf::protocol;
+    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    if (!shadow || opcode != 129 || !shadow->HasExtension(GameserverMessageTextForReport::gameserver_message_text_for_report))
+        return;
+    const auto& m = shadow->GetExtension(GameserverMessageTextForReport::gameserver_message_text_for_report);
+    tibia::game::notify("onTextForReport", m.statement_id(), m.text(), m.name());
 }
 
 } // namespace tibia::reporting

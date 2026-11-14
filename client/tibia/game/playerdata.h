@@ -27,7 +27,6 @@ public:
     static TPlayerData* liveInstance();
     static void setLiveInstance(TPlayerData* data);
 
-    // b1/25629e06a39166a2 (FUNCMAP TPlayerData::name @).
     void name();
 
     // Tip resource/scalar peels (not in External FUNCMAP as these names — no b1).
@@ -92,6 +91,7 @@ public:
     uint16_t regenerationTime() const { return m_regenerationTime; }
     uint16_t offlineTrainingTime() const { return m_offlineTrainingTime; }
     uint16_t storeExpBoostTime() const { return m_storeExpBoostTime; }
+    uint16_t dailyRewardExpBoostTime() const { return m_dailyRewardExpBoostTime; }
     uint8_t rottenBloodState() const { return m_rottenBloodState; }
 
     uint64_t resourceBalance(tibia::client::ResourceTypes_t type) const;
@@ -130,6 +130,7 @@ public:
     void setRegenerationTime(uint16_t regenerationTime);
     void setOfflineTrainingTime(uint16_t offlineTrainingTime);
     void setStoreExpBoostTime(uint16_t storeExpBoostTime);
+    void setDailyRewardExpBoostTime(uint16_t dailyRewardExpBoostTime);
     void setRottenBloodState(uint8_t rottenBloodState);
 
     void clear();
@@ -182,6 +183,7 @@ private:
     uint16_t m_regenerationTime{ 0 };
     uint16_t m_offlineTrainingTime{ 0 };
     uint16_t m_storeExpBoostTime{ 0 };
+    uint16_t m_dailyRewardExpBoostTime{ 0 };
     uint8_t m_rottenBloodState{ 0 };
     std::map<tibia::client::ResourceTypes_t, uint64_t> m_resourcesBalance;
 };

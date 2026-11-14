@@ -21,6 +21,7 @@ public:
     int subscribe(Listener listener);
     void unsubscribe(int id);
     void publish(uint8_t opcode, const std::string& buffer);
+    bool hasListeners() const { return !m_listeners.empty(); }
 
     /// Outbound extended opcodes. The live protocol installs this; product
     /// features send through the reader, not through the game session.

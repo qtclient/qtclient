@@ -282,7 +282,6 @@ TSpellListDataModelSortFilterProxy::TSpellListDataModelSortFilterProxy(QObject* 
     resetFilter();
 }
 
-// b1/49e1daf2163ec188
 void TSpellListDataModelSortFilterProxy::resetFilter()
 {
     // CIP defaults. Prefer showing the full vocation set until the
@@ -353,7 +352,6 @@ QVariant TSpellListDataModelSortFilterProxy::getDataWithRoleName(const int RowIn
     return data(idx, role);
 }
 
-// b1/f8f4ce6d311350a3
 bool TSpellListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     QAbstractItemModel* source = sourceModel();
@@ -404,7 +402,6 @@ bool TSpellListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, c
     return true;
 }
 
-// b1/0df8869b61bdf66a
 bool TSpellListDataModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     const QString a = sourceModel()->data(left, TMagicalArchiveSpellListModel::NameRole).toString();

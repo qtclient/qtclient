@@ -61,7 +61,6 @@ TPremiumMessageRenewPremium::TPremiumMessageRenewPremium(QObject* parent)
     m_imageUrl = iconUrl(RenewPremiumFeature);
 }
 
-// b1/920a919c4409d3cd
 void TPremiumMessageRenewPremium::setDaysLeft(const int days) { m_daysLeft = days; }
 
 QString TPremiumMessageRenewPremium::message() const
@@ -143,7 +142,6 @@ void TPremiumPanelController::setPremiumTime(const bool premium, const uint32_t 
     onPremiumTimeChanged();
 }
 
-// b1/8b37c0cef08962ad
 void TPremiumPanelController::onSessionStarted(const bool premium, const qint64 premiumUntil)
 {
     setPremiumTime(premium, static_cast<uint32_t>(std::max<qint64>(premiumUntil, 0)));
@@ -158,7 +156,6 @@ void TPremiumPanelController::resetPremiumTime()
     onPremiumTimeChanged();
 }
 
-// b1/c187a91532d30dae
 bool TPremiumPanelController::advertisePremium() const
 {
     const bool neverPremium = isFreeAccount() && !hasPremiumTime();
@@ -176,7 +173,6 @@ void TPremiumPanelController::applySessionVisibility()
         showCollapsed();
 }
 
-// b1/7b4ebfb06722f5d9
 void TPremiumPanelController::togglePanel()
 {
     stopHighlight();
@@ -188,7 +184,6 @@ void TPremiumPanelController::togglePanel()
         showCollapsed();
 }
 
-// b1/68262e45cfa936c5
 void TPremiumPanelController::onTutorialModeChanged(const bool enabled)
 {
     if (enabled)
@@ -220,7 +215,6 @@ void TPremiumPanelController::setPanelItem(QQuickItem* item)
     applySessionVisibility();
 }
 
-// b1/79416360449698d1
 void TPremiumPanelController::setTriggers(const std::vector<uint8_t>& features)
 {
     m_premiumMessages.clear();
@@ -232,7 +226,6 @@ void TPremiumPanelController::setTriggers(const std::vector<uint8_t>& features)
     startHighlight(RetriggerMs);
 }
 
-// b1/7c33f3c594cefb1a
 void TPremiumPanelController::onStoreDeeplinkChanged(const int openAction, const int detail)
 {
     if (openAction == 0 || detail == 1)
@@ -240,7 +233,6 @@ void TPremiumPanelController::onStoreDeeplinkChanged(const int openAction, const
     startHighlight(HighlightMs);
 }
 
-// b1/34e698276b57d364
 void TPremiumPanelController::startHighlight(const int minimumMs)
 {
     if (m_isMaximized)
@@ -259,14 +251,12 @@ void TPremiumPanelController::setHighlight(const bool highlight)
     Q_EMIT highlightMaximizeButtonChanged();
 }
 
-// b1/f0d7778424c866d5
 void TPremiumPanelController::stopHighlight()
 {
     m_highlightTimer.stop();
     setHighlight(false);
 }
 
-// b1/269e1170c66f9041
 void TPremiumPanelController::setMaximized(const bool maximized)
 {
     if (maximized == m_isMaximized)
@@ -280,14 +270,12 @@ void TPremiumPanelController::maximizePanel() { setMaximized(true); }
 
 void TPremiumPanelController::minimizePanel() { setMaximized(false); }
 
-// b1/b9d3ebb30c99df93
 void TPremiumPanelController::onPremiumTimeChanged()
 {
     if (m_renewPremium)
         m_renewPremium->setDaysLeft(premiumDaysLeft());
 }
 
-// b1/04212d857825f887
 void TPremiumPanelController::onIsVisibleChanged()
 {
     Q_EMIT isVisibleChanged(m_item && m_item->isVisible());

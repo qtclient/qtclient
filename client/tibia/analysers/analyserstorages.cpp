@@ -74,7 +74,6 @@ void THuntingSessionStorage::tick(const qint64 nowMs)
     Q_EMIT experienceChanged();
 }
 
-// b1/6e9b0320a1d393a3
 void THuntingSessionStorage::reset()
 {
     m_start = m_nextTick;
@@ -87,14 +86,12 @@ void THuntingSessionStorage::reset()
     emitKillsChanged();
 }
 
-// b1/bcc87bb1314d7d75
 void THuntingSessionStorage::addKill(const QString& name)
 {
     ++m_kills[name];
     emitKillsChanged();
 }
 
-// b1/2fb8672477deb824
 void THuntingSessionStorage::setShowBaseXp(const bool show)
 {
     if (m_showBaseXp == show)
@@ -189,8 +186,8 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         m_gainWaste.addWaste(static_cast<uint16_t>(argInt(args, 0)), 1, nowMs());
         return std::any{};
     });
-    // CIP ImpactTracking handler . Crystal sends one amount and its element for
-    // damage dealt, which CIP takes as (primary 0, secondary amount, element).
+    // CIP ImpactTracking handler: damage dealt is (physical amount, elemental
+    // amount, element).
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onImpactTracker", [this](GameObject*, const Args& args) {
         const qint64 type = argInt(args, 0);
         const qint64 amount = argInt(args, 1);
@@ -198,7 +195,7 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         if (type == AnalyzerHeal)
             m_impact.addHealing(amount, nowMs());
         else if (type == AnalyzerDamageDealt)
-            m_impact.addDamage(0, amount, element, nowMs());
+            m_impact.addDamage(amount, argInt(args, 4), element, nowMs());
         else if (type == AnalyzerDamageReceived)
             m_damageInput.addDamage(amount, element, argString(args, 3), nowMs());
         return std::any{};
@@ -239,8 +236,6 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         return std::any{};
     };
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyAnalyzerUpdate", applyPartyAnalyzer);
-    // Throttled CipSoft publish (same payload as Update); keep both subscribed.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyAnalyzer", applyPartyAnalyzer);
     // CIP market statistics (TItemPriceStorage +0x60).
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onItemsPrice", [this](GameObject*, const Args& args) {
         if (args.empty())

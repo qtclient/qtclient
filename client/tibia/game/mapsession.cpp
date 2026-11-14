@@ -263,6 +263,11 @@ void setWaypointCostFactory(WaypointCostFactory factory)
     sessionOverlay().setWaypointCostFactory(std::move(factory));
 }
 
+std::shared_ptr<tibia::minimap::TWaypointCosts> waypointCosts()
+{
+    return sessionOverlay().waypointCosts();
+}
+
 void clearWaypointCostFactory()
 {
     sessionOverlay().clearWaypointCostFactory();

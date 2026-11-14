@@ -190,20 +190,15 @@ set(SOURCE_FILES
         tibia/assets/spritesheet.cpp
         tibia/assets/thingtype.cpp
         tibia/assets/things.cpp
-        tibia/creatures/creaturespeedformula.cpp
         tibia/game/gamehub_impl.cpp
         tibia/game/gamehub.cpp
         tibia/game/gamesession_forward.cpp
         tibia/game/localplayersessionthing.cpp
-        tibia/game/localplayersessionthing.cpp
-        tibia/game/localplayergopath.cpp
         tibia/worldmap/worldmapsessionstate.cpp
         tibia/appearances/thing.cpp
         tibia/worldmap/worldmapfield.cpp
         tibia/creatures/attachedeffect.cpp
         tibia/creatures/attachedeffectmanager.cpp
-        tibia/creatures/paperdoll.cpp
-        tibia/creatures/paperdollmanager.cpp
 )
 
 if (TOGGLE_FRAMEWORK_GRAPHICS)

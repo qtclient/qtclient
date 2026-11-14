@@ -22,6 +22,9 @@ class TBossBestiaryProtocolMessageHandler final : public cip::tibia::bossbestiar
     Q_OBJECT
 public:
     using cip::tibia::bossbestiary::TBossBestiaryProtocolMessageHandler::TBossBestiaryProtocolMessageHandler;
+public:
+    /// Tip Q→H wire: BosstiaryHighlight from `serverMessageEnqueued`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 // TBossTrackerStorage — bosstrackerstorage.h

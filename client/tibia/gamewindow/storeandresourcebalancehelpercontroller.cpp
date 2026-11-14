@@ -60,7 +60,6 @@ TStoreAndResourceBalanceHelperController::TStoreAndResourceBalanceHelperControll
     updateResources();
 }
 
-// b1/9049bbf1e52d7203
 void TStoreAndResourceBalanceHelperController::setExaltationStorage(exaltation::TExaltationStorage* storage)
 {
     m_exaltation = storage;
@@ -70,13 +69,11 @@ void TStoreAndResourceBalanceHelperController::setExaltationStorage(exaltation::
     updateResources();
 }
 
-// b1/5492252506b7b4d7
 bool TStoreAndResourceBalanceHelperController::canAffordWithTotalGoldBalance(const int Price)
 {
     return static_cast<qulonglong>(std::max(0, Price)) <= m_bankGoldBalance + m_inventoryGoldBalance;
 }
 
-// b1/b72c5982fcc3894a
 void TStoreAndResourceBalanceHelperController::updateGold()
 {
     // CIP : bank / inventory / guild from TPlayerData (+0xe8 / +0xf0 / +0xf8)
@@ -110,7 +107,6 @@ void TStoreAndResourceBalanceHelperController::updateGold()
     Q_EMIT goldBalanceChanged();
 }
 
-// b1/d376c6f3310ab534
 void TStoreAndResourceBalanceHelperController::updateStoreBalance()
 {
     if (!m_storage)
@@ -122,7 +118,6 @@ void TStoreAndResourceBalanceHelperController::updateStoreBalance()
         previous->deleteLater();
 }
 
-// b1/1d2e89c080f54bf6
 void TStoreAndResourceBalanceHelperController::updateResources()
 {
     const int wildcards = intBalance(tibia::client::RESOURCE_PREY_WILDCARDS);

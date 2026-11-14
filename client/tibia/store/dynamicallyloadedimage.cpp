@@ -58,7 +58,6 @@ QUrl TDynamicallyLoadedImageManager::url(const QString& path) const
     return QUrl(base + path);
 }
 
-// b1/c43060910d864f0c
 void TDynamicallyLoadedImageManager::request(const QString& key, const int size)
 {
     const QString cached = cacheKey(key, size);
@@ -79,7 +78,6 @@ void TDynamicallyLoadedImageManager::request(const QString& key, const int size)
     connect(reply, &QNetworkReply::finished, this, [this, reply, key, size] { onFinished(reply, key, size); });
 }
 
-// b1/c529956ace43ffdb
 void TDynamicallyLoadedImageManager::onFinished(QNetworkReply* reply, const QString& key, const int size)
 {
     reply->deleteLater();
@@ -112,7 +110,6 @@ int TDynamicallyLoadedImageQuickItem::size() const
     return m_sourceImageSize < 0 ? static_cast<int>(width()) : m_sourceImageSize;
 }
 
-// b1/be70895f312b9aa3
 void TDynamicallyLoadedImageQuickItem::setImageKey(const QString& key)
 {
     if (m_imageKey == key)
@@ -122,7 +119,6 @@ void TDynamicallyLoadedImageQuickItem::setImageKey(const QString& key)
     requestImage();
 }
 
-// b1/917e6b19fbc7810b
 void TDynamicallyLoadedImageQuickItem::setDynamicallyLoadedImageManager(QObject* manager)
 {
     if (m_dynamicallyLoadedImageManager == manager)
@@ -159,25 +155,20 @@ void TDynamicallyLoadedImageQuickItem::setScaleUp(const bool scaleUp)
     update();
 }
 
-// b1/2ee08e53945cf0c4
 void TDynamicallyLoadedImageQuickItem::geometryChange(const QRectF& newGeometry, const QRectF& oldGeometry)
 {
-    // b1/2ee08e53945cf0c4
     cip::tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem::geometryChange(newGeometry, oldGeometry);
     if (newGeometry.size() != oldGeometry.size())
         requestImage();
 }
 
-// b1/7cc19d6c5585d0e4
 void TDynamicallyLoadedImageQuickItem::itemChange(const ItemChange change, const ItemChangeData& value)
 {
-    // b1/7cc19d6c5585d0e4
     cip::tibia::qmlcomponents::TDynamicallyLoadedImageQuickItem::itemChange(change, value);
     if (change == ItemVisibleHasChanged && value.boolValue)
         requestImage();
 }
 
-// b1/66e8cbda2cc1a94b
 void TDynamicallyLoadedImageQuickItem::requestImage()
 {
     if (!m_manager || m_imageKey.isEmpty() || !isVisible())
@@ -193,7 +184,6 @@ void TDynamicallyLoadedImageQuickItem::requestImage()
     m_manager->request(m_imageKey, imageSize);
 }
 
-// b1/5d179fa27ed94412
 void TDynamicallyLoadedImageQuickItem::showPlaceholder(const bool failed)
 {
     static const QImage loading(QStringLiteral(":/images/dynamic/dynamic-image-loading.png"));

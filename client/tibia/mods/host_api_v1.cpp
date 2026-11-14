@@ -565,11 +565,6 @@ void abiEnableFeature(int feature)
     tibia::game::enableFeature(static_cast<tibia::client::GameFeature>(feature));
 }
 
-void abiSetCustomOs(int operating_system)
-{
-    tibia::game::setCustomOs(static_cast<tibia::client::OperatingSystem_t>(operating_system));
-}
-
 // --- Session nested API ---
 
 int sessIsOnline() { return tibia::game::isOnline() ? 1 : 0; }
@@ -1053,6 +1048,8 @@ void sessRegAttachedByThing(uint16_t id, const char* note_utf8, uint16_t base_id
 }
 
 void sessRemoveAttached(uint16_t id) { tibia::game::removeAttachedEffect(id); }
+void sessAttachCreatureEffect(uint32_t creature_id, uint16_t effect_id) { tibia::game::attachCreatureEffect(creature_id, effect_id); }
+void sessDetachCreatureEffect(uint32_t creature_id, uint16_t effect_id) { tibia::game::detachCreatureEffect(creature_id, effect_id); }
 
 int sessCreatureTypeIsSummon(uint8_t t) { return tibia::game::creatureTypeIsSummon(t) ? 1 : 0; }
 
@@ -1092,7 +1089,6 @@ const QtClientSessionApiV1 g_sessionApi = {
     .map_item_revision = &sessItemRev,
     .cip_feature = &sessCipFeature,
     .enable_feature = &abiEnableFeature,
-    .set_custom_os = &abiSetCustomOs,
 
     .local_player_has_reached_main = &sessHasReachedMain,
     .local_player_inventory_type_id = &sessInvTypeId,
@@ -1191,6 +1187,8 @@ const QtClientSessionApiV1 g_sessionApi = {
 
     .set_path_avoid = &sessSetPathAvoid,
     .clear_path_avoids = &sessClearPathAvoids,
+    .attach_creature_effect = &sessAttachCreatureEffect,
+    .detach_creature_effect = &sessDetachCreatureEffect,
 };
 
 // --- Notify nested API ---
@@ -1413,7 +1411,6 @@ const QtClientHostApiV1 g_hostApi = {
     .set_attention_backend = &abiSetAttention,
     .set_instance_backend = &abiSetInstance,
     .set_login_sync_enqueue_hook = &abiSetLoginSync,
-    .set_feature_extras_hook = &tibia::mods::setFeatureExtrasHook,
     .set_world_lighting_driver = &abiSetLighting,
     .add_world_overlay_factory = &abiAddOverlay,
     .set_world_frame_hooks = &abiSetFrameHooks,
@@ -1421,7 +1418,6 @@ const QtClientHostApiV1 g_hostApi = {
     .set_hd_scaler = &abiSetHdScaler,
     .host_os = &abiHostOs,
     .enable_feature = &abiEnableFeature,
-    .set_custom_os = &abiSetCustomOs,
     .session = &g_sessionApi,
     .notify = &g_notifyApi,
     .options = &g_optionsApi,

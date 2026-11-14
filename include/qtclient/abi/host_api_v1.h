@@ -34,7 +34,6 @@ typedef struct QtClientHostApiV1 {
     void (*set_attention_backend)(void* backend);
     void (*set_instance_backend)(void* backend);
     void (*set_login_sync_enqueue_hook)(QtClientLoginSyncEnqueueFn fn);
-    void (*set_feature_extras_hook)(QtClientFeatureExtrasFn fn);
 
     void (*set_world_lighting_driver)(const QtClientLightingDriver* driver);
     void (*add_world_overlay_factory)(const QtClientWorldOverlayFactory* factory);
@@ -45,7 +44,6 @@ typedef struct QtClientHostApiV1 {
 
     QtClientHostOsFn host_os;
     QtClientEnableFeatureFn enable_feature;
-    QtClientSetCustomOsFn set_custom_os;
 
     /** Nested domain tables (v2+). Null on older hosts. Session peel is additive (Phase 2+); field count grows at tail. */
     const QtClientSessionApiV1* session;

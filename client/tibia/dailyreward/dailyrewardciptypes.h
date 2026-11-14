@@ -31,6 +31,9 @@ class TDailyRewardProtocolMessageHandler final : public cip::tibia::dailyreward:
     Q_OBJECT
 public:
     using cip::tibia::dailyreward::TDailyRewardProtocolMessageHandler::TDailyRewardProtocolMessageHandler;
+public:
+    /// Tip Q→H wire: DailyRewardCollectionState from `serverMessageEnqueued`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TDailyRewardStorage final : public cip::tibia::dailyreward::TDailyRewardStorage

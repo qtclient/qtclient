@@ -278,11 +278,18 @@ if(TIBIA_WITH_GAMECORE)
     app/qtplatformwindow.cpp app/qtplatformwindow.h
     chat/chatgameactionhandler.cpp chat/chatgameactionhandler.h
     shared/sharedciptypes.cpp shared/sharedciptypes.h
+    config/clientsettings.cpp config/clientsettings.h
     config/configciptypes.cpp config/configciptypes.h
     config/runtimegameconfig.cpp config/runtimegameconfig.h
     sound/soundciptypes.cpp sound/soundciptypes.h
     sessiondump/sessiondumpciptypes.cpp sessiondump/sessiondumpciptypes.h
     network/networkciptypes.cpp network/networkciptypes.h
+    protocol/mapwire.cpp protocol/mapwire.h
+    protocol/playerwire.cpp protocol/playerwire.h
+    protocol/chatwire.cpp protocol/chatwire.h
+    protocol/tradewire.cpp protocol/tradewire.h
+    protocol/miscwire.cpp protocol/miscwire.h
+    protocol/featurewire.cpp protocol/featurewire.h
     protocol/protocolciptypes.cpp protocol/protocolciptypes.h
     protocol/protocolclassicwire.h
     protocol/inventoryitemwire.cpp protocol/inventoryitemwire.h
@@ -323,11 +330,11 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/chatcontroller.cpp gamewindow/chatcontroller.h
     creatures/attachedeffect.cpp creatures/attachedeffect.h
     creatures/attachedeffectmanager.cpp creatures/attachedeffectmanager.h
-    creatures/paperdoll.cpp creatures/paperdoll.h
-    creatures/paperdollmanager.cpp creatures/paperdollmanager.h
     creatures/movementtweens.cpp creatures/movementtweens.h
     creatures/creaturemovementspeedcalculator.cpp creatures/creaturemovementspeedcalculator.h
     creatures/creaturemovementtween.cpp creatures/creaturemovementtween.h
+    creatures/movementdirection.h
+    creatures/walkdebug.cpp creatures/walkdebug.h
     creatures/creaturesciptypes.cpp creatures/creaturesciptypes.h
     creatures/creaturestorage.cpp creatures/creaturestorage.h
     friends/friendsciptypes.cpp friends/friendsciptypes.h
@@ -356,7 +363,6 @@ if(TIBIA_WITH_GAMECORE)
     app/portalurls.cpp app/portalurls.h
     game/gameciptypes.cpp game/gameciptypes.h
     game/playerdata.cpp game/playerdata.h
-    game/localplayergopath.cpp game/localplayergopath.h
     game/playerskillstats.cpp game/playerskillstats.h
     game/tgamenotify.cpp game/tgamenotify.h
     game/gameobject.cpp game/gameobject.h
@@ -382,6 +388,8 @@ if(TIBIA_WITH_GAMECORE)
     input/crosshairgameactionhandlers.cpp input/crosshairgameactionhandlers.h
     input/playermovementgameactionhandler.cpp input/playermovementgameactionhandler.h
     input/playermovementinputinterpreter.cpp input/playermovementinputinterpreter.h
+    input/playermovementintenthandler.cpp input/playermovementintenthandler.h
+    input/movementpathplanner.cpp input/movementpathplanner.h
     gamewindow/targetselectioncontroller.cpp gamewindow/targetselectioncontroller.h
     spells/spellinfostorage.cpp spells/spellinfostorage.h
     gamewindow/messagedialogcontroller.cpp gamewindow/messagedialogcontroller.h
@@ -547,7 +555,13 @@ if(TIBIA_WITH_GAMECORE)
     appearances/spriteinfo.cpp appearances/spriteinfo.h
     appearances/worldmaphighlightbaseplate.cpp appearances/worldmaphighlightbaseplate.h
     animation/animator.cpp animation/animator.h
-    animation/spriteanimator.cpp animation/spriteanimator.h
+    animation/animationinfo.h
+    animation/phaseanimator.cpp animation/phaseanimator.h
+    animation/durationtween.h
+    animation/movingoutfitanimator.cpp animation/movingoutfitanimator.h
+    creatures/creatureprotocolapply.cpp creatures/creatureprotocolapply.h
+    effects/effectprotocolmessagehandler.cpp effects/effectprotocolmessagehandler.h
+    effects/effectstorage.cpp effects/effectstorage.h
     effects/numericaleffect.cpp effects/numericaleffect.h
     sprites/sprite.cpp sprites/sprite.h
     shared/cip_typed.h

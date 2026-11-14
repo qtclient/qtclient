@@ -30,7 +30,8 @@ public:
     Timer() { restart(); }
 
     void restart(const int shift = 0);
-    void stop() { m_stopped = true; }
+    /// Freeze elapsed at the current value (ticksElapsed stops advancing).
+    void stop();
     void update(const ticks_t tick) { m_startTicks += tick; }
 
     ticks_t startTicks() const { return m_startTicks; }
@@ -40,6 +41,7 @@ public:
     bool running() const { return !m_stopped; }
 
 private:
-    ticks_t m_startTicks;
+    ticks_t m_startTicks{ 0 };
+    ticks_t m_frozenElapsed{ 0 };
     bool m_stopped{ false };
 };

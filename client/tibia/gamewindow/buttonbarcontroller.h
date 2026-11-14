@@ -3,7 +3,9 @@
 #include <cip_gen.h>
 
 #include <QPointer>
+#include <QStringList>
 
+#include <functional>
 #include <vector>
 
 namespace tibia {
@@ -53,8 +55,29 @@ class TButtonBarController final : public cip::tibia::gamewindow::TButtonBarCont
 {
     Q_OBJECT
 public:
+    /// Pack Display Shortcuts (controlButtonsOptions) entries. Numeric ids start
+    /// at ProductShortcutIdBase so they never collide with CIP EButtons.
+    static constexpr int ProductShortcutIdBase = 1000;
+
     explicit TButtonBarController(QObject* parent = nullptr);
     ~TButtonBarController() override;
+
+    /// Register a product shortcut for Options → Display Shortcuts and the
+    /// button bar grid. `id` is stored in controlButtonsOptions; `label` is
+    /// shown in the options lists and as the button tooltip. When
+    /// `defaultEnabled`, reconcile appends it to enabledButtons if the user
+    /// has never seen the id. `imageSource` is a `/images/…` (or pack qrc)
+    /// path for ButtonBarPanel; empty keeps the text label on the button.
+    static void addProductShortcut(const QString& id, const QString& label, std::function<void()> run,
+                                   bool defaultEnabled = true, const QString& imageSource = {});
+    static QStringList productShortcutIds();
+    static QStringList defaultEnabledProductShortcutIds();
+    static QString productShortcutLabel(const QString& id);
+    static QString productShortcutImage(const QString& id);
+    static QString productShortcutIdFromLabel(const QString& label);
+    static int productShortcutButtonId(const QString& id);
+    static QString productShortcutIdFromButtonId(int buttonId);
+    static bool isProductShortcutButtonId(int buttonId);
 
     /// sidebarPanelsOptions.controlButtonsVisible.
     void setSidebarOptions(config::TSidebarOptions* options);
@@ -82,6 +105,13 @@ public:
     void activateShortcut(int buttonId);
     /// Same as activateShortcut, keyed by controlButtonsOptions name.
     void activateShortcutByName(const QString& name);
+
+    /// ButtonBarPanel product delegate: label for a ProductShortcutIdBase id.
+    Q_INVOKABLE QString productShortcutLabelForButtonId(int buttonId) const;
+    /// ButtonBarPanel product delegate: icon path (empty → show label as text).
+    Q_INVOKABLE QString productShortcutImageForButtonId(int buttonId) const;
+    /// ButtonBarPanel product delegate click.
+    Q_INVOKABLE void onProductShortcutClicked(int buttonId);
 
 public Q_SLOTS:
     /// CIP .

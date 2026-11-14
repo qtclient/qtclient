@@ -166,10 +166,8 @@ void TKillTrackerWidgetController::bountyTaskDataChanged() { applyBountyMonsters
 
 void TKillTrackerWidgetController::weeklyTaskDataChanged() { applyWeeklyMonsters(m_pendingWeekly); }
 
-// b1/fac6f14148a14ce2
 bool TKillTrackerWidgetController::bonusRerollpossible() const { return m_storage->bonusRerollPossible(); }
 
-// b1/0d352fa5f2e78892
 bool TKillTrackerWidgetController::lockPreyPossible() const { return m_storage->choosePreyPossible(); }
 
 QList<QObject*> TKillTrackerWidgetController::preyList() const { return m_preyList; }
@@ -207,7 +205,6 @@ void TKillTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* op
                                                        json.value(QLatin1String("contentMaximized")).toBool(true));
 }
 
-// b1/e5ff4b47cee805fb
 void TKillTrackerWidgetController::requestOpenPreyDialog() { input::publish(input::makeAction(input::EGameAction::OPEN_PREY_DIALOG)); }
 
 void TKillTrackerWidgetController::requestOpenBountyTasksDialog()
@@ -224,7 +221,6 @@ void TKillTrackerWidgetController::requestOpenWeeklyTasksDialog()
     input::publish(action);
 }
 
-// b1/83a666af432c9001
 void TKillTrackerWidgetController::saveWidgetOptions()
 {
     if (!m_options)

@@ -71,10 +71,6 @@ esac
   echo "[pack-demo] missing $OTC/client/mods/myaac/mod.json" >&2
   exit 1
 }
-[[ -f "$OTC/client/mods/otclient/mod.json" ]] || {
-  echo "[pack-demo] missing $OTC/client/mods/otclient/mod.json" >&2
-  exit 1
-}
 
 echo "[pack-demo] emit demo tip (default mods + CipSoft assetsurl)…"
 python3 "$OTC/tools/publish/emit_demo_tip.py" \

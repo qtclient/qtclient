@@ -411,7 +411,6 @@ void TActionBarManager::assignDroppedObject(TActionBarController* bar, const int
     bar->assign(buttonId, multiActionIndex, setting);
 }
 
-// b1/5ef69b74dfee6ecd
 void TActionBarManager::openSpellDialogFor(TActionBarController* bar, const int buttonId, const int multiActionIndex, const int spellId)
 {
     (new TAssignSpellActionDialogController(bar, buttonId, multiActionIndex, spellId, this))->dialog()->show();

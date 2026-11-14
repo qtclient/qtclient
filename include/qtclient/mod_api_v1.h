@@ -33,7 +33,6 @@ struct ModApiV1 {
     void (*setAttentionBackend)(tibia::mods::AttentionBackend* backend) = nullptr;
     void (*setInstanceBackend)(tibia::mods::InstanceBackend* backend) = nullptr;
     void (*setLoginSyncEnqueueHook)(tibia::mods::LoginSyncEnqueueFn fn) = nullptr;
-    void (*setFeatureExtrasHook)(tibia::mods::FeatureExtrasFn fn) = nullptr;
 
     void (*setWorldLightingDriver)(tibia::mods::WorldLightingDriver* driver) = nullptr;
     void (*addWorldOverlayFactory)(tibia::mods::WorldOverlayFactory* factory) = nullptr;

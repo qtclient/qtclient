@@ -1,4 +1,9 @@
 #include "teamfinder/teamfinderciptypes.h"
+#include <vector>
+#include <protocol.pb.h>
+#include <tibia/game/gamesession.h>
+#include "teamfinder/teamfinder_types.h"
+#include "protocol/protocolciptypes.h"
 
 #include <QTime>
 
@@ -216,6 +221,61 @@ void TTeamSettings::setIncludeParty(const bool v)
 QObject* TTeamSettings::startTimeManager() const
 {
     return m_startTimeManager;
+}
+
+namespace {
+
+/// The settings a team listing and the leader's own team share.
+template<typename Data>
+void applyTeamSettings(const ::tibia::protobuf::protocol::ProtocolTeamSettings& settings, Data& data)
+{
+    data.minLevel = static_cast<uint16_t>(settings.min_level());
+    data.maxLevel = static_cast<uint16_t>(settings.max_level());
+    data.vocationIDs = static_cast<uint8_t>(settings.vocations());
+    data.teamSlots = static_cast<uint16_t>(settings.team_slots());
+    data.timestamp = settings.timestamp();
+    data.teamType = static_cast<uint8_t>(settings.type().team_type());
+    data.bossID = static_cast<uint16_t>(settings.type().boss_id());
+    data.huntType = static_cast<uint16_t>(settings.type().hunt_type());
+    data.huntArea = static_cast<uint16_t>(settings.type().hunt_area());
+    data.questID = static_cast<uint16_t>(settings.type().quest_id());
+}
+
+}
+
+void TTeamFinderProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
+                                                                const bool applyClassic)
+{
+    using namespace ::tibia::protobuf::protocol;
+    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    if (!shadow)
+        return;
+    if (opcode == 44 && shadow->HasExtension(GameserverMessageTeamFinderTeamLeader::gameserver_message_team_finder_team_leader)) {
+        const auto& m = shadow->GetExtension(GameserverMessageTeamFinderTeamLeader::gameserver_message_team_finder_team_leader);
+        TeamFinderLeaderData data;
+        data.reset = m.reset() != 0;
+        if (!data.reset) {
+            applyTeamSettings(m.settings(), data);
+            data.freeSlots = static_cast<uint16_t>(m.settings().free_slots());
+            for (const auto& member : m.members())
+                data.members.push_back({ .guid = member.guid(), .name = member.name(), .level = static_cast<uint16_t>(member.level()),
+                                         .vocation = static_cast<uint8_t>(member.vocation()),
+                                         .status = static_cast<uint8_t>(member.status()) });
+        }
+        tibia::game::processTeamFinderLeader(data);
+    } else if (opcode == 45 && shadow->HasExtension(GameserverMessageTeamFinderTeamMember::gameserver_message_team_finder_team_member)) {
+        const auto& m = shadow->GetExtension(GameserverMessageTeamFinderTeamMember::gameserver_message_team_finder_team_member);
+        std::vector<TeamFinderListEntry> entries;
+        for (const auto& team : m.teams()) {
+            TeamFinderListEntry& entry = entries.emplace_back();
+            entry.leaderGuid = team.leader_guid();
+            entry.leaderName = team.leader_name();
+            applyTeamSettings(team.settings(), entry);
+            entry.membersCount = static_cast<uint16_t>(team.settings().free_slots());
+            entry.status = static_cast<uint8_t>(team.status());
+        }
+        tibia::game::processTeamFinderList(m.rate_limited() != 0, entries);
+    }
 }
 
 } // namespace tibia::teamfinder

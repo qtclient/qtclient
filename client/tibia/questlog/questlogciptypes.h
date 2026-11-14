@@ -6,6 +6,7 @@
 
 #include <cip_gen.h>
 
+#include <QByteArray>
 #include <QObject>
 
 namespace tibia {
@@ -27,6 +28,9 @@ class TQuestLogProtocolMessageHandler final : public cip::tibia::questlog::TQues
     Q_OBJECT
 public:
     using cip::tibia::questlog::TQuestLogProtocolMessageHandler::TQuestLogProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TQuestLogStorage final : public cip::tibia::questlog::TQuestLogStorage

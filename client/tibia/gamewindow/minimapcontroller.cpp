@@ -72,7 +72,6 @@ TMinimapController::~TMinimapController()
         m_minimap->setRenderProvider(nullptr);
 }
 
-// b1/75ad99eb36fbb045
 void TMinimapController::setTileStorage(minimap::TMinimapTileStorage* storage)
 {
     if (m_storage)
@@ -187,7 +186,6 @@ void TMinimapController::onCenterButtonClicked()
 qmlcomponents::TMinimapQuickItem* TMinimapController::minimapItem() const { return m_minimap; }
 minimap::TMinimapTileStorage* TMinimapController::tileStorage() const { return m_storage; }
 
-// b1/636ebf7c108a2420
 void TMinimapController::onCyclopediaMapButtonClicked()
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
@@ -200,7 +198,6 @@ void TMinimapController::onCyclopediaMapButtonClicked()
 // (same centre / 0.33 / 0.66 sectors as TibiaMinimapRose.qml). CipSoft stores
 // the coords at +0x118/+0x120 but nothing in QML writes them; qtclient fills them
 // from onMinimapRoseButtonClicked so hold-repeat / this slot can re-fire.
-// b1/b73b903e8f344ebe
 void TMinimapController::emulateClickOnAutomapRose()
 {
     const double nx = m_roseMouseNormalized.x();
@@ -366,7 +363,6 @@ void TMinimapController::handleGameAction(const input::TGameAction& action)
     refresh();
 }
 
-// b1/2ed0a508dbffd2a4
 void TMinimapController::refresh()
 {
     if (m_storage)
@@ -417,7 +413,6 @@ int TMinimapController::scrollStep() const
     return roundAway(12.0f / m_area.scale());
 }
 
-// b1/255eec40beee0424
 bool TMinimapController::crosshairIsDark() const
 {
     if (!m_storage)

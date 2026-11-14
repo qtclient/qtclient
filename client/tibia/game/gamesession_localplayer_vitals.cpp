@@ -190,6 +190,11 @@ void localPlayerSetStoreExpBoostTime(const uint16_t storeExpBoostTime)
     playerDataAuthorityWrite([&](TPlayerData& data) { data.setStoreExpBoostTime(storeExpBoostTime); });
 }
 
+void localPlayerSetDailyRewardExpBoostTime(const uint16_t dailyRewardExpBoostTime)
+{
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.setDailyRewardExpBoostTime(dailyRewardExpBoostTime); });
+}
+
 void localPlayerSetStoreExpBoostPurchasable(const bool purchasable)
 {
     playerDataAuthorityWrite([&](TPlayerData& data) { data.setStoreExpBoostPurchasable(purchasable); });
@@ -425,6 +430,13 @@ uint16_t localPlayerStoreExpBoostTime()
     return 0;
 }
 
+uint16_t localPlayerDailyRewardExpBoostTime()
+{
+    if (TPlayerData* data = TPlayerData::liveInstance())
+        return data->dailyRewardExpBoostTime();
+    return 0;
+}
+
 uint8_t localPlayerRottenBloodState()
 {
     if (TPlayerData* data = TPlayerData::liveInstance())
@@ -480,78 +492,6 @@ tibia::client::Direction localPlayerDirection()
     if (const LocalPlayerSessionThingPtr player = localPlayer())
         return player->getDirection();
     return tibia::client::InvalidDirection;
-}
-
-bool localPlayerHasAutoWalkDirs()
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->hasAutoWalkDirs();
-    return false;
-}
-
-bool localPlayerIsWalking()
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->isWalking();
-    return false;
-}
-
-bool localPlayerIsPreWalking()
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->isPreWalking();
-    return false;
-}
-
-void localPlayerResetPreWalk()
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->resetPreWalk();
-}
-
-void localPlayerTryBeginNextGoPathStep()
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->tryBeginNextGoPathStep();
-}
-
-void onLocalPlayerMovementTweenTerminated()
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->onMovementTweenTerminated();
-}
-
-bool predictLocalPlayerStep(const tibia::client::Direction direction)
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer()) {
-        player->predictStep(direction);
-        return true;
-    }
-    return false;
-}
-
-void armLocalPlayerGoPathDirs(const std::vector<tibia::client::Direction>& dirs)
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->armGoPathDirs(dirs);
-}
-
-void localPlayerStopPendingWalk()
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->stopPendingWalk();
-}
-
-void localPlayerHandleTeleport()
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->handleTeleport();
-}
-
-void localPlayerRegisterAdjustInvalidPosEvent()
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->registerAdjustInvalidPosEvent();
 }
 
 bool localPlayerIsSoftDead()

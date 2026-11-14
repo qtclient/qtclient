@@ -87,7 +87,6 @@ bool eventIsSeasonal(const QJsonObject& e)
 
 }
 
-// b1/66861743b28a1ef3
 bool TGameWindowController::eventFilter(QObject* watched, QEvent* event)
 {
     return cip::tibia::gamewindow::TGameWindowController::eventFilter(watched, event);
@@ -379,14 +378,12 @@ void TGameWindowController::setAuthenticated(const bool authenticated)
 #endif
 }
 
-// b1/30543e5d416016bc
 void TGameWindowController::showGameScreen()
 {
     setAuthenticated(true);
     setScreen(QStringLiteral("INGAME"), false, Qt::black);
 }
 
-// b1/483a4f515fa05319
 void TGameWindowController::showStartScreen()
 {
     setScreen(QString(), true, QColor(QStringLiteral("#041020")));
@@ -614,7 +611,6 @@ void TGameWindowController::showQuitGameDialog()
     m_quitDialog->showMessage(qtTrId("warning"), qtTrId("quit_game_logout_warning"));
 }
 
-// b1/b88fef944becf502
 void TGameWindowController::optionsPressed()
 {
     Q_EMIT optionsMenuRequested(0);

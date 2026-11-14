@@ -19,6 +19,12 @@
 
 #include <algorithm>
 #include <tibia/game/thingsession_forward.h>
+#include <tibia/game/localplayersessionthing.h>
+#include <client/staticdata.h>
+#include "cyclopedia/iteminfostorage.h"
+
+#include <limits>
+#include <map>
 
 namespace tibia::container {
 
@@ -38,10 +44,20 @@ TContainerStorage* g_containerStorage = nullptr;
 TInventoryContainer* g_inventoryContainer = nullptr;
 TContainerProtocolMessageHandler* g_liveContainerProtocolHandler = nullptr;
 
+using ::tibia::protobuf::protocol::GameserverMessageChangeInContainer;
 using ::tibia::protobuf::protocol::GameserverMessageCloseContainer;
+using ::tibia::protobuf::protocol::GameserverMessageContainer;
+using ::tibia::protobuf::protocol::GameserverMessageCreateInContainer;
+using ::tibia::protobuf::protocol::GameserverMessageDeleteInContainer;
 using ::tibia::protobuf::protocol::GameserverMessageDeleteInventory;
+using ::tibia::protobuf::protocol::GameserverMessageDepotSearchResult;
+using ::tibia::protobuf::protocol::GameserverMessagePlayerInventory;
+using ::tibia::protobuf::protocol::GameserverMessageCloseDepotSearch;
+using ::tibia::protobuf::protocol::GameserverMessageDepotSearchDetailList;
+using ::tibia::protobuf::protocol::GameserverMessageObjectInfo;
 using ::tibia::protobuf::protocol::GameserverMessageSetInventory;
 using ::tibia::protobuf::protocol::GameserverMessageSpecialContainersAvailable;
+using ::tibia::protobuf::protocol::GameserverMessageStash;
 using ::tibia::protobuf::protocol::ProtocolInventoryItem;
 } // namespace
 
@@ -68,6 +84,50 @@ void TContainerProtocolMessageHandler::handleCloseContainerMessage(
     const auto containerId = static_cast<TContainerID>(CloseContainerMessage.container_id());
     if (TContainerStorage* storage = TContainerStorage::instance())
         storage->closeContainer(containerId);
+}
+
+void TContainerProtocolMessageHandler::handleContainerMessage(const GameserverMessageContainer& ContainerMessage)
+{
+    std::vector<TInventorySlot> items;
+    items.reserve(static_cast<size_t>(ContainerMessage.items_size()));
+    for (const auto& item : ContainerMessage.items())
+        items.push_back(TInventorySlot::fromProtocolInventoryItem(item));
+    tibia::game::processOpenContainer(static_cast<uint8_t>(ContainerMessage.container_id()),
+                                      TInventorySlot::fromProtocolInventoryItem(ContainerMessage.item()),
+                                      ContainerMessage.name(), static_cast<uint8_t>(ContainerMessage.capacity()),
+                                      ContainerMessage.has_parent(), items, ContainerMessage.is_unlocked(),
+                                      ContainerMessage.has_pages(), ContainerMessage.show_search(),
+                                      static_cast<uint16_t>(ContainerMessage.container_size()),
+                                      static_cast<uint16_t>(ContainerMessage.first_index()));
+}
+
+void TContainerProtocolMessageHandler::handleCreateInContainerMessage(
+    const GameserverMessageCreateInContainer& CreateInContainerMessage)
+{
+    tibia::game::processContainerAddItem(static_cast<uint8_t>(CreateInContainerMessage.container_id()),
+                                         CreateInContainerMessage.has_item()
+                                             ? TInventorySlot::fromProtocolInventoryItem(CreateInContainerMessage.item())
+                                             : TInventorySlot{},
+                                         static_cast<uint16_t>(CreateInContainerMessage.slot()));
+}
+
+void TContainerProtocolMessageHandler::handleChangeInContainerMessage(
+    const GameserverMessageChangeInContainer& ChangeInContainerMessage)
+{
+    tibia::game::processContainerUpdateItem(static_cast<uint8_t>(ChangeInContainerMessage.container_id()),
+                                            static_cast<uint16_t>(ChangeInContainerMessage.slot()),
+                                            TInventorySlot::fromProtocolInventoryItem(ChangeInContainerMessage.item()));
+}
+
+void TContainerProtocolMessageHandler::handleDeleteInContainerMessage(
+    const GameserverMessageDeleteInContainer& DeleteInContainerMessage)
+{
+    // The object that moves up into the last slot of the page, when there is one.
+    tibia::game::processContainerRemoveItem(static_cast<uint8_t>(DeleteInContainerMessage.container_id()),
+                                            static_cast<uint16_t>(DeleteInContainerMessage.slot()),
+                                            DeleteInContainerMessage.has_item()
+                                                ? TInventorySlot::fromProtocolInventoryItem(DeleteInContainerMessage.item())
+                                                : TInventorySlot{});
 }
 
 void TContainerProtocolMessageHandler::handleSetInventoryMessage(
@@ -106,6 +166,16 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode, const
         return;
 
     switch (opcode) {
+    case 41: {
+        const auto* shadow = protocol::lastShadowServerMessage();
+        if (!shadow || !shadow->HasExtension(GameserverMessageStash::gameserver_message_stash))
+            return;
+        std::vector<std::vector<uint32_t>> stash;
+        for (const auto& e : shadow->GetExtension(GameserverMessageStash::gameserver_message_stash).entries())
+            stash.push_back({ e.object_id(), e.amount() });
+        tibia::game::notify("onSupplyStashEnter", stash);
+        break;
+    }
     case 42: {
         const auto* shadow = protocol::lastShadowServerMessage();
         if (!shadow
@@ -126,6 +196,29 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode, const
             shadow->GetExtension(GameserverMessageCloseContainer::gameserver_message_close_container));
         break;
     }
+    case 110:
+    case 112:
+    case 113:
+    case 114: {
+        const auto* shadow = protocol::lastShadowServerMessage();
+        if (!shadow)
+            return;
+        if (opcode == 110 && shadow->HasExtension(GameserverMessageContainer::gameserver_message_container))
+            handleContainerMessage(shadow->GetExtension(GameserverMessageContainer::gameserver_message_container));
+        else if (opcode == 112
+                 && shadow->HasExtension(GameserverMessageCreateInContainer::gameserver_message_create_in_container))
+            handleCreateInContainerMessage(
+                shadow->GetExtension(GameserverMessageCreateInContainer::gameserver_message_create_in_container));
+        else if (opcode == 113
+                 && shadow->HasExtension(GameserverMessageChangeInContainer::gameserver_message_change_in_container))
+            handleChangeInContainerMessage(
+                shadow->GetExtension(GameserverMessageChangeInContainer::gameserver_message_change_in_container));
+        else if (opcode == 114
+                 && shadow->HasExtension(GameserverMessageDeleteInContainer::gameserver_message_delete_in_container))
+            handleDeleteInContainerMessage(
+                shadow->GetExtension(GameserverMessageDeleteInContainer::gameserver_message_delete_in_container));
+        break;
+    }
     case 120: {
         const auto* shadow = protocol::lastShadowServerMessage();
         if (!shadow
@@ -143,6 +236,82 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode, const
             return;
         handleDeleteInventoryMessage(shadow->GetExtension(
             GameserverMessageDeleteInventory::gameserver_message_delete_inventory));
+        break;
+    }
+    case 153: {
+        const auto* shadow = protocol::lastShadowServerMessage();
+        if (!shadow || !shadow->HasExtension(GameserverMessageDepotSearchDetailList::gameserver_message_depot_search_detail_list))
+            return;
+        const auto& m = shadow->GetExtension(GameserverMessageDepotSearchDetailList::gameserver_message_depot_search_detail_list);
+        DepotSearchDetail detail;
+        detail.itemId = static_cast<uint16_t>(m.object().object_id());
+        detail.tier = static_cast<uint8_t>(m.object().tier());
+        detail.depotCount = m.depot_count();
+        for (const auto& item : m.depot_objects()) {
+            const auto slot = TInventorySlot::fromProtocolInventoryItem(item);
+            detail.depotItems.emplace_back(slot.typeId, slot.tier);
+        }
+        detail.inboxCount = m.inbox_count();
+        for (const auto& item : m.inbox_objects()) {
+            const auto slot = TInventorySlot::fromProtocolInventoryItem(item);
+            detail.inboxItems.emplace_back(slot.typeId, slot.tier);
+        }
+        if (m.stash_size() > 0) {
+            detail.hasStash = true;
+            detail.stashItemId = static_cast<uint16_t>(m.stash(0).object_id());
+            detail.stashCount = m.stash(0).amount();
+        }
+        tibia::game::processDepotSearchDetail(detail);
+        break;
+    }
+    case 154: {
+        const auto* shadow = protocol::lastShadowServerMessage();
+        if (shadow && shadow->HasExtension(GameserverMessageCloseDepotSearch::gameserver_message_close_depot_search))
+            tibia::game::processCloseDepotSearch();
+        break;
+    }
+    case 244: {
+        const auto* shadow = protocol::lastShadowServerMessage();
+        if (!shadow || !shadow->HasExtension(GameserverMessageObjectInfo::gameserver_message_object_info))
+            return;
+        // Descriptions are keyed by object id.
+        std::vector<std::tuple<uint16_t, std::string>> objects;
+        for (const auto& o : shadow->GetExtension(GameserverMessageObjectInfo::gameserver_message_object_info).objects())
+            objects.emplace_back(static_cast<uint16_t>(o.object_id()), o.description());
+        if (auto* storage = tibia::cyclopedia::TItemInfoStorage::instance())
+            storage->applyItemInfo(objects);
+        else
+            tibia::game::notify("onItemInfo", objects);
+        break;
+    }
+    case 148: {
+        const auto* shadow = protocol::lastShadowServerMessage();
+        if (!shadow || !shadow->HasExtension(GameserverMessageDepotSearchResult::gameserver_message_depot_search_result))
+            return;
+        std::vector<DepotSearchResultItem> items;
+        for (const auto& e : shadow->GetExtension(GameserverMessageDepotSearchResult::gameserver_message_depot_search_result).entries())
+            items.push_back({ .itemId = static_cast<uint16_t>(e.object_id()), .tier = static_cast<uint8_t>(e.tier()),
+                              .count = static_cast<uint16_t>(e.count()) });
+        tibia::game::processDepotSearchResults(items);
+        break;
+    }
+    case 245: {
+        const auto* shadow = protocol::lastShadowServerMessage();
+        if (!shadow || !shadow->HasExtension(GameserverMessagePlayerInventory::gameserver_message_player_inventory))
+            return;
+        // Counts per (object, tier); the tier only counts for tiered objects.
+        std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts;
+        for (const auto& e : shadow->GetExtension(GameserverMessagePlayerInventory::gameserver_message_player_inventory).entries()) {
+            const auto id = static_cast<uint16_t>(e.object_id());
+            const ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
+            const uint8_t tier = type && type->getClassification() > 0 ? static_cast<uint8_t>(e.tier()) : 0;
+            auto& entry = counts[{ id, tier }];
+            entry = static_cast<uint32_t>(std::min<uint64_t>(uint64_t(entry) + e.count(), std::numeric_limits<uint32_t>::max()));
+        }
+        if (const auto& localPlayer = tibia::game::localPlayer()) {
+            localPlayer->setInventoryCountCache(std::move(counts));
+            tibia::game::notify("updateInventoryItems");
+        }
         break;
     }
     default:

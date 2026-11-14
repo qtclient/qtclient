@@ -315,7 +315,6 @@ QVariantMap TQmlSortFilterProxyModel::get(const int index)
     return rowMap(this->index(index, 0));
 }
 
-// b1/8001200f653fc7e7
 bool TQmlSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     if (!m_filterCallback.isCallable())
@@ -340,7 +339,6 @@ bool TQmlSortFilterProxyModel::filterAcceptsRow(const int sourceRow, const QMode
     return true;
 }
 
-// b1/c89f0f59f0e7da49
 bool TQmlSortFilterProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     if (!m_sortCallback.isCallable())
@@ -389,19 +387,16 @@ QVariantMap TQmlSortFilterProxyModel::rowMap(const QModelIndex& index) const
     return row;
 }
 
-// b1/6a5663c74d0066f7
 void TLenshelpQuickItem::hoverEnterEvent(QHoverEvent* event)
 {
     cip::tibia::qmlcomponents::TLenshelpQuickItem::hoverEnterEvent(event);
 }
 
-// b1/4aed347fce8c6d16
 void TLenshelpQuickItem::hoverLeaveEvent(QHoverEvent* event)
 {
     cip::tibia::qmlcomponents::TLenshelpQuickItem::hoverLeaveEvent(event);
 }
 
-// b1/67676fba67f2290f
 bool TNotMouseMoveEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     return cip::tibia::qmlcomponents::TNotMouseMoveEventFilter::eventFilter(watched, event);

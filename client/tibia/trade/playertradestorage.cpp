@@ -81,7 +81,6 @@ void TPlayerTradeStorage::close()
     Q_EMIT counterOfferChanged();
 }
 
-// b1/d47a820371909f92
 void TPlayerTradeStorage::accept() const
 {
     tibia::game::acceptTrade();

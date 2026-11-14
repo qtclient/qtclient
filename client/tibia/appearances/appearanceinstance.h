@@ -1,5 +1,6 @@
 #pragma once
 
+#include "animation/animator.h"
 #include "appearances/genericstorage.h"
 #include "shared/cip_typed.h"
 #include "tibia/client/outfit.h"
@@ -12,6 +13,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -77,9 +79,11 @@ public:
         m_patternY = y;
         m_patternZ = z;
     }
+    /// The phase to draw now, from this instance's own animator.
     int calculateAnimationPhase() const;
 
 protected:
+    mutable std::optional<animation::TAnimator> m_animator;
     uint16_t m_count{ 0 };
     uint8_t m_subType{ 0 };
     uint8_t m_tier{ 0 };
@@ -198,6 +202,7 @@ public:
 private:
     Outfit m_outfit;
     uint8_t m_direction = 2;
+    mutable animation::TIdleAnimators m_idleAnimators;
     bool m_socketVisible = true;
     bool m_hasLook = false;
 };
@@ -251,35 +256,37 @@ class TEffectInstance : public TAppearanceInstance
 public:
     using TAppearanceInstance::TAppearanceInstance;
 
-    bool getFieldDrawFrame(int& animationPhase, int& xPattern, int& yPattern);
-    bool waitForFieldEffect(const TEffectInstance& previous) const;
-    void beginFieldEffectLife(const Position& fieldPosition);
-    /// CIP TFieldEffectInstance::v14 / animator active flag — false once the life ends.
-    bool isFieldEffectAlive() const;
+    /// Place the effect on `field`, created at `nowMs` and shown `delayMs` later.
+    void start(const Position& field, qint64 nowMs, qint64 delayMs = 0);
+    /// Advance to `nowMs`; a delayed effect runs `delayMs` behind the clock.
+    virtual void update(qint64 nowMs);
+    /// The animation played its cycles, or there is none (TFieldEffectInstance::v14).
+    virtual bool isFinished() const;
+    /// The delay has passed, so the effect draws (TDelayedEffectInstance::v3).
+    bool isShown() const { return m_startMs + m_delayMs < m_nowMs || m_delayMs == 0; }
+    /// The phase and the pattern of the field to draw.
+    bool getFieldDrawFrame(int& animationPhase, int& xPattern, int& yPattern) const;
+    const Position& field() const { return m_fieldPosition; }
+    /// The animation's phase, 0 without one.
+    int phase() const { return m_animator ? m_animator->phase() : 0; }
     bool underCreatures() const { return m_underCreatures; }
     void setUnderCreatures(const bool under) { m_underCreatures = under; }
-    bool canDrawEffect() const { return m_canDraw; }
-    void setCanDrawEffect(const bool draw) { m_canDraw = draw; }
     uint16_t variantId() const { return m_variantId; }
     void setVariantId(const uint16_t variantId) { m_variantId = variantId; }
     tibia::client::MagicEffectSources source() const { return m_source; }
     void setSource(tibia::client::MagicEffectSources source);
-    /// Opacity baked at arrival from qtclient magicEffectOpacity (CIP instance +0x48).
+    /// The opacity of the effect's source, from the options.
     float opacity() const { return m_opacity; }
-    int effectSize() const;
     bool isTopEffectType() const;
-    uint16_t duration() const { return m_duration; }
-    bool permanent() const { return m_permanent; }
 
 protected:
-    Timer m_animationTimer;
-    uint16_t m_duration{ 0 };
-    uint16_t m_timeToStartDrawing{ 0 };
+    std::optional<animation::TAnimator> m_animator;
+    qint64 m_startMs{ 0 };
+    qint64 m_delayMs{ 0 };
+    qint64 m_nowMs{ 0 };
     uint16_t m_variantId{ 0 };
     tibia::client::MagicEffectSources m_source{ tibia::client::ME_SOURCE_DEFAULT };
-    bool m_permanent{ false };
     bool m_underCreatures{ false };
-    bool m_canDraw{ true };
     Position m_fieldPosition;
     int m_animationPhase{ 0 };
     int m_patternX{ 0 };
@@ -305,23 +312,22 @@ public:
 
     const Position& pathFrom() const { return m_pathFrom; }
     const Position& pathTo() const { return m_pathTo; }
-    /// Starts the flight clock and direction patterns. Returns flight duration in ms
-    /// (0 when from==to — caller should remove immediately).
-    float setPath(const Position& from, const Position& to);
+    /// Fly from `from` to `to` starting at `nowMs`; returns the flight time in ms.
+    float setPath(const Position& from, const Position& to, qint64 nowMs);
+    /// The pixel offset from `pathFrom` at the last update.
     Point flightOffset() const;
     float flightDuration() const { return m_flightDuration; }
+    void update(qint64 nowMs) override;
+    /// The flight is over (TMissileEffectInstance::v14).
+    bool isFinished() const override { return m_nowMs >= m_startMs + static_cast<qint64>(m_flightDuration); }
     int patternX() const { return m_patternX; }
     int patternY() const { return m_patternY; }
-    tibia::client::Direction direction() const { return m_direction; }
 
 private:
-    void setDirection(tibia::client::Direction dir);
-
     Position m_pathFrom;
     Position m_pathTo;
     Point m_delta;
     float m_flightDuration{ 0.f };
-    tibia::client::Direction m_direction{ tibia::client::InvalidDirection };
 };
 
 class TDelayedEffectInstance final : public TEffectInstance
@@ -330,10 +336,21 @@ public:
     using TEffectInstance::TEffectInstance;
 };
 
+/// The eight directions of a vector on the map (y grows southwards), as the
+/// cell of a 3×3 grid: 0 north-west, 1 north, 2 north-east, 3 west, 5 east,
+/// 6 south-west, 7 south, 8 south-east. A zero vector points east.
+int fieldDirection(int dx, int dy);
+/// The pattern drawing `direction` (column, row of its cell; the centre draws 0, 0).
+void directionPattern(int direction, int& patternX, int& patternY);
+
+/// A field effect drawn in a direction (the attack animation on a creature).
 class TDirectionalFieldEffectInstance final : public TEffectInstance
 {
 public:
     using TEffectInstance::TEffectInstance;
+
+    /// Place the effect on `field` at `nowMs`, drawn towards `direction`.
+    void start(const Position& field, qint64 nowMs, int direction);
 };
 
 class TTutorialFieldEffectInstance final : public TEffectInstance

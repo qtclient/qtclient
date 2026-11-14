@@ -138,22 +138,15 @@ public:
     /// Session LocalPlayerSessionThing only — no Map creature registry (Phase 5.0-B).
     CreaturePtr getCreatureById(uint32_t id);
 
-    /// Field ops by creature id. Prefer `fieldPos` (CIP Move/Change/DeleteOnMap
-    /// coordinate) — storage position alone desyncs and leaves outfit trails.
-    bool removeCreatureFromFields(uint32_t creatureId, const Position& fieldPos = {});
+    /// Takes the creature off the field `fieldPos` names, else off the field it
+    /// stands on. `fireLocalDisappear`: DeleteOnMap and unaware fields only.
+    bool removeCreatureFromFields(uint32_t creatureId, const Position& fieldPos = {},
+                                  bool fireLocalDisappear = true);
     bool placeCreatureId(uint32_t creatureId, const Position& pos, int16_t stackPos = -1);
 
-    /// Shared MoveCreature apply (classic parseCreatureMove + native H).
-    /// `byId` true when wire used 0xffff+creature_id (no from/stack scrub first).
-    /// Returns false when creatureId unresolved or remove failed for pos+stack form.
+    /// MoveCreature. `byId`: the message names the creature instead of its field and slot.
     bool applyCreatureMove(uint32_t creatureId, const Position& oldPos, int oldStack,
                            const Position& newPos, bool byId);
-
-    /// Shared MoveCreature apply (classic `parseCreatureMove` + native H peel).
-    /// `oldPos`/`oldStack` are wire source (invalid when mapped-thing is by-id);
-    /// `byId` is the creature id when the mapped-thing header used 0xffff+id.
-    void applyCreatureMove(uint32_t creatureId, const Position& oldPos, int oldStack, uint32_t byId,
-                           const Position& newPos);
 
     std::vector<CreaturePtr> getSpectators(const Position& centerPos, const bool multiFloor)
     {
@@ -204,16 +197,8 @@ public:
     Position getCentralPosition() { return m_centralPosition; }
     uint8_t getFirstAwareFloor() const;
     uint8_t getLastAwareFloor() const;
-    const std::vector<tibia::appearances::TAppearanceInstancePtr>& getFloorMissiles(const uint8_t z) const
-    {
-        if (z >= m_floors.size()) {
-            static const std::vector<tibia::appearances::TAppearanceInstancePtr> empty;
-            return empty;
-        }
-        return m_floors[z].missileAppearances;
-    }
+    const std::vector<tibia::appearances::TAppearanceInstancePtr>& getFloorMissiles(uint8_t z) const;
     void addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
-    bool removeMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
     /// Protocol magic effect → field `m_effectAppearances` (no Effect Thing).
     void addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& pos);
 
@@ -243,6 +228,11 @@ public:
     /// Indexed8 waypoint snapshot factory (CIP TWaypointCostMap). Set from
     /// TGameClient while the CipSoft minimap is live; cleared on world leave.
     using WaypointCostFactory = std::function<std::shared_ptr<tibia::minimap::TWaypointCosts>()>;
+    /// Minimap waypoint costs for the movement path planner (null without a minimap).
+    std::shared_ptr<tibia::minimap::TWaypointCosts> waypointCosts() const
+    {
+        return m_waypointCostFactory ? m_waypointCostFactory() : nullptr;
+    }
     void setWaypointCostFactory(WaypointCostFactory factory);
     void clearWaypointCostFactory();
 
@@ -258,7 +248,6 @@ public:
 private:
     struct FloorData
     {
-        std::vector<tibia::appearances::TAppearanceInstancePtr> missileAppearances;
     };
 
     void removeUnawareThings();

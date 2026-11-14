@@ -118,8 +118,8 @@ private:
 /// own channel, close, list, private,
 /// events). The map side is TGameMessageHandler.
 ///
-/// Live ingress today is classic `kNotifyScope` / TGameNotify (CIP queue →
-/// handle*Message slots land once protobuf fields are recovered).
+/// Ingress: the protobuf messages reach onServerMessageEnqueued, which applies
+/// them through the game session; the console listens on its notifies.
 class TChatProtocolMessageHandler final : public cip::tibia::chat::TChatProtocolMessageHandler
 {
     Q_OBJECT
@@ -145,6 +145,11 @@ public:
     void handlePrivateChannelMessage(const ::tibia::protobuf::protocol::GameserverMessagePrivateChannel& PrivateChannel);
     void handleChannelEventMessage(const ::tibia::protobuf::protocol::GameserverMessageChannelEvent& ChannelEvent);
     void handleNpcTalkPartersMessage(const ::tibia::protobuf::protocol::GameserverMessageNpcTalkParters& Message);
+
+    /// Tip Q→H wire: peeled chat opcodes from `serverMessageEnqueued`. Static —
+    /// the console handler is owned by the chat controller, while the map
+    /// (speech bubbles, numerical effects) and packs consume the same messages.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 
 public Q_SLOTS:
     /// CIP moc slot (cip_gen virtual) — reload console / UI-Sounds chat options.

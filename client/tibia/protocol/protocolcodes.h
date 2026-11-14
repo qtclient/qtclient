@@ -54,7 +54,6 @@ namespace Proto
         GameServerReadyForSecondaryConnection = 11,
         GameServerCharacterSwitch = 13, // 0x0D crystal custom: same-socket alt switch
         GameServerEnterGame = 15,
-        GameServerUpdateNeeded = 17,
         GameServerLoginError = 20,
         GameServerLoginAdvice = 21,
         GameServerLoginWait = 22,
@@ -84,16 +83,6 @@ namespace Proto
 
         // NOTE: add any custom opcodes in this range
         // 51 - 99
-        GameServerChangeMapAwareRange = 51,
-        GameServerAttchedEffect = 52,
-        GameServerDetachEffect = 53,
-        GameServerCreatureShader = 54,
-        GameServerMapShader = 55,
-        GameServerCreatureTyping = 56,
-        GameServerAttachedPaperdoll = 60,
-        GameServerDetachPaperdoll = 61,
-        GameServerFeatures = 67,
-        GameServerFloorDescription = 75,
         GameServerTaskBoard = 91,
 
         // original tibia ONLY

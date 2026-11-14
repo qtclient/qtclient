@@ -109,7 +109,6 @@ int maximumSellAmount(const TNPCTradeGood& good, const uint32_t owned)
     return static_cast<int>(std::min<uint32_t>(owned, amountLimit(good)));
 }
 
-// b1/fab530b2b75ab34b
 TNPCTradeStorage::TNPCTradeStorage(QObject* parent)
     : cip::tibia::trade::TNPCTradeStorage(parent)
 {
@@ -238,7 +237,6 @@ uint32_t TNPCTradeStorage::ownedCount(const TNPCTradeGood& good, const bool incl
     return count > equipped ? count - equipped : 0;
 }
 
-// b1/491cee87fcdbc9d0
 uint64_t TNPCTradeStorage::money() const
 {
     if (currencyIsItem())
@@ -260,7 +258,6 @@ uint64_t TNPCTradeStorage::inventoryBalance() const
     return tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);
 }
 
-// b1/01088c2a4a52cbde
 void TNPCTradeStorage::look(const TNPCTradeGood& good) const
 {
     if (good.typeId() != 0)

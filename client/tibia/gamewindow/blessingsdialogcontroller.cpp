@@ -135,7 +135,6 @@ TQmlBlessingDialogData::TQmlBlessingDialogData(const BlessDialogData& data, cons
         m_deathPenaltyText.append(qtTrId("blessings_dialog_has_skull"));
 }
 
-// b1/8008dd6884f0a012
 void TQmlBlessingDialogData::setPremium(const bool premium)
 {
     if (premium == m_isPremium)
@@ -169,7 +168,6 @@ TBlessingsDialogController::TBlessingsDialogController(QObject* parent)
     });
 }
 
-// b1/e60cf6cb4c353807
 void TBlessingsDialogController::setData(const BlessDialogData& data)
 {
     QObject* previous = m_blessingsData;
@@ -182,14 +180,12 @@ void TBlessingsDialogController::setData(const BlessDialogData& data)
 
 void TBlessingsDialogController::closeDialog() { dialog()->close(); }
 
-// b1/61bef536d4f513a3
 void TBlessingsDialogController::onPremiumStatusChanged()
 {
     if (auto* data = qobject_cast<TQmlBlessingDialogData*>(m_blessingsData))
         data->setPremium(localPlayerPremium());
 }
 
-// b1/f0c270e24b60bb5a
 void TBlessingsDialogController::requestOpenStoreWithPremiumCategory()
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
@@ -197,7 +193,6 @@ void TBlessingsDialogController::requestOpenStoreWithPremiumCategory()
     input::publish(action);
 }
 
-// b1/5a650d724ee00d88
 void TBlessingsDialogController::requestOpenStoreWithBlessingOffer(const int BlessingId)
 {
     const int offer = blessingStoreOffer(BlessingId);

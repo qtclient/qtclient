@@ -425,7 +425,6 @@ QVariant TMonsterListModelSortFilterProxy::getRaceIDAtIndex(const int RowIndex)
     return data(idx, TMonsterListFilterModel::RaceIdRole);
 }
 
-// b1/7b0b0abb6b7656b3
 bool TMonsterListModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     if (m_nameFilter.isEmpty())

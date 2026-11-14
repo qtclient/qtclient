@@ -46,6 +46,6 @@ fi
 
 echo "[demo] starting $QTCLIENT_LAUNCHER_BIN (Play → tip client + default mods)"
 cd "$OTC"
-# Launcher chrome stays stock CIP (--no-mods); tip package still ships myaac/otclient
+# Launcher chrome stays stock CIP (--no-mods); tip package still ships myaac
 # for installs that do not forward --no-mods to Play.
 exec "$QTCLIENT_LAUNCHER_BIN" --no-mods "$@"

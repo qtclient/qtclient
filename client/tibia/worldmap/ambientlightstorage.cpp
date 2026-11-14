@@ -35,7 +35,6 @@ float TAmbientLightStorage::normalizedTibiaTimeOfDay() const
     return static_cast<float>(m_clock.elapsed() - m_startMs) / DayLengthMs;
 }
 
-// b1/fb3db9963124ec68
 void TAmbientLightStorage::setNormalizedTibiaTimeOfDay(const float normalized)
 {
     m_startMs = m_clock.elapsed() - static_cast<qint64>(normalized * DayLengthMs);

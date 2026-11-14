@@ -91,9 +91,6 @@ int Thing::getStackPos()
     return -1;
 }
 
-void Thing::setShader(const std::string_view name) {
-    m_shaderId = name.empty() ? 0 : 1;
-}
 void Thing::setAttachedEffectDirection(const tibia::client::Direction dir) const
 {
     if (!hasAttachedEffects()) return;
@@ -104,16 +101,6 @@ void Thing::setAttachedEffectDirection(const tibia::client::Direction dir) const
     }
 }
 
-Animator* Thing::getAnimator() const {
-    if (const auto t = getThingType(); t)
-        return t->getAnimator();
-    return nullptr;
-}
-Animator* Thing::getIdleAnimator() const {
-    if (const auto t = getThingType(); t)
-        return t->getIdleAnimator();
-    return nullptr;
-}
 
 Point Thing::getDisplacement() const {
     if (const auto t = getThingType(); t)

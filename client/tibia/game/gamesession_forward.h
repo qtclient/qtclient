@@ -276,7 +276,6 @@ void sendStartOfflineTraining(const uint8_t skillType);
 
 void sendTeleport(const Position& pos);
 
-void sendTyping(const bool typing);
 
 void sendTutorialChangeVocation(uint8_t vocationClientId);
 
@@ -388,7 +387,6 @@ void updateMapLatency();
 
 void requestStop();
 
-void wireAutoWalk(const std::vector<tibia::client::Direction>& dirs, const Position& startPos);
 
 } // namespace game
 } // namespace tibia

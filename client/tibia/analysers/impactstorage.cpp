@@ -105,7 +105,6 @@ void TImpactStorage::fromJson(const QJsonObject& json)
     emitAllTimeValuesChanged();
 }
 
-// b1/b4f7a8268f741544
 void TImpactStorage::shiftRecords(const qint64 nowMs)
 {
     const qint64 shift = nowMs / 1000 - m_lastTime / 1000;
@@ -166,7 +165,6 @@ void TImpactStorage::checkAllTimeMax(const Kind kind, const qint64 hit)
     emitAllTimeValuesChanged();
 }
 
-// b1/580bd016ac1591b0
 bool TImpactStorage::computeWindow(const Kind kind)
 {
     const std::vector<Record>& records = m_records[kind];
@@ -187,7 +185,6 @@ bool TImpactStorage::computeWindow(const Kind kind)
     return changed;
 }
 
-// b1/195b1263572a6ab2
 void TImpactStorage::computeGraph(const Kind kind)
 {
     const std::vector<double>& weights = m_showSessionValues ? m_weights900 : m_weights15;
@@ -358,7 +355,6 @@ void TDamageInputStorage::fromJson(const QJsonObject& json)
     emitOptionsChanged();
 }
 
-// b1/f40be0babee5030c
 void TDamageInputStorage::addDamage(const qint64 amount, const int element, const QString& source, const qint64 nowMs)
 {
     const qint64 second = nowMs / 1000;
@@ -470,7 +466,6 @@ std::vector<double> TDamageInputStorage::graph(double& maxY) const
     return points;
 }
 
-// b1/435044b1f9d1fa97
 void TDamageInputStorage::reset()
 {
     m_sessionTotal = 0;

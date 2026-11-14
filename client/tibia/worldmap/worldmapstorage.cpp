@@ -2,6 +2,9 @@
 
 #include "worldmap/worldmapfield.h"
 
+#include "creatures/creaturestorage.h"
+#include "framework/core/clock.h"
+
 #include "client/const.h"
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/game/mapsession.h>
@@ -244,9 +247,10 @@ bool TWorldMapStorage::placeCreatureId(const uint32_t creatureId, const Position
     return sessionState().placeCreatureId(creatureId, position, stackPos);
 }
 
-bool TWorldMapStorage::removeCreatureFromFields(const uint32_t creatureId, const Position& fieldPos)
+bool TWorldMapStorage::removeCreatureFromFields(const uint32_t creatureId, const Position& fieldPos,
+                                                const bool fireLocalDisappear)
 {
-    return sessionState().removeCreatureFromFields(creatureId, fieldPos);
+    return sessionState().removeCreatureFromFields(creatureId, fieldPos, fireLocalDisappear);
 }
 
 bool TWorldMapStorage::applyCreatureMove(const uint32_t creatureId, const Position& oldPos, const int oldStack,
@@ -292,11 +296,6 @@ void TWorldMapStorage::addMissileAppearance(const tibia::appearances::TAppearanc
     sessionState().addMissileAppearance(appearance);
 }
 
-bool TWorldMapStorage::removeMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance)
-{
-    return sessionState().removeMissileAppearance(appearance);
-}
-
 void TWorldMapStorage::addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance,
                                            const Position& position)
 {
@@ -331,6 +330,34 @@ WorldMapFieldList fieldsOnFloor(const int8_t floor)
 const std::vector<tibia::appearances::TAppearanceInstancePtr>& floorMissiles(const uint8_t z)
 {
     return TWorldMapStorage::ensureStorage()->sessionState().getFloorMissiles(z);
+}
+
+int TWorldMapStorage::groundSpeedAt(const Position& position)
+{
+    TWorldMapField* field = fieldAt(position);
+    return field ? field->movementGroundSpeed() : 255;
+}
+
+int TWorldMapStorage::elevationAt(const Position& position)
+{
+    TWorldMapField* field = fieldAt(position);
+    return field ? field->getDrawElevation() : 0;
+}
+
+void TWorldMapStorage::moveCreature(creatures::TCreature& creature, const Position& from, const Position& to,
+                                    const int elevationFrom, const int elevationTo)
+{
+    const TWorldMapCoordinate origin(from);
+    const TWorldMapCoordinate target(to);
+    const creatures::EMovementDirection direction = creatures::directionBetween(origin, target);
+    if (static_cast<unsigned>(direction) >= 8) {
+        creature.resetMovement();
+        return;
+    }
+    const TWorldMapExtent step(target.x - origin.x, target.y - origin.y, target.z - origin.z);
+    const qint64 duration = m_speedCalculator.stepDuration(creature.speed(), step, groundSpeedAt(to));
+    const qint64 now = g_clock.millis();
+    creature.move(now, now + duration, origin, direction, elevationFrom, elevationTo);
 }
 
 }

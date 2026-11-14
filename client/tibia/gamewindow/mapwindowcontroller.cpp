@@ -84,7 +84,6 @@ void TMapWindowController::syncFov()
         Q_EMIT fovChanged();
 }
 
-// b1/acfeba6b9ef6258c
 void TMapWindowController::onMapWindowControllerOptionsChanged()
 {
     const QJsonObject options = app::ClientOptions::load().options();
@@ -104,14 +103,12 @@ void TMapWindowController::onMapWindowControllerOptionsChanged()
     syncFov();
 }
 
-// b1/52db33f9a278ec83
 void TMapWindowController::onMapWindowEntered()
 {
     if (auto* cursor = TMouseCursorController::instance())
         cursor->onMapWindowEntered();
 }
 
-// b1/2e9143fa5c0d38d9
 void TMapWindowController::onMapWindowExited()
 {
     if (auto* cursor = TMouseCursorController::instance())
@@ -120,7 +117,6 @@ void TMapWindowController::onMapWindowExited()
         m_provider->setMouseTargetObject(0, {}, -1);
 }
 
-// b1/bd881bf3b757782e
 void TMapWindowController::onUnusedWidthChanged()
 {
     if (m_pane)

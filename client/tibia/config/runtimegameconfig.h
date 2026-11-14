@@ -28,7 +28,6 @@ uint8_t mapAwareUndergroundFloorRange();
 uint8_t tileMaxElevation();
 uint8_t tileMaxThings();
 
-bool forcingNewWalkingFormula();
 uint16_t shieldBlinkTicks();
 uint16_t volatileSquareDuration();
 
@@ -40,8 +39,6 @@ uint16_t animatedTextDuration();
 uint16_t staticDurationPerCharacter();
 uint16_t minStaticTextDuration();
 
-double playerDiagonalWalkSpeed();
-double creatureDiagonalWalkSpeed();
 
 } // namespace config
 } // namespace tibia

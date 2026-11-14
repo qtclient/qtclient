@@ -1,7 +1,10 @@
 #include "storestorage.h"
+#include "protocol/protocolciptypes.h"
+#include <protocol.pb.h>
 
 #include "store/storeciptypes.h"
 
+#include <client/const.h>
 #include <client/staticdata.h>
 
 #include <algorithm>
@@ -426,6 +429,252 @@ TStoreProtocolMessageHandler::TStoreProtocolMessageHandler(QObject* parent)
         }
         return std::any{};
     });
+}
+
+}
+
+namespace tibia::store {
+
+void TStoreProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/, const bool applyClassic)
+{
+    using namespace ::tibia::protobuf::protocol;
+    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    if (!shadow)
+        return;
+    switch (opcode) {
+    case 252:
+        if (shadow->HasExtension(GameserverMessageStoreOffers::gameserver_message_store_offers)) {
+            const auto& m = shadow->GetExtension(GameserverMessageStoreOffers::gameserver_message_store_offers);
+            StoreData data{};
+            data.categoryName = m.category_name();
+            data.redirectId = m.redirect_id();
+            data.menuFilter.assign(m.menu_filters().begin(), m.menu_filters().end());
+            data.disableReasons.assign(m.disable_reasons().begin(), m.disable_reasons().end());
+            const auto subOfferOf = [](const ProtocolStoreSubOffer& p) {
+                SubOffer sub{};
+                sub.id = p.offer_id();
+                sub.count = static_cast<uint16_t>(p.count());
+                sub.price = p.price();
+                sub.coinType = static_cast<uint8_t>(p.coin_type());
+                sub.disabled = p.disabled();
+                if (p.disable_reasons_size() > 0)
+                    sub.reasonIdDisable = static_cast<uint16_t>(p.disable_reasons(p.disable_reasons_size() - 1));
+                sub.state = static_cast<uint8_t>(p.state());
+                sub.validUntil = p.valid_until();
+                sub.basePrice = p.base_price();
+                return sub;
+            };
+            const auto productOf = [](const std::string& name, const ProtocolStoreVisual& v) {
+                StoreProduct product;
+                product.name = name;
+                product.type = static_cast<uint8_t>(v.type());
+                product.icon = v.icon();
+                product.typeId = static_cast<uint16_t>(v.type() == tibia::client::SHOW_HIRELING ? 0 : v.type_id());
+                product.sex = static_cast<uint8_t>(v.sex());
+                product.maleOutfitId = static_cast<uint16_t>(v.male_outfit());
+                product.femaleOutfitId = static_cast<uint16_t>(v.female_outfit());
+                product.outfitHead = static_cast<uint8_t>(v.head());
+                product.outfitBody = static_cast<uint8_t>(v.body());
+                product.outfitLegs = static_cast<uint8_t>(v.legs());
+                product.outfitFeet = static_cast<uint8_t>(v.feet());
+                return product;
+            };
+            const bool home = data.categoryName == "Home";
+            for (const auto& o : m.offers()) {
+                std::vector<SubOffer> subOffers;
+                for (const auto& s : o.sub_offers())
+                    subOffers.push_back(subOfferOf(s));
+                std::vector<StoreProduct> products;
+                for (const auto& p : o.products())
+                    products.push_back(productOf(p.name(), p.visual()));
+                const StoreProduct visual = productOf(o.name(), o.visual());
+                if (home) {
+                    HomeOffer offer{};
+                    offer.name = o.name();
+                    offer.unknownByte = static_cast<uint8_t>(subOffers.size());
+                    if (!subOffers.empty()) {
+                        const SubOffer& first = subOffers.front();
+                        offer.id = first.id;
+                        offer.unknownU16 = first.count;
+                        offer.price = first.price;
+                        offer.coinType = first.coinType;
+                        offer.disabled = first.disabled;
+                        offer.disabledReasonIndex = first.reasonIdDisable;
+                        offer.unknownByte2 = first.state;
+                    }
+                    offer.subOffers = subOffers;
+                    offer.type = visual.type;
+                    offer.icon = visual.icon;
+                    if (visual.type == tibia::client::SHOW_MOUNT)
+                        offer.mountClientId = visual.typeId;
+                    else if (visual.type == tibia::client::SHOW_ITEM)
+                        offer.itemType = visual.typeId;
+                    else if (visual.type == tibia::client::SHOW_OUTFIT)
+                        offer.sexId = visual.typeId;
+                    offer.sex = visual.sex;
+                    offer.maleOutfitId = visual.maleOutfitId;
+                    offer.femaleOutfitId = visual.femaleOutfitId;
+                    offer.outfit = { visual.outfitHead, visual.outfitBody, visual.outfitLegs, visual.outfitFeet };
+                    offer.tryOnType = static_cast<uint8_t>(o.try_on_type());
+                    offer.popularityScore = static_cast<uint16_t>(o.popularity());
+                    offer.stateNewUntil = o.new_until();
+                    offer.userConfiguration = o.configurable() ? 1 : 0;
+                    offer.productsCapacity = static_cast<uint16_t>(products.size());
+                    offer.products = products;
+                    data.homeOffers.push_back(offer);
+                    continue;
+                }
+                StoreOffer offer{};
+                offer.name = o.name();
+                offer.subOffers = subOffers;
+                offer.type = visual.type;
+                offer.icon = visual.icon;
+                if (visual.type == tibia::client::SHOW_MOUNT)
+                    offer.mountId = visual.typeId;
+                else if (visual.type == tibia::client::SHOW_ITEM)
+                    offer.itemId = visual.typeId;
+                else if (visual.type == tibia::client::SHOW_OUTFIT)
+                    offer.outfitId = visual.typeId;
+                offer.outfitHead = visual.outfitHead;
+                offer.outfitBody = visual.outfitBody;
+                offer.outfitLegs = visual.outfitLegs;
+                offer.outfitFeet = visual.outfitFeet;
+                offer.sex = visual.sex;
+                offer.maleOutfitId = visual.maleOutfitId;
+                offer.femaleOutfitId = visual.femaleOutfitId;
+                offer.tryOnType = static_cast<uint8_t>(o.try_on_type());
+                offer.popularityScore = static_cast<uint16_t>(o.popularity());
+                offer.stateNewUntil = o.new_until();
+                offer.configurable = o.configurable();
+                offer.productsCapacity = static_cast<uint16_t>(products.size());
+                offer.products = products;
+                data.storeOffers.push_back(offer);
+            }
+            if (home) {
+                for (const auto& b : m.banners())
+                    data.banners.push_back({ .image = b.image(), .bannerType = static_cast<uint8_t>(b.parameters().open_action()),
+                                             .offerId = b.parameters().offer_id(),
+                                             .unknownByte1 = static_cast<uint8_t>(b.parameters().sort_order()),
+                                             .unknownByte2 = static_cast<uint8_t>(b.parameters().service_type()) });
+                data.bannerDelay = static_cast<uint8_t>(m.banner_delay());
+                tibia::game::notify("onParseStoreCreateHome", data);
+            } else {
+                data.tooManyResults = m.too_many_results();
+                tibia::game::notify("onParseStoreCreateProducts", data);
+            }
+        }
+        break;
+    case 168:
+        if (shadow->HasExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink)) {
+            const auto& p = shadow->GetExtension(GameserverMessageSetStoreButtonDeeplink::gameserver_message_set_store_button_deeplink)
+                                .parameters();
+            const auto action = static_cast<uint8_t>(p.open_action());
+            const uint32_t detail = action == 4 ? p.offer_id() : p.detail();
+            const std::string category = action == 5 ? p.search_text() : p.category();
+            tibia::game::notify("onStoreButtonDeeplink", action, detail, category, p.sub_category(),
+                                static_cast<uint8_t>(p.sort_order()), static_cast<uint8_t>(p.service_type()));
+        }
+        break;
+    case 203:
+        if (shadow->HasExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details)) {
+            const auto& m = shadow->GetExtension(GameserverMessageTransactionDetails::gameserver_message_transaction_details);
+            // The detail text of the record the server sent (none: no details).
+            std::string details;
+            if (m.has_purchase())
+                details = m.purchase().text();
+            else if (m.has_transfer())
+                details = m.transfer().first_text();
+            tibia::game::notify("onTransactionDetails", m.transaction_id(), details);
+        }
+        break;
+    case 225:
+        if (shadow->HasExtension(GameserverMessageRequestPurchaseData::gameserver_message_request_purchase_data)) {
+            const auto& m = shadow->GetExtension(GameserverMessageRequestPurchaseData::gameserver_message_request_purchase_data);
+            tibia::game::notify("onRequestPurchaseData", m.offer_id(), static_cast<uint8_t>(m.purchase_type()), m.cosmetic_tokens());
+        }
+        break;
+    case 251:
+        if (shadow->HasExtension(GameserverMessageStoreCategories::gameserver_message_store_categories)) {
+            std::vector<StoreCategory> categories;
+            for (const auto& c : shadow->GetExtension(GameserverMessageStoreCategories::gameserver_message_store_categories).categories()) {
+                StoreCategory& category = categories.emplace_back();
+                category.name = c.name();
+                category.state = static_cast<uint8_t>(c.state());
+                category.icons.assign(c.icons().begin(), c.icons().end());
+                category.parent = c.parent();
+            }
+            // Main categories, each followed by its sub categories.
+            std::vector<StoreCategory> organized;
+            for (const auto& category : categories) {
+                if (!category.parent.empty())
+                    continue;
+                StoreCategory main = category;
+                main.subCategories.clear();
+                for (const auto& sub : categories) {
+                    if (sub.parent == category.name)
+                        main.subCategories.push_back(sub);
+                }
+                organized.push_back(main);
+                for (const auto& sub : main.subCategories)
+                    organized.push_back(sub);
+            }
+            tibia::game::notify("onParseStoreGetCategories", organized);
+        }
+        break;
+    case 253:
+        if (shadow->HasExtension(GameserverMessageTransactionHistory::gameserver_message_transaction_history)) {
+            const auto& m = shadow->GetExtension(GameserverMessageTransactionHistory::gameserver_message_transaction_history);
+            std::vector<std::tuple<uint32_t, uint8_t, int32_t, uint8_t, std::string>> history;
+            // Per entry: transaction id and whether the server has details for it.
+            std::vector<std::tuple<uint32_t, uint8_t>> details;
+            for (const auto& t : m.transactions()) {
+                history.emplace_back(t.timestamp(), static_cast<uint8_t>(t.mode()), t.amount(), static_cast<uint8_t>(t.coin_type()),
+                                     t.description());
+                details.emplace_back(t.transaction_id(), static_cast<uint8_t>(t.has_details() ? 1 : 0));
+            }
+            tibia::game::notify("onParseStoreGetHistory", m.current_page(), m.page_count(), history, details);
+        }
+        break;
+    case 223:
+        if (shadow->HasExtension(GameserverMessageCreditBalance::gameserver_message_credit_balance)) {
+            const auto& m = shadow->GetExtension(GameserverMessageCreditBalance::gameserver_message_credit_balance);
+            if (m.update()) {
+                tibia::game::localPlayerSetResourceBalance(tibia::client::RESOURE_COIN_NORMAL, m.total());
+                tibia::game::localPlayerSetResourceBalance(tibia::client::RESOURE_COIN_TRANSFERRABLE, m.transferable());
+                tibia::game::localPlayerSetResourceBalance(tibia::client::RESOURE_COIN_AUCTION, m.reserved_auction());
+            }
+        }
+        break;
+    case 25:
+        if (shadow->HasExtension(GameserverMessageStoreButtonIndicators::gameserver_message_store_button_indicators)) {
+            const auto& m = shadow->GetExtension(GameserverMessageStoreButtonIndicators::gameserver_message_store_button_indicators);
+            tibia::game::notify("onStoreButtonIndicators", m.sale(), m.new_offers());
+        }
+        break;
+    case 242:
+        // The balance follows in a CreditBalance message; nothing to apply here.
+        break;
+    case 224:
+        if (shadow->HasExtension(GameserverMessageStoreError::gameserver_message_store_error)) {
+            const auto& m = shadow->GetExtension(GameserverMessageStoreError::gameserver_message_store_error);
+            tibia::game::notify("onParseStoreError", m.message(), static_cast<uint8_t>(m.error_type()));
+        }
+        break;
+    case 234:
+        if (shadow->HasExtension(GameserverMessageOfferDescription::gameserver_message_offer_description)) {
+            const auto& m = shadow->GetExtension(GameserverMessageOfferDescription::gameserver_message_offer_description);
+            tibia::game::notify("onParseStoreOfferDescriptions", m.offer_id(), m.description());
+        }
+        break;
+    case 254:
+        if (shadow->HasExtension(GameserverMessageStoreSuccess::gameserver_message_store_success)) {
+            const auto& m = shadow->GetExtension(GameserverMessageStoreSuccess::gameserver_message_store_success);
+            tibia::game::notify("onParseStoreGetPurchaseStatus", m.message(), static_cast<uint8_t>(m.success_type()));
+        }
+        break;
+    default:
+        break;
+    }
 }
 
 }

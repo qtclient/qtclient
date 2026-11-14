@@ -26,10 +26,21 @@
 void Timer::restart(const int shift)
 {
     m_startTicks = g_clock.millis() - shift;
+    m_frozenElapsed = shift;
     m_stopped = false;
+}
+
+void Timer::stop()
+{
+    if (m_stopped)
+        return;
+    m_frozenElapsed = g_clock.millis() - m_startTicks;
+    m_stopped = true;
 }
 
 ticks_t Timer::ticksElapsed() const
 {
+    if (m_stopped)
+        return m_frozenElapsed;
     return g_clock.millis() - m_startTicks;
 }

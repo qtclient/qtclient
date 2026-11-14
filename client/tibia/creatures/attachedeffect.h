@@ -21,6 +21,9 @@
  */
 
 #pragma once
+#include "animation/phaseanimator.h"
+
+#include <optional>
 #include "framework/core/timer.h"
 #include "framework/graphics/declarations.h"
 #include "client/staticdata.h"
@@ -149,6 +152,9 @@ private:
     Size m_size;
 
     Timer m_animationTimer;
+    /// The phase clock of the shown appearance, run on `m_animationTimer` and the speed.
+    std::optional<tibia::animation::TAnimator> m_phaseAnimator;
+    const ThingType* m_phaseAnimatorType = nullptr;
 
     tibia::client::Direction m_direction{ tibia::client::North };
 

@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "animation/spriteanimator.h"
+#include "animation/animationinfo.h"
 #include <client/const.h>
 #include <client/declarations.h>
 #include <idleot/heightstamp.h>
@@ -10,6 +10,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,10 @@ struct AppearanceRecord
     int numPatternZ = 1;
     int layers = 1;
     int animationPhases = 1;
+    /// The standing (non-moving) frame group's animation, when it has one.
+    std::optional<tibia::animation::TAnimationInfo> idleAnimation;
+    /// The walking frame group's animation, when it has one.
+    std::optional<tibia::animation::TAnimationInfo> movingAnimation;
     int elevation = 0;
     int groundSpeed = 0;
     int maxTextLength = 0;
@@ -69,7 +74,6 @@ public:
     };
 
     void adopt(AppearanceRecord record);
-    void setAnimators(std::unique_ptr<Animator> moving, std::unique_ptr<Animator> idle);
 
     uint16_t getId() const { return m_record.id; }
     ThingCategory getCategory() const { return m_record.category; }
@@ -86,8 +90,6 @@ public:
     int getNumPatternZ() const { return m_record.numPatternZ; }
     int getAnimationPhases() const;
     int getIdleAnimationPhases() const;
-    Animator* getAnimator() const { return m_moving.get(); }
-    Animator* getIdleAnimator() const { return m_idle.get(); }
 
     const Size& getSize() const { return m_record.size; }
     const Point& getDisplacement() const { return m_record.displacement; }
@@ -197,13 +199,21 @@ public:
     void setThingShape(ThingShape shape) { m_thingShape.store(shape, std::memory_order_relaxed); }
     ThingShape getThingShape() const { return m_thingShape.load(std::memory_order_relaxed); }
     const AppearanceRecord& record() const { return m_record; }
+    /// The standing frame group's animation, null when it does not animate.
+    const tibia::animation::TAnimationInfo* idleAnimation() const
+    {
+        return m_record.idleAnimation ? &*m_record.idleAnimation : nullptr;
+    }
+    /// The walking frame group's animation, null when there is none.
+    const tibia::animation::TAnimationInfo* movingAnimation() const
+    {
+        return m_record.movingAnimation ? &*m_record.movingAnimation : nullptr;
+    }
 
 private:
     bool castsShadowByFlags() const;
 
     AppearanceRecord m_record;
-    std::unique_ptr<Animator> m_moving;
-    std::unique_ptr<Animator> m_idle;
     std::atomic<ThingShape> m_thingShape{ ThingShape::Auto };
     std::atomic<int8_t> m_castsByFlags{ -1 };
 };

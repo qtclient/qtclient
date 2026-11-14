@@ -19,7 +19,6 @@ TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::
     : cip::tibia::input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter(parent)
 {}
 
-// b1/c152c1cb168b27fa
 bool TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     if (event->type() == QEvent::KeyPress) {
@@ -34,7 +33,6 @@ TDiscardMouseWheelEventFilter::TDiscardMouseWheelEventFilter(QObject* parent)
     : cip::tibia::input::TDiscardMouseWheelEventFilter(parent)
 {}
 
-// b1/2eed5a67b66c54d9
 bool TDiscardMouseWheelEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     if (event->type() == QEvent::Wheel)
@@ -46,7 +44,6 @@ TDiscardUnhandledMouseButtonsEventFilter::TDiscardUnhandledMouseButtonsEventFilt
     : cip::tibia::input::TDiscardUnhandledMouseButtonsEventFilter(parent)
 {}
 
-// b1/c71ce01e56a395dd
 bool TDiscardUnhandledMouseButtonsEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     switch (event->type()) {
@@ -97,7 +94,6 @@ TEventFilterManager* TEventFilterManager::instance()
     return g_eventFilterManager;
 }
 
-// b1/142786cf3f7e616e
 void TEventFilterManager::block()
 {
     if (m_blocked)
@@ -106,7 +102,6 @@ void TEventFilterManager::block()
     Q_EMIT releaseElementFocus();
 }
 
-// b1/16bd822224874e6d
 void TEventFilterManager::unblock()
 {
     if (!m_blocked)

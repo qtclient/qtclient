@@ -418,7 +418,6 @@ QString TActionButtonController::cooldownText(const qint64 remainingMs)
     return QStringLiteral("%1h").arg(remainingMs / 3600000);
 }
 
-// b1/24799424d30fbaf6
 void TActionButtonController::onTriggered()
 {
     auto action = input::mutableClone(*input::makeAction(A::ACTION_BUTTON_TRIGGERED));

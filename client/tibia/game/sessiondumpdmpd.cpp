@@ -256,10 +256,6 @@ void appendUnknownCreature(std::vector<uint8_t>& out, uint32_t playerId, const Q
     appendU8(out, 0);
     appendU8(out, 0); // addons
     appendU16(out, 0); // mount
-    appendU16(out, 0); // wings
-    appendU16(out, 0); // auras
-    appendU16(out, 0); // effects
-    appendString(out, {}); // outfit shader
     appendU8(out, 0); // light intensity
     appendU8(out, 0); // light color
     appendU16(out, 220); // speed
@@ -274,8 +270,6 @@ void appendUnknownCreature(std::vector<uint8_t>& out, uint32_t playerId, const Q
     appendU8(out, 0xff); // mark unmarked
     appendU8(out, 0); // inspection
     appendU8(out, 1); // unpass
-    appendString(out, {}); // GameCreatureShader
-    appendU8(out, 0); // GameCreatureAttachedEffect count
 }
 
 /// Synthetic FullMap for CIP dumps: protobuf map tiles are not converted yet,

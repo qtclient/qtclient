@@ -235,7 +235,6 @@ void TSkillsWidgetController::onMoreStatDetailsClicked()
     input::publish(action);
 }
 
-// b1/144a3f4f30ddf2cb
 void TSkillsWidgetController::setProgressBarVisible(const SkillType type, const bool visible)
 {
     const QString key = game::progressBarKey(type);

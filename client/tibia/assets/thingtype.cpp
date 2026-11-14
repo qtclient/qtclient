@@ -72,28 +72,34 @@ void ThingType::adopt(AppearanceRecord record)
     m_castsByFlags.store(-1, std::memory_order_relaxed);
 }
 
-void ThingType::setAnimators(std::unique_ptr<Animator> moving, std::unique_ptr<Animator> idle)
-{
-    m_moving = std::move(moving);
-    m_idle = std::move(idle);
-}
-
 bool ThingType::hasAttr(const ThingAttr attr) const
 {
     return m_record.flags & thingAttrToFlag(attr);
 }
 
+namespace {
+
+/// The phases of an animation with more than one phase, else 0.
+int animatedPhases(const tibia::animation::TAnimationInfo* info)
+{
+    return info && info->phaseCount() > 1 ? static_cast<int>(info->phaseCount()) : 0;
+}
+
+}
+
 int ThingType::getAnimationPhases() const
 {
-    return m_moving ? m_moving->getAnimationPhases() : m_record.animationPhases;
+    if (const int moving = animatedPhases(movingAnimation()))
+        return moving;
+    return m_record.animationPhases;
 }
 
 int ThingType::getIdleAnimationPhases() const
 {
-    if (m_idle)
-        return m_idle->getAnimationPhases();
-    if (m_moving)
-        return std::max(0, m_record.animationPhases - m_moving->getAnimationPhases());
+    if (const int idle = animatedPhases(idleAnimation()))
+        return idle;
+    if (const int moving = animatedPhases(movingAnimation()))
+        return std::max(0, m_record.animationPhases - moving);
     return 0;
 }
 

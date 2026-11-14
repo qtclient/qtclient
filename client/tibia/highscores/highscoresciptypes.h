@@ -6,6 +6,7 @@
 
 #include <cip_gen.h>
 
+#include <QByteArray>
 #include <QObject>
 
 namespace tibia {
@@ -20,6 +21,9 @@ class THighscoresProtocolMessageHandler final : public cip::tibia::highscores::T
     Q_OBJECT
 public:
     using cip::tibia::highscores::THighscoresProtocolMessageHandler::THighscoresProtocolMessageHandler;
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class THighscoresStorage final : public cip::tibia::highscores::THighscoresStorage

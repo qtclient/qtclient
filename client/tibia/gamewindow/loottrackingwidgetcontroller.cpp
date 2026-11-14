@@ -95,7 +95,6 @@ TQmlTrackedItem::TQmlTrackedItem(const cyclopedia::TItemInfoStorage::TrackedItem
     m_dropCountString = numberVariants(item.dropCount);
 }
 
-// b1/8a0d32bf21fe54b3
 void TQmlTrackedItem::setDropCount(const quint32 count)
 {
     if (m_dropCount == static_cast<int>(count))
@@ -105,7 +104,6 @@ void TQmlTrackedItem::setDropCount(const quint32 count)
     Q_EMIT dropCountChanged();
 }
 
-// b1/0048b181bd4d34b8
 void TQmlTrackedItem::setLootDrops(const std::vector<cyclopedia::TItemInfoStorage::DroppedLoot>& drops)
 {
     const QList<QObject*> old = std::exchange(m_lootDrops, {});
@@ -180,7 +178,6 @@ void TLootTrackingWidgetController::saveWidgetOptions()
 
 void TLootTrackingWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
 
-// b1/1c03650ff3701d45
 void TLootTrackingWidgetController::onCharacterConfigurationLoaded()
 {
     const QList<QObject*> old = std::exchange(m_trackedItems, {});
@@ -225,7 +222,6 @@ void TLootTrackingWidgetController::onAutoTrackLootValueChanged(const QString& t
         m_storage->setAutoTrackAboveValue(static_cast<quint32>(value));
 }
 
-// b1/8f6f0807adfc553f
 void TLootTrackingWidgetController::requestOpenItemInfoDialog()
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
@@ -233,7 +229,6 @@ void TLootTrackingWidgetController::requestOpenItemInfoDialog()
     input::publish(action);
 }
 
-// b1/bd52e792bd034f6d
 void TLootTrackingWidgetController::requestContextMenu(const int TrackedItemIndex)
 {
     TContextMenuController* menu = TContextMenuController::instance();
@@ -249,7 +244,6 @@ void TLootTrackingWidgetController::requestContextMenu(const int TrackedItemInde
     menu->showCustomMenu();
 }
 
-// b1/4fccc94e1d08691f
 void TLootTrackingWidgetController::requestConfigurationMenu()
 {
     if (!m_valueDialog) {

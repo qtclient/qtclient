@@ -157,15 +157,7 @@ TProtobufClientMessageTranslator* clientMessageTranslator();
 TProtocolMessageQueue* protocolMessageQueue();
 
 /// Structured opcodes with native H apply — enqueue with applyClassic=false.
-/// SessionDumpStart (4), SessionDumpMarker (5), PartyLeft (6), PendingStateEntered (10),
-/// WorldEntered (15), LoginError/Advice/Wait (20–22), LoginSuccess (23),
-/// SessionEndInformation (24), BugReportsAllowed (26), ShowMultiOfflineTrainingDialog (27),
-/// Ping/PingBack (29/30), LoginChallenge (31), SpecialContainersAvailable (42),
-/// SpellDataModification (96), MoveCreature (109), CloseContainer (111),
-/// SetInventory (120), DeleteInventory (121), AmbientLight (130),
-/// CreatureHealth/Light/Speed/Skull/Party/Unpass (140–141,143–146), Stop (188),
-/// GemAtelierGemRevealed (197), HirelingNameChange (219), TutorialHint (220),
-/// CloseRewardWall (227), MarketLeave (247).
+/// The list is the switch in protocolciptypes.cpp.
 bool nativeApplySkipsClassic(int opcode);
 
 /// Empty structured server bodies (measure consumes 0 payload bytes on success).
@@ -184,6 +176,10 @@ void prepareOutboundClientFrame(const QByteArray& classicFrame);
 QByteArray enqueueNativeServerProtobuf(const QByteArray& gameserverProtobuf, bool applyClassic = true);
 
 const ::tibia::protobuf::protocol::GameserverMessage* lastShadowServerMessage();
+
+/// The translated message a native handler applies for `opcode`, or null when
+/// the classic parser applies it (`applyClassic`) or the opcode is not native.
+const ::tibia::protobuf::protocol::GameserverMessage* nativeServerMessage(int opcode, bool applyClassic);
 
 }
 }

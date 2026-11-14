@@ -24,7 +24,6 @@ TWhiteBlacklistDialogController::~TWhiteBlacklistDialogController()
     clear(m_whitelistEntries);
 }
 
-// b1/8ec8122268109519
 void TWhiteBlacklistDialogController::open()
 {
     m_blacklistActive = m_lists.blacklistActive();
@@ -39,7 +38,6 @@ void TWhiteBlacklistDialogController::open()
     dialog()->show();
 }
 
-// b1/eada2b52eec1ca5d
 void TWhiteBlacklistDialogController::fill(Entries& entries, const bool blacklist)
 {
     clear(entries);
@@ -52,7 +50,6 @@ void TWhiteBlacklistDialogController::fill(Entries& entries, const bool blacklis
     publish(blacklist ? "blacklistSource" : "whitelistSource", entries);
 }
 
-// b1/4762c4161228d032
 void TWhiteBlacklistDialogController::addEntry(Entries& entries)
 {
     for (QObject* object : entries)
@@ -68,7 +65,6 @@ void TWhiteBlacklistDialogController::removeEntry(Entries& entries, const int ro
         entries.takeAt(row)->deleteLater();
 }
 
-// b1/4f6ae4e61a34e596
 void TWhiteBlacklistDialogController::clear(Entries& entries)
 {
     for (QObject* object : entries)
@@ -132,7 +128,6 @@ void TWhiteBlacklistDialogController::onControllerFinished()
     close();
 }
 
-// b1/408e4df54eb2d7cd
 void TWhiteBlacklistDialogController::close()
 {
     if (QQuickItem* item = dialog()->item()) {

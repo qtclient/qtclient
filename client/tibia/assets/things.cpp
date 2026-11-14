@@ -383,8 +383,7 @@ struct FrameGroupInfo
     int phases = 1;
 };
 
-void fillSprites(AppearanceRecord& record, std::unique_ptr<Animator>& moving, std::unique_ptr<Animator>& idle,
-                 const tibia::protobuf::appearances::Appearance& appearance)
+void fillSprites(AppearanceRecord& record, const tibia::protobuf::appearances::Appearance& appearance)
 {
     record.animationPhases = 0;
     int totalSprites = 0;
@@ -420,14 +419,24 @@ void fillSprites(AppearanceRecord& record, std::unique_ptr<Animator>& moving, st
                 sizeSet = true;
             }
         }
-        if (phases > 1) {
-            auto animator = std::make_unique<Animator>();
-            animator->unserializeAppearance(spriteInfo.animation());
-            const auto group = frameGroup.fixed_frame_group();
-            if (group == tibia::protobuf::appearances::FIXED_FRAME_GROUP_OUTFIT_MOVING)
-                moving = std::move(animator);
-            else
-                idle = std::move(animator);
+        const auto fixedGroup = frameGroup.fixed_frame_group();
+        const bool movingGroup = fixedGroup == tibia::protobuf::appearances::FIXED_FRAME_GROUP_OUTFIT_MOVING;
+        std::optional<tibia::animation::TAnimationInfo>& slot = movingGroup ? record.movingAnimation : record.idleAnimation;
+        if (spriteInfo.has_animation() && !slot) {
+            const auto& animation = spriteInfo.animation();
+            tibia::animation::TAnimationInfo info;
+            for (const auto& phase : animation.sprite_phase())
+                info.phases.emplace_back(phase.duration_min(), phase.duration_max());
+            using L = tibia::animation::TAnimationInfo::ELoopType;
+            switch (animation.loop_type()) {
+            case tibia::protobuf::shared::ANIMATION_LOOP_TYPE_PINGPONG: info.loopType = L::PingPong; break;
+            case tibia::protobuf::shared::ANIMATION_LOOP_TYPE_COUNTED: info.loopType = L::Counted; break;
+            default: info.loopType = L::Infinite; break;
+            }
+            info.synchronized = animation.synchronized();
+            info.loopCount = animation.loop_count();
+            info.finish();
+            slot = std::move(info);
         }
 
         const int count = layers * patternX * patternY * patternZ * phases;
@@ -677,12 +686,9 @@ bool ThingTypeManager::loadAppearances(const std::string& directory)
                     record.description = stdext::latin1_to_utf8(record.description);
                 if (appearance.has_flags())
                     applyFlags(record, appearance.flags());
-                std::unique_ptr<Animator> moving;
-                std::unique_ptr<Animator> idle;
-                fillSprites(record, moving, idle, appearance);
+                fillSprites(record, appearance);
                 auto type = std::make_shared<ThingType>();
                 type->adopt(std::move(record));
-                type->setAnimators(std::move(moving), std::move(idle));
                 if (category == ThingCategoryItem) {
                     if (const auto it = m_thingShapes.find(type->getId()); it != m_thingShapes.end())
                         type->setThingShape(it->second);

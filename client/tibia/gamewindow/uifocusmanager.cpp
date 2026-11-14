@@ -25,13 +25,11 @@ TUiFocusManager::~TUiFocusManager()
     }
 }
 
-// b1/a62f09637e3079f0
 void TUiFocusManager::setClickArea(QQuickItem* item)
 {
     m_clickArea.setClickArea(item);
 }
 
-// b1/a6514e1d4bb30a0d
 void TUiFocusManager::setActive(const bool active)
 {
     if (active == m_isActive)
@@ -42,7 +40,6 @@ void TUiFocusManager::setActive(const bool active)
     Q_EMIT activeChanged();
 }
 
-// b1/27dca45adca98888
 void TUiFocusManager::takeFocus()
 {
     TDialogStackController* stack = TDialogStackController::instance();
@@ -58,7 +55,6 @@ void TUiFocusManager::takeFocus()
     });
 }
 
-// b1/70a55f487554d6e5
 void TUiFocusManager::releaseFocus()
 {
     if (!m_hasFocus)
@@ -68,7 +64,6 @@ void TUiFocusManager::releaseFocus()
     onFocusTakenByEventFilterManager();
 }
 
-// b1/03329c662c02fd4a
 void TUiFocusManager::onFocusTakenByEventFilterManager()
 {
     if (!m_hasFocus)

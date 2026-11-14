@@ -138,7 +138,6 @@ void TCharacterSelectionController::onCancelClicked()
     Q_EMIT dialogClosed();
 }
 
-// b1/712f8135dc4b5939
 void TCharacterSelectionController::createCharacterPressed()
 {
     Q_EMIT createCharacterRequested(m_entries.isEmpty());

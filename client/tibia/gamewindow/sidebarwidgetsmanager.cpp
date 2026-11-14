@@ -330,7 +330,6 @@ QJsonArray TSidebarWidgetsManager::serializeSidebar(const uint sidebarId) const
     return list;
 }
 
-// b1/b003ad4bdfbe76c7
 void TSidebarWidgetsManager::saveCurrentOpenWidgets()
 {
     if (!m_options || !m_sidebars || m_restoring)
@@ -342,7 +341,6 @@ void TSidebarWidgetsManager::saveCurrentOpenWidgets()
     m_options->setSidebarWidgetsManagerOptions(o);
 }
 
-// b1/704a8dd556b863bb
 void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
 {
     if (!m_options || !m_sidebars || m_restoring)

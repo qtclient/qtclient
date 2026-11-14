@@ -325,7 +325,6 @@ TQmlMonsterRace::TQmlMonsterRace(const int raceId, const int progress, const dou
     updateUnassignCost();
 }
 
-// b1/8d170700093c9a71
 void TQmlMonsterRace::setSelectedCharmID(const int v)
 {
     if (m_selectedCharmID == v)
@@ -336,7 +335,6 @@ void TQmlMonsterRace::setSelectedCharmID(const int v)
     updateCanAfford();
 }
 
-// b1/cdc25cb7e273bb42
 void TQmlMonsterRace::setIndexOfSelectedCharmInCombobox(const int v)
 {
     if (m_indexOfSelectedCharmInCombobox == v)
@@ -345,7 +343,6 @@ void TQmlMonsterRace::setIndexOfSelectedCharmInCombobox(const int v)
     Q_EMIT indexOfSelectedCharmInComboboxChanged();
 }
 
-// b1/9db94bb2566ffaf6
 void TQmlMonsterRace::setSelectedCharmSlot(const int v)
 {
     if (m_selectedCharmSlot == v)
@@ -362,7 +359,6 @@ void TQmlMonsterRace::updateUnassignCost()
     m_unassignCostString = charm ? englishNumber(charm->removeCost) : qtTrId("monsters_unknown_data");
 }
 
-// b1/fa9179a5aa900e3e
 void TQmlMonsterRace::updateCanAfford()
 {
     const TCharm* charm = m_selectedCharmID >= 0 ? m_storage.charm(m_selectedCharmID) : nullptr;
@@ -458,7 +454,6 @@ void TMonsterDialogController::setNextRace(const int raceId)
     m_pendingContext = context;
 }
 
-// b1/b4e7b6986db2e55e
 void TMonsterDialogController::showDialogTab()
 {
     m_shown = true;
@@ -487,7 +482,6 @@ void TMonsterDialogController::showDialogTab()
 
 void TMonsterDialogController::hideDialogTab() { m_shown = false; }
 
-// b1/9dc035a615791414
 void TMonsterDialogController::requestClassificationSelection(const QString& ClassificationID)
 {
     m_selectedClassification = ClassificationID;
@@ -495,7 +489,6 @@ void TMonsterDialogController::requestClassificationSelection(const QString& Cla
     tibia::game::requestBestiaryOverview(ClassificationID.toStdString());
 }
 
-// b1/b971c5deb87867bc
 void TMonsterDialogController::requestMonsterSearch(const QString& SearchString)
 {
     m_search = SearchString;
@@ -510,7 +503,6 @@ void TMonsterDialogController::requestMonsterSearch(const QString& SearchString)
     tibia::game::requestBestiaryOverview("", true, raceIds);
 }
 
-// b1/74414f3e9e7e4a16
 void TMonsterDialogController::requestClassificationPageSwitch(const int NewPage)
 {
     const int pages = std::max(1, pageCount(m_classifications.size()));
@@ -542,14 +534,12 @@ void TMonsterDialogController::requestMonsterPageSwitch(const int NewPage)
     Q_EMIT qmlMonsterRacesPageChanged();
 }
 
-// b1/bb9e02943ec9c972
 void TMonsterDialogController::onMonsterRaceClicked(const uint MonsterRaceID)
 {
     m_selectedRace = static_cast<int>(MonsterRaceID);
     tibia::game::requestBestiarySearch(static_cast<uint16_t>(MonsterRaceID));
 }
 
-// b1/305e2f0cad482ed9
 void TMonsterDialogController::requestSwitchBackToClassificationSummary() { onClassificationSummaryChanged(); }
 
 void TMonsterDialogController::requestSwitchBackToRaceSummary()
@@ -560,7 +550,6 @@ void TMonsterDialogController::requestSwitchBackToRaceSummary()
         tibia::game::requestBestiaryOverview(m_selectedClassification.toStdString());
 }
 
-// b1/35d777f62c0c1c89
 void TMonsterDialogController::requestSwitchToItemInfo(const int AppearanceTypeID)
 {
     auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
@@ -589,7 +578,6 @@ void TMonsterDialogController::requestContextMenuForItem(const int AppearanceTyp
     menu->showCustomMenu();
 }
 
-// b1/6698d9f955e6ebd4
 void TMonsterDialogController::requestToggleBestiaryTracking()
 {
     if (!m_singleMonster)
@@ -597,7 +585,6 @@ void TMonsterDialogController::requestToggleBestiaryTracking()
     tibia::game::sendStatusTrackerBestiary(static_cast<uint16_t>(m_selectedRace), !m_storage.isTracked(m_selectedRace));
 }
 
-// b1/6a9a7e41fa532d42
 void TMonsterDialogController::viewSelectedCharm(const int charmID)
 {
     auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
@@ -606,7 +593,6 @@ void TMonsterDialogController::viewSelectedCharm(const int charmID)
     input::publish(action);
 }
 
-// b1/338699061fa40efc
 void TMonsterDialogController::removeSelectedCharm()
 {
     TQmlMonsterRace* race = singleRace();
@@ -646,7 +632,6 @@ void TMonsterDialogController::setDialogState(const DialogState state)
     Q_EMIT qmlDialogStateChanged();
 }
 
-// b1/ce6aeb4884187fb3
 void TMonsterDialogController::onClassificationSummaryChanged()
 {
     setDialogState(MonsterClassification);

@@ -45,6 +45,13 @@ public:
 
     /// Tip Q→H wire: peel structured creature-attribute opcodes from `serverMessageEnqueued`.
     void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+
+private:
+    /// A creature mark: timed or static square, or the attack animation.
+    void handleCreatureMarksMessage(uint32_t creatureId, uint32_t kind, uint32_t value);
+
+    /// Option gameWindowShowAttackAnimation.
+    bool m_showAttackAnimation{ true };
 };
 
 class TCreaturesGameActionHandler final : public cip::tibia::creatures::TCreaturesGameActionHandler
@@ -63,6 +70,9 @@ class TUnjustifiedPointsProtocolMessageHandler final : public cip::tibia::creatu
     Q_OBJECT
 public:
     using cip::tibia::creatures::TUnjustifiedPointsProtocolMessageHandler::TUnjustifiedPointsProtocolMessageHandler;
+public:
+    /// Tip Q→H wire: PvpSituations from `serverMessageEnqueued`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TUnjustifiedPointsStorage final : public cip::tibia::creatures::TUnjustifiedPointsStorage
@@ -84,6 +94,9 @@ class TVipProtocolMessageHandler final : public cip::tibia::creatures::TVipProto
     Q_OBJECT
 public:
     using cip::tibia::creatures::TVipProtocolMessageHandler::TVipProtocolMessageHandler;
+public:
+    /// Tip Q→H wire: BuddyStatusChange from `serverMessageEnqueued`.
+    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
 };
 
 class TVipWidgetGameActionProvider final : public ::tibia::CipTyped {};

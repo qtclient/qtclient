@@ -20,7 +20,6 @@ typedef uint8_t (*QtClientEffectVariantTintFn)(uint32_t variant_id);
 typedef void (*QtClientApplyImageTintFn)(QtClientImageView* image, uint8_t tint);
 
 typedef void (*QtClientLoginSyncEnqueueFn)(void (*fn)(void* user), void* user);
-typedef void (*QtClientFeatureExtrasFn)(void);
 typedef void (*QtClientEnsureModsFn)(void);
 
 /** HD scaler: write scaled pixels into *out (host frees previous out->pixels if non-null). */

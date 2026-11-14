@@ -12,7 +12,6 @@ extern "C" {
 typedef void (*QtClientHostOsFn)(char* buf, size_t buf_len);
 
 typedef void (*QtClientEnableFeatureFn)(int feature);
-typedef void (*QtClientSetCustomOsFn)(int operating_system);
 
 #ifdef __cplusplus
 }

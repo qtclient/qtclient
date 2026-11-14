@@ -515,7 +515,6 @@ int TSkillWheelPageController::stepSize(const int modifiers)
     return (modifiers & Qt::ControlModifier) ? base * 100 : base;
 }
 
-// b1/6c14395a8a155f7c
 void TSkillWheelPageController::changePoints(const int slot, const int delta)
 {
     if (slot < 0 || slot >= SlotCount || delta == 0)

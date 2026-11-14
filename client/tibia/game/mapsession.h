@@ -151,6 +151,8 @@ bool isCovered(MapPos pos, bool& isLoading, uint8_t firstFloor = 0);
 using WaypointCostFactory = std::function<std::shared_ptr<tibia::minimap::TWaypointCosts>()>;
 void setWaypointCostFactory(WaypointCostFactory factory);
 void clearWaypointCostFactory();
+/// Snapshot of the minimap waypoint costs (null without a minimap).
+std::shared_ptr<tibia::minimap::TWaypointCosts> waypointCosts();
 
 void initMap();
 void terminateMap();

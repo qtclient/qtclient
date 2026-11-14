@@ -36,7 +36,6 @@ void TMinimapQuickItem::setRenderProvider(const minimap::TMinimapRenderProvider*
     update();
 }
 
-// b1/c894d5b31ce28db0
 QSGNode* TMinimapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
     if (oldNode) {
@@ -102,7 +101,6 @@ void TMinimapQuickItem::deleteDetachedNodes()
     }
 }
 
-// b1/31e17f579c409351
 void TMinimapQuickItem::hoverEnterEvent(QHoverEvent* event)
 {
     QQuickItem::hoverEnterEvent(event);
@@ -110,7 +108,6 @@ void TMinimapQuickItem::hoverEnterEvent(QHoverEvent* event)
         cursor->onMinimapEntered();
 }
 
-// b1/a891e7640441833a
 void TMinimapQuickItem::hoverLeaveEvent(QHoverEvent* event)
 {
     QQuickItem::hoverLeaveEvent(event);

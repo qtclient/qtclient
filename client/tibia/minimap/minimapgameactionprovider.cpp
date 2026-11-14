@@ -7,7 +7,7 @@ namespace tibia::minimap {
 input::TGameActionList TMinimapGameActionProvider::actionsAt(const Position& coord) const
 {
     using A = input::EGameAction;
-    const input::TGameActionPtr movement = input::makeMovementIntent(coord);
+    const input::TGameActionPtr movement = input::makeMovementIntent(coord, 0, false);
     input::TGameActionList list{
         movement,
         input::makeSmartClick(movement),

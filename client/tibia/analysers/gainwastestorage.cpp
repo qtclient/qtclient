@@ -232,7 +232,6 @@ qint64 TGainWasteStorage::priceOf(const Side side, const uint16_t itemId) const
     return side == Loot ? m_prices->lootPrice(itemId) : m_prices->wastePrice(itemId);
 }
 
-// b1/b19da784731c4714
 void TGainWasteStorage::addLoot(const uint16_t itemId, const quint32 count, const QString& name, const qint64 nowMs)
 {
     SideData& side = m_sides[Loot];
@@ -255,7 +254,6 @@ void TGainWasteStorage::addLoot(const uint16_t itemId, const quint32 count, cons
     emitItemsChanged(Loot);
 }
 
-// b1/593f47a7671c0093
 void TGainWasteStorage::addWaste(const uint16_t itemId, const quint32 count, const qint64 nowMs)
 {
     SideData& side = m_sides[Waste];
@@ -276,7 +274,6 @@ void TGainWasteStorage::addWaste(const uint16_t itemId, const quint32 count, con
     emitItemsChanged(Waste);
 }
 
-// b1/ea1616ec948eda63
 void TGainWasteStorage::tick(const qint64 nowMs)
 {
     if (nowMs < m_nextTick && !m_dirty)
@@ -290,7 +287,6 @@ void TGainWasteStorage::tick(const qint64 nowMs)
     emitMetricsChanged();
 }
 
-// b1/782638f06517e9c9
 void TGainWasteStorage::computeMetrics(SideData& side, const qint64 nowMs)
 {
     Sums& sums = side.sums;
@@ -330,7 +326,6 @@ void TGainWasteStorage::computeMetrics(SideData& side, const qint64 nowMs)
     sums.perHour = perHour;
 }
 
-// b1/f27b46ec715d4cec
 void TGainWasteStorage::refreshPrices()
 {
     for (const Side s : { Loot, Waste }) {
@@ -339,7 +334,6 @@ void TGainWasteStorage::refreshPrices()
     }
 }
 
-// b1/c364919c85a9d5cd
 void TGainWasteStorage::reset(const Side side)
 {
     SideData& data = m_sides[side];
@@ -372,7 +366,6 @@ std::vector<TGainWasteStorage::Item> TGainWasteStorage::sessionItems(const Side 
     return items;
 }
 
-// b1/821c4642e366f42f
 std::vector<double> TGainWasteStorage::history(const Side side, double& maxY) const
 {
     const SideData& data = m_sides[side];
@@ -416,7 +409,6 @@ void TGainWasteStorage::setGraphVisible(const Side side, const bool visible)
     emitOptionsChanged();
 }
 
-// b1/1d7f0ac14a92df6f
 void TGainWasteStorage::setGaugeTarget(const Side side, const qint64 target)
 {
     if (m_sides[side].gaugeTarget == target)

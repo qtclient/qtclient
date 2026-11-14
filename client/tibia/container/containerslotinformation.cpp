@@ -162,7 +162,6 @@ QString slotText(const TInventorySlot& slot, const bool showExpire, const bool w
     return text;
 }
 
-// b1/116ef5dd252d4b62
 TContainerSlotQmlInformation::TContainerSlotQmlInformation(QObject* parent)
     : cip::tibia::container::TContainerSlotQmlInformation(parent)
 {
@@ -178,7 +177,6 @@ void TContainerSlotQmlInformation::setBackgroundImage(const QString& image)
     Q_EMIT backgroundImageChanged();
 }
 
-// b1/9252aeb3c4f57730
 void TContainerSlotQmlInformation::setText(const QString& text)
 {
     if (text == m_text)
@@ -187,7 +185,6 @@ void TContainerSlotQmlInformation::setText(const QString& text)
     Q_EMIT textChanged();
 }
 
-// b1/69d5c3b2fb545e43
 void TContainerSlotQmlInformation::assign(const TSlotInfo& info)
 {
     const uint previousSlot = m_slotID;

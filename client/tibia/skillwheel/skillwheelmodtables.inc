@@ -1,5 +1,5 @@
-// Generated from the CIP client tables (CIP 0x101118d30 basic mods, 0x10232dba8 supreme
-// categories, 0x10232ca08 supreme augmentations). Do not edit by hand.
+// Generated from the CIP client tables (basic mods, supreme categories, supreme
+// augmentations). Do not edit by hand.
 
 constexpr TBasicMod BasicMods[] = {
     /*  0 */ { 1, { { 0, { { 1.0, 1.1, 1.2, 1.5 }, { 1.0, 1.1, 1.2, 1.5 }, { 1.0, 1.1, 1.2, 1.5 }, { 1.0, 1.1, 1.2, 1.5 }, { 1.0, 1.1, 1.2, 1.5 } } } } },

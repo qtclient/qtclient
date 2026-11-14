@@ -192,7 +192,6 @@ void TCyclopediaMapDialogController::hideDialogTab()
     setTooltip({});
 }
 
-// b1/4357e8b80335d92f
 void TCyclopediaMapDialogController::onSelectedItemChanged()
 {
     if (!m_renderer)
@@ -215,7 +214,6 @@ void TCyclopediaMapDialogController::onSelectedItemChanged()
     m_renderer->setHighlightedSubareas(highlighted);
 }
 
-// b1/3092099498ad8c06
 void TCyclopediaMapDialogController::setMinimapRendererQuickItem(QObject* pItem)
 {
     if (m_renderer)
@@ -237,7 +235,6 @@ void TCyclopediaMapDialogController::setMinimapRendererQuickItem(QObject* pItem)
     }
 }
 
-// b1/abcb52464c347612
 void TCyclopediaMapDialogController::hoverAtPixelCoordinate(const int x, const int y)
 {
     m_tooltipTimer.stop();
@@ -247,7 +244,6 @@ void TCyclopediaMapDialogController::hoverAtPixelCoordinate(const int x, const i
     setTooltip(tooltip);
 }
 
-// b1/25e626890669f155
 void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const int y, const int TriggeringMouseButton, const Qt::KeyboardModifiers Modifiers)
 {
     if (!m_renderer)
@@ -263,7 +259,7 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
         candidates.push_back(std::make_shared<input::TGameActionCyclopediaMapSelectionItem>(subareaId));
     }
     // Cyclopedia Shift+click: pathfinder fog (0xfe) is passable — longer-range than minimap pathfinder.
-    candidates.push_back(input::makeMovementIntent(position, tibia::client::AutoWalkPathCyclopedia));
+    candidates.push_back(input::makeMovementIntent(position, tibia::client::AutoWalkPathCyclopedia, false));
     // CIP: GOD_TELEPORT is a mapper candidate (Shift+Ctrl); qtclient menus omit it.
     candidates.push_back(input::makeObjectAction(A::GOD_TELEPORT, position, -1));
     candidates.push_back(input::makeAction(A::CONTEXT_MENU));
@@ -285,7 +281,6 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
     input::publish(action);
 }
 
-// b1/d349c34b69548094
 void TCyclopediaMapDialogController::centerToPlayer()
 {
     if (!tibia::game::localPlayer() || !m_renderer)
@@ -296,7 +291,6 @@ void TCyclopediaMapDialogController::centerToPlayer()
     m_renderer->worldCamera()->centerDelayed(position.x * SubfieldsPerField + SubfieldsPerField / 2, position.y * SubfieldsPerField + SubfieldsPerField / 2, position.z);
 }
 
-// b1/d9a5605fe7790bcf
 void TCyclopediaMapDialogController::centerAt(const Position& position, const float scale)
 {
     if (!m_renderer) {
@@ -311,7 +305,6 @@ void TCyclopediaMapDialogController::centerAt(const Position& position, const fl
     camera->centerDelayed(position.x * SubfieldsPerField + SubfieldsPerField / 2, position.y * SubfieldsPerField + SubfieldsPerField / 2, position.z);
 }
 
-// b1/7cf513c0731c8be0
 void TCyclopediaMapDialogController::donateMoneyForArea(const int AreaID, const int Value)
 {
     const auto* area = cyclopedia::TCyclopediaMapStaticData::instance().area(AreaID);
@@ -336,7 +329,6 @@ void TCyclopediaMapDialogController::confirmResetViewpoints(const int subAreaId)
                                  qtTrId("cyclopediamap_confirm_reset_viewpoints").arg(area->name));
 }
 
-// b1/d646ec90b15732e7
 void TCyclopediaMapDialogController::requestResetViewpoints()
 {
     if (m_selectedId > 0 && !m_selectedIsArea)
@@ -349,7 +341,6 @@ void TCyclopediaMapDialogController::resetSubAreaViewPoints(const int SubAreaID)
         confirmResetViewpoints(SubAreaID);
 }
 
-// b1/06122baf8dbfd955
 void TCyclopediaMapDialogController::onCreatureClicked(const int RaceIDRaw)
 {
     if (RaceIDRaw <= 0)
@@ -360,17 +351,14 @@ void TCyclopediaMapDialogController::onCreatureClicked(const int RaceIDRaw)
     input::publish(action);
 }
 
-// b1/ec3330c36831eb2f
 void TCyclopediaMapDialogController::onMouseExited()
 {
     m_tooltipTimer.stop();
     setTooltip({});
 }
 
-// b1/b2e353c6ff7e300f
 void TCyclopediaMapDialogController::onAreaClicked(const int id, const bool isArea) { select(id, isArea); }
 
-// b1/daabe22e1709fbe9
 void TCyclopediaMapDialogController::select(const int id, const bool isArea)
 {
     m_selectedId = id;
@@ -379,7 +367,6 @@ void TCyclopediaMapDialogController::select(const int id, const bool isArea)
     rebuildSelection();
 }
 
-// b1/c2be806bc55912ae
 void TCyclopediaMapDialogController::rebuildSelection()
 {
     auto& data = cyclopedia::TCyclopediaMapStaticData::instance();
@@ -445,7 +432,6 @@ TCyclopediaMapAreaValues TCyclopediaMapDialogController::areaValues(const int ar
     return values;
 }
 
-// b1/0754d70cf7c6c40d
 QString TCyclopediaMapDialogController::donationsTooltip() const
 {
     auto& data = cyclopedia::TCyclopediaMapStaticData::instance();

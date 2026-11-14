@@ -85,7 +85,6 @@ int TAssignableBossSortProxyModel::raceIDRoleEnumValue() const
     return m_raceIDRoleEnumValue;
 }
 
-// b1/056cca231f35ac71
 void TAssignableBossSortProxyModel::resetFilter()
 {
     setNameFilter({});

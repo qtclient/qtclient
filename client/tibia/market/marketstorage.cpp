@@ -123,7 +123,6 @@ TMarketStorage::TMarketStorage(QObject* parent)
     });
 }
 
-// b1/865e534c2e6f7455
 int TMarketStorage::maximumOfferAmount(const uint16_t typeId)
 {
     if (typeId == 0)

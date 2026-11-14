@@ -1,5 +1,6 @@
 #pragma once
 
+#include "creatures/creaturemovementspeedcalculator.h"
 #include "worldmap/cacheforworldmapstoragelookupmembers.h"
 #include "worldmap/coordinates.h"
 
@@ -20,6 +21,9 @@
 #include <vector>
 
 namespace tibia {
+namespace creatures {
+class TCreature;
+}
 namespace worldmap {
 
 class TWorldMapField;
@@ -58,6 +62,16 @@ public:
                                    const std::function<void(const Position&)>& onRemoved);
     TCacheForWorldmapStorageLookupMembers* lookupMembers() const { return m_lookupMembers; }
 
+    creatures::TCreatureMovementSpeedCalculator& speedCalculator() { return m_speedCalculator; }
+    /// Speed of the field's ground; 255 where there is no ground.
+    int groundSpeedAt(const Position& position);
+    /// Accumulated elevation of the field's items; 0 where there is no field.
+    int elevationAt(const Position& position);
+    /// Animate `creature` stepping from `from` to `to`. Anything other than a
+    /// single step drops its motion instead.
+    void moveCreature(creatures::TCreature& creature, const Position& from, const Position& to, int elevationFrom,
+                      int elevationTo);
+
     TWorldMapSessionState& sessionState() { return m_sessionState; }
     const TWorldMapSessionState& sessionState() const { return m_sessionState; }
 
@@ -66,7 +80,8 @@ public:
     bool placeAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& position,
                          int stackPos = -1);
     bool placeCreatureId(uint32_t creatureId, const Position& position, int stackPos = -1);
-    bool removeCreatureFromFields(uint32_t creatureId, const Position& fieldPos = {});
+    bool removeCreatureFromFields(uint32_t creatureId, const Position& fieldPos = {},
+                                  bool fireLocalDisappear = true);
     bool applyCreatureMove(uint32_t creatureId, const Position& oldPos, int oldStack, const Position& newPos,
                            bool byId);
 
@@ -82,7 +97,6 @@ public:
     void notifyTileUpdate(const Position& position, const std::shared_ptr<class Thing>& thing,
                           tibia::client::Operation operation);
     void addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
-    bool removeMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
     void addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& position);
     void addStaticText(const StaticTextPtr& text, const Position& position);
     bool removeStaticText(const StaticTextPtr& text);
@@ -101,6 +115,7 @@ private:
     std::vector<std::unordered_map<uint32_t, TileBlock>> m_spatialFloors;
     TCacheForWorldmapStorageLookupMembers* m_lookupMembers = nullptr;
     TWorldMapSessionState m_sessionState;
+    creatures::TCreatureMovementSpeedCalculator m_speedCalculator;
 
     static quint64 key(const Position& pos);
 };

@@ -9,6 +9,7 @@
 #include "renderer/spritetextureprovider.h"
 
 #include "sprites/hdscale.h"
+#include "creatures/walkdebug.h"
 
 #include <algorithm>
 #include <QElapsedTimer>
@@ -152,13 +153,25 @@ void TWorldMapQuickItem::clearNodePools()
     m_highlightPool.clear();
 }
 
-// b1/643aa6071b695a15
 QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*)
 {
     QElapsedTimer cost;
     cost.start();
     if (!m_provider || !m_provider->frame().valid) {
-        qCDebug(lcWorldMap) << "no world" << (m_provider != nullptr);
+        static QElapsedTimer s_blackWorldLog;
+        if (tibia::creatures::walkDebugShouldLog(s_blackWorldLog, 500)) {
+            qCDebug(lcWorldMap) << "black-world"
+                                << "hasProvider" << (m_provider != nullptr)
+                                << "frameValid" << (m_provider && m_provider->frame().valid)
+                                << "sprites" << (m_provider ? m_provider->frame().sprites.size() : 0)
+                                << "creatures" << (m_provider ? m_provider->frame().creatures.size() : 0)
+                                << "camera" << (m_provider ? m_provider->frame().camera : QPoint());
+            if (tibia::creatures::lcWalk().isDebugEnabled()) {
+                qCDebug(tibia::creatures::lcWalk) << "black-world"
+                                                  << "hasProvider" << (m_provider != nullptr)
+                                                  << "frameValid" << (m_provider && m_provider->frame().valid);
+            }
+        }
         tibia::mods::abandonWorldOverlayNodes();
         harvestNodes(oldNode);
         delete oldNode;

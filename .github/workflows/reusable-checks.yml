@@ -39,7 +39,6 @@ jobs:
           grep -q 'qtclient_add_mod' cmake/QtClientMod.cmake
           grep -q 'add_library(.*MODULE' cmake/QtClientMod.cmake
           grep -q 'qtclient_mod_register' include/qtclient/abi/host_api_v1.h
-          grep -q 'qtclient_mod_register' client/mods/otclient/src/otclient_mod.cpp
           grep -q 'qtclient_host_api_v1' client/tibia/mods/host_api_v1.cpp
           grep -q 'QTCLIENT_MOD_REGISTER_SYMBOL' client/tibia/mods/modloader.cpp
           test -f include/qtclient/abi/host_api_v1.h

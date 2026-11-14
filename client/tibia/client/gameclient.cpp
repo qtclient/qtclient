@@ -1,4 +1,5 @@
 #include "gameclient.h"
+#include "creatures/movementtweens.h"
 #include "teamfinder/teamfinderciptypes.h"
 #include "taskboard/taskboardciptypes.h"
 #include "systemsurvey/systemsurveyciptypes.h"
@@ -30,9 +31,12 @@
 #include "shared/sharedciptypes.h"
 #include "game/gameciptypes.h"
 #include "trade/tradeciptypes.h"
+#include "cyclopedia/cyclopediaciptypes.h"
+#include "store/storestorage.h"
 #include "tutorial/tutorialciptypes.h"
 
 #include "app/clientoptions.h"
+#include "chat/chatprotocolmessagehandler.h"
 #include "chat/gamemessagehandler.h"
 #include "chat/textstorage.h"
 #include "client/gamecore.h"
@@ -54,12 +58,15 @@
 #include "renderer/worldmaprenderprovider.h"
 #include "worldmap/ambientlightstorage.h"
 #include "worldmap/nextframetimestamppredictor.h"
+#include "effects/effectprotocolmessagehandler.h"
+#include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
 #include "worldmap/numericaleffectstorage.h"
 #include "worldmap/worldmapprotocolmessagehandler.h"
 #include "container/containerciptypes.h"
 #include "creatures/creaturesciptypes.h"
 #include "creatures/creaturestorage.h"
+#include "creatures/walkdebug.h"
 #include "worldmap/worldmapstorage.h"
 
 #include <tibia/worldmap/mapobserver.h>
@@ -289,33 +296,32 @@ TGameClient::TGameClient(QObject* parent)
         Q_EMIT clientOutOfDate();
     });
     connect(m_login.get(), &authentication::TLoginRequestUploader::loginFailedDueToCloudflareMitigation, this, [this] {
-        if (!m_cloudflareChallenge)
+        if (!m_cloudflareChallenge) {
             m_cloudflareChallenge = std::make_unique<authentication::TCloudflareChallengeController>(this);
+            connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveSuccess, this,
+                    [this](const authentication::TCloudflareChallengeClearanceInfo& info) {
+                        m_login->applyClearance(info);
+                        login();
+                    });
+            connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveFailed, this,
+                    [this](authentication::TCloudflareChallengeError error) {
+                        switch (error) {
+                        case authentication::TCloudflareChallengeError::Timeout:
+                            fail(qtTrId("cloudflare_challenge_error_timeout"));
+                            break;
+                        case authentication::TCloudflareChallengeError::Cancelled:
+                            fail(qtTrId("cloudflare_challenge_error_cancelled"));
+                            break;
+                        case authentication::TCloudflareChallengeError::Unknown:
+                        default:
+                            fail(qtTrId("cloudflare_challenge_error_unknown"));
+                            break;
+                        }
+                    });
+        }
         QUrl challengeUrl = m_login->lastMitigatedUrl();
         if (!challengeUrl.isValid())
             challengeUrl = m_options.env.loginUrl();
-        connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveSuccess, this,
-                [this](const authentication::TCloudflareChallengeClearanceInfo& info) {
-                    m_login->applyClearance(info);
-                    login();
-                },
-                Qt::UniqueConnection);
-        connect(m_cloudflareChallenge.get(), &authentication::TCloudflareChallengeController::challengeSolveFailed, this,
-                [this](authentication::TCloudflareChallengeError error) {
-                    switch (error) {
-                    case authentication::TCloudflareChallengeError::Timeout:
-                        fail(qtTrId("cloudflare_challenge_error_timeout"));
-                        break;
-                    case authentication::TCloudflareChallengeError::Cancelled:
-                        fail(qtTrId("cloudflare_challenge_error_cancelled"));
-                        break;
-                    case authentication::TCloudflareChallengeError::Unknown:
-                    default:
-                        fail(qtTrId("cloudflare_challenge_error_unknown"));
-                        break;
-                    }
-                },
-                Qt::UniqueConnection);
         m_cloudflareChallenge->startChallenge(challengeUrl);
     });
 
@@ -398,6 +404,10 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, gameHandler,
                     &game::TGameProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
         }
+        if (auto* playerHandler = game::TPlayerProtocolMessageHandler::liveInstance()) {
+            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, playerHandler,
+                    &game::TPlayerProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
+        }
         if (auto* skillWheelHandler = skillwheel::TSkillWheelProtocolMessageHandler::liveInstance()) {
             connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, skillWheelHandler,
                     &skillwheel::TSkillWheelProtocolMessageHandler::onServerMessageEnqueued,
@@ -413,6 +423,46 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
                     &creatures::TCreatureProtocolMessageHandler::onServerMessageEnqueued,
                     Qt::UniqueConnection);
         }
+        // Static ingresses take the client as context: drop the previous
+        // session's connections before connecting the queue again.
+        using StaticIngress = void (*)(int, const QByteArray&, bool);
+        static constexpr StaticIngress kStaticIngresses[] = {
+            &chat::TChatProtocolMessageHandler::onServerMessageEnqueued,
+            &trade::TNPCTradeProtocolMessageHandler::onServerMessageEnqueued,
+            &trade::TPlayerTradeProtocolMessageHandler::onServerMessageEnqueued,
+            &store::TStoreProtocolMessageHandler::onServerMessageEnqueued,
+            &proficiency::TProficiencyProtocolMessageHandler::onServerMessageEnqueued,
+            &news::TNewsProtocolMessageHandler::onServerMessageEnqueued,
+            &cyclopedia::TCyclopediaProtocolMessageHandler::onServerMessageEnqueued,
+            &creatures::TUnjustifiedPointsProtocolMessageHandler::onServerMessageEnqueued,
+            &dailyreward::TDailyRewardProtocolMessageHandler::onServerMessageEnqueued,
+            &bossbestiary::TBossBestiaryProtocolMessageHandler::onServerMessageEnqueued,
+            &prey::TPreyProtocolMessageHandler::onServerMessageEnqueued,
+            &exaltation::TExaltationProtocolMessageHandler::onServerMessageEnqueued,
+            &creatures::TVipProtocolMessageHandler::onServerMessageEnqueued,
+            &cyclopedia::TBestiaryTrackerProtocolMessageHandler::onServerMessageEnqueued,
+            &sound::TSoundProtocolMessageHandler::onServerMessageEnqueued,
+            &game::TEditTextProtocolMessageHandler::onServerMessageEnqueued,
+            &game::TPremiumProtocolMessageHandler::onServerMessageEnqueued,
+            &quickloot::TManagedContainersProtocolMessageHandler::onServerMessageEnqueued,
+            &reporting::TRuleViolationProtocolMessageHandler::onServerMessageEnqueued,
+            &imbuing::TImbuingProtocolMessageHandler::onServerMessageEnqueued,
+            &exivaoptions::TExivaOptionsProtocolMessageHandler::onServerMessageEnqueued,
+            &market::TMarketProtocolMessageHandler::onServerMessageEnqueued,
+            &questlog::TQuestLogProtocolMessageHandler::onServerMessageEnqueued,
+            &teamfinder::TTeamFinderProtocolMessageHandler::onServerMessageEnqueued,
+            &game::TBlessingsProtocolMessageHandler::onServerMessageEnqueued,
+            &game::TServerModalDialogProtocolMessageHandler::onServerMessageEnqueued,
+            &game::TBossDifficultySelectionProtocolMessageHandler::onServerMessageEnqueued,
+            &highscores::THighscoresProtocolMessageHandler::onServerMessageEnqueued,
+            &trade::TCharacterTradeProtocolMessageHandler::onServerMessageEnqueued,
+        };
+        for (const QMetaObject::Connection& connection : m_staticIngressConnections)
+            disconnect(connection);
+        m_staticIngressConnections.clear();
+        for (const StaticIngress ingress : kStaticIngresses)
+            m_staticIngressConnections.push_back(
+                connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, this, ingress));
         if (auto* bugReportHandler = reporting::TBugReportProtocolMessageHandler::liveInstance()) {
             connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, bugReportHandler,
                     &reporting::TBugReportProtocolMessageHandler::onServerMessageEnqueued,
@@ -431,9 +481,14 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
                 });
     }
     m_numericalEffects = std::make_unique<worldmap::TNumericalEffectStorage>();
+    (void)effects::TEffectStorage::instance();
     m_effectStorage = std::make_unique<effects::TEffectStorage>();
+    m_effectStorage->setNumericalCount([this] { return m_numericalEffects ? m_numericalEffects->effects().size() : size_t(0); });
     m_effectGameActionHandler = std::make_unique<effects::TEffectGameActionHandler>();
     m_effectProtocolMessageHandler = std::make_unique<effects::TEffectProtocolMessageHandler>();
+    if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue())
+        connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, m_effectProtocolMessageHandler.get(),
+                &effects::TEffectProtocolMessageHandler::onServerMessageEnqueued);
     m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*m_textStorage, *m_numericalEffects);
     const QJsonObject clientOptions = app::ClientOptions::load().options();
     m_messageHandler->setOptions(clientOptions);
@@ -773,8 +828,7 @@ bool TGameClient::requestCharacterSwitch(const QString& characterName)
 {
     if (characterName.isEmpty() || !tibia::game::isOnline())
         return false;
-    if (characterName.compare(QString::fromStdString(tibia::game::characterName()), Qt::CaseInsensitive) == 0)
-        return false;
+    // Same character is allowed: CIP would logout+login; IdleOT re-enters on the same socket.
     if (tibia::game::isSwitchingCharacter())
         return false;
     const ProtocolGamePtr protocol = tibia::game::getProtocolGame();
@@ -924,6 +978,39 @@ void TGameClient::onWorldEntered()
         });
     }
 
+    if (!m_options.walk.isEmpty()) {
+        static const QHash<QString, tibia::client::Direction> directions = {
+            { QStringLiteral("n"), tibia::client::North },      { QStringLiteral("ne"), tibia::client::NorthEast },
+            { QStringLiteral("e"), tibia::client::East },       { QStringLiteral("se"), tibia::client::SouthEast },
+            { QStringLiteral("s"), tibia::client::South },      { QStringLiteral("sw"), tibia::client::SouthWest },
+            { QStringLiteral("w"), tibia::client::West },       { QStringLiteral("nw"), tibia::client::NorthWest },
+        };
+        auto* walker = new QTimer(this);
+        auto next = std::make_shared<qsizetype>(0);
+        connect(walker, &QTimer::timeout, this, [this, walker, next] {
+            if (*next >= m_options.walk.size()) {
+                walker->stop();
+                return;
+            }
+            if (!tibia::game::isOnline() || tibia::game::localPlayerIsAutoWalking() || tibia::game::localPlayerIsPreWalking()
+                || tibia::game::localPlayerIsWalking())
+                return;
+            const QString token = m_options.walk[*next].trimmed().toLower();
+            ++*next;
+            if (token.contains(QLatin1Char(':'))) {
+                // dx:dy walks to a field relative to the character.
+                const QStringList offset = token.split(QLatin1Char(':'));
+                const Position at = tibia::game::localPlayerPosition();
+                tibia::game::localPlayerAutoWalk(Position(at.x + offset.value(0).toInt(), at.y + offset.value(1).toInt(), at.z));
+                return;
+            }
+            const auto direction = directions.value(token, tibia::client::InvalidDirection);
+            if (direction != tibia::client::InvalidDirection)
+                tibia::game::walk(direction);
+        });
+        QTimer::singleShot(2000, walker, [walker] { walker->start(5); });
+    }
+
     if (m_options.playForSeconds > 0) {
         QTimer::singleShot(m_options.playForSeconds * 1000, this, [this] {
             const Position pos = tibia::game::localPlayerPosition();
@@ -974,6 +1061,7 @@ void TGameClient::setWindow(QQuickWindow* window)
             "tibia.weather.perf.debug=true\n"
             "tibia.rendering.debug=true"));
     }
+    tibia::creatures::enableWalkDebugFromEnv();
 
     // CIP: .
     connect(window, &QQuickWindow::afterAnimating, this, &TGameClient::tick);
@@ -1028,12 +1116,21 @@ void TGameClient::setWindow(QQuickWindow* window)
 
 void TGameClient::tick()
 {
+    // notifyCameraMove / QML during tween advance must not re-enter NFU: a nested
+    // tick would resumeRealTime while the outer advance still holds the predicted
+    // clock, collapsing DurationTween measurements and desyncing feet.
+    if (m_inTick)
+        return;
+    m_inTick = true;
+
     gamecore::poll();
     if (m_soundStorage)
         m_soundStorage->poll();
     m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
-    if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros()))
+    if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {
+        m_inTick = false;
         return;
+    }
 
     // Shown one tick-to-swap time from now, on average over the last frames.
     const qint64 offsetMicros = m_frameDurations->averageNs() / 1000;
@@ -1041,6 +1138,7 @@ void TGameClient::tick()
     m_predictor->setOffset(offsetMicros);
     if (m_updater && m_started)
         m_updater->v2(m_predictor->predict());
+    m_inTick = false;
 }
 
 bool TGameClient::frameSlotReached(qint64 now)

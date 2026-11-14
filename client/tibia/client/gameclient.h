@@ -15,6 +15,7 @@
 #include <QTimer>
 
 #include <memory>
+#include <vector>
 #include <optional>
 
 class QQuickWindow;
@@ -128,6 +129,8 @@ public:
         int playForSeconds = 0;
         /// Said one per second after entering the world (smoke tests).
         QStringList say;
+        /// Directions (n,e,se, ...) or relative goals (dx:dy) to walk after entering the world (smoke tests).
+        QStringList walk;
         /// Records the game session to this file.
         QString recordTo;
         /// Plays this recorded session instead of logging in.
@@ -249,6 +252,8 @@ private:
     std::unique_ptr<worldmap::TNextFrameTimestampPredictor> m_predictor;
     std::unique_ptr<renderer::TNextFrameUpdater> m_updater;
     bool m_frameRateLimitEnabled = false;
+    /// Guards against nested afterAnimating/tick while NFU holds the predicted clock.
+    bool m_inTick = false;
     int m_frameRateLimit = 60;
     int m_activeFrameRateLimit = 0;
     qint64 m_frameGridBase = 0;
@@ -275,6 +280,8 @@ private:
     std::unique_ptr<container::TContainerStorage> m_containerStorage;
     std::unique_ptr<container::TInventoryContainer> m_inventoryContainer;
     std::unique_ptr<worldmap::TWorldmapProtocolMessageHandler> m_worldmapProtocol;
+    /// Queue connections of the static protocol ingresses (reconnected per session).
+    std::vector<QMetaObject::Connection> m_staticIngressConnections;
     std::unique_ptr<chat::TTextStorage> m_textStorage;
     std::unique_ptr<worldmap::TNumericalEffectStorage> m_numericalEffects;
     std::unique_ptr<effects::TEffectStorage> m_effectStorage;

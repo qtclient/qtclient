@@ -86,10 +86,10 @@ private:
     bool filterWindowPointer(QEvent* event);
     /// Top-most QQuickItem under a scene position (front-to-back walk).
     QQuickItem* leafItemAtScenePos(const QPointF& scenePos) const;
-    /// True when `item` is under mapWindow (the FOV MouseArea subtree).
-    bool isMapSubtree(const QQuickItem* item) const;
-    /// True when the leaf (or an ancestor outside the map) accepts mouse buttons —
-    /// real HUD controls (spell slots, SELL/NPC). Empty overlay roots are false.
+    /// True when the leaf is pack/HUD chrome that must not synthesize a map
+    /// click. FOV MouseArea stays false. Items with passMapPointer are skipped
+    /// in leafItemAtScenePos; absorbMapClicks / MouseArea / AbstractButton
+    /// ancestors count as interactive.
     bool isInteractiveOverlay(const QQuickItem* leaf) const;
     void ungrabOverlayPointer(QQuickItem* from) const;
 

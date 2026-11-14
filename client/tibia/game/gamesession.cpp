@@ -7,6 +7,9 @@
 #include <tibia/creatures/creaturestorage.h>
 #include <tibia/game/localplayersessionthing.h>
 #include <tibia/game/mapsession.h>
+#include "input/playermovementintenthandler.h"
+#include "worldmap/worldmapfield.h"
+#include <tibia/worldmap/worldmapstorage.h>
 #include <tibia/config/runtimegameconfig.h>
 #include <framework/core/clock.h>
 #include <tibia/game/sessionhooks.h>
@@ -301,11 +304,6 @@ std::string formatCreatureName(const std::string_view name)
     return qtclientGameHub().formatCreatureName(name);
 }
 
-void setCustomOs(const tibia::client::OperatingSystem_t os)
-{
-    qtclientGameHub().setCustomOs(os);
-}
-
 uint32_t attackingCreatureId()
 {
     return qtclientGameHub().getAttackingCreatureId();
@@ -411,9 +409,15 @@ void processPlayerHelpers(uint16_t helpers)
     qtclientGameHub().processPlayerHelpers(helpers);
 }
 
-void processAttackCancel(uint32_t seq)
+void processUpdateTarget(const uint32_t seq, const uint32_t targetId)
 {
-    qtclientGameHub().processAttackCancel(seq);
+    qtclientGameHub().processUpdateTarget(seq, targetId);
+}
+
+void processPlayerTactics(const tibia::client::ChaseModes chaseMode, const bool safeMode, const tibia::client::PVPModes pvpMode)
+{
+    auto& hub = qtclientGameHub();
+    hub.processPlayerModes(hub.getFightMode(), chaseMode, safeMode, pvpMode);
 }
 
 void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
@@ -585,13 +589,9 @@ void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_vie
 void processOpenOutfitWindow(const Outfit& currentOutfit,
                              const std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>& outfitList,
                              const std::vector<std::tuple<uint16_t, std::string, uint8_t>>& mountList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& familiarList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& wingsList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& aurasList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& effectsList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& shaderList)
+                             const std::vector<std::tuple<uint16_t, std::string>>& familiarList)
 {
-    qtclientGameHub().processOpenOutfitWindow(currentOutfit, outfitList, mountList, familiarList, wingsList, aurasList, effectsList, shaderList);
+    qtclientGameHub().processOpenOutfitWindow(currentOutfit, outfitList, mountList, familiarList);
 }
 
 void processOpenNpcTrade(const std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items)
@@ -1043,37 +1043,106 @@ void openLocalPlayerInventory(const tibia::client::InventorySlot slot)
     openAt(inventoryWireMapPos(slot), item.typeId, 0);
 }
 
+namespace {
+
+tibia::input::TPlayerMovementIntentHandler* movementIntent()
+{
+    return qtclientGameHub().movementIntent();
+}
+
+}
+
 void localPlayerStopAutoWalk()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->stopAutoWalk();
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
+        intent->stopWalking();
 }
 
 bool localPlayerIsAutoWalking()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->isAutoWalking();
-    return false;
+    const tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
+    return intent && intent->hasGoal();
 }
 
-void localPlayerCancelPredictedStepCollision()
+bool localPlayerHasAutoWalkDirs()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->cancelPredictedStepCollision();
+    return localPlayerIsAutoWalking();
 }
 
-bool localPlayerAutoWalk(const Position& goal, const bool retry,
-                         const tibia::client::AutoWalkPathMode pathMode)
+bool localPlayerIsWalking()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->autoWalk(goal, retry, pathMode);
-    return false;
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    const auto row = storage ? storage->creatureAt(localPlayerId()) : nullptr;
+    return row && row->isMoving();
 }
 
-bool localPlayerAutoWalk(const MapPos goal, const bool retry,
-                         const tibia::client::AutoWalkPathMode pathMode)
+bool localPlayerIsPreWalking()
+{
+    const tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
+    return intent && intent->isPredicting();
+}
+
+bool localPlayerAutoWalk(const Position& goal, const bool retry, const tibia::client::AutoWalkPathMode pathMode,
+                         const bool enterUnwalkableGoal)
+{
+    (void)retry;
+    (void)pathMode;
+    tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
+    if (!intent || !goal.isValid() || !isOnline())
+        return false;
+    intent->walkTo(tibia::worldmap::TWorldMapCoordinate(goal), enterUnwalkableGoal);
+    return intent->hasGoal();
+}
+
+bool localPlayerAutoWalk(const MapPos goal, const bool retry, const tibia::client::AutoWalkPathMode pathMode)
 {
     return localPlayerAutoWalk(Position(goal.x, goal.y, static_cast<uint8_t>(goal.z)), retry, pathMode);
+}
+
+void localPlayerHoldDirection(const tibia::client::Direction direction)
+{
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent(); intent && isOnline())
+        intent->walkInDirection(tibia::input::toMovementDirection(direction));
+}
+
+void localPlayerRotate(const tibia::client::Direction direction)
+{
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent(); intent && isOnline() && direction <= tibia::client::West)
+        intent->rotate(static_cast<tibia::creatures::ECreatureLookDirection>(direction));
+}
+
+void localPlayerClearMovementGoal()
+{
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
+        intent->clearGoal();
+}
+
+void localPlayerReleaseDirection()
+{
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
+        intent->stopIntent();
+}
+
+void localPlayerMovementTick()
+{
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent(); intent && isOnline())
+        intent->tick();
+}
+
+void onLocalPlayerPositionChanged(const Position& position)
+{
+    if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
+        intent->onPositionChanged(tibia::worldmap::TWorldMapCoordinate(position));
+}
+
+void localPlayerCancelWalk(const tibia::client::Direction direction)
+{
+    tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
+    if (!intent)
+        return;
+    const auto look = direction <= tibia::client::West ? static_cast<tibia::creatures::ECreatureLookDirection>(direction)
+                                                       : static_cast<tibia::creatures::ECreatureLookDirection>(localPlayerDirection());
+    intent->onCancelWalk(look);
 }
 
 uint8_t localPlayerBlessVisualState()

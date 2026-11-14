@@ -55,7 +55,6 @@ TPreventAutoCloseEventFilter::TPreventAutoCloseEventFilter(QObject* parent)
     : cip::tibia::gamewindow::TPreventAutoCloseEventFilter(parent)
 {}
 
-// b1/acfae5baf612c44e
 bool TPreventAutoCloseEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     // CIP : any mouse or key input keeps the dialog open.
@@ -115,7 +114,6 @@ void TTargetSelectionEventFilter::emitTargetSelected(const QPointF& scenePositio
     }
 }
 
-// b1/0b0c4f0958f30650
 bool TTargetSelectionEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
     // CIP .
@@ -429,7 +427,6 @@ void TPassiveAbilityListDataModelSortFilterProxy::setNameFilter(const QString& f
     Q_EMIT configChanged();
 }
 
-// b1/bfdc64ceefba0c03
 bool TPassiveAbilityListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     if (m_nameFilter.isEmpty())
@@ -516,7 +513,6 @@ TPartyHuntMembersListModelSortFilterProxy::TPartyHuntMembersListModelSortFilterP
     setDynamicSortFilter(true);
 }
 
-// b1/c8e181ea3487e944
 bool TPartyHuntMembersListModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     const QString ln = sourceModel()->data(left, Qt::UserRole + 1).toString();
@@ -1022,7 +1018,6 @@ void TChatChannelFilterController::syncFromChannel(const bool canSubscribe, cons
     Q_EMIT chatChannelChanged();
 }
 
-// b1/ae1ce43a59186cce
 bool TChatChannelFilterController::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
     Q_UNUSED(sourceRow);

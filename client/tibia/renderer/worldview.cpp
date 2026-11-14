@@ -191,33 +191,49 @@ QQuickItem* TWorldView::leafItemAtScenePos(const QPointF& scenePos) const
             if (QQuickItem* hit = self(self, *it))
                 return hit;
         }
+        // Full-bleed pack roots (IdleotHud) set passMapPointer so empty space
+        // falls through to the FOV MouseArea instead of owning the leaf.
+        if (root->property("passMapPointer").toBool()
+            && root->acceptedMouseButtons() == Qt::NoButton
+            && !root->inherits("QQuickMouseArea")
+            && !root->inherits("QQuickAbstractButton"))
+            return nullptr;
         return root;
     };
     return walk(walk, m_pointerWindow->contentItem());
 }
 
-bool TWorldView::isMapSubtree(const QQuickItem* item) const
-{
-    for (const QQuickItem* p = item; p; p = p->parentItem()) {
-        if (p == m_mapWindow || p == m_mapMouseArea)
-            return true;
-    }
-    return false;
-}
-
 bool TWorldView::isInteractiveOverlay(const QQuickItem* leaf) const
 {
-    if (!leaf || isMapSubtree(leaf))
+    if (!leaf)
         return false;
+    // FOV MouseArea subtree is real map input — never treat as overlay chrome.
     for (const QQuickItem* p = leaf; p; p = p->parentItem()) {
-        if (p == m_mapWindow || p == m_mapMouseArea)
+        if (p == m_mapMouseArea)
             return false;
+    }
+    // Pack HUD (TeamHud, AutomationBar, TopBar, …) is a sibling of the FOV
+    // frame under mapWindow. Treating every mapWindow child as non-interactive
+    // used to synthesize a walk on HUD button release. Walk ancestors for a
+    // real control; absorbMapClicks marks opaque chrome (HudClickSink hosts).
+    bool underMapWindow = false;
+    for (const QQuickItem* p = leaf; p; p = p->parentItem()) {
+        if (p == m_mapWindow) {
+            underMapWindow = true;
+            break;
+        }
+        if (p->property("absorbMapClicks").toBool() || p->property("absorbClicks").toBool())
+            return true;
         if (p->acceptedMouseButtons() != Qt::NoButton)
             return true;
         if (p->inherits("QQuickMouseArea") || p->inherits("QQuickAbstractButton"))
             return true;
     }
-    return false;
+    if (underMapWindow)
+        return false;
+    // Outside the FOV frame: any hit that survived passMapPointer is chrome
+    // (or pane chrome) — never synthesize a walk through it.
+    return true;
 }
 
 void TWorldView::ungrabOverlayPointer(QQuickItem* from) const

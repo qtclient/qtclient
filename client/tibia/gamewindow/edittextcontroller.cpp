@@ -47,7 +47,6 @@ void TEditTextUIData::set(const QString& caption, const QString& description, co
     m_showReportButton = reportButton;
 }
 
-// b1/974ec3cc4d589c27
 TEditTextController::TEditTextController(QObject* parent)
     : TDialogController(QStringLiteral("EditTextDialog.qml"), parent)
 {
@@ -74,7 +73,6 @@ void TEditTextController::showItemText(const uint32_t id, const uint itemId, con
     reopen();
 }
 
-// b1/c40fe5e8ea203d64
 void TEditTextController::showEditList(const uint32_t id, const uint8_t doorId, const QString& text)
 {
     m_mode = EMode::EditList;

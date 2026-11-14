@@ -23,8 +23,9 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 };
 
-/// CIP input::TDiscardMouseWheelEventFilter (eventFilter): eats
-/// wheel events so dialogs / overlays do not scroll the world under them.
+/// CIP input::TDiscardMouseWheelEventFilter (eventFilter): eats wheel events
+/// on the object it is installed on (dialogs / overlays). Do not install on
+/// the QQuickWindow — that blocks container and list scrolling.
 class TDiscardMouseWheelEventFilter final : public cip::tibia::input::TDiscardMouseWheelEventFilter
 {
     Q_OBJECT

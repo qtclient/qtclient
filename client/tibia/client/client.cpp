@@ -26,7 +26,6 @@
 #include <tibia/config/runtimegameconfig.h>
 #include "tibia/assets/things.h"
 #include <tibia/minimap/satellitemap.h>
-#include "tibia/creatures/paperdollmanager.h"
 
 Client g_client;
 
@@ -45,6 +44,5 @@ void Client::terminate()
     tibia::game::terminateMap();
     g_satelliteMap.terminate();
     g_things.terminate();
-    g_paperdolls.clear();
     tibia::config::terminateRuntimeGameConfig();
 }

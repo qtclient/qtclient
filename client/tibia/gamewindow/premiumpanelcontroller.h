@@ -48,7 +48,7 @@ private:
 ///
 /// The premium time is CIP's game::TPremiumTimeStorage (vtable),
 /// fed from the player basic data (premium flag and expiration; CIP's
-/// parsePlayerInfo publishes onPremiumExpiration on the notify bus).
+/// The PlayerDataBasic handler publishes onPremiumExpiration on the notify bus).
 class TPremiumPanelController final : public cip::tibia::gamewindow::TPremiumPanelController
 {
     Q_OBJECT

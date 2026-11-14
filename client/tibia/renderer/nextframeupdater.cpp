@@ -5,6 +5,7 @@
 #include <tibia/creatures/movementtweens.h>
 #include <tibia/game/gamesession.h>
 #include "worldmap/numericaleffectstorage.h"
+#include "effects/effectstorage.h"
 
 namespace tibia::renderer {
 
@@ -15,14 +16,15 @@ TNextFrameUpdater::TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& pro
     , m_numericalEffects(numericalEffects)
 {}
 
-// b1/b1d06504a316841f
 void TNextFrameUpdater::v2(const qint64 timestampMs)
 {
     tibia::creatures::advanceAllMovementTweens(timestampMs);
     m_texts.update(timestampMs, tibia::game::localPlayerPosition());
     m_numericalEffects.update(timestampMs);
+    effects::TEffectStorage::instance().update(timestampMs);
     m_provider.advance();
     tibia::creatures::resumeMovementClock();
+    tibia::game::localPlayerMovementTick();
 }
 
 }

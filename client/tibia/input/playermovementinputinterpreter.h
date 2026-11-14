@@ -1,12 +1,9 @@
 #pragma once
 
-#include "client/gamecore.h"
-
 #include <cip_gen.h>
 
 #include <client/const.h>
 
-#include <QElapsedTimer>
 #include <QPointer>
 
 #include <array>
@@ -16,34 +13,28 @@
 class QKeyEvent;
 class QQuickItem;
 class QQuickWindow;
-class QTimer;
 
 namespace tibia {
 namespace input {
 
-/// Keyboard walking (CIP: TKeyEventHandler feeding the key
-/// status storage, read by TPlayerMovementInputInterpreter). The keys of a
-/// direction : the arrows (keypad flag ignored, list
-/// DAT_1077b2638), keypad Home / PageUp / End / PageDown for the diagonals,
-/// and the current preset's single-key Go* bindings of the active chat mode
-/// (key code only, modifiers dropped, keypad flag kept). A direction walks
-/// with no Shift/Ctrl/Alt/Meta/AltGr held (DAT_1077b2608); a cardinal one
-/// turns instead when an enabled rotateWith* modifier is held and no disabled
-/// one is . Key events are never consumed.
+/// Keyboard walking (CIP: TKeyEventHandler feeding the key status storage,
+/// read by TPlayerMovementInputInterpreter). The keys of a direction: the
+/// arrows (keypad flag ignored), keypad Home / PageUp / End / PageDown for the
+/// diagonals, and the current preset's single-key Go* bindings of the active
+/// chat mode (key code only, modifiers dropped, keypad flag kept). A direction
+/// walks with no Shift/Ctrl/Alt/Meta/AltGr held; a cardinal one turns instead
+/// when an enabled rotateWith* modifier is held and no disabled one is. Key
+/// events are never consumed.
 ///
-/// Holding a direction repeats it like CIP's TPlayerMovementIntentHandler tick
-/// : one step on the press, the next after the keyboard delay
-/// (keyboardDelayUseDefault ? 250 ms : keyboardDelayMs), then
-/// every 50 ms; the OS auto-repeat is ignored. A step waits for the walk
-/// calculator (the last request is kept until then). A step onto a
-/// known blocked field is not sent : with
-/// alwaysTurnTowardsMoveDirection the character turns to face it
-/// (: diagonals face east / west) if it does not already,
-/// otherwise "sorry_not_possible" shows.
-///
-/// Absorbs CIP TKeyEventHandler + TPlayerMovementIntentHandler direction-hold
-/// roles. Live Target intent + continuous replan tick live on
-/// TPlayerMovementGameActionHandler (CIP Target).
+/// The key status (CIP TKeyboardStatusStorage) only remembers the last event of
+/// a tracked key (the direction keys and the enabled rotateWith* modifiers):
+/// a press replaces it with that key plus the modifiers held, a release of any
+/// tracked key empties it. So the last pressed key wins, and releasing any
+/// movement key stops, even while another is still held. The newest status key
+/// that is a direction key is matched in the order N, S, W, E, NW, NE, SW, SE
+/// to walk, else N, E, W, S to turn (TKeyboardInputToGameActionConverter),
+/// else stop. A changed intent goes to the movement intent handler, which
+/// repeats a held direction.
 class TPlayerMovementInputInterpreter final : public cip::tibia::input::TPlayerMovementInputInterpreter
 {
     Q_OBJECT
@@ -71,18 +62,26 @@ private:
 
     void onHotkeyOptionsChanged();
     void onOptionsChanged();
-    void onKeyPressed(const QKeyEvent* key);
-    void onKeyReleased(const QKeyEvent* key);
-    /// The direction `event`'s key walks in the active chat mode, or InvalidDirection.
-    tibia::client::Direction directionOf(const QKeyEvent* event) const;
-    /// UI / focus gate only — step authority is creatures::canBeginStep.
+    enum class EIntentKind { Stop, Walk, Rotate };
+    struct TIntent
+    {
+        EIntentKind kind = EIntentKind::Stop;
+        tibia::client::Direction direction = tibia::client::InvalidDirection;
+        bool operator==(const TIntent&) const = default;
+    };
+
+    void onKeyEvent(const QKeyEvent* event, bool pressed);
+    void update();
+    /// The direction `key` walks in the active chat mode, or InvalidDirection.
+    tibia::client::Direction directionOf(TKey key) const;
+    /// A key the status remembers: a direction key, or an enabled rotate modifier.
+    bool isTracked(const TKey& key) const;
+    /// The status holds `key` (CIP TKeyboardStatusStorage::v12).
+    bool statusHolds(int key) const;
     bool inputAllowsWalk() const;
-    bool rotates(Qt::KeyboardModifiers modifiers) const;
-    void stopRepeat();
-    /// CIP .
-    void onTick();
-    /// CIP vtable slot 0xd0: one step, deferred while the character cannot walk.
-    void step(tibia::client::Direction direction);
+    /// CIP: no disabled rotateWith* modifier in the status, and an enabled one.
+    bool rotates() const;
+    void release();
 
     QPointer<QQuickWindow> m_window;
     QPointer<QQuickItem> m_chatItem;
@@ -92,16 +91,10 @@ private:
     bool m_rotateWithCtrl = true;
     bool m_rotateWithShift = false;
     bool m_rotateWithAlt = false;
-    bool m_turnTowardsMoveDirection = false;
-    int m_keyboardDelayMs = 250;
 
-    QTimer* m_timer = nullptr;
-    std::vector<client::gamecore::Hook> m_hooks;
-    QElapsedTimer m_elapsed;
-    tibia::client::Direction m_held = tibia::client::InvalidDirection;
-    int m_heldKey = 0;
-    int m_repeats = 0;
-    tibia::client::Direction m_pending = tibia::client::InvalidDirection;
+    /// The key status, oldest first.
+    std::vector<TKey> m_status;
+    TIntent m_intent;
 };
 
 }

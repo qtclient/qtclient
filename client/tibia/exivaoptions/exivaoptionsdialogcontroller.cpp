@@ -74,7 +74,6 @@ bool TExivaOptionsDialogController::handleAction(const input::TGameAction& actio
     return true;
 }
 
-// b1/2330ab1a6e3290a1
 void TExivaOptionsDialogController::showDialog()
 {
     if (m_worldType && m_worldType() != WorldTypeOptionalPvp) {
@@ -93,7 +92,6 @@ void TExivaOptionsDialogController::closeDialog()
     dialog()->close();
 }
 
-// b1/59148b1026fdb311
 void TExivaOptionsDialogController::closeButtonClicked()
 {
     closeDialog();
@@ -109,14 +107,12 @@ void TExivaOptionsDialogController::applyButtonClicked(const QString& CharacterW
     m_storage->update(options, lines(CharacterWhitelistString), lines(GuildWhitelistString));
 }
 
-// b1/6e6120ea4e1438c8
 void TExivaOptionsDialogController::onAllowEveryoneChanged()
 {
     m_allowEveryone = m_storage && m_storage->options().allowAll;
     Q_EMIT allowEveryoneChanged();
 }
 
-// b1/3d81c8862ca729a3
 void TExivaOptionsDialogController::onAllowedGroupsChanged()
 {
     const TExivaOptionsStorage::Options options = m_storage ? m_storage->options() : TExivaOptionsStorage::Options{};

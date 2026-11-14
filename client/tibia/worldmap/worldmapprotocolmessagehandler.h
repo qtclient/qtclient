@@ -10,10 +10,25 @@
 
 #include <QByteArray>
 
+#include <google/protobuf/repeated_ptr_field.h>
+
 namespace tibia {
 namespace protobuf {
 namespace protocol {
 class GameserverMessageAmbientLight;
+class GameserverMessageBottomFloor;
+class GameserverMessageBottomRow;
+class GameserverMessageChangeOnMap;
+class GameserverMessageCreateOnMap;
+class GameserverMessageDeleteOnMap;
+class GameserverMessageFieldData;
+class GameserverMessageFullMap;
+class GameserverMessageLeftColumn;
+class GameserverMessageRightColumn;
+class GameserverMessageTopFloor;
+class GameserverMessageTopRow;
+class ProtocolMapField;
+class ProtocolMapObject;
 }
 }
 }
@@ -46,6 +61,30 @@ public:
                                 int stackPos);
     void applyCreatureIdToField(uint32_t creatureId, const Position& position, int stackPos);
 
+    void handleFullMapMessage(const ::tibia::protobuf::protocol::GameserverMessageFullMap& message);
+    void handleTopRowMessage(const ::tibia::protobuf::protocol::GameserverMessageTopRow& message);
+    void handleRightColumnMessage(const ::tibia::protobuf::protocol::GameserverMessageRightColumn& message);
+    void handleBottomRowMessage(const ::tibia::protobuf::protocol::GameserverMessageBottomRow& message);
+    void handleLeftColumnMessage(const ::tibia::protobuf::protocol::GameserverMessageLeftColumn& message);
+    void handleTopFloorMessage(const ::tibia::protobuf::protocol::GameserverMessageTopFloor& message);
+    void handleBottomFloorMessage(const ::tibia::protobuf::protocol::GameserverMessageBottomFloor& message);
+    void handleFieldDataMessage(const ::tibia::protobuf::protocol::GameserverMessageFieldData& message);
+    void handleCreateOnMapMessage(const ::tibia::protobuf::protocol::GameserverMessageCreateOnMap& message);
+    void handleChangeOnMapMessage(const ::tibia::protobuf::protocol::GameserverMessageChangeOnMap& message);
+    void handleDeleteOnMapMessage(const ::tibia::protobuf::protocol::GameserverMessageDeleteOnMap& message);
+
+    /// A floor description (product server): its fields, re-centring on `center` when it is the view's floor.
+    void handleFloorDescription(const google::protobuf::RepeatedPtrField<::tibia::protobuf::protocol::ProtocolMapField>& fields,
+                                const Position& center, bool viewFloor);
+    /// Replace a field's content with `field`'s objects (none clears it).
+    void applyField(const ::tibia::protobuf::protocol::ProtocolMapField& field);
+    /// Place one object at `position` / `stackPos`.
+    void applyObject(const ::tibia::protobuf::protocol::ProtocolMapObject& object, const Position& position, int stackPos);
+    /// The first full map of the session arrived.
+    bool isMapKnown() const { return m_mapKnown; }
+    /// The view is centred on `position`: the first time, also the local player's position.
+    void centerOn(const Position& position);
+
     /// CIP slot: AmbientLight (S 0x82 / 130) — native Q→H apply (skips classic bridge).
     void handleAmbientLightMessage(
         const ::tibia::protobuf::protocol::GameserverMessageAmbientLight& AmbientLightMessage);
@@ -65,7 +104,10 @@ Q_SIGNALS:
     void publishGameAction();
 
 private:
+    void handleSlice(const google::protobuf::RepeatedPtrField<::tibia::protobuf::protocol::ProtocolMapField>& fields,
+                     const Position& center);
     TWorldMapStorage* m_storage = nullptr;
+    bool m_mapKnown = false;
 };
 
 }

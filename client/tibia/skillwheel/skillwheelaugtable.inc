@@ -1,4 +1,4 @@
-// Generated from the CIP client augmentation table (CIP 0x10110ec70, hash 0x1077b3778)
+// Generated from the CIP client augmentation table.
 // by tmp/re/tibia/gap-cip-systems/aug/{extract_aug,gen_cpp}.py. Do not edit by hand.
 
 constexpr TAugmentation Augmentations[] = {

@@ -38,9 +38,10 @@ namespace tibia::creatures {
 class TCreature;
 }
 
-class LocalPlayerGoPath;
 
 namespace tibia::game {
+/// Same floor, at most one field away.
+bool isOneStep(const Position& from, const Position& to);
 void wireLocalPlayerOnAppear(LocalPlayerSessionThing& player);
 void wireLocalPlayerOnDisappear(LocalPlayerSessionThing& player);
 }
@@ -84,26 +85,13 @@ public:
     bool isRemoved() const { return m_removed; }
     bool isWalking();
     void stopWalk();
+    /// Drop a queued onDisappear→stopWalk without touching the live tween.
+    void cancelPendingDisappear();
     Point getWalkOffset();
     uint16_t getStepDuration(bool ignoreDiagonal = false,
                              tibia::client::Direction dir = tibia::client::InvalidDirection);
     Position getServerPosition() const { return m_position; }
 
-    void unlockWalk();
-    /// Server Stop opcode (not SnapBack): clear auto-walk / Target; do not retry.
-    void stopPendingWalk();
-    void lockWalk(uint16_t millis = 250);
-    bool isWalkLocked();
-    /// Clear client GoPath / Target. `notifyServer` sends Stop (CipSoft takeover
-    /// action 0x94 + sendStop) so the server aborts an in-flight GoPath.
-    void stopAutoWalk(bool notifyServer = false);
-    /// Armed GoPath dirs still to predict (replan “live” check).
-    bool hasAutoWalkDirs();
-
-    /// `pathMode`: Minimap (default click), Cyclopedia (Shift+map), Travel (TravelRouter).
-    bool autoWalk(const Position& destination, bool retry = false,
-                  tibia::client::AutoWalkPathMode pathMode = tibia::client::AutoWalkPathMinimap);
-    bool canWalk(bool ignoreLock = false);
 
     void setStates(uint64_t states);
     auto getStates() { return m_states; }
@@ -132,6 +120,8 @@ public:
     bool isKnown() { return m_known; }
     bool isServerWalking() { return m_serverWalk; }
     bool isPreWalking();
+    bool isAutoWalking();
+    bool hasAutoWalkDirs();
 
     bool isSupplyStashAvailable() const { return m_isSupplyStashAvailable; }
     void setSupplyStashAvailable(bool available) {
@@ -140,7 +130,6 @@ public:
     bool isMarketAvailable() const { return m_isMarketAvailable; }
     void setMarketAvailable(bool available) { m_isMarketAvailable = available; }
 
-    bool isAutoWalking();
     bool isPendingGame() const { return m_pending; }
     bool isParalyzed() const { return (m_states & tibia::client::IconParalyze) == tibia::client::IconParalyze; }
 
@@ -148,25 +137,11 @@ public:
 
     void onPositionChange(const Position& newPos, const Position& oldPos) override;
 
-    /// CipSoft client prediction: begin TCreatureMovementTween before wire confirm.
-    void predictStep(tibia::client::Direction direction);
-    /// Cancel predicted step after NFU finds an impassable storage row on the tile.
-    void cancelPredictedStepCollision();
-    /// CIP GoPath: arm remaining dirs for client-side step prediction (≤ walkMaxSteps ahead).
-    void armGoPathDirs(const std::vector<tibia::client::Direction>& dirs);
-    /// Predict the next armed GoPath step when canWalk allows (tween end / NFU).
-    bool tryBeginNextGoPathStep();
-    /// CipSoft: TCreatureMovementTween terminate → GoPath chain / deferred chunk.
-    void onMovementTweenTerminated();
-
     Position getPosition() override;
-    void resetPreWalk();
-    /// CipSoft floor change / map description teleport — abort tween + prewalks.
+    /// Floor change or teleport: the motion and the walk goal end.
     void handleTeleport();
-    size_t getPreWalkingSize();
     /// Mirror HUD/session stats onto the storage row (keep-alive); walk state stays on TCreature.
     void syncStorageRow(tibia::creatures::TCreature& row);
-    void registerAdjustInvalidPosEvent();
 
 private:
     void goPathResetLastMapDuration() { m_lastMapDuration = -1; }
@@ -178,20 +153,16 @@ private:
     }
     void goPathSetServerWalk(const bool walking) { m_serverWalk = walking; }
 
-    friend class LocalPlayerGoPath;
     friend class Game;
-    LocalPlayerGoPath& goPath();
     template<typename... T>
     void publish(const std::string_view field, const T&... args)
     {
         tibia::game::notify(field, args...);
     }
 
-    void onWalking();
 
     void walk(const Position& oldPos, const Position& newPos);
     void terminateWalk();
-    void cancelWalk(tibia::client::Direction direction = tibia::client::InvalidDirection);
 
     uint32_t m_id{ 0 };
     uint32_t m_masterId{ 0 };
@@ -201,7 +172,6 @@ private:
     uint8_t m_healthPercent{ 101 };
     uint16_t m_speed{ 0 };
     uint16_t m_baseSpeed{ 0 };
-    uint16_t m_calculatedStepSpeed{ 0 };
     tibia::client::Direction m_direction{ tibia::client::South };
     tibia::client::Direction m_walkTurnDirection{ tibia::client::InvalidDirection };
     Outfit m_outfit;
@@ -210,19 +180,6 @@ private:
     bool m_removed{ true };
     Position m_oldPosition;
     EventPtr m_disappearEvent;
-    struct StepDurationCache
-    {
-        uint16_t speed{ 0 };
-        uint16_t groundSpeed{ 0 };
-        uint16_t duration{ 0 };
-        uint16_t walkDuration{ 0 };
-        uint16_t diagonalDuration{ 0 };
-        uint16_t getDuration(tibia::client::Direction dir) const
-        {
-            return Position::isDiagonal(dir) ? diagonalDuration : duration;
-        }
-    };
-    StepDurationCache m_stepCache;
 
     bool m_walking{ false };
     int16_t m_lastMapDuration{ -1 };

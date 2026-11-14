@@ -15,9 +15,10 @@ namespace renderer {
 class TRenderVolumeProvider : public ::tibia::CipTyped
 {
 public:
-    /// Plus-shape cover scan around `camera` (CIP mode 0).
+    /// Plus-shape cover scan around `camera` (CIP `v10` mode 0).
     static uint8_t firstVisibleFloor(const Position& camera);
     static uint8_t lastVisibleFloor(const Position& camera);
+    static uint8_t v10(const Position& camera) { return firstVisibleFloor(camera); }
 };
 
 }

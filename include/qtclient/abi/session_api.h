@@ -131,7 +131,6 @@ typedef struct QtClientSessionApiV1 {
 
     int (*cip_feature)(int feature);
     void (*enable_feature)(int feature);
-    void (*set_custom_os)(int operating_system);
 
     /** --- Phase 2 session peel (additive) --- */
 
@@ -249,6 +248,10 @@ typedef struct QtClientSessionApiV1 {
     /** CIP pathfinder avoid set (SnapBack / levitate mountain face). */
     void (*set_path_avoid)(QtClientMapPos pos, int avoid);
     void (*clear_path_avoids)(void);
+
+    /** Show / hide a registered attached effect on a creature (product transport). */
+    void (*attach_creature_effect)(uint32_t creature_id, uint16_t effect_id);
+    void (*detach_creature_effect)(uint32_t creature_id, uint16_t effect_id);
 } QtClientSessionApiV1;
 
 #ifdef __cplusplus

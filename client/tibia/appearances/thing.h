@@ -66,8 +66,6 @@ public:
     bool isCommon() { return !isGround() && !isGroundBorder() && !isOnTop() && !isCreature() && !isOnBottom(); }
     void canDraw(const bool canDraw) { m_canDraw = canDraw; }
 
-    Animator* getAnimator() const;
-    Animator* getIdleAnimator() const;
 
     virtual Point getDisplacement() const;
     virtual int getDisplacementX() const;
@@ -172,11 +170,6 @@ public:
 
     bool canDraw(const Color& color = Color::white) const;
 
-    void setShader(std::string_view name);
-    uint8_t getShaderId() const { return m_shaderId; }
-
-    bool hasShader() const { return m_shaderId > 0; }
-
     virtual void onPositionChange(const Position& /*newPos*/, const Position& /*oldPos*/) {}
     virtual void onAppear() {}
     virtual void onDisappear() {};
@@ -239,7 +232,6 @@ protected:
     uint8_t m_numPatternZ{ 0 };
 
     // Shader
-    uint8_t m_shaderId{ 0 };
 
 private:
     void lua_setMarked(const std::string_view color) { setMarked(Color(color)); }

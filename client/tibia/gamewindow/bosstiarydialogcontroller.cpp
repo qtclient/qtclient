@@ -74,7 +74,6 @@ QHash<int, QByteArray> TBosstiaryBossModel::roleNames() const
     };
 }
 
-// b1/3424b1cdf68632be
 void TBosstiaryBossModel::setEntries(std::vector<cyclopedia::TBosstiaryEntry> entries)
 {
     const int oldCount = rowCount();
@@ -144,7 +143,6 @@ void TBosstiaryDialogController::applyContext(const Context& context)
     Q_EMIT filterChanged();
 }
 
-// b1/4a288b083bf38be2
 void TBosstiaryDialogController::showRace(const int raceId)
 {
     Context context;
@@ -179,7 +177,6 @@ BOSSTIARY_FILTER_SETTER(setShowMasteryBosses, m_showMasteryBosses, bool)
 
 #undef BOSSTIARY_FILTER_SETTER
 
-// b1/815e137ffacfdce8
 void TBosstiaryDialogController::showDialogTab()
 {
     if (m_pendingContext) {
@@ -218,7 +215,6 @@ bool TBosstiaryDialogController::accepts(const cyclopedia::TBosstiaryEntry& entr
     return m_showMasteryBosses || kills < mastery;
 }
 
-// b1/23b550c7e7157e2a
 void TBosstiaryDialogController::rebuild()
 {
     std::vector<cyclopedia::TBosstiaryEntry> filtered;
@@ -238,7 +234,6 @@ void TBosstiaryDialogController::rebuild()
     Q_EMIT pagesChanged();
 }
 
-// b1/402f0516a0266afc
 void TBosstiaryDialogController::requestPreviousPage()
 {
     m_currentPage = std::max(1, m_currentPage - 1);
@@ -309,7 +304,6 @@ qlonglong TBossSlotsDialogController::playerGold() const
     return static_cast<qlonglong>(cyclopedia::TBestiaryStorage::goldBalance());
 }
 
-// b1/0078a26f7aca6210
 void TBossSlotsDialogController::showDialogTab()
 {
     m_firstList->resetFilter();
@@ -317,7 +311,6 @@ void TBossSlotsDialogController::showDialogTab()
     tibia::game::requestBossSlootInfo();
 }
 
-// b1/72c39a90b11622cd
 void TBossSlotsDialogController::onClearClicked(const int SlotNumber)
 {
     tibia::game::requestBossSlotAction(SlotNumber != 1 ? 2 : 1, 0);
@@ -329,7 +322,6 @@ void TBossSlotsDialogController::onSelectClicked(const int SlotNumber, const int
     (SlotNumber != 1 ? m_secondList : m_firstList)->resetFilter();
 }
 
-// b1/4445a2aa7805ed22
 void TBossSlotsDialogController::update()
 {
     const cyclopedia::TBossSlotsData& slots = m_storage.slots();
