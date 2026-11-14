@@ -3,12 +3,18 @@
 # hash-pinned — bump when sync QML needs newer native types). Settings is a
 # small stub: CipSoft QML still references it; the public module does not
 # ship the type.
-set(LC_QML_ROOT "${CIP_ROOT}/client/upstream/qml/QtQuick/LegacyControls")
+# Prefer CipSoftDir kind-A (cipsoft-data / QTCLIENT_CIPSOFT_DIR); fall back to
+# vendored upstream/qml for standalone qtclient CI checkouts.
+if(DEFINED CIPSOFT_QML_DIR AND EXISTS "${CIPSOFT_QML_DIR}/QtQuick/LegacyControls/BasicTableView.qml")
+  set(LC_QML_ROOT "${CIPSOFT_QML_DIR}/QtQuick/LegacyControls")
+else()
+  set(LC_QML_ROOT "${CIP_ROOT}/client/upstream/qml/QtQuick/LegacyControls")
+endif()
 set(LC_CXX_ROOT "${CIP_ROOT}/third_party/Qt5LegacyControls/QtQuick/LegacyControls")
 if(NOT EXISTS "${LC_QML_ROOT}/BasicTableView.qml")
   message(FATAL_ERROR
-    "tibia: missing ${LC_QML_ROOT} — run make tibia-sync (carves LegacyControls "
-    "QML from the installed Tibia.app plugin)")
+    "tibia: missing ${LC_QML_ROOT} — set QTCLIENT_CIPSOFT_DIR or run make tibia-sync "
+    "(carves LegacyControls QML from the installed Tibia.app plugin)")
 endif()
 if(NOT EXISTS "${LC_CXX_ROOT}/abstractstyle.cpp")
   message(FATAL_ERROR

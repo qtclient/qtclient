@@ -392,10 +392,3 @@ tools/cmake-*-osx/
 # Local Rust/Qt experiment tree (multi-GB build artifacts)
 tools/rust-qt-spikes/
 
-# C5: kind A lives in QTCLIENT_CIPSOFT_DIR / apps/cipsoft-data (not tracked)
-/client/upstream/qml/
-/client/upstream/shaders/
-/client/upstream/strings/
-/client/upstream/conf/
-/client/upstream/proto/
-/client/upstream/cip_stamps/
