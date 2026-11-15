@@ -292,7 +292,7 @@ if(TIBIA_WITH_GAMECORE)
     protocol/miscwire.cpp protocol/miscwire.h
     protocol/featurewire.cpp protocol/featurewire.h
     protocol/protocolciptypes.cpp protocol/protocolciptypes.h
-    protocol/protocolmessagequeue.cpp protocol/protocolmessagequeue.h
+    protocol/protocolmessagequeue.cpp
     protocol/protocolclassicwire.h
     protocol/inventoryitemwire.cpp protocol/inventoryitemwire.h
     assets/assetsciptypes.cpp assets/assetsciptypes.h
@@ -671,6 +671,11 @@ if(TIBIA_WITH_GAMECORE)
       set_source_files_properties("${_engine_src}" PROPERTIES SKIP_AUTOMOC ON)
     endif()
   endforeach()
+  # protocolciptypes.h pulls in protocolmessagequeue.h (Q_OBJECT). Do not run a
+  # second AUTOMOC pass here; protocolmessagequeue.cpp is the sole moc entry point.
+  set_source_files_properties(
+    "${CMAKE_CURRENT_SOURCE_DIR}/protocol/protocolciptypes.cpp"
+    PROPERTIES SKIP_AUTOMOC ON)
   # Engine translation units expect the old framework preamble (format, numbers,
   # asio). Force-include it here so it does not apply to Qt sources.
   set(_engine_cpp ${TIBIA_ENGINE_SOURCES})

@@ -192,8 +192,7 @@ foreach(_rel IN ITEMS
     "${CMAKE_CURRENT_SOURCE_DIR}/${_rel}"
     PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 endforeach()
-# dispatch.gen.cpp implements TProtocolMessageQueue methods but must not run
-# AUTOMOC on protocolmessagequeue.h (listed on the tibia target).
+# dispatch.gen.cpp includes protocolmessagequeue.h; skip AUTOMOC (extra moc path).
 set_source_files_properties("${_dispatch_gen_abs}" PROPERTIES SKIP_AUTOMOC ON)
 set(_protocol_stamp "${CMAKE_CURRENT_BINARY_DIR}/protocol_dispatch.stamp")
 add_custom_command(
