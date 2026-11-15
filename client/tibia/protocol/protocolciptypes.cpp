@@ -1,4 +1,5 @@
 #include "protocol/protocolciptypes.h"
+#include "protocol/protocolmessagequeue.h"
 #include "protocol/inventoryitemwire.h"
 #include "protocol/mapwire.h"
 #include "protocol/chatwire.h"

@@ -3,7 +3,6 @@
 // CIP-named protocol surfaces (Phase 6.0 load-split).
 // Architecture: TR → TProtocolMessageQueue → handlers (classic bridge + native).
 
-#include "protocol/protocolmessagequeue.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -26,6 +25,10 @@ class GameclientMessage;
 
 namespace tibia {
 namespace protocol {
+
+// Forward only — full type lives in protocolmessagequeue.h (Q_OBJECT). Including
+// that header here would make AUTOMOC emit a second moc via this listed .h.
+class TProtocolMessageQueue;
 
 void ownProductSurface(QObject* parent);
 
