@@ -1959,40 +1959,6 @@ bool emptyStructuredServerOpcode(int opcode)
     }
 }
 
-void TProtocolMessageQueue::enqueueServer(
-    std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> message)
-{
-    const int opcode = message && message->has_type() ? message->type() : -1;
-    g_lastServerMessage = std::move(message);
-    m_pendingServerOpcode = opcode;
-    ++m_serverCount;
-    fireEmitSignalForNewProtocolMessage();
-}
-
-void TProtocolMessageQueue::enqueueClient(
-    std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> message,
-    const QByteArray& wire)
-{
-    const int opcode = message && message->has_type() ? message->type()
-                                                      : (wire.isEmpty() ? -1 : int(uint8_t(wire[0])));
-    m_pendingClientOpcode = opcode;
-    m_pendingClientWire = wire;
-    ++m_clientCount;
-    fireEmitSignalForNewClientProtocolMessage();
-}
-
-void TProtocolMessageQueue::fireEmitSignalForNewProtocolMessage()
-{
-    Q_EMIT receivedMessage();
-    Q_EMIT serverMessageEnqueued(m_pendingServerOpcode);
-}
-
-void TProtocolMessageQueue::fireEmitSignalForNewClientProtocolMessage()
-{
-    Q_EMIT clientMessageReadyToProcess();
-    Q_EMIT clientMessageEnqueued(m_pendingClientOpcode, m_pendingClientWire);
-}
-
 bool TProtobufServerMessageTranslator::hasStructuredLayout(int opcode)
 {
     switch (opcode) {
@@ -2118,6 +2084,8 @@ QByteArray serverProtobufToClassic(const QByteArray& gameserverProtobuf)
 
 const GameserverMessage* lastShadowServerMessage()
 {
+    if (g_messageQueue && g_messageQueue->lastServerMessage())
+        return g_messageQueue->lastServerMessage();
     return g_lastServerMessage.get();
 }
 

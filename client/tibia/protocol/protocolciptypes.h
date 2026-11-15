@@ -3,6 +3,7 @@
 // CIP-named protocol surfaces (Phase 6.0 load-split).
 // Architecture: TR → TProtocolMessageQueue → handlers (classic bridge + native).
 
+#include "protocol/protocolmessagequeue.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -59,40 +60,6 @@ public:
 class TProtocolClientMessageProcessor final : public ::tibia::CipTyped {
 public:
     TProtocolClientMessageProcessor() = default;
-};
-
-/// CIP `TProtocolMessageQueue`: single dispatch hub for live + dump + outbound.
-class TProtocolMessageQueue final : public cip::tibia::protocol::TProtocolMessageQueue
-{
-    Q_OBJECT
-public:
-    using cip::tibia::protocol::TProtocolMessageQueue::TProtocolMessageQueue;
-
-    /// Enqueue a translated server message for the protocol message handlers.
-    void enqueueServer(std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> message);
-
-    void enqueueClient(std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> message,
-                       const QByteArray& wire);
-
-
-    void fireEmitSignalForNewProtocolMessage();
-    void fireEmitSignalForNewClientProtocolMessage();
-
-    int serverCount() const { return m_serverCount; }
-    int clientCount() const { return m_clientCount; }
-
-Q_SIGNALS:
-    void serverMessageEnqueued(int opcode);
-    void clientMessageEnqueued(int opcode, const QByteArray& wire);
-    void receivedMessage(); // CIP-shaped: fire after server enqueue
-    void clientMessageReadyToProcess();
-
-private:
-    int m_serverCount = 0;
-    int m_clientCount = 0;
-    int m_pendingServerOpcode = -1;
-    int m_pendingClientOpcode = -1;
-    QByteArray m_pendingClientWire;
 };
 
 /// CIP `protocol::TProtocolReader` (pin layout size 0x18).
