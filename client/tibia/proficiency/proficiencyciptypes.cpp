@@ -27,10 +27,10 @@ void ownProductSurface(QObject* parent)
 
 namespace tibia::proficiency {
 
-void TProficiencyProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/, const bool applyClassic)
+void TProficiencyProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
     switch (opcode) {

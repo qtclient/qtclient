@@ -25,10 +25,10 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
-void TQuestLogProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/, const bool applyClassic)
+void TQuestLogProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
     if (opcode == 208 && shadow->HasExtension(GameserverMessageTrackQuestFlags::gameserver_message_track_quest_flags)) {

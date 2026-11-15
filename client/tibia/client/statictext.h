@@ -22,10 +22,11 @@
 
 #pragma once
 
-#include <framework/graphics/cachedtext.h>
+#include <tibia/schedule/schedule.h>
+#include <framework/global.h>
 
 #include "declarations.h"
-#include "framework/core/declarations.h"
+#include <framework/global.h>
 #include <tibia/game/gameobject.h>
 
  // @bindclass
@@ -37,9 +38,8 @@ public:
     void drawText(const Point& dest, const Rect& parentRect);
 
     std::string getName() { return m_name; }
-    std::string getText() { return m_cachedText.getText(); }
-    Size getTextSize() { return m_cachedText.getTextSize(); }
-    bool hasText() { return m_cachedText.hasText(); }
+    std::string getText() { return m_text; }
+    bool hasText() { return !m_text.empty(); }
 
     tibia::client::MessageMode getMessageMode() const { return m_mode; }
     std::string getFirstMessage() { return m_messages.empty() ? "" : m_messages[0].first; }
@@ -63,11 +63,11 @@ private:
     void scheduleUpdate();
     void compose();
 
-    std::deque<std::pair<std::string, ticks_t>> m_messages;
+    std::deque<std::pair<std::string, int64_t>> m_messages;
     std::string m_name;
     tibia::client::MessageMode m_mode{ tibia::client::MessageNone };
     Color m_color{ Color::white };
-    CachedText m_cachedText;
-    ScheduledEventPtr m_updateEvent;
+    std::string m_text;
+    tibia::schedule::TScheduledTaskPtr m_updateEvent;
     Position m_position;
 };

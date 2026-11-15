@@ -30,6 +30,9 @@ namespace tibia {
 namespace creatures {
 class TCreature;
 }
+namespace worldmap {
+class TWorldMapViewport;
+}
 }
 
 namespace tibia {
@@ -105,6 +108,10 @@ public:
     const Frame& frame() const { return m_frame; }
     /// The player's field of the last frame.
     const Position& camera() const { return m_camera; }
+    /// The session's view (CIP: the render volume provider's viewport): the
+    /// picker reads the player's floor and the visible area from it.
+    void setViewport(worldmap::TWorldMapViewport* viewport) { m_viewport = viewport; }
+    worldmap::TWorldMapViewport* viewport() const { return m_viewport; }
     /// The field at the top-left of the walked area of floor `z`.
     Position firstField(int z) const;
 
@@ -130,17 +137,14 @@ public:
     uint16_t mouseTargetObjectClientId() const { return m_mouseTargetTypeId; }
     const Position& mouseTargetObjectField() const { return m_mouseTargetField; }
     int mouseTargetObjectStackPos() const { return m_mouseTargetStackPos; }
-    /// Thin shim: extracts typeId/field/stackPos from an Item Thing, or clears.
-    /// Prefer `setMouseTargetObject`. Never pass a Creature ThingPtr here.
-    void setMouseTarget(const ThingPtr& thing);
     /// Creature hover by storage id (battle list / TEMPORARY_SELECT).
     void setMouseTargetCreatureId(uint32_t id);
     uint32_t mouseTargetCreatureId() const { return m_mouseTargetCreatureId; }
     /// Field under the cursor for the highlight baseplate (CIP: v21 / +0xe8).
     void setMouseHighlightField(const Position& field) { m_mouseHighlightField = field; }
     const Position& mouseHighlightField() const { return m_mouseHighlightField; }
-    /// Option mouseHighlightTarget: highlight the mouse target; without it a
-    /// creature under the mouse gets a white mark instead (CIP: DAT_1077b2288).
+    /// Option mouseHighlightTarget: highlight the mouse target; without it the
+    /// selected creature keeps its white frame instead.
     void setMouseHighlightEnabled(bool enabled) { m_mouseHighlight = enabled; }
     /// Option gameWindowShowAttackAnimation: highlight the attack and follow targets.
     void setTargetHighlightEnabled(bool enabled) { m_targetHighlight = enabled; }
@@ -235,18 +239,6 @@ private:
         int y;
     };
 
-    /// Which creature mark frames show (CIP: copies the options
-    /// into DAT_102734bd8..bda).
-    struct MarkOptions
-    {
-        /// Option 0x4b gameWindowShowTragetFrame: attack and follow target frames.
-        bool target = true;
-        /// Option 0x49 combatShowPvpFrames: the server's permanent marks.
-        bool pvp = true;
-        /// Option 0x3f combatShowFrames: the server's timed marks.
-        bool timed = true;
-    };
-
     bool build();
     void buildLight();
     /// Shared outdoor / roof gather when weather or raycast needs it.
@@ -254,9 +246,10 @@ private:
     /// Cool outdoor cells from active weather (D).
     void applyWeatherAmbientTint();
     void loadLightOptions();
+    /// The options that decide which frames creatures show.
     void loadMarkOptions();
-    /// Frames around a creature, outer to inner (CIP: TCreature v0x258 ->
-    /// ); all 0 when it has none.
+    /// The colours of the frames around a creature, outer to inner; all 0
+    /// when it shows none.
     std::array<uint32_t, 3> creatureMarks(const tibia::creatures::TCreature& creature) const;
     uint8_t firstVisibleFloor() const;
     uint8_t lastVisibleFloor() const;
@@ -290,7 +283,6 @@ private:
     void addEffectFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
                                  uint8_t& elevation);
     /// Draw the show-off socket (podium) creature/outfit on top of the socket item.
-    void addPodiumOutfit(Item& item, const Point& dest, SpriteRecord::Highlight highlight);
     /// World-map creature sprites from field/storage outfit appearance + `TCreature` draw snapshot.
     void addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                          const tibia::creatures::TCreature& creature, const Point& dest);
@@ -314,6 +306,7 @@ private:
 
     Frame m_frame;
     Position m_camera;
+    worldmap::TWorldMapViewport* m_viewport = nullptr;
     int m_visibleWidth = DefaultVisibleWidth;
     int m_visibleHeight = DefaultVisibleHeight;
     double m_viewScale = 1;
@@ -327,7 +320,6 @@ private:
     Position m_mouseHighlightField;
     bool m_mouseHighlight = true;
     bool m_targetHighlight = true;
-    MarkOptions m_markOptions;
     uint32_t m_attackTarget = 0;
     uint32_t m_followTarget = 0;
     /// The current floor's sprites and their packed sort keys.

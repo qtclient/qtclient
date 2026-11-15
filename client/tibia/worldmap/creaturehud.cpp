@@ -107,13 +107,13 @@ void TCreatureHUDQmlRenderInfo::updateIcons(const tibia::creatures::TCreature& s
 {
     using Info = cip::tibia::worldmap::TCreatureHUDQmlRenderInfo;
 
-    enum class Kind { Player, Monster, Npc, Summon };
-    const bool summonType = stored.creatureType() == Proto::CreatureTypeSummonOwn
-                            || stored.creatureType() == Proto::CreatureTypeSummonOther;
-    const Kind kind = stored.isNpc() ? Kind::Npc
-                                    : summonType ? Kind::Summon
-                                    : stored.isPlayer() ? Kind::Player
-                                                        : Kind::Monster;
+    // Creature types past a summon carry no type icons.
+    enum class Kind { Player, Monster, Npc, Summon, Other };
+    const Kind kind = stored.isPlayer() ? Kind::Player
+                      : stored.creatureType() == Proto::CreatureTypeMonster ? Kind::Monster
+                      : stored.isNpc() ? Kind::Npc
+                      : stored.creatureType() == Proto::CreatureTypeSummonOwn ? Kind::Summon
+                                                                              : Kind::Other;
     const bool marks = kind == Kind::Npc ? option(options, "creatueShowNpcIcon")
                                          : option(options, stored.isLocalPlayer() ? "playerShowMarks" : "creatureShowMarks");
 
@@ -129,10 +129,14 @@ void TCreatureHUDQmlRenderInfo::updateIcons(const tibia::creatures::TCreature& s
                 break;
             case Kind::Monster: withOthers = true; break;
             case Kind::Npc: npcCategory = stored.icon(); break;
-            case Kind::Summon:
-                summon = stored.creatureType() == Proto::CreatureTypeSummonOwn ? 1 : 2;
+            case Kind::Summon: {
+                // The player's own summon or another player's, by its master.
+                const auto* storage = tibia::creatures::TCreatureStorage::instance();
+                summon = storage && stored.masterId() == storage->playerID() ? 1 : 2;
                 party = stored.shield();
                 break;
+            }
+            case Kind::Other: break;
         }
     }
 
@@ -163,14 +167,9 @@ void TCreatureHUDQmlRenderInfo::updateIcons(const tibia::creatures::TCreature& s
     m_otherIcons->setIcons(others);
     assign(this, m_isFiendishMonster, fiendish, &Info::fiendishMonsterChanged);
 
-    // CIP / : status-mark types 0/1. On product/Crystal
-    // the Echo Raid glow wire (0x8B type 15) carries the same: 0=warden/leader,
-    // 1=empowered/minion (see Monster::getEchoGlow / Creature::getEchoRaidColor).
-    const int8_t echo = stored.echoRaidColor();
-    const bool leader = echo == 0;
-    const bool minion = echo == 1;
-    assign(this, m_isLeaderMonster, leader, &Info::statusEffectsChanged);
-    assign(this, m_isLeaderMinionMonster, minion, &Info::statusEffectsChanged);
+    // Status marks 0 and 1: a raid leader and its minions.
+    assign(this, m_isLeaderMonster, stored.hasStatusMark(0), &Info::statusEffectsChanged);
+    assign(this, m_isLeaderMinionMonster, stored.hasStatusMark(1), &Info::statusEffectsChanged);
 }
 
 void TCreatureHUDQmlRenderInfo::setShowSpecialConditions(const bool show)
@@ -238,7 +237,7 @@ void TCreatureHUDQmlRenderInfo::update(const tibia::creatures::TCreature& stored
         showName = hud && option(options, "creatureShowName");
         // NPCs have shown no health since 11.00.
         showHealth = hud && option(options, "creatureShowHealth")
-            && !(stored.isNpc() && tibia::game::clientRevision() >= 1100);
+            && !(stored.isNpc());
     }
     assign(this, m_showCreatureName, showName, &Info::showCreatureNameChanged);
     assign(this, m_showHealthBar, showHealth, &Info::showHealthBarChanged);

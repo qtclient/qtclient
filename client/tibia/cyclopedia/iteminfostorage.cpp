@@ -6,7 +6,6 @@
 #include "input/gameactionhandlers.h"
 
 #include "container/containerciptypes.h"
-#include <client/item.h>
 #include <client/staticdata.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
@@ -116,7 +115,6 @@ TItemInfoStorage::TItemInfoStorage(QObject* parent)
         Q_EMIT pricesChanged();
         return std::any{};
     });
-    // Keep-alive; ProtocolGame::parseItemInfo prefers applyItemInfo.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onItemInfo", [this](GameObject*, const Args& args) {
         const auto* list = args.empty() ? nullptr : std::any_cast<std::vector<std::tuple<uint16_t, std::string>>>(&args[0]);
         if (!list)

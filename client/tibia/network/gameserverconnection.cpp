@@ -1,12 +1,10 @@
 #include "gameserverconnection.h"
 
-#include "framework/net/gamelink.h"
-#include "framework/net/protocol.h"
+#include "network/gameserverpacketprocessor.h"
 
-#include <client/protocolgame.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/network/logincrypt.h>
-#include <framework/core/clock.h>
+#include "shared/sharedciptypes.h"
+#include "shared/clockservice.h"
 #include <framework/stdext/math.h>
 
 #include <QCoreApplication>
@@ -33,25 +31,6 @@ namespace tibia::network {
 namespace {
 
 constexpr uint32_t XteaDelta = 0x9E3779B9;
-
-struct Pending
-{
-    QString record;
-    std::array<uint32_t, 4> key{};
-    bool hasKey = false;
-    bool xtea = false;
-    bool checksum = false;
-    bool sequenced = false;
-};
-
-std::unordered_map<Protocol*, TGameserverNetworkPacketConnection*> g_byProto;
-std::unordered_map<Protocol*, Pending> g_pending;
-
-TGameserverNetworkPacketConnection* findConn(Protocol* proto)
-{
-    const auto it = g_byProto.find(proto);
-    return it == g_byProto.end() ? nullptr : it->second;
-}
 
 void xteaBlocks(uint8_t* data, size_t length, const std::array<uint32_t, 4>& key, bool encrypt)
 {
@@ -153,8 +132,8 @@ bool decryptGameXtea1405(const std::array<uint32_t, 4>& key, QByteArray& body)
 
 void deliverSecondaryDecrypted(const uint32_t sequenceWord, QByteArray precursor)
 {
-    const auto proto = tibia::game::getProtocolGame();
-    auto* conn = proto ? findConn(proto.get()) : nullptr;
+    auto* processor = TGameserverNetworkPacketProcessor::live();
+    auto* conn = processor ? processor->connection() : nullptr;
     if (!conn)
         return;
     conn->acceptDecrypted(sequenceWord, std::move(precursor));
@@ -207,23 +186,14 @@ TGameserverNetworkPacketConnection::~TGameserverNetworkPacketConnection()
     inflateEnd(&m_zstream);
 }
 
-void TGameserverNetworkPacketConnection::open(Protocol* proto, const QString& host, const uint16_t port, const bool gameWorld)
+void TGameserverNetworkPacketConnection::open(TGameserverNetworkPacketProcessor* processor, const QString& host,
+                                              const uint16_t port, const bool gameWorld)
 {
-    m_proto = proto;
+    m_processor = processor;
     m_host = host;
     m_port = port;
     m_gameWorld = gameWorld;
     m_connecting = true;
-    if (const auto pending = g_pending.find(proto); pending != g_pending.end()) {
-        if (!pending->second.record.isEmpty())
-            setRecordFile(pending->second.record);
-        if (pending->second.hasKey)
-            m_xteaKey = pending->second.key;
-        m_xtea = pending->second.xtea;
-        m_checksum = pending->second.checksum;
-        m_sequenced = pending->second.sequenced;
-        g_pending.erase(pending);
-    }
 
 #if defined(Q_OS_WASM)
     openWebSocket();
@@ -293,8 +263,8 @@ void TGameserverNetworkPacketConnection::onTransportConnected()
     m_connecting = false;
     m_connected = true;
     m_readTimer.start();
-    if (m_proto)
-        m_proto->notifyConnected();
+    if (m_processor)
+        m_processor->connectionEstablished();
     flushEarly();
 }
 
@@ -307,7 +277,7 @@ qint64 TGameserverNetworkPacketConnection::millisSinceRead() const
 
 void TGameserverNetworkPacketConnection::writePayload(const uint8_t* data, const uint16_t size, const bool raw)
 {
-    if (!m_proto || m_proto->isReplay())
+    if (!m_processor)
         return;
     recordOutput(data, size);
     const QByteArray framed = frame(QByteArray(reinterpret_cast<const char*>(data), size), raw);
@@ -348,13 +318,13 @@ void TGameserverNetworkPacketConnection::setRecordFile(const QString& file)
     std::filesystem::create_directory("records", ec);
     const auto path = std::filesystem::path("records") / file.toStdString();
     m_record = std::make_unique<std::ofstream>(path, std::ios::out | std::ios::trunc);
-    m_recordStart = g_clock.millis();
+    m_recordStart = tibia::shared::TClockService::frameMillis();
     m_skipFirstOutput = true;
 }
 
 void TGameserverNetworkPacketConnection::ingestWire(const QByteArray& chunk)
 {
-    if (!m_proto || chunk.isEmpty())
+    if (!m_processor || chunk.isEmpty())
         return;
     // XTEA is enabled during onConnect. Bytes that arrive before that must wait,
     // or the first server message is decrypted with the wrong state.
@@ -363,7 +333,7 @@ void TGameserverNetworkPacketConnection::ingestWire(const QByteArray& chunk)
         return;
     }
     m_recv.append(chunk);
-    const bool modern = tibia::game::clientRevision() >= 1405;
+    const bool modern = true;
     while (m_recv.size() >= 2) {
         const auto header = readU16(m_recv, 0);
         const int remaining = modern ? int(header) * 8 + 4 : int(header);
@@ -377,14 +347,14 @@ void TGameserverNetworkPacketConnection::ingestWire(const QByteArray& chunk)
         const QByteArray frame = m_recv.mid(2, remaining);
         m_recv.remove(0, 2 + remaining);
         decodeFrame(frame);
-        if (!m_proto)
+        if (!m_processor)
             return;
     }
 }
 
 void TGameserverNetworkPacketConnection::decodeFrame(const QByteArray& afterSize)
 {
-    const bool modern = tibia::game::clientRevision() >= 1405;
+    const bool modern = true;
     const bool hasWord = m_sequenced || m_checksum || modern;
     if (hasWord && afterSize.size() < 4) {
         qCWarning(lcGameConn) << "short game frame" << afterSize.size();
@@ -397,7 +367,7 @@ void TGameserverNetworkPacketConnection::decodeFrame(const QByteArray& afterSize
         body = afterSize.mid(4);
     }
     if (!m_sequenced && m_checksum) {
-        const auto sum = stdext::computeChecksum({ reinterpret_cast<const uint8_t*>(body.constData()), size_t(body.size()) });
+        const auto sum = uint32_t(::adler32(::adler32(0L, Z_NULL, 0), reinterpret_cast<const Bytef*>(body.constData()), uInt(body.size())));
         if (sum != word) {
             qCWarning(lcGameConn) << "invalid game checksum";
             return;
@@ -483,7 +453,7 @@ bool TGameserverNetworkPacketConnection::inflatePrecursor(QByteArray& body)
 
 void TGameserverNetworkPacketConnection::acceptDecrypted(const uint32_t sequenceWord, QByteArray precursor)
 {
-    if (!m_proto)
+    if (!m_processor)
         return;
     if (m_sequenced) {
         const uint32_t seq = sequenceWord & 0x7fffffffu;
@@ -500,14 +470,14 @@ void TGameserverNetworkPacketConnection::acceptDecrypted(const uint32_t sequence
     recordInput(precursor);
     if (precursor.size() > 0xffff)
         return;
-    m_proto->deliverParserBytes(reinterpret_cast<const uint8_t*>(precursor.constData()), uint16_t(precursor.size()));
+    m_processor->deliverPacket(reinterpret_cast<const uint8_t*>(precursor.constData()), size_t(precursor.size()));
 }
 
 void TGameserverNetworkPacketConnection::recordInput(const QByteArray& precursor)
 {
     if (!m_record || !*m_record)
         return;
-    *m_record << "< " << (g_clock.millis() - m_recordStart) << ' ';
+    *m_record << "< " << (tibia::shared::TClockService::frameMillis() - m_recordStart) << ' ';
     *m_record << std::hex << std::setfill('0');
     for (const char byte : precursor)
         *m_record << std::setw(2) << int(uint8_t(byte));
@@ -522,7 +492,7 @@ void TGameserverNetworkPacketConnection::recordOutput(const uint8_t* data, const
         m_skipFirstOutput = false;
         return;
     }
-    *m_record << "> " << (g_clock.millis() - m_recordStart) << ' ';
+    *m_record << "> " << (tibia::shared::TClockService::frameMillis() - m_recordStart) << ' ';
     *m_record << std::hex << std::setfill('0');
     for (uint16_t i = 0; i < size; ++i)
         *m_record << std::setw(2) << int(data[i]);
@@ -533,7 +503,7 @@ QByteArray TGameserverNetworkPacketConnection::frame(const QByteArray& payload, 
 {
     if (raw)
         return payload;
-    const bool modern = tibia::game::clientRevision() >= 1405;
+    const bool modern = true;
     QByteArray body = payload;
     if (modern) {
         const int padAmt = 8 - (body.size() % 8) - 1;
@@ -551,7 +521,7 @@ QByteArray TGameserverNetworkPacketConnection::frame(const QByteArray& payload, 
     if (m_sequenced)
         prependU32(body, m_packetNumber++);
     else if (m_checksum) {
-        const auto sum = stdext::computeChecksum({ reinterpret_cast<const uint8_t*>(body.constData()), size_t(body.size()) });
+        const auto sum = uint32_t(::adler32(::adler32(0L, Z_NULL, 0), reinterpret_cast<const Bytef*>(body.constData()), uInt(body.size())));
         prependU32(body, sum);
     }
     if (modern) {
@@ -567,13 +537,13 @@ QByteArray TGameserverNetworkPacketConnection::frame(const QByteArray& payload, 
 
 void TGameserverNetworkPacketConnection::fail(const QString& message, const bool clean)
 {
-    if (!m_proto)
+    if (!m_processor)
         return;
-    Protocol* proto = m_proto;
-    m_proto = nullptr;
+    TGameserverNetworkPacketProcessor* processor = m_processor;
+    m_processor = nullptr;
     m_connected = false;
     m_connecting = false;
-    proto->fail(message.toStdString(), clean);
+    processor->connectionFailed(message, clean);
 }
 
 #if defined(Q_OS_WASM)
@@ -654,89 +624,7 @@ void TGameserverNetworkPacketConnection::openWebSocket()
 
 void installGameServerConnection()
 {
-    installLoginRsa();
-    gamelink::install({
-        .connect = [](Protocol* proto, const char* host, uint16_t port, bool gameWorld) {
-            if (!proto || findConn(proto))
-                return;
-            auto* conn = new TGameserverNetworkPacketConnection();
-            g_byProto.emplace(proto, conn);
-            conn->open(proto, QString::fromUtf8(host ? host : ""), port, gameWorld);
-        },
-        .disconnect = [](Protocol* proto) {
-            const auto it = g_byProto.find(proto);
-            if (it == g_byProto.end())
-                return;
-            auto* conn = it->second;
-            g_byProto.erase(it);
-            g_pending.erase(proto);
-            conn->shutdown();
-            conn->deleteLater();
-        },
-        .isConnected = [](Protocol* proto) {
-            const auto* conn = findConn(proto);
-            return conn && conn->connected();
-        },
-        .isConnecting = [](Protocol* proto) {
-            const auto* conn = findConn(proto);
-            return conn && conn->connecting();
-        },
-        .write = [](Protocol* proto, const uint8_t* data, uint16_t size, bool raw) {
-            if (auto* conn = findConn(proto))
-                conn->writePayload(data, size, raw);
-        },
-        .generateXtea = [](Protocol* proto, uint32_t key[4]) {
-            if (auto* conn = findConn(proto)) {
-                conn->generateXtea(key);
-                return;
-            }
-            auto& pending = g_pending[proto];
-            std::random_device rd;
-            std::uniform_int_distribution<uint32_t> unif;
-            for (uint32_t& part : pending.key)
-                part = unif(rd);
-            pending.hasKey = true;
-            std::memcpy(key, pending.key.data(), sizeof(pending.key));
-        },
-        .setXtea = [](Protocol* proto, const uint32_t key[4]) {
-            if (auto* conn = findConn(proto))
-                conn->setXtea(key);
-            else {
-                auto& pending = g_pending[proto];
-                std::memcpy(pending.key.data(), key, sizeof(pending.key));
-                pending.hasKey = true;
-            }
-        },
-        .enableXtea = [](Protocol* proto) {
-            if (auto* conn = findConn(proto))
-                conn->enableXtea();
-            else
-                g_pending[proto].xtea = true;
-        },
-        .enableChecksum = [](Protocol* proto) {
-            if (auto* conn = findConn(proto))
-                conn->enableChecksum();
-            else
-                g_pending[proto].checksum = true;
-        },
-        .enableSequenced = [](Protocol* proto) {
-            if (auto* conn = findConn(proto))
-                conn->enableSequenced();
-            else
-                g_pending[proto].sequenced = true;
-        },
-        .setRecordFile = [](Protocol* proto, const char* file) {
-            const QString path = QString::fromUtf8(file ? file : "");
-            if (auto* conn = findConn(proto))
-                conn->setRecordFile(path);
-            else
-                g_pending[proto].record = path;
-        },
-        .millisSinceRead = [](Protocol* proto) -> int64_t {
-            const auto* conn = findConn(proto);
-            return conn ? conn->millisSinceRead() : -1;
-        },
-    });
+    shared::TRsaHelper::installLoginKey();
 }
 
 }

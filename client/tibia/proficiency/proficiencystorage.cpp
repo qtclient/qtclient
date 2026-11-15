@@ -2,7 +2,7 @@
 
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
-#include <framework/core/resourcemanager.h>
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>

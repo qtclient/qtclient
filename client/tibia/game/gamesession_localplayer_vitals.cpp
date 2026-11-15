@@ -1,6 +1,6 @@
 #include "gamesession.h"
 
-#include "gamehub.h"
+#include "game/gameciptypes.h"
 #include "game/playerdata.h"
 #include "game/playerskillstats.h"
 
@@ -51,57 +51,42 @@ void localPlayerSetSupplyStashAvailable(const bool available)
 
 void localPlayerSetHealth(const uint32_t health, const uint32_t maxHealth)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setHealth(health, maxHealth); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateHealth(health, maxHealth); });
 }
 
 void localPlayerSetMana(const uint32_t mana, const uint32_t maxMana)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setMana(mana, maxMana); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateMana(mana, maxMana); });
 }
 
 void localPlayerSetManaShield(const uint32_t manaShield, const uint32_t maxManaShield)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setManaShield(manaShield, maxManaShield); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateManaShield(manaShield, maxManaShield); });
 }
 
 void localPlayerSetLevel(const uint16_t level, const uint16_t levelPercent)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setLevel(level, levelPercent); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateLevel(level, levelPercent); });
 }
 
 void localPlayerSetExperience(const uint64_t experience)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setExperience(experience); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateExperience(experience); });
 }
 
 void localPlayerSetStamina(const uint16_t stamina)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setStamina(stamina); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateStamina(stamina); });
 }
 
 void localPlayerSetSoul(const uint8_t soul)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setSoul(soul); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateSoul(soul); });
 }
 
 void localPlayerSetFreeCapacity(const uint32_t freeCapacity)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setFreeCapacity(freeCapacity); });
-}
-
-void localPlayerSetPremium(const bool premium)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setPremium(premium); });
-}
-
-void localPlayerSetVocation(const uint8_t vocation)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setVocation(vocation); });
-}
-
-void localPlayerSetSpells(const std::vector<uint16_t>& spells)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setSpells(spells); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateFreeCapacity(freeCapacity); });
 }
 
 void localPlayerSetBlessings(const uint16_t blessings, const uint8_t blessVisualState)
@@ -114,24 +99,14 @@ void localPlayerSetResourceBalance(const tibia::client::ResourceTypes_t type, co
     playerDataAuthorityWrite([&](TPlayerData& data) { data.setResourceBalance(type, value); });
 }
 
-void localPlayerSetHasReachedMain(const bool reached)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setHasReachedMain(reached); });
-}
-
-void localPlayerSetMagicShieldVocation(const bool enabled)
-{
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setMagicShieldVocation(enabled); });
-}
-
 void localPlayerSetHarmony(const uint8_t harmony)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setHarmony(harmony); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateHarmony(harmony); });
 }
 
 void localPlayerSetSerene(const bool serene)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setSerene(serene); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateSerene(serene); });
 }
 
 void localPlayerSetExperienceRate(const tibia::client::ExperienceRate_t type, const uint16_t value)
@@ -172,7 +147,7 @@ void localPlayerSetBaseSkill(const tibia::client::Skill skill, const uint16_t ba
 
 void localPlayerSetBaseSpeed(const uint16_t baseSpeed)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setBaseSpeed(baseSpeed); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateBaseSpeed(baseSpeed); });
 }
 
 void localPlayerSetRegenerationTime(const uint16_t regenerationTime)
@@ -197,7 +172,7 @@ void localPlayerSetDailyRewardExpBoostTime(const uint16_t dailyRewardExpBoostTim
 
 void localPlayerSetStoreExpBoostPurchasable(const bool purchasable)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setStoreExpBoostPurchasable(purchasable); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateStoreExpBoostPurchasable(purchasable); });
 }
 
 void localPlayerSetStatesAndRottenBlood(const uint64_t states, const uint8_t rottenBloodState)
@@ -209,12 +184,12 @@ void localPlayerSetStatesAndRottenBlood(const uint64_t states, const uint8_t rot
 
 void localPlayerSetTotalCapacity(const uint32_t totalCapacity)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setTotalCapacity(totalCapacity); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateTotalCapacity(totalCapacity); });
 }
 
 void localPlayerSetBaseCapacity(const uint32_t baseCapacity)
 {
-    playerDataAuthorityWrite([&](TPlayerData& data) { data.setBaseCapacity(baseCapacity); });
+    playerDataAuthorityWrite([&](TPlayerData& data) { data.updateBaseCapacity(baseCapacity); });
 }
 
 void localPlayerSetKnown(const bool known)
@@ -290,8 +265,8 @@ uint64_t localPlayerExperience()
 
 bool localPlayerIsPremium()
 {
-    if (TPlayerData* data = TPlayerData::liveInstance())
-        return data->premium();
+    if (TPremiumTimeStorage* storage = TPremiumTimeStorage::liveInstance())
+        return storage->isPremium();
     return false;
 }
 
@@ -383,8 +358,7 @@ uint16_t localPlayerMagicLevelPercentHundredths()
 uint16_t localPlayerLevelPercentHundredths()
 {
     if (TPlayerData* data = TPlayerData::liveInstance())
-        return cipFeature(tibia::client::GameLevelPercentU16) ? data->levelPercentRaw()
-                                                              : static_cast<uint16_t>(data->levelPercent() * 100);
+        return data->levelPercentRaw();
     return 0;
 }
 
@@ -479,12 +453,11 @@ uint16_t localPlayerMagicLevelPercent()
     return 0;
 }
 
-const std::vector<uint16_t>& localPlayerSpells()
+std::vector<uint16_t> localPlayerSpells()
 {
-    static const std::vector<uint16_t> kEmpty;
     if (TPlayerData* data = TPlayerData::liveInstance())
         return data->spells();
-    return kEmpty;
+    return {};
 }
 
 tibia::client::Direction localPlayerDirection()

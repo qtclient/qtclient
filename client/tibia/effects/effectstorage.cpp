@@ -4,8 +4,6 @@
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 
-#include <tibia/game/mapsession.h>
-
 #include <algorithm>
 
 namespace tibia::effects {
@@ -116,10 +114,15 @@ void TEffectStorage::update(const qint64 nowMs)
     }
     erase([](const TEffectPtr& effect) {
         const appearances::TEffectInstance* instance = effectOf(effect);
-        if (!instance || instance->isFinished())
-            return true;
-        const Position& field = instance->field();
-        return !tibia::game::isAwareOf({ field.x, field.y, field.z });
+        return !instance || instance->isFinished();
+    });
+}
+
+void TEffectStorage::removeOutside(const std::function<bool(const Position&)>& inArea)
+{
+    erase([&](const TEffectPtr& effect) {
+        const appearances::TEffectInstance* instance = effectOf(effect);
+        return !instance || !inArea(instance->field());
     });
 }
 

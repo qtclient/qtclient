@@ -2,6 +2,8 @@
 
 #include "client/gamecore.h"
 
+#include <client/staticdata.h>
+
 #include <QHash>
 #include <QObject>
 #include <QString>
@@ -64,7 +66,11 @@ struct THouseRecord
     quint32 moveOutDate = 0;
     quint8 cancelMoveOutDisableReason = 0;
 
-    /// CIP : forgets the dynamic data.
+    /// 0 / 1: named in the first / second house list of the static house
+    /// data, 2: in neither.
+    int listing = 2;
+
+    /// Back to "updating" without the auction, rent, transfer and move out data.
     void clearDynamicData();
 };
 
@@ -86,27 +92,47 @@ struct THouseLimits
     quint8 guildhalls = 0;
 };
 
-/// The houses of the Cyclopedia (CIP: cyclopedia::THousesStorage, ctor
-/// , fed by TCyclopediaProtocolMessageHandler slots 27 to 29).
+/// The houses of the Cyclopedia (CIP: cyclopedia::THousesStorage). The
+/// static house data and the current house data messages fill it.
 class THousesStorage final : public QObject
 {
     Q_OBJECT
 public:
     explicit THousesStorage(QObject* parent = nullptr);
 
-    /// CIP vslot 0x60.
     const std::vector<THouseRecord>& houses() const { return m_houses; }
-    /// CIP vslot 0xe0.
     const THouseRecord* house(quint32 id) const;
     /// The unique town names, sorted case-sensitively.
     const QStringList& towns() const { return m_towns; }
     const THouseCharacterInfo& characterInfo() const { return m_characterInfo; }
     const THouseLimits& limits() const { return m_limits; }
 
-    /// CIP vslot 0xd8: every house back to "updating".
+    void setCharacterInfo(quint32 excludedUntil, quint8 housesOnWorld, quint8 housesOnAccount, quint8 guildhalls);
+    void setLimits(quint8 perWorld, quint8 perAccount, quint8 guildhalls);
+    void setListing(quint32 houseId, int listing);
+
+    /// The house setters below only run between beginUpdate and endUpdate;
+    /// endUpdate announces the new house information.
+    void beginUpdate();
+    void setRentable(quint32 houseId, bool rentable);
+    /// State 1: rentable without an auction.
+    void setNoAuction(quint32 houseId);
+    void setAuction(quint32 houseId, const QString& bidderName, bool isBidder, quint8 bidDisableReason, quint32 bidEnd,
+                    quint64 highestBid, quint64 ownBidLimit);
+    void setRented(quint32 houseId, const QString& renterName, quint32 paidUntil, bool isOwner, quint8 moveOutDisableReason,
+                   quint8 transferDisableReason);
+    /// A rented house whose transfer is pending.
+    void setTransferPending(quint32 houseId, quint32 transferDate, const QString& newOwnerName, bool newOwnerAccepted,
+                            quint64 transferPrice, bool isNewOwner, quint8 acceptTransferDisableReason,
+                            quint8 rejectTransferDisableReason, quint8 cancelTransferDisableReason);
+    /// A rented house whose move out is pending.
+    void setMoveOutPending(quint32 houseId, quint32 moveOutDate, quint8 cancelMoveOutDisableReason);
+    void endUpdate();
+
+    /// Every house back to "updating".
     void reset();
 
-    /// The client messages (CIP 0x100a55... vslots 28 to 35). The town
+    /// The client messages. The town
     /// "houses_my_houses_town_name" asks for the character's own houses.
     void requestTown(const QString& town);
     void bid(quint32 houseId, quint64 limit);
@@ -127,6 +153,12 @@ Q_SIGNALS:
 private:
     void loadStaticHouses();
     THouseRecord* findHouse(quint32 id);
+    /// The static house data message: the character's houses, the limits
+    /// and the two house lists.
+    void applyStaticHouseData(quint32 excludedUntil, const std::vector<uint8_t>& counts, const std::vector<uint32_t>& firstList,
+                              const std::vector<uint32_t>& secondList);
+    /// The current house data message: the state of each listed house.
+    void applyCurrentHouseData(const std::vector<CyclopediaHouseEntry>& houses);
 
     std::vector<client::gamecore::Hook> m_hooks;
     std::vector<THouseRecord> m_houses;
@@ -134,6 +166,7 @@ private:
     QStringList m_towns;
     THouseCharacterInfo m_characterInfo;
     THouseLimits m_limits;
+    bool m_updating = false;
 };
 
 }

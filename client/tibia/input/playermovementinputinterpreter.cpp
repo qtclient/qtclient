@@ -8,6 +8,7 @@
 #include "input/gameactionhandlers.h"
 #include "input/inputciptypes.h"
 
+#include <QGuiApplication>
 #include <QKeyEvent>
 #include <QQuickItem>
 #include <QQuickWindow>
@@ -61,10 +62,21 @@ TPlayerMovementInputInterpreter::TPlayerMovementInputInterpreter(QQuickWindow* w
         if (name.startsWith(QLatin1String("rotateWith")))
             onOptionsChanged();
     });
+    connect(qGuiApp, &QGuiApplication::applicationStateChanged, this,
+            &TPlayerMovementInputInterpreter::onApplicationStateChanged);
     onHotkeyOptionsChanged();
     onOptionsChanged();
     if (window)
         window->installEventFilter(this);
+}
+
+void TPlayerMovementInputInterpreter::onApplicationStateChanged(const Qt::ApplicationState state)
+{
+    // Leaving the active state forgets every key; presses are ignored until
+    // the application is active again.
+    m_applicationActive = state == Qt::ApplicationActive;
+    if (!m_applicationActive)
+        release();
 }
 
 TPlayerMovementInputInterpreter::~TPlayerMovementInputInterpreter()
@@ -123,8 +135,6 @@ bool TPlayerMovementInputInterpreter::eventFilter(QObject* watched, QEvent* even
         switch (event->type()) {
             case QEvent::KeyPress: onKeyEvent(static_cast<QKeyEvent*>(event), true); break;
             case QEvent::KeyRelease: onKeyEvent(static_cast<QKeyEvent*>(event), false); break;
-            case QEvent::FocusOut:
-            case QEvent::WindowDeactivate: release(); break;
             default: break;
         }
     }
@@ -193,6 +203,8 @@ void TPlayerMovementInputInterpreter::onKeyEvent(const QKeyEvent* event, const b
     if (isArrow(key.key))
         key.keypad = false;
     if (!isTracked(key))
+        return;
+    if (pressed && !m_applicationActive)
         return;
     const std::vector<TKey> before = m_status;
     if (pressed) {

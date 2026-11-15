@@ -6,6 +6,7 @@
 #include <client/position.h>
 
 #include <cstdint>
+#include <vector>
 
 #include <QPoint>
 
@@ -18,64 +19,66 @@ class TWorldMapRenderProvider;
 namespace tibia {
 namespace worldmap {
 
-/// An object of a field and its stack position (CipSoft: appearance + stackpos + creatureId).
-struct TFieldObject
+class TWorldMapViewport;
+
+/// A field found under the mouse and its coordinate.
+struct TWorldMapPickedField
 {
-    int stackPosition = -1;
-    uint32_t creatureId = 0;
-    appearances::TAppearanceInstancePtr appearance;
+    Position position;
+    TWorldMapField* field = nullptr;
 
-    explicit operator bool() const { return stackPosition >= 0; }
-
-    uint16_t clientId() const;
+    explicit operator bool() const { return field != nullptr; }
 };
 
-/// CIP's TField object selectors over a CIP field's stack.
-namespace field {
-TFieldObject useObject(const TWorldMapField* field);
-TFieldObject lookObject(const TWorldMapField* field);
-TFieldObject moveObject(const TWorldMapField* field);
-TFieldObject multiUseObject(const TWorldMapField* field);
-TFieldObject quickLootObject(const TWorldMapField* field);
-TFieldObject creature(const TWorldMapField* field);
-bool isPickable(const TWorldMapField* field);
-/// 0 walkable, 1 blocked, 2 not known to be walkable.
-int walkability(const TWorldMapField* field);
-}
-
-/// What the mouse points at on the world map (CIP: TWorldMapPicker::v6's result).
+/// What the mouse points at on the world map.
 struct TWorldMapPick
 {
     bool valid = false;
     /// The first pickable field top-down under the mouse.
     Position position;
-    TWorldMapField* field = nullptr;
     /// The field on the player's floor under the mouse.
     Position playerFloorPosition;
-    /// Light at playerFloorPosition (fieldLightness).
+    /// The render provider's light at playerFloorPosition, 0 (dark) to 255.
     int lightness = 255;
+    /// The picked field's walkState: 0 free, 1 blocked, 2 unsure.
     int walkability = 2;
-    TFieldObject use;
     TFieldObject look;
+    TFieldObject use;
     TFieldObject move;
     TFieldObject multiUse;
     TFieldObject quickLoot;
     TFieldObject creature;
+    /// The picked field itself, so callers need not look it up again.
+    TWorldMapField* field = nullptr;
 
     bool isValid() const { return valid; }
 };
 
+/// Resolves a map pixel of the last frame to fields, objects and creatures.
 class TWorldMapPicker : public ::tibia::CipTyped
-
 {
 public:
-    /// The visible floors top-down, the first pickable field (CIP: v3/v4/v5/v6).
-    static TWorldMapPick pick(const qmlcomponents::TWorldMapRenderProvider& provider, const QPoint& mapPixel);
-    /// The creature drawn under a map pixel: the player's floor's fields in
-    /// x, y order, each field's first creature hit by its 32x32 box at its
-    /// walk position (CIP: v7).
-    /// Creature id under a map pixel (0 if none). Walk offset from `TCreatureStorage`.
-    static uint32_t creatureAt(const qmlcomponents::TWorldMapRenderProvider& provider, const QPoint& mapPixel);
+    /// The fields under a map pixel on each drawn floor, top-down.
+    static std::vector<Position> fieldCoordinatesAt(const qmlcomponents::TWorldMapRenderProvider& provider,
+                                                    const QPoint& mapPixel);
+    /// The first of `coordinates` whose field is known and pickable.
+    static TWorldMapPickedField firstPickableField(const std::vector<Position>& coordinates);
+    /// The top-most pickable field under a map pixel.
+    static TWorldMapPickedField pickField(const qmlcomponents::TWorldMapRenderProvider& provider,
+                                          const QPoint& mapPixel);
+    /// The field of floor `z` under a map pixel.
+    static Position coordinateAt(const qmlcomponents::TWorldMapRenderProvider& provider, const QPoint& mapPixel,
+                                 int z);
+    /// The picked field and its objects, with the field under the pixel on the
+    /// viewport's floor (the player's) and that field's light. Invalid without
+    /// a pickable field.
+    static TWorldMapPick pick(const qmlcomponents::TWorldMapRenderProvider& provider,
+                              const TWorldMapViewport& viewport, const QPoint& mapPixel);
+    /// The creature drawn under a map pixel (0 if none): the viewport's visible
+    /// fields in x, then y order, each field's top creature hit by a 32x32 box
+    /// at the creature's drawn position.
+    static uint32_t creatureAt(const qmlcomponents::TWorldMapRenderProvider& provider,
+                               const TWorldMapViewport& viewport, const QPoint& mapPixel);
 };
 
 }

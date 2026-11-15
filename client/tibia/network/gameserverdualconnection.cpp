@@ -5,7 +5,7 @@
 #include "client/gamecore.h"
 
 #include <tibia/game/gamesession.h>
-#include <client/protocolgame.h>
+#include "network/gameserverpacketprocessor.h"
 
 #include <QLoggingCategory>
 #include <QTimer>
@@ -28,7 +28,7 @@ constexpr quint8 ClientConnectionPingBack = 0x1C;
 
 using client::gamecore::argString;
 
-/// Little-endian u16 length prefix + UTF-8 (matches OTC OutputMessage::addString).
+/// Little-endian u16 length prefix + UTF-8.
 void appendString(QByteArray& out, const QString& text)
 {
     const QByteArray utf8 = text.toUtf8();
@@ -336,20 +336,14 @@ void TGameserverDualConnection::sendSecondaryLogin()
 
 void TGameserverDualConnection::adoptPrimaryXteaKeys()
 {
-    // Copy keys from primary ProtocolGame after SecondaryLogin so fan-out /
+    // Copy keys from the primary connection after SecondaryLogin so fan-out /
     // keep-alive frames can be decrypted (Crystal shares one XTEA session).
-    const auto primary = tibia::game::getProtocolGame();
+    const auto* primary = TGameserverNetworkPacketProcessor::live();
     if (!primary) {
-        qCWarning(lcDualConn) << "no primary ProtocolGame; secondary stays keep-alive-only";
+        qCWarning(lcDualConn) << "no primary game connection; secondary stays keep-alive-only";
         return;
     }
-    const auto keys = primary->getXteaKey();
-    if (keys.size() != 4) {
-        qCWarning(lcDualConn) << "primary XTEA key unavailable";
-        return;
-    }
-    for (int i = 0; i < 4; ++i)
-        m_xteaKey[static_cast<size_t>(i)] = keys[static_cast<size_t>(i)];
+    m_xteaKey = primary->xteaKey();
     m_xteaEnabled = true;
 }
 

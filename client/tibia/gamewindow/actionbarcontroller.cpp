@@ -7,7 +7,6 @@
 #include "gamewindow/draganddropcontroller.h"
 #include "spells/spellinfostorage.h"
 
-#include <client/item.h>
 #include <client/position.h>
 #include <tibia/assets/thingtype.h>
 
@@ -284,7 +283,7 @@ void TActionBarController::closeOpenMultiActionButtons()
 
 void TActionBarController::setNumVisibleSlots(const int Amount)
 {
-    m_numVisibleSlots = Amount;
+    m_numVisibleSlots = std::min(Amount, int(m_buttons.size()));
 }
 
 TActionBarGroup::TActionBarGroup(TActionBarManager* manager, const EActionBarPosition position, QQuickItem* container, QQmlEngine* engine,
@@ -358,9 +357,15 @@ void TActionBarGroup::onActionBarsOptionsChanged()
     applyOptions();
 }
 
+void TActionBarGroup::restoreLastAktionBarConfiguration()
+{
+    onActionBarsOptionsChanged();
+}
+
 void TActionBarGroup::onLockButtonClicked()
 {
-    app::ClientOptions::store(QLatin1String(optionsOf(m_position).locked), !m_locked);
+    const char* locked = optionsOf(m_position).locked;
+    app::ClientOptions::store(QLatin1String(locked), !option(app::ClientOptions::load().options(), locked, false));
 }
 
 void TActionBarGroup::setFirstVisibleButtonIdCanBeSaved(const bool CanBeSaved)

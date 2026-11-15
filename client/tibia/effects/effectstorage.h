@@ -38,9 +38,11 @@ public:
     bool add(const TEffectPtr& effect);
     /// Remove the effects of `typeId` at `field` (the server's remove message).
     void remove(uint16_t typeId, const Position& field);
-    /// Advance every effect to `nowMs`, then drop the finished ones and those
-    /// whose field is out of view.
+    /// Advance every effect to `nowMs`, then drop the finished ones.
     void update(qint64 nowMs);
+    /// Drop the effects whose field is outside the map area `inArea` accepts
+    /// (the view moved).
+    void removeOutside(const std::function<bool(const Position&)>& inArea);
     void clear();
 
     /// The missiles flying on floor `z`, in their order of arrival.

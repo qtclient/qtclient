@@ -40,11 +40,6 @@ bool readPosition(ClassicReader& r, Position& out)
     return true;
 }
 
-bool feature(const tibia::client::GameFeature f)
-{
-    return tibia::game::cipFeature(f);
-}
-
 /// The icons of a creature: u8 count × (u8 icon, u8 category, u16 value, bool flag).
 bool readCreatureIcons(ClassicReader& r, google::protobuf::RepeatedPtrField<ProtocolCreatureIcon>* icons)
 {
@@ -81,30 +76,18 @@ bool readExtraIcons(ClassicReader& r, google::protobuf::RepeatedField<uint32_t>*
 }
 
 /// The fields of one floor, column by column, carrying the skip count over.
-bool readFloor(ClassicReader& r, google::protobuf::RepeatedPtrField<ProtocolMapField>* fields, const int x, const int y,
-               const int z, const int width, const int height, const int offset, int& skip);
-
-}
-
-bool readMapFloor(ClassicReader& r, google::protobuf::RepeatedPtrField<ProtocolMapField>* fields, const int x, const int y,
-                  const int z, const int width, const int height, const int offset, int& skip)
-{
-    return readFloor(r, fields, x, y, z, width, height, offset, skip);
-}
-
-namespace {
-
+/// Only described fields are added: a skipped field is left as it is.
 bool readFloor(ClassicReader& r, google::protobuf::RepeatedPtrField<ProtocolMapField>* fields, const int x, const int y,
                const int z, const int width, const int height, const int offset, int& skip)
 {
     for (int nx = 0; nx < width; ++nx) {
         for (int ny = 0; ny < height; ++ny) {
-            ProtocolMapField* field = fields->Add();
-            setCoordinate(field->mutable_coordinate(), x + nx + offset, y + ny + offset, z);
             if (skip > 0) {
                 --skip;
                 continue;
             }
+            ProtocolMapField* field = fields->Add();
+            setCoordinate(field->mutable_coordinate(), x + nx + offset, y + ny + offset, z);
             if (!readMapField(r, field, skip))
                 return false;
         }
@@ -133,7 +116,8 @@ bool readArea(ClassicReader& r, google::protobuf::RepeatedPtrField<ProtocolMapFi
         if (!readFloor(r, fields, x, y, nz, width, height, z - nz, skip))
             return false;
     }
-    return true;
+    // The skip counts must cover the area exactly.
+    return skip == 0;
 }
 
 /// A mapped thing: a field and stack position, or 0xffff and a creature id.
@@ -171,10 +155,13 @@ bool readOutfit(ClassicReader& r, ProtocolOutfit* out, const bool outfit)
         uint8_t head = 0, body = 0, legs = 0, feet = 0;
         if (!r.u8(head) || !r.u8(body) || !r.u8(legs) || !r.u8(feet))
             return false;
-        out->set_head(head);
-        out->set_body(body);
-        out->set_legs(legs);
-        out->set_feet(feet);
+        // All four colours zero means the outfit has no colours.
+        if (head != 0 || body != 0 || legs != 0 || feet != 0) {
+            out->set_head(head);
+            out->set_body(body);
+            out->set_legs(legs);
+            out->set_feet(feet);
+        }
         if (outfit) {
             uint8_t addons = 0;
             if (!r.u8(addons))
@@ -243,7 +230,11 @@ bool readCreature(ClassicReader& r, ProtocolCreature* out, const uint16_t kind)
     out->set_light_intensity(intensity);
     out->set_light_color(color);
     out->set_speed(speed);
-    if (!readCreatureIcons(r, out->mutable_icons()) || !readExtraIcons(r, out->mutable_extra_icons()))
+    out->set_update_icons(true);
+    if (!readCreatureIcons(r, out->mutable_icons()))
+        return false;
+    out->set_update_extra_icons(true);
+    if (!readExtraIcons(r, out->mutable_extra_icons()))
         return false;
     uint8_t skull = 0, shield = 0;
     if (!r.u8(skull) || !r.u8(shield))
@@ -281,10 +272,9 @@ bool readCreature(ClassicReader& r, ProtocolCreature* out, const uint16_t kind)
     return true;
 }
 
-bool readMapObject(ClassicReader& r, ProtocolMapObject* out)
+bool readMapObject(ClassicReader& r, ProtocolMapObject* out, uint16_t id)
 {
-    uint16_t id = 0;
-    if (!r.u16(id) || id == 0)
+    if (id == 0 && (!r.u16(id) || id == 0))
         return false;
     if (id == NewCreature || id == KnownCreature || id == TurnedCreature)
         return readCreature(r, out->mutable_creature(), id);
@@ -293,27 +283,18 @@ bool readMapObject(ClassicReader& r, ProtocolMapObject* out)
 
 bool readMapField(ClassicReader& r, ProtocolMapField* out, int& skip)
 {
-    bool environmentEffect = feature(tibia::client::GameEnvironmentEffect);
-    for (int stackPos = 0; stackPos < 256; ++stackPos) {
-        if (r.remaining() < 2)
-            return false;
-        const uint16_t peek = uint16_t(r.p[r.i]) | (uint16_t(r.p[r.i + 1]) << 8);
-        if (peek >= 0xff00) {
-            r.i += 2;
-            skip = peek & 0xff;
-            return true;
-        }
-        if (environmentEffect) {
-            uint16_t effect = 0;
-            (void)r.u16(effect);
-            out->set_environment_effect(effect);
-            environmentEffect = false;
-            continue;
-        }
-        if (!readMapObject(r, out->add_objects()))
+    // Objects until a value of 0xff00 or more; its low byte is the number of
+    // fields to skip after this one.
+    uint16_t id = 0;
+    if (!r.u16(id))
+        return false;
+    while (id < 0xff00) {
+        if (id == 0)
+            return false; // a field has no zero-id appearance
+        if (!readMapObject(r, out->add_objects(), id) || !r.u16(id))
             return false;
     }
-    skip = 0;
+    skip = id & 0xff;
     return true;
 }
 
@@ -409,7 +390,7 @@ size_t fillMapMessage(GameserverMessage& msg, const int opcode, ClassicReader& r
                            pos.z - tibia::config::mapAwareUndergroundFloorRange(), range.horizontal(), range.vertical(), 3, skip))
                 return 0;
         }
-        return r.i;
+        return skip == 0 ? r.i : 0;
     }
     case 191: {
         // One floor down: the newly visible floors below, then the view moves -1,-1.
@@ -428,7 +409,7 @@ size_t fillMapMessage(GameserverMessage& msg, const int opcode, ClassicReader& r
                            pos.z + tibia::config::mapAwareUndergroundFloorRange(), range.horizontal(), range.vertical(), -3, skip))
                 return 0;
         }
-        return r.i;
+        return skip == 0 ? r.i : 0;
     }
     default:
         return 0;
@@ -497,35 +478,50 @@ size_t fillCreatureMessage(GameserverMessage& msg, const int opcode, ClassicRead
                 return 0;
             break;
         }
+        // One field of the known creature the update names.
         case 11: {
             uint8_t mana = 0;
             if (!r.u8(mana))
                 return 0;
-            m->set_mana_percent(mana);
+            ProtocolCreature* creature = m->mutable_creature();
+            creature->set_id(id);
+            creature->set_mana_percent(mana);
             break;
         }
         case 12: {
             uint8_t show = 0;
             if (!r.u8(show))
                 return 0;
-            m->set_show_status(show != 0);
+            ProtocolCreature* creature = m->mutable_creature();
+            creature->set_id(id);
+            creature->set_show_status(show != 0);
             break;
         }
         case 13: {
             uint8_t vocation = 0;
             if (!r.u8(vocation))
                 return 0;
-            m->set_vocation(vocation % 10);
+            ProtocolCreature* creature = m->mutable_creature();
+            creature->set_id(id);
+            creature->set_vocation(vocation % 10);
             break;
         }
-        case 14:
-            if (!readCreatureIcons(r, m->mutable_icons()))
+        case 14: {
+            ProtocolCreature* creature = m->mutable_creature();
+            creature->set_id(id);
+            creature->set_update_icons(true);
+            if (!readCreatureIcons(r, creature->mutable_icons()))
                 return 0;
             break;
-        case 15:
-            if (!readExtraIcons(r, m->mutable_extra_icons()))
+        }
+        case 15: {
+            ProtocolCreature* creature = m->mutable_creature();
+            creature->set_id(id);
+            creature->set_update_extra_icons(true);
+            if (!readExtraIcons(r, creature->mutable_extra_icons()))
                 return 0;
             break;
+        }
         // Product server party extensions.
         case 16:
         case 17: {

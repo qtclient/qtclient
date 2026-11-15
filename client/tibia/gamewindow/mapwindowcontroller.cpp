@@ -19,7 +19,8 @@ TMapWindowController::TMapWindowController(QQuickItem* pane, const bool software
             &TMapWindowController::onMapWindowControllerOptionsChanged);
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
             [this](const QString& name) {
-                if (name == QLatin1String("modClassicGameView"))
+                if (name == QLatin1String("modImmersiveGameView")
+                    || name == QLatin1String("modClassicGameView"))
                     refreshClassicView();
             });
     if (pane) {
@@ -48,7 +49,12 @@ bool TMapWindowController::classicView() const
 void TMapWindowController::refreshClassicView()
 {
     const QJsonObject options = app::ClientOptions::load().options();
-    const bool classic = options.value(QLatin1String("modClassicGameView")).toBool(false);
+    bool immersive = true;
+    if (options.contains(QLatin1String("modImmersiveGameView")))
+        immersive = options.value(QLatin1String("modImmersiveGameView")).toBool(true);
+    else if (options.contains(QLatin1String("modClassicGameView")))
+        immersive = !options.value(QLatin1String("modClassicGameView")).toBool(false);
+    const bool classic = !immersive;
     if (classic == m_classicView)
         return;
     m_classicView = classic;

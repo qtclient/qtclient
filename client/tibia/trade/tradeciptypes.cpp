@@ -193,12 +193,9 @@ std::vector<::tibia::container::TInventorySlot> offerItems(const Message& m)
 
 }
 
-void TNPCTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                              const bool applyClassic)
+void TNPCTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
     const auto* shadow = protocol::lastShadowServerMessage();
     if (!shadow)
         return;
@@ -235,12 +232,9 @@ void TNPCTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode, 
     }
 }
 
-void TPlayerTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                                 const bool applyClassic)
+void TPlayerTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
     const auto* shadow = protocol::lastShadowServerMessage();
     if (!shadow)
         return;
@@ -274,11 +268,10 @@ void ownProductSurface(QObject* parent)
     new TCharacterTradeStorage(parent);
 }
 
-void TCharacterTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                                    const bool applyClassic)
+void TCharacterTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow || opcode != 128
         || !shadow->HasExtension(GameserverMessageCharacterTradeConfiguration::gameserver_message_character_trade_configuration))
         return;

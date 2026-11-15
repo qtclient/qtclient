@@ -2,9 +2,7 @@
 
 #include <cip_gen.h>
 
-#include <QPointer>
-
-class QQuickWindow;
+#include <QAbstractNativeEventFilter>
 
 namespace tibia {
 namespace input {
@@ -37,7 +35,7 @@ protected:
 };
 
 /// CIP input::TDiscardUnhandledMouseButtonsEventFilter (eventFilter):
-/// eats mouse buttons other than left / right / middle.
+/// strips every button but left / right from mouse events that carry one.
 class TDiscardUnhandledMouseButtonsEventFilter final
     : public cip::tibia::input::TDiscardUnhandledMouseButtonsEventFilter
 {
@@ -49,20 +47,16 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 };
 
-/// CIP input::TWindowFocusEventFilter: emits windowFocusLost when the game
-/// window deactivates (CIP vtable).
-class TWindowFocusEventFilter final : public cip::tibia::input::TWindowFocusEventFilter
+/// CIP input::TWindowFocusEventFilter: a native event filter owned by the
+/// key status. It never claims an event and never reports a focus loss here.
+class TWindowFocusEventFilter final : public cip::tibia::input::TWindowFocusEventFilter,
+                                      public QAbstractNativeEventFilter
 {
     Q_OBJECT
 public:
-    explicit TWindowFocusEventFilter(QQuickWindow* window, QObject* parent = nullptr);
-    ~TWindowFocusEventFilter() override;
+    explicit TWindowFocusEventFilter(QObject* parent = nullptr);
 
-protected:
-    bool eventFilter(QObject* watched, QEvent* event) override;
-
-private:
-    QPointer<QQuickWindow> m_window;
+    bool nativeEventFilter(const QByteArray& eventType, void* message, qintptr* result) override;
 };
 
 /// CIP input::TEventFilterManager (block / unblock):

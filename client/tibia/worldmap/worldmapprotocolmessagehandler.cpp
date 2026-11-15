@@ -1,4 +1,5 @@
 #include "worldmap/worldmapprotocolmessagehandler.h"
+#include "worldmap/ambientlightstorage.h"
 
 #include "protocol/protocolciptypes.h"
 #include "worldmap/worldmapstorage.h"
@@ -6,8 +7,11 @@
 #include "container/containerciptypes.h"
 #include "creatures/creatureprotocolapply.h"
 #include "creatures/creaturestorage.h"
+#include "effects/effectstorage.h"
 #include "game/localplayersessionthing.h"
+#include "minimap/minimaptilestorage.h"
 #include "worldmap/worldmapfield.h"
+#include "worldmap/worldmapviewport.h"
 
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
@@ -73,35 +77,76 @@ void TWorldmapProtocolMessageHandler::applyCreatureIdToField(const uint32_t crea
         TWorldMapStorage::ensureStorage()->placeCreatureId(creatureId, position, stackPos);
 }
 
-void TWorldmapProtocolMessageHandler::applyObject(const ProtocolMapObject& object, const Position& position, const int stackPos)
+bool TWorldmapProtocolMessageHandler::applyObject(const ProtocolMapObject& object, const Position& position, const int stackPos)
 {
     if (object.has_creature()) {
-        if (const uint32_t id = creatures::applyProtocolCreature(object.creature()); id != 0)
+        // The creature's data is applied first; its field then holds it.
+        if (const uint32_t id = creatures::applyProtocolCreature(object.creature()); id != 0) {
             applyCreatureIdToField(id, position, stackPos);
-        return;
+            return true;
+        }
+        return false;
     }
     if (object.has_item()) {
-        if (const auto appearance = container::TInventorySlot::fromProtocolInventoryItem(object.item()).appearance)
+        if (const auto appearance = container::TInventorySlot::fromProtocolInventoryItem(object.item()).appearance) {
             applyAppearanceToField(appearance, position, stackPos);
+            return true;
+        }
     }
+    return false;
 }
 
 void TWorldmapProtocolMessageHandler::applyField(const ProtocolMapField& field)
 {
     const Position position = positionOf(field.coordinate());
+    // The storage holds fields of its known area only.
+    if (!game::isAwareOf({ position.x, position.y, position.z }))
+        return;
+    // The objects replace the field's content in their order; objects that
+    // yield nothing are left out, and a field left without objects is dropped.
     clearField(position);
     int stackPos = 0;
-    for (const ProtocolMapObject& object : field.objects())
-        applyObject(object, position, stackPos++);
+    for (const ProtocolMapObject& object : field.objects()) {
+        if (applyObject(object, position, stackPos))
+            ++stackPos;
+    }
+    updateMinimapField(position);
 }
 
-void TWorldmapProtocolMessageHandler::centerOn(const Position& position)
+void TWorldmapProtocolMessageHandler::setMinimapTileStorage(minimap::TMinimapTileStorage* minimap)
 {
-    if (!m_mapKnown) {
-        if (const LocalPlayerSessionThingPtr player = game::localPlayer())
-            player->setPosition(position);
+    m_minimap = minimap;
+}
+
+void TWorldmapProtocolMessageHandler::updateMinimapField(const Position& position)
+{
+    if (m_minimap)
+        m_minimap->onFieldChanged(position);
+}
+
+TWorldMapStorage& TWorldmapProtocolMessageHandler::map() const
+{
+    return m_storage ? *m_storage : *TWorldMapStorage::ensureStorage();
+}
+
+void TWorldmapProtocolMessageHandler::moveKnownArea(const Position& center)
+{
+    map().setStoredVolume(center);
+    effects::TEffectStorage::instance().removeOutside(
+        [](const Position& field) { return game::isAwareOf({ field.x, field.y, field.z }); });
+    // The minimap follows the view's floor and marks the fields of the area
+    // the server left out as unseen, on every move (also onto the same spot).
+    if (m_minimap) {
+        m_minimap->setPlayerZ(center.z);
+        m_minimap->markUnseen();
     }
-    game::setCentralPosition({ position.x, position.y, position.z });
+}
+
+void TWorldmapProtocolMessageHandler::applyArea(const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields)
+{
+    // Fields the server skipped keep what they hold.
+    for (const ProtocolMapField& field : fields)
+        applyField(field);
 }
 
 void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessageFullMap& message)
@@ -111,14 +156,21 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
     const Position position = positionOf(message.coordinate());
     const LocalPlayerSessionThingPtr player = game::localPlayer();
     const Position oldPosition = player ? player->getPosition() : Position();
-    centerOn(position);
+    // The session's first map also places the local player.
+    if (!m_mapKnown && player)
+        player->setPosition(position);
+    // The view centres on the map's field, its top-left subfield.
+    if (m_viewport)
+        m_viewport->setCenter(TWorldMapSubfieldCoordinate::fromField(TWorldMapCoordinate(position), 0, 0));
+    moveKnownArea(position);
+    // Every creature counts as off the map until the new area places it on a field.
+    if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance())
+        creatures->clearPlacedOnFieldFlags();
     // A jump re-places the view: the step in flight ends before the new map arrives.
     if (player && oldPosition.isValid() && !game::isOneStep(oldPosition, position))
         player->handleTeleport();
-    for (const ProtocolMapField& field : message.fields())
-        applyField(field);
+    applyArea(message.fields());
     game::updateMapLatency();
-    notifyWindowChanged(true);
     if (!m_mapKnown) {
         schedule::post([] { game::notify("onMapKnown"); });
         m_mapKnown = true;
@@ -127,40 +179,14 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
     game::notify("onTeleport", player, position, oldPosition);
 }
 
-void TWorldmapProtocolMessageHandler::handleFloorDescription(const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields,
-                                                             const Position& center, const bool viewFloor)
-{
-    if (game::isSceneFrozen())
-        return;
-    if (viewFloor) {
-        const LocalPlayerSessionThingPtr player = game::localPlayer();
-        const Position oldPosition = player ? player->getPosition() : Position();
-        centerOn(center);
-        if (!m_mapKnown) {
-            schedule::post([] { game::notify("onMapKnown"); });
-            m_mapKnown = true;
-        }
-        schedule::post([] { game::notify("onMapDescription"); });
-        if (player && oldPosition.isValid() && !game::isOneStep(oldPosition, center))
-            player->handleTeleport();
-        game::notify("onTeleport", player, center, oldPosition);
-    }
-    for (const ProtocolMapField& field : fields)
-        applyField(field);
-    notifyWindowChanged(viewFloor);
-    game::updateMapLatency();
-}
-
 void TWorldmapProtocolMessageHandler::handleSlice(const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields,
                                                   const Position& center)
 {
     if (game::isSceneFrozen())
         return;
-    for (const ProtocolMapField& field : fields)
-        applyField(field);
+    moveKnownArea(center);
+    applyArea(fields);
     game::updateMapLatency();
-    game::setCentralPosition({ center.x, center.y, center.z });
-    notifyWindowChanged(false);
 }
 
 void TWorldmapProtocolMessageHandler::handleTopRowMessage(const GameserverMessageTopRow& message)
@@ -183,34 +209,28 @@ void TWorldmapProtocolMessageHandler::handleLeftColumnMessage(const GameserverMe
     handleSlice(message.fields(), positionOf(message.coordinate()));
 }
 
-namespace {
-
-/// A floor change: the step in flight ends, the new floors land, the view re-centres.
-void changeFloor(TWorldmapProtocolMessageHandler& handler, const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields,
-                 const Position& center, const Position& from)
+void TWorldmapProtocolMessageHandler::changeFloor(const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields,
+                                                  const Position& center, const Position& from)
 {
+    // The step in flight ends; the new floors land around the moved view.
     const LocalPlayerSessionThingPtr player = game::localPlayer();
     if (player)
         player->handleTeleport();
-    for (const ProtocolMapField& field : fields)
-        handler.applyField(field);
-    game::setCentralPosition({ center.x, center.y, center.z });
-    notifyWindowChanged(true);
+    moveKnownArea(center);
+    applyArea(fields);
     game::notify("onTeleport", player, center, from);
-}
-
 }
 
 void TWorldmapProtocolMessageHandler::handleTopFloorMessage(const GameserverMessageTopFloor& message)
 {
     const Position center = positionOf(message.coordinate());
-    changeFloor(*this, message.fields(), center, Position(center.x - 1, center.y - 1, center.z));
+    changeFloor(message.fields(), center, Position(center.x - 1, center.y - 1, center.z));
 }
 
 void TWorldmapProtocolMessageHandler::handleBottomFloorMessage(const GameserverMessageBottomFloor& message)
 {
     const Position center = positionOf(message.coordinate());
-    changeFloor(*this, message.fields(), center, Position(center.x + 1, center.y + 1, center.z));
+    changeFloor(message.fields(), center, Position(center.x + 1, center.y + 1, center.z));
 }
 
 void TWorldmapProtocolMessageHandler::handleFieldDataMessage(const GameserverMessageFieldData& message)
@@ -221,8 +241,11 @@ void TWorldmapProtocolMessageHandler::handleFieldDataMessage(const GameserverMes
 
 void TWorldmapProtocolMessageHandler::handleCreateOnMapMessage(const GameserverMessageCreateOnMap& message)
 {
-    if (!game::isSceneFrozen())
-        applyObject(message.object(), positionOf(message.coordinate()), static_cast<int>(message.stackpos()));
+    if (game::isSceneFrozen())
+        return;
+    const Position at = positionOf(message.coordinate());
+    if (applyObject(message.object(), at, static_cast<int>(message.stackpos())))
+        updateMinimapField(at);
 }
 
 void TWorldmapProtocolMessageHandler::handleChangeOnMapMessage(const GameserverMessageChangeOnMap& message)
@@ -235,70 +258,57 @@ void TWorldmapProtocolMessageHandler::handleChangeOnMapMessage(const GameserverM
     const bool creatureReplacement = message.object().has_creature();
     const auto replace = [&](const Position& at, const int stackPos) { applyObject(message.object(), at, stackPos); };
     if (message.has_creature_id()) {
-        // The id form is always a creature, found on its stored field.
-        const uint32_t id = message.creature_id();
-        Position at;
-        if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
-            if (const auto row = storage->creatureAt(id))
-                at = row->position();
-        }
-        if (TWorldMapField* tile = at.isValid() ? fieldAt(at) : nullptr) {
-            const int stackPos = tile->creatureStackPos(id);
-            if (stackPos >= 0) {
-                map->removeCreatureFromFields(id, at);
-                replace(tile->getPosition(), stackPos);
-                return;
-            }
-        }
+        // CIP: the id form only updates the creature; its field entry stays.
         if (creatureReplacement)
             (void)creatures::applyProtocolCreature(message.object().creature());
         return;
     }
     const Position at = positionOf(message.coordinate());
     const int stackPos = static_cast<int>(message.stackpos());
-    if (TWorldMapField* tile = fieldAt(at)) {
-        if (const uint32_t stackCreatureId = tile->stackCreatureId(stackPos)) {
-            if (map->removeCreatureFromFields(stackCreatureId, at)) {
+    const auto replaceAt = [&] {
+        if (TWorldMapField* tile = fieldAt(at)) {
+            if (const uint32_t stackCreatureId = tile->stackCreatureId(stackPos)) {
+                if (map->removeCreatureFromFields(stackCreatureId, at)) {
+                    replace(at, stackPos);
+                    return;
+                }
+            }
+            if (tile->removeThingAtStackPos(stackPos)) {
                 replace(at, stackPos);
                 return;
             }
         }
-        if (tile->removeThingAtStackPos(stackPos)) {
-            replace(at, stackPos);
-            return;
-        }
-    }
-    // A turn still carries the creature's update when its field slot is not found.
-    if (creatureReplacement)
-        (void)creatures::applyProtocolCreature(message.object().creature());
+        // A turn still carries the creature's update when its field slot is not found.
+        if (creatureReplacement)
+            (void)creatures::applyProtocolCreature(message.object().creature());
+    };
+    replaceAt();
+    // The minimap records the field whether or not the slot was found.
+    updateMinimapField(at);
 }
 
 void TWorldmapProtocolMessageHandler::handleDeleteOnMapMessage(const GameserverMessageDeleteOnMap& message)
 {
     if (game::isSceneFrozen())
         return;
-    TWorldMapStorage* map = m_storage ? m_storage : TWorldMapStorage::ensureStorage();
-    // A deleted creature keeps its identity (name, outfit); only its field slot goes.
+    // The creature-id form leaves the creature where it is drawn: it only
+    // stops counting as placed on a field.
     if (message.has_creature_id()) {
-        const uint32_t id = message.creature_id();
-        if (map->removeCreatureFromFields(id)) {
-            if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance())
-                storage->leaveMap(id);
-        }
+        if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance())
+            storage->removeFromField(message.creature_id());
         return;
     }
+    // The field drops the object at the stack position (a creature leaves the
+    // field), then the minimap records the field.
+    TWorldMapStorage* map = m_storage ? m_storage : TWorldMapStorage::ensureStorage();
     const Position at = positionOf(message.coordinate());
     const int stackPos = static_cast<int>(message.stackpos());
     if (TWorldMapField* tile = fieldAt(at)) {
-        if (const uint32_t stackCreatureId = tile->stackCreatureId(stackPos)) {
-            if (map->removeCreatureFromFields(stackCreatureId, at)) {
-                if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance())
-                    storage->leaveMap(stackCreatureId);
-                return;
-            }
-        }
-        (void)tile->removeThingAtStackPos(stackPos);
+        const uint32_t stackCreatureId = tile->stackCreatureId(stackPos);
+        if (!stackCreatureId || !map->removeCreatureFromFields(stackCreatureId, at))
+            (void)tile->removeThingAtStackPos(stackPos);
     }
+    updateMinimapField(at);
 }
 
 void TWorldmapProtocolMessageHandler::handleAmbientLightMessage(const GameserverMessageAmbientLight& AmbientLightMessage)
@@ -306,18 +316,17 @@ void TWorldmapProtocolMessageHandler::handleAmbientLightMessage(const Gameserver
     const auto intensity = static_cast<uint8_t>(AmbientLightMessage.intensity());
     const auto color = static_cast<uint8_t>(AmbientLightMessage.color());
     tibia::game::applyWorldLight(intensity, color);
+    if (TAmbientLightStorage* ambient = TAmbientLightStorage::instance()) {
+        // The 6x6x6 palette; indices past 215 are black.
+        QColor rgb = QColor::fromRgb(0, 0, 0, 255);
+        if (color <= 215)
+            rgb = QColor::fromRgb(color / 36 * 51, color / 6 % 6 * 51, color % 6 * 51, 255);
+        ambient->setLight({ intensity, rgb });
+    }
 }
 
-void TWorldmapProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByteArray& /*classicFrame*/,
-                                                              bool applyClassic)
+void TWorldmapProtocolMessageHandler::onServerMessageEnqueued(int opcode)
 {
-    // Peeled opcodes: native H applies when the classic bridge will not
-    // (applyClassic=false on the structured TR→Q path). Measure-fail still
-    // classic-applies first then enqueues with applyClassic=false — re-applying
-    // the same AmbientLight values here is idempotent (no spurious notify).
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
-
     // A new session (LoginSuccess) waits for its first full map again.
     if (opcode == 23)
         m_mapKnown = false;
@@ -390,18 +399,6 @@ TWorldmapProtocolMessageHandler::TWorldmapProtocolMessageHandler(TWorldMapStorag
     : cip::tibia::worldmap::TWorldmapProtocolMessageHandler(parent)
     , m_storage(storage)
 {
-}
-
-void TWorldmapProtocolMessageHandler::onWindowChanged(const bool fullDescription)
-{
-    if (m_storage && fullDescription)
-        m_storage->notifyStoredVolumeChanged();
-}
-
-void TWorldmapProtocolMessageHandler::onTileChanged(const Position& position)
-{
-    if (m_storage)
-        m_storage->notifyCoordinateChanged(position);
 }
 
 }

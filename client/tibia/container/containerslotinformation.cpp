@@ -96,9 +96,10 @@ QString chargesText(const TInventorySlot& slot, const bool whenUnused)
 
 QString clockText(const TInventorySlot& slot, const bool whenUnused)
 {
-    const qint64 seconds = slot.durationRemainingSeconds();
-    if (seconds < 1 || (slot.brandNew && !whenUnused))
+    const qint64 milliseconds = slot.durationRemainingMilliseconds();
+    if (milliseconds < 1 || (slot.brandNew && !whenUnused))
         return {};
+    const qint64 seconds = milliseconds / 1000;
     return lengthVariants(durationLongText(seconds), durationShortText(seconds));
 }
 
@@ -157,7 +158,7 @@ QString slotText(const TInventorySlot& slot, const bool showExpire, const bool w
     }
     if (slot.stackable && slot.count > 1)
         text = QString::number(slot.count);
-    if (slot.containerAmmoTotal)
+    if (slot.hasContainerAmmo)
         text = ammoText(slot.containerAmmoTotal);
     return text;
 }

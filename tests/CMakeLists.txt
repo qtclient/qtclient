@@ -33,7 +33,6 @@ function(qtclient_add_gtest TARGET_NAME)
     target_compile_definitions(${TARGET_NAME}
         PRIVATE
             CLIENT
-            FRAMEWORK_GRAPHICS
             FRAMEWORK_NET
             FRAMEWORK_XML
     )

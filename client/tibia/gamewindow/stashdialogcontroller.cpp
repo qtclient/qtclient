@@ -7,7 +7,6 @@
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameactionhandlers.h"
 
-#include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 

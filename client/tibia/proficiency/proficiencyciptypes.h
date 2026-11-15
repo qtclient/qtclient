@@ -22,7 +22,7 @@ public:
     using cip::tibia::proficiency::TProficiencyProtocolMessageHandler::TProficiencyProtocolMessageHandler;
 public:
     /// Tip Q→H wire: WeaponProficiencyNotification from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 }

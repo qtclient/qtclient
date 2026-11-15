@@ -60,8 +60,10 @@ public:
     int playerZ() const { return m_playerZ; }
     /// Marks the fields of the world area the server left out as unseen (black).
     void markUnseen();
-    /// A field the server described or changed.
+    /// A field the server described, or created, changed or deleted an object
+    /// on: recorded when it lies on the minimap's floor.
     void onFieldChanged(const Position& coord);
+    /// Records the world's data of the field (the defaults without one).
     void updateField(const Position& coord);
     void setField(const Position& coord, const TMinimapFieldData& field);
 

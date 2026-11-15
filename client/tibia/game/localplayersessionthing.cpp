@@ -22,29 +22,27 @@
 
 #include "game/localplayersessionthing.h"
 
-#include <framework/core/gamehooks.h>
+#include <tibia/game/gamenotify.h>
 
 #include "container/containerciptypes.h"
 #include "creatures/creaturemovementspeedcalculator.h"
 #include "creatures/creaturestorage.h"
-#include "framework/core/scheduledevent.h"
+#include <tibia/schedule/schedule.h>
 #include <tibia/game/playerdata.h>
 #include <tibia/game/thingsession_forward.h>
 #include <tibia/schedule/schedule.h>
 #include "tibia/assets/thingtype.h"
 #include <tibia/config/runtimegameconfig.h>
 #include "worldmap/worldmapfield.h"
-#include "client/item.h"
 #include <tibia/worldmap/worldmapstorage.h>
-#include "framework/core/clock.h"
+#include "shared/clockservice.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/worldmap/worldmapstorage.h>
-#include "gamehub.h"
-#include "gamehub_impl.h"
+#include "game/gamesessionstate.h"
 
 #include <algorithm>
 #include <cmath>
@@ -62,10 +60,7 @@ std::shared_ptr<tibia::creatures::TCreature> localWalkRow(LocalPlayerSessionThin
 
 } // namespace
 
-LocalPlayerSessionThing::LocalPlayerSessionThing()
-{
-    m_name.setAlign(Fw::AlignTopCenter);
-}
+LocalPlayerSessionThing::LocalPlayerSessionThing() = default;
 LocalPlayerSessionThing::~LocalPlayerSessionThing() = default;
 
 void LocalPlayerSessionThing::walk(const Position& oldPos, const Position& newPos)
@@ -154,7 +149,7 @@ void LocalPlayerSessionThing::setStates(const uint64_t states)
 
 void LocalPlayerSessionThing::setInformationChannel(const uint32_t durationMs)
 {
-    m_informationChannelStart = g_clock.millis();
+    m_informationChannelStart = tibia::shared::TClockService::frameMillis();
     m_informationChannelDuration = std::max<uint32_t>(durationMs, 1);
 }
 
@@ -163,7 +158,7 @@ float LocalPlayerSessionThing::getInformationChannelProgress() const
     if (m_informationChannelDuration == 0)
         return -1.f;
 
-    const auto elapsed = static_cast<float>(g_clock.millis() - m_informationChannelStart);
+    const auto elapsed = static_cast<float>(tibia::shared::TClockService::frameMillis() - m_informationChannelStart);
     return std::min(100.f, elapsed * 100.f / static_cast<float>(m_informationChannelDuration));
 }
 
@@ -191,14 +186,6 @@ const tibia::container::TInventorySlot& LocalPlayerSessionThing::inventorySlot(
     if (tibia::container::TInventoryContainer* inventoryContainer = tibia::container::TInventoryContainer::instance())
         return inventoryContainer->slotAt(static_cast<int>(inventory));
     return kEmpty;
-}
-
-ItemPtr LocalPlayerSessionThing::getInventoryItem(const tibia::client::InventorySlot inventory)
-{
-    const tibia::container::TInventorySlot& slot = inventorySlot(inventory);
-    if (slot.empty())
-        return nullptr;
-    return Item::create(slot.typeId);
 }
 
 void LocalPlayerSessionThing::setInventoryCountCache(std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts)
@@ -296,23 +283,38 @@ void LocalPlayerSessionThing::setId(const uint32_t id)
     m_id = id;
 }
 
-uint32_t LocalPlayerSessionThing::getId()
+uint32_t LocalPlayerSessionThing::getId() const
 {
     return m_id;
 }
 
+void LocalPlayerSessionThing::setPosition(const Position& position, const uint8_t stackPos)
+{
+    m_stackPos = stackPos;
+    if (m_position == position)
+        return;
+    const Position oldPos = m_position;
+    m_position = position;
+    onPositionChange(position, oldPos);
+}
+
+tibia::worldmap::TWorldMapField* LocalPlayerSessionThing::getTile()
+{
+    return tibia::worldmap::fieldAt(m_position);
+}
+
 void LocalPlayerSessionThing::setName(const std::string_view name)
 {
-    if (name == m_name.getText())
+    if (name == m_name)
         return;
-    m_name.setText(name);
+    m_name = name;
     if (tibia::game::TPlayerData* data = tibia::game::TPlayerData::liveInstance())
         data->setCharacterName(name);
 }
 
 std::string LocalPlayerSessionThing::getName()
 {
-    return m_name.getText();
+    return m_name;
 }
 
 void LocalPlayerSessionThing::setDirection(const tibia::client::Direction direction, const bool syncFieldStack)
@@ -322,14 +324,6 @@ void LocalPlayerSessionThing::setDirection(const tibia::client::Direction direct
 
     m_direction = direction;
 
-    if (direction == tibia::client::NorthEast || direction == tibia::client::SouthEast)
-        m_numPatternX = tibia::client::East;
-    else if (direction == tibia::client::NorthWest || direction == tibia::client::SouthWest)
-        m_numPatternX = tibia::client::West;
-    else
-        m_numPatternX = direction;
-
-    setAttachedEffectDirection(static_cast<tibia::client::Direction>(m_numPatternX));
 
     if (syncFieldStack) {
         if (tibia::worldmap::TWorldMapField* field = getTile())
@@ -361,22 +355,16 @@ void LocalPlayerSessionThing::setOutfit(const Outfit& outfit, const bool fireEve
 
     const Outfit oldOutfit = m_outfit;
     m_outfit = newOutfit;
-    m_numPatternZ = 0;
 
     if (m_outfit.isInvalid())
         m_outfit.setCategory(m_outfit.getAuxId() > 0 ? ThingCategoryItem : ThingCategoryCreature);
 
     const auto* thingType = getThingType();
     if (!thingType) {
-        g_logger.error("LocalPlayerSessionThing::setOutfit - invalid thing type for player {}.", getId());
+        qCritical("%s", std::format("LocalPlayerSessionThing::setOutfit - invalid thing type for player {}.", getId()).c_str());
         m_outfit = oldOutfit;
         return;
     }
-
-    m_clientId = thingType->getId();
-
-    if (m_outfit.hasMount())
-        m_numPatternZ = std::min<int>(1, getNumPatternZ() - 1);
 
     if (fireEvent)
         publish("onOutfitChange", m_outfit, oldOutfit);
@@ -510,7 +498,6 @@ void wireLocalPlayerOnDisappear(LocalPlayerSessionThing& player)
             cancelFollow();
     });
 
-    player.Thing::onDisappear();
 }
 
 } // namespace tibia::game

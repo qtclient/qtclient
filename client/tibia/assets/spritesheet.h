@@ -1,7 +1,9 @@
 #pragma once
 
-#include <framework/core/timer.h>
-#include <framework/graphics/declarations.h>
+#include "shared/clockservice.h"
+#include <framework/util/size.h>
+
+#include <QImage>
 
 #include <atomic>
 #include <cstdint>
@@ -56,6 +58,9 @@ enum class SpriteLoadState
     LOADED
 };
 
+class SpriteSheet;
+using SpriteSheetPtr = std::shared_ptr<SpriteSheet>;
+
 class SpriteSheet
 {
 public:
@@ -76,7 +81,7 @@ public:
     std::atomic<SpriteLoadState> m_loadingState = SpriteLoadState::NONE;
     std::unique_ptr<uint8_t[]> data;
     std::string file;
-    Timer m_lastTimeUsage;
+    tibia::shared::TFrameStopWatch m_lastTimeUsage;
 };
 
 namespace tibia {
@@ -96,7 +101,8 @@ public:
 
     bool loadSheet(const SpriteSheetPtr& sheet) const;
     SpriteSheetPtr sheetBySpriteId(int id, bool& loading, bool load = true);
-    ImagePtr spriteImage(int id, bool& loading);
+    /// One sprite as RGBA8888 (null while its sheet loads or when the id is unknown).
+    QImage spriteImage(int id, bool& loading);
 
 private:
     int m_spritesCount = 0;

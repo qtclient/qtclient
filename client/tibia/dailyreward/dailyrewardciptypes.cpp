@@ -1,5 +1,6 @@
 #include "dailyreward/dailyrewardciptypes.h"
 #include "protocol/protocolciptypes.h"
+#include <client/staticdata.h>
 #include <tibia/game/gamenotify.h>
 #include <protocol.pb.h>
 
@@ -27,10 +28,10 @@ void ownProductSurface(QObject* parent)
 
 namespace tibia::dailyreward {
 
-void TDailyRewardProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/, const bool applyClassic)
+void TDailyRewardProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
     switch (opcode) {
@@ -45,6 +46,34 @@ void TDailyRewardProtocolMessageHandler::onServerMessageEnqueued(const int opcod
     case 222:
         if (shadow->HasExtension(GameserverMessageDailyRewardCollectionState::gameserver_message_daily_reward_collection_state))
             tibia::game::notify("onDailyRewardCollectionState", static_cast<uint8_t>(shadow->GetExtension(GameserverMessageDailyRewardCollectionState::gameserver_message_daily_reward_collection_state).collected() ? 1 : 0));
+        break;
+    case 228:
+        if (shadow->HasExtension(GameserverMessageDailyRewardBasic::gameserver_message_daily_reward_basic)) {
+            const auto& m = shadow->GetExtension(GameserverMessageDailyRewardBasic::gameserver_message_daily_reward_basic);
+            const auto content = [](const ProtocolDailyRewardContent& c) {
+                DailyRewardDay day;
+                for (const auto& o : c.objects())
+                    day.objects.push_back({ static_cast<uint16_t>(o.object_id()), o.name(), static_cast<uint8_t>(o.amount()) });
+                day.preyWildcards = c.prey_wildcards();
+                day.xpBoostMinutes = c.xp_boost_minutes();
+                day.xpBoostPercent = c.xp_boost_percent();
+                day.cosmeticTokens = c.cosmetic_tokens();
+                day.bountyRerollTokens = c.bounty_reroll_tokens();
+                return day;
+            };
+            DailyRewardData data;
+            for (const auto& day : m.days()) {
+                data.freeRewards.push_back(content(day.free()));
+                data.premiumRewards.push_back(content(day.premium()));
+            }
+            data.streakBonusThresholds.assign(m.streak_bonus_thresholds().begin(), m.streak_bonus_thresholds().end());
+            tibia::game::notify("onDailyReward", data);
+        }
+        break;
+    case 169:
+        if (shadow->HasExtension(GameserverMessageRestingAreaState::gameserver_message_resting_area_state))
+            tibia::game::notify("onRestingAreaState",
+                                shadow->GetExtension(GameserverMessageRestingAreaState::gameserver_message_resting_area_state).in_resting_area());
         break;
     case 229:
         if (shadow->HasExtension(GameserverMessageDailyRewardHistory::gameserver_message_daily_reward_history)) {

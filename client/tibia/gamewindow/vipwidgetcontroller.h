@@ -2,7 +2,7 @@
 
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
-#include "gamewindow/vipstorage.h"
+#include "creatures/vipstorage.h"
 #include "input/gameactionmapper.h"
 
 #include <cip_gen.h>
@@ -55,7 +55,7 @@ public:
         PrimaryRole,
     };
 
-    explicit TVipWidgetDataModel(TVipStorage* storage, QObject* parent = nullptr);
+    explicit TVipWidgetDataModel(creatures::TVipStorage* storage, QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     /// CIP .
@@ -87,7 +87,7 @@ private:
     void onVipStateChanged(uint32_t id, int previousState, int state);
     void emitHighlightChanged(uint32_t id);
 
-    TVipStorage* m_storage;
+    creatures::TVipStorage* m_storage;
     std::vector<Row> m_rows;
     QHash<uint32_t, TVipRenderInfo*> m_renderInfos;
     QSet<uint32_t> m_highlighted;
@@ -140,7 +140,7 @@ class TVipWidgetController final : public TSidebarWidgetController<cip::tibia::g
 {
     Q_OBJECT
 public:
-    TVipWidgetController(TVipStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TVipWidgetController(creatures::TVipStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TVipWidgetController() override;
 
     /// vipWidgetOptions: size, sort order, hidden offline VIPs, groups.
@@ -207,7 +207,7 @@ private:
     void openAddGroupDialog();
     void readOptions();
 
-    TVipStorage* m_storage;
+    creatures::TVipStorage* m_storage;
     TVipWidgetDataModel* m_model;
     TVipWidgetDataModelSortFilterProxy* m_proxy;
     TGenericEnterTextDialogController* m_addVipDialog;
@@ -233,7 +233,7 @@ public:
     TVipWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TVipWidgetManager() override;
 
-    TVipStorage* storage() const { return m_storage; }
+    creatures::TVipStorage* storage() const { return m_storage; }
     exivaoptions::TExivaOptionsStorage* exivaOptions() const { return m_exivaOptions; }
     /// Before the sidebar widgets manager restores the open widgets.
     void setSidebarOptions(config::TSidebarOptions* options);
@@ -252,7 +252,7 @@ public:
 private:
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
-    TVipStorage* m_storage;
+    creatures::TVipStorage* m_storage;
     exivaoptions::TExivaOptionsStorage* m_exivaOptions;
     QPointer<TVipWidgetController> m_controller;
     QPointer<config::TSidebarOptions> m_options;

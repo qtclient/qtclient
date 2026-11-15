@@ -11,7 +11,6 @@
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
 
-#include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 #include "game/playerskillstats.h"
@@ -221,7 +220,7 @@ QString hirelingJobName(const int job)
 }
 
 /// CIP: TStorePurchasesQmlData over the 0xDA store summary
-/// (CIP reader case 8). qtclient drops the hireling outfits.
+/// (CIP reader case 8).
 class TStorePurchasesQmlData final : public cip::tibia::gamewindow::TStorePurchasesQmlData
 {
 public:
@@ -243,11 +242,14 @@ public:
         m_collectionTokens = static_cast<int>(argInt(args, 6));
         m_hasCharmExpansion = argBool(args, 7);
         m_hirelings = static_cast<int>(argInt(args, 8));
-        // qtclient hands the wire byte + 1000.
         if (const auto* jobs = arg<std::vector<uint16_t>>(args, 9))
             for (const uint16_t job : *jobs)
-                m_hirelingJobs.append(hirelingJobName(job - 1000));
-        m_hirelingOutfits = new TStoreSummaryListModel({ "name", "count" }, {}, this);
+                m_hirelingJobs.append(hirelingJobName(job));
+        QList<QVariantList> hirelingOutfits;
+        if (const auto* list = arg<std::vector<std::tuple<std::string, uint8_t>>>(args, 11))
+            for (const auto& [name, count] : *list)
+                hirelingOutfits.append({ qstr(name), static_cast<int>(count) });
+        m_hirelingOutfits = new TStoreSummaryListModel({ "name", "count" }, std::move(hirelingOutfits), this);
         QList<QVariantList> houseItems;
         if (const auto* list = arg<std::vector<std::tuple<uint16_t, std::string, uint8_t>>>(args, 10))
             for (const auto& [id, name, count] : *list)

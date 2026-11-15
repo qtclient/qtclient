@@ -37,16 +37,12 @@ void TTutorialProtocolMessageHandler::setLiveInstance(TTutorialProtocolMessageHa
 void TTutorialProtocolMessageHandler::handleTutorialHintMessage(
     const GameserverMessageTutorialHint& TutorialHintMessage)
 {
-    // Same side effects as Game::processTutorialHint / parseTutorialHint.
     const auto id = static_cast<uint8_t>(TutorialHintMessage.hint_id());
     tibia::game::notify("onTutorialHint", id);
 }
 
-void TTutorialProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByteArray& /*classicFrame*/,
-                                                              bool applyClassic)
+void TTutorialProtocolMessageHandler::onServerMessageEnqueued(int opcode)
 {
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
 
     switch (opcode) {
     case 220: {

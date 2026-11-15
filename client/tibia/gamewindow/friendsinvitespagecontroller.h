@@ -30,6 +30,9 @@ public:
     Q_INVOKABLE void showContextMenuForBlacklistedAccount(uint BlacklistedAccountID) override;
 
 private:
+    void rebuildInvites();
+    void rebuildBlacklist();
+
     TInviteListModel* m_receivedModel = nullptr;
     TInviteListModel* m_sentModel = nullptr;
     TBlacklistModel* m_blacklistModel = nullptr;

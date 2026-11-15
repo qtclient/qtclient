@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "shared/clockservice.h"
 #include <atomic>
 #include <cstdint>
 #include <list>
@@ -134,12 +135,12 @@ public:
             return;
 
         m_stat = new Stat(0, description, extraDescription);
-        m_startUs = stdext::micros();
+        m_startUs = tibia::shared::TClockService::nowMicros();
     }
 
     // noexcept: must not throw during stack unwinding (e.g. OOM from heavy satellite
     // chunk decode on browser WASM) or process terminates inside chrono/stats.
-    // Timing goes through stdext::micros() (emscripten_get_now on WASM) — never
+    // Timing goes through tibia::shared::TClockService::nowMicros() — never
     // call chrono::steady_clock::now() here (noexcept + throw → std::terminate).
     ~AutoStat() noexcept {
         Stat* stat = m_stat;
@@ -147,7 +148,7 @@ public:
         if (!stat)
             return;
         try {
-            const ticks_t elapsed = stdext::micros() - m_startUs;
+            const int64_t elapsed = tibia::shared::TClockService::nowMicros() - m_startUs;
             stat->executionTime = static_cast<uint64_t>(elapsed > 0 ? elapsed : 0);
             stat->executionTime -= m_minusTime;
             g_stats.add(m_type, stat); // takes ownership
@@ -165,5 +166,5 @@ private:
 
 protected:
     uint64_t m_minusTime = 0;
-    ticks_t m_startUs = 0;
+    int64_t m_startUs = 0;
 };

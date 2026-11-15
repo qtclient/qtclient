@@ -1,3 +1,6 @@
+#include <QString>
+#include <QUtf8StringView>
+#include <stdexcept>
 #include "things.h"
 
 #include "loader.h"
@@ -9,8 +12,9 @@
 #include <tibia/game/gamesession.h>
 #include <tibia/config/runtimegameconfig.h>
 
-#include <framework/core/logger.h>
-#include <framework/core/resourcemanager.h>
+#include <QtGlobal>
+#include <format>
+#include "shared/tibiafilesystemhelper.h"
 #include <framework/stdext/string.h>
 
 #include <appearances.pb.h>
@@ -340,7 +344,7 @@ void applyFlags(AppearanceRecord& record, const tibia::protobuf::appearances::Ap
         addFlag(record, ThingFlagAttrExpireStop);
     if (flags.deco_item_kit())
         addFlag(record, ThingFlagAttrDecoKit);
-    if (flags.has_proficiency() && tibia::game::cipFeature(tibia::client::GameProficiency)) {
+    if (flags.has_proficiency()) {
         record.proficiencyId = flags.proficiency().proficiency_id();
         addFlag(record, ThingFlagAttrProficiency);
     }
@@ -441,7 +445,7 @@ void fillSprites(AppearanceRecord& record, const tibia::protobuf::appearances::A
 
         const int count = layers * patternX * patternY * patternZ * phases;
         if (totalSprites + count > 4096) {
-            g_logger.error("appearance {} has more than 4096 sprites", record.id);
+            qCritical("%s", std::format("appearance {} has more than 4096 sprites", record.id).c_str());
             break;
         }
         const int available = spriteInfo.sprite_id_size();
@@ -557,9 +561,37 @@ std::string catalogFile(const QJsonArray& catalog, const std::string& type)
 
 }
 
-ThingTypeManager g_things;
+namespace tibia::appearances {
 
-void ThingTypeManager::init()
+TAppearancesManager& TAppearancesManager::instance()
+{
+    static TAppearancesManager manager;
+    return manager;
+}
+
+TAppearanceInstanceTracker& TAppearancesManager::tracker()
+{
+    if (!m_tracker)
+        m_tracker = std::make_unique<TAppearanceInstanceTracker>();
+    return *m_tracker;
+}
+
+TAppearanceInstanceGenericStoragesManager& TAppearancesManager::storages()
+{
+    if (!m_storages)
+        m_storages = std::make_unique<TAppearanceInstanceGenericStoragesManager>();
+    return *m_storages;
+}
+
+TAppearanceInstanceGenericStorage& TAppearancesManager::genericStorage()
+{
+    if (!m_genericStorage)
+        m_genericStorage = std::make_unique<TAppearanceInstanceGenericStorage>();
+    return *m_genericStorage;
+}
+
+
+void TAppearancesManager::init()
 {
     if (!m_nullThingType)
         m_nullThingType = std::make_shared<ThingType>();
@@ -567,7 +599,7 @@ void ThingTypeManager::init()
         things.assign(1, m_nullThingType);
 }
 
-void ThingTypeManager::terminate()
+void TAppearancesManager::terminate()
 {
     for (auto& things : m_thingTypes)
         things.clear();
@@ -583,21 +615,19 @@ void ThingTypeManager::terminate()
     tibia::assets::sprites().clear();
 }
 
-bool ThingTypeManager::loadAppearances(const std::string& directory)
+bool TAppearancesManager::loadAppearances(const std::string& directory)
 {
     try {
         if (!m_nullThingType)
             init();
-        // CIP appearances::TAppearancesManager owns the catalog load path.
-        auto& appearancesManager = tibia::appearances::TAppearancesManager::instance();
-        (void)appearancesManager.tracker();
-        (void)appearancesManager.storages();
-        (void)appearancesManager.genericStorage();
+        (void)tracker();
+        (void)storages();
+        (void)genericStorage();
         m_assetIdentifier = loadAssetIdentifier(directory);
         if (m_assetIdentifier.empty()) {
             // Expected for bare --data extracts until make extract stamps the file.
             m_assetIdentifier = "appearancesHash";
-            g_logger.debug("assets.json.sha256 missing; using fallback appearancesHash");
+            qDebug("%s", std::format("assets.json.sha256 missing; using fallback appearancesHash").c_str());
         }
 
         tibia::assets::sprites().clear();
@@ -630,7 +660,7 @@ bool ThingTypeManager::loadAppearances(const std::string& directory)
         tibia::assets::sprites().setPath(directory);
         (void)tibia::sprites::TSpritesheetsMetadataManager::instance().spritesCount();
         if (appearancesFile.empty())
-            throw stdext::exception("catalog has no appearances file");
+            throw std::runtime_error("catalog has no appearances file");
 
         const auto appearancesPath =
             tibia::files::data().resolvePath(directory + appearancesFile);
@@ -645,11 +675,11 @@ bool ThingTypeManager::loadAppearances(const std::string& directory)
                 hex.push_back(kHex[c >> 4]);
                 hex.push_back(kHex[c & 0xf]);
             }
-            throw stdext::exception(
+            throw std::runtime_error(std::format(
                 "Couldn't parse appearances lib (path={} bytes={} head={})",
                 appearancesPath,
                 bytes.size(),
-                hex.empty() ? "empty" : hex);
+                hex.empty() ? "empty" : hex));
         }
 
         const auto& special = appearances.special_meaning_appearance_ids();
@@ -682,8 +712,9 @@ bool ThingTypeManager::loadAppearances(const std::string& directory)
                 record.category = static_cast<ThingCategory>(category);
                 record.name = appearance.name();
                 record.description = appearance.description();
-                if (!record.description.empty() && !stdext::is_valid_utf8(record.description))
-                    record.description = stdext::latin1_to_utf8(record.description);
+                if (!record.description.empty()
+                    && !QUtf8StringView(record.description.data(), qsizetype(record.description.size())).isValidUtf8())
+                    record.description = QString::fromLatin1(record.description.data(), qsizetype(record.description.size())).toStdString();
                 if (appearance.has_flags())
                     applyFlags(record, appearance.flags());
                 fillSprites(record, appearance);
@@ -705,18 +736,18 @@ bool ThingTypeManager::loadAppearances(const std::string& directory)
         m_proficiencyThingsCacheDirty = true;
         return true;
     } catch (const std::exception& e) {
-        g_logger.error("Failed to load '{}' (Appearances): {}", directory, e.what());
+        qCritical("%s", std::format("Failed to load '{}' (Appearances): {}", directory, e.what()).c_str());
         return false;
     }
 }
 
-bool ThingTypeManager::loadStaticData(const std::string& directory)
+bool TAppearancesManager::loadStaticData(const std::string& directory)
 {
     try {
         const auto catalog = catalogOf(directory);
         const auto fileName = catalogFile(catalog, "staticdata");
         if (fileName.empty())
-            throw stdext::exception("catalog has no staticdata file");
+            throw std::runtime_error("catalog has no staticdata file");
         const auto bytes = tibia::files::data().readFileContents(tibia::files::data().resolvePath(directory + fileName));
         const auto top = readMessage(reinterpret_cast<const uint8_t*>(bytes.data()),
                                       reinterpret_cast<const uint8_t*>(bytes.data()) + bytes.size());
@@ -767,16 +798,14 @@ bool ThingTypeManager::loadStaticData(const std::string& directory)
         }
         return true;
     } catch (const std::exception& e) {
-        g_logger.error("Failed to load '{}' (StaticData): {}", directory, e.what());
+        qCritical("%s", std::format("Failed to load '{}' (StaticData): {}", directory, e.what()).c_str());
         return false;
     }
 }
 
-bool ThingTypeManager::resolveProficienciesFile(const std::string& directory)
+bool TAppearancesManager::resolveProficienciesFile(const std::string& directory)
 {
     m_proficienciesFile.clear();
-    if (!tibia::game::cipFeature(tibia::client::GameProficiency))
-        return false;
     try {
         const auto fileName = catalogFile(catalogOf(directory), "proficiencies");
         if (fileName.empty())
@@ -792,33 +821,33 @@ bool ThingTypeManager::resolveProficienciesFile(const std::string& directory)
     }
 }
 
-const ThingTypePtr& ThingTypeManager::getThingType(const uint16_t id, const ThingCategory category)
+const ThingTypePtr& TAppearancesManager::getThingType(const uint16_t id, const ThingCategory category)
 {
     static const ThingTypePtr kEmpty;
     if (category >= ThingLastCategory || !m_nullThingType || m_thingTypes[category].empty())
         return m_nullThingType ? m_nullThingType : kEmpty;
     if (id >= m_thingTypes[category].size()) {
-        g_logger.error("Invalid thing type client id {} in category {}", id, static_cast<uint8_t>(category));
+        qCritical("%s", std::format("Invalid thing type client id {} in category {}", id, static_cast<uint8_t>(category)).c_str());
         return m_nullThingType;
     }
     return m_thingTypes[category][id];
 }
 
-ThingType* ThingTypeManager::getRawThingType(const uint16_t id, const ThingCategory category)
+ThingType* TAppearancesManager::getRawThingType(const uint16_t id, const ThingCategory category)
 {
     if (category >= ThingLastCategory || !m_nullThingType || m_thingTypes[category].empty() || id >= m_thingTypes[category].size())
         return nullptr;
     return m_thingTypes[category][id].get();
 }
 
-const ThingTypeList& ThingTypeManager::getThingTypes(const ThingCategory category)
+const ThingTypeList& TAppearancesManager::getThingTypes(const ThingCategory category)
 {
     if (category < ThingLastCategory)
         return m_thingTypes[category];
-    throw stdext::exception("invalid thing type category");
+    throw std::runtime_error("invalid thing type category");
 }
 
-const RaceType& ThingTypeManager::getRaceData(const uint32_t raceId)
+const RaceType& TAppearancesManager::getRaceData(const uint32_t raceId)
 {
     for (const auto& race : m_monsterRaces)
         if (race.raceId == raceId)
@@ -826,7 +855,7 @@ const RaceType& ThingTypeManager::getRaceData(const uint32_t raceId)
     return kEmptyRace;
 }
 
-RaceList ThingTypeManager::getRacesByName(const std::string& searchString)
+RaceList TAppearancesManager::getRacesByName(const std::string& searchString)
 {
     RaceList result;
     for (const auto& race : m_monsterRaces) {
@@ -836,7 +865,7 @@ RaceList ThingTypeManager::getRacesByName(const std::string& searchString)
     return result;
 }
 
-const CyclopediaQuestType* ThingTypeManager::getCyclopediaQuest(const uint16_t id) const
+const CyclopediaQuestType* TAppearancesManager::getCyclopediaQuest(const uint16_t id) const
 {
     for (const auto& quest : m_cyclopediaQuests) {
         if (quest.id == id)
@@ -845,7 +874,7 @@ const CyclopediaQuestType* ThingTypeManager::getCyclopediaQuest(const uint16_t i
     return nullptr;
 }
 
-void ThingTypeManager::buildProficiencyCache()
+void TAppearancesManager::buildProficiencyCache()
 {
     m_proficiencyThingsCache.clear();
     if (ThingCategoryItem < ThingLastCategory) {
@@ -857,14 +886,14 @@ void ThingTypeManager::buildProficiencyCache()
     m_proficiencyThingsCacheDirty = false;
 }
 
-const ThingTypeList& ThingTypeManager::getProficiencyThings()
+const ThingTypeList& TAppearancesManager::getProficiencyThings()
 {
     if (m_proficiencyThingsCacheDirty)
         buildProficiencyCache();
     return m_proficiencyThingsCache;
 }
 
-std::string ThingTypeManager::getCyclopediaItemName(const uint16_t id)
+std::string TAppearancesManager::getCyclopediaItemName(const uint16_t id)
 {
     const auto& type = getThingType(id, ThingCategoryItem);
     if (!type || type->isNull())
@@ -874,16 +903,14 @@ std::string ThingTypeManager::getCyclopediaItemName(const uint16_t id)
     return type->getName();
 }
 
-std::string ThingTypeManager::getProficienciesFile()
+std::string TAppearancesManager::getProficienciesFile()
 {
-    if (!tibia::game::cipFeature(tibia::client::GameProficiency))
-        return {};
     if (!m_proficienciesFile.empty() && tibia::files::data().fileExists(m_proficienciesFile))
         return m_proficienciesFile;
     return {};
 }
 
-bool ThingTypeManager::setThingShape(const uint16_t itemId, const std::string& shape)
+bool TAppearancesManager::setThingShape(const uint16_t itemId, const std::string& shape)
 {
     static constexpr std::pair<std::string_view, ThingShape> names[] = {
         { "auto", ThingShape::Auto }, { "flat", ThingShape::Flat }, { "wall", ThingShape::Wall },
@@ -901,30 +928,32 @@ bool ThingTypeManager::setThingShape(const uint16_t itemId, const std::string& s
     return true;
 }
 
-void ThingTypeManager::registerEffectVariant(const uint16_t virtualId, const uint16_t baseId, const std::string& shader, const bool underCreatures)
+void TAppearancesManager::registerEffectVariant(const uint16_t virtualId, const uint16_t baseId, const std::string& shader, const bool underCreatures)
 {
     if (virtualId == 0 || baseId == 0) {
-        g_logger.warning("registerEffectVariant: invalid ids {} -> {}", virtualId, baseId);
+        qWarning("%s", std::format("registerEffectVariant: invalid ids {} -> {}", virtualId, baseId).c_str());
         return;
     }
     m_effectVariants[virtualId] = EffectVariant{ baseId, shader, underCreatures };
+}
+
 }
 
 namespace tibia::assets {
 
 bool load(const std::string& directory)
 {
-    return g_things.loadAppearances(directory);
+    return tibia::appearances::TAppearancesManager::instance().loadAppearances(directory);
 }
 
 bool loadStaticData(const std::string& directory)
 {
-    return g_things.loadStaticData(directory);
+    return tibia::appearances::TAppearancesManager::instance().loadStaticData(directory);
 }
 
 bool resolveProficiencies(const std::string& directory)
 {
-    return g_things.resolveProficienciesFile(directory);
+    return tibia::appearances::TAppearancesManager::instance().resolveProficienciesFile(directory);
 }
 
 }

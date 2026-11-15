@@ -55,7 +55,7 @@ public Q_SLOTS:
     void handleToggleFpsLagIndecatorGameAction() override;
 };
 
-/// CIP input::TGatherAllGameActionHandler: GATHER_ALL → Game::gatherAll.
+/// CIP input::TGatherAllGameActionHandler: GATHER_ALL → tibia::game::gatherAll.
 class TGatherAllGameActionHandler final : public cip::tibia::input::TGatherAllGameActionHandler
 {
     Q_OBJECT
@@ -67,7 +67,7 @@ public:
 };
 
 /// CIP input::TGatherAllProtocolMessageHandler: ClientGatherAll (0xFF) send
-/// path used by TGatherAllGameActionHandler / Game::gatherAll.
+/// path used by TGatherAllGameActionHandler / tibia::game::gatherAll.
 class TGatherAllProtocolMessageHandler final : public cip::tibia::input::TGatherAllProtocolMessageHandler
 {
     Q_OBJECT

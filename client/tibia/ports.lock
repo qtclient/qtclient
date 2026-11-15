@@ -19,18 +19,96 @@ animation::TMovingOutfitAnimator::v6	abe96a15eed2cf38	tested	animation/movingout
 animation::TMovingOutfitAnimator::v7	211cf1733738ff0a	ported	animation/movingoutfitanimator.cpp:TMovingOutfitAnimator::phaseFraction
 animation::TMovingOutfitAnimator::v8	b5a0eaa4aa539db9	ported	animation/movingoutfitanimator.h:TMovingOutfitAnimator::lastPhaseFraction
 appearances::TAppearanceInstanceSpriteSequence::v0	40b101578bc086f9	ported	creatures/creaturestorage.cpp:TCreature::refreshWalkAnimators
+appearances::TCreaturePlaceholderAppearanceInstance::v14	4c040b7c33c2f573	ported	creatures/creaturestorage.cpp:TCreature::drawElevation
+appearances::TCreaturePlaceholderAppearanceInstance::v16	bc5f24e162f0f4f8	ported	creatures/creaturestorage.h:TCreature::setHoldsMovementIntent
+appearances::TCreaturePlaceholderAppearanceInstance::v17	c64ff1b8779fa1e2	inlined	creatures/creaturestorage.cpp:TCreature::resetMovement
+appearances::TCreaturePlaceholderAppearanceInstance::v5	519ea3203e193707	ported	creatures/creaturestorage.cpp:TCreature::update
 appearances::TDelayedEffectInstance::v14	a50e98d560e0f7d4	ported	appearances/appearanceinstance.cpp:TEffectInstance::isFinished
 appearances::TDelayedEffectInstance::v3	2c0eb47e21751286	ported	appearances/appearanceinstance.h:TEffectInstance::isShown
 appearances::TDelayedEffectInstance::v5	95ef1193fae143cd	ported	appearances/appearanceinstance.cpp:TEffectInstance::update
 appearances::TFieldEffectInstance::v14	f333968b638feb36	ported	appearances/appearanceinstance.cpp:TEffectInstance::isFinished
 appearances::TMissileEffectInstance::v14	7826a0311a6769e5	ported	appearances/appearanceinstance.h:TMissileEffectInstance::isFinished
 appearances::TMissileEffectInstance::v5	1eac0c0a892ed818	ported	appearances/appearanceinstance.h:TMissileEffectInstance::update
+chat::TFleetingTextQueue::v0	24d0e40b83cfab68	skip	compiler-generated destructor pair
+chat::TFleetingTextQueue::v1	e4044fefbfc91f14	skip	compiler-generated destructor pair
+chat::TFleetingTextQueue::v2	670b18759614e051	ported	chat/textstorage.cpp:TFleetingTextQueue::push
+chat::TTextMessageQueue::v0	24d0e40b83cfab68	skip	compiler-generated destructor pair
+chat::TTextMessageQueue::v1	e4044fefbfc91f14	skip	compiler-generated destructor pair
+chat::TTextMessageQueue::v2	1faf06d3867d34b1	ported	chat/textstorage.cpp:TTextMessageQueue::push
+creatures::TCreature::v12	11cded2ebf20d671	ported	creatures/creaturestorage.h:TCreature::creatureId
+creatures::TCreature::v13	8527cde0e7e8f21c	ported	creatures/creaturestorage.h:TCreature::isLocalPlayer
+creatures::TCreature::v14	b48aad3df0ff7cba	ported	creatures/creaturestorage.cpp:TCreature::name
+creatures::TCreature::v15	abdb6a5c3101a172	ported	creatures/creaturestorage.cpp:TCreature::setName
 creatures::TCreature::v16	261ef54fe0eea07f	ported	creatures/creaturestorage.h:TCreature::position
+creatures::TCreature::v17	39c4f56e567fe7bb	ported	creatures/creaturestorage.cpp:TCreature::setPosition
+creatures::TCreature::v20	cc6d11900452cfa3	ported	creatures/creaturestorage.h:TCreature::creatureType
+creatures::TCreature::v21	3c8e0197d92bd9a6	ported	creatures/creaturestorage.h:TCreature::masterId
+creatures::TCreature::v22	ef44ac47503937a5	ported	creatures/creaturestorage.h:TCreature::setMasterId
+creatures::TCreature::v23	063207ae1f4abd64	ported	creatures/creaturestorage.cpp:TCreature::isPlayer
+creatures::TCreature::v24	663827d84e85ca90	ported	creatures/creaturestorage.h:TCreature::setCreatureType
+creatures::TCreature::v25	fb586de8255a02a0	ported	creatures/creaturestorage.h:TCreature::emblem
+creatures::TCreature::v26	2df1a1c033039209	ported	creatures/creaturestorage.cpp:TCreature::setEmblem
+creatures::TCreature::v27	68df5162ecdf88d5	ported	creatures/creaturestorage.h:TCreature::shield
+creatures::TCreature::v28	a16d23bc59258905	ported	creatures/creaturestorage.cpp:TCreature::setShield
+creatures::TCreature::v29	35dc24396481fdc1	ported	creatures/creaturestorage.h:TCreature::inspectionType
+creatures::TCreature::v30	860d32923261bab6	ported	creatures/creaturestorage.cpp:TCreature::setInspectionType
+creatures::TCreature::v31	cb33dd6cf49f4393	ported	creatures/creaturestorage.h:TCreature::skull
+creatures::TCreature::v32	2a60b6700cc4568a	ported	creatures/creaturestorage.cpp:TCreature::setSkull
+creatures::TCreature::v33	21184262fa6b80cb	ported	creatures/creaturestorage.h:TCreature::isUnpassable
+creatures::TCreature::v34	42a5caac2741d754	ported	creatures/creaturestorage.h:TCreature::setUnpassable
+creatures::TCreature::v35	c16aacfc8e531457	ported	creatures/creaturestorage.h:TCreature::light
+creatures::TCreature::v36	212dc4a4e6052ee1	ported	creatures/creaturestorage.h:TCreature::setLight
+creatures::TCreature::v37	3857e501d682a15b	ported	creatures/creaturestorage.h:TCreature::direction
+creatures::TCreature::v38	328eb9c92202254a	ported	creatures/creaturestorage.h:TCreature::movementLook
+creatures::TCreature::v41	1776ff6afc6d29f1	ported	creatures/creaturestorage.h:TCreature::isMounted
+creatures::TCreature::v42	cbd800a27be97d5d	ported	creatures/creaturestorage.h:TCreature::setMounted
+creatures::TCreature::v43	be5df048a574525b	ported	creatures/creaturestorage.h:TCreature::icon
+creatures::TCreature::v44	20a4fc5d8e56af1b	ported	creatures/creaturestorage.h:TCreature::setIcon
+creatures::TCreature::v45	eeb04bc1c712e92f	ported	creatures/creaturestorage.h:TCreature::setHealthPercent
+creatures::TCreature::v46	be7bb39e8c7096db	ported	creatures/creaturestorage.h:TCreature::healthPercent
+creatures::TCreature::v47	37e1817fd72affd9	ported	creatures/creaturestorage.h:TCreature::healthRatio
+creatures::TCreature::v48	7e72b9952c595241	ported	creatures/creaturestorage.h:TCreature::setManaPercent
+creatures::TCreature::v49	18f7eeeb310f99a8	ported	creatures/creaturestorage.h:TCreature::manaRatio
 creatures::TCreature::v50	22651b822f5a2cfe	ported	creatures/creaturestorage.h:TCreature::isMoving
 creatures::TCreature::v52	da3d8c05f2ca4c39	ported	creatures/creaturestorage.cpp:TCreature::resetMovement
 creatures::TCreature::v53	8ecf8ddd6a1a7c2d	ported	creatures/creaturestorage.h:TCreature::speed
+creatures::TCreature::v54	94c8dd797453a0c2	ported	creatures/creaturestorage.cpp:TCreature::setSpeed
+creatures::TCreature::v55	45457483c083acc3	ported	creatures/creaturestorage.h:TCreature::setShowStatus
+creatures::TCreature::v56	118cb2f9c6453b06	ported	creatures/creaturestorage.h:TCreature::showsStatus
+creatures::TCreature::v57	78eb2d342ee0de6b	ported	creatures/creaturestorage.h:TCreature::vocation
+creatures::TCreature::v58	b9d3122b9fadfb27	ported	creatures/creaturestorage.h:TCreature::setVocation
 creatures::TCreature::v59	6380bb5d727a0ede	ported	creatures/creaturestorage.cpp:TCreature::update
 creatures::TCreature::v66	328d972b82864c8b	ported	creatures/creaturestorage.cpp:TCreature::move
+creatures::TCreature::v68	97fe39a1bac717ab	ported	creatures/creaturestorage.cpp:TCreature::setTargetFrame
+creatures::TCreature::v69	97fe39a1bac717ab	ported	creatures/creaturestorage.cpp:TCreature::hideTargetFrame
+creatures::TCreature::v70	97fe39a1bac717ab	ported	creatures/creaturestorage.cpp:TCreature::showStaticSquare
+creatures::TCreature::v71	97fe39a1bac717ab	ported	creatures/creaturestorage.cpp:TCreature::hideStaticSquare
+creatures::TCreature::v72	97fe39a1bac717ab	ported	creatures/creaturestorage.cpp:TCreature::addTimedSquare
+creatures::TCreature::v73	97fe39a1bac717ab	ported	creatures/creaturestorage.cpp:TCreature::hasMarks
+creatures::TCreature::v74	7d5cf843927d5333	ported	creatures/creaturestorage.cpp:TCreature::marks
+creatures::TCreature::v75	7d5cf843927d5333	ported	creatures/creaturestorage.cpp:TCreature::shownMarks
+creatures::TCreature::v77	3aff5b1e5eb81f86	ported	creatures/creaturestorage.h:TCreature::isDead
+creatures::TCreature::v78	9fe3807c4cc9b673	ported	creatures/creaturestorage.h:TCreature::isPlacedOnField
+creatures::TCreature::v79	330fe77b8574cabe	ported	creatures/creaturestorage.h:TCreature::setPlacedOnField
+creatures::TCreature::v80	99a305e835536c1c	ported	creatures/creaturestorage.h:TCreature::setPlacedOnField
+creatures::TCreature::v81	c2913bfd0c29227d	ported	creatures/creaturestorage.h:TCreature::uniqueId
+creatures::TCreature::v82	eacbe40e7cb57965	ported	creatures/creaturestorage.cpp:TCreature::renewUniqueId
+creatures::TCreature::v83	73030fe17126589e	ported	creatures/creaturestorage.h:TCreature::markAsLocalPlayer
+creatures::TCreature::v84	cf9fd6f1afe5e10d	ported	creatures/creaturestorage.h:TCreature::isPartyLeader
+creatures::TCreature::v85	464ba086770e6cdd	ported	creatures/creaturestorage.h:TCreature::isInParty
+creatures::TCreature::v86	73bd03cfc4549918	ported	creatures/creaturestorage.h:TCreature::isPartyMember
+creatures::TCreature::v87	031c75a76a867f59	ported	creatures/creaturestorage.h:TCreature::isSharingExperience
+creatures::TCreature::v89	e58256662e071f02	ported	creatures/creaturestorage.h:TCreature::inspectionGranted
+creatures::TCreature::v90	f7c733d7514988d5	ported	creatures/creaturestorage.h:TCreature::inspectionRequested
+creatures::TCreature::v91	d690111191c91171	ported	creatures/creaturestorage.h:TCreature::canBeInspected
+creatures::TCreature::v92	d881e02cd6d705f5	ported	creatures/creaturestorage.h:TCreature::requestsInspection
+creatures::TCreature::v93	69fe7e9be80ead87	ported	creatures/creaturestorage.h:TCreature::addIcon
+creatures::TCreature::v94	22ce163acaab34bf	ported	creatures/creaturestorage.h:TCreature::hudIcons
+creatures::TCreature::v95	3f9ca9979d245d8a	ported	creatures/creaturestorage.h:TCreature::clearIcons
+creatures::TCreature::v96	ada4af0ab5b0c233	ported	creatures/creaturestorage.h:TCreature::setExtraIcons
+creatures::TCreature::v97	1c32d5a839b2a6dc	ported	creatures/creaturestorage.h:TCreature::extraIcons
+creatures::TCreature::~TCreature	097457dc45e86dd8	skip	compiler-generated destructor pair
+creatures::TCreature::~TCreature_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 creatures::TCreatureMovementSpeedCalculator::v0	872d4faac408f6d5	skip	compiler-generated destructor pair
 creatures::TCreatureMovementSpeedCalculator::v1	e9caf669ab302182	skip	compiler-generated destructor pair
 creatures::TCreatureMovementSpeedCalculator::v10	00c5eed5c06dc2cf	tested	creatures/creaturemovementspeedcalculator.cpp:TCreatureMovementSpeedCalculator::stepDuration	test=tests/client/creaturemovement_test.cpp
@@ -62,7 +140,50 @@ creatures::TCreatureMovementTween::v6	77f7ef19b92bdb32	tested	creatures/creature
 creatures::TCreatureMovementTween::v7	569cfecdaefe3b98	tested	creatures/creaturemovementtween.h:TCreatureMovementTween::setMode	test=tests/client/creaturemovement_test.cpp
 creatures::TCreatureMovementTween::v8	ca5963e3f559b46b	ported	creatures/creaturemovementtween.h:TCreatureMovementTween::mode
 creatures::TCreatureMovementTween::v9	465b583722f78636	tested	creatures/creaturemovementtween.cpp:TCreatureMovementTween::start	test=tests/client/creaturemovement_test.cpp
+creatures::TCreatureProtocolMessageHandler::v12	e00da71b5eb8db5a	ported	creatures/creatureprotocolapply.cpp:applyProtocolCreatureFields
+creatures::TCreatureProtocolMessageHandler::v13	32d2fc1768fd62ec	ported	creatures/creatureprotocolapply.cpp:applyProtocolCreatureFields
+creatures::TCreatureProtocolMessageHandler::v14	1cc22b9e35a10714	ported	creatures/creatureprotocolapply.cpp:applyProtocolCreatureFields
+creatures::TCreatureProtocolMessageHandler::v16	d60c6774938c100d	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v18	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v19	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v20	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v21	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v22	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v23	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v24	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v25	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
 creatures::TCreatureProtocolMessageHandler::v26	464bda9f03446ab6	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::handleCreatureMarksMessage
+creatures::TCreatureProtocolMessageHandler::v27	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v28	40db771094866b44	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::onServerMessageEnqueued
+creatures::TCreatureProtocolMessageHandler::v29	b6238e47bfc7ecff	ported	creatures/creaturesciptypes.cpp:TCreatureProtocolMessageHandler::handleUpdateTargetMessage
+creatures::TCreatureProtocolMessageHandler::v30	785b2de8e5ea60f7	ported	creatures/creatureprotocolapply.cpp:applyProtocolCreature
+creatures::TCreatureProtocolMessageHandler::~TCreatureProtocolMessageHandler	097457dc45e86dd8	skip	compiler-generated destructor pair
+creatures::TCreatureProtocolMessageHandler::~TCreatureProtocolMessageHandler_deleting	79674512666b34e2	skip	compiler-generated destructor pair
+creatures::TCreatureStorage::v12	b2bf426c8c169ace	ported	creatures/creaturestorage.cpp:TCreatureStorage::creatureAt
+creatures::TCreatureStorage::v13	b38428b2150b7fa9	ported	creatures/creaturestorage.cpp:TCreatureStorage::createCreature
+creatures::TCreatureStorage::v14	cd7f9ab37e2b92f7	ported	creatures/creaturestorage.cpp:TCreatureStorage::add
+creatures::TCreatureStorage::v15	7db9916e4ed80d43	ported	creatures/creaturestorage.cpp:TCreatureStorage::setPlayerID
+creatures::TCreatureStorage::v16	b59314347e9826c6	ported	creatures/creaturestorage.cpp:TCreatureStorage::playerID
+creatures::TCreatureStorage::v17	d17b7d792aabe398	ported	creatures/creaturestorage.cpp:TCreatureStorage::player
+creatures::TCreatureStorage::v19	b7d8e071e0b81e55	ported	creatures/creaturestorage.cpp:TCreatureStorage::setTemporarySelectedID
+creatures::TCreatureStorage::v20	f3737761e0f24325	ported	creatures/creaturestorage.h:TCreatureStorage::temporarySelectedID
+creatures::TCreatureStorage::v21	5d92feb39aa0c428	ported	creatures/creaturestorage.cpp:TCreatureStorage::setFollowID
+creatures::TCreatureStorage::v22	558f1bf558d7f76d	ported	creatures/creaturestorage.h:TCreatureStorage::followID
+creatures::TCreatureStorage::v23	c5df336924eeb9ab	ported	creatures/creaturestorage.cpp:TCreatureStorage::setAttackID
+creatures::TCreatureStorage::v24	3fcfb3e404afe402	ported	creatures/creaturestorage.h:TCreatureStorage::attackID
+creatures::TCreatureStorage::v25	937b393a14328d48	ported	creatures/creaturestorage.cpp:TCreatureStorage::remove
+creatures::TCreatureStorage::v26	5741d568835491bb	ported	creatures/creaturestorage.cpp:TCreatureStorage::placeOnField
+creatures::TCreatureStorage::v27	741e0d178a6aee02	ported	creatures/creaturestorage.cpp:TCreatureStorage::removeFromField
+creatures::TCreatureStorage::v28	343d9c9fa103b89e	ported	creatures/creaturestorage.cpp:TCreatureStorage::clearPlacedOnFieldFlags
+creatures::TCreatureStorage::v29	ec13b62cab94d74b	ported	creatures/creaturestorage.cpp:TCreatureStorage::notifyPlayerAdded
+creatures::TCreatureStorage::v30	ec13b62cab94d74b	ported	creatures/creaturestorage.cpp:TCreatureStorage::notifyCreatureUpdated
+creatures::TCreatureStorage::v31	ec13b62cab94d74b	ported	creatures/creaturestorage.cpp:TCreatureStorage::notifyCreatureAppearanceUpdated
+creatures::TCreatureStorage::~TCreatureStorage	8ce292a1ecc0653d	skip	compiler-generated destructor pair
+creatures::TCreatureStorage::~TCreatureStorage_deleting	1531bc616668060c	skip	compiler-generated destructor pair
+creatures::TCreaturesGameActionHandler::v14	097eb07a159f3eb1	ported	game/gamesessionstate.cpp:TGameSessionState::follow
+creatures::TCreaturesGameActionHandler::v15	e572db1f503f1f5d	ported	game/gamesessionstate.cpp:TGameSessionState::follow
+creatures::TCreaturesGameActionHandler::v16	b643b2b6bc2b6ba0	ported	game/gamesessionstate.cpp:TGameSessionState::attack
+creatures::TCreaturesGameActionHandler::v17	47d6febf410dfa24	ported	game/gamesessionstate.cpp:TGameSessionState::attack
 effects::TEffectStorage::v12	d34d15bdd9e0ab74	inlined	effects/effectstorage.cpp:TEffectStorage::count
 effects::TEffectStorage::v13	12b959342cd2a692	ported	effects/effectstorage.cpp:TEffectStorage::add
 effects::TEffectStorage::v14	d1279b4f50bd932a	ported	effects/effectstorage.cpp:TEffectStorage::remove
@@ -71,21 +192,248 @@ effects::TEffectStorage::v21	42129e9d4083fa76	inlined	effects/effectstorage.cpp:
 effects::TEffectStorage::v26	6c84d5abc4d436d9	ported	effects/effectstorage.cpp:TEffectStorage::count
 effects::TEffectStorage::v27	846cadecac4b07df	ported	effects/effectstorage.cpp:TEffectStorage::update
 effects::TEffectStorage::v28	22b1034d0e2687ef	inlined	effects/effectstorage.cpp:TEffectStorage::update
-effects::TEffectStorage::v29	c98621e3d7a065b5	inlined	effects/effectstorage.cpp:TEffectStorage::update
+effects::TEffectStorage::v29	c98621e3d7a065b5	ported	effects/effectstorage.cpp:TEffectStorage::removeOutside
 effects::TEffectStorage::v30	9faac4e0be245e40	ported	effects/effectstorage.cpp:TEffectStorage::maximumEffects
 effects::TEffectStorage::v31	8990596ab092e370	inlined	effects/effectstorage.cpp:TEffectStorage::update
 effects::TEffectStorage::v33	cb1299f4bf8553a5	inlined	effects/effectstorage.cpp:TEffectStorage::update
 effects::TNumericalEffect::v10	498abfbe34938641	ported	worldmap/numericaleffectstorage.cpp:TNumericalEffectStorage::add
 effects::TNumericalEffect::v9	c0306a648c54309b	ported	worldmap/numericaleffectstorage.cpp:TNumericalEffectStorage::add
+friends::TFriendsProtocolMessageHandler::handleFriendSystemDataMessage	c0902cbb7412698b	ported	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 game::TPlayerProtocolMessageHandler::v13	6f8f3ec586f4379a	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage
 game::TPlayerProtocolMessageHandler::v19	0d72e5426f0a152e	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::onServerMessageEnqueued
+gamewindow::TFriendsBadgesPageController::updateBadgeVisibility	20558d253176c161	ported	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::updateBadgeVisibility
+gamewindow::TFriendsConfigurationPageController::setFriendGroupSetting	4edab2c9fe740f02	ported	gamewindow/friendsconfigurationpagecontroller.cpp:TFriendsConfigurationPageController::setFriendGroupSetting
+gamewindow::TFriendsFriendListPageController::onConfirmDialogAccepted	62eb1f40bead3e8c	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::onConfirmDialogAccepted
+gamewindow::TFriendsFriendListPageController::showContextMenuForAccountID	169f391ccbf6ac2a	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showContextMenuForAccountID
+gamewindow::TFriendsInvitesPageController::showContextMenuForBlacklistedAccount	eda17ee1421d7ba4	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showContextMenuForBlacklistedAccount
+gamewindow::TFriendsInvitesPageController::showContextMenuForReceivedInvite	b28c2f2fff80449b	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showContextMenuForReceivedInvite
+gamewindow::TFriendsInvitesPageController::showContextMenuForSentInvite	e214241dcafe49ef	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showContextMenuForSentInvite
+input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::eventFilter	7966ba543eec5ba6	ported	input/eventfilters.cpp:TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::eventFilter
+input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::~TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter	4a00f6b18d7ba357	skip	compiler-generated destructor pair
+input::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::~TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter_deleting	ca1ae45f16270212	skip	compiler-generated destructor pair
+input::TDiscardMouseWheelEventFilter::eventFilter	65a4e03834fbf8c4	ported	input/eventfilters.cpp:TDiscardMouseWheelEventFilter::eventFilter
+input::TDiscardMouseWheelEventFilter::~TDiscardMouseWheelEventFilter	4a00f6b18d7ba357	skip	compiler-generated destructor pair
+input::TDiscardMouseWheelEventFilter::~TDiscardMouseWheelEventFilter_deleting	ca1ae45f16270212	skip	compiler-generated destructor pair
+input::TDiscardUnhandledMouseButtonsEventFilter::eventFilter	8d71ea523c5d5616	ported	input/eventfilters.cpp:TDiscardUnhandledMouseButtonsEventFilter::eventFilter
+input::TDiscardUnhandledMouseButtonsEventFilter::~TDiscardUnhandledMouseButtonsEventFilter	4a00f6b18d7ba357	skip	compiler-generated destructor pair
+input::TDiscardUnhandledMouseButtonsEventFilter::~TDiscardUnhandledMouseButtonsEventFilter_deleting	ca1ae45f16270212	skip	compiler-generated destructor pair
+input::TGameActionActionButtonTriggered::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionActionButtonTriggered::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionAddMouseTrailHintAtTutorialMarker::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionAddMouseTrailHintAtTutorialMarker::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionAssignSpellToActionButton::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionAssignSpellToActionButton::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionAttackFirstTarget::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionAttackFirstTarget::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionAttackNextTarget::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionAttackNextTarget::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionAttackPreviousTarget::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionAttackPreviousTarget::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionChangeAutoPreyExtendType::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionChangeAutoPreyExtendType::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionChangeCharacter::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionChangeCharacter::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionChangeContextMenuEnabled::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionChangeContextMenuEnabled::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionChangeQuesttrackerOptions::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionChangeQuesttrackerOptions::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionChangeTutorialModeEnabled::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionChangeTutorialModeEnabled::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionClearLootContainer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionClearLootContainer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionClearObtainContainer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionClearObtainContainer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionClearOldestMessageFromMapwindow::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionClearOldestMessageFromMapwindow::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionCloseAllMultiActionButtons::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionCloseAllMultiActionButtons::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionCloseCurrentChatChannel::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionCloseCurrentChatChannel::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionContextMenu::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionContextMenu::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionContextMenuSeparator::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionContextMenuSeparator::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionCreature::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionCreature::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionDeleteMinimapMarker::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionDeleteMinimapMarker::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionDepotSearchRetrieve::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionDepotSearchRetrieve::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionDisplayNextChatChannelTab::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionDisplayNextChatChannelTab::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionDisplayPreviousChatChannelTab::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionDisplayPreviousChatChannelTab::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionExaltationForgeConvergenceFusion::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionExaltationForgeConvergenceFusion::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionExaltationForgeFusion::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionExaltationForgeFusion::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionExaltationForgeTransfer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionExaltationForgeTransfer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionForMinimapMarkerUsingCoordinate::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionForMinimapMarkerUsingCoordinate::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionGetChatChannelList::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionGetChatChannelList::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionGetGuildMessage::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionGetGuildMessage::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionMakeBattleListPrimary::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionMakeBattleListPrimary::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionManagedContainer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionManagedContainer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionMountPlayer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionMountPlayer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenAddVipDialog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenAddVipDialog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenAddVipGroupDialog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenAddVipGroupDialog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenContainerInSpecificSidebar::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenContainerInSpecificSidebar::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenCyclopedia::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenCyclopedia::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenGetPremiumUrl::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenGetPremiumUrl::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenHighscoresDialog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenHighscoresDialog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenLootContainer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenLootContainer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenNewsDialog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenNewsDialog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenNewsDialogWithCategory::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenNewsDialogWithCategory::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenObtainContainer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenObtainContainer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenOptionsMenuDialog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenOptionsMenuDialog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenPreyDialog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenPreyDialog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenQuestLog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenQuestLog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenSecondaryBattleListInSpecificSidebar::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenSecondaryBattleListInSpecificSidebar::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenSocialDialog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenSocialDialog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionOpenTradeCharacterDialog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionOpenTradeCharacterDialog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionPlayerMovementIntent::v0	2b87e6bbfbc44233	ported	input/gameaction.h:TGameActionPlayerMovementIntent::v0
+input::TGameActionPreySystem::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionPreySystem::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionQuitGame::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionQuitGame::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionRefreshCompendiumNews::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionRefreshCompendiumNews::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionRemoveAllTutorialMarkers::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionRemoveAllTutorialMarkers::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionReportMapBug::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionReportMapBug::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionRequestCopySelectedTextToClipboard::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionRequestCopySelectedTextToClipboard::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionRequestOutfitsFromServer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionRequestOutfitsFromServer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionRequestResourceBalance::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionRequestResourceBalance::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionRequestSearchTypeInDepot::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionRequestSearchTypeInDepot::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionRequestTransactionDetailsFromServer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionRequestTransactionDetailsFromServer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSelectAllText::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSelectAllText::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSelectPreyMonsterFromBestiary::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSelectPreyMonsterFromBestiary::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSelectPreyMonsterFromList::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSelectPreyMonsterFromList::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSessiondumpPause::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSessiondumpPause::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSessiondumpResume::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSessiondumpResume::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSessiondumpSkipTo::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSessiondumpSkipTo::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetChaseMode::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetChaseMode::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetCreaturePodiumConfiguration::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetCreaturePodiumConfiguration::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetHirelingOutfit::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetHirelingOutfit::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetLootContainerFallback::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetLootContainerFallback::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetPlayerOutfit::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetPlayerOutfit::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetPvPMode::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetPvPMode::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetSecureMode::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetSecureMode::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetSharedExperience::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetSharedExperience::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetShowOffSocketConfiguration::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetShowOffSocketConfiguration::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSetTactics::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSetTactics::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionShowDialogCreateMinimapMarker::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionShowDialogCreateMinimapMarker::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionShowExaltationResultDialog::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionShowExaltationResultDialog::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionShowLenshelp::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionShowLenshelp::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionShowTutorialHint::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionShowTutorialHint::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSortFilterVipList::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSortFilterVipList::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionStartTalkingToNPC::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionStartTalkingToNPC::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionStartTargetSelection::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionStartTargetSelection::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionStashRetrieve::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionStashRetrieve::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSwitchChatMode::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSwitchChatMode::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionSwitchClientOptions::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionSwitchClientOptions::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionTakeAutomaticScreenshot::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionTakeAutomaticScreenshot::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionTakeManualScreenshot::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionTakeManualScreenshot::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionTeleportToCoordinate::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionTeleportToCoordinate::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionToggleActionBar::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionToggleActionBar::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionToggleActionBars::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionToggleActionBars::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionToggleBlackWhitelistStatus::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionToggleBlackWhitelistStatus::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionToggleCreatureHudsVisible::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionToggleCreatureHudsVisible::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionToggleMounted::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionToggleMounted::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionToggleServerLogSubscriptionInCurrentChatChannel::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionToggleServerLogSubscriptionInCurrentChatChannel::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionToggleWidget::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionToggleWidget::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionTryToEquip::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionTryToEquip::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionTutorialHintConfirmed::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionTutorialHintConfirmed::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionUnmountPlayer::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionUnmountPlayer::v2	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TGameActionVisibleChatChannel::v1	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TGameActionVisibleChatChannel::v2	e9caf669ab302182	skip	compiler-generated destructor pair
 input::TKeyEventHandler::eventFilter	65b06017c9a4fb75	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onKeyEvent
 input::TKeyboardInputToGameActionConverter::v12	3359b9f739b1d763	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
 input::TKeyboardInputToGameActionConverter::v14	7457ae645e3c027b	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
+input::TKeyboardStatusStorage::onApplicationStateChanged	a34cb872119a335a	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onApplicationStateChanged
 input::TKeyboardStatusStorage::v12	37c8257daa7c4aaf	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::statusHolds
 input::TKeyboardStatusStorage::v13	7d0a4f17f2e88718	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onKeyEvent
 input::TKeyboardStatusStorage::v14	c0196e4a642f9b71	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onKeyEvent
 input::TKeyboardStatusStorage::v15	0fed0f7be218cf70	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
+input::TMovementIntentDirection::v0	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TMovementIntentDirection::v1	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TMovementIntentDirection::v2	dd4802861a7b5baa	ported	input/inputciptypes.h:TMovementIntentDirection::v2
+input::TMovementIntentRotate::v0	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TMovementIntentRotate::v1	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TMovementIntentRotate::v2	122336d00a45fcbf	ported	input/inputciptypes.h:TMovementIntentRotate::v2
+input::TMovementIntentStop::v0	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TMovementIntentStop::v1	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TMovementIntentStop::v2	18ccf7a6719f1d5b	ported	input/inputciptypes.h:TMovementIntentStop::v2
+input::TMovementIntentTargetCoordinate::v0	872d4faac408f6d5	skip	compiler-generated destructor pair
+input::TMovementIntentTargetCoordinate::v1	e9caf669ab302182	skip	compiler-generated destructor pair
+input::TMovementIntentTargetCoordinate::v2	bcccd51b8b153f85	ported	input/inputciptypes.h:TMovementIntentTargetCoordinate::v2
 input::TPlayerMovementGameActionHandler::v12	89f581898392f0cd	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
 input::TPlayerMovementGameActionHandler::v13	2d6620e05b2525b1	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
 input::TPlayerMovementGameActionHandler::v14	4724b908512397e8	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
@@ -120,8 +468,141 @@ input::TPlayerMovementIntentHandler::v33	c3b9824f41c30757	ported	input/playermov
 input::TPlayerMovementIntentHandler::v35	70febbde78725599	inlined	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::predictNextStep
 input::TPlayerMovementIntentHandler::v36	b71945d38186ad1a	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::resetAfterRejectedStep
 input::TPlayerMovementIntentHandler::v37	ae72ddd2d26a6c3c	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::goToAndSend
-minimap::TMinimapTileStorage::v18	11d534a32f85c5be	inlined	game/gamehub_impl.cpp:snapshotWaypointCost
-minimap::TMinimapTileStorage::v21	4ed6b78ca2f0a0b1	ported	game/gamehub_impl.cpp:avoidedFieldsInView
+input::TWindowFocusEventFilter::v0@10	3a20e7dbbd783506	skip	compiler-generated destructor pair
+input::TWindowFocusEventFilter::v12	bcccd51b8b153f85	ported	input/eventfilters.cpp:TWindowFocusEventFilter::nativeEventFilter
+input::TWindowFocusEventFilter::v1@10	60d66566c76dbfb6	skip	compiler-generated destructor pair
+input::TWindowFocusEventFilter::v2@10	bcccd51b8b153f85	ported	input/eventfilters.cpp:TWindowFocusEventFilter::nativeEventFilter
+input::TWindowFocusEventFilter::~TWindowFocusEventFilter	f31bceb5f7c544a5	skip	compiler-generated destructor pair
+input::TWindowFocusEventFilter::~TWindowFocusEventFilter_deleting	471e674d1ed2a48a	skip	compiler-generated destructor pair
+minimap::TMinimapTileStorage::v12	42adc7b9c6963a36	ported	minimap/minimaptilestorage.h:TMinimapTileStorage::setWorld
+minimap::TMinimapTileStorage::v13	0bbb6e12dc570ffb	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::setPlayerZ
+minimap::TMinimapTileStorage::v14	4c8fb20e6f5996f1	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::markUnseen
+minimap::TMinimapTileStorage::v15	1bde2057d88bb6b6	ported	minimap/minimaptilestorage.h:TMinimapTileStorage::playerZ
+minimap::TMinimapTileStorage::v16	3d165fa4490cee00	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::onFieldChanged
+minimap::TMinimapTileStorage::v17	d447a16b60aff447	ported	minimap/minimaptilestorage.cpp:TMinimapTileStorage::updateField
+minimap::TMinimapTileStorage::v18	11d534a32f85c5be	inlined	game/gamesessionstate.cpp:snapshotWaypointCost
+minimap::TMinimapTileStorage::v21	4ed6b78ca2f0a0b1	ported	game/gamesessionstate.cpp:avoidedFieldsInView
+protocol::TProtobufClientMessageTranslator::v0	097457dc45e86dd8	skip	compiler-generated destructor pair
+protocol::TProtobufClientMessageTranslator::v1	79674512666b34e2	skip	compiler-generated destructor pair
+protocol::TProtobufClientMessageTranslator::v10	5cfa59a09adfc4c5	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v100	7b15996db6491335	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v101	4ff45bbafd7162af	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v102	09e7b7c2c542312b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v103	547363b3a28b153d	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v104	e76c1edfb3a72f66	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v105	f4735a66ec53b68b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v106	5cfa59a09adfc4c5	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v107	f51a595e00301663	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v108	341d49432f58ba54	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v109	466927552fe9bef1	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v11	5cfa59a09adfc4c5	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v110	486d6ca0d1174529	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v111	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v112	277f344035ac37f8	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v113	a7918848caffa504	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v114	b74e38950bc7f20f	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v115	673174c283fe4de7	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v116	ead003f777c09849	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v117	ead003f777c09849	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v118	13222a2a7dfe3560	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v119	290d3b2530f411f4	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v12	5cfa59a09adfc4c5	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v13	1c83cdaa59df8471	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v14	d43ea6ab958959f8	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v15	858598083a6d5369	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v16	5cfa59a09adfc4c5	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v17	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v18	cece0213b131de07	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v19	4f983197cce15fda	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v2	fd0e8cebd14ebde7	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v20	ead003f777c09849	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v21	ead003f777c09849	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v22	3a6ea53f882e2dd3	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v23	a295d671f3a907f9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v24	644385a92d14a928	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v25	d30f26fda678429b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v26	4a667c35a6bd2f39	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v27	67b7f573b5946e2c	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v28	78defa5f15322256	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v29	9bc875ec71225415	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v3	603c8164e9514663	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v30	f085c95787755a7b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v31	be172b9254225c97	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v32	30b447193880acfb	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v33	00ca27bd840ceba2	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v34	00ca27bd840ceba2	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v35	09e7b7c2c542312b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v36	466927552fe9bef1	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v37	09e7b7c2c542312b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v38	e0b0e9c2e0dc7ee8	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v39	e0b0e9c2e0dc7ee8	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v40	a7918848caffa504	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v41	e4c6262c7f8458df	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v42	f68c2c3b2649a87f	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v43	cb884ce402316e27	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v44	47b96ed3a1ba3d7f	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v45	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v46	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v47	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v48	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v49	a7918848caffa504	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v5	921e646957e59aeb	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v50	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v51	466927552fe9bef1	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v52	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v53	b7453c52061cff71	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v54	95e8a17aa2aa80ca	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v55	98ea2e39a2f2b8ea	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v56	09e7b7c2c542312b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v57	8bd6d761a5715034	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v58	e03ace569e0abaa2	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v59	858598083a6d5369	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v6	0c793b18f58084ed	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v60	ab303120de3d6ad0	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v61	9bbbc782a0333806	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v62	09e7b7c2c542312b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v63	0082b81861adc8c4	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v64	6128be1b1a1b8300	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v65	60c923446419a8e8	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v66	065bfe757e7c0b46	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v67	466927552fe9bef1	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v68	dac4d063136bf23f	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v69	29d6f38eaa38ca60	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v7	88feaa3e598d2ffa	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v70	ead003f777c09849	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v71	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v72	dee7ec85b2008827	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v73	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v74	aa0915e17b200c3e	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v75	cec8f584f2323c7b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v76	0b86d5570e5fb78a	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v77	ef3537aa58870095	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v78	486d6ca0d1174529	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v79	ead003f777c09849	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v8	f085c95787755a7b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v80	4a071c71635db4ca	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v81	ead003f777c09849	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v82	059fe97979c4f1b9	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v83	6c080ec7f0d53aaf	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v84	644385a92d14a928	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v85	9e0a9e54563362a8	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v86	8dceebd368f1236b	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v87	7afdd1c42c27747a	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v88	d770c15766a30a62	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v89	a5d3b048c0c7a718	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v9	80dea58d8cef049f	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v90	6609fe26e1dc371c	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v91	41180295dfa68816	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v92	b94ece8a55245791	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v93	b6d2e3a69c23af34	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v94	edcdfd206d7d9aa3	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v95	635d0c6e620380d8	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v96	c3e19a44a8697634	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v97	513571b8dcad47da	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v98	1f3f42730b18a7fb	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufClientMessageTranslator::v99	82902519fa02e6b7	ported	protocol/protocolciptypes.cpp:serializeStructuredClient
+protocol::TProtobufServerMessageTranslator::v0	9bda156052f0a967	skip	compiler-generated destructor pair
+protocol::TProtobufServerMessageTranslator::v1	f9ccbb05e42b818e	skip	compiler-generated destructor pair
 protocol::TProtobufServerMessageTranslator::v10	25fe62d7d624c1e4	ported	protocol/mapwire.cpp:fillMapMessage
 protocol::TProtobufServerMessageTranslator::v100	4c6715d80770f61b	ported	protocol/playerwire.cpp:fillPlayerMessage
 protocol::TProtobufServerMessageTranslator::v101	38e418fa3e3a54a5	ported	protocol/playerwire.cpp:fillPlayerMessage
@@ -147,7 +628,9 @@ protocol::TProtobufServerMessageTranslator::v119	ddba8ca12f13c9d3	ported	protoco
 protocol::TProtobufServerMessageTranslator::v12	25fe62d7d624c1e4	ported	protocol/mapwire.cpp:fillMapMessage
 protocol::TProtobufServerMessageTranslator::v120	d60eaa0550438afb	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v121	4d0457f55a2bd672	ported	protocol/featurewire.cpp:fillFeatureMessage
+protocol::TProtobufServerMessageTranslator::v122	7d31ed382fa4a84b	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v123	888c19d1165d1b8e	ported	protocol/miscwire.cpp:fillMiscMessage
+protocol::TProtobufServerMessageTranslator::v124	a208a831bcbb177c	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v127	27663c9c8445c575	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v128	a2da3828b10465dd	ported	protocol/miscwire.cpp:fillMiscMessage
 protocol::TProtobufServerMessageTranslator::v129	464a952eed485c06	ported	protocol/featurewire.cpp:fillFeatureMessage
@@ -180,8 +663,12 @@ protocol::TProtobufServerMessageTranslator::v153	d7118a1b66395f08	ported	protoco
 protocol::TProtobufServerMessageTranslator::v155	69dd91ed68670ce2	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v156	0c3c9f1d64d93043	ported	protocol/miscwire.cpp:fillMiscMessage
 protocol::TProtobufServerMessageTranslator::v157	01aab104ed1d6ffc	ported	protocol/miscwire.cpp:fillMiscMessage
+protocol::TProtobufServerMessageTranslator::v158	ebc02b46e5c60ce6	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v159	0b39a24a81a082e3	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v16	ce339d8e967a129e	ported	protocol/mapwire.cpp:readMapObject
+protocol::TProtobufServerMessageTranslator::v160	f1b9e7adbd972123	ported	protocol/featurewire.cpp:fillFeatureMessage
+protocol::TProtobufServerMessageTranslator::v161	b32fea1869eb7978	ported	protocol/featurewire.cpp:fillFeatureMessage
+protocol::TProtobufServerMessageTranslator::v162	d5c976e326613493	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v163	891df33bb4eef909	ported	protocol/miscwire.cpp:fillMiscMessage
 protocol::TProtobufServerMessageTranslator::v164	3061489ae5290bf9	ported	protocol/miscwire.cpp:fillMiscMessage
 protocol::TProtobufServerMessageTranslator::v165	4c6715d80770f61b	ported	protocol/miscwire.cpp:fillMiscMessage
@@ -193,6 +680,7 @@ protocol::TProtobufServerMessageTranslator::v170	ebc02b46e5c60ce6	ported	protoco
 protocol::TProtobufServerMessageTranslator::v171	80c065904dd734d9	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v172	85e346a1157bb1b7	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v173	23371b87f33dd821	ported	protocol/featurewire.cpp:fillFeatureMessage
+protocol::TProtobufServerMessageTranslator::v174	472a72fdf0ed42fd	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v175	d84efe452bd4ffdd	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v176	eb55d5841bcf7a54	ported	protocol/miscwire.cpp:fillMiscMessage
 protocol::TProtobufServerMessageTranslator::v178	e06846ce30e52604	ported	protocol/featurewire.cpp:fillFeatureMessage
@@ -228,6 +716,7 @@ protocol::TProtobufServerMessageTranslator::v207	3902642ad8644212	ported	protoco
 protocol::TProtobufServerMessageTranslator::v208	4038fb847227e316	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v209	087bf17dc78a0f72	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v210	db0b5b9adce02ba1	ported	protocol/featurewire.cpp:fillFeatureMessage
+protocol::TProtobufServerMessageTranslator::v211	eeb49a39579e0c6f	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v23	15222b2257460350	ported	protocol/mapwire.cpp:readOutfit
 protocol::TProtobufServerMessageTranslator::v25	2a4347666f4c252d	ported	protocol/featurewire.cpp:readStoreOpenParameters
 protocol::TProtobufServerMessageTranslator::v26	45995db3c8f787ba	ported	protocol/featurewire.cpp:readStoreVisual
@@ -258,9 +747,11 @@ protocol::TProtobufServerMessageTranslator::v66	ddda81e010d22a9d	ported	protocol
 protocol::TProtobufServerMessageTranslator::v67	9fce6a353feadf7a	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v68	a2da3828b10465dd	ported	protocol/featurewire.cpp:readProgress
 protocol::TProtobufServerMessageTranslator::v69	32f88e072d4df0a4	ported	protocol/playerwire.cpp:fillPlayerMessage
+protocol::TProtobufServerMessageTranslator::v7	f4c3e2d0edd27ee0	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v70	99ae710f9b6d73bb	ported	protocol/playerwire.cpp:fillPlayerMessage
 protocol::TProtobufServerMessageTranslator::v73	7ac25e7fef7a76f1	ported	protocol/miscwire.cpp:fillMiscMessage
 protocol::TProtobufServerMessageTranslator::v74	e456f0b6e8747aa1	ported	protocol/featurewire.cpp:fillFeatureMessage
+protocol::TProtobufServerMessageTranslator::v75	546ed1efce29adbe	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v76	afa1a23834efb73b	ported	protocol/chatwire.cpp:fillChatMessage
 protocol::TProtobufServerMessageTranslator::v77	7ac25e7fef7a76f1	ported	protocol/mapwire.cpp:fillCreatureMessage
 protocol::TProtobufServerMessageTranslator::v8	4f9cef0f029c0054	ported	protocol/mapwire.cpp:fillMapMessage
@@ -283,89 +774,1129 @@ protocol::TProtobufServerMessageTranslator::v96	4c6715d80770f61b	ported	protocol
 protocol::TProtobufServerMessageTranslator::v97	3c0b35bd4f0a8a4f	ported	protocol/playerwire.cpp:fillPlayerMessage
 protocol::TProtobufServerMessageTranslator::v98	2b9039df5ee131ea	ported	protocol/playerwire.cpp:fillPlayerMessage
 protocol::TProtobufServerMessageTranslator::v99	12c4e733fa17ea8e	ported	protocol/playerwire.cpp:fillPlayerMessage
+shared::TClockService::v0	872d4faac408f6d5	skip	compiler-generated destructor pair
+shared::TClockService::v1	e9caf669ab302182	skip	compiler-generated destructor pair
+shared::TClockService::v2	19c65a535546e9f4	ported	shared/clockservice.cpp:TClockService::nowMillis
+shared::TClockService::v3	066d034d43b4bfda	inlined	shared/clockservice.cpp:TClockService::nowMicros
+shared::TClockService::v4	5a1cbe9be92a7970	ported	shared/clockservice.cpp:TClockService::nowMicros
+shared::TCoordinate::v2	be5c33954d406be4	ported	shared/sharedciptypes.h:TCoordinate::operator+
+shared::TExtent::v0	872d4faac408f6d5	skip	compiler-generated destructor pair
+shared::TExtent::v1	e9caf669ab302182	skip	compiler-generated destructor pair
+sub_00891527872e	00891527872e3bcc	ported	creatures/creaturestorage.cpp:TCreature::markOptions
+sub_00891527872e#2	00891527872e3bcc	ported	creatures/creaturestorage.cpp:TCreature::markOptions
+sub_00891527872e#4	00891527872e3bcc	ported	creatures/creaturestorage.cpp:TCreature::markOptions
+sub_00baebbba818#4	00baebbba81803e1	inlined	protocol::TProtobufServerMessageTranslator::v65
 sub_00c84b7f3952	00c84b7f3952c8d1	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_00fc9c95ece6	00fc9c95ece6c655	ported	appearances/appearanceinstance.cpp:directionPattern
+sub_011120f166d4#2	011120f166d4e972	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_01645bba232f	01645bba232feb8c	inlined	worldmap/worldmapfield.cpp:isBottom
 sub_0170cea90042	0170cea90042028b	tested	creatures/creaturemovementspeedcalculator.cpp:TCreatureMovementSpeedCalculator::beatRoundedDuration	test=tests/client/creaturemovement_test.cpp
+sub_02d135acb203	02d135acb203256c	inlined	creatures/creaturestorage.cpp:selectedFrameColor
+sub_02f8fe52bacd	02f8fe52bacd5f0a	inlined	worldmap/worldmappicker.cpp:TWorldMapPicker::fieldCoordinatesAt
+sub_032106eb27f5	032106eb27f513e4	inlined	creatures/creaturestorage.cpp:TCreature::marks
+sub_036fc29b76c1	036fc29b76c1ab08	ported	creatures/creaturestorage.h:TCreature::hasInspectionState
 sub_04dfa2aa22c5	04dfa2aa22c529ce	tested	creatures/movementdirection.h:directionBetween	test=tests/client/creaturemovement_test.cpp
+sub_04e2bab2ac6a	04e2bab2ac6ad45e	ported	input/gameaction.h:TGameActionSessiondumpResume::TGameActionSessiondumpResume
+sub_04e2bab2ac6a#2	04e2bab2ac6ad45e	ported	input/gameaction.h:TGameActionSessiondumpResume::TGameActionSessiondumpResume
+sub_05e9e0cfbf5c#6	05e9e0cfbf5c1356	inlined	protocol::TProtobufServerMessageTranslator::v169
+sub_060bbfd8acce#3	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_060bbfd8acce#4	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_060bbfd8acce#5	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_060bbfd8acce#6	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v187
+sub_060bbfd8acce#7	060bbfd8accec80f	inlined	protocol::TProtobufServerMessageTranslator::v211
 sub_07cb77371704	07cb773717048400	ported	animation/phaseanimator.h:TAnimator::isFinished
+sub_08b61ba3372a	08b61ba3372aebcd	inlined	protocol::TProtobufServerMessageTranslator::v56
+sub_08b61ba3372a#2	08b61ba3372aebcd	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_08b61ba3372a#3	08b61ba3372aebcd	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_090bcd197cd4	090bcd197cd4c044	inlined	input/movementpathplanner.cpp:planMovementPath
+sub_097457dc45e8#511	097457dc45e86dd8	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_097457dc45e8#784	097457dc45e86dd8	inlined	protocol::TProtobufClientMessageTranslator::v3
+sub_0a349a1bded7	0a349a1bded7b24f	inlined	worldmap/worldmapfield.cpp:isForceUse
+sub_0a82122eb660	0a82122eb6607dd2	inlined	creatures/creaturestorage.cpp:TCreature::setTargetFrame
+sub_0af40cf147e6	0af40cf147e65ea4	inlined	creatures/creaturestorage.cpp:TCreatureStorage::createCreature
+sub_0b96c734cfd5#4	0b96c734cfd502e0	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_0be45610fcce#4	0be45610fccee9f6	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_0be888783735	0be888783735acfc	ported	input/gameaction.h:TGameActionOpenTradeCharacterDialog::TGameActionOpenTradeCharacterDialog
+sub_0be888783735#2	0be888783735acfc	ported	input/gameaction.h:TGameActionOpenTradeCharacterDialog::TGameActionOpenTradeCharacterDialog
+sub_0bfe7f006ec2	0bfe7f006ec21622	inlined	creatures/creaturestorage.cpp:TCreature::hideTargetFrame
 sub_0cdec366ea69	0cdec366ea69bea3	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_0efebe99a6c7	0efebe99a6c755ee	inlined	input/movementpathplanner.cpp:planMovementPath
 sub_10d904a97f40	10d904a97f40a0a0	inlined	input/movementpathplanner.cpp:planMovementPath
+sub_1193670af137#10	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#100	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#101	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#102	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#103	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#104	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#105	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#106	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#107	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#108	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#109	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#11	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#110	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#111	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#112	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#113	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#114	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#115	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#116	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#117	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#118	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#119	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#12	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#13	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#14	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#15	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#16	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#17	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#18	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#19	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#20	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#21	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#22	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#23	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#24	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#25	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#26	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#27	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#28	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#29	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#30	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#31	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#32	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#33	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#34	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#35	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#36	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#37	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#38	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#39	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#40	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#41	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#42	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#43	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#44	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#45	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#46	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#47	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#48	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#49	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#5	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#50	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#51	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#52	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#53	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#54	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#55	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#56	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#57	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#58	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#59	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#6	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#60	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#61	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#62	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#63	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#64	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#65	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#66	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#67	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#68	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#69	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#7	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#70	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#71	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#72	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#73	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#74	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#75	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#76	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#77	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#78	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#79	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#8	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#80	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#81	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#82	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#83	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#84	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#85	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#86	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#87	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#88	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#89	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#9	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#90	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#91	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#92	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#93	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#94	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#95	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#96	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#97	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#98	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_1193670af137#99	1193670af1370708	inlined	protocol::TProtobufClientMessageTranslator::v2
 sub_1205f59ef909	1205f59ef909b26e	tested	creatures/movementdirection.h:reverseStepOffset	test=tests/client/creaturemovement_test.cpp
+sub_1234a2979c15#2	1234a2979c15b96d	inlined	protocol::TProtobufServerMessageTranslator::v15
+sub_12680f4ffaed#2	12680f4ffaedf916	inlined	protocol::TProtobufServerMessageTranslator::v143
+sub_1420e865d08d	1420e865d08d3c3a	ported	input/gameaction.h:TGameActionDisplayPreviousChatChannelTab::TGameActionDisplayPreviousChatChannelTab
+sub_1420e865d08d#2	1420e865d08d3c3a	ported	input/gameaction.h:TGameActionDisplayPreviousChatChannelTab::TGameActionDisplayPreviousChatChannelTab
+sub_1438a3557a75	1438a3557a7553cf	ported	chat/textstorage.h:TTextMessageQueue::TTextMessageQueue
+sub_1438a3557a75#2	1438a3557a7553cf	ported	chat/textstorage.h:TTextMessageQueue::TTextMessageQueue
 sub_15bedae812cb	15bedae812cb3aa9	tested	animation/durationtween.h:TDurationTween::isFinished	test=tests/client/durationtween_test.cpp
-sub_206b92cfaab6	206b92cfaab68e8b	ported	game/gamehub_impl.cpp:Game::createMovementIntent
+sub_16a9cc86912c#2	16a9cc86912c6add	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_176bafad08bd	176bafad08bd6418	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::undergroundFloor
+sub_198dc9557e84	198dc9557e84e22c	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_19bf31286b6d	19bf31286b6dbc81	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::updateExtent
+sub_1a3e2e348475#264	1a3e2e348475d66b	inlined	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::TAmbientLightStorage
+sub_1bf6b2627054	1bf6b2627054919d	skip	std::vector growth (library)
+sub_1c4a112ac937#2	1c4a112ac93762e2	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_1db1ccc766f3	1db1ccc766f39494	inlined	worldmap/worldmapsessionstate.cpp:TWorldMapSessionState::isAwareOfPosition
+sub_1e107f6deb97	1e107f6deb97a81b	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_1ed8eef79b6b	1ed8eef79b6be7cf	ported	input/gameaction.h:TGameActionToggleServerLogSubscriptionInCurrentChatChannel::TGameActionToggleServerLogSubscriptionInCurrentChatChannel
+sub_1ed8eef79b6b#2	1ed8eef79b6be7cf	ported	input/gameaction.h:TGameActionToggleServerLogSubscriptionInCurrentChatChannel::TGameActionToggleServerLogSubscriptionInCurrentChatChannel
+sub_1f0d76b58c80	1f0d76b58c801f70	ported	input/gameaction.h:TGameActionToggleCreatureHudsVisible::TGameActionToggleCreatureHudsVisible
+sub_1f0d76b58c80#2	1f0d76b58c801f70	ported	input/gameaction.h:TGameActionToggleCreatureHudsVisible::TGameActionToggleCreatureHudsVisible
+sub_206b92cfaab6	206b92cfaab68e8b	ported	game/gamesessionstate.cpp:TGameSessionState::createMovementIntent
 sub_20919a1fc5d0	20919a1fc5d0b08d	tested	input/movementpathplanner.cpp:planMovementPath	test=tests/client/movementpathplanner_test.cpp
+sub_217af12bafc6	217af12bafc6f79b	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_2233d33ba0fa	2233d33ba0fa8972	ported	creatures/creatureprotocolapply.cpp:playerIconFromProtocol
+sub_2233d33ba0fa#2	2233d33ba0fa8972	ported	creatures/creatureprotocolapply.cpp:creatureIconFromProtocol
+sub_22c31988f4b5	22c31988f4b55ef5	inlined	protocol::TProtobufServerMessageTranslator::v182
+sub_22c73b3fa49b#26	22c73b3fa49bf937	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_22c73b3fa49b#28	22c73b3fa49bf937	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_23c91f1a75a5#116	23c91f1a75a58fdc	skip	std::vector growth (library)
+sub_24d0e40b83cf	24d0e40b83cfab68	skip	compiler-generated destructor pair
+sub_26b86b7b68c7	26b86b7b68c7cdc3	ported	input/gameaction.h:TGameActionAttackFirstTarget::TGameActionAttackFirstTarget
+sub_26b86b7b68c7#2	26b86b7b68c7cdc3	ported	input/gameaction.h:TGameActionAttackFirstTarget::TGameActionAttackFirstTarget
+sub_26e3b8f4b44a	26e3b8f4b44a839f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_277911eaaa82	277911eaaa82f566	skip	debug output operator for a direction enum
 sub_27826b207c43	27826b207c43eaa9	inlined	animation/phaseanimator.cpp:TAnimator::update
+sub_27c1756a0ea2	27c1756a0ea272f9	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::TAmbientLightStorage
+sub_285b5a8fc90e#10	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_285b5a8fc90e#11	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_285b5a8fc90e#12	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_285b5a8fc90e#13	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_285b5a8fc90e#14	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_285b5a8fc90e#15	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v135
+sub_285b5a8fc90e#16	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v171
+sub_285b5a8fc90e#17	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_285b5a8fc90e#18	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_285b5a8fc90e#19	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v143
+sub_285b5a8fc90e#20	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_285b5a8fc90e#21	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v195
+sub_285b5a8fc90e#22	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v201
+sub_285b5a8fc90e#4	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v65
+sub_285b5a8fc90e#5	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v88
+sub_285b5a8fc90e#6	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v108
+sub_285b5a8fc90e#7	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v120
+sub_285b5a8fc90e#8	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_285b5a8fc90e#9	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_287294feddf4#10	287294feddf49027	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_28ce43924415	28ce439244157ef8	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_2a8e05bc3181#2	2a8e05bc318111c6	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_2a8e05bc3181#4	2a8e05bc318111c6	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_2b8b580609a9	2b8b580609a9bfda	inlined	protocol::TProtobufServerMessageTranslator::v15
+sub_2baba2b18053	2baba2b1805351ba	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_2c37da92c40b	2c37da92c40b0720	inlined	input/movementpathplanner.cpp:planMovementPath
 sub_2c3e53744af1	2c3e53744af1caa2	ported	animation/phaseanimator.h:TAnimator::setAlwaysLoop
+sub_2d0a30c09a20	2d0a30c09a20f0f5	ported	input/gameaction.h:TGameActionClearOldestMessageFromMapwindow::TGameActionClearOldestMessageFromMapwindow
+sub_2d0a30c09a20#2	2d0a30c09a20f0f5	ported	input/gameaction.h:TGameActionClearOldestMessageFromMapwindow::TGameActionClearOldestMessageFromMapwindow
+sub_2d225362710f#2	2d225362710fb731	inlined	protocol::TProtobufServerMessageTranslator::v206
 sub_2d4b61bfe5c7	2d4b61bfe5c74495	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::slotKey
+sub_2d7ffe3df21e#3	2d7ffe3df21e04c4	skip	constructor storing the render volume provider, render provider and map storage; qtclient passes the render provider and reads the map storage singleton
+sub_2d7ffe3df21e#4	2d7ffe3df21e04c4	skip	constructor storing the render volume provider, render provider and map storage; qtclient passes the render provider and reads the map storage singleton
 sub_2dfbb17ae4d6	2dfbb17ae4d656ca	ported	appearances/appearanceinstance.cpp:TEffectInstance::start
 sub_2f2d7046c2e5	2f2d7046c2e5c6c6	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::tick
+sub_2f7361e4442e#6	2f7361e4442ec061	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_2f7361e4442e#8	2f7361e4442ec061	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_2f7d0fdf121f#2	2f7d0fdf121f9000	skip	compiler-generated destructor pair
+sub_2f89e676d988	2f89e676d988f240	skip	std::map node teardown (library)
 sub_3025c2ede535	3025c2ede53551e0	tested	creatures/movementdirection.h:directionOfStep	test=tests/client/creaturemovement_test.cpp
+sub_306d1ba5475c#10	306d1ba5475c61d0	inlined	creatures/creaturestorage.cpp:TCreatureStorage::notifyCreatureUpdated
+sub_306d1ba5475c#60	306d1ba5475c61d0	inlined	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
 sub_30cfaf9fa6fd	30cfaf9fa6fdfaa1	ported	appearances/appearanceinstance.cpp:TMissileEffectInstance::setPath
+sub_317d4d35cbc2	317d4d35cbc2f554	inlined	creatures/creaturestorage.cpp:TCreatureStorage::remove
+sub_31b66d56ccbe	31b66d56ccbe590c	inlined	worldmap/worldmapfield.cpp:placeCreatureOnField
+sub_320eeede4a22#38	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v112
+sub_320eeede4a22#40	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v102
+sub_320eeede4a22#42	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v132
+sub_320eeede4a22#44	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v137
+sub_320eeede4a22#46	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_320eeede4a22#48	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_320eeede4a22#50	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v153
+sub_320eeede4a22#54	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v60
+sub_320eeede4a22#56	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v119
+sub_320eeede4a22#58	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_320eeede4a22#60	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_320eeede4a22#62	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_320eeede4a22#64	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_320eeede4a22#66	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_320eeede4a22#68	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_320eeede4a22#70	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_320eeede4a22#72	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_320eeede4a22#74	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_320eeede4a22#76	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v187
+sub_320eeede4a22#78	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v185
+sub_320eeede4a22#80	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_320eeede4a22#82	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_320eeede4a22#84	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_320eeede4a22#86	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v208
+sub_320eeede4a22#88	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v82
+sub_32cd757e4b22	32cd757e4b2269a3	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::firstFloor
+sub_3359adc3f222#2	3359adc3f222ff5f	inlined	protocol::TProtobufServerMessageTranslator::v135
+sub_33c007a5b41e	33c007a5b41e7f56	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_33e88fe5a2f7	33e88fe5a2f73368	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_3523411ddb02#3	3523411ddb025c2c	skip	shared_ptr copy/release (library)
+sub_35bb1c30f3d5#8	35bb1c30f3d54f91	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_35f135179395#2	35f135179395964b	ported	creatures/creatureprotocolapply.cpp:vocationFromProtocol
+sub_3616e876ff01	3616e876ff0179c7	ported	input/gameaction.h:TGameActionRequestCopySelectedTextToClipboard::TGameActionRequestCopySelectedTextToClipboard
+sub_3616e876ff01#2	3616e876ff0179c7	ported	input/gameaction.h:TGameActionRequestCopySelectedTextToClipboard::TGameActionRequestCopySelectedTextToClipboard
+sub_36cd6715fc8e	36cd6715fc8e05ef	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_377ad916ec4a	377ad916ec4ab5dd	skip	shared_ptr copy/release (library)
+sub_378c88ab1c36#2	378c88ab1c36ed6f	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_380f7a7f155e	380f7a7f155ed2a0	ported	shared/sharedciptypes.h:TExtent::TExtent
+sub_380f7a7f155e#2	380f7a7f155ed2a0	ported	shared/sharedciptypes.h:TExtent::TExtent
+sub_38c1859f9b74	38c1859f9b74111b	ported	input/gameaction.h:TGameActionDisplayNextChatChannelTab::TGameActionDisplayNextChatChannelTab
+sub_38c1859f9b74#2	38c1859f9b74111b	ported	input/gameaction.h:TGameActionDisplayNextChatChannelTab::TGameActionDisplayNextChatChannelTab
 sub_38c94e362e4c	38c94e362e4cc494	ported	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleGraphicalEffectsMessage
 sub_395d21488787	395d21488787d60d	inlined	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleGraphicalEffectsMessage
+sub_39af3334b322	39af3334b3228743	ported	chat/textstorage.h:TFleetingTextQueue::color
+sub_39f2aa9fbf88#2	39f2aa9fbf88343f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_3a13bd582465#52	3a13bd582465a386	skip	protobuf generated copy constructor
 sub_3aa7a180804d	3aa7a180804d16bc	inlined	effects/numericaleffect.cpp:TNumericalEffect::duration
+sub_3b2268c87db3	3b2268c87db31cad	ported	input/gameaction.h:TGameActionSessiondumpPause::TGameActionSessiondumpPause
+sub_3b2268c87db3#2	3b2268c87db31cad	ported	input/gameaction.h:TGameActionSessiondumpPause::TGameActionSessiondumpPause
 sub_3bb1b17490f6	3bb1b17490f6e5b7	skip	builds the base TAnimator phase table; walking phases come from the outfit Animator
 sub_3c6f1bf52fdf	3c6f1bf52fdf5cef	ported	renderer/worldmaprenderprovider.cpp:objectLayer
 sub_3ffb16904a27	3ffb16904a27fe6d	tested	animation/animationinfo.h:TAnimationInfo::finish	test=tests/client/phaseanimator_test.cpp
+sub_409babd10cfc	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v15
+sub_409babd10cfc#10	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v160
+sub_409babd10cfc#11	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v169
+sub_409babd10cfc#12	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v136
+sub_409babd10cfc#13	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v138
+sub_409babd10cfc#14	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v185
+sub_409babd10cfc#16	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_409babd10cfc#2	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v210
+sub_409babd10cfc#3	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v113
+sub_409babd10cfc#4	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_409babd10cfc#5	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_409babd10cfc#6	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_409babd10cfc#7	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_409babd10cfc#8	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_409babd10cfc#9	409babd10cfcc1db	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_4136eae006e1	4136eae006e1e48b	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::TWorldMapViewport
+sub_41b997a56a6a#2	41b997a56a6ae563	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_42188ede457f#130	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v160
+sub_42188ede457f#132	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_42188ede457f#134	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_42188ede457f#136	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_42188ede457f#138	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_42188ede457f#140	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_42188ede457f#148	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v49
+sub_42188ede457f#150	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_42188ede457f#152	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_42188ede457f#154	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_42188ede457f#156	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_42188ede457f#158	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_42188ede457f#160	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_43b3611eef4c	43b3611eef4ce476	ported	input/gameaction.h:TGameActionAttackNextTarget::TGameActionAttackNextTarget
+sub_43b3611eef4c#2	43b3611eef4ce476	ported	input/gameaction.h:TGameActionAttackNextTarget::TGameActionAttackNextTarget
+sub_450d7a7fc1e4	450d7a7fc1e49616	inlined	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
+sub_48afefe3e48a#22	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTranslator::v135
+sub_48afefe3e48a#24	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTranslator::v120
+sub_48afefe3e48a#26	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_48afefe3e48a#28	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_48afefe3e48a#30	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_49e3d1657580	49e3d1657580c6fa	ported	input/gameaction.h:TGameActionRemoveAllTutorialMarkers::TGameActionRemoveAllTutorialMarkers
+sub_49e3d1657580#2	49e3d1657580c6fa	ported	input/gameaction.h:TGameActionRemoveAllTutorialMarkers::TGameActionRemoveAllTutorialMarkers
 sub_4b42f09296ba	4b42f09296ba1629	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::sendPath
 sub_4c21d3dae31d	4c21d3dae31de72e	ported	game/skillswidgetentrydata.cpp:fillExperienceGain
+sub_4e0164b74803	4e0164b748033077	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::centerRow
+sub_4f0cbd3fa387#4	4f0cbd3fa387a479	inlined	protocol::TProtobufServerMessageTranslator::v210
+sub_504e9865bfe2	504e9865bfe2be4a	ported	input/gameaction.h:TGameActionCloseCurrentChatChannel::TGameActionCloseCurrentChatChannel
+sub_504e9865bfe2#2	504e9865bfe2be4a	ported	input/gameaction.h:TGameActionCloseCurrentChatChannel::TGameActionCloseCurrentChatChannel
+sub_50c420e16808	50c420e16808f249	inlined	protocol::TProtobufServerMessageTranslator::v135
+sub_517f05197785#2	517f051977858fda	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_51a5a9d9b7b6	51a5a9d9b7b6b07f	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::applyArea
+sub_533b1386e08f	533b1386e08fddb1	inlined	protocol::TProtobufServerMessageTranslator::v175
 sub_53577ea90588	53577ea9058864de	ported	appearances/appearanceinstance.cpp:TMissileEffectInstance::setPath
+sub_55a3f2f7b87a	55a3f2f7b87a25f6	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
 sub_568757ce8c16	568757ce8c16b558	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::DrawKey::packed
+sub_57d614aec5a3	57d614aec5a30a31	ported	input/gameaction.h:TGameActionSelectAllText::TGameActionSelectAllText
+sub_57d614aec5a3#2	57d614aec5a30a31	ported	input/gameaction.h:TGameActionSelectAllText::TGameActionSelectAllText
+sub_586819c13205#9	586819c13205c216	inlined	creatures/creaturestorage.cpp:TCreature::setShield
+sub_58a8ed58a785#3	58a8ed58a785542a	ported	input/inputciptypes.h:TMovementIntentTargetCoordinate::TMovementIntentTargetCoordinate
+sub_58a8ed58a785#4	58a8ed58a785542a	ported	input/inputciptypes.h:TMovementIntentTargetCoordinate::TMovementIntentTargetCoordinate
+sub_5aa45a1e0b84#2	5aa45a1e0b844c9d	inlined	protocol::TProtobufServerMessageTranslator::v26
+sub_5b118fe8da21	5b118fe8da218672	ported	creatures/creaturestorage.cpp:TCreature::showsMovingSprite
+sub_5c6fde237d93#2	5c6fde237d934bdd	inlined	protocol::TProtobufServerMessageTranslator::v168
+sub_5dd80a9a9e7a	5dd80a9a9e7aeb94	inlined	protocol::TProtobufServerMessageTranslator::v26
+sub_5e0df0cb67d9	5e0df0cb67d937e7	ported	input/gameaction.h:TGameActionMountPlayer::TGameActionMountPlayer
+sub_5e0df0cb67d9#2	5e0df0cb67d937e7	ported	input/gameaction.h:TGameActionMountPlayer::TGameActionMountPlayer
+sub_5f0cf0255133	5f0cf025513359f9	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleDeleteOnMapMessage
 sub_60339bc87903	60339bc879032747	tested	animation/movingoutfitanimator.h:TMovingOutfitAnimator::maximumPhaseDuration	test=tests/client/creaturemovement_test.cpp
+sub_6039a23d697b	6039a23d697bd1dc	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_607242124794#2	6072421247940167	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_6201bb5c756b	6201bb5c756b1609	inlined	input/movementpathplanner.cpp:planMovementPath
+sub_639c55887bb7#6	639c55887bb7c6a8	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_63b1f8f7f039#108	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v108
+sub_63b1f8f7f039#110	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v67
+sub_63b1f8f7f039#116	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v153
+sub_63b1f8f7f039#122	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v121
+sub_63b1f8f7f039#124	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v122
+sub_63b1f8f7f039#126	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_63b1f8f7f039#128	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_63b1f8f7f039#130	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_63b1f8f7f039#132	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_63b1f8f7f039#134	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_63b1f8f7f039#138	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v193
+sub_63b1f8f7f039#140	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v168
+sub_63b1f8f7f039#142	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v199
+sub_63b1f8f7f039#148	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v199
+sub_63b1f8f7f039#152	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_63b1f8f7f039#154	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_63b1f8f7f039#156	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_643b7400e1be	643b7400e1be702b	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
+sub_64a7066e01bc	64a7066e01bc0035	skip	debug output operator for a direction enum
 sub_65e75980f925	65e75980f92508a2	tested	animation/durationtween.h:TDurationTween::progress	test=tests/client/durationtween_test.cpp
 sub_6748059f40e4	6748059f40e43c08	skip	builds the base TAnimator phase table; walking phases come from the outfit Animator
+sub_6756eb06e2b0#8	6756eb06e2b04c8a	inlined	protocol::TProtobufServerMessageTranslator::v172
+sub_6784be96c631#10	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_6784be96c631#12	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTranslator::v201
+sub_67bb02f729b3#2	67bb02f729b30a27	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_683236c4466e	683236c4466ecc1f	inlined	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::moveKnownArea
+sub_688707013581#2	688707013581bdea	inlined	protocol::TProtobufServerMessageTranslator::v162
+sub_688707013581#4	688707013581bdea	inlined	protocol::TProtobufServerMessageTranslator::v113
+sub_688707013581#6	688707013581bdea	inlined	protocol::TProtobufServerMessageTranslator::v188
+sub_688707013581#8	688707013581bdea	inlined	protocol::TProtobufServerMessageTranslator::v189
+sub_69f10198a817	69f10198a8172f9e	inlined	creatures/creaturestorage.cpp:TCreature::addTimedSquare
+sub_6ad4597e7f06	6ad4597e7f06eaa9	inlined	creatures/creaturestorage.cpp:TCreature::update
+sub_6cd2509ca3f6#2	6cd2509ca3f645a3	inlined	protocol::TProtobufServerMessageTranslator::v138
+sub_6d4ec25951b3#2	6d4ec25951b382bc	inlined	protocol::TProtobufServerMessageTranslator::v182
+sub_6d574324c613#10	6d574324c6133c14	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_6d574324c613#12	6d574324c6133c14	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_6d574324c613#14	6d574324c6133c14	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_6d574324c613#16	6d574324c6133c14	inlined	protocol::TProtobufServerMessageTranslator::v185
+sub_6d574324c613#4	6d574324c6133c14	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_6d574324c613#6	6d574324c6133c14	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_6d574324c613#8	6d574324c6133c14	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_6d8b98cf54bf	6d8b98cf54bfb195	inlined	worldmap/worldmapfield.cpp:isTop
+sub_6e2d43fdfa5d	6e2d43fdfa5d0146	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::lastFloor
+sub_6e77367ef5e5#12	6e77367ef5e50ae3	inlined	protocol::TProtobufServerMessageTranslator::v49
+sub_6e77367ef5e5#14	6e77367ef5e50ae3	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_6e7e711f086c#2	6e7e711f086c0f11	inlined	protocol::TProtobufServerMessageTranslator::v187
 sub_6ff195c60d3f	6ff195c60d3f1ca3	inlined	input/movementpathplanner.cpp:planMovementPath
+sub_710ee82f1ab1	710ee82f1ab1fcda	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_71e6a0462ff0	71e6a0462ff07802	ported	input/gameaction.h:TGameActionTakeManualScreenshot::TGameActionTakeManualScreenshot
+sub_71e6a0462ff0#2	71e6a0462ff07802	ported	input/gameaction.h:TGameActionTakeManualScreenshot::TGameActionTakeManualScreenshot
+sub_73119f8c4c4e	73119f8c4c4e0e24	inlined	creatures/creatureprotocolapply.cpp:applyProtocolCreatureFields
+sub_73ad8fbd6f02#10	73ad8fbd6f02ba96	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_73ad8fbd6f02#8	73ad8fbd6f02ba96	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_757b8956ec0f	757b8956ec0f403b	inlined	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleFullMapMessage
+sub_75859b77da57	75859b77da57ac67	ported	input/gameaction.h:TGameActionGetGuildMessage::TGameActionGetGuildMessage
+sub_75859b77da57#2	75859b77da57ac67	ported	input/gameaction.h:TGameActionGetGuildMessage::TGameActionGetGuildMessage
 sub_7627528ea98e	7627528ea98e2fc9	tested	animation/movingoutfitanimator.h:TMovingOutfitAnimator::minimumPhaseDuration	test=tests/client/creaturemovement_test.cpp
+sub_7635dbf6e01d#2	7635dbf6e01d55b5	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_763b1c97024e	763b1c97024e5a2f	ported	game/gamesession.cpp:formatCreatureName
 sub_77ca4d10834b	77ca4d10834b2705	tested	creatures/movementdirection.h:lookDirectionAfter	test=tests/client/creaturemovement_test.cpp
+sub_782e79de34e0	782e79de34e0dd66	inlined	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleFullMapMessage
+sub_78bfa03c21d2#2	78bfa03c21d2f8b8	inlined	protocol::TProtobufServerMessageTranslator::v171
+sub_78bfa03c21d2#4	78bfa03c21d2f8b8	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_79d846cb5c50	79d846cb5c5084ed	inlined	protocol::TProtobufServerMessageTranslator::v121
+sub_7a2fdbcd8f0f#2	7a2fdbcd8f0f3518	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_7a6f5093038b#187	7a6f5093038bcf22	inlined	input/eventfilters.cpp:TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::eventFilter
+sub_7a6f5093038b#233	7a6f5093038bcf22	inlined	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::setNormalizedTibiaTimeOfDay
+sub_7a6f5093038b#235	7a6f5093038bcf22	skip	moc-generated worldMapVolumeChanged signal emitter
+sub_7d1e47349400	7d1e47349400f6f1	inlined	creatures/creaturestorage.cpp:TCreature::hideStaticSquare
+sub_7d3c5c56c071	7d3c5c56c071df0e	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_7d4f9b7fe6c3	7d4f9b7fe6c3e066	inlined	protocol::TProtobufServerMessageTranslator::v49
 sub_7e3a3866f4eb	7e3a3866f4eb25f2	ported	appearances/appearanceinstance.cpp:fieldDirection
+sub_7eca2fd20084	7eca2fd20084904f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_7f7adeab4a82#8	7f7adeab4a82cc3c	inlined	protocol::TProtobufServerMessageTranslator::v113
+sub_80169dd20755#6	80169dd20755fe3f	inlined	creatures/creaturestorage.cpp:TCreature::setInspectionType
+sub_8049d5c9bff1	8049d5c9bff1cd24	ported	input/gameaction.h:TGameActionOpenHighscoresDialog::TGameActionOpenHighscoresDialog
+sub_8049d5c9bff1#2	8049d5c9bff1cd24	ported	input/gameaction.h:TGameActionOpenHighscoresDialog::TGameActionOpenHighscoresDialog
+sub_807a7940ab71#6	807a7940ab714f0b	inlined	protocol::TProtobufServerMessageTranslator::v130
+sub_8095e30ec948#2	8095e30ec9482f13	inlined	protocol::TProtobufServerMessageTranslator::v210
+sub_81553dc4f9ec	81553dc4f9ece529	skip	debug output operator for a direction enum
 sub_816088977abe	816088977abe16d8	tested	creatures/creaturemovementtween.cpp:TCreatureMovementTween::remainingOffset	test=tests/client/creaturemovement_test.cpp
+sub_8258ce8096a4	8258ce8096a470f6	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_82b00dd49452	82b00dd494520993	ported	creatures/creaturestorage.h:TCreature::hasStatusMark
+sub_835de2e6cd81	835de2e6cd81cdd5	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_837932b7e775#4	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTranslator::v88
+sub_837932b7e775#6	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTranslator::v108
+sub_83c5f33127a6#146	83c5f33127a615cc	inlined	protocol::TProtobufClientMessageTranslator::v114
 sub_84b95f937971	84b95f93797150d7	inlined	animation/phaseanimator.cpp:TAnimator::update
+sub_8721425c106e	8721425c106e647d	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_87257f392be6#10	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#100	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#101	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#102	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#103	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#104	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#105	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#106	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#107	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#108	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#109	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#11	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#110	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#111	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#112	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#113	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#114	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#115	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#116	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#117	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#118	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#119	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#12	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#13	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#14	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#15	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#16	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#17	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#18	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#19	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#20	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#21	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#22	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#23	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#24	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#25	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#26	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#27	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#28	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#29	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#30	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#31	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#32	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#33	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#34	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#35	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#36	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#37	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#38	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#39	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#40	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#41	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#42	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#43	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#44	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#45	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#46	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#47	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#48	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#49	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#5	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#50	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#51	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#52	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#53	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#54	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#55	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#56	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#57	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#58	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#59	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#6	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#60	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#61	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#62	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#63	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#64	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#65	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#66	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#67	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#68	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#69	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#7	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#70	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#71	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#72	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#73	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#74	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#75	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#76	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#77	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#78	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#79	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#8	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#80	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#81	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#82	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#83	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#84	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#85	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#86	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#87	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#88	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#89	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#9	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#90	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#91	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#92	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#93	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#94	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#95	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#96	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#97	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#98	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
+sub_87257f392be6#99	87257f392be67ae8	inlined	protocol::TProtobufClientMessageTranslator::v2
 sub_87900da27b57	87900da27b578039	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::slotKey
+sub_88652aa95093	88652aa9509380b8	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_88652aa95093#2	88652aa9509380b8	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_88652aa95093#3	88652aa9509380b8	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_88652aa95093#4	88652aa9509380b8	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_88652aa95093#5	88652aa9509380b8	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_8927e5ddc075	8927e5ddc075a842	inlined	animation/phaseanimator.cpp:TAnimator::update
+sub_89436d17f586#2	89436d17f5865fa2	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_89c59651c9bc	89c59651c9bcd99c	ported	input/gameaction.h:TGameActionChangeCharacter::TGameActionChangeCharacter
+sub_89c59651c9bc#2	89c59651c9bcd99c	ported	input/gameaction.h:TGameActionChangeCharacter::TGameActionChangeCharacter
 sub_89f34d88a4e2	89f34d88a4e21a45	ported	appearances/appearanceinstance.cpp:TDirectionalFieldEffectInstance::start
 sub_8a94cfc5fa7d	8a94cfc5fa7de116	ported	config/clientsettings.cpp:clientSettingAtMost
+sub_8b2110b8d911	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTranslator::v113
+sub_8b2110b8d911#2	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8b2110b8d911#3	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTranslator::v152
+sub_8b2110b8d911#4	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_8b2110b8d911#5	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_8cd4421e78b6#10	8cd4421e78b6bf2f	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_8d306255397c#10	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v56
+sub_8d306255397c#100	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_8d306255397c#101	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v193
+sub_8d306255397c#102	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v193
+sub_8d306255397c#103	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v195
+sub_8d306255397c#104	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v195
+sub_8d306255397c#105	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v197
+sub_8d306255397c#106	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v199
+sub_8d306255397c#107	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v199
+sub_8d306255397c#108	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v199
+sub_8d306255397c#109	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v201
+sub_8d306255397c#11	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#110	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v202
+sub_8d306255397c#111	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_8d306255397c#112	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_8d306255397c#113	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_8d306255397c#114	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_8d306255397c#116	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#117	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_8d306255397c#12	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v60
+sub_8d306255397c#13	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v60
+sub_8d306255397c#14	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v69
+sub_8d306255397c#15	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v74
+sub_8d306255397c#16	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v82
+sub_8d306255397c#17	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v88
+sub_8d306255397c#18	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v152
+sub_8d306255397c#19	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v102
+sub_8d306255397c#20	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v108
+sub_8d306255397c#21	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v108
+sub_8d306255397c#22	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v109
+sub_8d306255397c#23	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v113
+sub_8d306255397c#24	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v115
+sub_8d306255397c#25	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v118
+sub_8d306255397c#26	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v119
+sub_8d306255397c#27	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v120
+sub_8d306255397c#28	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v121
+sub_8d306255397c#29	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v121
+sub_8d306255397c#30	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v122
+sub_8d306255397c#31	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v122
+sub_8d306255397c#32	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#33	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#34	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#35	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#36	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#37	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#38	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#39	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#40	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#41	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#42	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#43	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#44	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#45	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#46	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#47	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#48	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#49	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#5	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v15
+sub_8d306255397c#50	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_8d306255397c#51	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_8d306255397c#52	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_8d306255397c#53	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_8d306255397c#54	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_8d306255397c#55	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_8d306255397c#56	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_8d306255397c#57	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v129
+sub_8d306255397c#58	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v130
+sub_8d306255397c#59	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v132
+sub_8d306255397c#6	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v112
+sub_8d306255397c#60	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v133
+sub_8d306255397c#61	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v134
+sub_8d306255397c#62	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v135
+sub_8d306255397c#63	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v148
+sub_8d306255397c#64	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v152
+sub_8d306255397c#65	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v152
+sub_8d306255397c#66	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v153
+sub_8d306255397c#67	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v160
+sub_8d306255397c#68	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v160
+sub_8d306255397c#69	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v162
+sub_8d306255397c#7	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v19
+sub_8d306255397c#70	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v164
+sub_8d306255397c#72	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v168
+sub_8d306255397c#73	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v169
+sub_8d306255397c#74	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v171
+sub_8d306255397c#75	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v172
+sub_8d306255397c#76	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v136
+sub_8d306255397c#77	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v137
+sub_8d306255397c#78	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v138
+sub_8d306255397c#79	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_8d306255397c#8	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v31
+sub_8d306255397c#80	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_8d306255397c#81	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_8d306255397c#82	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_8d306255397c#83	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v143
+sub_8d306255397c#84	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_8d306255397c#85	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_8d306255397c#86	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_8d306255397c#87	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_8d306255397c#88	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_8d306255397c#89	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_8d306255397c#9	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v208
+sub_8d306255397c#90	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v182
+sub_8d306255397c#91	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v185
+sub_8d306255397c#92	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v185
+sub_8d306255397c#93	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v187
+sub_8d306255397c#94	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v187
+sub_8d306255397c#95	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v187
+sub_8d306255397c#96	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v188
+sub_8d306255397c#97	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v189
+sub_8d306255397c#98	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_8d306255397c#99	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_8e7cac809edf	8e7cac809edfed6c	tested	animation/movingoutfitanimator.cpp:TMovingOutfitAnimator::pingPongPhase	test=tests/client/creaturemovement_test.cpp
+sub_8fd93e9aaa3f#14	8fd93e9aaa3ff7fd	inlined	protocol::TProtobufServerMessageTranslator::v15
+sub_8fdc1211e9f4	8fdc1211e9f42e0d	ported	chat/textstorage.h:TFleetingTextQueue::text
+sub_8fef9ec6586b	8fef9ec6586b3742	ported	creatures/creaturestorage.cpp:marksOf
+sub_8ff91f97152c	8ff91f97152c33c5	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_928096b1633c#2	928096b1633c228b	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_932739b4cbb5#5	932739b4cbb594db	ported	input/inputciptypes.h:TMovementIntentRotate::TMovementIntentRotate
+sub_932739b4cbb5#6	932739b4cbb594db	ported	input/inputciptypes.h:TMovementIntentRotate::TMovementIntentRotate
+sub_93f3475912c6#2	93f3475912c61d09	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_94f726fdc23c	94f726fdc23cc32f	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::rotates
+sub_955b8b53cabe	955b8b53cabe0cef	ported	input/gameaction.h:TGameActionAttackPreviousTarget::TGameActionAttackPreviousTarget
+sub_955b8b53cabe#2	955b8b53cabe0cef	ported	input/gameaction.h:TGameActionAttackPreviousTarget::TGameActionAttackPreviousTarget
+sub_973bc8da3fbc#2	973bc8da3fbc0b1e	inlined	protocol::TProtobufServerMessageTranslator::v113
+sub_99482c467b7f#2	99482c467b7faa3a	inlined	protocol::TProtobufServerMessageTranslator::v56
+sub_9a683f305b22	9a683f305b221a31	ported	worldmap/worldmapfield.cpp:TWorldMapField::~TWorldMapField
+sub_9abcb8439919	9abcb84399198994	inlined	creatures/creaturestorage.cpp:TCreature::shownMarks
+sub_9b1791e7f5b9	9b1791e7f5b929fa	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9bf56ad68523#10	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9bf56ad68523#11	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9bf56ad68523#12	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9bf56ad68523#13	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9bf56ad68523#14	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9bf56ad68523#15	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9bf56ad68523#16	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_9bf56ad68523#17	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_9bf56ad68523#18	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_9bf56ad68523#19	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_9bf56ad68523#20	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v130
+sub_9bf56ad68523#21	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v152
+sub_9bf56ad68523#22	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v162
+sub_9bf56ad68523#23	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v164
+sub_9bf56ad68523#24	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v168
+sub_9bf56ad68523#25	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_9bf56ad68523#26	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_9bf56ad68523#27	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_9bf56ad68523#28	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v188
+sub_9bf56ad68523#29	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v189
+sub_9bf56ad68523#3	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v111
+sub_9bf56ad68523#31	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_9bf56ad68523#32	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v197
+sub_9bf56ad68523#33	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v199
+sub_9bf56ad68523#34	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v201
+sub_9bf56ad68523#35	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_9bf56ad68523#4	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v26
+sub_9bf56ad68523#5	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v10
+sub_9bf56ad68523#6	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v74
+sub_9bf56ad68523#7	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v109
+sub_9bf56ad68523#8	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v113
+sub_9bf56ad68523#9	9bf56ad685238810	inlined	protocol::TProtobufServerMessageTranslator::v121
+sub_9c05e09a6aa1#2	9c05e09a6aa1551f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9c05e09a6aa1#4	9c05e09a6aa1551f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9c8da507707b#2	9c8da507707bf3d6	inlined	protocol::TProtobufServerMessageTranslator::v211
 sub_9f77eee726a4	9f77eee726a4a016	tested	creatures/creaturemovementspeedcalculator.cpp:TCreatureMovementSpeedCalculator::stepDuration	test=tests/client/creaturemovement_test.cpp
+sub_9fd857f4fdd3	9fd857f4fdd3cbcf	skip	compiler-generated destructor pair
+sub_a34e30a9238f	a34e30a9238f3328	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a41ed75a74a9	a41ed75a74a91af9	inlined	protocol::TProtobufServerMessageTranslator::v42
+sub_a41ed75a74a9#2	a41ed75a74a91af9	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_a4291827b362	a4291827b362c6fa	tested	animation/durationtween.h:TDurationTween::reset	test=tests/client/durationtween_test.cpp
 sub_a4291827b362#2	a4291827b362c6fa	tested	animation/durationtween.h:TDurationTween::reset	test=tests/client/durationtween_test.cpp
+sub_a49777c099d8	a49777c099d8d709	ported	worldmap/ambientlightstorage.cpp:stepToward
+sub_a4f7e0097573#2	a4f7e00975737d43	inlined	protocol::TProtobufServerMessageTranslator::v195
+sub_a540602af04c	a540602af04c02b0	ported	renderer/worldmaprenderprovider.cpp:hasCreatureIcon
+sub_a5c9a995a89c#12	a5c9a995a89cc48d	inlined	creatures/creaturestorage.cpp:TCreature::setPosition
+sub_a5c9a995a89c#14	a5c9a995a89cc48d	inlined	creatures/creaturestorage.cpp:TCreatureStorage::notifyPlayerAdded
+sub_a5c9a995a89c#162	a5c9a995a89cc48d	inlined	worldmap/worldmapstorage.cpp:TWorldMapStorage::notifyCoordinateChanged
+sub_a60614dd3cec	a60614dd3cec8223	ported	input/gameaction.h:TGameActionStartTargetSelection::TGameActionStartTargetSelection
+sub_a60614dd3cec#2	a60614dd3cec8223	ported	input/gameaction.h:TGameActionStartTargetSelection::TGameActionStartTargetSelection
+sub_a7245aa95c71#2	a7245aa95c71e808	inlined	protocol::TProtobufServerMessageTranslator::v136
+sub_a85622a6cf4e#2	a85622a6cf4ef7bf	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_a8acf321a2b8	a8acf321a2b8f716	inlined	animation/phaseanimator.cpp:TAnimator::update
+sub_a90521b5afc6	a90521b5afc6c94c	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a90521b5afc6#2	a90521b5afc6c94c	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a90521b5afc6#3	a90521b5afc6c94c	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a90521b5afc6#4	a90521b5afc6c94c	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_a97795de4726	a97795de4726e8c7	inlined	effects/numericaleffect.cpp:TNumericalEffect::duration
+sub_a9f3110b8020#100	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_a9f3110b8020#102	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_a9f3110b8020#104	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_a9f3110b8020#106	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_a9f3110b8020#108	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_a9f3110b8020#110	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_a9f3110b8020#112	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_a9f3110b8020#114	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_a9f3110b8020#116	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_a9f3110b8020#118	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_a9f3110b8020#120	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_a9f3110b8020#122	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v69
+sub_a9f3110b8020#124	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#126	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#128	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#130	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#132	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#134	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#136	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#138	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#140	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#142	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#146	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_a9f3110b8020#148	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v193
+sub_a9f3110b8020#150	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v193
+sub_a9f3110b8020#152	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v195
+sub_a9f3110b8020#154	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v31
+sub_a9f3110b8020#156	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v166
+sub_a9f3110b8020#158	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v166
+sub_a9f3110b8020#162	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v202
+sub_a9f3110b8020#80	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_a9f3110b8020#82	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v133
+sub_a9f3110b8020#84	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v36
+sub_a9f3110b8020#88	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v141
+sub_a9f3110b8020#90	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v60
+sub_a9f3110b8020#92	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v160
+sub_a9f3110b8020#94	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v115
+sub_a9f3110b8020#96	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v122
+sub_a9f3110b8020#98	a9f3110b80208c26	inlined	protocol::TProtobufServerMessageTranslator::v122
+sub_aa46cbb940af#2	aa46cbb940af0423	inlined	protocol::TProtobufServerMessageTranslator::v174
 sub_aa986f2d2cee	aa986f2d2cee0f37	ported	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage
 sub_aee8f30c744b	aee8f30c744b8a92	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::mapLyingObjects
+sub_af210a3e5078#36	af210a3e5078721c	inlined	protocol::TProtobufServerMessageTranslator::v195
 sub_b1dd82af3667	b1dd82af3667a316	inlined	animation/phaseanimator.cpp:TAnimator::update
+sub_b27ae8897d8b	b27ae8897d8b571e	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::offsetInField
+sub_b2b298052b96	b2b298052b96ccb0	ported	input/gameaction.h:TGameActionOpenAddVipDialog::TGameActionOpenAddVipDialog
+sub_b2b298052b96#2	b2b298052b96ccb0	ported	input/gameaction.h:TGameActionOpenAddVipDialog::TGameActionOpenAddVipDialog
+sub_b373390eeb83	b373390eeb839866	inlined	worldmap/worldmapfield.cpp:isBank
+sub_b392f45fe3f0	b392f45fe3f05d8e	inlined	protocol::TProtobufServerMessageTranslator::v15
+sub_b3f1a272c175#2	b3f1a272c1756215	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_b496db6cd7d9	b496db6cd7d96329	tested	animation/phaseanimator.cpp:TAnimator::phaseDuration	test=tests/client/phaseanimator_test.cpp
+sub_b4f91b54cee7#2	b4f91b54cee7ce1f	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_b7fd6d6434ce	b7fd6d6434cec22a	inlined	animation/phaseanimator.cpp:TAnimator::update
+sub_b8249c9e3366#307	b8249c9e33663f7b	skip	shared_ptr copy/release (library)
+sub_b8249c9e3366#308	b8249c9e33663f7b	skip	shared_ptr release (library)
+sub_b8249c9e3366#309	b8249c9e33663f7b	skip	shared_ptr release (library)
+sub_b8249c9e3366#751	b8249c9e33663f7b	inlined	protocol::TProtobufClientMessageTranslator::v3
+sub_b8501c20280b#2	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v210
+sub_b8501c20280b#3	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_b8501c20280b#4	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_b8501c20280b#5	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_ba885ba28104#12	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v15
+sub_ba885ba28104#14	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v168
+sub_ba885ba28104#15	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v49
+sub_ba885ba28104#16	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v49
+sub_ba885ba28104#17	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v67
+sub_ba885ba28104#18	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v153
+sub_ba885ba28104#19	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v108
+sub_ba885ba28104#20	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v121
+sub_ba885ba28104#21	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v122
+sub_ba885ba28104#22	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_ba885ba28104#23	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_ba885ba28104#24	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_ba885ba28104#25	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_ba885ba28104#26	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_ba885ba28104#27	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_ba885ba28104#28	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_ba885ba28104#29	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_ba885ba28104#30	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_ba885ba28104#31	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_ba885ba28104#32	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v160
+sub_ba885ba28104#33	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_ba885ba28104#34	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#35	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#36	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#37	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#38	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#39	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#40	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#41	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#42	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#43	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#44	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#45	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ba885ba28104#46	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v193
+sub_ba885ba28104#47	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v199
+sub_ba885ba28104#48	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v199
+sub_ba885ba28104#50	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_bba8fdcfbf33	bba8fdcfbf33aa9d	ported	shared/clockservice.cpp:startup
+sub_bba8fdcfbf33#2	bba8fdcfbf33aa9d	ported	shared/clockservice.cpp:startup
+sub_bbe8814a38d4	bbe8814a38d49e26	ported	input/gameaction.h:TGameActionOpenPreyDialog::TGameActionOpenPreyDialog
+sub_bbe8814a38d4#2	bbe8814a38d49e26	ported	input/gameaction.h:TGameActionOpenPreyDialog::TGameActionOpenPreyDialog
+sub_bcd30f308704	bcd30f3087043b03	ported	creatures/creatureprotocolapply.cpp:colorFromEightBit
 sub_bd5a89e040b4	bd5a89e040b4f9a3	ported	protocol/featurewire.cpp:readVarInt
+sub_be2a4c87b343	be2a4c87b3439313	inlined	worldmap/worldmapsessionstate.cpp:TWorldMapSessionState::removeUnawareThings
 sub_bf983d49cf50	bf983d49cf5086f4	inlined	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleGraphicalEffectsMessage
+sub_c00ff9e01620	c00ff9e016203870	inlined	worldmap/worldmapfield.cpp:removeCreatureFromField
+sub_c106abba6518#2	c106abba6518ce5d	inlined	protocol::TProtobufServerMessageTranslator::v152
+sub_c1574a290b8a#10	c1574a290b8a6ddf	inlined	protocol::TProtobufServerMessageTranslator::v164
+sub_c1574a290b8a#12	c1574a290b8a6ddf	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_c1574a290b8a#14	c1574a290b8a6ddf	inlined	protocol::TProtobufServerMessageTranslator::v197
+sub_c1574a290b8a#16	c1574a290b8a6ddf	inlined	protocol::TProtobufServerMessageTranslator::v109
+sub_c1574a290b8a#18	c1574a290b8a6ddf	inlined	protocol::TProtobufServerMessageTranslator::v201
+sub_c340318e5101	c340318e51014a3b	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
+sub_c66baf069948#6	c66baf0699489bbd	inlined	protocol::TProtobufServerMessageTranslator::v19
 sub_c6babfb24fde	c6babfb24fdef388	tested	creatures/movementdirection.h:stepOffset	test=tests/client/creaturemovement_test.cpp
+sub_c87d8149227e	c87d8149227e205e	skip	translation-unit static initializer of shared header constants
+sub_c99eca0c25e6	c99eca0c25e6c065	inlined	creatures/creaturestorage.cpp:TCreature::showStaticSquare
+sub_cb137f72f569#2	cb137f72f56943e2	inlined	protocol::TProtobufServerMessageTranslator::v74
+sub_cbcb2fe17738#7	cbcb2fe177388cf6	ported	input/inputciptypes.h:TMovementIntentDirection::TMovementIntentDirection
+sub_cbcb2fe17738#8	cbcb2fe177388cf6	ported	input/inputciptypes.h:TMovementIntentDirection::TMovementIntentDirection
+sub_cc561ae143c1	cc561ae143c11fa6	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_ce803cb7f43b#2	ce803cb7f43b9e58	skip	builds the base TAnimator phase table; walking phases come from the outfit Animator
 sub_cf69eeabe14f	cf69eeabe14f3aa0	inlined	input/movementpathplanner.cpp:planMovementPath
+sub_cf9ccbb0da04	cf9ccbb0da048b9a	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_cf9ccbb0da04#2	cf9ccbb0da048b9a	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_d18ea4fd8259	d18ea4fd8259dd87	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::build
+sub_d1bd046956f2	d1bd046956f2e5d3	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_d26a7877ad78#2	d26a7877ad7893c7	inlined	protocol::TProtobufServerMessageTranslator::v118
+sub_d26a7877ad78#4	d26a7877ad7893c7	inlined	protocol::TProtobufServerMessageTranslator::v129
+sub_d362733678dd#2	d362733678dd5963	inlined	protocol::TProtobufServerMessageTranslator::v160
+sub_d418833b32ef#3	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter
+sub_d418833b32ef#4	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter
+sub_d418833b32ef#5	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardUnhandledMouseButtonsEventFilter::TDiscardUnhandledMouseButtonsEventFilter
+sub_d418833b32ef#6	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardUnhandledMouseButtonsEventFilter::TDiscardUnhandledMouseButtonsEventFilter
+sub_d418833b32ef#7	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardMouseWheelEventFilter::TDiscardMouseWheelEventFilter
+sub_d418833b32ef#8	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardMouseWheelEventFilter::TDiscardMouseWheelEventFilter
+sub_d419b8c28cad	d419b8c28cad379f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_d5ecfb16f667	d5ecfb16f667737f	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_d8bdc50ef03e#4	d8bdc50ef03e7355	inlined	protocol::TProtobufServerMessageTranslator::v121
+sub_d8bdc50ef03e#6	d8bdc50ef03e7355	inlined	protocol::TProtobufServerMessageTranslator::v174
 sub_d8c5bda7d68f	d8c5bda7d68fc106	inlined	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleGraphicalEffectsMessage
+sub_da8f1be998ea#2	da8f1be998ea02bd	inlined	protocol::TProtobufServerMessageTranslator::v42
+sub_dac2f6b12417#2	dac2f6b124177eba	inlined	worldmap/worldmappicker.cpp:TWorldMapPicker::fieldCoordinatesAt
 sub_dba019393c77	dba019393c77a846	ported	config/clientsettings.cpp:clientSetting
+sub_dc301b10302d	dc301b10302d0caa	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
 sub_dc45cf7cbc27	dc45cf7cbc277fed	tested	animation/phaseanimator.cpp:TAnimator::TAnimator	test=tests/client/phaseanimator_test.cpp
+sub_dcba9156fb8e	dcba9156fb8ea25b	inlined	creatures/creatureprotocolapply.cpp:applyProtocolCreature
 sub_dd359062e0a5	dd359062e0a5c262	tested	animation/durationtween.h:TDurationTween::operator==	test=tests/client/durationtween_test.cpp
+sub_dd6382ed3305	dd6382ed33057cad	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#10	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v25
+sub_de4d2428a434#11	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v31
+sub_de4d2428a434#12	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v208
+sub_de4d2428a434#13	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v36
+sub_de4d2428a434#14	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v56
+sub_de4d2428a434#15	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v60
+sub_de4d2428a434#16	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v60
+sub_de4d2428a434#17	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#18	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#19	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v69
+sub_de4d2428a434#20	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v82
+sub_de4d2428a434#21	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v102
+sub_de4d2428a434#22	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v112
+sub_de4d2428a434#23	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v115
+sub_de4d2428a434#24	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v118
+sub_de4d2428a434#25	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v119
+sub_de4d2428a434#26	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v122
+sub_de4d2428a434#27	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v122
+sub_de4d2428a434#28	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#29	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#30	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#31	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#32	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#33	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#34	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#35	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#36	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#37	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#38	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#39	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#40	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#41	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#42	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#43	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_de4d2428a434#44	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_de4d2428a434#45	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_de4d2428a434#46	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_de4d2428a434#47	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_de4d2428a434#48	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_de4d2428a434#49	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_de4d2428a434#50	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_de4d2428a434#51	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v129
+sub_de4d2428a434#52	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v132
+sub_de4d2428a434#53	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v133
+sub_de4d2428a434#54	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v195
+sub_de4d2428a434#55	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v153
+sub_de4d2428a434#56	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v160
+sub_de4d2428a434#58	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v166
+sub_de4d2428a434#59	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v166
+sub_de4d2428a434#60	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v172
+sub_de4d2428a434#61	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v137
+sub_de4d2428a434#62	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_de4d2428a434#63	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v139
+sub_de4d2428a434#64	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v140
+sub_de4d2428a434#65	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v141
+sub_de4d2428a434#66	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_de4d2428a434#67	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_de4d2428a434#68	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_de4d2428a434#69	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_de4d2428a434#70	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_de4d2428a434#71	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_de4d2428a434#72	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v185
+sub_de4d2428a434#73	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v187
+sub_de4d2428a434#74	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v187
+sub_de4d2428a434#75	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_de4d2428a434#76	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_de4d2428a434#77	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_de4d2428a434#78	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_de4d2428a434#79	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_de4d2428a434#8	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v15
+sub_de4d2428a434#80	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v193
+sub_de4d2428a434#81	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v193
+sub_de4d2428a434#82	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v195
+sub_de4d2428a434#83	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v202
+sub_de4d2428a434#84	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_de4d2428a434#85	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_de4d2428a434#86	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_de4d2428a434#9	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v19
+sub_dee1d9a87d87#22	dee1d9a87d87e369	inlined	protocol::TProtobufServerMessageTranslator::v152
+sub_dee1d9a87d87#24	dee1d9a87d87e369	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_dee1d9a87d87#28	dee1d9a87d87e369	inlined	protocol::TProtobufServerMessageTranslator::v111
+sub_df86b2aef725#2	df86b2aef7259a84	inlined	renderer/worldmaprenderprovider.cpp:creatureLight
+sub_dfc4cc2bb9ca#12	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_dfc4cc2bb9ca#14	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_dfc4cc2bb9ca#16	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTranslator::v191
+sub_e0147eb4204f#2	e0147eb4204f60b3	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_e16f987173de	e16f987173de42b5	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_e1d1e41c7963	e1d1e41c79638cde	ported	appearances/appearanceinstance.cpp:TMissileEffectInstance::setPath
 sub_e22f92503e7d	e22f92503e7d3802	tested	animation/movingoutfitanimator.cpp:TMovingOutfitAnimator::TMovingOutfitAnimator	test=tests/client/creaturemovement_test.cpp
+sub_e2eb048a66b8#6	e2eb048a66b8e2d0	inlined	protocol::TProtobufServerMessageTranslator::v187
+sub_e40187c3e279	e40187c3e279deea	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_e411b2ec6711	e411b2ec67112e33	tested	creatures/creaturemovementspeedcalculator.cpp:TCreatureMovementSpeedCalculator::effectiveSpeed	test=tests/client/creaturemovement_test.cpp
+sub_e4ba7e01b69d	e4ba7e01b69db69b	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_e4ba7e01b69d#2	e4ba7e01b69db69b	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_e4ba7e01b69d#3	e4ba7e01b69db69b	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_e5f47a10b427#4	e5f47a10b427d3bb	inlined	protocol::TProtobufServerMessageTranslator::v25
+sub_e5f47a10b427#8	e5f47a10b427d3bb	inlined	protocol::TProtobufServerMessageTranslator::v56
+sub_e5f8bf391932	e5f8bf39193290ad	ported	input/gameaction.h:TGameActionOpenAddVipGroupDialog::TGameActionOpenAddVipGroupDialog
+sub_e5f8bf391932#2	e5f8bf39193290ad	ported	input/gameaction.h:TGameActionOpenAddVipGroupDialog::TGameActionOpenAddVipGroupDialog
+sub_e6aecdda1f6f	e6aecdda1f6f4a6e	skip	compiler-generated destructor pair
+sub_e6db877f4f89#16	e6db877f4f89d737	inlined	creatures/creaturestorage.cpp:TCreature::setEmblem
+sub_e8e44788f97c	e8e44788f97c5695	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_ea40db17ce27	ea40db17ce27c123	inlined	worldmap/worldmapfield.cpp:isClip
+sub_ea9b1c4ce8d8#10	ea9b1c4ce8d82000	inlined	protocol::TProtobufServerMessageTranslator::v199
+sub_ea9b1c4ce8d8#12	ea9b1c4ce8d82000	inlined	protocol::TProtobufServerMessageTranslator::v10
+sub_ea9b1c4ce8d8#8	ea9b1c4ce8d82000	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_eb34c6bc4614#3	eb34c6bc46149ccd	skip	translation-unit static initializer of shared header constants
 sub_eb84d118ee55	eb84d118ee558db0	inlined	animation/phaseanimator.cpp:TAnimator::update
+sub_ecdb64fc3e77#60	ecdb64fc3e774709	inlined	protocol::TProtobufClientMessageTranslator::v83
+sub_ecdb64fc3e77#96	ecdb64fc3e774709	inlined	protocol::TProtobufClientMessageTranslator::v114
+sub_ed57d2bb48f9#2	ed57d2bb48f96bae	inlined	protocol::TProtobufServerMessageTranslator::v175
+sub_eea8522628e4#2	eea8522628e4cfac	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_ef6d1db9a3e6#10	ef6d1db9a3e68594	inlined	protocol::TProtobufClientMessageTranslator::v103
+sub_f1057a76185b#2	f1057a76185b66f3	inlined	protocol::TProtobufServerMessageTranslator::v36
 sub_f181d25f06e4	f181d25f06e4c475	tested	animation/animationinfo.h:TAnimationInfo::finish	test=tests/client/phaseanimator_test.cpp
+sub_f23eb3024ce5#20	f23eb3024ce596b3	inlined	creatures/creaturestorage.cpp:TCreature::setSkull
+sub_f247e6dd9d02	f247e6dd9d0228e3	ported	input/gameaction.h:TGameActionUnmountPlayer::TGameActionUnmountPlayer
+sub_f247e6dd9d02#2	f247e6dd9d0228e3	ported	input/gameaction.h:TGameActionUnmountPlayer::TGameActionUnmountPlayer
+sub_f430ef3b39ae	f430ef3b39ae9036	inlined	shared/clockservice.cpp:startup
+sub_f6a87717fe6b	f6a87717fe6b5d20	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::moveKnownArea
+sub_f6b9bd1a2ad4	f6b9bd1a2ad4d566	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::centerColumn
+sub_f6fe047def33	f6fe047def335d6f	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_f81385a1c2d4	f81385a1c2d44257	inlined	animation/phaseanimator.cpp:TAnimator::update
+sub_fb5b736ecf9c	fb5b736ecf9c7161	skip	debug output operator for a direction enum
 sub_fd4237eb601d	fd4237eb601d89f3	tested	creatures/creaturemovementtween.cpp:TCreatureMovementTween::TCreatureMovementTween	test=tests/client/creaturemovement_test.cpp
+sub_fd5f141a2411	fd5f141a24118bd2	inlined	creatures/creaturestorage.cpp:TCreatureStorage::notifyCreatureAppearanceUpdated
+sub_fd91a632265e	fd91a632265e81fa	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::applyObject
+sub_ff198b033e35	ff198b033e35dd95	inlined	protocol::TProtobufClientMessageTranslator::v3
+sub_ffd47c9e6a6a	ffd47c9e6a6abf99	skip	compiler-generated destructor of the optional picked field
+worldmap::TAmbientLightStorage::v12	302b9d561aff61ae	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::update
+worldmap::TAmbientLightStorage::v13	96c5155a0c00b6e2	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::setLight
+worldmap::TAmbientLightStorage::v14	ad7bc756e12166d4	ported	worldmap/ambientlightstorage.h:TAmbientLightStorage::light
+worldmap::TAmbientLightStorage::v15	927af11fad8a7d2a	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::color
+worldmap::TAmbientLightStorage::v16	6d97cb8a0f879747	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::setNormalizedTibiaTimeOfDay
+worldmap::TAmbientLightStorage::v17	733e4ad48073895a	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::normalizedTibiaTimeOfDay
+worldmap::TAmbientLightStorage::~TAmbientLightStorage	dadedd3fe20189db	skip	compiler-generated destructor pair
+worldmap::TAmbientLightStorage::~TAmbientLightStorage_deleting	32c6a75c162ebaae	skip	compiler-generated destructor pair
+worldmap::TLightMap::v10	606d006b0a90a2eb	ported	renderer/lightmodel.cpp:buildClassicLightPair
+worldmap::TWorldMapField::v12	05c9b46a10fa2b28	ported	worldmap/worldmapfield.h:TWorldMapField::isEmpty
+worldmap::TWorldMapField::v13	8f028080de4e824e	ported	worldmap/worldmapfield.h:TWorldMapField::coordinate
+worldmap::TWorldMapField::v14	da364dbf273981b3	ported	worldmap/worldmapfield.h:TWorldMapField::appearances
+worldmap::TWorldMapField::v15	a93b120427ae64bb	ported	worldmap/worldmapfield.cpp:TWorldMapField::drawList
+worldmap::TWorldMapField::v21	84f4cf371fc1d910	ported	worldmap/worldmapfield.cpp:TWorldMapField::appearanceAt
+worldmap::TWorldMapField::v22	30ac0cc4e1132046	ported	worldmap/worldmapfield.cpp:TWorldMapField::moveObject
+worldmap::TWorldMapField::v23	932bcb4c2ddf4881	ported	worldmap/worldmapfield.cpp:TWorldMapField::useObject
+worldmap::TWorldMapField::v24	0c56f76798243597	ported	worldmap/worldmapfield.cpp:TWorldMapField::quickLootObject
+worldmap::TWorldMapField::v25	bf61ad82a46f9f5a	ported	worldmap/worldmapfield.cpp:TWorldMapField::lookObject
+worldmap::TWorldMapField::v26	4de9006971956617	ported	worldmap/worldmapfield.cpp:TWorldMapField::multiUseObject
+worldmap::TWorldMapField::v27	fa1a127274e9090a	ported	worldmap/worldmapfield.cpp:TWorldMapField::topCreature
+worldmap::TWorldMapField::v28	042cdade58582282	ported	worldmap/worldmapfield.cpp:TWorldMapField::stackPositionOf
+worldmap::TWorldMapField::v31	e427d0327483fd6b	ported	worldmap/worldmapfield.cpp:TWorldMapField::isPickable
+worldmap::TWorldMapField::v32	fc481ed8a312070a	ported	worldmap/worldmapfield.cpp:TWorldMapField::hasBank
 worldmap::TWorldMapField::v43	438325aa40dfe1ba	ported	worldmap/worldmapfield.cpp:TWorldMapField::movementGroundSpeed
 worldmap::TWorldMapField::v44	fb29829b14dc42a0	ported	worldmap/worldmapfield.cpp:TWorldMapField::walkState
 worldmap::TWorldMapField::v48	812aca1d59a0ce09	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::drawIndex
+worldmap::TWorldMapField::~TWorldMapField	097457dc45e86dd8	skip	compiler-generated destructor pair
+worldmap::TWorldMapField::~TWorldMapField_deleting	79674512666b34e2	skip	compiler-generated destructor pair
+worldmap::TWorldMapPicker::v0	e2248d53c68a8d98	skip	compiler-generated destructor pair
+worldmap::TWorldMapPicker::v1	1f927c9ff7cb8bec	skip	compiler-generated destructor pair
+worldmap::TWorldMapPicker::v2	c3b2f5eb8abf7c61	ported	worldmap/worldmappicker.cpp:TWorldMapPicker::pickField
+worldmap::TWorldMapPicker::v3	41261346ef2d22a9	ported	worldmap/worldmappicker.cpp:TWorldMapPicker::firstPickableField
+worldmap::TWorldMapPicker::v4	156f0b25e9a04a37	ported	worldmap/worldmappicker.cpp:TWorldMapPicker::fieldCoordinatesAt
+worldmap::TWorldMapPicker::v5	8f3788457b2ca828	ported	worldmap/worldmappicker.cpp:TWorldMapPicker::coordinateAt
+worldmap::TWorldMapPicker::v6	0b3e5d99e51428f6	ported	worldmap/worldmappicker.cpp:TWorldMapPicker::pick
+worldmap::TWorldMapPicker::v7	2e25cfc4f85eb0b5	ported	worldmap/worldmappicker.cpp:TWorldMapPicker::creatureAt
 worldmap::TWorldMapRenderProvider::v12	af0f084c0e5aea75	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::mapLyingObjects
 worldmap::TWorldMapRenderProvider::v13	8500c42dd63a1a7a	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::mapLyingObjects
+worldmap::TWorldMapRenderProvider::v14	50b30993c446250b	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::fieldLightness
+worldmap::TWorldMapRenderProvider::v18	5ab7f61d91ae9fd4	ported	renderer/worldmaprenderprovider.h:TWorldMapRenderProvider::mouseHighlightField
+worldmap::TWorldMapRenderProvider::v19	dbd1e8dae8e0a7c4	ported	renderer/worldmaprenderprovider.h:TWorldMapRenderProvider::setMouseHighlightField
 worldmap::TWorldMapRenderProvider::v21	bc445331c5137bca	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::updateHighlightBaseplate
+worldmap::TWorldMapStorage::v12	9fb670436b9c666e	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
+worldmap::TWorldMapStorage::v14	bd7cfa016a324732	inlined	worldmap/worldmapsessionstate.cpp:TWorldMapSessionState::isAwareOfPosition
+worldmap::TWorldMapStorage::v16	56866489b3351ab0	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::fieldAt
 worldmap::TWorldMapStorage::v26	ee2121609a05e93f	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::elevationAt
 worldmap::TWorldMapStorage::v27	2bc9cb9a212e165a	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::groundSpeedAt
 worldmap::TWorldMapStorage::v28	684adea6b3debf9b	inlined	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::fieldState
 worldmap::TWorldMapStorage::v35	35ba17b78d90caef	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::moveCreature
-worldmap::TWorldMapStorage::v42	a39243cca9dbf3bb	ported	game/gamehub_impl.cpp:snapshotWaypointCost
+worldmap::TWorldMapStorage::v42	a39243cca9dbf3bb	ported	game/gamesessionstate.cpp:snapshotWaypointCost
+worldmap::TWorldMapViewport::v12	b0a24b6d79152186	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::setCenter
+worldmap::TWorldMapViewport::v13	5968e7bfbb2bd54d	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::setSize
+worldmap::TWorldMapViewport::v15	3cb84fb2fe65be6c	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::visibleArea
+worldmap::TWorldMapViewport::v16	688b328f6224dbfb	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::visibleOrigin
+worldmap::TWorldMapViewport::v17	f2af6d04d58b0dba	ported	worldmap/worldmapviewport.h:TWorldMapViewport::center
+worldmap::TWorldMapViewport::v18	c70d6df9c8b903ac	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::centerField
+worldmap::TWorldMapViewport::v19	e6acaef32a4938ce	ported	worldmap/worldmapviewport.h:TWorldMapViewport::centerFloor
+worldmap::TWorldMapViewport::v20	7a260fb272faa84a	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::visibleTopLeft
+worldmap::TWorldMapViewport::v21	6e0142e93842fe75	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::setHorizontalBorder
+worldmap::TWorldMapViewport::v22	cd3a62996f1eaeff	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::setVerticalBorder
+worldmap::TWorldMapViewport::~TWorldMapViewport	4a00f6b18d7ba357	skip	compiler-generated destructor pair
+worldmap::TWorldMapViewport::~TWorldMapViewport_deleting	ca1ae45f16270212	skip	compiler-generated destructor pair
+worldmap::TWorldmapProtocolMessageHandler::handleBottomFloorMessage	ea9df2f08a151dd6	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleBottomFloorMessage
+worldmap::TWorldmapProtocolMessageHandler::handleBottomRowMessage	ea9df2f08a151dd6	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleBottomRowMessage
+worldmap::TWorldmapProtocolMessageHandler::handleChangeOnMapMessage	a1f58282323e2dac	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleChangeOnMapMessage
+worldmap::TWorldmapProtocolMessageHandler::handleCreateOnMapMessage	7e503e47c77c9aac	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleCreateOnMapMessage
+worldmap::TWorldmapProtocolMessageHandler::handleFieldDataMessage	93bac8372dd0b9f2	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleFieldDataMessage
+worldmap::TWorldmapProtocolMessageHandler::handleFullMapMessage	5ce364b914ee3466	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleFullMapMessage
+worldmap::TWorldmapProtocolMessageHandler::handleLeftColumnMessage	ea9df2f08a151dd6	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleLeftColumnMessage
+worldmap::TWorldmapProtocolMessageHandler::handleRightColumnMessage	ea9df2f08a151dd6	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleRightColumnMessage
+worldmap::TWorldmapProtocolMessageHandler::handleTopFloorMessage	ea9df2f08a151dd6	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleTopFloorMessage
+worldmap::TWorldmapProtocolMessageHandler::handleTopRowMessage	ea9df2f08a151dd6	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleTopRowMessage

@@ -3,10 +3,9 @@
 
 #include "tibia/assets/things.h"
 #include "tibia/assets/thingtype.h"
-#include "tibia/client/item.h"
 #include "tibia/client/outfit.h"
 #include "creatures/creaturestorage.h"
-#include "tibia/appearances/thing.h"
+#include "assets/thingtype.h"
 #include <tibia/game/gamesession.h>
 #include "tibia/runtime/host.h"
 #include "animation/animator.h"
@@ -14,7 +13,7 @@
 
 #include <client/const.h>
 #include <tibia/config/runtimegameconfig.h>
-#include <framework/core/clock.h>
+#include "shared/clockservice.h"
 
 #include "client/magiceffectopacity.h"
 
@@ -23,6 +22,99 @@
 #include <tibia/game/thingsession_forward.h>
 
 namespace tibia::appearances {
+
+void objectPatternsFor(ThingType* type, const int countOrSubType, int& patternX, int& patternY, int& patternZ)
+{
+    patternX = patternY = patternZ = 0;
+    if (!type || type->isNull())
+        return;
+
+    const int numPatternX = type->getNumPatternX();
+    const int numPatternY = type->getNumPatternY();
+
+    if (type->isStackable() && numPatternX == 4 && numPatternY == 2) {
+        if (countOrSubType <= 0) {
+            patternX = 0;
+            patternY = 0;
+        } else if (countOrSubType < 5) {
+            patternX = countOrSubType - 1;
+            patternY = 0;
+        } else if (countOrSubType < 10) {
+            patternX = 0;
+            patternY = 1;
+        } else if (countOrSubType < 25) {
+            patternX = 1;
+            patternY = 1;
+        } else if (countOrSubType < 50) {
+            patternX = 2;
+            patternY = 1;
+        } else {
+            patternX = 3;
+            patternY = 1;
+        }
+        return;
+    }
+
+    if (!type->isSplash() && !type->isFluidContainer())
+        return;
+
+    int color = countOrSubType;
+    {
+        switch (countOrSubType) {
+            case tibia::client::FluidNone:
+                color = tibia::client::FluidTransparent;
+                break;
+            case tibia::client::FluidWater:
+                color = tibia::client::FluidBlue;
+                break;
+            case tibia::client::FluidMana:
+                color = tibia::client::FluidPurple;
+                break;
+            case tibia::client::FluidBeer:
+            case tibia::client::FluidOil:
+            case tibia::client::FluidMud:
+            case tibia::client::FluidRum:
+            case tibia::client::FluidTea:
+            case tibia::client::FluidMead:
+                color = tibia::client::FluidOrange;
+                break;
+            case tibia::client::FluidBlood:
+            case tibia::client::FluidHealth:
+                color = tibia::client::FluidRed;
+                break;
+            case tibia::client::FluidSlime:
+                color = tibia::client::FluidGreen;
+                break;
+            case tibia::client::FluidLemonade:
+            case tibia::client::FluidUrine:
+            case tibia::client::FluidFruitJuice:
+                color = tibia::client::FluidYellow;
+                break;
+            case tibia::client::FluidMilk:
+            case tibia::client::FluidCoconutMilk:
+                color = tibia::client::FluidWhite;
+                break;
+            case tibia::client::FluidWine:
+                color = tibia::client::FluidPurple;
+                break;
+            case tibia::client::FluidInk:
+                color = tibia::client::FluidBlack;
+                break;
+            case tibia::client::FluidCandy:
+                color = tibia::client::FluidPink;
+                break;
+            case tibia::client::FluidChocolate:
+                color = tibia::client::FluidBrown;
+                break;
+            default:
+                color = tibia::client::FluidTransparent;
+                break;
+        }
+    }
+    patternX = (color % 4) % std::max(1, numPatternX);
+    patternY = (color / 4) % std::max(1, numPatternY);
+}
+
 
 TAppearanceInstance::TAppearanceInstance(ThingType* type)
     : m_type(type)
@@ -51,31 +143,29 @@ void syncLiquidDrawPatterns(TObjectAppearanceInstance& object, ThingType* type, 
     if (!type)
         return;
     int color = fluidSubType;
-    if (tibia::game::cipFeature(tibia::client::GameNewFluids)) {
-        switch (fluidSubType) {
-            case tibia::client::FluidNone: color = tibia::client::FluidTransparent; break;
-            case tibia::client::FluidWater: color = tibia::client::FluidBlue; break;
-            case tibia::client::FluidMana: color = tibia::client::FluidPurple; break;
-            case tibia::client::FluidBeer:
-            case tibia::client::FluidOil:
-            case tibia::client::FluidMud:
-            case tibia::client::FluidTea:
-            case tibia::client::FluidMead:
-            case tibia::client::FluidRum: color = tibia::client::FluidOrange; break;
-            case tibia::client::FluidBlood:
-            case tibia::client::FluidHealth: color = tibia::client::FluidRed; break;
-            case tibia::client::FluidSlime: color = tibia::client::FluidGreen; break;
-            case tibia::client::FluidLemonade:
-            case tibia::client::FluidUrine:
-            case tibia::client::FluidFruitJuice: color = tibia::client::FluidYellow; break;
-            case tibia::client::FluidMilk:
-            case tibia::client::FluidCoconutMilk: color = tibia::client::FluidWhite; break;
-            case tibia::client::FluidWine: color = tibia::client::FluidPurple; break;
-            case tibia::client::FluidInk: color = tibia::client::FluidBlack; break;
-            case tibia::client::FluidCandy: color = tibia::client::FluidPink; break;
-            case tibia::client::FluidChocolate: color = tibia::client::FluidBrown; break;
-            default: color = tibia::client::FluidTransparent; break;
-        }
+    switch (fluidSubType) {
+        case tibia::client::FluidNone: color = tibia::client::FluidTransparent; break;
+        case tibia::client::FluidWater: color = tibia::client::FluidBlue; break;
+        case tibia::client::FluidMana: color = tibia::client::FluidPurple; break;
+        case tibia::client::FluidBeer:
+        case tibia::client::FluidOil:
+        case tibia::client::FluidMud:
+        case tibia::client::FluidTea:
+        case tibia::client::FluidMead:
+        case tibia::client::FluidRum: color = tibia::client::FluidOrange; break;
+        case tibia::client::FluidBlood:
+        case tibia::client::FluidHealth: color = tibia::client::FluidRed; break;
+        case tibia::client::FluidSlime: color = tibia::client::FluidGreen; break;
+        case tibia::client::FluidLemonade:
+        case tibia::client::FluidUrine:
+        case tibia::client::FluidFruitJuice: color = tibia::client::FluidYellow; break;
+        case tibia::client::FluidMilk:
+        case tibia::client::FluidCoconutMilk: color = tibia::client::FluidWhite; break;
+        case tibia::client::FluidWine: color = tibia::client::FluidPurple; break;
+        case tibia::client::FluidInk: color = tibia::client::FluidBlack; break;
+        case tibia::client::FluidCandy: color = tibia::client::FluidPink; break;
+        case tibia::client::FluidChocolate: color = tibia::client::FluidBrown; break;
+        default: color = tibia::client::FluidTransparent; break;
     }
     const int numPatternX = std::max(1, type->getNumPatternX());
     const int numPatternY = std::max(1, type->getNumPatternY());
@@ -91,7 +181,7 @@ void syncCumulativeDrawPatterns(TObjectAppearanceInstance& object, ThingType* ty
     int y = 0;
     int z = 0;
     // Protocol may send 0 for a single visible unit; pile sprites treat that as count 1.
-    Item::patternsFor(type, count > 0 ? static_cast<int>(count) : 1, x, y, z);
+    objectPatternsFor(type, count > 0 ? static_cast<int>(count) : 1, x, y, z);
     object.setDrawPatterns(static_cast<uint8_t>(x), static_cast<uint8_t>(y), static_cast<uint8_t>(z));
 }
 
@@ -144,40 +234,12 @@ void TPatternObjectAppearanceInstance::applyWorldMapCoordinate(const Position& p
                     static_cast<uint8_t>(pos.z % depth));
 }
 
-void TObjectAppearanceInstance::ingestItemDrawState(Item& item)
-{
-    m_canDraw = item.canDraw();
-    m_markedColor = item.getMarkedColor();
-    m_itemColor = Color::white;
-    m_patternX = item.getPatternX();
-    m_patternY = item.getPatternY();
-    m_patternZ = item.getPatternZ();
-    m_phase = static_cast<uint8_t>(std::clamp(item.peekAnimationPhase(), 0, 255));
-    m_lastPhase = g_clock.millis();
-    m_async = true;
-}
-
-bool TObjectAppearanceInstance::matchesItemIdentity(Thing& thing) const
-{
-    if (!thing.isItem() || !m_type)
-        return false;
-    auto& item = static_cast<Item&>(thing);
-    if (item.getId() != m_type->getId())
-        return false;
-    if (item.isFluidContainer() || item.isSplash())
-        return static_cast<uint8_t>(item.getSubType()) == subType()
-            || static_cast<uint8_t>(item.getCountOrSubType()) == subType();
-    if (item.isStackable())
-        return static_cast<uint16_t>(item.getCount()) == count();
-    return true;
-}
-
 Color TObjectAppearanceInstance::animatedMarkedColor() const
 {
     if (m_markedColor == Color::white)
         return m_markedColor;
     Color out = m_markedColor;
-    out.setAlpha(0.1f + std::abs(500 - g_clock.millis() % 1000) / 1000.0f);
+    out.setAlpha(0.1f + std::abs(500 - tibia::shared::TClockService::frameMillis() % 1000) / 1000.0f);
     return out;
 }
 
@@ -190,14 +252,14 @@ int TObjectAppearanceInstance::calculateAnimationPhase() const
     if (const animation::TAnimationInfo* info = m_type->idleAnimation()) {
         if (!m_animator)
             m_animator.emplace(*info, 0);
-        m_animator->update(static_cast<qint64>(g_clock.millis()));
+        m_animator->update(static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         return m_animator->phase();
     }
 
     // CipSoft absolute elapsed — sync (!m_async) used to +1/frame under lag.
     const int phases = std::max(1, m_type->getAnimationPhases());
     const int ticks = std::max(1, static_cast<int>(tibia::config::itemTicksPerFrame()));
-    return static_cast<int>((g_clock.millis() % (static_cast<long long>(ticks) * phases)) / ticks);
+    return static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
 }
 
 namespace {
@@ -400,29 +462,6 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(ThingType*
     return instance;
 }
 
-TAppearanceInstancePtr TAppearanceInstanceFactory::fromItem(Item& item)
-{
-    ThingType* type = tibia::game::rawThingType(static_cast<uint16_t>(item.getId()), ThingCategoryItem);
-    const uint16_t count = static_cast<uint16_t>(std::clamp(item.getCount(), 0, 65535));
-    const uint8_t subType = static_cast<uint8_t>(std::clamp(item.getSubType(), 0, 255));
-    const uint8_t tier = item.getTier();
-    const uint8_t fluid = static_cast<uint8_t>(std::clamp(item.getCountOrSubType(), 0, 255));
-    const uint8_t hangSide = item.getPatternX();
-
-    auto instance = fromProtocolObject(type, count, subType, tier, fluid, hangSide);
-
-    if (const auto showOff = std::dynamic_pointer_cast<TShowOffSocketAppearanceInstance>(instance)) {
-        if (item.hasPodiumOutfit()) {
-            showOff->setLook(item.getPodiumOutfit(), item.getPodiumDirection(), item.isPodiumVisible());
-        }
-    }
-
-    if (const auto object = std::dynamic_pointer_cast<TObjectAppearanceInstance>(instance))
-        object->ingestItemDrawState(item);
-
-    return instance;
-}
-
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromStoredCreature(tibia::creatures::TCreature& stored)
 {
     if (stored.outfitAppearance())
@@ -452,52 +491,6 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outf
     return instance;
 }
 
-TAppearancesManager& TAppearancesManager::instance()
-{
-    static TAppearancesManager manager;
-    return manager;
-}
-
-bool TAppearancesManager::loadAppearances(const std::string& directory)
-{
-    (void)tracker();
-    (void)storages();
-    (void)genericStorage();
-    // Catalog load remains on ThingTypeManager; this facade is the CIP entry.
-    return tibia::game::isDatLoaded() || tibia::game::loadAppearances(directory);
-}
-
-ThingType* TAppearancesManager::thingType(const uint16_t id, const ThingCategory category) const
-{
-    return tibia::game::rawThingType(id, category);
-}
-
-TAppearanceInstancePtr TAppearancesManager::makeInstance(const uint16_t id, const ThingCategory category) const
-{
-    return TAppearanceInstanceFactory::fromThingType(thingType(id, category));
-}
-
-TAppearanceInstanceTracker& TAppearancesManager::tracker()
-{
-    if (!m_tracker)
-        m_tracker = std::make_unique<TAppearanceInstanceTracker>();
-    return *m_tracker;
-}
-
-TAppearanceInstanceGenericStoragesManager& TAppearancesManager::storages()
-{
-    if (!m_storages)
-        m_storages = std::make_unique<TAppearanceInstanceGenericStoragesManager>();
-    return *m_storages;
-}
-
-TAppearanceInstanceGenericStorage& TAppearancesManager::genericStorage()
-{
-    if (!m_genericStorage)
-        m_genericStorage = std::make_unique<TAppearanceInstanceGenericStorage>();
-    return *m_genericStorage;
-}
-
 void TShowOffSocketAppearanceInstance::setLook(const Outfit& outfit, const uint8_t direction, const bool socketVisible)
 {
     m_outfit = outfit;
@@ -525,13 +518,6 @@ bool TShowOffSocketAppearanceInstance::hasFigure() const
     return m_outfit.hasMount();
 }
 
-std::shared_ptr<TShowOffSocketAppearanceInstance> TShowOffSocketAppearanceInstance::fromItem(Item& item)
-{
-    // CIP: Item holds the show-off instance as the look owner (protocol writes
-    // via Item::setPodium*). Renderer reuses that instance.
-    return item.showOffSocket();
-}
-
 std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppearanceInstance::figureLayers() const
 {
     std::vector<FigureLayer> layers;
@@ -557,7 +543,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
                 dx -= mount->getDisplacement().x;
                 dy -= mount->getDisplacement().y;
                 int mountPhase = 0;
-                mountPhase = m_idleAnimators.phaseAt(mount, mount->idleAnimation(), g_clock.millis());
+                mountPhase = m_idleAnimators.phaseAt(mount, mount->idleAnimation(), tibia::shared::TClockService::frameMillis());
                 layers.push_back(FigureLayer{ mount, dx, dy, direction, 0, 0, mountPhase, false, 0 });
                 dx += type->getDisplacement().x;
                 dy += type->getDisplacement().y;
@@ -566,7 +552,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
 
         const int zPattern = mounted ? std::min(1, std::max(0, type->getNumPatternZ() - 1)) : 0;
         int phase = 0;
-        phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), g_clock.millis());
+        phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), tibia::shared::TClockService::frameMillis());
         const bool colorize = type->getLayers() > 1;
         const uint32_t colors = colorize ? packColors(m_outfit) : 0;
         for (int addon = 0; addon < type->getNumPatternY(); ++addon) {
@@ -586,10 +572,10 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
 
     int phase = 0;
     if (type->idleAnimation())
-        phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), g_clock.millis());
+        phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), tibia::shared::TClockService::frameMillis());
     else if (const int phases = type->getAnimationPhases(); phases > 1) {
         const int ticks = tibia::config::itemTicksPerFrame();
-        phase = static_cast<int>((g_clock.millis() % (static_cast<long long>(ticks) * phases)) / ticks);
+        phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
     }
     layers.push_back(FigureLayer{ type, -type->getDisplacement().x, -type->getDisplacement().y, 0, 0, 0, phase, false, 0 });
     return layers;

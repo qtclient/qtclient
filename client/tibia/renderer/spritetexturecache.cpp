@@ -11,7 +11,7 @@
 #include <tibia/game/gamesession.h>
 #include <client/outfit.h>
 #include <tibia/assets/spritesheet.h>
-#include <framework/graphics/image.h>
+#include "assets/cipbmpimage.h"
 #include "sprites/hdscale.h"
 
 #include <QImage>
@@ -35,11 +35,7 @@ namespace {
 
 QImage spriteImage(const uint32_t id, bool& loading)
 {
-    const ImagePtr image = tibia::assets::sprites().spriteImage(static_cast<int>(id), loading);
-    if (!image || image->getBpp() != 4)
-        return {};
-    const Size& size = image->getSize();
-    return QImage(image->getPixelData(), size.width(), size.height(), size.width() * 4, QImage::Format_RGBA8888).copy();
+    return tibia::assets::sprites().spriteImage(static_cast<int>(id), loading);
 }
 
 /// Outfit masks mark the head yellow, the body red, the legs green and the feet
@@ -265,12 +261,8 @@ QImage TSpriteTextureCache::raster(const SpriteKey& key, bool& loading) const
     // Creature marks stay native (vector frames); draw path divides HD textures by factor.
     if (m_hdMode && !image.isNull() && !key.isCreatureMark() && !key.isHighlightBaseplate()
         && tibia::sprites::hdFactor() > 1) {
-        const ImagePtr src = std::make_shared<Image>(Size(image.width(), image.height()), 4, image.constBits());
-        if (const ImagePtr scaled = tibia::sprites::scaleHd(src); scaled && scaled != src) {
-            image = QImage(scaled->getPixelData(), scaled->getWidth(), scaled->getHeight(), scaled->getWidth() * 4,
-                           QImage::Format_RGBA8888)
-                        .copy();
-        }
+        if (QImage scaled = tibia::sprites::scaleHd(image); !scaled.isNull())
+            image = std::move(scaled);
     }
     return image;
 }

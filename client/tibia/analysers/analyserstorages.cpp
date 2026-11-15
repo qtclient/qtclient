@@ -1,6 +1,5 @@
 #include "analysers/analyserstorages.h"
 
-#include <client/item.h>
 #include <client/staticdata.h>
 
 #include <QDateTime>

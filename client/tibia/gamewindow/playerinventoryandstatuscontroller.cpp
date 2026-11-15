@@ -522,9 +522,10 @@ void TPlayerInventoryAndStatusController::onSlotEntered(const int slotId)
     updateMouseCursorForCurrentSlot();
 }
 
-void TPlayerInventoryAndStatusController::onSlotExited(int)
+void TPlayerInventoryAndStatusController::onSlotExited(const int slotId)
 {
-    m_hoveredSlot = -1;
+    if (m_hoveredSlot == slotId)
+        m_hoveredSlot = -1;
     if (Cursor* cursor = Cursor::instance())
         cursor->onContainerExited();
 }

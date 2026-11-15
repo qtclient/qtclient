@@ -11,7 +11,6 @@
 #include "worldmap/worldmapgameactionprovider.h"
 
 #include <tibia/game/gamesession.h>
-#include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 
@@ -192,8 +191,8 @@ void TContainerController::removeThisContainersOptions()
     if (!m_options)
         return;
     config::ContainersOptions containers = m_options->containersOptions();
-    if (containers.erase(m_containerId))
-        m_options->setContainersOptions(containers);
+    containers.erase(m_containerId);
+    m_options->setContainersOptions(containers);
 }
 
 template <class T>
@@ -244,11 +243,21 @@ void TContainerController::update(const bool resetScrollView)
     setProperty(m_indexOfFirstVisibleObject, firstIndex);
     setProperty(m_caption, captionOf(name));
     setProperty(m_numberOfPages, pages);
-    setProperty(m_currentPage, static_cast<uint>(firstIndex) / static_cast<uint>(capacity) + 1);
+    setProperty(m_currentPage, hasPages ? static_cast<uint>(firstIndex) / static_cast<uint>(capacity) + 1 : 0u);
     setProperty(m_numberOfContainerSlots, static_cast<uint>(capacity));
     setProperty(m_numberOfFilledContainerSlots, static_cast<uint>(filled));
     setProperty(m_levelUpButtonVisible, hasParent);
     setProperty(m_searchButtonVisible, showSearch);
+    // The hovered slot's cursor region depends on isUpdatable: leave it before switching.
+    if (unlocked != m_isUpdatable && m_hoveredSlot != -1) {
+        m_hoveredSlot = -1;
+        if (Cursor* cursor = Cursor::instance()) {
+            if (m_isUpdatable)
+                cursor->onContainerExited();
+            else
+                cursor->onContainerNoDropExited();
+        }
+    }
     setProperty(m_isUpdatable, unlocked);
     setIcon(icon);
 
@@ -333,9 +342,10 @@ void TContainerController::onSlotEntered(const int slotId)
     updateMouseCursorForCurrentSlot();
 }
 
-void TContainerController::onSlotExited(int)
+void TContainerController::onSlotExited(const int slotId)
 {
-    m_hoveredSlot = -1;
+    if (m_hoveredSlot == slotId)
+        m_hoveredSlot = -1;
     if (Cursor* cursor = Cursor::instance()) {
         if (m_isUpdatable)
             cursor->onContainerExited();
@@ -351,7 +361,8 @@ void TContainerController::updateMouseCursorForCurrentSlot()
         return;
     const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
     const input::TGameActionPtr action = m_mapper.map(slotActions(m_hoveredSlot), ContainerContext, Qt::LeftButton, modifiers);
-    cursor->setLayerShape(Cursor::Container, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
+    cursor->setLayerShape(m_isUpdatable ? Cursor::Container : Cursor::ContainerNoDrop,
+                          action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
 }
 
 void TContainerController::onSlotStartDrag(const int slotId, QObject* source)

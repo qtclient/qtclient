@@ -9,7 +9,6 @@
 
 #include "container/containerciptypes.h"
 
-#include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 
@@ -555,7 +554,6 @@ void TManageLootContainerDialogController::sendContainerAction(const uint8_t act
     // Proto::ClientLootContainer = 144
     qInfo().nospace() << "tibia.loot: ClientLootContainer(144) action=" << int(action) << " category=" << int(category)
                       << " itemId=" << int(typeId);
-    tibia::game::sendContainerAction(action, category);
     if (typeId)
         tibia::game::openContainerQuickLoot(action, category, position, typeId, std::max(0, stackPosition), false);
     else

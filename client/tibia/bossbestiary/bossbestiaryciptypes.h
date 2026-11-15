@@ -24,7 +24,7 @@ public:
     using cip::tibia::bossbestiary::TBossBestiaryProtocolMessageHandler::TBossBestiaryProtocolMessageHandler;
 public:
     /// Tip Q→H wire: BosstiaryHighlight from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 // TBossTrackerStorage — bosstrackerstorage.h

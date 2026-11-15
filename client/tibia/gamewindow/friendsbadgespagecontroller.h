@@ -1,5 +1,7 @@
 #pragma once
 
+#include "friends/friendlistmodels.h"
+
 #include <cip_gen.h>
 
 #include <QObject>
@@ -24,7 +26,9 @@ public:
     Q_INVOKABLE void updateBadgeVisibility(uint BadgeID, bool ShouldBeVisibleForOthers) override;
 
 private:
-    cip::TFriendListModel* m_model = nullptr;
+    void rebuildRows();
+
+    TFriendsRowsModel* m_model = nullptr;
 };
 
 }

@@ -31,9 +31,10 @@ public:
 /// CIP `creatures::TCreatureProtocolMessageHandler` — qtclient Q→H for filled creature
 /// attribute opcodes + MoveCreature (109). CIP contract has queue
 /// `receivedCreature*Message` / `receivedMoveCreatureMessage` only (no
-/// `handleCreature*Message` / `handleMoveCreatureMessage` moc slots) — apply via
-/// `protocolSet*` / `Map::applyCreatureMove` in `onServerMessageEnqueued`, do not
-/// invent handle* names.
+/// `handleCreature*Message` / `handleMoveCreatureMessage` moc slots) — each
+/// message applies its fields to the stored creature (`applyProtocolCreature`
+/// for a whole creature) or `Map::applyCreatureMove` in
+/// `onServerMessageEnqueued`; do not invent handle* names.
 class TCreatureProtocolMessageHandler final : public cip::tibia::creatures::TCreatureProtocolMessageHandler
 {
     Q_OBJECT
@@ -44,11 +45,13 @@ public:
     static void setLiveInstance(TCreatureProtocolMessageHandler* handler);
 
     /// Tip Q→H wire: peel structured creature-attribute opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    void onServerMessageEnqueued(int opcode);
 
 private:
     /// A creature mark: timed or static square, or the attack animation.
     void handleCreatureMarksMessage(uint32_t creatureId, uint32_t kind, uint32_t value);
+    /// The server changed the attack or follow target the sequence names.
+    void handleUpdateTargetMessage(uint32_t sequence, uint32_t target);
 
     /// Option gameWindowShowAttackAnimation.
     bool m_showAttackAnimation{ true };
@@ -72,7 +75,7 @@ public:
     using cip::tibia::creatures::TUnjustifiedPointsProtocolMessageHandler::TUnjustifiedPointsProtocolMessageHandler;
 public:
     /// Tip Q→H wire: PvpSituations from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TUnjustifiedPointsStorage final : public cip::tibia::creatures::TUnjustifiedPointsStorage
@@ -96,7 +99,7 @@ public:
     using cip::tibia::creatures::TVipProtocolMessageHandler::TVipProtocolMessageHandler;
 public:
     /// Tip Q→H wire: BuddyStatusChange from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TVipWidgetGameActionProvider final : public ::tibia::CipTyped {};

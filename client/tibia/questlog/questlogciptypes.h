@@ -30,7 +30,7 @@ public:
     using cip::tibia::questlog::TQuestLogProtocolMessageHandler::TQuestLogProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TQuestLogStorage final : public cip::tibia::questlog::TQuestLogStorage

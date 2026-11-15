@@ -503,9 +503,33 @@
           "type": "bool",
           "number": 23,
           "label": "optional"
+        },
+        {
+          "name": "mana_percent",
+          "type": "uint32",
+          "number": 24,
+          "label": "optional"
+        },
+        {
+          "name": "show_status",
+          "type": "bool",
+          "number": 25,
+          "label": "optional"
+        },
+        {
+          "name": "update_icons",
+          "type": "bool",
+          "number": 26,
+          "label": "optional"
+        },
+        {
+          "name": "update_extra_icons",
+          "type": "bool",
+          "number": 27,
+          "label": "optional"
         }
       ],
-      "note": "CIP v19: kind 0x61 new (remove id, id, type, master for own summons, name), 0x62 known (id), 0x63 turn (id, direction, unpassable). Fields 24-31 are product server features (not in CIP)."
+      "note": "CIP v19: kind 0x61 new (remove id, id, type, master for own summons, name), 0x62 known (id), 0x63 turn (id, direction, unpassable). CIP v42 fills one field of a known creature from a creature update (mana percent, show status, vocation, either icon list). update_icons / update_extra_icons: the message carries that icon list (it may be empty); a creature that turned carries neither."
     },
     "ProtocolMapObject": {
       "fields": [
@@ -3241,6 +3265,2069 @@
         }
       ],
       "note": "string, store open parameters."
+    },
+    "ProtocolCharacterInfoBase": {
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "vocation",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "outfit",
+          "type": "ProtocolOutfit",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "own_character",
+          "type": "bool",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "number": 6,
+          "label": "optional"
+        }
+      ],
+      "note": "string name; string vocation; u16 level; outfit; bool own character; string title."
+    },
+    "ProtocolCharacterInfoSkill": {
+      "fields": [
+        {
+          "name": "skill_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "base_level",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "loyalty_level",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "percent",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        }
+      ],
+      "note": "u8 skill id; u16 level; u16 base; u16 base with loyalty; u16 percent (hundredths)."
+    },
+    "ProtocolCharacterInfoElementLevel": {
+      "fields": [
+        {
+          "name": "element",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "int32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "u8 element; s16 value."
+    },
+    "ProtocolCharacterInfoKeyedValue": {
+      "fields": [
+        {
+          "name": "key",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "u8 key (element, range or skill); double value."
+    },
+    "ProtocolCharacterInfoGeneralStats": {
+      "fields": [
+        {
+          "name": "experience",
+          "type": "uint64",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "level_percent",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "base_xp_gain",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "low_level_xp_bonus",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "xp_boost_percent",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "stamina_xp_bonus",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "xp_boost_remaining",
+          "type": "uint32",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "can_buy_xp_boost",
+          "type": "bool",
+          "number": 9,
+          "label": "optional"
+        },
+        {
+          "name": "health",
+          "type": "uint32",
+          "number": 10,
+          "label": "optional"
+        },
+        {
+          "name": "max_health",
+          "type": "uint32",
+          "number": 11,
+          "label": "optional"
+        },
+        {
+          "name": "mana",
+          "type": "uint32",
+          "number": 12,
+          "label": "optional"
+        },
+        {
+          "name": "max_mana",
+          "type": "uint32",
+          "number": 13,
+          "label": "optional"
+        },
+        {
+          "name": "soul",
+          "type": "uint32",
+          "number": 14,
+          "label": "optional"
+        },
+        {
+          "name": "stamina_minutes",
+          "type": "uint32",
+          "number": 15,
+          "label": "optional"
+        },
+        {
+          "name": "regeneration",
+          "type": "uint32",
+          "number": 16,
+          "label": "optional"
+        },
+        {
+          "name": "offline_training",
+          "type": "uint32",
+          "number": 17,
+          "label": "optional"
+        },
+        {
+          "name": "speed",
+          "type": "uint32",
+          "number": 18,
+          "label": "optional"
+        },
+        {
+          "name": "base_speed",
+          "type": "uint32",
+          "number": 19,
+          "label": "optional"
+        },
+        {
+          "name": "capacity",
+          "type": "uint32",
+          "number": 20,
+          "label": "optional"
+        },
+        {
+          "name": "base_capacity",
+          "type": "uint32",
+          "number": 21,
+          "label": "optional"
+        },
+        {
+          "name": "free_capacity",
+          "type": "uint32",
+          "number": 22,
+          "label": "optional"
+        },
+        {
+          "name": "skills",
+          "type": "ProtocolCharacterInfoSkill",
+          "number": 23,
+          "label": "repeated"
+        },
+        {
+          "name": "specialized_magic_levels",
+          "type": "ProtocolCharacterInfoElementLevel",
+          "number": 24,
+          "label": "repeated"
+        },
+        {
+          "name": "trailing_first",
+          "type": "uint32",
+          "number": 25,
+          "label": "optional"
+        },
+        {
+          "name": "trailing_second",
+          "type": "uint32",
+          "number": 26,
+          "label": "optional"
+        }
+      ],
+      "note": "u64; 7x u16; bool; 4x u32; u8 soul; 5x u16; 3x u32; u8 n x skill (magic level first); u8 n x (u8 element, s16); 2x u16."
+    },
+    "ProtocolCharacterInfoDeath": {
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "cause",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolCharacterInfoPvpKill": {
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "status",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolCharacterInfoAchievement": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "secret",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "grade",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        }
+      ],
+      "note": "u16 id; u32 unlock time; bool secret; secret only: string name, string description, u8 grade."
+    },
+    "ProtocolCharacterInfoItemCount": {
+      "fields": [
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "tier",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "amount",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "u16 object, u8 tier when tiered; u32 amount."
+    },
+    "ProtocolCharacterInfoAppearance": {
+      "fields": [
+        {
+          "name": "look_type",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "addons",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "source",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "current",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        }
+      ],
+      "note": "u16 look type; string name; outfits only: u8 addons; u8 source; u32 current."
+    },
+    "ProtocolCharacterInfoColors": {
+      "fields": [
+        {
+          "name": "head",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "body",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "legs",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "feet",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolCharacterInfoNamedCount": {
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "count",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "string name; u8 count."
+    },
+    "ProtocolCharacterInfoHouseItem": {
+      "fields": [
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "count",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "u16 object; string name; u8 count."
+    },
+    "ProtocolCharacterInfoBadge": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolCharacterInfoTitle": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "permanent",
+          "type": "bool",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "unlocked",
+          "type": "bool",
+          "number": 5,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolCharacterInfoTargetBonus": {
+      "fields": [
+        {
+          "name": "name",
+          "type": "string",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolCharacterInfoSkillBonus": {
+      "fields": [
+        {
+          "name": "skill_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "first",
+          "type": "double",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "second",
+          "type": "double",
+          "number": 3,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolCharacterInfoTimedEffect": {
+      "fields": [
+        {
+          "name": "id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "duration",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ],
+      "note": "u32 id; u32 remaining time."
+    },
+    "ProtocolCharacterInfoAugment": {
+      "fields": [
+        {
+          "name": "spell_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "type",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "u16 spell; u8 type; double value."
+    },
+    "ProtocolCharacterInfoResistance": {
+      "fields": [
+        {
+          "name": "kind",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "element",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "value",
+          "type": "double",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "u8 kind; u8 element; double value."
+    },
+    "ProtocolCharacterInfoOffenceStats": {
+      "fields": [
+        {
+          "name": "crit_chance",
+          "type": "double",
+          "number": 1,
+          "label": "repeated"
+        },
+        {
+          "name": "crit_damage",
+          "type": "double",
+          "number": 2,
+          "label": "repeated"
+        },
+        {
+          "name": "life_leech",
+          "type": "double",
+          "number": 3,
+          "label": "repeated"
+        },
+        {
+          "name": "mana_leech",
+          "type": "double",
+          "number": 4,
+          "label": "repeated"
+        },
+        {
+          "name": "onslaught",
+          "type": "double",
+          "number": 5,
+          "label": "repeated"
+        },
+        {
+          "name": "cleave",
+          "type": "double",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "perfect_shot",
+          "type": "uint32",
+          "number": 7,
+          "label": "repeated"
+        },
+        {
+          "name": "flat_damage",
+          "type": "uint32",
+          "number": 8,
+          "label": "repeated"
+        },
+        {
+          "name": "weapon_attack",
+          "type": "uint32",
+          "number": 9,
+          "label": "optional"
+        },
+        {
+          "name": "weapon_flat_modifier",
+          "type": "uint32",
+          "number": 10,
+          "label": "optional"
+        },
+        {
+          "name": "weapon_damage",
+          "type": "uint32",
+          "number": 11,
+          "label": "optional"
+        },
+        {
+          "name": "weapon_skill_type",
+          "type": "uint32",
+          "number": 12,
+          "label": "optional"
+        },
+        {
+          "name": "weapon_skill_level",
+          "type": "int32",
+          "number": 13,
+          "label": "optional"
+        },
+        {
+          "name": "weapon_skill_modifier",
+          "type": "int32",
+          "number": 14,
+          "label": "optional"
+        },
+        {
+          "name": "weapon_element",
+          "type": "uint32",
+          "number": 15,
+          "label": "optional"
+        },
+        {
+          "name": "converted_damage",
+          "type": "double",
+          "number": 16,
+          "label": "optional"
+        },
+        {
+          "name": "converted_element",
+          "type": "uint32",
+          "number": 17,
+          "label": "optional"
+        },
+        {
+          "name": "accuracy",
+          "type": "ProtocolCharacterInfoKeyedValue",
+          "number": 18,
+          "label": "repeated"
+        },
+        {
+          "name": "powerful_foes",
+          "type": "double",
+          "number": 19,
+          "label": "optional"
+        },
+        {
+          "name": "specific_targets",
+          "type": "ProtocolCharacterInfoTargetBonus",
+          "number": 20,
+          "label": "repeated"
+        },
+        {
+          "name": "crit_chance_elements",
+          "type": "ProtocolCharacterInfoKeyedValue",
+          "number": 21,
+          "label": "repeated"
+        },
+        {
+          "name": "offensive_runes",
+          "type": "double",
+          "number": 22,
+          "label": "optional"
+        },
+        {
+          "name": "auto_attack",
+          "type": "double",
+          "number": 23,
+          "label": "optional"
+        },
+        {
+          "name": "crit_damage_elements",
+          "type": "ProtocolCharacterInfoKeyedValue",
+          "number": 24,
+          "label": "repeated"
+        },
+        {
+          "name": "crit_damage_runes",
+          "type": "double",
+          "number": 25,
+          "label": "optional"
+        },
+        {
+          "name": "crit_damage_auto_attack",
+          "type": "double",
+          "number": 26,
+          "label": "optional"
+        },
+        {
+          "name": "life_on_hit",
+          "type": "uint32",
+          "number": 27,
+          "label": "optional"
+        },
+        {
+          "name": "mana_on_hit",
+          "type": "uint32",
+          "number": 28,
+          "label": "optional"
+        },
+        {
+          "name": "life_on_kill",
+          "type": "uint32",
+          "number": 29,
+          "label": "optional"
+        },
+        {
+          "name": "mana_on_kill",
+          "type": "uint32",
+          "number": 30,
+          "label": "optional"
+        },
+        {
+          "name": "extra_damage_skills",
+          "type": "ProtocolCharacterInfoSkillBonus",
+          "number": 31,
+          "label": "repeated"
+        },
+        {
+          "name": "extra_damage_spells",
+          "type": "ProtocolCharacterInfoSkillBonus",
+          "number": 32,
+          "label": "repeated"
+        },
+        {
+          "name": "extra_healing_spells",
+          "type": "ProtocolCharacterInfoSkillBonus",
+          "number": 33,
+          "label": "repeated"
+        },
+        {
+          "name": "damage_high_health",
+          "type": "double",
+          "number": 34,
+          "label": "optional"
+        },
+        {
+          "name": "damage_low_health",
+          "type": "double",
+          "number": 35,
+          "label": "optional"
+        },
+        {
+          "name": "armor_penetration",
+          "type": "double",
+          "number": 36,
+          "label": "optional"
+        },
+        {
+          "name": "elemental_pierce",
+          "type": "ProtocolCharacterInfoKeyedValue",
+          "number": 37,
+          "label": "repeated"
+        }
+      ],
+      "note": "7 crit chance, 6 crit damage, 5 life leech, 5 mana leech, 4 onslaught doubles; cleave; 7 perfect shot + 3 flat damage u16; weapon block; lists."
+    },
+    "ProtocolCharacterInfoDefenceStats": {
+      "fields": [
+        {
+          "name": "dodge",
+          "type": "double",
+          "number": 1,
+          "label": "repeated"
+        },
+        {
+          "name": "magic_shield",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "magic_shield_flat",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "magic_shield_percent",
+          "type": "double",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "reflect_physical",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "armor",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "mantra",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "defence",
+          "type": "uint32",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "defence_equipment",
+          "type": "uint32",
+          "number": 9,
+          "label": "optional"
+        },
+        {
+          "name": "defence_skill_type",
+          "type": "uint32",
+          "number": 10,
+          "label": "optional"
+        },
+        {
+          "name": "shielding",
+          "type": "int32",
+          "number": 11,
+          "label": "optional"
+        },
+        {
+          "name": "defence_wheel",
+          "type": "uint32",
+          "number": 12,
+          "label": "optional"
+        },
+        {
+          "name": "mitigation",
+          "type": "double",
+          "number": 13,
+          "label": "repeated"
+        },
+        {
+          "name": "resistances",
+          "type": "ProtocolCharacterInfoResistance",
+          "number": 14,
+          "label": "repeated"
+        }
+      ],
+      "note": "5 dodge doubles; u32; u16; double; 5x u16; u8; s16; u16; 5 mitigation doubles; u8 n x resistance."
+    },
+    "ProtocolCharacterInfoMiscStats": {
+      "fields": [
+        {
+          "name": "momentum",
+          "type": "double",
+          "number": 1,
+          "label": "repeated"
+        },
+        {
+          "name": "dodge",
+          "type": "double",
+          "number": 2,
+          "label": "repeated"
+        },
+        {
+          "name": "damage_reflection",
+          "type": "double",
+          "number": 3,
+          "label": "repeated"
+        },
+        {
+          "name": "blessings",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "total_blessings",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "concoctions",
+          "type": "ProtocolCharacterInfoTimedEffect",
+          "number": 6,
+          "label": "repeated"
+        },
+        {
+          "name": "foods",
+          "type": "ProtocolCharacterInfoTimedEffect",
+          "number": 7,
+          "label": "repeated"
+        },
+        {
+          "name": "proficiency_augments",
+          "type": "ProtocolCharacterInfoAugment",
+          "number": 8,
+          "label": "repeated"
+        },
+        {
+          "name": "wheel_augments",
+          "type": "ProtocolCharacterInfoAugment",
+          "number": 9,
+          "label": "repeated"
+        },
+        {
+          "name": "equipped_augments",
+          "type": "ProtocolCharacterInfoAugment",
+          "number": 10,
+          "label": "repeated"
+        }
+      ],
+      "note": "5 momentum, 4 dodge, 3 reflection doubles; u8; u8; two u8 n x (u32, u32); three u8 n x augment."
+    },
+    "ProtocolDailyRewardObject": {
+      "fields": [
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "amount",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "u16 object; string name; u8 amount."
+    },
+    "ProtocolDailyRewardContent": {
+      "fields": [
+        {
+          "name": "objects",
+          "type": "ProtocolDailyRewardObject",
+          "number": 1,
+          "label": "repeated"
+        },
+        {
+          "name": "prey_wildcards",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "xp_boost_minutes",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "xp_boost_percent",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "cosmetic_tokens",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "bounty_reroll_tokens",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        }
+      ],
+      "note": "u8 n x (u8 kind: 1 object; 2 u8 prey wildcards; 3 u16 minutes, u16 percent XP boost; 4 u8 cosmetic tokens; 5 u8 bounty reroll tokens)."
+    },
+    "ProtocolDailyRewardDay": {
+      "fields": [
+        {
+          "name": "free",
+          "type": "ProtocolDailyRewardContent",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "premium",
+          "type": "ProtocolDailyRewardContent",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolBountyTask": {
+      "fields": [
+        {
+          "name": "task_index",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "race_id",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "required_kills",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "reward_xp",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "reward_bounty_points",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "current_kills",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "claim_state",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "grade",
+          "type": "uint32",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "elite",
+          "type": "bool",
+          "number": 9,
+          "label": "optional"
+        },
+        {
+          "name": "reward_dust",
+          "type": "uint32",
+          "number": 10,
+          "label": "optional"
+        }
+      ],
+      "note": "u8 index; u16 race; u16 required kills; u32 xp; u16 bounty points; u16 current kills; u8 claim state; u8 grade; bool elite; u16 dust."
+    },
+    "ProtocolBountyTalisman": {
+      "fields": [
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "upgradable",
+          "type": "bool",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "upgrade_cost",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "u16 level; bool upgradable; u16 cost."
+    },
+    "ProtocolBountyPreferredSlot": {
+      "fields": [
+        {
+          "name": "unlocked",
+          "type": "bool",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "preferred_race_id",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "avoided_race_id",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ],
+      "note": "bool unlocked; u16 preferred; u16 avoided."
+    },
+    "ProtocolTaskboardBounty": {
+      "fields": [
+        {
+          "name": "tasks",
+          "type": "ProtocolBountyTask",
+          "number": 1,
+          "label": "repeated"
+        },
+        {
+          "name": "difficulty",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "elite_enabled",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "talismans",
+          "type": "ProtocolBountyTalisman",
+          "number": 4,
+          "label": "repeated"
+        },
+        {
+          "name": "preferred_slots",
+          "type": "ProtocolBountyPreferredSlot",
+          "number": 5,
+          "label": "repeated"
+        }
+      ],
+      "note": "u8 n x task; u8 difficulty; bool elite; 4 talismans; u8 n x preferred slot."
+    },
+    "ProtocolWeeklyKillTask": {
+      "fields": [
+        {
+          "name": "race_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "total",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "current",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolWeeklyDeliveryTask": {
+      "fields": [
+        {
+          "name": "slot_index",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "required",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "available",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "delivered",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        }
+      ],
+      "note": "u8 slot; u32 object; u32 required; u32 available; u8 delivered."
+    },
+    "ProtocolTaskboardWeekly": {
+      "fields": [
+        {
+          "name": "any_creature_total",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "any_creature_current",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "kill_tasks",
+          "type": "ProtocolWeeklyKillTask",
+          "number": 3,
+          "label": "repeated"
+        },
+        {
+          "name": "delivery_tasks",
+          "type": "ProtocolWeeklyDeliveryTask",
+          "number": 4,
+          "label": "repeated"
+        },
+        {
+          "name": "difficulty",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "kill_reward_xp",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "delivery_reward_xp",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "completed_kill_tasks",
+          "type": "uint32",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "completed_delivery_tasks",
+          "type": "uint32",
+          "number": 9,
+          "label": "optional"
+        },
+        {
+          "name": "progress_finished",
+          "type": "uint32",
+          "number": 10,
+          "label": "optional"
+        },
+        {
+          "name": "unlocked_difficulty",
+          "type": "uint32",
+          "number": 11,
+          "label": "optional"
+        },
+        {
+          "name": "reset_time",
+          "type": "uint32",
+          "number": 12,
+          "label": "optional"
+        },
+        {
+          "name": "expansion",
+          "type": "bool",
+          "number": 13,
+          "label": "optional"
+        },
+        {
+          "name": "reward_hunting_task_points",
+          "type": "uint32",
+          "number": 14,
+          "label": "optional"
+        },
+        {
+          "name": "reward_soul_seals",
+          "type": "uint32",
+          "number": 15,
+          "label": "optional"
+        }
+      ],
+      "note": "u16; u16; u8 n x (u16, u16, u16); u8 n x delivery; u8; u32; u32; u8; u8; u8; u8; u32; bool; u32; u32."
+    },
+    "ProtocolTaskboardOffer": {
+      "fields": [
+        {
+          "name": "offer_type",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "appearance_id",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "addons",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "second_object_id",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "purchased",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "price",
+          "type": "uint32",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "status",
+          "type": "uint32",
+          "number": 9,
+          "label": "optional"
+        }
+      ],
+      "note": "u8 type; type 4: u16 purchased; else string name, string description, u32 id, outfit: u8 addons, double object: u32 second id; u32 price; u8 status."
+    },
+    "ProtocolCharmEntry": {
+      "fields": [
+        {
+          "name": "charm_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "tier",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "assigned",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "race_id",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "remove_cost",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        }
+      ],
+      "note": "u8 id; u8 tier; bool assigned; assigned only: u16 race, u32 removal cost."
+    },
+    "ProtocolCharmFinishedRace": {
+      "fields": [
+        {
+          "name": "race_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "first_flag",
+          "type": "bool",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "second_flag",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "second_value",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        }
+      ],
+      "note": "u16 race; bool; bool; u8 when the second flag is set."
+    },
+    "ProtocolFriendAccount": {
+      "fields": [
+        {
+          "name": "account_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "character_id",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "vocation",
+          "type": "string",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "world",
+          "type": "string",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "outfit",
+          "type": "ProtocolOutfit",
+          "number": 8,
+          "label": "optional"
+        }
+      ],
+      "note": "friend list: u32 account, u32 character, 4 strings, u16 level, outfit; invites: u32 account, 2 strings; blacklist: u32 account, string."
+    },
+    "ProtocolFriendListEntry": {
+      "fields": [
+        {
+          "name": "account",
+          "type": "ProtocolFriendAccount",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "friend_group",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "friendship_length",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolFriendInvite": {
+      "fields": [
+        {
+          "name": "sent",
+          "type": "bool",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "account",
+          "type": "ProtocolFriendAccount",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolFriendBlacklistEntry": {
+      "fields": [
+        {
+          "name": "account",
+          "type": "ProtocolFriendAccount",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolFriendBadge": {
+      "fields": [
+        {
+          "name": "badge_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "icon",
+          "type": "string",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "unlocked",
+          "type": "bool",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "visible",
+          "type": "bool",
+          "number": 5,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolFriendSearchCharacter": {
+      "fields": [
+        {
+          "name": "character_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "main_character",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "vocation",
+          "type": "string",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "world",
+          "type": "string",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "online",
+          "type": "bool",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "outfit",
+          "type": "ProtocolOutfit",
+          "number": 9,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolFriendAccountSearch": {
+      "fields": [
+        {
+          "name": "account_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "friend_or_invited",
+          "type": "bool",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "on_blacklist",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "show_account_info",
+          "type": "bool",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "online",
+          "type": "bool",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "last_login",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "premium",
+          "type": "bool",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "loyalty_title",
+          "type": "string",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "badges",
+          "type": "ProtocolFriendBadge",
+          "number": 9,
+          "label": "repeated"
+        },
+        {
+          "name": "characters",
+          "type": "ProtocolFriendSearchCharacter",
+          "number": 10,
+          "label": "repeated"
+        }
+      ],
+      "note": "u32 account; bool; bool; bool account info; info only: bool online, u32 last login, bool premium, string loyalty title, u8 n x (u32, string) badges; u8 n x character."
+    },
+    "ProtocolFriendSetting": {
+      "fields": [
+        {
+          "name": "setting_type",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "show_character_info",
+          "type": "bool",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "show_account_info",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "allow_inspect",
+          "type": "bool",
+          "number": 4,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolCustomPrice": {
+      "fields": [
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "price",
+          "type": "uint64",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolTeamFinderAssembly": {
+      "fields": [
+        {
+          "name": "min_level",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "max_level",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "vocations",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "team_slots",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "free_slots",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "party_only",
+          "type": "bool",
+          "number": 6,
+          "label": "optional"
+        },
+        {
+          "name": "timestamp",
+          "type": "uint32",
+          "number": 7,
+          "label": "optional"
+        },
+        {
+          "name": "team_type",
+          "type": "uint32",
+          "number": 8,
+          "label": "optional"
+        },
+        {
+          "name": "first_id",
+          "type": "uint32",
+          "number": 9,
+          "label": "optional"
+        },
+        {
+          "name": "second_id",
+          "type": "uint32",
+          "number": 10,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolObjectInfoRequest": {
+      "fields": [
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "data",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolContainerSort": {
+      "fields": [
+        {
+          "name": "sort_type",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "first_flag",
+          "type": "bool",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "second_flag",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolDailyRewardChoice": {
+      "fields": [
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "count",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolMapDonationRequest": {
+      "fields": [
+        {
+          "name": "area_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "amount",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolOutfitLook": {
+      "fields": [
+        {
+          "name": "look_type",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "head",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "body",
+          "type": "uint32",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "legs",
+          "type": "uint32",
+          "number": 4,
+          "label": "optional"
+        },
+        {
+          "name": "feet",
+          "type": "uint32",
+          "number": 5,
+          "label": "optional"
+        },
+        {
+          "name": "addons",
+          "type": "uint32",
+          "number": 6,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolFriendSettingChange": {
+      "fields": [
+        {
+          "name": "setting_type",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "show_character_info",
+          "type": "bool",
+          "number": 2,
+          "label": "optional"
+        },
+        {
+          "name": "show_account_info",
+          "type": "bool",
+          "number": 3,
+          "label": "optional"
+        },
+        {
+          "name": "allow_inspect",
+          "type": "bool",
+          "number": 4,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolTradeObject": {
+      "fields": [
+        {
+          "name": "object_id",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "tier",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
+    },
+    "ProtocolProficiencyPerkChoice": {
+      "fields": [
+        {
+          "name": "level",
+          "type": "uint32",
+          "number": 1,
+          "label": "optional"
+        },
+        {
+          "name": "perk_position",
+          "type": "uint32",
+          "number": 2,
+          "label": "optional"
+        }
+      ]
     }
   },
   "GameserverMessagePartyLeft": {
@@ -3380,9 +5467,40 @@
         "type": "string",
         "number": 1,
         "label": "optional"
+      },
+      {
+        "name": "player_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "beat_duration",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "speed_a",
+        "type": "double",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "speed_b",
+        "type": "double",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "speed_c",
+        "type": "double",
+        "number": 6,
+        "label": "optional"
       }
     ],
-    "classic": "optional string session_key"
+    "classic": "u32 player_id; u16 beat_duration; double speed_a; double speed_b; double speed_c",
+    "note": "session_key is not on the wire (kept for the existing consumer)."
   },
   "GameserverMessageSessionDumpMarker": {
     "fields": [
@@ -3391,9 +5509,22 @@
         "type": "string",
         "number": 1,
         "label": "optional"
+      },
+      {
+        "name": "kind",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "party_status",
+        "type": "bool",
+        "number": 3,
+        "label": "optional"
       }
     ],
-    "classic": "optional string marker"
+    "classic": "u8 kind; kind 0: bool party_status (a party status marker)",
+    "note": "marker is not on the wire (kept for the existing consumer)."
   },
   "GameserverMessagePendingStateEntered": {
     "fields": [],
@@ -3836,8 +5967,7 @@
         "label": "optional"
       }
     ],
-    "classic": "u8 stash; [protocol>=1220] u8 market",
-    "note": "Tip classic-wire recovery for native apply (CIP handleSpecialContainersAvailableMessage)."
+    "classic": "bool stash; bool market"
   },
   "GameserverMessagePartyHuntAnalyser": {
     "fields": [
@@ -4008,9 +6138,34 @@
     "note": "CIP TProtobufServerMessageTranslator::v210."
   },
   "GameserverMessageTaskboard": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "board_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "bounty",
+        "type": "ProtocolTaskboardBounty",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "weekly",
+        "type": "ProtocolTaskboardWeekly",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "offers",
+        "type": "ProtocolTaskboardOffer",
+        "number": 4,
+        "label": "repeated"
+      }
+    ],
+    "classic": "u8 type (0 bounty, 1 weekly, 2 shop); body by type",
+    "note": "CIP TProtobufServerMessageTranslator::v211."
   },
   "GameserverMessageWeaponProficiencyNotification": {
     "fields": [
@@ -4265,9 +6420,15 @@
     "note": "CIP TProtobufServerMessageTranslator::v169."
   },
   "GameserverMessageClientCheck": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "data",
+        "type": "bytes",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufServerMessageTranslator::v7: u32 length, raw bytes."
   },
   "GameserverMessageTopRow": {
     "fields": [
@@ -4615,9 +6776,64 @@
     "note": "CIP TProtobufServerMessageTranslator::v168."
   },
   "GameserverMessageFriendSystemData": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "data_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "error_code",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "error_message",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "friends",
+        "type": "ProtocolFriendListEntry",
+        "number": 4,
+        "label": "repeated"
+      },
+      {
+        "name": "invites",
+        "type": "ProtocolFriendInvite",
+        "number": 5,
+        "label": "repeated"
+      },
+      {
+        "name": "blacklist",
+        "type": "ProtocolFriendBlacklistEntry",
+        "number": 6,
+        "label": "repeated"
+      },
+      {
+        "name": "account_search",
+        "type": "ProtocolFriendAccountSearch",
+        "number": 7,
+        "label": "optional"
+      },
+      {
+        "name": "badges",
+        "type": "ProtocolFriendBadge",
+        "number": 8,
+        "label": "repeated"
+      },
+      {
+        "name": "settings",
+        "type": "ProtocolFriendSetting",
+        "number": 9,
+        "label": "repeated"
+      }
+    ],
+    "classic": "u8 type: 0 error (u8 code, string when 1), 1 invite notice, 2 friends, 3 invites, 4 blacklist, 5 account search, 6 badges, 7 friendship notice, 8 settings",
+    "note": "CIP TProtobufServerMessageTranslator::v174."
   },
   "GameserverMessageGameEvent": {
     "fields": [
@@ -5171,28 +7387,10 @@
         "label": "optional"
       },
       {
-        "name": "show_status",
-        "type": "bool",
-        "number": 5,
-        "label": "optional"
-      },
-      {
         "name": "vocation",
         "type": "uint32",
         "number": 6,
         "label": "optional"
-      },
-      {
-        "name": "icons",
-        "type": "ProtocolCreatureIcon",
-        "number": 7,
-        "label": "repeated"
-      },
-      {
-        "name": "extra_icons",
-        "type": "uint32",
-        "number": 8,
-        "label": "repeated"
       },
       {
         "name": "health_percent",
@@ -5232,7 +7430,7 @@
       }
     ],
     "classic": "u32 creatureId; u8 type: 0 u16 kind + creature (0x61-0x63), 11 u8 mana percent, 12 bool show status, 13 u8 vocation (kept % 10), 14 u8 count x (u8 icon, u8 category, u16 value, bool flag), 15 u8 count x u8",
-    "note": "CIP TProtobufServerMessageTranslator::v42. Types 16 (u8 health percent, u32 health, u32 max), 17 (u8 mana percent, u32 mana, u32 max) and 18 (u8 vocation, u16 level) are product server party extensions (not in CIP)."
+    "note": "CIP TProtobufServerMessageTranslator::v42: types 0 and 11-15 fill `creature` (types 11-15: the update's creature id and the one field). Types 16 (u8 health percent, u32 health, u32 max), 17 (u8 mana percent, u32 mana, u32 max) and 18 (u8 vocation, u16 level) are product server party extensions (not in CIP)."
   },
   "GameserverMessageCreatureOutfit": {
     "fields": [
@@ -6043,9 +8241,16 @@
     "note": "CIP TProtobufServerMessageTranslator::v63 (v25)."
   },
   "GameserverMessageRestingAreaState": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "in_resting_area",
+        "type": "bool",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "bool in resting area",
+    "note": "CIP TProtobufServerMessageTranslator::v158."
   },
   "GameserverMessageTalk": {
     "fields": [
@@ -7496,9 +9701,34 @@
     "note": "CIP TProtobufServerMessageTranslator::v121."
   },
   "GameserverMessageMonsterCyclopediaBonusEffects": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "reset_all_charms_cost",
+        "type": "uint64",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "charms",
+        "type": "ProtocolCharmEntry",
+        "number": 2,
+        "label": "repeated"
+      },
+      {
+        "name": "available_charm_slots",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "finished_races",
+        "type": "ProtocolCharmFinishedRace",
+        "number": 4,
+        "label": "repeated"
+      }
+    ],
+    "classic": "u64 reset cost; u8 n x charm; u8 free slots (0xff unlimited, then absent); u16 n x finished race",
+    "note": "CIP TProtobufServerMessageTranslator::v122."
   },
   "GameserverMessageMonsterCyclopediaNewDetails": {
     "fields": [
@@ -7513,9 +9743,292 @@
     "note": "CIP TProtobufServerMessageTranslator::v123."
   },
   "GameserverMessageCyclopediaCharacterInfo": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "info_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "error_code",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "base",
+        "type": "ProtocolCharacterInfoBase",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "general",
+        "type": "ProtocolCharacterInfoGeneralStats",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "current_page",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "page_count",
+        "type": "uint32",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "deaths",
+        "type": "ProtocolCharacterInfoDeath",
+        "number": 7,
+        "label": "repeated"
+      },
+      {
+        "name": "pvp_kills",
+        "type": "ProtocolCharacterInfoPvpKill",
+        "number": 8,
+        "label": "repeated"
+      },
+      {
+        "name": "achievement_points",
+        "type": "uint32",
+        "number": 9,
+        "label": "optional"
+      },
+      {
+        "name": "secret_achievements",
+        "type": "uint32",
+        "number": 10,
+        "label": "optional"
+      },
+      {
+        "name": "achievements",
+        "type": "ProtocolCharacterInfoAchievement",
+        "number": 11,
+        "label": "repeated"
+      },
+      {
+        "name": "inventory_items",
+        "type": "ProtocolCharacterInfoItemCount",
+        "number": 12,
+        "label": "repeated"
+      },
+      {
+        "name": "store_items",
+        "type": "ProtocolCharacterInfoItemCount",
+        "number": 13,
+        "label": "repeated"
+      },
+      {
+        "name": "stash_items",
+        "type": "ProtocolCharacterInfoItemCount",
+        "number": 14,
+        "label": "repeated"
+      },
+      {
+        "name": "depot_items",
+        "type": "ProtocolCharacterInfoItemCount",
+        "number": 15,
+        "label": "repeated"
+      },
+      {
+        "name": "inbox_items",
+        "type": "ProtocolCharacterInfoItemCount",
+        "number": 16,
+        "label": "repeated"
+      },
+      {
+        "name": "outfits",
+        "type": "ProtocolCharacterInfoAppearance",
+        "number": 17,
+        "label": "repeated"
+      },
+      {
+        "name": "outfit_colors",
+        "type": "ProtocolCharacterInfoColors",
+        "number": 18,
+        "label": "optional"
+      },
+      {
+        "name": "mounts",
+        "type": "ProtocolCharacterInfoAppearance",
+        "number": 19,
+        "label": "repeated"
+      },
+      {
+        "name": "mount_colors",
+        "type": "ProtocolCharacterInfoColors",
+        "number": 20,
+        "label": "optional"
+      },
+      {
+        "name": "familiars",
+        "type": "ProtocolCharacterInfoAppearance",
+        "number": 21,
+        "label": "repeated"
+      },
+      {
+        "name": "xp_boost_time",
+        "type": "uint32",
+        "number": 22,
+        "label": "optional"
+      },
+      {
+        "name": "daily_xp_boost_time",
+        "type": "uint32",
+        "number": 23,
+        "label": "optional"
+      },
+      {
+        "name": "blessings",
+        "type": "ProtocolCharacterInfoNamedCount",
+        "number": 24,
+        "label": "repeated"
+      },
+      {
+        "name": "prey_slots",
+        "type": "uint32",
+        "number": 25,
+        "label": "optional"
+      },
+      {
+        "name": "prey_wildcards",
+        "type": "uint32",
+        "number": 26,
+        "label": "optional"
+      },
+      {
+        "name": "weekly_task_expansion",
+        "type": "bool",
+        "number": 27,
+        "label": "optional"
+      },
+      {
+        "name": "instant_rewards",
+        "type": "uint32",
+        "number": 28,
+        "label": "optional"
+      },
+      {
+        "name": "charm_expansion",
+        "type": "bool",
+        "number": 29,
+        "label": "optional"
+      },
+      {
+        "name": "hirelings",
+        "type": "uint32",
+        "number": 30,
+        "label": "optional"
+      },
+      {
+        "name": "hireling_jobs",
+        "type": "uint32",
+        "number": 31,
+        "label": "repeated"
+      },
+      {
+        "name": "hireling_outfits",
+        "type": "ProtocolCharacterInfoNamedCount",
+        "number": 32,
+        "label": "repeated"
+      },
+      {
+        "name": "house_items",
+        "type": "ProtocolCharacterInfoHouseItem",
+        "number": 33,
+        "label": "repeated"
+      },
+      {
+        "name": "inspected_objects",
+        "type": "ProtocolInspectedObject",
+        "number": 34,
+        "label": "repeated"
+      },
+      {
+        "name": "player_name",
+        "type": "string",
+        "number": 35,
+        "label": "optional"
+      },
+      {
+        "name": "outfit",
+        "type": "ProtocolOutfit",
+        "number": 36,
+        "label": "optional"
+      },
+      {
+        "name": "player_details",
+        "type": "ProtocolInspectionDetail",
+        "number": 37,
+        "label": "repeated"
+      },
+      {
+        "name": "show_account",
+        "type": "bool",
+        "number": 38,
+        "label": "optional"
+      },
+      {
+        "name": "online",
+        "type": "bool",
+        "number": 39,
+        "label": "optional"
+      },
+      {
+        "name": "premium",
+        "type": "bool",
+        "number": 40,
+        "label": "optional"
+      },
+      {
+        "name": "loyalty_title",
+        "type": "string",
+        "number": 41,
+        "label": "optional"
+      },
+      {
+        "name": "badges",
+        "type": "ProtocolCharacterInfoBadge",
+        "number": 42,
+        "label": "repeated"
+      },
+      {
+        "name": "current_title",
+        "type": "uint32",
+        "number": 43,
+        "label": "optional"
+      },
+      {
+        "name": "titles",
+        "type": "ProtocolCharacterInfoTitle",
+        "number": 44,
+        "label": "repeated"
+      },
+      {
+        "name": "offence",
+        "type": "ProtocolCharacterInfoOffenceStats",
+        "number": 45,
+        "label": "optional"
+      },
+      {
+        "name": "defence",
+        "type": "ProtocolCharacterInfoDefenceStats",
+        "number": 46,
+        "label": "optional"
+      },
+      {
+        "name": "misc",
+        "type": "ProtocolCharacterInfoMiscStats",
+        "number": 47,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 type; u8 error (non-zero ends the message); body by type (0 base, 1 general, 3 deaths, 4 kills, 5 achievements, 6 items, 7 appearances, 8 store, 9 inspection, 10 badges, 11 titles, 13 offence, 14 defence, 15 misc)",
+    "note": "CIP TProtobufServerMessageTranslator::v124."
   },
   "GameserverMessageCyclopediaMapData": {
     "fields": [
@@ -7776,9 +10289,22 @@
     "note": "CIP TProtobufServerMessageTranslator::v159."
   },
   "GameserverMessageDailyRewardBasic": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "days",
+        "type": "ProtocolDailyRewardDay",
+        "number": 1,
+        "label": "repeated"
+      },
+      {
+        "name": "streak_bonus_thresholds",
+        "type": "uint32",
+        "number": 2,
+        "label": "repeated"
+      }
+    ],
+    "classic": "u8 n x (free content, premium content); u8 n x u32 reward streak needed per resting bonus",
+    "note": "CIP TProtobufServerMessageTranslator::v160."
   },
   "GameserverMessageDailyRewardHistory": {
     "fields": [
@@ -8420,14 +10946,98 @@
     "bridge": true
   },
   "GameclientMessageLogin": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "client_os",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "protocol_version",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "client_version",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "client_version_string",
+        "type": "string",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "asset_identifier",
+        "type": "string",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "preview_state",
+        "type": "uint32",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "xtea_key",
+        "type": "uint32",
+        "number": 7,
+        "label": "repeated"
+      },
+      {
+        "name": "gamemaster",
+        "type": "bool",
+        "number": 8,
+        "label": "optional"
+      },
+      {
+        "name": "session_key",
+        "type": "string",
+        "number": 9,
+        "label": "optional"
+      },
+      {
+        "name": "character_name",
+        "type": "string",
+        "number": 10,
+        "label": "optional"
+      },
+      {
+        "name": "challenge_timestamp",
+        "type": "uint32",
+        "number": 11,
+        "label": "optional"
+      },
+      {
+        "name": "challenge_random",
+        "type": "uint32",
+        "number": 12,
+        "label": "optional"
+      },
+      {
+        "name": "product_transport",
+        "type": "string",
+        "number": 13,
+        "label": "optional"
+      }
+    ],
+    "note": "u16 os, u16 protocol, u32 version, string version, string assets, u8 preview; RSA block: u8 0, 4x u32 xtea, bool gm, string session key, string character, u32 timestamp, u8 random, [product string], zero padding."
   },
   "GameclientMessageSecondaryLogin": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "token",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "note": "string token (Crystal secondary login)."
   },
   "GameclientMessageEnterWorld": {
     "fields": [],
@@ -8440,69 +11050,246 @@
     "bridge": true
   },
   "GameclientMessageStashAction": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "count",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v93."
   },
   "GameclientMessageDepotSearchRetrieve": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "tier",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "retrieve_type",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 object_id; u8? tier; u8 retrieve_type",
+    "note": "CIP TProtobufClientMessageTranslator::v97."
   },
   "GameclientMessageTrackBestiaryRace": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "race_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "tracked",
+        "type": "bool",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 race_id; bool tracked",
+    "note": "CIP TProtobufClientMessageTranslator::v6."
   },
   "GameclientMessagePartyHuntAnalyser": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "price_type",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "prices",
+        "type": "ProtocolCustomPrice",
+        "number": 3,
+        "label": "repeated"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v99."
   },
   "GameclientMessageTeamFinderAssembleTeam": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "member_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "member_status",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "assembly",
+        "type": "ProtocolTeamFinderAssembly",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v103."
   },
   "GameclientMessageTeamFinderJoinTeam": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "leader_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v104."
   },
   "GameclientMessageSetClientOptions": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "turn_towards_move_direction",
+        "type": "bool",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v115."
   },
   "GameclientMessageTaskboard": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "option",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "small_value",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "value",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v118."
   },
   "GameclientMessageTrackImbuements": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "open",
+        "type": "bool",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "bool open",
+    "note": "CIP TProtobufClientMessageTranslator::v113."
   },
   "GameclientMessageRequestSkillWheel": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "character_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v111."
   },
   "GameclientMessageApplySkillWheel": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "slot_points",
+        "type": "uint32",
+        "number": 1,
+        "label": "repeated"
+      },
+      {
+        "name": "vessel_gems",
+        "type": "uint32",
+        "number": 2,
+        "label": "repeated"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v112."
   },
   "GameclientMessageClientCheck": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "data",
+        "type": "bytes",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v7: u32 length, raw bytes."
   },
   "GameclientMessageGoPath": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "directions",
+        "type": "uint32",
+        "number": 1,
+        "label": "repeated"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v5."
   },
   "GameclientMessageGoNorth": {
     "fields": [],
@@ -8545,9 +11332,16 @@
     "bridge": true
   },
   "GameclientMessageSetVocation": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "vocation",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 vocation",
+    "note": "CIP TProtobufClientMessageTranslator::v116."
   },
   "GameclientMessageRotateNorth": {
     "fields": [],
@@ -8570,49 +11364,236 @@
     "bridge": true
   },
   "GameclientMessageTeleport": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position",
+    "note": "CIP TProtobufClientMessageTranslator::v84."
   },
   "GameclientMessageStartOfflineTraining": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "skill",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 skill",
+    "note": "CIP TProtobufClientMessageTranslator::v117."
   },
   "GameclientMessageContainerAction": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "container_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "move_to_managed_containers",
+        "type": "bool",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "sort",
+        "type": "ProtocolContainerSort",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v114."
   },
   "GameclientMessageCharacterTradeConfigurationAction": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "price",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "end_time",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "objects",
+        "type": "ProtocolTradeObject",
+        "number": 4,
+        "label": "repeated"
+      },
+      {
+        "name": "store_objects",
+        "type": "ProtocolTradeObject",
+        "number": 5,
+        "label": "repeated"
+      },
+      {
+        "name": "highlights",
+        "type": "uint32",
+        "number": 6,
+        "label": "repeated"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v105."
   },
   "GameclientMessageEquipObject": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "tier",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 object_id; u8 tier",
+    "note": "CIP TProtobufClientMessageTranslator::v8."
   },
   "GameclientMessageMoveObject": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "from_position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "from_stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "to_position",
+        "type": "ProtocolCoordinate",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "count",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "extra_flag",
+        "type": "bool",
+        "number": 6,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos from_position; u16 object_id; u8 from_stack_position; pos to_position; u8 count; bool extra_flag",
+    "note": "CIP TProtobufClientMessageTranslator::v9."
   },
   "GameclientMessageLookNPCTrade": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "count",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 object_id; u8 count",
+    "note": "CIP TProtobufClientMessageTranslator::v30."
   },
   "GameclientMessageBuyObject": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "subtype",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "amount",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "ignore_capacity",
+        "type": "bool",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "in_backpacks",
+        "type": "bool",
+        "number": 5,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 object_id; u8 subtype; u16 amount; bool ignore_capacity; bool in_backpacks",
+    "note": "CIP TProtobufClientMessageTranslator::v31."
   },
   "GameclientMessageSellObject": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "subtype",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "amount",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "ignore_equipped",
+        "type": "bool",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 object_id; u8 subtype; u16 amount; bool ignore_equipped",
+    "note": "CIP TProtobufClientMessageTranslator::v32."
   },
   "GameclientMessageCloseNPCTrade": {
     "fields": [],
@@ -8620,14 +11601,52 @@
     "bridge": true
   },
   "GameclientMessageTradeObject": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position; u16 object_id; u8 stack_position; u32 creature_id",
+    "note": "CIP TProtobufClientMessageTranslator::v59."
   },
   "GameclientMessageLookTrade": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "counter_offer",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "index",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 counter_offer; u8 index",
+    "note": "CIP TProtobufClientMessageTranslator::v60."
   },
   "GameclientMessageAcceptTrade": {
     "fields": [],
@@ -8640,84 +11659,415 @@
     "bridge": true
   },
   "GameclientMessageFriendSystemAction": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "account_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "value",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "badge_id",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "visible",
+        "type": "bool",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "setting",
+        "type": "ProtocolFriendSettingChange",
+        "number": 7,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v61."
   },
   "GameclientMessageUseObject": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "container_index",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position; u16 object_id; u8 stack_position; u8 container_index",
+    "note": "CIP TProtobufClientMessageTranslator::v13."
   },
   "GameclientMessageUseTwoObjects": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "from_position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "from_stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "to_position",
+        "type": "ProtocolCoordinate",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "to_object_id",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "to_stack_position",
+        "type": "uint32",
+        "number": 6,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos from_position; u16 object_id; u8 from_stack_position; pos to_position; u16 to_object_id; u8 to_stack_position",
+    "note": "CIP TProtobufClientMessageTranslator::v14."
   },
   "GameclientMessageUseOnCreature": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position; u16 object_id; u8 stack_position; u32 creature_id",
+    "note": "CIP TProtobufClientMessageTranslator::v15."
   },
   "GameclientMessageTurnObject": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position; u16 object_id; u8 stack_position",
+    "note": "CIP TProtobufClientMessageTranslator::v11."
   },
   "GameclientMessageConfigureShowOffSocket": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position; u16 object_id; u8 stack_position",
+    "note": "CIP TProtobufClientMessageTranslator::v12."
   },
   "GameclientMessageCloseContainer": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "container_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 container_id",
+    "note": "CIP TProtobufClientMessageTranslator::v20."
   },
   "GameclientMessageUpContainer": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "container_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 container_id",
+    "note": "CIP TProtobufClientMessageTranslator::v21."
   },
   "GameclientMessageEditText": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "window_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 window_id; str text",
+    "note": "CIP TProtobufClientMessageTranslator::v65."
   },
   "GameclientMessageEditList": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "list_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "window_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 list_type; u32 window_id; str text",
+    "note": "CIP TProtobufClientMessageTranslator::v66."
   },
   "GameclientMessageToggleWrapState": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position; u16 object_id; u8 stack_position",
+    "note": "CIP TProtobufClientMessageTranslator::v10."
   },
   "GameclientMessageLook": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position; u16 object_id; u8 stack_position",
+    "note": "CIP TProtobufClientMessageTranslator::v16."
   },
   "GameclientMessageLookAtCreature": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creature_id",
+    "note": "CIP TProtobufClientMessageTranslator::v17."
   },
   "GameclientMessageQuickLoot": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "variant",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 variant; pos? position; u16? object_id; u8? stack_position",
+    "note": "CIP TProtobufClientMessageTranslator::v87."
   },
   "GameclientMessageManagedContainer": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "category",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "use_main_as_fallback",
+        "type": "bool",
+        "number": 6,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v91."
   },
   "GameclientMessageQuickLootBlackWhitelist": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "filter",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_ids",
+        "type": "uint32",
+        "number": 2,
+        "label": "repeated"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v88."
   },
   "GameclientMessageOpenDepotSearch": {
     "fields": [],
@@ -8730,19 +12080,75 @@
     "bridge": true
   },
   "GameclientMessageDepotSearchType": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "tier",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 object_id; u8? tier",
+    "note": "CIP TProtobufClientMessageTranslator::v95."
   },
   "GameclientMessageOpenParentContainer": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position",
+    "note": "CIP TProtobufClientMessageTranslator::v96."
   },
   "GameclientMessageTalk": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "mode",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "channel_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "receiver",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "aim_mode",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "aim_position",
+        "type": "ProtocolCoordinate",
+        "number": 6,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v25."
   },
   "GameclientMessageGetChannels": {
     "fields": [],
@@ -8750,19 +12156,40 @@
     "bridge": true
   },
   "GameclientMessageJoinChannel": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "channel_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 channel_id",
+    "note": "CIP TProtobufClientMessageTranslator::v35."
   },
   "GameclientMessageLeaveChannel": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "channel_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 channel_id",
+    "note": "CIP TProtobufClientMessageTranslator::v37."
   },
   "GameclientMessagePrivateChannel": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "receiver",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "str receiver",
+    "note": "CIP TProtobufClientMessageTranslator::v36."
   },
   "GameclientMessageGuildMessage": {
     "fields": [],
@@ -8770,14 +12197,40 @@
     "bridge": true
   },
   "GameclientMessageEditGuildMessage": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "text",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "str text",
+    "note": "CIP TProtobufClientMessageTranslator::v67."
   },
   "GameclientMessageGetTextForReport": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position; u16 object_id; u8 stack_position",
+    "note": "CIP TProtobufClientMessageTranslator::v106."
   },
   "GameclientMessageCloseNPCChannel": {
     "fields": [],
@@ -8785,44 +12238,160 @@
     "bridge": true
   },
   "GameclientMessageSetCreaturePodiumConfiguration": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "race_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "direction",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "podium_visible",
+        "type": "bool",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "monster_visible",
+        "type": "bool",
+        "number": 7,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 race_id; pos position; u16 object_id; u8 stack_position; u8 direction; bool podium_visible; bool monster_visible",
+    "note": "CIP TProtobufClientMessageTranslator::v43."
   },
   "GameclientMessageSetTactics": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "chase_opponent",
+        "type": "bool",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "secure_mode",
+        "type": "bool",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "pvp_mode",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "bool chase_opponent; bool secure_mode; u8 pvp_mode",
+    "note": "CIP TProtobufClientMessageTranslator::v23."
   },
   "GameclientMessageAttack": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "sequence",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creature_id; u32 sequence",
+    "note": "CIP TProtobufClientMessageTranslator::v33."
   },
   "GameclientMessageFollow": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "sequence",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creature_id; u32 sequence",
+    "note": "CIP TProtobufClientMessageTranslator::v34."
   },
   "GameclientMessageInviteToParty": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creature_id",
+    "note": "CIP TProtobufClientMessageTranslator::v45."
   },
   "GameclientMessageJoinParty": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creature_id",
+    "note": "CIP TProtobufClientMessageTranslator::v46."
   },
   "GameclientMessageRevokeInvitation": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creature_id",
+    "note": "CIP TProtobufClientMessageTranslator::v47."
   },
   "GameclientMessagePassLeadership": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creature_id",
+    "note": "CIP TProtobufClientMessageTranslator::v48."
   },
   "GameclientMessageLeaveParty": {
     "fields": [],
@@ -8830,9 +12399,16 @@
     "bridge": true
   },
   "GameclientMessageShareExperience": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "active",
+        "type": "bool",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "bool active",
+    "note": "CIP TProtobufClientMessageTranslator::v49."
   },
   "GameclientMessageDisbandParty": {
     "fields": [],
@@ -8845,19 +12421,75 @@
     "bridge": true
   },
   "GameclientMessageInviteToChannel": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "name",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "channel_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "str name; u16 channel_id",
+    "note": "CIP TProtobufClientMessageTranslator::v38."
   },
   "GameclientMessageExcludeFromChannel": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "name",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "channel_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "str name; u16 channel_id",
+    "note": "CIP TProtobufClientMessageTranslator::v39."
   },
   "GameclientMessageCyclopediaHouseAction": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "house_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "bid",
+        "type": "uint64",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v98."
   },
   "GameclientMessageOpenBosstiary": {
     "fields": [],
@@ -8870,29 +12502,152 @@
     "bridge": true
   },
   "GameclientMessageEditBossSlot": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "race_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 action; u32 race_id",
+    "note": "CIP TProtobufClientMessageTranslator::v110."
   },
   "GameclientMessageHighscores": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "category",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "vocation",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "world",
+        "type": "string",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "world_types",
+        "type": "uint32",
+        "number": 5,
+        "label": "repeated"
+      },
+      {
+        "name": "battleye",
+        "type": "uint32",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "page",
+        "type": "uint32",
+        "number": 7,
+        "label": "optional"
+      },
+      {
+        "name": "entries_per_page",
+        "type": "uint32",
+        "number": 8,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v100."
   },
   "GameclientMessagePickObjectToImbue": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 action; pos? position; u16? object_id; u8? stack_position",
+    "note": "CIP TProtobufClientMessageTranslator::v77."
   },
   "GameclientMessageWeaponProficiencyCommand": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "perks",
+        "type": "ProtocolProficiencyPerkChoice",
+        "number": 3,
+        "label": "repeated"
+      },
+      {
+        "name": "slot",
+        "type": "ProtocolProficiencyPerkChoice",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "offer_index",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v101."
   },
   "GameclientMessageSoulSealsFightMonster": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "race_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 race_id",
+    "note": "CIP TProtobufClientMessageTranslator::v102."
   },
   "GameclientMessageCancel": {
     "fields": [],
@@ -8900,24 +12655,104 @@
     "bridge": true
   },
   "GameclientMessageExaltationAction": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "convergence",
+        "type": "bool",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "first_object_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "tier",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "second_object_id",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "improve_chance",
+        "type": "bool",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "reduce_tier_loss",
+        "type": "bool",
+        "number": 7,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v107."
   },
   "GameclientMessageOpenExaltationHistory": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "page",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "entries_per_page",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v108."
   },
   "GameclientMessageClientDetails": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "details",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "str details",
+    "note": "CIP TProtobufClientMessageTranslator::v109."
   },
   "GameclientMessageBossDifficultySelection": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "context",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "difficulty",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 context; u8 action; u16? difficulty",
+    "note": "CIP TProtobufClientMessageTranslator::v119."
   },
   "GameclientMessageSpellTargetConfig": {
     "fields": [],
@@ -8925,34 +12760,164 @@
     "bridge": true
   },
   "GameclientMessageGetTransactionDetails": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "transaction_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 transaction_id",
+    "note": "CIP TProtobufClientMessageTranslator::v71."
   },
   "GameclientMessageUpdateExivaOptions": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "allow_all",
+        "type": "bool",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "allow_own_guild",
+        "type": "bool",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "allow_own_party",
+        "type": "bool",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "allow_vip_list",
+        "type": "bool",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "allow_player_whitelist",
+        "type": "bool",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "allow_guild_whitelist",
+        "type": "bool",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "add_characters",
+        "type": "string",
+        "number": 7,
+        "label": "repeated"
+      },
+      {
+        "name": "remove_characters",
+        "type": "string",
+        "number": 8,
+        "label": "repeated"
+      },
+      {
+        "name": "add_guilds",
+        "type": "string",
+        "number": 9,
+        "label": "repeated"
+      },
+      {
+        "name": "remove_guilds",
+        "type": "string",
+        "number": 10,
+        "label": "repeated"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v92."
   },
   "GameclientMessageBrowseField": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position",
+    "note": "CIP TProtobufClientMessageTranslator::v24."
   },
   "GameclientMessageSeekInContainer": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "container_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "index",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "primary_type",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 container_id; u16 index; u8 primary_type",
+    "note": "CIP TProtobufClientMessageTranslator::v22."
   },
   "GameclientMessageInspectObject": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "inspection_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "count",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v19."
   },
   "GameclientMessageInspectPlayer": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "tab",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 tab; u32? creature_id",
+    "note": "CIP TProtobufClientMessageTranslator::v18."
   },
   "GameclientMessageBlessingsDialog": {
     "fields": [],
@@ -8960,9 +12925,27 @@
     "bridge": true
   },
   "GameclientMessageTrackQuestFlags": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "mission_ids",
+        "type": "uint32",
+        "number": 1,
+        "label": "repeated"
+      },
+      {
+        "name": "auto_track_new_quests",
+        "type": "bool",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "auto_untrack_completed_quests",
+        "type": "bool",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v86."
   },
   "GameclientMessageMarketStatistics": {
     "fields": [],
@@ -8970,29 +12953,146 @@
     "bridge": true
   },
   "GameclientMessageGetOutfit": {
-    "fields": [],
-    "classic": "empty",
-    "bridge": false
+    "fields": [
+      {
+        "name": "outfit_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "creature_type",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v41."
   },
   "GameclientMessageSetOutfit": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "outfit_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "look",
+        "type": "ProtocolOutfitLook",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "mount",
+        "type": "ProtocolOutfitLook",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "mounted",
+        "type": "bool",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "familiar",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "random_mount",
+        "type": "bool",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "hireling_id",
+        "type": "uint32",
+        "number": 7,
+        "label": "optional"
+      },
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 8,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 9,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 10,
+        "label": "optional"
+      },
+      {
+        "name": "direction",
+        "type": "uint32",
+        "number": 11,
+        "label": "optional"
+      },
+      {
+        "name": "podium_visible",
+        "type": "bool",
+        "number": 12,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v42."
   },
   "GameclientMessageMount": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "mounted",
+        "type": "bool",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "bool mounted",
+    "note": "CIP TProtobufClientMessageTranslator::v40."
   },
   "GameclientMessageApplyImbuement": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "slot",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "imbuement_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 slot; u32 imbuement_id",
+    "note": "CIP TProtobufClientMessageTranslator::v78."
   },
   "GameclientMessageApplyClearingCharm": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "slot",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 slot",
+    "note": "CIP TProtobufClientMessageTranslator::v79."
   },
   "GameclientMessageCloseImbuingDialog": {
     "fields": [],
@@ -9010,34 +13110,126 @@
     "bridge": true
   },
   "GameclientMessageCollectDailyReward": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "from_shrine",
+        "type": "bool",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "choices",
+        "type": "ProtocolDailyRewardChoice",
+        "number": 2,
+        "label": "repeated"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v85."
   },
   "GameclientMessageCyclopediaMapAction": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "donation",
+        "type": "ProtocolMapDonationRequest",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "reset_area_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "area_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v94."
   },
   "GameclientMessageAddBuddy": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "name",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "str name",
+    "note": "CIP TProtobufClientMessageTranslator::v51."
   },
   "GameclientMessageRemoveBuddy": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "character_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 character_id",
+    "note": "CIP TProtobufClientMessageTranslator::v52."
   },
   "GameclientMessageEditBuddy": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "character_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "description",
+        "type": "string",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "icon_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "notify_login",
+        "type": "bool",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "group_ids",
+        "type": "uint32",
+        "number": 5,
+        "label": "repeated"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v53."
   },
   "GameclientMessageBuddyGroup": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "group_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v54."
   },
   "GameclientMessageOpenMonsterCyclopedia": {
     "fields": [],
@@ -9045,69 +13237,286 @@
     "bridge": true
   },
   "GameclientMessageOpenMonsterCyclopediaMonsters": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "request_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "race_ids",
+        "type": "uint32",
+        "number": 2,
+        "label": "repeated"
+      },
+      {
+        "name": "category",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v55."
   },
   "GameclientMessageOpenMonsterCyclopediaRace": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "race_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 race_id",
+    "note": "CIP TProtobufClientMessageTranslator::v56."
   },
   "GameclientMessageMonsterBonusEffectAction": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "charm_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "race_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v57."
   },
   "GameclientMessageOpenCyclopediaCharacterInfo": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "character_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "info_type",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "entries_per_page",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "page",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 character_id; u8 info_type; u16? entries_per_page; u16? page",
+    "note": "CIP TProtobufClientMessageTranslator::v58."
   },
   "GameclientMessageBugReport": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "category",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "comment",
+        "type": "string",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "typo_speaker",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "typo_text",
+        "type": "string",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 5,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v75."
   },
   "GameclientMessageGemAtelier": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "gem_index",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "first_value",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "second_value",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v90."
   },
   "GameclientMessageGetOfferDescription": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "offer_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 offer_id",
+    "note": "CIP TProtobufClientMessageTranslator::v82."
   },
   "GameclientMessageStoreEvent": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "event_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "value",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v76."
   },
   "GameclientMessagePreyAction": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "slot",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "index",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "race_id",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v80."
   },
   "GameclientMessageSetHirelingName": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "name",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "str name; u32 creature_id; u32 object_id",
+    "note": "CIP TProtobufClientMessageTranslator::v44."
   },
   "GameclientMessageRequestResourceBalance": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "resource_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 resource_type",
+    "note": "CIP TProtobufClientMessageTranslator::v81."
   },
   "GameclientMessageGreet": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "creature_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 creature_id",
+    "note": "CIP TProtobufClientMessageTranslator::v73."
   },
   "GameclientMessageTransferCurrency": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "recipient",
+        "type": "string",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "amount",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "str recipient; u32 amount",
+    "note": "CIP TProtobufClientMessageTranslator::v74."
   },
   "GameclientMessageGetQuestLog": {
     "fields": [],
@@ -9115,44 +13524,198 @@
     "bridge": false
   },
   "GameclientMessageGetQuestLine": {
-    "fields": [],
-    "classic": "empty",
-    "bridge": false
+    "fields": [
+      {
+        "name": "quest_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u16 quest_id",
+    "note": "CIP TProtobufClientMessageTranslator::v62."
   },
   "GameclientMessageRuleViolationReport": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "report_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "reason",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "comment",
+        "type": "string",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "translation",
+        "type": "string",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "statement_id",
+        "type": "uint32",
+        "number": 6,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v64."
   },
   "GameclientMessageGetObjectInfo": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "objects",
+        "type": "ProtocolObjectInfoRequest",
+        "number": 1,
+        "label": "repeated"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v83."
   },
   "GameclientMessageMarketBrowse": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "browse_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "tier",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v26."
   },
   "GameclientMessageMarketCreate": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "offer_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "tier",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "amount",
+        "type": "uint32",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "price",
+        "type": "uint64",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "anonymous",
+        "type": "bool",
+        "number": 6,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v29."
   },
   "GameclientMessageMarketCancel": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "timestamp",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "counter",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 timestamp; u16 counter",
+    "note": "CIP TProtobufClientMessageTranslator::v27."
   },
   "GameclientMessageMarketAccept": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "timestamp",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "counter",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "amount",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 timestamp; u16 counter; u16 amount",
+    "note": "CIP TProtobufClientMessageTranslator::v28."
   },
   "GameclientMessageAnswerModalDialog": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "dialog_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "button",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "choice",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "u32 dialog_id; u8 button; u8 choice",
+    "note": "CIP TProtobufClientMessageTranslator::v63."
   },
   "GameclientMessageRequestStoreCategories": {
     "fields": [],
@@ -9160,29 +13723,145 @@
     "bridge": true
   },
   "GameclientMessageRequestStoreOffers": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "request_type",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "value",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "category",
+        "type": "string",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "subcategory",
+        "type": "string",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "search_text",
+        "type": "string",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "sort_order",
+        "type": "uint32",
+        "number": 6,
+        "label": "optional"
+      },
+      {
+        "name": "service_type",
+        "type": "uint32",
+        "number": 7,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v68."
   },
   "GameclientMessageBuyStoreOffer": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "offer_id",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "extra_flag",
+        "type": "bool",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "action",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "number": 4,
+        "label": "optional"
+      },
+      {
+        "name": "type",
+        "type": "uint32",
+        "number": 5,
+        "label": "optional"
+      },
+      {
+        "name": "location",
+        "type": "string",
+        "number": 6,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v69."
   },
   "GameclientMessageOpenTransactionHistory": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "entries_per_page",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      }
+    ],
+    "classic": "u8 entries_per_page",
+    "note": "CIP TProtobufClientMessageTranslator::v70."
   },
   "GameclientMessageGetTransactionHistory": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "page",
+        "type": "uint32",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "entries_per_page",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      }
+    ],
+    "note": "CIP TProtobufClientMessageTranslator::v72."
   },
   "GameclientMessageGatherAll": {
-    "fields": [],
-    "classic": "bridge \u2014 classic side-channel until CIP field RE",
-    "bridge": true
+    "fields": [
+      {
+        "name": "position",
+        "type": "ProtocolCoordinate",
+        "number": 1,
+        "label": "optional"
+      },
+      {
+        "name": "object_id",
+        "type": "uint32",
+        "number": 2,
+        "label": "optional"
+      },
+      {
+        "name": "stack_position",
+        "type": "uint32",
+        "number": 3,
+        "label": "optional"
+      }
+    ],
+    "classic": "pos position; u16 object_id; u8 stack_position",
+    "note": "CIP TProtobufClientMessageTranslator::v89."
   },
   "GameclientMessageUnknown": {
     "fields": [],

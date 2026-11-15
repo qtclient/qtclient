@@ -12,6 +12,57 @@ namespace tibia::protocol {
 
 using ::tibia::protobuf::protocol::ProtocolInventoryItem;
 
+namespace {
+
+// Container flag bits: each set bit is followed by one u32, in bit order.
+constexpr uint8_t ContainerLootFlags = 0x01;
+constexpr uint8_t ContainerAmmoTotal = 0x02;
+constexpr uint8_t ContainerObtainFlags = 0x08;
+
+bool readOutfitLook(ClassicReader& r, ProtocolInventoryItem* out)
+{
+    uint16_t lookType = 0;
+    if (!r.u16(lookType))
+        return false;
+    out->set_look_type(lookType);
+    if (lookType != 0) {
+        uint8_t head = 0, body = 0, legs = 0, feet = 0, addons = 0;
+        if (!r.u8(head) || !r.u8(body) || !r.u8(legs) || !r.u8(feet) || !r.u8(addons))
+            return false;
+        out->set_look_head(head);
+        out->set_look_body(body);
+        out->set_look_legs(legs);
+        out->set_look_feet(feet);
+        out->set_look_addons(addons);
+        return true;
+    }
+    uint16_t lookTypeEx = 0;
+    if (!r.u16(lookTypeEx))
+        return false;
+    out->set_look_type_ex(lookTypeEx);
+    return true;
+}
+
+bool readMountLook(ClassicReader& r, ProtocolInventoryItem* out)
+{
+    uint16_t lookMount = 0;
+    if (!r.u16(lookMount))
+        return false;
+    out->set_look_mount(lookMount);
+    if (lookMount == 0)
+        return true;
+    uint8_t head = 0, body = 0, legs = 0, feet = 0;
+    if (!r.u8(head) || !r.u8(body) || !r.u8(legs) || !r.u8(feet))
+        return false;
+    out->set_look_mount_head(head);
+    out->set_look_mount_body(body);
+    out->set_look_mount_legs(legs);
+    out->set_look_mount_feet(feet);
+    return true;
+}
+
+}
+
 bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetItemId)
 {
     if (!out)
@@ -26,200 +77,92 @@ bool readInventoryItem(ClassicReader& r, ProtocolInventoryItem* out, int presetI
     }
     out->set_item_id(id);
 
-    ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
+    // The appearance kinds that carry extra data are exclusive: the first kind
+    // the appearance belongs to decides what follows. An appearance of no such
+    // kind (or one the client does not know) has no extra data.
+    const ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
     if (!type || type->getId() == 0)
-        return false;
+        return true;
 
-    if (tibia::game::clientRevision() < 1281 && tibia::game::cipFeature(tibia::client::GameThingMarks)) {
-        uint8_t mark = 0;
-        if (r.u8(mark))
-            out->set_mark(mark);
-    }
-
-    if (type->isStackable() || type->isFluidContainer() || type->isSplash() || type->isChargeable()) {
-        if (tibia::game::cipFeature(tibia::client::GameCountU16)) {
-            uint16_t count = 0;
-            if (r.u16(count))
-                out->set_count_or_subtype(count);
-        } else {
-            uint8_t count = 0;
-            if (r.u8(count))
-                out->set_count_or_subtype(count);
-        }
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GameItemAnimationPhase) && type->getAnimationPhases() > 1) {
-        uint8_t phase = 0;
-        if (r.u8(phase))
-            out->set_animation_phase(phase);
+    if (type->isStackable() || type->isFluidContainer() || type->isSplash()) {
+        uint8_t count = 0;
+        if (!r.u8(count))
+            return false;
+        out->set_count_or_subtype(count);
+        return true;
     }
 
     if (type->isContainer()) {
-        if (tibia::game::cipFeature(tibia::client::GameContainerTypes)) {
-            uint8_t containerType = 0;
-            if (!r.u8(containerType))
-                return true;
-            out->set_container_type(containerType);
-            switch (containerType) {
-            case 1: { // Loot Container
-                uint32_t lootFlags = 0;
-                if (r.u32(lootFlags))
-                    out->set_loot_flags(lootFlags);
-                break;
-            }
-            case 2: { // Content Counter
-                uint32_t ammo = 0;
-                if (r.u32(ammo)) {
-                    out->set_container_ammo_total(ammo);
-                    out->set_has_container_ammo(true);
-                }
-                break;
-            }
-            case 3: { // Manager Unknown
-                uint32_t lootFlags = 0, obtainFlags = 0;
-                if (r.u32(lootFlags))
-                    out->set_loot_flags(lootFlags);
-                if (r.u32(obtainFlags))
-                    out->set_obtain_flags(obtainFlags);
-                break;
-            }
-            case 4: // Loot Highlight
-                break;
-            case 8: { // Obtain
-                uint32_t obtainFlags = 0;
-                if (r.u32(obtainFlags))
-                    out->set_obtain_flags(obtainFlags);
-                break;
-            }
-            case 9: { // Manager
-                uint32_t lootFlags = 0;
-                if (r.u32(lootFlags))
-                    out->set_loot_flags(lootFlags);
-                if (tibia::game::clientRevision() >= 1332) {
-                    uint32_t obtainFlags = 0;
-                    if (r.u32(obtainFlags))
-                        out->set_obtain_flags(obtainFlags);
-                }
-                break;
-            }
-            case 11: { // Quiver Loot
-                uint32_t lootFlags = 0, ammo = 0;
-                if (r.u32(lootFlags))
-                    out->set_loot_flags(lootFlags);
-                if (r.u32(ammo)) {
-                    out->set_container_ammo_total(ammo);
-                    out->set_has_container_ammo(true);
-                }
-                if (tibia::game::clientRevision() >= 1332) {
-                    uint32_t obtainFlags = 0;
-                    if (r.u32(obtainFlags))
-                        out->set_obtain_flags(obtainFlags);
-                }
-                break;
-            }
-            default:
-                break;
-            }
-        } else {
-            if (tibia::game::cipFeature(tibia::client::GameThingQuickLoot)) {
-                uint8_t hasLoot = 0;
-                if (r.u8(hasLoot) && hasLoot) {
-                    uint32_t lootFlags = 0;
-                    if (r.u32(lootFlags))
-                        out->set_loot_flags(lootFlags);
-                }
-            }
-            if (tibia::game::cipFeature(tibia::client::GameThingQuiver)) {
-                uint8_t hasAmmo = 0;
-                if (r.u8(hasAmmo) && hasAmmo) {
-                    uint32_t ammo = 0;
-                    if (r.u32(ammo)) {
-                        out->set_container_ammo_total(ammo);
-                        out->set_has_container_ammo(true);
-                    }
-                }
-            }
-        }
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GameThingPodium) && type->isPodium()) {
-        out->set_has_podium(true);
-        uint16_t looktype = 0;
-        if (!r.u16(looktype))
+        uint8_t flags = 0;
+        if (!r.u8(flags))
+            return false;
+        if (flags == 0)
             return true;
-        out->set_look_type(looktype);
-        if (looktype != 0) {
-            uint8_t head = 0, body = 0, legs = 0, feet = 0, addons = 0;
-            if (r.u8(head))
-                out->set_look_head(head);
-            if (r.u8(body))
-                out->set_look_body(body);
-            if (r.u8(legs))
-                out->set_look_legs(legs);
-            if (r.u8(feet))
-                out->set_look_feet(feet);
-            if (r.u8(addons))
-                out->set_look_addons(addons);
-        } else if (tibia::game::cipFeature(tibia::client::GameThingPodiumItemType)) {
-            uint16_t lookTypeEx = 0;
-            if (r.u16(lookTypeEx))
-                out->set_look_type_ex(lookTypeEx);
+        out->set_container_type(flags);
+        uint32_t value = 0;
+        if (flags & ContainerLootFlags) {
+            if (!r.u32(value))
+                return false;
+            out->set_loot_flags(value);
         }
-
-        uint16_t lookmount = 0;
-        if (r.u16(lookmount))
-            out->set_look_mount(lookmount);
-        if (lookmount != 0) {
-            uint8_t head = 0, body = 0, legs = 0, feet = 0;
-            if (r.u8(head))
-                out->set_look_mount_head(head);
-            if (r.u8(body))
-                out->set_look_mount_body(body);
-            if (r.u8(legs))
-                out->set_look_mount_legs(legs);
-            if (r.u8(feet))
-                out->set_look_mount_feet(feet);
+        if (flags & ContainerAmmoTotal) {
+            if (!r.u32(value))
+                return false;
+            out->set_container_ammo_total(value);
+            out->set_has_container_ammo(true);
         }
+        if (flags & ContainerObtainFlags) {
+            if (!r.u32(value))
+                return false;
+            out->set_obtain_flags(value);
+        }
+        return true;
+    }
 
+    if (type->isPodium()) {
+        out->set_has_podium(true);
         uint8_t direction = 0, visible = 0;
-        if (r.u8(direction))
-            out->set_podium_direction(direction);
-        if (r.u8(visible))
-            out->set_podium_visible(visible != 0);
+        if (!readOutfitLook(r, out) || !readMountLook(r, out) || !r.u8(direction) || !r.u8(visible))
+            return false;
+        out->set_podium_direction(direction);
+        out->set_podium_visible(visible != 0);
+        return true;
     }
 
-    if (tibia::game::cipFeature(tibia::client::GameThingUpgradeClassification) && type->getClassification() > 0) {
+    if (type->getClassification() > 0) {
         uint8_t tier = 0;
-        if (r.u8(tier))
-            out->set_tier(tier);
+        if (!r.u8(tier))
+            return false;
+        out->set_tier(tier);
+        return true;
     }
 
-    if (tibia::game::cipFeature(tibia::client::GameThingClock)
-        && (type->hasClockExpire() || type->hasExpire() || type->hasExpireStop())) {
-        uint32_t duration = 0;
-        uint8_t brandNew = 0;
-        if (r.u32(duration))
-            out->set_duration_seconds(duration);
-        if (r.u8(brandNew))
-            out->set_brand_new(brandNew != 0);
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GameThingCounter) && type->hasWearOut()) {
+    if (type->hasWearOut()) {
         uint32_t charges = 0;
         uint8_t brandNew = 0;
-        if (r.u32(charges))
-            out->set_charges(charges);
-        if (r.u8(brandNew))
-            out->set_brand_new(brandNew != 0);
+        if (!r.u32(charges) || !r.u8(brandNew))
+            return false;
+        out->set_charges(charges);
+        out->set_brand_new(brandNew != 0);
+        return true;
     }
 
-    if (tibia::game::cipFeature(tibia::client::GameWrapKit) && type->isDecoKit()) {
+    if (type->hasExpireStop() || type->hasExpire() || type->hasClockExpire()) {
+        uint32_t duration = 0;
+        uint8_t brandNew = 0;
+        if (!r.u32(duration) || !r.u8(brandNew))
+            return false;
+        out->set_duration_seconds(duration);
+        out->set_brand_new(brandNew != 0);
+        return true;
+    }
+
+    if (type->isDecoKit()) {
         uint16_t deco = 0;
-        if (r.u16(deco))
-            out->set_deco_item_id(deco);
+        if (!r.u16(deco))
+            return false;
+        out->set_deco_item_id(deco);
     }
-
-
     return true;
 }
 
@@ -228,116 +171,54 @@ void writeInventoryItem(ClassicWriter& w, const ProtocolInventoryItem& item)
     const uint16_t id = static_cast<uint16_t>(item.item_id());
     w.u16(id);
 
-    ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
+    const ThingType* type = tibia::game::rawThingType(id, ThingCategoryItem);
     if (!type || type->getId() == 0)
         return;
 
-    if (tibia::game::clientRevision() < 1281 && tibia::game::cipFeature(tibia::client::GameThingMarks))
-        w.u8(uint8_t(item.has_mark() ? item.mark() : 0));
-
-    if (type->isStackable() || type->isFluidContainer() || type->isSplash() || type->isChargeable()) {
-        const uint16_t count = static_cast<uint16_t>(item.has_count_or_subtype() ? item.count_or_subtype() : 0);
-        if (tibia::game::cipFeature(tibia::client::GameCountU16))
-            w.u16(count);
-        else
-            w.u8(uint8_t(count));
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GameItemAnimationPhase) && type->getAnimationPhases() > 1)
-        w.u8(uint8_t(item.has_animation_phase() ? item.animation_phase() : 0));
-
-    if (type->isContainer()) {
-        if (tibia::game::cipFeature(tibia::client::GameContainerTypes)) {
-            const uint8_t containerType = uint8_t(item.has_container_type() ? item.container_type() : 0);
-            w.u8(containerType);
-            switch (containerType) {
-            case 1:
-                w.u32(item.has_loot_flags() ? item.loot_flags() : 0);
-                break;
-            case 2:
-                w.u32(item.has_container_ammo_total() ? item.container_ammo_total() : 0);
-                break;
-            case 3:
-                w.u32(item.has_loot_flags() ? item.loot_flags() : 0);
-                w.u32(item.has_obtain_flags() ? item.obtain_flags() : 0);
-                break;
-            case 4:
-                break;
-            case 8:
-                w.u32(item.has_obtain_flags() ? item.obtain_flags() : 0);
-                break;
-            case 9:
-                w.u32(item.has_loot_flags() ? item.loot_flags() : 0);
-                if (tibia::game::clientRevision() >= 1332)
-                    w.u32(item.has_obtain_flags() ? item.obtain_flags() : 0);
-                break;
-            case 11:
-                w.u32(item.has_loot_flags() ? item.loot_flags() : 0);
-                w.u32(item.has_container_ammo_total() ? item.container_ammo_total() : 0);
-                if (tibia::game::clientRevision() >= 1332)
-                    w.u32(item.has_obtain_flags() ? item.obtain_flags() : 0);
-                break;
-            default:
-                break;
-            }
-        } else {
-            if (tibia::game::cipFeature(tibia::client::GameThingQuickLoot)) {
-                const bool hasLoot = item.has_loot_flags();
-                w.u8(hasLoot ? 1 : 0);
-                if (hasLoot)
-                    w.u32(item.loot_flags());
-            }
-            if (tibia::game::cipFeature(tibia::client::GameThingQuiver)) {
-                const bool hasAmmo = item.has_has_container_ammo() && item.has_container_ammo();
-                w.u8(hasAmmo ? 1 : 0);
-                if (hasAmmo)
-                    w.u32(item.has_container_ammo_total() ? item.container_ammo_total() : 0);
-            }
-        }
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GameThingPodium) && type->isPodium()) {
-        const uint16_t looktype = static_cast<uint16_t>(item.has_look_type() ? item.look_type() : 0);
+    if (type->isStackable() || type->isFluidContainer() || type->isSplash()) {
+        w.u8(uint8_t(item.count_or_subtype()));
+    } else if (type->isContainer()) {
+        const uint8_t flags = uint8_t(item.container_type());
+        w.u8(flags);
+        if (flags & ContainerLootFlags)
+            w.u32(item.loot_flags());
+        if (flags & ContainerAmmoTotal)
+            w.u32(item.container_ammo_total());
+        if (flags & ContainerObtainFlags)
+            w.u32(item.obtain_flags());
+    } else if (type->isPodium()) {
+        const uint16_t looktype = static_cast<uint16_t>(item.look_type());
         w.u16(looktype);
         if (looktype != 0) {
-            w.u8(uint8_t(item.has_look_head() ? item.look_head() : 0));
-            w.u8(uint8_t(item.has_look_body() ? item.look_body() : 0));
-            w.u8(uint8_t(item.has_look_legs() ? item.look_legs() : 0));
-            w.u8(uint8_t(item.has_look_feet() ? item.look_feet() : 0));
-            w.u8(uint8_t(item.has_look_addons() ? item.look_addons() : 0));
-        } else if (tibia::game::cipFeature(tibia::client::GameThingPodiumItemType)) {
-            w.u16(uint16_t(item.has_look_type_ex() ? item.look_type_ex() : 0));
+            w.u8(uint8_t(item.look_head()));
+            w.u8(uint8_t(item.look_body()));
+            w.u8(uint8_t(item.look_legs()));
+            w.u8(uint8_t(item.look_feet()));
+            w.u8(uint8_t(item.look_addons()));
+        } else {
+            w.u16(uint16_t(item.look_type_ex()));
         }
-
-        const uint16_t lookmount = static_cast<uint16_t>(item.has_look_mount() ? item.look_mount() : 0);
+        const uint16_t lookmount = static_cast<uint16_t>(item.look_mount());
         w.u16(lookmount);
         if (lookmount != 0) {
-            w.u8(uint8_t(item.has_look_mount_head() ? item.look_mount_head() : 0));
-            w.u8(uint8_t(item.has_look_mount_body() ? item.look_mount_body() : 0));
-            w.u8(uint8_t(item.has_look_mount_legs() ? item.look_mount_legs() : 0));
-            w.u8(uint8_t(item.has_look_mount_feet() ? item.look_mount_feet() : 0));
+            w.u8(uint8_t(item.look_mount_head()));
+            w.u8(uint8_t(item.look_mount_body()));
+            w.u8(uint8_t(item.look_mount_legs()));
+            w.u8(uint8_t(item.look_mount_feet()));
         }
-        w.u8(uint8_t(item.has_podium_direction() ? item.podium_direction() : 0));
-        w.u8(item.has_podium_visible() && item.podium_visible() ? 1 : 0);
+        w.u8(uint8_t(item.podium_direction()));
+        w.u8(item.podium_visible() ? 1 : 0);
+    } else if (type->getClassification() > 0) {
+        w.u8(uint8_t(item.tier()));
+    } else if (type->hasWearOut()) {
+        w.u32(item.charges());
+        w.u8(item.brand_new() ? 1 : 0);
+    } else if (type->hasExpireStop() || type->hasExpire() || type->hasClockExpire()) {
+        w.u32(item.duration_seconds());
+        w.u8(item.brand_new() ? 1 : 0);
+    } else if (type->isDecoKit()) {
+        w.u16(uint16_t(item.deco_item_id()));
     }
-
-    if (tibia::game::cipFeature(tibia::client::GameThingUpgradeClassification) && type->getClassification() > 0)
-        w.u8(uint8_t(item.has_tier() ? item.tier() : 0));
-
-    if (tibia::game::cipFeature(tibia::client::GameThingClock)
-        && (type->hasClockExpire() || type->hasExpire() || type->hasExpireStop())) {
-        w.u32(item.has_duration_seconds() ? item.duration_seconds() : 0);
-        w.u8(item.has_brand_new() && item.brand_new() ? 1 : 0);
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GameThingCounter) && type->hasWearOut()) {
-        w.u32(item.has_charges() ? item.charges() : 0);
-        w.u8(item.has_brand_new() && item.brand_new() ? 1 : 0);
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GameWrapKit) && type->isDecoKit())
-        w.u16(uint16_t(item.has_deco_item_id() ? item.deco_item_id() : 0));
-
 }
 
 } // namespace tibia::protocol

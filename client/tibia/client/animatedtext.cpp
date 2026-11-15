@@ -30,7 +30,6 @@
 
 AnimatedText::AnimatedText()
 {
-    m_cachedText.setAlign(Fw::AlignLeft);
 }
 
 void AnimatedText::drawText(const Point& dest, const Rect& visibleRect)
@@ -58,16 +57,13 @@ bool AnimatedText::merge(const AnimatedTextPtr& other)
     if (other->getColor() != m_color)
         return false;
 
-    if (other->getCachedText().getFont() != m_cachedText.getFont())
-        return false;
-
     if (m_animationTimer.ticksElapsed() > tibia::config::animatedTextDuration() / 2.5)
         return false;
 
     try {
-        const int number = stdext::safe_cast<int>(m_cachedText.getText());
-        const int otherNumber = stdext::safe_cast<int>(other->getCachedText().getText());
-        m_cachedText.setText(std::format("{}", number + otherNumber));
+        const int number = std::stoi(m_text);
+        const int otherNumber = std::stoi(other->getText());
+        m_text = std::format("{}", number + otherNumber);
         return true;
     } catch (...) {
         return false;

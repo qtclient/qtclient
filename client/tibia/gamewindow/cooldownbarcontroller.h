@@ -6,7 +6,6 @@
 
 #include <QPointer>
 #include <QTimer>
-#include <QVariantList>
 
 class QQuickItem;
 
@@ -14,35 +13,40 @@ namespace tibia {
 namespace gamewindow {
 
 /// One cooldown icon for CooldownBar.qml (CIP: TCooldownProgressDataForQML).
+/// CooldownBar.qml animates the bar from remaining/total itself.
 class TCooldownProgressDataForQML final : public cip::tibia::gamewindow::TCooldownProgressDataForQML
 {
     Q_OBJECT
 public:
-    TCooldownProgressDataForQML(QString sourceUrl, int remainingMs, int totalMs, QString tooltip, QObject* parent = nullptr);
+    TCooldownProgressDataForQML(QString sourceUrl, int remainingMs, int totalMs, QString tooltip);
 };
 
-/// CooldownBar under the map (CIP: TCooldownBarController, ctor /
-/// refresh). Option 0x77 cooldownBarEnabled (options-page
-/// showCooldownBar) toggles the QML item; spell/group rows come from
-/// TCooldownStorage.
+/// CooldownBar under the map (CIP: TCooldownBarController). The spell group
+/// row always shows the ten groups; the spell row the spells on cooldown.
+/// Both rows are rebuilt on the next frame after the cooldowns changed.
 class TCooldownBarController final : public cip::tibia::gamewindow::TCooldownBarController
 {
     Q_OBJECT
 public:
     explicit TCooldownBarController(QQuickItem* gameWindowItem, QObject* parent = nullptr);
-    ~TCooldownBarController() override;
+
+    /// Rebuilds both rows when the cooldowns changed since the last call.
+    void update(qint64 now);
+    /// The cooldowns changed: rebuild on the next update.
+    void markDirty();
 
 private:
+    /// Shows every bar group idle.
+    void showIdleSpellGroups();
+    /// "<name> (<seconds> sec. cooldown)" for a spell's icon.
+    static QString spellTooltip(int spellId);
+    /// Option 0x77 cooldownBarEnabled; CIP's game window controller does this.
     void applyVisibility();
-    void rebuildIdleGroups();
-    void refresh();
-    static QString groupTooltip(int cipGroup);
-    static QString groupIconUrl(int cipGroup);
 
     QPointer<QQuickItem> m_bar;
-    QTimer m_tick;
-    QVariantList m_groupModels;
-    QVariantList m_spellModels;
+    bool m_dirty = false;
+    /// The host's stand-in for CIP's per-frame update call.
+    QTimer m_nextFrame;
 };
 
 }

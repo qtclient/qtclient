@@ -49,7 +49,7 @@ public:
     using cip::tibia::trade::TCharacterTradeProtocolMessageHandler::TCharacterTradeProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 /// CipSoft CharacterTradeDialog data from onCharacterTrade* publishes.
@@ -117,7 +117,7 @@ public:
     using cip::tibia::trade::TNPCTradeProtocolMessageHandler::TNPCTradeProtocolMessageHandler;
 
     /// Tip Q→H wire: NPCOffer, PlayerGoods and CloseNPCTrade from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TPlayerTradeGameActionHandler final : public cip::tibia::trade::TPlayerTradeGameActionHandler
@@ -134,7 +134,7 @@ public:
     using cip::tibia::trade::TPlayerTradeProtocolMessageHandler::TPlayerTradeProtocolMessageHandler;
 
     /// Tip Q→H wire: OwnOffer, CounterOffer and CloseTrade from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 }

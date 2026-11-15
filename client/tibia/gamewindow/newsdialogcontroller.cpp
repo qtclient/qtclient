@@ -266,7 +266,6 @@ TNewsButtonController::TNewsButtonController(QObject* parent)
     m_highlightTimer.setInterval(600000);
     connect(&m_highlightTimer, &QTimer::timeout, this, &TNewsButtonController::changed);
 
-    // Keep-alive; ProtocolGame::parseGameNews prefers instance()->onShowGameNews.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onGameNews", [this](GameObject*, const std::vector<std::any>& args) {
         const int newsType = static_cast<int>(client::gamecore::argInt(args, 0));
         const bool notificationOnly = args.size() > 1 && client::gamecore::argBool(args, 1);

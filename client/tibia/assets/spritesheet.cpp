@@ -1,14 +1,13 @@
 #include "spritesheet.h"
 
 #include <framework/config.h>
-#include <framework/core/filestream.h>
-#include <framework/core/resourcemanager.h>
-#include <framework/graphics/image.h>
+#include "shared/tibiafilesystemhelper.h"
 
 #include "lzma.h"
 
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 #include <cstring>
 
 namespace {
@@ -83,18 +82,26 @@ bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
             return false;
         }
 
-        const auto fin = tibia::files::data().openFile(path);
-        fin->cache(true);
+        const std::string file = tibia::files::data().readFileContents(path);
+        const auto* bytes = reinterpret_cast<const uint8_t*>(file.data());
+        const size_t size = file.size();
+        size_t at = 0;
+        const auto next = [&]() -> uint8_t {
+            if (at >= size)
+                throw std::runtime_error("truncated sprite sheet");
+            return bytes[at++];
+        };
 
         thread_local static std::array<uint8_t, LZMA_UNCOMPRESSED_SIZE> decompressBuffer;
 
-        while (fin->getU8() == 0x00)
+        // CIP header: zero padding, u32 constant, a 7-bit varint size, then the LZMA properties.
+        while (next() == 0x00)
             ;
-        fin->skip(4);
-        while ((fin->getU8() & 0x80) == 0x80)
+        at += 4;
+        while ((next() & 0x80) == 0x80)
             ;
 
-        const uint8_t lclppb = fin->getU8();
+        const uint8_t lclppb = next();
         lzma_options_lzma options{};
         options.lc = lclppb % 9;
         const int remainder = lclppb / 9;
@@ -103,11 +110,13 @@ bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
 
         uint32_t dictionarySize = 0;
         for (uint8_t i = 0; i < 4; ++i)
-            dictionarySize += fin->getU8() << (i * 8);
+            dictionarySize += next() << (i * 8);
 
         constexpr uint32_t maxDictionarySize = std::max<uint32_t>(LZMA_UNCOMPRESSED_SIZE, 1024 * 1024);
         options.dict_size = std::min(dictionarySize, maxDictionarySize);
-        fin->skip(8);
+        at += 8;
+        if (at > size)
+            throw std::runtime_error("truncated sprite sheet");
 
         lzma_stream stream = LZMA_STREAM_INIT;
         const lzma_filter filters[2] = {
@@ -119,19 +128,19 @@ bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
             return false;
         }
 
-        stream.next_in = &fin->m_data[fin->tell()];
-        stream.avail_in = fin->size() - fin->tell();
+        stream.next_in = bytes + at;
+        stream.avail_in = size - at;
         stream.next_out = decompressBuffer.data();
         stream.avail_out = decompressBuffer.size();
         const auto result = lzma_code(&stream, LZMA_RUN);
         lzma_end(&stream);
         if (result != LZMA_STREAM_END)
-            throw stdext::exception("LZMA decompression failed");
+            throw std::runtime_error("LZMA decompression failed");
 
         const uint8_t* bmpOffsetPtr = decompressBuffer.data() + 10;
         const uint32_t bmpDataOffset = bmpOffsetPtr[0] | (bmpOffsetPtr[1] << 8) | (bmpOffsetPtr[2] << 16) | (bmpOffsetPtr[3] << 24);
         if (bmpDataOffset + BYTES_IN_SPRITE_SHEET > LZMA_UNCOMPRESSED_SIZE)
-            throw stdext::exception("sprite sheet image offset out of bounds");
+            throw std::runtime_error("sprite sheet image offset out of bounds");
 
         uint8_t* bufferStart = decompressBuffer.data() + bmpDataOffset;
         for (int i = 0; i < BYTES_IN_SPRITE_SHEET; i += 4) {
@@ -161,7 +170,7 @@ bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
         return true;
     } catch (const std::exception& e) {
         sheet->m_loadingState.store(SpriteLoadState::NONE, std::memory_order_release);
-        g_logger.error("Failed to load sprite sheet '{}': {}", sheet->file, e.what());
+        qCritical("%s", std::format("Failed to load sprite sheet '{}': {}", sheet->file, e.what()).c_str());
         return false;
     }
 }
@@ -192,22 +201,22 @@ SpriteSheetPtr SpriteStore::sheetBySpriteId(const int id, bool& loading, const b
     return sheet;
 }
 
-ImagePtr SpriteStore::spriteImage(const int id, bool& loading)
+QImage SpriteStore::spriteImage(const int id, bool& loading)
 {
     try {
         const SpriteSheetPtr sheet = sheetBySpriteId(id, loading, true);
         if (!sheet)
-            return nullptr;
+            return {};
 
         const Size size = sheet->getSpriteSize();
-        const auto image = std::make_shared<Image>(size);
-        uint8_t* pixelData = image->getPixelData();
+        QImage image(size.width(), size.height(), QImage::Format_RGBA8888);
+        uint8_t* pixelData = image.bits();
 
         const int spriteOffset = id - sheet->firstId;
         const int columns = sheet->getColumns();
         const int spritesPerSheet = sheet->getSpritesPerSheet();
         if (spriteOffset < 0 || spriteOffset >= spritesPerSheet)
-            return nullptr;
+            return {};
 
         const int spriteRow = spriteOffset / columns;
         const int spriteColumn = spriteOffset % columns;
@@ -217,21 +226,10 @@ ImagePtr SpriteStore::spriteImage(const int id, bool& loading)
                         &sheet->data[(height * SPRITE_SHEET_WIDTH_BYTES) + (spriteColumn * spriteWidthBytes)],
                         spriteWidthBytes);
         }
-
-        if (!image->hasTransparentPixel()) {
-            uint8_t transparent = 0;
-            const auto& pixels = image->getPixels();
-            for (size_t i = 3; i < pixels.size(); i += 4) {
-                if (pixels[i] == 0 && ++transparent > 4) {
-                    image->setTransparentPixel(true);
-                    break;
-                }
-            }
-        }
         return image;
     } catch (const std::exception& e) {
-        g_logger.error("Failed to get sprite id {}: {}", id, e.what());
-        return nullptr;
+        qCritical("%s", std::format("Failed to get sprite id {}: {}", id, e.what()).c_str());
+        return {};
     }
 }
 

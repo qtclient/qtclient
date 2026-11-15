@@ -129,8 +129,6 @@ typedef struct QtClientSessionApiV1 {
     uint8_t (*world_light_intensity)(void);
     uint32_t (*map_item_revision)(void);
 
-    int (*cip_feature)(int feature);
-    void (*enable_feature)(int feature);
 
     /** --- Phase 2 session peel (additive) --- */
 
@@ -216,7 +214,6 @@ typedef struct QtClientSessionApiV1 {
     void (*send_status_tracker_bestiary)(uint16_t race_id, int status);
     void (*request_bestiary_search)(uint16_t race_id);
 
-    void (*send_friend_system_payload)(const uint8_t* bytes, size_t len);
     void (*open_private_channel)(const char* receiver_utf8);
 
     void (*request_team_finder_list)(void);

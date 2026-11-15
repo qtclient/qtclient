@@ -94,9 +94,11 @@ private:
     void ungrabOverlayPointer(QQuickItem* from) const;
 
     TWorldMapRenderProvider* m_provider = nullptr;
+    /// The session's view (the provider's): the picker reads the player's
+    /// floor and visible area from it.
+    worldmap::TWorldMapViewport* m_viewport = nullptr;
     std::unique_ptr<worldmap::TWorldMapGameActionProvider> m_actions;
     worldmap::TWorldMapGameActionHandler* m_actionHandler = nullptr;
-    worldmap::TWorldMapViewport* m_viewport = nullptr;
     input::TGameActionMapper m_mapper;
     QPointer<QQuickItem> m_mapWindow;
     /// MapWindowPane mouseAreaDrag — FOV grabber (under IdleOT HUD z-order).

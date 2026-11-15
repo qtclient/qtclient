@@ -3,9 +3,10 @@
 #include "soundplayback.h"
 
 #include "worldmap/worldmapfield.h"
-#include <framework/core/clock.h>
-#include <framework/core/logger.h>
-#include <framework/core/resourcemanager.h>
+#include "shared/clockservice.h"
+#include <QtGlobal>
+#include <format>
+#include "shared/tibiafilesystemhelper.h"
 
 #ifdef FRAMEWORK_PROTOBUF
 #include <sounds.pb.h>
@@ -454,7 +455,7 @@ bool TSoundStorage::loadCatalog(const std::string& directory)
 {
 #ifndef FRAMEWORK_PROTOBUF
     Q_UNUSED(directory);
-    g_logger.error("Protobuf not supported in this build. Enable FRAMEWORK_PROTOBUF");
+    qCritical("%s", std::format("Protobuf not supported in this build. Enable FRAMEWORK_PROTOBUF").c_str());
     return false;
 #else
     // The bank is optional. readFileContents throws when the catalog is absent, and
@@ -537,10 +538,10 @@ bool TSoundStorage::loadCatalog(const std::string& directory)
         }
         return loaded;
     } catch (const std::exception& e) {
-        g_logger.debug("Failed to load '{}' (Sounds): {}", directory, e.what());
+        qDebug("%s", std::format("Failed to load '{}' (Sounds): {}", directory, e.what()).c_str());
         return false;
     } catch (...) {
-        g_logger.debug("Failed to load '{}' (Sounds)", directory);
+        qDebug("%s", std::format("Failed to load '{}' (Sounds)", directory).c_str());
         return false;
     }
 #endif
@@ -1045,7 +1046,7 @@ bool TSoundStorage::protocolEnabled(const uint8_t soundSource, const int soundTy
 
 bool TSoundStorage::recentlyPlayed(const uint16_t soundEffectId)
 {
-    const uint64_t now = static_cast<uint64_t>(g_clock.millis());
+    const uint64_t now = static_cast<uint64_t>(tibia::shared::TClockService::frameMillis());
     if (now - m_lastCooldownCleanup > kProtocolCooldownCleanupMs) {
         for (auto it = m_lastPlayedAt.begin(); it != m_lastPlayedAt.end();) {
             if (now - it->second > kProtocolCooldownCleanupMs)
@@ -1117,7 +1118,7 @@ void TSoundStorage::playQueuedEffect(const QueuedEffect& effect)
     if (!startVoice(&m_engine->engine, slot, pcm, false, gain, pan))
         return;
     slot->audioFileId = *audioFileId;
-    m_lastPlayedAt[effect.id] = static_cast<uint64_t>(g_clock.millis());
+    m_lastPlayedAt[effect.id] = static_cast<uint64_t>(tibia::shared::TClockService::frameMillis());
 }
 
 void TSoundStorage::poll()

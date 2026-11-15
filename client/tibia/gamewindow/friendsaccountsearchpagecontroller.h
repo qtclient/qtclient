@@ -1,5 +1,7 @@
 #pragma once
 
+#include "friends/friendlistmodels.h"
+
 #include <cip_gen.h>
 
 #include <QObject>
@@ -55,10 +57,15 @@ public Q_SLOTS:
 private:
     void setLoading(bool loading);
     void setEmpty(bool empty, bool noResults);
+    void onSearchResults();
+    void onNoResultsFound();
 
     cip::tibia::gamewindow::TAccountCharacterListData* m_characters = nullptr;
     cip::tibia::gamewindow::TAccountBadgeListData* m_badges = nullptr;
     TCharacterInfoDialogController* m_characterInfo = nullptr;
+    TFriendsRowsModel* m_characterRows = nullptr;
+    TFriendsRowsModel* m_badgeRows = nullptr;
+    uint32_t m_accountId = 0;
 };
 
 }

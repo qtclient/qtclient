@@ -10,7 +10,7 @@
 #include "qmlcomponents/texthelper.h"
 #include "worldmap/ambientlightstorage.h"
 
-#include <framework/core/resourcemanager.h>
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QColor>
 #include <QJsonArray>

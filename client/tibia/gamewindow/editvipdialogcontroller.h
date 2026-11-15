@@ -1,7 +1,7 @@
 #pragma once
 
 #include "gamewindow/dialogmanager.h"
-#include "gamewindow/vipstorage.h"
+#include "creatures/vipstorage.h"
 
 #include <cip_gen.h>
 
@@ -24,12 +24,12 @@ class TEditVipDialogController final : public TDialogController<cip::tibia::game
 {
     Q_OBJECT
 public:
-    explicit TEditVipDialogController(TVipStorage* storage, QObject* parent = nullptr);
+    explicit TEditVipDialogController(creatures::TVipStorage* storage, QObject* parent = nullptr);
 
     /// CIP : creates the dialog, sets vipName, vipIconID,
     /// vipDescription, vipNotify and vipGroupInfos (every group, the VIP's
     /// checked) and shows it.
-    void open(const TVipStorage::Vip& vip);
+    void open(const creatures::TVipStorage::Vip& vip);
 
 public Q_SLOTS:
     void onCancelClicked() override;
@@ -41,7 +41,7 @@ public Q_SLOTS:
 private:
     void clearGroupInfos();
 
-    TVipStorage* m_storage;
+    creatures::TVipStorage* m_storage;
     uint32_t m_vipId = 0;
     QList<TVipGroupInfo*> m_groupInfos;
 };

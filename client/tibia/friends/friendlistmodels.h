@@ -5,6 +5,8 @@
 #include <QColor>
 #include <QString>
 #include <QVector>
+#include <QAbstractListModel>
+#include <QVariantMap>
 
 namespace tibia {
 
@@ -28,6 +30,7 @@ public:
         OutfitDetailColorRole,
         OutfitFirstAddOnRole,
         OutfitSecondAddOnRole,
+        LengthRole,
     };
 
     struct Row {
@@ -45,6 +48,8 @@ public:
         QColor outfitDetailColor = Qt::black;
         bool outfitFirstAddOn = false;
         bool outfitSecondAddOn = false;
+        /// Friendship length in days.
+        int length = 0;
     };
 
     explicit TFriendListModel(QObject* parent = nullptr);
@@ -125,6 +130,28 @@ public:
 
 private:
     QVector<Row> m_rows;
+};
+
+/// Rows of named values for the badges and visibility-settings tables (roles = the row keys).
+class TFriendsRowsModel final : public QAbstractListModel
+{
+    Q_OBJECT
+    Q_PROPERTY(int count READ count NOTIFY countChanged FINAL)
+public:
+    explicit TFriendsRowsModel(QList<QByteArray> roles, QObject* parent = nullptr);
+
+    int count() const { return int(m_rows.size()); }
+    int rowCount(const QModelIndex& parent = {}) const override;
+    QVariant data(const QModelIndex& index, int role) const override;
+    QHash<int, QByteArray> roleNames() const override;
+    void setRows(QVector<QVariantMap> rows);
+
+Q_SIGNALS:
+    void countChanged();
+
+private:
+    QList<QByteArray> m_roles;
+    QVector<QVariantMap> m_rows;
 };
 
 }

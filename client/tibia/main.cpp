@@ -1063,7 +1063,6 @@ int main(int argc, char** argv)
     input::TGenericGameActionHandler genericActions;
     input::TGatherAllGameActionHandler gatherAllActions;
     [[maybe_unused]] input::TGatherAllProtocolMessageHandler gatherAllProtocol;
-    input::TWindowFocusEventFilter windowFocus(window);
     // Do not install TDiscardMouseWheelEventFilter on the window: that eats every
     // Wheel event (containers, chat, options lists). Dialogs that need it install
     // the filter on themselves.

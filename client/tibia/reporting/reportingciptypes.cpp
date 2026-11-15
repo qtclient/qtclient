@@ -33,18 +33,14 @@ void TBugReportProtocolMessageHandler::setLiveInstance(TBugReportProtocolMessage
 void TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage(
     const GameserverMessageBugReportsAllowed& Message)
 {
-    // Same side effects as ProtocolGame::parseBugReport.
     // CIP BugReportsAllowed: 0 = allowed; any other value is a refusal reason.
     const auto state = static_cast<uint8_t>(Message.state());
     tibia::game::setBugReportState(state);
     tibia::game::setCanReportBugs(state == 0);
 }
 
-void TBugReportProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByteArray& /*classicFrame*/,
-                                                                bool applyClassic)
+void TBugReportProtocolMessageHandler::onServerMessageEnqueued(int opcode)
 {
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
 
     switch (opcode) {
     case 26: {
@@ -72,11 +68,10 @@ void ownProductSurface(QObject* parent)
     TBugReportProtocolMessageHandler::setLiveInstance(handler);
 }
 
-void TRuleViolationProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                                   const bool applyClassic)
+void TRuleViolationProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow || opcode != 129 || !shadow->HasExtension(GameserverMessageTextForReport::gameserver_message_text_for_report))
         return;
     const auto& m = shadow->GetExtension(GameserverMessageTextForReport::gameserver_message_text_for_report);

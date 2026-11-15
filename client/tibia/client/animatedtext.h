@@ -24,8 +24,8 @@
 
 #include "declarations.h"
 
-#include "framework/core/timer.h"
-#include <framework/graphics/cachedtext.h>
+#include "shared/clockservice.h"
+#include <framework/global.h>
 #include <tibia/game/gameobject.h>
 
 // @bindclass
@@ -43,14 +43,13 @@ public:
     void onAppear();
 
     void setColor(const int color) { m_color = Color::from8bit(color); }
-    void setText(const std::string_view text) { m_cachedText.setText(text); }
+    void setText(const std::string_view text) { m_text = std::string(text); }
     void setOffset(const Point& offset) { m_offset = offset; }
 
     Color getColor() { return m_color; }
-    const CachedText& getCachedText() const { return m_cachedText; }
     Point getOffset() { return m_offset; }
-    Timer getTimer() const { return m_animationTimer; }
-    std::string getText() { return m_cachedText.getText(); }
+    tibia::shared::TFrameStopWatch getTimer() const { return m_animationTimer; }
+    std::string getText() const { return m_text; }
 
     bool merge(const AnimatedTextPtr& other);
     Position getPosition() const { return m_position; }
@@ -60,8 +59,8 @@ public:
 
 private:
     Color m_color{ Color::white };
-    Timer m_animationTimer;
-    CachedText m_cachedText;
+    tibia::shared::TFrameStopWatch m_animationTimer;
+    std::string m_text;
     Point m_offset;
     Position m_position;
 };

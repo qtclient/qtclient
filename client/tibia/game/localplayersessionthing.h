@@ -22,12 +22,13 @@
 
 #pragma once
 
-#include "appearances/thing.h"
+#include <tibia/schedule/schedule.h>
+#include "assets/thingtype.h"
 #include "client/outfit.h"
 #include "container/containerciptypes.h"
 
-#include <framework/core/declarations.h>
-#include <framework/graphics/cachedtext.h>
+#include <framework/global.h>
+#include <framework/global.h>
 
 #include <memory>
 #include <string_view>
@@ -40,6 +41,7 @@ class TCreature;
 
 
 namespace tibia::game {
+class TGameSessionState;
 /// Same floor, at most one field away.
 bool isOneStep(const Position& from, const Position& to);
 void wireLocalPlayerOnAppear(LocalPlayerSessionThing& player);
@@ -47,23 +49,23 @@ void wireLocalPlayerOnDisappear(LocalPlayerSessionThing& player);
 }
 
  // @bindclass
-class LocalPlayerSessionThing final : public Thing
+/// The local player's session state beside its creature row (CIP keeps the
+/// player as a creatures::TCreature plus game::TPlayerData): login state,
+/// the field it stands on, walk bookkeeping and the appear/disappear flow.
+class LocalPlayerSessionThing final : public std::enable_shared_from_this<LocalPlayerSessionThing>
 {
 public:
     LocalPlayerSessionThing();
-    ~LocalPlayerSessionThing() override;
+    ~LocalPlayerSessionThing();
 
     void onCreate();
-    void onAppear() override;
-    void onDisappear() override;
+    void onAppear();
+    void onDisappear();
 
-    bool isCreature() const override { return true; }
-    bool isPlayer() const override { return true; }
-    bool isLocalPlayer() const override { return true; }
-    ThingType* getThingType() const override;
+    ThingType* getThingType() const;
 
-    void setId(uint32_t id) override;
-    uint32_t getId() override;
+    void setId(uint32_t id);
+    uint32_t getId() const;
     void setName(std::string_view name);
     std::string getName();
     void setMasterId(uint32_t id) { m_masterId = id; }
@@ -112,7 +114,6 @@ public:
     void setInventoryCountCache(std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts);
     void takeScreenshot(uint8_t type);
     const tibia::container::TInventorySlot& inventorySlot(tibia::client::InventorySlot inventory) const;
-    ItemPtr getInventoryItem(tibia::client::InventorySlot inventory);
     bool hasEquippedItemId(uint16_t itemId, uint8_t tier);
     uint32_t getInventoryCount(uint16_t itemId, uint8_t tier);
 
@@ -133,11 +134,15 @@ public:
     bool isPendingGame() const { return m_pending; }
     bool isParalyzed() const { return (m_states & tibia::client::IconParalyze) == tibia::client::IconParalyze; }
 
-    LocalPlayerSessionThingPtr sessionThingPtr() { return static_self_cast<LocalPlayerSessionThing>(); }
+    LocalPlayerSessionThingPtr sessionThingPtr() { return shared_from_this(); }
 
-    void onPositionChange(const Position& newPos, const Position& oldPos) override;
+    void onPositionChange(const Position& newPos, const Position& oldPos);
 
-    Position getPosition() override;
+    Position getPosition();
+    /// Where the server placed the player (`stackPos` on that field).
+    void setPosition(const Position& position, uint8_t stackPos = 0);
+    int getStackPos() const { return m_stackPos; }
+    tibia::worldmap::TWorldMapField* getTile();
     /// Floor change or teleport: the motion and the walk goal end.
     void handleTeleport();
     /// Mirror HUD/session stats onto the storage row (keep-alive); walk state stays on TCreature.
@@ -153,7 +158,7 @@ private:
     }
     void goPathSetServerWalk(const bool walking) { m_serverWalk = walking; }
 
-    friend class Game;
+    friend class tibia::game::TGameSessionState;
     template<typename... T>
     void publish(const std::string_view field, const T&... args)
     {
@@ -165,6 +170,8 @@ private:
     void terminateWalk();
 
     uint32_t m_id{ 0 };
+    Position m_position;
+    int m_stackPos{ -1 };
     uint32_t m_masterId{ 0 };
     uint8_t m_creatureType{ 0 };
     uint8_t m_shield{ tibia::client::ShieldNone };
@@ -175,11 +182,11 @@ private:
     tibia::client::Direction m_direction{ tibia::client::South };
     tibia::client::Direction m_walkTurnDirection{ tibia::client::InvalidDirection };
     Outfit m_outfit;
-    CachedText m_name;
+    std::string m_name;
     Point m_walkOffset;
     bool m_removed{ true };
     Position m_oldPosition;
-    EventPtr m_disappearEvent;
+    tibia::schedule::TScheduledTaskPtr m_disappearEvent;
 
     bool m_walking{ false };
     int16_t m_lastMapDuration{ -1 };
@@ -188,7 +195,7 @@ private:
     bool m_pending{ false };
     bool m_serverWalk{ false };
     bool m_softDead{ false };
-    ticks_t m_informationChannelStart{ 0 };
+    int64_t m_informationChannelStart{ 0 };
     uint32_t m_informationChannelDuration{ 0 };
 
     bool m_isSupplyStashAvailable{ false };
@@ -197,7 +204,7 @@ private:
 
     uint64_t m_states{ 0 };
 
-    friend class Game;
+    friend class tibia::game::TGameSessionState;
     friend class tibia::creatures::TCreature;
     friend void tibia::game::wireLocalPlayerOnAppear(LocalPlayerSessionThing& player);
     friend void tibia::game::wireLocalPlayerOnDisappear(LocalPlayerSessionThing& player);

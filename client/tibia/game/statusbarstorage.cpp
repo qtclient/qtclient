@@ -7,27 +7,69 @@
 #include <QSaveFile>
 #include <QStandardPaths>
 
+#include <stdexcept>
+
 namespace tibia::game {
 
 namespace {
 
-const std::array<QLatin1StringView, 5> PositionNames = {
-    QLatin1StringView("off"), QLatin1StringView("top"), QLatin1StringView("bottom"), QLatin1StringView("left"), QLatin1StringView("right"),
-};
-const std::array<QLatin1StringView, 4> StyleNames = {
-    QLatin1StringView("default"), QLatin1StringView("compact"), QLatin1StringView("large"), QLatin1StringView("parallel"),
-};
+/// The JSON keys of the show* flags, by Entry.
 const std::array<QLatin1StringView, TStatusbarStorage::EntryCount> EntryKeys = {
     QLatin1StringView("showExperience"),   QLatin1StringView("showMagicLevel"),       QLatin1StringView("showAxeFighting"),
     QLatin1StringView("showClubFighting"), QLatin1StringView("showDistanceFighting"), QLatin1StringView("showFistFighting"),
     QLatin1StringView("showShielding"),    QLatin1StringView("showSwordFighting"),    QLatin1StringView("showFishing"),
 };
 
-template<size_t N>
-int indexOf(const std::array<QLatin1StringView, N>& names, const QString& name)
+/// The flags in the order the configuration lists them.
+constexpr std::array<TStatusbarStorage::Entry, TStatusbarStorage::EntryCount> StoredEntries = {
+    TStatusbarStorage::Experience,   TStatusbarStorage::MagicLevel,    TStatusbarStorage::AxeFighting,
+    TStatusbarStorage::ClubFighting, TStatusbarStorage::FistFighting,  TStatusbarStorage::SwordFighting,
+    TStatusbarStorage::Shielding,    TStatusbarStorage::DistanceFighting, TStatusbarStorage::Fishing,
+};
+
+QString positionToString(const int position)
 {
-    const auto it = std::find(names.begin(), names.end(), name);
-    return it == names.end() ? 0 : static_cast<int>(it - names.begin());
+    switch (position) {
+        case TStatusbarStorage::Off: return QStringLiteral("off");
+        case TStatusbarStorage::Top: return QStringLiteral("top");
+        case TStatusbarStorage::Bottom: return QStringLiteral("bottom");
+        case TStatusbarStorage::Left: return QStringLiteral("left");
+        case TStatusbarStorage::Right: return QStringLiteral("right");
+        default: throw std::runtime_error("Unhandled enum value");
+    }
+}
+
+int positionFromString(const QString& name)
+{
+    if (name == QLatin1String("top"))
+        return TStatusbarStorage::Top;
+    if (name == QLatin1String("bottom"))
+        return TStatusbarStorage::Bottom;
+    if (name == QLatin1String("left"))
+        return TStatusbarStorage::Left;
+    return name == QLatin1String("right") ? TStatusbarStorage::Right : TStatusbarStorage::Off;
+}
+
+QString styleToString(const int style)
+{
+    switch (style) {
+        case TStatusbarStorage::Default: return QStringLiteral("default");
+        case TStatusbarStorage::Compact: return QStringLiteral("compact");
+        case TStatusbarStorage::Large: return QStringLiteral("large");
+        case TStatusbarStorage::Parallel: return QStringLiteral("parallel");
+        default: throw std::runtime_error("Unhandled enum value");
+    }
+}
+
+int styleFromString(const QString& name)
+{
+    if (name == QLatin1String("default"))
+        return TStatusbarStorage::Default;
+    if (name == QLatin1String("compact"))
+        return TStatusbarStorage::Compact;
+    if (name == QLatin1String("large"))
+        return TStatusbarStorage::Large;
+    return name == QLatin1String("parallel") ? TStatusbarStorage::Parallel : TStatusbarStorage::Default;
 }
 
 }
@@ -39,10 +81,43 @@ TStatusbarStorage::TStatusbarStorage(QObject* parent)
     m_shown[Experience] = true;
 }
 
+QString TStatusbarStorage::configurationName()
+{
+    return QStringLiteral("statusBarData");
+}
+
+QJsonObject TStatusbarStorage::toJson() const
+{
+    QJsonObject json;
+    json.insert(QLatin1String("position"), positionToString(m_position));
+    json.insert(QLatin1String("style"), styleToString(m_style));
+    for (const Entry entry : StoredEntries)
+        json.insert(EntryKeys[entry], m_shown[entry]);
+    return json;
+}
+
+void TStatusbarStorage::fromJson(const QJsonObject& json)
+{
+    if (const QJsonValue value = json.value(QLatin1String("position")); value.isString()) {
+        m_position = positionFromString(value.toString());
+        Q_EMIT configurationChangedFromUserInput();
+    }
+    if (const QJsonValue value = json.value(QLatin1String("style")); value.isString()) {
+        m_style = styleFromString(value.toString());
+        Q_EMIT configurationChangedFromUserInput();
+    }
+    for (const Entry entry : StoredEntries) {
+        if (const QJsonValue value = json.value(EntryKeys[entry]); value.isBool()) {
+            m_shown[entry] = value.toBool();
+            Q_EMIT configurationChangedFromUserInput();
+        }
+    }
+}
+
 QString TStatusbarStorage::filePath() const
 {
     return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-           + QStringLiteral("/characterdata/%1/statusBarData.json").arg(m_characterId);
+           + QStringLiteral("/characterdata/%1/%2.json").arg(m_characterId).arg(configurationName());
 }
 
 void TStatusbarStorage::loadForCharacter(const quint32 characterId)
@@ -51,16 +126,16 @@ void TStatusbarStorage::loadForCharacter(const quint32 characterId)
         return;
     save();
     m_characterId = characterId;
-    m_root = {};
+    // A new character starts from the defaults, as CIP builds the storage per session.
+    m_position = Off;
+    m_style = Default;
+    m_shown.fill(false);
+    m_shown[Experience] = true;
     if (characterId != 0) {
         QFile file(filePath());
         if (file.open(QIODevice::ReadOnly))
-            m_root = QJsonDocument::fromJson(file.readAll()).object();
+            fromJson(QJsonDocument::fromJson(file.readAll()).object());
     }
-    m_position = indexOf(PositionNames, m_root.value(QLatin1String("position")).toString());
-    m_style = indexOf(StyleNames, m_root.value(QLatin1String("style")).toString());
-    for (int i = 0; i < EntryCount; ++i)
-        m_shown[i] = m_root.value(EntryKeys[i]).toBool(i == Experience);
     m_dirty = false;
     Q_EMIT changed();
 }
@@ -69,15 +144,11 @@ void TStatusbarStorage::save()
 {
     if (!m_dirty || m_characterId == 0)
         return;
-    m_root.insert(QLatin1String("position"), QString(PositionNames[m_position]));
-    m_root.insert(QLatin1String("style"), QString(StyleNames[m_style]));
-    for (int i = 0; i < EntryCount; ++i)
-        m_root.insert(EntryKeys[i], m_shown[i]);
     const QString path = filePath();
     QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile file(path);
     if (file.open(QIODevice::WriteOnly)) {
-        file.write(QJsonDocument(m_root).toJson());
+        file.write(QJsonDocument(toJson()).toJson());
         if (file.commit())
             m_dirty = false;
     }

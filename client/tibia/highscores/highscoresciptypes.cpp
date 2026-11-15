@@ -24,11 +24,10 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
-void THighscoresProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                                const bool applyClassic)
+void THighscoresProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow || opcode != 177 || !shadow->HasExtension(GameserverMessageHighscores::gameserver_message_highscores))
         return;
     const auto& m = shadow->GetExtension(GameserverMessageHighscores::gameserver_message_highscores);

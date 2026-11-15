@@ -20,6 +20,8 @@ class GameserverMessageLoginAdvice;
 class GameserverMessagePlayerDataBasic;
 class GameserverMessagePlayerSkills;
 class GameserverMessagePlayerDataCurrent;
+class GameserverMessagePlayerState;
+class GameserverMessageSetTactics;
 class GameserverMessageLoginError;
 class GameserverMessageLoginSuccess;
 class GameserverMessageLoginWait;
@@ -80,7 +82,7 @@ public:
     using cip::tibia::game::TBlessingsProtocolMessageHandler::TBlessingsProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TBossDifficultySelectionProtocolMessageHandler final : public cip::tibia::game::TBossDifficultySelectionProtocolMessageHandler
@@ -90,7 +92,7 @@ public:
     using cip::tibia::game::TBossDifficultySelectionProtocolMessageHandler::TBossDifficultySelectionProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TEditTextProtocolMessageHandler final : public cip::tibia::game::TEditTextProtocolMessageHandler
@@ -100,7 +102,7 @@ public:
     using cip::tibia::game::TEditTextProtocolMessageHandler::TEditTextProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TExperienceCalculator final : public ::tibia::CipTyped {
@@ -153,7 +155,7 @@ public:
         const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& LoginSuccessMessage);
 
     /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    void onServerMessageEnqueued(int opcode);
 };
 
 class TGameSessionBase final : public cip::tibia::game::TGameSessionBase
@@ -231,12 +233,14 @@ public:
     static void setLiveInstance(TPlayerProtocolMessageHandler* handler);
 
     /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    void onServerMessageEnqueued(int opcode);
 
 private:
     void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
     void handlePlayerSkillsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerSkills& message);
     void handlePlayerDataCurrentMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataCurrent& message);
+    void handlePlayerStateMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerState& message);
+    void handleSetTacticsMessage(const ::tibia::protobuf::protocol::GameserverMessageSetTactics& message);
 };
 
 class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler
@@ -246,14 +250,41 @@ public:
     using cip::tibia::game::TPremiumProtocolMessageHandler::TPremiumProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
+
+private:
+    /// Hands the premium flag and its end to the premium time storage.
+    static void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
 };
 
+/// The account's premium state: the flag, the server time it ends at (0 for
+/// none) and the local time it was received at, in epoch seconds.
 class TPremiumTimeStorage final : public cip::tibia::game::TPremiumTimeStorage
 {
     Q_OBJECT
 public:
-    using cip::tibia::game::TPremiumTimeStorage::TPremiumTimeStorage;
+    explicit TPremiumTimeStorage(QObject* parent = nullptr);
+    ~TPremiumTimeStorage() override;
+
+    static TPremiumTimeStorage* liveInstance();
+
+    bool isPremium() const { return m_premium; }
+    /// Premium without an end date.
+    bool hasUnlimitedPremium() const { return m_premiumUntil == 0 && m_premium; }
+    /// Premium, or an end date still on record.
+    bool hasPremiumRecord() const { return m_premiumUntil != 0 || m_premium; }
+    /// The state as 0 (free), 1 (premium) or 2 (unlimited premium).
+    int premiumState() const;
+    bool isFreeAccount() const { return premiumState() == 0; }
+    /// Whole days left between receiving the end date and the end date.
+    uint16_t remainingDays() const;
+    void setPremium(bool premium, uint32_t premiumUntil);
+    void reset();
+
+private:
+    uint32_t m_premiumUntil = 0;
+    bool m_premium = false;
+    uint32_t m_receivedAt = 0;
 };
 
 class TServerModalDialogProtocolMessageHandler final : public cip::tibia::game::TServerModalDialogProtocolMessageHandler
@@ -263,7 +294,7 @@ public:
     using cip::tibia::game::TServerModalDialogProtocolMessageHandler::TServerModalDialogProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TSessiondumpGameSessionMetaInfo final : public ::tibia::CipTyped {

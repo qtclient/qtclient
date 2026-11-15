@@ -119,6 +119,8 @@ public:
     void applyOptions();
 
 public Q_SLOTS:
+    /// Shows the bars the options ask for again.
+    void restoreLastAktionBarConfiguration() override;
     void onActionBarsOptionsChanged() override;
     /// Toggles actionBar*Locked.
     void onLockButtonClicked() override;

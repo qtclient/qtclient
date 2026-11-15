@@ -1,7 +1,6 @@
 #include "gamesession.h"
 
-#include "gamehub.h"
-#include "gamehub_impl.h"
+#include "game/gamesessionstate.h"
 #include "game/playerdata.h"
 #include "game/playerskillstats.h"
 #include <tibia/creatures/creaturestorage.h>
@@ -11,12 +10,40 @@
 #include "worldmap/worldmapfield.h"
 #include <tibia/worldmap/worldmapstorage.h>
 #include <tibia/config/runtimegameconfig.h>
-#include <framework/core/clock.h>
+#include "shared/clockservice.h"
 #include <tibia/game/sessionhooks.h>
 #include <tibia/game/tgamenotify.h>
 #include <vector>
 
+#include "tibia/runtime/host.h"
+#include "tibia/gamewindow/remainingdialogs.h"
+#include <tibia/game/gamenotify.h>
+#include <tibia/creatures/attachedeffect.h>
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
+#include "app/clientoptions.h"
+#include "config/clientoptiondefaults.h"
+#include "minimap/waypointcosts.h"
+#include "protocol/protocolcodes.h"
+#include "tibia/protocol/extendedopcode.h"
+#include "tibia/assets/thingtype.h"
+#include "tibia/assets/things.h"
+#include "container/containerciptypes.h"
+#include "creatures/creaturestorage.h"
+#include "creatures/walkdebug.h"
+#include "shared/clockservice.h"
+#include <QStringList>
+#include <tibia/schedule/schedule.h>
+#include <tibia/game/gamenotify.h>
+#include <tibia/game/gameservergamesession.h>
+#include <tibia/game/gamesession.h>
+#include <QString>
+#include <tibia/game/thingsession_forward.h>
+#include "protocol/clientmessages.h"
+
 namespace tibia::game {
+
+namespace gameclient = ::tibia::protocol::gameclient;
 
 namespace {
 
@@ -54,9 +81,8 @@ void IGameSession::bindLiveNotifyFans()
     if (!fans)
         return;
 
-    // Same SoftHook fields as TGameserverGameSession (minus ProtocolGame
-    // onConnect — qtclient emits `connected` with `onLogin` as the closest g_game
-    // bus event without opening the socket path).
+    // Same SoftHook fields as TGameserverGameSession (minus the connection's
+    // onConnect — a dump has no socket, so `connected` follows `onLogin`).
     fans->soft.emplace_back("onLogin", [this](const Args&) {
         Q_EMIT connected();
         Q_EMIT gameLoginSuccessful();
@@ -150,7 +176,7 @@ const bool kTipIGameSessionLinked = (tipIGameSession() != nullptr);
 
 uint64_t millis()
 {
-    return static_cast<uint64_t>(g_clock.millis());
+    return static_cast<uint64_t>(tibia::shared::TClockService::frameMillis());
 }
 
 uint8_t mapSeaFloor()
@@ -200,256 +226,267 @@ void unsubscribeSessionEnd(const int id)
 
 LocalPlayerSessionThingPtr localPlayer()
 {
-    return qtclientGameHub().getLocalPlayer();
+    return gameSessionState().getLocalPlayer();
 }
 
 
 bool isOnline()
 {
-    return qtclientGameHub().isOnline();
+    return gameSessionState().isOnline();
 }
 
 bool isDead()
 {
-    return qtclientGameHub().isDead();
+    return gameSessionState().isDead();
 }
 
 bool isSceneFrozen()
 {
-    return qtclientGameHub().isSceneFrozen();
+    return gameSessionState().isSceneFrozen();
 }
 
 void setSceneFrozen(const bool frozen)
 {
-    qtclientGameHub().setSceneFrozen(frozen);
+    gameSessionState().setSceneFrozen(frozen);
 }
 
 bool isSwitchingCharacter()
 {
-    return qtclientGameHub().isSwitchingCharacter();
+    return gameSessionState().isSwitchingCharacter();
 }
 
 std::string characterName()
 {
-    return qtclientGameHub().getCharacterName();
+    return gameSessionState().getCharacterName();
 }
 
 int clientRevision()
 {
-    return qtclientGameHub().getClientVersion();
+    return gameSessionState().getClientVersion();
 }
-
 tibia::client::OperatingSystem_t clientOs()
 {
-    return qtclientGameHub().getOs();
-}
+    // The client speaks CipSoft NEW_* OS ids, so Crystal keeps the CIP wire.
+    if (tibia::host::app().getOs() == "windows")
+        return tibia::client::CLIENTOS_TIBIA_NEW_WINDOWS;
 
-bool cipFeature(const tibia::client::GameFeature feature)
-{
-    return qtclientGameHub().getFeature(feature);
-}
+    if (tibia::host::app().getOs() == "mac")
+        return tibia::client::CLIENTOS_TIBIA_NEW_MAC;
 
-void enableFeature(const tibia::client::GameFeature feature)
-{
-    qtclientGameHub().enableFeature(feature);
-}
-
-void disableFeature(const tibia::client::GameFeature feature)
-{
-    qtclientGameHub().disableFeature(feature);
+    return tibia::client::CLIENTOS_TIBIA_NEW_LINUX;
 }
 
 void setProtocolVersion(const uint16_t version)
 {
-    qtclientGameHub().setProtocolVersion(version);
+    gameSessionState().setProtocolVersion(version);
 }
 
 void setClientRevision(const uint16_t version)
 {
-    qtclientGameHub().setClientVersion(version);
+    gameSessionState().setClientVersion(version);
 }
-
 void initGameHub()
 {
-    qtclientGameHub().init();
+    gameSessionState().resetGameStates();
 }
 
 void terminateGameHub()
 {
-    qtclientGameHub().terminate();
+    gameSessionState().terminate();
 }
 
-void processConnectionError(const std::error_code& ec)
+void processConnectionError(const std::string_view message, const bool clean)
 {
-    qtclientGameHub().processConnectionError(ec);
+    gameSessionState().processConnectionError(message, clean);
 }
 
 void startDecodedReplay()
 {
-    qtclientGameHub().startDecodedReplay();
+    gameSessionState().startDecodedReplay();
 }
 
 void deliverReplayPacket(const uint8_t* data, size_t size)
 {
-    qtclientGameHub().deliverReplayPacket(data, size);
+    gameSessionState().deliverReplayPacket(data, size);
 }
 
 void finishDecodedReplay()
 {
-    qtclientGameHub().finishDecodedReplay();
+    gameSessionState().finishDecodedReplay();
 }
-
 std::string formatCreatureName(const std::string_view name)
 {
-    return qtclientGameHub().formatCreatureName(name);
+    std::string formatedName{ name };
+    if (name.length() > 0) {
+        bool upnext = true;
+        for (char& i : formatedName) {
+            const char ch = i;
+            if (upnext) {
+                i = std::toupper(ch);
+                upnext = false;
+            }
+            if (ch == ' ')
+                upnext = true;
+        }
+    }
+
+    return formatedName;
 }
 
 uint32_t attackingCreatureId()
 {
-    return qtclientGameHub().getAttackingCreatureId();
+    return gameSessionState().getAttackingCreatureId();
 }
 
 uint32_t followingCreatureId()
 {
-    return qtclientGameHub().getFollowingCreatureId();
+    return gameSessionState().getFollowingCreatureId();
 }
 
 void setAttackingCreatureId(const uint32_t creatureId)
 {
-    qtclientGameHub().setAttackingCreatureId(creatureId);
+    gameSessionState().setAttackingCreatureId(creatureId);
 }
-
 void talk(const std::string_view message)
 {
-    qtclientGameHub().talk(message);
-}
+    if (!canPerformGameAction() || message.empty())
+        return;
 
+    talkChannel(tibia::client::MessageSay, 0, message);
+}
 void turn(const tibia::client::Direction direction)
 {
-    qtclientGameHub().turn(direction);
+    if (!canPerformGameAction())
+        return;
+
+    switch (direction) {
+        case tibia::client::North:
+            gameclient::sendTurnNorth();
+            break;
+        case tibia::client::East:
+            gameclient::sendTurnEast();
+            break;
+        case tibia::client::South:
+            gameclient::sendTurnSouth();
+            break;
+        case tibia::client::West:
+            gameclient::sendTurnWest();
+            break;
+        default:
+            break;
+    }
 }
 
 bool walk(const tibia::client::Direction direction)
 {
-    return qtclientGameHub().walk(direction);
+    return gameSessionState().walk(direction);
 }
 
 void interruptAutoWalk()
 {
-    qtclientGameHub().interruptAutoWalk();
+    gameSessionState().interruptAutoWalk();
 }
-
 void safeLogout()
 {
-    qtclientGameHub().safeLogout();
-}
+    if (!isOnline())
+        return;
 
+    gameclient::sendLogout();
+}
 void processLogin()
 {
-    qtclientGameHub().processLogin();
+    tibia::game::TGameserverGameSession::wireProcessLogin();
 }
 
 void processGameStart()
 {
-    qtclientGameHub().processGameStart();
+    gameSessionState().processGameStart();
 }
 
 void processPendingGame()
 {
-    qtclientGameHub().processPendingGame();
+    gameSessionState().processPendingGame();
 }
-
 void processWorldEntered()
 {
-    qtclientGameHub().processWorldEntered();
+    tibia::game::TGameserverGameSession::wireProcessWorldEntered();
 }
-
 void processPing()
 {
-    qtclientGameHub().processPing();
+    tibia::game::TGameserverGameSession::wireProcessPing();
 }
-
 void processPingBack()
 {
-    qtclientGameHub().processPingBack();
+    tibia::game::TGameserverGameSession::wireProcessPingBack();
 }
-
-void processDeath(uint8_t deathType, uint8_t penality)
+void processDeath(const uint8_t deathType, const uint8_t penality)
 {
-    qtclientGameHub().processDeath(deathType, penality);
+    tibia::game::TGameserverGameSession::wireProcessDeath(deathType, penality);
 }
-
-void processLoginError(std::string_view error)
+void processLoginError(const std::string_view error)
 {
-    qtclientGameHub().processLoginError(error);
+    tibia::game::TGameserverGameSession::wireProcessLoginError(error);
 }
-
-void processLoginAdvice(std::string_view message)
+void processLoginAdvice(const std::string_view message)
 {
-    qtclientGameHub().processLoginAdvice(message);
+    tibia::game::TGameserverGameSession::wireProcessLoginAdvice(message);
 }
-
-void processLoginWait(std::string_view message, uint8_t time)
+void processLoginWait(const std::string_view message, const uint8_t time)
 {
-    qtclientGameHub().processLoginWait(message, time);
+    tibia::game::TGameserverGameSession::wireProcessLoginWait(message, time);
 }
-
-void processSessionEnd(uint8_t reason)
+void processSessionEnd(const uint8_t reason)
 {
-    qtclientGameHub().processSessionEnd(reason);
+    tibia::game::TGameserverGameSession::wireProcessSessionEnd(reason);
 }
 
 void processCharacterSwitch(std::string_view characterName)
 {
-    qtclientGameHub().processCharacterSwitch(characterName);
+    gameSessionState().processCharacterSwitch(characterName);
 }
-
-void processPlayerHelpers(uint16_t helpers)
+void processPlayerHelpers(const uint16_t helpers)
 {
-    qtclientGameHub().processPlayerHelpers(helpers);
+    tibia::game::notify("onPlayerHelpersUpdate", helpers);
 }
 
 void processUpdateTarget(const uint32_t seq, const uint32_t targetId)
 {
-    qtclientGameHub().processUpdateTarget(seq, targetId);
+    gameSessionState().processUpdateTarget(seq, targetId);
 }
 
 void processPlayerTactics(const tibia::client::ChaseModes chaseMode, const bool safeMode, const tibia::client::PVPModes pvpMode)
 {
-    auto& hub = qtclientGameHub();
+    auto& hub = gameSessionState();
     hub.processPlayerModes(hub.getFightMode(), chaseMode, safeMode, pvpMode);
 }
 
 void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
                         tibia::client::PVPModes pvpMode)
 {
-    qtclientGameHub().processPlayerModes(fightMode, chaseMode, safeMode, pvpMode);
+    gameSessionState().processPlayerModes(fightMode, chaseMode, safeMode, pvpMode);
 }
-
-void processNumericalEffect(tibia::client::MessageMode mode, const Position& pos, uint64_t value, uint8_t color)
+void processNumericalEffect(const tibia::client::MessageMode mode, const Position& pos, const uint64_t value, const uint8_t color)
 {
-    qtclientGameHub().processNumericalEffect(mode, pos, value, color);
+    tibia::game::notify("onNumericalEffect", mode, pos, value, color);
 }
-
-void processTextMessage(tibia::client::MessageMode mode, std::string_view text)
+void processTextMessage(const tibia::client::MessageMode mode, const std::string_view text)
 {
-    qtclientGameHub().processTextMessage(mode, text);
+    tibia::game::notify("onTextMessage", mode, text);
+    tibia::game::TGameNotify::instance()->emitTextMessage(static_cast<int>(mode),
+                                                          QString::fromUtf8(text.data(), static_cast<int>(text.size())));
 }
-
-void processTalk(std::string_view name, uint16_t level, tibia::client::MessageMode mode, std::string_view text,
-                 uint16_t channelId, const Position& pos, uint32_t statement)
+void processTalk(const std::string_view name, const uint16_t level, const tibia::client::MessageMode mode, const std::string_view text, const uint16_t channelId, const Position& pos, const uint32_t statement)
 {
-    qtclientGameHub().processTalk(name, level, mode, text, channelId, pos, statement);
+    tibia::game::notify("onTalk", name, level, mode, text, channelId, pos, statement);
 }
 
 void processVipStateChange(uint32_t id, uint32_t status)
 {
-    qtclientGameHub().processVipStateChange(id, status);
+    gameSessionState().processVipStateChange(id, status);
 }
-
 void processTeamFinderLeader(const TeamFinderLeaderData& data)
 {
-    qtclientGameHub().processTeamFinderLeader(data);
+    tibia::game::notify("onTeamFinderLeader", data);
 }
 
 void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
@@ -457,328 +494,271 @@ void processOpenContainer(uint8_t containerId, const ::tibia::container::TInvent
                           const std::vector<::tibia::container::TInventorySlot>& items, bool isUnlocked, bool hasPages,
                           bool showSearch, uint16_t containerSize, uint16_t firstIndex)
 {
-    qtclientGameHub().processOpenContainer(containerId, containerItem, name, capacity, hasParent, items, isUnlocked, hasPages, showSearch, containerSize, firstIndex);
+    gameSessionState().processOpenContainer(containerId, containerItem, name, capacity, hasParent, items, isUnlocked, hasPages, showSearch, containerSize, firstIndex);
 }
-
-void processCloseContainer(uint8_t containerId)
+void processCloseContainer(const uint8_t containerId)
 {
-    qtclientGameHub().processCloseContainer(containerId);
+    if (tibia::container::TContainerStorage* storage = tibia::container::TContainerStorage::instance())
+        storage->closeContainer(containerId);
 }
 
 void processContainerAddItem(uint8_t containerId, const ::tibia::container::TInventorySlot& item, uint16_t slot)
 {
-    qtclientGameHub().processContainerAddItem(containerId, item, slot);
+    gameSessionState().processContainerAddItem(containerId, item, slot);
 }
 
 void processContainerUpdateItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& item)
 {
-    qtclientGameHub().processContainerUpdateItem(containerId, slot, item);
+    gameSessionState().processContainerUpdateItem(containerId, slot, item);
 }
 
 void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& lastItem)
 {
-    qtclientGameHub().processContainerRemoveItem(containerId, slot, lastItem);
+    gameSessionState().processContainerRemoveItem(containerId, slot, lastItem);
 }
-
-void processUpdateNeeded(std::string_view signature)
+void processUpdateNeeded(const std::string_view signature)
 {
-    qtclientGameHub().processUpdateNeeded(signature);
+    tibia::game::notify("onUpdateNeeded", signature);
 }
-
-void processSessionDumpStart(std::string_view sessionKey)
+void processSessionDumpStart(const std::string_view sessionKey)
 {
-    qtclientGameHub().processSessionDumpStart(sessionKey);
+    tibia::game::notify("onSessionDumpStart", std::string(sessionKey));
 }
-
-void processSessionDumpMarker(std::string_view marker)
+void processSessionDumpMarker(const std::string_view marker)
 {
-    qtclientGameHub().processSessionDumpMarker(marker);
+    tibia::game::notify("onSessionDumpMarker", std::string(marker));
 }
-
-void processSoundTrigger(uint8_t type, uint16_t soundId)
+void processSoundTrigger(const uint8_t type, const uint16_t soundId)
 {
-    qtclientGameHub().processSoundTrigger(type, soundId);
+    tibia::game::notify("onSoundTrigger", type, soundId);
 }
 
 void processReadyForSecondaryConnection(std::string_view token)
 {
-    qtclientGameHub().processReadyForSecondaryConnection(token);
+    gameSessionState().processReadyForSecondaryConnection(token);
 }
-
 void processOutfitMemorial(const OutfitMemorialData& data)
 {
-    qtclientGameHub().processOutfitMemorial(data);
+    if (auto* dialog = tibia::gamewindow::TOutfitMemorialDialogController::instance())
+        dialog->showMemorial(data);
+    else
+        tibia::game::notify("onOutfitMemorial", data);
 }
-
-void processWalkCancel(tibia::client::Direction direction)
+void processWalkCancel(const tibia::client::Direction direction)
 {
-    qtclientGameHub().processWalkCancel(direction);
+    tibia::game::localPlayerCancelWalk(direction);
 }
-
-void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEntry>& entries)
+void processTeamFinderList(const bool rateLimited, const std::vector<TeamFinderListEntry>& entries)
 {
-    qtclientGameHub().processTeamFinderList(rateLimited, entries);
+    tibia::game::notify("onTeamFinderList", rateLimited, entries);
 }
-
 void processDepotSearchResults(const std::vector<DepotSearchResultItem>& items)
 {
-    qtclientGameHub().processDepotSearchResults(items);
+    tibia::game::notify("onDepotSearchResults", items);
 }
-
 void processDepotSearchDetail(const DepotSearchDetail& detail)
 {
-    qtclientGameHub().processDepotSearchDetail(detail);
+    tibia::game::notify("onDepotSearchDetail", detail);
 }
-
 void processCloseDepotSearch()
 {
-    qtclientGameHub().processCloseDepotSearch();
+    tibia::game::notify("onCloseDepotSearch");
 }
-
 void processChannelList(const std::vector<std::tuple<uint16_t, std::string>>& channelList)
 {
-    qtclientGameHub().processChannelList(channelList);
+    tibia::game::notify("onChannelList", channelList);
 }
-
-void processOpenChannel(uint16_t channelId, std::string_view name)
+void processOpenChannel(const uint16_t channelId, const std::string_view name)
 {
-    qtclientGameHub().processOpenChannel(channelId, name);
+    tibia::game::notify("onOpenChannel", channelId, name);
 }
-
-void processOpenPrivateChannel(std::string_view name)
+void processOpenPrivateChannel(const std::string_view name)
 {
-    qtclientGameHub().processOpenPrivateChannel(name);
+    tibia::game::notify("onOpenPrivateChannel", name);
 }
-
-void processOpenOwnPrivateChannel(uint16_t channelId, std::string_view name)
+void processOpenOwnPrivateChannel(const uint16_t channelId, const std::string_view name)
 {
-    qtclientGameHub().processOpenOwnPrivateChannel(channelId, name);
+    tibia::game::notify("onOpenOwnPrivateChannel", channelId, name);
 }
-
-void processCloseChannel(uint16_t channelId)
+void processCloseChannel(const uint16_t channelId)
 {
-    qtclientGameHub().processCloseChannel(channelId);
+    tibia::game::notify("onCloseChannel", channelId);
 }
 
 void processVipAdd(uint32_t id, std::string_view name, uint32_t status, std::string_view description, uint32_t iconId,
                   bool notifyLogin, const std::vector<uint8_t>& groupID)
 {
-    qtclientGameHub().processVipAdd(id, name, status, description, iconId, notifyLogin, groupID);
+    gameSessionState().processVipAdd(id, name, status, description, iconId, notifyLogin, groupID);
 }
-
-void processVipGroupChange(const std::vector<std::tuple<uint8_t, std::string, bool>>& vipGroups, uint8_t groupsAmountLeft)
+void processVipGroupChange(const std::vector<std::tuple<uint8_t, std::string, bool>>& vipGroups, const uint8_t groupsAmountLeft)
 {
-    qtclientGameHub().processVipGroupChange(vipGroups, groupsAmountLeft);
+    tibia::game::notify("onVipGroupChange", vipGroups, groupsAmountLeft);
 }
-
-void processTutorialHint(uint8_t id)
+void processTutorialHint(const uint8_t id)
 {
-    qtclientGameHub().processTutorialHint(id);
+    tibia::game::notify("onTutorialHint", id);
 }
-
-void processAddAutomapFlag(const Position& pos, uint8_t icon, std::string_view message)
+void processAddAutomapFlag(const Position& pos, const uint8_t icon, const std::string_view message)
 {
-    qtclientGameHub().processAddAutomapFlag(pos, icon, message);
+    tibia::game::notify("onAddAutomapFlag", pos, icon, message);
 }
-
-void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_view message)
+void processRemoveAutomapFlag(const Position& pos, const uint8_t icon, const std::string_view message)
 {
-    qtclientGameHub().processRemoveAutomapFlag(pos, icon, message);
+    tibia::game::notify("onRemoveAutomapFlag", pos, icon, message);
 }
-
-void processOpenOutfitWindow(const Outfit& currentOutfit,
-                             const std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>& outfitList,
-                             const std::vector<std::tuple<uint16_t, std::string, uint8_t>>& mountList,
-                             const std::vector<std::tuple<uint16_t, std::string>>& familiarList)
+void processOpenOutfitWindow(const Outfit& currentOutfit, const std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>& outfitList, const std::vector<std::tuple<uint16_t, std::string, uint8_t>>& mountList, const std::vector<std::tuple<uint16_t, std::string>>& familiarList)
 {
-    qtclientGameHub().processOpenOutfitWindow(currentOutfit, outfitList, mountList, familiarList);
+    tibia::game::notify("onOpenOutfitWindow", currentOutfit, outfitList, mountList, familiarList);
 }
 
 void processOpenNpcTrade(const std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items)
 {
-    qtclientGameHub().processOpenNpcTrade(items);
+    gameSessionState().processOpenNpcTrade(items);
 }
-
-void processPlayerGoods(uint64_t money, const std::vector<std::pair<uint16_t, uint16_t>>& goods)
+void processPlayerGoods(const uint64_t money, const std::vector<std::pair<uint16_t, uint16_t>>& goods)
 {
-    qtclientGameHub().processPlayerGoods(money, goods);
+    tibia::game::notify("onPlayerGoods", money, goods);
 }
-
 void processCloseNpcTrade()
 {
-    qtclientGameHub().processCloseNpcTrade();
+    tibia::game::notify("onCloseNpcTrade");
 }
 
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items)
 {
-    qtclientGameHub().processOwnTrade(name, items);
+    gameSessionState().processOwnTrade(name, items);
 }
 
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items)
 {
-    qtclientGameHub().processCounterTrade(name, items);
+    gameSessionState().processCounterTrade(name, items);
 }
-
 void processCloseTrade()
 {
-    qtclientGameHub().processCloseTrade();
+    tibia::game::notify("onCloseTrade");
 }
-
-void processEditText(uint32_t id, uint32_t itemId, uint16_t maxLength, std::string_view text, std::string_view writer,
-                     std::string_view date, bool recentlyTraded)
+void processEditText(const uint32_t id, const uint32_t itemId, const uint16_t maxLength, const std::string_view text, const std::string_view writer, const std::string_view date, const bool recentlyTraded)
 {
-    qtclientGameHub().processEditText(id, itemId, maxLength, text, writer, date, recentlyTraded);
+    tibia::game::notify("onEditText", id, itemId, maxLength, text, writer, date, recentlyTraded);
 }
-
-void processEditList(uint32_t id, uint8_t doorId, std::string_view text)
+void processEditList(const uint32_t id, const uint8_t doorId, const std::string_view text)
 {
-    qtclientGameHub().processEditList(id, doorId, text);
+    tibia::game::notify("onEditList", id, doorId, text);
 }
-
 void processQuestLog(const std::vector<std::tuple<uint16_t, std::string, bool>>& questList)
 {
-    qtclientGameHub().processQuestLog(questList);
+    tibia::game::notify("onQuestLog", questList);
 }
-
-void processQuestLine(uint16_t questId, const std::vector<std::tuple<std::string, std::string, uint16_t>>& questMissions)
+void processQuestLine(const uint16_t questId, const std::vector<std::tuple<std::string, std::string, uint16_t>>& questMissions)
 {
-    qtclientGameHub().processQuestLine(questId, questMissions);
+    tibia::game::notify("onQuestLine", questId, questMissions);
 }
 
 void processModalDialog(uint32_t id, std::string_view title, std::string_view message,
                         const std::vector<std::tuple<uint8_t, std::string>>& buttonList, uint8_t enterButton,
                         uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>& choiceList, bool priority)
 {
-    qtclientGameHub().processModalDialog(id, title, message, buttonList, enterButton, escapeButton, choiceList, priority);
+    gameSessionState().processModalDialog(id, title, message, buttonList, enterButton, escapeButton, choiceList, priority);
 }
-
 void processItemDetail(const ItemInspectionData& data)
 {
-    qtclientGameHub().processItemDetail(data);
+    tibia::game::notify("onParseItemDetail", data);
 }
-
-void processInspectionState(uint32_t creatureId, uint8_t state)
+void processInspectionState(const uint32_t creatureId, const uint8_t state)
 {
-    qtclientGameHub().processInspectionState(creatureId, state);
+    tibia::game::notify("onInspectionState", creatureId, state);
 }
-
-void processCyclopediaCharacterGeneralStats(const CyclopediaCharacterGeneralStats& stats,
-                                            const std::vector<std::vector<uint16_t>>& skills,
-                                            const std::vector<std::tuple<uint8_t, uint16_t>>& combats)
+void processCyclopediaCharacterGeneralStats(const CyclopediaCharacterGeneralStats& stats, const std::vector<std::vector<uint16_t>>& skills, const std::vector<std::tuple<uint8_t, uint16_t>>& combats)
 {
-    qtclientGameHub().processCyclopediaCharacterGeneralStats(stats, skills, combats);
+    tibia::game::notify("onParseCyclopediaCharacterGeneralStats", stats, skills, combats);
 }
-
-void processCyclopediaCharacterCombatStats(const CyclopediaCharacterCombatStats& data, double mitigation,
-                                           const std::vector<std::vector<uint16_t>>& additionalSkillsArray,
-                                           const std::vector<std::vector<uint16_t>>& forgeSkillsArray,
-                                           const std::vector<uint16_t>& perfectShotDamageRangesArray,
-                                           const std::vector<std::tuple<uint8_t, uint16_t>>& combatsArray,
-                                           const std::vector<std::tuple<uint16_t, uint16_t>>& concoctionsArray)
+void processCyclopediaCharacterCombatStats(const CyclopediaCharacterCombatStats& data, const double mitigation, const std::vector<std::vector<uint16_t>>& additionalSkillsArray, const std::vector<std::vector<uint16_t>>& forgeSkillsArray, const std::vector<uint16_t>& perfectShotDamageRangesArray, const std::vector<std::tuple<uint8_t, uint16_t>>& combatsArray, const std::vector<std::tuple<uint16_t, uint16_t>>& concoctionsArray)
 {
-    qtclientGameHub().processCyclopediaCharacterCombatStats(data, mitigation, additionalSkillsArray, forgeSkillsArray, perfectShotDamageRangesArray, combatsArray, concoctionsArray);
+    tibia::game::notify("onParseCyclopediaCharacterCombatStats", data, mitigation, additionalSkillsArray, forgeSkillsArray, perfectShotDamageRangesArray, combatsArray, concoctionsArray);
 }
-
-void processCyclopediaCharacterGeneralStatsBadge(uint8_t showAccountInformation, uint8_t playerOnline,
-                                                 uint8_t playerPremium, std::string_view loyaltyTitle,
-                                                 const std::vector<std::tuple<uint32_t, std::string>>& badgesVector)
+void processCyclopediaCharacterGeneralStatsBadge(const uint8_t showAccountInformation, const uint8_t playerOnline, const uint8_t playerPremium, const std::string_view loyaltyTitle, const std::vector<std::tuple<uint32_t, std::string>>& badgesVector)
 {
-    qtclientGameHub().processCyclopediaCharacterGeneralStatsBadge(showAccountInformation, playerOnline, playerPremium, loyaltyTitle, badgesVector);
+    tibia::game::notify("onParseCyclopediaCharacterBadges", showAccountInformation, playerOnline, playerPremium, loyaltyTitle, badgesVector);
 }
-
 void processCyclopediaCharacterInspection(const CyclopediaCharacterInspection& data)
 {
-    qtclientGameHub().processCyclopediaCharacterInspection(data);
+    tibia::game::notify("onParseCyclopediaCharacterInspection", data);
 }
-
 void processCyclopediaCharacterItemSummary(const CyclopediaCharacterItemSummary& data)
 {
-    qtclientGameHub().processCyclopediaCharacterItemSummary(data);
+    tibia::game::notify("onUpdateCyclopediaCharacterItemSummary", data);
 }
-
-void processCyclopediaCharacterAppearances(const OutfitColorStruct& currentOutfit,
-                                           const std::vector<CharacterInfoOutfits>& outfits,
-                                           const std::vector<CharacterInfoMounts>& mounts,
-                                           const std::vector<CharacterInfoFamiliar>& familiars)
+void processCyclopediaCharacterAppearances(const OutfitColorStruct& currentOutfit, const std::vector<CharacterInfoOutfits>& outfits, const std::vector<CharacterInfoMounts>& mounts, const std::vector<CharacterInfoFamiliar>& familiars)
 {
-    qtclientGameHub().processCyclopediaCharacterAppearances(currentOutfit, outfits, mounts, familiars);
+    tibia::game::notify("onParseCyclopediaCharacterAppearances", currentOutfit, outfits, mounts, familiars);
 }
-
 void processCyclopediaCharacterRecentDeaths(const CyclopediaCharacterRecentDeaths& data)
 {
-    qtclientGameHub().processCyclopediaCharacterRecentDeaths(data);
+    tibia::game::notify("onCyclopediaCharacterRecentDeaths", data);
 }
-
 void processCyclopediaCharacterRecentPvpKills(const CyclopediaCharacterRecentPvPKills& data)
 {
-    qtclientGameHub().processCyclopediaCharacterRecentPvpKills(data);
+    tibia::game::notify("onCyclopediaCharacterRecentKills", data);
 }
-
 void processParseBestiaryRaces(const std::vector<CyclopediaBestiaryRace>& bestiaryData)
 {
-    qtclientGameHub().processParseBestiaryRaces(bestiaryData);
+    tibia::game::notify("onParseBestiaryRaces", bestiaryData);
 }
-
-void processParseBestiaryOverview(std::string_view raceName, const std::vector<BestiaryOverviewMonsters>& data,
-                                  uint16_t animusMasteryPoints)
+void processParseBestiaryOverview(const std::string_view raceName, const std::vector<BestiaryOverviewMonsters>& data, const uint16_t animusMasteryPoints)
 {
-    qtclientGameHub().processParseBestiaryOverview(raceName, data, animusMasteryPoints);
+    tibia::game::notify("onParseBestiaryOverview", raceName, data, animusMasteryPoints);
 }
-
 void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data)
 {
-    qtclientGameHub().processUpdateBestiaryMonsterData(data);
+    tibia::game::notify("onUpdateBestiaryMonsterData", data);
 }
-
 void processUpdateBestiaryCharmsData(const BestiaryCharmsData& charmData)
 {
-    qtclientGameHub().processUpdateBestiaryCharmsData(charmData);
+    tibia::game::notify("onUpdateBestiaryCharmsData", charmData);
 }
-
 void processBosstiaryInfo(const std::vector<BosstiaryData>& boss)
 {
-    qtclientGameHub().processBosstiaryInfo(boss);
+    tibia::game::notify("onParseSendBosstiary", boss);
 }
-
 void processBosstiarySlots(const BosstiarySlotsData& data)
 {
-    qtclientGameHub().processBosstiarySlots(data);
+    tibia::game::notify("onParseBosstiarySlots", data);
 }
-
-void processHighscore(std::string_view serverName, std::string_view world, uint8_t worldType, uint8_t battlEye,
-                      const std::vector<std::tuple<uint32_t, std::string>>& vocations,
-                      const std::vector<std::tuple<uint8_t, std::string>>& categories, uint16_t page, uint16_t totalPages,
-                      const std::vector<std::tuple<uint32_t, std::string, std::string, uint8_t, std::string, uint16_t, uint8_t, uint64_t>>& highscores,
-                      uint32_t entriesTs, const std::vector<std::string>& worlds, std::string_view allVocationsName,
-                      uint32_t selectedVocation, uint8_t selectedCategory, uint8_t selectedIndex,
-                      bool showLoyaltyTitle, uint8_t valueType)
+void processHighscore(const std::string_view serverName, const std::string_view world, const uint8_t worldType, const uint8_t battlEye, const std::vector<std::tuple<uint32_t, std::string>>& vocations, const std::vector<std::tuple<uint8_t, std::string>>& categories, const uint16_t page, const uint16_t totalPages, const std::vector<std::tuple<uint32_t, std::string, std::string, uint8_t, std::string, uint16_t, uint8_t, uint64_t>>& highscores, const uint32_t entriesTs, const std::vector<std::string>& worlds, const std::string_view allVocationsName, const uint32_t selectedVocation, const uint8_t selectedCategory, const uint8_t selectedIndex, const bool showLoyaltyTitle, const uint8_t valueType)
 {
-    qtclientGameHub().processHighscore(serverName, world, worldType, battlEye, vocations, categories, page, totalPages, highscores, entriesTs, worlds, allVocationsName, selectedVocation, selectedCategory, selectedIndex, showLoyaltyTitle, valueType);
+    tibia::game::notify("onProcessHighscores", serverName, world, worldType, battlEye, vocations, categories, page, totalPages, highscores, entriesTs,
+                                 worlds, allVocationsName, selectedVocation, selectedCategory, selectedIndex, showLoyaltyTitle, valueType);
 }
-
 void processCyclopediaCharacterOffenceStats(const CyclopediaCharacterOffenceStats& data)
 {
-    qtclientGameHub().processCyclopediaCharacterOffenceStats(data);
+    tibia::game::notify("onCyclopediaCharacterOffenceStats", data);
 }
-
 void processCyclopediaCharacterDefenceStats(const CyclopediaCharacterDefenceStats& data)
 {
-    qtclientGameHub().processCyclopediaCharacterDefenceStats(data);
+    tibia::game::notify("onCyclopediaCharacterDefenceStats", data);
 }
-
 void processCyclopediaCharacterMiscStats(const CyclopediaCharacterMiscStats& data)
 {
-    qtclientGameHub().processCyclopediaCharacterMiscStats(data);
+    tibia::game::notify("onCyclopediaCharacterMiscStats", data);
 }
 
 void requestBless()
 {
-    qtclientGameHub().requestBless();
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendRequestBless();
 }
-
 int openAt(const Position& position, const uint16_t itemId, const int stackPos, const int previousContainerId)
 {
-    return qtclientGameHub().openAt(position, itemId, stackPos, previousContainerId);
+    if (!canPerformGameAction() || itemId == 0 || stackPos < 0)
+        return -1;
+
+    const int id = previousContainerId >= 0 ? previousContainerId : gameSessionState().findEmptyContainerId();
+    gameclient::sendUseItem(position, itemId, static_cast<uint8_t>(stackPos), id);
+
+    tibia::game::notify("onUse", position, itemId, stackPos, 0);
+
+    return id;
 }
 
 int openAt(const MapPos pos, const uint16_t itemId, const int stackPos, const int previousContainerId)
@@ -788,102 +768,163 @@ int openAt(const MapPos pos, const uint16_t itemId, const int stackPos, const in
 
 void partyJoin(const uint32_t creatureId)
 {
-    qtclientGameHub().partyJoin(creatureId);
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendJoinParty(creatureId);
 }
 
 void openContainerQuickLoot(const uint8_t action, const uint8_t category, const Position& pos, const uint16_t itemId, const uint8_t stackpos, const bool useMainAsFallback)
 {
-    qtclientGameHub().openContainerQuickLoot(action, category, pos, itemId, stackpos, useMainAsFallback);
+    if (!canPerformGameAction())
+        return;
+    gameclient::openContainerQuickLoot(action, category, pos, itemId, stackpos, useMainAsFallback);
 }
-
 void useMapObject(const Position& position, const uint16_t itemId, const int stackPos)
 {
-    qtclientGameHub().useMapObject(position, itemId, stackPos);
+    if (!canPerformGameAction() || !position.isValid() || itemId == 0 || stackPos < 0)
+        return;
+    gameclient::sendUseItem(position, itemId, static_cast<uint8_t>(stackPos), gameSessionState().findEmptyContainerId());
+    tibia::game::notify("onUse", position, itemId, stackPos, 0);
 }
 
 void useMapObject(const MapPos pos, const uint16_t itemId, const int stackPos)
 {
-    qtclientGameHub().useMapObject(Position(pos.x, pos.y, static_cast<uint8_t>(pos.z)), itemId, stackPos);
+    useMapObject(Position(pos.x, pos.y, static_cast<uint8_t>(pos.z)), itemId, stackPos);
 }
-
 void useInventoryItemWithMapObject(const uint16_t itemId, const Position& to, const uint16_t toId, const int toStack)
 {
-    qtclientGameHub().useInventoryItemWithMapObject(itemId, to, toId, toStack);
+    if (!canPerformGameAction() || !to.isValid() || toId == 0 || toStack < 0)
+        return;
+
+    // pre-780: resolve real inventory slot when possible (classic wire stackpos).
+    if (gameSessionState().getClientVersion() < 780) {
+        if (const auto item = findPlayerItem(itemId, -1)) {
+            Position pos = item->position;
+            if (!pos.isValid())
+                pos = Position(0xFFFF, 0, 0);
+            gameclient::sendUseItemWith(pos, item->typeId, static_cast<uint8_t>(item->stackPos), to, toId,
+                                            static_cast<uint8_t>(toStack));
+            tibia::game::notify("onUseWith", pos, itemId, to, item->stackPos);
+            return;
+        }
+    }
+
+    const auto& pos = Position(0xFFFF, 0, 0);
+    gameclient::sendUseItemWith(pos, itemId, 0, to, toId, static_cast<uint8_t>(toStack));
+    tibia::game::notify("onUseWith", pos, itemId, to, 0);
 }
 
 void useInventoryItemWithMapObject(const uint16_t itemId, const MapPos to, const uint16_t toId, const int toStack)
 {
-    qtclientGameHub().useInventoryItemWithMapObject(itemId, Position(to.x, to.y, static_cast<uint8_t>(to.z)), toId, toStack);
+    useInventoryItemWithMapObject(itemId, Position(to.x, to.y, static_cast<uint8_t>(to.z)), toId, toStack);
 }
-
 void useInventoryItemOnCreature(const uint16_t itemId, const uint32_t creatureId)
 {
-    qtclientGameHub().useInventoryItemOnCreature(itemId, creatureId);
-}
+    if (!canPerformGameAction() || !creatureId)
+        return;
 
-ItemPtr findPlayerItem(const uint32_t itemId, const int subType)
+    if (gameSessionState().getClientVersion() < 780) {
+        if (const auto item = findPlayerItem(itemId, -1)) {
+            gameSessionState().useOnCreature(*item, creatureId);
+            return;
+        }
+    }
+
+    const auto& pos = Position(0xFFFF, 0, 0);
+    gameclient::sendUseOnCreature(pos, itemId, 0, creatureId);
+    tibia::game::notify("onUseWith", pos, itemId, creatureId, 0);
+}
+std::optional<TObjectReference> findPlayerItem(const uint32_t itemId, const int subType)
 {
-    return qtclientGameHub().findPlayerItem(itemId, subType);
+    if (tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance()) {
+        for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot) {
+            const tibia::container::TInventorySlot& row = inventory->slotAt(slot);
+            if (row.empty() || row.typeId != itemId)
+                continue;
+            const uint8_t fluidOrSub = row.fluidOrSplash ? row.fluid : 0;
+            if (subType != -1 && fluidOrSub != static_cast<uint8_t>(subType))
+                continue;
+            return TObjectReference{ row.typeId, Position(UINT16_MAX, static_cast<uint16_t>(slot), 0), 0,
+                                     static_cast<uint16_t>(row.stackable ? row.count : 0), row.tier, fluidOrSub };
+        }
+    }
+
+    return gameSessionState().findItemInContainers(itemId, subType, 0);
 }
 
 void requestQuickLootBlackWhiteList(const uint8_t filter, const uint16_t size, const std::vector<uint16_t>& listedItems)
 {
-    qtclientGameHub().requestQuickLootBlackWhiteList(filter, size, listedItems);
+    gameSessionState().requestQuickLootBlackWhiteList(filter, size, listedItems);
 }
 
 void sendStatusTrackerBestiary(const uint16_t raceId, const bool status)
 {
-    qtclientGameHub().sendStatusTrackerBestiary(raceId, status);
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendStatusTrackerBestiary(raceId, status);
 }
 
 void requestBestiarySearch(const uint16_t raceId)
 {
-    qtclientGameHub().requestBestiarySearch(raceId);
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendRequestBestiarySearch(raceId);
 }
-
-void sendFriendSystemPayload(const std::string& json)
-{
-    qtclientGameHub().sendFriendSystemPayload(json);
-}
-
 void openPrivateChannel(const std::string_view receiver)
 {
-    qtclientGameHub().openPrivateChannel(receiver);
+    if (!canPerformGameAction() || receiver.empty())
+        return;
+
+    gameclient::sendOpenPrivateChannel(receiver);
 }
 
 void requestTeamFinderList()
 {
-    qtclientGameHub().requestTeamFinderList();
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendTeamFinderMemberAction(0);
 }
 
 void requestTeamFinderLeader()
 {
-    qtclientGameHub().requestTeamFinderLeader();
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendTeamFinderLeaderAction(0);
 }
 
 void joinTeamFinder(const uint32_t leaderId)
 {
-    qtclientGameHub().joinTeamFinder(leaderId);
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendTeamFinderMemberAction(1, leaderId);
 }
 
 void leaveTeamFinder(const uint32_t leaderId)
 {
-    qtclientGameHub().leaveTeamFinder(leaderId);
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendTeamFinderMemberAction(2, leaderId);
 }
 
 void createTeamFinder(const TeamFinderAssemble& assemble)
 {
-    qtclientGameHub().createTeamFinder(assemble);
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendTeamFinderLeaderAction(3, 0, 0, assemble);
 }
 
 void resetTeamFinderLeader()
 {
-    qtclientGameHub().resetTeamFinderLeader();
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendTeamFinderLeaderAction(1);
 }
 
 void updateTeamFinderMember(const uint32_t memberId, const uint8_t status)
 {
-    qtclientGameHub().updateTeamFinderMember(memberId, status);
+    if (!canPerformGameAction())
+        return;
+    gameclient::sendTeamFinderLeaderAction(2, memberId, status);
 }
 
 Position localPlayerPosition()
@@ -925,7 +966,7 @@ int localPlayerLevel()
 uint16_t localPlayerLevelPercent()
 {
     if (TPlayerData* data = TPlayerData::liveInstance())
-        return data->levelPercent();
+        return static_cast<uint16_t>(data->levelPercent());
     return 0;
 }
 
@@ -966,8 +1007,9 @@ uint16_t localPlayerStamina()
 
 uint8_t localPlayerVocation()
 {
+    // The classic vocation id: promoted vocations count from 11.
     if (TPlayerData* data = TPlayerData::liveInstance())
-        return data->vocation();
+        return static_cast<uint8_t>(data->vocation() + (data->promoted() ? 10 : 0));
     return 0;
 }
 
@@ -1047,7 +1089,7 @@ namespace {
 
 tibia::input::TPlayerMovementIntentHandler* movementIntent()
 {
-    return qtclientGameHub().movementIntent();
+    return gameSessionState().movementIntent();
 }
 
 }

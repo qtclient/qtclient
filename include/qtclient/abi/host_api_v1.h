@@ -43,7 +43,6 @@ typedef struct QtClientHostApiV1 {
     void (*set_hd_scaler)(int factor, QtClientHdScaleFn fn, void* user);
 
     QtClientHostOsFn host_os;
-    QtClientEnableFeatureFn enable_feature;
 
     /** Nested domain tables (v2+). Null on older hosts. Session peel is additive (Phase 2+); field count grows at tail. */
     const QtClientSessionApiV1* session;

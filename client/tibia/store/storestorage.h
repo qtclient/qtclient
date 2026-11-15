@@ -5,207 +5,376 @@
 #include <cip_gen.h>
 
 #include <QString>
-#include <QStringList>
+#include <QTimer>
 #include <QUrl>
 
 #include <optional>
 #include <vector>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageLoginSuccess;
+class GameserverMessageStoreCategories;
+class GameserverMessageStoreOffers;
+class GameserverMessageRequestPurchaseData;
+class GameserverMessageCreditBalance;
+class GameserverMessageUpdatingShopBalance;
+class GameserverMessageTransactionHistory;
+class GameserverMessageStoreSuccess;
+class GameserverMessageStoreError;
+class GameserverMessageStoreButtonIndicators;
+class GameserverMessageOfferDescription;
+class ProtocolStoreVisual;
+class ProtocolStoreOpenParameters;
+}
+
 namespace tibia {
 namespace store {
 
-/// One price of an offer (CIP: the 0x40-byte quantity configuration of
-/// TStoreOffer; CIP's SubOffer).
-struct TStoreQuantity
+using TOfferID = uint32_t;
+using TStoreCredits = qint64;
+
+/// What the store shows next (the protocol's open actions).
+enum EStoreOpenAction
 {
-    uint32_t offerId = 0;
-    uint16_t quantity = 0;
-    uint32_t price = 0;
-    /// 0 Tibia coins, 1 transferable, 2 tournament.
-    uint8_t coinType = 0;
-    bool disabled = false;
-    QStringList disabledReasons;
-    /// 0 none, 1 new, 2 sale, 3 timed.
-    uint8_t state = 0;
-    uint32_t validUntil = 0;
-    uint32_t basePrice = 0;
+    OPEN_HOME = 0,
+    OPEN_PREMIUM_OR_BOOSTS = 1,
+    OPEN_CATEGORY = 2,
+    OPEN_USEFUL_THING = 3,
+    OPEN_OFFER = 4,
+    OPEN_SEARCH = 5,
 };
 
-/// What an offer shows (CIP: TStoreVisualisation; CIP's /// GameStoreInfoType_t, numbered like EQmlVisualisationType).
-struct TStoreVisual
+/// Where to open the store: a store request, a banner's target or the store
+/// button's deep link.
+struct TStoreOpenParameters
 {
-    enum Type : uint8_t { ImageIdentifier = 0, Mount = 1, Outfit = 2, Object = 3, BothGenderOutfits = 4 };
+    int openAction = OPEN_HOME;
+    int premiumDetail = -1;
+    /// The category, or the search text when searching.
+    QString category;
+    QString subcategory;
+    int usefulThing = -1;
+    TOfferID offerId = 0;
+    int sortOrder = 0;
+    int serviceType = 0;
+};
 
-    Type type = ImageIdentifier;
+/// The coins (all coins, the transferable ones and the ones reserved for
+/// character auctions).
+struct TStoreBalance
+{
+    TStoreCredits total = 0;
+    TStoreCredits confirmed = 0;
+    TStoreCredits reserved = 0;
+};
+
+/// The balance differs when the total, the transferable coins or whether it
+/// is known differ; the reserved coins are not compared.
+bool balanceDiffers(const std::optional<TStoreBalance>& a, const std::optional<TStoreBalance>& b);
+
+/// How an offer or a product is shown.
+struct TStoreVisualisation
+{
+    enum EType
+    {
+        IMAGE_IDENTIFIER = 0,
+        MOUNT = 1,
+        OUTFIT = 2,
+        OBJECT = 3,
+        BOTH_GENDER_OUTFITS = 4,
+    };
+    enum EGender
+    {
+        MALE = 1,
+        FEMALE = 2,
+    };
+
+    int type = IMAGE_IDENTIFIER;
     QString imageIdentifier;
-    int typeId = 0;
-    int maleTypeId = 0;
-    int femaleTypeId = 0;
-    uint8_t head = 0;
-    uint8_t body = 0;
-    uint8_t legs = 0;
-    uint8_t feet = 0;
+    uint16_t appearanceTypeId = 0;
+    /// Head, torso, legs and detail colour indices.
+    uint8_t colors[4] = {};
+    bool addon1 = false;
+    bool addon2 = false;
+    uint16_t maleAppearanceTypeId = 0;
+    uint16_t femaleAppearanceTypeId = 0;
+    int gender = MALE;
 };
 
-/// One product of a bundle offer (CIP: TStoreProduct, translator v139).
+/// One way to buy an offer: an amount for a price.
+struct TStoreOfferQuantityConfiguration
+{
+    /// The highlight states.
+    enum EHighlightState
+    {
+        STATE_NONE = 0,
+        STATE_NEW = 1,
+        STATE_SALE = 2,
+        STATE_TIMED = 3,
+    };
+    /// The currencies; cosmetic tokens are the extra purchase option some
+    /// quantities carry.
+    enum ECurrency
+    {
+        TIBIA_COINS = 0,
+        TRUSTED_TIBIA_COINS = 1,
+        TOURNAMENT_COINS = 2,
+        COSMETIC_TOKENS = 3,
+    };
+
+    TOfferID offerId = 0;
+    uint32_t quantity = 0;
+    uint32_t price = 0;
+    uint32_t basePrice = 0;
+    int highlightState = STATE_NONE;
+    std::vector<QString> disabledReasons;
+    uint32_t validUntil = 0;
+    bool canBeBought = false;
+    int currency = TIBIA_COINS;
+    bool buyableWithCosmeticTokens = false;
+};
+
+/// One product of a bundle offer.
 struct TStoreProduct
 {
     QString name;
-    TStoreVisual visual;
+    TStoreVisualisation visualisation;
 };
 
-/// CIP: TStoreOffer.
-struct TStoreOfferData
+struct TStoreOffer
 {
     QString name;
-    std::vector<TStoreQuantity> quantities;
-    TStoreVisual visual;
-    std::vector<TStoreProduct> products;
-    bool needsUserConfiguration = false;
-    uint8_t tryOnType = 0;
-    uint16_t popularity = 0;
+    std::vector<TStoreOfferQuantityConfiguration> quantities;
+    TStoreVisualisation visualisation;
+    int tryOnType = 0;
+    /// The offer's filter tag.
+    QString collection;
+    uint32_t popularity = 0;
     uint32_t newUntil = 0;
-    QString description;
+    std::vector<TStoreProduct> products;
+    bool configurable = false;
 
-    bool hasQuantity(uint32_t offerId) const;
+    bool hasQuantity(TOfferID offerId) const;
 };
 
-/// CIP: TStoreCategory.
-struct TStoreCategoryData
+struct TStoreCategory
 {
     QString name;
-    QStringList imageIdentifiers;
-    std::vector<TStoreCategoryData> subcategories;
+    int state = 0;
+    std::vector<QString> icons;
+    std::vector<TStoreCategory> subcategories;
+    QString parentName;
+
+    /// The category `name`: this one or one below it.
+    TStoreCategory* find(const QString& name);
+    /// Adds `category` below this one.
+    void addSubcategory(TStoreCategory category);
 };
 
-/// One line of the transaction history (CIP's onParseStoreGetHistory
-/// tuple).
-struct TStoreHistoryEntry
+/// A home page banner and the page it opens.
+struct TStoreBanner
 {
-    uint32_t time = 0;
-    /// 0 normal, 1 gift, 2 refund.
-    uint8_t mode = 0;
-    int32_t amount = 0;
-    uint8_t coinType = 0;
-    QString description;
-    uint32_t transactionId = 0;
-    bool detailsAvailable = false;
-    QString details;
+    QString image;
+    TStoreOpenParameters parameters;
 };
 
-/// The store's data (CIP: TStoreStorage, ctor , metacall
-/// ) fed by CIP's store events, and the store requests to the
-/// server.
+/// One line of the transaction history.
+struct TStoreTransactionHistoryEntry
+{
+    /// 0 a normal transaction, 1 a gift, 2 a refund.
+    enum EMode
+    {
+        MODE_NORMAL = 0,
+        MODE_GIFT = 1,
+        MODE_REFUND = 2,
+    };
+
+    uint32_t transactionId = 0;
+    uint32_t time = 0;
+    int mode = MODE_NORMAL;
+    qint64 amount = 0;
+    QString description;
+    int currency = 0;
+    bool detailsAvailable = false;
+};
+
+struct TStoreTransactionHistory
+{
+    uint32_t currentPage = 0;
+    uint32_t numberOfPages = 0;
+    std::vector<TStoreTransactionHistoryEntry> entries;
+};
+
+/// The store's data (CIP: store::TStoreStorage).
 class TStoreStorage final : public cip::tibia::store::TStoreStorage
 {
     Q_OBJECT
 public:
+    /// The page the offers belong to.
+    enum EPageType
+    {
+        PAGE_HOME = 0,
+        PAGE_CATEGORY = 1,
+        PAGE_SEARCH = 2,
+    };
+    /// The offer orders (the sort order index of the dialog, plus the newest
+    /// first order of the home page).
+    enum ESortOrder
+    {
+        SORT_BY_NAME = 0,
+        SORT_BY_POPULARITY = 1,
+        SORT_BY_NAME_ALTERNATIVE = 2,
+        SORT_BY_NEWEST = 3,
+    };
+
     explicit TStoreStorage(QObject* parent = nullptr);
 
-    const std::vector<TStoreCategoryData>& categories() const { return m_categories; }
-    const std::vector<TStoreOfferData>& offers() const { return m_offers; }
-    const QString& offersCategoryName() const { return m_offersCategoryName; }
-    /// The home page's banner images, relative to the image base URL.
-    const QStringList& banners() const { return m_banners; }
-    /// The offer each banner shows.
-    const QList<uint32_t>& bannerOfferIds() const { return m_bannerOfferIds; }
-    int bannerDelaySeconds() const { return m_bannerDelaySeconds; }
-    /// v200: the offer one of whose quantities is `offerId`.
-    const TStoreOfferData* offerById(uint32_t offerId) const;
-
-    bool balanceValid() const { return m_balanceValid; }
-    bool balanceUpdating() const { return m_balanceUpdating; }
-    /// v0x120.
+    bool categoriesLoaded() const;
+    void setCategoriesLoaded(bool loaded);
+    bool balanceUpdating() const;
     void setBalanceUpdating(bool updating);
-    uint64_t coins() const { return m_coins; }
-    uint64_t transferableCoins() const { return m_transferableCoins; }
-    uint64_t reservedCoins() const { return m_reservedCoins; }
+    std::optional<TStoreBalance> balance() const;
+    void setBalance(const std::optional<TStoreBalance>& balance);
+    const std::vector<TStoreCategory>& categories() const;
+    /// Adds a category (below `parentName` when not empty); the categories
+    /// changed signal follows once the batch is in.
+    void addCategory(const TStoreCategory& category, const QString& parentName);
+    TStoreCategory* findCategory(const QString& name);
+    void clearCategories();
+    void setHomePage(std::vector<TStoreBanner>&& banners, qint64 bannerDelay, std::vector<TStoreOffer>&& offers, int sortOrder);
+    void setSearchResults(std::vector<TStoreOffer>&& offers, TOfferID redirectId, int sortOrder, bool moreResultsAvailable);
+    void setCategoryOffers(const QString& categoryName, std::vector<TStoreOffer>&& offers, TOfferID preselectedOfferId, int sortOrder);
+    /// The offer one of whose quantities is `offerId`.
+    const TStoreOffer* findOffer(TOfferID offerId) const;
+    /// The offers of the active filter tag (all without one).
+    std::vector<TStoreOffer> filteredOffers() const;
+    const std::vector<TStoreBanner>& banners() const;
+    qint64 bannerDelay() const;
+    int sortOrder() const;
+    void setSortOrder(int sortOrder);
+    std::vector<QString> filterTags() const;
+    void setFilterTags(std::vector<QString>&& filterTags);
+    QString activeFilterTag() const;
+    void setActiveFilterTag(const QString& filterTag);
+    /// Keeps the active filter tag when the new offers have it (once), else
+    /// clears it.
+    void refreshActiveFilterTag();
+    void setKeepActiveFilterTag(bool keep);
+    const TStoreTransactionHistory& transactionHistory() const;
+    void setTransactionHistory(const TStoreTransactionHistory& history);
+    qint64 creditPacketSize() const;
+    void setCreditPacketSize(qint64 size);
+    const QString& searchText() const;
+    void setSearchText(QString&& text);
+    const TStoreCategory* currentCategory() const;
 
-    uint32_t historyPage() const { return m_historyPage; }
-    uint32_t historyPageCount() const { return m_historyPageCount; }
-    const std::vector<TStoreHistoryEntry>& history() const { return m_history; }
+    int pageType() const { return m_pageType; }
+    const std::vector<TStoreOffer>& offers() const { return m_offers; }
 
-    /// The protocol requests (CIP: TStoreGameActionHandler, v0x60 with the
-    /// request types 0 home, 2 category, 4 offer, 5 search).
-    void openStore();
-    void requestHome();
-    void requestCategory(const QString& name);
-    void requestOffer(uint32_t offerId);
-    void requestSearch(const QString& text);
-    /// Request type 1 (detail 1 the boosts, else premium time). qtclient only
-    /// sends the boosts variant, so premium asks for the server's premium
-    /// category by name (Crystal: "VIP Shop" with its VIP system, else
-    /// "Premium Time").
-    void requestPremiumOrBoosts(bool boosts);
-    /// Request type 3: the useful-things offer `subAction` (Crystal
-    /// GameStore.SubActions: prey slot, wildcards, blessings...).
-    void requestUsefulThing(int subAction);
-    /// v0x68.
-    void buy(uint32_t offerId);
-    /// v0x70 / v0x90: the buy with its purchase data (1 a new character name,
-    /// 3 a hireling's name and sex).
-    void buyConfigured(uint32_t offerId, uint8_t purchaseType, const QString& name, uint8_t sex = 0);
-    /// v0x98 / v0xa0 (26 entries per page).
-    void openTransactionHistory();
-    void requestTransactionHistoryPage(uint32_t page);
-    /// The coin transfer (Tibia's TransferCurrency, 0xEF).
-    void transferCoins(const QString& recipient, uint32_t amount);
+    /// Host: transaction details by transaction id, from the transaction
+    /// details message.
+    const QString& transactionDetails() const { return m_transactionDetails; }
+    void setTransactionDetails(QString details);
 
 Q_SIGNALS:
-    /// The offers of a category (or the search results) arrived; the server
-    /// asks to show `offerId` when it is not 0.
-    void offersChanged(int offerId);
-    void offerDescriptionChanged(int offerId);
+    void offersChanged(int PreselectedOfferID);
 
 private:
-    void setOffers(const std::vector<TStoreOfferData>& offers, const QString& categoryName);
-    void readBalance();
+    void sortOffers(int order);
 
-    std::vector<client::gamecore::Hook> m_hooks;
-    std::vector<TStoreCategoryData> m_categories;
-    std::vector<TStoreOfferData> m_offers;
-    QString m_offersCategoryName;
-    QStringList m_banners;
-    QList<uint32_t> m_bannerOfferIds;
-    int m_bannerDelaySeconds = 0;
-    bool m_balanceValid = false;
+    bool m_categoriesLoaded = false;
     bool m_balanceUpdating = false;
-    uint64_t m_coins = 0;
-    uint64_t m_transferableCoins = 0;
-    uint64_t m_reservedCoins = 0;
-    uint32_t m_historyPage = 0;
-    uint32_t m_historyPageCount = 0;
-    std::vector<TStoreHistoryEntry> m_history;
+    std::optional<TStoreBalance> m_balance;
+    int m_pageType = PAGE_HOME;
+    std::vector<TStoreCategory> m_categories;
+    std::vector<TStoreOffer> m_offers;
+    int m_sortOrder = SORT_BY_POPULARITY;
+    std::vector<QString> m_filterTags;
+    QString m_activeFilterTag;
+    bool m_keepActiveFilterTag = false;
+    std::vector<TStoreBanner> m_banners;
+    qint64 m_bannerDelay = 0;
+    QString m_searchText;
+    TStoreTransactionHistory m_transactionHistory;
+    qint64 m_creditPacketSize = 1;
+    TStoreCategory* m_currentCategory = nullptr;
+    QString m_transactionDetails;
+    QTimer m_categoriesTimer;
 };
 
-/// The store's server notifications (CIP: TStoreProtocolMessageHandler,
-/// ctor): the image base URL of the login message, purchase
-/// results, store errors and the store button indicators (slot 35,
-/// : sale then new).
+/// The store's protocol messages (CIP: store::TStoreProtocolMessageHandler).
 class TStoreProtocolMessageHandler final : public cip::tibia::store::TStoreProtocolMessageHandler
 {
     Q_OBJECT
 public:
     explicit TStoreProtocolMessageHandler(QObject* parent = nullptr);
+    ~TStoreProtocolMessageHandler() override;
 
+    /// Host: the storage the messages fill (CIP passes it to the constructor).
+    void setStorage(TStoreStorage* storage) { m_storage = storage; }
+    TStoreStorage* storage() const { return m_storage; }
     const QUrl& imageBaseUrl() const { return m_imageBaseUrl; }
     /// The login message's coin packet size: coins transfer in multiples of it.
-    qint64 creditPacketSize() const { return m_creditPacketSize; }
+    qint64 creditPacketSize() const;
+
+    /// Asks for the categories when not loaded yet, then for the page.
+    void openStore(const TStoreOpenParameters& parameters);
+    void buyOffer(TOfferID offerId, bool buyWithCosmeticTokens);
+    void buyOfferWithNewCharacterName(TOfferID offerId, const QString& name, bool buyWithCosmeticTokens);
+    void buyOfferWithNewWorld(TOfferID offerId, const QString& world, bool buyWithCosmeticTokens);
+    void buyOfferWithNewMainCharacter(TOfferID offerId, const QString& character, bool buyWithCosmeticTokens);
+    void buyOfferWithoutConfirmation(TOfferID offerId, bool buyWithCosmeticTokens);
+    void buyHireling(TOfferID offerId, const QString& name, int sex, bool buyWithCosmeticTokens);
+    void openTransactionHistory(uint32_t entriesPerPage);
+    void requestTransactionHistoryPage(uint32_t page, uint32_t entriesPerPage);
+    void transferCredits(const QString& recipient, TStoreCredits amount);
+    void requestOfferDescription(TOfferID offerId);
+    void sendStoreEventOfferViewed(TOfferID offerId);
+    void sendStoreEventSearch(const QString& text);
+    void sendStoreEventSortOrder(int sortOrder);
+    void sendStoreEventFilterTag(int filterTag);
+    void requestTransactionDetails(uint32_t transactionId);
+    bool searchRefreshPending() const;
+    void setRefreshOffersAfterPurchase(bool refresh);
+
+    void handleLoginSuccessMessage(const tibia::protobuf::protocol::GameserverMessageLoginSuccess& message);
+    void handleStoreCategoriesMessage(const tibia::protobuf::protocol::GameserverMessageStoreCategories& message);
+    void handleStoreOffersMessage(const tibia::protobuf::protocol::GameserverMessageStoreOffers& message);
+    void handleRequestPurchaseDataMessage(const tibia::protobuf::protocol::GameserverMessageRequestPurchaseData& message);
+    void handleCreditBalanceMessage(const tibia::protobuf::protocol::GameserverMessageCreditBalance& message);
+    void handleUpdatingShopBalanceMessage(const tibia::protobuf::protocol::GameserverMessageUpdatingShopBalance& message);
+    void handleTransactionHistoryMessage(const tibia::protobuf::protocol::GameserverMessageTransactionHistory& message);
+    void handleStoreSuccessMessage(const tibia::protobuf::protocol::GameserverMessageStoreSuccess& message);
+    void handleStoreErrorMessage(const tibia::protobuf::protocol::GameserverMessageStoreError& message);
+    void handleStoreButtonIndicatorsMessage(const tibia::protobuf::protocol::GameserverMessageStoreButtonIndicators& message);
+    void handleOfferDescriptionMessage(const tibia::protobuf::protocol::GameserverMessageOfferDescription& message);
+
+    /// The protocol's visualisation and open parameters.
+    static TStoreVisualisation visualisation(const tibia::protobuf::protocol::ProtocolStoreVisual& visual);
+    static TStoreOpenParameters openParameters(const tibia::protobuf::protocol::ProtocolStoreOpenParameters& parameters);
 
 Q_SIGNALS:
-    /// requestCharacterNameChangeInputDialog / requestHirelingInputDialog.
-    void characterNameChangeRequested(int offerId);
-    void hirelingConfigurationRequested(int offerId);
-    /// CIP HirelingNameChange (S 0xDB) → enter name → SetHirelingName (C 0xEC).
+    void requestCharacterNameChangeInputDialog(int OfferIDForCharacterNameChange, bool BuyWithCosmeticTokens);
+    void requestHirelingInputDialog(int OfferIDForHireling, bool BuyWithCosmeticTokens);
+    void requestConfirmationDialog(int Offer, const QString& Message, bool BuyWithCosmeticTokens);
+    void storeOfferDescriptionReceived(int OfferID, const QString& Description);
+    /// Host: CIP HirelingNameChange (S 0xDB) → enter name → SetHirelingName (C 0xEC).
     void hirelingNameChangeRequested(quint32 creatureId, quint32 objectId);
 
-private:
-    std::vector<client::gamecore::Hook> m_hooks;
-    QUrl m_imageBaseUrl;
-    qint64 m_creditPacketSize = 1;
 public:
-    /// Tip Q→H wire: StoreButtonIndicators and UpdatingShopBalance from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    /// Host ingress: the protocol queue's server messages.
+    static void onServerMessageEnqueued(int opcode);
+
+private:
+    /// After a purchase: asks for the offers shown again.
+    void refreshOffersAfterPurchase();
+
+    static TStoreProtocolMessageHandler* s_live;
+    TStoreStorage* m_storage = nullptr;
+    QUrl m_imageBaseUrl;
+    bool m_searchRefreshPending = false;
+    bool m_refreshOffersAfterPurchase = false;
+    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

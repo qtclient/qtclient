@@ -29,7 +29,7 @@ public:
     using cip::tibia::exaltation::TExaltationProtocolMessageHandler::TExaltationProtocolMessageHandler;
 public:
     /// Tip Q→H wire: ExaltationHistory from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 }

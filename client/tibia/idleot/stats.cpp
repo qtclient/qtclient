@@ -20,6 +20,7 @@
  * THE SOFTWARE.
  */
 
+#include "shared/clockservice.h"
 #include "idleot/stats.h"
 
 #include <framework/stdext/time.h>
@@ -62,7 +63,7 @@ std::string Stats::get(int type, int limit, bool pretty) {
     std::multimap<uint64_t, StatsMap::const_iterator> sorted_stats;
 
     uint64_t total_time = 0;
-    const uint64_t time_from_start = (stdext::micros() - stats[type].start);
+    const uint64_t time_from_start = (tibia::shared::TClockService::nowMicros() - stats[type].start);
 
     for (auto it = stats[type].data.cbegin(); it != stats[type].data.cend(); ++it) {
         sorted_stats.emplace(it->second.executionTime, it);
@@ -78,7 +79,7 @@ std::string Stats::get(int type, int limit, bool pretty) {
     if (pretty)
         ret << "Function" << std::setw(42) << "Calls" << std::setw(10) << "Time (ms)" << std::setw(10) << "Time (%)" << std::setw(10) << "Cpu (%)" << "\n";
     else
-        ret << "Stats|" << type << "|" << limit << "|" << stdext::micros() << "|" << total_time << "|" << time_from_start << "\n";
+        ret << "Stats|" << type << "|" << limit << "|" << tibia::shared::TClockService::nowMicros() << "|" << total_time << "|" << time_from_start << "\n";
 
     for (auto it = sorted_stats.rbegin(); it != sorted_stats.rend(); ++it) {
         if (i++ > limit)
@@ -99,7 +100,7 @@ void Stats::clear(int type) {
     if (type < 0 || type > STATS_LAST)
         return;
     std::lock_guard<std::mutex> lock(m_mutex);
-    stats[type].start = stdext::micros();
+    stats[type].start = tibia::shared::TClockService::nowMicros();
     stats[type].data.clear();
 }
 
@@ -123,7 +124,7 @@ std::string Stats::getSlow(int type, int limit, unsigned int minTime, bool prett
     if (pretty)
         ret << "Function" << std::setw(42) << "Time (ms)" << std::setw(20) << "Extra description" << "\n";
     else
-        ret << "Slow|" << type << "|" << limit << "|" << minTime << "|" << stdext::micros() << "\n";
+        ret << "Slow|" << type << "|" << limit << "|" << minTime << "|" << tibia::shared::TClockService::nowMicros() << "\n";
 
     minTime *= 1000;
 

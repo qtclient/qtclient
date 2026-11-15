@@ -24,6 +24,7 @@ public:
     /// Rereads clientoptions.json's specialConditionsOptions.
     void reloadOptions();
     void refresh();
+    void updateRestingArea();
 
 Q_SIGNALS:
     void restingAreaChanged(bool inRestingArea, bool hasBonus, const QString& bonusText);
@@ -36,6 +37,8 @@ private:
     TPlayerStateDisplayInfoModel m_model;
     bool m_inRestingArea = false;
     bool m_restingAreaBonus = false;
+    bool m_lastInRestingArea = false;
+    uint m_rewardStreak = 0;
     QString m_restingAreaText;
     std::vector<client::gamecore::Hook> m_hooks;
 };

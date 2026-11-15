@@ -32,7 +32,7 @@ namespace network {
 /// `websocketGamePort` (same binary framing as primary `WebConnection`) — Qt's
 /// `QTcpSocket` wasm tunnel is not compatible with that endpoint.
 ///
-/// After SecondaryLogin, XTEA keys are copied from the primary ProtocolGame so
+/// After SecondaryLogin, XTEA keys are copied from the primary connection so
 /// this socket can decrypt frames (shared session; no second player). Crystal
 /// OT classic uses the secondary as a **stability** socket (SecondaryLogin +
 /// ConnectionPingBack); optional fan-out copies are decrypted then discarded so

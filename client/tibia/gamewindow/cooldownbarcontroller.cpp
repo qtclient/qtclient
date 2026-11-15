@@ -1,10 +1,12 @@
 #include "cooldownbarcontroller.h"
 
 #include "app/clientoptions.h"
+#include "imageproviders/imagestripimageprovider.h"
 #include "spells/spellinfostorage.h"
 
 #include <QQmlEngine>
 #include <QQuickItem>
+#include <QVariantList>
 
 #include <algorithm>
 
@@ -13,104 +15,37 @@ namespace tibia::gamewindow {
 namespace {
 
 constexpr auto CooldownBarEnabled = "cooldownBarEnabled";
-constexpr int CooldownTickMs = 100;
 
-/// CIP : groups shown on the bar (conjure / id 5 is omitted).
+/// The spell groups on the bar, in order (conjure, group 5, is left out).
 constexpr int BarGroups[] = { 1, 2, 3, 4, 6, 7, 8, 9, 10, 11 };
 
-/// Crystal SpellGroup_t swaps great beams / bursts of nature vs CIP ids.
-int swapGreatBeamsBursts(const int id)
+/// Crystal's SpellGroup_t numbers great beams and bursts of nature the other
+/// way round than the client's spell groups.
+int serverGroup(const int group)
 {
-    if (id == 9)
+    if (group == 9)
         return 10;
-    if (id == 10)
+    if (group == 10)
         return 9;
-    return id;
+    return group;
 }
 
-int remainingMs(const game::TCooldown& cooldown, const qint64 now)
+/// image://spellgroup-icons-20x20/<group - 1>; no icon for group 0.
+QString spellGroupIconUrl(const int group)
 {
-    if (cooldown.end <= now)
-        return 0;
-    return int(std::min<qint64>(cooldown.end - now, cooldown.duration > 0 ? cooldown.duration : cooldown.end - now));
+    if (group == 0)
+        return {};
+    return QStringLiteral("image://%1/%2").arg(QLatin1String("spellgroup-icons-20x20")).arg(group - 1);
 }
 
-int totalMs(const game::TCooldown& cooldown)
+QString spellGroupName(const int group)
 {
-    return cooldown.duration > 0 ? int(cooldown.duration) : 1;
-}
-
-void clearModels(QVariantList& models)
-{
-    for (const QVariant& value : models)
-        if (QObject* object = value.value<QObject*>())
-            delete object;
-    models.clear();
-}
-
-}
-
-TCooldownProgressDataForQML::TCooldownProgressDataForQML(QString sourceUrl, const int remainingMs, const int totalMs,
-                                                       QString tooltip, QObject* parent)
-    : cip::tibia::gamewindow::TCooldownProgressDataForQML(parent)
-{
-    m_sourceURL = std::move(sourceUrl);
-    m_remainingDurationMilliseconds = remainingMs;
-    m_totalDurationMilliseconds = totalMs > 0 ? totalMs : 1;
-    m_tooltip = std::move(tooltip);
-}
-
-TCooldownBarController::~TCooldownBarController()
-{
-    clearModels(m_groupModels);
-    clearModels(m_spellModels);
-}
-
-TCooldownBarController::TCooldownBarController(QQuickItem* gameWindowItem, QObject* parent)
-    : cip::tibia::gamewindow::TCooldownBarController(parent)
-{
-    if (gameWindowItem)
-        m_bar = gameWindowItem->findChild<QQuickItem*>(QLatin1String("cooldownBar"));
-    if (!m_bar)
-        qWarning("gamewindow.qml has no cooldownBar");
-
-    applyVisibility();
-    rebuildIdleGroups();
-    if (m_bar)
-        m_bar->setProperty("spellCooldowns", QVariantList{});
-
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String(CooldownBarEnabled))
-            applyVisibility();
-    });
-
-    m_tick.setInterval(CooldownTickMs);
-    connect(&m_tick, &QTimer::timeout, this, &TCooldownBarController::refresh);
-
-    if (game::TCooldownStorage* storage = game::TCooldownStorage::instance()) {
-        connect(storage, &game::TCooldownStorage::spellOrSpellGroupCooldownChanged, this, &TCooldownBarController::refresh);
-        connect(storage, &game::TCooldownStorage::multiUseCooldownChanged, this, &TCooldownBarController::refresh);
-    }
-}
-
-void TCooldownBarController::applyVisibility()
-{
-    if (!m_bar)
-        return;
-    // CIP : option 0x77.
-    m_bar->setVisible(app::ClientOptions::load().options().value(QLatin1String(CooldownBarEnabled)).toBool(true));
-}
-
-QString TCooldownBarController::groupTooltip(const int cipGroup)
-{
-    // CIP / skillwheel spellGroupName (CIP ids).
-    switch (cipGroup) {
+    switch (group) {
         case 1: return qtTrId("spell_attack");
         case 2: return qtTrId("spell_healing");
         case 3: return qtTrId("spell_support");
         case 4: return qtTrId("spellcooldown_spell_special");
-        // Winter External qm dropped spellcooldown_spell_conjure; group 5 is unused on CipSoft.
-        case 5: return {};
+        case 5: return qtTrId("spellcooldown_spell_conjure");
         case 6: return qtTrId("spellcooldown_spell_crippling");
         case 7: return qtTrId("spellcooldown_spell_focus");
         case 8: return qtTrId("spellcooldown_spell_ultimate_strikes");
@@ -121,73 +56,122 @@ QString TCooldownBarController::groupTooltip(const int cipGroup)
     }
 }
 
-QString TCooldownBarController::groupIconUrl(const int cipGroup)
+QString spellIconUrl(const int iconIndex)
 {
-    if (cipGroup <= 0)
-        return {};
-    // CIP / : image://spellgroup-icons-20x20/<id-1>.
-    return QStringLiteral("image://spellgroup-icons-20x20/%1").arg(cipGroup - 1);
+    return QStringLiteral("image://%1/%2").arg(QLatin1String("spell-icons-20x20")).arg(iconIndex);
 }
 
-void TCooldownBarController::rebuildIdleGroups()
+bool isValidSpellIcon(const int iconIndex)
 {
-    clearModels(m_groupModels);
-    m_groupModels.reserve(std::size(BarGroups));
-    for (const int group : BarGroups) {
-        auto* data = new TCooldownProgressDataForQML(groupIconUrl(group), 0, 1, groupTooltip(group));
-        QQmlEngine::setObjectOwnership(data, QQmlEngine::CppOwnership);
-        m_groupModels.append(QVariant::fromValue(data));
-    }
+    return iconIndex >= 0 && iconIndex < imageproviders::spellIconCount();
+}
+
+/// The spell's own cooldown from the spell table, in milliseconds.
+int spellCooldownMs(const spells::TSpellInfo& spell)
+{
+    return spell.cooldownSelf * 1000;
+}
+
+/// QML owns the items: they live as long as the list it shows.
+QObject* qmlOwned(TCooldownProgressDataForQML* data)
+{
+    QQmlEngine::setObjectOwnership(data, QQmlEngine::JavaScriptOwnership);
+    return data;
+}
+
+}
+
+TCooldownProgressDataForQML::TCooldownProgressDataForQML(QString sourceUrl, const int remainingMs, const int totalMs, QString tooltip)
+    : cip::tibia::gamewindow::TCooldownProgressDataForQML(nullptr)
+{
+    m_sourceURL = std::move(sourceUrl);
+    m_remainingDurationMilliseconds = remainingMs;
+    m_totalDurationMilliseconds = totalMs;
+    m_tooltip = std::move(tooltip);
+}
+
+TCooldownBarController::TCooldownBarController(QQuickItem* gameWindowItem, QObject* parent)
+    : cip::tibia::gamewindow::TCooldownBarController(parent)
+{
+    if (gameWindowItem)
+        m_bar = gameWindowItem->findChild<QQuickItem*>(QLatin1String("cooldownBar"));
+    if (!m_bar)
+        qWarning("gamewindow.qml has no cooldownBar");
+
+    showIdleSpellGroups();
+
+    applyVisibility();
+    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
+        if (name == QLatin1String(CooldownBarEnabled))
+            applyVisibility();
+    });
+
+    m_nextFrame.setSingleShot(true);
+    m_nextFrame.setInterval(0);
+    connect(&m_nextFrame, &QTimer::timeout, this, [this] { update(game::TCooldownStorage::now()); });
+    if (game::TCooldownStorage* storage = game::TCooldownStorage::instance())
+        connect(storage, &game::TCooldownStorage::spellOrSpellGroupCooldownChanged, this, &TCooldownBarController::markDirty);
+}
+
+void TCooldownBarController::showIdleSpellGroups()
+{
+    QVariantList groups;
+    for (const int group : BarGroups)
+        groups.append(QVariant::fromValue(qmlOwned(new TCooldownProgressDataForQML(spellGroupIconUrl(group), 0, 1, spellGroupName(group)))));
     if (m_bar)
-        m_bar->setProperty("spellGroupCooldowns", m_groupModels);
+        m_bar->setProperty("spellGroupCooldowns", groups);
 }
 
-void TCooldownBarController::refresh()
+QString TCooldownBarController::spellTooltip(const int spellId)
+{
+    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId);
+    if (!spell)
+        return {};
+    return qtTrId("spellcooldown_individual_spell").arg(spell->name).arg(spellCooldownMs(*spell) / 1000);
+}
+
+void TCooldownBarController::update(const qint64 now)
 {
     game::TCooldownStorage* storage = game::TCooldownStorage::instance();
-    if (!m_bar || !storage) {
-        m_tick.stop();
+    if (!m_dirty || !m_bar || !storage)
         return;
-    }
 
-    const qint64 now = game::TCooldownStorage::now();
-    clearModels(m_groupModels);
-    m_groupModels.reserve(std::size(BarGroups));
-    bool running = false;
-    for (const int cipGroup : BarGroups) {
-        const game::TCooldown cooldown = storage->groupCooldown(swapGreatBeamsBursts(cipGroup));
-        const int remaining = remainingMs(cooldown, now);
-        running = running || remaining > 0;
-        auto* data = new TCooldownProgressDataForQML(groupIconUrl(cipGroup), remaining, remaining > 0 ? totalMs(cooldown) : 1,
-                                                   groupTooltip(cipGroup));
-        QQmlEngine::setObjectOwnership(data, QQmlEngine::CppOwnership);
-        m_groupModels.append(QVariant::fromValue(data));
+    QVariantList groups;
+    for (const int group : BarGroups) {
+        const game::TCooldown cooldown = storage->groupCooldown(serverGroup(group));
+        const qint64 remaining = std::max<qint64>(0, cooldown.end - now);
+        const qint64 total = std::max<qint64>(1, cooldown.duration);
+        groups.append(QVariant::fromValue(
+            qmlOwned(new TCooldownProgressDataForQML(spellGroupIconUrl(group), int(remaining), int(total), spellGroupName(group)))));
     }
-    m_bar->setProperty("spellGroupCooldowns", m_groupModels);
+    m_bar->setProperty("spellGroupCooldowns", groups);
 
-    clearModels(m_spellModels);
-    spells::TSpellInfoStorage* spellsInfo = spells::TSpellInfoStorage::instance();
+    QVariantList spellCooldowns;
+    spells::TSpellInfoStorage* spellInfo = spells::TSpellInfoStorage::instance();
     for (const auto& [spellId, cooldown] : storage->spellCooldowns()) {
-        const int remaining = remainingMs(cooldown, now);
-        if (remaining <= 0)
+        const qint64 remaining = cooldown.end - now;
+        const spells::TSpellInfo* spell = spellInfo->spell(spellId);
+        if (remaining <= 0 || !spell || !isValidSpellIcon(spell->iconIndex))
             continue;
-        const spells::TSpellInfo* spell = spellsInfo->spell(spellId);
-        if (!spell || spell->iconIndex < 0)
-            continue;
-        running = true;
-        // CIP : spellcooldown_individual_spell %1 name %2 seconds.
-        const QString tip = qtTrId("spellcooldown_individual_spell").arg(spell->name).arg((remaining + 999) / 1000);
-        auto* data = new TCooldownProgressDataForQML(QStringLiteral("image://spell-icons-20x20/%1").arg(spell->iconIndex), remaining,
-                                                   totalMs(cooldown), tip);
-        QQmlEngine::setObjectOwnership(data, QQmlEngine::CppOwnership);
-        m_spellModels.append(QVariant::fromValue(data));
+        spellCooldowns.append(QVariant::fromValue(qmlOwned(new TCooldownProgressDataForQML(
+            spellIconUrl(spell->iconIndex), int(remaining), spellCooldownMs(*spell), spellTooltip(spellId)))));
     }
-    m_bar->setProperty("spellCooldowns", m_spellModels);
+    m_bar->setProperty("spellCooldowns", spellCooldowns);
+    m_dirty = false;
+}
 
-    if (running && !m_tick.isActive())
-        m_tick.start();
-    else if (!running && m_tick.isActive())
-        m_tick.stop();
+void TCooldownBarController::markDirty()
+{
+    m_dirty = true;
+    if (!m_nextFrame.isActive())
+        m_nextFrame.start();
+}
+
+void TCooldownBarController::applyVisibility()
+{
+    if (!m_bar)
+        return;
+    m_bar->setVisible(app::ClientOptions::load().options().value(QLatin1String(CooldownBarEnabled)).toBool(true));
 }
 
 }

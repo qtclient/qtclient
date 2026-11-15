@@ -19,7 +19,7 @@
 #include "worldmap/worldmaptutorialmarkeroverlaycontroller.h"
 #include "worldmap/worldmapviewport.h"
 
-#include <tibia/appearances/thing.h>
+#include "assets/thingtype.h"
 
 #include <QCursor>
 #include <QGuiApplication>
@@ -45,9 +45,10 @@ TWorldView::TWorldView(QQuickItem* pane, TWorldMapRenderProvider* provider, cons
                        const worldmap::TNumericalEffectStorage* numericalEffects)
     : QObject(pane)
     , m_provider(provider)
-    , m_actions(std::make_unique<worldmap::TWorldMapGameActionProvider>(*provider))
+    // The session's view the map handler centres; a provider without one gets a view of its own.
+    , m_viewport(provider->viewport() ? provider->viewport() : new worldmap::TWorldMapViewport(this))
+    , m_actions(std::make_unique<worldmap::TWorldMapGameActionProvider>(*provider, *m_viewport))
     , m_actionHandler(new worldmap::TWorldMapGameActionHandler(this))
-    , m_viewport(new worldmap::TWorldMapViewport(provider, this))
     , m_mapWindow(pane->findChild<QQuickItem*>(QStringLiteral("mapWindow")))
     , m_worldMap(pane->findChild<TWorldMapQuickItem*>(QStringLiteral("worldmap")))
     , m_lightMap(pane->findChild<TLightmapPaintedItem*>(QStringLiteral("lightmap")))
@@ -78,6 +79,14 @@ TWorldView::TWorldView(QQuickItem* pane, TWorldMapRenderProvider* provider, cons
                  || name == QLatin1String("gameWindowShowTargetHighlight"))
             m_provider->setTargetHighlightEnabled(attackHighlightOn(options));
     });
+
+    // The drawn volume is sized for the visible fields.
+    const auto sizeViewport = [this] {
+        m_viewport->setSize(m_provider->visibleWidth() * TWorldMapRenderProvider::FieldSize,
+                            m_provider->visibleHeight() * TWorldMapRenderProvider::FieldSize);
+    };
+    sizeViewport();
+    connect(provider, &TWorldMapRenderProvider::visibleFieldsChanged, this, sizeViewport);
 
     if (m_worldMap)
         m_worldMap->setRenderProvider(provider);
@@ -302,6 +311,21 @@ bool TWorldView::filterWindowPointer(QEvent* event)
         const bool mapOwns = m_mapOwnedPress
             || (m_mapMouseArea && m_mapMouseArea->property("pressed").toBool());
         m_mapOwnedPress = mapOwns;
+        // A press grabbed by an item outside the map window belongs to a dialog
+        // drawn over the FOV (the Cyclopedia map pans this way): that item's own
+        // drag, not a map drag. Ungrabbing it would end the dialog's drag and pick
+        // up an object on the field hidden under the dialog.
+        if (!mapOwns && !mouse->points().isEmpty()) {
+            if (const auto* grabber = qobject_cast<const QQuickItem*>(mouse->exclusiveGrabber(mouse->points().first()))) {
+                bool underMapWindow = false;
+                for (const QQuickItem* p = grabber; p && !underMapWindow; p = p->parentItem())
+                    underMapWindow = p == m_mapWindow;
+                if (!underMapWindow) {
+                    m_mapPressActive = false;
+                    return false;
+                }
+            }
+        }
         // HUD button / empty overlay owned the press — take the drag for the map.
         if (!mapOwns) {
             if (QQuickItem* leaf = leafItemAtScenePos(mouse->scenePosition()))
@@ -529,7 +553,7 @@ void TWorldView::onMapWindowDragDropped(const int mouseX, const int mouseY)
     const input::TGameActionPtr move = dnd->takeAction();
     if (!move || !tibia::game::isOnline())
         return;
-    const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, toMapPixel(QPointF(mouseX, mouseY)));
+    const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, *m_viewport, toMapPixel(QPointF(mouseX, mouseY)));
     if (!pick.isValid())
         return;
     const bool moveAll = app::ClientOptions::load().options().value(QLatin1String("dragAndDropDefaultActionIsMoveAll")).toBool(false);
@@ -584,7 +608,7 @@ bool TWorldView::onAtMouseCursor(const input::TGameAction& action)
         return true;
     }
     // CIP : the spell's Talk aimed (2) at the field under the mouse.
-    const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, toMapPixel(point));
+    const worldmap::TWorldMapPick pick = worldmap::TWorldMapPicker::pick(*m_provider, *m_viewport, toMapPixel(point));
     if (!pick.isValid() || action.text.isEmpty())
         return true;
     tibia::game::setNextTalkAim(pick.position);

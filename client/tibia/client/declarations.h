@@ -39,11 +39,8 @@ enum ITEM_CATEGORY : uint8_t;
 enum SpriteMask : uint8_t;
 
 // core
-class Game;
 class LightView;
 class LightSink;
-class Thing;
-class Item;
 /// Retired OTC Map creature (`creature.cpp` deleted). `CreaturePtr` APIs return nullptr only.
 class Creature;
 class LocalPlayerSessionThing;
@@ -53,7 +50,6 @@ class ThingType;
 class ItemType;
 class TileBlock;
 class AttachedEffect;
-class AttachableObject;
 
 
 using LightViewPtr = std::unique_ptr<LightView>;
@@ -65,8 +61,6 @@ class TWorldMapField;
 }
 using WorldMapFieldPtr = tibia::worldmap::TWorldMapField*;
 
-using ThingPtr = std::shared_ptr<Thing>;
-using ItemPtr = std::shared_ptr<Item>;
 using CreaturePtr = std::shared_ptr<Creature>;
 using LocalPlayerSessionThingPtr = std::shared_ptr<LocalPlayerSessionThing>;
 using AnimatedTextPtr = std::shared_ptr<AnimatedText>;
@@ -74,22 +68,13 @@ using StaticTextPtr = std::shared_ptr<StaticText>;
 using ThingTypePtr = std::shared_ptr<ThingType>;
 using ItemTypePtr = std::shared_ptr<ItemType>;
 using AttachedEffectPtr = std::shared_ptr<AttachedEffect>;
-using AttachableObjectPtr = std::shared_ptr<AttachableObject>;
 
 
-using ThingList = std::vector<ThingPtr>;
 using ThingTypeList = std::vector<ThingTypePtr>;
 using ItemTypeList = std::vector<ItemTypePtr>;
 
 using WorldMapFieldList = std::vector<tibia::worldmap::TWorldMapField*>;
-using ItemVector = std::vector<ItemPtr>;
 
-// net
-class ProtocolLogin;
-class ProtocolGame;
-
-using ProtocolGamePtr = std::shared_ptr<ProtocolGame>;
-using ProtocolLoginPtr = std::shared_ptr<ProtocolLogin>;
 
 // ui
 class UIItem;

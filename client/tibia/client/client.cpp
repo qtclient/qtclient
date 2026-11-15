@@ -25,7 +25,6 @@
 #include <tibia/game/gamesession.h>
 #include <tibia/config/runtimegameconfig.h>
 #include "tibia/assets/things.h"
-#include <tibia/minimap/satellitemap.h>
 
 Client g_client;
 
@@ -33,16 +32,14 @@ void Client::init(std::vector<std::string>& /*args*/)
 {
     tibia::config::initRuntimeGameConfig();
     tibia::game::initMap();
-    g_satelliteMap.init();
     tibia::game::initGameHub();
-    g_things.init();
+    tibia::appearances::TAppearancesManager::instance().init();
 }
 
 void Client::terminate()
 {
     tibia::game::terminateGameHub();
     tibia::game::terminateMap();
-    g_satelliteMap.terminate();
-    g_things.terminate();
+    tibia::appearances::TAppearancesManager::instance().terminate();
     tibia::config::terminateRuntimeGameConfig();
 }

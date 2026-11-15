@@ -6,7 +6,6 @@
 
 #include <creatures/creaturestorage.h>
 #include <tibia/game/gamesession.h>
-#include <client/item.h>
 
 #include <QClipboard>
 #include <QGuiApplication>

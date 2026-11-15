@@ -353,7 +353,7 @@ void TBountyTasksController::upgradeBountyTalisman(const int BountyTalismanIndex
 
 void TBountyTasksController::unlockPreferredMonsterSlot()
 {
-    // Unlock targets the first locked slot (1-based); 0 is rejected by Game::bountyPreferredAction.
+    // Unlock targets the first locked slot (1-based); 0 is rejected by tibia::game::bountyPreferredAction.
     int slot = 1;
     if (m_preferredModel) {
         for (int row = 0; row < m_preferredModel->rowCount(); ++row) {

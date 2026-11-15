@@ -17,6 +17,7 @@
 #include <cip_registration.h>
 
 #include <QCoreApplication>
+#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -147,42 +148,66 @@ void configureProcess(const ClientOptions& options, const int rendererOverride)
         renderer = 8;
 #endif
     const auto api = graphicsApiForRenderer(renderer);
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::Unknown);
     if (api == QSGRendererInterface::Vulkan || api == QSGRendererInterface::Metal)
         qputenv("QT_MTL_NO_TRANSACTION", "1");
     QQuickWindow::setGraphicsApi(api);
     QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering);
 
-    // Render loop and atlas live in the app settings, not clientoptions.json.
+    // The render loop and the scene graph atlas come from the GRAPHICS group of the
+    // client settings; OpenGL always renders on the basic loop.
     QSettings settings;
-    const QString loop = settings.value(QStringLiteral("graphics/renderLoop"), QStringLiteral("threaded")).toString();
-    setEnvDefault("QSG_RENDER_LOOP", api == QSGRendererInterface::OpenGL ? QByteArray("basic") : loop.toLatin1());
+    settings.beginGroup(QStringLiteral("GRAPHICS"));
+    const QString loop = settings.value(QStringLiteral("renderLoopType"), QStringLiteral("threaded")).toString();
+    qputenv("QSG_RENDER_LOOP", renderer == 8 ? QByteArray("basic") : loop.toLocal8Bit());
 
-    // Idle sleep caps uncapped present rate (often ~150 FPS on this machine with the
-    // default 4 ms). With vsync off and no software frame limit, stay awake; otherwise
-    // keep a short idle sleep for battery when paced by vsync or a limit.
-    const bool vsync = options.vSyncEnabled();
-    const bool frameLimit = options.options().value(QLatin1String("frameRateLimitEnabled")).toBool(true);
-    if (!vsync && !frameLimit)
-        qputenv("QT_QPA_UPDATE_IDLE_TIME", "0");
-    else
+    if (qEnvironmentVariable("QT_QPA_UPDATE_IDLE_TIME").isEmpty())
         qputenv("QT_QPA_UPDATE_IDLE_TIME", "4");
 
-    // CIP: SIZE_LIMIT = min(max(w,h)/8, 256)+1. HD xBRZ 4× plates need a higher cap so
-    // they stay atlas citizens when the atlas path is live (basic/OpenGL).
+    // An atlas side below the minimum is raised to it and stored back.
+    // HD mode (pack option modHdMode) raises the defaults and the size cap so xBRZ 4x
+    // plates stay atlas citizens.
     const bool hdMode = options.options().value(QLatin1String("modHdMode")).toBool(false);
-    const int atlasWidth = std::max(512, settings.value(QStringLiteral("graphics/atlasWidth"), hdMode ? 8192 : 4096).toInt());
-    const int atlasHeight = std::max(512, settings.value(QStringLiteral("graphics/atlasHeight"), hdMode ? 8192 : 4096).toInt());
-    const int sizeLimitCap = hdMode ? 1024 : 256;
-    setEnvDefault("QSG_ATLAS_WIDTH", QByteArray::number(atlasWidth));
-    setEnvDefault("QSG_ATLAS_HEIGHT", QByteArray::number(atlasHeight));
-    setEnvDefault("QSG_ATLAS_SIZE_LIMIT",
-                  QByteArray::number(std::min(std::max(atlasWidth, atlasHeight) >> 3, sizeLimitCap) + 1));
+    const auto atlasSide = [&settings, hdMode](const QString& key) {
+        constexpr int Minimum = 512;
+        const int value = settings.value(key, hdMode ? 8192 : 4096).toInt();
+        if (value >= Minimum)
+            return value;
+        settings.setValue(key, Minimum);
+        return Minimum;
+    };
+    const int atlasWidth = atlasSide(QStringLiteral("qsgAtlasWidth"));
+    const int atlasHeight = atlasSide(QStringLiteral("qsgAtlasHeight"));
+    settings.endGroup();
+    const int sizeLimit = std::min(std::max(atlasWidth, atlasHeight) >> 3, hdMode ? 1024 : 256);
+    qputenv("QSG_ATLAS_WIDTH", QByteArray::number(atlasWidth));
+    qputenv("QSG_ATLAS_HEIGHT", QByteArray::number(atlasHeight));
+    qputenv("QSG_ATLAS_SIZE_LIMIT", QByteArray::number(sizeLimit + 1));
 
     qputenv("QML_XHR_ALLOW_FILE_READ", "1");
 
     QSurfaceFormat format = QSurfaceFormat::defaultFormat();
-    format.setSwapInterval(vsync ? 1 : 0);
+    format.setSwapInterval(options.vSyncEnabled());
     QSurfaceFormat::setDefaultFormat(format);
+    format = QSurfaceFormat::defaultFormat();
+    format.setProfile(QSurfaceFormat::NoProfile);
+    QSurfaceFormat::setDefaultFormat(format);
+}
+
+namespace {
+
+void removeOldQtQmlFolder()
+{
+#if !defined(Q_OS_WASM)
+    // Qt 5 builds installed QML modules next to the binary; they clash with Qt 6's.
+    QDir old(QCoreApplication::applicationDirPath() + QStringLiteral("/QtQml"));
+    if (old.exists()) {
+        qInfo() << "Found old QtQml folder, deleting to prevent conflict with Qt6 files";
+        old.removeRecursively();
+    }
+#endif
+}
+
 }
 
 void applyBundledMoltenVkIcd()
@@ -320,6 +345,7 @@ void installTranslations()
 
 std::unique_ptr<QQmlEngine> createEngine()
 {
+    removeOldQtQmlFolder();
     cip::registerQmlTypes();
 
     auto engine = std::make_unique<QQmlEngine>();

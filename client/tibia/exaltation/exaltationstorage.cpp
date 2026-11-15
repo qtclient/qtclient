@@ -89,7 +89,7 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
             m_transferCoreCosts[grade.tier] = grade.exaltedCores;
         Q_EMIT baseDataChanged();
         // The engine reports 15.25's raw dust limit byte as 100 + raw.
-        if (tibia::game::clientRevision() >= 1530 && data->maxDustLevel >= 100)
+        if (data->maxDustLevel >= 100)
             setDustLimitRaw(static_cast<uint8_t>(data->maxDustLevel - 100));
         return std::any{};
     });

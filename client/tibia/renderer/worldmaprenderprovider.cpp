@@ -1,3 +1,4 @@
+#include "assets/thingtype.h"
 #include "worldmaprenderprovider.h"
 #include "tibia/runtime/host.h"
 
@@ -21,13 +22,12 @@
 #include <tibia/creatures/attachedeffect.h>
 #include <tibia/creatures/movementtweens.h>
 #include <tibia/config/runtimegameconfig.h>
-#include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 #include "creatures/creaturestorage.h"
 #include "creatures/walkdebug.h"
 #include "worldmap/worldmapfield.h"
-#include <framework/core/clock.h>
+#include "shared/clockservice.h"
 
 #include <QColor>
 
@@ -41,6 +41,7 @@
 #include <vector>
 #include <tibia/game/gamesession.h>
 #include "worldmap/worldmapstorage.h"
+#include "worldmap/worldmapviewport.h"
 #include <tibia/game/thingsession_forward.h>
 
 namespace tibia::qmlcomponents {
@@ -56,12 +57,6 @@ constexpr int FieldSize = TWorldMapRenderProvider::FieldSize;
 uint32_t outfitColors(const Outfit& outfit)
 {
     return outfit.getHead() | outfit.getBody() << 8 | outfit.getLegs() << 16 | static_cast<uint32_t>(outfit.getFeet()) << 24;
-}
-
-/// Thing subclasses hide getThingType; Thing exposes it.
-ThingType* typeOf(const Thing& thing)
-{
-    return thing.getThingType();
 }
 
 tibia::mods::LightingMapPos lightingCamera(const Position& camera)
@@ -81,7 +76,7 @@ tibia::mods::LightingThingContext itemLightingContext(ThingType& type, const uin
     ctx.lift = lift;
     ctx.loose = !type.isNotMoveable();
     ctx.caster = true;
-    // Thing::isCommon || isOnTop: walkable commons/onTop on a wall field hang (no cast).
+    // Common or on-top objects: walkable commons/onTop on a wall field hang (no cast).
     const bool common = !type.isGround() && !type.isGroundBorder() && !type.isOnTop() && !type.isOnBottom();
     if ((common || type.isOnTop()) && !type.isNotWalkable() && tile && tile->hasBlockingBottomItem())
         ctx.caster = false;
@@ -99,6 +94,30 @@ tibia::mods::LightingThingContext creatureLightingContext(const tibia::creatures
     ctx.caster = true;
     ctx.creatureId = stored.creatureId();
     return ctx;
+}
+
+/// The creature carries creature icon `icon` (not a player icon) with a value.
+bool hasCreatureIcon(const tibia::creatures::TCreature& creature, const uint8_t icon)
+{
+    return std::any_of(creature.hudIcons().begin(), creature.hudIcons().end(), [icon](const auto& entry) {
+        const auto& [id, category, count] = entry;
+        return category != 0 && id == icon;
+    });
+}
+
+/// The light a creature casts. A creature that casts less than 2 but must stay
+/// visible in the dark (the local player, raid leaders and minions, a creature
+/// with icon 5) casts a white light of 2 instead.
+Light creatureLight(const tibia::creatures::TCreature& creature)
+{
+    Light light = creature.light();
+    if (light.intensity < 2
+        && (creature.hasStatusMark(0) || creature.hasStatusMark(1) || hasCreatureIcon(creature, 5)
+            || creature.isLocalPlayer())) {
+        light.intensity = 2;
+        light.color = 215; // white
+    }
+    return light;
 }
 
 tibia::mods::LightingThingContext transientLightingContext(const uint8_t lift = 0)
@@ -144,7 +163,8 @@ TWorldMapRenderProvider::TWorldMapRenderProvider(QObject* parent)
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name.startsWith(QLatin1String("light")))
             loadLightOptions();
-        else if (name.startsWith(QLatin1String("combatShow")) || name == QLatin1String("gameWindowShowTragetFrame"))
+        else if (name.startsWith(QLatin1String("combatShow")) || name == QLatin1String("gameWindowShowTragetFrame")
+                 || name == QLatin1String("mouseHighlightTarget"))
             loadMarkOptions();
     });
 }
@@ -173,14 +193,6 @@ void TWorldMapRenderProvider::setMouseTargetObject(const uint16_t typeId, const 
     m_mouseTargetCreatureId = 0;
 }
 
-void TWorldMapRenderProvider::setMouseTarget(const ThingPtr& thing)
-{
-    if (thing && thing->isItem()) {
-        setMouseTargetObject(static_cast<uint16_t>(thing->getId()), thing->getPosition(), thing->getStackPos());
-        return;
-    }
-    setMouseTargetObject(0, {}, -1);
-}
 
 void TWorldMapRenderProvider::setMouseTargetCreatureId(const uint32_t id)
 {
@@ -193,38 +205,22 @@ void TWorldMapRenderProvider::setMouseTargetCreatureId(const uint32_t id)
 void TWorldMapRenderProvider::loadMarkOptions()
 {
     const QJsonObject options = app::ClientOptions::load().options();
-    m_markOptions.target = options.value(QLatin1String("gameWindowShowTragetFrame")).toBool(true);
-    m_markOptions.pvp = options.value(QLatin1String("combatShowPvpFrames")).toBool(true);
-    m_markOptions.timed = options.value(QLatin1String("combatShowFrames")).toBool(true);
+    tibia::creatures::TCreatureMarkOptions marks;
+    marks.targetFrame = options.value(QLatin1String("gameWindowShowTragetFrame")).toBool(true);
+    marks.staticSquare = options.value(QLatin1String("combatShowPvpFrames")).toBool(true);
+    marks.timedSquare = options.value(QLatin1String("combatShowFrames")).toBool(true);
+    marks.mouseHighlightTarget = options.value(QLatin1String("mouseHighlightTarget")).toBool(true);
+    tibia::creatures::TCreature::setMarkOptions(marks);
 }
 
-/// The target frame is red for the attack target and green for the follow
-/// target, lighter under the mouse, white for any other creature under the
-/// mouse (42270/42420, colors from). Then the
-/// server's permanent mark (vt 0x230) and timed mark (vt 0x240).
 std::array<uint32_t, 3> TWorldMapRenderProvider::creatureMarks(const tibia::creatures::TCreature& creature) const
 {
     std::array<uint32_t, 3> marks{};
-    size_t count = 0;
-    if (m_markOptions.target) {
-        const uint32_t id = creature.creatureId();
-        // Creature hover is id-only (setMouseTargetCreatureId); items use setMouseTargetObject.
-        const bool hovered = m_mouseTargetCreatureId == id;
-        uint32_t target = 0;
-        if (id == m_attackTarget)
-            target = hovered ? 0xFFFF8080 : 0xFFFF0000;
-        else if (id == m_followTarget)
-            target = hovered ? 0xFF80FF80 : 0xFF00FF00;
-        else if (hovered && !m_mouseHighlight)
-            target = 0xFFFFFFFF;
-        if (target)
-            marks[count++] = target;
-    }
-    const auto argb = [](const Color& color) { return 0xFF000000u | color.r() << 16 | color.g() << 8 | color.b(); };
-    if (m_markOptions.pvp && creature.showStaticSquare())
-        marks[count++] = argb(creature.staticSquareColor());
-    if (m_markOptions.timed && creature.showTimedSquare())
-        marks[count++] = argb(creature.timedSquareColor());
+    if (!creature.hasMarks())
+        return marks;
+    const std::vector<QColor> colors = creature.shownMarks();
+    for (size_t i = 0; i < colors.size() && i < marks.size(); ++i)
+        marks[i] = colors[i].rgba();
     return marks;
 }
 
@@ -241,6 +237,11 @@ void TWorldMapRenderProvider::advance()
     cost.start();
     m_frame.valid = build();
     m_buildNs = cost.nsecsElapsed();
+    // The view follows the drawn frame's field, so the picker's floor and
+    // visible area match the frame's pixels (the full map centres it on the
+    // server's field; qtclient draws around the player, steps included).
+    if (m_frame.valid && m_viewport)
+        m_viewport->setCenter(worldmap::TWorldMapSubfieldCoordinate::fromField(worldmap::TWorldMapCoordinate(m_camera), 0, 0));
     if (m_frame.valid)
         updateHighlightBaseplate();
     if (!m_frame.valid) {
@@ -337,7 +338,7 @@ bool TWorldMapRenderProvider::build()
     m_firstFloor = first;
     m_lastFloor = last;
 
-    frame.highlightStrength = static_cast<float>((std::sin(g_clock.millis() / 100.0) * 0.15 + 0.65) * 0.75);
+    frame.highlightStrength = static_cast<float>((std::sin(tibia::shared::TClockService::frameMillis() / 100.0) * 0.15 + 0.65) * 0.75);
     m_attackTarget = tibia::game::attackingCreatureId();
     m_followTarget = tibia::game::getFollowingCreatureId();
 
@@ -418,7 +419,7 @@ bool TWorldMapRenderProvider::build()
             const QPoint cell = gridCell(m_mouseHighlightField);
             m_key = DrawKey{ .group = 3, .x = cell.x(), .y = cell.y(), .layer = 7 };
             const appearances::TWorldmapHighlightBaseplateSpriteInfo info(
-                appearances::TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(g_clock.millis()));
+                appearances::TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(tibia::shared::TClockService::frameMillis()));
             const QPoint topLeft = mapPixelOf(m_mouseHighlightField);
             m_floorSprites.push_back({ .anchor = topLeft + QPoint(FieldSize, FieldSize), .sprite = info.key() });
             m_floorKeys.push_back(m_key.packed());
@@ -470,7 +471,8 @@ WeatherFrame TWorldMapRenderProvider::weatherFrame() const
     out.clouds = state.clouds;
     out.windX = state.windX;
     out.windY = state.windY;
-    out.time = static_cast<float>(g_clock.millis()) * 0.001f;
+    // Seconds since the clock started: a float cannot hold epoch milliseconds.
+    out.time = static_cast<float>(tibia::shared::TClockService::frameMillis() - tibia::shared::TClockService::startMillis()) * 0.001f;
     out.lightning = weather->lightningFlash();
     // Midday isometric SE fall (map px). Kept in stock so weather overlays work
     // without linking a raycast pack.
@@ -492,7 +494,7 @@ WeatherFrame TWorldMapRenderProvider::weatherFrame() const
         static int s_frameSamples = 0;
         s_frameUsSum += frameUs;
         ++s_frameSamples;
-        const qint64 now = g_clock.millis();
+        const qint64 now = tibia::shared::TClockService::frameMillis();
         if (now - s_lastLogMs >= 1000) {
             s_lastLogMs = now;
             const qint64 avgFrameUs = s_frameSamples > 0 ? s_frameUsSum / s_frameSamples : 0;
@@ -812,7 +814,7 @@ void TWorldMapRenderProvider::updateHighlightBaseplate()
     // CIP v21: the square's frame follows the wall clock (& 7). build() keys it
     // into its field's slot; this refreshes the frame in place.
     const appearances::TWorldmapHighlightBaseplateSpriteInfo info(
-        appearances::TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(g_clock.millis()));
+        appearances::TWorldmapHighlightBaseplateSpriteInfo::frameAtMillis(tibia::shared::TClockService::frameMillis()));
     for (SpriteRecord& sprite : m_frame.sprites) {
         if (sprite.sprite.isHighlightBaseplate())
             sprite.sprite = info.key();
@@ -1183,20 +1185,6 @@ void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearan
         addLight(dest + Point(FieldSize / 2), type->getLight().intensity, type->getLight().color);
 }
 
-void TWorldMapRenderProvider::addPodiumOutfit(Item& item, const Point& dest,
-                                             const SpriteRecord::Highlight highlight)
-{
-    const auto showOff = appearances::TShowOffSocketAppearanceInstance::fromItem(item);
-    if (!showOff || !showOff->hasFigure())
-        return;
-
-    for (const auto& layer : showOff->figureLayers()) {
-        if (!layer.type)
-            continue;
-        addSprites(layer.type, dest + Point(layer.dx, layer.dy), layer.xPattern, layer.yPattern, layer.zPattern,
-                   layer.phase, layer.colorize, layer.colors, highlight);
-    }
-}
 
 void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
                                                               const tibia::creatures::TCreature& stored, const Point& dest)
@@ -1215,25 +1203,20 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
     if (const PointF jump = stored.jumpOffset(); !jump.isNull())
         at -= Point(static_cast<int>(std::round(jump.x)), static_cast<int>(std::round(jump.y)));
 
-    Light light = stored.light();
-    if (stored.isLocalPlayer() && (tibia::game::worldLightIntensity() < 64 || m_camera.z > tibia::config::mapSeaFloor())) {
-        if (light.intensity == 0)
-            light.intensity = 2;
-        else if (light.color == 0 || light.color > 215)
-            light.color = 215;
-    }
-    addLight(at + Point(FieldSize / 2), light.intensity, light.color);
-    if (m_lighting) {
-        const Point center = at + Point(FieldSize / 2);
-        m_lighting->addCenterLight(center.x, center.y, light.intensity, light.color);
-    }
+    const Point lightCenter = at + Point(FieldSize / 2);
+    const auto addCreatureLight = [&](const Light& light) {
+        addLight(lightCenter, light.intensity, light.color);
+        if (m_lighting)
+            m_lighting->addCenterLight(lightCenter.x, lightCenter.y, light.intensity, light.color);
+    };
+    addCreatureLight(creatureLight(stored));
 
     if (m_floor == m_camera.z && !stored.isDead() && !stored.isHidden()) {
         const uint32_t id = stored.creatureId();
         const bool listed = std::any_of(m_frame.creatures.begin(), m_frame.creatures.end(),
                                         [id](const CreatureHud& hud) { return hud.creatureId == id; });
         if (!listed) {
-            const Point head = tibia::game::cipFeature(tibia::client::GameNegativeOffset) ? at : at - stored.displacement();
+            const Point head = at - stored.displacement();
             m_frame.creatures.push_back({ id, QPoint(head.x, head.y) });
         }
     }
@@ -1259,14 +1242,25 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
     if (!type)
         return;
 
+    // The outfit's own light, and the mount's while riding.
+    if (type->hasLight())
+        addCreatureLight(type->getLight());
+    if (stored.isMounted() && outfit.hasMount()) {
+        if (ThingType* mount = tibia::game::rawThingType(outfit.getMount(), ThingCategoryCreature); mount && mount->hasLight())
+            addCreatureLight(mount->getLight());
+    }
+
     const SpriteRecord::Highlight highlight = highlightOf(stored.creatureId());
     const Point walked = dest + stored.walkOffset();
     const Point jumped = at;
-    const bool mounted = outfit.hasMount();
     addAttachedEffects(stored, walked, jumped, false);
 
     if (outfit.isCreature()) {
-        ThingType* mount = outfit.hasMount() ? tibia::game::rawThingType(outfit.getMount(), ThingCategoryCreature) : nullptr;
+        // The mount is drawn while riding; the outfit then shows its mounted
+        // sprites (pattern depth 1).
+        ThingType* mount = stored.isMounted() && outfit.hasMount()
+            ? tibia::game::rawThingType(outfit.getMount(), ThingCategoryCreature)
+            : nullptr;
         if (mount) {
             at -= mount->getDisplacement();
             addSprites(mount, at, stored.drawnPatternX(), 0, 0, stored.mountAnimationPhase(), false, 0, highlight);
@@ -1294,7 +1288,7 @@ void TWorldMapRenderProvider::addCreatureFromOutfitAppearance(const appearances:
     if (outfit.isItem() && type->idleAnimation())
         phase = stored.idleAnimationPhase();
     else if (phases > 1)
-        phase = static_cast<int>((g_clock.millis() % (static_cast<long long>(ticks) * phases)) / ticks);
+        phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
     if (outfit.isEffect())
         phase = std::min(phase + 1, phases);
     addSprites(type, at - stored.displacement(), 0, 0, 0, phase, false, 0, highlight);

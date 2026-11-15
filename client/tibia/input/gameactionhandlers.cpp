@@ -1,3 +1,5 @@
+#include "game/objectreference.h"
+#include <optional>
 #include "gameactionhandlers.h"
 
 #include "app/clientoptions.h"
@@ -11,7 +13,6 @@
 #include "worldmap/worldmapstorage.h"
 
 #include <creatures/creaturestorage.h>
-#include <client/item.h>
 #include "protocol/protocolcodes.h"
 #include <tibia/assets/thingtype.h>
 #include <client/outfit.h>
@@ -150,11 +151,11 @@ bool resolveCreatureMove(const TGameAction& action, Position* from, int* stackPo
     return *stackPos >= 0;
 }
 
-/// Ephemeral Item only where classic outbound wire still needs an ItemPtr.
-ItemPtr wireItem(const TGameAction& action)
+/// The action's object with the protocol details a client message needs.
+std::optional<tibia::game::TObjectReference> wireObject(const TGameAction& action)
 {
     if (!action.objectClientId || !action.position.isValid() || action.stackPosition < 0)
-        return nullptr;
+        return std::nullopt;
     uint16_t count = 0;
     uint8_t tier = 0;
     uint8_t fluid = 0;
@@ -176,7 +177,7 @@ ItemPtr wireItem(const TGameAction& action)
             fluid = slot.fluidOrSplash ? slot.fluid : 0;
         }
     }
-    return tibia::game::ephemeralItemForWire(action.objectClientId, action.position, action.stackPosition, count, tier, fluid);
+    return tibia::game::TObjectReference{ action.objectClientId, action.position, action.stackPosition, count, tier, fluid };
 }
 
 uint16_t wireTypeId(const TGameAction& action)
@@ -351,8 +352,8 @@ void publish(const TGameActionPtr& action)
     case A::TRY_TO_EQUIP:
         if (const uint16_t typeId = wireTypeId(*action); typeId != 0) {
             uint8_t tier = 0;
-            if (const ItemPtr item = wireItem(*action))
-                tier = item->getTier();
+            if (const auto object = wireObject(*action))
+                tier = object->tier;
             tibia::game::equipItemId(typeId, tier);
         }
         break;

@@ -420,6 +420,903 @@ bool readStoreVisual(ClassicReader& r, ProtocolStoreVisual* v)
     return true;
 }
 
+
+template<typename List>
+bool readDoubles(ClassicReader& r, List* out, const int count)
+{
+    for (int i = 0; i < count; ++i) {
+        double value = 0;
+        if (!r.real(value))
+            return false;
+        out->Add(value);
+    }
+    return true;
+}
+
+template<typename List>
+bool readU16Values(ClassicReader& r, List* out, const int count)
+{
+    for (int i = 0; i < count; ++i) {
+        uint16_t value = 0;
+        if (!r.u16(value))
+            return false;
+        out->Add(value);
+    }
+    return true;
+}
+
+/// u8 count, then (u8 key, double) per entry.
+template<typename List>
+bool readKeyedValues(ClassicReader& r, List* out)
+{
+    uint8_t count = 0;
+    if (!r.u8(count))
+        return false;
+    for (uint8_t i = 0; i < count; ++i) {
+        ProtocolCharacterInfoKeyedValue* entry = out->Add();
+        uint8_t key = 0;
+        double value = 0;
+        if (!r.u8(key) || !r.real(value))
+            return false;
+        entry->set_key(key);
+        entry->set_value(value);
+    }
+    return true;
+}
+
+/// u8 count, then (u8 skill, double, double) per entry.
+template<typename List>
+bool readSkillBonuses(ClassicReader& r, List* out)
+{
+    uint8_t count = 0;
+    if (!r.u8(count))
+        return false;
+    for (uint8_t i = 0; i < count; ++i) {
+        ProtocolCharacterInfoSkillBonus* entry = out->Add();
+        uint8_t skill = 0;
+        double first = 0, second = 0;
+        if (!r.u8(skill) || !r.real(first) || !r.real(second))
+            return false;
+        entry->set_skill_id(skill);
+        entry->set_first(first);
+        entry->set_second(second);
+    }
+    return true;
+}
+
+/// u8 count, then (u32 id, u32 remaining time) per entry.
+template<typename List>
+bool readTimedEffects(ClassicReader& r, List* out)
+{
+    uint8_t count = 0;
+    if (!r.u8(count))
+        return false;
+    for (uint8_t i = 0; i < count; ++i) {
+        ProtocolCharacterInfoTimedEffect* entry = out->Add();
+        uint32_t id = 0, duration = 0;
+        if (!r.u32(id) || !r.u32(duration))
+            return false;
+        entry->set_id(id);
+        entry->set_duration(duration);
+    }
+    return true;
+}
+
+/// u8 count, then (u16 spell, u8 type, double value) per entry.
+template<typename List>
+bool readAugments(ClassicReader& r, List* out)
+{
+    uint8_t count = 0;
+    if (!r.u8(count))
+        return false;
+    for (uint8_t i = 0; i < count; ++i) {
+        ProtocolCharacterInfoAugment* entry = out->Add();
+        uint16_t spell = 0;
+        uint8_t type = 0;
+        double value = 0;
+        if (!r.u16(spell) || !r.u8(type) || !r.real(value))
+            return false;
+        entry->set_spell_id(spell);
+        entry->set_type(type);
+        entry->set_value(value);
+    }
+    return true;
+}
+
+/// u16 count, then (tiered object, u32 amount) per entry.
+template<typename List>
+bool readItemCounts(ClassicReader& r, List* out)
+{
+    uint16_t count = 0;
+    if (!r.u16(count))
+        return false;
+    for (uint16_t i = 0; i < count; ++i) {
+        ProtocolCharacterInfoItemCount* entry = out->Add();
+        uint32_t amount = 0;
+        if (!readTieredObject(r, entry) || !r.u32(amount))
+            return false;
+        entry->set_amount(amount);
+    }
+    return true;
+}
+
+/// u16 count of owned outfits, mounts or familiars; the colours of the
+/// current one follow a non-empty outfit or mount list.
+template<typename List>
+bool readAppearances(ClassicReader& r, List* out, const bool addons, ProtocolCharacterInfoColors* colors)
+{
+    uint16_t count = 0;
+    if (!r.u16(count))
+        return false;
+    for (uint16_t i = 0; i < count; ++i) {
+        ProtocolCharacterInfoAppearance* entry = out->Add();
+        uint16_t look = 0;
+        uint8_t addon = 0, source = 0;
+        uint32_t current = 0;
+        if (!r.u16(look) || !r.string(*entry->mutable_name()) || (addons && !r.u8(addon)) || !r.u8(source) || !r.u32(current))
+            return false;
+        entry->set_look_type(look);
+        entry->set_addons(addon);
+        entry->set_source(source);
+        entry->set_current(current);
+    }
+    if (count > 0 && colors) {
+        uint8_t head = 0, body = 0, legs = 0, feet = 0;
+        if (!r.u8(head) || !r.u8(body) || !r.u8(legs) || !r.u8(feet))
+            return false;
+        colors->set_head(head);
+        colors->set_body(body);
+        colors->set_legs(legs);
+        colors->set_feet(feet);
+    }
+    return true;
+}
+
+/// u8 count, then (string name, u8 count) per entry.
+template<typename List>
+bool readNamedCounts(ClassicReader& r, List* out)
+{
+    uint8_t count = 0;
+    if (!r.u8(count))
+        return false;
+    for (uint8_t i = 0; i < count; ++i) {
+        ProtocolCharacterInfoNamedCount* entry = out->Add();
+        uint8_t value = 0;
+        if (!r.string(*entry->mutable_name()) || !r.u8(value))
+            return false;
+        entry->set_count(value);
+    }
+    return true;
+}
+
+bool readCharacterGeneralStats(ClassicReader& r, ProtocolCharacterInfoGeneralStats* g)
+{
+    uint64_t experience = 0;
+    uint16_t level = 0, levelPercent = 0, baseXp = 0, lowLevel = 0, boost = 0, stamina = 0, boostRemaining = 0;
+    bool canBuy = false;
+    uint32_t health = 0, maxHealth = 0, mana = 0, maxMana = 0;
+    uint8_t soul = 0;
+    uint16_t staminaMinutes = 0, regeneration = 0, training = 0, speed = 0, baseSpeed = 0;
+    uint32_t capacity = 0, baseCapacity = 0, freeCapacity = 0;
+    if (!r.u64(experience) || !r.u16(level) || !r.u16(levelPercent) || !r.u16(baseXp) || !r.u16(lowLevel) || !r.u16(boost)
+        || !r.u16(stamina) || !r.u16(boostRemaining) || !readBool(r, canBuy) || !r.u32(health) || !r.u32(maxHealth)
+        || !r.u32(mana) || !r.u32(maxMana) || !r.u8(soul) || !r.u16(staminaMinutes) || !r.u16(regeneration)
+        || !r.u16(training) || !r.u16(speed) || !r.u16(baseSpeed) || !r.u32(capacity) || !r.u32(baseCapacity)
+        || !r.u32(freeCapacity))
+        return false;
+    g->set_experience(experience);
+    g->set_level(level);
+    g->set_level_percent(levelPercent);
+    g->set_base_xp_gain(baseXp);
+    g->set_low_level_xp_bonus(lowLevel);
+    g->set_xp_boost_percent(boost);
+    g->set_stamina_xp_bonus(stamina);
+    g->set_xp_boost_remaining(boostRemaining);
+    g->set_can_buy_xp_boost(canBuy);
+    g->set_health(health);
+    g->set_max_health(maxHealth);
+    g->set_mana(mana);
+    g->set_max_mana(maxMana);
+    g->set_soul(soul);
+    g->set_stamina_minutes(staminaMinutes);
+    g->set_regeneration(regeneration);
+    g->set_offline_training(training);
+    g->set_speed(speed);
+    g->set_base_speed(baseSpeed);
+    g->set_capacity(capacity);
+    g->set_base_capacity(baseCapacity);
+    g->set_free_capacity(freeCapacity);
+    uint8_t skills = 0;
+    if (!r.u8(skills))
+        return false;
+    for (uint8_t i = 0; i < skills; ++i) {
+        ProtocolCharacterInfoSkill* skill = g->add_skills();
+        uint8_t id = 0;
+        uint16_t value = 0, base = 0, loyalty = 0, percent = 0;
+        if (!r.u8(id) || !r.u16(value) || !r.u16(base) || !r.u16(loyalty) || !r.u16(percent))
+            return false;
+        skill->set_skill_id(id);
+        skill->set_level(value);
+        skill->set_base_level(base);
+        skill->set_loyalty_level(loyalty);
+        skill->set_percent(percent);
+    }
+    uint8_t elements = 0;
+    if (!r.u8(elements))
+        return false;
+    for (uint8_t i = 0; i < elements; ++i) {
+        ProtocolCharacterInfoElementLevel* entry = g->add_specialized_magic_levels();
+        uint8_t element = 0;
+        int16_t value = 0;
+        if (!r.u8(element) || !r.s16(value))
+            return false;
+        entry->set_element(element);
+        entry->set_value(value);
+    }
+    uint16_t first = 0, second = 0;
+    if (!r.u16(first) || !r.u16(second))
+        return false;
+    g->set_trailing_first(first);
+    g->set_trailing_second(second);
+    return true;
+}
+
+bool readCharacterOffenceStats(ClassicReader& r, ProtocolCharacterInfoOffenceStats* o)
+{
+    double cleave = 0;
+    if (!readDoubles(r, o->mutable_crit_chance(), 7) || !readDoubles(r, o->mutable_crit_damage(), 6)
+        || !readDoubles(r, o->mutable_life_leech(), 5) || !readDoubles(r, o->mutable_mana_leech(), 5)
+        || !readDoubles(r, o->mutable_onslaught(), 4) || !r.real(cleave)
+        || !readU16Values(r, o->mutable_perfect_shot(), 7) || !readU16Values(r, o->mutable_flat_damage(), 3))
+        return false;
+    o->set_cleave(cleave);
+    uint16_t attack = 0, flat = 0, damage = 0;
+    uint8_t skillType = 0, element = 0, convertedElement = 0;
+    int16_t skillLevel = 0, skillModifier = 0;
+    double converted = 0;
+    if (!r.u16(attack) || !r.u16(flat) || !r.u16(damage) || !r.u8(skillType) || !r.s16(skillLevel) || !r.s16(skillModifier)
+        || !r.u8(element) || !r.real(converted) || !r.u8(convertedElement))
+        return false;
+    o->set_weapon_attack(attack);
+    o->set_weapon_flat_modifier(flat);
+    o->set_weapon_damage(damage);
+    o->set_weapon_skill_type(skillType);
+    o->set_weapon_skill_level(skillLevel);
+    o->set_weapon_skill_modifier(skillModifier);
+    o->set_weapon_element(element);
+    o->set_converted_damage(converted);
+    o->set_converted_element(convertedElement);
+    double foes = 0;
+    uint16_t targets = 0;
+    if (!readKeyedValues(r, o->mutable_accuracy()) || !r.real(foes) || !r.u16(targets))
+        return false;
+    o->set_powerful_foes(foes);
+    for (uint16_t i = 0; i < targets; ++i) {
+        ProtocolCharacterInfoTargetBonus* target = o->add_specific_targets();
+        double value = 0;
+        if (!r.string(*target->mutable_name()) || !r.real(value))
+            return false;
+        target->set_value(value);
+    }
+    double runes = 0, autoAttack = 0, critRunes = 0, critAutoAttack = 0;
+    uint16_t lifeHit = 0, manaHit = 0, lifeKill = 0, manaKill = 0;
+    if (!readKeyedValues(r, o->mutable_crit_chance_elements()) || !r.real(runes) || !r.real(autoAttack)
+        || !readKeyedValues(r, o->mutable_crit_damage_elements()) || !r.real(critRunes) || !r.real(critAutoAttack)
+        || !r.u16(lifeHit) || !r.u16(manaHit) || !r.u16(lifeKill) || !r.u16(manaKill))
+        return false;
+    o->set_offensive_runes(runes);
+    o->set_auto_attack(autoAttack);
+    o->set_crit_damage_runes(critRunes);
+    o->set_crit_damage_auto_attack(critAutoAttack);
+    o->set_life_on_hit(lifeHit);
+    o->set_mana_on_hit(manaHit);
+    o->set_life_on_kill(lifeKill);
+    o->set_mana_on_kill(manaKill);
+    double high = 0, low = 0, penetration = 0;
+    if (!readSkillBonuses(r, o->mutable_extra_damage_skills()) || !readSkillBonuses(r, o->mutable_extra_damage_spells())
+        || !readSkillBonuses(r, o->mutable_extra_healing_spells()) || !r.real(high) || !r.real(low) || !r.real(penetration)
+        || !readKeyedValues(r, o->mutable_elemental_pierce()))
+        return false;
+    o->set_damage_high_health(high);
+    o->set_damage_low_health(low);
+    o->set_armor_penetration(penetration);
+    return true;
+}
+
+bool readCharacterDefenceStats(ClassicReader& r, ProtocolCharacterInfoDefenceStats* d)
+{
+    uint32_t shield = 0;
+    uint16_t shieldFlat = 0, reflect = 0, armor = 0, mantra = 0, defence = 0, equipment = 0, wheel = 0;
+    double shieldPercent = 0;
+    uint8_t skillType = 0, count = 0;
+    int16_t shielding = 0;
+    if (!readDoubles(r, d->mutable_dodge(), 5) || !r.u32(shield) || !r.u16(shieldFlat) || !r.real(shieldPercent)
+        || !r.u16(reflect) || !r.u16(armor) || !r.u16(mantra) || !r.u16(defence) || !r.u16(equipment) || !r.u8(skillType)
+        || !r.s16(shielding) || !r.u16(wheel) || !readDoubles(r, d->mutable_mitigation(), 5) || !r.u8(count))
+        return false;
+    d->set_magic_shield(shield);
+    d->set_magic_shield_flat(shieldFlat);
+    d->set_magic_shield_percent(shieldPercent);
+    d->set_reflect_physical(reflect);
+    d->set_armor(armor);
+    d->set_mantra(mantra);
+    d->set_defence(defence);
+    d->set_defence_equipment(equipment);
+    d->set_defence_skill_type(skillType);
+    d->set_shielding(shielding);
+    d->set_defence_wheel(wheel);
+    for (uint8_t i = 0; i < count; ++i) {
+        ProtocolCharacterInfoResistance* entry = d->add_resistances();
+        uint8_t kind = 0, element = 0;
+        double value = 0;
+        if (!r.u8(kind) || !r.u8(element) || !r.real(value))
+            return false;
+        entry->set_kind(kind);
+        entry->set_element(element);
+        entry->set_value(value);
+    }
+    return true;
+}
+
+bool readCharacterMiscStats(ClassicReader& r, ProtocolCharacterInfoMiscStats* m)
+{
+    uint8_t blessings = 0, total = 0;
+    if (!readDoubles(r, m->mutable_momentum(), 5) || !readDoubles(r, m->mutable_dodge(), 4)
+        || !readDoubles(r, m->mutable_damage_reflection(), 3) || !r.u8(blessings) || !r.u8(total))
+        return false;
+    m->set_blessings(blessings);
+    m->set_total_blessings(total);
+    return readTimedEffects(r, m->mutable_concoctions()) && readTimedEffects(r, m->mutable_foods())
+        && readAugments(r, m->mutable_proficiency_augments()) && readAugments(r, m->mutable_wheel_augments())
+        && readAugments(r, m->mutable_equipped_augments());
+}
+
+bool readCharacterInfo(ClassicReader& r, GameserverMessageCyclopediaCharacterInfo* m)
+{
+    uint8_t type = 0, error = 0;
+    if (!r.u8(type) || !r.u8(error))
+        return false;
+    m->set_info_type(type);
+    m->set_error_code(error);
+    if (error != 0)
+        return true;
+    switch (type) {
+    case 0: { // base information
+        ProtocolCharacterInfoBase* b = m->mutable_base();
+        uint16_t level = 0;
+        bool own = false;
+        if (!r.string(*b->mutable_name()) || !r.string(*b->mutable_vocation()) || !r.u16(level)
+            || !readOutfit(r, b->mutable_outfit(), true) || !readBool(r, own) || !r.string(*b->mutable_title()))
+            return false;
+        b->set_level(level);
+        b->set_own_character(own);
+        return true;
+    }
+    case 1:
+        return readCharacterGeneralStats(r, m->mutable_general());
+    case 3:
+    case 4:
+    case 5: {
+        uint16_t first = 0, second = 0, count = 0;
+        if (!r.u16(first) || !r.u16(second) || !r.u16(count))
+            return false;
+        if (type == 5) {
+            m->set_achievement_points(first);
+            m->set_secret_achievements(second);
+        } else {
+            m->set_current_page(first);
+            m->set_page_count(second);
+        }
+        for (uint16_t i = 0; i < count; ++i) {
+            uint32_t timestamp = 0;
+            if (type == 3) {
+                ProtocolCharacterInfoDeath* death = m->add_deaths();
+                if (!r.u32(timestamp) || !r.string(*death->mutable_cause()))
+                    return false;
+                death->set_timestamp(timestamp);
+            } else if (type == 4) {
+                ProtocolCharacterInfoPvpKill* kill = m->add_pvp_kills();
+                uint8_t status = 0;
+                if (!r.u32(timestamp) || !r.string(*kill->mutable_description()) || !r.u8(status))
+                    return false;
+                kill->set_timestamp(timestamp);
+                kill->set_status(status);
+            } else {
+                ProtocolCharacterInfoAchievement* achievement = m->add_achievements();
+                uint16_t id = 0;
+                bool secret = false;
+                if (!r.u16(id) || !r.u32(timestamp) || !readBool(r, secret))
+                    return false;
+                achievement->set_id(id);
+                achievement->set_timestamp(timestamp);
+                achievement->set_secret(secret);
+                if (secret) {
+                    uint8_t grade = 0;
+                    if (!r.string(*achievement->mutable_name()) || !r.string(*achievement->mutable_description()) || !r.u8(grade))
+                        return false;
+                    achievement->set_grade(grade);
+                }
+            }
+        }
+        return true;
+    }
+    case 6: // item summary
+        return readItemCounts(r, m->mutable_inventory_items()) && readItemCounts(r, m->mutable_store_items())
+            && readItemCounts(r, m->mutable_stash_items()) && readItemCounts(r, m->mutable_depot_items())
+            && readItemCounts(r, m->mutable_inbox_items());
+    case 7: // outfits, mounts and familiars
+        return readAppearances(r, m->mutable_outfits(), true, m->mutable_outfit_colors())
+            && readAppearances(r, m->mutable_mounts(), false, m->mutable_mount_colors())
+            && readAppearances(r, m->mutable_familiars(), false, nullptr);
+    case 8: { // store summary
+        uint32_t boost = 0, dailyBoost = 0;
+        uint8_t slots = 0, wildcards = 0, instant = 0, hirelings = 0, jobs = 0;
+        bool weekly = false, charms = false;
+        if (!r.u32(boost) || !r.u32(dailyBoost) || !readNamedCounts(r, m->mutable_blessings()) || !r.u8(slots)
+            || !r.u8(wildcards) || !readBool(r, weekly) || !r.u8(instant) || !readBool(r, charms) || !r.u8(hirelings)
+            || !r.u8(jobs))
+            return false;
+        m->set_xp_boost_time(boost);
+        m->set_daily_xp_boost_time(dailyBoost);
+        m->set_prey_slots(slots);
+        m->set_prey_wildcards(wildcards);
+        m->set_weekly_task_expansion(weekly);
+        m->set_instant_rewards(instant);
+        m->set_charm_expansion(charms);
+        m->set_hirelings(hirelings);
+        for (uint8_t i = 0; i < jobs; ++i) {
+            uint8_t job = 0;
+            if (!r.u8(job))
+                return false;
+            m->add_hireling_jobs(job);
+        }
+        uint16_t houseItems = 0;
+        if (!readNamedCounts(r, m->mutable_hireling_outfits()) || !r.u16(houseItems))
+            return false;
+        for (uint16_t i = 0; i < houseItems; ++i) {
+            ProtocolCharacterInfoHouseItem* item = m->add_house_items();
+            uint16_t id = 0;
+            uint8_t count = 0;
+            if (!r.u16(id) || !r.string(*item->mutable_name()) || !r.u8(count))
+                return false;
+            item->set_object_id(id);
+            item->set_count(count);
+        }
+        return true;
+    }
+    case 9: { // inspection
+        uint8_t count = 0;
+        if (!r.u8(count))
+            return false;
+        for (uint8_t i = 0; i < count; ++i) {
+            ProtocolInspectedObject* object = m->add_inspected_objects();
+            uint8_t slot = 0, icons = 0;
+            if (!r.u8(slot) || !r.string(*object->mutable_name()) || !readInventoryItem(r, object->mutable_item()) || !r.u8(icons))
+                return false;
+            object->set_slot(slot);
+            for (uint8_t k = 0; k < icons; ++k) {
+                uint16_t icon = 0;
+                if (!r.u16(icon))
+                    return false;
+                object->add_imbuement_icons(icon);
+            }
+            if (!readInspectionDetails(r, object->mutable_details()))
+                return false;
+        }
+        return r.string(*m->mutable_player_name()) && readOutfit(r, m->mutable_outfit(), true)
+            && readInspectionDetails(r, m->mutable_player_details());
+    }
+    case 10: { // badges
+        bool show = false;
+        if (!readBool(r, show))
+            return false;
+        m->set_show_account(show);
+        if (!show)
+            return true;
+        bool online = false, premium = false;
+        uint8_t count = 0;
+        if (!readBool(r, online) || !readBool(r, premium) || !r.string(*m->mutable_loyalty_title()) || !r.u8(count))
+            return false;
+        m->set_online(online);
+        m->set_premium(premium);
+        for (uint8_t i = 0; i < count; ++i) {
+            ProtocolCharacterInfoBadge* badge = m->add_badges();
+            uint32_t id = 0;
+            if (!r.u32(id) || !r.string(*badge->mutable_name()))
+                return false;
+            badge->set_id(id);
+        }
+        return true;
+    }
+    case 11: { // titles
+        uint8_t current = 0, count = 0;
+        if (!r.u8(current) || !r.u8(count))
+            return false;
+        m->set_current_title(current);
+        for (uint8_t i = 0; i < count; ++i) {
+            ProtocolCharacterInfoTitle* title = m->add_titles();
+            uint8_t id = 0;
+            bool permanent = false, unlocked = false;
+            if (!r.u8(id) || !r.string(*title->mutable_name()) || !r.string(*title->mutable_description())
+                || !readBool(r, permanent) || !readBool(r, unlocked))
+                return false;
+            title->set_id(id);
+            title->set_permanent(permanent);
+            title->set_unlocked(unlocked);
+        }
+        return true;
+    }
+    case 13:
+        return readCharacterOffenceStats(r, m->mutable_offence());
+    case 14:
+        return readCharacterDefenceStats(r, m->mutable_defence());
+    case 15:
+        return readCharacterMiscStats(r, m->mutable_misc());
+    default: // combat stats and the skill wheel carry no body in this revision
+        return true;
+    }
+}
+
+
+/// One day's reward for one account kind: typed entries, the counts add up.
+bool readDailyRewardContent(ClassicReader& r, ProtocolDailyRewardContent* c)
+{
+    uint8_t count = 0;
+    if (!r.u8(count))
+        return false;
+    for (uint8_t i = 0; i < count; ++i) {
+        uint8_t kind = 0;
+        if (!r.u8(kind))
+            return false;
+        switch (kind) {
+        case 1: {
+            ProtocolDailyRewardObject* object = c->add_objects();
+            uint16_t id = 0;
+            uint8_t amount = 0;
+            if (!r.u16(id) || !r.string(*object->mutable_name()) || !r.u8(amount))
+                return false;
+            object->set_object_id(id);
+            object->set_amount(amount);
+            break;
+        }
+        case 2:
+        case 4:
+        case 5: {
+            uint8_t value = 0;
+            if (!r.u8(value))
+                return false;
+            if (kind == 2)
+                c->set_prey_wildcards(c->prey_wildcards() + value);
+            else if (kind == 4)
+                c->set_cosmetic_tokens(c->cosmetic_tokens() + value);
+            else
+                c->set_bounty_reroll_tokens(c->bounty_reroll_tokens() + value);
+            break;
+        }
+        case 3: {
+            uint16_t minutes = 0, percent = 0;
+            if (!r.u16(minutes) || !r.u16(percent))
+                return false;
+            c->set_xp_boost_minutes(c->xp_boost_minutes() + minutes);
+            c->set_xp_boost_percent(percent);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    return true;
+}
+
+
+bool readTaskboardBounty(ClassicReader& r, ProtocolTaskboardBounty* b)
+{
+    uint8_t count = 0;
+    if (!r.u8(count))
+        return false;
+    for (uint8_t i = 0; i < count; ++i) {
+        ProtocolBountyTask* task = b->add_tasks();
+        uint8_t index = 0, claim = 0, grade = 0;
+        uint16_t race = 0, required = 0, points = 0, current = 0, dust = 0;
+        uint32_t xp = 0;
+        bool elite = false;
+        if (!r.u8(index) || !r.u16(race) || !r.u16(required) || !r.u32(xp) || !r.u16(points) || !r.u16(current) || !r.u8(claim)
+            || !r.u8(grade) || !readBool(r, elite) || !r.u16(dust))
+            return false;
+        task->set_task_index(index);
+        task->set_race_id(race);
+        task->set_required_kills(required);
+        task->set_reward_xp(xp);
+        task->set_reward_bounty_points(points);
+        task->set_current_kills(current);
+        task->set_claim_state(claim);
+        task->set_grade(grade);
+        task->set_elite(elite);
+        task->set_reward_dust(dust);
+    }
+    uint8_t difficulty = 0;
+    bool elite = false;
+    if (!r.u8(difficulty) || !readBool(r, elite))
+        return false;
+    b->set_difficulty(difficulty);
+    b->set_elite_enabled(elite);
+    for (int i = 0; i < 4; ++i) {
+        ProtocolBountyTalisman* talisman = b->add_talismans();
+        uint16_t level = 0, cost = 0;
+        bool upgradable = false;
+        if (!r.u16(level) || !readBool(r, upgradable) || !r.u16(cost))
+            return false;
+        talisman->set_level(level);
+        talisman->set_upgradable(upgradable);
+        talisman->set_upgrade_cost(cost);
+    }
+    uint8_t slots = 0;
+    if (!r.u8(slots))
+        return false;
+    for (uint8_t i = 0; i < slots; ++i) {
+        ProtocolBountyPreferredSlot* slot = b->add_preferred_slots();
+        bool unlocked = false;
+        uint16_t preferred = 0, avoided = 0;
+        if (!readBool(r, unlocked) || !r.u16(preferred) || !r.u16(avoided))
+            return false;
+        slot->set_unlocked(unlocked);
+        slot->set_preferred_race_id(preferred);
+        slot->set_avoided_race_id(avoided);
+    }
+    return true;
+}
+
+bool readTaskboardWeekly(ClassicReader& r, ProtocolTaskboardWeekly* w)
+{
+    uint16_t total = 0, current = 0;
+    uint8_t kills = 0;
+    if (!r.u16(total) || !r.u16(current) || !r.u8(kills))
+        return false;
+    w->set_any_creature_total(total);
+    w->set_any_creature_current(current);
+    for (uint8_t i = 0; i < kills; ++i) {
+        ProtocolWeeklyKillTask* task = w->add_kill_tasks();
+        uint16_t race = 0, taskTotal = 0, taskCurrent = 0;
+        if (!r.u16(race) || !r.u16(taskTotal) || !r.u16(taskCurrent))
+            return false;
+        task->set_race_id(race);
+        task->set_total(taskTotal);
+        task->set_current(taskCurrent);
+    }
+    uint8_t deliveries = 0;
+    if (!r.u8(deliveries))
+        return false;
+    for (uint8_t i = 0; i < deliveries; ++i) {
+        ProtocolWeeklyDeliveryTask* task = w->add_delivery_tasks();
+        uint8_t slot = 0, delivered = 0;
+        uint32_t object = 0, required = 0, available = 0;
+        if (!r.u8(slot) || !r.u32(object) || !r.u32(required) || !r.u32(available) || !r.u8(delivered))
+            return false;
+        task->set_slot_index(slot);
+        task->set_object_id(object);
+        task->set_required(required);
+        task->set_available(available);
+        task->set_delivered(delivered);
+    }
+    uint8_t difficulty = 0, completedKills = 0, completedDeliveries = 0, finished = 0, unlocked = 0;
+    uint32_t killXp = 0, deliveryXp = 0, reset = 0, points = 0, seals = 0;
+    bool expansion = false;
+    if (!r.u8(difficulty) || !r.u32(killXp) || !r.u32(deliveryXp) || !r.u8(completedKills) || !r.u8(completedDeliveries)
+        || !r.u8(finished) || !r.u8(unlocked) || !r.u32(reset) || !readBool(r, expansion) || !r.u32(points) || !r.u32(seals))
+        return false;
+    w->set_difficulty(difficulty);
+    w->set_kill_reward_xp(killXp);
+    w->set_delivery_reward_xp(deliveryXp);
+    w->set_completed_kill_tasks(completedKills);
+    w->set_completed_delivery_tasks(completedDeliveries);
+    w->set_progress_finished(finished);
+    w->set_unlocked_difficulty(unlocked);
+    w->set_reset_time(reset);
+    w->set_expansion(expansion);
+    w->set_reward_hunting_task_points(points);
+    w->set_reward_soul_seals(seals);
+    return true;
+}
+
+template<typename List>
+bool readTaskboardOffers(ClassicReader& r, List* out)
+{
+    uint8_t count = 0;
+    if (!r.u8(count))
+        return false;
+    for (uint8_t i = 0; i < count; ++i) {
+        ProtocolTaskboardOffer* offer = out->Add();
+        uint8_t type = 0;
+        if (!r.u8(type))
+            return false;
+        offer->set_offer_type(type);
+        if (type == 4) { // bonus promotion
+            uint16_t purchased = 0;
+            if (!r.u16(purchased))
+                return false;
+            offer->set_purchased(purchased);
+        } else {
+            uint32_t id = 0;
+            if (!r.string(*offer->mutable_name()) || !r.string(*offer->mutable_description()) || !r.u32(id))
+                return false;
+            offer->set_appearance_id(id);
+            if (type == 2) { // outfit
+                uint8_t addons = 0;
+                if (!r.u8(addons))
+                    return false;
+                offer->set_addons(addons);
+            } else if (type == 3) { // two objects
+                uint32_t second = 0;
+                if (!r.u32(second))
+                    return false;
+                offer->set_second_object_id(second);
+            }
+        }
+        uint32_t price = 0;
+        uint8_t status = 0;
+        if (!r.u32(price) || !r.u8(status))
+            return false;
+        offer->set_price(price);
+        offer->set_status(status);
+    }
+    return true;
+}
+
+
+bool readFriendSystemData(ClassicReader& r, GameserverMessageFriendSystemData* m)
+{
+    uint8_t type = 0;
+    if (!r.u8(type))
+        return false;
+    m->set_data_type(type);
+    switch (type) {
+    case 0: {
+        uint8_t code = 0;
+        if (!r.u8(code))
+            return false;
+        m->set_error_code(code);
+        return code != 1 || r.string(*m->mutable_error_message());
+    }
+    case 2: {
+        uint16_t count = 0;
+        if (!r.u16(count))
+            return false;
+        for (uint16_t i = 0; i < count; ++i) {
+            ProtocolFriendListEntry* entry = m->add_friends();
+            ProtocolFriendAccount* account = entry->mutable_account();
+            uint32_t accountId = 0, characterId = 0, length = 0;
+            uint16_t level = 0;
+            uint8_t group = 0;
+            if (!r.u32(accountId) || !r.u32(characterId) || !r.string(*account->mutable_name()) || !r.string(*account->mutable_title())
+                || !r.string(*account->mutable_vocation()) || !r.string(*account->mutable_world()) || !r.u16(level)
+                || !readOutfit(r, account->mutable_outfit(), true) || !r.u8(group) || !r.u32(length))
+                return false;
+            account->set_account_id(accountId);
+            account->set_character_id(characterId);
+            account->set_level(level);
+            entry->set_friend_group(group);
+            entry->set_friendship_length(length);
+        }
+        return true;
+    }
+    case 3: {
+        uint16_t count = 0;
+        if (!r.u16(count))
+            return false;
+        for (uint16_t i = 0; i < count; ++i) {
+            ProtocolFriendInvite* invite = m->add_invites();
+            ProtocolFriendAccount* account = invite->mutable_account();
+            bool sent = false;
+            uint32_t accountId = 0, timestamp = 0;
+            if (!readBool(r, sent) || !r.u32(accountId) || !r.string(*account->mutable_name()) || !r.string(*account->mutable_title())
+                || !r.string(*invite->mutable_text()) || !r.u32(timestamp))
+                return false;
+            invite->set_sent(sent);
+            account->set_account_id(accountId);
+            invite->set_timestamp(timestamp);
+        }
+        return true;
+    }
+    case 4: {
+        uint16_t count = 0;
+        if (!r.u16(count))
+            return false;
+        for (uint16_t i = 0; i < count; ++i) {
+            ProtocolFriendBlacklistEntry* entry = m->add_blacklist();
+            uint32_t accountId = 0, timestamp = 0;
+            if (!r.u32(accountId) || !r.string(*entry->mutable_account()->mutable_name()) || !r.u32(timestamp))
+                return false;
+            entry->mutable_account()->set_account_id(accountId);
+            entry->set_timestamp(timestamp);
+        }
+        return true;
+    }
+    case 5: {
+        ProtocolFriendAccountSearch* search = m->mutable_account_search();
+        uint32_t accountId = 0;
+        bool friendOrInvited = false, blacklisted = false, showInfo = false;
+        if (!r.u32(accountId) || !readBool(r, friendOrInvited) || !readBool(r, blacklisted) || !readBool(r, showInfo))
+            return false;
+        search->set_account_id(accountId);
+        search->set_friend_or_invited(friendOrInvited);
+        search->set_on_blacklist(blacklisted);
+        search->set_show_account_info(showInfo);
+        if (showInfo) {
+            bool online = false, premium = false;
+            uint32_t lastLogin = 0;
+            uint8_t badges = 0;
+            if (!readBool(r, online) || !r.u32(lastLogin) || !readBool(r, premium) || !r.string(*search->mutable_loyalty_title())
+                || !r.u8(badges))
+                return false;
+            search->set_online(online);
+            search->set_last_login(lastLogin);
+            search->set_premium(premium);
+            for (uint8_t i = 0; i < badges; ++i) {
+                ProtocolFriendBadge* badge = search->add_badges();
+                uint32_t id = 0;
+                if (!r.u32(id) || !r.string(*badge->mutable_name()))
+                    return false;
+                badge->set_badge_id(id);
+            }
+        }
+        uint8_t characters = 0;
+        if (!r.u8(characters))
+            return false;
+        for (uint8_t i = 0; i < characters; ++i) {
+            ProtocolFriendSearchCharacter* character = search->add_characters();
+            uint32_t id = 0;
+            bool main = false, online = false;
+            uint16_t level = 0;
+            if (!r.u32(id) || !r.string(*character->mutable_name()) || !readBool(r, main) || !r.string(*character->mutable_title())
+                || !r.string(*character->mutable_vocation()) || !r.string(*character->mutable_world()) || !r.u16(level)
+                || !readBool(r, online) || !readOutfit(r, character->mutable_outfit(), true))
+                return false;
+            character->set_character_id(id);
+            character->set_main_character(main);
+            character->set_level(level);
+            character->set_online(online);
+        }
+        return true;
+    }
+    case 6: {
+        uint8_t count = 0;
+        if (!r.u8(count))
+            return false;
+        for (uint8_t i = 0; i < count; ++i) {
+            ProtocolFriendBadge* badge = m->add_badges();
+            uint32_t id = 0;
+            bool unlocked = false, visible = false;
+            if (!r.u32(id) || !r.string(*badge->mutable_name()) || !r.string(*badge->mutable_icon()) || !readBool(r, unlocked)
+                || !readBool(r, visible))
+                return false;
+            badge->set_badge_id(id);
+            badge->set_unlocked(unlocked);
+            badge->set_visible(visible);
+        }
+        return true;
+    }
+    case 8: {
+        uint8_t count = 0;
+        if (!r.u8(count))
+            return false;
+        for (uint8_t i = 0; i < count; ++i) {
+            ProtocolFriendSetting* setting = m->add_settings();
+            uint8_t settingType = 0;
+            bool character = false, account = false, inspect = false;
+            if (!r.u8(settingType) || !readBool(r, character) || !readBool(r, account) || !readBool(r, inspect))
+                return false;
+            setting->set_setting_type(settingType);
+            setting->set_show_character_info(character);
+            setting->set_show_account_info(account);
+            setting->set_allow_inspect(inspect);
+        }
+        return true;
+    }
+    default: // 1 invite notice, 7 friendship notice: no body
+        return true;
+    }
+}
+
 }
 
 bool isFeatureMessage(const int opcode)
@@ -492,6 +1389,14 @@ bool isFeatureMessage(const int opcode)
     case 168: // SetStoreButtonDeeplink
     case 3: // CreatureData
     case 118: // InspectionList
+    case 218: // CyclopediaCharacterInfo
+    case 116: // FriendSystemData
+    case 99: // ClientCheck
+    case 216: // MonsterCyclopediaBonusEffects
+    case 91: // Taskboard
+    case 186: // SoulSealsDialog
+    case 228: // DailyRewardBasic
+    case 169: // RestingAreaState
     case 128: // CharacterTradeConfiguration
     case 117: // GameEvent
     case 95: // SkillWheel
@@ -508,6 +1413,15 @@ bool isFeatureMessage(const int opcode)
 size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReader& r)
 {
     switch (opcode) {
+    case 99: {
+        auto* m = msg.MutableExtension(GameserverMessageClientCheck::gameserver_message_client_check);
+        uint32_t size = 0;
+        if (!r.u32(size) || r.remaining() < size)
+            return 0;
+        m->set_data(reinterpret_cast<const char*>(r.p + r.i), size);
+        r.i += size;
+        return r.i;
+    }
     case 46: {
         auto* m = msg.MutableExtension(GameserverMessageUnlockedSpells::gameserver_message_unlocked_spells);
         return readU16List(r, m->mutable_spell_ids()) ? r.i : 0;
@@ -2153,6 +3067,110 @@ size_t fillFeatureMessage(GameserverMessage& msg, const int opcode, ClassicReade
         if (!readCreature(r, m->mutable_creature(), NewCreature))
             return 0;
         return r.i;
+    }
+    case 91: {
+        auto* m = msg.MutableExtension(GameserverMessageTaskboard::gameserver_message_taskboard);
+        uint8_t type = 0;
+        if (!r.u8(type))
+            return 0;
+        m->set_board_type(type);
+        if (type == 2)
+            return readTaskboardOffers(r, m->mutable_offers()) ? r.i : 0;
+        if (type == 1)
+            return readTaskboardWeekly(r, m->mutable_weekly()) ? r.i : 0;
+        return readTaskboardBounty(r, m->mutable_bounty()) ? r.i : 0;
+    }
+    case 186: {
+        auto* m = msg.MutableExtension(GameserverMessageSoulSealsDialog::gameserver_message_soul_seals_dialog);
+        return readU16List(r, m->mutable_race_ids()) ? r.i : 0;
+    }
+    case 216: {
+        auto* m = msg.MutableExtension(GameserverMessageMonsterCyclopediaBonusEffects::gameserver_message_monster_cyclopedia_bonus_effects);
+        uint64_t resetCost = 0;
+        uint8_t charms = 0;
+        if (!r.u64(resetCost) || !r.u8(charms))
+            return 0;
+        m->set_reset_all_charms_cost(resetCost);
+        for (uint8_t i = 0; i < charms; ++i) {
+            ProtocolCharmEntry* charm = m->add_charms();
+            uint8_t id = 0, tier = 0;
+            bool assigned = false;
+            if (!r.u8(id) || !r.u8(tier) || !readBool(r, assigned))
+                return 0;
+            charm->set_charm_id(id);
+            charm->set_tier(tier);
+            charm->set_assigned(assigned);
+            if (assigned) {
+                uint16_t race = 0;
+                uint32_t cost = 0;
+                if (!r.u16(race) || !r.u32(cost))
+                    return 0;
+                charm->set_race_id(race);
+                charm->set_remove_cost(cost);
+            }
+        }
+        uint8_t slots = 0;
+        uint16_t finished = 0;
+        if (!r.u8(slots))
+            return 0;
+        if (slots != 0xff) // unlimited leaves the field unset
+            m->set_available_charm_slots(slots);
+        if (!r.u16(finished))
+            return 0;
+        for (uint16_t i = 0; i < finished; ++i) {
+            ProtocolCharmFinishedRace* race = m->add_finished_races();
+            uint16_t id = 0;
+            bool first = false, second = false;
+            if (!r.u16(id) || !readBool(r, first) || !readBool(r, second))
+                return 0;
+            race->set_race_id(id);
+            race->set_first_flag(first);
+            race->set_second_flag(second);
+            if (second) {
+                uint8_t value = 0;
+                if (!r.u8(value))
+                    return 0;
+                race->set_second_value(value);
+            }
+        }
+        return r.i;
+    }
+    case 116: {
+        auto* m = msg.MutableExtension(GameserverMessageFriendSystemData::gameserver_message_friend_system_data);
+        return readFriendSystemData(r, m) ? r.i : 0;
+    }
+    case 169: {
+        auto* m = msg.MutableExtension(GameserverMessageRestingAreaState::gameserver_message_resting_area_state);
+        bool resting = false;
+        if (!readBool(r, resting))
+            return 0;
+        m->set_in_resting_area(resting);
+        return r.i;
+    }
+    case 228: {
+        auto* m = msg.MutableExtension(GameserverMessageDailyRewardBasic::gameserver_message_daily_reward_basic);
+        uint8_t days = 0;
+        if (!r.u8(days))
+            return 0;
+        for (uint8_t i = 0; i < days; ++i) {
+            ProtocolDailyRewardDay* day = m->add_days();
+            if (!readDailyRewardContent(r, day->mutable_free()) || !readDailyRewardContent(r, day->mutable_premium()))
+                return 0;
+        }
+        uint8_t bonuses = 0;
+        if (!r.u8(bonuses))
+            return 0;
+        for (uint8_t i = 0; i < bonuses; ++i) {
+            uint32_t needed = 0;
+            if (!r.u32(needed))
+                return 0;
+            m->add_streak_bonus_thresholds(needed);
+        }
+        return r.i;
+    }
+    case 218: {
+        auto* m = msg.MutableExtension(GameserverMessageCyclopediaCharacterInfo::gameserver_message_cyclopedia_character_info);
+        return readCharacterInfo(r, m) ? r.i : 0;
     }
     case 118: {
         auto* m = msg.MutableExtension(GameserverMessageInspectionList::gameserver_message_inspection_list);

@@ -1,6 +1,6 @@
 #include "textstorage.h"
 
-#include <framework/core/clock.h>
+#include "shared/clockservice.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -155,7 +155,7 @@ TTextStorage::TTextStorage(const size_t maxCreatureBubbles, const size_t maxQueu
 
 Millis TTextStorage::now()
 {
-    return g_clock.millis();
+    return tibia::shared::TClockService::frameMillis();
 }
 
 void TTextStorage::update(const Millis now, const Position& player)

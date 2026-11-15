@@ -79,6 +79,7 @@ class TFrameDurationRing;
 class TNextFrameTimestampPredictor;
 class TNumericalEffectStorage;
 class TWorldMapStorage;
+class TWorldMapViewport;
 class TWorldmapProtocolMessageHandler;
 }
 }
@@ -153,6 +154,8 @@ public:
     game::TSessiondumpGameSession* sessiondump() const { return m_sessiondump.get(); }
     network::ExtendedOpcodeRouter* opcodes() const { return m_opcodes.get(); }
     qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider() const { return m_worldMapRenderProvider.get(); }
+    /// The view the world map shows: centred by the full map, read by the picker.
+    worldmap::TWorldMapViewport* worldMapViewport() const { return m_worldMapViewport.get(); }
     /// Pack-facing façade (signals + peels). Same instance for the process lifetime.
     runtime::TGameHost* gameHost() const { return m_gameHost; }
     /// Tick-to-swap durations for the FPS indicator's currentFrameCount.
@@ -206,6 +209,7 @@ public:
     void abortPendingEnter();
     /// Send C 0x0D character switch; server runs Alts.switchAlt (same-socket quick switch).
     bool requestCharacterSwitch(const QString& characterName);
+    void setSameSocketCharacterSwitch(bool enabled) { m_sameSocketCharacterSwitch = enabled; }
     /// End a tutorial sessiondump cinematic and connect to the pending live world.
     void finishTutorialCinematic();
 
@@ -271,6 +275,8 @@ private:
     std::unique_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocol;
     std::unique_ptr<sound::TSoundStorage> m_soundStorage;
     std::unique_ptr<network::TGameserverDualConnection> m_dualConnection;
+    /// Outlives the render provider and the map handler that refer to it.
+    std::unique_ptr<worldmap::TWorldMapViewport> m_worldMapViewport;
     std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::unique_ptr<config::TSidebarOptions> m_sidebarOptions;
     std::unique_ptr<game::TStatusbarStorage> m_statusbarStorage;
@@ -310,6 +316,9 @@ private:
     int m_worldType = -1;
     bool m_started = false;
     bool m_tutorialCinematic = false;
+    bool m_sameSocketCharacterSwitch = false;
+    /// Logged in once the current character has left the world (CIP switch).
+    std::optional<QString> m_pendingCharacter;
 };
 
 }

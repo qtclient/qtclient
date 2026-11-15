@@ -7,8 +7,6 @@ extern "C" {
 #endif
 
 enum {
-    QTCLIENT_FEATURE_GAME_THING_QUICK_LOOT = 83,
-
     /* MessageMode (uint8_t in tip) */
     QTCLIENT_MESSAGE_FAILURE = 19,
     QTCLIENT_MESSAGE_STATUS = 28,

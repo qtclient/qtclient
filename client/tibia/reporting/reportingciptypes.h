@@ -38,7 +38,7 @@ public:
         const ::tibia::protobuf::protocol::GameserverMessageBugReportsAllowed& Message);
 
     /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    void onServerMessageEnqueued(int opcode);
 };
 
 class TRuleViolationProtocolMessageHandler final : public cip::tibia::reporting::TRuleViolationProtocolMessageHandler
@@ -48,7 +48,7 @@ public:
     using cip::tibia::reporting::TRuleViolationProtocolMessageHandler::TRuleViolationProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 }

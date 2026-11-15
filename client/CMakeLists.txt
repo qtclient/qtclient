@@ -4,7 +4,6 @@ project(tibia)
 # Options
 # *****************************************************************************
 
-option(TOGGLE_FRAMEWORK_GRAPHICS "Use Graphics " ON)
 option(TOGGLE_FRAMEWORK_XML "Use XML " ON)
 option(TOGGLE_FRAMEWORK_NET "Use NET " ON)
 option(TOGGLE_FRAMEWORK_PROTOBUF "Use Protobuf" ON)
@@ -49,9 +48,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Define Framework options for use in compilation
 set(FRAMEWORK_DEFINITIONS "")
-if (TOGGLE_FRAMEWORK_GRAPHICS)
-  set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DFRAMEWORK_GRAPHICS)
-endif()
 if (TOGGLE_FRAMEWORK_XML)
   set(FRAMEWORK_DEFINITIONS ${FRAMEWORK_DEFINITIONS} -DFRAMEWORK_XML)
 endif()
@@ -135,7 +131,6 @@ if(WIN32)
   find_package(DbgHelp REQUIRED)
 endif(WIN32)
 if(ANDROID)
-  include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/tibia/framework/core/minizip)
   set(MINIZIP_LIBRARY "")
   find_package(game-activity REQUIRED CONFIG)
   find_package(EGL REQUIRED)
@@ -148,38 +143,16 @@ endif()
 # Tip-linked engine TUs only (Phase 8.2). OTC host leftovers (application /
 # graphicalapplication / mouse / platform windows / proxy / discord) deleted.
 set(SOURCE_FILES
-        tibia/framework/core/asyncdispatcher.cpp
-        tibia/framework/core/binarytree.cpp
-        tibia/framework/core/clock.cpp
-        tibia/framework/core/config.cpp
-        tibia/framework/core/configmanager.cpp
-        tibia/framework/core/event.cpp
-        tibia/framework/core/filestream.cpp
-        tibia/framework/core/logger.cpp
-        tibia/framework/core/resourcemanager.cpp
-        tibia/framework/core/scheduledevent.cpp
-        tibia/framework/core/unzipper.cpp
-        tibia/framework/core/unzipper.h
-        tibia/framework/core/timer.cpp
-        tibia/framework/net/gamelink.cpp
-        tibia/framework/net/inputmessage.cpp
-        tibia/framework/net/outputmessage.cpp
-        tibia/framework/net/protocol.cpp
-        tibia/framework/net/protocolhttp.cpp
         tibia/framework/stdext/math.cpp
         tibia/framework/stdext/string.cpp
         tibia/framework/stdext/time.cpp
         tibia/framework/util/color.cpp
-        tibia/framework/util/crypt.cpp
         tibia/client/animatedtext.cpp
-        tibia/client/attachableobject.cpp
         tibia/client/client.cpp
         tibia/idleot/heightstamp.cpp
         tibia/idleot/stats.cpp
-        tibia/client/item.cpp
         tibia/client/outfit.cpp
         tibia/client/position.cpp
-        tibia/client/protocolgame.cpp
         tibia/protocol/messagemodes.cpp
         tibia/protocol/extendedopcode.cpp
         tibia/protocol/extendedopcode_json.cpp
@@ -188,45 +161,20 @@ set(SOURCE_FILES
         tibia/protocol/dispatch.gen.cpp
         tibia/client/statictext.cpp
         tibia/assets/spritesheet.cpp
+        tibia/assets/cipbmpimage.cpp
+        tibia/shared/clockservice.cpp
+        tibia/shared/tibiafilesystemhelper.cpp
         tibia/assets/thingtype.cpp
         tibia/assets/things.cpp
-        tibia/game/gamehub_impl.cpp
-        tibia/game/gamehub.cpp
+        tibia/game/gamesessionstate.cpp
         tibia/game/gamesession_forward.cpp
         tibia/game/localplayersessionthing.cpp
         tibia/worldmap/worldmapsessionstate.cpp
-        tibia/appearances/thing.cpp
         tibia/worldmap/worldmapfield.cpp
         tibia/creatures/attachedeffect.cpp
         tibia/creatures/attachedeffectmanager.cpp
 )
 
-if (TOGGLE_FRAMEWORK_GRAPHICS)
-  set(SOURCE_FILES ${SOURCE_FILES}
-          tibia/framework/graphics/animatedtexture.cpp
-          tibia/framework/graphics/coordsbuffer.cpp
-          tibia/framework/graphics/textureatlas.cpp
-          tibia/framework/graphics/render/resourceregistry.cpp
-          tibia/framework/graphics/graphics.cpp
-          tibia/framework/graphics/image.cpp
-          tibia/framework/graphics/texture.cpp
-          tibia/framework/graphics/texturemanager.cpp
-  )
-  if(NOT WASM)
-    set(SOURCE_FILES ${SOURCE_FILES}
-            tibia/framework/graphics/gl_win32.cpp)
-  endif()
-endif()
-
-if(NOT WASM)
-  # Vendored minizip sources for ZIP extraction fallback (must be after SOURCE_FILES definition)
-  set(SOURCE_FILES ${SOURCE_FILES}
-          tibia/framework/core/minizip/ioapi.c
-          tibia/framework/core/minizip/ioapi_mem.c
-          tibia/framework/core/minizip/unzip.c
-          tibia/framework/core/minizip/crypt.c
-  )
-endif()
 
 # Engine for tibia (and wasm/mobile hosts): no Lua, OTUI, HTML, modules.
 # Script hooks reach GameEvents only. Host is Qt (`tibia::host::app`).
@@ -280,19 +228,6 @@ endif()
 # Engine sources compile into tibia. A framework PCH would also apply to Qt
 # sources (QT_NO_KEYWORDS), so headers include what they need themselves.
 message(STATUS "Use precompiled header: OFF")
-
-# Exclude vendored minizip C files from PCH and unity build (C files cannot use C++ PCH)
-if(NOT WASM)
-  set_source_files_properties(
-    tibia/framework/core/minizip/ioapi.c
-    tibia/framework/core/minizip/ioapi_mem.c
-    tibia/framework/core/minizip/unzip.c
-    tibia/framework/core/minizip/crypt.c
-    PROPERTIES
-      SKIP_PRECOMPILE_HEADERS ON
-      SKIP_UNITY_BUILD_INCLUSION ON
-  )
-endif()
 
 if(SPEED_UP_BUILD_UNITY)
   log_option_enabled("Build unity for speed up compilation")

@@ -73,9 +73,12 @@ public:
     int x() const { return m_x; }
     int y() const { return m_y; }
     int z() const { return m_z; }
+    /// Path planning may end on the goal even when it cannot be walked on.
+    bool enterUnwalkableGoal() const { return m_enterUnwalkableGoal; }
 
 private:
     int m_x = 0, m_y = 0, m_z = 0;
+    bool m_enterUnwalkableGoal = false;
 };
 
 class TLocationWorldMapCoordinateWithStackPositionContext final : public ::tibia::CipTyped
@@ -104,9 +107,12 @@ public:
     int x() const { return m_x; }
     int y() const { return m_y; }
     int z() const { return m_z; }
+    /// Path planning may end on the goal even when it cannot be walked on.
+    bool enterUnwalkableGoal() const { return m_enterUnwalkableGoal; }
 
 private:
     int m_x = 0, m_y = 0, m_z = 0;
+    bool m_enterUnwalkableGoal = false;
 };
 
 class TLocationActionButtonGameActionContext final : public ::tibia::CipTyped
@@ -257,8 +263,8 @@ public:
 class TMovementIntentTargetCoordinate final : public ::tibia::CipTyped
 {
 public:
-    TMovementIntentTargetCoordinate(int x = 0, int y = 0, int z = 0)
-        : m_x(x), m_y(y), m_z(z)
+    TMovementIntentTargetCoordinate(int x = 0, int y = 0, int z = 0, bool enterUnwalkableGoal = false)
+        : m_x(x), m_y(y), m_z(z), m_enterUnwalkableGoal(enterUnwalkableGoal)
     {
     }
     /// CIP `TMovementIntentTargetCoordinate::v2` → 0.
@@ -267,9 +273,12 @@ public:
     int x() const { return m_x; }
     int y() const { return m_y; }
     int z() const { return m_z; }
+    /// Path planning may end on the goal even when it cannot be walked on.
+    bool enterUnwalkableGoal() const { return m_enterUnwalkableGoal; }
 
 private:
     int m_x = 0, m_y = 0, m_z = 0;
+    bool m_enterUnwalkableGoal = false;
 };
 
 class TPathPlanningFailedException final : public ::tibia::CipTyped

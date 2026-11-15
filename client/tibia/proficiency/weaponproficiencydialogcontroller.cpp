@@ -7,7 +7,6 @@
 #include "input/gameactionhandlers.h"
 #include "proficiency/proficiencyperks.h"
 
-#include <client/item.h>
 #include <client/staticdata.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>

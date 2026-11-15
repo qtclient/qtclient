@@ -54,7 +54,7 @@ public:
         const ::tibia::protobuf::protocol::GameserverMessageGemAtelierGemRevealed& Message);
 
     /// Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    void onServerMessageEnqueued(int opcode);
 };
 
 }

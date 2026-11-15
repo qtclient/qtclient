@@ -25,12 +25,12 @@
 #include <tibia/config/runtimegameconfig.h>
 #include "tibia/assets/thingtype.h"
 #include "tibia/assets/things.h"
-#include "framework/core/clock.h"
+#include "shared/clockservice.h"
 #include <tibia/game/thingsession_forward.h>
 
 AttachedEffectPtr AttachedEffect::create(const uint16_t thingId, const ThingCategory category) {
     if (!tibia::game::isValidDatId(thingId, category)) {
-        g_logger.error("AttachedEffectManager::getInstance({}, {}): invalid thing with id or category.", thingId, static_cast<uint8_t>(category));
+        qCritical("%s", std::format("AttachedEffectManager::getInstance({}, {}): invalid thing with id or category.", thingId, static_cast<uint8_t>(category)).c_str());
         return nullptr;
     }
 
@@ -51,9 +51,6 @@ AttachedEffectPtr AttachedEffect::clone()
     obj->m_pulse.timer.restart();
     obj->m_fade.timer.restart();
 
-    // Image-path effects keep m_texturePath only; OTC g_textures load dropped.
-    // Tip QSG / thing-type frames own emit (getDrawFrame bails on texturePath).
-    obj->m_texture.reset();
 
     return obj;
 }
@@ -71,7 +68,7 @@ void AttachedEffect::draw(const Point& dest, const bool isOnTop, LightSink* ligh
 
 bool AttachedEffect::getDrawFrame(const bool isOnTop, int& animationPhase, Point& offset, float& opacity)
 {
-    if (m_transform || m_texture || !m_texturePath.empty())
+    if (m_transform || !m_texturePath.empty())
         return false;
     auto* thingType = getThingType();
     if (!thingType || thingType->isNull() || thingType->getAnimationPhases() == 0)
@@ -150,7 +147,7 @@ int AttachedEffect::getCurrentAnimationPhase()
         const long long animationPeriod = static_cast<long long>(ticksPerFrame) * animationPhases;
         if (animationPeriod <= 0) return 0;
 
-        return static_cast<int>((g_clock.millis() % animationPeriod) / ticksPerFrame);
+        return static_cast<int>((tibia::shared::TClockService::frameMillis() % animationPeriod) / ticksPerFrame);
     }
 
     return 0;

@@ -11,7 +11,6 @@ namespace tibia {
 namespace sprites {
 
 /// Sprite pixels as QImage (RGBA8888 copy). Null when missing / still loading / not RGBA8.
-/// Prefer this over qtclient `ImagePtr` so packs drop `framework/graphics/image.h`.
 QImage spriteImage(uint32_t id);
 
 }

@@ -63,6 +63,9 @@ public:
 
     virtual void toggleCharacterSelectionForSwitch() = 0;
     virtual bool requestCharacterSwitch(const QString& characterName) = 0;
+    /// Picking another character while online: CIP logs out and logs the new
+    /// character in. A product may switch on the same connection instead.
+    virtual void setSameSocketCharacterSwitch(bool enabled) = 0;
     /// Account character names (login list); empty before login.
     virtual QStringList characterNames() const = 0;
     /// Live session or sessiondump logout.

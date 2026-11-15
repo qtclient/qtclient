@@ -2,7 +2,6 @@
 
 #include "client/gamecore.h"
 
-#include <client/item.h>
 #include <client/outfit.h>
 
 #include <string>

@@ -24,18 +24,18 @@ TVipGroupInfo::TVipGroupInfo(const uint8_t id, const QString& name, const bool s
     m_selected = selected;
 }
 
-TEditVipDialogController::TEditVipDialogController(TVipStorage* storage, QObject* parent)
+TEditVipDialogController::TEditVipDialogController(creatures::TVipStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("EditVipDialog.qml"), parent)
     , m_storage(storage)
 {
 }
 
-void TEditVipDialogController::open(const TVipStorage::Vip& vip)
+void TEditVipDialogController::open(const creatures::TVipStorage::Vip& vip)
 {
     dialog()->destroy();
     clearGroupInfos();
     m_vipId = vip.id;
-    for (const TVipStorage::Group& group : m_storage->groups()) {
+    for (const creatures::TVipStorage::Group& group : m_storage->groups()) {
         const bool selected = std::find(vip.groups.begin(), vip.groups.end(), group.id) != vip.groups.end();
         m_groupInfos.append(new TVipGroupInfo(group.id, group.name, selected, this));
     }
@@ -59,7 +59,7 @@ void TEditVipDialogController::onCancelClicked() { dialog()->close(); }
 
 void TEditVipDialogController::onOkClicked(const int VipIconId, const QString& Description, const bool Notify)
 {
-    // CIP : publish REQUST_VIP_DATA_UPDATE; TVipStorage handles it.
+    // CIP : publish REQUST_VIP_DATA_UPDATE; creatures::TVipStorage handles it.
     auto action = input::mutableClone(*input::makeAction(A::REQUST_VIP_DATA_UPDATE));
     action->instance = static_cast<int>(m_vipId);
     action->text = Description;

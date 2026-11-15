@@ -35,7 +35,7 @@ public:
     void clear() { m_effects.clear(); }
 
 private:
-    stdext::map<uint16_t, AttachedEffectPtr> m_effects;
+    std::unordered_map<uint16_t, AttachedEffectPtr> m_effects;
 };
 
 extern AttachedEffectManager g_attachedEffects;

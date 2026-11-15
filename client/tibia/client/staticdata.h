@@ -26,7 +26,7 @@
 #include "outfit.h"
 #include "position.h"
 #include "teamfinder/teamfinder_types.h"
-#include <framework/core/timer.h>
+#include "shared/clockservice.h"
 
 #include <map>
 #include <string>
@@ -39,7 +39,7 @@ struct Bounce
     uint8_t minHeight{ 0 };
     uint8_t height{ 0 };
     uint16_t speed{ 0 };
-    Timer timer{};
+    tibia::shared::TFrameStopWatch timer{};
 };
 
 struct AwareRange
@@ -531,7 +531,6 @@ struct BlessDialogData
     std::vector<LogData> logs;
 };
 
-using Vip = std::tuple<std::string, uint32_t, std::string, int, bool, std::vector<uint8_t>>;
 
 struct StoreCategory
 {
@@ -887,42 +886,31 @@ struct CharacterInfoFamiliar
     uint32_t isCurrent;
 };
 
-struct DailyRewardItem
+/// One fixed object of a day's daily reward.
+struct DailyRewardObject
 {
-    uint16_t itemId;
+    uint16_t itemId = 0;
     std::string name;
-    uint32_t weight;
+    uint8_t count = 0;
 };
 
-struct DailyRewardBundle
-{
-    uint8_t bundleType;
-    uint16_t itemId;
-    std::string name;
-    uint8_t count;
-};
-
+/// A day's daily reward for one account kind (CIP DailyRewardBasic).
 struct DailyRewardDay
 {
-    uint8_t redeemMode;
-    uint8_t itemsToSelect;
-    std::vector<DailyRewardItem> selectableItems;
-    std::vector<DailyRewardBundle> bundleItems;
-};
-
-struct DailyRewardBonus
-{
-    std::string name;
-    uint8_t id;
+    std::vector<DailyRewardObject> objects;
+    uint32_t preyWildcards = 0;
+    uint32_t xpBoostMinutes = 0;
+    uint32_t xpBoostPercent = 0;
+    uint32_t cosmeticTokens = 0;
+    uint32_t bountyRerollTokens = 0;
 };
 
 struct DailyRewardData
 {
-    uint8_t days;
     std::vector<DailyRewardDay> freeRewards;
     std::vector<DailyRewardDay> premiumRewards;
-    std::vector<DailyRewardBonus> bonuses;
-    uint8_t maxUnlockableDragons;
+    /// The reward streak each resting area bonus needs.
+    std::vector<uint32_t> streakBonusThresholds;
 };
 
 struct ItemInspectionData

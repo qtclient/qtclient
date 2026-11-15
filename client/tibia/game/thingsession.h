@@ -14,7 +14,7 @@ namespace game {
 /// Item appearance name when `id` is a valid item dat id; empty otherwise.
 std::string itemName(uint16_t id);
 bool isValidItemId(uint16_t id);
-/// Pack shape override (`g_things.setThingShape`). False when id/shape invalid.
+/// Pack shape override (`tibia::appearances::TAppearancesManager::instance().setThingShape`). False when id/shape invalid.
 bool setItemThingShape(uint16_t id, std::string_view shapeName);
 /// True when `id` is a valid item dat id whose ThingType is a container.
 bool itemIsContainer(uint16_t id);
@@ -48,7 +48,7 @@ bool raceExists(uint32_t raceId);
 bool raceIsBoss(uint32_t raceId);
 /// Race ids whose catalog name equals `search` (case-sensitive CIP match via getRacesByName filter).
 std::vector<uint32_t> raceIdsByName(const std::string& search);
-/// All race catalog ids (`g_things.getAllRaces`, raceId != 0).
+/// All race catalog ids (`tibia::appearances::TAppearancesManager::instance().getAllRaces`, raceId != 0).
 std::vector<uint32_t> allRaceIds();
 
 /// Pack-facing race outfit peel (expedition detail / lobby). No Outfit / RaceType in the header.

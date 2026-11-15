@@ -113,6 +113,11 @@ struct ClassicWriter {
         out.append(char(uint8_t(v >> 16)));
         out.append(char(uint8_t(v >> 24)));
     }
+    void u64(uint64_t v)
+    {
+        u32(uint32_t(v));
+        u32(uint32_t(v >> 32));
+    }
     void string(const std::string& s)
     {
         const auto len = uint16_t(std::min(s.size(), size_t(0xffff)));

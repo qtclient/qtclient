@@ -1,6 +1,5 @@
 #include "hdscale.h"
 
-#include <framework/graphics/image.h>
 
 #include <QLoggingCategory>
 
@@ -35,32 +34,32 @@ int hdFactor()
     return g_fn ? g_factor : 1;
 }
 
-ImagePtr scaleHd(const ImagePtr& src)
+QImage scaleHd(const QImage& src)
 {
-    if (!src || !g_fn || g_factor <= 1)
-        return src;
-    return g_fn(src);
+    if (src.isNull() || !g_fn || g_factor <= 1)
+        return {};
+    return g_fn(src.format() == QImage::Format_RGBA8888 ? src : src.convertToFormat(QImage::Format_RGBA8888));
 }
 
-ImagePtr scaleNearest(const ImagePtr& src, const int factor)
+QImage scaleNearest(const QImage& source, const int factor)
 {
-    if (!src || src->getBpp() != 4 || src->getWidth() <= 0 || src->getHeight() <= 0 || factor < 1)
-        return nullptr;
+    if (source.isNull() || factor < 1)
+        return {};
+    const QImage src = source.format() == QImage::Format_RGBA8888 ? source : source.convertToFormat(QImage::Format_RGBA8888);
     if (factor == 1)
         return src;
-
-    const int w = src->getWidth();
-    const int h = src->getHeight();
-    auto out = std::make_shared<Image>(Size(w * factor, h * factor));
-    const uint8_t* sp = src->getPixelData();
-    uint8_t* dp = out->getPixelData();
+    const int w = src.width();
+    const int h = src.height();
+    QImage out(w * factor, h * factor, QImage::Format_RGBA8888);
     for (int y = 0; y < h; ++y) {
-        for (int x = 0; x < w; ++x) {
-            const uint8_t* px = sp + (static_cast<size_t>(y) * w + x) * 4;
-            const bool transparent = px[3] == 0;
-            for (int dy = 0; dy < factor; ++dy) {
+        const uint8_t* row = src.constScanLine(y);
+        for (int dy = 0; dy < factor; ++dy) {
+            uint8_t* dst = out.scanLine(y * factor + dy);
+            for (int x = 0; x < w; ++x) {
+                const uint8_t* px = row + x * 4;
+                const bool transparent = px[3] == 0;
                 for (int dx = 0; dx < factor; ++dx) {
-                    uint8_t* d = dp + (static_cast<size_t>(y * factor + dy) * (w * factor) + (x * factor + dx)) * 4;
+                    uint8_t* d = dst + (x * factor + dx) * 4;
                     if (transparent)
                         std::memset(d, 0, 4);
                     else
@@ -69,7 +68,6 @@ ImagePtr scaleNearest(const ImagePtr& src, const int factor)
             }
         }
     }
-    out->setTransparentPixel(src->hasTransparentPixel());
     return out;
 }
 

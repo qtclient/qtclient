@@ -1,5 +1,7 @@
 #pragma once
 
+#include "friends/friendlistmodels.h"
+
 #include <cip_gen.h>
 
 #include <QObject>
@@ -23,7 +25,9 @@ public:
                                           bool AllowInspect) override;
 
 private:
-    cip::TFriendListModel* m_model = nullptr;
+    void rebuildRows();
+
+    TFriendsRowsModel* m_model = nullptr;
 };
 
 }

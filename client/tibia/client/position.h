@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include <numbers>
 #include "const.h"
 
 #include <framework/const.h>
@@ -147,7 +148,7 @@ public:
 
         double angle = std::atan2<int32_t>(dy * -1, dx);
         if (angle < 0)
-            angle += 2 * Fw::pi;
+            angle += 2 * std::numbers::pi_v<float>;
 
         return angle;
     }
@@ -246,7 +247,7 @@ public:
         return _pos.x >= x - minXRange && _pos.x <= x + maxXRange && _pos.y >= y - minYRange && _pos.y <= y + maxYRange;
     }
 
-    // operator less than for stdext::map
+    // operator less than for ordered maps
     bool operator<(const Position& other) const { return x < other.x || y < other.y || z < other.z; }
 
     bool up(int8_t n = 1);

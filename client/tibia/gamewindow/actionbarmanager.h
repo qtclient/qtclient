@@ -68,7 +68,7 @@ public Q_SLOTS:
     /// CIP (connected to TSpellsProtocolMessageHandler::
     /// receivedUnlockedSpell by): with actionButtonAutoInsertSpells
     /// on, a spell no button casts yet goes onto the first unlocked bar, in the
-    /// order 1, 4, 7, 2, 5, 8, 3, 6, 9 (DAT_1022dc4a4), that has an empty
+    /// order 1, 4, 7, 2, 5, 8, 3, 6, 9, that has an empty
     /// button in view.
     void onReceivedUnlockedSpell(int spellId);
 

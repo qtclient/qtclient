@@ -3,8 +3,7 @@
 #include "appearances/appearanceinstance.h"
 #include <tibia/config/runtimegameconfig.h>
 #include "protocol/protocolcodes.h"
-#include "framework/core/clock.h"
-#include <tibia/schedule/schedule.h>
+#include "shared/clockservice.h"
 #include "tibia/creatures/attachedeffect.h"
 #include "creatures/walkdebug.h"
 #include "game/localplayersessionthing.h"
@@ -28,12 +27,80 @@ namespace {
 
 TCreatureStorage* g_creatureStorage = nullptr;
 
+/// Every creature made (or renewed) takes the next identity.
+int g_nextCreatureUniqueId = 0;
+
+TCreatureMarkOptions g_markOptions;
+
+/// The frame colours: red for the attack target, green for the follow
+/// target, lighter while also selected, white for a selected creature.
+const QColor& selectedFrameColor()
+{
+    static const QColor color(Qt::white);
+    return color;
+}
+
+const QColor& attackFrameColor()
+{
+    static const QColor color(Qt::red);
+    return color;
+}
+
+const QColor& selectedAttackFrameColor()
+{
+    static const QColor color = QColor::fromRgb(0xff, 0x80, 0x80, 0xff);
+    return color;
+}
+
+const QColor& followFrameColor()
+{
+    static const QColor color(Qt::green);
+    return color;
+}
+
+const QColor& selectedFollowFrameColor()
+{
+    static const QColor color = QColor::fromRgb(0x80, 0xff, 0x80, 0xff);
+    return color;
+}
+
+QColor toQColor(const Color& color)
+{
+    return QColor(color.r(), color.g(), color.b(), color.a());
+}
+
 } // namespace
 
 TCreature::TCreature(const TCreatureID id, QObject* parent)
     : cip::tibia::creatures::TCreature(parent)
     , m_creatureId(id)
+    , m_uniqueId(g_nextCreatureUniqueId++)
 {
+}
+
+void TCreature::renewUniqueId()
+{
+    m_uniqueId = g_nextCreatureUniqueId++;
+}
+
+const QString& TCreature::name() const
+{
+    return isPlayer() ? m_name : m_formattedName;
+}
+
+bool TCreature::isPlayer() const
+{
+    return m_creatureType == Proto::CreatureTypePlayer;
+}
+
+bool TCreature::isNpc() const
+{
+    return m_creatureType == Proto::CreatureTypeNpc;
+}
+
+bool TCreature::isHidden() const
+{
+    return m_creatureType == Proto::CreatureTypeHidden;
 }
 
 ThingType* TCreature::outfitThingType() const
@@ -174,6 +241,7 @@ void TCreature::update(const qint64 nowMs)
         m_mountIdleAnimator->update(nowMs);
     m_animationPhase = animationPhaseFor(outfitThingType(), m_outfitWalkAnimator, m_outfitIdleAnimator);
     m_mountAnimationPhase = animationPhaseFor(mountThingType(), m_mountWalkAnimator, m_mountIdleAnimator);
+    m_marks.timedSquareShown = nowMs < m_marks.timedSquareEndMs;
     updateCoveredField();
     if (m_isLocalPlayer && walkDebugVerbose()) {
         const Point offset = walkOffset();
@@ -310,6 +378,7 @@ Color TCreature::informationColorForHealthPercent(const uint8_t healthPercent)
 void TCreature::setName(const QString& name)
 {
     m_name = name;
+    m_formattedName = QString::fromStdString(tibia::game::formatCreatureName(name.toStdString()));
 }
 
 void TCreature::setPosition(const Position& position)
@@ -318,35 +387,7 @@ void TCreature::setPosition(const Position& position)
     m_position = position;
     if (floorChanged)
         resetMovement();
-}
-
-void TCreature::setCreatureType(const uint8_t creatureType)
-{
-    m_creatureType = creatureType;
-}
-
-void TCreature::setIsPlayer(const bool isPlayer)
-{
-    m_isPlayer = isPlayer;
-}
-
-void TCreature::setIsNpc(const bool isNpc)
-{
-    m_isNpc = isNpc;
-}
-
-void TCreature::setHidden(const bool hidden)
-{
-    m_hidden = hidden;
-}
-
-void TCreature::setHealthPercent(const uint8_t healthPercent)
-{
-    if (m_healthPercent == healthPercent)
-        return;
-    m_healthPercent = healthPercent;
-    m_informationColor = informationColorForHealthPercent(healthPercent);
-    m_dead = healthPercent == 0;
+    Q_EMIT positionWasUpdated(worldmap::TWorldMapCoordinate(m_position));
 }
 
 void TCreature::setOutfit(const Outfit& outfit)
@@ -358,11 +399,6 @@ void TCreature::setOutfit(const Outfit& outfit)
     restartWalkAnimators();
 }
 
-void TCreature::setLight(const Light& light)
-{
-    m_light = light;
-}
-
 void TCreature::setSpeed(const uint16_t speed)
 {
     m_speed = speed;
@@ -370,22 +406,26 @@ void TCreature::setSpeed(const uint16_t speed)
 
 void TCreature::setSkull(const uint8_t skull)
 {
+    if (m_skull == skull)
+        return;
     m_skull = skull;
+    Q_EMIT playerKillerMarkChanged();
 }
 
 void TCreature::setShield(const uint8_t shield)
 {
+    if (m_shield == shield)
+        return;
     m_shield = shield;
+    Q_EMIT playerPartyFlagChanged();
 }
 
 void TCreature::setEmblem(const uint8_t emblem)
 {
+    if (m_emblem == emblem)
+        return;
     m_emblem = emblem;
-}
-
-void TCreature::setPassable(const bool passable)
-{
-    m_passable = passable;
+    Q_EMIT playerGuildFlagChanged();
 }
 
 namespace {
@@ -422,21 +462,6 @@ void TCreature::setDirection(const uint8_t direction)
     }
 }
 
-void TCreature::setEchoRaidColor(const int8_t color)
-{
-    m_echoRaidColor = color;
-}
-
-void TCreature::setIcons(const std::vector<std::tuple<uint8_t, uint8_t, uint16_t>>& icons)
-{
-    m_hudIcons = icons;
-}
-
-void TCreature::setVocation(const uint8_t vocation)
-{
-    m_vocation = vocation;
-}
-
 void TCreature::attachEffect(const AttachedEffectPtr& effect)
 {
     if (!effect)
@@ -462,45 +487,85 @@ void TCreature::clearTemporaryAttachedEffects()
                             m_attachedEffects.end());
 }
 
-void TCreature::setIcon(const uint8_t icon)
-{
-    m_icon = icon;
-}
-
 void TCreature::setInspectionType(const uint8_t inspectionType)
 {
+    if (m_inspectionType == inspectionType)
+        return;
     m_inspectionType = inspectionType;
+    Q_EMIT inspectionStateChanged();
+}
+
+void TCreature::setTargetFrame(const QColor& color)
+{
+    m_marks.targetFrame = color;
+}
+
+void TCreature::hideTargetFrame()
+{
+    m_marks.targetFrame.setAlpha(0);
 }
 
 void TCreature::showStaticSquare(const Color& color)
 {
-    m_showStaticSquare = true;
-    m_staticSquareColor = color;
+    m_marks.staticSquare = toQColor(color);
 }
 
 void TCreature::hideStaticSquare()
 {
-    m_showStaticSquare = false;
+    m_marks.staticSquare.setAlpha(0);
 }
 
-void TCreature::addTimedSquare(const uint8_t color8bit)
+void TCreature::addTimedSquare(const Color& color, const qint64 nowMs)
 {
-    m_showTimedSquare = true;
-    m_timedSquareColor = Color::from8bit(color8bit != 0 ? color8bit : 1);
-    const TCreatureID id = m_creatureId;
-    tibia::schedule::after([id] {
-        if (TCreatureStorage* storage = TCreatureStorage::instance()) {
-            if (const auto row = storage->creatureAt(id)) {
-                row->removeTimedSquare();
-                storage->publishCreatureUpdated(row);
-            }
-        }
-    }, tibia::config::volatileSquareDuration());
+    m_marks.timedSquare = toQColor(color);
+    m_marks.timedSquareEndMs = nowMs + tibia::config::volatileSquareDuration();
+    m_marks.timedSquareShown = true;
 }
 
-void TCreature::removeTimedSquare()
+bool TCreature::hasMarks() const
 {
-    m_showTimedSquare = false;
+    if (g_markOptions.targetFrame && m_marks.targetFrame.alpha() > 0)
+        return true;
+    if (g_markOptions.staticSquare && m_marks.staticSquare.alpha() > 0)
+        return true;
+    return m_marks.timedSquareShown && g_markOptions.timedSquare;
+}
+
+namespace {
+
+std::vector<QColor> marksOf(const TCreatureMarks& marks, const bool withoutSelectionFrame)
+{
+    std::vector<QColor> colors;
+    if (g_markOptions.targetFrame && marks.targetFrame.alpha() > 0
+        && (!withoutSelectionFrame || marks.targetFrame != selectedFrameColor()))
+        colors.push_back(marks.targetFrame);
+    if (g_markOptions.staticSquare && marks.staticSquare.alpha() > 0)
+        colors.push_back(marks.staticSquare);
+    if (g_markOptions.timedSquare && marks.timedSquareShown)
+        colors.push_back(marks.timedSquare);
+    return colors;
+}
+
+}
+
+std::vector<QColor> TCreature::marks() const
+{
+    return marksOf(m_marks, false);
+}
+
+std::vector<QColor> TCreature::shownMarks() const
+{
+    return marksOf(m_marks, g_markOptions.mouseHighlightTarget);
+}
+
+const TCreatureMarkOptions& TCreature::markOptions()
+{
+    return g_markOptions;
+}
+
+void TCreature::setMarkOptions(const TCreatureMarkOptions& options)
+{
+    g_markOptions = options;
 }
 
 TCreatureStorage::TCreatureStorage(QObject* parent)
@@ -538,6 +603,121 @@ std::shared_ptr<TCreature> TCreatureStorage::getOrCreate(const TCreatureID id)
 std::shared_ptr<TCreature> TCreatureStorage::creatureAt(const TCreatureID id) const
 {
     return m_creatures.value(id);
+}
+
+std::shared_ptr<TCreature> TCreatureStorage::createCreature(const TCreatureID id)
+{
+    auto creature = std::make_shared<TCreature>(id);
+    add(creature);
+    return creature;
+}
+
+void TCreatureStorage::add(const std::shared_ptr<TCreature>& creature)
+{
+    const TCreatureID id = creature->creatureId();
+    m_creatures.insert(id, creature);
+    if (id == m_playerID)
+        creature->markAsLocalPlayer();
+    if (id == m_followID)
+        setFollowID(id);
+    else if (id == m_attackID)
+        setAttackID(id);
+}
+
+void TCreatureStorage::setPlayerID(const TCreatureID id)
+{
+    m_playerID = id;
+}
+
+TCreatureID TCreatureStorage::playerID() const
+{
+    return m_playerID;
+}
+
+void TCreatureStorage::setTemporarySelectedID(const TCreatureID id)
+{
+    // The previous one keeps only its attack or follow frame.
+    if (const auto previous = creatureAt(m_temporarySelectedID)) {
+        previous->hideTargetFrame();
+        if (m_temporarySelectedID == m_attackID)
+            previous->setTargetFrame(attackFrameColor());
+        else if (m_temporarySelectedID == m_followID)
+            previous->setTargetFrame(followFrameColor());
+    }
+    const auto selected = creatureAt(id);
+    if (!selected) {
+        m_temporarySelectedID = 0;
+        return;
+    }
+    m_temporarySelectedID = id;
+    const QColor* color = m_followID == id ? &selectedFollowFrameColor() : &selectedFrameColor();
+    if (m_attackID == id)
+        color = &selectedAttackFrameColor();
+    selected->setTargetFrame(*color);
+}
+
+void TCreatureStorage::setFollowID(const TCreatureID id)
+{
+    // Stopping keeps the white frame on a selected creature.
+    if (const auto previous = creatureAt(m_followID)) {
+        if (id == 0 && m_followID == m_temporarySelectedID)
+            previous->setTargetFrame(selectedFrameColor());
+        else
+            previous->hideTargetFrame();
+    }
+    if (const auto attacked = creatureAt(m_attackID))
+        attacked->hideTargetFrame();
+    m_attackID = 0;
+    const auto followed = creatureAt(id);
+    if (!followed) {
+        m_followID = 0;
+        return;
+    }
+    m_followID = id;
+    followed->setTargetFrame(m_temporarySelectedID == id ? selectedFollowFrameColor() : followFrameColor());
+}
+
+void TCreatureStorage::setAttackID(const TCreatureID id)
+{
+    if (const auto previous = creatureAt(m_attackID)) {
+        if (id == 0 && m_attackID == m_temporarySelectedID)
+            previous->setTargetFrame(selectedFrameColor());
+        else
+            previous->hideTargetFrame();
+    }
+    if (const auto followed = creatureAt(m_followID))
+        followed->hideTargetFrame();
+    m_followID = 0;
+    const auto attacked = creatureAt(id);
+    if (!attacked) {
+        m_attackID = 0;
+        return;
+    }
+    m_attackID = id;
+    attacked->setTargetFrame(m_temporarySelectedID == id ? selectedAttackFrameColor() : attackFrameColor());
+}
+
+void TCreatureStorage::placeOnField(const TCreatureID id)
+{
+    if (const auto creature = creatureAt(id))
+        creature->setPlacedOnField(true);
+}
+
+void TCreatureStorage::removeFromField(const TCreatureID id)
+{
+    if (const auto creature = creatureAt(id))
+        creature->setPlacedOnField(false);
+}
+
+void TCreatureStorage::clearPlacedOnFieldFlags()
+{
+    for (const std::shared_ptr<TCreature>& creature : std::as_const(m_creatures))
+        creature->setPlacedOnField(false);
+}
+
+std::shared_ptr<TCreature> TCreatureStorage::player() const
+{
+    return creatureAt(playerID());
 }
 
 std::vector<std::shared_ptr<TCreature>> TCreatureStorage::spectatorsNear(const Position& center,
@@ -614,213 +794,30 @@ void TCreatureStorage::syncLocalPlayerStatsFromMap()
     tibia::game::syncLocalPlayerStorageWorldDraw();
 }
 
+void TCreatureStorage::notifyPlayerAdded(const std::shared_ptr<TCreature>& player)
+{
+    Q_EMIT playerAdded(player);
+}
+
+void TCreatureStorage::notifyCreatureUpdated(const std::shared_ptr<TCreature>& creature)
+{
+    Q_EMIT creatureUpdated(creature);
+}
+
+void TCreatureStorage::notifyCreatureAppearanceUpdated(const std::shared_ptr<TCreature>& creature,
+                                                       const ECreatureUpdateAppearanceType appearanceType)
+{
+    Q_EMIT creatureAppearanceUpdated(creature, appearanceType);
+}
+
 void TCreatureStorage::publishCreatureUpdated(const std::shared_ptr<TCreature>& row,
                                             const ECreatureUpdateAppearanceType appearanceType)
 {
     if (!row)
         return;
-    const auto weak = std::weak_ptr<TCreature>(row);
-    Q_EMIT creatureUpdated(weak);
-    if (appearanceType != ECreatureUpdateAppearanceType::Health)
-        Q_EMIT creatureAppearanceUpdated(weak, appearanceType);
-}
-
-std::shared_ptr<TCreature> TCreatureStorage::ensureFromProtocol(const TCreatureID id,
-                                                               const QString& name,
-                                                               const Outfit& outfit,
-                                                               const uint8_t direction,
-                                                               const uint8_t creatureType,
-                                                               const bool isPlayer,
-                                                               const bool isNpc,
-                                                               const Position* position)
-{
-    if (id == 0)
-        return nullptr;
-
-    const bool isNew = !m_creatures.contains(id);
-    const Outfit previousOutfit = isNew ? Outfit{} : m_creatures.value(id)->outfit();
-    const bool outfitChanged = outfit.getId() != 0 && (isNew || previousOutfit != outfit);
-
-    const auto row = getOrCreate(id);
-    if (!name.isEmpty()) {
-        row->setName(name);
-    } else if (row->name().isEmpty()) {
-        // KnownCreature / OutdatedCreature omit the name. CIP keeps the prior
-        // KnownCreature row; if we just (re)created the LocalPlayerSessionThing slot, recover
-        // the session character name so the nameplate does not go blank.
-        if (const uint32_t localId = tibia::game::localPlayerId();
-            localId == id && localId != 0) {
-            const std::string name = tibia::game::localPlayerName();
-            if (!name.empty())
-                row->setName(QString::fromStdString(name));
-        }
-    }
-    if (outfit.getId() != 0)
-        row->setOutfit(outfit);
-    row->setDirection(direction);
-    if (position)
-        row->setPosition(*position);
-    if (creatureType != 0 || isPlayer || isNpc) {
-        row->setCreatureType(creatureType);
-        row->setIsPlayer(isPlayer);
-        row->setIsNpc(isNpc);
-        row->setHidden(creatureType == Proto::CreatureTypeHidden);
-    }
-
-    const auto weak = std::weak_ptr<TCreature>(row);
-    Q_EMIT creatureUpdated(weak);
-    if (isPlayer && isNew)
-        Q_EMIT playerAdded(weak);
-    if (outfitChanged)
-        Q_EMIT creatureAppearanceUpdated(weak, ECreatureUpdateAppearanceType::FullOutfit);
-
-    return row;
-}
-
-namespace {
-
-void syncFieldStackFor(const TCreatureID id)
-{
-    if (id == 0)
-        return;
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    const auto row = storage ? storage->creatureAt(id) : nullptr;
-    if (!row || !row->position().isValid())
-        return;
-    if (tibia::worldmap::TWorldMapField* field = tibia::worldmap::fieldAt(row->position()))
-        field->syncCreatureStackAppearance(id);
-}
-
-} // namespace
-
-std::shared_ptr<TCreature> ensureFromProtocol(const TCreatureID id,
-                                              const QString& name,
-                                              const Outfit& outfit,
-                                              const uint8_t direction,
-                                              const uint8_t creatureType,
-                                              const bool isPlayer,
-                                              const bool isNpc,
-                                              const Position* position)
-{
-    if (TCreatureStorage* storage = TCreatureStorage::instance()) {
-        return storage->ensureFromProtocol(id, name, outfit, direction, creatureType, isPlayer,
-                                           isNpc, position);
-    }
-    return nullptr;
-}
-
-void protocolSetHealthPercent(const TCreatureID id, const uint8_t healthPercent)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setHealthPercent(healthPercent);
-    storage->publishCreatureUpdated(row, ECreatureUpdateAppearanceType::Health);
-}
-
-void protocolSetLight(const TCreatureID id, const Light& light)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setLight(light);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetOutfit(const TCreatureID id, const Outfit& outfit)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    const bool outfitChanged = row->outfit() != outfit;
-    row->setOutfit(outfit);
-    storage->publishCreatureUpdated(row, outfitChanged ? ECreatureUpdateAppearanceType::FullOutfit
-                                                       : ECreatureUpdateAppearanceType::Health);
-    syncFieldStackFor(id);
-}
-
-void protocolSetSpeed(const TCreatureID id, const uint16_t speed, const uint16_t /*baseSpeed*/)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setSpeed(speed);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetSkull(const TCreatureID id, const uint8_t skull)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setSkull(skull);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetShield(const TCreatureID id, const uint8_t shield)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setShield(shield);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetPassable(const TCreatureID id, const bool passable)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setPassable(passable);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetDirection(const TCreatureID id, const uint8_t direction)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setDirection(direction);
-    storage->publishCreatureUpdated(row, ECreatureUpdateAppearanceType::Direction);
-    syncFieldStackFor(id);
-}
-
-void protocolSetEchoRaidColor(const TCreatureID id, const int8_t color)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setEchoRaidColor(color);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetIcons(const TCreatureID id, const std::vector<std::tuple<uint8_t, uint8_t, uint16_t>>& icons)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setIcons(icons);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetVocation(const TCreatureID id, const uint8_t vocation)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setVocation(vocation);
-    storage->publishCreatureUpdated(row);
+    notifyCreatureUpdated(row);
+    if (appearanceType != ECreatureUpdateAppearanceType::None)
+        notifyCreatureAppearanceUpdated(row, appearanceType);
 }
 
 void protocolAttachEffect(const TCreatureID id, const AttachedEffectPtr& effect)
@@ -850,66 +847,6 @@ void protocolClearTemporaryAttachedEffects(const TCreatureID id)
         return;
     const auto row = storage->getOrCreate(id);
     row->clearTemporaryAttachedEffects();
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetIcon(const TCreatureID id, const uint8_t icon)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setIcon(icon);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolSetInspectionType(const TCreatureID id, const uint8_t inspectionType)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->setInspectionType(inspectionType);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolShowStaticSquare(const TCreatureID id, const Color& color)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->showStaticSquare(color);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolHideStaticSquare(const TCreatureID id)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->hideStaticSquare();
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolAddTimedSquare(const TCreatureID id, const uint8_t color8bit)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->addTimedSquare(color8bit);
-    storage->publishCreatureUpdated(row);
-}
-
-void protocolRemoveTimedSquare(const TCreatureID id)
-{
-    TCreatureStorage* storage = TCreatureStorage::instance();
-    if (!storage)
-        return;
-    const auto row = storage->getOrCreate(id);
-    row->removeTimedSquare();
     storage->publishCreatureUpdated(row);
 }
 

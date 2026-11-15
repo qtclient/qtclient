@@ -748,16 +748,17 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
         makePrimary(action.instance);
         return true;
     });
-    // CIP TCreaturesGameActionHandler case 0x27 -> : the
-    // creature storage's hover id (TCreatureStorage swaps the target
-    // frames to the hover colours), then the world map's mouse target (v17).
-    // The renderer draws both from its mouse target, which CIP only sets with
-    // mouseHighlightTarget on; a creature mouse target has no sprite highlight,
-    // so setting it always gives the same frames.
+    // The creature storage's selected creature gets its frame; with
+    // mouseHighlightTarget on it is also the world map's mouse target,
+    // otherwise the mouse target is cleared.
     input::setActionHandler(A::TEMPORARY_SELECT_CREATURE, [this](const input::TGameAction& action) {
         setTemporarySelectedCreature(action.creatureId);
-        if (m_worldMapRenderProvider)
-            m_worldMapRenderProvider->setMouseTargetCreatureId(action.creatureId);
+        if (m_worldMapRenderProvider) {
+            creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+            const bool highlighted = creatures::TCreature::markOptions().mouseHighlightTarget && storage
+                && storage->creatureAt(action.creatureId);
+            m_worldMapRenderProvider->setMouseTargetCreatureId(highlighted ? action.creatureId : 0);
+        }
         return true;
     });
     m_gameActionHandler = new TBattleListGameActionHandler(this, this);
@@ -1012,9 +1013,10 @@ void TBattleListControllerStorage::makePrimary(const int battleListId)
 
 void TBattleListControllerStorage::setTemporarySelectedCreature(const uint32_t creatureId)
 {
-    if (creatureId == m_temporarySelected)
+    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+    if (!storage || creatureId == storage->temporarySelectedID())
         return;
-    m_temporarySelected = creatureId;
+    storage->setTemporarySelectedID(creatureId);
     refresh();
 }
 
@@ -1046,10 +1048,18 @@ std::vector<TCreaturePtr> TBattleListControllerStorage::creatures(const BattleLi
             if (!creature->isLocalPlayer() && !isPartyMember(*creature))
                 continue;
         } else {
-            if (creature->isLocalPlayer() || pos.z != center.z)
+            // Every living creature but the player: party members wherever
+            // they are, the others only inside the view and placed on a field.
+            if (creature->isLocalPlayer() || creature->isDead())
                 continue;
-            if (std::abs(pos.x - center.x) >= range.left || std::abs(pos.y - center.y) >= range.top)
-                continue;
+            if (!isPartyMember(*creature)) {
+                if (pos.z != center.z)
+                    continue;
+                if (std::abs(pos.x - center.x) >= range.left || std::abs(pos.y - center.y) >= range.top)
+                    continue;
+                if (!creature->isPlacedOnField())
+                    continue;
+            }
         }
         // Hide-keys run in TBattleListDataModelSortFilterProxy::filterAcceptsRow
         // (CIP); source model keeps the full spectator set.
@@ -1071,23 +1081,22 @@ BattleListEntry TBattleListControllerStorage::entryOf(const TCreaturePtr& creatu
     e.healthColor = colorOf(creature->informationColor());
     e.manaPercent = creature->maxMana() > 0 ? creature->mana() / float(creature->maxMana()) : 0.f;
     e.showMana = creature->isPlayer();
-    if (tibia::game::attackingCreatureId() == creature->creatureId())
-        e.frameColors.append(QColor(0xff, 0x00, 0x00));
-    else if (tibia::game::getFollowingCreatureId() == creature->creatureId())
-        e.frameColors.append(QColor(0x00, 0xff, 0x00));
+    // Every frame the creature shows on the map, the white selection frame too.
+    for (const QColor& color : creature->marks())
+        e.frameColors.append(color);
     for (const auto& [icon, category, count] : creature->hudIcons()) {
         if (category != 0 && icon != 0)
             e.statusIcons.append(stripIcon("othercreatureicons", icon));
         e.fiendish |= category != 0 && icon == 5;
     }
-    // Echo Raid glow ↔ CIP leader/minion status marks (see creaturehud.cpp).
-    e.leader = creature->echoRaidColor() == 0;
-    e.leaderMinion = creature->echoRaidColor() == 1;
+    e.leader = creature->hasStatusMark(0);
+    e.leaderMinion = creature->hasStatusMark(1);
+    // A summon is the player's own (1) or another player's (2), by its master.
     uint8_t summon = 0;
-    if (creature->creatureType() == Proto::CreatureTypeSummonOwn)
-        summon = 1;
-    else if (creature->creatureType() == Proto::CreatureTypeSummonOther)
-        summon = 2;
+    if (creature->creatureType() == Proto::CreatureTypeSummonOwn) {
+        const creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+        summon = storage && creature->masterId() == storage->playerID() ? 1 : 2;
+    }
     // Empty strings stay in: the QML Row skips the zero-sized images.
     e.statusIcons << stripIcon("summon", summon) << stripIcon("guild", creature->emblem()) << stripIcon("party", creature->shield())
                   << stripIcon("playerkiller", creature->skull());
@@ -1103,7 +1112,8 @@ BattleListEntry TBattleListControllerStorage::entryOf(const TCreaturePtr& creatu
     if (const auto it = m_visibleOrder.find(e.creatureId); it != m_visibleOrder.end())
         e.visibleOrder = it->second;
     e.distance = static_cast<uint>(std::max(std::abs(pos.x - center.x), std::abs(pos.y - center.y)));
-    e.temporarySelected = m_temporarySelected == e.creatureId;
+    if (const creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance())
+        e.temporarySelected = storage->temporarySelectedID() == e.creatureId;
     e.inViewport = pos.z == center.z && std::abs(pos.x - center.x) < range.left && std::abs(pos.y - center.y) < range.top;
     e.inSharedXpDistance = std::abs(pos.z - center.z) <= SharedXpFloors && static_cast<int>(e.distance) <= SharedXpRange;
     e.vocation = creature->isPlayer() ? baseVocation(*creature) : 0;

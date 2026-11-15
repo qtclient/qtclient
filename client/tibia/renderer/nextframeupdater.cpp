@@ -1,6 +1,7 @@
 #include "nextframeupdater.h"
 
 #include "chat/textstorage.h"
+#include "worldmap/ambientlightstorage.h"
 #include "renderer/worldmaprenderprovider.h"
 #include <tibia/creatures/movementtweens.h>
 #include <tibia/game/gamesession.h>
@@ -19,6 +20,8 @@ TNextFrameUpdater::TNextFrameUpdater(qmlcomponents::TWorldMapRenderProvider& pro
 void TNextFrameUpdater::v2(const qint64 timestampMs)
 {
     tibia::creatures::advanceAllMovementTweens(timestampMs);
+    if (worldmap::TAmbientLightStorage* ambient = worldmap::TAmbientLightStorage::instance())
+        ambient->update(timestampMs);
     m_texts.update(timestampMs, tibia::game::localPlayerPosition());
     m_numericalEffects.update(timestampMs);
     effects::TEffectStorage::instance().update(timestampMs);

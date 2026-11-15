@@ -5,14 +5,16 @@
 #include "appearances/appearanceinstance.h"
 #include "creatures/creaturemovementtween.h"
 #include "creatures/movementdirection.h"
+#include "worldmap/coordinates.h"
 
 #include <client/declarations.h>
 #include <client/position.h>
 #include <client/staticdata.h>
-#include <framework/core/declarations.h>
-#include <framework/core/timer.h>
+#include <framework/global.h>
+#include "shared/clockservice.h"
 #include <framework/util/color.h>
 
+#include <QColor>
 #include <QHash>
 #include <QList>
 #include <QObject>
@@ -23,7 +25,9 @@
 #include <deque>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
+#include <tuple>
 #include <vector>
 
 class LocalPlayerSessionThing;
@@ -34,10 +38,62 @@ namespace creatures {
 
 using TCreatureID = uint32_t;
 
+/// Which appearance of a creature the server replaced.
 enum class ECreatureUpdateAppearanceType : uint8_t {
-    FullOutfit = 0,
-    Direction = 1,
-    Health = 2,
+    Outfit = 0,
+    Mount = 1,
+    FullOutfit = Outfit,
+    /// Host: a creature update that replaced no appearance.
+    None = 0xFF,
+};
+
+/// One icon over a creature: its kind (0 player icon, 1 creature icon), the
+/// icon, the number shown with it and the flag the server sends with it.
+struct TCreatureIcon
+{
+    uint32_t kind = 0;
+    uint8_t icon = 0;
+    uint16_t value = 0;
+    bool flag = false;
+
+    /// Views bind an icon as (icon, kind, value).
+    template<std::size_t I>
+    const auto& get() const
+    {
+        if constexpr (I == 0)
+            return icon;
+        else if constexpr (I == 1)
+            return kind;
+        else
+            return value;
+    }
+};
+
+/// The client options that decide which frames around a creature show.
+struct TCreatureMarkOptions
+{
+    /// gameWindowShowTragetFrame: the attack, follow and selection frame.
+    bool targetFrame = true;
+    /// combatShowPvpFrames: the mark the server keeps on a creature.
+    bool staticSquare = true;
+    /// combatShowFrames: the mark the server shows for a moment.
+    bool timedSquare = true;
+    /// mouseHighlightTarget: the creature under the mouse is highlighted
+    /// instead of getting the white selection frame.
+    bool mouseHighlightTarget = true;
+};
+
+/// The frames drawn around a creature: the target frame (attack, follow,
+/// selection), the server's static square and its timed square. A frame is
+/// hidden while its colour is fully transparent.
+struct TCreatureMarks
+{
+    QColor targetFrame{ 0, 0, 0, 0 };
+    QColor staticSquare{ 0, 0, 0, 0 };
+    QColor timedSquare{ 0, 0, 0, 0 };
+    /// The timed square shows until then.
+    qint64 timedSquareEndMs = 0;
+    bool timedSquareShown = false;
 };
 
 /// CIP live creature row (protocol + field stack hold outfit appearance + creature id).
@@ -67,10 +123,35 @@ public:
     bool isDisplaced() const;
 
     TCreatureID creatureId() const { return m_creatureId; }
-    const QString& name() const { return m_name; }
+    /// A player's name as the server sent it; every other creature's name
+    /// with each word capitalised.
+    const QString& name() const;
+    /// Changes the creature's identity: a creature the storage replaced gets a
+    /// new one, so views keyed by it start over.
+    int uniqueId() const { return m_uniqueId; }
+    void renewUniqueId();
+    /// The own character (set when the storage adds the player's creature).
+    void markAsLocalPlayer() { m_isLocalPlayer = true; }
     uint8_t healthPercent() const { return m_healthPercent; }
+    float healthRatio() const { return m_healthPercent / 100.0f; }
+    /// A party member's mana.
+    uint8_t manaPercent() const { return m_manaPercent; }
+    float manaRatio() const { return m_manaPercent / 100.0f; }
+    void setManaPercent(uint8_t manaPercent) { m_manaPercent = manaPercent; }
+    /// A party member's status is shown (party list).
+    bool showsStatus() const { return m_showStatus; }
+    void setShowStatus(bool show) { m_showStatus = show; }
+    uint32_t masterId() const { return m_masterId; }
+    void setMasterId(uint32_t masterId) { m_masterId = masterId; }
     uint8_t skull() const { return m_skull; }
     uint8_t shield() const { return m_shield; }
+    /// Party shields: the creature leads a party (or invited this player to one).
+    bool isPartyLeader() const { return m_shield < 11 && (0x552u >> m_shield & 1) != 0; }
+    /// In a party, or inviting this player to one.
+    bool isInParty() const { return isPartyMember() || m_shield == 1; }
+    bool isPartyMember() const { return static_cast<uint8_t>(m_shield - 3) < 8; }
+    /// The party shares experience (active or not).
+    bool isSharingExperience() const { return static_cast<uint8_t>(m_shield - 5) < 6; }
     uint8_t emblem() const { return m_emblem; }
     const Outfit& outfit() const { return m_outfit; }
     const Position& position() const { return m_position; }
@@ -85,20 +166,28 @@ public:
     Position coveredField() const;
     PointF jumpOffset() const { return m_jumpOffset; }
     bool isWalking() const { return isMoving(); }
-    bool isPassable() const { return m_passable; }
-    bool isPlayer() const { return m_isPlayer; }
+    bool isUnpassable() const { return m_unpassable; }
+    void setUnpassable(bool unpassable) { m_unpassable = unpassable; }
+    bool isPassable() const { return !m_unpassable; }
+    bool isPlayer() const;
     bool isLocalPlayer() const { return m_isLocalPlayer; }
     bool isSoftDead() const { return m_softDead; }
     bool canDraw() const { return m_canDraw; }
     bool canBeSeen() const { return m_canBeSeen; }
-    bool isDead() const { return m_dead; }
-    bool isHidden() const { return m_hidden; }
+    bool isDead() const { return m_healthPercent == 0; }
+    bool isHidden() const;
     bool isHided() const { return m_hided; }
     bool drawOutfitColor() const { return m_drawOutfitColor; }
-    bool showTimedSquare() const { return m_showTimedSquare; }
-    Color timedSquareColor() const { return m_timedSquareColor; }
-    bool showStaticSquare() const { return m_showStaticSquare; }
-    Color staticSquareColor() const { return m_staticSquareColor; }
+    /// Some frame shows: one of the colours is set and its option is on.
+    bool hasMarks() const;
+    /// The colours of the frames that show, target frame first.
+    std::vector<QColor> marks() const;
+    /// As `marks`, without the white selection frame while the creature under
+    /// the mouse is highlighted instead.
+    std::vector<QColor> shownMarks() const;
+    /// Which frames show, for every creature.
+    static const TCreatureMarkOptions& markOptions();
+    static void setMarkOptions(const TCreatureMarkOptions& options);
     /// The step's elevation while moving, the field's otherwise.
     int drawElevation() const;
     /// The local player holds a movement intent other than Stop; keeps the
@@ -113,7 +202,12 @@ public:
     /// The look of the last step: each step turns from it, while a turn from
     /// the server changes only the look (`patternX`).
     uint8_t movementLook() const { return m_movementLook; }
-    uint8_t patternZ() const { return m_patternZ; }
+    /// The outfit's pattern depth: the mounted sprites while riding.
+    uint8_t patternZ() const { return m_mounted ? 1 : 0; }
+    /// The creature rides its mount: the outfit shows its mounted sprites and
+    /// the mount is drawn under it.
+    bool isMounted() const { return m_mounted; }
+    void setMounted(bool mounted) { m_mounted = mounted; }
     uint16_t animationPhase() const { return m_animationPhase; }
     uint16_t mountAnimationPhase() const { return m_mountAnimationPhase; }
     /// The standing sequence's phase (an outfit shown as an object, too).
@@ -121,9 +215,17 @@ public:
     Point displacement() const { return m_displacement; }
 
     uint8_t creatureType() const { return m_creatureType; }
+    /// The NPC category shown over the creature.
     uint8_t icon() const { return m_icon; }
-    bool isNpc() const { return m_isNpc; }
+    bool isNpc() const;
     uint8_t inspectionType() const { return m_inspectionType; }
+    /// Inspection between this player and the creature: permission granted,
+    /// asked for, this player may inspect it, it asks to inspect this player.
+    bool hasInspectionState(uint8_t mask) const { return (mask & m_inspectionType) != 0; }
+    bool inspectionGranted() const { return m_inspectionType & 1; }
+    bool inspectionRequested() const { return (m_inspectionType & 2) >> 1; }
+    bool canBeInspected() const { return (m_inspectionType & 4) >> 2; }
+    bool requestsInspection() const { return (m_inspectionType & 8) >> 3; }
 
     /// Local-player HUD (synced from `LocalPlayerSessionThing` on walk frames and stat packets).
     uint32_t mana() const { return m_mana; }
@@ -133,9 +235,20 @@ public:
     uint8_t harmony() const { return m_harmony; }
     bool isSerene() const { return m_serene; }
     uint8_t vocation() const { return m_vocation; }
-    const Color& informationColor() const { return m_informationColor; }
-    int8_t echoRaidColor() const { return m_echoRaidColor; }
-    const std::vector<std::tuple<uint8_t, uint8_t, uint16_t>>& hudIcons() const { return m_hudIcons; }
+    /// The health bar's colour for the creature's health.
+    Color informationColor() const { return informationColorForHealthPercent(m_healthPercent); }
+    const std::vector<TCreatureIcon>& hudIcons() const { return m_hudIcons; }
+    void clearIcons() { m_hudIcons.clear(); }
+    void addIcon(const TCreatureIcon& icon) { m_hudIcons.push_back(icon); }
+    /// The status marks the server sets on the creature.
+    const std::set<uint8_t>& extraIcons() const { return m_extraIcons; }
+    void setExtraIcons(std::set<uint8_t> icons) { m_extraIcons = std::move(icons); }
+    /// The server set status mark `type` (0 a raid leader, 1 its minion).
+    bool hasStatusMark(uint8_t type) const { return m_extraIcons.count(type) != 0; }
+    /// The creature stands on a map field (its field placed it there); a
+    /// creature known only by id is not.
+    bool isPlacedOnField() const { return m_placedOnField; }
+    void setPlacedOnField(bool placed) { m_placedOnField = placed; }
     const std::vector<AttachedEffectPtr>& attachedEffects() const { return m_attachedEffects; }
     bool hasAttachedEffects() const { return !m_attachedEffects.empty(); }
 
@@ -145,34 +258,36 @@ public:
     /// Session LocalPlayerSessionThing draw/HUD snapshot (walk offset owned by storage tween).
     void syncWorldDrawFrom(LocalPlayerSessionThing& player);
 
-    /// CipSoft-path protocol writes (storage is authoritative).
+    /// Protocol writes (storage is authoritative).
     void setName(const QString& name);
     void setPosition(const Position& position);
-    void setCreatureType(uint8_t creatureType);
-    void setIsPlayer(bool isPlayer);
-    void setIsNpc(bool isNpc);
-    void setHidden(bool hidden);
-    void setHealthPercent(uint8_t healthPercent);
+    void setCreatureType(uint8_t creatureType) { m_creatureType = creatureType; }
+    void setHealthPercent(uint8_t healthPercent) { m_healthPercent = healthPercent; }
     void setOutfit(const Outfit& outfit);
-    void setLight(const Light& light);
+    void setLight(const Light& light) { m_light = light; }
     void setSpeed(uint16_t speed);
     void setSkull(uint8_t skull);
     void setShield(uint8_t shield);
     void setEmblem(uint8_t emblem);
-    void setPassable(bool passable);
     void setDirection(uint8_t direction);
-    void setEchoRaidColor(int8_t color);
-    void setIcons(const std::vector<std::tuple<uint8_t, uint8_t, uint16_t>>& icons);
-    void setVocation(uint8_t vocation);
+    void setVocation(uint8_t vocation) { m_vocation = vocation; }
     void attachEffect(const AttachedEffectPtr& effect);
     void detachEffectById(uint16_t effectId);
     void clearTemporaryAttachedEffects();
-    void setIcon(uint8_t icon);
+    void setIcon(uint8_t icon) { m_icon = icon; }
     void setInspectionType(uint8_t inspectionType);
+    /// The attack, follow or selection frame in `color`.
+    void setTargetFrame(const QColor& color);
+    void hideTargetFrame();
+    /// The mark the server keeps on the creature until it clears it.
     void showStaticSquare(const Color& color);
     void hideStaticSquare();
-    void addTimedSquare(uint8_t color8bit);
-    void removeTimedSquare();
+    /// A mark shown for a moment from `nowMs`.
+    void addTimedSquare(const Color& color, qint64 nowMs);
+
+Q_SIGNALS:
+    /// Every position write, with the new position.
+    void positionWasUpdated(tibia::worldmap::TWorldMapCoordinate coordinate);
 
 private:
     void rebuildOutfitAppearance();
@@ -194,7 +309,12 @@ private:
 
     TCreatureID m_creatureId{ 0 };
     QString m_name;
-    uint8_t m_healthPercent{ 101 };
+    QString m_formattedName;
+    int m_uniqueId{ 0 };
+    uint8_t m_healthPercent{ 100 };
+    uint8_t m_manaPercent{ 100 };
+    bool m_showStatus{ true };
+    uint32_t m_masterId{ 0 };
     uint8_t m_skull{ 0 };
     uint8_t m_shield{ 0 };
     uint8_t m_emblem{ 0 };
@@ -203,39 +323,33 @@ private:
     appearances::TAppearanceInstancePtr m_outfitAppearance;
     uint8_t m_direction{ 2 };
     uint16_t m_speed{ 0 };
-    Light m_light;
+    Light m_light{ 0, 2 };
 
     PointF m_jumpOffset;
     Position m_walkingTilePos;
     bool m_hasWalkingTile{ false };
-    bool m_passable{ true };
-    bool m_isPlayer{ false };
+    bool m_unpassable{ false };
     bool m_isLocalPlayer{ false };
     bool m_softDead{ false };
     bool m_canDraw{ true };
     bool m_canBeSeen{ true };
-    bool m_dead{ false };
-    bool m_hidden{ false };
     bool m_hided{ false };
     bool m_drawOutfitColor{ true };
-    bool m_showTimedSquare{ false };
-    Color m_timedSquareColor;
-    bool m_showStaticSquare{ false };
-    Color m_staticSquareColor;
+    TCreatureMarks m_marks;
+    bool m_placedOnField{ false };
     qint64 m_lastFrameMs{ 0 };
     qint64 m_lastMovingFrameMs{ 0 };
     bool m_suppressMovingSprite{ false };
     bool m_holdsMovementIntent{ false };
     uint8_t m_patternX{ 2 };
     uint8_t m_movementLook{ 0 };
-    uint8_t m_patternZ{ 0 };
+    bool m_mounted{ false };
     uint16_t m_animationPhase{ 0 };
     uint16_t m_mountAnimationPhase{ 0 };
     Point m_displacement;
 
     uint8_t m_creatureType{ 0 };
     uint8_t m_icon{ 0 };
-    bool m_isNpc{ false };
     uint8_t m_inspectionType{ 0 };
     uint32_t m_mana{ 0 };
     uint32_t m_maxMana{ 0 };
@@ -244,9 +358,8 @@ private:
     uint8_t m_harmony{ 0 };
     bool m_serene{ false };
     uint8_t m_vocation{ 0 };
-    Color m_informationColor{ Color::white };
-    int8_t m_echoRaidColor{ -1 };
-    std::vector<std::tuple<uint8_t, uint8_t, uint16_t>> m_hudIcons;
+    std::vector<TCreatureIcon> m_hudIcons;
+    std::set<uint8_t> m_extraIcons;
     std::vector<AttachedEffectPtr> m_attachedEffects;
 
 };
@@ -264,7 +377,35 @@ public:
 
     std::shared_ptr<TCreature> getOrCreate(TCreatureID id);
     std::shared_ptr<TCreature> creatureAt(TCreatureID id) const;
+    /// A new creature with `id`, replacing any stored one.
+    std::shared_ptr<TCreature> createCreature(TCreatureID id);
+    /// Store `creature` under its id (replacing any stored one); the player's
+    /// own creature is marked as such, and the attack or follow target gets
+    /// its frame again.
+    void add(const std::shared_ptr<TCreature>& creature);
     void remove(TCreatureID id);
+    /// The own character's creature id (the login names it).
+    void setPlayerID(TCreatureID id);
+    TCreatureID playerID() const;
+    std::shared_ptr<TCreature> player() const;
+
+    /// The creature under the mouse or a hovered battle-list entry: white
+    /// frame, or the lighter attack/follow colour on the attack or follow
+    /// target. 0 (or an id not stored) clears it.
+    void setTemporarySelectedID(TCreatureID id);
+    TCreatureID temporarySelectedID() const { return m_temporarySelectedID; }
+    /// The followed creature: green frame. Following stops attacking.
+    void setFollowID(TCreatureID id);
+    TCreatureID followID() const { return m_followID; }
+    /// The attacked creature: red frame. Attacking stops following.
+    void setAttackID(TCreatureID id);
+    TCreatureID attackID() const { return m_attackID; }
+
+    /// The creature with `id` (if stored) stands on a map field / left it.
+    void placeOnField(TCreatureID id);
+    void removeFromField(TCreatureID id);
+    /// No stored creature stands on a field (the map is rebuilt).
+    void clearPlacedOnFieldFlags();
 
     /// CIP DeleteOnMap: leave the field, keep the known-creature row (name/outfit).
     /// Non-local rows clear position so battle list / spectators drop them; the
@@ -280,22 +421,16 @@ public:
     /// All registered creature ids (iteration authority for walk advance).
     QList<TCreatureID> creatureIds() const;
 
-    /// Upsert identity (id/name/outfit/direction/position/type) into storage.
-    /// Pass `position` only when known (tile place); empty outfit id skips outfit write.
-    std::shared_ptr<TCreature> ensureFromProtocol(TCreatureID id,
-                                                  const QString& name,
-                                                  const Outfit& outfit = {},
-                                                  uint8_t direction = 2,
-                                                  uint8_t creatureType = 0,
-                                                  bool isPlayer = false,
-                                                  bool isNpc = false,
-                                                  const Position* position = nullptr);
-
     /// Per-frame motion/animation sync for world draw (called from walk advance).
     void syncWorldDrawFrom(LocalPlayerSessionThing& player);
 
+    void notifyPlayerAdded(const std::shared_ptr<TCreature>& player);
+    void notifyCreatureUpdated(const std::shared_ptr<TCreature>& creature);
+    void notifyCreatureAppearanceUpdated(const std::shared_ptr<TCreature>& creature,
+                                         ECreatureUpdateAppearanceType appearanceType);
+    /// Host: creatureUpdated, then creatureAppearanceUpdated unless `None`.
     void publishCreatureUpdated(const std::shared_ptr<TCreature>& row,
-                                ECreatureUpdateAppearanceType appearanceType = ECreatureUpdateAppearanceType::Health);
+                                ECreatureUpdateAppearanceType appearanceType = ECreatureUpdateAppearanceType::None);
 
     /// Push local-player mana/harmony/vocation into storage (stat packets between walk frames).
     void syncLocalPlayerStatsFromMap();
@@ -309,37 +444,37 @@ Q_SIGNALS:
 
 private:
     QHash<TCreatureID, std::shared_ptr<TCreature>> m_creatures;
+    TCreatureID m_playerID{ 0 };
+    TCreatureID m_temporarySelectedID{ 0 };
+    TCreatureID m_followID{ 0 };
+    TCreatureID m_attackID{ 0 };
 };
 
-/// CipSoft-path protocol: storage is authoritative.
-std::shared_ptr<TCreature> ensureFromProtocol(TCreatureID id,
-                                              const QString& name,
-                                              const Outfit& outfit = {},
-                                              uint8_t direction = 2,
-                                              uint8_t creatureType = 0,
-                                              bool isPlayer = false,
-                                              bool isNpc = false,
-                                              const Position* position = nullptr);
-void protocolSetHealthPercent(TCreatureID id, uint8_t healthPercent);
-void protocolSetLight(TCreatureID id, const Light& light);
-void protocolSetOutfit(TCreatureID id, const Outfit& outfit);
-void protocolSetSpeed(TCreatureID id, uint16_t speed, uint16_t baseSpeed);
-void protocolSetSkull(TCreatureID id, uint8_t skull);
-void protocolSetShield(TCreatureID id, uint8_t shield);
-void protocolSetPassable(TCreatureID id, bool passable);
-void protocolSetDirection(TCreatureID id, uint8_t direction);
-void protocolSetEchoRaidColor(TCreatureID id, int8_t color);
-void protocolSetIcons(TCreatureID id, const std::vector<std::tuple<uint8_t, uint8_t, uint16_t>>& icons);
-void protocolSetVocation(TCreatureID id, uint8_t vocation);
+/// Host: product attached effects on a stored creature.
 void protocolAttachEffect(TCreatureID id, const AttachedEffectPtr& effect);
 void protocolDetachEffect(TCreatureID id, uint16_t effectId);
 void protocolClearTemporaryAttachedEffects(TCreatureID id);
-void protocolSetIcon(TCreatureID id, uint8_t icon);
-void protocolSetInspectionType(TCreatureID id, uint8_t inspectionType);
-void protocolShowStaticSquare(TCreatureID id, const Color& color);
-void protocolHideStaticSquare(TCreatureID id);
-void protocolAddTimedSquare(TCreatureID id, uint8_t color8bit);
-void protocolRemoveTimedSquare(TCreatureID id);
 
 }
+}
+
+namespace std {
+template<>
+struct tuple_size<tibia::creatures::TCreatureIcon> : integral_constant<size_t, 3>
+{};
+template<>
+struct tuple_element<0, tibia::creatures::TCreatureIcon>
+{
+    using type = uint8_t;
+};
+template<>
+struct tuple_element<1, tibia::creatures::TCreatureIcon>
+{
+    using type = uint32_t;
+};
+template<>
+struct tuple_element<2, tibia::creatures::TCreatureIcon>
+{
+    using type = uint16_t;
+};
 }

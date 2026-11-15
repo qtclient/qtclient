@@ -4,6 +4,8 @@
 
 #include <client/const.h>
 
+#include "input/eventfilters.h"
+
 #include <QPointer>
 
 #include <array>
@@ -62,6 +64,7 @@ private:
 
     void onHotkeyOptionsChanged();
     void onOptionsChanged();
+    void onApplicationStateChanged(Qt::ApplicationState state);
     enum class EIntentKind { Stop, Walk, Rotate };
     struct TIntent
     {
@@ -94,6 +97,9 @@ private:
 
     /// The key status, oldest first.
     std::vector<TKey> m_status;
+    bool m_applicationActive = true;
+    /// CIP keeps the focus filter here; it reports nothing on this platform.
+    TWindowFocusEventFilter m_windowFocus;
     TIntent m_intent;
 };
 

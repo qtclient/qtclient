@@ -22,7 +22,6 @@
 #include "creatures/creaturestorage.h"
 
 #include <client/const.h>
-#include <client/item.h>
 #include <client/position.h>
 #include <teamfinder/teamfinder_types.h>
 #include <tibia/assets/things.h>
@@ -165,7 +164,7 @@ TeamFinderAssemble teamFinderFromAbi(const QtClientTeamFinderAssemble* a)
     return t;
 }
 
-thread_local ItemPtr g_sessFindPlayerItemLast;
+thread_local std::optional<tibia::game::TObjectReference> g_sessFindPlayerItemLast;
 
 QtClientImageView imageViewFromQImage(QImage& img)
 {
@@ -560,11 +559,6 @@ void abiHostOs(char* buf, size_t buf_len)
     std::snprintf(buf, buf_len, "%s", os.c_str());
 }
 
-void abiEnableFeature(int feature)
-{
-    tibia::game::enableFeature(static_cast<tibia::client::GameFeature>(feature));
-}
-
 // --- Session nested API ---
 
 int sessIsOnline() { return tibia::game::isOnline() ? 1 : 0; }
@@ -617,11 +611,6 @@ uint64_t sessMillis() { return tibia::game::millis(); }
 uint8_t sessSeaFloor() { return tibia::game::mapSeaFloor(); }
 uint8_t sessWorldLight() { return tibia::game::worldLightIntensity(); }
 uint32_t sessItemRev() { return tibia::game::mapItemRevision(); }
-
-int sessCipFeature(int feature)
-{
-    return tibia::game::cipFeature(static_cast<tibia::client::GameFeature>(feature)) ? 1 : 0;
-}
 
 int sessHasReachedMain() { return tibia::game::localPlayerHasReachedMain() ? 1 : 0; }
 
@@ -853,7 +842,7 @@ int sessFindItemsInRange(QtClientMapPos center, int range_x, int range_y, uint16
                     continue;
                 if (type_id_or_0 != 0 && clientId != type_id_or_0)
                     continue;
-                if (!g_things.isValidDatId(clientId, ThingCategoryItem))
+                if (!tibia::appearances::TAppearancesManager::instance().isValidDatId(clientId, ThingCategoryItem))
                     continue;
                 out[written].pos = {x, y, static_cast<int>(c.z)};
                 out[written].type_id = clientId;
@@ -898,7 +887,7 @@ int sessFindItemsInRangeTypes(QtClientMapPos center, int range_x, int range_y, c
                     if (!match)
                         continue;
                 }
-                if (!g_things.isValidDatId(clientId, ThingCategoryItem))
+                if (!tibia::appearances::TAppearancesManager::instance().isValidDatId(clientId, ThingCategoryItem))
                     continue;
                 out[written].pos = {x, y, static_cast<int>(c.z)};
                 out[written].type_id = clientId;
@@ -985,13 +974,6 @@ void sessStatusBestiary(uint16_t race_id, int status)
 
 void sessBestiarySearch(uint16_t race_id) { tibia::game::requestBestiarySearch(race_id); }
 
-void sessFriendPayload(const uint8_t* bytes, size_t len)
-{
-    if (!bytes && len > 0)
-        return;
-    tibia::game::sendFriendSystemPayload(std::string(reinterpret_cast<const char*>(bytes), len));
-}
-
 void sessOpenPrivate(const char* receiver_utf8)
 {
     if (!receiver_utf8)
@@ -1057,7 +1039,7 @@ QtClientHandle sessFindPlayerItem(uint32_t item_id, int sub_type)
 {
     g_sessFindPlayerItemLast = tibia::game::findPlayerItem(item_id, sub_type);
     QtClientHandle h{};
-    h.ptr = g_sessFindPlayerItemLast.get();
+    h.ptr = g_sessFindPlayerItemLast ? &*g_sessFindPlayerItemLast : nullptr;
     return h;
 }
 
@@ -1087,8 +1069,6 @@ const QtClientSessionApiV1 g_sessionApi = {
     .map_sea_floor = &sessSeaFloor,
     .world_light_intensity = &sessWorldLight,
     .map_item_revision = &sessItemRev,
-    .cip_feature = &sessCipFeature,
-    .enable_feature = &abiEnableFeature,
 
     .local_player_has_reached_main = &sessHasReachedMain,
     .local_player_inventory_type_id = &sessInvTypeId,
@@ -1159,7 +1139,6 @@ const QtClientSessionApiV1 g_sessionApi = {
     .send_status_tracker_bestiary = &sessStatusBestiary,
     .request_bestiary_search = &sessBestiarySearch,
 
-    .send_friend_system_payload = &sessFriendPayload,
     .open_private_channel = &sessOpenPrivate,
 
     .request_team_finder_list = &sessTfList,
@@ -1417,7 +1396,6 @@ const QtClientHostApiV1 g_hostApi = {
     .set_weather_driver = &abiSetWeather,
     .set_hd_scaler = &abiSetHdScaler,
     .host_os = &abiHostOs,
-    .enable_feature = &abiEnableFeature,
     .session = &g_sessionApi,
     .notify = &g_notifyApi,
     .options = &g_optionsApi,

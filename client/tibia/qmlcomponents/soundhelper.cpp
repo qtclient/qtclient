@@ -4,7 +4,8 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <framework/core/logger.h>
+#include <QtGlobal>
+#include <format>
 #include "sound/soundstorage.h"
 
 #include <QJsonObject>
@@ -94,7 +95,7 @@ void playTriggeredSound(const int soundId)
         return;
     if (auto* storage = sound::TSoundStorage::instance()) {
         if (!storage->playUiEffect(static_cast<uint16_t>(soundId), 1.0f) && storage->isBankLoaded())
-            g_logger.warning("sound: no audio for effect {}", soundId);
+            qWarning("%s", std::format("sound: no audio for effect {}", soundId).c_str());
     }
 }
 

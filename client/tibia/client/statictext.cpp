@@ -25,12 +25,11 @@
 
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/worldmap/worldmapstorage.h>
-#include "framework/core/clock.h"
+#include "shared/clockservice.h"
 #include <tibia/schedule/schedule.h>
 
 StaticText::StaticText()
 {
-    m_cachedText.setAlign(Fw::AlignCenter);
 }
 
 void StaticText::drawText(const Point& dest, const Rect& parentRect)
@@ -39,7 +38,7 @@ void StaticText::drawText(const Point& dest, const Rect& parentRect)
 }
 
 
-void StaticText::setText(const std::string_view text) { m_cachedText.setText(text); }
+void StaticText::setText(const std::string_view text) { m_text = std::string(text); }
 void StaticText::setFont(const std::string_view) {}
 
 bool StaticText::addMessage(const std::string_view name, const tibia::client::MessageMode mode, const std::string_view text)
@@ -69,7 +68,7 @@ bool StaticText::addMessage(const std::string_view name, const tibia::client::Me
     if (tibia::host::app().mustOptimize())
         delay /= 2;
 
-    m_messages.emplace_back(text, g_clock.millis() + delay);
+    m_messages.emplace_back(text, tibia::shared::TClockService::frameMillis() + delay);
     compose();
 
     if (!m_updateEvent)
@@ -93,7 +92,7 @@ void StaticText::update()
 
 void StaticText::scheduleUpdate()
 {
-    const int delay = std::max<int>(m_messages.front().second - g_clock.millis(), 0);
+    const int delay = std::max<int>(m_messages.front().second - tibia::shared::TClockService::frameMillis(), 0);
     m_updateEvent = tibia::schedule::after([self = asStaticText()] {
         self->m_updateEvent = nullptr;
         self->update();
@@ -130,7 +129,7 @@ void StaticText::compose()
         text += " says:\n";
         m_color = MESSAGE_COLOR3;
     } else {
-        g_logger.warning("Unknown speak type: {}", static_cast<uint8_t>(m_mode));
+        qWarning("%s", std::format("Unknown speak type: {}", static_cast<uint8_t>(m_mode)).c_str());
     }
 
     for (uint32_t i = 0; i < m_messages.size(); ++i) {
@@ -140,6 +139,5 @@ void StaticText::compose()
             text += "\n";
     }
 
-    m_cachedText.setText(text);
-    m_cachedText.wrapText(275);
+    m_text = text;
 }

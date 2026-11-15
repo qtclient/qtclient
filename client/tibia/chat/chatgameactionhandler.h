@@ -42,15 +42,28 @@ public:
     TChatGameActionProvider() = default;
 };
 
-/// CIP chat::TClientChatEntryFactory — builds TChatEntry values
-/// (system / speaker / loot factories). Live path: TChatChannelStorage::add*.
-class TClientChatEntryFactory final : public ::tibia::CipTyped
+/// Builds chat entries (CIP: chat::TClientChatEntryFactory). Every entry
+/// carries the time it was made.
+class TClientChatEntryFactory final
 {
 public:
-    TClientChatEntryFactory() = default;
-
-    /// / : system line.
-    static TChatEntry systemEntry(const QString& text, const QColor& color);
+    /// A system line.
+    static TChatEntry systemEntry(const QColor& color, const QString& text);
+    /// A speaker without level (an NPC).
+    static TChatEntry speakerEntry(const QColor& color, const QString& name, const QString& text);
+    /// A player with level.
+    static TChatEntry speakerWithLevelEntry(const QColor& color, const QString& name, const QString& text, int level,
+                                            bool traded, uint32_t statementId);
+    /// A loot line.
+    static TChatEntry lootEntry(const QColor& color, const QString& text);
+    /// v2: "the channel was closed", red.
+    static TChatEntry channelClosedEntry();
+    /// v3: the Team Finder channel's closing line, red.
+    static TChatEntry teamFinderChannelClosedEntry();
+    /// v4: the help channel's introduction, white.
+    static TChatEntry helpChannelIntroductionEntry();
+    /// v5: the advertising channels' introduction, white.
+    static TChatEntry advertisingChannelIntroductionEntry();
 };
 
 }

@@ -10,92 +10,92 @@ namespace game {
 
 inline const ThingTypePtr& thingType(uint16_t id, ThingCategory category)
 {
-    return g_things.getThingType(id, category);
+    return tibia::appearances::TAppearancesManager::instance().getThingType(id, category);
 }
 
 inline ThingType* rawThingType(uint16_t id, ThingCategory category)
 {
-    return g_things.getRawThingType(id, category);
+    return tibia::appearances::TAppearancesManager::instance().getRawThingType(id, category);
 }
 
 inline const ThingTypeList& thingTypes(ThingCategory category)
 {
-    return g_things.getThingTypes(category);
+    return tibia::appearances::TAppearancesManager::instance().getThingTypes(category);
 }
 
 inline bool isValidDatId(uint16_t id, ThingCategory category)
 {
-    return g_things.isValidDatId(id, category);
+    return tibia::appearances::TAppearancesManager::instance().isValidDatId(id, category);
 }
 
 inline uint32_t supplyStashId()
 {
-    return g_things.getSupplyStashId();
+    return tibia::appearances::TAppearancesManager::instance().getSupplyStashId();
 }
 
 inline uint32_t standardRewardChestId()
 {
-    return g_things.getStandardRewardChestId();
+    return tibia::appearances::TAppearancesManager::instance().getStandardRewardChestId();
 }
 
 inline const RaceType& raceData(uint32_t raceId)
 {
-    return g_things.getRaceData(raceId);
+    return tibia::appearances::TAppearancesManager::instance().getRaceData(raceId);
 }
 
 inline uint16_t resolveEffectId(uint16_t id)
 {
-    return g_things.resolveEffectId(id);
+    return tibia::appearances::TAppearancesManager::instance().resolveEffectId(id);
 }
 
 inline const std::vector<CyclopediaHouseType>& cyclopediaHouses()
 {
-    return g_things.getCyclopediaHouses();
+    return tibia::appearances::TAppearancesManager::instance().getCyclopediaHouses();
 }
 
 inline const std::vector<CyclopediaAchievementType>& getCyclopediaAchievements()
 {
-    return g_things.getCyclopediaAchievements();
+    return tibia::appearances::TAppearancesManager::instance().getCyclopediaAchievements();
 }
 
 inline uint16_t stampedLetterId()
 {
-    return g_things.getStampedLetterId();
+    return tibia::appearances::TAppearancesManager::instance().getStampedLetterId();
 }
 
 inline uint32_t contentRevision()
 {
-    return g_things.getContentRevision();
+    return tibia::appearances::TAppearancesManager::instance().getContentRevision();
 }
 
 inline auto assetIdentifier()
 {
-    return g_things.getAssetIdentifier();
+    return tibia::appearances::TAppearancesManager::instance().getAssetIdentifier();
 }
 
 inline bool isDatLoaded()
 {
-    return g_things.isDatLoaded();
+    return tibia::appearances::TAppearancesManager::instance().isDatLoaded();
 }
 
 inline auto findEffectVariant(uint16_t id)
 {
-    return g_things.findEffectVariant(id);
+    return tibia::appearances::TAppearancesManager::instance().findEffectVariant(id);
 }
 
 inline const RaceList& getAllRaces()
 {
-    return g_things.getAllRaces();
+    return tibia::appearances::TAppearancesManager::instance().getAllRaces();
 }
 
 inline bool loadAppearances(const std::string& directory)
 {
-    return g_things.loadAppearances(directory);
+    return tibia::appearances::TAppearancesManager::instance().loadAppearances(directory);
 }
 
 inline std::string getProficienciesFile()
 {
-    return g_things.getProficienciesFile();
+    return tibia::appearances::TAppearancesManager::instance().getProficienciesFile();
 }
 
 }

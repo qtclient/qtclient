@@ -96,7 +96,7 @@ message ProtocolCreatureIcon {
   optional bool flag = 4;
 }
 
-// CIP v19: kind 0x61 new (remove id, id, type, master for own summons, name), 0x62 known (id), 0x63 turn (id, direction, unpassable). Fields 24-31 are product server features (not in CIP).
+// CIP v19: kind 0x61 new (remove id, id, type, master for own summons, name), 0x62 known (id), 0x63 turn (id, direction, unpassable). CIP v42 fills one field of a known creature from a creature update (mana percent, show status, vocation, either icon list). update_icons / update_extra_icons: the message carries that icon list (it may be empty); a creature that turned carries neither.
 message ProtocolCreature {
   optional uint32 kind = 1;
   optional uint32 remove_id = 2;
@@ -121,6 +121,10 @@ message ProtocolCreature {
   optional uint32 mark = 21;
   optional uint32 inspection_type = 22;
   optional bool unpassable = 23;
+  optional uint32 mana_percent = 24;
+  optional bool show_status = 25;
+  optional bool update_icons = 26;
+  optional bool update_extra_icons = 27;
 }
 
 // CIP v16: u16 id; 0x61-0x63 creature, else object.
@@ -886,6 +890,500 @@ message ProtocolStoreBanner {
   optional ProtocolStoreOpenParameters parameters = 2;
 }
 
+// string name; string vocation; u16 level; outfit; bool own character; string title.
+message ProtocolCharacterInfoBase {
+  optional string name = 1;
+  optional string vocation = 2;
+  optional uint32 level = 3;
+  optional ProtocolOutfit outfit = 4;
+  optional bool own_character = 5;
+  optional string title = 6;
+}
+
+// u8 skill id; u16 level; u16 base; u16 base with loyalty; u16 percent (hundredths).
+message ProtocolCharacterInfoSkill {
+  optional uint32 skill_id = 1;
+  optional uint32 level = 2;
+  optional uint32 base_level = 3;
+  optional uint32 loyalty_level = 4;
+  optional uint32 percent = 5;
+}
+
+// u8 element; s16 value.
+message ProtocolCharacterInfoElementLevel {
+  optional uint32 element = 1;
+  optional int32 value = 2;
+}
+
+// u8 key (element, range or skill); double value.
+message ProtocolCharacterInfoKeyedValue {
+  optional uint32 key = 1;
+  optional double value = 2;
+}
+
+// u64; 7x u16; bool; 4x u32; u8 soul; 5x u16; 3x u32; u8 n x skill (magic level first); u8 n x (u8 element, s16); 2x u16.
+message ProtocolCharacterInfoGeneralStats {
+  optional uint64 experience = 1;
+  optional uint32 level = 2;
+  optional uint32 level_percent = 3;
+  optional uint32 base_xp_gain = 4;
+  optional uint32 low_level_xp_bonus = 5;
+  optional uint32 xp_boost_percent = 6;
+  optional uint32 stamina_xp_bonus = 7;
+  optional uint32 xp_boost_remaining = 8;
+  optional bool can_buy_xp_boost = 9;
+  optional uint32 health = 10;
+  optional uint32 max_health = 11;
+  optional uint32 mana = 12;
+  optional uint32 max_mana = 13;
+  optional uint32 soul = 14;
+  optional uint32 stamina_minutes = 15;
+  optional uint32 regeneration = 16;
+  optional uint32 offline_training = 17;
+  optional uint32 speed = 18;
+  optional uint32 base_speed = 19;
+  optional uint32 capacity = 20;
+  optional uint32 base_capacity = 21;
+  optional uint32 free_capacity = 22;
+  repeated ProtocolCharacterInfoSkill skills = 23;
+  repeated ProtocolCharacterInfoElementLevel specialized_magic_levels = 24;
+  optional uint32 trailing_first = 25;
+  optional uint32 trailing_second = 26;
+}
+
+message ProtocolCharacterInfoDeath {
+  optional uint32 timestamp = 1;
+  optional string cause = 2;
+}
+
+message ProtocolCharacterInfoPvpKill {
+  optional uint32 timestamp = 1;
+  optional string description = 2;
+  optional uint32 status = 3;
+}
+
+// u16 id; u32 unlock time; bool secret; secret only: string name, string description, u8 grade.
+message ProtocolCharacterInfoAchievement {
+  optional uint32 id = 1;
+  optional uint32 timestamp = 2;
+  optional bool secret = 3;
+  optional string name = 4;
+  optional string description = 5;
+  optional uint32 grade = 6;
+}
+
+// u16 object, u8 tier when tiered; u32 amount.
+message ProtocolCharacterInfoItemCount {
+  optional uint32 object_id = 1;
+  optional uint32 tier = 2;
+  optional uint32 amount = 3;
+}
+
+// u16 look type; string name; outfits only: u8 addons; u8 source; u32 current.
+message ProtocolCharacterInfoAppearance {
+  optional uint32 look_type = 1;
+  optional string name = 2;
+  optional uint32 addons = 3;
+  optional uint32 source = 4;
+  optional uint32 current = 5;
+}
+
+message ProtocolCharacterInfoColors {
+  optional uint32 head = 1;
+  optional uint32 body = 2;
+  optional uint32 legs = 3;
+  optional uint32 feet = 4;
+}
+
+// string name; u8 count.
+message ProtocolCharacterInfoNamedCount {
+  optional string name = 1;
+  optional uint32 count = 2;
+}
+
+// u16 object; string name; u8 count.
+message ProtocolCharacterInfoHouseItem {
+  optional uint32 object_id = 1;
+  optional string name = 2;
+  optional uint32 count = 3;
+}
+
+message ProtocolCharacterInfoBadge {
+  optional uint32 id = 1;
+  optional string name = 2;
+}
+
+message ProtocolCharacterInfoTitle {
+  optional uint32 id = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional bool permanent = 4;
+  optional bool unlocked = 5;
+}
+
+message ProtocolCharacterInfoTargetBonus {
+  optional string name = 1;
+  optional double value = 2;
+}
+
+message ProtocolCharacterInfoSkillBonus {
+  optional uint32 skill_id = 1;
+  optional double first = 2;
+  optional double second = 3;
+}
+
+// u32 id; u32 remaining time.
+message ProtocolCharacterInfoTimedEffect {
+  optional uint32 id = 1;
+  optional uint32 duration = 2;
+}
+
+// u16 spell; u8 type; double value.
+message ProtocolCharacterInfoAugment {
+  optional uint32 spell_id = 1;
+  optional uint32 type = 2;
+  optional double value = 3;
+}
+
+// u8 kind; u8 element; double value.
+message ProtocolCharacterInfoResistance {
+  optional uint32 kind = 1;
+  optional uint32 element = 2;
+  optional double value = 3;
+}
+
+// 7 crit chance, 6 crit damage, 5 life leech, 5 mana leech, 4 onslaught doubles; cleave; 7 perfect shot + 3 flat damage u16; weapon block; lists.
+message ProtocolCharacterInfoOffenceStats {
+  repeated double crit_chance = 1;
+  repeated double crit_damage = 2;
+  repeated double life_leech = 3;
+  repeated double mana_leech = 4;
+  repeated double onslaught = 5;
+  optional double cleave = 6;
+  repeated uint32 perfect_shot = 7;
+  repeated uint32 flat_damage = 8;
+  optional uint32 weapon_attack = 9;
+  optional uint32 weapon_flat_modifier = 10;
+  optional uint32 weapon_damage = 11;
+  optional uint32 weapon_skill_type = 12;
+  optional int32 weapon_skill_level = 13;
+  optional int32 weapon_skill_modifier = 14;
+  optional uint32 weapon_element = 15;
+  optional double converted_damage = 16;
+  optional uint32 converted_element = 17;
+  repeated ProtocolCharacterInfoKeyedValue accuracy = 18;
+  optional double powerful_foes = 19;
+  repeated ProtocolCharacterInfoTargetBonus specific_targets = 20;
+  repeated ProtocolCharacterInfoKeyedValue crit_chance_elements = 21;
+  optional double offensive_runes = 22;
+  optional double auto_attack = 23;
+  repeated ProtocolCharacterInfoKeyedValue crit_damage_elements = 24;
+  optional double crit_damage_runes = 25;
+  optional double crit_damage_auto_attack = 26;
+  optional uint32 life_on_hit = 27;
+  optional uint32 mana_on_hit = 28;
+  optional uint32 life_on_kill = 29;
+  optional uint32 mana_on_kill = 30;
+  repeated ProtocolCharacterInfoSkillBonus extra_damage_skills = 31;
+  repeated ProtocolCharacterInfoSkillBonus extra_damage_spells = 32;
+  repeated ProtocolCharacterInfoSkillBonus extra_healing_spells = 33;
+  optional double damage_high_health = 34;
+  optional double damage_low_health = 35;
+  optional double armor_penetration = 36;
+  repeated ProtocolCharacterInfoKeyedValue elemental_pierce = 37;
+}
+
+// 5 dodge doubles; u32; u16; double; 5x u16; u8; s16; u16; 5 mitigation doubles; u8 n x resistance.
+message ProtocolCharacterInfoDefenceStats {
+  repeated double dodge = 1;
+  optional uint32 magic_shield = 2;
+  optional uint32 magic_shield_flat = 3;
+  optional double magic_shield_percent = 4;
+  optional uint32 reflect_physical = 5;
+  optional uint32 armor = 6;
+  optional uint32 mantra = 7;
+  optional uint32 defence = 8;
+  optional uint32 defence_equipment = 9;
+  optional uint32 defence_skill_type = 10;
+  optional int32 shielding = 11;
+  optional uint32 defence_wheel = 12;
+  repeated double mitigation = 13;
+  repeated ProtocolCharacterInfoResistance resistances = 14;
+}
+
+// 5 momentum, 4 dodge, 3 reflection doubles; u8; u8; two u8 n x (u32, u32); three u8 n x augment.
+message ProtocolCharacterInfoMiscStats {
+  repeated double momentum = 1;
+  repeated double dodge = 2;
+  repeated double damage_reflection = 3;
+  optional uint32 blessings = 4;
+  optional uint32 total_blessings = 5;
+  repeated ProtocolCharacterInfoTimedEffect concoctions = 6;
+  repeated ProtocolCharacterInfoTimedEffect foods = 7;
+  repeated ProtocolCharacterInfoAugment proficiency_augments = 8;
+  repeated ProtocolCharacterInfoAugment wheel_augments = 9;
+  repeated ProtocolCharacterInfoAugment equipped_augments = 10;
+}
+
+// u16 object; string name; u8 amount.
+message ProtocolDailyRewardObject {
+  optional uint32 object_id = 1;
+  optional string name = 2;
+  optional uint32 amount = 3;
+}
+
+// u8 n x (u8 kind: 1 object; 2 u8 prey wildcards; 3 u16 minutes, u16 percent XP boost; 4 u8 cosmetic tokens; 5 u8 bounty reroll tokens).
+message ProtocolDailyRewardContent {
+  repeated ProtocolDailyRewardObject objects = 1;
+  optional uint32 prey_wildcards = 2;
+  optional uint32 xp_boost_minutes = 3;
+  optional uint32 xp_boost_percent = 4;
+  optional uint32 cosmetic_tokens = 5;
+  optional uint32 bounty_reroll_tokens = 6;
+}
+
+message ProtocolDailyRewardDay {
+  optional ProtocolDailyRewardContent free = 1;
+  optional ProtocolDailyRewardContent premium = 2;
+}
+
+// u8 index; u16 race; u16 required kills; u32 xp; u16 bounty points; u16 current kills; u8 claim state; u8 grade; bool elite; u16 dust.
+message ProtocolBountyTask {
+  optional uint32 task_index = 1;
+  optional uint32 race_id = 2;
+  optional uint32 required_kills = 3;
+  optional uint32 reward_xp = 4;
+  optional uint32 reward_bounty_points = 5;
+  optional uint32 current_kills = 6;
+  optional uint32 claim_state = 7;
+  optional uint32 grade = 8;
+  optional bool elite = 9;
+  optional uint32 reward_dust = 10;
+}
+
+// u16 level; bool upgradable; u16 cost.
+message ProtocolBountyTalisman {
+  optional uint32 level = 1;
+  optional bool upgradable = 2;
+  optional uint32 upgrade_cost = 3;
+}
+
+// bool unlocked; u16 preferred; u16 avoided.
+message ProtocolBountyPreferredSlot {
+  optional bool unlocked = 1;
+  optional uint32 preferred_race_id = 2;
+  optional uint32 avoided_race_id = 3;
+}
+
+// u8 n x task; u8 difficulty; bool elite; 4 talismans; u8 n x preferred slot.
+message ProtocolTaskboardBounty {
+  repeated ProtocolBountyTask tasks = 1;
+  optional uint32 difficulty = 2;
+  optional bool elite_enabled = 3;
+  repeated ProtocolBountyTalisman talismans = 4;
+  repeated ProtocolBountyPreferredSlot preferred_slots = 5;
+}
+
+message ProtocolWeeklyKillTask {
+  optional uint32 race_id = 1;
+  optional uint32 total = 2;
+  optional uint32 current = 3;
+}
+
+// u8 slot; u32 object; u32 required; u32 available; u8 delivered.
+message ProtocolWeeklyDeliveryTask {
+  optional uint32 slot_index = 1;
+  optional uint32 object_id = 2;
+  optional uint32 required = 3;
+  optional uint32 available = 4;
+  optional uint32 delivered = 5;
+}
+
+// u16; u16; u8 n x (u16, u16, u16); u8 n x delivery; u8; u32; u32; u8; u8; u8; u8; u32; bool; u32; u32.
+message ProtocolTaskboardWeekly {
+  optional uint32 any_creature_total = 1;
+  optional uint32 any_creature_current = 2;
+  repeated ProtocolWeeklyKillTask kill_tasks = 3;
+  repeated ProtocolWeeklyDeliveryTask delivery_tasks = 4;
+  optional uint32 difficulty = 5;
+  optional uint32 kill_reward_xp = 6;
+  optional uint32 delivery_reward_xp = 7;
+  optional uint32 completed_kill_tasks = 8;
+  optional uint32 completed_delivery_tasks = 9;
+  optional uint32 progress_finished = 10;
+  optional uint32 unlocked_difficulty = 11;
+  optional uint32 reset_time = 12;
+  optional bool expansion = 13;
+  optional uint32 reward_hunting_task_points = 14;
+  optional uint32 reward_soul_seals = 15;
+}
+
+// u8 type; type 4: u16 purchased; else string name, string description, u32 id, outfit: u8 addons, double object: u32 second id; u32 price; u8 status.
+message ProtocolTaskboardOffer {
+  optional uint32 offer_type = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional uint32 appearance_id = 4;
+  optional uint32 addons = 5;
+  optional uint32 second_object_id = 6;
+  optional uint32 purchased = 7;
+  optional uint32 price = 8;
+  optional uint32 status = 9;
+}
+
+// u8 id; u8 tier; bool assigned; assigned only: u16 race, u32 removal cost.
+message ProtocolCharmEntry {
+  optional uint32 charm_id = 1;
+  optional uint32 tier = 2;
+  optional bool assigned = 3;
+  optional uint32 race_id = 4;
+  optional uint32 remove_cost = 5;
+}
+
+// u16 race; bool; bool; u8 when the second flag is set.
+message ProtocolCharmFinishedRace {
+  optional uint32 race_id = 1;
+  optional bool first_flag = 2;
+  optional bool second_flag = 3;
+  optional uint32 second_value = 4;
+}
+
+// friend list: u32 account, u32 character, 4 strings, u16 level, outfit; invites: u32 account, 2 strings; blacklist: u32 account, string.
+message ProtocolFriendAccount {
+  optional uint32 account_id = 1;
+  optional uint32 character_id = 2;
+  optional string name = 3;
+  optional string title = 4;
+  optional string vocation = 5;
+  optional string world = 6;
+  optional uint32 level = 7;
+  optional ProtocolOutfit outfit = 8;
+}
+
+message ProtocolFriendListEntry {
+  optional ProtocolFriendAccount account = 1;
+  optional uint32 friend_group = 2;
+  optional uint32 friendship_length = 3;
+}
+
+message ProtocolFriendInvite {
+  optional bool sent = 1;
+  optional ProtocolFriendAccount account = 2;
+  optional string text = 3;
+  optional uint32 timestamp = 4;
+}
+
+message ProtocolFriendBlacklistEntry {
+  optional ProtocolFriendAccount account = 1;
+  optional uint32 timestamp = 2;
+}
+
+message ProtocolFriendBadge {
+  optional uint32 badge_id = 1;
+  optional string name = 2;
+  optional string icon = 3;
+  optional bool unlocked = 4;
+  optional bool visible = 5;
+}
+
+message ProtocolFriendSearchCharacter {
+  optional uint32 character_id = 1;
+  optional string name = 2;
+  optional bool main_character = 3;
+  optional string title = 4;
+  optional string vocation = 5;
+  optional string world = 6;
+  optional uint32 level = 7;
+  optional bool online = 8;
+  optional ProtocolOutfit outfit = 9;
+}
+
+// u32 account; bool; bool; bool account info; info only: bool online, u32 last login, bool premium, string loyalty title, u8 n x (u32, string) badges; u8 n x character.
+message ProtocolFriendAccountSearch {
+  optional uint32 account_id = 1;
+  optional bool friend_or_invited = 2;
+  optional bool on_blacklist = 3;
+  optional bool show_account_info = 4;
+  optional bool online = 5;
+  optional uint32 last_login = 6;
+  optional bool premium = 7;
+  optional string loyalty_title = 8;
+  repeated ProtocolFriendBadge badges = 9;
+  repeated ProtocolFriendSearchCharacter characters = 10;
+}
+
+message ProtocolFriendSetting {
+  optional uint32 setting_type = 1;
+  optional bool show_character_info = 2;
+  optional bool show_account_info = 3;
+  optional bool allow_inspect = 4;
+}
+
+message ProtocolCustomPrice {
+  optional uint32 object_id = 1;
+  optional uint64 price = 2;
+}
+
+message ProtocolTeamFinderAssembly {
+  optional uint32 min_level = 1;
+  optional uint32 max_level = 2;
+  optional uint32 vocations = 3;
+  optional uint32 team_slots = 4;
+  optional uint32 free_slots = 5;
+  optional bool party_only = 6;
+  optional uint32 timestamp = 7;
+  optional uint32 team_type = 8;
+  optional uint32 first_id = 9;
+  optional uint32 second_id = 10;
+}
+
+message ProtocolObjectInfoRequest {
+  optional uint32 object_id = 1;
+  optional uint32 data = 2;
+}
+
+message ProtocolContainerSort {
+  optional uint32 sort_type = 1;
+  optional bool first_flag = 2;
+  optional bool second_flag = 3;
+}
+
+message ProtocolDailyRewardChoice {
+  optional uint32 object_id = 1;
+  optional uint32 count = 2;
+}
+
+message ProtocolMapDonationRequest {
+  optional uint32 area_id = 1;
+  optional uint32 amount = 2;
+}
+
+message ProtocolOutfitLook {
+  optional uint32 look_type = 1;
+  optional uint32 head = 2;
+  optional uint32 body = 3;
+  optional uint32 legs = 4;
+  optional uint32 feet = 5;
+  optional uint32 addons = 6;
+}
+
+message ProtocolFriendSettingChange {
+  optional uint32 setting_type = 1;
+  optional bool show_character_info = 2;
+  optional bool show_account_info = 3;
+  optional bool allow_inspect = 4;
+}
+
+message ProtocolTradeObject {
+  optional uint32 object_id = 1;
+  optional uint32 tier = 2;
+}
+
+message ProtocolProficiencyPerkChoice {
+  optional uint32 level = 1;
+  optional uint32 perk_position = 2;
+}
+
 // server opcode 0x03 (3) — CreatureData
 // classic: creature (new creature layout)
 // CIP TProtobufServerMessageTranslator::v52 (v19 kind 0x61).
@@ -897,18 +1395,27 @@ message GameserverMessageCreatureData {
 }
 
 // server opcode 0x04 (4) — SessionDumpStart
-// classic: optional string session_key
+// classic: u32 player_id; u16 beat_duration; double speed_a; double speed_b; double speed_c
+// session_key is not on the wire (kept for the existing consumer).
 message GameserverMessageSessionDumpStart {
   optional string session_key = 1;
+  optional uint32 player_id = 2;
+  optional uint32 beat_duration = 3;
+  optional double speed_a = 4;
+  optional double speed_b = 5;
+  optional double speed_c = 6;
   extend GameserverMessage {
     optional GameserverMessageSessionDumpStart gameserver_message_session_dump_start = 4;
   }
 }
 
 // server opcode 0x05 (5) — SessionDumpMarker
-// classic: optional string marker
+// classic: u8 kind; kind 0: bool party_status (a party status marker)
+// marker is not on the wire (kept for the existing consumer).
 message GameserverMessageSessionDumpMarker {
   optional string marker = 1;
+  optional uint32 kind = 2;
+  optional bool party_status = 3;
   extend GameserverMessage {
     optional GameserverMessageSessionDumpMarker gameserver_message_session_dump_marker = 5;
   }
@@ -1096,8 +1603,7 @@ message GameserverMessageStash {
 }
 
 // server opcode 0x2A (42) — SpecialContainersAvailable
-// classic: u8 stash; [protocol>=1220] u8 market
-// Tip classic-wire recovery for native apply (CIP handleSpecialContainersAvailableMessage).
+// classic: bool stash; bool market
 message GameserverMessageSpecialContainersAvailable {
   optional uint32 stash = 1;
   optional uint32 market = 2;
@@ -1175,8 +1681,13 @@ message GameserverMessageBossDifficultySelection {
 }
 
 // server opcode 0x5B (91) — Taskboard
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type (0 bounty, 1 weekly, 2 shop); body by type
+// CIP TProtobufServerMessageTranslator::v211.
 message GameserverMessageTaskboard {
+  optional uint32 board_type = 1;
+  optional ProtocolTaskboardBounty bounty = 2;
+  optional ProtocolTaskboardWeekly weekly = 3;
+  repeated ProtocolTaskboardOffer offers = 4;
   extend GameserverMessage {
     optional GameserverMessageTaskboard gameserver_message_taskboard = 91;
   }
@@ -1282,8 +1793,9 @@ message GameserverMessageBossSlots {
 }
 
 // server opcode 0x63 (99) — ClientCheck
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufServerMessageTranslator::v7: u32 length, raw bytes.
 message GameserverMessageClientCheck {
+  optional bytes data = 1;
   extend GameserverMessage {
     optional GameserverMessageClientCheck gameserver_message_client_check = 99;
   }
@@ -1475,8 +1987,18 @@ message GameserverMessageBosstiary {
 }
 
 // server opcode 0x74 (116) — FriendSystemData
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type: 0 error (u8 code, string when 1), 1 invite notice, 2 friends, 3 invites, 4 blacklist, 5 account search, 6 badges, 7 friendship notice, 8 settings
+// CIP TProtobufServerMessageTranslator::v174.
 message GameserverMessageFriendSystemData {
+  optional uint32 data_type = 1;
+  optional uint32 error_code = 2;
+  optional string error_message = 3;
+  repeated ProtocolFriendListEntry friends = 4;
+  repeated ProtocolFriendInvite invites = 5;
+  repeated ProtocolFriendBlacklistEntry blacklist = 6;
+  optional ProtocolFriendAccountSearch account_search = 7;
+  repeated ProtocolFriendBadge badges = 8;
+  repeated ProtocolFriendSetting settings = 9;
   extend GameserverMessage {
     optional GameserverMessageFriendSystemData gameserver_message_friend_system_data = 116;
   }
@@ -1746,16 +2268,13 @@ message GameserverMessageExaltationResult {
 
 // server opcode 0x8B (139) — CreatureUpdate
 // classic: u32 creatureId; u8 type: 0 u16 kind + creature (0x61-0x63), 11 u8 mana percent, 12 bool show status, 13 u8 vocation (kept % 10), 14 u8 count x (u8 icon, u8 category, u16 value, bool flag), 15 u8 count x u8
-// CIP TProtobufServerMessageTranslator::v42. Types 16 (u8 health percent, u32 health, u32 max), 17 (u8 mana percent, u32 mana, u32 max) and 18 (u8 vocation, u16 level) are product server party extensions (not in CIP).
+// CIP TProtobufServerMessageTranslator::v42: types 0 and 11-15 fill `creature` (types 11-15: the update's creature id and the one field). Types 16 (u8 health percent, u32 health, u32 max), 17 (u8 mana percent, u32 mana, u32 max) and 18 (u8 vocation, u16 level) are product server party extensions (not in CIP).
 message GameserverMessageCreatureUpdate {
   optional uint32 creature_id = 1;
   optional uint32 type = 2;
   optional ProtocolCreature creature = 3;
   optional uint32 mana_percent = 4;
-  optional bool show_status = 5;
   optional uint32 vocation = 6;
-  repeated ProtocolCreatureIcon icons = 7;
-  repeated uint32 extra_icons = 8;
   optional uint32 health_percent = 9;
   optional uint32 health = 10;
   optional uint32 max_health = 11;
@@ -2148,8 +2667,10 @@ message GameserverMessageSetStoreButtonDeeplink {
 }
 
 // server opcode 0xA9 (169) — RestingAreaState
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool in resting area
+// CIP TProtobufServerMessageTranslator::v158.
 message GameserverMessageRestingAreaState {
+  optional bool in_resting_area = 1;
   extend GameserverMessage {
     optional GameserverMessageRestingAreaState gameserver_message_resting_area_state = 169;
   }
@@ -2765,8 +3286,13 @@ message GameserverMessageMonsterCyclopediaRace {
 }
 
 // server opcode 0xD8 (216) — MonsterCyclopediaBonusEffects
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u64 reset cost; u8 n x charm; u8 free slots (0xff unlimited, then absent); u16 n x finished race
+// CIP TProtobufServerMessageTranslator::v122.
 message GameserverMessageMonsterCyclopediaBonusEffects {
+  optional uint64 reset_all_charms_cost = 1;
+  repeated ProtocolCharmEntry charms = 2;
+  optional uint32 available_charm_slots = 3;
+  repeated ProtocolCharmFinishedRace finished_races = 4;
   extend GameserverMessage {
     optional GameserverMessageMonsterCyclopediaBonusEffects gameserver_message_monster_cyclopedia_bonus_effects = 216;
   }
@@ -2783,8 +3309,56 @@ message GameserverMessageMonsterCyclopediaNewDetails {
 }
 
 // server opcode 0xDA (218) — CyclopediaCharacterInfo
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 type; u8 error (non-zero ends the message); body by type (0 base, 1 general, 3 deaths, 4 kills, 5 achievements, 6 items, 7 appearances, 8 store, 9 inspection, 10 badges, 11 titles, 13 offence, 14 defence, 15 misc)
+// CIP TProtobufServerMessageTranslator::v124.
 message GameserverMessageCyclopediaCharacterInfo {
+  optional uint32 info_type = 1;
+  optional uint32 error_code = 2;
+  optional ProtocolCharacterInfoBase base = 3;
+  optional ProtocolCharacterInfoGeneralStats general = 4;
+  optional uint32 current_page = 5;
+  optional uint32 page_count = 6;
+  repeated ProtocolCharacterInfoDeath deaths = 7;
+  repeated ProtocolCharacterInfoPvpKill pvp_kills = 8;
+  optional uint32 achievement_points = 9;
+  optional uint32 secret_achievements = 10;
+  repeated ProtocolCharacterInfoAchievement achievements = 11;
+  repeated ProtocolCharacterInfoItemCount inventory_items = 12;
+  repeated ProtocolCharacterInfoItemCount store_items = 13;
+  repeated ProtocolCharacterInfoItemCount stash_items = 14;
+  repeated ProtocolCharacterInfoItemCount depot_items = 15;
+  repeated ProtocolCharacterInfoItemCount inbox_items = 16;
+  repeated ProtocolCharacterInfoAppearance outfits = 17;
+  optional ProtocolCharacterInfoColors outfit_colors = 18;
+  repeated ProtocolCharacterInfoAppearance mounts = 19;
+  optional ProtocolCharacterInfoColors mount_colors = 20;
+  repeated ProtocolCharacterInfoAppearance familiars = 21;
+  optional uint32 xp_boost_time = 22;
+  optional uint32 daily_xp_boost_time = 23;
+  repeated ProtocolCharacterInfoNamedCount blessings = 24;
+  optional uint32 prey_slots = 25;
+  optional uint32 prey_wildcards = 26;
+  optional bool weekly_task_expansion = 27;
+  optional uint32 instant_rewards = 28;
+  optional bool charm_expansion = 29;
+  optional uint32 hirelings = 30;
+  repeated uint32 hireling_jobs = 31;
+  repeated ProtocolCharacterInfoNamedCount hireling_outfits = 32;
+  repeated ProtocolCharacterInfoHouseItem house_items = 33;
+  repeated ProtocolInspectedObject inspected_objects = 34;
+  optional string player_name = 35;
+  optional ProtocolOutfit outfit = 36;
+  repeated ProtocolInspectionDetail player_details = 37;
+  optional bool show_account = 38;
+  optional bool online = 39;
+  optional bool premium = 40;
+  optional string loyalty_title = 41;
+  repeated ProtocolCharacterInfoBadge badges = 42;
+  optional uint32 current_title = 43;
+  repeated ProtocolCharacterInfoTitle titles = 44;
+  optional ProtocolCharacterInfoOffenceStats offence = 45;
+  optional ProtocolCharacterInfoDefenceStats defence = 46;
+  optional ProtocolCharacterInfoMiscStats misc = 47;
   extend GameserverMessage {
     optional GameserverMessageCyclopediaCharacterInfo gameserver_message_cyclopedia_character_info = 218;
   }
@@ -2909,8 +3483,11 @@ message GameserverMessageCloseRewardWall {
 }
 
 // server opcode 0xE4 (228) — DailyRewardBasic
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 n x (free content, premium content); u8 n x u32 reward streak needed per resting bonus
+// CIP TProtobufServerMessageTranslator::v160.
 message GameserverMessageDailyRewardBasic {
+  repeated ProtocolDailyRewardDay days = 1;
+  repeated uint32 streak_bonus_thresholds = 2;
   extend GameserverMessage {
     optional GameserverMessageDailyRewardBasic gameserver_message_daily_reward_basic = 228;
   }
@@ -3238,16 +3815,30 @@ message GameserverMessageUnknown {
 }
 
 // client opcode 0x0A (10) — Login
-// classic: bridge — classic side-channel until CIP field RE
+// u16 os, u16 protocol, u32 version, string version, string assets, u8 preview; RSA block: u8 0, 4x u32 xtea, bool gm, string session key, string character, u32 timestamp, u8 random, [product string], zero padding.
 message GameclientMessageLogin {
+  optional uint32 client_os = 1;
+  optional uint32 protocol_version = 2;
+  optional uint32 client_version = 3;
+  optional string client_version_string = 4;
+  optional string asset_identifier = 5;
+  optional uint32 preview_state = 6;
+  repeated uint32 xtea_key = 7;
+  optional bool gamemaster = 8;
+  optional string session_key = 9;
+  optional string character_name = 10;
+  optional uint32 challenge_timestamp = 11;
+  optional uint32 challenge_random = 12;
+  optional string product_transport = 13;
   extend GameclientMessage {
     optional GameclientMessageLogin gameclient_message_login = 10;
   }
 }
 
 // client opcode 0x0B (11) — SecondaryLogin
-// classic: bridge — classic side-channel until CIP field RE
+// string token (Crystal secondary login).
 message GameclientMessageSecondaryLogin {
+  optional string token = 1;
   extend GameclientMessage {
     optional GameclientMessageSecondaryLogin gameclient_message_secondary_login = 11;
   }
@@ -3294,104 +3885,136 @@ message GameclientMessagePingBack {
 }
 
 // client opcode 0x28 (40) — StashAction
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v93.
 message GameclientMessageStashAction {
+  optional uint32 action = 1;
+  optional ProtocolCoordinate position = 2;
+  optional uint32 object_id = 3;
+  optional uint32 stack_position = 4;
+  optional uint32 count = 5;
   extend GameclientMessage {
     optional GameclientMessageStashAction gameclient_message_stash_action = 40;
   }
 }
 
 // client opcode 0x29 (41) — DepotSearchRetrieve
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object_id; u8? tier; u8 retrieve_type
+// CIP TProtobufClientMessageTranslator::v97.
 message GameclientMessageDepotSearchRetrieve {
+  optional uint32 object_id = 1;
+  optional uint32 tier = 2;
+  optional uint32 retrieve_type = 3;
   extend GameclientMessage {
     optional GameclientMessageDepotSearchRetrieve gameclient_message_depot_search_retrieve = 41;
   }
 }
 
 // client opcode 0x2A (42) — TrackBestiaryRace
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 race_id; bool tracked
+// CIP TProtobufClientMessageTranslator::v6.
 message GameclientMessageTrackBestiaryRace {
+  optional uint32 race_id = 1;
+  optional bool tracked = 2;
   extend GameclientMessage {
     optional GameclientMessageTrackBestiaryRace gameclient_message_track_bestiary_race = 42;
   }
 }
 
 // client opcode 0x2B (43) — PartyHuntAnalyser
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v99.
 message GameclientMessagePartyHuntAnalyser {
+  optional uint32 action = 1;
+  optional uint32 price_type = 2;
+  repeated ProtocolCustomPrice prices = 3;
   extend GameclientMessage {
     optional GameclientMessagePartyHuntAnalyser gameclient_message_party_hunt_analyser = 43;
   }
 }
 
 // client opcode 0x2C (44) — TeamFinderAssembleTeam
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v103.
 message GameclientMessageTeamFinderAssembleTeam {
+  optional uint32 action = 1;
+  optional uint32 member_id = 2;
+  optional uint32 member_status = 3;
+  optional ProtocolTeamFinderAssembly assembly = 4;
   extend GameclientMessage {
     optional GameclientMessageTeamFinderAssembleTeam gameclient_message_team_finder_assemble_team = 44;
   }
 }
 
 // client opcode 0x2D (45) — TeamFinderJoinTeam
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v104.
 message GameclientMessageTeamFinderJoinTeam {
+  optional uint32 action = 1;
+  optional uint32 leader_id = 2;
   extend GameclientMessage {
     optional GameclientMessageTeamFinderJoinTeam gameclient_message_team_finder_join_team = 45;
   }
 }
 
 // client opcode 0x2E (46) — SetClientOptions
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v115.
 message GameclientMessageSetClientOptions {
+  optional bool turn_towards_move_direction = 1;
   extend GameclientMessage {
     optional GameclientMessageSetClientOptions gameclient_message_set_client_options = 46;
   }
 }
 
 // client opcode 0x5F (95) — Taskboard
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v118.
 message GameclientMessageTaskboard {
+  optional uint32 option = 1;
+  optional uint32 small_value = 2;
+  optional uint32 value = 3;
   extend GameclientMessage {
     optional GameclientMessageTaskboard gameclient_message_taskboard = 95;
   }
 }
 
 // client opcode 0x60 (96) — TrackImbuements
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool open
+// CIP TProtobufClientMessageTranslator::v113.
 message GameclientMessageTrackImbuements {
+  optional bool open = 1;
   extend GameclientMessage {
     optional GameclientMessageTrackImbuements gameclient_message_track_imbuements = 96;
   }
 }
 
 // client opcode 0x61 (97) — RequestSkillWheel
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v111.
 message GameclientMessageRequestSkillWheel {
+  optional uint32 character_id = 1;
   extend GameclientMessage {
     optional GameclientMessageRequestSkillWheel gameclient_message_request_skill_wheel = 97;
   }
 }
 
 // client opcode 0x62 (98) — ApplySkillWheel
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v112.
 message GameclientMessageApplySkillWheel {
+  repeated uint32 slot_points = 1;
+  repeated uint32 vessel_gems = 2;
   extend GameclientMessage {
     optional GameclientMessageApplySkillWheel gameclient_message_apply_skill_wheel = 98;
   }
 }
 
 // client opcode 0x63 (99) — ClientCheck
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v7: u32 length, raw bytes.
 message GameclientMessageClientCheck {
+  optional bytes data = 1;
   extend GameclientMessage {
     optional GameclientMessageClientCheck gameclient_message_client_check = 99;
   }
 }
 
 // client opcode 0x64 (100) — GoPath
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v5.
 message GameclientMessageGoPath {
+  repeated uint32 directions = 1;
   extend GameclientMessage {
     optional GameclientMessageGoPath gameclient_message_go_path = 100;
   }
@@ -3470,8 +4093,10 @@ message GameclientMessageGoNorthWest {
 }
 
 // client opcode 0x6E (110) — SetVocation
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 vocation
+// CIP TProtobufClientMessageTranslator::v116.
 message GameclientMessageSetVocation {
+  optional uint32 vocation = 1;
   extend GameclientMessage {
     optional GameclientMessageSetVocation gameclient_message_set_vocation = 110;
   }
@@ -3510,72 +4135,109 @@ message GameclientMessageRotateWest {
 }
 
 // client opcode 0x73 (115) — Teleport
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position
+// CIP TProtobufClientMessageTranslator::v84.
 message GameclientMessageTeleport {
+  optional ProtocolCoordinate position = 1;
   extend GameclientMessage {
     optional GameclientMessageTeleport gameclient_message_teleport = 115;
   }
 }
 
 // client opcode 0x74 (116) — StartOfflineTraining
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 skill
+// CIP TProtobufClientMessageTranslator::v117.
 message GameclientMessageStartOfflineTraining {
+  optional uint32 skill = 1;
   extend GameclientMessage {
     optional GameclientMessageStartOfflineTraining gameclient_message_start_offline_training = 116;
   }
 }
 
 // client opcode 0x75 (117) — ContainerAction
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v114.
 message GameclientMessageContainerAction {
+  optional uint32 container_id = 1;
+  optional bool move_to_managed_containers = 2;
+  optional ProtocolContainerSort sort = 3;
   extend GameclientMessage {
     optional GameclientMessageContainerAction gameclient_message_container_action = 117;
   }
 }
 
 // client opcode 0x76 (118) — CharacterTradeConfigurationAction
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v105.
 message GameclientMessageCharacterTradeConfigurationAction {
+  optional uint32 action = 1;
+  optional uint32 price = 2;
+  optional uint32 end_time = 3;
+  repeated ProtocolTradeObject objects = 4;
+  repeated ProtocolTradeObject store_objects = 5;
+  repeated uint32 highlights = 6;
   extend GameclientMessage {
     optional GameclientMessageCharacterTradeConfigurationAction gameclient_message_character_trade_configuration_action = 118;
   }
 }
 
 // client opcode 0x77 (119) — EquipObject
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object_id; u8 tier
+// CIP TProtobufClientMessageTranslator::v8.
 message GameclientMessageEquipObject {
+  optional uint32 object_id = 1;
+  optional uint32 tier = 2;
   extend GameclientMessage {
     optional GameclientMessageEquipObject gameclient_message_equip_object = 119;
   }
 }
 
 // client opcode 0x78 (120) — MoveObject
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos from_position; u16 object_id; u8 from_stack_position; pos to_position; u8 count; bool extra_flag
+// CIP TProtobufClientMessageTranslator::v9.
 message GameclientMessageMoveObject {
+  optional ProtocolCoordinate from_position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 from_stack_position = 3;
+  optional ProtocolCoordinate to_position = 4;
+  optional uint32 count = 5;
+  optional bool extra_flag = 6;
   extend GameclientMessage {
     optional GameclientMessageMoveObject gameclient_message_move_object = 120;
   }
 }
 
 // client opcode 0x79 (121) — LookNPCTrade
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object_id; u8 count
+// CIP TProtobufClientMessageTranslator::v30.
 message GameclientMessageLookNPCTrade {
+  optional uint32 object_id = 1;
+  optional uint32 count = 2;
   extend GameclientMessage {
     optional GameclientMessageLookNPCTrade gameclient_message_look_n_p_c_trade = 121;
   }
 }
 
 // client opcode 0x7A (122) — BuyObject
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object_id; u8 subtype; u16 amount; bool ignore_capacity; bool in_backpacks
+// CIP TProtobufClientMessageTranslator::v31.
 message GameclientMessageBuyObject {
+  optional uint32 object_id = 1;
+  optional uint32 subtype = 2;
+  optional uint32 amount = 3;
+  optional bool ignore_capacity = 4;
+  optional bool in_backpacks = 5;
   extend GameclientMessage {
     optional GameclientMessageBuyObject gameclient_message_buy_object = 122;
   }
 }
 
 // client opcode 0x7B (123) — SellObject
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object_id; u8 subtype; u16 amount; bool ignore_equipped
+// CIP TProtobufClientMessageTranslator::v32.
 message GameclientMessageSellObject {
+  optional uint32 object_id = 1;
+  optional uint32 subtype = 2;
+  optional uint32 amount = 3;
+  optional bool ignore_equipped = 4;
   extend GameclientMessage {
     optional GameclientMessageSellObject gameclient_message_sell_object = 123;
   }
@@ -3590,16 +4252,24 @@ message GameclientMessageCloseNPCTrade {
 }
 
 // client opcode 0x7D (125) — TradeObject
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position; u16 object_id; u8 stack_position; u32 creature_id
+// CIP TProtobufClientMessageTranslator::v59.
 message GameclientMessageTradeObject {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 stack_position = 3;
+  optional uint32 creature_id = 4;
   extend GameclientMessage {
     optional GameclientMessageTradeObject gameclient_message_trade_object = 125;
   }
 }
 
 // client opcode 0x7E (126) — LookTrade
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 counter_offer; u8 index
+// CIP TProtobufClientMessageTranslator::v60.
 message GameclientMessageLookTrade {
+  optional uint32 counter_offer = 1;
+  optional uint32 index = 2;
   extend GameclientMessage {
     optional GameclientMessageLookTrade gameclient_message_look_trade = 126;
   }
@@ -3622,104 +4292,157 @@ message GameclientMessageRejectTrade {
 }
 
 // client opcode 0x81 (129) — FriendSystemAction
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v61.
 message GameclientMessageFriendSystemAction {
+  optional uint32 action = 1;
+  optional uint32 account_id = 2;
+  optional uint32 value = 3;
+  optional string text = 4;
+  optional uint32 badge_id = 5;
+  optional bool visible = 6;
+  optional ProtocolFriendSettingChange setting = 7;
   extend GameclientMessage {
     optional GameclientMessageFriendSystemAction gameclient_message_friend_system_action = 129;
   }
 }
 
 // client opcode 0x82 (130) — UseObject
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position; u16 object_id; u8 stack_position; u8 container_index
+// CIP TProtobufClientMessageTranslator::v13.
 message GameclientMessageUseObject {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 stack_position = 3;
+  optional uint32 container_index = 4;
   extend GameclientMessage {
     optional GameclientMessageUseObject gameclient_message_use_object = 130;
   }
 }
 
 // client opcode 0x83 (131) — UseTwoObjects
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos from_position; u16 object_id; u8 from_stack_position; pos to_position; u16 to_object_id; u8 to_stack_position
+// CIP TProtobufClientMessageTranslator::v14.
 message GameclientMessageUseTwoObjects {
+  optional ProtocolCoordinate from_position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 from_stack_position = 3;
+  optional ProtocolCoordinate to_position = 4;
+  optional uint32 to_object_id = 5;
+  optional uint32 to_stack_position = 6;
   extend GameclientMessage {
     optional GameclientMessageUseTwoObjects gameclient_message_use_two_objects = 131;
   }
 }
 
 // client opcode 0x84 (132) — UseOnCreature
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position; u16 object_id; u8 stack_position; u32 creature_id
+// CIP TProtobufClientMessageTranslator::v15.
 message GameclientMessageUseOnCreature {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 stack_position = 3;
+  optional uint32 creature_id = 4;
   extend GameclientMessage {
     optional GameclientMessageUseOnCreature gameclient_message_use_on_creature = 132;
   }
 }
 
 // client opcode 0x85 (133) — TurnObject
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position; u16 object_id; u8 stack_position
+// CIP TProtobufClientMessageTranslator::v11.
 message GameclientMessageTurnObject {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 stack_position = 3;
   extend GameclientMessage {
     optional GameclientMessageTurnObject gameclient_message_turn_object = 133;
   }
 }
 
 // client opcode 0x86 (134) — ConfigureShowOffSocket
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position; u16 object_id; u8 stack_position
+// CIP TProtobufClientMessageTranslator::v12.
 message GameclientMessageConfigureShowOffSocket {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 stack_position = 3;
   extend GameclientMessage {
     optional GameclientMessageConfigureShowOffSocket gameclient_message_configure_show_off_socket = 134;
   }
 }
 
 // client opcode 0x87 (135) — CloseContainer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 container_id
+// CIP TProtobufClientMessageTranslator::v20.
 message GameclientMessageCloseContainer {
+  optional uint32 container_id = 1;
   extend GameclientMessage {
     optional GameclientMessageCloseContainer gameclient_message_close_container = 135;
   }
 }
 
 // client opcode 0x88 (136) — UpContainer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 container_id
+// CIP TProtobufClientMessageTranslator::v21.
 message GameclientMessageUpContainer {
+  optional uint32 container_id = 1;
   extend GameclientMessage {
     optional GameclientMessageUpContainer gameclient_message_up_container = 136;
   }
 }
 
 // client opcode 0x89 (137) — EditText
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 window_id; str text
+// CIP TProtobufClientMessageTranslator::v65.
 message GameclientMessageEditText {
+  optional uint32 window_id = 1;
+  optional string text = 2;
   extend GameclientMessage {
     optional GameclientMessageEditText gameclient_message_edit_text = 137;
   }
 }
 
 // client opcode 0x8A (138) — EditList
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 list_type; u32 window_id; str text
+// CIP TProtobufClientMessageTranslator::v66.
 message GameclientMessageEditList {
+  optional uint32 list_type = 1;
+  optional uint32 window_id = 2;
+  optional string text = 3;
   extend GameclientMessage {
     optional GameclientMessageEditList gameclient_message_edit_list = 138;
   }
 }
 
 // client opcode 0x8B (139) — ToggleWrapState
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position; u16 object_id; u8 stack_position
+// CIP TProtobufClientMessageTranslator::v10.
 message GameclientMessageToggleWrapState {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 stack_position = 3;
   extend GameclientMessage {
     optional GameclientMessageToggleWrapState gameclient_message_toggle_wrap_state = 139;
   }
 }
 
 // client opcode 0x8C (140) — Look
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position; u16 object_id; u8 stack_position
+// CIP TProtobufClientMessageTranslator::v16.
 message GameclientMessageLook {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 stack_position = 3;
   extend GameclientMessage {
     optional GameclientMessageLook gameclient_message_look = 140;
   }
 }
 
 // client opcode 0x8D (141) — LookAtCreature
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creature_id
+// CIP TProtobufClientMessageTranslator::v17.
 message GameclientMessageLookAtCreature {
+  optional uint32 creature_id = 1;
   extend GameclientMessage {
     optional GameclientMessageLookAtCreature gameclient_message_look_at_creature = 141;
   }
@@ -3736,24 +4459,37 @@ message GameclientMessageJoinAggression {
 }
 
 // client opcode 0x8F (143) — QuickLoot
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 variant; pos? position; u16? object_id; u8? stack_position
+// CIP TProtobufClientMessageTranslator::v87.
 message GameclientMessageQuickLoot {
+  optional uint32 variant = 1;
+  optional ProtocolCoordinate position = 2;
+  optional uint32 object_id = 3;
+  optional uint32 stack_position = 4;
   extend GameclientMessage {
     optional GameclientMessageQuickLoot gameclient_message_quick_loot = 143;
   }
 }
 
 // client opcode 0x90 (144) — ManagedContainer
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v91.
 message GameclientMessageManagedContainer {
+  optional uint32 action = 1;
+  optional uint32 category = 2;
+  optional ProtocolCoordinate position = 3;
+  optional uint32 object_id = 4;
+  optional uint32 stack_position = 5;
+  optional bool use_main_as_fallback = 6;
   extend GameclientMessage {
     optional GameclientMessageManagedContainer gameclient_message_managed_container = 144;
   }
 }
 
 // client opcode 0x91 (145) — QuickLootBlackWhitelist
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v88.
 message GameclientMessageQuickLootBlackWhitelist {
+  optional uint32 filter = 1;
+  repeated uint32 object_ids = 2;
   extend GameclientMessage {
     optional GameclientMessageQuickLootBlackWhitelist gameclient_message_quick_loot_black_whitelist = 145;
   }
@@ -3776,24 +4512,35 @@ message GameclientMessageCloseDepotSearch {
 }
 
 // client opcode 0x94 (148) — DepotSearchType
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 object_id; u8? tier
+// CIP TProtobufClientMessageTranslator::v95.
 message GameclientMessageDepotSearchType {
+  optional uint32 object_id = 1;
+  optional uint32 tier = 2;
   extend GameclientMessage {
     optional GameclientMessageDepotSearchType gameclient_message_depot_search_type = 148;
   }
 }
 
 // client opcode 0x95 (149) — OpenParentContainer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position
+// CIP TProtobufClientMessageTranslator::v96.
 message GameclientMessageOpenParentContainer {
+  optional ProtocolCoordinate position = 1;
   extend GameclientMessage {
     optional GameclientMessageOpenParentContainer gameclient_message_open_parent_container = 149;
   }
 }
 
 // client opcode 0x96 (150) — Talk
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v25.
 message GameclientMessageTalk {
+  optional uint32 mode = 1;
+  optional uint32 channel_id = 2;
+  optional string receiver = 3;
+  optional string text = 4;
+  optional uint32 aim_mode = 5;
+  optional ProtocolCoordinate aim_position = 6;
   extend GameclientMessage {
     optional GameclientMessageTalk gameclient_message_talk = 150;
   }
@@ -3808,24 +4555,30 @@ message GameclientMessageGetChannels {
 }
 
 // client opcode 0x98 (152) — JoinChannel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 channel_id
+// CIP TProtobufClientMessageTranslator::v35.
 message GameclientMessageJoinChannel {
+  optional uint32 channel_id = 1;
   extend GameclientMessage {
     optional GameclientMessageJoinChannel gameclient_message_join_channel = 152;
   }
 }
 
 // client opcode 0x99 (153) — LeaveChannel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 channel_id
+// CIP TProtobufClientMessageTranslator::v37.
 message GameclientMessageLeaveChannel {
+  optional uint32 channel_id = 1;
   extend GameclientMessage {
     optional GameclientMessageLeaveChannel gameclient_message_leave_channel = 153;
   }
 }
 
 // client opcode 0x9A (154) — PrivateChannel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: str receiver
+// CIP TProtobufClientMessageTranslator::v36.
 message GameclientMessagePrivateChannel {
+  optional string receiver = 1;
   extend GameclientMessage {
     optional GameclientMessagePrivateChannel gameclient_message_private_channel = 154;
   }
@@ -3840,16 +4593,22 @@ message GameclientMessageGuildMessage {
 }
 
 // client opcode 0x9C (156) — EditGuildMessage
-// classic: bridge — classic side-channel until CIP field RE
+// classic: str text
+// CIP TProtobufClientMessageTranslator::v67.
 message GameclientMessageEditGuildMessage {
+  optional string text = 1;
   extend GameclientMessage {
     optional GameclientMessageEditGuildMessage gameclient_message_edit_guild_message = 156;
   }
 }
 
 // client opcode 0x9D (157) — GetTextForReport
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position; u16 object_id; u8 stack_position
+// CIP TProtobufClientMessageTranslator::v106.
 message GameclientMessageGetTextForReport {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 stack_position = 3;
   extend GameclientMessage {
     optional GameclientMessageGetTextForReport gameclient_message_get_text_for_report = 157;
   }
@@ -3864,64 +4623,90 @@ message GameclientMessageCloseNPCChannel {
 }
 
 // client opcode 0x9F (159) — SetCreaturePodiumConfiguration
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 race_id; pos position; u16 object_id; u8 stack_position; u8 direction; bool podium_visible; bool monster_visible
+// CIP TProtobufClientMessageTranslator::v43.
 message GameclientMessageSetCreaturePodiumConfiguration {
+  optional uint32 race_id = 1;
+  optional ProtocolCoordinate position = 2;
+  optional uint32 object_id = 3;
+  optional uint32 stack_position = 4;
+  optional uint32 direction = 5;
+  optional bool podium_visible = 6;
+  optional bool monster_visible = 7;
   extend GameclientMessage {
     optional GameclientMessageSetCreaturePodiumConfiguration gameclient_message_set_creature_podium_configuration = 159;
   }
 }
 
 // client opcode 0xA0 (160) — SetTactics
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool chase_opponent; bool secure_mode; u8 pvp_mode
+// CIP TProtobufClientMessageTranslator::v23.
 message GameclientMessageSetTactics {
+  optional bool chase_opponent = 1;
+  optional bool secure_mode = 2;
+  optional uint32 pvp_mode = 3;
   extend GameclientMessage {
     optional GameclientMessageSetTactics gameclient_message_set_tactics = 160;
   }
 }
 
 // client opcode 0xA1 (161) — Attack
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creature_id; u32 sequence
+// CIP TProtobufClientMessageTranslator::v33.
 message GameclientMessageAttack {
+  optional uint32 creature_id = 1;
+  optional uint32 sequence = 2;
   extend GameclientMessage {
     optional GameclientMessageAttack gameclient_message_attack = 161;
   }
 }
 
 // client opcode 0xA2 (162) — Follow
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creature_id; u32 sequence
+// CIP TProtobufClientMessageTranslator::v34.
 message GameclientMessageFollow {
+  optional uint32 creature_id = 1;
+  optional uint32 sequence = 2;
   extend GameclientMessage {
     optional GameclientMessageFollow gameclient_message_follow = 162;
   }
 }
 
 // client opcode 0xA3 (163) — InviteToParty
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creature_id
+// CIP TProtobufClientMessageTranslator::v45.
 message GameclientMessageInviteToParty {
+  optional uint32 creature_id = 1;
   extend GameclientMessage {
     optional GameclientMessageInviteToParty gameclient_message_invite_to_party = 163;
   }
 }
 
 // client opcode 0xA4 (164) — JoinParty
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creature_id
+// CIP TProtobufClientMessageTranslator::v46.
 message GameclientMessageJoinParty {
+  optional uint32 creature_id = 1;
   extend GameclientMessage {
     optional GameclientMessageJoinParty gameclient_message_join_party = 164;
   }
 }
 
 // client opcode 0xA5 (165) — RevokeInvitation
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creature_id
+// CIP TProtobufClientMessageTranslator::v47.
 message GameclientMessageRevokeInvitation {
+  optional uint32 creature_id = 1;
   extend GameclientMessage {
     optional GameclientMessageRevokeInvitation gameclient_message_revoke_invitation = 165;
   }
 }
 
 // client opcode 0xA6 (166) — PassLeadership
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creature_id
+// CIP TProtobufClientMessageTranslator::v48.
 message GameclientMessagePassLeadership {
+  optional uint32 creature_id = 1;
   extend GameclientMessage {
     optional GameclientMessagePassLeadership gameclient_message_pass_leadership = 166;
   }
@@ -3936,8 +4721,10 @@ message GameclientMessageLeaveParty {
 }
 
 // client opcode 0xA8 (168) — ShareExperience
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool active
+// CIP TProtobufClientMessageTranslator::v49.
 message GameclientMessageShareExperience {
+  optional bool active = 1;
   extend GameclientMessage {
     optional GameclientMessageShareExperience gameclient_message_share_experience = 168;
   }
@@ -3960,24 +4747,35 @@ message GameclientMessageOpenChannel {
 }
 
 // client opcode 0xAB (171) — InviteToChannel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: str name; u16 channel_id
+// CIP TProtobufClientMessageTranslator::v38.
 message GameclientMessageInviteToChannel {
+  optional string name = 1;
+  optional uint32 channel_id = 2;
   extend GameclientMessage {
     optional GameclientMessageInviteToChannel gameclient_message_invite_to_channel = 171;
   }
 }
 
 // client opcode 0xAC (172) — ExcludeFromChannel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: str name; u16 channel_id
+// CIP TProtobufClientMessageTranslator::v39.
 message GameclientMessageExcludeFromChannel {
+  optional string name = 1;
+  optional uint32 channel_id = 2;
   extend GameclientMessage {
     optional GameclientMessageExcludeFromChannel gameclient_message_exclude_from_channel = 172;
   }
 }
 
 // client opcode 0xAD (173) — CyclopediaHouseAction
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v98.
 message GameclientMessageCyclopediaHouseAction {
+  optional uint32 action = 1;
+  optional string name = 2;
+  optional uint32 house_id = 3;
+  optional uint64 bid = 4;
+  optional uint32 timestamp = 5;
   extend GameclientMessage {
     optional GameclientMessageCyclopediaHouseAction gameclient_message_cyclopedia_house_action = 173;
   }
@@ -4000,40 +4798,63 @@ message GameclientMessageOpenBossSlots {
 }
 
 // client opcode 0xB0 (176) — EditBossSlot
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 action; u32 race_id
+// CIP TProtobufClientMessageTranslator::v110.
 message GameclientMessageEditBossSlot {
+  optional uint32 action = 1;
+  optional uint32 race_id = 2;
   extend GameclientMessage {
     optional GameclientMessageEditBossSlot gameclient_message_edit_boss_slot = 176;
   }
 }
 
 // client opcode 0xB1 (177) — Highscores
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v100.
 message GameclientMessageHighscores {
+  optional uint32 action = 1;
+  optional uint32 category = 2;
+  optional uint32 vocation = 3;
+  optional string world = 4;
+  repeated uint32 world_types = 5;
+  optional uint32 battleye = 6;
+  optional uint32 page = 7;
+  optional uint32 entries_per_page = 8;
   extend GameclientMessage {
     optional GameclientMessageHighscores gameclient_message_highscores = 177;
   }
 }
 
 // client opcode 0xB2 (178) — PickObjectToImbue
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 action; pos? position; u16? object_id; u8? stack_position
+// CIP TProtobufClientMessageTranslator::v77.
 message GameclientMessagePickObjectToImbue {
+  optional uint32 action = 1;
+  optional ProtocolCoordinate position = 2;
+  optional uint32 object_id = 3;
+  optional uint32 stack_position = 4;
   extend GameclientMessage {
     optional GameclientMessagePickObjectToImbue gameclient_message_pick_object_to_imbue = 178;
   }
 }
 
 // client opcode 0xB3 (179) — WeaponProficiencyCommand
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v101.
 message GameclientMessageWeaponProficiencyCommand {
+  optional uint32 action = 1;
+  optional uint32 object_id = 2;
+  repeated ProtocolProficiencyPerkChoice perks = 3;
+  optional ProtocolProficiencyPerkChoice slot = 4;
+  optional uint32 offer_index = 5;
   extend GameclientMessage {
     optional GameclientMessageWeaponProficiencyCommand gameclient_message_weapon_proficiency_command = 179;
   }
 }
 
 // client opcode 0xBA (186) — SoulSealsFightMonster
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 race_id
+// CIP TProtobufClientMessageTranslator::v102.
 message GameclientMessageSoulSealsFightMonster {
+  optional uint32 race_id = 1;
   extend GameclientMessage {
     optional GameclientMessageSoulSealsFightMonster gameclient_message_soul_seals_fight_monster = 186;
   }
@@ -4048,80 +4869,120 @@ message GameclientMessageCancel {
 }
 
 // client opcode 0xBF (191) — ExaltationAction
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v107.
 message GameclientMessageExaltationAction {
+  optional uint32 action = 1;
+  optional bool convergence = 2;
+  optional uint32 first_object_id = 3;
+  optional uint32 tier = 4;
+  optional uint32 second_object_id = 5;
+  optional bool improve_chance = 6;
+  optional bool reduce_tier_loss = 7;
   extend GameclientMessage {
     optional GameclientMessageExaltationAction gameclient_message_exaltation_action = 191;
   }
 }
 
 // client opcode 0xC0 (192) — OpenExaltationHistory
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v108.
 message GameclientMessageOpenExaltationHistory {
+  optional uint32 page = 1;
+  optional uint32 entries_per_page = 2;
   extend GameclientMessage {
     optional GameclientMessageOpenExaltationHistory gameclient_message_open_exaltation_history = 192;
   }
 }
 
 // client opcode 0xC1 (193) — ClientDetails
-// classic: bridge — classic side-channel until CIP field RE
+// classic: str details
+// CIP TProtobufClientMessageTranslator::v109.
 message GameclientMessageClientDetails {
+  optional string details = 1;
   extend GameclientMessage {
     optional GameclientMessageClientDetails gameclient_message_client_details = 193;
   }
 }
 
 // client opcode 0xC2 (194) — BossDifficultySelection
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 context; u8 action; u16? difficulty
+// CIP TProtobufClientMessageTranslator::v119.
 message GameclientMessageBossDifficultySelection {
+  optional uint32 context = 1;
+  optional uint32 action = 2;
+  optional uint32 difficulty = 3;
   extend GameclientMessage {
     optional GameclientMessageBossDifficultySelection gameclient_message_boss_difficulty_selection = 194;
   }
 }
 
 // client opcode 0xC9 (201) — GetTransactionDetails
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 transaction_id
+// CIP TProtobufClientMessageTranslator::v71.
 message GameclientMessageGetTransactionDetails {
+  optional uint32 transaction_id = 1;
   extend GameclientMessage {
     optional GameclientMessageGetTransactionDetails gameclient_message_get_transaction_details = 201;
   }
 }
 
 // client opcode 0xCA (202) — UpdateExivaOptions
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v92.
 message GameclientMessageUpdateExivaOptions {
+  optional bool allow_all = 1;
+  optional bool allow_own_guild = 2;
+  optional bool allow_own_party = 3;
+  optional bool allow_vip_list = 4;
+  optional bool allow_player_whitelist = 5;
+  optional bool allow_guild_whitelist = 6;
+  repeated string add_characters = 7;
+  repeated string remove_characters = 8;
+  repeated string add_guilds = 9;
+  repeated string remove_guilds = 10;
   extend GameclientMessage {
     optional GameclientMessageUpdateExivaOptions gameclient_message_update_exiva_options = 202;
   }
 }
 
 // client opcode 0xCB (203) — BrowseField
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position
+// CIP TProtobufClientMessageTranslator::v24.
 message GameclientMessageBrowseField {
+  optional ProtocolCoordinate position = 1;
   extend GameclientMessage {
     optional GameclientMessageBrowseField gameclient_message_browse_field = 203;
   }
 }
 
 // client opcode 0xCC (204) — SeekInContainer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 container_id; u16 index; u8 primary_type
+// CIP TProtobufClientMessageTranslator::v22.
 message GameclientMessageSeekInContainer {
+  optional uint32 container_id = 1;
+  optional uint32 index = 2;
+  optional uint32 primary_type = 3;
   extend GameclientMessage {
     optional GameclientMessageSeekInContainer gameclient_message_seek_in_container = 204;
   }
 }
 
 // client opcode 0xCD (205) — InspectObject
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v19.
 message GameclientMessageInspectObject {
+  optional uint32 inspection_type = 1;
+  optional ProtocolCoordinate position = 2;
+  optional uint32 object_id = 3;
+  optional uint32 count = 4;
   extend GameclientMessage {
     optional GameclientMessageInspectObject gameclient_message_inspect_object = 205;
   }
 }
 
 // client opcode 0xCE (206) — InspectPlayer
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 tab; u32? creature_id
+// CIP TProtobufClientMessageTranslator::v18.
 message GameclientMessageInspectPlayer {
+  optional uint32 tab = 1;
+  optional uint32 creature_id = 2;
   extend GameclientMessage {
     optional GameclientMessageInspectPlayer gameclient_message_inspect_player = 206;
   }
@@ -4136,8 +4997,11 @@ message GameclientMessageBlessingsDialog {
 }
 
 // client opcode 0xD0 (208) — TrackQuestFlags
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v86.
 message GameclientMessageTrackQuestFlags {
+  repeated uint32 mission_ids = 1;
+  optional bool auto_track_new_quests = 2;
+  optional bool auto_untrack_completed_quests = 3;
   extend GameclientMessage {
     optional GameclientMessageTrackQuestFlags gameclient_message_track_quest_flags = 208;
   }
@@ -4152,40 +5016,62 @@ message GameclientMessageMarketStatistics {
 }
 
 // client opcode 0xD2 (210) — GetOutfit
-// classic: empty
+// CIP TProtobufClientMessageTranslator::v41.
 message GameclientMessageGetOutfit {
+  optional uint32 outfit_type = 1;
+  optional uint32 creature_type = 2;
+  optional uint32 creature_id = 3;
   extend GameclientMessage {
     optional GameclientMessageGetOutfit gameclient_message_get_outfit = 210;
   }
 }
 
 // client opcode 0xD3 (211) — SetOutfit
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v42.
 message GameclientMessageSetOutfit {
+  optional uint32 outfit_type = 1;
+  optional ProtocolOutfitLook look = 2;
+  optional ProtocolOutfitLook mount = 3;
+  optional bool mounted = 4;
+  optional uint32 familiar = 5;
+  optional bool random_mount = 6;
+  optional uint32 hireling_id = 7;
+  optional ProtocolCoordinate position = 8;
+  optional uint32 object_id = 9;
+  optional uint32 stack_position = 10;
+  optional uint32 direction = 11;
+  optional bool podium_visible = 12;
   extend GameclientMessage {
     optional GameclientMessageSetOutfit gameclient_message_set_outfit = 211;
   }
 }
 
 // client opcode 0xD4 (212) — Mount
-// classic: bridge — classic side-channel until CIP field RE
+// classic: bool mounted
+// CIP TProtobufClientMessageTranslator::v40.
 message GameclientMessageMount {
+  optional bool mounted = 1;
   extend GameclientMessage {
     optional GameclientMessageMount gameclient_message_mount = 212;
   }
 }
 
 // client opcode 0xD5 (213) — ApplyImbuement
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 slot; u32 imbuement_id
+// CIP TProtobufClientMessageTranslator::v78.
 message GameclientMessageApplyImbuement {
+  optional uint32 slot = 1;
+  optional uint32 imbuement_id = 2;
   extend GameclientMessage {
     optional GameclientMessageApplyImbuement gameclient_message_apply_imbuement = 213;
   }
 }
 
 // client opcode 0xD6 (214) — ApplyClearingCharm
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 slot
+// CIP TProtobufClientMessageTranslator::v79.
 message GameclientMessageApplyClearingCharm {
+  optional uint32 slot = 1;
   extend GameclientMessage {
     optional GameclientMessageApplyClearingCharm gameclient_message_apply_clearing_charm = 214;
   }
@@ -4216,48 +5102,65 @@ message GameclientMessageDailyRewardHistory {
 }
 
 // client opcode 0xDA (218) — CollectDailyReward
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v85.
 message GameclientMessageCollectDailyReward {
+  optional bool from_shrine = 1;
+  repeated ProtocolDailyRewardChoice choices = 2;
   extend GameclientMessage {
     optional GameclientMessageCollectDailyReward gameclient_message_collect_daily_reward = 218;
   }
 }
 
 // client opcode 0xDB (219) — CyclopediaMapAction
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v94.
 message GameclientMessageCyclopediaMapAction {
+  optional ProtocolMapDonationRequest donation = 1;
+  optional uint32 reset_area_id = 2;
+  optional uint32 area_id = 3;
   extend GameclientMessage {
     optional GameclientMessageCyclopediaMapAction gameclient_message_cyclopedia_map_action = 219;
   }
 }
 
 // client opcode 0xDC (220) — AddBuddy
-// classic: bridge — classic side-channel until CIP field RE
+// classic: str name
+// CIP TProtobufClientMessageTranslator::v51.
 message GameclientMessageAddBuddy {
+  optional string name = 1;
   extend GameclientMessage {
     optional GameclientMessageAddBuddy gameclient_message_add_buddy = 220;
   }
 }
 
 // client opcode 0xDD (221) — RemoveBuddy
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 character_id
+// CIP TProtobufClientMessageTranslator::v52.
 message GameclientMessageRemoveBuddy {
+  optional uint32 character_id = 1;
   extend GameclientMessage {
     optional GameclientMessageRemoveBuddy gameclient_message_remove_buddy = 221;
   }
 }
 
 // client opcode 0xDE (222) — EditBuddy
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v53.
 message GameclientMessageEditBuddy {
+  optional uint32 character_id = 1;
+  optional string description = 2;
+  optional uint32 icon_id = 3;
+  optional bool notify_login = 4;
+  repeated uint32 group_ids = 5;
   extend GameclientMessage {
     optional GameclientMessageEditBuddy gameclient_message_edit_buddy = 222;
   }
 }
 
 // client opcode 0xDF (223) — BuddyGroup
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v54.
 message GameclientMessageBuddyGroup {
+  optional uint32 action = 1;
+  optional uint32 group_id = 2;
+  optional string name = 3;
   extend GameclientMessage {
     optional GameclientMessageBuddyGroup gameclient_message_buddy_group = 223;
   }
@@ -4272,104 +5175,146 @@ message GameclientMessageOpenMonsterCyclopedia {
 }
 
 // client opcode 0xE2 (226) — OpenMonsterCyclopediaMonsters
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v55.
 message GameclientMessageOpenMonsterCyclopediaMonsters {
+  optional uint32 request_type = 1;
+  repeated uint32 race_ids = 2;
+  optional string category = 3;
   extend GameclientMessage {
     optional GameclientMessageOpenMonsterCyclopediaMonsters gameclient_message_open_monster_cyclopedia_monsters = 226;
   }
 }
 
 // client opcode 0xE3 (227) — OpenMonsterCyclopediaRace
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u16 race_id
+// CIP TProtobufClientMessageTranslator::v56.
 message GameclientMessageOpenMonsterCyclopediaRace {
+  optional uint32 race_id = 1;
   extend GameclientMessage {
     optional GameclientMessageOpenMonsterCyclopediaRace gameclient_message_open_monster_cyclopedia_race = 227;
   }
 }
 
 // client opcode 0xE4 (228) — MonsterBonusEffectAction
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v57.
 message GameclientMessageMonsterBonusEffectAction {
+  optional uint32 action = 1;
+  optional uint32 charm_id = 2;
+  optional uint32 race_id = 3;
   extend GameclientMessage {
     optional GameclientMessageMonsterBonusEffectAction gameclient_message_monster_bonus_effect_action = 228;
   }
 }
 
 // client opcode 0xE5 (229) — OpenCyclopediaCharacterInfo
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 character_id; u8 info_type; u16? entries_per_page; u16? page
+// CIP TProtobufClientMessageTranslator::v58.
 message GameclientMessageOpenCyclopediaCharacterInfo {
+  optional uint32 character_id = 1;
+  optional uint32 info_type = 2;
+  optional uint32 entries_per_page = 3;
+  optional uint32 page = 4;
   extend GameclientMessage {
     optional GameclientMessageOpenCyclopediaCharacterInfo gameclient_message_open_cyclopedia_character_info = 229;
   }
 }
 
 // client opcode 0xE6 (230) — BugReport
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v75.
 message GameclientMessageBugReport {
+  optional uint32 category = 1;
+  optional string comment = 2;
+  optional string typo_speaker = 3;
+  optional string typo_text = 4;
+  optional ProtocolCoordinate position = 5;
   extend GameclientMessage {
     optional GameclientMessageBugReport gameclient_message_bug_report = 230;
   }
 }
 
 // client opcode 0xE7 (231) — GemAtelier
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v90.
 message GameclientMessageGemAtelier {
+  optional uint32 action = 1;
+  optional uint32 gem_index = 2;
+  optional uint32 first_value = 3;
+  optional uint32 second_value = 4;
   extend GameclientMessage {
     optional GameclientMessageGemAtelier gameclient_message_gem_atelier = 231;
   }
 }
 
 // client opcode 0xE8 (232) — GetOfferDescription
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 offer_id
+// CIP TProtobufClientMessageTranslator::v82.
 message GameclientMessageGetOfferDescription {
+  optional uint32 offer_id = 1;
   extend GameclientMessage {
     optional GameclientMessageGetOfferDescription gameclient_message_get_offer_description = 232;
   }
 }
 
 // client opcode 0xE9 (233) — StoreEvent
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v76.
 message GameclientMessageStoreEvent {
+  optional uint32 event_type = 1;
+  optional uint32 value = 2;
+  optional string text = 3;
   extend GameclientMessage {
     optional GameclientMessageStoreEvent gameclient_message_store_event = 233;
   }
 }
 
 // client opcode 0xEB (235) — PreyAction
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v80.
 message GameclientMessagePreyAction {
+  optional uint32 slot = 1;
+  optional uint32 action = 2;
+  optional uint32 index = 3;
+  optional uint32 race_id = 4;
   extend GameclientMessage {
     optional GameclientMessagePreyAction gameclient_message_prey_action = 235;
   }
 }
 
 // client opcode 0xEC (236) — SetHirelingName
-// classic: bridge — classic side-channel until CIP field RE
+// classic: str name; u32 creature_id; u32 object_id
+// CIP TProtobufClientMessageTranslator::v44.
 message GameclientMessageSetHirelingName {
+  optional string name = 1;
+  optional uint32 creature_id = 2;
+  optional uint32 object_id = 3;
   extend GameclientMessage {
     optional GameclientMessageSetHirelingName gameclient_message_set_hireling_name = 236;
   }
 }
 
 // client opcode 0xED (237) — RequestResourceBalance
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 resource_type
+// CIP TProtobufClientMessageTranslator::v81.
 message GameclientMessageRequestResourceBalance {
+  optional uint32 resource_type = 1;
   extend GameclientMessage {
     optional GameclientMessageRequestResourceBalance gameclient_message_request_resource_balance = 237;
   }
 }
 
 // client opcode 0xEE (238) — Greet
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 creature_id
+// CIP TProtobufClientMessageTranslator::v73.
 message GameclientMessageGreet {
+  optional uint32 creature_id = 1;
   extend GameclientMessage {
     optional GameclientMessageGreet gameclient_message_greet = 238;
   }
 }
 
 // client opcode 0xEF (239) — TransferCurrency
-// classic: bridge — classic side-channel until CIP field RE
+// classic: str recipient; u32 amount
+// CIP TProtobufClientMessageTranslator::v74.
 message GameclientMessageTransferCurrency {
+  optional string recipient = 1;
+  optional uint32 amount = 2;
   extend GameclientMessage {
     optional GameclientMessageTransferCurrency gameclient_message_transfer_currency = 239;
   }
@@ -4384,24 +5329,33 @@ message GameclientMessageGetQuestLog {
 }
 
 // client opcode 0xF1 (241) — GetQuestLine
-// classic: empty
+// classic: u16 quest_id
+// CIP TProtobufClientMessageTranslator::v62.
 message GameclientMessageGetQuestLine {
+  optional uint32 quest_id = 1;
   extend GameclientMessage {
     optional GameclientMessageGetQuestLine gameclient_message_get_quest_line = 241;
   }
 }
 
 // client opcode 0xF2 (242) — RuleViolationReport
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v64.
 message GameclientMessageRuleViolationReport {
+  optional uint32 report_type = 1;
+  optional uint32 reason = 2;
+  optional string name = 3;
+  optional string comment = 4;
+  optional string translation = 5;
+  optional uint32 statement_id = 6;
   extend GameclientMessage {
     optional GameclientMessageRuleViolationReport gameclient_message_rule_violation_report = 242;
   }
 }
 
 // client opcode 0xF3 (243) — GetObjectInfo
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v83.
 message GameclientMessageGetObjectInfo {
+  repeated ProtocolObjectInfoRequest objects = 1;
   extend GameclientMessage {
     optional GameclientMessageGetObjectInfo gameclient_message_get_object_info = 243;
   }
@@ -4416,40 +5370,60 @@ message GameclientMessageMarketLeave {
 }
 
 // client opcode 0xF5 (245) — MarketBrowse
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v26.
 message GameclientMessageMarketBrowse {
+  optional uint32 browse_type = 1;
+  optional uint32 object_id = 2;
+  optional uint32 tier = 3;
   extend GameclientMessage {
     optional GameclientMessageMarketBrowse gameclient_message_market_browse = 245;
   }
 }
 
 // client opcode 0xF6 (246) — MarketCreate
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v29.
 message GameclientMessageMarketCreate {
+  optional uint32 offer_type = 1;
+  optional uint32 object_id = 2;
+  optional uint32 tier = 3;
+  optional uint32 amount = 4;
+  optional uint64 price = 5;
+  optional bool anonymous = 6;
   extend GameclientMessage {
     optional GameclientMessageMarketCreate gameclient_message_market_create = 246;
   }
 }
 
 // client opcode 0xF7 (247) — MarketCancel
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 timestamp; u16 counter
+// CIP TProtobufClientMessageTranslator::v27.
 message GameclientMessageMarketCancel {
+  optional uint32 timestamp = 1;
+  optional uint32 counter = 2;
   extend GameclientMessage {
     optional GameclientMessageMarketCancel gameclient_message_market_cancel = 247;
   }
 }
 
 // client opcode 0xF8 (248) — MarketAccept
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 timestamp; u16 counter; u16 amount
+// CIP TProtobufClientMessageTranslator::v28.
 message GameclientMessageMarketAccept {
+  optional uint32 timestamp = 1;
+  optional uint32 counter = 2;
+  optional uint32 amount = 3;
   extend GameclientMessage {
     optional GameclientMessageMarketAccept gameclient_message_market_accept = 248;
   }
 }
 
 // client opcode 0xF9 (249) — AnswerModalDialog
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u32 dialog_id; u8 button; u8 choice
+// CIP TProtobufClientMessageTranslator::v63.
 message GameclientMessageAnswerModalDialog {
+  optional uint32 dialog_id = 1;
+  optional uint32 button = 2;
+  optional uint32 choice = 3;
   extend GameclientMessage {
     optional GameclientMessageAnswerModalDialog gameclient_message_answer_modal_dialog = 249;
   }
@@ -4464,40 +5438,61 @@ message GameclientMessageRequestStoreCategories {
 }
 
 // client opcode 0xFB (251) — RequestStoreOffers
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v68.
 message GameclientMessageRequestStoreOffers {
+  optional uint32 request_type = 1;
+  optional uint32 value = 2;
+  optional string category = 3;
+  optional string subcategory = 4;
+  optional string search_text = 5;
+  optional uint32 sort_order = 6;
+  optional uint32 service_type = 7;
   extend GameclientMessage {
     optional GameclientMessageRequestStoreOffers gameclient_message_request_store_offers = 251;
   }
 }
 
 // client opcode 0xFC (252) — BuyStoreOffer
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v69.
 message GameclientMessageBuyStoreOffer {
+  optional uint32 offer_id = 1;
+  optional bool extra_flag = 2;
+  optional uint32 action = 3;
+  optional string name = 4;
+  optional uint32 type = 5;
+  optional string location = 6;
   extend GameclientMessage {
     optional GameclientMessageBuyStoreOffer gameclient_message_buy_store_offer = 252;
   }
 }
 
 // client opcode 0xFD (253) — OpenTransactionHistory
-// classic: bridge — classic side-channel until CIP field RE
+// classic: u8 entries_per_page
+// CIP TProtobufClientMessageTranslator::v70.
 message GameclientMessageOpenTransactionHistory {
+  optional uint32 entries_per_page = 1;
   extend GameclientMessage {
     optional GameclientMessageOpenTransactionHistory gameclient_message_open_transaction_history = 253;
   }
 }
 
 // client opcode 0xFE (254) — GetTransactionHistory
-// classic: bridge — classic side-channel until CIP field RE
+// CIP TProtobufClientMessageTranslator::v72.
 message GameclientMessageGetTransactionHistory {
+  optional uint32 page = 1;
+  optional uint32 entries_per_page = 2;
   extend GameclientMessage {
     optional GameclientMessageGetTransactionHistory gameclient_message_get_transaction_history = 254;
   }
 }
 
 // client opcode 0xFF (255) — GatherAll
-// classic: bridge — classic side-channel until CIP field RE
+// classic: pos position; u16 object_id; u8 stack_position
+// CIP TProtobufClientMessageTranslator::v89.
 message GameclientMessageGatherAll {
+  optional ProtocolCoordinate position = 1;
+  optional uint32 object_id = 2;
+  optional uint32 stack_position = 3;
   extend GameclientMessage {
     optional GameclientMessageGatherAll gameclient_message_gather_all = 255;
   }

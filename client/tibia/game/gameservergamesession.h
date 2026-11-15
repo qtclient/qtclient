@@ -56,7 +56,7 @@ public:
     static TGameserverGameSession* liveInstance();
     static void setLiveInstance(TGameserverGameSession* session);
 
-    /// ProtocolGame lifecycle peels (notify bus + simple hub fields). `Game::process*`
+    /// Session lifecycle side effects (notify bus + session state). `tibia::game::process*`
     /// forwards here when a live session is registered; static fallbacks keep
     /// sessiondump / headless paths working without `g_game` bodies in game.cpp.
     static void wireProcessLogin();

@@ -64,7 +64,7 @@ public:
         const ::tibia::protobuf::protocol::GameserverMessageTutorialHint& TutorialHintMessage);
 
     /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    void onServerMessageEnqueued(int opcode);
 };
 
 class TTutorialSessiondumpGameActionHandler final : public cip::tibia::tutorial::TTutorialSessiondumpGameActionHandler

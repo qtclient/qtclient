@@ -108,100 +108,92 @@ QJsonObject whiteBlacklistOptions()
 TWhiteBlacklist::TWhiteBlacklist(QObject* parent)
     : cip::tibia::chat::TWhiteBlacklist(parent)
 {
-    const QJsonObject options = whiteBlacklistOptions();
-    const auto load = [](const QJsonArray& names, Entries& entries) {
-        for (const QJsonValue& name : names)
-            if (!name.toString().isEmpty())
-                insert(entries, { name.toString(), true });
-    };
-    load(options.value(QLatin1String("blacklistedNames")).toArray(), m_blacklist);
-    load(options.value(QLatin1String("whitelistedNames")).toArray(), m_whitelist);
+    loadFromOptions();
 }
 
-bool TWhiteBlacklist::contains(const Entries& entries, const QString& name)
+TWhiteBlacklist::Entries::iterator TWhiteBlacklist::findEntry(Entries& entries, const QString& name)
 {
-    return std::any_of(entries.begin(), entries.end(), [&](const Entry& entry) { return entry.name.compare(name, Qt::CaseInsensitive) == 0; });
+    const QString lower = name.toLower();
+    return std::find_if(entries.begin(), entries.end(), [&](const Entry& entry) { return entry.name.toLower() == lower; });
 }
 
-void TWhiteBlacklist::insert(Entries& entries, const Entry& entry)
+TWhiteBlacklist::Entries::const_iterator TWhiteBlacklist::findEntry(const Entries& entries, const QString& name)
 {
-    if (entry.name.isEmpty() || contains(entries, entry.name))
+    const QString lower = name.toLower();
+    return std::find_if(entries.begin(), entries.end(), [&](const Entry& entry) { return entry.name.toLower() == lower; });
+}
+
+void TWhiteBlacklist::insertEntry(Entries& entries, const Entry& entry)
+{
+    if (const auto it = findEntry(entries, entry.name); it != entries.end())
+        entries.erase(it);
+    entries.push_back(entry);
+}
+
+void TWhiteBlacklist::sortEntries(Entries& entries)
+{
+    std::sort(entries.begin(), entries.end(),
+              [](const Entry& a, const Entry& b) { return a.name.toLower().compare(b.name.toLower()) < 0; });
+}
+
+bool TWhiteBlacklist::isVip(const QString& name) const
+{
+    return m_isVip && m_isVip(name);
+}
+
+void TWhiteBlacklist::addToBlacklist(const QString& name, const bool permanently)
+{
+    insertEntry(m_blacklist, { name, permanently });
+    sortEntries(m_blacklist);
+    saveToOptions();
+}
+
+void TWhiteBlacklist::removeFromBlacklist(const QString& name)
+{
+    const auto it = findEntry(m_blacklist, name);
+    if (it == m_blacklist.end())
         return;
-    const auto at = std::lower_bound(entries.begin(), entries.end(), entry,
-                                     [](const Entry& a, const Entry& b) { return a.name.compare(b.name, Qt::CaseInsensitive) < 0; });
-    entries.insert(at, entry);
+    m_blacklist.erase(it);
+    saveToOptions();
 }
 
-bool TWhiteBlacklist::isOnBlacklist(const QString& name) const
+void TWhiteBlacklist::addToWhitelist(const QString& name, const bool permanently)
 {
-    return !name.isEmpty() && contains(m_blacklist, name);
-}
-
-bool TWhiteBlacklist::isWhitelisted(const QString& name) const
-{
-    if (!m_whitelistActive)
-        return false;
-    return contains(m_whitelist, name) || (m_allowVips && m_isVip && m_isVip(name));
-}
-
-bool TWhiteBlacklist::isBlacklisted(const QString& name) const
-{
-    return m_blacklistActive && !isWhitelisted(name) && isOnBlacklist(name);
-}
-
-bool TWhiteBlacklist::filtersYell(const QString& name) const
-{
-    return m_blacklistActive && m_ignoreYelling && !isWhitelisted(name);
-}
-
-bool TWhiteBlacklist::filtersPrivateMessage(const QString& name) const
-{
-    return m_blacklistActive && m_ignorePrivateMessages && !isWhitelisted(name);
-}
-
-bool TWhiteBlacklist::isExemptMode(const int mode)
-{
-    return mode >= 0 && mode < 0x36 && ((0x2000300000ec00ULL >> mode) & 1) != 0;
-}
-
-void TWhiteBlacklist::ignore(const QString& name)
-{
-    if (name.isEmpty() || isOnBlacklist(name))
-        return;
-    insert(m_blacklist, { name, false });
-    save();
-}
-
-void TWhiteBlacklist::unignore(const QString& name)
-{
-    const auto removed = std::erase_if(m_blacklist, [&](const Entry& entry) { return entry.name.compare(name, Qt::CaseInsensitive) == 0; });
-    if (removed == 0)
-        return;
-    save();
+    insertEntry(m_whitelist, { name, permanently });
+    sortEntries(m_whitelist);
+    saveToOptions();
 }
 
 void TWhiteBlacklist::setLists(const Entries& whitelist, const Entries& blacklist)
 {
     m_whitelist.clear();
     for (const Entry& entry : whitelist)
-        insert(m_whitelist, entry);
+        insertEntry(m_whitelist, entry);
+    sortEntries(m_whitelist);
     m_blacklist.clear();
     for (const Entry& entry : blacklist)
-        insert(m_blacklist, entry);
-    save();
+        insertEntry(m_blacklist, entry);
+    sortEntries(m_blacklist);
+    saveToOptions();
 }
 
-void TWhiteBlacklist::setFlags(const bool blacklistActive, const bool whitelistActive, const bool ignoreYelling,
-                               const bool ignorePrivateMessages, const bool allowVips)
+void TWhiteBlacklist::loadFromOptions()
 {
-    m_blacklistActive = blacklistActive;
-    m_whitelistActive = whitelistActive;
-    m_ignoreYelling = ignoreYelling;
-    m_ignorePrivateMessages = ignorePrivateMessages;
-    m_allowVips = allowVips;
+    const QJsonObject options = whiteBlacklistOptions();
+    const auto load = [](const QJsonArray& names, Entries& entries) {
+        entries.clear();
+        for (const QJsonValue& value : names) {
+            const QString name = value.toString();
+            if (!name.isEmpty())
+                insertEntry(entries, { name, true });
+        }
+        sortEntries(entries);
+    };
+    load(options.value(QLatin1String("blacklistedNames")).toArray(), m_blacklist);
+    load(options.value(QLatin1String("whitelistedNames")).toArray(), m_whitelist);
 }
 
-void TWhiteBlacklist::save()
+void TWhiteBlacklist::saveToOptions() const
 {
     const auto permanentNames = [](const Entries& entries) {
         QJsonArray names;
@@ -214,7 +206,72 @@ void TWhiteBlacklist::save()
     options.insert(QLatin1String("blacklistedNames"), permanentNames(m_blacklist));
     options.insert(QLatin1String("whitelistedNames"), permanentNames(m_whitelist));
     app::ClientOptions::storeAll({ { QStringLiteral("whiteBlacklistOptions"), options } });
-    Q_EMIT changed();
+}
+
+bool TWhiteBlacklist::blocksName(const QString& name) const
+{
+    return m_blacklistActive && !isWhitelisted(name) && isOnBlacklist(name);
+}
+
+bool TWhiteBlacklist::blocksYell(const QString& name) const
+{
+    return m_blacklistActive && m_ignoreYelling && !isWhitelisted(name);
+}
+
+bool TWhiteBlacklist::blocksPrivateMessage(const QString& name) const
+{
+    return m_blacklistActive && m_ignorePrivateMessages && !isWhitelisted(name);
+}
+
+bool TWhiteBlacklist::isBlacklisted(const QString& name)
+{
+    if (!blocksName(name))
+        return false;
+    Q_EMIT messageFiltered();
+    return true;
+}
+
+bool TWhiteBlacklist::filtersYell(const QString& name)
+{
+    if (!blocksYell(name))
+        return false;
+    Q_EMIT messageFiltered();
+    return true;
+}
+
+bool TWhiteBlacklist::filtersPrivateMessage(const QString& name)
+{
+    if (!blocksPrivateMessage(name))
+        return false;
+    Q_EMIT messageFiltered();
+    return true;
+}
+
+bool TWhiteBlacklist::isOnBlacklist(const QString& name) const
+{
+    return findEntry(m_blacklist, name) != m_blacklist.end();
+}
+
+bool TWhiteBlacklist::isWhitelisted(const QString& name) const
+{
+    if (!m_whitelistActive)
+        return false;
+    return findEntry(m_whitelist, name) != m_whitelist.end() || (m_allowVips && isVip(name));
+}
+
+bool TWhiteBlacklist::isExemptMode(const int mode)
+{
+    return ((0x2000300000ec00ULL >> (static_cast<uint8_t>(mode) & 0x3f)) & 1) != 0 && static_cast<uint8_t>(mode) < 0x36;
+}
+
+void TWhiteBlacklist::setFlags(const bool blacklistActive, const bool whitelistActive, const bool ignoreYelling,
+                               const bool ignorePrivateMessages, const bool allowVips)
+{
+    setBlacklistActive(blacklistActive);
+    setWhitelistActive(whitelistActive);
+    setIgnoreYelling(ignoreYelling);
+    setIgnorePrivateMessages(ignorePrivateMessages);
+    setAllowVips(allowVips);
 }
 
 TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& storage, TWhiteBlacklist& blacklist, QObject* parent)
@@ -222,6 +279,7 @@ TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& st
     , m_storage(storage)
     , m_blacklist(blacklist)
 {
+    s_console = this;
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onTalk", [this](GameObject*, const Args& args) {
         onTalk(argString(args, 0), static_cast<int>(argInt(args, 1)), protocolMode(args, 2),
                shared::TTibiaUrlTools::process(argString(args, 3)),
@@ -250,34 +308,6 @@ TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& st
         Q_EMIT channelListReceived(channels);
         return std::any();
     });
-    // : GameServerOpenChannel.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenChannel", [this](GameObject*, const Args& args) {
-        const auto id = static_cast<uint16_t>(argInt(args, 0));
-        m_storage.open(TChatChannelIdentifier::channel(id, argString(args, 1)), m_foregroundChannels.erase(id) > 0);
-        return std::any();
-    });
-    // : GameServerOpenOwnChannel.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenOwnPrivateChannel", [this](GameObject*, const Args& args) {
-        const bool requested = m_foregroundChannels.erase(OwnChannelRequest) > 0;
-        TChatChannel* channel = m_storage.open(TChatChannelIdentifier::channel(static_cast<uint16_t>(argInt(args, 0)), argString(args, 1)), requested);
-        channel->setOwnChannel(true);
-        Q_EMIT channel->propertiesChanged();
-        return std::any();
-    });
-    // : GameServerPrivateChannel.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenPrivateChannel", [this](GameObject*, const Args& args) {
-        m_storage.open(TChatChannelIdentifier::messageTo(argString(args, 0)), true);
-        return std::any();
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseChannel", [this](GameObject*, const Args& args) {
-        onCloseChannel(static_cast<uint16_t>(argInt(args, 0)));
-        return std::any();
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onChannelEvent", [this](GameObject*, const Args& args) {
-        onChannelEvent(static_cast<uint16_t>(argInt(args, 0)), argString(args, 1), static_cast<int>(argInt(args, 2)));
-        return std::any();
-    });
-
     // CIP onChatProtocolMessageHandlerOptionsChanged .
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
             [this](const QString& name) {
@@ -293,6 +323,14 @@ TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& st
                 &TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage);
     }
     onChatProtocolMessageHandlerOptionsChanged();
+}
+
+TChatProtocolMessageHandler* TChatProtocolMessageHandler::s_console = nullptr;
+
+TChatProtocolMessageHandler::~TChatProtocolMessageHandler()
+{
+    if (s_console == this)
+        s_console = nullptr;
 }
 
 void TChatProtocolMessageHandler::setOptions(const QJsonObject& options)
@@ -340,19 +378,27 @@ void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::
     // Applied by onServerMessageEnqueued; the console follows the onTextMessage / onChannelTextMessage notify.
 }
 
-void TChatProtocolMessageHandler::handleOpenChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenChannel&)
+void TChatProtocolMessageHandler::handleOpenChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenChannel& OpenChannelMessage)
 {
-    // Applied by onServerMessageEnqueued; the console follows the onOpenChannel notify.
+    QStringList participants;
+    for (const auto& name : OpenChannelMessage.joined_players())
+        participants.append(QString::fromStdString(name));
+    m_storage.openServerChannel(static_cast<uint16_t>(OpenChannelMessage.channel_id()),
+                                QString::fromStdString(OpenChannelMessage.name()), false, participants);
 }
 
-void TChatProtocolMessageHandler::handleOpenOwnChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenOwnChannel&)
+void TChatProtocolMessageHandler::handleOpenOwnChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenOwnChannel& OpenChannelMessage)
 {
-    // Applied by onServerMessageEnqueued; the console follows the onOpenOwnPrivateChannel notify.
+    QStringList participants;
+    for (const auto& name : OpenChannelMessage.joined_players())
+        participants.append(QString::fromStdString(name));
+    m_storage.openServerChannel(static_cast<uint16_t>(OpenChannelMessage.channel_id()),
+                                QString::fromStdString(OpenChannelMessage.name()), true, participants);
 }
 
-void TChatProtocolMessageHandler::handleCloseChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseChannel&)
+void TChatProtocolMessageHandler::handleCloseChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseChannel& CloseChannelMessage)
 {
-    // Applied by onServerMessageEnqueued; the console follows the onCloseChannel notify.
+    m_storage.closeChannelByServer(static_cast<uint16_t>(CloseChannelMessage.channel_id()));
 }
 
 void TChatProtocolMessageHandler::handleChannelsMessage(const ::tibia::protobuf::protocol::GameserverMessageChannels&)
@@ -360,14 +406,21 @@ void TChatProtocolMessageHandler::handleChannelsMessage(const ::tibia::protobuf:
     // Applied by onServerMessageEnqueued; the console follows the onChannelList notify.
 }
 
-void TChatProtocolMessageHandler::handlePrivateChannelMessage(const ::tibia::protobuf::protocol::GameserverMessagePrivateChannel&)
+void TChatProtocolMessageHandler::handlePrivateChannelMessage(const ::tibia::protobuf::protocol::GameserverMessagePrivateChannel& PrivateChannel)
 {
-    // Applied by onServerMessageEnqueued; the console follows the onOpenPrivateChannel notify.
+    m_storage.openPrivateChannel(QString::fromStdString(PrivateChannel.name()), true);
 }
 
-void TChatProtocolMessageHandler::handleChannelEventMessage(const ::tibia::protobuf::protocol::GameserverMessageChannelEvent&)
+void TChatProtocolMessageHandler::handleChannelEventMessage(const ::tibia::protobuf::protocol::GameserverMessageChannelEvent& ChannelEvent)
 {
-    // Applied by onServerMessageEnqueued; the console follows the onChannelEvent notify.
+    // Joined (0) and left (1) lines, behind consoleShowJoinLeaveMessages;
+    // the invitation events add nothing.
+    const uint32_t event = ChannelEvent.event_type();
+    if ((event != 0 && event != 1) || !m_showJoinLeaveMessages)
+        return;
+    QString text = QString::fromStdString(ChannelEvent.name());
+    text.append(qtTrId(event == 1 ? "chat_user_left_channel" : "chat_user_entered_channel"));
+    m_storage.addChannelSystemEntryIfOpen(systemWhite(), static_cast<uint16_t>(ChannelEvent.channel_id()), text);
 }
 
 void TChatProtocolMessageHandler::handleNpcTalkPartersMessage(const ::tibia::protobuf::protocol::GameserverMessageNpcTalkParters&)
@@ -431,12 +484,9 @@ void applyChannelPlayers(const Message& m)
 
 }
 
-void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                          const bool applyClassic)
+void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
     const auto* shadow = protocol::lastShadowServerMessage();
     if (!shadow)
         return;
@@ -472,12 +522,17 @@ void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode, cons
             const auto& m = shadow->GetExtension(GameserverMessageOpenChannel::gameserver_message_open_channel);
             applyChannelPlayers(m);
             tibia::game::processOpenChannel(static_cast<uint16_t>(m.channel_id()), m.name());
+            if (s_console)
+                s_console->handleOpenChannelMessage(m);
         }
         break;
     case 173:
-        if (shadow->HasExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel))
-            tibia::game::processOpenPrivateChannel(tibia::game::formatCreatureName(
-                shadow->GetExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel).name()));
+        if (shadow->HasExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel)) {
+            const auto& m = shadow->GetExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel);
+            tibia::game::processOpenPrivateChannel(tibia::game::formatCreatureName(m.name()));
+            if (s_console)
+                s_console->handlePrivateChannelMessage(m);
+        }
         break;
     case 174:
         if (shadow->HasExtension(GameserverMessageEditGuildMessage::gameserver_message_edit_guild_message))
@@ -489,12 +544,17 @@ void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode, cons
             const auto& m = shadow->GetExtension(GameserverMessageOpenOwnChannel::gameserver_message_open_own_channel);
             applyChannelPlayers(m);
             tibia::game::processOpenOwnPrivateChannel(static_cast<uint16_t>(m.channel_id()), m.name());
+            if (s_console)
+                s_console->handleOpenOwnChannelMessage(m);
         }
         break;
     case 179:
-        if (shadow->HasExtension(GameserverMessageCloseChannel::gameserver_message_close_channel))
-            tibia::game::processCloseChannel(static_cast<uint16_t>(
-                shadow->GetExtension(GameserverMessageCloseChannel::gameserver_message_close_channel).channel_id()));
+        if (shadow->HasExtension(GameserverMessageCloseChannel::gameserver_message_close_channel)) {
+            const auto& m = shadow->GetExtension(GameserverMessageCloseChannel::gameserver_message_close_channel);
+            tibia::game::processCloseChannel(static_cast<uint16_t>(m.channel_id()));
+            if (s_console)
+                s_console->handleCloseChannelMessage(m);
+        }
         break;
     case 180:
         if (shadow->HasExtension(GameserverMessageMessage::gameserver_message_message))
@@ -505,6 +565,8 @@ void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode, cons
             const auto& m = shadow->GetExtension(GameserverMessageChannelEvent::gameserver_message_channel_event);
             tibia::game::notify("onChannelEvent", static_cast<uint16_t>(m.channel_id()), m.name(),
                                 static_cast<uint8_t>(m.event_type()));
+            if (s_console)
+                s_console->handleChannelEventMessage(m);
         }
         break;
     default:
@@ -567,15 +629,13 @@ bool TChatProtocolMessageHandler::isOwnName(const QString& name) const
 void TChatProtocolMessageHandler::onTalk(const QString& name, const int level, const int mode, const QString& text, const uint16_t channelId,
                                          const uint32_t statementId)
 {
-    // : the blacklist (vslot 0xa8) unless the mode is exempt (vslot 0xd0), then yells (0xb0) and private messages (0xb8).
-    const bool filtered = !TWhiteBlacklist::isExemptMode(mode)
-                          && (m_blacklist.isBlacklisted(name) || (mode == Yell && m_blacklist.filtersYell(name))
-                              || (mode == PrivateFrom && m_blacklist.filtersPrivateMessage(name)));
-    if (filtered) {
-        m_blacklist.notifyMessageFiltered();
-        Q_EMIT messageFiltered();
+    // The blacklist unless the mode is exempt, then yells and private
+    // messages; the list reports what it drops.
+    const bool filtered = (!TWhiteBlacklist::isExemptMode(mode) && m_blacklist.isBlacklisted(name))
+                          || (mode == Yell && m_blacklist.filtersYell(name))
+                          || (mode == PrivateFrom && m_blacklist.filtersPrivateMessage(name));
+    if (filtered)
         return;
-    }
     if (!consoleMessageAllowed(mode, channelId))
         return;
     const QColor color = consoleColor(mode);
@@ -583,11 +643,11 @@ void TChatProtocolMessageHandler::onTalk(const QString& name, const int level, c
     switch (mode) {
     case Say:
     case Whisper:
-        m_storage.addLocalEntry(color, text, name, level, statementId);
+        m_storage.addLocalEntry(color, name, text, level, false, statementId);
         break;
     case Yell:
         // : yelled text is upper case.
-        m_storage.addLocalEntry(color, text.toUpper(), name, level, statementId);
+        m_storage.addLocalEntry(color, name, text.toUpper(), level, false, statementId);
         break;
     case PrivateFrom:
         addPrivateMessage(name, level, mode, text, statementId);
@@ -596,12 +656,12 @@ void TChatProtocolMessageHandler::onTalk(const QString& name, const int level, c
     case Channel:
     case ChannelHighlight:
     case GamemasterChannel:
-        m_storage.addChannelEntry(channelId, color, text, name, level, statementId);
+        m_storage.addChannelEntry(color, channelId, name, text, level, false, statementId);
         arrivedSound = !isOwnName(name);
         break;
     case Spell:
         if (isOwnName(name) ? m_showOwnSpells : m_showOthersSpells)
-            m_storage.addLocalEntry(color, text, name, level, statementId);
+            m_storage.addLocalEntry(color, name, text, level, false, statementId);
         break;
     case NpcFromStartBlock:
     case NpcFrom:
@@ -609,12 +669,12 @@ void TChatProtocolMessageHandler::onTalk(const QString& name, const int level, c
         // Player lines to an NPC (mode 12) are not echoed by a typed dialog;
         // quest expeditions send them, and they belong on the NPCs tab with
         // the NPC's replies. The dialog pane shows this channel.
-        m_storage.addNpcEntry(color, text, name);
+        m_storage.addNpcChannelEntry(color, name, text);
         arrivedSound = true;
         break;
     case GamemasterBroadcast:
     case GamemasterPrivateFrom:
-        m_storage.addBroadcastEntry(color, text, name, level, statementId);
+        m_storage.addBroadcastEntry(color, name, text, level, false, statementId);
         arrivedSound = !isOwnName(name);
         break;
     case Game:
@@ -638,10 +698,10 @@ void TChatProtocolMessageHandler::addPrivateMessage(const QString& name, const i
     // : if *(this+0x8f) (openNewPrivateMessagesInNewTab) and the
     // sender is not own and no messageTo tab exists, open one (makeCurrent=0).
     if (m_openPrivateMessagesInNewTab && !isOwnName(name) && !m_storage.find(TChatChannelIdentifier::messageTo(name))) {
-        m_storage.open(TChatChannelIdentifier::messageTo(name), false);
+        m_storage.open(TChatChannelIdentifier::messageTo(name), false, false);
         Q_EMIT privateChannelOpened(name);
     }
-    m_storage.addPrivateEntry(name, consoleColor(mode), text, name, level, statementId);
+    m_storage.addPrivateEntry(consoleColor(mode), name, name, text, level, false, statementId);
 }
 
 void TChatProtocolMessageHandler::onTextMessage(const int mode, const QString& text)
@@ -700,27 +760,8 @@ void TChatProtocolMessageHandler::onChannelTextMessage(const int mode, const uin
     if (mode == ChannelManagement || mode == Guild || mode == PartyManagement || mode == Party) {
         if (!consoleMessageAllowed(mode, channelId))
             return;
-        m_storage.addChannelSystemEntry(channelId, consoleColor(mode), text);
+        m_storage.addChannelSystemEntry(consoleColor(mode), channelId, text);
     }
-}
-
-void TChatProtocolMessageHandler::onChannelEvent(const uint16_t channelId, const QString& name, const int type)
-{
-    if (!m_showJoinLeaveMessages || (type != 0 && type != 1))
-        return;
-    const QString text = name + qtTrId(type == 1 ? "chat_user_left_channel" : "chat_user_entered_channel");
-    m_storage.addChannelSystemEntry(channelId, systemWhite(), text);
-}
-
-void TChatProtocolMessageHandler::onCloseChannel(const uint16_t channelId)
-{
-    TChatChannel* channel = m_storage.findChannelId(channelId);
-    if (!channel)
-        return;
-    const char* id = channel->identifier().isPartyChannel() ? "chat_team_finder_channel_closed_message" : "chat_channel_closed_message";
-    m_storage.addSystemEntry(channel, systemRed(), qtTrId(id));
-    channel->setClosedByServer(true);
-    Q_EMIT channel->propertiesChanged();
 }
 
 }

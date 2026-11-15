@@ -3,7 +3,7 @@
 #include "worldmap/worldmapfield.h"
 
 #include "creatures/creaturestorage.h"
-#include "framework/core/clock.h"
+#include "shared/clockservice.h"
 
 #include "client/const.h"
 #include <tibia/config/runtimegameconfig.h>
@@ -268,27 +268,21 @@ void TWorldMapStorage::notifyCoordinateChanged(const Position& position)
 
 TShearedWorldMapCuboid TWorldMapStorage::storedVolume() const
 {
-    const tibia::game::MapPos center = tibia::game::centralPosition();
-    const tibia::game::MapAwareRange range = tibia::game::awareRange();
+    const Position center = m_sessionState.getCentralPosition();
+    const AwareRange range = m_sessionState.getAwareRange();
     return TShearedWorldMapCuboid(
         TWorldMapCoordinate(center.x - range.left, center.y - range.top, center.z),
         TWorldMapExtent(range.horizontal(), range.vertical(), 1));
 }
 
-void TWorldMapStorage::notifyStoredVolumeChanged()
+void TWorldMapStorage::setStoredVolume(const Position& center)
 {
-    Q_EMIT storedVolumeHasChanged(storedVolume());
-}
-
-void TWorldMapStorage::notifyWindowChanged(const bool fullDescription) const
-{
-    sessionState().notificateWindowChanged(fullDescription);
-}
-
-void TWorldMapStorage::notifyTileUpdate(const Position& position, const std::shared_ptr<Thing>& thing,
-                                        const tibia::client::Operation operation)
-{
-    sessionState().notificateTileUpdate(position, thing, operation);
+    const TShearedWorldMapCuboid previous = storedVolume();
+    // The session's centre defines the known area; moving it drops the fields
+    // that leave it.
+    m_sessionState.setCentralPosition(center);
+    if (!(storedVolume() == previous))
+        Q_EMIT storedVolumeHasChanged(storedVolume());
 }
 
 void TWorldMapStorage::addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance)
@@ -356,7 +350,7 @@ void TWorldMapStorage::moveCreature(creatures::TCreature& creature, const Positi
     }
     const TWorldMapExtent step(target.x - origin.x, target.y - origin.y, target.z - origin.z);
     const qint64 duration = m_speedCalculator.stepDuration(creature.speed(), step, groundSpeedAt(to));
-    const qint64 now = g_clock.millis();
+    const qint64 now = tibia::shared::TClockService::frameMillis();
     creature.move(now, now + duration, origin, direction, elevationFrom, elevationTo);
 }
 

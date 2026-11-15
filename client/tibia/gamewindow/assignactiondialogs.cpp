@@ -20,6 +20,7 @@
 #include <tibia/game/thingsession_forward.h>
 
 #include <algorithm>
+#include <map>
 #include <set>
 
 namespace tibia::gamewindow {
@@ -45,9 +46,10 @@ enum ESpellRole
     MinimumCasterLevelRole,
 };
 
-QString buttonName(const int actionBarId, const int buttonId)
+/// "Action Button <bar>.<button>", the button with two digits.
+QString actionButtonName(const int actionBarId, const int buttonId)
 {
-    return qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId);
+    return qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId, 2, 10, QLatin1Char('0'));
 }
 
 ThingTypePtr itemType(const int objectId)
@@ -58,6 +60,15 @@ ThingTypePtr itemType(const int objectId)
 bool isEquipable(const ThingTypePtr& type)
 {
     return type && (type->isCloth() || type->getClothSlot() > 0);
+}
+
+/// The "only known spells" box of each action bar's spell dialog. CIP keeps
+/// one dialog per bar for the whole session, so the box keeps its state
+/// between openings; it starts ticked.
+bool& showOnlyKnownSpellsOf(const uint actionBarId)
+{
+    static std::map<uint, bool> showOnlyKnown;
+    return showOnlyKnown.try_emplace(actionBarId, true).first->second;
 }
 
 std::set<int> knownSpellIds()
@@ -180,6 +191,11 @@ void TSpellListDataModel::onSpellDataModificationsApplied()
     rebuild();
 }
 
+int TSpellListDataModel::spellAt(const int row) const
+{
+    return row >= 0 && row < int(m_rows.size()) ? m_rows[size_t(row)] : 0;
+}
+
 int TSpellListDataModel::rowOf(const int spellId) const
 {
     const auto it = std::find(m_rows.begin(), m_rows.end(), spellId);
@@ -194,7 +210,7 @@ void TAssignActionDialogState::bind(QObject* dialog, TActionBarController* bar, 
     shared->bindActionButton(bar, buttonId);
     actionBarId = shared->actionBarId();
     this->buttonId = shared->buttonId();
-    buttonName = shared->buttonName();
+    buttonName = bar ? actionButtonName(bar->actionBarId(), buttonId) : shared->buttonName();
     showActionBarTarget = shared->showActionBarTarget();
 }
 
@@ -220,18 +236,24 @@ TAssignSpellActionDialogController::TAssignSpellActionDialogController(TActionBa
     m_showActionBarTarget = m_assign.showActionBarTarget;
     connect(this, &cip::tibia::gamewindow::TAssignSpellActionDialogController::dialogClosed, this, &QObject::deleteLater);
     m_spellListModel = QVariant::fromValue<QObject*>(&m_model);
-    m_spellListIndex = uint(-1);
+    // The name filter starts empty on every open.
+    m_showOnlyKnownSpells = showOnlyKnownSpellsOf(m_assign.actionBarId);
+    m_model.setFilterText(QString());
+    m_model.setShowOnlyKnown(m_showOnlyKnownSpells);
     const Setting setting = m_assign.current();
     const spells::TSpellInfo* spell = preselectedSpellId ? spells::TSpellInfoStorage::instance()->spell(preselectedSpellId)
         : setting.kind == Setting::TEXT                  ? spells::TSpellInfoStorage::instance()->spellOfText(setting.text)
                                                          : nullptr;
     if (spell) {
+        // The button's spell with its parameters and cast type.
         m_spellId = spell->id;
-        m_spellListIndex = uint(m_model.rowOf(spell->id));
         if (!preselectedSpellId) {
             m_spellParameters = setting.text.trimmed().mid(spell->words.size()).trimmed();
             m_currentSpellCastType = ECastType(setting.spellCastType);
         }
+    } else {
+        // Otherwise the first spell of the list, without parameters.
+        m_spellId = m_model.spellAt(0);
     }
 }
 
@@ -239,7 +261,7 @@ uint TAssignSpellActionDialogController::actionBarId() const { return m_assign.a
 uint TAssignSpellActionDialogController::buttonId() const { return m_assign.buttonId; }
 QString TAssignSpellActionDialogController::buttonName() const { return m_assign.buttonName; }
 bool TAssignSpellActionDialogController::showActionBarTarget() const { return m_assign.showActionBarTarget; }
-uint TAssignSpellActionDialogController::spellListIndex() const { return m_spellListIndex; }
+uint TAssignSpellActionDialogController::spellListIndex() const { return uint(m_model.rowOf(m_spellId)); }
 QString TAssignSpellActionDialogController::spellParameters() const { return m_spellParameters; }
 bool TAssignSpellActionDialogController::showOnlyKnownSpells() const { return m_showOnlyKnownSpells; }
 ECastType TAssignSpellActionDialogController::currentSpellCastType() const { return m_currentSpellCastType; }
@@ -250,10 +272,10 @@ void TAssignSpellActionDialogController::setShowOnlyKnownSpells(const bool v)
     if (::cip::unchanged(m_showOnlyKnownSpells, v))
         return;
     m_showOnlyKnownSpells = v;
+    showOnlyKnownSpellsOf(m_assign.actionBarId) = v;
     m_model.setShowOnlyKnown(v);
-    m_spellListIndex = m_spellId ? uint(m_model.rowOf(m_spellId)) : uint(-1);
-    Q_EMIT spellFilterChanged();
     Q_EMIT selectedSpellChanged();
+    Q_EMIT spellFilterChanged();
 }
 
 void TAssignSpellActionDialogController::onOkClicked(const QString& Parameters, const ECastType CastType)
@@ -264,6 +286,11 @@ void TAssignSpellActionDialogController::onOkClicked(const QString& Parameters, 
 
 void TAssignSpellActionDialogController::onApplyClicked(const QString& Parameters, const ECastType CastType)
 {
+    if (m_spellId == 0)
+        return;
+    m_spellParameters = Parameters;
+    m_currentSpellCastType = CastType;
+    Q_EMIT selectedSpellChanged();
     const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(m_spellId);
     if (!spell)
         return;
@@ -280,7 +307,8 @@ void TAssignSpellActionDialogController::spellSelected(const uint SpellEnumId)
     if (int(SpellEnumId) == m_spellId)
         return;
     m_spellId = int(SpellEnumId);
-    m_spellListIndex = uint(m_model.rowOf(m_spellId));
+    m_spellParameters.clear();
+    m_currentSpellCastType = ECastType(0);
     Q_EMIT selectedSpellChanged();
 }
 
@@ -438,16 +466,14 @@ void TAssignTextActionDialogController::onOkClicked(const QString& Text, const b
 
 void TAssignTextActionDialogController::onApplyClicked(const QString& Text, const bool SendAutomatically)
 {
-    if (Text.isEmpty())
-        return;
+    m_text = Text;
+    m_sendAutomatically = SendAutomatically;
+    Q_EMIT changed();
     Setting setting;
     setting.kind = Setting::TEXT;
     setting.text = Text;
     setting.sendAutomatically = SendAutomatically;
-    m_text = Text;
-    m_sendAutomatically = SendAutomatically;
     m_assign.assign(setting);
-    Q_EMIT changed();
 }
 
 void TAssignTextActionDialogController::onCloseClicked()
@@ -485,9 +511,12 @@ TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogCo
     m_proxy = new TPassiveAbilityListDataModelSortFilterProxy(this);
     m_proxy->setSourceModel(m_model);
     m_passiveAbilityListModel = QVariant::fromValue(static_cast<QObject*>(m_proxy));
+    // The button's passive ability, otherwise the first of the list.
     const Setting setting = m_assign.current();
     if (setting.kind == Setting::PASSIVE_ABILITY)
         m_passiveAbility = setting.passiveAbility;
+    else if (m_proxy->rowCount() > 0)
+        m_passiveAbility = m_proxy->index(0, 0).data(TPassiveAbilityListDataModel::IdRole).toInt();
     refreshSelectedPassive();
 }
 
@@ -505,15 +534,16 @@ void TAssignPassiveAbilityActionDialogController::refreshSelectedPassive()
     m_passiveAbilityListIndex = uint(-1);
     m_passiveAbilityName.clear();
     m_passiveAbilityIconUrl.clear();
-    if (!m_model || !m_passiveAbility)
+    if (!m_proxy || !m_passiveAbility)
         return;
-    for (int i = 0; i < m_model->rowCount(); ++i) {
-        const QModelIndex idx = m_model->index(i, 0);
-        if (m_model->data(idx, TPassiveAbilityListDataModel::IdRole).toInt() != m_passiveAbility)
+    // The row of the shown (sorted, filtered) list.
+    for (int i = 0; i < m_proxy->rowCount(); ++i) {
+        const QModelIndex idx = m_proxy->index(i, 0);
+        if (idx.data(TPassiveAbilityListDataModel::IdRole).toInt() != m_passiveAbility)
             continue;
         m_passiveAbilityListIndex = uint(i);
-        m_passiveAbilityName = m_model->data(idx, TPassiveAbilityListDataModel::NameRole).toString();
-        m_passiveAbilityIconUrl = m_model->data(idx, TPassiveAbilityListDataModel::IconUrlRole).toString();
+        m_passiveAbilityName = idx.data(TPassiveAbilityListDataModel::NameRole).toString();
+        m_passiveAbilityIconUrl = idx.data(TPassiveAbilityListDataModel::IconUrlRole).toString();
         if (m_passiveAbilityIconUrl.isEmpty())
             m_passiveAbilityIconUrl = QStringLiteral("image://passiveability-icons-32x32/%1").arg(m_passiveAbility);
         break;
@@ -532,6 +562,7 @@ void TAssignPassiveAbilityActionDialogController::onApplyClicked()
 {
     if (!m_passiveAbility)
         return;
+    Q_EMIT selectedPassiveAbilityChanged();
     Setting setting;
     setting.kind = Setting::PASSIVE_ABILITY;
     setting.passiveAbility = m_passiveAbility;
@@ -540,6 +571,8 @@ void TAssignPassiveAbilityActionDialogController::onApplyClicked()
 
 void TAssignPassiveAbilityActionDialogController::passiveAbilitySelected(const uint PassiveAbilityEnumId)
 {
+    if (int(PassiveAbilityEnumId) == m_passiveAbility)
+        return;
     m_passiveAbility = int(PassiveAbilityEnumId);
     refreshSelectedPassive();
     Q_EMIT selectedPassiveAbilityChanged();
@@ -558,7 +591,7 @@ TRecordKeyboardShortcutDialogController::TRecordKeyboardShortcutDialogController
     , m_actionName(config::THotkeyOptions::triggerActionButtonName(actionBarId, buttonId))
 {
     m_chatModeOn = chatModeOn;
-    m_actionDescription = buttonName(actionBarId, buttonId);
+    m_actionDescription = qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId);
     m_keys = config::THotkeyOptions::instance()->buttonKeys(actionBarId, buttonId, chatModeOn);
     m_keySequence = m_keys.toString(QKeySequence::NativeText);
     connect(this, &cip::tibia::gamewindow::TRecordKeyboardShortcutDialogController::dialogClosed, this, &QObject::deleteLater);

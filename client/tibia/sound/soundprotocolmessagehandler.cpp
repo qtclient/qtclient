@@ -45,11 +45,10 @@ void TSoundProtocolMessageHandler::handleSoundTrigger(const int type, const int 
     }
 }
 
-void TSoundProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                           const bool applyClassic)
+void TSoundProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow || opcode != 133 || !shadow->HasExtension(GameserverMessageSoundTrigger::gameserver_message_sound_trigger))
         return;
     const auto& m = shadow->GetExtension(GameserverMessageSoundTrigger::gameserver_message_sound_trigger);

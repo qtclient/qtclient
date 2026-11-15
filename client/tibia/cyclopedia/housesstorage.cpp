@@ -30,8 +30,7 @@ QString fromStd(const std::string& text) { return QString::fromStdString(text); 
 
 void THouseRecord::clearDynamicData()
 {
-    const THouseRecord defaults;
-    state = defaults.state;
+    state = 6;
     bidderName.clear();
     isBidder = false;
     bidDisableReason = 0;
@@ -70,78 +69,21 @@ THousesStorage::THousesStorage(QObject* parent)
         Q_EMIT housesLimitsChanged();
     });
 
-    // CIP (StaticHouseData): the character's houses, the limits and
-    // two house lists the house preview uses.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaHousesInfo", [this](GameObject*, const Args& args) {
         const auto* excludedUntil = arg<uint32_t>(args, 0);
         const auto* counts = arg<std::vector<uint8_t>>(args, 1);
+        const auto* firstList = arg<std::vector<uint32_t>>(args, 2);
+        const auto* secondList = arg<std::vector<uint32_t>>(args, 3);
         if (!excludedUntil || !counts || counts->size() < 6)
             return std::any{};
-        m_characterInfo = { *excludedUntil, (*counts)[0], (*counts)[1], (*counts)[2] };
-        Q_EMIT characterHousesInfoChanged();
-        m_limits = { (*counts)[3], (*counts)[4], (*counts)[5] };
-        Q_EMIT housesLimitsChanged();
+        applyStaticHouseData(*excludedUntil, *counts, firstList ? *firstList : std::vector<uint32_t>(),
+                             secondList ? *secondList : std::vector<uint32_t>());
         return std::any{};
     });
 
-    // CIP (CurrentHouseData) into vslots 0x90 to 0xd0.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaHouseList", [this](GameObject*, const Args& args) {
-        const auto* list = arg<std::vector<CyclopediaHouseEntry>>(args, 0);
-        if (!list || list->empty())
-            return std::any{};
-        const qint64 now = QDateTime::currentMSecsSinceEpoch() / 1000;
-        for (const CyclopediaHouseEntry& entry : *list) {
-            THouseRecord* house = findHouse(entry.houseId);
-            if (!house)
-                continue;
-            house->isRentable = entry.isRentable;
-            switch (entry.state) {
-                case 0:
-                    house->clearDynamicData();
-                    house->state = 0;
-                    house->bidderName = fromStd(entry.bidderName);
-                    house->isBidder = entry.isBidder;
-                    house->bidDisableReason = entry.bidDisableReason;
-                    house->bidEnd = entry.bidEnd;
-                    house->timeUntilAuctionEnd = static_cast<qint64>(entry.bidEnd) - now;
-                    house->highestBid = entry.bidderName.empty() ? 0 : entry.highestBid;
-                    house->ownBidLimit = entry.isBidder ? entry.bidLimit : 0;
-                    break;
-                case 1:
-                    house->clearDynamicData();
-                    house->state = 1;
-                    break;
-                case 2:
-                case 3:
-                case 4:
-                    house->clearDynamicData();
-                    house->state = 2;
-                    house->renterName = fromStd(entry.ownerName);
-                    house->paidUntil = entry.paidUntil;
-                    house->isOwner = entry.isOwner;
-                    house->moveOutDisableReason = entry.isOwner ? entry.moveOutDisableReason : 0;
-                    house->transferDisableReason = entry.isOwner ? entry.transferDisableReason : 0;
-                    if (entry.state == 3) {
-                        house->state = 3;
-                        house->transferDate = entry.transferDate;
-                        house->newOwnerName = fromStd(entry.newOwnerName);
-                        house->newOwnerAccepted = entry.newOwnerAccepted;
-                        house->transferPrice = entry.transferPrice;
-                        house->isNewOwner = entry.isNewOwner;
-                        house->acceptTransferDisableReason = entry.acceptTransferDisableReason;
-                        house->rejectTransferDisableReason = entry.rejectTransferDisableReason;
-                        house->cancelTransferDisableReason = entry.cancelTransferDisableReason;
-                    } else if (entry.state == 4) {
-                        house->state = 4;
-                        house->moveOutDate = entry.moveOutDate;
-                        house->cancelMoveOutDisableReason = entry.cancelMoveOutDisableReason;
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-        Q_EMIT houseInformationChanged();
+        if (const auto* list = arg<std::vector<CyclopediaHouseEntry>>(args, 0))
+            applyCurrentHouseData(*list);
         return std::any{};
     });
 
@@ -154,6 +96,185 @@ THousesStorage::THousesStorage(QObject* parent)
             Q_EMIT houseActionResult(*houseId, *action, *errorCode, outbidden && *outbidden);
         return std::any{};
     });
+}
+
+void THousesStorage::applyStaticHouseData(const quint32 excludedUntil, const std::vector<uint8_t>& counts,
+                                          const std::vector<uint32_t>& firstList, const std::vector<uint32_t>& secondList)
+{
+    setCharacterInfo(excludedUntil, counts[0], counts[1], counts[2]);
+    setLimits(counts[3], counts[4], counts[5]);
+    for (const uint32_t houseId : firstList)
+        setListing(houseId, 0);
+    for (const uint32_t houseId : secondList)
+        setListing(houseId, 1);
+}
+
+void THousesStorage::applyCurrentHouseData(const std::vector<CyclopediaHouseEntry>& houses)
+{
+    if (houses.empty())
+        return;
+    beginUpdate();
+    for (const CyclopediaHouseEntry& entry : houses) {
+        setRentable(entry.houseId, entry.isRentable);
+        // Rented, transfer pending and move out pending share the rent data;
+        // the disable reasons only count for the owner.
+        QString renterName;
+        quint32 paidUntil = 0;
+        bool isOwner = false;
+        quint8 moveOutDisableReason = 0;
+        quint8 transferDisableReason = 0;
+        if (entry.state >= 2 && entry.state <= 4) {
+            renterName = fromStd(entry.ownerName);
+            paidUntil = entry.paidUntil;
+            isOwner = entry.isOwner;
+            if (isOwner) {
+                moveOutDisableReason = entry.moveOutDisableReason;
+                transferDisableReason = entry.transferDisableReason;
+            }
+        }
+        switch (entry.state) {
+            case 0: {
+                // No bidder: no highest bid; only the bidder knows his limit.
+                const QString bidderName = fromStd(entry.bidderName);
+                setAuction(entry.houseId, bidderName, entry.isBidder, entry.bidDisableReason, entry.bidEnd,
+                           bidderName.isEmpty() ? 0 : entry.highestBid, entry.isBidder ? entry.bidLimit : 0);
+                break;
+            }
+            case 1: setNoAuction(entry.houseId); break;
+            case 2: setRented(entry.houseId, renterName, paidUntil, isOwner, moveOutDisableReason, transferDisableReason); break;
+            case 3:
+                setRented(entry.houseId, renterName, paidUntil, isOwner, moveOutDisableReason, transferDisableReason);
+                setTransferPending(entry.houseId, entry.transferDate, fromStd(entry.newOwnerName), entry.newOwnerAccepted,
+                                   entry.transferPrice, entry.isNewOwner, entry.acceptTransferDisableReason,
+                                   entry.rejectTransferDisableReason, entry.cancelTransferDisableReason);
+                break;
+            case 4:
+                setRented(entry.houseId, renterName, paidUntil, isOwner, moveOutDisableReason, transferDisableReason);
+                setMoveOutPending(entry.houseId, entry.moveOutDate, entry.cancelMoveOutDisableReason);
+                break;
+            default: break;
+        }
+    }
+    endUpdate();
+}
+
+void THousesStorage::setCharacterInfo(const quint32 excludedUntil, const quint8 housesOnWorld, const quint8 housesOnAccount,
+                                      const quint8 guildhalls)
+{
+    m_characterInfo = { excludedUntil, housesOnWorld, housesOnAccount, guildhalls };
+    Q_EMIT characterHousesInfoChanged();
+}
+
+void THousesStorage::setLimits(const quint8 perWorld, const quint8 perAccount, const quint8 guildhalls)
+{
+    m_limits = { perWorld, perAccount, guildhalls };
+    Q_EMIT housesLimitsChanged();
+}
+
+void THousesStorage::setListing(const quint32 houseId, const int listing)
+{
+    if (THouseRecord* house = findHouse(houseId))
+        house->listing = listing;
+}
+
+void THousesStorage::beginUpdate() { m_updating = true; }
+
+void THousesStorage::setRentable(const quint32 houseId, const bool rentable)
+{
+    if (!m_updating)
+        return;
+    if (THouseRecord* house = findHouse(houseId))
+        house->isRentable = rentable;
+}
+
+void THousesStorage::setNoAuction(const quint32 houseId)
+{
+    if (!m_updating)
+        return;
+    if (THouseRecord* house = findHouse(houseId)) {
+        house->clearDynamicData();
+        house->state = 1;
+    }
+}
+
+void THousesStorage::setAuction(const quint32 houseId, const QString& bidderName, const bool isBidder, const quint8 bidDisableReason,
+                                const quint32 bidEnd, const quint64 highestBid, const quint64 ownBidLimit)
+{
+    if (!m_updating)
+        return;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch() / 1000;
+    THouseRecord* house = findHouse(houseId);
+    if (!house)
+        return;
+    house->clearDynamicData();
+    house->state = 0;
+    house->bidderName = bidderName;
+    house->isBidder = isBidder;
+    house->bidDisableReason = bidDisableReason;
+    house->bidEnd = bidEnd;
+    house->timeUntilAuctionEnd = static_cast<qint64>(bidEnd) - now;
+    house->highestBid = highestBid;
+    house->ownBidLimit = ownBidLimit;
+}
+
+void THousesStorage::setRented(const quint32 houseId, const QString& renterName, const quint32 paidUntil, const bool isOwner,
+                               const quint8 moveOutDisableReason, const quint8 transferDisableReason)
+{
+    if (!m_updating)
+        return;
+    THouseRecord* house = findHouse(houseId);
+    if (!house)
+        return;
+    house->clearDynamicData();
+    house->state = 2;
+    house->renterName = renterName;
+    house->paidUntil = paidUntil;
+    house->isOwner = isOwner;
+    house->moveOutDisableReason = moveOutDisableReason;
+    house->transferDisableReason = transferDisableReason;
+}
+
+void THousesStorage::setTransferPending(const quint32 houseId, const quint32 transferDate, const QString& newOwnerName,
+                                       const bool newOwnerAccepted, const quint64 transferPrice, const bool isNewOwner,
+                                       const quint8 acceptTransferDisableReason, const quint8 rejectTransferDisableReason,
+                                       const quint8 cancelTransferDisableReason)
+{
+    if (!m_updating)
+        return;
+    THouseRecord* house = findHouse(houseId);
+    // A pending transfer extends a rented house.
+    if (!house || house->state != 2)
+        return;
+    house->state = 3;
+    house->transferDate = transferDate;
+    house->newOwnerName = newOwnerName;
+    house->newOwnerAccepted = newOwnerAccepted;
+    house->transferPrice = transferPrice;
+    house->isNewOwner = isNewOwner;
+    house->acceptTransferDisableReason = acceptTransferDisableReason;
+    house->rejectTransferDisableReason = rejectTransferDisableReason;
+    house->cancelTransferDisableReason = cancelTransferDisableReason;
+}
+
+void THousesStorage::setMoveOutPending(const quint32 houseId, const quint32 moveOutDate, const quint8 cancelMoveOutDisableReason)
+{
+    if (!m_updating)
+        return;
+    THouseRecord* house = findHouse(houseId);
+    // A pending move out extends a rented house.
+    if (!house || house->state != 2)
+        return;
+    house->state = 4;
+    house->moveOutDate = moveOutDate;
+    house->cancelMoveOutDisableReason = cancelMoveOutDisableReason;
+}
+
+void THousesStorage::endUpdate()
+{
+    if (!m_updating)
+        return;
+    m_updating = false;
+    Q_EMIT houseInformationChanged();
 }
 
 void THousesStorage::loadStaticHouses()

@@ -23,7 +23,7 @@ public:
     void handleSoundTrigger(int type, int soundId);
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 
 private:
     tibia::game::SoftHook m_hook;

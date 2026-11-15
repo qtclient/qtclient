@@ -295,7 +295,7 @@ public:
     /// The list's creatures, filtered and sorted (CIP: filterDrawCommands and
     /// ).
     std::vector<std::shared_ptr<creatures::TCreature>> creatures(const BattleListOptions& options) const;
-    uint32_t temporarySelectedCreature() const { return m_temporarySelected; }
+    /// The hovered creature (the creature storage holds it and its frame).
     void setTemporarySelectedCreature(uint32_t creatureId);
 
     /// CIP / (TBattleListGameActionHandler slots).
@@ -332,7 +332,6 @@ private:
     std::map<int, TBattleListController*> m_controllers;
     std::map<uint32_t, uint> m_visibleOrder;
     uint m_nextVisibleOrder = 1;
-    uint32_t m_temporarySelected = 0;
     int m_controlScheme = 0;
     QTimer m_updateTimer;
     TBattleListGameActionHandler* m_gameActionHandler = nullptr;

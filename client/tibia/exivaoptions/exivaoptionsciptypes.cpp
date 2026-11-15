@@ -22,10 +22,10 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
-void TExivaOptionsProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/, const bool applyClassic)
+void TExivaOptionsProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
     if (opcode == 201 && shadow->HasExtension(GameserverMessageExivaSuppressed::gameserver_message_exiva_suppressed))

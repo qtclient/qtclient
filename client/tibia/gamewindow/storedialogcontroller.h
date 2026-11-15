@@ -5,7 +5,9 @@
 
 #include <cip_gen.h>
 
+#include <QHash>
 #include <QPointer>
+#include <QSet>
 #include <QTimer>
 #include <optional>
 #include <utility>
@@ -33,14 +35,14 @@ public:
     explicit TStorePurchaseConfirmationDialogController(QObject* parent = nullptr);
 
     /// CIP : the dialog made anew for `offer`.
-    void showDialog(int offerId, const store::TStoreOfferData& offer, bool showAskAgainCheckbox);
-    void showDialog(int offerId, const store::TStoreOfferData& offer, bool showAskAgainCheckbox, bool buyWithCosmeticTokens);
+    void showDialog(int offerId, const store::TStoreOffer& offer, bool showAskAgainCheckbox);
+    void showDialog(int offerId, const store::TStoreOffer& offer, bool showAskAgainCheckbox, bool buyWithCosmeticTokens);
 
     Q_INVOKABLE void purchaseRequested(bool AskForConfirmationAgainForOtherPurchases) override;
     Q_INVOKABLE void closeRequested() override;
 
 Q_SIGNALS:
-    void purchaseConfirmed(int offerId, bool askAgain);
+    void purchaseConfirmed(int offerId, bool askAgain, bool buyWithCosmeticTokens);
 
 private:
     QPointer<store::TQmlStoreOffer> m_offer;
@@ -125,12 +127,13 @@ public:
     /// The store button: asks the server for the store and shows it.
     void open();
     /// OPEN_STORE (CIP TStoreGameActionHandler hands the
-    /// TStoreOpenParameters to TStoreProtocolMessageHandler : the
-    /// categories if not loaded yet, then the offers of `openAction`): 0 home,
-    /// 1 premium time / boosts (`detail` 1), 3 the useful thing `detail`,
-    /// 4 the offer `detail`, 5 search (`text` is the query). Category (2)
-    /// with an empty string opens home.
+    /// TStoreOpenParameters to TStoreProtocolMessageHandler: the categories if
+    /// not loaded yet, then the offers of `openAction`): 0 home, 1 premium time
+    /// / boosts (`detail` 1), 3 the useful thing `detail`, 4 the offer
+    /// `detail`, 5 search (`text` is the query). Category (2) with an empty
+    /// string opens home.
     void openWith(int openAction, int detail, const QString& text = {});
+    void openWith(const store::TStoreOpenParameters& parameters);
 
     void setSelectedSortOrderIndex(int index) override;
     void setSelectedFilterTagIndex(int index) override;
@@ -177,11 +180,12 @@ public:
 private:
     /// CIP / : the new character name, then the
     /// confirmation.
-    void onNewCharacterNameRequested(int offerId);
+    void onNewCharacterNameRequested(int offerId, bool buyWithCosmeticTokens);
     void onNewCharacterNameEntered(const QString& name);
     /// CIP.
-    void onHirelingConfigurationRequested(int offerId);
+    void onHirelingConfigurationRequested(int offerId, bool buyWithCosmeticTokens);
     void onHirelingConfigurationFinished(int offerId, const QString& name, int sex);
+    void onConfirmationDialogRequested(int offerId, const QString& message, bool buyWithCosmeticTokens);
     /// CIP HirelingNameChange (S 0xDB) → SetHirelingName (C 0xEC).
     void onHirelingNameChangeRequested(quint32 creatureId, quint32 objectId);
     void onHirelingNameChangeEntered(const QString& name);
@@ -211,17 +215,23 @@ private:
     void onTransactionHistoryErrorNotification(const QString& message);
     void onInformationNotification(const QString& message);
     /// CIP .
-    void onPurchaseConfirmed(int offerId, bool askAgain);
+    void onPurchaseConfirmed(int offerId, bool askAgain, bool buyWithCosmeticTokens);
     /// CIP : sends the purchase and waits.
-    void purchase(int offerId);
+    void purchase(int offerId, bool buyWithCosmeticTokens);
     /// CIP .
     void rebuildOffers();
     /// CIP .
     void selectOffer(int offerId);
     /// CIP .
     void rebuildFeaturedOffers();
+    void rebuildFilterTags();
     void setSelectedCategoryName(const QString& name);
     void showMessage(const QString& caption, const QString& message);
+    /// The offer description (CIP's TStoreDescriptionManager): known, or asked
+    /// for once.
+    std::optional<QString> offerDescription(store::TOfferID offerId);
+    void onOfferDescriptionReceived(int offerId, const QString& description);
+    QObject* makeCategory(const store::TStoreCategory& category);
 
     QPointer<store::TStoreStorage> m_storage;
     QPointer<store::TStoreProtocolMessageHandler> m_messages;
@@ -233,23 +243,19 @@ private:
     THirelingConfigurationDialogController m_hirelingDialog;
     TGenericEnterTextDialogController* m_newNameDialog;
     TGenericEnterTextDialogController* m_hirelingNameDialog;
-    /// CIP +0x1d4 / +0x1d8 / +0x1f8 / +0x210: the offer waiting for its
-    /// purchase data, the purchase type it is bought with (0 plain, 1 name
-    /// change, 3 hireling), the name and the hireling's sex.
+    /// The offer waiting for its purchase data, the purchase type it is bought
+    /// with (0 plain, 1 name change, 3 hireling, 6 confirmed by the server),
+    /// the name and the hireling's sex.
     int m_configuredOfferId = 0;
     int m_purchaseType = 0;
     QString m_purchaseName;
     int m_purchaseSex = 0;
-    std::vector<store::TStoreOfferData> m_sortedOffers;
-    QList<uint32_t> m_featuredOfferIds;
-    QString m_lastSearch;
+    bool m_buyWithCosmeticTokens = false;
+    QList<store::TStoreOpenParameters> m_featuredOfferTargets;
+    std::vector<QString> m_filterTags;
+    QHash<store::TOfferID, QString> m_offerDescriptions;
+    QSet<store::TOfferID> m_requestedOfferDescriptions;
     int m_pendingJumpOfferId = 0;
-    /// openWith's open action and detail, asked for once the categories are
-    /// in (the premium category is looked up by name). `m_pendingSearchText`
-    /// is used when open action is search (5).
-    std::optional<std::pair<int, int>> m_pendingOpen;
-    QString m_pendingSearchText;
-    void requestPendingOpen();
 };
 
 /// The control buttons' store button (CIP: TStoreButtonController, ctor

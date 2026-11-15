@@ -17,7 +17,6 @@ target_include_directories(qtclient_map_spectator_tests_objects PRIVATE
 )
 # Avoid `-DCLIENT=1` — conflicts with cip_gen identifiers named CLIENT.
 target_compile_definitions(qtclient_map_spectator_tests_objects PRIVATE
-    FRAMEWORK_GRAPHICS
     FRAMEWORK_NET
     FRAMEWORK_XML
 )

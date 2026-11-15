@@ -228,6 +228,8 @@ void TStatusBarController::onClickedOpenStoreXPBoost()
 
 void TStatusBarController::requestContextMenu()
 {
+    // Opening the menu closes any open multi-action button first.
+    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
     TContextMenuController* menu = TContextMenuController::instance();
     if (!menu || !m_storage)
         return;
@@ -254,27 +256,28 @@ void TStatusBarController::requestContextMenu()
     menu->addCustomSeparator();
     for (int index = 0; index < Storage::EntryCount; ++index) {
         const auto entry = static_cast<Storage::Entry>(index);
-        const bool shown = m_storage->shown(entry);
         TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId(EntryLabels[static_cast<size_t>(index)]));
-        item->setCheckable(true);
-        item->setChecked(shown);
-        connect(item, &TContextMenuEntryItem::triggered, this, [this, entry, shown] {
+        // The entry flips what the storage holds when it is picked.
+        connect(item, &TContextMenuEntryItem::triggered, this, [this, entry] {
             if (m_storage)
-                m_storage->setShown(entry, !shown);
+                m_storage->setShown(entry, !m_storage->shown(entry));
         });
+        item->setCheckable(true);
+        item->setChecked(m_storage->shown(entry));
     }
     menu->addCustomSeparator();
-    const QJsonObject options = app::ClientOptions::load().options();
-    const auto addOption = [&](const char* label, const char* name, const bool fallback) {
-        const bool enabled = options.value(QLatin1String(name)).toBool(fallback);
-        TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId(label));
-        item->setCheckable(true);
-        item->setChecked(enabled);
-        connect(item, &TContextMenuEntryItem::triggered, this,
-                [name, enabled] { app::ClientOptions::store(QLatin1String(name), !enabled); });
+    const auto option = [](const char* name) {
+        return app::ClientOptions::load().options().value(QLatin1String(name)).toBool(false);
     };
-    addOption("optionsmenu_statusbar_enabled", StatusBarEnabled, true);
-    addOption("optionsmenu_statuspanel_enabled", StatusPanelEnabled, false);
+    const auto addOption = [&](const char* label, const char* name) {
+        TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId(label));
+        connect(item, &TContextMenuEntryItem::triggered, this,
+                [name, option] { app::ClientOptions::store(QLatin1String(name), !option(name)); });
+        item->setCheckable(true);
+        item->setChecked(option(name));
+    };
+    addOption("optionsmenu_statusbar_enabled", StatusBarEnabled);
+    addOption("optionsmenu_statuspanel_enabled", StatusPanelEnabled);
     menu->showCustomMenu();
 }
 

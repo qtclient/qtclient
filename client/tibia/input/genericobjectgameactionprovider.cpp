@@ -1,3 +1,4 @@
+#include "creatures/vipstorage.h"
 #include "genericobjectgameactionprovider.h"
 
 #include "appearances/appearanceinstance.h"
@@ -5,7 +6,6 @@
 #include "creatures/creaturestorage.h"
 #include "cyclopedia/iteminfostorage.h"
 
-#include <client/item.h>
 #include "protocol/protocolcodes.h"
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
@@ -42,8 +42,8 @@ bool isSharedExpOn(const uint8_t shield)
 
 bool isVipName(const QString& name)
 {
-    for (const auto& [id, vip] : tibia::game::getVips()) {
-        if (QString::fromStdString(std::get<0>(vip)).compare(name, Qt::CaseInsensitive) == 0)
+    for (const auto& [id, vip] : tibia::creatures::TVipStorage::entries()) {
+        if (vip.name.compare(name, Qt::CaseInsensitive) == 0)
             return true;
     }
     return false;

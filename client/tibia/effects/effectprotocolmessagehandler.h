@@ -23,7 +23,7 @@ public:
     void handleRemoveGraphicalEffectMessage(const protobuf::protocol::GameserverMessageRemoveGraphicalEffect& message);
 
     /// Queue wire: the structured effect messages, which skip the classic bridge.
-    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    void onServerMessageEnqueued(int opcode);
 };
 
 }

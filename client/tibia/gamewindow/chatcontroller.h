@@ -110,8 +110,8 @@ private:
     };
 
     void rebuild();
-    void onEntryAdded();
-    void onOldestEntryRemoved();
+    /// The channel's entry ids moved: rows for the entries that left and came.
+    void onIdRangeChanged(uint32_t firstId, uint32_t afterLastId);
     Row makeRow(const chat::TChatEntry& entry) const;
     int plainLength(int row) const;
     void applySelection(int anchorRow, int anchorPos, int focusRow, int focusPos);
@@ -120,6 +120,9 @@ private:
 
     QPointer<chat::TChatChannel> m_channel;
     std::vector<Row> m_rows;
+    /// The entry ids the rows show.
+    uint32_t m_firstEntryId = 0;
+    uint32_t m_afterLastEntryId = 0;
     TChatChannelFilterController m_filter;
     bool m_showTimestamps = true;
     bool m_showTimestampSeconds = true;

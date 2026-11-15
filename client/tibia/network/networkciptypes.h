@@ -19,13 +19,6 @@ class TDualConnectionInfo final : public ::tibia::CipTyped {};
 
 class TDualConnectionUrlInfo final : public ::tibia::CipTyped {};
 
-class TGameserverNetworkPacketProcessor final : public cip::tibia::network::TGameserverNetworkPacketProcessor
-{
-    Q_OBJECT
-public:
-    using cip::tibia::network::TGameserverNetworkPacketProcessor::TGameserverNetworkPacketProcessor;
-};
-
 class TGameserverNetworkPacketRawDataProcessor final : public ::tibia::CipTyped {};
 
 class TGameserverNetworkPacketReader final : public ::tibia::CipTyped {};

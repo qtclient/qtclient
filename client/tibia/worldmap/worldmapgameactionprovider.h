@@ -15,12 +15,19 @@ class TWorldMapRenderProvider;
 namespace tibia {
 namespace worldmap {
 
+class TWorldMapViewport;
+
 /// The actions offered at a point of the world map (CIP:
 /// TWorldMapGameActionProvider::v2,).
 class TWorldMapGameActionProvider : public ::tibia::CipTyped
 {
 public:
-    explicit TWorldMapGameActionProvider(const qmlcomponents::TWorldMapRenderProvider& provider) : m_provider(provider) {}
+    TWorldMapGameActionProvider(const qmlcomponents::TWorldMapRenderProvider& provider,
+                                const TWorldMapViewport& viewport)
+        : m_provider(provider)
+        , m_viewport(viewport)
+    {
+    }
 
     input::TGameActionList actionsAt(const QPoint& mapPixel) const;
 
@@ -42,6 +49,7 @@ public:
 
 private:
     const qmlcomponents::TWorldMapRenderProvider& m_provider;
+    const TWorldMapViewport& m_viewport;
 };
 
 }

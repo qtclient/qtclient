@@ -510,6 +510,21 @@ void TGameWindowController::cipSoftLogoPressed()
     input::publish(input::makeAction(input::EGameAction::OPEN_URL_CIPSOFT));
 }
 
+void TGameWindowController::twitchLogoPressed()
+{
+    input::publish(input::makeAction(input::EGameAction::OPEN_URL_TWITCH_TIBIA));
+}
+
+void TGameWindowController::youTubeLogoPressed()
+{
+    input::publish(input::makeAction(input::EGameAction::OPEN_URL_YOUTUBE_TIBIA));
+}
+
+void TGameWindowController::closeOpenMultiActionButtons()
+{
+    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+}
+
 void TGameWindowController::setShowCreateAccountOption(const bool show)
 {
     if (m_showCreateAccountOption == show)

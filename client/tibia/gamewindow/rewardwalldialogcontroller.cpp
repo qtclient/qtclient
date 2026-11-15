@@ -23,8 +23,6 @@ using StreakState = cip::tibia::qmlcomponents::enums::EDailyRewardStreakState;
 
 constexpr uint MaxDailyRewardJokerAmount = 50;
 constexpr uint IraUnlimitedThreshold = 999;
-/// CipSoft daily-reward XP boost tooltips always use 50% (`rewardwall_daily_reward_xp_boost`).
-constexpr int DailyRewardXpBoostPercent = 50;
 
 QString formatCountdown(const qint64 seconds)
 {
@@ -39,97 +37,38 @@ QString formatCountdown(const qint64 seconds)
         .arg(s, 2, 10, QLatin1Char('0'));
 }
 
-bool nameLooksCosmetic(const QString& lower)
+/// CipSoft: one line of a day's reward, with the premium amount when the
+/// player is free and premium gets more.
+void appendRewardLine(QStringList& lines, QString line, const uint freeAmount, const uint premiumAmount, const bool isPremium,
+                      const QString& premiumAmountText)
 {
-    return lower.contains(QLatin1String("cosmetic")) || lower.contains(QLatin1String("outfit"))
-        || lower.contains(QLatin1String("mount")) || lower.contains(QLatin1String("training"))
-        || lower.contains(QLatin1String("exercise"));
-}
-
-/// CipSoft dailyRewardIcon : xp → xp-boost, prey → wildcard,
-/// otherwise temple-teleport vs cosmetic (no icon-reward-default.png).
-QString iconForRewardName(const std::string& name)
-{
-    const QString lower = QString::fromStdString(name).toLower();
-    if (lower.contains(QLatin1String("temple")) || lower.contains(QLatin1String("teleport")))
-        return QStringLiteral("/images/dailyreward/icon-reward-temple-teleport.png");
-    if (nameLooksCosmetic(lower))
-        return QStringLiteral("/images/dailyreward/icon-reward-cosmetic.png");
-    return {};
-}
-
-QString nonPreyXpIconForDay(const DailyRewardDay& day)
-{
-    if (day.redeemMode == 2) {
-        for (const DailyRewardBundle& bundle : day.bundleItems) {
-            if (bundle.bundleType != 1)
-                continue;
-            if (const QString named = iconForRewardName(bundle.name); !named.isEmpty())
-                return named;
-            return QStringLiteral("/images/dailyreward/icon-reward-temple-teleport.png");
-        }
-    }
-    if (day.redeemMode == 1) {
-        for (const DailyRewardItem& item : day.selectableItems) {
-            if (const QString named = iconForRewardName(item.name); !named.isEmpty())
-                return named;
-        }
-        if (!day.selectableItems.empty())
-            return QStringLiteral("/images/dailyreward/icon-reward-temple-teleport.png");
-    }
-    return {};
+    if (!isPremium && freeAmount < premiumAmount)
+        line += qtTrId("rewardwall_daily_reward_premium_teaser").arg(premiumAmountText);
+    lines << line;
 }
 
 /// CipSoft `rewardwall_daily_reward_details` body for one day cell.
-QString dailyRewardDetailsBody(const DailyRewardDay& day)
+QString dailyRewardDetailsBody(const DailyRewardDay& free, const DailyRewardDay& premium, const bool isPremium)
 {
-    if (day.redeemMode == 1) {
-        QStringList names;
-        for (const DailyRewardItem& item : day.selectableItems) {
-            if (!item.name.empty())
-                names << QString::fromStdString(item.name);
-            if (names.size() >= 3)
-                break;
-        }
-        const QString sample = names.join(QStringLiteral(", "));
-        if (day.itemsToSelect <= 1)
-            return qtTrId("rewardwall_daily_pick_item").arg(sample);
-        return qtTrId("rewardwall_daily_pick_items").arg(day.itemsToSelect).arg(sample);
+    const DailyRewardDay& day = isPremium ? premium : free;
+    QStringList lines;
+    if (day.cosmeticTokens != 0)
+        appendRewardLine(lines, qtTrId("rewardwall_daily_cosmetic_tokens").arg(day.cosmeticTokens), free.cosmeticTokens,
+                         premium.cosmeticTokens, isPremium, QString::number(premium.cosmeticTokens));
+    if (day.bountyRerollTokens != 0)
+        lines << qtTrId("rewardwall_daily_bounty_task_reroll_token");
+    if (day.preyWildcards != 0) {
+        const QString line = day.preyWildcards == 1 ? qtTrId("rewardwall_daily_prey_wildcard").arg(day.preyWildcards)
+                                                    : qtTrId("rewardwall_daily_prey_wildcards").arg(day.preyWildcards);
+        appendRewardLine(lines, line, free.preyWildcards, premium.preyWildcards, isPremium, QString::number(premium.preyWildcards));
     }
-    if (day.redeemMode == 2) {
-        QStringList parts;
-        for (const DailyRewardBundle& bundle : day.bundleItems) {
-            switch (bundle.bundleType) {
-            case 2: // Prey Wildcards
-                parts << (bundle.count == 1 ? qtTrId("rewardwall_daily_prey_wildcard").arg(bundle.count)
-                                            : qtTrId("rewardwall_daily_prey_wildcards").arg(bundle.count));
-                break;
-            case 3: // XP Boost — minutes in itemId
-                parts << qtTrId("rewardwall_daily_reward_xp_boost")
-                             .arg(bundle.itemId)
-                             .arg(DailyRewardXpBoostPercent);
-                break;
-            case 1: {
-                const QString lower = QString::fromStdString(bundle.name).toLower();
-                if (lower.contains(QLatin1String("temple")) || lower.contains(QLatin1String("teleport")))
-                    parts << qtTrId("rewardwall_daily_temple_teleport_scroll");
-                else if (lower.contains(QLatin1String("cosmetic")))
-                    parts << qtTrId("rewardwall_daily_cosmetic_tokens").arg(std::max<uint8_t>(1, bundle.count));
-                else if (lower.contains(QLatin1String("bounty")) || lower.contains(QLatin1String("reroll")))
-                    parts << qtTrId("rewardwall_daily_bounty_task_reroll_token");
-                else if (!bundle.name.empty())
-                    parts << QStringLiteral("%1x %2")
-                                 .arg(std::max<uint8_t>(1, bundle.count))
-                                 .arg(QString::fromStdString(bundle.name));
-                break;
-            }
-            default:
-                break;
-            }
-        }
-        return parts.join(QStringLiteral("<br>"));
-    }
-    return {};
+    if (!day.objects.empty())
+        lines << qtTrId("rewardwall_daily_temple_teleport_scroll");
+    if (day.xpBoostMinutes > 0)
+        appendRewardLine(lines, qtTrId("rewardwall_daily_reward_xp_boost").arg(day.xpBoostMinutes).arg(day.xpBoostPercent),
+                         free.xpBoostPercent, premium.xpBoostPercent, isPremium,
+                         QStringLiteral("%1%").arg(premium.xpBoostPercent));
+    return lines.join(QStringLiteral("<br>"));
 }
 
 bool localPlayerPremium()
@@ -321,14 +260,9 @@ void TRewardWallDialogController::rebuildRewardStreakBonuses()
     clearOwnedList(m_rewardStreakBonuses);
     const uint streak = m_rewardStreakLength;
     if (m_dailyReward) {
-        for (const DailyRewardBonus& bonus : m_dailyReward->bonuses) {
-            const uint needed = std::max<uint>(1, bonus.id);
+        for (const uint32_t needed : m_dailyReward->streakBonusThresholds)
             m_rewardStreakBonuses.append(new TQmlRewardStreakBonus(needed, streak < needed, this));
-        }
     }
-    while (m_rewardStreakBonuses.size() < 3)
-        m_rewardStreakBonuses.append(new TQmlRewardStreakBonus(static_cast<uint>(m_rewardStreakBonuses.size() + 1),
-                                                               streak < static_cast<uint>(m_rewardStreakBonuses.size() + 1), this));
 }
 
 void TRewardWallDialogController::refreshResources()
@@ -541,37 +475,30 @@ QString TRewardWallDialogController::jokersNeededCurrencyViewhInfoText()
 
 QString TRewardWallDialogController::restingBonusHoverText(const int Index)
 {
-    if (!m_dailyReward || Index < 0 || Index >= int(m_dailyReward->bonuses.size()))
-        return qtTrId("dummy_unknown");
-    const DailyRewardBonus& bonus = m_dailyReward->bonuses[size_t(Index)];
-    QString text = QString::fromStdString(bonus.name);
-    if (m_rewardStreakLength < std::max<uint>(1, bonus.id)) {
-        // CipSoft locked_by_count: %1=color, %2=needed streak.
-        text += qtTrId("rewardwall_resting_area_locked_by_count")
-                    .arg(QStringLiteral("#ff0000"))
-                    .arg(std::max<uint>(1, bonus.id));
+    if (!m_dailyReward || Index < 0 || Index >= int(m_dailyReward->streakBonusThresholds.size()))
+        return {};
+    // CipSoft: the locked note, then the streak the bonus needs, coloured by
+    // whether it is reached.
+    const uint needed = m_dailyReward->streakBonusThresholds[size_t(Index)];
+    const bool locked = m_rewardStreakLength < needed;
+    QString text;
+    if (locked)
         text += qtTrId("rewardwall_resting_area_bonus_locked").arg(QStringLiteral("#ff0000"));
-    }
+    text += QStringLiteral("<br>");
+    text += qtTrId("rewardwall_resting_area_locked_by_count")
+                .arg(locked ? QStringLiteral("#ff0000") : QStringLiteral("#00ff00"))
+                .arg(needed);
     return text;
 }
 
 QString TRewardWallDialogController::dailyRewardHoverText(const int Index)
 {
-    if (!m_dailyReward || Index < 0)
+    if (!m_dailyReward || Index < 0 || Index >= int(m_dailyReward->freeRewards.size())
+        || Index >= int(m_dailyReward->premiumRewards.size()))
         return {};
-    const auto& days = m_isPremium ? m_dailyReward->premiumRewards : m_dailyReward->freeRewards;
-    if (Index >= int(days.size()))
-        return {};
-    const QString body = dailyRewardDetailsBody(days[size_t(Index)]);
-    if (body.isEmpty())
-        return {};
-    QString text = qtTrId("rewardwall_daily_reward_details").arg(body);
-    if (!m_isPremium && Index < int(m_dailyReward->premiumRewards.size())) {
-        const QString premiumBody = dailyRewardDetailsBody(m_dailyReward->premiumRewards[size_t(Index)]);
-        if (!premiumBody.isEmpty())
-            text += qtTrId("rewardwall_daily_reward_premium_teaser").arg(premiumBody);
-    }
-    return text;
+    const QString body = dailyRewardDetailsBody(m_dailyReward->freeRewards[size_t(Index)],
+                                                m_dailyReward->premiumRewards[size_t(Index)], m_isPremium);
+    return body.isEmpty() ? QString() : qtTrId("rewardwall_daily_reward_details").arg(body);
 }
 
 QString TRewardWallDialogController::dailyRewardStateHoverText(const int Index)
@@ -601,20 +528,13 @@ QString TRewardWallDialogController::dailyRewardIcon(const int Index, const bool
     if (Index >= int(days.size()))
         return {};
     const DailyRewardDay& day = days[size_t(Index)];
-
-    if (day.redeemMode == 2) {
-        for (const DailyRewardBundle& bundle : day.bundleItems) {
-            switch (bundle.bundleType) {
-            case 2: // Prey Wildcards
-                return QStringLiteral("/images/dailyreward/icon-reward-wildcard.png");
-            case 3: // XP Boost
-                return QStringLiteral("/images/dailyreward/icon-reward-xp-boost.png");
-            default:
-                break;
-            }
-        }
-    }
-    return nonPreyXpIconForDay(day);
+    if (day.xpBoostMinutes != 0)
+        return QStringLiteral("/images/dailyreward/icon-reward-xp-boost.png");
+    if (day.preyWildcards != 0)
+        return QStringLiteral("/images/dailyreward/icon-reward-wildcard.png");
+    if (day.cosmeticTokens != 0)
+        return QStringLiteral("/images/dailyreward/icon-reward-cosmetic.png");
+    return QStringLiteral("/images/dailyreward/icon-reward-temple-teleport.png");
 }
 
 QString TRewardWallDialogController::dailyRewardNumbersText(const int Index, const bool IsPremium)
@@ -625,31 +545,13 @@ QString TRewardWallDialogController::dailyRewardNumbersText(const int Index, con
     if (Index >= int(days.size()))
         return {};
     const DailyRewardDay& day = days[size_t(Index)];
-
-    if (day.redeemMode == 1 && day.itemsToSelect > 0)
-        return QString::number(day.itemsToSelect);
-
-    if (day.redeemMode == 2) {
-        for (const DailyRewardBundle& bundle : day.bundleItems) {
-            switch (bundle.bundleType) {
-            case 2: // Prey Wildcards — count
-                if (bundle.count > 0)
-                    return QString::number(bundle.count);
-                break;
-            case 3: // XP Boost — minutes in itemId
-                if (bundle.itemId > 0)
-                    return QString::number(bundle.itemId);
-                break;
-            case 1: // Fixed items — stack count
-                if (bundle.count > 0)
-                    return QString::number(bundle.count);
-                break;
-            default:
-                break;
-            }
-        }
-    }
-    return {};
+    if (day.xpBoostMinutes != 0)
+        return QStringLiteral("%1%").arg(day.xpBoostPercent);
+    if (day.preyWildcards != 0)
+        return QStringLiteral("x%1").arg(day.preyWildcards);
+    if (day.cosmeticTokens != 0)
+        return QStringLiteral("x%1").arg(day.cosmeticTokens);
+    return QStringLiteral("x1");
 }
 
 void TRewardWallDialogController::onPremiumTimeChanged() { syncPremium(); }

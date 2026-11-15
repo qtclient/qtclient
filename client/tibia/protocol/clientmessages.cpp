@@ -1,1396 +1,1111 @@
-/*
- * Copyright (c) 2024-2026 qtclient contributors
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// CIP client messages: each builder fills a GameclientMessage and hands it to
+// the protocol queue, which encodes it (TProtobufClientMessageTranslator) and
+// writes it to the game connection.
 
-#include "protocol/extendedopcode.h"
-#include <tibia/game/localplayersessionthing.h>
-#include <tibia/appearances/thing.h>
-#include "client/item.h"
+#include "protocol/clientmessages.h"
+
+#include "network/gameserverpacketprocessor.h"
+#include "protocol/protocolciptypes.h"
+#include "protocol/protocolclassicwire.h"
 #include "protocol/protocolcodes.h"
-#include "client/protocolgame.h"
-#include "framework/net/outputmessage.h"
-#include "tibia/assets/things.h"
-#include "tibia/assets/thingtype.h"
-#include <tibia/game/gamesession.h>
-#include <tibia/network/logincrypt.h>
+#include <protocol.pb.h>
 
-#ifndef USE_PRECOMPILED_HEADERS
+#include <QtGlobal>
+#include <format>
+#include <tibia/game/gamesession.h>
+#include <tibia/game/thingsession_forward.h>
+#include "tibia/assets/thingtype.h"
+
 #include <algorithm>
 #include <array>
-#include <tibia/game/thingsession_forward.h>
-#endif
 
-void ProtocolGame::onSend() {}
-void ProtocolGame::sendExtendedOpcode(const uint8_t opcode, const std::string& buffer)
+using namespace ::tibia::protobuf::protocol;
+
+namespace {
+
+void setCoordinate(ProtocolCoordinate* out, const Position& position)
 {
-    if (m_enableSendExtendedOpcode) {
-        const auto& msg = std::make_shared<OutputMessage>();
-        msg->addU8(Proto::ClientExtendedOpcode);
-        msg->addU8(opcode);
-        msg->addString(buffer);
-        send(msg);
-    } else {
-        g_logger.error("Unable to send extended opcode {}, extended opcodes are not enabled", opcode);
+    out->set_x(position.x);
+    out->set_y(position.y);
+    out->set_z(position.z);
+}
+
+}
+
+namespace tibia::protocol::gameclient {
+
+void sendExtendedOpcode(const uint8_t opcode, const std::string& buffer)
+{
+    auto* processor = network::TGameserverNetworkPacketProcessor::live();
+    if (!processor || !processor->productTransportEnabled()) {
+        qCritical("%s", std::format("Unable to send extended opcode {}, extended opcodes are not enabled", opcode).c_str());
+        return;
     }
+    ClassicWriter w;
+    w.u8(Proto::ClientExtendedOpcode);
+    w.u8(opcode);
+    w.string(buffer);
+    processor->writeProductFrame(w.out);
 }
 
-void ProtocolGame::sendLoginPacket(const uint32_t challengeTimestamp, const uint8_t challengeRandom)
+void sendCharacterSwitch(const std::string& characterName)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-
-    msg->addU8(Proto::ClientPendingGame);
-    msg->addU16(tibia::game::clientOs());
-    msg->addU16(tibia::game::getProtocolVersion());
-
-    if (tibia::game::cipFeature(tibia::client::GameClientVersion))
-        msg->addU32(tibia::game::clientRevision());
-
-    if (tibia::game::clientRevision() >= 1281) {
-        msg->addString(std::to_string(tibia::game::clientRevision()));
-    }
-
-    if (tibia::game::clientRevision() >= 1334) {
-        msg->addString(tibia::game::assetIdentifier());
-    } else if (tibia::game::cipFeature(tibia::client::GameContentRevision)) {
-        msg->addU16(tibia::game::contentRevision());
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GamePreviewState))
-        msg->addU8(0);
-
-    const int offset = msg->getMessageSize();
-
-    if (tibia::game::cipFeature(tibia::client::GameLoginPacketEncryption)) {
-        // first RSA byte must be 0
-        msg->addU8(0);
-        // xtea key
-        generateXteaKey();
-        msg->addU32(m_xteaKey[0]);
-        msg->addU32(m_xteaKey[1]);
-        msg->addU32(m_xteaKey[2]);
-        msg->addU32(m_xteaKey[3]);
-    }
-
-    msg->addU8(0); // is gm set?
-
-    if (tibia::game::cipFeature(tibia::client::GameSessionKey)) {
-        msg->addString(m_sessionKey);
-        msg->addString(m_characterName);
-
-    } else {
-        if (tibia::game::cipFeature(tibia::client::GameAccountNames))
-            msg->addString(m_accountName);
-        else
-            msg->addU32(stdext::from_string<uint32_t>(m_accountName));
-
-        msg->addString(m_characterName);
-        msg->addString(m_accountPassword);
-
-        if (tibia::game::cipFeature(tibia::client::GameAuthenticator))
-            msg->addString(m_authenticatorToken);
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GameChallengeOnLogin)) {
-        msg->addU32(challengeTimestamp);
-        msg->addU8(challengeRandom);
-    }
-
-    // A pack that listens for extended opcodes asks for the product transport in
-    // the RSA padding; the CIP client leaves the padding zero.
-    if (tibia::protocol::ExtendedOpcodeReader::instance().hasListeners())
-        msg->addString("ExtendedOpcodes");
-
-    // complete the bytes for rsa encryption with zeros
-    const int paddingBytes = tibia::network::rsaBlockSize() - (msg->getMessageSize() - offset);
-    assert(paddingBytes >= 0);
-    msg->addPaddingBytes(paddingBytes);
-
-    // encrypt with RSA
-    if (tibia::game::cipFeature(tibia::client::GameLoginPacketEncryption))
-        msg->encryptRsa();
-
-    if (tibia::game::cipFeature(tibia::client::GameProtocolChecksum))
-        enableChecksum();
-
-    send(msg);
-
-    if (tibia::game::cipFeature(tibia::client::GameLoginPacketEncryption))
-        enableXteaEncryption();
-
-    if (tibia::game::cipFeature(tibia::client::GameSequencedPackets))
-        enabledSequencedPackets();
+    auto* processor = network::TGameserverNetworkPacketProcessor::live();
+    if (!processor)
+        return;
+    ClassicWriter w;
+    w.u8(Proto::ClientCharacterSwitch);
+    w.string(characterName);
+    processor->writeProductFrame(w.out);
 }
 
-void ProtocolGame::sendEnterGame()
+void sendSecondaryLogin(const std::string_view token)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientEnterGame);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(Proto::ClientSecondaryLogin);
+    auto* m = message->MutableExtension(GameclientMessageSecondaryLogin::gameclient_message_secondary_login);
+    m->set_token(std::string(token));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendLogout()
+void sendEnterGame()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientLeaveGame);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientEnterGame));
 }
 
-void ProtocolGame::sendCharacterSwitch(const std::string& characterName)
+void sendLogout()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCharacterSwitch);
-    msg->addString(characterName);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientLeaveGame));
 }
 
-void ProtocolGame::sendPing()
+void sendPing()
 {
-    if (tibia::game::cipFeature(tibia::client::GameExtendedClientPing))
-        sendExtendedOpcode(2, "");
-    else {
-        const auto& msg = std::make_shared<OutputMessage>();
-        msg->addU8(Proto::ClientPing);
-        Protocol::send(msg);
-    }
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientPing));
 }
 
-void ProtocolGame::sendPingBack()
+void sendPingBack()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientPingBack);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientPingBack));
 }
 
-void ProtocolGame::sendSecondaryLogin(const std::string_view token)
+void sendConnectionPingBack()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSecondaryLogin);
-    msg->addString(token);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientConnectionPingBack));
 }
 
-void ProtocolGame::sendConnectionPingBack()
+void sendAutoWalk(const std::vector<tibia::client::Direction>& path)
 {
-    // CIP ConnectionPingBack (C 0x1C). On the primary sequenced link Crystal
-    // treats checksum==0 as this ping at the framing layer and drops it before
-    // the game dispatcher; this opcode body is for the dual-connection path /
-    // coverage. Prefer TGameserverDualConnection for the stability socket.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientConnectionPingBack);
-    send(msg);
-}
-
-void ProtocolGame::sendAutoWalk(const std::vector<tibia::client::Direction>& path)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientAutoWalk);
-    msg->addU8(path.size());
+    auto message = tibia::protocol::newGameclientMessage(100);
+    auto* m = message->MutableExtension(GameclientMessageGoPath::gameclient_message_go_path);
     for (const tibia::client::Direction dir : path) {
-        uint8_t byte;
+        uint8_t step = 0;
         switch (dir) {
-            case tibia::client::East:
-                byte = 1;
-                break;
-            case tibia::client::NorthEast:
-                byte = 2;
-                break;
-            case tibia::client::North:
-                byte = 3;
-                break;
-            case tibia::client::NorthWest:
-                byte = 4;
-                break;
-            case tibia::client::West:
-                byte = 5;
-                break;
-            case tibia::client::SouthWest:
-                byte = 6;
-                break;
-            case tibia::client::South:
-                byte = 7;
-                break;
-            case tibia::client::SouthEast:
-                byte = 8;
-                break;
-            default:
-                byte = 0;
-                break;
+            case tibia::client::East: step = 1; break;
+            case tibia::client::NorthEast: step = 2; break;
+            case tibia::client::North: step = 3; break;
+            case tibia::client::NorthWest: step = 4; break;
+            case tibia::client::West: step = 5; break;
+            case tibia::client::SouthWest: step = 6; break;
+            case tibia::client::South: step = 7; break;
+            case tibia::client::SouthEast: step = 8; break;
+            default: break;
         }
-        msg->addU8(byte);
+        m->add_directions(step);
     }
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendWalkNorth()
+void sendWalkNorth()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWalkNorth);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientWalkNorth));
 }
 
-void ProtocolGame::sendWalkEast()
+void sendWalkEast()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWalkEast);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientWalkEast));
 }
 
-void ProtocolGame::sendWalkSouth()
+void sendWalkSouth()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWalkSouth);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientWalkSouth));
 }
 
-void ProtocolGame::sendWalkWest()
+void sendWalkWest()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWalkWest);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientWalkWest));
 }
 
-void ProtocolGame::sendStop()
+void sendStop()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientStop);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientStop));
 }
 
-void ProtocolGame::sendWalkNorthEast()
+void sendWalkNorthEast()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWalkNorthEast);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientWalkNorthEast));
 }
 
-void ProtocolGame::sendWalkSouthEast()
+void sendWalkSouthEast()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWalkSouthEast);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientWalkSouthEast));
 }
 
-void ProtocolGame::sendWalkSouthWest()
+void sendWalkSouthWest()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWalkSouthWest);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientWalkSouthWest));
 }
 
-void ProtocolGame::sendWalkNorthWest()
+void sendWalkNorthWest()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWalkNorthWest);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientWalkNorthWest));
 }
 
-void ProtocolGame::sendTurnNorth()
+void sendTurnNorth()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTurnNorth);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientTurnNorth));
 }
 
-void ProtocolGame::sendTurnEast()
+void sendTurnEast()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTurnEast);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientTurnEast));
 }
 
-void ProtocolGame::sendTurnSouth()
+void sendTurnSouth()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTurnSouth);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientTurnSouth));
 }
 
-void ProtocolGame::sendTurnWest()
+void sendTurnWest()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTurnWest);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientTurnWest));
 }
 
-void ProtocolGame::sendTeleport(const Position& pos)
+void sendTeleport(const Position& pos)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTeleport);
-    addPosition(msg, pos);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(115);
+    auto* m = message->MutableExtension(GameclientMessageTeleport::gameclient_message_teleport);
+    setCoordinate(m->mutable_position(), pos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendStartOfflineTraining(const uint8_t skillType)
+void sendStartOfflineTraining(const uint8_t skillType)
 {
     if (std::cmp_greater(skillType, static_cast<uint8_t>(tibia::client::Fishing))) {
         return;
     }
 
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientStartOfflineTraining);
-    msg->addU8(skillType);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(116);
+    auto* m = message->MutableExtension(GameclientMessageStartOfflineTraining::gameclient_message_start_offline_training);
+    m->set_skill(skillType);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendTutorialChangeVocation(uint8_t vocationClientId)
+void sendTutorialChangeVocation(uint8_t vocationClientId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTutorialChangeVocation);
-    msg->addU8(vocationClientId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(110);
+    auto* m = message->MutableExtension(GameclientMessageSetVocation::gameclient_message_set_vocation);
+    m->set_vocation(vocationClientId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendEquipItemWithTier(const uint16_t itemId, const uint8_t tier)
+void sendEquipItemWithTier(const uint16_t itemId, const uint8_t tier)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientEquipItem);
-    msg->addU16(itemId);
-    msg->addU8(tier);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(119);
+    auto* m = message->MutableExtension(GameclientMessageEquipObject::gameclient_message_equip_object);
+    m->set_object_id(itemId);
+    m->set_tier(tier);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendEquipItemWithCountOrSubType(const uint16_t itemId, const uint16_t countOrSubType)
+void sendEquipItemWithCountOrSubType(const uint16_t itemId, const uint16_t countOrSubType)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientEquipItem);
-    msg->addU16(itemId);
-    if (tibia::game::cipFeature(tibia::client::GameCountU16)) {
-        msg->addU16(countOrSubType);
-    } else {
-        msg->addU8(static_cast<uint8_t>(countOrSubType));
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(119);
+    auto* m = message->MutableExtension(GameclientMessageEquipObject::gameclient_message_equip_object);
+    m->set_object_id(itemId);
+    m->set_tier(static_cast<uint8_t>(countOrSubType));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendMove(const Position& fromPos, const uint16_t thingId, const uint8_t stackpos, const Position& toPos, const uint16_t count)
+void sendMove(const Position& fromPos, const uint16_t thingId, const uint8_t stackpos, const Position& toPos, const uint16_t count)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientMove);
-    addPosition(msg, fromPos);
-    msg->addU16(thingId);
-    msg->addU8(stackpos);
-    addPosition(msg, toPos);
-    if (tibia::game::cipFeature(tibia::client::GameCountU16))
-        msg->addU16(count);
-    else
-        msg->addU8(static_cast<uint8_t>(count));
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(120);
+    auto* m = message->MutableExtension(GameclientMessageMoveObject::gameclient_message_move_object);
+    setCoordinate(m->mutable_from_position(), fromPos);
+    m->set_object_id(thingId);
+    m->set_from_stack_position(stackpos);
+    setCoordinate(m->mutable_to_position(), toPos);
+    m->set_count(static_cast<uint8_t>(count));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendInspectNpcTrade(const uint16_t itemId, const uint16_t count)
+void sendInspectNpcTrade(const uint16_t itemId, const uint16_t count)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientInspectNpcTrade);
-    msg->addU16(itemId);
-    if (tibia::game::cipFeature(tibia::client::GameCountU16))
-        msg->addU16(count);
-    else
-        msg->addU8(static_cast<uint8_t>(count));
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(121);
+    auto* m = message->MutableExtension(GameclientMessageLookNPCTrade::gameclient_message_look_n_p_c_trade);
+    m->set_object_id(itemId);
+    m->set_count(static_cast<uint8_t>(count));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendBuyItem(const uint16_t itemId, const uint8_t subType, const uint16_t amount, const bool ignoreCapacity, const bool buyWithBackpack)
+void sendBuyItem(const uint16_t itemId, const uint8_t subType, const uint16_t amount, const bool ignoreCapacity, const bool buyWithBackpack)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBuyItem);
-    msg->addU16(itemId);
-    msg->addU8(subType);
-    if (tibia::game::cipFeature(tibia::client::GameDoubleShopSellAmount))
-        msg->addU16(amount);
-    else
-        msg->addU8(static_cast<uint8_t>(amount));
-    msg->addU8(ignoreCapacity);
-    msg->addU8(buyWithBackpack);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(122);
+    auto* m = message->MutableExtension(GameclientMessageBuyObject::gameclient_message_buy_object);
+    m->set_object_id(itemId);
+    m->set_subtype(subType);
+    m->set_amount(amount);
+    m->set_ignore_capacity(ignoreCapacity);
+    m->set_in_backpacks(buyWithBackpack);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendSellItem(const uint16_t itemId, const uint8_t subType, const uint16_t amount, const bool ignoreEquipped)
+void sendSellItem(const uint16_t itemId, const uint8_t subType, const uint16_t amount, const bool ignoreEquipped)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSellItem);
-    msg->addU16(itemId);
-    msg->addU8(subType);
-    if (tibia::game::cipFeature(tibia::client::GameDoubleShopSellAmount))
-        msg->addU16(amount);
-    else
-        msg->addU8(static_cast<uint8_t>(amount));
-    msg->addU8(ignoreEquipped);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(123);
+    auto* m = message->MutableExtension(GameclientMessageSellObject::gameclient_message_sell_object);
+    m->set_object_id(itemId);
+    m->set_subtype(subType);
+    m->set_amount(amount);
+    m->set_ignore_equipped(ignoreEquipped);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCloseNpcTrade()
+void sendCloseNpcTrade()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCloseNpcTrade);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientCloseNpcTrade));
 }
 
-void ProtocolGame::sendRequestTrade(const Position& pos, const uint16_t thingId, const uint8_t stackpos, const uint32_t creatureId)
+void sendRequestTrade(const Position& pos, const uint16_t thingId, const uint8_t stackpos, const uint32_t creatureId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestTrade);
-    addPosition(msg, pos);
-    msg->addU16(thingId);
-    msg->addU8(stackpos);
-    msg->addU32(creatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(125);
+    auto* m = message->MutableExtension(GameclientMessageTradeObject::gameclient_message_trade_object);
+    setCoordinate(m->mutable_position(), pos);
+    m->set_object_id(thingId);
+    m->set_stack_position(stackpos);
+    m->set_creature_id(creatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendInspectTrade(const bool counterOffer, const uint8_t index)
+void sendInspectTrade(const bool counterOffer, const uint8_t index)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientInspectTrade);
-    msg->addU8(counterOffer);
-    msg->addU8(index);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(126);
+    auto* m = message->MutableExtension(GameclientMessageLookTrade::gameclient_message_look_trade);
+    m->set_counter_offer(counterOffer ? 1u : 0u);
+    m->set_index(index);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendAcceptTrade()
+void sendAcceptTrade()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientAcceptTrade);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientAcceptTrade));
 }
 
-void ProtocolGame::sendRejectTrade()
+void sendRejectTrade()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRejectTrade);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientRejectTrade));
 }
 
-void ProtocolGame::sendUseItem(const Position& position, const uint16_t itemId, const uint8_t stackpos, const uint8_t index)
+void sendUseItem(const Position& position, const uint16_t itemId, const uint8_t stackpos, const uint8_t index)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientUseItem);
-    addPosition(msg, position);
-    msg->addU16(itemId);
-    msg->addU8(stackpos);
-    msg->addU8(index);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(130);
+    auto* m = message->MutableExtension(GameclientMessageUseObject::gameclient_message_use_object);
+    setCoordinate(m->mutable_position(), position);
+    m->set_object_id(itemId);
+    m->set_stack_position(stackpos);
+    m->set_container_index(index);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendUseItemWith(const Position& fromPos, const uint16_t itemId, const uint8_t fromStackPos, const Position& toPos, const uint16_t toThingId, const uint8_t toStackPos)
+void sendUseItemWith(const Position& fromPos, const uint16_t itemId, const uint8_t fromStackPos, const Position& toPos, const uint16_t toThingId, const uint8_t toStackPos)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientUseItemWith);
-    addPosition(msg, fromPos);
-    msg->addU16(itemId);
-    msg->addU8(fromStackPos);
-    addPosition(msg, toPos);
-    msg->addU16(toThingId);
-    msg->addU8(toStackPos);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(131);
+    auto* m = message->MutableExtension(GameclientMessageUseTwoObjects::gameclient_message_use_two_objects);
+    setCoordinate(m->mutable_from_position(), fromPos);
+    m->set_object_id(itemId);
+    m->set_from_stack_position(fromStackPos);
+    setCoordinate(m->mutable_to_position(), toPos);
+    m->set_to_object_id(toThingId);
+    m->set_to_stack_position(toStackPos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendUseOnCreature(const Position& pos, const uint16_t thingId, const uint8_t stackpos, const uint32_t creatureId)
+void sendUseOnCreature(const Position& pos, const uint16_t thingId, const uint8_t stackpos, const uint32_t creatureId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientUseOnCreature);
-    addPosition(msg, pos);
-    msg->addU16(thingId);
-    msg->addU8(stackpos);
-    msg->addU32(creatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(132);
+    auto* m = message->MutableExtension(GameclientMessageUseOnCreature::gameclient_message_use_on_creature);
+    setCoordinate(m->mutable_position(), pos);
+    m->set_object_id(thingId);
+    m->set_stack_position(stackpos);
+    m->set_creature_id(creatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRotateItem(const Position& pos, const uint16_t thingId, const uint8_t stackpos)
+void sendRotateItem(const Position& pos, const uint16_t thingId, const uint8_t stackpos)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRotateItem);
-    addPosition(msg, pos);
-    msg->addU16(thingId);
-    msg->addU8(stackpos);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(133);
+    auto* m = message->MutableExtension(GameclientMessageTurnObject::gameclient_message_turn_object);
+    setCoordinate(m->mutable_position(), pos);
+    m->set_object_id(thingId);
+    m->set_stack_position(stackpos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendOnWrapItem(const Position& pos, const uint16_t thingId, const uint8_t stackpos)
+void sendOnWrapItem(const Position& pos, const uint16_t thingId, const uint8_t stackpos)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOnWrapItem);
-    addPosition(msg, pos);
-    msg->addU16(thingId);
-    msg->addU8(stackpos);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(139);
+    auto* m = message->MutableExtension(GameclientMessageToggleWrapState::gameclient_message_toggle_wrap_state);
+    setCoordinate(m->mutable_position(), pos);
+    m->set_object_id(thingId);
+    m->set_stack_position(stackpos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCloseContainer(const uint8_t containerId)
+void sendCloseContainer(const uint8_t containerId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCloseContainer);
-    msg->addU8(containerId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(135);
+    auto* m = message->MutableExtension(GameclientMessageCloseContainer::gameclient_message_close_container);
+    m->set_container_id(containerId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendUpContainer(const uint8_t containerId)
+void sendUpContainer(const uint8_t containerId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientUpContainer);
-    msg->addU8(containerId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(136);
+    auto* m = message->MutableExtension(GameclientMessageUpContainer::gameclient_message_up_container);
+    m->set_container_id(containerId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendEditText(const uint32_t id, const std::string_view text)
+void sendEditText(const uint32_t id, const std::string_view text)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientEditText);
-    msg->addU32(id);
-    msg->addString(text);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(137);
+    auto* m = message->MutableExtension(GameclientMessageEditText::gameclient_message_edit_text);
+    m->set_window_id(id);
+    m->set_text(std::string(text));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendEditList(const uint32_t id, const uint8_t doorId, const std::string_view text)
+void sendEditList(const uint32_t id, const uint8_t doorId, const std::string_view text)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientEditList);
-    msg->addU8(doorId);
-    msg->addU32(id);
-    msg->addString(text);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(138);
+    auto* m = message->MutableExtension(GameclientMessageEditList::gameclient_message_edit_list);
+    m->set_list_type(doorId);
+    m->set_window_id(id);
+    m->set_text(std::string(text));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendLook(const Position& position, const uint16_t itemId, const uint8_t stackpos)
+void sendLook(const Position& position, const uint16_t itemId, const uint8_t stackpos)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientLook);
-    addPosition(msg, position);
-    msg->addU16(itemId);
-    msg->addU8(stackpos);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(140);
+    auto* m = message->MutableExtension(GameclientMessageLook::gameclient_message_look);
+    setCoordinate(m->mutable_position(), position);
+    m->set_object_id(itemId);
+    m->set_stack_position(stackpos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendLookCreature(const uint32_t creatureId)
+void sendLookCreature(const uint32_t creatureId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientLookCreature);
-    msg->addU32(creatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(141);
+    auto* m = message->MutableExtension(GameclientMessageLookAtCreature::gameclient_message_look_at_creature);
+    m->set_creature_id(creatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendTalk(const tibia::client::MessageMode mode, const uint16_t channelId, const std::string_view receiver, const std::string_view message)
+void sendTalk(const tibia::client::MessageMode mode, const uint16_t channelId, const std::string_view receiver, const std::string_view message)
 {
     // Consume any staged crosshair aim up front so an aborted/empty say never leaks it to the next one.
     const Position talkAimPos = tibia::game::takeNextTalkAim();
     const uint8_t talkAimMode = tibia::game::takeNextTalkAimMode();
-
     if (message.empty())
         return;
-
     if (message.length() > UINT8_MAX) {
-        g_logger.traceError("message too large");
+        qCritical("%s", std::format("message too large").c_str());
         return;
     }
-
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTalk);
-    msg->addU8(Proto::translateMessageModeToServer(mode));
-
+    auto talk = tibia::protocol::newGameclientMessage(150);
+    auto* m = talk->MutableExtension(GameclientMessageTalk::gameclient_message_talk);
+    m->set_mode(Proto::translateMessageModeToServer(mode));
     switch (mode) {
         case tibia::client::MessagePrivateTo:
         case tibia::client::MessageGamemasterPrivateTo:
-            msg->addString(receiver);
+            m->set_receiver(std::string(receiver));
             break;
         case tibia::client::MessageChannel:
         case tibia::client::MessageChannelHighlight:
         case tibia::client::MessageChannelManagement:
         case tibia::client::MessageGamemasterChannel:
-            msg->addU16(channelId);
+            m->set_channel_id(channelId);
             break;
         default:
             break;
     }
-
-    msg->addString(message);
-
-    if (tibia::game::clientRevision() >= 1530) {
-        // 15.25 say tail: [aimMode u8]; if != 0: [x u16][y u16][z u8][seq u8].
-        // Used by needPosition (crosshair) spells; harmless on plain chat (cleared per say).
-        if (talkAimMode == 3) {
-            msg->addU8(3); // 3 = at target or self, no tile
-        } else if (talkAimPos.isValid()) {
-            msg->addU8(talkAimMode == 2 ? 2 : 1); // 1 = crosshair, 2 = at mouse position
-            addPosition(msg, talkAimPos);
-            msg->addU8(0); // seq byte, server never reads it
-        } else {
-            msg->addU8(0); // no aim -> server clears the spell aim position
-        }
+    m->set_text(std::string(message));
+    // Spell aim: 3 at target or self, 1 crosshair / 2 mouse with the tile.
+    if (talkAimMode == 3) {
+        m->set_aim_mode(3);
+    } else if (talkAimPos.isValid()) {
+        m->set_aim_mode(talkAimMode == 2 ? 2 : 1);
+        setCoordinate(m->mutable_aim_position(), talkAimPos);
     }
-
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(talk));
 }
 
-void ProtocolGame::sendRequestChannels()
+void sendRequestChannels()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestChannels);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientRequestChannels));
 }
 
-void ProtocolGame::sendJoinChannel(const uint16_t channelId)
+void sendJoinChannel(const uint16_t channelId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientJoinChannel);
-    msg->addU16(channelId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(152);
+    auto* m = message->MutableExtension(GameclientMessageJoinChannel::gameclient_message_join_channel);
+    m->set_channel_id(channelId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendLeaveChannel(const uint16_t channelId)
+void sendLeaveChannel(const uint16_t channelId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientLeaveChannel);
-    msg->addU16(channelId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(153);
+    auto* m = message->MutableExtension(GameclientMessageLeaveChannel::gameclient_message_leave_channel);
+    m->set_channel_id(channelId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendOpenPrivateChannel(const std::string_view receiver)
+void sendOpenPrivateChannel(const std::string_view receiver)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenPrivateChannel);
-    msg->addString(receiver);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(154);
+    auto* m = message->MutableExtension(GameclientMessagePrivateChannel::gameclient_message_private_channel);
+    m->set_receiver(std::string(receiver));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendEditGuildMessage(const std::string_view text)
+void sendEditGuildMessage(const std::string_view text)
 {
     // CIP EditGuildMessage (C 0x9C).
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientEditGuildMessage);
-    msg->addString(text);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(156);
+    auto* m = message->MutableExtension(GameclientMessageEditGuildMessage::gameclient_message_edit_guild_message);
+    m->set_text(std::string(text));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCloseNpcChannel()
+void sendCloseNpcChannel()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCloseNpcChannel);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientCloseNpcChannel));
 }
 
-void ProtocolGame::sendChangeFightModes(const tibia::client::FightModes fightMode, const tibia::client::ChaseModes chaseMode, const bool safeFight, const tibia::client::PVPModes pvpMode)
+void sendChangeFightModes(const tibia::client::FightModes fightMode, const tibia::client::ChaseModes chaseMode, const bool safeFight, const tibia::client::PVPModes pvpMode)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientChangeFightModes);
-
-    if (tibia::game::cipFeature(tibia::client::GameTacticsWithoutFightMode)) {
-        msg->addU8(chaseMode);
-        msg->addU8(safeFight);
-        msg->addU8(pvpMode);
-        send(msg);
-        return;
-    }
-
-    msg->addU8(fightMode);
-    msg->addU8(chaseMode);
-    msg->addU8(safeFight);
-    if (tibia::game::cipFeature(tibia::client::GamePVPMode))
-        msg->addU8(pvpMode);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(160);
+    auto* m = message->MutableExtension(GameclientMessageSetTactics::gameclient_message_set_tactics);
+    m->set_chase_opponent(chaseMode != 0);
+    m->set_secure_mode(safeFight);
+    m->set_pvp_mode(pvpMode);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendAttack(const uint32_t creatureId, const uint32_t seq)
+void sendAttack(const uint32_t creatureId, const uint32_t seq)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientAttack);
-    msg->addU32(creatureId);
-    if (tibia::game::cipFeature(tibia::client::GameAttackSeq))
-        msg->addU32(seq);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(161);
+    auto* m = message->MutableExtension(GameclientMessageAttack::gameclient_message_attack);
+    m->set_creature_id(creatureId);
+    m->set_sequence(seq);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendFollow(const uint32_t creatureId, const uint32_t seq)
+void sendFollow(const uint32_t creatureId, const uint32_t seq)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientFollow);
-    msg->addU32(creatureId);
-    if (tibia::game::cipFeature(tibia::client::GameAttackSeq))
-        msg->addU32(seq);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(162);
+    auto* m = message->MutableExtension(GameclientMessageFollow::gameclient_message_follow);
+    m->set_creature_id(creatureId);
+    m->set_sequence(seq);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendInviteToParty(const uint32_t creatureId)
+void sendInviteToParty(const uint32_t creatureId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientInviteToParty);
-    msg->addU32(creatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(163);
+    auto* m = message->MutableExtension(GameclientMessageInviteToParty::gameclient_message_invite_to_party);
+    m->set_creature_id(creatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendJoinParty(const uint32_t creatureId)
+void sendJoinParty(const uint32_t creatureId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientJoinParty);
-    msg->addU32(creatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(164);
+    auto* m = message->MutableExtension(GameclientMessageJoinParty::gameclient_message_join_party);
+    m->set_creature_id(creatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRevokeInvitation(const uint32_t creatureId)
+void sendRevokeInvitation(const uint32_t creatureId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRevokeInvitation);
-    msg->addU32(creatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(165);
+    auto* m = message->MutableExtension(GameclientMessageRevokeInvitation::gameclient_message_revoke_invitation);
+    m->set_creature_id(creatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendPassLeadership(const uint32_t creatureId)
+void sendPassLeadership(const uint32_t creatureId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientPassLeadership);
-    msg->addU32(creatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(166);
+    auto* m = message->MutableExtension(GameclientMessagePassLeadership::gameclient_message_pass_leadership);
+    m->set_creature_id(creatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendLeaveParty()
+void sendLeaveParty()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientLeaveParty);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientLeaveParty));
 }
 
-void ProtocolGame::sendDisbandParty()
+void sendDisbandParty()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientDisbandParty);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientDisbandParty));
 }
 
-void ProtocolGame::sendShareExperience(const bool active)
+void sendShareExperience(const bool active)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientShareExperience);
-    msg->addU8(active);
-    if (tibia::game::clientRevision() < 910)
-        msg->addU8(0);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(168);
+    auto* m = message->MutableExtension(GameclientMessageShareExperience::gameclient_message_share_experience);
+    m->set_active(active);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendPartyAnalyzerAction(const uint8_t action, const std::vector<std::tuple<uint16_t, uint64_t>>& items)
+void sendPartyAnalyzerAction(const uint8_t action, const std::vector<std::tuple<uint16_t, uint64_t>>& items)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientPartyAnalyzerAction); // 43
-    msg->addU8(action);
-
-    // Only add items data for PARTYANALYZERACTION_PRICEVALUE (action 3)
-    if (action == 3) { // PARTYANALYZERACTION_PRICEVALUE
-        msg->addU16(static_cast<uint16_t>(items.size()));
+    auto message = tibia::protocol::newGameclientMessage(43);
+    auto* m = message->MutableExtension(GameclientMessagePartyHuntAnalyser::gameclient_message_party_hunt_analyser);
+    m->set_action(action);
+    if (action == tibia::client::PARTYANALYZERACTION_PRICEVALUE) {
         for (const auto& [itemId, price] : items) {
-            msg->addU16(itemId);
-            msg->addU64(price);
+            auto* entry = m->add_prices();
+            entry->set_object_id(itemId);
+            entry->set_price(price);
         }
     }
-
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendTeamFinderLeaderAction(const uint8_t action, const uint32_t memberId, const uint8_t memberStatus, const TeamFinderAssemble& assemble)
+void sendTeamFinderLeaderAction(const uint8_t action, const uint32_t memberId, const uint8_t memberStatus, const TeamFinderAssemble& assemble)
 {
-    // Crystal parseLeaderFinderWindow: action 0/1 bare; 2 memberId+status; 3 createLeaderTeamFinder fields
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTeamFinderAssembleTeam);
-    msg->addU8(action);
-
+    auto message = tibia::protocol::newGameclientMessage(44);
+    auto* m = message->MutableExtension(GameclientMessageTeamFinderAssembleTeam::gameclient_message_team_finder_assemble_team);
+    m->set_action(action);
     if (action == 2) {
-        msg->addU32(memberId);
-        msg->addU8(memberStatus);
+        m->set_member_id(memberId);
+        m->set_member_status(memberStatus);
     } else if (action == 3) {
-        msg->addU16(assemble.minLevel);
-        msg->addU16(assemble.maxLevel);
-        msg->addU8(assemble.vocationIDs);
-        msg->addU16(assemble.teamSlots);
-        msg->addU16(assemble.freeSlots);
-        msg->addU8(assemble.partyBool ? 1 : 0);
-        msg->addU32(assemble.timestamp);
-        msg->addU8(assemble.teamType);
-        switch (assemble.teamType) {
-            case 1:
-                msg->addU16(assemble.bossID);
-                break;
-            case 2:
-                msg->addU16(assemble.huntType);
-                msg->addU16(assemble.huntArea);
-                break;
-            case 3:
-                msg->addU16(assemble.questID);
-                break;
-            default:
-                break;
-        }
+        auto* a = m->mutable_assembly();
+        a->set_min_level(assemble.minLevel);
+        a->set_max_level(assemble.maxLevel);
+        a->set_vocations(assemble.vocationIDs);
+        a->set_team_slots(assemble.teamSlots);
+        a->set_free_slots(assemble.freeSlots);
+        a->set_party_only(assemble.partyBool);
+        a->set_timestamp(assemble.timestamp);
+        a->set_team_type(assemble.teamType);
+        // boss / hunt type + area / quest
+        if (assemble.teamType == 1)
+            a->set_first_id(assemble.bossID);
+        else if (assemble.teamType == 2) {
+            a->set_first_id(assemble.huntType);
+            a->set_second_id(assemble.huntArea);
+        } else if (assemble.teamType == 3)
+            a->set_first_id(assemble.questID);
     }
-
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendTeamFinderMemberAction(const uint8_t action, const uint32_t leaderId)
+void sendTeamFinderMemberAction(const uint8_t action, const uint32_t leaderId)
 {
-    // Crystal parseMemberFinderWindow: action 0 = list; else leaderId then join(1)/leave(other)
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTeamFinderJoinTeam);
-    msg->addU8(action);
-    if (action != 0)
-        msg->addU32(leaderId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(45);
+    auto* m = message->MutableExtension(GameclientMessageTeamFinderJoinTeam::gameclient_message_team_finder_join_team);
+    m->set_action(action);
+    m->set_leader_id(leaderId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendOpenDepotSearch()
+void sendOpenDepotSearch()
 {
-    // Empty body. Crystal exposes parseOpenDepotSearch but currently routes C 0x92 to cyclopedia map.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenDepotSearch);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientOpenDepotSearch));
 }
 
-void ProtocolGame::sendCloseDepotSearch()
+void sendCloseDepotSearch()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCloseDepotSearch);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientCloseDepotSearch));
 }
 
-void ProtocolGame::sendDepotSearchType(const uint16_t itemId, const uint8_t tier)
+void sendDepotSearchType(const uint16_t itemId, const uint8_t tier)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientDepotSearchType);
-    msg->addU16(itemId);
-    if (const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem)) {
-        if (thing->getClassification() > 0)
-            msg->addU8(tier);
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(148);
+    auto* m = message->MutableExtension(GameclientMessageDepotSearchType::gameclient_message_depot_search_type);
+    m->set_object_id(itemId);
+    if (tibia::game::rawThingType(itemId, ThingCategoryItem) && tibia::game::rawThingType(itemId, ThingCategoryItem)->getClassification() > 0)
+        m->set_tier(tier);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRetrieveDepotSearch(const uint16_t itemId, const uint8_t tier, const uint8_t type)
+void sendRetrieveDepotSearch(const uint16_t itemId, const uint8_t tier, const uint8_t type)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRetrieveDepotSearch);
-    msg->addU16(itemId);
-    if (const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem)) {
-        if (thing->getClassification() > 0)
-            msg->addU8(tier);
-    }
-    msg->addU8(type);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(41);
+    auto* m = message->MutableExtension(GameclientMessageDepotSearchRetrieve::gameclient_message_depot_search_retrieve);
+    m->set_object_id(itemId);
+    if (tibia::game::rawThingType(itemId, ThingCategoryItem) && tibia::game::rawThingType(itemId, ThingCategoryItem)->getClassification() > 0)
+        m->set_tier(tier);
+    m->set_retrieve_type(type);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendOpenParentContainer(const Position& pos)
+void sendOpenParentContainer(const Position& pos)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenParentContainer);
-    addPosition(msg, pos);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(149);
+    auto* m = message->MutableExtension(GameclientMessageOpenParentContainer::gameclient_message_open_parent_container);
+    setCoordinate(m->mutable_position(), pos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendGatherAll(const Position& pos, const uint16_t itemId, const uint8_t stackpos)
+void sendGatherAll(const Position& pos, const uint16_t itemId, const uint8_t stackpos)
 {
     // Crystal parseRewardChestCollect (C 0xFF)
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientGatherAll);
-    addPosition(msg, pos);
-    msg->addU16(itemId);
-    msg->addU8(stackpos);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(255);
+    auto* m = message->MutableExtension(GameclientMessageGatherAll::gameclient_message_gather_all);
+    setCoordinate(m->mutable_position(), pos);
+    m->set_object_id(itemId);
+    m->set_stack_position(stackpos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendOpenOwnChannel()
+void sendOpenOwnChannel()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenOwnChannel);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientOpenOwnChannel));
 }
 
-void ProtocolGame::sendInviteToOwnChannel(const std::string_view name)
+void sendInviteToOwnChannel(const std::string_view name)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientInviteToOwnChannel);
-    msg->addString(name);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(171);
+    auto* m = message->MutableExtension(GameclientMessageInviteToChannel::gameclient_message_invite_to_channel);
+    m->set_name(std::string(name));
+    m->set_channel_id(0);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendExcludeFromOwnChannel(const std::string_view name)
+void sendExcludeFromOwnChannel(const std::string_view name)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientExcludeFromOwnChannel);
-    msg->addString(name);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(172);
+    auto* m = message->MutableExtension(GameclientMessageExcludeFromChannel::gameclient_message_exclude_from_channel);
+    m->set_name(std::string(name));
+    m->set_channel_id(0);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendSoulSealsAction(const uint16_t raceId)
+void sendSoulSealsAction(const uint16_t raceId)
 {
     if (std::cmp_equal(raceId, 0)) {
         return;
     }
 
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSoulSealsAction);
-    msg->addU16(raceId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(186);
+    auto* m = message->MutableExtension(GameclientMessageSoulSealsFightMonster::gameclient_message_soul_seals_fight_monster);
+    m->set_race_id(raceId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCancelAttackAndFollow()
+void sendCancelAttackAndFollow()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCancelAttackAndFollow);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientCancelAttackAndFollow));
 }
 
-void ProtocolGame::sendRefreshContainer(const uint8_t containerId)
+void sendRequestBless()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRefreshContainer);
-    msg->addU8(containerId);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientRequestBless));
 }
 
-void ProtocolGame::sendRequestBless()
+void sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, const bool autoTrackNewQuests, const bool autoUntrackCompletedQuests, const uint8_t extra)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestBless);
-    send(msg);
-}
-
-void ProtocolGame::sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, const bool autoTrackNewQuests, const bool autoUntrackCompletedQuests, const uint8_t extra)
-{
-    const auto msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestTrackerQuestLog);
+    (void)extra;
+    auto message = tibia::protocol::newGameclientMessage(208);
+    auto* m = message->MutableExtension(GameclientMessageTrackQuestFlags::gameclient_message_track_quest_flags);
     const auto missionCount = std::min(missionIds.size(), static_cast<size_t>(255));
-    msg->addU8(static_cast<uint8_t>(missionCount));
-
-    for (size_t i = 0; i < missionCount; ++i) {
-        msg->addU16(missionIds[i]);
-    }
-
-    if (tibia::game::clientRevision() >= 1410) {
-        msg->addU8(autoTrackNewQuests ? 1 : 0);
-        msg->addU8(autoUntrackCompletedQuests ? 1 : 0);
-        msg->addU8(extra);
-    }
-
-    send(msg);
+    for (size_t i = 0; i < missionCount; ++i)
+        m->add_mission_ids(missionIds[i]);
+    m->set_auto_track_new_quests(autoTrackNewQuests);
+    m->set_auto_untrack_completed_quests(autoUntrackCompletedQuests);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRequestOutfit()
+void sendRequestOutfit()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestOutfit);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(210);
+    auto* m = message->MutableExtension(GameclientMessageGetOutfit::gameclient_message_get_outfit);
+    m->set_outfit_type(0); // the player's own outfit
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
 namespace {
 
-void addOutfitLook(const OutputMessagePtr& msg, const Outfit& outfit)
+}
+
+void sendChangeOutfit(const Outfit& outfit, const bool mounted, const bool randomMount)
 {
-    if (tibia::game::cipFeature(tibia::client::GameLooktypeU16))
-        msg->addU16(outfit.getId());
-    else
-        msg->addU8(static_cast<uint8_t>(outfit.getId()));
-
-    msg->addU8(outfit.getHead());
-    msg->addU8(outfit.getBody());
-    msg->addU8(outfit.getLegs());
-    msg->addU8(outfit.getFeet());
-
-    if (tibia::game::cipFeature(tibia::client::GamePlayerAddons))
-        msg->addU8(outfit.getAddons());
+    auto message = tibia::protocol::newGameclientMessage(211);
+    auto* m = message->MutableExtension(GameclientMessageSetOutfit::gameclient_message_set_outfit);
+    m->set_outfit_type(0);
+    auto* look = m->mutable_look();
+    look->set_look_type(outfit.getId());
+    look->set_head(outfit.getHead());
+    look->set_body(outfit.getBody());
+    look->set_legs(outfit.getLegs());
+    look->set_feet(outfit.getFeet());
+    look->set_addons(outfit.getAddons());
+    auto* mount = m->mutable_mount();
+    mount->set_look_type(outfit.getMount());
+    mount->set_head(outfit.getMountHead());
+    mount->set_body(outfit.getMountBody());
+    mount->set_legs(outfit.getMountLegs());
+    mount->set_feet(outfit.getMountFeet());
+    m->set_mounted(mounted);
+    m->set_familiar(outfit.getFamiliar());
+    m->set_random_mount(randomMount);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-}
-
-void ProtocolGame::sendChangeOutfit(const Outfit& outfit, const bool mounted, const bool randomMount)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientChangeOutfit);
-
-    if (tibia::game::clientRevision() >= 1281) {
-        msg->addU8(0x00); // normal outfit window
-    }
-
-    addOutfitLook(msg, outfit);
-
-    if (tibia::game::cipFeature(tibia::client::GamePlayerMounts)) {
-        msg->addU16(outfit.getMount());
-        if (tibia::game::clientRevision() >= 1281) {
-            msg->addU8(outfit.getMountHead());
-            msg->addU8(outfit.getMountBody());
-            msg->addU8(outfit.getMountLegs());
-            msg->addU8(outfit.getMountFeet());
-        }
-    }
-
-    if (tibia::game::clientRevision() >= 1334) {
-        msg->addU8(mounted);
-    }
-
-    if (tibia::game::cipFeature(tibia::client::GamePlayerFamiliars)) {
-        msg->addU16(outfit.getFamiliar()); //familiars
-    }
-
-    if (tibia::game::clientRevision() >= 1281) {
-        msg->addU8(randomMount); //randomizeMount
-    }
-
-    send(msg);
-}
-
-void ProtocolGame::sendSetShowOffSocketConfiguration(const Outfit& outfit, const Position& pos, const uint16_t itemId,
+void sendSetShowOffSocketConfiguration(const Outfit& outfit, const Position& pos, const uint16_t itemId,
                                                      const uint8_t stackpos, const uint8_t direction,
                                                      const uint8_t podiumVisible)
 {
-    // Crystal parseSetOutfit outfitType 2.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientChangeOutfit);
-    msg->addU8(0x02);
-    addOutfitLook(msg, outfit);
-    addPosition(msg, pos);
-    msg->addU16(itemId);
-    msg->addU8(stackpos);
-    msg->addU16(outfit.getMount());
-    msg->addU8(outfit.getMountHead());
-    msg->addU8(outfit.getMountBody());
-    msg->addU8(outfit.getMountLegs());
-    msg->addU8(outfit.getMountFeet());
-    msg->addU8(direction);
-    msg->addU8(podiumVisible);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(211);
+    auto* m = message->MutableExtension(GameclientMessageSetOutfit::gameclient_message_set_outfit);
+    m->set_outfit_type(2);
+    auto* look = m->mutable_look();
+    look->set_look_type(outfit.getId());
+    look->set_head(outfit.getHead());
+    look->set_body(outfit.getBody());
+    look->set_legs(outfit.getLegs());
+    look->set_feet(outfit.getFeet());
+    look->set_addons(outfit.getAddons());
+    setCoordinate(m->mutable_position(), pos);
+    m->set_object_id(itemId);
+    m->set_stack_position(stackpos);
+    auto* mount = m->mutable_mount();
+    mount->set_look_type(outfit.getMount());
+    mount->set_head(outfit.getMountHead());
+    mount->set_body(outfit.getMountBody());
+    mount->set_legs(outfit.getMountLegs());
+    mount->set_feet(outfit.getMountFeet());
+    m->set_direction(direction);
+    m->set_podium_visible(podiumVisible != 0);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendSetHirelingOutfit(const Outfit& outfit, const uint32_t hirelingCreatureId)
+void sendSetHirelingOutfit(const Outfit& outfit, const uint32_t hirelingCreatureId)
 {
-    // CIP ChangeOutfit type 3 (hireling): look + hireling creature id.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientChangeOutfit);
-    msg->addU8(0x03);
-    addOutfitLook(msg, outfit);
-    msg->addU32(hirelingCreatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(211);
+    auto* m = message->MutableExtension(GameclientMessageSetOutfit::gameclient_message_set_outfit);
+    m->set_outfit_type(1);
+    auto* look = m->mutable_look();
+    look->set_look_type(outfit.getId());
+    look->set_head(outfit.getHead());
+    look->set_body(outfit.getBody());
+    look->set_legs(outfit.getLegs());
+    look->set_feet(outfit.getFeet());
+    look->set_addons(outfit.getAddons());
+    m->set_hireling_id(hirelingCreatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendMountStatus(const bool mount)
+void sendMountStatus(const bool mount)
 {
-    if (tibia::game::cipFeature(tibia::client::GamePlayerMounts)) {
-        const auto& msg = std::make_shared<OutputMessage>();
-        msg->addU8(Proto::ClientMount);
-        msg->addU8(mount);
-        send(msg);
-    } else {
-        g_logger.error("ProtocolGame::sendMountStatus does not support the current protocol.");
-    }
+    auto message = tibia::protocol::newGameclientMessage(212);
+    auto* m = message->MutableExtension(GameclientMessageMount::gameclient_message_mount);
+    m->set_mounted(mount);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendAddVip(const std::string_view name)
+void sendAddVip(const std::string_view name)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientAddVip);
-    msg->addString(name);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(220);
+    auto* m = message->MutableExtension(GameclientMessageAddBuddy::gameclient_message_add_buddy);
+    m->set_name(std::string(name));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRemoveVip(const uint32_t playerId)
+void sendRemoveVip(const uint32_t playerId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRemoveVip);
-    msg->addU32(playerId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(221);
+    auto* m = message->MutableExtension(GameclientMessageRemoveBuddy::gameclient_message_remove_buddy);
+    m->set_character_id(playerId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendEditVip(const uint32_t playerId, const std::string_view description, const uint32_t iconId, const bool notifyLogin, const std::vector<uint8_t>& groupIDs)
+void sendEditVip(const uint32_t playerId, const std::string_view description, const uint32_t iconId, const bool notifyLogin, const std::vector<uint8_t>& groupIDs)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientEditVip);
-    msg->addU32(playerId);
-    msg->addString(description);
-    msg->addU32(iconId);
-    msg->addU8(notifyLogin);
-    if (tibia::game::cipFeature(tibia::client::GameVipGroups)) {
-        msg->addU8(static_cast<uint8_t>(groupIDs.size()));
-        for (const uint8_t groupID : groupIDs) {
-            msg->addU8(groupID);
-        }
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(222);
+    auto* m = message->MutableExtension(GameclientMessageEditBuddy::gameclient_message_edit_buddy);
+    m->set_character_id(playerId);
+    m->set_description(std::string(description));
+    m->set_icon_id(iconId);
+    m->set_notify_login(notifyLogin);
+    for (const uint8_t groupID : groupIDs)
+        m->add_group_ids(groupID);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendEditVipGroups(const tibia::client::GroupsEditInfoType_t action, const uint8_t groupId, const std::string_view groupName)
+void sendEditVipGroups(const tibia::client::GroupsEditInfoType_t action, const uint8_t groupId, const std::string_view groupName)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientEditVipGroups);
-    msg->addU8(action);
-    switch (action) {
-        case tibia::client::VIP_GROUP_ADD: {
-            msg->addString(groupName);
-            break;
-        }
-        case tibia::client::VIP_GROUP_EDIT: {
-            msg->addU8(groupId);
-            msg->addString(groupName);
-            break;
-        }
-        case tibia::client::VIP_GROUP_REMOVE: {
-            msg->addU8(groupId);
-            break;
-        }
-        default: {
-            return;
-        }
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(223);
+    auto* m = message->MutableExtension(GameclientMessageBuddyGroup::gameclient_message_buddy_group);
+    m->set_action(action);
+    m->set_group_id(groupId);
+    m->set_name(std::string(groupName));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendWheelGemAction(uint8_t actionType, uint16_t param, uint8_t pos)
+void sendWheelGemAction(uint8_t actionType, uint16_t param, uint8_t pos)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWheelGemAction); // 0xE7
-    msg->addU8(actionType);
-
-    // Destroy(0)/Reshape(2)/ToggleLock(3): gem index U16; Reveal(1)/ImproveGrade(4): U8
+    auto message = tibia::protocol::newGameclientMessage(231);
+    auto* m = message->MutableExtension(GameclientMessageGemAtelier::gameclient_message_gem_atelier);
+    m->set_action(actionType);
     if (actionType == 0 || actionType == 2 || actionType == 3)
-        msg->addU16(param);
+        m->set_gem_index(param);
     else
-        msg->addU8(static_cast<uint8_t>(param));
-
-    // Reshape(2): mod index; ImproveGrade(4): mod id
-    if (actionType == 2 || actionType == 4)
-        msg->addU8(pos);
-
-    send(msg);
-
-    // 🔍 Log de envio bem-sucedido
-    g_logger.debug(std::format(
-        "[Client Gem Action] sendWheelGemAction enviado com sucesso -> actionType={} param={} pos={}",
-        static_cast<int>(actionType),
-        static_cast<int>(param),
-        static_cast<int>(pos)
-    ));
+        m->set_first_value(static_cast<uint8_t>(param));
+    m->set_second_value(pos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRuleViolationReport(const uint8_t type, const uint8_t reason, const std::string_view name, const std::string_view comment,
+void sendRuleViolationReport(const uint8_t type, const uint8_t reason, const std::string_view name, const std::string_view comment,
                                            const std::string_view translation, const uint32_t id)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRuleViolationReport);
-    msg->addU8(type);
-    msg->addU8(reason);
-    msg->addString(name);
-    msg->addString(comment);
-    if (type != 2) // bot reports carry no translation
-        msg->addString(translation);
-    if (type == 1 || type == 3 || type == 4) // statement / hireling / text id
-        msg->addU32(id);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(242);
+    auto* m = message->MutableExtension(GameclientMessageRuleViolationReport::gameclient_message_rule_violation_report);
+    m->set_report_type(type);
+    m->set_reason(reason);
+    m->set_name(std::string(name));
+    m->set_comment(std::string(comment));
+    m->set_translation(std::string(translation));
+    m->set_statement_id(id);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendBugReport(const uint8_t category, const std::string_view comment, const std::string_view typoSpeaker,
+void sendBugReport(const uint8_t category, const std::string_view comment, const std::string_view typoSpeaker,
                                  const std::string_view typoText, const Position& position)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBugReport);
-    msg->addU8(category);
-    msg->addString(comment);
+    auto message = tibia::protocol::newGameclientMessage(230);
+    auto* m = message->MutableExtension(GameclientMessageBugReport::gameclient_message_bug_report);
+    m->set_category(category);
+    m->set_comment(std::string(comment));
     if (category == 1) {
-        msg->addString(typoSpeaker);
-        msg->addString(typoText);
+        m->set_typo_speaker(std::string(typoSpeaker));
+        m->set_typo_text(std::string(typoText));
     } else if (category == 0) {
-        addPosition(msg, position);
+        setCoordinate(m->mutable_position(), position);
     }
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendGetGuildMessage()
+void sendGetGuildMessage()
 {
-    // CIP GuildMessage (C 0x9B).
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientGuildMessage);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientGuildMessage));
 }
 
-void ProtocolGame::sendGetTextForReport(const Position& position, const uint16_t typeId, const uint8_t stackPosition)
+void sendGetTextForReport(const Position& position, const uint16_t typeId, const uint8_t stackPosition)
 {
     // CIP GetTextForReport (C 0x9D).
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientGetTextForReport);
-    addPosition(msg, position);
-    msg->addU16(typeId);
-    msg->addU8(stackPosition);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(157);
+    auto* m = message->MutableExtension(GameclientMessageGetTextForReport::gameclient_message_get_text_for_report);
+    setCoordinate(m->mutable_position(), position);
+    m->set_object_id(typeId);
+    m->set_stack_position(stackPosition);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendGetOfferDescription(const uint32_t offerId)
+void sendGetOfferDescription(const uint32_t offerId)
 {
     // CIP GetOfferDescription (C 0xE8). Server OfferDescription answers with u32 + string.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientGetOfferDescription);
-    msg->addU32(offerId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(232);
+    auto* m = message->MutableExtension(GameclientMessageGetOfferDescription::gameclient_message_get_offer_description);
+    m->set_offer_id(offerId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRequestQuestLog()
+void sendRequestQuestLog()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestQuestLog);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientRequestQuestLog));
 }
 
-void ProtocolGame::sendRequestQuestLine(const uint16_t questId)
+void sendRequestQuestLine(const uint16_t questId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestQuestLine);
-    msg->addU16(questId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(241);
+    auto* m = message->MutableExtension(GameclientMessageGetQuestLine::gameclient_message_get_quest_line);
+    m->set_quest_id(questId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRequestItemInfo(const uint16_t itemId, const uint8_t subType, const uint8_t index)
+void sendRequestItemInfo(const uint16_t itemId, const uint8_t subType, const uint8_t index)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestItemInfo);
-    msg->addU8(subType);
-    msg->addU16(itemId);
-    msg->addU8(index);
-    send(msg);
+    (void)index;
+    auto message = tibia::protocol::newGameclientMessage(243);
+    auto* m = message->MutableExtension(GameclientMessageGetObjectInfo::gameclient_message_get_object_info);
+    auto* object = m->add_objects();
+    object->set_object_id(itemId);
+    object->set_data(subType);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendAnswerModalDialog(const uint32_t dialog, const uint8_t button, const uint8_t choice)
+void sendAnswerModalDialog(const uint32_t dialog, const uint8_t button, const uint8_t choice)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientAnswerModalDialog);
-    msg->addU32(dialog);
-    msg->addU8(button);
-    msg->addU8(choice);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(249);
+    auto* m = message->MutableExtension(GameclientMessageAnswerModalDialog::gameclient_message_answer_modal_dialog);
+    m->set_dialog_id(dialog);
+    m->set_button(button);
+    m->set_choice(choice);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendBrowseField(const Position& position)
+void sendBrowseField(const Position& position)
 {
-    if (!tibia::game::cipFeature(tibia::client::GameBrowseField))
-        return;
 
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBrowseField);
-    addPosition(msg, position);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(203);
+    auto* m = message->MutableExtension(GameclientMessageBrowseField::gameclient_message_browse_field);
+    setCoordinate(m->mutable_position(), position);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendSeekInContainer(const uint8_t containerId, const uint16_t index)
+void sendSeekInContainer(const uint8_t containerId, const uint16_t index)
 {
-    if (!tibia::game::cipFeature(tibia::client::GameContainerPagination))
-        return;
 
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSeekInContainer);
-    msg->addU8(containerId);
-    msg->addU16(index);
-    if (tibia::game::cipFeature(tibia::client::GameContainerFilter)) {
-        msg->addU8(0); // Filter
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(204);
+    auto* m = message->MutableExtension(GameclientMessageSeekInContainer::gameclient_message_seek_in_container);
+    m->set_container_id(containerId);
+    m->set_index(index);
+    m->set_primary_type(0);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendInspectionNormalObject(const Position& position)
+void sendInspectionNormalObject(const Position& position)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientInspectionObject);
-    msg->addU8(tibia::client::INSPECT_NORMALOBJECT);
-    addPosition(msg, position);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(205);
+    auto* m = message->MutableExtension(GameclientMessageInspectObject::gameclient_message_inspect_object);
+    m->set_inspection_type(tibia::client::INSPECT_NORMALOBJECT);
+    setCoordinate(m->mutable_position(), position);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendInspectionObject(const tibia::client::InspectObjectTypes inspectionType, const uint16_t itemId, const uint8_t itemCount)
+void sendInspectionObject(const tibia::client::InspectObjectTypes inspectionType, const uint16_t itemId, const uint8_t itemCount)
 {
     if (inspectionType != tibia::client::INSPECT_NPCTRADE &&
         inspectionType != tibia::client::INSPECT_CYCLOPEDIA &&
         inspectionType != tibia::client::INSPECT_PROFICIENCY) {
         return;
     }
-
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientInspectionObject);
-    msg->addU8(inspectionType);
-    msg->addU16(itemId);
-    msg->addU8(itemCount);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(205);
+    auto* m = message->MutableExtension(GameclientMessageInspectObject::gameclient_message_inspect_object);
+    m->set_inspection_type(inspectionType);
+    m->set_object_id(itemId);
+    m->set_count(itemCount);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRequestBestiary()
+void sendRequestBestiary()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBestiaryRequest);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientBestiaryRequest));
 }
 
-void ProtocolGame::sendInspectCharacter(const uint32_t creatureId, const uint8_t tab)
+void sendInspectCharacter(const uint32_t creatureId, const uint8_t tab)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientInspectionCharacter);
-    msg->addU8(tab);
-    // CIP: allow-all / withdraw (tab 0) omit the creature id.
-    if (creatureId != 0 || tab != 0)
-        msg->addU32(creatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(206);
+    auto* m = message->MutableExtension(GameclientMessageInspectPlayer::gameclient_message_inspect_player);
+    m->set_tab(tab);
+    if (tab >= 1 && tab <= 5)
+        m->set_creature_id(creatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRequestBestiaryOverview(const std::string_view catName, bool search, std::vector<uint16_t> raceIds)
+void sendRequestBestiaryOverview(const std::string_view catName, bool search, std::vector<uint16_t> raceIds)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBestiaryRequestOverview);
-    msg->addU8(search ? 0x01 : 0x00);
+    auto message = tibia::protocol::newGameclientMessage(226);
+    auto* m = message->MutableExtension(GameclientMessageOpenMonsterCyclopediaMonsters::gameclient_message_open_monster_cyclopedia_monsters);
+    m->set_request_type(search ? 1 : 0);
     if (search) {
-        msg->addU16(static_cast<uint16_t>(raceIds.size()));
-        for (const uint16_t raceId : raceIds) {
-            msg->addU16(raceId);
-        }
+        for (const uint16_t raceId : raceIds)
+            m->add_race_ids(raceId);
     } else {
-        msg->addString(catName);
+        m->set_category(std::string(catName));
     }
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRequestBestiarySearch(const uint16_t raceId)
+void sendRequestBestiarySearch(const uint16_t raceId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBestiaryRequestSearch);
-    msg->addU16(raceId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(227);
+    auto* m = message->MutableExtension(GameclientMessageOpenMonsterCyclopediaRace::gameclient_message_open_monster_cyclopedia_race);
+    m->set_race_id(raceId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendBuyCharmRune(const uint8_t runeId, const uint8_t action, const uint16_t raceId)
+void sendBuyCharmRune(const uint8_t runeId, const uint8_t action, const uint16_t raceId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCyclopediaSendBuyCharmRune);
-    msg->addU8(runeId);
-    msg->addU8(action);
-    msg->addU16(raceId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(228);
+    auto* m = message->MutableExtension(GameclientMessageMonsterBonusEffectAction::gameclient_message_monster_bonus_effect_action);
+    m->set_action(action);
+    m->set_charm_id(runeId);
+    m->set_race_id(raceId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendFriendSystemAction(const uint8_t action, const uint8_t value, const std::string& payload)
+void sendFriendSystemAction(const uint8_t action, const uint8_t value)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientFriendSystemAction);
-    msg->addU8(action);
-    // Title action 0x0E is a single byte. Every other action carries the JSON
-    // body Crystal forwards into the social handler.
-    if (action == 0x0E)
-        msg->addU8(value);
-    else if (!payload.empty())
-        msg->addString(payload);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(129);
+    auto* m = message->MutableExtension(GameclientMessageFriendSystemAction::gameclient_message_friend_system_action);
+    m->set_action(action);
+    m->set_value(value);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCharacterTradeConfigurationAction(
+void sendFriendSystemAccountAction(const uint8_t action, const uint32_t accountId, const uint8_t value)
+{
+    auto message = tibia::protocol::newGameclientMessage(129);
+    auto* m = message->MutableExtension(GameclientMessageFriendSystemAction::gameclient_message_friend_system_action);
+    m->set_action(action);
+    m->set_account_id(accountId);
+    m->set_value(value);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendFriendSystemSearch(const std::string& characterName)
+{
+    auto message = tibia::protocol::newGameclientMessage(129);
+    auto* m = message->MutableExtension(GameclientMessageFriendSystemAction::gameclient_message_friend_system_action);
+    m->set_action(11);
+    m->set_text(characterName);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendFriendSystemBadgeVisibility(const uint32_t badgeId, const bool visible)
+{
+    auto message = tibia::protocol::newGameclientMessage(129);
+    auto* m = message->MutableExtension(GameclientMessageFriendSystemAction::gameclient_message_friend_system_action);
+    m->set_action(13);
+    m->set_badge_id(badgeId);
+    m->set_visible(visible);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendFriendSystemSetting(const uint8_t settingType, const bool showCharacterInfo, const bool showAccountInfo, const bool allowInspect)
+{
+    auto message = tibia::protocol::newGameclientMessage(129);
+    auto* m = message->MutableExtension(GameclientMessageFriendSystemAction::gameclient_message_friend_system_action);
+    m->set_action(16);
+    auto* setting = m->mutable_setting();
+    setting->set_setting_type(settingType);
+    setting->set_show_character_info(showCharacterInfo);
+    setting->set_show_account_info(showAccountInfo);
+    setting->set_allow_inspect(allowInspect);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendCharacterTradeConfigurationAction(
     const uint8_t action,
     const uint32_t price,
     const uint32_t endTimestamp,
@@ -1398,538 +1113,407 @@ void ProtocolGame::sendCharacterTradeConfigurationAction(
     const std::vector<std::tuple<uint16_t, uint8_t>>& storeItems,
     const std::vector<uint16_t>& highlights)
 {
-    // Crystal charbazaar onRecvbyte (C 0x76): action byte; CHECK/CONFIRM carry
-    // configuration. CIP appends a trailing token byte (charbazaar.lua docs);
-    // Crystal ignores leftovers after parseConfiguration / conditions handlers.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCharacterTradeConfigurationAction);
-    msg->addU8(action);
+    auto message = tibia::protocol::newGameclientMessage(118);
+    auto* m = message->MutableExtension(GameclientMessageCharacterTradeConfigurationAction::gameclient_message_character_trade_configuration_action);
+    m->set_action(action);
     if (action == 2 || action == 3) {
-        msg->addU32(price);
-        msg->addU32(endTimestamp);
-        const auto writeItems = [&](const std::vector<std::tuple<uint16_t, uint8_t>>& list) {
-            msg->addU8(static_cast<uint8_t>(std::min<size_t>(list.size(), 255)));
-            for (const auto& [itemId, tier] : list) {
-                msg->addU16(itemId);
-                const auto& thingType = tibia::game::thingType(itemId, ThingCategoryItem);
-                if (thingType && thingType->getClassification() > 0)
-                    msg->addU8(tier);
+        m->set_price(price);
+        m->set_end_time(endTimestamp);
+        const auto fill = [](auto* list, const std::vector<std::tuple<uint16_t, uint8_t>>& source) {
+            for (const auto& [itemId, tier] : source) {
+                auto* object = list->Add();
+                object->set_object_id(itemId);
+                if (tibia::game::rawThingType(itemId, ThingCategoryItem) && tibia::game::rawThingType(itemId, ThingCategoryItem)->getClassification() > 0)
+                    object->set_tier(tier);
             }
         };
-        writeItems(items);
-        writeItems(storeItems);
-        msg->addU8(static_cast<uint8_t>(std::min<size_t>(highlights.size(), 255)));
+        fill(m->mutable_objects(), items);
+        fill(m->mutable_store_objects(), storeItems);
         for (const uint16_t id : highlights)
-            msg->addU16(id);
+            m->add_highlights(id);
     }
-    msg->addU8(0); // trailing CIP store token
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendConfigureShowOffSocket(const Position& pos, const uint16_t itemId, const uint8_t stackpos)
+void sendConfigureShowOffSocket(const Position& pos, const uint16_t itemId, const uint8_t stackpos)
 {
     // Crystal parseConfigureShowOffSocket (C 0x86): Position, u16 itemId, u8 stackpos.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientConfigureShowOffSocket);
-    addPosition(msg, pos);
-    msg->addU16(itemId);
-    msg->addU8(stackpos);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(134);
+    auto* m = message->MutableExtension(GameclientMessageConfigureShowOffSocket::gameclient_message_configure_show_off_socket);
+    setCoordinate(m->mutable_position(), pos);
+    m->set_object_id(itemId);
+    m->set_stack_position(stackpos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendJoinAggression(const uint32_t creatureId)
+void sendJoinAggression(const uint32_t creatureId)
 {
-    // CIP JoinAggression (C 0x8E): u32 creatureId. Crystal shares the target's
-    // party/guild PvP opponents onto the joiner (not a no-op drain).
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientJoinAggression);
-    msg->addU32(creatureId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(Proto::ClientJoinAggression);
+    message->MutableExtension(GameclientMessageJoinAggression::gameclient_message_join_aggression)->set_creature_id(creatureId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendSetCreaturePodiumConfiguration(const uint32_t monsterRaceId, const Position& pos,
+void sendSetCreaturePodiumConfiguration(const uint32_t monsterRaceId, const Position& pos,
                                                       const uint16_t itemId, const uint8_t stackpos,
                                                       const uint8_t direction, const uint8_t podiumVisible,
                                                       const uint8_t monsterVisible)
 {
     // Crystal parseSetMonsterPodium (C 0x9F).
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSetCreaturePodiumConfiguration);
-    msg->addU32(monsterRaceId);
-    addPosition(msg, pos);
-    msg->addU16(itemId);
-    msg->addU8(stackpos);
-    msg->addU8(direction);
-    msg->addU8(podiumVisible);
-    msg->addU8(monsterVisible);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(159);
+    auto* m = message->MutableExtension(GameclientMessageSetCreaturePodiumConfiguration::gameclient_message_set_creature_podium_configuration);
+    m->set_race_id(monsterRaceId);
+    setCoordinate(m->mutable_position(), pos);
+    m->set_object_id(itemId);
+    m->set_stack_position(stackpos);
+    m->set_direction(direction);
+    m->set_podium_visible(podiumVisible != 0);
+    m->set_monster_visible(monsterVisible != 0);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendGetTransactionDetails(const uint32_t transactionId)
+void sendGetTransactionDetails(const uint32_t transactionId)
 {
     // CIP GetTransactionDetails (C 0xC9). Crystal currently no-ops the opcode.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(0xC9);
-    msg->addU32(transactionId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(201);
+    auto* m = message->MutableExtension(GameclientMessageGetTransactionDetails::gameclient_message_get_transaction_details);
+    m->set_transaction_id(transactionId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendStoreEvent(const uint8_t eventType)
+void sendStoreEvent(const uint8_t eventType)
 {
-    // Crystal gamestore C_StoreEvent (C 0xE9).
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientStoreEvent);
-    msg->addU8(eventType);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(233);
+    auto* m = message->MutableExtension(GameclientMessageStoreEvent::gameclient_message_store_event);
+    m->set_event_type(eventType);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendClientCheck(const std::vector<uint8_t>& data)
+void sendClientCheck(const std::vector<uint8_t>& data)
 {
-    // CIP ClientCheck (C 0x63); mirrors S 0x63 u32 count + bytes.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCheck);
-    msg->addU32(static_cast<uint32_t>(data.size()));
-    for (const uint8_t byte : data)
-        msg->addU8(byte);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(Proto::ClientCheck);
+    message->MutableExtension(GameclientMessageClientCheck::gameclient_message_client_check)->set_data(std::string(data.begin(), data.end()));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendContainerAction(const uint8_t action, const uint8_t containerId)
+void sendContainerAction(const uint8_t action, const uint8_t containerId)
 {
-    // CIP ContainerAction (C 0x75); Crystal has no parse yet — u8 action + container.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientContainerAction);
-    msg->addU8(action);
-    msg->addU8(containerId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(117);
+    auto* m = message->MutableExtension(GameclientMessageContainerAction::gameclient_message_container_action);
+    m->set_container_id(containerId);
+    if (action == 1) {
+        m->set_move_to_managed_containers(true);
+    } else {
+        auto* sort = m->mutable_sort();
+        sort->set_sort_type(0);
+    }
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendClientDetails(const std::string_view details)
+void sendClientDetails(const std::string_view details)
 {
     // CIP ClientDetails (C 0xC1); conservative string payload.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientDetails);
-    msg->addString(details);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(193);
+    auto* m = message->MutableExtension(GameclientMessageClientDetails::gameclient_message_client_details);
+    m->set_details(std::string(details));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendMarketStatistics(const uint16_t itemId, const uint8_t tier)
+void sendMarketStatistics(const uint16_t itemId, const uint8_t tier)
 {
-    // CIP MarketStatistics (C 0xD1); request stats for an item.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientMarketStatistics);
-    msg->addU16(itemId);
-    msg->addU8(tier);
-    send(msg);
+    // CIP sends the request without the item.
+    (void)itemId;
+    (void)tier;
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientMarketStatistics));
 }
 
-void ProtocolGame::sendSetHirelingName(const std::string_view name)
+void sendSetHirelingName(const std::string_view name)
 {
     // CIP SetHirelingName (C 0xEC); GameStore C_ParseHirelingName.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSetHirelingName);
-    msg->addString(name);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(236);
+    auto* m = message->MutableExtension(GameclientMessageSetHirelingName::gameclient_message_set_hireling_name);
+    m->set_name(std::string(name));
+    m->set_creature_id(0);
+    m->set_object_id(0);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCyclopediaRequestCharacterInfo(const uint32_t playerId, const tibia::client::CyclopediaCharacterInfoType_t characterInfoType, const uint16_t entriesPerPage, const uint16_t page)
+void sendCyclopediaRequestCharacterInfo(const uint32_t playerId, const tibia::client::CyclopediaCharacterInfoType_t characterInfoType, const uint16_t entriesPerPage, const uint16_t page)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCyclopediaRequestCharacterInfo);
-    msg->addU32(playerId);
-    msg->addU8(characterInfoType);
+    auto message = tibia::protocol::newGameclientMessage(229);
+    auto* m = message->MutableExtension(GameclientMessageOpenCyclopediaCharacterInfo::gameclient_message_open_cyclopedia_character_info);
+    m->set_character_id(playerId);
+    m->set_info_type(characterInfoType);
+    if (characterInfoType == 3 || characterInfoType == 4)
+        m->set_entries_per_page(entriesPerPage);
+    if (characterInfoType == 3 || characterInfoType == 4)
+        m->set_page(page);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
 
-    if (characterInfoType == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS || characterInfoType == tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS) {
-        msg->addU16(entriesPerPage);
-        msg->addU16(page);
+void sendCyclopediaHouseAuction(const tibia::client::CyclopediaHouseAuctionType_t type, const uint32_t houseId, const uint32_t timestamp, const uint64_t bidValue, const std::string_view name)
+{
+    auto message = tibia::protocol::newGameclientMessage(173);
+    auto* m = message->MutableExtension(GameclientMessageCyclopediaHouseAction::gameclient_message_cyclopedia_house_action);
+    m->set_action(type);
+    m->set_name(std::string(name));
+    m->set_house_id(houseId);
+    m->set_bid(bidValue);
+    m->set_timestamp(timestamp);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendCyclopediaMapDonate(const uint16_t areaId, const uint32_t amount)
+{
+    auto message = tibia::protocol::newGameclientMessage(219);
+    auto* m = message->MutableExtension(GameclientMessageCyclopediaMapAction::gameclient_message_cyclopedia_map_action);
+    auto* donation = m->mutable_donation();
+    donation->set_area_id(areaId);
+    donation->set_amount(amount);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendCyclopediaMapResetViewpoints(const uint16_t subAreaId)
+{
+    auto message = tibia::protocol::newGameclientMessage(219);
+    auto* m = message->MutableExtension(GameclientMessageCyclopediaMapAction::gameclient_message_cyclopedia_map_action);
+    m->set_reset_area_id(subAreaId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendRequestBosstiaryInfo()
+{
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientBosstiaryRequestInfo));
+}
+
+void sendRequestBossSlootInfo()
+{
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientBosstiaryRequestSlotInfo));
+}
+
+void sendRequestBossSlotAction(const uint8_t action, const uint32_t raceId)
+{
+    auto message = tibia::protocol::newGameclientMessage(176);
+    auto* m = message->MutableExtension(GameclientMessageEditBossSlot::gameclient_message_edit_boss_slot);
+    m->set_action(action);
+    m->set_race_id(raceId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendStatusTrackerBestiary(const uint16_t raceId, const bool status)
+{
+    auto message = tibia::protocol::newGameclientMessage(42);
+    auto* m = message->MutableExtension(GameclientMessageTrackBestiaryRace::gameclient_message_track_bestiary_race);
+    m->set_race_id(raceId);
+    m->set_tracked(status);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendBuyStoreOffer(const uint32_t offerId, const uint8_t action, const std::string_view& name, const uint8_t type, const std::string_view& location)
+{
+    (void)location;
+    auto message = tibia::protocol::newGameclientMessage(252);
+    auto* m = message->MutableExtension(GameclientMessageBuyStoreOffer::gameclient_message_buy_store_offer);
+    m->set_offer_id(offerId);
+    m->set_action(action);
+    m->set_name(std::string(name));
+    m->set_type(type);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendRequestTransactionHistory(const uint32_t page, const uint32_t entriesPerPage)
+{
+    auto message = tibia::protocol::newGameclientMessage(254);
+    auto* m = message->MutableExtension(GameclientMessageGetTransactionHistory::gameclient_message_get_transaction_history);
+    m->set_page(page);
+    m->set_entries_per_page(static_cast<uint8_t>(entriesPerPage));
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendRequestStoreOffers(const std::string_view categoryName, const std::string_view subCategory, const uint8_t sortOrder, const uint8_t serviceType)
+{
+    auto message = tibia::protocol::newGameclientMessage(251);
+    auto* m = message->MutableExtension(GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers);
+    m->set_request_type(tibia::client::Store_Type_Actions_t::OPEN_CATEGORY);
+    m->set_category(std::string(categoryName));
+    m->set_subcategory(std::string(subCategory));
+    m->set_sort_order(sortOrder);
+    m->set_service_type(serviceType);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendRequestStoreHome()
+{
+    auto message = tibia::protocol::newGameclientMessage(251);
+    auto* m = message->MutableExtension(GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers);
+    m->set_request_type(tibia::client::Store_Type_Actions_t::OPEN_HOME);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+void sendRequestStorePremiumBoost()
+{
+    auto message = tibia::protocol::newGameclientMessage(251);
+    auto* m = message->MutableExtension(GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers);
+    m->set_request_type(tibia::client::Store_Type_Actions_t::OPEN_PREMIUM_BOOST);
+    m->set_value(1);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendRequestUsefulThings(const uint8_t offerId)
+{
+    auto message = tibia::protocol::newGameclientMessage(251);
+    auto* m = message->MutableExtension(GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers);
+    m->set_request_type(tibia::client::Store_Type_Actions_t::OPEN_USEFUL_THINGS);
+    m->set_value(offerId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendRequestStoreOfferById(uint32_t offerId, const uint8_t sortOrder, const uint8_t serviceType)
+{
+    auto message = tibia::protocol::newGameclientMessage(251);
+    auto* m = message->MutableExtension(GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers);
+    m->set_request_type(tibia::client::Store_Type_Actions_t::OPEN_OFFER);
+    m->set_value(offerId);
+    m->set_sort_order(sortOrder);
+    m->set_service_type(serviceType);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendRequestStoreSearch(const std::string_view searchText, const uint8_t sortOrder, const uint8_t serviceType)
+{
+    auto message = tibia::protocol::newGameclientMessage(251);
+    auto* m = message->MutableExtension(GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers);
+    m->set_request_type(tibia::client::Store_Type_Actions_t::OPEN_SEARCH);
+    m->set_search_text(std::string(searchText));
+    m->set_sort_order(sortOrder);
+    m->set_service_type(serviceType);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendOpenStore(const uint8_t serviceType, const std::string_view category)
+{
+    (void)serviceType;
+    (void)category;
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientOpenStore));
+}
+
+void sendTransferCoins(const std::string_view recipient, const uint32_t amount)
+{
+    auto message = tibia::protocol::newGameclientMessage(239);
+    auto* m = message->MutableExtension(GameclientMessageTransferCurrency::gameclient_message_transfer_currency);
+    m->set_recipient(std::string(recipient));
+    m->set_amount(amount);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendOpenTransactionHistory(const uint8_t entriesPerPage)
+{
+    auto message = tibia::protocol::newGameclientMessage(253);
+    auto* m = message->MutableExtension(GameclientMessageOpenTransactionHistory::gameclient_message_open_transaction_history);
+    m->set_entries_per_page(entriesPerPage);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendMarketLeave()
+{
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientMarketLeave));
+}
+
+void sendMarketBrowse(const uint8_t browseId, const uint16_t browseType, const uint8_t tier)
+{
+    auto message = tibia::protocol::newGameclientMessage(245);
+    auto* m = message->MutableExtension(GameclientMessageMarketBrowse::gameclient_message_market_browse);
+    m->set_browse_type(browseId);
+    if (browseId == 3) {
+        m->set_object_id(browseType);
+        if (tibia::game::rawThingType(browseType, ThingCategoryItem) && tibia::game::rawThingType(browseType, ThingCategoryItem)->getClassification() > 0)
+            m->set_tier(tier);
     }
-
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCyclopediaHouseAuction(const tibia::client::CyclopediaHouseAuctionType_t type, const uint32_t houseId, const uint32_t timestamp, const uint64_t bidValue, const std::string_view name)
+void sendMarketCreateOffer(const uint8_t type, const uint16_t itemId, const uint8_t itemTier, const uint16_t amount, const uint64_t price, const uint8_t anonymous)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCyclopediaHouseAuction);
-    msg->addU8(type);
-
-    switch (type) {
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_NONE:
-            msg->addString(name); // townName
-            break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_BID:
-            msg->addU32(houseId);
-            msg->addU64(bidValue);
-            break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_MOVEOUT:
-            msg->addU32(houseId);
-            msg->addU32(timestamp);
-            break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_TRANSFER:
-            msg->addU32(houseId);
-            msg->addU32(timestamp);
-            msg->addString(name); // newOwner
-            msg->addU64(bidValue);
-            break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_MOVEOUT:
-            msg->addU32(houseId);
-            break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_CANCEL_TRANSFER:
-            msg->addU32(houseId);
-            break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_ACCEPT_TRANSFER:
-            msg->addU32(houseId);
-            break;
-        case tibia::client::CYCLOPEDIA_HOUSE_TYPE_REFECT_TRANSFER:
-            msg->addU32(houseId);
-            break;
-    }
-
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(246);
+    auto* m = message->MutableExtension(GameclientMessageMarketCreate::gameclient_message_market_create);
+    m->set_offer_type(type);
+    m->set_object_id(itemId);
+    if (tibia::game::rawThingType(itemId, ThingCategoryItem) && tibia::game::rawThingType(itemId, ThingCategoryItem)->getClassification() > 0)
+        m->set_tier(itemTier);
+    m->set_amount(amount);
+    m->set_price(price);
+    m->set_anonymous(anonymous != 0);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendSelectSpellAim(const std::vector<uint16_t>& spellIds, const bool enabled)
+void sendMarketCancelOffer(const uint32_t timestamp, const uint16_t counter)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSelectSpellAim);
-    msg->addU8(static_cast<uint8_t>(spellIds.size()));
-    for (const uint16_t id : spellIds) {
-        msg->addU16(id);
-        msg->addU8(enabled ? 1 : 0);
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(247);
+    auto* m = message->MutableExtension(GameclientMessageMarketCancel::gameclient_message_market_cancel);
+    m->set_timestamp(timestamp);
+    m->set_counter(counter);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCyclopediaMapDonate(const uint16_t areaId, const uint32_t amount)
+void sendMarketAcceptOffer(const uint32_t timestamp, const uint16_t counter, const uint16_t amount)
 {
-    // Opcode 0xDB (219) - cyclopedia map action 1 = donate to respawn area
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCyclopediaMapAction);
-    msg->addU8(1); // donate
-    msg->addU16(areaId);
-    msg->addU32(amount);
-    msg->addU8(0); // trailing byte, server ignores
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(248);
+    auto* m = message->MutableExtension(GameclientMessageMarketAccept::gameclient_message_market_accept);
+    m->set_timestamp(timestamp);
+    m->set_counter(counter);
+    m->set_amount(amount);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCyclopediaMapResetViewpoints(const uint16_t subAreaId)
+void sendPreyAction(const uint8_t slot, const uint8_t actionType, const uint16_t index)
 {
-    // Opcode 0xDB action 2 — Crystal accepts and currently does not reply.
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCyclopediaMapAction);
-    msg->addU8(2);
-    msg->addU16(subAreaId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(235);
+    auto* m = message->MutableExtension(GameclientMessagePreyAction::gameclient_message_prey_action);
+    m->set_slot(slot);
+    m->set_action(actionType);
+    if (actionType == 4)
+        m->set_race_id(index);
+    else
+        m->set_index(static_cast<uint8_t>(index));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRequestBosstiaryInfo()
+void sendRequestResourceBalance(const uint8_t resourceType)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBosstiaryRequestInfo);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(237);
+    auto* m = message->MutableExtension(GameclientMessageRequestResourceBalance::gameclient_message_request_resource_balance);
+    m->set_resource_type(resourceType);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRequestBossSlootInfo()
+void sendSetClientOptions(const uint8_t option, const bool value)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBosstiaryRequestSlotInfo);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(46);
+    auto* m = message->MutableExtension(GameclientMessageSetClientOptions::gameclient_message_set_client_options);
+    if (option == 1) // the only client option CIP sends
+        m->set_turn_towards_move_direction(value);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendRequestBossSlotAction(const uint8_t action, const uint32_t raceId)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBosstiaryRequestSlotAction);
-    msg->addU8(action);
-    msg->addU32(raceId);
-    send(msg);
+void sendForgeRequest(tibia::client::ForgeAction_t actionType, bool convergence, uint16_t firstItemid, uint8_t firstItemTier, uint16_t secondItemId, bool improveChance, bool tierLoss) {
+    auto message = tibia::protocol::newGameclientMessage(191);
+    auto* m = message->MutableExtension(GameclientMessageExaltationAction::gameclient_message_exaltation_action);
+    m->set_action(static_cast<uint8_t>(actionType));
+    m->set_convergence(convergence);
+    m->set_first_object_id(firstItemid);
+    m->set_tier(firstItemTier);
+    m->set_second_object_id(secondItemId);
+    m->set_improve_chance(improveChance);
+    m->set_reduce_tier_loss(tierLoss);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendStatusTrackerBestiary(const uint16_t raceId, const bool status)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBestiaryTrackerStatus);
-    msg->addU16(raceId);
-    msg->addU8(status);
-    send(msg);
+void sendForgeBrowseHistoryRequest(uint16_t page) {
+    auto message = tibia::protocol::newGameclientMessage(192);
+    auto* m = message->MutableExtension(GameclientMessageOpenExaltationHistory::gameclient_message_open_exaltation_history);
+    m->set_page(page);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendBuyStoreOffer(const uint32_t offerId, const uint8_t action, const std::string_view& name, const uint8_t type, const std::string_view& location)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBuyStoreOffer);
-    msg->addU32(offerId);
-    msg->addU8(action);
-    if (action > 0 && action < 6) {
-        msg->addString(name);
-        if (action == 3 || action == 5) {
-            msg->addU8(type);
-        }
-        if (action == 5) {
-            msg->addString(location);
-        }
-    }
-    send(msg);
-}
-
-void ProtocolGame::sendRequestTransactionHistory(const uint32_t page, const uint32_t entriesPerPage)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestTransactionHistory);
-    if (tibia::game::clientRevision() <= 1096) {
-        msg->addU16(static_cast<uint16_t>(page));
-        msg->addU32(entriesPerPage);
-    } else {
-        msg->addU32(page);
-        msg->addU8(static_cast<uint8_t>(entriesPerPage));
-    }
-
-    send(msg);
-}
-
-void ProtocolGame::sendRequestStoreOffers(const std::string_view categoryName, const std::string_view subCategory, const uint8_t sortOrder, const uint8_t serviceType)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_CATEGORY);
-    msg->addString(categoryName);
-    msg->addString(subCategory);
-    msg->addU8(sortOrder);
-    msg->addU8(serviceType);
-    send(msg);
-}
-
-void ProtocolGame::sendRequestStoreHome()
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_HOME);
-    send(msg);
-}
-void ProtocolGame::sendRequestStorePremiumBoost()
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_PREMIUM_BOOST);
-    msg->addU8(1);
-    send(msg);
-}
-
-void ProtocolGame::sendRequestUsefulThings(const uint8_t offerId)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_USEFUL_THINGS);
-    msg->addU8(offerId);
-    send(msg);
-}
-
-void ProtocolGame::sendRequestStoreOfferById(uint32_t offerId, const uint8_t sortOrder, const uint8_t serviceType)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_OFFER);
-    msg->addU32(offerId);
-    msg->addU8(sortOrder);
-    msg->addU8(serviceType);
-    send(msg);
-}
-
-void ProtocolGame::sendRequestStoreSearch(const std::string_view searchText, const uint8_t sortOrder, const uint8_t serviceType)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestStoreOffers);
-    msg->addU8(tibia::client::Store_Type_Actions_t::OPEN_SEARCH);
-    msg->addString(searchText);
-    msg->addU8(sortOrder);
-    msg->addU8(serviceType);
-    send(msg);
-}
-
-void ProtocolGame::sendOpenStore(const uint8_t serviceType, const std::string_view category)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenStore);
-
-    if (tibia::game::cipFeature(tibia::client::GameIngameStoreServiceType)) {
-        msg->addU8(serviceType);
-        msg->addString(category);
-    }
-
-    send(msg);
-}
-
-void ProtocolGame::sendTransferCoins(const std::string_view recipient, const uint32_t amount)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTransferCoins);
-    msg->addString(recipient);
-    msg->addU32(amount);
-    send(msg);
-}
-
-void ProtocolGame::sendOpenTransactionHistory(const uint8_t entriesPerPage)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenTransactionHistory);
-    msg->addU8(entriesPerPage);
-
-    send(msg);
-}
-
-void ProtocolGame::sendChangeMapAwareRange(const uint8_t xrange, const uint8_t yrange)
-{
-    if (!tibia::game::cipFeature(tibia::client::GameChangeMapAwareRange))
-        return;
-
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientChangeMapAwareRange);
-    msg->addU8(xrange);
-    msg->addU8(yrange);
-    send(msg);
-}
-
-void ProtocolGame::addPosition(const OutputMessagePtr& msg, const Position& position)
-{
-    msg->addU16(position.x);
-    msg->addU16(position.y);
-    msg->addU8(position.z);
-}
-
-void ProtocolGame::sendMarketLeave()
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientMarketLeave);
-    send(msg);
-}
-
-void ProtocolGame::sendMarketBrowse(const uint8_t browseId, const uint16_t browseType, const uint8_t tier)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientMarketBrowse);
-    if (tibia::game::clientRevision() >= 1251) {
-        msg->addU8(browseId);
-        if (browseType > 0) {
-            msg->addU16(browseType);
-            // If browseId is 3 (browse item), send tier if item has classification
-            if (browseId == 3) {
-                const auto& thing = tibia::game::thingType(browseType, ThingCategoryItem);
-                if (thing && thing->getClassification() > 0) {
-                    msg->addU8(tier);
-                }
-            }
-        }
-    } else {
-        msg->addU16(browseType);
-    }
-    send(msg);
-}
-
-void ProtocolGame::sendMarketCreateOffer(const uint8_t type, const uint16_t itemId, const uint8_t itemTier, const uint16_t amount, const uint64_t price, const uint8_t anonymous)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientMarketCreate);
-    msg->addU8(type);
-    msg->addU16(itemId);
-    if (const auto& thing = tibia::game::thingType(itemId, ThingCategoryItem)) {
-        if (thing->getClassification() > 0) {
-            msg->addU8(itemTier);
-        }
-    }
-    msg->addU16(amount);
-    msg->addU64(price);
-    msg->addU8(anonymous);
-    send(msg);
-}
-
-void ProtocolGame::sendMarketCancelOffer(const uint32_t timestamp, const uint16_t counter)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientMarketCancel);
-    msg->addU32(timestamp);
-    msg->addU16(counter);
-    send(msg);
-}
-
-void ProtocolGame::sendMarketAcceptOffer(const uint32_t timestamp, const uint16_t counter, const uint16_t amount)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientMarketAccept);
-    msg->addU32(timestamp);
-    msg->addU16(counter);
-    msg->addU16(amount);
-    send(msg);
-}
-
-void ProtocolGame::sendPreyAction(const uint8_t slot, const uint8_t actionType, const uint16_t index)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientPreyAction);
-    msg->addU8(slot);
-    msg->addU8(actionType);
-    if (actionType == 2 || actionType == 5) {
-        msg->addU8(static_cast<uint8_t>(index));
-    } else if (actionType == 4) {
-        msg->addU16(index); // raceid
-    }
-    send(msg);
-}
-
-void ProtocolGame::sendPreyRequest()
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientPreyRequest);
-    send(msg);
-}
-
-void ProtocolGame::sendOpenPortableForge() {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientPreyRequest);
-    send(msg);
-}
-
-void ProtocolGame::sendRequestResourceBalance(const uint8_t resourceType)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientPreyRequest);
-    msg->addU8(resourceType);
-    send(msg);
-}
-
-void ProtocolGame::sendSetClientOptions(const uint8_t option, const bool value)
-{
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSetClientOptions);
-    msg->addU8(option);
-    msg->addU8(value ? 1 : 0);
-    send(msg);
-}
-
-void ProtocolGame::sendForgeRequest(tibia::client::ForgeAction_t actionType, bool convergence, uint16_t firstItemid, uint8_t firstItemTier, uint16_t secondItemId, bool improveChance, bool tierLoss) {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientForgeEnter);
-    msg->addU8(static_cast<uint8_t>(actionType));
-
-    if (actionType == tibia::client::ForgeAction_t::FUSION || actionType == tibia::client::ForgeAction_t::TRANSFER) {
-        msg->addU8(static_cast<uint8_t>(convergence));
-        msg->addU16(firstItemid);
-        msg->addU8(firstItemTier);
-        msg->addU16(secondItemId);
-        msg->addU8(static_cast<uint8_t>(improveChance));
-        msg->addU8(static_cast<uint8_t>(tierLoss));
-    }
-
-    send(msg);
-}
-
-void ProtocolGame::sendForgeBrowseHistoryRequest(uint16_t page) {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientForgeBrowseHistory);
-    msg->addU8(page);
-    send(msg);
-}
-
-void ProtocolGame::sendExivaRestrictions(
+void sendExivaRestrictions(
     const bool allowAll, const bool allowOwnGuild, const bool allowOwnParty,
     const bool allowVipList, const bool allowPlayerWhitelist, const bool allowGuildWhitelist,
     const std::vector<std::string>& characterWhiteList,
@@ -1939,331 +1523,258 @@ void ProtocolGame::sendExivaRestrictions(
 {
     if (!tibia::game::canExivaOptions())
         return;
-
-    const auto& msg = std::make_shared<OutputMessage>();
-    // Opcode 202 is ClientExivaRestrictions in protocol > 11.00
-    msg->addU8(Proto::ClientRefreshContainer);
-
-    msg->addU8(allowAll ? 1 : 0);
-    msg->addU8(allowOwnGuild ? 1 : 0);
-    msg->addU8(allowOwnParty ? 1 : 0);
-    msg->addU8(allowVipList ? 1 : 0);
-    msg->addU8(allowPlayerWhitelist ? 1 : 0);
-    msg->addU8(allowGuildWhitelist ? 1 : 0);
-
-    msg->addU16(static_cast<uint16_t>(characterWhiteList.size()));
+    auto message = tibia::protocol::newGameclientMessage(202);
+    auto* m = message->MutableExtension(GameclientMessageUpdateExivaOptions::gameclient_message_update_exiva_options);
+    m->set_allow_all(allowAll);
+    m->set_allow_own_guild(allowOwnGuild);
+    m->set_allow_own_party(allowOwnParty);
+    m->set_allow_vip_list(allowVipList);
+    m->set_allow_player_whitelist(allowPlayerWhitelist);
+    m->set_allow_guild_whitelist(allowGuildWhitelist);
     for (const auto& name : characterWhiteList)
-        msg->addString(name);
-
-    msg->addU16(static_cast<uint16_t>(removeCharacter.size()));
+        m->add_add_characters(name);
     for (const auto& name : removeCharacter)
-        msg->addString(name);
-
-    msg->addU16(static_cast<uint16_t>(guildWhiteList.size()));
+        m->add_remove_characters(name);
     for (const auto& name : guildWhiteList)
-        msg->addString(name);
-
-    msg->addU16(static_cast<uint16_t>(removeGuild.size()));
+        m->add_add_guilds(name);
     for (const auto& name : removeGuild)
-        msg->addString(name);
-
-    send(msg);
+        m->add_remove_guilds(name);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendApplyImbuement(const uint8_t slot, const uint32_t imbuementId, const bool protectionCharm)
+void sendApplyImbuement(const uint8_t slot, const uint32_t imbuementId, const bool protectionCharm)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientApplyImbuement);
-    msg->addU8(slot);
-    msg->addU32(imbuementId);
-    if (tibia::game::clientRevision() < 1510) {
-        msg->addU8(protectionCharm);
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(213);
+    auto* m = message->MutableExtension(GameclientMessageApplyImbuement::gameclient_message_apply_imbuement);
+    m->set_slot(slot);
+    m->set_imbuement_id(imbuementId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendClearImbuement(const uint8_t slot)
+void sendClearImbuement(const uint8_t slot)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientClearImbuement);
-    msg->addU8(slot);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(214);
+    auto* m = message->MutableExtension(GameclientMessageApplyClearingCharm::gameclient_message_apply_clearing_charm);
+    m->set_slot(slot);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendCloseImbuingWindow()
+void sendCloseImbuingWindow()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientCloseImbuingWindow);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientCloseImbuingWindow));
 }
 
-void ProtocolGame::sendImbuementWindowAction(const uint8_t type, const uint16_t itemId, const Position& pos, const uint8_t stackpos)
+void sendImbuementWindowAction(const uint8_t type, const uint16_t itemId, const Position& pos, const uint8_t stackpos)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientImbuementWindowAction);
-    msg->addU8(type); // 1 = SELECT_ITEM, 2 = SCROLL
-
-    if (type == tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM) {
-        addPosition(msg, pos);
-        msg->addU16(itemId);
-        msg->addU8(stackpos);
-    }
-
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(178);
+    auto* m = message->MutableExtension(GameclientMessagePickObjectToImbue::gameclient_message_pick_object_to_imbue);
+    m->set_action(type);
+    if (type == tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM)
+        setCoordinate(m->mutable_position(), pos);
+    if (type == tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM)
+        m->set_object_id(itemId);
+    if (type == tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM)
+        m->set_stack_position(stackpos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendOpenRewardWall()
+void sendOpenRewardWall()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenRewardWall);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientOpenRewardWall));
 }
 
-void ProtocolGame::sendOpenRewardHistory()
+void sendOpenRewardHistory()
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientOpenRewardHistory);
-    send(msg);
+    tibia::protocol::sendGameclientMessage(tibia::protocol::newGameclientMessage(Proto::ClientOpenRewardHistory));
 }
 
-void ProtocolGame::sendGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items)
+void sendGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint8_t>& items)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientGetRewardDaily);
-    msg->addU8(bonusShrine);
-    msg->addU8(items.size());
+    auto message = tibia::protocol::newGameclientMessage(218);
+    auto* m = message->MutableExtension(GameclientMessageCollectDailyReward::gameclient_message_collect_daily_reward);
+    m->set_from_shrine(bonusShrine != 0);
     for (const auto& [itemId, count] : items) {
-        msg->addU16(itemId);
-        msg->addU8(count);
+        auto* choice = m->add_choices();
+        choice->set_object_id(itemId);
+        choice->set_count(count);
     }
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendStashWithdraw(const uint16_t itemId, const uint32_t count, const uint8_t stackpos)
+void sendStashWithdraw(const uint16_t itemId, const uint32_t count, const uint8_t stackpos)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientUseStash);
-    msg->addU8(tibia::client::Supply_Stash_Actions_t::SUPPLY_STASH_ACTION_WITHDRAW);
-    msg->addU16(itemId);
-    msg->addU32(count);
-    msg->addU8(stackpos);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(40);
+    auto* m = message->MutableExtension(GameclientMessageStashAction::gameclient_message_stash_action);
+    m->set_action(tibia::client::Supply_Stash_Actions_t::SUPPLY_STASH_ACTION_WITHDRAW);
+    m->set_object_id(itemId);
+    m->set_count(count);
+    m->set_stack_position(stackpos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendGreet(const uint32_t npcId)
+void sendGreet(const uint32_t npcId)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientGreet);
-    msg->addU32(npcId);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(238);
+    auto* m = message->MutableExtension(GameclientMessageGreet::gameclient_message_greet);
+    m->set_creature_id(npcId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendStashStow(const Position& position, const uint16_t itemId, const uint32_t count, const uint8_t stackpos, const uint8_t action)
+void sendStashStow(const Position& position, const uint16_t itemId, const uint32_t count, const uint8_t stackpos, const uint8_t action)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientUseStash);
-    msg->addU8(action);
-    addPosition(msg, position);
-    msg->addU16(itemId);
-    msg->addU8(stackpos);
-
-    if (action == tibia::client::Supply_Stash_Actions_t::SUPPLY_STASH_ACTION_STOW_ITEM) {
-        msg->addU32(count);
-    }
-
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(40);
+    auto* m = message->MutableExtension(GameclientMessageStashAction::gameclient_message_stash_action);
+    m->set_action(action);
+    setCoordinate(m->mutable_position(), position);
+    m->set_object_id(itemId);
+    m->set_stack_position(stackpos);
+    m->set_count(std::min<uint32_t>(count, 0xff));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendHighscoreInfo(const uint8_t action, const uint8_t category, const uint32_t vocation, const std::string_view world, const uint8_t worldType, const uint8_t battlEye, const uint16_t page, const uint8_t totalPages)
+void sendHighscoreInfo(const uint8_t action, const uint8_t category, const uint32_t vocation, const std::string_view world, const uint8_t worldType, const uint8_t battlEye, const uint16_t page, const uint8_t totalPages)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientRequestHighscore);
-    msg->addU8(action);
-    msg->addU8(category);
-    msg->addU32(vocation);
-    msg->addString(world);
-    msg->addU8(worldType);
-    msg->addU8(battlEye);
-    if (action == 0) // the own-rank request (1) carries no page
-        msg->addU16(page);
-    msg->addU8(totalPages);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(177);
+    auto* m = message->MutableExtension(GameclientMessageHighscores::gameclient_message_highscores);
+    m->set_action(action);
+    m->set_category(category);
+    m->set_vocation(vocation);
+    m->set_world(std::string(world));
+    if (worldType != 0 && worldType != 0xff) // all world types: an empty list
+        m->add_world_types(worldType);
+    m->set_battleye(battlEye);
+    m->set_page(page);
+    m->set_entries_per_page(totalPages);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendTaskBoardAction(const uint8_t option, const uint16_t value, const uint16_t extraValue)
+void sendTaskBoardAction(const uint8_t option, const uint16_t value, const uint16_t extraValue)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientTaskBoardAction);
-    msg->addU8(option);
-    switch (option) {
-        case tibia::client::TASK_BOARD_OPTION_BOUNTY_CHANGE_DIFFICULTY:
-        case tibia::client::TASK_BOARD_OPTION_BOUNTY_SELECT_TASK:
-        case tibia::client::TASK_BOARD_OPTION_BOUNTY_TALISMAN_UPGRADE:
-        case tibia::client::TASK_BOARD_OPTION_WEEKLY_DELIVER:
-        case tibia::client::TASK_BOARD_OPTION_WEEKLY_SELECT_DIFFICULTY:
-            msg->addU8(static_cast<uint8_t>(std::clamp<uint16_t>(value, 0, std::numeric_limits<uint8_t>::max())));
-            break;
-        case tibia::client::TASK_BOARD_OPTION_HUNTING_SHOP_BUY_OFFER:
-            msg->addU8(static_cast<uint8_t>(std::clamp<uint16_t>(value, 0, std::numeric_limits<uint8_t>::max())));
-            msg->addU8(static_cast<uint8_t>(std::clamp<uint16_t>(extraValue, 0, std::numeric_limits<uint8_t>::max())));
-            break;
-        case tibia::client::TASK_BOARD_OPTION_PREFERRED_UNLOCK:
-        case tibia::client::TASK_BOARD_OPTION_PREFERRED_CLEAR:
-        case tibia::client::TASK_BOARD_OPTION_UNWANTED_CLEAR:
-            msg->addU16(value);
-            break;
-        case tibia::client::TASK_BOARD_OPTION_PREFERRED_ASSIGN:
-        case tibia::client::TASK_BOARD_OPTION_UNWANTED_ASSIGN:
-            msg->addU16(value);
-            msg->addU16(extraValue);
-            break;
-        case tibia::client::TASK_BOARD_OPTION_OPEN_BOUNTY:
-        case tibia::client::TASK_BOARD_OPTION_OPEN_WEEKLY:
-        case tibia::client::TASK_BOARD_OPTION_BOUNTY_REROLL:
-        case tibia::client::TASK_BOARD_OPTION_BOUNTY_CLAIM_DAILY:
-        case tibia::client::TASK_BOARD_OPTION_BOUNTY_CLAIM_REWARD:
-        case tibia::client::TASK_BOARD_OPTION_OPEN_HUNTING_SHOP:
-            break;
-        default:
-            g_logger.error("Unknown task board action option {}", static_cast<int>(option));
-            return;
-    }
-    send(msg);
+    (void)extraValue;
+    auto message = tibia::protocol::newGameclientMessage(95);
+    auto* m = message->MutableExtension(GameclientMessageTaskboard::gameclient_message_taskboard);
+    m->set_option(option);
+    if (option == tibia::client::TASK_BOARD_OPTION_BOUNTY_CHANGE_DIFFICULTY)
+        m->set_small_value(static_cast<uint8_t>(std::min<uint16_t>(value, 0xff)));
+    else
+        m->set_value(value);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendImbuementDurations(const bool isOpen)
+void sendImbuementDurations(const bool isOpen)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientImbuementDurations);
-    msg->addU8(isOpen);
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(96);
+    auto* m = message->MutableExtension(GameclientMessageTrackImbuements::gameclient_message_track_imbuements);
+    m->set_open(isOpen);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendQuickLoot(const uint8_t variant, const Position& pos, const uint16_t itemId, const uint8_t stackpos)
+void sendQuickLoot(const uint8_t variant, const Position& pos, const uint16_t itemId, const uint8_t stackpos)
 {
-    const auto msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSendQuickLoot);
-    if (tibia::game::clientRevision() >= 1332) {
-        msg->addU8(variant);
-    }
-    addPosition(msg, pos);
-    if (variant != 2) {
-        msg->addU16(itemId);
-        msg->addU8(stackpos);
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(143);
+    auto* m = message->MutableExtension(GameclientMessageQuickLoot::gameclient_message_quick_loot);
+    m->set_variant(variant);
+    if (variant < 2)
+        setCoordinate(m->mutable_position(), pos);
+    if (variant < 2)
+        m->set_object_id(itemId);
+    if (variant < 2)
+        m->set_stack_position(stackpos);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::requestQuickLootBlackWhiteList(const uint8_t filter, const uint16_t size, const std::vector<uint16_t>& listedItems)
+void requestQuickLootBlackWhiteList(const uint8_t filter, const uint16_t size, const std::vector<uint16_t>& listedItems)
 {
-    const auto msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientQuickLootBlackWhitelist);
-    msg->addU8(filter);
-    msg->addU16(size);
-
-    for (const uint16_t item : listedItems) {
-        msg->addU16(item);
-    }
-    send(msg);
+    (void)size;
+    auto message = tibia::protocol::newGameclientMessage(145);
+    auto* m = message->MutableExtension(GameclientMessageQuickLootBlackWhitelist::gameclient_message_quick_loot_black_whitelist);
+    m->set_filter(filter);
+    for (const uint16_t item : listedItems)
+        m->add_object_ids(item);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::openContainerQuickLoot(const uint8_t action, const uint8_t category, const Position& pos, const uint16_t itemId, const uint8_t stackpos, const bool useMainAsFallback)
+void openContainerQuickLoot(const uint8_t action, const uint8_t category, const Position& pos, const uint16_t itemId, const uint8_t stackpos, const bool useMainAsFallback)
 {
-    const auto msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientLootContainer);
-    msg->addU8(action);
-
+    auto message = tibia::protocol::newGameclientMessage(144);
+    auto* m = message->MutableExtension(GameclientMessageManagedContainer::gameclient_message_managed_container);
+    m->set_action(action);
+    m->set_category(category);
     if (action == 0 || action == 4) {
-        msg->addU8(category);
-        addPosition(msg, pos);
-        msg->addU16(itemId);
-        msg->addU8(stackpos);
-    } else if (action == 3) {
-        msg->addU8(useMainAsFallback);
-    } else if (action == 1 || action == 2 || action == 5 || action == 6) {
-        msg->addU8(category);
+        setCoordinate(m->mutable_position(), pos);
+        m->set_object_id(itemId);
+        m->set_stack_position(stackpos);
     }
-    send(msg);
+    m->set_use_main_as_fallback(useMainAsFallback);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendWeaponProficiencyAction(const uint8_t actionType, const uint16_t itemId)
+void sendWeaponProficiencyAction(const uint8_t actionType, const uint16_t itemId)
 {
-    const auto msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWeaponProficiency);
-    msg->addU8(actionType);
-    if (actionType == tibia::client::WEAPON_PROFICIENCY_ITEM_INFO || actionType == tibia::client::WEAPON_PROFICIENCY_RESET_PERKS) {
-        msg->addU16(itemId);
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(179);
+    auto* m = message->MutableExtension(GameclientMessageWeaponProficiencyCommand::gameclient_message_weapon_proficiency_command);
+    m->set_action(actionType);
+    m->set_object_id(itemId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendWeaponProficiencyApply(const uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions)
+void sendWeaponProficiencyApply(const uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions)
 {
-    const auto msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWeaponProficiency);
-    msg->addU8(tibia::client::WEAPON_PROFICIENCY_APPLY_PERKS);
-    msg->addU16(itemId);
+    auto message = tibia::protocol::newGameclientMessage(179);
+    auto* m = message->MutableExtension(GameclientMessageWeaponProficiencyCommand::gameclient_message_weapon_proficiency_command);
+    m->set_action(tibia::client::WEAPON_PROFICIENCY_APPLY_PERKS);
+    m->set_object_id(itemId);
     const size_t count = std::min(levels.size(), perkPositions.size());
-    msg->addU8(static_cast<uint8_t>(count));
     for (size_t i = 0; i < count; ++i) {
-        msg->addU8(levels[i]);
-        msg->addU8(perkPositions[i]);
+        auto* perk = m->add_perks();
+        perk->set_level(levels[i]);
+        perk->set_perk_position(perkPositions[i]);
     }
-    send(msg);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendWeaponProficiencySlotAction(const uint8_t actionType, const uint16_t itemId, const uint8_t level, const uint8_t perkPosition, const int offerIndex)
+void sendWeaponProficiencySlotAction(const uint8_t actionType, const uint16_t itemId, const uint8_t level, const uint8_t perkPosition, const int offerIndex)
 {
-    const auto msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientWeaponProficiency);
-    msg->addU8(actionType);
-    msg->addU16(itemId);
-    msg->addU8(level);
-    msg->addU8(perkPosition);
-    if (actionType == tibia::client::WEAPON_PROFICIENCY_PICK_OFFER) {
-        msg->addU8(static_cast<uint8_t>(offerIndex));
-    }
-    send(msg);
+    auto message = tibia::protocol::newGameclientMessage(179);
+    auto* m = message->MutableExtension(GameclientMessageWeaponProficiencyCommand::gameclient_message_weapon_proficiency_command);
+    m->set_action(actionType);
+    m->set_object_id(itemId);
+    auto* slot = m->mutable_slot();
+    slot->set_level(level);
+    slot->set_perk_position(perkPosition);
+    m->set_offer_index(static_cast<uint8_t>(offerIndex));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendBossDifficultySelectionAction(const uint8_t action, const uint16_t difficulty)
+void sendBossDifficultySelectionAction(const uint8_t action, const uint16_t difficulty)
 {
-    const auto msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientBossDifficultySelection);
-    msg->addU32(1);
-    msg->addU8(action);
+    auto message = tibia::protocol::newGameclientMessage(194);
+    auto* m = message->MutableExtension(GameclientMessageBossDifficultySelection::gameclient_message_boss_difficulty_selection);
+    m->set_context(1);
+    m->set_action(action);
     if (action == 0x00 || action == 0x02)
-        msg->addU16(difficulty);
-    send(msg);
+        m->set_difficulty(difficulty);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendOpenWheel(uint32_t playerId) {  
-    const auto& msg = std::make_shared<OutputMessage>();  
-    msg->addU8(Proto::ClientOpenWheel); // 0x61  
-    msg->addU32(playerId); // Adicionar o ID do jogador  
-    send(msg);  
+void sendOpenWheel(const uint32_t playerId)
+{
+    auto message = tibia::protocol::newGameclientMessage(97);
+    auto* m = message->MutableExtension(GameclientMessageRequestSkillWheel::gameclient_message_request_skill_wheel);
+    m->set_character_id(playerId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void ProtocolGame::sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints,
+void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints,
                                         const std::array<uint16_t, 8>& vesselGems)
 {
-    const auto& msg = std::make_shared<OutputMessage>();
-    msg->addU8(Proto::ClientSaveWheel); // 0x62 (ClientSaveWheel)
-    g_logger.debug("[Wheel C++ Send] sendApplyWheelPoints iniciado");
+    auto message = tibia::protocol::newGameclientMessage(98);
+    auto* m = message->MutableExtension(GameclientMessageApplySkillWheel::gameclient_message_apply_skill_wheel);
+    for (int i = 0; i < 36; ++i)
+        m->add_slot_points(i < static_cast<int>(slotPoints.size()) ? slotPoints[i] : 0);
+    for (const uint16_t gemId : vesselGems)
+        m->add_vessel_gems(gemId);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
 
-    for (int i = 0; i < 36; ++i) {
-        const uint16_t value = (i < static_cast<int>(slotPoints.size())) ? slotPoints[i] : 0;
-        msg->addU16(value);
-    }
-
-    // Eight quality-typed vessels (CipSoft Winter 2026).
-    for (int v = 0; v < 8; ++v) {
-        const uint16_t gemId = vesselGems[v];
-        msg->addU8(gemId != UINT16_MAX ? 1 : 0);
-        if (gemId != UINT16_MAX)
-            msg->addU16(gemId);
-    }
-
-    msg->addU8(0);
-    send(msg);
 }

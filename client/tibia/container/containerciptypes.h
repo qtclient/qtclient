@@ -45,7 +45,7 @@ using TContainerID = int;
 void ownProductSurface(QObject* parent);
 
 /// One inventory / container slot's appearance payload (CIP object-info).
-/// Controllers read this — not ItemPtr. Protocol dual-write fills via fromItem.
+/// Controllers read this.
 struct TInventorySlot
 {
     appearances::TAppearanceInstancePtr appearance;
@@ -58,6 +58,8 @@ struct TInventorySlot
     uint32_t durationSeconds = 0;
     int64_t durationEndMs = 0;
     bool decaying = false;
+    /// A quiver: the slot shows containerAmmoTotal, zero included.
+    bool hasContainerAmmo = false;
     uint32_t containerAmmoTotal = 0;
     uint32_t lootFlags = 0;
     uint32_t obtainFlags = 0;
@@ -70,9 +72,10 @@ struct TInventorySlot
 
     bool empty() const { return typeId == 0; }
     uint32_t durationRemainingSeconds() const;
+    /// Time left in milliseconds (a decaying item counts down from its end time).
+    int64_t durationRemainingMilliseconds() const;
 
     /// Bridge from protocol / LocalPlayerSessionThing Item during dual-write.
-    static TInventorySlot fromItem(const ItemPtr& item);
     /// Build from ThingType + protocol object fields (no Item::create).
     static TInventorySlot fromProtocolObject(ThingType* type, uint16_t countOrSubType = 0, uint8_t tier = 0,
                                              uint8_t hangSide = 0);
@@ -155,7 +158,7 @@ public:
             SpecialContainersAvailableMessage);
 
     /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    void onServerMessageEnqueued(int opcode);
 };
 
 class TContainerRenderProvider final : public ::tibia::CipTyped {};

@@ -10,8 +10,12 @@
 
 #include <cip_gen.h>
 
+#include "worldmap/coordinates.h"
+
 #include <QTimer>
 
+#include <deque>
+#include <variant>
 #include <vector>
 
 namespace tibia {
@@ -44,31 +48,29 @@ public:
     explicit TCyclopediaDialogController(QObject* parent = nullptr);
     ~TCyclopediaDialogController() override;
 
-    /// CIP / /.
+    /// The local player's gold; "unknown" (charms: "0") outside the game.
     QString bankGoldBalanceString() const override;
     QString inventoryGoldBalanceString() const override;
     qulonglong totalGoldBalance() const override;
     QString totalGoldBalanceString() const override;
-    /// CIP: the charm storage's +0x28 / +0x2c / +0x30 / +0x34.
+    /// The charm points and minor charm echoes, available and unlocked.
     QString availableCharmPointsString() const override;
     QString unlockedCharmPointsString() const override;
     QString availableMinorCharmEchoesString() const override;
     QString unlockedMinorCharmEchoesString() const override;
     bool backPossible() const override { return !m_backlog.empty(); }
 
-    /// CIP .
+    /// Reopens the dialog on `Tab` and asks the server for the charm, bank
+    /// and inventory balances.
     void showDialog(const DialogTab& Tab) override;
-    /// CIP .
+    /// showDialog, remembering the shown page for requestBack first.
     void captureNavigationBacklogContextIfNeedAndShowDialog(const DialogTab& NewTab) override;
-    /// CIP .
     void closeDialog() override;
-    /// CIP .
+    /// The close button: forgets the backlog and closes.
     void requestClose() override;
-    /// CIP .
     void requestTabSwitch(const DialogTab& NewTab) override;
-    /// CIP .
     void requestOpenManageLootContainerDialog() override;
-    /// CIP .
+    /// Returns to the last remembered page and its context.
     void requestBack() override;
 
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
@@ -90,14 +92,15 @@ private:
     };
 
     void hookActions();
-    /// CIP .
     void switchTab(DialogTab tab);
     cip::tibia::gamewindow::ICyclopediaDialogTab* page(DialogTab tab) const;
     Context captureContext() const;
+    /// Remembers the shown page's context for requestBack.
     void pushBacklog();
-    /// CIP .
+    /// Forgets every step back.
     void clearBacklog();
-    void hideCurrentPage();
+
+    static constexpr size_t MaxBacklog = 100;
 
     cyclopedia::TBestiaryStorage* m_bestiary;
     TItemInfoDialogController* m_itemInfo;
@@ -110,32 +113,46 @@ private:
     THousesInfoDialogController* m_houses;
     TCyclopediaMapDialogController* m_map;
     TMagicalArchiveDialogController* m_magicalArchive;
-    std::vector<Context> m_backlog;
+    std::deque<Context> m_backlog;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
-/// The button bar's Cyclopedia button (CIP: TCyclopediaButtonController,
-/// ctor , onCyclopediaButtonClicked). A new bestiary
-/// detail (0xD9, CIP) highlights it for ten minutes; a click
-/// opens that race's page.
+/// The button bar's Cyclopedia button (CIP: TCyclopediaButtonController).
+/// New bestiary details, a raid that started and an imminent raid highlight
+/// it for ten minutes; a click opens the race's page or the map at the raid,
+/// else the item page.
 class TCyclopediaButtonController final : public cip::tibia::gamewindow::TCyclopediaButtonController
 {
     Q_OBJECT
 public:
     explicit TCyclopediaButtonController(QObject* parent = nullptr);
 
-    /// CIP : the highlight timer runs.
+    /// While the highlight timer runs.
     bool highlighted() const override { return m_highlightTimer.isActive(); }
     void onCyclopediaButtonClicked() override;
-    /// CIP .
     void onHighlightCyclopediaButtonEnds() override;
 
+    /// A new game session: no highlight.
+    void connectToGameSession();
+    void onMonsterCyclopediaNewDetailsMessage(uint16_t NewDetailsMonsterRaceID);
+    void onCyclopediaMapActiveRaidAdded(const worldmap::TWorldMapCoordinate& WorldMapCoordinate);
+    void onCyclopediaMapImminentRaidsChanged(const worldmap::TWorldMapCoordinate& WorldMapCoordinate, float MapScaleFactor);
+
 private:
+    struct TImminentRaid
+    {
+        worldmap::TWorldMapCoordinate coordinate;
+        float scale = 0;
+    };
+    /// What the next click opens: the item page, a race, a started raid, an
+    /// imminent raid.
+    using THighlightReason = std::variant<std::monostate, uint16_t, worldmap::TWorldMapCoordinate, TImminentRaid>;
+
+    void startHighlight();
     void stopHighlight();
 
     QTimer m_highlightTimer;
-    /// CIP +0x38: the page the next click opens (0 = none).
-    int m_newDetailsRaceId = 0;
+    THighlightReason m_highlightReason;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 

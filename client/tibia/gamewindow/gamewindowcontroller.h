@@ -84,6 +84,10 @@ public:
     void goToCreateNewAccount() override;
     void tibiaLogoPressed() override;
     void cipSoftLogoPressed() override;
+    void twitchLogoPressed() override;
+    void youTubeLogoPressed() override;
+    /// Closes every open multi-action button (CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS).
+    void closeOpenMultiActionButtons() override;
 
     void quitPressed() override;
     bool eventFilter(QObject* watched, QEvent* event) override;

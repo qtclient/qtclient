@@ -1,6 +1,6 @@
 #include "animation/animator.h"
 
-#include "framework/core/clock.h"
+#include "shared/clockservice.h"
 
 #include <algorithm>
 

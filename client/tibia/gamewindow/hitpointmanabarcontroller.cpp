@@ -13,67 +13,93 @@ namespace {
 constexpr auto StatusBarEnabled = "statusBarEnabled";
 constexpr auto StatusPanelEnabled = "statusPanelEnabled";
 
+bool option(const char* name)
+{
+    return app::ClientOptions::load().options().value(QLatin1String(name)).toBool(false);
+}
+
+void toggleOption(const char* name)
+{
+    app::ClientOptions::store(QLatin1String(name), !option(name));
+}
+
 }
 
 THitpointManabarController::THitpointManabarController(QObject* parent)
     : cip::tibia::gamewindow::THitpointManabarController(parent)
 {
-    m_visible = app::ClientOptions::load().options().value(QLatin1String(StatusPanelEnabled)).toBool(true);
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
             &THitpointManabarController::onOptionChanged);
+    setVisible(option(StatusPanelEnabled));
 
     const auto onPlayer = [this](GameObject*, const std::vector<std::any>&) {
-        updateFromPlayer();
+        onPlayerDataChanged();
         return std::any{};
     };
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onHealthChange", onPlayer);
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onManaChange", onPlayer);
-    updateFromPlayer();
+    onPlayerDataChanged();
 }
 
-void THitpointManabarController::updateFromPlayer()
+void THitpointManabarController::onPlayerDataChanged()
 {
     if (!tibia::game::localPlayer())
         return;
-    const auto update = [this](int& field, const uint32_t value, void (THitpointManabarController::*signal)()) {
-        if (field == static_cast<int>(value))
-            return;
-        field = static_cast<int>(value);
-        Q_EMIT(this->*signal)();
-    };
-    update(m_currentHitpoints, tibia::game::localPlayerHealth(), &THitpointManabarController::currentHitpointsChanged);
-    update(m_maxHitpoints, tibia::game::localPlayerMaxHealth(), &THitpointManabarController::maxHitpointsChanged);
-    update(m_currentMana, tibia::game::localPlayerMana(), &THitpointManabarController::currentManaChanged);
-    update(m_maxMana, tibia::game::localPlayerMaxMana(), &THitpointManabarController::maxManaChanged);
+    setHitpoints(static_cast<int>(tibia::game::localPlayerHealth()),
+                 static_cast<int>(tibia::game::localPlayerMaxHealth()));
+    setMana(static_cast<int>(tibia::game::localPlayerMana()), static_cast<int>(tibia::game::localPlayerMaxMana()));
 }
 
-// CIP .
-void THitpointManabarController::onOptionChanged(const QString& name)
+void THitpointManabarController::setHitpoints(const int current, const int max)
 {
-    if (name != QLatin1String(StatusPanelEnabled))
+    if (m_currentHitpoints != current) {
+        m_currentHitpoints = current;
+        Q_EMIT currentHitpointsChanged();
+    }
+    if (m_maxHitpoints == max)
         return;
-    m_visible = app::ClientOptions::load().options().value(name).toBool(true);
+    m_maxHitpoints = max;
+    Q_EMIT maxHitpointsChanged();
+}
+
+void THitpointManabarController::setMana(const int current, const int max)
+{
+    if (m_currentMana != current) {
+        m_currentMana = current;
+        Q_EMIT currentManaChanged();
+    }
+    if (m_maxMana == max)
+        return;
+    m_maxMana = max;
+    Q_EMIT maxManaChanged();
+}
+
+void THitpointManabarController::setVisible(const bool visible)
+{
+    m_visible = visible;
     Q_EMIT visibilityChanged();
 }
 
-// CIP .
+void THitpointManabarController::onOptionChanged()
+{
+    setVisible(option(StatusPanelEnabled));
+}
+
 void THitpointManabarController::requestContextMenu()
 {
     TContextMenuController* menu = TContextMenuController::instance();
     if (!menu)
         return;
     menu->beginCustomMenu();
-    const QJsonObject options = app::ClientOptions::load().options();
-    const auto addOption = [&](const char* label, const char* name, const bool fallback) {
-        const bool enabled = options.value(QLatin1String(name)).toBool(fallback);
+    const auto addOption = [&](const char* label, const char* name) {
         TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId(label));
+        // The option is read again when the entry is picked.
+        connect(item, &TContextMenuEntryItem::triggered, this, [name] { toggleOption(name); });
         item->setCheckable(true);
-        item->setChecked(enabled);
-        connect(item, &TContextMenuEntryItem::triggered, this,
-                [name, enabled] { app::ClientOptions::store(QLatin1String(name), !enabled); });
+        item->setChecked(option(name));
     };
-    addOption("optionsmenu_statusbar_enabled", StatusBarEnabled, true);
-    addOption("optionsmenu_statuspanel_enabled", StatusPanelEnabled, false);
+    addOption("optionsmenu_statusbar_enabled", StatusBarEnabled);
+    addOption("optionsmenu_statuspanel_enabled", StatusPanelEnabled);
     menu->showCustomMenu();
 }
 

@@ -6,7 +6,6 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameactionhandlers.h"
 
-#include <client/item.h>
 #include <client/outfit.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>

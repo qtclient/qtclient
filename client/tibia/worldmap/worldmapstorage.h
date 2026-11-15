@@ -87,15 +87,14 @@ public:
 
     /// CIP: informationAtWorldMapCoordinateHasChanged — call after a field mutate.
     void notifyCoordinateChanged(const Position& position);
-    /// CIP: storedVolumeHasChanged — call after a full map / floor window update.
-    void notifyStoredVolumeChanged();
+    /// The storage keeps the fields of the visible area around `center` (the
+    /// view's centre) and drops every other field; storedVolumeHasChanged when
+    /// the volume moved.
+    void setStoredVolume(const Position& center);
     /// Current aware-range cuboid (central ± AwareRange), for storedVolumeHasChanged.
     TShearedWorldMapCuboid storedVolume() const;
 
-    /// Map observer + dynamic overlay peels (qtclient-bridge dual-write).
-    void notifyWindowChanged(bool fullDescription) const;
-    void notifyTileUpdate(const Position& position, const std::shared_ptr<class Thing>& thing,
-                          tibia::client::Operation operation);
+    /// Dynamic overlay peels (qtclient-bridge dual-write).
     void addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
     void addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& position);
     void addStaticText(const StaticTextPtr& text, const Position& position);
@@ -137,16 +136,7 @@ WorldMapFieldList fieldsOnFloor(int8_t floor = -1);
 /// Per-floor missile appearances for worldmap renderer.
 const std::vector<tibia::appearances::TAppearanceInstancePtr>& floorMissiles(uint8_t z);
 
-inline void notifyWindowChanged(const bool fullDescription)
-{
-    TWorldMapStorage::ensureStorage()->notifyWindowChanged(fullDescription);
-}
 
-inline void notifyTileUpdate(const Position& position, const std::shared_ptr<class Thing>& thing,
-                             const tibia::client::Operation operation)
-{
-    TWorldMapStorage::ensureStorage()->notifyTileUpdate(position, thing, operation);
-}
 
 }
 }

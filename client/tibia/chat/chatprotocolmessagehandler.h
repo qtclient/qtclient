@@ -11,7 +11,6 @@
 
 #include <functional>
 #include <memory>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -39,11 +38,10 @@ namespace chat {
 
 class TChatChannelStorage;
 
-/// The ignore and white lists (CIP: TWhiteBlacklist, ctor ,
-/// vtable slots 12-36 at ..; option section
-/// whiteBlacklistOptions). Both lists are kept sorted; only permanent entries
-/// are stored . The flags are not stored: blacklist and
-/// whitelist start active, the rest off (ctor +0x60 = 0x101).
+/// The ignore and white lists (CIP: chat::TWhiteBlacklist, vtable slots
+/// 12-36; option section whiteBlacklistOptions). Both lists are kept sorted
+/// by lower-case name; only permanent entries are stored. The flags are not
+/// stored: blacklist and whitelist start active, the rest off.
 class TWhiteBlacklist final : public cip::tibia::chat::TWhiteBlacklist
 {
     Q_OBJECT
@@ -57,50 +55,72 @@ public:
 
     explicit TWhiteBlacklist(QObject* parent = nullptr);
 
-    /// Slot 24 : the name is on the blacklist.
-    bool isOnBlacklist(const QString& name) const;
-    bool isIgnored(const QString& name) const { return isOnBlacklist(name); }
-    /// Slot 25 : the whitelist is active and has the name, or
-    /// allows VIPs and the name is one.
-    bool isWhitelisted(const QString& name) const;
-    /// Slot 21 .
-    bool isBlacklisted(const QString& name) const;
-    /// Slots 22 / 23 : every yell / private message
-    /// but the whitelisted ones.
-    bool filtersYell(const QString& name) const;
-    bool filtersPrivateMessage(const QString& name) const;
-    /// Slot 26 : message modes no list filters (mask 0x2000300000ec00).
-    static bool isExemptMode(int mode);
-
-    /// IGNORE_NAME / UNIGNORE_NAME (CIP): a temporary entry.
-    void ignore(const QString& name);
-    void unignore(const QString& name);
-
-    const Entries& blacklist() const { return m_blacklist; }
-    const Entries& whitelist() const { return m_whitelist; }
-    /// Slot 18 .
-    void setLists(const Entries& whitelist, const Entries& blacklist);
-
-    bool blacklistActive() const { return m_blacklistActive; }
-    bool whitelistActive() const { return m_whitelistActive; }
-    bool ignoreYelling() const { return m_ignoreYelling; }
-    bool ignorePrivateMessages() const { return m_ignorePrivateMessages; }
-    bool allowVips() const { return m_allowVips; }
-    void setFlags(bool blacklistActive, bool whitelistActive, bool ignoreYelling, bool ignorePrivateMessages, bool allowVips);
-    /// : whether a name is on the VIP list.
+    /// v12: where allowVips looks names up.
     void setVipQuery(std::function<bool(const QString&)> isVip) { m_isVip = std::move(isVip); }
-    /// CIP moc messageFiltered (inherited) — protocol path flashes the ignore button.
-    void notifyMessageFiltered() { Q_EMIT messageFiltered(); }
+    /// v13: a name already listed is replaced.
+    void addToBlacklist(const QString& name, bool permanently);
+    /// v14.
+    void removeFromBlacklist(const QString& name);
+    /// v15.
+    const Entries& blacklist() const { return m_blacklist; }
+    /// v16.
+    void addToWhitelist(const QString& name, bool permanently);
+    /// v17.
+    const Entries& whitelist() const { return m_whitelist; }
+    /// v18.
+    void setLists(const Entries& whitelist, const Entries& blacklist);
+    /// v19: the stored permanent names.
+    void loadFromOptions();
+    /// v20.
+    void saveToOptions() const;
+    /// v21: a message from `name` is dropped (messageFiltered).
+    bool isBlacklisted(const QString& name);
+    /// v22: a yell from `name` is dropped (messageFiltered).
+    bool filtersYell(const QString& name);
+    /// v23: a private message from `name` is dropped (messageFiltered).
+    bool filtersPrivateMessage(const QString& name);
+    /// v24.
+    bool isOnBlacklist(const QString& name) const;
+    /// v25: the whitelist is active and has the name, or allows VIPs and
+    /// the name is one.
+    bool isWhitelisted(const QString& name) const;
+    /// v26: message modes no list filters.
+    static bool isExemptMode(int mode);
+    /// v27 / v28.
+    bool blacklistActive() const { return m_blacklistActive; }
+    void setBlacklistActive(bool active) { m_blacklistActive = active; }
+    /// v29 / v30.
+    bool whitelistActive() const { return m_whitelistActive; }
+    void setWhitelistActive(bool active) { m_whitelistActive = active; }
+    /// v31 / v32.
+    bool ignoreYelling() const { return m_ignoreYelling; }
+    void setIgnoreYelling(bool ignore) { m_ignoreYelling = ignore; }
+    /// v33 / v34.
+    bool ignorePrivateMessages() const { return m_ignorePrivateMessages; }
+    void setIgnorePrivateMessages(bool ignore) { m_ignorePrivateMessages = ignore; }
+    /// v35 / v36.
+    bool allowVips() const { return m_allowVips; }
+    void setAllowVips(bool allow) { m_allowVips = allow; }
 
-Q_SIGNALS:
-    void changed();
-    // CIP moc messageFiltered is inherited from cip::tibia::chat::TWhiteBlacklist.
+    /// The map's speech applies the same rules as the console, which reports
+    /// the filtered message; these do not signal.
+    bool blocksName(const QString& name) const;
+    bool blocksYell(const QString& name) const;
+    bool blocksPrivateMessage(const QString& name) const;
+
+    bool isIgnored(const QString& name) const { return isOnBlacklist(name); }
+    /// IGNORE_NAME / UNIGNORE_NAME.
+    void ignore(const QString& name) { addToBlacklist(name, false); }
+    void unignore(const QString& name) { removeFromBlacklist(name); }
+    void setFlags(bool blacklistActive, bool whitelistActive, bool ignoreYelling, bool ignorePrivateMessages, bool allowVips);
 
 private:
-    static bool contains(const Entries& entries, const QString& name);
-    static void insert(Entries& entries, const Entry& entry);
-    /// vslot 0xa0 .
-    void save();
+    static Entries::iterator findEntry(Entries& entries, const QString& name);
+    static Entries::const_iterator findEntry(const Entries& entries, const QString& name);
+    /// Replaces an entry of the same name, else appends.
+    static void insertEntry(Entries& entries, const Entry& entry);
+    static void sortEntries(Entries& entries);
+    bool isVip(const QString& name) const;
 
     Entries m_blacklist;
     Entries m_whitelist;
@@ -125,16 +145,10 @@ class TChatProtocolMessageHandler final : public cip::tibia::chat::TChatProtocol
     Q_OBJECT
 public:
     TChatProtocolMessageHandler(TChatChannelStorage& storage, TWhiteBlacklist& blacklist, QObject* parent = nullptr);
+    ~TChatProtocolMessageHandler() override;
 
     /// : the console options by CIP name.
     void setOptions(const QJsonObject& options);
-    /// The server's next GameServerOpenChannel for `channelId` makes the tab
-    /// current (OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT). Channels the server opens
-    /// by itself do not ('s last argument is 0 from).
-    void openInForeground(uint16_t channelId) { m_foregroundChannels.insert(channelId); }
-    /// openInForeground's id for the player's own private channel (GameServerOpenOwnChannel).
-    static constexpr uint16_t OwnChannelRequest = 0xFFFF;
-
     /// CIP slots (protobuf args; empty layouts → classic notify remains live apply).
     void handleTalkMessage(const ::tibia::protobuf::protocol::GameserverMessageTalk& TalkMessage);
     void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& MessageMessage);
@@ -149,7 +163,7 @@ public:
     /// Tip Q→H wire: peeled chat opcodes from `serverMessageEnqueued`. Static —
     /// the console handler is owned by the chat controller, while the map
     /// (speech bubbles, numerical effects) and packs consume the same messages.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 
 public Q_SLOTS:
     /// CIP moc slot (cip_gen virtual) — reload console / UI-Sounds chat options.
@@ -160,8 +174,6 @@ public Q_SLOTS:
 Q_SIGNALS:
     /// Tip open-channel dialog list (classic notify path).
     void channelListReceived(const std::vector<std::pair<uint16_t, QString>>& channels);
-    /// Tip ignore-button flash (also CIP TWhiteBlacklist::messageFiltered).
-    void messageFiltered();
     /// A private tab opened for an incoming message.
     void privateChannelOpened(const QString& name);
     /// CIP moc signal (TChatChannelIdentifierList → qtclient channel pairs).
@@ -173,10 +185,6 @@ private:
     void onTalk(const QString& name, int level, int mode, const QString& text, uint16_t channelId, uint32_t statementId);
     void onTextMessage(int mode, const QString& text);
     void onChannelTextMessage(int mode, uint16_t channelId, const QString& text);
-    /// : joined (0) / left (1) lines in the channel, behind consoleShowJoinLeaveMessages;
-    /// invite / exclude events add nothing.
-    void onChannelEvent(uint16_t channelId, const QString& name, int type);
-    void onCloseChannel(uint16_t channelId);
     /// .
     void addPrivateMessage(const QString& name, int level, int mode, const QString& text, uint32_t statementId);
     bool isOwnName(const QString& name) const;
@@ -188,7 +196,8 @@ private:
     TChatChannelStorage& m_storage;
     TWhiteBlacklist& m_blacklist;
     std::vector<client::gamecore::Hook> m_hooks;
-    std::unordered_set<uint16_t> m_foregroundChannels;
+    /// The console handler the session's channel messages go to.
+    static TChatProtocolMessageHandler* s_console;
 
     /// Prefaults match (ids 0x1c/0x1d/0x20/0x1f/0x1b/0x1a/0x46/0x45)
     /// until setOptions runs.

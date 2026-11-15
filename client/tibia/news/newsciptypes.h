@@ -40,7 +40,7 @@ public:
     using cip::tibia::news::TNewsProtocolMessageHandler::TNewsProtocolMessageHandler;
 public:
     /// Tip Q→H wire: ShowGameNews from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TNewsViewsUploader final : public cip::tibia::news::TNewsViewsUploader

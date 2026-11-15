@@ -40,7 +40,7 @@ TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
     m_replayTimer.setParent(this);
     m_replayTimer.setSingleShot(true);
     connect(&m_replayTimer, &QTimer::timeout, this, &TSessiondumpGameSession::pumpReplay);
-    // Protocol::onConnect → SoftHooks (only ProtocolGame publishes).
+    // The game connection publishes onConnect once the socket is open.
     m_hooks.emplace_back("onConnect", [this](const Args&) {
         Q_EMIT connected();
         return std::any{};

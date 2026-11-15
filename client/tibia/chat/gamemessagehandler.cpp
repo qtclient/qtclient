@@ -176,9 +176,10 @@ void TGameMessageHandler::addSpeech(const QString& name, const int mode, const Q
 void TGameMessageHandler::onTalk(const QString& name, const int mode, const QString& text, const Position& coordinate)
 {
     // CIP / handler +0x98: same ignore rules as the console.
-    if (m_ignoreList && !TWhiteBlacklist::isExemptMode(mode)
-        && (m_ignoreList->isBlacklisted(name) || (mode == Yell && m_ignoreList->filtersYell(name))
-            || (mode == PrivateFrom && m_ignoreList->filtersPrivateMessage(name))))
+    if (m_ignoreList
+        && ((!TWhiteBlacklist::isExemptMode(mode) && m_ignoreList->blocksName(name))
+            || (mode == Yell && m_ignoreList->blocksYell(name))
+            || (mode == PrivateFrom && m_ignoreList->blocksPrivateMessage(name))))
         return;
 
     switch (mode) {

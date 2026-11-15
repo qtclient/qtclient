@@ -24,8 +24,8 @@
 #include "animation/phaseanimator.h"
 
 #include <optional>
-#include "framework/core/timer.h"
-#include "framework/graphics/declarations.h"
+#include "shared/clockservice.h"
+#include <framework/global.h>
 #include "client/staticdata.h"
 
 #include <memory>
@@ -107,8 +107,6 @@ public:
 
     void attachEffect(const AttachedEffectPtr& e) { m_effects.emplace_back(e); }
 
-    DrawOrder getDrawOrder() { return m_drawOrder; }
-    void setDrawOrder(const DrawOrder drawOrder) { m_drawOrder = drawOrder; }
     const Light& getLight() const { return m_light; }
     void setLight(const Light& light) { m_light = light; }
 
@@ -128,7 +126,6 @@ private:
     uint8_t m_speed{ 100 };
     uint8_t m_opacity{ 100 };
     uint8_t m_lastAnimation{ 0 };
-    DrawOrder m_drawOrder{ THIRD };
 
     uint16_t m_id{ 0 };
     uint16_t m_duration{ 0 };
@@ -151,7 +148,7 @@ private:
 
     Size m_size;
 
-    Timer m_animationTimer;
+    tibia::shared::TFrameStopWatch m_animationTimer;
     /// The phase clock of the shown appearance, run on `m_animationTimer` and the speed.
     std::optional<tibia::animation::TAnimator> m_phaseAnimator;
     const ThingType* m_phaseAnimatorType = nullptr;
@@ -166,7 +163,6 @@ private:
     Bounce m_fade;
 
     std::string m_shader;
-    TexturePtr m_texture;
 
     std::string m_name;
 
@@ -174,7 +170,6 @@ private:
 
     Point m_toPoint;
 
-    friend class Thing;
     friend class Creature;
     friend class AttachedEffectManager;
 };

@@ -9,9 +9,9 @@
 #include "tibia/game/gamesession.h"
 #include <tibia/game/gamesession.h>
 
-#include <client/item.h>
-#include <framework/core/clock.h>
-#include <framework/core/logger.h>
+#include "shared/clockservice.h"
+#include <QtGlobal>
+#include <format>
 
 #include <protocol.pb.h>
 
@@ -79,8 +79,6 @@ void TContainerProtocolMessageHandler::setLiveInstance(TContainerProtocolMessage
 void TContainerProtocolMessageHandler::handleCloseContainerMessage(
     const GameserverMessageCloseContainer& CloseContainerMessage)
 {
-    // Same side effects as Game::processCloseContainer / parseCloseContainer.
-    // processCloseContainer is ProtocolGame-friend protected — apply via storage.
     const auto containerId = static_cast<TContainerID>(CloseContainerMessage.container_id());
     if (TContainerStorage* storage = TContainerStorage::instance())
         storage->closeContainer(containerId);
@@ -133,7 +131,6 @@ void TContainerProtocolMessageHandler::handleDeleteInContainerMessage(
 void TContainerProtocolMessageHandler::handleSetInventoryMessage(
     const GameserverMessageSetInventory& SetInventoryMessage)
 {
-    // Same side effects as Game::processInventoryChange / parseAddInventoryItem.
     const auto slot = static_cast<uint8_t>(SetInventoryMessage.slot());
     const TInventorySlot item = SetInventoryMessage.has_item()
         ? TInventorySlot::fromProtocolInventoryItem(SetInventoryMessage.item())
@@ -144,14 +141,12 @@ void TContainerProtocolMessageHandler::handleSetInventoryMessage(
 void TContainerProtocolMessageHandler::handleDeleteInventoryMessage(
     const GameserverMessageDeleteInventory& DeleteInventoryMessage)
 {
-    // Same side effects as Game::processInventoryChange(slot, {}) / parseRemoveInventoryItem.
     tibia::game::processInventoryChange(static_cast<uint8_t>(DeleteInventoryMessage.slot()), {});
 }
 
 void TContainerProtocolMessageHandler::handleSpecialContainersAvailableMessage(
     const GameserverMessageSpecialContainersAvailable& SpecialContainersAvailableMessage)
 {
-    // Same side effects as ProtocolGame::parseSpecialContainer.
     const bool stash = SpecialContainersAvailableMessage.stash() != 0;
     const bool market = SpecialContainersAvailableMessage.market() != 0;
     tibia::game::localPlayerSetSupplyStashAvailable(stash);
@@ -159,11 +154,8 @@ void TContainerProtocolMessageHandler::handleSpecialContainersAvailableMessage(
     tibia::game::notify("onSpecialContainersAvailable", stash, market);
 }
 
-void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByteArray& /*classicFrame*/,
-                                                               bool applyClassic)
+void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
 {
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
 
     switch (opcode) {
     case 41: {
@@ -339,10 +331,17 @@ void ownProductSurface(QObject* parent)
 uint32_t TInventorySlot::durationRemainingSeconds() const
 {
     if (decaying) {
-        const auto remaining = durationEndMs - g_clock.millis();
+        const auto remaining = durationEndMs - tibia::shared::TClockService::frameMillis();
         return remaining > 0 ? static_cast<uint32_t>(remaining / 1000) : 0;
     }
     return durationSeconds;
+}
+
+int64_t TInventorySlot::durationRemainingMilliseconds() const
+{
+    if (decaying)
+        return std::max<int64_t>(durationEndMs - tibia::shared::TClockService::frameMillis(), 0);
+    return int64_t(durationSeconds) * 1000;
 }
 
 TInventorySlot TInventorySlot::fromProtocolObject(ThingType* type, const uint16_t countOrSubType, const uint8_t tier,
@@ -391,8 +390,10 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
         slot.lootFlags = item.loot_flags();
     if (item.has_obtain_flags())
         slot.obtainFlags = item.obtain_flags();
-    if (item.has_has_container_ammo() && item.has_container_ammo())
+    if (item.has_has_container_ammo() && item.has_container_ammo()) {
+        slot.hasContainerAmmo = true;
         slot.containerAmmoTotal = item.has_container_ammo_total() ? item.container_ammo_total() : 0;
+    }
 
     if (item.has_duration_seconds()) {
         slot.durationSeconds = item.duration_seconds();
@@ -414,7 +415,7 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
             podiumOutfit.setCategory(ThingCategoryCreature);
             uint16_t lookId = looktype;
             if (!tibia::game::isValidDatId(lookId, ThingCategoryCreature)) {
-                g_logger.traceError("invalid podium looktype {}", lookId);
+                qCritical("%s", std::format("invalid podium looktype {}", lookId).c_str());
                 lookId = 0;
             }
             podiumOutfit.setId(lookId);
@@ -427,7 +428,7 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
             uint16_t lookTypeEx = static_cast<uint16_t>(item.has_look_type_ex() ? item.look_type_ex() : 0);
             if (lookTypeEx != 0) {
                 if (!tibia::game::isValidDatId(lookTypeEx, ThingCategoryItem)) {
-                    g_logger.traceError("invalid podium looktypeex {}", lookTypeEx);
+                    qCritical("%s", std::format("invalid podium looktypeex {}", lookTypeEx).c_str());
                     lookTypeEx = 0;
                 }
                 if (lookTypeEx != 0) {
@@ -454,35 +455,6 @@ TInventorySlot TInventorySlot::fromProtocolInventoryItem(const ProtocolInventory
             showOff->setLook(podiumOutfit, podiumDirection, podiumVisible);
     }
 
-    return slot;
-}
-
-TInventorySlot TInventorySlot::fromItem(const ItemPtr& item)
-{
-    TInventorySlot slot;
-    if (!item)
-        return slot;
-
-    slot.appearance = appearances::TAppearanceInstanceFactory::fromItem(*item);
-    slot.typeId = static_cast<uint16_t>(item->getId());
-    slot.stackable = item->isStackable();
-    slot.fluidOrSplash = item->isFluidContainer() || item->isSplash();
-    slot.count = slot.stackable ? static_cast<uint16_t>(std::clamp(item->getCountOrSubType(), 0, 65535)) : 0;
-    slot.fluid = slot.fluidOrSplash ? static_cast<uint8_t>(std::clamp(item->getCountOrSubType(), 0, 255)) : 0;
-    slot.tier = item->getTier();
-    slot.decoItemId = item->getDecoItemId();
-    slot.charges = item->getCharges();
-    slot.decaying = item->isDecaying();
-    slot.durationSeconds = item->getDurationTime();
-    if (slot.decaying)
-        slot.durationEndMs = g_clock.millis() + static_cast<int64_t>(slot.durationSeconds) * 1000;
-    slot.containerAmmoTotal = item->getContainerAmmoTotal();
-    slot.lootFlags = item->getLootFlags();
-    slot.obtainFlags = item->getObtainFlags();
-    slot.brandNew = item->isBrandNew();
-    slot.hasWearOut = item->hasWearOut();
-    slot.hasClock = item->hasClockExpire() || item->hasExpire() || item->hasExpireStop();
-    slot.dualWield = item->isDualWield();
     return slot;
 }
 
@@ -571,7 +543,7 @@ void TContainerStorage::applyAddItem(const TContainerID id, const TInventorySlot
     }
 
     if (pageSlot < 0 || pageSlot > static_cast<int>(row->items.size())) {
-        g_logger.traceError("container add slot out of range");
+        qCritical("%s", std::format("container add slot out of range").c_str());
         return;
     }
 
@@ -587,7 +559,7 @@ void TContainerStorage::applyUpdateItem(const TContainerID id, const uint16_t sl
         return;
     const int pageSlot = static_cast<int>(slot) - static_cast<int>(row->firstIndex);
     if (pageSlot < 0 || pageSlot >= static_cast<int>(row->items.size())) {
-        g_logger.traceError("container update slot not found");
+        qCritical("%s", std::format("container update slot not found").c_str());
         return;
     }
     row->items[static_cast<size_t>(pageSlot)] = item;
@@ -611,7 +583,7 @@ void TContainerStorage::applyRemoveItem(const TContainerID id, const uint16_t sl
     }
 
     if (pageSlot < 0 || pageSlot >= static_cast<int>(row->items.size())) {
-        g_logger.traceError("container remove slot not found");
+        qCritical("%s", std::format("container remove slot not found").c_str());
         return;
     }
 

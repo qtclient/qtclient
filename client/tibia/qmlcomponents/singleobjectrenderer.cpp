@@ -1,10 +1,10 @@
+#include "appearances/appearanceinstance.h"
 #include "singleobjectrenderer.h"
 
 #include <tibia/config/runtimegameconfig.h>
-#include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
-#include <framework/core/clock.h>
+#include "shared/clockservice.h"
 
 #include <QQuickWindow>
 #include <QSGImageNode>
@@ -108,7 +108,7 @@ void TSingleObjectAppearanceInstanceRenderer::itemChange(const ItemChange change
 }
 
 /// The type and its patterns, as the engine picks them for an item of that count,
-/// liquid and hook (Item::updatePatterns).
+/// liquid and hook (appearances::objectPatternsFor).
 void TSingleObjectAppearanceInstanceRenderer::changed()
 {
     m_type = nullptr;
@@ -123,7 +123,7 @@ void TSingleObjectAppearanceInstanceRenderer::changed()
         int x = 0;
         int y = 0;
         int z = 0;
-        Item::patternsFor(m_type, liquid ? static_cast<int>(m_liquidType) : m_cumulativeCount, x, y, z);
+        tibia::appearances::objectPatternsFor(m_type, liquid ? static_cast<int>(m_liquidType) : m_cumulativeCount, x, y, z);
         m_patternX = x;
         m_patternY = y;
         m_patternZ = z;
@@ -163,14 +163,14 @@ int TSingleObjectAppearanceInstanceRenderer::currentPhase() const
             m_animator.emplace(*info, 0);
             m_animatorType = m_type;
         }
-        m_animator->update(static_cast<qint64>(g_clock.millis()));
+        m_animator->update(static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         return m_animator->phase();
     }
     const int phases = m_type->getAnimationPhases();
     if (phases <= 1)
         return 0;
     const int ticks = tibia::config::itemTicksPerFrame();
-    return static_cast<int>((g_clock.millis() % (static_cast<long long>(ticks) * phases)) / ticks);
+    return static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
 }
 
 void TSingleObjectAppearanceInstanceRenderer::updatePolish()

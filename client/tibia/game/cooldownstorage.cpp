@@ -25,7 +25,6 @@ TCooldownStorage::TCooldownStorage(QObject* parent)
     : cip::tibia::game::TCooldownStorage(parent)
 {
     g_instance = this;
-    // Keep-alive hooks for any residual publishers; ProtocolGame prefers apply*.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpellCooldown", [this](GameObject*, const Args& args) {
         applySpellCooldown(int(client::gamecore::argInt(args, 0)), client::gamecore::argInt(args, 1));
         return std::any{};

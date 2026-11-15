@@ -1,6 +1,7 @@
 #include "gameclient.h"
 #include "creatures/movementtweens.h"
 #include "teamfinder/teamfinderciptypes.h"
+#include "friends/friendsciptypes.h"
 #include "taskboard/taskboardciptypes.h"
 #include "systemsurvey/systemsurveyciptypes.h"
 #include "spells/spellsciptypes.h"
@@ -68,11 +69,12 @@
 #include "creatures/creaturestorage.h"
 #include "creatures/walkdebug.h"
 #include "worldmap/worldmapstorage.h"
+#include "worldmap/worldmapviewport.h"
 
-#include <tibia/worldmap/mapobserver.h>
 #include <client/outfit.h>
-#include <client/protocolgame.h>
-#include <framework/core/resourcemanager.h>
+#include "network/gameserverpacketprocessor.h"
+#include "protocol/clientmessages.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -179,6 +181,11 @@ public:
         return m_client->requestCharacterSwitch(characterName);
     }
 
+    void setSameSocketCharacterSwitch(const bool enabled) override
+    {
+        m_client->setSameSocketCharacterSwitch(enabled);
+    }
+
     QStringList characterNames() const override
     {
         QStringList names;
@@ -232,6 +239,8 @@ TGameClient::TGameClient(QObject* parent)
     , m_sessiondumpCatalogLoader(this)
     , m_sessiondumpPlayer(this)
 {
+    m_worldMapViewport = std::make_unique<worldmap::TWorldMapViewport>();
+    m_worldMapRenderProvider->setViewport(m_worldMapViewport.get());
     m_gameHost = new GameHostImpl(this);
     connect(this, &TGameClient::mainWindowInitialized, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
     connect(this, &TGameClient::worldLeft, m_gameHost, &runtime::TGameHost::worldLeft);
@@ -391,6 +400,7 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     m_inventoryContainer = std::make_unique<container::TInventoryContainer>();
     container::TInventoryContainer::setInstance(m_inventoryContainer.get());
     m_worldmapProtocol = std::make_unique<worldmap::TWorldmapProtocolMessageHandler>(m_worldMapStorage.get());
+    m_worldmapProtocol->setViewport(m_worldMapViewport.get());
     worldmap::TWorldmapProtocolMessageHandler::setLiveInstance(m_worldmapProtocol.get());
     // CIP Q→H: peeled structured opcodes → native handle*Message (skips classic).
     if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue()) {
@@ -425,7 +435,7 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
         }
         // Static ingresses take the client as context: drop the previous
         // session's connections before connecting the queue again.
-        using StaticIngress = void (*)(int, const QByteArray&, bool);
+        using StaticIngress = void (*)(int);
         static constexpr StaticIngress kStaticIngresses[] = {
             &chat::TChatProtocolMessageHandler::onServerMessageEnqueued,
             &trade::TNPCTradeProtocolMessageHandler::onServerMessageEnqueued,
@@ -456,6 +466,8 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             &game::TBossDifficultySelectionProtocolMessageHandler::onServerMessageEnqueued,
             &highscores::THighscoresProtocolMessageHandler::onServerMessageEnqueued,
             &trade::TCharacterTradeProtocolMessageHandler::onServerMessageEnqueued,
+            &taskboard::TTaskboardProtocolMessageHandler::onServerMessageEnqueued,
+            &friends::TFriendsProtocolMessageHandler::onServerMessageEnqueued,
         };
         for (const QMetaObject::Connection& connection : m_staticIngressConnections)
             disconnect(connection);
@@ -469,8 +481,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
                     Qt::UniqueConnection);
         }
     }
-    // CIP: protocol handler owns Map → TWorldMapStorage notify (minimap is sibling).
-    tibia::game::addMapObserver(m_worldmapProtocol.get());
     m_textStorage = std::make_unique<chat::TTextStorage>();
     // CIP TTextStorage::onPlayerCreatureAddedToGameSession — clear map overlays when own body arrives.
     if (m_creatureStorage) {
@@ -626,8 +636,6 @@ void TGameClient::shutdown()
     m_numericalEffects.reset();
     m_textStorage.reset();
     m_ambientLight.reset();
-    if (m_worldmapProtocol)
-        tibia::game::removeMapObserver(m_worldmapProtocol.get());
     worldmap::TWorldmapProtocolMessageHandler::setLiveInstance(nullptr);
     m_worldmapProtocol.reset();
     worldmap::TWorldMapStorage::setInstance(nullptr);
@@ -831,10 +839,9 @@ bool TGameClient::requestCharacterSwitch(const QString& characterName)
     // Same character is allowed: CIP would logout+login; IdleOT re-enters on the same socket.
     if (tibia::game::isSwitchingCharacter())
         return false;
-    const ProtocolGamePtr protocol = tibia::game::getProtocolGame();
-    if (!protocol)
+    if (!tibia::network::TGameserverNetworkPacketProcessor::live())
         return false;
-    protocol->sendCharacterSwitch(characterName.toStdString());
+    tibia::protocol::gameclient::sendCharacterSwitch(characterName.toStdString());
     Q_EMIT characterSwitchRequested(characterName);
     return true;
 }
@@ -843,8 +850,14 @@ void TGameClient::onCharacterChosen(const gamewindow::CharacterEntry& character)
 {
     if (tibia::game::isOnline()) {
         Q_EMIT characterSelectionClosed();
-        if (!requestCharacterSwitch(character.name))
-            fail(tr("Could not switch to %1.").arg(character.name));
+        if (m_sameSocketCharacterSwitch) {
+            if (!requestCharacterSwitch(character.name))
+                fail(tr("Could not switch to %1.").arg(character.name));
+            return;
+        }
+        // CIP: log this character out; the chosen one logs in once it left the world.
+        m_pendingCharacter = character.name;
+        tibia::game::safeLogout();
         return;
     }
 
@@ -962,8 +975,8 @@ void TGameClient::onWorldEntered()
     m_minimap = std::make_unique<minimap::TMinimapManager>(
         defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath),
         markersPath.empty() ? QString() : QString::fromStdString(markersPath));
-    // CIP: minimap consumes TWorldMapStorage signals (not MapObserver).
-    m_minimap->setWorldMapStorage(m_worldMapStorage.get());
+    // The map handler keeps the minimap's floor and fields current.
+    m_minimap->setProtocolHandler(m_worldmapProtocol.get());
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
     // TWaypointCosts), not OTC WasSeen tile blocks — otherwise far clicks stop mid-path.
     tibia::game::setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
@@ -1046,6 +1059,12 @@ void TGameClient::onWorldLeft()
     Q_EMIT worldLeft();
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();
+    if (m_pendingCharacter) {
+        gamewindow::CharacterEntry next;
+        next.name = *m_pendingCharacter;
+        m_pendingCharacter.reset();
+        QTimer::singleShot(0, this, [this, next] { onCharacterChosen(next); });
+    }
 }
 
 void TGameClient::setWindow(QQuickWindow* window)

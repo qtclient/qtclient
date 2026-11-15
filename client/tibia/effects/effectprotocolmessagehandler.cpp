@@ -3,7 +3,7 @@
 #include "appearances/appearanceinstance.h"
 #include "client/magiceffectopacity.h"
 #include "effects/effectstorage.h"
-#include "framework/core/clock.h"
+#include "shared/clockservice.h"
 #include "protocol/protocolciptypes.h"
 #include "sound/soundplayback.h"
 #include "worldmap/worldmapstorage.h"
@@ -50,7 +50,7 @@ appearances::TAppearanceInstancePtr makeEffect(const uint16_t effectId)
 
 void TEffectProtocolMessageHandler::handleGraphicalEffectsMessage(const GameserverMessageGraphicalEffects& message)
 {
-    const qint64 now = static_cast<qint64>(g_clock.millis());
+    const qint64 now = static_cast<qint64>(tibia::shared::TClockService::frameMillis());
     worldmap::TWorldMapStorage* map = worldmap::TWorldMapStorage::ensureStorage();
     for (const auto& entry : message.entries()) {
         const Position at = positionOf(entry.coordinate());
@@ -99,10 +99,8 @@ void TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage(const Gam
                                       positionOf(message.coordinate()));
 }
 
-void TEffectProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray&, const bool applyClassic)
+void TEffectProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
     const auto* shadow = protocol::lastShadowServerMessage();
     if (!shadow)
         return;

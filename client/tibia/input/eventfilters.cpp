@@ -1,9 +1,10 @@
 #include "eventfilters.h"
 
+#include <QCoreApplication>
 #include <QEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <QQuickWindow>
+#include <QPointingDevice>
 #include <QWheelEvent>
 
 namespace tibia::input {
@@ -46,14 +47,28 @@ TDiscardUnhandledMouseButtonsEventFilter::TDiscardUnhandledMouseButtonsEventFilt
 
 bool TDiscardUnhandledMouseButtonsEventFilter::eventFilter(QObject* watched, QEvent* event)
 {
+    // A mouse event that involves any button besides left and right is sent
+    // again with only its left / right bits. When no left / right bit is
+    // left, the event passes through unchanged.
     switch (event->type()) {
     case QEvent::MouseButtonPress:
     case QEvent::MouseButtonRelease:
-    case QEvent::MouseButtonDblClick: {
-        const Qt::MouseButton button = static_cast<QMouseEvent*>(event)->button();
-        if (button != Qt::LeftButton && button != Qt::RightButton && button != Qt::MiddleButton)
-            return true;
-        break;
+    case QEvent::MouseButtonDblClick:
+    case QEvent::MouseMove: {
+        const auto* mouse = static_cast<QMouseEvent*>(event);
+        const auto button = static_cast<uint>(mouse->button());
+        const auto buttons = static_cast<uint>(mouse->buttons().toInt());
+        if (button <= 3 && buttons <= 3)
+            break;
+        const auto handledButton = static_cast<Qt::MouseButton>(button & 3);
+        const auto handledButtons = Qt::MouseButtons::fromInt(static_cast<int>(buttons & 3));
+        if (handledButton == Qt::NoButton && handledButtons == Qt::NoButton)
+            break;
+        QMouseEvent handled(event->type(), mouse->position(), mouse->scenePosition(), mouse->globalPosition(),
+                            handledButton, handledButtons, mouse->modifiers(),
+                            QPointingDevice::primaryPointingDevice());
+        QCoreApplication::sendEvent(watched, &handled);
+        return true;
     }
     default:
         break;
@@ -61,26 +76,13 @@ bool TDiscardUnhandledMouseButtonsEventFilter::eventFilter(QObject* watched, QEv
     return QObject::eventFilter(watched, event);
 }
 
-TWindowFocusEventFilter::TWindowFocusEventFilter(QQuickWindow* window, QObject* parent)
+TWindowFocusEventFilter::TWindowFocusEventFilter(QObject* parent)
     : cip::tibia::input::TWindowFocusEventFilter(parent)
-    , m_window(window)
-{
-    if (window)
-        window->installEventFilter(this);
-}
+{}
 
-TWindowFocusEventFilter::~TWindowFocusEventFilter()
+bool TWindowFocusEventFilter::nativeEventFilter(const QByteArray&, void*, qintptr*)
 {
-    if (m_window)
-        m_window->removeEventFilter(this);
-}
-
-bool TWindowFocusEventFilter::eventFilter(QObject* watched, QEvent* event)
-{
-    if (watched == m_window
-        && (event->type() == QEvent::WindowDeactivate || event->type() == QEvent::FocusOut))
-        Q_EMIT windowFocusLost();
-    return QObject::eventFilter(watched, event);
+    return false;
 }
 
 TEventFilterManager::TEventFilterManager(QObject* parent)

@@ -6,7 +6,7 @@
 #include <idleot/heightstamp.h>
 #include <client/position.h>
 #include <tibia/assets/thingtype.h>
-#include <tibia/appearances/thing.h>
+#include "assets/thingtype.h"
 #include "worldmap/worldmapfield.h"
 #include <algorithm>
 #include <cmath>

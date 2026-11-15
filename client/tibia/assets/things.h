@@ -3,13 +3,29 @@
 
 #include "thingtype.h"
 
+#include <memory>
 #include <unordered_map>
 
 using RaceList = std::vector<RaceType>;
 
-class ThingTypeManager
+namespace tibia::appearances {
+
+class TAppearanceInstanceTracker;
+class TAppearanceInstanceGenericStoragesManager;
+class TAppearanceInstanceGenericStorage;
+
+/// CIP appearances::TAppearancesManager: the appearance catalog (objects,
+/// outfits, effects, missiles) and the static data shipped with it, plus the
+/// appearance-instance tracker and storages.
+class TAppearancesManager
 {
 public:
+    static TAppearancesManager& instance();
+
+    TAppearanceInstanceTracker& tracker();
+    TAppearanceInstanceGenericStoragesManager& storages();
+    TAppearanceInstanceGenericStorage& genericStorage();
+
     struct EffectVariant
     {
         uint16_t baseId = 0;
@@ -76,6 +92,10 @@ public:
 private:
     void buildProficiencyCache();
 
+    std::unique_ptr<TAppearanceInstanceTracker> m_tracker;
+    std::unique_ptr<TAppearanceInstanceGenericStoragesManager> m_storages;
+    std::unique_ptr<TAppearanceInstanceGenericStorage> m_genericStorage;
+
     ThingTypeList m_thingTypes[ThingLastCategory];
     ThingTypePtr m_nullThingType;
     RaceList m_monsterRaces;
@@ -94,4 +114,4 @@ private:
     std::unordered_map<uint16_t, ThingShape> m_thingShapes;
 };
 
-extern ThingTypeManager g_things;
+}

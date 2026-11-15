@@ -3,7 +3,7 @@
   "dir": "client",
   "opcode": 10,
   "name": "Login",
-  "func": "sendLoginPacket"
+  "call": "// Built by network::TGameserverNetworkPacketProcessor::sendLogin."
  },
  {
   "dir": "client",
@@ -963,13 +963,15 @@
   "dir": "server",
   "opcode": 5,
   "name": "SessionDumpMarker",
-  "call": "// Native: game::TGameProtocolMessageHandler."
+  "call": "// CIP's message queue registers no signal for it; no handler applies it.",
+  "unhandled": true
  },
  {
   "dir": "server",
   "opcode": 6,
   "name": "PartyLeft",
-  "call": "// Native: game::TGameProtocolMessageHandler."
+  "call": "// CIP's message queue registers no signal for it; no handler applies it.",
+  "unhandled": true
  },
  {
   "dir": "server",
@@ -1113,7 +1115,7 @@
   "dir": "server",
   "opcode": 91,
   "name": "Taskboard",
-  "call": "parseTaskBoardData(msg);"
+  "call": "// Native: taskboard::TTaskboardProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1161,7 +1163,7 @@
   "dir": "server",
   "opcode": 99,
   "name": "ClientCheck",
-  "call": "parseClientCheck(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1263,7 +1265,7 @@
   "dir": "server",
   "opcode": 116,
   "name": "FriendSystemData",
-  "call": "parseFriendSystemData(msg);"
+  "call": "// Native: friends::TFriendsProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1581,7 +1583,7 @@
   "dir": "server",
   "opcode": 169,
   "name": "RestingAreaState",
-  "call": "parseRestingAreaState(msg);"
+  "call": "// Native: dailyreward::TDailyRewardProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1683,7 +1685,7 @@
   "dir": "server",
   "opcode": 186,
   "name": "SoulSealsDialog",
-  "call": "parseTaskHuntingBasicData(msg);"
+  "call": "// Native: taskboard::TTaskboardProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1863,7 +1865,7 @@
   "dir": "server",
   "opcode": 216,
   "name": "MonsterCyclopediaBonusEffects",
-  "call": "parseBestiaryCharmsData(msg);"
+  "call": "// Native: cyclopedia::TCyclopediaProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1875,7 +1877,7 @@
   "dir": "server",
   "opcode": 218,
   "name": "CyclopediaCharacterInfo",
-  "call": "parseCyclopediaCharacterInfo(msg);"
+  "call": "// Native: game::TGameProtocolMessageHandler."
  },
  {
   "dir": "server",
@@ -1935,7 +1937,7 @@
   "dir": "server",
   "opcode": 228,
   "name": "DailyRewardBasic",
-  "call": "parseDailyReward(msg);"
+  "call": "// Native: dailyreward::TDailyRewardProtocolMessageHandler."
  },
  {
   "dir": "server",

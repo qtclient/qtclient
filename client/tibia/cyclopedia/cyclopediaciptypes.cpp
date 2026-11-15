@@ -95,10 +95,10 @@ void ownProductSurface(QObject* parent)
 
 namespace tibia::cyclopedia {
 
-void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/, const bool applyClassic)
+void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
     switch (opcode) {
@@ -111,6 +111,27 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
     case 206:
         if (shadow->HasExtension(GameserverMessageItemWasted::gameserver_message_item_wasted))
             tibia::game::notify("onSupplyTracker", static_cast<uint16_t>(shadow->GetExtension(GameserverMessageItemWasted::gameserver_message_item_wasted).object_id()));
+        break;
+    case 216:
+        if (shadow->HasExtension(GameserverMessageMonsterCyclopediaBonusEffects::gameserver_message_monster_cyclopedia_bonus_effects)) {
+            const auto& m = shadow->GetExtension(GameserverMessageMonsterCyclopediaBonusEffects::gameserver_message_monster_cyclopedia_bonus_effects);
+            BestiaryCharmsData data{};
+            data.resetAllCharmsCost = m.reset_all_charms_cost();
+            data.availableCharmSlots = m.has_available_charm_slots() ? static_cast<uint8_t>(m.available_charm_slots()) : 0xff;
+            for (const auto& c : m.charms()) {
+                CharmData charm{};
+                charm.id = static_cast<uint8_t>(c.charm_id());
+                charm.tier = static_cast<uint8_t>(c.tier());
+                charm.asignedStatus = c.assigned();
+                charm.unlocked = c.assigned() || c.tier() > 0;
+                charm.raceId = static_cast<uint16_t>(c.race_id());
+                charm.removeRuneCost = c.remove_cost();
+                data.charms.push_back(std::move(charm));
+            }
+            for (const auto& f : m.finished_races())
+                data.finishedMonsters.push_back(static_cast<uint16_t>(f.race_id()));
+            tibia::game::processUpdateBestiaryCharmsData(data);
+        }
         break;
     case 217:
         if (shadow->HasExtension(GameserverMessageMonsterCyclopediaNewDetails::gameserver_message_monster_cyclopedia_new_details))
@@ -346,11 +367,10 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
     }
 }
 
-void TBestiaryTrackerProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                                     const bool applyClassic)
+void TBestiaryTrackerProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow || opcode != 185 || !shadow->HasExtension(GameserverMessageBestiaryTracker::gameserver_message_bestiary_tracker))
         return;
     const auto& m = shadow->GetExtension(GameserverMessageBestiaryTracker::gameserver_message_bestiary_tracker);

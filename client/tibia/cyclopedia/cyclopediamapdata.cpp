@@ -5,8 +5,8 @@
 #include "client/gamecore.h"
 #include "creatures/creaturestorage.h"
 
-#include <framework/core/resourcemanager.h>
-#include <framework/graphics/image.h>
+#include "shared/tibiafilesystemhelper.h"
+#include "assets/cipbmpimage.h"
 
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -88,11 +88,7 @@ TMapCoordinate readCoordinate(const std::string_view data)
 
 QImage decodeImage(const std::string& data)
 {
-    const ImagePtr image = Image::fromCipBmpData(data);
-    if (!image || image->getBpp() != 4)
-        return {};
-    const Size size = image->getSize();
-    return QImage(image->getPixelData(), size.width(), size.height(), size.width() * 4, QImage::Format_RGBA8888).copy();
+    return tibia::assets::decodeCipBmpImage(QByteArray(data.data(), qsizetype(data.size())));
 }
 
 }
@@ -358,7 +354,6 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
     : cip::tibia::cyclopedia::TCyclopediaMapStorage(parent)
 {
     using client::gamecore::argInt;
-    // Live path: ProtocolGame 0xDD → onCyclopediaMap* notifies → CIP moc signals.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaMapDiscoveryData", [this](GameObject*, const std::vector<std::any>& args) {
         const auto* mains = args.size() > 0 ? std::any_cast<std::vector<std::vector<int>>>(&args[0]) : nullptr;
         const auto* discovered = args.size() > 1 ? std::any_cast<std::vector<int>>(&args[1]) : nullptr;

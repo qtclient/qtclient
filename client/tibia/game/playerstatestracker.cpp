@@ -29,21 +29,21 @@ TPlayerStatesTracker::TPlayerStatesTracker(const config::SpecialConditionsFilter
     };
     for (const char* event : { "onStatesChange", "onRegenerationChange", "onSkullChange", "onEmblemChange" })
         m_hooks.emplace_back(tibia::game::kNotifyScope, event, onPlayer);
+    // CipSoft: the server only says whether the player is in a resting area;
+    // the bonus follows the daily reward streak (at least 2).
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onRestingAreaState", [this](GameObject*, const Args& args) {
-        const bool inRestingArea = client::gamecore::argBool(args, 0);
-        const bool hasBonus = client::gamecore::argBool(args, 1);
-        const QString text = client::gamecore::argString(args, 2);
-        if (inRestingArea != m_inRestingArea || hasBonus != m_restingAreaBonus || text != m_restingAreaText) {
-            m_inRestingArea = inRestingArea;
-            m_restingAreaBonus = hasBonus;
-            m_restingAreaText = text;
-            Q_EMIT restingAreaChanged(inRestingArea, hasBonus, text);
-            refresh();
-        }
+        m_inRestingArea = client::gamecore::argBool(args, 0);
+        updateRestingArea();
+        return std::any{};
+    });
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenRewardWall", [this](GameObject*, const Args& args) {
+        m_rewardStreak = static_cast<uint>(client::gamecore::argInt(args, 7));
+        updateRestingArea();
         return std::any{};
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_inRestingArea = m_restingAreaBonus = false;
+        m_rewardStreak = 0;
         m_restingAreaText.clear();
         m_model.setEntries({});
     });
@@ -53,6 +53,19 @@ TPlayerStatesTracker::TPlayerStatesTracker(const config::SpecialConditionsFilter
         reloadOptions();
         Q_EMIT optionsChanged();
     });
+    refresh();
+}
+
+void TPlayerStatesTracker::updateRestingArea()
+{
+    const bool hasBonus = m_inRestingArea && m_rewardStreak >= 2;
+    const QString text = m_inRestingArea ? qtTrId("playerstatus_client_restingarea_group_name") : QString();
+    if (hasBonus == m_restingAreaBonus && text == m_restingAreaText && m_inRestingArea == m_lastInRestingArea)
+        return;
+    m_lastInRestingArea = m_inRestingArea;
+    m_restingAreaBonus = hasBonus;
+    m_restingAreaText = text;
+    Q_EMIT restingAreaChanged(m_inRestingArea, hasBonus, text);
     refresh();
 }
 

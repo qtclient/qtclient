@@ -12,9 +12,9 @@
 #include "minimap/minimaptilestorage.h"
 
 #include <tibia/assets/things.h>
-#include <framework/core/clock.h>
-#include <framework/core/resourcemanager.h>
-#include <framework/graphics/image.h>
+#include "shared/clockservice.h"
+#include "shared/tibiafilesystemhelper.h"
+#include "assets/cipbmpimage.h"
 
 #include <QList>
 #include <QQmlComponent>
@@ -348,7 +348,7 @@ void TMinimapRendererQuickItem::syncZoneBlinkTimer()
 float TMinimapRendererQuickItem::zoneHighlightOpacity()
 {
     // CIP : same pulse as world-map sprite highlights.
-    return static_cast<float>((std::sin(g_clock.millis() / 100.0) * 0.15 + 0.65) * 0.75);
+    return static_cast<float>((std::sin(tibia::shared::TClockService::frameMillis() / 100.0) * 0.15 + 0.65) * 0.75);
 }
 
 void TMinimapRendererQuickItem::setMinimapTileStorage(minimap::TMinimapTileStorage* storage) { g_minimapTiles = storage; }
@@ -554,13 +554,11 @@ QImage TMinimapRendererQuickItem::missionZoneImage(const TMissionZoneOverlay& zo
         m_missionZoneImages.emplace(zone.id, QImage{});
         return {};
     }
-    const ImagePtr image = Image::fromCipBmpData(data);
-    if (!image || image->getBpp() != 4) {
+    const QImage mask = tibia::assets::decodeCipBmpImage(QByteArray(data.data(), qsizetype(data.size())));
+    if (mask.isNull()) {
         m_missionZoneImages.emplace(zone.id, QImage{});
         return {};
     }
-    const Size size = image->getSize();
-    const QImage mask = QImage(image->getPixelData(), size.width(), size.height(), size.width() * 4, QImage::Format_RGBA8888).copy();
     const QImage colored = zoneImage(zone.id, mask);
     m_missionZoneImages[zone.id] = colored;
     return colored;

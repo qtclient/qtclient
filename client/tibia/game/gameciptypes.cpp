@@ -12,6 +12,7 @@
 #include "creatures/creaturestorage.h"
 #include "game/cooldownstorage.h"
 #include "game/playerdata.h"
+#include "shared/clockservice.h"
 #include "game/playerskillstats.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/gamewindowciptypes.h"
@@ -21,7 +22,8 @@
 #include <client/staticdata.h>
 #include <client/gamecore.h>
 #include "protocol/protocolcodes.h"
-#include <client/protocolgame.h>
+#include "network/gameserverpacketprocessor.h"
+#include "protocol/clientmessages.h"
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
@@ -36,6 +38,377 @@ namespace tibia::game {
 
 namespace {
 FPSDropsLogger* g_qtclientFpsDropsLogger = nullptr;
+
+std::vector<std::pair<std::string, std::string>> inspectionDetails(
+    const google::protobuf::RepeatedPtrField<::tibia::protobuf::protocol::ProtocolInspectionDetail>& list)
+{
+    std::vector<std::pair<std::string, std::string>> out;
+    for (const auto& d : list)
+        out.emplace_back(d.label(), d.value());
+    return out;
+}
+
+/// The appearance of an inspected object, as the dialogs show it.
+template<typename Dest>
+void fillInspectedAppearance(Dest& dest, const ::tibia::protobuf::protocol::ProtocolInventoryItem& item)
+{
+    const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(item);
+    dest.typeId = slot.typeId;
+    dest.count = slot.stackable ? std::max<uint16_t>(1, slot.count) : 1;
+    dest.tier = slot.tier;
+    dest.fluidOrSubtype = slot.fluidOrSplash ? slot.fluid : 0;
+    dest.fluidOrSplash = slot.fluidOrSplash;
+    ThingType* type = tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
+    dest.hookSouth = type && type->isHookSouth();
+    dest.hookEast = type && type->isHookEast();
+    dest.hasProficiency = type && type->getProficiencyId() != 0;
+}
+
+double at(const google::protobuf::RepeatedField<double>& list, const int index)
+{
+    return index < list.size() ? list.Get(index) : 0.0;
+}
+
+template<typename List>
+std::vector<CyclopediaCharacterOffenceStats::ElementModifier> elementModifiers(const List& list)
+{
+    std::vector<CyclopediaCharacterOffenceStats::ElementModifier> out;
+    for (const auto& e : list)
+        out.push_back({ static_cast<uint8_t>(e.key()), e.value() });
+    return out;
+}
+
+template<typename List>
+std::vector<CyclopediaCharacterOffenceStats::SkillBonus> skillBonuses(const List& list)
+{
+    std::vector<CyclopediaCharacterOffenceStats::SkillBonus> out;
+    for (const auto& e : list)
+        out.push_back({ static_cast<uint8_t>(e.skill_id()), e.first(), e.second() });
+    return out;
+}
+
+CyclopediaCharacterOffenceStats offenceStats(const ::tibia::protobuf::protocol::ProtocolCharacterInfoOffenceStats& o)
+{
+    CyclopediaCharacterOffenceStats data{};
+    data.critChanceTotal = at(o.crit_chance(), 0);
+    data.critChanceEquipament = at(o.crit_chance(), 1);
+    data.critChanceFlat = at(o.crit_chance(), 2);
+    data.critChanceImbuement = at(o.crit_chance(), 3);
+    data.critChanceWheel = at(o.crit_chance(), 4);
+    data.critChanceConcoction = at(o.crit_chance(), 5);
+    data.critDamageTotal = at(o.crit_damage(), 0);
+    data.critDamageEquipament = at(o.crit_damage(), 1);
+    data.critDamageFlat = at(o.crit_damage(), 2);
+    data.critDamageImbuement = at(o.crit_damage(), 3);
+    data.critDamageWheel = at(o.crit_damage(), 4);
+    data.critDamageConcoction = at(o.crit_damage(), 5);
+    data.lifeLeechTotal = at(o.life_leech(), 0);
+    data.lifeLeechEquipament = at(o.life_leech(), 1);
+    data.lifeLeechImbuement = at(o.life_leech(), 2);
+    data.lifeLeechWheel = at(o.life_leech(), 3);
+    data.lifeLeechEventBonus = at(o.life_leech(), 4);
+    data.manaLeechTotal = at(o.mana_leech(), 0);
+    data.manaLeechEquipament = at(o.mana_leech(), 1);
+    data.manaLeechImbuement = at(o.mana_leech(), 2);
+    data.manaLeechWheel = at(o.mana_leech(), 3);
+    data.manaLeechEventBonus = at(o.mana_leech(), 4);
+    data.onslaught = at(o.onslaught(), 0);
+    data.onslaughtBase = at(o.onslaught(), 1);
+    data.onslaughtBonus = at(o.onslaught(), 2);
+    data.onslaughtEventBonus = at(o.onslaught(), 3);
+    data.cleavePercent = o.cleave();
+    for (const uint32_t value : o.perfect_shot())
+        data.perfectShotDamage.push_back(static_cast<uint16_t>(value));
+    const auto flat = [&o](const int i) { return static_cast<uint16_t>(i < o.flat_damage_size() ? o.flat_damage(i) : 0); };
+    data.flatDamage = flat(0);
+    data.flatDamageBase = flat(1);
+    data.flatDamageWheel = flat(2);
+    data.weaponAttack = static_cast<uint16_t>(o.weapon_attack());
+    data.weaponFlatModifier = static_cast<uint16_t>(o.weapon_flat_modifier());
+    data.weaponDamage = static_cast<uint16_t>(o.weapon_damage());
+    data.weaponSkillType = static_cast<uint8_t>(o.weapon_skill_type());
+    data.weaponSkillLevel = static_cast<uint16_t>(o.weapon_skill_level());
+    data.weaponSkillModifier = static_cast<uint16_t>(o.weapon_skill_modifier());
+    data.weaponElement = static_cast<uint8_t>(o.weapon_element());
+    data.weaponElementDamage = o.converted_damage();
+    data.weaponElementType = static_cast<uint8_t>(o.converted_element());
+    for (const auto& a : o.accuracy())
+        data.weaponAccuracy.push_back({ static_cast<uint8_t>(a.key()), a.value() });
+    data.damagePowerfulFoes = o.powerful_foes();
+    for (const auto& t : o.specific_targets())
+        data.damageSpecificTargets.push_back({ t.name(), t.value() });
+    data.damageElements = elementModifiers(o.crit_chance_elements());
+    data.offensiveRuneDamage = o.offensive_runes();
+    data.autoAttackDamage = o.auto_attack();
+    data.critDamageElements = elementModifiers(o.crit_damage_elements());
+    data.critDamageOffensiveRunes = o.crit_damage_runes();
+    data.critDamageAutoAttack = o.crit_damage_auto_attack();
+    data.lifeGainHit = static_cast<uint16_t>(o.life_on_hit());
+    data.manaGainHit = static_cast<uint16_t>(o.mana_on_hit());
+    data.lifeGainKill = static_cast<uint16_t>(o.life_on_kill());
+    data.manaGainKill = static_cast<uint16_t>(o.mana_on_kill());
+    data.extraDamageSkills = skillBonuses(o.extra_damage_skills());
+    data.extraDamageSpells = skillBonuses(o.extra_damage_spells());
+    data.extraHealingSpells = skillBonuses(o.extra_healing_spells());
+    data.damageHighHp = o.damage_high_health();
+    data.damageLowHp = o.damage_low_health();
+    data.armorPenetration = o.armor_penetration();
+    data.elementalPierce = elementModifiers(o.elemental_pierce());
+    return data;
+}
+
+CyclopediaCharacterDefenceStats defenceStats(const ::tibia::protobuf::protocol::ProtocolCharacterInfoDefenceStats& d)
+{
+    CyclopediaCharacterDefenceStats data{};
+    data.dodgeTotal = at(d.dodge(), 0);
+    data.dodgeBase = at(d.dodge(), 1);
+    data.dodgeBonus = at(d.dodge(), 2);
+    data.dodgeWheel = at(d.dodge(), 4);
+    data.magicShieldCapacity = d.magic_shield();
+    data.magicShieldCapacityFlat = static_cast<uint16_t>(d.magic_shield_flat());
+    data.magicShieldCapacityPercent = d.magic_shield_percent();
+    data.reflectPhysical = static_cast<uint16_t>(d.reflect_physical());
+    data.armor = static_cast<uint16_t>(d.armor());
+    data.defense = static_cast<uint16_t>(d.defence());
+    data.defenseEquipment = static_cast<uint16_t>(d.defence_equipment());
+    data.defenseSkillType = static_cast<uint8_t>(d.defence_skill_type());
+    data.shieldingSkill = static_cast<uint16_t>(d.shielding());
+    data.defenseWheel = static_cast<uint16_t>(d.defence_wheel());
+    data.mitigation = at(d.mitigation(), 0);
+    data.mitigationBase = at(d.mitigation(), 1);
+    data.mitigationEquipment = at(d.mitigation(), 2);
+    data.mitigationShield = at(d.mitigation(), 3);
+    data.mitigationWheel = at(d.mitigation(), 4);
+    for (const auto& r : d.resistances()) {
+        if (r.kind() == 4) // elemental resistances; the other kinds have no row
+            data.resistances.push_back({ static_cast<uint8_t>(r.element()), r.value() });
+    }
+    return data;
+}
+
+CyclopediaCharacterMiscStats miscStats(const ::tibia::protobuf::protocol::ProtocolCharacterInfoMiscStats& m)
+{
+    CyclopediaCharacterMiscStats data{};
+    data.momentumTotal = at(m.momentum(), 0);
+    data.momentumBase = at(m.momentum(), 1);
+    data.momentumBonus = at(m.momentum(), 2);
+    data.momentumWheel = at(m.momentum(), 3);
+    data.dodgeTotal = at(m.dodge(), 0);
+    data.dodgeBase = at(m.dodge(), 1);
+    data.dodgeBonus = at(m.dodge(), 2);
+    data.dodgeWheel = at(m.dodge(), 3);
+    data.damageReflectionTotal = at(m.damage_reflection(), 0);
+    data.damageReflectionBase = at(m.damage_reflection(), 1);
+    data.damageReflectionBonus = at(m.damage_reflection(), 2);
+    data.haveBlesses = static_cast<uint8_t>(m.blessings());
+    data.totalBlesses = static_cast<uint8_t>(m.total_blessings());
+    for (const auto& c : m.concoctions())
+        data.concoctions.push_back({ static_cast<uint16_t>(c.id()), c.duration() });
+    for (const auto& f : m.foods())
+        data.activeFoods.push_back({ static_cast<uint16_t>(f.id()), f.duration() });
+    const auto augments = [](const auto& list) {
+        std::vector<CyclopediaCharacterMiscStats::Augment> out;
+        for (const auto& a : list)
+            out.push_back({ static_cast<uint16_t>(a.spell_id()), static_cast<uint8_t>(a.type()), a.value() });
+        return out;
+    };
+    data.weaponProficiencyAugments = augments(m.proficiency_augments());
+    data.wheelAugments = augments(m.wheel_augments());
+    data.equippedAugments = augments(m.equipped_augments());
+    return data;
+}
+
+std::vector<ItemSummary> itemCounts(
+    const google::protobuf::RepeatedPtrField<::tibia::protobuf::protocol::ProtocolCharacterInfoItemCount>& list)
+{
+    std::vector<ItemSummary> out;
+    for (const auto& e : list)
+        out.push_back({ static_cast<uint16_t>(e.object_id()), static_cast<uint8_t>(e.tier()), e.amount() });
+    return out;
+}
+
+/// The 0xDA character information, one page of the character dialog.
+void applyCharacterInfo(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& m)
+{
+    const int type = static_cast<int>(m.info_type());
+    if (m.error_code() != 0) {
+        tibia::game::notify("onCyclopediaCharacterInfoError", type, static_cast<int>(m.error_code()));
+        return;
+    }
+    switch (type) {
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION: {
+        const auto& b = m.base();
+        tibia::game::notify("onCyclopediaCharacterBaseInformation", b.name(), b.vocation(), static_cast<uint16_t>(b.level()),
+                            creatures::outfitFromProtocol(b.outfit(), nullptr), b.own_character(), b.title());
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_GENERALSTATS: {
+        const auto& g = m.general();
+        CyclopediaCharacterGeneralStats stats{};
+        stats.experience = g.experience();
+        stats.level = static_cast<uint16_t>(g.level());
+        stats.levelPercent = static_cast<uint16_t>(g.level_percent() / 100);
+        stats.baseExpGain = static_cast<uint16_t>(g.base_xp_gain());
+        stats.lowLevelExpBonus = static_cast<uint16_t>(g.low_level_xp_bonus());
+        stats.XpBoostPercent = static_cast<uint16_t>(g.xp_boost_percent());
+        stats.staminaExpBonus = static_cast<uint16_t>(g.stamina_xp_bonus());
+        stats.XpBoostBonusRemainingTime = static_cast<uint16_t>(g.xp_boost_remaining());
+        stats.canBuyXpBoost = g.can_buy_xp_boost() ? 1 : 0;
+        stats.health = g.health();
+        stats.maxHealth = g.max_health();
+        stats.mana = g.mana();
+        stats.maxMana = g.max_mana();
+        stats.soul = static_cast<uint8_t>(g.soul());
+        stats.staminaMinutes = static_cast<uint16_t>(g.stamina_minutes());
+        stats.regenerationCondition = static_cast<uint16_t>(g.regeneration());
+        stats.offlineTrainingTime = static_cast<uint16_t>(g.offline_training());
+        stats.speed = static_cast<uint16_t>(g.speed());
+        stats.baseSpeed = static_cast<uint16_t>(g.base_speed());
+        stats.capacity = g.capacity();
+        stats.baseCapacity = g.base_capacity();
+        stats.freeCapacity = g.free_capacity();
+        std::vector<std::vector<uint16_t>> skills;
+        for (int i = 0; i < g.skills_size(); ++i) {
+            const auto& s = g.skills(i);
+            if (i == 0) { // the magic level leads the list
+                stats.magicLevel = static_cast<uint16_t>(s.level());
+                stats.baseMagicLevel = static_cast<uint16_t>(s.base_level());
+                stats.loyaltyMagicLevel = static_cast<uint16_t>(s.loyalty_level());
+                stats.magicLevelPercent = static_cast<uint16_t>(s.percent());
+                continue;
+            }
+            skills.push_back({ static_cast<uint16_t>(s.level()), static_cast<uint16_t>(s.base_level()),
+                               static_cast<uint16_t>(s.percent() / 100) });
+        }
+        std::vector<std::tuple<uint8_t, uint16_t>> combats;
+        for (const auto& e : g.specialized_magic_levels())
+            combats.emplace_back(static_cast<uint8_t>(e.element()), static_cast<uint16_t>(e.value()));
+        tibia::game::processCyclopediaCharacterGeneralStats(stats, skills, combats);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS: {
+        tibia::game::notify("onCyclopediaCharacterPagination", type, static_cast<int>(m.current_page()), static_cast<int>(m.page_count()));
+        CyclopediaCharacterRecentDeaths data;
+        for (const auto& d : m.deaths())
+            data.entries.push_back({ d.timestamp(), d.cause() });
+        tibia::game::processCyclopediaCharacterRecentDeaths(data);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS: {
+        tibia::game::notify("onCyclopediaCharacterPagination", type, static_cast<int>(m.current_page()), static_cast<int>(m.page_count()));
+        CyclopediaCharacterRecentPvPKills data;
+        for (const auto& k : m.pvp_kills())
+            data.entries.push_back({ k.timestamp(), k.description(), static_cast<uint8_t>(k.status()) });
+        tibia::game::processCyclopediaCharacterRecentPvpKills(data);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_ACHIEVEMENTS: {
+        std::vector<std::tuple<uint16_t, uint32_t, bool, std::string, std::string, uint8_t>> achievements;
+        for (const auto& a : m.achievements())
+            achievements.emplace_back(static_cast<uint16_t>(a.id()), a.timestamp(), a.secret(), a.name(), a.description(),
+                                      static_cast<uint8_t>(a.grade()));
+        tibia::game::notify("onCyclopediaCharacterAchievements", static_cast<int>(m.achievement_points()),
+                            static_cast<int>(m.secret_achievements()), achievements);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_ITEMSUMMARY: {
+        CyclopediaCharacterItemSummary data;
+        data.inventory = itemCounts(m.inventory_items());
+        data.store = itemCounts(m.store_items());
+        data.stash = itemCounts(m.stash_items());
+        data.depot = itemCounts(m.depot_items());
+        data.inbox = itemCounts(m.inbox_items());
+        tibia::game::processCyclopediaCharacterItemSummary(data);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_OUTFITSMOUNTS: {
+        OutfitColorStruct colors{};
+        colors.lookHead = static_cast<uint8_t>(m.outfit_colors().head());
+        colors.lookBody = static_cast<uint8_t>(m.outfit_colors().body());
+        colors.lookLegs = static_cast<uint8_t>(m.outfit_colors().legs());
+        colors.lookFeet = static_cast<uint8_t>(m.outfit_colors().feet());
+        colors.lookMountHead = static_cast<uint8_t>(m.mount_colors().head());
+        colors.lookMountBody = static_cast<uint8_t>(m.mount_colors().body());
+        colors.lookMountLegs = static_cast<uint8_t>(m.mount_colors().legs());
+        colors.lookMountFeet = static_cast<uint8_t>(m.mount_colors().feet());
+        std::vector<CharacterInfoOutfits> outfits;
+        for (const auto& o : m.outfits())
+            outfits.push_back({ static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.addons()),
+                                static_cast<uint8_t>(o.source()), o.current() });
+        std::vector<CharacterInfoMounts> mounts;
+        for (const auto& o : m.mounts())
+            mounts.push_back({ static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.source()), o.current() });
+        std::vector<CharacterInfoFamiliar> familiars;
+        for (const auto& o : m.familiars())
+            familiars.push_back({ static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.source()), o.current() });
+        tibia::game::processCyclopediaCharacterAppearances(colors, outfits, mounts, familiars);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_STORESUMMARY: {
+        std::vector<std::tuple<std::string, uint8_t>> blessings;
+        for (const auto& b : m.blessings())
+            blessings.emplace_back(b.name(), static_cast<uint8_t>(b.count()));
+        std::vector<uint16_t> jobs;
+        for (const uint32_t job : m.hireling_jobs())
+            jobs.push_back(static_cast<uint16_t>(job));
+        std::vector<std::tuple<uint16_t, std::string, uint8_t>> houseItems;
+        for (const auto& h : m.house_items())
+            houseItems.emplace_back(static_cast<uint16_t>(h.object_id()), h.name(), static_cast<uint8_t>(h.count()));
+        std::vector<std::tuple<std::string, uint8_t>> hirelingOutfits;
+        for (const auto& o : m.hireling_outfits())
+            hirelingOutfits.emplace_back(o.name(), static_cast<uint8_t>(o.count()));
+        tibia::game::notify("onParseCyclopediaStoreSummary", m.xp_boost_time(), m.daily_xp_boost_time(), blessings,
+                            static_cast<uint8_t>(m.prey_slots()), static_cast<uint8_t>(m.prey_wildcards()), m.weekly_task_expansion(),
+                            static_cast<uint8_t>(m.instant_rewards()), m.charm_expansion(), static_cast<uint8_t>(m.hirelings()), jobs,
+                            houseItems, hirelingOutfits);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_INSPECTION: {
+        CyclopediaCharacterInspection data;
+        data.inspectionType = tibia::client::INSPECT_CYCLOPEDIA;
+        for (const auto& o : m.inspected_objects()) {
+            InspectionInventoryItem entry;
+            entry.slot = static_cast<uint8_t>(o.slot());
+            entry.name = o.name();
+            fillInspectedAppearance(entry, o.item());
+            entry.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
+            entry.descriptions = inspectionDetails(o.details());
+            data.inventoryItems.push_back(std::move(entry));
+        }
+        data.playerName = m.player_name();
+        data.outfit = creatures::outfitFromProtocol(m.outfit(), nullptr);
+        data.playerDescriptions = inspectionDetails(m.player_details());
+        tibia::game::processCyclopediaCharacterInspection(data);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES: {
+        std::vector<std::tuple<uint32_t, std::string>> badges;
+        for (const auto& b : m.badges())
+            badges.emplace_back(b.id(), b.name());
+        tibia::game::processCyclopediaCharacterGeneralStatsBadge(m.show_account() ? 1 : 0, m.online() ? 1 : 0, m.premium() ? 1 : 0,
+                                                                 m.loyalty_title(), badges);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_TITLES: {
+        std::vector<std::tuple<uint8_t, std::string, std::string, bool, bool>> titles;
+        for (const auto& t : m.titles())
+            titles.emplace_back(static_cast<uint8_t>(t.id()), t.name(), t.description(), t.permanent(), t.unlocked());
+        tibia::game::notify("onCyclopediaCharacterTitles", static_cast<int>(m.current_title()), titles);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_OFFENCESTATS:
+        tibia::game::processCyclopediaCharacterOffenceStats(offenceStats(m.offence()));
+        break;
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_DEFENCESTATS:
+        tibia::game::processCyclopediaCharacterDefenceStats(defenceStats(m.defence()));
+        break;
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_MISCSTATS:
+        tibia::game::processCyclopediaCharacterMiscStats(miscStats(m.misc()));
+        break;
+    default:
+        break;
+    }
+}
 } // namespace
 
 FPSDropsLogger::FPSDropsLogger(QObject* parent)
@@ -106,6 +479,7 @@ using client::gamecore::argInt;
 using ::tibia::protobuf::protocol::GameserverMessageCloseRewardWall;
 using ::tibia::protobuf::protocol::GameserverMessageHirelingNameChange;
 using ::tibia::protobuf::protocol::GameserverMessageLoginAdvice;
+using ::tibia::protobuf::protocol::GameserverMessageClientCheck;
 using ::tibia::protobuf::protocol::GameserverMessageLoginChallenge;
 using ::tibia::protobuf::protocol::GameserverMessageLoginError;
 using ::tibia::protobuf::protocol::GameserverMessageLoginSuccess;
@@ -160,7 +534,6 @@ void TGameProtocolMessageHandler::setLiveInstance(TGameProtocolMessageHandler* h
 void TGameProtocolMessageHandler::handleSessionDumpStartMessage(
     const GameserverMessageSessionDumpStart& SessionDumpStartMessage)
 {
-    // Same side effects as Game::processSessionDumpStart / parseSessionDumpStart.
     const std::string key =
         SessionDumpStartMessage.has_session_key() ? SessionDumpStartMessage.session_key() : std::string();
     tibia::game::notify("onSessionDumpStart", key);
@@ -169,32 +542,27 @@ void TGameProtocolMessageHandler::handleSessionDumpStartMessage(
 void TGameProtocolMessageHandler::handlePendingStateEnteredMessage(
     const GameserverMessagePendingStateEntered& /*PendingStateEnteredMessage*/)
 {
-    // Same side effects as Game::processPendingGame / parsePendingGame (empty pb).
-    // processPendingGame is ProtocolGame-friend protected — apply publicly.
     tibia::game::localPlayerSetPendingGame(true);
     tibia::game::notify("onPendingGame");
-    if (const ProtocolGamePtr protocol = getProtocolGame())
-        protocol->sendEnterGame();
+    if (network::TGameserverNetworkPacketProcessor::live())
+        protocol::gameclient::sendEnterGame();
 }
 
 void TGameProtocolMessageHandler::handleSessionEndInformationMessage(
     const GameserverMessageSessionEndInformation& Message)
 {
-    // Same side effects as Game::processSessionEnd / parseSessionEnd.
     tibia::game::notify("onSessionEnd", static_cast<uint8_t>(Message.reason()));
 }
 
 void TGameProtocolMessageHandler::handleShowMultiOfflineTrainingDialogMessage(
     const GameserverMessageShowMultiOfflineTrainingDialog& /*Message*/)
 {
-    // Same side effects as parseMultiOfflineTrainingDialog (empty pb).
     tibia::game::notify("onMultiOfflineTrainingDialog");
 }
 
 void TGameProtocolMessageHandler::handleLoginSuccessMessage(
     const GameserverMessageLoginSuccess& LoginSuccessMessage)
 {
-    // Same side effects as ProtocolGame::parseLogin (feature fields already gated in fill).
     const uint32_t playerId = LoginSuccessMessage.player_id();
     const uint16_t serverBeat = static_cast<uint16_t>(LoginSuccessMessage.beat_duration());
 
@@ -205,34 +573,24 @@ void TGameProtocolMessageHandler::handleLoginSuccessMessage(
     speedCalculator.setServerBeat(serverBeat);
 
     bool canReportBugs = false;
-    if (!cipFeature(tibia::client::GameDynamicBugReporter))
-        canReportBugs = LoginSuccessMessage.can_report_bugs() > 0;
 
-    if (clientRevision() >= 1058)
-        setExpertPvpMode(LoginSuccessMessage.expert_pvp() != 0);
+    setExpertPvpMode(LoginSuccessMessage.expert_pvp() != 0);
 
-    if (cipFeature(tibia::client::GameIngameStore)) {
-        const std::string url =
-            LoginSuccessMessage.has_store_url() ? LoginSuccessMessage.store_url() : std::string();
-        tibia::game::notify("onStoreInit", url,
-                            static_cast<uint16_t>(LoginSuccessMessage.coins_packet_size()));
-    }
+    const std::string url =
+        LoginSuccessMessage.has_store_url() ? LoginSuccessMessage.store_url() : std::string();
+    tibia::game::notify("onStoreInit", url,
+                        static_cast<uint16_t>(LoginSuccessMessage.coins_packet_size()));
 
-    if (clientRevision() >= 1281)
-        setCanExivaOptions(LoginSuccessMessage.exiva_options() != 0);
+    setCanExivaOptions(LoginSuccessMessage.exiva_options() != 0);
 
     tibia::game::localPlayerSetId(playerId);
     setServerBeat(serverBeat);
     setCanReportBugs(canReportBugs);
-    // processLogin is ProtocolGame-friend protected — same side effect as Game::processLogin.
     tibia::game::notify("onLogin");
 }
 
-void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByteArray& /*classicFrame*/,
-                                                          bool applyClassic)
+void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
 {
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
 
     const auto* shadow = protocol::lastShadowServerMessage();
     if (!shadow)
@@ -249,7 +607,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
     case 5: {
         // CIP has queue receivedSessionDumpMarkerMessage / session signals only —
         // no handleSessionDumpMarkerMessage. Same side effects as parseSessionDumpMarker
-        // (processSessionDumpMarker is ProtocolGame-friend protected).
         if (!shadow->HasExtension(
                 GameserverMessageSessionDumpMarker::gameserver_message_session_dump_marker))
             return;
@@ -261,7 +618,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
     }
     case 6: {
         // CIP: receivedPartyLeftMessage only — no handlePartyLeftMessage.
-        // Same side effects as parsePartyLeft (empty pb).
         if (!shadow->HasExtension(GameserverMessagePartyLeft::gameserver_message_party_left))
             return;
         tibia::game::notify("onPartyLeft");
@@ -277,7 +633,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
     }
     case 15: {
         // CIP: receivedWorldEnteredMessage only — no handleWorldEnteredMessage.
-        // Same side effects as parseEnterGame → Game::processWorldEntered.
         if (!shadow->HasExtension(GameserverMessageWorldEntered::gameserver_message_world_entered))
             return;
         processWorldEntered();
@@ -285,7 +640,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
     }
     case 20: {
         // CIP: receivedLoginErrorMessage + gameLoginErrorMessage — no handleLoginErrorMessage.
-        // Same side effects as processLoginError (ProtocolGame-friend protected).
         if (!shadow->HasExtension(GameserverMessageLoginError::gameserver_message_login_error))
             return;
         const auto& m = shadow->GetExtension(GameserverMessageLoginError::gameserver_message_login_error);
@@ -383,25 +737,8 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
     case 118:
         if (shadow->HasExtension(GameserverMessageInspectionList::gameserver_message_inspection_list)) {
             const auto& m = shadow->GetExtension(GameserverMessageInspectionList::gameserver_message_inspection_list);
-            const auto details = [](const auto& list) {
-                std::vector<std::pair<std::string, std::string>> out;
-                for (const auto& d : list)
-                    out.emplace_back(d.label(), d.value());
-                return out;
-            };
-            // The appearance of an inspected object, as the dialogs show it.
-            const auto fill = [](auto& dest, const ::tibia::protobuf::protocol::ProtocolInventoryItem& item) {
-                const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(item);
-                dest.typeId = slot.typeId;
-                dest.count = slot.stackable ? std::max<uint16_t>(1, slot.count) : 1;
-                dest.tier = slot.tier;
-                dest.fluidOrSubtype = slot.fluidOrSplash ? slot.fluid : 0;
-                dest.fluidOrSplash = slot.fluidOrSplash;
-                ThingType* type = tibia::game::rawThingType(slot.typeId, ThingCategoryItem);
-                dest.hookSouth = type && type->isHookSouth();
-                dest.hookEast = type && type->isHookEast();
-                dest.hasProficiency = type && type->getProficiencyId() != 0;
-            };
+            const auto details = [](const auto& list) { return inspectionDetails(list); };
+            const auto fill = [](auto& dest, const auto& item) { fillInspectedAppearance(dest, item); };
             if (m.window_type() == 1) {
                 CyclopediaCharacterInspection data;
                 data.inspectionType = tibia::client::INSPECT_CYCLOPEDIA;
@@ -436,6 +773,10 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
                 tibia::game::processItemDetail(data);
             }
         }
+        break;
+    case 218:
+        if (shadow->HasExtension(protobuf::protocol::GameserverMessageCyclopediaCharacterInfo::gameserver_message_cyclopedia_character_info))
+            applyCharacterInfo(shadow->GetExtension(protobuf::protocol::GameserverMessageCyclopediaCharacterInfo::gameserver_message_cyclopedia_character_info));
         break;
     case 176:
         if (shadow->HasExtension(GameserverMessageOutfitMemorial::gameserver_message_outfit_memorial)) {
@@ -584,7 +925,7 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
         } else if (!shadow->HasExtension(GameserverMessagePingBack::gameserver_message_ping_back)) {
             return;
         }
-        const bool feature = cipFeature(tibia::client::GameClientPing);
+        const bool feature = true;
         // Proto enum names are inverted vs CIP comments: PingBack=29, Ping=30.
         if (((opcode == Proto::GameServerPing) && feature)
             || ((opcode == Proto::GameServerPingBack) && !feature)) {
@@ -602,8 +943,18 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
             return;
         const auto& m = shadow->GetExtension(
             GameserverMessageLoginChallenge::gameserver_message_login_challenge);
-        if (const ProtocolGamePtr protocol = getProtocolGame())
-            protocol->sendLoginPacket(m.timestamp(), static_cast<uint8_t>(m.random()));
+        if (auto* connection = network::TGameserverNetworkPacketProcessor::live())
+            connection->sendLogin(m.timestamp(), static_cast<uint8_t>(m.random()));
+        break;
+    }
+    case 99: {
+        if (!shadow->HasExtension(GameserverMessageClientCheck::gameserver_message_client_check))
+            return;
+        const std::string& data = shadow->GetExtension(GameserverMessageClientCheck::gameserver_message_client_check).data();
+        std::vector<uint8_t> bytes(data.begin(), data.end());
+        // Acknowledged with the same bytes (C 0x63).
+        protocol::gameclient::sendClientCheck(bytes);
+        tibia::game::notify("onClientCheck", bytes);
         break;
     }
     case 96: {
@@ -632,7 +983,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
         break;
     case 188: {
         // CIP: receivedStopMessage only — no handleStopMessage.
-        // Same side effects as parseServerStop (empty pb → onServerStop).
         if (!shadow->HasExtension(GameserverMessageStop::gameserver_message_stop))
             return;
         tibia::game::notify("onServerStop");
@@ -640,7 +990,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
     }
     case 219: {
         // CIP: receivedHirelingNameChangeMessage only — no handleHirelingNameChangeMessage.
-        // Same side effects as parseHirelingNameChange.
         if (!shadow->HasExtension(
                 GameserverMessageHirelingNameChange::gameserver_message_hireling_name_change))
             return;
@@ -651,7 +1000,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByt
     }
     case 227: {
         // CIP: receivedCloseRewardWallMessage only — no handleCloseRewardWallMessage.
-        // Same side effects as parseCloseRewardWall (empty pb).
         if (!shadow->HasExtension(
                 GameserverMessageCloseRewardWall::gameserver_message_close_reward_wall))
             return;
@@ -725,18 +1073,33 @@ void TPlayerProtocolMessageHandler::setLiveInstance(TPlayerProtocolMessageHandle
 void TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message)
 {
-    const bool premium = message.premium();
-    const auto vocation = static_cast<uint8_t>(message.vocation() + (message.promoted() ? 10 : 0));
-    tibia::game::localPlayerSetHasReachedMain(message.reached_main());
+    // The premium flag and its end go to TPremiumProtocolMessageHandler.
+    // A vocation beyond the five abandons the message.
+    if (message.vocation() >= 6) {
+        qWarning() << "PlayerDataBasic carries unknown vocation" << message.vocation();
+        return;
+    }
+    if (TPlayerData* data = TPlayerData::liveInstance()) {
+        const uint8_t oldVocation = static_cast<uint8_t>(tibia::game::localPlayerVocation());
+        const std::vector<uint16_t> oldSpells = data->spells();
+        data->setVocation(static_cast<uint8_t>(message.vocation()));
+        data->setHasReachedMain(message.reached_main());
+        data->setPromoted(message.promoted());
+        data->setMagicShieldVocation(message.magic_shield());
+        data->clearKnownSpells();
+        for (const uint32_t spellId : message.spells())
+            data->addKnownSpell(static_cast<uint16_t>(spellId));
+
+        const auto vocation = static_cast<uint8_t>(tibia::game::localPlayerVocation());
+        if (oldVocation != vocation)
+            tibia::game::notify("onVocationChange", vocation, oldVocation);
+        if (const std::vector<uint16_t> spells = data->spells(); spells != oldSpells)
+            tibia::game::notify("onSpellsChange", spells, oldSpells);
+    }
     tibia::game::notify("onHasReachedMain", message.reached_main());
-    std::vector<uint16_t> spells(message.spells().begin(), message.spells().end());
-    tibia::game::localPlayerSetMagicShieldVocation(message.magic_shield());
-    tibia::game::localPlayerSetPremium(premium);
-    tibia::game::localPlayerSetVocation(vocation);
-    tibia::game::localPlayerSetSpells(spells);
-    tibia::game::notify("onPremiumExpiration", premium, message.premium_until());
-    // After hasReachedMain / vocation are applied — product chrome gates on mainland.
-    tibia::game::notify("onPlayerInfo", premium, static_cast<int>(vocation), tibia::game::localPlayerHasReachedMain());
+    // Product chrome gates on mainland and wants the classic promoted vocation id.
+    tibia::game::notify("onPlayerInfo", message.premium(), static_cast<int>(tibia::game::localPlayerVocation()),
+                        tibia::game::localPlayerHasReachedMain());
 }
 
 void TPlayerProtocolMessageHandler::handlePlayerSkillsMessage(
@@ -808,12 +1171,35 @@ void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
         storage->syncLocalPlayerStatsFromMap();
 }
 
-void TPlayerProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                            const bool applyClassic)
+void TPlayerProtocolMessageHandler::handlePlayerStateMessage(
+    const ::tibia::protobuf::protocol::GameserverMessagePlayerState& message)
+{
+    if (TPlayerData* data = TPlayerData::liveInstance())
+        data->setStates(std::bitset<30>(message.states() & 0x3fffffff), static_cast<int>(message.counter()));
+    // The player-state icons still read the states from the local player.
+    tibia::game::localPlayerSetStatesAndRottenBlood(message.states(), static_cast<uint8_t>(message.counter()));
+}
+
+void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageSetTactics& message)
+{
+    // A PvP mode beyond the four abandons the message.
+    if (message.pvp_mode() >= 4) {
+        qWarning() << "SetTactics carries unknown PvP mode" << message.pvp_mode();
+        return;
+    }
+    if (TPlayerData* data = TPlayerData::liveInstance()) {
+        data->setChaseOpponents(message.chase_opponents());
+        data->setSecureMode(message.secure_mode());
+        data->setPvpMode(static_cast<int>(message.pvp_mode()));
+    }
+    tibia::game::processPlayerTactics(message.chase_opponents() ? tibia::client::ChaseOpponent : tibia::client::DontChase,
+                                      message.secure_mode(), static_cast<tibia::client::PVPModes>(message.pvp_mode()));
+}
+
+void TPlayerProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
     const auto* shadow = protocol::lastShadowServerMessage();
     if (!shadow)
         return;
@@ -859,8 +1245,7 @@ void TPlayerProtocolMessageHandler::onServerMessageEnqueued(const int opcode, co
         break;
     case 162:
         if (shadow->HasExtension(GameserverMessagePlayerState::gameserver_message_player_state)) {
-            const auto& m = shadow->GetExtension(GameserverMessagePlayerState::gameserver_message_player_state);
-            tibia::game::localPlayerSetStatesAndRottenBlood(m.states(), static_cast<uint8_t>(m.counter()));
+            handlePlayerStateMessage(shadow->GetExtension(GameserverMessagePlayerState::gameserver_message_player_state));
         }
         break;
     case 163:
@@ -892,9 +1277,7 @@ void TPlayerProtocolMessageHandler::onServerMessageEnqueued(const int opcode, co
         break;
     case 167:
         if (shadow->HasExtension(GameserverMessageSetTactics::gameserver_message_set_tactics)) {
-            const auto& m = shadow->GetExtension(GameserverMessageSetTactics::gameserver_message_set_tactics);
-            tibia::game::processPlayerTactics(m.chase_opponents() ? tibia::client::ChaseOpponent : tibia::client::DontChase,
-                                              m.secure_mode(), static_cast<tibia::client::PVPModes>(m.pvp_mode()));
+            handleSetTacticsMessage(shadow->GetExtension(GameserverMessageSetTactics::gameserver_message_set_tactics));
         }
         break;
     default:
@@ -941,10 +1324,9 @@ void ownProductSurface(QObject* parent)
     new TSpellBookProtocolMessageHandler(parent);
 }
 
-void TEditTextProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                              const bool applyClassic)
+void TEditTextProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (shadow && opcode == 150 && shadow->HasExtension(GameserverMessageEditText::gameserver_message_edit_text)) {
         const auto& m = shadow->GetExtension(GameserverMessageEditText::gameserver_message_edit_text);
         const auto item = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(m.object());
@@ -958,10 +1340,77 @@ void TEditTextProtocolMessageHandler::onServerMessageEnqueued(const int opcode, 
     tibia::game::processEditList(m.list_id(), static_cast<uint8_t>(m.list_type()), m.text());
 }
 
-void TPremiumProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                             const bool applyClassic)
+namespace {
+TPremiumTimeStorage* g_livePremiumTimeStorage = nullptr;
+}
+
+TPremiumTimeStorage::TPremiumTimeStorage(QObject* parent)
+    : cip::tibia::game::TPremiumTimeStorage(parent)
 {
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    g_livePremiumTimeStorage = this;
+}
+
+TPremiumTimeStorage::~TPremiumTimeStorage()
+{
+    if (g_livePremiumTimeStorage == this)
+        g_livePremiumTimeStorage = nullptr;
+}
+
+TPremiumTimeStorage* TPremiumTimeStorage::liveInstance()
+{
+    return g_livePremiumTimeStorage;
+}
+
+int TPremiumTimeStorage::premiumState() const
+{
+    if (hasUnlimitedPremium())
+        return 2;
+    return isPremium() ? 1 : 0;
+}
+
+uint16_t TPremiumTimeStorage::remainingDays() const
+{
+    if (m_receivedAt <= m_premiumUntil && m_premiumUntil - m_receivedAt != 0)
+        return static_cast<uint16_t>((m_premiumUntil - m_receivedAt) / 86400);
+    return 0;
+}
+
+void TPremiumTimeStorage::setPremium(const bool premium, const uint32_t premiumUntil)
+{
+    m_premium = premium;
+    m_premiumUntil = premiumUntil;
+    m_receivedAt = static_cast<uint32_t>(shared::TClockService::nowMillis() / 1000);
+    Q_EMIT premiumTimeChanged();
+}
+
+void TPremiumTimeStorage::reset()
+{
+    m_premiumUntil = 0;
+    m_premium = false;
+    m_receivedAt = 0;
+    Q_EMIT premiumTimeChanged();
+}
+
+void TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage(
+    const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message)
+{
+    const bool wasPremium = tibia::game::localPlayerIsPremium();
+    if (TPremiumTimeStorage* storage = TPremiumTimeStorage::liveInstance())
+        storage->setPremium(message.premium(), message.premium_until());
+    if (wasPremium != message.premium())
+        tibia::game::notify("onPremiumChange", message.premium());
+    tibia::game::notify("onPremiumExpiration", message.premium(), message.premium_until());
+}
+
+void TPremiumProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+{
+    const auto* shadow = protocol::nativeServerMessage(opcode);
+    if (shadow && opcode == 159
+        && shadow->HasExtension(::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic::gameserver_message_player_data_basic)) {
+        handlePlayerDataBasicMessage(
+            shadow->GetExtension(::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic::gameserver_message_player_data_basic));
+        return;
+    }
     if (!shadow || opcode != 158 || !shadow->HasExtension(GameserverMessagePremiumTrigger::gameserver_message_premium_trigger))
         return;
     std::vector<uint8_t> triggers;
@@ -970,11 +1419,10 @@ void TPremiumProtocolMessageHandler::onServerMessageEnqueued(const int opcode, c
     tibia::game::notify("onPremiumTrigger", triggers);
 }
 
-void TBlessingsProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                               const bool applyClassic)
+void TBlessingsProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow || opcode != 155 || !shadow->HasExtension(GameserverMessageBlessingsDialog::gameserver_message_blessings_dialog))
         return;
     const auto& m = shadow->GetExtension(GameserverMessageBlessingsDialog::gameserver_message_blessings_dialog);
@@ -999,11 +1447,10 @@ void TBlessingsProtocolMessageHandler::onServerMessageEnqueued(const int opcode,
     tibia::game::notify("onUpdateBlessDialog", data);
 }
 
-void TServerModalDialogProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                                       const bool applyClassic)
+void TServerModalDialogProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow || opcode != 250 || !shadow->HasExtension(GameserverMessageShowModalDialog::gameserver_message_show_modal_dialog))
         return;
     const auto& m = shadow->GetExtension(GameserverMessageShowModalDialog::gameserver_message_show_modal_dialog);
@@ -1017,11 +1464,10 @@ void TServerModalDialogProtocolMessageHandler::onServerMessageEnqueued(const int
                                     static_cast<uint8_t>(m.escape_button()), choices, m.priority());
 }
 
-void TBossDifficultySelectionProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                                             const bool applyClassic)
+void TBossDifficultySelectionProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow || opcode != 47
         || !shadow->HasExtension(GameserverMessageBossDifficultySelection::gameserver_message_boss_difficulty_selection))
         return;

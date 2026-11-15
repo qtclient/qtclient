@@ -70,13 +70,13 @@ input::TGameActionPtr makeNamed(const A type, const QString& text, const int ins
 
 }
 
-TVipWidgetDataModel::TVipWidgetDataModel(TVipStorage* storage, QObject* parent)
+TVipWidgetDataModel::TVipWidgetDataModel(creatures::TVipStorage* storage, QObject* parent)
     : cip::tibia::gamewindow::TVipWidgetDataModel(parent)
     , m_storage(storage)
 {
-    connect(storage, &TVipStorage::vipsChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
-    connect(storage, &TVipStorage::groupsChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
-    connect(storage, &TVipStorage::vipStateChanged, this, &TVipWidgetDataModel::onVipStateChanged);
+    connect(storage, &creatures::TVipStorage::vipsChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
+    connect(storage, &creatures::TVipStorage::groupsChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
+    connect(storage, &creatures::TVipStorage::vipStateChanged, this, &TVipWidgetDataModel::onVipStateChanged);
     onVipGroupDataChanged();
 }
 
@@ -149,8 +149,8 @@ void TVipWidgetDataModel::onVipGroupDataChanged()
 {
     beginResetModel();
     m_rows.clear();
-    const std::vector<TVipStorage::Group>& groups = m_storage->groups();
-    for (const TVipStorage::Vip& vip : m_storage->vips()) {
+    const std::vector<creatures::TVipStorage::Group>& groups = m_storage->groups();
+    for (const creatures::TVipStorage::Vip& vip : m_storage->vips()) {
         if (vip.groups.empty()) {
             m_rows.push_back({ vip.id, vip.name, vip.state, vip.iconId, ungroupedName(), true });
             continue;
@@ -158,7 +158,7 @@ void TVipWidgetDataModel::onVipGroupDataChanged()
         bool primary = true;
         for (const uint8_t groupId : vip.groups) {
             QString groupName = ungroupedName();
-            const auto it = std::find_if(groups.begin(), groups.end(), [groupId](const TVipStorage::Group& group) { return group.id == groupId; });
+            const auto it = std::find_if(groups.begin(), groups.end(), [groupId](const creatures::TVipStorage::Group& group) { return group.id == groupId; });
             if (it != groups.end())
                 groupName = it->name;
             m_rows.push_back({ vip.id, vip.name, vip.state, vip.iconId, groupName, primary });
@@ -265,7 +265,7 @@ bool TVipWidgetDataModelSortFilterProxy::lessThan(const QModelIndex& left, const
     return leftName.compare(rightName, Qt::CaseInsensitive) < 0;
 }
 
-TVipWidgetController::TVipWidgetController(TVipStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
+TVipWidgetController::TVipWidgetController(creatures::TVipStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_storage(storage)
     , m_model(new TVipWidgetDataModel(storage, this))
@@ -317,7 +317,7 @@ void TVipWidgetController::onSidebarDestroyed() { widget()->onSidebarDestroyed()
 void TVipWidgetController::onLevelUpClicked() {}
 void TVipWidgetController::setCursorToResizeVertical(const bool Enabled) { widget()->setCursorToResizeVertical(Enabled); }
 void TVipWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
-void TVipWidgetController::onVipDataEdited() { /* TVipStorage signals rebuild the list model. */ }
+void TVipWidgetController::onVipDataEdited() { /* creatures::TVipStorage signals rebuild the list model. */ }
 void TVipWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
 void TVipWidgetController::onWidgetQuickItemDestroyed() {}
 
@@ -376,13 +376,13 @@ input::TGameActionList TVipWidgetController::candidates(const QString& vipName, 
     if (tibia::game::localPlayer() && tibia::game::localPlayerIsPremium())
         result.push_back(input::makeAction(A::OPEN_ADD_VIP_GROUP_DIALOG));
     if (!groupName.isEmpty()) {
-        if (const std::optional<TVipStorage::Group> group = m_storage->groupByName(groupName); group && group->editable) {
+        if (const std::optional<creatures::TVipStorage::Group> group = m_storage->groupByName(groupName); group && group->editable) {
             result.push_back(makeNamed(A::OPEN_EDIT_VIP_GROUP_DIALOG, group->name, 0, group->id));
             result.push_back(makeNamed(A::REMOVE_VIP_GROUP, group->name, 0, group->id));
         }
     }
     if (!vipName.isEmpty()) {
-        if (const std::optional<TVipStorage::Vip> vip = m_storage->vipByName(vipName)) {
+        if (const std::optional<creatures::TVipStorage::Vip> vip = m_storage->vipByName(vipName)) {
             const int id = static_cast<int>(vip->id);
             result.push_back(makeNamed(A::OPEN_EDIT_VIP_DIALOG, vip->name, id));
             result.push_back(makeNamed(A::REMOVE_VIP, vip->name, id));
@@ -477,7 +477,7 @@ bool TVipWidgetController::handleAction(const input::TGameAction& action)
             m_addVipDialog->dialog()->show();
             return true;
         case A::OPEN_EDIT_VIP_DIALOG: {
-            std::optional<TVipStorage::Vip> vip = m_storage->vipByName(action.text);
+            std::optional<creatures::TVipStorage::Vip> vip = m_storage->vipByName(action.text);
             if (vip)
                 m_editVipDialog->open(*vip);
             return true;
@@ -486,7 +486,7 @@ bool TVipWidgetController::handleAction(const input::TGameAction& action)
             openAddGroupDialog();
             return true;
         case A::OPEN_EDIT_VIP_GROUP_DIALOG: {
-            const std::optional<TVipStorage::Group> group = m_storage->groupByName(action.text);
+            const std::optional<creatures::TVipStorage::Group> group = m_storage->groupByName(action.text);
             if (!group || !group->editable)
                 return true;
             m_editedGroupId = group->id;
@@ -524,7 +524,7 @@ TVipWidgetManager::TVipWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* eng
     : QObject(parent)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
-    , m_storage(new TVipStorage(this))
+    , m_storage(new creatures::TVipStorage(this))
     , m_exivaOptions(new exivaoptions::TExivaOptionsStorage(this))
 {
     for (const A type : WidgetActions)

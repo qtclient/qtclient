@@ -1,5 +1,4 @@
 #include "protocol/protocolciptypes.h"
-#include "protocol/classicprotocolbridge.h"
 #include "protocol/inventoryitemwire.h"
 #include "protocol/mapwire.h"
 #include "protocol/chatwire.h"
@@ -11,6 +10,8 @@
 
 #include <client/const.h>
 #include <tibia/game/gamesession.h>
+#include "network/gameserverpacketprocessor.h"
+#include "shared/sharedciptypes.h"
 
 #include <protocol.pb.h>
 
@@ -53,16 +54,16 @@ using ::tibia::protobuf::protocol::SpellDataModificationEntry;
 
 #include "protocol/protocol_translator.gen.inc"
 
-void readCoordinate(ClassicReader& r, ProtocolCoordinate* c)
+bool readCoordinate(ClassicReader& r, ProtocolCoordinate* c)
 {
     uint16_t x = 0, y = 0;
     uint8_t z = 0;
-    if (r.u16(x))
-        c->set_x(x);
-    if (r.u16(y))
-        c->set_y(y);
-    if (r.u8(z))
-        c->set_z(z);
+    if (!r.u16(x) || !r.u16(y) || !r.u8(z))
+        return false;
+    c->set_x(x);
+    c->set_y(y);
+    c->set_z(z);
+    return true;
 }
 
 void writeCoordinate(ClassicWriter& w, const ProtocolCoordinate& c)
@@ -92,16 +93,31 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
     switch (opcode) {
     case 4: {
         auto* m = msg.MutableExtension(GameserverMessageSessionDumpStart::gameserver_message_session_dump_start);
-        std::string key;
-        if (r.string(key))
-            m->set_session_key(key);
+        uint32_t playerId = 0;
+        uint16_t beat = 0;
+        double a = 0, b = 0, c = 0;
+        if (!r.u32(playerId) || !r.u16(beat) || !r.otDouble(a) || !r.otDouble(b) || !r.otDouble(c))
+            return 0;
+        m->set_player_id(playerId);
+        m->set_beat_duration(beat);
+        m->set_speed_a(a);
+        m->set_speed_b(b);
+        m->set_speed_c(c);
         return r.i;
     }
     case 5: {
+        // A kind byte; kind 0 is a party status marker carrying one flag.
         auto* m = msg.MutableExtension(GameserverMessageSessionDumpMarker::gameserver_message_session_dump_marker);
-        std::string marker;
-        if (r.string(marker))
-            m->set_marker(marker);
+        uint8_t kind = 0;
+        if (!r.u8(kind))
+            return 0;
+        m->set_kind(kind);
+        if (kind == 0) {
+            uint8_t flag = 0;
+            if (!r.u8(flag))
+                return 0;
+            m->set_party_status(flag != 0);
+        }
         return r.i;
     }
     case 6:
@@ -118,39 +134,40 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         auto* m = msg.MutableExtension(
             GameserverMessageBugReportsAllowed::gameserver_message_bug_reports_allowed);
         uint8_t state = 0;
-        if (r.u8(state))
-            m->set_state(state);
+        if (!r.u8(state))
+            return 0;
+        m->set_state(state);
         return r.i;
     }
     case 20: {
         auto* m = msg.MutableExtension(GameserverMessageLoginError::gameserver_message_login_error);
         std::string error;
-        if (r.string(error))
-            m->set_error(error);
         uint8_t reason = 0;
-        if (r.u8(reason))
-            m->set_reason(reason);
+        if (!r.string(error) || !r.u8(reason))
+            return 0;
+        m->set_error(error);
+        m->set_reason(reason);
         return r.i;
     }
     case 21: {
         auto* m = msg.MutableExtension(GameserverMessageLoginAdvice::gameserver_message_login_advice);
         std::string message;
-        if (r.string(message))
-            m->set_message(message);
+        if (!r.string(message))
+            return 0;
+        m->set_message(message);
         return r.i;
     }
     case 22: {
         auto* m = msg.MutableExtension(GameserverMessageLoginWait::gameserver_message_login_wait);
         std::string message;
-        if (r.string(message))
-            m->set_message(message);
         uint8_t time = 0;
-        if (r.u8(time))
-            m->set_time(time);
+        if (!r.string(message) || !r.u8(time))
+            return 0;
+        m->set_message(message);
+        m->set_time(time);
         return r.i;
     }
     case 23: {
-        // Mirror ProtocolGame::parseLogin feature/version gates so measure equals classic consume.
         auto* m = msg.MutableExtension(GameserverMessageLoginSuccess::gameserver_message_login_success);
         uint32_t playerId = 0;
         uint16_t beat = 0;
@@ -158,55 +175,37 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
             m->set_player_id(playerId);
         if (r.u16(beat))
             m->set_beat_duration(beat);
-        if (tibia::game::cipFeature(tibia::client::GameNewSpeedLaw)) {
-            double a = 0, b = 0, c = 0;
-            if (r.otDouble(a))
-                m->set_speed_a(a);
-            if (r.otDouble(b))
-                m->set_speed_b(b);
-            if (r.otDouble(c))
-                m->set_speed_c(c);
-        }
-        if (!tibia::game::cipFeature(tibia::client::GameDynamicBugReporter)) {
-            uint8_t bugs = 0;
-            if (r.u8(bugs))
-                m->set_can_report_bugs(bugs);
-        }
-        if (tibia::game::clientRevision() >= 1054) {
-            uint8_t pvp = 0;
-            if (r.u8(pvp))
-                m->set_pvp_frame(pvp);
-        }
-        if (tibia::game::clientRevision() >= 1058) {
-            uint8_t expert = 0;
-            if (r.u8(expert))
-                m->set_expert_pvp(expert);
-        }
-        if (tibia::game::cipFeature(tibia::client::GameIngameStore)) {
-            std::string url;
-            if (r.string(url))
-                m->set_store_url(url);
-            uint16_t coins = 0;
-            if (r.u16(coins))
-                m->set_coins_packet_size(coins);
-        }
-        if (tibia::game::clientRevision() >= 1281) {
-            uint8_t exiva = 0;
-            if (r.u8(exiva))
-                m->set_exiva_options(exiva);
-            if (tibia::game::cipFeature(tibia::client::GameTournamentPackets)) {
-                uint8_t tournament = 0;
-                (void)r.u8(tournament); // classic discards; no pb field
-            }
-        }
+        double a = 0, b = 0, c = 0;
+        if (r.otDouble(a))
+            m->set_speed_a(a);
+        if (r.otDouble(b))
+            m->set_speed_b(b);
+        if (r.otDouble(c))
+            m->set_speed_c(c);
+        uint8_t pvp = 0;
+        if (r.u8(pvp))
+            m->set_pvp_frame(pvp);
+        uint8_t expert = 0;
+        if (r.u8(expert))
+            m->set_expert_pvp(expert);
+        std::string url;
+        if (r.string(url))
+            m->set_store_url(url);
+        uint16_t coins = 0;
+        if (r.u16(coins))
+            m->set_coins_packet_size(coins);
+        uint8_t exiva = 0;
+        if (r.u8(exiva))
+            m->set_exiva_options(exiva);
         return r.i;
     }
     case 24: {
         auto* m = msg.MutableExtension(
             GameserverMessageSessionEndInformation::gameserver_message_session_end_information);
         uint8_t reason = 0;
-        if (r.u8(reason))
-            m->set_reason(reason);
+        if (!r.u8(reason))
+            return 0;
+        m->set_reason(reason);
         return r.i;
     }
     case 31: {
@@ -219,23 +218,18 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
             m->set_random(random);
         // CIP / Crystal 1405+: one pad byte after random (Crystal sends 0x71).
         // Consumed for length authority — not a pb field.
-        if (tibia::game::clientRevision() >= 1405) {
-            uint8_t pad = 0;
-            (void)r.u8(pad);
-        }
+        uint8_t pad = 0;
+        (void)r.u8(pad);
         return r.i;
     }
     case 42: {
         auto* m = msg.MutableExtension(
             GameserverMessageSpecialContainersAvailable::gameserver_message_special_containers_available);
-        uint8_t stash = 0;
-        if (r.u8(stash))
-            m->set_stash(stash);
-        if (tibia::game::getProtocolVersion() >= 1220) {
-            uint8_t market = 0;
-            if (r.u8(market))
-                m->set_market(market);
-        }
+        uint8_t stash = 0, market = 0;
+        if (!r.u8(stash) || !r.u8(market))
+            return 0;
+        m->set_stash(stash != 0);
+        m->set_market(market != 0);
         return r.i;
     }
     case 96: {
@@ -262,49 +256,49 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         auto* m = msg.MutableExtension(GameserverMessageMoveCreature::gameserver_message_move_creature);
         uint16_t x = 0;
         if (!r.u16(x))
-            return r.i;
+            return 0;
         if (x == 0xffff) {
             uint32_t creatureId = 0;
-            if (r.u32(creatureId))
-                m->set_creature_id(creatureId);
+            if (!r.u32(creatureId))
+                return 0;
+            m->set_creature_id(creatureId);
         } else {
-            auto* from = m->mutable_from_pos();
-            from->set_x(x);
             uint16_t y = 0;
             uint8_t z = 0;
             uint8_t stack = 0;
-            if (r.u16(y))
-                from->set_y(y);
-            if (r.u8(z))
-                from->set_z(z);
-            if (r.u8(stack))
-                m->set_stackpos(stack);
+            if (!r.u16(y) || !r.u8(z) || !r.u8(stack))
+                return 0;
+            auto* from = m->mutable_from_pos();
+            from->set_x(x);
+            from->set_y(y);
+            from->set_z(z);
+            m->set_stackpos(stack);
         }
-        readCoordinate(r, m->mutable_to_pos());
-        return r.i;
+        return readCoordinate(r, m->mutable_to_pos()) ? r.i : 0;
     }
     case 111: {
         auto* m = msg.MutableExtension(GameserverMessageCloseContainer::gameserver_message_close_container);
         uint8_t containerId = 0;
-        if (r.u8(containerId))
-            m->set_container_id(containerId);
+        if (!r.u8(containerId))
+            return 0;
+        m->set_container_id(containerId);
         return r.i;
     }
     case 120: {
-        // Mirror ProtocolGame::parseAddInventoryItem / getInventorySlot feature matrix.
         auto* m = msg.MutableExtension(GameserverMessageSetInventory::gameserver_message_set_inventory);
         uint8_t slot = 0;
-        if (r.u8(slot))
-            m->set_slot(slot);
-        (void)readInventoryItem(r, m->mutable_item());
-        return r.i;
+        if (!r.u8(slot))
+            return 0;
+        m->set_slot(slot);
+        return readInventoryItem(r, m->mutable_item()) ? r.i : 0;
     }
     case 121: {
         auto* m = msg.MutableExtension(
             GameserverMessageDeleteInventory::gameserver_message_delete_inventory);
         uint8_t slot = 0;
-        if (r.u8(slot))
-            m->set_slot(slot);
+        if (!r.u8(slot))
+            return 0;
+        m->set_slot(slot);
         return r.i;
     }
     case 131: {
@@ -409,9 +403,8 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
     case 132: {
         auto* m = msg.MutableExtension(
             GameserverMessageRemoveGraphicalEffect::gameserver_message_remove_graphical_effect);
-        readCoordinate(r, m->mutable_coordinate());
         uint16_t id = 0;
-        if (!r.u16(id))
+        if (!readCoordinate(r, m->mutable_coordinate()) || !r.u16(id))
             return 0;
         m->set_appearance_id(id);
         return r.i;
@@ -419,10 +412,10 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
     case 130: {
         auto* m = msg.MutableExtension(GameserverMessageAmbientLight::gameserver_message_ambient_light);
         uint8_t intensity = 0, color = 0;
-        if (r.u8(intensity))
-            m->set_intensity(intensity);
-        if (r.u8(color))
-            m->set_color(color);
+        if (!r.u8(intensity) || !r.u8(color))
+            return 0;
+        m->set_intensity(intensity);
+        m->set_color(color);
         return r.i;
     }
     case 110: {
@@ -507,10 +500,10 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         auto* m = msg.MutableExtension(GameserverMessageCreatureHealth::gameserver_message_creature_health);
         uint32_t id = 0;
         uint8_t hp = 0;
-        if (r.u32(id))
-            m->set_creature_id(id);
-        if (r.u8(hp))
-            m->set_health_percent(hp);
+        if (!r.u32(id) || !r.u8(hp))
+            return 0;
+        m->set_creature_id(id);
+        m->set_health_percent(hp);
         return r.i;
     }
     case 141: {
@@ -518,12 +511,11 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         uint32_t id = 0;
         uint8_t intensity = 0;
         uint8_t color = 0;
-        if (r.u32(id))
-            m->set_creature_id(id);
-        if (r.u8(intensity))
-            m->set_intensity(intensity);
-        if (r.u8(color))
-            m->set_color(color);
+        if (!r.u32(id) || !r.u8(intensity) || !r.u8(color))
+            return 0;
+        m->set_creature_id(id);
+        m->set_intensity(intensity);
+        m->set_color(color);
         return r.i;
     }
     case 143: {
@@ -540,30 +532,30 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         auto* m = msg.MutableExtension(GameserverMessageCreatureSkull::gameserver_message_creature_skull);
         uint32_t id = 0;
         uint8_t skull = 0;
-        if (r.u32(id))
-            m->set_creature_id(id);
-        if (r.u8(skull))
-            m->set_skull(skull);
+        if (!r.u32(id) || !r.u8(skull))
+            return 0;
+        m->set_creature_id(id);
+        m->set_skull(skull);
         return r.i;
     }
     case 145: {
         auto* m = msg.MutableExtension(GameserverMessageCreatureParty::gameserver_message_creature_party);
         uint32_t id = 0;
         uint8_t party = 0;
-        if (r.u32(id))
-            m->set_creature_id(id);
-        if (r.u8(party))
-            m->set_party(party);
+        if (!r.u32(id) || !r.u8(party))
+            return 0;
+        m->set_creature_id(id);
+        m->set_party(party);
         return r.i;
     }
     case 146: {
         auto* m = msg.MutableExtension(GameserverMessageCreatureUnpass::gameserver_message_creature_unpass);
         uint32_t id = 0;
         uint8_t unpass = 0;
-        if (r.u32(id))
-            m->set_creature_id(id);
-        if (r.u8(unpass))
-            m->set_unpass(unpass);
+        if (!r.u32(id) || !r.u8(unpass))
+            return 0;
+        m->set_creature_id(id);
+        m->set_unpass(unpass != 0);
         return r.i;
     }
     case 197: {
@@ -578,44 +570,21 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         auto* m = msg.MutableExtension(
             GameserverMessageHirelingNameChange::gameserver_message_hireling_name_change);
         uint32_t creatureId = 0, objectId = 0;
-        if (r.u32(creatureId))
-            m->set_creature_id(creatureId);
-        if (r.u32(objectId))
-            m->set_object_id(objectId);
+        if (!r.u32(creatureId) || !r.u32(objectId))
+            return 0;
+        m->set_creature_id(creatureId);
+        m->set_object_id(objectId);
         return r.i;
     }
     case 220: {
         auto* m = msg.MutableExtension(GameserverMessageTutorialHint::gameserver_message_tutorial_hint);
         uint8_t hint = 0;
-        if (r.u8(hint))
-            m->set_hint_id(hint);
+        if (!r.u8(hint))
+            return 0;
+        m->set_hint_id(hint);
         return r.i;
     }
     default:
-        return r.i;
-    }
-}
-
-size_t fillStructuredClient(GameclientMessage& msg, int opcode, ClassicReader& r)
-{
-    using namespace ::tibia::protobuf::protocol;
-    switch (opcode) {
-    case 28: // ConnectionPingBack
-    case 29:
-    case 30:
-    case 105:
-    case 244:
-        return r.i;
-    case 142: { // JoinAggression 0x8E
-        auto* m = msg.MutableExtension(GameclientMessageJoinAggression::gameclient_message_join_aggression);
-        uint32_t id = 0;
-        if (r.u32(id))
-            m->set_creature_id(id);
-        return r.i;
-    }
-    default:
-        (void)msg;
-        (void)r;
         return r.i;
     }
 }
@@ -628,13 +597,18 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
     switch (opcode) {
     case 4: {
         const auto& m = msg.GetExtension(GameserverMessageSessionDumpStart::gameserver_message_session_dump_start);
-        if (m.has_session_key())
-            w.string(m.session_key());
+        w.u32(m.player_id());
+        w.u16(uint16_t(m.beat_duration()));
+        w.otDouble(m.speed_a());
+        w.otDouble(m.speed_b());
+        w.otDouble(m.speed_c());
         return w.out;
     }
     case 5: {
         const auto& m = msg.GetExtension(GameserverMessageSessionDumpMarker::gameserver_message_session_dump_marker);
-        w.string(m.has_marker() ? m.marker() : std::string());
+        w.u8(uint8_t(m.kind()));
+        if (m.kind() == 0)
+            w.u8(m.party_status() ? 1 : 0);
         return w.out;
     }
     case 6:
@@ -676,26 +650,14 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
         const auto& m = msg.GetExtension(GameserverMessageLoginSuccess::gameserver_message_login_success);
         w.u32(m.player_id());
         w.u16(uint16_t(m.beat_duration()));
-        if (tibia::game::cipFeature(tibia::client::GameNewSpeedLaw)) {
-            w.otDouble(m.speed_a());
-            w.otDouble(m.speed_b());
-            w.otDouble(m.speed_c());
-        }
-        if (!tibia::game::cipFeature(tibia::client::GameDynamicBugReporter))
-            w.u8(uint8_t(m.can_report_bugs()));
-        if (tibia::game::clientRevision() >= 1054)
-            w.u8(uint8_t(m.pvp_frame()));
-        if (tibia::game::clientRevision() >= 1058)
-            w.u8(uint8_t(m.expert_pvp()));
-        if (tibia::game::cipFeature(tibia::client::GameIngameStore)) {
-            w.string(m.store_url());
-            w.u16(uint16_t(m.coins_packet_size()));
-        }
-        if (tibia::game::clientRevision() >= 1281) {
-            w.u8(uint8_t(m.exiva_options()));
-            if (tibia::game::cipFeature(tibia::client::GameTournamentPackets))
-                w.u8(0);
-        }
+        w.otDouble(m.speed_a());
+        w.otDouble(m.speed_b());
+        w.otDouble(m.speed_c());
+        w.u8(uint8_t(m.pvp_frame()));
+        w.u8(uint8_t(m.expert_pvp()));
+        w.string(m.store_url());
+        w.u16(uint16_t(m.coins_packet_size()));
+        w.u8(uint8_t(m.exiva_options()));
         return w.out;
     }
     case 24: {
@@ -708,16 +670,14 @@ QByteArray serializeStructuredServer(const GameserverMessage& msg, int opcode)
         const auto& m = msg.GetExtension(GameserverMessageLoginChallenge::gameserver_message_login_challenge);
         w.u32(m.timestamp());
         w.u8(uint8_t(m.random()));
-        if (tibia::game::clientRevision() >= 1405)
-            w.u8(0); // 1405+ pad (Crystal sends 0x71; value unused)
+        w.u8(0); // 1405+ pad (Crystal sends 0x71; value unused)
         return w.out;
     }
     case 42: {
         const auto& m = msg.GetExtension(
             GameserverMessageSpecialContainersAvailable::gameserver_message_special_containers_available);
-        w.u8(uint8_t(m.stash()));
-        if (tibia::game::getProtocolVersion() >= 1220)
-            w.u8(uint8_t(m.market()));
+        w.u8(m.stash() != 0 ? 1 : 0);
+        w.u8(m.market() != 0 ? 1 : 0);
         return w.out;
     }
     case 96: {
@@ -834,6 +794,1097 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
     ClassicWriter w;
     w.u8(uint8_t(opcode));
     switch (opcode) {
+    case 10: {
+        const auto& m = msg.GetExtension(GameclientMessageLogin::gameclient_message_login);
+        w.u16(static_cast<uint16_t>(m.client_os()));
+        w.u16(static_cast<uint16_t>(m.protocol_version()));
+        w.u32(m.client_version());
+        w.string(m.client_version_string());
+        w.string(m.asset_identifier());
+        w.u8(static_cast<uint8_t>(m.preview_state()));
+        // The rest is one RSA block; its first byte must be 0.
+        const int block = int(w.out.size());
+        w.u8(0);
+        for (int i = 0; i < 4; ++i)
+            w.u32(i < m.xtea_key_size() ? m.xtea_key(i) : 0);
+        w.u8(m.gamemaster() ? 1 : 0);
+        // CIP writes the block's strings as Latin-1.
+        const auto latin1 = [](const std::string& text) {
+            return QString::fromStdString(text).toLatin1().toStdString();
+        };
+        w.string(latin1(m.session_key()));
+        w.string(latin1(m.character_name()));
+        w.u32(m.challenge_timestamp());
+        w.u8(static_cast<uint8_t>(m.challenge_random()));
+        if (m.has_product_transport())
+            w.string(m.product_transport());
+        const int size = tibia::shared::TRsaHelper::blockSize();
+        const int used = int(w.out.size()) - block;
+        if (size <= 0 || used > size)
+            return {};
+        w.out.append(QByteArray(size - used, '\0'));
+        if (!tibia::shared::TRsaHelper::encrypt(reinterpret_cast<uint8_t*>(w.out.data()) + block, size))
+            return {};
+        return w.out;
+    }
+    case 11: {
+        const auto& m = msg.GetExtension(GameclientMessageSecondaryLogin::gameclient_message_secondary_login);
+        w.string(m.token());
+        return w.out;
+    }
+    case 98: {
+        const auto& m = msg.GetExtension(GameclientMessageApplySkillWheel::gameclient_message_apply_skill_wheel);
+        for (int i = 0; i < 36; ++i)
+            w.u16(static_cast<uint16_t>(i < m.slot_points_size() ? m.slot_points(i) : 0));
+        // Filled vessels: one presence bit each, vessel 0 in the high bit.
+        uint8_t mask = 0;
+        for (int v = 0; v < 8 && v < m.vessel_gems_size(); ++v) {
+            if (m.vessel_gems(v) != 0xffff)
+                mask |= static_cast<uint8_t>(0x80 >> v);
+        }
+        w.u8(mask);
+        for (int v = 0; v < 8 && v < m.vessel_gems_size(); ++v) {
+            if (m.vessel_gems(v) != 0xffff)
+                w.u16(static_cast<uint16_t>(m.vessel_gems(v)));
+        }
+        return w.out;
+    }
+    case 191: {
+        const auto& m = msg.GetExtension(GameclientMessageExaltationAction::gameclient_message_exaltation_action);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action == 0 || action == 1) { // fusion, transfer
+            w.u8(m.convergence() ? 1 : 0);
+            w.u16(static_cast<uint16_t>(m.first_object_id()));
+            w.u8(static_cast<uint8_t>(m.tier()));
+            w.u16(static_cast<uint16_t>(m.second_object_id()));
+            if (action == 0 && !m.convergence()) {
+                w.u8(m.improve_chance() ? 1 : 0);
+                w.u8(m.reduce_tier_loss() ? 1 : 0);
+            }
+        }
+        return w.out;
+    }
+    case 192: {
+        const auto& m = msg.GetExtension(GameclientMessageOpenExaltationHistory::gameclient_message_open_exaltation_history);
+        w.u16(static_cast<uint16_t>(m.page()));
+        w.u8(static_cast<uint8_t>(m.entries_per_page()));
+        return w.out;
+    }
+    case 118: {
+        const auto& m = msg.GetExtension(GameclientMessageCharacterTradeConfigurationAction::gameclient_message_character_trade_configuration_action);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action == 2 || action == 3) {
+            w.u32(m.price());
+            w.u32(m.end_time());
+            const auto writeObjects = [&w](const auto& list) {
+                w.u8(static_cast<uint8_t>(std::min(list.size(), 255)));
+                for (const auto& o : list) {
+                    w.u16(static_cast<uint16_t>(o.object_id()));
+                    if (o.has_tier())
+                        w.u8(static_cast<uint8_t>(o.tier()));
+                }
+            };
+            writeObjects(m.objects());
+            writeObjects(m.store_objects());
+            w.u8(static_cast<uint8_t>(std::min(m.highlights_size(), 255)));
+            for (const uint32_t id : m.highlights())
+                w.u16(static_cast<uint16_t>(id));
+        }
+        return w.out;
+    }
+    case 173: {
+        const auto& m = msg.GetExtension(GameclientMessageCyclopediaHouseAction::gameclient_message_cyclopedia_house_action);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action == 0) {
+            w.string(m.name()); // town
+        } else {
+            w.u32(m.house_id());
+            if (action == 1) {
+                w.u64(m.bid());
+            } else if (action == 2) {
+                w.u32(m.timestamp());
+            } else if (action == 3) {
+                w.u32(m.timestamp());
+                w.string(m.name()); // new owner
+                w.u64(m.bid());
+            }
+        }
+        return w.out;
+    }
+    case 202: {
+        const auto& m = msg.GetExtension(GameclientMessageUpdateExivaOptions::gameclient_message_update_exiva_options);
+        w.u8(m.allow_all() ? 1 : 0);
+        w.u8(m.allow_own_guild() ? 1 : 0);
+        w.u8(m.allow_own_party() ? 1 : 0);
+        w.u8(m.allow_vip_list() ? 1 : 0);
+        w.u8(m.allow_player_whitelist() ? 1 : 0);
+        w.u8(m.allow_guild_whitelist() ? 1 : 0);
+        for (const auto* list : { &m.add_characters(), &m.remove_characters(), &m.add_guilds(), &m.remove_guilds() }) {
+            w.u16(static_cast<uint16_t>(list->size()));
+            for (const auto& name : *list)
+                w.string(name);
+        }
+        return w.out;
+    }
+    case 179: {
+        const auto& m = msg.GetExtension(GameclientMessageWeaponProficiencyCommand::gameclient_message_weapon_proficiency_command);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        switch (action) {
+        case 0: case 2: case 3: // item info, reset, apply
+            w.u16(static_cast<uint16_t>(m.object_id()));
+            w.u8(static_cast<uint8_t>(m.perks_size()));
+            for (const auto& p : m.perks()) {
+                w.u8(static_cast<uint8_t>(p.level()));
+                w.u8(static_cast<uint8_t>(p.perk_position()));
+            }
+            break;
+        case 4: case 5: case 6: case 7: case 8: case 9: // slot actions
+            w.u16(static_cast<uint16_t>(m.object_id()));
+            if (m.has_slot()) {
+                w.u8(static_cast<uint8_t>(m.slot().level()));
+                w.u8(static_cast<uint8_t>(m.slot().perk_position()));
+            }
+            if (action == 8)
+                w.u8(static_cast<uint8_t>(m.offer_index()));
+            break;
+        default: // list info
+            break;
+        }
+        return w.out;
+    }
+    case 211: {
+        const auto& m = msg.GetExtension(GameclientMessageSetOutfit::gameclient_message_set_outfit);
+        const auto writeLook = [&w](const ProtocolOutfitLook& look, const bool addons) {
+            w.u16(static_cast<uint16_t>(look.look_type()));
+            w.u8(static_cast<uint8_t>(look.head()));
+            w.u8(static_cast<uint8_t>(look.body()));
+            w.u8(static_cast<uint8_t>(look.legs()));
+            w.u8(static_cast<uint8_t>(look.feet()));
+            if (addons)
+                w.u8(static_cast<uint8_t>(look.addons()));
+        };
+        const auto type = m.outfit_type();
+        w.u8(static_cast<uint8_t>(type));
+        writeLook(m.look(), true);
+        if (type == 0) { // own outfit
+            writeLook(m.mount(), false);
+            w.u8(m.mounted() ? 1 : 0);
+            w.u16(static_cast<uint16_t>(m.familiar()));
+            w.u8(m.random_mount() ? 1 : 0);
+        } else if (type == 1) { // hireling
+            w.u32(m.hireling_id());
+        } else if (type == 2) { // podium
+            writeCoordinate(w, m.position());
+            w.u16(static_cast<uint16_t>(m.object_id()));
+            w.u8(static_cast<uint8_t>(m.stack_position()));
+            writeLook(m.mount(), false);
+            w.u8(static_cast<uint8_t>(m.direction()));
+            w.u8(m.podium_visible() ? 1 : 0);
+        }
+        return w.out;
+    }
+    case 223: {
+        const auto& m = msg.GetExtension(GameclientMessageBuddyGroup::gameclient_message_buddy_group);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action == 3) {
+            w.u8(static_cast<uint8_t>(m.group_id()));
+        } else if (action == 2) {
+            w.u8(static_cast<uint8_t>(m.group_id()));
+            w.string(m.name());
+        } else if (action == 1) {
+            w.string(m.name());
+        }
+        return w.out;
+    }
+    case 129: {
+        const auto& m = msg.GetExtension(GameclientMessageFriendSystemAction::gameclient_message_friend_system_action);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        switch (action) {
+        case 3: case 5: case 6: case 7: case 8: case 9:
+            w.u32(m.account_id());
+            break;
+        case 4: case 10:
+            w.u32(m.account_id());
+            w.u8(static_cast<uint8_t>(m.value()));
+            break;
+        case 11:
+            w.string(m.text());
+            break;
+        case 13:
+            w.u32(m.badge_id());
+            w.u8(m.visible() ? 1 : 0);
+            break;
+        case 14:
+            w.u8(static_cast<uint8_t>(m.value()));
+            break;
+        case 16:
+            w.u8(static_cast<uint8_t>(m.setting().setting_type()));
+            w.u8(m.setting().show_character_info() ? 1 : 0);
+            w.u8(m.setting().show_account_info() ? 1 : 0);
+            w.u8(m.setting().allow_inspect() ? 1 : 0);
+            break;
+        default:
+            break;
+        }
+        return w.out;
+    }
+    case 99: {
+        const auto& m = msg.GetExtension(GameclientMessageClientCheck::gameclient_message_client_check);
+        w.u32(static_cast<uint32_t>(m.data().size()));
+        w.out.append(m.data().data(), static_cast<int>(m.data().size()));
+        return w.out;
+    }
+    case 251: {
+        const auto& m = msg.GetExtension(GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers);
+        const auto type = m.request_type();
+        w.u8(static_cast<uint8_t>(type));
+        switch (type) {
+        case 1: // premium boost
+        case 3: // useful things
+            w.u8(static_cast<uint8_t>(m.value()));
+            break;
+        case 2: // category
+            w.string(m.category());
+            w.string(m.subcategory());
+            break;
+        case 4: // offer
+            w.u32(m.value());
+            break;
+        case 5: // search
+            w.string(m.search_text());
+            break;
+        default: // home
+            break;
+        }
+        w.u8(static_cast<uint8_t>(m.sort_order()));
+        w.u8(static_cast<uint8_t>(m.service_type()));
+        return w.out;
+    }
+    case 252: {
+        const auto& m = msg.GetExtension(GameclientMessageBuyStoreOffer::gameclient_message_buy_store_offer);
+        w.u32(m.offer_id());
+        w.u8(m.extra_flag() ? 1 : 0);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action >= 1 && action <= 4)
+            w.string(m.name());
+        if (action == 3)
+            w.u8(static_cast<uint8_t>(m.type()));
+        return w.out;
+    }
+    case 231: {
+        const auto& m = msg.GetExtension(GameclientMessageGemAtelier::gameclient_message_gem_atelier);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action == 0 || action == 2 || action == 3)
+            w.u16(static_cast<uint16_t>(m.gem_index()));
+        else
+            w.u8(static_cast<uint8_t>(m.first_value()));
+        if (action == 2 || action == 4)
+            w.u8(static_cast<uint8_t>(m.second_value()));
+        return w.out;
+    }
+    case 242: {
+        const auto& m = msg.GetExtension(GameclientMessageRuleViolationReport::gameclient_message_rule_violation_report);
+        const auto type = m.report_type();
+        w.u8(static_cast<uint8_t>(type));
+        w.u8(static_cast<uint8_t>(m.reason()));
+        w.string(m.name());
+        w.string(m.comment());
+        if (type != 2) {
+            w.string(m.translation());
+            if (type == 1 || type == 3 || type == 4)
+                w.u32(m.statement_id());
+        }
+        return w.out;
+    }
+    case 245: {
+        const auto& m = msg.GetExtension(GameclientMessageMarketBrowse::gameclient_message_market_browse);
+        w.u8(static_cast<uint8_t>(m.browse_type()));
+        if (m.browse_type() == 3) {
+            w.u16(static_cast<uint16_t>(m.object_id()));
+            if (m.has_tier())
+                w.u8(static_cast<uint8_t>(m.tier()));
+        }
+        return w.out;
+    }
+    case 246: {
+        const auto& m = msg.GetExtension(GameclientMessageMarketCreate::gameclient_message_market_create);
+        w.u8(static_cast<uint8_t>(m.offer_type()));
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        if (m.has_tier())
+            w.u8(static_cast<uint8_t>(m.tier()));
+        w.u16(static_cast<uint16_t>(m.amount()));
+        w.u64(m.price());
+        w.u8(m.anonymous() ? 1 : 0);
+        return w.out;
+    }
+    case 254: {
+        const auto& m = msg.GetExtension(GameclientMessageGetTransactionHistory::gameclient_message_get_transaction_history);
+        w.u32(m.page());
+        w.u8(static_cast<uint8_t>(m.entries_per_page()));
+        return w.out;
+    }
+    case 230: {
+        const auto& m = msg.GetExtension(GameclientMessageBugReport::gameclient_message_bug_report);
+        w.u8(static_cast<uint8_t>(m.category()));
+        w.string(m.comment());
+        if (m.category() == 1) {
+            w.string(m.typo_speaker());
+            w.string(m.typo_text());
+        } else if (m.category() == 0) {
+            writeCoordinate(w, m.position());
+        }
+        return w.out;
+    }
+    case 177: {
+        const auto& m = msg.GetExtension(GameclientMessageHighscores::gameclient_message_highscores);
+        w.u8(static_cast<uint8_t>(m.action()));
+        w.u8(static_cast<uint8_t>(m.category()));
+        w.u32(m.vocation());
+        w.string(m.world());
+        w.u8(static_cast<uint8_t>(m.world_types_size()));
+        for (const uint32_t type : m.world_types())
+            w.u8(static_cast<uint8_t>(type));
+        w.u8(static_cast<uint8_t>(m.battleye()));
+        if (m.action() == 0)
+            w.u16(static_cast<uint16_t>(m.page()));
+        w.u8(static_cast<uint8_t>(m.entries_per_page()));
+        return w.out;
+    }
+    case 233: {
+        const auto& m = msg.GetExtension(GameclientMessageStoreEvent::gameclient_message_store_event);
+        const auto type = m.event_type();
+        w.u8(static_cast<uint8_t>(type));
+        if (type == 0 || type == 3)
+            w.u32(m.value());
+        else if (type == 1)
+            w.string(m.text());
+        else if (type == 2)
+            w.u8(static_cast<uint8_t>(m.value()));
+        return w.out;
+    }
+    case 150: {
+        const auto& m = msg.GetExtension(GameclientMessageTalk::gameclient_message_talk);
+        w.u8(static_cast<uint8_t>(m.mode()));
+        if (m.has_channel_id())
+            w.u16(static_cast<uint16_t>(m.channel_id()));
+        if (m.has_receiver())
+            w.string(m.receiver());
+        w.string(m.text());
+        if (!m.has_aim_mode()) {
+            w.u8(0);
+        } else {
+            w.u8(static_cast<uint8_t>(m.aim_mode()));
+            if (m.aim_mode() == 1 || m.aim_mode() == 2)
+                writeCoordinate(w, m.aim_position());
+        }
+        return w.out;
+    }
+    case 210: {
+        const auto& m = msg.GetExtension(GameclientMessageGetOutfit::gameclient_message_get_outfit);
+        const auto type = m.outfit_type();
+        w.u8(static_cast<uint8_t>(type));
+        if (type == 2)
+            w.u32(m.creature_id());
+        else if (type == 1 || type == 3)
+            w.u16(static_cast<uint16_t>(m.creature_type()));
+        return w.out;
+    }
+    case 218: {
+        const auto& m = msg.GetExtension(GameclientMessageCollectDailyReward::gameclient_message_collect_daily_reward);
+        w.u8(m.from_shrine() ? 1 : 0);
+        w.u8(static_cast<uint8_t>(m.choices_size()));
+        for (const auto& c : m.choices()) {
+            w.u16(static_cast<uint16_t>(c.object_id()));
+            w.u8(static_cast<uint8_t>(c.count()));
+        }
+        return w.out;
+    }
+    case 219: {
+        const auto& m = msg.GetExtension(GameclientMessageCyclopediaMapAction::gameclient_message_cyclopedia_map_action);
+        if (m.has_donation()) {
+            w.u8(1);
+            w.u16(static_cast<uint16_t>(m.donation().area_id()));
+            w.u32(m.donation().amount());
+        } else if (m.has_reset_area_id()) {
+            w.u8(2);
+            w.u16(static_cast<uint16_t>(m.reset_area_id()));
+        } else {
+            w.u8(0);
+            w.u16(static_cast<uint16_t>(m.area_id()));
+        }
+        return w.out;
+    }
+    case 222: {
+        const auto& m = msg.GetExtension(GameclientMessageEditBuddy::gameclient_message_edit_buddy);
+        w.u32(m.character_id());
+        w.string(m.description());
+        w.u32(m.icon_id());
+        w.u8(m.notify_login() ? 1 : 0);
+        w.u8(static_cast<uint8_t>(m.group_ids_size()));
+        for (const uint32_t id : m.group_ids())
+            w.u8(static_cast<uint8_t>(id));
+        return w.out;
+    }
+    case 226: {
+        const auto& m = msg.GetExtension(GameclientMessageOpenMonsterCyclopediaMonsters::gameclient_message_open_monster_cyclopedia_monsters);
+        const auto type = m.request_type();
+        w.u8(static_cast<uint8_t>(type));
+        if (type == 1) {
+            w.u16(static_cast<uint16_t>(m.race_ids_size()));
+            for (const uint32_t id : m.race_ids())
+                w.u16(static_cast<uint16_t>(id));
+        } else if (type == 0) {
+            w.string(m.category());
+        }
+        return w.out;
+    }
+    case 97: {
+        const auto& m = msg.GetExtension(GameclientMessageRequestSkillWheel::gameclient_message_request_skill_wheel);
+        w.u32(m.character_id());
+        return w.out;
+    }
+    case 40: {
+        const auto& m = msg.GetExtension(GameclientMessageStashAction::gameclient_message_stash_action);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action < 3) {
+            writeCoordinate(w, m.position());
+            w.u16(static_cast<uint16_t>(m.object_id()));
+            w.u8(static_cast<uint8_t>(m.stack_position()));
+            if (action == 0) // stow one item: the count
+                w.u8(static_cast<uint8_t>(m.count()));
+        } else if (action == 3) { // withdraw
+            w.u16(static_cast<uint16_t>(m.object_id()));
+            w.u32(m.count());
+            w.u8(static_cast<uint8_t>(m.stack_position()));
+        }
+        return w.out;
+    }
+    case 144: {
+        const auto& m = msg.GetExtension(GameclientMessageManagedContainer::gameclient_message_managed_container);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action != 3) {
+            w.u8(static_cast<uint8_t>(m.category()));
+            if (action == 0 || action == 4) {
+                writeCoordinate(w, m.position());
+                w.u16(static_cast<uint16_t>(m.object_id()));
+                w.u8(static_cast<uint8_t>(m.stack_position()));
+            }
+        } else {
+            w.u8(m.use_main_as_fallback() ? 1 : 0);
+        }
+        return w.out;
+    }
+    case 145: {
+        const auto& m = msg.GetExtension(GameclientMessageQuickLootBlackWhitelist::gameclient_message_quick_loot_black_whitelist);
+        w.u8(static_cast<uint8_t>(m.filter()));
+        w.u16(static_cast<uint16_t>(m.object_ids_size()));
+        for (const uint32_t id : m.object_ids())
+            w.u16(static_cast<uint16_t>(id));
+        return w.out;
+    }
+    case 205: {
+        const auto& m = msg.GetExtension(GameclientMessageInspectObject::gameclient_message_inspect_object);
+        const auto type = m.inspection_type();
+        w.u8(static_cast<uint8_t>(type));
+        if (type == 0) {
+            writeCoordinate(w, m.position());
+        } else {
+            if (type != 2)
+                w.u16(static_cast<uint16_t>(m.object_id()));
+            w.u8(static_cast<uint8_t>(m.count()));
+        }
+        return w.out;
+    }
+    case 228: {
+        const auto& m = msg.GetExtension(GameclientMessageMonsterBonusEffectAction::gameclient_message_monster_bonus_effect_action);
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action != 3) {
+            w.u8(static_cast<uint8_t>(m.charm_id()));
+            if (action == 1)
+                w.u16(static_cast<uint16_t>(m.race_id()));
+        }
+        return w.out;
+    }
+    case 235: {
+        const auto& m = msg.GetExtension(GameclientMessagePreyAction::gameclient_message_prey_action);
+        w.u8(static_cast<uint8_t>(m.slot()));
+        const auto action = m.action();
+        w.u8(static_cast<uint8_t>(action));
+        if (action == 2 || action == 5)
+            w.u8(static_cast<uint8_t>(m.index()));
+        else if (action == 4)
+            w.u16(static_cast<uint16_t>(m.race_id()));
+        return w.out;
+    }
+    case 243: {
+        const auto& m = msg.GetExtension(GameclientMessageGetObjectInfo::gameclient_message_get_object_info);
+        w.u8(static_cast<uint8_t>(m.objects_size()));
+        for (const auto& o : m.objects()) {
+            w.u16(static_cast<uint16_t>(o.object_id()));
+            w.u8(static_cast<uint8_t>(o.data()));
+        }
+        return w.out;
+    }
+    case 117: {
+        const auto& m = msg.GetExtension(GameclientMessageContainerAction::gameclient_message_container_action);
+        w.u8(static_cast<uint8_t>(m.container_id()));
+        if (m.has_move_to_managed_containers()) {
+            w.u8(1);
+            w.u8(m.move_to_managed_containers() ? 1 : 0);
+        } else if (m.has_sort()) {
+            w.u8(0);
+            w.u8(static_cast<uint8_t>(m.sort().sort_type()));
+            w.u8(m.sort().first_flag() ? 1 : 0);
+            w.u8(m.sort().second_flag() ? 1 : 0);
+        }
+        return w.out;
+    }
+    case 43: {
+        const auto& m = msg.GetExtension(GameclientMessagePartyHuntAnalyser::gameclient_message_party_hunt_analyser);
+        w.u8(static_cast<uint8_t>(m.action()));
+        if (m.action() == 1)
+            w.u8(static_cast<uint8_t>(m.price_type()));
+        if (m.action() == 2) {
+            w.u16(static_cast<uint16_t>(m.prices_size()));
+            for (const auto& p : m.prices()) {
+                w.u16(static_cast<uint16_t>(p.object_id()));
+                w.u64(p.price());
+            }
+        }
+        return w.out;
+    }
+    case 44: {
+        const auto& m = msg.GetExtension(GameclientMessageTeamFinderAssembleTeam::gameclient_message_team_finder_assemble_team);
+        w.u8(static_cast<uint8_t>(m.action()));
+        if (m.action() == 2) {
+            w.u32(m.member_id());
+            w.u8(static_cast<uint8_t>(m.member_status()));
+        } else if (m.action() == 3) {
+            const auto& a = m.assembly();
+            w.u16(static_cast<uint16_t>(a.min_level()));
+            w.u16(static_cast<uint16_t>(a.max_level()));
+            w.u8(static_cast<uint8_t>(a.vocations()));
+            w.u16(static_cast<uint16_t>(a.team_slots()));
+            w.u16(static_cast<uint16_t>(a.free_slots()));
+            w.u8(a.party_only() ? 1 : 0);
+            w.u32(a.timestamp());
+            w.u8(static_cast<uint8_t>(a.team_type()));
+            if (a.team_type() >= 1 && a.team_type() <= 3)
+                w.u16(static_cast<uint16_t>(a.first_id()));
+            if (a.team_type() == 2)
+                w.u16(static_cast<uint16_t>(a.second_id()));
+        }
+        return w.out;
+    }
+    case 45: {
+        const auto& m = msg.GetExtension(GameclientMessageTeamFinderJoinTeam::gameclient_message_team_finder_join_team);
+        w.u8(static_cast<uint8_t>(m.action()));
+        if (m.action() == 1 || m.action() == 2)
+            w.u32(m.leader_id());
+        return w.out;
+    }
+    case 46: {
+        const auto& m = msg.GetExtension(GameclientMessageSetClientOptions::gameclient_message_set_client_options);
+        if (m.has_turn_towards_move_direction()) {
+            w.u8(0);
+            w.u8(m.turn_towards_move_direction() ? 1 : 0);
+        }
+        return w.out;
+    }
+    case 95: {
+        const auto& m = msg.GetExtension(GameclientMessageTaskboard::gameclient_message_taskboard);
+        const auto option = static_cast<uint8_t>(m.option());
+        w.u8(option);
+        switch (option) {
+        case 2:
+            w.u8(static_cast<uint8_t>(m.small_value()));
+            break;
+        case 5: case 7: case 8: case 9: case 11: case 13: case 14: case 15: case 16:
+            w.u16(static_cast<uint16_t>(m.value()));
+            break;
+        default:
+            break;
+        }
+        return w.out;
+    }
+    case 100: {
+        const auto& m = msg.GetExtension(GameclientMessageGoPath::gameclient_message_go_path);
+        w.u8(static_cast<uint8_t>(m.directions_size()));
+        for (const uint32_t direction : m.directions())
+            w.u8(static_cast<uint8_t>(direction));
+        return w.out;
+    }
+    case 208: {
+        const auto& m = msg.GetExtension(GameclientMessageTrackQuestFlags::gameclient_message_track_quest_flags);
+        w.u8(static_cast<uint8_t>(m.mission_ids_size()));
+        for (const uint32_t id : m.mission_ids())
+            w.u16(static_cast<uint16_t>(id));
+        w.u8(m.auto_track_new_quests() ? 1 : 0);
+        w.u8(m.auto_untrack_completed_quests() ? 1 : 0);
+        return w.out;
+    }
+    case 203: {
+        const auto& m = msg.GetExtension(GameclientMessageBrowseField::gameclient_message_browse_field);
+        writeCoordinate(w, m.position());
+        return w.out;
+    }
+    case 204: {
+        const auto& m = msg.GetExtension(GameclientMessageSeekInContainer::gameclient_message_seek_in_container);
+        w.u8(static_cast<uint8_t>(m.container_id()));
+        w.u16(static_cast<uint16_t>(m.index()));
+        w.u8(static_cast<uint8_t>(m.primary_type()));
+        return w.out;
+    }
+    case 212: {
+        const auto& m = msg.GetExtension(GameclientMessageMount::gameclient_message_mount);
+        w.u8(m.mounted() ? 1 : 0);
+        return w.out;
+    }
+    case 213: {
+        const auto& m = msg.GetExtension(GameclientMessageApplyImbuement::gameclient_message_apply_imbuement);
+        w.u8(static_cast<uint8_t>(m.slot()));
+        w.u32(static_cast<uint32_t>(m.imbuement_id()));
+        return w.out;
+    }
+    case 214: {
+        const auto& m = msg.GetExtension(GameclientMessageApplyClearingCharm::gameclient_message_apply_clearing_charm);
+        w.u8(static_cast<uint8_t>(m.slot()));
+        return w.out;
+    }
+    case 220: {
+        const auto& m = msg.GetExtension(GameclientMessageAddBuddy::gameclient_message_add_buddy);
+        w.string(m.name());
+        return w.out;
+    }
+    case 221: {
+        const auto& m = msg.GetExtension(GameclientMessageRemoveBuddy::gameclient_message_remove_buddy);
+        w.u32(static_cast<uint32_t>(m.character_id()));
+        return w.out;
+    }
+    case 227: {
+        const auto& m = msg.GetExtension(GameclientMessageOpenMonsterCyclopediaRace::gameclient_message_open_monster_cyclopedia_race);
+        w.u16(static_cast<uint16_t>(m.race_id()));
+        return w.out;
+    }
+    case 232: {
+        const auto& m = msg.GetExtension(GameclientMessageGetOfferDescription::gameclient_message_get_offer_description);
+        w.u32(static_cast<uint32_t>(m.offer_id()));
+        return w.out;
+    }
+    case 236: {
+        const auto& m = msg.GetExtension(GameclientMessageSetHirelingName::gameclient_message_set_hireling_name);
+        w.string(m.name());
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        w.u32(static_cast<uint32_t>(m.object_id()));
+        return w.out;
+    }
+    case 237: {
+        const auto& m = msg.GetExtension(GameclientMessageRequestResourceBalance::gameclient_message_request_resource_balance);
+        w.u8(static_cast<uint8_t>(m.resource_type()));
+        return w.out;
+    }
+    case 238: {
+        const auto& m = msg.GetExtension(GameclientMessageGreet::gameclient_message_greet);
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        return w.out;
+    }
+    case 239: {
+        const auto& m = msg.GetExtension(GameclientMessageTransferCurrency::gameclient_message_transfer_currency);
+        w.string(m.recipient());
+        w.u32(static_cast<uint32_t>(m.amount()));
+        return w.out;
+    }
+    case 241: {
+        const auto& m = msg.GetExtension(GameclientMessageGetQuestLine::gameclient_message_get_quest_line);
+        w.u16(static_cast<uint16_t>(m.quest_id()));
+        return w.out;
+    }
+    case 247: {
+        const auto& m = msg.GetExtension(GameclientMessageMarketCancel::gameclient_message_market_cancel);
+        w.u32(static_cast<uint32_t>(m.timestamp()));
+        w.u16(static_cast<uint16_t>(m.counter()));
+        return w.out;
+    }
+    case 248: {
+        const auto& m = msg.GetExtension(GameclientMessageMarketAccept::gameclient_message_market_accept);
+        w.u32(static_cast<uint32_t>(m.timestamp()));
+        w.u16(static_cast<uint16_t>(m.counter()));
+        w.u16(static_cast<uint16_t>(m.amount()));
+        return w.out;
+    }
+    case 249: {
+        const auto& m = msg.GetExtension(GameclientMessageAnswerModalDialog::gameclient_message_answer_modal_dialog);
+        w.u32(static_cast<uint32_t>(m.dialog_id()));
+        w.u8(static_cast<uint8_t>(m.button()));
+        w.u8(static_cast<uint8_t>(m.choice()));
+        return w.out;
+    }
+    case 253: {
+        const auto& m = msg.GetExtension(GameclientMessageOpenTransactionHistory::gameclient_message_open_transaction_history);
+        w.u8(static_cast<uint8_t>(m.entries_per_page()));
+        return w.out;
+    }
+    case 255: {
+        const auto& m = msg.GetExtension(GameclientMessageGatherAll::gameclient_message_gather_all);
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        return w.out;
+    }
+    case 206: {
+        const auto& m = msg.GetExtension(GameclientMessageInspectPlayer::gameclient_message_inspect_player);
+        w.u8(static_cast<uint8_t>(m.tab()));
+        if (m.has_creature_id())
+            w.u32(static_cast<uint32_t>(m.creature_id()));
+        return w.out;
+    }
+    case 229: {
+        const auto& m = msg.GetExtension(GameclientMessageOpenCyclopediaCharacterInfo::gameclient_message_open_cyclopedia_character_info);
+        w.u32(static_cast<uint32_t>(m.character_id()));
+        w.u8(static_cast<uint8_t>(m.info_type()));
+        if (m.has_entries_per_page())
+            w.u16(static_cast<uint16_t>(m.entries_per_page()));
+        if (m.has_page())
+            w.u16(static_cast<uint16_t>(m.page()));
+        return w.out;
+    }
+    case 201: {
+        const auto& m = msg.GetExtension(GameclientMessageGetTransactionDetails::gameclient_message_get_transaction_details);
+        w.u32(static_cast<uint32_t>(m.transaction_id()));
+        return w.out;
+    }
+    case 143: {
+        const auto& m = msg.GetExtension(GameclientMessageQuickLoot::gameclient_message_quick_loot);
+        w.u8(static_cast<uint8_t>(m.variant()));
+        if (m.has_position())
+            writeCoordinate(w, m.position());
+        if (m.has_object_id())
+            w.u16(static_cast<uint16_t>(m.object_id()));
+        if (m.has_stack_position())
+            w.u8(static_cast<uint8_t>(m.stack_position()));
+        return w.out;
+    }
+    case 148: {
+        const auto& m = msg.GetExtension(GameclientMessageDepotSearchType::gameclient_message_depot_search_type);
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        if (m.has_tier())
+            w.u8(static_cast<uint8_t>(m.tier()));
+        return w.out;
+    }
+    case 41: {
+        const auto& m = msg.GetExtension(GameclientMessageDepotSearchRetrieve::gameclient_message_depot_search_retrieve);
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        if (m.has_tier())
+            w.u8(static_cast<uint8_t>(m.tier()));
+        w.u8(static_cast<uint8_t>(m.retrieve_type()));
+        return w.out;
+    }
+    case 149: {
+        const auto& m = msg.GetExtension(GameclientMessageOpenParentContainer::gameclient_message_open_parent_container);
+        writeCoordinate(w, m.position());
+        return w.out;
+    }
+    case 152: {
+        const auto& m = msg.GetExtension(GameclientMessageJoinChannel::gameclient_message_join_channel);
+        w.u16(static_cast<uint16_t>(m.channel_id()));
+        return w.out;
+    }
+    case 153: {
+        const auto& m = msg.GetExtension(GameclientMessageLeaveChannel::gameclient_message_leave_channel);
+        w.u16(static_cast<uint16_t>(m.channel_id()));
+        return w.out;
+    }
+    case 154: {
+        const auto& m = msg.GetExtension(GameclientMessagePrivateChannel::gameclient_message_private_channel);
+        w.string(m.receiver());
+        return w.out;
+    }
+    case 156: {
+        const auto& m = msg.GetExtension(GameclientMessageEditGuildMessage::gameclient_message_edit_guild_message);
+        w.string(m.text());
+        return w.out;
+    }
+    case 157: {
+        const auto& m = msg.GetExtension(GameclientMessageGetTextForReport::gameclient_message_get_text_for_report);
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        return w.out;
+    }
+    case 159: {
+        const auto& m = msg.GetExtension(GameclientMessageSetCreaturePodiumConfiguration::gameclient_message_set_creature_podium_configuration);
+        w.u32(static_cast<uint32_t>(m.race_id()));
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        w.u8(static_cast<uint8_t>(m.direction()));
+        w.u8(m.podium_visible() ? 1 : 0);
+        w.u8(m.monster_visible() ? 1 : 0);
+        return w.out;
+    }
+    case 160: {
+        const auto& m = msg.GetExtension(GameclientMessageSetTactics::gameclient_message_set_tactics);
+        w.u8(m.chase_opponent() ? 1 : 0);
+        w.u8(m.secure_mode() ? 1 : 0);
+        w.u8(static_cast<uint8_t>(m.pvp_mode()));
+        return w.out;
+    }
+    case 161: {
+        const auto& m = msg.GetExtension(GameclientMessageAttack::gameclient_message_attack);
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        w.u32(static_cast<uint32_t>(m.sequence()));
+        return w.out;
+    }
+    case 162: {
+        const auto& m = msg.GetExtension(GameclientMessageFollow::gameclient_message_follow);
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        w.u32(static_cast<uint32_t>(m.sequence()));
+        return w.out;
+    }
+    case 163: {
+        const auto& m = msg.GetExtension(GameclientMessageInviteToParty::gameclient_message_invite_to_party);
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        return w.out;
+    }
+    case 164: {
+        const auto& m = msg.GetExtension(GameclientMessageJoinParty::gameclient_message_join_party);
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        return w.out;
+    }
+    case 165: {
+        const auto& m = msg.GetExtension(GameclientMessageRevokeInvitation::gameclient_message_revoke_invitation);
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        return w.out;
+    }
+    case 166: {
+        const auto& m = msg.GetExtension(GameclientMessagePassLeadership::gameclient_message_pass_leadership);
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        return w.out;
+    }
+    case 168: {
+        const auto& m = msg.GetExtension(GameclientMessageShareExperience::gameclient_message_share_experience);
+        w.u8(m.active() ? 1 : 0);
+        return w.out;
+    }
+    case 171: {
+        const auto& m = msg.GetExtension(GameclientMessageInviteToChannel::gameclient_message_invite_to_channel);
+        w.string(m.name());
+        w.u16(static_cast<uint16_t>(m.channel_id()));
+        return w.out;
+    }
+    case 172: {
+        const auto& m = msg.GetExtension(GameclientMessageExcludeFromChannel::gameclient_message_exclude_from_channel);
+        w.string(m.name());
+        w.u16(static_cast<uint16_t>(m.channel_id()));
+        return w.out;
+    }
+    case 176: {
+        const auto& m = msg.GetExtension(GameclientMessageEditBossSlot::gameclient_message_edit_boss_slot);
+        w.u8(static_cast<uint8_t>(m.action()));
+        w.u32(static_cast<uint32_t>(m.race_id()));
+        return w.out;
+    }
+    case 178: {
+        const auto& m = msg.GetExtension(GameclientMessagePickObjectToImbue::gameclient_message_pick_object_to_imbue);
+        w.u8(static_cast<uint8_t>(m.action()));
+        if (m.has_position())
+            writeCoordinate(w, m.position());
+        if (m.has_object_id())
+            w.u16(static_cast<uint16_t>(m.object_id()));
+        if (m.has_stack_position())
+            w.u8(static_cast<uint8_t>(m.stack_position()));
+        return w.out;
+    }
+    case 186: {
+        const auto& m = msg.GetExtension(GameclientMessageSoulSealsFightMonster::gameclient_message_soul_seals_fight_monster);
+        w.u16(static_cast<uint16_t>(m.race_id()));
+        return w.out;
+    }
+    case 193: {
+        const auto& m = msg.GetExtension(GameclientMessageClientDetails::gameclient_message_client_details);
+        w.string(m.details());
+        return w.out;
+    }
+    case 194: {
+        const auto& m = msg.GetExtension(GameclientMessageBossDifficultySelection::gameclient_message_boss_difficulty_selection);
+        w.u32(static_cast<uint32_t>(m.context()));
+        w.u8(static_cast<uint8_t>(m.action()));
+        if (m.has_difficulty())
+            w.u16(static_cast<uint16_t>(m.difficulty()));
+        return w.out;
+    }
+    case 42: {
+        const auto& m = msg.GetExtension(GameclientMessageTrackBestiaryRace::gameclient_message_track_bestiary_race);
+        w.u16(static_cast<uint16_t>(m.race_id()));
+        w.u8(m.tracked() ? 1 : 0);
+        return w.out;
+    }
+    case 96: {
+        const auto& m = msg.GetExtension(GameclientMessageTrackImbuements::gameclient_message_track_imbuements);
+        w.u8(m.open() ? 1 : 0);
+        return w.out;
+    }
+    case 110: {
+        const auto& m = msg.GetExtension(GameclientMessageSetVocation::gameclient_message_set_vocation);
+        w.u8(static_cast<uint8_t>(m.vocation()));
+        return w.out;
+    }
+    case 115: {
+        const auto& m = msg.GetExtension(GameclientMessageTeleport::gameclient_message_teleport);
+        writeCoordinate(w, m.position());
+        return w.out;
+    }
+    case 116: {
+        const auto& m = msg.GetExtension(GameclientMessageStartOfflineTraining::gameclient_message_start_offline_training);
+        w.u8(static_cast<uint8_t>(m.skill()));
+        return w.out;
+    }
+    case 119: {
+        const auto& m = msg.GetExtension(GameclientMessageEquipObject::gameclient_message_equip_object);
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.tier()));
+        return w.out;
+    }
+    case 120: {
+        const auto& m = msg.GetExtension(GameclientMessageMoveObject::gameclient_message_move_object);
+        writeCoordinate(w, m.from_position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.from_stack_position()));
+        writeCoordinate(w, m.to_position());
+        w.u8(static_cast<uint8_t>(m.count()));
+        w.u8(m.extra_flag() ? 1 : 0);
+        return w.out;
+    }
+    case 121: {
+        const auto& m = msg.GetExtension(GameclientMessageLookNPCTrade::gameclient_message_look_n_p_c_trade);
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.count()));
+        return w.out;
+    }
+    case 122: {
+        const auto& m = msg.GetExtension(GameclientMessageBuyObject::gameclient_message_buy_object);
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.subtype()));
+        w.u16(static_cast<uint16_t>(m.amount()));
+        w.u8(m.ignore_capacity() ? 1 : 0);
+        w.u8(m.in_backpacks() ? 1 : 0);
+        return w.out;
+    }
+    case 123: {
+        const auto& m = msg.GetExtension(GameclientMessageSellObject::gameclient_message_sell_object);
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.subtype()));
+        w.u16(static_cast<uint16_t>(m.amount()));
+        w.u8(m.ignore_equipped() ? 1 : 0);
+        return w.out;
+    }
+    case 125: {
+        const auto& m = msg.GetExtension(GameclientMessageTradeObject::gameclient_message_trade_object);
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        return w.out;
+    }
+    case 126: {
+        const auto& m = msg.GetExtension(GameclientMessageLookTrade::gameclient_message_look_trade);
+        w.u8(static_cast<uint8_t>(m.counter_offer()));
+        w.u8(static_cast<uint8_t>(m.index()));
+        return w.out;
+    }
+    case 130: {
+        const auto& m = msg.GetExtension(GameclientMessageUseObject::gameclient_message_use_object);
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        w.u8(static_cast<uint8_t>(m.container_index()));
+        return w.out;
+    }
+    case 131: {
+        const auto& m = msg.GetExtension(GameclientMessageUseTwoObjects::gameclient_message_use_two_objects);
+        writeCoordinate(w, m.from_position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.from_stack_position()));
+        writeCoordinate(w, m.to_position());
+        w.u16(static_cast<uint16_t>(m.to_object_id()));
+        w.u8(static_cast<uint8_t>(m.to_stack_position()));
+        return w.out;
+    }
+    case 132: {
+        const auto& m = msg.GetExtension(GameclientMessageUseOnCreature::gameclient_message_use_on_creature);
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        return w.out;
+    }
+    case 133: {
+        const auto& m = msg.GetExtension(GameclientMessageTurnObject::gameclient_message_turn_object);
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        return w.out;
+    }
+    case 134: {
+        const auto& m = msg.GetExtension(GameclientMessageConfigureShowOffSocket::gameclient_message_configure_show_off_socket);
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        return w.out;
+    }
+    case 135: {
+        const auto& m = msg.GetExtension(GameclientMessageCloseContainer::gameclient_message_close_container);
+        w.u8(static_cast<uint8_t>(m.container_id()));
+        return w.out;
+    }
+    case 136: {
+        const auto& m = msg.GetExtension(GameclientMessageUpContainer::gameclient_message_up_container);
+        w.u8(static_cast<uint8_t>(m.container_id()));
+        return w.out;
+    }
+    case 137: {
+        const auto& m = msg.GetExtension(GameclientMessageEditText::gameclient_message_edit_text);
+        w.u32(static_cast<uint32_t>(m.window_id()));
+        w.string(m.text());
+        return w.out;
+    }
+    case 138: {
+        const auto& m = msg.GetExtension(GameclientMessageEditList::gameclient_message_edit_list);
+        w.u8(static_cast<uint8_t>(m.list_type()));
+        w.u32(static_cast<uint32_t>(m.window_id()));
+        w.string(m.text());
+        return w.out;
+    }
+    case 139: {
+        const auto& m = msg.GetExtension(GameclientMessageToggleWrapState::gameclient_message_toggle_wrap_state);
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        return w.out;
+    }
+    case 140: {
+        const auto& m = msg.GetExtension(GameclientMessageLook::gameclient_message_look);
+        writeCoordinate(w, m.position());
+        w.u16(static_cast<uint16_t>(m.object_id()));
+        w.u8(static_cast<uint8_t>(m.stack_position()));
+        return w.out;
+    }
+    case 141: {
+        const auto& m = msg.GetExtension(GameclientMessageLookAtCreature::gameclient_message_look_at_creature);
+        w.u32(static_cast<uint32_t>(m.creature_id()));
+        return w.out;
+    }
     case 29:
     case 30:
     case 105:
@@ -860,7 +1911,12 @@ void ownProductSurface(QObject* parent)
     g_serverTranslator = &typedKeep().tProtobufServerMessageTranslator;
     g_clientTranslator = &typedKeep().tProtobufClientMessageTranslator;
     g_messageQueue = new TProtocolMessageQueue(parent);
-    ownClassicProtocolBridge(parent);
+    // CIP TProtocolClientMessageProcessor: encoded client messages → the game connection.
+    QObject::connect(g_messageQueue, &TProtocolMessageQueue::clientMessageEnqueued, g_messageQueue,
+                     [](int, const QByteArray& frame) {
+                         if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
+                             processor->writeClientFrame(frame);
+                     });
 }
 
 TProtobufServerMessageTranslator* serverMessageTranslator()
@@ -903,248 +1959,38 @@ bool emptyStructuredServerOpcode(int opcode)
     }
 }
 
-bool nativeApplySkipsClassic(int opcode)
-{
-    switch (opcode) {
-    case 4:   // SessionDumpStart
-    case 5:   // SessionDumpMarker
-    case 6:   // PartyLeft
-    case 10:  // PendingStateEntered
-    case 15:  // WorldEntered
-    case 20:  // LoginError
-    case 21:  // LoginAdvice
-    case 22:  // LoginWait
-    case 23:  // LoginSuccess
-    case 24:  // SessionEndInformation
-    case 26:  // BugReportsAllowed
-    case 27:  // ShowMultiOfflineTrainingDialog
-    case 29:  // Ping
-    case 30:  // PingBack
-    case 31:  // LoginChallenge
-    case 42:  // SpecialContainersAvailable
-    case 96:  // SpellDataModification
-    case 109: // MoveCreature
-    case 110: // Container
-    case 111: // CloseContainer
-    case 112: // CreateInContainer
-    case 113: // ChangeInContainer
-    case 114: // DeleteInContainer
-    case 120: // SetInventory
-    case 121: // DeleteInventory
-    case 100: // FullMap
-    case 101: // TopRow
-    case 102: // RightColumn
-    case 103: // BottomRow
-    case 104: // LeftColumn
-    case 105: // FieldData
-    case 106: // CreateOnMap
-    case 107: // ChangeOnMap
-    case 108: // DeleteOnMap
-    case 190: // TopFloor
-    case 191: // BottomFloor
-    case 130: // AmbientLight
-    case 131: // GraphicalEffects
-    case 132: // RemoveGraphicalEffect
-    case 140: // CreatureHealth
-    case 141: // CreatureLight
-    case 143: // CreatureSpeed
-    case 144: // CreatureSkull
-    case 145: // CreatureParty
-    case 146: // CreatureUnpass
-    case 159: // PlayerDataBasic
-    case 160: // PlayerDataCurrent
-    case 161: // PlayerSkills
-    case 162: // PlayerState
-    case 163: // UpdateTarget
-    case 164: // SpellDelay
-    case 165: // SpellGroupDelay
-    case 166: // MultiUseDelay
-    case 167: // SetTactics
-    case 170: // Talk
-    case 171: // Channels
-    case 172: // OpenChannel
-    case 173: // PrivateChannel
-    case 174: // EditGuildMessage
-    case 178: // OpenOwnChannel
-    case 179: // CloseChannel
-    case 180: // Message
-    case 243: // ChannelEvent
-    case 122: // NPCOffer
-    case 123: // PlayerGoods
-    case 124: // CloseNPCTrade
-    case 125: // OwnOffer
-    case 126: // CounterOffer
-    case 127: // CloseTrade
-    case 25: // StoreButtonIndicators
-    case 40: // Dead
-    case 92: // WeaponProficiencyNotification
-    case 152: // ShowGameNews
-    case 157: // SwitchPreset
-    case 175: // XpChanged
-    case 184: // PvpSituations
-    case 206: // ItemWasted
-    case 217: // MonsterCyclopediaNewDetails
-    case 222: // DailyRewardCollectionState
-    case 230: // BosstiaryHighlight
-    case 231: // PreyTimeLeft
-    case 233: // PreyPrices
-    case 238: // ResourceBalance
-    case 239: // TibiaTime
-    case 242: // UpdatingShopBalance
-    case 11: // ReadyForSecondaryConnection
-    case 41: // Stash
-    case 119: // InspectionState
-    case 136: // ExaltationHistory
-    case 189: // BossTracking
-    case 195: // CyclopediaHouseActionResult
-    case 199: // CyclopediaCurrentHouseData
-    case 211: // BuddyStatusChange
-    case 224: // StoreError
-    case 229: // DailyRewardHistory
-    case 234: // OfferDescription
-    case 254: // StoreSuccess
-    case 139: // CreatureUpdate
-    case 142: // CreatureOutfit
-    case 46: // UnlockedSpells
-    case 94: // PassiveAbilityData
-    case 129: // TextForReport
-    case 133: // SoundTrigger
-    case 148: // DepotSearchResult
-    case 151: // EditList
-    case 158: // PremiumTrigger
-    case 183: // UnjustifiedPoints
-    case 185: // BestiaryTracker
-    case 192: // UpdateManagedContainers
-    case 204: // ImpactTracking
-    case 205: // MarketStatistics
-    case 207: // ItemLooted
-    case 209: // KillTracking
-    case 223: // CreditBalance
-    case 237: // ShowMessageDialog
-    case 245: // PlayerInventory
-    case 137: // CloseExaltationDialog
-    case 154: // CloseDepotSearch
-    case 201: // ExivaSuppressed
-    case 212: // BuddyGroupData
-    case 213: // MonsterCyclopedia
-    case 236: // CloseImbuingDialog
-    case 240: // QuestLog
-    case 244: // ObjectInfo
-    case 246: // MarketEnter
-    case 115: // Bosstiary
-    case 138: // ExaltationResult
-    case 153: // DepotSearchDetailList
-    case 193: // VocationSpecificPlayerData
-    case 214: // MonsterCyclopediaMonsters
-    case 226: // OpenRewardWall
-    case 241: // QuestLine
-    case 44: // TeamFinderTeamLeader
-    case 45: // TeamFinderTeamMember
-    case 98: // BossSlots
-    case 150: // EditText
-    case 196: // WeaponProficiency
-    case 208: // TrackQuestFlags
-    case 253: // TransactionHistory
-    case 28: // NpcTalkParters
-    case 43: // PartyHuntAnalyser
-    case 187: // ShapedPerkReshapeOffers
-    case 198: // CyclopediaStaticHouseData
-    case 155: // BlessingsDialog
-    case 210: // BuddyData
-    case 250: // ShowModalDialog
-    case 251: // StoreCategories
-    case 93: // ImbuementDurations
-    case 134: // ExaltationBaseData
-    case 202: // UpdateExivaOptions
-    case 225: // RequestPurchaseData
-    case 156: // Blessings
-    case 194: // ConfigureCreaturePodium
-    case 203: // TransactionDetails
-    case 232: // PreyData
-    case 235: // ImbuingDialogRefresh
-    case 47: // BossDifficultySelection
-    case 176: // OutfitMemorial
-    case 200: // Outfit
-    case 215: // MonsterCyclopediaRace
-    case 249: // MarketBrowse
-    case 177: // Highscores
-    case 168: // SetStoreButtonDeeplink
-    case 3: // CreatureData
-    case 118: // InspectionList
-    case 128: // CharacterTradeConfiguration
-    case 117: // GameEvent
-    case 95: // SkillWheel
-    case 135: // ExaltationDialogRefresh
-    case 221: // CyclopediaMapData
-    case 248: // MarketDetail
-    case 252: // StoreOffers
-    case 97: // BosstiaryStaticData
-    case 147: // CreatureMarks
-    case 149: // CreatureType
-    case 181: // SnapBack
-    case 182: // Wait
-    case 188: // Stop
-    case 197: // GemAtelierGemRevealed
-    case 219: // HirelingNameChange
-    case 220: // TutorialHint
-    case 227: // CloseRewardWall
-    case 247: // MarketLeave
-        return true;
-    default:
-        return false;
-    }
-}
-
 void TProtocolMessageQueue::enqueueServer(
-    std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> message,
-    const QByteArray& classicFrame, bool applyClassic)
+    std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> message)
 {
-    const int opcode = message && message->has_type() ? message->type()
-                                                      : (classicFrame.isEmpty() ? -1 : int(uint8_t(classicFrame[0])));
+    const int opcode = message && message->has_type() ? message->type() : -1;
     g_lastServerMessage = std::move(message);
     m_pendingServerOpcode = opcode;
-    m_pendingServerClassic = classicFrame;
-    m_pendingApplyClassic = applyClassic;
     ++m_serverCount;
     fireEmitSignalForNewProtocolMessage();
 }
 
 void TProtocolMessageQueue::enqueueClient(
     std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> message,
-    const QByteArray& classicFrame)
+    const QByteArray& wire)
 {
     const int opcode = message && message->has_type() ? message->type()
-                                                      : (classicFrame.isEmpty() ? -1 : int(uint8_t(classicFrame[0])));
+                                                      : (wire.isEmpty() ? -1 : int(uint8_t(wire[0])));
     m_pendingClientOpcode = opcode;
-    m_pendingClientClassic = classicFrame;
+    m_pendingClientWire = wire;
     ++m_clientCount;
     fireEmitSignalForNewClientProtocolMessage();
-}
-
-void TProtocolMessageQueue::prepareAndEnqueueGameclientMessage(const QByteArray& classicFrame)
-{
-    auto* xlat = clientMessageTranslator();
-    if (!xlat || classicFrame.isEmpty())
-        return;
-    auto pb = xlat->translateFromClassic(classicFrame);
-    QByteArray wire = xlat->translateToClassic(*pb);
-    if (wire.size() <= 1 && classicFrame.size() > 1)
-        wire = classicFrame;
-    else if (wire.isEmpty())
-        wire = classicFrame;
-    enqueueClient(std::move(pb), wire);
 }
 
 void TProtocolMessageQueue::fireEmitSignalForNewProtocolMessage()
 {
     Q_EMIT receivedMessage();
-    Q_EMIT serverMessageEnqueued(m_pendingServerOpcode, m_pendingServerClassic, m_pendingApplyClassic);
+    Q_EMIT serverMessageEnqueued(m_pendingServerOpcode);
 }
 
 void TProtocolMessageQueue::fireEmitSignalForNewClientProtocolMessage()
 {
     Q_EMIT clientMessageReadyToProcess();
-    Q_EMIT clientMessageEnqueued(m_pendingClientOpcode, m_pendingClientClassic);
+    Q_EMIT clientMessageEnqueued(m_pendingClientOpcode, m_pendingClientWire);
 }
 
 bool TProtobufServerMessageTranslator::hasStructuredLayout(int opcode)
@@ -1175,51 +2021,11 @@ bool TProtobufServerMessageTranslator::hasStructuredLayout(int opcode)
     case 155: case 210: case 250: case 251:
     case 93: case 134: case 202: case 225:
     case 156: case 194: case 203: case 232: case 235:
-    case 47: case 97: case 176: case 200: case 215: case 249: case 177: case 168: case 3: case 118: case 128: case 117: case 95: case 135: case 221: case 248: case 252:
+    case 47: case 97: case 176: case 200: case 215: case 249: case 177: case 168: case 3: case 99: case 118: case 218: case 228: case 169: case 91: case 186: case 216: case 116: case 128: case 117: case 95: case 135: case 221: case 248: case 252:
         return true;
     default:
         return false;
     }
-}
-
-size_t TProtobufServerMessageTranslator::measureStructuredPayload(int opcode, const uint8_t* payload,
-                                                                  size_t len) const
-{
-    // LoginChallenge (31) pad and LoginSuccess (23) feature gates live in
-    // fillStructuredServer — measure must consume the same bytes.
-    if (!hasStructuredLayout(opcode))
-        return 0;
-    GameserverMessage tmp;
-    tmp.set_type(opcode);
-    if (!mutableServerExtensionGenerated(tmp, opcode))
-        return 0;
-    ClassicReader reader{ payload, len, 0 };
-    return fillStructuredServer(tmp, opcode, reader);
-}
-
-std::unique_ptr<GameserverMessage>
-TProtobufServerMessageTranslator::translateFromClassic(const QByteArray& classicBody) const
-{
-    return translateFromClassic(reinterpret_cast<const uint8_t*>(classicBody.constData()),
-                                size_t(classicBody.size()));
-}
-
-std::unique_ptr<GameserverMessage>
-TProtobufServerMessageTranslator::translateFromClassic(const uint8_t* data, size_t len) const
-{
-    auto out = std::make_unique<GameserverMessage>();
-    if (!data || len == 0) {
-        qCWarning(lcProtoXlat) << "translateFromClassic: empty body";
-        return out;
-    }
-    const int opcode = int(data[0]);
-    out->set_type(opcode);
-    if (!mutableServerExtensionGenerated(*out, opcode))
-        return out;
-    ClassicReader reader{ data + 1, len > 0 ? len - 1 : 0, 0 };
-    if (fillStructuredServer(*out, opcode, reader) > 0 && isMapMessage(opcode))
-        advanceMapViewport(*out);
-    return out;
 }
 
 QByteArray TProtobufServerMessageTranslator::translateToClassic(const GameserverMessage& message) const
@@ -1230,28 +2036,6 @@ QByteArray TProtobufServerMessageTranslator::translateToClassic(const Gameserver
     if (!hasStructuredLayout(opcode))
         return {};
     return serializeStructuredServer(message, opcode);
-}
-
-std::unique_ptr<GameclientMessage>
-TProtobufClientMessageTranslator::translateFromClassic(const QByteArray& classicBody) const
-{
-    return translateFromClassic(reinterpret_cast<const uint8_t*>(classicBody.constData()),
-                                size_t(classicBody.size()));
-}
-
-std::unique_ptr<GameclientMessage>
-TProtobufClientMessageTranslator::translateFromClassic(const uint8_t* data, size_t len) const
-{
-    auto out = std::make_unique<GameclientMessage>();
-    if (!data || len == 0)
-        return out;
-    const int opcode = int(data[0]);
-    out->set_type(opcode);
-    if (!mutableClientExtensionGenerated(*out, opcode))
-        return out;
-    ClassicReader reader{ data + 1, len > 0 ? len - 1 : 0, 0 };
-    fillStructuredClient(*out, opcode, reader);
-    return out;
 }
 
 QByteArray TProtobufClientMessageTranslator::translateToClassic(const GameclientMessage& message) const
@@ -1271,56 +2055,65 @@ QByteArray TProtobufClientMessageTranslator::translateToClassic(const Gameclient
     return out;
 }
 
-void enqueueTranslatedServerFrame(const QByteArray& classicFrame, bool applyClassic)
+bool translateAndEnqueueServerMessage(const int opcode, ClassicReader& packet)
 {
-    auto* xlat = serverMessageTranslator();
     auto* queue = protocolMessageQueue();
-    if (!xlat || !queue || classicFrame.isEmpty())
-        return;
-    auto pb = xlat->translateFromClassic(classicFrame);
-    queue->enqueueServer(std::move(pb), classicFrame, applyClassic);
+    auto message = std::make_unique<GameserverMessage>();
+    message->set_type(opcode);
+    if (!mutableServerExtensionGenerated(*message, opcode))
+        return false;
+    const size_t begin = packet.i - 1; // the opcode byte
+    ClassicReader body{ packet.p + packet.i, packet.remaining(), 0 };
+    const size_t consumed = fillStructuredServer(*message, opcode, body);
+    if (consumed == 0 && !emptyStructuredServerOpcode(opcode))
+        return false;
+    packet.i += consumed;
+    if (isMapMessage(opcode))
+        advanceMapViewport(*message);
+    (void)begin;
+    if (queue)
+        queue->enqueueServer(std::move(message));
+    else
+        g_lastServerMessage = std::move(message);
+    return true;
 }
 
-QByteArray translateOutboundClientFrame(const QByteArray& classicFrame)
+std::unique_ptr<GameclientMessage> newGameclientMessage(const int opcode)
+{
+    auto message = std::make_unique<GameclientMessage>();
+    message->set_type(opcode);
+    mutableClientExtensionGenerated(*message, opcode);
+    return message;
+}
+
+void sendGameclientMessage(std::unique_ptr<GameclientMessage> message)
 {
     auto* xlat = clientMessageTranslator();
-    auto* queue = protocolMessageQueue();
-    if (!xlat || classicFrame.isEmpty())
-        return classicFrame;
-    auto pb = xlat->translateFromClassic(classicFrame);
-    QByteArray out = xlat->translateToClassic(*pb);
-    if (queue)
-        queue->enqueueClient(std::move(pb), classicFrame);
-    if (out.size() > 1 || (out.size() == 1 && classicFrame.size() == 1))
-        return out;
-    return classicFrame;
-}
-
-void prepareOutboundClientFrame(const QByteArray& classicFrame)
-{
-    auto* queue = protocolMessageQueue();
-    if (!queue || classicFrame.isEmpty())
+    if (!xlat || !message)
         return;
-    queue->prepareAndEnqueueGameclientMessage(classicFrame);
+    QByteArray wire = xlat->translateToClassic(*message);
+    if (wire.isEmpty())
+        return;
+    if (auto* queue = protocolMessageQueue()) {
+        queue->enqueueClient(std::move(message), wire);
+        return;
+    }
+    // Before the queue exists: straight to the wire.
+    if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
+        processor->writeClientFrame(wire);
 }
 
-QByteArray enqueueNativeServerProtobuf(const QByteArray& gameserverProtobuf, bool applyClassic)
+QByteArray serverProtobufToClassic(const QByteArray& gameserverProtobuf)
 {
     auto* xlat = serverMessageTranslator();
-    auto* queue = protocolMessageQueue();
     if (!xlat || gameserverProtobuf.isEmpty())
         return {};
-    auto pb = std::make_unique<GameserverMessage>();
-    if (!pb->ParseFromArray(gameserverProtobuf.constData(), gameserverProtobuf.size())) {
-        qCWarning(lcProtoXlat) << "enqueueNativeServerProtobuf: ParseFromArray failed";
+    GameserverMessage message;
+    if (!message.ParseFromArray(gameserverProtobuf.constData(), gameserverProtobuf.size())) {
+        qCWarning(lcProtoXlat) << "serverProtobufToClassic: ParseFromArray failed";
         return {};
     }
-    QByteArray classic = xlat->translateToClassic(*pb);
-    if (queue)
-        queue->enqueueServer(std::move(pb), classic, applyClassic && !classic.isEmpty());
-    else
-        g_lastServerMessage = std::move(pb);
-    return classic;
+    return xlat->translateToClassic(message);
 }
 
 const GameserverMessage* lastShadowServerMessage()
@@ -1328,11 +2121,10 @@ const GameserverMessage* lastShadowServerMessage()
     return g_lastServerMessage.get();
 }
 
-const GameserverMessage* nativeServerMessage(const int opcode, const bool applyClassic)
+const GameserverMessage* nativeServerMessage(const int opcode)
 {
-    if (applyClassic || !nativeApplySkipsClassic(opcode))
-        return nullptr;
-    return lastShadowServerMessage();
+    const GameserverMessage* message = lastShadowServerMessage();
+    return message && message->type() == opcode ? message : nullptr;
 }
 
 } // namespace tibia::protocol

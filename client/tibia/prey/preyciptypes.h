@@ -29,7 +29,7 @@ public:
     using cip::tibia::prey::TPreyProtocolMessageHandler::TPreyProtocolMessageHandler;
 public:
     /// Tip Q→H wire: PreyTimeLeft and PreyPrices from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 }

@@ -3,7 +3,6 @@
 #include "config/sidebaroptions.h"
 #include "gamewindow/contextmenucontroller.h"
 
-#include <client/item.h>
 #include <client/staticdata.h>
 
 #include <tibia/game/gamenotify.h>

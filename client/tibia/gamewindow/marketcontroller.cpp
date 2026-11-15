@@ -8,7 +8,6 @@
 #include "qmlcomponents/texthelper.h"
 
 #include <client/const.h>
-#include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
 

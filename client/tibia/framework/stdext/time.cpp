@@ -38,7 +38,6 @@ namespace stdext
     // Browser monotonic clock (ms since page load). Never throws — unlike
     // libc++ steady_clock::now(), which is noexcept but may __throw_system_error
     // on clock_gettime failure → std::terminate (seen as abort in
-    // Game::isConnectionOk → timer::elapsed_millis → micros → steady_clock::now).
     static const double startup_ms = emscripten_get_now();
 
     ticks_t time() { return std::time(nullptr); }

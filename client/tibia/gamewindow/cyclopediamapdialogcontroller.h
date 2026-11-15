@@ -137,6 +137,7 @@ private:
     void updateTimeDisplay();
     void updatePlayerArea();
     void setTooltip(const QString& tooltip);
+    void updateMouseCursor(int x, int y);
 
     cyclopedia::TCyclopediaMapStorage* m_storage;
     TMessageDialogController* m_confirmDialog;

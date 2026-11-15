@@ -3,7 +3,7 @@
 #include "mods/mod_entry.h"
 #include "mods/registry.h"
 
-#include "framework/core/resourcemanager.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QCoreApplication>
 #include <QDir>

@@ -38,6 +38,10 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     m_hasPremium = true;
     connect(m_search, &TFriendsAccountSearchPageController::showBackButton, this, &TSocialDialogController::onShowBackButton);
     connect(this, &TSocialDialogController::backButtonClicked, m_search, &TFriendsAccountSearchPageController::onBackButtonPressed);
+    connect(m_friends, &TFriendsFriendListPageController::accountDetailsRequested, this, [this](const QString& name) {
+        setTab(AccountSearch);
+        m_search->onClickedSearchForCharacter(name);
+    });
     for (const auto type : { input::EGameAction::OPEN_SOCIAL_DIALOG, input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT })
         input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
     if (!g_socialDialog)

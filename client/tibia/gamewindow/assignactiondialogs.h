@@ -35,6 +35,8 @@ public:
     void setFilterText(const QString& text);
     void setShowOnlyKnown(bool showOnlyKnown);
     int rowOf(int spellId) const;
+    /// The spell in a row, 0 past the end.
+    int spellAt(int row) const;
 
 public Q_SLOTS:
     /// CIP moc private slot — qtclient rebuilds rows (Magical Archive notifies).

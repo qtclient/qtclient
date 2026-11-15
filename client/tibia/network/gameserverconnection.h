@@ -21,10 +21,10 @@
 
 #include <zlib.h>
 
-class Protocol;
-
 namespace tibia {
 namespace network {
+
+class TGameserverNetworkPacketProcessor;
 
 #if !defined(Q_OS_WASM)
 class GameSocketWorker final : public QObject
@@ -54,6 +54,7 @@ bool decryptGameXtea1405(const std::array<uint32_t, 4>& key, QByteArray& body);
 /// to the primary connection so both sockets share one parser.
 void deliverSecondaryDecrypted(uint32_t sequenceWord, QByteArray precursor);
 
+/// Installs the login RSA key (shared::TRsaHelper).
 void installGameServerConnection();
 
 /// Primary game socket. Desktop: QTcpSocket on a worker thread, bytes queued to
@@ -66,7 +67,7 @@ public:
     explicit TGameserverNetworkPacketConnection(QObject* parent = nullptr);
     ~TGameserverNetworkPacketConnection() override;
 
-    void open(Protocol* proto, const QString& host, uint16_t port, bool gameWorld);
+    void open(TGameserverNetworkPacketProcessor* processor, const QString& host, uint16_t port, bool gameWorld);
     void shutdown();
 
     bool connected() const { return m_connected; }
@@ -100,7 +101,7 @@ private:
     bool inflatePrecursor(QByteArray& body);
     void fail(const QString& message, bool clean);
 
-    Protocol* m_proto = nullptr;
+    TGameserverNetworkPacketProcessor* m_processor = nullptr;
     QString m_host;
     uint16_t m_port = 0;
     bool m_gameWorld = true;

@@ -36,16 +36,12 @@ void TSkillWheelProtocolMessageHandler::setLiveInstance(TSkillWheelProtocolMessa
 void TSkillWheelProtocolMessageHandler::handleGemAtelierGemRevealedMessage(
     const GameserverMessageGemAtelierGemRevealed& Message)
 {
-    // Same side effects as ProtocolGame::parseGemAtelierGemRevealed.
     const uint32_t gemId = Message.gem_id();
     tibia::game::notify("onGemAtelierGemRevealed", gemId);
 }
 
-void TSkillWheelProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByteArray& /*classicFrame*/,
-                                                                bool applyClassic)
+void TSkillWheelProtocolMessageHandler::onServerMessageEnqueued(int opcode)
 {
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
 
     switch (opcode) {
     case 95: {

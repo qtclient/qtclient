@@ -243,11 +243,10 @@ void applyTeamSettings(const ::tibia::protobuf::protocol::ProtocolTeamSettings& 
 
 }
 
-void TTeamFinderProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/,
-                                                                const bool applyClassic)
+void TTeamFinderProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
     if (opcode == 44 && shadow->HasExtension(GameserverMessageTeamFinderTeamLeader::gameserver_message_team_finder_team_leader)) {

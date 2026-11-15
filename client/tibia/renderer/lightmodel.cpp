@@ -1,11 +1,12 @@
 #include "renderer/lightmodel.h"
+#include "worldmap/ambientlightstorage.h"
 
 #include "app/clientoptions.h"
 
 #include "appearances/appearanceinstance.h"
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/appearances/thing.h>
+#include "assets/thingtype.h"
 #include <tibia/assets/thingtype.h>
 #include "worldmap/worldmapfield.h"
 
@@ -17,15 +18,6 @@
 #include "worldmap/worldmapstorage.h"
 
 namespace tibia::qmlcomponents::light {
-
-namespace {
-
-ThingType* typeOf(const Thing& thing)
-{
-    return thing.getThingType();
-}
-
-}
 
 LightOptions loadOptions()
 {
@@ -113,7 +105,12 @@ ClassicLightBuild buildClassicLightPair(const BuildInput& in, const std::vector<
     const Light world{ tibia::game::worldLightIntensity(), tibia::game::worldLightColor() };
     const int level = static_cast<int>(std::clamp(options.ambientLevel, 0.f, 1.f) * 255.f);
     const auto ambientColour = [&](const bool daylight) {
-        const QRgb base = daylight ? lightColor(world.color, world.intensity / 255.f) : qRgb(0, 0, 0);
+        QRgb base = qRgb(0, 0, 0);
+        if (daylight) {
+            // The shown (fading) world light; the server's value until the storage exists.
+            const tibia::worldmap::TAmbientLightStorage* ambient = tibia::worldmap::TAmbientLightStorage::instance();
+            base = ambient ? ambient->color().rgb() : lightColor(world.color, world.intensity / 255.f);
+        }
         const auto channel = [level](const int value) { return std::min(255, value + (255 - value) * level / 255) / 255.f; };
         return LightRgb{ channel(qRed(base)), channel(qGreen(base)), channel(qBlue(base)) };
     };

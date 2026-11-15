@@ -44,8 +44,8 @@ using namespace std::literals;
 #include "util/rect.h"
 #include "util/size.h"
 
-// logger
-#include "core/logger.h"
+#include <QtGlobal>
+#include <format>
 
 #ifdef ANDROID
 #include "platform/androidmanager.h"

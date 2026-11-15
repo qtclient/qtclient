@@ -13,26 +13,26 @@ std::string itemName(const uint16_t id)
 {
     if (!isValidItemId(id))
         return {};
-    if (const ThingTypePtr& type = g_things.getThingType(id, ThingCategoryItem); type)
+    if (const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem); type)
         return type->getName();
     return {};
 }
 
 bool isValidItemId(const uint16_t id)
 {
-    return g_things.isValidDatId(id, ThingCategoryItem);
+    return tibia::appearances::TAppearancesManager::instance().isValidDatId(id, ThingCategoryItem);
 }
 
 bool setItemThingShape(const uint16_t id, const std::string_view shapeName)
 {
-    return g_things.setThingShape(id, std::string(shapeName));
+    return tibia::appearances::TAppearancesManager::instance().setThingShape(id, std::string(shapeName));
 }
 
 bool itemIsContainer(const uint16_t id)
 {
     if (!isValidItemId(id))
         return false;
-    const ThingTypePtr& type = g_things.getThingType(id, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
     return type && type->isContainer();
 }
 
@@ -40,7 +40,7 @@ bool itemIsPickupable(const uint16_t id)
 {
     if (!isValidItemId(id))
         return false;
-    const ThingTypePtr& type = g_things.getThingType(id, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
     return type && type->isPickupable();
 }
 
@@ -48,7 +48,7 @@ int64_t itemMeanPrice(const uint16_t id)
 {
     if (!isValidItemId(id))
         return 0;
-    const ThingTypePtr& type = g_things.getThingType(id, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
     return type ? static_cast<int64_t>(type->getMeanPrice()) : 0;
 }
 
@@ -56,7 +56,7 @@ int64_t itemMaxNpcSaleGoldPrice(const uint16_t id)
 {
     if (!isValidItemId(id))
         return 0;
-    const ThingTypePtr& type = g_things.getThingType(id, ThingCategoryItem);
+    const ThingTypePtr& type = tibia::appearances::TAppearancesManager::instance().getThingType(id, ThingCategoryItem);
     if (!type)
         return 0;
     int64_t npcSale = 0;
@@ -69,25 +69,25 @@ int64_t itemMaxNpcSaleGoldPrice(const uint16_t id)
 
 std::string raceName(const uint32_t raceId)
 {
-    const RaceType& race = g_things.getRaceData(raceId);
+    const RaceType& race = tibia::appearances::TAppearancesManager::instance().getRaceData(raceId);
     return race.raceId != 0 ? race.name : std::string{};
 }
 
 bool raceExists(const uint32_t raceId)
 {
-    return g_things.getRaceData(raceId).raceId != 0;
+    return tibia::appearances::TAppearancesManager::instance().getRaceData(raceId).raceId != 0;
 }
 
 bool raceIsBoss(const uint32_t raceId)
 {
-    const RaceType& race = g_things.getRaceData(raceId);
+    const RaceType& race = tibia::appearances::TAppearancesManager::instance().getRaceData(raceId);
     return race.raceId != 0 && race.boss;
 }
 
 std::vector<uint32_t> raceIdsByName(const std::string& search)
 {
     std::vector<uint32_t> out;
-    for (const RaceType& race : g_things.getRacesByName(search)) {
+    for (const RaceType& race : tibia::appearances::TAppearancesManager::instance().getRacesByName(search)) {
         if (race.raceId != 0)
             out.push_back(race.raceId);
     }
@@ -97,7 +97,7 @@ std::vector<uint32_t> raceIdsByName(const std::string& search)
 std::vector<uint32_t> allRaceIds()
 {
     std::vector<uint32_t> out;
-    for (const RaceType& race : g_things.getAllRaces()) {
+    for (const RaceType& race : tibia::appearances::TAppearancesManager::instance().getAllRaces()) {
         if (race.raceId != 0)
             out.push_back(race.raceId);
     }
@@ -107,7 +107,7 @@ std::vector<uint32_t> allRaceIds()
 RaceOutfitInfo raceOutfit(const uint32_t raceId)
 {
     RaceOutfitInfo info;
-    const RaceType& race = g_things.getRaceData(raceId);
+    const RaceType& race = tibia::appearances::TAppearancesManager::instance().getRaceData(raceId);
     if (race.raceId == 0)
         return info;
     const Outfit& outfit = race.outfit;
@@ -130,7 +130,7 @@ RaceOutfitInfo raceOutfit(const uint32_t raceId)
 std::vector<QuestInfo> allQuestInfos()
 {
     std::vector<QuestInfo> out;
-    for (const CyclopediaQuestType& quest : g_things.getCyclopediaQuests()) {
+    for (const CyclopediaQuestType& quest : tibia::appearances::TAppearancesManager::instance().getCyclopediaQuests()) {
         if (quest.id == 0)
             continue;
         out.push_back({ true, quest.id, quest.name });
@@ -141,7 +141,7 @@ std::vector<QuestInfo> allQuestInfos()
 QuestInfo questInfo(const uint16_t id)
 {
     QuestInfo info;
-    if (const CyclopediaQuestType* quest = g_things.getCyclopediaQuest(id)) {
+    if (const CyclopediaQuestType* quest = tibia::appearances::TAppearancesManager::instance().getCyclopediaQuest(id)) {
         info.exists = true;
         info.id = quest->id;
         info.name = quest->name;
@@ -151,13 +151,13 @@ QuestInfo questInfo(const uint16_t id)
 
 void clearEffectVariants()
 {
-    g_things.clearEffectVariants();
+    tibia::appearances::TAppearancesManager::instance().clearEffectVariants();
 }
 
 void registerEffectVariant(const uint16_t virtualId, const uint16_t baseId, const std::string& shader,
                            const bool underCreatures)
 {
-    g_things.registerEffectVariant(virtualId, baseId, shader, underCreatures);
+    tibia::appearances::TAppearancesManager::instance().registerEffectVariant(virtualId, baseId, shader, underCreatures);
 }
 
 void removeAttachedEffect(const uint16_t id)

@@ -29,12 +29,26 @@ struct TStackCreatureEntry
     appearances::TAppearanceInstancePtr appearance;
 };
 
+/// An object of a field and its stack position (CipSoft: appearance + stackpos + creatureId).
+struct TFieldObject
+{
+    int stackPosition = -1;
+    uint32_t creatureId = 0;
+    appearances::TAppearanceInstancePtr appearance;
+
+    explicit operator bool() const { return stackPosition >= 0; }
+
+    uint16_t clientId() const;
+};
+
 /// One aware-range field (CIP: TWorldMapField). Owns the appearance stack (+ item/creature refs) for qtclient play.
 class TWorldMapField final : public cip::tibia::worldmap::TWorldMapField
 {
     Q_OBJECT
 public:
     explicit TWorldMapField(QObject* parent = nullptr);
+    /// The creatures still on the field leave it: they are no longer placed on a field.
+    ~TWorldMapField() override;
 
     void setCoordinate(const TWorldMapCoordinate& coordinate)
     {
@@ -60,16 +74,40 @@ public:
     void addAppearance(const appearances::TAppearanceInstancePtr& appearance, int stackPos);
     /// Phase 5.0-C: place creature from storage id + outfit appearance (no CreaturePtr).
     void addCreatureId(uint32_t creatureId, int stackPos);
-    bool removeThing(ThingPtr thing);
     /// Remove stack entry by creature id without requiring Map `Creature`.
     bool removeCreatureById(uint32_t creatureId);
-    ThingPtr getThing(int stackPos) const;
-    bool hasThing(const ThingPtr& thing);
-    int getThingStackPos(const ThingPtr& thing);
     int creatureStackPos(uint32_t creatureId) const;
 
-    /// LocalPlayerSessionThing-only CreaturePtr stub; play UI uses stackCreatureId / getStoredCreatures.
-    CreaturePtr getTopCreature(bool checkAround = false);
+    /// The stack positions in draw order: the leading bank, clip and bottom
+    /// objects in stack order, then the rest of the stack from its end.
+    std::vector<int> drawList() const;
+    /// The object a drag from this field moves: top-down, top objects passed
+    /// over, the first object that is no creature unless it cannot be moved,
+    /// else the creature drawn highest above it. Bank, clip and bottom objects
+    /// end the search.
+    TFieldObject moveObject() const;
+    /// The object a use on this field uses: the first object to force a use
+    /// among the bank, clip, bottom, top objects and creatures leading the
+    /// stack, else the object after them, stepping back over creatures and
+    /// liquid pools; the bank when nothing else is left.
+    TFieldObject useObject() const;
+    /// The corpse with contents drawn highest.
+    TFieldObject quickLootObject() const;
+    /// The object a look looks at: the last of the leading bank, clip, bottom
+    /// and top objects (a top object only when something follows it), objects
+    /// with ignore look skipped; the bottom of the stack by default.
+    TFieldObject lookObject() const;
+    /// The object a use with targets: the first object to force a use or past
+    /// the leading bank, clip, bottom and top objects (at most the last one),
+    /// or the one before a liquid pool.
+    TFieldObject multiUseObject() const;
+    /// The creature drawn on top: the last creature of the draw list.
+    TFieldObject topCreature() const;
+    /// Stack position of an object, 0xff when it is not on this field.
+    int stackPositionOf(const appearances::TAppearanceInstancePtr& appearance) const;
+    /// The mouse can pick this field: it has a bank or bottom object without
+    /// ignore look.
+    bool isPickable() const;
 
     int getDrawElevation() const { return m_drawElevation; }
     const std::vector<uint32_t>& walkingCreatureIds() const { return m_walkingCreatureIds; }
@@ -102,8 +140,8 @@ public:
     int getGroundSpeed();
     /// Speed of the first ground item in the stack, 255 without one.
     int movementGroundSpeed() const;
-    /// An item with a ground speed lies here.
-    bool hasBank() const { return movementGroundSpeed() != 255; }
+    /// A bank object lies here.
+    bool hasBank() const;
     uint8_t getMinimapColorByte();
     int getThingCount() { return static_cast<int>(m_stack.size()); }
     int thingCount() const { return static_cast<int>(m_stack.size()); }
@@ -112,7 +150,6 @@ public:
     /// Whether the field can be stepped onto, from its stack in order: 0 free,
     /// 1 blocked, 2 unsure.
     int walkState() const;
-    bool isClickable();
     bool isPathable() { return (m_thingTypeFlag & NOT_PATHABLE) == 0; }
     bool isFullGround() const { return m_thingTypeFlag & FULL_GROUND; }
     bool isFullyOpaque() const;
@@ -199,20 +236,22 @@ private:
     };
 
     CreaturePtr stackCreature(const TFieldStackEntry& entry) const;
+    /// The stack entry at `stackIndex` as an object, at its stack position.
+    TFieldObject fieldObject(int stackIndex) const;
     int stackPriorityAt(int stackIndex) const;
     int stackPriorityFor(const TFieldStackEntry& entry) const;
     void rebuildAppearanceCache();
-    bool stackEntryMatchesThing(const TFieldStackEntry& entry, const ThingPtr& thing) const;
+    /// Takes the stack entry at `stackIndex` off the field without touching a
+    /// creature's placed-on-field flag (the stack's overflow).
+    void eraseStackEntry(int stackIndex);
     void setStackEntryFlag(const TFieldStackEntry& entry);
     void applyStackFlagsFromThingType(ThingType* type);
     void applyCreatureStackFlags(const tibia::creatures::TCreature& stored, ThingType* outfitType);
 
     void updateThingStackPos();
 
-    void updateCreatureRangeForInsert(int16_t stackPos, const ThingPtr& thing);
     void rebuildCreatureRange();
 
-    void setThingFlag(const ThingPtr& thing);
     void setMarkedOnStackEntry(int stackPos, const Color& color);
 
     void recalculateThingFlag();
@@ -228,7 +267,7 @@ private:
     std::unique_ptr<StaticText> m_timerText;
     std::unique_ptr<StaticText> m_text;
     Color m_fill = Color::alpha;
-    ticks_t m_timer = 0;
+    int64_t m_timer = 0;
 
     uint32_t m_isCompletelyCovered{ 0 };
     uint32_t m_isCovered{ 0 };

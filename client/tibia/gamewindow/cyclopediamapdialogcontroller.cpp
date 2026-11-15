@@ -5,11 +5,15 @@
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/messagedialogcontroller.h"
+#include "gamewindow/mousecursorcontroller.h"
 #include "mods/instance_backend.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/minimaprendererquickitem.h"
 #include "worldmap/ambientlightstorage.h"
+#include "worldmap/worldmapgameactionprovider.h"
+
+#include <QGuiApplication>
 
 #include <client/const.h>
 #include <QLocale>
@@ -26,6 +30,7 @@ namespace tibia::gamewindow {
 namespace {
 
 using A = input::EGameAction;
+using Cursor = TMouseCursorController;
 using SelectionType = cip::tibia::qmlcomponents::enums::ECyclopediaMapSelectionType;
 
 constexpr int SubfieldsPerField = 32;
@@ -190,6 +195,10 @@ void TCyclopediaMapDialogController::hideDialogTab()
 {
     m_tooltipTimer.stop();
     setTooltip({});
+    if (auto* cursor = Cursor::instance()) {
+        cursor->onCyclopediaMapExited();
+        cursor->setLayerShape(Cursor::CyclopediaMap, Cursor::Default);
+    }
 }
 
 void TCyclopediaMapDialogController::onSelectedItemChanged()
@@ -242,6 +251,7 @@ void TCyclopediaMapDialogController::hoverAtPixelCoordinate(const int x, const i
     if (!tooltip.isEmpty())
         m_tooltipTimer.start();
     setTooltip(tooltip);
+    updateMouseCursor(x, y);
 }
 
 void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const int y, const int TriggeringMouseButton, const Qt::KeyboardModifiers Modifiers)
@@ -343,8 +353,6 @@ void TCyclopediaMapDialogController::resetSubAreaViewPoints(const int SubAreaID)
 
 void TCyclopediaMapDialogController::onCreatureClicked(const int RaceIDRaw)
 {
-    if (RaceIDRaw <= 0)
-        return;
     auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
     action->parameter = 1;
     action->category = RaceIDRaw;
@@ -355,6 +363,8 @@ void TCyclopediaMapDialogController::onMouseExited()
 {
     m_tooltipTimer.stop();
     setTooltip({});
+    if (auto* cursor = Cursor::instance())
+        cursor->setLayerShape(Cursor::CyclopediaMap, Cursor::Default);
 }
 
 void TCyclopediaMapDialogController::onAreaClicked(const int id, const bool isArea) { select(id, isArea); }
@@ -470,6 +480,28 @@ void TCyclopediaMapDialogController::setTooltip(const QString& tooltip)
         return;
     m_currentTooltip = tooltip;
     Q_EMIT currentTooltipChanged();
+}
+
+void TCyclopediaMapDialogController::updateMouseCursor(const int x, const int y)
+{
+    auto* cursor = Cursor::instance();
+    if (!cursor || !m_renderer)
+        return;
+    qmlcomponents::TWorldMapCamera* camera = m_renderer->worldCamera();
+    const QPoint field = camera->fieldAt(QPointF(x, y));
+    const int layer = camera->layer();
+    const Position position(field.x(), field.y(), static_cast<uint8_t>(layer));
+    const int subareaId = layer <= GroundLayer ? cyclopedia::TCyclopediaMapStaticData::instance().subareaAt(field.x(), field.y(), layer) : 0;
+
+    input::TGameActionList candidates;
+    if (subareaId > 0)
+        candidates.push_back(std::make_shared<input::TGameActionCyclopediaMapSelectionItem>(subareaId));
+    candidates.push_back(input::makeMovementIntent(position, tibia::client::AutoWalkPathCyclopedia, false));
+
+    const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
+    const input::TGameActionPtr action = m_mapper.map(candidates, 9, Qt::LeftButton, modifiers);
+    const int shape = action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default;
+    cursor->setLayerShape(Cursor::CyclopediaMap, shape);
 }
 
 }

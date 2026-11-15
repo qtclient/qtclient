@@ -11,10 +11,9 @@
 
 #include <tibia/game/gamesession.h>
 #include <tibia/config/runtimegameconfig.h>
-#include <client/item.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
-#include <framework/core/clock.h>
+#include "shared/clockservice.h"
 #include "sprites/hdscale.h"
 
 #include <QLineF>
@@ -419,7 +418,7 @@ void TAppearanceInstanceRenderer::showGraphicalEffect(const int AppearanceTypeID
         return;
     // The field pattern follows the preview field, the player standing at 0,0.
     effect.instance->start(Position(SubfieldCoordinate.x() / FieldSize, SubfieldCoordinate.y() / FieldSize, 0),
-                           static_cast<qint64>(g_clock.millis()));
+                           static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     m_effects.push_back(effect);
     watchFrames();
     polish();
@@ -445,7 +444,7 @@ void TAppearanceInstanceRenderer::showMissileEffect(const int AppearanceTypeID,
         return;
     missile->setPath(Position(SourceCoordinate.x() / FieldSize, SourceCoordinate.y() / FieldSize, 0),
                      Position(DestinationCoordinate.x() / FieldSize, DestinationCoordinate.y() / FieldSize, 0),
-                     static_cast<qint64>(g_clock.millis()));
+                     static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
     effect.instance = std::move(missile);
     m_effects.push_back(effect);
     watchFrames();
@@ -454,7 +453,7 @@ void TAppearanceInstanceRenderer::showMissileEffect(const int AppearanceTypeID,
 
 void TAppearanceInstanceRenderer::purgeExpiredEffects()
 {
-    const qint64 now = static_cast<qint64>(g_clock.millis());
+    const qint64 now = static_cast<qint64>(tibia::shared::TClockService::frameMillis());
     for (TransientEffect& effect : m_effects) {
         if (effect.instance)
             effect.instance->update(now);
@@ -496,16 +495,16 @@ int TAppearanceInstanceRenderer::outfitPhase(ThingType* type, const bool moving,
         animation::TMovingOutfitAnimator animator(
             walk->phaseCount(), walk->loopType == animation::TAnimationInfo::ELoopType::PingPong);
         animator.setKey(millisecondsPerField > 0 ? millisecondsPerField : animation::TMovingOutfitAnimator::kMaximumCycleMs, 0);
-        animator.update(g_clock.millis());
+        animator.update(tibia::shared::TClockService::frameMillis());
         // Sprite phase 0 is idle; walk art is 1..walkPhases.
         return 1 + static_cast<int>(animator.phase()) % std::max(1, phases - 1);
     }
     if (type->idleAnimation())
-        return m_idleAnimators.phaseAt(type, type->idleAnimation(), g_clock.millis());
+        return m_idleAnimators.phaseAt(type, type->idleAnimation(), tibia::shared::TClockService::frameMillis());
     // Outfits with multi-phase idle art but no Animator (common for monsters in
     // expedition / cyclopedia cells): cycle phases so the preview is animated.
     constexpr int MsPerPhase = 200;
-    return static_cast<int>((g_clock.millis() / MsPerPhase) % phases);
+    return static_cast<int>((tibia::shared::TClockService::frameMillis() / MsPerPhase) % phases);
 }
 
 void TAppearanceInstanceRenderer::addSprites(ThingType* type, const QPoint& fieldTopLeft, const int xPattern, const int yPattern,
@@ -598,7 +597,7 @@ void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQ
     if (liquid || type->isStackable()) {
         // CipSoft: same count/fluid → 4×2 (or fluid) patterns as inventory slots /
         // TCumulativeObjectAppearanceInstance::setCount.
-        Item::patternsFor(type, liquid ? static_cast<int>(instance.liquidType()) : instance.cumulativeCount(),
+        appearances::objectPatternsFor(type, liquid ? static_cast<int>(instance.liquidType()) : instance.cumulativeCount(),
                           xPattern, yPattern, zPattern);
     } else if (type->isHangable()) {
         const int patterns = type->getNumPatternX();
@@ -610,10 +609,10 @@ void TAppearanceInstanceRenderer::addObject(const TObjectAppearanceInstanceInfoQ
     int phase = 0;
     if (m_animated && type->getAnimationPhases() > 1) {
         if (type->idleAnimation()) {
-            phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), g_clock.millis());
+            phase = m_idleAnimators.phaseAt(type, type->idleAnimation(), tibia::shared::TClockService::frameMillis());
         } else {
             const int ticks = tibia::config::itemTicksPerFrame();
-            phase = static_cast<int>((g_clock.millis() % (static_cast<long long>(ticks) * type->getAnimationPhases())) / ticks);
+            phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * type->getAnimationPhases())) / ticks);
         }
     }
     addSprites(type, instance.position(), xPattern, yPattern, zPattern, phase, false, 0);
@@ -641,7 +640,7 @@ void TAppearanceInstanceRenderer::updatePolish()
             int zPattern = 0;
             if (ThingType* type = object->type()) {
                 if (type->isFluidContainer() || type->isSplash() || type->isStackable()) {
-                    Item::patternsFor(type,
+                    appearances::objectPatternsFor(type,
                                       (type->isFluidContainer() || type->isSplash())
                                           ? static_cast<int>(object->liquidType())
                                           : object->cumulativeCount(),

@@ -9,11 +9,12 @@
 
 #include <cip_gen.h>
 
+#include <QPointer>
+
 #include <memory>
 
 namespace tibia {
 namespace worldmap {
-class TWorldMapStorage;
 class TWorldmapProtocolMessageHandler;
 }
 }
@@ -37,8 +38,9 @@ public:
 
     TMinimapTileStorage* tileStorage() { return &m_storage; }
     TMinimapMarkerStorage* markerStorage() { return m_markers.get(); }
-    /// CIP: consume TWorldMapStorage signals (not MapObserver) for tile/volume.
-    void setWorldMapStorage(worldmap::TWorldMapStorage* storage);
+    /// The map handler keeps the tile storage current: it sets the floor, marks
+    /// unseen fields and records every field it applies. A handler that already
+    /// holds a map brings the minimap up to its area at once.
     void setProtocolHandler(worldmap::TWorldmapProtocolMessageHandler* handler);
 
     static QString minimapDir();
@@ -49,12 +51,9 @@ public:
     void loadDefaultTilesFromResources();
 
 private:
-    void onWorldMapCoordinateChanged(worldmap::TWorldMapCoordinate coordinate);
-    void onStoredVolumeChanged(worldmap::TShearedWorldMapCuboid volume);
-
     QString m_defaultTilesDir;
     TMinimapTileStorage m_storage;
-    worldmap::TWorldMapStorage* m_worldMapStorage = nullptr;
+    QPointer<worldmap::TWorldmapProtocolMessageHandler> m_protocolHandler;
     TMinimapDiskIOAsync m_diskIO;
     TMinimapDiskIOMemoryOnly m_diskIOMemoryOnly;
     TMinimapDiskIOSynchronous m_diskIOSynchronous;

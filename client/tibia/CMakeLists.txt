@@ -278,6 +278,7 @@ if(TIBIA_WITH_GAMECORE)
     app/qtplatformwindow.cpp app/qtplatformwindow.h
     chat/chatgameactionhandler.cpp chat/chatgameactionhandler.h
     shared/sharedciptypes.cpp shared/sharedciptypes.h
+    shared/rsahelper.cpp
     config/clientsettings.cpp config/clientsettings.h
     config/configciptypes.cpp config/configciptypes.h
     config/runtimegameconfig.cpp config/runtimegameconfig.h
@@ -291,9 +292,9 @@ if(TIBIA_WITH_GAMECORE)
     protocol/miscwire.cpp protocol/miscwire.h
     protocol/featurewire.cpp protocol/featurewire.h
     protocol/protocolciptypes.cpp protocol/protocolciptypes.h
+    protocol/protocolmessagequeue.cpp protocol/protocolmessagequeue.h
     protocol/protocolclassicwire.h
     protocol/inventoryitemwire.cpp protocol/inventoryitemwire.h
-    protocol/classicprotocolbridge.cpp protocol/classicprotocolbridge.h
     assets/assetsciptypes.cpp assets/assetsciptypes.h
     authentication/authenticationciptypes.cpp authentication/authenticationciptypes.h
     taskboard/taskboardciptypes.cpp taskboard/taskboardciptypes.h
@@ -366,7 +367,6 @@ if(TIBIA_WITH_GAMECORE)
     game/playerskillstats.cpp game/playerskillstats.h
     game/tgamenotify.cpp game/tgamenotify.h
     game/gameobject.cpp game/gameobject.h
-    game/gamehub.cpp game/gamehub.h
     game/gamesession.cpp game/gamesession.h
     game/gamesession_localplayer_vitals.cpp
     game/gamesession_forward.cpp game/gamesession_forward.h
@@ -515,7 +515,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/editminimapmarkerdialogcontroller.cpp gamewindow/editminimapmarkerdialogcontroller.h
     gamewindow/editvipdialogcontroller.cpp gamewindow/editvipdialogcontroller.h
     gamewindow/premiumpanelcontroller.cpp gamewindow/premiumpanelcontroller.h
-    gamewindow/vipstorage.cpp gamewindow/vipstorage.h
+    creatures/vipstorage.cpp creatures/vipstorage.h
     gamewindow/vipwidgetcontroller.cpp gamewindow/vipwidgetcontroller.h
     exivaoptions/exivaoptionsstorage.cpp exivaoptions/exivaoptionsstorage.h
     exivaoptions/exivaoptionsdialogcontroller.cpp exivaoptions/exivaoptionsdialogcontroller.h
@@ -544,12 +544,11 @@ if(TIBIA_WITH_GAMECORE)
     minimap/minimaptilestorage.cpp minimap/minimaptilestorage.h
     minimap/minimapvisiblearea.cpp minimap/minimapvisiblearea.h
     minimap/minimapworldfeed.cpp minimap/minimapworldfeed.h
-    minimap/satellitemap.cpp minimap/satellitemap.h
     minimap/waypointcosts.cpp minimap/waypointcosts.h
     network/extendedopcoderouter.cpp network/extendedopcoderouter.h
     network/gameserverconnection.cpp network/gameserverconnection.h
+    network/gameserverpacketprocessor.cpp network/gameserverpacketprocessor.h
     network/gameserverdualconnection.cpp network/gameserverdualconnection.h
-    network/logincrypt.cpp network/logincrypt.h
     appearances/appearanceinstance.cpp appearances/appearanceinstance.h
     appearances/genericstorage.h
     appearances/spriteinfo.cpp appearances/spriteinfo.h
@@ -633,7 +632,6 @@ if(TIBIA_WITH_GAMECORE)
     renderer/scenegraphnodeprovider.cpp renderer/scenegraphnodeprovider.h
     renderer/spritetexturecache.cpp renderer/spritetexturecache.h
     renderer/spritetextureprovider.cpp renderer/spritetextureprovider.h
-    renderer/filetextures.cpp renderer/filetextures.h
     renderer/texturedeletionqueue.cpp renderer/texturedeletionqueue.h
     renderer/worldmapquickitem.cpp renderer/worldmapquickitem.h
     renderer/worldmaprenderprovider.cpp renderer/worldmaprenderprovider.h

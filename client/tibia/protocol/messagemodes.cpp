@@ -28,7 +28,7 @@
 
 namespace Proto
 {
-    stdext::map<uint8_t, uint8_t > messageModesMap;
+    std::unordered_map<uint8_t, uint8_t > messageModesMap;
 
     void buildMessageModesMap(const int version)
     {

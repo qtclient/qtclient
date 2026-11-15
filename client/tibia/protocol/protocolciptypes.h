@@ -37,15 +37,6 @@ class TProtobufServerMessageTranslator final : public ::tibia::CipTyped {
 public:
     TProtobufServerMessageTranslator() = default;
 
-    std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage>
-    translateFromClassic(const QByteArray& classicBody) const;
-
-    std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage>
-    translateFromClassic(const uint8_t* data, size_t len) const;
-
-    /// Returns bytes consumed after the opcode byte (0 if unknown / bridge).
-    size_t measureStructuredPayload(int opcode, const uint8_t* payload, size_t len) const;
-
     QByteArray translateToClassic(
         const ::tibia::protobuf::protocol::GameserverMessage& message) const;
 
@@ -55,12 +46,6 @@ public:
 class TProtobufClientMessageTranslator final : public ::tibia::CipTyped {
 public:
     TProtobufClientMessageTranslator() = default;
-
-    std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage>
-    translateFromClassic(const QByteArray& classicBody) const;
-
-    std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage>
-    translateFromClassic(const uint8_t* data, size_t len) const;
 
     QByteArray translateToClassic(
         const ::tibia::protobuf::protocol::GameclientMessage& message) const;
@@ -83,16 +68,12 @@ class TProtocolMessageQueue final : public cip::tibia::protocol::TProtocolMessag
 public:
     using cip::tibia::protocol::TProtocolMessageQueue::TProtocolMessageQueue;
 
-    /// Enqueue server message. When `applyClassic` is true, the classic bridge
-    /// re-applies `classicFrame` via `ProtocolGame` (CIP: Q → H).
-    void enqueueServer(std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> message,
-                       const QByteArray& classicFrame, bool applyClassic = true);
+    /// Enqueue a translated server message for the protocol message handlers.
+    void enqueueServer(std::unique_ptr<::tibia::protobuf::protocol::GameserverMessage> message);
 
     void enqueueClient(std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> message,
-                       const QByteArray& classicFrame);
+                       const QByteArray& wire);
 
-    /// CIP slot name: build client message path (classic bridge today).
-    void prepareAndEnqueueGameclientMessage(const QByteArray& classicFrame);
 
     void fireEmitSignalForNewProtocolMessage();
     void fireEmitSignalForNewClientProtocolMessage();
@@ -101,8 +82,8 @@ public:
     int clientCount() const { return m_clientCount; }
 
 Q_SIGNALS:
-    void serverMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
-    void clientMessageEnqueued(int opcode, const QByteArray& classicFrame);
+    void serverMessageEnqueued(int opcode);
+    void clientMessageEnqueued(int opcode, const QByteArray& wire);
     void receivedMessage(); // CIP-shaped: fire after server enqueue
     void clientMessageReadyToProcess();
 
@@ -110,10 +91,8 @@ private:
     int m_serverCount = 0;
     int m_clientCount = 0;
     int m_pendingServerOpcode = -1;
-    QByteArray m_pendingServerClassic;
-    bool m_pendingApplyClassic = true;
     int m_pendingClientOpcode = -1;
-    QByteArray m_pendingClientClassic;
+    QByteArray m_pendingClientWire;
 };
 
 /// CIP `protocol::TProtocolReader` (pin layout size 0x18).
@@ -156,30 +135,35 @@ TProtobufServerMessageTranslator* serverMessageTranslator();
 TProtobufClientMessageTranslator* clientMessageTranslator();
 TProtocolMessageQueue* protocolMessageQueue();
 
-/// Structured opcodes with native H apply — enqueue with applyClassic=false.
-/// The list is the switch in protocolciptypes.cpp.
-bool nativeApplySkipsClassic(int opcode);
 
 /// Empty structured server bodies (measure consumes 0 payload bytes on success).
 bool emptyStructuredServerOpcode(int opcode);
 
-/// Live/dump: translate classic frame and enqueue (CIP TR → Q).
-void enqueueTranslatedServerFrame(const QByteArray& classicFrame, bool applyClassic = true);
+struct ClassicReader;
+/// Reads one message of `opcode` (the reader stands just past the opcode byte),
+/// translates it and puts it on the queue. False when it does not read.
+bool translateAndEnqueueServerMessage(int opcode, ClassicReader& packet);
+/// CIP TProtocolServerMessageProcessor: every message of a decoded server packet.
+void processServerPacket(const uint8_t* data, size_t size);
+/// dispatch.gen.cpp: every CIP server message has a handler / every client message a builder.
+bool isHandledServerMessage(uint8_t opcode);
+bool bindClientMessage(uint8_t opcode);
 
-/// Outbound wire: classic → GameclientMessage → classic load-split bytes.
-QByteArray translateOutboundClientFrame(const QByteArray& classicFrame);
 
-/// Outbound enqueue only (CIP prepareAndEnqueue) — does not rewrite wire bytes.
-void prepareOutboundClientFrame(const QByteArray& classicFrame);
 
-/// Sessiondump native protobuf → queue (CIP dump → Q).
-QByteArray enqueueNativeServerProtobuf(const QByteArray& gameserverProtobuf, bool applyClassic = true);
+/// CIP outbound: a game-built client message, encoded by the client
+/// translator and queued for the wire.
+void sendGameclientMessage(std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> message);
+/// A client message of `opcode` with no fields set yet.
+std::unique_ptr<::tibia::protobuf::protocol::GameclientMessage> newGameclientMessage(int opcode);
+
+/// A recorded GameserverMessage as classic wire bytes (opcode first), empty when not structured.
+QByteArray serverProtobufToClassic(const QByteArray& gameserverProtobuf);
 
 const ::tibia::protobuf::protocol::GameserverMessage* lastShadowServerMessage();
 
-/// The translated message a native handler applies for `opcode`, or null when
-/// the classic parser applies it (`applyClassic`) or the opcode is not native.
-const ::tibia::protobuf::protocol::GameserverMessage* nativeServerMessage(int opcode, bool applyClassic);
+/// The message just enqueued, when it is of `opcode`.
+const ::tibia::protobuf::protocol::GameserverMessage* nativeServerMessage(int opcode);
 
 }
 }

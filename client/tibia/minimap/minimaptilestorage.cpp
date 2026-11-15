@@ -53,7 +53,9 @@ void TMinimapTileStorage::onFieldChanged(const Position& coord)
 
 void TMinimapTileStorage::updateField(const Position& coord)
 {
-    if (m_world && m_world->isKnown(coord))
+    // A field the world no longer holds is recorded with the defaults of an
+    // empty field.
+    if (m_world)
         setField(coord, m_world->fieldData(coord));
 }
 

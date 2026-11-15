@@ -5,10 +5,9 @@
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/assets/loader.h>
 #include <tibia/assets/things.h>
-#include <framework/core/clock.h>
+#include "shared/clockservice.h"
 #include <tibia/schedule/schedule.h>
-#include <framework/core/resourcemanager.h>
-#include <tibia/renderer/filetextures.h>
+#include "shared/tibiafilesystemhelper.h"
 #include <tibia/renderer/texturedeletionqueue.h>
 #include "mods/registry.h"
 #include "network/gameserverconnection.h"
@@ -59,94 +58,6 @@ void finishExit()
         QCoreApplication::quit();
 }
 
-/// CIP client wire features for `version` (historical CIP revision table).
-/// qtclient qtclient + Crystal both speak this layout — qtclient does not bend to OTC.
-void enableFeatures(const int version)
-{
-    using namespace tibia::client;
-    const auto on = [](const GameFeature f) { tibia::game::enableFeature(f); };
-    const auto off = [](const GameFeature f) { tibia::game::disableFeature(f); };
-
-    on(GameFormatCreatureName);
-    on(GameAllowPreWalk);
-    on(GameMapCache);
-
-    // disable has no `= {}`: MSVC rejects brace defaults on initializer_list (C2797).
-    struct Step
-    {
-        int version;
-        std::initializer_list<GameFeature> enable;
-        std::initializer_list<GameFeature> disable;
-    };
-    static const Step steps[] = {
-        { 750, { GameSoul }, {} },
-        { 760, { GameLevelU16 }, {} },
-        { 770, { GameLooktypeU16, GameMessageStatements, GameLoginPacketEncryption }, {} },
-        { 780, { GamePlayerAddons, GamePlayerStamina, GameNewFluids, GameMessageLevel, GamePlayerStateU16, GameNewOutfitProtocol }, {} },
-        { 790, { GameWritableDate }, {} },
-        { 840, { GameProtocolChecksum, GameAccountNames, GameDoubleFreeCapacity }, {} },
-        { 841, { GameChallengeOnLogin, GameMessageSizeCheck, GameTileAddThingWithStackpos }, {} },
-        { 854, { GameCreatureEmblems }, {} },
-        { 860, { GameAttackSeq }, {} },
-        { 862, { GamePenalityOnDeath }, {} },
-        { 870, { GameDoubleExperience, GamePlayerMounts, GameSpellList }, {} },
-        { 910, { GameNameOnNpcTrade, GameTotalCapacity, GameSkillsBase, GamePlayerRegenerationTime, GameChannelPlayerList, GameEnvironmentEffect, GameItemAnimationPhase }, {} },
-        { 940, { GamePlayerMarket }, {} },
-        { 953, { GamePurseSlot, GameClientPing }, {} },
-        { 960, { GameSpritesU32, GameOfflineTrainingTime }, {} },
-        { 963, { GameAdditionalVipInfo }, {} },
-        { 972, { GameDoublePlayerGoodsMoney }, {} },
-        { 980, { GamePreviewState, GameClientVersion }, {} },
-        { 981, { GameLoginPending, GameNewSpeedLaw }, {} },
-        { 984, { GameContainerPagination, GameBrowseField }, {} },
-        { 1000, { GameThingMarks, GamePVPMode }, {} },
-        { 1035, { GameDoubleSkills, GameBaseSkillU16 }, {} },
-        { 1036, { GameCreatureIcons, GameHideNpcNames }, {} },
-        { 1038, { GamePremiumExpiration }, {} },
-        { 1050, { GameEnhancedAnimations }, {} },
-        { 1053, { GameUnjustifiedPoints }, {} },
-        { 1054, { GameExperienceBonus }, {} },
-        { 1055, { GameDeathType }, {} },
-        { 1057, { GameIdleAnimations }, {} },
-        { 1061, { GameOGLInformation }, {} },
-        { 1071, { GameContentRevision }, {} },
-        { 1072, { GameAuthenticator }, {} },
-        { 1074, { GameSessionKey }, {} },
-        { 1080, { GameIngameStore }, {} },
-        { 1092, { GameIngameStoreServiceType }, {} },
-        { 1093, { GameIngameStoreHighlights }, {} },
-        { 1094, { GameAdditionalSkills, GameLeechAmount }, {} },
-        { 1100, { GamePrey }, {} },
-        { 1200, { GameColorizedLootValue, GameThingQuickLoot, GameTournamentPackets, GameVipGroups, GameEnterGameShowAppearance }, {} },
-        { 1260, { GameThingQuiver }, {} },
-        { 1264, { GameThingPodium }, {} },
-        { 1272, { GameThingUpgradeClassification }, {} },
-        { 1281, { GameForgeSkillStats, GamePlayerFamiliars }, { GameEnvironmentEffect, GameItemAnimationPhase } },
-        { 1290, { GameSequencedPackets, GameBosstiary, GameThingClock, GameThingCounter, GameThingPodiumItemType, GameDoubleShopSellAmount }, {} },
-        { 1300, { GameDoubleHealth, GameUshortSpell, GameConcotions, GameAnthem }, {} },
-        { 1314, { GameDynamicForgeVariables }, { GameTournamentPackets } },
-        { 1320, { GameEffectU16, GameContainerTypes, GameBosstiaryTracker, GamePlayerStateCounter, GameItemAugment, GameDynamicBugReporter }, { GameLeechAmount } },
-        { 1321, { GameWrapKit, GameContainerFilter }, {} },
-        { 1332, { GameForgeConvergence }, {} },
-        { 1410, { GameCharacterSkillStats }, { GameAdditionalSkills, GameForgeSkillStats } },
-        { 1500, { GameVocationMonk }, {} },
-        { 1510, { GameProficiency }, {} },
-        { 1513, { GameNpcWindowRedesign }, {} },
-        { 1514, { GameEffectSource }, {} },
-        { 1520, { GameLevelPercentU16, GameTaskboard }, {} },
-        { 1525, { GameTacticsWithoutFightMode }, {} },
-    };
-    for (const auto& step : steps) {
-        if (version < step.version)
-            break;
-        for (const auto f : step.enable)
-            on(f);
-        for (const auto f : step.disable)
-            off(f);
-    }
-}
-
-QMetaObject::Connection gameStartConnection;
 
 }
 
@@ -176,7 +87,6 @@ bool init(const QString& argv0, const QString& workDir)
     tibia::files::data().addSearchPath(dataRoot, true);
     tibia::files::data().addSearchPath(dataRoot + "/data", true);
 
-    g_mainThreadId = g_eventThreadId = stdext::getThreadId();
 
     std::signal(SIGTERM, onExitSignal);
     std::signal(SIGINT, onExitSignal);
@@ -186,11 +96,6 @@ bool init(const QString& argv0, const QString& workDir)
     tibia::network::installGameServerConnection();
 
     // Exit is qtclient schedule / Qt (SIGINT→finishExit, forceExitHandler) — not OTC g_app/onExit.
-    // CIP client: re-apply wire features on each world enter (typed notify).
-    gameStartConnection = QObject::connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, [] {
-        if (const int version = tibia::game::clientRevision(); version > 0)
-            enableFeatures(version);
-    });
 
     running = true;
     return true;
@@ -204,14 +109,8 @@ void terminate()
 
     if (tibia::game::isOnline())
         tibia::game::hubDisconnectNow();
-    QObject::disconnect(gameStartConnection);
 
     g_client.terminate();
-    // Graphics never starts here, so nothing else drops the textures the engine
-    // cached; at static destruction ~Texture would lock ResourceRegistry's
-    // already destroyed mutex.
-    tibia::renderer::terminateFileTextures();
-    g_eventThreadId = -1;
 }
 
 bool isRunning()
@@ -250,7 +149,7 @@ void poll()
 
 qint64 nowMicros()
 {
-    return g_clock.realMicros();
+    return shared::TClockService::nowMicros();
 }
 
 void advanceTo(const qint64 micros)
@@ -261,12 +160,13 @@ void advanceTo(const qint64 micros)
     // frame-duration offset shrinks, predict() can fall below the previous frame's
     // predicted stamp. Allowing that rewind made DurationTween / foot clocks jump
     // and compressed auto-walk steps while key-hold (real-time v9) stayed smooth.
-    g_clock.set(std::max<qint64>({ micros, g_clock.realMicros(), g_clock.micros() }));
+    shared::TClockService::setFrameMicros(
+        std::max<qint64>({ micros, shared::TClockService::nowMicros(), shared::TClockService::frameMicros() }));
 }
 
 void resumeRealTime()
 {
-    g_clock.update();
+    shared::TClockService::updateFrame();
 }
 
 void setClientVersion(const int version)
@@ -282,7 +182,6 @@ void setClientVersion(const int version)
         tibia::config::setLastSupportedVersion(static_cast<uint16_t>(version));
     tibia::game::setClientRevision(static_cast<uint16_t>(version));
     tibia::game::setProtocolVersion(static_cast<uint16_t>(it != olderProtocol.end() ? it->second : version));
-    enableFeatures(version);
 }
 
 namespace {
@@ -412,7 +311,7 @@ bool loadAssets(const int version, QString* error)
         errors << QStringLiteral("Couldn't load assets from %1").arg(QString::fromStdString(dir));
     if (!tibia::assets::loadStaticData(dir))
         errors << QStringLiteral("Couldn't load static data from %1").arg(QString::fromStdString(dir));
-    if (tibia::game::cipFeature(tibia::client::GameProficiency) && !tibia::assets::resolveProficiencies(dir))
+    if (!tibia::assets::resolveProficiencies(dir))
         qWarning().noquote() << "gamecore: no proficiencies-<hash>.json in" << QString::fromStdString(dir);
 
     const std::string soundsDir = soundsRoot(version);

@@ -9,8 +9,7 @@
 namespace tibia {
 namespace game {
 
-/// A character's status bar settings (CIP: TStatusbarStorage, ctor
-/// , read , write), kept in
+/// A character's status bar settings (CIP TStatusbarStorage), kept in
 /// <app data>/characterdata/<character id>/statusBarData.json and written
 /// when the session ends.
 class TStatusbarStorage final : public cip::tibia::game::TStatusbarStorage
@@ -26,6 +25,15 @@ public:
     static constexpr int EntryCount = 9;
 
     explicit TStatusbarStorage(QObject* parent = nullptr);
+
+    /// The configuration's file name in the character's data directory.
+    static QString configurationName();
+    /// position, style and the nine show* flags.
+    QJsonObject toJson() const;
+    /// Takes every key present with the right type (strings for position and
+    /// style, booleans for the flags); an unknown name reads as the first
+    /// value. Each value taken notifies configurationChangedFromUserInput.
+    void fromJson(const QJsonObject& json);
 
     void loadForCharacter(quint32 characterId);
     void save();
@@ -46,7 +54,6 @@ private:
     void modified();
 
     quint32 m_characterId = 0;
-    QJsonObject m_root;
     int m_position = Off;
     int m_style = Default;
     std::array<bool, EntryCount> m_shown{ true };

@@ -2,7 +2,6 @@
 
 #include "client/gamecore.h"
 #include "network/gameserverconnection.h"
-#include "network/logincrypt.h"
 
 #include <QClipboard>
 #include <QCryptographicHash>
@@ -25,7 +24,6 @@ struct CipTypedKeep {
     TNullExperienceGainChangeTracker tNullExperienceGainChangeTracker;
     TNullExperiencePerHourProvider tNullExperiencePerHourProvider;
     TTibiaClipboardHelper tTibiaClipboardHelper;
-    TTibiaFileSystemHelper tTibiaFileSystemHelper;
     TClipboardHelper tClipboardHelper;
     THashHelper tHashHelper;
     TRsaHelper tRsaHelper;
@@ -87,39 +85,9 @@ QByteArray THashHelper::sha256(const QByteArray& data)
     return QCryptographicHash::hash(data, QCryptographicHash::Sha256);
 }
 
-void TRsaHelper::installLoginKey()
-{
-    network::installLoginRsa();
-}
-
-bool TRsaHelper::encrypt(uint8_t* msg, int size)
-{
-    return network::rsaEncrypt(msg, size);
-}
-
-bool TRsaHelper::decrypt(uint8_t* msg, int size)
-{
-    return network::rsaDecrypt(msg, size);
-}
-
-int TRsaHelper::blockSize()
-{
-    return network::rsaBlockSize();
-}
-
 bool TXteaHelper::decryptInPlace(const std::array<uint32_t, 4>& key, QByteArray& body)
 {
     return network::decryptGameXtea1405(key, body);
-}
-
-qint64 TClockService::nowMicros()
-{
-    return client::gamecore::nowMicros();
-}
-
-qint64 TClockService::nowMillis()
-{
-    return nowMicros() / 1000;
 }
 
 quint32 TRandomNumberGenerator::bounded(quint32 minInclusive, quint32 maxInclusive)

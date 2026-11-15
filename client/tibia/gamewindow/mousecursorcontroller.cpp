@@ -149,6 +149,10 @@ void TMouseCursorController::setDefaultCursor()
     // CIP leaves the diagonal resize flags set.
     m_lenshelp = m_targetSelection = m_resizeHorizontal = m_resizeVertical = false;
     m_pointingHand = m_openContainer = false;
+    // Clear map-layer shapes so a MOVE_OBJECT Crosshair cannot linger under a dialog.
+    m_layerShapes.insert(MapWindow, Default);
+    m_layerShapes.insert(Minimap, Default);
+    m_layerShapes.insert(CyclopediaMap, Default);
     update();
 }
 

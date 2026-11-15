@@ -23,7 +23,7 @@ public:
     using cip::tibia::highscores::THighscoresProtocolMessageHandler::THighscoresProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode, const QByteArray& classicFrame, bool applyClassic);
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class THighscoresStorage final : public cip::tibia::highscores::THighscoresStorage

@@ -24,7 +24,6 @@
 #include "appearances/appearanceinstance.h"
 #include "client/declarations.h"
 #include "client/staticdata.h"
-#include "framework/core/inputevent.h"
 
 #include <atomic>
 #include <functional>
@@ -55,8 +54,8 @@ public:
     void ensureMissileFloorsSized();
     void terminate();
 
-    void notificateTileUpdate(const Position& pos, const ThingPtr& thing, tibia::client::Operation operation);
-    void notificateWindowChanged(bool fullDescription) const;
+    /// A field changed (`creature`: a creature moved on it, not the field content).
+    void notificateTileUpdate(const Position& pos, bool creature, tibia::client::Operation operation);
     void notificateCameraMove(const Point& offset) const;
     /// CIP TWorldmapProtocolMessageHandler + minimap feed both listen.
     void addObserver(MapObserver* observer);
@@ -79,7 +78,6 @@ public:
     /// the whole FOV, so positions are not consumed by the renderer.
     /// Returns how many were discarded (for PERF).
     size_t clearStaticDirtyTiles();
-    void notificateKeyRelease(const InputEvent& inputEvent) const;
 
 
     void setWidth(const uint16_t w) { m_width = w; }
@@ -91,11 +89,9 @@ public:
     void cleanTexts() { m_animatedTexts.clear(); m_staticTexts.clear(); }
 
     // thing related
-    ThingPtr getThing(const Position& pos, int16_t stackPos);
     /// Place a protocol-decoded item appearance (no ephemeral Item).
     bool placeAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& pos,
                          int16_t stackPos = -1);
-    bool removeThing(const ThingPtr& thing);
     bool removeThingByPos(const Position& pos, int16_t stackPos);
 
     void addStaticText(const StaticTextPtr& txt, const Position& pos);
@@ -131,7 +127,7 @@ public:
         int stackPos = -1;
     };
 
-    stdext::map<Position, uint16_t, Position::Hasher> findItemsById(uint16_t clientId, uint32_t max);
+    std::unordered_map<Position, uint16_t, Position::Hasher> findItemsById(uint16_t clientId, uint32_t max);
     std::vector<TItemHit> findItemsInRange(const Position& center, int rangeX, int rangeY,
                                            const std::vector<uint16_t>& clientIds);
 
@@ -194,7 +190,7 @@ public:
     AwareRange getAwareRange() const { return m_awareRange; }
 
     Light getLight() const { return m_light; }
-    Position getCentralPosition() { return m_centralPosition; }
+    Position getCentralPosition() const { return m_centralPosition; }
     uint8_t getFirstAwareFloor() const;
     uint8_t getLastAwareFloor() const;
     const std::vector<tibia::appearances::TAppearanceInstancePtr>& getFloorMissiles(uint8_t z) const;

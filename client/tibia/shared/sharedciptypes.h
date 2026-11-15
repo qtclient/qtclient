@@ -3,6 +3,7 @@
 // CIP-named shared surfaces (promoted from cipwire).
 
 #include "shared/cip_typed.h"
+#include "shared/clockservice.h"
 
 #include <cip_gen.h>
 
@@ -11,6 +12,8 @@
 #include <QElapsedTimer>
 #include <QNetworkReply>
 #include <QObject>
+
+#include <string_view>
 #include <QString>
 #include <QtGlobal>
 #include <QUrl>
@@ -263,15 +266,18 @@ public:
     static QByteArray sha256(const QByteArray& data);
 };
 
-/// CIP `shared::TRsaHelper` — wraps `network::` login RSA façade.
+/// CIP `shared::TRsaHelper` — RSA with the game server's public key (rsahelper.cpp).
 class TRsaHelper final : public ::tibia::CipTyped
 {
 public:
     TRsaHelper() = default;
+    /// Installs the login key (Crystal's modulus, exponent 65537).
     static void installLoginKey();
-    static bool encrypt(uint8_t* msg, int size);
-    static bool decrypt(uint8_t* msg, int size);
+    static void setPublicKey(std::string_view modulusDecimal, std::string_view exponentDecimal);
+    /// Bytes per RSA block (0 before a key is set).
     static int blockSize();
+    /// Encrypts one block in place; false when `size` is not blockSize().
+    static bool encrypt(uint8_t* block, int size);
 };
 
 /// CIP `shared::TXteaHelper` — wraps game-wire XTEA (`decryptGameXtea1405`).
@@ -280,17 +286,6 @@ class TXteaHelper final : public ::tibia::CipTyped
 public:
     TXteaHelper() = default;
     static bool decryptInPlace(const std::array<uint32_t, 4>& key, QByteArray& body);
-};
-
-/// CIP `shared::TClockService` — engine clock in µs / ms (v2 = ns/1e6 → ms).
-class TClockService final : public ::tibia::CipTyped
-{
-public:
-    TClockService() = default;
-    /// Microseconds on the game clock (product: `gamecore::nowMicros`).
-    static qint64 nowMicros();
-    /// Milliseconds (`nowMicros / 1000`), matching CIP v2 scale from ns.
-    static qint64 nowMillis();
 };
 
 /// CIP `shared::TRandomNumberGenerator` (uniform int in [min,max]).
@@ -481,11 +476,6 @@ class TSimpleVectorAbstractListModel : public ::tibia::CipTyped
 {
 public:
     TSimpleVectorAbstractListModel() = default;
-};
-
-class TTibiaFileSystemHelper final : public ::tibia::CipTyped {
-public:
-    TTibiaFileSystemHelper() = default;
 };
 
 }

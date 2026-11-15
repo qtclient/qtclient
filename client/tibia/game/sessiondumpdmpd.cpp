@@ -781,9 +781,8 @@ std::deque<DmpdClassicPacket> dmpdToClassicPackets(const TSessiondumpDmpdFile& d
         // Phase 6.0-E primary: Parse GameserverMessage, enqueue on CIP queue,
         // inverse to classic when structured. Fallback: legacy mapSimpleOpcode.
         std::optional<std::vector<uint8_t>> classic;
-        // Parse/enqueue for CIP queue observability; applyClassic=false because
-        // replay still delivers classic via parseMessage (avoids double-apply).
-        const QByteArray structured = tibia::protocol::enqueueNativeServerProtobuf(msg.protobuf, false);
+        // Translated only: the replay applies the classic packet at its timestamp.
+        const QByteArray structured = tibia::protocol::serverProtobufToClassic(msg.protobuf);
         if (!structured.isEmpty()) {
             classic = std::vector<uint8_t>(structured.begin(), structured.end());
             if (msg.opcode == 0x17 && classic->size() >= 5) {

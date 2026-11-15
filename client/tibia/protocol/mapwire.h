@@ -22,14 +22,9 @@ bool readOutfit(ClassicReader& r, protobuf::protocol::ProtocolOutfit* out, bool 
 /// A creature after its u16 kind: new (0x61), known (0x62) or turned (0x63).
 bool readCreature(ClassicReader& r, protobuf::protocol::ProtocolCreature* out, uint16_t kind);
 /// An object or a creature (u16 id first).
-bool readMapObject(ClassicReader& r, protobuf::protocol::ProtocolMapObject* out);
+bool readMapObject(ClassicReader& r, protobuf::protocol::ProtocolMapObject* out, uint16_t id = 0);
 /// A field's objects up to its end marker; `skip` receives the fields to skip after it.
 bool readMapField(ClassicReader& r, protobuf::protocol::ProtocolMapField* out, int& skip);
-
-/// The fields of one floor, column by column, carrying `skip` over (the
-/// classic floor description; `offset` shifts towards the view's floor).
-bool readMapFloor(ClassicReader& r, google::protobuf::RepeatedPtrField<protobuf::protocol::ProtocolMapField>* fields, int x,
-                  int y, int z, int width, int height, int offset, int& skip);
 
 /// Fill a world map message (FullMap, the four slices, TopFloor, BottomFloor,
 /// FieldData, CreateOnMap, ChangeOnMap, DeleteOnMap); 0 when the body is short.

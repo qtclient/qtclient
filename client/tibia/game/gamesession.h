@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game/objectreference.h"
+#include <optional>
 #include <client/declarations.h>
 #include <client/const.h>
 #include <client/outfit.h>
@@ -31,11 +33,11 @@ class TCreatureStorage;
 namespace game {
 
 /// CipSoft-shaped session / wire façade for qtclient + packs.
-/// Prefer this header over `#include "gamehub_impl.h"` at call sites.
-/// Implementation peels the private OTC hub via `qtclientGameHub()` in `gamehub.*`.
+/// Prefer this header over `#include "game/gamesessionstate.h"` at call sites.
+/// Implementation: the shared session state, game::TGameSessionState (gamesessionstate.*).
 /// migrates each method onto TGameClient / IGameSession / storages.
 
-/// Pack-facing monotonic ms (`g_clock.millis`). Header free of `framework/core/clock.h`.
+/// Pack-facing monotonic ms (the frame clock, shared::TClockService).
 uint64_t millis();
 
 /// Map sea floor (`tibia::config::mapSeaFloor`). Header free of engine gameconfig.
@@ -143,7 +145,7 @@ uint8_t localPlayerSoul();
 uint16_t localPlayerMagicLevel();
 uint16_t localPlayerBaseMagicLevel();
 uint16_t localPlayerMagicLevelPercent();
-const std::vector<uint16_t>& localPlayerSpells();
+std::vector<uint16_t> localPlayerSpells();
 tibia::client::Direction localPlayerDirection();
 bool localPlayerIsSoftDead();
 /// Keep-alive Map Creature → TCreature HUD mirror (Phase 5.0-C).
@@ -192,16 +194,10 @@ int clientRevision();
 tibia::client::OperatingSystem_t clientOs();
 
 
-/// Feature flags / client & protocol revision peels. `Game` remains SoT until a
-/// dedicated session storage owns wire gates (peels read through here only).
-/// CIP client wire gate (feature flags on the private hub).
-bool cipFeature(const tibia::client::GameFeature feature);
 
 
-void enableFeature(const tibia::client::GameFeature feature);
 
 
-void disableFeature(const tibia::client::GameFeature feature);
 
 
 void setProtocolVersion(const uint16_t version);
@@ -214,8 +210,8 @@ void setClientRevision(const uint16_t version);
 void initGameHub();
 void terminateGameHub();
 
-/// ProtocolGame socket error → hub disconnect peel.
-void processConnectionError(const std::error_code& ec);
+/// The game connection was lost (`clean` = peer close, no error reported).
+void processConnectionError(std::string_view message, bool clean);
 
 /// Sessiondump OTC packet replay (headless / devtools).
 void startDecodedReplay();
@@ -251,7 +247,7 @@ void interruptAutoWalk();
 void safeLogout();
 
 
-/// Login / world wire side effects (ProtocolGame + TGameProtocolMessageHandler).
+/// Login / world side effects (game connection + TGameProtocolMessageHandler).
 /// Prefer over raw `g_game` in protocol translators.
 void processLogin();
 void processGameStart();
@@ -265,7 +261,7 @@ void processLoginAdvice(std::string_view message);
 void processLoginWait(std::string_view message, uint8_t time);
 void processSessionEnd(uint8_t reason);
 
-/// Wire handlers (ProtocolGame) — thin forwards until storages own the paths.
+/// Server message side effects — thin forwards until storages own the paths.
 void processCharacterSwitch(std::string_view characterName);
 void processPlayerHelpers(uint16_t helpers);
 void processUpdateTarget(uint32_t seq, uint32_t targetId);
@@ -287,7 +283,7 @@ void processCloseContainer(uint8_t containerId);
 void processContainerAddItem(uint8_t containerId, const ::tibia::container::TInventorySlot& item, uint16_t slot);
 void processContainerUpdateItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& item);
 void processContainerRemoveItem(uint8_t containerId, uint16_t slot, const ::tibia::container::TInventorySlot& lastItem);
-/// ProtocolGame wire handlers — thin `g_game` forwards (server parse peels).
+/// Server message side effects — thin hub forwards.
 void processUpdateNeeded(std::string_view signature);
 void processSessionDumpStart(std::string_view sessionKey);
 void processSessionDumpMarker(std::string_view marker);
@@ -384,13 +380,8 @@ void localPlayerSetExperience(uint64_t experience);
 void localPlayerSetStamina(uint16_t stamina);
 void localPlayerSetSoul(uint8_t soul);
 void localPlayerSetFreeCapacity(uint32_t freeCapacity);
-void localPlayerSetPremium(bool premium);
-void localPlayerSetVocation(uint8_t vocation);
-void localPlayerSetSpells(const std::vector<uint16_t>& spells);
 void localPlayerSetBlessings(uint16_t blessings, uint8_t blessVisualState = 0);
 void localPlayerSetResourceBalance(tibia::client::ResourceTypes_t type, uint64_t value);
-void localPlayerSetHasReachedMain(bool reached);
-void localPlayerSetMagicShieldVocation(bool enabled);
 void localPlayerSetHarmony(uint8_t harmony);
 void localPlayerSetSerene(bool serene);
 void localPlayerSetExperienceRate(tibia::client::ExperienceRate_t type, uint16_t value);
@@ -469,7 +460,8 @@ void useInventoryItemWithMapObject(const uint16_t itemId, const MapPos to, const
 void useInventoryItemOnCreature(const uint16_t itemId, const uint32_t creatureId);
 
 
-ItemPtr findPlayerItem(const uint32_t itemId, const int subType);
+/// The first inventory or open-container object of `itemId` (any subtype when -1).
+std::optional<TObjectReference> findPlayerItem(uint32_t itemId, int subType);
 
 
 void requestQuickLootBlackWhiteList(const uint8_t filter, const uint16_t size, const std::vector<uint16_t>& listedItems);
@@ -481,7 +473,6 @@ void sendStatusTrackerBestiary(const uint16_t raceId, const bool status);
 void requestBestiarySearch(const uint16_t raceId);
 
 
-void sendFriendSystemPayload(const std::string& json);
 
 
 void openPrivateChannel(const std::string_view receiver);

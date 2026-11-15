@@ -64,7 +64,7 @@ void append(TGameActionList& to, const TGameActionList& from)
 
 TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) const
 {
-    const TWorldMapPick pick = TWorldMapPicker::pick(m_provider, mapPixel);
+    const TWorldMapPick pick = TWorldMapPicker::pick(m_provider, m_viewport, mapPixel);
     if (!pick.isValid())
         return Provider::creatureActions(0);
 
@@ -114,7 +114,7 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     result.push_back(input::makeObjectAction(A::BROWSE_FIELD, pick.position, -1));
     result.push_back(input::makeObjectAction(A::REPORT_BUG_MAP, pick.position, -1));
 
-    const uint32_t pixelCreatureId = TWorldMapPicker::creatureAt(m_provider, mapPixel);
+    const uint32_t pixelCreatureId = TWorldMapPicker::creatureAt(m_provider, m_viewport, mapPixel);
     const TGameActionList creatureActions = Provider::creatureActions(pixelCreatureId);
     result.push_back(input::makeAction(A::CONTEXT_MENU));
     (void)input::TLocationWorldMapGameActionContext(pick.position.x, pick.position.y, pick.position.z);
@@ -122,8 +122,8 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     if (pixelCreatureId)
         (void)input::TObjectCreatureGameActionContext(pixelCreatureId);
 
-    // CipSoft creature hit-test (v7 / provider v2): when the cursor is on a creature
-    // sprite, MOVE_OBJECT is that creature — field::moveObject prefers items under it.
+    // Creature hit-test (TWorldMapPicker::creatureAt): when the cursor is on a creature
+    // sprite, MOVE_OBJECT is that creature — the field's move object prefers items under it.
     // Always canonicalize from TCreatureStorage::position (same as lookCreature);
     // walk-offset sprites and pick.creature on the cursor tile must not keep pick.position
     // as the wire `from` (that yields from==to no-ops / NOTPOSSIBLE).
@@ -172,8 +172,6 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
         const int useDefault = defaultActionOf(use, pick.field);
         const int lookDefault = defaultActionOf(pick.look, pick.field);
         if ((useDefault == 0 || useDefault == 4) && (lookDefault == 0 || lookDefault == 4) && pick.walkability != 1) {
-            const auto target = input::TMovementIntentTargetCoordinate(pick.position.x, pick.position.y, pick.position.z);
-            (void)target;
             smartClick = input::makeSmartClick(input::makeMovementIntent(pick.position));
         }
     }
@@ -255,7 +253,7 @@ uint32_t TWorldMapGameActionProvider::mouseTargetCreatureIdOf(const TGameActionP
         TWorldMapField* field = storage ? storage->fieldAt(action->position) : nullptr;
         if (!field || field->isEmpty())
             return 0;
-        const TFieldObject look = field::lookObject(field);
+        const TFieldObject look = field->lookObject();
         return defaultActionOf(look, field) == PLAYER_ACTION_AUTOWALK_HIGHLIGHT ? look.creatureId : 0;
     }
     case A::SMART_CLICK:

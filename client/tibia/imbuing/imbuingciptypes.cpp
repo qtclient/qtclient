@@ -29,10 +29,10 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
-void TImbuingProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/, const bool applyClassic)
+void TImbuingProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
     if (opcode == 236 && shadow->HasExtension(GameserverMessageCloseImbuingDialog::gameserver_message_close_imbuing_dialog))

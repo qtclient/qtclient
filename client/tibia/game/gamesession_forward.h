@@ -8,7 +8,6 @@
 #include <client/staticdata.h>
 #include <client/const.h>
 #include <container/containerciptypes.h>
-#include <framework/net/declarations.h>
 
 #include <cstdint>
 #include <map>
@@ -84,7 +83,6 @@ void editVip(uint32_t playerId, std::string_view description, uint32_t iconId, b
 
 void editVipGroups(tibia::client::GroupsEditInfoType_t action, uint8_t groupId, std::string_view groupName);
 
-ItemPtr ephemeralItemForWire(uint16_t typeId, const Position& position, int stackPos, uint16_t count = 0, uint8_t tier = 0, uint8_t fluidOrSubtype = 0);
 
 void equipItemId(const uint16_t itemId, const uint8_t tier);
 
@@ -268,7 +266,6 @@ void sendRequestTrackerQuestLog(const std::vector<uint16_t>& missionIds, bool au
 
 void sendRequestUsefulThings(const uint8_t serviceType);
 
-void sendSelectSpellAim(const std::vector<uint16_t>& spellIds, bool enabled);
 
 void sendSetHirelingName(std::string_view name);
 
@@ -335,7 +332,6 @@ bool isUsingProtobuf();
 
 int getPing();
 
-stdext::map<int, Vip> getVips();
 
 uint32_t getFollowingCreatureId();
 
@@ -362,8 +358,6 @@ void setUnjustifiedPoints(const UnjustifiedPoints unjustifiedPoints);
 uint32_t getOpenPvpSituations();
 
 void setOpenPvpSituations(const uint8_t openPvpSituations);
-
-ProtocolGamePtr getProtocolGame();
 
 uint16_t getServerBeat();
 

@@ -5,7 +5,7 @@
 #include "appearances/appearanceinstance.h"
 #include "app/clientoptions.h"
 #include "creatures/creatureprotocolapply.h"
-#include "framework/core/clock.h"
+#include "shared/clockservice.h"
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolcodes.h"
 
@@ -18,6 +18,8 @@
 #include <tibia/worldmap/worldmapstorage.h>
 
 #include <protocol.pb.h>
+
+#include <QDebug>
 
 namespace tibia::creatures {
 
@@ -44,7 +46,9 @@ using ::tibia::protobuf::protocol::GameserverMessageCreatureParty;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureSkull;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureSpeed;
 using ::tibia::protobuf::protocol::GameserverMessageCreatureUnpass;
+using ::tibia::protobuf::protocol::GameserverMessageLoginSuccess;
 using ::tibia::protobuf::protocol::GameserverMessageMoveCreature;
+using ::tibia::protobuf::protocol::GameserverMessageUpdateTarget;
 
 Position positionFromPb(const ::tibia::protobuf::protocol::ProtocolCoordinate& c)
 {
@@ -74,13 +78,19 @@ uint16_t attackAnimationEffect(const uint32_t weaponType)
     }
 }
 
-/// The creature type as this client shows it: a summon of another player is
-/// not the player's own.
-uint8_t shownCreatureType(const uint8_t type, const uint32_t masterId)
+/// A message about one stored creature: apply it, then tell the views; a
+/// creature the storage does not hold is ignored.
+template <typename Apply>
+void updateCreature(const uint32_t creatureId, Apply&& apply)
 {
-    if (type == Proto::CreatureTypeSummonOwn && tibia::game::localPlayerId() != masterId)
-        return Proto::CreatureTypeSummonOther;
-    return type;
+    TCreatureStorage* storage = TCreatureStorage::instance();
+    const auto creature = storage ? storage->creatureAt(creatureId) : nullptr;
+    if (!creature) {
+        qWarning() << "updateOrCreateCreatureFromProtobuf: no creature with id" << creatureId << "found";
+        return;
+    }
+    apply(*storage, creature);
+    storage->notifyCreatureUpdated(creature);
 }
 
 } // namespace
@@ -104,13 +114,14 @@ void TCreatureProtocolMessageHandler::handleCreatureMarksMessage(const uint32_t 
         return;
     switch (kind) {
     case 1:
-        protocolAddTimedSquare(creatureId, static_cast<uint8_t>(value));
+        creature->addTimedSquare(colorFromEightBit(static_cast<uint8_t>(value)),
+                                 static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         break;
     case 2:
-        if (value == 0xff)
-            protocolHideStaticSquare(creatureId);
+        if (static_cast<uint8_t>(value) == 0xff)
+            creature->hideStaticSquare();
         else
-            protocolShowStaticSquare(creatureId, Color::from8bit(static_cast<int>(value)));
+            creature->showStaticSquare(colorFromEightBit(static_cast<uint8_t>(value)));
         break;
     case 3: {
         if (!m_showAttackAnimation)
@@ -125,13 +136,26 @@ void TCreatureProtocolMessageHandler::handleCreatureMarksMessage(const uint32_t 
         const int direction = appearances::fieldDirection((at.x - from.x) * 32, (at.y - from.y) * 32);
         auto effect = std::make_shared<appearances::TDirectionalFieldEffectInstance>(
             tibia::game::rawThingType(effectId, ThingCategoryEffect));
-        effect->start(at, static_cast<qint64>(g_clock.millis()), direction);
+        effect->start(at, static_cast<qint64>(tibia::shared::TClockService::frameMillis()), direction);
         tibia::worldmap::TWorldMapStorage::ensureStorage()->addEffectAppearance(effect, at);
         break;
     }
     default:
         break;
     }
+}
+
+void TCreatureProtocolMessageHandler::handleUpdateTargetMessage(const uint32_t sequence, const uint32_t target)
+{
+    // The server replaces the target the sequence names (the id the player
+    // attacked or followed); 0 drops it.
+    TCreatureStorage* storage = TCreatureStorage::instance();
+    if (!storage)
+        return;
+    if (storage->attackID() == sequence)
+        storage->setAttackID(target);
+    else if (storage->followID() == sequence)
+        storage->setFollowID(target);
 }
 
 TCreatureProtocolMessageHandler* TCreatureProtocolMessageHandler::liveInstance()
@@ -144,19 +168,30 @@ void TCreatureProtocolMessageHandler::setLiveInstance(TCreatureProtocolMessageHa
     g_liveCreatureProtocolHandler = handler;
 }
 
-void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const QByteArray& /*classicFrame*/,
-                                                              bool applyClassic)
+void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode)
 {
-    // No CIP handleCreature*Message slots — apply the same protocolSet* APIs as
-    // ProtocolGame::parseCreature* when the classic bridge is skipped.
-    if (applyClassic || !protocol::nativeApplySkipsClassic(opcode))
-        return;
+    // Every creature message applies to a stored creature (a new or known one
+    // on the map creates or finds it first) and then tells the views.
 
     const auto* shadow = protocol::lastShadowServerMessage();
     if (!shadow)
         return;
 
     switch (opcode) {
+    case 23:
+        // The login names the own character.
+        if (shadow->HasExtension(GameserverMessageLoginSuccess::gameserver_message_login_success)) {
+            if (TCreatureStorage* storage = TCreatureStorage::instance())
+                storage->setPlayerID(
+                    shadow->GetExtension(GameserverMessageLoginSuccess::gameserver_message_login_success).player_id());
+        }
+        break;
+    case 163:
+        if (shadow->HasExtension(GameserverMessageUpdateTarget::gameserver_message_update_target)) {
+            const auto& m = shadow->GetExtension(GameserverMessageUpdateTarget::gameserver_message_update_target);
+            handleUpdateTargetMessage(m.sequence(), m.target());
+        }
+        break;
     case 3:
         if (shadow->HasExtension(::tibia::protobuf::protocol::GameserverMessageCreatureData::gameserver_message_creature_data))
             applyProtocolCreature(
@@ -164,7 +199,6 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
         break;
     case 109: {
         // CIP: receivedMoveCreatureMessage only — no handleMoveCreatureMessage.
-        // Same side effects as ProtocolGame::parseCreatureMove via Map::applyCreatureMove.
         if (!shadow->HasExtension(GameserverMessageMoveCreature::gameserver_message_move_creature))
             return;
         if (tibia::game::isSceneFrozen())
@@ -202,33 +236,28 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
         const uint32_t id = m.creature_id();
         switch (m.type()) {
         case 0:
+        case 13:
+        case 14:
+        case 15:
+            // A creature on the map, or one field of a known creature.
             if (m.has_creature())
                 applyProtocolCreature(m.creature());
             break;
         case 11:
-            tibia::game::notify("onPartyMemberManaChange", id, static_cast<uint8_t>(m.mana_percent()));
+            if (m.has_creature())
+                applyProtocolCreature(m.creature());
+            tibia::game::notify("onPartyMemberManaChange", id, static_cast<uint8_t>(m.creature().mana_percent()));
             break;
         case 12:
-            tibia::game::notify("onPartyMemberShowStatusChange", id, m.show_status());
-            break;
-        case 13:
-            protocolSetVocation(id, static_cast<uint8_t>(m.vocation()));
-            break;
-        case 14: {
-            std::vector<std::tuple<uint8_t, uint8_t, uint16_t>> icons;
-            for (const auto& icon : m.icons())
-                icons.emplace_back(static_cast<uint8_t>(icon.icon()), static_cast<uint8_t>(icon.category()),
-                                   static_cast<uint16_t>(icon.value()));
-            protocolSetIcons(id, icons);
-            break;
-        }
-        case 15:
-            // Product server: the Echo Raid glow is the last state (0 warden, 1 empowered).
-            protocolSetEchoRaidColor(id, m.extra_icons().empty() ? int8_t(-1) : static_cast<int8_t>(*m.extra_icons().rbegin()));
+            if (m.has_creature())
+                applyProtocolCreature(m.creature());
+            tibia::game::notify("onPartyMemberShowStatusChange", id, m.creature().show_status());
             break;
         // Product server party extensions.
         case 16:
-            protocolSetHealthPercent(id, static_cast<uint8_t>(m.health_percent()));
+            updateCreature(id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+                creature->setHealthPercent(static_cast<uint8_t>(m.health_percent()));
+            });
             tibia::game::notify("onPartyMemberHealthChange", id, static_cast<uint8_t>(m.health_percent()), m.health(),
                                 m.max_health());
             break;
@@ -237,7 +266,9 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
                                 m.max_mana());
             break;
         case 18:
-            protocolSetVocation(id, static_cast<uint8_t>(m.vocation()));
+            updateCreature(id, [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+                creature->setVocation(static_cast<uint8_t>(m.vocation()));
+            });
             tibia::game::notify("onPartyMemberInfoChange", id, static_cast<uint8_t>(m.vocation()),
                                 static_cast<uint16_t>(m.level()));
             break;
@@ -251,8 +282,16 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
             return;
         const auto& m =
             shadow->GetExtension(GameserverMessageCreatureOutfit::gameserver_message_creature_outfit);
-        Outfit outfit = outfitFromProtocol(m.outfit(), &m.mount());
-        protocolSetOutfit(m.creature_id(), outfit);
+        updateCreature(m.creature_id(), [&](TCreatureStorage& storage, const std::shared_ptr<TCreature>& creature) {
+            creature->setOutfit(outfitFromProtocol(m.outfit(), m.has_mount() ? &m.mount() : nullptr));
+            storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Outfit);
+            if (m.has_mount()) {
+                // A mount without a look type dismounts.
+                creature->setMounted(m.mount().look_type() != 0);
+                storage.notifyCreatureAppearanceUpdated(creature, ECreatureUpdateAppearanceType::Mount);
+            }
+        });
+        syncFieldStackFor(m.creature_id());
         break;
     }
     case 147: {
@@ -268,13 +307,13 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
             return;
         const auto& m =
             shadow->GetExtension(GameserverMessageCreatureType::gameserver_message_creature_type);
-        TCreatureStorage* storage = TCreatureStorage::instance();
-        const auto creature = storage ? storage->creatureAt(m.creature_id()) : nullptr;
-        if (!creature)
-            return;
-        const uint8_t type = shownCreatureType(static_cast<uint8_t>(m.type()), m.master_id());
-        ensureFromProtocol(m.creature_id(), {}, {}, creature->direction(), type, type == Proto::CreatureTypePlayer,
-                           type == Proto::CreatureTypeNpc);
+        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+            // The type as sent: the views tell the player's own summons by
+            // their master.
+            creature->setCreatureType(static_cast<uint8_t>(m.type()));
+            if (m.has_master_id())
+                creature->setMasterId(m.master_id());
+        });
         break;
     }
     case 140: {
@@ -282,7 +321,9 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
             return;
         const auto& m =
             shadow->GetExtension(GameserverMessageCreatureHealth::gameserver_message_creature_health);
-        protocolSetHealthPercent(m.creature_id(), static_cast<uint8_t>(m.health_percent()));
+        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+            creature->setHealthPercent(static_cast<uint8_t>(m.health_percent()));
+        });
         break;
     }
     case 141: {
@@ -290,10 +331,9 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
             return;
         const auto& m =
             shadow->GetExtension(GameserverMessageCreatureLight::gameserver_message_creature_light);
-        Light light;
-        light.intensity = static_cast<uint8_t>(m.intensity());
-        light.color = static_cast<uint8_t>(m.color());
-        protocolSetLight(m.creature_id(), light);
+        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+            creature->setLight(Light(static_cast<uint8_t>(m.intensity()), static_cast<uint8_t>(m.color())));
+        });
         break;
     }
     case 143: {
@@ -301,7 +341,9 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
             return;
         const auto& m =
             shadow->GetExtension(GameserverMessageCreatureSpeed::gameserver_message_creature_speed);
-        protocolSetSpeed(m.creature_id(), static_cast<uint16_t>(m.speed()), 0);
+        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+            creature->setSpeed(static_cast<uint16_t>(m.speed()));
+        });
         break;
     }
     case 144: {
@@ -309,7 +351,9 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
             return;
         const auto& m =
             shadow->GetExtension(GameserverMessageCreatureSkull::gameserver_message_creature_skull);
-        protocolSetSkull(m.creature_id(), static_cast<uint8_t>(m.skull()));
+        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+            creature->setSkull(static_cast<uint8_t>(m.skull()));
+        });
         break;
     }
     case 145: {
@@ -317,7 +361,9 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
             return;
         const auto& m =
             shadow->GetExtension(GameserverMessageCreatureParty::gameserver_message_creature_party);
-        protocolSetShield(m.creature_id(), static_cast<uint8_t>(m.party()));
+        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+            creature->setShield(static_cast<uint8_t>(m.party()));
+        });
         break;
     }
     case 146: {
@@ -325,8 +371,9 @@ void TCreatureProtocolMessageHandler::onServerMessageEnqueued(int opcode, const 
             return;
         const auto& m =
             shadow->GetExtension(GameserverMessageCreatureUnpass::gameserver_message_creature_unpass);
-        // Classic parseCreatureUnpass: protocolSetPassable(id, !unpass).
-        protocolSetPassable(m.creature_id(), !static_cast<bool>(m.unpass()));
+        updateCreature(m.creature_id(), [&](TCreatureStorage&, const std::shared_ptr<TCreature>& creature) {
+            creature->setUnpassable(static_cast<bool>(m.unpass()));
+        });
         break;
     }
     default:
@@ -349,10 +396,10 @@ void ownProductSurface(QObject* parent)
 
 namespace tibia::creatures {
 
-void TUnjustifiedPointsProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/, const bool applyClassic)
+void TUnjustifiedPointsProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
     switch (opcode) {
@@ -381,10 +428,10 @@ void TUnjustifiedPointsProtocolMessageHandler::onServerMessageEnqueued(const int
 
 namespace tibia::creatures {
 
-void TVipProtocolMessageHandler::onServerMessageEnqueued(const int opcode, const QByteArray& /*classicFrame*/, const bool applyClassic)
+void TVipProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode, applyClassic);
+    const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
     switch (opcode) {

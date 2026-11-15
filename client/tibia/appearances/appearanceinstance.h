@@ -8,7 +8,7 @@
 #include <client/const.h>
 #include <client/declarations.h>
 #include <client/position.h>
-#include <framework/core/timer.h>
+#include "shared/clockservice.h"
 #include <framework/util/color.h>
 
 #include <cstdint>
@@ -20,7 +20,6 @@
 class ThingType;
 class Item;
 class Creature;
-class Thing;
 
 // Classic nested braces (qtclient + pack TUs share /FI framework/pch.h).
 namespace tibia {
@@ -30,6 +29,9 @@ class TCreature;
 } // namespace creatures
 
 namespace appearances {
+
+/// The sprite pattern of a stackable count or a fluid colour (CIP draws stacks and fluids this way).
+void objectPatternsFor(ThingType* type, int countOrSubType, int& patternX, int& patternY, int& patternZ);
 
 /// CIP appearances::TAppearanceInstance — thin view over a ThingType record.
 class TAppearanceInstance : public ::tibia::CipTyped
@@ -61,8 +63,6 @@ public:
     void setSubType(uint8_t subType) { m_subType = subType; }
     void setTier(uint8_t tier) { m_tier = tier; }
 
-    void ingestItemDrawState(Item& item);
-    bool matchesItemIdentity(Thing& thing) const;
     bool drawable() const { return m_canDraw; }
     void setDrawable(const bool draw) { m_canDraw = draw; }
     const Color& markedColor() const { return m_markedColor; }
@@ -93,7 +93,7 @@ protected:
     uint8_t m_patternY{ 0 };
     uint8_t m_patternZ{ 0 };
     uint8_t m_phase{ 0 };
-    ticks_t m_lastPhase{ 0 };
+    int64_t m_lastPhase{ 0 };
     bool m_async{ true };
     bool m_canDraw{ true };
 };
@@ -197,7 +197,6 @@ public:
     std::vector<FigureLayer> figureLayers() const;
 
     /// Item's owned show-off instance (created on first podium wire write).
-    static std::shared_ptr<TShowOffSocketAppearanceInstance> fromItem(Item& item);
 
 private:
     Outfit m_outfit;
@@ -385,30 +384,10 @@ public:
     static TAppearanceInstancePtr fromThingType(ThingType* type);
     static TAppearanceInstancePtr fromProtocolObject(ThingType* type, uint16_t count = 0, uint8_t subType = 0,
                                                      uint8_t tier = 0, uint8_t fluid = 0, uint8_t hangSide = 0);
-    static TAppearanceInstancePtr fromItem(Item& item);
     static TAppearanceInstancePtr fromStoredCreature(tibia::creatures::TCreature& stored);
     static TAppearanceInstancePtr fromOutfit(const Outfit& outfit, ThingType* type);
 };
 
-/// CIP appearances::TAppearancesManager — facade over ThingTypeManager / g_things.
-class TAppearancesManager final : public ::tibia::CipTyped
-{
-public:
-    static TAppearancesManager& instance();
-
-    bool loadAppearances(const std::string& directory);
-    ThingType* thingType(uint16_t id, ThingCategory category) const;
-    TAppearanceInstancePtr makeInstance(uint16_t id, ThingCategory category) const;
-
-    TAppearanceInstanceTracker& tracker();
-    TAppearanceInstanceGenericStoragesManager& storages();
-    TAppearanceInstanceGenericStorage& genericStorage();
-
-private:
-    std::unique_ptr<TAppearanceInstanceTracker> m_tracker;
-    std::unique_ptr<TAppearanceInstanceGenericStoragesManager> m_storages;
-    std::unique_ptr<TAppearanceInstanceGenericStorage> m_genericStorage;
-};
 
 } // namespace appearances
 } // namespace tibia

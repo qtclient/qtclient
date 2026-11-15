@@ -7,85 +7,26 @@
 #include <tibia/game/tgamenotify.h>
 
 #include <QRegularExpression>
+#include <QSignalBlocker>
 #include <QSettings>
 
 #include <algorithm>
 
 namespace tibia::chat {
 
-namespace {
-
-QDateTime now()
-{
-    return QDateTime::currentDateTime();
-}
-
-} // namespace
-
 TChatChannelIdentifier TChatChannelIdentifier::channel(const uint16_t id, const QString& name)
 {
-    (void)TChannelIDChatChannelIdentifier(id, name);
     return { ChannelId, id, name };
 }
 
 TChatChannelIdentifier TChatChannelIdentifier::messageTo(const QString& name)
 {
-    (void)TMessageToChatChannelIdentifier(name);
     return { MessageTo, 0, name };
 }
 
 TChatChannelIdentifier TChatChannelIdentifier::help()
 {
-    (void)THelpChannelIdentifier();
-    return channel(THelpChannelIdentifier::kChannelId);
-}
-
-TChatChannelIdentifierBase::TChatChannelIdentifierBase(const TChatChannelIdentifier::Type type)
-    : m_type(type)
-{
-}
-
-TLocalChatChannelIdentifier::TLocalChatChannelIdentifier()
-    : TChatChannelIdentifierBase(TChatChannelIdentifier::Local)
-{
-}
-
-TServerLogChannelIdentifier::TServerLogChannelIdentifier()
-    : TChatChannelIdentifierBase(TChatChannelIdentifier::ServerLog)
-{
-}
-
-TNpcChatChannelIdentifier::TNpcChatChannelIdentifier()
-    : TChatChannelIdentifierBase(TChatChannelIdentifier::Npc)
-{
-}
-
-TChannelIDChatChannelIdentifier::TChannelIDChatChannelIdentifier(const uint16_t id, QString name)
-    : TChatChannelIdentifierBase(TChatChannelIdentifier::ChannelId)
-    , m_id(id)
-    , m_name(std::move(name))
-{
-}
-
-TMessageToChatChannelIdentifier::TMessageToChatChannelIdentifier(QString partner)
-    : TChatChannelIdentifierBase(TChatChannelIdentifier::MessageTo)
-    , m_partner(std::move(partner))
-{
-}
-
-TOwnPrivateChannelToOpenIdentifier::TOwnPrivateChannelToOpenIdentifier()
-    : TChatChannelIdentifierBase(TChatChannelIdentifier::OwnPrivateChannelToOpen)
-{
-}
-
-TLootChannelIdentifier::TLootChannelIdentifier()
-    : TChatChannelIdentifierBase(TChatChannelIdentifier::Loot)
-{
-}
-
-THelpChannelIdentifier::THelpChannelIdentifier()
-    : TChannelIDChatChannelIdentifier(kChannelId)
-{
+    return { ChannelId, 7, qtTrId("chat_channel_name_help") };
 }
 
 namespace {
@@ -147,60 +88,111 @@ bool TChatChannelIdentifier::sameChannel(const TChatChannelIdentifier& other) co
     if (type != other.type)
         return false;
     switch (type) {
-    case ChannelId: return id == other.id;
-    case MessageTo: return name.compare(other.name, Qt::CaseInsensitive) == 0;
+    case ChannelId: return id == other.id && displayName() == other.displayName();
+    case MessageTo:
+    case OwnPrivateChannelToOpen: return displayName() == other.displayName();
     default: return true;
     }
 }
 
-TChatChannel::TChatChannel(const TChatChannelIdentifier& identifier, QObject* parent)
+// ---------------------------------------------------------------------------
+// TChatChannel
+
+TChatChannel::TChatChannel(const uint32_t maxEntries, const TChatChannelIdentifier& identifier, QObject* parent)
     : cip::tibia::chat::TChatChannel(parent)
+    , m_maxEntries(maxEntries)
     , m_identifier(identifier)
+    , m_isSubscribedToServerLog(identifier.type == TChatChannelIdentifier::ServerLog)
 {}
 
-size_t TChatChannel::maxEntries()
+uint32_t TChatChannel::maxEntries()
 {
-    static const size_t value = static_cast<size_t>(chatSetting(QStringLiteral("maxChatBacklogLength"), 1000, 5));
+    static const uint32_t value = static_cast<uint32_t>(chatSetting(QStringLiteral("maxChatBacklogLength"), 1000, 5));
     return value;
 }
 
-void TChatChannel::addEntry(TChatEntry entry)
+void TChatChannel::addEntry(const TChatEntry& entry)
 {
-    m_entries.push_back(std::move(entry));
-    Q_EMIT entryAdded();
-    if (m_entries.size() > maxEntries()) {
+    if (m_maxEntries <= entryCount() && !m_entries.empty()) {
         m_entries.pop_front();
-        Q_EMIT oldestEntryRemoved();
+        ++m_firstEntryId;
+        dropStaleTutorialMarker();
     }
+    m_entries.push_back(entry);
+    Q_EMIT idRangeChanged(firstEntryId(), afterLastEntryId());
+    Q_EMIT chatEntryAdded();
+}
+
+void TChatChannel::removeOldestEntry()
+{
+    if (entryCount() == 0)
+        return;
+    m_entries.pop_front();
+    ++m_firstEntryId;
+    Q_EMIT idRangeChanged(firstEntryId(), afterLastEntryId());
+    dropStaleTutorialMarker();
 }
 
 void TChatChannel::clear()
 {
+    const uint32_t afterLast = afterLastEntryId();
     m_entries.clear();
-    Q_EMIT cleared();
+    m_firstEntryId = afterLast;
+    Q_EMIT idRangeChanged(firstEntryId(), afterLastEntryId());
+    dropStaleTutorialMarker();
 }
 
-bool TChatChannel::canBeClosed() const
+const TChatEntry& TChatChannel::entry(const uint32_t id) const
 {
-    return m_identifier.type != TChatChannelIdentifier::Local && m_identifier.type != TChatChannelIdentifier::ServerLog;
+    return m_entries[id - m_firstEntryId];
+}
+
+void TChatChannel::setClosed(const bool closed)
+{
+    if (m_isClosed == closed)
+        return;
+    m_isClosed = closed;
+    Q_EMIT isClosedChanged();
+}
+
+bool TChatChannel::isSubscribedToServerLog() const
+{
+    return m_isSubscribedToServerLog || m_identifier.type == TChatChannelIdentifier::ServerLog;
 }
 
 void TChatChannel::setSubscribedToServerLog(const bool subscribed)
 {
-    if (m_subscribedToServerLog == subscribed)
+    if (m_isSubscribedToServerLog == subscribed)
         return;
-    m_subscribedToServerLog = subscribed;
+    m_isSubscribedToServerLog = subscribed;
     Q_EMIT serverLogSubscriptionChanged();
-    Q_EMIT propertiesChanged();
 }
 
-void TChatChannel::setClosedByServer(const bool closed)
+bool TChatChannel::addTutorialMarkerForKeyword(const int markerId, const QString& keyword)
 {
-    if (m_closedByServer == closed)
-        return;
-    m_closedByServer = closed;
-    Q_EMIT isClosedChanged();
-    Q_EMIT propertiesChanged();
+    if (entryCount() == 0)
+        return false;
+    const QString needle = QStringLiteral("{%1}").arg(keyword);
+    for (uint32_t id = firstEntryId(); id < afterLastEntryId(); ++id) {
+        if (entry(id).text.indexOf(needle, 0, Qt::CaseInsensitive) != -1)
+            m_tutorialMarker = std::make_shared<TKeywordGuiTutorialMarkerInfo>(TKeywordGuiTutorialMarkerInfo{ markerId, keyword, id });
+    }
+    const bool marked = m_tutorialMarker != nullptr;
+    if (marked)
+        Q_EMIT tutorialMarkerChanged();
+    return marked;
+}
+
+void TChatChannel::removeTutorialMarker()
+{
+    m_tutorialMarker.reset();
+    Q_EMIT tutorialMarkerChanged();
+}
+
+void TChatChannel::dropStaleTutorialMarker()
+{
+    if (m_tutorialMarker && m_tutorialMarker->entryId < firstEntryId())
+        removeTutorialMarker();
 }
 
 bool TChatChannel::writesToLocalChat() const
@@ -215,11 +207,15 @@ bool TChatChannel::writesToLocalChat() const
     }
 }
 
+// ---------------------------------------------------------------------------
+// TChatChannelStorage
+
 TChatChannelStorage::TChatChannelStorage(QObject* parent)
     : cip::tibia::chat::TChatChannelStorage(parent)
+    , m_maxEntries(TChatChannel::maxEntries())
 {
-    reset();
-    // CIP onPlayerCreatureAddedToCreatureStorage .
+    openDefaultChannels();
+    // The player's name arrives with the player creature.
     const auto bindPlayer = [this]() {
         if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance()) {
             connect(creatures, &creatures::TCreatureStorage::playerAdded, this,
@@ -230,37 +226,10 @@ TChatChannelStorage::TChatChannelStorage(QObject* parent)
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, bindPlayer);
 }
 
-TChatChannel* TChatChannelStorage::create(const TChatChannelIdentifier& identifier)
+void TChatChannelStorage::openDefaultChannels()
 {
-    switch (identifier.type) {
-    case TChatChannelIdentifier::Local:
-        (void)TLocalChatChannelIdentifier();
-        break;
-    case TChatChannelIdentifier::ServerLog:
-        (void)TServerLogChannelIdentifier();
-        break;
-    case TChatChannelIdentifier::Npc:
-        (void)TNpcChatChannelIdentifier();
-        break;
-    case TChatChannelIdentifier::ChannelId:
-        if (identifier.id == THelpChannelIdentifier::kChannelId)
-            (void)THelpChannelIdentifier();
-        else
-            (void)TChannelIDChatChannelIdentifier(identifier.id, identifier.name);
-        break;
-    case TChatChannelIdentifier::MessageTo:
-        (void)TMessageToChatChannelIdentifier(identifier.name);
-        break;
-    case TChatChannelIdentifier::OwnPrivateChannelToOpen:
-        (void)TOwnPrivateChannelToOpenIdentifier();
-        break;
-    case TChatChannelIdentifier::Loot:
-        (void)TLootChannelIdentifier();
-        break;
-    }
-    auto* channel = new TChatChannel(identifier, this);
-    m_channels.push_back(channel);
-    return channel;
+    m_localChat = open({ TChatChannelIdentifier::Local }, true, false);
+    m_serverLog = open({ TChatChannelIdentifier::ServerLog }, true, false);
 }
 
 void TChatChannelStorage::reset()
@@ -268,9 +237,200 @@ void TChatChannelStorage::reset()
     for (TChatChannel* channel : m_channels)
         channel->deleteLater();
     m_channels.clear();
-    create({ TChatChannelIdentifier::Local });
-    create({ TChatChannelIdentifier::ServerLog });
+    m_localChat = m_serverLog = m_lootChannel = nullptr;
+    {
+        const QSignalBlocker blocker(this);
+        openDefaultChannels();
+    }
     Q_EMIT channelsReset();
+}
+
+bool TChatChannelStorage::isOwnName(const QString& name) const
+{
+    return name.toLower() == m_ownName;
+}
+
+void TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<::tibia::creatures::TCreature> pPlayer)
+{
+    if (const auto player = pPlayer.lock())
+        setOwnName(player->name());
+}
+
+void TChatChannelStorage::addServerLogEntry(const QColor& color, const QString& text)
+{
+    const TChatEntry entry = TClientChatEntryFactory::systemEntry(color, text);
+    for (TChatChannel* channel : std::vector<TChatChannel*>(m_channels)) {
+        if (channel->isSubscribedToServerLog())
+            channel->addEntry(entry);
+    }
+}
+
+void TChatChannelStorage::addLootEntry(const QColor& color, const QString& text)
+{
+    const TChatEntry entry = TClientChatEntryFactory::lootEntry(color, text);
+    if (m_lootChannel) {
+        m_lootChannel->addEntry(entry);
+        return;
+    }
+    for (TChatChannel* channel : std::vector<TChatChannel*>(m_channels)) {
+        if (channel->isSubscribedToServerLog())
+            channel->addEntry(entry);
+    }
+}
+
+void TChatChannelStorage::addLocalEntry(const QColor& color, const QString& name, const QString& text, const int level,
+                                        const bool traded, const uint32_t statementId)
+{
+    if (level == 0)
+        m_localChat->addEntry(TClientChatEntryFactory::speakerEntry(color, name, text));
+    else
+        m_localChat->addEntry(TClientChatEntryFactory::speakerWithLevelEntry(color, name, text, level, traded, statementId));
+}
+
+void TChatChannelStorage::addNpcChannelEntry(const QColor& color, const QString& name, const QString& text)
+{
+    open({ TChatChannelIdentifier::Npc }, false, false)->addEntry(TClientChatEntryFactory::speakerEntry(color, name, text));
+}
+
+void TChatChannelStorage::addOwnNpcChannelEntry(const QColor& color, const QString& name, const QString& text, const int level)
+{
+    open({ TChatChannelIdentifier::Npc }, true, false)
+        ->addEntry(TClientChatEntryFactory::speakerWithLevelEntry(color, name, text, level, false, 0));
+}
+
+void TChatChannelStorage::addNpcEntry(const QColor& color, const QString& text, const QString& name)
+{
+    open({ TChatChannelIdentifier::Npc }, true, false)->addEntry(TClientChatEntryFactory::speakerEntry(color, name, text));
+}
+
+void TChatChannelStorage::addChannelEntry(const QColor& color, const uint16_t channelId, const QString& name, const QString& text,
+                                          const int level, const bool traded, const uint32_t statementId)
+{
+    if (TChatChannel* channel = findChannelId(channelId))
+        channel->addEntry(TClientChatEntryFactory::speakerWithLevelEntry(color, name, text, level, traded, statementId));
+}
+
+void TChatChannelStorage::addChannelSystemEntry(const QColor& color, const uint16_t channelId, const QString& text)
+{
+    const TChatEntry entry = TClientChatEntryFactory::systemEntry(color, text);
+    if (TChatChannel* channel = findChannelId(channelId)) {
+        channel->addEntry(entry);
+        return;
+    }
+    for (TChatChannel* channel : std::vector<TChatChannel*>(m_channels)) {
+        if (channel->isSubscribedToServerLog())
+            channel->addEntry(entry);
+    }
+}
+
+void TChatChannelStorage::addChannelSystemEntryIfOpen(const QColor& color, const uint16_t channelId, const QString& text)
+{
+    if (TChatChannel* channel = findChannelId(channelId))
+        channel->addEntry(TClientChatEntryFactory::systemEntry(color, text));
+}
+
+void TChatChannelStorage::addPrivateEntry(const QColor& color, const QString& partner, const QString& name, const QString& text,
+                                          const int level, const bool traded, const uint32_t statementId)
+{
+    const TChatEntry entry = TClientChatEntryFactory::speakerWithLevelEntry(color, name, text, level, traded, statementId);
+    TChatChannel* channel = find(TChatChannelIdentifier::messageTo(partner));
+    if (!channel)
+        channel = m_localChat;
+    channel->addEntry(entry);
+}
+
+void TChatChannelStorage::addBroadcastEntry(const QColor& color, const QString& name, const QString& text, const int level,
+                                            const bool traded, const uint32_t statementId)
+{
+    const TChatEntry entry = TClientChatEntryFactory::speakerWithLevelEntry(color, name, text, level, traded, statementId);
+    for (TChatChannel* channel : std::vector<TChatChannel*>(m_channels)) {
+        if (channel->isSubscribedToServerLog())
+            channel->addEntry(entry);
+    }
+}
+
+TChatChannel* TChatChannelStorage::open(const TChatChannelIdentifier& identifier, const bool makeCurrentOnOpen,
+                                        const bool forceMakeCurrent)
+{
+    if (TChatChannel* channel = find(identifier)) {
+        if (channel->isClosed())
+            channel->setClosed(false);
+        Q_EMIT chatChannelReopend(identifier, forceMakeCurrent);
+        if (forceMakeCurrent || channel->makeCurrentOnOpen())
+            Q_EMIT channelAdded(channel, true);
+        if (identifier.type == TChatChannelIdentifier::MessageTo)
+            channel->setMakeCurrentOnOpen(true);
+        return channel;
+    }
+    auto* channel = new TChatChannel(m_maxEntries, identifier, this);
+    channel->setMakeCurrentOnOpen(makeCurrentOnOpen);
+    if (identifier.type == TChatChannelIdentifier::ChannelId) {
+        if (identifier.isHelpChannel())
+            channel->addEntry(TClientChatEntryFactory::helpChannelIntroductionEntry());
+        else if (identifier.isAdvertisingChannel())
+            channel->addEntry(TClientChatEntryFactory::advertisingChannelIntroductionEntry());
+    } else if (identifier.type == TChatChannelIdentifier::Loot) {
+        m_lootChannel = channel;
+    }
+    m_channels.push_back(channel);
+    connect(channel, &TChatChannel::chatEntryAdded, this, [this, channel] {
+        Q_EMIT entryAddedToChatChannel(channel->identifier());
+        const QString& name = channel->entries().back().name;
+        Q_EMIT entryAddedToChannel(channel, name.isEmpty() || !isOwnName(name));
+    });
+    Q_EMIT newChatChannelOpened(identifier, forceMakeCurrent);
+    Q_EMIT channelAdded(channel, forceMakeCurrent || channel->makeCurrentOnOpen());
+    return channel;
+}
+
+void TChatChannelStorage::openServerChannel(const uint16_t channelId, const QString& name, const bool ownPrivateChannel,
+                                            const QStringList& participants)
+{
+    TChatChannel* channel = open(TChatChannelIdentifier::channel(channelId, name), true, false);
+    channel->setOwnPrivateChannel(ownPrivateChannel);
+    if (!participants.isEmpty())
+        channel->addEntry(TClientChatEntryFactory::systemEntry(
+            systemWhite(), qtTrId("chat_channel_participants").arg(participants.join(QStringLiteral(", ")))));
+}
+
+void TChatChannelStorage::openPrivateChannel(const QString& partner, const bool makeCurrentOnOpen)
+{
+    open(TChatChannelIdentifier::messageTo(partner), makeCurrentOnOpen, false);
+}
+
+void TChatChannelStorage::closeChannelByServer(const uint16_t channelId)
+{
+    TChatChannel* channel = findChannelId(channelId);
+    if (!channel)
+        return;
+    const TChatChannelIdentifier& identifier = channel->identifier();
+    const bool teamFinder = identifier.type == TChatChannelIdentifier::ChannelId && identifier.isTeamFinderChannel();
+    channel->addEntry(teamFinder ? TClientChatEntryFactory::teamFinderChannelClosedEntry()
+                                 : TClientChatEntryFactory::channelClosedEntry());
+    channel->setClosed(true);
+}
+
+void TChatChannelStorage::clearAllChannels()
+{
+    for (TChatChannel* channel : m_channels)
+        channel->clear();
+}
+
+void TChatChannelStorage::removeChannel(const TChatChannelIdentifier& identifier)
+{
+    if (!identifier.canBeClosed())
+        return;
+    const auto it = std::find_if(m_channels.begin(), m_channels.end(),
+                                 [&](const TChatChannel* channel) { return channel->identifier().sameChannel(identifier); });
+    if (it == m_channels.end())
+        return;
+    TChatChannel* channel = *it;
+    Q_EMIT chatChannelRemoved(channel->identifier());
+    if (identifier.type == TChatChannelIdentifier::Loot)
+        m_lootChannel = nullptr;
+    m_channels.erase(it);
+    Q_EMIT channelRemoved(channel);
+    channel->deleteLater();
 }
 
 TChatChannel* TChatChannelStorage::find(const TChatChannelIdentifier& identifier) const
@@ -282,47 +442,46 @@ TChatChannel* TChatChannelStorage::find(const TChatChannelIdentifier& identifier
     return nullptr;
 }
 
-TChatChannel* TChatChannelStorage::ownChannel() const
+TChatChannel* TChatChannelStorage::findChannelId(const uint16_t channelId) const
 {
     for (TChatChannel* channel : m_channels) {
-        if (channel->isOwnChannel())
+        const TChatChannelIdentifier& identifier = channel->identifier();
+        if (identifier.type == TChatChannelIdentifier::ChannelId && !channel->isClosed() && identifier.id == channelId)
             return channel;
     }
     return nullptr;
 }
 
-TChatChannel* TChatChannelStorage::open(const TChatChannelIdentifier& identifier, const bool makeCurrent)
+TChatChannel* TChatChannelStorage::ownChannel() const
 {
-    if (TChatChannel* channel = find(identifier)) {
-        bool reopened = false;
-        if (channel->isClosedByServer()) {
-            channel->setClosedByServer(false);
-            reopened = true;
-        }
-        if (reopened || makeCurrent) {
-            Q_EMIT chatChannelReopend(makeCurrent);
-            if (makeCurrent)
-                Q_EMIT channelAdded(channel, true);
-        }
-        return channel;
+    for (TChatChannel* channel : m_channels) {
+        const TChatChannelIdentifier& identifier = channel->identifier();
+        if (identifier.type == TChatChannelIdentifier::ChannelId && channel->isOwnPrivateChannel()
+            && identifier.isPrivateChannelId())
+            return channel;
     }
-    TChatChannel* channel = create(identifier);
-    Q_EMIT newChatChannelOpened(makeCurrent);
-    Q_EMIT channelAdded(channel, makeCurrent);
-    return channel;
+    return nullptr;
 }
 
-void TChatChannelStorage::close(TChatChannel* channel)
+std::vector<TChatChannelIdentifier> TChatChannelStorage::identifiers() const
 {
-    if (!channel || !channel->canBeClosed())
-        return;
-    const auto it = std::find(m_channels.begin(), m_channels.end(), channel);
-    if (it == m_channels.end())
-        return;
-    m_channels.erase(it);
-    Q_EMIT chatChannelRemoved();
-    Q_EMIT channelRemoved(channel);
-    channel->deleteLater();
+    std::vector<TChatChannelIdentifier> result;
+    result.reserve(channelCount());
+    for (const TChatChannel* channel : m_channels)
+        result.push_back(channel->identifier());
+    return result;
+}
+
+void TChatChannelStorage::addTutorialMarkerToNpcChannel(const int markerId, const QString& keyword)
+{
+    if (TChatChannel* channel = find({ TChatChannelIdentifier::Npc }))
+        channel->addTutorialMarkerForKeyword(markerId, keyword);
+}
+
+void TChatChannelStorage::removeAllTutorialMarkers()
+{
+    for (TChatChannel* channel : m_channels)
+        channel->removeTutorialMarker();
 }
 
 void TChatChannelStorage::moveChannel(const int from, const int to)
@@ -336,84 +495,10 @@ void TChatChannelStorage::moveChannel(const int from, const int to)
     Q_EMIT channelsMoved();
 }
 
-void TChatChannelStorage::add(TChatChannel* channel, TChatEntry entry)
-{
-    const bool fromOthers = entry.name.isEmpty() || entry.name.compare(m_ownName, Qt::CaseInsensitive) != 0;
-    channel->addEntry(std::move(entry));
-    Q_EMIT entryAddedToChatChannel();
-    Q_EMIT entryAddedToChannel(channel, fromOthers);
-}
-
-void TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage(
-    std::weak_ptr<::tibia::creatures::TCreature> pPlayer)
-{
-    if (const auto player = pPlayer.lock())
-        setOwnName(player->name());
-}
-
-void TChatChannelStorage::addServerLogEntry(const QColor& color, const QString& text)
-{
-    const TChatEntry entry = TClientChatEntryFactory::systemEntry(text, color);
-    for (TChatChannel* channel : std::vector<TChatChannel*>(m_channels)) {
-        if (channel->isSubscribedToServerLog())
-            add(channel, entry);
-    }
-}
-
-void TChatChannelStorage::addLocalEntry(const QColor& color, const QString& text, const QString& name, const int level, const uint32_t statementId)
-{
-    const TChatEntry::Kind kind = level == 0 ? TChatEntry::Speaker : TChatEntry::SpeakerWithLevel;
-    add(localChat(), { kind, now(), text, name, level, false, color, statementId });
-}
-
-void TChatChannelStorage::addNpcEntry(const QColor& color, const QString& text, const QString& name)
-{
-    add(open({ TChatChannelIdentifier::Npc }, false), { TChatEntry::Speaker, now(), text, name, 0, false, color, 0 });
-}
-
-void TChatChannelStorage::addChannelEntry(const uint16_t channelId, const QColor& color, const QString& text, const QString& name,
-                                          const int level, const uint32_t statementId)
-{
-    if (TChatChannel* channel = findChannelId(channelId))
-        add(channel, { TChatEntry::SpeakerWithLevel, now(), text, name, level, false, color, statementId });
-}
-
-void TChatChannelStorage::addChannelSystemEntry(const uint16_t channelId, const QColor& color, const QString& text)
-{
-    if (TChatChannel* channel = findChannelId(channelId))
-        add(channel, TClientChatEntryFactory::systemEntry(text, color));
-}
-
-void TChatChannelStorage::addPrivateEntry(const QString& partner, const QColor& color, const QString& text, const QString& name,
-                                          const int level, const uint32_t statementId)
-{
-    TChatChannel* channel = find(TChatChannelIdentifier::messageTo(partner));
-    if (!channel)
-        channel = localChat();
-    const TChatEntry::Kind kind = level == 0 ? TChatEntry::Speaker : TChatEntry::SpeakerWithLevel;
-    add(channel, { kind, now(), text, name, level, false, color, statementId });
-}
-
-void TChatChannelStorage::addBroadcastEntry(const QColor& color, const QString& text, const QString& name, const int level,
-                                            const uint32_t statementId)
-{
-    TChatEntry entry{ TChatEntry::SpeakerWithLevel, now(), text, name, level, false, color, statementId };
-    for (TChatChannel* channel : std::vector<TChatChannel*>(m_channels)) {
-        if (channel->isSubscribedToServerLog())
-            add(channel, entry);
-    }
-}
-
-void TChatChannelStorage::addLootEntry(const QColor& color, const QString& text)
-{
-    if (TChatChannel* channel = find({ TChatChannelIdentifier::Loot }))
-        add(channel, { TChatEntry::Loot, now(), text, {}, 0, false, color, 0 });
-}
-
 void TChatChannelStorage::addSystemEntry(TChatChannel* channel, const QColor& color, const QString& text)
 {
     if (channel)
-        add(channel, TClientChatEntryFactory::systemEntry(text, color));
+        channel->addEntry(TClientChatEntryFactory::systemEntry(color, text));
 }
 
 QColor consoleColor(const int mode)

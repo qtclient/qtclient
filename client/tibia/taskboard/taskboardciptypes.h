@@ -37,6 +37,9 @@ class TTaskboardProtocolMessageHandler final : public cip::tibia::taskboard::TTa
     Q_OBJECT
 public:
     using cip::tibia::taskboard::TTaskboardProtocolMessageHandler::TTaskboardProtocolMessageHandler;
+
+    /// Taskboard (bounty, weekly, shop) and the soul seals list, from the native message.
+    static void onServerMessageEnqueued(int opcode);
 };
 
 class TTaskboardShopStorage final : public cip::tibia::taskboard::TTaskboardShopStorage

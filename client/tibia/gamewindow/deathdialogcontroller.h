@@ -15,7 +15,7 @@ using TDeathMessageDialog = ::tibia::gamewindow::TMessageDialogController;
 
 /// Stock "You are dead" dialog (CIP: TDeathDialogController, ctor —
 /// MessageDialog with close-on-click + centered text). OT servers deliver death
-/// via opcode 0x28 → Game::processDeath → TGameNotify::death; CIP's
+/// via opcode 0x28 → tibia::game::processDeath → TGameNotify::death; CIP's
 /// GameserverMessageDead / EDeathType + TFairFightFactor are cipgen-skipped, so
 /// qtclient slots take ints. Live QML path: composed TDeathMessageDialog →
 /// TibiaMessageDialog.qml (main.cpp keeps a stack instance).

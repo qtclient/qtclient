@@ -1,13 +1,13 @@
 #include "gameservergamesession.h"
 
-#include "client/protocolgame.h"
+#include "protocol/clientmessages.h"
 #include "game/gameciptypes.h"
 #include "game/tgamenotify.h"
 
-#include <framework/core/logger.h>
+#include <QtGlobal>
+#include <format>
 
-#include "gamehub.h"
-#include "gamehub_impl.h"
+#include "game/gamesessionstate.h"
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/localplayersessionthing.h>
 #include <tibia/game/gamesession.h>
@@ -87,17 +87,17 @@ void TGameserverGameSession::wireProcessSessionEnd(const uint8_t reason)
 
 void TGameserverGameSession::wireProcessWorldEntered()
 {
-    Game& hub = qtclientGameHub();
+    TGameSessionState& hub = gameSessionState();
     hub.processEnterGame();
-    if (hub.m_protocolGame && !hub.m_protocolGame->m_gameInitialized) {
+    if (hub.m_gameConnection && !hub.m_gameConnection->gameInitialized()) {
         hub.processGameStart();
-        hub.m_protocolGame->m_gameInitialized = true;
+        hub.m_gameConnection->setGameInitialized(true);
     }
 }
 
 void TGameserverGameSession::wireProcessDeath(const uint8_t deathType, const uint8_t penality)
 {
-    Game& hub = qtclientGameHub();
+    TGameSessionState& hub = gameSessionState();
     hub.m_dead = true;
     if (hub.m_localPlayer)
         hub.m_localPlayer->stopWalk();
@@ -110,25 +110,25 @@ void TGameserverGameSession::wireProcessDeath(const uint8_t deathType, const uin
 void TGameserverGameSession::wireProcessPing()
 {
     tibia::game::notify("onPing");
-    if (Game& hub = qtclientGameHub(); hub.m_protocolGame)
-        hub.m_protocolGame->sendPingBack();
+    if (TGameSessionState& hub = gameSessionState(); hub.m_gameConnection)
+        tibia::protocol::gameclient::sendPingBack();
 }
 
 void TGameserverGameSession::wireProcessPingBack()
 {
-    Game& hub = qtclientGameHub();
+    TGameSessionState& hub = gameSessionState();
     ++hub.m_pingReceived;
 
     if (hub.m_pingReceived == hub.m_pingSent) {
-        const ticks_t oldPing = hub.m_ping;
-        hub.m_ping = hub.m_pingTimer.elapsed_millis();
+        const int64_t oldPing = hub.m_ping;
+        hub.m_ping = hub.m_pingTimer.elapsed();
         if (oldPing != hub.m_ping)
             tibia::game::notify("onPingBack", hub.m_ping);
     } else
-        g_logger.error("Got an invalid ping from server");
+        qCritical("%s", std::format("Got an invalid ping from server").c_str());
 
     const int pingDelay = hub.m_pingDelay;
-    hub.m_pingEvent = tibia::schedule::after([] { qtclientGameHub().ping(); }, pingDelay);
+    hub.m_pingEvent = tibia::schedule::after([] { gameSessionState().ping(); }, pingDelay);
 }
 
 namespace {
@@ -147,16 +147,16 @@ SoftHook gameHook(const char* field, F&& f)
 void hubDisconnectNow()
 {
     if (tibia::game::isOnline())
-        qtclientGameHub().forceLogout();
+        gameSessionState().forceLogout();
     else
-        qtclientGameHub().cancelLogin();
+        gameSessionState().cancelLogin();
 }
 
 TGameserverGameSession::TGameserverGameSession(QObject* parent)
     : cip::tibia::game::TGameserverGameSession(parent)
 {
     game::ownProductSurface(this);
-    // Protocol::onConnect → SoftHooks (only ProtocolGame publishes).
+    // The game connection publishes onConnect once the socket is open.
     m_hooks.emplace_back("onConnect", [this](const Args&) {
         Q_EMIT connected();
         return std::any{};
@@ -198,7 +198,7 @@ void TGameserverGameSession::connectToGameserver(const GameserverCredentials& c)
 {
     // Remaining hub call: loginWorld (session-owned; IGameSession qtclient twin does not mirror).
     try {
-        qtclientGameHub().loginWorld(c.account.toStdString(), c.password.toStdString(), c.worldName.toStdString(),
+        gameSessionState().loginWorld(c.account.toStdString(), c.password.toStdString(), c.worldName.toStdString(),
                           c.host.toStdString(), c.port, c.characterName.toStdString(),
                           c.authenticatorToken.toStdString(), c.sessionKey.toStdString(), c.recordTo.toStdString());
     } catch (const std::exception& e) {

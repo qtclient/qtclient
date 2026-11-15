@@ -276,7 +276,6 @@ namespace Proto
 
         // qtclient ONLY
         ClientExtendedOpcode = 50,
-        ClientChangeMapAwareRange = 51,
 
         // NOTE: add any custom opcodes in this range
         // 51 - 94
@@ -373,9 +372,8 @@ namespace Proto
         ClientForgeBrowseHistory = 192,
         ClientDetails = 193, // CIP ClientDetails
         ClientBossDifficultySelection = 194, // 0xC2 crystal-summerupdate custom
-        ClientSelectSpellAim = 200, // 0xC8 cyclopedia magical archives / directional-spell aim
         ClientGetTransactionDetails = 201, // CIP GetTransactionDetails (was legacy UpdateTile)
-        ClientRefreshContainer = 202, // > 11.00 ClientExivaRestrictions
+        ClientUpdateExivaOptions = 202,
         ClientBrowseField = 203,
         ClientSeekInContainer = 204,
         ClientInspectionObject = 205,
