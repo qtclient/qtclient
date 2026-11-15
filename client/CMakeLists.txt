@@ -179,17 +179,22 @@ set(SOURCE_FILES
 # Engine for tibia (and wasm/mobile hosts): no Lua, OTUI, HTML, modules.
 # Script hooks reach GameEvents only. Host is Qt (`tibia::host::app`).
 set(GAMECORE_SOURCES ${SOURCE_FILES})
-set_source_files_properties(
-  tibia/assets/things.cpp
-  tibia/assets/spritesheet.cpp
-  tibia/protocol/servermessages.cpp
-  tibia/protocol/clientmessages.cpp
-  tibia/protocol/dispatch.gen.cpp
-  PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
+# Engine sources are added to `tibia` as absolute paths (see TIBIA_ENGINE_SOURCES).
+set(_dispatch_gen_abs "${CMAKE_CURRENT_SOURCE_DIR}/tibia/protocol/dispatch.gen.cpp")
+foreach(_rel IN ITEMS
+    tibia/assets/things.cpp
+    tibia/assets/spritesheet.cpp
+    tibia/protocol/servermessages.cpp
+    tibia/protocol/clientmessages.cpp
+    tibia/protocol/dispatch.gen.cpp
 )
+  set_source_files_properties(
+    "${CMAKE_CURRENT_SOURCE_DIR}/${_rel}"
+    PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
+endforeach()
 # dispatch.gen.cpp implements TProtocolMessageQueue methods but must not run
 # AUTOMOC on protocolmessagequeue.h (listed on the tibia target).
-set_source_files_properties(tibia/protocol/dispatch.gen.cpp PROPERTIES SKIP_AUTOMOC ON)
+set_source_files_properties("${_dispatch_gen_abs}" PROPERTIES SKIP_AUTOMOC ON)
 set(_protocol_stamp "${CMAKE_CURRENT_BINARY_DIR}/protocol_dispatch.stamp")
 add_custom_command(
   OUTPUT "${_protocol_stamp}"

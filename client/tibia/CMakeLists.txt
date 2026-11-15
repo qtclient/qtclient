@@ -666,6 +666,11 @@ if(TIBIA_WITH_GAMECORE)
     runtime/host.cpp
     runtime/gamehost.h
     schedule/qtschedule.cpp)
+  foreach(_engine_src IN LISTS TIBIA_ENGINE_SOURCES)
+    if(_engine_src MATCHES "dispatch\\.gen\\.cpp$")
+      set_source_files_properties("${_engine_src}" PROPERTIES SKIP_AUTOMOC ON)
+    endif()
+  endforeach()
   # Engine translation units expect the old framework preamble (format, numbers,
   # asio). Force-include it here so it does not apply to Qt sources.
   set(_engine_cpp ${TIBIA_ENGINE_SOURCES})
