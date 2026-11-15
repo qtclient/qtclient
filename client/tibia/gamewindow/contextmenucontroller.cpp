@@ -94,7 +94,7 @@ const char* simpleLabel(const A type)
     case A::REPORT_NAME: return "context_report_name";
     case A::REPORT_BOT: return "context_report_bot";
     case A::REPORT_HIRELING_NAME: return "context_report_hireling_name";
-    case A::REPORT_TEXT: return "context_report_text";
+    case A::GET_TEXT_FOR_REPORT: return "context_report_text";
     case A::RECENTLY_TRADED: return "context_recently_traded";
     case A::GET_GUILD_MESSAGE: return "context_edit_guild_message";
     case A::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES: return "context_show_join_leave_messages";
@@ -363,7 +363,7 @@ TContextMenuEntryItem* TContextMenuController::addEntry(const QString& text, con
 
 void TContextMenuController::requestShow()
 {
-    if (!m_menu || !m_enabled || m_entries.isEmpty())
+    if (!m_menu || !m_enabled)
         return;
     Q_EMIT entriesChanged();
     m_showTimer.start();
@@ -400,7 +400,7 @@ void TContextMenuController::onCalculatePosition()
     if (area.top() + area.height() - 1 < y + height)
         y -= height;
     const QPointF position(std::max(x, area.left()), std::max(y, area.top()));
-    if (!qFuzzyCompare(position.x(), m_menu->x()) || !qFuzzyCompare(position.y(), m_menu->y()))
+    if (m_menu->position() != position)
         m_menu->setPosition(position);
 }
 

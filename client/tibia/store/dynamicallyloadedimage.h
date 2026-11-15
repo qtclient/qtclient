@@ -24,6 +24,7 @@ public:
     explicit TDynamicallyLoadedImageManager(QObject* parent = nullptr);
 
     void setBaseUrl(const QUrl& baseUrl);
+    const QUrl& baseUrl() const { return m_baseUrl; }
     /// CIP : the image, now if known, else imageLoaded or
     /// imageLoadFailed later.
     void request(const QString& key, int size);

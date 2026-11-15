@@ -19,8 +19,8 @@ struct SpecialCondition
     enum Type { PlayerStateFlag = 0, PlayerStateClient = 1, RottenBloodState = 2, PlayerKillerFlag = 3, Generic = 4 };
     /// ESpecialConditionGenericDataType.
     enum GenericType { GuildWar = 0, Goshnar = 1, RottenBlood = 2, RestingArea = 3, ManaShield = 4 };
-    /// EPlayerStateClient.
-    enum ClientState { Hungry = 2 };
+    /// EPlayerStateClient: 0 is the resting area group.
+    enum ClientState { Hungry = 1 };
 
     int type = 0;
     int value = 0;
@@ -45,7 +45,8 @@ struct SpecialConditionsOptions
 
     static SpecialConditionsOptions load();
     static SpecialConditionsOptions fromJson(const QJsonObject& json);
-    /// CIP's default file (:/conf/clientoptions.json), for "reset to default".
+    /// The defaults a fresh options file holds and "reset to default" restores:
+    /// HUD off, bar on, every known condition in the bar, most in the HUD.
     static SpecialConditionsOptions defaults();
     /// The section as CIP stores it ([type, value] pairs, sets sorted).
     QJsonObject toJson() const;

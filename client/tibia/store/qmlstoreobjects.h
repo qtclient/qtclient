@@ -4,7 +4,7 @@
 
 #include <cip_gen.h>
 
-#include <functional>
+#include <QPointer>
 
 namespace tibia {
 namespace store {
@@ -103,16 +103,16 @@ private:
     TStoreOfferQuantityConfiguration m_configuration;
 };
 
-/// CIP: store::TQmlStoreOffer. The description comes from `descriptionSource`
-/// (CIP's TStoreDescriptionManager): the text, or empty while loading.
+class TStoreDescriptionManager;
+
+/// CIP: store::TQmlStoreOffer. The description comes from the description
+/// manager: the text, or "loading" until the server sent it.
 class TQmlStoreOffer final : public cip::tibia::store::TQmlStoreOffer
 {
     Q_OBJECT
     Q_PROPERTY(QList<QObject*> cosmeticTokenQuantities READ cosmeticTokenQuantities CONSTANT FINAL)
 public:
-    using TDescriptionSource = std::function<std::optional<QString>(TOfferID)>;
-
-    TQmlStoreOffer(const TStoreOffer& offer, TDescriptionSource descriptionSource, QObject* parent = nullptr);
+    TQmlStoreOffer(const TStoreOffer& offer, TStoreDescriptionManager* descriptionManager, QObject* parent = nullptr);
 
     QString name() const override;
     QString description() const override;
@@ -127,11 +127,11 @@ public:
     /// The quantity configuration `offerId` is one of.
     bool hasQuantity(int offerId) const;
     /// The description of `offerId` arrived.
-    void onOfferDescriptionLoaded(TOfferID offerId);
+    void onOfferDescriptionLoaded(int offerId);
 
 private:
     TStoreOffer m_offer;
-    TDescriptionSource m_descriptionSource;
+    QPointer<TStoreDescriptionManager> m_descriptionManager;
     TQmlStoreVisualisation* m_visualisationObject;
     QList<QObject*> m_cosmeticTokenQuantities;
 };

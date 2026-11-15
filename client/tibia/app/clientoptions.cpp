@@ -1,6 +1,7 @@
 #include "clientoptions.h"
 
 #include "config/clientoptiondefaults.h"
+#include "config/specialconditionsoptions.h"
 
 #include <QDir>
 #include <QFile>
@@ -13,6 +14,7 @@
 namespace {
 
 constexpr auto ControlButtonsSection = "controlButtonsOptions";
+constexpr auto SpecialConditionsSection = "specialConditionsOptions";
 
 }
 
@@ -50,14 +52,16 @@ ClientOptions ClientOptions::load()
 {
     ClientOptions o;
     // CIP's shipped clientoptions.json is a machine snapshot (hotkeys, cookies).
-    // Code owns factory defaults: the options map and the button
-    // bar (EButtons / ButtonBarButtons). The user file overrides both. The
-    // snapshot must not supply controlButtonsOptions.
+    // Code owns the factory defaults TClientOptions resets to: the options
+    // map, the button bar and the special conditions. The user file overrides
+    // them. The snapshot must not supply those sections.
     QJsonObject resource = readObject(QStringLiteral(":/conf/clientoptions.json"));
     resource.remove(QLatin1String(ControlButtonsSection));
+    resource.remove(QLatin1String(SpecialConditionsSection));
     QJsonObject codeDefaults;
     codeDefaults.insert(QStringLiteral("options"), config::defaultClientOptions());
     codeDefaults.insert(QLatin1String(ControlButtonsSection), config::defaultControlButtonsOptions());
+    codeDefaults.insert(QLatin1String(SpecialConditionsSection), config::SpecialConditionsOptions::defaults().toJson());
     o.m_root = merged(merged(std::move(resource), codeDefaults), readObject(userFilePath()));
     o.m_root.insert(QLatin1String(ControlButtonsSection),
                     config::reconcileControlButtons(o.m_root.value(QLatin1String(ControlButtonsSection)).toObject()));
@@ -66,11 +70,13 @@ ClientOptions ClientOptions::load()
 
 void ClientOptions::store(const QString& name, const QJsonValue& value)
 {
+    // Nothing happens when the option already holds the value (its default
+    // included); otherwise it is set and optionChanged names it.
+    if (load().options().value(name) == value)
+        return;
     const QString path = userFilePath();
     QJsonObject root = readObject(path);
     QJsonObject options = root.value(QLatin1String("options")).toObject();
-    if (options.value(name) == value)
-        return;
     options.insert(name, value);
     root.insert(QLatin1String("options"), options);
     QDir().mkpath(QFileInfo(path).absolutePath());
@@ -140,7 +146,7 @@ int ClientOptions::rendererIndex() const
 
 bool ClientOptions::vSyncEnabled() const
 {
-    return options().value(QLatin1String("vSyncEnabled")).toBool(true);
+    return options().value(QLatin1String("vSyncEnabled")).toBool(false);
 }
 
 }

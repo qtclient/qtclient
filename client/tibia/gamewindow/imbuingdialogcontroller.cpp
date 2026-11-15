@@ -35,14 +35,14 @@ enum ESlotRole
     SlotCategoryRole,
 };
 
-/// CIP .
-QString imageSource(const int iconId)
+/// The imbuement icon from the image provider.
+QString imageSource(const uint32_t iconId)
 {
     return QStringLiteral("image://%1/%2").arg(QStringLiteral("imbuement-icons")).arg(iconId);
 }
 
-/// CIP : the tier's name, empty for no imbuement.
-QString categoryName(const Imbuement& imbuement)
+/// The tier's name; empty for no imbuement or an unknown tier.
+QString categoryName(const TImbuement& imbuement)
 {
     if (imbuement.id == 0)
         return {};
@@ -54,7 +54,7 @@ QString categoryName(const Imbuement& imbuement)
     }
 }
 
-/// CIP (below a day), on minutes.
+/// Minutes as "Xmin" / "Xh Ymin" up to a day, then days, hours and minutes.
 QString durationText(const qint64 minutes)
 {
     if (minutes <= 1440) {
@@ -72,9 +72,8 @@ QString goldText(const qint64 gold)
 
 }
 
-/// CIP : resizes with row inserts or removals, then reports
-/// every row changed.
-void TAvailableImbuementsListModel::setImbuements(std::vector<Imbuement> imbuements)
+/// Resizes with row inserts or removals, then reports every row changed.
+void TAvailableImbuementsListModel::setImbuements(std::vector<TImbuement> imbuements)
 {
     const int previous = rowCount();
     const int count = static_cast<int>(imbuements.size());
@@ -96,15 +95,14 @@ int TAvailableImbuementsListModel::rowCount(const QModelIndex& parent) const
     return parent.isValid() ? 0 : static_cast<int>(m_imbuements.size());
 }
 
-/// CIP .
 QVariant TAvailableImbuementsListModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() >= rowCount())
         return {};
-    const Imbuement& imbuement = m_imbuements[index.row()];
+    const TImbuement& imbuement = m_imbuements[index.row()];
     switch (role) {
         case ImbuementIdRole: return static_cast<uint>(imbuement.id);
-        case ImageSourceRole: return imageSource(imbuement.imageId);
+        case ImageSourceRole: return imageSource(imbuement.iconId);
         case CategoryRole: return categoryName(imbuement);
         default: return {};
     }
@@ -115,7 +113,6 @@ QHash<int, QByteArray> TAvailableImbuementsListModel::roleNames() const
     return { { ImbuementIdRole, "imbuementId" }, { ImageSourceRole, "imageSource" }, { CategoryRole, "category" } };
 }
 
-/// CIP .
 void TImbuementSlotsListModel::setSlots(std::vector<TImbuementSlot> slots)
 {
     const int previous = rowCount();
@@ -138,7 +135,6 @@ int TImbuementSlotsListModel::rowCount(const QModelIndex& parent) const
     return parent.isValid() ? 0 : static_cast<int>(m_slots.size());
 }
 
-/// CIP .
 QVariant TImbuementSlotsListModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() >= rowCount())
@@ -147,7 +143,7 @@ QVariant TImbuementSlotsListModel::data(const QModelIndex& index, const int role
     switch (role) {
         case SlotIndexRole: return static_cast<uint>(slot.index);
         case SlotImbuementIdRole: return static_cast<uint>(slot.imbuement.id);
-        case SlotImageSourceRole: return imageSource(slot.imbuement.imageId);
+        case SlotImageSourceRole: return imageSource(slot.imbuement.iconId);
         case SlotCategoryRole: return categoryName(slot.imbuement);
         default: return {};
     }
@@ -158,43 +154,41 @@ QHash<int, QByteArray> TImbuementSlotsListModel::roleNames() const
     return { { SlotIndexRole, "slotIndex" }, { SlotImbuementIdRole, "imbuementId" }, { SlotImageSourceRole, "imageSource" }, { SlotCategoryRole, "category" } };
 }
 
-/// CIP ctor ; resourceString (count via),
-/// hasEnoughToImbue .
-TQmlAstralSource::TQmlAstralSource(const QString& name, const uint typeId, const uint needed, const uint owned, QObject* parent)
+TQmlAstralSource::TQmlAstralSource(const QString& name, const uint needed, const uint owned, const uint objectTypeId, QObject* parent)
     : cip::tibia::imbuing::TQmlAstralSource(parent)
 {
     m_name = name;
-    m_objectID = typeId;
-    if (needed != 0)
-        m_resourceString = qtTrId("imbuing_resource_count").arg(container::ammoText(owned)).arg(needed);
+    m_objectID = objectTypeId;
+    // "owned/needed", nothing for a source that takes none.
+    m_resourceString = needed == 0 ? QStringLiteral("") : qtTrId("imbuing_resource_count").arg(container::ammoText(owned)).arg(needed);
     m_hasEnoughToImbue = needed <= owned;
 }
 
-/// CIP .
-TQmlImbuementData::TQmlImbuementData(const Imbuement& data, const QList<QObject*>& sources, const bool enough, QObject* parent)
+TQmlImbuementData::TQmlImbuementData(const TImbuement& imbuement, const QList<QObject*>& astralSources, const bool enoughAstralSources,
+                                     QObject* parent)
     : cip::tibia::imbuing::TQmlImbuementData(parent)
 {
-    m_name = QString::fromStdString(data.name);
-    m_description = QString::fromStdString(data.description);
-    m_goldCost = static_cast<int>(data.cost);
-    m_goldCostString = goldText(data.cost);
-    m_astralSources = sources;
-    for (QObject* source : sources)
+    m_name = imbuement.name;
+    m_description = imbuement.description;
+    m_goldCost = static_cast<int>(imbuement.goldCost);
+    m_goldCostString = goldText(m_goldCost);
+    m_astralSources = astralSources;
+    for (QObject* source : astralSources)
         source->setParent(this);
-    m_enoughAstralSourcesForImbuement = enough;
+    m_enoughAstralSourcesForImbuement = enoughAstralSources;
     m_isDummyWhenNoImbuementAvailable = false;
 }
 
-/// CIP .
-TQmlExistingImbuement::TQmlExistingImbuement(const TImbuementSlot& slot, QObject* parent)
+TQmlExistingImbuement::TQmlExistingImbuement(const uint32_t imbuementId, const QString& name, const uint64_t remainingDuration,
+                                             const uint64_t totalDuration, const uint32_t clearingGoldCost, QObject* parent)
     : cip::tibia::imbuing::TQmlExistingImbuement(parent)
 {
-    m_imbuementID = static_cast<int>(slot.imbuement.id);
-    m_name = QString::fromStdString(slot.imbuement.name);
-    m_clearingGoldCost = static_cast<int>(slot.clearingGoldCost);
-    m_clearingGoldCostString = goldText(slot.clearingGoldCost);
-    m_remainingDurationPercentage = slot.imbuement.duration ? static_cast<double>(slot.remainingDuration) / slot.imbuement.duration : 0.0;
-    m_remainingDuration = durationText(slot.remainingDuration / 60);
+    m_imbuementID = static_cast<int>(imbuementId);
+    m_name = name;
+    m_clearingGoldCost = static_cast<int>(clearingGoldCost);
+    m_clearingGoldCostString = goldText(m_clearingGoldCost);
+    m_remainingDurationPercentage = static_cast<double>(remainingDuration) / static_cast<double>(totalDuration);
+    m_remainingDuration = durationText(static_cast<qint64>(remainingDuration) / 60);
 }
 
 }
@@ -204,21 +198,72 @@ namespace tibia::gamewindow {
 namespace {
 
 using Args = std::vector<std::any>;
+using imbuing::TImbuement;
+using imbuing::TImbuementSlot;
+using imbuing::TImbuementSource;
 using imbuing::TImbuingStorage;
 
-/// The blank imbuement scroll (CIP 's scroll-mode appearance).
-constexpr uint BlankImbuementScrollTypeId = 51442;
+/// The blank imbuement scroll shown in scroll mode.
+constexpr uint16_t BlankImbuementScrollTypeId = 51442;
 
-/// CIP 's sort keys for imbuement ids 1..72; others sort as 25.
-constexpr std::array<int, 72> ImbuementSortKeys = {
+/// The list order of imbuement ids 1..72; others sort as 25.
+constexpr std::array<uint32_t, 72> ImbuementSortKeys = {
     11, 11, 11, 12, 12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 1, 1, 1, 2, 2, 2, 3, 3, 3,
     21, 21, 21, 16, 16, 16, 17, 17, 17, 18, 18, 18, 19, 19, 19, 20, 20, 20, 23, 23, 23, 5, 5, 5,
     4, 4, 4, 6, 6, 6, 7, 7, 7, 10, 10, 10, 8, 8, 8, 24, 24, 24, 22, 22, 22, 9, 9, 9,
 };
 
-int sortKey(const uint32_t id)
+uint32_t sortKey(const uint32_t id)
 {
-    return id >= 1 && id <= ImbuementSortKeys.size() ? ImbuementSortKeys[id - 1] : 25;
+    return id - 1 < ImbuementSortKeys.size() ? ImbuementSortKeys[id - 1] : 25;
+}
+
+void sortImbuements(std::vector<TImbuement>& imbuements)
+{
+    std::stable_sort(imbuements.begin(), imbuements.end(),
+                     [](const TImbuement& a, const TImbuement& b) { return sortKey(a.id) < sortKey(b.id); });
+}
+
+/// The storage's imbuements of one tier, in the server's order.
+std::vector<TImbuement> imbuementsOfTier(const TImbuingStorage& storage, const uint32_t tier)
+{
+    std::vector<TImbuement> imbuements;
+    for (const TImbuement& imbuement : storage.imbuements()) {
+        if (imbuement.tier == tier)
+            imbuements.push_back(imbuement);
+    }
+    return imbuements;
+}
+
+const TImbuement* findImbuement(const TImbuingStorage& storage, const uint32_t id)
+{
+    const auto& imbuements = storage.imbuements();
+    const auto it = std::find_if(imbuements.begin(), imbuements.end(), [id](const TImbuement& imbuement) { return imbuement.id == id; });
+    return it != imbuements.end() ? &*it : nullptr;
+}
+
+/// The owned resources the storage imbuement `id` needs, and whether there
+/// is enough of each. False when the storage does not offer `id`; true for
+/// an imbuement that needs nothing.
+std::vector<TImbuementSource> ownedAstralSources(const TImbuingStorage& storage, const uint32_t id, bool& enough)
+{
+    std::vector<TImbuementSource> owned;
+    const TImbuement* imbuement = findImbuement(storage, id);
+    enough = imbuement != nullptr;
+    if (!imbuement)
+        return owned;
+    for (const TImbuementSource& source : imbuement->astralSources) {
+        const auto& ownedObjects = storage.ownedObjects();
+        const auto it = std::find_if(ownedObjects.begin(), ownedObjects.end(),
+                                     [&source](const TImbuementSource& o) { return o.objectTypeId == source.objectTypeId; });
+        if (it == ownedObjects.end()) {
+            enough = false;
+            continue;
+        }
+        enough = enough && source.count <= it->count;
+        owned.push_back(*it);
+    }
+    return owned;
 }
 
 bool localPlayerPremium()
@@ -226,21 +271,17 @@ bool localPlayerPremium()
     return tibia::game::localPlayer() && tibia::game::localPlayerIsPremium();
 }
 
-QString typeName(const uint typeId)
+/// An object type's name with each space-separated word capitalised.
+QString objectTypeName(const uint16_t typeId)
 {
     const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    return type ? QString::fromStdString(type->getName()) : QString();
+    return type ? QString::fromStdString(tibia::game::formatCreatureName(type->getName())) : QString();
 }
 
-/// CIP : each space-separated word's first letter upper-cased.
-QString capitalizeWords(const QString& text)
+uint32_t imbuementSlotCount(const uint16_t typeId)
 {
-    QStringList words = text.split(QLatin1Char(' '));
-    for (QString& word : words) {
-        if (!word.isEmpty())
-            word[0] = word[0].toUpper();
-    }
-    return words.join(QLatin1Char(' '));
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    return type ? type->getImbueSlots() : 0;
 }
 
 void publishOpenPremiumStore()
@@ -304,7 +345,7 @@ QString TImbuingDialogController::imbuementFilter() const
 
 void TImbuingDialogController::setImbuementFilter(const QString& v)
 {
-    int filter = 0;
+    uint32_t filter = 0;
     if (v == qtTrId("imbuing_category_intricate"))
         filter = 1;
     else if (v == qtTrId("imbuing_category_powerful"))
@@ -313,17 +354,17 @@ void TImbuingDialogController::setImbuementFilter(const QString& v)
         return;
     m_filter = filter;
     m_selectedImbuementId = 0;
-    updateAvailable();
-    select(0);
+    updateAvailableImbuements();
+    selectImbuement(static_cast<uint32_t>(m_selectedImbuementId));
     Q_EMIT imbuingQmlDataChanged();
 }
 
 QString TImbuingDialogController::selectedItemText() const
 {
     switch (m_storage->mode()) {
-        case TImbuingStorage::MODE_SCROLL: return typeName(BlankImbuementScrollTypeId);
-        case TImbuingStorage::MODE_ITEM: return capitalizeWords(typeName(m_storage->itemTypeId()));
-        default: return {};
+        case TImbuingStorage::MODE_SCROLL: return objectTypeName(BlankImbuementScrollTypeId);
+        case TImbuingStorage::MODE_ITEM: return objectTypeName(m_storage->itemTypeId());
+        default: return QStringLiteral("");
     }
 }
 
@@ -356,13 +397,12 @@ void TImbuingDialogController::requestImbue()
 {
     if (m_selectedImbuementId == 0)
         return;
-    const auto& imbuements = m_storage->imbuements();
-    const auto it = std::find_if(imbuements.begin(), imbuements.end(), [this](const Imbuement& i) { return static_cast<int>(i.id) == m_selectedImbuementId; });
-    if (it == imbuements.end())
+    const TImbuement* imbuement = findImbuement(*m_storage, static_cast<uint32_t>(m_selectedImbuementId));
+    if (!imbuement)
         return;
     m_imbueConfirm->setYesNoButtons();
     m_imbueConfirm->showMessage(qtTrId("imbuing_confirm_imbuing_title"),
-                                qtTrId("imbuing_confirm_imbuing_text").arg(QString::fromStdString(it->name)).arg(imbuing::goldText(it->cost)));
+                                qtTrId("imbuing_confirm_imbuing_text").arg(imbuement->name).arg(imbuing::goldText(imbuement->goldCost)));
 }
 
 void TImbuingDialogController::requestClearImbuement()
@@ -389,16 +429,16 @@ void TImbuingDialogController::handleSelectImbuementSlot(const uint SlotIndex)
     if (SlotIndex == m_selectedImbuementSlotIndex)
         return;
     m_selectedImbuementSlotIndex = SlotIndex;
-    updateExisting();
-    updateAvailable();
-    const imbuing::TImbuementSlot* slot = selectedSlot();
-    select(slot && !slot->isEmpty ? static_cast<int>(slot->imbuement.id) : 0);
+    updateExistingImbuement();
+    updateAvailableImbuements();
+    const TImbuementSlot* slot = selectedSlot();
+    selectImbuement(slot && !slot->isEmpty ? slot->imbuement.id : 0);
     Q_EMIT imbuingQmlDataChanged();
 }
 
 void TImbuingDialogController::handleSelectImbuement(const uint ImbuementId)
 {
-    select(static_cast<int>(ImbuementId));
+    selectImbuement(ImbuementId);
     Q_EMIT imbuingQmlDataChanged();
 }
 
@@ -406,10 +446,10 @@ void TImbuingDialogController::handlePickFilterBasic() { setFilter(0); }
 void TImbuingDialogController::handlePickFilterIntricate() { setFilter(1); }
 void TImbuingDialogController::handlePickFilterPowerful() { setFilter(2); }
 
-void TImbuingDialogController::setFilter(const int filter)
+void TImbuingDialogController::setFilter(const uint32_t filter)
 {
     m_filter = filter;
-    updateAvailable();
+    updateAvailableImbuements();
     Q_EMIT imbuingQmlDataChanged();
 }
 
@@ -417,6 +457,8 @@ void TImbuingDialogController::handlePickItemToImbue()
 {
     m_picking = true;
     dialog()->hide();
+    // The picked object goes to the server; when the selection ends the
+    // dialog comes back if it is still there.
     input::startTargetSelection([this](const input::TGameActionPtr& target) {
         if (!m_picking)
             return;
@@ -434,10 +476,10 @@ void TImbuingDialogController::handleImbueScroll() { tibia::game::selectImbuemen
 
 void TImbuingDialogController::onImbuingStorageDataChanged()
 {
-    updateItem();
-    updateExisting();
-    updateAvailable();
-    select(m_selectedImbuementId);
+    updateImbuedItem();
+    updateExistingImbuement();
+    updateAvailableImbuements();
+    selectImbuement(static_cast<uint32_t>(m_selectedImbuementId));
     Q_EMIT imbuingQmlDataChanged();
 }
 
@@ -457,20 +499,27 @@ void TImbuingDialogController::onClearSlotConfirmed()
     tibia::game::clearImbuement(static_cast<uint8_t>(m_selectedImbuementSlotIndex));
 }
 
-const imbuing::TImbuementSlot* TImbuingDialogController::selectedSlot() const
+const TImbuementSlot* TImbuingDialogController::selectedSlot() const
 {
     const auto& slots = m_storage->slots();
     return m_selectedImbuementSlotIndex < slots.size() ? &slots[m_selectedImbuementSlotIndex] : nullptr;
 }
 
-void TImbuingDialogController::updateItem()
+void TImbuingDialogController::updateImbuedItem()
 {
     switch (m_storage->mode()) {
+        case TImbuingStorage::MODE_NONE:
+            m_imbuedItemObjectID = 0;
+            m_imbuedItemObjectUpgradeTier = 0;
+            m_imbuedItemObjectCount = 0;
+            m_selectedImbuementSlotIndex = 0;
+            break;
         case TImbuingStorage::MODE_ITEM:
             m_imbuedItemObjectID = m_storage->itemTypeId();
-            m_imbuedItemObjectUpgradeTier = m_storage->itemTier();
+            m_imbuedItemObjectUpgradeTier = m_storage->itemTier().value_or(0);
             m_imbuedItemObjectCount = 0;
-            if (m_selectedImbuementSlotIndex >= m_storage->slots().size())
+            // An item without imbuement slots, or fewer than the index, starts at the first.
+            if (imbuementSlotCount(m_storage->itemTypeId()) <= m_selectedImbuementSlotIndex)
                 m_selectedImbuementSlotIndex = 0;
             break;
         case TImbuingStorage::MODE_SCROLL:
@@ -480,105 +529,103 @@ void TImbuingDialogController::updateItem()
             m_selectedImbuementSlotIndex = 0;
             break;
         default:
-            m_imbuedItemObjectID = 0;
-            m_imbuedItemObjectUpgradeTier = 0;
-            m_imbuedItemObjectCount = 0;
-            m_selectedImbuementSlotIndex = 0;
             break;
     }
 }
 
-void TImbuingDialogController::updateExisting()
+void TImbuingDialogController::updateExistingImbuement()
 {
-    QObject* existing = nullptr;
     switch (m_storage->mode()) {
-        case TImbuingStorage::MODE_ITEM:
-            if (const imbuing::TImbuementSlot* slot = selectedSlot(); slot && !slot->isEmpty) {
-                existing = new imbuing::TQmlExistingImbuement(*slot, this);
+        case TImbuingStorage::MODE_NONE:
+            m_slotsModel->setSlots({});
+            replaceObject(m_existingImbuement, nullptr);
+            break;
+        case TImbuingStorage::MODE_ITEM: {
+            // Only an imbueable item has slots to show.
+            if (imbuementSlotCount(m_storage->itemTypeId()) == 0)
+                break;
+            const TImbuementSlot* slot = selectedSlot();
+            if (slot && !slot->isEmpty) {
+                replaceObject(m_existingImbuement,
+                              new imbuing::TQmlExistingImbuement(slot->imbuement.id, slot->imbuement.name, slot->remainingDuration,
+                                                                 slot->imbuement.duration, slot->clearingGoldCost, this));
                 m_selectedImbuementId = static_cast<int>(slot->imbuement.id);
+            } else {
+                replaceObject(m_existingImbuement, nullptr);
             }
             m_slotsModel->setSlots(m_storage->slots());
             break;
+        }
         case TImbuingStorage::MODE_SCROLL:
             m_selectedImbuementSlotIndex = 0;
+            replaceObject(m_existingImbuement, nullptr);
             m_slotsModel->setSlots({});
             break;
         default:
-            m_slotsModel->setSlots({});
             break;
     }
-    replaceObject(m_existingImbuement, existing);
 }
 
-void TImbuingDialogController::updateAvailable()
+void TImbuingDialogController::updateAvailableImbuements()
 {
-    const auto byTier = [this] {
-        std::vector<Imbuement> list;
-        for (const Imbuement& imbuement : m_storage->imbuements()) {
-            if (imbuement.tier == m_filter)
-                list.push_back(imbuement);
-        }
-        return list;
-    };
-    const auto sorted = [](std::vector<Imbuement> list) {
-        std::stable_sort(list.begin(), list.end(), [](const Imbuement& a, const Imbuement& b) { return sortKey(a.id) < sortKey(b.id); });
-        return list;
-    };
-
     switch (m_storage->mode()) {
+        case TImbuingStorage::MODE_NONE:
+            m_filter = 0;
+            m_available->setImbuements({});
+            break;
         case TImbuingStorage::MODE_ITEM: {
-            const imbuing::TImbuementSlot* slot = selectedSlot();
+            // An occupied slot lists only its imbuement, under its tier; a
+            // free account sees basic imbuements only.
+            const TImbuementSlot* slot = selectedSlot();
             const bool occupied = slot && !slot->isEmpty;
             if (occupied)
                 m_filter = slot->imbuement.tier;
             else if (!localPlayerPremium())
                 m_filter = 0;
-            std::vector<Imbuement> list = occupied ? std::vector<Imbuement>{ slot->imbuement } : byTier();
-            m_available->setImbuements(sorted(std::move(list)));
+            std::vector<TImbuement> imbuements = occupied ? std::vector<TImbuement>{ slot->imbuement } : imbuementsOfTier(*m_storage, m_filter);
+            sortImbuements(imbuements);
+            m_available->setImbuements(std::move(imbuements));
             break;
         }
         case TImbuingStorage::MODE_SCROLL: {
+            // Scrolls have no basic imbuements.
             if (m_filter == 0)
                 m_filter = 1;
-            std::vector<Imbuement> list = sorted(byTier());
-            if (m_selectedImbuementId == 0 && !list.empty())
-                m_selectedImbuementId = static_cast<int>(list.front().id);
-            m_available->setImbuements(std::move(list));
+            std::vector<TImbuement> imbuements = imbuementsOfTier(*m_storage, m_filter);
+            sortImbuements(imbuements);
+            if (m_selectedImbuementId == 0 && !imbuements.empty())
+                m_selectedImbuementId = static_cast<int>(imbuements.front().id);
+            m_available->setImbuements(std::move(imbuements));
             break;
         }
         default:
-            m_filter = 0;
-            m_available->setImbuements({});
             break;
     }
 }
 
-void TImbuingDialogController::select(const int imbuementId)
+void TImbuingDialogController::selectImbuement(const uint32_t imbuementId)
 {
-    m_selectedImbuementId = imbuementId;
-    const auto& imbuements = m_storage->imbuements();
-    const auto it = std::find_if(imbuements.begin(), imbuements.end(), [imbuementId](const Imbuement& i) { return static_cast<int>(i.id) == imbuementId; });
-    const Imbuement* data = it != imbuements.end() ? &*it : nullptr;
-    if (!data && m_storage->mode() == TImbuingStorage::MODE_ITEM) {
-        if (const imbuing::TImbuementSlot* slot = selectedSlot(); slot && !slot->isEmpty)
-            data = &slot->imbuement;
+    m_selectedImbuementId = static_cast<int>(imbuementId);
+    bool enough = false;
+    const std::vector<TImbuementSource> owned = ownedAstralSources(*m_storage, imbuementId, enough);
+    const TImbuement* imbuement = findImbuement(*m_storage, imbuementId);
+    if (!imbuement && m_storage->mode() == TImbuingStorage::MODE_ITEM) {
+        // The selected slot's imbuement, which the server may not offer.
+        if (const TImbuementSlot* slot = selectedSlot(); slot && !slot->isEmpty)
+            imbuement = &slot->imbuement;
     }
-    if (!data) {
+    if (!imbuement) {
         replaceObject(m_selectedImbuement, nullptr);
         return;
     }
-
-    QList<QObject*> sources;
-    bool enough = true;
-    for (const auto& [typeIdRaw, neededRaw, name] : data->sources) {
-        const uint typeId = typeIdRaw;
-        const uint needed = neededRaw;
-        bool listed = false;
-        const uint owned = m_storage->ownedCount(static_cast<uint16_t>(typeId), &listed);
-        enough = enough && listed && needed <= owned;
-        sources.append(new imbuing::TQmlAstralSource(QString::fromStdString(name), typeId, needed, owned, nullptr));
+    QList<QObject*> astralSources;
+    for (const TImbuementSource& source : imbuement->astralSources) {
+        const auto it = std::find_if(owned.begin(), owned.end(),
+                                     [&source](const TImbuementSource& o) { return o.objectTypeId == source.objectTypeId; });
+        const uint ownedCount = it != owned.end() ? it->count : 0;
+        astralSources.append(new imbuing::TQmlAstralSource(source.name, source.count, ownedCount, source.objectTypeId));
     }
-    replaceObject(m_selectedImbuement, new imbuing::TQmlImbuementData(*data, sources, enough, this));
+    replaceObject(m_selectedImbuement, new imbuing::TQmlImbuementData(*imbuement, astralSources, enough, this));
 }
 
 void TImbuingDialogController::replaceObject(QObject*& member, QObject* object)

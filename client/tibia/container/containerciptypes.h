@@ -11,7 +11,7 @@
 #include <client/declarations.h>
 
 #include <QByteArray>
-#include <QHash>
+#include <QMap>
 #include <QObject>
 #include <QString>
 
@@ -200,7 +200,8 @@ private:
     TStoredContainer* mutableAt(TContainerID id);
     void emitUpdated(TContainerID id, bool isNew);
 
-    QHash<TContainerID, TStoredContainer> m_containers;
+    /// Ordered by id, as CIP keeps them.
+    QMap<TContainerID, TStoredContainer> m_containers;
 };
 
 class TDepotSearchDetailListStorage final : public cip::tibia::container::TDepotSearchDetailListStorage

@@ -19,9 +19,60 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <tibia/game/thingsession_forward.h>
 
 namespace tibia::appearances {
+
+namespace {
+
+/// The appearance has more than one pattern in some direction.
+bool hasPatterns(const ThingType& type)
+{
+    return type.getNumPatternX() > 1 || type.getNumPatternY() > 1 || type.getNumPatternZ() > 1;
+}
+
+} // namespace
+
+uint32_t liquidColor(const uint32_t liquidType)
+{
+    // Colour per liquid type: none, water, mana, beer, oil, blood, slime, mud,
+    // lemonade, milk, wine, health, urine, rum, fruit juice, coconut milk, tea,
+    // mead, ink, candy, chocolate.
+    static constexpr uint32_t colors[] = { 0, 1, 7, 3, 3, 2, 4, 3, 5, 6, 7, 2, 5, 3, 5, 6, 3, 3, 8, 10, 9 };
+    return liquidType < std::size(colors) ? colors[liquidType] : 1;
+}
+
+void liquidPattern(const uint32_t color, const uint32_t width, const uint32_t height, int& patternX, int& patternY)
+{
+    patternX = static_cast<int>((color & 3) % std::max<uint32_t>(1, width));
+    patternY = static_cast<int>(((color >> 2) & 0x3f) % std::max<uint32_t>(1, height));
+}
+
+uint32_t cumulativePileIndex(const uint8_t count)
+{
+    if (count < 2)
+        return 0;
+    if (count < 5)
+        return count - 1;
+    if (count < 10)
+        return 4;
+    if (count < 25)
+        return 5;
+    return count < 50 ? 6 : 7;
+}
+
+void cumulativePilePattern(const uint32_t index, int& patternX, int& patternY)
+{
+    patternX = static_cast<int>(index & 3);
+    patternY = static_cast<int>((index >> 2) & 0x3f);
+}
+
+int hookPattern(const uint8_t hookState, const uint8_t width)
+{
+    const uint8_t last = static_cast<uint8_t>(width - 1);
+    return last < hookState ? last : hookState;
+}
 
 void objectPatternsFor(ThingType* type, const int countOrSubType, int& patternX, int& patternY, int& patternZ)
 {
@@ -29,90 +80,16 @@ void objectPatternsFor(ThingType* type, const int countOrSubType, int& patternX,
     if (!type || type->isNull())
         return;
 
-    const int numPatternX = type->getNumPatternX();
-    const int numPatternY = type->getNumPatternY();
-
-    if (type->isStackable() && numPatternX == 4 && numPatternY == 2) {
-        if (countOrSubType <= 0) {
-            patternX = 0;
-            patternY = 0;
-        } else if (countOrSubType < 5) {
-            patternX = countOrSubType - 1;
-            patternY = 0;
-        } else if (countOrSubType < 10) {
-            patternX = 0;
-            patternY = 1;
-        } else if (countOrSubType < 25) {
-            patternX = 1;
-            patternY = 1;
-        } else if (countOrSubType < 50) {
-            patternX = 2;
-            patternY = 1;
-        } else {
-            patternX = 3;
-            patternY = 1;
-        }
+    if (type->isStackable()) {
+        if (hasPatterns(*type))
+            cumulativePilePattern(cumulativePileIndex(static_cast<uint8_t>(countOrSubType)), patternX, patternY);
         return;
     }
 
     if (!type->isSplash() && !type->isFluidContainer())
         return;
-
-    int color = countOrSubType;
-    {
-        switch (countOrSubType) {
-            case tibia::client::FluidNone:
-                color = tibia::client::FluidTransparent;
-                break;
-            case tibia::client::FluidWater:
-                color = tibia::client::FluidBlue;
-                break;
-            case tibia::client::FluidMana:
-                color = tibia::client::FluidPurple;
-                break;
-            case tibia::client::FluidBeer:
-            case tibia::client::FluidOil:
-            case tibia::client::FluidMud:
-            case tibia::client::FluidRum:
-            case tibia::client::FluidTea:
-            case tibia::client::FluidMead:
-                color = tibia::client::FluidOrange;
-                break;
-            case tibia::client::FluidBlood:
-            case tibia::client::FluidHealth:
-                color = tibia::client::FluidRed;
-                break;
-            case tibia::client::FluidSlime:
-                color = tibia::client::FluidGreen;
-                break;
-            case tibia::client::FluidLemonade:
-            case tibia::client::FluidUrine:
-            case tibia::client::FluidFruitJuice:
-                color = tibia::client::FluidYellow;
-                break;
-            case tibia::client::FluidMilk:
-            case tibia::client::FluidCoconutMilk:
-                color = tibia::client::FluidWhite;
-                break;
-            case tibia::client::FluidWine:
-                color = tibia::client::FluidPurple;
-                break;
-            case tibia::client::FluidInk:
-                color = tibia::client::FluidBlack;
-                break;
-            case tibia::client::FluidCandy:
-                color = tibia::client::FluidPink;
-                break;
-            case tibia::client::FluidChocolate:
-                color = tibia::client::FluidBrown;
-                break;
-            default:
-                color = tibia::client::FluidTransparent;
-                break;
-        }
-    }
-    patternX = (color % 4) % std::max(1, numPatternX);
-    patternY = (color / 4) % std::max(1, numPatternY);
+    liquidPattern(liquidColor(static_cast<uint32_t>(countOrSubType)), static_cast<uint32_t>(type->getNumPatternX()),
+                  static_cast<uint32_t>(type->getNumPatternY()), patternX, patternY);
 }
 
 
@@ -138,55 +115,9 @@ bool TAppearanceInstance::isNull() const
 
 namespace {
 
-void syncLiquidDrawPatterns(TObjectAppearanceInstance& object, ThingType* type, const uint8_t fluidSubType)
-{
-    if (!type)
-        return;
-    int color = fluidSubType;
-    switch (fluidSubType) {
-        case tibia::client::FluidNone: color = tibia::client::FluidTransparent; break;
-        case tibia::client::FluidWater: color = tibia::client::FluidBlue; break;
-        case tibia::client::FluidMana: color = tibia::client::FluidPurple; break;
-        case tibia::client::FluidBeer:
-        case tibia::client::FluidOil:
-        case tibia::client::FluidMud:
-        case tibia::client::FluidTea:
-        case tibia::client::FluidMead:
-        case tibia::client::FluidRum: color = tibia::client::FluidOrange; break;
-        case tibia::client::FluidBlood:
-        case tibia::client::FluidHealth: color = tibia::client::FluidRed; break;
-        case tibia::client::FluidSlime: color = tibia::client::FluidGreen; break;
-        case tibia::client::FluidLemonade:
-        case tibia::client::FluidUrine:
-        case tibia::client::FluidFruitJuice: color = tibia::client::FluidYellow; break;
-        case tibia::client::FluidMilk:
-        case tibia::client::FluidCoconutMilk: color = tibia::client::FluidWhite; break;
-        case tibia::client::FluidWine: color = tibia::client::FluidPurple; break;
-        case tibia::client::FluidInk: color = tibia::client::FluidBlack; break;
-        case tibia::client::FluidCandy: color = tibia::client::FluidPink; break;
-        case tibia::client::FluidChocolate: color = tibia::client::FluidBrown; break;
-        default: color = tibia::client::FluidTransparent; break;
-    }
-    const int numPatternX = std::max(1, type->getNumPatternX());
-    const int numPatternY = std::max(1, type->getNumPatternY());
-    object.setDrawPatterns(static_cast<uint8_t>((color % 4) % numPatternX),
-                           static_cast<uint8_t>((color / 4) % numPatternY), 0);
-}
-
-void syncCumulativeDrawPatterns(TObjectAppearanceInstance& object, ThingType* type, const uint16_t count)
-{
-    if (!type || !type->isStackable())
-        return;
-    int x = 0;
-    int y = 0;
-    int z = 0;
-    // Protocol may send 0 for a single visible unit; pile sprites treat that as count 1.
-    objectPatternsFor(type, count > 0 ? static_cast<int>(count) : 1, x, y, z);
-    object.setDrawPatterns(static_cast<uint8_t>(x), static_cast<uint8_t>(y), static_cast<uint8_t>(z));
-}
-
+/// The protocol's count, sub type, tier and hook state of an object.
 void applyProtocolObjectState(const TAppearanceInstancePtr& instance, const uint16_t count, const uint8_t subType,
-                              const uint8_t tier, const uint8_t fluid, const uint8_t hangSide)
+                              const uint8_t tier, const uint8_t hangSide)
 {
     if (!instance)
         return;
@@ -195,12 +126,6 @@ void applyProtocolObjectState(const TAppearanceInstancePtr& instance, const uint
         object->setCount(count);
         object->setSubType(subType);
         object->setTier(tier);
-    }
-    if (const auto liquid = std::dynamic_pointer_cast<TLiquidObjectAppearanceInstance>(instance)) {
-        const uint8_t fluidValue = fluid != 0 ? fluid : subType;
-        liquid->setFluid(fluidValue);
-        if (const auto object = std::dynamic_pointer_cast<TObjectAppearanceInstance>(instance))
-            syncLiquidDrawPatterns(*object, instance->thingType(), fluidValue);
     }
     if (const auto hangable = std::dynamic_pointer_cast<THangableObjectAppearanceInstance>(instance))
         hangable->setHangSide(hangSide);
@@ -214,24 +139,77 @@ void TOutfitAppearanceInstance::setOutfitLook(const Outfit& outfit, const uint8_
     m_direction = direction;
 }
 
+TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance(ThingType* type, const uint16_t count)
+    : TObjectAppearanceInstance(type)
+{
+    m_count = count;
+    if (static_cast<uint8_t>(count) != 0) {
+        int x = 0;
+        int y = 0;
+        pilePattern(x, y);
+        setDrawPatterns(static_cast<uint8_t>(x), static_cast<uint8_t>(y), 0);
+    }
+}
+
 void TCumulativeObjectAppearanceInstance::setCount(const uint16_t count)
 {
-    TObjectAppearanceInstance::setCount(count);
-    syncCumulativeDrawPatterns(*this, thingType(), count);
+    const bool changed = static_cast<uint8_t>(count) != static_cast<uint8_t>(m_count);
+    m_count = count;
+    if (!changed)
+        return;
+    int x = 0;
+    int y = 0;
+    pilePattern(x, y);
+    setDrawPatterns(static_cast<uint8_t>(x), static_cast<uint8_t>(y), 0);
+}
+
+void TCumulativeObjectAppearanceInstance::pilePattern(int& patternX, int& patternY) const
+{
+    const uint32_t pile = m_type && hasPatterns(*m_type) ? cumulativePileIndex(static_cast<uint8_t>(m_count)) : 0;
+    cumulativePilePattern(pile, patternX, patternY);
+}
+
+THangableObjectAppearanceInstance::THangableObjectAppearanceInstance(ThingType* type)
+    : TObjectAppearanceInstance(type)
+{
+    updateHookPattern();
+}
+
+void THangableObjectAppearanceInstance::setHangSide(const uint8_t side)
+{
+    m_hangSide = side;
+    updateHookPattern();
+}
+
+void THangableObjectAppearanceInstance::updateHookPattern()
+{
+    const uint8_t width = m_type ? static_cast<uint8_t>(m_type->getNumPatternX()) : 1;
+    setDrawPatterns(static_cast<uint8_t>(hookPattern(m_hangSide, width)), 0, 0);
+}
+
+TLiquidObjectAppearanceInstance::TLiquidObjectAppearanceInstance(ThingType* type, const uint32_t liquidType)
+    : TObjectAppearanceInstance(type)
+    , m_fluid(liquidType)
+{
+    int x = 0;
+    int y = 0;
+    if (type)
+        liquidPattern(liquidColor(liquidType), static_cast<uint32_t>(type->getNumPatternX()),
+                      static_cast<uint32_t>(type->getNumPatternY()), x, y);
+    setDrawPatterns(static_cast<uint8_t>(x), static_cast<uint8_t>(y), 0);
 }
 
 void TPatternObjectAppearanceInstance::applyWorldMapCoordinate(const Position& pos)
 {
-    // CIP : x % pattern_width, y % pattern_height, z % pattern_depth.
     ThingType* type = thingType();
     if (!type)
         return;
-    const int width = std::max(1, type->getNumPatternX());
-    const int height = std::max(1, type->getNumPatternY());
-    const int depth = std::max(1, type->getNumPatternZ());
-    setDrawPatterns(static_cast<uint8_t>(pos.x % width),
-                    static_cast<uint8_t>(pos.y % height),
-                    static_cast<uint8_t>(pos.z % depth));
+    const auto width = static_cast<uint32_t>(std::max(1, type->getNumPatternX()));
+    const auto height = static_cast<uint32_t>(std::max(1, type->getNumPatternY()));
+    const auto depth = static_cast<uint32_t>(std::max(1, type->getNumPatternZ()));
+    setDrawPatterns(static_cast<uint8_t>(static_cast<uint32_t>(pos.x) % width),
+                    static_cast<uint8_t>(static_cast<uint32_t>(pos.y) % height),
+                    static_cast<uint8_t>(static_cast<uint32_t>(pos.z) % depth));
 }
 
 Color TObjectAppearanceInstance::animatedMarkedColor() const
@@ -410,6 +388,35 @@ TAppearanceInstanceSpriteSequence::TAppearanceInstanceSpriteSequence(std::vector
 {
 }
 
+namespace {
+
+/// An object of `type`. The protocol does not say which kind of object it
+/// sends, so the type's flags pick it, in the order CipSoft tests the kinds of
+/// a protocol object: liquid, cumulative, container, show-off socket,
+/// upgradeable, wearout, expire, deco item kit, then a plain object.
+TAppearanceInstancePtr createItem(ThingType* type, const uint16_t count, const uint32_t liquidType)
+{
+    if (type->isFluidContainer() || type->isSplash())
+        return std::make_shared<TLiquidObjectAppearanceInstance>(type, liquidType);
+    if (type->isStackable())
+        return std::make_shared<TCumulativeObjectAppearanceInstance>(type, count);
+    if (type->isContainer())
+        return std::make_shared<TContainerObjectAppearanceInstance>(type);
+    if (type->isPodium())
+        return std::make_shared<TShowOffSocketAppearanceInstance>(type);
+    if (type->getClassification() > 0)
+        return std::make_shared<TUpgradeableObjectAppearanceInstance>(type);
+    if (type->hasWearOut())
+        return std::make_shared<TWearoutObjectAppearanceInstance>(type);
+    if (type->hasExpire() || type->hasClockExpire())
+        return std::make_shared<TExpireObjectAppearanceInstance>(type);
+    if (type->isDecoKit())
+        return std::make_shared<TDecoItemKitAppearanceInstance>(type);
+    return TAppearanceInstanceFactory::createObject(type);
+}
+
+} // namespace
+
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(ThingType* type)
 {
     if (!type || type->isNull())
@@ -417,48 +424,47 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromThingType(ThingType* type
 
     switch (type->getCategory()) {
         case ThingCategoryCreature:
-            if (type->getLayers() > 1)
-                return std::make_shared<TCustomizableOutfitAppearanceInstance>(type);
-            return std::make_shared<TOutfitAppearanceInstance>(type);
+            return createOutfit(type, Outfit(), 2);
         case ThingCategoryEffect:
             return std::make_shared<TFieldEffectInstance>(type);
         case ThingCategoryMissile:
             return std::make_shared<TMissileEffectInstance>(type);
         case ThingCategoryItem:
-            break;
+            return createItem(type, 0, 0);
         default:
             return std::make_shared<TWorldMapAppearanceInstance>(type);
     }
+}
 
-    if (type->isContainer())
-        return std::make_shared<TContainerObjectAppearanceInstance>(type);
-    if (type->isStackable())
-        return std::make_shared<TCumulativeObjectAppearanceInstance>(type);
-    if (type->isHangable())
+TAppearanceInstancePtr TAppearanceInstanceFactory::createObject(ThingType* type)
+{
+    if (type && type->isHangable())
         return std::make_shared<THangableObjectAppearanceInstance>(type);
-    if (type->isFluidContainer() || type->isSplash())
-        return std::make_shared<TLiquidObjectAppearanceInstance>(type);
-    if (type->hasWearOut())
-        return std::make_shared<TWearoutObjectAppearanceInstance>(type);
-    if (type->hasExpire() || type->hasClockExpire())
-        return std::make_shared<TExpireObjectAppearanceInstance>(type);
-    if (type->isDecoKit())
-        return std::make_shared<TDecoItemKitAppearanceInstance>(type);
-    if (type->isPodium())
-        return std::make_shared<TShowOffSocketAppearanceInstance>(type);
-    if (type->getClassification() > 0)
-        return std::make_shared<TUpgradeableObjectAppearanceInstance>(type);
-    if (type->getNumPatternX() > 1 || type->getNumPatternY() > 1 || type->getNumPatternZ() > 1)
-        return std::make_shared<TPatternObjectAppearanceInstance>(type);
-    return std::make_shared<TObjectAppearanceInstance>(type);
+    return std::make_shared<TPatternObjectAppearanceInstance>(type);
+}
+
+std::shared_ptr<TOutfitAppearanceInstance> TAppearanceInstanceFactory::createOutfit(ThingType* type, const Outfit& outfit,
+                                                                                    const uint8_t direction)
+{
+    const bool customizable =
+        type && (type->getLayers() > 1 || (type->getNumPatternY() > 1 && (outfit.getAddons() & 3) != 0));
+    std::shared_ptr<TOutfitAppearanceInstance> instance;
+    if (customizable)
+        instance = std::make_shared<TCustomizableOutfitAppearanceInstance>(type);
+    else
+        instance = std::make_shared<TOutfitAppearanceInstance>(type);
+    instance->setOutfitLook(outfit, direction);
+    return instance;
 }
 
 TAppearanceInstancePtr TAppearanceInstanceFactory::fromProtocolObject(ThingType* type, const uint16_t count,
                                                                       const uint8_t subType, const uint8_t tier,
                                                                       const uint8_t fluid, const uint8_t hangSide)
 {
-    const auto instance = fromThingType(type);
-    applyProtocolObjectState(instance, count, subType, tier, fluid, hangSide);
+    if (!type || type->isNull() || type->getCategory() != ThingCategoryItem)
+        return fromThingType(type);
+    const auto instance = createItem(type, count, fluid != 0 ? fluid : subType);
+    applyProtocolObjectState(instance, count, subType, tier, hangSide);
     return instance;
 }
 
@@ -482,13 +488,9 @@ TAppearanceInstancePtr TAppearanceInstanceFactory::fromOutfit(const Outfit& outf
         return std::make_shared<TObjectOutfitAppearanceInstance>(type);
     if (outfit.isEffect())
         return std::make_shared<TEffectInstance>(type);
-    if (type && type->getLayers() > 1)
-        return std::make_shared<TCustomizableOutfitAppearanceInstance>(type);
     if (!type || type->isNull())
         return std::make_shared<TCreaturePlaceholderAppearanceInstance>(type);
-    const auto instance = std::make_shared<TOutfitAppearanceInstance>(type);
-    instance->setOutfitLook(outfit, 2);
-    return instance;
+    return createOutfit(type, outfit, 2);
 }
 
 void TShowOffSocketAppearanceInstance::setLook(const Outfit& outfit, const uint8_t direction, const bool socketVisible)

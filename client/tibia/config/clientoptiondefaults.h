@@ -5,19 +5,23 @@
 namespace tibia {
 namespace config {
 
-/// CIP's default TClientOptions (, filled by): the
-/// "options" section the options dialog resets pages to. The control scheme
-/// default is Left Smart-Click ((3), list index 2).
+/// TClientOptions' defaults: the "options" section a fresh options file holds
+/// and the options dialog resets pages to. The control scheme default is the
+/// list index of Left Smart-Click (2).
 const QJsonObject& defaultClientOptions();
 
-/// Button-bar ids in CIP EButtons order (ButtonBarButtons).
+/// Button-bar ids in EButtons order (ButtonBarButtons), then the pack's
+/// default-enabled shortcuts.
 QStringList defaultControlButtonIds();
 
-/// Factory controlButtonsOptions: every shortcut enabled, in defaultControlButtonIds order.
+/// Factory controlButtonsOptions: skills, battle list, spells, VIP, lens help,
+/// quests, compendium, cyclopedia, highscores, player guide and manage
+/// shortcuts enabled in that order; every other button disabled.
 QJsonObject defaultControlButtonsOptions();
 
-/// Keeps a saved enabled/disabled arrangement. Ids from the code table that
-/// appear in neither list are appended to enabledButtons in table order.
+/// The stored button arrangement as the options load reads it: names matched
+/// case-insensitively, then every table button in neither list appended to
+/// enabledButtons in table order.
 QJsonObject reconcileControlButtons(const QJsonObject& section);
 
 }

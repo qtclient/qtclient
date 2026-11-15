@@ -21,8 +21,8 @@ constexpr int NoGem = -1;
 /// Medium perk ids (External jump table): Gem Vessel + Revelation Mastery.
 constexpr int VesselNodePerk = 37;
 constexpr int MasteryIncreasePerk = 46;
-/// Vessel socket qualities by unlock index (wiki / CipSoft).
-constexpr std::array<int, VesselCount> VesselQualities = { 0, 0, 1, 1, 2, 2, 2, 2 };
+/// Gem quality each vessel holds, by vessel index (vessels unlock in index order).
+constexpr std::array<int, VesselCount> VesselQualities = { 0, 1, 2, 0, 2, 1, 2, 2 };
 /// Promotion points granted by each filled MasteryIncrease slice.
 constexpr int MasteryIncreasePoints = 125;
 /// Fragment workshop: +5 Hit Points / Mana / Capacity per grade step.
@@ -76,7 +76,7 @@ bool isMasteryIncreasePerk(int perk);
 int vesselQualityAt(int vesselIndex);
 /// How many Gem Vessel slices are filled (unlocks that many sockets).
 int unlockedVesselCount(const std::array<int, SlotCount>& points, int vocationIndex);
-/// CIP mask 0x1f013ef7c7c00: the conviction perks that augment spells.
+/// The conviction perks that augment spells (10..14, 18..22, 24..27, 29..33, 36, 41..45).
 bool isAugmentedPerk(int perk);
 /// The slices of a domain, from the centre out (CIP quadrant tables).
 const std::array<int, 9>& domainSlots(int domain);
@@ -124,11 +124,12 @@ double mitigationValue(int points);
 
 /// The part of a CIP multi string (long, short), or the first part.
 QString multiPart(const QString& text, int index);
-/// CIP : a multi string for augmentations and vessels.
-QString mediumPerkName(int perk);
+/// The name of a conviction perk: a multi string (long, short) for augmented
+/// spells and Revelation Mastery, whose name carries `largePerk`'s name.
+QString mediumPerkName(int perk, std::optional<int> largePerk = std::nullopt);
 /// CIP : the full slices with a conviction perk, over all domains.
 int mediumPerkCount(const std::array<int, SlotCount>& points, int perk, int vocationIndex);
-/// CIP (value): the summed effect of a conviction perk.
+/// The summed effect of a conviction perk over the grid.
 QString mediumPerkValueText(const std::array<int, SlotCount>& points, int perk, int vocationIndex);
 /// CIP : the description lines of a conviction perk; an augmented
 /// spell gets its two levels (the start-up table).
@@ -136,8 +137,9 @@ QStringList mediumPerkDescriptions(int perk);
 /// CIP : the augmentation level icons before an augmented spell's
 /// two lines, active for the levels `count` full slices unlock.
 QStringList withAugmentationIcons(QStringList lines, int perk, int count);
-/// CIP : a conviction perk with its single-slice effect ("+1 Sword Fighting").
-QString mediumPerkEffect(int perk);
+/// A conviction perk with its single-slice effect ("+1 Sword Fighting"), on
+/// every part of a multi string name.
+QString mediumPerkEffect(int perk, std::optional<int> largePerk = std::nullopt);
 /// CIP : one augmentation line of a spell.
 QString augmentationDescription(double value, int spellId, int augType, double momentum, bool hasMomentum, bool shortForm);
 /// CIP .
@@ -220,7 +222,8 @@ QString modGradeImage(int grade);
 QString modGradePotentialImage(int grade);
 QString modGradeHighlightImage(int grade);
 
-/// Fragment workshop costs (CIP): fragments 5 / 15 / 30; gold basic 2M / 5M / 30M, supreme 5M / 12.5M / 75M.
+/// Fragment workshop costs of a grade step 0..2 (fragments 5 / 15 / 30; gold basic
+/// 2M / 5M / 30M, supreme 5M / 12.5M / 75M); -1 for any other grade.
 int fragmentCost(int grade);
 int basicGoldCost(int grade);
 int supremeGoldCost(int grade);

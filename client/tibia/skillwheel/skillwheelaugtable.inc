@@ -1,5 +1,6 @@
-// Generated from the CIP client augmentation table.
-// by tmp/re/tibia/gap-cip-systems/aug/{extract_aug,gen_cpp}.py. Do not edit by hand.
+// The spell augmentations of each augmented conviction perk, by level, as
+// CipSoft's client builds them at start-up. Each element renders its first spell.
+// Regenerate from the client binary; do not edit by hand.
 
 constexpr TAugmentation Augmentations[] = {
     { 10, 1, 1, 105, -30.0 },
@@ -44,14 +45,14 @@ constexpr TAugmentation Augmentations[] = {
     { 33, 2, 3, 84, 0.06 },
     { 36, 1, 6, 310, -2.0 },
     { 36, 2, 2, 310, 0.12 },
-    { 47, 1, 5, 288, 1.0 },
-    { 47, 2, 2, 288, 0.18 },
-    { 48, 1, 10, 287, 1.0 },
-    { 48, 2, 2, 287, 0.15 },
-    { 45, 1, 3, 296, 0.08 },
-    { 45, 2, 6, 296, -4.0 },
-    { 46, 1, 6, 290, -4.0 },
-    { 46, 2, 2, 290, 0.6 },
-    { 44, 1, 16, 301, 0.4 },
-    { 44, 2, 6, 301, -4.0 },
+    { 44, 1, 5, 288, 1.0 },
+    { 44, 2, 2, 288, 0.18 },
+    { 45, 1, 10, 287, 1.0 },
+    { 45, 2, 2, 287, 0.15 },
+    { 42, 1, 3, 296, 0.08 },
+    { 42, 2, 6, 296, -4.0 },
+    { 43, 1, 6, 290, -4.0 },
+    { 43, 2, 2, 290, 0.6 },
+    { 41, 1, 16, 301, 0.4 },
+    { 41, 2, 6, 301, -4.0 },
 };

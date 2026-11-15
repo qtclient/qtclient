@@ -210,14 +210,14 @@ void TKillTrackerWidgetController::requestOpenPreyDialog() { input::publish(inpu
 void TKillTrackerWidgetController::requestOpenBountyTasksDialog()
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_TASKBOARD_DIALOG));
-    action->parameter = static_cast<int>(cip::tibia::gamewindow::TTaskboardDialogController::BountyTasks);
+    action->parameter = 0; // the bounty tasks tab
     input::publish(action);
 }
 
 void TKillTrackerWidgetController::requestOpenWeeklyTasksDialog()
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_TASKBOARD_DIALOG));
-    action->parameter = static_cast<int>(cip::tibia::gamewindow::TTaskboardDialogController::WeeklyTasks);
+    action->parameter = 1; // the weekly tasks tab
     input::publish(action);
 }
 

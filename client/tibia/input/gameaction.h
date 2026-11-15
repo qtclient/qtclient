@@ -1611,7 +1611,9 @@ public:
     TGameActionSimple() = default;
     explicit TGameActionSimple(EGameAction type);
 };
-/// CIP input::gameactions::TGameActionSoundTrigger .
+/// CIP input::gameactions::TGameActionSoundTrigger: `parameter` is the sound
+/// effect id to play once. CipSoft's trigger can instead carry a pause flag for
+/// the looping sounds (application inactive); qtclient has no such trigger.
 class TGameActionSoundTrigger final : public TGameAction
 {
 public:

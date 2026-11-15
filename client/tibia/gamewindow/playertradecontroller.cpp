@@ -7,6 +7,7 @@
 
 #include <creatures/creaturestorage.h>
 #include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
 
 #include <algorithm>
 #include <utility>
@@ -17,34 +18,12 @@ namespace {
 
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 
-QList<QObject*> tradeObjects(const std::vector<container::TInventorySlot>& items, QObject* parent)
-{
-    QList<QObject*> objects;
-    objects.reserve(static_cast<qsizetype>(items.size()));
-    for (size_t slot = 0; slot < items.size(); ++slot)
-        objects.append(new TPlayerTradeObject(static_cast<int>(slot), items[slot], parent));
-    return objects;
 }
 
-void replaceObjects(QList<QObject*>& objects, QList<QObject*> replacement)
-{
-    for (QObject* object : std::exchange(objects, std::move(replacement)))
-        object->deleteLater();
-}
-
-}
-
-TPlayerTradeObject::TPlayerTradeObject(const int slot, const container::TInventorySlot& appearance, QObject* parent)
+TPlayerTradeObject::TPlayerTradeObject(QObject* parent)
     : cip::tibia::trade::TPlayerTradeObject(parent)
 {
-    m_slotID = static_cast<uint>(slot);
-    if (appearance.empty())
-        return;
-    m_appearanceID = appearance.typeId;
-    m_objectCount = appearance.stackable ? std::max<uint>(1, appearance.count) : 1;
-    m_objectUpgradeTier = appearance.tier;
-    if (appearance.fluidOrSplash)
-        m_liquidType = static_cast<Info::ELiquidType>(appearance.fluid);
+    m_objectCount = 1;
 }
 
 uint TPlayerTradeObject::slotID() const { return m_slotID; }
@@ -54,22 +33,95 @@ uint TPlayerTradeObject::objectUpgradeTier() const { return m_objectUpgradeTier;
 Info::ELiquidType TPlayerTradeObject::liquidType() const { return m_liquidType; }
 Info::EHookDirection TPlayerTradeObject::hookDirection() const { return m_hookDirection; }
 
-TPlayerTradeController::TPlayerTradeController(trade::TPlayerTradeStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
-    : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_storage(storage)
+void TPlayerTradeObject::setSlotID(const int slotId)
 {
-    // CIP .
-    connect(storage, &trade::TPlayerTradeStorage::ownOfferChanged, this, &TPlayerTradeController::onOwnOfferChanged);
-    connect(storage, &trade::TPlayerTradeStorage::counterOfferChanged, this, &TPlayerTradeController::onCounterOfferChanged);
-    onOwnOfferChanged();
-    onCounterOfferChanged();
+    if (m_slotID == static_cast<uint>(slotId))
+        return;
+    m_slotID = static_cast<uint>(slotId);
+    Q_EMIT itemChanged();
+}
 
+void TPlayerTradeObject::setObject(const container::TInventorySlot& object)
+{
+    // A stack shows its count, any other object 1; inventory objects have no
+    // hook direction.
+    const auto appearanceId = static_cast<uint>(object.typeId);
+    const auto count = static_cast<uint>(static_cast<uint8_t>(object.stackable ? object.count : 1));
+    const auto liquidType = static_cast<Info::ELiquidType>(object.fluidOrSplash ? object.fluid : 0);
+    const auto hookDirection = Info::EHookDirection::NONE;
+    const auto tier = static_cast<uint>(object.tier);
+    const bool changed = appearanceId != m_appearanceID || count != m_objectCount || liquidType != m_liquidType
+                         || hookDirection != m_hookDirection || tier != m_objectUpgradeTier;
+    m_appearanceID = appearanceId;
+    m_objectCount = count;
+    m_liquidType = liquidType;
+    m_hookDirection = hookDirection;
+    m_objectUpgradeTier = tier;
+    if (changed)
+        Q_EMIT itemChanged();
+}
+
+TPlayerTradeController::TPlayerTradeController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
+    : TSidebarWidgetController(gameWindowItem, engine, parent)
+{
     widget()->createItem(QStringLiteral("playertrade.qml"));
 }
 
-QString TPlayerTradeController::ownName() const { return m_ownName; }
+TPlayerTradeController::~TPlayerTradeController()
+{
+    clearOffers();
+}
 
-QString TPlayerTradeController::tradePartnerName() const { return m_tradePartnerName; }
+void TPlayerTradeController::setGameSession(trade::TPlayerTradeStorage* storage, trade::TPlayerTradeProtocolMessageHandler* handler)
+{
+    for (const QMetaObject::Connection& connection : std::exchange(m_sessionConnections, {}))
+        disconnect(connection);
+    m_storage = storage;
+    m_handler = handler;
+    clearOffers();
+    if (!m_storage)
+        return;
+    m_sessionConnections.push_back(
+        connect(m_storage, &trade::TPlayerTradeStorage::ownOfferChanged, this, &TPlayerTradeController::onOwnOfferChanged));
+    m_sessionConnections.push_back(
+        connect(m_storage, &trade::TPlayerTradeStorage::counterOfferChanged, this, &TPlayerTradeController::onCounterOfferChanged));
+    onOwnOfferChanged();
+    onCounterOfferChanged();
+}
+
+void TPlayerTradeController::clearOffers()
+{
+    for (QObject* object : std::exchange(m_ownOffer, {}))
+        object->deleteLater();
+    Q_EMIT ownOfferChanged();
+    for (QObject* object : std::exchange(m_counterOffer, {}))
+        object->deleteLater();
+    Q_EMIT counterOfferChanged();
+}
+
+void TPlayerTradeController::rebuildOffer(QList<QObject*>& objects, const trade::TPlayerTradeOffer& offer)
+{
+    for (QObject* object : std::exchange(objects, {}))
+        object->deleteLater();
+    int slotId = 0;
+    for (const container::TInventorySlot& slot : offer) {
+        auto* object = new TPlayerTradeObject(this);
+        object->setSlotID(slotId);
+        object->setObject(slot);
+        objects.append(object);
+        ++slotId;
+    }
+}
+
+QString TPlayerTradeController::ownName() const
+{
+    return m_storage ? m_storage->ownName() : qtTrId("dummy_unknown");
+}
+
+QString TPlayerTradeController::tradePartnerName() const
+{
+    return m_storage ? m_storage->counterName() : qtTrId("dummy_unknown");
+}
 
 QList<QObject*> TPlayerTradeController::ownOffer() const { return m_ownOffer; }
 
@@ -77,13 +129,11 @@ QList<QObject*> TPlayerTradeController::counterOffer() const { return m_counterO
 
 QQuickItem* TPlayerTradeController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
 
-
 void TPlayerTradeController::onOwnOfferChanged()
 {
     if (!m_storage)
         return;
-    m_ownName = m_storage->ownName();
-    replaceObjects(m_ownOffer, tradeObjects(m_storage->ownOffer(), this));
+    rebuildOffer(m_ownOffer, m_storage->ownOffer());
     Q_EMIT ownOfferChanged();
 }
 
@@ -91,8 +141,7 @@ void TPlayerTradeController::onCounterOfferChanged()
 {
     if (!m_storage)
         return;
-    m_tradePartnerName = m_storage->counterName();
-    replaceObjects(m_counterOffer, tradeObjects(m_storage->counterOffer(), this));
+    rebuildOffer(m_counterOffer, m_storage->counterOffer());
     Q_EMIT counterOfferChanged();
 }
 
@@ -135,71 +184,73 @@ void TPlayerTradeController::setCursorToResizeVertical(const bool Enabled)
 
 void TPlayerTradeController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 
-/// CIP .
 void TPlayerTradeController::rejectTrade()
 {
-    if (m_storage)
-        m_storage->reject();
+    if (m_handler)
+        m_handler->rejectTrade();
     Q_EMIT widgetClosed();
 }
 
-/// CIP .
 void TPlayerTradeController::acceptTrade()
 {
-    if (m_storage)
-        m_storage->accept();
+    if (m_handler)
+        m_handler->acceptTrade();
 }
 
-/// CIP .
 void TPlayerTradeController::lookOwnTradeSide(const int SlotIndex)
 {
-    if (m_storage && SlotIndex >= 0 && SlotIndex < m_ownOffer.size())
-        m_storage->look(false, SlotIndex);
+    if (SlotIndex < m_ownOffer.size() && m_handler)
+        m_handler->lookTrade(SlotIndex, 0);
 }
 
-/// CIP .
 void TPlayerTradeController::lookCounterOfferTradeSide(const int SlotIndex)
 {
-    if (m_storage && SlotIndex >= 0 && SlotIndex < m_counterOffer.size())
-        m_storage->look(true, SlotIndex);
+    if (SlotIndex < m_counterOffer.size() && m_handler)
+        m_handler->lookTrade(SlotIndex, 1);
 }
 
 void TPlayerTradeController::showContextMenuOwnTradeSide(const int SlotIndex)
 {
-    showContextMenu(false, SlotIndex);
+    showContextMenu(SlotIndex, 0);
 }
 
 void TPlayerTradeController::showContextMenuCounterOfferTradeSide(const int SlotIndex)
 {
-    showContextMenu(true, SlotIndex);
+    showContextMenu(SlotIndex, 1);
 }
 
-/// CIP : Look and Inspect.
-void TPlayerTradeController::showContextMenu(const bool counterOffer, const int slotIndex)
+void TPlayerTradeController::lookTradeSide(const int slotIndex, const int side)
+{
+    const QList<QObject*>& offer = side == 0 ? m_ownOffer : m_counterOffer;
+    if (m_handler && slotIndex < offer.size())
+        m_handler->lookTrade(slotIndex, side);
+}
+
+void TPlayerTradeController::inspectTradeSide(const int slotIndex, const int side)
+{
+    const QList<QObject*>& offer = side == 0 ? m_ownOffer : m_counterOffer;
+    if (slotIndex < 0 || slotIndex >= offer.size())
+        return;
+    // CipSoft inspects the trade slot itself (side and index), which the
+    // protocol here cannot carry; the object type inspection is the closest.
+    auto* object = qobject_cast<TPlayerTradeObject*>(offer[slotIndex]);
+    if (!object || object->appearanceID() == 0)
+        return;
+    tibia::game::inspectionObject(tibia::client::INSPECT_NPCTRADE, static_cast<uint16_t>(object->appearanceID()),
+                            static_cast<uint8_t>(std::clamp<int>(static_cast<int>(object->objectCount()), 1, 255)));
+}
+
+/// Look and Inspect for one slot of an offer.
+void TPlayerTradeController::showContextMenu(const int slotIndex, const int side)
 {
     TContextMenuController* menu = TContextMenuController::instance();
     if (!menu)
         return;
     menu->beginCustomMenu();
-    connect(menu->addCustomEntry(qtTrId("context_look")), &TContextMenuEntryItem::triggered, this, [this, counterOffer, slotIndex] {
-        if (counterOffer)
-            lookCounterOfferTradeSide(slotIndex);
-        else
-            lookOwnTradeSide(slotIndex);
-    });
-    // CIP sends the player trade inspection (type 2, side and
-    // index), which Crystal does not parse; its item type inspection is the
-    // closest it answers.
-    connect(menu->addCustomEntry(qtTrId("context_inspect_object")), &TContextMenuEntryItem::triggered, this, [this, counterOffer, slotIndex] {
-        const QList<QObject*>& offer = counterOffer ? m_counterOffer : m_ownOffer;
-        if (slotIndex < 0 || slotIndex >= offer.size())
-            return;
-        auto* object = qobject_cast<TPlayerTradeObject*>(offer[slotIndex]);
-        if (!object || object->appearanceID() == 0)
-            return;
-        tibia::game::inspectionObject(tibia::client::INSPECT_NPCTRADE, static_cast<uint16_t>(object->appearanceID()),
-                                static_cast<uint8_t>(std::clamp<int>(static_cast<int>(object->objectCount()), 1, 255)));
-    });
+    connect(menu->addCustomEntry(qtTrId("context_look")), &TContextMenuEntryItem::triggered, this,
+            [this, slotIndex, side] { lookTradeSide(slotIndex, side); });
+    connect(menu->addCustomEntry(qtTrId("context_inspect_object")), &TContextMenuEntryItem::triggered, this,
+            [this, slotIndex, side] { inspectTradeSide(slotIndex, side); });
     menu->showCustomMenu();
 }
 
@@ -208,9 +259,14 @@ TPlayerTradeWidgetManager::TPlayerTradeWidgetManager(TSidebarManager* sidebars, 
     , m_sidebars(sidebars)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
+    , m_handler(m_storage)
 {
-    connect(&m_storage, &trade::TPlayerTradeStorage::requestOpenPlayerTradeWidget, this, &TPlayerTradeWidgetManager::open);
-    connect(&m_storage, &trade::TPlayerTradeStorage::requestClosePlayerTradeWidget, this, &TPlayerTradeWidgetManager::close);
+    connect(&m_handler, &trade::TPlayerTradeProtocolMessageHandler::requestOpenPlayerTradeWidget, this, &TPlayerTradeWidgetManager::open);
+    connect(&m_handler, &trade::TPlayerTradeProtocolMessageHandler::requestClosePlayerTradeWidget, this, &TPlayerTradeWidgetManager::close);
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this] {
+        m_storage.reset();
+        close();
+    });
     input::setActionHandler(input::EGameAction::TRADE_ITEM, [this](const input::TGameAction& action) { return tradeItem(action); });
 }
 
@@ -225,7 +281,8 @@ void TPlayerTradeWidgetManager::open()
 {
     if (m_controller || !m_sidebars)
         return;
-    m_controller = new TPlayerTradeController(&m_storage, m_gameWindowItem, m_engine, this);
+    m_controller = new TPlayerTradeController(m_gameWindowItem, m_engine, this);
+    m_controller->setGameSession(&m_storage, &m_handler);
     connect(m_controller, &TPlayerTradeController::widgetClosed, this, &TPlayerTradeWidgetManager::close);
     m_sidebars->addWidget(m_controller->widget());
     m_controller->widget()->show();
@@ -241,8 +298,8 @@ void TPlayerTradeWidgetManager::close()
     controller->deleteLater();
 }
 
-/// CIP / : TRADE_ITEM starts a target selection; a
-/// player picked on the map gets the trade request.
+/// TRADE_ITEM starts a target selection; a player picked on the map gets the
+/// trade request.
 bool TPlayerTradeWidgetManager::tradeItem(const input::TGameAction& action)
 {
     const uint16_t typeId = action.objectClientId;

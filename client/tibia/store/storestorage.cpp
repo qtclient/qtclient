@@ -532,10 +532,10 @@ void TStoreProtocolMessageHandler::sendStoreEventOfferViewed(const TOfferID offe
     sendMessage(std::move(message));
 }
 
-void TStoreProtocolMessageHandler::sendStoreEventSearch(const QString& text)
+void TStoreProtocolMessageHandler::sendStoreEventFilterTag(const QString& filterTag)
 {
     std::unique_ptr<GameclientMessage> message;
-    storeEvent(message, 1)->set_text(text.toStdString());
+    storeEvent(message, 1)->set_text(filterTag.toStdString());
     sendMessage(std::move(message));
 }
 
@@ -546,10 +546,10 @@ void TStoreProtocolMessageHandler::sendStoreEventSortOrder(const int sortOrder)
     sendMessage(std::move(message));
 }
 
-void TStoreProtocolMessageHandler::sendStoreEventFilterTag(const int filterTag)
+void TStoreProtocolMessageHandler::sendStoreEventVisitDuration(const uint32_t seconds)
 {
     std::unique_ptr<GameclientMessage> message;
-    storeEvent(message, 3)->set_value(static_cast<uint32_t>(filterTag));
+    storeEvent(message, 3)->set_value(seconds);
     sendMessage(std::move(message));
 }
 

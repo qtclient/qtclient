@@ -75,19 +75,33 @@ public:
     explicit TGatherAllProtocolMessageHandler(QObject* parent = nullptr);
 };
 
-/// CIP input::TOpenWebsiteGameActionHandler: OPEN_URL_* → portal / absolute URL
-/// (product maps CIP tibia.com URLs via app::PortalUrls + LauncherEnv overrides).
+/// CIP input::TOpenWebsiteGameActionHandler: opens the website page of an
+/// OPEN_URL_* action in the system browser. CipSoft reads each page from the
+/// [URLS] group of the client settings (tibiaPageUrl, getPremiumUrl, ...), falling
+/// back to http://www.tibia.com/. Host concern: qtclient has no [URLS] blob, so
+/// app::PortalUrls (portal paths + QTCLIENT_URL_* overrides) stands in for it.
 class TOpenWebsiteGameActionHandler final : public cip::tibia::input::TOpenWebsiteGameActionHandler
 {
     Q_OBJECT
 public:
     explicit TOpenWebsiteGameActionHandler(const app::LauncherEnv& env, QObject* parent = nullptr);
-    explicit TOpenWebsiteGameActionHandler(const QUrl& loginBase, QObject* parent = nullptr);
     ~TOpenWebsiteGameActionHandler() override;
     TOpenWebsiteGameActionHandler(const TOpenWebsiteGameActionHandler&) = delete;
     TOpenWebsiteGameActionHandler& operator=(const TOpenWebsiteGameActionHandler&) = delete;
 
+    void handleGameAction(const TGameAction& action);
+    /// OPEN_URL_GET_PREMIUM: getPremiumUrl followed by the action's number (`parameter`).
+    void handleOpenGetPremiumUrlGameAction(const TGameAction& action);
+    /// OPEN_URL_SURVEY: limesurveyUrl, the survey id (`parameter`), then
+    /// "/lang-en?token=" and the invitation token (`text`).
+    void handleOpenSurveyUrlGameAction(const TGameAction& action);
+
 private:
+    /// The [URLS] page for `action`, or `defaultUrl` when none is configured.
+    QUrl configuredUrl(EGameAction action, const QUrl& defaultUrl) const;
+    /// Opens `url` from the event loop, after the action finished.
+    static void openUrlLater(const QUrl& url);
+
     app::LauncherEnv m_env;
 };
 

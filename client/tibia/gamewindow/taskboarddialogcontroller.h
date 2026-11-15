@@ -9,11 +9,12 @@ namespace tibia {
 namespace gamewindow {
 
 class TBountyTasksController;
+class TMessageDialogController;
 class TWeeklyTasksController;
 class TTaskboardShopController;
 
 /// TaskboardDialog.qml (CIP: TTaskboardDialogController). Opens from the
-/// button bar / side rail OPEN_TASKBOARD_DIALOG action and fills tabs from
+/// OPEN_TASKBOARD_DIALOG action (bounty or weekly tab) and fills tabs from
 /// onBountyTaskData / onWeeklyTaskData / onTaskHuntingShopData.
 class TTaskboardDialogController final : public TDialogController<cip::tibia::gamewindow::TTaskboardDialogController>
 {
@@ -22,9 +23,6 @@ public:
     explicit TTaskboardDialogController(QObject* parent = nullptr);
     ~TTaskboardDialogController() override;
 
-    void openOrUpdate();
-    bool isOpen() const;
-
 public Q_SLOTS:
     void showDialog(const DialogTab& Tab) override;
     void closeDialog() override;
@@ -32,13 +30,14 @@ public Q_SLOTS:
     void requestTabSwitch(const DialogTab& NewTab) override;
 
 private:
-    void requestDataForTab(DialogTab tab);
+    void switchToTab(DialogTab tab);
     void refreshCurrencies();
     void refreshFromResourceBalance();
 
     TBountyTasksController* m_bounty = nullptr;
     TWeeklyTasksController* m_weekly = nullptr;
     TTaskboardShopController* m_shop = nullptr;
+    TMessageDialogController* m_notOnMain = nullptr;
     std::vector<client::gamecore::Hook> m_hooks;
     /// True while TaskboardDialog.qml (and nested tab Loaders) are being created.
     /// Resource-balance slots must not emit into incubating QML — that corrupts the heap.

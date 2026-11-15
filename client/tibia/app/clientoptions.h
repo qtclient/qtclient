@@ -27,7 +27,8 @@ class ClientOptions
 public:
     static ClientOptions load();
     static QString userFilePath();
-    /// Sets one option in the user's file (TClientOptions' setters, vtable 0x80).
+    /// Sets one option (TClientOptions' typed setters): a no-op when the
+    /// option already holds `value`, else written and announced by optionChanged.
     static void store(const QString& name, const QJsonValue& value);
     /// Writes many settings at once (the options dialog's apply): every section
     /// of `changes` key by key, keeping the keys it does not name.
@@ -38,9 +39,9 @@ public:
     /// The "options" section, keyed by CIP's option names (cip_options.h).
     QJsonObject options() const { return m_root.value(QLatin1String("options")).toObject(); }
 
-    /// Option 0x5c: 0 auto, 3 software, 6 D3D11, 7 Vulkan, 8 OpenGL, 9 Metal, 10 D3D12.
+    /// Option rendererIndex: 0 auto, 3 software, 6 D3D11, 7 Vulkan, 8 OpenGL, 9 Metal, 10 D3D12.
     int rendererIndex() const;
-    /// Option 0x5e.
+    /// Option vSyncEnabled.
     bool vSyncEnabled() const;
 
 private:

@@ -843,10 +843,13 @@ public:
     }
 };
 
-void clearInspectList(QList<QObject*>& list)
+/// Empties the list, tells QML, then deletes the rows.
+template <class Controller>
+void clearInspectList(Controller& controller, QList<QObject*>& list)
 {
-    qDeleteAll(list);
-    list.clear();
+    const QList<QObject*> rows = std::exchange(list, {});
+    Q_EMIT controller.inspectObjectListChanged();
+    qDeleteAll(rows);
 }
 
 } // namespace
@@ -873,7 +876,8 @@ TInspectObjectDialogController* TInspectObjectDialogController::instance()
 
 void TInspectObjectDialogController::showObject(const ItemInspectionData& data)
 {
-    clearInspectList(m_inspectObjectList);
+    // Any open inspection closes first.
+    closeDialog();
     auto* row = new TInspectObjectRow(0, this);
     row->setFromItem(data);
     m_inspectObjectList.append(row);
@@ -885,8 +889,8 @@ void TInspectObjectDialogController::showObject(const ItemInspectionData& data)
 
 void TInspectObjectDialogController::closeDialog()
 {
+    clearInspectList(*this, m_inspectObjectList);
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 void TInspectObjectDialogController::okButtonClicked()
@@ -896,22 +900,21 @@ void TInspectObjectDialogController::okButtonClicked()
 
 void TInspectObjectDialogController::copyToClipboarClicked()
 {
-    if (!m_inspectObjectList.isEmpty()) {
-        if (auto* row = static_cast<TInspectObjectRow*>(m_inspectObjectList.front())) {
-            if (QClipboard* clip = QGuiApplication::clipboard())
-                clip->setText(row->clipboardReadyText());
-        }
+    QString text;
+    for (QObject* object : m_inspectObjectList) {
+        if (const auto* row = qobject_cast<cip::tibia::gamewindow::TInspectObjectQMLData*>(object))
+            text.append(row->clipboardReadyText());
     }
-    input::publish(input::makeAction(A::COPY_TEXT_TO_CLIPBOARD));
+    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(text));
 }
 
 void TInspectObjectDialogController::openWeaponProficiencyDialogClicked()
 {
     if (m_inspectObjectList.isEmpty())
         return;
-    if (auto* row = static_cast<TInspectObjectRow*>(m_inspectObjectList.front()); row && row->appearanceID() != 0) {
+    if (const auto* row = qobject_cast<cip::tibia::gamewindow::TInspectObjectQMLData*>(m_inspectObjectList.front())) {
         auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
-        action->instance = row->appearanceID();
+        action->instance = static_cast<uint16_t>(row->appearanceID());
         input::publish(action);
     }
 }
@@ -939,12 +942,15 @@ TInspectPlayerDialogController* TInspectPlayerDialogController::instance()
 
 void TInspectPlayerDialogController::showPlayer(const CyclopediaCharacterInspection& data)
 {
-    clearInspectList(m_inspectObjectList);
+    // Any open inspection closes first; then one row per inventory slot and
+    // one for the player.
+    closeDialog();
     for (int slot = 1; slot <= InspectSlots; ++slot)
         m_inspectObjectList.append(new TInspectObjectRow(slot, this));
     auto* player = new TInspectObjectRow(InspectPlayerSlot, this);
     m_inspectObjectList.append(player);
 
+    // Dual wielding: a dual-wield weapon in the left hand and the right hand empty.
     bool rightHandEmpty = true;
     uint16_t leftHandTypeId = 0;
     bool leftHandDualWield = false;
@@ -965,14 +971,17 @@ void TInspectPlayerDialogController::showPlayer(const CyclopediaCharacterInspect
     m_dualWieldingObjectID = leftHandDualWield ? static_cast<int>(leftHandTypeId) : 0;
     m_isOwnPlayer = tibia::game::localPlayer() && tibia::game::localPlayerId() == data.creatureId;
     Q_EMIT inspectObjectListChanged();
+    m_inspectedPlayerId = data.creatureId;
     dialog()->create();
     dialog()->show();
 }
 
 void TInspectPlayerDialogController::closeDialog()
 {
+    if (TMouseCursorController* cursor = TMouseCursorController::instance())
+        cursor->setPointingHand(false);
+    clearInspectList(*this, m_inspectObjectList);
     dialog()->close();
-    Q_EMIT dialogClosed();
 }
 
 void TInspectPlayerDialogController::okButtonClicked()
@@ -980,19 +989,31 @@ void TInspectPlayerDialogController::okButtonClicked()
     closeDialog();
 }
 
+void TInspectPlayerDialogController::openCharacterInfoClicked()
+{
+    // The Cyclopedia's character tab.
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
+    action->parameter = 2;
+    input::publish(action);
+    closeDialog();
+}
+
 void TInspectPlayerDialogController::copyToClipboarClicked(const QString& Text)
 {
-    if (QClipboard* clip = QGuiApplication::clipboard())
-        clip->setText(Text);
-    input::publish(input::makeAction(A::COPY_TEXT_TO_CLIPBOARD));
+    input::publish(std::make_shared<input::TGameActionCopyTrustedTextToClipboard>(Text));
+}
+
+void TInspectPlayerDialogController::openSkillWheelDialog()
+{
+    if (!tibia::game::localPlayer() || m_inspectObjectList.isEmpty() || m_inspectedPlayerId == 0)
+        return;
+    input::publish(std::make_shared<input::TGameActionCreature>(A::REQUEST_SKILL_WHEEL, m_inspectedPlayerId));
 }
 
 void TInspectPlayerDialogController::openWeaponProficiencyDialogClicked(const uint AppearanceTypeID)
 {
-    if (AppearanceTypeID == 0)
-        return;
     auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_DIALOG));
-    action->instance = static_cast<int>(AppearanceTypeID);
+    action->instance = static_cast<uint16_t>(AppearanceTypeID);
     input::publish(action);
 }
 

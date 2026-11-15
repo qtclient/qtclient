@@ -5,143 +5,235 @@
 #include <QDateTime>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QLocale>
+#include <QJsonValue>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+
+#include <set>
 
 namespace tibia::gamewindow {
 
 namespace {
 
-/// CIP .
-QString formatDate(const qint64 timestamp)
+/// A world's creation date: month and year.
+QString worldCreationDateText(const int timestamp)
 {
-    if (timestamp <= 0)
-        return {};
-    return QLocale().toString(QDateTime::fromSecsSinceEpoch(timestamp).date(), QLocale::ShortFormat);
+    QDateTime date;
+    date.setSecsSinceEpoch(timestamp);
+    return date.toString(QStringLiteral("MMM yyyy"));
 }
 
-/// CIP .
-QString battleEyeStatus(const bool initiallyActive, const qint64 activation)
+/// Protected since the world's release, or since the month BattlEye came.
+QString worldBattleEyeStatusText(const bool initiallyActive, const int activation)
 {
     if (initiallyActive)
-        return QStringLiteral("Protected since release");
-    if (activation > 0 && activation <= QDateTime::currentSecsSinceEpoch())
-        return QStringLiteral("Protected since %1").arg(formatDate(activation));
-    return QStringLiteral("Unprotected");
+        return qtTrId("initially_protected");
+    QDateTime date;
+    date.setSecsSinceEpoch(activation);
+    return qtTrId("create_account_dialog_protected_since_format").arg(date.toString(QStringLiteral("MMM yyyy")));
 }
 
-/// CIP .
-CreationWorld parseWorld(const QJsonObject& o)
+/// The reply body as a JSON object.
+QJsonObject replyObject(QNetworkReply* reply)
 {
-    CreationWorld w;
-    w.name = o.value(QLatin1String("Name")).toString();
-    w.region = o.value(QLatin1String("Region")).toString();
-    w.pvpType = o.value(QLatin1String("PvPType")).toString();
-    w.playersOnline = o.value(QLatin1String("PlayersOnline")).toInt();
-    w.creationDate = formatDate(o.value(QLatin1String("CreationDate")).toInteger());
-    w.battleEyeStatus = battleEyeStatus(o.value(QLatin1String("BattlEyeInitiallyActive")).toInt() == 1,
-                                        o.value(QLatin1String("BattlEyeActivationTimestamp")).toInteger());
-    w.premiumOnly = o.value(QLatin1String("PremiumOnly")).toInt() > 0;
-    w.transferType = o.value(QLatin1String("TransferType")).toString();
+    return QJsonDocument::fromJson(QString::fromUtf8(reply->readAll()).toUtf8()).object();
+}
+
+bool httpOk(QNetworkReply* reply)
+{
+    return reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200;
+}
+
+bool succeeded(const QJsonObject& reply) { return reply.value(QLatin1String("errorCode")).toInt() == 0; }
+
+/// "errorMessage", a string or a list joined by ", ".
+QString errorMessage(const QJsonObject& reply)
+{
+    QString message = QString::fromUtf8("");
+    const QJsonValue value = reply.value(QLatin1String("errorMessage"));
+    if (value.isArray()) {
+        const QJsonArray parts = value.toArray();
+        if (!parts.isEmpty()) {
+            message.append(parts[0].toString());
+            for (qsizetype i = 1; i < parts.size(); ++i) {
+                message.append(QStringLiteral(", "));
+                message.append(parts[i].toString());
+            }
+        }
+    }
+    if (value.isString())
+        message = value.toString();
+    return message;
+}
+
+}
+
+WorldData parseWorldData(const QJsonValue& value)
+{
+    const QJsonObject o = value.toObject();
+    WorldData w;
+    w.name = o[QLatin1String("Name")].toString();
+    w.region = o[QLatin1String("Region")].toString();
+    w.pvpType = o[QLatin1String("PvPType")].toString();
+    w.playersOnline = o[QLatin1String("PlayersOnline")].toInt();
+    w.creationDate = worldCreationDateText(o[QLatin1String("CreationDate")].toInt());
+    w.battleEyeStatus = worldBattleEyeStatusText(o[QLatin1String("BattlEyeInitiallyActive")].toInt() == 1,
+                                                 o[QLatin1String("BattlEyeActivationTimestamp")].toInt());
+    w.premiumOnly = o[QLatin1String("PremiumOnly")].toInt() > 0;
+    w.transferType = o[QLatin1String("TransferType")].toString();
     return w;
 }
 
-/// CIP .
-bool succeeded(const QJsonObject& reply) { return reply.value(QLatin1String("errorCode")).toInt() == 0; }
-
-/// CIP : "errorMessage", a string or a list joined by ", ".
-QString errorMessage(const QJsonObject& reply)
+WorldSelectionModel::WorldSelectionModel(QObject* parent)
+    : cip::tibia::gamewindow::WorldSelectionModel(parent)
 {
-    const QJsonValue value = reply.value(QLatin1String("errorMessage"));
-    if (!value.isArray())
-        return value.toString();
-    QStringList parts;
-    for (const QJsonValue& part : value.toArray())
-        parts.append(part.toString());
-    return parts.join(QStringLiteral(", "));
+    connect(this, &QAbstractItemModel::rowsInserted, this, &WorldSelectionModel::rowCountChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &WorldSelectionModel::rowCountChanged);
 }
 
-}
-
-WorldSelectionModel::WorldSelectionModel(QObject* parent) : cip::tibia::gamewindow::WorldSelectionModel(parent) {}
-
-void WorldSelectionModel::setWorlds(const QList<CreationWorld>& worlds)
+void WorldSelectionModel::setItems(std::vector<WorldData> worlds)
 {
-    beginResetModel();
-    m_worlds = worlds;
-    m_count = int(m_worlds.size());
-    endResetModel();
-    Q_EMIT rowCountChanged();
+    int count = rowCount();
+    const int newCount = int(worlds.size());
+    if (newCount < count) {
+        beginRemoveRows({}, newCount, count - 1);
+        m_worlds = std::move(worlds);
+        endRemoveRows();
+        count = newCount;
+    } else if (count < newCount) {
+        beginInsertRows({}, count, newCount - 1);
+        m_worlds = std::move(worlds);
+        endInsertRows();
+    } else {
+        m_worlds = std::move(worlds);
+    }
+    if (count > 0)
+        Q_EMIT dataChanged(index(0), index(count - 1));
 }
 
-int WorldSelectionModel::count() const { return m_count; }
-
-int WorldSelectionModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : int(m_worlds.size()); }
+int WorldSelectionModel::rowCount(const QModelIndex&) const { return int(m_worlds.size()); }
 
 QVariant WorldSelectionModel::data(const QModelIndex& index, const int role) const
 {
-    if (!index.isValid() || index.row() >= m_worlds.size())
+    if (index.row() < 0 || index.column() < 0 || !index.model() || index.row() >= int(m_worlds.size()))
         return {};
-    if (role == WorldNameRole || role == Qt::DisplayRole)
-        return m_worlds[index.row()].name;
-    return {};
+    const WorldData& w = m_worlds[size_t(index.row())];
+    switch (role) {
+    case WorldNameRole:
+        return w.name;
+    case PlayersOnlineRole:
+        return w.playersOnline;
+    case RegionRole:
+        return w.region;
+    case PvPTypeRole:
+        return w.pvpType;
+    case CreationDateRole:
+        return w.creationDate;
+    case BattleEyeStatusRole:
+        return w.battleEyeStatus;
+    case PremiumOnlyRole:
+        return w.premiumOnly;
+    case TransferTypeRole:
+        return w.transferType;
+    default:
+        return {};
+    }
 }
 
-QHash<int, QByteArray> WorldSelectionModel::roleNames() const { return { { WorldNameRole, "WorldName" } }; }
+QHash<int, QByteArray> WorldSelectionModel::roleNames() const
+{
+    return {
+        { WorldNameRole, "WorldName" },
+        { RegionRole, "Region" },
+        { PvPTypeRole, "PvPType" },
+        { PlayersOnlineRole, "PlayersOnline" },
+        { CreationDateRole, "CreationDate" },
+        { BattleEyeStatusRole, "BattleEyeStatus" },
+        { PremiumOnlyRole, "PremiumOnly" },
+        { TransferTypeRole, "TransferType" },
+    };
+}
 
-TWorldSelectionSortProxyModel::TWorldSelectionSortProxyModel(TWorldSelectionModel* source, QObject* parent)
+TWorldSelectionSortProxyModel::TWorldSelectionSortProxyModel(QObject* parent)
     : cip::tibia::gamewindow::TWorldSelectionSortProxyModel(parent)
-    , m_source(source)
+    , m_worlds(new WorldSelectionModel(this))
 {
-    setSourceModel(source);
-    setSortRole(WorldSelectionModel::WorldNameRole);
-    setSortCaseSensitivity(Qt::CaseInsensitive);
-    sort(0);
+    setSourceModel(m_worlds);
+    sort(0, Qt::AscendingOrder);
 }
 
-QList<QObject*> TWorldSelectionSortProxyModel::filterOptions(const QStringList& values)
+void TWorldSelectionSortProxyModel::setWorlds(const std::vector<WorldData>& worlds)
 {
-    QList<QObject*> options{ new TWorldFilterEntry(QStringLiteral("All"), {}, this) };
-    for (const QString& value : values)
-        options.append(new TWorldFilterEntry(value, value, this));
-    return options;
+    m_worlds->setItems(worlds);
+
+    // Every region and PvP type once, sorted, with "All" among them.
+    const QString all = qtTrId("all");
+    std::set<QString> regions{ all };
+    std::set<QString> pvpTypes{ all };
+    std::map<QString, std::set<QString>> pvpTypesByRegion;
+    for (const WorldData& world : worlds) {
+        regions.insert(world.region);
+        pvpTypes.insert(world.pvpType);
+        pvpTypesByRegion[world.region].insert(world.pvpType);
+    }
+
+    // "All" filters nothing: its value is empty.
+    const auto option = [this, &all](const QString& text) -> QObject* {
+        return new TWorldFilterEntry(text, text == all ? QString::fromUtf8("") : text, this);
+    };
+    const auto release = [](const QList<QObject*>& options) {
+        for (QObject* entry : options)
+            entry->deleteLater();
+    };
+
+    release(m_worldRegionFilterModel);
+    m_worldRegionFilterModel.clear();
+    for (const QString& region : regions)
+        m_worldRegionFilterModel.append(option(region));
+
+    release(m_worldPvPTypeFilterModel);
+    m_worldPvPTypeFilterModel.clear();
+    for (const QString& pvpType : pvpTypes)
+        m_worldPvPTypeFilterModel.append(option(pvpType));
+
+    for (const auto& [region, options] : m_worldPvPTypeFilterModelByRegion)
+        release(options);
+    m_worldPvPTypeFilterModelByRegion.clear();
+    for (const auto& [region, types] : pvpTypesByRegion) {
+        QList<QObject*>& options = m_worldPvPTypeFilterModelByRegion[region];
+        for (const QString& pvpType : types)
+            options.append(option(pvpType));
+    }
+
+    beginFilterChange();
+    m_worldRegionFilter = QString::fromUtf8("");
+    m_worldPvPTypeFilter = QString::fromUtf8("");
+    endFilterChange(Direction::Both);
+    invalidate();
 }
 
-void TWorldSelectionSortProxyModel::reload(const QString& recommendedWorld)
+void TWorldSelectionSortProxyModel::setRecommendedWorld(const QString& world)
 {
-    QStringList regions;
-    QStringList pvpTypes;
-    for (const CreationWorld& w : m_source->worlds()) {
-        if (!w.region.isEmpty() && !regions.contains(w.region))
-            regions.append(w.region);
-        if (!w.pvpType.isEmpty() && !pvpTypes.contains(w.pvpType))
-            pvpTypes.append(w.pvpType);
-    }
-    regions.sort();
-    pvpTypes.sort();
-    qDeleteAll(m_worldRegionFilterModel);
-    qDeleteAll(m_worldPvPTypeFilterModel);
-    m_worldRegionFilterModel = filterOptions(regions);
-    m_worldPvPTypeFilterModel = filterOptions(pvpTypes);
-    Q_EMIT worldRegionsChanged();
-    Q_EMIT worldPvPTypeChanged();
-    if (m_recommendedWorld != recommendedWorld) {
-        m_recommendedWorld = recommendedWorld;
-        Q_EMIT recommendedWorldChanged();
-    }
-    resetFilter();
+    if (m_recommendedWorld == world)
+        return;
+    m_recommendedWorld = world;
+    Q_EMIT recommendedWorldChanged();
+    invalidate();
 }
 
 void TWorldSelectionSortProxyModel::setWorldRegionFilter(const QString& v)
 {
     if (m_worldRegionFilter == v)
         return;
+    // A new region drops the PvP type filter: its options are the region's.
     beginFilterChange();
     m_worldRegionFilter = v;
-    endFilterChange(Direction::Rows);
+    m_worldPvPTypeFilter = QString::fromUtf8("");
+    endFilterChange(Direction::Both);
     Q_EMIT filterChanged();
+    Q_EMIT worldRegionsChanged();
+    Q_EMIT worldPvPTypeChanged();
 }
 
 void TWorldSelectionSortProxyModel::setWorldPvPTypeFilter(const QString& v)
@@ -150,202 +242,231 @@ void TWorldSelectionSortProxyModel::setWorldPvPTypeFilter(const QString& v)
         return;
     beginFilterChange();
     m_worldPvPTypeFilter = v;
-    endFilterChange(Direction::Rows);
+    endFilterChange(Direction::Both);
     Q_EMIT filterChanged();
+    Q_EMIT worldRegionsChanged();
+    Q_EMIT worldPvPTypeChanged();
+}
+
+QList<QObject*> TWorldSelectionSortProxyModel::worldPvPTypeFilterModel() const
+{
+    if (!m_worldRegionFilter.isEmpty()) {
+        const auto it = m_worldPvPTypeFilterModelByRegion.find(m_worldRegionFilter);
+        if (it != m_worldPvPTypeFilterModelByRegion.end())
+            return it->second;
+    }
+    return m_worldPvPTypeFilterModel;
 }
 
 void TWorldSelectionSortProxyModel::resetFilter()
 {
     beginFilterChange();
-    m_worldRegionFilter.clear();
-    m_worldPvPTypeFilter.clear();
-    endFilterChange(Direction::Rows);
-    Q_EMIT filterChanged();
+    m_worldRegionFilter = QString::fromUtf8("");
+    m_worldPvPTypeFilter = QString::fromUtf8("");
+    endFilterChange(Direction::Both);
 }
 
 bool TWorldSelectionSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    if (sourceRow >= m_source->worlds().size())
+    const QModelIndex world = m_worlds->index(sourceRow);
+    if (!m_worldRegionFilter.isEmpty() && world.data(WorldSelectionModel::RegionRole).toString() != m_worldRegionFilter)
         return false;
-    const CreationWorld& w = m_source->worlds()[sourceRow];
-    return (m_worldRegionFilter.isEmpty() || w.region == m_worldRegionFilter) && (m_worldPvPTypeFilter.isEmpty() || w.pvpType == m_worldPvPTypeFilter);
+    if (!m_worldPvPTypeFilter.isEmpty() && world.data(WorldSelectionModel::PvPTypeRole).toString() != m_worldPvPTypeFilter)
+        return false;
+    return true;
 }
 
-const CreationWorld* TWorldSelectionSortProxyModel::worldAt(const QModelIndex& index) const
+bool TWorldSelectionSortProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const QModelIndex source = mapToSource(index);
-    if (!source.isValid() || source.row() >= m_source->worlds().size())
-        return nullptr;
-    return &m_source->worlds()[source.row()];
+    // The recommended world first, then by name.
+    const QString leftName = left.data(WorldSelectionModel::WorldNameRole).toString();
+    const QString rightName = right.data(WorldSelectionModel::WorldNameRole).toString();
+    const bool leftNotRecommended = leftName != m_recommendedWorld;
+    const bool rightNotRecommended = rightName != m_recommendedWorld;
+    if (leftNotRecommended != rightNotRecommended)
+        return leftNotRecommended < rightNotRecommended;
+    return QString::compare(leftName, rightName, Qt::CaseSensitive) < 0;
 }
 
-QString TWorldSelectionSortProxyModel::worldName(const QModelIndex& index)
+QString TWorldSelectionSortProxyModel::roleText(const QModelIndex& index, const int role) const
 {
-    const CreationWorld* w = worldAt(index);
-    return w ? w->name : QString();
+    return data(index, role).toString();
 }
+
+QString TWorldSelectionSortProxyModel::worldName(const QModelIndex& index) { return roleText(index, WorldSelectionModel::WorldNameRole); }
 
 QString TWorldSelectionSortProxyModel::playersOnline(const QModelIndex& index)
 {
-    const CreationWorld* w = worldAt(index);
-    return w ? QString::number(w->playersOnline) : QString();
+    return roleText(index, WorldSelectionModel::PlayersOnlineRole);
 }
 
-QString TWorldSelectionSortProxyModel::worldPvPType(const QModelIndex& index)
-{
-    const CreationWorld* w = worldAt(index);
-    return w ? w->pvpType : QString();
-}
+QString TWorldSelectionSortProxyModel::worldPvPType(const QModelIndex& index) { return roleText(index, WorldSelectionModel::PvPTypeRole); }
 
-QString TWorldSelectionSortProxyModel::worldRegion(const QModelIndex& index)
-{
-    const CreationWorld* w = worldAt(index);
-    return w ? w->region : QString();
-}
+QString TWorldSelectionSortProxyModel::worldRegion(const QModelIndex& index) { return roleText(index, WorldSelectionModel::RegionRole); }
 
 QString TWorldSelectionSortProxyModel::worldCreationDate(const QModelIndex& index)
 {
-    const CreationWorld* w = worldAt(index);
-    return w ? w->creationDate : QString();
+    return roleText(index, WorldSelectionModel::CreationDateRole);
 }
 
 QString TWorldSelectionSortProxyModel::worldBattleEyeStatus(const QModelIndex& index)
 {
-    const CreationWorld* w = worldAt(index);
-    return w ? w->battleEyeStatus : QString();
+    return roleText(index, WorldSelectionModel::BattleEyeStatusRole);
 }
 
 QString TWorldSelectionSortProxyModel::worldPremiumOnly(const QModelIndex& index)
 {
-    const CreationWorld* w = worldAt(index);
-    if (!w)
-        return {};
-    return w->premiumOnly ? qtTrId("yes") : qtTrId("no");
+    return roleText(index, WorldSelectionModel::PremiumOnlyRole);
 }
 
 QString TWorldSelectionSortProxyModel::worldTransferType(const QModelIndex& index)
 {
-    const CreationWorld* w = worldAt(index);
-    return w ? w->transferType : QString();
+    return roleText(index, WorldSelectionModel::TransferTypeRole);
 }
 
 TCreateCharacterDialogController::TCreateCharacterDialogController(const QString& qmlFile, QObject* parent)
     : TDialogController(qmlFile, parent)
     , m_network(new QNetworkAccessManager(this))
-    , m_worlds(new TWorldSelectionModel(this))
-    , m_proxy(new TWorldSelectionSortProxyModel(m_worlds, this))
+    , m_proxy(new TWorldSelectionSortProxyModel(this))
     , m_error(new TMessageDialogController(this))
 {
     m_worldsModel = m_proxy;
     m_characterSexMale = true;
     m_playTutorial = true;
-    m_canCancelCharacterCreation = true;
+    setAccountHasNoCharacters(true);
     m_error->setCloseOnButtonClicked(true);
     m_error->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
 }
 
 TCreateCharacterDialogController::~TCreateCharacterDialogController() = default;
 
+void TCreateCharacterDialogController::setAccountHasNoCharacters(const bool noCharacters)
+{
+    // The first character can neither be cancelled nor skip the tutorial.
+    m_noCharacters = noCharacters;
+    m_canChangePlayTutorial = !noCharacters;
+    m_canCancelCharacterCreation = !noCharacters;
+}
+
 void TCreateCharacterDialogController::open(const bool accountHasNoCharacters)
 {
-    if (m_pending > 0 || dialog()->isInStack())
+    if (m_pending > 0)
         return;
-    m_noCharacters = accountHasNoCharacters;
-    showDialog();
+    setAccountHasNoCharacters(accountHasNoCharacters);
+    dialog()->close();
+    requestAccountCreationStatus();
 }
 
 void TCreateCharacterDialogController::showDialog()
 {
-    m_canCancelCharacterCreation = !m_noCharacters;
-    Q_EMIT characterCreationDataChanged();
-    post({ { QStringLiteral("type"), QStringLiteral("getaccountcreationstatus") } }, [this](const QJsonObject& reply) { onStatus(reply); });
-}
-
-void TCreateCharacterDialogController::onStatus(const QJsonObject& reply)
-{
-    if (!succeeded(reply)) {
-        showError(errorMessage(reply));
-        return;
-    }
-    QList<CreationWorld> worlds;
-    for (const QJsonValue& w : reply.value(QLatin1String("Worlds")).toArray())
-        worlds.append(parseWorld(w.toObject()));
-    m_worlds->setWorlds(worlds);
-    m_proxy->reload(reply.value(QLatin1String("RecommendedWorld")).toString());
-    const bool tutorial = reply.value(QLatin1String("PlayTutorialEnabled")).toBool(true);
-    m_canChangePlayTutorial = tutorial;
-    m_playTutorial = tutorial;
-    Q_EMIT characterCreationDataChanged();
-    suggestCharacterName();
-    dialog()->show();
-}
-
-void TCreateCharacterDialogController::resetForm()
-{
-    m_characterSexMale = true;
-    m_playTutorial = true;
-    m_characterName.clear();
-    m_characterNameError.clear();
-    m_characterNameValid = false;
-    m_generatedName.clear();
-    m_creating = false;
-    m_worlds->setWorlds({});
-    Q_EMIT characterNameChanged();
-    Q_EMIT characterCreationDataChanged();
+    dialog()->close();
+    requestAccountCreationStatus();
 }
 
 void TCreateCharacterDialogController::cancel()
 {
-    resetForm();
-    if (dialog()->isInStack())
-        dialog()->close();
+    m_characterSexMale = true;
+    m_playTutorial = true;
+    setAccountHasNoCharacters(false);
+    m_proxy->setWorlds({});
+    Q_EMIT characterCreationDataChanged();
+    dialog()->close();
+}
+
+void TCreateCharacterDialogController::requestAccountCreationStatus()
+{
+    post({ { QStringLiteral("type"), QStringLiteral("getaccountcreationstatus") } },
+         [this](QNetworkReply* reply) { onAccountCreationStatus(reply); });
+}
+
+void TCreateCharacterDialogController::onAccountCreationStatus(QNetworkReply* reply)
+{
+    if (!httpOk(reply)) {
+        showError(qtTrId("create_account_dialog_error_account_creation_disabled"));
+        return;
+    }
+    const QJsonObject status = replyObject(reply);
+    if (!succeeded(status)) {
+        showError(errorMessage(status));
+        return;
+    }
+    std::vector<WorldData> worlds;
+    for (const QJsonValue& world : status[QLatin1String("Worlds")].toArray())
+        worlds.push_back(parseWorldData(world));
+    m_proxy->setWorlds(worlds);
+    m_proxy->setRecommendedWorld(status[QLatin1String("RecommendedWorld")].toString());
+    // Product: the portal can switch the tutorial off for every new character.
+    if (!status[QLatin1String("PlayTutorialEnabled")].toBool(true)) {
+        m_canChangePlayTutorial = false;
+        m_playTutorial = false;
+    }
+    suggestCharacterName();
+    dialog()->show();
+    Q_EMIT characterCreationDataChanged();
 }
 
 void TCreateCharacterDialogController::suggestCharacterName()
 {
-    post({ { QStringLiteral("Type"), QStringLiteral("GenerateCharacterName") } }, [this](const QJsonObject& reply) {
-        if (!succeeded(reply)) {
-            showError(errorMessage(reply));
-            return;
-        }
-        // CIP .
-        m_generatedName = reply.value(QLatin1String("GeneratedName")).toString();
-        m_characterName = m_generatedName;
-        m_characterNameError = errorMessage(reply);
-        m_characterNameValid = !m_generatedName.isEmpty();
-        Q_EMIT characterNameChanged();
-        Q_EMIT characterCreationDataChanged();
-    });
+    post({ { QStringLiteral("Type"), QStringLiteral("GenerateCharacterName") } }, [this](QNetworkReply* reply) { onCharacterNameGenerated(reply); });
+}
+
+void TCreateCharacterDialogController::onCharacterNameGenerated(QNetworkReply* reply)
+{
+    if (!httpOk(reply)) {
+        showError(reply->errorString());
+        return;
+    }
+    const QJsonObject answer = replyObject(reply);
+    if (!succeeded(answer)) {
+        showError(errorMessage(answer));
+        return;
+    }
+    m_characterName = answer[QLatin1String("GeneratedName")].toString();
+    Q_EMIT characterNameChanged();
+    if (answer.contains(QLatin1String("Error")))
+        m_characterNameError = answer[QLatin1String("Error")].toString();
+    else
+        m_characterNameError = QString::fromUtf8("");
+    m_generatedName = m_characterName;
+    m_characterNameValid = true;
+    Q_EMIT characterCreationDataChanged();
 }
 
 void TCreateCharacterDialogController::updateCharacterName(const QString& Name)
 {
     m_characterName = Name;
-    if (Name.isEmpty()) {
-        m_characterNameError.clear();
-        m_characterNameValid = false;
-        Q_EMIT characterCreationDataChanged();
+    if (!m_characterName.isEmpty()) {
+        post({ { QStringLiteral("Type"), QStringLiteral("CheckCharacterName") }, { QStringLiteral("CharacterName"), m_characterName } },
+             [this](QNetworkReply* reply) { onCharacterNameChecked(reply); });
         return;
     }
-    post({ { QStringLiteral("Type"), QStringLiteral("CheckCharacterName") }, { QStringLiteral("CharacterName"), Name } }, [this](const QJsonObject& reply) {
-        // CIP : an answer for an older name only reports errors.
-        if (reply.value(QLatin1String("CharacterName")).toString() != m_characterName) {
-            if (!succeeded(reply))
-                showError(errorMessage(reply));
-            return;
-        }
-        m_characterNameValid = reply.value(QLatin1String("IsAvailable")).toBool();
-        m_characterNameError = errorMessage(reply);
+    m_characterNameError = QString::fromUtf8("");
+    m_characterNameValid = false;
+    Q_EMIT characterCreationDataChanged();
+}
+
+void TCreateCharacterDialogController::onCharacterNameChecked(QNetworkReply* reply)
+{
+    if (!httpOk(reply)) {
+        showError(reply->errorString());
+        return;
+    }
+    const QJsonObject answer = replyObject(reply);
+    // An answer for a name the player already changed only reports errors.
+    if (answer[QLatin1String("CharacterName")].toString() == m_characterName) {
+        m_characterNameValid = answer[QLatin1String("IsAvailable")].toBool();
+        m_characterNameError = errorMessage(answer);
         Q_EMIT characterCreationDataChanged();
-    });
+    } else if (!succeeded(answer)) {
+        showError(errorMessage(answer));
+    }
 }
 
 void TCreateCharacterDialogController::createCharacter(const QString& CharacterName, const bool CharacterSexMale, const bool PlayTutorial,
                                                        const QString& WorldName)
 {
-    if (m_creating)
+    if (m_pending > 0)
         return;
-    m_creating = true;
     QJsonObject request{
         { QStringLiteral("SessionKey"), m_sessionKey },
         { QStringLiteral("Type"), QStringLiteral("createCharacter") },
@@ -354,57 +475,58 @@ void TCreateCharacterDialogController::createCharacter(const QString& CharacterN
         { QStringLiteral("SelectedWorld"), WorldName },
         { QStringLiteral("PlayTutorial"), PlayTutorial },
         { QStringLiteral("ClientType"), QStringLiteral("Client") },
-        { QStringLiteral("NameIsGenerated"), !m_generatedName.isEmpty() && CharacterName == m_generatedName },
+        { QStringLiteral("NameIsGenerated"), m_generatedName == CharacterName },
+        // Host: "Epic" for the Epic Games distribution, which qtclient is not.
         { QStringLiteral("DistributionChannel"), QStringLiteral("Regular") },
     };
     addCreateCharacterFields(request);
-    post(request, [this, CharacterName](const QJsonObject& reply) {
-        m_creating = false;
-        // CIP closes the dialog after most errors; product's
-        // service codes differ from CIP's, so the form stays for a correction.
-        if (!reply.value(QLatin1String("Success")).toBool()) {
-            const QString message = errorMessage(reply);
-            showError(message.isEmpty() ? QStringLiteral("The character could not be created.") : message);
-            return;
-        }
-        const QString name = reply.value(QLatin1String("CharacterName")).toString(CharacterName);
+    post(request, [this](QNetworkReply* reply) { onCharacterCreated(reply); });
+}
+
+void TCreateCharacterDialogController::onCharacterCreated(QNetworkReply* reply)
+{
+    if (!httpOk(reply)) {
+        showError(reply->errorString());
+        return;
+    }
+    const QJsonObject answer = replyObject(reply);
+    if (answer[QLatin1String("Success")].toBool()) {
+        // The reply carries the account's characters; the host applies them.
+        Q_EMIT characterCreated(answer[QLatin1String("CharacterName")].toString(), answer);
         cancel();
-        Q_EMIT characterCreated(name, reply);
-    });
+        return;
+    }
+    if (succeeded(answer))
+        return;
+    showError(errorMessage(answer));
+    // Product: the portal's codes differ from CipSoft's (which closes the dialog
+    // unless errorCode is 2), so the form always stays for a correction.
 }
 
 void TCreateCharacterDialogController::post(const QJsonObject& request, ReplyHandler onReply)
 {
-    QNetworkRequest httpRequest(m_serviceUrl);
+    QNetworkRequest httpRequest;
+    httpRequest.setUrl(m_serviceUrl);
     httpRequest.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    QNetworkReply* reply = m_network->post(httpRequest, QJsonDocument(request).toJson(QJsonDocument::Compact));
     setPending(m_pending + 1);
+    QNetworkReply* reply = m_network->post(httpRequest, QJsonDocument(request).toJson(QJsonDocument::Compact));
     connect(reply, &QNetworkReply::finished, this, [this, reply, onReply = std::move(onReply)] {
         reply->deleteLater();
         setPending(m_pending - 1);
-        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (status != 200) {
-            m_creating = false;
-            showError(reply->errorString());
-            return;
-        }
-        onReply(QJsonDocument::fromJson(reply->readAll()).object());
+        onReply(reply);
     });
 }
 
 void TCreateCharacterDialogController::setPending(const int pending)
 {
     m_pending = std::max(0, pending);
-    const bool busy = m_pending > 0;
-    if (m_asyncOperationInProgress == busy)
-        return;
-    m_asyncOperationInProgress = busy;
+    m_asyncOperationInProgress = m_pending > 0;
     Q_EMIT asyncOperationStatusChanged();
 }
 
 void TCreateCharacterDialogController::showError(const QString& message)
 {
-    m_error->showMessage(qtTrId("create_character_dialog_caption"), message);
+    m_error->showMessage(qtTrId("error"), message);
 }
 
 }

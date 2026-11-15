@@ -640,12 +640,10 @@ int TContainerStorage::findEmptyId() const
 
 void TContainerStorage::clear()
 {
-    if (m_containers.isEmpty())
-        return;
-    const QList<TContainerID> ids = m_containers.keys();
-    m_containers.clear();
-    for (const TContainerID id : ids)
-        Q_EMIT containerRemoved(id);
+    // One container at a time, lowest id first: each removal is signalled
+    // while the others are still open.
+    while (!m_containers.isEmpty())
+        closeContainer(m_containers.firstKey());
 }
 
 TInventoryContainer::TInventoryContainer(QObject* parent)

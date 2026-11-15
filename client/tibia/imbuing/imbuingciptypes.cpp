@@ -1,9 +1,7 @@
 #include "imbuing/imbuingciptypes.h"
+#include "imbuing/imbuingstorage.h"
 #include <utility>
-#include <unordered_map>
-#include <tuple>
 #include <string>
-#include <array>
 #include <client/const.h>
 #include <vector>
 #include <client/staticdata.h>
@@ -17,9 +15,6 @@
 
 namespace tibia::imbuing {
 
-namespace {
-} // namespace
-
 void ownProductSurface(QObject* parent)
 {
     static bool owned = false;
@@ -29,61 +24,89 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
+namespace {
+
+/// One imbuement as the dialog refresh sends it.
+TImbuement imbuementFromProtocol(const ::tibia::protobuf::protocol::ProtocolImbuement& protocolImbuement)
+{
+    TImbuement imbuement;
+    imbuement.id = protocolImbuement.imbuement_id();
+    imbuement.name = QString::fromStdString(protocolImbuement.name());
+    imbuement.description = QString::fromStdString(protocolImbuement.description());
+    imbuement.tier = protocolImbuement.tier();
+    imbuement.iconId = protocolImbuement.icon_id();
+    imbuement.duration = protocolImbuement.duration();
+    imbuement.goldCost = protocolImbuement.cost();
+    imbuement.astralSources.reserve(static_cast<size_t>(protocolImbuement.sources_size()));
+    for (const auto& source : protocolImbuement.sources())
+        imbuement.astralSources.push_back({ static_cast<uint16_t>(source.object_id()), source.count(), QString::fromStdString(source.name()) });
+    return imbuement;
+}
+
+/// The whole refresh goes to the storage; the dialog then shows or updates.
+void handleImbuingDialogRefreshMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuingDialogRefresh& message)
+{
+    TImbuingStorage* storage = TImbuingStorage::instance();
+    if (!storage)
+        return;
+    std::vector<TImbuementSlot> slots;
+    slots.reserve(static_cast<size_t>(message.slots_size()));
+    for (int index = 0; index < message.slots_size(); ++index) {
+        const auto& protocolSlot = message.slots(index);
+        TImbuementSlot& slot = slots.emplace_back();
+        slot.index = static_cast<uint32_t>(index);
+        if (!protocolSlot.has_imbuement())
+            continue;
+        slot.imbuement = imbuementFromProtocol(protocolSlot.imbuement());
+        slot.remainingDuration = protocolSlot.duration();
+        slot.clearingGoldCost = protocolSlot.removal_cost();
+        slot.isEmpty = false;
+    }
+    std::vector<TImbuement> imbuements;
+    imbuements.reserve(static_cast<size_t>(message.imbuements_size()));
+    for (const auto& protocolImbuement : message.imbuements())
+        imbuements.push_back(imbuementFromProtocol(protocolImbuement));
+    std::vector<TImbuementSource> ownedObjects;
+    ownedObjects.reserve(static_cast<size_t>(message.needed_objects_size()));
+    for (const auto& owned : message.needed_objects())
+        ownedObjects.push_back({ static_cast<uint16_t>(owned.object_id()), owned.count(), {} });
+    std::optional<uint8_t> tier;
+    if (message.has_tier())
+        tier = static_cast<uint8_t>(message.tier());
+    storage->setImbuingData(message.window_type(), message.flag(), static_cast<uint16_t>(message.object_id()), tier, std::move(slots),
+                            std::move(imbuements), std::move(ownedObjects));
+    Q_EMIT storage->requestShowOrRefreshImbuingDialog();
+}
+
+/// Only the dialog types that report an imbuing result (mask 0xc0f).
+void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message)
+{
+    TImbuingStorage* storage = TImbuingStorage::instance();
+    const uint32_t type = message.dialog_type();
+    if (storage && type < 12 && (0xc0fu >> type & 1) != 0)
+        Q_EMIT storage->requestShowResultDialog(QString::fromStdString(message.message()));
+}
+
+}
+
 void TImbuingProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
     const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
-    if (opcode == 236 && shadow->HasExtension(GameserverMessageCloseImbuingDialog::gameserver_message_close_imbuing_dialog))
-        tibia::game::notify("onCloseImbuementWindow");
+    if (opcode == 236 && shadow->HasExtension(GameserverMessageCloseImbuingDialog::gameserver_message_close_imbuing_dialog)) {
+        if (TImbuingStorage* storage = TImbuingStorage::instance())
+            Q_EMIT storage->requestCloseImbuingDialog();
+    }
+    if (opcode == 237 && shadow->HasExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog))
+        handleShowMessageDialogMessage(shadow->GetExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog));
     if (opcode == 235 && shadow->HasExtension(GameserverMessageImbuingDialogRefresh::gameserver_message_imbuing_dialog_refresh)) {
-        const auto& m = shadow->GetExtension(GameserverMessageImbuingDialogRefresh::gameserver_message_imbuing_dialog_refresh);
-        static const std::array<std::string, 3> tierNames = { "Basic", "Intricate", "Powerful" };
-        const auto imbuementOf = [](const ProtocolImbuement& p) {
-            Imbuement imbuement;
-            imbuement.id = p.imbuement_id();
-            imbuement.name = p.name();
-            imbuement.description = p.description();
-            imbuement.tier = static_cast<uint8_t>(p.tier());
-            imbuement.group = imbuement.tier < tierNames.size() ? tierNames[imbuement.tier] : std::string("Unknown");
-            imbuement.imageId = static_cast<uint16_t>(p.icon_id());
-            imbuement.duration = p.duration();
-            imbuement.premiumOnly = false;
-            for (const auto& source : p.sources())
-                imbuement.sources.emplace_back(static_cast<uint16_t>(source.object_id()), static_cast<uint16_t>(source.count()), source.name());
-            imbuement.cost = p.cost();
-            imbuement.successRate = 100;
-            imbuement.protectionCost = 0;
-            return imbuement;
-        };
-        std::vector<Imbuement> imbuements;
-        for (const auto& p : m.imbuements())
-            imbuements.push_back(imbuementOf(p));
-        std::vector<std::pair<uint16_t, uint16_t>> needed;
-        for (const auto& n : m.needed_objects())
-            needed.emplace_back(static_cast<uint16_t>(n.object_id()), static_cast<uint16_t>(n.count()));
-        switch (m.window_type()) {
-        case tibia::client::IMBUEMENT_WINDOW_CHOICE:
+        const auto& message = shadow->GetExtension(GameserverMessageImbuingDialogRefresh::gameserver_message_imbuing_dialog_refresh);
+        // product: the pack refreshes its gold-token material status when the choice window opens.
+        if (message.window_type() == tibia::client::IMBUEMENT_WINDOW_CHOICE)
             tibia::game::notify("onOpenImbuementWindow", static_cast<uint16_t>(0), static_cast<uint32_t>(0));
-            break;
-        case tibia::client::IMBUEMENT_WINDOW_SCROLL:
-            tibia::game::notify("onImbuementScroll", imbuements, needed);
-            break;
-        case tibia::client::IMBUEMENT_WINDOW_SELECT_ITEM: {
-            std::unordered_map<int, std::tuple<Imbuement, uint32_t, uint32_t>> active;
-            for (int i = 0; i < m.slots_size(); ++i) {
-                const auto& slot = m.slots(i);
-                if (slot.occupied())
-                    active[i] = std::make_tuple(imbuementOf(slot.imbuement()), slot.duration(), slot.removal_cost());
-            }
-            tibia::game::notify("onImbuementItem", static_cast<uint16_t>(m.object_id()), static_cast<uint8_t>(m.tier()),
-                                static_cast<uint8_t>(m.slots_size()), active, imbuements, needed);
-            break;
-        }
-        default:
-            break;
-        }
+        handleImbuingDialogRefreshMessage(message);
     }
     if (opcode == 93 && shadow->HasExtension(GameserverMessageImbuementDurations::gameserver_message_imbuement_durations)) {
         std::vector<ImbuementTrackerItem> items;

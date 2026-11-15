@@ -3,6 +3,7 @@
 // CIP-named trade surfaces (promoted from cipwire).
 
 #include "client/gamecore.h"
+#include "trade/playertradestorage.h"
 #include "shared/cip_typed.h"
 
 #include <client/outfit.h>
@@ -15,6 +16,11 @@
 #include <string>
 #include <tuple>
 #include <vector>
+
+namespace tibia::protobuf::protocol {
+class GameserverMessageOwnOffer;
+class GameserverMessageCounterOffer;
+}
 
 namespace tibia {
 namespace trade {
@@ -127,14 +133,31 @@ public:
     using cip::tibia::trade::TPlayerTradeGameActionHandler::TPlayerTradeGameActionHandler;
 };
 
+/// The player trade messages: fills TPlayerTradeStorage from the server's
+/// offers and sends the player's accept, reject and look requests.
 class TPlayerTradeProtocolMessageHandler final : public cip::tibia::trade::TPlayerTradeProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::trade::TPlayerTradeProtocolMessageHandler::TPlayerTradeProtocolMessageHandler;
+    explicit TPlayerTradeProtocolMessageHandler(TPlayerTradeStorage& storage, QObject* parent = nullptr);
+    ~TPlayerTradeProtocolMessageHandler() override;
+
+    void acceptTrade();
+    /// Rejecting also forgets the trade.
+    void rejectTrade();
+    /// `side` 0 is the own offer, 1 the counter offer.
+    void lookTrade(int index, int side);
+
+    void handleOwnOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageOwnOffer& OwnOfferMessage);
+    void handleCounterOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageCounterOffer& CounterOfferMessage);
+    void handleCloseTradeMessage();
 
     /// Tip Q→H wire: OwnOffer, CounterOffer and CloseTrade from `serverMessageEnqueued`.
     static void onServerMessageEnqueued(int opcode);
+
+private:
+    static TPlayerTradeProtocolMessageHandler* s_instance;
+    TPlayerTradeStorage& m_storage;
 };
 
 }

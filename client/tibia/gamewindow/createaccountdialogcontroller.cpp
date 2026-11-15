@@ -2,55 +2,71 @@
 
 #include "gamewindow/messagedialogcontroller.h"
 
+#include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonValue>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QSysInfo>
 
 namespace tibia::gamewindow {
 
 namespace {
 
-bool succeeded(const QJsonObject& reply)
+QJsonObject replyObject(QNetworkReply* reply)
 {
-    return reply.value(QLatin1String("errorCode")).toInt() == 0;
+    return QJsonDocument::fromJson(QString::fromUtf8(reply->readAll()).toUtf8()).object();
 }
 
+bool httpOk(QNetworkReply* reply)
+{
+    return reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 200;
+}
+
+bool succeeded(const QJsonObject& reply) { return reply.value(QLatin1String("errorCode")).toInt() == 0; }
+
+/// "errorMessage", a string or a list joined by ", ".
 QString errorMessage(const QJsonObject& reply)
 {
+    QString message = QString::fromUtf8("");
     const QJsonValue value = reply.value(QLatin1String("errorMessage"));
-    if (!value.isArray())
-        return value.toString();
-    QStringList parts;
-    for (const QJsonValue& part : value.toArray())
-        parts.append(part.toString());
-    return parts.join(QStringLiteral(", "));
+    if (value.isArray()) {
+        const QJsonArray parts = value.toArray();
+        if (!parts.isEmpty()) {
+            message.append(parts[0].toString());
+            for (qsizetype i = 1; i < parts.size(); ++i) {
+                message.append(QStringLiteral(", "));
+                message.append(parts[i].toString());
+            }
+        }
+    }
+    if (value.isString())
+        message = value.toString();
+    return message;
 }
 
-QString strengthLabel(const int strength)
+/// The help text of a PvP type; empty for an unknown one.
+QString pvpTypeHelp(const QString& pvpType)
 {
-    if (strength >= 2)
-        return QStringLiteral("Strong");
-    if (strength >= 1)
-        return QStringLiteral("Medium");
-    return QStringLiteral("Weak");
+    if (pvpType == QLatin1String("Optional PvP"))
+        return qtTrId("create_account_dialog_optional_pvp_help");
+    if (pvpType == QLatin1String("Open PvP"))
+        return qtTrId("create_account_dialog_open_pvp_help");
+    if (pvpType == QLatin1String("Hardcore PvP"))
+        return qtTrId("create_account_dialog_hardcore_pvp_help");
+    if (pvpType == QLatin1String("Retro Open PvP"))
+        return qtTrId("create_account_dialog_retro_open_pvp_help");
+    if (pvpType == QLatin1String("Retro Hardcore PvP"))
+        return qtTrId("create_account_dialog_retro_hardcore_pvp_help");
+    return QString::fromUtf8("");
 }
 
-CreationWorld parseWorld(const QJsonObject& o)
+/// One entry of passwordCriteria.
+QJsonObject passwordCriterion(const QString& key, const QJsonObject& requirements)
 {
-    CreationWorld w;
-    w.name = o.value(QLatin1String("Name")).toString();
-    w.region = o.value(QLatin1String("Region")).toString();
-    w.pvpType = o.value(QLatin1String("PvPType")).toString();
-    w.playersOnline = o.value(QLatin1String("PlayersOnline")).toInt();
-    w.creationDate = QString::number(o.value(QLatin1String("CreationDate")).toInteger());
-    w.battleEyeStatus = o.value(QLatin1String("BattlEyeInitiallyActive")).toInt() == 1
-        ? QStringLiteral("Protected since release")
-        : QStringLiteral("Unprotected");
-    w.premiumOnly = o.value(QLatin1String("PremiumOnly")).toInt() > 0;
-    w.transferType = o.value(QLatin1String("TransferType")).toString();
-    return w;
+    return { { QStringLiteral("criterionKey"), key }, { QStringLiteral("criterionMet"), requirements[key].toBool() } };
 }
 
 }
@@ -58,338 +74,440 @@ CreationWorld parseWorld(const QJsonObject& o)
 TCreateAccountDialogController::TCreateAccountDialogController(QObject* parent)
     : TDialogController(QStringLiteral("createaccountandcharacter/CreateAccountDialog.qml"), parent)
     , m_network(new QNetworkAccessManager(this))
-    , m_worlds(new TWorldSelectionModel(this))
-    , m_proxy(new TWorldSelectionSortProxyModel(m_worlds, this))
+    , m_proxy(new TWorldSelectionSortProxyModel(this))
     , m_error(new TMessageDialogController(this))
 {
     m_worldsModel = m_proxy;
-    m_recaptchaDisabled = true;
+    m_showRecaptchaV2 = false;
+    m_recaptchaDisabled = false;
+    m_passwordStrengthColor = QColor::fromString(QLatin1String("black"));
     m_characterSexMale = true;
     m_error->setCloseOnButtonClicked(true);
     m_error->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
-    applyPasswordRequirements({}, false, {}, QStringLiteral("#EC644B"));
 }
 
 TCreateAccountDialogController::~TCreateAccountDialogController() = default;
 
 void TCreateAccountDialogController::showDialog()
 {
-    if (m_pending > 0 || dialog()->isInStack())
-        return;
-    post({ { QStringLiteral("type"), QStringLiteral("getaccountcreationstatus") } }, [this](const QJsonObject& reply) { onStatus(reply); });
+    dialog()->close();
+    requestAccountCreationStatus();
 }
 
 bool TCreateAccountDialogController::eventFilter(QObject* watched, QEvent* event)
 {
+    // Host: CipSoft refreshes capsLock from the OS key state here; qtclient has
+    // no caps lock query yet.
     return cip::tibia::gamewindow::TCreateAccountDialogController::eventFilter(watched, event);
 }
 
-void TCreateAccountDialogController::onStatus(const QJsonObject& reply)
+bool TCreateAccountDialogController::accountDataValid() const
 {
-    if (!succeeded(reply)) {
-        showError(errorMessage(reply));
-        return;
-    }
-    m_recaptchaDisabled = reply.value(QLatin1String("IsCaptchaDeactivated")).toBool(true);
-    Q_EMIT recaptchaDataChanged();
+    return m_eMailDataValid && m_passwordValid && m_accountPassword == m_accountPasswordRepeat && m_termsAndServicesAccepted;
+}
 
-    QList<CreationWorld> worlds;
-    for (const QJsonValue& w : reply.value(QLatin1String("Worlds")).toArray())
-        worlds.append(parseWorld(w.toObject()));
-    m_worlds->setWorlds(worlds);
-    m_recommendedWorld = reply.value(QLatin1String("RecommendedWorld")).toString();
-    m_proxy->reload(m_recommendedWorld);
-    m_selectedWorld = m_recommendedWorld;
-    m_worldRegions.clear();
-    for (const CreationWorld& w : m_worlds->worlds()) {
-        if (!w.region.isEmpty() && !m_worldRegions.contains(w.region))
-            m_worldRegions.append(w.region);
-    }
-    m_worldRegions.sort();
-    refreshSelectedWorldInfo();
-    suggestCharacterName();
-    recomputeValidity();
-    dialog()->show();
+bool TCreateAccountDialogController::allDataValid() const { return accountDataValid() && m_characterNameValid && !m_selectedWorld.isEmpty(); }
+
+bool TCreateAccountDialogController::characterDataValid() const { return m_characterNameValid && !m_selectedWorld.isEmpty(); }
+
+QVariantMap TCreateAccountDialogController::worldPvPTypesForRegion() const
+{
+    QVariantMap map;
+    for (auto it = m_pvpTypesByRegion.cbegin(); it != m_pvpTypesByRegion.cend(); ++it)
+        map.insert(it.key(), QVariant::fromValue(it.value()));
+    return map;
 }
 
 void TCreateAccountDialogController::setTermsAndServicesAccepted(const bool Accepted)
 {
-    if (m_termsAndServicesAccepted == Accepted)
-        return;
     m_termsAndServicesAccepted = Accepted;
-    recomputeValidity();
+    Q_EMIT accountCreationDataChanged();
 }
 
 void TCreateAccountDialogController::setPersonalizedAdsAccepted(const bool Accepted)
 {
-    if (m_personalizedAdsAccepted == Accepted)
-        return;
     m_personalizedAdsAccepted = Accepted;
-    Q_EMIT accountCreationDataChanged();
-}
-
-void TCreateAccountDialogController::setCharacterSexMale(const bool Male)
-{
-    if (m_characterSexMale == Male)
-        return;
-    m_characterSexMale = Male;
     Q_EMIT accountCreationDataChanged();
 }
 
 void TCreateAccountDialogController::cancel()
 {
-    m_accountEmail.clear();
-    m_accountPassword.clear();
-    m_accountPasswordRepeat.clear();
+    m_accountEmail = QString::fromUtf8("");
     m_eMailDataValid = false;
+    m_accountPassword = QString::fromUtf8("");
     m_passwordValid = false;
-    m_characterName.clear();
-    m_characterNameError.clear();
-    m_characterNameValid = false;
-    m_generatedName.clear();
+    m_accountPasswordRepeat = QString::fromUtf8("");
+    m_passwordStrength = QString::fromUtf8("");
     m_termsAndServicesAccepted = false;
     m_personalizedAdsAccepted = false;
     m_characterSexMale = true;
-    m_selectedWorld.clear();
-    m_worlds->setWorlds({});
-    applyPasswordRequirements({}, false, {}, QStringLiteral("#EC644B"));
-    recomputeValidity();
-    if (dialog()->isInStack())
-        dialog()->close();
+    m_showRecaptchaV2 = false;
+    m_proxy->setWorlds({});
+    m_asyncStartPlayingInProgress = false;
+    dialog()->close();
+}
+
+void TCreateAccountDialogController::requestAccountCreationStatus()
+{
+    post({ { QStringLiteral("type"), QStringLiteral("getaccountcreationstatus") } },
+         [this](QNetworkReply* reply) { onAccountCreationStatus(reply); });
+}
+
+void TCreateAccountDialogController::onAccountCreationStatus(QNetworkReply* reply)
+{
+    if (!httpOk(reply)) {
+        showError(qtTrId("create_account_dialog_error_account_creation_disabled"));
+        return;
+    }
+    const QJsonObject status = replyObject(reply);
+    if (!succeeded(status)) {
+        showError(errorMessage(status));
+        return;
+    }
+
+    // The region and PvP type combo boxes: "all" first, then in the order the
+    // worlds name them.
+    m_worlds.clear();
+    const QString all = QStringLiteral("all");
+    m_worldRegions.clear();
+    m_worldRegions.append(all);
+    m_pvpTypesByRegion.clear();
+    m_pvpTypesByRegion[all].append(all);
+    m_selectedWorldRegionFilterIndex = 0;
+    m_selectedWorldPvPTypeFilterIndex = 0;
+    for (const QJsonValue& value : status[QLatin1String("Worlds")].toArray()) {
+        WorldData world = parseWorldData(value);
+        if (!m_worldRegions.contains(world.region)) {
+            m_worldRegions.append(world.region);
+            m_pvpTypesByRegion[world.region].append(all);
+        }
+        if (!m_pvpTypesByRegion[world.region].contains(world.pvpType))
+            m_pvpTypesByRegion[world.region].append(world.pvpType);
+        if (!m_pvpTypesByRegion[all].contains(world.pvpType))
+            m_pvpTypesByRegion[all].append(world.pvpType);
+        m_worlds.push_back(std::move(world));
+    }
+    m_proxy->setWorlds(m_worlds);
+
+    const bool captchaDeactivated = status[QLatin1String("IsCaptchaDeactivated")].toBool();
+    if (m_recaptchaDisabled != captchaDeactivated) {
+        m_recaptchaDisabled = captchaDeactivated;
+        Q_EMIT recaptchaDataChanged();
+    }
+    m_recommendedWorld = status[QLatin1String("RecommendedWorld")].toString();
+    selectWorld(m_recommendedWorld);
+    suggestCharacterName();
+    dialog()->show();
 }
 
 void TCreateAccountDialogController::updateAccountEmail(const QString& Email)
 {
-    m_accountEmail = Email.trimmed();
-    if (m_accountEmail.isEmpty()) {
+    if (Email.isEmpty()) {
         m_eMailDataValid = false;
-        recomputeValidity();
+        Q_EMIT accountCreationDataChanged();
         return;
     }
-    post({ { QStringLiteral("type"), QStringLiteral("checkemail") }, { QStringLiteral("Email"), m_accountEmail } }, [this](const QJsonObject& reply) {
-        const QString answered = reply.value(QLatin1String("EMail")).toString();
-        if (!answered.isEmpty() && answered.compare(m_accountEmail, Qt::CaseInsensitive) != 0)
-            return;
-        m_eMailDataValid = reply.value(QLatin1String("IsValid")).toBool();
-        recomputeValidity();
-    });
+    m_accountEmail = Email;
+    post({ { QStringLiteral("type"), QStringLiteral("CheckEMail") }, { QStringLiteral("Email"), Email } },
+         [this](QNetworkReply* reply) { onEMailChecked(reply); });
+}
+
+void TCreateAccountDialogController::onEMailChecked(QNetworkReply* reply)
+{
+    if (!httpOk(reply)) {
+        showError(reply->errorString());
+        return;
+    }
+    const QJsonObject answer = replyObject(reply);
+    if (!succeeded(answer)) {
+        m_eMailDataValid = false;
+        Q_EMIT accountCreationDataChanged();
+        return;
+    }
+    // Valid only for the address the player still has in the form.
+    const bool valid = answer[QLatin1String("IsValid")].toBool();
+    m_eMailDataValid = valid && answer[QLatin1String("EMail")].toString() == m_accountEmail;
+    Q_EMIT accountCreationDataChanged();
 }
 
 void TCreateAccountDialogController::updateAccountPasswords(const QString& Password01, const QString& Password02)
 {
+    if (Password01.isEmpty()) {
+        m_passwordValid = false;
+        m_passwordStrength = QString::fromUtf8("");
+        Q_EMIT accountCreationDataChanged();
+    } else {
+        post({ { QStringLiteral("Type"), QStringLiteral("checkpassword") }, { QStringLiteral("Password1"), Password01 } },
+             [this](QNetworkReply* reply) { onPasswordChecked(reply); });
+    }
     m_accountPassword = Password01;
     m_accountPasswordRepeat = Password02;
-    if (Password01.isEmpty()) {
-        applyPasswordRequirements({}, false, {}, QStringLiteral("#EC644B"));
-        recomputeValidity();
+}
+
+void TCreateAccountDialogController::onPasswordChecked(QNetworkReply* reply)
+{
+    if (!httpOk(reply)) {
+        showError(reply->errorString());
         return;
     }
-    post({ { QStringLiteral("type"), QStringLiteral("checkpassword") }, { QStringLiteral("Password1"), Password01 } }, [this](const QJsonObject& reply) {
-        const QJsonObject requirements = reply.value(QLatin1String("PasswordRequirements")).toObject();
-        const bool valid = reply.value(QLatin1String("PasswordValid")).toBool();
-        const int strength = reply.value(QLatin1String("PasswordStrength")).toInt();
-        const QString color = reply.value(QLatin1String("PasswordStrengthColor")).toString(QStringLiteral("#EC644B"));
-        applyPasswordRequirements(requirements, valid, strengthLabel(strength), color);
-        recomputeValidity();
-    });
+    const QJsonObject answer = replyObject(reply);
+    if (!succeeded(answer)) {
+        showError(errorMessage(answer));
+        return;
+    }
+    // An answer for a password the player already changed is dropped.
+    if (answer[QLatin1String("Password1")].toString() != m_accountPassword)
+        return;
+    m_passwordValid = answer[QLatin1String("PasswordValid")].toBool();
+    const int strength = answer[QLatin1String("PasswordStrength")].toInt();
+    m_passwordStrength = qtTrId(QStringLiteral("create_account_dialog_password_strength_%1").arg(strength).toStdString().c_str());
+    m_passwordStrengthColor = QColor::fromString(answer[QLatin1String("PasswordStrengthColor")].toString());
+    const QJsonObject requirements = answer[QLatin1String("PasswordRequirements")].toObject();
+    m_passwordCriteria = QJsonArray();
+    m_passwordCriteria.append(passwordCriterion(QStringLiteral("PasswordLength"), requirements));
+    m_passwordCriteria.append(passwordCriterion(QStringLiteral("InvalidCharacters"), requirements));
+    m_passwordCriteria.append(passwordCriterion(QStringLiteral("HasLowerCase"), requirements));
+    m_passwordCriteria.append(passwordCriterion(QStringLiteral("HasUpperCase"), requirements));
+    m_passwordCriteria.append(passwordCriterion(QStringLiteral("HasNumber"), requirements));
+    Q_EMIT accountCreationDataChanged();
 }
 
 void TCreateAccountDialogController::suggestCharacterName()
 {
-    post({ { QStringLiteral("Type"), QStringLiteral("GenerateCharacterName") } }, [this](const QJsonObject& reply) {
-        if (!succeeded(reply)) {
-            showError(errorMessage(reply));
-            return;
-        }
-        m_generatedName = reply.value(QLatin1String("GeneratedName")).toString();
-        m_characterName = m_generatedName;
-        m_characterNameError.clear();
-        m_characterNameValid = !m_generatedName.isEmpty();
-        Q_EMIT characterNameChanged();
-        recomputeValidity();
-    });
+    post({ { QStringLiteral("Type"), QStringLiteral("GenerateCharacterName") } }, [this](QNetworkReply* reply) { onCharacterNameGenerated(reply); });
+}
+
+void TCreateAccountDialogController::onCharacterNameGenerated(QNetworkReply* reply)
+{
+    if (!httpOk(reply)) {
+        showError(reply->errorString());
+        return;
+    }
+    const QJsonObject answer = replyObject(reply);
+    if (!succeeded(answer)) {
+        showError(errorMessage(answer));
+        return;
+    }
+    m_characterName = answer[QLatin1String("GeneratedName")].toString();
+    Q_EMIT characterNameChanged();
+    if (answer.contains(QLatin1String("Error")))
+        m_characterNameError = answer[QLatin1String("Error")].toString();
+    else
+        m_characterNameError = QString::fromUtf8("");
+    m_characterNameValid = true;
+    Q_EMIT accountCreationDataChanged();
 }
 
 void TCreateAccountDialogController::updateCharacterName(const QString& Name)
 {
     m_characterName = Name;
-    if (Name.isEmpty()) {
-        m_characterNameError.clear();
-        m_characterNameValid = false;
-        recomputeValidity();
+    if (!m_characterName.isEmpty()) {
+        post({ { QStringLiteral("Type"), QStringLiteral("CheckCharacterName") }, { QStringLiteral("CharacterName"), m_characterName } },
+             [this](QNetworkReply* reply) { onCharacterNameChecked(reply); });
         return;
     }
-    post({ { QStringLiteral("Type"), QStringLiteral("CheckCharacterName") }, { QStringLiteral("CharacterName"), Name } }, [this](const QJsonObject& reply) {
-        if (reply.value(QLatin1String("CharacterName")).toString() != m_characterName) {
-            if (!succeeded(reply))
-                showError(errorMessage(reply));
-            return;
-        }
-        m_characterNameValid = reply.value(QLatin1String("IsAvailable")).toBool();
-        m_characterNameError = errorMessage(reply);
-        recomputeValidity();
-    });
+    m_characterNameError = QString::fromUtf8("");
+    m_characterNameValid = false;
+    Q_EMIT accountCreationDataChanged();
+}
+
+void TCreateAccountDialogController::onCharacterNameChecked(QNetworkReply* reply)
+{
+    if (!httpOk(reply)) {
+        showError(reply->errorString());
+        return;
+    }
+    const QJsonObject answer = replyObject(reply);
+    // An answer for a name the player already changed only reports errors.
+    if (answer[QLatin1String("CharacterName")].toString() == m_characterName) {
+        m_characterNameValid = answer[QLatin1String("IsAvailable")].toBool();
+        m_characterNameError = errorMessage(answer);
+        Q_EMIT accountCreationDataChanged();
+    } else if (!succeeded(answer)) {
+        showError(errorMessage(answer));
+    }
 }
 
 void TCreateAccountDialogController::updateWorldRegionFilter(const int SelectedIndex)
 {
+    if (SelectedIndex < 0 || SelectedIndex >= m_worldRegions.size() || SelectedIndex == m_selectedWorldRegionFilterIndex)
+        return;
     m_selectedWorldRegionFilterIndex = SelectedIndex;
-    const QList<QObject*> options = m_proxy->worldRegionFilterModel();
-    QString value;
-    if (SelectedIndex >= 0 && SelectedIndex < options.size())
-        value = options[SelectedIndex]->property("value").toString();
-    m_proxy->setWorldRegionFilter(value);
+    const QString region = m_worldRegions[SelectedIndex];
+    if (region == QLatin1String("all")) {
+        m_proxy->setWorldRegionFilter(QString::fromUtf8(""));
+    } else {
+        m_proxy->setWorldRegionFilter(region);
+        // A selected world of another region is dropped.
+        const WorldData* selected = findWorld(m_selectedWorld);
+        if (selected && selected->region != region)
+            m_selectedWorld = QString::fromUtf8("");
+    }
     Q_EMIT accountCreationDataChanged();
 }
 
 void TCreateAccountDialogController::updateWorldPvPTypeFilter(const int SelectedIndex)
 {
-    m_selectedWorldPvPTypeFilterIndex = SelectedIndex;
-    const QList<QObject*> options = m_proxy->worldPvPTypeFilterModel();
-    QString value;
-    if (SelectedIndex >= 0 && SelectedIndex < options.size())
-        value = options[SelectedIndex]->property("value").toString();
-    m_proxy->setWorldPvPTypeFilter(value);
+    const int regionIndex = m_selectedWorldRegionFilterIndex;
+    if (regionIndex >= 0 && regionIndex < m_worldRegions.size()) {
+        const QStringList& pvpTypes = m_pvpTypesByRegion[m_worldRegions[regionIndex]];
+        if (SelectedIndex >= 0 && SelectedIndex < pvpTypes.size()) {
+            if (m_selectedWorldPvPTypeFilterIndex == SelectedIndex)
+                return;
+            m_selectedWorldPvPTypeFilterIndex = SelectedIndex;
+            const QString pvpType = pvpTypes[SelectedIndex];
+            if (pvpType == QLatin1String("all")) {
+                m_proxy->setWorldPvPTypeFilter(QString::fromUtf8(""));
+            } else {
+                m_proxy->setWorldPvPTypeFilter(pvpType);
+                // A selected world of another PvP type is dropped.
+                const WorldData* selected = findWorld(m_selectedWorld);
+                if (selected && selected->pvpType != pvpType)
+                    m_selectedWorld = QString::fromUtf8("");
+            }
+        }
+    }
     Q_EMIT accountCreationDataChanged();
 }
 
 void TCreateAccountDialogController::updateSelectedWorld(const QString& SelectedWorld)
 {
-    m_selectedWorld = SelectedWorld;
-    refreshSelectedWorldInfo();
-    recomputeValidity();
-}
-
-void TCreateAccountDialogController::resetWorldSelection()
-{
-    m_proxy->resetFilter();
-    m_selectedWorldRegionFilterIndex = 0;
-    m_selectedWorldPvPTypeFilterIndex = 0;
-    m_selectedWorld = m_recommendedWorld;
-    refreshSelectedWorldInfo();
-    recomputeValidity();
-}
-
-void TCreateAccountDialogController::startPlaying(const QString&, const QString&)
-{
-    if (m_asyncStartPlayingInProgress || !m_allDataValid)
+    if (m_selectedWorld == SelectedWorld)
         return;
-    setStartPlayingPending(true);
-    QJsonObject request{
-        { QStringLiteral("type"), QStringLiteral("createaccountandcharacter") },
+    applySelectedWorld(SelectedWorld);
+    Q_EMIT accountCreationDataChanged();
+}
+
+void TCreateAccountDialogController::resetWorldSelection() { selectWorld(m_recommendedWorld); }
+
+void TCreateAccountDialogController::selectWorld(const QString& name)
+{
+    const WorldData* world = findWorld(name);
+    if (!world)
+        return;
+    m_proxy->setWorldRegionFilter(world->region);
+    m_selectedWorldRegionFilterIndex = int(m_worldRegions.indexOf(world->region));
+    m_proxy->setWorldPvPTypeFilter(world->pvpType);
+    m_selectedWorldPvPTypeFilterIndex = int(m_pvpTypesByRegion[m_worldRegions.value(m_selectedWorldRegionFilterIndex)].indexOf(world->pvpType));
+    applySelectedWorld(name);
+    Q_EMIT accountCreationDataChanged();
+}
+
+void TCreateAccountDialogController::applySelectedWorld(const QString& name)
+{
+    const WorldData* world = findWorld(name);
+    if (!world) {
+        m_selectedWorld = QString::fromUtf8("");
+        return;
+    }
+    m_selectedWorld = name;
+    m_selectedWorldPlayersOnline = world->playersOnline;
+    m_selectedWorldPvPType = world->pvpType;
+    m_selectedWorldPvPTypeHelp = pvpTypeHelp(world->pvpType);
+    m_selectedWorldRegion = world->region;
+    m_selectedWorldCreationDate = world->creationDate;
+    m_selectedWorldBattleEyeStatus = world->battleEyeStatus;
+    m_selectedWorldPremiumOnly = world->premiumOnly;
+    m_selectedWorldTransferType = world->transferType;
+}
+
+const WorldData* TCreateAccountDialogController::findWorld(const QString& name) const
+{
+    for (const WorldData& world : m_worlds) {
+        if (world.name == name)
+            return &world;
+    }
+    return nullptr;
+}
+
+void TCreateAccountDialogController::startPlaying(const QString& Recaptcha2Token, const QString& Recaptcha3Token)
+{
+    if (m_pending > 0)
+        return;
+    qDebug() << "Start playing( V2:" << !Recaptcha2Token.isEmpty() << ", V3:" << !Recaptcha3Token.isEmpty() << " )";
+    const QJsonObject request{
+        { QStringLiteral("Type"), QStringLiteral("CreateAccountAndCharacter") },
+        { QStringLiteral("ReCaptcha2Token"), Recaptcha2Token },
+        { QStringLiteral("ReCaptcha3Token"), Recaptcha3Token },
         { QStringLiteral("EMail"), m_accountEmail },
         { QStringLiteral("Password"), m_accountPassword },
         { QStringLiteral("CharacterName"), m_characterName },
         { QStringLiteral("CharacterSex"), m_characterSexMale ? QStringLiteral("male") : QStringLiteral("female") },
         { QStringLiteral("SelectedWorld"), m_selectedWorld },
+        { QStringLiteral("ClientType"), QStringLiteral("Client") },
+        { QStringLiteral("PersonalizedAdsAccepted"), m_personalizedAdsAccepted },
+        // Host: "Epic" for the Epic Games distribution, which qtclient is not.
+        { QStringLiteral("DistributionChannel"), QStringLiteral("Regular") },
+        { QStringLiteral("OperatingSystem"), QSysInfo::prettyProductName() },
     };
-    const QString email = m_accountEmail;
-    const QString password = m_accountPassword;
-    post(request, [this, email, password](const QJsonObject& reply) {
-        setStartPlayingPending(false);
-        if (!reply.value(QLatin1String("Success")).toBool()) {
-            const QString message = errorMessage(reply);
-            showError(message.isEmpty() ? QStringLiteral("The account could not be created.") : message);
-            return;
-        }
-        Q_EMIT accountCreated(email, password);
-        cancel();
-    });
+    if (!m_asyncStartPlayingInProgress) {
+        m_asyncStartPlayingInProgress = true;
+        Q_EMIT asyncStartPlayingStatusChanged();
+    }
+    post(request, [this](QNetworkReply* reply) { onAccountCreated(reply); });
 }
 
-void TCreateAccountDialogController::refreshSelectedWorldInfo()
+void TCreateAccountDialogController::onAccountCreated(QNetworkReply* reply)
 {
-    const CreationWorld* found = nullptr;
-    for (const CreationWorld& w : m_worlds->worlds()) {
-        if (w.name == m_selectedWorld) {
-            found = &w;
-            break;
-        }
-    }
-    if (!found) {
-        m_selectedWorldPlayersOnline = 0;
-        m_selectedWorldPvPType.clear();
-        m_selectedWorldRegion.clear();
-        m_selectedWorldCreationDate.clear();
-        m_selectedWorldBattleEyeStatus.clear();
-        m_selectedWorldPremiumOnly = false;
-        m_selectedWorldTransferType.clear();
+    setStartPlayingInProgress(false);
+    if (!httpOk(reply)) {
+        showError(reply->errorString());
         return;
     }
-    m_selectedWorldPlayersOnline = found->playersOnline;
-    m_selectedWorldPvPType = found->pvpType;
-    m_selectedWorldRegion = found->region;
-    m_selectedWorldCreationDate = found->creationDate;
-    m_selectedWorldBattleEyeStatus = found->battleEyeStatus;
-    m_selectedWorldPremiumOnly = found->premiumOnly;
-    m_selectedWorldTransferType = found->transferType;
-}
-
-void TCreateAccountDialogController::applyPasswordRequirements(const QJsonObject& requirements, const bool valid, const QString& strength,
-                                                               const QString& color)
-{
-    static const QStringList keys{ QStringLiteral("PasswordLength"), QStringLiteral("HasLowerCase"), QStringLiteral("HasUpperCase"),
-                                   QStringLiteral("HasNumber"), QStringLiteral("InvalidCharacters") };
-    QJsonArray criteria;
-    for (const QString& key : keys) {
-        criteria.append(QJsonObject{ { QStringLiteral("criterionKey"), key },
-                                     { QStringLiteral("criterionMet"), requirements.value(key).toBool() } });
+    const QJsonObject answer = replyObject(reply);
+    if (answer[QLatin1String("Success")].toBool()) {
+        Q_EMIT accountCreated(m_accountEmail, m_accountPassword);
+        cancel();
+        return;
     }
-    m_passwordCriteria = criteria;
-    m_passwordValid = valid;
-    m_passwordStrength = strength;
-    m_passwordStrengthColor = QColor(color);
+    const bool recaptchaV2Requested = answer[QLatin1String("IsRecaptcha2Requested")].toBool();
+    if (m_showRecaptchaV2 != recaptchaV2Requested) {
+        m_showRecaptchaV2 = recaptchaV2Requested;
+        Q_EMIT recaptchaDataChanged();
+    }
+    if (m_showRecaptchaV2) {
+        Q_EMIT accountCreationDataChanged();
+        return;
+    }
+    if (succeeded(answer))
+        return;
+    showError(errorMessage(answer));
+    // Product: the portal's codes differ from CipSoft's (which closes the dialog
+    // unless errorCode is 2), so the form always stays for a correction.
 }
 
-void TCreateAccountDialogController::recomputeValidity()
+void TCreateAccountDialogController::setStartPlayingInProgress(const bool inProgress)
 {
-    const bool passwordsMatch = !m_accountPassword.isEmpty() && m_accountPassword == m_accountPasswordRepeat;
-    m_accountDataValid = m_eMailDataValid && m_passwordValid && passwordsMatch && m_termsAndServicesAccepted;
-    m_characterDataValid = m_characterNameValid;
-    m_allDataValid = m_accountDataValid && m_characterDataValid && !m_selectedWorld.isEmpty();
-    Q_EMIT accountCreationDataChanged();
+    if (m_asyncStartPlayingInProgress == inProgress)
+        return;
+    m_asyncStartPlayingInProgress = inProgress;
+    Q_EMIT asyncStartPlayingStatusChanged();
 }
 
 void TCreateAccountDialogController::post(const QJsonObject& request, ReplyHandler onReply)
 {
-    QNetworkRequest httpRequest(m_serviceUrl);
+    QNetworkRequest httpRequest;
+    httpRequest.setUrl(m_serviceUrl);
     httpRequest.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
-    QNetworkReply* reply = m_network->post(httpRequest, QJsonDocument(request).toJson(QJsonDocument::Compact));
     setPending(m_pending + 1);
+    QNetworkReply* reply = m_network->post(httpRequest, QJsonDocument(request).toJson(QJsonDocument::Compact));
     connect(reply, &QNetworkReply::finished, this, [this, reply, onReply = std::move(onReply)] {
         reply->deleteLater();
         setPending(m_pending - 1);
-        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-        if (status != 200) {
-            setStartPlayingPending(false);
-            showError(reply->errorString());
-            return;
-        }
-        onReply(QJsonDocument::fromJson(reply->readAll()).object());
+        onReply(reply);
     });
 }
 
 void TCreateAccountDialogController::setPending(const int pending)
 {
     m_pending = std::max(0, pending);
-    const bool busy = m_pending > 0;
-    if (m_asyncOperationInProgress == busy)
-        return;
-    m_asyncOperationInProgress = busy;
+    m_asyncOperationInProgress = m_pending > 0;
     Q_EMIT asyncOperationStatusChanged();
-}
-
-void TCreateAccountDialogController::setStartPlayingPending(const bool pending)
-{
-    if (m_asyncStartPlayingInProgress == pending)
-        return;
-    m_asyncStartPlayingInProgress = pending;
-    Q_EMIT asyncStartPlayingStatusChanged();
 }
 
 void TCreateAccountDialogController::showError(const QString& message)
 {
-    m_error->showMessage(qtTrId("create_account_dialog_caption"), message);
+    m_error->showMessage(qtTrId("error"), message);
 }
 
 }

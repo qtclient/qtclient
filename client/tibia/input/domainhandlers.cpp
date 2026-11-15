@@ -8,10 +8,12 @@
 #include <tibia/game/gamesession.h>
 
 #include <QClipboard>
+#include <QDesktopServices>
 #include <QGuiApplication>
 #include <QJsonObject>
 #include <QMetaObject>
 #include <QQuickWindow>
+#include <QTimer>
 #include <QWindow>
 
 #include <array>
@@ -201,11 +203,19 @@ TGatherAllProtocolMessageHandler::TGatherAllProtocolMessageHandler(QObject* pare
 
 namespace {
 
-constexpr std::array<A, 13> OpenWebsiteActions = {
+constexpr std::array<A, 14> OpenWebsiteActions = {
     A::OPEN_URL_GET_PREMIUM, A::OPEN_URL_GET_COINS, A::OPEN_URL_TIBIA_PAGE, A::OPEN_URL_CREATE_ACCOUNT,
     A::OPEN_URL_ACCESS_ACCOUNT, A::OPEN_URL_CIPSOFT, A::OPEN_URL_MANUAL, A::OPEN_URL_FAQ, A::OPEN_URL_SURVEY,
     A::OPEN_URL_LOST_ACCOUNT, A::OPEN_URL_PREMIUM_FEATURES, A::OPEN_URL_TWITCH_TIBIA, A::OPEN_URL_YOUTUBE_TIBIA,
+    A::OPEN_URL,
 };
+
+/// Fallback of every [URLS] page but cipSoftUrl.
+const QUrl& tibiaComUrl()
+{
+    static const QUrl url(QStringLiteral("http://www.tibia.com/"));
+    return url;
+}
 
 }
 
@@ -213,32 +223,79 @@ TOpenWebsiteGameActionHandler::TOpenWebsiteGameActionHandler(const app::Launcher
     : cip::tibia::input::TOpenWebsiteGameActionHandler(parent)
     , m_env(env)
 {
-    const auto openNamed = [this](const TGameAction& action) {
-        app::PortalUrls::open(app::PortalUrls::urlFor(m_env, action.type));
-        return true;
-    };
-    for (const A type : OpenWebsiteActions)
-        setActionHandler(type, openNamed);
-    setActionHandler(A::OPEN_URL, [this](const TGameAction& action) {
-        QUrl url = action.text.isEmpty() ? m_env.loginBase : QUrl(action.text);
-        if (!url.isValid() || url.scheme().isEmpty())
-            url = app::PortalUrls::urlFor(m_env, A::OPEN_URL_TIBIA_PAGE);
-        app::PortalUrls::open(url);
-        return true;
-    });
-}
-
-TOpenWebsiteGameActionHandler::TOpenWebsiteGameActionHandler(const QUrl& loginBase, QObject* parent)
-    : TOpenWebsiteGameActionHandler(app::LauncherEnv{}, parent)
-{
-    m_env.loginBase = loginBase;
+    for (const A type : OpenWebsiteActions) {
+        setActionHandler(type, [this](const TGameAction& action) {
+            handleGameAction(action);
+            return true;
+        });
+    }
 }
 
 TOpenWebsiteGameActionHandler::~TOpenWebsiteGameActionHandler()
 {
     for (const A type : OpenWebsiteActions)
         setActionHandler(type, nullptr);
-    setActionHandler(A::OPEN_URL, nullptr);
+}
+
+void TOpenWebsiteGameActionHandler::handleGameAction(const TGameAction& action)
+{
+    switch (action.type) {
+    case A::OPEN_URL_GET_PREMIUM:
+        handleOpenGetPremiumUrlGameAction(action);
+        break;
+    case A::OPEN_URL_GET_COINS:
+    case A::OPEN_URL_TIBIA_PAGE:
+    case A::OPEN_URL_CREATE_ACCOUNT:
+    case A::OPEN_URL_ACCESS_ACCOUNT:
+    case A::OPEN_URL_MANUAL:
+    case A::OPEN_URL_FAQ:
+    case A::OPEN_URL_LOST_ACCOUNT:
+    case A::OPEN_URL_PREMIUM_FEATURES:
+    case A::OPEN_URL_TWITCH_TIBIA:
+    case A::OPEN_URL_YOUTUBE_TIBIA:
+        openUrlLater(configuredUrl(action.type, tibiaComUrl()));
+        break;
+    case A::OPEN_URL_CIPSOFT:
+        // cipSoftUrl is the one page without a tibia.com fallback.
+        openUrlLater(configuredUrl(action.type, QUrl()));
+        break;
+    case A::OPEN_URL_SURVEY:
+        handleOpenSurveyUrlGameAction(action);
+        break;
+    case A::OPEN_URL:
+        openUrlLater(QUrl(action.text, QUrl::TolerantMode));
+        break;
+    default:
+        break;
+    }
+}
+
+void TOpenWebsiteGameActionHandler::handleOpenGetPremiumUrlGameAction(const TGameAction& action)
+{
+    QString url = configuredUrl(A::OPEN_URL_GET_PREMIUM, tibiaComUrl()).toString();
+    url.append(QString::number(action.parameter));
+    openUrlLater(QUrl(url, QUrl::TolerantMode));
+}
+
+void TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction(const TGameAction& action)
+{
+    QString url = configuredUrl(A::OPEN_URL_SURVEY, tibiaComUrl()).toString();
+    url.append(QString::number(action.parameter));
+    url.append(QStringLiteral("/lang-en?token="));
+    url.append(action.text);
+    openUrlLater(QUrl(url, QUrl::TolerantMode));
+}
+
+QUrl TOpenWebsiteGameActionHandler::configuredUrl(const EGameAction action, const QUrl& defaultUrl) const
+{
+    // Host concern: app::PortalUrls is qtclient's [URLS] group.
+    const QUrl url = app::PortalUrls::urlFor(m_env, action);
+    return url.isEmpty() ? defaultUrl : url;
+}
+
+void TOpenWebsiteGameActionHandler::openUrlLater(const QUrl& url)
+{
+    QTimer::singleShot(0, [url] { QDesktopServices::openUrl(url); });
 }
 
 }

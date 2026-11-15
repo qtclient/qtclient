@@ -1,39 +1,59 @@
 #pragma once
 
-#include "client/gamecore.h"
-
 #include <cip_gen.h>
-
-#include <client/staticdata.h>
 
 #include <QString>
 
 #include <cstdint>
-#include <unordered_map>
+#include <optional>
 #include <vector>
 
 namespace tibia {
 namespace imbuing {
 
-/// One slot of the item being imbued (CIP: the storage's slot entries read
-/// by).
-struct TImbuementSlot
+/// An object type with a count: an imbuement's astral source (with its
+/// name) or a resource the player owns (no name).
+struct TImbuementSource
 {
-    int index = 0;
-    bool isEmpty = true;
-    Imbuement imbuement{};
-    /// Seconds left.
-    uint32_t remainingDuration = 0;
-    uint32_t clearingGoldCost = 0;
+    uint16_t objectTypeId = 0;
+    uint32_t count = 0;
+    QString name;
 };
 
-/// What the imbuing dialog shows (CIP: imbuing::TImbuingStorage, filled by
-/// TImbuingProtocolMessageHandler::refresh).
+/// One imbuement the server offers or an item carries.
+struct TImbuement
+{
+    uint32_t id = 0;
+    QString name;
+    QString description;
+    /// 0 basic, 1 intricate, 2 powerful.
+    uint32_t tier = 0;
+    uint32_t iconId = 0;
+    /// Seconds.
+    uint64_t duration = 0;
+    std::vector<TImbuementSource> astralSources;
+    uint32_t goldCost = 0;
+};
+
+/// One slot of the item being imbued.
+struct TImbuementSlot
+{
+    uint32_t index = 0;
+    TImbuement imbuement;
+    /// Seconds left.
+    uint64_t remainingDuration = 0;
+    uint32_t clearingGoldCost = 0;
+    bool isEmpty = true;
+};
+
+/// What the imbuing dialog shows, as the server's last imbuing dialog refresh
+/// left it. Also carries TImbuingProtocolMessageHandler's dialog requests.
 class TImbuingStorage final : public cip::tibia::imbuing::TImbuingStorage
 {
     Q_OBJECT
 public:
-    enum EMode : uint8_t
+    /// The refresh's window type.
+    enum EMode : uint32_t
     {
         MODE_NONE = 0,
         MODE_ITEM = 1,
@@ -41,39 +61,47 @@ public:
     };
 
     explicit TImbuingStorage(QObject* parent = nullptr);
+    ~TImbuingStorage() override;
 
-    EMode mode() const { return m_mode; }
+    /// The storage TImbuingProtocolMessageHandler fills.
+    static TImbuingStorage* instance();
+
+    uint32_t mode() const { return m_mode; }
     bool scrollAvailable() const { return m_scrollAvailable; }
     uint16_t itemTypeId() const { return m_itemTypeId; }
-    uint8_t itemTier() const { return m_itemTier; }
+    const std::optional<uint8_t>& itemTier() const { return m_itemTier; }
     const std::vector<TImbuementSlot>& slots() const { return m_slots; }
-    const std::vector<Imbuement>& imbuements() const { return m_imbuements; }
-    /// How many of a resource the player owns (inventory and stash); 0 when
-    /// the server did not list it.
-    uint32_t ownedCount(uint16_t typeId, bool* listed = nullptr) const;
+    const std::vector<TImbuement>& imbuements() const { return m_imbuements; }
+    /// The resources the player owns (inventory and stash), as the server
+    /// listed them.
+    const std::vector<TImbuementSource>& ownedObjects() const { return m_ownedObjects; }
+
+    /// Replaces everything and emits imbuingDataChanged.
+    void setImbuingData(uint32_t mode, bool scrollAvailable, uint16_t itemTypeId, std::optional<uint8_t> itemTier,
+                        std::vector<TImbuementSlot> slots, std::vector<TImbuement> imbuements, std::vector<TImbuementSource> ownedObjects);
+
     /// product: a resource bought outside the imbuing window (gold-token material purchase,
     /// mod/imbuing/imbuingmaterialmenu) counts until the server's next window update.
     void addOwned(uint16_t typeId, uint32_t count);
 
 Q_SIGNALS:
-    /// CIP: TImbuingProtocolMessageHandler's requestShowOrRefreshImbuingDialog.
+    /// TImbuingProtocolMessageHandler::requestShowOrRefreshImbuingDialog.
     void requestShowOrRefreshImbuingDialog();
-    /// CIP: requestCloseImbuingDialog (close message and death).
+    /// TImbuingProtocolMessageHandler::requestCloseImbuingDialog.
     void requestCloseImbuingDialog();
-    /// CIP : requestShowResultDialog.
+    /// TImbuingProtocolMessageHandler::requestShowResultDialog.
     void requestShowResultDialog(const QString& message);
 
 private:
-    void refresh(EMode mode, uint16_t typeId, uint8_t tier, std::vector<TImbuementSlot> slots, std::vector<Imbuement> imbuements, const std::vector<std::pair<uint16_t, uint16_t>>* owned);
+    static TImbuingStorage* s_instance;
 
-    EMode m_mode = MODE_NONE;
+    uint32_t m_mode = MODE_NONE;
     bool m_scrollAvailable = false;
     uint16_t m_itemTypeId = 0;
-    uint8_t m_itemTier = 0;
+    std::optional<uint8_t> m_itemTier;
     std::vector<TImbuementSlot> m_slots;
-    std::vector<Imbuement> m_imbuements;
-    std::unordered_map<uint16_t, uint32_t> m_owned;
-    std::vector<client::gamecore::Hook> m_hooks;
+    std::vector<TImbuement> m_imbuements;
+    std::vector<TImbuementSource> m_ownedObjects;
 };
 
 }

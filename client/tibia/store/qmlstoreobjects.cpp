@@ -1,5 +1,7 @@
 #include "qmlstoreobjects.h"
 
+#include "store/storeciptypes.h"
+
 #include <client/outfit.h>
 
 #include <QDateTime>
@@ -33,7 +35,7 @@ QString dateString(const uint32_t time, const bool withSeconds)
     return QDateTime::fromSecsSinceEpoch(time).toString(format);
 }
 
-bool isOnSale(const TStoreOfferQuantityConfiguration& configuration)
+bool quantityIsOnSale(const TStoreOfferQuantityConfiguration& configuration)
 {
     return configuration.highlightState == TStoreOfferQuantityConfiguration::STATE_SALE && configuration.price < configuration.basePrice
         && configuration.validUntil != 0;
@@ -305,7 +307,7 @@ QStringList TQmlStoreOfferQuantityConfiguration::disabledReasons() const
 
 QString TQmlStoreOfferQuantityConfiguration::saleStringShort() const
 {
-    if (!isOnSale(m_configuration))
+    if (!quantityIsOnSale(m_configuration))
         return {};
     return qtTrId("store_offer_sale_short").arg(salePercent(m_configuration)).arg(storeTimeLeftString(m_configuration.validUntil, true));
 }
@@ -322,7 +324,7 @@ QString TQmlStoreOfferQuantityConfiguration::basePriceString() const
 
 bool TQmlStoreOfferQuantityConfiguration::isOnSale() const
 {
-    return store::isOnSale(m_configuration);
+    return quantityIsOnSale(m_configuration);
 }
 
 TQmlStoreOfferQuantityConfiguration::EQmlStoreCurrency TQmlStoreOfferQuantityConfiguration::currencyType() const
@@ -331,10 +333,10 @@ TQmlStoreOfferQuantityConfiguration::EQmlStoreCurrency TQmlStoreOfferQuantityCon
     return static_cast<EQmlStoreCurrency>(static_cast<unsigned>(currency - 1) > 2 ? 0 : currency);
 }
 
-TQmlStoreOffer::TQmlStoreOffer(const TStoreOffer& offer, TDescriptionSource descriptionSource, QObject* parent)
+TQmlStoreOffer::TQmlStoreOffer(const TStoreOffer& offer, TStoreDescriptionManager* descriptionManager, QObject* parent)
     : cip::tibia::store::TQmlStoreOffer(parent)
     , m_offer(offer)
-    , m_descriptionSource(std::move(descriptionSource))
+    , m_descriptionManager(descriptionManager)
     , m_visualisationObject(new TQmlStoreVisualisation(m_offer.visualisation, this))
 {
     m_visualisation = m_visualisationObject;
@@ -348,6 +350,8 @@ TQmlStoreOffer::TQmlStoreOffer(const TStoreOffer& offer, TDescriptionSource desc
             m_cosmeticTokenQuantities.append(new TQmlStoreOfferQuantityConfiguration(cosmetic, this));
         }
     }
+    if (descriptionManager)
+        connect(descriptionManager, &TStoreDescriptionManager::offerDescriptionLoaded, this, &TQmlStoreOffer::onOfferDescriptionLoaded);
 }
 
 QString TQmlStoreOffer::name() const
@@ -358,15 +362,15 @@ QString TQmlStoreOffer::name() const
 QString TQmlStoreOffer::description() const
 {
     QString loaded;
-    if (m_descriptionSource) {
+    if (m_descriptionManager) {
         const TOfferID id = m_offer.quantities.empty() ? 0 : m_offer.quantities.front().offerId;
-        loaded = m_descriptionSource(id).value_or(qtTrId("store_description_loading"));
+        loaded = m_descriptionManager->description(id);
     }
     QString text;
     for (QObject* object : m_quantities) {
         const TStoreOfferQuantityConfiguration& configuration =
             static_cast<TQmlStoreOfferQuantityConfiguration*>(object)->configuration();
-        if (!isOnSale(configuration))
+        if (!quantityIsOnSale(configuration))
             continue;
         text.append(qtTrId("store_offer_sale_description")
                         .arg(dateString(configuration.validUntil, true))
@@ -377,7 +381,7 @@ QString TQmlStoreOffer::description() const
                         .arg(m_offer.name)
                         .arg(configuration.quantity));
     }
-    if (m_descriptionSource)
+    if (m_descriptionManager)
         text.append(loaded);
     replacePlaceholders(text);
     text.replace(QStringLiteral("\n"), QStringLiteral("<br/>"));
@@ -421,9 +425,9 @@ bool TQmlStoreOffer::hasQuantity(const int offerId) const
     return m_offer.hasQuantity(static_cast<TOfferID>(offerId));
 }
 
-void TQmlStoreOffer::onOfferDescriptionLoaded(const TOfferID offerId)
+void TQmlStoreOffer::onOfferDescriptionLoaded(const int offerId)
 {
-    if (m_offer.hasQuantity(offerId) && m_descriptionSource)
+    if (m_offer.hasQuantity(static_cast<TOfferID>(offerId)) && m_descriptionManager)
         Q_EMIT descriptionChanged();
 }
 

@@ -41,11 +41,26 @@ constexpr const char* ControlButtonIds[] = {
     "taskboard",
 };
 
-QStringList stringList(const QJsonValue& value)
+/// The buttons a fresh options file shows on the button bar, in bar order
+/// (indexes into ControlButtonIds). Every other button starts disabled.
+constexpr int DefaultEnabledButtons[] = { 0, 1, 4, 3, 23, 6, 13, 14, 24, 25, 26 };
+constexpr int DefaultDisabledButtons[] = { 2, 5, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 27 };
+
+/// A button id as stored: names are matched case-insensitively against the
+/// button table and stored in the table's spelling. Ids outside the table are
+/// kept as they are, so pack shortcuts registered after the options load
+/// survive.
+QStringList buttonIds(const QJsonValue& value)
 {
     QStringList list;
     for (const QJsonValue& entry : value.toArray()) {
-        const QString id = entry.toString();
+        QString id = entry.toString();
+        for (const char* known : ControlButtonIds) {
+            if (id.compare(QLatin1String(known), Qt::CaseInsensitive) == 0) {
+                id = QString::fromLatin1(known);
+                break;
+            }
+        }
         if (!id.isEmpty())
             list << id;
     }
@@ -106,9 +121,8 @@ const QJsonObject& defaultClientOptions()
         { QStringLiteral("containerSortBackpacksFirst"), false },
         { QStringLiteral("containerSortRecursive"), false },
         { QStringLiteral("containerSortRecursiveShowWarningAgain"), true },
-        // CipSoft default: Classic (0). Smart (2) was a product override that
-        // opened the context menu on plain right-click without Cmd/Ctrl.
-        { QStringLiteral("controlSchemeIndex"), 0 },
+        // The list index of Left Smart-Click (classic, legacy, left smart-click).
+        { QStringLiteral("controlSchemeIndex"), 2 },
         { QStringLiteral("cooldownBarEnabled"), true },
         { QStringLiteral("creatueShowNpcIcon"), true },
         { QStringLiteral("creatureHudEnabled"), true },
@@ -117,11 +131,8 @@ const QJsonObject& defaultClientOptions()
         { QStringLiteral("creatureShowName"), true },
         { QStringLiteral("dragAndDropDefaultActionIsMoveAll"), true },
         { QStringLiteral("emergencyDialogVersion"), 0 },
-        // Match uncapped classic OTC feel out of the box; enable a limit in Graphics
-        // for play (display refresh) or battery. Previously true@60 with a disabled
-        // checkbox left users stuck, while the HUD still counted empty presents ~150.
         { QStringLiteral("frameRateLimit"), 60 },
-        { QStringLiteral("frameRateLimitEnabled"), false },
+        { QStringLiteral("frameRateLimitEnabled"), true },
         { QStringLiteral("gameWindowLowerPaneHeight"), 216 },
         { QStringLiteral("gameWindowResizingMode"), 0 },
         { QStringLiteral("gameWindowScaleOnlyByEvenMultiples"), false },
@@ -246,7 +257,7 @@ const QJsonObject& defaultClientOptions()
         { QStringLiteral("soundUiVolume"), 100 },
         { QStringLiteral("soundVipEnabled"), true },
         { QStringLiteral("stashAskBeforeStowContainerContent"), true },
-        // CIP ESortOrder::AtoZ (1) — stash dialog persists via stashSortOrder (0xc0).
+        // ESortOrder::AtoZ.
         { QStringLiteral("stashSortOrder"), 1 },
         { QStringLiteral("statusBarEnabled"), true },
         { QStringLiteral("statusPanelEnabled"), false },
@@ -272,16 +283,24 @@ QStringList defaultControlButtonIds()
 
 QJsonObject defaultControlButtonsOptions()
 {
+    QStringList enabled;
+    QStringList disabled;
+    for (const int index : DefaultEnabledButtons)
+        enabled << QString::fromLatin1(ControlButtonIds[index]);
+    for (const int index : DefaultDisabledButtons)
+        disabled << QString::fromLatin1(ControlButtonIds[index]);
+    // Pack Display Shortcuts registered via addProductShortcut (default-enabled).
+    enabled += gamewindow::TButtonBarController::defaultEnabledProductShortcutIds();
     return {
-        { QStringLiteral("enabledButtons"), QJsonArray::fromStringList(defaultControlButtonIds()) },
-        { QStringLiteral("disabledButtons"), QJsonArray() },
+        { QStringLiteral("enabledButtons"), QJsonArray::fromStringList(enabled) },
+        { QStringLiteral("disabledButtons"), QJsonArray::fromStringList(disabled) },
     };
 }
 
 QJsonObject reconcileControlButtons(const QJsonObject& section)
 {
-    QStringList enabled = stringList(section.value(QLatin1String("enabledButtons")));
-    const QStringList disabled = stringList(section.value(QLatin1String("disabledButtons")));
+    QStringList enabled = buttonIds(section.value(QLatin1String("enabledButtons")));
+    const QStringList disabled = buttonIds(section.value(QLatin1String("disabledButtons")));
     QSet<QString> seen;
     for (const QString& id : enabled)
         seen.insert(id);

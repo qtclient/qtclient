@@ -10,7 +10,10 @@
 #include <QUrl>
 
 #include <functional>
+#include <map>
+#include <vector>
 
+class QJsonValue;
 class QNetworkAccessManager;
 class QNetworkReply;
 
@@ -19,45 +22,58 @@ namespace gamewindow {
 
 class TMessageDialogController;
 
-/// One entry of the account service's "Worlds" (CIP).
-struct CreationWorld
+/// One world of the account service's "Worlds" list (CIP: gamewindow::WorldData).
+struct WorldData
 {
     QString name;
     QString region;
     QString pvpType;
     int playersOnline = 0;
+    /// "MMM yyyy" of CreationDate.
     QString creationDate;
     QString battleEyeStatus;
     bool premiumOnly = false;
     QString transferType;
 };
 
-/// The worlds of WorldSelection.qml (CipSoft name, no T prefix); one role,
-/// "WorldName". Tip owns CIP `count` / `rowCountChanged`.
+/// A "Worlds" entry of the account service as WorldData.
+WorldData parseWorldData(const QJsonValue& value);
+
+/// The worlds of WorldSelection.qml (CipSoft name, no T prefix): a
+/// shared::TSimpleVectorAbstractListModel<WorldData> with one role per field.
 class WorldSelectionModel final : public cip::tibia::gamewindow::WorldSelectionModel
 {
     Q_OBJECT
 public:
-    enum Role { WorldNameRole = Qt::UserRole + 1 };
+    enum Role
+    {
+        WorldNameRole = Qt::UserRole + 1,
+        PlayersOnlineRole,
+        RegionRole,
+        PvPTypeRole,
+        CreationDateRole,
+        BattleEyeStatusRole,
+        PremiumOnlyRole,
+        TransferTypeRole,
+    };
 
     explicit WorldSelectionModel(QObject* parent = nullptr);
 
-    void setWorlds(const QList<CreationWorld>& worlds);
-    const QList<CreationWorld>& worlds() const { return m_worlds; }
+    /// Rows removed or inserted to the new count, then the kept rows changed.
+    void setItems(std::vector<WorldData> worlds);
+    const std::vector<WorldData>& items() const { return m_worlds; }
 
-    int count() const override;
+    int count() const override { return rowCount(); }
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
 private:
-    QList<CreationWorld> m_worlds;
+    std::vector<WorldData> m_worlds;
 };
 
-/// Back-compat alias for qtclient call sites still using the T-prefixed name.
-using TWorldSelectionModel = WorldSelectionModel;
-
-/// One option of WorldSelection.qml's region and PvP type combo boxes.
+/// One option of WorldSelection.qml's region and PvP type combo boxes (CIP builds
+/// a gameWidnow::TTextValueQmlObject; same text/value properties).
 class TWorldFilterEntry final : public QObject
 {
     Q_OBJECT
@@ -71,19 +87,24 @@ private:
     QString m_value;
 };
 
-/// CreateCharacterDialog.qml's worldsModel (CIP: TWorldSelectionSortProxyModel):
-/// the worlds by name, filtered by region and PvP type.
+/// The worldsModel of CreateCharacterDialog.qml / CreateAccountDialog.qml (CIP:
+/// TWorldSelectionSortProxyModel): owns the WorldSelectionModel, filters it by
+/// region and PvP type and sorts the recommended world first, then by name.
 class TWorldSelectionSortProxyModel final : public cip::tibia::gamewindow::TWorldSelectionSortProxyModel
 {
     Q_OBJECT
 public:
-    explicit TWorldSelectionSortProxyModel(TWorldSelectionModel* source, QObject* parent = nullptr);
+    explicit TWorldSelectionSortProxyModel(QObject* parent = nullptr);
 
-    /// The worlds changed: rebuilds the filter options and clears the filters.
-    void reload(const QString& recommendedWorld);
+    /// New worlds: rebuilds the region and PvP type options and clears the filters.
+    void setWorlds(const std::vector<WorldData>& worlds);
+    const std::vector<WorldData>& worlds() const { return m_worlds->items(); }
+    void setRecommendedWorld(const QString& world);
 
     void setWorldRegionFilter(const QString& v) override;
     void setWorldPvPTypeFilter(const QString& v) override;
+    /// The PvP types of the filtered region, or of every world.
+    QList<QObject*> worldPvPTypeFilterModel() const override;
 
     Q_INVOKABLE QString worldName(const QModelIndex& index) override;
     Q_INVOKABLE QString playersOnline(const QModelIndex& index) override;
@@ -97,17 +118,19 @@ public:
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
+    bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
 private:
-    const CreationWorld* worldAt(const QModelIndex& index) const;
-    QList<QObject*> filterOptions(const QStringList& values);
+    QString roleText(const QModelIndex& index, int role) const;
 
-    TWorldSelectionModel* m_source;
+    WorldSelectionModel* m_worlds;
+    /// Per region: the PvP type options of its worlds.
+    std::map<QString, QList<QObject*>> m_worldPvPTypeFilterModelByRegion;
 };
 
-/// CreateCharacterDialog.qml's controller (CIP: TCreateCharacterDialogController,
-/// slots): character name checks, name suggestions and the
-/// character creation, posted as JSON to the account service.
+/// CreateCharacterDialog.qml's controller (CIP: TCreateCharacterDialogController):
+/// asks the account service for the worlds, checks and suggests character names
+/// and creates the character, all as JSON posts.
 class TCreateCharacterDialogController : public TDialogController<cip::tibia::gamewindow::TCreateCharacterDialogController>
 {
     Q_OBJECT
@@ -122,53 +145,52 @@ public:
     /// The login session the new character goes to.
     void setSessionKey(const QString& sessionKey) { m_sessionKey = sessionKey; }
 
-    /// SHOW_CREATE_CHARACTER_DIALOG (CIP publishes it from the
-    /// character list; the parameter: the account has no characters, so the
-    /// dialog cannot be cancelled). Ignored while a request is pending.
+    /// SHOW_CREATE_CHARACTER_DIALOG; ignored while a request is pending. The
+    /// parameter: the account has no characters yet, so the dialog can be neither
+    /// cancelled nor skip the tutorial.
     void open(bool accountHasNoCharacters);
 
-    /// CIP : shows the dialog and asks for the worlds .
+    /// Closes the dialog and asks for the worlds; the answer shows it.
     void showDialog() override;
-    /// CIP : resets the form and closes the dialog.
+    /// Back to the defaults, worlds dropped, dialog closed.
     Q_INVOKABLE void cancel() override;
-    /// CIP : GenerateCharacterName.
     Q_INVOKABLE void suggestCharacterName() override;
-    /// CIP : CheckCharacterName for a non-empty name .
+    /// Asks whether a non-empty name is available.
     Q_INVOKABLE void updateCharacterName(const QString& Name) override;
-    /// CIP : createCharacter.
+    /// Ignored while a request is pending.
     Q_INVOKABLE void createCharacter(const QString& CharacterName, bool CharacterSexMale, bool PlayTutorial, const QString& WorldName) override;
 
 Q_SIGNALS:
     /// The service created `name`; `reply` carries the account's new
-    /// session and character list (CIP applies it).
+    /// session and character list for the host to apply.
     void characterCreated(const QString& name, const QJsonObject& reply);
 
 protected:
     /// Extra createCharacter fields of a product dialog.
     virtual void addCreateCharacterFields(QJsonObject& request) const { Q_UNUSED(request); }
-    /// Back to the defaults (CIP before closing).
-    virtual void resetForm();
 
 private:
-    using ReplyHandler = std::function<void(const QJsonObject&)>;
+    using ReplyHandler = std::function<void(QNetworkReply*)>;
 
-    /// CIP : POSTs `request`; asyncOperationInProgress while any is pending.
+    /// POSTs `request`; asyncOperationInProgress while any post is unanswered.
     void post(const QJsonObject& request, ReplyHandler onReply);
     void setPending(int pending);
-    /// CIP : the error message box.
+    void setAccountHasNoCharacters(bool noCharacters);
+    void requestAccountCreationStatus();
+    void onAccountCreationStatus(QNetworkReply* reply);
+    void onCharacterNameGenerated(QNetworkReply* reply);
+    void onCharacterNameChecked(QNetworkReply* reply);
+    void onCharacterCreated(QNetworkReply* reply);
     void showError(const QString& message);
-    void onStatus(const QJsonObject& reply);
 
     QUrl m_serviceUrl;
     QString m_sessionKey;
     QNetworkAccessManager* m_network;
-    TWorldSelectionModel* m_worlds;
     TWorldSelectionSortProxyModel* m_proxy;
     TMessageDialogController* m_error;
-    /// The last GenerateCharacterName answer (CIP +0x108): NameIsGenerated.
+    /// The last generated name: createCharacter's NameIsGenerated.
     QString m_generatedName;
-    bool m_noCharacters = false;
-    bool m_creating = false;
+    bool m_noCharacters = true;
     int m_pending = 0;
 };
 

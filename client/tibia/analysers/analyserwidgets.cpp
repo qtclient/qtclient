@@ -254,11 +254,11 @@ void TAnalyticsSelectorWidgetController::onWidgetVisibility(const int widgetType
         case W::DamageInputAnalyser: flag = &m_damageInputAnalyserVisible; break;
         case W::HuntingSessionAnalyser: flag = &m_huntingSessionAnalyserVisible; break;
         case W::PartyHuntAnalyser: flag = &m_partyHuntAnalyserVisible; break;
-        default: return;
+        default: break;
     }
-    if (*flag == visible)
-        return;
-    *flag = visible;
+    // Every visibility report notifies, also for other widget types and unchanged flags.
+    if (flag)
+        *flag = visible;
     Q_EMIT widgetVisibilityChanged();
 }
 

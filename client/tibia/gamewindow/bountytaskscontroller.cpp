@@ -389,10 +389,13 @@ void TBountyTasksController::assignAvoidedMonster(const int slotIndex, const int
                                  static_cast<uint16_t>(std::max(0, RaceId)));
 }
 
+/// Also forgets the creature picked for a preferred / avoided slot.
 void TBountyTasksController::clearNameFilter()
 {
     if (m_monsterFilter)
         m_monsterFilter->setNameFilter(QString());
+    if (m_preferredModel)
+        m_preferredModel->clearAssignableMonster();
 }
 
 }

@@ -21,27 +21,25 @@ class TMessageDialogController;
 namespace tibia {
 namespace imbuing {
 
-/// The imbuements to choose from (CIP: imbuing::TAvailableImbuementsListModel,
-/// data 's roles imbuementId, imageSource, category).
+/// The imbuements to choose from, roles imbuementId, imageSource and category.
 class TAvailableImbuementsListModel final : public cip::tibia::imbuing::TAvailableImbuementsListModel
 {
     Q_OBJECT
 public:
     using cip::tibia::imbuing::TAvailableImbuementsListModel::TAvailableImbuementsListModel;
 
-    void setImbuements(std::vector<Imbuement> imbuements);
-    const std::vector<Imbuement>& imbuements() const { return m_imbuements; }
+    void setImbuements(std::vector<TImbuement> imbuements);
+    const std::vector<TImbuement>& imbuements() const { return m_imbuements; }
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
 private:
-    std::vector<Imbuement> m_imbuements;
+    std::vector<TImbuement> m_imbuements;
 };
 
-/// The item's slots (CIP: imbuing::TImbuementSlotsListModel, roles
-/// slotIndex, imbuementId, imageSource, category).
+/// The item's slots, roles slotIndex, imbuementId, imageSource and category.
 class TImbuementSlotsListModel final : public cip::tibia::imbuing::TImbuementSlotsListModel
 {
     Q_OBJECT
@@ -58,28 +56,30 @@ private:
     std::vector<TImbuementSlot> m_slots;
 };
 
-/// One resource an imbuement needs (CIP: imbuing::TQmlAstralSource).
+/// One resource an imbuement needs: how many it takes and how many the player
+/// owns.
 class TQmlAstralSource final : public cip::tibia::imbuing::TQmlAstralSource
 {
     Q_OBJECT
 public:
-    TQmlAstralSource(const QString& name, uint typeId, uint needed, uint owned, QObject* parent);
+    TQmlAstralSource(const QString& name, uint needed, uint owned, uint objectTypeId, QObject* parent = nullptr);
 };
 
-/// The selected imbuement (CIP: imbuing::TQmlImbuementData).
+/// The selected imbuement; owns its astral sources.
 class TQmlImbuementData final : public cip::tibia::imbuing::TQmlImbuementData
 {
     Q_OBJECT
 public:
-    TQmlImbuementData(const Imbuement& data, const QList<QObject*>& sources, bool enough, QObject* parent);
+    TQmlImbuementData(const TImbuement& imbuement, const QList<QObject*>& astralSources, bool enoughAstralSources, QObject* parent = nullptr);
 };
 
-/// The selected slot's imbuement (CIP: imbuing::TQmlExistingImbuement).
+/// The imbuement in the selected slot.
 class TQmlExistingImbuement final : public cip::tibia::imbuing::TQmlExistingImbuement
 {
     Q_OBJECT
 public:
-    TQmlExistingImbuement(const TImbuementSlot& slot, QObject* parent);
+    TQmlExistingImbuement(uint32_t imbuementId, const QString& name, uint64_t remainingDuration, uint64_t totalDuration,
+                          uint32_t clearingGoldCost, QObject* parent = nullptr);
 };
 
 }
@@ -88,9 +88,8 @@ public:
 namespace tibia {
 namespace gamewindow {
 
-/// ImbuingDialog.qml (CIP: gamewindow::TImbuingDialogController, ctor
-/// , metacall). Opens when the server sends the
-/// imbuing window (using an imbuing shrine).
+/// ImbuingDialog.qml. Opens when the server sends the imbuing window (using an
+/// imbuing shrine).
 class TImbuingDialogController final : public TDialogController<cip::tibia::gamewindow::TImbuingDialogController>
 {
     Q_OBJECT
@@ -102,58 +101,48 @@ public:
     bool imbueModeItem() const override;
     bool imbueModeScroll() const override;
     bool isPremium() const override;
-    /// CIP .
     QString imbuementFilter() const override;
-    /// CIP .
     void setImbuementFilter(const QString& v) override;
-    /// CIP .
+    /// The imbued item's (or the blank scroll's) name, each word capitalised.
     QString selectedItemText() const override;
 
 public Q_SLOTS:
-    /// CIP .
     void showDialog() override;
-    /// CIP .
+    /// Closes the confirmations too, tells the server and forgets the item.
     void closeDialog() override;
     void requestClose() override;
-    /// CIP .
+    /// Asks to confirm imbuing the selected imbuement for its gold.
     void requestImbue() override;
-    /// CIP .
+    /// Asks to confirm clearing the selected slot for its gold.
     void requestClearImbuement() override;
-    /// CIP .
     void requestOpenStoreWithPremiumCategory() override;
-    /// CIP .
+    /// The premium store page, then closes.
     void openPremiumStore() override;
-    /// CIP .
     void handleSelectImbuementSlot(uint SlotIndex) override;
-    /// CIP .
     void handleSelectImbuement(uint ImbuementId) override;
-    /// CIP /.
     void handlePickFilterBasic() override;
     void handlePickFilterIntricate() override;
     void handlePickFilterPowerful() override;
-    /// CIP (and handleGameAction).
+    /// Hides the dialog while the player picks the item to imbue.
     void handlePickItemToImbue() override;
-    /// CIP .
     void handleImbueScroll() override;
 
 private:
-    /// CIP .
     void onImbuingStorageDataChanged();
-    /// CIP .
     void onDisplayResultMessage(const QString& message);
-    /// CIP.
     void onImbueSlotConfirmed();
     void onClearSlotConfirmed();
-    void setFilter(int filter);
+    void setFilter(uint32_t filter);
     const imbuing::TImbuementSlot* selectedSlot() const;
-    /// CIP .
-    void updateItem();
-    /// CIP .
-    void updateExisting();
-    /// CIP .
-    void updateAvailable();
-    /// CIP .
-    void select(int imbuementId);
+    /// The imbued item from the storage; resets the slot index the item does
+    /// not have.
+    void updateImbuedItem();
+    /// The selected slot's imbuement and the slot list.
+    void updateExistingImbuement();
+    /// The imbuements of the current filter, ordered for the list.
+    void updateAvailableImbuements();
+    /// `imbuementId` becomes the selected imbuement, with its astral sources.
+    void selectImbuement(uint32_t imbuementId);
     void replaceObject(QObject*& member, QObject* object);
 
     imbuing::TImbuingStorage* m_storage;
@@ -163,8 +152,8 @@ private:
     TMessageDialogController* m_imbueConfirm;
     TMessageDialogController* m_clearConfirm;
     bool m_picking = false;
-    /// 0 basic, 1 intricate, 2 powerful.
-    int m_filter = 0;
+    /// The imbuement tier listed: 0 basic, 1 intricate, 2 powerful.
+    uint32_t m_filter = 0;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 

@@ -44,7 +44,10 @@ public:
 
     QColor colorAt(const Position& coord) const;
     uint8_t waypointAt(const Position& coord) const;
+    /// Each of these marks the tile changed only when the field's value changes.
+    void setColorIndex(const Position& coord, uint8_t colorIndex);
     /// Costs above 250 clamp to 250; blocked fields cost 0xff.
+    void setWaypoint(const Position& coord, uint8_t cost, bool blocked);
     void setField(const Position& coord, uint8_t colorIndex, uint8_t cost, bool blocked);
 
     const QImage& colorImage() const { return m_colors; }

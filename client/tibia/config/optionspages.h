@@ -27,10 +27,14 @@ struct TOptionBinding
         InvertedBool,
         Int,
         Real,
-        /// A 0..1 option as 0..100 (CIP: min(round(v * 100), 100), back min(p * 0.01, 1)).
+        /// A 0..1 option as 0..100: min(round(v * 100), 100), back min(p * 0.01, 1).
         Percent,
-        /// lightAttenuationCloudsIndoor as a slider step: (1 - v) / 0.005.
+        /// lightAttenuationCloudsIndoor as a slider step: (1 - v) / 0.005, truncated.
         CloudsIndex,
+        /// An option the page has no property for: read on load and written
+        /// back unchanged on apply. `property` names the dynamic property
+        /// that holds it.
+        Carried,
     };
 
     const char* property;
@@ -194,7 +198,9 @@ public:
     void load(const QJsonObject& settings) override;
     void apply(QJsonObject& settings) const override;
 
-    /// Ignored while the software renderer limits the options .
+    /// Off while the software renderer limits the options.
+    bool lightEffects() const override;
+    /// Ignored while the software renderer limits the options.
     void setLightEffects(bool enabled) override;
 };
 
@@ -240,8 +246,9 @@ public:
 
     void load(const QJsonObject& settings) override;
     void apply(QJsonObject& settings) const override;
-    /// CIP: battle/UI sound pages disable when master is 0 (`soundEnabled`).
-    void setMasterVolume(uint v) override;
+    /// The sound pages are enabled while the sound engine runs and the master
+    /// volume is above 0.
+    bool soundEnabled() const override;
 
 private:
     void refreshSoundDevices();

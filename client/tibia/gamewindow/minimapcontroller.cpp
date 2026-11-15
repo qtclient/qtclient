@@ -24,28 +24,20 @@ namespace {
 using A = input::EGameAction;
 using Cursor = TMouseCursorController;
 
-/// qtclient minimap field menu order (walk / marks). GOD_TELEPORT is Shift+Ctrl only.
-constexpr A SoftMinimapOrder[] = {
-    A::SET_PLAYER_MOVEMENT_INTENT,
-    A::CONTEXT_MENU_SEPARATOR,
+/// The context menu of a minimap field is "create mark", that of a marker
+/// "edit mark" and "delete mark". The fields' actions here already carry the
+/// marker's entries when the field has one (there is no marker overlay to
+/// click), so one order serves both.
+constexpr A FieldContextMenuOrder[] = {
     A::SHOW_DIALOG_CREATE_MINIMAP_MARKER,
     A::SHOW_DIALOG_EDIT_MINIMAP_MARKER,
     A::DELETE_MINIMAP_MARKER,
 };
 
-/// CIP's float rounding: half away from zero.
-int roundAway(const float v)
+/// Rounds half away from zero, as std::lround does.
+int roundToInt(const float v)
 {
-    return static_cast<int>(std::trunc(v + std::copysign(0.5f, v)));
-}
-
-void showMinimapContextMenu(const input::TGameActionList& candidates, const input::TGameActionMapper& mapper)
-{
-    TContextMenuController* menu = TContextMenuController::instance();
-    if (!menu)
-        return;
-    if (const input::TGameActionList entries = input::contextMenuActions(candidates, SoftMinimapOrder); !entries.empty())
-        menu->showGameActions(entries, input::TGameActionMapper::MinimapContext, mapper);
+    return static_cast<int>(std::round(v));
 }
 
 }
@@ -188,56 +180,45 @@ minimap::TMinimapTileStorage* TMinimapController::tileStorage() const { return m
 
 void TMinimapController::onCyclopediaMapButtonClicked()
 {
+    // The cyclopedia's map tab, at the player's field.
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
     action->parameter = 4;
-    action->position = m_area.center();
+    if (tibia::game::localPlayer()) {
+        m_playerPosition = tibia::game::localPlayerPosition();
+        action->position = m_playerPosition;
+    }
     input::publish(action);
 }
 
-// CIP : re-apply rose scroll from last normalised mouse on the rose
-// (same centre / 0.33 / 0.66 sectors as TibiaMinimapRose.qml). CipSoft stores
-// the coords at +0x118/+0x120 but nothing in QML writes them; qtclient fills them
-// from onMinimapRoseButtonClicked so hold-repeat / this slot can re-fire.
+// The rose's centre recentres on the player, its arms scroll, from the last
+// mouse position on the rose (normalised to 0..1; unset until known, and
+// then nothing scrolls).
 void TMinimapController::emulateClickOnAutomapRose()
 {
     const double nx = m_roseMouseNormalized.x();
     const double ny = m_roseMouseNormalized.y();
     const double sx = nx + nx - 1.0;
     const double sy = ny + ny - 1.0;
-    if (std::sqrt(sx * sx + sy * sy) < 0.33) {
+    if (std::sqrt(sx * sx + sy * sy) < double(0.33f)) {
         centerOnPlayer();
-        return;
-    }
-
-    int offsetX = 0;
-    int offsetY = 0;
-    if (nx >= 0.66)
-        offsetX = 1;
-    else if (nx <= 0.33)
-        offsetX = -1;
-    if (ny >= 0.66)
-        offsetY = 1;
-    else if (ny <= 0.33)
-        offsetY = -1;
-
-    if (offsetX == 0 && offsetY == 0) {
         refresh();
         return;
     }
     const int step = scrollStep();
-    if (offsetX != 0)
-        m_area.moveX(offsetX * step);
-    if (offsetY != 0)
-        m_area.moveY(step * offsetY);
+    if (nx >= double(0.66f))
+        m_area.moveX(step);
+    else if (nx <= double(0.33f))
+        m_area.moveX(-step);
+    if (ny >= double(0.66f))
+        m_area.moveY(step);
+    else if (ny <= double(0.33f))
+        m_area.moveY(-step);
     refresh();
 }
 
-// CIP : the rose's centre recentres, its arms scroll.
+// The rose's centre recentres on the player, its arms scroll.
 void TMinimapController::onMinimapRoseButtonClicked(const int offsetX, const int offsetY)
 {
-    // Map discrete rose sectors onto the normalised bands emulateClick reads.
-    m_roseMouseNormalized = QPointF(offsetX < 0 ? 0.0 : offsetX > 0 ? 1.0 : 0.5,
-                                    offsetY < 0 ? 0.0 : offsetY > 0 ? 1.0 : 0.5);
     if (offsetX == 0 && offsetY == 0) {
         centerOnPlayer();
     } else {
@@ -250,50 +231,52 @@ void TMinimapController::onMinimapRoseButtonClicked(const int offsetX, const int
     refresh();
 }
 
-// CIP : item pixels to fields, carrying the fraction to the next drag.
+// Item pixels to fields, carrying the fraction to the next drag.
 void TMinimapController::onMinimapDragged(const float deltaX, const float deltaY)
 {
     const float scale = m_area.scale();
-    const float x = static_cast<float>(m_dragRemainder.x()) + deltaX / scale;
-    const float y = static_cast<float>(m_dragRemainder.y()) + deltaY / scale;
-    const int fieldsX = roundAway(x);
-    const int fieldsY = roundAway(y);
-    m_dragRemainder = QPointF(x - fieldsX, y - fieldsY);
-    m_area.moveX(fieldsX);
-    m_area.moveY(fieldsY);
+    const float x = m_dragRemainderX + deltaX / scale;
+    const float y = m_dragRemainderY + deltaY / scale;
+    const float fieldsX = std::round(x);
+    const float fieldsY = std::round(y);
+    m_dragRemainderX = x - fieldsX;
+    m_dragRemainderY = y - fieldsY;
+    m_area.moveX(static_cast<int>(fieldsX));
+    m_area.moveY(static_cast<int>(fieldsY));
     refresh();
 }
 
-// CIP.
+void TMinimapController::dispatchClick(const input::TGameActionList& actions, const int mouseButton, const int modifiers,
+                                       const std::span<const input::EGameAction> contextMenuOrder)
+{
+    const input::TGameActionPtr action =
+        m_mapper.map(actions, input::TGameActionMapper::MinimapContext, static_cast<Qt::MouseButton>(mouseButton), modifiers);
+    if (!action)
+        return;
+    if (action->type != A::CONTEXT_MENU) {
+        input::publish(action);
+        return;
+    }
+    const input::TGameActionList entries = input::contextMenuActions(actions, contextMenuOrder);
+    if (entries.empty())
+        return;
+    if (TContextMenuController* menu = TContextMenuController::instance())
+        menu->showGameActions(entries, input::TGameActionMapper::MinimapContext, m_mapper);
+}
+
 void TMinimapController::onMinimapClick(const int x, const int y, const int triggeringMouseButton, const Qt::KeyboardModifiers modifiers)
 {
     m_mouse = QPoint(x, y);
-    const input::TGameActionList candidates = actionsAtMouse();
-    const input::TGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::MinimapContext,
-                                                      static_cast<Qt::MouseButton>(triggeringMouseButton), static_cast<int>(modifiers));
-    if (!action)
-        return;
-    if (action->type == A::CONTEXT_MENU) {
-        showMinimapContextMenu(candidates, m_mapper);
-        return;
-    }
-    input::publish(action);
+    dispatchClick(m_actions.actionsAt(m_area.itemToWorld(m_mouse)), triggeringMouseButton, static_cast<int>(modifiers),
+                  FieldContextMenuOrder);
 }
 
 void TMinimapController::onMinimapMarkerClick(QObject* /*pMinimapMarkerQmlRenderInfo*/, const int TriggeringMouseButton,
                                               const Qt::KeyboardModifiers Modifiers)
 {
-    // qtclient: marker overlay clicks use the same worldmap field candidates as the tile under the mouse.
-    const input::TGameActionList candidates = actionsAtMouse();
-    const input::TGameActionPtr action = m_mapper.map(candidates, input::TGameActionMapper::MinimapContext,
-                                                      static_cast<Qt::MouseButton>(TriggeringMouseButton), static_cast<int>(Modifiers));
-    if (!action)
-        return;
-    if (action->type == A::CONTEXT_MENU) {
-        showMinimapContextMenu(candidates, m_mapper);
-        return;
-    }
-    input::publish(action);
+    // There is no marker overlay that reports a hovered marker, so this
+    // takes the field under the mouse.
+    dispatchClick(actionsAtMouse(), TriggeringMouseButton, static_cast<int>(Modifiers), FieldContextMenuOrder);
 }
 
 void TMinimapController::onMinimapMouseMoved(const int x, const int y)
@@ -410,7 +393,7 @@ void TMinimapController::centerOnPlayer()
 
 int TMinimapController::scrollStep() const
 {
-    return roundAway(12.0f / m_area.scale());
+    return roundToInt(12.0f / m_area.scale());
 }
 
 bool TMinimapController::crosshairIsDark() const

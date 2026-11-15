@@ -52,7 +52,7 @@ void TMinimapMarkerStorage::setActive(TMinimapMarkerStorage* storage) { g_active
 TMinimapMarkerStorage::TMinimapMarkerStorage(const QString& bundledMarkersJson, QObject* parent)
     : cip::tibia::minimap::TMinimapMarkerStorage(parent)
     , m_bundledMarkersJson(bundledMarkersJson)
-    , m_dialog(std::make_unique<gamewindow::TEditMinimapMarkerDialogController>(this))
+    , m_dialog(std::make_unique<gamewindow::TEditMinimapMarkerDialogController>(this, this))
     , m_markers(MINIMAP_MARKER_FLOORS)
 {
     using Args = std::vector<std::any>;
@@ -296,31 +296,16 @@ bool TMinimapMarkerStorage::remove(const Position& pos)
 
 void TMinimapMarkerStorage::bindActions()
 {
-    input::setActionHandler(A::SHOW_DIALOG_CREATE_MINIMAP_MARKER, [this](const input::TGameAction& action) {
-        m_pendingPosition = action.position;
-        m_dialog->open(action.position, {}, 0, false);
-        return true;
-    });
-    input::setActionHandler(A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION, [this](const input::TGameAction&) {
-        if (!tibia::game::localPlayer())
-            return false;
-        const Position pos = tibia::game::localPlayerPosition();
-        if (!pos.isValid())
-            return false;
-        m_pendingPosition = pos;
-        m_dialog->open(pos, {}, 0, false);
-        return true;
-    });
-    input::setActionHandler(A::SHOW_DIALOG_EDIT_MINIMAP_MARKER, [this](const input::TGameAction& action) {
-        m_pendingPosition = action.position;
-        const auto existing = markerAt(action.position);
-        m_dialog->open(action.position,
-                       existing ? QString::fromStdString(existing->description) : QString(),
-                       existing ? existing->icon : 0, true);
-        return true;
-    });
+    // The marker dialog's actions.
+    for (const A type : { A::SHOW_DIALOG_CREATE_MINIMAP_MARKER, A::SHOW_DIALOG_EDIT_MINIMAP_MARKER,
+                          A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION }) {
+        input::setActionHandler(type, [this](const input::TGameAction& action) {
+            m_dialog->handleGameAction(action);
+            return true;
+        });
+    }
     input::setActionHandler(A::UPDATE_MINIMAP_MARKER, [this](const input::TGameAction& action) {
-        const Position pos = action.position.isValid() ? action.position : m_pendingPosition;
+        const Position pos = action.position;
         const auto icon = static_cast<uint8_t>(std::clamp(action.parameter, 0, static_cast<int>(MINIMAP_MARKER_ICONS - 1)));
         return createOrUpdate(pos, icon, action.text);
     });

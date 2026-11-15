@@ -4,6 +4,7 @@
 
 #include <QByteArray>
 #include <QLocale>
+#include <QRegularExpression>
 #include <QStringList>
 
 #include <zlib.h>
@@ -81,16 +82,15 @@ constexpr int CapacityPerPoint[VocationCount] = { 5, 4, 2, 2, 5 };
 /// CIP DAT_1017dc404.
 constexpr float MitigationPerPoint = 0.075f;
 
-/// External medium perk ids: VesselNode=37 on 8 slices; MasteryIncrease=46 on the
-/// most-central former vessel-resonance slice of each domain (14/17/18/21).
-/// Monk ids realigned to External (Sanctuary=38 .. exori_mas_pug=45).
+/// The conviction perk of each slice by vocation index (knight, paladin, sorcerer,
+/// druid, monk).
 constexpr std::array<std::array<int, VocationCount>, SlotCount> MediumPerks = { {
-    { 8, 17, 35, 28, 39 }, { 5, 5, 5, 5, 5 }, { 37, 37, 37, 37, 37 }, { 7, 15, 34, 34, 40 }, { 37, 37, 37, 37, 37 }, { 12, 22, 27, 29, 44 },
-    { 37, 37, 37, 37, 37 }, { 14, 21, 26, 32, 42 }, { 6, 6, 6, 6, 6 }, { 37, 37, 37, 37, 37 }, { 13, 20, 36, 33, 43 }, { 5, 5, 5, 5, 5 },
-    { 11, 19, 25, 30, 45 }, { 7, 15, 34, 34, 40 }, { 46, 46, 46, 46, 46 }, { 10, 18, 24, 31, 41 }, { 6, 6, 6, 6, 6 }, { 46, 46, 46, 46, 46 },
-    { 46, 46, 46, 46, 46 }, { 5, 5, 5, 5, 5 }, { 12, 22, 27, 29, 44 }, { 46, 46, 46, 46, 46 }, { 7, 15, 34, 34, 40 }, { 14, 21, 26, 32, 42 },
-    { 6, 6, 6, 6, 6 }, { 13, 20, 36, 33, 43 }, { 37, 37, 37, 37, 37 }, { 5, 5, 5, 5, 5 }, { 11, 19, 25, 30, 45 }, { 37, 37, 37, 37, 37 },
-    { 10, 18, 24, 31, 41 }, { 37, 37, 37, 37, 37 }, { 7, 15, 34, 34, 40 }, { 37, 37, 37, 37, 37 }, { 6, 6, 6, 6, 6 }, { 9, 16, 23, 35, 38 },
+    { 8, 17, 35, 28, 39 }, { 5, 5, 5, 5, 5 }, { 14, 21, 26, 32, 42 }, { 7, 15, 34, 34, 40 }, { 37, 37, 37, 37, 37 }, { 12, 22, 27, 29, 44 },
+    { 37, 37, 37, 37, 37 }, { 46, 46, 46, 46, 46 }, { 6, 6, 6, 6, 6 }, { 37, 37, 37, 37, 37 }, { 46, 46, 46, 46, 46 }, { 5, 5, 5, 5, 5 },
+    { 11, 19, 25, 30, 45 }, { 7, 15, 34, 34, 40 }, { 37, 37, 37, 37, 37 }, { 10, 18, 24, 31, 41 }, { 6, 6, 6, 6, 6 }, { 13, 20, 36, 33, 43 },
+    { 13, 20, 36, 33, 43 }, { 5, 5, 5, 5, 5 }, { 12, 22, 27, 29, 44 }, { 37, 37, 37, 37, 37 }, { 7, 15, 34, 34, 40 }, { 14, 21, 26, 32, 42 },
+    { 6, 6, 6, 6, 6 }, { 46, 46, 46, 46, 46 }, { 37, 37, 37, 37, 37 }, { 5, 5, 5, 5, 5 }, { 46, 46, 46, 46, 46 }, { 37, 37, 37, 37, 37 },
+    { 10, 18, 24, 31, 41 }, { 37, 37, 37, 37, 37 }, { 7, 15, 34, 34, 40 }, { 11, 19, 25, 30, 45 }, { 6, 6, 6, 6, 6 }, { 9, 16, 23, 35, 38 },
 } };
 
 constexpr std::array<std::array<int, 9>, DomainCount> DomainSlots = { {
@@ -215,6 +215,41 @@ QString trimmedNumber(const double value, const int decimals)
 
 QString sign(const double value) { return value > 0.0 ? QStringLiteral("+") : QString(); }
 
+/// A signed number in English grouping, then its " k"/"k", " kk"/"kk" and
+/// " kkk"/"kkk" forms from 1,000 on, as a multi string.
+QString shortenedNumber(const int value)
+{
+    const QString prefix = value > 0 ? QStringLiteral("+") : QString();
+    QStringList parts{ prefix + englishNumber(value) };
+    const auto add = [&](const int divisor, const char* unit) {
+        const QString number = prefix + englishNumber(value / divisor);
+        parts << number + u' ' + QLatin1String(unit) << number + QLatin1String(unit);
+    };
+    if (value >= 1000 || value <= -1000) {
+        add(1000, "k");
+        if (value >= 1000000 || value <= -1000000) {
+            add(1000000, "kk");
+            if (value >= 1000000000 || value <= -1000000000)
+                add(1000000000, "kkk");
+        }
+    }
+    return parts.join(MultiStringSeparator);
+}
+
+/// The damage type name of a resistance conviction perk's element.
+QString perkDamageTypeName(const int element)
+{
+    switch (element) {
+        case 1: return qtTrId("damagetype_fire");
+        case 2: return qtTrId("damagetype_earth");
+        case 3: return qtTrId("damagetype_energy");
+        case 4: return qtTrId("damagetype_ice");
+        case 5: return qtTrId("damagetype_holy");
+        case 6: return qtTrId("damagetype_death");
+        default: return qtTrId("damagetype_physical");
+    }
+}
+
 /// CIP : a mod value (scaled by 100) in the given format.
 QString formatModValue(const qint64 value, const int format)
 {
@@ -240,8 +275,7 @@ QString spellGroupName(const int protocolGroup)
         case 2: return qtTrId("spell_healing");
         case 3: return qtTrId("spell_support");
         case 4: return qtTrId("spellcooldown_spell_special");
-        // Winter External qm dropped spellcooldown_spell_conjure; group 5 is unused on CipSoft.
-        case 5: return {};
+        case 5: return qtTrId("spellcooldown_spell_conjure");
         case 6: return qtTrId("spellcooldown_spell_crippling");
         case 7: return qtTrId("spellcooldown_spell_focus");
         case 8: return qtTrId("spellcooldown_spell_ultimate_strikes");
@@ -261,8 +295,35 @@ QString percentNumber(const double value, const int decimals, const bool plus)
     return QString::fromLatin1(plus && value > 0.0 ? "+" : "") + QLocale(QLocale::English).toString(v, 'f', precision);
 }
 
-/// CIP (via): `value` * 100 with up to `decimals` decimals.
-QString trimmedPercentNumber(const double value, const int decimals) { return trimmedNumber(value * 100.0, decimals); }
+/// `value` in English with `maxDecimals` decimals ('f'), then: without a
+/// decimal point, `minDecimals` zeros are added; with fewer decimals than
+/// `minDecimals` zeros are padded, otherwise trailing zeros and a trailing point
+/// are dropped.
+QString boundedDecimals(const double value, const int minDecimals, const int maxDecimals)
+{
+    const int minimum = maxDecimals < minDecimals ? 0 : std::max(minDecimals, 0);
+    QString text = QLocale(QLocale::English).toString(value, 'f', maxDecimals);
+    const qsizetype point = text.indexOf(u'.');
+    if (point < 0) {
+        if (minimum != 0)
+            text += u'.' + QString(minimum, u'0');
+        return text;
+    }
+    const int decimals = static_cast<int>(text.size() - point - 1);
+    if (minimum == decimals || minimum < decimals) {
+        text.remove(QRegularExpression(QStringLiteral("0+$")));
+        text.remove(QRegularExpression(QStringLiteral("\\.$")));
+        return text;
+    }
+    return text + QString(minimum - decimals, u'0');
+}
+
+/// `value` * 100 with `minDecimals`..`maxDecimals` decimals, "+" for positive
+/// values when `plus`.
+QString percentNumberTrimmed(const double value, const int minDecimals, const int maxDecimals, const bool plus)
+{
+    return QString::fromLatin1(plus && value > 0.0 ? "+" : "") + boundedDecimals(value * 100.0, minDecimals, maxDecimals);
+}
 
 /// CIP : minutes as "1h 30min".
 QString compactMinutes(const int minutes)
@@ -336,7 +397,7 @@ int unlockedVesselCount(const std::array<int, SlotCount>& points, const int voca
     return std::min(n, VesselCount);
 }
 
-bool isAugmentedPerk(const int perk) { return perk >= 0 && perk < 0x31 && ((0x1f013ef7c7c00ULL >> perk) & 1) != 0; }
+bool isAugmentedPerk(const int perk) { return perk >= 0 && perk < 46 && ((0x3e13ef7c7c00ULL >> perk) & 1) != 0; }
 
 const std::array<int, 9>& domainSlots(const int domain) { return DomainSlots[std::clamp(domain, 0, DomainCount - 1)]; }
 
@@ -413,17 +474,19 @@ int revelationPoints(const TWheel& wheel, const std::vector<TGem>& gems, const T
         if (isMasteryIncreasePerk(mediumPerk(slot, vocationIndex)) && wheel.points[slot] >= MaxPoints[slot])
             total += MasteryIncreasePoints;
     }
+    // Greater gems in unlocked vessels of their quality: supreme Revelation Mastery mods.
     const int perk = largePerk(domain, vocationIndex);
-    for (int v = 0; v < VesselCount; ++v) {
+    const int unlocked = unlockedVesselCount(wheel.points, vocationIndex);
+    for (int v = 0; v < unlocked; ++v) {
         if (wheel.gems[v] == NoGem)
             continue;
         const auto it = std::ranges::find_if(gems, [&](const TGem& g) { return g.id == wheel.gems[v]; });
-        if (it == gems.end() || it->quality < 2 || revelationMasteryPerk(it->supreme) != perk)
+        if (it == gems.end() || it->quality != vesselQualityAt(v) || it->quality < 2 || revelationMasteryPerk(it->supreme) != perk)
             continue;
         const auto grade = supremeGrades.find(it->supreme);
         total += revelationMasteryBonus(grade != supremeGrades.end() ? grade->second : 0);
     }
-    return std::min(total, 1000);
+    return std::clamp(total, 0, 1000);
 }
 
 int revelationStage(const int points)
@@ -543,18 +606,24 @@ QString trIdArg(const char* id, const QString& arg)
     return fmt.contains(QLatin1Char('%')) ? fmt.arg(arg) : fmt;
 }
 
-QString mediumPerkName(const int perk)
+QString mediumPerkName(const int perk, const std::optional<int> largePerk)
 {
+    if (perk >= 0 && perk <= 4) {
+        // The resistance perks: "<elements> Resistance", the elements joined by "and".
+        static constexpr int Elements[5][2] = { { 1, 0 }, { 3, 0 }, { 4, 0 }, { 2, 0 }, { 5, 6 } };
+        QStringList elements;
+        for (const int element : Elements[perk])
+            if (element != 0)
+                elements << perkDamageTypeName(element);
+        return qtTrId("resistance_for_damge_type").arg(elements.join(qtTrId("connecting_and")));
+    }
     const QString name = qtTrId(mediumPerkId(perk));
     if (isAugmentedPerk(perk))
         return multi(trIdArg("perk_name_prefix_augmentation", name), trIdArg("perk_name_prefix_augmentation_short", name));
-    if (isVesselPerk(perk)) {
-        // External qm: perk_name_VesselNode = "Gem Vessel" (no _short / no %1).
-        const QString vessel = qtTrId("perk_name_VesselNode");
-        return multi(vessel, vessel);
+    if (isMasteryIncreasePerk(perk)) {
+        const QString revelation = largePerk ? largePerkName(*largePerk) : QString();
+        return multi(trIdArg("perk_name_MasteryIncrease", revelation), trIdArg("perk_name_MasteryIncrease_short", revelation));
     }
-    if (isMasteryIncreasePerk(perk))
-        return multi(qtTrId("perk_name_MasteryIncrease"), qtTrId("perk_name_MasteryIncrease_short"));
     return name;
 }
 
@@ -598,11 +667,17 @@ QString mediumPerkValueText(const std::array<int, SlotCount>& points, const int 
     const int count = mediumPerkCount(points, perk, vocationIndex);
     switch (perk) {
         case 0: case 1: case 2: case 3: return formatValue(count * 2, 2);
+        // Holy and death resistance has no single effect.
         case 4: return qtTrId("dummy_unknown");
         case 5: return formatValue(count * 25, 3);
         case 6: return formatValue(count * 75, 3);
-        case 7: case 15: case 34: case 43: return formatValue(count, 1);
-        default: return formatValue(count, isAugmentedPerk(perk) || isVesselPerk(perk) ? 7 : 0);
+        case 7: case 15: case 34: case 37: case 40: return formatValue(count, 1);
+        // Revelation Mastery shows the promotion points of one slice.
+        case 46: return formatValue(MasteryIncreasePoints, 1);
+        default:
+            if (isAugmentedPerk(perk))
+                return formatValue(count, 7);
+            return formatValue(perk < 46 ? count : 0, 0);
     }
 }
 
@@ -651,9 +726,17 @@ QStringList mediumPerkDescriptions(const int perk)
 {
     if (isAugmentedPerk(perk)) {
         QStringList levels[2];
-        for (const TAugmentation& aug : Augmentations)
-            if (aug.perk == perk)
-                levels[aug.level - 1].append(augmentationDescription(aug.value, aug.spellId, aug.augType, 0.0, false, false));
+        bool stopped[2] = { false, false };
+        for (const TAugmentation& aug : Augmentations) {
+            if (aug.perk != perk || stopped[aug.level - 1])
+                continue;
+            // A level stops at the first augmentation of an unknown spell.
+            if (!spells::TSpellInfoStorage::instance()->spell(aug.spellId)) {
+                stopped[aug.level - 1] = true;
+                continue;
+            }
+            levels[aug.level - 1].append(augmentationDescription(aug.value, aug.spellId, aug.augType, 0.0, false, false));
+        }
         QString special;
         switch (perk) {
             case 26: special = u' ' + qtTrId("perk_description_AugSpecialSpells_special"); break;
@@ -672,11 +755,10 @@ QStringList mediumPerkDescriptions(const int perk)
         case 23: return { qtTrId("perk_description_FocusMastery").arg(35).arg(12).arg(2) };
         case 28: return { qtTrId("perk_description_HealingLink").arg(25) };
         case 35: return { qtTrId("perk_description_RunicMastery").arg(25).arg(10).arg(20) };
-        // External: "Each node grants +%1 Damage / Healing..." — CipSoft passes 1.
         case 37: return { qtTrId("perk_description_VesselNode").arg(1) };
         case 38: return { qtTrId("perk_description_Sanctuary").arg(10).arg(2) };
         case 39: return { qtTrId("perk_description_GuidingPresence") };
-        case 46: return { qtTrId("perk_description_MasteryIncrease").arg(MasteryIncreasePoints) };
+        case 46: return { qtTrId("perk_description_MasteryIncrease") };
         default: return {};
     }
 }
@@ -690,20 +772,30 @@ QStringList withAugmentationIcons(QStringList lines, const int perk, const int c
     return lines;
 }
 
-QString mediumPerkEffect(const int perk)
+QString mediumPerkEffect(const int perk, const std::optional<int> largePerk)
 {
-    const QString name = mediumPerkName(perk);
+    const QString name = mediumPerkName(perk, largePerk);
+    const QString percent = qtTrId("skill_wheel_dialog_perk_percent_bonus_effect_format");
     QString prefix;
     switch (perk) {
-        case 0: case 1: case 2: case 3: prefix = qtTrId("skill_wheel_dialog_perk_percent_bonus_effect_format").arg(2); break;
-        case 5: prefix = qtTrId("skill_wheel_dialog_perk_percent_bonus_effect_format").arg(percentNumber(0.0025, 2, false)); break;
-        case 6: prefix = qtTrId("skill_wheel_dialog_perk_percent_bonus_effect_format").arg(percentNumber(0.0075, 2, false)); break;
-        case 7: case 15: case 34: case 43: prefix = QStringLiteral("+1"); break;
+        case 0: case 1: case 2: case 3: prefix = percent.arg(2); break;
+        case 4:
+            // Holy and death resistance: one line per element.
+            return QStringLiteral("%1 %2<br>%3 %4")
+                .arg(percent.arg(1), qtTrId("perk_split_name_ResistanceHolyDeath_holy"), percent.arg(1),
+                     qtTrId("perk_split_name_ResistanceHolyDeath_death"));
+        case 5: prefix = percent.arg(percentNumber(0.0025, 2, false)); break;
+        case 6: prefix = percent.arg(percentNumber(0.0075, 2, false)); break;
+        case 7: case 15: case 34: case 37: case 40: prefix = QStringLiteral("+1"); break;
+        case 46: prefix = u'+' + QString::number(MasteryIncreasePoints); break;
         default: break;
     }
     if (prefix.isEmpty())
         return name;
-    return QStringLiteral("%1 %2").arg(prefix, name);
+    QStringList parts = name.split(MultiStringSeparator);
+    for (QString& part : parts)
+        part = QStringLiteral("%1 %2").arg(prefix, part);
+    return parts.join(MultiStringSeparator);
 }
 
 QString largePerkDetailedInformation(const int perk, const int stage)
@@ -786,8 +878,8 @@ QString largePerkDetailedInformation(const int perk, const int stage)
         }
         case 11:
             return qtTrId("perk_description_BlessingOfTheGrove")
-                .arg(stageValues(trimmedPercentNumber(0.05000000074505806, 1) + u'%', trimmedPercentNumber(0.07500000298023224, 1) + u'%',
-                                 trimmedPercentNumber(0.10000000149011612, 1) + u'%', stage));
+                .arg(stageValues(percentNumberTrimmed(0.05000000074505806, 0, 1, false) + u'%', percentNumberTrimmed(0.07500000298023224, 0, 1, false) + u'%',
+                                 percentNumberTrimmed(0.10000000149011612, 0, 1, false) + u'%', stage));
         case 13: {
             const auto cd = cooldownStages(0x127, 4);
             if (!cd)
@@ -1120,19 +1212,19 @@ QString modGradeHighlightImage(const int grade) { return imageUrl("backdrop-mod-
 int fragmentCost(const int grade)
 {
     constexpr int Costs[] = { 5, 15, 30 };
-    return grade >= 0 && grade < 3 ? Costs[grade] : 0;
+    return grade >= 0 && grade < 3 ? Costs[grade] : -1;
 }
 
 int basicGoldCost(const int grade)
 {
     constexpr int Costs[] = { 2000000, 5000000, 30000000 };
-    return grade >= 0 && grade < 3 ? Costs[grade] : 0;
+    return grade >= 0 && grade < 3 ? Costs[grade] : -1;
 }
 
 int supremeGoldCost(const int grade)
 {
     constexpr int Costs[] = { 5000000, 12500000, 75000000 };
-    return grade >= 0 && grade < 3 ? Costs[grade] : 0;
+    return grade >= 0 && grade < 3 ? Costs[grade] : -1;
 }
 
 int revealCost(const int quality)
@@ -1174,15 +1266,14 @@ QString romanNumeral(int value)
 
 QString formatValue(const qint64 value, const int format)
 {
-    const QLocale english(QLocale::English);
     switch (format) {
         case 0: return QString();
-        case 1: return sign(static_cast<double>(value)) + englishNumber(value);
+        case 1: return shortenedNumber(static_cast<int>(value));
         case 2: return qtTrId("skill_wheel_dialog_perk_percent_bonus_effect_format").arg(static_cast<int>(value));
-        case 3: return qtTrId("skill_wheel_dialog_perk_percent_bonus_effect_format").arg(english.toString(static_cast<double>(value) * 0.01, 'f', 2));
+        case 3: return qtTrId("skill_wheel_dialog_perk_percent_bonus_effect_format").arg(percentNumber(static_cast<double>(static_cast<int>(value)) * 0.0001, 2, false));
         case 4:
-        case 5: return formatModValue(value, 4);
-        case 6: return formatModValue(value, 6);
+        case 5: return QStringLiteral("%1%").arg(percentNumberTrimmed(static_cast<double>(static_cast<int>(value)) * 0.0001, 0, 2, true));
+        case 6: return QStringLiteral("%1%").arg(percentNumber(static_cast<double>(static_cast<int>(value)) * 0.0001, 2, false));
         case 7: return romanNumeral(static_cast<int>(value));
         case 8: return QStringLiteral("%1s").arg(value);
         default: return qtTrId("dummy_unknown");

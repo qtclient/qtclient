@@ -28,6 +28,8 @@ struct TPreyMonster
     int detail = 0;
     bool firstAddOn = false;
     bool secondAddOn = false;
+
+    bool operator==(const TPreyMonster&) const = default;
 };
 
 /// The protocol's prey bonus (type 4: none).
@@ -59,7 +61,8 @@ public:
     const QList<TPreyMonster>& monsterList() const { return m_monsterList; }
     const QList<uint16_t>& raceList() const { return m_raceList; }
 
-    /// The state setters of CIP .. .
+    /// The state setters. Each clears the slot first (clearStateData) and
+    /// falls back to inactive when the server sent no bonus or no creatures.
     void setLocked(int unlockOption);
     void setInactive();
     void setActive(const TPreyBonus& bonus, const TPreyMonster& monster, int timeLeft);
@@ -73,12 +76,18 @@ public:
     void setAutomaticExtendType(int type);
 
 private:
+    void clearStateData();
     void setState(int state);
+    void setUnlockOption(int unlockOption);
     void setBonus(const TPreyBonus& bonus);
+    void setMonster(const TPreyMonster& monster);
+    void setMonsterList(QList<TPreyMonster> list);
+    void setRaceList(QList<uint16_t> races);
 
     uint8_t m_preyId;
-    int m_state = 0;
-    int m_unlockOption = 0;
+    /// A new slot is inactive and unlocked until the server says otherwise.
+    int m_state = 1;
+    int m_unlockOption = 2;
     int m_timeLeft = 0;
     qint64 m_nextFreeListReroll = 0;
     int m_automaticExtendType = 0;
@@ -110,11 +119,14 @@ public:
     int bonusRerollPrice() const { return m_bonusRerollPrice; }
     int choosePreyPrice() const { return m_choosePreyPrice; }
     int preyWildcards() const { return m_preyWildcards; }
-    bool bonusRerollPossible() const { return m_preyWildcards >= m_bonusRerollPrice; }
-    bool choosePreyPossible() const { return m_preyWildcards >= m_choosePreyPrice; }
-    /// CIP /.
+    bool bonusRerollPossible() const { return static_cast<uint>(m_bonusRerollPrice) <= static_cast<uint>(m_preyWildcards); }
+    bool choosePreyPossible() const { return static_cast<uint>(m_choosePreyPrice) <= static_cast<uint>(m_preyWildcards); }
+    /// The PreyPrices message: list reroll, bonus reroll and choose prey prices.
     void setPrices(int listReroll, int bonusReroll, int choosePrey);
-    /// CIP .
+    void setListRerollPrice(int price);
+    void setBonusRerollPrice(int price);
+    void setChoosePreyPrice(int price);
+    /// The prey wildcard resource balance.
     void setPreyWildcards(int amount);
 
 private:
@@ -175,6 +187,7 @@ public:
     using QSortFilterProxyModel::QSortFilterProxyModel;
 
     void setNameFilter(const QString& filter);
+    const QString& nameFilter() const { return m_nameFilter; }
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
@@ -249,6 +262,7 @@ private:
     void onMonsterRaceListChanged();
 
     prey::TPreyData* m_data;
+    QString m_monsterRacesFilter;
     TPreyBestiarySelectionModel m_bestiary;
     TPreyBestiarySelectionProxyModel m_bestiaryProxy;
 };

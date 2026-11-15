@@ -11,7 +11,7 @@ constexpr uint8_t UnknownWaypoint = 0xfe;
 constexpr uint8_t BlockedWaypoint = 0xff;
 constexpr uint8_t MaxWaypointCost = 250;
 
-// CIP: .
+/// The colour table of the colour image: the automap palette.
 QList<QRgb> colorPalette()
 {
     QList<QRgb> palette(256, qRgb(0, 0, 0));
@@ -20,7 +20,8 @@ QList<QRgb> colorPalette()
     return palette;
 }
 
-// CIP: . Costs are grey levels; the top indices mark blocked and unknown.
+/// The colour table of the waypoint image: costs are grey levels, 251..253
+/// red, unknown magenta and blocked yellow.
 QList<QRgb> waypointPalette()
 {
     QList<QRgb> palette(256);
@@ -82,12 +83,29 @@ uint8_t TMinimapTile::waypointAt(const Position& coord) const
     return static_cast<uint8_t>(m_waypoints.pixelIndex(p.x(), p.y()));
 }
 
-void TMinimapTile::setField(const Position& coord, const uint8_t colorIndex, const uint8_t cost, const bool blocked)
+void TMinimapTile::setColorIndex(const Position& coord, const uint8_t colorIndex)
 {
     const QPoint p = pixelOf(coord);
+    if (m_colors.pixelIndex(p) == colorIndex)
+        return;
     m_colors.setPixel(p, colorIndex);
-    m_waypoints.setPixel(p, blocked ? BlockedWaypoint : std::min(cost, MaxWaypointCost));
     m_changed = true;
+}
+
+void TMinimapTile::setWaypoint(const Position& coord, const uint8_t cost, const bool blocked)
+{
+    const QPoint p = pixelOf(coord);
+    const uint8_t value = blocked ? BlockedWaypoint : std::min(cost, MaxWaypointCost);
+    if (m_waypoints.pixelIndex(p) == value)
+        return;
+    m_waypoints.setPixel(p, value);
+    m_changed = true;
+}
+
+void TMinimapTile::setField(const Position& coord, const uint8_t colorIndex, const uint8_t cost, const bool blocked)
+{
+    setColorIndex(coord, colorIndex);
+    setWaypoint(coord, cost, blocked);
 }
 
 void TMinimapTile::merge(const TMinimapTile& loaded)

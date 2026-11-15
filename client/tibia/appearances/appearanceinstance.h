@@ -33,6 +33,21 @@ namespace appearances {
 /// The sprite pattern of a stackable count or a fluid colour (CIP draws stacks and fluids this way).
 void objectPatternsFor(ThingType* type, int countOrSubType, int& patternX, int& patternY, int& patternZ);
 
+/// The colour a liquid type draws with, the pattern cell of its fluid sprites;
+/// an unknown liquid type draws as colour 1 (blue).
+uint32_t liquidColor(uint32_t liquidType);
+/// The pattern of liquid `color` on an appearance of `width` × `height`
+/// patterns: four colours per row, wrapped to the appearance's patterns.
+void liquidPattern(uint32_t color, uint32_t width, uint32_t height, int& patternX, int& patternY);
+/// The pile (0..7) a stack of `count` draws: one item draws pile 0, two to four
+/// items piles 1 to 3, and 5, 10, 25 and 50 items start piles 4 to 7.
+uint32_t cumulativePileIndex(uint8_t count);
+/// The pattern of pile `index`: four piles per row.
+void cumulativePilePattern(uint32_t index, int& patternX, int& patternY);
+/// The column a hangable object draws for its hook state (0 none, 1 south,
+/// 2 east), limited to the appearance's `width` columns.
+int hookPattern(uint8_t hookState, uint8_t width);
+
 /// CIP appearances::TAppearanceInstance — thin view over a ThingType record.
 class TAppearanceInstance : public ::tibia::CipTyped
 {
@@ -104,47 +119,59 @@ public:
     using TObjectAppearanceInstance::TObjectAppearanceInstance;
 };
 
+/// A stackable object: its count picks the pile it draws.
 class TCumulativeObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    /// A stack of `count`; a count of 0 keeps the first pile.
+    TCumulativeObjectAppearanceInstance(ThingType* type, uint16_t count);
 
-    /// CipSoft stackables: count drives the 4×2 pile sprite pattern (`Item::patternsFor`).
+    /// A changed count draws its pile.
     void setCount(uint16_t count) override;
+
+private:
+    /// The pattern of the current count's pile; an appearance without
+    /// patterns draws its only sprite.
+    void pilePattern(int& patternX, int& patternY) const;
 };
 
+/// An object hung on a wall: its hook state picks the column it draws.
 class THangableObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    explicit THangableObjectAppearanceInstance(ThingType* type);
 
     uint8_t hangSide() const { return m_hangSide; }
-    void setHangSide(uint8_t side) { m_hangSide = side; }
+    /// Hang the object on `side` (0 none, 1 south, 2 east) and draw that column.
+    void setHangSide(uint8_t side);
 
 private:
+    void updateHookPattern();
+
     uint8_t m_hangSide{ 0 };
 };
 
+/// A fluid container or splash: its liquid type picks the colour it draws.
 class TLiquidObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
-    using TObjectAppearanceInstance::TObjectAppearanceInstance;
+    TLiquidObjectAppearanceInstance(ThingType* type, uint32_t liquidType);
 
-    uint8_t fluid() const { return m_fluid; }
-    void setFluid(uint8_t fluid) { m_fluid = fluid; }
+    uint32_t fluid() const { return m_fluid; }
 
 private:
-    uint8_t m_fluid{ 0 };
+    uint32_t m_fluid{ 0 };
 };
 
+/// An object whose pattern follows the field it lies on, so multi-pattern
+/// grounds (e.g. cobbled pavement) tile as connected variants.
 class TPatternObjectAppearanceInstance final : public TObjectAppearanceInstance
 {
 public:
     using TObjectAppearanceInstance::TObjectAppearanceInstance;
 
-    /// CIP `TPatternObjectAppearanceInstance` ctor (`` → ``):
-    /// patternX/Y/Z = world coordinate % appearance pattern width/height/depth so
-    /// multi-pattern grounds (e.g. cobbled pavement) tile as connected variants.
+    /// Pattern x, y and z are the coordinate modulo the appearance's pattern
+    /// width, height and depth.
     void applyWorldMapCoordinate(const Position& pos);
 };
 
@@ -382,6 +409,13 @@ class TAppearanceInstanceFactory final : public ::tibia::CipTyped
 {
 public:
     static TAppearanceInstancePtr fromThingType(ThingType* type);
+    /// An object with no state of its own: hangable objects hang, every other
+    /// one follows its field's pattern.
+    static TAppearanceInstancePtr createObject(ThingType* type);
+    /// An outfit looking towards `direction`: outfits with colour layers, or
+    /// with addon patterns while an addon is worn, are customizable.
+    static std::shared_ptr<TOutfitAppearanceInstance> createOutfit(ThingType* type, const Outfit& outfit,
+                                                                   uint8_t direction);
     static TAppearanceInstancePtr fromProtocolObject(ThingType* type, uint16_t count = 0, uint8_t subType = 0,
                                                      uint8_t tier = 0, uint8_t fluid = 0, uint8_t hangSide = 0);
     static TAppearanceInstancePtr fromStoredCreature(tibia::creatures::TCreature& stored);

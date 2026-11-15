@@ -527,9 +527,9 @@ void TItemInfoDialogController::requestItemTracking(const bool TrackItem)
 
 void TItemInfoDialogController::requestItemBlackWhitelisting(const bool BlackWhitelistItem)
 {
+    // The storage's list change tells QML.
     if (m_typeId != 0)
         m_storage->setLootListed(m_typeId, BlackWhitelistItem);
-    Q_EMIT lootBlackWhitelistChanged();
 }
 
 void TItemInfoDialogController::onWeaponProficiencyDialogButtonClicked()

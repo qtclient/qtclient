@@ -452,10 +452,10 @@ void TCharacterInfoDialogController::hideDialogTab()
 
 void TCharacterInfoDialogController::setDialogCategory(const EDialogCategory Category)
 {
+    // A category without a page of its own (the main menus) shows the general stats.
     const int index = static_cast<int>(Category) - 1;
-    if (index < 0 || index >= static_cast<int>(std::size(DataTypeOfCategory)))
-        return;
-    request(DataTypeOfCategory[index], false);
+    const bool known = index >= 0 && index < static_cast<int>(std::size(DataTypeOfCategory));
+    request(known ? DataTypeOfCategory[index] : GeneralStats, false);
 }
 
 void TCharacterInfoDialogController::request(const int dataType, const bool force)
@@ -556,6 +556,15 @@ void TCharacterInfoDialogController::nextPaginatedPage()
         ++m_page[index];
         sendRequest(m_dataType, m_page[index]);
     }
+}
+
+void TCharacterInfoDialogController::openSkillWheelDialog()
+{
+    // The shown character's wheel; the own one when no character is named.
+    uint32_t characterId = m_characterId;
+    if (characterId == 0)
+        characterId = tibia::game::localPlayer() ? tibia::game::localPlayerId() : 0;
+    input::publish(std::make_shared<input::TGameActionCreature>(A::REQUEST_SKILL_WHEEL, characterId));
 }
 
 void TCharacterInfoDialogController::openWeaponProficiencyDialog(const uint AppearanceTypeID)

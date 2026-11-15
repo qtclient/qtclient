@@ -3,16 +3,18 @@
 #include "app/clientoptions.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
+#include "gamewindow/mousecursorcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "input/gameactionhandlers.h"
 #include "store/dynamicallyloadedimage.h"
 #include "store/qmlstoreobjects.h"
+#include "store/storeciptypes.h"
+
+#include <client/const.h>
 
 #include <QLocale>
 #include <QRandomGenerator>
 
-#include <algorithm>
-#include <utility>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
@@ -22,18 +24,25 @@ namespace tibia::gamewindow {
 namespace {
 
 constexpr auto AskBeforeBuyingOption = "storeAskBeforeBuyingProducts";
+constexpr auto ShowStoreMessagesOption = "gameWindowShowStoreMessages";
+/// The transaction history's page size.
+constexpr uint32_t TransactionHistoryEntriesPerPage = 26;
+/// The name the server gives the home page.
+const QString HomeCategoryName = QStringLiteral("Home");
 
-QString homeCategoryName()
+bool optionBool(const char* name, const bool fallback)
 {
-    return qtTrId("store_home_catergory_name");
+    return app::ClientOptions::load().options().value(QLatin1String(name)).toBool(fallback);
 }
 
-QString searchCategoryName()
+/// Option antialiasingMode is AntialiasingModeAntialiasing.
+bool smoothTextureFilteringOption()
 {
-    return qtTrId("store_search_result_catergory_name");
+    return app::ClientOptions::load().options().value(QLatin1String("antialiasingMode")).toInt()
+           == static_cast<int>(cip::tibia::qmlcomponents::enums::EAntialiasingMode::AntialiasingModeAntialiasing);
 }
 
-/// CIP : one "OK" button.
+/// One "OK" button (Return).
 QList<TMessageDialogButton*> okButton()
 {
     using Button = TMessageDialogController::Button;
@@ -46,40 +55,116 @@ void deleteObjectsLater(const QList<QObject*>& objects)
         object->deleteLater();
 }
 
+/// The store's sort order of a sort order label: popularity, name or newest.
+int sortOrderOfLabel(const QString& label)
+{
+    if (label == qtTrId("store_sort_name"))
+        return store::TStoreStorage::SORT_BY_NAME_ALTERNATIVE;
+    if (label == qtTrId("store_sort_newest"))
+        return store::TStoreStorage::SORT_BY_NEWEST;
+    return store::TStoreStorage::SORT_BY_POPULARITY;
 }
 
-TStorePurchaseConfirmationDialogController::TStorePurchaseConfirmationDialogController(QObject* parent)
+/// The same name, image identifiers and subcategories.
+bool sameCategory(const QObject* left, const QObject* right)
+{
+    const auto* a = qobject_cast<const cip::tibia::store::TQmlStoreCategory*>(left);
+    const auto* b = qobject_cast<const cip::tibia::store::TQmlStoreCategory*>(right);
+    if (!a || !b)
+        return a == b;
+    if (a->name() != b->name() || a->imageIdentifiers() != b->imageIdentifiers())
+        return false;
+    const QList<QObject*> left_ = a->subcategoryList();
+    const QList<QObject*> right_ = b->subcategoryList();
+    if (left_.size() != right_.size())
+        return false;
+    for (qsizetype i = 0; i < left_.size(); ++i) {
+        if (!sameCategory(left_[i], right_[i]))
+            return false;
+    }
+    return true;
+}
+
+store::TStoreOpenParameters openParameters(const int openAction, const int serviceType)
+{
+    store::TStoreOpenParameters parameters;
+    parameters.openAction = openAction;
+    parameters.serviceType = serviceType;
+    return parameters;
+}
+
+void publishTextMessage(const input::EGameAction type, const QString& text)
+{
+    auto message = std::make_shared<input::TGameActionAddTextMessage>(type);
+    message->text = text;
+    message->color = QColor(0x18, 0x72, 0xc3);
+    input::publish(message);
+}
+
+}
+
+TStorePurchaseConfirmationDialogController::TStorePurchaseConfirmationDialogController(store::TDynamicallyLoadedImageManager* imageManager,
+                                                                                       QObject* parent)
     : TDialogController(QStringLiteral("StorePurchaseConfirmationDialog.qml"), parent)
+    , m_imageManager(imageManager)
 {}
 
-void TStorePurchaseConfirmationDialogController::showDialog(const int offerId, const store::TStoreOfferData& offer, const bool showAskAgainCheckbox)
+void TStorePurchaseConfirmationDialogController::setOffer(const int offerId, const store::TStoreOffer& offer,
+                                                          store::TStoreDescriptionManager* descriptionManager,
+                                                          const bool smoothTextureFiltering, const bool showAskAgainCheckbox,
+                                                          const bool buyWithCosmeticTokens)
 {
-    showDialog(offerId, offer, showAskAgainCheckbox, false);
-}
-
-void TStorePurchaseConfirmationDialogController::showDialog(const int offerId, const store::TStoreOfferData& offer,
-                                                           const bool showAskAgainCheckbox, const bool buyWithCosmeticTokens)
-{
-    dialog()->destroy();
+    dialog()->close();
     if (m_offer)
         m_offer->deleteLater();
-    m_offer = new store::TQmlStoreOffer(offer, this);
+    m_offer = new store::TQmlStoreOffer(offer, descriptionManager);
     m_offerToPurchase = m_offer;
     m_offerID = offerId;
+    m_smoothTextureFiltering = smoothTextureFiltering;
     m_showAskAgainCheckbox = showAskAgainCheckbox;
     m_buyWithCosmeticTokens = buyWithCosmeticTokens;
+}
+
+void TStorePurchaseConfirmationDialogController::showDialog(const int offerId, const store::TStoreOffer& offer,
+                                                            store::TStoreDescriptionManager* descriptionManager,
+                                                            const bool smoothTextureFiltering, const bool showAskAgainCheckbox,
+                                                            const bool buyWithCosmeticTokens)
+{
+    setOffer(offerId, offer, descriptionManager, smoothTextureFiltering, showAskAgainCheckbox, buyWithCosmeticTokens);
+    dialog()->create();
+    dialog()->show();
+}
+
+void TStorePurchaseConfirmationDialogController::showHirelingPurchaseDialog(const int offerId, const store::TStoreOffer& offer, const int sex,
+                                                                            store::TStoreDescriptionManager* descriptionManager,
+                                                                            const bool smoothTextureFiltering,
+                                                                            const bool showAskAgainCheckbox,
+                                                                            const bool buyWithCosmeticTokens)
+{
+    setOffer(offerId, offer, descriptionManager, smoothTextureFiltering, showAskAgainCheckbox, buyWithCosmeticTokens);
+    if (auto* visualisation = qobject_cast<store::TQmlStoreVisualisation*>(m_offer->visualisation())) {
+        visualisation->setGenderToShow(sex != 1 ? store::TQmlStoreVisualisation::FEMALE : store::TQmlStoreVisualisation::MALE);
+    }
+    dialog()->create();
     dialog()->show();
 }
 
 void TStorePurchaseConfirmationDialogController::purchaseRequested(const bool AskForConfirmationAgainForOtherPurchases)
 {
     dialog()->close();
-    Q_EMIT purchaseConfirmed(m_offerID, AskForConfirmationAgainForOtherPurchases);
+    Q_EMIT confirmPurchase(m_offerID, AskForConfirmationAgainForOtherPurchases);
 }
 
 void TStorePurchaseConfirmationDialogController::closeRequested()
 {
     dialog()->close();
+}
+
+QVariantMap TStorePurchaseConfirmationDialogController::initialDialogProperties() const
+{
+    QVariantMap properties = TDialogController::initialDialogProperties();
+    properties.insert(QStringLiteral("dynamicallyLoadedImageManager"), QVariant::fromValue<QObject*>(m_imageManager.data()));
+    return properties;
 }
 
 TStorePurchaseSuccessDialogController::TStorePurchaseSuccessDialogController(QObject* parent)
@@ -93,8 +178,8 @@ void TStorePurchaseSuccessDialogController::requestClose()
 
 void TStorePurchaseSuccessDialogController::showDialog(const QString& Message)
 {
-    dialog()->destroy();
     m_message = Message;
+    dialog()->create();
     dialog()->show();
 }
 
@@ -106,9 +191,10 @@ TTransferCreditsDialogController::TTransferCreditsDialogController(QObject* pare
 
 void TTransferCreditsDialogController::showDialog(const qint64 transferableCredits, const qint64 creditPacketSize)
 {
-    dialog()->destroy();
+    dialog()->close();
     m_transferableCredits = transferableCredits;
     m_creditPacketSize = creditPacketSize;
+    dialog()->create();
     dialog()->show();
 }
 
@@ -136,6 +222,9 @@ void THirelingConfigurationDialogController::showDialog(const int offerId)
 {
     dialog()->close();
     m_offerId = offerId;
+    if (dialog()->item())
+        return;
+    dialog()->create();
     dialog()->show();
 }
 
@@ -157,70 +246,92 @@ TStoreDialogController::TStoreDialogController(store::TStoreStorage* storage, st
     , m_storage(storage)
     , m_messages(handler)
     , m_imageManager(new store::TDynamicallyLoadedImageManager(this))
+    , m_descriptionManager(new store::TStoreDescriptionManager(this))
+    , m_confirmationDialog(m_imageManager)
+    , m_newCharacterNameDialog(new TGenericEnterTextDialogController(this))
+    , m_extraConfirmationDialog(new TMessageDialogController(this))
     , m_messageDialog(new TMessageDialogController(this))
-    , m_newNameDialog(new TGenericEnterTextDialogController(this))
+    , m_searchMessageDialog(new TMessageDialogController(this))
+    , m_transactionDetailsDialog(new TMarketCoinTransactionDetailsDialogController(this))
     , m_hirelingNameDialog(new TGenericEnterTextDialogController(this))
 {
-    // CIP THirelingNameChangeController keep-alive beside the enter-text rename dialog.
+    m_dynamicallyLoadedImageManager = m_imageManager;
+    m_searchResultCategory = new store::TQmlStoreCategory(qtTrId("store_search_result_catergory_name"), {}, {}, this);
+    m_selectedCategoryName = HomeCategoryName;
+    m_selectedOfferIndex = -1;
+    m_featuredOfferIndex = -1;
+
+    m_newCharacterNameDialog->setCaption(qtTrId("enter_text_new_character_caption"));
+    m_newCharacterNameDialog->setDescription(qtTrId("enter_text_new_character_description"));
+    m_newCharacterNameDialog->setMaxInputLength(29);
+    connect(m_newCharacterNameDialog, &TGenericEnterTextDialogController::textEntered, this,
+            &TStoreDialogController::onNewCharacterNameEntered);
+    connect(&m_hirelingDialog, &THirelingConfigurationDialogController::hirelingConfigured, this,
+            &TStoreDialogController::onHirelingConfigurationFinished);
+    connect(&m_transferDialog, &TTransferCreditsDialogController::transferRequested, this,
+            &TStoreDialogController::onTransferCoinsReceipientAndAmountSpecified);
+    connect(&m_confirmationDialog, &TStorePurchaseConfirmationDialogController::confirmPurchase, this,
+            &TStoreDialogController::onPurchaseConfirmed);
+    connect(&m_viewEventTimer, &QTimer::timeout, this, &TStoreDialogController::onViewEventTimeoutElapsed);
+    connect(m_extraConfirmationDialog, &TMessageDialogController::acceptClicked, this, &TStoreDialogController::onExtraConfirmDialogClickedOK);
+    connect(m_extraConfirmationDialog, &TMessageDialogController::discardClicked, this,
+            &TStoreDialogController::onExtraConfirmDialogClickedNotOK);
+    m_messageDialog->setCloseOnButtonClicked(true);
+    m_messageDialog->setTextCentered(true);
+    m_searchMessageDialog->setCloseOnButtonClicked(true);
+    m_viewEventTimer.setInterval(2000);
+    m_viewEventTimer.setSingleShot(true);
+
+    // Host: the hireling rename prompt (CIP THirelingNameChangeController).
     new THirelingNameChangeController(this);
-    m_newNameDialog->setCaption(qtTrId("enter_text_new_character_caption"));
-    m_newNameDialog->setDescription(qtTrId("enter_text_new_character_description"));
-    m_newNameDialog->setMaxInputLength(29);
-    connect(m_newNameDialog, &TGenericEnterTextDialogController::textEntered, this, &TStoreDialogController::onNewCharacterNameEntered);
     m_hirelingNameDialog->setCaption(qtTrId("request_hireling_name_change_caption"));
     m_hirelingNameDialog->setDescription(qtTrId("request_hireling_name_change_text"));
     m_hirelingNameDialog->setMaxInputLength(21);
     connect(m_hirelingNameDialog, &TGenericEnterTextDialogController::textEntered, this,
             &TStoreDialogController::onHirelingNameChangeEntered);
-    connect(&m_hirelingDialog, &THirelingConfigurationDialogController::hirelingConfigured, this,
-            &TStoreDialogController::onHirelingConfigurationFinished);
-    connect(&m_transferDialog, &TTransferCreditsDialogController::transferRequested, this,
-            &TStoreDialogController::onTransferCoinsRecipientAndAmountSpecified);
-    connect(handler, &store::TStoreProtocolMessageHandler::characterNameChangeRequested, this,
-            &TStoreDialogController::onNewCharacterNameRequested);
-    connect(handler, &store::TStoreProtocolMessageHandler::hirelingConfigurationRequested, this,
-            &TStoreDialogController::onHirelingConfigurationRequested);
-    connect(handler, &store::TStoreProtocolMessageHandler::hirelingNameChangeRequested, this,
-            &TStoreDialogController::onHirelingNameChangeRequested);
-    connect(handler, &store::TStoreProtocolMessageHandler::requestTransferSuccessNotification, this,
-            &TStoreDialogController::onTransferSuccessNotification);
-    m_dynamicallyLoadedImageManager = m_imageManager;
-    m_searchResultCategory = new store::TQmlStoreCategory(searchCategoryName(), {}, this);
-    m_sortOrderModel = { qtTrId("store_sort_popularity"), qtTrId("store_sort_name"), qtTrId("store_sort_newest") };
-    m_filterTagsModel = { qtTrId("store_filter_tag_all") };
-    m_selectedOfferIndex = -1;
-    m_featuredOfferIndex = -1;
-    m_messageDialog->setCloseOnButtonClicked(true);
 
-    m_imageManager->setBaseUrl(handler->imageBaseUrl());
-    connect(handler, &store::TStoreProtocolMessageHandler::storeImageBaseUrlChanged, m_imageManager,
-            &store::TDynamicallyLoadedImageManager::setBaseUrl);
-    connect(handler, &store::TStoreProtocolMessageHandler::requestPurchaseSuccessNotification, this,
-            &TStoreDialogController::onPurchaseSuccessNotification);
-    connect(handler, &store::TStoreProtocolMessageHandler::requestPurchaseErrorNotification, this,
-            &TStoreDialogController::onPurchaseErrorNotification);
-    connect(handler, &store::TStoreProtocolMessageHandler::requestTransferErrorNotification, this,
-            &TStoreDialogController::onTransferErrorNotification);
-    connect(handler, &store::TStoreProtocolMessageHandler::requestTransactionHistoryErrorNotification, this,
-            &TStoreDialogController::onTransactionHistoryErrorNotification);
-    connect(handler, &store::TStoreProtocolMessageHandler::requestInformationNotification, this,
-            &TStoreDialogController::onInformationNotification);
-    connect(storage, &store::TStoreStorage::categoriesChanged, this, &TStoreDialogController::onCategoriesChanged);
-    connect(storage, &store::TStoreStorage::homePageChanged, this, &TStoreDialogController::onHomePageChanged);
-    connect(storage, &store::TStoreStorage::offersChanged, this, &TStoreDialogController::onOffersChanged);
-    connect(storage, &store::TStoreStorage::searchResultsChanged, this, &TStoreDialogController::onSearchResultsChanged);
-    connect(storage, &store::TStoreStorage::emptySearchResultReceived, this, &TStoreDialogController::onEmptySearchResult);
-    connect(storage, &store::TStoreStorage::transactionHistoryChanged, this, &TStoreDialogController::onTransactionHistoryChanged);
-    connect(storage, &store::TStoreStorage::offerDescriptionChanged, this, [this](const int offerId) {
-        const store::TStoreOfferData* data = m_storage ? m_storage->offerById(static_cast<uint32_t>(offerId)) : nullptr;
-        for (QObject* object : std::as_const(m_availableOffers)) {
-            auto* offer = static_cast<store::TQmlStoreOffer*>(object);
-            if (data && offer->hasQuantity(offerId))
-                offer->setDescription(data->description);
-        }
-    });
-    connect(&m_confirmationDialog, &TStorePurchaseConfirmationDialogController::purchaseConfirmed, this,
-            &TStoreDialogController::onPurchaseConfirmed);
+    // CIP connects these when the game session starts; the storage and the
+    // handler outlive the sessions here.
+    if (handler && storage && !handler->storage())
+        handler->setStorage(storage);
+    m_descriptionManager->setMessageHandler(handler);
+    if (handler) {
+        m_imageManager->setBaseUrl(handler->imageBaseUrl());
+        connect(handler, &store::TStoreProtocolMessageHandler::requestOpenStoreDialog, this, &TStoreDialogController::onRequestOpenStoreDialog);
+        connect(handler, &store::TStoreProtocolMessageHandler::storeImageBaseUrlChanged, this,
+                &TStoreDialogController::onStoreImageBaseUrlChanged);
+        connect(handler, &store::TStoreProtocolMessageHandler::requestCharacterNameChangeInputDialog, this,
+                &TStoreDialogController::onNewCharacterNameRequested);
+        connect(handler, &store::TStoreProtocolMessageHandler::requestHirelingInputDialog, this,
+                &TStoreDialogController::onHirelingConfigurationRequested);
+        connect(handler, &store::TStoreProtocolMessageHandler::requestConfirmationDialog, this,
+                &TStoreDialogController::onConfirmationDialogRequested);
+        connect(handler, &store::TStoreProtocolMessageHandler::requestPurchaseSuccessNotification, this,
+                &TStoreDialogController::onPurchaseSuccessNotification);
+        connect(handler, &store::TStoreProtocolMessageHandler::requestTransferSuccessNotification, this,
+                &TStoreDialogController::onTransferSuccessNotification);
+        connect(handler, &store::TStoreProtocolMessageHandler::requestPurchaseErrorNotification, this,
+                &TStoreDialogController::onPurchaseErrorNotification);
+        connect(handler, &store::TStoreProtocolMessageHandler::requestTransferErrorNotification, this,
+                &TStoreDialogController::onTransferErrorNotification);
+        connect(handler, &store::TStoreProtocolMessageHandler::requestTransactionHistoryErrorNotification, this,
+                &TStoreDialogController::onTransactionHistoryErrorNotification);
+        connect(handler, &store::TStoreProtocolMessageHandler::requestInformationNotification, this,
+                &TStoreDialogController::onInformationNotification);
+        connect(handler, &store::TStoreProtocolMessageHandler::hirelingNameChangeRequested, this,
+                &TStoreDialogController::onHirelingNameChangeRequested);
+    }
+    if (storage) {
+        connect(storage, &store::TStoreStorage::offersChanged, this, &TStoreDialogController::onOffersChanged);
+        connect(storage, &store::TStoreStorage::homePageChanged, this, &TStoreDialogController::onHomePageChanged);
+        connect(storage, &store::TStoreStorage::searchResultsChanged, this, &TStoreDialogController::onSearchResultsChanged);
+        connect(storage, &store::TStoreStorage::emptySearchResultReceived, this, &TStoreDialogController::onEmptySearchResultReceived);
+        connect(storage, &store::TStoreStorage::transactionHistoryChanged, this, &TStoreDialogController::onTransactionHistoryChanged);
+        connect(storage, &store::TStoreStorage::sortOrderChanged, this, &TStoreDialogController::selectedSortOrderIndexChanged);
+        connect(storage, &store::TStoreStorage::activeFilterTagChanged, this, &TStoreDialogController::rebuildAvailableOffers);
+    }
+    // Host: the session ending closes the store (CIP: the new session's setup).
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, &TStoreDialogController::closeDialog);
 
     input::setActionHandler(input::EGameAction::CLOSE_STORE_WAIT_OR_ERROR_MESSAGE_DIALOG, [this](const input::TGameAction&) {
         m_messageDialog->dialog()->close();
@@ -246,293 +357,358 @@ TStoreDialogController::~TStoreDialogController()
 
 void TStoreDialogController::open()
 {
-    if (m_storage)
-        m_storage->openStore();
-    showDialog();
+    openWith(openParameters(store::OPEN_HOME, 0));
 }
 
 void TStoreDialogController::openWith(const int openAction, const int detail, const QString& text)
 {
-    m_pendingOpen = std::make_pair(openAction, detail);
-    m_pendingSearchText = text;
-    open();
+    store::TStoreOpenParameters parameters;
+    switch (openAction) {
+        case store::OPEN_PREMIUM_OR_BOOSTS:
+            parameters.openAction = openAction;
+            parameters.premiumDetail = detail;
+            break;
+        case store::OPEN_CATEGORY:
+            parameters.openAction = text.isEmpty() ? store::OPEN_HOME : openAction;
+            parameters.category = text;
+            break;
+        case store::OPEN_USEFUL_THING:
+            parameters.openAction = openAction;
+            parameters.usefulThing = detail;
+            break;
+        case store::OPEN_OFFER:
+            parameters.openAction = openAction;
+            parameters.offerId = static_cast<store::TOfferID>(detail);
+            break;
+        case store::OPEN_SEARCH:
+            parameters.openAction = text.isEmpty() ? store::OPEN_HOME : openAction;
+            parameters.category = text;
+            break;
+        default: parameters.openAction = store::OPEN_HOME; break;
+    }
+    openWith(parameters);
 }
 
-void TStoreDialogController::requestPendingOpen()
+void TStoreDialogController::openWith(const store::TStoreOpenParameters& parameters)
 {
-    const auto [openAction, detail] = *m_pendingOpen;
-    m_pendingOpen.reset();
-    const QString searchText = m_pendingSearchText;
-    m_pendingSearchText.clear();
-    switch (openAction) {
-        case 1: m_storage->requestPremiumOrBoosts(detail == 1); break;
-        case 3: m_storage->requestUsefulThing(detail); break;
-        case 4: requestJumpToOfferWithID(detail); break;
-        case 5:
-            if (!searchText.isEmpty()) {
-                requestSearch(searchText);
-                setSelectedCategoryName(searchCategoryName());
-            } else {
-                selectCategory(homeCategoryName());
-            }
-            break;
-        default: selectCategory(homeCategoryName()); break;
-    }
+    openStore(parameters);
+}
+
+void TStoreDialogController::openStore(const store::TStoreOpenParameters& parameters)
+{
+    if (m_messages)
+        m_messages->openStore(parameters);
+}
+
+void TStoreDialogController::onRequestOpenStoreDialog()
+{
+    showDialog();
 }
 
 void TStoreDialogController::showDialog()
 {
     onCategoriesChanged();
-    if (!dialog()->isShown())
+    if (!dialog()->item()) {
+        dialog()->create();
         dialog()->show();
+        m_openedAt = std::chrono::steady_clock::now();
+        m_opened = true;
+    }
+    if (m_messages)
+        m_messages->setRefreshOffersAfterPurchase(true);
 }
 
 void TStoreDialogController::closeDialog()
 {
+    m_descriptionManager->clear();
+    QObject* transactionPage = m_transactionPage;
+    m_transactionPage = nullptr;
+    if (transactionPage)
+        transactionPage->deleteLater();
+    m_transactionHistoryLoading = false;
+    const QList<QObject*> categories = m_categoryList;
+    m_categoryList.clear();
+    Q_EMIT categoryListChanged();
+    const QList<QObject*> offers = m_availableOffers;
+    m_availableOffers.clear();
+    Q_EMIT availableOffersChanged();
+    m_selectedOfferIndex = -1;
+    m_offerViewReported = false;
+    m_offerIdForNameChange = 0;
+    m_viewEventTimer.stop();
     dialog()->close();
+    m_confirmationDialog.dialog()->close();
+    m_newCharacterNameDialog->dialog()->close();
+    m_hirelingDialog.dialog()->close();
+    m_transferDialog.dialog()->close();
+    m_messageDialog->dialog()->close();
+    m_searchMessageDialog->dialog()->close();
+    m_successDialog.dialog()->close();
+    m_extraConfirmationDialog->dialog()->close();
+    deleteObjectsLater(categories);
+    deleteObjectsLater(offers);
+    if (m_storage) {
+        m_storage->setCategoriesLoaded(false);
+        m_storage->setSortOrder(store::TStoreStorage::SORT_BY_POPULARITY);
+    }
+    if (m_messages) {
+        if (m_opened) {
+            const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - m_openedAt).count();
+            const uint64_t seconds = elapsed < -999999 ? 0 : static_cast<uint64_t>(elapsed / 1000000) / 1000;
+            m_messages->sendStoreEventVisitDuration(static_cast<uint32_t>(seconds));
+            m_opened = false;
+        }
+        m_messages->setRefreshOffersAfterPurchase(false);
+    }
+    if (TMouseCursorController* cursor = TMouseCursorController::instance())
+        cursor->setPointingHand(false);
+    m_transactionDetailsDialog->closeDialog();
 }
 
 void TStoreDialogController::requestClose()
 {
-    dialog()->close();
+    closeDialog();
 }
 
-void TStoreDialogController::setSelectedSortOrderIndex(const int index)
+void TStoreDialogController::onStoreImageBaseUrlChanged(const QUrl& baseUrl)
 {
-    if (m_selectedSortOrderIndex == index)
+    m_imageManager->setBaseUrl(baseUrl);
+}
+
+void TStoreDialogController::onCategoriesChanged()
+{
+    QList<QObject*> categories;
+    categories.append(new store::TQmlStoreCategory(HomeCategoryName, {}, {}));
+    if (m_storage) {
+        for (const store::TStoreCategory& category : m_storage->categories()) {
+            QList<QObject*> subcategories;
+            for (const store::TStoreCategory& subcategory : category.subcategories)
+                subcategories.append(new store::TQmlStoreCategory(subcategory.name, subcategory.icons, {}));
+            categories.append(new store::TQmlStoreCategory(category.name, category.icons, subcategories));
+        }
+    }
+    bool changed = categories.size() != m_categoryList.size();
+    for (qsizetype i = 0; !changed && i < categories.size(); ++i)
+        changed = !sameCategory(categories[i], m_categoryList[i]);
+    if (!changed) {
+        deleteObjectsLater(categories);
         return;
-    m_selectedSortOrderIndex = index;
-    Q_EMIT selectedSortOrderIndexChanged();
-    if (m_selectedCategoryName != homeCategoryName())
-        rebuildOffers();
+    }
+    const QList<QObject*> previous = m_categoryList;
+    m_categoryList = categories;
+    Q_EMIT categoryListChanged();
+    deleteObjectsLater(previous);
 }
 
-void TStoreDialogController::setSelectedFilterTagIndex(const int index)
-{
-    if (m_selectedFilterTagIndex == index)
-        return;
-    m_selectedFilterTagIndex = index;
-    Q_EMIT selectedFilterTagIndexChanged();
-}
-
-void TStoreDialogController::setSelectedOfferIndex(const int index)
-{
-    if (m_selectedOfferIndex == index)
-        return;
-    m_selectedOfferIndex = index;
-    Q_EMIT selectedOfferIndexChanged();
-}
-
-void TStoreDialogController::getNextFeaturedOffer()
-{
-    if (m_featuredOffers.isEmpty())
-        return;
-    m_featuredOfferIndex = (m_featuredOfferIndex + 1) % static_cast<int>(m_featuredOffers.size());
-    Q_EMIT featuredOfferIndexChanged();
-}
-
-void TStoreDialogController::getPreviousFeaturedOffer()
-{
-    if (m_featuredOffers.isEmpty())
-        return;
-    m_featuredOfferIndex = (m_featuredOfferIndex + static_cast<int>(m_featuredOffers.size()) - 1) % static_cast<int>(m_featuredOffers.size());
-    Q_EMIT featuredOfferIndexChanged();
-}
-
-void TStoreDialogController::onFeaturedOfferClicked()
-{
-    if (m_featuredOfferIndex >= 0 && m_featuredOfferIndex < m_featuredOfferIds.size() && m_featuredOfferIds[m_featuredOfferIndex] != 0)
-        requestJumpToOfferWithID(static_cast<int>(m_featuredOfferIds[m_featuredOfferIndex]));
-}
-
-void TStoreDialogController::requestJumpToOfferWithID(const int QmlOfferID)
+void TStoreDialogController::onHomePageChanged()
 {
     if (!m_storage)
         return;
-    m_pendingJumpOfferId = QmlOfferID;
-    m_storage->requestOffer(static_cast<uint32_t>(QmlOfferID));
+    setSelectedCategoryName(HomeCategoryName);
+    rebuildAvailableOffers();
+    updateFeaturedOffers();
 }
 
-void TStoreDialogController::selectCategory(const QString& CategoryName)
+void TStoreDialogController::onOffersChanged(int preselectedOfferId)
 {
     if (!m_storage)
         return;
-    if (CategoryName == homeCategoryName())
-        m_storage->requestHome();
-    else
-        m_storage->requestCategory(CategoryName);
+    if (const store::TStoreCategory* category = m_storage->currentCategory())
+        setSelectedCategoryName(category->name);
+    rebuildAvailableOffers();
+    if (preselectedOfferId != 0 || (preselectedOfferId = m_offerIdToSelect) != 0)
+        selectOfferWithId(preselectedOfferId);
 }
 
-void TStoreDialogController::requestSearch(const QString& SearchString)
+void TStoreDialogController::onSearchResultsChanged(const bool moreResultsAvailable)
 {
     if (!m_storage)
         return;
-    m_lastSearch = SearchString;
-    m_storage->requestSearch(SearchString);
+    setSelectedCategoryName(qtTrId("store_search_result_catergory_name"));
+    rebuildAvailableOffers();
+    if (m_offerIdToSelect != 0)
+        selectOfferWithId(m_offerIdToSelect);
+    if (moreResultsAvailable && m_messages && !m_messages->searchRefreshPending())
+        showMessage(m_searchMessageDialog, qtTrId("store_information"),
+                    qtTrId("store_search_result_more_results_available").arg(m_storage->searchText()));
 }
 
-void TStoreDialogController::openGetCoinsUrl()
+void TStoreDialogController::onEmptySearchResultReceived()
 {
-    input::publish(input::makeAction(input::EGameAction::OPEN_URL_GET_COINS));
-}
-
-void TStoreDialogController::openTransactionHistory()
-{
-    if (!m_storage)
+    if (!m_messages)
         return;
-    m_storage->openTransactionHistory();
-    onTransactionHistoryChanged();
-    m_transactionHistoryLoading = true;
+    m_messages->openStore(openParameters(store::OPEN_HOME, 0));
+    if (!m_messages->searchRefreshPending() && m_storage)
+        showMessage(m_searchMessageDialog, qtTrId("store_information"), qtTrId("store_search_result_empty").arg(m_storage->searchText()));
+}
+
+void TStoreDialogController::onTransactionHistoryChanged()
+{
+    if (m_storage) {
+        QObject* previous = m_transactionPage;
+        m_transactionPage = new store::TQmlStoreTransactionHistoryPage(m_storage->transactionHistory());
+        if (previous)
+            previous->deleteLater();
+    }
+    setSelectedCategoryName(QString());
+    m_transactionHistoryLoading = false;
     Q_EMIT transactionHistoryLoadingChanged();
+    Q_EMIT transactionPageChanged();
 }
 
-void TStoreDialogController::nextTransactionPage()
-{
-    if (m_storage)
-        m_storage->requestTransactionHistoryPage(m_storage->historyPage() + 1);
-}
-
-void TStoreDialogController::previousTransactionPage()
-{
-    if (m_storage && m_storage->historyPage() > 0)
-        m_storage->requestTransactionHistoryPage(m_storage->historyPage() - 1);
-}
-
-void TStoreDialogController::buyOffer(const int QmlOfferID)
-{
-    buyOffer(QmlOfferID, false);
-}
-
-void TStoreDialogController::buyOffer(const int QmlOfferID, const bool BuyWithCosmeticTokens)
-{
-    if (!m_storage)
-        return;
-    const store::TStoreOfferData* offer = m_storage->offerById(static_cast<uint32_t>(QmlOfferID));
-    if (!offer)
-        return;
-    // TODO: cosmetic-token purchase currency once CIP resource id + store buy
-    // payload field are known; UI path keeps BuyWithCosmeticTokens for confirmation.
-    if (offer->needsUserConfiguration) {
-        m_storage->buy(static_cast<uint32_t>(QmlOfferID));
-        m_messageDialog->setButtons(okButton());
-        m_messageDialog->showMessage(qtTrId("store_configuring_order_caption"), qtTrId("store_configuring_order"));
-        return;
-    }
-    const bool ask = app::ClientOptions::load().options().value(QLatin1String(AskBeforeBuyingOption)).toBool(true);
-    if (ask) {
-        m_confirmationDialog.showDialog(QmlOfferID, *offer, true, BuyWithCosmeticTokens);
-        return;
-    }
-    purchase(QmlOfferID);
-}
-
-void TStoreDialogController::onPurchaseConfirmed(const int offerId, const bool askAgain)
-{
-    purchase(offerId);
-    app::ClientOptions::store(QLatin1String(AskBeforeBuyingOption), askAgain);
-}
-
-/// CIP : the buy carries the purchase data the server asked for.
-void TStoreDialogController::purchase(const int offerId)
-{
-    if (!m_storage)
-        return;
-    const auto id = static_cast<uint32_t>(offerId);
-    switch (m_purchaseType) {
-        case 1: m_storage->buyConfigured(id, 1, m_purchaseName); break;
-        case 3: m_storage->buyConfigured(id, 3, m_purchaseName, static_cast<uint8_t>(m_purchaseSex)); break;
-        default: m_storage->buy(id); break;
-    }
-    m_purchaseType = 0;
-    m_purchaseName.clear();
-    m_messageDialog->setButtons(okButton());
-    m_messageDialog->showMessage(qtTrId("store_processing_order_caption"), qtTrId("store_processing_order"));
-    m_storage->setBalanceUpdating(true);
-    m_pendingJumpOfferId = offerId;
-}
-
-void TStoreDialogController::tryOutfitForCurrentOffer()
-{
-    if (m_selectedOfferIndex < 0 || m_selectedOfferIndex >= static_cast<int>(m_sortedOffers.size()))
-        return;
-    const store::TStoreOfferData& offer = m_sortedOffers[static_cast<size_t>(m_selectedOfferIndex)];
-    const store::TStoreVisual& visual = offer.visual;
-    if (visual.type != store::TStoreVisual::Mount && visual.type != store::TStoreVisual::Outfit
-        && visual.type != store::TStoreVisual::BothGenderOutfits)
-        return;
-    int typeId = visual.typeId;
-    if (visual.type == store::TStoreVisual::BothGenderOutfits) {
-        // CIP picks by the player's sex, which qtclient does not track.
-        const bool female = tibia::game::localPlayer()
-                            && tibia::game::localPlayerOutfit().getId() == static_cast<uint16_t>(visual.femaleTypeId);
-        typeId = female ? visual.femaleTypeId : visual.maleTypeId;
-    }
-    int mode = 0;
-    if (offer.tryOnType == 1)
-        mode = 1;
-    else if (offer.tryOnType == 2)
-        mode = 3;
-    else
-        return;
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::REQUEST_OUTFITS_FROM_SERVER));
-    action->parameter = mode;
-    action->instance = typeId;
-    input::publish(action);
-}
-
-void TStoreDialogController::requestTransferCredits()
-{
-    if (!m_storage)
-        return;
-    const auto transferable = static_cast<qint64>(m_storage->transferableCoins());
-    const qint64 packetSize = m_messages ? m_messages->creditPacketSize() : 1;
-    if (transferable < packetSize) {
-        showMessage(qtTrId("store_not_enough_coins_for_transfer_caption"), qtTrId("store_not_enough_coins_for_transfer"));
-        return;
-    }
-    m_transferDialog.showDialog(transferable, packetSize);
-}
-
-void TStoreDialogController::requestTransactionDetailsAndShowPage(const int TransactionID)
-{
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::REQUEST_TRANSACTION_DETAILS));
-    action->instance = TransactionID;
-    input::publish(action);
-}
-
-void TStoreDialogController::requestTradeCharacter()
-{
-    input::publish(input::makeAction(input::EGameAction::OPEN_TRADE_CHARACTER_DIALOG));
-}
-
-void TStoreDialogController::onNewCharacterNameRequested(const int offerId)
+void TStoreDialogController::onNewCharacterNameRequested(const int offerId, const bool buyWithCosmeticTokens)
 {
     m_messageDialog->dialog()->close();
-    m_configuredOfferId = offerId;
-    m_newNameDialog->setText({});
-    m_newNameDialog->dialog()->destroy();
-    m_newNameDialog->dialog()->show();
+    m_offerIdForNameChange = offerId;
+    m_buyWithCosmeticTokens = buyWithCosmeticTokens;
+    m_newCharacterNameDialog->setText(QString());
+    m_newCharacterNameDialog->dialog()->create();
+    m_newCharacterNameDialog->dialog()->show();
 }
 
 void TStoreDialogController::onNewCharacterNameEntered(const QString& name)
 {
-    m_purchaseType = 1;
-    m_purchaseName = name;
-    showConfiguredConfirmation(m_configuredOfferId);
+    if (!m_messages || !m_storage)
+        return;
+    m_purchaseType = PURCHASE_NEW_CHARACTER_NAME;
+    m_newName = name;
+    if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(m_offerIdForNameChange)))
+        m_confirmationDialog.showDialog(m_offerIdForNameChange, *offer, m_descriptionManager, smoothTextureFilteringOption(), false,
+                                        m_buyWithCosmeticTokens);
 }
 
-void TStoreDialogController::onHirelingConfigurationRequested(const int offerId)
+void TStoreDialogController::onConfirmationDialogRequested(const int offerId, const QString& message, const bool buyWithCosmeticTokens)
+{
+    if (!m_messages)
+        return;
+    m_messageDialog->dialog()->close();
+    m_buyWithCosmeticTokens = buyWithCosmeticTokens;
+    using Button = TMessageDialogController::Button;
+    m_extraConfirmationDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence()),
+                                            new TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))) });
+    m_extraConfirmationDialog->showMessage(qtTrId("store_extra_confirmation_caption"), message);
+    m_extraConfirmationOfferId = offerId;
+}
+
+void TStoreDialogController::onHirelingConfigurationRequested(const int offerId, const bool buyWithCosmeticTokens)
 {
     m_messageDialog->dialog()->close();
+    m_buyWithCosmeticTokens = buyWithCosmeticTokens;
     m_hirelingDialog.showDialog(offerId);
 }
 
 void TStoreDialogController::onHirelingConfigurationFinished(const int offerId, const QString& name, const int sex)
 {
-    m_purchaseType = 3;
-    m_purchaseName = name;
-    m_purchaseSex = sex;
-    showConfiguredConfirmation(offerId);
+    if (!m_messages || !m_storage)
+        return;
+    m_purchaseType = PURCHASE_HIRELING;
+    m_newName = name;
+    m_hirelingSex = sex;
+    if (const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(offerId)))
+        m_confirmationDialog.showHirelingPurchaseDialog(offerId, *offer, sex, m_descriptionManager, smoothTextureFilteringOption(), false,
+                                                        m_buyWithCosmeticTokens);
+}
+
+void TStoreDialogController::onTransferCoinsReceipientAndAmountSpecified(const QString& recipient, const int amount)
+{
+    if (m_messages)
+        m_messages->transferCredits(recipient, amount);
+}
+
+void TStoreDialogController::onPurchaseSuccessNotification(const QString& message)
+{
+    m_messageDialog->dialog()->close();
+    if (!m_messages || !tibia::game::localPlayer())
+        return;
+    if ((tibia::game::localPlayerStates() & tibia::client::IconSwords) == 0) {
+        m_successDialog.showDialog(message.trimmed());
+        return;
+    }
+    if (optionBool(ShowStoreMessagesOption, true))
+        publishTextMessage(input::EGameAction::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE, message.trimmed());
+    publishTextMessage(input::EGameAction::ADD_SYSTEM_CHAT_MESSAGE, message.trimmed());
+}
+
+void TStoreDialogController::onTransferSuccessNotification(const QString& message)
+{
+    showMessage(m_messageDialog, qtTrId("store_success_caption"), message);
+}
+
+void TStoreDialogController::onPurchaseErrorNotification(const QString& message)
+{
+    showMessage(m_messageDialog, qtTrId("store_purchase_failed"), message);
+    if (m_storage)
+        m_storage->setKeepActiveFilterTag(false);
+    m_offerIdToSelect = 0;
+}
+
+void TStoreDialogController::onTransferErrorNotification(const QString& message)
+{
+    showMessage(m_messageDialog, qtTrId("store_transfer_failed"), message);
+}
+
+void TStoreDialogController::onTransactionHistoryErrorNotification(const QString& message)
+{
+    showMessage(m_messageDialog, qtTrId("store_history_error"), message);
+    m_transactionHistoryLoading = false;
+    Q_EMIT transactionHistoryLoadingChanged();
+    m_transactionDetailsDialog->closeDialog();
+}
+
+void TStoreDialogController::onInformationNotification(const QString& message)
+{
+    showMessage(m_messageDialog, qtTrId("store_information"), message);
+}
+
+void TStoreDialogController::onPurchaseConfirmed(const int offerId, const bool askForConfirmationAgainForOtherPurchases)
+{
+    if (!m_messages)
+        return;
+    if (!m_offerViewReported)
+        sendOfferViewedEvents(offerId);
+    const auto id = static_cast<store::TOfferID>(offerId);
+    switch (m_purchaseType) {
+        case PURCHASE_PLAIN: m_messages->buyOffer(id, m_buyWithCosmeticTokens); break;
+        case PURCHASE_NEW_CHARACTER_NAME: m_messages->buyOfferWithNewCharacterName(id, m_newName, m_buyWithCosmeticTokens); break;
+        case PURCHASE_NEW_WORLD: m_messages->buyOfferWithNewWorld(id, m_newWorldName, m_buyWithCosmeticTokens); break;
+        case PURCHASE_HIRELING: m_messages->buyHireling(id, m_newName, m_hirelingSex, m_buyWithCosmeticTokens); break;
+        case PURCHASE_NEW_MAIN_CHARACTER: m_messages->buyOfferWithNewMainCharacter(id, m_newMainCharacter, m_buyWithCosmeticTokens); break;
+        case PURCHASE_WITHOUT_CONFIRMATION: m_messages->buyOfferWithoutConfirmation(id, m_buyWithCosmeticTokens); break;
+        default: break;
+    }
+    showProcessingOrderMessage();
+    m_purchaseType = PURCHASE_PLAIN;
+    m_offerViewReported = false;
+    m_viewEventTimer.stop();
+    if (m_storage)
+        m_storage->setKeepActiveFilterTag(true);
+    m_offerIdToSelect = offerId;
+    app::ClientOptions::store(QLatin1String(AskBeforeBuyingOption), askForConfirmationAgainForOtherPurchases);
+}
+
+void TStoreDialogController::onViewEventTimeoutElapsed()
+{
+    const int index = m_selectedOfferIndex;
+    if (index < 0 || index >= m_availableOffers.size() || m_offerViewReported || m_selectedCategoryName.isEmpty())
+        return;
+    if (m_selectedCategoryName == HomeCategoryName)
+        return;
+    const store::TStoreOffer& offer = static_cast<store::TQmlStoreOffer*>(m_availableOffers[index])->offer();
+    sendOfferViewedEvents(offer.quantities.empty() ? 0 : static_cast<int>(offer.quantities.front().offerId));
+    m_offerViewReported = true;
+}
+
+void TStoreDialogController::onExtraConfirmDialogClickedOK()
+{
+    m_purchaseType = PURCHASE_WITHOUT_CONFIRMATION;
+    if (m_storage && m_storage->findOffer(static_cast<store::TOfferID>(m_extraConfirmationOfferId)))
+        onPurchaseConfirmed(m_extraConfirmationOfferId, optionBool(AskBeforeBuyingOption, true));
+    m_extraConfirmationDialog->dialog()->close();
+}
+
+void TStoreDialogController::onExtraConfirmDialogClickedNotOK()
+{
+    m_extraConfirmationDialog->dialog()->close();
 }
 
 void TStoreDialogController::onHirelingNameChangeRequested(const quint32 creatureId, const quint32 objectId)
@@ -552,192 +728,331 @@ void TStoreDialogController::onHirelingNameChangeEntered(const QString& name)
     tibia::game::sendSetHirelingName(name.trimmed().toStdString());
 }
 
-void TStoreDialogController::showConfiguredConfirmation(const int offerId)
+QStringList TStoreDialogController::sortOrderModel() const
 {
-    const store::TStoreOfferData* offer = m_storage ? m_storage->offerById(static_cast<uint32_t>(offerId)) : nullptr;
+    return { qtTrId("store_sort_popularity"), qtTrId("store_sort_name"), qtTrId("store_sort_newest") };
+}
+
+int TStoreDialogController::selectedSortOrderIndex() const
+{
+    const QStringList model = sortOrderModel();
+    for (qsizetype i = 0; m_storage && i < model.size(); ++i) {
+        if (sortOrderOfLabel(model[i]) == m_storage->sortOrder())
+            return static_cast<int>(i);
+    }
+    return 0;
+}
+
+void TStoreDialogController::setSelectedSortOrderIndex(const int index)
+{
+    const QStringList model = sortOrderModel();
+    if (index < 0 || index >= model.size() || !m_storage)
+        return;
+    const int sortOrder = sortOrderOfLabel(model[index]);
+    m_storage->setSortOrder(sortOrder);
+    if (m_messages)
+        m_messages->sendStoreEventSortOrder(sortOrder);
+    rebuildAvailableOffers();
+}
+
+QStringList TStoreDialogController::filterTagsModel() const
+{
+    QStringList model{ qtTrId("store_filter_tag_all") };
+    if (m_storage) {
+        for (const QString& tag : m_storage->filterTags())
+            model.append(qtTrId("store_filter_tag").arg(tag));
+    }
+    return model;
+}
+
+int TStoreDialogController::selectedFilterTagIndex() const
+{
+    if (!m_storage || m_storage->activeFilterTag().isEmpty())
+        return 0;
+    const QStringList model = filterTagsModel();
+    const QString active = qtTrId("store_filter_tag").arg(m_storage->activeFilterTag());
+    const auto index = model.indexOf(active);
+    return index < 0 ? 0 : static_cast<int>(index);
+}
+
+void TStoreDialogController::setSelectedFilterTagIndex(const int index)
+{
+    const QStringList model = filterTagsModel();
+    if (index < 0 || index >= model.size() || !m_storage)
+        return;
+    if (index == 0) {
+        m_storage->setActiveFilterTag(QString());
+    } else {
+        QString tag = model[index];
+        tag.replace(qtTrId("store_filter_tag").arg(QString()), QString());
+        m_storage->setActiveFilterTag(tag);
+        if (m_messages)
+            m_messages->sendStoreEventFilterTag(tag);
+    }
+    rebuildAvailableOffers();
+}
+
+void TStoreDialogController::setSelectedOfferIndex(const int index)
+{
+    if (index < 0 || index >= m_availableOffers.size())
+        return;
+    if (m_selectedOfferIndex != index) {
+        m_selectedOfferIndex = index;
+        Q_EMIT selectedOfferIndexChanged();
+    }
+    m_offerViewReported = false;
+    m_viewEventTimer.start();
+}
+
+bool TStoreDialogController::smoothTextureFiltering() const
+{
+    return smoothTextureFilteringOption();
+}
+
+void TStoreDialogController::getNextFeaturedOffer()
+{
+    if (m_featuredOfferIndex == -1)
+        return;
+    m_featuredOfferIndex = m_featuredOfferIndex == static_cast<int>(m_featuredOffers.size()) - 1 ? 0 : m_featuredOfferIndex + 1;
+    Q_EMIT featuredOfferIndexChanged();
+}
+
+void TStoreDialogController::getPreviousFeaturedOffer()
+{
+    if (m_featuredOfferIndex == -1)
+        return;
+    m_featuredOfferIndex = (m_featuredOfferIndex == 0 ? static_cast<int>(m_featuredOffers.size()) : m_featuredOfferIndex) - 1;
+    Q_EMIT featuredOfferIndexChanged();
+}
+
+void TStoreDialogController::onFeaturedOfferClicked()
+{
+    if (!m_messages || !m_storage || m_featuredOfferIndex == -1)
+        return;
+    const std::vector<store::TStoreBanner>& banners = m_storage->banners();
+    if (m_featuredOfferIndex >= static_cast<int>(banners.size()))
+        return;
+    m_messages->openStore(banners[static_cast<size_t>(m_featuredOfferIndex)].parameters);
+}
+
+void TStoreDialogController::requestJumpToOfferWithID(const int QmlOfferID)
+{
+    store::TStoreOpenParameters parameters = openParameters(store::OPEN_OFFER, 1);
+    parameters.offerId = static_cast<store::TOfferID>(QmlOfferID);
+    openStore(parameters);
+}
+
+void TStoreDialogController::selectCategory(const QString& CategoryName)
+{
+    if (CategoryName == HomeCategoryName) {
+        openStore(openParameters(store::OPEN_HOME, 1));
+        return;
+    }
+    store::TStoreOpenParameters parameters = openParameters(store::OPEN_CATEGORY, 1);
+    parameters.category = CategoryName;
+    openStore(parameters);
+}
+
+void TStoreDialogController::requestSearch(const QString& SearchString)
+{
+    store::TStoreOpenParameters parameters = openParameters(store::OPEN_SEARCH, 1);
+    parameters.category = SearchString;
+    openStore(parameters);
+}
+
+void TStoreDialogController::openGetCoinsUrl()
+{
+    input::publish(input::makeAction(input::EGameAction::OPEN_URL_GET_COINS));
+}
+
+void TStoreDialogController::openTransactionHistory()
+{
+    if (!m_messages)
+        return;
+    m_messages->openTransactionHistory(TransactionHistoryEntriesPerPage);
+    onTransactionHistoryChanged();
+    m_transactionHistoryLoading = true;
+    Q_EMIT transactionHistoryLoadingChanged();
+}
+
+void TStoreDialogController::nextTransactionPage()
+{
+    if (m_messages && m_storage)
+        m_messages->requestTransactionHistoryPage(m_storage->transactionHistory().currentPage + 1, TransactionHistoryEntriesPerPage);
+}
+
+void TStoreDialogController::previousTransactionPage()
+{
+    if (m_messages && m_storage)
+        m_messages->requestTransactionHistoryPage(m_storage->transactionHistory().currentPage - 1, TransactionHistoryEntriesPerPage);
+}
+
+void TStoreDialogController::buyOffer(const int QmlOfferID)
+{
+    buyOffer(QmlOfferID, false);
+}
+
+void TStoreDialogController::buyOffer(const int QmlOfferID, const bool BuyWithCosmeticTokens)
+{
+    m_buyWithCosmeticTokens = BuyWithCosmeticTokens;
+    if (!m_storage || !m_messages)
+        return;
+    const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(QmlOfferID));
     if (!offer)
         return;
-    const bool ask = app::ClientOptions::load().options().value(QLatin1String(AskBeforeBuyingOption)).toBool(true);
-    m_confirmationDialog.showDialog(offerId, *offer, ask);
-}
-
-void TStoreDialogController::onTransferCoinsRecipientAndAmountSpecified(const QString& recipient, const int amount)
-{
-    if (!m_storage || amount <= 0)
+    if (offer->configurable) {
+        m_messages->buyOffer(static_cast<store::TOfferID>(QmlOfferID), BuyWithCosmeticTokens);
+        showConfiguringOrderMessage();
         return;
-    m_storage->transferCoins(recipient, static_cast<uint32_t>(amount));
-    m_storage->setBalanceUpdating(true);
-}
-
-void TStoreDialogController::onTransferSuccessNotification(const QString& message)
-{
-    showMessage(qtTrId("store_success_caption"), message);
-}
-
-void TStoreDialogController::onTransferErrorNotification(const QString& message)
-{
-    showMessage(qtTrId("store_transfer_failed"), message);
-    if (m_storage)
-        m_storage->setBalanceUpdating(false);
-}
-
-void TStoreDialogController::onCategoriesChanged()
-{
-    if (!m_storage)
-        return;
-    const QList<QObject*> previous = m_categoryList;
-    m_categoryList.clear();
-    m_categoryList.append(new store::TQmlStoreCategory(homeCategoryName(), {}, this));
-    for (const store::TStoreCategoryData& category : m_storage->categories())
-        m_categoryList.append(new store::TQmlStoreCategory(category, this));
-    Q_EMIT categoryListChanged();
-    deleteObjectsLater(previous);
-    if (m_storage->categories().empty())
-        setSelectedCategoryName({});
-    else if (m_pendingOpen)
-        requestPendingOpen();
-    else if (m_selectedCategoryName.isEmpty() && dialog()->isShown())
-        selectCategory(homeCategoryName());
-}
-
-void TStoreDialogController::onHomePageChanged()
-{
-    setSelectedCategoryName(homeCategoryName());
-    rebuildOffers();
-    rebuildFeaturedOffers();
-}
-
-void TStoreDialogController::onOffersChanged(const int offerId)
-{
-    if (!m_storage)
-        return;
-    setSelectedCategoryName(m_storage->offersCategoryName());
-    rebuildOffers();
-    if (offerId != 0 || m_pendingJumpOfferId != 0)
-        selectOffer(offerId != 0 ? offerId : m_pendingJumpOfferId);
-}
-
-void TStoreDialogController::onSearchResultsChanged(const bool moreResultsAvailable)
-{
-    setSelectedCategoryName(searchCategoryName());
-    rebuildOffers();
-    if (m_pendingJumpOfferId != 0)
-        selectOffer(m_pendingJumpOfferId);
-    if (moreResultsAvailable && dialog()->isShown())
-        showMessage(qtTrId("store_information"), qtTrId("store_search_result_more_results_available").arg(m_lastSearch));
-}
-
-void TStoreDialogController::onEmptySearchResult()
-{
-    if (dialog()->isShown())
-        showMessage(qtTrId("store_information"), qtTrId("store_search_result_empty").arg(m_lastSearch));
-}
-
-void TStoreDialogController::onTransactionHistoryChanged()
-{
-    if (!m_storage)
-        return;
-    QObject* previous = m_transactionPage;
-    m_transactionPage = new store::TQmlStoreTransactionHistoryPage(*m_storage, this);
-    Q_EMIT transactionPageChanged();
-    if (previous)
-        previous->deleteLater();
-    if (m_transactionHistoryLoading) {
-        m_transactionHistoryLoading = false;
-        Q_EMIT transactionHistoryLoadingChanged();
     }
-}
-
-void TStoreDialogController::onPurchaseSuccessNotification(const QString& message)
-{
-    m_messageDialog->dialog()->close();
-    m_successDialog.showDialog(message.trimmed());
-}
-
-void TStoreDialogController::onPurchaseErrorNotification(const QString& message)
-{
-    showMessage(qtTrId("store_purchase_failed"), message);
-    if (m_storage)
-        m_storage->setBalanceUpdating(false);
-    m_pendingJumpOfferId = 0;
-}
-
-void TStoreDialogController::onTransactionHistoryErrorNotification(const QString& message)
-{
-    showMessage(qtTrId("store_history_error"), message);
-    if (m_transactionHistoryLoading) {
-        m_transactionHistoryLoading = false;
-        Q_EMIT transactionHistoryLoadingChanged();
+    if (optionBool(AskBeforeBuyingOption, true)) {
+        m_purchaseType = PURCHASE_PLAIN;
+        m_confirmationDialog.showDialog(QmlOfferID, *offer, m_descriptionManager, smoothTextureFilteringOption(), true, BuyWithCosmeticTokens);
+        return;
     }
+    if (!m_offerViewReported)
+        sendOfferViewedEvents(QmlOfferID);
+    m_messages->buyOffer(static_cast<store::TOfferID>(QmlOfferID), BuyWithCosmeticTokens);
+    showProcessingOrderMessage();
+    m_purchaseType = PURCHASE_PLAIN;
+    m_offerViewReported = false;
+    m_viewEventTimer.stop();
+    m_storage->setKeepActiveFilterTag(true);
+    m_offerIdToSelect = QmlOfferID;
 }
 
-void TStoreDialogController::onInformationNotification(const QString& message)
+void TStoreDialogController::tryOutfitForCurrentOffer()
 {
-    showMessage(qtTrId("store_information"), message);
+    const int index = m_selectedOfferIndex;
+    if (index < 0 || index >= m_availableOffers.size() || !m_storage || !m_messages)
+        return;
+    const store::TStoreOffer& selected = static_cast<store::TQmlStoreOffer*>(m_availableOffers[index])->offer();
+    const store::TStoreOffer* offer =
+        m_storage->findOffer(selected.quantities.empty() ? 0 : selected.quantities.front().offerId);
+    if (!offer)
+        return;
+    const store::TStoreVisualisation& visualisation = offer->visualisation;
+    if (visualisation.type != store::TStoreVisualisation::MOUNT && visualisation.type != store::TStoreVisualisation::OUTFIT
+        && visualisation.type != store::TStoreVisualisation::BOTH_GENDER_OUTFITS)
+        return;
+    const uint16_t typeId = visualisation.type == store::TStoreVisualisation::BOTH_GENDER_OUTFITS
+                                ? (visualisation.gender != store::TStoreVisualisation::MALE ? visualisation.femaleAppearanceTypeId
+                                                                                            : visualisation.maleAppearanceTypeId)
+                                : visualisation.appearanceTypeId;
+    int mode = 0;
+    if (offer->tryOnType == 1)
+        mode = 1;
+    else if (offer->tryOnType == 2)
+        mode = 3;
+    else
+        return;
+    auto action = input::mutableClone(*input::makeAction(input::EGameAction::REQUEST_OUTFITS_FROM_SERVER));
+    action->parameter = mode;
+    action->instance = typeId;
+    input::publish(action);
 }
 
-void TStoreDialogController::showMessage(const QString& caption, const QString& message)
-{
-    m_messageDialog->setButtons(okButton());
-    m_messageDialog->showMessage(caption, message);
-}
-
-void TStoreDialogController::rebuildOffers()
+void TStoreDialogController::requestTransferCredits()
 {
     if (!m_storage)
         return;
-    m_sortedOffers = m_storage->offers();
-    if (m_selectedCategoryName != homeCategoryName()) {
-        switch (m_selectedSortOrderIndex) {
-            case 0:
-                std::stable_sort(m_sortedOffers.begin(), m_sortedOffers.end(),
-                                 [](const auto& a, const auto& b) { return a.popularity > b.popularity; });
-                break;
-            case 1:
-                std::stable_sort(m_sortedOffers.begin(), m_sortedOffers.end(),
-                                 [](const auto& a, const auto& b) { return a.name.localeAwareCompare(b.name) < 0; });
-                break;
-            case 2:
-                std::stable_sort(m_sortedOffers.begin(), m_sortedOffers.end(),
-                                 [](const auto& a, const auto& b) { return a.newUntil > b.newUntil; });
-                break;
-            default: break;
-        }
+    const qint64 transferable = m_storage->balance().value_or(store::TStoreBalance{}).confirmed;
+    const qint64 packetSize = m_storage->creditPacketSize();
+    if (transferable < packetSize) {
+        showMessage(m_messageDialog, qtTrId("store_not_enough_coins_for_transfer_caption"), qtTrId("store_not_enough_coins_for_transfer"));
+        return;
     }
+    m_transferDialog.showDialog(transferable, packetSize);
+}
+
+void TStoreDialogController::requestTransactionDetailsAndShowPage(const int TransactionID)
+{
+    m_transactionDetailsDialog->showDialog();
+    m_transactionDetailsId = TransactionID;
+    auto action = input::mutableClone(*input::makeAction(input::EGameAction::REQUEST_TRANSACTION_DETAILS));
+    action->instance = TransactionID;
+    input::publish(action);
+}
+
+void TStoreDialogController::requestTradeCharacter()
+{
+    input::publish(input::makeAction(input::EGameAction::OPEN_TRADE_CHARACTER_DIALOG));
+}
+
+void TStoreDialogController::rebuildAvailableOffers()
+{
+    if (!m_storage)
+        return;
     const QList<QObject*> previous = m_availableOffers;
     m_availableOffers.clear();
-    for (const store::TStoreOfferData& offer : m_sortedOffers)
-        m_availableOffers.append(new store::TQmlStoreOffer(offer, this));
-    m_selectedOfferIndex = m_availableOffers.isEmpty() ? -1 : 0;
+    for (const store::TStoreOffer& offer : m_storage->filteredOffers())
+        m_availableOffers.append(new store::TQmlStoreOffer(offer, m_descriptionManager));
+    Q_EMIT filterTagsChanged();
+    Q_EMIT selectedFilterTagIndexChanged();
     Q_EMIT availableOffersChanged();
-    Q_EMIT selectedOfferIndexChanged();
     deleteObjectsLater(previous);
-}
-
-void TStoreDialogController::selectOffer(const int offerId)
-{
-    for (int i = 0; i < m_availableOffers.size(); ++i) {
-        if (static_cast<store::TQmlStoreOffer*>(m_availableOffers[i])->hasQuantity(offerId)) {
-            setSelectedOfferIndex(i);
-            break;
-        }
-    }
-    m_pendingJumpOfferId = 0;
-}
-
-void TStoreDialogController::rebuildFeaturedOffers()
-{
-    if (!m_storage)
+    if (m_availableOffers.isEmpty())
         return;
+    if (m_selectedOfferIndex != 0) {
+        m_selectedOfferIndex = 0;
+        Q_EMIT selectedOfferIndexChanged();
+    }
+    m_offerViewReported = false;
+    m_viewEventTimer.start();
+}
+
+void TStoreDialogController::selectOfferWithId(const int offerId)
+{
+    if (!m_availableOffers.isEmpty()) {
+        int index = 0;
+        for (qsizetype i = 0; i < m_availableOffers.size(); ++i) {
+            if (static_cast<store::TQmlStoreOffer*>(m_availableOffers[i])->hasQuantity(offerId)) {
+                index = static_cast<int>(i);
+                break;
+            }
+        }
+        if (m_selectedOfferIndex != index) {
+            m_selectedOfferIndex = index;
+            Q_EMIT selectedOfferIndexChanged();
+        }
+        m_offerViewReported = false;
+        m_viewEventTimer.start();
+    }
+    m_offerIdToSelect = 0;
+}
+
+void TStoreDialogController::sendOfferViewedEvents(const int offerId)
+{
+    if (!m_storage || !m_messages)
+        return;
+    const store::TStoreOffer* offer = m_storage->findOffer(static_cast<store::TOfferID>(offerId));
+    if (!offer)
+        return;
+    for (const store::TStoreOfferQuantityConfiguration& quantity : offer->quantities)
+        m_messages->sendStoreEventOfferViewed(quantity.offerId);
+}
+
+void TStoreDialogController::showProcessingOrderMessage()
+{
+    showMessage(m_messageDialog, qtTrId("store_processing_order_caption"), qtTrId("store_processing_order"));
+}
+
+void TStoreDialogController::showConfiguringOrderMessage()
+{
+    showMessage(m_messageDialog, qtTrId("store_configuring_order_caption"), qtTrId("store_configuring_order"));
+}
+
+void TStoreDialogController::updateFeaturedOffers()
+{
+    const std::vector<store::TStoreBanner> banners = m_storage->banners();
+    const QString baseUrl = m_imageManager->baseUrl().toString();
     m_featuredOffers.clear();
-    for (const QString& banner : m_storage->banners())
-        m_featuredOffers.append(m_imageManager->url(banner).toString());
-    m_featuredOfferIds = m_storage->bannerOfferIds();
-    // CIP takes the delay as is; a 0 would make StoreMainPage's timer spin.
-    m_displayTimePerFeature = std::max(1, m_storage->bannerDelaySeconds()) * 1000;
+    for (const store::TStoreBanner& banner : banners)
+        m_featuredOffers.append(baseUrl + QLatin1Char('/') + banner.image);
     Q_EMIT featuredOffersChanged();
+    m_displayTimePerFeature = static_cast<int>(m_storage->bannerDelay()) * 1000;
     Q_EMIT displayTimePerFeatureChanged();
-    m_featuredOfferIndex = m_featuredOffers.isEmpty() ? -1 : QRandomGenerator::global()->bounded(static_cast<int>(m_featuredOffers.size()));
+    m_featuredOfferIndex = banners.empty() ? -1 : QRandomGenerator::global()->bounded(static_cast<int>(banners.size()));
     Q_EMIT featuredOfferIndexChanged();
 }
 
@@ -749,25 +1064,31 @@ void TStoreDialogController::setSelectedCategoryName(const QString& name)
     Q_EMIT selectedCategoryChanged();
 }
 
+void TStoreDialogController::showMessage(TMessageDialogController* dialog, const QString& caption, const QString& message)
+{
+    dialog->setButtons(okButton());
+    dialog->showMessage(caption, message);
+}
+
 TStoreButtonController::TStoreButtonController(TStoreDialogController* dialog, QObject* parent)
     : cip::tibia::gamewindow::TStoreButtonController(parent)
     , m_dialog(dialog)
 {
-    if (dialog && dialog->messages())
+    if (dialog && dialog->messages()) {
         connect(dialog->messages(), &store::TStoreProtocolMessageHandler::storeButtonIndicatorsChanged, this,
                 &TStoreButtonController::onStoreButtonIndicatorsChanged);
+        connect(dialog->messages(), &store::TStoreProtocolMessageHandler::requestOpenStoreDialog, this,
+                &TStoreButtonController::onRequestOpenStoreDialog);
+    }
 
     m_highlightTimer.setSingleShot(true);
     m_highlightTimer.setInterval(600000);
     connect(&m_highlightTimer, &QTimer::timeout, this, [this] { onHighlightStoreButtonEnds(false); });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onStoreButtonDeeplink", [this](GameObject*, const std::vector<std::any>& args) {
-        onStoreDeeplinkChanged(static_cast<int>(client::gamecore::argInt(args, 0)),
-                               static_cast<int>(client::gamecore::argInt(args, 1)));
+        onStoreDeeplinkChanged(static_cast<int>(client::gamecore::argInt(args, 0)), static_cast<int>(client::gamecore::argInt(args, 1)));
         return std::any{};
     });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        clearDeeplink();
-    });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() { clearDeeplink(); });
 }
 
 void TStoreButtonController::onOpenStoreButtonClicked()

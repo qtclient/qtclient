@@ -33,6 +33,15 @@ std::pair<QUrl, QUrl> vesselImages(const TSkillWheelStorage* storage, const int 
              socketBezel(vesselIndex % DomainCount, quality + 1, quality, gem != nullptr) };
 }
 
+/// The icon of a conviction perk; Revelation Mastery has one per revelation perk.
+QUrl mediumPerkImage(const int perk, const std::optional<int> largePerk)
+{
+    int index = MasteryIncreasePerk + (largePerk ? *largePerk : 0);
+    if (perk != MasteryIncreasePerk)
+        index = perk;
+    return imageUrl("icons-skillwheel-mediumperks", index);
+}
+
 QString itemName(const int typeId)
 {
     if (typeId <= 0)
@@ -170,13 +179,13 @@ int TSkillWheelPageController::totalModGradesSkillPoints() const
     return m_storage->hasData() ? totalModGradePoints(m_storage->vocationIndex()) : 0;
 }
 
-/// CIP : one tooltip line per consumed promotion scroll.
+/// One tooltip line per consumed promotion scroll: its item name and points.
 QString TSkillWheelPageController::bonusPointItemNames() const
 {
     QStringList lines;
     for (const auto& [typeId, points] : m_storage->promotionScrolls())
         lines << qtTrId("skill_wheel_skill_promotion_points_bonus_consumed_item_tooltip").arg(itemName(typeId)).arg(points);
-    return lines.join(u'\n');
+    return lines.join(QStringLiteral("<br>"));
 }
 
 cip::tibia::qmlcomponents::enums::EVocation TSkillWheelPageController::vocation() const
@@ -217,7 +226,7 @@ void TSkillWheelPageController::updateParameters()
         const double fill = std::clamp(static_cast<double>(points) / maxPoints(slot), 0.0, 1.0);
         const bool unlocked = points > 0 || isUnlocked(wheel.points, slot);
         const int medium = mediumPerk(slot, voc);
-        const QUrl image = imageUrl("icons-skillwheel-mediumperks", medium);
+        const QUrl image = mediumPerkImage(medium, largePerk(domainOfSlot(slot), voc));
         m_skillParameters.append(
             new TSkillWheelTileQMLInfo(slot, fill, unlocked, medium, static_cast<int>(smallPerk(slot)), image, this));
     }
@@ -238,10 +247,11 @@ void TSkillWheelPageController::updateParameters()
         o->deleteLater();
 }
 
-/// CIP summaries: the dedication totals and the revelation stages;
-/// conviction perks, vessels, everything.
+/// The summaries: the dedication totals, the revelation stages, the conviction
+/// perks, the vessels and everything. Without wheel data the first three are empty.
 void TSkillWheelPageController::updateSummaries()
 {
+    const bool hasData = m_storage->hasData();
     const TWheel& wheel = m_storage->currentWheel();
     const int voc = m_storage->vocationIndex();
     const TActiveMods mods = activeMods(wheel, m_storage->gems(), m_storage->basicGrades(), m_storage->supremeGrades(), voc);
@@ -251,6 +261,8 @@ void TSkillWheelPageController::updateSummaries()
 
     QList<TSummaryEntry> smallEntries;
     for (const ESmallPerk perk : { ESmallPerk::Life, ESmallPerk::Mana, ESmallPerk::Capacity, ESmallPerk::Mitigation }) {
+        if (!hasData)
+            break;
         TSummaryEntry e;
         e.label = smallPerkName(perk);
         e.effect = formatValue(smallPerkTotal(wheel.points, perk, voc), smallPerkFormat(perk));
@@ -268,38 +280,72 @@ void TSkillWheelPageController::updateSummaries()
         perks.append({ largePerkName(largePerk(d, voc)), perkLevelName(stage), largePerkDetailedInformation(largePerk(d, voc), stage), QUrl(), false });
     }
     std::ranges::sort(perks, [](const TSummaryEntry& a, const TSummaryEntry& b) { return a.label < b.label; });
-    large.append({ qtTrId("damage_and_healing"), QStringLiteral("+%1").arg(bonus),
-                   qtTrId("skill_wheel_dialog_unlock_large_perk_extra_damage_healing_info")
-                       .arg(largePerkExtraDamageHealing(1))
-                       .arg(largePerkExtraDamageHealing(2))
-                       .arg(largePerkExtraDamageHealing(3)),
-                   QUrl(), false });
-    large.append(perks);
+    if (hasData) {
+        large.append({ qtTrId("damage_and_healing"), QStringLiteral("+%1").arg(englishNumber(bonus)),
+                       qtTrId("skill_wheel_dialog_unlock_large_perk_extra_damage_healing_info")
+                           .arg(largePerkExtraDamageHealing(1))
+                           .arg(largePerkExtraDamageHealing(2))
+                           .arg(largePerkExtraDamageHealing(3)),
+                       QUrl(), false });
+        large.append(perks);
+    }
 
-    // CIP : the perk groups , and the
-    // leeches sorted by name, then the vessels in id order. Resistance perks
-    // 0..4 are not in any vocation's wheel, so their group stays empty.
-    const auto mediumGroup = [&](const std::initializer_list<int> perks, const bool sorted) {
+    // The conviction perks: the plain perks, the augmented spells (with their
+    // augmentation level icons), the leeches, the resistances under a header and
+    // Revelation Mastery per domain, each group sorted by name.
+    const auto mediumEntry = [&](const QString& label, const int perk, const bool withIcons) -> TSummaryEntry {
+        QStringList lines = mediumPerkDescriptions(perk);
+        if (withIcons)
+            lines = withAugmentationIcons(lines, perk, mediumPerkCount(wheel.points, perk, voc));
+        return { label, mediumPerkValueText(wheel.points, perk, voc), lines.join(QStringLiteral("<br>")), QUrl(), false };
+    };
+    const auto mediumGroup = [&](const std::initializer_list<int> perks, const bool withIcons) {
         QList<TSummaryEntry> group;
-        for (const int perk : perks) {
-            const int count = mediumPerkCount(wheel.points, perk, voc);
-            if (count <= 0)
-                continue;
-            group.append({ mediumPerkName(perk), mediumPerkValueText(wheel.points, perk, voc),
-                           withAugmentationIcons(mediumPerkDescriptions(perk), perk, count).join(QStringLiteral("<br>")), QUrl(), false });
-        }
-        if (sorted)
-            std::ranges::stable_sort(group, [](const TSummaryEntry& a, const TSummaryEntry& b) { return a.label < b.label; });
+        for (const int perk : perks)
+            if (mediumPerkCount(wheel.points, perk, voc) > 0)
+                group.append(mediumEntry(mediumPerkName(perk), perk, withIcons));
+        byLabel(group);
         return group;
     };
-    const QList<TSummaryEntry> perkGroup = mediumGroup({ 7, 8, 9, 15, 16, 17, 28, 34, 35, 23, 41, 42, 43 }, true);
+    const QList<TSummaryEntry> perkGroup = mediumGroup({ 7, 8, 9, 15, 16, 17, 28, 34, 35, 23, 38, 39, 40, 37 }, false);
     const QList<TSummaryEntry> augmentedGroup =
-        mediumGroup({ 10, 11, 14, 13, 12, 18, 19, 20, 21, 22, 24, 25, 26, 27, 29, 30, 31, 32, 33, 36, 44, 45, 46, 47, 48 }, true);
-    const QList<TSummaryEntry> vesselGroup = mediumGroup({ 37, 38, 39, 40 }, false);
-    QList<TSummaryEntry> medium = perkGroup;
-    medium.append(augmentedGroup);
-    medium.append(mediumGroup({ 5, 6 }, true));
-    medium.append(vesselGroup);
+        mediumGroup({ 10, 11, 14, 13, 12, 18, 19, 20, 21, 22, 24, 25, 26, 27, 29, 30, 31, 32, 33, 36, 41, 42, 43, 44, 45 }, true);
+    QList<TSummaryEntry> leechGroup;
+    for (const auto& [perk, label] : { std::pair{ 5, "mana_leech" }, std::pair{ 6, "life_leech" } })
+        if (mediumPerkCount(wheel.points, perk, voc) > 0)
+            leechGroup.append(mediumEntry(qtTrId(label), perk, false));
+    byLabel(leechGroup);
+    QList<TSummaryEntry> resistanceGroup;
+    static constexpr const char* ResistanceElements[] = { "damagetype_fire", "damagetype_energy", "damagetype_ice", "damagetype_earth" };
+    for (int perk = 0; perk < 4; ++perk)
+        if (mediumPerkCount(wheel.points, perk, voc) > 0)
+            resistanceGroup.append(mediumEntry(qtTrId("subentry_prefix").arg(qtTrId(ResistanceElements[perk])), perk, false));
+    if (const int holyDeath = mediumPerkCount(wheel.points, 4, voc); holyDeath > 0)
+        for (const char* element : { "damagetype_holy", "damagetype_death" })
+            resistanceGroup.append({ qtTrId("subentry_prefix").arg(qtTrId(element)), formatValue(holyDeath, 2),
+                                     mediumPerkDescriptions(4).join(QStringLiteral("<br>")), QUrl(), false });
+    if (!resistanceGroup.isEmpty()) {
+        byLabel(resistanceGroup);
+        resistanceGroup.prepend({ qtTrId("skill_wheel_dialog_resistance") + u':', {}, {}, QUrl(), false });
+    }
+    QList<TSummaryEntry> masteryGroup;
+    for (int d = 0; d < DomainCount; ++d) {
+        int filled = 0;
+        for (const int slot : domainSlots(d))
+            if (isMasteryIncreasePerk(mediumPerk(slot, voc)) && wheel.points[slot] >= maxPoints(slot))
+                ++filled;
+        if (filled > 0)
+            masteryGroup.append(mediumEntry(mediumPerkName(MasteryIncreasePerk, largePerk(d, voc)), MasteryIncreasePerk, false));
+    }
+    byLabel(masteryGroup);
+    QList<TSummaryEntry> medium;
+    if (hasData) {
+        medium = perkGroup;
+        medium.append(augmentedGroup);
+        medium.append(leechGroup);
+        medium.append(resistanceGroup);
+        medium.append(masteryGroup);
+    }
 
     // CIP entries (resistances), sorted under a "Resistance:" header.
     const auto resistances = [&](const std::array<double, 9>& values) {
@@ -429,7 +475,7 @@ void TSkillWheelPageController::updateSummaries()
     revelationGroup.append(revelations);
     appendGroup(revelationGroup);
     appendGroup(resistances(resistanceValues));
-    appendGroup(vesselGroup);
+    appendGroup(masteryGroup);
 
     m_small->setEntries(smallEntries);
     m_large->setEntries(large);
@@ -458,9 +504,11 @@ void TSkillWheelPageController::fillTile(cip::tibia::gamewindow::TTileInformatio
     const int medium = mediumPerk(slot, voc);
     info->setCurrentSkillPoints(points);
     info->setMaximumSkillPoints(max);
-    info->setCanBeDecreased(m_storage->changeState() == 1 && canDecrease(wheel.points, slot));
-    info->setCanBeIncreased(canBeIncreased() && points < max && m_storage->freePoints() > 0 && isUnlocked(wheel.points, slot));
-    info->setShowGemAtelierButton(isVesselPerk(medium) && m_storage->isLocalPlayer() && !m_storage->isPreview());
+    // The grid alone decides: a full slice can be emptied, and a slice can be
+    // filled, when the grid stays valid.
+    info->setCanBeDecreased(canDecrease(wheel.points, slot));
+    info->setCanBeIncreased(points < max && isUnlocked(wheel.points, slot));
+    info->setShowGemAtelierButton(isVesselPerk(medium));
     info->setSmallPerkHover(smallPerkInfo(smallPerkId, voc));
     info->setSmallPerkSumInfo(smallPerkValueText(smallPerkId, points, voc));
     // CIP : an augmented spell shows its two levels (plain and with
@@ -469,10 +517,10 @@ void TSkillWheelPageController::fillTile(cip::tibia::gamewindow::TTileInformatio
     const bool augmented = isAugmentedPerk(medium);
     const QStringList lines = mediumPerkDescriptions(medium);
     const QStringList iconLines = withAugmentationIcons(lines, medium, count);
-    info->setMediumPerkUnlocked(points >= max);
-    info->setMediumPerkInfo(mediumPerkEffect(medium));
+    info->setMediumPerkUnlocked(points == max);
+    info->setMediumPerkInfo(mediumPerkEffect(medium, largePerk(domainOfSlot(slot), voc)));
     info->setMediumPerkHover(qtTrId("skill_wheel_dialog_unlock_medium_perk_info") + QStringLiteral("<br><br>")
-                             + qtTrId(augmented ? "skill_wheel_dialog_how_augmentatios_unlock_info" : "skill_wheel_dialog_medim_perk_more_than_once_info"));
+                             + qtTrId(augmented ? "skill_wheel_dialog_how_augmentatios_unlock_info" : "skill_wheel_dialog_medium_perk_more_than_once_info"));
     info->setMediumPerkCount(count);
     if (augmented && lines.size() == 2) {
         info->setMediumPerkAdditional(QString());
@@ -506,7 +554,12 @@ void TSkillWheelPageController::fillLargePerk(cip::tibia::gamewindow::TLargePerk
     info->setLargePerkHover(qtTrId("skill_wheel_dialog_unlock_large_perk_info")
                                 .arg(revelationThreshold(1))
                                 .arg(revelationThreshold(2))
-                                .arg(revelationThreshold(3)));
+                                .arg(revelationThreshold(3))
+                            + QStringLiteral("<br><br>")
+                            + qtTrId("skill_wheel_dialog_unlock_large_perk_extra_damage_healing_info")
+                                  .arg(largePerkExtraDamageHealing(1))
+                                  .arg(largePerkExtraDamageHealing(2))
+                                  .arg(largePerkExtraDamageHealing(3)));
 }
 
 int TSkillWheelPageController::stepSize(const int modifiers)

@@ -24,85 +24,162 @@ TPreyData::TPreyData(const uint8_t preyId, QObject* parent) : cip::tibia::prey::
 
 void TPreyData::setState(const int state)
 {
+    if (m_state == state)
+        return;
     m_state = state;
     Q_EMIT stateChanged();
 }
 
+void TPreyData::setUnlockOption(const int unlockOption)
+{
+    if (m_unlockOption == unlockOption)
+        return;
+    m_unlockOption = unlockOption;
+    Q_EMIT unlockOptionChanged();
+}
+
 void TPreyData::setBonus(const TPreyBonus& bonus)
 {
+    if (m_bonus.type == bonus.type && m_bonus.value == bonus.value && m_bonus.grade == bonus.grade)
+        return;
     m_bonus = bonus;
     Q_EMIT bonusChanged();
 }
 
+void TPreyData::setMonster(const TPreyMonster& monster)
+{
+    if (m_monster == monster)
+        return;
+    m_monster = monster;
+    Q_EMIT monsterInformationChanged();
+}
+
+void TPreyData::setMonsterList(QList<TPreyMonster> list)
+{
+    if (m_monsterList == list)
+        return;
+    m_monsterList = std::move(list);
+    Q_EMIT monsterListChanged();
+}
+
+void TPreyData::setRaceList(QList<uint16_t> races)
+{
+    if (m_raceList == races)
+        return;
+    m_raceList = std::move(races);
+    Q_EMIT monsterRaceListChanged();
+}
+
+/// Every state change starts from a cleared slot: unlock option 2, no bonus,
+/// no creature, empty lists and no time left.
+void TPreyData::clearStateData()
+{
+    setUnlockOption(2);
+    setBonus(TPreyBonus{});
+    setMonster(TPreyMonster{});
+    setMonsterList({});
+    setRaceList({});
+    setTimeLeft(0);
+}
+
+/// Unlock option 2 means the slot is unlocked, so it shows as inactive.
 void TPreyData::setLocked(const int unlockOption)
 {
+    clearStateData();
     if (unlockOption == 2) {
         setState(1);
         return;
     }
-    m_unlockOption = unlockOption;
-    Q_EMIT unlockOptionChanged();
+    setUnlockOption(unlockOption);
     setState(0);
 }
 
-void TPreyData::setInactive() { setState(1); }
+void TPreyData::setInactive()
+{
+    clearStateData();
+    setState(1);
+}
 
 void TPreyData::setActive(const TPreyBonus& bonus, const TPreyMonster& monster, const int timeLeft)
 {
-    setBonus(bonus);
-    m_monster = monster;
-    Q_EMIT monsterInformationChanged();
+    clearStateData();
+    if (bonus.type == 4) {
+        setState(1);
+    } else {
+        setBonus(bonus);
+        setMonster(monster);
+        setState(2);
+    }
     setTimeLeft(timeLeft);
-    setState(bonus.type == 4 ? 1 : 2);
 }
 
 void TPreyData::setSelection(QList<TPreyMonster> list)
 {
-    const bool empty = list.isEmpty();
-    m_monsterList = std::move(list);
-    Q_EMIT monsterListChanged();
-    setState(empty ? 1 : 3);
+    clearStateData();
+    if (list.isEmpty()) {
+        setState(1);
+        return;
+    }
+    setMonsterList(std::move(list));
+    setState(3);
 }
 
 void TPreyData::setSelectionChangeMonster(const TPreyBonus& bonus, QList<TPreyMonster> list)
 {
-    const bool none = bonus.type == 4 || list.isEmpty();
+    clearStateData();
+    if (bonus.type == 4 || list.isEmpty()) {
+        setState(1);
+        return;
+    }
     setBonus(bonus);
-    m_monsterList = std::move(list);
-    Q_EMIT monsterListChanged();
-    setState(none ? 1 : 4);
+    setMonsterList(std::move(list));
+    setState(4);
 }
 
 void TPreyData::setListSelection(QList<uint16_t> races)
 {
-    const bool empty = races.isEmpty();
-    m_raceList = std::move(races);
-    Q_EMIT monsterRaceListChanged();
-    setState(empty ? 1 : 5);
+    clearStateData();
+    if (races.isEmpty()) {
+        setState(1);
+        return;
+    }
+    setRaceList(std::move(races));
+    setState(5);
 }
 
 void TPreyData::setWildcardSelection(const TPreyBonus& bonus, QList<uint16_t> races)
 {
+    clearStateData();
+    if (bonus.type == 4 || races.isEmpty()) {
+        setState(1);
+        return;
+    }
     setBonus(bonus);
-    m_raceList = std::move(races);
-    Q_EMIT monsterRaceListChanged();
+    setRaceList(std::move(races));
     setState(6);
 }
 
 void TPreyData::setTimeLeft(const int seconds)
 {
+    if (m_timeLeft == seconds)
+        return;
     m_timeLeft = seconds;
     Q_EMIT timeLeftChanged();
 }
 
 void TPreyData::setNextFreeListReroll(const qint64 seconds)
 {
-    m_nextFreeListReroll = seconds > 0 ? now() + seconds : 0;
+    const qint64 at = seconds > 0 ? now() + seconds : 0;
+    if (m_nextFreeListReroll == at)
+        return;
+    m_nextFreeListReroll = at;
     Q_EMIT timeUntilFreeListRerollChanged();
 }
 
 void TPreyData::setAutomaticExtendType(const int type)
 {
+    if (m_automaticExtendType == type)
+        return;
     m_automaticExtendType = type;
     Q_EMIT automaticExtendTypeChanged();
 }
@@ -130,32 +207,45 @@ void TPreyStorage::reset()
 
 void TPreyStorage::setPrices(const int listReroll, const int bonusReroll, const int choosePrey)
 {
-    const bool bonusPossible = bonusRerollPossible();
-    const bool choosePossible = choosePreyPossible();
-    m_listRerollPrice = listReroll;
-    m_bonusRerollPrice = bonusReroll;
-    m_choosePreyPrice = choosePrey;
+    setListRerollPrice(listReroll);
+    setBonusRerollPrice(bonusReroll);
+    setChoosePreyPrice(choosePrey);
+}
+
+void TPreyStorage::setListRerollPrice(const int price)
+{
+    if (m_listRerollPrice == price)
+        return;
+    m_listRerollPrice = price;
     Q_EMIT listRerollPriceChanged();
+}
+
+void TPreyStorage::setBonusRerollPrice(const int price)
+{
+    if (m_bonusRerollPrice == price)
+        return;
+    m_bonusRerollPrice = price;
     Q_EMIT bonusRerollPriceChanged();
+    Q_EMIT bonusRerollPossibleChanged();
+}
+
+void TPreyStorage::setChoosePreyPrice(const int price)
+{
+    if (m_choosePreyPrice == price)
+        return;
+    m_choosePreyPrice = price;
     Q_EMIT choosePreyPriceChanged();
-    if (bonusPossible != bonusRerollPossible())
-        Q_EMIT bonusRerollPossibleChanged();
-    if (choosePossible != choosePreyPossible())
-        Q_EMIT choosePreyPossibleChanged();
+    Q_EMIT choosePreyPossibleChanged();
 }
 
 void TPreyStorage::setPreyWildcards(const int amount)
 {
     if (amount == m_preyWildcards)
         return;
-    const bool bonusPossible = bonusRerollPossible();
-    const bool choosePossible = choosePreyPossible();
     m_preyWildcards = amount;
     Q_EMIT preyWildcardAmountChanged();
-    if (bonusPossible != bonusRerollPossible())
-        Q_EMIT bonusRerollPossibleChanged();
-    if (choosePossible != choosePreyPossible())
-        Q_EMIT choosePreyPossibleChanged();
+    Q_EMIT bonusRerollPossibleChanged();
+    Q_EMIT choosePreyPossibleChanged();
 }
 
 }
@@ -550,7 +640,7 @@ void TPreyRenderInfo::confirmBestiaryPreyCreatureClicked(const int MonsterRaceID
 void TPreyRenderInfo::unlockPermanentlyClicked() { openStore(3, 0); }
 
 /// CIP .
-void TPreyRenderInfo::unlockWithPermiumClicked() { openStore(1, -1); }
+void TPreyRenderInfo::unlockWithPermiumClicked() { openStore(1, 0); }
 
 /// CIP .
 void TPreyRenderInfo::autoExtendPreydClicked(const EExtendType QMLAutoExtendType)
@@ -563,7 +653,16 @@ void TPreyRenderInfo::autoExtendPreydClicked(const EExtendType QMLAutoExtendType
     Q_EMIT requestChangeAutoExtendType(preyId(), type);
 }
 
-void TPreyRenderInfo::setMonsterRacesFilter(const QString& NameFilter) { m_bestiaryProxy.setNameFilter(NameFilter); }
+/// A new filter rebuilds the race list before the proxy filters it.
+void TPreyRenderInfo::setMonsterRacesFilter(const QString& NameFilter)
+{
+    if (m_monsterRacesFilter == NameFilter)
+        return;
+    m_monsterRacesFilter = NameFilter;
+    onMonsterRaceListChanged();
+    if (m_bestiaryProxy.nameFilter() != m_monsterRacesFilter)
+        m_bestiaryProxy.setNameFilter(m_monsterRacesFilter);
+}
 
 TPreyPreyPageController::TPreyPreyPageController(prey::TPreyStorage* storage, QObject* parent)
     : cip::tibia::gamewindow::TPreyPreyPageController(parent)

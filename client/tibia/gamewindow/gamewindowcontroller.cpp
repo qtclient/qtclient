@@ -196,6 +196,30 @@ void TGameWindowController::setStatusBarController(QObject* controller)
     m_statusBarController = controller;
 }
 
+void TGameWindowController::setGameWindowItem(QQuickItem* gameWindowItem)
+{
+    m_gameWindowItem = gameWindowItem;
+    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
+            &TGameWindowController::onClientOptionsChangedAfterShowGameWindows, Qt::UniqueConnection);
+    onClientOptionsChangedAfterShowGameWindows();
+}
+
+void TGameWindowController::onClientOptionsChangedAfterShowGameWindows()
+{
+    const QJsonObject options = app::ClientOptions::load().options();
+    if (m_container)
+        m_container->setProperty("backgroundImageSmooth", options.value(QLatin1String("antialiasingMode")).toInt() == 1);
+    if (m_gameWindowItem) {
+        if (auto* cooldownBar = m_gameWindowItem->findChild<QQuickItem*>(QStringLiteral("cooldownBar")))
+            cooldownBar->setVisible(options.value(QLatin1String("cooldownBarEnabled")).toBool(true));
+    }
+    // The pane layout getters read their options.
+    m_upperPaneHeight = static_cast<uint>(options.value(QLatin1String(UpperPaneHeight)).toInt());
+    m_lowerPaneHeight = static_cast<uint>(options.value(QLatin1String(LowerPaneHeight)).toInt());
+    m_resizingMode = static_cast<EResizingMode>(options.value(QLatin1String(ResizingMode)).toInt());
+    Q_EMIT layoutChanged();
+}
+
 void TGameWindowController::configureClientServices(const QUrl& url, const QString& clientRevision)
 {
     const QUrl service = url.isEmpty() ? QUrl() : url;
@@ -628,7 +652,9 @@ void TGameWindowController::showQuitGameDialog()
 
 void TGameWindowController::optionsPressed()
 {
-    Q_EMIT optionsMenuRequested(0);
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_OPTIONS_MENU_DIALOG));
+    action->parameter = 0;
+    input::publish(action);
 }
 
 }

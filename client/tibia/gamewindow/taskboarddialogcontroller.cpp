@@ -1,6 +1,7 @@
 #include "taskboarddialogcontroller.h"
 
 #include "gamewindow/bountytaskscontroller.h"
+#include "gamewindow/messagedialogcontroller.h"
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/taskboardshopcontroller.h"
 #include "gamewindow/weeklytaskscontroller.h"
@@ -34,7 +35,7 @@ uint64_t resourceBalance(const tibia::client::ResourceTypes_t type)
 
 QString formatBalance(const uint64_t value)
 {
-    return QLocale::system().toString(static_cast<qulonglong>(value));
+    return QLocale(QLocale::English).toString(static_cast<qulonglong>(value));
 }
 
 template <typename T>
@@ -50,6 +51,7 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
     , m_bounty(new TBountyTasksController(this))
     , m_weekly(new TWeeklyTasksController(this))
     , m_shop(new TTaskboardShopController(this))
+    , m_notOnMain(new TMessageDialogController(this))
 {
     m_bountyTaskController = m_bounty;
     m_weeklyTaskController = m_weekly;
@@ -95,8 +97,13 @@ TTaskboardDialogController::TTaskboardDialogController(QObject* parent)
         dialog()->destroy();
     });
 
-    input::setActionHandler(A::OPEN_TASKBOARD_DIALOG, [this](const input::TGameAction&) {
-        openOrUpdate();
+    m_notOnMain->setCloseOnButtonClicked(true);
+    // The action's parameter picks the tab: 0 bounty tasks, 1 weekly tasks.
+    input::setActionHandler(A::OPEN_TASKBOARD_DIALOG, [this](const input::TGameAction& action) {
+        if (action.parameter == 0)
+            showDialog(BountyTasks);
+        else if (action.parameter == 1)
+            showDialog(WeeklyTasks);
         return true;
     });
 }
@@ -106,23 +113,16 @@ TTaskboardDialogController::~TTaskboardDialogController()
     input::setActionHandler(A::OPEN_TASKBOARD_DIALOG, nullptr);
 }
 
-bool TTaskboardDialogController::isOpen() const { return dialog()->isShown(); }
-
-void TTaskboardDialogController::openOrUpdate()
-{
-    if (isOpen()) {
-        closeDialog();
-        return;
-    }
-    showDialog(BountyTasks);
-}
-
+/// Reopens the dialog on `Tab`; before the character reached the main land
+/// it only explains why there is no task board.
 void TTaskboardDialogController::showDialog(const DialogTab& Tab)
 {
-    const DialogTab tab = Tab == NoTabInitialState ? BountyTasks : Tab;
-    if (m_dialogTab != tab) {
-        m_dialogTab = tab;
-        Q_EMIT dialogTabChanged();
+    closeDialog();
+    if (!tibia::game::localPlayer() || !tibia::game::localPlayerHasReachedMain()) {
+        m_notOnMain->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
+                                                           QKeySequence(QStringLiteral("Return"))) });
+        m_notOnMain->showMessage(qtTrId("taskboard_need_to_reach_main_caption"), qtTrId("taskboard_need_to_reach_main_text"));
+        return;
     }
     refreshCurrencies();
     m_dialogCreating = true;
@@ -132,35 +132,65 @@ void TTaskboardDialogController::showDialog(const DialogTab& Tab)
         m_pendingResourceRefresh = false;
         refreshFromResourceBalance();
     }
-    requestDataForTab(tab);
+    switchToTab(Tab);
 }
 
-void TTaskboardDialogController::closeDialog() { dialog()->close(); }
+void TTaskboardDialogController::closeDialog()
+{
+    m_bounty->clearNameFilter();
+    dialog()->close();
+}
 
-void TTaskboardDialogController::requestClose() { closeDialog(); }
+/// While the bounty tab shows its preferred-monster list, closing only closes that list.
+void TTaskboardDialogController::requestClose()
+{
+    if (m_dialogTab == BountyTasks && m_bounty->showPreferredList()) {
+        m_bounty->setShowPreferredList(false);
+        m_bounty->clearNameFilter();
+        return;
+    }
+    closeDialog();
+}
 
 void TTaskboardDialogController::requestTabSwitch(const DialogTab& NewTab)
 {
-    if (NewTab == NoTabInitialState || NewTab == m_dialogTab)
+    if (NewTab == m_dialogTab)
         return;
-    m_dialogTab = NewTab;
-    Q_EMIT dialogTabChanged();
-    requestDataForTab(NewTab);
+    switchToTab(NewTab);
 }
 
-void TTaskboardDialogController::requestDataForTab(const DialogTab tab)
+/// Shows the new tab's page, then hides the previous one (also when it is the same page).
+void TTaskboardDialogController::switchToTab(const DialogTab tab)
 {
-    if (!tibia::game::canPerformGameAction())
-        return;
+    const DialogTab previous = m_dialogTab;
+    DialogTab shown = NoTabInitialState;
     switch (tab) {
     case BountyTasks:
         m_bounty->showDialogTab();
+        shown = tab;
         break;
     case WeeklyTasks:
         m_weekly->showDialogTab();
+        shown = tab;
         break;
     case Shop:
         m_shop->showDialogTab();
+        shown = tab;
+        break;
+    case NoTabInitialState:
+        break;
+    }
+    m_dialogTab = shown;
+    Q_EMIT dialogTabChanged();
+    switch (previous) {
+    case BountyTasks:
+        m_bounty->hideDialogTab();
+        break;
+    case WeeklyTasks:
+        m_weekly->hideDialogTab();
+        break;
+    case Shop:
+        m_shop->hideDialogTab();
         break;
     case NoTabInitialState:
         break;

@@ -2,9 +2,7 @@
 
 #include "app/clientoptions.h"
 
-#include <QFile>
 #include <QJsonArray>
-#include <QJsonDocument>
 #include <QJsonObject>
 
 #include <algorithm>
@@ -74,9 +72,22 @@ SpecialConditionsOptions SpecialConditionsOptions::load()
 
 SpecialConditionsOptions SpecialConditionsOptions::defaults()
 {
-    QFile file(QStringLiteral(":/conf/clientoptions.json"));
-    const QJsonObject root = file.open(QIODevice::ReadOnly) ? QJsonDocument::fromJson(file.readAll()).object() : QJsonObject();
-    return fromJson(root.value(QLatin1String("specialConditionsOptions")).toObject());
+    // Conditions the HUD leaves out by default; the bar shows every one.
+    static const QSet<SpecialCondition> hiddenInHud = {
+        { C::PlayerStateFlag, 7 },  { C::PlayerStateFlag, 12 }, { C::PlayerStateFlag, 13 },
+        { C::PlayerStateFlag, 14 }, { C::Generic, C::RestingArea }, { C::Generic, C::Goshnar },
+        { C::Generic, C::RottenBlood }, { C::Generic, C::GuildWar }, { C::PlayerStateClient, C::Hungry },
+    };
+    SpecialConditionsOptions o;
+    o.showInHUD = false;
+    o.showInBar = true;
+    o.specialConditionsOrder = known();
+    for (const SpecialCondition& condition : known()) {
+        o.visibleInBar.insert(condition);
+        if (!hiddenInHud.contains(condition))
+            o.visibleInHUD.insert(condition);
+    }
+    return o;
 }
 
 SpecialConditionsOptions SpecialConditionsOptions::fromJson(const QJsonObject& json)

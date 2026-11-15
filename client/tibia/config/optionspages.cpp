@@ -170,6 +170,9 @@ constexpr B ActionBarsBindings[] = {
     { "showRightActionBar2", O::actionBarShowRight2, B::Bool },
     { "showRightActionBar3", O::actionBarShowRight3, B::Bool },
     { "showRightActionBars", O::actionBarsShowRight, B::Bool },
+    { "actionBarBottomLocked", O::actionBarBottomLocked, B::Carried },
+    { "actionBarLeftLocked", O::actionBarLeftLocked, B::Carried },
+    { "actionBarRightLocked", O::actionBarRightLocked, B::Carried },
     { "showHotkey", O::actionButtonShowHotkey, B::Bool },
     { "showAmount", O::actionButtonShowAmount, B::Bool },
     { "showSpellParameters", O::actionButtonShowSpellParameters, B::Bool },
@@ -365,6 +368,26 @@ constexpr B UISoundsBindings[] = {
     { "systemMessagesEnabled", O::SystemMessagesEnabled, B::Bool },
 };
 
+/// A 0..1 float option as a slider percent: rounded, at most 100.
+uint percentOf(const float value)
+{
+    const long percent = std::lround(value * 100.0f);
+    return percent >= 0 && percent < 100 ? static_cast<uint>(percent) : 100u;
+}
+
+/// A slider percent as the 0..1 float option: at most 1, never negative.
+float fractionOf(const uint percent)
+{
+    const float fraction = static_cast<float>(percent) * 0.01f;
+    return fraction < 0.0f ? 0.0f : std::min(fraction, 1.0f);
+}
+
+/// lightAttenuationCloudsIndoor as the slider's step of 0.005, truncated.
+uint cloudsIndexOf(const float value)
+{
+    return static_cast<uint>(static_cast<long>((1.0f - value) / 0.005f));
+}
+
 constexpr auto SpecialConditionsSection = "specialConditionsOptions";
 constexpr auto ControlButtonsSection = "controlButtonsOptions";
 constexpr auto ClientWindowSection = "clientWindowOptions";
@@ -403,13 +426,17 @@ void loadBindings(QObject* page, const std::span<const TOptionBinding> bindings,
             property = static_cast<uint>(std::max(0, value.toInt()));
             break;
         case B::Real:
-            property = value.toDouble();
+            // The option is a float.
+            property = static_cast<double>(static_cast<float>(value.toDouble()));
             break;
         case B::Percent:
-            property = static_cast<uint>(std::clamp(std::lround(value.toDouble() * 100.0), 0L, 100L));
+            property = percentOf(static_cast<float>(value.toDouble()));
             break;
         case B::CloudsIndex:
-            property = static_cast<uint>(std::max(0L, std::lround((1.0 - value.toDouble()) / 0.005)));
+            property = cloudsIndexOf(static_cast<float>(value.toDouble()));
+            break;
+        case B::Carried:
+            property = value.toVariant();
             break;
         }
         page->setProperty(binding.property, property);
@@ -433,13 +460,18 @@ void applyBindings(const QObject* page, const std::span<const TOptionBinding> bi
             value = static_cast<int>(property.toUInt());
             break;
         case B::Real:
-            value = property.toDouble();
+            value = static_cast<double>(static_cast<float>(property.toDouble()));
             break;
         case B::Percent:
-            value = std::clamp(property.toUInt() * 0.01, 0.0, 1.0);
+            value = static_cast<double>(fractionOf(property.toUInt()));
             break;
         case B::CloudsIndex:
-            value = 1.0 - property.toUInt() * 0.005;
+            value = static_cast<double>(static_cast<float>(property.toUInt()) * -0.005f + 1.0f);
+            break;
+        case B::Carried:
+            if (!property.isValid())
+                continue;
+            value = QJsonValue::fromVariant(property);
             break;
         }
         options.insert(optionName(binding.option), value);
@@ -641,6 +673,11 @@ void TEffectsOptionsPage::apply(QJsonObject& settings) const
     setOptionValue(settings, O::lightEffectsEnabled, m_lightEffects);
 }
 
+bool TEffectsOptionsPage::lightEffects() const
+{
+    return m_lightEffects && !rendererLimitationsActive();
+}
+
 void TEffectsOptionsPage::setLightEffects(const bool enabled)
 {
     if (m_lightEffects == enabled || rendererLimitationsActive())
@@ -671,8 +708,9 @@ void TButtonBarOptionsPage::load(const QJsonObject& settings)
         m_enabled = stringList(section[QLatin1String("enabledButtons")]);
         m_disabled = stringList(section[QLatin1String("disabledButtons")]);
     } else {
-        m_enabled = defaultControlButtonIds();
-        m_disabled.clear();
+        const QJsonObject defaults = defaultControlButtonsOptions();
+        m_enabled = stringList(defaults[QLatin1String("enabledButtons")]);
+        m_disabled = stringList(defaults[QLatin1String("disabledButtons")]);
     }
     // Pack shortcuts registered after first ClientOptions::load — surface them here.
     QSet<QString> seen(m_enabled.begin(), m_enabled.end());
@@ -717,24 +755,28 @@ QStringList TButtonBarOptionsPage::disabledButtons() const
 
 void TButtonBarOptionsPage::enableButton(const QString& ButtonName)
 {
-    const QString id = buttonId(ButtonName);
-    if (!m_disabled.removeOne(id))
+    if (ButtonName.isEmpty())
         return;
+    const QString id = buttonId(ButtonName);
+    m_disabled.removeAll(id);
     m_enabled << id;
     Q_EMIT changed();
 }
 
 void TButtonBarOptionsPage::disableButton(const QString& ButtonName)
 {
-    const QString id = buttonId(ButtonName);
-    if (!m_enabled.removeOne(id))
+    if (ButtonName.isEmpty())
         return;
+    const QString id = buttonId(ButtonName);
+    m_enabled.removeAll(id);
     m_disabled << id;
     Q_EMIT changed();
 }
 
 void TButtonBarOptionsPage::moveEnabledButtonUp(const QString& ButtonName)
 {
+    if (ButtonName.isEmpty())
+        return;
     const qsizetype index = m_enabled.indexOf(buttonId(ButtonName));
     if (index <= 0)
         return;
@@ -744,6 +786,8 @@ void TButtonBarOptionsPage::moveEnabledButtonUp(const QString& ButtonName)
 
 void TButtonBarOptionsPage::moveEnabledButtonDown(const QString& ButtonName)
 {
+    if (ButtonName.isEmpty())
+        return;
     const qsizetype index = m_enabled.indexOf(buttonId(ButtonName));
     if (index < 0 || index + 1 >= m_enabled.size())
         return;
@@ -776,10 +820,9 @@ void TSoundOptionsPage::load(const QJsonObject& settings)
 {
     TBoundOptionsPage::load(settings);
     const QString device = optionValue(settings, O::usedSoundDevice).toString();
-    m_soundDevice = device.isEmpty() || device == QLatin1String("auto")
+    m_soundDevice = device.isEmpty() || device.compare(QLatin1String("auto"), Qt::CaseInsensitive) == 0
         ? qtTrId("optionsmenu_sound_used_sound_device_auto")
         : device;
-    m_soundEnabled = m_masterVolume > 0;
     refreshSoundDevices();
     Q_EMIT changed();
 }
@@ -789,17 +832,13 @@ void TSoundOptionsPage::apply(QJsonObject& settings) const
     TBoundOptionsPage::apply(settings);
     if (m_masterVolume != 0)
         setOptionValue(settings, O::soundMasterVolumeOld, static_cast<int>(m_masterVolume));
-    const bool automatic = m_soundDevice == qtTrId("optionsmenu_sound_used_sound_device_auto");
+    const bool automatic = m_soundDevice.isEmpty() || m_soundDevice == qtTrId("optionsmenu_sound_used_sound_device_auto");
     setOptionValue(settings, O::usedSoundDevice, automatic ? QStringLiteral("auto") : m_soundDevice);
 }
 
-void TSoundOptionsPage::setMasterVolume(const uint v)
+bool TSoundOptionsPage::soundEnabled() const
 {
-    if (::cip::unchanged(m_masterVolume, v))
-        return;
-    m_masterVolume = v;
-    m_soundEnabled = v > 0;
-    Q_EMIT changed();
+    return m_soundEngineInitialized && m_masterVolume != 0;
 }
 
 namespace {

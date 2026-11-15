@@ -74,7 +74,8 @@ public:
     /// CIP.
     Q_INVOKABLE void previousPaginatedPage() override;
     Q_INVOKABLE void nextPaginatedPage() override;
-    /// CIP .
+    /// The shown character's skill wheel.
+    Q_INVOKABLE void openSkillWheelDialog() override;
     Q_INVOKABLE void openWeaponProficiencyDialog(uint AppearanceTypeID) override;
     /// CIP CharacterInfoShowSelection outfit/mount/summon preview.
     Q_INVOKABLE void openOutfitDialog(int OutfitID, bool IsOutfit, bool IsMount, bool IsSummonSkin) override;

@@ -10,11 +10,12 @@
 
 #include <QJsonObject>
 #include <QObject>
+#include <QTimer>
 
 #include <algorithm>
-#include <chrono>
 #include <memory>
 #include <string>
+#include <vector>
 #include <tibia/game/gamesession.h>
 
 namespace tibia::qmlcomponents {
@@ -69,22 +70,43 @@ float uiGain(const QJsonObject& options)
     return (master / 100.0f) * (ui / 100.0f);
 }
 
+/// SOUND_TRIGGER effects waiting for the next event-loop pass. CipSoft
+/// queues each effect once and plays the queue from a zero-interval
+/// single-shot timer, so a burst of the same effect plays once.
+std::vector<int>& queuedSounds()
+{
+    static std::vector<int> queue;
+    return queue;
+}
+
+void playQueuedSounds()
+{
+    std::vector<int> queue;
+    queue.swap(queuedSounds());
+    auto* storage = sound::TSoundStorage::instance();
+    if (!storage)
+        return;
+    for (const int soundId : queue) {
+        if (!storage->playUiEffect(static_cast<uint16_t>(soundId), 1.0f) && storage->isBankLoaded())
+            qWarning("%s", std::format("sound: no audio for effect {}", soundId).c_str());
+    }
+}
+
+QTimer& queuedSoundsTimer()
+{
+    static QTimer* timer = [] {
+        auto* t = new QTimer;
+        t->setSingleShot(true);
+        QObject::connect(t, &QTimer::timeout, playQueuedSounds);
+        return t;
+    }();
+    return *timer;
+}
+
 void playTriggeredSound(const int soundId)
 {
     if (soundId <= 0)
         return;
-    // A stall while entering the world drains a burst of the same button
-    // press. One click is one press and one release.
-    if (soundId == static_cast<int>(ESound::BUTTON_PRESS) || soundId == static_cast<int>(ESound::BUTTON_RELEASE)) {
-        using clock = std::chrono::steady_clock;
-        static clock::time_point lastPress{};
-        static clock::time_point lastRelease{};
-        auto& last = soundId == static_cast<int>(ESound::BUTTON_PRESS) ? lastPress : lastRelease;
-        const auto now = clock::now();
-        if (last != clock::time_point{} && now - last < std::chrono::milliseconds(200))
-            return;
-        last = now;
-    }
     const QJsonObject options = app::ClientOptions::load().options();
     if (optionInt(options, "soundMasterVolume", 100) <= 0)
         return;
@@ -93,10 +115,12 @@ void playTriggeredSound(const int soundId)
     const float gain = uiGain(options);
     if (gain <= 0.0f)
         return;
-    if (auto* storage = sound::TSoundStorage::instance()) {
-        if (!storage->playUiEffect(static_cast<uint16_t>(soundId), 1.0f) && storage->isBankLoaded())
-            qWarning("%s", std::format("sound: no audio for effect {}", soundId).c_str());
-    }
+    std::vector<int>& queue = queuedSounds();
+    if (std::find(queue.begin(), queue.end(), soundId) == queue.end())
+        queue.push_back(soundId);
+    QTimer& timer = queuedSoundsTimer();
+    if (!timer.isActive())
+        timer.start();
 }
 
 }
@@ -105,7 +129,7 @@ TSoundHelperService::TSoundHelperService(QObject* parent)
     : cip::tibia::qmlcomponents::TSoundHelperService(parent)
 {}
 
-/// CIP : builds SOUND_TRIGGER (0x12f) with the ESound id and publishes.
+/// Publishes a SOUND_TRIGGER game action for the ESound id.
 void TSoundHelperService::playSound(const ESound Sound)
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));

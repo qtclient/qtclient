@@ -14,7 +14,6 @@ namespace tibia::gamewindow {
 
 namespace {
 
-constexpr auto CooldownBarEnabled = "cooldownBarEnabled";
 
 /// The spell groups on the bar, in order (conjure, group 5, is left out).
 constexpr int BarGroups[] = { 1, 2, 3, 4, 6, 7, 8, 9, 10, 11 };
@@ -100,12 +99,6 @@ TCooldownBarController::TCooldownBarController(QQuickItem* gameWindowItem, QObje
 
     showIdleSpellGroups();
 
-    applyVisibility();
-    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String(CooldownBarEnabled))
-            applyVisibility();
-    });
-
     m_nextFrame.setSingleShot(true);
     m_nextFrame.setInterval(0);
     connect(&m_nextFrame, &QTimer::timeout, this, [this] { update(game::TCooldownStorage::now()); });
@@ -165,13 +158,6 @@ void TCooldownBarController::markDirty()
     m_dirty = true;
     if (!m_nextFrame.isActive())
         m_nextFrame.start();
-}
-
-void TCooldownBarController::applyVisibility()
-{
-    if (!m_bar)
-        return;
-    m_bar->setVisible(app::ClientOptions::load().options().value(QLatin1String(CooldownBarEnabled)).toBool(true));
 }
 
 }

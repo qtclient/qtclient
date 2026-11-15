@@ -50,6 +50,15 @@ public:
 
     void setStatusBarController(QObject* controller);
 
+    /// gamewindow.qml's item, once it is shown: applies the option-driven game
+    /// window state now and again on every option change.
+    void setGameWindowItem(QQuickItem* gameWindowItem);
+    /// The container's backgroundImageSmooth (option antialiasingMode is
+    /// antialiasing), the cooldown bar's visibility (option cooldownBarEnabled)
+    /// and the pane layout (options gameWindowUpperPaneHeight,
+    /// gameWindowLowerPaneHeight, gameWindowResizingMode).
+    void onClientOptionsChangedAfterShowGameWindows() override;
+
     /// Button-bar Compendium / News button (CIP TNewsButtonController).
     TNewsButtonController* newsButton() const { return m_newsButton.get(); }
 
@@ -68,7 +77,8 @@ public:
     /// Persist `email` when remember-email is on (password login and SSO).
     void rememberLoginEmailIfEnabled(const QString& email);
 
-    /// Options 0x3a, 0x3b and 0x3c (CIP , ,).
+    /// Options gameWindowUpperPaneHeight, gameWindowLowerPaneHeight and
+    /// gameWindowResizingMode: a changed value is stored and layoutChanged emitted.
     void setUpperPaneHeight(uint height) override;
     /// CIP: grows clientWindow minimum width by the vertical status/action bars.
     void leftAndRightStatusActionBarWidthChanged(int newWidth) override;
@@ -137,6 +147,7 @@ private:
     void syncAnthemButton();
 
     QPointer<QQuickItem> m_container;
+    QPointer<QQuickItem> m_gameWindowItem;
     bool m_allowWindowClose = false;
     class TMessageDialogController* m_quitDialog = nullptr;
     std::unique_ptr<news::TNewsStorage> m_newsStorage;

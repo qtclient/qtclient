@@ -32,6 +32,9 @@ public:
     QString lootvalueImageSourceOverItem() const override { return m_lootvalueOver; }
 
     const QString& name() const { return m_name; }
+    uint32_t count() const { return m_count; }
+    /// Changes the count; signals countChanged when it changes.
+    void setCount(uint32_t count);
     /// Shows another type in the slot; signals typeIDchanged when it changes.
     void setDisplayTypeID(uint16_t typeId);
     /// Both loot value frame images; signals lootvalueCategoryChanged when either changes.

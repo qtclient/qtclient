@@ -44,12 +44,11 @@ constexpr int PartyListContext = 2;
 constexpr int SharedXpRange = 30;
 constexpr int SharedXpFloors = 1;
 
-/// CIP DAT_1022d2920 + 0x28: a battle list entry's context menu.
+/// The order of a battle list entry's context menu.
 constexpr A ContextMenuOrder[] = {
     A::START_TALKING_TO_NPC, A::ATTACK_CREATURE, A::STOP_ATTACKING_CREATURE, A::FOLLOW_CREATURE, A::STOP_FOLLOWING_CREATURE, A::LOOK,
     A::LOOK_AT_CREATURE, A::CONTEXT_MENU_SEPARATOR, A::OPEN_MESSAGE_TO_CHAT_CHANNEL, A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL, A::ADD_NEW_VIP,
     A::IGNORE_NAME, A::UNIGNORE_NAME, A::INVITE_TO_PARTY, A::JOIN_PARTY, A::REVOKE_PARTY_INVITATION, A::PASS_PARTY_LEADERSHIP, A::JOIN_AGGRESSION,
-    A::SET_SHARED_EXPERIENCE, A::LEAVE_PARTY,
     A::INSPECT_PLAYER, A::ASK_TO_INSPECT_PLAYER, A::INVITE_TO_INSPECT_PLAYER, A::ALLOW_INSPECT_PLAYER, A::REVOKE_INSPECT_PLAYER,
     A::CONTEXT_MENU_SEPARATOR, A::REPORT_NAME, A::REPORT_BOT, A::REPORT_HIRELING_NAME, A::CONTEXT_MENU_SEPARATOR,
     A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD,
@@ -65,7 +64,7 @@ constexpr const char* SortNames[] = {
     "byAgeAscending",       "byAgeDescending",       "byDistanceAscending", "byDistanceDescending",
     "byHitpointsAscending", "byHitpointsDescending", "byNameAscending",     "byNameDescending",
 };
-/// CIP 's sort entries, in Sort order.
+/// The configuration menu's sort entries, in Sort order.
 constexpr const char* SortMenuEntries[] = {
     "battlelist_configure_menuentry_sortby_age_ascending",       "battlelist_configure_menuentry_sortby_age_descending",
     "battlelist_configure_menuentry_sortby_distance_ascending",  "battlelist_configure_menuentry_sortby_distance_descending",
@@ -85,11 +84,6 @@ bool isPartyMember(const TCreature& creature)
 
 /// The protocol's vocation without its promotion.
 int baseVocation(const TCreature& creature) { return creature.vocation() % 10; }
-
-bool isMonster(const TCreature& creature)
-{
-    return !creature.isPlayer() && !creature.isNpc();
-}
 
 QColor colorOf(const Color& c) { return QColor(c.r(), c.g(), c.b()); }
 
@@ -142,37 +136,22 @@ QJsonObject serializeOptions(const BattleListOptions& o)
     };
 }
 
-/// CIP's filter keys on one creature (TBattleListGameActionHandler::filterDrawCommands).
-bool hiddenByFilter(const TCreature& creature, const std::set<Filter>& filters)
+/// A battle list entry's actions: the creature's, then CONTEXT_MENU.
+input::TGameActionList battleListGameActions(const uint32_t creatureId)
 {
-    const auto has = [&filters](const Filter f) { return filters.contains(f); };
-    const bool player = creature.isPlayer();
-    if (player) {
-        if (has(Filter::HIDE_PLAYERS))
-            return true;
-        switch (baseVocation(creature)) {
-            case 1: if (has(Filter::HIDE_KNIGHTS)) return true; break;
-            case 2: if (has(Filter::HIDE_PALADINS)) return true; break;
-            case 3: if (has(Filter::HIDE_SORCERERS)) return true; break;
-            case 4: if (has(Filter::HIDE_DRUIDS)) return true; break;
-            case 5: if (has(Filter::HIDE_MONKS)) return true; break;
-            default: break;
-        }
-        if (has(Filter::HIDE_NON_SKULLED_PLAYERS) && creature.skull() == 0)
-            return true;
-        if (has(Filter::HIDE_PARTY_MEMBERS) && isPartyMember(creature))
-            return true;
-        if (has(Filter::HIDE_MEMBERS_OF_OWN_GUILD) && creature.emblem() == 1)
-            return true;
+    input::TGameActionList actions = input::TGenericObjectGameActionProvider::creatureActions(creatureId);
+    actions.push_back(input::makeAction(A::CONTEXT_MENU));
+    return actions;
+}
+
+/// The first of the actions with `type`, or none.
+input::TGameActionPtr findAction(const input::TGameActionList& actions, const A type)
+{
+    for (const input::TGameActionPtr& action : actions) {
+        if (action && action->type == type)
+            return action;
     }
-    if (creature.isNpc() && has(Filter::HIDE_NPCS))
-        return true;
-    const uint8_t type = creature.creatureType();
-    if ((type == Proto::CreatureTypeSummonOwn || type == Proto::CreatureTypeSummonOther) && has(Filter::HIDE_PLAYER_SUMMONS))
-        return true;
-    if (isMonster(creature) && type != Proto::CreatureTypeSummonOwn && type != Proto::CreatureTypeSummonOther && has(Filter::HIDE_MONSTERS))
-        return true;
-    return false;
+    return nullptr;
 }
 
 }
@@ -241,23 +220,15 @@ TBattleListDataModelSortFilterProxy::TBattleListDataModelSortFilterProxy(QObject
     : QSortFilterProxyModel(parent)
 {
     setDynamicSortFilter(true);
+    sort(0, Qt::AscendingOrder);
 }
 
-void TBattleListDataModelSortFilterProxy::setFilters(std::set<Filter> filters)
+void TBattleListDataModelSortFilterProxy::setOptions(const BattleListOptions& options)
 {
-    if (filters == m_filters)
+    if (options == m_options)
         return;
-    m_filters = std::move(filters);
-    invalidateFilter();
-}
-
-void TBattleListDataModelSortFilterProxy::setSortOrder(std::array<int, 2> order)
-{
-    if (order == m_sortOrder)
-        return;
-    m_sortOrder = order;
+    m_options = options;
     invalidate();
-    sort(0);
 }
 
 bool TBattleListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
@@ -268,93 +239,94 @@ bool TBattleListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, 
     const QModelIndex index = source->index(sourceRow, 0, sourceParent);
     if (!index.isValid())
         return false;
-    if (m_filters.empty())
+    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
+    if (!storage)
         return true;
     const auto creatureId = static_cast<creatures::TCreatureID>(source->data(index, 0x101).toUInt());
-    if (creatureId == 0)
-        return true;
-    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-    const TCreaturePtr creature = storage ? storage->creatureAt(creatureId) : nullptr;
+    const bool inViewport = source->data(index, 0x115).toBool();
+    const TCreaturePtr creature = storage->creatureAt(creatureId);
     if (!creature)
         return true;
-    return !hiddenByFilter(*creature, m_filters);
+    const uint8_t type = creature->creatureType();
+    const bool partyMember = creature->isPartyMember();
+    const uint8_t emblem = creature->emblem();
+    const bool player = type == Proto::CreatureTypePlayer;
+    // The party list shows party members only, the other lists the creatures
+    // in the viewport only.
+    bool hidden = m_options.isPartyView ? !partyMember : !inViewport;
+    for (auto it = m_options.filters.begin(); !hidden && it != m_options.filters.end(); ++it) {
+        switch (*it) {
+            case Filter::HIDE_PLAYERS: hidden = player; break;
+            case Filter::HIDE_KNIGHTS: hidden = player && creature->vocation() == 1; break;
+            case Filter::HIDE_PALADINS: hidden = player && creature->vocation() == 2; break;
+            case Filter::HIDE_DRUIDS: hidden = player && creature->vocation() == 4; break;
+            case Filter::HIDE_SORCERERS: hidden = player && creature->vocation() == 3; break;
+            case Filter::HIDE_MONKS: hidden = player && creature->vocation() == 5; break;
+            case Filter::HIDE_NPCS: hidden = type == Proto::CreatureTypeNpc; break;
+            case Filter::HIDE_MONSTERS: hidden = type == Proto::CreatureTypeMonster; break;
+            case Filter::HIDE_NON_SKULLED_PLAYERS: hidden = player && creature->skull() == 0; break;
+            case Filter::HIDE_PARTY_MEMBERS: hidden = partyMember; break;
+            case Filter::HIDE_PLAYER_SUMMONS: hidden = type == Proto::CreatureTypeSummonOwn; break;
+            case Filter::HIDE_MEMBERS_OF_OWN_GUILD: hidden = emblem == 1 || emblem == 4; break;
+            default: break;
+        }
+    }
+    return !hidden;
 }
 
 bool TBattleListDataModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    QAbstractItemModel* source = sourceModel();
-    if (!source)
+    if (!sourceModel())
         return false;
-    const auto roleUInt = [&](const QModelIndex& index, const int role) {
-        return source->data(index, role).toUInt();
-    };
-    const auto roleFloat = [&](const QModelIndex& index, const int role) {
-        return source->data(index, role).toFloat();
-    };
-    const auto roleString = [&](const QModelIndex& index, const int role) {
-        return source->data(index, role).toString();
-    };
-    for (const int key : m_sortOrder) {
+    const uint leftAge = left.data(0x112).toUInt();
+    const uint rightAge = right.data(0x112).toUInt();
+    const uint leftDistance = left.data(0x113).toUInt();
+    const uint rightDistance = right.data(0x113).toUInt();
+    const float leftHitpoints = left.data(0x103).toFloat();
+    const float rightHitpoints = right.data(0x103).toFloat();
+    const QString leftName = left.data(0x102).toString();
+    const QString rightName = right.data(0x102).toString();
+    // The first sort key on which the two differ decides; the creature id
+    // breaks ties.
+    for (const int key : m_options.sortOrder) {
         switch (key) {
-            case BattleListOptions::ByAgeAscending: {
-                const auto a = roleUInt(left, 0x112);
-                const auto b = roleUInt(right, 0x112);
-                if (a != b)
-                    return a < b;
+            case BattleListOptions::ByAgeAscending:
+                if (leftAge != rightAge)
+                    return leftAge < rightAge;
                 break;
-            }
-            case BattleListOptions::ByAgeDescending: {
-                const auto a = roleUInt(left, 0x112);
-                const auto b = roleUInt(right, 0x112);
-                if (a != b)
-                    return a > b;
+            case BattleListOptions::ByAgeDescending:
+                if (leftAge != rightAge)
+                    return leftAge > rightAge;
                 break;
-            }
-            case BattleListOptions::ByDistanceAscending: {
-                const auto a = roleUInt(left, 0x113);
-                const auto b = roleUInt(right, 0x113);
-                if (a != b)
-                    return a < b;
+            case BattleListOptions::ByDistanceAscending:
+                if (leftDistance != rightDistance)
+                    return leftDistance < rightDistance;
                 break;
-            }
-            case BattleListOptions::ByDistanceDescending: {
-                const auto a = roleUInt(left, 0x113);
-                const auto b = roleUInt(right, 0x113);
-                if (a != b)
-                    return a > b;
+            case BattleListOptions::ByDistanceDescending:
+                if (leftDistance != rightDistance)
+                    return leftDistance > rightDistance;
                 break;
-            }
-            case BattleListOptions::ByHitpointsAscending: {
-                const float a = roleFloat(left, 0x103);
-                const float b = roleFloat(right, 0x103);
-                if (a != b)
-                    return a < b;
+            case BattleListOptions::ByHitpointsAscending:
+                if (leftHitpoints != rightHitpoints)
+                    return leftHitpoints < rightHitpoints;
                 break;
-            }
-            case BattleListOptions::ByHitpointsDescending: {
-                const float a = roleFloat(left, 0x103);
-                const float b = roleFloat(right, 0x103);
-                if (a != b)
-                    return a > b;
+            case BattleListOptions::ByHitpointsDescending:
+                if (leftHitpoints != rightHitpoints)
+                    return leftHitpoints > rightHitpoints;
                 break;
-            }
-            case BattleListOptions::ByNameAscending: {
-                const int c = QString::compare(roleString(left, 0x102), roleString(right, 0x102), Qt::CaseSensitive);
-                if (c != 0)
-                    return c < 0;
+            case BattleListOptions::ByNameAscending:
+                if (leftName != rightName)
+                    return QString::compare(leftName, rightName, Qt::CaseSensitive) < 0;
                 break;
-            }
-            case BattleListOptions::ByNameDescending: {
-                const int c = QString::compare(roleString(left, 0x102), roleString(right, 0x102), Qt::CaseSensitive);
-                if (c != 0)
-                    return c > 0;
+            case BattleListOptions::ByNameDescending:
+                if (leftName != rightName)
+                    return QString::compare(leftName, rightName, Qt::CaseSensitive) > 0;
                 break;
-            }
             default:
                 break;
         }
     }
-    return roleUInt(left, 0x101) < roleUInt(right, 0x101);
+    return left.data(0x101).toUInt() < right.data(0x101).toUInt();
 }
 
 QHash<int, QByteArray> TBattleListDataModel::roleNames() const
@@ -408,17 +380,9 @@ TBattleListController::TBattleListController(const int battleListId, TBattleList
     m_proxy->setSourceModel(&m_model);
     m_battleListModel = QVariant::fromValue<QObject*>(m_proxy);
     m_options = storage->options(battleListId);
-    m_proxy->setFilters(m_options.filters);
-    m_proxy->setSortOrder({ static_cast<int>(m_options.sortOrder[0]), static_cast<int>(m_options.sortOrder[1]) });
-    m_filterButtonsVisible = m_options.showFilters;
-    m_isPartyView = m_options.isPartyView;
-    m_name = m_options.name;
-    m_isPrimary = m_options.isPrimary;
+    m_proxy->setOptions(m_options);
     m_hasPremiumStatus = storage->hasPremium();
     widget()->setInitialContentHeightAndMaximized(m_options.contentHeight, m_options.contentMaximized);
-
-    if (TContextMenuController* menu = TContextMenuController::instance())
-        connect(menu, &TContextMenuController::contextMenuClosed, this, &TBattleListController::onContextMenuControllerMenuClosed);
 
     widget()->createItem(QStringLiteral("battlelist.qml"));
     QQuickItem* item = quickItem();
@@ -433,36 +397,31 @@ TBattleListController::TBattleListController(const int battleListId, TBattleList
 
 TBattleListController::~TBattleListController()
 {
+    QObject::disconnect(m_contextMenuClosed);
     for (const int id : m_actionListeners)
         input::removeActionListener(id);
 }
 
 void TBattleListController::handleGameAction()
 {
-    // CIP moc shared_ptr dispatch; qtclient routes via m_mapper / addActionListener.
+    // The game actions reach the list through the mapper and the action listeners.
 }
 
 void TBattleListController::handleGameActionAtMouseCursor()
 {
-    // Live path: USE_AT_MOUSECURSOR listener → onAtMouseCursor.
+    // USE_AT_MOUSECURSOR reaches onAtMouseCursor through its action listener.
 }
 
 void TBattleListController::handleGameActionCastSpellAtMouseCursor()
 {
-    // Live path: SPELL_AT_MOUSE_CURSOR listener → onAtMouseCursor.
+    // SPELL_AT_MOUSE_CURSOR reaches onAtMouseCursor through its action listener.
 }
 
 bool TBattleListController::onAtMouseCursor(const input::TGameAction& action)
 {
     if (!m_hoveredCreature)
         return false;
-    input::TGameActionPtr target;
-    for (const input::TGameActionPtr& candidate : input::TGenericObjectGameActionProvider::creatureActions(m_hoveredCreature)) {
-        if (candidate->type == A::TARGET_SELECTED) {
-            target = candidate;
-            break;
-        }
-    }
+    const input::TGameActionPtr target = findAction(battleListGameActions(m_hoveredCreature), A::TARGET_SELECTED);
     if (!target || !target->creatureId)
         return false;
     if (action.type == A::USE_AT_MOUSECURSOR) {
@@ -488,14 +447,8 @@ void TBattleListController::applyOptions(const BattleListOptions& options)
 {
     const bool changed = !(options == m_options);
     m_options = options;
-    if (m_proxy) {
-        m_proxy->setFilters(options.filters);
-        m_proxy->setSortOrder({ static_cast<int>(options.sortOrder[0]), static_cast<int>(options.sortOrder[1]) });
-    }
-    m_filterButtonsVisible = options.showFilters;
-    m_isPartyView = options.isPartyView;
-    m_name = options.name;
-    m_isPrimary = options.isPrimary;
+    if (m_proxy)
+        m_proxy->setOptions(options);
     if (changed)
         Q_EMIT optionsChanged();
 }
@@ -508,11 +461,11 @@ void TBattleListController::setPremium(const bool premium)
     Q_EMIT premiumTimeChanged();
 }
 
-bool TBattleListController::filterButtonsVisible() const { return m_filterButtonsVisible; }
-bool TBattleListController::isPartyView() const { return m_isPartyView; }
-QString TBattleListController::name() const { return m_name; }
-bool TBattleListController::isPrimary() const { return m_isPrimary; }
-bool TBattleListController::hasPremiumStatus() const { return m_hasPremiumStatus; }
+bool TBattleListController::filterButtonsVisible() const { return m_options.showFilters; }
+bool TBattleListController::isPartyView() const { return m_options.isPartyView; }
+QString TBattleListController::name() const { return m_options.name.toHtmlEscaped(); }
+bool TBattleListController::isPrimary() const { return m_options.isPrimary; }
+bool TBattleListController::hasPremiumStatus() const { return m_storage->hasPremium(); }
 QVariant TBattleListController::battleListModel() const { return m_battleListModel; }
 
 QQuickItem* TBattleListController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -532,10 +485,11 @@ void TBattleListController::onLevelUpClicked() {}
 void TBattleListController::setCursorToResizeVertical(const bool Enabled) { widget()->setCursorToResizeVertical(Enabled); }
 void TBattleListController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 
-void TBattleListController::setOptions(const BattleListOptions& options)
+void TBattleListController::storeOptions(BattleListOptions options)
 {
+    options.contentHeight = widget()->maximizedContentHeight();
+    options.contentMaximized = widget()->isMaximized();
     m_storage->setOptions(m_id, options);
-    m_storage->triggerUpdate();
 }
 
 bool TBattleListController::isFilterActive(const EBattleListWidgetFilterKey filterKey) { return m_options.filters.contains(filterKey); }
@@ -545,29 +499,25 @@ void TBattleListController::toggleFilter(const EBattleListWidgetFilterKey filter
     BattleListOptions options = m_options;
     if (!options.filters.erase(filterKey))
         options.filters.insert(filterKey);
-    setOptions(options);
+    storeOptions(options);
 }
 
 void TBattleListController::onFilterButtonsVisibleClicked()
 {
     BattleListOptions options = m_options;
     options.showFilters = !options.showFilters;
-    setOptions(options);
+    storeOptions(options);
 }
 
-void TBattleListController::saveWidgetOptions()
-{
-    BattleListOptions options = m_options;
-    options.contentHeight = widget()->maximizedContentHeight();
-    options.contentMaximized = widget()->isMaximized();
-    m_storage->setOptions(m_id, options);
-}
+void TBattleListController::saveWidgetOptions() { storeOptions(m_options); }
 
 void TBattleListController::onRequestClose() { Q_EMIT battleListClosed(m_id); }
 
 void TBattleListController::requestOpenSecondaryBattleList()
 {
-    if (m_hasPremiumStatus) {
+    // Premium opens a new list in the first sidebar with room, free accounts
+    // get the store's premium page.
+    if (hasPremiumStatus()) {
         auto action = input::mutableClone(*input::makeAction(A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR));
         action->instance = 0xff;
         action->sidebarId = 0xff;
@@ -589,9 +539,7 @@ void TBattleListController::onNewNameEntered(const QString& EnteredName)
 {
     BattleListOptions options = m_options;
     options.name = EnteredName.toHtmlEscaped();
-    options.contentHeight = widget()->maximizedContentHeight();
-    options.contentMaximized = widget()->isMaximized();
-    m_storage->setOptions(m_id, options);
+    storeOptions(options);
 }
 
 void TBattleListController::requestMakePrimary()
@@ -627,7 +575,7 @@ void TBattleListController::onShowConfigurationMenu()
             &TBattleListController::requestEditName);
     if (!m_options.isPartyView) {
         TContextMenuEntryItem* secondary =
-            menu->addCustomEntry(qtTrId("battlelist_open_secondary"), m_hasPremiumStatus ? QString() : qtTrId("context_premium_feature"));
+            menu->addCustomEntry(qtTrId("battlelist_open_secondary"), hasPremiumStatus() ? QString() : qtTrId("context_premium_feature"));
         connect(secondary, &TContextMenuEntryItem::triggered, this, &TBattleListController::requestOpenSecondaryBattleList);
         if (!m_options.isPrimary) {
             connect(menu->addCustomEntry(qtTrId("battlelist_make_primary")), &TContextMenuEntryItem::triggered, this,
@@ -635,14 +583,15 @@ void TBattleListController::onShowConfigurationMenu()
         }
     }
     menu->addCustomSeparator();
+    // Picking a sort key makes it the first key, by age ascending the second.
     for (int i = 0; i < static_cast<int>(std::size(SortMenuEntries)); ++i) {
         TContextMenuEntryItem* entry = menu->addCustomEntry(qtTrId(SortMenuEntries[i]));
         entry->setCheckable(true);
         entry->setChecked(m_options.sortOrder[0] == i);
         connect(entry, &TContextMenuEntryItem::triggered, this, [this, i] {
             BattleListOptions options = m_options;
-            options.sortOrder = { static_cast<BattleListOptions::Sort>(i), m_options.sortOrder[0] };
-            setOptions(options);
+            options.sortOrder = { static_cast<BattleListOptions::Sort>(i), BattleListOptions::ByAgeAscending };
+            storeOptions(options);
         });
     }
     menu->showCustomMenu();
@@ -650,74 +599,66 @@ void TBattleListController::onShowConfigurationMenu()
 
 int TBattleListController::mapperContext() const { return m_options.isPartyView ? PartyListContext : BattleListContext; }
 
-void TBattleListController::temporarySelect(const uint32_t creatureId)
-{
-    for (const input::TGameActionPtr& action : input::TGenericObjectGameActionProvider::creatureActions(creatureId)) {
-        if (action->type == A::TEMPORARY_SELECT_CREATURE) {
-            input::publish(action);
-            break;
-        }
-    }
-}
-
 void TBattleListController::onCurrentlyHoveredCreatureChanged(const int creatureId)
 {
-    const bool entered = m_hoveredCreature == 0 && creatureId != 0;
-    const bool exited = m_hoveredCreature != 0 && creatureId == 0;
     m_hoveredCreature = static_cast<uint32_t>(creatureId);
+    // While an entry's context menu is open, that entry stays selected.
+    const uint32_t selected = m_lockedCreature ? m_lockedCreature : m_hoveredCreature;
+    const input::TGameActionList actions = battleListGameActions(selected);
+    const input::TGameActionPtr temporarySelect = findAction(actions, A::TEMPORARY_SELECT_CREATURE);
+    const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
+    const input::TGameActionPtr action = m_mapper.map(actions, mapperContext(), Qt::LeftButton, modifiers);
     if (Cursor* cursor = Cursor::instance()) {
-        if (entered)
-            cursor->onBattleListEntered();
-        else if (exited)
+        if (action)
+            cursor->setLayerShape(Cursor::BattleList, worldmap::TWorldMapGameActionProvider::cursorShapeOf(action));
+        if (creatureId == 0)
             cursor->onBattleListExited();
-        if (m_hoveredCreature) {
-            const int modifiers = static_cast<int>(QGuiApplication::queryKeyboardModifiers());
-            const input::TGameActionPtr action = m_mapper.map(input::TGenericObjectGameActionProvider::creatureActions(m_hoveredCreature),
-                                                              mapperContext(), Qt::LeftButton, modifiers);
-            cursor->setLayerShape(Cursor::BattleList, action ? worldmap::TWorldMapGameActionProvider::cursorShapeOf(action) : Cursor::Default);
-        }
+        else
+            cursor->onBattleListEntered();
     }
-    temporarySelect(m_lockedCreature ? m_lockedCreature : m_hoveredCreature);
+    if (temporarySelect)
+        input::publish(temporarySelect);
 }
 
 void TBattleListController::onCreatureClicked(const int creatureId, const int mouseButton, const int keyboardModifiers)
 {
-    const input::TGameActionList candidates = input::TGenericObjectGameActionProvider::creatureActions(static_cast<uint32_t>(creatureId));
-    input::TGameActionList withMenu = candidates;
-    withMenu.push_back(input::makeAction(A::CONTEXT_MENU));
+    const input::TGameActionList actions = battleListGameActions(static_cast<uint32_t>(creatureId));
     const input::TGameActionPtr action =
-        m_mapper.map(withMenu, mapperContext(), static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
+        m_mapper.map(actions, mapperContext(), static_cast<Qt::MouseButton>(mouseButton), keyboardModifiers);
     if (!action)
         return;
     if (action->type != A::CONTEXT_MENU) {
         input::publish(action);
         return;
     }
+    m_lockedCreature = static_cast<uint32_t>(creatureId);
+    onCurrentlyHoveredCreatureChanged(static_cast<int>(m_hoveredCreature));
+    showCreatureContextMenu(input::contextMenuActions(actions, ContextMenuOrder));
+}
+
+void TBattleListController::showCreatureContextMenu(const input::TGameActionList& actions)
+{
     TContextMenuController* menu = TContextMenuController::instance();
     if (!menu)
         return;
-    m_lockedCreature = static_cast<uint32_t>(creatureId);
-    temporarySelect(m_lockedCreature);
-    if (const input::TGameActionList entries = input::contextMenuActions(candidates, ContextMenuOrder); !entries.empty())
-        menu->showGameActions(entries, mapperContext(), m_mapper);
+    QObject::disconnect(m_contextMenuClosed);
+    m_contextMenuClosed =
+        connect(menu, &TContextMenuController::contextMenuClosed, this, &TBattleListController::onContextMenuControllerMenuClosed);
+    // The modifier hints are those of a battle list (not the party list).
+    menu->showGameActions(actions, BattleListContext, m_mapper);
 }
 
 void TBattleListController::onContextMenuControllerMenuClosed()
 {
-    if (!m_lockedCreature)
-        return;
     m_lockedCreature = 0;
-    temporarySelect(m_hoveredCreature);
+    onCurrentlyHoveredCreatureChanged(static_cast<int>(m_hoveredCreature));
+    QObject::disconnect(m_contextMenuClosed);
 }
 
 void TBattleListController::onCreatureTargetSelected(const int creatureId)
 {
-    for (const input::TGameActionPtr& action : input::TGenericObjectGameActionProvider::creatureActions(static_cast<uint32_t>(creatureId))) {
-        if (action->type == A::TARGET_SELECTED) {
-            input::publish(action);
-            return;
-        }
-    }
+    if (const input::TGameActionPtr action = findAction(battleListGameActions(static_cast<uint32_t>(creatureId)), A::TARGET_SELECTED))
+        input::publish(action);
 }
 
 // ---------------------------------------------------------------------------

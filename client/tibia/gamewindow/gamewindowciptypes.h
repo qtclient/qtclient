@@ -453,15 +453,21 @@ public:
     static TInspectPlayerDialogController* instance();
 
 public Q_SLOTS:
+    /// Also drops the pointing hand and the rows.
     void closeDialog() override;
     void okButtonClicked() override;
+    /// The Cyclopedia's character tab; closes.
+    void openCharacterInfoClicked() override;
     void copyToClipboarClicked(const QString& Text) override;
+    /// The inspected player's skill wheel.
+    void openSkillWheelDialog() override;
     void openWeaponProficiencyDialogClicked(uint AppearanceTypeID) override;
 
 private:
     void showPlayer(const CyclopediaCharacterInspection& data);
     static TInspectPlayerDialogController* s_instance;
     std::vector<client::gamecore::Hook> m_hooks;
+    uint32_t m_inspectedPlayerId = 0;
 };
 
 // CipSoft DepotSearchWidget lives in depotsearchwidgetcontroller.h.cpp

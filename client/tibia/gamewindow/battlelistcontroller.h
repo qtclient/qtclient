@@ -121,8 +121,8 @@ private:
     std::vector<BattleListEntry> m_entries;
 };
 
-/// CIP: TBattleListDataModelSortFilterProxy (filterAcceptsRow ,
-/// lessThan).
+/// One battle list's view of the rows (CIP: TBattleListDataModelSortFilterProxy):
+/// the list's options decide which rows show and their order.
 class TBattleListDataModelSortFilterProxy final : public QSortFilterProxyModel
 {
     Q_OBJECT
@@ -131,16 +131,15 @@ public:
 
     explicit TBattleListDataModelSortFilterProxy(QObject* parent = nullptr);
 
-    void setFilters(std::set<Filter> filters);
-    void setSortOrder(std::array<int, 2> order);
+    /// Takes the list's options and re-filters and re-sorts when they changed.
+    void setOptions(const BattleListOptions& options);
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
 private:
-    std::set<Filter> m_filters;
-    std::array<int, 2> m_sortOrder{ 0, 0 };
+    BattleListOptions m_options;
 };
 
 /// One battle list widget, battlelist.qml (CIP: TBattleListController,
@@ -161,7 +160,7 @@ public:
     void setEntries(std::vector<BattleListEntry> entries) { m_model.setEntries(std::move(entries)); }
     void setPremium(bool premium);
 
-    /// CIP moc property getters (live members filled by applyOptions / setPremium).
+    /// The QML properties, read from the list's options.
     bool filterButtonsVisible() const override;
     bool isPartyView() const override;
     QString name() const override;
@@ -233,11 +232,15 @@ private Q_SLOTS:
 
 private:
     int mapperContext() const;
-    void setOptions(const BattleListOptions& options);
-    void temporarySelect(uint32_t creatureId);
-    /// CIP (USE_AT_MOUSECURSOR , SPELL_AT_MOUSE_CURSOR
-    /// ): the hovered entry's TARGET_SELECTED creature takes the
-    /// object (USE_ON_CREATURE) or the spell (Talk aimed, mode 2, at its field).
+    /// Stores `options` with the widget's current height and maximized state.
+    void storeOptions(BattleListOptions options);
+    /// The entry's context menu: its actions in the battle list's order, the
+    /// modifier hints of a left click, and the creature stays selected until
+    /// the menu closes.
+    void showCreatureContextMenu(const input::TGameActionList& actions);
+    /// USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR: the hovered entry's
+    /// TARGET_SELECTED creature takes the object (USE_ON_CREATURE) or the
+    /// spell (Talk aimed, mode 2, at its field).
     bool onAtMouseCursor(const input::TGameAction& action);
 
     int m_id;
@@ -251,6 +254,7 @@ private:
     BattleListOptions m_options;
     uint32_t m_hoveredCreature = 0;
     uint32_t m_lockedCreature = 0;
+    QMetaObject::Connection m_contextMenuClosed;
     std::vector<int> m_actionListeners;
 };
 

@@ -41,7 +41,6 @@ private:
     /// "<name> (<seconds> sec. cooldown)" for a spell's icon.
     static QString spellTooltip(int spellId);
     /// Option 0x77 cooldownBarEnabled; CIP's game window controller does this.
-    void applyVisibility();
 
     QPointer<QQuickItem> m_bar;
     bool m_dirty = false;

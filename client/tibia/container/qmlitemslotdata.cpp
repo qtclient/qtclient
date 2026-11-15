@@ -51,6 +51,14 @@ QString TQMLItemSlotData::tooltipString() const
     return QStringLiteral("%1x %2").arg(QLocale(QLocale::English).toString(m_count), m_name);
 }
 
+void TQMLItemSlotData::setCount(const uint32_t count)
+{
+    if (m_count == count)
+        return;
+    m_count = count;
+    Q_EMIT countChanged();
+}
+
 void TQMLItemSlotData::setDisplayTypeID(const uint16_t typeId)
 {
     if (m_displayTypeId == typeId)

@@ -417,6 +417,11 @@ void TQuestLogController::clear()
 void TQuestLogController::closeButtonPressed()
 {
     dialog()->close();
+    // Closing forgets the selection and resets the quest line list's filter and sorting.
+    m_selectedQuestLineId = 0;
+    m_selectedQuestFlagId = 0;
+    m_linesProxy.resetFilter();
+    m_linesProxy.setSortOrder(int(cip::tibia::qmlcomponents::enums::ESortOrder::AtoZ));
 }
 
 /// CIP .
@@ -456,7 +461,7 @@ void TQuestLogController::selectedQuestFlag(const int QuestFlagID)
 void TQuestLogController::questTrackerButtonPressed()
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::TOGGLE_WIDGET));
-    action->parameter = 10;
+    action->instance = 10;
     input::publish(action);
 }
 

@@ -12,6 +12,7 @@
 #include <QPointer>
 
 #include <memory>
+#include <span>
 
 class QQuickItem;
 
@@ -91,8 +92,7 @@ public Q_SLOTS:
     void onMinimapMouseMoved(int x, int y) override;
     void updateMouseCursor() override;
     void updateTimeDisplay() override;
-    /// CIP : OPEN_CYCLOPEDIA, Map tab (4), at the visible area's
-    /// centre.
+    /// OPEN_CYCLOPEDIA, map tab (4), at the player's field.
     void onCyclopediaMapButtonClicked() override;
 
 private:
@@ -105,6 +105,10 @@ private:
     /// CIP : the player's field is light (blue 255) on the minimap.
     bool crosshairIsDark() const;
     input::TGameActionList actionsAtMouse() const;
+    /// A click on the minimap: the mapped action runs, or the context menu
+    /// opens with the actions in `contextMenuOrder`.
+    void dispatchClick(const input::TGameActionList& actions, int mouseButton, int modifiers,
+                       std::span<const input::EGameAction> contextMenuOrder);
 
     minimap::TMinimapVisibleArea m_area;
     minimap::TMinimapGameActionProvider m_actions;
@@ -117,10 +121,10 @@ private:
     QPointer<QQuickItem> m_timeDisplay;
     Position m_playerPosition;
     QPoint m_mouse;
-    QPointF m_dragRemainder;
-    /// CIP +0x118/+0x120: last normalised mouse on the rose (0..1). qtclient writes
-    /// these from rose clicks; CipSoft's QML never did.
-    QPointF m_roseMouseNormalized{0.5, 0.5};
+    float m_dragRemainderX = 0;
+    float m_dragRemainderY = 0;
+    /// The last mouse position on the rose, normalised to 0..1 (unset: NaN).
+    QPointF m_roseMouseNormalized{ qSNaN(), qSNaN() };
     client::gamecore::Hook m_positionHook;
 };
 

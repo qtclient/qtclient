@@ -628,6 +628,7 @@ int main(int argc, char** argv)
     }
     gameWindowItem->setParentItem(placeholder);
     gameWindowItem->setProperty("controller", QVariant::fromValue<QObject*>(&gameWindowController));
+    gameWindowController.setGameWindowItem(gameWindowItem);
     gameWindowController.configureClientServices(env.clientServicesUrl(), env.revision);
     gameWindowController.showStartScreen();
     auto* dialogPlaceholder = gameWindowItem->findChild<QQuickItem*>(QStringLiteral("dialogPlaceholder"));
@@ -786,6 +787,7 @@ int main(int argc, char** argv)
     engine->rootContext()->setContextProperty(QStringLiteral("tibiaDragAndDropController"), &dragAndDrop);
     store::TStoreStorage storeStorage;
     store::TStoreProtocolMessageHandler storeMessages;
+    storeMessages.setStorage(&storeStorage);
     gamewindow::TStoreAndResourceBalanceHelperController storeBalance(&storeStorage);
     engine->rootContext()->setContextProperty(QStringLiteral("storeAndResourceBalanceHelper"), &storeBalance);
     gamewindow::TStoreDialogController storeDialog(&storeStorage, &storeMessages);
@@ -1015,8 +1017,6 @@ int main(int argc, char** argv)
     optionsDialog.setPortalBase(env.loginBase);
     qInfo("tibia.boot: after OptionsMenuDialog");
     input::TOpenWebsiteGameActionHandler openWebsiteActions(env);
-    QObject::connect(&gameWindowController, &gamewindow::TGameWindowController::optionsMenuRequested, &optionsDialog,
-                     &gamewindow::TOptionsMenuDialogController::open);
     input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG, [&optionsDialog](const input::TGameAction& action) {
         optionsDialog.open(action.parameter);
         return true;

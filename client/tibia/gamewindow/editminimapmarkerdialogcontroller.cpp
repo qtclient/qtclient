@@ -1,11 +1,11 @@
 #include "editminimapmarkerdialogcontroller.h"
 
 #include "input/gameaction.h"
-#include "input/gameactionhandlers.h"
+#include "minimap/minimapmarkerstorage.h"
 
 #include <QQuickItem>
 
-#include <memory>
+#include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
 
@@ -15,17 +15,14 @@ using A = input::EGameAction;
 
 }
 
-TEditMinimapMarkerDialogController::TEditMinimapMarkerDialogController(QObject* parent)
+TEditMinimapMarkerDialogController::TEditMinimapMarkerDialogController(minimap::TMinimapMarkerStorage* markers, QObject* parent)
     : TDialogController(QStringLiteral("EditMinimapMarkerDialog.qml"), parent)
+    , m_markers(markers)
 {
 }
 
-void TEditMinimapMarkerDialogController::open(const Position& position, const QString& text, const int symbolId,
-                                              const bool editing)
+void TEditMinimapMarkerDialogController::showDialog(const QString& text, const int symbolId)
 {
-    Q_UNUSED(editing);
-    m_position = position;
-    dialog()->destroy();
     dialog()->create();
     if (QQuickItem* item = dialog()->item()) {
         item->setProperty("text", text);
@@ -34,16 +31,48 @@ void TEditMinimapMarkerDialogController::open(const Position& position, const QS
     dialog()->show();
 }
 
+void TEditMinimapMarkerDialogController::showForMarkerAt(const Position& position)
+{
+    m_position = position;
+    const auto marker = m_markers ? m_markers->markerAt(position) : std::nullopt;
+    if (marker)
+        showDialog(QString::fromStdString(marker->description), marker->icon);
+    else
+        showDialog(QString(), 0);
+}
+
+void TEditMinimapMarkerDialogController::showForCurrentPosition()
+{
+    if (!tibia::game::localPlayer())
+        return;
+    showForMarkerAt(tibia::game::localPlayerPosition());
+}
+
+void TEditMinimapMarkerDialogController::handleGameAction(const input::TGameAction& action)
+{
+    switch (action.type) {
+        case A::SHOW_DIALOG_CREATE_MINIMAP_MARKER:
+            m_position = action.position;
+            showDialog(QString(), 0);
+            break;
+        case A::SHOW_DIALOG_EDIT_MINIMAP_MARKER:
+            showForMarkerAt(action.position);
+            break;
+        case A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION:
+            showForCurrentPosition();
+            break;
+        default:
+            break;
+    }
+}
+
 void TEditMinimapMarkerDialogController::onCancelClicked() { dialog()->close(); }
 
 void TEditMinimapMarkerDialogController::onOkClicked(const QString& Text, const int SymbolID)
 {
-    auto action = input::mutableClone(
-        *input::makeObjectAction(A::UPDATE_MINIMAP_MARKER, m_position, -1));
-    action->text = Text;
-    action->parameter = SymbolID;
-    input::publish(action);
     dialog()->close();
+    if (m_markers)
+        m_markers->createOrUpdate(m_position, static_cast<uint8_t>(SymbolID), Text);
 }
 
 void TEditMinimapMarkerDialogController::onControllerFinished() { dialog()->close(); }

@@ -59,7 +59,6 @@ private:
 
     QString m_bundledMarkersJson;
     std::unique_ptr<gamewindow::TEditMinimapMarkerDialogController> m_dialog;
-    Position m_pendingPosition;
     QSet<QString> m_userOwned;
     QSet<QString> m_deleted;
     bool m_savePending = false;

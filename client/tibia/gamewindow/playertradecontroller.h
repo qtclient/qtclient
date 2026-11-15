@@ -4,43 +4,52 @@
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "input/gameaction.h"
 #include "trade/playertradestorage.h"
+#include "trade/tradeciptypes.h"
 
 #include <cip_gen.h>
 
 #include <QPointer>
+
+#include <vector>
 
 namespace tibia {
 namespace gamewindow {
 
 class TSidebarManager;
 
-/// One object of a trade offer (CIP: TPlayerTradeObject, ctor).
-/// Appearance fields only — offers are CIP `TInventorySlot` lists in storage.
+/// One object of a trade offer, as shown by playertrade.qml.
 class TPlayerTradeObject final : public cip::tibia::trade::TPlayerTradeObject
 {
     Q_OBJECT
 public:
-    TPlayerTradeObject(int slot, const container::TInventorySlot& appearance, QObject* parent = nullptr);
+    explicit TPlayerTradeObject(QObject* parent = nullptr);
 
-    /// CIP moc property getters (appearance fields filled in the ctor).
+    /// moc property getters.
     uint slotID() const override;
     uint appearanceID() const override;
     uint objectCount() const override;
     uint objectUpgradeTier() const override;
     ::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::ELiquidType liquidType() const override;
     ::cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType::EHookDirection hookDirection() const override;
+
+    void setSlotID(int slotId);
+    /// Takes the appearance fields of `object`; notifies once when any changed.
+    void setObject(const container::TInventorySlot& object);
 };
 
-/// The trade window, playertrade.qml (CIP: TPlayerTradeController, ctor
-/// , vtable).
+/// The trade window, playertrade.qml.
 class TPlayerTradeController final : public TSidebarWidgetController<cip::tibia::gamewindow::TPlayerTradeController>
 {
     Q_OBJECT
 
 public:
-    TPlayerTradeController(trade::TPlayerTradeStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TPlayerTradeController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    ~TPlayerTradeController() override;
 
-    /// CIP moc property getters.
+    /// Follows the trade of a game session (none: both offers empty).
+    void setGameSession(trade::TPlayerTradeStorage* storage, trade::TPlayerTradeProtocolMessageHandler* handler);
+
+    /// moc property getters.
     QString ownName() const override;
     QString tradePartnerName() const override;
     QList<QObject*> ownOffer() const override;
@@ -48,14 +57,14 @@ public:
     QQuickItem* gameWindowQuickItem() const override;
 
 public Q_SLOTS:
-    /// CIP / : closing the window rejects the trade.
+    /// Closing the window rejects the trade.
     void onCloseClicked() override;
     void onRequestClose() override;
     void onRequestMoveToSidebar(int TargetSidebar) override;
     void onSetDragActive(bool Active) override;
     void onSidebarDestroyed() override;
     void onLevelUpClicked() override;
-    /// CIP v37 — empty; trade widget is ephemeral.
+    /// The trade window has no options.
     void saveWidgetOptions() override;
     void setCursorToResizeVertical(bool Enabled) override;
     void startContentSizeChangedTimer();
@@ -81,25 +90,29 @@ Q_SIGNALS:
     void publishGameAction();
 
 private Q_SLOTS:
-    /// CIP.
     void onOwnOfferChanged();
     void onCounterOfferChanged();
-    /// CIP v38 — empty companion to saveWidgetOptions.
     void onWidgetOptionsChanged();
     void onWidgetQuickItemDestroyed();
 
 private:
-    void showContextMenu(bool counterOffer, int slotIndex);
+    /// Deletes the objects of both offers and notifies both.
+    void clearOffers();
+    /// Rebuilds `objects` from the offer, one object per slot.
+    void rebuildOffer(QList<QObject*>& objects, const trade::TPlayerTradeOffer& offer);
+    /// `side` 0 is the own offer, 1 the counter offer.
+    void lookTradeSide(int slotIndex, int side);
+    void inspectTradeSide(int slotIndex, int side);
+    void showContextMenu(int slotIndex, int side);
 
     QPointer<trade::TPlayerTradeStorage> m_storage;
+    QPointer<trade::TPlayerTradeProtocolMessageHandler> m_handler;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
 };
 
-/// Opens the trade window when a trade starts and closes it when it ends
-/// (CIP: the sidebar manager's handling of
-/// TPlayerTradeProtocolMessageHandler's requests), and handles TRADE_ITEM
-/// (CIP: TPlayerTradeGameActionHandler, ctor , with
-/// TGameActionPlayerTradeItem): the item is offered to the
-/// player picked by target selection.
+/// Owns the trade storage and its protocol handler, opens the trade window when
+/// the handler asks for it and closes it when the trade ends, and handles
+/// TRADE_ITEM: the item is offered to the player picked by target selection.
 class TPlayerTradeWidgetManager final : public QObject
 {
     Q_OBJECT
@@ -118,6 +131,7 @@ private:
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     trade::TPlayerTradeStorage m_storage;
+    trade::TPlayerTradeProtocolMessageHandler m_handler;
     QPointer<TPlayerTradeController> m_controller;
 };
 

@@ -329,10 +329,12 @@ public:
     void requestTransactionHistoryPage(uint32_t page, uint32_t entriesPerPage);
     void transferCredits(const QString& recipient, TStoreCredits amount);
     void requestOfferDescription(TOfferID offerId);
+    /// The store events: an offer was looked at, a filter tag or sort order
+    /// was chosen, and how many seconds the store was open.
     void sendStoreEventOfferViewed(TOfferID offerId);
-    void sendStoreEventSearch(const QString& text);
+    void sendStoreEventFilterTag(const QString& filterTag);
     void sendStoreEventSortOrder(int sortOrder);
-    void sendStoreEventFilterTag(int filterTag);
+    void sendStoreEventVisitDuration(uint32_t seconds);
     void requestTransactionDetails(uint32_t transactionId);
     bool searchRefreshPending() const;
     void setRefreshOffersAfterPurchase(bool refresh);

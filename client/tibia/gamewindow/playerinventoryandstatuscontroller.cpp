@@ -436,13 +436,10 @@ void TPlayerInventoryAndStatusController::onToggleChaseMode()
 
 void TPlayerInventoryAndStatusController::onSecureModeEnabledRequested(const bool secureModeEnabled)
 {
-    if (secureModeEnabled != m_secureModeEnabled) {
-        m_secureModeEnabled = secureModeEnabled;
-        Q_EMIT secureModeEnabledChanged();
-        publishTactics();
-        return;
-    }
+    // Sent even when unchanged.
+    m_secureModeEnabled = secureModeEnabled;
     Q_EMIT secureModeEnabledChanged();
+    publishTactics();
 }
 
 void TPlayerInventoryAndStatusController::requestPvpMode(const int mode)
@@ -474,7 +471,12 @@ bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::TGame
         onSecureModeEnabledRequested(!m_secureModeEnabled);
         break;
     case A::SET_SECURE_MODE:
-        onSecureModeEnabledRequested(action.secure);
+        // Unlike the panel's button, the action sends only a change.
+        if (action.secure != m_secureModeEnabled) {
+            onSecureModeEnabledRequested(action.secure);
+            break;
+        }
+        Q_EMIT secureModeEnabledChanged();
         break;
     default:
         return false;
