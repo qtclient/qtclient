@@ -291,7 +291,9 @@ if(TIBIA_WITH_GAMECORE)
     protocol/tradewire.cpp protocol/tradewire.h
     protocol/miscwire.cpp protocol/miscwire.h
     protocol/featurewire.cpp protocol/featurewire.h
-    protocol/protocolciptypes.cpp protocol/protocolciptypes.h
+    # Header not listed: it includes protocolmessagequeue.h (Q_OBJECT); listing
+    # it would AUTOMOC a second moc unit alongside protocolmessagequeue.cpp.
+    protocol/protocolciptypes.cpp
     protocol/protocolmessagequeue.cpp
     protocol/protocolclassicwire.h
     protocol/inventoryitemwire.cpp protocol/inventoryitemwire.h
