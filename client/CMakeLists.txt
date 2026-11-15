@@ -187,6 +187,9 @@ set_source_files_properties(
   tibia/protocol/dispatch.gen.cpp
   PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON
 )
+# dispatch.gen.cpp implements TProtocolMessageQueue methods but must not run
+# AUTOMOC on protocolmessagequeue.h (listed on the tibia target).
+set_source_files_properties(tibia/protocol/dispatch.gen.cpp PROPERTIES SKIP_AUTOMOC ON)
 set(_protocol_stamp "${CMAKE_CURRENT_BINARY_DIR}/protocol_dispatch.stamp")
 add_custom_command(
   OUTPUT "${_protocol_stamp}"
