@@ -1,19 +1,15 @@
 #pragma once
 
-#include "client/gamecore.h"
-
 #include <cip_gen.h>
 
 #include <cstdint>
 #include <map>
-#include <tuple>
-#include <vector>
 
 namespace tibia {
 namespace quickloot {
 
-/// Server-driven quick-loot container assignments (CIP: TManagedContainerStorage,
-/// vtable family, update , fallback).
+/// The server's quick-loot container assignments per object category and
+/// whether loot falls back to the main backpack.
 class TManagedContainerStorage final : public cip::tibia::quickloot::TManagedContainerStorage
 {
     Q_OBJECT
@@ -24,25 +20,26 @@ public:
         uint16_t obtainContainerId = 0;
         bool operator==(const Assignment& other) const = default;
     };
+    /// Keyed by object category.
+    using Assignments = std::map<int, Assignment>;
 
     explicit TManagedContainerStorage(QObject* parent = nullptr);
     ~TManagedContainerStorage() override;
 
     static TManagedContainerStorage* instance();
 
-    bool useMainBackpackAsFallback() const { return m_fallback; }
-    /// CIP + LOOT_CONTAINER_FALLBACK (action 3).
+    /// Replaces the assignments; notifies only when they differ.
+    void setManagedContainers(const Assignments& assignments);
+    Assignments managedContainers() const { return m_assignments; }
+    /// Stores the flag and always notifies.
     void setUseMainBackpackAsFallback(bool value);
+    bool useMainBackpackAsFallback() const { return m_fallback; }
 
-    Assignment assignment(uint8_t category) const;
-    const std::map<uint8_t, Assignment>& assignments() const { return m_assignments; }
+    Assignment assignment(int category) const;
 
 private:
-    void onContainers(bool fallback, const std::vector<std::tuple<uint8_t, uint16_t, uint16_t>>& list);
-
+    Assignments m_assignments;
     bool m_fallback = false;
-    std::map<uint8_t, Assignment> m_assignments;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

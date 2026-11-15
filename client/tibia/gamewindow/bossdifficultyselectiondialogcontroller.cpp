@@ -1,10 +1,14 @@
 #include "bossdifficultyselectiondialogcontroller.h"
 
+#include "protocol/protocolciptypes.h"
+
+#include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+
+#include <protocol.pb.h>
 
 #include <string>
-#include <tibia/game/gamenotify.h>
-#include <tibia/game/tgamenotify.h>
 
 namespace tibia::gamewindow {
 
@@ -12,16 +16,15 @@ namespace {
 
 using Args = std::vector<std::any>;
 
-enum EBossDifficultyAction : uint8_t { Start = 0, Cancel = 1, Preview = 2 };
+enum EBossDifficultyAction : uint32_t { Start = 0, Cancel = 1, Preview = 2 };
 
-QStringList stringList(const Args& args, const size_t index)
+template <class Strings>
+QStringList toStringList(const Strings& strings)
 {
     QStringList out;
-    if (const auto* list = index < args.size() ? std::any_cast<std::vector<std::string>>(&args[index]) : nullptr) {
-        out.reserve(static_cast<qsizetype>(list->size()));
-        for (const std::string& s : *list)
-            out.append(QString::fromStdString(s));
-    }
+    out.reserve(static_cast<qsizetype>(strings.size()));
+    for (const std::string& s : strings)
+        out.append(QString::fromStdString(s));
     return out;
 }
 
@@ -30,22 +33,21 @@ QStringList stringList(const Args& args, const size_t index)
 TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogController(QObject* parent)
     : TDialogController(QStringLiteral("BossDifficultySelectionDialog.qml"), parent)
 {
-    m_previewTimer.setSingleShot(true);
     m_previewTimer.setInterval(500);
-    connect(&m_previewTimer, &QTimer::timeout, this, [this] {
-        tibia::game::sendBossDifficultyAction(Preview, static_cast<uint16_t>(m_selectedDifficulty));
-    });
+    m_previewTimer.setSingleShot(true);
+    connect(&m_previewTimer, &QTimer::timeout, this, [this] { sendSelection(Preview, true); });
 
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossDifficultySelection", [this](GameObject*, const Args& args) {
-        open(args);
+        if (const auto* data = args.empty() ? nullptr : std::any_cast<game::TBossDifficultySelectionDialogData>(&args[0]))
+            showDialog(*data);
         return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossDifficultyUpdate", [this](GameObject*, const Args& args) {
-        update(args);
+        if (const auto* data = args.empty() ? nullptr : std::any_cast<game::TBossDifficultySelectionDialogUpdateData>(&args[0]))
+            updateDialog(*data);
         return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onBossDifficultyClose", [this](GameObject*, const Args&) {
-        m_previewTimer.stop();
         dialog()->close();
         return std::any{};
     });
@@ -55,63 +57,69 @@ TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogControll
     });
 }
 
-void TBossDifficultySelectionDialogController::open(const Args& args)
+void TBossDifficultySelectionDialogController::showDialog(const game::TBossDifficultySelectionDialogData& data)
 {
-    using client::gamecore::argBool;
-    using client::gamecore::argInt;
-    const int lowest = static_cast<int>(argInt(args, 0));
-    const bool active = argBool(args, 1);
-    const int raceId = static_cast<int>(argInt(args, 2));
-    const int personalHighest = static_cast<int>(argInt(args, 5));
-    // Crystal: bad luck percent * 1000.
-    const float badLuck = static_cast<float>(argInt(args, 6)) / 1000.f;
-    const bool sameConstants = dialog()->isShown() && lowest == m_lowestDifficulty && active == m_isActiveUser && raceId == m_raceId
-        && personalHighest == m_personalHighestDifficulty && badLuck == m_currentBadLuckDropBonus;
-    m_lowestDifficulty = lowest;
-    m_isActiveUser = active;
-    m_raceId = raceId;
-    m_personalHighestDifficulty = personalHighest;
-    m_currentBadLuckDropBonus = badLuck;
-    if (!m_previewTimer.isActive())
-        m_selectedDifficulty = static_cast<int>(argInt(args, 3));
-    m_highestDifficultyOfGroup = static_cast<int>(argInt(args, 4));
-    m_playerNames = stringList(args, 7);
-    m_conModifiers = stringList(args, 8);
-    m_proModifiers = stringList(args, 9);
-    if (!sameConstants)
-        dialog()->destroy();
-    Q_EMIT selectionDataUpdated();
+    m_selectedDifficulty = data.selectedDifficulty;
+    m_updateData = data;
+    m_conModifiers = toStringList(data.conModifiers);
+    m_proModifiers = toStringList(data.proModifiers);
+    m_isActiveUser = data.isActiveUser;
+    m_context = data.context;
+    m_raceId = data.raceId;
+    m_lowestDifficulty = data.lowestDifficulty;
+    m_highestDifficultyOfGroup = data.highestDifficultyOfGroup;
+    m_personalHighestDifficulty = data.personalHighestDifficulty;
+    m_currentBadLuckDropBonus = data.currentBadLuckDropBonus;
+    m_playerNames = toStringList(data.playerNames);
+    dialog()->create();
     dialog()->show();
 }
 
-void TBossDifficultySelectionDialogController::update(const Args& args)
+void TBossDifficultySelectionDialogController::updateDialog(const game::TBossDifficultySelectionDialogUpdateData& data)
 {
+    m_updateData.selectedDifficulty = m_selectedDifficulty;
+    if (m_updateData == data)
+        return;
+    m_updateData.proModifiers = data.proModifiers;
+    m_updateData.conModifiers = data.conModifiers;
+    m_proModifiers = toStringList(data.proModifiers);
+    m_conModifiers = toStringList(data.conModifiers);
     if (!m_isActiveUser)
-        m_selectedDifficulty = static_cast<int>(client::gamecore::argInt(args, 0));
-    m_conModifiers = stringList(args, 1);
-    m_proModifiers = stringList(args, 2);
+        m_selectedDifficulty = data.selectedDifficulty;
     Q_EMIT selectionDataUpdated();
 }
 
 void TBossDifficultySelectionDialogController::setSelectedDifficulty(const int v)
 {
-    if (v == m_selectedDifficulty)
+    if (m_selectedDifficulty == v)
         return;
     m_selectedDifficulty = v;
     m_previewTimer.start();
-    Q_EMIT selectionDataUpdated();
 }
 
 void TBossDifficultySelectionDialogController::onCancelClicked()
 {
-    m_previewTimer.stop();
-    tibia::game::sendBossDifficultyAction(Cancel);
+    sendSelection(Cancel, false);
 }
 
 void TBossDifficultySelectionDialogController::onStartClicked()
 {
-    m_previewTimer.stop();
-    tibia::game::sendBossDifficultyAction(Start, static_cast<uint16_t>(m_selectedDifficulty));
+    sendSelection(Start, true);
+}
+
+void TBossDifficultySelectionDialogController::sendSelection(const uint32_t action, const bool withDifficulty) const
+{
+    // Host: the session refuses game actions while it cannot perform them.
+    if (!tibia::game::canPerformGameAction())
+        return;
+    using namespace ::tibia::protobuf::protocol;
+    auto message = tibia::protocol::newGameclientMessage(194);
+    auto* m = message->MutableExtension(GameclientMessageBossDifficultySelection::gameclient_message_boss_difficulty_selection);
+    m->set_context(m_context);
+    m->set_action(action);
+    if (withDifficulty)
+        m->set_difficulty(static_cast<uint32_t>(m_selectedDifficulty));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
 }

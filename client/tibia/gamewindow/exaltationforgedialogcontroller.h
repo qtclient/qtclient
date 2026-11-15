@@ -329,6 +329,7 @@ public Q_SLOTS:
     void closeDialog() override;
 
 private:
+    bool handleGameAction(const input::TGameAction& action);
     cip::tibia::gamewindow::IDialogTabPage* page(EDialogTab tab) const;
     void setTab(EDialogTab tab);
 

@@ -1,7 +1,5 @@
 #include "editvipdialogcontroller.h"
 
-#include "input/gameaction.h"
-#include "input/gameactionhandlers.h"
 
 #include <QQuickItem>
 
@@ -9,12 +7,6 @@
 #include <memory>
 
 namespace tibia::gamewindow {
-
-namespace {
-
-using A = input::EGameAction;
-
-}
 
 TVipGroupInfo::TVipGroupInfo(const uint8_t id, const QString& name, const bool selected, QObject* parent)
     : cip::tibia::gamewindow::TVipGroupInfo(parent)
@@ -24,33 +16,34 @@ TVipGroupInfo::TVipGroupInfo(const uint8_t id, const QString& name, const bool s
     m_selected = selected;
 }
 
-TEditVipDialogController::TEditVipDialogController(creatures::TVipStorage* storage, QObject* parent)
+TEditVipDialogController::TEditVipDialogController(QObject* parent)
     : TDialogController(QStringLiteral("EditVipDialog.qml"), parent)
-    , m_storage(storage)
 {
 }
 
-void TEditVipDialogController::open(const creatures::TVipStorage::Vip& vip)
+void TEditVipDialogController::open(const creatures::TVipStorage::Vip& vip, const std::map<uint8_t, creatures::TVipStorage::Group>& groups)
 {
     dialog()->destroy();
-    clearGroupInfos();
-    m_vipId = vip.id;
-    for (const creatures::TVipStorage::Group& group : m_storage->groups()) {
-        const bool selected = std::find(vip.groups.begin(), vip.groups.end(), group.id) != vip.groups.end();
-        m_groupInfos.append(new TVipGroupInfo(group.id, group.name, selected, this));
-    }
-
     dialog()->create();
+    m_vip = vip;
     QQuickItem* item = dialog()->item();
     if (!item)
         return;
+    item->setProperty("vipName", m_vip.name);
+    item->setProperty("vipIconID", m_vip.iconId);
+    item->setProperty("vipDescription", m_vip.description);
+    item->setProperty("vipNotify", m_vip.notifyLogin);
+    clearGroupInfos();
+    for (const auto& [id, group] : groups) {
+        const bool selected = std::find(m_vip.groups.begin(), m_vip.groups.end(), id) != m_vip.groups.end();
+        m_groupInfos.append(new TVipGroupInfo(id, group.name, selected, this));
+    }
+    std::sort(m_groupInfos.begin(), m_groupInfos.end(), [](const TVipGroupInfo* left, const TVipGroupInfo* right) {
+        return left->groupName().toUpper() < right->groupName().toUpper();
+    });
     QList<QObject*> infos;
     for (TVipGroupInfo* info : m_groupInfos)
         infos.append(info);
-    item->setProperty("vipName", vip.name);
-    item->setProperty("vipIconID", vip.iconId);
-    item->setProperty("vipDescription", vip.description);
-    item->setProperty("vipNotify", vip.notifyLogin);
     item->setProperty("vipGroupInfos", QVariant::fromValue(infos));
     dialog()->show();
 }
@@ -59,18 +52,20 @@ void TEditVipDialogController::onCancelClicked() { dialog()->close(); }
 
 void TEditVipDialogController::onOkClicked(const int VipIconId, const QString& Description, const bool Notify)
 {
-    // CIP : publish REQUST_VIP_DATA_UPDATE; creatures::TVipStorage handles it.
-    auto action = input::mutableClone(*input::makeAction(A::REQUST_VIP_DATA_UPDATE));
-    action->instance = static_cast<int>(m_vipId);
-    action->text = Description;
-    action->parameter = VipIconId;
-    action->enable = Notify;
+    dialog()->close();
+    std::vector<uint8_t> groups;
     for (const TVipGroupInfo* info : m_groupInfos) {
         if (info->selected())
-            action->vipGroups.push_back(static_cast<uint8_t>(info->groupID()));
+            groups.push_back(static_cast<uint8_t>(info->groupID()));
     }
-    input::publish(action);
-    dialog()->close();
+    if (m_vip.iconId == static_cast<uint8_t>(VipIconId) && m_vip.description == Description && m_vip.notifyLogin == Notify && m_vip.groups == groups)
+        return;
+    creatures::TVipStorage::Vip edited = m_vip;
+    edited.iconId = static_cast<uint8_t>(VipIconId);
+    edited.description = Description;
+    edited.notifyLogin = Notify;
+    edited.groups = std::move(groups);
+    Q_EMIT vipDataUpdated(edited);
 }
 
 void TEditVipDialogController::onControllerFinished() { dialog()->close(); }

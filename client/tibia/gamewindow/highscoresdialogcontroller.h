@@ -178,6 +178,10 @@ private:
     int selectedCategoryId() const;
     /// CIP / / through .
     void requestPage(int page);
+    void updateIndexOfSelectedWorld();
+    void updateIndexOfSelectedBattlEyeType();
+    void updateIndexOfSelectedVocation();
+    void updateIndexOfSelectedCategory();
     void requestOwnRank();
     void updateWorldTypes();
 

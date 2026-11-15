@@ -438,15 +438,45 @@ void TCyclopediaButtonController::stopHighlight()
     m_highlightReason = std::monostate{};
 }
 
+TBosstiaryButtonController::TBosstiaryButtonController(QObject* parent)
+    : cip::tibia::gamewindow::TBosstiaryButtonController(parent)
+{
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TBosstiaryButtonController::connectToGameSession);
+    connectToGameSession();
+}
+
 void TBosstiaryButtonController::onOpenBosstiaryButtonClicked()
 {
     auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
     action->parameter = 6;
+    action->category = m_highlightedBossRaceId;
     input::publish(action);
-    if (m_highlighted) {
-        m_highlighted = false;
+    if (m_highlightedBossRaceId != 0) {
+        m_highlightedBossRaceId = 0;
         Q_EMIT changed();
     }
+}
+
+void TBosstiaryButtonController::connectToGameSession()
+{
+    if (m_highlightedBossRaceId != 0) {
+        m_highlightedBossRaceId = 0;
+        Q_EMIT changed();
+    }
+    m_hooks.clear();
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onBosstiaryEntryChanged", [this](GameObject*, const std::vector<std::any>& args) {
+        onHighlightRequested(static_cast<uint16_t>(client::gamecore::argInt(args, 0)));
+        return std::any{};
+    });
+}
+
+void TBosstiaryButtonController::onHighlightRequested(const uint16_t BossRaceID)
+{
+    if (m_highlightedBossRaceId == BossRaceID)
+        return;
+    m_highlightedBossRaceId = BossRaceID;
+    Q_EMIT changed();
 }
 
 }

@@ -554,32 +554,6 @@ void publish(const TGameActionPtr& action)
                                               action->enable ? 1 : 0, action->showSocket || action->chase ? 1 : 0);
         break;
     }
-    case A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG:
-        tibia::game::sendOpenRewardWall();
-        break;
-    case A::CLOSE_REWARD_WALL_DIALOG:
-        // Local dialog close is owned by the reward-wall controller; the server
-        // also pushes CloseRewardWall. Clear the button-bar highlight.
-        publish(makeAction(A::DAILY_REWARD_NOT_COLLECTABLE));
-        break;
-    case A::REQUEST_DAILY_REWARD_HISTORY:
-        tibia::game::requestOpenRewardHistory();
-        break;
-    case A::COLLECT_FIXED_ITEMS_DAILY_REWARD:
-        tibia::game::requestGetRewardDaily(static_cast<uint8_t>(action->parameter > 0 ? action->parameter : 0), {});
-        break;
-    case A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE:
-    case A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE: {
-        auto status = mutableClone(*makeAction(A::SET_STATUS_LINE));
-        status->text = action->text.isEmpty()
-            ? qtTrId(action->type == A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE
-                         ? "rewardwall_need_to_reach_main_text"
-                         : "rewardwall_no_daily_reward_available_caption")
-            : action->text;
-        status->color = QColor(Qt::white);
-        publish(status);
-        break;
-    }
     case A::SHOW_MESSAGE_YOU_SEE_NOTHING: {
         auto message = std::make_shared<TGameActionAddTextMessage>(A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE);
         message->text = action->text.isEmpty() ? qtTrId("you_see_nothing") : action->text;

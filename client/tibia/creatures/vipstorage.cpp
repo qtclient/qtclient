@@ -1,186 +1,156 @@
 #include "vipstorage.h"
 
+#include "chat/chatchannel.h"
+#include "creatures/creaturesciptypes.h"
 #include "input/gameactionhandlers.h"
 
-#include <creatures/creaturestorage.h>
-#include <tibia/game/gamesession.h>
-
-#include <tuple>
-#include <utility>
-#include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
+
+#include <QColor>
+#include <QCoreApplication>
 
 namespace tibia::creatures {
 
 namespace {
 
 using A = input::EGameAction;
-using Args = std::vector<std::any>;
-using GroupTuples = std::vector<std::tuple<uint8_t, std::string, bool>>;
 
-constexpr A HandledActions[] = { A::ADD_NEW_VIP,           A::REMOVE_VIP,         A::ADD_NEW_VIP_GROUP,
-                                 A::REMOVE_VIP_GROUP,      A::REQUEST_VIP_GROUP_UPDATE, A::REQUST_VIP_DATA_UPDATE };
+/// The status line colour of the VIP login notice.
+const QColor LoginNoticeColor(0xf0, 0xf0, 0xf0);
+/// The console colour (message mode) of the VIP login notice.
+constexpr int LoginNoticeMessageMode = 30;
+/// Icons above this are stored as 0.
+constexpr uint8_t MaxIconId = 10;
 
-QString qstr(const std::string& text) { return QString::fromStdString(text); }
+bool isLoggedOut(const int state) { return state == TVipStorage::LoggedOut || state == TVipStorage::Offline; }
+
+bool isLoggedIn(const int state) { return state == TVipStorage::LoggedIn || state == TVipStorage::Online; }
 
 }
 
 TVipStorage::TVipStorage(QObject* parent)
     : cip::tibia::creatures::TVipStorage(parent)
 {
-    m_vipsChangedTimer.setSingleShot(true);
-    m_vipsChangedTimer.setInterval(0);
-    connect(&m_vipsChangedTimer, &QTimer::timeout, this, &TVipStorage::vipsChanged);
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onAddVip", [this](GameObject*, const Args& args) {
-        m_states[static_cast<uint32_t>(client::gamecore::argInt(args, 0))] = static_cast<int>(client::gamecore::argInt(args, 2));
-        m_vipsChangedTimer.start();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onVipStateChange", [this](GameObject*, const Args& args) {
-        const auto id = static_cast<uint32_t>(client::gamecore::argInt(args, 0));
-        const auto state = static_cast<int>(client::gamecore::argInt(args, 1));
-        m_vipsChangedTimer.start();
-        const auto it = m_states.find(id);
-        if (it == m_states.end() || it->second == state)
-            return std::any{};
-        const int previous = std::exchange(it->second, state);
-        Q_EMIT vipStateChanged(id, previous, state);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onVipGroupChange", [this](GameObject*, const Args& args) {
-        m_groups.clear();
-        if (const auto* groups = args.empty() ? nullptr : std::any_cast<GroupTuples>(&args[0])) {
-            for (const auto& [id, name, editable] : *groups)
-                m_groups.push_back({ id, qstr(name), editable });
-        }
-        m_groupsLeft = static_cast<int>(client::gamecore::argInt(args, 1));
-        Q_EMIT groupsChanged();
-        Q_EMIT vipGroupDataChanged();
-        m_vipsChangedTimer.start();
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        m_states.clear();
-        m_groups.clear();
-        m_groupsLeft = 0;
-        Q_EMIT groupsChanged();
-        Q_EMIT vipGroupDataChanged();
-        m_vipsChangedTimer.start();
-    });
-
-    input::setActionHandler(A::ADD_NEW_VIP, [this](const input::TGameAction& action) {
-        QString name = action.text;
-        if (action.creatureId) {
-            if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-                if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(action.creatureId))
-                    name = row->name();
-            }
-        }
-        addVip(name);
-        return true;
-    });
-    input::setActionHandler(A::REMOVE_VIP, [this](const input::TGameAction& action) {
-        uint32_t id = static_cast<uint32_t>(action.instance);
-        if (!id) {
-            if (const std::optional<Vip> vip = vipByName(action.text))
-                id = vip->id;
-        }
-        removeVip(id);
-        return true;
-    });
-    input::setActionHandler(A::ADD_NEW_VIP_GROUP, [this](const input::TGameAction& action) {
-        addGroup(action.text);
-        return true;
-    });
-    input::setActionHandler(A::REMOVE_VIP_GROUP, [this](const input::TGameAction& action) {
-        removeGroup(static_cast<uint8_t>(action.parameter));
-        return true;
-    });
-    input::setActionHandler(A::REQUEST_VIP_GROUP_UPDATE, [this](const input::TGameAction& action) {
-        editGroup(static_cast<uint8_t>(action.parameter), action.text);
-        return true;
-    });
-    input::setActionHandler(A::REQUST_VIP_DATA_UPDATE, [this](const input::TGameAction& action) {
-        // CIP TVipGameActionHandler::handleRequestVipDataUpdateGameAction
-        // : EditBuddy from instance / text / parameter / enable /
-        // vipGroups.
-        editVip(static_cast<uint32_t>(action.instance), action.text, action.parameter, action.enable, action.vipGroups);
-        return true;
-    });
+    // CIP's session connects the storage's game actions to the input handlers.
+    connect(this, &TVipStorage::publishGameAction, this, [](const input::TGameActionPtr& action) { input::publish(action); });
+    // CIP makes a new storage per game session; the shared one is emptied instead.
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, &TVipStorage::clear);
 }
 
-std::unordered_map<uint32_t, TVipStorage::Vip>& TVipStorage::entries()
+TVipStorage* TVipStorage::instance()
 {
-    static std::unordered_map<uint32_t, Vip> list;
-    return list;
+    static TVipStorage* storage = [] {
+        auto* created = new TVipStorage(QCoreApplication::instance());
+        new TVipGameActionHandler(created, created);
+        return created;
+    }();
+    return storage;
 }
 
-TVipStorage::~TVipStorage()
+std::map<uint32_t, TVipStorage::Vip>& TVipStorage::entries() { return instance()->m_vips; }
+
+void TVipStorage::clear()
 {
-    for (const A type : HandledActions)
-        input::setActionHandler(type, nullptr);
+    m_vips.clear();
+    m_groups.clear();
+    m_groupsLeft = 0;
+    Q_EMIT vipGroupDataChanged();
+}
+
+size_t TVipStorage::vipCount() const { return m_vips.size(); }
+
+std::optional<TVipStorage::Vip> TVipStorage::vipById(const uint32_t id) const
+{
+    const auto it = m_vips.find(id);
+    if (it == m_vips.end())
+        return std::nullopt;
+    return it->second;
+}
+
+std::optional<TVipStorage::Vip> TVipStorage::vipByName(const QString& name) const
+{
+    for (const auto& [id, vip] : m_vips) {
+        if (vip.name == name)
+            return vip;
+    }
+    return std::nullopt;
 }
 
 std::vector<TVipStorage::Vip> TVipStorage::vips() const
 {
     std::vector<Vip> result;
-    for (const auto& [id, vip] : entries())
+    for (const auto& [id, vip] : m_vips)
         result.push_back(vip);
     return result;
 }
 
-std::optional<TVipStorage::Vip> TVipStorage::vipByName(const QString& name) const
+void TVipStorage::addOrUpdateVip(const Vip& vip)
 {
-    for (Vip& vip : vips()) {
-        if (vip.name.compare(name, Qt::CaseInsensitive) == 0)
-            return std::move(vip);
-    }
-    return std::nullopt;
+    m_vips[vip.id] = vip;
+    Q_EMIT vipDataChangedOrAdded(vip);
 }
+
+void TVipStorage::addVip(const uint32_t id, const QString& name, const QString& description, const uint8_t iconId,
+                         const bool notifyLogin, const int state, const std::vector<uint8_t>& groups)
+{
+    addOrUpdateVip({ id, name, state, description, iconId <= MaxIconId ? iconId : 0, notifyLogin, groups });
+}
+
+void TVipStorage::updateVipState(const uint32_t id, const int state)
+{
+    const auto it = m_vips.find(id);
+    if (it == m_vips.end())
+        return;
+    if (state == LoggedIn || state == LoggedOut)
+        Q_EMIT loginOrLogoutStateUpdate(state);
+    Vip& vip = it->second;
+    if (vip.notifyLogin && isLoggedOut(vip.state) && isLoggedIn(state)) {
+        const QString text = qtTrId("speech_volume_vip_has_logged_in").arg(vip.name);
+        Q_EMIT publishGameAction(std::make_shared<input::TGameActionSetStatusLine>(text));
+        auto message = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE);
+        message->text = text;
+        message->color = chat::consoleColor(LoginNoticeMessageMode);
+        Q_EMIT publishGameAction(message);
+    }
+    vip.state = state;
+    Q_EMIT vipStateChanged(id, state);
+}
+
+void TVipStorage::removeVip(const uint32_t id)
+{
+    if (m_vips.erase(id) == 0)
+        return;
+    Q_EMIT vipDataRemoved(id);
+}
+
+void TVipStorage::setGroups(const std::vector<Group>& groups, const int groupsLeft)
+{
+    m_groupsLeft = groupsLeft;
+    m_groups.clear();
+    for (const Group& group : groups)
+        m_groups[group.id] = group;
+    Q_EMIT vipGroupDataChanged();
+}
+
+std::vector<TVipStorage::Group> TVipStorage::groups() const
+{
+    std::vector<Group> result;
+    for (const auto& [id, group] : m_groups)
+        result.push_back(group);
+    return result;
+}
+
+std::map<uint8_t, TVipStorage::Group> TVipStorage::groupMap() const { return m_groups; }
 
 std::optional<TVipStorage::Group> TVipStorage::groupByName(const QString& name) const
 {
-    for (const Group& group : m_groups) {
+    for (const auto& [id, group] : m_groups) {
         if (group.name == name)
             return group;
     }
     return std::nullopt;
 }
 
-void TVipStorage::addVip(const QString& name)
-{
-    if (!name.trimmed().isEmpty())
-        tibia::game::addVip(name.trimmed().toStdString());
-}
-
-void TVipStorage::removeVip(const uint32_t id)
-{
-    if (!id)
-        return;
-    tibia::game::removeVip(id);
-    m_vipsChangedTimer.start();
-}
-
-void TVipStorage::editVip(const uint32_t id, const QString& description, const int iconId, const bool notifyLogin,
-                          const std::vector<uint8_t>& groups)
-{
-    tibia::game::editVip(id, description.toStdString(), static_cast<uint32_t>(iconId), notifyLogin, groups);
-    m_vipsChangedTimer.start();
-}
-
-void TVipStorage::addGroup(const QString& name)
-{
-    if (!name.trimmed().isEmpty())
-        tibia::game::editVipGroups(tibia::client::VIP_GROUP_ADD, 0, name.trimmed().toStdString());
-}
-
-void TVipStorage::editGroup(const uint8_t id, const QString& name)
-{
-    if (!name.trimmed().isEmpty())
-        tibia::game::editVipGroups(tibia::client::VIP_GROUP_EDIT, id, name.trimmed().toStdString());
-}
-
-void TVipStorage::removeGroup(const uint8_t id) { tibia::game::editVipGroups(tibia::client::VIP_GROUP_REMOVE, id, {}); }
+int TVipStorage::groupsLeft() const { return m_groupsLeft; }
 
 }

@@ -6,8 +6,8 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameactionhandlers.h"
 #include "quickloot/managedcontainerstorage.h"
+#include "quickloot/quicklootciptypes.h"
 
-#include "container/containerciptypes.h"
 
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
@@ -36,12 +36,20 @@ constexpr int CategoryOrder[] = {
 /// CIP / empty sentinel.
 constexpr uint16_t EmptyAppearance = 0x5ca9;
 
-constexpr uint8_t ActionSelectLoot = 0;
-constexpr uint8_t ActionClearLoot = 1;
-constexpr uint8_t ActionOpenLoot = 2;
-constexpr uint8_t ActionSelectObtain = 4;
-constexpr uint8_t ActionClearObtain = 5;
-constexpr uint8_t ActionOpenObtain = 6;
+
+/// A managed container action for one object category; select actions also
+/// carry the picked container.
+void publishContainerAction(const A type, const int category, const input::TGameAction* target = nullptr)
+{
+    auto action = input::mutableClone(*input::makeAction(type));
+    action->category = category;
+    if (target) {
+        action->position = target->position;
+        action->stackPosition = target->stackPosition;
+        action->objectClientId = target->objectClientId;
+    }
+    input::publish(action);
+}
 
 bool isSet(const uint16_t typeId) { return typeId != 0 && typeId != EmptyAppearance; }
 
@@ -141,23 +149,15 @@ TManageLootContainerDialogController::TManageLootContainerDialogController(QObje
         auto* row = new TLootContainerQMLInfo(category, this);
         m_lootContainers.append(row);
         connect(row, &TLootContainerQMLInfo::requestSelectLootContainer, this, [this](const int c) { startContainerPick(c, true); });
-        connect(row, &TLootContainerQMLInfo::requestClearLootContainer, this, [this](const int c) {
-            sendContainerAction(ActionClearLoot, static_cast<uint8_t>(c));
-        });
-        connect(row, &TLootContainerQMLInfo::requestOpenLootContainer, this, [this](const int c) {
-            if (m_containers)
-                openAssignedContainer(static_cast<uint8_t>(c), m_containers->assignment(static_cast<uint8_t>(c)).lootContainerId,
-                                      ActionOpenLoot);
-        });
+        connect(row, &TLootContainerQMLInfo::requestClearLootContainer, this,
+                [](const int c) { publishContainerAction(A::LOOT_CONTAINER_CLEAR, c); });
+        connect(row, &TLootContainerQMLInfo::requestOpenLootContainer, this,
+                [](const int c) { publishContainerAction(A::LOOT_CONTAINER_OPEN, c); });
         connect(row, &TLootContainerQMLInfo::requestSelectObtainContainer, this, [this](const int c) { startContainerPick(c, false); });
-        connect(row, &TLootContainerQMLInfo::requestClearObtainContainer, this, [this](const int c) {
-            sendContainerAction(ActionClearObtain, static_cast<uint8_t>(c));
-        });
-        connect(row, &TLootContainerQMLInfo::requestOpenObtainContainer, this, [this](const int c) {
-            if (m_containers)
-                openAssignedContainer(static_cast<uint8_t>(c), m_containers->assignment(static_cast<uint8_t>(c)).obtainContainerId,
-                                      ActionOpenObtain);
-        });
+        connect(row, &TLootContainerQMLInfo::requestClearObtainContainer, this,
+                [](const int c) { publishContainerAction(A::OBTAIN_CONTAINER_CLEAR, c); });
+        connect(row, &TLootContainerQMLInfo::requestOpenObtainContainer, this,
+                [](const int c) { publishContainerAction(A::OBTAIN_CONTAINER_OPEN, c); });
     }
 
     if (m_itemInfo) {
@@ -212,19 +212,13 @@ TManageLootContainerDialogController::~TManageLootContainerDialogController()
 void TManageLootContainerDialogController::installHandlers()
 {
     const auto handle = [this](const input::TGameAction& action) { return handleGameAction(action); };
-    for (const A type : { A::OPEN_MANAGE_LOOT_CONTAINER, A::OPEN_MANAGE_LOOT_CONTAINER_STASH, A::QUICK_LOOT, A::QUICK_LOOT_AREA_AT_PLAYER,
-                          A::LOOT_ADD_TO_BLACKWHITELIST, A::LOOT_REMOVE_FROM_BLACKWHITELIST, A::LOOT_CONTAINER_FALLBACK,
-                          A::LOOT_CONTAINER_SELECT, A::LOOT_CONTAINER_CLEAR, A::LOOT_CONTAINER_OPEN, A::OBTAIN_CONTAINER_SELECT,
-                          A::OBTAIN_CONTAINER_CLEAR, A::OBTAIN_CONTAINER_OPEN })
+    for (const A type : { A::OPEN_MANAGE_LOOT_CONTAINER, A::OPEN_MANAGE_LOOT_CONTAINER_STASH })
         input::setActionHandler(type, handle);
 }
 
 void TManageLootContainerDialogController::uninstallHandlers()
 {
-    for (const A type : { A::OPEN_MANAGE_LOOT_CONTAINER, A::OPEN_MANAGE_LOOT_CONTAINER_STASH, A::QUICK_LOOT, A::QUICK_LOOT_AREA_AT_PLAYER,
-                          A::LOOT_ADD_TO_BLACKWHITELIST, A::LOOT_REMOVE_FROM_BLACKWHITELIST, A::LOOT_CONTAINER_FALLBACK,
-                          A::LOOT_CONTAINER_SELECT, A::LOOT_CONTAINER_CLEAR, A::LOOT_CONTAINER_OPEN, A::OBTAIN_CONTAINER_SELECT,
-                          A::OBTAIN_CONTAINER_CLEAR, A::OBTAIN_CONTAINER_OPEN })
+    for (const A type : { A::OPEN_MANAGE_LOOT_CONTAINER, A::OPEN_MANAGE_LOOT_CONTAINER_STASH })
         input::setActionHandler(type, nullptr);
 }
 
@@ -240,57 +234,6 @@ bool TManageLootContainerDialogController::handleGameAction(const input::TGameAc
         m_scrollOnShow = true;
         showDialog();
         return true;
-    case A::QUICK_LOOT: {
-        const uint16_t typeId = action.objectClientId;
-        if (typeId != 0)
-            tibia::game::sendQuickLootAt(0, action.position, typeId, action.stackPosition);
-        return true;
-    }
-    case A::QUICK_LOOT_AREA_AT_PLAYER:
-        tibia::game::sendQuickLootAt(2, Position(0, 0, 0), 0, 0);
-        return true;
-    case A::LOOT_ADD_TO_BLACKWHITELIST: {
-        const uint16_t typeId = action.objectClientId;
-        if (m_itemInfo && typeId != 0)
-            m_itemInfo->setLootListed(typeId, true);
-        return true;
-    }
-    case A::LOOT_REMOVE_FROM_BLACKWHITELIST: {
-        const uint16_t typeId = action.objectClientId;
-        if (m_itemInfo && typeId != 0)
-            m_itemInfo->setLootListed(typeId, false);
-        return true;
-    }
-    case A::LOOT_CONTAINER_FALLBACK:
-        if (m_containers)
-            m_containers->setUseMainBackpackAsFallback(action.enable);
-        return true;
-    case A::LOOT_CONTAINER_SELECT:
-        startContainerPick(action.parameter >= 0 ? action.parameter : action.category, true);
-        return true;
-    case A::OBTAIN_CONTAINER_SELECT:
-        startContainerPick(action.parameter >= 0 ? action.parameter : action.category, false);
-        return true;
-    case A::LOOT_CONTAINER_CLEAR:
-        sendContainerAction(ActionClearLoot, static_cast<uint8_t>(action.parameter >= 0 ? action.parameter : action.category));
-        return true;
-    case A::OBTAIN_CONTAINER_CLEAR:
-        sendContainerAction(ActionClearObtain, static_cast<uint8_t>(action.parameter >= 0 ? action.parameter : action.category));
-        return true;
-    case A::LOOT_CONTAINER_OPEN:
-        if (m_containers)
-            openAssignedContainer(static_cast<uint8_t>(action.parameter >= 0 ? action.parameter : action.category),
-                                  m_containers->assignment(static_cast<uint8_t>(action.parameter >= 0 ? action.parameter : action.category))
-                                      .lootContainerId,
-                                  ActionOpenLoot);
-        return true;
-    case A::OBTAIN_CONTAINER_OPEN:
-        if (m_containers)
-            openAssignedContainer(static_cast<uint8_t>(action.parameter >= 0 ? action.parameter : action.category),
-                                  m_containers->assignment(static_cast<uint8_t>(action.parameter >= 0 ? action.parameter : action.category))
-                                      .obtainContainerId,
-                                  ActionOpenObtain);
-        return true;
     default:
         return false;
     }
@@ -298,10 +241,12 @@ bool TManageLootContainerDialogController::handleGameAction(const input::TGameAc
 
 void TManageLootContainerDialogController::setUseMainBackpackAsFallback(const bool v)
 {
-    if (m_containers)
-        m_containers->setUseMainBackpackAsFallback(v);
-    else
-        TDialogController::setUseMainBackpackAsFallback(v);
+    // The checkbox only asks the server; the stored flag follows its answer.
+    if (m_containers ? m_containers->useMainBackpackAsFallback() == v : !v)
+        return;
+    auto action = input::mutableClone(*input::makeAction(A::LOOT_CONTAINER_FALLBACK));
+    action->enable = v;
+    input::publish(action);
 }
 
 void TManageLootContainerDialogController::setFilterString(const QString& v)
@@ -415,7 +360,7 @@ void TManageLootContainerDialogController::onLootContainersUpdated()
         auto* row = qobject_cast<TLootContainerQMLInfo*>(object);
         if (!row)
             continue;
-        const auto assignment = m_containers->assignment(static_cast<uint8_t>(row->category()));
+        const auto assignment = m_containers->assignment(static_cast<int>(row->category()));
         row->setLootContainer(assignment.lootContainerId);
         row->setObtainContainer(assignment.obtainContainerId);
     }
@@ -522,8 +467,8 @@ void TManageLootContainerDialogController::finishPick(const input::TGameActionPt
             if (m_itemInfo)
                 m_itemInfo->setLootListed(typeId, true);
         } else if (type && type->isContainer()) {
-            sendContainerAction(mode == PickMode::LootContainer ? ActionSelectLoot : ActionSelectObtain,
-                                static_cast<uint8_t>(category), typeId, target->position, target->stackPosition);
+            publishContainerAction(mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,
+                                   target.get());
         } else {
             m_confirm->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
                                                              QKeySequence(QStringLiteral("Return"))) });
@@ -544,34 +489,6 @@ void TManageLootContainerDialogController::cancelPick()
         input::finishTargetSelection(nullptr);
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->setTargetSelection(false);
-}
-
-void TManageLootContainerDialogController::sendContainerAction(const uint8_t action, const uint8_t category, const uint16_t typeId,
-                                                               const Position& position, const int stackPosition)
-{
-    if (!tibia::game::isOnline())
-        return;
-    // Proto::ClientLootContainer = 144
-    qInfo().nospace() << "tibia.loot: ClientLootContainer(144) action=" << int(action) << " category=" << int(category)
-                      << " itemId=" << int(typeId);
-    if (typeId)
-        tibia::game::openContainerQuickLoot(action, category, position, typeId, std::max(0, stackPosition), false);
-    else
-        tibia::game::openContainerQuickLoot(action, category, {}, 0, 0, false);
-}
-
-void TManageLootContainerDialogController::openAssignedContainer(const uint8_t category, const uint16_t typeId, const uint8_t action)
-{
-    if (!isSet(typeId) || !tibia::game::isOnline())
-        return;
-    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-        for (const container::TContainerID id : storage->openIds()) {
-            if (const container::TStoredContainer* row = storage->containerAt(id);
-                row && row->containerItem.typeId == typeId)
-                return;
-        }
-    }
-    tibia::game::openContainerQuickLoot(action, category, {}, 0, 0, false);
 }
 
 }

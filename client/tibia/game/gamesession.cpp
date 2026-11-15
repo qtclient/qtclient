@@ -480,10 +480,6 @@ void processTalk(const std::string_view name, const uint16_t level, const tibia:
     tibia::game::notify("onTalk", name, level, mode, text, channelId, pos, statement);
 }
 
-void processVipStateChange(uint32_t id, uint32_t status)
-{
-    gameSessionState().processVipStateChange(id, status);
-}
 void processTeamFinderLeader(const TeamFinderLeaderData& data)
 {
     tibia::game::notify("onTeamFinderLeader", data);
@@ -585,15 +581,6 @@ void processCloseChannel(const uint16_t channelId)
     tibia::game::notify("onCloseChannel", channelId);
 }
 
-void processVipAdd(uint32_t id, std::string_view name, uint32_t status, std::string_view description, uint32_t iconId,
-                  bool notifyLogin, const std::vector<uint8_t>& groupID)
-{
-    gameSessionState().processVipAdd(id, name, status, description, iconId, notifyLogin, groupID);
-}
-void processVipGroupChange(const std::vector<std::tuple<uint8_t, std::string, bool>>& vipGroups, const uint8_t groupsAmountLeft)
-{
-    tibia::game::notify("onVipGroupChange", vipGroups, groupsAmountLeft);
-}
 void processTutorialHint(const uint8_t id)
 {
     tibia::game::notify("onTutorialHint", id);

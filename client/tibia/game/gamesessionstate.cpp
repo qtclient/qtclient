@@ -1,4 +1,3 @@
-#include "creatures/vipstorage.h"
 #include <stdexcept>
 #include "game/gamesessionstate.h"
 #include "tibia/runtime/host.h"
@@ -278,7 +277,6 @@ void TGameSessionState::resetGameStates()
         m_checkConnectionEvent = nullptr;
     }
 
-    tibia::creatures::TVipStorage::entries().clear();
     if (tibia::container::TContainerStorage* storage = tibia::container::TContainerStorage::instance())
         storage->clear();
     if (tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance())
@@ -537,22 +535,6 @@ void TGameSessionState::processEditGuildMessage(const std::string_view text)
     tibia::game::notify("onEditGuildMessage", text);
 }
 
-void TGameSessionState::processVipAdd(const uint32_t id, const std::string_view name, const uint32_t status, const std::string_view description, const uint32_t iconId, const bool notifyLogin, const std::vector<uint8_t>& groupID)
-{
-    tibia::creatures::TVipStorage::entries()[id] = { id, QString::fromUtf8(name.data(), qsizetype(name.size())), static_cast<int>(status),
-                                                     QString::fromUtf8(description.data(), qsizetype(description.size())),
-                                                     static_cast<int>(iconId), notifyLogin, groupID };
-    tibia::game::notify("onAddVip", id, name, status, description, iconId, notifyLogin, groupID);
-}
-
-void TGameSessionState::processVipStateChange(const uint32_t id, const uint32_t status)
-{
-    auto& vip = tibia::creatures::TVipStorage::entries()[id];
-    vip.id = id;
-    vip.state = static_cast<int>(status);
-    const std::vector<uint8_t>& groupID = vip.groups;
-    tibia::game::notify("onVipStateChange", id, status, groupID);
-}
 
 
 
@@ -960,37 +942,6 @@ void TGameSessionState::changeOutfitAndMount(const Outfit& outfit, const bool mo
 }
 
 
-void TGameSessionState::removeVip(const uint32_t playerId)
-{
-    if (!canPerformGameAction())
-        return;
-
-    auto& vips = tibia::creatures::TVipStorage::entries();
-    const auto it = vips.find(playerId);
-    if (it == vips.end())
-        return;
-
-    vips.erase(it);
-    gameclient::sendRemoveVip(playerId);
-}
-
-void TGameSessionState::editVip(const uint32_t playerId, const std::string_view description, const uint32_t iconId, const bool notifyLogin, const std::vector<uint8_t>& groupID)
-{
-    if (!canPerformGameAction())
-        return;
-
-    auto& vips = tibia::creatures::TVipStorage::entries();
-    const auto it = vips.find(playerId);
-    if (it == vips.end())
-        return;
-
-    it->second.description = QString::fromUtf8(description.data(), qsizetype(description.size()));
-    it->second.iconId = static_cast<int>(iconId);
-    it->second.notifyLogin = notifyLogin;
-    it->second.groups = groupID;
-
-    gameclient::sendEditVip(playerId, description, iconId, notifyLogin, groupID);
-}
 
 
 void TGameSessionState::setChaseMode(const tibia::client::ChaseModes chaseMode)

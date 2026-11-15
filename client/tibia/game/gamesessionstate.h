@@ -56,7 +56,6 @@ public:
     void processUpdateTarget(uint32_t seq, uint32_t targetId);
     void processPlayerModes(tibia::client::FightModes fightMode, tibia::client::ChaseModes chaseMode, bool safeMode,
                             tibia::client::PVPModes pvpMode);
-    void processVipStateChange(uint32_t id, uint32_t status);
     void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
                               std::string_view name, uint8_t capacity, bool hasParent,
                               const std::vector<::tibia::container::TInventorySlot>& items, bool isUnlocked,
@@ -81,7 +80,6 @@ public:
     static void processEditGuildMessage(std::string_view text);
 
     // vip related
-    void processVipAdd(uint32_t id, std::string_view name, uint32_t status, std::string_view description, uint32_t iconId, bool notifyLogin, const std::vector<uint8_t>& groupID);
 
     // tutorial hint
 
@@ -187,8 +185,6 @@ public:
 
 
     // vip related
-    void removeVip(uint32_t playerId);
-    void editVip(uint32_t playerId, std::string_view description, uint32_t iconId, bool notifyLogin, const std::vector<uint8_t>& groupID = {});
     // fight modes related
     void setChaseMode(tibia::client::ChaseModes chaseMode);
     void setFightMode(tibia::client::FightModes fightMode);

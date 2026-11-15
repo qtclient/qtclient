@@ -1773,7 +1773,8 @@ void TChatController::runMenuAction(const input::TGameAction& action, TChatChann
         QGuiApplication::clipboard()->setText(action.text);
         return;
     case A::ADD_NEW_VIP:
-        tibia::game::addVip(action.text.toStdString());
+        // The VIP list's game action handler sends AddBuddy.
+        input::publish(std::make_shared<input::TGameActionAddNewVip>(action.text));
         return;
     case A::CLOSE_CHAT_CHANNEL:
         closeChannel(channel);

@@ -4,19 +4,48 @@
 #include "game/tgamenotify.h"
 
 #include <QElapsedTimer>
-#include <tibia/game/gamenotify.h>
+
+#include <algorithm>
 
 namespace tibia::game {
 
 namespace {
 
-using Args = std::vector<std::any>;
-
 TCooldownStorage* g_instance = nullptr;
 
-TCooldown started(const qint64 duration)
+/// The spell groups the cooldown bar shows, in its order (5 has no slot).
+constexpr uint8_t CooldownBarSpellGroups[] = { 1, 2, 3, 4, 6, 7, 8, 9, 10, 11 };
+
+/// Joins `other` into `result`: an idle result takes `other`; two running
+/// cooldowns become one span from the earlier start to the later end, unless
+/// they do not touch, in which case the later one wins.
+void joinCooldown(TCooldown& result, const TCooldown& other)
 {
-    return { duration, TCooldownStorage::now() + duration };
+    if (result.remaining == 0) {
+        result = other;
+        return;
+    }
+    if (other.remaining == 0)
+        return;
+    const qint64 resultStart = result.end - result.duration;
+    if (other.end < resultStart)
+        return;
+    const qint64 otherStart = other.end - other.duration;
+    if (result.end < otherStart) {
+        result = other;
+        return;
+    }
+    if (other.end <= result.end && resultStart <= otherStart)
+        return;
+    if (result.end <= other.end && otherStart <= resultStart) {
+        result = other;
+        return;
+    }
+    if (result.end < other.end) {
+        result.remaining = other.remaining;
+        result.end = other.end;
+    }
+    result.duration = result.end - std::min(resultStart, otherStart);
 }
 
 }
@@ -25,64 +54,16 @@ TCooldownStorage::TCooldownStorage(QObject* parent)
     : cip::tibia::game::TCooldownStorage(parent)
 {
     g_instance = this;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpellCooldown", [this](GameObject*, const Args& args) {
-        applySpellCooldown(int(client::gamecore::argInt(args, 0)), client::gamecore::argInt(args, 1));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpellGroupCooldown", [this](GameObject*, const Args& args) {
-        applySpellGroupCooldown(int(client::gamecore::argInt(args, 0)), client::gamecore::argInt(args, 1));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onMultiUseCooldown", [this](GameObject*, const Args& args) {
-        applyMultiUseCooldown(client::gamecore::argInt(args, 0));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPassiveData", [this](GameObject*, const Args& args) {
-        applyPassiveAbilityData(int(client::gamecore::argInt(args, 0)), client::gamecore::argInt(args, 1),
-                                client::gamecore::argInt(args, 2), client::gamecore::argBool(args, 3));
-        return std::any{};
-    });
-    connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] { applyGameEnd(); });
-}
-
-void TCooldownStorage::applySpellCooldown(const int spellId, const qint64 durationMs)
-{
-    m_spells[spellId] = started(durationMs);
-    Q_EMIT spellOrSpellGroupCooldownChanged();
-}
-
-void TCooldownStorage::applySpellGroupCooldown(const int groupId, const qint64 durationMs)
-{
-    m_groups[groupId] = started(durationMs);
-    Q_EMIT spellOrSpellGroupCooldownChanged();
-}
-
-void TCooldownStorage::applyMultiUseCooldown(const qint64 durationMs)
-{
-    m_multiUse = started(durationMs);
-    Q_EMIT multiUseCooldownChanged();
-}
-
-void TCooldownStorage::applyPassiveAbilityData(const int abilityId, const qint64 remainingMs, const qint64 totalMs,
-                                             const bool decaying)
-{
-    m_passiveAbilityId = abilityId;
-    m_passiveRemaining = remainingMs;
-    m_passiveDuration = totalMs;
-    m_passiveDecaying = decaying;
-    m_passiveRecvAt = now();
-    Q_EMIT passiveCooldownChanged();
-    Q_EMIT spellOrSpellGroupCooldownChanged();
-}
-
-void TCooldownStorage::applyGameEnd()
-{
-    clear();
+    for (uint8_t group = 1; group <= 11; ++group) {
+        m_spellGroupCooldownStarts[group] = 0;
+        m_spellGroupCooldownEnds[group] = 0;
+    }
+    // The storage outlives the game session here; start every session empty.
+    connect(TGameNotify::instance(), &TGameNotify::gameEnded, this, [this] { reset(); });
 }
 
 TCooldownStorage::~TCooldownStorage()
 {
-    m_hooks.clear();
     if (g_instance == this)
         g_instance = nullptr;
 }
@@ -102,69 +83,225 @@ qint64 TCooldownStorage::now()
     return timer.elapsed();
 }
 
-TCooldown TCooldownStorage::spellCooldown(const int spellId) const
+void TCooldownStorage::updateSpellCooldownEnd(const uint16_t spellId, const qint64 end)
 {
-    TCooldown longest;
-    const auto consider = [&longest](const std::map<int, TCooldown>& map, const int key) {
-        if (const auto it = map.find(key); it != map.end() && it->second.end > longest.end)
-            longest = it->second;
-    };
-    consider(m_spells, spellId);
-    if (const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId)) {
-        if (spell->groupPrimary)
-            consider(m_groups, spell->groupPrimary);
-        if (spell->groupSecondary)
-            consider(m_groups, spell->groupSecondary);
+    if (const auto it = m_spellCooldownEnds.find(spellId); it != m_spellCooldownEnds.end()) {
+        if (!spells::TSpellInfoStorage::instance()->spell(spellId) || it->second == end) {
+            Q_EMIT spellOrSpellGroupCooldownChanged();
+            return;
+        }
     }
-    return longest;
+    m_spellCooldownEnds[spellId] = end;
+    Q_EMIT spellOrSpellGroupCooldownChanged();
 }
 
-TCooldown TCooldownStorage::groupCooldown(const int groupId) const
+void TCooldownStorage::setSpellCooldownEnd(const uint16_t spellId, const qint64 end)
 {
-    if (const auto it = m_groups.find(groupId); it != m_groups.end())
-        return it->second;
-    return {};
+    m_spellCooldownEnds[spellId] = end;
+    Q_EMIT spellOrSpellGroupCooldownChanged();
+}
+
+void TCooldownStorage::setSpellGroupCooldown(const uint8_t groupId, const qint64 start, const qint64 end)
+{
+    m_spellGroupCooldownStarts[groupId] = start;
+    m_spellGroupCooldownEnds[groupId] = end;
+    Q_EMIT spellOrSpellGroupCooldownChanged();
+}
+
+void TCooldownStorage::setMultiUseCooldown(const qint64 start, const qint64 end)
+{
+    m_multiUseCooldownStart = start;
+    m_multiUseCooldownEnd = end;
+    Q_EMIT multiUseCooldownChanged();
+}
+
+void TCooldownStorage::setPassiveAbilityCooldown(const uint8_t abilityId, const qint64 remaining, const qint64 total,
+                                                 const bool decaying)
+{
+    m_passiveAbilityCooldowns[abilityId] = { remaining, total, now(), decaying };
+    Q_EMIT passiveAbilityCooldownChanged();
+}
+
+void TCooldownStorage::setPassiveAbilityCounter(const uint8_t abilityId, const uint32_t current, const uint32_t maximum)
+{
+    m_passiveAbilityCounters[abilityId] = { current, maximum };
+    // The counter announces itself on the cooldown signal.
+    Q_EMIT passiveAbilityCooldownChanged();
+}
+
+void TCooldownStorage::expireCooldowns(const qint64 time)
+{
+    bool changed = false;
+    for (auto it = m_spellCooldownEnds.begin(); it != m_spellCooldownEnds.end();) {
+        if (it->second < time) {
+            it = m_spellCooldownEnds.erase(it);
+            changed = true;
+        } else {
+            ++it;
+        }
+    }
+    for (auto& [groupId, end] : m_spellGroupCooldownEnds) {
+        if (end > 0 && end < time) {
+            m_spellGroupCooldownStarts[groupId] = 0;
+            end = 0;
+            changed = true;
+        }
+    }
+    if (changed)
+        Q_EMIT spellOrSpellGroupCooldownChanged();
+    if (m_multiUseCooldownEnd > 0 && m_multiUseCooldownEnd < time) {
+        m_multiUseCooldownStart = 0;
+        m_multiUseCooldownEnd = 0;
+        Q_EMIT multiUseCooldownChanged();
+    }
+}
+
+std::vector<TSpellCooldownEntry> TCooldownStorage::spellCooldownList(const qint64 time) const
+{
+    std::vector<TSpellCooldownEntry> list;
+    const spells::TSpellInfoStorage* spellInfo = spells::TSpellInfoStorage::instance();
+    for (const auto& [spellId, end] : m_spellCooldownEnds) {
+        const spells::TSpellInfo* spell = spellInfo->spell(spellId);
+        const qint64 remaining = end - time;
+        if (remaining > 0 && spell)
+            list.push_back({ spellId, remaining, qint64(spell->cooldownSelf) * 1000 });
+    }
+    return list;
+}
+
+std::vector<TSpellGroupCooldownEntry> TCooldownStorage::spellGroupCooldownList(const qint64 time) const
+{
+    std::vector<TSpellGroupCooldownEntry> list;
+    list.reserve(std::size(CooldownBarSpellGroups));
+    for (const uint8_t groupId : CooldownBarSpellGroups) {
+        const qint64 end = m_spellGroupCooldownEnds.at(groupId);
+        const qint64 start = m_spellGroupCooldownStarts.at(groupId);
+        list.push_back({ groupId, std::max<qint64>(0, end - time), std::max<qint64>(1, end - start) });
+    }
+    return list;
+}
+
+TCooldown TCooldownStorage::spellOwnCooldown(const uint16_t spellId, const qint64 time) const
+{
+    const auto it = m_spellCooldownEnds.find(spellId);
+    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId);
+    if (it == m_spellCooldownEnds.end() || !spell)
+        return {};
+    const qint64 end = it->second;
+    if (end - time == 0 || end < time)
+        return {};
+    return { end - time, qint64(spell->cooldownSelf) * 1000, end };
+}
+
+TCooldown TCooldownStorage::spellGroupCooldown(const uint8_t groupId, const qint64 time) const
+{
+    const auto endIt = m_spellGroupCooldownEnds.find(groupId);
+    if (endIt == m_spellGroupCooldownEnds.end())
+        return {};
+    const qint64 end = endIt->second;
+    if (end - time == 0 || end < time)
+        return {};
+    const auto startIt = m_spellGroupCooldownStarts.find(groupId);
+    const qint64 start = startIt != m_spellGroupCooldownStarts.end() ? startIt->second : 0;
+    return { end - time, end - start, end };
+}
+
+TCooldown TCooldownStorage::spellCooldown(const uint16_t spellId, const qint64 time) const
+{
+    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId);
+    if (!spell)
+        return {};
+    TCooldown cooldown = spellOwnCooldown(spellId, time);
+    joinCooldown(cooldown, spellGroupCooldown(uint8_t(spell->groupPrimary), time));
+    joinCooldown(cooldown, spellGroupCooldown(uint8_t(spell->groupSecondary), time));
+    return cooldown;
+}
+
+TCooldown TCooldownStorage::multiUseCooldown(const qint64 time) const
+{
+    return { std::max<qint64>(0, m_multiUseCooldownEnd - time),
+             std::max<qint64>(1, m_multiUseCooldownEnd - m_multiUseCooldownStart), m_multiUseCooldownEnd };
+}
+
+TCooldown TCooldownStorage::objectCooldown(const uint16_t objectId, const qint64 time) const
+{
+    TCooldown cooldown = multiUseCooldown(time);
+    const spells::TSpellInfo* rune = spells::TSpellInfoStorage::instance()->runeSpellOfObject(objectId);
+    if (!rune)
+        return cooldown;
+    joinCooldown(cooldown, spellOwnCooldown(uint16_t(rune->id), time));
+    joinCooldown(cooldown, spellGroupCooldown(uint8_t(rune->groupPrimary), time));
+    joinCooldown(cooldown, spellGroupCooldown(uint8_t(rune->groupSecondary), time));
+    return cooldown;
+}
+
+std::map<int, TCooldown> TCooldownStorage::spellCooldowns() const
+{
+    std::map<int, TCooldown> cooldowns;
+    const qint64 time = now();
+    for (const auto& [spellId, end] : m_spellCooldownEnds) {
+        const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId);
+        cooldowns[spellId] = { std::max<qint64>(0, end - time), spell ? qint64(spell->cooldownSelf) * 1000 : 0, end };
+    }
+    return cooldowns;
 }
 
 TCooldown TCooldownStorage::passiveCooldown() const
 {
-    if (m_passiveDuration <= 0 && m_passiveRemaining <= 0)
+    if (m_passiveAbilityCooldowns.empty())
         return {};
-    qint64 remaining = m_passiveRemaining;
-    if (m_passiveDecaying)
-        remaining = std::max<qint64>(0, m_passiveRemaining - (now() - m_passiveRecvAt));
-    if (remaining <= 0 && m_passiveDuration <= 0)
-        return {};
-    return { std::max(m_passiveDuration, remaining), now() + remaining };
+    const TPassiveAbilityCooldown& data = m_passiveAbilityCooldowns.begin()->second;
+    const qint64 time = now();
+    qint64 remaining = data.remaining;
+    if (data.decaying)
+        remaining = std::max<qint64>(0, data.remaining - (time - data.receivedAt));
+    if (remaining <= 0)
+        return { 0, data.total, 0 };
+    return { remaining, std::max(data.total, remaining), time + remaining };
 }
 
-bool TCooldownStorage::anyRunning() const
+int TCooldownStorage::passiveAbilityId() const
+{
+    return m_passiveAbilityCooldowns.empty() ? 0 : m_passiveAbilityCooldowns.begin()->first;
+}
+
+void TCooldownStorage::applySpellCooldown(const int spellId, const qint64 durationMs)
+{
+    setSpellCooldownEnd(uint16_t(spellId), now() + durationMs);
+}
+
+void TCooldownStorage::applySpellGroupCooldown(const int groupId, const qint64 durationMs)
 {
     const qint64 time = now();
-    if (m_multiUse.end > time)
-        return true;
-    if (passiveCooldown().end > time)
-        return true;
-    for (const auto* map : { &m_spells, &m_groups })
-        for (const auto& [id, cooldown] : *map)
-            if (cooldown.end > time)
-                return true;
-    return false;
+    setSpellGroupCooldown(uint8_t(groupId), time, time + durationMs);
 }
 
-void TCooldownStorage::clear()
+void TCooldownStorage::applyMultiUseCooldown(const qint64 durationMs)
 {
-    m_spells.clear();
-    m_groups.clear();
-    m_multiUse = {};
-    m_passiveAbilityId = 0;
-    m_passiveRemaining = 0;
-    m_passiveDuration = 0;
-    m_passiveRecvAt = 0;
-    m_passiveDecaying = false;
+    const qint64 time = now();
+    setMultiUseCooldown(time, time + durationMs);
+}
+
+void TCooldownStorage::applyPassiveAbilityData(const int abilityId, const qint64 remainingMs, const qint64 totalMs,
+                                               const bool decaying)
+{
+    setPassiveAbilityCooldown(uint8_t(abilityId), remainingMs, totalMs, decaying);
+}
+
+void TCooldownStorage::reset()
+{
+    m_spellCooldownEnds.clear();
+    for (auto& [groupId, start] : m_spellGroupCooldownStarts)
+        start = 0;
+    for (auto& [groupId, end] : m_spellGroupCooldownEnds)
+        end = 0;
+    m_multiUseCooldownStart = 0;
+    m_multiUseCooldownEnd = 0;
+    m_passiveAbilityCooldowns.clear();
+    m_passiveAbilityCounters.clear();
     Q_EMIT spellOrSpellGroupCooldownChanged();
     Q_EMIT multiUseCooldownChanged();
-    Q_EMIT passiveCooldownChanged();
+    Q_EMIT passiveAbilityCooldownChanged();
 }
 
 }

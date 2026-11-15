@@ -42,14 +42,14 @@ QString englishNumber(const qulonglong value) { return QLocale(QLocale::English)
 
 QDateTime fromSecs(const qint64 secs) { return QDateTime::fromSecsSinceEpoch(secs); }
 
-/// CIP : "yyyy-MM-dd, HH:mm" Berlin time and its zone.
+/// "yyyy-MM-dd, HH:mm" Berlin time and its zone (CET / CEST).
 QString dateBerlin(const qint64 secs)
 {
     qmlcomponents::TTextHelperQmlService helper;
     return helper.formatDateTimeWithTimeZoneBerlin(static_cast<int>(secs), false);
 }
 
-/// CIP : the system locale's "MMM dd, HH:mm" Berlin time and its zone.
+/// The system locale's "MMM dd, HH:mm" Berlin time and its zone.
 QString shortDateBerlin(const qint64 secs)
 {
     const QString longForm = dateBerlin(secs);
@@ -58,14 +58,13 @@ QString shortDateBerlin(const qint64 secs)
     return QStringLiteral("%1 %2").arg(QLocale().toString(berlin, QStringLiteral("MMM dd, HH:mm")), zone);
 }
 
-/// CIP .
 QString dateMulti(const qint64 secs)
 {
     qmlcomponents::TTextHelperQmlService helper;
     return helper.createQmlMultiString(dateBerlin(secs), shortDateBerlin(secs));
 }
 
-/// 10:00 Berlin time on `date` (CIP: the server save, DAT_10279f210).
+/// 10:00 Berlin time on `date`: the server save.
 QDateTime serverSave(const QDate& date)
 {
 #if QT_CONFIG(timezone)
@@ -78,7 +77,7 @@ QDateTime serverSave(const QDate& date)
 #endif
 }
 
-/// CIP : today's server save, or yesterday's before it.
+/// Today's server save, or yesterday's before it.
 QDateTime lastServerSaveTime()
 {
     const QDateTime now = QDateTime::currentDateTime();
@@ -86,7 +85,7 @@ QDateTime lastServerSaveTime()
     return now < today ? today.addDays(-1) : today;
 }
 
-/// CIP : the rent with thousands shortcuts.
+/// The rent with thousands shortcuts.
 QString shortRent(const quint32 rent)
 {
     if (rent < 10000)
@@ -96,7 +95,6 @@ QString shortRent(const quint32 rent)
     return englishNumber(rent / 1000000) + QStringLiteral(" kk");
 }
 
-/// CIP .
 QString amount(const quint8 count)
 {
     return QStringLiteral("%1 %2").arg(count).arg(qtTrId(count == 1 ? "houses_amount_singular" : "houses_amount_plural"));
@@ -111,13 +109,10 @@ QString numberedId(const char* prefix, const int number, const int last)
     return qtTrId(QByteArray(prefix).append(QByteArray::number(number)).constData());
 }
 
-/// CIP .
 QString ownHouseReason(const int error) { return numberedId("houses_error_message_own_house", error, 28); }
 
-/// CIP .
 QString incomingTransferReason(const int error) { return numberedId("houses_error_message_incoming_transfer", error, 18); }
 
-/// CIP .
 QString bidReason(const int error, const THouseCharacterInfo& info, const THouseLimits& limits, const bool guildHall)
 {
     switch (error) {
@@ -131,7 +126,6 @@ QString bidReason(const int error, const THouseCharacterInfo& info, const THouse
     }
 }
 
-/// CIP .
 QString shortStatus(const THouseRecord& house)
 {
     QStringList parts;
@@ -140,7 +134,7 @@ QString shortStatus(const THouseRecord& house)
     } else {
         switch (house.state) {
             case StateAuctioned:
-                // CIP with the QColor at (#00f000).
+                // Auctioned is green (#00f000).
                 parts << QStringLiteral("<font color=\"%1\">%2</font>").arg(QColor(0, 0xf0, 0).name(), qtTrId("houses_state_auctioned"));
                 if (house.bidderName.isEmpty())
                     parts << qtTrId("houses_state_auctioned_no_bits");
@@ -266,7 +260,9 @@ int THousesModel::rowCount(const QModelIndex& parent) const
 
 QHash<int, QByteArray> THousesModel::roleNames() const
 {
-    return {
+    // The default item roles plus the house roles.
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles.insert({
         { HouseId, "houseId" },
         { Name, "name" },
         { Size, "size" },
@@ -307,7 +303,8 @@ QHash<int, QByteArray> THousesModel::roleNames() const
         { MoveOutTimestampString, "moveOutTimestampString" },
         { MoveOutTimestampStringMulti, "moveOutTimestampStringMulti" },
         { DisableCancelMoveOutReasonString, "disableCancelMoveOutReasonString" },
-    };
+    });
+    return roles;
 }
 
 QVariant THousesModel::data(const QModelIndex& index, const int role) const
@@ -323,8 +320,8 @@ QVariant THousesModel::data(const QModelIndex& index, const int role) const
     switch (role) {
         case HouseId: return house.id;
         case Name: return house.name;
-        case Size: return house.size;
-        case MaxBeds: return house.beds;
+        case Size: return uint(house.size);
+        case MaxBeds: return uint(house.beds);
         case Rent: return house.rent;
         case State: return house.state;
         case Town: return house.town;
@@ -335,15 +332,15 @@ QVariant THousesModel::data(const QModelIndex& index, const int role) const
         case ShortStatusString: return shortStatus(house);
         case HasBids: return auctioned && !house.bidderName.isEmpty();
         case HighestBidderName: return auctioned ? house.bidderName : QString();
-        case HighestBid: return auctioned ? house.highestBid : 0ULL;
-        case TimeUntilAuctionEnd: return auctioned ? house.timeUntilAuctionEnd : 0LL;
+        case HighestBid: return qlonglong(auctioned ? house.highestBid : 0);
+        case TimeUntilAuctionEnd: return int(auctioned ? house.timeUntilAuctionEnd : 0);
         case TimeUntilAuctionEndString:
             return helper.formatSecondsToShortDaysHoursMinOrHoursMinOrMinSecondsOrSecondsTimeString(
                 auctioned ? static_cast<int>(house.timeUntilAuctionEnd) : 0);
         case AuctionEndString: return dateBerlin(auctioned ? house.bidEnd : 0);
         case AuctionEndStringMulti: return dateMulti(auctioned ? house.bidEnd : 0);
         case OwnLimitSet: return auctioned && house.isBidder;
-        case OwnBidLimit: return auctioned ? house.ownBidLimit : 0ULL;
+        case OwnBidLimit: return qlonglong(auctioned ? house.ownBidLimit : 0);
         case DisableBidReasonString:
             return bidReason(auctioned ? house.bidDisableReason : 0, m_characterInfo, m_limits, house.isGuildHall);
         case RenterName: return rented ? house.renterName : QString();
@@ -356,7 +353,7 @@ QVariant THousesModel::data(const QModelIndex& index, const int role) const
         case TransferTimestampStringMulti: return dateMulti(transfer ? house.transferDate : 0);
         case NewOwnerName: return transfer ? house.newOwnerName : QString();
         case HasNewOwnerAccepted: return transfer && house.newOwnerAccepted;
-        case TransferPrice: return transfer ? house.transferPrice : 0ULL;
+        case TransferPrice: return qlonglong(transfer ? house.transferPrice : 0);
         case IsHouseOfferedToMe: return transfer && house.isNewOwner;
         case DisableAcceptTransferReasonString: return incomingTransferReason(transfer ? house.acceptTransferDisableReason : 0);
         case DisableRejectTransferReasonString: return incomingTransferReason(transfer ? house.rejectTransferDisableReason : 0);
@@ -380,14 +377,14 @@ THousesSortProxyModel::THousesSortProxyModel(QObject* parent)
     , m_houses(new THousesModel(this))
 {
     m_houseIdEnumValue = THousesModel::HouseId;
+    setDynamicSortFilter(true);
+    sort(0);
+    setSourceModel(m_houses);
 #if !defined(Q_OS_WASM)
     // Wasm's POSIX collator logs and ignores both of these.
     m_collator.setNumericMode(true);
     m_collator.setCaseSensitivity(Qt::CaseInsensitive);
 #endif
-    setSourceModel(m_houses);
-    setDynamicSortFilter(true);
-    sort(0);
 }
 
 template <class F>
@@ -466,7 +463,7 @@ bool THousesSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIn
 
 bool THousesSortProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    // CIP DAT_1022e344c: auctioned first, then rented, empty, unknown.
+    // Auctioned first, then rented, empty, unknown; any other state throws.
     static const std::unordered_map<int, int> stateRank = { { 0, 0 }, { 2, 1 }, { 3, 1 }, { 4, 1 }, { 1, 2 }, { 6, 3 } };
     const bool nameLess = m_collator.compare(left.data(THousesModel::Name).toString(), right.data(THousesModel::Name).toString()) < 0;
     const auto compareInts = [nameLess](const qint64 a, const qint64 b) { return a == b ? nameLess : a < b; };
@@ -477,12 +474,10 @@ bool THousesSortProxyModel::lessThan(const QModelIndex& left, const QModelIndex&
         case 4: {
             const int leftState = left.data(THousesModel::State).toInt();
             const int rightState = right.data(THousesModel::State).toInt();
-            const auto leftRank = stateRank.find(leftState);
-            const auto rightRank = stateRank.find(rightState);
-            if (leftRank == stateRank.end() || rightRank == stateRank.end())
-                return nameLess;
+            const int leftRank = stateRank.at(leftState);
+            const int rightRank = stateRank.at(rightState);
             if (leftState != StateAuctioned || rightState != StateAuctioned)
-                return compareInts(leftRank->second, rightRank->second);
+                return compareInts(leftRank, rightRank);
             const bool leftBids = left.data(THousesModel::HasBids).toBool();
             const bool rightBids = right.data(THousesModel::HasBids).toBool();
             if (!leftBids || !rightBids)
@@ -518,11 +513,9 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
     , m_proxy(new THousesSortProxyModel(this))
     , m_resultDialog(new TMessageDialogController(this))
     , m_confirmDialog(new TMessageDialogController(this))
-    , m_houseItems(new THouseItemModel(this))
 {
     m_model = m_proxy->houses();
     m_housesModel = m_proxy;
-    Q_UNUSED(m_houseItems);
     for (TMessageDialogController* dialog : { m_resultDialog, m_confirmDialog }) {
         dialog->setCloseOnButtonClicked(true);
         dialog->setMessageDialogTextFormat(TMessageDialogController::RICH_TEXT);
@@ -575,7 +568,7 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
     connect(m_storage, &cyclopedia::THousesStorage::housesLimitsChanged, this, &THousesInfoDialogController::onHousesLimitsChanged);
     connect(m_storage, &cyclopedia::THousesStorage::houseActionResult, this, &THousesInfoDialogController::onHouseActionResult);
     connect(m_storage, &cyclopedia::THousesStorage::houseInformationChanged, this, [this] {
-        // CIP session : the towns, "Own Houses" first.
+        // The towns, "Own Houses" first.
         QStringList towns = m_storage->towns();
         std::sort(towns.begin(), towns.end(), [](const QString& a, const QString& b) { return a.compare(b, Qt::CaseInsensitive) < 0; });
         towns.insert(0, qtTrId("houses_my_houses_town_name"));
@@ -603,7 +596,6 @@ void THousesInfoDialogController::setAmbientLightStorage(worldmap::TAmbientLight
     updateTimeDisplay();
 }
 
-/// CIP .
 void THousesInfoDialogController::updateTimeDisplay()
 {
     if (!m_ambientLight)
@@ -617,7 +609,7 @@ THousesInfoDialogController::Context THousesInfoDialogController::captureContext
     return { m_proxy->townFilter(), m_proxy->stateFilter(), m_proxy->houseTypeFilter(), m_proxy->sortOrder(), m_currentHouseId };
 }
 
-/// CIP (without the preview camera).
+/// Without the preview camera.
 void THousesInfoDialogController::restoreContext(const Context& context)
 {
     setDisableQmlSelect(true);
@@ -637,13 +629,11 @@ void THousesInfoDialogController::setDisableQmlSelect(const bool disable)
     Q_EMIT disableQmlSelectChanged();
 }
 
-/// CIP .
 int THousesInfoDialogController::townFilterCurrentIndex() const
 {
     return std::max<int>(0, static_cast<int>(m_townFilterModel.indexOf(m_proxy->townFilter())));
 }
 
-/// CIP .
 int THousesInfoDialogController::stateFilterCurrentIndex() const
 {
     for (int i = 0; i < m_statesFitlerModel.size(); ++i) {
@@ -658,7 +648,6 @@ cip::tibia::qmlcomponents::enums::EHouseType THousesInfoDialogController::houseT
     return static_cast<cip::tibia::qmlcomponents::enums::EHouseType>(m_proxy->houseTypeFilter());
 }
 
-/// CIP .
 int THousesInfoDialogController::sortOrderCurrentIndex() const
 {
     for (int i = 0; i < m_sortOrderModel.size(); ++i) {
@@ -668,16 +657,13 @@ int THousesInfoDialogController::sortOrderCurrentIndex() const
     return 0;
 }
 
-/// CIP .
 uint THousesInfoDialogController::currentHouseId() const
 {
     return m_proxy->rowCount() > 0 ? m_currentHouseId : 0;
 }
 
-/// CIP .
 QDateTime THousesInfoDialogController::lastServerSave() const { return lastServerSaveTime(); }
 
-/// CIP .
 QDateTime THousesInfoDialogController::in30DaysServerSave() const { return lastServerSaveTime().addDays(30); }
 
 /// CIP is empty; product selects a town/house so the 3D preview has a row.
@@ -689,7 +675,6 @@ void THousesInfoDialogController::showDialogTab()
         m_townRequestTimer.start();
 }
 
-/// CIP .
 void THousesInfoDialogController::hideDialogTab()
 {
     m_proxy->clearFilters();
@@ -698,7 +683,6 @@ void THousesInfoDialogController::hideDialogTab()
     Q_EMIT currentHouseIdChanged();
 }
 
-/// CIP .
 void THousesInfoDialogController::onHouseInformationChanged()
 {
     m_proxy->changeFilter([this] { m_model->setHouses(m_storage->houses()); });
@@ -706,22 +690,18 @@ void THousesInfoDialogController::onHouseInformationChanged()
     Q_EMIT currentHouseIdChanged();
 }
 
-/// CIP .
 void THousesInfoDialogController::onCharacterHousesInfoChanged() { m_model->setCharacterInfo(m_storage->characterInfo()); }
 
-/// CIP .
 void THousesInfoDialogController::onHousesLimitsChanged() { m_model->setLimits(m_storage->limits()); }
 
 void THousesInfoDialogController::requestDynamicDataForTown() { m_townRequestTimer.start(); }
 
-/// CIP .
 void THousesInfoDialogController::setTownFilter(const QString& Town)
 {
     m_townRequestTimer.start();
     m_proxy->setTownFilter(Town);
 }
 
-/// CIP .
 void THousesInfoDialogController::setStateFilter(const int State) { m_proxy->setStateFilter(State); }
 
 void THousesInfoDialogController::setHouseTypeFilter(const int HouseType) { m_proxy->setHouseTypeFilter(HouseType); }
@@ -734,21 +714,18 @@ void THousesInfoDialogController::refresh()
     m_townRequestTimer.start();
 }
 
-/// CIP .
 void THousesInfoDialogController::setHouseWorldMapQuickItem(cip::tibia::qmlcomponents::TWorldMapQuickItem* pWorldMapQuickItem)
 {
     m_houseWorldMap = pWorldMapQuickItem;
     centerHousePreview();
 }
 
-/// CIP .
 void THousesInfoDialogController::setHouseCameraViewport(cip::tibia::qmlcomponents::TWorldMapCameraViewportQmlType* pCameraViewport)
 {
     m_houseCamera = pCameraViewport;
     centerHousePreview();
 }
 
-/// CIP .
 void THousesInfoDialogController::selectHouse(const uint HouseId)
 {
     if (m_currentHouseId == HouseId)
@@ -810,7 +787,6 @@ void THousesInfoDialogController::ensureTownAndHouseSelection()
         centerHousePreview();
 }
 
-/// CIP / makeHouseVisible .
 void THousesInfoDialogController::centerHouse() { centerHousePreview(); }
 
 void THousesInfoDialogController::centerHousePreview()
@@ -841,7 +817,6 @@ void THousesInfoDialogController::confirmAction(const int action, const QString&
     m_confirmDialog->showMessage(qtTrId("houses_action_confirm_caption"), message);
 }
 
-/// CIP .
 void THousesInfoDialogController::onActionBidClicked(const qulonglong Limit)
 {
     const THouseRecord* house = m_storage->house(m_currentHouseId);

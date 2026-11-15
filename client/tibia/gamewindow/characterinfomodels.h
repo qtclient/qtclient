@@ -286,7 +286,8 @@ public:
 class TAchievementInfoController final : public cip::tibia::gamewindow::TAchievementInfoController
 {
 public:
-    using cip::tibia::gamewindow::TAchievementInfoController::TAchievementInfoController;
+    /// The list opens on the discovered achievements.
+    explicit TAchievementInfoController(QObject* parent = nullptr);
 
     /// CIP case 5.
     void setData(int points, int totalSecret, std::vector<AchievementEntry> unlocked);

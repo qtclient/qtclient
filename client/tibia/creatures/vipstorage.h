@@ -1,30 +1,38 @@
 #pragma once
 
-#include "client/gamecore.h"
+#include "input/gameaction.h"
 
 #include <cip_gen.h>
 
 #include <QString>
-#include <QTimer>
 
 #include <cstdint>
+#include <map>
 #include <optional>
-#include <unordered_map>
 #include <vector>
 
 namespace tibia {
 namespace creatures {
 
-/// The VIP list and its groups (CIP: creatures::TVipStorage, fed by the VIP
-/// protocol messages, plus TVipGameActionHandler's VIP actions). VIPs come from
-/// tibia::game::getVips; groups only arrive with onVipGroupChange, so they are
-/// kept here.
+/// The VIP list and its groups (CIP: creatures::TVipStorage). Filled by
+/// TVipProtocolMessageHandler and edited by TVipGameActionHandler; the session
+/// owns one storage (instance()), emptied when the game ends.
 class TVipStorage final : public cip::tibia::creatures::TVipStorage
 {
     Q_OBJECT
 public:
-    /// CIP EVipState (creaturetypes.h): 0 offline, 1 online, 2 pending,
-    /// 3 exercise weapon training, 4 online, 5 offline. The server sends 0 to 2.
+    /// CIP EVipState: 0 offline, 1 online, 2 pending, 3 exercise weapon
+    /// training, 4 online (logged in), 5 offline (logged out).
+    enum EVipState
+    {
+        Offline = 0,
+        Online = 1,
+        Pending = 2,
+        Training = 3,
+        LoggedIn = 4,
+        LoggedOut = 5,
+    };
+    /// CIP TVipData. Icons are 0..10.
     struct Vip
     {
         uint32_t id = 0;
@@ -35,6 +43,7 @@ public:
         bool notifyLogin = false;
         std::vector<uint8_t> groups;
     };
+    /// CIP TVipGroupData.
     struct Group
     {
         uint8_t id = 0;
@@ -42,39 +51,51 @@ public:
         bool editable = false;
     };
 
-    explicit TVipStorage(QObject* parent = nullptr);
-    ~TVipStorage() override;
+    /// The session's storage (created on first use).
+    static TVipStorage* instance();
+    /// The session's VIP list by character id.
+    static std::map<uint32_t, Vip>& entries();
 
-    std::vector<Vip> vips() const;
-    /// The session's VIP list (filled by the VIP protocol messages).
-    static std::unordered_map<uint32_t, Vip>& entries();
+    /// How many VIPs the list holds.
+    size_t vipCount() const;
+    /// The VIP with `id` (CIP map::at; qtclient answers nothing for an unknown id).
+    std::optional<Vip> vipById(uint32_t id) const;
+    /// The first VIP whose name equals `name` exactly.
     std::optional<Vip> vipByName(const QString& name) const;
-    const std::vector<Group>& groups() const { return m_groups; }
-    std::optional<Group> groupByName(const QString& name) const;
-    /// How many more user-defined groups the account may create.
-    int groupsLeft() const { return m_groupsLeft; }
-
-    void addVip(const QString& name);
+    std::vector<Vip> vips() const;
+    /// Stores `vip` under its id and reports it.
+    void addOrUpdateVip(const Vip& vip);
+    /// addOrUpdateVip from the protocol fields; icons above 10 become 0.
+    void addVip(uint32_t id, const QString& name, const QString& description, uint8_t iconId, bool notifyLogin, int state,
+                const std::vector<uint8_t>& groups);
+    /// A known VIP's new state: logging in or out is reported, and a VIP with
+    /// login notification coming online is announced in the status line and
+    /// the console.
+    void updateVipState(uint32_t id, int state);
     void removeVip(uint32_t id);
-    /// REQUST_VIP_DATA_UPDATE (CIP 's request).
-    void editVip(uint32_t id, const QString& description, int iconId, bool notifyLogin, const std::vector<uint8_t>& groups);
-    void addGroup(const QString& name);
-    void editGroup(uint8_t id, const QString& name);
-    void removeGroup(uint8_t id);
+    /// Replaces the groups and the number of groups the account may still create.
+    void setGroups(const std::vector<Group>& groups, int groupsLeft);
+    std::vector<Group> groups() const;
+    /// The groups by id.
+    std::map<uint8_t, Group> groupMap() const;
+    /// The group named exactly `name`.
+    std::optional<Group> groupByName(const QString& name) const;
+    int groupsLeft() const;
 
 Q_SIGNALS:
-    void vipsChanged();
-    void groupsChanged();
-    /// The server changed a known VIP's state (CIP TVipStorage's state signal,
-    /// handled by); CIP's list already holds `state`.
-    void vipStateChanged(uint32_t id, int previousState, int state);
+    void vipDataChangedOrAdded(const tibia::creatures::TVipStorage::Vip& vip);
+    void vipStateChanged(uint32_t id, int state);
+    void vipDataRemoved(uint32_t id);
+    void publishGameAction(const tibia::input::TGameActionPtr& action);
+    void loginOrLogoutStateUpdate(int state);
 
 private:
-    std::vector<client::gamecore::Hook> m_hooks;
-    std::unordered_map<uint32_t, int> m_states;
-    std::vector<Group> m_groups;
+    explicit TVipStorage(QObject* parent = nullptr);
+    void clear();
+
+    std::map<uint32_t, Vip> m_vips;
+    std::map<uint8_t, Group> m_groups;
     int m_groupsLeft = 0;
-    QTimer m_vipsChangedTimer;
 };
 
 }

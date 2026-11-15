@@ -812,16 +812,9 @@ int main(int argc, char** argv)
         storeDialog.openWith(action.parameter, action.instance, action.text);
         return true;
     });
-    // Reward-wall open/toggle is owned by TRewardWallDialogController (hooks +
-    // REQUEST_OPEN_REWARD_WALL / OPEN_OR_UPDATE_REWARD_WALL_DIALOG).
-    input::setActionHandler(input::EGameAction::REQUEST_DAILY_REWARD_HISTORY, [](const input::TGameAction&) {
-        tibia::game::requestOpenRewardHistory();
-        return true;
-    });
-    input::setActionHandler(input::EGameAction::COLLECT_FIXED_ITEMS_DAILY_REWARD, [](const input::TGameAction& action) {
-        tibia::game::requestGetRewardDaily(static_cast<uint8_t>(std::max(0, action.parameter)), {});
-        return true;
-    });
+    // The daily reward: the session's storage and its game actions (238, 243, 244).
+    dailyreward::TDailyRewardStorage dailyRewardStorage;
+    dailyreward::TDailyRewardGameActionHandler dailyRewardActions(&dailyRewardStorage);
     input::setActionHandler(input::EGameAction::LENSHELP_ACTIVATE, [](const input::TGameAction&) {
         if (gamewindow::TMouseCursorController* cursor = gamewindow::TMouseCursorController::instance())
             cursor->setLenshelp(true);
@@ -958,7 +951,7 @@ int main(int argc, char** argv)
     proficiency::TWeaponProficiencyShapeOptionsDialogController weaponProficiencyShapeOptionsDialog;
     qInfo("tibia.boot: after proficiency dialogs");
     gamewindow::TBlessingsDialogController blessingsDialog;
-    gamewindow::TRewardWallDialogController rewardWallDialog;
+    gamewindow::TRewardWallDialogController rewardWallDialog(&dailyRewardStorage);
     gamewindow::TTaskboardDialogController taskboardDialog;
     gamewindow::TTutorialShell tutorialShell;
     qInfo("tibia.boot: after blessings/reward/taskboard/tutorial");

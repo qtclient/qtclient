@@ -192,11 +192,11 @@ QVariant TExaltationHistoryListModel::data(const QModelIndex& index, const int r
 
 QHash<int, QByteArray> TExaltationHistoryListModel::roleNames() const
 {
-    return {
-        { DateStringRole, "dateString" },
-        { ActionStringRole, "actionString" },
-        { DetailsStringRole, "detailsString" },
-    };
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles[DateStringRole] = "dateString";
+    roles[ActionStringRole] = "actionString";
+    roles[DetailsStringRole] = "detailsString";
+    return roles;
 }
 
 void TExaltationHistoryListModel::setEntries(std::vector<THistoryEntry> entries)
@@ -817,7 +817,7 @@ uchar TExaltationResultDialogController::dustCost() const
     return 100;
 }
 
-/// CIP .
+/// The fusion price of the input object's classification and tier.
 qulonglong TExaltationResultDialogController::goldCost() const
 {
     const std::optional<int> classification = classificationOf(m_inputObjectTypeId);
@@ -876,21 +876,29 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
     m_conversionController = new TExaltationForgeConversionPageController(storage, this);
     m_historyController = new TExaltationForgeHistoryPageController(storage, this);
     m_smoothTextureFiltering = smoothTextureFilteringOption();
+    m_readOnlyMode = true;
     m_errorDialog->setCloseOnButtonClicked(true);
     connect(this, &TExaltationForgeDialogController::prepareOpenDialog, fusion, &TExaltationForgeFusionPageController::prepareOpenDialog);
     connect(this, &TExaltationForgeDialogController::prepareOpenDialog, transfer, &TExaltationForgeTransferPageController::prepareOpenDialog);
 
-    input::setActionHandler(A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, [this](const input::TGameAction&) {
+    for (const A type : { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, A::CLOSE_EXALTATION_FORGE_DIALOG, A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG,
+                          A::SHOW_EXALTATION_RESULT_DIALOG, A::SHOW_EXALTATION_ERROR_DIALOG })
+        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+}
+
+/// The result travels in the storage instead of the action.
+bool TExaltationForgeDialogController::handleGameAction(const input::TGameAction& action)
+{
+    switch (action.type) {
+    case A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG:
         showDialog(true);
-        return true;
-    });
-    input::setActionHandler(A::CLOSE_EXALTATION_FORGE_DIALOG, [this](const input::TGameAction&) {
+        break;
+    case A::CLOSE_EXALTATION_FORGE_DIALOG:
         closeDialog();
-        return true;
-    });
-    input::setActionHandler(A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG, [this](const input::TGameAction&) {
+        break;
+    case A::OPEN_OR_UPDATE_EXALTATION_FORGE_DIALOG:
         if (dialog()->item())
-            return true;
+            break;
         closeDialog();
         m_readOnlyMode = false;
         if (!dialog()->item()) {
@@ -899,17 +907,18 @@ TExaltationForgeDialogController::TExaltationForgeDialogController(exaltation::T
         }
         Q_EMIT prepareOpenDialog();
         setTab(Fusion);
-        return true;
-    });
-    input::setActionHandler(A::SHOW_EXALTATION_RESULT_DIALOG, [this](const input::TGameAction&) {
+        break;
+    case A::SHOW_EXALTATION_RESULT_DIALOG:
         m_resultDialog->showDialog(m_storage->lastResult());
-        return true;
-    });
-    input::setActionHandler(A::SHOW_EXALTATION_ERROR_DIALOG, [this](const input::TGameAction& action) {
+        break;
+    case A::SHOW_EXALTATION_ERROR_DIALOG:
         m_errorDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
         m_errorDialog->showMessage(qtTrId("exaltation_forge_info_dialog_caption"), action.text);
-        return true;
-    });
+        break;
+    default:
+        return false;
+    }
+    return true;
 }
 
 TExaltationForgeDialogController::~TExaltationForgeDialogController()
@@ -919,22 +928,21 @@ TExaltationForgeDialogController::~TExaltationForgeDialogController()
         input::setActionHandler(type, nullptr);
 }
 
-/// CIP .
+/// Closes and tells the storage (EXALTATION_FORGE_DIALOG_CLOSED).
 void TExaltationForgeDialogController::requestClose()
 {
     closeDialog();
     publish(A::EXALTATION_FORGE_DIALOG_CLOSED);
 }
 
-/// CIP .
 void TExaltationForgeDialogController::requestTabSwitch(const EDialogTab NewTab)
 {
     if (NewTab != m_dialogTab)
         setTab(NewTab);
 }
 
-/// CIP : read-only (the button bar) asks for the balances and
-/// starts on the conversion page.
+/// Read-only (the button bar) asks for the balances and starts on the
+/// conversion page.
 void TExaltationForgeDialogController::showDialog(const bool ReadOnly)
 {
     closeDialog();
@@ -976,7 +984,7 @@ cip::tibia::gamewindow::IDialogTabPage* TExaltationForgeDialogController::page(c
     }
 }
 
-/// CIP .
+/// Hides the current page, shows the new one.
 void TExaltationForgeDialogController::setTab(const EDialogTab tab)
 {
     if (auto* current = page(m_dialogTab))

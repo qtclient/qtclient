@@ -4,12 +4,18 @@
 
 #include <cip_gen.h>
 
+#include <QList>
+#include <QMetaObject>
 #include <QObject>
+#include <QPointer>
 
 namespace tibia {
+namespace game {
+class TPremiumTimeStorage;
+}
 namespace gamewindow {
 
-/// TeamJoinPage.qml (CIP TTeamJoinPageController).
+/// TeamJoinPage.qml (CIP TTeamJoinPageController): the listed teams, apply / withdraw.
 class TTeamJoinPageController final : public cip::tibia::gamewindow::TTeamJoinPageController
 {
     Q_OBJECT
@@ -19,8 +25,12 @@ public:
     bool hasPremium() const override;
     QObject* teamsList() const override;
 
+    /// Binds to the session's team storage, filters for the own character once, and asks for the list.
     void showDialogTab() override;
     void hideDialogTab() override;
+
+    /// The account's premium state; premiumTimeChanged follows it.
+    void setPremiumStorage(game::TPremiumTimeStorage* Storage);
 
 public Q_SLOTS:
     void onJoinLeaveTeamClicked(uint TeamIDRaw, uint CurrentStatusRaw) override;
@@ -29,7 +39,11 @@ public Q_SLOTS:
     void onTeamsChanged() override;
 
 private:
-    cip::TTeamsListModel* m_source = nullptr;
+    void disconnectAll();
+
+    QPointer<game::TPremiumTimeStorage> m_premium;
+    QPointer<teamfinder::TTeamFinderStorage> m_storage;
+    QList<QMetaObject::Connection> m_connections;
     TTeamsListSortProxyModel* m_proxy = nullptr;
 };
 

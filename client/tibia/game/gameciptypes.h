@@ -10,7 +10,9 @@
 #include <QByteArray>
 #include <QObject>
 
+#include <array>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace tibia {
@@ -85,6 +87,34 @@ public:
     static void onServerMessageEnqueued(int opcode);
 };
 
+/// What an update of the boss difficulty dialog carries: the selected
+/// difficulty and the modifiers it brings.
+struct TBossDifficultySelectionDialogUpdateData
+{
+    int selectedDifficulty = 0;
+    std::vector<std::string> conModifiers;
+    std::vector<std::string> proModifiers;
+
+    bool operator==(const TBossDifficultySelectionDialogUpdateData&) const = default;
+};
+
+/// What opens the boss difficulty dialog: the update part plus the fight's
+/// constants. `context` goes back to the server with every answer.
+struct TBossDifficultySelectionDialogData : TBossDifficultySelectionDialogUpdateData
+{
+    bool isActiveUser = false;
+    uint32_t context = 0;
+    int raceId = 0;
+    int lowestDifficulty = 0;
+    int highestDifficultyOfGroup = 0;
+    int personalHighestDifficulty = 0;
+    float currentBadLuckDropBonus = 0.f;
+    std::array<std::string, 5> playerNames;
+};
+
+/// Turns the boss difficulty selection message into open / update / close of
+/// the dialog (published as onBossDifficultySelection / onBossDifficultyUpdate /
+/// onBossDifficultyClose).
 class TBossDifficultySelectionProtocolMessageHandler final : public cip::tibia::game::TBossDifficultySelectionProtocolMessageHandler
 {
     Q_OBJECT
@@ -302,11 +332,34 @@ public:
     TSessiondumpGameSessionMetaInfo() = default;
 };
 
+}
+}
+
+namespace tibia::protobuf::protocol {
+class GameserverMessageShowMessageDialog;
+}
+
+namespace tibia {
+namespace game {
+
+/// Opens the spell book dialog for the server's spell book message dialog.
 class TSpellBookProtocolMessageHandler final : public cip::tibia::game::TSpellBookProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::game::TSpellBookProtocolMessageHandler::TSpellBookProtocolMessageHandler;
+    explicit TSpellBookProtocolMessageHandler(QObject* parent = nullptr);
+    ~TSpellBookProtocolMessageHandler() override;
+    static TSpellBookProtocolMessageHandler* liveInstance();
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode);
+
+public Q_SLOTS:
+    /// Only the spell book dialog type: its text and the book's appearance.
+    void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& Message);
+
+Q_SIGNALS:
+    void requestShowSpellBookDialog(const QString& text, int SpellBook);
 };
 
 class TTraderStorage final : public ::tibia::CipTyped {

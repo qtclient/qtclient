@@ -18,7 +18,7 @@ using A = input::EGameAction;
 
 constexpr A Handled[] = { A::REPORT_STATEMENT, A::REPORT_NAME, A::REPORT_BOT, A::REPORT_HIRELING_NAME, A::REPORT_TEXT, A::GET_TEXT_FOR_REPORT };
 
-/// CIP : a report within ten minutes of the last one is refused.
+/// A report within ten minutes of the last one is refused.
 constexpr qint64 ReportCooldownSeconds = 600;
 
 QString nameOf(const input::TGameAction& action)
@@ -39,14 +39,8 @@ TReportViolationController::TReportViolationController(QObject* parent)
 {
     for (const A type : Handled)
         input::setActionHandler(type, [this](const input::TGameAction& action) { return handleAction(action); });
-    // CIP TRuleViolationProtocolMessageHandler::handleTextForReportMessage : TextForReport (0x81) becomes
-    // REPORT_TEXT with the name, the text id and the text .
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTextForReport", [](GameObject*, const std::vector<std::any>& args) {
-        auto action = input::mutableClone(*input::makeAction(A::REPORT_TEXT));
-        action->parameter = static_cast<int>(client::gamecore::argInt(args, 0));
-        action->statement = client::gamecore::argString(args, 1);
-        action->text = client::gamecore::argString(args, 2);
-        input::publish(action);
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRuleViolationReportConfirmed", [this](GameObject*, const std::vector<std::any>&) {
+        onRuleViolationReportConfirmedByServer();
         return std::any{};
     });
 }
@@ -57,9 +51,8 @@ TReportViolationController::~TReportViolationController()
         input::setActionHandler(type, nullptr);
 }
 
-/// CIP and its per-type openers (statement), 
-/// (name), (bot), (hireling), (text) and
-/// (GET_TEXT_FOR_REPORT, the protocol's GetTextForReport).
+/// The report actions open the dialog for their report type;
+/// GET_TEXT_FOR_REPORT asks the server for a text's author and content.
 bool TReportViolationController::handleAction(const input::TGameAction& action)
 {
     switch (action.type) {
@@ -92,7 +85,7 @@ void TReportViolationController::open(const EType type, const QString& name, con
 {
     const QDateTime now = QDateTime::currentDateTime();
     if (m_lastReport.isValid() && m_lastReport.secsTo(now) < ReportCooldownSeconds) {
-        // CIP : ADD_SYSTEM_CHAT_MESSAGE in console colour 30, then the world map line.
+        // A chat system message and the same line beneath the world map.
         const QString text = qtTrId("new_report_too_soon_error");
         for (const A messageType : { A::ADD_SYSTEM_CHAT_MESSAGE, A::ADD_BENEATH_MIDDLE_WORLDMAP_MESSAGE }) {
             auto message = input::mutableClone(*input::makeAction(messageType));
@@ -110,8 +103,7 @@ void TReportViolationController::open(const EType type, const QString& name, con
     m_reportedStatement = statement;
     m_selectedReportReasonName.clear();
     m_selectedReportReasonDescription.clear();
-    static const char* const TypeNames[] = { "name", "statement", "bot", "hireling", "text" };
-    m_dialogType = QLatin1String(TypeNames[type]);
+    m_dialogType = typeName(type);
     m_ruleViolationReasons.clear();
     for (const Reason& reason : reasons(type))
         m_ruleViolationReasons.append(qtTrId(reason.caption));
@@ -119,7 +111,6 @@ void TReportViolationController::open(const EType type, const QString& name, con
     dialog()->show();
 }
 
-/// CIP .
 void TReportViolationController::selectReportReason(const int ModelIndex)
 {
     const std::vector<Reason> list = reasons(m_type);
@@ -132,19 +123,42 @@ void TReportViolationController::selectReportReason(const int ModelIndex)
     Q_EMIT selectedReportReasonChanged();
 }
 
-/// CIP .
+/// A bot report carries no translation.
 void TReportViolationController::submitReport(const QString& Comment, const QString& Translation)
 {
+    const std::string translation = m_type == Bot ? std::string() : Translation.toStdString();
     tibia::game::reportRuleViolationCip(static_cast<uint8_t>(m_type), static_cast<uint8_t>(m_reasonId), m_reportedCharacterName.toStdString(),
-                                  Comment.toStdString(), Translation.toStdString(), m_id);
+                                  Comment.toStdString(), translation, m_id);
     m_lastReport = QDateTime::currentDateTime();
     dialog()->close();
 }
 
-/// CIP .
 void TReportViolationController::cancelReport()
 {
     dialog()->close();
+}
+
+/// The server's confirmation lifts the ten-minute wait.
+void TReportViolationController::onRuleViolationReportConfirmedByServer()
+{
+    m_lastReport = QDateTime();
+}
+
+QString TReportViolationController::typeName(const EType type)
+{
+    switch (type) {
+    case Name:
+        return QStringLiteral("name");
+    case Statement:
+        return QStringLiteral("statement");
+    case Bot:
+        return QStringLiteral("bot");
+    case Hireling:
+        return QStringLiteral("hireling");
+    case Text:
+        return QStringLiteral("text");
+    }
+    return {};
 }
 
 std::vector<TReportViolationController::Reason> TReportViolationController::reasons(const EType type)

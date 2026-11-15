@@ -22,7 +22,7 @@ void TNextFrameUpdater::v2(const qint64 timestampMs)
     tibia::creatures::advanceAllMovementTweens(timestampMs);
     if (worldmap::TAmbientLightStorage* ambient = worldmap::TAmbientLightStorage::instance())
         ambient->update(timestampMs);
-    m_texts.update(timestampMs, tibia::game::localPlayerPosition());
+    m_texts.update(timestampMs);
     m_numericalEffects.update(timestampMs);
     effects::TEffectStorage::instance().update(timestampMs);
     m_provider.advance();

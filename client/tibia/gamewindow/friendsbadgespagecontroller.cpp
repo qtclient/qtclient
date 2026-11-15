@@ -73,6 +73,9 @@ QObject* TFriendsBadgesPageController::badges() const
 
 void TFriendsBadgesPageController::showDialogTab()
 {
+    // Opening the page shows every badge again, then asks for the current list.
+    setBadgeFilter(ShowAll);
+    rebuildRows();
     protocol::gameclient::sendFriendSystemAction(kLoadBadges);
 }
 

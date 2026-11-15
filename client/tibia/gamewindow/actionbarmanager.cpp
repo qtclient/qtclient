@@ -132,6 +132,7 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
     connect(&m_cooldownTimer, &QTimer::timeout, this, &TActionBarManager::refreshCooldowns);
     connect(&m_cooldowns, &game::TCooldownStorage::spellOrSpellGroupCooldownChanged, this, &TActionBarManager::refreshCooldowns);
     connect(&m_cooldowns, &game::TCooldownStorage::multiUseCooldownChanged, this, &TActionBarManager::refreshCooldowns);
+    connect(&m_cooldowns, &game::TCooldownStorage::passiveAbilityCooldownChanged, this, &TActionBarManager::refreshCooldowns);
 
     m_objectsTimer.setSingleShot(true);
     m_objectsTimer.setInterval(0);

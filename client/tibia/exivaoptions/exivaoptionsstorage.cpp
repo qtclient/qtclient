@@ -15,26 +15,13 @@ namespace tibia::exivaoptions {
 
 namespace {
 
+TExivaOptionsStorage* g_instance = nullptr;
+
 using A = input::EGameAction;
-using Args = std::vector<std::any>;
 using WireNames = std::vector<std::string>;
 
 constexpr A Handled[] = { A::EXIVA_TOGGLE_ALLOW_EVERYONE, A::EXIVA_ADD_CHARACTER_TO_WHITELIST, A::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST,
                           A::EXIVA_UPADATE_OPTIONS };
-
-const WireNames* namesArg(const Args& args, const size_t index) { return index < args.size() ? std::any_cast<WireNames>(&args[index]) : nullptr; }
-
-void apply(TExivaOptionsStorage::Names& names, const WireNames* added, const WireNames* removed)
-{
-    if (added) {
-        for (const std::string& name : *added)
-            names.insert(QString::fromStdString(name));
-    }
-    if (removed) {
-        for (const std::string& name : *removed)
-            names.erase(QString::fromStdString(name));
-    }
-}
 
 WireNames wire(const TExivaOptionsStorage::Names& names)
 {
@@ -45,7 +32,7 @@ WireNames wire(const TExivaOptionsStorage::Names& names)
     return result;
 }
 
-/// CIP : the names of `from` missing in `without`.
+/// The names of `from` missing in `without`.
 TExivaOptionsStorage::Names difference(const TExivaOptionsStorage::Names& from, const TExivaOptionsStorage::Names& without)
 {
     TExivaOptionsStorage::Names result;
@@ -58,60 +45,109 @@ TExivaOptionsStorage::Names difference(const TExivaOptionsStorage::Names& from, 
 TExivaOptionsStorage::TExivaOptionsStorage(QObject* parent)
     : QObject(parent)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onReceiveExivaOptions", [this](GameObject*, const Args& args) {
-        m_options = { client::gamecore::argBool(args, 0), client::gamecore::argBool(args, 1), client::gamecore::argBool(args, 2),
-                      client::gamecore::argBool(args, 3), client::gamecore::argBool(args, 4), client::gamecore::argBool(args, 5) };
-        apply(m_characterWhitelist, namesArg(args, 6), namesArg(args, 7));
-        apply(m_guildWhitelist, namesArg(args, 8), namesArg(args, 9));
-        Q_EMIT optionsChanged();
-        Q_EMIT allowEveryoneChanged();
-        Q_EMIT allowedGroupsChanged();
-        Q_EMIT characterWhitelistChanged();
-        Q_EMIT guildWhitelistChanged();
-        return std::any{};
-    });
-    // CIP TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage : ExivaSuppressed (0xC9, no fields).
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onExivaSuppressed", [](GameObject*, const Args&) {
-        input::publish(input::makeAction(A::EXIVA_WAS_SUPPRESSED));
-        return std::any{};
-    });
+    g_instance = this;
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_options = {};
         m_characterWhitelist.clear();
         m_guildWhitelist.clear();
-        Q_EMIT optionsChanged();
         Q_EMIT allowEveryoneChanged();
         Q_EMIT allowedGroupsChanged();
         Q_EMIT characterWhitelistChanged();
         Q_EMIT guildWhitelistChanged();
     });
 
-    for (const A type : Handled) {
-        input::setActionHandler(type, [this](const input::TGameAction& action) {
-            switch (action.type) {
-            case A::EXIVA_TOGGLE_ALLOW_EVERYONE:
-                toggleAllowEveryone();
-                return true;
-            case A::EXIVA_ADD_CHARACTER_TO_WHITELIST:
-            case A::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST:
-                requestWhitelistChange(action.text, action.type == A::EXIVA_ADD_CHARACTER_TO_WHITELIST);
-                return true;
-            case A::EXIVA_UPADATE_OPTIONS:
-                // Dialog OK: re-send current options vs stored whitelists (empty diffs
-                // when unchanged). Full option payloads ride on CIP's typed action.
-                update(m_options, m_characterWhitelist, m_guildWhitelist);
-                return true;
-            default:
-                return false;
-            }
-        });
-    }
+    for (const A type : Handled)
+        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
 }
 
 TExivaOptionsStorage::~TExivaOptionsStorage()
 {
+    if (g_instance == this)
+        g_instance = nullptr;
     for (const A type : Handled)
         input::setActionHandler(type, nullptr);
+}
+
+TExivaOptionsStorage* TExivaOptionsStorage::instance() { return g_instance; }
+
+bool TExivaOptionsStorage::handleGameAction(const input::TGameAction& action)
+{
+    switch (action.type) {
+    case A::EXIVA_TOGGLE_ALLOW_EVERYONE:
+        toggleAllowEveryone();
+        return true;
+    case A::EXIVA_ADD_CHARACTER_TO_WHITELIST:
+    case A::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST:
+        requestWhitelistChange(action.text, action.type == A::EXIVA_ADD_CHARACTER_TO_WHITELIST);
+        return true;
+    case A::EXIVA_UPADATE_OPTIONS:
+        // The dialog's apply calls update() with its payload; this action
+        // type carries none here, so the stored options go out unchanged.
+        update(m_options, m_characterWhitelist, m_guildWhitelist);
+        return true;
+    default:
+        return false;
+    }
+}
+
+void TExivaOptionsStorage::setAllowEveryone(const bool allow)
+{
+    if (m_options.allowAll == allow)
+        return;
+    m_options.allowAll = allow;
+    Q_EMIT allowEveryoneChanged();
+}
+
+void TExivaOptionsStorage::setAllowedGroups(const bool ownGuild, const bool ownParty, const bool vipList, const bool characterWhitelist,
+                                            const bool guildWhitelist)
+{
+    if (m_options.allowOwnGuild == ownGuild && m_options.allowOwnParty == ownParty && m_options.allowVipList == vipList
+        && m_options.allowPlayerWhitelist == characterWhitelist && m_options.allowGuildWhitelist == guildWhitelist)
+        return;
+    m_options.allowOwnGuild = ownGuild;
+    m_options.allowOwnParty = ownParty;
+    m_options.allowVipList = vipList;
+    m_options.allowPlayerWhitelist = characterWhitelist;
+    m_options.allowGuildWhitelist = guildWhitelist;
+    Q_EMIT allowedGroupsChanged();
+}
+
+void TExivaOptionsStorage::addToCharacterWhitelist(const Names& names)
+{
+    const size_t before = m_characterWhitelist.size();
+    m_characterWhitelist.insert(names.begin(), names.end());
+    if (before != m_characterWhitelist.size())
+        Q_EMIT characterWhitelistChanged();
+}
+
+void TExivaOptionsStorage::removeFromCharacterWhitelist(const Names& names)
+{
+    if (names.empty())
+        return;
+    const size_t before = m_characterWhitelist.size();
+    for (const QString& name : names)
+        m_characterWhitelist.erase(name);
+    if (before != m_characterWhitelist.size())
+        Q_EMIT characterWhitelistChanged();
+}
+
+void TExivaOptionsStorage::addToGuildWhitelist(const Names& names)
+{
+    const size_t before = m_guildWhitelist.size();
+    m_guildWhitelist.insert(names.begin(), names.end());
+    if (before != m_guildWhitelist.size())
+        Q_EMIT guildWhitelistChanged();
+}
+
+void TExivaOptionsStorage::removeFromGuildWhitelist(const Names& names)
+{
+    if (names.empty())
+        return;
+    const size_t before = m_guildWhitelist.size();
+    for (const QString& name : names)
+        m_guildWhitelist.erase(name);
+    if (before != m_guildWhitelist.size())
+        Q_EMIT guildWhitelistChanged();
 }
 
 void TExivaOptionsStorage::send(const Options& options, const Names& addCharacters, const Names& removeCharacters, const Names& addGuilds,
@@ -134,8 +170,6 @@ void TExivaOptionsStorage::toggleAllowEveryone() const
 
 void TExivaOptionsStorage::requestWhitelistChange(const QString& name, const bool add) const
 {
-    if (name.isEmpty())
-        return;
     const Names names{ name };
     send(m_options, add ? names : Names{}, add ? Names{} : names, {}, {});
 }

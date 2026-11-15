@@ -233,10 +233,13 @@ void TWeaponProficiencyShapeDialogController::updateReshape(const std::optional<
 
 void TWeaponProficiencyShapeDialogController::showDialog()
 {
-    m_message->dialog()->hide();
+    m_message->dialog()->close();
     update(m_typeId);
     requestBalances();
-    dialog()->show();
+    if (!dialog()->item()) {
+        dialog()->create();
+        dialog()->show();
+    }
 }
 
 void TWeaponProficiencyShapeDialogController::requestClose() { closeDialog(); }
@@ -294,6 +297,8 @@ void TWeaponProficiencyShapeDialogController::onResourceBalanceChanged() { updat
 
 void TWeaponProficiencyShapeDialogController::onShowShapeOptionsClicked()
 {
+    if (!tibia::game::isOnline())
+        return;
     auto action = input::mutableClone(*input::makeAction(A::OPEN_WEAPON_PROFICIENCY_SHAPE_OPTIONS_DIALOG));
     action->parameter = profession();
     input::publish(action);

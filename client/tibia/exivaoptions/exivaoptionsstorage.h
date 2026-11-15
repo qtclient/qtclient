@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "input/gameaction.h"
 
 #include <QObject>
 #include <QString>
@@ -11,13 +12,9 @@
 namespace tibia {
 namespace exivaoptions {
 
-/// The exiva restrictions (CIP: TExivaOptionsStorage, getters ..
-/// , character whitelist), fed by the server's 0xCA
-/// message (TExivaOptionsProtocolMessageHandler: the added names join the
-/// whitelists, the removed ones leave them,), plus
-/// TExivaOptionsGameActionHandler : EXIVA_TOGGLE_ALLOW_EVERYONE,
-/// EXIVA_ADD/REMOVE_CHARACTER_TO/FROM_WHITELIST and the dialog's
-/// EXIVA_UPADATE_OPTIONS (update).
+/// The exiva restrictions (flags and character / guild whitelists) the
+/// server reports, plus the exiva game actions (toggle allow-everyone, add /
+/// remove a whitelisted character, update from the dialog).
 class TExivaOptionsStorage final : public QObject
 {
     Q_OBJECT
@@ -37,30 +34,46 @@ public:
     explicit TExivaOptionsStorage(QObject* parent = nullptr);
     ~TExivaOptionsStorage() override;
 
+    /// The storage the server's exiva messages update (the VIP widget owns it).
+    static TExivaOptionsStorage* instance();
+
+    bool allowEveryone() const { return m_options.allowAll; }
+    /// Notifies only when the flag changes.
+    void setAllowEveryone(bool allow);
+    /// The five group flags at once; notifies when any of them changes.
+    void setAllowedGroups(bool ownGuild, bool ownParty, bool vipList, bool characterWhitelist, bool guildWhitelist);
+    /// Inserts / erases `names`; notifies when the whitelist's size changes.
+    void addToCharacterWhitelist(const Names& names);
+    void removeFromCharacterWhitelist(const Names& names);
+    void addToGuildWhitelist(const Names& names);
+    void removeFromGuildWhitelist(const Names& names);
+
     const Options& options() const { return m_options; }
     const Names& characterWhitelist() const { return m_characterWhitelist; }
     const Names& guildWhitelist() const { return m_guildWhitelist; }
-    /// Case-sensitive, like CIP's whitelist set.
+    /// Case-sensitive, like the whitelist set.
     bool isCharacterWhitelisted(const QString& name) const { return m_characterWhitelist.contains(name); }
 
-    /// CIP (EXIVA_UPADATE_OPTIONS): `options` with the names that
+    /// (EXIVA_UPADATE_OPTIONS): `options` with the names that
     /// join or leave each whitelist compared to the stored ones.
     void update(const Options& options, const Names& characters, const Names& guilds) const;
 
 Q_SIGNALS:
-    void optionsChanged();
-    /// CIP moc allowEveryoneChanged — allow-all flag only.
+    /// The allow-all flag only.
     void allowEveryoneChanged();
-    /// CIP moc allowedGroupsChanged — guild/party/vip/whitelist flags.
+    /// The guild / party / VIP / whitelist flags.
     void allowedGroupsChanged();
     void characterWhitelistChanged();
     void guildWhitelistChanged();
 
 private:
-    /// CIP (EXIVA_TOGGLE_ALLOW_EVERYONE): the current options with
+    /// The exiva actions: toggle allow-everyone, add / remove a whitelisted
+    /// character, update the options.
+    bool handleGameAction(const input::TGameAction& action);
+    /// (EXIVA_TOGGLE_ALLOW_EVERYONE): the current options with
     /// "allow everyone" flipped, and a status line about it.
     void toggleAllowEveryone() const;
-    /// CIP (EXIVA_ADD_CHARACTER_TO_WHITELIST) / 
+    /// (EXIVA_ADD_CHARACTER_TO_WHITELIST) / 
     /// (EXIVA_REMOVE_CHARACTER_FROM_WHITELIST): the current options with `name`
     /// as the only added / removed character.
     void requestWhitelistChange(const QString& name, bool add) const;

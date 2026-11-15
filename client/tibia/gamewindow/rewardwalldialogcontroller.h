@@ -1,17 +1,14 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "dailyreward/dailyrewardciptypes.h"
 #include "gamewindow/dialogmanager.h"
 
-#include <client/staticdata.h>
 #include <cip_gen.h>
 
-#include <QPointer>
 #include <QTimer>
 
-#include <map>
-#include <optional>
-#include <vector>
+#include <memory>
 
 namespace tibia {
 namespace gamewindow {
@@ -31,8 +28,7 @@ class TQmlDailyRewardHistoryEntry final : public cip::tibia::dailyreward::TQmlDa
 {
     Q_OBJECT
 public:
-    TQmlDailyRewardHistoryEntry(quint32 timestamp, bool changedBySupport, const QString& description, uint streak,
-                                QObject* parent);
+    TQmlDailyRewardHistoryEntry(const dailyreward::TDailyRewardHistoryEntry& entry, QObject* parent);
 };
 
 /// Reward-streak bonus icon (CIP: dailyreward::TQmlRewardStreakBonus).
@@ -43,17 +39,36 @@ public:
     TQmlRewardStreakBonus(uint neededStreak, bool lockedByStreak, QObject* parent);
 };
 
-/// RewardWallDialog.qml (CIP: TRewardWallDialogController).
+/// RewardWallDialog.qml (CIP: TRewardWallDialogController): the daily
+/// rewards, the reward streak and the history, read from the session's
+/// TDailyRewardStorage.
 class TRewardWallDialogController final : public TDialogController<cip::tibia::gamewindow::TRewardWallDialogController>
 {
     Q_OBJECT
 public:
-    explicit TRewardWallDialogController(QObject* parent = nullptr);
+    explicit TRewardWallDialogController(dailyreward::TDailyRewardStorage* storage, QObject* parent = nullptr);
     ~TRewardWallDialogController() override;
 
-    /// Toggle: close when open, otherwise request the wall from the server.
-    void openOrUpdate();
-    bool isOpen() const;
+    bool isPremium() const override;
+    uint instantRewardAccessAmount() const override;
+    uint dailyRewardJokerAmount() const override;
+    uint rewardStreakLength() const override;
+    QString rewardStreakInfoText() const override;
+    QString rewardStreakStateInfoText() const override;
+    QString rewardStreakTimeLeft() const override;
+    double rewardStreakTimeLeftProgress() const override;
+    uint nextDailyRewardPosition() const override;
+    bool isDailyRewardLocked() const override;
+    QString dailyRewardTimeToUnlock() const override;
+    double dailyRewardTimeToUnlockProgress() const override;
+    bool isUsingRewardShrine() const override;
+    uint jokersNeededForCollecting() const override;
+    ::cip::tibia::qmlcomponents::enums::EDailyRewardStreakState dailyRewardStreakState() const override;
+    uint maxDailyRewardJokerAmount() const override;
+    uint cosmeticTokenCount() const override;
+    uint bountyTaskRerollTokenCount() const override;
+
+    bool handleGameAction(const input::TGameAction& action);
 
 public Q_SLOTS:
     void showDialog() override;
@@ -71,44 +86,32 @@ public Q_SLOTS:
     QString dailyRewardNumbersText(int Index, bool IsPremium) override;
     void onPremiumTimeChanged() override;
     void onDailyRewardHistoryChanged() override;
+    void showConfirmUsOfInstantRewardAccessDialogIfNeeded() override;
     void onConfirmedCollectReward() override;
     void onConfirmedPartialCollect() override;
     void requestCollectFixedItemsReward() override;
-    /// Declared without `override`: clang/moc mis-resolve this CIP virtual in some builds.
-    void showConfirmUseOfInstantRewardAccessDialogIfNeeded();
 
 private:
-    struct OpenWallState
-    {
-        uint8_t bonusShrine = 0;
-        quint32 nextRewardTime = 0;
-        uint8_t dayStreakDay = 0;
-        bool wasTaken = false;
-        QString errorMessage;
-        uint16_t jokers = 0;
-        quint32 streakTimeLeft = 0;
-        uint16_t dayStreakLevel = 0;
-    };
+    void updateDailyRewards();
+    void clearDailyRewards();
+    void clearHistory();
+    /// The reward to collect now, or null while it is locked.
+    std::shared_ptr<dailyreward::TDailyReward> collectableReward() const;
+    QString dailyRewardDetails(const std::shared_ptr<dailyreward::TDailyReward>& free,
+                               const std::shared_ptr<dailyreward::TDailyReward>& premium, bool isPremium) const;
+    void showNotCollectableMessage();
+    void showCollectWarning();
+    void showNoDailyRewardMessage(const QString& text);
+    /// Seconds from now until the streak ends, or until the next reward.
+    qint64 secondsUntilStreakEnd() const;
+    qint64 secondsUntilNextReward() const;
 
-    void applyOpenWall(const OpenWallState& state);
-    void applyDailyReward(const DailyRewardData& data);
-    void applyHistory(const std::vector<std::tuple<uint32_t, bool, std::string, uint16_t>>& history);
-    void rebuildDailyRewards();
-    void rebuildRewardStreakBonuses();
-    void refreshResources();
-    void refreshTimers();
-    void syncPremium();
-    void updateRewardStreakTexts();
-    const DailyRewardDay* currentDay() const;
-    void collectNow();
-
-    std::vector<client::gamecore::Hook> m_hooks;
+    dailyreward::TDailyRewardStorage* m_storage;
+    TMessageDialogController* m_infoDialog;
+    TMessageDialogController* m_confirmDialog;
+    TMessageDialogController* m_warningDialog;
     QTimer m_timer;
-    OpenWallState m_wall;
-    qint64 m_wallReceivedAt = 0;
-    std::optional<DailyRewardData> m_dailyReward;
-    TMessageDialogController* m_confirmDialog = nullptr;
-    bool m_pendingShow = false;
+    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

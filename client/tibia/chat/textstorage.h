@@ -34,8 +34,6 @@ public:
     virtual void push(const QString& text, Millis duration, const QColor& color);
     /// Shows the next text once the current one has run out (CIP:).
     void update(Millis now);
-    /// Drop the shown text immediately and promote the next waiting one.
-    void dismiss(Millis now);
 
     bool isVisible() const { return m_visible; }
     const QString& text() const { return m_text; }
@@ -43,6 +41,9 @@ public:
     Millis start() const { return m_start; }
 
 protected:
+    /// Clears the shown text of a queue it owns (hotkey ClearOldestMessage).
+    friend class TTextStorage;
+
     struct Entry
     {
         QString text;
@@ -76,41 +77,49 @@ private:
 class TNpcSpeechBubble : public TFleetingTextQueue
 {
 public:
-    TNpcSpeechBubble(const QString& name, const QColor& color, const Position& coordinate);
+    TNpcSpeechBubble() = default;
+
+    /// Answers only come in through addText.
+    void push(const QString& text, Millis duration, const QColor& color) override;
+    /// Starts the bubble over for `name`: drops the waiting and shown answers.
+    void setHeader(const QString& name, const QColor& color, const Position& coordinate);
+    /// Queues an answer of `name`: tags escaped, keywords in {braces} highlighted.
+    void addText(const QString& name, const QString& text, Millis duration);
+    /// "Name:" header, a line break and the shown answer.
+    QString bubbleText() const;
 
     const QString& name() const { return m_name; }
     const QColor& bubbleColor() const { return m_bubbleColor; }
     const Position& coordinate() const { return m_coordinate; }
-    void setHeader(const QColor& color, const Position& coordinate);
-    /// Rich text: keywords in {braces} highlighted (CIP:).
-    void pushText(const QString& text, Millis duration);
-    /// "Name:\n" and the shown answer (CIP: TNpcSpeechBubble::v3).
-    QString bubbleText() const;
 
 private:
     QString m_name;
     QString m_header;
-    QColor m_bubbleColor;
+    QColor m_bubbleColor = Qt::transparent;
     Position m_coordinate;
 };
 
-/// A creature's recent lines at one place, said the same way (CIP's 0xb8-byte
-/// speech bubble,).
+/// A creature's recent lines at one place, said the same way (CIP:
+/// chat::TPersonalizedSpeechBubble).
 class TCreatureSpeechBubble : public ::tibia::CipTyped
 {
 public:
-    /// CIP's speech volume .
+    /// CIP's speech volume.
     enum Volume { Whisper = 0, Say = 1, Yell = 2, Monster = 3, Cast = 4 };
 
     TCreatureSpeechBubble(const QString& speaker, int volume, const QColor& color, const Position& coordinate, size_t maxLines);
 
     bool matches(const QString& speaker, int volume, const QColor& color, const Position& coordinate) const;
-    /// Yells are upper-cased; past maxLines the oldest line goes (CIP:).
+    /// Yells are upper-cased; past maxLines the oldest line goes.
     void addLine(const QString& text, Millis now, Millis duration);
-    /// Drops the leading lines that ran out (CIP:).
+    /// Drops the leading lines that ran out.
     void update(Millis now);
+    /// Blanks the oldest line; the next update drops it.
+    void clearFirstLine();
     bool isEmpty() const { return m_lines.empty(); }
-    /// The header and the lines, one per row (CIP:).
+    /// When the oldest line was said.
+    Millis firstLineStart() const { return m_lines.front().start; }
+    /// The header and the lines, one per row.
     QString text() const;
     const QColor& color() const { return m_color; }
     const Position& coordinate() const { return m_coordinate; }
@@ -121,7 +130,9 @@ private:
     {
         QString text;
         Millis expiry = 0;
-        bool visible = true;
+        Millis start = 0;
+        bool visible = false;
+        QColor color = Qt::white;
     };
 
     QString m_speaker;
@@ -139,59 +150,77 @@ private:
 class TTextStorage : public ::tibia::CipTyped
 {
 public:
-    /// CIP builds it with 10 creature bubbles and 9 queued messages .
     explicit TTextStorage(size_t maxCreatureBubbles = 10, size_t maxQueuedMessages = 9);
 
     static Millis now();
 
-    /// Ages every text (CIP: v12, slot 0x60). `player` is the own character's
-    /// field; NPC bubbles farther than 3 fields away close.
-    void update(Millis now, const Position& player);
+    /// Ages every text. NPC bubbles showing an answer close once the own
+    /// character is more than 3 fields away.
+    void update(Millis now);
+    /// Leaving the world: drops everything.
     void clear();
 
-    /// The bottom status line, shown 5 s (CIP: slot 0x80).
-    void setStatusMessage(const QString& text, const QColor& color);
-    /// Hotkey ClearOldestMessage: dismiss status, else look, else the centre queue.
-    void clearOldestMessage();
+    size_t maxCreatureBubbles() const { return m_maxCreatureBubbles; }
+
+    /// The bottom status line, shown 5 s.
+    void setStatusMessage(const QString& text, const QColor& color, bool isHtml = false);
     bool isStatusVisible() const { return m_statusVisible; }
     const QString& statusText() const { return m_statusText; }
     const QColor& statusColor() const { return m_statusColor; }
+    bool isStatusHtml() const { return m_statusHtml; }
 
-    /// The look line above the centre (CIP: slot 0xa8); `isHtml` for loot.
+    /// Hotkey ClearOldestMessage: blanks the oldest of the look line, the shown
+    /// centre and private messages, the NPC answers and the creature lines.
+    void clearOldestMessage();
+
+    /// The look line above the centre; `isHtml` for loot.
     void setLookMessage(const QString& text, const QColor& color, bool isHtml);
     bool isLookVisible() const { return m_lookVisible; }
     const QString& lookText() const { return m_lookText; }
     const QColor& lookColor() const { return m_lookColor; }
     bool isLookHtml() const { return m_lookHtml; }
 
-    /// Centre messages (CIP: slots 0xd0, 0xd8) and private messages (slot 0xf8).
+    /// Centre messages and private messages, "Name:\ntext" for a speaker.
     void addCenterMessage(const QString& text, const QColor& color);
     void addGamemasterMessage(const QString& name, const QString& text, const QColor& color);
     void addPrivateMessage(const QString& name, const QString& text, const QColor& color);
     const TTextMessageQueue& centerMessages() const { return m_center; }
     const TTextMessageQueue& privateMessages() const { return m_private; }
 
-    /// A creature's speech (CIP: slot 0x118); volume per TCreatureSpeechBubble::Volume.
+    /// A creature's speech; volume per TCreatureSpeechBubble::Volume.
     void addCreatureSpeech(const QString& speaker, int volume, const QString& text, const QColor& color, const Position& coordinate);
+    bool hasCreatureBubbles() const { return !m_creatureBubbles.empty(); }
+    size_t creatureBubbleCount() const { return m_creatureBubbles.size(); }
+    std::shared_ptr<TCreatureSpeechBubble> creatureBubble(size_t index) const { return m_creatureBubbles.at(index); }
     const std::vector<std::shared_ptr<TCreatureSpeechBubble>>& creatureBubbles() const { return m_creatureBubbles; }
 
-    /// An NPC's bubble (CIP: slot 0x138) and its answers (slot 0x140).
+    /// An NPC's bubble (brought to the front, emptied) and its answers.
     void setNpcSpeechHeader(const QString& name, const QColor& color, const Position& coordinate);
     void addNpcSpeech(const QString& name, const QString& text);
+    bool hasVisibleNpcBubble() const;
+    size_t npcBubbleCount() const { return m_npcBubbles.size(); }
+    const TNpcSpeechBubble& npcBubble(size_t index) const { return m_npcBubbles.at(index); }
     const std::deque<TNpcSpeechBubble>& npcBubbles() const { return m_npcBubbles; }
 
-    /// CIP moc onPlayerCreatureAddedToGameSession — own character joined the session.
+    /// Remembers the own character for the NPC bubble range.
     void onPlayerCreatureAddedToGameSession(std::weak_ptr<::tibia::creatures::TCreature> pPlayer);
 
 private:
+    /// No own character yet counts as in range.
+    bool isInNpcBubbleRange(const Position& coordinate) const;
+
+    std::weak_ptr<::tibia::creatures::TCreature> m_player;
     size_t m_maxCreatureBubbles;
     size_t m_maxQueuedMessages;
     QString m_statusText;
     Millis m_statusExpiry = 0;
+    Millis m_statusStart = 0;
     bool m_statusVisible = false;
     QColor m_statusColor = Qt::white;
+    bool m_statusHtml = false;
     QString m_lookText;
     Millis m_lookExpiry = 0;
+    Millis m_lookStart = 0;
     bool m_lookVisible = false;
     QColor m_lookColor = Qt::white;
     bool m_lookHtml = false;

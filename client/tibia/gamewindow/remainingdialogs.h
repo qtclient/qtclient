@@ -406,17 +406,21 @@ private:
     QStringList m_paths;
 };
 
-/// CIP TShowSpellBookDialogController — ShowSpellBookDialog.qml (v3).
+/// The spell book a player reads (ShowSpellBookDialog.qml).
 class TShowSpellBookDialogController final : public TDialogController<cip::tibia::gamewindow::TShowSpellBookDialogController>
 {
     Q_OBJECT
 public:
     explicit TShowSpellBookDialogController(QObject* parent = nullptr);
 
-    void showSpellBook(int spellBookId, const QString& text);
+    /// Closes the dialog and follows the new session's spell book handler.
+    void onGameSessionChanged();
 
     Q_INVOKABLE void openCyclopedia() override;
     Q_INVOKABLE void requestClose() override;
+
+public Q_SLOTS:
+    void showSpellBookDialog(const QString& Text, int AppearanceID);
 };
 
 /// CIP TSoulSealsDialogController — taskboard/SoulSealsDialog.qml.

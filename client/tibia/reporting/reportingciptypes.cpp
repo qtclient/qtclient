@@ -1,6 +1,7 @@
 #include "reporting/reportingciptypes.h"
 #include <tibia/game/gamenotify.h>
 
+#include "input/gameactionhandlers.h"
 #include "protocol/protocolciptypes.h"
 
 #include <tibia/game/gamesession.h>
@@ -33,9 +34,12 @@ void TBugReportProtocolMessageHandler::setLiveInstance(TBugReportProtocolMessage
 void TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage(
     const GameserverMessageBugReportsAllowed& Message)
 {
-    // CIP BugReportsAllowed: 0 = allowed; any other value is a refusal reason.
-    const auto state = static_cast<uint8_t>(Message.state());
-    tibia::game::setBugReportState(state);
+    // The four known states (0 = allowed, otherwise the refusal reason); an
+    // unknown one rejects the message.
+    const uint32_t state = Message.state();
+    if (state > 3)
+        return;
+    tibia::game::setBugReportState(static_cast<int>(state));
     tibia::game::setCanReportBugs(state == 0);
 }
 
@@ -68,14 +72,40 @@ void ownProductSurface(QObject* parent)
     TBugReportProtocolMessageHandler::setLiveInstance(handler);
 }
 
+namespace {
+
+/// The text the server sends for a report becomes the REPORT_TEXT action:
+/// its author, the text's edit id and the text itself.
+void handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMessageTextForReport& message)
+{
+    auto action = input::mutableClone(*input::makeAction(input::EGameAction::REPORT_TEXT));
+    action->text = QString::fromStdString(message.name());
+    action->parameter = static_cast<int>(message.statement_id());
+    action->statement = QString::fromStdString(message.text());
+    input::publish(action);
+}
+
+/// The server's report message confirms a submitted rule violation report.
+constexpr uint32_t MessageModeReport = 38;
+
+void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message)
+{
+    if (message.mode() == MessageModeReport)
+        tibia::game::notify("onRuleViolationReportConfirmed");
+}
+
+}
+
 void TRuleViolationProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
     const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || opcode != 129 || !shadow->HasExtension(GameserverMessageTextForReport::gameserver_message_text_for_report))
+    if (!shadow)
         return;
-    const auto& m = shadow->GetExtension(GameserverMessageTextForReport::gameserver_message_text_for_report);
-    tibia::game::notify("onTextForReport", m.statement_id(), m.text(), m.name());
+    if (opcode == 180 && shadow->HasExtension(GameserverMessageMessage::gameserver_message_message))
+        handleMessageMessage(shadow->GetExtension(GameserverMessageMessage::gameserver_message_message));
+    if (opcode == 129 && shadow->HasExtension(GameserverMessageTextForReport::gameserver_message_text_for_report))
+        handleTextForReportMessage(shadow->GetExtension(GameserverMessageTextForReport::gameserver_message_text_for_report));
 }
 
 } // namespace tibia::reporting

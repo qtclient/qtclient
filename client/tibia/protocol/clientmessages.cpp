@@ -1510,6 +1510,7 @@ void sendForgeBrowseHistoryRequest(uint16_t page) {
     auto message = tibia::protocol::newGameclientMessage(192);
     auto* m = message->MutableExtension(GameclientMessageOpenExaltationHistory::gameclient_message_open_exaltation_history);
     m->set_page(page);
+    m->set_entries_per_page(9);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 

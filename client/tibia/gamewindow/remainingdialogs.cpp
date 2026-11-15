@@ -1,7 +1,9 @@
 #include "remainingdialogs.h"
 
 #include "app/clientoptions.h"
+#include "game/gameciptypes.h"
 #include "game/offlineskilltrainingdata.h"
+#include "game/tgamenotify.h"
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/gameaction.h"
@@ -886,26 +888,41 @@ void TShowImageDialogController::closeDialog()
 
 TShowSpellBookDialogController::TShowSpellBookDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ShowSpellBookDialog.qml"), parent)
-{}
-
-void TShowSpellBookDialogController::showSpellBook(const int spellBookId, const QString& text)
 {
-    m_spellBookID = spellBookId;
-    m_spellBookText = text;
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TShowSpellBookDialogController::onGameSessionChanged);
+    onGameSessionChanged();
+}
+
+void TShowSpellBookDialogController::onGameSessionChanged()
+{
+    dialog()->close();
+    if (auto* handler = tibia::game::TSpellBookProtocolMessageHandler::liveInstance())
+        connect(handler, &tibia::game::TSpellBookProtocolMessageHandler::requestShowSpellBookDialog, this,
+                &TShowSpellBookDialogController::showSpellBookDialog, Qt::UniqueConnection);
+}
+
+void TShowSpellBookDialogController::showSpellBookDialog(const QString& Text, const int AppearanceID)
+{
+    m_spellBookText = Text;
+    m_spellBookID = static_cast<uint16_t>(AppearanceID);
+    // An open dialog keeps showing the book it was opened with.
+    if (dialog()->item())
+        return;
     dialog()->create();
     dialog()->show();
 }
 
 void TShowSpellBookDialogController::openCyclopedia()
 {
-    input::publish(input::makeAction(A::OPEN_CYCLOPEDIA));
+    dialog()->close();
+    // The magical archive tab of the cyclopedia.
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
+    action->parameter = 8;
+    input::publish(action);
 }
 
-void TShowSpellBookDialogController::requestClose()
-{
-    dialog()->close();
-    Q_EMIT dialogClosed();
-}
+void TShowSpellBookDialogController::requestClose() { dialog()->close(); }
 
 TSoulSealsDialogController* TSoulSealsDialogController::s_instance = nullptr;
 

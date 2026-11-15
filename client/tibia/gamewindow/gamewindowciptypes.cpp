@@ -483,12 +483,12 @@ QVariant THouseItemModel::data(const QModelIndex& index, const int role) const
         return {};
     const Entry& e = m_entries[static_cast<size_t>(index.row())];
     switch (role) {
+    case AppearanceTypeIdRole:
+        return uint(e.appearanceTypeId);
     case NameRole:
         return e.name;
     case CountRole:
         return e.count;
-    case ObjectIdRole:
-        return e.objectId;
     default:
         return {};
     }
@@ -496,7 +496,11 @@ QVariant THouseItemModel::data(const QModelIndex& index, const int role) const
 
 QHash<int, QByteArray> THouseItemModel::roleNames() const
 {
-    return { { NameRole, "name" }, { CountRole, "count" }, { ObjectIdRole, "objectId" } };
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles.insert(AppearanceTypeIdRole, "appearanceTypeID");
+    roles.insert(NameRole, "name");
+    roles.insert(CountRole, "count");
+    return roles;
 }
 
 void THouseItemModel::setEntries(std::vector<Entry> entries)

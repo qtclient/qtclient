@@ -998,14 +998,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
         tibia::game::notify("onHirelingNameChange", m.creature_id(), m.object_id());
         break;
     }
-    case 227: {
-        // CIP: receivedCloseRewardWallMessage only — no handleCloseRewardWallMessage.
-        if (!shadow->HasExtension(
-                GameserverMessageCloseRewardWall::gameserver_message_close_reward_wall))
-            return;
-        tibia::game::notify("onCloseRewardWall");
-        break;
-    }
     case 247: {
         // CIP: receivedMarketLeaveMessage only — no handleMarketLeaveMessage.
         // Same side effects as dispatch MarketLeave (empty pb → onMarketLeave).
@@ -1472,18 +1464,73 @@ void TBossDifficultySelectionProtocolMessageHandler::onServerMessageEnqueued(con
         || !shadow->HasExtension(GameserverMessageBossDifficultySelection::gameserver_message_boss_difficulty_selection))
         return;
     const auto& m = shadow->GetExtension(GameserverMessageBossDifficultySelection::gameserver_message_boss_difficulty_selection);
-    const std::vector<std::string> red(m.red_entries().begin(), m.red_entries().end());
-    const std::vector<std::string> green(m.green_entries().begin(), m.green_entries().end());
-    if (m.state() == 2) {
-        tibia::game::notify("onBossDifficultyUpdate", static_cast<uint16_t>(m.difficulty()), red, green);
-    } else if (m.state() == 0) {
-        const std::vector<std::string> banners(m.banners().begin(), m.banners().end());
-        tibia::game::notify("onBossDifficultySelection", m.lowest_difficulty(), !m.spinner_locked(), static_cast<uint16_t>(m.race_id()),
-                            static_cast<uint16_t>(m.selected_difficulty()), static_cast<uint16_t>(m.group_highest()),
-                            static_cast<uint16_t>(m.personal_highest()), m.bad_luck(), banners, red, green);
-    } else {
-        tibia::game::notify("onBossDifficultyClose");
+    // The classic wire carries the open part (state 0) and the update part
+    // (states 0 and 2) flat in one message: its first u32 is the selection
+    // context (proto: lowest_difficulty), the second u16 the lowest difficulty
+    // (proto: selected_difficulty) and the trailing u16 the selected one.
+    TBossDifficultySelectionDialogData data;
+    if (m.state() == 0) {
+        data.context = m.lowest_difficulty();
+        data.isActiveUser = !m.spinner_locked();
+        data.raceId = static_cast<int>(m.race_id());
+        data.lowestDifficulty = static_cast<int>(m.selected_difficulty());
+        data.highestDifficultyOfGroup = static_cast<int>(m.group_highest());
+        data.personalHighestDifficulty = static_cast<int>(m.personal_highest());
+        // The wire sends the bonus percent times 1000.
+        data.currentBadLuckDropBonus = static_cast<float>(m.bad_luck()) / 1000.f;
+        for (size_t i = 0; i < data.playerNames.size() && i < static_cast<size_t>(m.banners_size()); ++i)
+            data.playerNames[i] = m.banners(static_cast<int>(i));
     }
+    if (m.state() == 0 || m.state() == 2) {
+        data.selectedDifficulty = static_cast<int>(m.difficulty());
+        data.conModifiers.assign(m.red_entries().begin(), m.red_entries().end());
+        data.proModifiers.assign(m.green_entries().begin(), m.green_entries().end());
+    }
+    switch (m.state()) {
+        case 2: tibia::game::notify("onBossDifficultyUpdate", static_cast<const TBossDifficultySelectionDialogUpdateData&>(data)); break;
+        case 1: tibia::game::notify("onBossDifficultyClose"); break;
+        case 0: tibia::game::notify("onBossDifficultySelection", data); break;
+        default: break;
+    }
+}
+
+namespace {
+TSpellBookProtocolMessageHandler* g_spellBookProtocolMessageHandler = nullptr;
+/// The message dialog type that shows a spell book.
+constexpr uint32_t SpellBookMessageDialogType = 80;
+}
+
+TSpellBookProtocolMessageHandler::TSpellBookProtocolMessageHandler(QObject* parent)
+    : cip::tibia::game::TSpellBookProtocolMessageHandler(parent)
+{
+    g_spellBookProtocolMessageHandler = this;
+}
+
+TSpellBookProtocolMessageHandler::~TSpellBookProtocolMessageHandler()
+{
+    if (g_spellBookProtocolMessageHandler == this)
+        g_spellBookProtocolMessageHandler = nullptr;
+}
+
+TSpellBookProtocolMessageHandler* TSpellBookProtocolMessageHandler::liveInstance() { return g_spellBookProtocolMessageHandler; }
+
+void TSpellBookProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+{
+    using namespace ::tibia::protobuf::protocol;
+    if (opcode != 237 || !g_spellBookProtocolMessageHandler)
+        return;
+    const auto* shadow = protocol::nativeServerMessage(opcode);
+    if (!shadow || !shadow->HasExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog))
+        return;
+    g_spellBookProtocolMessageHandler->handleShowMessageDialogMessage(
+        shadow->GetExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog));
+}
+
+void TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& Message)
+{
+    if (Message.dialog_type() == SpellBookMessageDialogType)
+        Q_EMIT requestShowSpellBookDialog(QString::fromStdString(Message.message()), static_cast<uint16_t>(Message.extra_value()));
 }
 
 } // namespace tibia::game

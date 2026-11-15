@@ -280,12 +280,13 @@ class THouseItemModel final : public QAbstractListModel
 {
     Q_OBJECT
 public:
-    enum Role { NameRole = Qt::UserRole + 1, CountRole, ObjectIdRole };
+    enum Role { AppearanceTypeIdRole = Qt::UserRole + 1, NameRole, CountRole };
 
+    /// One house item: its appearance, name and count.
     struct Entry {
+        quint16 appearanceTypeId = 0;
         QString name;
-        int count = 0;
-        int objectId = 0;
+        uint count = 0;
     };
 
     explicit THouseItemModel(QObject* parent = nullptr);

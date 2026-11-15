@@ -133,7 +133,6 @@ TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTr
     if (m_storage) {
         connect(m_storage, &bossbestiary::TBossTrackerStorage::bossEntriesChanged, this,
                 &TBossTrackerWidgetController::onBossTrackingEntriesChanged);
-        m_hasUnlockedAnyBosses = m_storage->hasUnlockedAnyBosses();
     }
     onBossTrackingEntriesChanged();
     widget()->createItem(QStringLiteral("BossTrackingWidget.qml"));
@@ -143,7 +142,7 @@ TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTr
 
 QObject* TBossTrackerWidgetController::bosses() const { return m_model; }
 
-bool TBossTrackerWidgetController::hasUnlockedAnyBosses() const { return m_hasUnlockedAnyBosses; }
+bool TBossTrackerWidgetController::hasUnlockedAnyBosses() const { return m_storage && m_storage->hasUnlockedAnyBosses(); }
 
 QQuickItem* TBossTrackerWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
 bool TBossTrackerWidgetController::hasFocus() const { return m_hasFocus; }
@@ -208,22 +207,18 @@ void TBossTrackerWidgetController::persistOptions()
 
 void TBossTrackerWidgetController::onBossTrackingEntriesChanged()
 {
+    if (!m_storage)
+        return;
     std::vector<TBossTrackerListModel::Row> rows;
-    if (m_storage) {
-        rows.reserve(m_storage->entries().size());
-        for (const bossbestiary::TBossTrackerEntry& entry : m_storage->entries()) {
-            TBossTrackerListModel::Row row;
-            row.entry = entry;
-            row.outfit = outfitForRace(entry.raceId, m_model);
-            rows.push_back(std::move(row));
-        }
-        const bool unlocked = m_storage->hasUnlockedAnyBosses();
-        if (unlocked != m_hasUnlockedAnyBosses) {
-            m_hasUnlockedAnyBosses = unlocked;
-            Q_EMIT bossCountChanged();
-        }
+    rows.reserve(m_storage->entries().size());
+    for (const bossbestiary::TBossTrackerEntry& entry : m_storage->entries()) {
+        TBossTrackerListModel::Row row;
+        row.entry = entry;
+        row.outfit = outfitForRace(entry.raceId, m_model);
+        rows.push_back(std::move(row));
     }
     m_model->setRows(std::move(rows));
+    Q_EMIT bossCountChanged();
 }
 
 void TBossTrackerWidgetController::requestFilterByBossName(const QString& Filter) { m_model->setNameFilter(Filter); }

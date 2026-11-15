@@ -341,11 +341,7 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
     connect(this, &TWeaponProficiencyDialogController::proficiencyModelChanged, this, onSourceChanged);
     connect(m_storage, &TProficiencyStorage::proficiencyDataChanged, this, [this](const uint typeId) {
         m_model.onObjectProficiencyXPChanged();
-        if (typeId != m_currentTypeId)
-            return;
-        if (const TProficiencyData* server = m_storage->data(static_cast<uint16_t>(typeId)))
-            m_local = *server;
-        rebuildModel();
+        onProficiencyDataChanged(static_cast<uint16_t>(typeId));
     });
     connect(m_storage, &TProficiencyStorage::proficiencyXPChanged, this, [this] {
         m_model.onObjectProficiencyXPChanged();
@@ -419,55 +415,76 @@ void TWeaponProficiencyDialogController::sendItemInfo(const uint16_t typeId) con
 void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
 {
     m_onAccept = m_onDiscard = nullptr;
-    m_confirm->dialog()->hide();
+    m_confirm->dialog()->close();
     if (m_model.isEmpty())
         m_model.rebuild();
     m_proxy.clearFilters();
 
+    // The asked weapon when it is a proficiency weapon not already shown,
+    // otherwise the list's first entry with every weapon type.
     const ThingTypePtr type = typeId != 0 && tibia::game::isValidDatId(typeId, ThingCategoryItem)
         ? tibia::game::thingType(typeId, ThingCategoryItem)
         : nullptr;
-    if (type && type->getProficiencyId() != 0 && m_proxy.rowOf(typeId) != -1) {
+    const bool selected = typeId != 0 && tibia::game::isOnline() && m_model.contains(typeId) && typeId != m_currentTypeId;
+    if (selected)
+        select(typeId);
+    if (!selected || !type) {
+        select(m_proxy.typeIdAt(0));
+        setWeaponTypeFilter(0);
+    } else {
         setFilter(false, vocationMatches(type->getRestrictVocation()), false, false);
         setWeaponTypeFilter(static_cast<int>(type->getAppearanceWeaponType()));
-        select(typeId);
-    } else {
-        setWeaponTypeFilter(0);
-        select(m_proxy.typeIdAt(0));
     }
 
-    if (m_storage->listRequested()) {
-        sendItemInfo(static_cast<uint16_t>(m_currentTypeId));
-    } else {
-        tibia::game::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_LIST_INFO);
-        m_storage->setListRequested(true);
+    if (tibia::game::isOnline()) {
+        if (m_storage->listRequested()) {
+            sendItemInfo(static_cast<uint16_t>(m_currentTypeId));
+        } else {
+            tibia::game::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_LIST_INFO);
+            m_storage->setListRequested(true);
+        }
     }
     for (const int resource : DialogResources) {
         auto action = input::mutableClone(*input::makeAction(A::REQUEST_RESOURCE_BALANCE));
         action->parameter = resource;
         input::publish(action);
     }
-    dialog()->show();
+    if (!dialog()->item()) {
+        dialog()->create();
+        dialog()->show();
+    }
 }
 
 void TWeaponProficiencyDialogController::select(const uint16_t typeId)
 {
-    if (typeId == 0 || m_proxy.rowOf(typeId) == -1)
+    if (!m_model.contains(typeId) || typeId == m_currentTypeId)
         return;
     m_currentTypeId = typeId;
     Q_EMIT currentTypeIdChanged();
     m_currentInspectText.clear();
     Q_EMIT currentInspectTextChanged();
-    m_selectedLevelIndex = -1;
-    m_selectedPerkIndex = -1;
+    if (m_selectedLevelIndex != -1 || m_selectedPerkIndex != -1) {
+        m_selectedLevelIndex = -1;
+        m_selectedPerkIndex = -1;
+        updateSelectedPerk();
+    }
 
     tibia::game::inspectionObject(tibia::client::INSPECT_PROFICIENCY, typeId, 1);
-    if (dialog()->isShown())
+    if (dialog()->item())
         sendItemInfo(typeId);
 
+    // A pending reset stays pending: the next apply still sends it.
     const TProficiencyData* server = m_storage->data(typeId);
     m_local = server ? *server : TProficiencyData{};
-    m_pendingReset = false;
+    rebuildModel();
+}
+
+void TWeaponProficiencyDialogController::onProficiencyDataChanged(const uint16_t typeId)
+{
+    if (typeId != m_currentTypeId)
+        return;
+    const TProficiencyData* server = m_storage->data(typeId);
+    m_local = server ? *server : TProficiencyData{};
     rebuildModel();
 }
 
@@ -494,17 +511,30 @@ void TWeaponProficiencyDialogController::rebuildModel()
     updateSelectedPerk();
 }
 
+bool TWeaponProficiencyDialogController::picksEqual(const std::vector<TPerkPick>& a, const std::vector<TPerkPick>& b)
+{
+    if (a.size() != b.size())
+        return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        if (a[i].level != b[i].level || a[i].picked != b[i].picked)
+            return false;
+        if (a[i].picked && b[i].picked && a[i].perk != b[i].perk)
+            return false;
+    }
+    return true;
+}
+
 bool TWeaponProficiencyDialogController::localDiffersFromServer() const
 {
+    if (!tibia::game::isOnline() || m_currentTypeId == 0)
+        return false;
     const TProficiencyData* server = m_storage->data(static_cast<uint16_t>(m_currentTypeId));
-    const TProficiencyData empty;
-    const TProficiencyData& reference = server ? *server : empty;
-    return flaggedPicks(m_local) != flaggedPicks(reference) || m_local.shaped != reference.shaped;
+    return server && !picksEqual(server->picks, m_local.picks);
 }
 
 void TWeaponProficiencyDialogController::confirmUnsavedChanges(std::function<void()> next)
 {
-    if (m_currentTypeId != 0 && m_storage->data(static_cast<uint16_t>(m_currentTypeId)) && localDiffersFromServer()) {
+    if (localDiffersFromServer()) {
         m_onAccept = [this, next] {
             onApplyClicked();
             next();
@@ -533,10 +563,8 @@ void TWeaponProficiencyDialogController::requestClose()
 void TWeaponProficiencyDialogController::onApplyClicked()
 {
     const auto typeId = static_cast<uint16_t>(m_currentTypeId);
-    if (typeId == 0)
-        return;
     const TProficiencyData* server = m_storage->data(typeId);
-    if (m_pendingReset && server && !flaggedPicks(*server).empty())
+    if (m_pendingReset && tibia::game::isOnline() && server && !flaggedPicks(*server).empty())
         tibia::game::sendWeaponProficiencyAction(tibia::client::WEAPON_PROFICIENCY_RESET_PERKS, typeId);
     std::vector<uint8_t> levels;
     std::vector<uint8_t> perks;
@@ -579,6 +607,8 @@ void TWeaponProficiencyDialogController::setFilter(const bool FilterByLevel, con
 
 void TWeaponProficiencyDialogController::pickPerk(const uint LevelIndex, const uint PerkIndex)
 {
+    if (!tibia::game::isOnline())
+        return;
     m_local.pick(static_cast<int>(LevelIndex), static_cast<int>(PerkIndex));
     rebuildModel();
 }
@@ -592,6 +622,8 @@ void TWeaponProficiencyDialogController::resetPerks()
 
 void TWeaponProficiencyDialogController::selectPerk(const int LevelIndex, const int PerkIndex)
 {
+    if (m_selectedLevelIndex == LevelIndex && m_selectedPerkIndex == PerkIndex)
+        return;
     m_selectedLevelIndex = LevelIndex;
     m_selectedPerkIndex = PerkIndex;
     updateSelectedPerk();
@@ -689,7 +721,16 @@ void TWeaponProficiencyDialogController::onModifyShapeClicked()
     input::publish(action);
 }
 
-void TWeaponProficiencyDialogController::closeDialog() { dialog()->close(); }
+void TWeaponProficiencyDialogController::closeDialog()
+{
+    m_onAccept = m_onDiscard = nullptr;
+    m_confirm->dialog()->close();
+    dialog()->close();
+    // The next opening starts without a weapon and without local choices.
+    m_currentTypeId = 0;
+    m_local = {};
+    m_pendingReset = false;
+}
 
 QString TWeaponProficiencyDialogController::currentTypeName() const
 {

@@ -156,15 +156,25 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
 };
 
-/// The button bar's Bosstiary button (CIP: TBosstiaryButtonController,
-/// onOpenBosstiaryButtonClicked).
+/// The button bar's Bosstiary button (CIP: TBosstiaryButtonController). It is
+/// highlighted while the server's last bosstiary highlight names a boss; a
+/// click opens that boss's bosstiary entry.
 class TBosstiaryButtonController final : public cip::tibia::gamewindow::TBosstiaryButtonController
 {
     Q_OBJECT
 public:
-    using cip::tibia::gamewindow::TBosstiaryButtonController::TBosstiaryButtonController;
+    explicit TBosstiaryButtonController(QObject* parent = nullptr);
+
+    bool highlighted() const override { return m_highlightedBossRaceId != 0; }
 
     void onOpenBosstiaryButtonClicked() override;
+    /// Clears the highlight and listens to the new session's highlight requests.
+    void connectToGameSession();
+    void onHighlightRequested(uint16_t BossRaceID);
+
+private:
+    uint16_t m_highlightedBossRaceId = 0;
+    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

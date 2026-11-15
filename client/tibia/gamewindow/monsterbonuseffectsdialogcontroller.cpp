@@ -135,7 +135,7 @@ TMonsterBonusEffectsDialogController::~TMonsterBonusEffectsDialogController() = 
 
 TMonsterBonusEffectsDialogController::Context TMonsterBonusEffectsDialogController::captureContext() const
 {
-    return Context{ m_selectedCharm, m_activeTab };
+    return Context{ m_selectedCharm, m_temporarySelectedMonsterIndex };
 }
 
 void TMonsterBonusEffectsDialogController::restoreContext(const Context& context)
@@ -144,7 +144,10 @@ void TMonsterBonusEffectsDialogController::restoreContext(const Context& context
         m_selectedCharm = context.charmId;
         Q_EMIT qmlSelectedBonusEffectIdChanged();
     }
-    setActiveTab(context.activeTab);
+    if (m_temporarySelectedMonsterIndex == context.temporarySelectedMonsterIndex)
+        return;
+    m_temporarySelectedMonsterIndex = context.temporarySelectedMonsterIndex;
+    Q_EMIT qmlTemporarySelectedMonsterIndexChanged();
 }
 
 void TMonsterBonusEffectsDialogController::selectCharm(const int charmId)
@@ -211,7 +214,11 @@ void TMonsterBonusEffectsDialogController::showDialogTab()
     tibia::game::requestBestiary();
 }
 
-void TMonsterBonusEffectsDialogController::hideDialogTab() { m_shown = false; }
+void TMonsterBonusEffectsDialogController::hideDialogTab()
+{
+    m_shown = false;
+    m_selectedCharm = -1;
+}
 
 void TMonsterBonusEffectsDialogController::refresh()
 {

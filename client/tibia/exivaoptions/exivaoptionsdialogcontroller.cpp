@@ -11,25 +11,25 @@ namespace {
 
 using A = input::EGameAction;
 
-/// CIP EWorldType's Optional PvP.
+/// The world type of Optional PvP worlds.
 constexpr int WorldTypeOptionalPvp = 1;
 
-/// CIP : one name per line, each line ended.
+/// One name per line, and always a final line break (an empty list is "\n").
 QString joined(const TExivaOptionsStorage::Names& names)
 {
-    QString text;
+    QStringList list;
+    list.reserve(static_cast<qsizetype>(names.size()));
     for (const QString& name : names)
-        text += name + QLatin1Char('\n');
-    return text;
+        list.append(name);
+    return list.join(QLatin1Char('\n')) + QLatin1Char('\n');
 }
 
+/// The non-empty lines of `text`.
 TExivaOptionsStorage::Names lines(const QString& text)
 {
     TExivaOptionsStorage::Names names;
-    for (const QString& line : text.split(QLatin1Char('\n'))) {
-        if (!line.isEmpty())
-            names.insert(line);
-    }
+    for (const QString& line : text.split(QLatin1Char('\n'), Qt::SkipEmptyParts))
+        names.insert(line);
     return names;
 }
 
@@ -38,6 +38,9 @@ TExivaOptionsStorage::Names lines(const QString& text)
 TExivaOptionsDialogController::TExivaOptionsDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ExivaOptionsDialog.qml"), parent)
 {
+    // Until a storage is set, own guild and own party are allowed.
+    m_allowGuild = true;
+    m_allowParty = true;
     m_onlyOptionalPvp.setButtons({ new gamewindow::TMessageDialogButton(qtTrId("ok"), gamewindow::TMessageDialogController::Button::OK,
                                                                         QKeySequence(QStringLiteral("Return"))) });
     m_onlyOptionalPvp.setCloseOnButtonClicked(true);
@@ -51,6 +54,7 @@ TExivaOptionsDialogController::~TExivaOptionsDialogController()
 
 void TExivaOptionsDialogController::setStorage(TExivaOptionsStorage* storage, std::function<int()> worldType)
 {
+    closeDialog();
     if (m_storage)
         disconnect(m_storage, nullptr, this, nullptr);
     m_storage = storage;
@@ -63,9 +67,10 @@ void TExivaOptionsDialogController::setStorage(TExivaOptionsStorage* storage, st
     }
     onAllowEveryoneChanged();
     onAllowedGroupsChanged();
+    Q_EMIT characterWhitelistChanged();
+    Q_EMIT guildWhitelistChanged();
 }
 
-/// CIP .
 bool TExivaOptionsDialogController::handleAction(const input::TGameAction& action)
 {
     if (action.type != A::OPEN_EXIVA_OPTIONS_DIALOG)
@@ -77,18 +82,16 @@ bool TExivaOptionsDialogController::handleAction(const input::TGameAction& actio
 void TExivaOptionsDialogController::showDialog()
 {
     if (m_worldType && m_worldType() != WorldTypeOptionalPvp) {
-        // CIP .
         m_onlyOptionalPvp.showMessage(qtTrId("exivaoptions_only_optional_pvp_caption"), qtTrId("exivaoptions_only_optional_pvp_text"));
         return;
     }
-    onAllowEveryoneChanged();
-    onAllowedGroupsChanged();
     dialog()->create();
     dialog()->show();
 }
 
 void TExivaOptionsDialogController::closeDialog()
 {
+    m_onlyOptionalPvp.dialog()->close();
     dialog()->close();
 }
 
@@ -97,7 +100,8 @@ void TExivaOptionsDialogController::closeButtonClicked()
     closeDialog();
 }
 
-/// CIP : the dialog's flags and the edited whitelists, one name per line.
+/// The dialog's flags and the edited whitelists, one name per line, become
+/// the exiva options update.
 void TExivaOptionsDialogController::applyButtonClicked(const QString& CharacterWhitelistString, const QString& GuildWhitelistString)
 {
     if (!m_storage)
@@ -124,13 +128,11 @@ void TExivaOptionsDialogController::onAllowedGroupsChanged()
     Q_EMIT allowedGroupsChanged();
 }
 
-/// CIP .
 QString TExivaOptionsDialogController::characterWhitelist() const
 {
     return m_storage ? joined(m_storage->characterWhitelist()) : QString();
 }
 
-/// CIP .
 QString TExivaOptionsDialogController::guildWhitelist() const
 {
     return m_storage ? joined(m_storage->guildWhitelist()) : QString();

@@ -468,6 +468,7 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             &trade::TCharacterTradeProtocolMessageHandler::onServerMessageEnqueued,
             &taskboard::TTaskboardProtocolMessageHandler::onServerMessageEnqueued,
             &friends::TFriendsProtocolMessageHandler::onServerMessageEnqueued,
+            &game::TSpellBookProtocolMessageHandler::onServerMessageEnqueued,
         };
         for (const QMetaObject::Connection& connection : m_staticIngressConnections)
             disconnect(connection);
@@ -612,6 +613,8 @@ void TGameClient::setMessageIgnoreList(chat::TWhiteBlacklist* list)
 {
     if (m_messageHandler)
         m_messageHandler->setIgnoreList(list);
+    if (auto* teamFinder = teamfinder::TTeamFinderProtocolMessageHandler::instance())
+        teamFinder->setIgnoreList(list);
 }
 
 void TGameClient::shutdown()

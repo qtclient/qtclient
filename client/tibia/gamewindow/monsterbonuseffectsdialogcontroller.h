@@ -26,11 +26,12 @@ class TMonsterBonusEffectsDialogController final : public cip::tibia::gamewindow
 {
     Q_OBJECT
 public:
-    /// The page left for another tab (CIP context type 2: the charm, the tab).
+    /// The page left for another tab (CIP context type 2): the selected charm
+    /// and the selected monster of the assign list.
     struct Context
     {
         int charmId = 0;
-        int activeTab = 0;
+        int temporarySelectedMonsterIndex = 0;
         bool operator==(const Context&) const = default;
     };
 
@@ -38,7 +39,6 @@ public:
     ~TMonsterBonusEffectsDialogController() override;
 
     Context captureContext() const;
-    /// CIP .
     void restoreContext(const Context& context);
     /// CIP : shows the charm's tab and selects it once the data arrives.
     void selectCharm(int charmId);
@@ -50,6 +50,7 @@ public:
     void setUnassignedMonstersNameFilter(const QString& v) override;
 
     void showDialogTab() override;
+    /// Forgets the selected charm.
     void hideDialogTab() override;
     /// CIP /, answered by .
     Q_INVOKABLE void unlockBonusEffect(int BonusEffectID) override;

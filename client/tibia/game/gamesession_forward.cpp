@@ -70,13 +70,6 @@ void acceptTrade()
         return;
     gameclient::sendAcceptTrade();
 }
-void addVip(const std::string_view name)
-{
-    if (!canPerformGameAction() || name.empty())
-        return;
-
-    gameclient::sendAddVip(name);
-}
 
 void answerModalDialog(uint32_t dialog, uint8_t button, uint8_t choice)
 {
@@ -316,18 +309,6 @@ void editText(uint32_t id, std::string_view text)
     if (!canPerformGameAction())
         return;
     gameclient::sendEditText(id, text);
-}
-
-void editVip(uint32_t playerId, std::string_view description, uint32_t iconId, bool notifyLogin, const std::vector<uint8_t>& groupID)
-{
-    gameSessionState().editVip(playerId, description, iconId, notifyLogin, groupID);
-}
-
-void editVipGroups(tibia::client::GroupsEditInfoType_t action, uint8_t groupId, std::string_view groupName)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendEditVipGroups(action, groupId, groupName);
 }
 
 void equipItemId(const uint16_t itemId, const uint8_t tier)
@@ -599,11 +580,6 @@ void rejectTrade()
     if (!canPerformGameAction())
         return;
     gameclient::sendRejectTrade();
-}
-
-void removeVip(uint32_t playerId)
-{
-    gameSessionState().removeVip(playerId);
 }
 
 void reportBugCip(uint8_t category, std::string_view comment, std::string_view typoSpeaker, std::string_view typoText, const Position& position)

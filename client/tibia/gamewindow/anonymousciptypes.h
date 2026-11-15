@@ -9,7 +9,6 @@ namespace tibia {
 namespace gamewindow {
 
 class TAccountBadgesSortProxyModel final : public ::tibia::CipTyped { public: TAccountBadgesSortProxyModel() = default; };
-class TActivitiesModel final : public ::tibia::CipTyped { public: TActivitiesModel() = default; };
 class TBossTrackerModel final : public ::tibia::CipTyped { public: TBossTrackerModel() = default; };
 class TBossTrackerSortProxyModel final : public ::tibia::CipTyped { public: TBossTrackerSortProxyModel() = default; };
 class TBossesModel final : public ::tibia::CipTyped { public: TBossesModel() = default; };
@@ -26,8 +25,6 @@ class TSortedDamageSourceModel final : public ::tibia::CipTyped { public: TSorte
 class TSortedDamageTypedModel final : public ::tibia::CipTyped { public: TSortedDamageTypedModel() = default; };
 class TSortedTypedDamageModel final : public ::tibia::CipTyped { public: TSortedTypedDamageModel() = default; };
 class TSpellListModel final : public ::tibia::CipTyped { public: TSpellListModel() = default; };
-class TTeamMembersModel final : public ::tibia::CipTyped { public: TTeamMembersModel() = default; };
-class TTeamsListModel final : public ::tibia::CipTyped { public: TTeamsListModel() = default; };
 class TTypedDamageModel final : public ::tibia::CipTyped { public: TTypedDamageModel() = default; };
 class TUnlockedPlayerGuideEntryListModel final : public ::tibia::CipTyped { public: TUnlockedPlayerGuideEntryListModel() = default; };
 class TVisibilitySettingsModel final : public ::tibia::CipTyped { public: TVisibilitySettingsModel() = default; };

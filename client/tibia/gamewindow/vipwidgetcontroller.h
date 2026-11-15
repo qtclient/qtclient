@@ -2,6 +2,7 @@
 
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "creatures/creaturesciptypes.h"
 #include "creatures/vipstorage.h"
 #include "input/gameactionmapper.h"
 
@@ -194,17 +195,22 @@ Q_SIGNALS:
     void publishGameAction();
 
 private Q_SLOTS:
-    /// CIP onVipDataEdited — storage change already rebuilds the list model.
-    void onVipDataEdited();
+    /// The edit dialog's result: REQUST_VIP_DATA_UPDATE.
+    void onVipDataEdited(const tibia::creatures::TVipStorage::Vip& VipData);
+    /// A VIP logged in (4) or out (5): the VIP list sound.
+    void onLoginOrLogoutStateUpdate(int state);
     /// CIP onWidgetOptionsChanged — persist contentHeight / filters / sort.
     void onWidgetOptionsChanged();
     void onWidgetQuickItemDestroyed();
 
 private:
-    /// CIP TVipGameActionProvider: the candidates of a click.
-    input::TGameActionList candidates(const QString& vipName, const QString& groupName) const;
     void runClick(const input::TGameActionList& candidates, int mouseButton, int modifiers);
+    /// OPEN_ADD_VIP_GROUP_DIALOG: the add dialog while groups are left, else a message.
     void openAddGroupDialog();
+    /// OPEN_EDIT_VIP_DIALOG for the VIP named `vipName`.
+    void openEditVipDialog(const QString& vipName);
+    /// OPEN_EDIT_VIP_GROUP_DIALOG: remembers the group and shows its name.
+    void openEditGroupDialog(const QString& groupName);
     void readOptions();
 
     creatures::TVipStorage* m_storage;
@@ -216,10 +222,10 @@ private:
     TEditVipDialogController* m_editVipDialog;
     TMessageDialogController* m_messageDialog;
     QPointer<config::TSidebarOptions> m_options;
-    exivaoptions::TExivaOptionsStorage* m_exivaOptions = nullptr;
-    int m_worldType = -1;
+    creatures::TVipWidgetGameActionProvider m_provider;
     input::TGameActionMapper m_mapper;
-    int m_editedGroupId = -1;
+    /// The group the edit-group dialog was opened for.
+    creatures::TVipStorage::Group m_editedGroup;
     bool m_readingOptions = false;
 };
 

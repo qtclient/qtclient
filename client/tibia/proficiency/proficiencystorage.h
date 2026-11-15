@@ -125,6 +125,22 @@ public:
     bool listRequested() const { return m_listRequested; }
     void setListRequested(bool requested) { m_listRequested = requested; }
 
+    /// The equipped weapon's proficiency XP (the notification's, when it named the wielded weapon).
+    uint32_t currentProficiencyXP() const { return m_currentProficiencyXP; }
+    /// The server reports an unspent perk for the wielded weapon.
+    bool hasUnspentPerk() const { return m_unspentPerk; }
+    void setUnspentPerk(bool unspent);
+    /// Replaces a weapon's record.
+    void setProficiencyData(uint16_t typeId, TProficiencyData data);
+    /// The server's latest reshape offers.
+    void setReshapeOffers(TReshapeOffers offers);
+    /// A weapon's XP from a notification; `isCurrentWeapon` also updates the
+    /// wielded weapon's progress.
+    void setProficiencyExperience(uint32_t xp, uint16_t typeId, bool isCurrentWeapon);
+    /// Lunar ascension orbs, the reshape resource.
+    uint32_t lunarAscensionOrbs() const { return m_lunarAscensionOrbs; }
+    void setLunarAscensionOrbs(uint32_t orbs);
+
     /// CIP : the last reshape offers, null when none arrived.
     const TReshapeOffers* reshapeOffers() const { return m_reshapeOffers ? &*m_reshapeOffers : nullptr; }
 
@@ -150,8 +166,10 @@ private:
     mutable std::map<uint32_t, TProficiencyInfo> m_tables;
     mutable bool m_tablesLoaded = false;
     bool m_listRequested = false;
+    uint32_t m_currentProficiencyXP = 0;
+    bool m_unspentPerk = false;
+    uint32_t m_lunarAscensionOrbs = 0;
     std::optional<TReshapeOffers> m_reshapeOffers;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

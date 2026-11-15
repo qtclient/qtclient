@@ -268,7 +268,7 @@ TCharacterTitlesInfoQmlData::TCharacterTitlesInfoQmlData(const uint8_t currentTi
     m_isCurrentTitleActive = true;
     const auto current =
         std::find_if(entries.begin(), entries.end(), [currentTitleId](const TitleEntry& entry) { return entry.id == currentTitleId; });
-    if (current != entries.end()) {
+    if (current != entries.end() && current->id != 0) {
         m_currentTitle = current->name;
         m_isCurrentTitleActive = current->unlocked;
         m_currentTitleId = current->id;
@@ -391,9 +391,8 @@ QVariant TAccountBadgesModel::data(const QModelIndex& index, const int role) con
     switch (role) {
         case BadgeID: return static_cast<uint>(entry.id);
         case BadgeName: return entry.name;
-        // CIP : image://friendbadge-icons/<id-1>.
-        case BadgeIcon: return entry.id == 0 ? QString()
-                                            : QStringLiteral("image://friendbadge-icons/%1").arg(entry.id - 1);
+        // The icon atlas counts from 0, badge ids from 1.
+        case BadgeIcon: return QStringLiteral("image://friendbadge-icons/%1").arg(quint64(entry.id) - 1);
         default: return {};
     }
 }
@@ -429,6 +428,12 @@ const CyclopediaAchievementType* staticAchievement(const uint16_t id)
     return it != all.end() ? &*it : nullptr;
 }
 
+}
+
+TAchievementInfoController::TAchievementInfoController(QObject* parent)
+    : cip::tibia::gamewindow::TAchievementInfoController(parent)
+{
+    m_filterCriterion = Discovered;
 }
 
 void TAchievementInfoController::setData(const int points, const int totalSecret, std::vector<AchievementEntry> unlocked)

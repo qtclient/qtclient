@@ -23,8 +23,6 @@ void acceptMarketOffer(uint32_t timestamp, uint16_t counter, uint16_t amount);
 
 void acceptTrade();
 
-void addVip(std::string_view name);
-
 void answerModalDialog(uint32_t dialog, uint8_t button, uint8_t choice);
 
 void applyImbuement(uint8_t slot, uint32_t imbuementId, bool protectionCharm);
@@ -78,10 +76,6 @@ void editGuildMessage(std::string_view text);
 void editList(uint32_t id, uint8_t doorId, std::string_view text);
 
 void editText(uint32_t id, std::string_view text);
-
-void editVip(uint32_t playerId, std::string_view description, uint32_t iconId, bool notifyLogin, const std::vector<uint8_t>& groupID = {});
-
-void editVipGroups(tibia::client::GroupsEditInfoType_t action, uint8_t groupId, std::string_view groupName);
 
 
 void equipItemId(const uint16_t itemId, const uint8_t tier);
@@ -159,8 +153,6 @@ void preyAction(uint8_t slot, uint8_t actionType, uint16_t index);
 void processInventoryChange(uint8_t slot, const ::tibia::container::TInventorySlot& item);
 
 void rejectTrade();
-
-void removeVip(uint32_t playerId);
 
 void reportBugCip(uint8_t category, std::string_view comment, std::string_view typoSpeaker, std::string_view typoText, const Position& position);
 

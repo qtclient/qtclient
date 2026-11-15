@@ -30,9 +30,6 @@ constexpr int VipWidgetContext = 7;
 constexpr uint MaxNameLength = 29;
 /// CIP : TVipRenderInfo's single-shot highlight timer.
 constexpr int HighlightMs = 1000;
-/// CIP EWorldType: TVipWidgetGameActionProvider offers the exiva
-/// whitelist entries on optional PvP worlds only.
-constexpr int WorldTypeOptionalPvp = 1;
 
 /// CIP 's context menu order.
 constexpr A ContextMenuOrder[] = {
@@ -74,9 +71,21 @@ TVipWidgetDataModel::TVipWidgetDataModel(creatures::TVipStorage* storage, QObjec
     : cip::tibia::gamewindow::TVipWidgetDataModel(parent)
     , m_storage(storage)
 {
-    connect(storage, &creatures::TVipStorage::vipsChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
-    connect(storage, &creatures::TVipStorage::groupsChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
-    connect(storage, &creatures::TVipStorage::vipStateChanged, this, &TVipWidgetDataModel::onVipStateChanged);
+    connect(storage, &creatures::TVipStorage::vipDataChangedOrAdded, this, &TVipWidgetDataModel::onVipDataChangedOrAdded);
+    connect(storage, &creatures::TVipStorage::vipDataRemoved, this, &TVipWidgetDataModel::onVipRemoved);
+    connect(storage, &creatures::TVipStorage::vipGroupDataChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
+    connect(storage, &creatures::TVipStorage::vipStateChanged, this, [this](const uint32_t id, const int state) {
+        // The rows still hold the state before the change.
+        int previousState = 0;
+        for (const Row& row : m_rows) {
+            if (row.id == id) {
+                previousState = row.state;
+                break;
+            }
+        }
+        onVipGroupDataChanged();
+        onVipStateChanged(id, previousState, state);
+    });
     onVipGroupDataChanged();
 }
 
@@ -273,9 +282,12 @@ TVipWidgetController::TVipWidgetController(creatures::TVipStorage* storage, QQui
     , m_addVipDialog(new TGenericEnterTextDialogController(this))
     , m_addGroupDialog(new TGenericEnterTextDialogController(this))
     , m_editGroupDialog(new TGenericEnterTextDialogController(this))
-    , m_editVipDialog(new TEditVipDialogController(storage, this))
+    , m_editVipDialog(new TEditVipDialogController(this))
     , m_messageDialog(new TMessageDialogController(this))
+    , m_provider(storage, nullptr)
 {
+    connect(m_editVipDialog, &TEditVipDialogController::vipDataUpdated, this, &TVipWidgetController::onVipDataEdited);
+    connect(storage, &creatures::TVipStorage::loginOrLogoutStateUpdate, this, &TVipWidgetController::onLoginOrLogoutStateUpdate);
     m_proxy->setSourceModel(m_model);
 
     m_addVipDialog->setCaption(qtTrId("add_new_vip_caption"));
@@ -317,7 +329,6 @@ void TVipWidgetController::onSidebarDestroyed() { widget()->onSidebarDestroyed()
 void TVipWidgetController::onLevelUpClicked() {}
 void TVipWidgetController::setCursorToResizeVertical(const bool Enabled) { widget()->setCursorToResizeVertical(Enabled); }
 void TVipWidgetController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
-void TVipWidgetController::onVipDataEdited() { /* creatures::TVipStorage signals rebuild the list model. */ }
 void TVipWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
 void TVipWidgetController::onWidgetQuickItemDestroyed() {}
 
@@ -366,43 +377,10 @@ void TVipWidgetController::saveWidgetOptions()
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
-input::TGameActionList TVipWidgetController::candidates(const QString& vipName, const QString& groupName) const
-{
-    input::TGameActionList result{ input::makeAction(A::CONTEXT_MENU), input::makeAction(A::OPEN_ADD_VIP_DIALOG),
-                                   input::makeAction(A::SORT_VIPS_BY_NAME), input::makeAction(A::SORT_VIPS_BY_ICON),
-                                   input::makeAction(A::SORT_VIPS_BY_STATUS),
-                                   input::makeAction(m_proxy->hideOffline() ? A::SHOW_OFFLINE_VIPS : A::HIDE_OFFLINE_VIPS),
-                                   input::makeAction(m_proxy->showGroups() ? A::HIDE_VIPS_GROUPS : A::SHOW_VIPS_GROUPS) };
-    if (tibia::game::localPlayer() && tibia::game::localPlayerIsPremium())
-        result.push_back(input::makeAction(A::OPEN_ADD_VIP_GROUP_DIALOG));
-    if (!groupName.isEmpty()) {
-        if (const std::optional<creatures::TVipStorage::Group> group = m_storage->groupByName(groupName); group && group->editable) {
-            result.push_back(makeNamed(A::OPEN_EDIT_VIP_GROUP_DIALOG, group->name, 0, group->id));
-            result.push_back(makeNamed(A::REMOVE_VIP_GROUP, group->name, 0, group->id));
-        }
-    }
-    if (!vipName.isEmpty()) {
-        if (const std::optional<creatures::TVipStorage::Vip> vip = m_storage->vipByName(vipName)) {
-            const int id = static_cast<int>(vip->id);
-            result.push_back(makeNamed(A::OPEN_EDIT_VIP_DIALOG, vip->name, id));
-            result.push_back(makeNamed(A::REMOVE_VIP, vip->name, id));
-            result.push_back(makeNamed(A::COPY_CREATURE_NAME_TO_CLIPBOARD, vip->name, id));
-            if (vip->state == 1 || vip->state == 4)
-                result.push_back(makeNamed(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, vip->name));
-            result.push_back(makeNamed(A::REPORT_NAME, vip->name));
-            if (m_exivaOptions && m_worldType == WorldTypeOptionalPvp)
-                result.push_back(makeNamed(m_exivaOptions->isCharacterWhitelisted(vip->name) ? A::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST
-                                                                                            : A::EXIVA_ADD_CHARACTER_TO_WHITELIST,
-                                           vip->name, id));
-        }
-    }
-    return result;
-}
-
 void TVipWidgetController::setExivaOptions(exivaoptions::TExivaOptionsStorage* exivaOptions, const int worldType)
 {
-    m_exivaOptions = exivaOptions;
-    m_worldType = worldType;
+    m_provider = creatures::TVipWidgetGameActionProvider(m_storage, exivaOptions);
+    m_provider.setWorldType(worldType);
 }
 
 void TVipWidgetController::runClick(const input::TGameActionList& candidates, const int mouseButton, const int modifiers)
@@ -426,12 +404,13 @@ void TVipWidgetController::onVipDoubleClicked(const QString& VipName) { input::p
 void TVipWidgetController::onVipOrGroupClicked(const QString& VipName, const QString& GroupName, const int MouseButtonRaw,
                                                const int KeyboardModifiersRaw)
 {
-    runClick(candidates(VipName, GroupName), MouseButtonRaw, KeyboardModifiersRaw);
+    runClick(m_provider.gameActions(VipName, GroupName, m_proxy->hideOffline(), !m_proxy->showGroups()), MouseButtonRaw,
+             KeyboardModifiersRaw);
 }
 
 void TVipWidgetController::onWidgetClicked(const int MouseButtonRaw, const int KeyboardModifiersRaw)
 {
-    runClick(candidates({}, {}), MouseButtonRaw, KeyboardModifiersRaw);
+    onVipOrGroupClicked({}, {}, MouseButtonRaw, KeyboardModifiersRaw);
 }
 
 void TVipWidgetController::onPlayerNameToAddToVipListReceived(const QString& PlayerName)
@@ -446,10 +425,8 @@ void TVipWidgetController::onGroupNameToAddToVipListReceived(const QString& Grou
 
 void TVipWidgetController::onGroupNameEditedReceived(const QString& GroupName)
 {
-    if (m_editedGroupId < 0)
-        return;
-    input::publish(makeNamed(A::REQUEST_VIP_GROUP_UPDATE, GroupName, 0, m_editedGroupId));
-    m_editedGroupId = -1;
+    input::publish(makeNamed(A::REQUEST_VIP_GROUP_UPDATE, GroupName, 0, m_editedGroup.id));
+    m_editedGroup = {};
 }
 
 void TVipWidgetController::openAddGroupDialog()
@@ -467,33 +444,59 @@ void TVipWidgetController::openAddGroupDialog()
     m_messageDialog->showMessage(qtTrId("no_more_userdefined_groups_caption"), qtTrId("no_more_userdefined_groups_text"));
 }
 
+void TVipWidgetController::openEditVipDialog(const QString& vipName)
+{
+    if (const std::optional<creatures::TVipStorage::Vip> vip = m_storage->vipByName(vipName))
+        m_editVipDialog->open(*vip, m_storage->groupMap());
+}
+
+void TVipWidgetController::openEditGroupDialog(const QString& groupName)
+{
+    const std::optional<creatures::TVipStorage::Group> group = m_storage->groupByName(groupName);
+    m_editedGroup = group.value_or(creatures::TVipStorage::Group{});
+    if (!group)
+        return;
+    m_editGroupDialog->setText(groupName);
+    m_editGroupDialog->dialog()->show();
+}
+
+void TVipWidgetController::onVipDataEdited(const creatures::TVipStorage::Vip& VipData)
+{
+    auto action = input::mutableClone(*input::makeAction(A::REQUST_VIP_DATA_UPDATE));
+    action->instance = static_cast<int>(VipData.id);
+    action->text = VipData.description;
+    action->parameter = VipData.iconId;
+    action->enable = VipData.notifyLogin;
+    action->vipGroups = VipData.groups;
+    input::publish(action);
+}
+
+void TVipWidgetController::onLoginOrLogoutStateUpdate(const int state)
+{
+    using Sound = cip::tibia::qmlcomponents::TSoundHelperService;
+    if (state != creatures::TVipStorage::LoggedIn && state != creatures::TVipStorage::LoggedOut)
+        return;
+    auto action = input::mutableClone(*input::makeAction(A::SOUND_TRIGGER));
+    action->parameter = state == creatures::TVipStorage::LoggedIn ? Sound::VIP_LIST_LOGIN : Sound::VIP_LIST_LOGOUT;
+    input::publish(action);
+}
+
 bool TVipWidgetController::handleAction(const input::TGameAction& action)
 {
     switch (action.type) {
         case A::OPEN_ADD_VIP_DIALOG:
-            // CIP chat/hotkey can open the dialog with a prefilled speaker name
-            // (action.text); empty text is the blank Add VIP path.
-            m_addVipDialog->setText(action.text);
+            m_addVipDialog->setText({});
             m_addVipDialog->dialog()->show();
             return true;
-        case A::OPEN_EDIT_VIP_DIALOG: {
-            std::optional<creatures::TVipStorage::Vip> vip = m_storage->vipByName(action.text);
-            if (vip)
-                m_editVipDialog->open(*vip);
+        case A::OPEN_EDIT_VIP_DIALOG:
+            openEditVipDialog(action.text);
             return true;
-        }
         case A::OPEN_ADD_VIP_GROUP_DIALOG:
             openAddGroupDialog();
             return true;
-        case A::OPEN_EDIT_VIP_GROUP_DIALOG: {
-            const std::optional<creatures::TVipStorage::Group> group = m_storage->groupByName(action.text);
-            if (!group || !group->editable)
-                return true;
-            m_editedGroupId = group->id;
-            m_editGroupDialog->setText(group->name);
-            m_editGroupDialog->dialog()->show();
+        case A::OPEN_EDIT_VIP_GROUP_DIALOG:
+            openEditGroupDialog(action.text);
             return true;
-        }
         case A::SORT_VIPS_BY_NAME:
             m_proxy->sortBy(TVipWidgetDataModelSortFilterProxy::ByName);
             return true;
@@ -524,7 +527,7 @@ TVipWidgetManager::TVipWidgetManager(QQuickItem* gameWindowItem, QQmlEngine* eng
     : QObject(parent)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
-    , m_storage(new creatures::TVipStorage(this))
+    , m_storage(creatures::TVipStorage::instance())
     , m_exivaOptions(new exivaoptions::TExivaOptionsStorage(this))
 {
     for (const A type : WidgetActions)

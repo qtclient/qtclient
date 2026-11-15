@@ -15,7 +15,7 @@ using A = input::EGameAction;
 
 constexpr A Handled[] = { A::REPORT_BUG_OTHER, A::REPORT_BUG_MAP, A::REPORT_BUG_TYPO };
 
-/// DAT_10278fae0 as fills it.
+/// The classification rows, in the dialog's order.
 constexpr TBugReportDialogController::ECategory Classifications[] = {
     TBugReportDialogController::Map,
     TBugReportDialogController::Typo,
@@ -38,8 +38,8 @@ TBugReportDialogController::~TBugReportDialogController()
         input::setActionHandler(type, nullptr);
 }
 
-/// CIP : REPORT_BUG_OTHER (0xac) keeps the category, REPORT_BUG_MAP
-/// (0xad) and REPORT_BUG_TYPO (0xae, speaker and text) set theirs.
+/// REPORT_BUG_OTHER keeps the category, REPORT_BUG_MAP and REPORT_BUG_TYPO
+/// (speaker and text) set theirs.
 bool TBugReportDialogController::handleAction(const input::TGameAction& action)
 {
     switch (action.type) {
@@ -141,13 +141,6 @@ QString TBugReportDialogController::notAllowedReason() const
     }
 }
 
-Position TBugReportDialogController::reportedPosition() const
-{
-    if (m_position.isValid())
-        return m_position;
-    return tibia::game::localPlayer() ? tibia::game::localPlayerPosition() : Position();
-}
-
 /// A row outside the table reports "other"; the dialog closes either way.
 void TBugReportDialogController::requestSendBugReport(const int ClassificationIndex, const QString& Comment)
 {
@@ -158,7 +151,7 @@ void TBugReportDialogController::requestSendBugReport(const int ClassificationIn
         const std::string comment = Comment.toStdString();
         switch (category) {
         case Map:
-            tibia::game::reportBugCip(Map, comment, {}, {}, reportedPosition());
+            tibia::game::reportBugCip(Map, comment, {}, {}, m_position);
             break;
         case Typo:
             tibia::game::reportBugCip(Typo, comment, m_speaker.toStdString(), m_text.toStdString(), {});

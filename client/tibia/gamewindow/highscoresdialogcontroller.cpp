@@ -333,7 +333,19 @@ void THighscoresDialogController::setAnswer(Answer answer)
     setDataAvailable(true);
     setShowLoadingComponent(false);
 
-    // CIP : the selected world's index, 0 (all) when absent.
+    updateIndexOfSelectedWorld();
+    updateIndexOfSelectedBattlEyeType();
+    updateIndexOfSelectedVocation();
+    updateIndexOfSelectedCategory();
+
+    m_selectedWorldTypes.clear();
+    updateWorldTypes();
+    Q_EMIT dataChanged();
+}
+
+/// The answer's world, 0 (all worlds) when it names none or an unknown one.
+void THighscoresDialogController::updateIndexOfSelectedWorld()
+{
     int worldIndex = 0;
     if (!m_answer.selectedWorld.empty()) {
         const auto it = std::ranges::find(m_answer.worlds, m_answer.selectedWorld);
@@ -341,8 +353,11 @@ void THighscoresDialogController::setAnswer(Answer answer)
             worldIndex = static_cast<int>(it - m_answer.worlds.begin()) + 1;
     }
     setIndexOfSelectedWorld(worldIndex);
+}
 
-    // CIP .
+/// The answer's BattlEye type in battlEyeTypes(), 0 (any) when unknown.
+void THighscoresDialogController::updateIndexOfSelectedBattlEyeType()
+{
     int battlEyeIndex = 0;
     const QList<BattlEyeType> types = battlEyeTypes();
     for (int i = 0; i < types.size(); ++i) {
@@ -352,8 +367,11 @@ void THighscoresDialogController::setAnswer(Answer answer)
         }
     }
     setIndexOfSelectedBattlEyeType(battlEyeIndex);
+}
 
-    // CIP : index 0 is "all vocations".
+/// The answer's vocation, 0 ("all vocations") when unknown.
+void THighscoresDialogController::updateIndexOfSelectedVocation()
+{
     int vocationIndex = 0;
     for (size_t i = 0; i < m_answer.vocations.size(); ++i) {
         if (std::get<0>(m_answer.vocations[i]) == m_answer.selectedVocation) {
@@ -362,8 +380,11 @@ void THighscoresDialogController::setAnswer(Answer answer)
         }
     }
     setIndexOfSelectedVocation(vocationIndex);
+}
 
-    // CIP .
+/// The answer's category, 0 when unknown.
+void THighscoresDialogController::updateIndexOfSelectedCategory()
+{
     int categoryIndex = 0;
     for (size_t i = 0; i < m_answer.categories.size(); ++i) {
         if (std::get<0>(m_answer.categories[i]) == m_answer.selectedCategory) {
@@ -372,10 +393,6 @@ void THighscoresDialogController::setAnswer(Answer answer)
         }
     }
     setIndexOfSelectedCategory(categoryIndex);
-
-    m_selectedWorldTypes.clear();
-    updateWorldTypes();
-    Q_EMIT dataChanged();
 }
 
 void THighscoresDialogController::setNoData()

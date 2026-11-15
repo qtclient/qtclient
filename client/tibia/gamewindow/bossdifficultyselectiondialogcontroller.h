@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "game/gameciptypes.h"
 #include "gamewindow/dialogmanager.h"
 
 #include <cip_gen.h>
@@ -12,9 +13,9 @@
 namespace tibia {
 namespace gamewindow {
 
-/// BossDifficultySelectionDialog.qml (CIP: gamewindow::TBossDifficultySelectionDialogController,
-/// ctor , protocol hookup). The server opens it before a lever boss
-/// fight; changing the spinner previews the difficulty after 500 ms, Start / Cancel answer.
+/// BossDifficultySelectionDialog.qml (CIP: gamewindow::TBossDifficultySelectionDialogController).
+/// The server opens it before a lever boss fight; changing the spinner previews
+/// the difficulty after 500 ms, Start / Cancel answer. The server closes it.
 class TBossDifficultySelectionDialogController final
     : public TDialogController<cip::tibia::gamewindow::TBossDifficultySelectionDialogController>
 {
@@ -22,27 +23,31 @@ class TBossDifficultySelectionDialogController final
 public:
     explicit TBossDifficultySelectionDialogController(QObject* parent = nullptr);
 
-    /// CIP : restarts the preview timer when the value changes.
+    /// Restarts the preview timer when the value changes (no notify: the
+    /// spinner already shows it).
     void setSelectedDifficulty(int v) override;
 
+    /// Takes the open message's data and shows the dialog.
+    void showDialog(const game::TBossDifficultySelectionDialogData& data);
+
 public Q_SLOTS:
-    /// CIP -> : action 1.
+    /// Answers "cancel" with the selection context.
     void onCancelClicked() override;
-    /// CIP -> : action 0 with the selected difficulty.
+    /// Answers "start" with the selection context and the selected difficulty.
     void onStartClicked() override;
 
 private:
-    /// CIP : copies the selection data and shows the dialog. Crystal answers each
-    /// preview with the full data, so an open dialog with the same constant properties is
-    /// updated in place; otherwise it is rebuilt (QML reads constants once). The server
-    /// closes the dialog after Start / Cancel.
-    void open(const std::vector<std::any>& args);
-    /// CIP : new modifiers; the selection follows the group leader's only when this
-    /// player cannot change it.
-    void update(const std::vector<std::any>& args);
+    /// Takes new modifiers when they differ; the selection follows the server's
+    /// only when this player cannot change it.
+    void updateDialog(const game::TBossDifficultySelectionDialogUpdateData& data);
+    /// Sends the boss difficulty selection client message.
+    void sendSelection(uint32_t action, bool withDifficulty) const;
 
     std::vector<client::gamecore::Hook> m_hooks;
-    /// CIP ctor: single shot, 500 ms; timeout -> (action 2).
+    /// The last update part, compared against the next update.
+    game::TBossDifficultySelectionDialogUpdateData m_updateData;
+    uint32_t m_context = 0;
+    /// Single shot, 500 ms: sends a preview of the selected difficulty.
     QTimer m_previewTimer;
 };
 

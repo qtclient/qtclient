@@ -273,7 +273,6 @@ void processNumericalEffect(tibia::client::MessageMode mode, const Position& pos
 void processTextMessage(tibia::client::MessageMode mode, std::string_view text);
 void processTalk(std::string_view name, uint16_t level, tibia::client::MessageMode mode, std::string_view text,
                  uint16_t channelId, const Position& pos, uint32_t statement = 0);
-void processVipStateChange(uint32_t id, uint32_t status);
 void processTeamFinderLeader(const TeamFinderLeaderData& data);
 void processOpenContainer(uint8_t containerId, const ::tibia::container::TInventorySlot& containerItem,
                           std::string_view name, uint8_t capacity, bool hasParent,
@@ -300,9 +299,6 @@ void processOpenChannel(uint16_t channelId, std::string_view name);
 void processOpenPrivateChannel(std::string_view name);
 void processOpenOwnPrivateChannel(uint16_t channelId, std::string_view name);
 void processCloseChannel(uint16_t channelId);
-void processVipAdd(uint32_t id, std::string_view name, uint32_t status, std::string_view description, uint32_t iconId,
-                  bool notifyLogin, const std::vector<uint8_t>& groupID);
-void processVipGroupChange(const std::vector<std::tuple<uint8_t, std::string, bool>>& vipGroups, uint8_t groupsAmountLeft);
 void processTutorialHint(uint8_t id);
 void processAddAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);
 void processRemoveAutomapFlag(const Position& pos, uint8_t icon, std::string_view message);

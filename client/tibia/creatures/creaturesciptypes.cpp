@@ -1,4 +1,8 @@
 #include "creatures/creaturesciptypes.h"
+#include "creatures/vipstorage.h"
+#include "exivaoptions/exivaoptionsstorage.h"
+#include "input/gameactionhandlers.h"
+#include "protocol/clientmessages.h"
 #include <tibia/game/gamesession_forward.h>
 #include <client/staticdata.h>
 
@@ -428,6 +432,30 @@ void TUnjustifiedPointsProtocolMessageHandler::onServerMessageEnqueued(const int
 
 namespace tibia::creatures {
 
+namespace {
+
+using VipAction = ::tibia::input::EGameAction;
+
+/// The protocol's buddy status is the EVipState; larger values are invalid.
+constexpr uint32_t MaxBuddyStatus = 5;
+
+TVipProtocolMessageHandler* vipProtocolMessageHandler()
+{
+    static auto* handler = new TVipProtocolMessageHandler(TVipStorage::instance(), TVipStorage::instance());
+    return handler;
+}
+
+constexpr VipAction VipGameActions[] = { VipAction::ADD_NEW_VIP,       VipAction::REMOVE_VIP,       VipAction::REQUST_VIP_DATA_UPDATE,
+                                         VipAction::ADD_NEW_VIP_GROUP, VipAction::REMOVE_VIP_GROUP, VipAction::REQUEST_VIP_GROUP_UPDATE };
+
+}
+
+TVipProtocolMessageHandler::TVipProtocolMessageHandler(TVipStorage* storage, QObject* parent)
+    : cip::tibia::creatures::TVipProtocolMessageHandler(parent)
+    , m_storage(storage)
+{
+}
+
 void TVipProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
@@ -436,33 +464,219 @@ void TVipProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
         return;
     switch (opcode) {
     case 210:
-        if (shadow->HasExtension(GameserverMessageBuddyData::gameserver_message_buddy_data)) {
-            const auto& m = shadow->GetExtension(GameserverMessageBuddyData::gameserver_message_buddy_data);
-            std::vector<uint8_t> groups;
-            for (const uint32_t g : m.group_ids())
-                groups.push_back(static_cast<uint8_t>(g));
-            tibia::game::processVipAdd(m.buddy_id(), tibia::game::formatCreatureName(m.name()), m.status(), m.description(), m.icon(),
-                                       m.notify_login(), groups);
-        }
-        break;
-    case 212:
-        if (shadow->HasExtension(GameserverMessageBuddyGroupData::gameserver_message_buddy_group_data)) {
-            const auto& m = shadow->GetExtension(GameserverMessageBuddyGroupData::gameserver_message_buddy_group_data);
-            std::vector<std::tuple<uint8_t, std::string, bool>> groups;
-            for (const auto& g : m.groups())
-                groups.emplace_back(static_cast<uint8_t>(g.group_id()), g.name(), g.editable());
-            tibia::game::processVipGroupChange(groups, static_cast<uint8_t>(m.groups_left()));
-        }
+        if (shadow->HasExtension(GameserverMessageBuddyData::gameserver_message_buddy_data))
+            vipProtocolMessageHandler()->handleBuddyData(shadow->GetExtension(GameserverMessageBuddyData::gameserver_message_buddy_data));
         break;
     case 211:
-        if (shadow->HasExtension(GameserverMessageBuddyStatusChange::gameserver_message_buddy_status_change)) {
-            const auto& m = shadow->GetExtension(GameserverMessageBuddyStatusChange::gameserver_message_buddy_status_change);
-            tibia::game::processVipStateChange(m.buddy_id(), m.status());
-        }
+        if (shadow->HasExtension(GameserverMessageBuddyStatusChange::gameserver_message_buddy_status_change))
+            vipProtocolMessageHandler()->handleBuddyStatusChange(
+                shadow->GetExtension(GameserverMessageBuddyStatusChange::gameserver_message_buddy_status_change));
+        break;
+    case 212:
+        if (shadow->HasExtension(GameserverMessageBuddyGroupData::gameserver_message_buddy_group_data))
+            vipProtocolMessageHandler()->handleBuddyGroupData(
+                shadow->GetExtension(GameserverMessageBuddyGroupData::gameserver_message_buddy_group_data));
         break;
     default:
         break;
     }
+}
+
+void TVipProtocolMessageHandler::handleBuddyData(const ::tibia::protobuf::protocol::GameserverMessageBuddyData& message)
+{
+    // CIP throws on a status it cannot convert.
+    if (message.status() > MaxBuddyStatus)
+        return;
+    std::vector<uint8_t> groups;
+    for (const uint32_t group : message.group_ids())
+        groups.push_back(static_cast<uint8_t>(group));
+    m_storage->addVip(message.buddy_id(), QString::fromStdString(message.name()), QString::fromStdString(message.description()),
+                      static_cast<uint8_t>(message.icon()), message.notify_login(), static_cast<int>(message.status()), groups);
+}
+
+void TVipProtocolMessageHandler::handleBuddyStatusChange(const ::tibia::protobuf::protocol::GameserverMessageBuddyStatusChange& message)
+{
+    if (message.status() > MaxBuddyStatus)
+        return;
+    m_storage->updateVipState(message.buddy_id(), static_cast<int>(message.status()));
+}
+
+void TVipProtocolMessageHandler::handleBuddyGroupData(const ::tibia::protobuf::protocol::GameserverMessageBuddyGroupData& message)
+{
+    std::vector<TVipStorage::Group> groups;
+    for (const auto& group : message.groups())
+        groups.push_back({ static_cast<uint8_t>(group.group_id()), QString::fromStdString(group.name()), group.editable() });
+    m_storage->setGroups(groups, static_cast<int>(message.groups_left()));
+}
+
+TVipGameActionHandler::TVipGameActionHandler(TVipStorage* storage, QObject* parent)
+    : cip::tibia::creatures::TVipGameActionHandler(parent)
+    , m_storage(storage)
+{
+    for (const VipAction type : VipGameActions) {
+        ::tibia::input::setActionHandler(type, [this](const ::tibia::input::TGameAction& action) {
+            handleGameAction(action);
+            return true;
+        });
+    }
+}
+
+TVipGameActionHandler::~TVipGameActionHandler()
+{
+    for (const VipAction type : VipGameActions)
+        ::tibia::input::setActionHandler(type, nullptr);
+}
+
+void TVipGameActionHandler::handleGameAction(const ::tibia::input::TGameAction& action)
+{
+    switch (action.type) {
+    case VipAction::ADD_NEW_VIP:
+        handleAddNewVipGameAction(action);
+        break;
+    case VipAction::REMOVE_VIP:
+        handleRemoveVipGameAction(action);
+        break;
+    case VipAction::REQUST_VIP_DATA_UPDATE:
+        handleRequestVipDataUpdateGameAction(action);
+        break;
+    case VipAction::ADD_NEW_VIP_GROUP:
+        handleAddNewVipGroupGameAction(action);
+        break;
+    case VipAction::REMOVE_VIP_GROUP:
+        handleRemoveVipGroupGameAction(action);
+        break;
+    case VipAction::REQUEST_VIP_GROUP_UPDATE:
+        handleRequestVipGroupUpdateGameAction(action);
+        break;
+    default:
+        break;
+    }
+}
+
+void TVipGameActionHandler::handleAddNewVipGameAction(const ::tibia::input::TGameAction& action)
+{
+    protocol::gameclient::sendAddVip(action.text.toStdString());
+}
+
+void TVipGameActionHandler::handleRemoveVipGameAction(const ::tibia::input::TGameAction& action)
+{
+    const std::optional<TVipStorage::Vip> vip = m_storage->vipByName(action.text);
+    if (!vip)
+        return;
+    m_storage->removeVip(vip->id);
+    protocol::gameclient::sendRemoveVip(vip->id);
+}
+
+void TVipGameActionHandler::handleRequestVipDataUpdateGameAction(const ::tibia::input::TGameAction& action)
+{
+    // The edit dialog's action: `instance` the VIP, `text` the description,
+    // `parameter` the icon, `enable` login notification, `vipGroups` the groups.
+    // CIP's map::at throws for an unknown VIP; qtclient ignores the edit.
+    const std::optional<TVipStorage::Vip> stored = m_storage->vipById(static_cast<uint32_t>(action.instance));
+    if (!stored)
+        return;
+    TVipStorage::Vip vip = *stored;
+    vip.description = action.text;
+    vip.iconId = action.parameter;
+    vip.notifyLogin = action.enable;
+    vip.groups = action.vipGroups;
+    m_storage->addOrUpdateVip(vip);
+    protocol::gameclient::sendEditVip(vip.id, vip.description.toStdString(), static_cast<uint32_t>(vip.iconId), vip.notifyLogin, vip.groups);
+}
+
+void TVipGameActionHandler::handleAddNewVipGroupGameAction(const ::tibia::input::TGameAction& action)
+{
+    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_ADD, 0, action.text.toStdString());
+}
+
+void TVipGameActionHandler::handleRemoveVipGroupGameAction(const ::tibia::input::TGameAction& action)
+{
+    // An unknown name removes the default group (id 0), as CIP does.
+    const TVipStorage::Group group = m_storage->groupByName(action.text).value_or(TVipStorage::Group{});
+    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_REMOVE, group.id, {});
+}
+
+void TVipGameActionHandler::handleRequestVipGroupUpdateGameAction(const ::tibia::input::TGameAction& action)
+{
+    // The edit-group dialog's action: `parameter` the group, `text` its new name.
+    protocol::gameclient::sendEditVipGroups(tibia::client::VIP_GROUP_EDIT, static_cast<uint8_t>(action.parameter), action.text.toStdString());
+}
+
+namespace {
+
+/// The EWorldType whose VIP menu offers the exiva whitelist entries.
+constexpr int WorldTypeOptionalPvp = 1;
+
+::tibia::input::TGameActionPtr vipNamedAction(const VipAction type, const QString& name)
+{
+    auto action = ::tibia::input::mutableClone(*::tibia::input::makeAction(type));
+    action->text = name;
+    return action;
+}
+
+void appendActions(::tibia::input::TGameActionList& to, const ::tibia::input::TGameActionList& from)
+{
+    to.insert(to.end(), from.begin(), from.end());
+}
+
+}
+
+TVipWidgetGameActionProvider::TVipWidgetGameActionProvider(TVipStorage* storage, ::tibia::exivaoptions::TExivaOptionsStorage* exivaOptions)
+    : m_storage(storage)
+    , m_exivaOptions(exivaOptions)
+{
+}
+
+void TVipWidgetGameActionProvider::setWorldType(const int worldType) { m_worldType = worldType; }
+
+::tibia::input::TGameActionList TVipWidgetGameActionProvider::widgetGameActions(const bool hideOffline, const bool groupsHidden) const
+{
+    using ::tibia::input::makeAction;
+    return { makeAction(VipAction::CONTEXT_MENU),
+             makeAction(VipAction::OPEN_ADD_VIP_DIALOG),
+             makeAction(VipAction::SORT_VIPS_BY_NAME),
+             makeAction(VipAction::SORT_VIPS_BY_ICON),
+             makeAction(VipAction::SORT_VIPS_BY_STATUS),
+             makeAction(hideOffline ? VipAction::SHOW_OFFLINE_VIPS : VipAction::HIDE_OFFLINE_VIPS),
+             makeAction(groupsHidden ? VipAction::SHOW_VIPS_GROUPS : VipAction::HIDE_VIPS_GROUPS) };
+}
+
+::tibia::input::TGameActionList TVipWidgetGameActionProvider::gameActions(const QString& vipName, const QString& groupName,
+                                                                          const bool hideOffline, const bool groupsHidden) const
+{
+    ::tibia::input::TGameActionList result = widgetGameActions(hideOffline, groupsHidden);
+    appendActions(result, groupGameActions(groupName));
+    if (vipName.isEmpty())
+        return result;
+    result.push_back(vipNamedAction(VipAction::COPY_CREATURE_NAME_TO_CLIPBOARD, vipName));
+    result.push_back(vipNamedAction(VipAction::REMOVE_VIP, vipName));
+    result.push_back(vipNamedAction(VipAction::OPEN_EDIT_VIP_DIALOG, vipName));
+    const std::optional<TVipStorage::Vip> vip = m_storage->vipByName(vipName);
+    const int state = vip ? vip->state : TVipStorage::Offline;
+    if (state == TVipStorage::LoggedIn || state == TVipStorage::Online)
+        result.push_back(vipNamedAction(VipAction::OPEN_MESSAGE_TO_CHAT_CHANNEL, vipName));
+    result.push_back(vipNamedAction(VipAction::REPORT_NAME, vipName));
+    if (m_worldType == WorldTypeOptionalPvp && m_exivaOptions) {
+        result.push_back(vipNamedAction(m_exivaOptions->isCharacterWhitelisted(vipName) ? VipAction::EXIVA_REMOVE_CHARACTER_FROM_WHITELIST
+                                                                                       : VipAction::EXIVA_ADD_CHARACTER_TO_WHITELIST,
+                                        vipName));
+    }
+    return result;
+}
+
+::tibia::input::TGameActionList TVipWidgetGameActionProvider::groupGameActions(const QString& groupName) const
+{
+    ::tibia::input::TGameActionList result;
+    if (!tibia::game::localPlayer() || !tibia::game::localPlayerIsPremium())
+        return result;
+    result.push_back(::tibia::input::makeAction(VipAction::OPEN_ADD_VIP_GROUP_DIALOG));
+    if (groupName.isEmpty())
+        return result;
+    if (const std::optional<TVipStorage::Group> group = m_storage->groupByName(groupName); group && group->editable) {
+        result.push_back(vipNamedAction(VipAction::REMOVE_VIP_GROUP, groupName));
+        result.push_back(vipNamedAction(VipAction::OPEN_EDIT_VIP_GROUP_DIALOG, groupName));
+    }
+    return result;
 }
 
 }

@@ -19,7 +19,6 @@ namespace tibia::proficiency {
 
 namespace {
 
-using Args = std::vector<std::any>;
 
 TProficiencyStorage* g_instance = nullptr;
 
@@ -95,69 +94,15 @@ TProficiencyStorage::TProficiencyStorage(QObject* parent)
     : QObject(parent)
 {
     g_instance = this;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeaponProficiency", [this](GameObject*, const Args& args) {
-        if (args.size() < 3)
-            return std::any{};
-        const auto typeId = static_cast<uint16_t>(client::gamecore::argInt(args, 0));
-        TProficiencyData data;
-        data.xp = static_cast<uint32_t>(client::gamecore::argInt(args, 1));
-        if (const auto* perks = std::any_cast<std::map<uint8_t, uint8_t>>(&args[2])) {
-            for (const auto& [level, perk] : *perks)
-                data.pick(level, perk);
-        }
-        if (args.size() > 4) {
-            if (const auto* slots = std::any_cast<std::vector<std::map<std::string, uint16_t>>>(&args[4])) {
-                for (const auto& slot : *slots) {
-                    const auto field = [&slot](const char* key) {
-                        const auto it = slot.find(key);
-                        return it == slot.end() ? uint16_t{ 0 } : it->second;
-                    };
-                    data.shaped.push_back({ static_cast<uint8_t>(field("grade")), static_cast<uint8_t>(field("slot")),
-                                            field("modifierEnum"), static_cast<uint8_t>(field("refineLevel")) });
-                }
-            }
-        }
-        m_data[typeId] = std::move(data);
-        Q_EMIT proficiencyDataChanged(typeId);
-        Q_EMIT proficiencyXPChanged();
-        Q_EMIT currentProficiencyProgressChanged();
-        Q_EMIT unspentPerkChanged();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeaponProficiencyExperience", [this](GameObject*, const Args& args) {
-        const auto typeId = static_cast<uint16_t>(client::gamecore::argInt(args, 0));
-        m_data[typeId].xp = static_cast<uint32_t>(client::gamecore::argInt(args, 1));
-        Q_EMIT proficiencyXPChanged();
-        Q_EMIT currentProficiencyProgressChanged();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onWeaponProficiencyReshape", [this](GameObject*, const Args& args) {
-        if (args.size() < 4)
-            return std::any{};
-        TReshapeOffers offers;
-        offers.typeId = static_cast<uint16_t>(client::gamecore::argInt(args, 0));
-        offers.level = static_cast<uint8_t>(client::gamecore::argInt(args, 1));
-        offers.perk = static_cast<uint8_t>(client::gamecore::argInt(args, 2));
-        if (const auto* entries = std::any_cast<std::vector<std::map<std::string, uint16_t>>>(&args[3])) {
-            for (const auto& entry : *entries) {
-                const auto field = [&entry](const char* key) {
-                    const auto it = entry.find(key);
-                    return it == entry.end() ? uint16_t{ 0 } : it->second;
-                };
-                offers.offers.push_back({ offers.level, offers.perk, field("modifierEnum"), static_cast<uint8_t>(field("refineLevel")) });
-            }
-        }
-        m_reshapeOffers = std::move(offers);
-        Q_EMIT reshapeOffersChanged();
-        Q_EMIT shapedPerkReshapeOffersChanged();
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int) { Q_EMIT resourceBalanceChanged(); });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_data.clear();
         m_reshapeOffers.reset();
         m_listRequested = false;
+        m_currentProficiencyXP = 0;
+        m_unspentPerk = false;
+        m_lunarAscensionOrbs = 0;
         m_tables.clear();
         m_tablesLoaded = false;
         Q_EMIT proficiencyXPChanged();
@@ -176,6 +121,49 @@ TProficiencyStorage::~TProficiencyStorage()
 }
 
 TProficiencyStorage* TProficiencyStorage::instance() { return g_instance; }
+
+void TProficiencyStorage::setProficiencyData(const uint16_t typeId, TProficiencyData data)
+{
+    m_data[typeId] = std::move(data);
+    Q_EMIT proficiencyDataChanged(typeId);
+    Q_EMIT proficiencyXPChanged();
+}
+
+void TProficiencyStorage::setReshapeOffers(TReshapeOffers offers)
+{
+    m_reshapeOffers = std::move(offers);
+    Q_EMIT reshapeOffersChanged();
+    Q_EMIT shapedPerkReshapeOffersChanged();
+}
+
+void TProficiencyStorage::setUnspentPerk(const bool unspent)
+{
+    if (m_unspentPerk == unspent)
+        return;
+    m_unspentPerk = unspent;
+    Q_EMIT unspentPerkChanged();
+}
+
+void TProficiencyStorage::setProficiencyExperience(const uint32_t xp, const uint16_t typeId, const bool isCurrentWeapon)
+{
+    if (isCurrentWeapon && m_currentProficiencyXP != xp) {
+        m_currentProficiencyXP = xp;
+        Q_EMIT currentProficiencyProgressChanged();
+    }
+    if (typeId == 0)
+        return;
+    m_data[typeId].xp = xp;
+    Q_EMIT proficiencyDataChanged(typeId);
+    Q_EMIT proficiencyXPChanged();
+}
+
+void TProficiencyStorage::setLunarAscensionOrbs(const uint32_t orbs)
+{
+    if (m_lunarAscensionOrbs == orbs)
+        return;
+    m_lunarAscensionOrbs = orbs;
+    Q_EMIT resourceBalanceChanged();
+}
 
 void TProficiencyStorage::loadTables() const
 {

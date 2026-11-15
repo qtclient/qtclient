@@ -51,9 +51,14 @@ void TExaltationProtocolMessageHandler::onServerMessageEnqueued(const int opcode
                 return transfer;
             };
             ForgeOpenData data;
-            for (const auto& group : m.fusion_groups())
-                for (const auto& o : group.objects())
+            std::vector<std::vector<ForgeItemInfo>> fusionGroups;
+            for (const auto& group : m.fusion_groups()) {
+                std::vector<ForgeItemInfo>& items = fusionGroups.emplace_back();
+                for (const auto& o : group.objects()) {
                     data.fusionItems.push_back(itemOf(o));
+                    items.push_back(itemOf(o));
+                }
+            }
             for (const auto& group : m.convergence_fusion_groups()) {
                 std::vector<ForgeItemInfo> items;
                 for (const auto& o : group.objects())
@@ -65,7 +70,7 @@ void TExaltationProtocolMessageHandler::onServerMessageEnqueued(const int opcode
             for (const auto& t : m.convergence_transfers())
                 data.convergenceTransfers.push_back(transferOf(t));
             data.dustLevel = static_cast<uint16_t>(m.dust_level());
-            tibia::game::notify("onOpenForge", data);
+            tibia::game::notify("onOpenForge", data, fusionGroups);
         }
         break;
     case 134:
@@ -114,15 +119,10 @@ void TExaltationProtocolMessageHandler::onServerMessageEnqueued(const int opcode
             result.leftTier = static_cast<uint8_t>(m.first_object().tier());
             result.rightItemId = static_cast<uint16_t>(m.second_object().object_id());
             result.rightTier = static_cast<uint8_t>(m.second_object().tier());
-            if (result.actionType != 1) { // a transfer has no bonus
-                result.bonus = static_cast<uint8_t>(m.bonus());
-                result.coreCount = static_cast<uint8_t>(m.core_count());
-                if (m.has_bonus_object()) {
-                    result.leftItemId = static_cast<uint16_t>(m.bonus_object().object_id());
-                    result.leftTier = static_cast<uint8_t>(m.bonus_object().tier());
-                }
-            }
-            tibia::game::notify("forgeResultData", result);
+            result.bonus = static_cast<uint8_t>(std::min<uint32_t>(m.bonus(), 0xff));
+            result.coreCount = static_cast<uint8_t>(m.core_count());
+            tibia::game::notify("forgeResultData", result, static_cast<uint16_t>(m.bonus_object().object_id()),
+                                static_cast<uint8_t>(m.bonus_object().tier()));
         }
         break;
     case 136:

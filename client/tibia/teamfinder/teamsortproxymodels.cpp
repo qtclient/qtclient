@@ -1,289 +1,397 @@
 #include "teamfinder/teamsortproxymodels.h"
 
+#include <QDateTime>
+#include <QLocale>
+
+#include <compare>
+#include <map>
+#include <tuple>
+
 namespace tibia {
 namespace {
 
-constexpr int DruidBit = 1;
-constexpr int KnightBit = 2;
-constexpr int PaladinBit = 4;
-constexpr int SorcererBit = 8;
-constexpr int MonkBit = 16;
+using teamfinder::TTeamActivity;
 
-constexpr int TeamTypeBoss = 1;
-constexpr int TeamTypeHunt = 2;
-constexpr int TeamTypeQuest = 3;
-constexpr int TeamTypeOther = 4;
-
-int roleOf(const QAbstractItemModel* model, const char* name)
+/// "ddd HH:mm" in the system locale, local time.
+QString weekdayTimeString(const uint32_t Timestamp)
 {
-    if (!model)
-        return -1;
-    const QHash<int, QByteArray> roles = model->roleNames();
-    for (auto it = roles.constBegin(); it != roles.constEnd(); ++it) {
-        if (it.value() == name)
-            return it.key();
-    }
-    return -1;
+    return QLocale().toString(QDateTime::fromSecsSinceEpoch(Timestamp), QStringLiteral("ddd HH:mm"));
 }
 
-QVariant sourceData(const QAbstractItemModel* model, const int row, const char* roleName)
+/// Every word of `Filter` (split at spaces) occurs in `Text`, ignoring case.
+bool containsAllWords(const QString& Text, const QString& Filter)
 {
-    if (!model)
-        return {};
-    const int role = roleOf(model, roleName);
-    if (role < 0)
-        return {};
-    return model->index(row, 0).data(role);
+    const QStringList words = Filter.split(QLatin1Char(' '));
+    for (const QString& word : words) {
+        if (Text.indexOf(word, 0, Qt::CaseInsensitive) == -1)
+            return false;
+    }
+    return true;
+}
+
+/// Sort rank of a member / application status: pending, invited, accepted, rejected, none.
+int statusRank(const uint Status)
+{
+    static const std::map<uint, int> ranks = { { 1, 0 }, { 2, 1 }, { 3, 2 }, { 4, 3 }, { 0, 4 } };
+    const auto it = ranks.find(Status);
+    return it != ranks.end() ? it->second : 4;
+}
+
+/// Orders activities by type name, then by name (case-sensitive).
+std::strong_ordering compareTypeAndName(const QString& LeftType, const QString& LeftName, const QString& RightType,
+                                        const QString& RightName)
+{
+    if (QString::compare(LeftType, RightType, Qt::CaseSensitive) < 0)
+        return std::strong_ordering::less;
+    if (QString::compare(RightType, LeftType, Qt::CaseSensitive) < 0)
+        return std::strong_ordering::greater;
+    if (QString::compare(LeftName, RightName, Qt::CaseSensitive) < 0)
+        return std::strong_ordering::less;
+    if (QString::compare(RightName, LeftName, Qt::CaseSensitive) < 0)
+        return std::strong_ordering::greater;
+    return std::strong_ordering::equal;
 }
 
 } // namespace
 
-TTeamsListSortProxyModel::TTeamsListSortProxyModel(QAbstractItemModel* source, QObject* parent)
+QString activityTypeName(const int Kind)
+{
+    switch (Kind) {
+        case TTeamActivity::Boss: return qtTrId("teamfinder_activty_boss");
+        case TTeamActivity::Hunt: return qtTrId("teamfinder_activty_hunt");
+        case TTeamActivity::Quest: return qtTrId("teamfinder_activty_quest");
+        case TTeamActivity::Other: return qtTrId("teamfinder_activty_other");
+        default: return qtTrId("dummy_unknown");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TTeamMembersModel
+
+QHash<int, QByteArray> TTeamMembersModel::roleNames() const
+{
+    QHash<int, QByteArray> roles;
+    roles[CharacterIdRole] = "characterId";
+    roles[NameRole] = "name";
+    roles[LevelRole] = "level";
+    roles[VocationRole] = "vocation";
+    roles[VocationStringRole] = "vocationString";
+    roles[StatusRole] = "status";
+    roles[IsLeaderRole] = "isLeader";
+    return roles;
+}
+
+void TTeamMembersModel::setCharacterName(const QString& Name)
+{
+    if (m_characterName == Name)
+        return;
+    m_characterName = Name;
+    if (rowCount() > 0)
+        Q_EMIT dataChanged(index(0, 0), index(rowCount() - 1, 0), { IsLeaderRole });
+}
+
+QVariant TTeamMembersModel::itemData(const teamfinder::TTeamMember& Member, const int Role) const
+{
+    switch (Role) {
+        case CharacterIdRole: return Member.characterId;
+        case NameRole: return Member.name;
+        case LevelRole: return uint(Member.level);
+        case VocationRole: return uint(Member.vocation);
+        case VocationStringRole: return teamfinder::vocationName(Member.vocation, false);
+        case StatusRole: return Member.status;
+        case IsLeaderRole: return Member.name == m_characterName;
+        default: return {};
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TActivitiesModel
+
+QHash<int, QByteArray> TActivitiesModel::roleNames() const
+{
+    QHash<int, QByteArray> roles;
+    roles[TypeRole] = "type";
+    roles[TypeNameRole] = "typeName";
+    roles[NameRole] = "name";
+    roles[AliasRole] = "alias";
+    return roles;
+}
+
+QVariant TActivitiesModel::itemData(const TActivity& Activity, const int Role) const
+{
+    switch (Role) {
+        case TypeRole: return int(Activity.type.kind);
+        case TypeNameRole: return QStringLiteral("%1:").arg(Activity.typeName);
+        case NameRole: return Activity.name;
+        case AliasRole: return Activity.alias;
+        default: return {};
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TTeamsListModel
+
+QHash<int, QByteArray> TTeamsListModel::roleNames() const
+{
+    QHash<int, QByteArray> roles;
+    roles[TeamIdRole] = "teamId";
+    roles[ActivityTypeRole] = "activityType";
+    roles[TypeNameRole] = "typeName";
+    roles[NameRole] = "name";
+    roles[AliasRole] = "alias";
+    roles[MinLevelRole] = "minLevel";
+    roles[MaxLevelRole] = "maxLevel";
+    roles[LevelRangeRole] = "levelRange";
+    roles[TeamSizeRole] = "teamSize";
+    roles[TakenSlotsRole] = "takenSlots";
+    roles[TeamSizeStringRole] = "teamSizeString";
+    roles[VocationStringRole] = "vocationString";
+    roles[StartTimeRole] = "startTime";
+    roles[StartTimeStringRole] = "startTimeString";
+    roles[StartTimeDetailStringRole] = "startTimeDetailString";
+    roles[LeaderNameRole] = "leaderName";
+    roles[StatusRole] = "status";
+    roles[IsLeaderRole] = "isLeader";
+    return roles;
+}
+
+void TTeamsListModel::setCharacterName(const QString& Name)
+{
+    if (m_characterName == Name)
+        return;
+    m_characterName = Name;
+    if (rowCount() > 0)
+        Q_EMIT dataChanged(index(0, 0), index(rowCount() - 1, 0), { IsLeaderRole });
+}
+
+QVariant TTeamsListModel::itemData(const teamfinder::TTeamData& Team, const int Role) const
+{
+    const teamfinder::TTeamParameters& parameters = Team.parameters;
+    switch (Role) {
+        case TeamIdRole: return uint(Team.teamId);
+        case ActivityTypeRole: return int(parameters.activity.kind);
+        case TypeNameRole: return QStringLiteral("%1:").arg(activityTypeName(parameters.activity.kind));
+        // Boss / hunting place / quest names come from the activity name resolver (static data), not wired yet.
+        case NameRole:
+        case AliasRole: return QString();
+        case MinLevelRole: return uint(parameters.minLevel);
+        case MaxLevelRole: return uint(parameters.maxLevel);
+        case LevelRangeRole: {
+            const uint minLevel = parameters.minLevel;
+            const uint maxLevel = parameters.maxLevel;
+            if (minLevel != 0 && maxLevel != 0)
+                return QStringLiteral("%1-%2").arg(minLevel).arg(maxLevel);
+            if (minLevel != 0)
+                return QStringLiteral("> %1").arg(minLevel);
+            if (maxLevel != 0)
+                return QStringLiteral("< %1").arg(maxLevel);
+            return qtTrId("any");
+        }
+        case TeamSizeRole: return uint(parameters.teamSlots);
+        case TakenSlotsRole: return uint(parameters.freeSlots);
+        case TeamSizeStringRole:
+            if (parameters.teamSlots != 0xffff)
+                return QStringLiteral("%1/%2").arg(uint(parameters.freeSlots)).arg(uint(parameters.teamSlots));
+            return QString::number(parameters.freeSlots);
+        case VocationStringRole: {
+            QStringList names;
+            for (const uint8_t vocation : { 4, 1, 2, 3, 5 }) {
+                if (parameters.vocations.contains(vocation))
+                    names.append(teamfinder::vocationName(vocation, false));
+            }
+            if (!names.isEmpty() && names.size() != 5)
+                return names.join(QStringLiteral(", "));
+            return qtTrId("spelllist_all_vocations");
+        }
+        case StartTimeRole: return parameters.startTime;
+        case StartTimeStringRole:
+            if (parameters.startTime != 1)
+                return weekdayTimeString(parameters.startTime);
+            return qtTrId("teamfinder_start_time_immediately");
+        case StartTimeDetailStringRole:
+            if (parameters.startTime != 1)
+                return qtTrId("teamfinder_date_time_local_sever")
+                    .arg(teamfinder::localDateTimeString(parameters.startTime))
+                    .arg(teamfinder::serverDateTimeString(parameters.startTime));
+            return QString();
+        case LeaderNameRole: return Team.leaderName;
+        case StatusRole: return Team.status;
+        case IsLeaderRole: return Team.leaderName == m_characterName;
+        default: return {};
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TTeamsListSortProxyModel
+
+TTeamsListSortProxyModel::TTeamsListSortProxyModel(QObject* parent)
     : cip::TTeamsListSortProxyModel(parent)
+    , m_model(new TTeamsListModel(this))
     , m_time(new teamfinder::TTeamStartTimeManager(this))
 {
     m_startTimeManager = m_time;
-    m_druidWanted = true;
-    m_knightWanted = true;
-    m_paladinWanted = true;
-    m_sorcererWanted = true;
-    m_monkWanted = true;
-    m_showBosses = true;
-    m_showHunts = true;
-    m_showQuests = true;
-    m_showOther = true;
-    setSourceModel(source);
+    m_time->setStartImmediately(true);
     setDynamicSortFilter(true);
-    // CIP private slot anouceFilterChanged: invalidate + refresh count.
-    connect(this, &TTeamsListSortProxyModel::filterChanged, this, &TTeamsListSortProxyModel::anouceFilterChanged);
-    connect(this, &QAbstractItemModel::modelReset, this, &TTeamsListSortProxyModel::refreshNumberOfTeams);
-    connect(this, &QAbstractItemModel::rowsInserted, this, &TTeamsListSortProxyModel::refreshNumberOfTeams);
-    connect(this, &QAbstractItemModel::rowsRemoved, this, &TTeamsListSortProxyModel::refreshNumberOfTeams);
-    refreshNumberOfTeams();
+    sort(0, Qt::AscendingOrder);
+    setSourceModel(m_model);
+    connect(m_time, &teamfinder::TTeamStartTimeManager::timeChanged, this, &TTeamsListSortProxyModel::anouceFilterChanged);
+    resetFilters();
 }
 
 int TTeamsListSortProxyModel::numberOfTeams() const
 {
-    return m_numberOfTeams;
+    return rowCount();
 }
 
 QString TTeamsListSortProxyModel::filterLevel() const
 {
-    return m_filterLevel;
+    return teamfinder::numberOrEmpty(m_filterLevel);
 }
 
 void TTeamsListSortProxyModel::setFilterLevel(const QString& v)
 {
-    if (v == m_filterLevel)
-        return;
-    m_filterLevel = v;
-    Q_EMIT filterChanged();
+    setUIntFilter(m_filterLevel, v);
 }
 
 QString TTeamsListSortProxyModel::minTeamSize() const
 {
-    return m_minTeamSize;
+    return teamfinder::numberOrEmpty(m_minSize);
 }
 
 void TTeamsListSortProxyModel::setMinTeamSize(const QString& v)
 {
-    if (v == m_minTeamSize)
-        return;
-    m_minTeamSize = v;
-    Q_EMIT filterChanged();
+    setUIntFilter(m_minSize, v);
 }
 
 QString TTeamsListSortProxyModel::maxTeamSize() const
 {
-    return m_maxTeamSize;
+    return teamfinder::numberOrEmpty(m_maxSize);
 }
 
 void TTeamsListSortProxyModel::setMaxTeamSize(const QString& v)
 {
-    if (v == m_maxTeamSize)
-        return;
-    m_maxTeamSize = v;
-    Q_EMIT filterChanged();
-}
-
-bool TTeamsListSortProxyModel::druidWanted() const
-{
-    return m_druidWanted;
+    setUIntFilter(m_maxSize, v);
 }
 
 void TTeamsListSortProxyModel::setDruidWanted(const bool v)
 {
-    if (v == m_druidWanted)
-        return;
-    m_druidWanted = v;
-    Q_EMIT filterChanged();
-}
-
-bool TTeamsListSortProxyModel::knightWanted() const
-{
-    return m_knightWanted;
+    setFlag(m_druid, v);
 }
 
 void TTeamsListSortProxyModel::setKnightWanted(const bool v)
 {
-    if (v == m_knightWanted)
-        return;
-    m_knightWanted = v;
-    Q_EMIT filterChanged();
-}
-
-bool TTeamsListSortProxyModel::paladinWanted() const
-{
-    return m_paladinWanted;
+    setFlag(m_knight, v);
 }
 
 void TTeamsListSortProxyModel::setPaladinWanted(const bool v)
 {
-    if (v == m_paladinWanted)
-        return;
-    m_paladinWanted = v;
-    Q_EMIT filterChanged();
-}
-
-bool TTeamsListSortProxyModel::sorcererWanted() const
-{
-    return m_sorcererWanted;
+    setFlag(m_paladin, v);
 }
 
 void TTeamsListSortProxyModel::setSorcererWanted(const bool v)
 {
-    if (v == m_sorcererWanted)
-        return;
-    m_sorcererWanted = v;
-    Q_EMIT filterChanged();
-}
-
-bool TTeamsListSortProxyModel::monkWanted() const
-{
-    return m_monkWanted;
+    setFlag(m_sorcerer, v);
 }
 
 void TTeamsListSortProxyModel::setMonkWanted(const bool v)
 {
-    if (v == m_monkWanted)
-        return;
-    m_monkWanted = v;
-    Q_EMIT filterChanged();
+    setFlag(m_monk, v);
 }
 
 QString TTeamsListSortProxyModel::nameFilter() const
 {
-    return m_nameFilter;
+    return m_name;
 }
 
 void TTeamsListSortProxyModel::setNameFilter(const QString& v)
 {
-    if (v == m_nameFilter)
+    if (m_name == v)
         return;
-    m_nameFilter = v;
-    Q_EMIT filterChanged();
-}
-
-bool TTeamsListSortProxyModel::showBosses() const
-{
-    return m_showBosses;
+    m_name = v;
+    anouceFilterChangedAndEmitfilterchanged();
 }
 
 void TTeamsListSortProxyModel::setShowBosses(const bool v)
 {
-    if (v == m_showBosses)
-        return;
-    m_showBosses = v;
-    Q_EMIT filterChanged();
-}
-
-bool TTeamsListSortProxyModel::showHunts() const
-{
-    return m_showHunts;
+    setFlag(m_showBosses, v);
 }
 
 void TTeamsListSortProxyModel::setShowHunts(const bool v)
 {
-    if (v == m_showHunts)
-        return;
-    m_showHunts = v;
-    Q_EMIT filterChanged();
-}
-
-bool TTeamsListSortProxyModel::showQuests() const
-{
-    return m_showQuests;
+    setFlag(m_showHunts, v);
 }
 
 void TTeamsListSortProxyModel::setShowQuests(const bool v)
 {
-    if (v == m_showQuests)
-        return;
-    m_showQuests = v;
-    Q_EMIT filterChanged();
-}
-
-bool TTeamsListSortProxyModel::showOther() const
-{
-    return m_showOther;
+    setFlag(m_showQuests, v);
 }
 
 void TTeamsListSortProxyModel::setShowOther(const bool v)
 {
-    if (v == m_showOther)
-        return;
-    m_showOther = v;
-    Q_EMIT filterChanged();
-}
-
-uint TTeamsListSortProxyModel::jitterTime() const
-{
-    return m_jitterTime;
+    setFlag(m_showOther, v);
 }
 
 void TTeamsListSortProxyModel::setJitterTime(const uint v)
 {
-    if (v == m_jitterTime)
+    if (m_jitterTime == v)
         return;
     m_jitterTime = v;
-    Q_EMIT filterChanged();
+    anouceFilterChangedAndEmitfilterchanged();
 }
 
 QObject* TTeamsListSortProxyModel::startTimeManager() const
 {
-    return m_startTimeManager;
+    return m_time;
 }
 
 void TTeamsListSortProxyModel::resetFilters()
 {
-    const bool changed = !m_druidWanted || !m_knightWanted || !m_paladinWanted || !m_sorcererWanted
-        || !m_monkWanted || !m_showBosses || !m_showHunts || !m_showQuests || !m_showOther
-        || !m_filterLevel.isEmpty() || !m_minTeamSize.isEmpty() || !m_maxTeamSize.isEmpty()
-        || !m_nameFilter.isEmpty() || m_jitterTime != 0;
-    m_druidWanted = true;
-    m_knightWanted = true;
-    m_paladinWanted = true;
-    m_sorcererWanted = true;
-    m_monkWanted = true;
+    m_filterLevel = 0;
+    m_minSize = 0;
+    m_maxSize = 0;
+    m_druid = false;
+    m_knight = false;
+    m_paladin = false;
+    m_sorcerer = false;
+    m_monk = false;
+    m_name.clear();
+    m_jitterTime = 0;
     m_showBosses = true;
     m_showHunts = true;
     m_showQuests = true;
     m_showOther = true;
-    m_filterLevel.clear();
-    m_minTeamSize.clear();
-    m_maxTeamSize.clear();
-    m_nameFilter.clear();
-    m_jitterTime = 0;
-    if (m_time)
-        m_time->setStartImmediately(true);
-    if (changed)
-        Q_EMIT filterChanged();
+    m_time->setStartTime(0);
+    m_time->setStartImmediately(false);
+    m_characterFiltersSet = false;
+    anouceFilterChangedAndEmitfilterchanged();
+}
+
+void TTeamsListSortProxyModel::setCharacterFilters(const uint32_t Level, const uint8_t Vocation)
+{
+    m_characterFiltersSet = true;
+    m_filterLevel = Level & 0xffff;
+    m_druid = Vocation == 4;
+    m_knight = Vocation == 1;
+    m_paladin = Vocation == 2;
+    m_sorcerer = Vocation == 3;
+    m_monk = Vocation == 5;
+    anouceFilterChangedAndEmitfilterchanged();
+}
+
+void TTeamsListSortProxyModel::setTeams(const std::vector<teamfinder::TTeamData>& Teams)
+{
+    beginFilterChange();
+    m_model->setItems(Teams);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+    invalidate();
+    Q_EMIT numberOfTeamsChagned();
 }
 
 void TTeamsListSortProxyModel::anouceFilterChanged()
 {
+    beginFilterChange();
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
     invalidate();
-    refreshNumberOfTeams();
 }
 
 void TTeamsListSortProxyModel::anouceFilterChangedAndEmitfilterchanged()
@@ -292,377 +400,248 @@ void TTeamsListSortProxyModel::anouceFilterChangedAndEmitfilterchanged()
     Q_EMIT filterChanged();
 }
 
-QString TTeamsListSortProxyModel::getUIntFilterAsString(const uint UIntMember) const
+void TTeamsListSortProxyModel::setFlag(bool& Flag, const bool Value)
 {
-    return UIntMember == 0 ? QString() : QString::number(UIntMember);
-}
-
-void TTeamsListSortProxyModel::setStringAsUIntFilter(QString NumberText, uint& UIntMember)
-{
-    const QString trimmed = NumberText.trimmed();
-    uint value = 0;
-    if (!trimmed.isEmpty()) {
-        bool ok = false;
-        value = trimmed.toUInt(&ok);
-        if (!ok)
-            return;
-    }
-    if (UIntMember == value)
+    if (Flag == Value)
         return;
-    UIntMember = value;
-    Q_EMIT filterChanged();
+    Flag = Value;
+    anouceFilterChangedAndEmitfilterchanged();
 }
 
-void TTeamsListSortProxyModel::refreshNumberOfTeams()
+void TTeamsListSortProxyModel::setUIntFilter(uint32_t& Field, const QString& Text)
 {
-    const int count = rowCount();
-    if (count == m_numberOfTeams)
+    const uint32_t value = Text.toUInt();
+    if (Field == value)
         return;
-    m_numberOfTeams = count;
-    Q_EMIT numberOfTeamsChagned();
+    Field = value;
+    anouceFilterChangedAndEmitfilterchanged();
 }
 
-bool TTeamsListSortProxyModel::vocationWanted(const int bits) const
+bool TTeamsListSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    if (bits == 0)
-        return true;
-    if ((bits & DruidBit) && m_druidWanted)
-        return true;
-    if ((bits & KnightBit) && m_knightWanted)
-        return true;
-    if ((bits & PaladinBit) && m_paladinWanted)
-        return true;
-    if ((bits & SorcererBit) && m_sorcererWanted)
-        return true;
-    if ((bits & MonkBit) && m_monkWanted)
-        return true;
-    return false;
-}
-
-bool TTeamsListSortProxyModel::typeShown(const int teamType) const
-{
-    switch (teamType) {
-        case TeamTypeBoss: return m_showBosses;
-        case TeamTypeHunt: return m_showHunts;
-        case TeamTypeQuest: return m_showQuests;
-        case TeamTypeOther: return m_showOther;
-        default: return m_showOther;
-    }
-}
-
-bool TTeamsListSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
-{
-    Q_UNUSED(sourceParent);
-    const QAbstractItemModel* source = sourceModel();
-    if (!source)
+    const QModelIndex row = m_model->index(sourceRow, 0);
+    if (!row.isValid())
         return false;
 
-    if (!m_nameFilter.isEmpty()) {
-        const QString name = sourceData(source, sourceRow, "name").toString();
-        if (!name.contains(m_nameFilter, Qt::CaseInsensitive))
-            return false;
+    bool accepted = true;
+    const QString filter = m_name.trimmed();
+    if (!filter.isEmpty()) {
+        const QString text = row.data(TTeamsListModel::TypeNameRole).toString() + QLatin1Char(' ')
+            + row.data(TTeamsListModel::NameRole).toString() + QLatin1Char(' ')
+            + row.data(TTeamsListModel::AliasRole).toString() + QLatin1Char(' ')
+            + row.data(TTeamsListModel::LeaderNameRole).toString();
+        accepted = containsAllWords(text, filter);
     }
 
-    const int teamType = sourceData(source, sourceRow, "teamType").toInt();
-    if (teamType != 0 && !typeShown(teamType))
-        return false;
-
-    const int vocations = sourceData(source, sourceRow, "vocations").toInt();
-    if (!vocationWanted(vocations))
-        return false;
-
-    if (!m_filterLevel.isEmpty()) {
-        bool ok = false;
-        const uint level = m_filterLevel.toUInt(&ok);
-        if (ok) {
-            const uint minLevel = sourceData(source, sourceRow, "minLevel").toUInt();
-            const uint maxLevel = sourceData(source, sourceRow, "maxLevel").toUInt();
-            if ((minLevel != 0 && level < minLevel) || (maxLevel != 0 && level > maxLevel))
-                return false;
-        }
+    if (m_filterLevel != 0) {
+        const uint minLevel = row.data(TTeamsListModel::MinLevelRole).toUInt();
+        const uint maxLevelValue = row.data(TTeamsListModel::MaxLevelRole).toUInt();
+        const uint maxLevel = maxLevelValue != 0 ? maxLevelValue : 99999;
+        accepted = accepted && m_filterLevel <= maxLevel && minLevel <= m_filterLevel;
     }
 
-    if (!m_minTeamSize.isEmpty()) {
-        bool ok = false;
-        const uint minSize = m_minTeamSize.toUInt(&ok);
-        if (ok) {
-            const uint teamSize = sourceData(source, sourceRow, "teamSize").toUInt();
-            if (teamSize != 0 && teamSize < minSize)
-                return false;
-        }
+    // The listing's vocations, read back from its display text.
+    const QString vocationText = row.data(TTeamsListModel::VocationStringRole).toString();
+    std::set<uint8_t> vocations;
+    if (vocationText.indexOf(qtTrId("spelllist_all_vocations"), 0, Qt::CaseSensitive) != -1)
+        vocations = { 4, 1, 2, 3, 5 };
+    for (const uint8_t vocation : { 4, 1, 2, 3, 5 }) {
+        if (vocationText.indexOf(teamfinder::vocationName(vocation, false), 0, Qt::CaseSensitive) != -1)
+            vocations.insert(vocation);
     }
-    if (!m_maxTeamSize.isEmpty()) {
-        bool ok = false;
-        const uint maxSize = m_maxTeamSize.toUInt(&ok);
-        if (ok) {
-            const uint teamSize = sourceData(source, sourceRow, "teamSize").toUInt();
-            if (teamSize != 0 && teamSize > maxSize)
-                return false;
-        }
+    const bool anyVocationWanted = m_druid || m_knight || m_paladin || m_sorcerer || m_monk;
+    if (!vocations.empty() && anyVocationWanted) {
+        const bool match = (m_druid && vocations.contains(4)) || (m_knight && vocations.contains(1))
+            || (m_paladin && vocations.contains(2)) || (m_sorcerer && vocations.contains(3))
+            || (m_monk && vocations.contains(5));
+        accepted = accepted && match;
     }
 
-    return true;
+    // Team size within [min, max]; teams without a size are judged by their taken slots.
+    const uint teamSize = row.data(TTeamsListModel::TeamSizeRole).toUInt();
+    const uint takenSlots = row.data(TTeamsListModel::TakenSlotsRole).toUInt();
+    const uint maxSize = m_maxSize != 0 ? m_maxSize : 99999;
+    const bool takenFits = accepted && m_minSize <= takenSlots && takenSlots <= maxSize;
+    bool sizeFits = accepted;
+    if (teamSize < m_minSize || maxSize < teamSize || teamSize == 0xffff)
+        sizeFits = takenFits;
+
+    // Start time: any, "immediately", or within the jitter window (minutes) after the chosen time.
+    bool result = sizeFits;
+    const uint32_t start = m_time->getStartTime();
+    const uint teamStart = row.data(TTeamsListModel::StartTimeRole).toUInt();
+    if (start == 1)
+        result = teamStart == 1 && sizeFits;
+    else if (start != 0)
+        result = start <= teamStart && teamStart <= m_jitterTime * 60 + start && sizeFits;
+
+    const int type = row.data(TTeamsListModel::ActivityTypeRole).toInt();
+    return result && (type != TTeamActivity::Hunt || m_showHunts) && (type != TTeamActivity::Boss || m_showBosses)
+        && (type != TTeamActivity::Quest || m_showQuests) && (type != TTeamActivity::Other || m_showOther);
 }
 
 bool TTeamsListSortProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const QString leftName = left.data(roleOf(sourceModel(), "name")).toString();
-    const QString rightName = right.data(roleOf(sourceModel(), "name")).toString();
-    return QString::localeAwareCompare(leftName, rightName) < 0;
+    const QString leftType = left.data(TTeamsListModel::TypeNameRole).toString();
+    const QString rightType = right.data(TTeamsListModel::TypeNameRole).toString();
+    const QString leftName = left.data(TTeamsListModel::NameRole).toString();
+    const QString rightName = right.data(TTeamsListModel::NameRole).toString();
+    const QString leftLeader = left.data(TTeamsListModel::LeaderNameRole).toString();
+    const QString rightLeader = right.data(TTeamsListModel::LeaderNameRole).toString();
+    const int leftRank = statusRank(left.data(TTeamsListModel::StatusRole).toUInt());
+    const int rightRank = statusRank(right.data(TTeamsListModel::StatusRole).toUInt());
+    const uint leftStart = left.data(TTeamsListModel::StartTimeRole).toUInt();
+    const uint rightStart = right.data(TTeamsListModel::StartTimeRole).toUInt();
+    return std::tie(leftRank, leftType, leftName, leftStart, leftLeader)
+        < std::tie(rightRank, rightType, rightName, rightStart, rightLeader);
 }
 
-TTeamMembersSortProxyModel::TTeamMembersSortProxyModel(QAbstractItemModel* source, QObject* parent)
+// ---------------------------------------------------------------------------
+// TTeamMembersSortProxyModel
+
+TTeamMembersSortProxyModel::TTeamMembersSortProxyModel(QObject* parent)
     : cip::TTeamMembersSortProxyModel(parent)
+    , m_model(new TTeamMembersModel(this))
 {
-    setSourceModel(source);
     setDynamicSortFilter(true);
-    connect(this, &QAbstractItemModel::modelReset, this, &TTeamMembersSortProxyModel::onSourceChanged);
-    connect(this, &QAbstractItemModel::rowsInserted, this, &TTeamMembersSortProxyModel::onSourceChanged);
-    connect(this, &QAbstractItemModel::rowsRemoved, this, &TTeamMembersSortProxyModel::onSourceChanged);
-    connect(this, &QAbstractItemModel::dataChanged, this, &TTeamMembersSortProxyModel::onSourceChanged);
-    refreshCounts();
+    sort(0, Qt::AscendingOrder);
+    setSourceModel(m_model);
 }
 
-uint TTeamMembersSortProxyModel::countAccepted() const
+void TTeamMembersSortProxyModel::setMembers(const std::vector<teamfinder::TTeamMember>& Members)
 {
-    return m_countAccepted;
-}
-
-uint TTeamMembersSortProxyModel::countInvited() const
-{
-    return m_countInvited;
-}
-
-uint TTeamMembersSortProxyModel::countRejected() const
-{
-    return m_countRejected;
-}
-
-uint TTeamMembersSortProxyModel::countPending() const
-{
-    return m_countPending;
-}
-
-uint TTeamMembersSortProxyModel::countDruid() const
-{
-    return m_countDruid;
-}
-
-uint TTeamMembersSortProxyModel::countKnight() const
-{
-    return m_countKnight;
-}
-
-uint TTeamMembersSortProxyModel::countPaladin() const
-{
-    return m_countPaladin;
-}
-
-uint TTeamMembersSortProxyModel::countSorcerer() const
-{
-    return m_countSorcerer;
-}
-
-uint TTeamMembersSortProxyModel::countMonk() const
-{
-    return m_countMonk;
-}
-
-void TTeamMembersSortProxyModel::onSourceChanged()
-{
-    refreshCounts();
-}
-
-void TTeamMembersSortProxyModel::refreshCounts()
-{
-    uint accepted = 0;
-    uint invited = 0;
-    uint rejected = 0;
-    uint pending = 0;
-    uint druid = 0;
-    uint knight = 0;
-    uint paladin = 0;
-    uint sorcerer = 0;
-    uint monk = 0;
-
-    const QAbstractItemModel* source = sourceModel();
-    const int rows = source ? source->rowCount() : 0;
-    for (int row = 0; row < rows; ++row) {
-        switch (sourceData(source, row, "status").toUInt()) {
-            case 1: ++accepted; break;
-            case 2: ++invited; break;
-            case 3: ++pending; break;
-            case 4: ++rejected; break;
-            default: break;
-        }
-        switch (sourceData(source, row, "vocationBits").toInt()) {
-            case DruidBit: ++druid; break;
-            case KnightBit: ++knight; break;
-            case PaladinBit: ++paladin; break;
-            case SorcererBit: ++sorcerer; break;
-            case MonkBit: ++monk; break;
+    beginFilterChange();
+    m_model->setItems(Members);
+    m_countAccepted = 0;
+    m_countInvited = 0;
+    m_countRejected = 0;
+    m_countPending = 0;
+    m_countDruid = 0;
+    m_countKnight = 0;
+    m_countPaladin = 0;
+    m_countSorcerer = 0;
+    m_countMonk = 0;
+    for (const teamfinder::TTeamMember& member : m_model->items()) {
+        switch (member.status) {
+            case teamfinder::TeamMemberPending: ++m_countPending; break;
+            case teamfinder::TeamMemberInvited: ++m_countInvited; break;
+            case teamfinder::TeamMemberAccepted:
+                ++m_countAccepted;
+                switch (member.vocation) {
+                    case 1: ++m_countKnight; break;
+                    case 2: ++m_countPaladin; break;
+                    case 3: ++m_countSorcerer; break;
+                    case 4: ++m_countDruid; break;
+                    case 5: ++m_countMonk; break;
+                    default: break;
+                }
+                break;
+            case teamfinder::TeamMemberRejected: ++m_countRejected; break;
             default: break;
         }
     }
-
-    const bool changed = accepted != m_countAccepted || invited != m_countInvited || rejected != m_countRejected
-        || pending != m_countPending || druid != m_countDruid || knight != m_countKnight || paladin != m_countPaladin
-        || sorcerer != m_countSorcerer || monk != m_countMonk;
-    m_countAccepted = accepted;
-    m_countInvited = invited;
-    m_countRejected = rejected;
-    m_countPending = pending;
-    m_countDruid = druid;
-    m_countKnight = knight;
-    m_countPaladin = paladin;
-    m_countSorcerer = sorcerer;
-    m_countMonk = monk;
-    if (changed)
-        Q_EMIT countChanged();
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+    invalidate();
+    Q_EMIT countChanged();
 }
 
 bool TTeamMembersSortProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const bool leftLeader = left.data(roleOf(sourceModel(), "isLeader")).toBool();
-    const bool rightLeader = right.data(roleOf(sourceModel(), "isLeader")).toBool();
-    if (leftLeader != rightLeader)
-        return leftLeader;
-    const QString leftName = left.data(roleOf(sourceModel(), "name")).toString();
-    const QString rightName = right.data(roleOf(sourceModel(), "name")).toString();
-    return QString::localeAwareCompare(leftName, rightName) < 0;
+    const QString leftName = left.data(TTeamMembersModel::NameRole).toString();
+    const QString rightName = right.data(TTeamMembersModel::NameRole).toString();
+    const int leftRank = statusRank(left.data(TTeamMembersModel::StatusRole).toUInt());
+    const int rightRank = statusRank(right.data(TTeamMembersModel::StatusRole).toUInt());
+    if (leftRank != rightRank)
+        return leftRank < rightRank;
+    return QString::compare(leftName, rightName, Qt::CaseSensitive) < 0;
 }
 
-TActivitiesSortProxyModel::TActivitiesSortProxyModel(QAbstractItemModel* source, QObject* parent)
+// ---------------------------------------------------------------------------
+// TActivitiesSortProxyModel
+
+TActivitiesSortProxyModel::TActivitiesSortProxyModel(QObject* parent)
     : cip::TActivitiesSortProxyModel(parent)
+    , m_model(new TActivitiesModel(this))
 {
-    m_showBosses = true;
-    m_showHunts = true;
-    m_showQuests = true;
-    m_showOther = true;
-    setSourceModel(source);
     setDynamicSortFilter(true);
-    connect(this, &TActivitiesSortProxyModel::filterChanged, this, &TActivitiesSortProxyModel::onFilterAnnounced);
+    sort(0, Qt::AscendingOrder);
+    setSourceModel(m_model);
 }
 
 QString TActivitiesSortProxyModel::nameFilter() const
 {
-    return m_nameFilter;
+    return m_name;
 }
 
 void TActivitiesSortProxyModel::setNameFilter(const QString& v)
 {
-    if (v == m_nameFilter)
+    if (m_name == v)
         return;
-    m_nameFilter = v;
-    Q_EMIT filterChanged();
-}
-
-bool TActivitiesSortProxyModel::showBosses() const
-{
-    return m_showBosses;
+    m_name = v;
+    filterUpdated();
 }
 
 void TActivitiesSortProxyModel::setShowBosses(const bool v)
 {
-    if (v == m_showBosses)
-        return;
-    m_showBosses = v;
-    Q_EMIT filterChanged();
-}
-
-bool TActivitiesSortProxyModel::showHunts() const
-{
-    return m_showHunts;
+    setFlag(m_showBosses, v);
 }
 
 void TActivitiesSortProxyModel::setShowHunts(const bool v)
 {
-    if (v == m_showHunts)
-        return;
-    m_showHunts = v;
-    Q_EMIT filterChanged();
-}
-
-bool TActivitiesSortProxyModel::showQuests() const
-{
-    return m_showQuests;
+    setFlag(m_showHunts, v);
 }
 
 void TActivitiesSortProxyModel::setShowQuests(const bool v)
 {
-    if (v == m_showQuests)
-        return;
-    m_showQuests = v;
-    Q_EMIT filterChanged();
-}
-
-bool TActivitiesSortProxyModel::showOther() const
-{
-    return m_showOther;
+    setFlag(m_showQuests, v);
 }
 
 void TActivitiesSortProxyModel::setShowOther(const bool v)
 {
-    if (v == m_showOther)
+    setFlag(m_showOther, v);
+}
+
+void TActivitiesSortProxyModel::setFlag(bool& Flag, const bool Value)
+{
+    if (Flag == Value)
         return;
-    m_showOther = v;
+    Flag = Value;
+    filterUpdated();
+}
+
+void TActivitiesSortProxyModel::filterUpdated()
+{
+    beginFilterChange();
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+    invalidate();
     Q_EMIT filterChanged();
 }
 
-void TActivitiesSortProxyModel::resetFilters()
+bool TActivitiesSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
 {
-    const bool changed = !m_showBosses || !m_showHunts || !m_showQuests || !m_showOther || !m_nameFilter.isEmpty();
-    m_showBosses = true;
-    m_showHunts = true;
-    m_showQuests = true;
-    m_showOther = true;
-    m_nameFilter.clear();
-    if (changed)
-        Q_EMIT filterChanged();
-}
-
-void TActivitiesSortProxyModel::onFilterAnnounced()
-{
-    invalidate();
-}
-
-bool TActivitiesSortProxyModel::typeShown(const int teamType) const
-{
-    switch (teamType) {
-        case TeamTypeBoss: return m_showBosses;
-        case TeamTypeHunt: return m_showHunts;
-        case TeamTypeQuest: return m_showQuests;
-        case TeamTypeOther: return m_showOther;
-        default: return m_showOther;
-    }
-}
-
-bool TActivitiesSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
-{
-    Q_UNUSED(sourceParent);
-    const QAbstractItemModel* source = sourceModel();
-    if (!source)
+    const QModelIndex row = m_model->index(sourceRow, 0);
+    if (!row.isValid())
         return false;
-    if (!m_nameFilter.isEmpty()) {
-        const QString name = sourceData(source, sourceRow, "name").toString();
-        if (!name.contains(m_nameFilter, Qt::CaseInsensitive))
-            return false;
+    bool accepted = true;
+    const QString filter = m_name.trimmed();
+    if (!filter.isEmpty()) {
+        const QString text = row.data(TActivitiesModel::TypeNameRole).toString() + QLatin1Char(' ')
+            + row.data(TActivitiesModel::NameRole).toString() + QLatin1Char(' ')
+            + row.data(TActivitiesModel::AliasRole).toString();
+        accepted = containsAllWords(text, filter);
     }
-    const int teamType = sourceData(source, sourceRow, "teamType").toInt();
-    if (teamType != 0 && !typeShown(teamType))
-        return false;
-    return true;
+    const int type = row.data(TActivitiesModel::TypeRole).toInt();
+    return accepted && (type != TTeamActivity::Boss || m_showBosses) && (type != TTeamActivity::Hunt || m_showHunts)
+        && (type != TTeamActivity::Other || m_showOther) && (type != TTeamActivity::Quest || m_showQuests);
 }
 
 bool TActivitiesSortProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const int leftType = left.data(roleOf(sourceModel(), "teamType")).toInt();
-    const int rightType = right.data(roleOf(sourceModel(), "teamType")).toInt();
-    if (leftType != rightType)
-        return leftType < rightType;
-    const QString leftName = left.data(roleOf(sourceModel(), "name")).toString();
-    const QString rightName = right.data(roleOf(sourceModel(), "name")).toString();
-    return QString::localeAwareCompare(leftName, rightName) < 0;
+    return compareTypeAndName(left.data(TActivitiesModel::TypeNameRole).toString(),
+                              left.data(TActivitiesModel::NameRole).toString(),
+                              right.data(TActivitiesModel::TypeNameRole).toString(),
+                              right.data(TActivitiesModel::NameRole).toString())
+        < 0;
 }
 
 }

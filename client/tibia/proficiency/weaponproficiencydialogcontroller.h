@@ -70,6 +70,10 @@ public:
     bool isEmpty() const { return m_entries.empty(); }
     const TWeaponEntry& entry(int row) const { return m_entries[row]; }
     int size() const { return static_cast<int>(m_entries.size()); }
+    bool contains(uint16_t typeId) const
+    {
+        return std::ranges::any_of(m_entries, [typeId](const TWeaponEntry& entry) { return entry.typeId == typeId; });
+    }
     uint32_t xp(int row) const { return m_storage->xp(m_entries[row].typeId); }
 
     void onObjectProficiencyXPChanged() override;
@@ -172,8 +176,13 @@ private:
     void updateSelectedPerk();
     /// CIP .
     bool hasEnoughDust() const;
-    /// CIP on the local copy and the server's record.
+    /// The local perk choices differ from the server's record of the current weapon.
     bool localDiffersFromServer() const;
+    /// Two pick lists are equal: same length, same levels, same picked flags and,
+    /// where both are picked, the same perk.
+    static bool picksEqual(const std::vector<TPerkPick>& a, const std::vector<TPerkPick>& b);
+    /// The server's record of a weapon changed; the current weapon takes it over.
+    void onProficiencyDataChanged(uint16_t typeId);
     /// CIP / : asks to save unsaved perks, then runs `next`.
     void confirmUnsavedChanges(std::function<void()> next);
     void sendItemInfo(uint16_t typeId) const;

@@ -18,31 +18,31 @@ public:
     TVipGroupInfo(uint8_t id, const QString& name, bool selected, QObject* parent = nullptr);
 };
 
-/// EditVipDialog.qml (CIP: TEditVipDialogController, ctor): the
-/// VIP's icon, description, login notification and groups.
+/// EditVipDialog.qml (CIP: TEditVipDialogController): the VIP's icon,
+/// description, login notification and groups.
 class TEditVipDialogController final : public TDialogController<cip::tibia::gamewindow::TEditVipDialogController>
 {
     Q_OBJECT
 public:
-    explicit TEditVipDialogController(creatures::TVipStorage* storage, QObject* parent = nullptr);
+    explicit TEditVipDialogController(QObject* parent = nullptr);
 
-    /// CIP : creates the dialog, sets vipName, vipIconID,
-    /// vipDescription, vipNotify and vipGroupInfos (every group, the VIP's
-    /// checked) and shows it.
-    void open(const creatures::TVipStorage::Vip& vip);
+    /// Shows the dialog for `vip`: its name, icon, description, notification
+    /// and one check box per group (the VIP's checked), sorted by upper-case name.
+    void open(const creatures::TVipStorage::Vip& vip, const std::map<uint8_t, creatures::TVipStorage::Group>& groups);
 
 public Q_SLOTS:
     void onCancelClicked() override;
-    /// Sends the edit (CIP: REQUST_VIP_DATA_UPDATE through) and closes.
+    /// Closes; reports the VIP with the new values unless nothing changed.
     void onOkClicked(int VipIconId, const QString& Description, bool Notify) override;
-    /// CIP .
     void onControllerFinished() override;
+
+Q_SIGNALS:
+    void vipDataUpdated(const tibia::creatures::TVipStorage::Vip& vip);
 
 private:
     void clearGroupInfos();
 
-    creatures::TVipStorage* m_storage;
-    uint32_t m_vipId = 0;
+    creatures::TVipStorage::Vip m_vip;
     QList<TVipGroupInfo*> m_groupInfos;
 };
 

@@ -23,8 +23,7 @@ namespace gamewindow {
 
 class TMessageDialogController;
 
-/// The houses of the storage (CIP: THousesModel, data , role
-/// names). Reason strings need the character info and limits.
+/// The houses of the storage. Reason strings need the character info and limits.
 class THousesModel final : public QAbstractListModel
 {
     Q_OBJECT
@@ -79,7 +78,6 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    /// CIP .
     void setHouses(std::vector<cyclopedia::THouseRecord> houses);
     void setCharacterInfo(const cyclopedia::THouseCharacterInfo& info) { m_characterInfo = info; }
     void setLimits(const cyclopedia::THouseLimits& limits) { m_limits = limits; }
@@ -90,8 +88,7 @@ private:
     cyclopedia::THouseLimits m_limits;
 };
 
-/// CIP: THousesSortProxyModel (filterAcceptsRow , lessThan
-/// ), held at THousesInfoDialogController +0x208.
+/// Filters houses by town, type and state and sorts them; owns the houses model.
 class THousesSortProxyModel final : public cip::tibia::gamewindow::THousesSortProxyModel
 {
     Q_OBJECT
@@ -108,9 +105,9 @@ public:
     void setStateFilter(int state);
     void setHouseTypeFilter(int type);
     void setSortOrder(int order);
-    /// CIP (part): town cleared, type and sort order back to 0.
+    /// Town cleared, type and sort order back to 0.
     void clearFilters();
-    /// A filter change around `change` (CIP: beginFilterChange, endFilterChange, invalidate).
+    /// A filter change around `change` (beginFilterChange, endFilterChange, invalidate).
     template <class F>
     void changeFilter(F&& change);
 
@@ -142,7 +139,7 @@ public:
 };
 
 /// The Cyclopedia's houses page, HousesInfoDialog.qml (CIP:
-/// THousesInfoDialogController, ctor , session).
+/// THousesInfoDialogController).
 class THousesInfoDialogController final : public cip::tibia::gamewindow::THousesInfoDialogController
 {
     Q_OBJECT
@@ -163,7 +160,7 @@ public:
 
     Context captureContext() const;
     void restoreContext(const Context& context);
-    /// CIP session vslot 0xe8: the Tibia time of day of the house preview.
+    /// The Tibia time of day of the house preview.
     void setAmbientLightStorage(worldmap::TAmbientLightStorage* ambientLight);
 
     QStringList townFilterModel() const override { return m_townFilterModel; }
@@ -201,9 +198,7 @@ public:
     void centerHouse() override;
 
 private:
-    /// CIP .
     void onHouseActionResult(quint32 houseId, int action, int errorCode, bool hasBeenOutbidden);
-    /// CIP.
     void onHouseActionConfirmed();
     void resetHouseActionData();
     void confirmAction(int action, const QString& message);
@@ -222,11 +217,10 @@ private:
     THousesSortProxyModel* m_proxy;
     TMessageDialogController* m_resultDialog;
     TMessageDialogController* m_confirmDialog;
-    THouseItemModel* m_houseItems = nullptr;
     QTimer m_townRequestTimer;
     QPointer<worldmap::TAmbientLightStorage> m_ambientLight;
 
-    /// CIP +0x298..+0x2d0: the action waiting for confirmation.
+    /// The action waiting for confirmation.
     int m_pendingAction = -1;
     quint32 m_pendingHouseId = 0;
     quint64 m_pendingAmount = 0;

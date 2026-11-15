@@ -4,12 +4,12 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
-#include <client/staticdata.h>
-
+#include <QColor>
 #include <QDateTime>
+#include <QLocale>
+#include <QStringList>
 
 #include <algorithm>
-#include <cmath>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
@@ -19,56 +19,60 @@ namespace tibia::gamewindow {
 namespace {
 
 using Args = std::vector<std::any>;
+using A = input::EGameAction;
 using StreakState = cip::tibia::qmlcomponents::enums::EDailyRewardStreakState;
+using dailyreward::TDailyReward;
+using dailyreward::TDailyRewardFixedItems;
 
-constexpr uint MaxDailyRewardJokerAmount = 50;
-constexpr uint IraUnlimitedThreshold = 999;
+/// Separates a text's length variants (the view shows the one that fits).
+const QChar MultiStringSeparator(0x9c);
+/// The resting area hover's locked and reached colours.
+const QColor LockedColor(QStringLiteral("#D33C3C"));
+const QColor ReachedColor(QStringLiteral("#44AD25"));
 
-QString formatCountdown(const qint64 seconds)
+void publish(const A type)
 {
-    if (seconds <= 0)
-        return QStringLiteral("00:00:00");
-    const qint64 h = seconds / 3600;
-    const qint64 m = (seconds % 3600) / 60;
-    const qint64 s = seconds % 60;
-    return QStringLiteral("%1:%2:%3")
-        .arg(h, 2, 10, QLatin1Char('0'))
-        .arg(m, 2, 10, QLatin1Char('0'))
-        .arg(s, 2, 10, QLatin1Char('0'));
+    input::publish(input::makeAction(type));
 }
 
-/// CipSoft: one line of a day's reward, with the premium amount when the
-/// player is free and premium gets more.
-void appendRewardLine(QStringList& lines, QString line, const uint freeAmount, const uint premiumAmount, const bool isPremium,
-                      const QString& premiumAmountText)
+uint32_t nowSeconds()
 {
-    if (!isPremium && freeAmount < premiumAmount)
-        line += qtTrId("rewardwall_daily_reward_premium_teaser").arg(premiumAmountText);
-    lines << line;
+    return static_cast<uint32_t>(QDateTime::currentMSecsSinceEpoch() / 1000);
 }
 
-/// CipSoft `rewardwall_daily_reward_details` body for one day cell.
-QString dailyRewardDetailsBody(const DailyRewardDay& free, const DailyRewardDay& premium, const bool isPremium)
+/// "hh:mm".
+QString hoursAndMinutes(const qint64 seconds)
 {
-    const DailyRewardDay& day = isPremium ? premium : free;
-    QStringList lines;
-    if (day.cosmeticTokens != 0)
-        appendRewardLine(lines, qtTrId("rewardwall_daily_cosmetic_tokens").arg(day.cosmeticTokens), free.cosmeticTokens,
-                         premium.cosmeticTokens, isPremium, QString::number(premium.cosmeticTokens));
-    if (day.bountyRerollTokens != 0)
-        lines << qtTrId("rewardwall_daily_bounty_task_reroll_token");
-    if (day.preyWildcards != 0) {
-        const QString line = day.preyWildcards == 1 ? qtTrId("rewardwall_daily_prey_wildcard").arg(day.preyWildcards)
-                                                    : qtTrId("rewardwall_daily_prey_wildcards").arg(day.preyWildcards);
-        appendRewardLine(lines, line, free.preyWildcards, premium.preyWildcards, isPremium, QString::number(premium.preyWildcards));
-    }
-    if (!day.objects.empty())
-        lines << qtTrId("rewardwall_daily_temple_teleport_scroll");
-    if (day.xpBoostMinutes > 0)
-        appendRewardLine(lines, qtTrId("rewardwall_daily_reward_xp_boost").arg(day.xpBoostMinutes).arg(day.xpBoostPercent),
-                         free.xpBoostPercent, premium.xpBoostPercent, isPremium,
-                         QStringLiteral("%1%").arg(premium.xpBoostPercent));
-    return lines.join(QStringLiteral("<br>"));
+    return QStringLiteral("%1:%2").arg(seconds / 3600, 2, 10, QLatin1Char('0')).arg((seconds / 60) % 60, 2, 10, QLatin1Char('0'));
+}
+
+/// "45min" or "3h 5min".
+QString minutesText(const qint64 minutes)
+{
+    if (minutes < 60)
+        return qtTrId("time_minutes_short").arg(minutes % 60);
+    return qtTrId("time_hours_and_minutes_short").arg(minutes / 60).arg(minutes % 60);
+}
+
+QString lessThanOneMinute()
+{
+    return QStringList{ qtTrId("time_less_than_one_minute"), qtTrId("time_less_than_one_minute_short") }.join(MultiStringSeparator);
+}
+
+/// A line of the reward details.
+QString bulletPoint(const QString& line)
+{
+    return (qtTrId("bullet_point") + QStringLiteral("<br/>")).arg(line);
+}
+
+QString jokerName(const uint jokers)
+{
+    return jokers == 1 ? qtTrId("currency_view_daily_reward_joker_singular_tooltip") : qtTrId("currency_view_daily_reward_joker_tooltip");
+}
+
+const TDailyRewardFixedItems* fixedItems(const std::shared_ptr<TDailyReward>& reward)
+{
+    return dynamic_cast<const TDailyRewardFixedItems*>(reward.get());
 }
 
 bool localPlayerPremium()
@@ -76,16 +80,15 @@ bool localPlayerPremium()
     return tibia::game::localPlayer() && tibia::game::localPlayerIsPremium();
 }
 
-uint64_t resourceBalance(const tibia::client::ResourceTypes_t type)
+TMessageDialogButton* okButton(const TMessageDialogController::Button identifier)
 {
-    return tibia::game::localPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
+    return new TMessageDialogButton(qtTrId("ok"), identifier, QKeySequence(QStringLiteral("Return")));
 }
 
-void clearOwnedList(QList<QObject*>& list)
+QList<TMessageDialogButton*> okCancelButtons()
 {
-    for (QObject* object : list)
-        object->deleteLater();
-    list.clear();
+    return { okButton(TMessageDialogController::Button::OK),
+             new TMessageDialogButton(qtTrId("cancel"), TMessageDialogController::Button::CANCEL, QKeySequence(QStringLiteral("Esc"))) };
 }
 
 }
@@ -94,14 +97,13 @@ TQmlDailyReward::TQmlDailyReward(QObject* parent)
     : cip::tibia::dailyreward::TQmlDailyReward(parent)
 {}
 
-TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry(const quint32 timestamp, const bool changedBySupport,
-                                                         const QString& description, const uint streak, QObject* parent)
+TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry(const dailyreward::TDailyRewardHistoryEntry& entry, QObject* parent)
     : cip::tibia::dailyreward::TQmlDailyRewardHistoryEntry(parent)
 {
-    m_timestamp = QDateTime::fromSecsSinceEpoch(timestamp).toString(QStringLiteral("yyyy-MM-dd, HH:mm:ss"));
-    m_changedBySupport = changedBySupport;
-    m_description = description;
-    m_newRewardStreakLength = streak;
+    m_timestamp = QDateTime::fromSecsSinceEpoch(entry.timestamp).toString(QStringLiteral("yyyy-MM-dd, HH:mm:ss"));
+    m_changedBySupport = entry.type == 1;
+    m_description = entry.description;
+    m_newRewardStreakLength = entry.newRewardStreakLength;
 }
 
 TQmlRewardStreakBonus::TQmlRewardStreakBonus(const uint neededStreak, const bool lockedByStreak, QObject* parent)
@@ -111,476 +113,531 @@ TQmlRewardStreakBonus::TQmlRewardStreakBonus(const uint neededStreak, const bool
     m_isLockedByRewardStreakLength = lockedByStreak;
 }
 
-TRewardWallDialogController::TRewardWallDialogController(QObject* parent)
+TRewardWallDialogController::TRewardWallDialogController(dailyreward::TDailyRewardStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("RewardWallDialog.qml"), parent)
+    , m_storage(storage)
+    , m_infoDialog(new TMessageDialogController(this))
+    , m_confirmDialog(new TMessageDialogController(this))
+    , m_warningDialog(new TMessageDialogController(this))
 {
-    m_maxDailyRewardJokerAmount = MaxDailyRewardJokerAmount;
-    m_confirmDialog = new TMessageDialogController(this);
-    m_confirmDialog->setCloseOnButtonClicked(true);
-    m_confirmDialog->setYesNoButtons();
-    connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this, [this](bool) { onConfirmedCollectReward(); });
-    connect(m_confirmDialog, &TMessageDialogController::discardClicked, this, [this](bool) {});
-
+    m_infoDialog->setCloseOnButtonClicked(true);
     m_timer.setInterval(1000);
-    connect(&m_timer, &QTimer::timeout, this, [this] { refreshTimers(); });
+    connect(&m_timer, &QTimer::timeout, this, &TRewardWallDialogController::timeChanged);
+    m_confirmDialog->setCloseOnButtonClicked(true);
+    connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this, [this](bool) { onConfirmedCollectReward(); });
+    m_warningDialog->setCloseOnButtonClicked(true);
+    connect(m_warningDialog, &TMessageDialogController::acceptClicked, this, [this](bool) { onConfirmedPartialCollect(); });
 
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenRewardWall", [this](GameObject*, const Args& args) {
-        if (args.size() < 8)
-            return std::any{};
-        OpenWallState state;
-        state.bonusShrine = static_cast<uint8_t>(client::gamecore::argInt(args, 0));
-        state.nextRewardTime = static_cast<quint32>(client::gamecore::argInt(args, 1));
-        state.dayStreakDay = static_cast<uint8_t>(client::gamecore::argInt(args, 2));
-        state.wasTaken = client::gamecore::argInt(args, 3) != 0;
-        state.errorMessage = client::gamecore::argString(args, 4);
-        state.jokers = static_cast<uint16_t>(client::gamecore::argInt(args, 5));
-        state.streakTimeLeft = static_cast<quint32>(client::gamecore::argInt(args, 6));
-        state.dayStreakLevel = static_cast<uint16_t>(client::gamecore::argInt(args, 7));
-        applyOpenWall(state);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onDailyReward", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<DailyRewardData>(&args[0]))
-            applyDailyReward(*data);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onRewardHistory", [this](GameObject*, const Args& args) {
-        if (const auto* history =
-                args.empty() ? nullptr
-                             : std::any_cast<std::vector<std::tuple<uint32_t, bool, std::string, uint16_t>>>(&args[0]))
-            applyHistory(*history);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseRewardWall", [this](GameObject*, const Args&) {
-        dialog()->close();
-        m_timer.stop();
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
-            [this]() {
-        refreshResources();
-    });
+    // The storage's signals.
+    connect(m_storage, &dailyreward::TDailyRewardStorage::instantRewardAccessAmountChanged, this,
+            &TRewardWallDialogController::instantRewardAccessAmountChanged);
+    connect(m_storage, &dailyreward::TDailyRewardStorage::dailyRewardHistoryChanged, this,
+            &TRewardWallDialogController::onDailyRewardHistoryChanged);
+    connect(m_storage, &dailyreward::TDailyRewardStorage::dailyRewardJokerAmountChanged, this,
+            &TRewardWallDialogController::dailyRewardJokerAmountChanged);
+    connect(m_storage, &dailyreward::TDailyRewardStorage::cosmeticTokenCountChanged, this,
+            &TRewardWallDialogController::cosmeticTokenCountChanged);
+    connect(m_storage, &dailyreward::TDailyRewardStorage::bountyTaskRerollTokenCountChanged, this,
+            &TRewardWallDialogController::bountyTaskRerollTokenCountChanged);
+    connect(m_storage, &dailyreward::TDailyRewardStorage::jokersNeededForCollectingChanged, this,
+            &TRewardWallDialogController::jokersNeededForCollectingChanged);
+    connect(m_storage, &dailyreward::TDailyRewardStorage::dailyRewardStreakStateChanged, this, &TRewardWallDialogController::timeChanged);
+    connect(m_storage, &dailyreward::TDailyRewardStorage::dailyRewardStreakStateChanged, this,
+            &TRewardWallDialogController::dailyRewardStreakStateChanged);
+    // The player's premium status.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
         onPremiumTimeChanged();
         return std::any{};
     });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        dialog()->destroy();
-        m_timer.stop();
-        m_dailyReward.reset();
-    });
+    // The session's end.
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this] { closeDialog(); });
 
-    input::setActionHandler(input::EGameAction::REQUEST_OPEN_REWARD_WALL, [this](const input::TGameAction&) {
-        tibia::game::sendOpenRewardWall();
-        m_pendingShow = true;
-        return true;
-    });
-    input::setActionHandler(input::EGameAction::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, [this](const input::TGameAction&) {
-        openOrUpdate();
-        return true;
-    });
+    for (const A type : { A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, A::CLOSE_REWARD_WALL_DIALOG, A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE,
+                          A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE })
+        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
 }
 
 TRewardWallDialogController::~TRewardWallDialogController()
 {
-    input::setActionHandler(input::EGameAction::REQUEST_OPEN_REWARD_WALL, nullptr);
-    input::setActionHandler(input::EGameAction::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, nullptr);
+    for (const A type : { A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG, A::CLOSE_REWARD_WALL_DIALOG, A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE,
+                          A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE })
+        input::setActionHandler(type, nullptr);
+    m_timer.stop();
+    clearHistory();
+    clearDailyRewards();
 }
 
-bool TRewardWallDialogController::isOpen() const { return dialog()->isShown(); }
+bool TRewardWallDialogController::isPremium() const { return localPlayerPremium(); }
+uint TRewardWallDialogController::instantRewardAccessAmount() const { return m_storage ? m_storage->instantRewardAccessAmount() : 0; }
+uint TRewardWallDialogController::dailyRewardJokerAmount() const { return m_storage ? m_storage->dailyRewardJokerAmount() : 0; }
+uint TRewardWallDialogController::cosmeticTokenCount() const { return m_storage ? m_storage->cosmeticTokenCount() : 0; }
+uint TRewardWallDialogController::bountyTaskRerollTokenCount() const { return m_storage ? m_storage->bountyTaskRerollTokenCount() : 0; }
+uint TRewardWallDialogController::rewardStreakLength() const { return m_storage ? m_storage->rewardStreakLength() : 0; }
 
-void TRewardWallDialogController::openOrUpdate()
+QString TRewardWallDialogController::rewardStreakInfoText() const
 {
-    if (isOpen()) {
+    return m_storage ? m_storage->rewardStreakInfoText() : qtTrId("rewardwall_reward_streak_no_bonus");
+}
+
+qint64 TRewardWallDialogController::secondsUntilStreakEnd() const
+{
+    return m_storage ? qint64(m_storage->rewardStreakEndTime()) - qint64(nowSeconds()) : 0;
+}
+
+qint64 TRewardWallDialogController::secondsUntilNextReward() const
+{
+    return m_storage ? qint64(m_storage->nextRewardTime()) - qint64(nowSeconds()) : 0;
+}
+
+/// "expired", the running streak's time left, or nothing.
+QString TRewardWallDialogController::rewardStreakTimeLeft() const
+{
+    if (!m_storage)
+        return {};
+    const int state = m_storage->dailyRewardStreakState();
+    if (state == static_cast<int>(StreakState::Expired))
+        return qtTrId("expired");
+    if (state != static_cast<int>(StreakState::Running))
+        return {};
+    const qint64 seconds = secondsUntilStreakEnd();
+    return seconds > 59 ? hoursAndMinutes(seconds) : lessThanOneMinute();
+}
+
+/// The running streak's part of a day left; 0 when expired, 1 otherwise.
+double TRewardWallDialogController::rewardStreakTimeLeftProgress() const
+{
+    if (!m_storage)
+        return 1.0;
+    const int state = m_storage->dailyRewardStreakState();
+    if (state == static_cast<int>(StreakState::Expired))
+        return 0.0;
+    if (state != static_cast<int>(StreakState::Running))
+        return 1.0;
+    const qint64 seconds = secondsUntilStreakEnd();
+    if (seconds < 0)
+        return 0.0;
+    return std::clamp(double(seconds) / 86400.0, 0.0, 1.0);
+}
+
+/// The streak state's explanation, lines joined with <br>.
+QString TRewardWallDialogController::rewardStreakStateInfoText() const
+{
+    QStringList lines;
+    if (m_storage) {
+        const uint jokers = m_storage->jokersNeededForCollecting();
+        const QString jokersText = QLocale(QLocale::English).toString(jokers);
+        const QString name = jokerName(jokers);
+        switch (static_cast<StreakState>(m_storage->dailyRewardStreakState())) {
+        case StreakState::AlreadyCollected:
+            lines << qtTrId("rewardwall_reward_streak_already_collected_hover_text");
+            break;
+        case StreakState::Expired:
+            lines << qtTrId("rewardwall_reward_streak_expired_hover_text").arg(jokersText, name);
+            break;
+        case StreakState::Running: {
+            const qint64 seconds = secondsUntilStreakEnd();
+            const QString timeLeft = seconds > 60 ? minutesText(qint64(uint32_t(seconds)) / 60) : qtTrId("time_less_than_one_minute");
+            lines << qtTrId("rewardwall_reward_streak_running_hover_text").arg(timeLeft);
+            if (jokers != 0)
+                lines << qtTrId("rewardwall_reward_streak_uses_jokers").arg(jokersText, name);
+            break;
+        }
+        case StreakState::Frozen:
+            lines << qtTrId("rewardwall_reward_streak_running_frozen_hover_text");
+            break;
+        case StreakState::NeverCollected:
+            lines << qtTrId("rewardwall_reward_streak_never_collected_hover_text");
+            break;
+        default:
+            break;
+        }
+    }
+    return lines.join(QStringLiteral("<br>"));
+}
+
+uint TRewardWallDialogController::nextDailyRewardPosition() const { return m_storage ? m_storage->nextDailyRewardPosition() : 0; }
+
+bool TRewardWallDialogController::isDailyRewardLocked() const
+{
+    return m_storage && m_storage->nextRewardTime() > nowSeconds();
+}
+
+/// Nothing once unlocked, "hh:mm" or less than a minute before.
+QString TRewardWallDialogController::dailyRewardTimeToUnlock() const
+{
+    if (m_storage) {
+        const qint64 seconds = secondsUntilNextReward();
+        if (seconds < 0)
+            return {};
+        if (seconds > 59)
+            return hoursAndMinutes(seconds);
+    }
+    return lessThanOneMinute();
+}
+
+double TRewardWallDialogController::dailyRewardTimeToUnlockProgress() const
+{
+    const qint64 seconds = secondsUntilNextReward();
+    if (seconds < 0)
+        return 0.0;
+    return std::clamp(double(seconds) / 86400.0, 0.0, 1.0);
+}
+
+bool TRewardWallDialogController::isUsingRewardShrine() const { return m_storage && m_storage->isUsingRewardShrine(); }
+uint TRewardWallDialogController::jokersNeededForCollecting() const { return m_storage ? m_storage->jokersNeededForCollecting() : 0; }
+
+::cip::tibia::qmlcomponents::enums::EDailyRewardStreakState TRewardWallDialogController::dailyRewardStreakState() const
+{
+    return m_storage ? static_cast<StreakState>(m_storage->dailyRewardStreakState()) : StreakState::Expired;
+}
+
+uint TRewardWallDialogController::maxDailyRewardJokerAmount() const { return 3; }
+
+/// 239 opens (or refreshes) the wall, 240 closes it, 241 and 242 say why
+/// there is no reward.
+bool TRewardWallDialogController::handleGameAction(const input::TGameAction& action)
+{
+    switch (action.type) {
+    case A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG: {
+        const bool open = dialog()->item() != nullptr;
+        updateDailyRewards();
+        onDailyRewardHistoryChanged();
+        Q_EMIT dailyRewardStreakStateChanged();
+        if (!open) {
+            dialog()->create();
+            dialog()->show();
+            m_timer.start();
+        }
+        return true;
+    }
+    case A::CLOSE_REWARD_WALL_DIALOG:
         closeDialog();
+        return true;
+    case A::OPEN_REWARD_WALL_NOT_REACHED_MAIN_MESSAGE:
+        showNoDailyRewardMessage(qtTrId("rewardwall_need_to_reach_main_text"));
+        return true;
+    case A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE:
+        showNoDailyRewardMessage(action.text);
+        return true;
+    default:
+        return false;
+    }
+}
+
+void TRewardWallDialogController::showNoDailyRewardMessage(const QString& text)
+{
+    m_infoDialog->setButtons({ okButton(TMessageDialogController::Button::OK) });
+    m_infoDialog->showMessage(qtTrId("rewardwall_no_daily_reward_available_caption"), text);
+}
+
+void TRewardWallDialogController::clearDailyRewards()
+{
+    const QList<QObject*> rewards = std::exchange(m_dailyRewards, {});
+    Q_EMIT dailyRewardsChanged();
+    for (QObject* reward : rewards)
+        reward->deleteLater();
+}
+
+void TRewardWallDialogController::clearHistory()
+{
+    const QList<QObject*> history = std::exchange(m_history, {});
+    Q_EMIT historyChanged();
+    for (QObject* entry : history)
+        entry->deleteLater();
+}
+
+/// One cell per day.
+void TRewardWallDialogController::updateDailyRewards()
+{
+    if (!m_storage)
         return;
-    }
-    m_pendingShow = true;
-    tibia::game::sendOpenRewardWall();
-}
-
-void TRewardWallDialogController::applyOpenWall(const OpenWallState& state)
-{
-    m_wall = state;
-    m_wallReceivedAt = QDateTime::currentSecsSinceEpoch();
-    m_isUsingRewardShrine = state.bonusShrine != 0;
-    m_nextDailyRewardPosition = state.dayStreakDay;
-    m_rewardStreakLength = state.dayStreakLevel;
-    m_dailyRewardJokerAmount = state.jokers;
-    m_jokersNeededForCollecting = 0;
-    m_isDailyRewardLocked = state.wasTaken;
-    syncPremium();
-    refreshResources();
-    rebuildRewardStreakBonuses();
-    rebuildDailyRewards();
-    updateRewardStreakTexts();
-    refreshTimers();
-    if (!m_timer.isActive())
-        m_timer.start();
-    Q_EMIT dailyRewardsChanged();
-    Q_EMIT rewardStreakBonusesChanged();
-    Q_EMIT dailyRewardJokerAmountChanged();
-    Q_EMIT jokersNeededForCollectingChanged();
-    Q_EMIT dailyRewardStreakStateChanged();
-    Q_EMIT timeChanged();
-    if (m_pendingShow || state.bonusShrine != 0) {
-        m_pendingShow = false;
-        dialog()->show();
-    }
-}
-
-void TRewardWallDialogController::applyDailyReward(const DailyRewardData& data)
-{
-    m_dailyReward = data;
-    rebuildRewardStreakBonuses();
-    rebuildDailyRewards();
-    updateRewardStreakTexts();
-    Q_EMIT rewardStreakBonusesChanged();
+    clearDailyRewards();
+    const size_t days = m_storage->rewards().size();
+    for (size_t i = 0; i < days; ++i)
+        m_dailyRewards.append(new TQmlDailyReward(this));
     Q_EMIT dailyRewardsChanged();
 }
 
-void TRewardWallDialogController::applyHistory(
-    const std::vector<std::tuple<uint32_t, bool, std::string, uint16_t>>& history)
+void TRewardWallDialogController::onDailyRewardHistoryChanged()
 {
-    clearOwnedList(m_history);
-    for (const auto& [timestamp, premium, description, streak] : history)
-        m_history.append(new TQmlDailyRewardHistoryEntry(timestamp, premium, QString::fromStdString(description), streak, this));
+    if (!m_storage)
+        return;
+    clearHistory();
+    for (const dailyreward::TDailyRewardHistoryEntry& entry : m_storage->history())
+        m_history.append(new TQmlDailyRewardHistoryEntry(entry, this));
     Q_EMIT historyChanged();
 }
 
-void TRewardWallDialogController::rebuildDailyRewards()
+void TRewardWallDialogController::onPremiumTimeChanged()
 {
-    clearOwnedList(m_dailyRewards);
-    for (int i = 0; i < 7; ++i)
-        m_dailyRewards.append(new TQmlDailyReward(this));
-}
-
-void TRewardWallDialogController::rebuildRewardStreakBonuses()
-{
-    clearOwnedList(m_rewardStreakBonuses);
-    const uint streak = m_rewardStreakLength;
-    if (m_dailyReward) {
-        for (const uint32_t needed : m_dailyReward->streakBonusThresholds)
-            m_rewardStreakBonuses.append(new TQmlRewardStreakBonus(needed, streak < needed, this));
-    }
-}
-
-void TRewardWallDialogController::refreshResources()
-{
-    const uint ira = static_cast<uint>(resourceBalance(tibia::client::RESOURCE_DAILYREWARD_STREAK));
-    if (m_instantRewardAccessAmount != ira) {
-        m_instantRewardAccessAmount = ira;
-        Q_EMIT instantRewardAccessAmountChanged();
-    }
-    const uint jokers = static_cast<uint>(resourceBalance(tibia::client::RESOURCE_DAILYREWARD_JOKERS));
-    if (jokers != 0 && m_dailyRewardJokerAmount != jokers) {
-        m_dailyRewardJokerAmount = jokers;
-        Q_EMIT dailyRewardJokerAmountChanged();
-    }
-    const uint cosmetic = static_cast<uint>(resourceBalance(tibia::client::RESOURCE_COSMETIC_TOKENS));
-    if (m_cosmeticTokenCount != cosmetic) {
-        m_cosmeticTokenCount = cosmetic;
-        Q_EMIT cosmeticTokenCountChanged();
-    }
-    const uint reroll = static_cast<uint>(resourceBalance(tibia::client::RESOURCE_BOUNTY_TASK_REROLL_TOKENS));
-    if (m_bountyTaskRerollTokenCount != reroll) {
-        m_bountyTaskRerollTokenCount = reroll;
-        Q_EMIT bountyTaskRerollTokenCountChanged();
-    }
-}
-
-void TRewardWallDialogController::refreshTimers()
-{
-    const qint64 now = QDateTime::currentSecsSinceEpoch();
-    qint64 unlockLeft = 0;
-    if (m_wall.nextRewardTime > 0)
-        unlockLeft = static_cast<qint64>(m_wall.nextRewardTime) - now;
-    if (unlockLeft < 0)
-        unlockLeft = 0;
-
-    m_isDailyRewardLocked = m_wall.wasTaken;
-    m_dailyRewardTimeToUnlock = formatCountdown(m_wall.wasTaken ? unlockLeft : 0);
-    m_dailyRewardTimeToUnlockProgress =
-        m_wall.wasTaken && unlockLeft > 0 ? std::min(1.0, unlockLeft / 86400.0) : 0.0;
-
-    qint64 streakLeft = 0;
-    if (!m_wall.wasTaken && m_wall.streakTimeLeft > 0 && m_wallReceivedAt > 0) {
-        const qint64 elapsed = std::max<qint64>(0, now - m_wallReceivedAt);
-        streakLeft = static_cast<qint64>(m_wall.streakTimeLeft) - elapsed;
-        if (streakLeft < 0)
-            streakLeft = 0;
-    }
-
-    StreakState state = StreakState::NeverCollected;
-    if (m_rewardStreakLength == 0 && m_wall.dayStreakDay == 0 && !m_wall.wasTaken)
-        state = StreakState::NeverCollected;
-    else if (m_wall.wasTaken)
-        state = StreakState::AlreadyCollected;
-    else if (streakLeft > 0)
-        state = StreakState::Running;
-    else
-        state = StreakState::Expired;
-
-    // CipSoft only paints the streak countdown while Running; checkmark/lock
-    // states leave the text empty so it does not sit under the icon.
-    const QString streakCountdown =
-        state == StreakState::Running ? formatCountdown(streakLeft) : QString{};
-    const bool streakCountdownChanged = m_rewardStreakTimeLeft != streakCountdown;
-    m_rewardStreakTimeLeft = streakCountdown;
-    m_rewardStreakTimeLeftProgress =
-        state == StreakState::Running ? std::min(1.0, streakLeft / 90000.0) : 0.0;
-
-    // Expired: show how many jokers a late claim would consume (1 day late → 1).
-    uint jokersNeeded = 0;
-    if (state == StreakState::Expired && m_wallReceivedAt > 0 && m_wall.streakTimeLeft > 0) {
-        const qint64 overdue =
-            std::max<qint64>(0, now - m_wallReceivedAt - static_cast<qint64>(m_wall.streakTimeLeft));
-        jokersNeeded = static_cast<uint>(std::max<qint64>(1, (overdue / 86400) + 1));
-    } else if (state == StreakState::Expired) {
-        jokersNeeded = 1;
-    }
-    const bool jokersNeededChanged = m_jokersNeededForCollecting != jokersNeeded;
-    if (jokersNeededChanged) {
-        m_jokersNeededForCollecting = jokersNeeded;
-        Q_EMIT jokersNeededForCollectingChanged();
-    }
-
-    const bool stateChanged = m_dailyRewardStreakState != state;
-    if (stateChanged) {
-        m_dailyRewardStreakState = state;
-        Q_EMIT dailyRewardStreakStateChanged();
-    }
-    if (stateChanged || streakCountdownChanged || jokersNeededChanged)
-        updateRewardStreakTexts();
-    Q_EMIT timeChanged();
-}
-
-void TRewardWallDialogController::syncPremium()
-{
-    const bool premium = localPlayerPremium();
-    if (m_isPremium == premium)
-        return;
-    m_isPremium = premium;
+    updateDailyRewards();
+    onDailyRewardHistoryChanged();
+    Q_EMIT dailyRewardStreakStateChanged();
     Q_EMIT premiumStatusChanged();
-    rebuildDailyRewards();
-    rebuildRewardStreakBonuses();
-    updateRewardStreakTexts();
-    Q_EMIT dailyRewardsChanged();
-    Q_EMIT rewardStreakBonusesChanged();
 }
 
-void TRewardWallDialogController::updateRewardStreakTexts()
+void TRewardWallDialogController::showDialog()
 {
-    // CipSoft: body shows current proficiency-XP bonus; help icon keeps rewardwall_reward_streak.
-    if (m_rewardStreakLength <= 1)
-        m_rewardStreakInfoText = qtTrId("rewardwall_reward_streak_no_bonus");
-    else
-        m_rewardStreakInfoText =
-            qtTrId("rewardwall_reward_streak_current_bonus")
-                .arg(std::min<uint>(7, m_rewardStreakLength - 1));
-
-    switch (m_dailyRewardStreakState) {
-    case StreakState::AlreadyCollected:
-        m_rewardStreakStateInfoText = qtTrId("rewardwall_reward_streak_already_collected_hover_text");
-        break;
-    case StreakState::Expired: {
-        const uint jokersNeeded = m_jokersNeededForCollecting > 0 ? m_jokersNeededForCollecting : 1;
-        const QString jokerName = jokersNeeded == 1
-            ? qtTrId("currency_view_daily_reward_joker_singular_tooltip")
-            : qtTrId("currency_view_daily_reward_joker_tooltip");
-        m_rewardStreakStateInfoText =
-            qtTrId("rewardwall_reward_streak_expired_hover_text").arg(jokersNeeded).arg(jokerName);
-        break;
-    }
-    case StreakState::Running:
-        m_rewardStreakStateInfoText =
-            qtTrId("rewardwall_reward_streak_running_hover_text").arg(m_rewardStreakTimeLeft);
-        break;
-    case StreakState::Frozen:
-        m_rewardStreakStateInfoText = qtTrId("rewardwall_reward_streak_running_frozen_hover_text");
-        break;
-    case StreakState::NeverCollected:
-    default:
-        m_rewardStreakStateInfoText = qtTrId("rewardwall_reward_streak_never_collected_hover_text");
-        break;
-    }
+    updateDailyRewards();
+    onDailyRewardHistoryChanged();
+    Q_EMIT dailyRewardStreakStateChanged();
+    dialog()->create();
+    dialog()->show();
+    m_timer.start();
 }
-
-const DailyRewardDay* TRewardWallDialogController::currentDay() const
-{
-    if (!m_dailyReward)
-        return nullptr;
-    const auto& days = m_isPremium ? m_dailyReward->premiumRewards : m_dailyReward->freeRewards;
-    if (m_nextDailyRewardPosition >= days.size())
-        return nullptr;
-    return &days[m_nextDailyRewardPosition];
-}
-
-void TRewardWallDialogController::showDialog() { dialog()->show(); }
 
 void TRewardWallDialogController::closeDialog()
 {
-    dialog()->close();
+    m_infoDialog->dialog()->close();
+    m_confirmDialog->dialog()->close();
+    m_warningDialog->dialog()->close();
     m_timer.stop();
-    input::publish(input::makeAction(input::EGameAction::CLOSE_REWARD_WALL_DIALOG));
+    dialog()->close();
+    clearHistory();
+    clearDailyRewards();
 }
 
 void TRewardWallDialogController::closeButtonClicked() { closeDialog(); }
 
+/// The store's Instant Reward Access page (useful thing 2).
 void TRewardWallDialogController::getMoreInstantRewardAccessClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 1;
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
+    action->parameter = 3;
+    action->instance = 2;
     input::publish(action);
 }
 
+/// The store's premium page.
 void TRewardWallDialogController::getPremiumClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
     action->parameter = 1;
+    action->instance = 0;
     input::publish(action);
 }
 
-void TRewardWallDialogController::historyButtonClicked() { tibia::game::requestOpenRewardHistory(); }
+void TRewardWallDialogController::historyButtonClicked() { publish(A::REQUEST_DAILY_REWARD_HISTORY); }
 
-void TRewardWallDialogController::collectRewardButtonClicked()
+/// The player's reward of the next position once it is unlocked.
+std::shared_ptr<TDailyReward> TRewardWallDialogController::collectableReward() const
 {
-    if (m_isDailyRewardLocked)
-        return;
-    if (!m_isUsingRewardShrine && m_instantRewardAccessAmount < IraUnlimitedThreshold) {
-        showConfirmUseOfInstantRewardAccessDialogIfNeeded();
-        return;
-    }
-    collectNow();
+    if (!m_storage)
+        return {};
+    const std::vector<dailyreward::TDailyRewardStorage::TRewardPair> rewards = m_storage->rewards();
+    const size_t position = m_storage->nextDailyRewardPosition();
+    if (position >= rewards.size() || m_storage->nextRewardTime() > nowSeconds())
+        return {};
+    return localPlayerPremium() ? rewards[position].second : rewards[position].first;
 }
 
-void TRewardWallDialogController::collectNow() { requestCollectFixedItemsReward(); }
+/// The server may warn first (1) or refuse (2); away from a shrine the
+/// player confirms using an Instant Reward Access.
+void TRewardWallDialogController::collectRewardButtonClicked()
+{
+    if (!collectableReward())
+        return;
+    switch (m_storage->collectState()) {
+    case 1: showCollectWarning(); break;
+    case 2: showNotCollectableMessage(); break;
+    default:
+        if (!m_storage->isUsingRewardShrine())
+            showConfirmUsOfInstantRewardAccessDialogIfNeeded();
+        else
+            requestCollectFixedItemsReward();
+        break;
+    }
+}
+
+void TRewardWallDialogController::showNotCollectableMessage()
+{
+    m_infoDialog->setButtons({ okButton(TMessageDialogController::Button::OK) });
+    m_infoDialog->showMessage(qtTrId("rewardwall_reward_not_collectable_caption"), m_storage->collectMessage());
+}
+
+void TRewardWallDialogController::showCollectWarning()
+{
+    m_warningDialog->setButtons(okCancelButtons());
+    m_warningDialog->showMessage(qtTrId("warning"), m_storage->collectMessage());
+}
 
 QString TRewardWallDialogController::jokersNeededCurrencyViewhInfoText()
 {
-    // When a claim will consume jokers, CipSoft shows the uses_jokers line; otherwise the explanation.
-    if (m_jokersNeededForCollecting > 0
-        && (m_dailyRewardStreakState == StreakState::Expired || m_dailyRewardStreakState == StreakState::Frozen)) {
-        const QString jokerName = m_jokersNeededForCollecting == 1
-            ? qtTrId("currency_view_daily_reward_joker_singular_tooltip")
-            : qtTrId("currency_view_daily_reward_joker_tooltip");
-        return qtTrId("rewardwall_reward_streak_uses_jokers").arg(m_jokersNeededForCollecting).arg(jokerName);
-    }
-    // CipSoft: rewardwall_jokers_explanation — %1=plural name, %2=singular, %3=max.
     return qtTrId("rewardwall_jokers_explanation")
-        .arg(qtTrId("currency_view_daily_reward_joker_tooltip"),
-             qtTrId("currency_view_daily_reward_joker_singular_tooltip"),
-             QString::number(m_maxDailyRewardJokerAmount > 0 ? m_maxDailyRewardJokerAmount : MaxDailyRewardJokerAmount));
+        .arg(qtTrId("currency_view_daily_reward_joker_tooltip"), qtTrId("currency_view_daily_reward_joker_singular_tooltip"))
+        .arg(3);
 }
 
+/// The bonus' lock and the streak it needs. The count CipSoft fills in is 0.
 QString TRewardWallDialogController::restingBonusHoverText(const int Index)
 {
-    if (!m_dailyReward || Index < 0 || Index >= int(m_dailyReward->streakBonusThresholds.size()))
-        return {};
-    // CipSoft: the locked note, then the streak the bonus needs, coloured by
-    // whether it is reached.
-    const uint needed = m_dailyReward->streakBonusThresholds[size_t(Index)];
-    const bool locked = m_rewardStreakLength < needed;
     QString text;
+    if (Index < 0 || Index >= m_rewardStreakBonuses.size() || !m_storage)
+        return text;
+    const auto* bonus = qobject_cast<cip::tibia::dailyreward::TQmlRewardStreakBonus*>(m_rewardStreakBonuses[Index]);
+    const bool locked = bonus && bonus->isLockedByRewardStreakLength();
     if (locked)
-        text += qtTrId("rewardwall_resting_area_bonus_locked").arg(QStringLiteral("#ff0000"));
+        text += qtTrId("rewardwall_resting_area_bonus_locked").arg(LockedColor.name());
     text += QStringLiteral("<br>");
-    text += qtTrId("rewardwall_resting_area_locked_by_count")
-                .arg(locked ? QStringLiteral("#ff0000") : QStringLiteral("#00ff00"))
-                .arg(needed);
+    text += qtTrId("rewardwall_resting_area_locked_by_count").arg((locked ? LockedColor : ReachedColor).name()).arg(0);
+    QStringList active;
+    for (QObject* object : std::as_const(m_rewardStreakBonuses)) {
+        const auto* other = qobject_cast<cip::tibia::dailyreward::TQmlRewardStreakBonus*>(object);
+        if (other && !other->isLockedByRewardStreakLength())
+            active << QString();
+    }
+    if (active.size() == 1)
+        text += qtTrId("rewardwall_resting_area_active_bonus") + active.first();
+    else if (active.size() > 1)
+        text += qtTrId("rewardwall_resting_area_active_bonuses") + active.join(QStringLiteral(", "));
+    return text;
+}
+
+/// The day's reward lines; a free player sees the premium amounts too.
+QString TRewardWallDialogController::dailyRewardDetails(const std::shared_ptr<TDailyReward>& free,
+                                                        const std::shared_ptr<TDailyReward>& premium, const bool isPremium) const
+{
+    QString text;
+    const TDailyRewardFixedItems* freeItems = fixedItems(free);
+    const TDailyRewardFixedItems* premiumItems = fixedItems(premium);
+    if (!freeItems || !premiumItems)
+        return text;
+    const TDailyRewardFixedItems& reward = isPremium ? *premiumItems : *freeItems;
+    if (reward.cosmeticTokens() != 0) {
+        QString line = qtTrId("rewardwall_daily_cosmetic_tokens").arg(reward.cosmeticTokens());
+        if (!isPremium && uint(freeItems->cosmeticTokens()) < uint(premiumItems->cosmeticTokens()))
+            line += qtTrId("rewardwall_daily_reward_premium_teaser").arg(premiumItems->cosmeticTokens());
+        text += bulletPoint(line);
+    }
+    if (reward.bountyRerollTokens() != 0)
+        text += bulletPoint(qtTrId("rewardwall_daily_bounty_task_reroll_token"));
+    if (reward.preyWildcards() != 0) {
+        QString line = reward.preyWildcards() == 1 ? qtTrId("rewardwall_daily_prey_wildcard").arg(reward.preyWildcards())
+                                                   : qtTrId("rewardwall_daily_prey_wildcards").arg(reward.preyWildcards());
+        if (!isPremium && uint(freeItems->preyWildcards()) < uint(premiumItems->preyWildcards()))
+            line += qtTrId("rewardwall_daily_reward_premium_teaser").arg(premiumItems->preyWildcards());
+        text += bulletPoint(line);
+    }
+    if (!reward.items().empty())
+        text += bulletPoint(qtTrId("rewardwall_daily_temple_teleport_scroll"));
+    if (reward.xpBoostMinutes() > 0) {
+        QString line = qtTrId("rewardwall_daily_reward_xp_boost").arg(reward.xpBoostMinutes()).arg(reward.xpBoostPercent());
+        if (!isPremium && uint(freeItems->xpBoostPercent()) < uint(premiumItems->xpBoostPercent()))
+            line += qtTrId("rewardwall_daily_reward_premium_teaser").arg(QStringLiteral("%1%").arg(premiumItems->xpBoostPercent()));
+        text += bulletPoint(line);
+    }
     return text;
 }
 
 QString TRewardWallDialogController::dailyRewardHoverText(const int Index)
 {
-    if (!m_dailyReward || Index < 0 || Index >= int(m_dailyReward->freeRewards.size())
-        || Index >= int(m_dailyReward->premiumRewards.size()))
+    if (Index < 0 || Index >= m_dailyRewards.size() || !m_storage)
         return {};
-    const QString body = dailyRewardDetailsBody(m_dailyReward->freeRewards[size_t(Index)],
-                                                m_dailyReward->premiumRewards[size_t(Index)], m_isPremium);
-    return body.isEmpty() ? QString() : qtTrId("rewardwall_daily_reward_details").arg(body);
+    const dailyreward::TDailyRewardStorage::TRewardPair reward = m_storage->rewards()[size_t(Index)];
+    return qtTrId("rewardwall_daily_reward_details").arg(dailyRewardDetails(reward.first, reward.second, localPlayerPremium()));
 }
 
+/// Collected, waiting, unlocking in some time, or claimable now with the
+/// shrine and streak notes.
 QString TRewardWallDialogController::dailyRewardStateHoverText(const int Index)
 {
-    if (Index < int(m_nextDailyRewardPosition))
+    if (Index < 0 || Index >= m_dailyRewards.size() || !m_storage)
+        return {};
+    const uint position = m_storage->nextDailyRewardPosition();
+    const uint index = uint(Index) & 0xff;
+    if (index < position)
         return qtTrId("rewardwall_daily_reward_collected");
-    if (Index == int(m_nextDailyRewardPosition)) {
-        if (m_isDailyRewardLocked)
-            return qtTrId("rewardwall_daily_reward_is_unlocking").arg(m_dailyRewardTimeToUnlock);
-        QString text = qtTrId("rewardwall_daily_reward_unlocked");
-        if (m_isUsingRewardShrine)
-            text += QLatin1Char('\n') + qtTrId("rewardwall_daily_reward_shrine_theretfore_free");
-        else if (m_instantRewardAccessAmount < IraUnlimitedThreshold)
-            text += QLatin1Char('\n') + qtTrId("rewardwall_daily_reward_shrine_makes_it_free");
-        else
-            text += QLatin1Char('\n') + qtTrId("rewardwall_for_free_using_shrine");
-        return text;
-    }
-    return qtTrId("rewardwall_daily_reward_waiting");
+    if (position < index)
+        return qtTrId("rewardwall_daily_reward_waiting");
+    const uint32_t unlockTime = m_storage->nextRewardTime();
+    const uint32_t now = nowSeconds();
+    if (unlockTime > now)
+        return qtTrId("rewardwall_daily_reward_is_unlocking").arg(minutesText((unlockTime - now) / 60));
+    QString text = qtTrId("rewardwall_daily_reward_unlocked");
+    text += QStringLiteral("<br>");
+    text += m_storage->isUsingRewardShrine() ? qtTrId("rewardwall_daily_reward_shrine_theretfore_free")
+                                             : qtTrId("rewardwall_daily_reward_shrine_makes_it_free");
+    text += QStringLiteral("<br>");
+    const qint64 streakLeft = secondsUntilStreakEnd();
+    if (streakLeft < 0)
+        text += qtTrId("rewardwall_reward_streak_expired").arg(qtTrId("currency_view_daily_reward_joker_tooltip"));
+    else
+        text += qtTrId("rewardwall_reward_streak_running_hover_text").arg(minutesText(streakLeft / 60));
+    return text;
 }
 
+/// XP boost, wildcard, cosmetic token or temple teleport scroll.
 QString TRewardWallDialogController::dailyRewardIcon(const int Index, const bool IsPremium)
 {
-    if (!m_dailyReward || Index < 0)
+    if (Index < 0 || !m_storage)
         return {};
-    const auto& days = IsPremium ? m_dailyReward->premiumRewards : m_dailyReward->freeRewards;
-    if (Index >= int(days.size()))
+    const std::vector<dailyreward::TDailyRewardStorage::TRewardPair> rewards = m_storage->rewards();
+    if (Index >= int(rewards.size()))
         return {};
-    const DailyRewardDay& day = days[size_t(Index)];
-    if (day.xpBoostMinutes != 0)
+    const TDailyRewardFixedItems* reward = fixedItems(IsPremium ? rewards[size_t(Index)].second : rewards[size_t(Index)].first);
+    if (!reward)
+        return {};
+    if (reward->xpBoostMinutes() != 0)
         return QStringLiteral("/images/dailyreward/icon-reward-xp-boost.png");
-    if (day.preyWildcards != 0)
+    if (reward->preyWildcards() != 0)
         return QStringLiteral("/images/dailyreward/icon-reward-wildcard.png");
-    if (day.cosmeticTokens != 0)
+    if (reward->cosmeticTokens() != 0)
         return QStringLiteral("/images/dailyreward/icon-reward-cosmetic.png");
     return QStringLiteral("/images/dailyreward/icon-reward-temple-teleport.png");
 }
 
 QString TRewardWallDialogController::dailyRewardNumbersText(const int Index, const bool IsPremium)
 {
-    if (!m_dailyReward || Index < 0)
+    if (Index < 0 || !m_storage)
         return {};
-    const auto& days = IsPremium ? m_dailyReward->premiumRewards : m_dailyReward->freeRewards;
-    if (Index >= int(days.size()))
+    const std::vector<dailyreward::TDailyRewardStorage::TRewardPair> rewards = m_storage->rewards();
+    if (Index >= int(rewards.size()))
         return {};
-    const DailyRewardDay& day = days[size_t(Index)];
-    if (day.xpBoostMinutes != 0)
-        return QStringLiteral("%1%").arg(day.xpBoostPercent);
-    if (day.preyWildcards != 0)
-        return QStringLiteral("x%1").arg(day.preyWildcards);
-    if (day.cosmeticTokens != 0)
-        return QStringLiteral("x%1").arg(day.cosmeticTokens);
+    const TDailyRewardFixedItems* reward = fixedItems(IsPremium ? rewards[size_t(Index)].second : rewards[size_t(Index)].first);
+    if (!reward)
+        return {};
+    if (reward->xpBoostMinutes() != 0)
+        return QStringLiteral("%1%").arg(reward->xpBoostPercent());
+    if (reward->preyWildcards() != 0)
+        return QStringLiteral("x%1").arg(reward->preyWildcards());
+    if (reward->cosmeticTokens() != 0)
+        return QStringLiteral("x%1").arg(reward->cosmeticTokens());
     return QStringLiteral("x1");
 }
 
-void TRewardWallDialogController::onPremiumTimeChanged() { syncPremium(); }
-
-void TRewardWallDialogController::onDailyRewardHistoryChanged() { historyButtonClicked(); }
-
-void TRewardWallDialogController::showConfirmUseOfInstantRewardAccessDialogIfNeeded()
+/// Without an Instant Reward Access only an explanation; otherwise the
+/// player confirms using one (the last one, or one of several).
+void TRewardWallDialogController::showConfirmUsOfInstantRewardAccessDialogIfNeeded()
 {
-    if (m_instantRewardAccessAmount == 0) {
-        m_confirmDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
-                                                               QKeySequence(QStringLiteral("Return")), m_confirmDialog) });
-        m_confirmDialog->showMessage(qtTrId("rewardwall_warning_instant_reward_access_caption"),
-                                     qtTrId("rewardwall_confirm_instant_reward_access_not_possible"));
+    if (!m_storage)
+        return;
+    const int amount = m_storage->instantRewardAccessAmount();
+    QString text = qtTrId("rewardwall_for_free_using_shrine") + QStringLiteral("\n\n");
+    if (amount == 0) {
+        text += qtTrId("rewardwall_confirm_instant_reward_access_not_possible");
+        m_confirmDialog->setButtons({ okButton(TMessageDialogController::Button::CANCEL) });
+        m_confirmDialog->showMessage(qtTrId("rewardwall_warning_instant_reward_access_caption"), text);
         return;
     }
-    m_confirmDialog->setYesNoButtons();
-    const QString body = m_instantRewardAccessAmount == 1
-        ? qtTrId("rewardwall_confirm_instant_reward_access_last")
-        : qtTrId("rewardwall_confirm_instant_reward_access_plural").arg(m_instantRewardAccessAmount);
-    m_confirmDialog->showMessage(qtTrId("rewardwall_confirm_instant_reward_access_caption"), body);
+    text += amount == 1 ? qtTrId("rewardwall_confirm_instant_reward_access_last")
+                        : qtTrId("rewardwall_confirm_instant_reward_access_plural").arg(amount);
+    m_confirmDialog->setButtons(okCancelButtons());
+    m_confirmDialog->showMessage(qtTrId("rewardwall_confirm_instant_reward_access_caption"), text);
 }
 
-void TRewardWallDialogController::onConfirmedCollectReward() { collectNow(); }
+void TRewardWallDialogController::onConfirmedCollectReward() { requestCollectFixedItemsReward(); }
 
-void TRewardWallDialogController::onConfirmedPartialCollect() { collectNow(); }
-
-void TRewardWallDialogController::requestCollectFixedItemsReward()
+/// After the server's warning: confirm the Instant Reward Access away from a
+/// shrine, collect at one.
+void TRewardWallDialogController::onConfirmedPartialCollect()
 {
-    tibia::game::requestGetRewardDaily(m_wall.bonusShrine == 1 ? 0 : 1, {});
+    if (m_storage && !m_storage->isUsingRewardShrine()) {
+        showConfirmUsOfInstantRewardAccessDialogIfNeeded();
+        return;
+    }
+    requestCollectFixedItemsReward();
 }
+
+void TRewardWallDialogController::requestCollectFixedItemsReward() { publish(A::COLLECT_FIXED_ITEMS_DAILY_REWARD); }
 
 }

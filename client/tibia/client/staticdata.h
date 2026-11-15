@@ -886,33 +886,6 @@ struct CharacterInfoFamiliar
     uint32_t isCurrent;
 };
 
-/// One fixed object of a day's daily reward.
-struct DailyRewardObject
-{
-    uint16_t itemId = 0;
-    std::string name;
-    uint8_t count = 0;
-};
-
-/// A day's daily reward for one account kind (CIP DailyRewardBasic).
-struct DailyRewardDay
-{
-    std::vector<DailyRewardObject> objects;
-    uint32_t preyWildcards = 0;
-    uint32_t xpBoostMinutes = 0;
-    uint32_t xpBoostPercent = 0;
-    uint32_t cosmeticTokens = 0;
-    uint32_t bountyRerollTokens = 0;
-};
-
-struct DailyRewardData
-{
-    std::vector<DailyRewardDay> freeRewards;
-    std::vector<DailyRewardDay> premiumRewards;
-    /// The reward streak each resting area bonus needs.
-    std::vector<uint32_t> streakBonusThresholds;
-};
-
 struct ItemInspectionData
 {
     uint8_t inspectionType;
