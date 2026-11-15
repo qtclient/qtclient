@@ -469,6 +469,7 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             &taskboard::TTaskboardProtocolMessageHandler::onServerMessageEnqueued,
             &friends::TFriendsProtocolMessageHandler::onServerMessageEnqueued,
             &game::TSpellBookProtocolMessageHandler::onServerMessageEnqueued,
+            &spells::TSpellsProtocolMessageHandler::onServerMessageEnqueued,
         };
         for (const QMetaObject::Connection& connection : m_staticIngressConnections)
             disconnect(connection);
@@ -962,6 +963,8 @@ void TGameClient::onWorldEntered()
     qCInfo(lcGameClient).noquote() << "in world" << world << "as" << character;
     // Entering a world dismisses the character list (login and alt switch).
     Q_EMIT characterSelectionClosed();
+    // A new game session: no own team or listed teams, the team finder pages start over.
+    teamfinder::TTeamFinderProtocolMessageHandler::instance()->startSession();
     if (const uint32_t playerId = tibia::game::localPlayerId()) {
         m_sidebarOptions->loadForCharacter(playerId);
         m_statusbarStorage->loadForCharacter(playerId);

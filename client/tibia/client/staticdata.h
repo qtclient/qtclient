@@ -133,6 +133,8 @@ struct RaceType
     Outfit outfit;
     bool hasCategory{ false };
     bool boss{ false };
+    /// Boss record field 4: the team finder leaves these bosses out.
+    bool notInTeamFinder{ false };
 };
 
 struct CyclopediaHouseType

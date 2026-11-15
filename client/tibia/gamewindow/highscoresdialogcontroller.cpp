@@ -1,45 +1,35 @@
 #include "highscoresdialogcontroller.h"
 
+#include "protocol/protocolciptypes.h"
+
 #include <tibia/game/gamesession.h>
+#include <tibia/game/tgamenotify.h>
+
+#include <protocol.pb.h>
 
 #include <QDateTime>
 #include <QLocale>
 
+#include <algorithm>
 #include <cmath>
 
 namespace tibia::highscores {
 
-namespace {
-
-/// CIP : client vocation ids are 1..5, promoted ones 11..15.
-QString vocationName(const uint8_t vocation)
-{
-    static constexpr const char* Base[] = { "knight", "paladin", "sorcerer", "druid", "monk" };
-    static constexpr const char* Promoted[] = { "knight_promoted", "paladin_promoted", "sorcerer_promoted", "druid_promoted", "monk_promoted" };
-    const bool promoted = vocation >= 10;
-    const int base = promoted ? vocation - 10 : vocation;
-    if (base < 1 || base > 5)
-        return qtTrId("none");
-    return qtTrId(promoted ? Promoted[base - 1] : Base[base - 1]);
-}
-
-}
-
-THighscoresEntriesModel::THighscoresEntriesModel(QList<THighscoreEntry> entries, QObject* parent)
+THighscoresEntriesModel::THighscoresEntriesModel(std::vector<THighscoreEntry> entries, QObject* parent)
     : cip::tibia::highscores::THighscoresEntriesModel(parent)
     , m_entries(std::move(entries))
 {}
 
 int THighscoresEntriesModel::rowCount(const QModelIndex& parent) const
 {
-    return parent.isValid() ? 0 : m_entries.size();
+    return parent.isValid() ? 0 : static_cast<int>(m_entries.size());
 }
 
 QVariant THighscoresEntriesModel::data(const QModelIndex& index, const int role) const
 {
-    if (!index.isValid() || index.row() >= m_entries.size())
+    if (!index.isValid() || index.row() >= static_cast<int>(m_entries.size()))
         return {};
-    const THighscoreEntry& entry = m_entries[index.row()];
+    const THighscoreEntry& entry = m_entries[static_cast<size_t>(index.row())];
     switch (role) {
         case RankRole: return entry.rank;
         case CharacterRole: return entry.character;
@@ -61,7 +51,7 @@ QHash<int, QByteArray> THighscoresEntriesModel::roleNames() const
     return names;
 }
 
-THighscoresData::THighscoresData(QList<THighscoreEntry> entries, QObject* parent)
+THighscoresData::THighscoresData(std::vector<THighscoreEntry> entries, QObject* parent)
     : cip::tibia::highscores::THighscoresData(parent)
     , m_model(std::move(entries))
 {
@@ -76,12 +66,7 @@ namespace {
 
 constexpr int EntriesPerPage = 20;
 
-QString qstr(const std::string& text)
-{
-    return QString::fromStdString(text);
-}
-
-/// CIP .
+/// The age of the data: seconds up to a minute, then minutes.
 QString formatElapsed(const qint64 milliseconds)
 {
     const uint seconds = static_cast<uint>(std::llround(static_cast<double>(milliseconds) / 1000.0));
@@ -133,7 +118,9 @@ THighscoresDialogController::THighscoresDialogController(QObject* parent)
     m_indexOfSelectedVocation = -1;
     m_indexOfSelectedCategory = -1;
     m_worldTypeModel = &m_worldTypes;
-    updateWorldTypes();
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &THighscoresDialogController::connectToGameSession);
+    connectToGameSession();
 }
 
 THighscoresDialogController::~THighscoresDialogController()
@@ -141,7 +128,19 @@ THighscoresDialogController::~THighscoresDialogController()
     delete m_highscoreData;
 }
 
-/// CIP .
+void THighscoresDialogController::connectToGameSession()
+{
+    closeDialog();
+    if (m_storage)
+        disconnect(m_storage, nullptr, this, nullptr);
+    m_storage = highscores::THighscoresStorage::liveInstance();
+    if (m_storage) {
+        connect(m_storage, &highscores::THighscoresStorage::highScoresError, this, &THighscoresDialogController::onHighScoresError);
+        connect(m_storage, &highscores::THighscoresStorage::highScoresUpdated, this, &THighscoresDialogController::onHighScoresUpdated);
+    }
+    updateWorldTypes();
+}
+
 QList<THighscoresDialogController::BattlEyeType> THighscoresDialogController::battlEyeTypes()
 {
     return { { -1, qtTrId("highscores_battleye_any") },
@@ -166,16 +165,16 @@ void THighscoresDialogController::setDataAvailable(const bool available)
     Q_EMIT dataAvailableChanged();
 }
 
-/// CIP : "all worlds" first.
+/// "All worlds" first.
 QStringList THighscoresDialogController::availableWorlds() const
 {
+    if (!m_storage)
+        return {};
     QStringList worlds{ qtTrId("highscores_worlds_all") };
-    for (const std::string& world : m_answer.worlds)
-        worlds.append(qstr(world));
+    worlds.append(m_storage->worlds());
     return worlds;
 }
 
-/// CIP .
 QStringList THighscoresDialogController::availableBattlEyeTypes() const
 {
     QStringList names;
@@ -184,43 +183,61 @@ QStringList THighscoresDialogController::availableBattlEyeTypes() const
     return names;
 }
 
-/// CIP .
 QStringList THighscoresDialogController::availableVocations() const
 {
-    QStringList names{ qstr(m_answer.allVocationsName) };
-    for (const auto& [id, name] : m_answer.vocations)
-        names.append(qstr(name));
+    QStringList names;
+    if (m_storage) {
+        for (const auto& [id, name] : m_storage->vocations())
+            names.append(name);
+    }
     return names;
 }
 
-/// CIP .
 QStringList THighscoresDialogController::availableCategories() const
 {
     QStringList names;
-    for (const auto& [id, name] : m_answer.categories)
-        names.append(qstr(name));
+    if (m_storage) {
+        for (const auto& [id, name] : m_storage->categories())
+            names.append(name);
+    }
     return names;
+}
+
+int THighscoresDialogController::selectedPage() const
+{
+    return m_storage ? m_storage->page() : 0;
+}
+
+int THighscoresDialogController::totalPages() const
+{
+    return m_storage ? m_storage->totalPages() : 0;
 }
 
 int THighscoresDialogController::selectedIndex() const
 {
-    return m_answer.selectedIndex == 0xFF ? -1 : m_answer.selectedIndex;
+    return m_storage ? m_storage->selectedIndex() : 0;
 }
 
-/// CIP : unknown types show as points.
+bool THighscoresDialogController::showLoyaltyTitle() const
+{
+    return m_storage && m_storage->showLoyaltyTitle();
+}
+
+/// Unknown types show as points.
 cip::tibia::gamewindow::THighscoresDialogController::EValueType THighscoresDialogController::valueType() const
 {
-    return m_answer.valueType < 3 ? static_cast<EValueType>(m_answer.valueType) : Points;
+    const int type = m_storage ? m_storage->valueType() : Points;
+    return type >= 0 && type < 3 ? static_cast<EValueType>(type) : Points;
 }
 
-/// CIP .
 QString THighscoresDialogController::dataActualisationText() const
 {
-    const qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - static_cast<qint64>(m_answer.timestamp) * 1000;
+    if (!m_storage)
+        return {};
+    const qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - static_cast<qint64>(m_storage->lastUpdate()) * 1000;
     return qtTrId("highscores_refreshtext").arg(formatElapsed(elapsed));
 }
 
-/// CIP (and , ,).
 void THighscoresDialogController::setIndexOfSelectedWorld(const int v)
 {
     if (m_indexOfSelectedWorld == v)
@@ -253,16 +270,19 @@ void THighscoresDialogController::setIndexOfSelectedCategory(const int v)
     Q_EMIT indexOfSelectedCategoryChanged();
 }
 
+/// The world behind the selected index; index 0 is "all worlds" (empty).
 QString THighscoresDialogController::selectedWorldName() const
 {
     const int index = m_indexOfSelectedWorld;
-    if (index > 0 && index <= static_cast<int>(m_answer.worlds.size()))
-        return qstr(m_answer.worlds[index - 1]);
-    return {};
+    if (m_storage && index > 0 && index <= m_storage->worlds().size())
+        return m_storage->worlds()[index - 1];
+    return QString();
 }
 
 int THighscoresDialogController::selectedBattlEyeValue() const
 {
+    if (!m_storage)
+        return -1;
     const QList<BattlEyeType> types = battlEyeTypes();
     const int index = m_indexOfSelectedBattlEyeType;
     return index >= 0 && index < types.size() ? types[index].value : -1;
@@ -271,74 +291,74 @@ int THighscoresDialogController::selectedBattlEyeValue() const
 int THighscoresDialogController::selectedVocationId() const
 {
     const int index = m_indexOfSelectedVocation;
-    if (index > 0 && index <= static_cast<int>(m_answer.vocations.size()))
-        return static_cast<int>(std::get<0>(m_answer.vocations[index - 1]));
+    if (m_storage && index >= 0 && index < static_cast<int>(m_storage->vocations().size()))
+        return m_storage->vocations()[static_cast<size_t>(index)].first;
     return -1;
 }
 
 int THighscoresDialogController::selectedCategoryId() const
 {
     const int index = m_indexOfSelectedCategory;
-    if (index >= 0 && index < static_cast<int>(m_answer.categories.size()))
-        return std::get<0>(m_answer.categories[index]);
+    if (m_storage && index >= 0 && index < static_cast<int>(m_storage->categories().size()))
+        return m_storage->categories()[static_cast<size_t>(index)].first;
     return 0;
+}
+
+void THighscoresDialogController::sendHighscoresRequest(const int action, const int page, const int category, const QString& world,
+                                                        const int vocation, const std::vector<int>& worldTypes, const int battlEye)
+{
+    // Host: the session refuses game actions while it cannot perform them.
+    if (!tibia::game::canPerformGameAction())
+        return;
+    using namespace ::tibia::protobuf::protocol;
+    auto message = tibia::protocol::newGameclientMessage(177);
+    auto* m = message->MutableExtension(GameclientMessageHighscores::gameclient_message_highscores);
+    m->set_entries_per_page(EntriesPerPage);
+    m->set_action(static_cast<uint32_t>(action));
+    m->set_page(static_cast<uint32_t>(page));
+    m->set_world(world.toStdString());
+    for (const int type : worldTypes) {
+        if (type >= 0 && type < 5)
+            m->add_world_types(static_cast<uint32_t>(type));
+    }
+    m->set_vocation(static_cast<uint32_t>(vocation));
+    m->set_battleye(static_cast<uint32_t>(battlEye));
+    m->set_category(static_cast<uint32_t>(category));
+    tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
 void THighscoresDialogController::requestPage(const int page)
 {
-    setShowLoadingComponent(true);
-    tibia::game::requestHighscore(0, static_cast<uint8_t>(selectedCategoryId()), static_cast<uint32_t>(selectedVocationId()),
-                            selectedWorldName().toStdString(), 0, static_cast<uint8_t>(selectedBattlEyeValue()),
-                            static_cast<uint16_t>(page), EntriesPerPage);
-}
-
-void THighscoresDialogController::requestOwnRank()
-{
-    setShowLoadingComponent(true);
-    tibia::game::requestHighscore(1, static_cast<uint8_t>(selectedCategoryId()), static_cast<uint32_t>(selectedVocationId()),
-                            selectedWorldName().toStdString(), 0, 0xFF, static_cast<uint16_t>(m_answer.page), EntriesPerPage);
-}
-
-/// CIP : the five PvP types , checked when selected.
-void THighscoresDialogController::updateWorldTypes()
-{
-    static constexpr const char* Names[] = { "highscores_world_pvp_open", "highscores_world_pvp_optional", "highscores_world_pvp_hardcore",
-                                             "highscores_world_pvp_retro_open", "highscores_world_pvp_retro_hardcore" };
-    QList<THighscoresWorldTypeModel::Entry> entries;
-    for (int type = 0; type < 5; ++type)
-        entries.append({ .worldType = type, .name = qtTrId(Names[type]), .checked = m_selectedWorldTypes.contains(type) });
-    m_worldTypes.setEntries(std::move(entries));
+    sendHighscoresRequest(0, page, selectedCategoryId(), selectedWorldName(), selectedVocationId(), m_selectedWorldTypes, selectedBattlEyeValue());
 }
 
 void THighscoresDialogController::openDialog()
 {
     showDialog();
-    tibia::game::requestHighscore(0, 0, 0xFFFFFFFF, "OWN", 0, 0xFF, 1, EntriesPerPage);
+    sendHighscoresRequest(0, 1, 0, QStringLiteral("OWN"), -1, {}, -1);
 }
 
-void THighscoresDialogController::setAnswer(Answer answer)
+void THighscoresDialogController::onHighScoresError()
 {
-    m_answer = std::move(answer);
+    if (!m_storage || m_storage->state() != 1)
+        return;
+    setDataAvailable(false);
+    setShowLoadingComponent(false);
+}
 
-    QList<highscores::THighscoreEntry> entries;
-    entries.reserve(static_cast<qsizetype>(m_answer.entries.size()));
-    for (const auto& [rank, name, title, vocation, world, level, isPlayer, points] : m_answer.entries) {
-        entries.append({ .rank = rank, .character = qstr(name), .loyaltyTitle = qstr(title), .vocation = highscores::vocationName(vocation),
-                         .world = qstr(world), .level = level, .isOwnCharacter = isPlayer != 0, .score = points });
+void THighscoresDialogController::onHighScoresUpdated()
+{
+    if (m_storage) {
+        auto* old = m_highscoreData;
+        m_highscoreData = new highscores::THighscoresData(m_storage->entries());
+        delete old;
     }
-    auto* old = m_highscoreData;
-    m_highscoreData = new highscores::THighscoresData(std::move(entries));
-    delete old;
-
     setDataAvailable(true);
     setShowLoadingComponent(false);
-
     updateIndexOfSelectedWorld();
     updateIndexOfSelectedBattlEyeType();
     updateIndexOfSelectedVocation();
     updateIndexOfSelectedCategory();
-
-    m_selectedWorldTypes.clear();
     updateWorldTypes();
     Q_EMIT dataChanged();
 }
@@ -347,10 +367,10 @@ void THighscoresDialogController::setAnswer(Answer answer)
 void THighscoresDialogController::updateIndexOfSelectedWorld()
 {
     int worldIndex = 0;
-    if (!m_answer.selectedWorld.empty()) {
-        const auto it = std::ranges::find(m_answer.worlds, m_answer.selectedWorld);
-        if (it != m_answer.worlds.end())
-            worldIndex = static_cast<int>(it - m_answer.worlds.begin()) + 1;
+    if (m_storage && !m_storage->selectedWorld().isEmpty()) {
+        const int found = m_storage->worlds().indexOf(m_storage->selectedWorld());
+        if (found >= 0)
+            worldIndex = found + 1;
     }
     setIndexOfSelectedWorld(worldIndex);
 }
@@ -359,24 +379,29 @@ void THighscoresDialogController::updateIndexOfSelectedWorld()
 void THighscoresDialogController::updateIndexOfSelectedBattlEyeType()
 {
     int battlEyeIndex = 0;
-    const QList<BattlEyeType> types = battlEyeTypes();
-    for (int i = 0; i < types.size(); ++i) {
-        if (types[i].value == m_answer.battlEye) {
-            battlEyeIndex = i;
-            break;
+    if (m_storage) {
+        const QList<BattlEyeType> types = battlEyeTypes();
+        for (int i = 0; i < types.size(); ++i) {
+            if (types[i].value == m_storage->battlEyeType()) {
+                battlEyeIndex = i;
+                break;
+            }
         }
     }
     setIndexOfSelectedBattlEyeType(battlEyeIndex);
 }
 
-/// The answer's vocation, 0 ("all vocations") when unknown.
+/// The answer's vocation in the vocation list, 0 when unknown.
 void THighscoresDialogController::updateIndexOfSelectedVocation()
 {
     int vocationIndex = 0;
-    for (size_t i = 0; i < m_answer.vocations.size(); ++i) {
-        if (std::get<0>(m_answer.vocations[i]) == m_answer.selectedVocation) {
-            vocationIndex = static_cast<int>(i) + 1;
-            break;
+    if (m_storage) {
+        const auto& vocations = m_storage->vocations();
+        for (size_t i = 0; i < vocations.size(); ++i) {
+            if (vocations[i].first == m_storage->selectedVocation()) {
+                vocationIndex = static_cast<int>(i);
+                break;
+            }
         }
     }
     setIndexOfSelectedVocation(vocationIndex);
@@ -386,31 +411,45 @@ void THighscoresDialogController::updateIndexOfSelectedVocation()
 void THighscoresDialogController::updateIndexOfSelectedCategory()
 {
     int categoryIndex = 0;
-    for (size_t i = 0; i < m_answer.categories.size(); ++i) {
-        if (std::get<0>(m_answer.categories[i]) == m_answer.selectedCategory) {
-            categoryIndex = static_cast<int>(i);
-            break;
+    if (m_storage) {
+        const auto& categories = m_storage->categories();
+        for (size_t i = 0; i < categories.size(); ++i) {
+            if (categories[i].first == m_storage->selectedCategory()) {
+                categoryIndex = static_cast<int>(i);
+                break;
+            }
         }
     }
     setIndexOfSelectedCategory(categoryIndex);
 }
 
-void THighscoresDialogController::setNoData()
+void THighscoresDialogController::updateWorldTypes()
 {
-    setDataAvailable(false);
-    setShowLoadingComponent(false);
+    QList<THighscoresWorldTypeModel::Entry> entries;
+    if (m_storage) {
+        m_selectedWorldTypes.clear();
+        static constexpr const char* Names[] = { "highscores_world_pvp_open", "highscores_world_pvp_optional", "highscores_world_pvp_hardcore",
+                                                 "highscores_world_pvp_retro_open", "highscores_world_pvp_retro_hardcore" };
+        const std::vector<int>& answered = m_storage->selectedWorldTypes();
+        for (int type = 0; type < 5; ++type) {
+            const bool checked = std::ranges::find(answered, type) != answered.end();
+            if (checked)
+                m_selectedWorldTypes.push_back(type);
+            entries.append({ .worldType = type, .name = qtTrId(Names[type]), .checked = checked });
+        }
+    }
+    m_worldTypes.setEntries(std::move(entries));
 }
 
 void THighscoresDialogController::clear()
 {
     dialog()->close();
-    m_answer = {};
     delete m_highscoreData;
     m_highscoreData = nullptr;
     Q_EMIT dataChanged();
 }
 
-/// CIP .
+/// Resets the filters and shows the dialog loading.
 void THighscoresDialogController::showDialog()
 {
     closeDialog();
@@ -419,7 +458,7 @@ void THighscoresDialogController::showDialog()
     dialog()->show();
 }
 
-/// CIP .
+/// Forgets the selected filters and closes the dialog.
 void THighscoresDialogController::closeDialog()
 {
     m_indexOfSelectedWorld = -1;
@@ -432,56 +471,62 @@ void THighscoresDialogController::closeDialog()
     dialog()->close();
 }
 
-/// CIP .
 void THighscoresDialogController::onClickedFirstPage()
 {
-    requestPage(1);
+    setShowLoadingComponent(true);
+    if (m_storage)
+        requestPage(1);
 }
 
-/// CIP .
+/// The loading view shows even when there is no previous page.
 void THighscoresDialogController::onClickedPreviousPage()
 {
-    if (m_answer.page > 1)
-        requestPage(m_answer.page - 1);
+    setShowLoadingComponent(true);
+    if (m_storage && m_storage->page() > 1)
+        requestPage(m_storage->page() - 1);
 }
 
-/// CIP .
 void THighscoresDialogController::onClickedNextPage()
 {
-    if (m_answer.page < m_answer.totalPages)
-        requestPage(m_answer.page + 1);
+    setShowLoadingComponent(true);
+    if (m_storage && m_storage->page() >= 0 && m_storage->page() < m_storage->totalPages())
+        requestPage(m_storage->page() + 1);
 }
 
-/// CIP .
 void THighscoresDialogController::onClickedLastPage()
 {
-    requestPage(m_answer.totalPages);
+    setShowLoadingComponent(true);
+    if (m_storage)
+        requestPage(m_storage->totalPages());
 }
 
-/// CIP .
+/// The own rank in the selected category, vocation and world.
 void THighscoresDialogController::onClickedShowMyPlaceButton()
 {
-    requestOwnRank();
+    setShowLoadingComponent(true);
+    if (!m_storage)
+        return;
+    sendHighscoresRequest(1, m_storage->page(), selectedCategoryId(), selectedWorldName(), selectedVocationId(), {}, -1);
 }
 
-/// CIP .
 void THighscoresDialogController::applyFilters()
 {
-    requestPage(1);
+    onClickedFirstPage();
 }
 
-/// CIP .
 void THighscoresDialogController::requestClose()
 {
     closeDialog();
 }
 
-/// CIP .
+/// The check boxes keep their own state; only the request list changes.
 void THighscoresDialogController::toggleSelectedWorldType(const int RawWorldType)
 {
-    if (!m_selectedWorldTypes.removeOne(RawWorldType))
-        m_selectedWorldTypes.append(RawWorldType);
-    updateWorldTypes();
+    const auto it = std::ranges::find(m_selectedWorldTypes, RawWorldType);
+    if (it != m_selectedWorldTypes.end())
+        m_selectedWorldTypes.erase(it);
+    else
+        m_selectedWorldTypes.push_back(RawWorldType);
 }
 
 }

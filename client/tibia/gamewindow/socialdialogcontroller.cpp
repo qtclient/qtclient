@@ -1,5 +1,7 @@
 #include "socialdialogcontroller.h"
 
+#include "friends/friendsciptypes.h"
+#include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
@@ -27,6 +29,7 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     , m_join(new TTeamJoinPageController(this))
     , m_assemble(new TTeamAssemblePageController(this))
     , m_button(new TSocialButtonController(this, this))
+    , m_errorDialog(new TMessageDialogController(this))
 {
     m_friendListController = m_friends;
     m_invitesController = m_invites;
@@ -38,10 +41,12 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     m_hasPremium = true;
     connect(m_search, &TFriendsAccountSearchPageController::showBackButton, this, &TSocialDialogController::onShowBackButton);
     connect(this, &TSocialDialogController::backButtonClicked, m_search, &TFriendsAccountSearchPageController::onBackButtonPressed);
-    connect(m_friends, &TFriendsFriendListPageController::accountDetailsRequested, this, [this](const QString& name) {
-        setTab(AccountSearch);
-        m_search->onClickedSearchForCharacter(name);
-    });
+    m_errorDialog->setCloseOnButtonClicked(true);
+    auto* friendsHandler = friends::TFriendsProtocolMessageHandler::instance();
+    connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::cannotUseFriendSystemError, this,
+            &TSocialDialogController::onCannotUseFriendSystemError);
+    connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::genericFriendSystemError, this,
+            &TSocialDialogController::onGenericFriendSystemError);
     for (const auto type : { input::EGameAction::OPEN_SOCIAL_DIALOG, input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT })
         input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
     if (!g_socialDialog)
@@ -103,7 +108,8 @@ bool TSocialDialogController::backButtonVisible() const
 
 bool TSocialDialogController::refreshButtonVisible() const
 {
-    return m_refreshButtonVisible;
+    // Only the team list can be refreshed.
+    return m_dialogTab == JoinTeam;
 }
 
 bool TSocialDialogController::hasPremium() const
@@ -127,38 +133,66 @@ cip::tibia::gamewindow::IDialogTabPage* TSocialDialogController::page(const EDia
 
 void TSocialDialogController::setTab(const EDialogTab tab)
 {
-    if (tab == m_dialogTab)
-        return;
+    // The shown page is hidden and the new one shown (shown again when it is
+    // the same); a tab without a page shows nothing.
     if (auto* old = page(m_dialogTab))
         old->hideDialogTab();
-    m_dialogTab = tab;
-    m_refreshButtonVisible = tab == FriendList || tab == Invites || tab == JoinTeam || tab == AssembleTeam;
-    Q_EMIT dialogTabChanged();
-    if (auto* current = page(tab))
+    if (auto* current = page(tab)) {
         current->showDialogTab();
+        m_dialogTab = tab;
+    } else {
+        m_dialogTab = NoTabInitialState;
+    }
+    Q_EMIT dialogTabChanged();
+}
+
+void TSocialDialogController::closeTabs()
+{
+    if (auto* current = page(m_dialogTab))
+        current->hideDialogTab();
+    m_dialogTab = NoTabInitialState;
+    Q_EMIT dialogTabChanged();
+    dialog()->close();
+}
+
+void TSocialDialogController::showErrorMessage(const QString& message)
+{
+    m_errorDialog->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
+                                                         QKeySequence(QStringLiteral("Return"))) });
+    m_errorDialog->showMessage(qtTrId("error"), message);
+}
+
+void TSocialDialogController::onCannotUseFriendSystemError()
+{
+    showErrorMessage(qtTrId("friends_function_not_available"));
+    closeTabs();
+}
+
+void TSocialDialogController::onGenericFriendSystemError(const QString& errorMessage)
+{
+    showErrorMessage(errorMessage);
 }
 
 bool TSocialDialogController::handleGameAction(const input::TGameAction& action)
 {
-    // CIP : OPEN_SOCIAL_DIALOG parameter p opens tab p + 1.
-    // FRIENDS_DIALOG_SEARCH_ACCOUNT searches `text`.
-    if (action.type == input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT) {
-        showDialog(AccountSearch);
-        if (!action.text.isEmpty())
-            m_search->onClickedSearchForCharacter(action.text);
-        return true;
+    if (action.type == input::EGameAction::OPEN_SOCIAL_DIALOG) {
+        // Parameter p opens tab p + 1; anything else the friend list.
+        const int parameter = action.parameter;
+        showDialog(parameter >= 0 && parameter <= 6 ? static_cast<EDialogTab>(parameter + 1) : FriendList);
+    } else if (action.type == input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT) {
+        setTab(AccountSearch);
     }
-    const auto tab = static_cast<EDialogTab>(action.parameter + 1);
-    showDialog(page(tab) ? tab : FriendList);
+    // The account search page runs its own actions (a new search).
+    m_search->handleGameAction(action);
     return true;
 }
 
 void TSocialDialogController::showDialog(const EDialogTab Tab)
 {
-    // CIP .
-    if (!dialog()->isInStack())
-        dialog()->show();
-    setTab(page(Tab) ? Tab : FriendList);
+    // The dialog opens anew on the tab.
+    closeTabs();
+    dialog()->show();
+    setTab(Tab);
 }
 
 void TSocialDialogController::closeDialog()
@@ -168,16 +202,15 @@ void TSocialDialogController::closeDialog()
 
 void TSocialDialogController::requestClose()
 {
-    // CIP .
-    setTab(NoTabInitialState);
-    dialog()->close();
+    closeTabs();
 }
 
 void TSocialDialogController::requestTabSwitch(const EDialogTab NewTab)
 {
-    // CIP . Tabs without a page stay put.
-    if (page(NewTab))
-        setTab(NewTab);
+    if (NewTab == m_dialogTab)
+        return;
+    setTab(NewTab);
+    Q_EMIT buttonVisibleChanged();
 }
 
 void TSocialDialogController::signalBackButtonClicked()

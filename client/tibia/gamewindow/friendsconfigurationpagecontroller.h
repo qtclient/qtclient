@@ -4,12 +4,14 @@
 
 #include <cip_gen.h>
 
+#include <QMetaObject>
 #include <QObject>
 
 namespace tibia {
 namespace gamewindow {
 
-/// FriendsConfigurationPage.qml (CIP TFriendsConfigurationPageController).
+/// FriendsConfigurationPage.qml (CIP TFriendsConfigurationPageController):
+/// what each friend group may see, from friends::TFriendsStorage.
 class TFriendsConfigurationPageController final : public cip::tibia::gamewindow::TFriendsConfigurationPageController
 {
     Q_OBJECT
@@ -25,9 +27,12 @@ public:
                                           bool AllowInspect) override;
 
 private:
-    void rebuildRows();
+    /// Copies the stored settings (or a closed setting per group when there
+    /// are none) into the model, highest group first.
+    void updateSettings();
 
-    TFriendsRowsModel* m_model = nullptr;
+    TVisibilitySettingsModel* m_model = nullptr;
+    QMetaObject::Connection m_settingsConnection;
 };
 
 }

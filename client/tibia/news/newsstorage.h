@@ -27,10 +27,29 @@ struct NewsItem {
     qint64 dateTo = 0;
     int specialEvent = 0;
 
+    /// Reached by the character: group headers and entries without an unlock
+    /// level from the start, others once the character reaches the level.
+    bool unlocked = true;
+
     bool isGroupHeader() const
     {
         return type.compare(QLatin1String("GROUP HEADER"), Qt::CaseInsensitive) == 0;
     }
+
+    /// CIP's category ids: 0 client features, 1 useful info, 2 player guide
+    /// (game contents count as player guide), 3 major updates, 4 support.
+    enum ECategory
+    {
+        ClientFeatures = 0,
+        UsefulInfo = 1,
+        PlayerGuide = 2,
+        MajorUpdates = 3,
+        Support = 4,
+    };
+    /// The category's id; an unknown category counts as useful info.
+    ECategory categoryId() const;
+    /// CIP's type ids: 0 regular, 3 returner, -1 group header.
+    int typeId() const;
 };
 
 /// CIP TNewsStorage — holds portal `{gamenews:[…], categorycounts, …}` for NewsDialog.
@@ -39,12 +58,20 @@ class TNewsStorage final : public cip::tibia::news::TNewsStorage
     Q_OBJECT
 public:
     explicit TNewsStorage(QObject* parent = nullptr);
+    ~TNewsStorage() override;
 
     const QVector<NewsItem>& items() const { return m_items; }
     const QJsonObject& categoryCounts() const { return m_categoryCounts; }
     qint64 maxEditDate() const { return m_maxEditDate; }
     bool isReturner() const { return m_isReturner; }
     bool showRewardNews() const { return m_showRewardNews; }
+    /// The character's level the entries unlock against, 0 before a character
+    /// is known.
+    uint16_t characterLevel() const { return m_characterLevel; }
+    void setCharacterLevel(uint16_t level);
+
+    /// The storage of the running client, null before one exists.
+    static TNewsStorage* current();
 
     /// Prefer CIP `gamenews`; also accepts legacy flat `newsitems`.
     void setFromNewsDocument(const QJsonObject& reply);
@@ -62,6 +89,7 @@ private:
     qint64 m_maxEditDate = 0;
     bool m_isReturner = false;
     bool m_showRewardNews = false;
+    uint16_t m_characterLevel = 0;
 };
 
 }

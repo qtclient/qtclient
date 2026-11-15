@@ -158,9 +158,25 @@ public:
     void joinTeam(uint16_t TeamID);
     void leaveTeam(uint16_t TeamID);
 
+    /// A new game session: no own team, no listed teams; the pages hand themselves the new session.
+    void startSession();
+
+Q_SIGNALS:
+    void sessionStarted();
+
 private:
     TTeamFinderStorage* m_storage = nullptr;
     chat::TWhiteBlacklist* m_ignoreList = nullptr;
+};
+
+/// Display names of team finder activities, from the boss / quest static data and the Cyclopedia map areas.
+class TTeamfinderActivityNameResolver
+{
+public:
+    /// The boss, hunting place or quest name; "unspecified" when no id is set, empty for no activity.
+    QString name(const TTeamActivity& Activity) const;
+    /// The hunting place's alias (other activities have none).
+    QString alias(const TTeamActivity& Activity) const;
 };
 
 /// Start time of a team listing or filter; 0 = none chosen, startImmediately = "now".

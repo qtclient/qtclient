@@ -1,6 +1,7 @@
 #include "nextframeupdater.h"
 
 #include "chat/textstorage.h"
+#include "game/cooldownstorage.h"
 #include "worldmap/ambientlightstorage.h"
 #include "renderer/worldmaprenderprovider.h"
 #include <tibia/creatures/movementtweens.h>
@@ -23,6 +24,10 @@ void TNextFrameUpdater::v2(const qint64 timestampMs)
     if (worldmap::TAmbientLightStorage* ambient = worldmap::TAmbientLightStorage::instance())
         ambient->update(timestampMs);
     m_texts.update(timestampMs);
+    // Cooldowns that ran out drop and announce it; their end times are on
+    // the cooldown storage's own clock.
+    if (game::TCooldownStorage* cooldowns = game::TCooldownStorage::instance())
+        cooldowns->expireCooldowns(game::TCooldownStorage::now());
     m_numericalEffects.update(timestampMs);
     effects::TEffectStorage::instance().update(timestampMs);
     m_provider.advance();

@@ -1093,7 +1093,7 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendRequestBossSlotAction(0, 0);
         return true;
     case 177: // Highscores
-        gameclient::sendHighscoreInfo(0, 0, 0, std::string_view{}, 0, 0, 0, 0);
+        // Built by gamewindow::THighscoresDialogController::sendHighscoresRequest.
         return true;
     case 178: // PickObjectToImbue
         gameclient::sendImbuementWindowAction(0, 0, Position{}, 0);
@@ -1117,7 +1117,7 @@ bool bindClientMessage(const uint8_t opcode)
         gameclient::sendClientDetails(std::string_view{});
         return true;
     case 194: // BossDifficultySelection
-        gameclient::sendBossDifficultySelectionAction(0, 0);
+        // Built by gamewindow::TBossDifficultySelectionDialogController::sendSelection.
         return true;
     case 201: // GetTransactionDetails
         gameclient::sendGetTransactionDetails(0);

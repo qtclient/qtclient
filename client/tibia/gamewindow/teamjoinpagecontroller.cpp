@@ -14,6 +14,13 @@ TTeamJoinPageController::TTeamJoinPageController(QObject* parent)
     , m_proxy(new TTeamsListSortProxyModel(this))
 {
     m_teamsList = m_proxy;
+    connect(teamfinder::TTeamFinderProtocolMessageHandler::instance(), &teamfinder::TTeamFinderProtocolMessageHandler::sessionStarted, this,
+            &TTeamJoinPageController::setGameSession);
+}
+
+void TTeamJoinPageController::setGameSession()
+{
+    m_proxy->resetFilters();
 }
 
 bool TTeamJoinPageController::hasPremium() const
@@ -60,6 +67,7 @@ void TTeamJoinPageController::showDialogTab()
         m_proxy->setCharacterFilters(static_cast<uint32_t>(tibia::game::localPlayerLevel()),
                                      static_cast<uint8_t>(tibia::game::localPlayerVocation() % 10));
     }
+    m_proxy->model()->setResolver(&m_resolver);
     onTeamsChanged();
     handler->requestTeamList();
 }

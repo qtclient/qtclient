@@ -666,12 +666,6 @@ void requestGuildMessage()
     gameclient::sendGetGuildMessage();
 }
 
-void requestHighscore(uint8_t action, uint8_t category, uint32_t vocation, std::string_view world, uint8_t worldType, uint8_t battlEye, uint16_t page, uint8_t totalPages)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendHighscoreInfo(action, category, vocation, world, worldType, battlEye, page, totalPages);
-}
 void requestItemInfo(const uint16_t typeId, const uint8_t subType, const uint8_t index)
 {
     if (!canPerformGameAction() || typeId == 0)
@@ -831,13 +825,6 @@ void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints, const std::ar
     if (!canPerformGameAction())
         return;
     gameclient::sendApplyWheelPoints(slotPoints, vesselGems);
-}
-
-void sendBossDifficultyAction(uint8_t action, uint16_t difficulty)
-{
-    if (!canPerformGameAction())
-        return;
-    gameclient::sendBossDifficultySelectionAction(action, difficulty);
 }
 
 void sendContainerAction(uint8_t action, uint8_t containerId)

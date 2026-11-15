@@ -24,9 +24,7 @@ class TQuestTrackerSortProxyModel final : public ::tibia::CipTyped { public: TQu
 class TSortedDamageSourceModel final : public ::tibia::CipTyped { public: TSortedDamageSourceModel() = default; };
 class TSortedDamageTypedModel final : public ::tibia::CipTyped { public: TSortedDamageTypedModel() = default; };
 class TSortedTypedDamageModel final : public ::tibia::CipTyped { public: TSortedTypedDamageModel() = default; };
-class TSpellListModel final : public ::tibia::CipTyped { public: TSpellListModel() = default; };
 class TTypedDamageModel final : public ::tibia::CipTyped { public: TTypedDamageModel() = default; };
-class TUnlockedPlayerGuideEntryListModel final : public ::tibia::CipTyped { public: TUnlockedPlayerGuideEntryListModel() = default; };
 class TVisibilitySettingsModel final : public ::tibia::CipTyped { public: TVisibilitySettingsModel() = default; };
 class TWorldTypeModel final : public ::tibia::CipTyped { public: TWorldTypeModel() = default; };
 

@@ -16,41 +16,125 @@ class TActionBarController;
 class TPassiveAbilityListDataModel;
 class TPassiveAbilityListDataModelSortFilterProxy;
 
-/// The spells of spells.json for SpellList.qml (CIP: TSpellListDataModel, the
-/// roles enumId, name, formulaRaw, iconUrl, iconUrlSmall, castPossible,
-/// parameterHints, isCrossHairSpell, groupPrimaryIconUrl,
-/// minimumCasterLevel), filtered by filterText / showOnlyKnown.
+/// Every spell of the spell table in id order, with the server's
+/// modifications applied (CIP: TSpellListDataModel). The rows' roles feed
+/// SpellList.qml, the Magical Archive and the vocation selection popup.
 class TSpellListDataModel final : public cip::tibia::gamewindow::TSpellListDataModel
 {
     Q_OBJECT
-    Q_PROPERTY(QString filterText READ filterText WRITE setFilterText NOTIFY filterTextChanged)
 public:
+    enum ERole
+    {
+        EnumIdRole = 0x101,
+        NameRole,
+        FormulaRawRole,
+        ParameterHintsRole,
+        GroupsRole,
+        GroupPrimaryRole,
+        GroupPrimaryIconUrlRole,
+        GroupSecondaryRole,
+        IconUrlRole,
+        IconUrlSmallRole,
+        IconIndexRole,
+        TypeRole,
+        DamagetypeRole,
+        MinimumCasterLevelRole,
+        MinimumMagicLevelRole,
+        IsRuneRole,
+        RuneAmountRole,
+        IsPremiumRole,
+        PremiumOnlyRole,
+        AllowedVocationsRole,
+        ManaCostRole,
+        SoulPointsCostRole,
+        CooldownsRole,
+        CooldownRole,
+        CooldownPrimaryGroupRole,
+        CooldownSecondaryGroupRole,
+        GroupCooldownsRole,
+        CastPossibleRole,
+        DescriptionRole,
+        ScalingRole,
+        SpellUsageInfoRole,
+        RuneUsageInfoRole,
+        RelevantUsageInfoRole,
+        SourceRole,
+        IsAimAtTargetConfigurableRole,
+        IsCrossHairSpellRole,
+    };
+
     explicit TSpellListDataModel(QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    QString filterText() const { return m_filterText; }
-    void setFilterText(const QString& text);
-    void setShowOnlyKnown(bool showOnlyKnown);
-    int rowOf(int spellId) const;
-    /// The spell in a row, 0 past the end.
-    int spellAt(int row) const;
-
 public Q_SLOTS:
-    /// CIP moc private slot — qtclient rebuilds rows (Magical Archive notifies).
+    /// The modified roles (mana cost, cooldown) of every row changed.
     void onSpellDataModificationsApplied();
 
-Q_SIGNALS:
-    void filterTextChanged();
+private:
+    /// The table's spells in id order.
+    std::vector<int> m_spellIds;
+};
+
+/// The spell list as a player browses it (CIP:
+/// TSpellListDataModelSortFilterProxy): filtered by the player's vocation,
+/// level and known spells, by vocation, group, premium and kind checkboxes
+/// and by the search words, sorted by name. It owns its TSpellListDataModel.
+class TSpellListDataModelSortFilterProxy final : public cip::tibia::gamewindow::TSpellListDataModelSortFilterProxy
+{
+    Q_OBJECT
+public:
+    explicit TSpellListDataModelSortFilterProxy(QObject* parent = nullptr);
+
+    /// Checks every box except "only current level", clears the search words.
+    void resetFilter() override;
+    /// The source model's roles of a row as a map.
+    QVariant getModelDataForRow(int RowIndex) override;
+    /// The spell of a row, 0 past the end.
+    int spellIdAt(int row) const;
+    /// The row of a spell, -1 when filtered out.
+    int rowOfSpell(int spellId) const;
+
+    void setShowOnlyCurrentVocation(bool v) override;
+    void setShowOnlyCurrentLevel(bool v) override;
+    void setShowUnkownSpells(bool v) override;
+    void setShowDruidSpells(bool v) override;
+    void setShowKnightSpells(bool v) override;
+    void setShowPaladinSpells(bool v) override;
+    void setShowSorcererSpells(bool v) override;
+    void setShowMonkSpells(bool v) override;
+    void setShowAttackSpellGroup(bool v) override;
+    void setShowHealingSpellGroup(bool v) override;
+    void setShowSupportSpellGroup(bool v) override;
+    void setShowRuneSpells(bool v) override;
+    void setShowInstantSpells(bool v) override;
+    void setShowPremiumOnlySpells(bool v) override;
+    void setShowFreeSpells(bool v) override;
+    void setFilterText(const QString& v) override;
+
+    QVariant data(const QModelIndex& index, int role) const override;
+
+public Q_SLOTS:
+    QVariant getDataWithRoleName(int RowIndex, const QByteArray& RoleName) override;
+    /// Re-reads the player's known spells, vocation and level; refilters on a change.
+    void onPlayerDataChanged() override;
+    /// Follows the new session's player data.
+    void onGameSessionChanged();
+
+protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
+    bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
 private:
-    void rebuild();
+    void setFlag(bool& flag, bool value);
 
-    QString m_filterText;
-    bool m_showOnlyKnown = false;
-    std::vector<int> m_rows;
+    TSpellListDataModel* m_model;
+    /// The player's base vocation (CIP id) and level, 0 without a session.
+    uint8_t m_playerVocation = 0;
+    uint16_t m_playerLevel = 0;
+    std::set<uint16_t> m_knownSpells;
 };
 
 /// Shared action-bar bind/assign state for the CIP assign dialogs (not a QObject
@@ -102,7 +186,7 @@ public Q_SLOTS:
 
 private:
     TAssignActionDialogState m_assign;
-    TSpellListDataModel m_model;
+    TSpellListDataModelSortFilterProxy m_proxy;
     int m_spellId = 0;
 };
 

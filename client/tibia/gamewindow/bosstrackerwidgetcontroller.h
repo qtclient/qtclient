@@ -50,16 +50,28 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
+    /// How rows are ordered: by remaining cooldown, by name.
+    enum ESortMode { SortByRemainingCooldown = 0, SortByName = 1 };
+
     void setRows(std::vector<Row> rows);
     void setNameFilter(const QString& filter);
     QString nameFilter() const { return m_filter; }
+    int sortMode() const { return m_sortMode; }
+    /// Re-sorts when the mode changes.
+    void setSortMode(int mode);
 
 private:
     void clearOutfits();
+    /// The rows passing the name filter, in sort order.
+    void rebuildVisible();
+    /// Cooldowns first, ending soonest first, then the name (lower case);
+    /// by name only in name mode.
+    bool lessThan(const Row& left, const Row& right) const;
 
     std::vector<Row> m_all;
     std::vector<int> m_visible;
     QString m_filter;
+    int m_sortMode = SortByRemainingCooldown;
 };
 
 /// BossTrackingWidget.qml (Boss Cooldowns sidebar).

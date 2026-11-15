@@ -292,44 +292,9 @@ void TInformationDialogs::hookQuestLog()
 
 void TInformationDialogs::hookHighscores()
 {
-    using client::gamecore::argBool;
-    using client::gamecore::argInt;
-    using client::gamecore::argString;
-
     input::setActionHandler(A::OPEN_HIGHSCORES_DIALOG, [this](const input::TGameAction&) {
         m_highscores->openDialog();
         return true;
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onProcessHighscores", [this](GameObject*, const Args& args) {
-        THighscoresDialogController::Answer answer;
-        if (const auto* worlds = arg<std::vector<std::string>>(args, 10))
-            answer.worlds = *worlds;
-        answer.selectedWorld = argString(args, 1).toStdString();
-        answer.worldTypeCount = static_cast<uint8_t>(argInt(args, 2));
-        answer.battlEye = static_cast<uint8_t>(argInt(args, 3));
-        if (const auto* vocations = arg<THighscoresDialogController::Vocations>(args, 4))
-            answer.vocations = *vocations;
-        if (const auto* categories = arg<THighscoresDialogController::Categories>(args, 5))
-            answer.categories = *categories;
-        answer.page = static_cast<uint16_t>(argInt(args, 6));
-        answer.totalPages = static_cast<uint16_t>(argInt(args, 7));
-        if (const auto* entries = arg<THighscoresDialogController::Entries>(args, 8))
-            answer.entries = *entries;
-        answer.timestamp = static_cast<uint32_t>(argInt(args, 9));
-        answer.allVocationsName = argString(args, 11).toStdString();
-        answer.selectedVocation = static_cast<uint32_t>(argInt(args, 12));
-        answer.selectedCategory = static_cast<uint8_t>(argInt(args, 13));
-        answer.selectedIndex = static_cast<uint8_t>(argInt(args, 14));
-        answer.showLoyaltyTitle = argBool(args, 15);
-        answer.valueType = static_cast<uint8_t>(argInt(args, 16));
-        m_highscores->setAnswer(std::move(answer));
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onHighscoresNoData", [this](GameObject*, const Args&) {
-        m_highscores->setNoData();
-        return std::any{};
     });
 }
 

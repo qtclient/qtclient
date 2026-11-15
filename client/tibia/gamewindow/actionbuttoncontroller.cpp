@@ -287,8 +287,9 @@ game::TCooldown TActionButtonController::currentCooldown() const
     if (m_type == PASSIVEABILITY)
         return storage->passiveCooldown();
     if (m_type == OBJECT) {
-        if (const spells::TSpellInfo* rune = spells::TSpellInfoStorage::instance()->runeSpellOfObject(m_setting.objectId))
-            return storage->spellCooldown(rune->id);
+        // A rune waits for the multi-use cooldown and its spell's.
+        if (spells::TSpellInfoStorage::instance()->runeSpellOfObject(m_setting.objectId))
+            return storage->objectCooldown(uint16_t(m_setting.objectId), game::TCooldownStorage::now());
         if (isMultiUse(m_setting.objectId))
             return storage->multiUseCooldown();
     }
@@ -319,8 +320,8 @@ qint64 TActionButtonController::remainingCooldown(const qint64 now) const
     } else if (m_type == PASSIVEABILITY) {
         cooldown = storage->passiveCooldown();
     } else if (m_type == OBJECT) {
-        if (const spells::TSpellInfo* rune = spells::TSpellInfoStorage::instance()->runeSpellOfObject(m_setting.objectId)) {
-            cooldown = storage->spellCooldown(rune->id);
+        if (spells::TSpellInfoStorage::instance()->runeSpellOfObject(m_setting.objectId)) {
+            cooldown = storage->objectCooldown(uint16_t(m_setting.objectId), now);
         } else {
             switch (m_setting.useType) {
             case config::EUseType::UseOnYourself:

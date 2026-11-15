@@ -177,19 +177,21 @@ BOSSTIARY_FILTER_SETTER(setShowMasteryBosses, m_showMasteryBosses, bool)
 
 #undef BOSSTIARY_FILTER_SETTER
 
+/// Asks the server for the bosstiary; its answer rebuilds the page.
 void TBosstiaryDialogController::showDialogTab()
 {
-    if (m_pendingContext) {
-        applyContext(*m_pendingContext);
-        m_pendingContext.reset();
-    }
-    rebuild();
     tibia::game::requestBosstiaryInfo();
+}
+
+void TBosstiaryDialogController::restoreContext(const Context& context)
+{
+    applyContext(context);
+    rebuild();
 }
 
 void TBosstiaryDialogController::hideDialogTab()
 {
-    // CIP : page 1, empty model, default filter, no list.
+    // Page 1, empty model, default filter, no list.
     m_model->setEntries({});
     applyContext({});
     m_storage.clearEntries();
@@ -240,9 +242,10 @@ void TBosstiaryDialogController::requestPreviousPage()
     rebuild();
 }
 
+/// Past the last page the rebuild goes back to page 1.
 void TBosstiaryDialogController::requestNextPage()
 {
-    m_currentPage = std::min(m_numberOfPages, m_currentPage + 1);
+    m_currentPage = std::max(1, m_currentPage + 1);
     rebuild();
 }
 

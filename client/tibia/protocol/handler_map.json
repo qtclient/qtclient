@@ -579,7 +579,7 @@
   "dir": "client",
   "opcode": 177,
   "name": "Highscores",
-  "func": "sendHighscoreInfo"
+  "call": "// Built by gamewindow::THighscoresDialogController::sendHighscoresRequest."
  },
  {
   "dir": "client",
@@ -627,7 +627,7 @@
   "dir": "client",
   "opcode": 194,
   "name": "BossDifficultySelection",
-  "func": "sendBossDifficultySelectionAction"
+  "call": "// Built by gamewindow::TBossDifficultySelectionDialogController::sendSelection."
  },
  {
   "dir": "client",

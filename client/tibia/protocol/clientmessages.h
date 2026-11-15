@@ -150,7 +150,6 @@ void sendGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, uint
 void sendStashWithdraw(uint16_t itemId, uint32_t count, uint8_t stackpos);
 void sendGreet(uint32_t npcId);
 void sendStashStow(const Position& position, const uint16_t itemId, const uint32_t count, const uint8_t stackpos, const uint8_t action);
-void sendHighscoreInfo(uint8_t action, uint8_t category, uint32_t vocation, std::string_view world, uint8_t worldType, uint8_t battlEye, uint16_t page, uint8_t totalPages);
 void sendTaskBoardAction(const uint8_t option, const uint16_t value = 0, const uint16_t extraValue = 0);
 void sendImbuementDurations(bool isOpen = false);
 void sendStartOfflineTraining(const uint8_t skillType);
@@ -201,6 +200,5 @@ void sendWheelGemAction(const uint8_t actionType, const uint16_t param, const ui
 void sendWeaponProficiencyAction(uint8_t actionType, uint16_t itemId = 0);
 void sendWeaponProficiencyApply(uint16_t itemId, const std::vector<uint8_t>& levels, const std::vector<uint8_t>& perkPositions);
 void sendWeaponProficiencySlotAction(uint8_t actionType, uint16_t itemId, uint8_t level, uint8_t perkPosition, int offerIndex = 0);
-void sendBossDifficultySelectionAction(uint8_t action, uint16_t difficulty = 0);
 
 }

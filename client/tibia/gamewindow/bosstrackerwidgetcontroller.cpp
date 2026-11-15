@@ -9,6 +9,8 @@
 #include <tibia/assets/things.h>
 
 #include <QDateTime>
+
+#include <algorithm>
 #include <QJsonObject>
 #include <tibia/game/thingsession_forward.h>
 
@@ -100,12 +102,7 @@ void TBossTrackerListModel::setRows(std::vector<Row> rows)
     beginResetModel();
     clearOutfits();
     m_all = std::move(rows);
-    m_visible.clear();
-    m_visible.reserve(m_all.size());
-    for (int i = 0; i < static_cast<int>(m_all.size()); ++i) {
-        if (m_filter.isEmpty() || m_all[static_cast<size_t>(i)].entry.name.contains(m_filter, Qt::CaseInsensitive))
-            m_visible.push_back(i);
-    }
+    rebuildVisible();
     endResetModel();
 }
 
@@ -115,12 +112,48 @@ void TBossTrackerListModel::setNameFilter(const QString& filter)
         return;
     beginResetModel();
     m_filter = filter;
+    rebuildVisible();
+    endResetModel();
+}
+
+void TBossTrackerListModel::setSortMode(const int mode)
+{
+    if (m_sortMode == mode)
+        return;
+    beginResetModel();
+    m_sortMode = mode;
+    rebuildVisible();
+    endResetModel();
+}
+
+void TBossTrackerListModel::rebuildVisible()
+{
     m_visible.clear();
+    m_visible.reserve(m_all.size());
     for (int i = 0; i < static_cast<int>(m_all.size()); ++i) {
         if (m_filter.isEmpty() || m_all[static_cast<size_t>(i)].entry.name.contains(m_filter, Qt::CaseInsensitive))
             m_visible.push_back(i);
     }
-    endResetModel();
+    std::stable_sort(m_visible.begin(), m_visible.end(), [this](const int left, const int right) {
+        return lessThan(m_all[static_cast<size_t>(left)], m_all[static_cast<size_t>(right)]);
+    });
+}
+
+bool TBossTrackerListModel::lessThan(const Row& left, const Row& right) const
+{
+    const QString leftName = left.entry.name.toLower();
+    const QString rightName = right.entry.name.toLower();
+    if (m_sortMode == SortByRemainingCooldown) {
+        const bool leftHas = left.entry.hasCooldown();
+        const bool rightHas = right.entry.hasCooldown();
+        if (leftHas != rightHas)
+            return leftHas;
+        const qint64 leftEnd = leftHas ? left.entry.cooldownUntil : 0;
+        const qint64 rightEnd = rightHas ? right.entry.cooldownUntil : 0;
+        if (leftEnd != rightEnd)
+            return leftEnd < rightEnd;
+    }
+    return QString::compare(leftName, rightName, Qt::CaseSensitive) < 0;
 }
 
 TBossTrackerWidgetController::TBossTrackerWidgetController(bossbestiary::TBossTrackerStorage* storage, QQuickItem* gameWindowItem,
@@ -186,6 +219,7 @@ void TBossTrackerWidgetController::setSidebarOptions(config::TSidebarOptions* op
     if (!m_options)
         return;
     const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
+    m_model->setSortMode(json.value(QLatin1String("sortType")).toInt(TBossTrackerListModel::SortByRemainingCooldown));
     if (json.contains(QLatin1String("contentHeight")))
         widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
                                                        json.value(QLatin1String("contentMaximized")).toBool(true));
@@ -202,6 +236,7 @@ void TBossTrackerWidgetController::persistOptions()
     QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
     json.insert(QStringLiteral("contentHeight"), widget()->maximizedContentHeight());
     json.insert(QStringLiteral("contentMaximized"), widget()->isMaximized());
+    json.insert(QStringLiteral("sortType"), m_model->sortMode());
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
@@ -231,13 +266,28 @@ void TBossTrackerWidgetController::requestOpenBosstiary(const int BossRaceID)
     input::publish(action);
 }
 
+/// Two checkable sort entries; picking one sorts and saves the options.
 void TBossTrackerWidgetController::requestWidgetConfigurationMenu()
 {
     TContextMenuController* menu = TContextMenuController::instance();
     if (!menu)
         return;
     menu->beginCustomMenu();
-    menu->addCustomEntry(qtTrId("bosstracker_caption"));
+    static constexpr struct
+    {
+        const char* text;
+        int mode;
+    } Entries[] = { { "bosstracker_sort_remaining_cooldown", TBossTrackerListModel::SortByRemainingCooldown },
+                    { "bosstracker_sort_name", TBossTrackerListModel::SortByName } };
+    for (const auto& [text, mode] : Entries) {
+        TContextMenuEntryItem* entry = menu->addCustomEntry(qtTrId(text));
+        entry->setCheckable(true);
+        entry->setChecked(m_model->sortMode() == mode);
+        connect(entry, &TContextMenuEntryItem::triggered, this, [this, mode] {
+            m_model->setSortMode(mode);
+            saveWidgetOptions();
+        });
+    }
     menu->showCustomMenu();
 }
 

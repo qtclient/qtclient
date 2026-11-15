@@ -54,6 +54,8 @@ public Q_SLOTS:
     void onOwnTeamUpdateAvailable() override;
 
 private:
+    /// Fills the activity list: unspecified entries of each kind, the hunting places, the bosses and the quests.
+    void loadActivities();
     void showErrors(const QStringList& Errors);
     void disconnectAll();
 
@@ -61,6 +63,7 @@ private:
     QPointer<game::TPremiumTimeStorage> m_premium;
     QPointer<teamfinder::TTeamFinderStorage> m_storage;
     QList<QMetaObject::Connection> m_connections;
+    teamfinder::TTeamfinderActivityNameResolver m_resolver;
     teamfinder::TTeamSettings* m_settings = nullptr;
     TActivitiesSortProxyModel* m_activities = nullptr;
     TTeamMembersSortProxyModel* m_members = nullptr;

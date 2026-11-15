@@ -307,14 +307,17 @@ void TMonsterBonusEffectsDialogController::updatePlayerData()
 
 void TMonsterBonusEffectsDialogController::updateStoreTooltip()
 {
+    // Unlimited slots (0xFF): no tooltip.
     const int slots = m_storage.availableCharmSlots();
     QStringList lines;
-    if (slots == 0)
-        lines << qtTrId("monster_bonus_effects_no_more_remaining_unassigned_bonus_effects");
-    else if (slots != 0xFF)
-        lines << qtTrId("monster_bonus_effects_remaining_unassigned_bonus_effects").arg(slots);
-    lines << (tibia::game::localPlayerIsPremium() ? qtTrId("monster_bonus_effects_no_cyclopedia_improved_charms")
-                                            : qtTrId("monster_bonus_effects_no_premium_tooltip"));
+    if (slots != 0xFF) {
+        if (slots == 0)
+            lines << qtTrId("monster_bonus_effects_no_more_remaining_unassigned_bonus_effects");
+        else
+            lines << qtTrId("monster_bonus_effects_remaining_unassigned_bonus_effects").arg(slots);
+        lines << (tibia::game::localPlayerIsPremium() ? qtTrId("monster_bonus_effects_no_cyclopedia_improved_charms")
+                                                      : qtTrId("monster_bonus_effects_no_premium_tooltip"));
+    }
     m_storeButtonTooltip = lines.join(u'\n');
     m_showStoreButtonTooltip = slots != 0xFF;
     Q_EMIT qmlStoreButtonTooltipChanged();
@@ -322,9 +325,11 @@ void TMonsterBonusEffectsDialogController::updateStoreTooltip()
 
 void TMonsterBonusEffectsDialogController::unlockBonusEffect(const int BonusEffectID)
 {
+    // The charm becomes the selected one (no notify) and the confirmation's.
     const TCharm* charm = m_storage.charm(BonusEffectID);
-    if (!charm || charm->grade >= 3)
+    if (!charm)
         return;
+    m_selectedCharm = charm->id;
     m_confirmAction = 0;
     m_confirmCharm = charm->id;
     m_confirmRace = 0;
@@ -343,8 +348,9 @@ void TMonsterBonusEffectsDialogController::unlockBonusEffect(const int BonusEffe
 void TMonsterBonusEffectsDialogController::clearBonusEffect(const int BonusEffectID)
 {
     const TCharm* charm = m_storage.charm(BonusEffectID);
-    if (!charm || charm->raceId == 0)
+    if (!charm)
         return;
+    m_selectedCharm = charm->id;
     m_confirmAction = 2;
     m_confirmCharm = charm->id;
     m_confirmRace = 0;
@@ -355,8 +361,9 @@ void TMonsterBonusEffectsDialogController::clearBonusEffect(const int BonusEffec
 void TMonsterBonusEffectsDialogController::assignBonusEffectToMonster(const int BonusEffectID, const int monsterRaceID)
 {
     const TCharm* charm = m_storage.charm(BonusEffectID);
-    if (!charm || monsterRaceID <= 0)
+    if (!charm)
         return;
+    m_selectedCharm = charm->id;
     m_confirmAction = 1;
     m_confirmCharm = charm->id;
     m_confirmRace = monsterRaceID;

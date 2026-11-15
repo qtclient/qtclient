@@ -532,6 +532,7 @@ RaceType creatureFrom(const WireField& field, const bool boss, const bool offici
     race.outfit = outfitFrom(subMessage(fields, 3));
     race.boss = boss;
     if (official) {
+        race.notInTeamFinder = boss && fieldVarint(fields, 4) != 0;
         race.hasCategory = hasField(fields, 6);
         race.category = static_cast<uint32_t>(fieldVarint(fields, 6));
     } else {

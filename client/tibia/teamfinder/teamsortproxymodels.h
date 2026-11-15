@@ -146,16 +146,23 @@ public:
     QHash<int, QByteArray> roleNames() const override;
     /// The own character's name: a team it leads reports isLeader. Rows are refreshed when it changes.
     void setCharacterName(const QString& Name);
+    /// Names the listed activities; without one the model has no data.
+    void setResolver(const teamfinder::TTeamfinderActivityNameResolver* Resolver) { m_resolver = Resolver; }
 
 protected:
     QVariant itemData(const teamfinder::TTeamData& Team, int Role) const override;
 
 private:
     QString m_characterName;
+    const teamfinder::TTeamfinderActivityNameResolver* m_resolver = nullptr;
 };
 
 /// "Boss" / "Hunt" / "Quest" / "Other" for an activity kind.
 QString activityTypeName(int Kind);
+/// An activity row: the kind's type name and the resolver's name and alias.
+TActivity makeActivity(const teamfinder::TTeamActivity& Type, const teamfinder::TTeamfinderActivityNameResolver& Resolver);
+/// "Hunt: Edron" (the kind's type name and the trimmed activity name).
+QString activityDisplayName(const teamfinder::TTeamActivity& Activity, const teamfinder::TTeamfinderActivityNameResolver& Resolver);
 
 /// CIP: TTeamsListSortProxyModel (Join Team `teamsList`).
 class TTeamsListSortProxyModel final : public cip::TTeamsListSortProxyModel
@@ -274,6 +281,8 @@ public:
     explicit TActivitiesSortProxyModel(QObject* parent = nullptr);
 
     TActivitiesModel* model() const { return m_model; }
+    /// New activity catalog.
+    void setActivities(const std::vector<TActivity>& Activities);
 
     QString nameFilter() const override;
     void setNameFilter(const QString& v) override;

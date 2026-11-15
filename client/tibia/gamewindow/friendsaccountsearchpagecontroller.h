@@ -8,11 +8,16 @@
 #include <QString>
 
 namespace tibia {
+namespace input {
+struct TGameAction;
+}
 namespace gamewindow {
 
 class TCharacterInfoDialogController;
 
-/// FriendsAccountSearchPage.qml (CIP TFriendsAccountSearchPageController).
+/// FriendsAccountSearchPage.qml (CIP TFriendsAccountSearchPageController): the
+/// account search result from friends::TFriendsAccountSearchStorage, and the
+/// character info of one of its characters.
 class TFriendsAccountSearchPageController final : public cip::tibia::gamewindow::TFriendsAccountSearchPageController
 {
     Q_OBJECT
@@ -40,6 +45,9 @@ public:
     void showDialogTab() override;
     void hideDialogTab() override;
 
+    /// FRIENDS_DIALOG_SEARCH_ACCOUNT: a new search for the action's character name.
+    void handleGameAction(const input::TGameAction& action);
+
 public Q_SLOTS:
     void onClickedSearchForCharacter(const QString& SearchString) override;
     void openCyclopediaCharacterInfo(int CharacterID) override;
@@ -47,25 +55,27 @@ public Q_SLOTS:
     void onClickedInviteAsFriend() override;
     void onClickedSetOnBlacklist() override;
     void onBackButtonPressed() override;
-    /// CIP moc slot (skipped from cip_gen shared_ptr type); qtclient name parity.
-    void handleGameAction();
-    /// CIP moc slots (friend-system errors while the search tab is open).
+    /// CIP slots: the character info could not be shown.
     void onErrorLoadingCharacter();
     void onNoPermissionToDisplayCharacterSummary();
     void onNoPermissionToInspectCharacter();
 
 private:
-    void setLoading(bool loading);
-    void setEmpty(bool empty, bool noResults);
-    void onSearchResults();
+    void setShowEmptyTab(bool show);
+    void setShowNoResultsFound(bool show);
+    void setShowLoadingComponent(bool show);
+    void setDisableButtonsAfterClick(bool disable);
+    /// Closes the character info (back to the search result).
+    void closeCharacterInfo();
+    /// A search result arrived: new character and badge lists.
+    void onAccountSearchResults();
     void onNoResultsFound();
+    /// A friend system error ends the search and enables the buttons again.
+    void onFriendSystemError();
+    /// Replaces the character and badge lists with the stored result's.
+    void replaceLists();
 
-    cip::tibia::gamewindow::TAccountCharacterListData* m_characters = nullptr;
-    cip::tibia::gamewindow::TAccountBadgeListData* m_badges = nullptr;
     TCharacterInfoDialogController* m_characterInfo = nullptr;
-    TFriendsRowsModel* m_characterRows = nullptr;
-    TFriendsRowsModel* m_badgeRows = nullptr;
-    uint32_t m_accountId = 0;
 };
 
 }

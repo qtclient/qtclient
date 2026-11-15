@@ -13,57 +13,27 @@ constexpr uint8_t kLoadBadges = 12;
 
 TFriendsBadgesPageController::TFriendsBadgesPageController(QObject* parent)
     : cip::tibia::gamewindow::TFriendsBadgesPageController(parent)
-    , m_model(new TFriendsRowsModel({ "badgeID", "badgeIcon", "badgeName", "badgeDescription", "isBadgeUnlocked", "isBadgeVisible" }, this))
+    , m_model(new TAccountBadgesSortProxyModel(this))
 {
     m_badges = m_model;
-    connect(friends::TFriendsStorage::instance(), &friends::TFriendsStorage::accountBadgesChanged, this,
-            &TFriendsBadgesPageController::rebuildRows);
-    rebuildRows();
 }
 
-void TFriendsBadgesPageController::rebuildRows()
+void TFriendsBadgesPageController::updateBadges()
 {
-    QVector<QVariantMap> rows;
-    for (const auto& badge : friends::TFriendsStorage::instance()->badges()) {
-        const bool shown = [&] {
-            switch (m_badgeFilter) {
-            case ShowLocked:
-                return !badge.unlocked();
-            case ShowUnlocked:
-                return badge.unlocked();
-            case ShowPublic:
-                return badge.unlocked() && badge.visible();
-            case ShowHidden:
-                return badge.unlocked() && !badge.visible();
-            default:
-                return true;
-            }
-        }();
-        if (!shown)
-            continue;
-        rows.push_back({
-            { QStringLiteral("badgeID"), static_cast<uint>(badge.badge_id()) },
-            { QStringLiteral("badgeIcon"), QString::fromStdString(badge.icon()) },
-            { QStringLiteral("badgeName"), QString::fromStdString(badge.name()) },
-            { QStringLiteral("badgeDescription"), QString() },
-            { QStringLiteral("isBadgeUnlocked"), badge.unlocked() },
-            { QStringLiteral("isBadgeVisible"), badge.visible() },
-        });
-    }
-    m_model->setRows(std::move(rows));
+    m_model->setBadges(friends::TFriendsStorage::instance()->badges());
 }
 
 TFriendsBadgesPageController::EBadgeFilter TFriendsBadgesPageController::badgeFilter() const
 {
-    return m_badgeFilter;
+    return static_cast<EBadgeFilter>(m_model->badgeFilter());
 }
 
 void TFriendsBadgesPageController::setBadgeFilter(const EBadgeFilter filter)
 {
-    if (filter == m_badgeFilter)
+    if (!m_model->setBadgeFilter(filter))
         return;
-    cip::tibia::gamewindow::TFriendsBadgesPageController::setBadgeFilter(filter);
-    rebuildRows();
+    m_badgeFilter = filter;
+    Q_EMIT badgeFilterChanged();
 }
 
 QObject* TFriendsBadgesPageController::badges() const
@@ -73,14 +43,19 @@ QObject* TFriendsBadgesPageController::badges() const
 
 void TFriendsBadgesPageController::showDialogTab()
 {
-    // Opening the page shows every badge again, then asks for the current list.
+    // Opening the page shows every badge again, follows the stored badges
+    // while it is open and asks for the current list.
     setBadgeFilter(ShowAll);
-    rebuildRows();
+    updateBadges();
+    disconnect(m_badgesConnection);
+    m_badgesConnection = connect(friends::TFriendsStorage::instance(), &friends::TFriendsStorage::accountBadgesChanged, this,
+                                 &TFriendsBadgesPageController::updateBadges);
     protocol::gameclient::sendFriendSystemAction(kLoadBadges);
 }
 
 void TFriendsBadgesPageController::hideDialogTab()
 {
+    disconnect(m_badgesConnection);
 }
 
 void TFriendsBadgesPageController::updateBadgeVisibility(const uint BadgeID, const bool ShouldBeVisibleForOthers)

@@ -31,6 +31,8 @@ public:
 
     /// The account's premium state; premiumTimeChanged follows it.
     void setPremiumStorage(game::TPremiumTimeStorage* Storage);
+    /// A new game session: the filters start over (and pick up the new character on the next show).
+    void setGameSession();
 
 public Q_SLOTS:
     void onJoinLeaveTeamClicked(uint TeamIDRaw, uint CurrentStatusRaw) override;
@@ -44,6 +46,7 @@ private:
     QPointer<game::TPremiumTimeStorage> m_premium;
     QPointer<teamfinder::TTeamFinderStorage> m_storage;
     QList<QMetaObject::Connection> m_connections;
+    teamfinder::TTeamfinderActivityNameResolver m_resolver;
     TTeamsListSortProxyModel* m_proxy = nullptr;
 };
 

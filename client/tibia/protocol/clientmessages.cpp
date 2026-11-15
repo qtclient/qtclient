@@ -1633,22 +1633,6 @@ void sendStashStow(const Position& position, const uint16_t itemId, const uint32
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 
-void sendHighscoreInfo(const uint8_t action, const uint8_t category, const uint32_t vocation, const std::string_view world, const uint8_t worldType, const uint8_t battlEye, const uint16_t page, const uint8_t totalPages)
-{
-    auto message = tibia::protocol::newGameclientMessage(177);
-    auto* m = message->MutableExtension(GameclientMessageHighscores::gameclient_message_highscores);
-    m->set_action(action);
-    m->set_category(category);
-    m->set_vocation(vocation);
-    m->set_world(std::string(world));
-    if (worldType != 0 && worldType != 0xff) // all world types: an empty list
-        m->add_world_types(worldType);
-    m->set_battleye(battlEye);
-    m->set_page(page);
-    m->set_entries_per_page(totalPages);
-    tibia::protocol::sendGameclientMessage(std::move(message));
-}
-
 void sendTaskBoardAction(const uint8_t option, const uint16_t value, const uint16_t extraValue)
 {
     (void)extraValue;
@@ -1744,17 +1728,6 @@ void sendWeaponProficiencySlotAction(const uint8_t actionType, const uint16_t it
     slot->set_level(level);
     slot->set_perk_position(perkPosition);
     m->set_offer_index(static_cast<uint8_t>(offerIndex));
-    tibia::protocol::sendGameclientMessage(std::move(message));
-}
-
-void sendBossDifficultySelectionAction(const uint8_t action, const uint16_t difficulty)
-{
-    auto message = tibia::protocol::newGameclientMessage(194);
-    auto* m = message->MutableExtension(GameclientMessageBossDifficultySelection::gameclient_message_boss_difficulty_selection);
-    m->set_context(1);
-    m->set_action(action);
-    if (action == 0x00 || action == 0x02)
-        m->set_difficulty(difficulty);
     tibia::protocol::sendGameclientMessage(std::move(message));
 }
 

@@ -1188,7 +1188,7 @@ bool readFriendSystemData(ClassicReader& r, GameserverMessageFriendSystemData* m
             uint16_t level = 0;
             uint8_t group = 0;
             if (!r.u32(accountId) || !r.u32(characterId) || !r.string(*account->mutable_name()) || !r.string(*account->mutable_title())
-                || !r.string(*account->mutable_vocation()) || !r.string(*account->mutable_world()) || !r.u16(level)
+                || !r.string(*account->mutable_world()) || !r.string(*account->mutable_vocation()) || !r.u16(level)
                 || !readOutfit(r, account->mutable_outfit(), true) || !r.u8(group) || !r.u32(length))
                 return false;
             account->set_account_id(accountId);
@@ -1268,7 +1268,7 @@ bool readFriendSystemData(ClassicReader& r, GameserverMessageFriendSystemData* m
             bool main = false, online = false;
             uint16_t level = 0;
             if (!r.u32(id) || !r.string(*character->mutable_name()) || !readBool(r, main) || !r.string(*character->mutable_title())
-                || !r.string(*character->mutable_vocation()) || !r.string(*character->mutable_world()) || !r.u16(level)
+                || !r.string(*character->mutable_world()) || !r.string(*character->mutable_vocation()) || !r.u16(level)
                 || !readBool(r, online) || !readOutfit(r, character->mutable_outfit(), true))
                 return false;
             character->set_character_id(id);

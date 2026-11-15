@@ -8,6 +8,8 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "config/hotkeyoptions.h"
 #include "input/gameactionhandlers.h"
+#include "game/playerdata.h"
+#include "game/tgamenotify.h"
 #include "spells/spellinfostorage.h"
 
 #include "container/containerciptypes.h"
@@ -30,21 +32,6 @@ namespace {
 using Setting = config::TActionSetting;
 using ECastType = cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType;
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
-
-enum ESpellRole
-{
-    EnumIdRole = Qt::UserRole + 1,
-    NameRole,
-    FormulaRawRole,
-    IconUrlRole,
-    IconUrlSmallRole,
-    CastPossibleRole,
-    ParameterHintsRole,
-    IsCrossHairSpellRole,
-    IsAimAtTargetConfigurableRole,
-    GroupPrimaryIconUrlRole,
-    MinimumCasterLevelRole,
-};
 
 /// "Action Button <bar>.<button>", the button with two digits.
 QString actionButtonName(const int actionBarId, const int buttonId)
@@ -71,135 +58,499 @@ bool& showOnlyKnownSpellsOf(const uint actionBarId)
     return showOnlyKnown.try_emplace(actionBarId, true).first->second;
 }
 
-std::set<int> knownSpellIds()
-{
-    std::set<int> ids;
-    for (const uint16_t id : tibia::game::localPlayerSpells())
-        ids.insert(int(id));
-    return ids;
 }
 
+namespace {
+
+/// A spell group's name, empty for none.
+QString spellGroupName(const uint8_t group)
+{
+    switch (group) {
+    case 1: return qtTrId("spell_attack");
+    case 2: return qtTrId("spell_healing");
+    case 3: return qtTrId("spell_support");
+    case 4: return qtTrId("spellcooldown_spell_special");
+    case 5: return qtTrId("spellcooldown_spell_conjure");
+    case 6: return qtTrId("spellcooldown_spell_crippling");
+    case 7: return qtTrId("spellcooldown_spell_focus");
+    case 8: return qtTrId("spellcooldown_spell_ultimate_strikes");
+    case 9: return qtTrId("spellcooldown_spell_great_beams");
+    case 10: return qtTrId("spellcooldown_spell_bursts_of_nature");
+    case 11: return qtTrId("spellcooldown_spell_stance");
+    default: return {};
+    }
 }
+
+/// image://<provider>/<index - 1>, empty for index 0.
+QString imageUrlOfIndex(const char* provider, const uint8_t index)
+{
+    if (index == 0)
+        return {};
+    return QStringLiteral("image://%1/%2").arg(QLatin1String(provider)).arg(int(index) - 1);
+}
+
+QString vocationName(const uint8_t vocation)
+{
+    switch (vocation) {
+    case 1: return qtTrId("knight");
+    case 2: return qtTrId("paladin");
+    case 3: return qtTrId("sorcerer");
+    case 4: return qtTrId("druid");
+    case 5: return qtTrId("monk");
+    default: return qtTrId("none");
+    }
+}
+
+QString damageTypeName(const uint8_t damageType)
+{
+    switch (damageType) {
+    case 1: return qtTrId("damagetype_fire");
+    case 2: return qtTrId("damagetype_earth");
+    case 3: return qtTrId("damagetype_energy");
+    case 4: return qtTrId("damagetype_ice");
+    case 5: return qtTrId("damagetype_holy");
+    case 6: return qtTrId("damagetype_death");
+    case 7: return qtTrId("damagetype_healing");
+    case 8: return qtTrId("damagetype_drowning");
+    case 9: return qtTrId("damagetype_lifeleech");
+    case 10: return qtTrId("damagetype_manadrain");
+    case 11: return qtTrId("damagetype_agony");
+    default: return qtTrId("damagetype_physical");
+    }
+}
+
+/// A damage type, else "variable" for weapon-scaled spells, else "none".
+QString damageText(const std::optional<uint8_t>& damageType, const bool weaponScaled)
+{
+    if (damageType)
+        return damageTypeName(*damageType);
+    return weaponScaled ? qtTrId("spelllist_label_damage_type_variable") : qtTrId("spelllist_label_damage_type_none");
+}
+
+/// "45s", "2min", "1:30min" style cooldown text of milliseconds.
+QString cooldownText(const qint64 milliseconds)
+{
+    const qint64 seconds = milliseconds / 1000;
+    if (seconds < 60)
+        return qtTrId("time_second_short").arg(seconds);
+    if (seconds % 60 == 0)
+        return qtTrId("time_minutes_short").arg(seconds / 60);
+    return qtTrId("time_minutes_and_seconds_short").arg(seconds / 60).arg(seconds % 60);
+}
+
+/// The group names, "none" without a group.
+QString groupsText(const spells::TSpellCastParameters& cast)
+{
+    QStringList groups;
+    if (cast.groupPrimary)
+        groups << spellGroupName(cast.groupPrimary);
+    if (cast.groupSecondary)
+        groups << spellGroupName(cast.groupSecondary);
+    if (groups.isEmpty())
+        groups << qtTrId("none");
+    return groups.join(QStringLiteral(", "));
+}
+
+/// The cast's own cooldown, then those of its groups.
+QString cooldownsText(const spells::TSpellCastParameters& cast)
+{
+    QStringList cooldowns{ cooldownText(cast.cooldownSelf) };
+    if (cast.groupPrimary)
+        cooldowns << cooldownText(cast.cooldownPrimaryGroup);
+    if (cast.groupSecondary)
+        cooldowns << cooldownText(cast.cooldownSecondaryGroup);
+    return cooldowns.join(QStringLiteral(" / "));
+}
+
+QString groupCooldownsText(const spells::TSpellCastParameters& cast)
+{
+    QStringList cooldowns;
+    if (cast.groupPrimary)
+        cooldowns << cooldownText(cast.cooldownPrimaryGroup);
+    if (cast.groupSecondary)
+        cooldowns << cooldownText(cast.cooldownSecondaryGroup);
+    return cooldowns.join(QStringLiteral(" / "));
+}
+
+/// "none", "all" for every vocation, else the vocation names druid, knight,
+/// paladin, sorcerer, monk in that order.
+QString vocationsText(const spells::TSpellCastParameters& cast)
+{
+    if (cast.vocations.empty())
+        return qtTrId("none");
+    if (cast.vocations.size() == 5)
+        return qtTrId("all");
+    QStringList names;
+    for (const uint8_t vocation : { 4, 1, 2, 3, 5 }) {
+        if (cast.vocations.count(vocation))
+            names << vocationName(vocation);
+    }
+    return names.join(QStringLiteral(", "));
+}
+
+/// The usage block the Magical Archive shows for a spell's cast or a rune's use.
+QVariantMap usageInfo(const spells::TSpellCastParameters& cast, const bool weaponScaled)
+{
+    QVariantMap info;
+    info.insert(QStringLiteral("groupPrimary"), spellGroupName(cast.groupPrimary));
+    info.insert(QStringLiteral("groupSecondary"), spellGroupName(cast.groupSecondary));
+    info.insert(QStringLiteral("groups"), groupsText(cast));
+    QVariantList vocations;
+    for (const uint8_t vocation : cast.vocations) {
+        QVariantMap entry;
+        entry.insert(QStringLiteral("iconUrl"), imageUrlOfIndex("vocation-icons", vocation));
+        entry.insert(QStringLiteral("tooltip"), vocationName(vocation));
+        vocations.push_back(entry);
+    }
+    info.insert(QStringLiteral("allowedVocationInfos"), vocations);
+    info.insert(QStringLiteral("cooldown"), cooldownText(cast.cooldownSelf));
+    info.insert(QStringLiteral("groupCooldowns"), groupCooldownsText(cast));
+    info.insert(QStringLiteral("manaCost"), uint(cast.mana));
+    info.insert(QStringLiteral("soulPointsCost"), uint(cast.soul));
+    info.insert(QStringLiteral("damagetype"), damageText(cast.damageType, weaponScaled));
+    info.insert(QStringLiteral("mean"), uint(cast.mean));
+    return info;
+}
+
+QString scalingName(const int scaling)
+{
+    switch (scaling) {
+    case spells::TSpellInfo::WeaponSkills: return qtTrId("spell_scaling_weaponskills");
+    case spells::TSpellInfo::MagicLevel: return qtTrId("spell_scaling_magiclevel");
+    case spells::TSpellInfo::DistanceSkill: return qtTrId("spell_scaling_distanceskill");
+    case spells::TSpellInfo::FistSkill: return qtTrId("spell_scaling_fistskill");
+    case spells::TSpellInfo::Weapon: return qtTrId("spell_scaling_weapon");
+    case spells::TSpellInfo::ShieldingSkill: return qtTrId("spell_scaling_shieldingskill");
+    default: return {};
+    }
+}
+
+bool hasVocation(const spells::TSpellCastParameters& cast, const uint8_t vocation) { return cast.vocations.count(vocation) > 0; }
+
+} // namespace
 
 TSpellListDataModel::TSpellListDataModel(QObject* parent)
     : cip::tibia::gamewindow::TSpellListDataModel(parent)
 {
-    rebuild();
-}
-
-void TSpellListDataModel::rebuild()
-{
-    beginResetModel();
-    m_rows.clear();
-    const QString filter = m_filterText.trimmed();
-    const std::set<int> known = m_showOnlyKnown ? knownSpellIds() : std::set<int>{};
-    for (const auto& [id, spell] : spells::TSpellInfoStorage::instance()->spells()) {
-        if (spell.words.isEmpty())
-            continue;
-        if (m_showOnlyKnown && !known.count(id))
-            continue;
-        if (!filter.isEmpty() && !spell.name.contains(filter, Qt::CaseInsensitive) && !spell.words.contains(filter, Qt::CaseInsensitive))
-            continue;
-        m_rows.push_back(id);
-    }
-    std::sort(m_rows.begin(), m_rows.end(), [](const int a, const int b) {
-        const spells::TSpellInfoStorage* storage = spells::TSpellInfoStorage::instance();
-        return QString::localeAwareCompare(storage->spell(a)->name, storage->spell(b)->name) < 0;
-    });
-    endResetModel();
+    for (const auto& [id, spell] : spells::TSpellInfoStorage::instance()->spells())
+        m_spellIds.push_back(id);
+    connect(spells::TSpellInfoStorage::instance(), &spells::TSpellInfoStorage::spellModificationsApplied, this,
+            &TSpellListDataModel::onSpellDataModificationsApplied);
 }
 
 int TSpellListDataModel::rowCount(const QModelIndex& parent) const
 {
-    return parent.isValid() ? 0 : int(m_rows.size());
+    return parent.isValid() ? 0 : spells::TSpellInfoStorage::instance()->spellCount();
 }
 
 QVariant TSpellListDataModel::data(const QModelIndex& index, const int role) const
 {
-    if (!index.isValid() || index.row() >= int(m_rows.size()))
+    if (!index.isValid() || index.row() >= rowCount() || index.row() >= int(m_spellIds.size()))
         return {};
-    const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(m_rows[size_t(index.row())]);
-    if (!spell)
-        return {};
+    const spells::TSpellInfo spell = spells::TSpellInfoStorage::instance()->spellInfoAt(m_spellIds[size_t(index.row())]);
+    const spells::TSpellCastParameters& cast = spell.cast;
+    const bool weaponScaled = spell.scalings.count(spells::TSpellInfo::Weapon) > 0;
     switch (role) {
-    case EnumIdRole:
-        return spell->id;
-    case Qt::DisplayRole:
-    case NameRole:
-        return spell->name;
-    case FormulaRawRole:
-        return spell->parameterHints.isEmpty() ? spell->words : spell->words + QLatin1Char(' ') + spell->parameterHints;
-    case IconUrlRole:
-        return spells::TSpellInfoStorage::iconUrl(*spell);
-    case IconUrlSmallRole:
-        return QStringLiteral("image://spell-icons-20x20/%1").arg(spell->iconIndex);
-    case CastPossibleRole: {
-        const std::set<int> known = knownSpellIds();
-        return known.empty() || known.count(spell->id) > 0;
+    case EnumIdRole: return uint(spell.id);
+    case NameRole: return spell.name;
+    case FormulaRawRole: return spell.words;
+    case ParameterHintsRole: return spell.parameterHints;
+    case GroupsRole: return groupsText(cast);
+    case GroupPrimaryRole: return spellGroupName(cast.groupPrimary);
+    case GroupPrimaryIconUrlRole: return imageUrlOfIndex("spellgroup-icons-20x20", cast.groupPrimary);
+    case GroupSecondaryRole: return spellGroupName(cast.groupSecondary);
+    case IconUrlRole: return QStringLiteral("image://spell-icons-32x32/%1").arg(spell.iconIndex);
+    case IconUrlSmallRole: return QStringLiteral("image://spell-icons-20x20/%1").arg(spell.iconIndex);
+    case IconIndexRole: return uint(spell.iconIndex);
+    case TypeRole:
+        if (spell.type == spells::TSpellInfo::CreatableRune)
+            return qtTrId("spelllist_spell_type_rune");
+        if (spell.type == spells::TSpellInfo::Instant)
+            return qtTrId("spelllist_spell_type_instant");
+        return QString();
+    case DamagetypeRole:
+        if (spell.rune && spell.rune->cast.damageType)
+            return damageTypeName(*spell.rune->cast.damageType);
+        return damageText(cast.damageType, weaponScaled);
+    case MinimumCasterLevelRole: return uint(cast.minimumLevel);
+    case MinimumMagicLevelRole: return spell.rune ? spell.rune->useMagicLevel : 0.0;
+    case IsRuneRole: return spell.rune.has_value();
+    case RuneAmountRole: return uint(spell.rune ? spell.rune->amount : 0);
+    case IsPremiumRole: return spell.premium;
+    case PremiumOnlyRole: return spell.premium ? qtTrId("yes") : qtTrId("no");
+    case AllowedVocationsRole: return vocationsText(cast);
+    case ManaCostRole: return uint(cast.mana);
+    case SoulPointsCostRole: return uint(spell.cast.soul);
+    case CooldownsRole: return cooldownsText(cast);
+    case CooldownRole: return cooldownText(cast.cooldownSelf);
+    case CooldownPrimaryGroupRole: return cooldownText(cast.cooldownPrimaryGroup);
+    case CooldownSecondaryGroupRole: return cooldownText(cast.cooldownSecondaryGroup);
+    case GroupCooldownsRole: return groupCooldownsText(cast);
+    case CastPossibleRole: return true;
+    case DescriptionRole: return spell.description;
+    case ScalingRole: {
+        QStringList names;
+        for (const int scaling : spell.scalings)
+            names << scalingName(scaling);
+        return names;
     }
-    case ParameterHintsRole:
-        return spell->parameterHints;
-    case IsCrossHairSpellRole:
-        return spell->crossHairTarget;
-    case IsAimAtTargetConfigurableRole:
-        return spell->aimAtTarget;
-    case GroupPrimaryIconUrlRole:
-        return QStringLiteral("image://spellgroup-icons-20x20/%1").arg(std::max(0, spell->groupPrimary - 1));
-    case MinimumCasterLevelRole:
-        return spell->minimumLevel;
-    default:
-        return {};
+    case SpellUsageInfoRole: return usageInfo(cast, weaponScaled);
+    case RuneUsageInfoRole: return spell.rune ? usageInfo(spell.rune->cast, weaponScaled) : QVariantMap();
+    case RelevantUsageInfoRole: return usageInfo(spell.rune ? spell.rune->cast : cast, weaponScaled);
+    case SourceRole: {
+        using ESource = cip::tibia::qmlcomponents::enums::ESpellSource;
+        const ESource source = spell.source >= 1 && spell.source <= 3 ? ESource(spell.source) : ESource::SpellSourceUnknown;
+        return QVariant::fromValue(source);
+    }
+    case IsAimAtTargetConfigurableRole: return spell.aimAtTarget;
+    case IsCrossHairSpellRole: return spell.crossHairTarget;
+    default: return {};
     }
 }
 
 QHash<int, QByteArray> TSpellListDataModel::roleNames() const
 {
-    return {
-        { EnumIdRole, "enumId" },
-        { NameRole, "name" },
-        { FormulaRawRole, "formulaRaw" },
-        { IconUrlRole, "iconUrl" },
-        { IconUrlSmallRole, "iconUrlSmall" },
-        { CastPossibleRole, "castPossible" },
-        { ParameterHintsRole, "parameterHints" },
-        { IsCrossHairSpellRole, "isCrossHairSpell" },
-        { IsAimAtTargetConfigurableRole, "isAimAtTargetConfigurable" },
-        { GroupPrimaryIconUrlRole, "groupPrimaryIconUrl" },
-        { MinimumCasterLevelRole, "minimumCasterLevel" },
-    };
-}
-
-void TSpellListDataModel::setFilterText(const QString& text)
-{
-    if (text == m_filterText)
-        return;
-    m_filterText = text;
-    rebuild();
-    Q_EMIT filterTextChanged();
-}
-
-void TSpellListDataModel::setShowOnlyKnown(const bool showOnlyKnown)
-{
-    if (showOnlyKnown == m_showOnlyKnown)
-        return;
-    m_showOnlyKnown = showOnlyKnown;
-    rebuild();
+    QHash<int, QByteArray> roles = QAbstractItemModel::roleNames();
+    roles[EnumIdRole] = "enumId";
+    roles[NameRole] = "name";
+    roles[FormulaRawRole] = "formulaRaw";
+    roles[ParameterHintsRole] = "parameterHints";
+    roles[GroupsRole] = "groups";
+    roles[GroupPrimaryRole] = "groupPrimary";
+    roles[GroupPrimaryIconUrlRole] = "groupPrimaryIconUrl";
+    roles[GroupSecondaryRole] = "groupSecondary";
+    roles[IconUrlRole] = "iconUrl";
+    roles[IconUrlSmallRole] = "iconUrlSmall";
+    roles[IconIndexRole] = "iconIndex";
+    roles[TypeRole] = "type";
+    roles[DamagetypeRole] = "damagetype";
+    roles[MinimumCasterLevelRole] = "minimumCasterLevel";
+    roles[MinimumMagicLevelRole] = "minimumMagicLevel";
+    roles[IsRuneRole] = "isRune";
+    roles[RuneAmountRole] = "runeAmount";
+    roles[IsPremiumRole] = "isPremium";
+    roles[PremiumOnlyRole] = "premiumOnly";
+    roles[AllowedVocationsRole] = "allowedVocations";
+    roles[ManaCostRole] = "manaCost";
+    roles[SoulPointsCostRole] = "soulPointsCost";
+    roles[CooldownsRole] = "cooldowns";
+    roles[CooldownRole] = "cooldown";
+    roles[CooldownPrimaryGroupRole] = "cooldownPrimaryGroup";
+    roles[CooldownSecondaryGroupRole] = "cooldownSecondaryGroup";
+    roles[GroupCooldownsRole] = "groupCooldowns";
+    roles[CastPossibleRole] = "castPossible";
+    roles[DescriptionRole] = "description";
+    roles[ScalingRole] = "scaling";
+    roles[SpellUsageInfoRole] = "spellUsageInfo";
+    roles[RuneUsageInfoRole] = "runeUsageInfo";
+    roles[RelevantUsageInfoRole] = "relevantUsageInfo";
+    roles[SourceRole] = "source";
+    roles[IsAimAtTargetConfigurableRole] = "isAimAtTargetConfigurable";
+    roles[IsCrossHairSpellRole] = "isCrossHairSpell";
+    return roles;
 }
 
 void TSpellListDataModel::onSpellDataModificationsApplied()
 {
-    rebuild();
+    Q_EMIT dataChanged(index(0), index(rowCount() - 1), { CooldownRole, ManaCostRole });
 }
 
-int TSpellListDataModel::spellAt(const int row) const
+TSpellListDataModelSortFilterProxy::TSpellListDataModelSortFilterProxy(QObject* parent)
+    : cip::tibia::gamewindow::TSpellListDataModelSortFilterProxy(parent)
+    , m_model(new TSpellListDataModel(this))
 {
-    return row >= 0 && row < int(m_rows.size()) ? m_rows[size_t(row)] : 0;
+    m_showOnlyCurrentVocation = true;
+    m_showDruidSpells = m_showKnightSpells = m_showPaladinSpells = m_showSorcererSpells = m_showMonkSpells = true;
+    m_showAttackSpellGroup = m_showHealingSpellGroup = m_showSupportSpellGroup = true;
+    m_showRuneSpells = m_showInstantSpells = m_showPremiumOnlySpells = m_showFreeSpells = true;
+    setSourceModel(m_model);
+    setDynamicSortFilter(true);
+    sort(0);
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TSpellListDataModelSortFilterProxy::onGameSessionChanged);
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this,
+            &TSpellListDataModelSortFilterProxy::onPlayerDataChanged);
+    onGameSessionChanged();
 }
 
-int TSpellListDataModel::rowOf(const int spellId) const
+void TSpellListDataModelSortFilterProxy::onGameSessionChanged()
 {
-    const auto it = std::find(m_rows.begin(), m_rows.end(), spellId);
-    return it == m_rows.end() ? -1 : int(it - m_rows.begin());
+    if (game::TPlayerData* player = game::TPlayerData::liveInstance())
+        connect(player, &game::TPlayerData::playerDataChanged, this, &TSpellListDataModelSortFilterProxy::onPlayerDataChanged,
+                Qt::UniqueConnection);
+    onPlayerDataChanged();
+}
+
+void TSpellListDataModelSortFilterProxy::onPlayerDataChanged()
+{
+    const game::TPlayerData* player = tibia::game::isOnline() ? game::TPlayerData::liveInstance() : nullptr;
+    if (!player) {
+        m_knownSpells.clear();
+        m_playerVocation = 0;
+        m_playerLevel = 0;
+        invalidate();
+        return;
+    }
+    bool changed = false;
+    const std::vector<uint16_t> spells = player->spells();
+    const std::set<uint16_t> known(spells.begin(), spells.end());
+    if (known != m_knownSpells) {
+        m_knownSpells = known;
+        changed = true;
+    }
+    if (m_playerVocation != player->vocation()) {
+        m_playerVocation = player->vocation();
+        changed = true;
+    }
+    if (m_playerLevel != player->level()) {
+        m_playerLevel = player->level();
+        changed = true;
+    }
+    if (changed)
+        invalidate();
+}
+
+void TSpellListDataModelSortFilterProxy::resetFilter()
+{
+    m_showOnlyCurrentVocation = true;
+    m_showOnlyCurrentLevel = false;
+    m_showUnkownSpells = true;
+    m_showDruidSpells = m_showKnightSpells = m_showPaladinSpells = m_showSorcererSpells = m_showMonkSpells = true;
+    m_showAttackSpellGroup = m_showHealingSpellGroup = m_showSupportSpellGroup = true;
+    m_showRuneSpells = m_showInstantSpells = m_showPremiumOnlySpells = m_showFreeSpells = true;
+    m_filterText = QString();
+    invalidate();
+    Q_EMIT configChanged();
+}
+
+void TSpellListDataModelSortFilterProxy::setFlag(bool& flag, const bool value)
+{
+    if (flag == value)
+        return;
+    flag = value;
+    invalidate();
+    Q_EMIT configChanged();
+}
+
+void TSpellListDataModelSortFilterProxy::setShowOnlyCurrentVocation(const bool v) { setFlag(m_showOnlyCurrentVocation, v); }
+void TSpellListDataModelSortFilterProxy::setShowOnlyCurrentLevel(const bool v) { setFlag(m_showOnlyCurrentLevel, v); }
+void TSpellListDataModelSortFilterProxy::setShowUnkownSpells(const bool v) { setFlag(m_showUnkownSpells, v); }
+void TSpellListDataModelSortFilterProxy::setShowDruidSpells(const bool v) { setFlag(m_showDruidSpells, v); }
+void TSpellListDataModelSortFilterProxy::setShowKnightSpells(const bool v) { setFlag(m_showKnightSpells, v); }
+void TSpellListDataModelSortFilterProxy::setShowPaladinSpells(const bool v) { setFlag(m_showPaladinSpells, v); }
+void TSpellListDataModelSortFilterProxy::setShowSorcererSpells(const bool v) { setFlag(m_showSorcererSpells, v); }
+void TSpellListDataModelSortFilterProxy::setShowMonkSpells(const bool v) { setFlag(m_showMonkSpells, v); }
+void TSpellListDataModelSortFilterProxy::setShowAttackSpellGroup(const bool v) { setFlag(m_showAttackSpellGroup, v); }
+void TSpellListDataModelSortFilterProxy::setShowHealingSpellGroup(const bool v) { setFlag(m_showHealingSpellGroup, v); }
+void TSpellListDataModelSortFilterProxy::setShowSupportSpellGroup(const bool v) { setFlag(m_showSupportSpellGroup, v); }
+void TSpellListDataModelSortFilterProxy::setShowRuneSpells(const bool v) { setFlag(m_showRuneSpells, v); }
+void TSpellListDataModelSortFilterProxy::setShowInstantSpells(const bool v) { setFlag(m_showInstantSpells, v); }
+void TSpellListDataModelSortFilterProxy::setShowPremiumOnlySpells(const bool v) { setFlag(m_showPremiumOnlySpells, v); }
+void TSpellListDataModelSortFilterProxy::setShowFreeSpells(const bool v) { setFlag(m_showFreeSpells, v); }
+
+void TSpellListDataModelSortFilterProxy::setFilterText(const QString& v)
+{
+    if (m_filterText == v)
+        return;
+    m_filterText = v;
+    invalidate();
+    Q_EMIT configChanged();
+}
+
+QVariant TSpellListDataModelSortFilterProxy::data(const QModelIndex& index, const int role) const
+{
+    if (!index.isValid() || index.row() >= rowCount())
+        return {};
+    const QModelIndex source = mapToSource(index);
+    if (role != TSpellListDataModel::CastPossibleRole)
+        return source.model() ? source.model()->data(source, role) : QVariant();
+    // A spell can be cast when the player knows it and has its vocation and level.
+    const int spellId = source.model() ? source.model()->data(source, TSpellListDataModel::EnumIdRole).toInt() : 0;
+    const spells::TSpellInfo spell = spells::TSpellInfoStorage::instance()->spellInfoAt(spellId);
+    return m_knownSpells.count(uint16_t(spellId)) > 0 && hasVocation(spell.cast, m_playerVocation)
+        && spell.cast.minimumLevel <= m_playerLevel;
+}
+
+bool TSpellListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
+{
+    QAbstractItemModel* source = sourceModel();
+    const QModelIndex index = source->index(sourceRow, 0, sourceParent);
+    if (!index.isValid())
+        return false;
+    const int spellId = source->data(index, TSpellListDataModel::EnumIdRole).toInt();
+    const spells::TSpellInfo spell = spells::TSpellInfoStorage::instance()->spellInfoAt(spellId);
+    const spells::TSpellCastParameters& cast = spell.cast;
+
+    bool playerOk = !m_showOnlyCurrentVocation || hasVocation(cast, m_playerVocation);
+    if (m_showOnlyCurrentLevel)
+        playerOk = playerOk && cast.minimumLevel <= m_playerLevel;
+    if (!m_showUnkownSpells)
+        playerOk = playerOk && m_knownSpells.count(uint16_t(spellId)) > 0;
+
+    const bool vocationOk = (m_showDruidSpells && hasVocation(cast, 4)) || (m_showKnightSpells && hasVocation(cast, 1))
+        || (m_showPaladinSpells && hasVocation(cast, 2)) || (m_showSorcererSpells && hasVocation(cast, 3))
+        || (m_showMonkSpells && hasVocation(cast, 5));
+    const auto inGroup = [&cast](const uint8_t group) { return cast.groupSecondary == group || cast.groupPrimary == group; };
+    const bool groupOk = (m_showAttackSpellGroup && inGroup(1)) || (m_showHealingSpellGroup && inGroup(2))
+        || (m_showSupportSpellGroup && inGroup(3));
+    const bool premiumOk = (m_showPremiumOnlySpells && spell.premium) || (m_showFreeSpells && !spell.premium);
+    const bool kindOk = (m_showInstantSpells && !spell.rune) || (m_showRuneSpells && spell.rune);
+
+    bool accepted = premiumOk && groupOk && kindOk && vocationOk && playerOk;
+    // Every search word in the formula, or every search word in the name.
+    QStringList words = m_filterText.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+    words.removeIf([](const QString& word) { return word.trimmed().isEmpty(); });
+    if (!words.isEmpty()) {
+        const auto containsAll = [&words](const QString& text) {
+            return std::all_of(words.cbegin(), words.cend(),
+                               [&text](const QString& word) { return text.contains(word, Qt::CaseInsensitive); });
+        };
+        accepted = accepted && (containsAll(spell.words) || containsAll(spell.name));
+    }
+    return accepted;
+}
+
+bool TSpellListDataModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
+{
+    const QString a = left.model() ? left.model()->data(left, TSpellListDataModel::NameRole).toString().toLower() : QString();
+    const QString b = right.model() ? right.model()->data(right, TSpellListDataModel::NameRole).toString().toLower() : QString();
+    return QString::compare(a, b, Qt::CaseSensitive) < 0;
+}
+
+QVariant TSpellListDataModelSortFilterProxy::getModelDataForRow(const int RowIndex)
+{
+    const QModelIndex source = mapToSource(index(RowIndex, 0));
+    if (!source.isValid())
+        return {};
+    QVariantMap row;
+    const QHash<int, QByteArray> roles = sourceModel()->roleNames();
+    for (auto it = roles.cbegin(); it != roles.cend(); ++it) {
+        const QString name = QString::fromUtf8(it.value());
+        if (!name.isEmpty())
+            row.insert(name, sourceModel()->data(source, it.key()));
+    }
+    return row;
+}
+
+QVariant TSpellListDataModelSortFilterProxy::getDataWithRoleName(const int RowIndex, const QByteArray& RoleName)
+{
+    const QModelIndex source = mapToSource(index(RowIndex, 0));
+    const int role = roleNames().key(RoleName, 0);
+    return m_model->data(source, role).toString();
+}
+
+int TSpellListDataModelSortFilterProxy::spellIdAt(const int row) const
+{
+    return m_model->data(mapToSource(index(row, 0)), TSpellListDataModel::EnumIdRole).toInt();
+}
+
+int TSpellListDataModelSortFilterProxy::rowOfSpell(const int spellId) const
+{
+    for (int row = 0; row < rowCount(); ++row) {
+        if (spellIdAt(row) == spellId)
+            return row;
+    }
+    return -1;
 }
 
 void TAssignActionDialogState::bind(QObject* dialog, TActionBarController* bar, const int buttonId, const int multiActionIndex)
@@ -235,11 +586,12 @@ TAssignSpellActionDialogController::TAssignSpellActionDialogController(TActionBa
     m_buttonName = m_assign.buttonName;
     m_showActionBarTarget = m_assign.showActionBarTarget;
     connect(this, &cip::tibia::gamewindow::TAssignSpellActionDialogController::dialogClosed, this, &QObject::deleteLater);
-    m_spellListModel = QVariant::fromValue<QObject*>(&m_model);
-    // The name filter starts empty on every open.
+    m_spellListModel = QVariant::fromValue<QObject*>(&m_proxy);
+    // Every box ticked and the search words cleared on every open; unknown
+    // spells follow the dialog's "only known spells" box.
     m_showOnlyKnownSpells = showOnlyKnownSpellsOf(m_assign.actionBarId);
-    m_model.setFilterText(QString());
-    m_model.setShowOnlyKnown(m_showOnlyKnownSpells);
+    m_proxy.resetFilter();
+    m_proxy.setShowUnkownSpells(!m_showOnlyKnownSpells);
     const Setting setting = m_assign.current();
     const spells::TSpellInfo* spell = preselectedSpellId ? spells::TSpellInfoStorage::instance()->spell(preselectedSpellId)
         : setting.kind == Setting::TEXT                  ? spells::TSpellInfoStorage::instance()->spellOfText(setting.text)
@@ -253,7 +605,7 @@ TAssignSpellActionDialogController::TAssignSpellActionDialogController(TActionBa
         }
     } else {
         // Otherwise the first spell of the list, without parameters.
-        m_spellId = m_model.spellAt(0);
+        m_spellId = m_proxy.spellIdAt(0);
     }
 }
 
@@ -261,7 +613,7 @@ uint TAssignSpellActionDialogController::actionBarId() const { return m_assign.a
 uint TAssignSpellActionDialogController::buttonId() const { return m_assign.buttonId; }
 QString TAssignSpellActionDialogController::buttonName() const { return m_assign.buttonName; }
 bool TAssignSpellActionDialogController::showActionBarTarget() const { return m_assign.showActionBarTarget; }
-uint TAssignSpellActionDialogController::spellListIndex() const { return uint(m_model.rowOf(m_spellId)); }
+uint TAssignSpellActionDialogController::spellListIndex() const { return uint(m_proxy.rowOfSpell(m_spellId)); }
 QString TAssignSpellActionDialogController::spellParameters() const { return m_spellParameters; }
 bool TAssignSpellActionDialogController::showOnlyKnownSpells() const { return m_showOnlyKnownSpells; }
 ECastType TAssignSpellActionDialogController::currentSpellCastType() const { return m_currentSpellCastType; }
@@ -273,7 +625,7 @@ void TAssignSpellActionDialogController::setShowOnlyKnownSpells(const bool v)
         return;
     m_showOnlyKnownSpells = v;
     showOnlyKnownSpellsOf(m_assign.actionBarId) = v;
-    m_model.setShowOnlyKnown(v);
+    m_proxy.setShowUnkownSpells(!v);
     Q_EMIT selectedSpellChanged();
     Q_EMIT spellFilterChanged();
 }

@@ -65,6 +65,16 @@ QString activityTypeName(const int Kind)
     }
 }
 
+TActivity makeActivity(const TTeamActivity& Type, const teamfinder::TTeamfinderActivityNameResolver& Resolver)
+{
+    return { .type = Type, .typeName = activityTypeName(Type.kind), .name = Resolver.name(Type), .alias = Resolver.alias(Type) };
+}
+
+QString activityDisplayName(const TTeamActivity& Activity, const teamfinder::TTeamfinderActivityNameResolver& Resolver)
+{
+    return QStringLiteral("%1: %2").arg(activityTypeName(Activity.kind)).arg(Resolver.name(Activity).trimmed());
+}
+
 // ---------------------------------------------------------------------------
 // TTeamMembersModel
 
@@ -166,14 +176,15 @@ void TTeamsListModel::setCharacterName(const QString& Name)
 
 QVariant TTeamsListModel::itemData(const teamfinder::TTeamData& Team, const int Role) const
 {
+    if (!m_resolver)
+        return {};
     const teamfinder::TTeamParameters& parameters = Team.parameters;
     switch (Role) {
         case TeamIdRole: return uint(Team.teamId);
         case ActivityTypeRole: return int(parameters.activity.kind);
         case TypeNameRole: return QStringLiteral("%1:").arg(activityTypeName(parameters.activity.kind));
-        // Boss / hunting place / quest names come from the activity name resolver (static data), not wired yet.
-        case NameRole:
-        case AliasRole: return QString();
+        case NameRole: return m_resolver->name(parameters.activity);
+        case AliasRole: return m_resolver->alias(parameters.activity);
         case MinLevelRole: return uint(parameters.minLevel);
         case MaxLevelRole: return uint(parameters.maxLevel);
         case LevelRangeRole: {
@@ -566,6 +577,14 @@ TActivitiesSortProxyModel::TActivitiesSortProxyModel(QObject* parent)
     setDynamicSortFilter(true);
     sort(0, Qt::AscendingOrder);
     setSourceModel(m_model);
+}
+
+void TActivitiesSortProxyModel::setActivities(const std::vector<TActivity>& Activities)
+{
+    beginFilterChange();
+    m_model->setItems(Activities);
+    endFilterChange(QSortFilterProxyModel::Direction::Both);
+    invalidate();
 }
 
 QString TActivitiesSortProxyModel::nameFilter() const

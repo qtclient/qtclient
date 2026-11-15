@@ -4,6 +4,7 @@
 
 #include <cip_gen.h>
 
+#include <QMetaObject>
 #include <QObject>
 
 namespace tibia {
@@ -30,12 +31,17 @@ public:
     Q_INVOKABLE void showContextMenuForBlacklistedAccount(uint BlacklistedAccountID) override;
 
 private:
-    void rebuildInvites();
-    void rebuildBlacklist();
+    /// Copies the stored invites into the received and sent models.
+    void updateInviteLists();
+    /// Copies the stored blacklist into its model.
+    void updateBlacklist();
+    void disconnectStorage();
 
     TInviteListModel* m_receivedModel = nullptr;
     TInviteListModel* m_sentModel = nullptr;
     TBlacklistModel* m_blacklistModel = nullptr;
+    QMetaObject::Connection m_inviteListConnection;
+    QMetaObject::Connection m_blacklistConnection;
 };
 
 }

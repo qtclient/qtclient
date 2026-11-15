@@ -8,28 +8,65 @@
 #include <QJsonObject>
 #include <QQuickItem>
 
-#include <any>
+#include <functional>
 #include <memory>
+#include <utility>
 #include <vector>
-#include <tibia/game/gamenotify.h>
 
 namespace tibia::gamewindow {
 
 namespace {
 
 constexpr auto OptionsKey = "spellListWidgetOptions";
-using Args = std::vector<std::any>;
+using Proxy = TSpellListDataModelSortFilterProxy;
+
+/// The filter boxes the widget options keep (not the rune and instant boxes).
+const std::vector<std::pair<const char*, bool (Proxy::*)() const>>& filterBoxes()
+{
+    static const std::vector<std::pair<const char*, bool (Proxy::*)() const>> boxes = {
+        { "showOnlyCurrentVocation", &Proxy::showOnlyCurrentVocation },
+        { "showOnlyCurrentLevel", &Proxy::showOnlyCurrentLevel },
+        { "showUnkownSpells", &Proxy::showUnkownSpells },
+        { "showDruidSpells", &Proxy::showDruidSpells },
+        { "showKnightSpells", &Proxy::showKnightSpells },
+        { "showPaladinSpells", &Proxy::showPaladinSpells },
+        { "showSorcererSpells", &Proxy::showSorcererSpells },
+        { "showMonkSpells", &Proxy::showMonkSpells },
+        { "showAttackSpellGroup", &Proxy::showAttackSpellGroup },
+        { "showHealingSpellGroup", &Proxy::showHealingSpellGroup },
+        { "showSupportSpellGroup", &Proxy::showSupportSpellGroup },
+        { "showPremiumOnlySpells", &Proxy::showPremiumOnlySpells },
+        { "showFreeSpells", &Proxy::showFreeSpells },
+    };
+    return boxes;
+}
+
+const std::vector<std::pair<const char*, void (Proxy::*)(bool)>>& filterBoxSetters()
+{
+    static const std::vector<std::pair<const char*, void (Proxy::*)(bool)>> boxes = {
+        { "showOnlyCurrentVocation", &Proxy::setShowOnlyCurrentVocation },
+        { "showOnlyCurrentLevel", &Proxy::setShowOnlyCurrentLevel },
+        { "showUnkownSpells", &Proxy::setShowUnkownSpells },
+        { "showDruidSpells", &Proxy::setShowDruidSpells },
+        { "showKnightSpells", &Proxy::setShowKnightSpells },
+        { "showPaladinSpells", &Proxy::setShowPaladinSpells },
+        { "showSorcererSpells", &Proxy::setShowSorcererSpells },
+        { "showMonkSpells", &Proxy::setShowMonkSpells },
+        { "showAttackSpellGroup", &Proxy::setShowAttackSpellGroup },
+        { "showHealingSpellGroup", &Proxy::setShowHealingSpellGroup },
+        { "showSupportSpellGroup", &Proxy::setShowSupportSpellGroup },
+        { "showPremiumOnlySpells", &Proxy::setShowPremiumOnlySpells },
+        { "showFreeSpells", &Proxy::setShowFreeSpells },
+    };
+    return boxes;
+}
 
 }
 
 TSpellListWidgetController::TSpellListWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
-    , m_model(new TMagicalArchiveSpellListModel(this))
     , m_proxy(new TSpellListDataModelSortFilterProxy(this))
 {
-    m_proxy->setSourceModel(m_model);
-    m_proxy->resetFilter();
-    m_proxy->sort(0);
     m_spellListModel = QVariant::fromValue<QObject*>(m_proxy);
     m_gameWindowQuickItem = gameWindowItem;
     widget()->createItem(QStringLiteral("spelllistwidget.qml"));
@@ -37,23 +74,13 @@ TSpellListWidgetController::TSpellListWidgetController(QQuickItem* gameWindowIte
         m_focus.setClickArea(item);
         connect(item, &QObject::destroyed, this, &TSpellListWidgetController::onWidgetQuickItemDestroyed);
     }
+    connect(m_proxy, &TSpellListDataModelSortFilterProxy::configChanged, this, &TSpellListWidgetController::saveWidgetOptions);
 }
 
 void TSpellListWidgetController::setSidebarOptions(config::TSidebarOptions* options)
 {
     m_options = options;
-    if (!m_options)
-        return;
-    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
-    if (json.contains(QLatin1String("contentHeight")))
-        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
-                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
-}
-
-void TSpellListWidgetController::reloadArchive()
-{
-    if (m_model)
-        m_model->reload();
+    onWidgetOptionsChanged();
 }
 
 QQuickItem* TSpellListWidgetController::gameWindowQuickItem() const { return widget()->gameWindowItem(); }
@@ -65,38 +92,91 @@ void TSpellListWidgetController::onShowContextMenu()
     TContextMenuController* menu = TContextMenuController::instance();
     if (!menu)
         return;
+    TSpellListDataModelSortFilterProxy* proxy = m_proxy;
     menu->beginCustomMenu();
-    connect(menu->addCustomEntry(qtTrId("spell_book_open_magical_archive")), &TContextMenuEntryItem::triggered, this, [] {
-        auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-        action->parameter = 8; // Magical Archive tab
-        input::publish(action);
-    });
-    // CipSoft qm has no spelllist_reset_filter id; use the shared "Reset" label.
-    connect(menu->addCustomEntry(qtTrId("reset")), &TContextMenuEntryItem::triggered, this, [this] {
-        m_proxy->resetFilter();
-    });
+    const auto addBox = [this, menu](const QString& text, const bool checked, std::function<void(bool)> toggle) {
+        TContextMenuEntryItem* entry = menu->addCustomEntry(text, QString());
+        entry->setCheckable(true);
+        entry->setChecked(checked);
+        connect(entry, &TContextMenuEntryItem::toggled, this, std::move(toggle));
+    };
+    addBox(qtTrId("spelllist_only_current_vocation"), proxy->showOnlyCurrentVocation(),
+           [proxy](const bool on) { proxy->setShowOnlyCurrentVocation(on); });
+    addBox(qtTrId("spelllist_only_current_level"), proxy->showOnlyCurrentLevel(),
+           [proxy](const bool on) { proxy->setShowOnlyCurrentLevel(on); });
+    addBox(qtTrId("spelllist_show_only_known_spells"), !proxy->showUnkownSpells(),
+           [proxy](const bool on) { proxy->setShowUnkownSpells(!on); });
+    menu->addCustomSeparator();
+    addBox(qtTrId("druid"), proxy->showDruidSpells(), [proxy](const bool on) { proxy->setShowDruidSpells(on); });
+    addBox(qtTrId("knight"), proxy->showKnightSpells(), [proxy](const bool on) { proxy->setShowKnightSpells(on); });
+    addBox(qtTrId("paladin"), proxy->showPaladinSpells(), [proxy](const bool on) { proxy->setShowPaladinSpells(on); });
+    addBox(qtTrId("sorcerer"), proxy->showSorcererSpells(), [proxy](const bool on) { proxy->setShowSorcererSpells(on); });
+    addBox(qtTrId("monk"), proxy->showMonkSpells(), [proxy](const bool on) { proxy->setShowMonkSpells(on); });
+    addBox(qtTrId("spelllist_all_vocations"),
+           proxy->showDruidSpells() && proxy->showKnightSpells() && proxy->showPaladinSpells() && proxy->showSorcererSpells()
+               && proxy->showMonkSpells(),
+           [proxy](const bool on) {
+               proxy->setShowDruidSpells(on);
+               proxy->setShowKnightSpells(on);
+               proxy->setShowPaladinSpells(on);
+               proxy->setShowSorcererSpells(on);
+               proxy->setShowMonkSpells(on);
+           });
+    menu->addCustomSeparator();
+    addBox(qtTrId("spell_attack"), proxy->showAttackSpellGroup(), [proxy](const bool on) { proxy->setShowAttackSpellGroup(on); });
+    addBox(qtTrId("spell_healing"), proxy->showHealingSpellGroup(), [proxy](const bool on) { proxy->setShowHealingSpellGroup(on); });
+    addBox(qtTrId("spell_support"), proxy->showSupportSpellGroup(), [proxy](const bool on) { proxy->setShowSupportSpellGroup(on); });
+    addBox(qtTrId("spelllist_all_spell_groups"),
+           proxy->showAttackSpellGroup() && proxy->showHealingSpellGroup() && proxy->showSupportSpellGroup(), [proxy](const bool on) {
+               proxy->setShowAttackSpellGroup(on);
+               proxy->setShowHealingSpellGroup(on);
+               proxy->setShowSupportSpellGroup(on);
+           });
+    menu->addCustomSeparator();
+    addBox(qtTrId("spelllist_premium_only"), proxy->showPremiumOnlySpells(), [proxy](const bool on) { proxy->setShowPremiumOnlySpells(on); });
+    addBox(qtTrId("spelllist_free_account"), proxy->showFreeSpells(), [proxy](const bool on) { proxy->setShowFreeSpells(on); });
+    menu->addCustomSeparator();
+    addBox(qtTrId("spelllist_rune_spells"), proxy->showRuneSpells(), [proxy](const bool on) { proxy->setShowRuneSpells(on); });
+    addBox(qtTrId("spelllist_instant_spells"), proxy->showInstantSpells(), [proxy](const bool on) { proxy->setShowInstantSpells(on); });
     menu->showCustomMenu();
 }
 
 void TSpellListWidgetController::onShowMoreForSpell(const int SpellID)
 {
-    Q_UNUSED(SpellID);
+    // The Magical Archive tab with the spell.
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
-    action->parameter = 8; // Magical Archive tab
+    action->parameter = 8;
+    action->instance = uint16_t(SpellID);
     input::publish(action);
 }
 
 void TSpellListWidgetController::saveWidgetOptions()
 {
-    if (!m_options)
+    if (!m_options || m_applyingOptions)
         return;
     QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
     json.insert(QStringLiteral("contentHeight"), widget()->maximizedContentHeight());
     json.insert(QStringLiteral("contentMaximized"), widget()->isMaximized());
+    for (const auto& [key, getter] : filterBoxes())
+        json.insert(QLatin1String(key), (m_proxy->*getter)());
     m_options->setSection(QLatin1String(OptionsKey), json);
 }
 
-void TSpellListWidgetController::onWidgetOptionsChanged() { saveWidgetOptions(); }
+void TSpellListWidgetController::onWidgetOptionsChanged()
+{
+    if (!m_options)
+        return;
+    const QJsonObject json = m_options->section(QLatin1String(OptionsKey)).toObject();
+    if (json.contains(QLatin1String("contentHeight")))
+        widget()->setInitialContentHeightAndMaximized(json.value(QLatin1String("contentHeight")).toInt(),
+                                                       json.value(QLatin1String("contentMaximized")).toBool(true));
+    // Every box defaults to ticked; applying them does not store them back.
+    m_applyingOptions = true;
+    for (const auto& [key, setter] : filterBoxSetters())
+        (m_proxy->*setter)(json.value(QLatin1String(key)).toBool(true));
+    m_applyingOptions = false;
+}
+
 void TSpellListWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TSpellListWidgetController::onCloseClicked() { onRequestClose(); }
@@ -143,14 +223,6 @@ TSpellListWidgetManager::TSpellListWidgetManager(QQuickItem* gameWindowItem, QQm
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
 {
-    // CipSoft archive model: CastPossibleRole reads LocalPlayerSessionThing spells; reload on unlock / mods.
-    const auto reload = [this](GameObject*, const Args&) {
-        if (m_controller)
-            m_controller->reloadArchive();
-        return std::any{};
-    };
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUnlockedSpells", reload);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onSpellDataModification", reload);
 }
 
 TSpellListWidgetManager::~TSpellListWidgetManager() { delete m_controller; }

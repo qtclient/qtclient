@@ -5,6 +5,8 @@
 #include "chat/chatprotocolmessagehandler.h"
 #include "teamfinder/teamfinder_types.h"
 #include "protocol/protocolciptypes.h"
+#include "assets/things.h"
+#include "cyclopedia/cyclopediamapdata.h"
 
 #include <QLocale>
 #include <QTime>
@@ -392,6 +394,80 @@ void TTeamFinderProtocolMessageHandler::leaveTeam(const uint16_t TeamID)
     request->set_leader_id(TeamID);
     m_storage->setTeamStatus(TeamID, 0);
     protocol::sendGameclientMessage(std::move(message));
+}
+
+void TTeamFinderProtocolMessageHandler::startSession()
+{
+    m_storage->reset();
+    m_storage->setTeams({});
+    Q_EMIT sessionStarted();
+}
+
+// ---------------------------------------------------------------------------
+// TTeamfinderActivityNameResolver
+
+namespace {
+
+/// Every space-separated word starts upper case ("the pale count" -> "The Pale Count").
+QString capitalizeWords(const QString& Text)
+{
+    if (Text.isEmpty())
+        return QString();
+    QStringList words = Text.split(QStringLiteral(" "));
+    for (QString& word : words) {
+        if (!word.isEmpty())
+            word = QString(word.at(0).toUpper()) + word.mid(1);
+    }
+    return words.join(QStringLiteral(" "));
+}
+
+QString bossName(const uint16_t BossID)
+{
+    for (const auto& race : tibia::appearances::TAppearancesManager::instance().getAllRaces()) {
+        if (race.boss && race.raceId == BossID)
+            return QString::fromStdString(race.name);
+    }
+    return QString();
+}
+
+QString questName(const uint32_t QuestID)
+{
+    if (const auto* quest = tibia::appearances::TAppearancesManager::instance().getCyclopediaQuest(static_cast<uint16_t>(QuestID)))
+        return QString::fromStdString(quest->name);
+    return QString();
+}
+
+} // namespace
+
+QString TTeamfinderActivityNameResolver::name(const TTeamActivity& Activity) const
+{
+    auto& map = cyclopedia::TCyclopediaMapStaticData::instance();
+    switch (Activity.kind) {
+        case TTeamActivity::Boss:
+            if (Activity.bossId == 0)
+                return qtTrId("teamfinder_unspecified_activity");
+            return capitalizeWords(bossName(Activity.bossId));
+        case TTeamActivity::Hunt: {
+            if (Activity.huntType == 0)
+                return qtTrId("teamfinder_unspecified_activity");
+            const auto* area = map.area(Activity.huntArea != 0 ? Activity.huntArea : Activity.huntType);
+            return area ? area->name : QString();
+        }
+        case TTeamActivity::Quest:
+            if (Activity.questId == 0)
+                return qtTrId("teamfinder_unspecified_activity");
+            return questName(Activity.questId);
+        case TTeamActivity::Other: return qtTrId("teamfinder_unspecified_activity");
+        default: return QString();
+    }
+}
+
+QString TTeamfinderActivityNameResolver::alias(const TTeamActivity& Activity) const
+{
+    if (Activity.kind != TTeamActivity::Hunt)
+        return QString();
+    const auto* area = cyclopedia::TCyclopediaMapStaticData::instance().area(Activity.huntArea != 0 ? Activity.huntArea : Activity.huntType);
+    return area ? area->alias : QString();
 }
 
 // ---------------------------------------------------------------------------

@@ -42,6 +42,65 @@ QStringList stringList(const QJsonValue& value)
     return list;
 }
 
+/// The vocation names of `allowedVocations` as CIP vocation ids; other names
+/// are left out.
+std::set<uint8_t> vocationIds(const QJsonArray& names)
+{
+    static const std::map<QString, uint8_t> ids = {
+        { QStringLiteral("Knight"), 1 }, { QStringLiteral("Paladin"), 2 }, { QStringLiteral("Sorcerer"), 3 },
+        { QStringLiteral("Druid"), 4 },  { QStringLiteral("Monk"), 5 },
+    };
+    std::set<uint8_t> vocations;
+    for (const QJsonValue& name : names) {
+        const auto it = ids.find(name.toString());
+        if (it != ids.end())
+            vocations.insert(it->second);
+    }
+    return vocations;
+}
+
+/// A `damagetype` of spells.json (any case); damage over time counts as its element.
+std::optional<uint8_t> damageTypeOf(const QString& name)
+{
+    static const std::map<std::string, uint8_t> types = {
+        { "DAMAGE_HIT", 0 },          { "DAMAGE_LIFEDRAIN", 9 },      { "DAMAGE_MANADRAIN", 10 },
+        { "DAMAGE_FIRE", 1 },         { "DAMAGE_EARTH", 2 },          { "DAMAGE_ENERGY", 3 },
+        { "DAMAGE_ICE", 4 },          { "DAMAGE_HOLY", 5 },           { "DAMAGE_DEATH", 6 },
+        { "DAMAGE_DROWNING", 8 },     { "DAMAGE_FIRE_DOT", 1 },       { "DAMAGE_EARTH_DOT", 2 },
+        { "DAMAGE_ENERGY_DOT", 3 },   { "DAMAGE_ICE_DOT", 4 },        { "DAMAGE_HOLY_DOT", 5 },
+        { "DAMAGE_DEATH_DOT", 6 },    { "DAMAGE_DROWNING_DOT", 8 },   { "DAMAGE_HEALING", 7 },
+        { "DAMAGE_AGONY", 11 },
+    };
+    const auto it = types.find(name.toUpper().toStdString());
+    return it == types.end() ? std::nullopt : std::optional<uint8_t>(it->second);
+}
+
+std::optional<int> scalingOf(const QString& name)
+{
+    static const std::map<std::string, int> scalings = {
+        { "weaponskills", TSpellInfo::WeaponSkills }, { "magiclevel", TSpellInfo::MagicLevel },
+        { "distanceskill", TSpellInfo::DistanceSkill }, { "weapon", TSpellInfo::Weapon },
+        { "fistskill", TSpellInfo::FistSkill },        { "shieldingskill", TSpellInfo::ShieldingSkill },
+    };
+    const auto it = scalings.find(name.toStdString());
+    return it == scalings.end() ? std::nullopt : std::optional<int>(it->second);
+}
+
+/// The groups, level, vocations and cooldowns both a spell and a rune's use
+/// read from their object.
+void readCastParameters(TSpellCastParameters& cast, const QJsonObject& object)
+{
+    cast.groupPrimary = uint8_t(groupId(object.value(QLatin1String("spellGroupPrimary")).toString()));
+    cast.groupSecondary = uint8_t(groupId(object.value(QLatin1String("spellGroupSecondary")).toString()));
+    cast.minimumLevel = uint16_t(object.value(QLatin1String("minimumCasterLevel")).toInt());
+    cast.aggressive = object.value(QLatin1String("aggressive")).toBool();
+    cast.vocations = vocationIds(object.value(QLatin1String("allowedVocations")).toArray());
+    cast.cooldownSelf = qint64(object.value(QLatin1String("cooldownSelf")).toInt()) * 1000;
+    cast.cooldownPrimaryGroup = qint64(object.value(QLatin1String("cooldownPrimaryGroup")).toInt()) * 1000;
+    cast.cooldownSecondaryGroup = qint64(object.value(QLatin1String("cooldownSecondaryGroup")).toInt()) * 1000;
+    cast.damageType = damageTypeOf(object.value(QLatin1String("damagetype")).toString());
+}
+
 }
 
 TSpellInfoStorage* TSpellInfoStorage::instance()
@@ -132,17 +191,36 @@ TSpellInfoStorage::TSpellInfoStorage()
         spell.isRune = object.value(QLatin1String("isRune")).toBool();
         spell.isRuneCreatable = object.value(QLatin1String("isRuneCreatable")).toBool();
         spell.description = object.value(QLatin1String("description")).toString();
+        // CIP's record.
+        spell.type = !spell.isRune ? TSpellInfo::Instant : spell.isRuneCreatable ? TSpellInfo::CreatableRune : TSpellInfo::Rune;
+        spell.autoUnlock = object.value(QLatin1String("autoUnlock")).toBool();
+        for (const QJsonValue& name : object.value(QLatin1String("scaling")).toArray()) {
+            if (const std::optional<int> scaling = scalingOf(name.toString()))
+                spell.scalings.insert(*scaling);
+        }
+        readCastParameters(spell.cast, object);
+        spell.cast.onlyPromoted = object.value(QLatin1String("onlyPromoted")).toBool();
+        spell.cast.mana = object.value(QLatin1String("castCostMana")).toInt();
+        spell.cast.soul = uint8_t(object.value(QLatin1String("castCostSoulPoints")).toInt());
+        if (spell.isRune) {
+            const QJsonObject params = object.value(QLatin1String("runeParams")).toObject();
+            TRuneParameters rune;
+            rune.objectId = uint16_t(params.value(QLatin1String("runeType")).toInt());
+            rune.useMagicLevel = params.value(QLatin1String("useMagicLevel")).toInt();
+            rune.amount = uint8_t(params.value(QLatin1String("amount")).toInt());
+            readCastParameters(rune.cast, params);
+            rune.cast.mana = params.value(QLatin1String("useMana")).toInt();
+            rune.cast.mean = params.value(QLatin1String("mean")).toInt();
+            spell.rune = std::move(rune);
+        } else {
+            spell.cast.mean = object.value(QLatin1String("mean")).toInt();
+        }
         spell.damagetype = object.value(QLatin1String("damagetype")).toString();
         spell.mean = object.value(QLatin1String("mean")).toInt();
         spell.scaling = stringList(object.value(QLatin1String("scaling")));
-        // CIP ESpellSource: Unknown=0, LevelUp=1, WheelOfDestiny=2, ThreeFoldPath=3.
-        const QString source = object.value(QLatin1String("source")).toString();
-        if (source.contains(QLatin1String("Wheel"), Qt::CaseInsensitive))
-            spell.source = 2;
-        else if (source.contains(QLatin1String("ThreeFold"), Qt::CaseInsensitive) || source.contains(QLatin1String("Threefold"), Qt::CaseInsensitive))
-            spell.source = 3;
-        else if (!source.isEmpty())
-            spell.source = 1;
+        // CIP ESpellSource: lower-cased "wheelofdestiny" 2, "threefoldpath" 3, else level up 1.
+        const QString source = object.value(QLatin1String("source")).toString().toLower();
+        spell.source = source == QLatin1String("wheelofdestiny") ? 2 : source == QLatin1String("threefoldpath") ? 3 : 1;
         QJsonObject cooldowns = object;
         if (const QJsonObject rune = object.value(QLatin1String("runeParams")).toObject(); !rune.isEmpty()) {
             spell.runeObjectId = rune.value(QLatin1String("runeType")).toInt();
@@ -163,13 +241,9 @@ TSpellInfoStorage::TSpellInfoStorage()
         spell.vocations = stringList(object.value(QLatin1String("allowedVocations")));
         if (spell.vocations.isEmpty())
             spell.vocations = stringList(cooldowns.value(QLatin1String("allowedVocations")));
-        if (spell.id <= 0)
-            continue;
-        if (!spell.words.isEmpty())
-            m_byWords.emplace(spell.words.toLower(), spell.id);
-        if (spell.runeObjectId)
-            m_byRune.emplace(spell.runeObjectId, spell.id);
-        m_spells.emplace(spell.id, std::move(spell));
+        if (spell.rune)
+            m_byRune[spell.rune->objectId] = spell.id;
+        m_spells[spell.id] = std::move(spell);
     }
 }
 
@@ -179,20 +253,123 @@ const TSpellInfo* TSpellInfoStorage::spell(const int spellId) const
     return it == m_spells.end() ? nullptr : &it->second;
 }
 
-const TSpellInfo* TSpellInfoStorage::spellOfText(const QString& text) const
+int TSpellInfoStorage::spellCount() const { return int(m_spells.size()); }
+
+TSpellInfo TSpellInfoStorage::spellInfoAt(const int spellId) const
 {
-    const QString words = text.trimmed().toLower();
-    if (words.isEmpty())
-        return nullptr;
-    if (const auto it = m_byWords.find(words); it != m_byWords.end())
-        return spell(it->second);
-    const TSpellInfo* best = nullptr;
-    for (const auto& [formula, id] : m_byWords) {
-        if (words.size() > formula.size() && words.startsWith(formula) && words.at(formula.size()) == QLatin1Char(' ')
-            && (!best || formula.size() > best->words.size()))
-            best = spell(id);
+    TSpellInfo spell;
+    if (const TSpellInfo* record = this->spell(spellId))
+        spell = *record;
+    applySpellModifications(spell);
+    return spell;
+}
+
+std::optional<TSpellInfo> TSpellInfoStorage::spellInfo(const int spellId) const
+{
+    const TSpellInfo* record = spell(spellId);
+    if (!record)
+        return std::nullopt;
+    TSpellInfo spell = *record;
+    applySpellModifications(spell);
+    return spell;
+}
+
+QString TSpellInfoStorage::spellFormula(const int spellId) const
+{
+    if (!spell(spellId))
+        return {};
+    const TSpellInfo spell = spellInfoAt(spellId);
+    if (spell.parameterHints.isEmpty())
+        return spell.words;
+    return spell.words + QLatin1Char(' ') + spell.parameterHints.trimmed();
+}
+
+std::optional<TSpellCastParameters> TSpellInfoStorage::castParameters(const int spellId) const
+{
+    const std::optional<TSpellInfo> spell = spellInfo(spellId);
+    if (!spell)
+        return std::nullopt;
+    return spell->rune ? spell->rune->cast : spell->cast;
+}
+
+std::optional<TSpellInfo> TSpellInfoStorage::runeSpellInfo(const int objectId) const
+{
+    const auto it = m_byRune.find(objectId);
+    if (it == m_byRune.end())
+        return std::nullopt;
+    return spellInfo(it->second);
+}
+
+bool TSpellInfoStorage::isCrossHairTarget(const int spellId) const
+{
+    const TSpellInfo* spell = this->spell(spellId);
+    return spell && spell->crossHairTarget;
+}
+
+bool TSpellInfoStorage::isAimAtTarget(const int spellId) const
+{
+    const TSpellInfo* spell = this->spell(spellId);
+    return spell && spell->aimAtTarget;
+}
+
+void TSpellInfoStorage::applySpellModifications(TSpellInfo& spell) const
+{
+    const std::vector<TSpellModification>* modifications = spellModifications(uint16_t(spell.id));
+    if (!modifications)
+        return;
+    // The value is signed: a modification can lower the cost or cooldown.
+    for (const TSpellModification& modification : *modifications) {
+        const int value = int(modification.value);
+        switch (modification.type) {
+        case 0: spell.cast.mana += value; break;
+        case 1: spell.cast.cooldownSelf += value; break;
+        case 2: spell.cast.cooldownPrimaryGroup += value; break;
+        case 3: spell.cast.cooldownSecondaryGroup += value; break;
+        default: break;
+        }
     }
-    return best;
+}
+
+TSpellInfoStorage::TSpellText TSpellInfoStorage::parseSpellText(QString text) const
+{
+    text = text.trimmed();
+    TSpellText result;
+    result.parameters = text;
+    qsizetype bestLength = 0;
+    for (const auto& [id, spell] : m_spells) {
+        const qsizetype length = spell.words.size();
+        if (bestLength >= length || !text.startsWith(spell.words, Qt::CaseInsensitive))
+            continue;
+        const QString parameters = text.mid(length).trimmed();
+        if (!spell.parameterHints.isEmpty() || parameters.isEmpty()) {
+            result.spell = &spell;
+            result.parameters = parameters;
+            bestLength = length;
+        }
+    }
+    return result;
+}
+
+const TSpellInfo* TSpellInfoStorage::spellOfText(const QString& text) const { return parseSpellText(text).spell; }
+
+int TSpellInfoStorage::spellIdOfText(const QString& text) const
+{
+    const TSpellInfo* spell = parseSpellText(text).spell;
+    return spell ? spell->id : 0;
+}
+
+void TSpellInfoStorage::setSpellModifications(std::unordered_map<uint16_t, std::vector<TSpellModification>> modifications)
+{
+    m_modifications = std::move(modifications);
+    Q_EMIT spellModificationsApplied();
+}
+
+void TSpellInfoStorage::clearSpellModifications() { m_modifications.clear(); }
+
+const std::vector<TSpellInfoStorage::TSpellModification>* TSpellInfoStorage::spellModifications(const uint16_t spellId) const
+{
+    const auto it = m_modifications.find(spellId);
+    return it == m_modifications.end() ? nullptr : &it->second;
 }
 
 const TSpellInfo* TSpellInfoStorage::runeSpellOfObject(const int objectId) const

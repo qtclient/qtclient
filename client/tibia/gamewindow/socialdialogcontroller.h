@@ -20,6 +20,8 @@ struct TGameAction;
 }
 namespace gamewindow {
 
+class TMessageDialogController;
+
 /// SocialDialog.qml (CIP TSocialDialogController, show / close /
 /// handleGameAction / requestTabSwitch).
 class TSocialDialogController final : public TDialogController<cip::tibia::gamewindow::TSocialDialogController>
@@ -68,7 +70,15 @@ public:
 private:
     bool handleGameAction(const input::TGameAction& action);
     cip::tibia::gamewindow::IDialogTabPage* page(EDialogTab tab) const;
+    /// Hides the shown page and shows the tab's page.
     void setTab(EDialogTab tab);
+    /// Hides the shown page, leaves every tab and closes the dialog.
+    void closeTabs();
+    /// The friend system cannot be used: an error message, and the dialog closes.
+    void onCannotUseFriendSystemError();
+    /// A friend system error with the server's message.
+    void onGenericFriendSystemError(const QString& errorMessage);
+    void showErrorMessage(const QString& message);
 
     TFriendsFriendListPageController* m_friends = nullptr;
     TFriendsInvitesPageController* m_invites = nullptr;
@@ -78,6 +88,7 @@ private:
     TTeamJoinPageController* m_join = nullptr;
     TTeamAssemblePageController* m_assemble = nullptr;
     TSocialButtonController* m_button = nullptr;
+    TMessageDialogController* m_errorDialog = nullptr;
 };
 
 }

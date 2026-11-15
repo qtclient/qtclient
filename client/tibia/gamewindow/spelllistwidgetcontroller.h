@@ -1,7 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
-#include "gamewindow/magicalarchivedialogcontroller.h"
+#include "gamewindow/assignactiondialogs.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 #include "gamewindow/uifocusmanager.h"
 
@@ -20,9 +20,8 @@ class TSidebarOptions;
 namespace tibia {
 namespace gamewindow {
 
-/// spelllistwidget.qml (CIP: TSpellListWidgetController). Reuses the Magical
-/// Archive spell model + filter proxy. Archive rows refresh on
-/// onUnlockedSpells / onSpellDataModification.
+/// spelllistwidget.qml (CIP: TSpellListWidgetController): the spell list
+/// proxy, its filter boxes in the context menu and in the widget options.
 class TSpellListWidgetController final
     : public TSidebarWidgetController<cip::tibia::gamewindow::TSpellListWidgetController>
 {
@@ -31,7 +30,6 @@ public:
     TSpellListWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
 
     void setSidebarOptions(config::TSidebarOptions* options);
-    void reloadArchive();
 
     /// CIP moc property getters.
     QQuickItem* gameWindowQuickItem() const override;
@@ -39,8 +37,12 @@ public:
     bool hasFocus() const override;
 
 public Q_SLOTS:
+    /// The filter boxes as checkable entries; "all vocations" and "all spell
+    /// groups" tick every box of their block.
     void onShowContextMenu() override;
+    /// Opens the spell in the Magical Archive.
     void onShowMoreForSpell(int SpellID) override;
+    /// Stores the size and the filter boxes in the widget options.
     void saveWidgetOptions() override;
     void takeFocus() override;
     void releaseFocus() override;
@@ -70,13 +72,13 @@ Q_SIGNALS:
     void requestWidgetControlToTakeFocus();
 
 private Q_SLOTS:
-    /// CIP private slot — persist contentHeight / contentMaximized.
+    /// Applies the widget options' size and filter boxes.
     void onWidgetOptionsChanged();
     void onWidgetQuickItemDestroyed();
 
 private:
-    TMagicalArchiveSpellListModel* m_model;
     TSpellListDataModelSortFilterProxy* m_proxy;
+    bool m_applyingOptions = false;
     TUiFocusManager m_focus;
     QPointer<config::TSidebarOptions> m_options;
 };
@@ -96,7 +98,6 @@ private:
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TSpellListWidgetController> m_controller;
-    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

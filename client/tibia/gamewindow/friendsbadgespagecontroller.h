@@ -4,12 +4,14 @@
 
 #include <cip_gen.h>
 
+#include <QMetaObject>
 #include <QObject>
 
 namespace tibia {
 namespace gamewindow {
 
-/// FriendsBadgesPage.qml (CIP TFriendsBadgesPageController).
+/// FriendsBadgesPage.qml (CIP TFriendsBadgesPageController): the player's
+/// badges from friends::TFriendsStorage, filtered by state.
 class TFriendsBadgesPageController final : public cip::tibia::gamewindow::TFriendsBadgesPageController
 {
     Q_OBJECT
@@ -26,9 +28,11 @@ public:
     Q_INVOKABLE void updateBadgeVisibility(uint BadgeID, bool ShouldBeVisibleForOthers) override;
 
 private:
-    void rebuildRows();
+    /// Copies the stored badges into the list model.
+    void updateBadges();
 
-    TFriendsRowsModel* m_model = nullptr;
+    TAccountBadgesSortProxyModel* m_model = nullptr;
+    QMetaObject::Connection m_badgesConnection;
 };
 
 }

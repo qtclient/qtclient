@@ -5,34 +5,93 @@
 
 #include <cip_gen.h>
 
+#include <QAbstractListModel>
 #include <QPointer>
+#include <QTimer>
 
+#include <optional>
+#include <set>
 #include <vector>
 
 namespace tibia {
 namespace config {
 class TSidebarOptions;
 }
+namespace news {
+class TNewsStorage;
+}
 }
 
 namespace tibia {
 namespace gamewindow {
 
-/// PlayerGuideWidget.qml CipSoft shell (CIP: TPlayerGuideWidgetController).
-/// Newhaven / tutorial player-guide entries are not published on CipSoft today —
-/// the widget stays an empty entries pane. The manager still listens for
-/// onUnlockedSpells so CipSoft can later surface level-up auto-spell rows.
+/// The spells a level up brings (CIP: the player guide's anonymous
+/// TSpellListModel): the roles spellName and iconID.
+class TPlayerGuideSpellListModel final : public QAbstractListModel
+{
+    Q_OBJECT
+public:
+    struct TEntry
+    {
+        int iconIndex = 0;
+        QString name;
+    };
+
+    using QAbstractListModel::QAbstractListModel;
+
+    void setEntries(std::vector<TEntry> entries);
+    int rowCount(const QModelIndex& parent = {}) const override;
+    QVariant data(const QModelIndex& index, int role) const override;
+    QHash<int, QByteArray> roleNames() const override;
+
+private:
+    std::vector<TEntry> m_entries;
+};
+
+/// The older unlocked player guide news (CIP: the anonymous
+/// TPlayerGuideEntryListModel): the roles playerGuideHeader and
+/// newsEntryID.
+class TPlayerGuideEntryListModel final : public QAbstractListModel
+{
+    Q_OBJECT
+public:
+    struct TEntry
+    {
+        QString header;
+        int newsEntryId = 0;
+    };
+
+    using QAbstractListModel::QAbstractListModel;
+
+    void setEntries(std::vector<TEntry> entries);
+    int rowCount(const QModelIndex& parent = {}) const override;
+    QVariant data(const QModelIndex& index, int role) const override;
+    QHash<int, QByteArray> roleNames() const override;
+
+private:
+    std::vector<TEntry> m_entries;
+};
+
+/// PlayerGuideWidget.qml (CIP: TPlayerGuideWidgetController). On a level up
+/// it shows the level and the spells of that level for the player's
+/// vocation (unlocked ones and ones to learn) for 15 seconds; otherwise the
+/// latest unlocked player guide news, up to two older ones, or the special
+/// popup a reached level (9, 10, 20) still has to show.
 class TPlayerGuideWidgetController final
     : public TSidebarWidgetController<cip::tibia::gamewindow::TPlayerGuideWidgetController>
 {
     Q_OBJECT
 public:
-    TPlayerGuideWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TPlayerGuideWidgetController(news::TNewsStorage* newsStorage, QQuickItem* gameWindowItem, QQmlEngine* engine,
+                                 QObject* parent = nullptr);
 
     void setSidebarOptions(config::TSidebarOptions* options);
-    void onUnlockedSpells(const std::vector<uint16_t>& spellIds);
 
-    /// CIP moc property getters (live members; empty shell keeps entries off).
+    /// Queues the special popup of a reached level unless the player saw it
+    /// already (the option sets pendingLevelSpecialPopups /
+    /// confirmedLevelSpecialPopups of playerGuideWidgetOptions).
+    static void queueLevelSpecialPopup(int level, config::TSidebarOptions* options);
+
     bool isShowLevelUp() const override;
     bool isShowAutoSpellList() const override;
     bool isShowManualSpellList() const override;
@@ -50,6 +109,7 @@ public:
     QQuickItem* gameWindowQuickItem() const override;
 
 public Q_SLOTS:
+    /// Stores the size, keeping the popup sets.
     void saveWidgetOptions() override;
     void onCloseClicked() override;
     void onRequestClose() override;
@@ -61,8 +121,10 @@ public Q_SLOTS:
     void startContentSizeChangedTimer();
 
 public:
+    /// Opens the latest unlocked guide entry in the news dialog.
     Q_INVOKABLE void showLatestUnlockedPlayerGuide() override;
     Q_INVOKABLE void showPreviousUnlockedPlayerGuide(int newsEntryId) override;
+    /// Shows the pending special popup and marks it seen.
     Q_INVOKABLE void showLevelSpecialPopup() override;
 
 Q_SIGNALS:
@@ -76,24 +138,32 @@ Q_SIGNALS:
     void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
-    /// CIP class NOTIFY — qtclient already emits.
-    void playerGuideEntriesChanged();
-    /// CIP empty-shell NOTIFYs — qtclient redeclare; Newhaven catalogue absent so no live emit yet.
-    void autoSpellListChanged();
-    void manualSpellListChanged();
-    void showAutoSpellListChanged();
-    void showManualSpellListChanged();
-    void showLevelUpChanged();
-    void playerLevelToShowChanged();
-    void levelSpecialPopupLevelChanged();
 
 private Q_SLOTS:
-    /// CIP private slots — options persist + news-driven entry refresh hook.
+    /// Applies the widget options' size.
     void onWidgetOptionsChanged();
     void onWidgetQuickItemDestroyed();
     void onNewsStorageContentsChanged();
 
 private:
+    /// Follows the new session's player: level ups, then the guide entries.
+    void onGameSessionChanged();
+    /// The level up view: the level and its spells, shown until the hide timer runs out.
+    void onPlayerLevelUp();
+    /// Hides the level up view once the hide timer is not running.
+    void hideLevelUpUnlessTimerRuns();
+    /// The latest unlocked player guide news and up to two older ones.
+    void refreshPlayerGuideEntries();
+    /// The lowest pending special popup level once the player reached it.
+    std::optional<int> levelSpecialPopupLevel() const;
+    void setFlag(bool& flag, bool value, void (TPlayerGuideWidgetController::*changed)());
+
+    QPointer<news::TNewsStorage> m_newsStorage;
+    QTimer m_hideTimer;
+    TPlayerGuideSpellListModel m_autoSpells;
+    TPlayerGuideSpellListModel m_manualSpells;
+    TPlayerGuideEntryListModel m_previousEntries;
+    int m_latestUnlockedNewsEntryId = 0;
     QPointer<config::TSidebarOptions> m_options;
 };
 
@@ -109,10 +179,13 @@ public:
     TSidebarWidget* current() const;
 
 private:
+    void onGameStarted();
+    void onPlayerLevelUp();
+
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
     QPointer<TPlayerGuideWidgetController> m_controller;
-    std::vector<client::gamecore::Hook> m_hooks;
+    QPointer<config::TSidebarOptions> m_options;
 };
 
 }

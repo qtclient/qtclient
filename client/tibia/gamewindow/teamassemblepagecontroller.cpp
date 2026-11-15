@@ -1,5 +1,8 @@
 #include "teamassemblepagecontroller.h"
 
+#include "assets/things.h"
+#include "creatures/creaturestorage.h"
+#include "cyclopedia/cyclopediamapdata.h"
 #include "game/gameciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -9,6 +12,8 @@
 #include <tibia/game/gamesession.h>
 
 #include <QKeySequence>
+
+#include <algorithm>
 
 namespace tibia::gamewindow {
 
@@ -41,13 +46,70 @@ bool TTeamAssemblePageController::assemblyStarted() const
 
 QString TTeamAssemblePageController::activityName() const
 {
-    // The listed activity's display name comes from the activity name resolver (static data), not wired yet.
-    return {};
+    if (!m_storage)
+        return {};
+    return activityDisplayName(m_storage->teamParameters().activity, m_resolver);
 }
 
 bool TTeamAssemblePageController::isInParty() const
 {
-    return m_isInParty;
+    if (!m_storage)
+        return false;
+    auto* creatures = creatures::TCreatureStorage::instance();
+    const auto player = creatures ? creatures->player() : nullptr;
+    return player ? player->isPartyMember() : false;
+}
+
+void TTeamAssemblePageController::loadActivities()
+{
+    using teamfinder::TTeamActivity;
+    std::vector<TActivity> activities;
+    const auto addHunt = [&](const int area, const int subarea) {
+        activities.push_back(makeActivity({ .kind = TTeamActivity::Hunt, .huntType = static_cast<uint16_t>(area),
+                                            .huntArea = static_cast<uint16_t>(subarea) },
+                                          m_resolver));
+    };
+    const auto addBoss = [&](const uint16_t boss) {
+        activities.push_back(makeActivity({ .kind = TTeamActivity::Boss, .bossId = boss }, m_resolver));
+    };
+    const auto addQuest = [&](const uint32_t quest) {
+        activities.push_back(makeActivity({ .kind = TTeamActivity::Quest, .questId = quest }, m_resolver));
+    };
+    addHunt(0, 0);
+    addBoss(0);
+    addQuest(0);
+    activities.push_back(makeActivity({ .kind = TTeamActivity::Other }, m_resolver));
+
+    // Hunting places: each map area (with an "any" entry when it has several subareas) and its subareas.
+    std::vector<const cyclopedia::TCyclopediaMapStaticData::TArea*> areas;
+    for (const auto& area : cyclopedia::TCyclopediaMapStaticData::instance().areas()) {
+        if (!area.isSubarea)
+            areas.push_back(&area);
+    }
+    std::sort(areas.begin(), areas.end(), [](const auto* left, const auto* right) { return left->id < right->id; });
+    for (const auto* area : areas) {
+        std::vector<int> subareas = area->subareaIds;
+        std::sort(subareas.begin(), subareas.end());
+        subareas.erase(std::unique(subareas.begin(), subareas.end()), subareas.end());
+        if (subareas.size() > 1)
+            addHunt(area->id, 0);
+        for (const int subarea : subareas)
+            addHunt(area->id, subarea);
+    }
+
+    std::vector<uint16_t> bosses;
+    for (const auto& race : appearances::TAppearancesManager::instance().getAllRaces()) {
+        if (race.boss && !race.notInTeamFinder)
+            bosses.push_back(static_cast<uint16_t>(race.raceId));
+    }
+    std::sort(bosses.begin(), bosses.end());
+    for (const uint16_t boss : bosses)
+        addBoss(boss);
+
+    for (const auto& quest : appearances::TAppearancesManager::instance().getCyclopediaQuests())
+        addQuest(quest.id);
+
+    m_activities->setActivities(activities);
 }
 
 QObject* TTeamAssemblePageController::teamSettings() const
@@ -84,6 +146,8 @@ void TTeamAssemblePageController::disconnectAll()
 
 void TTeamAssemblePageController::showDialogTab()
 {
+    if (m_activities->rowCount() == 0)
+        loadActivities();
     disconnectAll();
     m_storage = nullptr;
     if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance(); premium != m_premium)

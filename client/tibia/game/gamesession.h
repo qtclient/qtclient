@@ -350,13 +350,6 @@ void processUpdateBestiaryMonsterData(const BestiaryMonsterData& data);
 void processUpdateBestiaryCharmsData(const BestiaryCharmsData& charmData);
 void processBosstiaryInfo(const std::vector<BosstiaryData>& boss);
 void processBosstiarySlots(const BosstiarySlotsData& data);
-void processHighscore(std::string_view serverName, std::string_view world, uint8_t worldType, uint8_t battlEye,
-                      const std::vector<std::tuple<uint32_t, std::string>>& vocations,
-                      const std::vector<std::tuple<uint8_t, std::string>>& categories, uint16_t page, uint16_t totalPages,
-                      const std::vector<std::tuple<uint32_t, std::string, std::string, uint8_t, std::string, uint16_t, uint8_t, uint64_t>>& highscores,
-                      uint32_t entriesTs, const std::vector<std::string>& worlds = {}, std::string_view allVocationsName = {},
-                      uint32_t selectedVocation = 0xFFFFFFFF, uint8_t selectedCategory = 0, uint8_t selectedIndex = 0xFF,
-                      bool showLoyaltyTitle = false, uint8_t valueType = 1);
 void processCyclopediaCharacterOffenceStats(const CyclopediaCharacterOffenceStats& data);
 void processCyclopediaCharacterDefenceStats(const CyclopediaCharacterDefenceStats& data);
 void processCyclopediaCharacterMiscStats(const CyclopediaCharacterMiscStats& data);

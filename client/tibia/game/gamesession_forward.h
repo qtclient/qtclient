@@ -178,7 +178,6 @@ void requestGetRewardDaily(const uint8_t bonusShrine, const std::map<uint16_t, u
 
 void requestGuildMessage();
 
-void requestHighscore(uint8_t action, uint8_t category, uint32_t vocation, std::string_view world, uint8_t worldType, uint8_t battlEye, uint16_t page, uint8_t totalPages);
 
 void requestItemInfo(uint16_t typeId, uint8_t subType, uint8_t index);
 
@@ -226,7 +225,6 @@ void sellItem(uint16_t typeId, uint8_t subType, uint16_t amount, bool ignoreEqui
 
 void sendApplyWheelPoints(const std::vector<uint16_t>& slotPoints, const std::array<uint16_t, 8>& vesselGems);
 
-void sendBossDifficultyAction(uint8_t action, uint16_t difficulty = 0);
 
 void sendContainerAction(uint8_t action, uint8_t containerId = 0);
 

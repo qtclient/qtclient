@@ -4,14 +4,11 @@
 #include "gamewindow/contextmenucontroller.h"
 #include "protocol/clientmessages.h"
 
-#include <QDateTime>
-#include <QLocale>
-
 namespace tibia::gamewindow {
 
 namespace {
 
-// CIP FriendSystemAction numbers.
+// FriendSystemAction numbers.
 constexpr uint8_t kLoadInvites = 1;
 constexpr uint8_t kLoadBlacklist = 2;
 constexpr uint8_t kAcceptInvite = 4;
@@ -19,13 +16,6 @@ constexpr uint8_t kDeclineInvite = 5;
 constexpr uint8_t kCancelInvite = 6;
 constexpr uint8_t kAddToBlacklist = 7;
 constexpr uint8_t kRemoveFromBlacklist = 8;
-
-QString dateText(const uint32_t timestamp)
-{
-    if (timestamp == 0)
-        return {};
-    return QLocale().toString(QDateTime::fromSecsSinceEpoch(timestamp).date(), QLocale::ShortFormat);
-}
 
 }
 
@@ -38,41 +28,24 @@ TFriendsInvitesPageController::TFriendsInvitesPageController(QObject* parent)
     m_receivedInvites = m_receivedModel;
     m_sentInvites = m_sentModel;
     m_blacklist = m_blacklistModel;
-    auto* invites = friends::TFriendsStorage::instance()->inviteStorage();
-    connect(invites, &friends::TFriendsInviteStorage::inviteListChanged, this, &TFriendsInvitesPageController::rebuildInvites);
-    connect(invites, &friends::TFriendsInviteStorage::blacklistChanged, this, &TFriendsInvitesPageController::rebuildBlacklist);
-    rebuildInvites();
-    rebuildBlacklist();
 }
 
-void TFriendsInvitesPageController::rebuildInvites()
+void TFriendsInvitesPageController::updateInviteLists()
 {
-    QVector<TInviteListModel::Row> received;
-    QVector<TInviteListModel::Row> sent;
-    for (const auto& invite : friends::TFriendsStorage::instance()->inviteStorage()->invites()) {
-        TInviteListModel::Row row;
-        row.accountId = invite.account().account_id();
-        row.maincharName = QString::fromStdString(invite.account().name());
-        row.title = QString::fromStdString(invite.account().title());
-        row.inviterName = QString::fromStdString(invite.text());
-        row.inviteDate = dateText(invite.timestamp());
-        (invite.sent() ? sent : received).push_back(std::move(row));
-    }
-    m_receivedModel->setRows(std::move(received));
-    m_sentModel->setRows(std::move(sent));
+    const friends::TInviteList& inviteList = friends::TFriendsStorage::instance()->inviteStorage()->inviteList();
+    m_receivedModel->setEntries(inviteList.received);
+    m_sentModel->setEntries(inviteList.sent);
 }
 
-void TFriendsInvitesPageController::rebuildBlacklist()
+void TFriendsInvitesPageController::updateBlacklist()
 {
-    QVector<TBlacklistModel::Row> rows;
-    for (const auto& entry : friends::TFriendsStorage::instance()->inviteStorage()->blacklist()) {
-        TBlacklistModel::Row row;
-        row.accountId = entry.account().account_id();
-        row.maincharName = QString::fromStdString(entry.account().name());
-        row.blacklistDate = dateText(entry.timestamp());
-        rows.push_back(std::move(row));
-    }
-    m_blacklistModel->setRows(std::move(rows));
+    m_blacklistModel->setEntries(friends::TFriendsStorage::instance()->inviteStorage()->blacklist());
+}
+
+void TFriendsInvitesPageController::disconnectStorage()
+{
+    disconnect(m_inviteListConnection);
+    disconnect(m_blacklistConnection);
 }
 
 QObject* TFriendsInvitesPageController::receivedInvites() const
@@ -102,13 +75,24 @@ void TFriendsInvitesPageController::setShownListType(const EShownListType type)
 
 void TFriendsInvitesPageController::showDialogTab()
 {
-    // CIP fetches both lists when the tab opens.
+    // The tab opens on the received invites, follows the stored lists while it
+    // is open and asks for fresh ones.
+    disconnectStorage();
+    setShownListType(ReceivedInvites);
+    auto* invites = friends::TFriendsStorage::instance()->inviteStorage();
+    m_inviteListConnection = connect(invites, &friends::TFriendsInviteStorage::inviteListChanged, this,
+                                     &TFriendsInvitesPageController::updateInviteLists);
+    m_blacklistConnection = connect(invites, &friends::TFriendsInviteStorage::blacklistChanged, this,
+                                    &TFriendsInvitesPageController::updateBlacklist);
+    updateInviteLists();
+    updateBlacklist();
     protocol::gameclient::sendFriendSystemAction(kLoadInvites);
     protocol::gameclient::sendFriendSystemAction(kLoadBlacklist);
 }
 
 void TFriendsInvitesPageController::hideDialogTab()
 {
+    disconnectStorage();
 }
 
 void TFriendsInvitesPageController::showContextMenuForSentInvite(const uint InvitedAccountID)

@@ -67,7 +67,8 @@ public:
     ~TBosstiaryDialogController() override;
 
     Context captureContext() const;
-    void restoreContext(const Context& context) { m_pendingContext = context; }
+    /// Takes the filter and page back and rebuilds.
+    void restoreContext(const Context& context);
     /// CIP : shows the boss of `raceId` (its name as the search).
     void showRace(int raceId);
 
@@ -104,8 +105,6 @@ private:
 
     cyclopedia::TBosstiaryStorage& m_storage;
     TBosstiaryBossModel* m_model;
-    std::optional<Context> m_pendingContext;
-    bool m_restoring = false;
 };
 
 /// One slot of the boss slots page (CIP: TBossSlotQMLInformation, metacall

@@ -1254,8 +1254,8 @@ message ProtocolFriendAccount {
   optional uint32 character_id = 2;
   optional string name = 3;
   optional string title = 4;
-  optional string vocation = 5;
-  optional string world = 6;
+  optional string world = 5;
+  optional string vocation = 6;
   optional uint32 level = 7;
   optional ProtocolOutfit outfit = 8;
 }
@@ -1291,8 +1291,8 @@ message ProtocolFriendSearchCharacter {
   optional string name = 2;
   optional bool main_character = 3;
   optional string title = 4;
-  optional string vocation = 5;
-  optional string world = 6;
+  optional string world = 5;
+  optional string vocation = 6;
   optional uint32 level = 7;
   optional bool online = 8;
   optional ProtocolOutfit outfit = 9;

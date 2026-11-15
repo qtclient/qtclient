@@ -1,46 +1,53 @@
 #include "friendsaccountsearchpagecontroller.h"
 
-#include "gamewindow/characterinfodialogcontroller.h"
 #include "friends/friendsciptypes.h"
+#include "gamewindow/characterinfodialogcontroller.h"
+#include "gamewindow/characterinfomodels.h"
+#include "input/gameaction.h"
 #include "protocol/clientmessages.h"
-#include "client/outfit.h"
 
 #include <QDateTime>
-#include <QLocale>
 
 namespace tibia::gamewindow {
 
 namespace {
 
-// CIP FriendSystemAction numbers.
+// FriendSystemAction numbers.
 constexpr uint8_t kSendInvite = 3;
 constexpr uint8_t kAddToBlacklist = 7;
 
-QColor outfitColor(const uint32_t index)
+const friends::TAccountSearchResult& searchResult()
 {
-    const Color color = Outfit::getColor(static_cast<int>(index));
-    return QColor(color.r(), color.g(), color.b());
+    return friends::TFriendsStorage::instance()->accountSearch()->result();
 }
 
+/// CIP gamewindow::TAccountCharacterListData: the characters model of one result.
 class TAccountCharacterList final : public cip::tibia::gamewindow::TAccountCharacterListData
 {
     Q_OBJECT
 public:
-    TAccountCharacterList(QObject* model, QObject* parent)
+    TAccountCharacterList(const std::vector<friends::TAccountCharacterListEntry>& characters, QObject* parent)
         : TAccountCharacterListData(parent)
     {
+        auto* model = new ::tibia::TAccountCharactersModel(this);
+        model->setEntries(characters);
         m_accountCharactersModel = model;
     }
 };
 
+/// CIP gamewindow::TAccountBadgeListData: the badges model of one result.
 class TAccountBadgeList final : public cip::tibia::gamewindow::TAccountBadgeListData
 {
     Q_OBJECT
 public:
-    TAccountBadgeList(QObject* model, QObject* parent)
+    TAccountBadgeList(const std::vector<friends::TAccountBadge>& badges, QObject* parent)
         : TAccountBadgeListData(parent)
     {
-        m_accountBadgesModel = model;
+        std::vector<AccountBadgeEntry> entries;
+        entries.reserve(badges.size());
+        for (const auto& badge : badges)
+            entries.push_back({ badge.id, badge.name });
+        m_accountBadgesModel = new TAccountBadgesModel(std::move(entries), this);
     }
 };
 
@@ -49,103 +56,65 @@ public:
 TFriendsAccountSearchPageController::TFriendsAccountSearchPageController(QObject* parent)
     : cip::tibia::gamewindow::TFriendsAccountSearchPageController(parent)
     , m_characterInfo(new TCharacterInfoDialogController(this))
-    , m_characterRows(new TFriendsRowsModel({ "characterID", "characterName", "characterTitle", "isMainCharacter", "isOnline", "level",
-                                              "vocation", "world", "outfitID", "headColor", "torsoColor", "legsColor", "detailColor",
-                                              "addon" },
-                                            this))
-    , m_badgeRows(new TFriendsRowsModel({ "badgeIcon", "badgeName" }, this))
 {
-    m_characters = new TAccountCharacterList(m_characterRows, this);
-    m_badges = new TAccountBadgeList(m_badgeRows, this);
-    m_accountCharacterList = m_characters;
-    m_accountBadgeList = m_badges;
     m_characterInfoDialogController = m_characterInfo;
     m_showEmptyTab = true;
+    m_accountCharacterList = new TAccountCharacterList({}, this);
+    m_accountBadgeList = new TAccountBadgeList({}, this);
+    connect(m_characterInfo, &TCharacterInfoDialogController::errorLoadingCharacter, this,
+            &TFriendsAccountSearchPageController::onErrorLoadingCharacter);
+    connect(m_characterInfo, &TCharacterInfoDialogController::noPermissionsToViewCharacter, this,
+            &TFriendsAccountSearchPageController::onNoPermissionToDisplayCharacterSummary);
+    connect(m_characterInfo, &TCharacterInfoDialogController::noPermissionsToInspectCharacter, this,
+            &TFriendsAccountSearchPageController::onNoPermissionToInspectCharacter);
+    // The session's storages live as long as the client: follow them from the start.
     auto* search = friends::TFriendsStorage::instance()->accountSearch();
     connect(search, &friends::TFriendsAccountSearchStorage::receivedAccountSearchResults, this,
-            &TFriendsAccountSearchPageController::onSearchResults);
+            &TFriendsAccountSearchPageController::onAccountSearchResults);
     connect(search, &friends::TFriendsAccountSearchStorage::receivedNoResultsFound, this,
             &TFriendsAccountSearchPageController::onNoResultsFound);
-}
-
-void TFriendsAccountSearchPageController::onSearchResults()
-{
-    const auto& result = friends::TFriendsStorage::instance()->accountSearch()->result();
-    m_accountId = result.account_id();
-    m_showAccountInfo = result.show_account_info();
-    m_isOnline = result.online();
-    m_isPremium = result.premium();
-    m_isFriendOrInvited = result.friend_or_invited();
-    m_isOnBlacklist = result.on_blacklist();
-    m_loyaltyTitle = QString::fromStdString(result.loyalty_title());
-    m_lastGameLogin = result.last_login() == 0
-        ? QString()
-        : QLocale().toString(QDateTime::fromSecsSinceEpoch(result.last_login()), QLocale::ShortFormat);
-    m_hasMainCharacter = false;
-    QVector<QVariantMap> characters;
-    for (const auto& character : result.characters()) {
-        m_hasMainCharacter = m_hasMainCharacter || character.main_character();
-        const auto& outfit = character.outfit();
-        characters.push_back({
-            { QStringLiteral("characterID"), static_cast<uint>(character.character_id()) },
-            { QStringLiteral("characterName"), QString::fromStdString(character.name()) },
-            { QStringLiteral("characterTitle"), QString::fromStdString(character.title()) },
-            { QStringLiteral("isMainCharacter"), character.main_character() },
-            { QStringLiteral("isOnline"), character.online() },
-            { QStringLiteral("level"), static_cast<int>(character.level()) },
-            { QStringLiteral("vocation"), QString::fromStdString(character.vocation()) },
-            { QStringLiteral("world"), QString::fromStdString(character.world()) },
-            { QStringLiteral("outfitID"), static_cast<int>(outfit.look_type()) },
-            { QStringLiteral("headColor"), outfitColor(outfit.head()) },
-            { QStringLiteral("torsoColor"), outfitColor(outfit.body()) },
-            { QStringLiteral("legsColor"), outfitColor(outfit.legs()) },
-            { QStringLiteral("detailColor"), outfitColor(outfit.feet()) },
-            { QStringLiteral("addon"), static_cast<int>(outfit.addons()) },
-        });
-    }
-    m_characterRows->setRows(std::move(characters));
-    QVector<QVariantMap> badges;
-    for (const auto& badge : result.badges())
-        badges.push_back({ { QStringLiteral("badgeIcon"), QString::fromStdString(badge.icon()) },
-                           { QStringLiteral("badgeName"), QString::fromStdString(badge.name()) } });
-    m_badgeRows->setRows(std::move(badges));
-    m_disableButtonsAfterClick = false;
-    Q_EMIT disableButtonsAfterClickChanged();
-    Q_EMIT dataChanged();
-    setLoading(false);
-    setEmpty(false, false);
-}
-
-void TFriendsAccountSearchPageController::onNoResultsFound()
-{
-    m_accountId = 0;
-    setLoading(false);
-    setEmpty(false, true);
+    connect(friends::TFriendsProtocolMessageHandler::instance(), &friends::TFriendsProtocolMessageHandler::errorReceived, this,
+            &TFriendsAccountSearchPageController::onFriendSystemError);
 }
 
 bool TFriendsAccountSearchPageController::showAccountInfo() const
 {
-    return m_showAccountInfo;
+    return searchResult().showAccountInfo;
 }
 
 bool TFriendsAccountSearchPageController::isOnline() const
 {
-    return m_isOnline;
+    return searchResult().isOnline;
 }
 
 bool TFriendsAccountSearchPageController::isPremium() const
 {
-    return m_isPremium;
+    return searchResult().isPremium;
 }
 
 bool TFriendsAccountSearchPageController::isFriendOrInvited() const
 {
-    return m_isFriendOrInvited;
+    return searchResult().isFriendOrInvited;
 }
 
 bool TFriendsAccountSearchPageController::isOnBlacklist() const
 {
-    return m_isOnBlacklist;
+    return searchResult().isOnBlacklist;
+}
+
+bool TFriendsAccountSearchPageController::hasMainCharacter() const
+{
+    return searchResult().hasMainCharacter;
+}
+
+QString TFriendsAccountSearchPageController::loyaltyTitle() const
+{
+    return searchResult().loyaltyTitle;
+}
+
+QString TFriendsAccountSearchPageController::lastGameLogin() const
+{
+    return QDateTime::fromSecsSinceEpoch(searchResult().lastGameLogin).toString(QStringLiteral("yyyy-MM-dd"));
 }
 
 bool TFriendsAccountSearchPageController::showEmptyTab() const
@@ -163,11 +132,6 @@ bool TFriendsAccountSearchPageController::showLoadingComponent() const
     return m_showLoadingComponent;
 }
 
-bool TFriendsAccountSearchPageController::hasMainCharacter() const
-{
-    return m_hasMainCharacter;
-}
-
 bool TFriendsAccountSearchPageController::disableButtonsAfterClick() const
 {
     return m_disableButtonsAfterClick;
@@ -176,21 +140,6 @@ bool TFriendsAccountSearchPageController::disableButtonsAfterClick() const
 bool TFriendsAccountSearchPageController::showCharacterInfo() const
 {
     return m_showCharacterInfo;
-}
-
-void TFriendsAccountSearchPageController::setShowCharacterInfo(const bool show)
-{
-    cip::tibia::gamewindow::TFriendsAccountSearchPageController::setShowCharacterInfo(show);
-}
-
-QString TFriendsAccountSearchPageController::loyaltyTitle() const
-{
-    return m_loyaltyTitle;
-}
-
-QString TFriendsAccountSearchPageController::lastGameLogin() const
-{
-    return m_lastGameLogin;
 }
 
 cip::tibia::gamewindow::TAccountBadgeListData* TFriendsAccountSearchPageController::accountBadgeList() const
@@ -208,89 +157,55 @@ QObject* TFriendsAccountSearchPageController::characterInfoDialogController() co
     return m_characterInfoDialogController;
 }
 
-void TFriendsAccountSearchPageController::showDialogTab()
+void TFriendsAccountSearchPageController::setShowEmptyTab(const bool show)
 {
-}
-
-void TFriendsAccountSearchPageController::hideDialogTab()
-{
-    onBackButtonPressed();
-}
-
-void TFriendsAccountSearchPageController::setLoading(const bool loading)
-{
-    if (loading == m_showLoadingComponent)
+    if (show == m_showEmptyTab)
         return;
-    m_showLoadingComponent = loading;
+    m_showEmptyTab = show;
+    Q_EMIT showEmptyTabChanged();
+}
+
+void TFriendsAccountSearchPageController::setShowNoResultsFound(const bool show)
+{
+    if (show == m_showNoResultsFound)
+        return;
+    m_showNoResultsFound = show;
+    Q_EMIT showNoResultsFoundChanged();
+}
+
+void TFriendsAccountSearchPageController::setShowLoadingComponent(const bool show)
+{
+    if (show == m_showLoadingComponent)
+        return;
+    m_showLoadingComponent = show;
     Q_EMIT showLoadingComponentChanged();
 }
 
-void TFriendsAccountSearchPageController::setEmpty(const bool empty, const bool noResults)
+void TFriendsAccountSearchPageController::setDisableButtonsAfterClick(const bool disable)
 {
-    if (empty != m_showEmptyTab) {
-        m_showEmptyTab = empty;
-        Q_EMIT showEmptyTabChanged();
-    }
-    if (noResults != m_showNoResultsFound) {
-        m_showNoResultsFound = noResults;
-        Q_EMIT showNoResultsFoundChanged();
-    }
+    if (disable == m_disableButtonsAfterClick)
+        return;
+    m_disableButtonsAfterClick = disable;
+    Q_EMIT disableButtonsAfterClickChanged();
 }
 
-void TFriendsAccountSearchPageController::onClickedSearchForCharacter(const QString& SearchString)
+void TFriendsAccountSearchPageController::setShowCharacterInfo(const bool show)
 {
-    // CIP : loading on, then the storage's search request.
-    if (SearchString.trimmed().isEmpty())
+    if (show == m_showCharacterInfo)
         return;
-    setEmpty(false, false);
-    setLoading(true);
-    if (m_disableButtonsAfterClick) {
-        m_disableButtonsAfterClick = false;
-        Q_EMIT disableButtonsAfterClickChanged();
+    m_showCharacterInfo = show;
+    if (show) {
+        m_characterInfo->setNextDataType(TCharacterInfoDialogController::Inspection);
+        m_characterInfo->showDialogTab();
+    } else {
+        m_characterInfo->hideDialogTab();
     }
-    protocol::gameclient::sendFriendSystemSearch(SearchString.trimmed().toStdString());
-}
-
-void TFriendsAccountSearchPageController::openCyclopediaCharacterInfo(const int CharacterID)
-{
-    // CIP .
-    m_characterInfo->setCharacterId(static_cast<uint32_t>(CharacterID));
-    if (m_showCharacterInfo)
-        return;
-    m_showCharacterInfo = true;
-    m_characterInfo->setNextDataType(TCharacterInfoDialogController::Inspection);
-    m_characterInfo->showDialogTab();
-    Q_EMIT showBackButton(true);
+    Q_EMIT showBackButton(show);
     Q_EMIT showCharacterInfoChanged();
 }
 
-void TFriendsAccountSearchPageController::refreshCurrentCharacterInfo()
+void TFriendsAccountSearchPageController::closeCharacterInfo()
 {
-    if (m_characterInfo)
-        m_characterInfo->showDialogTab();
-}
-
-void TFriendsAccountSearchPageController::onClickedInviteAsFriend()
-{
-    if (m_disableButtonsAfterClick || m_accountId == 0)
-        return;
-    protocol::gameclient::sendFriendSystemAccountAction(kSendInvite, m_accountId);
-    m_disableButtonsAfterClick = true;
-    Q_EMIT disableButtonsAfterClickChanged();
-}
-
-void TFriendsAccountSearchPageController::onClickedSetOnBlacklist()
-{
-    if (m_disableButtonsAfterClick || m_accountId == 0)
-        return;
-    protocol::gameclient::sendFriendSystemAccountAction(kAddToBlacklist, m_accountId);
-    m_disableButtonsAfterClick = true;
-    Q_EMIT disableButtonsAfterClickChanged();
-}
-
-void TFriendsAccountSearchPageController::onBackButtonPressed()
-{
-    // CIP .
     if (!m_showCharacterInfo)
         return;
     m_showCharacterInfo = false;
@@ -299,23 +214,118 @@ void TFriendsAccountSearchPageController::onBackButtonPressed()
     Q_EMIT showCharacterInfoChanged();
 }
 
-void TFriendsAccountSearchPageController::handleGameAction()
+void TFriendsAccountSearchPageController::showDialogTab()
 {
-    // CIP moc handleGameAction(shared_ptr) — qtclient action path is the dialog controller.
+    // An open tab starts empty.
+    setShowEmptyTab(true);
+    setShowLoadingComponent(false);
+    setShowNoResultsFound(false);
+}
+
+void TFriendsAccountSearchPageController::hideDialogTab()
+{
+    setShowEmptyTab(true);
+    setShowLoadingComponent(false);
+    setShowNoResultsFound(false);
+    closeCharacterInfo();
+}
+
+void TFriendsAccountSearchPageController::replaceLists()
+{
+    const friends::TAccountSearchResult& result = searchResult();
+    auto* characters = m_accountCharacterList;
+    auto* badges = m_accountBadgeList;
+    m_accountCharacterList = new TAccountCharacterList(result.characters, this);
+    m_accountBadgeList = new TAccountBadgeList(result.badges, this);
+    // QML may still read the old lists until it sees dataChanged.
+    if (characters)
+        characters->deleteLater();
+    if (badges)
+        badges->deleteLater();
+}
+
+void TFriendsAccountSearchPageController::onAccountSearchResults()
+{
+    setShowEmptyTab(false);
+    setShowNoResultsFound(false);
+    setShowLoadingComponent(false);
+    setDisableButtonsAfterClick(false);
+    replaceLists();
+    Q_EMIT dataChanged();
+}
+
+void TFriendsAccountSearchPageController::onNoResultsFound()
+{
+    setShowEmptyTab(true);
+    setShowNoResultsFound(true);
+}
+
+void TFriendsAccountSearchPageController::onFriendSystemError()
+{
+    setShowLoadingComponent(false);
+    setDisableButtonsAfterClick(false);
+}
+
+void TFriendsAccountSearchPageController::onClickedSearchForCharacter(const QString& SearchString)
+{
+    setShowLoadingComponent(true);
+    protocol::gameclient::sendFriendSystemSearch(SearchString.toStdString());
+}
+
+void TFriendsAccountSearchPageController::openCyclopediaCharacterInfo(const int CharacterID)
+{
+    m_characterInfo->setCharacterId(static_cast<uint32_t>(CharacterID));
+    setShowCharacterInfo(true);
+}
+
+void TFriendsAccountSearchPageController::refreshCurrentCharacterInfo()
+{
+    // Asks again for the page that is shown.
+    m_characterInfo->setNextDataType(m_characterInfo->dataType());
+    m_characterInfo->showDialogTab();
+}
+
+void TFriendsAccountSearchPageController::handleGameAction(const input::TGameAction& action)
+{
+    if (action.type != input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT)
+        return;
+    showDialogTab();
+    setShowLoadingComponent(true);
+    protocol::gameclient::sendFriendSystemSearch(action.text.toStdString());
+}
+
+void TFriendsAccountSearchPageController::onClickedInviteAsFriend()
+{
+    protocol::gameclient::sendFriendSystemAccountAction(kSendInvite, searchResult().accountId);
+    setDisableButtonsAfterClick(true);
+}
+
+void TFriendsAccountSearchPageController::onClickedSetOnBlacklist()
+{
+    protocol::gameclient::sendFriendSystemAccountAction(kAddToBlacklist, searchResult().accountId);
+    setDisableButtonsAfterClick(true);
+}
+
+void TFriendsAccountSearchPageController::onBackButtonPressed()
+{
+    closeCharacterInfo();
 }
 
 void TFriendsAccountSearchPageController::onErrorLoadingCharacter()
 {
-    setLoading(false);
-    setEmpty(false, true);
+    closeCharacterInfo();
 }
 
 void TFriendsAccountSearchPageController::onNoPermissionToDisplayCharacterSummary()
 {
+    closeCharacterInfo();
 }
 
 void TFriendsAccountSearchPageController::onNoPermissionToInspectCharacter()
 {
+    // Without the inspection the general stats are shown.
+    m_characterInfo->setNextDataType(TCharacterInfoDialogController::GeneralStats);
+    m_characterInfo->showDialogTab();
 }
 
 }

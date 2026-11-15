@@ -1,19 +1,35 @@
 #include "highscores/highscoresciptypes.h"
 
 #include "protocol/protocolciptypes.h"
-#include <tibia/game/gamenotify.h>
-#include <tibia/game/gamesession.h>
 
 #include <protocol.pb.h>
 
 #include <string>
-#include <tuple>
-#include <vector>
 
 namespace tibia::highscores {
 
 namespace {
-} // namespace
+
+THighscoresStorage* g_liveStorage = nullptr;
+
+QString qstr(const std::string& text)
+{
+    return QString::fromStdString(text);
+}
+
+/// Client vocation ids are 1..5, promoted ones 11..15.
+QString vocationName(const uint32_t vocation)
+{
+    static constexpr const char* Base[] = { "knight", "paladin", "sorcerer", "druid", "monk" };
+    static constexpr const char* Promoted[] = { "knight_promoted", "paladin_promoted", "sorcerer_promoted", "druid_promoted", "monk_promoted" };
+    const bool promoted = vocation >= 10;
+    const uint32_t base = promoted ? vocation - 10 : vocation;
+    if (base < 1 || base > 5)
+        return qtTrId("none");
+    return qtTrId(promoted ? Promoted[base - 1] : Base[base - 1]);
+}
+
+}
 
 void ownProductSurface(QObject* parent)
 {
@@ -21,43 +37,73 @@ void ownProductSurface(QObject* parent)
     if (owned)
         return;
     owned = true;
-    (void)parent;
+    new THighscoresStorage(parent);
+    new THighscoresProtocolMessageHandler(parent);
+}
+
+THighscoresStorage::THighscoresStorage(QObject* parent)
+    : cip::tibia::highscores::THighscoresStorage(parent)
+{
+    g_liveStorage = this;
+}
+
+THighscoresStorage::~THighscoresStorage()
+{
+    if (g_liveStorage == this)
+        g_liveStorage = nullptr;
+}
+
+THighscoresStorage* THighscoresStorage::liveInstance()
+{
+    return g_liveStorage;
 }
 
 void THighscoresProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
+    THighscoresStorage* storage = THighscoresStorage::liveInstance();
     const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || opcode != 177 || !shadow->HasExtension(GameserverMessageHighscores::gameserver_message_highscores))
+    if (!storage || !shadow || opcode != 177 || !shadow->HasExtension(GameserverMessageHighscores::gameserver_message_highscores))
         return;
     const auto& m = shadow->GetExtension(GameserverMessageHighscores::gameserver_message_highscores);
-    if (m.no_data() != 0) {
-        tibia::game::notify("onHighscoresNoData");
+    storage->m_state = static_cast<int>(m.no_data());
+    if (storage->m_state != 0) {
+        Q_EMIT storage->highScoresError();
         return;
     }
-    const std::vector<std::string> worlds(m.worlds().begin(), m.worlds().end());
-    // The first vocation is "all vocations".
-    std::string allVocationsName;
-    std::vector<std::tuple<uint32_t, std::string>> vocations;
-    for (int i = 0; i < m.vocations_size(); ++i) {
-        if (i == 0)
-            allVocationsName = m.vocations(0).name();
-        else
-            vocations.emplace_back(static_cast<uint32_t>(m.vocations(i).vocation_id()), m.vocations(i).name());
+
+    storage->m_worlds.clear();
+    for (const std::string& world : m.worlds())
+        storage->m_worlds.append(qstr(world));
+    storage->m_selectedWorld = qstr(m.selected_world());
+
+    storage->m_vocations.clear();
+    for (const auto& vocation : m.vocations())
+        storage->m_vocations.emplace_back(vocation.vocation_id(), qstr(vocation.name()));
+    storage->m_selectedVocation = m.selected_vocation();
+
+    storage->m_categories.clear();
+    for (const auto& category : m.categories())
+        storage->m_categories.emplace_back(static_cast<int>(category.category_id()), qstr(category.name()));
+    storage->m_selectedCategory = static_cast<int>(m.selected_category());
+
+    storage->m_entries.clear();
+    storage->m_entries.reserve(static_cast<size_t>(m.entries_size()));
+    for (const auto& e : m.entries()) {
+        storage->m_entries.push_back({ .rank = e.rank(), .character = qstr(e.name()), .loyaltyTitle = qstr(e.title()),
+                                       .vocation = vocationName(e.vocation()), .world = qstr(e.world()),
+                                       .level = static_cast<quint16>(e.level()), .isOwnCharacter = e.is_player(), .score = e.points() });
     }
-    std::vector<std::tuple<uint8_t, std::string>> categories;
-    for (const auto& c : m.categories())
-        categories.emplace_back(static_cast<uint8_t>(c.category_id()), c.name());
-    std::vector<std::tuple<uint32_t, std::string, std::string, uint8_t, std::string, uint16_t, uint8_t, uint64_t>> entries;
-    for (const auto& e : m.entries())
-        entries.emplace_back(e.rank(), e.name(), e.title(), static_cast<uint8_t>(e.vocation()), e.world(), static_cast<uint16_t>(e.level()),
-                             static_cast<uint8_t>(e.is_player() ? 1 : 0), e.points());
-    const auto worldType = static_cast<uint8_t>(m.world_categories_size() > 0 ? m.world_categories(0) : 0);
-    tibia::game::processHighscore(worlds.empty() ? std::string() : worlds.front(), m.selected_world(), worldType,
-                                  static_cast<uint8_t>(m.battleye_type()), vocations, categories, static_cast<uint16_t>(m.page()),
-                                  static_cast<uint16_t>(m.page_count()), entries, m.last_update(), worlds, allVocationsName,
-                                  static_cast<uint32_t>(m.selected_vocation()), static_cast<uint8_t>(m.selected_category()),
-                                  static_cast<uint8_t>(m.selected_index()), m.show_loyalty_title(), static_cast<uint8_t>(m.value_type()));
+
+    storage->m_selectedWorldTypes.assign(m.world_categories().begin(), m.world_categories().end());
+    storage->m_battlEyeType = m.battleye_type();
+    storage->m_page = static_cast<int>(m.page());
+    storage->m_totalPages = static_cast<int>(m.page_count());
+    storage->m_selectedIndex = m.selected_index();
+    storage->m_showLoyaltyTitle = m.show_loyalty_title();
+    storage->m_valueType = static_cast<int>(m.value_type());
+    storage->m_lastUpdate = m.last_update();
+    Q_EMIT storage->highScoresUpdated();
 }
 
 } // namespace tibia::highscores

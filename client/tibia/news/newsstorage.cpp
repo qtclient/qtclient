@@ -38,9 +38,60 @@ QString normalizeType(QString type)
 
 }
 
+namespace {
+
+TNewsStorage* g_currentNewsStorage = nullptr;
+
+}
+
 TNewsStorage::TNewsStorage(QObject* parent)
     : cip::tibia::news::TNewsStorage(parent)
-{}
+{
+    g_currentNewsStorage = this;
+}
+
+TNewsStorage::~TNewsStorage()
+{
+    if (g_currentNewsStorage == this)
+        g_currentNewsStorage = nullptr;
+}
+
+TNewsStorage* TNewsStorage::current() { return g_currentNewsStorage; }
+
+void TNewsStorage::setCharacterLevel(const uint16_t level)
+{
+    if (m_characterLevel == level)
+        return;
+    m_characterLevel = level;
+    // Entries unlock once the character reaches their level.
+    for (NewsItem& item : m_items) {
+        if (!item.unlocked && item.unlockLevel <= level)
+            item.unlocked = true;
+    }
+    Q_EMIT contentsChanged();
+}
+
+NewsItem::ECategory NewsItem::categoryId() const
+{
+    if (category == QLatin1String("MAJOR UPDATES"))
+        return MajorUpdates;
+    if (category == QLatin1String("GAME CONTENTS") || category == QLatin1String("PLAYER GUIDE"))
+        return PlayerGuide;
+    if (category == QLatin1String("CLIENT FEATURES"))
+        return ClientFeatures;
+    if (category == QLatin1String("SUPPORT"))
+        return Support;
+    return UsefulInfo;
+}
+
+int NewsItem::typeId() const
+{
+    if (type == QLatin1String("RETURNER"))
+        return 3;
+    if (type == QLatin1String("GROUP HEADER"))
+        return -1;
+    return 0;
+}
 
 NewsItem TNewsStorage::parseEntry(const QJsonObject& o, const int fallbackIndex)
 {
@@ -69,6 +120,8 @@ NewsItem TNewsStorage::parseEntry(const QJsonObject& o, const int fallbackIndex)
     item.dateFrom = o.value(QStringLiteral("datefrom")).toInteger();
     item.dateTo = o.value(QStringLiteral("dateto")).toInteger();
     item.specialEvent = o.value(QStringLiteral("specialevent")).toInt();
+    // Group headers and entries without an unlock level start unlocked.
+    item.unlocked = item.isGroupHeader() || item.unlockLevel == 0;
     return item;
 }
 
@@ -96,6 +149,8 @@ void TNewsStorage::setFromNewsDocument(const QJsonObject& reply)
     int index = 0;
     for (const QJsonValue& value : rows) {
         NewsItem item = parseEntry(value.toObject(), index);
+        if (item.unlockLevel <= m_characterLevel)
+            item.unlocked = true;
         if (!item.headline.isEmpty())
             parsed.push_back(std::move(item));
         ++index;

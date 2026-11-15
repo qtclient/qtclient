@@ -711,11 +711,6 @@ void processBosstiarySlots(const BosstiarySlotsData& data)
 {
     tibia::game::notify("onParseBosstiarySlots", data);
 }
-void processHighscore(const std::string_view serverName, const std::string_view world, const uint8_t worldType, const uint8_t battlEye, const std::vector<std::tuple<uint32_t, std::string>>& vocations, const std::vector<std::tuple<uint8_t, std::string>>& categories, const uint16_t page, const uint16_t totalPages, const std::vector<std::tuple<uint32_t, std::string, std::string, uint8_t, std::string, uint16_t, uint8_t, uint64_t>>& highscores, const uint32_t entriesTs, const std::vector<std::string>& worlds, const std::string_view allVocationsName, const uint32_t selectedVocation, const uint8_t selectedCategory, const uint8_t selectedIndex, const bool showLoyaltyTitle, const uint8_t valueType)
-{
-    tibia::game::notify("onProcessHighscores", serverName, world, worldType, battlEye, vocations, categories, page, totalPages, highscores, entriesTs,
-                                 worlds, allVocationsName, selectedVocation, selectedCategory, selectedIndex, showLoyaltyTitle, valueType);
-}
 void processCyclopediaCharacterOffenceStats(const CyclopediaCharacterOffenceStats& data)
 {
     tibia::game::notify("onCyclopediaCharacterOffenceStats", data);
