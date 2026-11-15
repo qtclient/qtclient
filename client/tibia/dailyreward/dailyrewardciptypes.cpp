@@ -144,7 +144,8 @@ void TDailyRewardStorage::clearRewards()
 
 void TDailyRewardStorage::clearPendingReward()
 {
-    m_pendingReward = {};
+    // Named type: `= {}` is ambiguous for pair<shared_ptr, shared_ptr> on wasm libc++.
+    m_pendingReward = TRewardPair{};
 }
 
 /// Adds the pending day once it has both rewards (CIP throws otherwise).
@@ -153,7 +154,7 @@ void TDailyRewardStorage::finishAddReward()
     if (!m_pendingReward.first || !m_pendingReward.second)
         return;
     m_rewards.push_back(m_pendingReward);
-    m_pendingReward = {};
+    m_pendingReward = TRewardPair{};
 }
 
 void TDailyRewardStorage::addFixedItemsReward(const bool premium, const int preyWildcards, const qint64 xpBoostMinutes,
@@ -221,7 +222,7 @@ void TDailyRewardStorage::reset()
     m_bountyTaskRerollTokenCount = 0;
     m_rewardStreakBonuses.clear();
     m_rewards.clear();
-    m_pendingReward = {};
+    m_pendingReward = TRewardPair{};
     m_rewardStreakLength = 0;
     m_rewardStreakEndTime = 0;
     m_history.clear();
