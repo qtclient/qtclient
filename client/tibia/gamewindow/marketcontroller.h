@@ -41,7 +41,7 @@ public:
     /// CIP .
     static QString translate(int identifier);
 
-    /// CIP .
+    /// A one- or two-handed weapon tab (not the all-weapons parent).
     Q_INVOKABLE bool isHandWeaponCategory() override;
 };
 

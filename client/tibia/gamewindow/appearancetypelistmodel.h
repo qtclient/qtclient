@@ -4,9 +4,13 @@
 
 #include <QCollator>
 #include <QString>
+#include <QStringList>
+#include <QTimer>
 
 #include <cstdint>
 #include <functional>
+#include <optional>
+#include <set>
 #include <vector>
 
 namespace tibia {
@@ -27,6 +31,9 @@ struct TAppearanceTypeEntry
     uint16_t professions = 0;
     bool hasClothSlot = false;
     int clothSlot = 0;
+    /// The names the type's imbuement filter matches (CIP: the entries of
+    /// the type's list with a non-zero count).
+    QStringList imbuements;
 };
 
 /// Object types with their counts (CIP: TAppearanceTypeListModel, data
@@ -68,7 +75,8 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     void reset(std::vector<TAppearanceTypeEntry> entries);
-    const TAppearanceTypeEntry& entry(int row) const { return m_entries[row]; }
+    /// The entry of `row`, or an empty one for a row out of range.
+    const TAppearanceTypeEntry& entry(int row) const;
     int size() const { return static_cast<int>(m_entries.size()); }
 
 public Q_SLOTS:
@@ -81,19 +89,38 @@ private:
     std::vector<TAppearanceTypeEntry> m_entries;
 };
 
-/// The filters of TAppearanceTypeListModelSortFilterProxy (CIP).
+/// The filter buttons of the item lists (CIP: TAppearanceTypeFilter, the
+/// 0x68-byte value at TAppearanceTypeListModelSortFilterProxy+0x140). Each
+/// selection is a mode (0 off, 1 none only, 2 any, 3 `value` only) with the
+/// label the drop-down shows.
 struct TAppearanceTypeFilter
 {
-    /// 0 off, 1 unclassified only, 2 any, 3 `value` only.
+    bool filterByLevel = false;
+    bool filterByVocation = false;
+    bool onlyOneHandWeapons = false;
+    bool onlyTwoHandWeapons = false;
     int classificationMode = 0;
     int classification = 0;
-    /// 0 off, 3 `value` only.
+    QString classificationName;
     int tierMode = 0;
     int tier = 0;
+    QString tierName;
+    int imbuementMode = 0;
+    int imbuementValue = 0;
+    QString imbuement;
+
+    /// CIP: member-wise, the labels included.
+    bool operator==(const TAppearanceTypeFilter& other) const;
+    bool operator!=(const TAppearanceTypeFilter& other) const { return !(*this == other); }
+    /// Whether `entry` passes the buttons for a player of `level` and
+    /// `profession`; `tier` is the row's upgrade tier, if it has one.
+    bool accepts(const TAppearanceTypeEntry& entry, std::optional<uint8_t> tier, int level, int profession) const;
 };
 
-/// Category, name and filter buttons over the list, sorted by name (CIP:
-/// TAppearanceTypeListModelSortFilterProxy, filterAcceptsRow).
+/// Category, name and filter buttons over the list (CIP:
+/// TAppearanceTypeListModelSortFilterProxy). Filter changes are applied on
+/// the next event loop turn (a zero-interval single-shot timer started by
+/// filterChanged), or at once by applyFilterNow.
 class TAppearanceTypeListModelSortFilterProxy final : public cip::tibia::gamewindow::TAppearanceTypeListModelSortFilterProxy
 {
     Q_OBJECT
@@ -104,17 +131,66 @@ public:
     /// CIP .
     static bool isHandWeaponCategory(int category);
 
+    /// The orders of the list (CIP +0x1ac); anything else sorts like
+    /// NameAscending.
+    enum ESortMode {
+        NameAscending = 1,
+        NameDescending = 2,
+        AverageValueDescending = 5,
+        AverageValueAscending = 6,
+        TotalAverageValueDescending = 7,
+        TotalAverageValueAscending = 8,
+        NpcValueDescending = 9,
+        NpcValueAscending = 10,
+        TotalNpcValueDescending = 11,
+        TotalNpcValueAscending = 12,
+        CountDescending = 13,
+        CountAscending = 14,
+        ProficiencyDescending = 15,
+    };
+
     explicit TAppearanceTypeListModelSortFilterProxy(TAppearanceTypeListModel* model, QObject* parent = nullptr);
 
-    /// CIP : the category (or -1) and the buttons' filters.
+    bool filterByLevel() const override { return m_filter.filterByLevel; }
+    bool filterByVocation() const override { return m_filter.filterByVocation; }
+    bool onlyOneHandWeapons() const override { return m_filter.onlyOneHandWeapons; }
+    bool onlyTwoHandWeapons() const override { return m_filter.onlyTwoHandWeapons; }
+
+    /// Clears category, type set, name, buttons and type.
+    void resetFilters();
+    /// The category (or -1) with the buttons; the other filters are reset
+    /// when anything changes.
+    void setCategoryFilter(int category, const TAppearanceTypeFilter& filter, bool showLockerOnly);
     void setCategoryFilter(int category, bool filterByLevel, bool filterByVocation, bool oneHand, bool twoHand,
-                           const TAppearanceTypeFilter& filter, bool showLockerOnly);
-    /// CIP : the name (no category) and the buttons' filters.
+                           TAppearanceTypeFilter filter, bool showLockerOnly);
+    /// The name with the buttons; the other filters are reset when the name
+    /// or the buttons change.
+    void setNameFilter(const QString& name, const TAppearanceTypeFilter& filter, bool showLockerOnly);
     void setNameFilter(const QString& name, bool filterByLevel, bool filterByVocation, bool oneHand, bool twoHand,
-                       const TAppearanceTypeFilter& filter, bool showLockerOnly);
-    /// CIP : only `typeId` (the market opened on a type).
+                       TAppearanceTypeFilter filter, bool showLockerOnly);
+    /// Only the type shown as `typeId`; the other filters are reset.
     void setTypeFilter(uint16_t typeId);
-    /// CIP : the row of the type and tier, or -1.
+    void setCategory(int category);
+    void setFilter(const TAppearanceTypeFilter& filter);
+    void setName(const QString& name);
+    void setTypeId(uint16_t typeId);
+    void setTypeIds(const std::set<int>& typeIds);
+    void setShowLockerOnly(bool showLockerOnly);
+    /// Rows pass without any filter set (otherwise the list is empty then).
+    void setAcceptWithoutFilter(bool accept);
+    void setSortMode(int sortMode);
+    /// Replaces the model's entries inside one filter change.
+    void resetEntries(std::vector<TAppearanceTypeEntry> entries);
+    /// Applies pending filter changes now.
+    void applyFilterNow();
+
+    int category() const { return m_category; }
+    QString name() const { return m_name; }
+    uint16_t typeId() const { return m_typeId; }
+    const TAppearanceTypeFilter& filter() const { return m_filter; }
+    bool showLockerOnly() const { return m_showLockerOnly; }
+
+    /// The row of the type and tier, or -1.
     int rowOf(uint16_t typeId, uint8_t tier) const;
     uint16_t typeIdAt(int row) const;
     uint8_t tierAt(int row) const;
@@ -124,15 +200,17 @@ protected:
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
 private:
-    void setButtons(bool filterByLevel, bool filterByVocation, bool oneHand, bool twoHand);
-
     TAppearanceTypeListModel* m_model;
+    QCollator m_collator;
+    QTimer m_filterTimer;
     int m_category = -1;
+    std::set<int> m_typeIds;
     QString m_name;
     uint16_t m_typeId = 0;
     TAppearanceTypeFilter m_filter;
+    bool m_acceptWithoutFilter = false;
     bool m_showLockerOnly = false;
-    QCollator m_collator;
+    int m_sortMode = NameAscending;
 };
 
 }

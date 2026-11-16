@@ -286,7 +286,9 @@ QString TQmlObjectCategory::translate(const int identifier)
 
 bool TQmlObjectCategory::isHandWeaponCategory()
 {
-    return TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(m_categoryIdentifier);
+    // Category 0x10 is a hand-weapon category of the list filter but not a
+    // weapon tab of its own.
+    return TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(m_categoryIdentifier) && m_categoryIdentifier != 0x10;
 }
 
 TMarketController::TMarketController(market::TMarketStorage* storage, QObject* parent)
@@ -394,8 +396,7 @@ void TMarketController::rebuildEntries()
             entries.push_back(std::move(tiered));
         }
     }
-    m_model.reset(std::move(entries));
-    m_proxy.invalidate();
+    m_proxy.resetEntries(std::move(entries));
     m_entriesBuilt = true;
 }
 
@@ -551,6 +552,7 @@ void TMarketController::onMarketCategorySelected(const int CategoryIdentifier, c
     }
     m_proxy.setCategoryFilter(CategoryIdentifier, FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons, currentFilter(),
                               ShowLockerOnly);
+    m_proxy.applyFilterNow();
     reselect();
     setSelectedCategory(CategoryIdentifier);
 }
@@ -574,6 +576,7 @@ void TMarketController::onMarketFilterSelected(const QString& NameFilter, const 
         Q_EMIT showLockerOnlyChanged();
     }
     m_proxy.setNameFilter(NameFilter, FilterByLevel, FilterByVocation, OnlyOneHandWeapons, OnlyTwoHandWeapons, currentFilter(), ShowLockerOnly);
+    m_proxy.applyFilterNow();
     reselect();
     setSelectedCategory(-1);
 }
@@ -794,6 +797,7 @@ void TMarketController::onItemDetailsChanged()
         m_hasSelectedTier = details.hasTier;
         m_selectedTier = details.tier;
         m_proxy.setTypeFilter(m_selectedType);
+        m_proxy.applyFilterNow();
         row = m_proxy.rowOf(m_selectedType, selectedTier());
         Q_EMIT itemListSelectionRequest(0);
     }

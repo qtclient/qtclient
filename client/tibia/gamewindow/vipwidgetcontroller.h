@@ -122,11 +122,15 @@ public:
     /// CIP (SORT_VIPS_BY_*): `key` becomes the most significant.
     void sortBy(int key);
 
+    /// Group names in section order: case-insensitive, ungrouped last.
+    static int compareGroups(const QString& left, const QString& right);
+
 protected:
-    /// CIP : offline VIPs when hidden; a VIP's other group rows
-    /// without groups.
+    /// Offline VIPs are hidden on request; a VIP's rows of further groups
+    /// show only with groups.
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
-    /// CIP .
+    /// Group (with groups shown), then the sort keys in order; rows equal on
+    /// every key keep their source order.
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
 private:

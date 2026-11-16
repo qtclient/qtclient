@@ -267,15 +267,15 @@ class TPartyHuntMembersListModel final : public QAbstractListModel
 public:
     enum Role
     {
-        Name = Qt::UserRole + 1,
-        CharacterId,
-        IsLeader,
+        CharacterId = Qt::UserRole + 1,
+        Name,
         IsInParty,
         Gain,
         Waste,
         Balance,
         Damage,
         Healing,
+        IsLeader,
     };
 
     using QAbstractListModel::QAbstractListModel;
