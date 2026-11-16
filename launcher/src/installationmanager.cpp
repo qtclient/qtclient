@@ -137,6 +137,9 @@ void TInstallationManager::installOrUpdate(const std::shared_ptr<TPackage>& pack
     auto installation = std::make_shared<TPackageInstallation>(package, m_networkAccessManager, m_filesystemHelper);
     connect(installation.get(), &TPackageInstallation::metaDataDownloadCompleted, this,
             &TInstallationManager::onMetaDataDownloadCompleted);
+    // Host: a failed channel manifest finishes the installation before it is prepared.
+    connect(installation.get(), &TPackageInstallation::installationFinished, this,
+            &TInstallationManager::onInstallationFinished, Qt::UniqueConnection);
     m_installations.push_back(installation);
     installation->start();
 }
@@ -172,7 +175,7 @@ void TInstallationManager::prepareInstallation(const std::shared_ptr<TPackage>& 
     installation->setVersions(installedVersion, targetVersion);
     installation->setUpdateMode(m_updateMode);
     connect(installation.get(), &TPackageInstallation::installationFinished, this,
-            &TInstallationManager::onInstallationFinished);
+            &TInstallationManager::onInstallationFinished, Qt::UniqueConnection);
     Q_EMIT installationOrUpdateStarted(installation.get());
 
     auto* watcher = new QFutureWatcher<TPackageDifference>(this);

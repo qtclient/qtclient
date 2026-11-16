@@ -50,6 +50,10 @@ TPackageInstallation::TPackageInstallation(std::shared_ptr<TPackage> package,
             &TPackageInstallation::onAssetMetaDataReceived);
     connect(m_downloader, &TPackageFileDownloader::downloadCompleted, this, &TPackageInstallation::onDownloadCompleted);
     connect(m_downloader, &TPackageFileDownloader::downloadFailed, this, &TPackageInstallation::onDownloadFailed);
+    connect(m_downloader, &TPackageFileDownloader::hostChannelMetaDataReceived, this,
+            &TPackageInstallation::onHostChannelMetaDataReceived);
+    connect(m_downloader, &TPackageFileDownloader::hostChannelMetaDataFailed, this,
+            &TPackageInstallation::onHostChannelMetaDataFailed);
     m_downloader->setTargetDirectory(TLauncherFilesystemHelper::packageDirectory(*m_package));
 }
 
@@ -72,6 +76,7 @@ void TPackageInstallation::start()
         m_waitingForPackageMetaData = true;
     }
     if (!needsAssetMetaData(*m_package)) {
+        // The installed assets.json already carries the host channel files.
         m_assetMetaData = TLauncherFilesystemHelper::localAssetMetaData(*m_package);
         if (!m_waitingForPackageMetaData && !m_waitingForAssetMetaData)
             Q_EMIT metaDataDownloadCompleted(m_package, m_packageMetaData, m_assetMetaData);
@@ -79,23 +84,60 @@ void TPackageInstallation::start()
         qDebug() << "downloading asset meta data for package " << m_package->name() << " from " << build->assetsUrl;
         m_downloader->downloadAssetMetaData(build->assetsUrl);
         m_waitingForAssetMetaData = true;
+        // Host: channel manifests whose versions the configuration counted.
+        for (const THostChannel& channel : TLauncherFilesystemHelper::enabledHostChannels(*build)) {
+            if (!build->activeHostChannels.contains(channel.name))
+                continue;
+            qDebug() << "downloading" << channel.name << "channel for package" << m_package->name() << "from"
+                     << channel.url;
+            ++m_waitingForHostChannels;
+            m_downloader->downloadHostChannelMetaData(channel.url);
+        }
     }
+}
+
+void TPackageInstallation::emitMetaDataIfComplete()
+{
+    if (m_waitingForPackageMetaData || m_waitingForAssetMetaData || m_waitingForHostChannels > 0)
+        return;
+    if (!m_hostChannelManifests.empty()) {
+        m_assetMetaData = hostMergeChannelManifests(m_assetMetaData, m_hostChannelManifests);
+        m_hostChannelManifests.clear();
+    }
+    Q_EMIT metaDataDownloadCompleted(m_package, m_packageMetaData, m_assetMetaData);
 }
 
 void TPackageInstallation::onPackageMetaDataReceived(QByteArray data)
 {
     m_packageMetaData = data;
     m_waitingForPackageMetaData = false;
-    if (!m_waitingForAssetMetaData)
-        Q_EMIT metaDataDownloadCompleted(m_package, m_packageMetaData, m_assetMetaData);
+    emitMetaDataIfComplete();
 }
 
 void TPackageInstallation::onAssetMetaDataReceived(QByteArray data)
 {
     m_assetMetaData = data;
     m_waitingForAssetMetaData = false;
-    if (!m_waitingForPackageMetaData)
-        Q_EMIT metaDataDownloadCompleted(m_package, m_packageMetaData, m_assetMetaData);
+    emitMetaDataIfComplete();
+}
+
+void TPackageInstallation::onHostChannelMetaDataReceived(QUrl url, QByteArray data)
+{
+    m_hostChannelManifests.emplace_back(url, data);
+    --m_waitingForHostChannels;
+    emitMetaDataIfComplete();
+}
+
+void TPackageInstallation::onHostChannelMetaDataFailed(QUrl)
+{
+    // The channel's version is already part of the target version: fail the
+    // installation instead of recording channel files that never arrived.
+    m_waitingForHostChannels = 0;
+    m_waitingForAssetMetaData = false;
+    m_waitingForPackageMetaData = false;
+    m_succeeded = false;
+    m_errorReason = DownloadFailed;
+    Q_EMIT installationFinished(m_package);
 }
 
 void TPackageInstallation::onDownloadCompleted()
@@ -111,6 +153,8 @@ void TPackageInstallation::onDownloadCompleted()
             linkFailed |= !QFile::link(targetPath, path);
         }
     }
+    // Host (macOS): bundles lose their framework symlinks in the file list.
+    TLauncherFilesystemHelper::repairMacFrameworkVersions(directory);
     m_succeeded = !linkFailed;
     m_errorReason = linkFailed ? DiskAccessFailed : NoError;
     Q_EMIT installationFinished(m_package);

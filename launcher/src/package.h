@@ -67,6 +67,16 @@ quint8 buildCpuArchitecture();
 /// Architecture of the machine (i386 / x86_64 only).
 quint8 currentCpuArchitecture();
 
+/// Host (qtclient): a non-CipSoft download channel of a build, published by
+/// the release tip as `<name>url` / `<name>versionurl` (mods, minimap). Its
+/// manifest has the assets.json shape; the files install into the package
+/// directory together with the assets. Gated by launcher mod capabilities.
+struct THostChannel {
+    QString name;
+    QUrl url;
+    QUrl versionUrl;
+};
+
 /// One `builds[]` entry of a package.
 struct TPackageBuild {
     TPackageBuild(TPackage* package, const QJsonObject& build, const QUrl& baseUrl);
@@ -79,7 +89,22 @@ struct TPackageBuild {
     QUrl assetsUrl;
     QUrl assetsVersionUrl;
     std::unique_ptr<TPackageConfiguration> configuration;
+    /// Host channels the tip publishes for this build (not filtered by capability).
+    std::vector<THostChannel> hostChannels;
+    /// Host channels whose version is part of the configuration's assets version.
+    QStringList activeHostChannels;
 };
+
+/// Host: assets version of a build with host channels — the published assets
+/// version followed by ` <channel>=<version>` per channel, so a changed channel
+/// makes the installed assets outdated the CipSoft way. Unchanged without channels.
+QByteArray hostCompositeAssetsVersion(const QByteArray& assetsVersion,
+                                      const std::vector<std::pair<QString, QByteArray>>& channelVersions);
+/// Host: appends the files of host channel manifests to assets.json (urls made
+/// absolute against each manifest's url). Returns `assetMetaData` unchanged when
+/// there is nothing to merge.
+QByteArray hostMergeChannelManifests(const QByteArray& assetMetaData,
+                                     const std::vector<std::pair<QUrl, QByteArray>>& channelManifests);
 
 /// Resolves `url` against `base` the way CipSoft's metadata does: absolute urls
 /// stay, relative ones are appended to the base path with exactly one '/'.

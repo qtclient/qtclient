@@ -128,6 +128,13 @@ void TLauncherConfigurationHandler::downloadPackageConfigurations(bool includeLa
             pending.versionUrl = build->versionUrl;
             pending.assetsUrl = build->assetsUrl;
             pending.assetsVersionUrl = build->assetsVersionUrl;
+            // Host channels count only with assets (their files install with them).
+            if (build->assetsUrl.isValid() && !build->assetsUrl.isEmpty()) {
+                for (const THostChannel& channel : TLauncherFilesystemHelper::enabledHostChannels(*build)) {
+                    if (channel.versionUrl.isValid() && !channel.versionUrl.isEmpty())
+                        pending.hostChannelVersionUrls.emplace_back(channel.name, channel.versionUrl);
+                }
+            }
             m_pendingPackageConfigurations.push_back(pending);
         }
     }
@@ -139,7 +146,10 @@ void TLauncherConfigurationHandler::downloadPackageConfigurations(bool includeLa
     const auto pending = m_pendingPackageConfigurations;
     for (const TPendingPackageConfiguration& configuration : pending) {
         bool requested = false;
-        for (const QUrl& url : {configuration.versionUrl, configuration.assetsVersionUrl}) {
+        std::vector<QUrl> urls{configuration.versionUrl, configuration.assetsVersionUrl};
+        for (const auto& channel : configuration.hostChannelVersionUrls)
+            urls.push_back(channel.second);
+        for (const QUrl& url : urls) {
             if (!url.isValid() || url.isEmpty())
                 continue;
             requested = true;
@@ -208,17 +218,15 @@ void TLauncherConfigurationHandler::onConfigurationDownloadFinished(const QUrl& 
         return;
     }
     for (auto it = m_pendingPackageConfigurations.begin(); it != m_pendingPackageConfigurations.end(); ++it) {
-        if (url != it->versionUrl && url != it->assetsVersionUrl)
+        const bool hostChannel = takeHostChannelVersion(*it, url, &data);
+        if (!hostChannel && url != it->versionUrl && url != it->assetsVersionUrl)
             continue;
         qInfo() << "Finished downloading file for package " << describeBuild(*it->build) << ": " << url.toString();
         if (url == it->versionUrl)
             it->version = data;
         if (url == it->assetsVersionUrl)
             it->assetsVersion = data;
-        const bool versionDone = !it->versionUrl.isValid() || it->versionUrl.isEmpty() || !it->version.isEmpty();
-        const bool assetsDone =
-            !it->assetsVersionUrl.isValid() || it->assetsVersionUrl.isEmpty() || !it->assetsVersion.isEmpty();
-        if (versionDone && assetsDone) {
+        if (isComplete(*it)) {
             qInfo() << "Package configuration for" << describeBuild(*it->build) << "loaded completely";
             finishPendingConfiguration(it);
         }
@@ -226,11 +234,41 @@ void TLauncherConfigurationHandler::onConfigurationDownloadFinished(const QUrl& 
     }
 }
 
+bool TLauncherConfigurationHandler::isComplete(const TPendingPackageConfiguration& pending)
+{
+    const bool versionDone = !pending.versionUrl.isValid() || pending.versionUrl.isEmpty() || !pending.version.isEmpty();
+    const bool assetsDone = !pending.assetsVersionUrl.isValid() || pending.assetsVersionUrl.isEmpty()
+                            || !pending.assetsVersion.isEmpty();
+    return versionDone && assetsDone && pending.hostChannelVersionUrls.empty();
+}
+
+bool TLauncherConfigurationHandler::takeHostChannelVersion(TPendingPackageConfiguration& pending, const QUrl& url,
+                                                           const QByteArray* data)
+{
+    for (auto channel = pending.hostChannelVersionUrls.begin(); channel != pending.hostChannelVersionUrls.end();
+         ++channel) {
+        if (channel->second != url)
+            continue;
+        // A failed channel version leaves the channel out; the client still installs.
+        if (data)
+            pending.hostChannelVersions.emplace_back(channel->first, *data);
+        else
+            qWarning() << "Version of channel" << channel->first << "could not be downloaded; skipping it.";
+        pending.hostChannelVersionUrls.erase(channel);
+        return true;
+    }
+    return false;
+}
+
 void TLauncherConfigurationHandler::finishPendingConfiguration(
     std::vector<TPendingPackageConfiguration>::iterator pending)
 {
     pending->build->configuration = std::make_unique<TPackageConfiguration>(
-        pending->version, pending->assetsVersion, pending->url, pending->assetsUrl);
+        pending->version, hostCompositeAssetsVersion(pending->assetsVersion, pending->hostChannelVersions),
+        pending->url, pending->assetsUrl);
+    pending->build->activeHostChannels.clear();
+    for (const auto& channel : pending->hostChannelVersions)
+        pending->build->activeHostChannels.append(channel.first);
     m_pendingPackageConfigurations.erase(pending);
     if (m_pendingPackageConfigurations.empty())
         Q_EMIT packageConfigurationDownloadsFinished();
@@ -246,6 +284,11 @@ void TLauncherConfigurationHandler::onConfigurationDownloadFailed(const QUrl& ur
         return;
     }
     for (auto it = m_pendingPackageConfigurations.begin(); it != m_pendingPackageConfigurations.end(); ++it) {
+        if (takeHostChannelVersion(*it, url, nullptr)) {
+            if (isComplete(*it))
+                finishPendingConfiguration(it);
+            return;
+        }
         if (url != it->url && url != it->versionUrl && url != it->assetsUrl && url != it->assetsVersionUrl)
             continue;
         qCritical() << "Download of package configuration for " << describeBuild(*it->build) << "from configuration"

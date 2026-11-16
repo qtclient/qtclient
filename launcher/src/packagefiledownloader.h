@@ -39,6 +39,8 @@ public:
     void start();
     void downloadPackageMetaData(const QUrl& url);
     void downloadAssetMetaData(const QUrl& url);
+    /// Host: downloads the manifest of a host channel (mods / minimap).
+    void downloadHostChannelMetaData(const QUrl& url);
 
     /// True once at least one speed sample was taken.
     bool hasDownloadSpeed() const { return m_speedSamples > 0; }
@@ -48,6 +50,8 @@ public:
 Q_SIGNALS:
     void packageMetaDataReceived(QByteArray data);
     void assetMetaDataReceived(QByteArray data);
+    void hostChannelMetaDataReceived(QUrl url, QByteArray data);
+    void hostChannelMetaDataFailed(QUrl url);
     void downloadCompleted();
     void downloadProgress(launcher::TFileSize bytesDownloaded, launcher::TFileSize bytesTotal);
     void downloadFailed(launcher::EPackageDownloaderError errorReason);
@@ -86,6 +90,7 @@ private:
     double m_averageSpeed = 0.0;
     QUrl m_packageMetaDataUrl;
     QUrl m_assetMetaDataUrl;
+    std::vector<QUrl> m_hostChannelMetaDataUrls;
 };
 
 } // namespace launcher

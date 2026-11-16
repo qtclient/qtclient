@@ -304,9 +304,12 @@ def stage_moltenvk_frameworks(app: Path) -> None:
         return
     fw = app / "Contents" / "Frameworks"
     fw.mkdir(parents=True, exist_ok=True)
+    # The build already staged a read-only copy (Homebrew's mode): replace, not overwrite.
+    (fw / "libMoltenVK.dylib").unlink(missing_ok=True)
     shutil.copy2(dylib, fw / "libMoltenVK.dylib")
     icd_src = dylib.parent / "MoltenVK_icd.json"
     icd_dest = fw / "MoltenVK_icd.json"
+    icd_dest.unlink(missing_ok=True)
     if icd_src.is_file():
         shutil.copy2(icd_src, icd_dest)
     else:

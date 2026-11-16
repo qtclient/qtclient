@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QTimer>
 
+#include <functional>
 #include <memory>
 
 class QNetworkAccessManager;
@@ -68,6 +69,8 @@ private:
     void onEulaAccepted();
     void installPrerequisites();
     void launchPackage(const std::shared_ptr<TPackage>& package);
+    /// Host: the client revision sent at login (latest/release.json, else `fallback`).
+    void hostResolveLoginRevision(const QString& fallback, std::function<void(QString)> then);
     void showSplash(ESplashState state);
     void hideSplash();
     void setUpLogging(const QString& logFile, qint64 maxSize);

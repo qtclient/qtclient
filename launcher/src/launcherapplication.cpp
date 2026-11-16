@@ -14,6 +14,8 @@
 #include <QDebug>
 #include <QDir>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMessageBox>
 #include <QMutex>
 #include <QNetworkAccessManager>
@@ -360,27 +362,71 @@ void TLauncherApplication::launchPackage(const std::shared_ptr<TPackage>& packag
     if (executable.isEmpty())
         return;
     const QString workingDirectory = QFileInfo(executable).absoluteDir().absolutePath();
-    // Host: the qtclient launcher → client contract (login revision, launcher path, CDN).
-    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
-    environment.insert(QStringLiteral("QTCLIENT_LAUNCHER"), QStringLiteral("1"));
-    if (const TPackageConfiguration* configuration = package->configurationForCurrentPlatform())
-        environment.insert(QStringLiteral("QTCLIENT_CLIENT_REVISION"), configuration->packageVersion().trimmed());
-    environment.insert(QStringLiteral("QTCLIENT_LAUNCHER_BIN"), QCoreApplication::applicationFilePath());
-    if (!qEnvironmentVariableIsEmpty("QTCLIENT_CDN_URL"))
-        environment.insert(QStringLiteral("QTCLIENT_ASSET_BASE"), qEnvironmentVariable("QTCLIENT_CDN_URL"));
-    QProcess process;
-    process.setProgram(executable);
-    process.setArguments(parameters);
-    process.setWorkingDirectory(workingDirectory);
-    process.setProcessEnvironment(environment);
-    if (!process.startDetached()) {
-        QCoreApplication::exit(1);
+    const TPackageConfiguration* configuration = package->configurationForCurrentPlatform();
+    const QString packageRevision = configuration ? configuration->packageVersion().trimmed() : QString();
+    hostResolveLoginRevision(packageRevision, [this, executable, parameters, workingDirectory](const QString& revision) {
+        // Host: the qtclient launcher → client contract (login revision, launcher path, CDN).
+        QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+        environment.insert(QStringLiteral("QTCLIENT_LAUNCHER"), QStringLiteral("1"));
+        environment.insert(QStringLiteral("QTCLIENT_CLIENT_REVISION"), revision);
+        environment.insert(QStringLiteral("QTCLIENT_LAUNCHER_BIN"), QCoreApplication::applicationFilePath());
+        if (const QString cdn = TLauncherFilesystemHelper::cdnBase(); !cdn.isEmpty())
+            environment.insert(QStringLiteral("QTCLIENT_ASSET_BASE"), cdn);
+        QProcess process;
+        process.setProgram(executable);
+        process.setArguments(parameters);
+        process.setWorkingDirectory(workingDirectory);
+        process.setProcessEnvironment(environment);
+        if (!process.startDetached()) {
+            QCoreApplication::exit(1);
+            return;
+        }
+        m_clientStartTimer.start();
+        m_exitTimer.start();
+        if (m_mainWindow)
+            m_mainWindow->close();
+    });
+}
+
+void TLauncherApplication::hostResolveLoginRevision(const QString& fallback, std::function<void(QString)> then)
+{
+    // The portal accepts the live latest/release.json "revision" at login; a
+    // package version ("15.33.<sha>") would be refused with errorCode 7.
+    const QUrl manifest = m_filesystemHelper->releaseManifestUrl();
+    if (!manifest.isValid() || manifest.isEmpty()) {
+        then(fallback);
         return;
     }
-    m_clientStartTimer.start();
-    m_exitTimer.start();
-    if (m_mainWindow)
-        m_mainWindow->close();
+    auto finished = std::make_shared<bool>(false);
+    auto connections = std::make_shared<std::vector<QMetaObject::Connection>>();
+    const auto finish = [finished, connections, fallback, then](const QString& revision) {
+        if (*finished)
+            return;
+        *finished = true;
+        for (const QMetaObject::Connection& connection : *connections)
+            QObject::disconnect(connection);
+        if (revision != fallback)
+            qInfo().noquote() << "Login revision" << revision << "(package version" << fallback << ")";
+        then(revision.isEmpty() ? fallback : revision);
+    };
+    connections->push_back(connect(m_downloadPool.get(), &host::TDownloadPool::downloadSucceeded, this,
+                                   [manifest, finish](const QUrl& url, const QByteArray& data) {
+                                       if (url != manifest)
+                                           return;
+                                       finish(QJsonDocument::fromJson(data)
+                                                  .object()
+                                                  .value(QStringLiteral("revision"))
+                                                  .toString()
+                                                  .trimmed());
+                                   }));
+    connections->push_back(connect(m_downloadPool.get(), &host::TDownloadPool::downloadFailed, this,
+                                   [manifest, finish](const QUrl& url, QNetworkReply::NetworkError, const QString& error) {
+                                       if (url != manifest)
+                                           return;
+                                       qWarning() << "Release manifest" << url.toString() << "failed:" << error;
+                                       finish(QString());
+                                   }));
+    m_downloadPool->download(manifest, m_filesystemHelper->retries(), m_filesystemHelper->configurationTransportTimeout());
 }
 
 void TLauncherApplication::showSplash(ESplashState state)

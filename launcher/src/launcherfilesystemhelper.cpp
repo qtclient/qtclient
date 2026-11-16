@@ -1,5 +1,6 @@
 #include "launcherfilesystemhelper.h"
 
+#include "brand.h"
 #include "package.h"
 
 #include <QCoreApplication>
@@ -18,6 +19,32 @@ const QString kGroupUrls = QStringLiteral("URLS");
 const QString kGroupTiming = QStringLiteral("TIMING");
 const QString kGroupUser = QStringLiteral("USER");
 const QString kGroupOptions = QStringLiteral("OPTIONS");
+
+/// Host: origin of the product CDN bundle (QTCLIENT_CDN_URL, else the tip
+/// pack's brand `defaultCdn`); empty for stock CipSoft.
+QString hostCdnBase()
+{
+    QString cdn = qEnvironmentVariable("QTCLIENT_CDN_URL");
+    if (cdn.isEmpty() && !LauncherBrand::instance().noMods)
+        cdn = LauncherBrand::instance().defaultCdn;
+    while (cdn.endsWith(QLatin1Char('/')))
+        cdn.chop(1);
+    return cdn;
+}
+
+/// Host: content-addressed store (`<cdn>/content/<aa>/<packedhash>`) for file
+/// downloads. QTCLIENT_CDN_CONTENT_STORE=1/0 forces it; otherwise only the
+/// local test origins use it, and tips keep CipSoft's per-file urls.
+bool hostUseContentStore(const QString& cdn)
+{
+    const QString force = qEnvironmentVariable("QTCLIENT_CDN_CONTENT_STORE");
+    if (force == QLatin1String("1"))
+        return !cdn.isEmpty();
+    if (force == QLatin1String("0") || cdn.isEmpty())
+        return false;
+    const QString host = QUrl(cdn).host();
+    return host.contains(QLatin1String("example.invalid")) || host.contains(QLatin1String("qtclient.local"));
+}
 
 /// Host: launcher settings defaults from the tip mods (highest priority last
 /// wins), then environment overrides used by local play and the release sidecar.
@@ -65,16 +92,21 @@ QJsonObject hostSettingsDefaults()
             }
         }
     }
-    if (tip.isEmpty()) {
-        const QString cdn = qEnvironmentVariable("QTCLIENT_CDN_URL");
-        if (!cdn.isEmpty())
-            tip = cdn + QStringLiteral("/launcher/tibiametadata.json");
-    }
-    if (!tip.isEmpty()) {
-        QJsonObject urls = defaults.value(kGroupUrls).toObject();
+    const QString cdn = hostCdnBase();
+    QJsonObject urls = defaults.value(kGroupUrls).toObject();
+    // An explicit QTCLIENT_CDN_URL wins over the mods; the brand's CDN only fills a gap.
+    if (tip.isEmpty() && !cdn.isEmpty()
+        && (!qEnvironmentVariableIsEmpty("QTCLIENT_CDN_URL") || !urls.contains(QStringLiteral("launcherConfiguration"))))
+        tip = cdn + QStringLiteral("/launcher/tibiametadata.json");
+    if (!tip.isEmpty())
         urls.insert(QStringLiteral("launcherConfiguration"), tip);
-        defaults.insert(kGroupUrls, urls);
-    }
+    // The release gate: the portal accepts latest/release.json "revision" as the
+    // client revision at login (errorCode 7 otherwise).
+    if (!cdn.isEmpty() && !urls.contains(QStringLiteral("releaseManifest")))
+        urls.insert(QStringLiteral("releaseManifest"), cdn + QStringLiteral("/latest/release.json"));
+    if (hostUseContentStore(cdn) && !urls.contains(QStringLiteral("contentStore")))
+        urls.insert(QStringLiteral("contentStore"), cdn + QStringLiteral("/content"));
+    defaults.insert(kGroupUrls, urls);
     return defaults;
 }
 
@@ -149,6 +181,100 @@ QUrl TLauncherFilesystemHelper::launcherConfigurationUrl() const
 QUrl TLauncherFilesystemHelper::cdnDiagnosticsTraceUrl() const
 {
     return QUrl(m_settings->stringValue(kGroupUrls, QStringLiteral("cdnDiagnosticsTrace")));
+}
+
+QString TLauncherFilesystemHelper::cdnBase()
+{
+    return hostCdnBase();
+}
+
+QUrl TLauncherFilesystemHelper::releaseManifestUrl() const
+{
+    return QUrl(m_settings->stringValue(kGroupUrls, QStringLiteral("releaseManifest")));
+}
+
+QUrl TLauncherFilesystemHelper::contentStoreUrl() const
+{
+    if (qEnvironmentVariable("QTCLIENT_CDN_CONTENT_STORE") == QLatin1String("0"))
+        return {};
+    return QUrl(m_settings->stringValue(kGroupUrls, QStringLiteral("contentStore")));
+}
+
+QUrl TLauncherFilesystemHelper::fileDownloadUrl(const TFileInPackage& file) const
+{
+    const QUrl store = contentStoreUrl();
+    const QString hash = file.packedHash.trimmed().toLower();
+    if (!store.isValid() || store.isEmpty() || hash.size() != 64)
+        return file.url;
+    for (const QChar c : hash) {
+        if (!c.isDigit() && (c < QLatin1Char('a') || c > QLatin1Char('f')))
+            return file.url;
+    }
+    QString base = store.toString();
+    while (base.endsWith(QLatin1Char('/')))
+        base.chop(1);
+    return QUrl(base + QLatin1Char('/') + hash.left(2) + QLatin1Char('/') + hash);
+}
+
+std::vector<THostChannel> TLauncherFilesystemHelper::enabledHostChannels(const TPackageBuild& build)
+{
+    std::vector<THostChannel> channels;
+    const LauncherMods& mods = LauncherMods::instance();
+    for (const THostChannel& channel : build.hostChannels) {
+        const bool enabled = (channel.name == QLatin1String("mods") && mods.clientModsChannel)
+                             || (channel.name == QLatin1String("minimap") && mods.minimapChannel);
+        if (enabled && channel.url.isValid() && !channel.url.isEmpty())
+            channels.push_back(channel);
+    }
+    return channels;
+}
+
+void TLauncherFilesystemHelper::repairMacFrameworkVersions(const QDir& bundle)
+{
+#ifdef Q_OS_MACOS
+    // Packages ship file lists without symlinks: Qt frameworks need
+    // Versions/Current plus the top-level Resources / Headers / binary links.
+    const QDir frameworks(bundle.filePath(QStringLiteral("Contents/Frameworks")));
+    if (!frameworks.exists())
+        return;
+    for (const QFileInfo& framework :
+         frameworks.entryInfoList({QStringLiteral("*.framework")}, QDir::Dirs | QDir::NoDotAndDotDot)) {
+        const QDir versions(QDir(framework.absoluteFilePath()).filePath(QStringLiteral("Versions")));
+        if (!versions.exists())
+            continue;
+        const QString current = versions.filePath(QStringLiteral("Current"));
+        if (QFileInfo::exists(current))
+            continue;
+        QString target;
+        for (const QFileInfo& entry : versions.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+            if (entry.fileName() == QLatin1String("A")) {
+                target = entry.fileName();
+                break;
+            }
+            if (target.isEmpty() && entry.fileName() != QLatin1String("Current"))
+                target = entry.fileName();
+        }
+        if (target.isEmpty())
+            continue;
+        if (!QFile::link(target, current)) {
+            qWarning() << "Linking" << current << "->" << target << "failed.";
+            continue;
+        }
+        const QDir root(framework.absoluteFilePath());
+        const QString binary = framework.completeBaseName();
+        for (const QString& leaf : {QStringLiteral("Resources"), QStringLiteral("Headers"), QStringLiteral("Modules"),
+                                    binary}) {
+            const QString link = root.filePath(leaf);
+            const QString destination = QStringLiteral("Versions/Current/") + leaf;
+            if (QFileInfo::exists(link) || !QFileInfo::exists(root.filePath(destination)))
+                continue;
+            if (!QFile::link(destination, link))
+                qWarning() << "Linking" << link << "->" << destination << "failed.";
+        }
+    }
+#else
+    Q_UNUSED(bundle);
+#endif
 }
 
 int TLauncherFilesystemHelper::downloadErrorTimeout() const

@@ -107,7 +107,13 @@ private:
         QUrl assetsVersionUrl;
         QByteArray version;
         QByteArray assetsVersion;
+        /// Host channel version urls still awaited, and the versions received.
+        std::vector<std::pair<QString, QUrl>> hostChannelVersionUrls;
+        std::vector<std::pair<QString, QByteArray>> hostChannelVersions;
     };
+    /// Host: records a channel version download; true when `url` was one.
+    bool takeHostChannelVersion(TPendingPackageConfiguration& pending, const QUrl& url, const QByteArray* data);
+    static bool isComplete(const TPendingPackageConfiguration& pending);
     bool loadMainConfiguration(const QByteArray& data);
     void mainConfigurationFailed();
     void finishPendingConfiguration(std::vector<TPendingPackageConfiguration>::iterator pending);

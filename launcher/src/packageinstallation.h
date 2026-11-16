@@ -60,8 +60,13 @@ public Q_SLOTS:
     void onAssetMetaDataReceived(QByteArray data);
     void onDownloadCompleted();
     void onDownloadFailed(launcher::EPackageDownloaderError errorReason);
+    void onHostChannelMetaDataReceived(QUrl url, QByteArray data);
+    void onHostChannelMetaDataFailed(QUrl url);
 
 private:
+    /// Emits metaDataDownloadCompleted once package, assets and host channel
+    /// manifests are in (channel files merged into the assets).
+    void emitMetaDataIfComplete();
     void removeFiles();
     void downloadFiles();
 
@@ -80,6 +85,8 @@ private:
     QByteArray m_packageMetaData;
     bool m_waitingForAssetMetaData = false;
     QByteArray m_assetMetaData;
+    int m_waitingForHostChannels = 0;
+    std::vector<std::pair<QUrl, QByteArray>> m_hostChannelManifests;
 };
 
 } // namespace launcher

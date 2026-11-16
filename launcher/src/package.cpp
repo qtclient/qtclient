@@ -172,6 +172,53 @@ TPackageBuild::TPackageBuild(TPackage* owner, const QJsonObject& build, const QU
     versionUrl = optionalUrl("versionurl");
     assetsUrl = optionalUrl("assetsurl");
     assetsVersionUrl = optionalUrl("assetsversionurl");
+    // Host channels of the release tip (see THostChannel).
+    for (const char* channel : {"mods", "minimap"}) {
+        const QString name = QString::fromLatin1(channel);
+        const QString key = name + QStringLiteral("url");
+        if (!build.contains(key))
+            continue;
+        THostChannel host;
+        host.name = name;
+        host.url = resolveConfigurationUrl(baseUrl, QUrl(build.value(key).toString()));
+        const QString versionKey = name + QStringLiteral("versionurl");
+        if (build.contains(versionKey))
+            host.versionUrl = resolveConfigurationUrl(baseUrl, QUrl(build.value(versionKey).toString()));
+        hostChannels.push_back(host);
+    }
+}
+
+QByteArray hostCompositeAssetsVersion(const QByteArray& assetsVersion,
+                                      const std::vector<std::pair<QString, QByteArray>>& channelVersions)
+{
+    if (channelVersions.empty())
+        return assetsVersion;
+    QByteArray composite = assetsVersion.trimmed();
+    for (const auto& [name, version] : channelVersions)
+        composite += ' ' + name.toUtf8() + '=' + version.trimmed();
+    return composite;
+}
+
+QByteArray hostMergeChannelManifests(const QByteArray& assetMetaData,
+                                     const std::vector<std::pair<QUrl, QByteArray>>& channelManifests)
+{
+    if (channelManifests.empty())
+        return assetMetaData;
+    QJsonObject assets = QJsonDocument::fromJson(assetMetaData).object();
+    QJsonArray files = assets.value(QStringLiteral("files")).toArray();
+    for (const auto& [manifestUrl, manifest] : channelManifests) {
+        const QJsonArray channelFiles =
+            QJsonDocument::fromJson(manifest).object().value(QStringLiteral("files")).toArray();
+        for (const QJsonValue& value : channelFiles) {
+            QJsonObject file = value.toObject();
+            // Channel manifests use urls relative to themselves (e.g. ../assets-current/…).
+            file.insert(QStringLiteral("url"),
+                        manifestUrl.resolved(QUrl(file.value(QStringLiteral("url")).toString())).toString());
+            files.append(file);
+        }
+    }
+    assets.insert(QStringLiteral("files"), files);
+    return QJsonDocument(assets).toJson(QJsonDocument::Compact);
 }
 
 // --- TPackage ----------------------------------------------------------------------------

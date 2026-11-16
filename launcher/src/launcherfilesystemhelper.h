@@ -9,10 +9,14 @@
 #include <QVariant>
 
 #include <memory>
+#include <vector>
 
 namespace launcher {
 
 class TPackage;
+struct TFileInPackage;
+struct TPackageBuild;
+struct THostChannel;
 
 /// Launcher settings: an optional `launchersettings.ini` next to the launcher
 /// overrides the user's settings, which fall back to built-in defaults.
@@ -52,6 +56,18 @@ public:
     // URLS
     QUrl launcherConfigurationUrl() const;
     QUrl cdnDiagnosticsTraceUrl() const;
+    /// Host: origin of the product CDN bundle (QTCLIENT_CDN_URL, else the pack brand's); empty for stock.
+    static QString cdnBase();
+    /// Host: `latest/release.json` of the product CDN (login revision); empty for stock.
+    QUrl releaseManifestUrl() const;
+    /// Host: content-addressed store base, when file downloads use it.
+    QUrl contentStoreUrl() const;
+    /// Host: where `file` is downloaded from (its url, or the content store blob).
+    QUrl fileDownloadUrl(const TFileInPackage& file) const;
+    /// Host: channels of `build` enabled by the tip's launcher mod capabilities.
+    static std::vector<THostChannel> enabledHostChannels(const TPackageBuild& build);
+    /// Host (macOS): restores the framework symlinks a package file list cannot carry.
+    static void repairMacFrameworkVersions(const QDir& bundle);
     // TIMING
     int downloadErrorTimeout() const;
     int clientStartTimeout() const;

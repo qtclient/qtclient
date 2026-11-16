@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QFileInfo>
+#include <QSet>
 #include <QFutureWatcher>
 #include <QtConcurrent/QtConcurrentRun>
 
@@ -43,6 +44,16 @@ TPackageFileDownloader::~TPackageFileDownloader() = default;
 void TPackageFileDownloader::start()
 {
     m_pendingFiles = m_files;
+    // Host: content-addressed store urls. Equal blobs share a store url, so a
+    // fragment (not sent to the server) keeps every pending file's url unique.
+    QSet<QUrl> seen;
+    for (TFileInPackage& file : m_pendingFiles) {
+        QUrl url = m_filesystemHelper->fileDownloadUrl(file);
+        if (url != file.url && seen.contains(url))
+            url.setFragment(file.localFile);
+        seen.insert(url);
+        file.url = url;
+    }
     std::sort(m_pendingFiles.begin(), m_pendingFiles.end(), [](const TFileInPackage& a, const TFileInPackage& b) {
         return a.url.toString().compare(b.url.toString()) < 0;
     });
@@ -68,6 +79,12 @@ void TPackageFileDownloader::downloadAssetMetaData(const QUrl& url)
     m_downloadPool->download(url, m_filesystemHelper->retries(), m_filesystemHelper->configurationTransportTimeout());
 }
 
+void TPackageFileDownloader::downloadHostChannelMetaData(const QUrl& url)
+{
+    m_hostChannelMetaDataUrls.push_back(url);
+    m_downloadPool->download(url, m_filesystemHelper->retries(), m_filesystemHelper->configurationTransportTimeout());
+}
+
 TPackageFileDownloader::TFileIterator TPackageFileDownloader::findPendingFile(const QUrl& url)
 {
     const auto file = std::lower_bound(m_pendingFiles.begin(), m_pendingFiles.end(), url, urlLess);
@@ -89,6 +106,12 @@ void TPackageFileDownloader::handleDownloadedFile(const QUrl& url, const QByteAr
     }
     if (url == m_assetMetaDataUrl) {
         Q_EMIT assetMetaDataReceived(data);
+        return;
+    }
+    if (const auto channel = std::find(m_hostChannelMetaDataUrls.begin(), m_hostChannelMetaDataUrls.end(), url);
+        channel != m_hostChannelMetaDataUrls.end()) {
+        m_hostChannelMetaDataUrls.erase(channel);
+        Q_EMIT hostChannelMetaDataReceived(url, data);
         return;
     }
     const auto file = findPendingFile(url);
@@ -143,6 +166,13 @@ void TPackageFileDownloader::saveFile(const TFileInPackage& file, const QByteArr
 
 void TPackageFileDownloader::onDownloadFailed(const QUrl& url, QNetworkReply::NetworkError, const QString& errorString)
 {
+    if (const auto channel = std::find(m_hostChannelMetaDataUrls.begin(), m_hostChannelMetaDataUrls.end(), url);
+        channel != m_hostChannelMetaDataUrls.end()) {
+        qCritical() << "Download of" << url.toString() << "failed:" << errorString;
+        m_hostChannelMetaDataUrls.erase(channel);
+        Q_EMIT hostChannelMetaDataFailed(url);
+        return;
+    }
     const auto file = findPendingFile(url);
     if (file == m_pendingFiles.end())
         return;
