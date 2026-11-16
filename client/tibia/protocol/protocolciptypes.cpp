@@ -242,9 +242,9 @@ size_t fillStructuredServer(GameserverMessage& msg, int opcode, ClassicReader& r
         for (uint16_t i = 0; i < count; ++i) {
             uint16_t spellId = 0;
             uint8_t mod = 0;
-            uint8_t value = 0;
-            if (!r.u16(spellId) || !r.u8(mod) || !r.u8(value))
-                break;
+            uint32_t value = 0;
+            if (!r.u16(spellId) || !r.u8(mod) || !r.u32(value))
+                return 0;
             auto* entry = m->add_entries();
             entry->set_spell_id(spellId);
             entry->set_mod(mod);

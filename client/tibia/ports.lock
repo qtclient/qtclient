@@ -2474,6 +2474,7 @@ protocol::TProtobufServerMessageTranslator::v163	891df33bb4eef909	ported	protoco
 protocol::TProtobufServerMessageTranslator::v164	3061489ae5290bf9	ported	protocol/miscwire.cpp:fillMiscMessage
 protocol::TProtobufServerMessageTranslator::v165	4c6715d80770f61b	ported	protocol/miscwire.cpp:fillMiscMessage
 protocol::TProtobufServerMessageTranslator::v166	58a16c92bfbe7d22	ported	protocol/featurewire.cpp:fillFeatureMessage
+protocol::TProtobufServerMessageTranslator::v167	b260a29cca6a25e6	ported	protocol/protocolciptypes.cpp:fillStructuredServer
 protocol::TProtobufServerMessageTranslator::v168	2a7b37913ecadf03	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v169	a7b39ec6a159092b	ported	protocol/featurewire.cpp:fillFeatureMessage
 protocol::TProtobufServerMessageTranslator::v17	89c239b4d9cca65a	ported	protocol/featurewire.cpp:fillFeatureMessage

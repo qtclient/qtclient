@@ -266,7 +266,7 @@ StampResult writeHeightStampFrame(const StampFrame& stamp)
         });
 
         auto& foot = reset(scratch.foot, area);
-        std::vector<std::pair<double, double>> edges; // (x - y, x + y) of each contact's floor edge
+        std::vector<QPointF> edges; // (x - y, x + y) of each contact's floor edge
         for (const auto& group : groups) {
             int diagonal = 0;
             int row = 0;
@@ -354,16 +354,18 @@ StampResult writeHeightStampFrame(const StampFrame& stamp)
         } else {
             // Where each diagonal s = x - y crosses the contacts' hull (in s, u = x + y): a
             // pixel whose run does not end on a contact stands halfway across.
-            std::ranges::sort(edges);
+            std::ranges::sort(edges, [](const QPointF& a, const QPointF& b) {
+                return a.x() < b.x() || (a.x() == b.x() && a.y() < b.y());
+            });
             edges.erase(std::unique(edges.begin(), edges.end()), edges.end());
             // The art alone does not tell a box from a round thing (a fence panel and a lamp
             // both stand on contacts across their width): round unless an override says box.
             if (shape == ThingShape::Auto)
                 shape = ThingShape::Round;
             const auto cross = [](const auto& o, const auto& a, const auto& b) {
-                return (a.first - o.first) * (b.second - o.second) - (a.second - o.second) * (b.first - o.first);
+                return (a.x() - o.x()) * (b.y() - o.y()) - (a.y() - o.y()) * (b.x() - o.x());
             };
-            std::vector<std::pair<double, double>> hull;
+            std::vector<QPointF> hull;
             if (edges.size() < 3) {
                 hull = edges;
             } else {
@@ -382,8 +384,8 @@ StampResult writeHeightStampFrame(const StampFrame& stamp)
                 hull.resize(k - 1);
             }
 
-            const double firstS = std::floor(edges.front().first);
-            const int steps = static_cast<int>((std::ceil(edges.back().first) - firstS) * 2) + 1;
+            const double firstS = std::floor(edges.front().x());
+            const int steps = static_cast<int>((std::ceil(edges.back().x()) - firstS) * 2) + 1;
             std::vector<double> low(steps, std::numeric_limits<double>::infinity());
             std::vector<double> high(steps, -std::numeric_limits<double>::infinity());
             for (size_t i = 0; i < hull.size(); ++i) {
@@ -391,17 +393,19 @@ StampResult writeHeightStampFrame(const StampFrame& stamp)
                 const auto& b = hull[(i + 1) % hull.size()];
                 for (int k = 0; k < steps; ++k) {
                     const double s = firstS + k * 0.5;
-                    if (s < std::min(a.first, b.first) || s > std::max(a.first, b.first))
+                    if (s < std::min(a.x(), b.x()) || s > std::max(a.x(), b.x()))
                         continue;
-                    double uLow = std::min(a.second, b.second);
-                    double uHigh = std::max(a.second, b.second);
-                    if (a.first != b.first)
-                        uLow = uHigh = a.second + (s - a.first) * (b.second - a.second) / (b.first - a.first);
+                    double uLow = std::min(a.y(), b.y());
+                    double uHigh = std::max(a.y(), b.y());
+                    if (a.x() != b.x())
+                        uLow = uHigh = a.y() + (s - a.x()) * (b.y() - a.y()) / (b.x() - a.x());
                     low[k] = std::min(low[k], uLow);
                     high[k] = std::max(high[k], uHigh);
                 }
             }
-            for (const auto& [s, u] : edges) {
+            for (const QPointF& edge : edges) {
+                const double s = edge.x();
+                const double u = edge.y();
                 const int k = std::clamp<int>(static_cast<int>(std::lround((s - firstS) * 2)), 0, steps - 1);
                 low[k] = std::min(low[k], u);
                 high[k] = std::max(high[k], u);

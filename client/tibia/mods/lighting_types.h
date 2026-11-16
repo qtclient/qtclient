@@ -5,28 +5,6 @@
 namespace tibia {
 namespace mods {
 
-/// CIP 6³ palette byte → RGB (same formula as `tibia::client::colorFromEightBit`).
-struct ColorRgb {
-    uint8_t r = 0;
-    uint8_t g = 0;
-    uint8_t b = 0;
-
-    constexpr float rF() const { return r / 255.f; }
-    constexpr float gF() const { return g / 255.f; }
-    constexpr float bF() const { return b / 255.f; }
-};
-
-inline constexpr ColorRgb colorFrom8bit(const uint8_t color, const float brightness = 1.0f)
-{
-    if (color >= 216 || color == 0)
-        return {};
-    return {
-        static_cast<uint8_t>(static_cast<int>((color / 36 % 6 * 51) * brightness)),
-        static_cast<uint8_t>(static_cast<int>((color / 6 % 6 * 51) * brightness)),
-        static_cast<uint8_t>(static_cast<int>((color % 6 * 51) * brightness)),
-    };
-}
-
 /// POD map cell for WorldLightingDriver / WorldGeometry (no qtclient `Position`).
 struct LightingMapPos {
     int x = 0;

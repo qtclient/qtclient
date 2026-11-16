@@ -4,6 +4,7 @@
 
 #include <QImage>
 #include <QPointer>
+#include <QRect>
 #include <QTimer>
 
 #include <map>
@@ -126,11 +127,8 @@ public:
         int id = 0;
         QString name;
         QString file;
-        int x = 0;
-        int y = 0;
+        QRect fields; // map fields the mask covers
         int z = 7;
-        int w = 0;
-        int h = 0;
     };
     /// Caption pin for a hunt that has no CIP AreaData label (generated floors).
     struct TMissionCaption

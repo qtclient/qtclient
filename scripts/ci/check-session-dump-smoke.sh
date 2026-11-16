@@ -21,15 +21,24 @@
 set -euo pipefail
 
 OTC="$(cd "$(dirname "$0")/../.." && pwd)"
+CALLER_PWD="$PWD"
 cd "$OTC"
+
+# Paths from the environment are relative to where the script was called from.
+absolute() {
+  case "$1" in
+    /*) echo "$1" ;;
+    *) echo "$CALLER_PWD/$1" ;;
+  esac
+}
 
 resolve_dump() {
   if [[ -n "${QTCLIENT_DUMP_FIXTURE:-}" ]]; then
-    echo "$QTCLIENT_DUMP_FIXTURE"
+    absolute "$QTCLIENT_DUMP_FIXTURE"
     return
   fi
   if [[ -n "${QTCLIENT_SESSION_DUMP:-}" ]]; then
-    echo "$QTCLIENT_SESSION_DUMP"
+    absolute "$QTCLIENT_SESSION_DUMP"
     return
   fi
   local candidate
@@ -67,7 +76,7 @@ fi
 
 BIN="${QTCLIENT_CLIENT_BIN:-}"
 if [[ -z "$BIN" ]]; then
-  FIND_BIN="$(cd "$(dirname "$0")/../.." && pwd)/scripts/lifecycle/lib/find-client-bin.sh"
+  FIND_BIN="$OTC/scripts/lifecycle/lib/find-client-bin.sh"
   BIN="$("$FIND_BIN" "$OTC" 2>/dev/null || true)"
 fi
 if [[ -z "${BIN:-}" || ! -x "$BIN" ]]; then

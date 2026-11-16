@@ -512,16 +512,17 @@ void TMinimapRendererQuickItem::addZones(TDraw& draw, const int layer)
         if (zoneIt == m_missionZones.end())
             continue;
         const TMissionZoneOverlay& zone = zoneIt->second;
-        if (zone.z != layer || zone.w <= 0 || zone.h <= 0 || zone.file.isEmpty())
+        if (zone.z != layer || zone.fields.isEmpty() || zone.file.isEmpty())
             continue;
-        const QRectF target(m_worldCamera->pixelOf(zone.x, zone.y, layer),
-                            m_worldCamera->pixelOf(zone.x + zone.w, zone.y + zone.h, layer));
+        const QRect& fields = zone.fields;
+        const QRectF target(m_worldCamera->pixelOf(fields.x(), fields.y(), layer),
+                            m_worldCamera->pixelOf(fields.x() + fields.width(), fields.y() + fields.height(), layer));
         if (!target.intersects(viewport))
             continue;
         const QImage mask = missionZoneImage(zone);
         if (mask.isNull())
             continue;
-        draw.images.push_back({ mask, target, QRectF(0, 0, zone.w, zone.h), true, opacity });
+        draw.images.push_back({ mask, target, QRectF(QPointF(0, 0), QSizeF(fields.size())), true, opacity });
     }
 }
 

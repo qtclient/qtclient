@@ -102,6 +102,31 @@ void TWorldMapQuickItem::releaseResources()
         window()->scheduleRenderJob(new ReleaseTextures(std::move(m_textures)), QQuickWindow::NoStage);
 }
 
+namespace {
+
+bool isSoftwareRenderer(const QQuickWindow* window)
+{
+    const QSGRendererInterface* api = window ? window->rendererInterface() : nullptr;
+    return api && api->graphicsApi() == QSGRendererInterface::Software;
+}
+
+/// A sprite drawn with the highlight material. The software backend bakes highlights
+/// instead (no such nodes), and its image nodes carry a placeholder material pointer
+/// that must not be dereferenced.
+bool isHighlightSpriteNode(QSGNode* node, const bool software)
+{
+    if (software || !node || node->type() != QSGNode::GeometryNodeType)
+        return false;
+    static QSGMaterialType* highlightType = [] {
+        static renderer::TSpriteDrawCommandHighlightMaterial sample;
+        return sample.type();
+    }();
+    const QSGMaterial* material = static_cast<QSGGeometryNode*>(node)->material();
+    return material && material->type() == highlightType;
+}
+
+}
+
 void TWorldMapQuickItem::recycleNode(QSGNode* node)
 {
     if (!node)
@@ -115,12 +140,7 @@ void TWorldMapQuickItem::recycleNode(QSGNode* node)
         return;
     }
     if (node->type() == QSGNode::GeometryNodeType) {
-        auto* geo = static_cast<QSGGeometryNode*>(node);
-        static QSGMaterialType* highlightType = [] {
-            static renderer::TSpriteDrawCommandHighlightMaterial sample;
-            return sample.type();
-        }();
-        if (geo->material() && geo->material()->type() == highlightType) {
+        if (isHighlightSpriteNode(node, isSoftwareRenderer(window()))) {
             m_highlightPool.push_back(static_cast<renderer::THighlightedSpriteScenegraphNode*>(node));
             return;
         }
@@ -241,17 +261,7 @@ QSGNode* TWorldMapQuickItem::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeDa
         QSGNode* parent = nullptr;
         QSGNode* next = nullptr;
     };
-    // Highlight material type — distinguish GeometryNode image vs highlight without RTTI.
-    const auto isHighlightNode = [](QSGNode* node) -> bool {
-        if (!node || node->type() != QSGNode::GeometryNodeType)
-            return false;
-        static QSGMaterialType* highlightType = [] {
-            static renderer::TSpriteDrawCommandHighlightMaterial sample;
-            return sample.type();
-        }();
-        auto* geo = static_cast<QSGGeometryNode*>(node);
-        return geo->material() && geo->material()->type() == highlightType;
-    };
+    const auto isHighlightNode = [software](QSGNode* node) { return isHighlightSpriteNode(node, software); };
     // Takes the next pooled node if it is of the wanted kind, else puts a new
     // one in its place. `create` must leave the node renderable (textures set)
     // before return — parenting triggers an immediate software update.
