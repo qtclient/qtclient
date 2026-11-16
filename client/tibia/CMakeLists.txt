@@ -22,6 +22,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 get_filename_component(TIBIA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+# CipSoft shared:: classes (apps/qtclient/shared) are compiled once into
+# qtclient_shared; every target here sees their headers.
+include_directories("${TIBIA_ROOT}/shared/src")
 include("${TIBIA_ROOT}/cmake/CipSoftDir.cmake")
 include("${TIBIA_ROOT}/cmake/CipCodegen.cmake")
 include("${TIBIA_ROOT}/cmake/CipQmlModule.cmake")
@@ -194,7 +197,8 @@ endif()
 target_link_libraries(tibia PRIVATE
   Qt6::Core Qt6::CorePrivate Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::QuickPrivate Qt6::QuickControls2
   tibia_legacycontrolsplugin
-  qmlcomponentsplugin)
+  qmlcomponentsplugin
+  qtclient_shared)
 tibia_link_desktop_webengine(tibia ${TIBIA_USE_WEBENGINE_STUBS})
 # Public HD scaler + mods registry / WorldView / ModLoader; packs via TibiaMods + QtClientMod.
 target_sources(tibia PRIVATE
@@ -284,14 +288,10 @@ if(TIBIA_WITH_GAMECORE)
     app/qtplatformwindow.cpp app/qtplatformwindow.h
     chat/chatgameactionhandler.cpp chat/chatgameactionhandler.h
     shared/sharedciptypes.cpp shared/sharedciptypes.h
-    shared/clipboardhelper.cpp shared/clipboardhelper.h
     shared/iodevicereader.cpp shared/iodevicereader.h
     shared/iodevicewriter.cpp shared/iodevicewriter.h
     shared/simplevectorabstractlistmodel.h
     shared/xteahelper.cpp shared/xteahelper.h
-    shared/timelapseclockservice.cpp shared/timelapseclockservice.h
-    shared/jsonvalidator.cpp shared/jsonvalidator.h
-    shared/downloadpool.cpp shared/downloadpool.h
     shared/rsahelper.cpp
     config/clientsettings.cpp config/clientsettings.h
     config/configciptypes.cpp config/configciptypes.h

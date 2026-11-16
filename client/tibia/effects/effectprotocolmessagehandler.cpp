@@ -3,7 +3,7 @@
 #include "appearances/appearanceinstance.h"
 #include "client/magiceffectopacity.h"
 #include "effects/effectstorage.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include "protocol/protocolciptypes.h"
 #include "sound/soundplayback.h"
 #include "worldmap/worldmapstorage.h"

@@ -16,7 +16,7 @@
 #include <tibia/game/mapsession.h>
 #include <tibia/worldmap/worldmapstorage.h>
 #include "assets/thingtype.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <tibia/schedule/schedule.h>
 #include <tibia/schedule/schedule.h>
 #include <tibia/game/gamesession.h>

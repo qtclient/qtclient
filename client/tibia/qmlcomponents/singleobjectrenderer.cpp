@@ -4,7 +4,7 @@
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/assets/thingtype.h>
 #include <tibia/assets/things.h>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 
 #include <QQuickWindow>
 #include <QSGImageNode>

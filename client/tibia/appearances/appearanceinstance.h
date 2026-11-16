@@ -8,7 +8,7 @@
 #include <client/const.h>
 #include <client/declarations.h>
 #include <client/position.h>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <QColor>
 
 #include <cstdint>

@@ -14,7 +14,7 @@
 #include <QPoint>
 #include <QRect>
 #include <QSize>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <QColor>
 
 #include <QColor>

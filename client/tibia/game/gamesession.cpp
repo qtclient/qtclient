@@ -10,7 +10,7 @@
 #include "worldmap/worldmapfield.h"
 #include <tibia/worldmap/worldmapstorage.h>
 #include <tibia/config/runtimegameconfig.h>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <tibia/game/sessionhooks.h>
 #include <tibia/game/tgamenotify.h>
 #include <vector>
@@ -34,7 +34,7 @@
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "creatures/creaturestorage.h"
 #include "creatures/walkdebug.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <QStringList>
 #include <tibia/schedule/schedule.h>
 #include <tibia/game/gamenotify.h>

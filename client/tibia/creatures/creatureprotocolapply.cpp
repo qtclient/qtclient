@@ -1,5 +1,6 @@
 #include "creatures/creatureprotocolapply.h"
 
+#include "colorhelper.h"
 #include "creatures/creaturestorage.h"
 #include "game/playerdata.h"
 #include "protocol/protocolcodes.h"
@@ -89,13 +90,6 @@ Outfit outfitFromProtocol(const protobuf::protocol::ProtocolOutfit& look, const 
     return outfit;
 }
 
-QColor colorFromEightBit(const uint8_t color)
-{
-    if (color > 215)
-        return QColor(0, 0, 0);
-    return QColor(color / 36 * 51, color / 6 % 6 * 51, color % 6 * 51);
-}
-
 void syncFieldStackFor(const uint32_t creatureId)
 {
     TCreatureStorage* storage = TCreatureStorage::instance();
@@ -142,7 +136,7 @@ bool applyProtocolCreatureFields(TCreatureStorage& storage, const std::shared_pt
         if (static_cast<uint8_t>(c.mark()) == 0xff)
             target.hideStaticSquare();
         else
-            target.showStaticSquare(colorFromEightBit(static_cast<uint8_t>(c.mark())));
+            target.showStaticSquare(shared::colorFromEightBit(static_cast<uint8_t>(c.mark())));
     }
     if (c.has_show_status())
         target.setShowStatus(c.show_status());

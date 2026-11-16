@@ -26,7 +26,7 @@
 #include "outfit.h"
 #include "position.h"
 #include "teamfinder/teamfinder_types.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 
 #include <map>
 #include <string>

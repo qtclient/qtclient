@@ -20,7 +20,7 @@ include(GoogleTest)
 function(qtclient_add_port_test TARGET_NAME)
     add_executable(${TARGET_NAME} ${ARGN})
     set_target_properties(${TARGET_NAME} PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
-    target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/client/tibia ${CMAKE_SOURCE_DIR}/client)
+    target_include_directories(${TARGET_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/client/tibia ${CMAKE_SOURCE_DIR}/client ${CMAKE_SOURCE_DIR}/shared/src)
     target_link_libraries(${TARGET_NAME} PRIVATE GTest::gtest GTest::gtest_main Qt6::Core)
     gtest_discover_tests(${TARGET_NAME})
 endfunction()
@@ -131,20 +131,20 @@ target_link_libraries(client_sessiondumpreader_tests PRIVATE Qt6::Network)
 target_compile_definitions(client_sessiondumpreader_tests PRIVATE QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
 qtclient_add_port_test(client_timelapseclockservice_tests
     timelapseclockservice_test.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/shared/timelapseclockservice.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/shared/clockservice.cpp
+    ${CMAKE_SOURCE_DIR}/shared/src/timelapseclockservice.cpp
+    ${CMAKE_SOURCE_DIR}/shared/src/clockservice.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumpprogressclockservice.cpp
 )
 qtclient_add_port_test(client_jsonvalidator_tests
     jsonvalidator_test.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/shared/jsonvalidator.cpp
+    ${CMAKE_SOURCE_DIR}/shared/src/jsonvalidator.cpp
 )
 
 # CIP tutorial::TSessiondumpHints and its publish-game-action hints (game actions need the generated headers).
 if(Qt6_FOUND AND TARGET tibia)
     add_executable(client_sessiondumphints_tests
         sessiondumphints_test.cpp
-        ${CMAKE_SOURCE_DIR}/client/tibia/shared/jsonvalidator.cpp
+        ${CMAKE_SOURCE_DIR}/shared/src/jsonvalidator.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintbase.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintpublishgameaction.cpp
         ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphints.cpp

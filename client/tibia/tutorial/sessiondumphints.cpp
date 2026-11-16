@@ -1,7 +1,7 @@
 #include "tutorial/sessiondumphints.h"
 
 #include "chat/chatchannel.h"
-#include "shared/jsonvalidator.h"
+#include "jsonvalidator.h"
 #include "tutorial/sessiondumphintpublishgameaction.h"
 
 #include <QJsonArray>

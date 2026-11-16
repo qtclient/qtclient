@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/clipboardhelper.h"
+#include "clipboardhelper.h"
 #include "qmlcomponents/outfitpalette.h"
 
 #include <cip_gen.h>

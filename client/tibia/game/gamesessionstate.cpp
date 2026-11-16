@@ -26,7 +26,7 @@
 #include "creatures/creaturestorage.h"
 #include "game/playerdata.h"
 #include "creatures/walkdebug.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <QStringList>
 #include <tibia/schedule/schedule.h>
 #include <tibia/game/gamenotify.h>

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "shared/jsonvalidator.h"
+#include "jsonvalidator.h"
 
 #include <QJsonDocument>
 

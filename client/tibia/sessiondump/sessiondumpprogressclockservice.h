@@ -1,6 +1,7 @@
 #pragma once
 
-#include "shared/timelapseclockservice.h"
+#include "clockservice.h"
+#include "timelapseclockservice.h"
 
 #include <limits>
 
@@ -12,7 +13,7 @@ namespace sessiondump {
 class TSessiondumpProgressClockService : public shared::TTimeLapseClockService
 {
 public:
-    explicit TSessiondumpProgressClockService(std::function<qint64()> nanosecondClock = {});
+    explicit TSessiondumpProgressClockService(std::shared_ptr<shared::IClockService> clockService = shared::TClockService::process());
     ~TSessiondumpProgressClockService() override;
 
     virtual void start();

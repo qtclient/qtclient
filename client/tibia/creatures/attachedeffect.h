@@ -24,7 +24,7 @@
 #include "animation/phaseanimator.h"
 
 #include <optional>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <QColor>
 #include <QPoint>
 #include <QRect>

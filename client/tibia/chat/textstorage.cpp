@@ -1,6 +1,6 @@
 #include "textstorage.h"
 
-#include "shared/clockservice.h"
+#include "clockservice.h"
 
 #include "creatures/creaturestorage.h"
 

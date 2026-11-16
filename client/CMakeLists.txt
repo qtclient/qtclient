@@ -158,7 +158,6 @@ set(SOURCE_FILES
         tibia/client/statictext.cpp
         tibia/assets/spritesheet.cpp
         tibia/assets/cipbmpimage.cpp
-        tibia/shared/clockservice.cpp
         tibia/shared/tibiafilesystemhelper.cpp
         tibia/shared/filesystemhelper.cpp
         tibia/assets/thingtype.cpp

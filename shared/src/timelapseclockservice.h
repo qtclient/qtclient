@@ -1,27 +1,28 @@
 #pragma once
 
+#include "iclockservice.h"
+
 #include <QDateTime>
 #include <QtGlobal>
 
-#include <functional>
+#include <memory>
 
 namespace tibia {
 namespace shared {
 
-/// CIP `shared::TTimeLapseClockService`: a clock that starts at real time and
-/// runs at an adjustable speed over a base nanosecond clock.
-class TTimeLapseClockService
+/// CIP `shared::TTimeLapseClockService`: a clock that starts at the base
+/// clock's current time and runs at an adjustable speed over it.
+class TTimeLapseClockService : public IClockService
 {
 public:
-    /// `nanosecondClock` is the base clock (default: TClockService::nowNanos).
-    explicit TTimeLapseClockService(std::function<qint64()> nanosecondClock = {});
-    virtual ~TTimeLapseClockService();
+    explicit TTimeLapseClockService(std::shared_ptr<IClockService> clockService);
+    ~TTimeLapseClockService() override;
 
-    virtual qint64 nowMillis();
+    qint64 nowMillis() override;
     /// The start time plus the base clock's elapsed time scaled by the speed.
-    virtual qint64 nowNanos();
-    virtual qint64 nowMicros();
-    virtual QDateTime currentDateTime();
+    qint64 nowNanos() override;
+    qint64 nowMicros() override;
+    QDateTime currentDateTime() override;
     virtual qint64 startNanos() const;
     /// Stops the clock, remembering the speed.
     virtual void pause();
@@ -32,9 +33,7 @@ public:
     double speed() const;
 
 private:
-    void advance();
-
-    std::function<qint64()> m_nanosecondClock;
+    std::shared_ptr<IClockService> m_clockService;
     qint64 m_startNanos = 0;
     qint64 m_lastBaseNanos = 0;
     qint64 m_elapsedNanos = 0;
