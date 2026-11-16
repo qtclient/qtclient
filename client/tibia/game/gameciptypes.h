@@ -19,6 +19,7 @@
 namespace tibia {
 namespace protobuf {
 namespace protocol {
+class GameserverMessageVocationSpecificPlayerData;
 class GameserverMessageBlessingsDialog;
 class GameserverMessageBossDifficultySelection;
 class GameserverMessageEditList;
@@ -274,10 +275,7 @@ public:
     static TPlayerProtocolMessageHandler* liveInstance();
     static void setLiveInstance(TPlayerProtocolMessageHandler* handler);
 
-    /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode);
-
-private:
+public:
     void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
     void handlePlayerSkillsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerSkills& message);
     void handlePlayerDataCurrentMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataCurrent& message);
@@ -288,6 +286,9 @@ private:
     void handleMultiUseDelayMessage(const ::tibia::protobuf::protocol::GameserverMessageMultiUseDelay& message);
     void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
     void handlePassiveAbilityDataMessage(const ::tibia::protobuf::protocol::GameserverMessagePassiveAbilityData& message);
+    /// The monk's harmony, serenity and virtue spells.
+    void handleVocationSpecificPlayerDataMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageVocationSpecificPlayerData& message);
 };
 
 class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler

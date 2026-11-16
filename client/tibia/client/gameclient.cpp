@@ -396,10 +396,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, gameHandler,
                     &game::TGameProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
         }
-        if (auto* playerHandler = game::TPlayerProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, playerHandler,
-                    &game::TPlayerProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
-        }
         if (auto* skillWheelHandler = skillwheel::TSkillWheelProtocolMessageHandler::liveInstance()) {
             connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, skillWheelHandler,
                     &skillwheel::TSkillWheelProtocolMessageHandler::onServerMessageEnqueued,

@@ -1,5 +1,6 @@
 #include "game/gamesessionbase.h"
 
+#include "game/gamesession.h"
 #include "game/tgamenotify.h"
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolmessagequeue.h"
@@ -184,6 +185,25 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     using creatures::TUnjustifiedPointsProtocolMessageHandler;
     link(&Queue::receivedUnjustifiedPointsMessage, this, &TUnjustifiedPointsProtocolMessageHandler::handleUnjustifiedPoints);
     link(&Queue::receivedPvpSituationsMessage, this, &TUnjustifiedPointsProtocolMessageHandler::handlePvpSituations);
+
+    if (auto* player = TPlayerProtocolMessageHandler::liveInstance()) {
+        link(&Queue::receivedPlayerDataBasicMessage, player, &TPlayerProtocolMessageHandler::handlePlayerDataBasicMessage);
+        link(&Queue::receivedPlayerDataCurrentMessage, player, &TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage);
+        link(&Queue::receivedVocationSpecificPlayerDataMessage, player,
+             &TPlayerProtocolMessageHandler::handleVocationSpecificPlayerDataMessage);
+        link(&Queue::receivedPlayerSkillsMessage, player, &TPlayerProtocolMessageHandler::handlePlayerSkillsMessage);
+        link(&Queue::receivedPlayerStateMessage, player, &TPlayerProtocolMessageHandler::handlePlayerStateMessage);
+        link(&Queue::receivedSetTacticsMessage, player, &TPlayerProtocolMessageHandler::handleSetTacticsMessage);
+        link(&Queue::receivedSpellDelayMessage, player, &TPlayerProtocolMessageHandler::handleSpellDelayMessage);
+        link(&Queue::receivedSpellGroupDelayMessage, player, &TPlayerProtocolMessageHandler::handleSpellGroupDelayMessage);
+        link(&Queue::receivedMultiUseDelayMessage, player, &TPlayerProtocolMessageHandler::handleMultiUseDelayMessage);
+        link(&Queue::receivedResourceBalanceMessage, player, &TPlayerProtocolMessageHandler::handleResourceBalanceMessage);
+        link(&Queue::receivedPassiveAbilityDataMessage, player, &TPlayerProtocolMessageHandler::handlePassiveAbilityDataMessage);
+    }
+    // Host: the classic attack target follows the server's target.
+    link(&Queue::receivedUpdateTargetMessage, this, [](const ::tibia::protobuf::protocol::GameserverMessageUpdateTarget& message) {
+        processUpdateTarget(message.sequence(), message.target());
+    });
 
     // The spell modifications the server announces.
     link(&Queue::receivedSpellDataModificationMessage, this, &spells::TSpellsProtocolMessageHandler::handleSpellDataModificationMessage);

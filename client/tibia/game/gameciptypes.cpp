@@ -898,91 +898,27 @@ void TPlayerProtocolMessageHandler::handlePassiveAbilityDataMessage(
                                            message.decaying());
 }
 
-void TPlayerProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TPlayerProtocolMessageHandler::handleVocationSpecificPlayerDataMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageVocationSpecificPlayerData& m)
 {
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 193:
-        if (shadow->HasExtension(GameserverMessageVocationSpecificPlayerData::gameserver_message_vocation_specific_player_data)) {
-            const auto& m = shadow->GetExtension(GameserverMessageVocationSpecificPlayerData::gameserver_message_vocation_specific_player_data);
-            switch (m.data_type()) {
-            case tibia::client::TYPES_MONK_HARMONY:
-                tibia::game::localPlayerSetHarmony(static_cast<uint8_t>(m.harmony()));
-                if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
-                    storage->syncLocalPlayerStatsFromMap();
-                break;
-            case tibia::client::TYPES_MONK_SERENE:
-                tibia::game::localPlayerSetSerene(m.serene());
-                if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
-                    storage->syncLocalPlayerStatsFromMap();
-                break;
-            case tibia::client::TYPES_MONK_VIRTUE: {
-                std::vector<uint16_t> spellIds;
-                for (const uint32_t id : m.virtue_spell_ids())
-                    spellIds.push_back(static_cast<uint16_t>(id));
-                tibia::game::notify("onVirtuesYellowBorder", spellIds);
-                break;
-            }
-            default:
-                break;
-            }
-        }
+    switch (m.data_type()) {
+    case tibia::client::TYPES_MONK_HARMONY:
+        tibia::game::localPlayerSetHarmony(static_cast<uint8_t>(m.harmony()));
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+            storage->syncLocalPlayerStatsFromMap();
         break;
-    case 159:
-        if (shadow->HasExtension(GameserverMessagePlayerDataBasic::gameserver_message_player_data_basic))
-            handlePlayerDataBasicMessage(shadow->GetExtension(GameserverMessagePlayerDataBasic::gameserver_message_player_data_basic));
+    case tibia::client::TYPES_MONK_SERENE:
+        tibia::game::localPlayerSetSerene(m.serene());
+        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+            storage->syncLocalPlayerStatsFromMap();
         break;
-    case 160:
-        if (shadow->HasExtension(GameserverMessagePlayerDataCurrent::gameserver_message_player_data_current))
-            handlePlayerDataCurrentMessage(
-                shadow->GetExtension(GameserverMessagePlayerDataCurrent::gameserver_message_player_data_current));
+    case tibia::client::TYPES_MONK_VIRTUE: {
+        std::vector<uint16_t> spellIds;
+        for (const uint32_t id : m.virtue_spell_ids())
+            spellIds.push_back(static_cast<uint16_t>(id));
+        tibia::game::notify("onVirtuesYellowBorder", spellIds);
         break;
-    case 161:
-        if (shadow->HasExtension(GameserverMessagePlayerSkills::gameserver_message_player_skills))
-            handlePlayerSkillsMessage(shadow->GetExtension(GameserverMessagePlayerSkills::gameserver_message_player_skills));
-        break;
-    case 162:
-        if (shadow->HasExtension(GameserverMessagePlayerState::gameserver_message_player_state)) {
-            handlePlayerStateMessage(shadow->GetExtension(GameserverMessagePlayerState::gameserver_message_player_state));
-        }
-        break;
-    case 163:
-        if (shadow->HasExtension(GameserverMessageUpdateTarget::gameserver_message_update_target)) {
-            const auto& m = shadow->GetExtension(GameserverMessageUpdateTarget::gameserver_message_update_target);
-            tibia::game::processUpdateTarget(m.sequence(), m.target());
-        }
-        break;
-    case 164:
-        if (shadow->HasExtension(GameserverMessageSpellDelay::gameserver_message_spell_delay))
-            handleSpellDelayMessage(shadow->GetExtension(GameserverMessageSpellDelay::gameserver_message_spell_delay));
-        break;
-    case 165:
-        if (shadow->HasExtension(GameserverMessageSpellGroupDelay::gameserver_message_spell_group_delay))
-            handleSpellGroupDelayMessage(
-                shadow->GetExtension(GameserverMessageSpellGroupDelay::gameserver_message_spell_group_delay));
-        break;
-    case 166:
-        if (shadow->HasExtension(GameserverMessageMultiUseDelay::gameserver_message_multi_use_delay))
-            handleMultiUseDelayMessage(shadow->GetExtension(GameserverMessageMultiUseDelay::gameserver_message_multi_use_delay));
-        break;
-    case 94:
-        if (shadow->HasExtension(GameserverMessagePassiveAbilityData::gameserver_message_passive_ability_data))
-            handlePassiveAbilityDataMessage(
-                shadow->GetExtension(GameserverMessagePassiveAbilityData::gameserver_message_passive_ability_data));
-        break;
-    case 238:
-        if (shadow->HasExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance))
-            handleResourceBalanceMessage(
-                shadow->GetExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance));
-        break;
-    case 167:
-        if (shadow->HasExtension(GameserverMessageSetTactics::gameserver_message_set_tactics)) {
-            handleSetTacticsMessage(shadow->GetExtension(GameserverMessageSetTactics::gameserver_message_set_tactics));
-        }
-        break;
+    }
     default:
         break;
     }
