@@ -9,6 +9,7 @@
 #include <QVector>
 
 #include <functional>
+#include <memory>
 
 class QStackedLayout;
 
@@ -25,8 +26,9 @@ class QWidget;
 class QProcess;
 #endif
 
-namespace shared {
+namespace tibia::shared {
 class QTextBrowserWithNetwork;
+class TDownloadPool;
 }
 
 class LauncherWindow : public QMainWindow
@@ -123,7 +125,9 @@ private:
     double m_downloadRateBytesPerSec = 0.0;
 
     QStackedLayout* m_stack = nullptr;
-    shared::QTextBrowserWithNetwork* m_news = nullptr;
+    tibia::shared::QTextBrowserWithNetwork* m_news = nullptr;
+    /// Feeds m_news's remote resources (CIP: the main window's download pool).
+    std::shared_ptr<tibia::shared::TDownloadPool> m_hintDownloadPool;
     QLabel* m_logo = nullptr;
     QLabel* m_version = nullptr;
     QLabel* m_status = nullptr;

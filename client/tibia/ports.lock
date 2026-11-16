@@ -3323,6 +3323,15 @@ shared::QNetworkReplyWrapper::v14	128b51c6e47e5553	ported	shared/src/qnetworkrep
 shared::QNetworkReplyWrapper::v15	9ebdd4e7e9c9e6b7	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::url
 shared::QNetworkReplyWrapper::~QNetworkReplyWrapper	a828334c687ee441	skip	generated: compiler-generated destructor
 shared::QNetworkReplyWrapper::~QNetworkReplyWrapper_deleting	20148092611d81f8	skip	generated: deleting destructor
+shared::QTextBrowserWithNetwork::onDownloadFailed	789607e2798e3550	ported	shared/src/textbrowserwithnetwork.cpp:QTextBrowserWithNetwork::onDownloadFailed
+shared::QTextBrowserWithNetwork::onDownloadFinished	fcb2d93a989a0f51	ported	shared/src/textbrowserwithnetwork.cpp:QTextBrowserWithNetwork::onDownloadFinished
+shared::QTextBrowserWithNetwork::v0@10	09a627f4cda02cb8	skip	generated: compiler-generated destructor and its secondary-base thunks
+shared::QTextBrowserWithNetwork::v14	8028440766b5f4a2	ported	shared/src/textbrowserwithnetwork.cpp:QTextBrowserWithNetwork::sizeHint
+shared::QTextBrowserWithNetwork::v16	65bd8bfeb9a6981c	ported	shared/src/textbrowserwithnetwork.cpp:QTextBrowserWithNetwork::heightForWidth
+shared::QTextBrowserWithNetwork::v1@10	4d259b429a4292b3	skip	generated: compiler-generated destructor and its secondary-base thunks
+shared::QTextBrowserWithNetwork::v57	04f09b3377588c19	ported	shared/src/textbrowserwithnetwork.cpp:QTextBrowserWithNetwork::loadResource
+shared::QTextBrowserWithNetwork::~QTextBrowserWithNetwork	1c08b471b107850d	skip	generated: compiler-generated destructor and its secondary-base thunks
+shared::QTextBrowserWithNetwork::~QTextBrowserWithNetwork_deleting	7cfec818888e8bd3	skip	generated: deleting destructor
 shared::TClipboardHelper::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor
 shared::TClipboardHelper::v1	e9caf669ab302182	skip	generated: compiler-generated destructor
 shared::TClipboardHelper::v2	03220d30fe342478	ported	shared/src/clipboardhelper.cpp:TClipboardHelper::setTextInClipboard
@@ -3909,6 +3918,7 @@ sub_097457dc45e8#195	097457dc45e86dd8	inlined	analysers/itempricestorage.cpp:TIt
 sub_097457dc45e8#197	097457dc45e86dd8	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleKillTrackingMessage
 sub_097457dc45e8#198	097457dc45e86dd8	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleItemLootedMessage
 sub_097457dc45e8#199	097457dc45e86dd8	inlined	analysers/gainwastestorage.cpp:TGainWasteStorage::TGainWasteStorage
+sub_097457dc45e8#20	097457dc45e86dd8	inlined	shared/src/textbrowserwithnetwork.cpp:QTextBrowserWithNetwork::QTextBrowserWithNetwork
 sub_097457dc45e8#210	097457dc45e86dd8	inlined	cyclopedia/combatstatsqmldata.cpp:TQmlStatWithSources::TQmlStatWithSources
 sub_097457dc45e8#215	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 sub_097457dc45e8#22	097457dc45e86dd8	inlined	shared/src/jsondocumenthttppostsender.cpp:TJsonDocumentHttpPostSender::TJsonDocumentHttpPostSender
@@ -5095,6 +5105,7 @@ sub_32dea18f0cc3	32dea18f0cc31471	skip	data: translation-unit static initializer
 sub_32ee31bbb220	32ee31bbb22000ab	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::TPlayerTradeObject
 sub_32ee31bbb220#2	32ee31bbb22000ab	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::TPlayerTradeObject
 sub_32f22415c290	32f22415c2902dcf	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems
+sub_32f5f3dab1bb	32f5f3dab1bb892c	skip	library: QList<QString> destructor
 sub_330cdd74969f	330cdd74969f91ab	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage
 sub_3314a0648818	3314a0648818a027	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::closeButtonClicked
 sub_331a269e8ec7	331a269e8ec7afb5	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::TQuestLogController
@@ -5303,6 +5314,8 @@ sub_3c6f1bf52fdf	3c6f1bf52fdf5cef	ported	renderer/worldmaprenderprovider.cpp:obj
 sub_3c713c8a2ba7	3c713c8a2ba757fe	ported	gamewindow/imbuingdialogcontroller.cpp:findImbuement
 sub_3c722c2b90ce	3c722c2b90cef622	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onToggleAnalyticsSelectorWidget
 sub_3c77fed97608	3c77fed976086b39	skip	generated: compiler-generated destructor
+sub_3c80093e47e0#3	3c80093e47e0db90	skip	library: QMap<QUrl, QVariant> template code
+sub_3c80093e47e0#4	3c80093e47e0db90	skip	library: QMap<QUrl, QVariant> release
 sub_3c8ed8d82488	3c8ed8d82488ae83	inlined	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showContextMenuForAccountID
 sub_3ca082b72d22	3ca082b72d228b02	skip	library: std::sort instantiation over achievements (library)
 sub_3ca3bba0cb9d	3ca3bba0cb9d543a	skip	generated: compiler-generated operator== of store records
@@ -6085,6 +6098,7 @@ sub_57615ffd6094#2	57615ffd6094c442	ported	gamewindow/depotsearchwidgetcontrolle
 sub_57615ffd6094#3	57615ffd6094c442	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::emptySlotAreaExited
 sub_576456edf9d5	576456edf9d5c3a0	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_576711c6b9d3	576711c6b9d3ce6b	tested	shared/src/jsonvalidator.cpp:TJsonObjectValidator::value	test=tests/client/jsonvalidator_test.cpp
+sub_576d10f91fe2	576d10f91fe23d38	skip	generated: QtPrivate slot object impl (member-function connection)
 sub_577c409e0295#7	577c409e029532b6	skip	library: libc++ std::vector/std::unordered_map instantiation
 sub_579704e75f6b	579704e75f6b2548	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::switchToSellItems
 sub_57a1ac2c048a#2	57a1ac2c048af9ce	skip	library: boost::bimap / std::map template instantiation
@@ -6208,6 +6222,7 @@ sub_5c3df11e52ef	5c3df11e52ef837e	ported	gamewindow/containercontroller.cpp:TCon
 sub_5c535b83c535	5c535b83c53555d0	inlined	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::rebuildMonsterInfos
 sub_5c6fde237d93#2	5c6fde237d934bdd	inlined	protocol::TProtobufServerMessageTranslator::v168
 sub_5c7628a99fc2	5c7628a99fc2d820	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::setTeamSize
+sub_5c910fbf85db	5c910fbf85dbfb2b	skip	library: QMap<QUrl, QVariant> template code
 sub_5cb171d16c33	5cb171d16c33e056	ported	gamewindow/naggingmessagedialogcontroller.cpp:TNaggingMessageDialogController::TNaggingMessageDialogController
 sub_5cb87e6fa39e	5cb87e6fa39e36af	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::setShowLoadingComponent
 sub_5cba6b203b84	5cba6b203b84ff59	skip	library: SFML/miniaudio library helper, only called from library code
@@ -7376,6 +7391,7 @@ sub_8ccf40041cf2	8ccf40041cf221cc	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_8cd4421e78b6#10	8cd4421e78b6bf2f	inlined	protocol::TProtobufServerMessageTranslator::v127
 sub_8cd979f10738	8cd979f107385107	skip	library: std::sort instantiation over achievements (library)
 sub_8ce2025e7b61	8ce2025e7b61a524	ported	gamewindow/assignactiondialogs.cpp:TRecordKeyboardShortcutDialogController::showDialog
+sub_8cee8d00a7c1	8cee8d00a7c145f0	skip	library: QMap<QUrl, QVariant> template code
 sub_8ceff5bc2016	8ceff5bc2016d7d0	inlined	gamewindow/imbuingdialogcontroller.cpp:TQmlImbuementData::TQmlImbuementData
 sub_8d05e361124c	8d05e361124c234a	ported	gamewindow/actionbarcontroller.cpp:TActionBarController::applySetting
 sub_8d17619bf583	8d17619bf5833734	inlined	gamewindow/contextmenucontroller.cpp:TContextMenuController::TContextMenuController
@@ -7881,6 +7897,7 @@ sub_9a0ffd5590b2	9a0ffd5590b23418	inlined	gamewindow/teamassemblepagecontroller.
 sub_9a4fe08d12d1	9a4fe08d12d1517e	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::setMembers
 sub_9a683f305b22	9a683f305b221a31	ported	worldmap/worldmapfield.cpp:TWorldMapField::~TWorldMapField
 sub_9a68d4e636a1	9a68d4e636a1114b	inlined	gamewindow/characterinfomodels.cpp:TAchievementInfoController::updateCounts
+sub_9a772620dd2d	9a772620dd2dfcb1	skip	library: QMap<QUrl, QVariant> template code
 sub_9aa58dc8bd30	9aa58dc8bd305404	inlined	creatures/inspectplayergameactionprovider.cpp:TInspectPlayerGameActionProvider::appendActions
 sub_9ab53bc9d738	9ab53bc9d738317a	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::setFlag
 sub_9abcb8439919	9abcb84399198994	inlined	creatures/creaturestorage.cpp:TCreature::shownMarks
@@ -8396,6 +8413,7 @@ sub_b255626de177	b255626de1771eff	ported	gamewindow/playertradecontroller.cpp:TP
 sub_b26569aea116	b26569aea1161145	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::isArray	test=tests/client/jsonvalidator_test.cpp
 sub_b26c88aa2e6d	b26c88aa2e6d9104	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_b26ffb0a8262	b26ffb0a826245cd	skip	library: Qt/std container template code
+sub_b26ffb0a8262#2	b26ffb0a826245cd	skip	library: QMap<QUrl, QVariant> template code
 sub_b27a5ea86947	b27a5ea86947078a	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::setShowCompleted
 sub_b27ae8897d8b	b27ae8897d8b571e	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::offsetInField
 sub_b2b298052b96	b2b298052b96ccb0	ported	input/gameaction.h:TGameActionOpenAddVipDialog::TGameActionOpenAddVipDialog
@@ -8480,6 +8498,7 @@ sub_b5e1d5998879	b5e1d5998879605b	ported	exivaoptions/exivaoptionsstorage.cpp:TE
 sub_b5f1ecb9c2fe	b5f1ecb9c2fed891	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::setLeaderId
 sub_b60ba77a3158	b60ba77a31589617	skip	library: std::vector copy / growth of store records (library)
 sub_b60db259bb83	b60db259bb8394c4	skip	library: SFML/miniaudio library helper, only called from library code
+sub_b667e64b4e80	b667e64b4e80715f	skip	library: QMap<QUrl, QVariant> template code
 sub_b66df66a794b	b66df66a794b8d4f	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::QNetworkReplyWrapper
 sub_b67f76756eea	b67f76756eead26c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendDepotSearchRetrieve
 sub_b6850df0dd7d	b6850df0dd7d7113	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems
@@ -8912,6 +8931,7 @@ sub_be505da07b78	be505da07b7820e1	inlined	friends/friendsciptypes.cpp:TFriendsPr
 sub_be505da07b78#2	be505da07b7820e1	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_be7193e6cba0	be7193e6cba0081a	inlined	gamewindow/gamewindowciptypes.cpp:TInspectPlayerDialogController::showPlayer
 sub_be80a7859c4b	be80a7859c4bb035	ported	config/sidebaroptions.cpp:serializeImbuementTracker
+sub_be82f5a840cb	be82f5a840cb98de	ported	shared/src/textbrowserwithnetwork.cpp:QTextBrowserWithNetwork::QTextBrowserWithNetwork
 sub_be85583106bc	be85583106bcb0e1	skip	generated: moc property getter, provided by the generated cip base
 sub_be917a6c7101	be917a6c71016cee	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::updateTeam
 sub_bea3fc73f636	bea3fc73f636eeac	ported	container/qmlitemslotdata.cpp:TQMLItemSlotData::countString
@@ -8967,6 +8987,7 @@ sub_c18617383597	c18617383597f354	inlined	gamewindow/teamassemblepagecontroller.
 sub_c188db2679b8	c188db2679b88ea7	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_c198acb819ae	c198acb819ae1005	skip	library: miniaudio library
 sub_c198f81321a0#3	c198f81321a04803	ported	market/marketstorage.h:TMarketOffer::sameOffer
+sub_c19941fd087d	c19941fd087d6494	skip	generated: QtPrivate slot object impl (member-function connection)
 sub_c1a1070f592b	c1a1070f592b1c99	skip	library: std vector internals (push_back/realloc/assign/clear)
 sub_c1aa469051bc	c1aa469051bc6ed0	ported	gamewindow/chatcontroller.cpp:TChatController::setSecondary
 sub_c1b5c1ba82b1	c1b5c1ba82b11c34	ported	gamewindow/createcharacterdialogcontroller.cpp:TWorldSelectionSortProxyModel::setRecommendedWorld
@@ -9633,6 +9654,7 @@ sub_d902425e069b#38	d902425e069b0690	skip	library: std::unordered_map/std::map/s
 sub_d902425e069b#6	d902425e069b0690	skip	library: std::unordered_map instantiation
 sub_d902b7f2da1b	d902b7f2da1bb8cb	skip	data: static initializer of unrelated globals (inbox filter names, vocation names, server time zone; misattributed)
 sub_d9136ad7dbbe	d9136ad7dbbe5cdb	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowInstantSpells
+sub_d92804c657f0	d92804c657f07a68	skip	library: QMap<QUrl, QVariant> template code
 sub_d92d2edd7c18	d92d2edd7c181ef6	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowFreeSpells
 sub_d979d5c11335	d979d5c11335697b	skip	library: std::vector<shared::THint> growth/destructor template
 sub_d98996b9af1b	d98996b9af1b1278	skip	library: std::unordered_map/std::map/std::variant instantiation (libc++)
@@ -10380,6 +10402,7 @@ sub_f7a0f0bacbb5#2	f7a0f0bacbb522e9	skip	data: translation-unit static initializ
 sub_f7d3c749fa51	f7d3c749fa515734	skip	library: std::vector<action setting> template instantiation (emplace/insert/relocate/destroy)
 sub_f7d489716feb	f7d489716feb843e	skip	library: std container internals (map/vector/set)
 sub_f7e7763c3800	f7e7763c38008d65	skip	library: QMap/QVariant template instantiation
+sub_f7e7763c3800#2	f7e7763c38008d65	skip	library: QMap<QUrl, QVariant> template code
 sub_f7e7763c3800#3	f7e7763c38008d65	skip	library: QMap/QList template instantiations
 sub_f7ec8decdf22#2	f7ec8decdf220357	skip	library: libc++ std::vector instantiation
 sub_f7ef8179701a	f7ef8179701a376f	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::handleHighscoresMessage

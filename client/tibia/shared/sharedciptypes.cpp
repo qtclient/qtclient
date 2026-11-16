@@ -36,23 +36,9 @@ struct CipTypedKeep {
     TZlibDeflateWrapper tZlibDeflateWrapper;
     TCompressionHelper tCompressionHelper;
     TCoordinate tCoordinate;
-    QTextBrowserWithNetwork qTextBrowserWithNetwork;
 };
 CipTypedKeep& typedKeep() { static CipTypedKeep keep; return keep; }
 } // namespace
-
-void QTextBrowserWithNetwork::onDownloadFailed(QUrl Url, QNetworkReply::NetworkError Code, QString ErrorString)
-{
-    Q_UNUSED(Url);
-    Q_UNUSED(Code);
-    Q_UNUSED(ErrorString);
-}
-
-void QTextBrowserWithNetwork::onDownloadFinished(QUrl Url, QByteArray Data)
-{
-    Q_UNUSED(Url);
-    Q_UNUSED(Data);
-}
 
 QByteArray THashHelper::sha256(const QByteArray& data)
 {

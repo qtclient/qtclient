@@ -29,17 +29,6 @@ namespace shared {
 /// Own CIP-named types under `parent` (live session / feature owner).
 void ownProductSurface(QObject* parent);
 
-/// CipSoft QTextBrowserWithNetwork download slots (contract moc).
-/// Live QWidget implementation lives in apps/qtclient/shared/;
-/// this stub owns Class::method keys for the client inventory walk.
-class QTextBrowserWithNetwork final : public ::tibia::CipTyped
-{
-public:
-    QTextBrowserWithNetwork() = default;
-    void onDownloadFailed(QUrl Url, QNetworkReply::NetworkError Code, QString ErrorString);
-    void onDownloadFinished(QUrl Url, QByteArray Data);
-};
-
 class TDynamicResourcesHelper final : public cip::tibia::shared::TDynamicResourcesHelper
 {
     Q_OBJECT
