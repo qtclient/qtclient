@@ -110,6 +110,14 @@ QHash<int, QByteArray> TAppearanceTypeListModel::roleNames() const
     };
 }
 
+const TAppearanceTypeEntry& TAppearanceTypeListModel::entry(const int row) const
+{
+    static const TAppearanceTypeEntry Empty;
+    if (row < 0 || row >= rowCount())
+        return Empty;
+    return m_entries[row];
+}
+
 void TAppearanceTypeListModel::reset(std::vector<TAppearanceTypeEntry> entries)
 {
     beginResetModel();
@@ -130,72 +138,223 @@ bool TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(const int cat
     return category >= 0 && category < 0x1e && ((0x283f0000u >> category) & 1) != 0;
 }
 
+bool TAppearanceTypeFilter::operator==(const TAppearanceTypeFilter& other) const
+{
+    return filterByLevel == other.filterByLevel && filterByVocation == other.filterByVocation
+           && onlyOneHandWeapons == other.onlyOneHandWeapons && onlyTwoHandWeapons == other.onlyTwoHandWeapons
+           && classificationMode == other.classificationMode && classification == other.classification
+           && classificationName == other.classificationName && tierMode == other.tierMode && tier == other.tier
+           && tierName == other.tierName && imbuementMode == other.imbuementMode && imbuementValue == other.imbuementValue
+           && imbuement == other.imbuement;
+}
+
+bool TAppearanceTypeFilter::accepts(const TAppearanceTypeEntry& entry, const std::optional<uint8_t> entryTier, const int level,
+                                    const int profession) const
+{
+    if (level < entry.requiredLevel && filterByLevel)
+        return false;
+    if (filterByVocation && entry.professions != 0
+        && (profession < 1 || profession > 16 || (entry.professions & (1u << (profession - 1))) == 0))
+        return false;
+    if ((!(entry.hasClothSlot && entry.clothSlot == 6) && onlyOneHandWeapons)
+        || (!(entry.hasClothSlot && entry.clothSlot == 0) && onlyTwoHandWeapons))
+        return false;
+    if (classificationMode != 0) {
+        if (entry.classification == 0) {
+            if (classificationMode == 3)
+                return false;
+        } else if (classificationMode == 1 || (classificationMode == 3 && entry.classification != classification)) {
+            return false;
+        }
+    }
+    if (tierMode != 0) {
+        if (!entryTier) {
+            if (tierMode == 3 && tier >= 1)
+                return false;
+        } else if (tierMode == 3 && tier != *entryTier) {
+            return false;
+        }
+    }
+    if (imbuementMode == 3)
+        return entry.imbuements.contains(imbuement);
+    return true;
+}
+
 TAppearanceTypeListModelSortFilterProxy::TAppearanceTypeListModelSortFilterProxy(TAppearanceTypeListModel* model, QObject* parent)
     : cip::tibia::gamewindow::TAppearanceTypeListModelSortFilterProxy(parent)
     , m_model(model)
 {
     m_typeIdEnumValue = TAppearanceTypeListModel::TypeID;
+    setDynamicSortFilter(true);
+    sort(0, Qt::AscendingOrder);
+    setSourceModel(model);
 #if !defined(Q_OS_WASM)
     // Wasm's POSIX collator logs and ignores both of these.
     m_collator.setNumericMode(true);
     m_collator.setCaseSensitivity(Qt::CaseInsensitive);
 #endif
-    setSourceModel(model);
-    setDynamicSortFilter(false);
-    sort(0);
+    m_filterTimer.setInterval(0);
+    m_filterTimer.setSingleShot(true);
+    connect(this, &TAppearanceTypeListModelSortFilterProxy::filterChanged, &m_filterTimer, qOverload<>(&QTimer::start));
+    connect(&m_filterTimer, &QTimer::timeout, this, [this] {
+        beginFilterChange();
+        endFilterChange(QSortFilterProxyModel::Direction::Rows);
+    });
+    resetFilters();
 }
 
-void TAppearanceTypeListModelSortFilterProxy::setButtons(const bool filterByLevel, const bool filterByVocation, const bool oneHand,
-                                                        const bool twoHand)
+void TAppearanceTypeListModelSortFilterProxy::resetFilters()
 {
-    m_filterByLevel = filterByLevel;
-    m_filterByVocation = filterByVocation;
-    m_onlyOneHandWeapons = oneHand;
-    m_onlyTwoHandWeapons = twoHand;
+    m_category = -1;
+    m_typeIds.clear();
+    m_name = QString();
+    m_filter = {};
+    m_typeId = 0;
+    Q_EMIT filterChanged();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setCategoryFilter(const int category, const TAppearanceTypeFilter& filter,
+                                                                const bool showLockerOnly)
+{
+    if (m_category == category && m_filter == filter && m_showLockerOnly == showLockerOnly)
+        return;
+    resetFilters();
+    if (m_category != category) {
+        m_category = category;
+        Q_EMIT filterChanged();
+    }
+    if (m_filter != filter) {
+        m_filter = filter;
+        Q_EMIT filterChanged();
+    }
+    setShowLockerOnly(showLockerOnly);
 }
 
 void TAppearanceTypeListModelSortFilterProxy::setCategoryFilter(const int category, const bool filterByLevel, const bool filterByVocation,
-                                                                const bool oneHand, const bool twoHand, const TAppearanceTypeFilter& filter,
+                                                                const bool oneHand, const bool twoHand, TAppearanceTypeFilter filter,
                                                                 const bool showLockerOnly)
 {
-    const bool lockerChanged = showLockerOnly != m_showLockerOnly;
-    m_category = category;
-    m_name.clear();
-    m_typeId = 0;
-    m_filter = filter;
-    m_showLockerOnly = showLockerOnly;
-    setButtons(filterByLevel, filterByVocation, oneHand, twoHand);
-    invalidate();
-    Q_EMIT filterChanged();
-    if (lockerChanged)
-        Q_EMIT showLockerOnlyChanged();
+    filter.filterByLevel = filterByLevel;
+    filter.filterByVocation = filterByVocation;
+    filter.onlyOneHandWeapons = oneHand;
+    filter.onlyTwoHandWeapons = twoHand;
+    setCategoryFilter(category, filter, showLockerOnly);
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setNameFilter(const QString& name, const TAppearanceTypeFilter& filter,
+                                                            const bool showLockerOnly)
+{
+    if (m_name != name || m_filter != filter) {
+        resetFilters();
+        if (m_filter != filter) {
+            m_filter = filter;
+            Q_EMIT filterChanged();
+        }
+        if (m_name != name) {
+            m_name = name;
+            Q_EMIT filterChanged();
+        }
+    }
+    setShowLockerOnly(showLockerOnly);
 }
 
 void TAppearanceTypeListModelSortFilterProxy::setNameFilter(const QString& name, const bool filterByLevel, const bool filterByVocation,
-                                                            const bool oneHand, const bool twoHand, const TAppearanceTypeFilter& filter,
+                                                            const bool oneHand, const bool twoHand, TAppearanceTypeFilter filter,
                                                             const bool showLockerOnly)
 {
-    const bool lockerChanged = showLockerOnly != m_showLockerOnly;
-    m_category = -1;
-    m_name = name;
-    m_typeId = 0;
-    m_filter = filter;
-    m_showLockerOnly = showLockerOnly;
-    setButtons(filterByLevel, filterByVocation, oneHand, twoHand);
-    invalidate();
-    Q_EMIT filterChanged();
-    if (lockerChanged)
-        Q_EMIT showLockerOnlyChanged();
+    filter.filterByLevel = filterByLevel;
+    filter.filterByVocation = filterByVocation;
+    filter.onlyOneHandWeapons = oneHand;
+    filter.onlyTwoHandWeapons = twoHand;
+    setNameFilter(name, filter, showLockerOnly);
 }
 
 void TAppearanceTypeListModelSortFilterProxy::setTypeFilter(const uint16_t typeId)
 {
-    m_category = -1;
-    m_name.clear();
-    m_typeId = typeId;
-    m_filter = {};
-    invalidate();
+    if (m_typeId == typeId)
+        return;
+    resetFilters();
+    if (m_typeId != typeId) {
+        m_typeId = typeId;
+        Q_EMIT filterChanged();
+    }
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setCategory(const int category)
+{
+    if (m_category == category)
+        return;
+    m_category = category;
     Q_EMIT filterChanged();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setFilter(const TAppearanceTypeFilter& filter)
+{
+    if (m_filter == filter)
+        return;
+    m_filter = filter;
+    Q_EMIT filterChanged();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setName(const QString& name)
+{
+    if (m_name == name)
+        return;
+    m_name = name;
+    Q_EMIT filterChanged();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setTypeId(const uint16_t typeId)
+{
+    if (m_typeId == typeId)
+        return;
+    m_typeId = typeId;
+    Q_EMIT filterChanged();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setTypeIds(const std::set<int>& typeIds)
+{
+    if (m_typeIds == typeIds)
+        return;
+    m_typeIds = typeIds;
+    Q_EMIT filterChanged();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setShowLockerOnly(const bool showLockerOnly)
+{
+    if (m_showLockerOnly == showLockerOnly)
+        return;
+    m_showLockerOnly = showLockerOnly;
+    Q_EMIT showLockerOnlyChanged();
+    Q_EMIT filterChanged();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setAcceptWithoutFilter(const bool accept)
+{
+    m_acceptWithoutFilter = accept;
+    Q_EMIT filterChanged();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::setSortMode(const int sortMode)
+{
+    if (m_sortMode == sortMode)
+        return;
+    m_sortMode = sortMode;
+    invalidate();
+}
+
+void TAppearanceTypeListModelSortFilterProxy::resetEntries(std::vector<TAppearanceTypeEntry> entries)
+{
+    beginFilterChange();
+    m_model->reset(std::move(entries));
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
+}
+
+void TAppearanceTypeListModelSortFilterProxy::applyFilterNow()
+{
+    beginFilterChange();
+    m_filterTimer.stop();
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
 }
 
 int TAppearanceTypeListModelSortFilterProxy::rowOf(const uint16_t typeId, const uint8_t tier) const
@@ -222,67 +381,79 @@ uint8_t TAppearanceTypeListModelSortFilterProxy::tierAt(const int row) const
     return entry.hasTier ? entry.tier : 0;
 }
 
-bool TAppearanceTypeListModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
+bool TAppearanceTypeListModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
-    if (sourceRow < 0 || sourceRow >= m_model->size())
+    if (!sourceModel() || !tibia::game::hasLocalPlayer())
         return false;
-    if (m_name.isEmpty() && m_category == -1 && m_typeId == 0)
+    const QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
+    if (!index.isValid() || sourceRow >= m_model->size())
+        return false;
+    if (!m_acceptWithoutFilter && m_name.isEmpty() && m_category == -1 && m_typeIds.empty() && m_typeId == 0)
         return false;
     const TAppearanceTypeEntry& entry = m_model->entry(sourceRow);
 
-    if (!m_name.isEmpty() && !entry.name.contains(m_name, Qt::CaseInsensitive))
-        return false;
-    if (m_category != -1 && m_category != AllCategories && entry.marketCategory != m_category) {
-        const bool weapons = m_category == AllWeaponsCategory && isHandWeaponCategory(entry.marketCategory);
-        if (!weapons)
-            return false;
+    bool accepted = m_name.isEmpty() || entry.name.indexOf(m_name, 0, Qt::CaseInsensitive) != -1;
+    if (m_category != -1 && m_category != AllCategories) {
+        const int category = entry.marketCategory;
+        const bool matches = category == m_category || (category == AllWeaponsCategory && isHandWeaponCategory(m_category))
+                             || (m_category == AllWeaponsCategory && isHandWeaponCategory(category));
+        accepted = accepted && matches;
     }
-    if (m_typeId != 0 && entry.typeId != m_typeId)
-        return false;
+    if (!m_typeIds.empty())
+        accepted = accepted && m_typeIds.contains(entry.typeId);
+    if (m_typeId != 0)
+        accepted = accepted && index.data(TAppearanceTypeListModel::DisplayTypeID).toUInt() == m_typeId;
 
-    // CIP .
-    if (m_filterByLevel && tibia::game::hasLocalPlayer() && tibia::game::localPlayerLevel() < entry.requiredLevel)
-        return false;
-    if (m_filterByVocation && entry.professions != 0) {
-        const int profession = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
-        if (profession < 1 || (entry.professions & (1u << (profession - 1))) == 0)
-            return false;
-    }
-    if (m_onlyOneHandWeapons && !(entry.hasClothSlot && entry.clothSlot == 6))
-        return false;
-    if (m_onlyTwoHandWeapons && !(entry.hasClothSlot && entry.clothSlot == 0))
-        return false;
-    if (m_filter.classificationMode != 0) {
-        if (entry.classification == 0) {
-            if (m_filter.classificationMode == 3)
-                return false;
-        } else if (m_filter.classificationMode == 1
-                   || (m_filter.classificationMode == 3 && entry.classification != m_filter.classification)) {
-            return false;
-        }
-    }
-    if (m_filter.tierMode == 3) {
-        if (!entry.hasTier) {
-            if (m_filter.tier >= 1)
-                return false;
-        } else if (entry.tier != m_filter.tier) {
-            return false;
-        }
-    }
-    if (m_showLockerOnly && m_model->data(m_model->index(sourceRow), TAppearanceTypeListModel::TypeCount).toInt() == 0)
-        return false;
-    return true;
+    const std::optional<uint8_t> tier = entry.hasTier ? std::optional<uint8_t>(entry.tier) : std::nullopt;
+    accepted = m_filter.accepts(entry, tier, tibia::game::localPlayerLevel(), tibia::game::localPlayerVocation() % 10) && accepted;
+    if (m_showLockerOnly)
+        accepted = accepted && index.data(TAppearanceTypeListModel::TypeCount).toUInt() != 0;
+    return accepted;
 }
 
 bool TAppearanceTypeListModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const TAppearanceTypeEntry& a = m_model->entry(left.row());
-    const TAppearanceTypeEntry& b = m_model->entry(right.row());
-    if (const int c = m_collator.compare(a.name, b.name); c != 0)
-        return c < 0;
-    if (a.typeId != b.typeId)
-        return a.typeId < b.typeId;
-    return a.tier < b.tier;
+    if (!sourceModel())
+        return false;
+    static const std::set<int> SortModes = { 1, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+    const int mode = SortModes.contains(m_sortMode) ? m_sortMode : NameAscending;
+    using M = TAppearanceTypeListModel;
+    const int byName = m_collator.compare(left.data(M::TypeName).toString(), right.data(M::TypeName).toString());
+
+    // Each order compares `descending ? right < left : left < right` and
+    // falls back to the name when the values are equal.
+    const auto order = [byName](const auto a, const auto b, const bool descending) {
+        if (a == b)
+            return byName < 0;
+        return descending ? b < a : a < b;
+    };
+    switch (mode) {
+    case NameAscending:
+        return byName < 0;
+    case AverageValueDescending:
+    case AverageValueAscending:
+        return order(left.data(M::MarketAverageValue).toULongLong(), right.data(M::MarketAverageValue).toULongLong(),
+                     mode == AverageValueDescending);
+    case TotalAverageValueDescending:
+    case TotalAverageValueAscending:
+        return order(left.data(M::MarketAverageValue).toULongLong() * left.data(M::TypeCount).toULongLong(),
+                     right.data(M::MarketAverageValue).toULongLong() * right.data(M::TypeCount).toULongLong(),
+                     mode == TotalAverageValueDescending);
+    case NpcValueDescending:
+    case NpcValueAscending:
+        return order(left.data(M::NpcSellValue).toUInt(), right.data(M::NpcSellValue).toUInt(), mode == NpcValueDescending);
+    case TotalNpcValueDescending:
+    case TotalNpcValueAscending:
+        return order(left.data(M::NpcSellValue).toUInt() * left.data(M::TypeCount).toUInt(),
+                     right.data(M::NpcSellValue).toUInt() * right.data(M::TypeCount).toUInt(), mode == TotalNpcValueDescending);
+    case CountDescending:
+    case CountAscending:
+        return order(left.data(M::TypeCount).toUInt(), right.data(M::TypeCount).toUInt(), mode == CountDescending);
+    case ProficiencyDescending:
+        return order(left.data(M::ProficiencyXP).toUInt(), right.data(M::ProficiencyXP).toUInt(), true);
+    default:
+        return byName > 0;
+    }
 }
 
 }

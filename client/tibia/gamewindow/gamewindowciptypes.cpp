@@ -518,8 +518,9 @@ TPartyHuntMembersListModelSortFilterProxy::TPartyHuntMembersListModelSortFilterP
 
 bool TPartyHuntMembersListModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
-    const QString ln = sourceModel()->data(left, Qt::UserRole + 1).toString();
-    const QString rn = sourceModel()->data(right, Qt::UserRole + 1).toString();
+    // The member model's name role (characterID is Qt::UserRole + 1).
+    const QString ln = sourceModel()->data(left, Qt::UserRole + 2).toString();
+    const QString rn = sourceModel()->data(right, Qt::UserRole + 2).toString();
     return QString::localeAwareCompare(ln, rn) < 0;
 }
 

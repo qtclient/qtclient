@@ -722,25 +722,32 @@ QVariant TPartyHuntMembersListModel::data(const QModelIndex& index, const int ro
         return {};
     const TPartyHuntStorage::Member& member = m_members[static_cast<size_t>(index.row())];
     switch (role) {
-        case Name: return member.name;
         case CharacterId: return member.id;
-        case IsLeader: return member.id != 0 && member.id == m_leaderId;
+        case Name: return member.name;
         case IsInParty: return member.active;
-        case Gain: return member.loot;
-        case Waste: return member.supplies;
-        case Balance: return member.loot - member.supplies;
-        case Damage: return member.damage;
-        case Healing: return member.healing;
+        case Gain: return static_cast<qulonglong>(member.loot);
+        case Waste: return static_cast<qulonglong>(member.supplies);
+        case Balance: return static_cast<qlonglong>(member.loot - member.supplies);
+        case Damage: return static_cast<qulonglong>(member.damage);
+        case Healing: return static_cast<qulonglong>(member.healing);
+        case IsLeader: return member.id == m_leaderId;
         default: return {};
     }
 }
 
 QHash<int, QByteArray> TPartyHuntMembersListModel::roleNames() const
 {
-    return {
-        { Name, "name" },       { CharacterId, "characterID" }, { IsLeader, "isLeader" }, { IsInParty, "isInParty" }, { Gain, "gain" },
-        { Waste, "waste" },     { Balance, "balance" },         { Damage, "damage" },     { Healing, "healing" },
-    };
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles[CharacterId] = "characterID";
+    roles[Name] = "name";
+    roles[IsInParty] = "isInParty";
+    roles[Gain] = "gain";
+    roles[Waste] = "waste";
+    roles[Balance] = "balance";
+    roles[Damage] = "damage";
+    roles[Healing] = "healing";
+    roles[IsLeader] = "isLeader";
+    return roles;
 }
 
 void TPartyHuntMembersListModel::setMembers(const std::vector<TPartyHuntStorage::Member>& members, const quint32 leaderId)

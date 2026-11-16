@@ -224,8 +224,7 @@ void TItemInfoDialogController::rebuildEntries()
         entry.clothSlot = type->getClothSlot();
         entries.push_back(std::move(entry));
     }
-    m_model.reset(std::move(entries));
-    m_proxy.invalidate();
+    m_proxy.resetEntries(std::move(entries));
     m_entriesBuilt = true;
     setEnableTier(false);
 }
@@ -582,6 +581,7 @@ void TItemInfoDialogController::restoreContext(const Context& context)
     }
     if (context.typeId == 0)
         return;
+    m_proxy.applyFilterNow();
     for (int row = 0; row < m_proxy.rowCount(); ++row) {
         if (m_proxy.typeIdAt(row) == context.typeId) {
             Q_EMIT itemListSelectionRequest(row);

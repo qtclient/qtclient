@@ -53,8 +53,13 @@ bool isOffline(const int state) { return state == 0 || state == 5; }
 
 bool isOnline(const int state) { return state == 1 || state == 4; }
 
-/// CIP 's status order: online (1, 3, 4) before the rest.
-int statusRank(const int state) { return state == 1 || state == 3 || state == 4 ? 0 : 1; }
+/// The status sort rank: online (1, 3, 4) before offline (0, 2, 5), unknown
+/// states last.
+int statusRank(const int state)
+{
+    static constexpr int Rank[] = { 1, 0, 1, 0, 0, 1 };
+    return state >= 0 && state < 6 ? Rank[state] : 2;
+}
 
 input::TGameActionPtr makeNamed(const A type, const QString& text, const int instance = 0, const int parameter = 0)
 {
@@ -198,6 +203,8 @@ bool TVipWidgetDataModelSortFilterProxy::showGroups() const { return m_showGroup
 
 void TVipWidgetDataModelSortFilterProxy::setHideOffline(const bool hide, const bool silent)
 {
+    if (m_hideOffline == hide)
+        return;
     m_hideOffline = hide;
     invalidate();
     if (!silent)
@@ -206,9 +213,11 @@ void TVipWidgetDataModelSortFilterProxy::setHideOffline(const bool hide, const b
 
 void TVipWidgetDataModelSortFilterProxy::setShowGroups(const bool show, const bool silent)
 {
+    if (m_showGroups == show)
+        return;
     m_showGroups = show;
-    invalidate();
     Q_EMIT showGroupsChanged();
+    invalidate();
     if (!silent)
         Q_EMIT configChanged();
 }
@@ -230,39 +239,46 @@ void TVipWidgetDataModelSortFilterProxy::sortBy(const int key)
 
 bool TVipWidgetDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
 {
+    if (!sourceModel())
+        return false;
     const QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
+    if (!index.isValid())
+        return false;
     if (m_hideOffline && isOffline(index.data(TVipWidgetDataModel::VipStateRole).toInt()))
         return false;
-    return m_showGroups || index.data(TVipWidgetDataModel::PrimaryRole).toBool();
+    return index.data(TVipWidgetDataModel::PrimaryRole).toBool() || m_showGroups;
+}
+
+int TVipWidgetDataModelSortFilterProxy::compareGroups(const QString& left, const QString& right)
+{
+    // The ungrouped section compares as an empty name and goes last.
+    const QString ungrouped = ungroupedName();
+    const QString a = left == ungrouped ? QString() : left;
+    const QString b = right == ungrouped ? QString() : right;
+    const int order = a.compare(b, Qt::CaseInsensitive);
+    return a.isEmpty() || b.isEmpty() ? -order : order;
 }
 
 bool TVipWidgetDataModelSortFilterProxy::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
+    if (!sourceModel())
+        return false;
+    using M = TVipWidgetDataModel;
     if (m_showGroups) {
-        // CIP : the ungrouped section last.
-        const QString leftGroup = left.data(TVipWidgetDataModel::GroupNameRole).toString();
-        const QString rightGroup = right.data(TVipWidgetDataModel::GroupNameRole).toString();
-        if (leftGroup != rightGroup) {
-            const QString ungrouped = ungroupedName();
-            if (leftGroup == ungrouped || rightGroup == ungrouped)
-                return rightGroup == ungrouped;
-            return leftGroup.compare(rightGroup, Qt::CaseInsensitive) < 0;
-        }
+        if (const int order = compareGroups(left.data(M::GroupNameRole).toString(), right.data(M::GroupNameRole).toString()); order != 0)
+            return order < 0;
     }
-    const QString leftName = left.data(TVipWidgetDataModel::VipNameRole).toString();
-    const QString rightName = right.data(TVipWidgetDataModel::VipNameRole).toString();
     for (const int key : m_sortOrder) {
         int order = 0;
         switch (key) {
             case ByStatus:
-                order = statusRank(left.data(TVipWidgetDataModel::VipStateRole).toInt()) -
-                        statusRank(right.data(TVipWidgetDataModel::VipStateRole).toInt());
+                order = statusRank(left.data(M::VipStateRole).toInt()) - statusRank(right.data(M::VipStateRole).toInt());
                 break;
             case ByIcon:
-                order = left.data(TVipWidgetDataModel::VipIconIdRole).toInt() - right.data(TVipWidgetDataModel::VipIconIdRole).toInt();
+                order = static_cast<uint8_t>(left.data(M::VipIconIdRole).toInt()) - static_cast<uint8_t>(right.data(M::VipIconIdRole).toInt());
                 break;
             case ByName:
-                order = leftName.compare(rightName, Qt::CaseInsensitive);
+                order = left.data(M::VipNameRole).toString().compare(right.data(M::VipNameRole).toString(), Qt::CaseInsensitive);
                 break;
             default:
                 break;
@@ -270,8 +286,7 @@ bool TVipWidgetDataModelSortFilterProxy::lessThan(const QModelIndex& left, const
         if (order != 0)
             return order < 0;
     }
-    // CIP leaves rows equal on every key in the source order; the name keeps the list stable here.
-    return leftName.compare(rightName, Qt::CaseInsensitive) < 0;
+    return false;
 }
 
 TVipWidgetController::TVipWidgetController(creatures::TVipStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)

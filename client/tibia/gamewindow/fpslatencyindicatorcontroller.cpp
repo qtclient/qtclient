@@ -17,13 +17,15 @@ namespace {
 constexpr auto ShowFpsOption = QLatin1String("showFpsLagIndicator");
 constexpr auto StabilityOption = QLatin1String("connectionStabilityOptimizationEnabled");
 
+/// The latency band QML colours the ping by: "measuring" until a ping
+/// is known, then low below 200 ms, medium below 500 ms, else high.
 QString latencyStateFor(const int pingMs)
 {
     if (pingMs < 0)
         return QStringLiteral("measuring");
-    if (pingMs < 120)
+    if (pingMs < 200)
         return QStringLiteral("low");
-    if (pingMs < 250)
+    if (pingMs < 500)
         return QStringLiteral("medium");
     return QStringLiteral("high");
 }
