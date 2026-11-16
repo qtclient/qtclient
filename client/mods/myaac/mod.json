@@ -20,7 +20,7 @@
   },
   "launchersettings": {
     "URLS": {
-      "systemSurvey": "http://127.0.0.1/systemsurvey.php"
+      "systemSurvey": "http://127.0.0.1/clientservices/hardwarereceiver.php"
     }
   }
 }
