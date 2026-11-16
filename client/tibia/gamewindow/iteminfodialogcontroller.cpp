@@ -192,6 +192,12 @@ TItemInfoDialogController::~TItemInfoDialogController() = default;
 
 void TItemInfoDialogController::buildCategories()
 {
+    for (const int identifier : categoryIdentifiers())
+        m_categories << new TQmlObjectCategory(identifier, this);
+}
+
+std::vector<int> TItemInfoDialogController::categoryIdentifiers()
+{
     std::vector<int> identifiers(CategoryOrder.begin(), CategoryOrder.end());
     for (const int extra : { GoldCategory, UnsortedCategory }) {
         const QString name = TQmlObjectCategory::translate(extra);
@@ -201,28 +207,35 @@ void TItemInfoDialogController::buildCategories()
         identifiers.insert(it, extra);
     }
     std::erase(identifiers, TibiaCoinsCategory);
-    for (const int identifier : identifiers)
-        m_categories << new TQmlObjectCategory(identifier, this);
+    return identifiers;
+}
+
+TAppearanceTypeEntry TItemInfoDialogController::cyclopediaEntry(const ThingTypePtr& type)
+{
+    TAppearanceTypeEntry entry;
+    entry.typeId = type->getId();
+    entry.name = QString::fromStdString(type->getName());
+    entry.marketCategory = itemCategory(type);
+    entry.classification = type->getClassification();
+    if (type->isMarketable()) {
+        const MarketData& market = type->getMarketData();
+        entry.requiredLevel = market.requiredLevel;
+        entry.professions = market.restrictVocation;
+    }
+    entry.hasClothSlot = type->isCloth();
+    entry.clothSlot = type->getClothSlot();
+    for (const NPCData& npc : type->getNpcSaleData()) {
+        if (npc.buyPrice != 0)
+            entry.imbuements << QString::fromStdString(npc.name);
+    }
+    return entry;
 }
 
 void TItemInfoDialogController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
-    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes()) {
-        TAppearanceTypeEntry entry;
-        entry.typeId = type->getId();
-        entry.name = QString::fromStdString(type->getName());
-        entry.marketCategory = itemCategory(type);
-        entry.classification = type->getClassification();
-        if (type->isMarketable()) {
-            const MarketData& market = type->getMarketData();
-            entry.requiredLevel = market.requiredLevel;
-            entry.professions = market.restrictVocation;
-        }
-        entry.hasClothSlot = type->isCloth();
-        entry.clothSlot = type->getClothSlot();
-        entries.push_back(std::move(entry));
-    }
+    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes())
+        entries.push_back(cyclopediaEntry(type));
     m_proxy.resetEntries(std::move(entries));
     m_entriesBuilt = true;
     setEnableTier(false);

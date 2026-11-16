@@ -101,6 +101,9 @@ public:
     explicit TExaltationStorage(QObject* parent = nullptr);
     ~TExaltationStorage() override;
 
+    /// The client's storage (CIP: the session's), or null.
+    static TExaltationStorage* instance();
+
     /// Slot 12: adds the prices (keeps the ones the data does not name).
     void setBaseData(const TExaltationBaseData& data);
     /// Slots 13, 14: the dust limit as the server sends it (increases bought).

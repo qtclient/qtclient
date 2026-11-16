@@ -293,8 +293,9 @@ void processReadyForSecondaryConnection(std::string_view token);
 void processOutfitMemorial(const OutfitMemorialData& data);
 void processWalkCancel(tibia::client::Direction direction);
 void processTeamFinderList(bool rateLimited, const std::vector<TeamFinderListEntry>& entries);
-void processDepotSearchResults(const std::vector<DepotSearchResultItem>& items);
-void processDepotSearchDetail(const DepotSearchDetail& detail);
+/// The depot search widget shows (results and detail lists are in the session storages).
+void processDepotSearchResults();
+void processDepotSearchDetail();
 void processCloseDepotSearch();
 void processChannelList(const std::vector<std::tuple<uint16_t, std::string>>& channelList);
 void processOpenChannel(uint16_t channelId, std::string_view name);

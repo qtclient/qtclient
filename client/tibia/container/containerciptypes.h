@@ -22,6 +22,7 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -276,12 +277,6 @@ private:
     QMap<TContainerID, TStoredContainer> m_containers;
 };
 
-class TDepotSearchDetailListStorage final : public cip::tibia::container::TDepotSearchDetailListStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::container::TDepotSearchDetailListStorage::TDepotSearchDetailListStorage;
-};
 
 /// Session inventory equipment slots (CIP: TInventoryContainer).
 class TInventoryContainer final : public cip::tibia::container::TInventoryContainer
@@ -347,6 +342,43 @@ class TStashStorage final : public cip::tibia::container::TStashStorage
     Q_OBJECT
 public:
     using cip::tibia::container::TStashStorage::TStashStorage;
+};
+
+/// The depot search's detail list of one object type (CIP:
+/// TDepotSearchDetailListStorage): the type and tier, the depot's and the
+/// inbox's objects of it with their totals, and the stash's counts.
+class TDepotSearchDetailListStorage final : public cip::tibia::container::TDepotSearchDetailListStorage
+{
+    Q_OBJECT
+public:
+    explicit TDepotSearchDetailListStorage(QObject* parent = nullptr);
+
+    /// No type, no objects, no stash counts; detailListChanged.
+    void clear();
+    /// The detail list the server sent; detailListChanged.
+    void setDetailList(uint16_t typeId, std::optional<uint8_t> tier, std::vector<TInventorySlot> depotObjects, uint32_t depotCount,
+                       std::vector<TInventorySlot> inboxObjects, uint32_t inboxCount, const TObjectCountStorage::TCounts& stashCounts);
+
+    /// 0 while no detail list is shown.
+    uint16_t typeId() const { return m_typeId; }
+    std::optional<uint8_t> tier() const { return m_tier; }
+    const std::vector<TInventorySlot>& depotObjects() const { return m_depotObjects; }
+    uint32_t depotCount() const { return m_depotCount; }
+    const std::vector<TInventorySlot>& inboxObjects() const { return m_inboxObjects; }
+    uint32_t inboxCount() const { return m_inboxCount; }
+    const TObjectCountStorage::TCounts& stashCounts() const { return m_stashCounts->counts(); }
+    const std::shared_ptr<TObjectCountStorage>& stashCountStorage() const { return m_stashCounts; }
+    /// The number of stash entries.
+    uint32_t stashCount() const { return static_cast<uint32_t>(m_stashCounts->counts().size()); }
+
+private:
+    uint16_t m_typeId = 0;
+    std::optional<uint8_t> m_tier;
+    std::vector<TInventorySlot> m_depotObjects;
+    uint32_t m_depotCount = 0;
+    std::vector<TInventorySlot> m_inboxObjects;
+    uint32_t m_inboxCount = 0;
+    std::shared_ptr<TObjectCountStorage> m_stashCounts;
 };
 
 } // namespace container

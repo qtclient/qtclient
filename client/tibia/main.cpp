@@ -103,7 +103,6 @@
 #include "input/playermovementinputinterpreter.h"
 #include "minimap/minimapmanager.h"
 #include "qmlcomponents/soundhelper.h"
-#include "renderer/worldview.h"
 #endif
 #include "controllers/characterselectioncontroller.h"
 #include "gamewindow/gamewindowcontroller.h"
@@ -747,7 +746,6 @@ int main(int argc, char** argv)
     const bool softwareRenderer = window->rendererInterface()->graphicsApi() == QSGRendererInterface::Software;
     auto* mapWindowController = new gamewindow::TMapWindowController(mapWindowPane, softwareRenderer, mapWindowPane);
     mapWindowController->setRenderProvider(gameClient.worldMapRenderProvider());
-    mapWindowPane->setProperty("mapWindowController", QVariant::fromValue<QObject*>(mapWindowController));
     mapWindowController->syncFov();
     QObject::connect(mapWindowController, &gamewindow::TMapWindowController::unusedWidthChanged, &sidebarManager,
                      &gamewindow::TSidebarManager::onUnusedWidthChanged);
@@ -1163,11 +1161,11 @@ int main(int argc, char** argv)
         qInfo("tibia.boot: after mods::bootstrapAll");
     }
 
-    QPointer<qmlcomponents::TWorldView> worldView;
+    bool mapWindowBound = false;
     // A new game session brings its own texts, effects, view and light.
     QObject::connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, gameWindowItem, [&] {
-        if (worldView)
-            worldView->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
+        if (mapWindowBound)
+            mapWindowController->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
         informationDialogs.setAmbientLightStorage(gameClient.ambientLight());
         if (minimapController)
             minimapController->setAmbientLightStorage(gameClient.ambientLight());
@@ -1177,14 +1175,10 @@ int main(int argc, char** argv)
         // leave the login mask hidden and the game window still off.
         gameWindowController.showGameScreen();
         try {
-            if (!worldView) {
-                worldView = new qmlcomponents::TWorldView(mapWindowPane, gameClient.worldMapRenderProvider(), gameClient.textStorage(),
-                                                          gameClient.numericalEffects());
-                if (!worldView->isBound())
-                    qCritical("MapWindowPane has no WorldMap named worldmap");
-            } else {
-                worldView->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
-            }
+            mapWindowController->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
+            if (!mapWindowBound && !mapWindowController->isBound())
+                qCritical("MapWindowPane has no WorldMap named worldmap");
+            mapWindowBound = true;
             vipWidget.setSidebarOptions(gameClient.sidebarOptions());
             vipWidget.setWorldType(gameClient.worldType());
             sidebarWidgets.setSidebarOptions(gameClient.sidebarOptions());
@@ -1228,8 +1222,7 @@ int main(int argc, char** argv)
         qmlcomponents::applyOptionVolumes(); // resume login anthem when offline
     });
     QObject::connect(&application, &QCoreApplication::aboutToQuit, &gameClient, [&] {
-        if (worldView)
-            worldView->unbind();
+        mapWindowController->unbind();
         if (minimapController)
             minimapController->setTileStorage(nullptr);
         informationDialogs.setMinimapTileStorage(nullptr);

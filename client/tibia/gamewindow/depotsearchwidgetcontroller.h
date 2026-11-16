@@ -1,24 +1,32 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include "gamewindow/appearanceinstancelistmodel.h"
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "input/gameaction.h"
+#include "input/gameactionmapper.h"
 
-#include <client/staticdata.h>
 #include <cip_gen.h>
 
-#include <QHash>
-#include <QPair>
 #include <QPointer>
 #include <QString>
-#include <QVariant>
+#include <QStringList>
 
 #include <cstdint>
+#include <memory>
+#include <optional>
 #include <vector>
 
 namespace tibia {
 namespace config {
 class TSidebarOptions;
+}
+namespace container {
+class TDepotSearchDetailListStorage;
+}
+namespace game {
+class TGameSessionBase;
 }
 }
 
@@ -27,22 +35,24 @@ namespace gamewindow {
 
 class TSidebarManager;
 
-/// CipSoft DepotSearchWidget.qml — CIP TDepotSearchWidgetController with real
-/// appearance models + tibia::game:: depot-search peels / notify hooks.
+/// The depot search sidebar widget (CIP: TDepotSearchWidgetController,
+/// DepotSearchWidget.qml). The search list holds every cyclopedia type (one
+/// row per tier of a classified type) with the locker's counts from the
+/// session's object counts; picking a type asks the server for its detail
+/// list, which the session's TDepotSearchDetailListStorage holds and the
+/// stash list and the depot and inbox grids show.
 class TDepotSearchWidgetController final : public TSidebarWidgetController<cip::tibia::gamewindow::TDepotSearchWidgetController>
 {
     Q_OBJECT
 
 public:
-    TDepotSearchWidgetController(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    TDepotSearchWidgetController(QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    ~TDepotSearchWidgetController() override;
 
+    /// CIP v12: binds the lists to the session's storages (null unbinds).
+    void setGameSession(game::TGameSessionBase* session);
+    /// The options the widget keeps (CIP: the session's sidebar options).
     void setSidebarOptions(config::TSidebarOptions* options);
-
-    QVariant appearanceTypeListModel() const override;
-    QVariant stashAppearanceTypeListModel() const override;
-    QVariant depotAppearanceTypeListModel() const override;
-    QVariant inboxAppearanceTypeListModel() const override;
-    QList<QObject*> categories() const override;
 
     bool showDetailList() const override;
     QString detailListObjectName() const override;
@@ -54,37 +64,47 @@ public:
     QString totalCountInboxString() const override;
     bool isAppearanceAllowedToRetrieve() const override;
     bool showLockerOnly() const override;
-    bool enableTierAndClassificationSelection() const override;
-    bool enableTierSelection() const override;
-    int indexOfSelectedTier() const override;
-    int indexOfSelectedClassification() const override;
+    bool enableTierAndClassificationSelection() const override { return m_enableTierAndClassificationSelection; }
+    bool enableTierSelection() const override { return m_enableTierSelection; }
+    void setEnableTierSelection(bool enable) override;
+    int indexOfSelectedTier() const override { return m_indexOfSelectedTier; }
+    void setIndexOfSelectedTier(int index) override;
+    int indexOfSelectedClassification() const override { return m_indexOfSelectedClassification; }
+    void setIndexOfSelectedClassification(int index) override;
+    int indexOfSelectedNPC() const override { return m_indexOfSelectedNPC; }
+    void setIndexOfSelectedNPC(int index) override;
     QStringList availableTiers() const override;
     QStringList availableClassifications() const override;
-    int indexOfSelectedNPC() const override;
-    QStringList availableNPCs() const override;
+    QStringList availableNPCs() const override { return m_availableNPCs; }
 
-    /// CIP TSidebarWidgetControllerBase chrome.
-    QQuickItem* gameWindowQuickItem() const override;
-    /// CIP TSidebarWidgetControllerWithFocusHandling.
-    bool hasFocus() const override;
+    bool hasFocus() const override { return m_hasFocus; }
 
 public Q_SLOTS:
+    void takeFocus() override;
+    void releaseFocus() override;
+
+    /// CIP v32: the server's search closes with the widget.
+    void onRequestClose() override;
+    /// CIP v36: back from the detail list to the search.
+    void onLevelUpClicked() override;
+    /// CIP v37.
     void saveWidgetOptions() override;
-    void requestSearch() override;
-    void requestRefresh() override;
+
     void requestCategorySelect(int ClassificationIdentifier, bool FilterByLevel, bool FilterByVocation, bool OnlyOneHanWeapons,
                                bool OnlyTwoHandWeapons, bool ShowLockerOnly) override;
     void requestNameSelect(const QString& NameFilter, bool FilterByLevel, bool FilterByVocation, bool OnlyOneHanWeapons,
                            bool OnlyTwoHandWeapons, bool ShowLockerOnly) override;
     void requestItemSelect(int AppearanceId, int UpgradeTier) override;
     void requestItemChosen(int AppearanceId, int UpgradeTier) override;
-    void onSearchedItemClicked(int AppearanceId, int UpgradeTier, int MouseButtonRaw, int KeyboardModifiersRaw) override;
     void onClassificationFilterWasSelected(int SelectedIndex, const QString& NameFilter, bool FilterByLevel, bool FilterByVocation,
                                            bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly) override;
     void onTierFilterWasSelected(int SelectedIndex, const QString& NameFilter, bool FilterByLevel, bool FilterByVocation,
-                                  bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly) override;
-    void onNpcFilterWasSelected(int SelectedIndex, const QString& NameFilter, bool FilterByLevel, bool FilterByVocation,
                                  bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly) override;
+    void onNpcFilterWasSelected(int SelectedIndex, const QString& NameFilter, bool FilterByLevel, bool FilterByVocation,
+                                bool OnlyOneHandWeapons, bool OnlyTwoHandWeapons, bool ShowLockerOnly) override;
+    void onSearchedItemClicked(int AppearanceId, int UpgradeTier, int MouseButtonRaw, int KeyboardModifiersRaw) override;
+    void requestSearch() override;
+    void requestRefresh() override;
     void requestRetrieveFromStash(int TypeID) override;
     void requestRetrieveFromDepotInbox(int StorageLocation) override;
     void slotClicked(int StorageLocation, int SlotIDRaw, int MouseButtonRaw, int KeyboardModifiersRaw) override;
@@ -94,66 +114,69 @@ public Q_SLOTS:
     void emptySlotAreaExited() override;
     void slotStartDrag(int StorageLocation, int SlotIDRaw, QObject* pSource) override;
     void slotTargetSelected(int StorageLocation, int SlotIDRaw) override;
-    void onRequestClose() override;
-    void onCloseClicked() override;
-    /// CIP sidebar chrome (battlelist/container pattern).
-    void onRequestMoveToSidebar(int TargetSidebar) override;
-    void onSetDragActive(bool Active) override;
-    void onSidebarDestroyed() override;
-    /// CIP: level-up from detail list returns to search results (QML levelUpButtonVisible).
-    void onLevelUpClicked() override;
-    void setCursorToResizeVertical(bool Enabled) override;
-    void startContentSizeChangedTimer();
-    void takeFocus() override;
-    void releaseFocus() override;
-
-Q_SIGNALS:
-    /// CIP sidebar chrome (TSidebarWidgetControllerBase) — qtclient NOTIFY deepen.
-    void contentSizeChanged();
-    void positionInSidebarChanged();
-    void sidebarIdChanged();
-    void widgetClosed();
-    /// CIP sidebar chrome (drag/move) — qtclient redeclare; forwarded from chrome slots.
-    void widgetDragChanged(uint sidebarId, bool active);
-    void widgetWantsToMoveToSidebar(int targetSidebar, tibia::gamewindow::TSidebarWidget* widget);
-    /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
-    void publishGameAction();
-    void focusChanged();
-    void requestWidgetControlToTakeFocus();
-    /// CIP index NOTIFYs — qtclient forwards after cip:: setters in filter slots.
-    /// CIP filter/list NOTIFYs — qtclient redeclare (members filled; no dynamic filter source yet).
-    void categoryListSelectionRequest();
 
 private Q_SLOTS:
-    /// CIP private slots — options / detail refresh hooks from QML.
     void onWidgetOptionsChanged();
+    /// CIP: the stash list and the depot and inbox grids follow the
+    /// session's detail list; the search field has the focus while no
+    /// detail list is shown.
     void onDetailListChanged();
-    void onWidgetQuickItemDestroyed();
 
 private:
-    void persistOptions();
-    void placeInSidebar();
-    void applyResults(const std::vector<DepotSearchResultItem>& items);
-    void applyDetail(const DepotSearchDetail& detail);
-    void clearDetail();
-    int countOf(uint16_t typeId, uint8_t tier) const;
-    TAppearanceTypeListModel* modelForStorage(int storageLocation) const;
-    uint8_t retrieveTypeForStorage(int storageLocation) const;
-    bool entryAt(int storageLocation, int slotId, uint16_t& typeId, uint8_t& tier) const;
+    /// QML storage locations.
+    enum EStorageLocation
+    {
+        Depot = 0,
+        Stash = 1,
+        Inbox = 2,
+    };
 
-    QPointer<TSidebarManager> m_sidebars;
+    /// CIP v38: the widget options to the widget and the search list.
+    void applyWidgetOptions();
+    /// A category picked: the classification and tier drop-downs follow
+    /// whether the category has classified types.
+    void setCategory(int category);
+    /// Whether any type of `category` is classified.
+    bool categorySupportsTiers(int category) const;
+    /// The row of the category in `categories`, or -1.
+    int categoryIndex(int identifier) const;
+    /// The drop-downs' selections with the buttons.
+    TAppearanceTypeFilter currentFilter(bool filterByLevel, bool filterByVocation, bool oneHand, bool twoHand) const;
+    /// The filter to the search list: the name if there is one, else the
+    /// category.
+    void applyFilter(const QString& nameFilter, bool filterByLevel, bool filterByVocation, bool oneHand, bool twoHand, bool showLockerOnly);
+    /// The type (and tier, for a classified type) the search list picked.
+    void selectType(uint16_t typeId, uint8_t tier);
+    /// Asks the server for the picked type's detail list.
+    void publishSearchTypeRequest();
+    void publishSimpleAction(input::EGameAction type);
+    /// The mouse cursor over the hovered slot.
+    void updateHoverCursor();
+    /// The actions of a depot or inbox slot, or of the stash entry.
+    input::TGameActionList slotActions(int storageLocation, int slotId) const;
+    /// The actions of a search list row.
+    input::TGameActionList typeActions(uint16_t typeId) const;
+
+    game::TGameSessionBase* m_session = nullptr;
     QPointer<config::TSidebarOptions> m_options;
-    TAppearanceTypeListModel* m_resultsModel = nullptr;
-    TAppearanceTypeListModelSortFilterProxy* m_resultsProxy = nullptr;
-    TAppearanceTypeListModel* m_stashModel = nullptr;
-    TAppearanceTypeListModel* m_depotModel = nullptr;
-    TAppearanceTypeListModel* m_inboxModel = nullptr;
-    QHash<QPair<uint16_t, uint8_t>, int> m_counts;
-    uint16_t m_detailTypeId = 0;
-    uint8_t m_detailTier = 0;
-    std::vector<client::gamecore::Hook> m_hooks;
+    TAppearanceTypeListModel m_searchModel;
+    TAppearanceTypeListModelSortFilterProxy m_searchProxy;
+    TAppearanceTypeListModel m_stashModel;
+    TAppearanceTypeListModelSortFilterProxy m_stashProxy;
+    TAppearanceInstanceListModel m_depotModel;
+    TAppearanceInstanceListModel m_inboxModel;
+    uint16_t m_selectedTypeId = 0;
+    std::optional<uint8_t> m_selectedTier;
+    int m_hoveredSlot = -1;
+    int m_hoveredStorageLocation = -1;
+    int m_lastCategory = -1;
+    QString m_nameFilter;
+    std::shared_ptr<container::TDepotSearchDetailListStorage> m_detailList;
+    input::TGameActionMapper m_mapper;
+    std::vector<QMetaObject::Connection> m_sessionConnections;
 };
 
+/// Host: the controller the client keeps for its sidebar.
 class TDepotSearchWidgetManager final : public QObject
 {
     Q_OBJECT
@@ -162,15 +185,15 @@ public:
     ~TDepotSearchWidgetManager() override;
 
     void setSidebarOptions(config::TSidebarOptions* options);
-    TSidebarWidget* open(config::TSidebarOptions* options);
-    void close();
     TSidebarWidget* current() const;
 
 private:
+    /// Results or a detail list arrived: the widget shows in a sidebar.
+    void show();
+
     QPointer<TSidebarManager> m_sidebars;
-    QQuickItem* m_gameWindowItem = nullptr;
-    QQmlEngine* m_engine = nullptr;
     TDepotSearchWidgetController* m_controller = nullptr;
+    std::vector<client::gamecore::Hook> m_hooks;
 };
 
 }

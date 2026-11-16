@@ -661,7 +661,6 @@ if(TIBIA_WITH_GAMECORE)
     renderer/texturedeletionqueue.cpp renderer/texturedeletionqueue.h
     renderer/worldmapquickitem.cpp renderer/worldmapquickitem.h
     renderer/worldmaprenderprovider.cpp renderer/worldmaprenderprovider.h
-    renderer/worldview.cpp renderer/worldview.h
     store/storeciptypes.cpp store/storeciptypes.h
     store/dynamicallyloadedimage.cpp store/dynamicallyloadedimage.h
     store/qmlstoreobjects.cpp store/qmlstoreobjects.h

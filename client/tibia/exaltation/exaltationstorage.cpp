@@ -60,9 +60,16 @@ void publish(const A type)
 
 }
 
+namespace {
+TExaltationStorage* s_instance = nullptr;
+}
+
+TExaltationStorage* TExaltationStorage::instance() { return s_instance; }
+
 TExaltationStorage::TExaltationStorage(QObject* parent)
     : cip::tibia::exaltation::TExaltationStorage(parent)
 {
+    s_instance = this;
     // CIP TExaltationProtocolMessageHandler::handleExaltationBaseDataMessage:
     // the prices, then the dust limit.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args& args) {
@@ -170,6 +177,8 @@ TExaltationStorage::TExaltationStorage(QObject* parent)
 
 TExaltationStorage::~TExaltationStorage()
 {
+    if (s_instance == this)
+        s_instance = nullptr;
     for (const A type : { A::EXALTATION_FORGE_DIALOG_CLOSED, A::EXALTATION_FORGE_FUSION, A::EXALTATION_FORGE_CONVERGENCE_FUSION,
                           A::EXALTATION_FORGE_TRANSFER, A::REQUEST_EXALTATION_FORGE_HISTORY_FIRST_PAGE,
                           A::REQUEST_EXALTATION_FORGE_HISTORY_NEXT_PAGE, A::REQUEST_EXALTATION_FORGE_HISTORY_PREVIOUS_PAGE })

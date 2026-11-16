@@ -63,15 +63,6 @@ QString typeName(ThingType* type)
     return QString::fromStdString(type->isMarketable() && !market.name.empty() ? market.name : type->getName());
 }
 
-/// The NPCs the stash and depot search trader filters offer.
-std::set<QString> traderNames()
-{
-    return { QStringLiteral("Alesar"), QStringLiteral("Alexander"), QStringLiteral("Avan"), QStringLiteral("Brengus"),
-             QStringLiteral("Chondur"), QStringLiteral("Flint"), QStringLiteral("Gnomission"), QStringLiteral("Haroun"),
-             QStringLiteral("Kiru"), QStringLiteral("Lailene"), QStringLiteral("Mugruu"), QStringLiteral("Nah'bob"),
-             QStringLiteral("Rafzan"), QStringLiteral("Rashid"), QStringLiteral("Talila"), QStringLiteral("Tamoril"),
-             QStringLiteral("Tamru"), QStringLiteral("Valindara"), QStringLiteral("Yaman"), QStringLiteral("Tom") };
-}
 
 /// What the NPCs pay for one, the best offer (CIP: the sell value).
 uint32_t sellValue(ThingType* type)
@@ -82,6 +73,16 @@ uint32_t sellValue(ThingType* type)
     return best;
 }
 
+}
+
+/// The NPCs the stash and depot search trader filters offer.
+std::set<QString> traderNames()
+{
+    return { QStringLiteral("Alesar"), QStringLiteral("Alexander"), QStringLiteral("Avan"), QStringLiteral("Brengus"),
+             QStringLiteral("Chondur"), QStringLiteral("Flint"), QStringLiteral("Gnomission"), QStringLiteral("Haroun"),
+             QStringLiteral("Kiru"), QStringLiteral("Lailene"), QStringLiteral("Mugruu"), QStringLiteral("Nah'bob"),
+             QStringLiteral("Rafzan"), QStringLiteral("Rashid"), QStringLiteral("Talila"), QStringLiteral("Tamoril"),
+             QStringLiteral("Tamru"), QStringLiteral("Valindara"), QStringLiteral("Yaman"), QStringLiteral("Tom") };
 }
 
 TStashProxyModel::TStashProxyModel(TAppearanceTypeListModel* model, std::function<int(uint16_t)> counts, QObject* parent)

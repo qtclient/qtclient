@@ -578,13 +578,13 @@ void processTeamFinderList(const bool rateLimited, const std::vector<TeamFinderL
 {
     tibia::game::notify("onTeamFinderList", rateLimited, entries);
 }
-void processDepotSearchResults(const std::vector<DepotSearchResultItem>& items)
+void processDepotSearchResults()
 {
-    tibia::game::notify("onDepotSearchResults", items);
+    tibia::game::notify("onDepotSearchResults");
 }
-void processDepotSearchDetail(const DepotSearchDetail& detail)
+void processDepotSearchDetail()
 {
-    tibia::game::notify("onDepotSearchDetail", detail);
+    tibia::game::notify("onDepotSearchDetail");
 }
 void processCloseDepotSearch()
 {

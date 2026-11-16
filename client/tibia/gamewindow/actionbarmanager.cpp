@@ -39,26 +39,6 @@ constexpr std::array<A, 9> HandledActions{ A::TOGGLE_ACTION_BAR, A::TOGGLE_ACTIO
                                            A::ASSIGN_SPELL_TO_ACTION_BUTTON, A::ASSIGN_HOTKEY_TO_GAME_ACTION };
 
 /// Options 0x3-0xe, by bar id.
-const char* showBarOption(const int actionBarId)
-{
-    static constexpr std::array<const char*, 9> names{ "actionBarShowBottom1", "actionBarShowBottom2", "actionBarShowBottom3",
-                                                       "actionBarShowLeft1",   "actionBarShowLeft2",   "actionBarShowLeft3",
-                                                       "actionBarShowRight1",  "actionBarShowRight2",  "actionBarShowRight3" };
-    return actionBarId >= 1 && actionBarId <= 9 ? names[size_t(actionBarId - 1)] : nullptr;
-}
-
-const char* showGroupOption(const int position)
-{
-    switch (P(position)) {
-    case P::ActionBarPositionLeft:
-        return "actionBarsShowLeft";
-    case P::ActionBarPositionRight:
-        return "actionBarsShowRight";
-    default:
-        return "actionBarsShowBottom";
-    }
-}
-
 bool isActionBarsOption(const QString& name)
 {
     return name.startsWith(QLatin1String("actionBar")) || name.startsWith(QLatin1String("actionButton"));
@@ -101,6 +81,8 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
             m_groups[i] = std::make_unique<TActionBarGroup>(this, containers[i].first, container, engine, gameWindowItem, mapWindowPane,
                                                            &m_displayOptions);
         }
+        for (const auto& group : m_groups)
+            group->restoreLastAktionBarConfiguration();
     }
     applyMappings();
 
@@ -111,9 +93,6 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
         if (!isActionBarsOption(name))
             return;
         loadDisplayOptions();
-        for (const auto& group : m_groups)
-            if (group)
-                group->applyOptions();
     });
 
     m_cooldownTimer.setInterval(CooldownTickMs);
@@ -473,19 +452,17 @@ void TActionBarManager::useObject(const Setting& setting)
 
 bool TActionBarManager::toggleActionBar(const input::TGameAction& action)
 {
-    const char* name = showBarOption(action.actionBarId);
-    if (!name)
-        return true;
-    const QJsonObject options = app::ClientOptions::load().options();
-    app::ClientOptions::store(QLatin1String(name), !options.value(QLatin1String(name)).toBool(false));
+    for (const auto& group : m_groups)
+        if (group)
+            group->handleGameAction(action);
     return true;
 }
 
 bool TActionBarManager::toggleActionBars(const input::TGameAction& action)
 {
-    const char* name = showGroupOption(action.parameter);
-    const QJsonObject options = app::ClientOptions::load().options();
-    app::ClientOptions::store(QLatin1String(name), !options.value(QLatin1String(name)).toBool(true));
+    for (const auto& group : m_groups)
+        if (group)
+            group->handleGameAction(action);
     return true;
 }
 
