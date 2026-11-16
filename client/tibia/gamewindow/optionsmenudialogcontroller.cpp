@@ -86,7 +86,6 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     : TDialogController(QStringLiteral("OptionsMenuDialog.qml"), parent)
     , m_actionBarOptions(this)
     , m_characterConfigurationManager(this)
-    , m_clientOptions(this)
     , m_clientOptionsModeSwitcher(this)
     , m_optionPageQmlWrapperBase(this)
 {

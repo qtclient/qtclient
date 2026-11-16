@@ -19,9 +19,9 @@ Q_SIGNALS:
     void optionChanged(const QString& name);
 };
 
-/// conf/clientoptions.json, CIP's options file (TClientOptions). Defaults are
-/// CIP's own file (cip/conf, embedded at :/conf); the user's copy lives in the
-/// app data dir and overrides them key by key.
+/// A JSON view of config::TClientOptions for host and pack code: load() is
+/// the options as TClientOptions::toJson writes them; store and storeAll go
+/// through its typed setters and save the file.
 class ClientOptions
 {
 public:

@@ -1,67 +1,44 @@
 #include "clientoptions.h"
 
 #include "config/clientoptiondefaults.h"
-#include "config/clientoptionsmigration.h"
-#include "config/specialconditionsoptions.h"
+#include "config/clientoptions.h"
 
-#include <QDir>
-#include <QFile>
-#include <QFileInfo>
-#include <QJsonDocument>
-#include <QSaveFile>
-#include <QStandardPaths>
 #include <QStringList>
-
-namespace {
-
-constexpr auto ControlButtonsSection = "controlButtonsOptions";
-constexpr auto SpecialConditionsSection = "specialConditionsOptions";
-constexpr auto VersionKey = "clientOptionsVersion";
-
-}
 
 namespace tibia::app {
 
 namespace {
 
-QJsonObject readObject(const QString& path)
+/// The stored value of a CIP option as JSON.
+QJsonValue optionValue(const config::TClientOptions& options, const QString& name)
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
-        return {};
-    return QJsonDocument::fromJson(file.readAll()).object();
+    return options.toJson().object().value(QLatin1String("options")).toObject().value(name);
 }
 
-/// A file that names its clientOptionsVersion is a CIP options file and is
-/// upgraded to the current layout. qtclient's own user file always carries
-/// the current version (see writeUserFile).
-QJsonObject readOptionsFile(const QString& path)
+/// Sets one option: a CIP option through its typed setter, any other name as
+/// a host option.
+void setOptionValue(config::TClientOptions& options, const QString& name, const QJsonValue& value)
 {
-    QJsonObject root = readObject(path);
-    if (root.contains(QLatin1String(VersionKey)))
-        root = config::clientoptionsmigration::migrate(std::move(root));
-    return root;
-}
-
-bool writeUserFile(const QString& path, QJsonObject root)
-{
-    root.insert(QLatin1String(VersionKey), config::clientoptionsmigration::CurrentVersion);
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly))
-        return false;
-    file.write(QJsonDocument(root).toJson());
-    return file.commit();
+    config::EClientOption id;
+    if (!config::TClientOptions::optionId(name, id)) {
+        options.setExtraOption(name, value);
+        return;
+    }
+    const QJsonValue current = optionValue(options, name);
+    if (current.isBool())
+        options.setBoolOption(id, value.toBool());
+    else if (current.isString())
+        options.setStringOption(id, value.toString());
+    else if (config::isFloatOption(name))
+        options.setFloatOption(id, float(value.toDouble()));
+    else
+        options.setIntOption(id, value.toInt());
 }
 
 QJsonObject merged(QJsonObject base, const QJsonObject& over)
 {
-    for (auto it = over.begin(); it != over.end(); ++it) {
-        if (it->isObject() && base.value(it.key()).isObject())
-            base.insert(it.key(), merged(base.value(it.key()).toObject(), it->toObject()));
-        else
-            base.insert(it.key(), *it);
-    }
+    for (auto it = over.begin(); it != over.end(); ++it)
+        base.insert(it.key(), *it);
     return base;
 }
 
@@ -69,83 +46,55 @@ QJsonObject merged(QJsonObject base, const QJsonObject& over)
 
 QString ClientOptions::userFilePath()
 {
-    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + QStringLiteral("/conf/clientoptions.json");
+    return config::TClientOptions::userFilePath();
 }
 
 ClientOptions ClientOptions::load()
 {
     ClientOptions o;
-    // CIP's shipped clientoptions.json is a machine snapshot (hotkeys, cookies).
-    // Code owns the factory defaults TClientOptions resets to: the options
-    // map, the button bar and the special conditions. The user file overrides
-    // them. The snapshot must not supply those sections.
-    QJsonObject resource = readOptionsFile(QStringLiteral(":/conf/clientoptions.json"));
-    resource.remove(QLatin1String(ControlButtonsSection));
-    resource.remove(QLatin1String(SpecialConditionsSection));
-    QJsonObject codeDefaults;
-    codeDefaults.insert(QStringLiteral("options"), config::defaultClientOptions());
-    codeDefaults.insert(QLatin1String(ControlButtonsSection), config::defaultControlButtonsOptions());
-    codeDefaults.insert(QLatin1String(SpecialConditionsSection), config::SpecialConditionsOptions::defaults().toJson());
-    o.m_root = merged(merged(std::move(resource), codeDefaults), readOptionsFile(userFilePath()));
-    o.m_root.insert(QStringLiteral("options"), config::readClientOptions(o.m_root.value(QLatin1String("options")).toObject()));
-    o.m_root.insert(QLatin1String(ControlButtonsSection),
-                    config::reconcileControlButtons(o.m_root.value(QLatin1String(ControlButtonsSection)).toObject()));
+    o.m_root = config::TClientOptions::instance()->toJson().object();
     return o;
 }
 
 void ClientOptions::store(const QString& name, const QJsonValue& value)
 {
-    // Nothing happens when the option already holds the value (its default
-    // included); otherwise it is set and optionChanged names it.
-    if (load().options().value(name) == value)
+    config::TClientOptions* options = config::TClientOptions::instance();
+    const QJsonValue before = optionValue(*options, name);
+    if (before == value)
         return;
-    const QString path = userFilePath();
-    QJsonObject root = readOptionsFile(path);
-    QJsonObject options = root.value(QLatin1String("options")).toObject();
-    options.insert(name, value);
-    root.insert(QLatin1String("options"), options);
-    if (!writeUserFile(path, std::move(root)))
+    setOptionValue(*options, name, value);
+    if (optionValue(*options, name) == before)
         return;
+    options->saveToJsonFile();
     Q_EMIT ClientOptionsNotifier::instance()->optionChanged(name);
 }
 
 void ClientOptions::storeAll(const QJsonObject& changes)
 {
-    const QJsonObject current = load().root();
-    const QString path = userFilePath();
-    QJsonObject root = readOptionsFile(path);
+    config::TClientOptions* options = config::TClientOptions::instance();
+    const QJsonObject current = options->toJson().object();
     QStringList changed;
     for (auto section = changes.begin(); section != changes.end(); ++section) {
-        if (!section->isObject()) {
-            if (current.value(section.key()) != *section) {
-                root.insert(section.key(), *section);
-                changed << section.key();
+        if (section.key() == QLatin1String("options")) {
+            const QJsonObject values = section->toObject();
+            for (auto it = values.begin(); it != values.end(); ++it) {
+                const QJsonValue before = optionValue(*options, it.key());
+                setOptionValue(*options, it.key(), *it);
+                if (optionValue(*options, it.key()) != before)
+                    changed << it.key();
             }
             continue;
         }
-        const bool perOption = section.key() == QLatin1String("options");
-        const QJsonObject currentValues = current.value(section.key()).toObject();
-        QJsonObject stored = root.value(section.key()).toObject();
-        const QJsonObject values = section->toObject();
-        bool sectionChanged = false;
-        for (auto it = values.begin(); it != values.end(); ++it) {
-            if (currentValues.value(it.key()) == *it)
-                continue;
-            stored.insert(it.key(), *it);
-            sectionChanged = true;
-            if (perOption)
-                changed << it.key();
-        }
-        if (!sectionChanged)
-            continue;
-        root.insert(section.key(), stored);
-        if (!perOption)
+        const QJsonValue value = section->isObject() && current.value(section.key()).isObject()
+                                     ? QJsonValue(merged(current.value(section.key()).toObject(), section->toObject()))
+                                     : *section;
+        options->fromJson({ { section.key(), value } });
+        if (options->toJson().object().value(section.key()) != current.value(section.key()))
             changed << section.key();
     }
     if (changed.isEmpty())
         return;
-    if (!writeUserFile(path, std::move(root)))
-        return;
+    options->saveToJsonFile();
     for (const QString& name : std::as_const(changed))
         Q_EMIT ClientOptionsNotifier::instance()->optionChanged(name);
 }

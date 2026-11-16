@@ -1,0 +1,191 @@
+#pragma once
+
+#include <cip_gen.h>
+#include <cip_options.h>
+
+#include <QByteArray>
+#include <QDateTime>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QList>
+#include <QRect>
+#include <QString>
+#include <QStringList>
+#include <QTimer>
+
+#include <array>
+
+#include <map>
+#include <set>
+#include <unordered_map>
+#include <utility>
+
+namespace tibia {
+namespace config {
+
+using EClientOption = cip::EClientOption;
+
+/// clientWindowOptions: the client window's screen and geometry.
+struct TClientWindowOptions
+{
+    QString screenName;
+    QRect geometry;
+    bool maximized = false;
+    bool borderless = false;
+
+    bool operator==(const TClientWindowOptions&) const = default;
+};
+
+/// chatOptions: the open channels, the chat mode and the loot channel.
+struct TChatOptions
+{
+    QList<quint16> openChannels{ 7 };
+    bool chatModeOn = false;
+    bool lootChannelOpen = false;
+
+    bool operator==(const TChatOptions&) const = default;
+};
+
+/// whiteBlacklistOptions.
+struct TWhiteBlacklistOptions
+{
+    QStringList blacklistedNames;
+    QStringList whitelistedNames;
+
+    bool operator==(const TWhiteBlacklistOptions&) const = default;
+};
+
+/// survey: the last survey invitation and its status (0..2).
+struct TSurveyInvitationOptions
+{
+    quint32 id = 0;
+    int status = 2;
+
+    bool operator==(const TSurveyInvitationOptions&) const = default;
+};
+
+/// The options of the client (CIP's clientoptions.json): five typed option
+/// maps keyed by EClientOption, one value per section, a load and a save.
+/// A setter changes nothing when the value is unchanged; otherwise it sets it
+/// and emits the section's signal (optionChanged for an option).
+class TClientOptions final : public cip::tibia::config::TClientOptions
+{
+    Q_OBJECT
+public:
+    static TClientOptions* instance();
+
+    /// optionChanged(id) for every bool, int, float, string and date option.
+    void announceAllOptions();
+
+    bool boolOption(EClientOption id) const;
+    void setBoolOption(EClientOption id, bool value);
+    int intOption(EClientOption id) const;
+    void setIntOption(EClientOption id, int value);
+    float floatOption(EClientOption id) const;
+    void setFloatOption(EClientOption id, float value);
+    QString stringOption(EClientOption id) const;
+    void setStringOption(EClientOption id, const QString& value);
+
+    const TClientWindowOptions& clientWindowOptions() const { return m_clientWindow; }
+    void setClientWindowOptions(const TClientWindowOptions& options);
+    const QRect& npcDialogOptions() const { return m_npcDialog; }
+    void setNpcDialogOptions(const QRect& geometry);
+    /// controlButtonsOptions as stored (enabledButtons, disabledButtons).
+    const QJsonObject& controlButtonsOptions() const { return m_controlButtons; }
+    void setControlButtonsOptions(const QJsonObject& section);
+    /// deviceCookieOptions: (hash, cookie) pairs, oldest first.
+    const QList<std::pair<QString, QString>>& deviceCookies() const { return m_deviceCookies; }
+    void setDeviceCookies(const QList<std::pair<QString, QString>>& cookies);
+    const QJsonObject& hotkeyOptions() const { return m_hotkeyOptions; }
+    void setHotkeyOptions(const QJsonObject& section);
+    const TChatOptions& chatOptions() const { return m_chat; }
+    void setChatOptions(const TChatOptions& options);
+    const TWhiteBlacklistOptions& whiteBlacklistOptions() const { return m_whiteBlacklist; }
+    void setWhiteBlacklistOptions(const TWhiteBlacklistOptions& options);
+    const TSurveyInvitationOptions& surveyInvitationOptions() const { return m_survey; }
+    void setSurveyInvitationOptions(const TSurveyInvitationOptions& options);
+    quint16 newsMaxUnlockLevel() const { return m_newsMaxUnlockLevel; }
+    void setNewsMaxUnlockLevel(quint16 level);
+    const QJsonObject& specialConditionsOptions() const { return m_specialConditions; }
+    void setSpecialConditionsOptions(const QJsonObject& section);
+    const std::set<QByteArray>& pinnedCharacters() const { return m_pinnedCharacters; }
+    void setPinnedCharacters(const std::set<QByteArray>& characters);
+
+    bool rendererChangeConfirmationRequired() const { return m_rendererChangeConfirmationRequired; }
+    void setRendererChangeConfirmationRequired(bool required);
+
+    /// The options a fresh options file holds.
+    void setDefaults();
+    /// Reads every section `json` holds with the right JSON type over the
+    /// current values; the others keep theirs.
+    void fromJson(const QJsonObject& json);
+    /// Every section and option, with the current options version.
+    QJsonDocument toJson() const;
+    /// Reads the user's options file: missing or empty, the defaults; else
+    /// migrated to the current layout and read over the defaults. Then
+    /// optionChanged for every option; then ensureGlobalShortcuts.
+    void load();
+    /// Every hotkey set gains the GlobalShortcuts it lacks; with no set, the
+    /// vocation presets (THotkeyOptionsData::addGlobalShortcuts).
+    void ensureGlobalShortcuts();
+
+    /// Host extension: options and top-level sections no CIP option names,
+    /// kept as stored so pack and host settings survive load and save.
+    QJsonObject extraOptions() const { return m_extraOptions; }
+    void setExtraOption(const QString& name, const QJsonValue& value);
+    QJsonValue extraSection(const QString& name) const { return m_extraSections.value(name); }
+    void setExtraSection(const QString& name, const QJsonValue& value);
+
+    static QString optionName(EClientOption id);
+    /// The option named `name`, or false when no CIP option has that name.
+    static bool optionId(const QString& name, EClientOption& id);
+
+    static QString userFilePath();
+
+    /// actionBarsOptionsChanged .. stashOptionsChanged.
+    static constexpr size_t CategoryCount = 22;
+
+public Q_SLOTS:
+    void saveToJsonFile() override;
+    /// Starts the timer of every category signal `id` belongs to.
+    void consolidateSignalsAndEnqueueOptionSetSignalsForEmit(tibia::config::EClientOption id);
+
+Q_SIGNALS:
+    void optionChanged(tibia::config::EClientOption id);
+
+private:
+    TClientOptions();
+
+    void readBoolOptions(const QJsonObject& options);
+    void readIntOptions(const QJsonObject& options);
+    void readFloatOptions(const QJsonObject& options);
+    void readStringOptions(const QJsonObject& options);
+    void writeBoolOptions(QJsonObject& options) const;
+    void writeIntOptions(QJsonObject& options) const;
+    void writeFloatOptions(QJsonObject& options) const;
+    void writeStringOptions(QJsonObject& options) const;
+
+    std::unordered_map<EClientOption, bool> m_bools;
+    std::unordered_map<EClientOption, int> m_ints;
+    std::unordered_map<EClientOption, float> m_floats;
+    std::unordered_map<EClientOption, QString> m_strings;
+    bool m_rendererChangeConfirmationRequired = false;
+    TClientWindowOptions m_clientWindow;
+    QRect m_npcDialog;
+    QJsonObject m_controlButtons;
+    QList<std::pair<QString, QString>> m_deviceCookies;
+    QJsonObject m_hotkeyOptions;
+    TChatOptions m_chat;
+    TWhiteBlacklistOptions m_whiteBlacklist;
+    TSurveyInvitationOptions m_survey;
+    quint16 m_newsMaxUnlockLevel = 0;
+    QJsonObject m_specialConditions;
+    std::set<QByteArray> m_pinnedCharacters;
+
+    QJsonObject m_extraOptions;
+    QJsonObject m_extraSections;
+    std::array<QTimer, CategoryCount> m_categoryTimers;
+};
+
+}
+}
