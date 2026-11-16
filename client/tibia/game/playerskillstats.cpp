@@ -123,6 +123,7 @@ void TPlayerSkillStats::setForgeBonuses(const double momentum, const double tran
 
 void TPlayerSkillStats::clear()
 {
+    m_specialMagicLevels.clear();
     commit({});
 }
 

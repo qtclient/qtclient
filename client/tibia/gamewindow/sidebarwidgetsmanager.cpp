@@ -6,7 +6,9 @@
 #include "gamewindow/containerstoragecontroller.h"
 #include "gamewindow/sidebarmanager.h"
 #include "gamewindow/skillswidgetcontroller.h"
+#include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "protocol/clientmessages.h"
 
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
@@ -78,20 +80,13 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
                                 }
                                 return m_skills->widget();
                             },
-                             [this] {
-                                 if (!m_skills)
-                                     return;
-                                 m_skills->saveWidgetOptions();
-                                 m_skills->deleteLater();
-                                 m_skills = nullptr;
-                             },
-                             [this]() -> TSidebarWidget* { return m_skills ? m_skills->widget() : nullptr; } });
+                             [this] { closeSkills(true); },
+                             [this]() -> TSidebarWidget* { return m_skills ? m_skills->widget() : nullptr; },
+                             [this] { closeSkills(false); } });
 
-    input::setActionHandler(A::TOGGLE_WIDGET, [this](const input::TGameAction& action) {
-        // Key bindings carry the widget in instance, older publishers in parameter.
-        toggleWidget(action.instance != 0 ? action.instance : action.parameter);
-        return true;
-    });
+    connect(this, &TSidebarWidgetsManager::widgetVisible, this, &TSidebarWidgetsManager::onWidgetVisible);
+    connect(this, &TSidebarWidgetsManager::widgetHidden, this, &TSidebarWidgetsManager::onWidgetHidden);
+    input::setActionHandler(A::TOGGLE_WIDGET, [this](const input::TGameAction& action) { return handleGameAction(action); });
     input::setActionHandler(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, [this](const input::TGameAction& action) {
         if (!m_containers)
             return false;
@@ -109,10 +104,12 @@ TSidebarWidgetsManager::~TSidebarWidgetsManager()
 
 void TSidebarWidgetsManager::setSidebarOptions(config::TSidebarOptions* options)
 {
+    // CIP: the old options go first, so closing every widget does not save
+    // the empty sidebars over them.
     if (m_options)
         disconnect(m_options, nullptr, this, nullptr);
-    if (!options)
-        closeAll();
+    m_options = nullptr;
+    closeAll();
     m_options = options;
     m_battleLists->setSidebarOptions(options);
     if (m_skills)
@@ -208,7 +205,7 @@ void TSidebarWidgetsManager::onRegisteredWidgetClosed()
     }
 }
 
-void TSidebarWidgetsManager::closeWidget(const int widgetType)
+void TSidebarWidgetsManager::closeWidget(const int widgetType, const bool saveWidgetOptions)
 {
     switch (widgetType) {
         case BattleList:
@@ -230,18 +227,68 @@ void TSidebarWidgetsManager::closeWidget(const int widgetType)
     if (m_sidebars)
         m_sidebars->removeWidget(widget);
     widget->hide();
-    if (const WidgetHooks& hooks = m_widgets[widgetType]; hooks.close)
+    if (const WidgetHooks& hooks = m_widgets[widgetType]; !saveWidgetOptions && hooks.discard)
+        hooks.discard();
+    else if (hooks.close)
         hooks.close();
     saveCurrentOpenWidgets();
     Q_EMIT widgetHidden(widgetType);
 }
 
-void TSidebarWidgetsManager::toggleWidget(const int widgetType)
+void TSidebarWidgetsManager::toggleWidget(const int widgetType, const uint sidebarId)
 {
     if (isWidgetOpen(widgetType))
-        closeWidget(widgetType);
+        closeWidget(widgetType, true);
     else
-        openWidget(widgetType);
+        openWidget(widgetType, sidebarId);
+}
+
+bool TSidebarWidgetsManager::handleGameAction(const input::TGameAction& action)
+{
+    if (action.type != A::TOGGLE_WIDGET)
+        return false;
+    // Key bindings carry the widget in instance, older publishers in parameter.
+    const int widgetType = action.instance != 0 ? action.instance : action.parameter;
+    const uint sidebarId = action.sidebarId;
+    switch (widgetType) {
+        case Skills: onToggleSkillsWidget(sidebarId); break;
+        case UnjustifiedPoints: onToggleUnjustifiedPointsWidget(sidebarId); break;
+        case KillTracker: onToggleKillTrackerWidget(sidebarId); break;
+        case SpellList: onToggleSpellListWidget(sidebarId); break;
+        case QuestTracker: onToggleQuestTrackerWidget(sidebarId); break;
+        case BossCooldowns: onToggleBossTrackerWidget(sidebarId); break;
+        case LootTracker: onToggleLootTrackerWidget(sidebarId); break;
+        case XpAnalyser: onToggleProgressAnalyserWidget(sidebarId); break;
+        case LootAnalyser: onToggleLootAnalyserWidget(sidebarId); break;
+        case WasteAnalyser: onToggleWasteAnalyserWidget(sidebarId); break;
+        case ImpactAnalyser: onToggleImpactAnalyserWidget(sidebarId); break;
+        case DamageInputAnalyser: onToggleDamageInputAnalyserWidget(sidebarId); break;
+        case HuntingSessionAnalyser: onToggleHuntingSessionAnalyserWidget(sidebarId); break;
+        case AnalyticsSelector: onToggleAnalyticsSelectorWidget(sidebarId); break;
+        case PartyHuntAnalyser: onTogglePartyHuntAnalyserWidget(sidebarId); break;
+        // The battle lists toggle through the battle list storage (CIP passes
+        // it every game action).
+        case BattleList:
+        case PartyList:
+        // The widgets the manager keeps by type (VIP, bestiary and bosstiary
+        // trackers, imbuement tracker, player guide) and pack widgets.
+        default: toggleWidget(widgetType, sidebarId); break;
+        // CIP toggles no container widget.
+        case Container: break;
+    }
+    return true;
+}
+
+void TSidebarWidgetsManager::onWidgetVisible(const int widgetType)
+{
+    if (m_options && widgetType == ImbuementTracker)
+        protocol::gameclient::sendImbuementDurations(true);
+}
+
+void TSidebarWidgetsManager::onWidgetHidden(const int widgetType)
+{
+    if (m_options && widgetType == ImbuementTracker)
+        protocol::gameclient::sendImbuementDurations(false);
 }
 
 QQuickItem* TSidebarWidgetsManager::widgetQuickItem(const int widgetType) const
@@ -261,9 +308,30 @@ QQuickItem* TSidebarWidgetsManager::widgetQuickItem(const int widgetType) const
 
 void TSidebarWidgetsManager::closeAll()
 {
-    for (const auto& [type, hooks] : m_widgets)
-        closeWidget(type);
     m_battleLists->closeAll();
+    for (const int type : { Skills, UnjustifiedPoints, KillTracker, SpellList, LootTracker, LootAnalyser, WasteAnalyser, BossCooldowns,
+                            QuestTracker, ImpactAnalyser, DamageInputAnalyser, XpAnalyser, HuntingSessionAnalyser, AnalyticsSelector,
+                            PartyHuntAnalyser })
+        closeWidget(type, false);
+    std::vector<int> others;
+    for (const auto& [type, hooks] : m_widgets)
+        others.push_back(type);
+    for (const int type : others)
+        closeWidget(type, false);
+    if (m_sidebars) {
+        m_sidebars->setSidebarCount(TSidebarManager::Right, 1);
+        m_sidebars->setSidebarCount(TSidebarManager::Left, 0);
+    }
+}
+
+void TSidebarWidgetsManager::closeSkills(const bool saveWidgetOptions)
+{
+    if (!m_skills)
+        return;
+    if (saveWidgetOptions)
+        m_skills->saveWidgetOptions();
+    m_skills->deleteLater();
+    m_skills = nullptr;
 }
 
 QString TSidebarWidgetsManager::widgetTypeName(const int widgetType)

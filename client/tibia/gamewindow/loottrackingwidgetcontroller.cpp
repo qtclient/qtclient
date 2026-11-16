@@ -280,11 +280,12 @@ TSidebarWidget* TLootTrackingWidgetManager::open(config::TSidebarOptions* option
     return m_controller->widget();
 }
 
-void TLootTrackingWidgetManager::close()
+void TLootTrackingWidgetManager::close(const bool saveWidgetOptions)
 {
     if (!m_controller)
         return;
-    m_controller->saveWidgetOptions();
+    if (saveWidgetOptions)
+        m_controller->saveWidgetOptions();
     m_controller->deleteLater();
     m_controller = nullptr;
 }

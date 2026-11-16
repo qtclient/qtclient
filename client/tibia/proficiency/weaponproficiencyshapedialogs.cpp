@@ -102,19 +102,26 @@ TWeaponProficiencyShapeDialogController::TWeaponProficiencyShapeDialogController
     });
 
     input::setActionHandler(A::OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG, [this](const input::TGameAction& action) {
-        const auto typeId = static_cast<uint16_t>(action.instance);
-        const auto level = static_cast<uint8_t>(action.parameter);
-        const auto perk = static_cast<uint8_t>(action.category);
-        const TProficiencyData* data = m_storage->data(typeId);
-        if (!data || !data->shapedSlot(level, perk))
-            return true;
-        m_typeId = typeId;
-        m_level = level;
-        m_perk = perk;
-        m_fromPerkTree = action.enable;
-        showDialog();
+        handleGameAction(action);
         return true;
     });
+}
+
+/// CIP: OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG from the perk tree opens the
+/// dialog for a shaped perk the weapon has.
+void TWeaponProficiencyShapeDialogController::handleGameAction(const input::TGameAction& action)
+{
+    const auto typeId = static_cast<uint16_t>(action.instance);
+    const auto level = static_cast<uint8_t>(action.parameter);
+    const auto perk = static_cast<uint8_t>(action.category);
+    const TProficiencyData* data = m_storage->data(typeId);
+    if (!data || !action.enable || !data->shapedSlot(level, perk))
+        return;
+    m_typeId = typeId;
+    m_level = level;
+    m_perk = perk;
+    m_fromPerkTree = action.enable;
+    showDialog();
 }
 
 TWeaponProficiencyShapeDialogController::~TWeaponProficiencyShapeDialogController()

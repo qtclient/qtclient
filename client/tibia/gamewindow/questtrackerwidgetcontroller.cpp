@@ -592,11 +592,12 @@ TSidebarWidget* TQuestTrackerWidgetManager::open(config::TSidebarOptions* option
     return m_controller->widget();
 }
 
-void TQuestTrackerWidgetManager::close()
+void TQuestTrackerWidgetManager::close(const bool saveWidgetOptions)
 {
     if (!m_controller)
         return;
-    m_controller->saveWidgetOptions();
+    if (saveWidgetOptions)
+        m_controller->saveWidgetOptions();
     m_controller->deleteLater();
     m_controller = nullptr;
 }

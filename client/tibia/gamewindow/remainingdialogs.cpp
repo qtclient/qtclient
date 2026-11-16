@@ -676,25 +676,72 @@ TLoginConfirmationCodeEnterTextDialogController::TLoginConfirmationCodeEnterText
     : TDialogController(QStringLiteral("LoginConfirmationCodeEnterDialog.qml"), parent)
 {}
 
+/// CIP: the code is dropped, the information line cleared and the dialog aborted.
 void TLoginConfirmationCodeEnterTextDialogController::onCancelClicked()
 {
+    m_enteredText.clear();
+    setAdditionalInfoText(QString());
+    Q_EMIT abort();
     dialog()->close();
     Q_EMIT dialogClosed();
 }
 
+/// CIP: the dialog closes; an empty code cancels, otherwise it is kept and
+/// textEntered goes out.
 void TLoginConfirmationCodeEnterTextDialogController::onOkClicked(const QString& EnteredText)
 {
-    m_enteredText = EnteredText;
-    Q_EMIT codeEntered(EnteredText);
     dialog()->close();
-    Q_EMIT dialogClosed();
+    if (EnteredText.isEmpty()) {
+        onCancelClicked();
+        return;
+    }
+    m_enteredText = EnteredText;
+    setAdditionalInfoText(QString());
+    Q_EMIT textEntered(EnteredText);
 }
 
+QVariantMap TLoginConfirmationCodeEnterTextDialogController::getAvailableMethods()
+{
+    return { { QStringLiteral("primaryEmail"), m_targets.primaryEmail },
+             { QStringLiteral("secondaryEmail"), m_targets.secondaryEmail },
+             { QStringLiteral("sms"), m_targets.sms } };
+}
+
+void TLoginConfirmationCodeEnterTextDialogController::setAvailableMethods(const ConfirmationMethodTargets& Targets)
+{
+    if (m_targets == Targets)
+        return;
+    m_targets = Targets;
+    Q_EMIT availableMethodsChanged();
+}
+
+QString TLoginConfirmationCodeEnterTextDialogController::getChosenMethod()
+{
+    switch (m_method) {
+        case EmailPrimary: return QStringLiteral("emailPrimary");
+        case EmailSecondary: return QStringLiteral("emailSecondary");
+        case Sms: return QStringLiteral("sms");
+    }
+    return QStringLiteral("emailPrimary");
+}
+
+/// CIP: "emailPrimary", "emailSecondary", anything else is SMS.
+void TLoginConfirmationCodeEnterTextDialogController::setChosenMethod(const QString& Value)
+{
+    const EMethod method = Value == QLatin1String("emailPrimary") ? EmailPrimary
+        : Value == QLatin1String("emailSecondary")                ? EmailSecondary
+                                                                  : Sms;
+    if (method == m_method)
+        return;
+    m_method = method;
+    Q_EMIT chosenMethodChanged();
+}
+
+/// CIP: asks for a code by the chosen method; the information line clears.
 void TLoginConfirmationCodeEnterTextDialogController::onSendClicked()
 {
-    // CIP LoginConfirmationCodeEnterDialog.qml requestConfirmationCode → resend path.
-    setHasPendingCode(true);
-    Q_EMIT confirmationCodeResendRequested();
+    setAdditionalInfoText(QString());
+    Q_EMIT confirmationCodeRequested(m_method);
 }
 
 void TLoginConfirmationCodeEnterTextDialogController::getEnteredText()
@@ -905,23 +952,51 @@ TShowImageDialogController* TShowImageDialogController::instance()
 void TShowImageDialogController::showImages(const QStringList& paths, const QString& caption, const bool dragonHeader,
                                             const bool crestHeader)
 {
-    m_paths = paths;
-    m_caption = caption;
-    m_showCaption = !caption.isEmpty();
-    m_showDragonHeader = dragonHeader;
-    m_showCrestHeader = crestHeader;
-    m_imageCount = static_cast<uint>(paths.size());
-    m_currentIndex = 0;
-    m_imageTabIcons = paths;
-    refreshCurrent();
-    dialog()->create();
-    dialog()->show();
+    TData data;
+    data.showDragonHeader = dragonHeader;
+    data.showCrestHeader = crestHeader;
+    data.showCaption = !caption.isEmpty();
+    data.caption = caption;
+    for (const QString& path : paths)
+        data.images.push_back({ path, path });
+    setData(data);
+    if (!dialog()->item()) {
+        dialog()->create();
+        dialog()->show();
+    }
 }
 
-void TShowImageDialogController::refreshCurrent()
+/// CIP: new data replaces the old (the tab icons follow the images); the
+/// current index stays.
+void TShowImageDialogController::setData(const TData& data)
 {
-    m_currentImagePath = m_paths.value(static_cast<int>(m_currentIndex));
+    if (m_data == data)
+        return;
+    m_data = data;
+    m_showDragonHeader = data.showDragonHeader;
+    m_showCrestHeader = data.showCrestHeader;
+    m_showCaption = data.showCaption;
+    m_caption = data.caption;
+    m_bannerPath = data.bannerPath;
+    m_imageTabIcons.clear();
+    for (const TImage& image : data.images)
+        m_imageTabIcons.append(image.tabIcon);
     Q_EMIT dataChanged();
+}
+
+/// CIP: the index never passes the image count.
+void TShowImageDialogController::setCurrentIndex(const uint index)
+{
+    const uint clamped = std::min(index, imageCount());
+    if (clamped == m_currentIndex)
+        return;
+    m_currentIndex = clamped;
+    Q_EMIT dataChanged();
+}
+
+QString TShowImageDialogController::currentImagePath() const
+{
+    return m_currentIndex < imageCount() ? m_data.images[m_currentIndex].path : QString();
 }
 
 void TShowImageDialogController::requestClose()
@@ -931,23 +1006,20 @@ void TShowImageDialogController::requestClose()
 
 void TShowImageDialogController::nextClicked()
 {
-    if (m_paths.isEmpty())
-        return;
-    m_currentIndex = (m_currentIndex + 1) % static_cast<uint>(m_paths.size());
-    refreshCurrent();
+    setCurrentIndex(m_currentIndex + 1);
 }
 
 void TShowImageDialogController::backClicked()
 {
-    if (m_paths.isEmpty())
-        return;
-    m_currentIndex = (m_currentIndex + static_cast<uint>(m_paths.size()) - 1) % static_cast<uint>(m_paths.size());
-    refreshCurrent();
+    if (m_currentIndex != 0)
+        setCurrentIndex(m_currentIndex - 1);
 }
 
+/// CIP: closing drops the data.
 void TShowImageDialogController::closeDialog()
 {
     dialog()->close();
+    setData({});
     Q_EMIT dialogClosed();
 }
 

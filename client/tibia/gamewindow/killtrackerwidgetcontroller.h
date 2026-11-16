@@ -150,7 +150,7 @@ public:
     /// Makes the widget (if needed) with the session's sidebar options and returns it.
     TSidebarWidget* open(config::TSidebarOptions* options);
     /// Saves its options and deletes it.
-    void close();
+    void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
 
 private:

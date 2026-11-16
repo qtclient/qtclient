@@ -310,11 +310,12 @@ TSidebarWidget* TBossTrackerWidgetManager::open(config::TSidebarOptions* options
     return m_controller->widget();
 }
 
-void TBossTrackerWidgetManager::close()
+void TBossTrackerWidgetManager::close(const bool saveWidgetOptions)
 {
     if (!m_controller)
         return;
-    m_controller->saveWidgetOptions();
+    if (saveWidgetOptions)
+        m_controller->saveWidgetOptions();
     m_controller->deleteLater();
     m_controller = nullptr;
 }

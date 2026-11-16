@@ -303,24 +303,48 @@ Q_SIGNALS:
     void copyRejected();
 };
 
-/// CIP TLoginConfirmationCodeEnterTextDialogController — LoginConfirmationCodeEnterDialog.qml.
+/// CIP TLoginConfirmationCodeEnterTextDialogController — LoginConfirmationCodeEnterDialog.qml:
+/// the login confirmation code, the method to (re)send it with and where it goes.
 class TLoginConfirmationCodeEnterTextDialogController final
     : public TDialogController<cip::tibia::gamewindow::TLoginConfirmationCodeEnterTextDialogController>
 {
     Q_OBJECT
 public:
+    /// CIP ELoginConfirmationMethod as the dialog offers it.
+    enum EMethod { EmailPrimary = 0, EmailSecondary = 1, Sms = 2 };
+    /// CIP ConfirmationMethodTargets: where each method sends the code (empty: unavailable).
+    struct ConfirmationMethodTargets
+    {
+        QString primaryEmail;
+        QString secondaryEmail;
+        QString sms;
+        bool operator==(const ConfirmationMethodTargets&) const = default;
+    };
+
     explicit TLoginConfirmationCodeEnterTextDialogController(QObject* parent = nullptr);
+
+    QVariantMap availableMethods() const override { return const_cast<TLoginConfirmationCodeEnterTextDialogController*>(this)->getAvailableMethods(); }
+    QString chosenMethod() const override { return const_cast<TLoginConfirmationCodeEnterTextDialogController*>(this)->getChosenMethod(); }
+    void setChosenMethod(const QString& Value) override;
+    void setAvailableMethods(const ConfirmationMethodTargets& Targets);
 
 public Q_SLOTS:
     void onCancelClicked() override;
     void onOkClicked(const QString& EnteredText) override;
+    QVariantMap getAvailableMethods() override;
+    QString getChosenMethod() override;
     void onSendClicked() override;
     void getEnteredText() override;
+    QString getAdditionalInfoText() override { return m_additionalInfoText; }
+    bool getHasPendingConfirmationCode() override { return m_hasPendingCode; }
     void setHasPendingConfirmationCode(bool hasCode) override;
 
 Q_SIGNALS:
-    void codeEntered(const QString& code);
-    void confirmationCodeResendRequested();
+    void confirmationCodeRequested(int Method);
+
+private:
+    ConfirmationMethodTargets m_targets;
+    EMethod m_method = EmailPrimary;
 };
 
 /// CIP TMainCharacterChangeDialogController — MainCharacterChangeDialog.qml.
@@ -412,10 +436,33 @@ class TShowImageDialogController final : public TDialogController<cip::tibia::ga
 {
     Q_OBJECT
 public:
+    /// CIP: one image and its tab icon.
+    struct TImage
+    {
+        QString path;
+        QString tabIcon;
+        bool operator==(const TImage&) const = default;
+    };
+    /// CIP: what the dialog shows.
+    struct TData
+    {
+        bool showDragonHeader = false;
+        bool showCrestHeader = false;
+        bool showCaption = false;
+        QString caption;
+        QString bannerPath;
+        std::vector<TImage> images;
+        bool operator==(const TData&) const = default;
+    };
+
     explicit TShowImageDialogController(QObject* parent = nullptr);
     static TShowImageDialogController* instance();
 
+    /// CIP handleShowImageDialogGameAction: takes the data and opens the dialog.
     void showImages(const QStringList& paths, const QString& caption = {}, bool dragonHeader = false, bool crestHeader = false);
+
+    uint imageCount() const override { return static_cast<uint>(m_data.images.size()); }
+    QString currentImagePath() const override;
 
 public Q_SLOTS:
     void requestClose() override;
@@ -424,9 +471,10 @@ public Q_SLOTS:
     void closeDialog() override;
 
 private:
-    void refreshCurrent();
+    void setData(const TData& data);
+    void setCurrentIndex(uint index);
     static TShowImageDialogController* s_instance;
-    QStringList m_paths;
+    TData m_data;
 };
 
 /// The spell book a player reads (ShowSpellBookDialog.qml).

@@ -28,11 +28,10 @@ using Cursor = TMouseCursorController;
 /// "edit mark" and "delete mark". The fields' actions here already carry the
 /// marker's entries when the field has one (there is no marker overlay to
 /// click), so one order serves both.
-constexpr A FieldContextMenuOrder[] = {
-    A::SHOW_DIALOG_CREATE_MINIMAP_MARKER,
-    A::SHOW_DIALOG_EDIT_MINIMAP_MARKER,
-    A::DELETE_MINIMAP_MARKER,
-};
+/// CIP: a click on a field offers a new marker, a click on a marker edits
+/// or deletes it.
+constexpr A FieldContextMenuOrder[] = { A::SHOW_DIALOG_CREATE_MINIMAP_MARKER };
+constexpr A MarkerContextMenuOrder[] = { A::SHOW_DIALOG_EDIT_MINIMAP_MARKER, A::DELETE_MINIMAP_MARKER };
 
 /// Rounds half away from zero, as std::lround does.
 int roundToInt(const float v)
@@ -276,7 +275,7 @@ void TMinimapController::onMinimapMarkerClick(QObject* /*pMinimapMarkerQmlRender
 {
     // There is no marker overlay that reports a hovered marker, so this
     // takes the field under the mouse.
-    dispatchClick(actionsAtMouse(), TriggeringMouseButton, static_cast<int>(Modifiers), FieldContextMenuOrder);
+    dispatchClick(actionsAtMouse(), TriggeringMouseButton, static_cast<int>(Modifiers), MarkerContextMenuOrder);
 }
 
 void TMinimapController::onMinimapMouseMoved(const int x, const int y)

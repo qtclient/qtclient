@@ -147,10 +147,8 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
     });
 
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
-        if (name == QLatin1String(ShowExpireOption) || name == QLatin1String(ShowExpireWhenUnusedOption)) {
-            readExpireOptions();
-            refreshSlots();
-        }
+        if (name == QLatin1String(ShowExpireOption) || name == QLatin1String(ShowExpireWhenUnusedOption))
+            onInventoryOptionsChanged();
         if (name == QLatin1String(AutoChaseOption))
             m_autoChaseEnabled = app::ClientOptions::load().options().value(name).toBool(false);
     });
@@ -301,6 +299,12 @@ void TPlayerInventoryAndStatusController::refreshClocks()
             continue;
         slot->setText(container::slotText(slot->appearance(), m_showExpire, m_showExpireWhenUnused));
     }
+}
+
+void TPlayerInventoryAndStatusController::onInventoryOptionsChanged()
+{
+    readExpireOptions();
+    refreshSlots();
 }
 
 void TPlayerInventoryAndStatusController::readExpireOptions()

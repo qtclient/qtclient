@@ -768,6 +768,10 @@ void TPlayerProtocolMessageHandler::handlePlayerSkillsMessage(
         absorbs[static_cast<uint8_t>(absorb.combat())] = absorb.value();
     tibia::game::localPlayerSetCombatAbsorbValues(absorbs);
     tibia::game::localPlayerSetForgeBonuses(message.momentum(), message.transcendence(), message.amplification());
+    std::vector<std::pair<int, int>> specialMagicLevels;
+    for (const auto& modifier : message.modifiers())
+        specialMagicLevels.emplace_back(static_cast<int>(modifier.type()), static_cast<int>(modifier.value()));
+    tibia::game::localPlayerSetSpecialMagicLevels(std::move(specialMagicLevels));
 }
 
 void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
