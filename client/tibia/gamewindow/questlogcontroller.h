@@ -141,10 +141,6 @@ public:
     /// CIP showDialog(optional<TQuestFlagID>): with the 0x10000 bit, the low 16
     /// bits are a quest flag to select along with its quest line.
     void showDialog(int parameter = 0);
-    /// The server's quest lines (QuestLog message).
-    void setQuestLines(const std::vector<std::tuple<uint16_t, std::string, bool>>& lines);
-    /// The server's missions of one quest line (QuestLine message).
-    void setQuestLineParts(uint16_t questLineId, const std::vector<std::tuple<std::string, std::string, uint16_t>>& missions);
     questlog::TQuestLogStorage* questLogStorage() { return &m_storage; }
     /// The tracked missions, shared with the quest tracker widget.
     TQuestTrackerStorage* tracker() { return &m_tracker; }

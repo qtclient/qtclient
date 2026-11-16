@@ -7,12 +7,15 @@
 #include "gamewindow/outfitdialogcontroller.h"
 #include "gamewindow/preydialogcontroller.h"
 #include "gamewindow/questlogcontroller.h"
+#include "questlog/questlogciptypes.h"
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/servermodaldialogcontroller.h"
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/minimaprendererquickitem.h"
 
 #include <tibia/game/gamesession.h>
+#include <map>
+#include <optional>
 #include <client/outfit.h>
 #include <client/position.h>
 #include <tibia/assets/thingtype.h>
@@ -242,15 +245,18 @@ void TInformationDialogs::hookQuestLog()
         return true;
     });
 
+    // The quest log protocol handler hands the storage what the server sent.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestLog", [this](GameObject*, const Args& args) {
-        if (const auto* lines = arg<std::vector<std::tuple<uint16_t, std::string, bool>>>(args, 0))
-            m_questLog->setQuestLines(*lines);
+        if (const auto* lines = arg<std::vector<questlog::TQuestLine>>(args, 0))
+            m_questLog->questLogStorage()->setQuestLines(*lines);
         return std::any{};
     });
 
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestLine", [this](GameObject*, const Args& args) {
-        if (const auto* missions = arg<std::vector<std::tuple<std::string, std::string, uint16_t>>>(args, 1))
-            m_questLog->setQuestLineParts(client::gamecore::argInt(args, 0), *missions);
+        const auto* questLineId = arg<questlog::TQuestLineID>(args, 0);
+        const auto* parts = arg<std::vector<questlog::TQuestLinePart>>(args, 1);
+        if (questLineId && parts)
+            m_questLog->questLogStorage()->setQuestLineParts(*questLineId, *parts);
         return std::any{};
     });
 
@@ -260,30 +266,17 @@ void TInformationDialogs::hookQuestLog()
     });
 
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestTracker", [this](GameObject*, const Args& args) {
-        using Missions = std::vector<std::tuple<uint16_t, uint16_t, std::string, std::string, std::string>>;
-        const auto* missions = arg<Missions>(args, 1);
-        if (!missions)
+        const auto* flags = arg<std::map<questlog::TQuestFlagID, questlog::TQuestFlagData>>(args, 0);
+        const auto* timestamp = arg<qint64>(args, 1);
+        const auto* fullList = arg<bool>(args, 2);
+        const auto* canTrack = arg<std::optional<bool>>(args, 3);
+        if (!flags || !timestamp || !fullList || !canTrack)
             return std::any{};
-        QList<TQuestTrackerStorage::Entry> entries;
-        for (const auto& [questLineId, questFlagId, questLineName, part, description] : *missions)
-            entries.append({ .questFlagId = questFlagId,
-                             .questLineId = questLineId,
-                             .questLineName = qstr(questLineName),
-                             .questLinePart = qstr(part),
-                             .description = qstr(description) });
         m_questLog->ensureStorage();
-        m_questLog->tracker()->setTrackedQuestFlags(std::move(entries), client::gamecore::argInt(args, 0));
-        return std::any{};
-    });
-
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateQuestTracker", [this](GameObject*, const Args& args) {
-        using client::gamecore::argInt;
-        using client::gamecore::argString;
-        m_questLog->tracker()->updateQuestFlag({ .questFlagId = static_cast<int>(argInt(args, 1)),
-                                                 .questLineId = static_cast<int>(argInt(args, 0)),
-                                                 .questLineName = argString(args, 2),
-                                                 .questLinePart = argString(args, 3),
-                                                 .description = argString(args, 4) });
+        questlog::TQuestLogStorage* storage = m_questLog->questLogStorage();
+        if (*canTrack)
+            storage->setCanTrackAdditionalQuestFlags(**canTrack);
+        storage->setTrackedQuestFlags(*flags, *timestamp, *fullList);
         return std::any{};
     });
 }

@@ -14,47 +14,21 @@ namespace tibia::cyclopedia {
 namespace {
 
 using Args = std::vector<std::any>;
-using PacketEntry = std::tuple<uint16_t, uint32_t, uint16_t, uint16_t, uint16_t, uint8_t>;
-
-QString raceDisplayName(const int raceId, const bool boss)
-{
-    if (boss)
-        return bossName(raceId);
-    QString name = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name);
-    if (!name.isEmpty())
-        name[0] = name[0].toUpper();
-    return name;
-}
-
-std::vector<TCreatureTrackerEntry> fromPacket(const std::vector<PacketEntry>& packet, const bool boss)
-{
-    std::vector<TCreatureTrackerEntry> out;
-    out.reserve(packet.size());
-    for (const PacketEntry& row : packet) {
-        TCreatureTrackerEntry entry;
-        entry.raceId = std::get<0>(row);
-        entry.currentKills = std::get<1>(row);
-        entry.killsForDetails1 = std::get<2>(row);
-        entry.killsForDetails2 = std::get<3>(row);
-        entry.killsForDetails3 = std::get<4>(row);
-        entry.status = std::get<5>(row);
-        entry.name = raceDisplayName(entry.raceId, boss);
-        out.push_back(std::move(entry));
-    }
-    return out;
-}
 
 } // namespace
 
 TCreatureTrackerStorage::TCreatureTrackerStorage(QObject* parent)
     : cip::tibia::cyclopedia::TCreatureTrackerStorage(parent)
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaTracker", [this](GameObject*, const Args& args) {
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCreatureTracker", [this](GameObject*, const Args& args) {
         const int trackerType = client::gamecore::argInt(args, 0);
-        const auto* packet = args.size() > 1 ? std::any_cast<std::vector<PacketEntry>>(&args[1]) : nullptr;
-        if (!packet)
+        const auto* entries = args.size() > 1 ? std::any_cast<std::vector<TCreatureTrackerEntry>>(&args[1]) : nullptr;
+        if (!entries)
             return std::any{};
-        applyTracker(trackerType, fromPacket(*packet, trackerType == 1));
+        if (trackerType == 0)
+            setTrackedMonsters(*entries);
+        else
+            setTrackedBosses(*entries);
         return std::any{};
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
@@ -71,25 +45,18 @@ TCreatureTrackerStorage::TCreatureTrackerStorage(QObject* parent)
     });
 }
 
-void TCreatureTrackerStorage::applyTracker(const int trackerType, const std::vector<TCreatureTrackerEntry>& entries)
+void TCreatureTrackerStorage::setTrackedMonsters(const std::vector<TCreatureTrackerEntry>& entries)
 {
-    if (trackerType == 1) {
-        const bool canMore = static_cast<int>(entries.size()) < TrackLimit;
-        const bool canChanged = canMore != canTrackMoreBosses();
-        m_bosses = entries;
-        Q_EMIT trackedBossesChanged();
-        if (canChanged)
-            Q_EMIT canTrackMoreBossesChanged();
-        return;
-    }
-    if (trackerType != 0)
-        return;
-    const bool canMore = static_cast<int>(entries.size()) < TrackLimit;
-    const bool canChanged = canMore != canTrackMoreMonsters();
     m_monsters = entries;
     Q_EMIT trackedMonstersChanged();
-    if (canChanged)
-        Q_EMIT canTrackMoreMonstersChanged();
+    Q_EMIT canTrackMoreMonstersChanged();
+}
+
+void TCreatureTrackerStorage::setTrackedBosses(const std::vector<TCreatureTrackerEntry>& entries)
+{
+    m_bosses = entries;
+    Q_EMIT trackedBossesChanged();
+    Q_EMIT canTrackMoreBossesChanged();
 }
 
 } // namespace tibia::cyclopedia

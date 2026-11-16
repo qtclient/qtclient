@@ -3,12 +3,13 @@
 #include "protocol/protocolciptypes.h"
 #include <tibia/game/gamesession.h>
 
+#include <optional>
 #include <string>
-#include <tuple>
 #include <vector>
 
 #include <tibia/game/gamenotify.h>
 
+#include <QDateTime>
 #include <QJsonArray>
 #include <QJsonValue>
 
@@ -364,42 +365,57 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
+void TQuestLogProtocolMessageHandler::handleQuestLogMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLog& message)
+{
+    std::vector<TQuestLine> questLines;
+    questLines.reserve(static_cast<std::size_t>(message.quests_size()));
+    for (const auto& quest : message.quests())
+        questLines.push_back({ .id = static_cast<TQuestLineID>(quest.quest_id()),
+                               .name = QString::fromStdString(quest.name()),
+                               .completed = quest.completed(),
+                               .parts = {} });
+    tibia::game::notify("onQuestLog", questLines);
+}
+
+void TQuestLogProtocolMessageHandler::handleQuestLineMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLine& message)
+{
+    std::vector<TQuestLinePart> parts;
+    parts.reserve(static_cast<std::size_t>(message.missions_size()));
+    for (const auto& mission : message.missions())
+        parts.emplace_back(static_cast<TQuestFlagID>(mission.mission_id()), QString::fromStdString(mission.name()),
+                           QString::fromStdString(mission.description()));
+    tibia::game::notify("onQuestLine", static_cast<TQuestLineID>(message.quest_id()), parts);
+}
+
+void TQuestLogProtocolMessageHandler::handleTrackedQuestFlagsMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageTrackQuestFlags& message)
+{
+    const qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
+    // Only a full list says whether more flags can be tracked.
+    std::optional<bool> canTrackAdditionalQuestFlags;
+    if (message.full_list())
+        canTrackAdditionalQuestFlags = static_cast<uint8_t>(message.remaining()) != 0;
+    std::map<TQuestFlagID, TQuestFlagData> questFlags;
+    for (const auto& mission : message.missions())
+        questFlags[static_cast<TQuestFlagID>(mission.mission_id())] = { .questLineId = static_cast<TQuestLineID>(mission.quest_id()),
+                                                                         .questLineName = QString::fromStdString(mission.quest_name()),
+                                                                         .questFlagName = QString::fromStdString(mission.mission_name()),
+                                                                         .description = QString::fromStdString(mission.description()) };
+    tibia::game::notify("onQuestTracker", questFlags, timestamp, message.full_list(), canTrackAdditionalQuestFlags);
+}
+
 void TQuestLogProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
     const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
-    if (opcode == 208 && shadow->HasExtension(GameserverMessageTrackQuestFlags::gameserver_message_track_quest_flags)) {
-        const auto& m = shadow->GetExtension(GameserverMessageTrackQuestFlags::gameserver_message_track_quest_flags);
-        if (m.full_list()) {
-            std::vector<std::tuple<uint16_t, uint16_t, std::string, std::string, std::string>> missions;
-            for (const auto& mission : m.missions())
-                missions.emplace_back(static_cast<uint16_t>(mission.quest_id()), static_cast<uint16_t>(mission.mission_id()),
-                                      mission.quest_name(), mission.mission_name(), mission.description());
-            tibia::game::notify("onQuestTracker", static_cast<uint8_t>(m.remaining()), missions);
-        } else if (m.missions_size() > 0) {
-            const auto& mission = m.missions(0);
-            tibia::game::notify("onUpdateQuestTracker", static_cast<uint16_t>(mission.quest_id()),
-                                static_cast<uint16_t>(mission.mission_id()), mission.quest_name(), mission.mission_name(),
-                                mission.description());
-        }
-        return;
-    }
-    if (opcode == 241 && shadow->HasExtension(GameserverMessageQuestLine::gameserver_message_quest_line)) {
-        const auto& m = shadow->GetExtension(GameserverMessageQuestLine::gameserver_message_quest_line);
-        std::vector<std::tuple<std::string, std::string, uint16_t>> missions;
-        for (const auto& mission : m.missions())
-            missions.emplace_back(mission.name(), mission.description(), static_cast<uint16_t>(mission.mission_id()));
-        tibia::game::processQuestLine(static_cast<uint16_t>(m.quest_id()), missions);
-        return;
-    }
-    if (opcode != 240 || !shadow->HasExtension(GameserverMessageQuestLog::gameserver_message_quest_log))
-        return;
-    std::vector<std::tuple<uint16_t, std::string, bool>> quests;
-    for (const auto& q : shadow->GetExtension(GameserverMessageQuestLog::gameserver_message_quest_log).quests())
-        quests.emplace_back(static_cast<uint16_t>(q.quest_id()), q.name(), q.completed());
-    tibia::game::processQuestLog(quests);
+    if (opcode == 208 && shadow->HasExtension(GameserverMessageTrackQuestFlags::gameserver_message_track_quest_flags))
+        handleTrackedQuestFlagsMessage(shadow->GetExtension(GameserverMessageTrackQuestFlags::gameserver_message_track_quest_flags));
+    else if (opcode == 241 && shadow->HasExtension(GameserverMessageQuestLine::gameserver_message_quest_line))
+        handleQuestLineMessage(shadow->GetExtension(GameserverMessageQuestLine::gameserver_message_quest_line));
+    else if (opcode == 240 && shadow->HasExtension(GameserverMessageQuestLog::gameserver_message_quest_log))
+        handleQuestLogMessage(shadow->GetExtension(GameserverMessageQuestLog::gameserver_message_quest_log));
 }
 
 } // namespace tibia::questlog

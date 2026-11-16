@@ -318,8 +318,6 @@ void processCloseTrade();
 void processEditText(uint32_t id, uint32_t itemId, uint16_t maxLength, std::string_view text, std::string_view writer,
                      std::string_view date, bool recentlyTraded = false);
 void processEditList(uint32_t id, uint8_t doorId, std::string_view text);
-void processQuestLog(const std::vector<std::tuple<uint16_t, std::string, bool>>& questList);
-void processQuestLine(uint16_t questId, const std::vector<std::tuple<std::string, std::string, uint16_t>>& questMissions);
 void processModalDialog(uint32_t id, std::string_view title, std::string_view message,
                         const std::vector<std::tuple<uint8_t, std::string>>& buttonList, uint8_t enterButton,
                         uint8_t escapeButton, const std::vector<std::tuple<uint8_t, std::string>>& choiceList, bool priority);

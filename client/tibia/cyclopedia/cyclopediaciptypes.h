@@ -15,6 +15,13 @@
 #include <vector>
 
 namespace tibia::protobuf::protocol {
+class GameserverMessageBestiaryTracker;
+class GameserverMessageCyclopediaCharacterInfo;
+class GameserverMessageImpactTracking;
+class GameserverMessageItemLooted;
+class GameserverMessageKillTracking;
+class GameserverMessageItemWasted;
+class GameserverMessageResourceBalance;
 class GameserverMessageCyclopediaHouseActionResult;
 class GameserverMessageMarketStatistics;
 class GameserverMessageMonsterCyclopedia;
@@ -37,6 +44,10 @@ public:
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
     static void onServerMessageEnqueued(int opcode);
+    /// The tracked races with their capitalised names ("onCreatureTracker": tracker type,
+    /// rows; tracker 0 is the bestiary's, any other the bosstiary's). The raw rows also go
+    /// out as "onParseCyclopediaTracker" for packs.
+    static void handleBestiaryTrackerMessage(const ::tibia::protobuf::protocol::GameserverMessageBestiaryTracker& message);
 };
 
 class TCharacterInfoStorage final : public cip::tibia::cyclopedia::TCharacterInfoStorage
@@ -76,6 +87,20 @@ public:
     static void onServerMessageEnqueued(int opcode);
 
     // Slots, one per server message.
+    /// One kill: its drops, stamped with the current time, go to the loot tracking, the
+    /// monster's name to the hunting session ("onKillTracker": name, outfit, drops).
+    static void handleKillTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageKillTracking& message);
+    /// One page of the character info: an error, or the page's data by info type (no
+    /// combat stats and no wheel page here).
+    static void handleCyclopediaCharacterInfoMessage(const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& message);
+    /// Healing, damage dealt (physical and elemental part) and damage received with its source.
+    static void handleImpactTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageImpactTracking& message);
+    /// One object used up; a cumulative object counts once.
+    static void handleItemWastedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemWasted& message);
+    /// One looted object: a cumulative object with its count, any other once.
+    static void handleItemLootedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemLooted& message);
+    /// The charm point balances (resource types 30..33); other types are not this handler's.
+    static void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
     static void handleMarketStatisticsMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketStatistics& message);
     static void handleMonsterCyclopediaMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopedia& message);
     static void handleMonsterCyclopediaNewDetailsMessage(

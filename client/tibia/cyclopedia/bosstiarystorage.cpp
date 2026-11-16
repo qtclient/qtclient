@@ -50,15 +50,21 @@ TBossSlot makeSlot(const bool unlocked, const uint32_t bossId, const std::option
 
 }
 
-QString bossName(const int raceId)
+QString capitalizeWords(const QString& name)
 {
-    const QString name = QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name);
-    QStringList words = name.split(QStringLiteral(" "));
+    if (name.isEmpty())
+        return name;
+    QStringList words = name.split(QStringLiteral(" "), Qt::SkipEmptyParts);
     for (QString& word : words) {
         if (!word.isEmpty())
-            word = word.at(0).toUpper() + word.mid(1);
+            word = QString(word.at(0).toUpper()) + word.mid(1);
     }
     return words.join(QStringLiteral(" "));
+}
+
+QString bossName(const int raceId)
+{
+    return capitalizeWords(QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(raceId)).name));
 }
 
 QString bossRaritySource(const int category)

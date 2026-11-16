@@ -54,17 +54,12 @@ public:
     const QList<Entry>& entries() const { return m_entries; }
     QSet<int> trackedIds() const;
     QList<int> completedIds() const;
-    int remainingTrackable() const { return m_remaining; }
     /// The quest line a tracked flag belongs to, 0 if it is not tracked.
     int questLineOf(int questFlagId) const;
 
     bool autoTrackNewQuests() const;
     bool autoUntrackCompletedQuests() const;
 
-    /// The server's full list replaces the tracked flags.
-    void setTrackedQuestFlags(const QList<Entry>& entries, int remaining);
-    /// One entry the server updated (TrackQuestFlags without the full-list flag).
-    void updateQuestFlag(const Entry& entry);
     void setPinned(int questFlagId, bool pinned);
     /// Adds (or removes) the flags and sends the new list.
     void changeTrackedQuestFlags(const QList<int>& ids, bool remove);
@@ -89,8 +84,6 @@ private:
 
     questlog::TQuestLogStorage* m_storage;
     QList<Entry> m_entries;
-    /// Optimistic until the server's 0xD0 remaining count arrives.
-    int m_remaining = 25;
 };
 
 /// The quest tracker rows (CIP: list model vtable , roleNames
