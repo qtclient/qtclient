@@ -624,7 +624,8 @@ void TActionBarGroup::createActionBar(const uint8_t actionBarId)
     bar->setLocked(locked());
     bar->createItem(m_engine, barContainer);
     if (m_manager) {
-        bar->applyMappings(m_manager->chatOn());
+        bar->onActionBarOptionsChanged();
+        bar->onHotkeyOptionsChanged();
         bar->refreshObjects();
     }
     m_bars.emplace(actionBarId, std::move(bar));
