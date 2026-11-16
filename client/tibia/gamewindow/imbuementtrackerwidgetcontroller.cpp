@@ -295,19 +295,17 @@ void TImbuementTrackerWidgetController::optionsContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    menu->addCustomEntry(qtTrId("imbuement_tracker_widget_caption"));
-    menu->addCustomSeparator();
-
-    const auto addFlag = [this, menu](const char* trId, bool& flag) {
-        TContextMenuEntryItem* entry = menu->addCustomEntry(qtTrId(trId));
+    // The four filters; the labels carry the minutes thresholds (1 and 3).
+    const auto addFlag = [this, menu](const QString& text, bool& flag) {
+        TContextMenuEntryItem* entry = menu->addCustomEntry(text);
         entry->setCheckable(true);
         entry->setChecked(flag);
         connect(entry, &TContextMenuEntryItem::triggered, this, [this, &flag] { toggleShowFlag(flag); });
     };
-    addFlag("imbuementtrackerwidget_show_almoste_gone", m_showAlmostGone);
-    addFlag("imbuementtrackerwidget_show_used", m_showUsed);
-    addFlag("imbuementtrackerwidget_show_almost_new", m_showAlmostNew);
-    addFlag("imbuementtrackerwidget_show_without_imbuements", m_showEmptySlots);
+    addFlag(qtTrId("imbuementtrackerwidget_show_almoste_gone").arg(1), m_showAlmostGone);
+    addFlag(qtTrId("imbuementtrackerwidget_show_used").arg(1).arg(3), m_showUsed);
+    addFlag(qtTrId("imbuementtrackerwidget_show_almost_new").arg(3), m_showAlmostNew);
+    addFlag(qtTrId("imbuementtrackerwidget_show_without_imbuements"), m_showEmptySlots);
     menu->showCustomMenu();
 }
 
