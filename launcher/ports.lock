@@ -1,16 +1,16 @@
 # ports.lock: CipSoft functions qtclient has dealt with. Written by
 # tools/re/port.py; checked by `port.py check`. Format and statuses: see port.py.
 # id	fp	status	where
-shared::TClipboardHelper::v0	872d4faac408f6d5	skip	compiler-generated destructor
-shared::TClipboardHelper::v1	e9caf669ab302182	skip	compiler-generated destructor
+shared::TClipboardHelper::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor
+shared::TClipboardHelper::v1	e9caf669ab302182	skip	generated: compiler-generated destructor
 shared::TClipboardHelper::v2	03220d30fe342478	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::setTextInClipboard
 shared::TClipboardHelper::v3	ea9ad4e161872047	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::getTextFromClipboard
 shared::TClipboardHelper::v4	472805c042cab6d0	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::getBase64StringAsJsonObject
 shared::TClipboardHelper::v5	ddeffed4c24bc6f4	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::setJsonObjectAsBase64String
 shared::TClipboardHelper::v6	7561ec3f69b5e0b5	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::convertBase64StringAsJsonObject
 shared::TClipboardHelper::v7	ad01f8d8e86715f1	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::convertJsonObjectToBase64String
-shared::TCoordinate::v0	872d4faac408f6d5	skip	compiler-generated destructor
-shared::TCoordinate::v1	e9caf669ab302182	skip	compiler-generated destructor
+shared::TCoordinate::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor
+shared::TCoordinate::v1	e9caf669ab302182	skip	generated: compiler-generated destructor
 shared::TCoordinate::v2	be5c33954d406be4	tested	client/tibia/shared/coordinate.h:TCoordinate::operator+	test=tests/client/coordinate_test.cpp
 shared::TDownloadPool::v12	94f613a37c4d5d03	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::download
 shared::TDownloadPool::v13	3229a889564b46ec	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::downloadWithPriority
@@ -19,9 +19,9 @@ shared::TDownloadPool::v15	b59314347e9826c6	ported	client/tibia/shared/downloadp
 shared::TDownloadPool::v16	c6adb91a55f8fd28	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::activeDownloads
 shared::TDownloadPool::v17	04062eb14d8a921b	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::pendingDownloads
 shared::TDownloadPool::v18	ed0a05af12caeb4f	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::setCache
-shared::TDownloadPool::~TDownloadPool	097457dc45e86dd8	skip	compiler-generated destructor
-shared::TFileSystemHelper::v0	872d4faac408f6d5	skip	compiler-generated destructor
-shared::TFileSystemHelper::v1	e9caf669ab302182	skip	compiler-generated destructor
+shared::TDownloadPool::~TDownloadPool	097457dc45e86dd8	skip	generated: compiler-generated destructor
+shared::TFileSystemHelper::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor
+shared::TFileSystemHelper::v1	e9caf669ab302182	skip	generated: compiler-generated destructor
 shared::TFileSystemHelper::v10	d60dafd7e7741754	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::getPathInsideDirectory
 shared::TFileSystemHelper::v11	3aa2470e8562c82a	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::forEachFileInDirectory
 shared::TFileSystemHelper::v12	087629e228d625a9	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::getFilesInDirectory
@@ -40,14 +40,14 @@ shared::TFileSystemHelper::v6	9d4edb0229d4f093	ported	client/tibia/shared/filesy
 shared::TFileSystemHelper::v7	dc35ad591e1f0033	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::appendTextFile
 shared::TFileSystemHelper::v8	aa843099a29fe341	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::removeFile
 shared::TFileSystemHelper::v9	5a53f643bc260723	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::createDirectory
-shared::TJsonArrayValidator::v0	1c78789c6ae86f80	skip	compiler-generated destructor
-shared::TJsonArrayValidator::v1	d9c80c502db082ac	skip	compiler-generated destructor
-shared::TJsonObjectValidator::v0	8db8e8a926d2105f	skip	compiler-generated destructor
-shared::TJsonObjectValidator::v1	ace589f5a3165f73	skip	compiler-generated destructor
-shared::TJsonValueValidator::v0	767b4b8c3fd2c9a4	skip	compiler-generated destructor
-shared::TJsonValueValidator::v1	5619d173686f7527	skip	compiler-generated destructor
-shared::TTimeLapseClockService::v0	5f3d3948d1681070	skip	compiler-generated destructor
-shared::TTimeLapseClockService::v1	2c2985996b181825	skip	compiler-generated destructor
+shared::TJsonArrayValidator::v0	1c78789c6ae86f80	skip	generated: compiler-generated destructor
+shared::TJsonArrayValidator::v1	d9c80c502db082ac	skip	generated: compiler-generated destructor
+shared::TJsonObjectValidator::v0	8db8e8a926d2105f	skip	generated: compiler-generated destructor
+shared::TJsonObjectValidator::v1	ace589f5a3165f73	skip	generated: compiler-generated destructor
+shared::TJsonValueValidator::v0	767b4b8c3fd2c9a4	skip	generated: compiler-generated destructor
+shared::TJsonValueValidator::v1	5619d173686f7527	skip	generated: compiler-generated destructor
+shared::TTimeLapseClockService::v0	5f3d3948d1681070	skip	generated: compiler-generated destructor
+shared::TTimeLapseClockService::v1	2c2985996b181825	skip	generated: compiler-generated destructor
 shared::TTimeLapseClockService::v10	ae9a0b63993ae677	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::setStartTime	test=tests/client/timelapseclockservice_test.cpp
 shared::TTimeLapseClockService::v11	615adbb3912dac53	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::setElapsedNanos	test=tests/client/timelapseclockservice_test.cpp
 shared::TTimeLapseClockService::v2	19c65a535546e9f4	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::nowMillis	test=tests/client/timelapseclockservice_test.cpp
@@ -58,16 +58,16 @@ shared::TTimeLapseClockService::v6	112e5e7a3fd16432	ported	client/tibia/shared/t
 shared::TTimeLapseClockService::v7	d79e0476ff10935e	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::pause	test=tests/client/timelapseclockservice_test.cpp
 shared::TTimeLapseClockService::v8	7e9779ce49b62562	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::resume	test=tests/client/timelapseclockservice_test.cpp
 shared::TTimeLapseClockService::v9	0a195c52b9cff74d	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::setSpeed	test=tests/client/timelapseclockservice_test.cpp
-shared::TXteaHelper::v0	097457dc45e86dd8	skip	compiler-generated destructor (CryptoPP cipher members)
-shared::TXteaHelper::v1	79674512666b34e2	skip	compiler-generated destructor (CryptoPP cipher members)
+shared::TXteaHelper::v0	097457dc45e86dd8	skip	generated: compiler-generated destructor (CryptoPP cipher members)
+shared::TXteaHelper::v1	79674512666b34e2	skip	generated: compiler-generated destructor (CryptoPP cipher members)
 shared::TXteaHelper::v2	564c0d0fd8332fea	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::setKey	test=tests/client/xteahelper_test.cpp
 shared::TXteaHelper::v3	b5286ae7d86979cb	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::key	test=tests/client/xteahelper_test.cpp
 shared::TXteaHelper::v4	8535ee3dd32cd9b6	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::pad	test=tests/client/xteahelper_test.cpp
 shared::TXteaHelper::v5	3c3c2aae23587bbf	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::encrypt	test=tests/client/xteahelper_test.cpp
 shared::TXteaHelper::v6	0e3dcff3a2eaa7de	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::decrypt	test=tests/client/xteahelper_test.cpp
-sub_073bd719c008	073bd719c0089d40	skip	inlined QCborValue destructor
+sub_073bd719c008	073bd719c0089d40	skip	generated: inlined QCborValue destructor
 sub_17e5f5a5ca9d	17e5f5a5ca9d84cd	tested	client/tibia/shared/coordinate.h:TCoordinate::operator!=	test=tests/client/coordinate_test.cpp
-sub_1c78789c6ae8	1c78789c6ae86f80	skip	compiler-generated destructor
+sub_1c78789c6ae8	1c78789c6ae86f80	skip	generated: compiler-generated destructor
 sub_1cb2c1aa4f0e	1cb2c1aa4f0eb4d9	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::TTimeLapseClockService	test=tests/client/timelapseclockservice_test.cpp
 sub_26838ffeaa59	26838ffeaa590e98	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isDouble	test=tests/client/jsonvalidator_test.cpp
 sub_2af260e163d1	2af260e163d1a5b9	tested	client/tibia/shared/coordinate.h:operator<<	test=tests/client/coordinate_test.cpp
@@ -76,14 +76,14 @@ sub_3bcbc59d35c6	3bcbc59d35c661da	tested	client/tibia/shared/jsonvalidator.cpp:T
 sub_491bc0e14328	491bc0e143287fb4	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isInt	test=tests/client/jsonvalidator_test.cpp
 sub_4b356d808179	4b356d8081794ab4	tested	client/tibia/shared/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
 sub_4b356d808179#2	4b356d8081794ab4	tested	client/tibia/shared/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
-sub_520aa27ea166	520aa27ea166b7e4	skip	CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
+sub_520aa27ea166	520aa27ea166b7e4	skip	library: CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
 sub_576711c6b9d3	576711c6b9d3ce6b	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::value	test=tests/client/jsonvalidator_test.cpp
 sub_699797d1c544	699797d1c5446f74	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::array	test=tests/client/jsonvalidator_test.cpp
 sub_6d4300dd8428	6d4300dd84283a06	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::TJsonObjectValidator	test=tests/client/jsonvalidator_test.cpp
 sub_6d4300dd8428#2	6d4300dd84283a06	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::TJsonObjectValidator	test=tests/client/jsonvalidator_test.cpp
-sub_767b4b8c3fd2	767b4b8c3fd2c9a4	skip	compiler-generated destructor
-sub_8161fcdee961#2	8161fcdee96159dd	skip	Qt/std container template code
-sub_8db8e8a926d2	8db8e8a926d2105f	skip	compiler-generated destructor
+sub_767b4b8c3fd2	767b4b8c3fd2c9a4	skip	generated: compiler-generated destructor
+sub_8161fcdee961#2	8161fcdee96159dd	skip	library: Qt/std container template code
+sub_8db8e8a926d2	8db8e8a926d2105f	skip	generated: compiler-generated destructor
 sub_9ba06e6b5d56	9ba06e6b5d564634	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isBool	test=tests/client/jsonvalidator_test.cpp
 sub_a7b3b18142a3	a7b3b18142a3bae4	tested	client/tibia/shared/coordinate.h:TCoordinate::operator-	test=tests/client/coordinate_test.cpp
 sub_a91de195e07b	a91de195e07b190c	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isString	test=tests/client/jsonvalidator_test.cpp
@@ -95,15 +95,15 @@ sub_b77e55e4508a	b77e55e4508ae7d9	tested	client/tibia/shared/coordinate.h:TCoord
 sub_c32e96836788	c32e968367880e26	tested	client/tibia/shared/coordinate.h:operator<<	test=tests/client/coordinate_test.cpp
 sub_c358393a99a9	c358393a99a9475d	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isValid	test=tests/client/jsonvalidator_test.cpp
 sub_c358393a99a9#2	c358393a99a9475d	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isValid	test=tests/client/jsonvalidator_test.cpp
-sub_c40711fb05c6	c40711fb05c69caf	skip	CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
+sub_c40711fb05c6	c40711fb05c69caf	skip	library: CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
 sub_c9a5a780a79e	c9a5a780a79e5e68	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isType	test=tests/client/jsonvalidator_test.cpp
 sub_ccfc9ccd2fbf	ccfc9ccd2fbf36c3	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::TJsonValueValidator	test=tests/client/jsonvalidator_test.cpp
 sub_ccfc9ccd2fbf#2	ccfc9ccd2fbf36c3	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::TJsonValueValidator	test=tests/client/jsonvalidator_test.cpp
 sub_d86bbada087a	d86bbada087a10aa	tested	client/tibia/shared/coordinate.h:TCoordinate::operator<	test=tests/client/coordinate_test.cpp
 sub_dad695d23de9	dad695d23de97d73	tested	client/tibia/shared/coordinate.h:TCoordinate::maximum	test=tests/client/coordinate_test.cpp
-sub_ddbe646a13f4#2	ddbe646a13f460f6	skip	CryptoPP XTEA cipher holder (library)
+sub_ddbe646a13f4#2	ddbe646a13f460f6	skip	library: CryptoPP XTEA cipher holder (library)
 sub_de2ed7bcb926	de2ed7bcb926293f	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::speed	test=tests/client/timelapseclockservice_test.cpp
-sub_e8082de37776	e8082de37776fbbb	skip	compiler-generated destructor (CryptoPP cipher members)
+sub_e8082de37776	e8082de37776fbbb	skip	generated: compiler-generated destructor (CryptoPP cipher members)
 sub_e9071ee6211d	e9071ee6211dd089	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isObject	test=tests/client/jsonvalidator_test.cpp
 sub_f764966ac696#3	f764966ac6964e43	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::isValid	test=tests/client/jsonvalidator_test.cpp
 sub_f764966ac696#4	f764966ac6964e43	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::isValid	test=tests/client/jsonvalidator_test.cpp
