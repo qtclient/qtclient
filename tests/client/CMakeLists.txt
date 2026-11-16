@@ -162,3 +162,12 @@ if(Qt6_FOUND AND TARGET tibia)
         QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
     gtest_discover_tests(client_sessiondumphints_tests)
 endif()
+
+# CIP shared:: classes (apps/qtclient/shared) of the launcher's net slice.
+if(TARGET qtclient_shared)
+    add_executable(client_sharednet_tests sharednet_test.cpp)
+    set_target_properties(client_sharednet_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON AUTOMOC ON)
+    target_link_libraries(client_sharednet_tests PRIVATE GTest::gtest qtclient_shared)
+    include(GoogleTest)
+    gtest_discover_tests(client_sharednet_tests)
+endif()
