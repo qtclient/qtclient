@@ -96,3 +96,6 @@ qtclient_add_port_test(client_xteahelper_tests
 qtclient_add_port_test(client_simplevectorabstractlistmodel_tests
     simplevectorabstractlistmodel_test.cpp
 )
+qtclient_add_port_test(client_coordinate_tests
+    coordinate_test.cpp
+)

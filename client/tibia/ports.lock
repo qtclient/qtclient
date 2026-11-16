@@ -2703,7 +2703,9 @@ shared::TClockService::v1	e9caf669ab302182	skip	compiler-generated destructor pa
 shared::TClockService::v2	19c65a535546e9f4	ported	shared/clockservice.cpp:TClockService::nowMillis
 shared::TClockService::v3	066d034d43b4bfda	inlined	shared/clockservice.cpp:TClockService::nowMicros
 shared::TClockService::v4	5a1cbe9be92a7970	ported	shared/clockservice.cpp:TClockService::nowMicros
-shared::TCoordinate::v2	be5c33954d406be4	ported	shared/sharedciptypes.h:TCoordinate::operator+
+shared::TCoordinate::v0	872d4faac408f6d5	skip	compiler-generated destructor
+shared::TCoordinate::v1	e9caf669ab302182	skip	compiler-generated destructor
+shared::TCoordinate::v2	be5c33954d406be4	tested	shared/coordinate.h:TCoordinate::operator+	test=tests/client/coordinate_test.cpp
 shared::TDownloadPool::v12	94f613a37c4d5d03	ported	shared/downloadpool.cpp:TDownloadPool::download
 shared::TDownloadPool::v13	3229a889564b46ec	ported	shared/downloadpool.cpp:TDownloadPool::downloadWithPriority
 shared::TDownloadPool::v14	90c456462179bebf	ported	shared/downloadpool.cpp:TDownloadPool::setMaxParallelDownloads
@@ -3537,6 +3539,7 @@ sub_1781c055f9f9	1781c055f9f9ca3f	inlined	proficiency/proficiencyciptypes.cpp:ha
 sub_17995839b68c	17995839b68c5353	skip	SFML/miniaudio library helper, only called from library code
 sub_17ae535c886c	17ae535c886cabb0	ported	store/storestorage.cpp:TStoreProtocolMessageHandler::handleLoginSuccessMessage
 sub_17b27948a6d8	17b27948a6d899f2	skip	miniaudio library
+sub_17e5f5a5ca9d	17e5f5a5ca9d84cd	tested	shared/coordinate.h:TCoordinate::operator!=	test=tests/client/coordinate_test.cpp
 sub_1809053aa368	1809053aa36861d2	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::addToSkill
 sub_180d0abde4a5	180d0abde4a56951	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_1870ae32a39c	1870ae32a39c84e3	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendBossDifficultySelectionChangedMessage
@@ -3765,6 +3768,7 @@ sub_23c91f1a75a5#164	23c91f1a75a58fdc	skip	std::vector length error (library)
 sub_23c91f1a75a5#177	23c91f1a75a58fdc	skip	std vector internals (push_back/realloc/assign/clear)
 sub_23c91f1a75a5#178	23c91f1a75a58fdc	skip	std vector internals (push_back/realloc/assign/clear)
 sub_23c91f1a75a5#179	23c91f1a75a58fdc	skip	std vector internals (push_back/realloc/assign/clear)
+sub_23c91f1a75a5#183	23c91f1a75a58fdc	skip	std::vector length_error throw (compiler-generated)
 sub_23c91f1a75a5#190	23c91f1a75a58fdc	skip	std::vector length error (library)
 sub_23c91f1a75a5#2	23c91f1a75a58fdc	skip	std::vector / QList template code
 sub_23c91f1a75a5#208	23c91f1a75a58fdc	skip	std::vector growth/length_error (library)
@@ -3923,6 +3927,7 @@ sub_2a8e05bc3181#4	2a8e05bc318111c6	inlined	protocol::TProtobufServerMessageTran
 sub_2abe6694639b	2abe6694639bdbc0	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openWeaponProficiencyDialog
 sub_2ae8fb8409cc	2ae8fb8409cc8bdf	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::queueLevelSpecialPopup
 sub_2af1304bf004	2af1304bf004ba3d	skip	Qt/std container template code
+sub_2af260e163d1	2af260e163d1a5b9	tested	shared/coordinate.h:operator<<	test=tests/client/coordinate_test.cpp
 sub_2aff49da73a7	2aff49da73a70fb4	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendBlessingsDialog
 sub_2b29967ad240	2b29967ad2401fd7	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModel::TSpellListDataModel
 sub_2b45b2d1550b	2b45b2d1550b2f3c	ported	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::TExivaOptionsDialogController
@@ -6435,6 +6440,7 @@ sub_a6f40351916b	a6f40351916b0fcc	ported	gamewindow/exaltationforgedialogcontrol
 sub_a7245aa95c71#2	a7245aa95c71e808	inlined	protocol::TProtobufServerMessageTranslator::v136
 sub_a74ee7ff07c8	a74ee7ff07c8a4b0	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_a768b8a28410	a768b8a284102b78	ported	chat/chatchannel.cpp:TChatChannelStorage::openDefaultChannels
+sub_a7b3b18142a3	a7b3b18142a3bae4	tested	shared/coordinate.h:TCoordinate::operator-	test=tests/client/coordinate_test.cpp
 sub_a81553cb360a#17	a81553cb360a77e2	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::showDialog
 sub_a81553cb360a#20	a81553cb360a77e2	inlined	screenshot::TScreenshotManager::handleGameAction
 sub_a81553cb360a#7	a81553cb360a77e2	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleOpenGetPremiumUrlGameAction
@@ -6678,6 +6684,7 @@ sub_b76031ae9572#27	b76031ae95727cee	skip	moc-generated signal emitter
 sub_b76031ae9572#3	b76031ae95727cee	skip	moc signal emitter
 sub_b76031ae9572#35	b76031ae95727cee	skip	moc-generated signal emitter
 sub_b76031ae9572#7	b76031ae95727cee	skip	moc-generated signal emitter
+sub_b77e55e4508a	b77e55e4508ae7d9	tested	shared/coordinate.h:TCoordinate::minimum	test=tests/client/coordinate_test.cpp
 sub_b79a2ea5a2b7	b79a2ea5a2b76654	skip	compiler-generated destructor
 sub_b7c3d81a9852	b7c3d81a985213a9	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEquipObject
 sub_b7ce4218434d	b7ce4218434dad08	inlined	config/sidebaroptions.cpprGuide
@@ -7070,6 +7077,7 @@ sub_c2df17853882	c2df1785388272ab	ported	gamewindow/minimapcontroller.cpp:TMinim
 sub_c2e8bde43a4b	c2e8bde43a4b4a84	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::request
 sub_c2f4eeed7844	c2f4eeed78448b19	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenBosstiary
 sub_c2fb94b36cb8	c2fb94b36cb83153	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
+sub_c32e96836788	c32e968367880e26	tested	shared/coordinate.h:operator<<	test=tests/client/coordinate_test.cpp
 sub_c340318e5101	c340318e51014a3b	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
 sub_c36bfa394b6e	c36bfa394b6eb48b	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::requestOpenManageLootContainerDialog
 sub_c39502991fa0	c39502991fa0dac5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCloseNPCChannel
@@ -7548,6 +7556,7 @@ sub_d81f1e093f91#97	d81f1e093f91274a	inlined	protocol/dispatch.gen.cpp:TProtocol
 sub_d81f1e093f91#98	d81f1e093f91274a	inlined	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendDepotSearchType
 sub_d81f1e093f91#99	d81f1e093f91274a	inlined	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenParentContainer
 sub_d8488092ac9c	d8488092ac9c8d37	ported	game/statusbarstorage.cpp:positionToString
+sub_d86bbada087a	d86bbada087a10aa	tested	shared/coordinate.h:TCoordinate::operator<	test=tests/client/coordinate_test.cpp
 sub_d88eb5dfa1ef	d88eb5dfa1eff2a0	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_d8a9877f08ac	d8a9877f08ac9e11	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::setHintAreaTitle
 sub_d8b05f8a32dc	d8b05f8a32dcc756	skip	std::unordered_map<int, std::function> internals (emplace, rehash, destructor, node holder)
@@ -7595,6 +7604,7 @@ sub_dabdcf464cb4	dabdcf464cb42d05	skip	miniaudio library
 sub_dabfc3f56213	dabfc3f56213f916	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onFriendSystemError
 sub_dac2f6b12417#2	dac2f6b124177eba	inlined	worldmap/worldmappicker.cpp:TWorldMapPicker::fieldCoordinatesAt
 sub_dac905982267	dac905982267e1e5	ported	gamewindow/storedialogcontroller.cpp:TStorePurchaseConfirmationDialogController::purchaseRequested
+sub_dad695d23de9	dad695d23de97d73	tested	shared/coordinate.h:TCoordinate::maximum	test=tests/client/coordinate_test.cpp
 sub_dafe13ec021a	dafe13ec021a1fa8	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::modifiyDustCost
 sub_db38635ce42d	db38635ce42d57de	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::updateSelectedWorld
 sub_db7bb9a20f2a	db7bb9a20f2a0105	skip	std::vector<TEventInformation> reserve/growth template

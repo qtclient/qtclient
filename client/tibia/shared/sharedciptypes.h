@@ -4,6 +4,7 @@
 
 #include "shared/cip_typed.h"
 #include "shared/clockservice.h"
+#include "shared/coordinate.h"
 
 #include <cip_gen.h>
 
@@ -61,34 +62,6 @@ public:
     QTextBrowserWithNetwork() = default;
     void onDownloadFailed(QUrl Url, QNetworkReply::NetworkError Code, QString ErrorString);
     void onDownloadFinished(QUrl Url, QByteArray Data);
-};
-
-/// CIP `shared::TCoordinate` (pin layout 0x10 + z at +0x10 in v2 add).
-class TCoordinate final : public ::tibia::CipTyped
-{
-public:
-    int x = 0;
-    int y = 0;
-    int z = 0;
-
-    TCoordinate() = default;
-    TCoordinate(int x_, int y_, int z_ = 0)
-        : x(x_)
-        , y(y_)
-        , z(z_)
-    {
-    }
-
-    /// CIP `TCoordinate::v2` — component-wise add.
-    TCoordinate operator+(const TCoordinate& other) const
-    {
-        return TCoordinate(x + other.x, y + other.y, z + other.z);
-    }
-
-    bool operator==(const TCoordinate& other) const
-    {
-        return x == other.x && y == other.y && z == other.z;
-    }
 };
 
 /// CIP `shared::TExtent` (width/height/depth volume).
