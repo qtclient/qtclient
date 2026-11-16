@@ -30,7 +30,6 @@ namespace tibia::creatures {
 namespace {
 struct CipTypedKeep {
     TBattleListGameActionProvider tBattleListGameActionProvider;
-    TInspectPlayerGameActionProvider tInspectPlayerGameActionProvider;
 };
 CipTypedKeep& typedKeep()
 {

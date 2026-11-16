@@ -347,6 +347,8 @@ if(TIBIA_WITH_GAMECORE)
     creatures/movementdirection.h
     creatures/walkdebug.cpp creatures/walkdebug.h
     creatures/creaturesciptypes.cpp creatures/creaturesciptypes.h
+    creatures/partygameactionprovider.cpp creatures/partygameactionprovider.h
+    creatures/inspectplayergameactionprovider.cpp creatures/inspectplayergameactionprovider.h
     creatures/creaturestorage.cpp creatures/creaturestorage.h
     friends/friendsciptypes.cpp friends/friendsciptypes.h
     friends/friendlistmodels.cpp friends/friendlistmodels.h

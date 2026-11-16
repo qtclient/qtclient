@@ -69,10 +69,6 @@ public:
     using cip::tibia::creatures::TCreaturesGameActionHandler::TCreaturesGameActionHandler;
 };
 
-class TInspectPlayerGameActionProvider final : public ::tibia::CipTyped {};
-
-class TPartyGameActionProvider final : public ::tibia::CipTyped {};
-
 class TUnjustifiedPointsProtocolMessageHandler final : public cip::tibia::creatures::TUnjustifiedPointsProtocolMessageHandler
 {
     Q_OBJECT
