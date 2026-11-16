@@ -420,14 +420,6 @@ namespace {
 /// CIP : the static achievements (staticdata).
 const std::vector<CyclopediaAchievementType>& staticAchievements() { return tibia::game::getCyclopediaAchievements(); }
 
-/// CIP .
-const CyclopediaAchievementType* staticAchievement(const uint16_t id)
-{
-    const auto& all = staticAchievements();
-    const auto it = std::find_if(all.begin(), all.end(), [id](const CyclopediaAchievementType& a) { return a.id == id; });
-    return it != all.end() ? &*it : nullptr;
-}
-
 }
 
 TAchievementInfoController::TAchievementInfoController(QObject* parent)
@@ -438,16 +430,6 @@ TAchievementInfoController::TAchievementInfoController(QObject* parent)
 
 void TAchievementInfoController::setData(const int points, const int totalSecret, std::vector<AchievementEntry> unlocked)
 {
-    for (AchievementEntry& entry : unlocked) {
-        if (entry.secret)
-            continue;
-        // CIP : a regular one takes its texts and grade from the static data.
-        if (const CyclopediaAchievementType* known = staticAchievement(entry.id)) {
-            entry.name = QString::fromStdString(known->name);
-            entry.description = QString::fromStdString(known->description);
-            entry.grade = known->grade;
-        }
-    }
     m_unlocked = std::move(unlocked);
     m_achievementPointsSum = points;
     m_totalSecretAchievements = totalSecret;

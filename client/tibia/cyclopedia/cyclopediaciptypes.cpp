@@ -2,6 +2,7 @@
 #include <cmath>
 #include "protocol/protocolciptypes.h"
 #include "client/staticdata.h"
+#include "analysers/analyserstorages.h"
 #include "cyclopedia/bosstiarystorage.h"
 #include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/iteminfostorage.h"
@@ -12,6 +13,7 @@
 #include <tibia/client/outfit.h>
 #include <tibia/game/thingsession_forward.h>
 
+#include <QCoreApplication>
 #include <QDateTime>
 
 #include <algorithm>
@@ -76,6 +78,114 @@ void ownProductSurface(QObject* parent)
     owned = true;
     (void)typedKeep();
     (void)parent;
+}
+
+QString monsterRaceName(const uint16_t raceId)
+{
+    return capitalizeWords(QString::fromStdString(tibia::game::raceData(raceId).name));
+}
+
+Outfit monsterRaceAppearance(const uint16_t raceId)
+{
+    return tibia::game::raceData(raceId).outfit;
+}
+
+namespace {
+TMonsterRaceStorage* g_monsterRaceStorage = nullptr;
+}
+
+TMonsterRaceStorage::TMonsterRaceStorage(QObject* parent)
+    : cip::tibia::cyclopedia::TMonsterRaceStorage(parent)
+{
+    g_monsterRaceStorage = this;
+}
+
+TMonsterRaceStorage::~TMonsterRaceStorage()
+{
+    if (g_monsterRaceStorage == this)
+        g_monsterRaceStorage = nullptr;
+}
+
+const TMonsterRace* TMonsterRaceStorage::race(const uint16_t raceId) const
+{
+    const auto it = std::ranges::find(m_classificationRaces, raceId, &TMonsterRace::raceId);
+    return it != m_classificationRaces.end() ? &*it : nullptr;
+}
+
+void TMonsterRaceStorage::setRaceDetails(TMonsterRace race)
+{
+    auto it = std::ranges::find(m_classificationRaces, race.raceId, &TMonsterRace::raceId);
+    if (it != m_classificationRaces.end()) {
+        *it = std::move(race);
+    } else {
+        m_classificationRaces.push_back(std::move(race));
+        it = std::prev(m_classificationRaces.end());
+    }
+    const TMonsterRace& r = *it;
+    Q_EMIT monsterRaceDetailsChanged(r.raceId);
+    // The monster dialog still reads the details as one record.
+    BestiaryMonsterData data{};
+    data.id = r.raceId;
+    data.bestClass = r.classificationName.toStdString();
+    data.currentLevel = static_cast<uint8_t>(r.progress);
+    data.AnimusMasteryBonus = static_cast<uint16_t>(std::lround(r.animusMasteryBonus * 1000.0));
+    data.AnimusMasteryPoints = r.animusMasteryPoints;
+    data.killCounter = r.kills;
+    data.thirdDifficulty = r.firstUnlock;
+    data.secondUnlock = r.secondUnlock;
+    data.lastProgressKillCount = r.lastUnlock;
+    data.difficulty = r.known ? 1 : 0;
+    if (r.occurrence) {
+        data.ocorrence = static_cast<uint8_t>(r.occurrence->occurrence);
+        data.leaderKilled = r.occurrence->extra != 0;
+        for (const TMonsterRace::Loot& l : r.occurrence->loot)
+            data.loot.push_back({ .itemId = l.objectId, .diffculty = static_cast<uint8_t>(l.rarity),
+                                  .specialEvent = static_cast<uint8_t>(l.specialEvent ? 1 : 0), .name = l.name.toStdString(),
+                                  .amount = static_cast<uint8_t>(l.amount) });
+    }
+    if (r.characteristics) {
+        data.charmValue = r.characteristics->charmValue;
+        data.attackMode = static_cast<uint8_t>(r.characteristics->attackMode);
+        data.castsSpells = r.characteristics->castsSpells;
+        data.maxHealth = r.characteristics->maxHealth;
+        data.experience = r.characteristics->experience;
+        data.speed = r.characteristics->speed;
+        data.armor = r.characteristics->armor;
+        data.mitigation = r.characteristics->mitigation;
+    }
+    if (r.combat) {
+        for (const auto& [element, value] : r.combat->elements)
+            data.combat[static_cast<uint8_t>(element)] = static_cast<uint16_t>(value);
+        if (!r.combat->locations.isEmpty())
+            data.location = r.combat->locations.front().toStdString();
+    }
+    tibia::game::processUpdateBestiaryMonsterData(data);
+}
+
+TMonsterRaceStorage* TMonsterRaceStorage::instance()
+{
+    // One storage for the client's lifetime; each classification request replaces its races.
+    if (!g_monsterRaceStorage)
+        g_monsterRaceStorage = new TMonsterRaceStorage(QCoreApplication::instance());
+    return g_monsterRaceStorage;
+}
+
+void TMonsterRaceStorage::setClassificationRaces(const QString& classificationName, std::vector<TMonsterRace> races)
+{
+    m_classificationName = classificationName;
+    m_classificationRaces = std::move(races);
+    Q_EMIT monsterClassificationMonstersChanged(m_classificationName);
+    // The monster dialog still reads the overview rows.
+    std::vector<BestiaryOverviewMonsters> rows;
+    rows.reserve(m_classificationRaces.size());
+    uint16_t animusMasteryPoints = 0;
+    for (const TMonsterRace& race : m_classificationRaces) {
+        rows.push_back({ .id = race.raceId, .currentLevel = static_cast<uint8_t>(race.progress),
+                         .occurrence = static_cast<uint8_t>(race.occurrence ? race.occurrence->occurrence : 0),
+                         .creatureAnimusMasteryBonus = static_cast<uint16_t>(std::lround(race.animusMasteryBonus * 1000.0)) });
+        animusMasteryPoints = race.animusMasteryPoints;
+    }
+    tibia::game::processParseBestiaryOverview(m_classificationName.toStdString(), rows, animusMasteryPoints);
 }
 
 } // namespace tibia::cyclopedia
@@ -382,9 +492,23 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
     }
     case tibia::client::CYCLOPEDIA_CHARACTERINFO_ACHIEVEMENTS: {
         std::vector<std::tuple<uint16_t, uint32_t, bool, std::string, std::string, uint8_t>> achievements;
-        for (const auto& a : m.achievements())
-            achievements.emplace_back(static_cast<uint16_t>(a.id()), a.timestamp(), a.secret(), a.name(), a.description(),
-                                      static_cast<uint8_t>(a.grade()));
+        for (const auto& a : m.achievements()) {
+            const auto id = static_cast<uint16_t>(a.id());
+            if (a.secret()) {
+                achievements.emplace_back(id, a.timestamp(), true, a.name(), a.description(), static_cast<uint8_t>(a.grade()));
+                continue;
+            }
+            // A regular achievement takes its texts and grade from the static data; an unknown
+            // one is shown as unknown.
+            const auto& all = tibia::game::getCyclopediaAchievements();
+            const auto known = std::lower_bound(all.begin(), all.end(), id,
+                                                [](const CyclopediaAchievementType& entry, const uint16_t key) { return entry.id < key; });
+            if (known != all.end() && known->id == id)
+                achievements.emplace_back(id, a.timestamp(), false, known->name, known->description, known->grade);
+            else
+                achievements.emplace_back(id, a.timestamp(), false, qtTrId("dummy_unknown").toStdString(),
+                                          qtTrId("dummy_unknown").toStdString(), static_cast<uint8_t>(0));
+        }
         tibia::game::notify("onCyclopediaCharacterAchievements", static_cast<int>(m.achievement_points()),
                             static_cast<int>(m.secret_achievements()), achievements);
         break;
@@ -506,6 +630,111 @@ void TCyclopediaProtocolMessageHandler::handleKillTrackingMessage(
                           static_cast<quint32>(now / 1000) });
     }
     tibia::game::notify("onKillTracker", message.name(), outfit, drops);
+}
+
+void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMonstersMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaMonsters& message)
+{
+    std::vector<TMonsterRace> races;
+    for (const auto& entry : message.monsters()) {
+        TMonsterRace race;
+        race.raceId = static_cast<uint16_t>(entry.race_id());
+        race.known = entry.known();
+        race.progress = static_cast<int>(entry.progress());
+        if (race.progress == 0) {
+            race.name = qtTrId("monsters_unknown_name");
+        } else {
+            race.name = monsterRaceName(race.raceId);
+            race.occurrence = TMonsterRace::Occurrence{ static_cast<int>(entry.occurrence()), static_cast<int>(entry.extra()) };
+        }
+        race.appearance = monsterRaceAppearance(race.raceId);
+        race.animusMasteryBonus = entry.animus_mastery_bonus();
+        race.animusMasteryPoints = static_cast<uint16_t>(message.animus_mastery_points());
+        races.push_back(std::move(race));
+    }
+    if (TMonsterRaceStorage* storage = TMonsterRaceStorage::instance())
+        storage->setClassificationRaces(QString::fromStdString(message.class_name()), std::move(races));
+}
+
+void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaRace& m)
+{
+    TMonsterRace race;
+    race.raceId = static_cast<uint16_t>(m.race_id());
+    race.classificationName = QString::fromStdString(m.class_name());
+    race.progress = static_cast<int>(m.progress());
+    race.animusMasteryBonus = m.animus_mastery_bonus();
+    race.animusMasteryPoints = static_cast<uint16_t>(m.animus_mastery_points());
+    race.name = race.progress == 0 ? qtTrId("monsters_unknown_name") : monsterRaceName(race.raceId);
+    race.kills = m.kills();
+    race.firstUnlock = static_cast<uint16_t>(m.first_unlock());
+    race.secondUnlock = static_cast<uint16_t>(m.second_unlock());
+    race.lastUnlock = static_cast<uint16_t>(m.last_unlock());
+    race.known = m.difficulty();
+    race.appearance = monsterRaceAppearance(race.raceId);
+    if (race.progress != 0) {
+        TMonsterRace::Occurrence occurrence;
+        occurrence.occurrence = static_cast<int>(m.occurrence());
+        occurrence.extra = static_cast<int>(m.leader_killed());
+        occurrence.loot.reserve(static_cast<std::size_t>(m.loot_size()));
+        for (const auto& l : m.loot())
+            occurrence.loot.push_back({ .objectId = static_cast<uint16_t>(l.object_id()),
+                                        .name = QString::fromStdString(l.name()),
+                                        .rarity = l.has_rarity() ? static_cast<int>(l.rarity()) : 0,
+                                        .amount = static_cast<int>(l.amount()),
+                                        .specialEvent = l.special_event() });
+        race.occurrence = std::move(occurrence);
+        if (race.progress > 1) {
+            race.characteristics = TMonsterRace::Characteristics{ .charmValue = static_cast<uint16_t>(m.charm_value()),
+                                                                  .attackMode = static_cast<int>(m.attack_mode()),
+                                                                  .castsSpells = m.casts_spells(),
+                                                                  .maxHealth = m.max_health(),
+                                                                  .experience = m.experience(),
+                                                                  .speed = static_cast<uint16_t>(m.speed()),
+                                                                  .armor = static_cast<uint16_t>(m.armor()),
+                                                                  .mitigation = m.mitigation() };
+            if (race.progress > 2) {
+                TMonsterRace::Combat combat;
+                for (const auto& e : m.elements())
+                    combat.elements.emplace(static_cast<int>(e.element()), static_cast<int16_t>(e.value()));
+                for (const std::string& location : m.locations())
+                    combat.locations.append(QString::fromStdString(location));
+                race.combat = std::move(combat);
+            }
+        }
+    }
+    if (TMonsterRaceStorage* storage = TMonsterRaceStorage::instance())
+        storage->setRaceDetails(std::move(race));
+}
+
+void TCyclopediaProtocolMessageHandler::handlePartyHuntAnalyserMessage(
+    const ::tibia::protobuf::protocol::GameserverMessagePartyHuntAnalyser& m)
+{
+    analysers::TAnalyserStorages* analysers = analysers::TAnalyserStorages::instance();
+    if (!analysers)
+        return;
+    analysers::TPartyHuntStorage& storage = *analysers->partyHunt();
+    storage.setSessionStart(m.session_start());
+    if (m.price_type() == 1)
+        storage.setLootType(1);
+    else if (m.price_type() == 0)
+        storage.setLootType(0);
+    storage.setLeaderId(m.leader_id());
+    std::vector<analysers::TPartyHuntStorage::Member> members;
+    members.reserve(static_cast<std::size_t>(m.members_size()));
+    for (const auto& member : m.members())
+        members.push_back({ .id = member.member_id(),
+                            .name = {},
+                            .active = member.highlighted(),
+                            .loot = static_cast<qint64>(member.loot()),
+                            .supplies = static_cast<qint64>(member.supplies()),
+                            .balance = 0,
+                            .damage = static_cast<qint64>(member.damage()),
+                            .healing = static_cast<qint64>(member.healing()) });
+    std::unordered_map<quint32, QString> names;
+    for (const auto& name : m.names())
+        names[name.member_id()] = QString::fromStdString(name.name());
+    storage.setMembers(members, names);
 }
 
 void TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage(
@@ -638,18 +867,8 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
         }
         break;
     case 43:
-        if (shadow->HasExtension(GameserverMessagePartyHuntAnalyser::gameserver_message_party_hunt_analyser)) {
-            const auto& m = shadow->GetExtension(GameserverMessagePartyHuntAnalyser::gameserver_message_party_hunt_analyser);
-            std::vector<PartyMemberData> members;
-            for (const auto& member : m.members())
-                members.push_back({ member.member_id(), static_cast<uint8_t>(member.highlighted() ? 1 : 0), member.loot(),
-                                    member.supplies(), member.damage(), member.healing() });
-            std::vector<PartyMemberName> names;
-            for (const auto& name : m.names())
-                names.emplace_back(name.member_id(), name.name());
-            tibia::game::notify("onPartyAnalyzerUpdate", m.session_start(), m.leader_id(), static_cast<uint8_t>(m.price_type()), members,
-                                names);
-        }
+        if (shadow->HasExtension(GameserverMessagePartyHuntAnalyser::gameserver_message_party_hunt_analyser))
+            handlePartyHuntAnalyserMessage(shadow->GetExtension(GameserverMessagePartyHuntAnalyser::gameserver_message_party_hunt_analyser));
         break;
     case 198:
         if (shadow->HasExtension(GameserverMessageCyclopediaStaticHouseData::gameserver_message_cyclopedia_static_house_data)) {
@@ -663,39 +882,8 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
         }
         break;
     case 215:
-        if (shadow->HasExtension(GameserverMessageMonsterCyclopediaRace::gameserver_message_monster_cyclopedia_race)) {
-            const auto& m = shadow->GetExtension(GameserverMessageMonsterCyclopediaRace::gameserver_message_monster_cyclopedia_race);
-            BestiaryMonsterData data{};
-            data.id = static_cast<uint16_t>(m.race_id());
-            data.bestClass = m.class_name();
-            data.currentLevel = static_cast<uint8_t>(m.progress());
-            data.AnimusMasteryBonus = static_cast<uint16_t>(std::lround(m.animus_mastery_bonus() * 1000.0));
-            data.AnimusMasteryPoints = static_cast<uint16_t>(m.animus_mastery_points());
-            data.killCounter = m.kills();
-            data.thirdDifficulty = static_cast<uint16_t>(m.first_unlock());
-            data.secondUnlock = static_cast<uint16_t>(m.second_unlock());
-            data.lastProgressKillCount = static_cast<uint16_t>(m.last_unlock());
-            data.difficulty = m.difficulty() ? 1 : 0;
-            data.ocorrence = static_cast<uint8_t>(m.occurrence());
-            data.leaderKilled = m.leader_killed() != 0;
-            for (const auto& l : m.loot())
-                data.loot.push_back({ .itemId = static_cast<uint16_t>(l.object_id()), .diffculty = static_cast<uint8_t>(l.rarity()),
-                                      .specialEvent = static_cast<uint8_t>(l.special_event() ? 1 : 0), .name = l.name(),
-                                      .amount = static_cast<uint8_t>(l.amount()) });
-            data.charmValue = static_cast<uint16_t>(m.charm_value());
-            data.attackMode = static_cast<uint8_t>(m.attack_mode());
-            data.castsSpells = m.casts_spells();
-            data.maxHealth = m.max_health();
-            data.experience = m.experience();
-            data.speed = static_cast<uint16_t>(m.speed());
-            data.armor = static_cast<uint16_t>(m.armor());
-            data.mitigation = m.mitigation();
-            for (const auto& e : m.elements())
-                data.combat[static_cast<uint8_t>(e.element())] = static_cast<uint16_t>(e.value());
-            if (m.locations_size() > 0)
-                data.location = m.locations(0);
-            tibia::game::processUpdateBestiaryMonsterData(data);
-        }
+        if (shadow->HasExtension(GameserverMessageMonsterCyclopediaRace::gameserver_message_monster_cyclopedia_race))
+            handleMonsterCyclopediaRaceMessage(shadow->GetExtension(GameserverMessageMonsterCyclopediaRace::gameserver_message_monster_cyclopedia_race));
         break;
     case 221:
         if (shadow->HasExtension(GameserverMessageCyclopediaMapData::gameserver_message_cyclopedia_map_data)) {
@@ -752,15 +940,9 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
         }
         break;
     case 214:
-        if (shadow->HasExtension(GameserverMessageMonsterCyclopediaMonsters::gameserver_message_monster_cyclopedia_monsters)) {
-            const auto& m = shadow->GetExtension(GameserverMessageMonsterCyclopediaMonsters::gameserver_message_monster_cyclopedia_monsters);
-            std::vector<BestiaryOverviewMonsters> monsters;
-            for (const auto& e : m.monsters())
-                monsters.push_back({ .id = static_cast<uint16_t>(e.race_id()), .currentLevel = static_cast<uint8_t>(e.progress()),
-                                     .occurrence = static_cast<uint8_t>(e.occurrence()),
-                                     .creatureAnimusMasteryBonus = static_cast<uint16_t>(std::lround(e.animus_mastery_bonus() * 1000.0)) });
-            tibia::game::processParseBestiaryOverview(m.class_name(), monsters, static_cast<uint16_t>(m.animus_mastery_points()));
-        }
+        if (shadow->HasExtension(GameserverMessageMonsterCyclopediaMonsters::gameserver_message_monster_cyclopedia_monsters))
+            handleMonsterCyclopediaMonstersMessage(
+                shadow->GetExtension(GameserverMessageMonsterCyclopediaMonsters::gameserver_message_monster_cyclopedia_monsters));
         break;
     case 213:
         if (shadow->HasExtension(GameserverMessageMonsterCyclopedia::gameserver_message_monster_cyclopedia))

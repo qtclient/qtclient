@@ -7,10 +7,13 @@
 
 #include <cip_gen.h>
 
+#include <client/outfit.h>
 #include <client/staticdata.h>
 
 #include <QObject>
+#include <QStringList>
 
+#include <map>
 #include <optional>
 #include <vector>
 
@@ -24,6 +27,9 @@ class GameserverMessageItemWasted;
 class GameserverMessageResourceBalance;
 class GameserverMessageCyclopediaHouseActionResult;
 class GameserverMessageMarketStatistics;
+class GameserverMessagePartyHuntAnalyser;
+class GameserverMessageMonsterCyclopediaMonsters;
+class GameserverMessageMonsterCyclopediaRace;
 class GameserverMessageMonsterCyclopedia;
 class GameserverMessageMonsterCyclopediaNewDetails;
 class GameserverMessageXpChanged;
@@ -87,6 +93,14 @@ public:
     static void onServerMessageEnqueued(int opcode);
 
     // Slots, one per server message.
+    /// The party hunt: session start, loot type (0 or 1 only), leader, then the members with names.
+    static void handlePartyHuntAnalyserMessage(const ::tibia::protobuf::protocol::GameserverMessagePartyHuntAnalyser& message);
+    /// The races of a classification: progress 0 shows as unknown without occurrence.
+    static void handleMonsterCyclopediaMonstersMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaMonsters& message);
+    /// One race's details, in steps by progress: occurrence and loot from 1, the
+    /// characteristics from 2, element modifiers and locations from 3.
+    static void handleMonsterCyclopediaRaceMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaRace& message);
     /// One kill: its drops, stamped with the current time, go to the loot tracking, the
     /// monster's name to the hunting session ("onKillTracker": name, outfit, drops).
     static void handleKillTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageKillTracking& message);
@@ -181,11 +195,94 @@ public:
     using cip::tibia::cyclopedia::TMonsterBonusEffectStorage::TMonsterBonusEffectStorage;
 };
 
+/// One monster race of the bestiary (CIP: TMonsterRace).
+struct TMonsterRace
+{
+    /// One loot object of the race's details.
+    struct Loot
+    {
+        uint16_t objectId = 0;
+        QString name;
+        /// 0 when the server leaves it out.
+        int rarity = 0;
+        int amount = 0;
+        bool specialEvent = false;
+    };
+    struct Occurrence
+    {
+        int occurrence = 0;
+        int extra = 0;
+        std::vector<Loot> loot;
+    };
+    /// The second detail step.
+    struct Characteristics
+    {
+        uint16_t charmValue = 0;
+        int attackMode = 0;
+        bool castsSpells = false;
+        uint32_t maxHealth = 0;
+        uint32_t experience = 0;
+        uint16_t speed = 0;
+        uint16_t armor = 0;
+        double mitigation = 0;
+    };
+    /// The third detail step: element modifiers and locations.
+    struct Combat
+    {
+        std::map<int, int> elements;
+        QStringList locations;
+    };
+
+    uint16_t raceId = 0;
+    QString name;
+    int progress = 0;
+    double animusMasteryBonus = 0;
+    uint16_t animusMasteryPoints = 0;
+    bool known = false;
+    /// The race's appearance from the static data.
+    Outfit appearance;
+    /// Known once the race has progress.
+    std::optional<Occurrence> occurrence;
+    // The details of one race (MonsterCyclopediaRace).
+    QString classificationName;
+    uint32_t kills = 0;
+    uint16_t firstUnlock = 0;
+    uint16_t secondUnlock = 0;
+    uint16_t lastUnlock = 0;
+    std::optional<Characteristics> characteristics;
+    std::optional<Combat> combat;
+};
+
+/// The static race name, each word capitalised (CIP: the monster race name lookup).
+QString monsterRaceName(uint16_t raceId);
+/// The static race's appearance, a monster's or else a boss's.
+Outfit monsterRaceAppearance(uint16_t raceId);
+
+/// The bestiary's races (CIP: cyclopedia::TMonsterRaceStorage).
 class TMonsterRaceStorage final : public cip::tibia::cyclopedia::TMonsterRaceStorage
 {
     Q_OBJECT
 public:
-    using cip::tibia::cyclopedia::TMonsterRaceStorage::TMonsterRaceStorage;
+    explicit TMonsterRaceStorage(QObject* parent = nullptr);
+    ~TMonsterRaceStorage() override;
+    static TMonsterRaceStorage* instance();
+
+    const QString& classificationName() const { return m_classificationName; }
+    const std::vector<TMonsterRace>& classificationRaces() const { return m_classificationRaces; }
+    /// The races of one classification (or of a search), replacing the previous ones.
+    void setClassificationRaces(const QString& classificationName, std::vector<TMonsterRace> races);
+    /// The race with `raceId`, or null.
+    const TMonsterRace* race(uint16_t raceId) const;
+    /// One race's details replace that race in the list (or join it).
+    void setRaceDetails(TMonsterRace race);
+
+Q_SIGNALS:
+    void monsterClassificationMonstersChanged(const QString& MonsterClassificationID);
+    void monsterRaceDetailsChanged(int ChangedRace);
+
+private:
+    QString m_classificationName;
+    std::vector<TMonsterRace> m_classificationRaces;
 };
 
 /// CipSoft shells for split offence / defence / misc providers (CIP IOffenceStats etc.).

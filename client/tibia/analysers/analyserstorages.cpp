@@ -102,41 +102,84 @@ TPartyHuntStorage::TPartyHuntStorage(QObject* parent)
     : cip::tibia::cyclopedia::TPartyHuntStorage(parent)
 {}
 
-void TPartyHuntStorage::update(const quint32 sessionSeconds, const quint32 leaderId, const int priceType, std::vector<Member> members)
+void TPartyHuntStorage::setSessionStart(const quint32 elapsedSeconds)
 {
-    for (Member& member : members) {
-        if (!member.name.isEmpty())
-            m_names[member.id] = member.name;
-        else if (const auto it = m_names.find(member.id); it != m_names.end())
-            member.name = it->second;
-    }
-    const bool sessionChanged = sessionSeconds != m_sessionSeconds;
-    const bool leaderChanged = leaderId != m_leaderId;
-    const bool priceTypeChanged = priceType != m_priceType;
-    m_sessionSeconds = sessionSeconds;
+    const qint64 start = QDateTime::currentSecsSinceEpoch() - elapsedSeconds;
+    if (m_sessionStart == start)
+        return;
+    m_sessionStart = start;
+    Q_EMIT sessionStartChanged();
+}
+
+void TPartyHuntStorage::setLootType(const int lootType)
+{
+    if (m_lootType == lootType)
+        return;
+    m_lootType = lootType;
+    Q_EMIT lootTypeChanged();
+}
+
+void TPartyHuntStorage::setLeaderId(const quint32 leaderId)
+{
+    if (m_leaderId == leaderId)
+        return;
     m_leaderId = leaderId;
-    m_priceType = priceType;
-    m_members = std::move(members);
+    recompute();
+    Q_EMIT partyLeaderIDChanged();
+}
+
+void TPartyHuntStorage::setMembers(const std::vector<Member>& members, const std::unordered_map<quint32, QString>& names)
+{
+    if (!names.empty() && names != m_names)
+        m_names = names;
+    if (members.empty() && !m_names.empty())
+        m_names.clear();
+    if (members == m_members)
+        return;
+    m_members = members;
+    recompute();
     Q_EMIT changed();
     Q_EMIT partyHuntDataChanged();
-    if (priceTypeChanged)
-        Q_EMIT lootTypeChanged();
-    if (sessionChanged)
-        Q_EMIT sessionStartChanged();
-    if (leaderChanged)
-        Q_EMIT partyLeaderIDChanged();
+}
+
+void TPartyHuntStorage::resolveName(Member& member) const
+{
+    if (const auto it = m_names.find(member.id); it != m_names.end())
+        member.name = it->second;
+    else
+        member.name = qtTrId("dummy_unknown");
+}
+
+void TPartyHuntStorage::recompute()
+{
+    m_totalLoot = 0;
+    m_totalSupplies = 0;
+    m_totalBalance = 0;
+    for (Member& member : m_members) {
+        resolveName(member);
+        member.balance = member.loot - member.supplies;
+        m_totalLoot += member.loot;
+        m_totalSupplies += member.supplies;
+        m_totalBalance += member.balance;
+    }
+}
+
+quint32 TPartyHuntStorage::sessionSeconds() const
+{
+    return m_sessionStart == 0 ? 0 : static_cast<quint32>(QDateTime::currentSecsSinceEpoch() - m_sessionStart);
 }
 
 void TPartyHuntStorage::clear()
 {
-    const bool hadSession = m_sessionSeconds != 0;
+    const bool hadSession = m_sessionStart != 0;
     const bool hadLeader = m_leaderId != 0;
-    const bool hadLootType = m_priceType != 0;
-    m_sessionSeconds = 0;
+    const bool hadLootType = m_lootType != 0;
+    m_sessionStart = 0;
     m_leaderId = 0;
-    m_priceType = 0;
+    m_lootType = 0;
     m_members.clear();
     m_names.clear();
+    m_totalLoot = m_totalSupplies = m_totalBalance = 0;
     Q_EMIT changed();
     Q_EMIT partyHuntDataChanged();
     if (hadLootType)
@@ -203,37 +246,6 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         m_huntingSession.addKill(argString(args, 0));
         return std::any{};
     });
-    // CIP PartyHuntAnalyser handler (every message; the Lua hook is throttled).
-    const auto applyPartyAnalyzer = [this](GameObject*, const Args& args) {
-        if (args.size() < 5)
-            return std::any{};
-        const auto* data = std::any_cast<std::vector<PartyMemberData>>(&args[3]);
-        const auto* names = std::any_cast<std::vector<PartyMemberName>>(&args[4]);
-        if (!data)
-            return std::any{};
-        std::vector<TPartyHuntStorage::Member> members;
-        members.reserve(data->size());
-        for (const PartyMemberData& d : *data) {
-            TPartyHuntStorage::Member member;
-            member.id = d.memberID;
-            member.active = d.highlight != 0;
-            member.loot = static_cast<qint64>(d.loot);
-            member.supplies = static_cast<qint64>(d.supply);
-            member.damage = static_cast<qint64>(d.damage);
-            member.healing = static_cast<qint64>(d.healing);
-            if (names) {
-                for (const PartyMemberName& n : *names) {
-                    if (n.memberID == d.memberID)
-                        member.name = QString::fromStdString(n.memberName);
-                }
-            }
-            members.push_back(std::move(member));
-        }
-        m_partyHunt.update(static_cast<quint32>(argInt(args, 0)), static_cast<quint32>(argInt(args, 1)), static_cast<int>(argInt(args, 2)),
-                           std::move(members));
-        return std::any{};
-    };
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyAnalyzerUpdate", applyPartyAnalyzer);
     m_timer.setInterval(TickIntervalMs);
     connect(&m_timer, &QTimer::timeout, this, &TAnalyserStorages::tick);
     if (tibia::game::isOnline()) {

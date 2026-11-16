@@ -512,31 +512,51 @@ public:
         bool active = false;
         qint64 loot = 0;
         qint64 supplies = 0;
+        /// loot - supplies.
+        qint64 balance = 0;
         qint64 damage = 0;
         qint64 healing = 0;
+        bool operator==(const Member&) const = default;
     };
 
     explicit TPartyHuntStorage(QObject* parent = nullptr);
 
-    void update(quint32 sessionSeconds, quint32 leaderId, int priceType, std::vector<Member> members);
+    /// The session started `elapsedSeconds` ago.
+    void setSessionStart(quint32 elapsedSeconds);
+    /// 0 market prices, 1 the leader's prices.
+    void setLootType(int lootType);
+    void setLeaderId(quint32 leaderId);
+    /// The members with the names the server sent with them; an empty party forgets the names.
+    void setMembers(const std::vector<Member>& members, const std::unordered_map<quint32, QString>& names);
     void clear();
 
-    quint32 sessionSeconds() const { return m_sessionSeconds; }
+    /// Seconds since the session started.
+    quint32 sessionSeconds() const;
     quint32 leaderId() const { return m_leaderId; }
-    int priceType() const { return m_priceType; }
+    int priceType() const { return m_lootType; }
     const std::vector<Member>& members() const { return m_members; }
+    qint64 totalLoot() const { return m_totalLoot; }
+    qint64 totalSupplies() const { return m_totalSupplies; }
+    qint64 totalBalance() const { return m_totalBalance; }
 
 Q_SIGNALS:
     /// Tip alias of CIP partyHuntDataChanged.
     void changed();
-    // CIP lootTypeChanged / sessionStartChanged / partyLeaderIDChanged come from the cip:: base.
 
 private:
-    quint32 m_sessionSeconds = 0;
-    quint32 m_leaderId = 0;
-    int m_priceType = 0;
-    std::vector<Member> m_members;
+    /// The member's name from the names, "unknown" without one.
+    void resolveName(Member& member) const;
+    /// Names, balances and totals of every member.
+    void recompute();
+
     std::unordered_map<quint32, QString> m_names;
+    std::vector<Member> m_members;
+    int m_lootType = 0;
+    qint64 m_sessionStart = 0;
+    quint32 m_leaderId = 0;
+    qint64 m_totalLoot = 0;
+    qint64 m_totalSupplies = 0;
+    qint64 m_totalBalance = 0;
 };
 
 /// The session's analyser storages (CIP: the storage container behind session+0x40 vt0xb0) and
