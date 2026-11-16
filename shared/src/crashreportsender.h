@@ -16,7 +16,8 @@ namespace shared {
 
 /// CIP `shared::TCrashReportSender`: uploads a crash report as a multipart
 /// form: the minidump and session dump files (when asked to) and one text
-/// field per annotation. The upload URL is the caller's; qtclient takes it
+/// field per annotation (CipSoft adds Comment and ReportType). The upload URL
+/// is CipSoft's [URLS] crashReportUrl; qtclient takes it
 /// from the mod configuration (urls.crashReportPath).
 class TCrashReportSender : public QObject
 {

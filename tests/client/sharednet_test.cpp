@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include "colorhelper.h"
+#include "crashreportsender.h"
 #include "crashhandler.h"
 #include "extent.h"
 #include "highlighttimer.h"
@@ -14,11 +15,16 @@
 #include "synchronousexecutor.h"
 
 #include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include <QEventLoop>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStringListModel>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include <QThread>
 #include <QTimer>
 
@@ -236,6 +242,70 @@ TEST(CrashHandler, AnnotationsRoundTripAndAnonymize)
     TCrashHandler::anonymize(none);
     EXPECT_TRUE(none.empty());
     EXPECT_EQ(TCrashHandler::annotationsFileName(QStringLiteral("/tmp/a/b.dmp")), QStringLiteral("b.dmp.json"));
+}
+
+TEST(CrashHandler, WritesABreakpadMinidumpWithItsSideFiles)
+{
+    QTemporaryDir directory;
+    ASSERT_TRUE(directory.isValid());
+    TCrashHandler& handler = TCrashHandler::instance();
+    handler.initialize(QStringLiteral("Tibia"), QStringLiteral("15.11"), directory.path());
+    handler.setAnnotation(QStringLiteral("Character"), QStringLiteral("Knight"));
+    handler.addLogMessage(QStringLiteral("hello"));
+    handler.setSessiondumpProvider([] { return QByteArray("session"); });
+    if (!handler.writeMinidump())
+        GTEST_SKIP() << "no Breakpad on this host";
+    const QStringList dumps = QDir(directory.path()).entryList({ QStringLiteral("*.dmp") }, QDir::Files);
+    ASSERT_EQ(dumps.size(), 1);
+    QFile dump(QDir(directory.path()).filePath(dumps.first()));
+    ASSERT_TRUE(dump.open(QIODevice::ReadOnly));
+    EXPECT_EQ(dump.read(4), QByteArray("MDMP"));
+    QFile annotations(QDir(directory.path()).filePath(dumps.first() + QStringLiteral(".json")));
+    ASSERT_TRUE(annotations.open(QIODevice::ReadOnly));
+    const TCrashHandler::TAnnotations parsed = TCrashHandler::annotationsFromJson(annotations.readAll());
+    EXPECT_EQ(parsed.at(QStringLiteral("ProductName")), QStringLiteral("Tibia"));
+    EXPECT_EQ(parsed.at(QStringLiteral("Version")), QStringLiteral("15.11"));
+    EXPECT_EQ(parsed.at(QStringLiteral("Character")), QStringLiteral("Knight"));
+    EXPECT_TRUE(parsed.count(QStringLiteral("Timestamp")));
+    EXPECT_TRUE(parsed.at(QStringLiteral("LogMessages")).contains(QStringLiteral("hello")));
+    QFile session(QDir(directory.path()).filePath(dumps.first() + QStringLiteral(".session")));
+    ASSERT_TRUE(session.open(QIODevice::ReadOnly));
+    EXPECT_EQ(session.readAll(), QByteArray("session"));
+}
+
+TEST(CrashReportSender, PostsCipSoftsMultipartForm)
+{
+    QTcpServer server;
+    ASSERT_TRUE(server.listen(QHostAddress::LocalHost));
+    QByteArray request;
+    QObject::connect(&server, &QTcpServer::newConnection, [&] {
+        QTcpSocket* socket = server.nextPendingConnection();
+        QObject::connect(socket, &QTcpSocket::readyRead, [&request, socket] {
+            request += socket->readAll();
+            const qsizetype headerEnd = request.indexOf("\r\n\r\n");
+            if (headerEnd < 0)
+                return;
+            const QByteArray headers = request.left(headerEnd).toLower();
+            const qsizetype at = headers.indexOf("content-length:");
+            const qsizetype length = headers.mid(at + 15, headers.indexOf("\r\n", at) - at - 15).trimmed().toLongLong();
+            if (request.size() >= headerEnd + 4 + length)
+                socket->write("HTTP/1.1 201 Created\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+        });
+    });
+    auto annotations = std::make_shared<TCrashReportSender::TAnnotations>(
+        TCrashReportSender::TAnnotations { { "Comment", "it broke" }, { "ReportType", "Full" } });
+    TCrashReportSender sender(QStringLiteral("/dumps/abc.dmp"), QStringLiteral("/dumps/abc.dmp.session"), annotations);
+    const QUrl url(QStringLiteral("http://127.0.0.1:%1/clientservices/crashreceiver.php").arg(server.serverPort()));
+    sender.send(QByteArray("MDMP-dump"), QByteArray("session-dump"), url, true);
+    ASSERT_TRUE(waitFor([&] { return request.contains("--\r\n"); }, 5000));
+    EXPECT_TRUE(request.startsWith("POST /clientservices/crashreceiver.php"));
+    EXPECT_TRUE(request.toLower().contains(QByteArray("content-disposition: form-data; name=\"minidump\"; filename=\"abc.dmp\"").toLower()));
+    EXPECT_TRUE(request.contains("MDMP-dump"));
+    EXPECT_TRUE(request.toLower().contains(QByteArray("content-disposition: form-data; name=\"sessiondump\"; filename=\"abc.dmp.session\"").toLower()));
+    EXPECT_TRUE(request.toLower().contains(QByteArray("content-disposition: form-data; name=\"Comment\"").toLower()));
+    EXPECT_TRUE(request.contains("it broke"));
+    EXPECT_TRUE(request.toLower().contains(QByteArray("content-disposition: form-data; name=\"ReportType\"").toLower()));
+    EXPECT_TRUE(request.toLower().contains("content-type: multipart/form-data"));
 }
 
 int main(int argc, char** argv)

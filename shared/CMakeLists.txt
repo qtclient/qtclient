@@ -73,3 +73,23 @@ target_compile_definitions(qtclient_shared PRIVATE QT_NO_KEYWORDS)
 target_include_directories(qtclient_shared PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_link_libraries(qtclient_shared PUBLIC Qt6::Widgets Qt6::Network)
+
+# CipSoft links Google Breakpad for TCrashHandler's minidumps (vcpkg `breakpad`,
+# desktop only). WASM and mobile builds have no handler.
+set(_qtclient_breakpad_platform OFF)
+if((APPLE AND NOT IOS) OR WIN32 OR (UNIX AND NOT APPLE AND NOT ANDROID))
+  if(NOT EMSCRIPTEN)
+    set(_qtclient_breakpad_platform ON)
+  endif()
+endif()
+if(_qtclient_breakpad_platform)
+  find_package(unofficial-breakpad CONFIG QUIET)
+  if(TARGET unofficial::breakpad::libbreakpad_client)
+    target_link_libraries(qtclient_shared PRIVATE unofficial::breakpad::libbreakpad_client)
+    target_compile_definitions(qtclient_shared PRIVATE QTCLIENT_HAVE_BREAKPAD=1)
+  elseif(DEFINED VCPKG_TOOLCHAIN)
+    message(FATAL_ERROR "qtclient_shared: vcpkg breakpad missing (apps/qtclient/vcpkg.json)")
+  else()
+    message(STATUS "qtclient_shared: no Breakpad outside vcpkg; TCrashHandler installs no handler")
+  endif()
+endif()

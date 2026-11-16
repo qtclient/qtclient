@@ -185,7 +185,7 @@ sub_1195667229bd#2	1195667229bdffc6	tested	shared/src/jsonhelper.cpp:jsonBool	te
 sub_1195667229bd#4	1195667229bdffc6	ported	shared/src/qtconnectionmanager.cpp:TQtConnectionManager::~TQtConnectionManager
 sub_1195667229bd#6	1195667229bdffc6	ported	shared/src/timelapseclockservice.cpp:TTimeLapseClockService::TTimeLapseClockService
 sub_11cded2ebf20	11cded2ebf20d671	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::retries
-sub_14724ee2bc6a	14724ee2bc6afc63	ported	shared/src/crashhandler.cpp:TCrashHandler::removeOldLogMessages
+sub_14724ee2bc6a	14724ee2bc6afc63	tested	shared/src/crashhandler.cpp:TCrashHandler::removeOldLogMessages	test=tests/client/sharednet_test.cpp
 sub_14e4d46b5407	14e4d46b54075b51	skip	library: libc++ std::optional / std::string helpers
 sub_15cab166697c	15cab166697c3757	skip	library: std::sort of QNetworkInterface by index() (libc++ introsort / sort3-5 / insertion sort)
 sub_167045153e91	167045153e91b94a	skip	library: CryptoPP StringSource / StringStore / AlgorithmParameters / allocator
@@ -228,7 +228,7 @@ sub_2af1304bf004	2af1304bf004ba3d	skip	library: QMap<QUrl, TActiveDownload> (std
 sub_2af260e163d1	2af260e163d1a5b9	tested	shared/src/coordinate.h:operator<<	test=tests/client/coordinate_test.cpp
 sub_2be498d8123f#2	2be498d8123f454d	skip	library: QList<QHostAddress> template code
 sub_2be498d8123f#3	2be498d8123f454d	skip	library: QList<QNetworkInterface> / QList<QHostAddress> template code
-sub_2c0924e60878	2c0924e60878cfa5	ported	shared/src/crashhandler.cpp:TCrashHandler::writeMinidump
+sub_2c0924e60878	2c0924e60878cfa5	tested	shared/src/crashhandler.cpp:TCrashHandler::writeMinidump	test=tests/client/sharednet_test.cpp
 sub_2c76d914ce53	2c76d914ce53f86e	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_2cbc9e42b727	2cbc9e42b7275614	inlined	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::QNetworkReplyWrapper
 sub_2f59241085be	2f59241085bef6f2	ported	shared/src/rpcserviceclient.cpp:TRPCServiceClient::connectToServer
@@ -241,7 +241,7 @@ sub_36c71742467a	36c71742467ad3d5	skip	library: CryptoPP StringSource / StringSt
 sub_380f7a7f155e	380f7a7f155ed2a0	tested	shared/src/extent.h:TExtent::TExtent	test=tests/client/sharednet_test.cpp
 sub_380f7a7f155e#2	380f7a7f155ed2a0	tested	shared/src/extent.h:TExtent::TExtent	test=tests/client/sharednet_test.cpp
 sub_38cd8b333fdc	38cd8b333fdcd8b6	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::TJsonValueValidator	test=tests/client/jsonvalidator_test.cpp
-sub_39cbb8bb6c49	39cbb8bb6c491116	ported	shared/src/crashreportsender.cpp:TCrashReportSender::createMultiPart
+sub_39cbb8bb6c49	39cbb8bb6c491116	tested	shared/src/crashreportsender.cpp:TCrashReportSender::createMultiPart	test=tests/client/sharednet_test.cpp
 sub_3a293831cb08	3a293831cb08537b	tested	shared/src/jsonhelper.cpp:jsonInt	test=tests/client/sharednet_test.cpp
 sub_3b7c766f57af	3b7c766f57af0afd	skip	library: QList<QHostAddress> template code
 sub_3bcbc59d35c6	3bcbc59d35c661da	tested	shared/src/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
@@ -298,7 +298,7 @@ sub_5e7303c9dd6f	5e7303c9dd6fd07f	skip	library: boost::throw_exception / wrapexc
 sub_5e9650e2edc2	5e9650e2edc27401	ported	shared/src/rpcserviceserver.cpp:TRPCServiceServer::onConnectionDisconnected
 sub_5f3fa02d670e	5f3fa02d670ef1cd	skip	library: CryptoPP StringSource / StringStore / AlgorithmParameters / allocator
 sub_60108709fdb6	60108709fdb6b236	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
-sub_602b0b978a8a	602b0b978a8ab7fb	ported	shared/src/crashhandler.cpp:TCrashHandler::instance
+sub_602b0b978a8a	602b0b978a8ab7fb	tested	shared/src/crashhandler.cpp:TCrashHandler::instance	test=tests/client/sharednet_test.cpp
 sub_623ffc7c8473	623ffc7c84733162	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_62bfb64d16bb	62bfb64d16bbf289	ported	shared/src/clockservice.cpp:TClockService::currentUnixTimestamp
 sub_63c2a8e59a1d	63c2a8e59a1d176d	tested	shared/src/jsonhelper.cpp:jsonObject	test=tests/client/sharednet_test.cpp
@@ -358,7 +358,7 @@ sub_8cee8d00a7c1	8cee8d00a7c145f0	skip	library: QMap<QUrl, QVariant> template co
 sub_8d5e136b4322	8d5e136b43224ea5	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::reset	test=tests/client/sharednet_test.cpp
 sub_8db8e8a926d2	8db8e8a926d2105f	skip	generated: compiler-generated destructor
 sub_8e7183d1b27b	8e7183d1b27b2f43	ported	shared/src/rpcserviceconnection.cpp:TRPCServiceConnection::readState
-sub_8fc46f361f9b	8fc46f361f9be434	ported	shared/src/crashhandler.cpp:TCrashHandler::updateLogMessagesAnnotation
+sub_8fc46f361f9b	8fc46f361f9be434	tested	shared/src/crashhandler.cpp:TCrashHandler::updateLogMessagesAnnotation	test=tests/client/sharednet_test.cpp
 sub_9307c21cf47d	9307c21cf47d4f34	skip	library: std::vector<QMetaObject::Connection> grow (push_back slow path)
 sub_93c91c1f5768	93c91c1f57686cf1	skip	library: std::set<TRPCServiceConnection*> node destroy
 sub_93e4760083f1	93e4760083f1ea95	tested	shared/src/highlighttimer.cpp:THighlightTimer::start	test=tests/client/sharednet_test.cpp
@@ -388,7 +388,7 @@ sub_afe4da77c1ef#2	afe4da77c1efdae1	skip	library: std::map<QString, QString> tem
 sub_b00e40775276	b00e40775276bc16	skip	library: std::shared_ptr::operator* (identity)
 sub_b02e349a7c61	b02e349a7c618aff	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::value	test=tests/client/jsonvalidator_test.cpp
 sub_b15087ae3d2f	b15087ae3d2f6ba5	ported	shared/src/downloadpool.cpp:TDownloadPool::isActive
-sub_b162a8d1a39f	b162a8d1a39fb71f	ported	shared/src/crashhandler.cpp:TCrashHandler::installHandler
+sub_b162a8d1a39f	b162a8d1a39fb71f	tested	shared/src/crashhandler.cpp:TCrashHandler::installHandler	test=tests/client/sharednet_test.cpp
 sub_b1b32ae7a4ac	b1b32ae7a4ac5b48	tested	shared/src/jsonvalidator.cpp:TJsonArrayValidator::first	test=tests/client/jsonvalidator_test.cpp
 sub_b1ca2665cf0d	b1ca2665cf0df264	skip	library: std::vector / QList template code
 sub_b23b8772a1ea	b23b8772a1ea05f5	skip	library: QMap<QString, QVariant> node destructors
@@ -409,7 +409,7 @@ sub_b8249c9e3366#5	b8249c9e33663f7b	skip	library: std::shared_ptr release
 sub_b8249c9e3366#6	b8249c9e33663f7b	skip	library: std::shared_ptr release
 sub_b8249c9e3366#7	b8249c9e33663f7b	skip	library: std::shared_ptr release
 sub_b85a0e5c4938	b85a0e5c49380434	skip	library: QMap<QUrl, TActiveDownload> (std::map) template code
-sub_b8609b837cb9	b8609b837cb9e247	ported	shared/src/crashhandler.cpp:TCrashHandler::writeCrashFiles
+sub_b8609b837cb9	b8609b837cb9e247	tested	shared/src/crashhandler.cpp:TCrashHandler::writeCrashFiles	test=tests/client/sharednet_test.cpp
 sub_ba79d715467e#2	ba79d715467ef906	skip	library: std::make_unique / construct_at forwarding to the constructor
 sub_bba8fdcfbf33	bba8fdcfbf33aa9d	ported	shared/src/clockservice.cpp:TClockService::TClockService
 sub_bba8fdcfbf33#2	bba8fdcfbf33aa9d	ported	shared/src/clockservice.cpp:TClockService::TClockService
@@ -419,9 +419,9 @@ sub_bc6074ba0643	bc6074ba0643adaa	skip	library: std::list<TWaitingDownload> clea
 sub_bcccd51b8b15	bcccd51b8b153f85	ported	shared/src/downloadpool.cpp:TDownloadPool::isAuthenticationEnabled
 sub_bcd30f308704	bcd30f3087043b03	tested	shared/src/colorhelper.cpp:colorFromEightBit	test=tests/client/sharednet_test.cpp
 sub_bcf7807b6a96	bcf7807b6a962475	skip	library: Google Breakpad ExceptionHandler destructor / UninstallHandler
-sub_bd7cfa016a32	bd7cfa016a324732	ported	shared/src/crashhandler.cpp:TCrashHandler::setAnnotation
+sub_bd7cfa016a32	bd7cfa016a324732	tested	shared/src/crashhandler.cpp:TCrashHandler::setAnnotation	test=tests/client/sharednet_test.cpp
 sub_bd7cfa016a32#2	bd7cfa016a324732	ported	shared/src/crashhandler.cpp:TCrashHandler::removeAnnotation
-sub_bd8dbcb34435	bd8dbcb344356400	ported	shared/src/crashhandler.cpp:TCrashHandler::addLogMessage
+sub_bd8dbcb34435	bd8dbcb344356400	tested	shared/src/crashhandler.cpp:TCrashHandler::addLogMessage	test=tests/client/sharednet_test.cpp
 sub_bdcae11a3a71	bdcae11a3a71742c	skip	library: QMap<QString, QVariant> template code
 sub_be50260e858b	be50260e858b6ff0	tested	shared/src/highlighttimer.cpp:THighlightTimer::interval	test=tests/client/sharednet_test.cpp
 sub_bee9a7c95fdf	bee9a7c95fdf1152	ported	shared/src/qnetworkaccessmanagerwrapper.cpp:QNetworkAccessManagerWrapper::QNetworkAccessManagerWrapper
@@ -453,7 +453,7 @@ sub_d42f7abfd6ef	d42f7abfd6ef8339	ported	shared/src/crashhandler.cpp:TCrashHandl
 sub_d66c6dec21d7	d66c6dec21d7a0ae	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::hasNextPage	test=tests/client/sharednet_test.cpp
 sub_d7157c3308f8	d7157c3308f8e250	tested	shared/src/jsonhelper.cpp:jsonDateTime	test=tests/client/sharednet_test.cpp
 sub_d74862a49107	d74862a49107d7df	skip	library: Google Breakpad ExceptionHandler destructor / UninstallHandler
-sub_d7a0edf4f0fb	d7a0edf4f0fb72e1	ported	shared/src/crashreportsender.cpp:TCrashReportSender::send
+sub_d7a0edf4f0fb	d7a0edf4f0fb72e1	tested	shared/src/crashreportsender.cpp:TCrashReportSender::send	test=tests/client/sharednet_test.cpp
 sub_d82acfd0735a	d82acfd0735aa306	ported	shared/src/rpcserviceconnection.cpp:TRPCServiceConnection::onDataReady
 sub_d86bbada087a	d86bbada087a10aa	tested	shared/src/coordinate.h:TCoordinate::operator<	test=tests/client/coordinate_test.cpp
 sub_d8754dab1f8a	d8754dab1f8a514f	skip	library: QList<QNetworkInterface> / QList<QHostAddress> template code
@@ -478,7 +478,7 @@ sub_e1406486a04a	e1406486a04a37f9	inlined	shared/src/highlighttimer.cpp:THighlig
 sub_e266cbdd80c2	e266cbdd80c2463c	skip	library: libc++ std::optional / std::string helpers
 sub_e2c8b5aa312c	e2c8b5aa312ce6b0	tested	shared/src/crashhandler.cpp:TCrashHandler::annotationsFromJson	test=tests/client/sharednet_test.cpp
 sub_e3b63b2d5f11	e3b63b2d5f116c53	ported	shared/src/qtconnectionwrapper.cpp:TQtConnectionWrapper::setOnlyFirstSignal
-sub_e55af598f8bf	e55af598f8bf702d	ported	shared/src/crashhandler.cpp:TCrashHandler::setSessiondumpProvider
+sub_e55af598f8bf	e55af598f8bf702d	tested	shared/src/crashhandler.cpp:TCrashHandler::setSessiondumpProvider	test=tests/client/sharednet_test.cpp
 sub_e584fdeb2dd1	e584fdeb2dd11c4b	skip	generated: moc signal body TDownloadPool::failed
 sub_e6db877f4f89	e6db877f4f89d737	skip	generated: moc signal bodies of TRPCServiceClient
 sub_e8082de37776	e8082de37776fbbb	skip	generated: compiler-generated destructor (CryptoPP cipher members)
@@ -492,9 +492,9 @@ sub_ee2f5fc042f3	ee2f5fc042f39648	skip	generated: QtPrivate slot object impl (me
 sub_ee2f5fc042f3#2	ee2f5fc042f39648	skip	generated: QtPrivate slot object impl (member-function connection)
 sub_ee2f5fc042f3#3	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_ee2f5fc042f3#4	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
-sub_ee568eb1527e	ee568eb1527e029f	ported	shared/src/crashreportsender.cpp:TCrashReportSender::TCrashReportSender
+sub_ee568eb1527e	ee568eb1527e029f	tested	shared/src/crashreportsender.cpp:TCrashReportSender::TCrashReportSender	test=tests/client/sharednet_test.cpp
 sub_ee8ad351396b	ee8ad351396bf8ae	skip	library: QList<QHostAddress> template code
-sub_efe4deb86027	efe4deb860278073	ported	shared/src/crashhandler.cpp:TCrashHandler::initialize
+sub_efe4deb86027	efe4deb860278073	tested	shared/src/crashhandler.cpp:TCrashHandler::initialize	test=tests/client/sharednet_test.cpp
 sub_f221f6c4a758	f221f6c4a7580589	ported	shared/src/launcherutils.cpp:TLauncherUtils::hasLocalIPv4
 sub_f23eb3024ce5	f23eb3024ce596b3	skip	generated: moc signal bodies paginationDataChanged / sourceModelChanged
 sub_f28aa1e139d8	f28aa1e139d83e72	ported	shared/src/jsondocumenthttppostsender.cpp:TJsonDocumentHttpPostSender::post
@@ -515,4 +515,4 @@ sub_f8a11d3eeda3	f8a11d3eeda38994	ported	shared/src/downloadpool.cpp:TDownloadPo
 sub_f98ceae25008	f98ceae25008c033	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::convertByteOrder	test=tests/client/xteahelper_test.cpp
 sub_f9edf84f1a88	f9edf84f1a8802d0	skip	library: CryptoPP StringSource / StringStore / AlgorithmParameters / allocator
 sub_fcb88cfadac6	fcb88cfadac63993	ported	shared/src/rpcserviceserver.cpp:TRPCServiceServer::TRPCServiceServer
-sub_ff079e3f148d	ff079e3f148dc9f0	ported	shared/src/crashhandler.cpp:TCrashHandler::minidumpCallback
+sub_ff079e3f148d	ff079e3f148dc9f0	tested	shared/src/crashhandler.cpp:TCrashHandler::minidumpCallback	test=tests/client/sharednet_test.cpp

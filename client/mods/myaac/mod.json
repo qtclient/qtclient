@@ -11,7 +11,7 @@
     "loginPath": "/login.php",
     "clientServicesPath": "/login.php",
     "createAccountPath": "/login.php",
-    "crashReportPath": "/crashreport.php",
+    "crashReportPath": "/clientservices/crashreceiver.php",
     "pages": {
       "QTCLIENT_URL_CREATE_ACCOUNT": "/?subtopic=createaccount",
       "QTCLIENT_URL_ACCESS_ACCOUNT": "/?subtopic=accountmanagement",

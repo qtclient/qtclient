@@ -45,7 +45,7 @@ struct ModUrls {
     std::string loginPath;
     std::string clientServicesPath;
     std::string createAccountPath;
-    /// Crash report upload path (CIP crashReportUrl); empty = no crash reports.
+    /// CIP `[URLS] crashReportUrl` path (e.g. /clientservices/crashreceiver.php); empty = no crash reports.
     std::string crashReportPath;
     std::string assetBase;
     std::string paymentsBase;

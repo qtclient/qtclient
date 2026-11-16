@@ -8,12 +8,18 @@
     "libogg",
     "libvorbis",
     "protobuf",
-    "spdlog"
+    "spdlog",
+    {
+      "name": "breakpad",
+      "platform": "osx | linux | windows"
+    }
   ],
   "features": {
     "tests": {
       "description": "Unit test dependencies (TIBIA_BUILD_TESTS)",
-      "dependencies": ["gtest"]
+      "dependencies": [
+        "gtest"
+      ]
     }
   },
   "builtin-baseline": "56bb2411609227288b70117ead2c47585ba07713"
