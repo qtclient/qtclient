@@ -143,9 +143,9 @@ bool TSidebarWidgetsManager::isWidgetOpen(const int widgetType) const
 {
     switch (widgetType) {
         case BattleList:
-            return m_battleLists->isOpen(m_battleLists->primaryId());
+            return m_battleLists->primaryBattleList() != nullptr;
         case PartyList:
-            return m_battleLists->isOpen(TBattleListControllerStorage::PartyListId);
+            return m_battleLists->partyBattleList() != nullptr;
         default:
             return currentWidget(widgetType) != nullptr;
     }
@@ -162,10 +162,12 @@ void TSidebarWidgetsManager::openWidget(const int widgetType, const uint sidebar
         return;
     switch (widgetType) {
         case BattleList:
-            m_battleLists->open(m_battleLists->primaryId(), sidebarId);
+            if (!m_battleLists->primaryBattleList())
+                m_battleLists->togglePrimaryBattleList(static_cast<uint8_t>(sidebarId));
             return;
         case PartyList:
-            m_battleLists->open(TBattleListControllerStorage::PartyListId, sidebarId);
+            if (!m_battleLists->partyBattleList())
+                m_battleLists->togglePartyBattleList(static_cast<uint8_t>(sidebarId));
             return;
         default:
             break;
@@ -209,10 +211,12 @@ void TSidebarWidgetsManager::closeWidget(const int widgetType, const bool saveWi
 {
     switch (widgetType) {
         case BattleList:
-            m_battleLists->close(m_battleLists->primaryId());
+            if (TBattleListController* primary = m_battleLists->primaryBattleList())
+                primary->onRequestClose();
             return;
         case PartyList:
-            m_battleLists->close(TBattleListControllerStorage::PartyListId);
+            if (TBattleListController* party = m_battleLists->partyBattleList())
+                party->onRequestClose();
             return;
         default:
             break;
@@ -267,9 +271,10 @@ bool TSidebarWidgetsManager::handleGameAction(const input::TGameAction& action)
         case AnalyticsSelector: onToggleAnalyticsSelectorWidget(sidebarId); break;
         case PartyHuntAnalyser: onTogglePartyHuntAnalyserWidget(sidebarId); break;
         // The battle lists toggle through the battle list storage (CIP passes
-        // it every game action).
+        // it every game action); it toggles the primary and party list in the
+        // action's sidebar.
         case BattleList:
-        case PartyList:
+        case PartyList: m_battleLists->handleGameAction(action); break;
         // The widgets the manager keeps by type (VIP, bestiary and bosstiary
         // trackers, imbuement tracker, player guide) and pack widgets.
         default: toggleWidget(widgetType, sidebarId); break;
@@ -294,12 +299,9 @@ void TSidebarWidgetsManager::onWidgetHidden(const int widgetType)
 QQuickItem* TSidebarWidgetsManager::widgetQuickItem(const int widgetType) const
 {
     if (widgetType == BattleList || widgetType == PartyList) {
-        const int id = widgetType == PartyList ? TBattleListControllerStorage::PartyListId : m_battleLists->primaryId();
-        for (const auto& [listId, widget] : m_battleLists->widgets()) {
-            if (listId == id && widget)
-                return widget->quickItem();
-        }
-        return nullptr;
+        const TBattleListController* list =
+            widgetType == PartyList ? m_battleLists->partyBattleList() : m_battleLists->primaryBattleList();
+        return list ? list->widget()->quickItem() : nullptr;
     }
     if (TSidebarWidget* widget = currentWidget(widgetType))
         return widget->quickItem();
@@ -434,8 +436,7 @@ void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
             const int type = widgetTypeOf(entry.value(QLatin1String("type")).toString());
             const int instance = entry.value(QLatin1String("instance")).toInt();
             if (type == BattleList) {
-                if (instance >= 0 && (instance < TBattleListControllerStorage::MaxBattleLists || instance == TBattleListControllerStorage::PartyListId))
-                    m_battleLists->open(instance, sidebarId);
+                m_battleLists->openBattleList(static_cast<uint8_t>(sidebarId), static_cast<uint8_t>(instance), false, false);
             } else if (type == Container) {
                 if (m_containers)
                     m_containers->openInSidebar(instance, sidebarId, position);

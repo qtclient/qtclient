@@ -93,6 +93,71 @@ int NewsItem::typeId() const
     return 0;
 }
 
+std::optional<NewsItem> TNewsStorage::entry(const uint id) const
+{
+    for (const NewsItem& item : m_items) {
+        if (static_cast<uint>(item.id) == id)
+            return item;
+    }
+    return std::nullopt;
+}
+
+QVector<NewsItem> TNewsStorage::entriesOfCategory(const int category) const
+{
+    QVector<NewsItem> entries;
+    for (const NewsItem& item : m_items) {
+        if (item.categoryId() == category)
+            entries.push_back(item);
+    }
+    std::stable_sort(entries.begin(), entries.end(), [](const NewsItem& a, const NewsItem& b) {
+        return static_cast<uint>(a.id) < static_cast<uint>(b.id);
+    });
+    return entries;
+}
+
+int TNewsStorage::categoryOfNewestUnreadOrNewestEntry() const
+{
+    int newestCategory = NewsItem::UsefulInfo;
+    int newestUnreadCategory = NewsItem::UsefulInfo;
+    bool anyUnread = false;
+    qint64 newest = 0;
+    qint64 newestUnread = 0;
+    for (const NewsItem& item : m_items) {
+        if (!item.unlocked)
+            continue;
+        if (!item.isRead) {
+            anyUnread = true;
+            if (item.publishDate > newestUnread) {
+                newestUnreadCategory = item.categoryId();
+                newestUnread = item.publishDate;
+            }
+        }
+        if (item.publishDate > newest) {
+            newestCategory = item.categoryId();
+            newest = item.publishDate;
+        }
+    }
+    return anyUnread ? newestUnreadCategory : newestCategory;
+}
+
+bool TNewsStorage::hasUnreadUnlockedEntry() const
+{
+    return std::any_of(m_items.begin(), m_items.end(), [](const NewsItem& item) { return !item.isRead && item.unlocked; });
+}
+
+void TNewsStorage::setEntryRead(const uint id, const bool read)
+{
+    for (NewsItem& item : m_items) {
+        if (static_cast<uint>(item.id) != id)
+            continue;
+        if (item.typeId() == -1 || item.isRead == read)
+            return;
+        item.isRead = read;
+        Q_EMIT contentsChanged();
+        return;
+    }
+}
+
 NewsItem TNewsStorage::parseEntry(const QJsonObject& o, const int fallbackIndex)
 {
     NewsItem item;

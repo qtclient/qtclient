@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 #include "gamewindow/dialogmanager.h"
+#include "input/gameaction.h"
 #include "news/newsentrymodels.h"
 #include "news/newsstorage.h"
 
@@ -23,8 +24,10 @@ class TNewsRequestUploader;
 namespace tibia {
 namespace gamewindow {
 
-/// NewsDialog.qml (CIP: TNewsDialogController) — CIP gamenews trees via TNewsStorage.
-/// Button-bar label is "Compendium"; QML caption stays CIP's news_dialog_caption.
+/// NewsDialog.qml (CIP: TNewsDialogController): the news storage's entries of
+/// one category (0 client features .. 4 support; the tab is category + 1) and
+/// the selected entry. Without a choice of the player the dialog opens on the
+/// category of the newest unread entry.
 class TNewsDialogController final : public TDialogController<cip::tibia::gamewindow::TNewsDialogController>
 {
     Q_OBJECT
@@ -33,10 +36,16 @@ public:
 
     void setNewsUploader(news::TNewsRequestUploader* uploader);
 
+    /// CIP: OPEN_NEWS_DIALOG (an entry id in parameter selects that entry),
+    /// OPEN_NEWS_CATEGORY (the category in parameter) and REFRESH_COMPENDIUM_NEWS.
+    void handleGameAction(const input::TGameAction& action);
+
+    EDialogTab dialogTab() const override;
+    QString headline() const override;
+    QString contentText() const override;
+
     void showDialog() override;
-    /// Open on `tab` (CIP OPEN_NEWS_CATEGORY / EDialogTab). NoTabInitialState picks
-    /// the tab with the newest unread entry when data is available.
-    void showDialog(cip::tibia::gamewindow::TNewsDialogController::EDialogTab tab);
+    /// CIP: closes the dialog and forgets category and selection.
     void closeDialog() override;
     Q_INVOKABLE void requestClose() override;
     Q_INVOKABLE void requestTabSwitch(cip::tibia::gamewindow::TNewsDialogController::EDialogTab NewTab) override;
@@ -45,19 +54,28 @@ public:
     Q_INVOKABLE void linkHoverChanged(bool IsOverLink) override;
     void onNewsQueryFailed(const QString& ErrorMessage) override;
     void requestUpdateNewsFromWebsite() override;
-    /// CIP slot (not in generated base); picks newest unread tab when data changes.
+    /// CIP slot: the category of the newest (unread) entry once there is data.
     void selectCategoryWithNewestEntryOrNewestUnreadEntryIfDataAvailableAndCategoryChanged();
+    void onNewsStorageContentsChanged();
 
 private:
-    void rebuildFromStorage();
-    void selectItem(uint categoryId);
-    QVector<news::NewsItem> itemsForTab(EDialogTab tab) const;
-    EDialogTab preferredTab() const;
+    /// CIP: the player picked `category`.
+    void setCategory(int category);
+    /// CIP: the entry `entryId` and its category are shown when the dialog opens.
+    bool selectEntryForOpening(uint entryId);
+    /// CIP: the model shows the current category's entries.
+    void refresh();
+    /// CIP: the model takes `entries`; the selection stays when it is in the
+    /// category, a pending entry wins, else the first row is selected.
+    void setEntries(const QVector<news::NewsItem>& entries);
+    void resetCategoryAndSelection();
 
     QPointer<news::TNewsStorage> m_storage;
     QPointer<news::TNewsRequestUploader> m_uploader;
     TNewsEntryModel m_model;
-    QVector<news::NewsItem> m_flatLookup;
+    int m_category = news::NewsItem::UsefulInfo;
+    uint m_pendingEntry = 0;
+    bool m_userChoseCategory = false;
 };
 
 /// Button bar Compendium / News button (CIP: TNewsButtonController).
