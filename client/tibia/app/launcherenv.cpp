@@ -221,6 +221,16 @@ QUrl LauncherEnv::createAccountUrl() const
     return withPath(loginBase, createAccountPath);
 }
 
+QUrl LauncherEnv::crashReportUrl() const
+{
+    if (crashReportPath.isEmpty())
+        return QUrl();
+    const QUrl absolute(crashReportPath);
+    if (absolute.isValid() && !absolute.isRelative())
+        return absolute;
+    return withPath(loginBase, crashReportPath);
+}
+
 LauncherEnv LauncherEnv::load(const QString& workDir)
 {
     const auto release = readReleaseEnv(workDir);
@@ -280,6 +290,12 @@ LauncherEnv LauncherEnv::load(const QString& workDir)
         "QTCLIENT_CREATE_ACCOUNT_PATH",
         modUrls ? fromStd(modUrls->createAccountPath) : QString(),
         QStringLiteral("/clientservices/accountcreationclientservices.php")));
+    const QString crashReportPath = pick(
+        "QTCLIENT_CRASH_REPORT_PATH",
+        modUrls ? fromStd(modUrls->crashReportPath) : QString(),
+        QString());
+    e.crashReportPath = crashReportPath.startsWith(QStringLiteral("http")) ? crashReportPath
+        : crashReportPath.isEmpty() ? QString() : ensureLeadingSlash(crashReportPath);
 
     QString assetBase = pick(
         "QTCLIENT_ASSET_BASE",

@@ -28,6 +28,9 @@ struct LauncherEnv
     QString clientServicesPath;
     /// accountCreationClientServices path.
     QString createAccountPath;
+    /// Crash report upload path (QTCLIENT_CRASH_REPORT_PATH / mod urls.crashReportPath).
+    /// No fallback: without one no crash report leaves the machine.
+    QString crashReportPath;
     /// Public asset origin (QTCLIENT_ASSET_BASE), defaulting to https://static.tibia.com.
     QUrl assetBase;
     /// Coin webshop origin (QTCLIENT_PAYMENTS_URL / QTCLIENT_PAYMENTS_BASE); empty = compose on loginBase.
@@ -59,6 +62,8 @@ struct LauncherEnv
     QUrl loginUrl() const;
     QUrl clientServicesUrl() const;
     QUrl createAccountUrl() const;
+    /// Where shared::TCrashReportSender posts; empty when not configured.
+    QUrl crashReportUrl() const;
 
     /// Override string for an OPEN_URL_* action env key, or empty.
     QString urlOverride(const char* envKey) const;

@@ -61,6 +61,7 @@ ModUrls readUrlsObject(const QJsonObject& urlsObj, int priority)
     u.loginPath = urlsObj.value(QStringLiteral("loginPath")).toString().toStdString();
     u.clientServicesPath = urlsObj.value(QStringLiteral("clientServicesPath")).toString().toStdString();
     u.createAccountPath = urlsObj.value(QStringLiteral("createAccountPath")).toString().toStdString();
+    u.crashReportPath = urlsObj.value(QStringLiteral("crashReportPath")).toString().toStdString();
     u.assetBase = urlsObj.value(QStringLiteral("assetBase")).toString().toStdString();
     u.paymentsBase = urlsObj.value(QStringLiteral("paymentsBase")).toString().toStdString();
     const QJsonObject pages = urlsObj.value(QStringLiteral("pages")).toObject();

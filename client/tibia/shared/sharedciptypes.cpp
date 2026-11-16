@@ -29,7 +29,6 @@ struct CipTypedKeep {
     TLocalFileInfo tLocalFileInfo;
     TDecompressionError tDecompressionError;
     TRPCServiceError tRpcServiceError;
-    TCrashHandler tCrashHandler;
     TReadOnlyMemoryBlob tReadOnlyMemoryBlob;
     TLZMACompressedReadOnlyMemoryBlob tLzmaBlob;
     TZlibBaseWrapper tZlibBaseWrapper;

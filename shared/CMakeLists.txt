@@ -11,6 +11,10 @@ add_library(qtclient_shared STATIC
   src/colorhelper.cpp
   src/colorhelper.h
   src/coordinate.h
+  src/crashhandler.cpp
+  src/crashhandler.h
+  src/crashreportsender.cpp
+  src/crashreportsender.h
   src/downloadpool.cpp
   src/downloadpool.h
   src/executor.cpp
@@ -21,6 +25,12 @@ add_library(qtclient_shared STATIC
   src/iclockservice.h
   src/imagehistogram.cpp
   src/imagehistogram.h
+  src/jsondocumenthttppostsender.cpp
+  src/jsondocumenthttppostsender.h
+  src/jsondocumentuploaderbase.cpp
+  src/jsondocumentuploaderbase.h
+  src/jsonhelper.cpp
+  src/jsonhelper.h
   src/jsonvalidator.cpp
   src/jsonvalidator.h
   src/launcherutils.cpp

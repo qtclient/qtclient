@@ -40,13 +40,6 @@ public:
     void onDownloadFinished(QUrl Url, QByteArray Data);
 };
 
-class TCrashReportSender final : public cip::shared::TCrashReportSender
-{
-    Q_OBJECT
-public:
-    using cip::shared::TCrashReportSender::TCrashReportSender;
-};
-
 class TDynamicResourcesHelper final : public cip::tibia::shared::TDynamicResourcesHelper
 {
     Q_OBJECT
@@ -62,20 +55,6 @@ public:
 class TImagestripResponse final : public ::tibia::CipTyped {
 public:
     TImagestripResponse() = default;
-};
-
-class TJsonDocumentHttpPostSender final : public cip::shared::TJsonDocumentHttpPostSender
-{
-    Q_OBJECT
-public:
-    using cip::shared::TJsonDocumentHttpPostSender::TJsonDocumentHttpPostSender;
-};
-
-class TJsonDocumentUploaderBase final : public cip::shared::TJsonDocumentUploaderBase
-{
-    Q_OBJECT
-public:
-    using cip::shared::TJsonDocumentUploaderBase::TJsonDocumentUploaderBase;
 };
 
 class TNullExperienceGainChangeTracker final : public ::tibia::CipTyped {
@@ -193,13 +172,6 @@ public:
 
 private:
     QString m_message;
-};
-
-/// CIP `shared::TCrashHandler` — product host owns real crash reporting.
-class TCrashHandler final : public ::tibia::CipTyped
-{
-public:
-    TCrashHandler() = default;
 };
 
 /// CIP `shared::TReadOnlyMemoryBlob`.
