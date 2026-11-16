@@ -1,6 +1,7 @@
 #pragma once
 
 #include "friends/friendsciptypes.h"
+#include "shared/simplevectorabstractlistmodel.h"
 
 #include <cip_gen.h>
 
@@ -11,63 +12,8 @@
 
 namespace tibia {
 
-/// CIP shared::TSimpleVectorAbstractListModel<Entry>: a list model over a
-/// vector of entries; the derived model maps an entry to its roles.
-template<typename Base, typename Entry>
-class TSimpleVectorAbstractListModel : public Base
-{
-public:
-    using Base::Base;
-
-    int rowCount(const QModelIndex& parent = {}) const override
-    {
-        return parent.isValid() ? 0 : static_cast<int>(m_entries.size());
-    }
-
-    QVariant data(const QModelIndex& index, const int role) const override
-    {
-        if (!index.isValid() || index.row() < 0 || index.row() >= static_cast<int>(m_entries.size()))
-            return {};
-        return entryData(m_entries[static_cast<size_t>(index.row())], role);
-    }
-
-    const std::vector<Entry>& entries() const { return m_entries; }
-
-    /// Takes the new entries: rows past the old count are inserted, rows past
-    /// the new count removed, and the rows both have are reported as changed.
-    void setEntries(const std::vector<Entry>& entries)
-    {
-        int count = static_cast<int>(m_entries.size());
-        const int newCount = static_cast<int>(entries.size());
-        if (newCount < count) {
-            this->beginRemoveRows({}, newCount, count - 1);
-            if (&m_entries != &entries)
-                m_entries = entries;
-            this->endRemoveRows();
-            count = newCount;
-        } else if (count < newCount) {
-            this->beginInsertRows({}, count, newCount - 1);
-            if (&m_entries != &entries)
-                m_entries = entries;
-            this->endInsertRows();
-        } else if (&m_entries != &entries) {
-            m_entries = entries;
-        }
-        if (count > 0)
-            Q_EMIT this->dataChanged(this->index(0, 0), this->index(count - 1, 0));
-    }
-
-    /// Empties the model.
-    void clearEntries() { setEntries({}); }
-
-protected:
-    virtual QVariant entryData(const Entry& entry, int role) const = 0;
-
-    std::vector<Entry> m_entries;
-};
-
 /// CIP (anonymous)::TFriendListModel: FriendsFriendListPage.qml rows.
-class TFriendListModel final : public TSimpleVectorAbstractListModel<cip::TFriendListModel, friends::TFriendList::TFriendEntry>
+class TFriendListModel final : public shared::TSimpleVectorAbstractListModel<friends::TFriendList::TFriendEntry, cip::TFriendListModel>
 {
     Q_OBJECT
 public:
@@ -94,7 +40,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
 protected:
-    QVariant entryData(const friends::TFriendList::TFriendEntry& entry, int role) const override;
+    QVariant itemData(const friends::TFriendList::TFriendEntry& entry, int role) const override;
 };
 
 /// CIP (anonymous)::TFriendListSortProxyModel: the friend list by name, filtered
@@ -122,7 +68,7 @@ private:
 };
 
 /// CIP (anonymous)::TInviteListModel: FriendsInvitesPage.qml received / sent invites.
-class TInviteListModel final : public TSimpleVectorAbstractListModel<cip::TInviteListModel, friends::TInviteList::TInviteListEntry>
+class TInviteListModel final : public shared::TSimpleVectorAbstractListModel<friends::TInviteList::TInviteListEntry, cip::TInviteListModel>
 {
     Q_OBJECT
 public:
@@ -140,11 +86,11 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
 protected:
-    QVariant entryData(const friends::TInviteList::TInviteListEntry& entry, int role) const override;
+    QVariant itemData(const friends::TInviteList::TInviteListEntry& entry, int role) const override;
 };
 
 /// CIP (anonymous)::TBlacklistModel: FriendsInvitesPage.qml blacklist.
-class TBlacklistModel final : public TSimpleVectorAbstractListModel<cip::TBlacklistModel, friends::TBlacklist::TBlacklistEntry>
+class TBlacklistModel final : public shared::TSimpleVectorAbstractListModel<friends::TBlacklist::TBlacklistEntry, cip::TBlacklistModel>
 {
     Q_OBJECT
 public:
@@ -160,11 +106,11 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
 protected:
-    QVariant entryData(const friends::TBlacklist::TBlacklistEntry& entry, int role) const override;
+    QVariant itemData(const friends::TBlacklist::TBlacklistEntry& entry, int role) const override;
 };
 
 /// CIP (anonymous)::TAccountBadgesModel: FriendsBadgesPage.qml rows.
-class TFriendsAccountBadgesModel final : public TSimpleVectorAbstractListModel<QAbstractListModel, friends::TAccountBadge>
+class TFriendsAccountBadgesModel final : public shared::TSimpleVectorAbstractListModel<friends::TAccountBadge, QAbstractListModel>
 {
     Q_OBJECT
 public:
@@ -182,7 +128,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
 protected:
-    QVariant entryData(const friends::TAccountBadge& entry, int role) const override;
+    QVariant itemData(const friends::TAccountBadge& entry, int role) const override;
 };
 
 /// CIP (anonymous)::TAccountBadgesSortProxyModel: the badges filter
@@ -210,7 +156,7 @@ private:
 /// CIP (anonymous)::TVisibilitySettingsModel: FriendsConfigurationPage.qml rows.
 /// A group shows what it or "everyone" (group 0) may see; a group's switch is
 /// enabled while "everyone" does not already allow it.
-class TVisibilitySettingsModel final : public TSimpleVectorAbstractListModel<QAbstractListModel, friends::TVisibilitySetting>
+class TVisibilitySettingsModel final : public shared::TSimpleVectorAbstractListModel<friends::TVisibilitySetting, QAbstractListModel>
 {
     Q_OBJECT
 public:
@@ -229,7 +175,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
 protected:
-    QVariant entryData(const friends::TVisibilitySetting& entry, int role) const override;
+    QVariant itemData(const friends::TVisibilitySetting& entry, int role) const override;
 
 private:
     /// The "everyone" entry, or an empty one.
@@ -237,8 +183,7 @@ private:
 };
 
 /// CIP gamewindow::TAccountCharactersModel: the characters of a searched account.
-class TAccountCharactersModel final : public TSimpleVectorAbstractListModel<cip::tibia::gamewindow::TAccountCharactersModel,
-                                                                           friends::TAccountCharacterListEntry>
+class TAccountCharactersModel final : public shared::TSimpleVectorAbstractListModel<friends::TAccountCharacterListEntry, cip::tibia::gamewindow::TAccountCharactersModel>
 {
     Q_OBJECT
 public:
@@ -265,7 +210,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
 protected:
-    QVariant entryData(const friends::TAccountCharacterListEntry& entry, int role) const override;
+    QVariant itemData(const friends::TAccountCharacterListEntry& entry, int role) const override;
 };
 
 }

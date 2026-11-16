@@ -145,16 +145,8 @@ bool TUpgradeableObjectModel::lessThan(const QModelIndex& left, const QModelInde
     return leftType < rightType;
 }
 
-int TExaltationHistoryListModel::rowCount(const QModelIndex& parent) const
+QVariant TExaltationHistoryListModel::itemData(const THistoryEntry& entry, const int role) const
 {
-    return parent.isValid() ? 0 : static_cast<int>(m_entries.size());
-}
-
-QVariant TExaltationHistoryListModel::data(const QModelIndex& index, const int role) const
-{
-    if (!index.isValid() || index.row() >= rowCount())
-        return {};
-    const THistoryEntry& entry = m_entries[index.row()];
     switch (role) {
     case DateStringRole:
         // CIP TTextHelperQmlService::formatDateTime , with seconds.
@@ -177,13 +169,6 @@ QHash<int, QByteArray> TExaltationHistoryListModel::roleNames() const
     roles[ActionStringRole] = "actionString";
     roles[DetailsStringRole] = "detailsString";
     return roles;
-}
-
-void TExaltationHistoryListModel::setEntries(std::vector<THistoryEntry> entries)
-{
-    beginResetModel();
-    m_entries = std::move(entries);
-    endResetModel();
 }
 
 }
@@ -760,7 +745,7 @@ void TExaltationForgeHistoryPageController::showDialogTab()
 
 void TExaltationForgeHistoryPageController::hideDialogTab()
 {
-    m_history->setEntries({});
+    m_history->clear();
 }
 
 void TExaltationForgeHistoryPageController::requestPreviousPage()
@@ -778,7 +763,7 @@ void TExaltationForgeHistoryPageController::onHistoryChanged()
 {
     std::vector<exaltation::THistoryEntry> entries = m_storage->history();
     std::ranges::stable_sort(entries, std::greater<>{}, &exaltation::THistoryEntry::timestamp);
-    m_history->setEntries(std::move(entries));
+    m_history->setItems(entries);
     Q_EMIT historyChanged();
 }
 

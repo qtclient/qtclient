@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shared/simplevectorabstractlistmodel.h"
+
 #include "gamewindow/dialogmanager.h"
 #include "container/containerciptypes.h"
 #include "exaltation/exaltationstorage.h"
@@ -85,7 +87,7 @@ private:
 
 /// CIP: shared::TSimpleVectorAbstractListModel<THistoryEntry> (vtable
 /// , data).
-class TExaltationHistoryListModel final : public QAbstractListModel
+class TExaltationHistoryListModel final : public shared::TSimpleVectorAbstractListModel<THistoryEntry>
 {
     Q_OBJECT
 public:
@@ -96,16 +98,12 @@ public:
         DetailsStringRole,
     };
 
-    using QAbstractListModel::QAbstractListModel;
+    using TSimpleVectorAbstractListModel::TSimpleVectorAbstractListModel;
 
-    int rowCount(const QModelIndex& parent = {}) const override;
-    QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setEntries(std::vector<THistoryEntry> entries);
-
-private:
-    std::vector<THistoryEntry> m_entries;
+protected:
+    QVariant itemData(const THistoryEntry& entry, int role) const override;
 };
 
 }

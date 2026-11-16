@@ -4,6 +4,7 @@
 
 #include "shared/cip_typed.h"
 #include "shared/clockservice.h"
+#include "shared/coordinate.h"
 
 #include <cip_gen.h>
 
@@ -63,34 +64,6 @@ public:
     void onDownloadFinished(QUrl Url, QByteArray Data);
 };
 
-/// CIP `shared::TCoordinate` (pin layout 0x10 + z at +0x10 in v2 add).
-class TCoordinate final : public ::tibia::CipTyped
-{
-public:
-    int x = 0;
-    int y = 0;
-    int z = 0;
-
-    TCoordinate() = default;
-    TCoordinate(int x_, int y_, int z_ = 0)
-        : x(x_)
-        , y(y_)
-        , z(z_)
-    {
-    }
-
-    /// CIP `TCoordinate::v2` — component-wise add.
-    TCoordinate operator+(const TCoordinate& other) const
-    {
-        return TCoordinate(x + other.x, y + other.y, z + other.z);
-    }
-
-    bool operator==(const TCoordinate& other) const
-    {
-        return x == other.x && y == other.y && z == other.z;
-    }
-};
-
 /// CIP `shared::TExtent` (width/height/depth volume).
 class TExtent final : public ::tibia::CipTyped
 {
@@ -144,16 +117,6 @@ class THighlightTimer final : public cip::shared::THighlightTimer
     Q_OBJECT
 public:
     using cip::shared::THighlightTimer::THighlightTimer;
-};
-
-class TIODeviceReader final : public ::tibia::CipTyped {
-public:
-    TIODeviceReader() = default;
-};
-
-class TIODeviceWriter final : public ::tibia::CipTyped {
-public:
-    TIODeviceWriter() = default;
 };
 
 class TImagestripResponse final : public ::tibia::CipTyped {
@@ -262,14 +225,6 @@ public:
     static int blockSize();
     /// Encrypts one block in place; false when `size` is not blockSize().
     static bool encrypt(uint8_t* block, int size);
-};
-
-/// CIP `shared::TXteaHelper` — wraps game-wire XTEA (`decryptGameXtea1405`).
-class TXteaHelper final : public ::tibia::CipTyped
-{
-public:
-    TXteaHelper() = default;
-    static bool decryptInPlace(const std::array<uint32_t, 4>& key, QByteArray& body);
 };
 
 /// CIP `shared::TRandomNumberGenerator` (uniform int in [min,max]).
@@ -446,15 +401,6 @@ class TQtConnectionManager final : public ::tibia::CipTyped
 {
 public:
     TQtConnectionManager() = default;
-};
-
-/// CIP `shared::TSimpleVectorAbstractListModel<T>` primary template shell.
-/// Concrete QAbstractListModel instantiations live next to their feature models.
-template<typename T>
-class TSimpleVectorAbstractListModel : public ::tibia::CipTyped
-{
-public:
-    TSimpleVectorAbstractListModel() = default;
 };
 
 }

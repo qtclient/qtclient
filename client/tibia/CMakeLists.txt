@@ -285,6 +285,10 @@ if(TIBIA_WITH_GAMECORE)
     chat/chatgameactionhandler.cpp chat/chatgameactionhandler.h
     shared/sharedciptypes.cpp shared/sharedciptypes.h
     shared/clipboardhelper.cpp shared/clipboardhelper.h
+    shared/iodevicereader.cpp shared/iodevicereader.h
+    shared/iodevicewriter.cpp shared/iodevicewriter.h
+    shared/simplevectorabstractlistmodel.h
+    shared/xteahelper.cpp shared/xteahelper.h
     shared/downloadpool.cpp shared/downloadpool.h
     shared/rsahelper.cpp
     config/clientsettings.cpp config/clientsettings.h

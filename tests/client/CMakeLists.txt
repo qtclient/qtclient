@@ -93,3 +93,22 @@ qtclient_add_port_test(client_hotkeyoptions_tests
 )
 set_target_properties(client_hotkeyoptions_tests PROPERTIES AUTOMOC ON)
 target_link_libraries(client_hotkeyoptions_tests PRIVATE Qt6::Gui)
+
+# CIP shared::TIODeviceReader / TIODeviceWriter (QAbstractSocket check needs Network).
+find_package(Qt6 REQUIRED COMPONENTS Network)
+qtclient_add_port_test(client_iodevice_tests
+    iodevice_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicereader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicewriter.cpp
+)
+target_link_libraries(client_iodevice_tests PRIVATE Qt6::Network)
+qtclient_add_port_test(client_xteahelper_tests
+    xteahelper_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/xteahelper.cpp
+)
+qtclient_add_port_test(client_simplevectorabstractlistmodel_tests
+    simplevectorabstractlistmodel_test.cpp
+)
+qtclient_add_port_test(client_coordinate_tests
+    coordinate_test.cpp
+)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shared/simplevectorabstractlistmodel.h"
 #include "teamfinder/teamfinderciptypes.h"
 
 #include <cip_gen.h>
@@ -11,55 +12,8 @@
 
 namespace tibia {
 
-/// A list model over a vector of items. Rows are the items; `itemData` maps one item and role.
-template<typename Base, typename T>
-class TSimpleVectorListModel : public Base
-{
-public:
-    using Base::Base;
-
-    int rowCount(const QModelIndex& = {}) const override { return static_cast<int>(m_items.size()); }
-
-    QVariant data(const QModelIndex& index, const int role) const override
-    {
-        if (index.row() >= 0 && index.column() >= 0 && index.model() && index.row() < static_cast<int>(m_items.size()))
-            return itemData(m_items[static_cast<size_t>(index.row())], role);
-        return defaultData(role);
-    }
-
-    /// Replaces the items: rows are removed / inserted for the size difference, the rest reported changed.
-    virtual void setItems(const std::vector<T>& Items)
-    {
-        int count = rowCount();
-        const int newCount = static_cast<int>(Items.size());
-        if (newCount < count) {
-            this->beginRemoveRows({}, newCount, count - 1);
-            m_items = Items;
-            this->endRemoveRows();
-            count = newCount;
-        } else if (count < newCount) {
-            this->beginInsertRows({}, count, newCount - 1);
-            m_items = Items;
-            this->endInsertRows();
-        } else {
-            m_items = Items;
-        }
-        if (count > 0)
-            Q_EMIT this->dataChanged(this->index(0, 0), this->index(count - 1, 0));
-    }
-
-    void clear() { setItems({}); }
-    const std::vector<T>& items() const { return m_items; }
-
-protected:
-    virtual QVariant defaultData(int) const { return {}; }
-    virtual QVariant itemData(const T& Item, int Role) const = 0;
-
-    std::vector<T> m_items;
-};
-
 /// Assemble Team: the own team's members.
-class TTeamMembersModel final : public TSimpleVectorListModel<cip::TTeamMembersModel, teamfinder::TTeamMember>
+class TTeamMembersModel final : public shared::TSimpleVectorAbstractListModel<teamfinder::TTeamMember, cip::TTeamMembersModel>
 {
 public:
     enum Role
@@ -73,7 +27,7 @@ public:
         IsLeaderRole,
     };
 
-    using TSimpleVectorListModel::TSimpleVectorListModel;
+    using TSimpleVectorAbstractListModel::TSimpleVectorAbstractListModel;
 
     QHash<int, QByteArray> roleNames() const override;
     /// The own character's name: that member is the leader. Rows are refreshed when it changes.
@@ -99,7 +53,7 @@ struct TActivity
 };
 
 /// Assemble Team: the activities a team can be assembled for.
-class TActivitiesModel final : public TSimpleVectorListModel<cip::TActivitiesModel, TActivity>
+class TActivitiesModel final : public shared::TSimpleVectorAbstractListModel<TActivity, cip::TActivitiesModel>
 {
 public:
     enum Role
@@ -110,7 +64,7 @@ public:
         AliasRole,
     };
 
-    using TSimpleVectorListModel::TSimpleVectorListModel;
+    using TSimpleVectorAbstractListModel::TSimpleVectorAbstractListModel;
 
     QHash<int, QByteArray> roleNames() const override;
 
@@ -119,7 +73,7 @@ protected:
 };
 
 /// Join Team: the listed teams.
-class TTeamsListModel final : public TSimpleVectorListModel<cip::TTeamsListModel, teamfinder::TTeamData>
+class TTeamsListModel final : public shared::TSimpleVectorAbstractListModel<teamfinder::TTeamData, cip::TTeamsListModel>
 {
 public:
     enum Role
@@ -144,7 +98,7 @@ public:
         IsLeaderRole,
     };
 
-    using TSimpleVectorListModel::TSimpleVectorListModel;
+    using TSimpleVectorAbstractListModel::TSimpleVectorAbstractListModel;
 
     QHash<int, QByteArray> roleNames() const override;
     /// The own character's name: a team it leads reports isLeader. Rows are refreshed when it changes.
