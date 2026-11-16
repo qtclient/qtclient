@@ -60,6 +60,12 @@ QJsonObject hostSettingsDefaults()
             defaults.insert(group.key(), merged);
         }
     };
+    // The in-tree default mod (compiled in) gives the lowest-priority defaults.
+    {
+        QFile file(QStringLiteral(":/mods/default/mod.json"));
+        if (file.open(QIODevice::ReadOnly))
+            merge(QJsonDocument::fromJson(file.readAll()).object().value(QStringLiteral("launchersettings")).toObject());
+    }
     if (!QCoreApplication::arguments().contains(QStringLiteral("--no-mods"))) {
         QString modsRoot = qEnvironmentVariable("QTCLIENT_MODS_DIR");
         if (modsRoot.isEmpty())
@@ -181,6 +187,11 @@ QUrl TLauncherFilesystemHelper::launcherConfigurationUrl() const
 QUrl TLauncherFilesystemHelper::cdnDiagnosticsTraceUrl() const
 {
     return QUrl(m_settings->stringValue(kGroupUrls, QStringLiteral("cdnDiagnosticsTrace")));
+}
+
+QUrl TLauncherFilesystemHelper::systemSurveyUrl() const
+{
+    return QUrl(m_settings->stringValue(kGroupUrls, QStringLiteral("systemSurvey")));
 }
 
 bool TLauncherFilesystemHelper::appendNocacheToPackageUrls() const

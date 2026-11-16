@@ -57,6 +57,10 @@ public:
     QUrl launcherConfigurationUrl() const;
     QUrl cdnDiagnosticsTraceUrl() const;
     bool appendNocacheToPackageUrls() const;
+    /// Host: where the system survey is posted. CipSoft takes the tip's
+    /// "hardwaresurvey" url; qtclient takes it from mod configuration so no
+    /// CipSoft url is contacted (empty: no survey).
+    QUrl systemSurveyUrl() const;
     /// Host: origin of the product CDN bundle (QTCLIENT_CDN_URL, else the pack brand's); empty for stock.
     static QString cdnBase();
     /// Host: `latest/release.json` of the product CDN (login revision); empty for stock.

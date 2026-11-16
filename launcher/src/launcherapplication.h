@@ -13,6 +13,10 @@
 class QNetworkAccessManager;
 class QSplashScreen;
 
+namespace systemsurvey {
+class TSystemSurveyUploader;
+}
+
 namespace tibia::shared {
 class TDownloadPool;
 }
@@ -58,6 +62,8 @@ public:
 
 private:
     void onMainConfigurationLoaded();
+    /// Creates the survey uploader for the survey url and posts this machine's survey.
+    void startSystemSurvey();
     void onMainConfigurationDownloadFailed();
     void onDiskAccessFailed(const QString& errorMessage);
     void onPackageConfigurationDownloadsFinished();
@@ -84,6 +90,7 @@ private:
     std::unique_ptr<TLauncherSelfUpdater> m_selfUpdater;
     std::unique_ptr<TInstallationManager> m_installationManager;
     std::unique_ptr<TLauncherMainWindow> m_mainWindow;
+    std::unique_ptr<systemsurvey::TSystemSurveyUploader> m_systemSurveyUploader;
     std::unique_ptr<QSplashScreen> m_splash;
     std::unique_ptr<TApplicationLock> m_lock;
     QCommandLineParser m_parser;

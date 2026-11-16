@@ -10,6 +10,12 @@
 #include "launchermainwindow.h"
 #include "launcherselfupdater.h"
 #include "package.h"
+#include "systemsurvey/systemsurveyasjsondocumentcreator.h"
+#include "systemsurvey/systemsurveycreator.h"
+#include "systemsurvey/systemsurveytojsonconverter.h"
+#include "systemsurvey/systemsurveyuploader.h"
+#include "systemsurvey/systemsurveyvalueretriever.h"
+#include "jsondocumenthttppostsender.h"
 
 #include <QDateTime>
 #include <QDebug>
@@ -183,8 +189,24 @@ void TLauncherApplication::start()
     m_configurationHandler->downloadMainConfiguration();
 }
 
+void TLauncherApplication::startSystemSurvey()
+{
+    // Host: the url comes from mod configuration, not the tip's "hardwaresurvey".
+    const QUrl url = m_filesystemHelper->systemSurveyUrl();
+    if (!url.isValid())
+        return;
+    auto creator = std::make_shared<systemsurvey::TSystemSurveyCreator>(
+        std::make_shared<systemsurvey::TSystemSurveyValueRetriever>());
+    auto documentCreator = std::make_shared<systemsurvey::TSystemSurveyAsJsonDocumentCreator>(
+        creator, std::make_shared<systemsurvey::TSystemSurveyToJsonConverter>());
+    m_systemSurveyUploader = std::make_unique<systemsurvey::TSystemSurveyUploader>(
+        url, documentCreator, std::make_shared<tibia::shared::TJsonDocumentHttpPostSender>());
+    m_systemSurveyUploader->uploadSystemSurvey();
+}
+
 void TLauncherApplication::onMainConfigurationLoaded()
 {
+    startSystemSurvey();
     m_configurationHandler->downloadPackageConfigurations(true);
     TLauncherFilesystemHelper::linkLauncherIntoDataDirectory();
 }

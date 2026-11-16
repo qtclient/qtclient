@@ -43,6 +43,12 @@ else()
     package.cpp package.h
     packagefiledownloader.cpp packagefiledownloader.h
     packageinstallation.cpp packageinstallation.h
+    systemsurvey/systemsurvey.h
+    systemsurvey/systemsurveyasjsondocumentcreator.cpp systemsurvey/systemsurveyasjsondocumentcreator.h
+    systemsurvey/systemsurveycreator.cpp systemsurvey/systemsurveycreator.h
+    systemsurvey/systemsurveytojsonconverter.cpp systemsurvey/systemsurveytojsonconverter.h
+    systemsurvey/systemsurveyuploader.cpp systemsurvey/systemsurveyuploader.h
+    systemsurvey/systemsurveyvalueretriever.cpp systemsurvey/systemsurveyvalueretriever.h
     unpack.cpp unpack.h)
 endif()
 
@@ -79,6 +85,13 @@ if(EXISTS "${_hints_json}")
   list(APPEND _launcher_resources "${_hints_json}")
 endif()
 
+# In-tree default mod: lowest-priority launcher settings (no CipSoft urls by default).
+set(_default_mod_json "${TIBIA_ROOT}/client/mods/myaac/mod.json")
+if(EXISTS "${_default_mod_json}")
+  set_source_files_properties("${_default_mod_json}" PROPERTIES QT_RESOURCE_ALIAS "mods/default/mod.json")
+  list(APPEND _launcher_resources "${_default_mod_json}")
+endif()
+
 if(_launcher_resources)
   qt_add_resources(launcher launcher_assets PREFIX "/" FILES ${_launcher_resources})
 endif()
@@ -86,10 +99,15 @@ endif()
 target_include_directories(launcher PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/wasm"
+  "${CMAKE_CURRENT_SOURCE_DIR}/systemsurvey"
   "${TIBIA_ROOT}/shared/src/lzma"
   "${TIBIA_ROOT}/client/tibia"
   "${TIBIA_ROOT}/shared/src")
 target_link_libraries(launcher PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent qtclient_shared)
+if(APPLE AND NOT EMSCRIPTEN)
+  # System survey: screen modes (CoreGraphics).
+  target_link_libraries(launcher PRIVATE "-framework ApplicationServices")
+endif()
 # QStringLiteral(TIBIA_LAUNCHER_VERSION) in main.cpp / window.cpp (wasm + desktop).
 set(_launcher_version "dev")
 execute_process(
