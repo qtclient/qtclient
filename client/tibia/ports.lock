@@ -5839,6 +5839,7 @@ sub_6ca624c7a997	6ca624c7a997efe1	inlined	analysers/gainwastestorage.cpp:TGainWa
 sub_6cae591ece4c	6cae591ece4ce9e3	ported	analysers/impactwidgets.cpp:TDamageInputWidgetController::detailedDamageSource
 sub_6cd2509ca3f6#2	6cd2509ca3f645a3	inlined	protocol::TProtobufServerMessageTranslator::v138
 sub_6cf485aa46cd	6cf485aa46cd43d3	ported	gamewindow/containercontroller.cpp:TContainerController::manualSortModeActive
+sub_6d14433cf2cc	6d14433cf2cc7f5b	ported	gamewindow/minimapcontroller.cpp:TMinimapController::onMinimapClick
 sub_6d4ec25951b3#2	6d4ec25951b382bc	inlined	protocol::TProtobufServerMessageTranslator::v182
 sub_6d5168638a50#2	6d5168638a50dc81	skip	QList template instantiation (reserve/insert/detach)
 sub_6d574324c613#10	6d574324c6133c14	inlined	protocol::TProtobufServerMessageTranslator::v124
