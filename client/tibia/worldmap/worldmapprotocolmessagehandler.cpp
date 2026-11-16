@@ -32,12 +32,6 @@ Position positionOf(const ProtocolCoordinate& c)
     return Position(static_cast<int32_t>(c.x()), static_cast<int32_t>(c.y()), static_cast<uint8_t>(c.z()));
 }
 
-template<typename Message>
-const Message* extension(const GameserverMessage& shadow, const auto& id)
-{
-    return shadow.HasExtension(id) ? &shadow.GetExtension(id) : nullptr;
-}
-
 } // namespace
 
 TWorldmapProtocolMessageHandler* TWorldmapProtocolMessageHandler::liveInstance()
@@ -323,74 +317,12 @@ void TWorldmapProtocolMessageHandler::handleAmbientLightMessage(const Gameserver
     }
 }
 
-void TWorldmapProtocolMessageHandler::onServerMessageEnqueued(int opcode)
+void TWorldmapProtocolMessageHandler::handleTibiaTimeMessage(const GameserverMessageTibiaTime& TibiaTimeMessage)
 {
-    // A new session (LoginSuccess) waits for its first full map again.
-    if (opcode == 23)
-        m_mapKnown = false;
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 100:
-        if (const auto* m = extension<GameserverMessageFullMap>(*shadow, GameserverMessageFullMap::gameserver_message_full_map))
-            handleFullMapMessage(*m);
-        break;
-    case 101:
-        if (const auto* m = extension<GameserverMessageTopRow>(*shadow, GameserverMessageTopRow::gameserver_message_top_row))
-            handleTopRowMessage(*m);
-        break;
-    case 102:
-        if (const auto* m = extension<GameserverMessageRightColumn>(*shadow, GameserverMessageRightColumn::gameserver_message_right_column))
-            handleRightColumnMessage(*m);
-        break;
-    case 103:
-        if (const auto* m = extension<GameserverMessageBottomRow>(*shadow, GameserverMessageBottomRow::gameserver_message_bottom_row))
-            handleBottomRowMessage(*m);
-        break;
-    case 104:
-        if (const auto* m = extension<GameserverMessageLeftColumn>(*shadow, GameserverMessageLeftColumn::gameserver_message_left_column))
-            handleLeftColumnMessage(*m);
-        break;
-    case 105:
-        if (const auto* m = extension<GameserverMessageFieldData>(*shadow, GameserverMessageFieldData::gameserver_message_field_data))
-            handleFieldDataMessage(*m);
-        break;
-    case 106:
-        if (const auto* m = extension<GameserverMessageCreateOnMap>(*shadow, GameserverMessageCreateOnMap::gameserver_message_create_on_map))
-            handleCreateOnMapMessage(*m);
-        break;
-    case 107:
-        if (const auto* m = extension<GameserverMessageChangeOnMap>(*shadow, GameserverMessageChangeOnMap::gameserver_message_change_on_map))
-            handleChangeOnMapMessage(*m);
-        break;
-    case 108:
-        if (const auto* m = extension<GameserverMessageDeleteOnMap>(*shadow, GameserverMessageDeleteOnMap::gameserver_message_delete_on_map))
-            handleDeleteOnMapMessage(*m);
-        break;
-    case 130:
-        if (const auto* m = extension<GameserverMessageAmbientLight>(*shadow, GameserverMessageAmbientLight::gameserver_message_ambient_light))
-            handleAmbientLightMessage(*m);
-        break;
-    case 190:
-        if (const auto* m = extension<GameserverMessageTopFloor>(*shadow, GameserverMessageTopFloor::gameserver_message_top_floor))
-            handleTopFloorMessage(*m);
-        break;
-    case 191:
-        if (const auto* m = extension<GameserverMessageBottomFloor>(*shadow, GameserverMessageBottomFloor::gameserver_message_bottom_floor))
-            handleBottomFloorMessage(*m);
-        break;
-    case 239:
-        if (const auto* m = extension<GameserverMessageTibiaTime>(*shadow, GameserverMessageTibiaTime::gameserver_message_tibia_time)) {
-            const auto hour = static_cast<uint8_t>(m->hour());
-            const auto minute = static_cast<uint8_t>(m->minute());
-            tibia::world::setWorldTime(hour, minute);
-            tibia::game::notify("onChangeWorldTime", hour, minute);
-        }
-        break;
-    default:
-        break;
-    }
+    const auto hour = static_cast<uint8_t>(TibiaTimeMessage.hour());
+    const auto minute = static_cast<uint8_t>(TibiaTimeMessage.minute());
+    tibia::world::setWorldTime(hour, minute);
+    tibia::game::notify("onChangeWorldTime", hour, minute);
 }
 
 TWorldmapProtocolMessageHandler::TWorldmapProtocolMessageHandler(TWorldMapStorage* storage, QObject* parent)

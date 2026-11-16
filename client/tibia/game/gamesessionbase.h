@@ -26,6 +26,9 @@ class TOutfitDialogStorage;
 class TPlayerData;
 class TPlayerSkillStats;
 }
+namespace protocol {
+class TProtocolMessageQueue;
+}
 namespace questlog {
 class TQuestLogStorage;
 }
@@ -110,6 +113,8 @@ private:
     /// CIP: the protocol message handlers that fill them.
     void createProtocolMessageHandlers();
     void install(bool installed);
+    /// CIP: connects the session's message queue to its handlers' typed slots.
+    void connectProtocolMessageHandlers(protocol::TProtocolMessageQueue* queue);
     void releaseStorages();
 
     bool m_worldInitialized = false;

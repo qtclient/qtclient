@@ -99,16 +99,4 @@ void TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage(const Gam
                                       positionOf(message.coordinate()));
 }
 
-void TEffectProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
-        return;
-    if (opcode == 131 && shadow->HasExtension(GameserverMessageGraphicalEffects::gameserver_message_graphical_effects))
-        handleGraphicalEffectsMessage(shadow->GetExtension(GameserverMessageGraphicalEffects::gameserver_message_graphical_effects));
-    else if (opcode == 132 && shadow->HasExtension(GameserverMessageRemoveGraphicalEffect::gameserver_message_remove_graphical_effect))
-        handleRemoveGraphicalEffectMessage(
-            shadow->GetExtension(GameserverMessageRemoveGraphicalEffect::gameserver_message_remove_graphical_effect));
-}
-
 }

@@ -25,6 +25,7 @@ class GameserverMessageFieldData;
 class GameserverMessageFullMap;
 class GameserverMessageLeftColumn;
 class GameserverMessageRightColumn;
+class GameserverMessageTibiaTime;
 class GameserverMessageTopFloor;
 class GameserverMessageTopRow;
 class ProtocolMapField;
@@ -89,9 +90,11 @@ public:
     /// CIP slot: AmbientLight (S 0x82 / 130) — native Q→H apply (skips classic bridge).
     void handleAmbientLightMessage(
         const ::tibia::protobuf::protocol::GameserverMessageAmbientLight& AmbientLightMessage);
-
-    /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode);
+    /// The world's time of day.
+    void handleTibiaTimeMessage(const ::tibia::protobuf::protocol::GameserverMessageTibiaTime& TibiaTimeMessage);
+    /// Host: the live session outlives a logout, so a new login waits for its
+    /// first full map again.
+    void restartSession() { m_mapKnown = false; }
 
 Q_SIGNALS:
     void publishGameAction();

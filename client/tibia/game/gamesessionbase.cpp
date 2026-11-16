@@ -2,6 +2,9 @@
 
 #include "game/tgamenotify.h"
 #include "protocol/protocolciptypes.h"
+#include "protocol/protocolmessagequeue.h"
+
+#include <protocol.pb.h>
 
 #include "chat/textstorage.h"
 #include "container/containerciptypes.h"
@@ -122,14 +125,41 @@ void TGameSessionBase::install(const bool installed)
         disconnect(connection);
     m_queueConnections.clear();
     protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue();
-    if (!installed || !queue)
-        return;
-    m_queueConnections.push_back(connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued,
-                                         m_worldmapProtocolMessageHandler.get(),
-                                         &worldmap::TWorldmapProtocolMessageHandler::onServerMessageEnqueued));
-    m_queueConnections.push_back(connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued,
-                                         m_effectProtocolMessageHandler.get(),
-                                         &effects::TEffectProtocolMessageHandler::onServerMessageEnqueued));
+    if (installed && queue)
+        connectProtocolMessageHandlers(queue);
+}
+
+void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessageQueue* queue)
+{
+    using Queue = protocol::TProtocolMessageQueue;
+    const auto link = [this, queue](auto signal, const auto* receiver, auto slot) {
+        m_queueConnections.push_back(connect(queue, signal, receiver, slot));
+    };
+
+    auto* effects = m_effectProtocolMessageHandler.get();
+    link(&Queue::receivedGraphicalEffectsMessage, effects, &effects::TEffectProtocolMessageHandler::handleGraphicalEffectsMessage);
+    link(&Queue::receivedRemoveGraphicalEffectMessage, effects,
+         &effects::TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage);
+
+    using worldmap::TWorldmapProtocolMessageHandler;
+    auto* worldmap = m_worldmapProtocolMessageHandler.get();
+    link(&Queue::receivedCreateOnMapMessage, worldmap, &TWorldmapProtocolMessageHandler::handleCreateOnMapMessage);
+    link(&Queue::receivedChangeOnMapMessage, worldmap, &TWorldmapProtocolMessageHandler::handleChangeOnMapMessage);
+    link(&Queue::receivedDeleteOnMapMessage, worldmap, &TWorldmapProtocolMessageHandler::handleDeleteOnMapMessage);
+    link(&Queue::receivedFullMapMessage, worldmap, &TWorldmapProtocolMessageHandler::handleFullMapMessage);
+    link(&Queue::receivedLeftColumnMessage, worldmap, &TWorldmapProtocolMessageHandler::handleLeftColumnMessage);
+    link(&Queue::receivedRightColumnMessage, worldmap, &TWorldmapProtocolMessageHandler::handleRightColumnMessage);
+    link(&Queue::receivedTopRowMessage, worldmap, &TWorldmapProtocolMessageHandler::handleTopRowMessage);
+    link(&Queue::receivedBottomRowMessage, worldmap, &TWorldmapProtocolMessageHandler::handleBottomRowMessage);
+    link(&Queue::receivedTopFloorMessage, worldmap, &TWorldmapProtocolMessageHandler::handleTopFloorMessage);
+    link(&Queue::receivedBottomFloorMessage, worldmap, &TWorldmapProtocolMessageHandler::handleBottomFloorMessage);
+    link(&Queue::receivedFieldDataMessage, worldmap, &TWorldmapProtocolMessageHandler::handleFieldDataMessage);
+    link(&Queue::receivedAmbientLightMessage, worldmap, &TWorldmapProtocolMessageHandler::handleAmbientLightMessage);
+    link(&Queue::receivedTibiaTimeMessage, worldmap, &TWorldmapProtocolMessageHandler::handleTibiaTimeMessage);
+
+    // Host: the live session is reused across logins (CIP builds a new one).
+    m_queueConnections.push_back(connect(queue, &Queue::receivedLoginSuccessMessage, worldmap,
+                                         [worldmap] { worldmap->restartSession(); }));
 }
 
 void TGameSessionBase::releaseStorages()
