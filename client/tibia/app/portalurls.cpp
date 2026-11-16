@@ -2,7 +2,9 @@
 
 #include "input/gameaction.h"
 
+#include <QCoreApplication>
 #include <QDesktopServices>
+#include <QObject>
 #include <QUrlQuery>
 
 namespace tibia::app {
@@ -139,7 +141,8 @@ QUrl PortalUrls::urlFor(const LauncherEnv& env, const A action)
     case A::OPEN_URL_SURVEY: {
         if (const QUrl o = tryOverride("QTCLIENT_URL_SURVEY"); !o.isEmpty())
             return o;
-        return withPath(env.loginBase, QStringLiteral("/survey"));
+        // CIP limesurveyUrl: the survey id and `/lang-en?token=` are appended.
+        return withPath(env.loginBase, QStringLiteral("/index.php/survey/index/sid/"));
     }
     case A::OPEN_URL_TWITCH_TIBIA: {
         if (const QUrl o = tryOverride("QTCLIENT_URL_TWITCH"); !o.isEmpty())
@@ -177,6 +180,83 @@ QUrl PortalUrls::clientServicesUrl(const QUrl& loginBase, const QString& clientS
     return url;
 }
 
+namespace {
+
+LauncherEnv& activeEnv()
+{
+    static LauncherEnv env;
+    return env;
+}
+
+/// Base origin + path prefix of `base`, then the CIP path/query/fragment.
+QUrl rebase(const QUrl& base, const QUrl& cip, bool keepPath = true)
+{
+    if (base.isEmpty())
+        return cip;
+    QUrl out = base;
+    QString prefix = base.path();
+    while (prefix.endsWith(QLatin1Char('/')))
+        prefix.chop(1);
+    out.setPath(keepPath ? prefix + (cip.path().isEmpty() ? QStringLiteral("/") : cip.path())
+                         : prefix + QStringLiteral("/"));
+    out.setQuery(keepPath ? cip.query() : QString());
+    out.setFragment(keepPath ? cip.fragment() : QString());
+    return out;
+}
+
+class CipUrlHandler final : public QObject
+{
+    Q_OBJECT
+public:
+    using QObject::QObject;
+
+public Q_SLOTS:
+    void open(const QUrl& url)
+    {
+        const QUrl mapped = PortalUrls::mapCipUrl(url);
+        // Hand the final URL to the platform without re-entering this handler.
+        const QString scheme = mapped.scheme();
+        const bool ours = scheme == QLatin1String("http") || scheme == QLatin1String("https");
+        if (ours)
+            QDesktopServices::unsetUrlHandler(scheme);
+        QDesktopServices::openUrl(mapped);
+        if (ours)
+            QDesktopServices::setUrlHandler(scheme, this, "open");
+    }
+};
+
+}
+
+QUrl PortalUrls::mapCipUrl(const LauncherEnv& env, const QUrl& url)
+{
+    const QString host = url.host().toLower();
+    if (host == QLatin1String("www.tibia.com") || host == QLatin1String("tibia.com")
+        || host == QLatin1String("qt.tibia.com"))
+        return rebase(env.loginBase, url);
+    if (host == QLatin1String("static.tibia.com"))
+        return rebase(env.assetBase, url);
+    if (host == QLatin1String("payments.cipsoft.com"))
+        return rebase(env.paymentsBase.isEmpty() ? env.loginBase : env.paymentsBase, url);
+    if (host == QLatin1String("limesurvey.cipsoft.com"))
+        return rebase(env.loginBase, url);
+    if (host == QLatin1String("www.cipsoft.com") || host == QLatin1String("cipsoft.com"))
+        return rebase(env.loginBase, url, false);
+    return url;
+}
+
+QUrl PortalUrls::mapCipUrl(const QUrl& url)
+{
+    return mapCipUrl(activeEnv(), url);
+}
+
+void PortalUrls::installCipUrlHandler(const LauncherEnv& env)
+{
+    activeEnv() = env;
+    static CipUrlHandler* handler = new CipUrlHandler(QCoreApplication::instance());
+    QDesktopServices::setUrlHandler(QStringLiteral("http"), handler, "open");
+    QDesktopServices::setUrlHandler(QStringLiteral("https"), handler, "open");
+}
+
 void PortalUrls::open(const QUrl& url)
 {
     if (url.isEmpty() || !url.isValid())
@@ -185,3 +265,5 @@ void PortalUrls::open(const QUrl& url)
 }
 
 }
+
+#include "portalurls.moc"

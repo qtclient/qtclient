@@ -150,6 +150,7 @@ TSkillWheelPageController::TSkillWheelPageController(TSkillWheelStorage* storage
     , m_message(new TMessageDialogController(this))
     , m_export(new TMessageDialogController(this))
     , m_info(new TMessageDialogController(this))
+    // CIP literal; app::PortalUrls::installCipUrlHandler maps www.tibia.com to the portal.
     , m_plannerUrl(QStringLiteral("https://www.tibia.com/community/?subtopic=wheelofdestinyplanner&code="))
 {
     m_smallPerkSummaryModel = m_small;
