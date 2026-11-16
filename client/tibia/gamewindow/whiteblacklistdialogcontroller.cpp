@@ -11,12 +11,18 @@ namespace {
 
 using QmlEntry = TWhiteBlacklistQmlEntry;
 
+/// The name a new entry starts with; OK drops entries still carrying it.
+const QString NewEntryName = QStringLiteral("new entry");
+
 }
 
 TWhiteBlacklistDialogController::TWhiteBlacklistDialogController(chat::TWhiteBlacklist& lists, QObject* parent)
     : TDialogController(QStringLiteral("WhiteBlacklistDialog.qml"), parent)
     , m_lists(lists)
-{}
+{
+    m_blacklistActive = true;
+    m_whitelistActive = true;
+}
 
 TWhiteBlacklistDialogController::~TWhiteBlacklistDialogController()
 {
@@ -55,6 +61,7 @@ void TWhiteBlacklistDialogController::addEntry(Entries& entries)
     for (QObject* object : entries)
         static_cast<QmlEntry*>(object)->setEditmodeEnabled(false);
     auto* item = new QmlEntry;
+    item->setName(NewEntryName);
     item->setEditmodeEnabled(true);
     entries.append(item);
 }
@@ -109,7 +116,7 @@ void TWhiteBlacklistDialogController::onOkClicked()
         chat::TWhiteBlacklist::Entries result;
         for (QObject* object : entries) {
             const auto* item = static_cast<const QmlEntry*>(object);
-            if (!item->name().isEmpty())
+            if (item->name() != NewEntryName && !item->name().isEmpty())
                 result.push_back({ item->name(), item->permanently() });
         }
         return result;

@@ -1134,6 +1134,12 @@ game::TStatusbarStorage::v13	3574f6398067cbb8	ported	game/statusbarstorage.cpp:T
 game::TStatusbarStorage::v14	f4b71b8a78f0d076	ported	game/statusbarstorage.cpp:TStatusbarStorage::fromJson
 game::TStatusbarStorage::~TStatusbarStorage	4a00f6b18d7ba357	skip	compiler-generated destructor pair
 game::TStatusbarStorage::~TStatusbarStorage_deleting	ca1ae45f16270212	skip	compiler-generated destructor pair
+gamewindow::TAboutDialogController::requestClose	1dac087c02348019	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::tibiaVersion
+gamewindow::TAboutDialogController::requestOpenWebsite	adbb013336045e66	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::copyrightPeriod
+gamewindow::TAboutDialogController::requestShowLicensesDialog	ef5408aa5f178611	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::requestShowLicensesDialog
+gamewindow::TAboutDialogController::showDialog	6862797a3f9dcbfc	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::operatingSystemName
+gamewindow::TAboutDialogController::~TAboutDialogController	ecf0cb5883ee6595	skip	compiler-generated destructor pair
+gamewindow::TAboutDialogController::~TAboutDialogController_deleting	b07e18a8f2a2d2a3	skip	compiler-generated destructor pair
 gamewindow::TAccountBadgesModel::v44	9c3c7eba24a1ef8f	ported	gamewindow/characterinfomodels.cpp:TAccountBadgesModel::roleNames
 gamewindow::TAccountBadgesModel::v53	15cc541bd3bd7894	ported	gamewindow/characterinfomodels.cpp:TAccountBadgesModel::data
 gamewindow::TAccountBadgesModel::~TAccountBadgesModel	7c93c6054bd2886d	skip	compiler-generated destructor pair
@@ -1220,6 +1226,13 @@ gamewindow::TBattleListDataModelSortFilterProxy::filterAcceptsRow	a482a4d7ecb7fa
 gamewindow::TBattleListDataModelSortFilterProxy::lessThan	8a0f82bf84625a28	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::lessThan
 gamewindow::TBattleListDataModelSortFilterProxy::~TBattleListDataModelSortFilterProxy	251ffc7e5113a993	skip	compiler-generated destructor pair
 gamewindow::TBattleListDataModelSortFilterProxy::~TBattleListDataModelSortFilterProxy_deleting	7191719c1605f135	skip	compiler-generated destructor pair
+gamewindow::TBlessingsDialogController::onPremiumStatusChanged	07e4f3380d0dfaeb	ported	gamewindow/blessingsdialogcontroller.cpp:TBlessingsDialogController::onPremiumStatusChanged
+gamewindow::TBlessingsDialogController::requestClose	21e4e90e3f186cdf	ported	gamewindow/blessingsdialogcontroller.cpp:TBlessingsDialogController::requestClose
+gamewindow::TBlessingsDialogController::requestOpenStoreWithBlessingOffer	82206dfee0285557	ported	gamewindow/blessingsdialogcontroller.cpp:TBlessingsDialogController::requestOpenStoreWithBlessingOffer
+gamewindow::TBlessingsDialogController::requestOpenStoreWithPremiumCategory	88c5a608098f0d84	ported	gamewindow/blessingsdialogcontroller.cpp:TBlessingsDialogController::requestOpenStoreWithPremiumCategory
+gamewindow::TBlessingsDialogController::v14	dcdb890fb18b928a	ported	gamewindow/blessingsdialogcontroller.cpp:TBlessingsDialogController::closeDialog
+gamewindow::TBlessingsDialogController::~TBlessingsDialogController	ae9848cd4b602343	skip	compiler-generated destructor pair
+gamewindow::TBlessingsDialogController::~TBlessingsDialogController_deleting	0d7ac0943104c570	skip	compiler-generated destructor pair
 gamewindow::TBossDifficultySelectionDialogController::onCancelClicked	761afefe77e225b2	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::onCancelClicked
 gamewindow::TBossDifficultySelectionDialogController::onStartClicked	93c337631de083f3	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::onStartClicked
 gamewindow::TBossDifficultySelectionDialogController::setSelectedDifficulty	39115d083bf7a2bf	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::setSelectedDifficulty
@@ -1310,8 +1323,10 @@ gamewindow::TChatChannelController::~TChatChannelController	097457dc45e86dd8	ski
 gamewindow::TChatChannelController::~TChatChannelController_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 gamewindow::TChatController::exivaOptionsAvailableChanged	ed71ce1ad0c4556c	ported	gamewindow/chatcontroller.h:TChatController::chatMode
 gamewindow::TChatController::exivaSuppressedFlashChanged	bbc5bb91fe9e044a	ported	gamewindow/chatcontroller.cpp:TChatController::exivaOptionsAvailable
+gamewindow::TChatController::handleGameAction	3806cba323d4c327	ported	gamewindow/chatcontroller.cpp:TChatController::handleAction
 gamewindow::TChatController::onExivaSuppressed	ec076d0e32b686a3	ported	gamewindow/chatcontroller.cpp:TChatController::onExivaSuppressed
 gamewindow::TChatController::onMessageFiltered	490ab2df68e99732	ported	gamewindow/chatcontroller.cpp:TChatController::onMessageFiltered
+gamewindow::TChatController::openChannelsFromConfig	2fab38ef53ea2bc5	ported	gamewindow/chatcontroller.cpp:TChatController::openChannelsFromConfig
 gamewindow::TChatController::publishGameAction	792eb1e0e0462928	ported	gamewindow/chatcontroller.h:TChatController::messageIgnoredFlash
 gamewindow::TChatController::sendChatMessage	56e76e2bded012a7	ported	gamewindow/chatcontroller.cpp:TChatController::sendChatMessage
 gamewindow::TChatController::sendKeyword	666f29b69a034f8f	ported	gamewindow/chatcontroller.cpp:TChatController::sendKeyword
@@ -1324,7 +1339,9 @@ gamewindow::TContainerController::onSlotClicked	f2f5941c114cc09e	ported	gamewind
 gamewindow::TContainerController::onSlotEntered	fa5253dfd1293148	ported	gamewindow/containercontroller.cpp:TContainerController::onSlotEntered
 gamewindow::TContainerController::onSlotExited	bc8c42d2f5b164fc	ported	gamewindow/containercontroller.cpp:TContainerController::onSlotExited
 gamewindow::TContainerController::onSlotStartDrag	65dc9ee1605ddea9	ported	gamewindow/containercontroller.cpp:TContainerController::onSlotStartDrag
+gamewindow::TContainerController::onWidgetOptionsChanged	4cfee0770eb8ff95	skip	moc property getter, provided by the generated cip base
 gamewindow::TContainerController::removeThisContainersOptions	e4b4f2cf0f1b903b	ported	gamewindow/containercontroller.cpp:TContainerController::removeThisContainersOptions
+gamewindow::TContainerController::saveWidgetOptions	1bf41e131201b161	skip	moc property getter, provided by the generated cip base
 gamewindow::TContainerController::showSplitStackDialog	4cb330860c24e6e3	ported	gamewindow/containercontroller.cpp:TContainerController::appearanceTypeListModel
 gamewindow::TContainerController::v31	ae393ea6a06a01e2	ported	gamewindow/containercontroller.cpp:TContainerController::onCloseClicked
 gamewindow::TContainerController::v32	3558dffca0cb73c3	ported	gamewindow/containercontroller.cpp:TContainerController::onRequestClose
@@ -1381,11 +1398,38 @@ gamewindow::TCyclopediaDialogController::v26	f6bb1b15431d97c9	ported	gamewindow/
 gamewindow::TCyclopediaDialogController::v27	a5ef31c68c4090fc	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::captureNavigationBacklogContextIfNeedAndShowDialog
 gamewindow::TDeathQmlData::~TDeathQmlData	96ad80a74675f243	skip	compiler-generated destructor pair
 gamewindow::TDeathQmlData::~TDeathQmlData_deleting	01ec7be7f977607f	skip	compiler-generated destructor pair
+gamewindow::TDialogControllerBase::v12	3151156c158f2c70	ported	gamewindow/dialogmanager.cpp:TDialog::show
+gamewindow::TDialogControllerBase::v13	f6b4fc52092e8626	ported	gamewindow/dialogmanager.cpp:TDialog::hide
+gamewindow::TDialogControllerBase::v14	0762b4bbae517a63	ported	gamewindow/dialogmanager.cpp:TDialog::close
+gamewindow::TDialogControllerBase::v15	af816421e5236639	ported	gamewindow/dialogmanager.cpp:TDialog::setMouseShieldVisible
+gamewindow::TDialogControllerBase::v16	4d59289f2e37e2af	ported	gamewindow/dialogmanager.cpp:TDialog::isInStack
+gamewindow::TDialogControllerBase::v17	f105d88d657432bb	ported	gamewindow/dialogmanager.cpp:TDialog::isShown
+gamewindow::TDialogControllerBase::v18	bcccd51b8b153f85	ported	gamewindow/dialogmanager.h:TDialogHooks::hasPersonalMouseShield
+gamewindow::TDialogControllerBase::v19	75584fbcbc5c82de	ported	gamewindow/dialogmanager.cpp:TDialog::create
+gamewindow::TDialogControllerBase::v20	a07b00024c37589b	ported	gamewindow/dialogmanager.cpp:TDialog::destroy
+gamewindow::TDialogControllerBase::v21	578bf4217c7a5845	ported	gamewindow/dialogmanager.h:TDialogController::initialDialogProperties
+gamewindow::TDialogControllerBase::v22	872d4faac408f6d5	ported	gamewindow/dialogmanager.h:TDialogHooks::beforeShow
+gamewindow::TDialogControllerBase::v23	872d4faac408f6d5	ported	gamewindow/dialogmanager.h:TDialogHooks::beforeHide
+gamewindow::TDialogControllerBase::v24	872d4faac408f6d5	ported	gamewindow/dialogmanager.h:TDialogHooks::afterShow
+gamewindow::TDialogControllerBase::v25	872d4faac408f6d5	ported	gamewindow/dialogmanager.h:TDialogHooks::afterHide
+gamewindow::TDialogControllerBase::~TDialogControllerBase	a1953b2fd79a37fd	skip	compiler-generated destructor pair
+gamewindow::TDialogControllerBase::~TDialogControllerBase_deleting	65c45da648af2d2d	skip	compiler-generated destructor pair
 gamewindow::TEditMinimapMarkerDialogController::handleGameAction	a843c38d3795cd53	ported	gamewindow/editminimapmarkerdialogcontroller.cpp:TEditMinimapMarkerDialogController::handleGameAction
 gamewindow::TEditMinimapMarkerDialogController::onCancelClicked	21e4e90e3f186cdf	ported	gamewindow/editminimapmarkerdialogcontroller.cpp:TEditMinimapMarkerDialogController::onCancelClicked
 gamewindow::TEditMinimapMarkerDialogController::onOkClicked	0bd991ead62f1797	ported	gamewindow/editminimapmarkerdialogcontroller.cpp:TEditMinimapMarkerDialogController::onOkClicked
 gamewindow::TEditMinimapMarkerDialogController::~TEditMinimapMarkerDialogController	f4acd2912fee3cad	skip	compiler-generated destructor pair
 gamewindow::TEditMinimapMarkerDialogController::~TEditMinimapMarkerDialogController_deleting	f9afef789cd1ae61	skip	compiler-generated destructor pair
+gamewindow::TEditTextController::abortEditing	cf05504ad4702cbb	ported	gamewindow/edittextcontroller.cpp:TEditTextController::abortEditing
+gamewindow::TEditTextController::reportText	8cd6bb4ccff04dcf	ported	gamewindow/edittextcontroller.cpp:TEditTextController::reportText
+gamewindow::TEditTextController::showEditGuildMessageDialog	97e116fc1544f095	ported	gamewindow/edittextcontroller.cpp:TEditTextController::showEditGuildMessageDialog
+gamewindow::TEditTextController::showEditListDialog	55daabc8c360003b	ported	gamewindow/edittextcontroller.cpp:TEditTextController::showEditList
+gamewindow::TEditTextController::showEditTextDialog	febeb7471bf17fe7	ported	gamewindow/edittextcontroller.cpp:TEditTextController::showItemText
+gamewindow::TEditTextController::showReadOnlyText	e67283997ead6d1d	ported	gamewindow/edittextcontroller.cpp:TEditTextController::showReadOnlyText
+gamewindow::TEditTextController::submitNewText	873c9b399f9e65bd	ported	gamewindow/edittextcontroller.cpp:TEditTextController::submitNewText
+gamewindow::TEditTextController::~TEditTextController	2860e90d55ce137f	skip	compiler-generated destructor pair
+gamewindow::TEditTextController::~TEditTextController_deleting	a30f229cde121e82	skip	compiler-generated destructor pair
+gamewindow::TEditTextUIData::~TEditTextUIData	097457dc45e86dd8	skip	compiler-generated destructor pair
+gamewindow::TEditTextUIData::~TEditTextUIData_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 gamewindow::TEditVipDialogController::v26	c8f2534b10ca6df9	ported	gamewindow/editvipdialogcontroller.cpp:TEditVipDialogController::open
 gamewindow::TEditVipDialogController::~TEditVipDialogController	970f829516c40e8d	skip	compiler-generated destructor pair
 gamewindow::TEditVipDialogController::~TEditVipDialogController_deleting	7b978f1dffe820c3	skip	compiler-generated destructor pair
@@ -1559,6 +1603,15 @@ gamewindow::TLootAndWasteWidgetController::gainWasteValueChanged	45a70f0d497f2e3
 gamewindow::TLootAndWasteWidgetController::onGaugeTargetValueChanged	5883dfb051c7507a	ported	analysers/analyserwidgets.cpp:TLootAndWasteWidgetController::onGaugeTargetValueChanged
 gamewindow::TLootAndWasteWidgetController::onItemsChanged	22971436d5c4c683	ported	analysers/analyserwidgets.cpp:TLootAndWasteWidgetController::onItemsChanged
 gamewindow::TLootAndWasteWidgetController::onWidgetOptionsChanged	0130414a8ee79df1	ported	analysers/analyserwidgets.cpp:TLootAndWasteWidgetController::imagePrefix
+gamewindow::TManageLootContainerDialogController::closeButtonClicked	21e4e90e3f186cdf	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::closeButtonClicked
+gamewindow::TManageLootContainerDialogController::filterStringChanged	40fd47b3eb2e2e3f	skip	moc property getter, provided by the generated cip base
+gamewindow::TManageLootContainerDialogController::getPremiumClicked	c161f29540504184	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::getPremiumClicked
+gamewindow::TManageLootContainerDialogController::handleGameAction	b497879c0a2d615d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::handleGameAction
+gamewindow::TManageLootContainerDialogController::premiumStatusChanged	948b18be1aac2cef	skip	moc property getter, provided by the generated cip base
+gamewindow::TManageLootContainerDialogController::publishGameAction	fc7575933c6d2d1d	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::syncPremium
+gamewindow::TManageLootContainerDialogController::showDialog	149a5661c0f079f8	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::showDialog
+gamewindow::TManageLootContainerDialogController::useMainBackpackAsFallbackChanged	0f2e9f26d9d093a3	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::syncFallback
+gamewindow::TManageLootContainerDialogController::v14	05138244495c752b	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::closeDialog
 gamewindow::TMapWindowController::onMapWindowControllerOptionsChanged	b7e8ba75ad5cc9ae	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::onMapWindowControllerOptionsChanged
 gamewindow::TMapWindowController::onMapWindowEntered	57615ffd6094c442	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::onMapWindowEntered
 gamewindow::TMapWindowController::onUnusedWidthChanged	59c12cfd972d6ec0	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::onUnusedWidthChanged
@@ -1567,6 +1620,13 @@ gamewindow::TMapWindowController::renderOptionsChanged	bb418f2962df752e	skip	moc
 gamewindow::TMapWindowController::unusedWidthChanged	9fe3807c4cc9b673	skip	moc signal bodies
 gamewindow::TMapWindowController::~TMapWindowController	097457dc45e86dd8	skip	compiler-generated destructors
 gamewindow::TMapWindowController::~TMapWindowController_deleting	79674512666b34e2	skip	compiler-generated destructors
+gamewindow::TMessageDialogController::onDialogButtonClicked	765f81d621a5f8b8	ported	gamewindow/messagedialogcontroller.cpp:TMessageDialogController::onDialogButtonClicked
+gamewindow::TMessageDialogController::onDialogEscapeKeyPressed	e56b0881f7ca841e	ported	gamewindow/messagedialogcontroller.cpp:TMessageDialogController::onDialogEscapeKeyPressed
+gamewindow::TMessageDialogController::onDialogKeyPressed	432e4c293197df85	ported	gamewindow/messagedialogcontroller.cpp:TMessageDialogController::onDialogKeyPressed
+gamewindow::TMessageDialogController::onDialogReturnKeyPressed	53f35f381156afe1	ported	gamewindow/messagedialogcontroller.cpp:TMessageDialogController::onDialogReturnKeyPressed
+gamewindow::TMessageDialogController::v17	f105d88d657432bb	ported	gamewindow/dialogmanager.cpp:TDialog::isShown
+gamewindow::TMessageDialogController::~TMessageDialogController	a091c1bb1ba19c2b	skip	compiler-generated destructor pair
+gamewindow::TMessageDialogController::~TMessageDialogController_deleting	0b8c916e12f0747b	skip	compiler-generated destructor pair
 gamewindow::TMinimapController::onMinimapDataChanged	097457dc45e86dd8	ported	gamewindow/minimapcontroller.cpp:TMinimapController::onMinimapDataChanged
 gamewindow::TMinimapController::onMoveDownButtonClicked	cd695c95715bae6e	ported	gamewindow/minimapcontroller.cpp:TMinimapController::onMoveDownButtonClicked
 gamewindow::TMinimapController::onMoveUpButtonClicked	e79ac32251e7d019	ported	gamewindow/minimapcontroller.cpp:TMinimapController::onMoveUpButtonClicked
@@ -1652,6 +1712,16 @@ gamewindow::TPlayerTradeController::v37	872d4faac408f6d5	ported	gamewindow/playe
 gamewindow::TPlayerTradeController::v38	872d4faac408f6d5	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeController::onWidgetOptionsChanged
 gamewindow::TPlayerTradeController::~TPlayerTradeController	b255626de1771eff	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeController::~TPlayerTradeController
 gamewindow::TPlayerTradeController::~TPlayerTradeController_deleting	569f68150cc989c7	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeController::~TPlayerTradeController
+gamewindow::TPremiumPanelController::handleGameAction	08f322d3d183deef	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::onTutorialModeChanged
+gamewindow::TPremiumPanelController::onIsVisibleChanged	ecad30d9db5036c4	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::onIsVisibleChanged
+gamewindow::TPremiumPanelController::onPremiumTimeChanged	9f0611c6ae90372d	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::onPremiumTimeChanged
+gamewindow::TPremiumPanelController::onStoreDeeplinkChanged	60b0ff8bb4fb6b86	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::onStoreDeeplinkChanged
+gamewindow::TPremiumPanelController::premiumMessagesChanged	ff71f16a14d734fa	skip	moc property getter, provided by the generated cip base
+gamewindow::TPremiumPanelController::stopHighlight	f8de23818483cabe	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::stopHighlight
+gamewindow::TPremiumPanelController::v14	4d3642b25b59d0d6	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setPanelItem
+gamewindow::TPremiumPanelController::v15	db46be23835e933b	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setPanelItem
+gamewindow::TPremiumPanelController::~TPremiumPanelController	097457dc45e86dd8	skip	compiler-generated destructor pair
+gamewindow::TPremiumPanelController::~TPremiumPanelController_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 gamewindow::TPreyDialogController::getMorePreyWildcardsClicked	8a80ac82d9da8c30	ported	gamewindow/preydialogcontroller.cpp:TPreyDialogController::getMorePreyWildcardsClicked
 gamewindow::TPreyDialogController::onRequestShowMessageDialog	d7c97353b07f5f23	ported	gamewindow/preydialogcontroller.cpp:TPreyDialogController::onRequestShowMessageDialog
 gamewindow::TPreyDialogController::requestClose	21e4e90e3f186cdf	ported	gamewindow/preydialogcontroller.cpp:TPreyDialogController::requestClose
@@ -1860,6 +1930,8 @@ gamewindow::TVipWidgetController::onVipDataEdited	56d2c52104aedc5b	ported	gamewi
 gamewindow::TVipWidgetController::onVipDoubleClicked	bef103555c471bcf	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::onVipDoubleClicked
 gamewindow::TVipWidgetController::onVipOrGroupClicked	82034e211612818c	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::onVipOrGroupClicked
 gamewindow::TVipWidgetController::onWidgetClicked	29ad023b8e88ebd9	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::onWidgetClicked
+gamewindow::TVipWidgetController::v37	8269e14aa84c7e44	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::saveWidgetOptions
+gamewindow::TVipWidgetController::v38	008257ca1aeb7c24	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::readOptions
 gamewindow::TVipWidgetController::~TVipWidgetController	097457dc45e86dd8	skip	compiler-generated destructor pair
 gamewindow::TVipWidgetController::~TVipWidgetController_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 gamewindow::TWeaponProficiencyDialogController::canEditPerksChanged	f56376b0fd3d9dd8	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::currentIsUseRestricted
@@ -1879,6 +1951,17 @@ gamewindow::TWeaponProficiencyShapeDialogController::requestClose	21e4e90e3f186c
 gamewindow::TWeaponProficiencyShapeDialogController::showDialog	bd94ca3c76e66386	ported	proficiency/weaponproficiencyshapedialogs.cpp:TWeaponProficiencyShapeDialogController::showDialog
 gamewindow::TWeaponProficiencyShapeDialogController::~TWeaponProficiencyShapeDialogController	097457dc45e86dd8	skip	compiler-generated destructor pair
 gamewindow::TWeaponProficiencyShapeDialogController::~TWeaponProficiencyShapeDialogController_deleting	79674512666b34e2	skip	compiler-generated destructor pair
+gamewindow::TWhiteBlacklistDialogController::addNewBlacklistEntry	c5ffaa096ec69470	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::addNewBlacklistEntry
+gamewindow::TWhiteBlacklistDialogController::addNewWhitelistEntry	49e69d09b2789e6c	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::addNewWhitelistEntry
+gamewindow::TWhiteBlacklistDialogController::onCancelClicked	5581414748b18d3e	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::onCancelClicked
+gamewindow::TWhiteBlacklistDialogController::onOkClicked	288065d91a6efea8	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::onOkClicked
+gamewindow::TWhiteBlacklistDialogController::removeEntryAtIndexFromBlacklist	0bd961ba46bd8d69	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::removeEntryAtIndexFromBlacklist
+gamewindow::TWhiteBlacklistDialogController::removeEntryAtIndexFromWhitelist	7222936ad53aa488	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::removeEntryAtIndexFromWhitelist
+gamewindow::TWhiteBlacklistDialogController::v14	afd11c875101a9dd	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::close
+gamewindow::TWhiteBlacklistDialogController::v26	624c22b4edda12ff	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::open
+gamewindow::TWhiteBlacklistDialogController::v27	2286c93ca38f2732	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::onControllerFinished
+gamewindow::TWhiteBlacklistDialogController::~TWhiteBlacklistDialogController	c4903884fd476b47	skip	compiler-generated destructor pair
+gamewindow::TWhiteBlacklistDialogController::~TWhiteBlacklistDialogController_deleting	6a2a045649d93e84	skip	compiler-generated destructor pair
 gamewindow::TWorldSelectionSortProxyModel::filterAcceptsRow	1d58cd72a7a34ef7	ported	gamewindow/createcharacterdialogcontroller.cpp:TWorldSelectionSortProxyModel::filterAcceptsRow
 gamewindow::TWorldSelectionSortProxyModel::lessThan	a6061dad5802c322	ported	gamewindow/createcharacterdialogcontroller.cpp:TWorldSelectionSortProxyModel::lessThan
 gamewindow::TWorldSelectionSortProxyModel::playersOnline	b4bf338a37935b22	ported	gamewindow/createcharacterdialogcontroller.cpp:TWorldSelectionSortProxyModel::playersOnline
@@ -3024,6 +3107,7 @@ sub_06ae6de0ac65	06ae6de0ac651fa0	skip	compiler-generated destructor body
 sub_06af9e9f4b2f	06af9e9f4b2f53f2	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::requestTransactionDetailsAndShowPage
 sub_06cf67a455eb	06cf67a455eba3a4	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTrackQuestFlags
 sub_06d18ee3f787	06d18ee3f787e3a8	ported	gamewindow/sidebarpanelsmanager.cpp:TSidebarPanelsManager::TSidebarPanelsManager
+sub_06e1396f8bc9	06e1396f8bc9f89c	ported	gamewindow/dialogmanager.cpp:TDialog::create
 sub_06e3451d1448	06e3451d14481e80	ported	gamewindow/minimapcontroller.cpp:TMinimapController::updateTimeDisplay
 sub_07314700e05a#5	07314700e05a3e43	skip	std container/shared_ptr template code or compiler-generated copy
 sub_07314700e05a#6	07314700e05a3e43	skip	std::set<QKeySequence> instantiation
@@ -3063,6 +3147,7 @@ sub_08fa4311f388#2	08fa4311f388428d	skip	std::unordered_map template
 sub_090bcd197cd4	090bcd197cd4c044	inlined	input/movementpathplanner.cpp:planMovementPath
 sub_09141a6da8b8	09141a6da8b87729	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::secondsUntilNextReward
 sub_0938e8df9b4b	0938e8df9b4bc278	inlined	app/clientoptions.cpp:ClientOptions::store
+sub_093e80bef008	093e80bef008dd33	ported	gamewindow/chatcontroller.cpp:TChatController::onWorldLeft
 sub_09454647cbba	09454647cbbae432	inlined	skillwheel/skillwheeldata.cpp:romanNumeral
 sub_09474d868ba3	09474d868ba32ca4	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_097457dc45e8#10	097457dc45e86dd8	inlined	sub_67075aefd67d
@@ -3078,9 +3163,11 @@ sub_097457dc45e8#199	097457dc45e86dd8	inlined	analysers/gainwastestorage.cpp:TGa
 sub_097457dc45e8#210	097457dc45e86dd8	inlined	cyclopedia/combatstatsqmldata.cpp:TQmlStatWithSources::TQmlStatWithSources
 sub_097457dc45e8#215	097457dc45e86dd8	skip	compiler-generated destructor pair
 sub_097457dc45e8#295	097457dc45e86dd8	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::TQuestLogController
+sub_097457dc45e8#303	097457dc45e86dd8	inlined	gamewindow/edittextcontroller.cpp:TEditTextController::TEditTextController
 sub_097457dc45e8#306	097457dc45e86dd8	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::rebuildAvailableOffers
 sub_097457dc45e8#309	097457dc45e86dd8	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::TStoreDialogController
 sub_097457dc45e8#310	097457dc45e86dd8	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::TStoreDialogController
+sub_097457dc45e8#311	097457dc45e86dd8	inlined	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::TPremiumPanelController
 sub_097457dc45e8#313	097457dc45e86dd8	skip	compiler-generated destructor
 sub_097457dc45e8#324	097457dc45e86dd8	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::TStoreDialogController
 sub_097457dc45e8#331	097457dc45e86dd8	skip	compiler-generated destructor
@@ -3139,6 +3226,7 @@ sub_0afa9102ee69	0afa9102ee6942f0	inlined	highscores/highscoresciptypes.cpp:THig
 sub_0b0930970b86	0b0930970b8621c1	ported	gamewindow/playerinventoryandstatuscontroller.h:TPlayerInventoryAndStatusController::onPvPModeWhiteHandRequested
 sub_0b3460654a25	0b3460654a2581da	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::nextTransactionPage
 sub_0b48e270d349	0b48e270d349565a	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onActionAcceptTransferClicked
+sub_0b61be40c545	0b61be40c54580e4	ported	gamewindow/chatcontroller.cpp:TChatController::TChatController
 sub_0b6e12f81352#2	0b6e12f8135222fa	skip	moc property getter (generated in cip_gen)
 sub_0b6e12f81352#5	0b6e12f8135222fa	ported	gamewindow/teamjoinpagecontroller.cpp:TTeamJoinPageController::teamsList
 sub_0b7a8eb72a28	0b7a8eb72a287272	skip	compiler-generated destructor pair
@@ -3184,6 +3272,7 @@ sub_0dbe628bd7ce	0dbe628bd7cee5da	skip	translation-unit static initializer (misa
 sub_0ddea2b23f19	0ddea2b23f19a5cd	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::addHighlight
 sub_0e132af83ef5	0e132af83ef5e4b1	inlined	gamewindow/battlelistcontroller.cpp:BattleListEntry::operator==
 sub_0e45754cb40a	0e45754cb40a7554	skip	nlohmann::json from_json number/string conversion (third-party template)
+sub_0e979a643874	0e979a6438741515	skip	compiler-generated destructor pair
 sub_0e9e1aece15f	0e9e1aece15f11e3	ported	teamfinder/teamsortproxymodels.cpp:TTeamsListSortProxyModel::TTeamsListSortProxyModel
 sub_0ead1ecd8434	0ead1ecd8434ce3b	ported	game/gamesessionbase.cpp:TGameSessionBase::TGameSessionBase
 sub_0ead8987211c	0ead8987211c9991	ported	trade/npctradestorage.cpp:sellPrice
@@ -3200,6 +3289,7 @@ sub_0f37c7802c91	0f37c7802c917fd7	ported	gamewindow/bosstiarydialogcontroller.cp
 sub_0f48ebe9f292	0f48ebe9f2927323	skip	libc++ vector/deque internals (library)
 sub_0f56e32aebdb#2	0f56e32aebdb1d31	inlined	imbuing/imbuingciptypes.cpp:imbuementFromProtocol
 sub_0f9bf5d55e85	0f9bf5d55e85a686	inlined	skillwheel/skillwheelcontrollers.cpp:TFragmentWorkshopPageController::TFragmentWorkshopPageController
+sub_0fb0a9d1c47d	0fb0a9d1c47d4ded	ported	gamewindow/blessingsdialogcontroller.cpp:TBlessingsDialogController::setData
 sub_0fbef3f14989	0fbef3f14989f061	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::setOptions
 sub_0fbfd5441ccf	0fbfd5441ccfe6d5	ported	cyclopedia/combatstatsqmldata.cpp:skillSourceName
 sub_0fd586c62698	0fd586c626985942	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::buyOffer
@@ -3345,6 +3435,7 @@ sub_119752aeae78	119752aeae780b30	ported	gamewindow/teamjoinpagecontroller.cpp:T
 sub_11a1aceaa979	11a1aceaa97932db	skip	miniaudio library
 sub_11c66903cdb1	11c66903cdb10c7f	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendMarketStatistics
 sub_11cded2ebf20	11cded2ebf20d671	inlined	sub_67075aefd67d
+sub_11cded2ebf20#3	11cded2ebf20d671	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_11d1b2e2f44a#2	11d1b2e2f44a01f7	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_11d3858080da	11d3858080da745e	ported	gamewindow/sidebarmanager.cpp:TSidebarController::removeWidget
 sub_11ed148f85d6	11ed148f85d68863	skip	std::set<QKeySequence> instantiation
@@ -3361,10 +3452,12 @@ sub_124b49744803	124b49744803441f	skip	std::unordered_map template
 sub_124b49744803#2	124b49744803441f	skip	std::unordered_map template
 sub_12680f4ffaed#2	12680f4ffaedf916	inlined	protocol::TProtobufServerMessageTranslator::v143
 sub_129bc71f0af9	129bc71f0af93d95	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::requestConfirmConfiguration
+sub_12abd83722e1	12abd83722e12c03	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_12b3ac089e2c	12b3ac089e2c5d87	ported	gamewindow/marketcontroller.cpp:TMarketController::getTotalPriceOrProfitMultistring
 sub_12b6f1436eeb	12b6f1436eeb320a	skip	miniaudio library
 sub_12c2b0e57cdb	12c2b0e57cdb6687	inlined	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaButtonController::onCyclopediaButtonClicked
 sub_132fbd28b58f	132fbd28b58f07cb	skip	std::vector/shared_ptr template instantiations
+sub_133616f7d2ed	133616f7d2ed0280	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::operatingSystemName
 sub_1356d493bddf	1356d493bddfeaf9	skip	translation-unit static initializer (misattributed)
 sub_13760f6d2af0	13760f6d2af0dc2a	inlined	imbuing/imbuingciptypes.cpp:imbuementFromProtocol
 sub_137894f43f9a#2	137894f43f9afea3	skip	moc signal emitter
@@ -3385,6 +3478,7 @@ sub_1438a3557a75#2	1438a3557a7553cf	ported	chat/textstorage.h:TTextMessageQueue:
 sub_143c5d000727	143c5d00072758cf	ported	news/newsstorage.cpp:NewsItem::typeId
 sub_1447683f7d26	1447683f7d26cdbd	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_14507da24656	14507da246563d57	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendStop
+sub_149c4970915f	149c4970915f1bb7	skip	std container template code
 sub_14a46b90b801	14a46b90b8016385	inlined	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createOutfit
 sub_14bcf95e1273	14bcf95e12734d85	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::resetAllOptionsToDefault
 sub_14cbcc518dbd	14cbcc518dbd00b3	skip	nlohmann::json from_json number/string conversion (third-party template)
@@ -3397,6 +3491,7 @@ sub_1528373c34ba	1528373c34baa147	ported	gamewindow/sidebarmanager.cpp:TSidebarC
 sub_15336fedbc20	15336fedbc207c17	ported	skillwheel/skillwheeldata.cpp:revelationPoints
 sub_1541a2a1b5e6	1541a2a1b5e686fe	skip	miniaudio library
 sub_1557a5d43ee6#2	1557a5d43ee646d1	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
+sub_15692cbb31ae	15692cbb31aed816	skip	moc property getter, provided by the generated cip base
 sub_15803f2e4f34	15803f2e4f348df2	skip	compiler-generated destructor pair
 sub_15a417656d1e#4	15a417656d1e28f1	skip	libc++ vector/deque internals (library)
 sub_15a417656d1e#8	15a417656d1e28f1	skip	std::vector reserve/realloc (library)
@@ -3410,6 +3505,7 @@ sub_16a79254c8b0	16a79254c8b0c571	ported	config/optionspages.cpp:fractionOf
 sub_16a84eea1f91	16a84eea1f91c0d6	inlined	config/sidebaroptions.cpp:parseNpcTrade
 sub_16a84eea1f91#2	16a84eea1f91c0d6	inlined	config/sidebaroptions.cpp:parseImbuementTracker
 sub_16a9cc86912c#2	16a9cc86912c6add	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_16aa7b48c219	16aa7b48c219d994	ported	gamewindow/containercontroller.cpp:TContainerController::setIcon
 sub_16b685e4d258	16b685e4d258a5f0	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::setTraderFilterIndex
 sub_16e6202bdc1f	16e6202bdc1fc7a1	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onBackButtonPressed
 sub_1702afcf89da	1702afcf89da26f2	ported	config/clientoptionsmigration.cpp:migrateFromVersion8
@@ -3436,10 +3532,12 @@ sub_18849a2a5eac	18849a2a5eac15a1	ported	gamewindow/imbuingdialogcontroller.cpp:
 sub_18988614f4ee	18988614f4ee6052	skip	translation-unit static initializer (misattributed)
 sub_18a8598cab3c	18a8598cab3c5ceb	ported	skillwheel/skillwheeldata.cpp:smallPerkFormat
 sub_18afb1fe3e05	18afb1fe3e05e352	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::onClientOptionsChangedAfterShowGameWindows
+sub_18c5b935a458#2	18c5b935a458d289	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::sortBy
 sub_18ccf7a6719f	18ccf7a6719f1d5b	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::maxDailyRewardJokerAmount
 sub_18e017374fc2	18e017374fc2a246	ported	gamewindow/housesinfodialogcontroller.cpp:THousesSortProxyModel::setHouseTypeFilter
 sub_18e37cecbac8	18e37cecbac83703	inlined	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::applyButtonClicked
 sub_18f2001bb0ab	18f2001bb0ab9dd5	skip	static initializer of unrelated globals (misattributed)
+sub_1902b0c3b8bf	1902b0c3b8bf72b5	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::applySessionVisibility
 sub_19053187b939	19053187b939aee0	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_191033395676#2	191033395676e4c3	skip	compiler-generated destructor pair
 sub_1912acf537ba	1912acf537bac5ff	skip	std::map construction from an initializer list (library)
@@ -3449,6 +3547,7 @@ sub_194fba0f12ff#348	194fba0f12ff33db	skip	QMetaType construct/copy/destroy help
 sub_1965baf3c69d	1965baf3c69d64a8	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_1973dbd9a747	1973dbd9a7471fe9	ported	teamfinder/teamfinderciptypes.cpp:serverDateTimeString
 sub_198dc9557e84	198dc9557e84e22c	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_19aacb45c43a#2	19aacb45c43ada13	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_19ab1c66283b	19ab1c66283b9258	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::updateSelectedPerk
 sub_19ad2a1e062b	19ad2a1e062b96c9	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::collectableReward
 sub_19bf31286b6d	19bf31286b6dbc81	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::updateExtent
@@ -3457,12 +3556,15 @@ sub_19f430833703#2	19f430833703fc99	inlined	gamewindow/battlelistcontroller.cpp:
 sub_1a0bb25777c8	1a0bb25777c8766d	ported	gamewindow/containercontroller.cpp:TContainerController::refreshViewOptions
 sub_1a0dc03cf9ff	1a0dc03cf9ff3ed1	ported	gamewindow/cyclopediadialogcontroller.h:TCyclopediaDialogController::backPossible
 sub_1a33e8ae8ad8	1a33e8ae8ad81ef0	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::onMessageDialogDiscardClicked
+sub_1a3e2e348475#106	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
+sub_1a3e2e348475#107	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
 sub_1a3e2e348475#114	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
 sub_1a3e2e348475#115	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
 sub_1a3e2e348475#116	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
 sub_1a3e2e348475#129	1a3e2e348475d66b	skip	compiler-generated Qt slot-object thunk
 sub_1a3e2e348475#130	1a3e2e348475d66b	skip	compiler-generated Qt slot-object thunk
 sub_1a3e2e348475#131	1a3e2e348475d66b	skip	compiler-generated Qt slot-object thunk
+sub_1a3e2e348475#132	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
 sub_1a3e2e348475#133	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
 sub_1a3e2e348475#134	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
 sub_1a3e2e348475#145	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
@@ -3489,12 +3591,14 @@ sub_1a3e2e348475#31	1a3e2e348475d66b	skip	Qt slot-object impl (QtPrivate::QSlotO
 sub_1a3e2e348475#33	1a3e2e348475d66b	skip	Qt slot-object impl (QtPrivate::QSlotObject)
 sub_1a3e2e348475#58	1a3e2e348475d66b	skip	Qt-generated slot object impl
 sub_1a3e2e348475#63	1a3e2e348475d66b	skip	Qt-generated slot object impl
+sub_1a3e2e348475#76	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
 sub_1a3e2e348475#79	1a3e2e348475d66b	skip	QtPrivate slot-object impl (Qt template)
 sub_1a3e2e348475#82	1a3e2e348475d66b	skip	Qt-generated slot object impl
 sub_1a3e2e348475#85	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
 sub_1a3e2e348475#87	1a3e2e348475d66b	skip	Qt-generated slot object impl
 sub_1a3e2e348475#88	1a3e2e348475d66b	skip	Qt-generated slot object impl
 sub_1a3e2e348475#94	1a3e2e348475d66b	skip	Qt slot-object impl (template-generated)
+sub_1a40c9e4620a#6	1a40c9e4620a75c6	skip	std container template code
 sub_1a774b8b2f92	1a774b8b2f925e09	skip	compiler-generated draw command copy / std::vector growth
 sub_1a998e2209b7	1a998e2209b7303e	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_1a9e24246d5e	1a9e24246d5ee8b3	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::movePanelToEnd
@@ -3502,10 +3606,13 @@ sub_1ab8a6bfe7b7	1ab8a6bfe7b73a75	ported	analysers/analyserstorages.cpp:THunting
 sub_1ab8a6bfe7b7#2	1ab8a6bfe7b73a75	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::THuntingSessionStorage
 sub_1ab8db40eba1	1ab8db40eba133d9	skip	std::sort instantiation for the category list
 sub_1abb1ca38ba1	1abb1ca38ba1e1c7	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onRequestListReroll
+sub_1ada54b598a1	1ada54b598a10024	skip	translation-unit static initializer (misattributed)
+sub_1adb38db9343	1adb38db9343e2a6	skip	std::sort / std::stable_sort instantiation (library)
 sub_1af7d312df28	1af7d312df28ef35	skip	std container template code
 sub_1afc8ddeef07	1afc8ddeef07bff0	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setSelection
 sub_1b103c42f5a8	1b103c42f5a886a4	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::apply
 sub_1b214972eaae	1b214972eaaed182	inlined	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::removeFriend
+sub_1b288bfe3352	1b288bfe3352afb0	ported	gamewindow/dialogmanager.cpp:TDialog::create
 sub_1b2c003dee4b	1b2c003dee4b944f	skip	std::unordered_map<int, std::function> internals (emplace, rehash, destructor, node holder)
 sub_1b32f40b3a5f	1b32f40b3a5f8ecc	skip	compiler-generated destructor
 sub_1b38643159a8	1b38643159a84dbb	ported	game/gameciptypes.cpp:FPSDropsLogger::resetFrameDurations
@@ -3541,6 +3648,7 @@ sub_1cd3d74639b3	1cd3d74639b3edf1	ported	gamewindow/characterinfomodels.cpp:TAch
 sub_1cd3d74639b3#2	1cd3d74639b3edf1	ported	gamewindow/characterinfomodels.cpp:TAchievementInfoController::TAchievementInfoController
 sub_1cd5cfe41ed9	1cd5cfe41ed96cf0	ported	gamewindow/mousecursorcontroller.cpp:TMouseCursorController::loadSystemCursors
 sub_1ce2c1788075#3	1ce2c1788075e137	inlined	gamewindow/playerguidewidgetcontroller.cpp:levelSpecialPopup
+sub_1ce4d1bc733a	1ce4d1bc733a288e	ported	gamewindow/chatcontroller.cpp:TChatChannelController::selectedText
 sub_1d04461c43d8	1d04461c43d8b412	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::beginFrame
 sub_1d2e95e07ce8	1d2e95e07ce81281	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoSouthWest
 sub_1d4d9e61b677	1d4d9e61b677f209	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::hasMainCharacter
@@ -3557,8 +3665,10 @@ sub_1dbceb40aa1e	1dbceb40aa1e6b99	skip	SFML/miniaudio library helper, only calle
 sub_1e01a7973a9e	1e01a7973a9e2800	skip	compiler-generated destructor pair
 sub_1e0eac1d0fc6	1e0eac1d0fc6472c	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::requestScreenshot
 sub_1e107f6deb97	1e107f6deb97a81b	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_1e2a28907cbf	1e2a28907cbf87df	ported	gamewindow/dialogmanager.cpp:TDialogStackController::show
 sub_1e4cef7e82d4#4	1e4cef7e82d4326e	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::requestQuestLineDetails
 sub_1e623603abe2	1e623603abe28653	skip	moc property getter (generated in cip_gen)
+sub_1eb7b796d7ff	1eb7b796d7ffd120	ported	input/gameactionmapper.cpp:TGameActionMapper::ruleTypes
 sub_1ed8eef79b6b	1ed8eef79b6be7cf	ported	input/gameaction.h:TGameActionToggleServerLogSubscriptionInCurrentChatChannel::TGameActionToggleServerLogSubscriptionInCurrentChatChannel
 sub_1ed8eef79b6b#2	1ed8eef79b6be7cf	ported	input/gameaction.h:TGameActionToggleServerLogSubscriptionInCurrentChatChannel::TGameActionToggleServerLogSubscriptionInCurrentChatChannel
 sub_1ef759e16cdb	1ef759e16cdb2ae7	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::isPremium
@@ -3576,6 +3686,11 @@ sub_200d74ec427d	200d74ec427df956	ported	gamewindow/highscoresdialogcontroller.c
 sub_20140a16439a	20140a16439a1bf3	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::setUseMainBackpackAsFallback
 sub_202ae800ab57	202ae800ab577d98	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferCreate
 sub_204013620a4f#503	204013620a4fb213	skip	Qt-generated slot object impl
+sub_204013620a4f#510	204013620a4fb213	skip	Qt slot-object impl (template-generated)
+sub_204013620a4f#511	204013620a4fb213	skip	Qt slot-object impl (template-generated)
+sub_204013620a4f#512	204013620a4fb213	skip	Qt slot-object impl (template-generated)
+sub_204013620a4f#521	204013620a4fb213	skip	Qt slot-object impl (template-generated)
+sub_204013620a4f#526	204013620a4fb213	skip	Qt slot-object impl (template-generated)
 sub_204013620a4f#527	204013620a4fb213	skip	Qt slot-object impl (template-generated)
 sub_204013620a4f#528	204013620a4fb213	skip	Qt slot-object impl (template-generated)
 sub_204013620a4f#538	204013620a4fb213	skip	Qt slot-object impl (template-generated)
@@ -3588,6 +3703,7 @@ sub_20558d253176	20558d253176c161	ported	gamewindow/friendsfriendlistpagecontrol
 sub_206b92cfaab6	206b92cfaab68e8b	ported	game/gamesessionstate.cpp:TGameSessionState::createMovementIntent
 sub_20919a1fc5d0	20919a1fc5d0b08d	tested	input/movementpathplanner.cpp:planMovementPath	test=tests/client/movementpathplanner_test.cpp
 sub_209c90cef295	209c90cef2954a52	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::onAvailableCurrencyBalanceMightHaveChanged
+sub_20c37c48e620	20c37c48e6209a32	skip	std::sort instantiation
 sub_20c72e436390	20c72e436390d9d6	ported	gamewindow/teamjoinpagecontroller.cpp:TTeamJoinPageController::hasPremium
 sub_20fa74c0bd0e	20fa74c0bd0ea977	ported	minimap/minimapdiskio.cpp:TMinimapDiskIOAsync::waypointFileName
 sub_212a7090190b	212a7090190b257b	skip	compiler-generated draw command copy / std::vector growth
@@ -3602,12 +3718,14 @@ sub_21bc479fbb41	21bc479fbb41b6d9	ported	appearances/appearanceinstance.cpp:hook
 sub_21bedb5b1456	21bedb5b14562dd0	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::requestTeamList
 sub_21c76510e05e	21c76510e05e56bd	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendRevokeInvitation
 sub_21c7ae0ba39a	21c7ae0ba39a3276	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::openTransactionHistory
+sub_21dfa88ebaad	21dfa88ebaad071e	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_21e4e90e3f18	21e4e90e3f186cdf	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::requestClose
 sub_21e4e90e3f18#10	21e4e90e3f186cdf	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::closeButtonClicked
 sub_21e4e90e3f18#11	21e4e90e3f186cdf	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::requestClose
 sub_21e4e90e3f18#12	21e4e90e3f186cdf	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::closeButtonClicked
 sub_21e4e90e3f18#15	21e4e90e3f186cdf	ported	gamewindow/marketcontroller.cpp:TMarketController::onCloseButtonPressed
 sub_21e4e90e3f18#3	21e4e90e3f186cdf	ported	gamewindow/storedialogcontroller.cpp:TStorePurchaseConfirmationDialogController::closeRequested
+sub_21e4e90e3f18#4	21e4e90e3f186cdf	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::requestClose
 sub_21e4e90e3f18#5	21e4e90e3f186cdf	ported	gamewindow/storedialogcontroller.cpp:TStorePurchaseSuccessDialogController::requestClose
 sub_21e4e90e3f18#6	21e4e90e3f186cdf	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::closeButtonClicked
 sub_21e4e90e3f18#9	21e4e90e3f186cdf	inlined	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::closeDialog
@@ -3627,6 +3745,7 @@ sub_22cd9f1ac28c	22cd9f1ac28c0817	skip	std::vector<action setting> template inst
 sub_22fc017d7ff9	22fc017d7ff96bad	inlined	creatures/creaturesciptypes.cpp:TVipProtocolMessageHandler::handleBuddyData
 sub_230b67cfedcb	230b67cfedcb602a	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::TCharacterTradeDialogController
 sub_230c41615458#6	230c41615458f359	ported	analysers/analyserstorages.h:showBaseXp
+sub_230c41615458#8	230c41615458f359	skip	moc property getter, provided by the generated cip base
 sub_231246cf2cb0	231246cf2cb0f413	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::canBlackWhitelistAdditionalItems
 sub_233da3f5be44	233da3f5be449a41	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::switchToBuyItems
 sub_2354bdedba7a	2354bdedba7a8844	inlined	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::requestSendBugReport
@@ -3659,6 +3778,7 @@ sub_23c91f1a75a5#2	23c91f1a75a58fdc	skip	std::vector / QList template code
 sub_23c91f1a75a5#208	23c91f1a75a58fdc	skip	std::vector growth/length_error (library)
 sub_23c91f1a75a5#216	23c91f1a75a58fdc	skip	std::vector length error (library)
 sub_23c91f1a75a5#217	23c91f1a75a58fdc	skip	std::vector length error (library)
+sub_23c91f1a75a5#220	23c91f1a75a58fdc	skip	std::vector length error (library)
 sub_23c91f1a75a5#221	23c91f1a75a58fdc	skip	std::vector/shared_ptr template instantiations
 sub_23c91f1a75a5#230	23c91f1a75a58fdc	skip	std::vector length error (library)
 sub_23c91f1a75a5#248	23c91f1a75a58fdc	skip	std::vector length error (library)
@@ -3679,34 +3799,42 @@ sub_23d0e799df78	23d0e799df78dd35	ported	teamfinder/teamsortproxymodels.cpp:make
 sub_23e2bec2fc32	23e2bec2fc321c78	skip	std::map / std::deque / std::vector template instantiation
 sub_23e7642f13a6	23e7642f13a61801	skip	moc property getter, provided by the generated cip base
 sub_23eff65e0a90	23eff65e0a909a72	skip	std vector internals (push_back/realloc/assign/clear)
+sub_23f33f308519	23f33f3085195fb7	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_23f4072d7759	23f4072d7759dbad	inlined	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaButtonController::onCyclopediaButtonClicked
 sub_23f8a412584f	23f8a412584f03c8	ported	chat/chatgameactionhandler.cpp:TClientChatEntryFactory::speakerWithLevelEntry
 sub_241290723a10	241290723a10e78b	inlined	sub_67075aefd67d
+sub_242b79206da7	242b79206da7453f	ported	game/skillswidgetentrydata.cpp:buildSkillEntry
 sub_24640c6a6323	24640c6a6323a419	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::removeItem
 sub_2472f1e19636	2472f1e196365c98	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_2476436d259c#2	2476436d259c94dd	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::TSpellInfoStorage
+sub_248d71e5d0e7	248d71e5d0e77332	ported	gamewindow/containercontroller.cpp:TContainerController::updateMouseCursorForCurrentSlot
 sub_249596582bb0	249596582bb0cf2c	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setSelectionChangeMonster
 sub_24d0e40b83cf	24d0e40b83cfab68	skip	compiler-generated destructor pair
+sub_24fe4880d680	24fe4880d680a94a	ported	gamewindow/dialogmanager.cpp:TDialog::create
 sub_25107c13b8d5	25107c13b8d5fdc1	ported	gamewindow/reportviolationcontroller.cpp:TReportViolationController::TReportViolationController
 sub_25167152d90f#5	25167152d90fb3f2	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresData::THighscoresData
 sub_25167152d90f#6	25167152d90fb3f2	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresData::THighscoresData
+sub_25373d26178d	25373d26178ddbf9	ported	gamewindow/chatcontroller.cpp:TChatController::pressEnter
 sub_2567864601c6#2	2567864601c6f081	skip	compiler-generated chat entry copy constructor / destructor
 sub_25721d4789a1	25721d4789a13bcb	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::getPreviousFeaturedOffer
 sub_25953be9d7b2	25953be9d7b257e2	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::fillLargePerk
 sub_25b288870fd1	25b288870fd19cd3	ported	config/optionspages.cpp:THotkeysOptionsPage::requestRemoveCurrentPreset
 sub_25ebb171eed3	25ebb171eed38853	ported	store/storestorage.cpp:TStoreProtocolMessageHandler::handleStoreErrorMessage
+sub_25fcc1fd219f	25fcc1fd219f060e	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::createPremiumMessages
 sub_260f2a5c725d	260f2a5c725d2efb	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
 sub_2611bdfda850	2611bdfda8500501	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::registerServerMessages
 sub_262f45e74a19	262f45e74a197d9c	skip	compiler-generated destructor pair
 sub_262f45e74a19#2	262f45e74a197d9c	skip	compiler-generated destructor pair
 sub_262f45e74a19#3	262f45e74a197d9c	skip	compiler-generated destructor pair
 sub_262f45e74a19#4	262f45e74a197d9c	skip	compiler-generated destructor pair
+sub_2636bfbe941a#2	2636bfbe941a1623	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::sortBy
 sub_264a865b5d44	264a865b5d442116	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::setMemberStatus
 sub_26514ff8b336	26514ff8b336944f	ported	teamfinder/teamsortproxymodels.cpp:compareTypeAndName
 sub_26542bc98c7e	26542bc98c7ee1ff	ported	appearances/appearanceinstance.cpp:cumulativePileIndex
 sub_267158a0864a	267158a0864a454f	ported	gamewindow/contextmenucontroller.cpp:firstPresent
 sub_2673da72a352	2673da72a35285a8	inlined	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::setResult
 sub_26a4b43a626a	26a4b43a626a4435	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::freeSlots
+sub_26b7b279dc99	26b7b279dc99f0be	skip	std container template code
 sub_26b86b7b68c7	26b86b7b68c7cdc3	ported	input/gameaction.h:TGameActionAttackFirstTarget::TGameActionAttackFirstTarget
 sub_26b86b7b68c7#2	26b86b7b68c7cdc3	ported	input/gameaction.h:TGameActionAttackFirstTarget::TGameActionAttackFirstTarget
 sub_26c29fa6fa09	26c29fa6fa091282	skip	compiler-generated destructor pair
@@ -3723,16 +3851,19 @@ sub_277911eaaa82	277911eaaa82f566	skip	debug output operator for a direction enu
 sub_27826b207c43	27826b207c43eaa9	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_27827f980c62	27827f980c6242f4	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::optionsPressed
 sub_2787dff660d0	2787dff660d09064	skip	moc signal emitter
+sub_27a0e3d67c7c	27a0e3d67c7c7c1b	inlined	gamewindow/dialogmanager.cpp:TDialog::show
 sub_27af30ca2cb9	27af30ca2cb91213	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::setShowTrade
 sub_27c1756a0ea2	27c1756a0ea272f9	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::TAmbientLightStorage
 sub_27d378265164	27d3782651648a2c	ported	teamfinder/teamsortproxymodels.cpp:TActivitiesSortProxyModel::TActivitiesSortProxyModel
 sub_27e29f853532	27e29f8535320e18	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_27eab9727be0	27eab9727be00c61	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterRaceListChanged
 sub_27fc14080c6e	27fc14080c6edf4b	inlined	proficiency/proficiencystorage.cpp:TProficiencyStorage::setReshapeOffers
+sub_28070472ce1f	28070472ce1fca40	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_281e0c283ea0	281e0c283ea0c2c5	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::manageAccountPressed
 sub_281e0c283ea0#2	281e0c283ea0c2c5	ported	controllers/characterselectioncontroller.cpp:TCharacterSelectionController::manageAccountPressed
 sub_282ec105c7ca	282ec105c7ca455a	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::TNPCTradeController
 sub_28381d26a96a	28381d26a96af7be	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onNewNameEntered
+sub_283b720d5bbd	283b720d5bbdc644	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::canTogglePanel
 sub_285b5a8fc90e#10	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_285b5a8fc90e#11	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_285b5a8fc90e#12	285b5a8fc90e3585	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -3790,7 +3921,9 @@ sub_29bb994743e3#9	29bb994743e38ff0	ported	input/domainhandlers.cpp:TOpenWebsite
 sub_29def5d04d9c	29def5d04d9c681e	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::localDiffersFromServer
 sub_29f5343478d2	29f5343478d24af3	skip	compiler-generated copy/move constructor
 sub_2a2013f71974	2a2013f719743327	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::hasEnoughDust
+sub_2a21e8bb50e7	2a21e8bb50e77396	ported	gamewindow/edittextcontroller.cpp:TEditTextController::TEditTextController
 sub_2a259b136992	2a259b1369923345	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeController::lookTradeSide
+sub_2a27f61de7dc	2a27f61de7dcb252	ported	input/gameactionmapper.cpp:TGameActionMapper::map
 sub_2a49d3048918	2a49d3048918717c	inlined	store/storestorage.cpp:TStoreStorage::sortOffers
 sub_2a4ac8b3a746	2a4ac8b3a746e55d	skip	miniaudio library
 sub_2a575558d38a	2a575558d38af914	skip	translation-unit static initializer (misattributed)
@@ -3805,8 +3938,10 @@ sub_2aff49da73a7	2aff49da73a70fb4	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_2b29967ad240	2b29967ad2401fd7	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModel::TSpellListDataModel
 sub_2b45b2d1550b	2b45b2d1550b2f3c	ported	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::TExivaOptionsDialogController
 sub_2b65cd43d759	2b65cd43d7594e86	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onInformationNotification
+sub_2b7c60185673	2b7c6018567364f1	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::setFilterString
 sub_2b80f820d416	2b80f820d4160723	ported	gamewindow/sidebarmanager.h:TSidebarManager::canCloseLeftSidebar
 sub_2b8b580609a9	2b8b580609a9bfda	inlined	protocol::TProtobufServerMessageTranslator::v15
+sub_2b94c619c18b	2b94c619c18b68e3	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_2baba2b18053	2baba2b1805351ba	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_2bc99c769f53	2bc99c769f534ad2	skip	compiler-generated destructor pair
 sub_2bcddf8e95a3	2bcddf8e95a357cf	ported	friends/friendsciptypes.cpp:TFriendsInviteStorage::setInviteList
@@ -3814,6 +3949,7 @@ sub_2be498d8123f#7	2be498d8123f454d	skip	QList<QKeySequence> instantiation
 sub_2bec162682bf	2bec162682bf056a	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::setFlag
 sub_2bf47e29c3cd	2bf47e29c3cd6174	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::lookup
 sub_2bf9c5055ea1	2bf9c5055ea1bb93	ported	gamewindow/mousecursorcontroller.cpp:TMouseCursorController::TMouseCursorController
+sub_2c117864edcd#6	2c117864edcd3d71	skip	std container template code
 sub_2c1fe34d2594	2c1fe34d25945e92	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::isDailyRewardLocked
 sub_2c25a8a4d67b	2c25a8a4d67bef82	inlined	chat/chatchannel.cpp:TChatChannelStorage::openServerChannel
 sub_2c37da92c40b	2c37da92c40b0720	inlined	input/movementpathplanner.cpp:planMovementPath
@@ -3851,6 +3987,7 @@ sub_2e4a877efb36	2e4a877efb3678d2	ported	gamewindow/bugreportdialogcontroller.cp
 sub_2e96605266a8	2e96605266a8a1a6	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onPurchaseSuccessNotification
 sub_2e9a4a62938a	2e9a4a62938abd4a	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendRotateSouth
 sub_2e9ad809e777#9	2e9ad809e7777e76	ported	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::configuredUrl
+sub_2ea163e962b4	2ea163e962b4cebe	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::startContainerPick
 sub_2eb9b33fd37c	2eb9b33fd37c8d32	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::onGridTileSelected
 sub_2efabd86aa67	2efabd86aa6798f2	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendPrivateChannel
 sub_2f20affc2bf7	2f20affc2bf75544	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::savePresetChangesThanSwapPreset
@@ -3863,6 +4000,7 @@ sub_2f7d0fdf121f#2	2f7d0fdf121f9000	skip	compiler-generated destructor pair
 sub_2f89e676d988	2f89e676d988f240	skip	std::map node teardown (library)
 sub_2f89e676d988#11	2f89e676d988f240	skip	std::map tree destructor template instantiation
 sub_2faabb58ff31#3	2faabb58ff3122c4	skip	moc signal emitter
+sub_2fd27cd7fdfc#2	2fd27cd7fdfc0274	skip	moc property getter, provided by the generated cip base
 sub_3015ce76ea93	3015ce76ea9307f0	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::updateWorldPvPTypeFilter
 sub_3025c2ede535	3025c2ede53551e0	tested	creatures/movementdirection.h:directionOfStep	test=tests/client/creaturemovement_test.cpp
 sub_30458964ddfd	30458964ddfdf43e	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onCreatureTargetSelected
@@ -3873,6 +4011,7 @@ sub_306d1ba5475c#41	306d1ba5475c61d0	skip	moc-generated signal emitter
 sub_306d1ba5475c#50	306d1ba5475c61d0	skip	moc-generated signal body (sendMessage, receivedMessage, clientMessageReadyToProcess)
 sub_306d1ba5475c#58	306d1ba5475c61d0	skip	moc-generated signal emitter
 sub_306d1ba5475c#60	306d1ba5475c61d0	inlined	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
+sub_309c404501f5	309c404501f5493e	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::canTogglePanel
 sub_30ca8799b235	30ca8799b2353a64	skip	std::sort instantiation
 sub_30cfaf9fa6fd	30cfaf9fa6fdfaa1	ported	appearances/appearanceinstance.cpp:TMissileEffectInstance::setPath
 sub_31176b71da58	31176b71da58d2a6	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
@@ -3891,6 +4030,7 @@ sub_31c78a2c7065	31c78a2c7065e7e3	ported	gamewindow/createaccountdialogcontrolle
 sub_31d992c7af01	31d992c7af01e898	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::clearSpellModifications
 sub_31dc3c061107	31dc3c0611071c4b	skip	std library template (vector push_back / length error, std::sort introsort pieces, unique_ptr deleter)
 sub_31e92a06200e	31e92a06200eb96a	skip	std::vector reserve / grow / record move (library, compiler-generated)
+sub_31f33a0359bf	31f33a0359bfa78f	ported	game/skillswidgetentrydata.cpp:skillDetail
 sub_31f9e11fd99b	31f9e11fd99bc44b	inlined	gamewindow/npctradecontroller.cpp:TNPCTradeController::setTradeStorage
 sub_320eeede4a22#38	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v112
 sub_320eeede4a22#40	320eeede4a228471	inlined	protocol::TProtobufServerMessageTranslator::v102
@@ -3930,6 +4070,7 @@ sub_32b60136c8c6	32b60136c8c6e31d	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_32b6dd8bd0e8	32b6dd8bd0e8df3e	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::startBacklogTimerIfNeeded
 sub_32cc78de7bee	32cc78de7bee045b	ported	minimap/minimaptile.cpp:blankImage
 sub_32cd757e4b22	32cd757e4b2269a3	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::firstFloor
+sub_32d19b3aa3f8	32d19b3aa3f80171	ported	gamewindow/chatcontroller.cpp:TChatChannelController::setChatFont
 sub_32d81f4dc03d	32d81f4dc03d2fd6	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::spellInfo
 sub_32de808c7d27#2	32de808c7d27ff77	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_32dea18f0cc3	32dea18f0cc31471	skip	translation-unit static initializer (misattributed)
@@ -3976,10 +4117,13 @@ sub_3575a8af5da6	3575a8af5da60c76	inlined	teamfinder/teamsortproxymodels.cpp:TTe
 sub_357e40c53823	357e40c53823ad51	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendQuitGame
 sub_35a01bab3e2a	35a01bab3e2a0d94	ported	gamewindow/sidebarmanager.h:TSidebarManager::sidebarCount
 sub_35a61c36245a	35a61c36245a88e4	ported	appearances/appearanceinstance.cpp:THangableObjectAppearanceInstance::updateHookPattern
+sub_35ac7f962708	35ac7f96270805ad	ported	gamewindow/containercontroller.cpp:TContainerController::onPreviousPageClicked
+sub_35ac7f962708#2	35ac7f96270805ad	ported	gamewindow/containercontroller.cpp:TContainerController::onNextPageClicked
 sub_35af34703334	35af347033344483	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::fillLargePerk
 sub_35bb1c30f3d5#6	35bb1c30f3d54f91	skip	protobuf-generated message constructor
 sub_35bb1c30f3d5#8	35bb1c30f3d54f91	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_35c16428242a	35c16428242a82bc	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::confirmGridPreyCreatureClicked
+sub_35d09264940d	35d09264940de993	ported	gamewindow/edittextcontroller.cpp:TEditTextController::submitNewText
 sub_35d5714ea198	35d5714ea1982474	skip	compiler-generated destructor pair
 sub_35e3738982ca	35e3738982caa166	inlined	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showDialogTab
 sub_35ecf76a0b6c	35ecf76a0b6c6dd4	ported	friends/friendsciptypes.cpp:TFriendsFriendListStorage::removeFriend
@@ -3987,9 +4131,13 @@ sub_35f135179395#2	35f135179395964b	ported	creatures/creatureprotocolapply.cpp:v
 sub_35fe1cdbc85e	35fe1cdbc85ecf7d	skip	static initializer of unrelated globals (misattributed)
 sub_3616e876ff01	3616e876ff0179c7	ported	input/gameaction.h:TGameActionRequestCopySelectedTextToClipboard::TGameActionRequestCopySelectedTextToClipboard
 sub_3616e876ff01#2	3616e876ff0179c7	ported	input/gameaction.h:TGameActionRequestCopySelectedTextToClipboard::TGameActionRequestCopySelectedTextToClipboard
+sub_36363b385fdd	36363b385fdde289	ported	gamewindow/chatcontroller.cpp:TChatController::getNewerChatInputHistoryEntry
 sub_36384f613659	36384f6136597c9f	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::valueType
+sub_3659d1359463	3659d1359463bdcd	ported	gamewindow/edittextcontroller.cpp:TEditTextUIData::set
+sub_3659d1359463#2	3659d1359463bdcd	ported	gamewindow/edittextcontroller.cpp:TEditTextUIData::set
 sub_36754a3afd61	36754a3afd6192f1	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onNoResultsFound
 sub_367b49c1b5b0	367b49c1b5b04855	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openItemInformation
+sub_367b49c1b5b0#2	367b49c1b5b04855	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::showItemDetails
 sub_368b3a1273da	368b3a1273daea5c	skip	SFML/miniaudio library helper, only called from library code
 sub_369b9309a9ea	369b9309a9eaaf9f	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeController::TPlayerTradeController
 sub_36a8c5963f88#2	36a8c5963f889d79	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::setFlag
@@ -4003,6 +4151,7 @@ sub_36f50c252562	36f50c2525625b49	ported	gamewindow/highscoresdialogcontroller.c
 sub_370bf7a8a348	370bf7a8a3480d8d	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::joinTeam
 sub_373f1defe30b	373f1defe30bdd6e	skip	std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
 sub_3743a84ec5b9	3743a84ec5b9512b	skip	compiler-generated draw command copy / std::vector growth
+sub_37459bc1794e	37459bc1794e476b	ported	gamewindow/chatcontroller.cpp:TChatController::saveChannel
 sub_374e6343e075	374e6343e075fa18	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_375374af951e	375374af951e53a6	ported	minimap/minimapvisiblearea.cpp:TMinimapVisibleArea::TMinimapVisibleArea
 sub_3761fee3e985	3761fee3e985c7a3	skip	std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
@@ -4012,6 +4161,7 @@ sub_3769ecff9eda#3	3769ecff9eda0cb5	ported	gamewindow/highscoresdialogcontroller
 sub_376e5f00f851	376e5f00f8519fae	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::validate
 sub_377ad916ec4a	377ad916ec4ab5dd	skip	shared_ptr copy/release (library)
 sub_377ad916ec4a#6	377ad916ec4ab5dd	skip	std::shared_ptr / vector library code
+sub_378b076aef30	378b076aef300cc0	skip	translation-unit static initializer (misattributed)
 sub_378c88ab1c36#2	378c88ab1c36ed6f	inlined	protocol::TProtobufServerMessageTranslator::v127
 sub_37a42720f03f	37a42720f03fc9f6	skip	std::sort instantiation for the category list
 sub_37d73c61cfbb	37d73c61cfbb5c22	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
@@ -4044,6 +4194,7 @@ sub_395d21488787	395d21488787d60d	inlined	effects/effectprotocolmessagehandler.c
 sub_396388484342	396388484342081d	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::sendItemInfo
 sub_39764fae2fe6	39764fae2fe686c7	ported	chat/chatchannel.cpp:formatEntry
 sub_398166b7d060	398166b7d060285c	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
+sub_39a551599246	39a5515992462af1	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_39af3334b322	39af3334b3228743	ported	chat/textstorage.h:TFleetingTextQueue::color
 sub_39b2e1e066f8	39b2e1e066f86d03	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::onClickedPreviousPage
 sub_39cb427abbb6	39cb427abbb6151c	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
@@ -4115,9 +4266,11 @@ sub_3e9694309573#3	3e9694309573b59c	inlined	gamewindow/rewardwalldialogcontrolle
 sub_3e9694309573#6	3e9694309573b59c	ported	gamewindow/characterinfodialogcontroller.cpp:TDeathQmlData::TDeathQmlData
 sub_3e9694309573#7	3e9694309573b59c	ported	gamewindow/characterinfodialogcontroller.cpp:TKillQmlData::TKillQmlData
 sub_3e9d50032775#2	3e9d50032775d73b	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
+sub_3e9f06285b78	3e9f06285b78d3a4	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::removeItemFromList
 sub_3ea2a6ae64ba	3ea2a6ae64ba83f0	ported	gamewindow/hitpointmanabarcontroller.cpp:toggleOption
 sub_3eae962e9ec4	3eae962e9ec46736	skip	std::sort instantiation over team members / member indices (library)
 sub_3eefd61396e4#2	3eefd61396e4e2a9	inlined	chat/chatgameactionhandler.cpp:TChatGameActionProvider::entryGameActions
+sub_3eefd61396e4#3	3eefd61396e4e2a9	skip	moc property getter, provided by the generated cip base
 sub_3f1e58766c53	3f1e58766c53b3fe	ported	teamfinder/teamsortproxymodels.cpp:TTeamsListSortProxyModel::resetFilters
 sub_3f6150d24754	3f6150d247540828	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendBuddyGroup
 sub_3f8652738146	3f8652738146edc0	skip	compiler-generated operator== of store records
@@ -4130,6 +4283,7 @@ sub_3ffb16904a27	3ffb16904a27fe6d	tested	animation/animationinfo.h:TAnimationInf
 sub_4002baf20d36	4002baf20d36ded0	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::cosmeticTokenCount
 sub_401b5224a7a3	401b5224a7a38907	skip	compiler-generated destructor pair
 sub_402a20562f3a	402a20562f3ade78	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::tooltipRows
+sub_4056e86fdf85	4056e86fdf85857e	ported	gamewindow/draganddropcontroller.cpp:TDragAndDropController::updateIcon
 sub_405a42cdce24	405a42cdce245e83	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_40666275c518	40666275c5184946	skip	std::map / unordered_map template instantiation
 sub_406b7b4ef734	406b7b4ef7349bee	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::buildContextMenu
@@ -4153,6 +4307,7 @@ sub_40c988a9a014	40c988a9a0146ab7	skip	miniaudio library
 sub_40d4c3a2c434	40d4c3a2c43454b1	ported	skillwheel/skillwheeldata.cpp:mediumPerkDescriptions
 sub_40e7965390ad	40e7965390ad28c8	ported	config/clientoptionsmigration.cpp:migrateFromVersion3
 sub_40f20c4580b2	40f20c4580b2872a	ported	gamewindow/minimapcontroller.cpp:TMinimapController::centerOnPlayer
+sub_4124ab819b6e	4124ab819b6e7b54	skip	compiler-generated destructor pair
 sub_4136eae006e1	4136eae006e1e48b	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::TWorldMapViewport
 sub_4137ab833001	4137ab8330012cc4	inlined	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createOutfit
 sub_41391af49fbd	41391af49fbdfc5d	ported	config/sidebaroptions.cpp:parseBossTracker
@@ -4166,6 +4321,7 @@ sub_41aa13a038fd	41aa13a038fdb2ab	skip	compiler-generated destructor
 sub_41b997a56a6a#2	41b997a56a6ae563	inlined	protocol::TProtobufServerMessageTranslator::v140
 sub_41bd21b091b9	41bd21b091b9b84f	skip	std::vector reserve / std::sort instantiation
 sub_41d06c389967	41d06c3899671c36	skip	std vector internals (push_back/realloc/assign/clear)
+sub_41dc69a172da	41dc69a172daa016	ported	gamewindow/sidebarmanager.cpp:createQuickItem
 sub_42061ed48ff0#3	42061ed48ff0e8c6	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::setSlotID
 sub_42129e9d4083	42129e9d4083fa76	skip	moc property getter (generated in cip_gen)
 sub_42188ede457f#130	42188ede457ffefa	inlined	protocol::TProtobufServerMessageTranslator::v160
@@ -4203,6 +4359,7 @@ sub_43a5e0ef11dc	43a5e0ef11dc9d7d	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_43af5407e883	43af5407e8838802	skip	libc++ std::vector growth / destroy (library)
 sub_43b3611eef4c	43b3611eef4ce476	ported	input/gameaction.h:TGameActionAttackNextTarget::TGameActionAttackNextTarget
 sub_43b3611eef4c#2	43b3611eef4ce476	ported	input/gameaction.h:TGameActionAttackNextTarget::TGameActionAttackNextTarget
+sub_43bf0649ff85	43bf0649ff852867	ported	gamewindow/chatcontroller.cpp:TChatController::onWorldLeft
 sub_43c48b0456f3	43c48b0456f3505f	ported	config/sidebaroptions.cpp:parseContainers
 sub_43de94ae2398	43de94ae2398c66d	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions
 sub_43e2bb803cff	43e2bb803cff7515	ported	chat/chatchannel.cpp:TChatChannelStorage::isOwnName
@@ -4226,6 +4383,7 @@ sub_450d7a7fc1e4	450d7a7fc1e49616	inlined	worldmap/worldmapstorage.cpp:TWorldMap
 sub_452dfdbf5d02	452dfdbf5d023c8f	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_453e38a73f85	453e38a73f857936	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onOffersChanged
 sub_45622b073570	45622b0735705a80	skip	SFML/miniaudio library helper, only called from library code
+sub_456a5aaa9668	456a5aaa96689ca2	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::requestAddItemBlackWhitelist
 sub_4576be64c083	4576be64c083e54b	ported	config/sidebaroptions.cpp:serializeWidgetsManager
 sub_45995925e4b6	45995925e4b6c7e5	skip	std::vector realloc (library)
 sub_459d61bf2ecc	459d61bf2eccf43f	skip	std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
@@ -4233,12 +4391,17 @@ sub_45bcf55ed92b	45bcf55ed92b9f5a	inlined	imbuing/imbuingciptypes.cpp:handleImbu
 sub_45c073c75284	45c073c752840f20	skip	libc++ vector/deque internals (library)
 sub_45c101f6ae4a	45c101f6ae4a1f2b	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::getNextFeaturedOffer
 sub_4609dec7117c	4609dec7117c7c29	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::showDialog
+sub_462e681df880	462e681df8806424	ported	gamewindow/edittextcontroller.cpp:TEditTextController::reopen
+sub_462e681df880#2	462e681df8806424	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::showDialog
 sub_46338ebcaa4a	46338ebcaa4a0ea3	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::addPanel
 sub_46453055a911	46453055a9119a25	ported	gamewindow/marketcontroller.cpp:offerType
 sub_464574edef1f	464574edef1f1677	inlined	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::applySelectedWorld
 sub_464924acb9d6	464924acb9d67075	inlined	protocol::TProtobufServerMessageTranslator::v42
 sub_4659452c5bef	4659452c5bef9395	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::setAmountPreselected
+sub_4660ae68a5da	4660ae68a5da8994	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_4660ae68a5da#3	4660ae68a5da8994	inlined	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry
+sub_4660ae68a5da#4	4660ae68a5da8994	skip	moc property getter, provided by the generated cip base
+sub_4665ca8995e3	4665ca8995e3164a	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::onClearConfirmed
 sub_466d3959a01b	466d3959a01b2426	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::battlEyeTypes
 sub_468f65a1ce40	468f65a1ce407cc5	skip	Qt template instantiation qmlRegisterUncreatableType<T>
 sub_468f65a1ce40#10	468f65a1ce407cc5	skip	Qt template instantiation qmlRegisterUncreatableType<T>
@@ -4326,6 +4489,7 @@ sub_49df9dc7462c	49df9dc7462c3453	skip	moc property getter, provided by the gene
 sub_49e3d1657580	49e3d1657580c6fa	ported	input/gameaction.h:TGameActionRemoveAllTutorialMarkers::TGameActionRemoveAllTutorialMarkers
 sub_49e3d1657580#2	49e3d1657580c6fa	ported	input/gameaction.h:TGameActionRemoveAllTutorialMarkers::TGameActionRemoveAllTutorialMarkers
 sub_49ee8d1d8ad4	49ee8d1d8ad4698d	skip	miniaudio library
+sub_49f9b3db2a05	49f9b3db2a05002a	skip	Qt/std container template code
 sub_4a00f6b18d7b#5	4a00f6b18d7ba357	skip	compiler-generated destructors
 sub_4a0f055eb2d5	4a0f055eb2d5fde5	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::contextMenuForObject
 sub_4a32c2e47e6c	4a32c2e47e6ca10d	skip	std library template (vector length error, map emplace, vector push_back)
@@ -4344,6 +4508,7 @@ sub_4b84aa42fa3d	4b84aa42fa3debd9	ported	renderer/spritetexturecache.cpp:TSprite
 sub_4b852159f602	4b852159f602db28	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenCyclopediaCharacterInfo
 sub_4b912dca4bd9	4b912dca4bd965b9	inlined	creatures/vipstorage.cpp:TVipStorage::addVip
 sub_4c02e0d97d38	4c02e0d97d38bd82	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendJoinAggression
+sub_4c0c6c6755d5	4c0c6c6755d5645c	skip	moc property getter, provided by the generated cip base
 sub_4c21d3dae31d	4c21d3dae31de72e	ported	game/skillswidgetentrydata.cpp:fillExperienceGain
 sub_4c510dead2ba	4c510dead2ba6503	skip	compiler-generated destructor
 sub_4c63201194f4	4c63201194f490e2	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::showDialog
@@ -4371,6 +4536,7 @@ sub_4d5c7a2d77b5	4d5c7a2d77b507e8	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_4d6020971bc4	4d6020971bc4c628	skip	moc property getter (generated in cip_gen)
 sub_4d6020971bc4#3	4d6020971bc4c628	skip	generated property getter (cip_gen)
 sub_4d7e3db39675#7	4d7e3db39675f970	skip	std container / struct destructor
+sub_4da25f5da2a7	4da25f5da2a799cf	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setHighlight
 sub_4da4407b66c2	4da4407b66c2c2f9	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationForgeDialogController::showDialog
 sub_4dbca733654c	4dbca733654c65a4	skip	std::sort instantiation for the category list
 sub_4dca9ac0e8dc	4dca9ac0e8dc760c	skip	static initializer of header constants
@@ -4387,6 +4553,8 @@ sub_4e140a8e3530	4e140a8e3530b97a	ported	gamewindow/spelllistwidgetcontroller.cp
 sub_4e1671359546	4e16713595465e0c	skip	Qt/std container template code
 sub_4e1806e28f13	4e1806e28f13f249	ported	gamewindow/storedialogcontroller.cpp:TStorePurchaseConfirmationDialogController::showDialog
 sub_4e2722297485	4e2722297485fad1	inlined	config/sidebaroptions.cpp:parseSkills
+sub_4e3c7b7652d3	4e3c7b7652d31ca5	skip	translation-unit static initializer (misattributed)
+sub_4e668bd92b7b	4e668bd92b7b4e0f	skip	Qt/std container template code
 sub_4e7d66dc9277	4e7d66dc92777012	skip	nlohmann::json from_json number/string conversion (third-party template)
 sub_4e92c14fdd3c	4e92c14fdd3c6a5a	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_4e9622e703f9	4e9622e703f95c33	ported	gamewindow/housesinfodialogcontroller.h:THousesModel::setLimits
@@ -4394,6 +4562,10 @@ sub_4ea6be3da4b8#2	4ea6be3da4b82c6e	skip	moc signal emitter
 sub_4ea7f7d1e9d8	4ea7f7d1e9d86bb0	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCancel
 sub_4ecb244c924e	4ecb244c924e2655	ported	dailyreward/dailyrewardciptypes.cpp:TDailyRewardGameActionHandler::TDailyRewardGameActionHandler
 sub_4ecb244c924e#2	4ecb244c924e2655	ported	dailyreward/dailyrewardciptypes.cpp:TDailyRewardGameActionHandler::TDailyRewardGameActionHandler
+sub_4ed3909ad890	4ed3909ad8904cf4	ported	gamewindow/containercontroller.cpp:TContainerController::setIcon
+sub_4ed3909ad890#2	4ed3909ad8904cf4	ported	gamewindow/containercontroller.cpp:TContainerController::setIcon
+sub_4ed3909ad890#3	4ed3909ad8904cf4	ported	gamewindow/containercontroller.cpp:TContainerController::setIcon
+sub_4ed3909ad890#4	4ed3909ad8904cf4	ported	gamewindow/containercontroller.cpp:TContainerController::setIcon
 sub_4eeea6a98170	4eeea6a98170ebc5	skip	compiler-generated destructors of the friends data types and their vectors
 sub_4efbe8499c97	4efbe8499c977df4	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::resetPerks
 sub_4f0b4eeb18b7	4f0b4eeb18b7fce4	skip	static initializer of unrelated globals, misattributed
@@ -4438,11 +4610,14 @@ sub_51a5a9d9b7b6	51a5a9d9b7b6b07f	ported	worldmap/worldmapprotocolmessagehandler
 sub_51b9b3eadc78	51b9b3eadc78ae68	skip	compiler-generated destructor pair
 sub_51c75f4cea91#2	51c75f4cea9109d4	skip	compiler-generated destructor pair
 sub_51c7abd9eb85#7	51c7abd9eb85ede5	inlined	quickloot/quicklootciptypes.cpp:TQuickLootGameActionHandler::handleGameAction
+sub_51d271a458f1	51d271a458f138f4	ported	gamewindow/chatcontroller.cpp:TChatController::showEntryMenu
 sub_51e5548f5d16	51e5548f5d16bfbe	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendRuleViolationReport
+sub_51f271bb8ed4	51f271bb8ed45b45	ported	gamewindow/chatcontroller.cpp:TChatController::openInviteDialog
 sub_51f3b3b34ed1#2	51f3b3b34ed17187	skip	moc signal emitter
 sub_520192e4e0e3	520192e4e0e32264	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::openHelpChannel
 sub_5221a791df71	5221a791df7192a6	skip	moc-generated signal emitter
 sub_52475214d2ed	52475214d2ed07db	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
+sub_524b0a56deb9	524b0a56deb9e1e0	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::addEntry
 sub_524bb53ec3c7	524bb53ec3c797be	inlined	chat/chatchannel.h:TChatChannelIdentifier::isGuildChannel
 sub_5268ddcfd7a4	5268ddcfd7a4faa7	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::removeSelectedCharm
 sub_527a8a4d9cf5	527a8a4d9cf57b73	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationForgeDialogController::page
@@ -4451,9 +4626,11 @@ sub_529ba173b422	529ba173b422b1ce	inlined	gamewindow/assignactiondialogs.cpp:TSp
 sub_529d53a095c4	529d53a095c49327	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTurnObject
 sub_529fafe2940d	529fafe2940db6eb	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
 sub_52ca29368333	52ca29368333687d	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage
+sub_52cc4c6ee0c0	52cc4c6ee0c0fda1	ported	gamewindow/chatcontroller.cpp:TChatController::getOlderChatInputHistoryEntry
 sub_52fb468d111b	52fb468d111b87c9	ported	gamewindow/editminimapmarkerdialogcontroller.cpp:TEditMinimapMarkerDialogController::showForCurrentPosition
 sub_5315057841b2#2	5315057841b24dcc	skip	std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
 sub_5315057841b2#3	5315057841b24dcc	skip	std::deque<std::shared_ptr> internals (grow, split buffer, destructor)
+sub_532718ffe032	532718ffe032dd24	ported	gamewindow/containercontroller.cpp:TContainerController::update
 sub_53312494363d	53312494363d6123	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::rebuildModel
 sub_533b1386e08f	533b1386e08fddb1	inlined	protocol::TProtobufServerMessageTranslator::v175
 sub_53485a7c8b77	53485a7c8b7754bc	inlined	protocol::TProtobufServerMessageTranslator::v127
@@ -4474,6 +4651,7 @@ sub_53e72b9a973d	53e72b9a973db9ec	ported	gamewindow/rewardwalldialogcontroller.c
 sub_53f54bf9354e	53f54bf9354e6ad0	ported	gamewindow/sidebarmanager.h:TSidebarManager::canCloseRightSidebar
 sub_541434ce284d	541434ce284d02f0	skip	std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
 sub_541d5271bec7	541d5271bec7b0ab	skip	miniaudio library code (miniaudio.h asserts), misattributed
+sub_542222f04afb	542222f04afbabbd	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::TWhiteBlacklistDialogController
 sub_5468181e0d50#4	5468181e0d5064ae	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::requestTransferCredits
 sub_547ebb18d37d	547ebb18d37dcc7d	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::setWeaponTypeFilter
 sub_5496c4171ba8	5496c4171ba87920	inlined	protocol::TProtobufServerMessageTranslator::v18
@@ -4690,10 +4868,12 @@ sub_55b583c44c93	55b583c44c934ba2	skip	std::sort / std::stable_sort instantiatio
 sub_55b78acb3f39	55b78acb3f39cfd9	ported	chat/chatchannel.cpp:TChatChannelStorage::TChatChannelStorage
 sub_562e15740b51	562e15740b51e68d	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onRequestBonusReroll
 sub_5633a9892868	5633a98928681894	ported	config/optionspages.cpp:percentOf
+sub_5639997ee325#14	5639997ee325bcca	skip	Qt/std container template code
 sub_5639997ee325#21	5639997ee325bcca	skip	std::vector reserve/realloc (library)
 sub_5639997ee325#5	5639997ee325bcca	skip	std::vector<std::shared_ptr> grow (library)
 sub_564a85896724	564a85896724c9aa	inlined	gamewindow/assignactiondialogs.cpp:TSpellListDataModel::data
 sub_5651fa32fe63	5651fa32fe639287	ported	minimap/minimaptile.cpp:colorPalette
+sub_566328859dfb	566328859dfb349b	ported	gamewindow/sidebarpanelsmanager.cpp:TSidebarPanelsManager::TSidebarPanelsManager
 sub_567e6034cbb5	567e6034cbb51a60	ported	gamewindow/mousecursorcontroller.cpp:TMouseCursorController::layerShape
 sub_5683fbc193a2	5683fbc193a22a3a	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::setFlag
 sub_568757ce8c16	568757ce8c16b558	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::DrawKey::packed
@@ -4725,6 +4905,7 @@ sub_586819c13205#41	586819c13205c216	skip	moc-generated signal emitter
 sub_586819c13205#45	586819c13205c216	skip	moc-generated signal emitter
 sub_586819c13205#46	586819c13205c216	skip	moc-generated signal emitter
 sub_586819c13205#58	586819c13205c216	skip	moc-generated signal emitter
+sub_586819c13205#62	586819c13205c216	skip	moc-generated signal emitter
 sub_586819c13205#7	586819c13205c216	skip	moc signal emitter
 sub_586819c13205#72	586819c13205c216	skip	moc-generated signal emitter
 sub_586819c13205#74	586819c13205c216	skip	moc signal emitter
@@ -4741,6 +4922,7 @@ sub_58a8ed58a785#4	58a8ed58a785542a	ported	input/inputciptypes.h:TMovementIntent
 sub_58b47e76b835	58b47e76b83547a0	ported	config/optionspages.cpp:fractionOf
 sub_58badab9e63f	58badab9e63fdf72	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setActive
 sub_58be68613c67	58be68613c678519	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::setPinned
+sub_58c18f13bfdf	58c18f13bfdf2012	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::finishPick
 sub_58d01f3074be	58d01f3074bed26f	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTrackImbuementsMessage
 sub_58d2bfebb99f#2	58d2bfebb99f8bb7	ported	gamewindow/cyclopediadialogcontroller.h:TBosstiaryButtonController::highlighted
 sub_591fdb283bc9#441	591fdb283bc999e5	skip	moc / QMetaType generated
@@ -4783,6 +4965,7 @@ sub_5b7a122686a3	5b7a122686a3fcb0	ported	screenshot/screenshotciptypes.cpp:TScre
 sub_5b7a629a129e	5b7a629a129e01ba	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::setShowHidden
 sub_5b8b76106041	5b8b761060411017	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::fillLargePerk
 sub_5b9e440b6a86#2	5b9e440b6a8640ee	skip	moc signal emitter
+sub_5bc5003601b7	5bc5003601b71659	skip	Qt/std container template code
 sub_5bd86fbbcaa5	5bd86fbbcaa54467	skip	compiler-generated destructor pair
 sub_5c0405457f2c	5c0405457f2c7a50	ported	protocol/protocolmessagequeue.cpp:TProtocolMessageQueue::fireEmitSignalForNewProtocolMessage
 sub_5c0b3a27018c	5c0b3a27018cb87d	skip	compiler-generated destructor pair
@@ -4815,6 +4998,8 @@ sub_5e5173af64c8	5e5173af64c8c6d8	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_5e6c020885da	5e6c020885daea4b	inlined	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::showDialog
 sub_5e6d45da9b08	5e6d45da9b08da89	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::setKeyboardBlocked
 sub_5e9636ad4c12	5e9636ad4c123d4c	skip	compiler-generated destructor pair
+sub_5ea6d31f53d2#2	5ea6d31f53d28b8e	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::sortBy
+sub_5ee0f7516590#3	5ee0f75165907013	skip	Qt slot-object impl (template-generated)
 sub_5ee245e67469	5ee245e67469bd18	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::setGameSessionActive
 sub_5eef91a11682	5eef91a11682c63b	skip	miniaudio library code (miniaudio.h asserts), misattributed
 sub_5ef1c86b6120	5ef1c86b6120bc3a	skip	std::vector / QList template code
@@ -4835,14 +5020,17 @@ sub_5ff783944d43	5ff783944d43ebcd	skip	std::sort instantiation
 sub_6008af61bf20	6008af61bf2047d6	ported	skillwheel/skillwheeldata.cpp:mediumPerkCount
 sub_60339bc87903	60339bc879032747	tested	animation/movingoutfitanimator.h:TMovingOutfitAnimator::maximumPhaseDuration	test=tests/client/creaturemovement_test.cpp
 sub_60339bc87903#4	60339bc879032747	skip	moc property getter (generated in cip_gen)
+sub_60339bc87903#5	60339bc879032747	skip	moc property getter, provided by the generated cip base
 sub_6039a23d697b	6039a23d697bd1dc	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_603c4f4fa6d7	603c4f4fa6d7e0ab	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_603d2f5cb846	603d2f5cb846ddfb	ported	gamewindow/imbuingdialogcontroller.cpp:imageSource
 sub_604055bca7c5	604055bca7c565a9	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::setSlots
+sub_604aea4bcd43	604aea4bcd43b954	ported	gamewindow/containercontroller.cpp:TContainerController::onSlotDragDropped
 sub_604f77123678	604f7712367852ef	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCollectDailyReward
 sub_607242124794#2	6072421247940167	inlined	protocol::TProtobufServerMessageTranslator::v191
 sub_607750c316e2	607750c316e2d2db	skip	compiler-generated destructor pair
 sub_607765febbde	607765febbde3f2e	skip	moc property getter, provided by the generated cip base
+sub_60792148e642	60792148e6425b6d	ported	gamewindow/dialogmanager.cpp:TDialogStackController::update
 sub_609f0ac821f4	609f0ac821f41936	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::showGameActions
 sub_60a18b2d08a6#2	60a18b2d08a63a4a	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_60b1b30128a7#11	60b1b30128a74865	skip	std container template code
@@ -4858,11 +5046,14 @@ sub_6183499a93f6	6183499a93f61c55	ported	gamewindow/actionbarmanager.cpp:TAction
 sub_61bae912de5a	61bae912de5a7bcb	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSetCreaturePodiumConfiguration
 sub_61c1f87901c3	61c1f87901c38bda	skip	libc++ vector/deque internals (library)
 sub_61cad6bfdccb	61cad6bfdccb63a7	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onHouseInformationChanged
+sub_61e85083e1bc	61e85083e1bc76eb	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_61f90df58a1c	61f90df58a1c2b37	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendMonsterBonusEffectAction
 sub_6201bb5c756b	6201bb5c756b1609	inlined	input/movementpathplanner.cpp:planMovementPath
 sub_620e9483380b	620e9483380b6715	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::onHighScoresError
 sub_622c8dd02b74	622c8dd02b742c6b	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::TGainWasteStorage
 sub_6232c48722d2	6232c48722d20915	skip	std container template instance
+sub_62384853984a#3	62384853984a86d2	skip	std container template code
+sub_625b0785c125#2	625b0785c12500c5	skip	translation-unit static initializer (misattributed)
 sub_626db2cbf1ff	626db2cbf1ff37ce	skip	compiler-generated destructor pair
 sub_62871225bbad#11	62871225bbad5568	skip	std::shared_ptr control block
 sub_628ab99dd394	628ab99dd394ef09	ported	config/sidebaroptions.cpp:serializeBattleList
@@ -4881,14 +5072,17 @@ sub_6303bdfa89d3#5	6303bdfa89d3eaee	ported	gamewindow/containercontroller.cpp:TC
 sub_6303bdfa89d3#6	6303bdfa89d3eaee	ported	gamewindow/containercontroller.cpp:TContainerController::onShowConfigurationMenu
 sub_6303bdfa89d3#7	6303bdfa89d3eaee	skip	Qt-generated slot object impl
 sub_6303bdfa89d3#8	6303bdfa89d3eaee	skip	Qt-generated slot object impl
+sub_630423abb44c	630423abb44c674b	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_6350f26b7ccb	6350f26b7ccbbcc4	ported	config/sidebaroptions.cpp:parseSpellList
 sub_63526520a835	63526520a8350171	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTeleport
 sub_6353cd59e08b	6353cd59e08ba030	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::selectedCategoryId
 sub_635803a56d47	635803a56d471576	skip	SFML/miniaudio library helper, only called from library code
 sub_6373bbced908	6373bbced90819ce	ported	chat/textstorage.cpp:privateTextDuration
+sub_637866a6b2b4	637866a6b2b40aa9	ported	gamewindow/dialogmanager.cpp:TDialogStackController::hide
 sub_637d6fa92d99	637d6fa92d999846	skip	std::vector/shared_ptr template instantiations
 sub_639902e32a47	639902e32a476d1c	ported	gamewindow/remainingdialogs.cpp:TShowSpellBookDialogController::onGameSessionChanged
 sub_639c55887bb7#6	639c55887bb7c6a8	inlined	protocol::TProtobufServerMessageTranslator::v127
+sub_639fddc39b4b	639fddc39b4b4f2c	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_63a541d7ca56	63a541d7ca56af58	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_63b1f8f7f039#108	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v108
 sub_63b1f8f7f039#110	63b1f8f7f039124f	inlined	protocol::TProtobufServerMessageTranslator::v67
@@ -4920,6 +5114,7 @@ sub_6424b88073b8	6424b88073b8b065	skip	miniaudio library
 sub_643b7400e1be	643b7400e1be702b	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
 sub_647825f15a2e#21	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleOpenSurveyUrlGameAction
 sub_647825f15a2e#26	647825f15a2ef76c	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleGameAction
+sub_647825f15a2e#8	647825f15a2ef76c	skip	moc property getter, provided by the generated cip base
 sub_647ecb9b1032	647ecb9b10325c29	inlined	dailyreward/dailyrewardciptypes.cpp:TDailyRewardStorage::setHistory
 sub_6484bad94ada	6484bad94ada0b8d	skip	moc property getter, provided by the generated cip base
 sub_648eaafed2e5	648eaafed2e5a733	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::requestFilterByName
@@ -4932,6 +5127,7 @@ sub_652295b83dbc#2	652295b83dbc362a	inlined	gamewindow/bosstrackerwidgetcontroll
 sub_65263ac5ec7e	65263ac5ec7eb6f0	skip	compiler-generated destructor
 sub_6529c05f5baa	6529c05f5baad623	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::changedRoles
 sub_6532f776a823	6532f776a8234d67	skip	compiler-generated destructor pair
+sub_655601c070b6	655601c070b61fee	ported	gamewindow/chatcontroller.cpp:TChatChannelController::invalidateSizes
 sub_6576006e30a6	6576006e30a6946c	ported	gamewindow/gamewindowciptypes.cpp:clearInspectList
 sub_657e5f8f7e6a	657e5f8f7e6aade6	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onHouseActionConfirmed
 sub_658d24410a9f	658d24410a9fe517	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowAttackSpellGroup
@@ -4967,6 +5163,10 @@ sub_67cf0abde087	67cf0abde087e3a9	ported	skillwheel/skillwheeldata.cpp:smallPerk
 sub_67d093172a1a	67d093172a1aa18c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendAttack
 sub_67da5211166e	67da5211166e58a6	ported	teamfinder/teamfinderciptypes.cpp:localDateTimeString
 sub_67e9d479e1c2	67e9d479e1c2a46c	ported	trade/npctradestorage.cpp:maximumBuyAmount
+sub_6803c309e5cd	6803c309e5cdc74b	ported	gamewindow/dialogmanager.cpp:TDialog::TDialog
+sub_6803c309e5cd#2	6803c309e5cdc74b	ported	gamewindow/dialogmanager.cpp:TDialog::TDialog
+sub_680a366ee323	680a366ee323a491	skip	translation-unit static initializer (misattributed)
+sub_680bc09a3f3f	680bc09a3f3f2f8a	skip	Qt/std container template code
 sub_680f99bc6768	680f99bc6768baa7	skip	moc signal emitter
 sub_68147e9aa2e5	68147e9aa2e5257c	ported	minimap/minimaptile.cpp:TMinimapTile::paletteIndex
 sub_6814acf0043f	6814acf0043f1190	ported	proficiency/proficiencycatalogue.cpp:shapePerk
@@ -4996,6 +5196,7 @@ sub_69057c0395bc	69057c0395bc6118	skip	std::vector growth / std::shared_ptr copy
 sub_690f76dcbaa6	690f76dcbaa60cb1	ported	config/optionspages.cpp:fractionOf
 sub_691b1e258ba3	691b1e258ba38ba4	inlined	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::rebuildBonusEffects
 sub_69290a5a8f7e	69290a5a8f7e8bf3	skip	moc property getter (generated in cip_gen)
+sub_69290a5a8f7e#3	69290a5a8f7e8bf3	skip	moc property getter, provided by the generated cip base
 sub_6933047aa0a2	6933047aa0a213ce	ported	skillwheel/skillwheeldata.cpp:mediumPerkEffect
 sub_6938b3185cd8#2	6938b3185cd8d9e3	skip	std vector internals (push_back/realloc/assign/clear)
 sub_69431652cadc	69431652cadc90d6	ported	minimap/minimapvisiblearea.cpp:TMinimapVisibleArea::updateMatrix
@@ -5007,18 +5208,21 @@ sub_697d4be3e2f8#2	697d4be3e2f8b5b1	skip	moc-generated signal emitter
 sub_6980e1b13f51	6980e1b13f513c24	ported	chat/chatchannel.h:TChatChannelIdentifier::isPrivateChannelId
 sub_699d675bf4da	699d675bf4dac1b6	skip	SFML/miniaudio library helper, only called from library code
 sub_69b3b0935728#2	69b3b093572857e3	ported	gamewindow/chatcontroller.cpp:TChatChannelController::Row::clearSelection
+sub_69d81806c852#2	69d81806c852cb4e	inlined	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::onOkClicked
 sub_69d9694aa491	69d9694aa4913131	inlined	shared::TTibiaFileSystemHelper::v61
 sub_69f10198a817	69f10198a8172f9e	inlined	creatures/creaturestorage.cpp:TCreature::addTimedSquare
 sub_6a529ceb3a4b#2	6a529ceb3a4becda	skip	compiler-generated destructor of the dialog update data
 sub_6a54d912339a	6a54d912339acdc5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenChannel
 sub_6a5a383d6f97	6a5a383d6f975230	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::TBattleListDataModelSortFilterProxy
 sub_6a5a383d6f97#2	6a5a383d6f975230	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::TBattleListDataModelSortFilterProxy
+sub_6a77d1a8eca6	6a77d1a8eca6df64	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::rebuildListItems
 sub_6a81ce34b0e4	6a81ce34b0e4a1d9	skip	miniaudio library code (miniaudio.h asserts), misattributed
 sub_6a936b127cb3	6a936b127cb3706d	skip	compiler-generated destructor pair
 sub_6ad4597e7f06	6ad4597e7f06eaa9	inlined	creatures/creaturestorage.cpp:TCreature::update
 sub_6ae4bd662fd8	6ae4bd662fd84fab	skip	std container internals (map/vector/set)
 sub_6b0d0fc3a4f0	6b0d0fc3a4f011f0	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::sessionItems
 sub_6b3bd2ce4356	6b3bd2ce4356ff0c	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::sendHighscoresRequest
+sub_6b40a7922d29	6b40a7922d29b32d	skip	moc property getter, provided by the generated cip base
 sub_6baa0f3e4887#2	6baa0f3e48871dc9	skip	libc++ std::vector growth / destroy (library)
 sub_6baa0f3e4887#5	6baa0f3e48871dc9	skip	std::set / std::vector assignment, copy and destruction (library)
 sub_6bd2c335e7fe	6bd2c335e7fea34d	ported	gamewindow/sidebarpanelsmanager.cpp:TSidebarPanelsManager::TSidebarPanelsManager
@@ -5047,6 +5251,7 @@ sub_6dbb29406869	6dbb2940686916e3	skip	std::deque internals (library)
 sub_6ddf6ec45c9c	6ddf6ec45c9c9226	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::setShowCharacterInfo
 sub_6de3c73eef8f	6de3c73eef8f59c3	inlined	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::requestSendBugReport
 sub_6df82f052203	6df82f052203d9d7	skip	compiler-generated destructor / move-assignment of store records
+sub_6df907e52a65	6df907e52a650b3c	skip	moc property getter, provided by the generated cip base
 sub_6e0e7686a64b	6e0e7686a64bd62a	ported	cyclopedia/combatstatsqmldata.cpp:TOffenceStatsQmlData::TOffenceStatsQmlData
 sub_6e12c0493b8b	6e12c0493b8b7426	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::slotClicked
 sub_6e19f52cb57f	6e19f52cb57f72c4	skip	std::deque internals (library)
@@ -5060,12 +5265,14 @@ sub_6e77367ef5e5#14	6e77367ef5e50ae3	inlined	protocol::TProtobufServerMessageTra
 sub_6e7e711f086c#2	6e7e711f086c0f11	inlined	protocol::TProtobufServerMessageTranslator::v187
 sub_6eae9822a34c#2	6eae9822a34c8cc3	skip	QList template instantiation (reserve/insert/detach)
 sub_6ecbea820c0f	6ecbea820c0fec87	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::fillLargePerk
+sub_6ed9c858abf6	6ed9c858abf69e12	skip	compiler-generated destructor pair
 sub_6edfda0fd44c	6edfda0fd44c90a0	skip	Qt/std container template code
 sub_6f0a515dd28e	6f0a515dd28ea675	skip	std::vector<shared::THint> growth/destructor template
 sub_6f4c61727c5e	6f4c61727c5ec076	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::TCharacterTradeDialogController
 sub_6f624245d4a5	6f624245d4a5e3ab	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setWildcardSelection
 sub_6f6cac1e1daa	6f6cac1e1daa2600	inlined	gamewindow/assignactiondialogs.cpp:TRecordKeyboardShortcutDialogController::startRecording
 sub_6f6d89c59b2d	6f6d89c59b2decac	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSetVocationMessage
+sub_6f7b0e5ff214#2	6f7b0e5ff21476b0	inlined	gamewindow/edittextcontroller.cpp:TEditTextController::submitNewText
 sub_6f7b0e5ff214#4	6f7b0e5ff21476b0	ported	store/storestorage.cpp:categoryState
 sub_6f7b0e5ff214#5	6f7b0e5ff21476b0	inlined	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::requestSendBugReport
 sub_6f8b7b37543e	6f8b7b37543e9daa	skip	miniaudio library
@@ -5075,6 +5282,7 @@ sub_6fb85cd48ec6	6fb85cd48ec67ee4	ported	gamewindow/mousecursorcontroller.cpp:TM
 sub_6fc265a2c671	6fc265a2c671d0ed	ported	gamewindow/marketcontroller.cpp:TMarketController::onStoreDeeplinkClicked
 sub_6fc2e45019cb	6fc2e45019cb2c78	skip	Qt/std container template code
 sub_6fc8cd0152b9	6fc8cd0152b9fca3	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
+sub_6fe05faab99a#3	6fe05faab99a86cf	skip	moc property getter, provided by the generated cip base
 sub_6ff195c60d3f	6ff195c60d3f1ca3	inlined	input/movementpathplanner.cpp:planMovementPath
 sub_6ff2017d9c48	6ff2017d9c480456	ported	gamewindow/minimapcontroller.cpp:TMinimapController::onMinimapMouseMoved
 sub_6ff4cc0225fb	6ff4cc0225fbd7c4	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::setGraphVisible
@@ -5120,6 +5328,8 @@ sub_713a8e783e48	713a8e783e48dc9f	ported	gamewindow/optionsmenudialogcontroller.
 sub_713c6f5e326a	713c6f5e326aa1c8	inlined	shared::TFileSystemHelper::v9
 sub_71687a5e27ca	71687a5e27ca6288	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onHouseActionResult
 sub_716fce08eab8	716fce08eab8efbd	ported	skillwheel/skillwheelcontrollers.cpp:mediumPerkImage
+sub_7181229dddff	7181229dddff8699	skip	translation-unit static initializer (misattributed)
+sub_718aa88843b1#5	718aa88843b10894	skip	std container template code
 sub_71bf21fc405a	71bf21fc405ad0ea	ported	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::badgeFilter
 sub_71e6a0462ff0	71e6a0462ff07802	ported	input/gameaction.h:TGameActionTakeManualScreenshot::TGameActionTakeManualScreenshot
 sub_71e6a0462ff0#2	71e6a0462ff07802	ported	input/gameaction.h:TGameActionTakeManualScreenshot::TGameActionTakeManualScreenshot
@@ -5127,6 +5337,7 @@ sub_71e7d88facb2	71e7d88facb2c950	inlined	spells/spellinfostorage.cpp:TSpellInfo
 sub_71fa39f3cf9d	71fa39f3cf9d225f	ported	skillwheel/skillwheeldata.cpp:mediumPerkValueText
 sub_720de1324eee	720de1324eeeed31	ported	controllers/characterselectioncontroller.cpp:TCharacterSelectionController::onGetPremiumClicked
 sub_721700a072bf	721700a072bff856	ported	cyclopedia/combatstatsqmldata.cpp:TOffenceStatsQmlData::makeSpellBonusHealingFromSkills
+sub_7242cdd7f7c5	7242cdd7f7c581ec	skip	Qt slot-object impl (template-generated)
 sub_7245fede64fc	7245fede64fcbde8	inlined	gamewindow/createcharacterdialogcontroller.cpp:TWorldSelectionSortProxyModel::setWorlds
 sub_724df86d578d	724df86d578d60ae	inlined	gamewindow/battlelistcontroller.cpp:BattleListEntry::operator==
 sub_7257ba4b3cae	7257ba4b3cae9993	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendApplyImbuement
@@ -5136,6 +5347,7 @@ sub_7304272e9ad9#4	7304272e9ad91984	ported	gamewindow/playertradecontroller.cpp:
 sub_73119f8c4c4e	73119f8c4c4e0e24	inlined	creatures/creatureprotocolapply.cpp:applyProtocolCreatureFields
 sub_731ae052fcef	731ae052fcefe602	skip	Qt/std container template code
 sub_731c482b5cd6	731c482b5cd6c1f4	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::collectRewardButtonClicked
+sub_7320595dd15f	7320595dd15fd6b7	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::removeEntry
 sub_73211d931e4c	73211d931e4c789a	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::suggestCharacterName
 sub_73211d931e4c#2	73211d931e4c789a	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::suggestCharacterName
 sub_735a7f39f4b1	735a7f39f4b1c7f5	ported	sound/soundmetadatamanager.cpp:TSoundMetadataManager::setMemoryPriority
@@ -5159,19 +5371,24 @@ sub_753aad09be19	753aad09be1951a4	skip	static initializer of unrelated globals (
 sub_754548d6e1da	754548d6e1da52d2	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::centerAt
 sub_75624a1574a0	75624a1574a0d851	skip	compiler-generated destructor pair
 sub_757b8956ec0f	757b8956ec0f403b	inlined	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleFullMapMessage
+sub_757f50e5b2fa	757f50e5b2fa1049	ported	gamewindow/blessingsdialogcontroller.cpp:TBlessingsDialogController::TBlessingsDialogController
 sub_7580eb0d99b8	7580eb0d99b8ad7d	ported	config/sidebaroptions.cpp:serializeBossTracker
 sub_75859b77da57	75859b77da57ac67	ported	input/gameaction.h:TGameActionGetGuildMessage::TGameActionGetGuildMessage
 sub_75859b77da57#2	75859b77da57ac67	ported	input/gameaction.h:TGameActionGetGuildMessage::TGameActionGetGuildMessage
 sub_75955550cdb0	75955550cdb03047	ported	news/eventqmlentry.cpp:TEventQMLEntry::lessThan
 sub_75d42dac6d29	75d42dac6d29e7a6	inlined	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::loadActivities
+sub_75dbd5d1f6df	75dbd5d1f6dfb261	ported	gamewindow/chatcontroller.cpp:TChatController::storeOpenChannels
+sub_75e9994b8b73	75e9994b8b73abb3	ported	gamewindow/chatcontroller.cpp:TChatController::showTabMenu
 sub_75f31ba1eb2d	75f31ba1eb2d9acf	ported	gamewindow/chatcontroller.cpp:TChatChannelController::tutorialMarkerOf
 sub_7602725c65e0	7602725c65e0c629	skip	miniaudio library
 sub_7627528ea98e	7627528ea98e2fc9	tested	animation/movingoutfitanimator.h:TMovingOutfitAnimator::minimumPhaseDuration	test=tests/client/creaturemovement_test.cpp
 sub_7627528ea98e#3	7627528ea98e2fc9	skip	moc property getter (generated in cip_gen)
 sub_7635dbf6e01d#2	7635dbf6e01d55b5	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_763acb771f48	763acb771f48ef41	ported	gamewindow/containercontroller.cpp:TContainerController::setIcon
 sub_763b1c97024e	763b1c97024e5a2f	ported	game/gamesession.cpp:formatCreatureName
 sub_763e7434d38d	763e7434d38d4b8f	skip	std::vector insert / growth of team members (library)
 sub_76a137d724de#3	76a137d724dec3c2	skip	libc++ std::map tree destroy (library)
+sub_76a76330715f	76a76330715f1a7c	skip	Qt/std container template code
 sub_76d7797b73a0	76d7797b73a00ffd	skip	std::vector growth / std::make_shared (library)
 sub_76df08b92bba	76df08b92bbaaedf	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
 sub_771e50d9122b	771e50d9122b5e8a	inlined	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::filterAcceptsRow
@@ -5180,6 +5397,7 @@ sub_7761f73bb934	7761f73bb9346bf3	skip	moc property getter (generated in cip_gen
 sub_776a49153ce9	776a49153ce95b8a	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterListChanged
 sub_77844d44d3f1	77844d44d3f184c5	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_77844d44d3f1#2	77844d44d3f184c5	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
+sub_7794ab98bfd6	7794ab98bfd6d1fd	skip	compiler-generated destructor pair
 sub_77a42b987e30#4	77a42b987e30e459	skip	translation-unit static initializer (misattributed)
 sub_77a42b987e30#7	77a42b987e30e459	skip	translation-unit static initializer (misattributed)
 sub_77a42b987e30#8	77a42b987e30e459	skip	translation-unit static initializer (misattributed)
@@ -5188,8 +5406,10 @@ sub_77eafe2495a9	77eafe2495a94dbe	ported	gamewindow/createaccountdialogcontrolle
 sub_77f2eaf7034a	77f2eaf7034a6e3e	inlined	gamewindow/assignactiondialogs.cpp:TSpellListDataModel::data
 sub_780fabc73c2b	780fabc73c2be09c	ported	container/qmlitemslotdata.cpp:countVariants
 sub_780fc588a58d	780fc588a58dc1e4	inlined	gamewindow/imbuingdialogcontroller.cpp:TQmlAstralSource::TQmlAstralSource
+sub_781d5eb51dfb	781d5eb51dfbec71	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_7823aa38fec1	7823aa38fec1719f	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendLeaveChannel
 sub_782e79de34e0	782e79de34e0dd66	inlined	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::handleFullMapMessage
+sub_783995af8be8	783995af8be8f219	ported	gamewindow/containercontroller.cpp:TContainerController::TContainerController
 sub_7866e4d57834	7866e4d578345ca1	ported	chat/textstorage.cpp:TCreatureSpeechBubble::TCreatureSpeechBubble
 sub_788dd5f2698a	788dd5f2698a3174	skip	std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
 sub_78b462b4198c#2	78b462b4198c7eb8	inlined	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage
@@ -5275,6 +5495,7 @@ sub_7b090b69f90e	7b090b69f90e360c	ported	gamewindow/highscoresdialogcontroller.c
 sub_7b20dd3be2f9	7b20dd3be2f97a1a	skip	compiler-generated destructor pair
 sub_7b3072cbafdc	7b3072cbafdc37b8	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::resetHouseActionData
 sub_7b4078707a93	7b4078707a930670	ported	analysers/analyserwidgets.cpp:TAnalyticsSelectorWidgetController::partyHuntAnalyserButtonClicked
+sub_7b6ae69ad18f	7b6ae69ad18f1eaf	skip	std::sort / std::stable_sort instantiation (library)
 sub_7b737791289d	7b737791289da552	skip	vtable install (compiler-generated)
 sub_7b737791289d#2	7b737791289da552	skip	vtable install (compiler-generated)
 sub_7b74798e999d	7b74798e999dca1c	ported	config/optionspages.cpp:percentOf
@@ -5299,6 +5520,7 @@ sub_7cfd3752a300	7cfd3752a300836c	ported	proficiency/proficiencystorage.cpp:TPro
 sub_7d13145ad42c#12	7d13145ad42cd336	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onCategoriesChanged
 sub_7d13145ad42c#5	7d13145ad42cd336	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::setOptions
 sub_7d13145ad42c#7	7d13145ad42cd336	inlined	gamewindow/battlelistcontroller.cpp:BattleListEntry::operator==
+sub_7d14f67c00f1	7d14f67c00f1ecc5	ported	gamewindow/chatcontroller.cpp:TChatController::onSecondaryChannelClicked
 sub_7d1e47349400	7d1e47349400f6f1	inlined	creatures/creaturestorage.cpp:TCreature::hideStaticSquare
 sub_7d29f7c67352#11	7d29f7c67352456a	skip	std::vector growth/length_error (library)
 sub_7d29f7c67352#4	7d29f7c67352456a	skip	libc++ vector/deque internals (library)
@@ -5326,6 +5548,8 @@ sub_7eca2fd20084	7eca2fd20084904f	inlined	protocol::TProtobufServerMessageTransl
 sub_7ed35111a8f9	7ed35111a8f91f61	inlined	gamewindow/imbuingdialogcontroller.cpp:ownedAstralSources
 sub_7f0069cff628	7f0069cff628d98a	ported	config/optionspages.cpp:THotkeysOptionsPage::setHotkeyMode
 sub_7f01e44604de	7f01e44604de7caf	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onShowConfigurationMenu
+sub_7f1b35bd0dff	7f1b35bd0dff5858	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::onClearConfirmed
+sub_7f1d016b6cae	7f1d016b6cae16f1	ported	gamewindow/chatcontroller.cpp:TChatController::setSecondary
 sub_7f3c81defacc	7f3c81defacccd4a	inlined	sub_a89d061d0d73
 sub_7f3c81defacc#2	7f3c81defacccd4a	inlined	sub_a89d061d0d73
 sub_7f47575bc2e5	7f47575bc2e5c621	skip	std::sort / std::vector template instantiations
@@ -5367,6 +5591,7 @@ sub_8095e30ec948#2	8095e30ec9482f13	inlined	protocol::TProtobufServerMessageTran
 sub_8098c202c144	8098c202c1444bd3	inlined	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::requestSendBugReport
 sub_80a3d2235e00	80a3d2235e0010f5	ported	gamewindow/sidebarmanager.cpp:TSidebarController::addPanel
 sub_80ca0bb0322d	80ca0bb0322dec2c	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::addSidebar
+sub_80ce178e3407	80ce178e340782d1	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setMaximized
 sub_80fc4498f08b	80fc4498f08b1161	ported	chat/textstorage.cpp:TNpcSpeechBubble::setHeader
 sub_80fec95b1aa5#2	80fec95b1aa5f182	skip	QList template instantiation (reserve/insert/detach)
 sub_81505e38a69f	81505e38a69f5e9c	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::activateLensehelp
@@ -5419,6 +5644,7 @@ sub_837932b7e775#6	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTran
 sub_83815f571796	83815f571796b8d0	inlined	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::data
 sub_8382c73d673c	8382c73d673c68cc	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::imbuementFilter
 sub_83c5f33127a6#146	83c5f33127a615cc	inlined	protocol::TProtobufClientMessageTranslator::v114
+sub_83d09776d01a	83d09776d01afc85	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_84110ef0e020	84110ef0e020a82b	inlined	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaButtonController::onCyclopediaButtonClicked
 sub_841da4d9a757	841da4d9a7576af7	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::requestAccountCreationStatus
 sub_841da4d9a757#2	841da4d9a7576af7	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::requestAccountCreationStatus
@@ -5463,6 +5689,7 @@ sub_869d01f197cd	869d01f197cd3c37	ported	config/optionspages.cpp:THotkeysOptions
 sub_86a0ef8bfa64	86a0ef8bfa647d0f	ported	exivaoptions/exivaoptionsstorage.cpp:TExivaOptionsStorage::toggleAllowEveryone
 sub_86a311ec612f	86a311ec612fc728	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onSecureModeEnabledRequested
 sub_86d6d83812d1	86d6d83812d1d279	ported	gamewindow/assignactiondialogs.h:TRecordKeyboardShortcutDialogController::selectedKeySequence
+sub_86ea1229680a	86ea1229680a20f2	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setTriggers
 sub_86f9562eb3ba	86f9562eb3badcde	skip	std vector internals (push_back/realloc/assign/clear)
 sub_870645981933	8706459819338b52	ported	skillwheel/skillwheeldata.cpp:mitigationValue
 sub_8721425c106e	8721425c106e647d	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -5592,6 +5819,7 @@ sub_87c016509403	87c0165094033d90	inlined	gamewindow/optionsmenudialogcontroller
 sub_87d512d18497	87d512d18497662c	ported	gamewindow/containercontroller.cpp:TContainerController::onShowConfigurationMenu
 sub_87de2232bd13	87de2232bd130004	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onTransferErrorNotification
 sub_87eed76d9fdf	87eed76d9fdf05de	inlined	skillwheel/skillwheeldata.cpp:mediumPerkName
+sub_884d775d4e7a	884d775d4e7a08d3	skip	std container template code
 sub_8857609738f5	8857609738f53298	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::addWaste
 sub_88652aa95093	88652aa9509380b8	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_88652aa95093#2	88652aa9509380b8	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -5614,7 +5842,9 @@ sub_89d9c177f6f7	89d9c177f6f7eb61	inlined	proficiency/proficiencystorage.cpp:TPr
 sub_89da42713aa7	89da42713aa7ebce	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendContainerActionMessage
 sub_89ec68470341	89ec68470341eb38	skip	std container internals (map/vector/set)
 sub_89f34d88a4e2	89f34d88a4e21a45	ported	appearances/appearanceinstance.cpp:TDirectionalFieldEffectInstance::start
+sub_8a1cf056795c	8a1cf056795c0857	ported	gamewindow/edittextcontroller.cpp:TEditTextController::submitNewText
 sub_8a21276a85f5	8a21276a85f50687	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::requestToggleBosstiaryTracking
+sub_8a3475722c0c	8a3475722c0cc1ed	skip	Qt/std container template code
 sub_8a48f80eefc1	8a48f80eefc1949d	ported	chat/textstorage.cpp:highlightKeywords
 sub_8a5035bbf41a	8a5035bbf41abe60	ported	config/optionspages.cpp:THotkeysOptionsPage::resetToDefault
 sub_8a685bb5da3d	8a685bb5da3d4220	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::applySpellModifications
@@ -5655,8 +5885,10 @@ sub_8c0184aea69a#3	8c0184aea69a6bf8	ported	skillwheel/skillwheeldata.cpp:smallPe
 sub_8c08386771e4	8c08386771e4d390	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::bonusGradeText
 sub_8c0d27cc04eb	8c0d27cc04ebffc1	skip	libc++ vector/deque internals (library)
 sub_8c398a2bdca4	8c398a2bdca471b2	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::handlePickFilterIntricate
+sub_8c51c7aa353a	8c51c7aa353a852e	skip	Qt slot-object impl (template-generated)
 sub_8c5c5874bc44	8c5c5874bc445ee2	inlined	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleSetTacticsMessage
 sub_8c77d8abeeaf	8c77d8abeeaf3174	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::setInventoryMinimized
+sub_8c7dc7b82918	8c7dc7b829184f75	ported	gamewindow/chatcontroller.cpp:TChatController::showRecentlyTraded
 sub_8cb0783005b4	8cb0783005b426ad	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::requestJumpToOfferWithID
 sub_8ccbc9e59b46	8ccbc9e59b461924	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::updateAccountPasswords
 sub_8ccf40041cf2	8ccf40041cf221cc	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTaskboardCommandMessage
@@ -5778,6 +6010,7 @@ sub_8d306255397c#99	8d306255397c3dbe	inlined	protocol::TProtobufServerMessageTra
 sub_8d4596895379	8d45968953791afc	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::updateCharacterName
 sub_8d64c2976730	8d64c2976730ad8b	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::onInspectObjectDataReceived
 sub_8d80c76f3a94	8d80c76f3a948e25	skip	miniaudio library
+sub_8deb34499902	8deb34499902d9e7	skip	moc property getter, provided by the generated cip base
 sub_8df0e071c723	8df0e071c7232e61	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::updateHint
 sub_8df8e8457715	8df8e8457715d71d	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyReward::TQmlDailyReward
 sub_8df8e8457715#2	8df8e8457715d71d	ported	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyReward::TQmlDailyReward
@@ -5797,6 +6030,7 @@ sub_8eb7175c9b94	8eb7175c9b94e5db	ported	gamewindow/stashdialogcontroller.cpp:TS
 sub_8ed4bd584347	8ed4bd584347a230	ported	gamewindow/skillswidgetcontroller.cpp:TSkillsWidgetController::showOffenceStats
 sub_8ed4bd584347#2	8ed4bd584347a230	ported	gamewindow/skillswidgetcontroller.cpp:TSkillsWidgetController::showDefenceStats
 sub_8ed4bd584347#3	8ed4bd584347a230	ported	gamewindow/skillswidgetcontroller.cpp:TSkillsWidgetController::showMiscStats
+sub_8edb9eaba86b#2	8edb9eaba86b0437	skip	Qt/std container template code
 sub_8edd50f3d0df	8edd50f3d0df6d67	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::~TContextMenuController
 sub_8eeed222eb97	8eeed222eb97ddbf	ported	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::TFriendsAccountSearchStorage
 sub_8eeed222eb97#2	8eeed222eb97ddbf	ported	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::TFriendsAccountSearchStorage
@@ -5858,6 +6092,7 @@ sub_933b77caea39	933b77caea394372	skip	moc signal emitter
 sub_9342c38ee24b	9342c38ee24bf4c9	inlined	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::TCharacterTradeDialogController
 sub_93454396f188	93454396f188853d	skip	std::vector<action setting> template instantiation (emplace/insert/relocate/destroy)
 sub_9348e4284ee0	9348e4284ee0cd66	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowSorcererSpells
+sub_93657401ec27	93657401ec279e28	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::fill
 sub_93807c1e732e	93807c1e732e82ce	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::requestCheckConfiguration
 sub_93c8b5eb58d1	93c8b5eb58d10f03	inlined	chat/chatchannel.cpp:TChatChannelStorage::addServerLogEntry
 sub_93c91c1f5768#100	93c91c1f57686cf1	skip	libc++ std::map tree destroy (library)
@@ -6041,11 +6276,13 @@ sub_972f146a9ba7	972f146a9ba736e5	inlined	questlog/questlogciptypes.cpp:TQuestLo
 sub_9737c0189098#2	9737c0189098afe4	skip	compiler-generated destructor pair
 sub_973bc8da3fbc#2	973bc8da3fbc0b1e	inlined	protocol::TProtobufServerMessageTranslator::v113
 sub_97780ee1a962#2	97780ee1a96291bd	skip	moc signal emitter
+sub_978e1e82f261#14	978e1e82f261a6f0	skip	Qt slot-object impl (template-generated)
 sub_978e1e82f261#20	978e1e82f261a6f0	skip	Qt slot-object template instantiation
 sub_978e1e82f261#22	978e1e82f261a6f0	skip	shared_ptr / Qt slot-object template code
 sub_978e1e82f261#25	978e1e82f261a6f0	skip	Qt slot object impl (compiler-generated)
 sub_97ad7b4f4822	97ad7b4f48220a8f	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenRewardWall
 sub_97c0d09fa5d3	97c0d09fa5d35c53	ported	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::preselectedClassificationIndex
+sub_97c981b4b6b8	97c981b4b6b8f402	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::sortBy
 sub_97db4faf4792	97db4faf4792f1e4	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onEMailChecked
 sub_97e7e9902047	97e7e99020475038	ported	exivaoptions/exivaoptionsdialogcontroller.cpp:joined
 sub_980031c2aed9	980031c2aed9262d	skip	std::sort instantiation over team members / member indices (library)
@@ -6063,6 +6300,7 @@ sub_9884ce4b8747	9884ce4b8747acd5	ported	chat/chatchannel.cpp:TChatChannelIdenti
 sub_9884ce4b8747#2	9884ce4b8747acd5	ported	chat/chatchannel.cpp:TChatChannelIdentifier::help
 sub_988f8ebb3ec9	988f8ebb3ec959ae	skip	miniaudio library
 sub_989b2e9d7f9f	989b2e9d7f9f2a0e	ported	gamewindow/remainingdialogs.cpp:TShowSpellBookDialogController::TShowSpellBookDialogController
+sub_98a39ed84590	98a39ed8459033b2	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::requestClearItemBlackWhitelist
 sub_98ccff7b0270	98ccff7b02703ab4	ported	gamewindow/imbuingdialogcontroller.cpp:TQmlImbuementData::TQmlImbuementData
 sub_98ccff7b0270#2	98ccff7b02703ab4	ported	gamewindow/imbuingdialogcontroller.cpp:TQmlImbuementData::TQmlImbuementData
 sub_98d70bba55bc	98d70bba55bca591	ported	proficiency/proficiencystorage.cpp:TProficiencyStorage::xp
@@ -6102,6 +6340,7 @@ sub_9ac70321ea47	9ac70321ea471f27	ported	gamewindow/createcharacterdialogcontrol
 sub_9ad1cfcd3ef0	9ad1cfcd3ef0840f	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::updateWorldTypes
 sub_9afbf3e1319e	9afbf3e1319e79dd	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onCategoriesChanged
 sub_9b1791e7f5b9	9b1791e7f5b929fa	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_9b449b2715d8	9b449b2715d8e771	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::requestLootBlackWhitelistSwitch
 sub_9b8a3fb0e9ea	9b8a3fb0e9ea29e3	skip	std::deque / std::variant library code
 sub_9b8bb1311527	9b8bb13115272ecb	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendRotateEast
 sub_9ba29582fb21	9ba29582fb21185f	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onFilterButtonsVisibleClicked
@@ -6153,7 +6392,9 @@ sub_9c7085172050#24	9c7085172050a603	skip	moc-generated signal emitter
 sub_9c7085172050#27	9c7085172050a603	skip	moc-generated signal emitter
 sub_9c7085172050#3	9c7085172050a603	skip	moc signal emitter
 sub_9c73cdc7cbd0	9c73cdc7cbd01faa	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::requestExportPresetClicked
+sub_9c83b6c9bc81#2	9c83b6c9bc819eda	skip	Qt slot-object impl (template-generated)
 sub_9c8da507707b#2	9c8da507707bf3d6	inlined	protocol::TProtobufServerMessageTranslator::v211
+sub_9c8ff2919db2	9c8ff2919db2cdab	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumMessageRenewPremium::setDaysLeft
 sub_9c9beee4da81	9c9beee4da812f43	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::forgotEMailAddressOrPasswordPressed
 sub_9ca2bb3899ca	9ca2bb3899cac677	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendMarketAccept
 sub_9cb2ed85f99f	9cb2ed85f99fc080	skip	moc property getter, provided by the generated cip base
@@ -6172,6 +6413,7 @@ sub_9da9109951bd	9da9109951bd8fb4	skip	SFML audio library (miniaudio backend)
 sub_9daff4ec827a	9daff4ec827a9cf4	ported	config/clientoptionsmigration.cpp:moveBoolOptions
 sub_9e0f3a675770	9e0f3a67577098d6	skip	translation-unit static initializer (misattributed)
 sub_9e16ea0f8592	9e16ea0f8592df43	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::configuration
+sub_9e5a06594701	9e5a065947010392	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::TAboutDialogController
 sub_9e624c3587a6	9e624c3587a69b47	skip	QMap/QVariant template instantiation
 sub_9e624c3587a6#3	9e624c3587a69b47	skip	std::map<QString,QString> insert (library template)
 sub_9e624c3587a6#7	9e624c3587a69b47	skip	std::map emplace-hint instantiation (libc++)
@@ -6197,18 +6439,22 @@ sub_9fcce92fe779	9fcce92fe779ea49	ported	config/optionspages.cpp:percentOf
 sub_9fd857f4fdd3	9fd857f4fdd3cbcf	skip	compiler-generated destructor pair
 sub_9fe3a3a7b7b4	9fe3a3a7b7b4b56a	skip	std container/shared_ptr template code or compiler-generated copy
 sub_9feece087a71	9feece087a7189f7	ported	gamewindow/imbuingdialogcontroller.cpp:categoryName
+sub_a01671970487	a0167197048771dc	ported	gamewindow/chatcontroller.cpp:TChatChannelController::setChatWidth
 sub_a028ddbf252f	a028ddbf252f4464	skip	std container template code
 sub_a03279bef16a	a03279bef16a1074	skip	compiler-generated destructor
 sub_a04e1e4b1523	a04e1e4b15236e5f	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onCharacterNameChecked
 sub_a0a0de3359ae	a0a0de3359ae4652	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::bonusIcon
 sub_a0b270078c24#2	a0b270078c243b48	inlined	imbuing/imbuingciptypes.cpp:handleImbuingDialogRefreshMessage
 sub_a0ba4ad7221a	a0ba4ad7221a4048	inlined	config/optionspages.cpp:THotkeysOptionsPage::onTextAssignedToHotkeyAction
+sub_a0d39b124abf	a0d39b124abf1728	ported	gamewindow/edittextcontroller.cpp:TEditTextUIData::set
 sub_a0d86c5978c6	a0d86c5978c6b3ac	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::lastHourItems
 sub_a0ec04652811#6	a0ec0465281138db	skip	compiler-generated destructor pair
+sub_a11591b4e3c2	a11591b4e3c21bbf	ported	gamewindow/chatcontroller.cpp:TChatController::addEntryToChatInputHistory
 sub_a13306d4d923	a13306d4d923c6dd	inlined	config/optionspages.cpp:THotkeysOptionsPage::requestEnterNewHotkeyForAction
 sub_a1606252e54f	a1606252e54f5141	ported	gamewindow/cooldownbarcontroller.cpp:TCooldownBarController::showIdleSpellGroups
 sub_a1873a1b7dc5	a1873a1b7dc5300a	inlined	gamewindow/marketcontroller.cpp:TMarketController::getTotalPriceOrProfitMultistring
 sub_a1944bb0c5e6	a1944bb0c5e6450c	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::openDialog
+sub_a1953b2fd79a	a1953b2fd79a37fd	skip	compiler-generated destructor pair
 sub_a1b51b488aa9	a1b51b488aa9af81	skip	std::vector copy constructor (library template)
 sub_a1c1ad980321	a1c1ad980321a757	skip	miniaudio library
 sub_a1c6c188209e	a1c6c188209e5e82	ported	sound/soundprotocolmessagehandler.cpp:TSoundProtocolMessageHandler::handleSoundTriggerMessage
@@ -6249,6 +6495,7 @@ sub_a3d1ff165859#12	a3d1ff16585996a0	skip	static initializer of unrelated global
 sub_a3d1ff165859#13	a3d1ff16585996a0	skip	static initializer of unrelated globals (inbox filter names, vocation names; misattributed)
 sub_a3d1ff165859#17	a3d1ff16585996a0	skip	static initializer of unrelated globals, misattributed
 sub_a3d1ff165859#3	a3d1ff16585996a0	skip	static initializer misattributed to the class
+sub_a3e171e1fb82	a3e171e1fb82a20a	ported	game/skillswidgetentrydata.cpp:skillDetail
 sub_a3e9464ff301	a3e9464ff30140ef	ported	store/storestorage.cpp:TStoreCategory::addSubcategory
 sub_a3fe13df9f09	a3fe13df9f093914	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::updateEventsSchedulePreview
 sub_a41ed75a74a9	a41ed75a74a91af9	inlined	protocol::TProtobufServerMessageTranslator::v42
@@ -6274,6 +6521,7 @@ sub_a540602af04c	a540602af04c02b0	ported	renderer/worldmaprenderprovider.cpp:has
 sub_a5502213f47e	a5502213f47e491f	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::hasPickedPerks
 sub_a581058933d4	a581058933d47a78	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCyclopediaMapAction
 sub_a58e4f10fb6a	a58e4f10fb6ad9a4	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::rebuildBonusEffects
+sub_a593f44564e6	a593f44564e61554	skip	moc property getter, provided by the generated cip base
 sub_a593f44564e6#2	a593f44564e61554	ported	gamewindow/battlelistcontroller.h:TBattleListController::battleListId
 sub_a597f21d78f8	a597f21d78f8a71b	ported	teamfinder/teamfinderciptypes.cpp:localDateString
 sub_a5c9a995a89c#12	a5c9a995a89cc48d	inlined	creatures/creaturestorage.cpp:TCreature::setPosition
@@ -6305,6 +6553,7 @@ sub_a6f40351916b	a6f40351916b0fcc	ported	gamewindow/exaltationforgedialogcontrol
 sub_a7245aa95c71#2	a7245aa95c71e808	inlined	protocol::TProtobufServerMessageTranslator::v136
 sub_a74ee7ff07c8	a74ee7ff07c8a4b0	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_a768b8a28410	a768b8a284102b78	ported	chat/chatchannel.cpp:TChatChannelStorage::openDefaultChannels
+sub_a78396770023	a78396770023f75e	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_a81553cb360a#17	a81553cb360a77e2	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::showDialog
 sub_a81553cb360a#20	a81553cb360a77e2	inlined	screenshot::TScreenshotManager::handleGameAction
 sub_a81553cb360a#7	a81553cb360a77e2	inlined	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::handleOpenGetPremiumUrlGameAction
@@ -6388,8 +6637,10 @@ sub_ab9f9f5d701c	ab9f9f5d701c6074	ported	gamewindow/stashdialogcontroller.cpp:TS
 sub_abc247d4aff9	abc247d4aff9656e	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onExtraConfirmDialogClickedOK
 sub_abd062c109d7	abd062c109d7c200	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoSouthEast
 sub_abd168d489c7	abd168d489c7179f	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::onOwnTeamUpdateAvailable
+sub_abd521034f50	abd521034f507482	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::fill
 sub_abe6895fc5f1	abe6895fc5f18593	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferCancel
 sub_abf087865be3	abf087865be3c2d0	ported	config/clientoptionsmigration.cpp:moveIntOptions
+sub_ac10d7d1cd34	ac10d7d1cd34e9ee	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::setSortOrder
 sub_ac5e2d3f0b56	ac5e2d3f0b56db2f	ported	gamewindow/chatcontroller.cpp:TChatController::onPlayerNameToInviteToChatChannelReceived
 sub_ac5e2d3f0b56#2	ac5e2d3f0b56db2f	ported	gamewindow/chatcontroller.cpp:TChatController::onPlayerNameToExcludeFromChatChannelReceived
 sub_ac6ad6e64916#2	ac6ad6e649160405	skip	QMap/QList template instantiations
@@ -6406,6 +6657,7 @@ sub_ad1bdf42a6c1	ad1bdf42a6c1e079	ported	cyclopedia/playeroffencestatsprovider.c
 sub_ad1bdf42a6c1#2	ad1bdf42a6c1e079	ported	cyclopedia/playeroffencestatsprovider.cpp:TPlayerOffenceStatsProvider::TPlayerOffenceStatsProvider
 sub_ad1bdf42a6c1#5	ad1bdf42a6c1e079	ported	cyclopedia/playermiscstatsprovider.cpp:TPlayerMiscStatsProvider::TPlayerMiscStatsProvider
 sub_ad1bdf42a6c1#6	ad1bdf42a6c1e079	ported	cyclopedia/playermiscstatsprovider.cpp:TPlayerMiscStatsProvider::TPlayerMiscStatsProvider
+sub_ad296ce9235f	ad296ce9235f1e34	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_ad4ac51f780d	ad4ac51f780d55a7	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEditBuddy
 sub_ad64f08e7b10	ad64f08e7b106f40	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::onConfirmedPartialCollect
 sub_ad64f08e7b10#2	ad64f08e7b106f40	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::onConfirmedPartialCollect
@@ -6432,15 +6684,19 @@ sub_aef55422ae2e#9	aef55422ae2e3230	skip	static initializer of unrelated globals
 sub_aefa06bc1d20	aefa06bc1d201db8	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onChaseModeChangeRequested
 sub_aefd2ebf7401	aefd2ebf74015dd7	skip	moc property getter, provided by the generated cip base
 sub_af035f2c8a6f	af035f2c8a6ffa08	ported	chat/chatchannel.cpp:TChatChannel::TChatChannel
+sub_af0972335447	af09723354470419	skip	Qt/std container template code
 sub_af1d4df9a7ea	af1d4df9a7eaf012	skip	std container / struct destructor
 sub_af210a3e5078#36	af210a3e5078721c	inlined	protocol::TProtobufServerMessageTranslator::v195
 sub_af22a1c737f0	af22a1c737f03e51	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::TCalendarDialogController
 sub_af512d5039f9	af512d5039f99850	skip	static initializer (inbox filter names, typeinfo, classification row table; misattributed)
+sub_af56beb0dce6	af56beb0dce6733d	ported	gamewindow/edittextcontroller.cpp:itemTextDescription
 sub_af79bb4903b6	af79bb4903b64249	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResulMessage
 sub_af9f9e7e885c	af9f9e7e885c11d5	skip	compiler-generated destructor pair
 sub_afa33c2521d6	afa33c2521d6f85e	skip	std::vector reserve / grow / record move (library, compiler-generated)
 sub_afa69ca9610a	afa69ca9610a6a2f	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::tryOutfitForCurrentOffer
 sub_afe506aff430	afe506aff430ec89	ported	gamewindow/assignactiondialogs.cpp:TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogController
+sub_b017d843f8a1	b017d843f8a143f0	skip	Qt/std container template code
+sub_b03c4a8dd3ff	b03c4a8dd3ff1b68	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_b04d1d01a854	b04d1d01a854773a	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::closeSidebarClosestToGamewindow
 sub_b056b10043a9	b056b10043a9b083	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::updateMiscStats
 sub_b05aa98b7c2d	b05aa98b7c2d35dd	ported	gamewindow/chatcontroller.cpp:TChatController::parseInput
@@ -6491,18 +6747,23 @@ sub_b35aff460d32#2	b35aff460d32f607	ported	news/eventqmlentry.cpp:TEventQMLEntry
 sub_b3608a9521f1	b3608a9521f128cf	skip	std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
 sub_b373390eeb83	b373390eeb839866	inlined	worldmap/worldmapfield.cpp:isBank
 sub_b373390eeb83#9	b373390eeb839866	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
+sub_b38375548e26	b38375548e26c0b4	ported	gamewindow/edittextcontroller.cpp:TEditTextController::abortEditing
 sub_b392f45fe3f0	b392f45fe3f05d8e	inlined	protocol::TProtobufServerMessageTranslator::v15
 sub_b3936248ebd0	b3936248ebd0bba3	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::isMonsterOnlyAssignableForMinorCharms
 sub_b3a2f6e3e66f	b3a2f6e3e66f2bc1	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::removeSidebar
 sub_b3e92eefca68	b3e92eefca683da1	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardIcon
 sub_b3ecce915d07	b3ecce915d07d8c3	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendConfigureShowOffSocket
 sub_b3f1a272c175#2	b3f1a272c1756215	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_b3f2329fb06f	b3f2329fb06f8f73	ported	gamewindow/chatcontroller.cpp:TChatChannelController::TChatChannelController
 sub_b3f36e92234c	b3f36e92234c4563	skip	std::sort instantiation over trade goods (library)
 sub_b41ba0a66646	b41ba0a66646d49b	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendPickObjectToImbue
 sub_b4331f861203	b4331f8612030518	skip	std::sort instantiation over team members / member indices (library)
 sub_b439c2fdded4	b439c2fdded499a3	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onCreatureClicked
+sub_b43de8ac9cc7	b43de8ac9cc7c0b9	ported	gamewindow/chatcontroller.cpp:TChatController::handleAction
+sub_b450833caef1	b450833caef163f4	skip	compiler-generated destructor pair
 sub_b457e2c7f31d	b457e2c7f31d7fd6	skip	std::map<QString,QString> insert (library template)
 sub_b4823e34d8f8	b4823e34d8f83755	inlined	gamewindow/characterinfomodels.cpp:TAchievementInfoController::updateCounts
+sub_b4851c4277cb	b4851c4277cb1047	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::startContainerPick
 sub_b496db6cd7d9	b496db6cd7d96329	tested	animation/phaseanimator.cpp:TAnimator::phaseDuration	test=tests/client/phaseanimator_test.cpp
 sub_b4a4e2a89455	b4a4e2a89455f30e	ported	protocol/protocolmessagequeue.cpp:TProtocolMessageQueue::fireEmitSignalForNewClientProtocolMessage
 sub_b4b5b7541084	b4b5b75410841ff7	inlined	gamewindow/assignactiondialogs.cpp:TSpellListDataModel::data
@@ -6510,6 +6771,7 @@ sub_b4be9a6c59ac	b4be9a6c59accfea	tested	config/clientoptionsmigration.cpp:migra
 sub_b4c0e7a6f8ee	b4c0e7a6f8eea972	skip	compiler-generated destructor pair
 sub_b4ca01b06989#2	b4ca01b06989775e	skip	moc property getter (generated in cip_gen)
 sub_b4ca01b06989#3	b4ca01b06989775e	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
+sub_b4ca01b06989#4	b4ca01b06989775e	skip	moc property getter, provided by the generated cip base
 sub_b4ca01b06989#7	b4ca01b06989775e	ported	gamewindow/housesinfodialogcontroller.h:THousesSortProxyModel::townFilter
 sub_b4d0b38d912c	b4d0b38d912cef1a	skip	std vector internals (erase move / destructor)
 sub_b4d112292d2a	b4d112292d2a85f1	ported	config/optionspages.cpp:THotkeysOptionsPage::rebuildModel
@@ -6524,10 +6786,12 @@ sub_b530e3e840a1	b530e3e840a1fdf2	skip	compiler-generated struct ctor/dtor and s
 sub_b53db42d4d39	b53db42d4d392d4f	skip	translation-unit static initializer (misattributed)
 sub_b56f78f61775	b56f78f61775269d	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::isTracked
 sub_b59314347e98#2	b59314347e9826c6	inlined	chat/chatgameactionhandler.cpp:TChatGameActionProvider::entryGameActions
+sub_b59314347e98#8	b59314347e9826c6	skip	moc property getter, provided by the generated cip base
 sub_b59500226596	b59500226596ed63	ported	gamewindow/minimapcontroller.cpp:TMinimapController::onMinimapRoseButtonClicked
 sub_b596c5daae88	b596c5daae88e61a	skip	SFML/miniaudio library helper, only called from library code
 sub_b5b4ecd2774a	b5b4ecd2774a435b	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSellObject
 sub_b5c511b2dcff	b5c511b2dcff6b72	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
+sub_b5d5a90bfcb2	b5d5a90bfcb24628	ported	gamewindow/dialogmanager.cpp:createItem
 sub_b5ddcb20546a#2	b5ddcb20546aae64	skip	QList template instantiation (reserve/insert/detach)
 sub_b5e1d5998879	b5e1d5998879605b	ported	exivaoptions/exivaoptionsstorage.cpp:TExivaOptionsStorage::requestWhitelistChange
 sub_b60ba77a3158	b60ba77a31589617	skip	std::vector copy / growth of store records (library)
@@ -6536,6 +6800,7 @@ sub_b67f76756eea	b67f76756eead26c	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_b6acbbb13220	b6acbbb13220e743	skip	compiler-generated destructor pair
 sub_b6afd94b5fe0	b6afd94b5fe0ab7b	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::good
 sub_b6dca9c9d985	b6dca9c9d9853ab6	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onConfirmListReroll
+sub_b6e6f350708f	b6e6f350708fefca	ported	gamewindow/dialogmanager.cpp:TDialog::create
 sub_b70182dff846	b70182dff846c340	ported	proficiency/weaponproficiencyshapedialogs.cpp:TWeaponProficiencyShapeDialogController::onResourceBalanceChanged
 sub_b72e9d1c360e	b72e9d1c360e28c8	ported	gamewindow/imbuingdialogcontroller.cpp:sortKey
 sub_b730a77c4ed6	b730a77c4ed6c094	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::saveFilter
@@ -6684,6 +6949,8 @@ sub_b8249c9e3366#600	b8249c9e33663f7b	skip	std::shared_ptr release (library)
 sub_b8249c9e3366#601	b8249c9e33663f7b	skip	std::shared_ptr release (library)
 sub_b8249c9e3366#602	b8249c9e33663f7b	skip	std::shared_ptr release (library)
 sub_b8249c9e3366#603	b8249c9e33663f7b	skip	std container / struct destructor
+sub_b8249c9e3366#604	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-generated)
+sub_b8249c9e3366#605	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#606	b8249c9e33663f7b	skip	std::shared_ptr release (library)
 sub_b8249c9e3366#607	b8249c9e33663f7b	skip	std::shared_ptr release (library)
 sub_b8249c9e3366#608	b8249c9e33663f7b	skip	std::shared_ptr release (library)
@@ -6691,6 +6958,7 @@ sub_b8249c9e3366#61	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-gene
 sub_b8249c9e3366#617	b8249c9e33663f7b	skip	shared_ptr release (library)
 sub_b8249c9e3366#618	b8249c9e33663f7b	skip	shared_ptr release (library)
 sub_b8249c9e3366#62	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-generated)
+sub_b8249c9e3366#623	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#624	b8249c9e33663f7b	skip	std::shared_ptr release (library)
 sub_b8249c9e3366#629	b8249c9e33663f7b	skip	std::vector/shared_ptr template instantiations
 sub_b8249c9e3366#63	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-generated)
@@ -6747,6 +7015,7 @@ sub_b8249c9e3366#97	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-gene
 sub_b8249c9e3366#98	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#99	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-generated)
 sub_b82b33c34056	b82b33c34056cb0b	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSoulSealsFightMonsterMessage
+sub_b83748759c64	b83748759c647888	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_b837e5a1cb04	b837e5a1cb04eddc	skip	QBasicMutex destructor (compiler-generated)
 sub_b8501c20280b#2	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v210
 sub_b8501c20280b#3	b8501c20280b6557	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -6758,6 +7027,7 @@ sub_b8e59ad3b027	b8e59ad3b0274ad5	ported	skillwheel/skillwheelcontrollers.cpp:TS
 sub_b8ff50a7cbef	b8ff50a7cbef497c	skip	library: std::vector<std::string>::assign
 sub_b906e4a3d0dc	b906e4a3d0dc1e66	ported	friends/friendsciptypes.cpp:TFriendsAccountSearchStorage::moveMainCharacterToFront
 sub_b911df8935ab	b911df8935ab2f4f	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openStoreWithXpBoostCategory
+sub_b947b4729c5a	b947b4729c5a04ea	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::maximizePanel
 sub_b9532842b3bd	b9532842b3bd6ac7	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::autoExtendPreydClicked
 sub_b954afbb77ec	b954afbb77ecd7b0	inlined	config/sidebaroptions.cpp:parseNpcTrade
 sub_b954afbb77ec#2	b954afbb77ecd7b0	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::onServerMessageEnqueued
@@ -6767,6 +7037,7 @@ sub_b9798d867338	b9798d8673386722	ported	gamewindow/characterinfodialogcontrolle
 sub_b98104253c86	b98104253c8660ce	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::onWheelChanged
 sub_b988957ffcb1	b988957ffcb12de4	ported	config/clientoptiondefaults.cpp:reconcileControlButtons
 sub_b9e06ce748f1	b9e06ce748f12239	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
+sub_b9ed65f7bc04	b9ed65f7bc049f7a	ported	gamewindow/chatcontroller.cpp:TChatController::openInviteDialog
 sub_ba10c5a8d6a1	ba10c5a8d6a1fa41	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::tooltipRows
 sub_ba4f476e45e3#2	ba4f476e45e3e3d5	skip	translation-unit static initializer (misattributed)
 sub_ba4f476e45e3#3	ba4f476e45e3e3d5	skip	translation-unit static initializer (misattributed)
@@ -6819,9 +7090,11 @@ sub_ba885ba28104#50	ba885ba28104ff7a	inlined	protocol::TProtobufServerMessageTra
 sub_ba885ba28104#6	ba885ba28104ff7a	skip	protobuf-generated arena constructors
 sub_ba885ba28104#7	ba885ba28104ff7a	skip	protobuf-generated arena constructors
 sub_ba885ba28104#8	ba885ba28104ff7a	skip	protobuf-generated arena constructors
+sub_ba92b02e2399	ba92b02e2399f3b8	ported	gamewindow/containercontroller.cpp:TContainerController::onSlotTargetSelected
 sub_ba9c0c0823d1	ba9c0c0823d1bb7c	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::requestTransferCredits
 sub_baa38a23d359	baa38a23d359d845	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardNumbersText
 sub_babdd5a9a5b3	babdd5a9a5b36770	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
+sub_bac3d6f7b701	bac3d6f7b7016707	skip	std container template code
 sub_bacb34461c58	bacb34461c5810a9	ported	skillwheel/skillwheeldata.cpp:percentNumberTrimmed
 sub_bad00b56de9f	bad00b56de9ff38f	inlined	gamewindow/taskboarddialogcontroller.cpp:TTaskboardDialogController::switchToTab
 sub_bae7e771cd7d	bae7e771cd7dc351	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
@@ -6852,6 +7125,7 @@ sub_bc31de4df57d	bc31de4df57d7048	inlined	friends/friendsciptypes.cpp:TFriendsFr
 sub_bc54c8348ee3	bc54c8348ee31a0c	skip	compiler-generated destructors of the friends data types and their vectors
 sub_bc677fe4c7fa	bc677fe4c7fae797	ported	gamewindow/chatcontroller.cpp:TChatChannelController::Row::startSelection
 sub_bc97f5fd9d97	bc97f5fd9d9703a0	inlined	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::TRewardWallDialogController
+sub_bca043e806a5	bca043e806a57795	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::TVipWidgetController
 sub_bcae0e12c6d3	bcae0e12c6d39db6	skip	std::vector copy / growth of store records (library)
 sub_bcc444307684	bcc444307684a90d	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::refreshPlayerGuideEntries
 sub_bcccd51b8b15	bcccd51b8b153f85	inlined	sub_f69d6c7e5f47
@@ -6860,11 +7134,13 @@ sub_bcd30f308704	bcd30f3087043b03	ported	creatures/creatureprotocolapply.cpp:col
 sub_bcf9679747b8	bcf9679747b8c802	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::masteryProficiencyXP
 sub_bcfcd744b398	bcfcd744b39896d5	skip	std::map / unordered_map template instantiation
 sub_bd3568a75ccf	bd3568a75ccfa1e7	ported	config/clientoptiondefaults.cpp:buttonIds
+sub_bd438b4db8c0	bd438b4db8c0b628	ported	gamewindow/dialogmanager.cpp:TDialogStackController::contains
 sub_bd476cc1c839	bd476cc1c839783b	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::highlighted
 sub_bd4acd5c8724	bd4acd5c8724ef7d	skip	library: std::vector<std::string> grow-and-append
 sub_bd56735863c1	bd56735863c1fbd9	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::blackWhiteListType
 sub_bd5a89e040b4	bd5a89e040b4f9a3	ported	protocol/featurewire.cpp:readVarInt
 sub_bd667c0fe769	bd667c0fe76914ce	skip	std::variant assignment (library)
+sub_bd6de0e4f36f	bd6de0e4f36f6dc9	ported	input/gameaction.cpp:contextMenuActions
 sub_bd7cfa016a32#10	bd7cfa016a324732	inlined	friends/friendsciptypes.cpp:TFriendsFriendListStorage::friendGroupOf
 sub_bd7cfa016a32#14	bd7cfa016a324732	ported	gamewindow/cyclopediadialogcontroller.h:TCyclopediaButtonController::highlighted
 sub_bd9cda5f798a	bd9cda5f798a5dae	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendMarketLeave
@@ -6878,6 +7154,7 @@ sub_bdad446210e1#5	bdad446210e16462	skip	std::sort instantiation
 sub_bdcae11a3a71	bdcae11a3a71742c	skip	QMap/QVariant template instantiation
 sub_bdd1e96da73c	bdd1e96da73c6f49	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::sidebarIds
 sub_bddbf53ee342	bddbf53ee3424b7d	skip	std container template code
+sub_be0237a6c667	be0237a6c66745e3	skip	std::sort / std::stable_sort instantiation (library)
 sub_be04f99d6c95	be04f99d6c953171	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEditList
 sub_be14815ad083	be14815ad0831c79	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_be15361f627e	be15361f627e50e4	ported	gamewindow/managelootcontainerdialogcontroller.cpp:publishContainerAction
@@ -6897,6 +7174,7 @@ sub_bed8a6cb40fb#15	bed8a6cb40fb8ae8	skip	compiler-generated destructor pair
 sub_bed8a6cb40fb#8	bed8a6cb40fb8ae8	skip	compiler-generated struct ctor/dtor and std vector internals
 sub_bef623d0eabb	bef623d0eabb5a42	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendInviteToParty
 sub_bf07cfc916a5#2	bf07cfc916a5f34f	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::closeOpenMultiActionButtons
+sub_bf7629be18d8	bf7629be18d8330d	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::minimizePanel
 sub_bf921aefb654	bf921aefb6543881	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGreet
 sub_bf983d49cf50	bf983d49cf5086f4	inlined	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleGraphicalEffectsMessage
 sub_bfa9b5ebb159	bfa9b5ebb1590290	skip	std container/shared_ptr template code or compiler-generated copy
@@ -6927,7 +7205,9 @@ sub_c18617383597	c18617383597f354	inlined	gamewindow/teamassemblepagecontroller.
 sub_c188db2679b8	c188db2679b88ea7	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_c198acb819ae	c198acb819ae1005	skip	miniaudio library
 sub_c1a1070f592b	c1a1070f592b1c99	skip	std vector internals (push_back/realloc/assign/clear)
+sub_c1aa469051bc	c1aa469051bc6ed0	ported	gamewindow/chatcontroller.cpp:TChatController::setSecondary
 sub_c1b5c1ba82b1	c1b5c1ba82b11c34	ported	gamewindow/createcharacterdialogcontroller.cpp:TWorldSelectionSortProxyModel::setRecommendedWorld
+sub_c1f49a968f36	c1f49a968f361d5f	inlined	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::saveWidgetOptions
 sub_c205dc75a824	c205dc75a824e48f	inlined	config/sidebaroptions.h:TBattleListOptions::operator==
 sub_c24aae6d0a0f	c24aae6d0a0f0fef	ported	gamewindow/containercontroller.cpp:TContainerController::onSearchButtonClicked
 sub_c28525fb3de5	c28525fb3de5463f	ported	input/domainhandlers.cpp:TOpenWebsiteGameActionHandler::openUrlLater
@@ -6939,6 +7219,7 @@ sub_c2df17853882	c2df1785388272ab	ported	gamewindow/minimapcontroller.cpp:TMinim
 sub_c2e8bde43a4b	c2e8bde43a4b4a84	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::request
 sub_c2f4eeed7844	c2f4eeed78448b19	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenBosstiary
 sub_c2fb94b36cb8	c2fb94b36cb83153	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
+sub_c30bf9c71940	c30bf9c719407782	ported	gamewindow/messagedialogcontroller.cpp:TMessageDialogController::TMessageDialogController
 sub_c340318e5101	c340318e51014a3b	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
 sub_c36bfa394b6e	c36bfa394b6eb48b	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::requestOpenManageLootContainerDialog
 sub_c39502991fa0	c39502991fa0dac5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCloseNPCChannel
@@ -6952,6 +7233,7 @@ sub_c4b4fcf4338d	c4b4fcf4338d55f9	ported	gamewindow/actionbarcontroller.cpp:TAct
 sub_c4b66f7e7113	c4b66f7e7113b0e4	ported	app/bootstrap.cpp:configureProcess
 sub_c4cd86a6db56	c4cd86a6db565f15	skip	nlohmann::json from_json number/string conversion (third-party template)
 sub_c4cefd151c8b	c4cefd151c8bb730	inlined	sub_52ca29368333
+sub_c4d000842b79	c4d000842b798322	skip	moc property getter, provided by the generated cip base
 sub_c4de1e09057f	c4de1e09057f3fc8	ported	gamewindow/assignactiondialogs.cpp:TRecordKeyboardShortcutDialogController::onClearButtonClicked
 sub_c4fcaff66495	c4fcaff66495654e	skip	compiler-generated destructors of the friends data types and their vectors
 sub_c4fce947e178	c4fce947e178b722	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::setShowBaseXp
@@ -6959,10 +7241,13 @@ sub_c4ff8240485e	c4ff8240485e92fe	ported	gamewindow/friendsaccountsearchpagecont
 sub_c500714298bf	c500714298bfac67	ported	gamewindow/mousecursorcontroller.cpp:TMouseCursorController::loadStaticCursors
 sub_c502b96d9474	c502b96d94741bef	skip	SFML audio library (miniaudio backend)
 sub_c51ad1c0e45f	c51ad1c0e45f22aa	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::nextDailyRewardPosition
+sub_c52d1e95c4dd	c52d1e95c4dd266a	ported	gamewindow/dialogmanager.cpp:TDialog::setVisibleByStack
 sub_c5316a697832#2	c5316a6978325d6c	skip	protobuf-generated message constructor
+sub_c558740f151c	c558740f151c5bb7	skip	compiler-generated destructor pair
 sub_c55c677a16bc	c55c677a16bc1e41	ported	minimap/minimaptile.cpp:TMinimapTile::TMinimapTile
 sub_c55c677a16bc#2	c55c677a16bc1e41	ported	minimap/minimaptile.cpp:TMinimapTile::TMinimapTile
 sub_c567e7eb3413	c567e7eb34133b6f	inlined	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showContextMenuForAccountID
+sub_c5691f85b0bb	c5691f85b0bba100	skip	moc property getter, provided by the generated cip base
 sub_c5810f2dfc56#5	c5810f2dfc5663ca	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::shownListType
 sub_c5813a6081f1	c5813a6081f1f6dc	inlined	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::loadActivities
 sub_c58b251f286e	c58b251f286ebabe	skip	SFML audio library (miniaudio backend)
@@ -7016,6 +7301,7 @@ sub_c7cae578b9e6	c7cae578b9e6ee99	skip	compiler-generated destructor pair
 sub_c7dcf6995df5#3	c7dcf6995df5b09b	skip	std::unordered_set insert (library)
 sub_c7f3bb3493d8	c7f3bb3493d875a3	ported	gamewindow/imbuingdialogcontroller.cpp:durationText
 sub_c7ff9dbcda68	c7ff9dbcda68c3f9	inlined	sub_7ce2c2eb96cb
+sub_c8009a8b440b	c8009a8b440bc681	skip	translation-unit static initializer (misattributed)
 sub_c82c2ec365fb	c82c2ec365fb8891	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onToggleChaseMode
 sub_c86c94ddaeb0#2	c86c94ddaeb06f7c	skip	std::deque / std::variant library code
 sub_c87d8149227e	c87d8149227e205e	skip	translation-unit static initializer of shared header constants
@@ -7029,6 +7315,7 @@ sub_c8d59017c441	c8d59017c4412fbe	ported	skillwheel/skillwheelcontrollers.cpp:TS
 sub_c8db0dd1bde6	c8db0dd1bde67ae7	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_c8e9e8e33a7a	c8e9e8e33a7a49a2	inlined	skillwheel/skillwheelcontrollers.cpp:TFragmentWorkshopPageController::TFragmentWorkshopPageController
 sub_c8ea23f4c6fc#2	c8ea23f4c6fcd538	skip	std container template code
+sub_c8f57f51754c	c8f57f51754c901f	ported	gamewindow/chatcontroller.cpp:TChatController::sendChatMessage
 sub_c8ffecd1e5b1	c8ffecd1e5b122ae	skip	std vector internals (push_back/realloc/assign/clear)
 sub_c9118863cb14	c9118863cb14fa14	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::setFlag
 sub_c93e0412d36f	c93e0412d36f5381	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenMonsterCyclopediaMonsters
@@ -7054,6 +7341,7 @@ sub_ca4d66a57a02	ca4d66a57a02e81f	skip	QMap/QList template instantiations
 sub_ca8d87ffb26d	ca8d87ffb26dccdb	inlined	chat/chatprotocolmessagehandler.cpp:TChatProtocolMessageHandler::handleChannelEventMessage
 sub_ca9dac2964a0	ca9dac2964a0294a	inlined	config/specialconditionsoptions.cpp:SpecialConditionsOptions::defaults
 sub_caba4c2f9982	caba4c2f9982403e	ported	gamewindow/battlelistcontroller.cpp:BattleListEntry::operator==
+sub_cad4980c9397	cad4980c939781cb	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::clear
 sub_cadb14b1715e	cadb14b1715e0b49	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::runeSpellInfo
 sub_cadd1b9d95e2	cadd1b9d95e260c6	inlined	exaltation/exaltationstorage.cpp:TExaltationStorage::setTransferGroups
 sub_cb07846a90f4#2	cb07846a90f43e3e	skip	QList template instantiation (reserve/insert/detach)
@@ -7073,6 +7361,7 @@ sub_cba004b7e662	cba004b7e6624739	ported	gamewindow/bountytaskscontroller.cpp:TB
 sub_cbcb2fe17738#7	cbcb2fe177388cf6	ported	input/inputciptypes.h:TMovementIntentDirection::TMovementIntentDirection
 sub_cbcb2fe17738#8	cbcb2fe177388cf6	ported	input/inputciptypes.h:TMovementIntentDirection::TMovementIntentDirection
 sub_cbd5c8d5dbca	cbd5c8d5dbca47f0	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::clearDailyRewards
+sub_cbd75d0c5a41	cbd75d0c5a41b8c5	ported	gamewindow/messagedialogcontroller.cpp:TMessageDialogController::pressButtonWithKey
 sub_cc012410f2d9	cc012410f2d95f12	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
 sub_cc498a733911	cc498a7339112377	skip	std container/shared_ptr template code or compiler-generated copy
 sub_cc561ae143c1	cc561ae143c11fa6	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -7186,6 +7475,7 @@ sub_d04544b76a80	d04544b76a80dd7e	ported	container/qmlitemslotdata.h:TQMLItemSlo
 sub_d097924d44b0	d097924d44b01f46	ported	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::onAllowedGroupsChanged
 sub_d09906c6464b	d09906c6464b654b	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout
 sub_d09c1f97b5f7	d09c1f97b5f753a1	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::onStartAssembleTeamClicked
+sub_d0a98016e8b1	d0a98016e8b12ced	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::onOkClicked
 sub_d0b55c918c44	d0b55c918c44660f	ported	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::loadActivities
 sub_d0d20c3c2bf9	d0d20c3c2bf9ccb5	skip	moc property getter, provided by the generated cip base
 sub_d0edd7f4745f	d0edd7f4745f0522	ported	chat/chatgameactionhandler.cpp:TClientChatEntryFactory::lootEntry
@@ -7193,6 +7483,7 @@ sub_d0feb6916245	d0feb6916245b378	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_d10a28960c60	d10a28960c60dd00	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::maxLevel
 sub_d1370549ee69	d1370549ee699c43	ported	gamewindow/assignactiondialogs.cpp:TAssignPassiveAbilityActionDialogController::TAssignPassiveAbilityActionDialogController
 sub_d137e6f183c0	d137e6f183c01d7b	inlined	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::showDialog
+sub_d13955dc5cbb	d13955dc5cbbfcc2	skip	std::shared_ptr release (compiler-generated)
 sub_d14b14137fb1	d14b14137fb12d19	ported	config/optionspages.cpp:fractionOf
 sub_d1510b19f83f	d1510b19f83fe1b7	skip	compiler-generated constructor / destructor of trade records
 sub_d165a846628b	d165a846628b904d	ported	gamewindow/chatcontroller.cpp:TChatChannelController::sizeOf
@@ -7215,6 +7506,7 @@ sub_d1fcb5a3a78f	d1fcb5a3a78ff63b	inlined	container/containerciptypes.cpp:TConta
 sub_d20402e6e05b	d20402e6e05bdf82	ported	gamewindow/storedialogcontroller.cpp:TStorePurchaseConfirmationDialogController::setOffer
 sub_d209eea12e5f	d209eea12e5ff2d3	skip	SFML/miniaudio library helper, only called from library code
 sub_d2330eb395f3	d2330eb395f338d5	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::grabScreenshot
+sub_d2342c5dae7a	d2342c5dae7aecc4	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::TPremiumPanelController
 sub_d2350e02f41d	d2350e02f41dda82	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGoWest
 sub_d268cc983dfc	d268cc983dfc12ba	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
 sub_d268cc983dfc#2	d268cc983dfc12ba	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
@@ -7238,6 +7530,7 @@ sub_d362733678dd#2	d362733678dd5963	inlined	protocol::TProtobufServerMessageTran
 sub_d363c7fd6d22	d363c7fd6d22be34	skip	std::sort instantiation over team members / member indices (library)
 sub_d363d7b4379a	d363d7b4379af865	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::showUnfriendConfirmation
 sub_d369c41de665	d369c41de665433f	inlined	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onAccountCreationStatus
+sub_d38b44912402	d38b44912402a057	skip	translation-unit static initializer (misattributed)
 sub_d39cd1f13b11	d39cd1f13b11189b	skip	moc property getter (generated in cip_gen)
 sub_d39d9ff35fb8	d39d9ff35fb8489f	skip	std::sort instantiation over trade goods (library)
 sub_d3b0b0a9a598	d3b0b0a9a5980bd8	ported	teamfinder/teamfinderciptypes.cpp:slotsOrEmpty
@@ -7246,6 +7539,7 @@ sub_d3d123c98a2d	d3d123c98a2dd5f7	ported	gamewindow/friendsaccountsearchpagecont
 sub_d3d123c98a2d#2	d3d123c98a2dd5f7	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::onClickedSetOnBlacklist
 sub_d3e2e18a90e8	d3e2e18a90e88b58	ported	gamewindow/housesinfodialogcontroller.cpp:shortRent
 sub_d3eba2a74314#4	d3eba2a7431489de	ported	gamewindow/housesinfodialogcontroller.h:THousesSortProxyModel::houseTypeFilter
+sub_d3f8843375ce	d3f8843375cec425	ported	game/skillswidgetentrydata.cpp:clockMinutes
 sub_d3fc1b29187c	d3fc1b29187cb863	ported	gamewindow/createcharacterdialogcontroller.cpp:worldBattleEyeStatusText
 sub_d418833b32ef#3	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter
 sub_d418833b32ef#4	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter::TDiscardAllKeyboardInputAndSignalEscapePressedEventFilter
@@ -7422,6 +7716,7 @@ sub_d8b05f8a32dc	d8b05f8a32dcc756	skip	std::unordered_map<int, std::function> in
 sub_d8bdc50ef03e#4	d8bdc50ef03e7355	inlined	protocol::TProtobufServerMessageTranslator::v121
 sub_d8bdc50ef03e#6	d8bdc50ef03e7355	inlined	protocol::TProtobufServerMessageTranslator::v174
 sub_d8c5bda7d68f	d8c5bda7d68fc106	inlined	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleGraphicalEffectsMessage
+sub_d8fed7d8f51c	d8fed7d8f51c844d	skip	Qt/std container template code
 sub_d902425e069b#16	d902425e069b0690	inlined	sub_92f98c376ee9
 sub_d902425e069b#20	d902425e069b0690	skip	std::unordered_set rehash (library)
 sub_d902425e069b#22	d902425e069b0690	skip	std::unordered_map construction/rehash/destruction (library)
@@ -7466,6 +7761,7 @@ sub_dac905982267	dac905982267e1e5	ported	gamewindow/storedialogcontroller.cpp:TS
 sub_dafe13ec021a	dafe13ec021a1fa8	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::modifiyDustCost
 sub_db38635ce42d	db38635ce42d57de	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::updateSelectedWorld
 sub_db7bb9a20f2a	db7bb9a20f2a0105	skip	std::vector<TEventInformation> reserve/growth template
+sub_db8f19817d1d	db8f19817d1d4b7c	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::startHighlight
 sub_db8f462bed1d#10	db8f462bed1df0cf	skip	std::unordered_map template
 sub_db8f462bed1d#5	db8f462bed1df0cf	skip	std::unordered_set insert / find / erase / rehash (library)
 sub_db8f462bed1d#6	db8f462bed1df0cf	skip	std::unordered_set insert / find / erase / rehash (library)
@@ -7504,12 +7800,14 @@ sub_dda8e4e36212	dda8e4e3621278c2	inlined	gamewindow/bugreportdialogcontroller.c
 sub_ddbedce64ba0	ddbedce64ba0d270	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::onApplyClicked
 sub_ddccbebfc064	ddccbebfc0644033	inlined	teamfinder/teamsortproxymodels.cpp:TTeamMembersModel::setItems
 sub_ddd126b4fbb7#7	ddd126b4fbb70a04	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
+sub_ddecc8a7daca	ddecc8a7daca5a69	ported	gamewindow/chatcontroller.cpp:TChatController::closeChannel
 sub_ddf2fc91831f	ddf2fc91831f79ac	ported	config/sidebaroptions.cpp:serializeBattleLists
 sub_ddf6614bb749	ddf6614bb74937da	skip	std::vector<TEventInformation> reserve/growth template
 sub_de06a14090a9	de06a14090a97a37	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendShareExperience
 sub_de114b50af33	de114b50af3316f2	inlined	proficiency/proficiencyciptypes.cpp:handleWeaponProficiencyMessage
 sub_de1b26e3e341	de1b26e3e3415ffa	skip	std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
 sub_de1d24dd041b	de1d24dd041b6ace	ported	gamewindow/characterinfomodels.cpp:TCharacterTitlesInfoQmlData::TCharacterTitlesInfoQmlData
+sub_de285b0cb7fa	de285b0cb7fa1471	skip	moc property getter, provided by the generated cip base
 sub_de2f0a6ce4e5	de2f0a6ce4e5334d	ported	app/hints.cpp:parseHint
 sub_de3891ec4c36	de3891ec4c3698a0	inlined	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry
 sub_de4d2428a434#10	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v25
@@ -7591,6 +7889,7 @@ sub_de4d2428a434#84	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTra
 sub_de4d2428a434#85	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v211
 sub_de4d2428a434#86	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v211
 sub_de4d2428a434#9	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v19
+sub_de6cab6fa635	de6cab6fa6350ed1	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::clear
 sub_dea4780acc14	dea4780acc140796	skip	std::sort instantiation (introsort/insertion helpers)
 sub_dead7ffe3a8d	dead7ffe3a8d6c85	inlined	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::updateBadgeVisibility
 sub_ded71acf3fb9	ded71acf3fb9b2c0	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardDetails
@@ -7607,6 +7906,7 @@ sub_df5292dde126	df5292dde1266ecc	ported	gamewindow/vipwidgetcontroller.cpp:TVip
 sub_df86b2aef725#2	df86b2aef7259a84	inlined	renderer/worldmaprenderprovider.cpp:creatureLight
 sub_df9882e85958	df9882e859581e8f	skip	miniaudio library
 sub_dfa13f8b5156	dfa13f8b515613bd	ported	proficiency/proficiencystorage.cpp:TProficiencyStorage::decorationLevel
+sub_dfb1192d14a9	dfb1192d14a9f370	ported	gamewindow/edittextcontroller.cpp:TEditTextUIData::set
 sub_dfc4cc2bb9ca#12	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTranslator::v127
 sub_dfc4cc2bb9ca#14	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_dfc4cc2bb9ca#16	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTranslator::v191
@@ -7616,10 +7916,14 @@ sub_dfe3bd7173c2	dfe3bd7173c2a3c7	ported	gamewindow/contextmenucontroller.cpp:TC
 sub_dff4519d4cee	dff4519d4cee85f9	inlined	skillwheel/skillwheeldata.cpp:mediumPerkValueText
 sub_e0044047d7a7	e0044047d7a717af	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterRaceListChanged
 sub_e0147eb4204f#2	e0147eb4204f60b3	inlined	protocol::TProtobufServerMessageTranslator::v124
+sub_e01d1a93d39b	e01d1a93d39b9538	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::onLootContainersUpdated
 sub_e0239a74bd4d#4	e0239a74bd4df02e	skip	QMap/QList template instantiations
 sub_e0239a74bd4d#7	e0239a74bd4df02e	skip	std container template instance
+sub_e04b7e1bc5c5	e04b7e1bc5c5fa95	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::TManageLootContainerDialogController
 sub_e056fe83879b	e056fe83879bb063	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::onLoginOrLogoutStateUpdate
 sub_e0689629fe35	e0689629fe35d785	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::onStashContentChanged
+sub_e08984ede033	e08984ede033e388	skip	inherited constructor of the generated cip base
+sub_e08984ede033#2	e08984ede033e388	skip	inherited constructor of the generated cip base
 sub_e0b073441789	e0b073441789e6e5	ported	config/sidebaroptions.cpp:serializeBaseOnly
 sub_e0d3abc00874	e0d3abc008743040	ported	config/sidebaroptions.cpp:parseBaseOnly
 sub_e0d59894a05e	e0d59894a05e395e	skip	miniaudio library
@@ -7640,6 +7944,7 @@ sub_e1bcc818bc00	e1bcc818bc004e12	ported	gamewindow/chatcontroller.cpp:TChatChan
 sub_e1d1e41c7963	e1d1e41c79638cde	ported	appearances/appearanceinstance.cpp:TMissileEffectInstance::setPath
 sub_e1dd94efa202	e1dd94efa202ff34	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::onResetAllCharmsClicked
 sub_e1ec85ce3e73	e1ec85ce3e738436	skip	std::vector copy / growth of store records (library)
+sub_e1f5c9e3b1c4	e1f5c9e3b1c40315	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::togglePanel
 sub_e1fb6e7919c6	e1fb6e7919c663ca	ported	analysers/impactstorage.cpp:TImpactStorage::checkAllTimeMax
 sub_e1fe5a0c3b49	e1fe5a0c3b49050e	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setNextFreeListReroll
 sub_e21a9a319127	e21a9a319127a479	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::updateFeaturedOffers
@@ -7675,6 +7980,7 @@ sub_e39cd39c49ab	e39cd39c49ab08f5	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_e3b63b2d5f11#2	e3b63b2d5f116c53	inlined	config/sidebaroptions.cpp:parseSkills
 sub_e3be260c32bb	e3be260c32bb719c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendLook
 sub_e3d3312e1322	e3d3312e13224d34	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::historyButtonClicked
+sub_e3da22150338	e3da221503384c39	ported	gamewindow/edittextcontroller.cpp:TEditTextController::submitNewText
 sub_e3dfdc1cc1ce	e3dfdc1cc1ce3670	skip	compiler-generated operator== of store records
 sub_e3e8dc022e4a	e3e8dc022e4af7a2	skip	std container template instance
 sub_e3fa6e729d6b	e3fa6e729d6b4074	ported	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::TBugReportDialogController
@@ -7685,9 +7991,12 @@ sub_e420266dedfd	e420266dedfd3ce6	inlined	gamewindow/friendsbadgespagecontroller
 sub_e42506b3299f	e42506b3299f9263	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setInactive
 sub_e44ddaf71be4	e44ddaf71be4678e	inlined	questlog/questlogciptypes.cpp:TQuestLogStorage::setTrackedQuestFlags
 sub_e457654ad6e2#2	e457654ad6e25d3f	skip	Qt slot-object thunk
+sub_e468c6c84413	e468c6c844130bd9	ported	gamewindow/chatcontroller.cpp:TChatController::handleAction
 sub_e475b3f34147#2	e475b3f34147116c	skip	moc signal emitter
 sub_e47ef54e419c	e47ef54e419ce1c6	ported	gamewindow/storedialogcontroller.cpp:TStorePurchaseConfirmationDialogController::showHirelingPurchaseDialog
+sub_e4804a808789	e4804a808789897d	ported	gamewindow/blessingsdialogcontroller.cpp:TBlessingsDialogController::setData
 sub_e48f218b77fd	e48f218b77fd8d54	skip	std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
+sub_e4aa587391f1	e4aa587391f1579b	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_e4ba7e01b69d	e4ba7e01b69db69b	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_e4ba7e01b69d#2	e4ba7e01b69db69b	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_e4ba7e01b69d#3	e4ba7e01b69db69b	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -7723,6 +8032,8 @@ sub_e5f8bf391932#2	e5f8bf39193290ad	ported	input/gameaction.h:TGameActionOpenAdd
 sub_e60a7a861562	e60a7a861562f68e	skip	std::sort instantiation over team members / member indices (library)
 sub_e61aee06c918	e61aee06c9183f9f	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::bountyTaskRerollTokenCount
 sub_e620362b0a71	e620362b0a71a859	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::TBossDifficultySelectionDialogController
+sub_e62ea0871c3e	e62ea0871c3e9ba6	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
+sub_e62ea0871c3e#2	e62ea0871c3e9ba6	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_e64094d362f2	e64094d362f2786c	inlined	gamewindow/battlelistcontroller.cpp:TBattleListController::onShowConfigurationMenu
 sub_e64724f88c6d	e64724f88c6d3b4a	ported	gamewindow/teamjoinpagecontroller.cpp:TTeamJoinPageController::setPremiumStorage
 sub_e6517060957c	e6517060957cbd0f	skip	compiler-generated destructor / move-assignment of store records
@@ -7757,6 +8068,7 @@ sub_e6db877f4f89#66	e6db877f4f89d737	skip	moc-generated signal emitter
 sub_e6db877f4f89#8	e6db877f4f89d737	skip	moc-generated signal emitter
 sub_e6db877f4f89#82	e6db877f4f89d737	skip	moc-generated signal emitter
 sub_e6db877f4f89#85	e6db877f4f89d737	skip	moc-generated signal emitter
+sub_e6db877f4f89#87	e6db877f4f89d737	skip	moc-generated signal emitter
 sub_e6db877f4f89#9	e6db877f4f89d737	skip	moc-generated signal emitter
 sub_e6eb54d58729	e6eb54d5872959f8	skip	std::vector growth / std::shared_ptr copy and release (library)
 sub_e70327c0f6cd	e70327c0f6cdb8d4	ported	friends/friendsciptypes.cpp:TFriendsFriendListStorage::setFriendGroup
@@ -7788,14 +8100,18 @@ sub_e8e44788f97c	e8e44788f97c5695	inlined	protocol::TProtobufServerMessageTransl
 sub_e8e7664c4cb9	e8e7664c4cb9352b	skip	std::sort instantiation over team members / member indices (library)
 sub_e918ee6cb2f9	e918ee6cb2f960a3	skip	miniaudio library code (miniaudio.h asserts), misattributed
 sub_e9310b5db771	e9310b5db771517d	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
+sub_e96df1bdff30	e96df1bdff305c85	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setPremiumTime
+sub_e9778ceb1cca	e9778ceb1cca3108	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_e988f080a09a	e988f080a09a6777	skip	miniaudio library
 sub_e9a5b02aee65	e9a5b02aee6511b7	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setTimeLeft
 sub_e9ad6b4369b2	e9ad6b4369b267ce	ported	gamewindow/housesinfodialogcontroller.cpp:amount
 sub_e9e52c16dce1	e9e52c16dce1629d	inlined	gamewindow/assignactiondialogs.cpp:TSpellListDataModel::data
 sub_ea0527de6b88	ea0527de6b889109	skip	std container template instance
 sub_ea0e8ea0d2da	ea0e8ea0d2da6bf5	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::lookSelectedGoods
+sub_ea1125831f21	ea1125831f21e2c6	skip	compiler-generated destructor pair
 sub_ea16f6c9b493	ea16f6c9b49337dc	skip	SFML/miniaudio library helper, only called from library code
 sub_ea304f43dc51	ea304f43dc5180b7	skip	static initializer of header constants
+sub_ea3640e716c7	ea3640e716c7299a	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_ea370d341fa4	ea370d341fa47e97	inlined	teamfinder/teamsortproxymodels.cpp:TTeamMembersModel::setItems
 sub_ea40db17ce27	ea40db17ce27c123	inlined	worldmap/worldmapfield.cpp:isClip
 sub_ea44fac36211	ea44fac362117433	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::insert
@@ -7811,6 +8127,7 @@ sub_eac7d5453ec6	eac7d5453ec67acb	ported	gamewindow/chatcontroller.cpp:TChatChan
 sub_eaee370cb76c	eaee370cb76cca3a	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::onClassificationFilterWasSelected
 sub_eb33ff28a6e1	eb33ff28a6e13c9e	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_eb34c6bc4614#3	eb34c6bc46149ccd	skip	translation-unit static initializer of shared header constants
+sub_eb7c68da5e48	eb7c68da5e488d48	ported	gamewindow/chatcontroller.cpp:TChatChannelController::invalidateSizes
 sub_eb84d118ee55	eb84d118ee558db0	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_eb84d118ee55#2	eb84d118ee558db0	skip	moc property getter (generated in cip_gen)
 sub_eb84d118ee55#4	eb84d118ee558db0	skip	moc property getter (generated in cip_gen)
@@ -7854,16 +8171,20 @@ sub_edec52f5db44#9	edec52f5db4466ec	skip	Qt-generated slot object impl
 sub_edf31144e5e3	edf31144e5e3ae78	skip	miniaudio library code (miniaudio.h asserts), misattributed
 sub_ee03e23c5732#3	ee03e23c57323228	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::showCharacterInfo
 sub_ee179f0547a5	ee179f0547a5378c	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
+sub_ee686499304a	ee686499304acb0b	inlined	gamewindow/containercontroller.cpp:TContainerController::onSlotDragDropped
+sub_ee881c9ef632	ee881c9ef6324e60	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::advertisePremium
 sub_eea1984d670a	eea1984d670a7535	skip	SFML/miniaudio library helper, only called from library code
 sub_eea49304b77b	eea49304b77b439d	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::clearHistory
 sub_eea8522628e4#2	eea8522628e4cfac	inlined	protocol::TProtobufServerMessageTranslator::v211
 sub_eede39bdd9c3	eede39bdd9c3eef8	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::rebuild
 sub_ef305772ee49	ef305772ee49b592	inlined	config/sidebaroptions.h:TPlayerGuideWidgetOptions::operator==
+sub_ef49f2bffcdd	ef49f2bffcdd385d	skip	Qt slot-object impl (template-generated)
 sub_ef6d1db9a3e6#10	ef6d1db9a3e68594	inlined	protocol::TProtobufClientMessageTranslator::v103
 sub_efc5b789bed1	efc5b789bed16380	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::requestSearch
 sub_efe66c9d09ce	efe66c9d09ceaa42	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::levelSpecialPopupName
 sub_f005b9de2670	f005b9de267099c2	ported	skillwheel/skillwheeldata.cpp:largePerkDetailedInformation
 sub_f056cc75fd5e	f056cc75fd5e550d	skip	miniaudio library
+sub_f0980a26a2a0	f0980a26a2a00156	skip	translation-unit static initializer (misattributed)
 sub_f0a2be48266b	f0a2be48266b4b14	ported	gamewindow/containercontroller.cpp:TContainerController::sortContainer
 sub_f0cd1bfd30d7	f0cd1bfd30d73592	ported	skillwheel/skillwheeldata.cpp:mediumPerkName
 sub_f0e4ec39ca1c#3	f0e4ec39ca1c6f28	skip	QList<QKeySequence> instantiation
@@ -7878,6 +8199,7 @@ sub_f127363e0a29#2	f127363e0a292cae	ported	game/gameciptypes.cpp:TPremiumTimeSto
 sub_f13ada1e18f2	f13ada1e18f2fe33	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::spellInfoAt
 sub_f13ada1e18f2#2	f13ada1e18f2fe33	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::onPlayerLevelUp
 sub_f15ad6a352e4	f15ad6a352e4a1e9	skip	miniaudio library
+sub_f16bdcbb9e00	f16bdcbb9e009c55	skip	compiler-generated destructor pair
 sub_f173d5f391e6	f173d5f391e64fcd	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendRequestSkillWheel
 sub_f181d25f06e4	f181d25f06e4c475	tested	animation/animationinfo.h:TAnimationInfo::finish	test=tests/client/phaseanimator_test.cpp
 sub_f18a01ced49d	f18a01ced49df9a1	ported	app/bootstrap.cpp:configureProcess
@@ -7919,6 +8241,7 @@ sub_f23eb3024ce5#53	f23eb3024ce596b3	skip	moc-generated signal emitter
 sub_f23eb3024ce5#55	f23eb3024ce596b3	skip	moc-generated signal emitter
 sub_f23eb3024ce5#69	f23eb3024ce596b3	skip	moc-generated signal emitter
 sub_f23eb3024ce5#73	f23eb3024ce596b3	skip	moc-generated signal body
+sub_f23eb3024ce5#77	f23eb3024ce596b3	skip	moc-generated signal emitter
 sub_f23eb3024ce5#80	f23eb3024ce596b3	skip	moc-generated signal emitter
 sub_f23eb3024ce5#81	f23eb3024ce596b3	skip	moc-generated signal emitter
 sub_f23eb3024ce5#84	f23eb3024ce596b3	skip	moc-generated signal emitter
@@ -7941,6 +8264,7 @@ sub_f2a13dfac88d	f2a13dfac88db26f	ported	gamewindow/playerinventoryandstatuscont
 sub_f2a1b3c9aacb	f2a1b3c9aacbf6f2	inlined	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaButtonController::onCyclopediaButtonClicked
 sub_f2a4602f56f1	f2a4602f56f1e672	skip	std::vector / QList template code
 sub_f2a4602f56f1#2	f2a4602f56f1e672	skip	std::vector / QList template code
+sub_f2d223e99d2f	f2d223e99d2f0471	skip	translation-unit static initializer (misattributed)
 sub_f2d2e4fa14f9	f2d2e4fa14f9e5f9	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::onGameSessionChanged
 sub_f2df2cb53d7e	f2df2cb53d7ed794	skip	QList<QKeySequence> instantiation
 sub_f2df4e5780ab	f2df4e5780abbee3	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
@@ -7968,6 +8292,7 @@ sub_f4d768abf0ad	f4d768abf0ad4fcb	skip	std::map pair-table constructor (template
 sub_f4d768abf0ad#2	f4d768abf0ad4fcb	skip	std::map pair-table constructor (template) for a misattributed static enum-table initializer
 sub_f4d768abf0ad#3	f4d768abf0ad4fcb	skip	std::map pair-table constructor (template) for a misattributed static enum-table initializer
 sub_f4d768abf0ad#4	f4d768abf0ad4fcb	skip	std::map pair-table constructor (template) for a misattributed static enum-table initializer
+sub_f4f7b9c8a92a	f4f7b9c8a92a14ca	skip	moc property getter, provided by the generated cip base
 sub_f51466cc8731	f51466cc8731436d	skip	compiler-generated destructor pair
 sub_f51ca78d9816	f51ca78d981662b9	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::placeWidget
 sub_f520d90d5790	f520d90d5790d09a	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onAccountCreationStatus
@@ -7978,6 +8303,7 @@ sub_f68144bd11b2	f68144bd11b263ac	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_f69d6c7e5f47	f69d6c7e5f47ed64	ported	shared/downloadpool.cpp:TDownloadPool::TDownloadPool
 sub_f6a87717fe6b	f6a87717fe6b5d20	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::moveKnownArea
 sub_f6b9bd1a2ad4	f6b9bd1a2ad4d566	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::centerColumn
+sub_f6e41aa66411	f6e41aa6641117c0	ported	game/skillswidgetentrydata.cpp:fillExperienceGain
 sub_f6fe047def33	f6fe047def335d6f	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_f732fe1f7ae4	f732fe1f7ae47917	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onSearchResultsChanged
 sub_f7442f91aefd#23	f7442f91aefd2ca1	skip	std::deque / std::variant library code
@@ -8023,14 +8349,18 @@ sub_f9e930b88611	f9e930b88611d754	inlined	spells/spellinfostorage.cpp:TSpellInfo
 sub_f9eb50c776fc	f9eb50c776fc4ec2	ported	questlog/questlogciptypes.cpp:TQuestLinePart::TQuestLinePart
 sub_f9f6c867fa19	f9f6c867fa196318	ported	config/optionspages.cpp:cloudsIndexOf
 sub_fa1ad8fae83a	fa1ad8fae83ad962	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::tibiaLogoPressed
+sub_fa1ad8fae83a#2	fa1ad8fae83ad962	ported	gamewindow/aboutdialogcontroller.cpp:TAboutDialogController::requestOpenWebsite
 sub_fa36903027e4	fa36903027e416e4	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::setImbuementFilter
 sub_fa441d03eb86	fa441d03eb86af0d	ported	gamewindow/createcharacterdialogcontroller.cpp:TCreateCharacterDialogController::onCharacterNameChecked
 sub_fa4b2d3d49ed#3	fa4b2d3d49ed42ad	skip	moc property getter (generated in cip_gen)
 sub_fa75c3295ca6	fa75c3295ca676ac	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::isShowLevelSpecialPopup
 sub_fa8aceb6ca8a	fa8aceb6ca8a7e74	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::getSeasonalTooltipForDay
 sub_faa2b478c21a	faa2b478c21a051d	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::sendOfferViewedEvents
+sub_faaadfc7d891#4	faaadfc7d8913d91	skip	Qt slot-object impl (template-generated)
+sub_faaadfc7d891#6	faaadfc7d8913d91	skip	Qt slot-object impl (template-generated)
 sub_faf02f06338c	faf02f06338c7d92	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::updateDialog
 sub_fb0d76d230e5	fb0d76d230e5c991	skip	std::unordered_set insert / find / erase / rehash (library)
+sub_fb2ddecb4a4f	fb2ddecb4a4ffa1c	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_fb3947cc0b4e	fb3947cc0b4eebe5	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onConfirmChoosePrey
 sub_fb3da18212e9	fb3da18212e9a5cb	skip	compiler-generated struct ctor/dtor and std vector internals
 sub_fb4553bf599e	fb4553bf599e93af	ported	app/bootstrap.cpp:configureProcess
@@ -8060,6 +8390,7 @@ sub_fd531998be62	fd531998be6293ce	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_fd5f141a2411	fd5f141a24118bd2	inlined	creatures/creaturestorage.cpp:TCreatureStorage::notifyCreatureAppearanceUpdated
 sub_fd62baedaa96	fd62baedaa963b2e	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::onRequestCloseNpcTrade
 sub_fd639a1ac2fc	fd639a1ac2fc729b	ported	exivaoptions/exivaoptionsstorage.cpp:TExivaOptionsStorage::requestWhitelistChange
+sub_fd6d8d45a887	fd6d8d45a8871b3c	ported	gamewindow/draganddropcontroller.cpp:TDragAndDropController::startDrag
 sub_fd91a632265e	fd91a632265e81fa	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::applyObject
 sub_fd91ead0bdc8	fd91ead0bdc8c31d	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::setNumber
 sub_fd94a633a9de	fd94a633a9deb20e	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::TSpellInfoStorage
@@ -8078,6 +8409,9 @@ sub_fefa1cf921f3#2	fefa1cf921f3dc7a	inlined	gamewindow/imbuingdialogcontroller.c
 sub_ff144ff8f6b6	ff144ff8f6b69c36	inlined	chat/chatchannel.cpp:TChatChannelIdentifier::sameChannel
 sub_ff198b033e35	ff198b033e35dd95	inlined	protocol::TProtobufClientMessageTranslator::v3
 sub_ff3585da374a	ff3585da374af83b	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::discardPresetChangesThanSwapPreset
+sub_ff4d0743befc	ff4d0743befcfa08	ported	gamewindow/chatcontroller.cpp:TChatController::saveChannel
+sub_ff71f16a14d7	ff71f16a14d734fa	skip	moc property getter, provided by the generated cip base
+sub_ff810966fd5f	ff810966fd5f0b40	ported	gamewindow/chatcontroller.cpp:TChatChannelController::resetChannel
 sub_ffcb550e4d4c	ffcb550e4d4c246b	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferAccept
 sub_ffd47c9e6a6a	ffd47c9e6a6abf99	skip	compiler-generated destructor of the optional picked field
 teamfinder::TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage	cb74bcd7c1f2c6a1	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage

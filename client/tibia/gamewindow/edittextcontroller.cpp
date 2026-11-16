@@ -66,6 +66,7 @@ void TEditTextController::showItemText(const uint32_t id, const uint itemId, con
     const bool stampedLetter = itemId != 0 && itemId == tibia::game::stampedLetterId();
     m_mode = EMode::ItemText;
     m_id = id;
+    m_doorId = 0;
     m_author = author;
     m_data.set(qtTrId(editable ? "edit_text_caption" : "edit_text_show_text"), itemTextDescription(author, date, !text.isEmpty(), editable),
                text, editable, maxLength, itemId, stampedLetter && !author.isEmpty(), recentlyTraded,
@@ -78,6 +79,7 @@ void TEditTextController::showEditList(const uint32_t id, const uint8_t doorId, 
     m_mode = EMode::EditList;
     m_id = id;
     m_doorId = doorId;
+    m_author.clear();
     m_data.set(qtTrId("edit_text_edit_list"), qtTrId("edit_text_one_per_line"), text, true, 1999);
     reopen();
 }
@@ -87,7 +89,9 @@ void TEditTextController::showEditGuildMessageDialog(const QString& Text)
 {
     m_mode = EMode::GuildMessage;
     m_id = 0;
-    m_data.set(qtTrId("context_edit_guild_message"), qtTrId("edit_text_enter_new_text"), Text, true, 255);
+    m_doorId = 0;
+    m_author.clear();
+    m_data.set(qtTrId("edit_text_caption"), QString(), Text, true, 255);
     reopen();
 }
 
@@ -96,6 +100,8 @@ void TEditTextController::showReadOnlyText(const QString& DialogCaption, const Q
 {
     m_mode = EMode::ItemText;
     m_id = 0;
+    m_doorId = 0;
+    m_author.clear();
     m_data.set(DialogCaption, {}, Text, false, Text.size());
     reopen();
 }
@@ -108,8 +114,7 @@ void TEditTextController::submitNewText(const QString& NewText)
         return;
     switch (m_mode) {
         case EMode::ItemText:
-            if (m_data.textIsEditable())
-                tibia::game::editText(m_id, NewText.toStdString());
+            tibia::game::editText(m_id, NewText.toStdString());
             break;
         case EMode::EditList:
             tibia::game::editList(m_id, m_doorId, NewText.toStdString());

@@ -291,7 +291,10 @@ void TManageLootContainerDialogController::closeButtonClicked() { closeDialog();
 
 void TManageLootContainerDialogController::getPremiumClicked()
 {
-    input::publish(input::makeAction(A::OPEN_URL_GET_PREMIUM));
+    // The store, opened on its premium page.
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
+    action->parameter = 1;
+    input::publish(action);
 }
 
 void TManageLootContainerDialogController::requestClearItemBlackWhitelist()
@@ -333,7 +336,13 @@ void TManageLootContainerDialogController::requestLootBlackWhitelistSwitch(const
     rebuildListItems();
 }
 
-void TManageLootContainerDialogController::requestAddItemBlackWhitelist() { startListItemPick(); }
+void TManageLootContainerDialogController::requestAddItemBlackWhitelist()
+{
+    // Items are put on the list from the cyclopedia's item page.
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_CYCLOPEDIA));
+    action->parameter = 0;
+    input::publish(action);
+}
 
 void TManageLootContainerDialogController::removeItemFromList(const int AppearanceTypeIDRaw)
 {
@@ -416,30 +425,9 @@ void TManageLootContainerDialogController::syncFallback()
 
 void TManageLootContainerDialogController::startContainerPick(const int category, const bool lootColumn)
 {
-    if (!m_isPremium && category != UnassignedCategory) {
-        qInfo().nospace() << "tibia.loot: startContainerPick blocked (premium) category=" << category;
-        return;
-    }
     qInfo().nospace() << "tibia.loot: startContainerPick category=" << category << " lootColumn=" << lootColumn;
     m_pick = lootColumn ? PickMode::LootContainer : PickMode::ObtainContainer;
     m_pickCategory = category;
-    if (TMouseCursorController* cursor = TMouseCursorController::instance())
-        cursor->setTargetSelection(true);
-    dialog()->hide();
-    QPointer<TManageLootContainerDialogController> self(this);
-    input::startTargetSelection([self](const input::TGameActionPtr& target) {
-        if (TMouseCursorController* cursor = TMouseCursorController::instance())
-            cursor->setTargetSelection(false);
-        if (self)
-            self->finishPick(target);
-    });
-}
-
-void TManageLootContainerDialogController::startListItemPick()
-{
-    qInfo() << "tibia.loot: startListItemPick";
-    m_pick = PickMode::ListItem;
-    m_pickCategory = 0;
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->setTargetSelection(true);
     dialog()->hide();
@@ -463,10 +451,7 @@ void TManageLootContainerDialogController::finishPick(const input::TGameActionPt
     if (target && target->objectClientId) {
         const uint16_t typeId = target->objectClientId;
         ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
-        if (mode == PickMode::ListItem) {
-            if (m_itemInfo)
-                m_itemInfo->setLootListed(typeId, true);
-        } else if (type && type->isContainer()) {
+        if (type && type->isContainer()) {
             publishContainerAction(mode == PickMode::LootContainer ? A::LOOT_CONTAINER_SELECT : A::OBTAIN_CONTAINER_SELECT, category,
                                    target.get());
         } else {

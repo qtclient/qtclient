@@ -191,6 +191,7 @@ void TBlessingsDialogController::requestOpenStoreWithPremiumCategory()
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
     action->parameter = 1;
     input::publish(action);
+    requestClose();
 }
 
 void TBlessingsDialogController::requestOpenStoreWithBlessingOffer(const int BlessingId)
@@ -202,6 +203,7 @@ void TBlessingsDialogController::requestOpenStoreWithBlessingOffer(const int Ble
     action->parameter = 3;
     action->instance = offer;
     input::publish(action);
+    requestClose();
 }
 
 void TBlessingsDialogController::requestClose() { dialog()->close(); }

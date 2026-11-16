@@ -370,8 +370,9 @@ SkillsWidgetEntry buildSkillsWidgetEntry(const SkillType type)
             entry.valueString = number(free);
             entry.valueStringColor = compareColor(total, base, free == 0);
             entry.tooltip = qtTrId("x_of_y_foos_left_tooltips").arg(number(free)).arg(number(total)).arg(qtTrId("capacity"));
+            // The capacity's detail line comes first.
             if (const QString detail = skillDetail(total, base, base); !detail.isEmpty())
-                entry.tooltip += QLatin1Char('\n') + detail;
+                entry.tooltip = QStringLiteral("%1\n%2").arg(detail, entry.tooltip);
             break;
         }
         case SkillType::Food: {

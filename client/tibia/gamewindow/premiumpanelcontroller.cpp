@@ -70,14 +70,11 @@ QString TPremiumMessageRenewPremium::message() const
 
 TPremiumPanelController::TPremiumPanelController()
 {
-    for (int id = 0; id < static_cast<int>(std::size(MessageIds)); ++id) {
-        if (id == RenewPremiumFeature) {
-            m_renewPremium = new TPremiumMessageRenewPremium(this);
-            m_messages[id] = m_renewPremium;
-        } else {
-            m_messages[id] = new TPremiumMessage(id, this);
-        }
-    }
+    createPremiumMessages();
+    // The renew line replaces the table's plain message for its feature.
+    delete m_messages[RenewPremiumFeature];
+    m_renewPremium = new TPremiumMessageRenewPremium(this);
+    m_messages[RenewPremiumFeature] = m_renewPremium;
 
     m_highlightTimer.setSingleShot(true);
     m_highlightTimer.setInterval(HighlightMs);
@@ -127,6 +124,12 @@ TPremiumPanelController::~TPremiumPanelController()
     setPanelItem(nullptr);
 }
 
+void TPremiumPanelController::createPremiumMessages()
+{
+    for (int id = 0; id < static_cast<int>(std::size(MessageIds)); ++id)
+        m_messages[id] = new TPremiumMessage(id, this);
+}
+
 int TPremiumPanelController::premiumDaysLeft() const
 {
     if (m_premiumTimeSetAt > m_premiumExpiration || m_premiumExpiration == m_premiumTimeSetAt)
@@ -173,10 +176,15 @@ void TPremiumPanelController::applySessionVisibility()
         showCollapsed();
 }
 
+bool TPremiumPanelController::canTogglePanel() const
+{
+    return isPremium() || hasUnlimitedPremium() || hasPremiumTime();
+}
+
 void TPremiumPanelController::togglePanel()
 {
     stopHighlight();
-    if (!isPremium() && !hasUnlimitedPremium() && !hasPremiumTime())
+    if (!canTogglePanel())
         return;
     if (m_item && m_item->isVisible())
         setPanelVisible(false);
@@ -212,16 +220,16 @@ void TPremiumPanelController::setPanelItem(QQuickItem* item)
     if (!m_item)
         return;
     connect(m_item, &QQuickItem::visibleChanged, this, &TPremiumPanelController::onIsVisibleChanged);
-    applySessionVisibility();
+    // A new item starts hidden; the session start shows it.
+    setPanelVisible(false);
 }
 
 void TPremiumPanelController::setTriggers(const std::vector<uint8_t>& features)
 {
     m_premiumMessages.clear();
-    for (const uint8_t feature : features) {
-        if (const auto it = m_messages.find(feature); it != m_messages.end())
-            m_premiumMessages.append(it->second);
-    }
+    // An unknown feature adds an empty line, as the table lookup inserts one.
+    for (const uint8_t feature : features)
+        m_premiumMessages.append(m_messages[feature]);
     Q_EMIT premiumMessagesChanged();
     startHighlight(RetriggerMs);
 }

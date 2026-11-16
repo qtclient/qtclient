@@ -1190,6 +1190,10 @@ void TChatController::onWorldLeft()
     m_excludeDialog.dialog()->close();
     m_messageDialog.dialog()->close();
     setSecondary(nullptr);
+    m_history.clear();
+    m_historyIndex = 0;
+    if (m_chatItem)
+        m_chatItem->setProperty("currentChatInput", QString());
     m_storage.reset();
     m_mode.onGameSessionDisconnected();
     m_channelsFromConfigOpened = false;
@@ -1325,7 +1329,7 @@ void TChatController::onPlayerNameToExcludeFromChatChannelReceived(const QString
 
 void TChatController::openInviteDialog(chat::TChatChannel* channel, const bool exclude)
 {
-    if (!channel || !channel->isOwnPrivateChannel())
+    if (!channel)
         return;
     m_inviteTarget = channel;
     TGenericEnterTextDialogController& prompt = exclude ? m_excludeDialog : m_inviteDialog;
@@ -1610,11 +1614,13 @@ QString TChatController::getNewerChatInputHistoryEntry()
 void TChatController::addEntryToChatInputHistory(const QString& chatInputText)
 {
     static const qsizetype maxHistory = chat::chatSetting(QStringLiteral("maxChatInputHistoryLength"), 1000, 1);
-    if (!chatInputText.isEmpty() && (m_history.isEmpty() || m_history.constLast() != chatInputText)) {
-        if (m_history.size() >= maxHistory)
-            m_history.removeFirst();
+    if (chatInputText.isEmpty())
+        return;
+    // A full history drops its oldest line first; a repeat of the newest line is not stored again.
+    if (m_history.size() >= maxHistory)
+        m_history.removeFirst();
+    if (m_history.isEmpty() || m_history.constLast() != chatInputText)
         m_history.append(chatInputText);
-    }
     m_historyIndex = m_history.size();
 }
 
@@ -1793,7 +1799,10 @@ bool TChatController::handleAction(const input::TGameAction& action)
         return true;
     case A::OPEN_INVITE_TO_CHAT_CHANNEL_DIALOG:
     case A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG:
-        openInviteDialog(m_tabs.currentChannel(), action.type == A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG);
+        // The parameter names the pane whose channel the prompt is for.
+        if (action.parameter == 0 || action.parameter == 1)
+            openInviteDialog(action.parameter == 1 ? m_secondary.channel() : m_primary.channel(),
+                             action.type == A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG);
         return true;
     case A::SAVE_CHAT_CHANNEL_TO_FILE:
         saveChannel(action.parameter == 1 ? m_secondary.channel() : m_primary.channel());
@@ -1845,7 +1854,11 @@ bool TChatController::handleAction(const input::TGameAction& action)
         setSecondary(nullptr);
         return true;
     case A::CHAT_CHANNEL_SELECT_ALL:
-        m_primary.selectAll();
+        // The parameter names the pane: 0 the primary, 1 the secondary channel.
+        if (action.parameter == 0)
+            m_primary.selectAll();
+        else if (action.parameter == 1)
+            m_secondary.selectAll();
         return true;
     case A::COPY_CHAT_ENTRY_TO_CLIPBOARD:
         if (!action.text.isEmpty())

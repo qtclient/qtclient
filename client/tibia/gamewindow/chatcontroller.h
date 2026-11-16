@@ -152,7 +152,7 @@ private:
     int m_selectionLow = 0;
     int m_selectionFocus = 0;
     int m_width = 0;
-    QFont m_font;
+    QFont m_font{ QStringLiteral("Verdana"), 8, QFont::Bold };
     bool m_autoScroll = true;
 };
 

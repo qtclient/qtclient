@@ -100,7 +100,7 @@ public Q_SLOTS:
     void onLootContainersUpdated() override;
 
 private:
-    enum class PickMode { None, LootContainer, ObtainContainer, ListItem };
+    enum class PickMode { None, LootContainer, ObtainContainer };
 
     void installHandlers();
     void uninstallHandlers();
@@ -110,7 +110,6 @@ private:
     void syncPremium();
     void syncFallback();
     void startContainerPick(int category, bool lootColumn);
-    void startListItemPick();
     void finishPick(const input::TGameActionPtr& target);
     void cancelPick();
     void onClearConfirmed();

@@ -76,6 +76,10 @@ public:
     Q_INVOKABLE void minimizePanel() override;
 
 private:
+    /// One message per premium feature (13 is replaced by the renew line).
+    void createPremiumMessages();
+    /// Premium, unlimited premium or a known premium time.
+    bool canTogglePanel() const;
     /// CIP : the triggered features become the messages.
     void setTriggers(const std::vector<uint8_t>& features);
     /// CIP , the store's SetStoreButtonDeeplink (0xA8): a deep

@@ -2,20 +2,20 @@
 
 #include "app/launcherenv.h"
 #include "client/gameclient.h"
-#include "gamewindow/messagedialogcontroller.h"
+#include "gamewindow/edittextcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
 #include <QCoreApplication>
+#include <QSysInfo>
 #include <QtGlobal>
 
 namespace tibia::gamewindow {
 
 TAboutDialogController::TAboutDialogController(QObject* parent)
     : TDialogController(QStringLiteral("AboutDialog.qml"), parent)
-    , m_licensesMessage(new TMessageDialogController(this))
+    , m_licensesText(new TEditTextController(this))
 {
-    m_licensesMessage->setCloseOnButtonClicked(true);
 }
 
 QString TAboutDialogController::clientType() const
@@ -25,13 +25,14 @@ QString TAboutDialogController::clientType() const
 
 QString TAboutDialogController::operatingSystemName() const
 {
-#if defined(Q_OS_WIN)
-    return qtTrId("aboutdialog_windows");
-#elif defined(Q_OS_MACOS)
-    return qtTrId("aboutdialog_macosx");
-#else
-    return qtTrId("aboutdialog_linux");
-#endif
+    const QString product = QSysInfo::productType();
+    if (product == QLatin1String("windows"))
+        return qtTrId("aboutdialog_windows");
+    if (product == QLatin1String("macos"))
+        return qtTrId("aboutdialog_macosx");
+    if (QSysInfo::kernelType() == QLatin1String("linux"))
+        return qtTrId("aboutdialog_linux");
+    return QString();
 }
 
 QString TAboutDialogController::tibiaVersion() const
@@ -63,6 +64,7 @@ void TAboutDialogController::setPortalBase(const QUrl& loginBase)
 
 void TAboutDialogController::showDialog()
 {
+    dialog()->close();
     dialog()->show();
 }
 
@@ -78,14 +80,11 @@ void TAboutDialogController::requestOpenWebsite()
 
 void TAboutDialogController::requestShowLicensesDialog()
 {
-    // CIP : message caption aboutdialog_licenses; body from
-    // *(this+0x40)->vslot[0x1a8/8] which concatenates
-    // Resources/3rdpartylicences/*.txt (qt.txt, qt-3rdparty.txt, protobuf, …;
-    // includes BattlEye EULA — out of scope). Product lists our linked libs.
-    m_licensesMessage->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
-    m_licensesMessage->showMessage(qtTrId("aboutdialog_licenses"),
-                                   QStringLiteral("Qt %1 (LGPLv3), zlib, miniaudio (public domain), protobuf (BSD)")
-                                       .arg(QLatin1StringView(qVersion())));
+    // CIP concatenates the bundled third-party licence files; the product
+    // lists the libraries it links.
+    m_licensesText->showReadOnlyText(qtTrId("aboutdialog_licenses"),
+                                     QStringLiteral("Qt %1 (LGPLv3), zlib, miniaudio (public domain), protobuf (BSD)")
+                                         .arg(QLatin1StringView(qVersion())));
 }
 
 }

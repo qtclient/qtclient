@@ -9,7 +9,7 @@
 namespace tibia {
 namespace gamewindow {
 
-class TMessageDialogController;
+class TEditTextController;
 
 /// AboutDialog.qml (CIP: TAboutDialogController, vtable ,
 /// metacall), owned by the options dialog (CIP +0x3a8).
@@ -40,11 +40,11 @@ public:
     Q_INVOKABLE void requestClose() override;
     /// CIP : OPEN_URL_TIBIA_PAGE (portal).
     Q_INVOKABLE void requestOpenWebsite() override;
-    /// CIP : a message box captioned "aboutdialog_licenses".
+    /// CIP : the licences as a read-only text captioned "aboutdialog_licenses".
     Q_INVOKABLE void requestShowLicensesDialog() override;
 
 private:
-    TMessageDialogController* m_licensesMessage;
+    TEditTextController* m_licensesText;
     QUrl m_portalBase;
 };
 

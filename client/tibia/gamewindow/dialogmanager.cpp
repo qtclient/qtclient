@@ -3,6 +3,8 @@
 #include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
 
 #include <QQmlComponent>
 #include <QQmlContext>
@@ -219,6 +221,9 @@ void TDialog::show()
     create();
     if (TDialogStackController* stack = TDialogStackController::instance())
         stack->show(this);
+    auto sound = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
+    sound->parameter = cip::tibia::qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET;
+    input::publish(sound);
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
         cursor->setDefaultCursor();
 }
