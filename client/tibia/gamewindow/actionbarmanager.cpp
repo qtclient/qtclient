@@ -161,11 +161,11 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
             input::TKeyboardShortcutHandler::handleGameAction(action);
             return true;
         });
-    input::setActionHandler(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameAction&) {
+    input::setActionHandler(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameAction& action) {
         for (const auto& group : m_groups)
             if (group)
                 for (TActionBarController* bar : group->bars())
-                    bar->closeOpenMultiActionButtons();
+                    bar->closeOpenMultiActionButtons(action.actionBarId, action.actionButtonId);
         return true;
     });
     input::setActionHandler(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameAction& action) {
@@ -234,11 +234,12 @@ void TActionBarManager::loadDisplayOptions()
 
 void TActionBarManager::applyMappings()
 {
-    const bool on = chatOn();
     for (const auto& group : m_groups)
         if (group)
-            for (TActionBarController* bar : group->bars())
-                bar->applyMappings(on);
+            for (TActionBarController* bar : group->bars()) {
+                bar->onActionBarOptionsChanged();
+                bar->onHotkeyOptionsChanged();
+            }
     refreshObjects();
     refreshCooldowns();
 }
@@ -402,12 +403,12 @@ bool TActionBarManager::onActionButtonTriggered(const input::TGameAction& action
     TActionButtonController* button = target->button(action.actionButtonId);
     if (!button)
         return true;
-    Setting setting = button->setting();
+    Setting setting = target->settingAt(action.actionButtonId, -1);
     if (setting.kind == Setting::MULTI_ACTION) {
-        // CIP : a clicked slot runs itself, the button its current slot.
+        // A clicked slot runs itself, the button its current slot.
         const TActionButtonController* slot = action.multiActionIndex >= 0 ? button->multiAction(action.multiActionIndex)
                                                                              : button->currentMultiAction(game::TCooldownStorage::now());
-        setting = slot ? slot->setting() : Setting{};
+        setting = slot ? target->settingAt(action.actionButtonId, slot->multiActionIndex()) : Setting{};
     }
     execute(setting, action.autoRepeat);
     input::publish(input::makeAction(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS));

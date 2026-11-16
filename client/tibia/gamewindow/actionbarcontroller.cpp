@@ -4,6 +4,8 @@
 #include "container/containerciptypes.h"
 #include "gamewindow/actionbarmanager.h"
 #include "gamewindow/actionbuttoncontroller.h"
+#include "gamewindow/contextmenucontroller.h"
+#include "input/gameactionhandlers.h"
 #include "gamewindow/draganddropcontroller.h"
 #include "spells/spellinfostorage.h"
 
@@ -66,6 +68,7 @@ TActionBarController::TActionBarController(TActionBarManager* manager, const int
     m_mapWindowPane = mapWindowPane;
     for (int id = 1; id <= ButtonCount; ++id) {
         auto* button = new TActionButtonController(this, id, -1, this);
+        connect(button, &TActionButtonController::requestContextMenu, this, &TActionBarController::onRequestContextMenu);
         m_buttons.push_back(button);
         m_actionButtonModel << button;
     }
@@ -73,7 +76,24 @@ TActionBarController::TActionBarController(TActionBarManager* manager, const int
 
 TActionButtonController* TActionBarController::button(const int buttonId) const
 {
-    return buttonId >= 1 && buttonId <= int(m_buttons.size()) ? m_buttons[size_t(buttonId - 1)] : nullptr;
+    return buttonController(buttonId, -1);
+}
+
+TActionButtonController* TActionBarController::buttonController(const int buttonId, const int multiActionChild) const
+{
+    TActionButtonController* found = nullptr;
+    if (buttonId != 0 && buttonId <= int(m_buttons.size()) && int(m_buttons[size_t(buttonId - 1)]->actionButtonID()) == buttonId) {
+        found = m_buttons[size_t(buttonId - 1)];
+    } else {
+        for (TActionButtonController* button : m_buttons)
+            if (int(button->actionButtonID()) == buttonId) {
+                found = button;
+                break;
+            }
+    }
+    if (!found || multiActionChild < 0)
+        return found;
+    return found->multiAction(multiActionChild);
 }
 
 void TActionBarController::createItem(QQmlEngine* engine, QQuickItem* container)
@@ -103,20 +123,73 @@ void TActionBarController::destroyItem()
     m_numVisibleSlots = 0;
 }
 
-void TActionBarController::applyMappings(const bool chatOn)
+void TActionBarController::applySetting(TActionButtonController* button, const Setting& setting)
+{
+    switch (setting.kind) {
+    case Setting::NONE:
+        button->reset();
+        if (!button->isMultiActionChild())
+            button->clearMultiActions();
+        break;
+    case Setting::TEXT: {
+        const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spellOfText(setting.text);
+        if (!spell || !setting.sendAutomatically)
+            button->setText(setting.text, setting.sendAutomatically);
+        else
+            button->setSpell(spell->id, setting.text.trimmed().mid(spell->words.size()).trimmed(), setting.spellCastType);
+        break;
+    }
+    case Setting::OBJECT:
+        button->setObject(setting.objectId, setting.upgradeTier.value_or(0), setting.liquidType.value_or(0), setting.useType,
+                          setting.useEquipSmartMode);
+        break;
+    case Setting::ACTION:
+        button->setText(setting.action, false);
+        break;
+    case Setting::PASSIVE_ABILITY:
+        if (setting.passiveAbility != 0)
+            button->setPassiveAbility(setting.passiveAbility);
+        break;
+    case Setting::MULTI_ACTION:
+        if (setting.multiActions.empty() || button->isMultiActionChild())
+            break;
+        button->createMultiActions(int(Setting::MaxMultiActions));
+        for (size_t i = 0; i < setting.multiActions.size(); ++i) {
+            TActionButtonController* slot = button->multiAction(int(i));
+            if (!slot)
+                break;
+            const Setting& action = setting.multiActions[i];
+            // A slot holds a spell, a text or an object.
+            if (action.kind == Setting::TEXT || action.kind == Setting::OBJECT)
+                applySetting(slot, action);
+            else if (action.kind == Setting::NONE)
+                slot->reset();
+        }
+        break;
+    }
+}
+
+void TActionBarController::onActionBarOptionsChanged()
 {
     const config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
-    for (TActionButtonController* button : m_buttons) {
-        const int id = int(button->actionButtonID());
-        button->setSetting(hotkeys->mapping(m_actionBarId, id), hotkeys->buttonKeys(m_actionBarId, id, chatOn));
-        button->setHotkeys(hotkeys->allButtonKeys(m_actionBarId, id, chatOn));
-    }
-    // CIP .
+    for (int id = 1; id <= int(m_buttons.size()); ++id)
+        if (TActionButtonController* button = buttonController(id, -1))
+            applySetting(button, hotkeys->mapping(m_actionBarId, id));
+    refreshObjects();
+    // The current preset's first visible button.
     const int first = hotkeys->firstVisibleButton(m_actionBarId);
     if (first != m_firstVisibleButtonId) {
         m_firstVisibleButtonId = first;
         Q_EMIT firstVisibleButtonIdChanged();
     }
+}
+
+void TActionBarController::onHotkeyOptionsChanged()
+{
+    const config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
+    const bool chatOn = m_manager->chatOn();
+    for (TActionButtonController* button : m_buttons)
+        button->setHotkeys(hotkeys->allButtonKeys(m_actionBarId, int(button->actionButtonID()), chatOn));
 }
 
 void TActionBarController::setFirstVisibleButtonId(const int v)
@@ -205,9 +278,102 @@ void TActionBarController::openAssignDialog(const EAssignKind kind, const int bu
     m_manager->openAssignDialog(this, kind, buttonId, multiActionIndex);
 }
 
-void TActionBarController::editHotkey(const int buttonId)
+void TActionBarController::onRequestContextMenu(const uint ButtonId, const int MultiActionChild)
 {
-    m_manager->editHotkey(this, buttonId);
+    TContextMenuController* menu = TContextMenuController::instance();
+    if (!menu)
+        return;
+    TActionButtonController* button = buttonController(int(ButtonId), MultiActionChild);
+    if (!button)
+        return;
+    const auto type = button->type();
+    const bool multiAction = button->isMultiAction();
+    const bool child = button->isMultiActionChild();
+    const bool hasHotkey = !button->hotkeyShort().isEmpty();
+    const auto entry = [&](const char* formatId, const char* kindId, auto&& handler) {
+        TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId(formatId).arg(qtTrId(kindId)));
+        if (item)
+            connect(item, &TContextMenuEntryItem::triggered, this, std::forward<decltype(handler)>(handler));
+    };
+    const auto editOrAssign = [&](const TActionButtonController::EQmlActionButtonType kind) {
+        return !multiAction && type == kind ? "actionbar_contextmenu_edit" : "actionbar_contextmenu_assign";
+    };
+
+    menu->beginCustomMenu();
+    entry(editOrAssign(TActionButtonController::SPELL), "actionbar_contextmenu_spell",
+          [this, ButtonId, MultiActionChild] { onOpenAssignSpellActionDialog(ButtonId, MultiActionChild); });
+    entry(editOrAssign(TActionButtonController::OBJECT), "actionbar_contextmenu_object",
+          [this, ButtonId, MultiActionChild] { onOpenAssignObjectActionDialog(ButtonId, MultiActionChild); });
+    entry(editOrAssign(TActionButtonController::TEXT), "actionbar_contextmenu_text",
+          [this, ButtonId, MultiActionChild] { onOpenAssignTextActionDialog(ButtonId, MultiActionChild); });
+    if (!child) {
+        entry(editOrAssign(TActionButtonController::PASSIVEABILITY), "actionbar_contextmenu_passiveability",
+              [this, ButtonId] { onOpenAssignPassiveAbilityActionDialog(ButtonId); });
+        const char* multiFormat = !multiAction                  ? "actionbar_contextmenu_assign"
+                                  : button->multiActionExpanded() ? "actionbar_contextmenu_close"
+                                                                  : "actionbar_contextmenu_edit";
+        entry(multiFormat, "actionbar_contextmenu_multiaction", [this, ButtonId] { onOpenAssignMultiActionPopup(ButtonId); });
+        entry(hasHotkey ? "actionbar_contextmenu_edit" : "actionbar_contextmenu_assign", "actionbar_contextmenu_hotkey",
+              [this, ButtonId] { onAssignHotkey(ButtonId); });
+    }
+    if (button->type() != TActionButtonController::EMPTY || button->isMultiAction()) {
+        menu->addCustomSeparator();
+        if (TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId("actionbar_contextmenu_clear_action")))
+            connect(item, &TContextMenuEntryItem::triggered, this,
+                    [this, ButtonId, MultiActionChild] { onClearAction(ButtonId, MultiActionChild); });
+    }
+    menu->showCustomMenu();
+}
+
+void TActionBarController::onOpenAssignSpellActionDialog(const uint ButtonId, const int MultiActionChild)
+{
+    openAssignDialog(ASSIGN_SPELL, int(ButtonId), MultiActionChild);
+}
+
+void TActionBarController::onOpenAssignObjectActionDialog(const uint ButtonId, const int MultiActionChild)
+{
+    openAssignDialog(ASSIGN_OBJECT, int(ButtonId), MultiActionChild);
+}
+
+void TActionBarController::onOpenAssignTextActionDialog(const uint ButtonId, const int MultiActionChild)
+{
+    openAssignDialog(ASSIGN_TEXT, int(ButtonId), MultiActionChild);
+}
+
+void TActionBarController::onOpenAssignPassiveAbilityActionDialog(const uint ButtonId)
+{
+    openAssignDialog(ASSIGN_PASSIVE_ABILITY, int(ButtonId), -1);
+}
+
+void TActionBarController::onOpenAssignMultiActionPopup(const uint ButtonId)
+{
+    auto close = input::mutableClone(*input::makeAction(input::EGameAction::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS));
+    close->actionBarId = m_actionBarId;
+    close->actionButtonId = int(ButtonId);
+    input::publish(close);
+    if (TActionButtonController* button = buttonController(int(ButtonId), -1)) {
+        button->createMultiActions(int(Setting::MaxMultiActions));
+        button->setMultiActionExpanded(!button->multiActionExpanded());
+    }
+    // A mapping without slots becomes a multi-action one with three empty slots.
+    config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
+    Setting setting = hotkeys->mapping(m_actionBarId, int(ButtonId));
+    if (setting.multiActions.empty()) {
+        Setting multi;
+        multi.kind = Setting::MULTI_ACTION;
+        multi.multiActions.resize(size_t(Setting::MaxMultiActions));
+        hotkeys->setMapping(m_actionBarId, int(ButtonId), multi);
+    }
+}
+
+void TActionBarController::onAssignHotkey(const uint ButtonId)
+{
+    m_manager->editHotkey(this, int(ButtonId));
+}
+
+void TActionBarController::onClearAction(const uint ButtonId, const int MultiActionChild)
+{
+    assign(int(ButtonId), MultiActionChild, Setting{});
 }
 
 void TActionBarController::onDropped(const uint ButtonId, const int MultiActionIndex)
@@ -274,11 +440,11 @@ void TActionBarController::onSpellIconDropped(const uint ButtonId, const int Spe
     onSpellIconDropped(ButtonId, SpellEnumId, -1);
 }
 
-void TActionBarController::closeOpenMultiActionButtons()
+void TActionBarController::closeOpenMultiActionButtons(const int ExceptBarID, const int ExceptButtonID)
 {
     for (TActionButtonController* button : m_buttons)
-        if (button->multiActionExpanded())
-            button->cip::tibia::gamewindow::TActionButtonController::setMultiActionExpanded(false);
+        if (button->multiActionExpanded() && (m_actionBarId != ExceptBarID || int(button->actionButtonID()) != ExceptButtonID))
+            button->setMultiActionExpanded(false);
 }
 
 void TActionBarController::setNumVisibleSlots(const int Amount)

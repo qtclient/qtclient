@@ -1,7 +1,6 @@
 #include "actionbuttoncontroller.h"
 
 #include "gamewindow/actionbarcontroller.h"
-#include "gamewindow/contextmenucontroller.h"
 #include "input/gameactionhandlers.h"
 #include "spells/spellinfostorage.h"
 
@@ -22,9 +21,6 @@ using Base = cip::tibia::gamewindow::TActionButtonController;
 using Setting = config::TActionSetting;
 using Info = cip::tibia::qmlcomponents::TObjectAppearanceInstanceInfoQmlType;
 using A = input::EGameAction;
-
-/// CIP's multi-action buttons have three slots ((button, 3)).
-constexpr int MultiActionSlots = 3;
 
 QString objectDisplayName(const int objectId, const std::optional<int>& tier)
 {
@@ -82,97 +78,147 @@ void TActionButtonController::set(T& member, const T& value, bool& changed)
     changed = true;
 }
 
-void TActionButtonController::clear()
+void TActionButtonController::reset()
 {
     m_type = EMPTY;
     m_progressType = COOLDOWN;
-    m_spellIconUrl.clear();
-    m_spellParameters.clear();
+    m_spellId = 0;
+    m_passiveAbility = 0;
     m_text.clear();
+    m_spellParameters.clear();
+    m_spellIconUrl.clear();
+    m_passiveAbilityIconUrl.clear();
+    m_sendAutomatically = false;
+    m_castType = 0;
     m_objectID = 0;
-    m_objectCount = 0;
     m_objectUpgradeTier = 0;
     m_liquidType = Info::ELiquidType::EMPTY;
     m_hookDirection = Info::EHookDirection::NONE;
-    m_objectIsEquiped = false;
+    m_useType = config::EUseType::SelectUseTarget;
     m_isEquipeAction = false;
-    m_passiveAbilityIconUrl.clear();
-    m_spellId = 0;
-}
-
-void TActionButtonController::setSetting(const Setting& setting, const QKeySequence& hotkey)
-{
-    if (setting == m_setting && hotkey == m_hotkey)
-        return;
-    m_setting = setting;
-    m_hotkey = hotkey;
-    clear();
-    m_hotkeyShort = hotkey.toString(QKeySequence::NativeText);
-
-    switch (setting.kind) {
-    case Setting::TEXT:
-        if (const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spellOfText(setting.text); spell && setting.sendAutomatically) {
-            m_type = SPELL;
-            m_spellId = spell->id;
-            m_spellIconUrl = spells::TSpellInfoStorage::iconUrl(*spell);
-            m_spellParameters = setting.text.trimmed().mid(spell->words.size()).trimmed();
-        } else {
-            m_type = TEXT;
-        }
-        m_text = setting.text;
-        break;
-    case Setting::OBJECT:
-        m_type = OBJECT;
-        m_objectID = uint(setting.objectId);
-        m_objectUpgradeTier = uint(setting.upgradeTier.value_or(0));
-        m_liquidType = Info::ELiquidType(setting.liquidType.value_or(0));
-        m_isEquipeAction = setting.useType == config::EUseType::Equip;
-        break;
-    case Setting::PASSIVE_ABILITY:
-        m_type = PASSIVEABILITY;
-        m_passiveAbilityIconUrl = QStringLiteral("image://passiveability-icons-32x32/%1").arg(setting.passiveAbility);
-        break;
-    default:
-        break;
+    m_objectIsEquiped = false;
+    m_isEnabled = true;
+    if (m_cooldownRemainingPercent != 0) {
+        m_cooldownRemainingPercent = 0;
+        Q_EMIT cooldownRemainingPercentChanged();
     }
-
-    if (setting.kind == Setting::MULTI_ACTION && !isMultiActionChild()) {
-        if (m_children.empty()) {
-            for (int i = 0; i < MultiActionSlots; ++i) {
-                auto* child = new TActionButtonController(m_bar, int(m_actionButtonID), i, this);
-                m_children.push_back(child);
-                m_multiActions << child;
-                const auto relay = [this, child](void (Base::*signal)()) {
-                    connect(child, signal, this, [this, child, signal] {
-                        if (m_shownSlot == child)
-                            Q_EMIT(this->*signal)();
-                    });
-                };
-                relay(&Base::changed);
-                relay(&Base::appearanceChanged);
-                relay(&Base::cooldownRemainingPercentChanged);
-                relay(&Base::cooldownTextChanged);
-            }
-        }
-        for (int i = 0; i < MultiActionSlots; ++i)
-            m_children[i]->setSetting(i < int(setting.multiActions.size()) ? setting.multiActions[i] : Setting{}, {});
-    } else if (!m_children.empty()) {
-        m_shownSlot = nullptr;
-        m_multiActions.clear();
-        for (TActionButtonController* child : std::exchange(m_children, {}))
-            child->deleteLater();
-        m_multiActionExpanded = false;
-        Q_EMIT multiActionExpandedChanged();
+    if (!m_cooldownText.isEmpty()) {
+        m_cooldownText.clear();
+        Q_EMIT cooldownTextChanged();
     }
-
-    refreshObject();
+    if (m_isNewlyUnlocked) {
+        m_isNewlyUnlocked = false;
+        Q_EMIT changed();
+    }
+    m_objectCount = 0;
     m_showsCooldown = false;
-    m_cooldownRemainingPercent = 0;
-    m_cooldownText.clear();
+    for (TActionButtonController* child : m_children)
+        child->reset();
     Q_EMIT changed();
     Q_EMIT appearanceChanged();
-    Q_EMIT cooldownRemainingPercentChanged();
-    Q_EMIT cooldownTextChanged();
+}
+
+void TActionButtonController::clearMultiActions()
+{
+    if (!m_multiActionExpanded && m_children.empty())
+        return;
+    m_multiActionExpanded = false;
+    m_shownSlot = nullptr;
+    m_multiActions.clear();
+    for (TActionButtonController* child : std::exchange(m_children, {}))
+        child->deleteLater();
+    Q_EMIT changed();
+    Q_EMIT multiActionExpandedChanged();
+}
+
+void TActionButtonController::createMultiActions(const int count)
+{
+    if (!m_children.empty())
+        return;
+    reset();
+    for (int i = 0; i < count; ++i) {
+        auto* child = new TActionButtonController(m_bar, int(m_actionButtonID), i, this);
+        connect(child, &Base::changed, this, &Base::changed);
+        connect(child, &Base::cooldownRemainingPercentChanged, this, &Base::cooldownRemainingPercentChanged);
+        connect(child, &Base::cooldownTextChanged, this, &Base::cooldownTextChanged);
+        connect(child, &Base::appearanceChanged, this, &Base::appearanceChanged);
+        connect(child, &TActionButtonController::requestContextMenu, this, &TActionButtonController::requestContextMenu);
+        m_children.push_back(child);
+        m_multiActions << child;
+    }
+    Q_EMIT changed();
+}
+
+void TActionButtonController::setSpell(const int spellId, const QString& parameters, const int castType)
+{
+    if (m_type == SPELL && m_spellId == spellId && m_spellParameters == parameters && m_castType == castType)
+        return;
+    reset();
+    clearMultiActions();
+    m_type = SPELL;
+    m_spellId = spellId;
+    m_spellParameters = parameters;
+    m_castType = castType;
+    if (const spells::TSpellInfo* spell = spells::TSpellInfoStorage::instance()->spell(spellId)) {
+        m_spellIconUrl = spells::TSpellInfoStorage::iconUrl(*spell);
+        m_text = parameters.isEmpty() ? spell->words : spell->words + QLatin1Char(' ') + parameters;
+    }
+    m_sendAutomatically = true;
+    Q_EMIT changed();
+}
+
+void TActionButtonController::setText(const QString& text, const bool sendAutomatically)
+{
+    if (m_type == TEXT && m_text == text && m_sendAutomatically == sendAutomatically)
+        return;
+    reset();
+    clearMultiActions();
+    m_type = TEXT;
+    m_text = text;
+    m_sendAutomatically = sendAutomatically;
+    Q_EMIT changed();
+}
+
+void TActionButtonController::setObject(const int objectId, const int upgradeTier, const int liquidType, const config::EUseType useType,
+                                        const bool useEquipSmartMode)
+{
+    const bool sameObject = m_type == OBJECT && m_objectID == uint(objectId) && m_objectUpgradeTier == uint(upgradeTier)
+                            && m_liquidType == Info::ELiquidType(liquidType);
+    if (sameObject && m_useType == useType && m_useEquipSmartMode == useEquipSmartMode)
+        return;
+    reset();
+    clearMultiActions();
+    m_type = OBJECT;
+    m_objectID = uint(objectId);
+    m_objectUpgradeTier = uint(upgradeTier);
+    m_liquidType = Info::ELiquidType(liquidType);
+    m_useType = useType;
+    m_useEquipSmartMode = useEquipSmartMode;
+    m_isEquipeAction = useType == config::EUseType::Equip;
+    Q_EMIT changed();
+    Q_EMIT appearanceChanged();
+}
+
+void TActionButtonController::setPassiveAbility(const int passiveAbility)
+{
+    if (m_type == PASSIVEABILITY && m_passiveAbility == passiveAbility)
+        return;
+    reset();
+    clearMultiActions();
+    m_type = PASSIVEABILITY;
+    m_passiveAbilityIconUrl = QStringLiteral("image://passiveability-icons-32x32/%1").arg(passiveAbility);
+    m_passiveAbility = passiveAbility;
+    Q_EMIT changed();
+}
+
+void TActionButtonController::setHotkeys(const QList<QKeySequence>& hotkeys)
+{
+    m_hotkeys = hotkeys;
+    const QString hotkeyShort = hotkeys.isEmpty() ? QString() : hotkeys.front().toString(QKeySequence::NativeText);
+    if (hotkeyShort == m_hotkeyShort)
+        return;
+    m_hotkeyShort = hotkeyShort;
+    Q_EMIT changed();
 }
 
 QString TActionButtonController::tooltip() const
@@ -208,7 +254,7 @@ QString TActionButtonController::tooltipRows() const
         break;
     case OBJECT: {
         const char* actionId = nullptr;
-        switch (m_setting.useType) {
+        switch (m_useType) {
         case config::EUseType::Use:
             actionId = "actionbar_tooltip_use_object";
             break;
@@ -228,14 +274,14 @@ QString TActionButtonController::tooltipRows() const
             actionId = "actionbar_tooltip_use_object_at_mousecursor";
             break;
         }
-        const QString action = actionId ? qtTrId(actionId).arg(objectDisplayName(m_setting.objectId, m_setting.upgradeTier)) : QString();
+        const QString action = actionId ? qtTrId(actionId).arg(objectDisplayName(int(m_objectID), int(m_objectUpgradeTier))) : QString();
         rows += row("actionbar_tooltip_label_action", action);
         rows += row("actionbar_tooltip_label_amount", QString::number(m_objectCount));
         break;
     }
     case TEXT:
-        rows += row("actionbar_tooltip_label_action", qtTrId("actionbar_tooltip_text_action").arg(m_setting.text.toHtmlEscaped()));
-        rows += row("actionbar_tooltip_label_sendautomatically", qtTrId(m_setting.sendAutomatically ? "yes" : "no"));
+        rows += row("actionbar_tooltip_label_action", qtTrId("actionbar_tooltip_text_action").arg(m_text.toHtmlEscaped()));
+        rows += row("actionbar_tooltip_label_sendautomatically", qtTrId(m_sendAutomatically ? "yes" : "no"));
         break;
     case PASSIVEABILITY:
         // CIP : the ability's name; qtclient has no passive ability data.
@@ -263,9 +309,9 @@ void TActionButtonController::refreshObject()
     uint count = 0;
     bool equipped = false;
     if (tibia::game::isOnline()) {
-        const uint8_t tier = uint8_t(m_setting.upgradeTier.value_or(0));
-        count = tibia::game::localPlayerInventoryCount(uint16_t(m_setting.objectId), tier);
-        equipped = tibia::game::localPlayerHasEquippedItemId(uint16_t(m_setting.objectId), tier);
+        const uint8_t tier = uint8_t(m_objectUpgradeTier);
+        count = tibia::game::localPlayerInventoryCount(uint16_t(m_objectID), tier);
+        equipped = tibia::game::localPlayerHasEquippedItemId(uint16_t(m_objectID), tier);
     }
     bool changedAppearance = false;
     bool changedState = false;
@@ -288,9 +334,9 @@ game::TCooldown TActionButtonController::currentCooldown() const
         return storage->passiveCooldown();
     if (m_type == OBJECT) {
         // A rune waits for the multi-use cooldown and its spell's.
-        if (spells::TSpellInfoStorage::instance()->runeSpellOfObject(m_setting.objectId))
-            return storage->objectCooldown(uint16_t(m_setting.objectId), game::TCooldownStorage::now());
-        if (isMultiUse(m_setting.objectId))
+        if (spells::TSpellInfoStorage::instance()->runeSpellOfObject(int(m_objectID)))
+            return storage->objectCooldown(uint16_t(int(m_objectID)), game::TCooldownStorage::now());
+        if (isMultiUse(int(m_objectID)))
             return storage->multiUseCooldown();
     }
     return {};
@@ -320,10 +366,10 @@ qint64 TActionButtonController::remainingCooldown(const qint64 now) const
     } else if (m_type == PASSIVEABILITY) {
         cooldown = storage->passiveCooldown();
     } else if (m_type == OBJECT) {
-        if (spells::TSpellInfoStorage::instance()->runeSpellOfObject(m_setting.objectId)) {
-            cooldown = storage->objectCooldown(uint16_t(m_setting.objectId), now);
+        if (spells::TSpellInfoStorage::instance()->runeSpellOfObject(int(m_objectID))) {
+            cooldown = storage->objectCooldown(uint16_t(int(m_objectID)), now);
         } else {
-            switch (m_setting.useType) {
+            switch (m_useType) {
             case config::EUseType::UseOnYourself:
             case config::EUseType::UseOnTarget:
             case config::EUseType::SelectUseTarget:
@@ -345,7 +391,7 @@ TActionButtonController* TActionButtonController::currentMultiAction(const qint6
     qint64 best = std::numeric_limits<qint64>::max();
     TActionButtonController* candidate = nullptr;
     for (TActionButtonController* child : m_children) {
-        if (child->m_setting.isEmpty())
+        if (child->m_type == EMPTY)
             continue;
         if (!child->isUsable()) {
             if (!candidate)
@@ -432,51 +478,7 @@ void TActionButtonController::onTriggered()
 
 void TActionButtonController::contextMenuRequested()
 {
-    TContextMenuController* menu = TContextMenuController::instance();
-    if (!menu)
-        return;
-    const int buttonId = int(m_actionButtonID);
-    const int index = m_multiActionIndex;
-    TActionBarController* bar = m_bar;
-    const auto entry = [&](const bool edit, const char* kindId, auto&& handler) {
-        const QString kind = qtTrId(kindId);
-        TContextMenuEntryItem* item = menu->addCustomEntry(edit ? qtTrId("actionbar_contextmenu_edit").arg(kind) : qtTrId("actionbar_contextmenu_assign").arg(kind));
-        if (item)
-            connect(item, &TContextMenuEntryItem::triggered, bar, std::forward<decltype(handler)>(handler));
-    };
-
-    menu->beginCustomMenu();
-    entry(m_type == SPELL, "actionbar_contextmenu_spell", [bar, buttonId, index] { bar->openAssignDialog(TActionBarController::ASSIGN_SPELL, buttonId, index); });
-    entry(m_type == OBJECT, "actionbar_contextmenu_object", [bar, buttonId, index] { bar->openAssignDialog(TActionBarController::ASSIGN_OBJECT, buttonId, index); });
-    entry(m_type == TEXT, "actionbar_contextmenu_text", [bar, buttonId, index] { bar->openAssignDialog(TActionBarController::ASSIGN_TEXT, buttonId, index); });
-    if (!isMultiActionChild()) {
-        entry(m_type == PASSIVEABILITY, "actionbar_contextmenu_passiveability", [bar, buttonId, index] { bar->openAssignDialog(TActionBarController::ASSIGN_PASSIVE_ABILITY, buttonId, index); });
-        if (m_setting.kind != Setting::MULTI_ACTION) {
-            entry(false, "actionbar_contextmenu_multiaction", [bar, buttonId] {
-                Setting multi;
-                multi.kind = Setting::MULTI_ACTION;
-                multi.multiActions.resize(MultiActionSlots);
-                bar->assign(buttonId, -1, multi);
-                if (TActionButtonController* button = bar->button(buttonId))
-                    button->setMultiActionExpanded(true);
-            });
-        } else if (m_multiActionExpanded) {
-            TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId("actionbar_contextmenu_close").arg(qtTrId("actionbar_contextmenu_multiaction")));
-            if (item)
-                connect(item, &TContextMenuEntryItem::triggered, this, [this] { setMultiActionExpanded(false); });
-        } else {
-            TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId("actionbar_contextmenu_edit").arg(qtTrId("actionbar_contextmenu_multiaction")));
-            if (item)
-                connect(item, &TContextMenuEntryItem::triggered, this, [this] { setMultiActionExpanded(true); });
-        }
-        entry(!m_hotkey.isEmpty(), "actionbar_contextmenu_hotkey", [bar, buttonId] { bar->editHotkey(buttonId); });
-    }
-    if (!m_setting.isEmpty()) {
-        menu->addCustomSeparator();
-        if (TContextMenuEntryItem* item = menu->addCustomEntry(qtTrId("actionbar_contextmenu_clear_action")))
-            connect(item, &TContextMenuEntryItem::triggered, bar, [bar, buttonId, index] { bar->assign(buttonId, index, Setting{}); });
-    }
-    menu->showCustomMenu();
+    Q_EMIT requestContextMenu(m_actionButtonID, m_multiActionIndex);
 }
 
 void TActionButtonController::onTargetSelected()
@@ -489,15 +491,6 @@ void TActionButtonController::onDragChanged(bool)
     // Dragging the button ends its "newly unlocked" marker.
     if (m_isNewlyUnlocked)
         setIsNewlyUnlocked(false);
-}
-
-void TActionButtonController::setMultiActionExpanded(const bool v)
-{
-    if (v == m_multiActionExpanded)
-        return;
-    if (v)
-        m_bar->closeOpenMultiActionButtons();
-    Base::setMultiActionExpanded(v);
 }
 
 }
