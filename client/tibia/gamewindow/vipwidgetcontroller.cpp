@@ -79,51 +79,36 @@ TVipWidgetDataModel::TVipWidgetDataModel(creatures::TVipStorage* storage, QObjec
     connect(storage, &creatures::TVipStorage::vipDataChangedOrAdded, this, &TVipWidgetDataModel::onVipDataChangedOrAdded);
     connect(storage, &creatures::TVipStorage::vipDataRemoved, this, &TVipWidgetDataModel::onVipRemoved);
     connect(storage, &creatures::TVipStorage::vipGroupDataChanged, this, &TVipWidgetDataModel::onVipGroupDataChanged);
-    connect(storage, &creatures::TVipStorage::vipStateChanged, this, [this](const uint32_t id, const int state) {
-        // The rows still hold the state before the change.
-        int previousState = 0;
-        for (const Row& row : m_rows) {
-            if (row.id == id) {
-                previousState = row.state;
-                break;
-            }
-        }
-        onVipGroupDataChanged();
-        onVipStateChanged(id, previousState, state);
-    });
+    connect(storage, &creatures::TVipStorage::vipStateChanged, this, &TVipWidgetDataModel::onVipStateChanged);
     onVipGroupDataChanged();
 }
 
-void TVipWidgetDataModel::onVipStateChanged(const uint32_t id, const int previousState, const int state)
+/// A VIP's rows take the new state; coming online from offline highlights them
+/// until the highlight timer ends.
+void TVipWidgetDataModel::onVipStateChanged(const uint32_t id, const int state)
 {
+    const auto it = std::find_if(m_rows.begin(), m_rows.end(), [id](const Row& row) { return row.id == id; });
+    if (it == m_rows.end() || it->state == state)
+        return;
     TVipRenderInfo*& info = m_renderInfos[id];
     if (!info) {
         info = new TVipRenderInfo(id, this);
         connect(info, &TVipRenderInfo::vipRenderInfoChanged, this, [this](const uint32_t characterId) {
             if (TVipRenderInfo* render = m_renderInfos.value(characterId); !render || !render->highlighted())
                 m_highlighted.remove(characterId);
-            emitHighlightChanged(characterId);
+            onVipRenderInfoChanged(characterId);
         });
     }
     info->clearHighlight();
-    if (isOffline(previousState) && isOnline(state)) {
+    if (isOffline(it->state) && isOnline(state)) {
         m_highlighted.insert(id);
         info->startHighlight(HighlightMs);
-        emitHighlightChanged(id);
-    } else {
-        m_highlighted.remove(id);
-        emitHighlightChanged(id);
     }
-}
-
-void TVipWidgetDataModel::emitHighlightChanged(const uint32_t id)
-{
-    for (size_t row = 0; row < m_rows.size(); ++row) {
-        if (m_rows[row].id == id) {
-            const QModelIndex changed = index(static_cast<int>(row), 0);
-            Q_EMIT dataChanged(changed, changed, { VipHighlightedRole });
-        }
+    for (Row& row : m_rows) {
+        if (row.id == id)
+            row.state = state;
     }
+    onVipRenderInfoChanged(id);
 }
 
 int TVipWidgetDataModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : static_cast<int>(m_rows.size()); }
@@ -153,10 +138,12 @@ QVariant TVipWidgetDataModel::data(const QModelIndex& index, const int role) con
 
 QHash<int, QByteArray> TVipWidgetDataModel::roleNames() const
 {
-    return {
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles.insert({
         { VipNameRole, "vipName" },   { VipStateRole, "vipState" },     { VipHighlightedRole, "vipHighlighted" },
-        { VipIconIdRole, "vipIconId" }, { GroupNameRole, "groupName" }, { PrimaryRole, "primary" },
-    };
+        { VipIconIdRole, "vipIconId" }, { GroupNameRole, "groupName" },
+    });
+    return roles;
 }
 
 void TVipWidgetDataModel::onVipGroupDataChanged()
@@ -186,11 +173,27 @@ void TVipWidgetDataModel::onVipDataChangedOrAdded() { onVipGroupDataChanged(); }
 
 void TVipWidgetDataModel::onVipRemoved(const uint32_t characterId)
 {
-    Q_UNUSED(characterId);
-    onVipGroupDataChanged();
+    for (;;) {
+        const auto it = std::find_if(m_rows.begin(), m_rows.end(), [characterId](const Row& row) { return row.id == characterId; });
+        if (it == m_rows.end())
+            return;
+        const int row = static_cast<int>(it - m_rows.begin());
+        beginRemoveRows({}, row, row);
+        m_rows.erase(it);
+        endRemoveRows();
+    }
 }
 
-void TVipWidgetDataModel::onVipRenderInfoChanged(const uint32_t characterId) { emitHighlightChanged(characterId); }
+/// Every row of the VIP changed.
+void TVipWidgetDataModel::onVipRenderInfoChanged(const uint32_t characterId)
+{
+    for (size_t row = 0; row < m_rows.size(); ++row) {
+        if (m_rows[row].id == characterId) {
+            const QModelIndex changed = index(static_cast<int>(row), 0);
+            Q_EMIT dataChanged(changed, changed);
+        }
+    }
+}
 
 TVipWidgetDataModelSortFilterProxy::TVipWidgetDataModelSortFilterProxy(QObject* parent)
     : cip::tibia::gamewindow::TVipWidgetDataModelSortFilterProxy(parent)

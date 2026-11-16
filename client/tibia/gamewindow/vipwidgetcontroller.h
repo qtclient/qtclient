@@ -85,8 +85,7 @@ private:
     /// CIP : a state change stops the VIP's highlight timer; going
     /// from offline (0, 5) to online (1, 4) highlights it again for the
     /// timer's 1000 ms (TVipRenderInfo , cleared by).
-    void onVipStateChanged(uint32_t id, int previousState, int state);
-    void emitHighlightChanged(uint32_t id);
+    void onVipStateChanged(uint32_t id, int state);
 
     creatures::TVipStorage* m_storage;
     std::vector<Row> m_rows;

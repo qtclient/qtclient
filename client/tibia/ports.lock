@@ -2113,6 +2113,14 @@ gamewindow::TVipWidgetController::v37	8269e14aa84c7e44	ported	gamewindow/vipwidg
 gamewindow::TVipWidgetController::v38	008257ca1aeb7c24	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::readOptions
 gamewindow::TVipWidgetController::~TVipWidgetController	097457dc45e86dd8	skip	compiler-generated destructor pair
 gamewindow::TVipWidgetController::~TVipWidgetController_deleting	79674512666b34e2	skip	compiler-generated destructor pair
+gamewindow::TVipWidgetDataModel::onVipRemoved	d997e85beaf452b2	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::onVipRemoved
+gamewindow::TVipWidgetDataModel::onVipRenderInfoChanged	8f0088817fdb94fd	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::onVipRenderInfoChanged
+gamewindow::TVipWidgetDataModel::onVipStateChanged	a9cf843d26ffeee4	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::onVipStateChanged
+gamewindow::TVipWidgetDataModel::v15	2c1fc45f66743756	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::rowCount
+gamewindow::TVipWidgetDataModel::v18	477934f7b017847a	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::data
+gamewindow::TVipWidgetDataModel::v44	e7e83fc8658005fc	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::roleNames
+gamewindow::TVipWidgetDataModel::~TVipWidgetDataModel	097457dc45e86dd8	skip	compiler-generated destructor pair
+gamewindow::TVipWidgetDataModel::~TVipWidgetDataModel_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 gamewindow::TVipWidgetDataModelSortFilterProxy::filterAcceptsRow	ca0879d0ad28c744	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::filterAcceptsRow
 gamewindow::TVipWidgetDataModelSortFilterProxy::lessThan	fbf9d730344538c3	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::lessThan
 gamewindow::TVipWidgetDataModelSortFilterProxy::sortOrderChanged	576950a74390ed20	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::showGroups
@@ -6454,6 +6462,7 @@ sub_8b2110b8d911#4	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTran
 sub_8b2110b8d911#5	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTranslator::v174
 sub_8b351da3ffef	8b351da3ffef63d4	ported	config/sidebaroptions.cpp:serializeBase
 sub_8b547d445443	8b547d445443c5d6	ported	analysers/impactwidgets.cpp:TImpactWidgetController::isHpsGraphVisible
+sub_8b55c9bedfc0	8b55c9bedfc06231	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::onVipStateChanged
 sub_8b579d3509ca	8b579d3509ca1b18	skip	std::deque internals (library)
 sub_8b91f6c23675	8b91f6c236755077	ported	controllers/characterselectioncontroller.cpp:TCharacterSelectionController::onMorePremiumFeaturesClicked
 sub_8b979eff9889	8b979eff98897c5c	skip	std::vector/shared_ptr template instantiations
@@ -6688,6 +6697,7 @@ sub_932739b4cbb5#5	932739b4cbb594db	ported	input/inputciptypes.h:TMovementIntent
 sub_932739b4cbb5#6	932739b4cbb594db	ported	input/inputciptypes.h:TMovementIntentRotate::TMovementIntentRotate
 sub_933b77caea39	933b77caea394372	skip	moc signal emitter
 sub_9342c38ee24b	9342c38ee24bf4c9	inlined	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::TCharacterTradeDialogController
+sub_93449cd19100	93449cd1910039c1	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::onVipRenderInfoChanged
 sub_93454396f188	93454396f188853d	skip	std::vector<action setting> template instantiation (emplace/insert/relocate/destroy)
 sub_9348e4284ee0	9348e4284ee0cd66	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowSorcererSpells
 sub_93657401ec27	93657401ec279e28	ported	gamewindow/whiteblacklistdialogcontroller.cpp:TWhiteBlacklistDialogController::fill
