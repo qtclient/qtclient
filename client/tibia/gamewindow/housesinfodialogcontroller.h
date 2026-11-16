@@ -207,6 +207,8 @@ private:
     /// The floors of the house (CIP: the staticmapdata extent of the house).
     void updateHouseLayers(uint houseId);
     void centerHousePreview();
+    /// The town filter's houses from the server.
+    void onRequestDynamicDataForTownTimerTimeout();
     /// Pick a town (if none) and the first house row so the 3D preview is not blank.
     void ensureTownAndHouseSelection();
 

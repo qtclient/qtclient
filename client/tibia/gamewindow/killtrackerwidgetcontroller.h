@@ -32,12 +32,23 @@ class TTaskMonsterModel final : public cip::tibia::gamewindow::TKillTrackerWidge
 {
     Q_OBJECT
 public:
-    enum Role { NameRole = Qt::UserRole + 1, CountRole, RaceIdRole };
+    enum Role
+    {
+        RaceID = 0x101,
+        RaceName,
+        AmountToHunt,
+        AmountHunted,
+        IsActive,
+    };
 
-    struct Entry {
-        QString name;
-        int count = 0;
-        int raceId = 0;
+    /// One hunting task row (race 0 with no name: none, or any creature).
+    struct Entry
+    {
+        uint16_t raceId = 0;
+        QString raceName;
+        uint16_t amountToHunt = 0;
+        uint16_t amountHunted = 0;
+        bool isActive = false;
     };
 
     explicit TTaskMonsterModel(QObject* parent = nullptr);
@@ -124,6 +135,7 @@ private:
     std::vector<client::gamecore::Hook> m_hooks;
     std::vector<std::map<std::string, uint32_t>> m_pendingBounty;
     std::vector<std::map<std::string, uint32_t>> m_pendingWeekly;
+    bool m_weeklyActive = true;
 };
 
 /// Owns the kill tracker widget while it is open. The sidebar widgets manager

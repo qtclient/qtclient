@@ -57,12 +57,16 @@ QVariant TTaskMonsterModel::data(const QModelIndex& index, const int role) const
         return {};
     const Entry& e = m_entries[static_cast<size_t>(index.row())];
     switch (role) {
-    case NameRole:
-        return e.name;
-    case CountRole:
-        return e.count;
-    case RaceIdRole:
-        return e.raceId;
+    case RaceID:
+        return uint(e.raceId);
+    case RaceName:
+        return e.raceName;
+    case AmountToHunt:
+        return uint(e.amountToHunt);
+    case AmountHunted:
+        return uint(e.amountHunted);
+    case IsActive:
+        return e.isActive;
     default:
         return {};
     }
@@ -70,7 +74,8 @@ QVariant TTaskMonsterModel::data(const QModelIndex& index, const int role) const
 
 QHash<int, QByteArray> TTaskMonsterModel::roleNames() const
 {
-    return { { NameRole, "name" }, { CountRole, "count" }, { RaceIdRole, "raceId" } };
+    return { { RaceID, "raceID" },           { RaceName, "raceName" }, { AmountToHunt, "amountToHunt" },
+             { AmountHunted, "amountHunted" }, { IsActive, "isActive" } };
 }
 
 void TTaskMonsterModel::setEntries(std::vector<Entry> entries)
@@ -107,6 +112,8 @@ TKillTrackerWidgetController::TKillTrackerWidgetController(prey::TPreyStorage* s
         if (args.size() < 2)
             return std::any{};
         if (const auto* monsters = std::any_cast<std::vector<std::map<std::string, uint32_t>>>(&args[1])) {
+            const auto* header = std::any_cast<std::map<std::string, uint32_t>>(&args[0]);
+            m_weeklyActive = !header || mapU32(*header, "weeklyProgressFinished") == 0;
             m_pendingWeekly = *monsters;
             weeklyTaskDataChanged();
         }
@@ -123,21 +130,24 @@ void TKillTrackerWidgetController::applyBountyMonsters(const std::vector<std::ma
     auto* model = qobject_cast<TTaskMonsterModel*>(m_bountyTasksModel);
     if (!model)
         return;
-    std::vector<TTaskMonsterModel::Entry> entries;
-    entries.reserve(monsters.size());
+    // One row: the one active bounty task, else an inactive empty row.
+    const std::map<std::string, uint32_t>* active = nullptr;
+    int activeCount = 0;
     for (const auto& row : monsters) {
-        const uint32_t raceId = mapU32(row, "raceId");
-        const uint32_t current = mapU32(row, "currentKills");
-        const uint32_t total = mapU32(row, "totalKills");
-        TTaskMonsterModel::Entry entry;
-        entry.raceId = int(raceId);
-        entry.name = raceName(raceId);
-        entry.count = int(total > 0 ? current : current);
-        if (total > 0)
-            entry.name = QStringLiteral("%1 (%2/%3)").arg(entry.name).arg(current).arg(total);
-        entries.push_back(std::move(entry));
+        if (mapU32(row, "isActive") != 0) {
+            active = &row;
+            ++activeCount;
+        }
     }
-    model->setEntries(std::move(entries));
+    TTaskMonsterModel::Entry entry;
+    if (activeCount == 1) {
+        entry.raceId = static_cast<uint16_t>(mapU32(*active, "raceId"));
+        entry.raceName = raceName(entry.raceId);
+        entry.amountToHunt = static_cast<uint16_t>(mapU32(*active, "totalKills"));
+        entry.amountHunted = static_cast<uint16_t>(mapU32(*active, "currentKills"));
+        entry.isActive = true;
+    }
+    model->setEntries({ std::move(entry) });
 }
 
 void TKillTrackerWidgetController::applyWeeklyMonsters(const std::vector<std::map<std::string, uint32_t>>& monsters)
@@ -147,16 +157,16 @@ void TKillTrackerWidgetController::applyWeeklyMonsters(const std::vector<std::ma
         return;
     std::vector<TTaskMonsterModel::Entry> entries;
     entries.reserve(monsters.size());
+    // The any-creature task (race 0, no name) first, then one row per race;
+    // all active while the week's hunting is not finished.
     for (const auto& row : monsters) {
-        const uint32_t raceId = mapU32(row, "raceId");
-        const uint32_t current = mapU32(row, "current");
-        const uint32_t total = mapU32(row, "total");
         TTaskMonsterModel::Entry entry;
-        entry.raceId = int(raceId);
-        entry.name = raceName(raceId);
-        entry.count = int(current);
-        if (total > 0)
-            entry.name = QStringLiteral("%1 (%2/%3)").arg(entry.name).arg(current).arg(total);
+        entry.raceId = static_cast<uint16_t>(mapU32(row, "raceId"));
+        if (entry.raceId != 0)
+            entry.raceName = raceName(entry.raceId);
+        entry.amountToHunt = static_cast<uint16_t>(mapU32(row, "total"));
+        entry.amountHunted = static_cast<uint16_t>(mapU32(row, "current"));
+        entry.isActive = m_weeklyActive;
         entries.push_back(std::move(entry));
     }
     model->setEntries(std::move(entries));

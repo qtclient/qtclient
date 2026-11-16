@@ -547,7 +547,7 @@ THousesInfoDialogController::THousesInfoDialogController(QObject* parent)
     // CIP: a 5 ms single shot asks for the town's dynamic data.
     m_townRequestTimer.setSingleShot(true);
     m_townRequestTimer.setInterval(5);
-    connect(&m_townRequestTimer, &QTimer::timeout, this, [this] { m_storage->requestTown(m_proxy->townFilter()); });
+    connect(&m_townRequestTimer, &QTimer::timeout, this, &THousesInfoDialogController::onRequestDynamicDataForTownTimerTimeout);
 
     m_statesFitlerModel = {
         new THousStateFilterOption(qtTrId("houses_filter_all_states"), StateAll, this),
@@ -695,6 +695,8 @@ void THousesInfoDialogController::onCharacterHousesInfoChanged() { m_model->setC
 void THousesInfoDialogController::onHousesLimitsChanged() { m_model->setLimits(m_storage->limits()); }
 
 void THousesInfoDialogController::requestDynamicDataForTown() { m_townRequestTimer.start(); }
+
+void THousesInfoDialogController::onRequestDynamicDataForTownTimerTimeout() { m_storage->requestTown(m_proxy->townFilter()); }
 
 void THousesInfoDialogController::setTownFilter(const QString& Town)
 {
