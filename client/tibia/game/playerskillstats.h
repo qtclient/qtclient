@@ -5,6 +5,8 @@
 #include <cip_gen.h>
 
 #include <map>
+#include <utility>
+#include <vector>
 
 namespace tibia {
 namespace game {
@@ -30,13 +32,21 @@ public:
                         uint16_t damageReflection);
     void setCombatAbsorbValues(const std::map<uint8_t, double>& absorbValues);
     void setForgeBonuses(double momentum, double transcendence, double amplification);
+    /// The magic level boosts per damage type (PlayerSkills modifiers).
+    void setSpecialMagicLevels(std::vector<std::pair<int, int>> boosts) { m_specialMagicLevels = std::move(boosts); }
+    const std::vector<std::pair<int, int>>& specialMagicLevels() const { return m_specialMagicLevels; }
     void clear();
 
 private:
     void commit(const cyclopedia::CombatStats& next);
 
     cyclopedia::CombatStats m_stats;
+    std::vector<std::pair<int, int>> m_specialMagicLevels;
 };
+
+void localPlayerSetSpecialMagicLevels(std::vector<std::pair<int, int>> boosts);
+/// The magic level boosts per damage type (damage type, levels).
+std::vector<std::pair<int, int>> localPlayerSpecialMagicLevels();
 
 }
 }

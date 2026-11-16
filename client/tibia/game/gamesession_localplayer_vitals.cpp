@@ -215,6 +215,19 @@ void localPlayerSetForgeBonuses(const double momentum, const double transcendenc
         stats->setForgeBonuses(momentum, transcendence, amplification);
 }
 
+void localPlayerSetSpecialMagicLevels(std::vector<std::pair<int, int>> boosts)
+{
+    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+        stats->setSpecialMagicLevels(std::move(boosts));
+}
+
+std::vector<std::pair<int, int>> localPlayerSpecialMagicLevels()
+{
+    if (TPlayerSkillStats* stats = TPlayerSkillStats::liveInstance())
+        return stats->specialMagicLevels();
+    return {};
+}
+
 uint32_t localPlayerManaShield()
 {
     if (TPlayerData* data = TPlayerData::liveInstance())

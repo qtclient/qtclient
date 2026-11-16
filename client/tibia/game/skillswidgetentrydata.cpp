@@ -1,6 +1,7 @@
 #include "skillswidgetentrydata.h"
 
 #include "client/gamecore.h"
+#include "game/playerskillstats.h"
 
 #include <QLocale>
 
@@ -42,6 +43,41 @@ QString skillDetail(const qint64 value, const qint64 base, const qint64 loyaltyB
     if (loyaltyBase != base)
         detail += qtTrId("loyalty_bonus").arg(loyaltyBase > base ? QStringLiteral("+") : QString(), number(loyaltyBase - base), QString());
     return detail;
+}
+
+/// The damage type's name (CIP's combat type names).
+QString damageTypeName(const int type)
+{
+    switch (type) {
+        case 1: return qtTrId("damagetype_fire");
+        case 2: return qtTrId("damagetype_earth");
+        case 3: return qtTrId("damagetype_energy");
+        case 4: return qtTrId("damagetype_ice");
+        case 5: return qtTrId("damagetype_holy");
+        case 6: return qtTrId("damagetype_death");
+        case 7: return qtTrId("damagetype_healing");
+        case 8: return qtTrId("damagetype_drowning");
+        case 9: return qtTrId("damagetype_lifeleech");
+        case 10: return qtTrId("damagetype_manadrain");
+        case 11: return qtTrId("damagetype_agony");
+        default: return qtTrId("damagetype_physical");
+    }
+}
+
+/// CIP: magic level's tooltip lists the boosts per damage type under a
+/// caption; other skills have none.
+QString specialMagicLevelInformation(const SkillType type)
+{
+    if (type != SkillType::MagicLevel)
+        return {};
+    const std::vector<std::pair<int, int>> boosts = tibia::game::localPlayerSpecialMagicLevels();
+    if (boosts.empty())
+        return {};
+    QString text = qtTrId("special_magic_skillboost_caption");
+    for (const auto& [damageType, value] : boosts)
+        text += QLatin1Char('\n')
+            + qtTrId("special_magic_skillboost_element").arg(damageTypeName(damageType), value > 0 ? QStringLiteral("+") : QString()).arg(value);
+    return text;
 }
 
 std::optional<tibia::client::Skill> otcSkill(const SkillType type)
@@ -162,7 +198,7 @@ qint64 experienceForLevel(const int level)
     return (((l - 6) * l + 17) * l - 12) / 6 * 100;
 }
 
-SkillsWidgetEntry buildSkillEntry(const SkillType type)
+SkillsWidgetEntry buildSkillEntry(const SkillType type, const bool precisePercent)
 {
     SkillsWidgetEntry entry;
     entry.caption = skillName(type);
@@ -210,9 +246,16 @@ SkillsWidgetEntry buildSkillEntry(const SkillType type)
     entry.valueString = number(value);
     entry.progressBarValue = percent / 100.0;
     entry.progressBarColor = QColor(0x00, 0xc0, 0x00);
-    entry.tooltip = qtTrId("skill_progress_tooltip").arg(100.0 - percent, 0, 'f', 2);
+    if (precisePercent)
+        entry.tooltip = qtTrId("skill_progress_tooltip").arg(100.0 - percent, 0, 'f', 2);
+    else if (percent > 99.0)
+        entry.tooltip = qtTrId("skill_progress_tooltip_almost_there");
+    else
+        entry.tooltip = qtTrId("skill_progress_tooltip").arg(100 - static_cast<int>(percent + 0.5));
     if (const QString detail = skillDetail(value, base, loyaltyBase); !detail.isEmpty())
-        entry.tooltip = detail + QLatin1Char('\n') + entry.tooltip;
+        entry.tooltip = QStringLiteral("%1\n%2").arg(detail, entry.tooltip);
+    if (const QString special = specialMagicLevelInformation(type); !special.isEmpty())
+        entry.tooltip = QStringLiteral("%1\n\n%2").arg(entry.tooltip, special);
     using Color = SkillsWidgetEntry::ValueColor;
     if (value > loyaltyBase)
         entry.valueStringColor = Color::MODIFIER_POSITIVE;

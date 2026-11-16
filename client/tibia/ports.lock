@@ -5807,6 +5807,7 @@ sub_6ae4bd662fd8	6ae4bd662fd84fab	skip	std container internals (map/vector/set)
 sub_6b0d0fc3a4f0	6b0d0fc3a4f011f0	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::sessionItems
 sub_6b3bd2ce4356	6b3bd2ce4356ff0c	ported	gamewindow/highscoresdialogcontroller.cpp:THighscoresDialogController::sendHighscoresRequest
 sub_6b40a7922d29	6b40a7922d29b32d	skip	moc property getter, provided by the generated cip base
+sub_6b53c4c884db	6b53c4c884db966e	ported	game/skillswidgetentrydata.cpp:skillDetail
 sub_6b86b8bee918	6b86b8bee91827de	skip	compiler-generated destructor pair
 sub_6baa0f3e4887#2	6baa0f3e48871dc9	skip	libc++ std::vector growth / destroy (library)
 sub_6baa0f3e4887#5	6baa0f3e48871dc9	skip	std::set / std::vector assignment, copy and destruction (library)
@@ -6245,6 +6246,7 @@ sub_827ff8c47225	827ff8c47225aca7	skip	static initializer misattributed to the c
 sub_828672b0db98	828672b0db98d0f2	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_828d3fe69e6f	828d3fe69e6f7f8c	skip	miniaudio library
 sub_828d78e7da0e	828d78e7da0e3496	skip	compiler-generated destructor
+sub_82985123764c	82985123764c7923	ported	game/skillswidgetentrydata.cpp:buildSkillEntry
 sub_82a6f2462518	82a6f2462518cb03	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::showDialogTab
 sub_82a6f2462518#10	82a6f2462518cb03	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::showDialog
 sub_82a6f2462518#2	82a6f2462518cb03	ported	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotsDialogController::showDialogTab
@@ -7318,6 +7320,7 @@ sub_a9f8d691a9bc	a9f8d691a9bcab7d	ported	analysers/impactwidgets.cpp:TImpactWidg
 sub_aa0f3605feaa	aa0f3605feaa04d1	skip	SFML audio library (miniaudio backend)
 sub_aa15509bde55	aa15509bde553d59	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendBugReport
 sub_aa46cbb940af#2	aa46cbb940af0423	inlined	protocol::TProtobufServerMessageTranslator::v174
+sub_aa882ee6585c	aa882ee6585c93eb	ported	game/skillswidgetentrydata.cpp:specialMagicLevelInformation
 sub_aa986f2d2cee	aa986f2d2cee0f37	ported	effects/effectprotocolmessagehandler.cpp:TEffectProtocolMessageHandler::handleRemoveGraphicalEffectMessage
 sub_aa9cc9f22ef0	aa9cc9f22ef0a453	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::setSelectedFilterTagIndex
 sub_aaa30d7665ca	aaa30d7665ca1f71	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::switchTab

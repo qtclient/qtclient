@@ -84,7 +84,9 @@ SkillsWidgetEntry buildSkillsWidgetEntry(SkillType type);
 QString skillIconSource(SkillType type);
 
 /// The local player's entry for `type` (CIP: XP , skills).
-SkillsWidgetEntry buildSkillEntry(SkillType type);
+/// CIP: a skill's entry; `precisePercent` shows the progress left with two
+/// decimals, otherwise rounded ("almost there" above 99%).
+SkillsWidgetEntry buildSkillEntry(SkillType type, bool precisePercent = true);
 
 /// Experience needed for `level` (CIP:).
 qint64 experienceForLevel(int level);
