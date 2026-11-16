@@ -28,6 +28,11 @@ enum class EUseType : int
 /// TActionSetting variants, read by / written by).
 struct TActionSetting
 {
+    /// A chat text this long or longer fails the options load.
+    static constexpr qsizetype MaxChatTextLength = 256;
+    /// Actions a multi-action setting holds at most.
+    static constexpr qsizetype MaxMultiActions = 3;
+
     enum EKind : int
     {
         NONE,
@@ -89,8 +94,16 @@ struct THotkeyOptionsData
     bool showStaticHotkeysFirst = true;
     std::map<QString, THotkeySet> hotkeySets;
 
+    /// Throws std::runtime_error when a chat text is too long.
     static THotkeyOptionsData fromJson(const QJsonObject& section);
     QJsonObject toJson() const;
+
+    /// After every load: each set gains the GlobalShortcuts bindings whose
+    /// action it does not bind yet and whose keys are free in that chat mode
+    /// (the arrow keys, and the keys of the movement actions, also with Ctrl,
+    /// Shift or Alt when that modifier rotates). With no set at all, the
+    /// vocation presets are created, Knight current and auto-switch on.
+    void addGlobalShortcuts(bool rotateWithCtrl, bool rotateWithShift, bool rotateWithAlt);
 
     THotkeySet* set(const QString& name);
     void setCurrentSet(const QString& name);
@@ -120,7 +133,9 @@ public:
     void load();
     void save();
 
-    /// CIP built-in `hotkeyOptions` (vocation presets + GlobalShortcuts).
+    /// The vocation presets' set names (Knight first, CIP's default set).
+    static const QStringList& vocationSetNames();
+    /// CIP built-in `hotkeyOptions`: the vocation presets, Knight current.
     static QJsonObject builtInSection();
     /// CIP's default hotkey sets by name: each vocation preset with
     /// GlobalShortcuts' keys merged in, and GlobalShortcuts itself.

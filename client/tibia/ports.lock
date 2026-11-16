@@ -319,6 +319,11 @@ config::TClientOptions::v16	7805bbf5902a546c	ported	app/clientoptions.cpp:Client
 config::TClientOptions::v18	15e9144e211a492c	ported	app/clientoptions.cpp:ClientOptions::store
 config::TClientOptions::v20	aece2b524b478f4d	ported	app/clientoptions.cpp:ClientOptions::store
 config::TClientOptions::v25	d0ed910bbdb1f642	ported	app/clientoptions.cpp:ClientOptions::rendererIndex
+config::TClientOptions::v68	5a95bc249a1df391	ported	config/clientoptiondefaults.cpp:readClientOptions
+config::TClientOptions::v70	d04a60fc599262b7	ported	config/clientoptiondefaults.cpp:readClientOptions
+config::TClientOptions::v72	69ec84a74ca59bc0	ported	config/clientoptiondefaults.cpp:readClientOptions
+config::TClientOptions::v74	e9a8a326c13a485b	ported	config/clientoptiondefaults.cpp:readClientOptions
+config::TClientOptions::v77	da6c9276d03b2ae9	ported	config/hotkeyoptions.cpp:THotkeyOptionsData::addGlobalShortcuts
 config::TClientOptions::~TClientOptions	097457dc45e86dd8	skip	compiler-generated destructor pair
 config::TClientOptions::~TClientOptions_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 config::TConsoleQMLOptionsPage::v12	d9cacfaa4afa0a55	ported	config/optionspages.cpp:consoleBindings
@@ -2142,6 +2147,10 @@ input::TGenericObjectGameActionProvider::v5	bae9237d25f9b999	ported	input/generi
 input::TKeyEventHandler::eventFilter	65b06017c9a4fb75	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onKeyEvent
 input::TKeyboardInputToGameActionConverter::v12	3359b9f739b1d763	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
 input::TKeyboardInputToGameActionConverter::v14	7457ae645e3c027b	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
+input::TKeyboardShortcutHandler::v12	efed428578933324	ported	input/keyboardshortcuthandler.cpp:TKeyboardShortcutHandler::handleGameAction
+input::TKeyboardShortcutHandler::v13	d20c224241c0c46b	ported	input/keyboardshortcuthandler.cpp:TKeyboardShortcutHandler::tryToSwitchHotkeySet
+input::TKeyboardShortcutHandler::v14	d66e14bd83733da8	ported	input/keyboardshortcuthandler.cpp:TKeyboardShortcutHandler::switchToNextHotkeySet
+input::TKeyboardShortcutHandler::v15	11347c4d11890b70	ported	input/keyboardshortcuthandler.cpp:TKeyboardShortcutHandler::switchToPreviousHotkeySet
 input::TKeyboardStatusStorage::onApplicationStateChanged	a34cb872119a335a	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onApplicationStateChanged
 input::TKeyboardStatusStorage::v12	37c8257daa7c4aaf	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::statusHolds
 input::TKeyboardStatusStorage::v13	7d0a4f17f2e88718	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onKeyEvent
@@ -2168,6 +2177,7 @@ input::TPlayerMovementGameActionHandler::v12	89f581898392f0cd	ported	input/playe
 input::TPlayerMovementGameActionHandler::v13	2d6620e05b2525b1	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
 input::TPlayerMovementGameActionHandler::v14	4724b908512397e8	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
 input::TPlayerMovementGameActionHandler::v15	ff663f2a0c476155	ported	input/playermovementgameactionhandler.cpp:TPlayerMovementGameActionHandler::TPlayerMovementGameActionHandler
+input::TPlayerMovementInputInterpreter::onHotkeyOptionsChanged	75a00857f361b765	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::onHotkeyOptionsChanged
 input::TPlayerMovementInputInterpreter::v13	76a27aa244c258e8	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
 input::TPlayerMovementInputInterpreter::v14	2fc8976752643716	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
 input::TPlayerMovementInputInterpreter::v15	d6344b0d3ded3445	ported	input/playermovementinputinterpreter.cpp:TPlayerMovementInputInterpreter::update
@@ -3966,6 +3976,7 @@ sub_349057ad6180	349057ad6180834a	ported	gamewindow/sidebarmanager.h:TSidebarMan
 sub_34c556d29a88	34c556d29a886895	inlined	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::onServerMessageEnqueued
 sub_34e653e93f2e	34e653e93f2eac3e	skip	std library template (vector push_back / length error, std::sort introsort pieces, unique_ptr deleter)
 sub_3505ef0f3787#2	3505ef0f378739ea	inlined	questlog/questlogciptypes.cpp:TQuestLogStorage::setTrackedQuestFlags
+sub_351030668c7c	351030668c7c928c	tested	config/hotkeyoptions.cpp:THotkeyOptionsData::fromJson	test=tests/client/hotkeyoptions_test.cpp
 sub_351b94d930e8#3	351b94d930e805d0	skip	compiler-generated destructor of the three-string stat source
 sub_3523411ddb02#3	3523411ddb025c2c	skip	shared_ptr copy/release (library)
 sub_3525b8e1c575	3525b8e1c5756138	skip	std::sort instantiation for the category list
@@ -4298,6 +4309,7 @@ sub_481c661393dc	481c661393dccdf1	inlined	gamewindow/characterinfomodels.cpp:TAc
 sub_483bf90be896#4	483bf90be896eede	ported	teamfinder/teamfinderciptypes.cpp:TTeamStartTimeManager::startImmediately
 sub_483bf90be896#5	483bf90be896eede	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::appearanceID
 sub_483c06cdce06	483c06cdce066723	ported	gamewindow/containercontroller.cpp:TContainerController::update
+sub_484fe5c16fab	484fe5c16fabd0af	ported	config/hotkeyoptions.cpp:readSet
 sub_48656aecf265	48656aecf2651598	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::currentWidgetsManagerOptions
 sub_48686e59fd85	48686e59fd852efb	ported	teamfinder/teamfinderciptypes.cpp:TTeamActivity::operator==
 sub_48810764037a	48810764037a2f24	inlined	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry
@@ -4848,6 +4860,7 @@ sub_60a18b2d08a6#2	60a18b2d08a63a4a	inlined	gamewindow/battlelistcontroller.cpp:
 sub_60b1b30128a7#11	60b1b30128a74865	skip	std container template code
 sub_60ced133d06c	60ced133d06c5989	ported	cyclopedia/combatstatsqmldata.cpp:makeSourcedStat
 sub_60e4181c1825#2	60e4181c1825ef72	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
+sub_60fd1696eab5	60fd1696eab5126e	tested	config/hotkeyoptions.cpp:writeMappings	test=tests/client/hotkeyoptions_test.cpp
 sub_61011547388a	61011547388a52b2	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::setMonsterRacesFilter
 sub_6114fb60ff55	6114fb60ff55a6a4	inlined	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onAccountCreationStatus
 sub_614bcebd2322	614bcebd23227575	ported	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::accepts
@@ -5314,6 +5327,7 @@ sub_7dee44380fa1	7dee44380fa16b62	ported	game/statusbarstorage.cpp:styleToString
 sub_7df5220d7846	7df5220d78464675	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_7e022ccd8cc3	7e022ccd8cc3225b	inlined	gamewindow/contextmenucontroller.cpp:TContextMenuController::showContextMenuForTextInputQmlItem
 sub_7e12d91c1ff8	7e12d91c1ff8299f	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::jokersNeededForCollecting
+sub_7e30430fbba8	7e30430fbba8d531	ported	config/hotkeyoptions.cpp:readMappings
 sub_7e362e7971b8#2	7e362e7971b8bd1c	inlined	assets/spritesheet.cpp:SpriteStore::addSheet
 sub_7e3a3866f4eb	7e3a3866f4eb25f2	ported	appearances/appearanceinstance.cpp:fieldDirection
 sub_7e4e35e28eb6	7e4e35e28eb60669	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::handlePickItemToImbue
@@ -5803,6 +5817,7 @@ sub_8eeed222eb97#2	8eeed222eb97ddbf	ported	friends/friendsciptypes.cpp:TFriendsA
 sub_8f028080de4e#4	8f028080de4e824e	ported	friends/friendsciptypes.h:TFriendsStorage::badges
 sub_8f028080de4e#5	8f028080de4e824e	ported	friends/friendsciptypes.h:TFriendsInviteStorage::blacklist
 sub_8f089a7a3a5d	8f089a7a3a5d9f46	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
+sub_8f0db8b22fc5	8f0db8b22fc56e00	tested	config/hotkeyoptions.cpp:TActionSetting::fromJson	test=tests/client/hotkeyoptions_test.cpp
 sub_8f125cfc0481	8f125cfc04810755	ported	analysers/analyserwidgets.cpp:TAnalyticsSelectorWidgetController::huntingSessionAnalyserButtonClicked
 sub_8f14be016726	8f14be016726c884	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::currentProficiencyXP
 sub_8f2b36852cc6	8f2b36852cc69beb	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendGetTextForReport
@@ -6044,6 +6059,7 @@ sub_97780ee1a962#2	97780ee1a96291bd	skip	moc signal emitter
 sub_978e1e82f261#20	978e1e82f261a6f0	skip	Qt slot-object template instantiation
 sub_978e1e82f261#22	978e1e82f261a6f0	skip	shared_ptr / Qt slot-object template code
 sub_978e1e82f261#25	978e1e82f261a6f0	skip	Qt slot object impl (compiler-generated)
+sub_97a8a70831e9	97a8a70831e9158c	skip	std::vector<TKey>::insert (libc++)
 sub_97ad7b4f4822	97ad7b4f48220a8f	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenRewardWall
 sub_97c0d09fa5d3	97c0d09fa5d35c53	ported	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::preselectedClassificationIndex
 sub_97db4faf4792	97db4faf4792f1e4	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onEMailChecked
@@ -6484,6 +6500,7 @@ sub_b2b298052b96	b2b298052b96ccb0	ported	input/gameaction.h:TGameActionOpenAddVi
 sub_b2b298052b96#2	b2b298052b96ccb0	ported	input/gameaction.h:TGameActionOpenAddVipDialog::TGameActionOpenAddVipDialog
 sub_b2d317684246	b2d31768424668ba	skip	compiler-generated destructor / move-assignment of store records
 sub_b2d317684246#2	b2d31768424668ba	skip	compiler-generated destructor / move-assignment of store records
+sub_b2dc59c40ca4	b2dc59c40ca4b12c	tested	config/hotkeyoptions.cpp:THotkeyOptionsData::toJson	test=tests/client/hotkeyoptions_test.cpp
 sub_b31736ca24ac	b31736ca24ac3ce3	ported	gamewindow/chatcontroller.cpp:isVip
 sub_b32bd5339c99	b32bd5339c9929e4	skip	Qt slot-object impl (template-generated)
 sub_b35aff460d32	b35aff460d32f607	ported	news/eventqmlentry.cpp:TEventQMLEntry::TEventQMLEntry
@@ -6940,6 +6957,7 @@ sub_c2e8bde43a4b	c2e8bde43a4b4a84	ported	gamewindow/characterinfodialogcontrolle
 sub_c2f4eeed7844	c2f4eeed78448b19	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenBosstiary
 sub_c2fb94b36cb8	c2fb94b36cb83153	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
 sub_c340318e5101	c340318e51014a3b	inlined	creatures/creaturestorage.cpp:TCreature::hasMarks
+sub_c361206625a5	c361206625a5c3f2	ported	config/hotkeyoptions.cpp:writeSet
 sub_c36bfa394b6e	c36bfa394b6eb48b	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::requestOpenManageLootContainerDialog
 sub_c39502991fa0	c39502991fa0dac5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCloseNPCChannel
 sub_c3b5fd8b0f64	c3b5fd8b0f640ac9	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::closeSidebarClosestToGamewindow
@@ -7172,6 +7190,7 @@ sub_ced5ec012109#2	ced5ec012109ed50	inlined	gamewindow/createcharacterdialogcont
 sub_cee32bdd68e0	cee32bdd68e00792	ported	gamewindow/housesinfodialogcontroller.cpp:incomingTransferReason
 sub_cee84ca3ce1f	cee84ca3ce1f5225	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::clearSkill
 sub_cef0649e9bdb#2	cef0649e9bdbbb2c	skip	moc signal emitter
+sub_cf024bab73ce	cf024bab73ce9204	ported	config/hotkeyoptions.cpp:TActionSetting::toJson
 sub_cf599477d831	cf599477d83197ed	ported	gamewindow/characterinfomodels.cpp:TAchievementInfoController::setSortingCriterion
 sub_cf5a3261c15f#5	cf5a3261c15f16d6	inlined	shared::TTibiaFileSystemHelper::v2
 sub_cf69eeabe14f	cf69eeabe14f3aa0	inlined	input/movementpathplanner.cpp:planMovementPath
@@ -7255,6 +7274,7 @@ sub_d418833b32ef#7	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardMouseW
 sub_d418833b32ef#8	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardMouseWheelEventFilter::TDiscardMouseWheelEventFilter
 sub_d419b8c28cad	d419b8c28cad379f	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_d440ed7fe720	d440ed7fe72080fb	ported	app/hints.cpp:tibia::app::parseHints
+sub_d4a336919f23	d4a336919f23750c	tested	config/hotkeyoptions.cpp:writeBindings	test=tests/client/hotkeyoptions_test.cpp
 sub_d4a644d68860	d4a644d68860a638	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onCurrentlyHoveredCreatureChanged
 sub_d4aec58ab5b4#2	d4aec58ab5b440dd	skip	protobuf-generated arena constructors
 sub_d4c047171e0f	d4c047171e0f0626	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendBuyStoreOffer
@@ -8006,6 +8026,7 @@ sub_f85264fa3114	f85264fa3114cec7	ported	gamewindow/storedialogcontroller.cpp:TS
 sub_f86d5b71f360	f86d5b71f360cd82	ported	gamewindow/assignactiondialogs.cpp:TRecordKeyboardShortcutDialogController::initKeyLists
 sub_f8750c951e8a#18	f8750c951e8af84d	skip	moc-generated signal emitter
 sub_f8750c951e8a#2	f8750c951e8af84d	skip	moc signal emitter
+sub_f87b59f83660	f87b59f83660653b	ported	config/hotkeyoptions.cpp:writeSet
 sub_f87e0760100c	f87e0760100ca248	skip	compiler-generated destructor pair
 sub_f8a11d3eeda3	f8a11d3eeda38994	ported	shared/downloadpool.cpp:TDownloadPool::removeWaiting
 sub_f8bb12815fd1	f8bb12815fd1b9ff	skip	translation-unit static initializer (string constants)

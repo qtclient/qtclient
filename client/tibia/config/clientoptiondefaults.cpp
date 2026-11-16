@@ -5,6 +5,9 @@
 #include <QJsonArray>
 #include <QSet>
 
+#include <algorithm>
+#include <limits>
+
 namespace tibia::config {
 
 namespace {
@@ -268,6 +271,54 @@ const QJsonObject& defaultClientOptions()
         { QStringLiteral("usedSoundDevice"), QStringLiteral("auto") },
         { QStringLiteral("vSyncEnabled"), false },
     };
+    return options;
+}
+
+namespace {
+
+/// CIP's float options; every other numeric option is an int.
+bool isFloatOption(const QString& name)
+{
+    static const QSet<QString> floats = {
+        QStringLiteral("playerHudArcDistance"), QStringLiteral("playerHudArcOpacity"), QStringLiteral("playerHudArcHeight"),
+        QStringLiteral("lightAmbientLevel"), QStringLiteral("lightLevelSeparatorLevel"), QStringLiteral("lightAttenuationCloudsIndoor"),
+        QStringLiteral("ownEffectsOpacity"), QStringLiteral("otherPlayersEffectsOpacity"), QStringLiteral("monsterEffectsOpacity"),
+        QStringLiteral("monsterBossAreaEffectsOpacity"),
+    };
+    return floats.contains(name);
+}
+
+}
+
+QJsonObject readClientOptions(const QJsonObject& stored)
+{
+    QJsonObject options = stored;
+    const QJsonObject& defaults = defaultClientOptions();
+    for (auto it = defaults.begin(); it != defaults.end(); ++it) {
+        const QString& name = it.key();
+        const QJsonValue value = stored.value(name);
+        if (it->isBool()) {
+            options.insert(name, value.isBool() ? value.toBool() : it->toBool());
+        } else if (it->isString()) {
+            options.insert(name, value.isString() ? value.toString() : QString());
+        } else if (isFloatOption(name)) {
+            const double read = value.isDouble() ? value.toDouble() : it->toDouble();
+            options.insert(name, std::clamp(read, 0.0, double(std::numeric_limits<float>::max())));
+        } else {
+            const int read = value.isDouble() ? value.toInt() : it->toInt();
+            options.insert(name, std::clamp(read, 0, std::numeric_limits<int>::max()));
+        }
+    }
+    const auto clampOption = [&options](const char* name, const double low, const double high) {
+        const QString key = QString::fromLatin1(name);
+        options.insert(key, std::clamp(options.value(key).toDouble(), low, high));
+    };
+    options.insert(QStringLiteral("frameRateLimit"), std::clamp(options.value(QLatin1String("frameRateLimit")).toInt(), 10, 200));
+    for (const char* name : { "lightAmbientLevel", "lightLevelSeparatorLevel", "lightAttenuationCloudsIndoor", "ownEffectsOpacity",
+                              "otherPlayersEffectsOpacity", "monsterEffectsOpacity", "monsterBossAreaEffectsOpacity", "playerHudArcDistance" })
+        clampOption(name, 0.0, 1.0);
+    clampOption("playerHudArcOpacity", 0.2, 1.0);
+    clampOption("playerHudArcHeight", 0.1, 1.0);
     return options;
 }
 

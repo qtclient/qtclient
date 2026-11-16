@@ -331,31 +331,97 @@ bool TKeyboardShortcutHandler::handleKey(const QKeyEvent* key)
         return false;
     auto action = mutableClone(*bound);
     action->autoRepeat = key->isAutoRepeat();
-    if (action->autoRepeat && throttled(*action))
+    if (action->autoRepeat && throttled(*action, keys))
         return true;
     publish(action);
     return true;
 }
 
-bool TKeyboardShortcutHandler::throttled(const TGameAction& action)
+bool TKeyboardShortcutHandler::throttled(const TGameAction& action, const QKeySequence& keys)
 {
-    const int type = int(action.type);
     qint64 interval = -1;
-    if (type == 3 || type == 9)
-        interval = 100;
-    else if ((type >= 4 && type <= 8) || type == 235)
-        interval = 500;
-    else if (type == 72)
-        interval = 1000;
-    else if (type >= 97 && type <= 100)
-        interval = 1;
-    if (interval < 0)
-        return true;
-    QElapsedTimer& last = m_lastRepeat[type];
+    switch (action.type) {
+        case A::USE:
+        case A::TRY_TO_EQUIP: interval = 100; break;
+        case A::USE_WITH:
+        case A::USE_ON_CREATURE:
+        case A::USE_ON_TARGET:
+        case A::USE_ON_YOURSELF:
+        case A::USE_AT_MOUSECURSOR:
+        case A::ACTION_BUTTON_TRIGGERED: interval = 500; break;
+        case A::SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT: interval = 1000; break;
+        case A::MINIMAP_SCROLL_NORTH:
+        case A::MINIMAP_SCROLL_EAST:
+        case A::MINIMAP_SCROLL_SOUTH:
+        case A::MINIMAP_SCROLL_WEST: interval = 1; break;
+        default: return true;
+    }
+    QElapsedTimer& last = m_lastRepeat[keys];
     if (last.isValid() && last.elapsed() < interval)
         return true;
     last.start();
     return false;
+}
+
+namespace {
+
+/// The switched set goes to the status line (when statusLine) and the console.
+void announceHotkeySet(const QString& name, const bool statusLine)
+{
+    const QString text = qtTrId("hotkey_preset_switched").arg(name);
+    if (statusLine) {
+        auto status = mutableClone(*makeAction(A::SET_STATUS_LINE));
+        status->text = text;
+        publish(status);
+    }
+    auto system = std::make_shared<TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE);
+    system->text = text;
+    system->color = chat::consoleColor(30);
+    publish(system);
+}
+
+/// The set `step` places after the current one in name order, wrapping.
+void switchHotkeySetBy(const int step)
+{
+    config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
+    const QStringList names = hotkeys->setNames();
+    if (names.isEmpty())
+        return;
+    const qsizetype count = names.size();
+    const qsizetype index = ((names.indexOf(hotkeys->currentSetName()) + step) % count + count) % count;
+    hotkeys->selectSet(names.at(index));
+    announceHotkeySet(hotkeys->currentSetName(), true);
+}
+
+}
+
+void TKeyboardShortcutHandler::handleGameAction(const TGameAction& action)
+{
+    switch (action.type) {
+        case A::TRY_TO_SWITCH_HOTKEYSET: tryToSwitchHotkeySet(action); break;
+        case A::SWITCH_TO_NEXT_HOTKEYSET: switchToNextHotkeySet(); break;
+        case A::SWITCH_TO_PREVIOUS_HOTKEYSET: switchToPreviousHotkeySet(); break;
+        default: break;
+    }
+}
+
+void TKeyboardShortcutHandler::tryToSwitchHotkeySet(const TGameAction& action)
+{
+    config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
+    if (!hotkeys->autoSwitchHotkeyPreset() || !hotkeys->set(action.text) || action.text == hotkeys->currentSetName())
+        return;
+    hotkeys->selectSet(action.text);
+    announceHotkeySet(action.text, action.enable);
+}
+
+void TKeyboardShortcutHandler::switchToNextHotkeySet()
+{
+    switchHotkeySetBy(1);
+}
+
+void TKeyboardShortcutHandler::switchToPreviousHotkeySet()
+{
+    switchHotkeySetBy(-1);
 }
 
 }

@@ -9,6 +9,7 @@
 #include "gamewindow/mousecursorcontroller.h"
 #include "input/inputciptypes.h"
 #include "input/gameactionhandlers.h"
+#include "input/keyboardshortcuthandler.h"
 #include "spells/spellinfostorage.h"
 
 #include <tibia/assets/thingtype.h>
@@ -71,20 +72,6 @@ void publishMessage(const QString& text)
     input::publish(action);
 }
 
-/// CIP / / : the switched set goes to
-/// the status line (TRY_TO_SWITCH only when its flag is set) and the console.
-void announceHotkeySet(const bool statusLine)
-{
-    const QString text = qtTrId("hotkey_preset_switched").arg(config::THotkeyOptions::instance()->currentSetName());    if (statusLine) {
-        auto status = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
-        status->text = text;
-        input::publish(status);
-    }
-    auto system = std::make_shared<input::TGameActionAddTextMessage>(A::ADD_SYSTEM_CHAT_MESSAGE);
-    system->text = text;
-    system->color = chat::consoleColor(30);
-    input::publish(system);
-}
 
 }
 
@@ -169,23 +156,11 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
 
     input::setActionHandler(A::TOGGLE_ACTION_BAR, [this](const input::TGameAction& action) { return toggleActionBar(action); });
     input::setActionHandler(A::TOGGLE_ACTION_BARS, [this](const input::TGameAction& action) { return toggleActionBars(action); });
-    input::setActionHandler(A::TRY_TO_SWITCH_HOTKEYSET, [](const input::TGameAction& action) {
-        config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();        if (!hotkeys->autoSwitchHotkeyPreset() || !hotkeys->set(action.text) || action.text == hotkeys->currentSetName())
+    for (const A type : { A::TRY_TO_SWITCH_HOTKEYSET, A::SWITCH_TO_NEXT_HOTKEYSET, A::SWITCH_TO_PREVIOUS_HOTKEYSET })
+        input::setActionHandler(type, [](const input::TGameAction& action) {
+            input::TKeyboardShortcutHandler::handleGameAction(action);
             return true;
-        hotkeys->selectSet(action.text);
-        announceHotkeySet(action.enable);
-        return true;
-    });
-    input::setActionHandler(A::SWITCH_TO_NEXT_HOTKEYSET, [](const input::TGameAction&) {
-        config::THotkeyOptions::instance()->switchSet(1);
-        announceHotkeySet(true);
-        return true;
-    });
-    input::setActionHandler(A::SWITCH_TO_PREVIOUS_HOTKEYSET, [](const input::TGameAction&) {
-        config::THotkeyOptions::instance()->switchSet(-1);
-        announceHotkeySet(true);
-        return true;
-    });
+        });
     input::setActionHandler(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameAction&) {
         for (const auto& group : m_groups)
             if (group)

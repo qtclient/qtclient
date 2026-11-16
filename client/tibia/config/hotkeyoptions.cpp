@@ -6,6 +6,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 
+#include <algorithm>
+#include <limits>
+#include <set>
+#include <stdexcept>
+
 namespace tibia::config {
 
 namespace {
@@ -23,63 +28,108 @@ const QStringList& useTypeNames()
     return names;
 }
 
+/// Binds keys in one chat mode: CIP keeps a map keyed by the key sequence, so a
+/// key bound again replaces its setting and the bindings stay in key order.
+void insertBinding(std::vector<THotkeyBinding>& bindings, const QKeySequence& keys, const TActionSetting& setting)
+{
+    const auto it = std::lower_bound(bindings.begin(), bindings.end(), keys,
+                                     [](const THotkeyBinding& binding, const QKeySequence& k) { return binding.keys < k; });
+    if (it != bindings.end() && !(keys < it->keys))
+        it->setting = setting;
+    else
+        bindings.insert(it, { keys, setting });
+}
+
+/// One chat mode's bindings: entries that are not objects, or lack a string
+/// keysequence or an object actionsetting, are skipped.
 std::vector<THotkeyBinding> readBindings(const QJsonArray& array)
 {
     std::vector<THotkeyBinding> bindings;
     for (const QJsonValue& value : array) {
+        if (!value.isObject())
+            continue;
         const QJsonObject object = value.toObject();
-        THotkeyBinding binding;
-        binding.keys = QKeySequence::fromString(object.value(QLatin1String("keysequence")).toString(), QKeySequence::PortableText);
-        binding.setting = TActionSetting::fromJson(object.value(QLatin1String("actionsetting")).toObject());
-        if (!binding.keys.isEmpty() && !binding.setting.isEmpty())
-            bindings.push_back(std::move(binding));
+        if (!object.value(QLatin1String("keysequence")).isString() || !object.value(QLatin1String("actionsetting")).isObject())
+            continue;
+        insertBinding(bindings, QKeySequence(object.value(QLatin1String("keysequence")).toString()),
+                      TActionSetting::fromJson(object.value(QLatin1String("actionsetting")).toObject()));
     }
     return bindings;
 }
 
+/// Bindings with an empty setting are not written.
 QJsonArray writeBindings(const std::vector<THotkeyBinding>& bindings)
 {
     QJsonArray array;
-    for (const THotkeyBinding& binding : bindings)
+    for (const THotkeyBinding& binding : bindings) {
+        if (binding.setting.isEmpty())
+            continue;
         array.append(QJsonObject{
-            { QStringLiteral("actionsetting"), binding.setting.toJson() },
             { QStringLiteral("keysequence"), binding.keys.toString(QKeySequence::PortableText) },
+            { QStringLiteral("actionsetting"), binding.setting.toJson() },
         });
+    }
+    return array;
+}
+
+/// actionBarOptions.mappings: entries need a numeric actionBar and actionButton
+/// and an object actionsetting.
+std::map<std::pair<int, int>, TActionSetting> readMappings(const QJsonArray& array)
+{
+    std::map<std::pair<int, int>, TActionSetting> mappings;
+    for (const QJsonValue& value : array) {
+        if (!value.isObject())
+            continue;
+        const QJsonObject mapping = value.toObject();
+        if (!mapping.value(QLatin1String("actionBar")).isDouble() || !mapping.value(QLatin1String("actionButton")).isDouble()
+            || !mapping.value(QLatin1String("actionsetting")).isObject())
+            continue;
+        const int bar = quint8(mapping.value(QLatin1String("actionBar")).toInt());
+        const int button = quint8(mapping.value(QLatin1String("actionButton")).toInt());
+        mappings[{ bar, button }] = TActionSetting::fromJson(mapping.value(QLatin1String("actionsetting")).toObject());
+    }
+    return mappings;
+}
+
+/// Mappings with an empty setting are not written.
+QJsonArray writeMappings(const std::map<std::pair<int, int>, TActionSetting>& mappings)
+{
+    QJsonArray array;
+    for (const auto& [key, setting] : mappings) {
+        if (setting.isEmpty())
+            continue;
+        array.append(QJsonObject{
+            { QStringLiteral("actionBar"), key.first },
+            { QStringLiteral("actionButton"), key.second },
+            { QStringLiteral("actionsetting"), setting.toJson() },
+        });
+    }
     return array;
 }
 
 THotkeySet readSet(const QJsonObject& object)
 {
     THotkeySet set;
-    QJsonObject actionBar = object.value(QLatin1String("actionBarOptions")).toObject();
-    for (const QJsonValue& value : actionBar.value(QLatin1String("mappings")).toArray()) {
-        const QJsonObject mapping = value.toObject();
-        TActionSetting setting = TActionSetting::fromJson(mapping.value(QLatin1String("actionsetting")).toObject());
-        if (!setting.isEmpty())
-            set.mappings[{ mapping.value(QLatin1String("actionBar")).toInt(), mapping.value(QLatin1String("actionButton")).toInt() }] = std::move(setting);
-    }
-    actionBar.remove(QLatin1String("mappings"));
-    set.actionBarExtra = actionBar;
     set.chatOff = readBindings(object.value(QLatin1String("chatOff")).toArray());
     set.chatOn = readBindings(object.value(QLatin1String("chatOn")).toArray());
+    if (object.value(QLatin1String("actionBarOptions")).isObject()) {
+        QJsonObject actionBar = object.value(QLatin1String("actionBarOptions")).toObject();
+        if (actionBar.value(QLatin1String("mappings")).isArray())
+            set.mappings = readMappings(actionBar.value(QLatin1String("mappings")).toArray());
+        actionBar.remove(QLatin1String("mappings"));
+        set.actionBarExtra = actionBar;
+    }
     return set;
 }
 
 QJsonObject writeSet(const THotkeySet& set)
 {
-    QJsonArray mappings;
-    for (const auto& [key, setting] : set.mappings)
-        mappings.append(QJsonObject{
-            { QStringLiteral("actionBar"), key.first },
-            { QStringLiteral("actionButton"), key.second },
-            { QStringLiteral("actionsetting"), setting.toJson() },
-        });
     QJsonObject actionBar = set.actionBarExtra;
-    actionBar.insert(QStringLiteral("mappings"), mappings);
+    actionBar.insert(QStringLiteral("mappings"), writeMappings(set.mappings));
     return {
-        { QStringLiteral("actionBarOptions"), actionBar },
         { QStringLiteral("chatOff"), writeBindings(set.chatOff) },
         { QStringLiteral("chatOn"), writeBindings(set.chatOn) },
+        { QStringLiteral("actionBarOptions"), actionBar },
     };
 }
 
@@ -159,7 +209,7 @@ void THotkeyOptionsData::clearBindings(const QString& setName, const bool chatOn
 void THotkeyOptionsData::addBinding(const QString& setName, const bool chatOn, const QKeySequence& keys, const TActionSetting& setting)
 {
     if (THotkeySet* hotkeySet = set(setName))
-        (chatOn ? hotkeySet->chatOn : hotkeySet->chatOff).push_back({ keys, setting });
+        insertBinding(chatOn ? hotkeySet->chatOn : hotkeySet->chatOff, keys, setting);
 }
 
 void THotkeyOptionsData::setBindings(const QString& setName, const bool chatOn, const std::vector<THotkeyBinding>& bindings)
@@ -168,33 +218,96 @@ void THotkeyOptionsData::setBindings(const QString& setName, const bool chatOn, 
         (chatOn ? hotkeySet->chatOn : hotkeySet->chatOff) = bindings;
 }
 
+void THotkeyOptionsData::addGlobalShortcuts(const bool rotateWithCtrl, const bool rotateWithShift, const bool rotateWithAlt)
+{
+    static const QStringList movementActions = {
+        QStringLiteral("GoNorth"), QStringLiteral("GoWest"), QStringLiteral("GoSouth"), QStringLiteral("GoEast"),
+    };
+    static const char* const arrowKeys[] = { "Left", "Right", "Up", "Down" };
+    const std::pair<bool, QLatin1String> rotations[] = {
+        { rotateWithCtrl, QLatin1String("Ctrl+") },
+        { rotateWithShift, QLatin1String("Shift+") },
+        { rotateWithAlt, QLatin1String("Alt+") },
+    };
+    const auto addRotations = [&](std::set<QKeySequence>& keys, const QString& portable) {
+        for (const auto& [enabled, modifier] : rotations)
+            if (enabled)
+                keys.insert(QKeySequence(modifier + portable));
+    };
+
+    if (hotkeySets.empty()) {
+        for (const QString& vocation : THotkeyOptions::vocationSetNames())
+            hotkeySets.emplace(vocation, THotkeyOptions::builtInSet(vocation));
+        currentHotkeySetName = QStringLiteral("Knight");
+        autoSwitchHotkeyPreset = true;
+        return;
+    }
+
+    const THotkeySet global = THotkeyOptions::builtInSet(QStringLiteral("GlobalShortcuts"));
+    for (auto& [name, set] : hotkeySets) {
+        for (const bool chatOn : { false, true }) {
+            std::vector<THotkeyBinding>& bindings = chatOn ? set.chatOn : set.chatOff;
+            std::set<QKeySequence> usedKeys;
+            std::set<QString> usedActions;
+            for (const THotkeyBinding& binding : bindings) {
+                usedKeys.insert(binding.keys);
+                const QString action = binding.setting.kind == TActionSetting::ACTION ? binding.setting.action : QString();
+                usedActions.insert(action);
+                if (movementActions.contains(action))
+                    addRotations(usedKeys, binding.keys.toString(QKeySequence::PortableText));
+            }
+            for (const char* key : arrowKeys)
+                addRotations(usedKeys, QLatin1String(key));
+            for (const THotkeyBinding& binding : chatOn ? global.chatOn : global.chatOff) {
+                if (binding.setting.kind != TActionSetting::ACTION)
+                    continue;
+                if (usedActions.contains(binding.setting.action) || usedKeys.contains(binding.keys))
+                    continue;
+                insertBinding(bindings, binding.keys, binding.setting);
+            }
+        }
+    }
+}
+
 TActionSetting TActionSetting::fromJson(const QJsonObject& json)
 {
+    // The first key present decides the kind: chatText, action, useObject,
+    // passiveAbility, multiActions. Anything else is an empty setting.
     TActionSetting setting;
     if (json.contains(QLatin1String("chatText"))) {
         setting.kind = TEXT;
         setting.text = json.value(QLatin1String("chatText")).toString();
-        setting.sendAutomatically = json.value(QLatin1String("sendAutomatically")).toBool();
+        setting.sendAutomatically = json.value(QLatin1String("sendAutomatically")).toBool(false);
         setting.spellCastType = json.value(QLatin1String("spellCastType")).toInt();
+        if (setting.text.size() >= MaxChatTextLength)
+            throw std::runtime_error("Hotkey chat text is too long.");
+    } else if (json.contains(QLatin1String("action"))) {
+        setting.kind = ACTION;
+        setting.action = json.value(QLatin1String("action")).toString();
     } else if (json.contains(QLatin1String("useObject"))) {
         setting.kind = OBJECT;
-        setting.objectId = json.value(QLatin1String("useObject")).toInt();
-        setting.useType = EUseType(std::max<qsizetype>(0, useTypeNames().indexOf(json.value(QLatin1String("useType")).toString())));
-        if (json.contains(QLatin1String("upgradeTier")))
-            setting.upgradeTier = json.value(QLatin1String("upgradeTier")).toInt();
+        const QJsonValue objectId = json.value(QLatin1String("useObject"));
+        setting.objectId = objectId.isDouble() ? std::clamp(objectId.toInt(), 0, std::numeric_limits<int>::max()) : 0;
+        // A liquid type wins over an upgrade tier; an object has at most one.
         if (json.contains(QLatin1String("liquidType")))
             setting.liquidType = json.value(QLatin1String("liquidType")).toInt();
-        setting.useEquipSmartMode = json.value(QLatin1String("useEquipSmartMode")).toBool();
+        else if (json.contains(QLatin1String("upgradeTier")))
+            setting.upgradeTier = json.value(QLatin1String("upgradeTier")).toInt();
+        const qsizetype useType = useTypeNames().indexOf(json.value(QLatin1String("useType")).toString());
+        if (useType >= 0)
+            setting.useType = EUseType(useType);
+        if (setting.useType == EUseType::Equip && json.contains(QLatin1String("useEquipSmartMode")))
+            setting.useEquipSmartMode = json.value(QLatin1String("useEquipSmartMode")).toBool();
     } else if (json.contains(QLatin1String("passiveAbility"))) {
         setting.kind = PASSIVE_ABILITY;
         setting.passiveAbility = json.value(QLatin1String("passiveAbility")).toInt();
     } else if (json.contains(QLatin1String("multiActions"))) {
+        // At most MaxMultiActions actions are read.
         setting.kind = MULTI_ACTION;
-        for (const QJsonValue& value : json.value(QLatin1String("multiActions")).toArray())
-            setting.multiActions.push_back(fromJson(value.toObject()));
-    } else if (json.contains(QLatin1String("action"))) {
-        setting.kind = ACTION;
-        setting.action = json.value(QLatin1String("action")).toString();
+        const QJsonArray actions = json.value(QLatin1String("multiActions")).toArray();
+        const qsizetype count = std::min<qsizetype>(actions.size(), MaxMultiActions);
+        for (qsizetype i = 0; i < count; ++i)
+            setting.multiActions.push_back(fromJson(actions.at(i).toObject()));
     }
     return setting;
 }
@@ -252,58 +365,86 @@ THotkeyOptions* THotkeyOptions::instance()
     return options;
 }
 
+namespace {
+
+/// CIP's built-in hotkey sets: the embedded defaults read once, each vocation
+/// preset then given the GlobalShortcuts bindings whose keys it does not bind.
+const THotkeyOptionsData& builtInOptions()
+{
+    static const THotkeyOptionsData options = [] {
+        QFile file(QStringLiteral(":/config/defaulthotkeys.json"));
+        if (!file.open(QIODevice::ReadOnly))
+            return THotkeyOptionsData{};
+        THotkeyOptionsData data = THotkeyOptionsData::fromJson(QJsonDocument::fromJson(file.readAll()).object());
+        const auto global = data.hotkeySets.find(QStringLiteral("GlobalShortcuts"));
+        if (global == data.hotkeySets.end())
+            return data;
+        for (const QString& vocation : THotkeyOptions::vocationSetNames()) {
+            THotkeySet* set = data.set(vocation);
+            if (!set)
+                continue;
+            for (const bool chatOn : { false, true }) {
+                std::vector<THotkeyBinding>& bindings = chatOn ? set->chatOn : set->chatOff;
+                for (const THotkeyBinding& binding : chatOn ? global->second.chatOn : global->second.chatOff) {
+                    const bool bound = std::any_of(bindings.begin(), bindings.end(),
+                                                   [&](const THotkeyBinding& own) { return own.keys == binding.keys; });
+                    if (!bound)
+                        insertBinding(bindings, binding.keys, binding.setting);
+                }
+            }
+        }
+        return data;
+    }();
+    return options;
+}
+
+}
+
+const QStringList& THotkeyOptions::vocationSetNames()
+{
+    static const QStringList names = {
+        QStringLiteral("Knight"), QStringLiteral("Paladin"), QStringLiteral("Sorcerer"), QStringLiteral("Druid"), QStringLiteral("Monk"),
+    };
+    return names;
+}
+
 QJsonObject THotkeyOptions::builtInSets()
 {
-    // CIP : vocation presets, each with GlobalShortcuts' keys merged in.
-    QFile file(QStringLiteral(":/config/defaulthotkeys.json"));
-    if (!file.open(QIODevice::ReadOnly))
-        return {};
-    QJsonObject sets = QJsonDocument::fromJson(file.readAll()).object().value(QLatin1String("hotkeySets")).toObject();
-    const QJsonObject global = sets.value(QLatin1String("GlobalShortcuts")).toObject();
-    for (auto it = sets.begin(); it != sets.end(); ++it) {
-        if (it.key() == QLatin1String("GlobalShortcuts"))
-            continue;
-        QJsonObject set = it->toObject();
-        for (const QLatin1String mode : { QLatin1String("chatOff"), QLatin1String("chatOn") }) {
-            QJsonArray keys = global.value(mode).toArray();
-            for (const QJsonValue& value : set.value(mode).toArray())
-                keys.append(value);
-            set.insert(mode, keys);
-        }
-        *it = set;
-    }
-    return sets;
+    return builtInOptions().toJson().value(QLatin1String("hotkeySets")).toObject();
 }
 
 QJsonObject THotkeyOptions::builtInSection()
 {
-    QJsonObject sets = builtInSets();
-    sets.remove(QLatin1String("GlobalShortcuts"));
-    return {
-        { QStringLiteral("autoSwitchHotkeyPreset"), true },
-        { QStringLiteral("currentHotkeySetName"), sets.isEmpty() ? QString() : sets.begin().key() },
-        { QStringLiteral("hotkeySets"), sets },
-        { QStringLiteral("showStaticHotkeysFirst"), true },
-    };
+    THotkeyOptionsData data;
+    data.addGlobalShortcuts(false, false, false);
+    return data.toJson();
 }
 
 THotkeySet THotkeyOptions::builtInSet(const QString& name)
 {
-    const QJsonObject sets = builtInSection().value(QLatin1String("hotkeySets")).toObject();
-    if (sets.contains(name))
-        return readSet(sets.value(name).toObject());
-    QFile file(QStringLiteral(":/config/defaulthotkeys.json"));
-    if (!file.open(QIODevice::ReadOnly))
-        return {};
-    return readSet(QJsonDocument::fromJson(file.readAll()).object().value(QLatin1String("hotkeySets")).toObject().value(QLatin1String("GlobalShortcuts")).toObject());
+    const auto it = builtInOptions().hotkeySets.find(name);
+    return it == builtInOptions().hotkeySets.end() ? THotkeySet{} : it->second;
 }
 
 void THotkeyOptions::load()
 {
-    QJsonObject section = app::ClientOptions::load().root().value(QLatin1String("hotkeyOptions")).toObject();
-    if (section.value(QLatin1String("hotkeySets")).toObject().isEmpty())
-        section = builtInSection();
-    readFrom(section);
+    const app::ClientOptions clientOptions = app::ClientOptions::load();
+    const QJsonObject options = clientOptions.options();
+    THotkeyOptionsData data;
+    try {
+        data = THotkeyOptionsData::fromJson(clientOptions.root().value(QLatin1String("hotkeyOptions")).toObject());
+    } catch (const std::runtime_error&) {
+        // A section CIP refuses to load (a chat text too long) falls back to
+        // the built-in sets, as a missing one does.
+        data = {};
+    }
+    data.addGlobalShortcuts(options.value(QLatin1String("rotateWithCtrl")).toBool(),
+                            options.value(QLatin1String("rotateWithShift")).toBool(),
+                            options.value(QLatin1String("rotateWithAlt")).toBool());
+    m_sets = std::move(data.hotkeySets);
+    m_current = data.currentHotkeySetName;
+    m_autoSwitch = data.autoSwitchHotkeyPreset;
+    m_showStaticFirst = data.showStaticHotkeysFirst;
     m_loaded = true;
 }
 

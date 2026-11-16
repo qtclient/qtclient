@@ -80,3 +80,9 @@ qtclient_add_port_test(client_clientoptionsmigration_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/config/clientoptionsmigration.cpp
 )
 target_link_libraries(client_clientoptionsmigration_tests PRIVATE Qt6::Gui)
+qtclient_add_port_test(client_hotkeyoptions_tests
+    hotkeyoptions_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/config/hotkeyoptions.cpp
+)
+set_target_properties(client_hotkeyoptions_tests PROPERTIES AUTOMOC ON)
+target_link_libraries(client_hotkeyoptions_tests PRIVATE Qt6::Gui)
