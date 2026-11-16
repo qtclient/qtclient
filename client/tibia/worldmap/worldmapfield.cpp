@@ -23,30 +23,36 @@
 
 namespace tibia::worldmap {
 
-int TWorldMapField::stackPriorityFor(const TFieldStackEntry& entry) const
+int TWorldMapField::stackOrder(const TFieldStackEntry& entry)
 {
-    // A creature slot is always CREATURE priority.
-    if (entry.creatureId != 0)
-        return CREATURE;
-    ThingType* type = entry.appearance ? entry.appearance->thingType() : nullptr;
-    if (!type)
+    // Bank, clip, bottom and top objects lead the stack in that order, then
+    // the creatures, then every other object.
+    const ThingType* type = entry.appearance ? entry.appearance->thingType() : nullptr;
+    if (type && type->isGround())
         return 0;
-    if (type->isGround())
-        return GROUND;
-    if (type->isGroundBorder())
-        return GROUND_BORDER;
-    if (type->isOnBottom())
-        return ON_BOTTOM;
-    if (type->isOnTop())
-        return ON_TOP;
-    return COMMON_ITEMS;
+    if (type && type->isGroundBorder())
+        return 1;
+    if (type && type->isOnBottom())
+        return 2;
+    if (type && type->isOnTop())
+        return 3;
+    return entry.creatureId != 0 ? 4 : 5;
 }
 
-int TWorldMapField::stackPriorityAt(const int stackIndex) const
+int TWorldMapField::insertionIndex(const TFieldStackEntry& entry) const
 {
-    if (stackIndex < 0 || stackIndex >= static_cast<int>(m_stack.size()))
-        return 0;
-    return stackPriorityFor(m_stack[stackIndex]);
+    // An object goes after the objects that sort before or with it; a common
+    // object goes before the other common objects (the newest lies on top).
+    const int order = stackOrder(entry);
+    int index = 0;
+    for (; index < static_cast<int>(m_stack.size()); ++index) {
+        const int other = stackOrder(m_stack[index]);
+        if (order < other)
+            break;
+        if (order == 5 && other == 5)
+            break;
+    }
+    return index;
 }
 
 uint16_t TWorldMapField::itemClientIdAt(const int stackPos) const
@@ -278,34 +284,13 @@ void TWorldMapField::addAppearance(const appearances::TAppearanceInstancePtr& ap
         return;
 
     const uint8_t size = static_cast<uint8_t>(m_stack.size());
-    ThingType* type = appearance->thingType();
-    const int priority = [&] {
-        if (!type)
-            return COMMON_ITEMS;
-        if (type->isGround())
-            return GROUND;
-        if (type->isGroundBorder())
-            return GROUND_BORDER;
-        if (type->isOnBottom())
-            return ON_BOTTOM;
-        if (type->isOnTop())
-            return ON_TOP;
-        return COMMON_ITEMS;
-    }();
-
-    if (stackPos < 0 || stackPos == 255) {
-        bool append = (priority <= 3);
-        if (priority == 4)
-            append = !append;
-        for (stackPos = 0; stackPos < size; ++stackPos) {
-            const int otherPriority = stackPriorityAt(stackPos);
-            if ((append && otherPriority > priority) || (!append && otherPriority >= priority))
-                break;
-        }
-    } else if (stackPos > static_cast<int>(size)) {
+    if (stackPos < 0 || stackPos == 255)
+        stackPos = insertionIndex(TFieldStackEntry{ appearance, 0 });
+    else if (stackPos > static_cast<int>(size))
         stackPos = size;
-    }
-
+    // An object sorted past the last stack position does not fit on the field.
+    if (stackPos >= static_cast<int>(tibia::config::tileMaxThings()))
+        return;
 
     // CIP TPatternObjectAppearanceInstance : patterns from field coordinate.
     if (const auto patterned =
@@ -357,20 +342,12 @@ void TWorldMapField::addCreatureId(const uint32_t creatureId, int stackPos)
     }
 
     const uint8_t size = static_cast<uint8_t>(m_stack.size());
-    if (stackPos < 0 || stackPos == 255) {
-        const int priority = CREATURE;
-        bool append = (priority <= 3);
-        if (priority == 4)
-            append = !append;
-        for (stackPos = 0; stackPos < size; ++stackPos) {
-            const int otherPriority = stackPriorityAt(stackPos);
-            if ((append && otherPriority > priority) || (!append && otherPriority >= priority))
-                break;
-        }
-    } else if (stackPos > static_cast<int>(size)) {
+    if (stackPos < 0 || stackPos == 255)
+        stackPos = insertionIndex(TFieldStackEntry{ nullptr, creatureId });
+    else if (stackPos > static_cast<int>(size))
         stackPos = size;
-    }
-
+    if (stackPos >= static_cast<int>(tibia::config::tileMaxThings()))
+        return;
 
     TFieldStackEntry entry;
     entry.creatureId = creatureId;
@@ -595,6 +572,144 @@ bool TWorldMapField::hasBank() const
             return true;
     }
     return false;
+}
+
+namespace {
+
+bool anyObject(const std::vector<TWorldMapField::TStackView>& stack, bool (*test)(const ThingType&))
+{
+    for (const auto& view : stack) {
+        if (view.type && test(*view.type))
+            return true;
+    }
+    return false;
+}
+
+}
+
+std::vector<TWorldMapField::TStackView> TWorldMapField::stackView() const
+{
+    std::vector<TStackView> view;
+    view.reserve(m_stack.size());
+    for (const auto& entry : m_stack)
+        view.push_back({ entryThingType(entry.appearance), entry.creatureId });
+    return view;
+}
+
+std::vector<std::shared_ptr<tibia::creatures::TCreature>> TWorldMapField::creatures() const
+{
+    std::vector<std::shared_ptr<tibia::creatures::TCreature>> result;
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    for (const auto& entry : m_stack) {
+        if (entry.creatureId == 0 || !storage)
+            continue;
+        if (auto creature = storage->creatureAt(entry.creatureId))
+            result.push_back(std::move(creature));
+    }
+    return result;
+}
+
+bool TWorldMapField::hasBottom() const
+{
+    return anyObject(stackView(), [](const ThingType& type) { return type.isOnBottom(); });
+}
+
+bool TWorldMapField::hasUnsight() const
+{
+    return anyObject(stackView(), [](const ThingType& type) { return type.blockProjectile(); });
+}
+
+bool TWorldMapField::hasDontHide() const
+{
+    return anyObject(stackView(), [](const ThingType& type) { return type.isDontHide(); });
+}
+
+bool TWorldMapField::hasTranslucent() const
+{
+    return anyObject(stackView(), [](const ThingType& type) { return type.isTranslucent(); });
+}
+
+bool TWorldMapField::blocksMovement() const
+{
+    // An unpassable object blocks, and so does an unpassable creature other
+    // than the local player.
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    for (const auto& entry : m_stack) {
+        if (const ThingType* type = entryThingType(entry.appearance); type && type->isNotWalkable())
+            return true;
+        if (entry.creatureId == 0 || !storage)
+            continue;
+        if (const auto creature = storage->creatureAt(entry.creatureId);
+            creature && !creature->isLocalPlayer() && creature->isUnpassable())
+            return true;
+    }
+    return false;
+}
+
+bool TWorldMapField::hasUnpassableObject() const
+{
+    for (const auto& view : stackView()) {
+        if (view.type && view.type->isNotWalkable() && view.creatureId == 0)
+            return true;
+    }
+    return false;
+}
+
+Light TWorldMapField::light() const
+{
+    // The light of the highest object that shines.
+    for (auto it = m_stack.rbegin(); it != m_stack.rend(); ++it) {
+        if (const ThingType* type = entryThingType(it->appearance); type && type->getLight().intensity != 0)
+            return type->getLight();
+    }
+    return {};
+}
+
+void TWorldMapField::updateElevation()
+{
+    // In draw order every object but a top object stands on the elevation of
+    // the objects drawn before it; the stack rises by each object's height up
+    // to 24 pixels.
+    const std::vector<int> order = drawList();
+    uint8_t elevation = 0;
+    for (const int index : order) {
+        const appearances::TAppearanceInstancePtr& appearance = m_stack[index].appearance;
+        const ThingType* type = entryThingType(appearance);
+        if (!type)
+            continue;
+        if (!type->isOnTop())
+            appearance->setElevation(elevation);
+        elevation = static_cast<uint8_t>(std::min(24, elevation + type->getElevation()));
+    }
+    m_objectElevation = elevation;
+    // A hangable object hangs on the hook of the last hook object drawn before it.
+    uint8_t hook = 0;
+    for (const int index : order) {
+        const appearances::TAppearanceInstancePtr& appearance = m_stack[index].appearance;
+        if (const ThingType* type = entryThingType(appearance)) {
+            if (type->isHookSouth())
+                hook = 1;
+            else if (type->isHookEast())
+                hook = 2;
+        }
+        if (const auto hangable = std::dynamic_pointer_cast<appearances::THangableObjectAppearanceInstance>(appearance))
+            hangable->setHangSide(hook);
+    }
+}
+
+void TWorldMapField::updateViewFlags()
+{
+    // Sight is blocked by an unsight object, or by a bottom object that can
+    // neither be moved nor passed.
+    m_blocksSight = anyObject(stackView(), [](const ThingType& type) {
+        return type.blockProjectile() || (type.isOnBottom() && type.isNotMoveable() && type.isNotWalkable());
+    });
+    // A bank or an unsight bottom object hides the floor below unless
+    // something on the field is translucent.
+    const bool covers = anyObject(stackView(), [](const ThingType& type) {
+        return type.isGround() || (type.isOnBottom() && type.blockProjectile());
+    });
+    m_opaque = covers && !hasTranslucent();
 }
 
 namespace {

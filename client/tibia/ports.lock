@@ -49,6 +49,8 @@ animation::TMovingOutfitAnimator::v8	b5a0eaa4aa539db9	ported	animation/movingout
 appearances::TAppearanceInstance::v0	93d4d227dfdd8e50	skip	compiler-generated destructor pair
 appearances::TAppearanceInstance::v1	c706b9be1f95cd79	skip	compiler-generated destructor pair
 appearances::TAppearanceInstance::v2	5468181e0d5064ae	ported	appearances/appearanceinstance.h:TAppearanceInstance::thingType
+appearances::TAppearanceInstance::v6	b373390eeb839866	ported	appearances/appearanceinstance.h:TAppearanceInstance::elevation
+appearances::TAppearanceInstance::v7	cc376964c96b4161	ported	appearances/appearanceinstance.h:TAppearanceInstance::setElevation
 appearances::TAppearanceInstanceFactory::v0	f6314da58750ec3c	skip	compiler-generated destructor pair
 appearances::TAppearanceInstanceFactory::v1	187ed52c4af39879	skip	compiler-generated destructor pair
 appearances::TAppearanceInstanceFactory::v14	5853906c26f37574	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createOutfit
@@ -4474,6 +4476,8 @@ sub_23c91f1a75a5#321	23c91f1a75a58fdc	skip	std::shared_ptr / vector library code
 sub_23c91f1a75a5#323	23c91f1a75a58fdc	skip	std container template code
 sub_23c91f1a75a5#341	23c91f1a75a58fdc	skip	std::vector length_error thrower (library)
 sub_23c91f1a75a5#342	23c91f1a75a58fdc	skip	std::vector length_error thrower (library)
+sub_23c91f1a75a5#366	23c91f1a75a58fdc	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
+sub_23c91f1a75a5#367	23c91f1a75a58fdc	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_23c91f1a75a5#58	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#60	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#93	23c91f1a75a58fdc	skip	libc++ std::vector growth
@@ -4549,6 +4553,7 @@ sub_27d378265164	27d3782651648a2c	ported	teamfinder/teamsortproxymodels.cpp:TAct
 sub_27e29f853532	27e29f8535320e18	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_27eab9727be0	27eab9727be00c61	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterRaceListChanged
 sub_27fc14080c6e	27fc14080c6edf4b	inlined	proficiency/proficiencystorage.cpp:TProficiencyStorage::setReshapeOffers
+sub_28045f2e1ec0	28045f2e1ec0731d	inlined	worldmap/worldmapfield.cpp:TWorldMapField::updateElevation
 sub_28045f2e1ec0#2	28045f2e1ec0731d	inlined	authentication/authenticationjsondocumenthelper.cpp:TAuthenticationJsonDocumentHelper::createLoginRequest
 sub_28070472ce1f	28070472ce1fca40	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
 sub_281e0c283ea0	281e0c283ea0c2c5	ported	gamewindow/gamewindowcontroller.cpp:TGameWindowController::manageAccountPressed
@@ -4584,6 +4589,7 @@ sub_2875a9d83792	2875a9d83792197e	inlined	shared::TFileSystemHelper::v15
 sub_288065d91a6e	288065d91a6efea8	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::requestClose
 sub_288065d91a6e#2	288065d91a6efea8	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::okButtonClicked
 sub_288065d91a6e#3	288065d91a6efea8	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::onOkClicked
+sub_288e0dc526d1#3	288e0dc526d106a0	skip	moc signal body (appearanceInstancesChanged)
 sub_289aac716131	289aac71613109f0	skip	Qt/std container template code
 sub_28aa3f22bdb8	28aa3f22bdb82220	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeController::showContextMenuCounterOfferTradeSide
 sub_28c609222921	28c609222921d06c	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::setTradeStorage
@@ -4828,6 +4834,7 @@ sub_33dc685e5eba	33dc685e5eba2a09	skip	SFML/miniaudio library helper, only calle
 sub_33e88fe5a2f7	33e88fe5a2f73368	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_340dfdfddaf1	340dfdfddaf103a1	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendClientCheck
 sub_3417d1eac14a	3417d1eac14a28e6	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::sendKeyword
+sub_3431ddca3764	3431ddca376415ac	inlined	worldmap/worldmapfield.cpp:TWorldMapField::light
 sub_34437ff80c96	34437ff80c967a82	skip	compiler-generated destructor pair
 sub_34619c22e993	34619c22e9936f60	ported	store/storeciptypes.cpp:TStoreDescriptionManager::clear
 sub_3468388f952c	3468388f952cd696	ported	gamewindow/actionbuttoncontroller.cpp:durationText
@@ -5277,6 +5284,7 @@ sub_48afefe3e48a#28	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTra
 sub_48afefe3e48a#30	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_48d41f604671	48d41f604671022b	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onActionRejectTransferClicked
 sub_48d9f3d326aa	48d9f3d326aa0dd2	skip	boost::bimap / std::map template instantiation
+sub_48e3047d276d	48e3047d276d850c	inlined	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::inVolume
 sub_48e5c3198860	48e5c31988604c3b	ported	config/sidebaroptions.cpp:serializePlayerGuide
 sub_48f0293cbb52	48f0293cbb525795	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::onRequestShowStashMessageDialog
 sub_48fcdd7b051a	48fcdd7b051adb81	ported	gamewindow/characterinfomodels.cpp:TAchievementInfoController::reset
@@ -5328,6 +5336,7 @@ sub_4c02e0d97d38	4c02e0d97d38bd82	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_4c02e3d6ec12	4c02e3d6ec121697	inlined	config/clientoptions.cpp:TClientOptions::setDeviceCookies
 sub_4c0c6c6755d5	4c0c6c6755d5645c	skip	moc property getter, provided by the generated cip base
 sub_4c21d3dae31d	4c21d3dae31de72e	ported	game/skillswidgetentrydata.cpp:fillExperienceGain
+sub_4c3689596cf9	4c3689596cf9b0f6	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_4c510dead2ba	4c510dead2ba6503	skip	compiler-generated destructor
 sub_4c63201194f4	4c63201194f490e2	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::showDialog
 sub_4c803c205e0d	4c803c205e0d81bb	ported	gamewindow/createaccountdialogcontroller.cpp:pvpTypeHelp
@@ -5406,6 +5415,7 @@ sub_4f929e27edef	4f929e27edefdbbf	ported	config/optionspages.cpp:THotkeysOptions
 sub_4fa17404474c	4fa17404474c6afb	skip	compiler-generated destructor pair
 sub_4fa17404474c	4fa17404474c6afb	skip	compiler-generated destructors
 sub_4fc1ccdb6831	4fc1ccdb6831521d	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onImpactAnalyserWidgetClosed
+sub_4fbe210e265c	4fbe210e265c52b6	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::TCacheForWorldmapStorageLookupMembers
 sub_4fd3da64f08b	4fd3da64f08b2a37	skip	miniaudio library
 sub_4fe7ecb13d52	4fe7ecb13d52f555	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setAutomaticExtendType
 sub_50180dfc6234	50180dfc6234e61b	ported	skillwheel/skillwheeldata.cpp:largePerkName
@@ -5734,6 +5744,7 @@ sub_572ea5534fb3#2	572ea5534fb3e524	ported	container/qmlitemslotdata.h:TQMLItemS
 sub_5744152f1cc0	5744152f1cc09aad	inlined	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::requestConfigurationContextMenu
 sub_57615ffd6094#2	57615ffd6094c442	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::emptySlotAreaEntered
 sub_57615ffd6094#3	57615ffd6094c442	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::emptySlotAreaExited
+sub_574e9dce5ddf	574e9dce5ddf0e9b	ported	worldmap/worldmapfield.cpp:TWorldMapField::stackOrder
 sub_576456edf9d5	576456edf9d5c3a0	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_579704e75f6b	579704e75f6b2548	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::switchToSellItems
 sub_57a1ac2c048a#2	57a1ac2c048af9ce	skip	boost::bimap / std::map template instantiation
@@ -5831,6 +5842,7 @@ sub_5b04adc7f4fb#2	5b04adc7f4fb8bd6	inlined	imbuing/imbuingciptypes.cpp:imbuemen
 sub_5b0b7e60d886	5b0b7e60d886bf7f	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendInspectObject
 sub_5b107abf5957	5b107abf59575dfa	skip	std::map / std::deque / std::vector template instantiation
 sub_5b118fe8da21	5b118fe8da218672	ported	creatures/creaturestorage.cpp:TCreature::showsMovingSprite
+sub_5b382c18017f	5b382c18017fd123	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::storedVolumeHasChanged
 sub_5b455073f7ee	5b455073f7ee7c07	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onActionBidClicked
 sub_5b49dde2589e	5b49dde2589e5a2f	ported	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::updateTitles
 sub_5b7a122686a3	5b7a122686a3fcb0	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::clearBacklog
@@ -6089,6 +6101,7 @@ sub_6756eb06e2b0#8	6756eb06e2b04c8a	inlined	protocol::TProtobufServerMessageTran
 sub_677e6d43502b	677e6d43502bfddb	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_6784be96c631#10	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTranslator::v127
 sub_6784be96c631#12	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTranslator::v201
+sub_6799962b2b2d	6799962b2b2d3482	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::informationAtWorldMapCoordinateHasChanged
 sub_67aebdb4db89	67aebdb4db8950d7	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onConfirmationDialogRequested
 sub_67bb02f729b3#2	67bb02f729b30a27	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_67c2d36078c8	67c2d36078c81b75	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onHuntingSessionAnalyserWidgetClosed
@@ -6138,6 +6151,7 @@ sub_6938b3185cd8#2	6938b3185cd8d9e3	skip	std vector internals (push_back/realloc
 sub_69431652cadc	69431652cadc90d6	ported	minimap/minimapvisiblearea.cpp:TMinimapVisibleArea::updateMatrix
 sub_69490eb2818e	69490eb2818e5daa	skip	miniaudio library code (miniaudio.h asserts), misattributed
 sub_69529f67059c	69529f67059c430c	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::slotEntered
+sub_69507ce320e9	69507ce320e9c968	inlined	worldmap/worldmapfield.cpp:TWorldMapField::light
 sub_695be3a9ef1e	695be3a9ef1eab04	ported	game/statusbarstorage.cpp:positionFromString
 sub_697079c2d97e#14	697079c2d97e2d6b	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
 sub_697079c2d97e#4	697079c2d97e2d6b	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
@@ -7541,6 +7555,7 @@ sub_9fcce92fe779	9fcce92fe779ea49	ported	config/optionspages.cpp:percentOf
 sub_9fd857f4fdd3	9fd857f4fdd3cbcf	skip	compiler-generated destructor pair
 sub_9fe3a3a7b7b4	9fe3a3a7b7b4b56a	skip	std container/shared_ptr template code or compiler-generated copy
 sub_9feece087a71	9feece087a7189f7	ported	gamewindow/imbuingdialogcontroller.cpp:categoryName
+sub_9ff871563ea2	9ff871563ea2c3c3	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::lookup
 sub_a01671970487	a0167197048771dc	ported	gamewindow/chatcontroller.cpp:TChatChannelController::setChatWidth
 sub_a028ddbf252f	a028ddbf252f4464	skip	std container template code
 sub_a03279bef16a	a03279bef16a1074	skip	compiler-generated destructor
@@ -7676,6 +7691,7 @@ sub_a74ee7ff07c8	a74ee7ff07c8a4b0	inlined	container/containerciptypes.cpp:TConta
 sub_a768b8a28410	a768b8a284102b78	ported	chat/chatchannel.cpp:TChatChannelStorage::openDefaultChannels
 sub_a77811c3da18	a77811c3da181e9e	ported	news/newsstorage.cpp:TNewsStorage::entriesOfCategory
 sub_a78396770023	a78396770023f75e	ported	game/skillswidgetentrydata.cpp:buildSkillsWidgetEntry
+sub_a7aec6b12a28	a7aec6b12a28e8c6	inlined	worldmap/worldmapfield.cpp:TWorldMapField::hasDontHide
 sub_a7b3b18142a3	a7b3b18142a3bae4	tested	shared/coordinate.h:TCoordinate::operator-	test=tests/client/coordinate_test.cpp
 sub_a81553cb360a#15	a81553cb360a77e2	inlined	gamewindow/actionbarcontroller.cpp:TActionBarGroup::handleGameAction
 sub_a81553cb360a#17	a81553cb360a77e2	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::showDialog
@@ -8495,6 +8511,7 @@ sub_c567e7eb3413	c567e7eb34133b6f	inlined	gamewindow/friendsfriendlistpagecontro
 sub_c5691f85b0bb	c5691f85b0bba100	skip	moc property getter, provided by the generated cip base
 sub_c5720a831a3d	c5720a831a3d8d6c	ported	config/clientoptions.cpp:surveyInvitationOptionsFromJson
 sub_c569d2a05cd6	c569d2a05cd68cde	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::totalCountStashString
+sub_c5810f2dfc56	c5810f2dfc5663ca	inlined	worldmap/worldmapfield.cpp:TWorldMapField::updateElevation
 sub_c5810f2dfc56#5	c5810f2dfc5663ca	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::shownListType
 sub_c5813a6081f1	c5813a6081f1f6dc	inlined	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::loadActivities
 sub_c58b251f286e	c58b251f286ebabe	skip	SFML audio library (miniaudio backend)
@@ -8805,6 +8822,7 @@ sub_d26a7877ad78#2	d26a7877ad7893c7	inlined	protocol::TProtobufServerMessageTran
 sub_d26a7877ad78#4	d26a7877ad7893c7	inlined	protocol::TProtobufServerMessageTranslator::v129
 sub_d26efff74c39	d26efff74c391fbc	skip	std::vector copy / growth of store records (library)
 sub_d282a3586d0b	d282a3586d0b9a10	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
+sub_d2ae978b071a	d2ae978b071aa38a	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_d2c47e0c91f4	d2c47e0c91f464bc	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::sendSelection
 sub_d2cdb6947ae2#19	d2cdb6947ae25aa4	skip	moc send* signal emitter: qtclient's handler calls the session send path (tibia::game) directly
 sub_d2cdb6947ae2#25	d2cdb6947ae25aa4	skip	moc-generated signal emitter
@@ -9112,6 +9130,7 @@ sub_dc301b10302d	dc301b10302d0caa	inlined	creatures/creaturestorage.cpp:TCreatur
 sub_dc35668832a8#2	dc35668832a8039c	inlined	gamewindow/bosstrackerwidgetcontroller.cpp:TBossTrackerWidgetController::requestWidgetConfigurationMenu
 sub_dc45cf7cbc27	dc45cf7cbc277fed	tested	animation/phaseanimator.cpp:TAnimator::TAnimator	test=tests/client/phaseanimator_test.cpp
 sub_dc59b1477668	dc59b1477668bc5d	ported	gamewindow/containercontroller.cpp:TContainerController::onShowConfigurationMenu
+sub_dc623873b7f6	dc623873b7f61d39	inlined	worldmap/worldmapfield.cpp:TWorldMapField::hasTranslucent
 sub_dc6600575aa4	dc6600575aa49dbb	ported	config/sidebaroptions.cpp:parseBattleList
 sub_dc706c1cbace	dc706c1cbaceb6fe	ported	analysers/impactwidgets.cpp:TImpactWidgetController::addGraphEntry
 sub_dc8240b9e62f	dc8240b9e62fe71b	skip	Qt/std container template code
@@ -9302,6 +9321,7 @@ sub_e1fb6e7919c6	e1fb6e7919c663ca	ported	analysers/impactstorage.cpp:TImpactStor
 sub_e1fe5a0c3b49	e1fe5a0c3b49050e	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setNextFreeListReroll
 sub_e21a9a319127	e21a9a319127a479	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::updateFeaturedOffers
 sub_e2202c3c8ea4	e2202c3c8ea433e9	inlined	container/containerciptypes.cpp:TContainerRenderProvider::containerProperties
+sub_e222628ef823	e222628ef823e14f	inlined	worldmap/worldmapfield.cpp:TWorldMapField::hasUnsight
 sub_e2281736f49a	e2281736f49a241f	ported	appearances/appearanceinstance.cpp:TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance
 sub_e2281736f49a#2	e2281736f49a241f	ported	appearances/appearanceinstance.cpp:TCumulativeObjectAppearanceInstance::TCumulativeObjectAppearanceInstance
 sub_e2288f0b5f40	e2288f0b5f4043f6	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::toggleWidget
@@ -9349,6 +9369,7 @@ sub_e411b2ec6711	e411b2ec67112e33	tested	creatures/creaturemovementspeedcalculat
 sub_e420266dedfd	e420266dedfd3ce6	inlined	gamewindow/friendsbadgespagecontroller.cpp:TFriendsBadgesPageController::showDialogTab
 sub_e42506b3299f	e42506b3299f9263	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setInactive
 sub_e44ddaf71be4	e44ddaf71be4678e	inlined	questlog/questlogciptypes.cpp:TQuestLogStorage::setTrackedQuestFlags
+sub_e451901c3828	e451901c382885d3	ported	worldmap/worldmapfield.cpp:TWorldMapField::insertionIndex
 sub_e457654ad6e2#2	e457654ad6e25d3f	skip	Qt slot-object thunk
 sub_e468c6c84413	e468c6c844130bd9	ported	gamewindow/chatcontroller.cpp:TChatController::handleAction
 sub_e475b3f34147#2	e475b3f34147116c	skip	moc signal emitter
@@ -9566,6 +9587,7 @@ sub_eede39bdd9c3	eede39bdd9c3eef8	inlined	gamewindow/bosstiarydialogcontroller.c
 sub_ef0419433471	ef0419433471b952	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::TMapWindowController
 sub_ef0f2a212fe8	ef0f2a212fe88693	skip	Qt/std container template code
 sub_ef305772ee49	ef305772ee49b592	inlined	config/sidebaroptions.h:TPlayerGuideWidgetOptions::operator==
+sub_ef46477c7d08	ef46477c7d08be3e	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_ef49f2bffcdd	ef49f2bffcdd385d	skip	Qt slot-object impl (template-generated)
 sub_ef6d1db9a3e6#10	ef6d1db9a3e68594	inlined	protocol::TProtobufClientMessageTranslator::v103
 sub_ef7b24285a44	ef7b24285a44c8ac	ported	gamewindow/newsdialogcontroller.cpp:contentStyle
@@ -9708,6 +9730,7 @@ sub_f51466cc8731	f51466cc8731436d	skip	compiler-generated destructor pair
 sub_f51ca78d9816	f51ca78d981662b9	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::placeWidget
 sub_f520d90d5790	f520d90d5790d09a	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onAccountCreationStatus
 sub_f58ad2d66834	f58ad2d668348c01	ported	gamewindow/actionbuttoncontroller.h:TActionButtonController::passiveAbilityIconUrl
+sub_f5b999c169aa	f5b999c169aa3cc8	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_f5e5ccfc9f03	f5e5ccfc9f03ccb3	ported	analysers/impactwidgets.cpp:TImpactWidgetController::addGaugeEntries
 sub_f5e6087b4b3f	f5e6087b4b3fad9b	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_f5e73db6d503	f5e73db6d503d854	ported	config/sidebaroptions.cpp:parseDepotSearch
@@ -9805,6 +9828,7 @@ sub_fb6f242cc816	fb6f242cc816ee2e	ported	gamewindow/sidebarmanager.cpp:TSidebarM
 sub_fb862e242e86	fb862e242e86532e	ported	config/optionspages.cpp:percentOf
 sub_fba5f9f9f15e	fba5f9f9f15e24cf	inlined	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::TDepotSearchWidgetController
 sub_fba6151b925d	fba6151b925d73f8	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
+sub_fbaebf552152	fbaebf552152e99a	inlined	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::inVolume
 sub_fbb206d17a5b	fbb206d17a5b7e88	skip	compiler-generated destructor pair
 sub_fbbce5be7cf7#6	fbbce5be7cf7fee8	inlined	analysers/itempricestorage.cpp:TItemPriceStorage::npcBuyPrice
 sub_fbc29af2065b	fbc29af2065b8818	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
@@ -9836,6 +9860,7 @@ sub_fd6d8d45a887	fd6d8d45a8871b3c	ported	gamewindow/draganddropcontroller.cpp:TD
 sub_fd91a632265e	fd91a632265e81fa	ported	worldmap/worldmapprotocolmessagehandler.cpp:TWorldmapProtocolMessageHandler::applyObject
 sub_fd91ead0bdc8	fd91ead0bdc8c31d	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::setNumber
 sub_fd94a633a9de	fd94a633a9deb20e	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::TSpellInfoStorage
+sub_fd94fc8b0bc1	fd94fc8b0bc13307	inlined	worldmap/worldmapfield.cpp:TWorldMapField::blocksMovement
 sub_fd9d6ff26336	fd9d6ff26336f71d	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::showLevelSpecialPopup
 sub_fda5886882ca	fda5886882cacc79	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::trackedQuestFlagIds
 sub_fdad026fe3b2	fdad026fe3b25d9f	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowRuneSpells
@@ -9914,11 +9939,17 @@ worldmap::TAmbientLightStorage::v16	6d97cb8a0f879747	ported	worldmap/ambientligh
 worldmap::TAmbientLightStorage::v17	733e4ad48073895a	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::normalizedTibiaTimeOfDay
 worldmap::TAmbientLightStorage::~TAmbientLightStorage	dadedd3fe20189db	skip	compiler-generated destructor pair
 worldmap::TAmbientLightStorage::~TAmbientLightStorage_deleting	32c6a75c162ebaae	skip	compiler-generated destructor pair
+worldmap::TCacheForWorldmapStorageLookupMembers::~TCacheForWorldmapStorageLookupMembers	097457dc45e86dd8	skip	compiler-generated destructor pair
+worldmap::TCacheForWorldmapStorageLookupMembers::~TCacheForWorldmapStorageLookupMembers_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 worldmap::TLightMap::v10	606d006b0a90a2eb	ported	renderer/lightmodel.cpp:buildClassicLightPair
 worldmap::TWorldMapField::v12	05c9b46a10fa2b28	ported	worldmap/worldmapfield.h:TWorldMapField::isEmpty
 worldmap::TWorldMapField::v13	8f028080de4e824e	ported	worldmap/worldmapfield.h:TWorldMapField::coordinate
 worldmap::TWorldMapField::v14	da364dbf273981b3	ported	worldmap/worldmapfield.h:TWorldMapField::appearances
 worldmap::TWorldMapField::v15	a93b120427ae64bb	ported	worldmap/worldmapfield.cpp:TWorldMapField::drawList
+worldmap::TWorldMapField::v16	2a73571baa4b086e	ported	worldmap/worldmapfield.cpp:TWorldMapField::creatures
+worldmap::TWorldMapField::v18	9a2f014ba551d92b	ported	worldmap/worldmapfield.cpp:TWorldMapField::addAppearance
+worldmap::TWorldMapField::v19	d4f88dd297829487	ported	worldmap/worldmapfield.cpp:TWorldMapField::addAppearance
+worldmap::TWorldMapField::v20	12af933df91a9a4f	ported	worldmap/worldmapfield.cpp:TWorldMapField::removeThingAtStackPos
 worldmap::TWorldMapField::v21	84f4cf371fc1d910	ported	worldmap/worldmapfield.cpp:TWorldMapField::appearanceAt
 worldmap::TWorldMapField::v22	30ac0cc4e1132046	ported	worldmap/worldmapfield.cpp:TWorldMapField::moveObject
 worldmap::TWorldMapField::v23	932bcb4c2ddf4881	ported	worldmap/worldmapfield.cpp:TWorldMapField::useObject
@@ -9929,9 +9960,21 @@ worldmap::TWorldMapField::v27	fa1a127274e9090a	ported	worldmap/worldmapfield.cpp
 worldmap::TWorldMapField::v28	042cdade58582282	ported	worldmap/worldmapfield.cpp:TWorldMapField::stackPositionOf
 worldmap::TWorldMapField::v31	e427d0327483fd6b	ported	worldmap/worldmapfield.cpp:TWorldMapField::isPickable
 worldmap::TWorldMapField::v32	fc481ed8a312070a	ported	worldmap/worldmapfield.cpp:TWorldMapField::hasBank
+worldmap::TWorldMapField::v33	fc481ed8a312070a	ported	worldmap/worldmapfield.cpp:TWorldMapField::hasBottom
+worldmap::TWorldMapField::v34	fc481ed8a312070a	ported	worldmap/worldmapfield.cpp:TWorldMapField::hasUnsight
+worldmap::TWorldMapField::v35	fc481ed8a312070a	ported	worldmap/worldmapfield.cpp:TWorldMapField::hasDontHide
+worldmap::TWorldMapField::v36	fc481ed8a312070a	ported	worldmap/worldmapfield.cpp:TWorldMapField::hasTranslucent
+worldmap::TWorldMapField::v38	1e632bb117a36c93	ported	worldmap/worldmapfield.cpp:TWorldMapField::blocksMovement
+worldmap::TWorldMapField::v39	7412cf0b52fdb169	ported	worldmap/worldmapfield.cpp:TWorldMapField::hasUnpassableObject
+worldmap::TWorldMapField::v40	5e37bd2a4f1538b2	ported	worldmap/worldmapfield.h:TWorldMapField::isOpaque
+worldmap::TWorldMapField::v41	d31f05e908db8cdf	ported	worldmap/worldmapfield.h:TWorldMapField::blocksSight
+worldmap::TWorldMapField::v42	670f0c686e13b34f	ported	worldmap/worldmapfield.h:TWorldMapField::objectElevation
 worldmap::TWorldMapField::v43	438325aa40dfe1ba	ported	worldmap/worldmapfield.cpp:TWorldMapField::movementGroundSpeed
 worldmap::TWorldMapField::v44	fb29829b14dc42a0	ported	worldmap/worldmapfield.cpp:TWorldMapField::walkState
+worldmap::TWorldMapField::v46	ac12bf7106f3e38b	ported	worldmap/worldmapfield.cpp:TWorldMapField::light
+worldmap::TWorldMapField::v47	21a408c886fcd4f4	ported	worldmap/worldmapfield.cpp:TWorldMapField::updateElevation
 worldmap::TWorldMapField::v48	812aca1d59a0ce09	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::drawIndex
+worldmap::TWorldMapField::v49	49be59ca4b889d33	ported	worldmap/worldmapfield.cpp:TWorldMapField::updateViewFlags
 worldmap::TWorldMapField::~TWorldMapField	097457dc45e86dd8	skip	compiler-generated destructor pair
 worldmap::TWorldMapField::~TWorldMapField_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 worldmap::TWorldMapGameActionProvider::v0	7da6e7afa666b74a	skip	compiler-generated destructor pair
@@ -9953,10 +9996,14 @@ worldmap::TWorldMapRenderProvider::v19	dbd1e8dae8e0a7c4	ported	renderer/worldmap
 worldmap::TWorldMapRenderProvider::v21	bc445331c5137bca	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::updateHighlightBaseplate
 worldmap::TWorldMapStorage::v12	9fb670436b9c666e	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
 worldmap::TWorldMapStorage::v14	bd7cfa016a324732	inlined	worldmap/worldmapsessionstate.cpp:TWorldMapSessionState::isAwareOfPosition
+worldmap::TWorldMapStorage::v15	842019cc137285f3	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasField
 worldmap::TWorldMapStorage::v16	56866489b3351ab0	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::fieldAt
 worldmap::TWorldMapStorage::v26	ee2121609a05e93f	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::elevationAt
 worldmap::TWorldMapStorage::v27	2bc9cb9a212e165a	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::groundSpeedAt
 worldmap::TWorldMapStorage::v28	684adea6b3debf9b	inlined	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::fieldState
+worldmap::TWorldMapStorage::v30	1f24906986312220	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasUnpassableObjectAt
+worldmap::TWorldMapStorage::v31	65f61fa40ea7f860	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasBankAt
+worldmap::TWorldMapStorage::v32	d8bf1a9bb63bf5cd	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::hasTranslucentAt
 worldmap::TWorldMapStorage::v35	35ba17b78d90caef	ported	worldmap/worldmapstorage.cpp:TWorldMapStorage::moveCreature
 worldmap::TWorldMapStorage::v42	a39243cca9dbf3bb	ported	game/gamesessionstate.cpp:snapshotWaypointCost
 worldmap::TWorldMapViewport::v12	b0a24b6d79152186	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::setCenter

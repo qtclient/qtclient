@@ -28,7 +28,6 @@ quint64 pack(const Position& pos)
 
 TWorldMapStorage::TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* speedCalculator, QObject* parent)
     : cip::tibia::worldmap::TWorldMapStorage(parent)
-    , m_lookupMembers(new TCacheForWorldmapStorageLookupMembers(this))
     , m_speedCalculator(speedCalculator ? speedCalculator : &m_ownSpeedCalculator)
 {
     ensureSpatialFloorsSized();
@@ -353,6 +352,29 @@ void TWorldMapStorage::moveCreature(creatures::TCreature& creature, const Positi
     const qint64 duration = m_speedCalculator->stepDuration(creature.speed(), step, groundSpeedAt(to));
     const qint64 now = tibia::shared::TClockService::frameMillis();
     creature.move(now, now + duration, origin, direction, elevationFrom, elevationTo);
+}
+
+bool TWorldMapStorage::hasField(const TWorldMapCoordinate& coordinate)
+{
+    return fieldAt(coordinate) != nullptr;
+}
+
+bool TWorldMapStorage::hasUnpassableObjectAt(const TWorldMapCoordinate& coordinate)
+{
+    const TWorldMapField* field = fieldAt(coordinate);
+    return field && field->hasUnpassableObject();
+}
+
+bool TWorldMapStorage::hasBankAt(const TWorldMapCoordinate& coordinate)
+{
+    const TWorldMapField* field = fieldAt(coordinate);
+    return field && field->hasBank();
+}
+
+bool TWorldMapStorage::hasTranslucentAt(const TWorldMapCoordinate& coordinate)
+{
+    const TWorldMapField* field = fieldAt(coordinate);
+    return field && field->hasTranslucent();
 }
 
 }

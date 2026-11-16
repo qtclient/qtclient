@@ -58,9 +58,13 @@ public:
     uint16_t id() const;
     ThingCategory category() const;
     bool isNull() const;
+    /// The pixels the object is lifted by the objects below it on its field.
+    uint8_t elevation() const { return m_elevation; }
+    void setElevation(uint8_t elevation) { m_elevation = elevation; }
 
 protected:
     ThingType* m_type = nullptr;
+    uint8_t m_elevation = 0;
 };
 
 using TAppearanceInstancePtr = std::shared_ptr<TAppearanceInstance>;

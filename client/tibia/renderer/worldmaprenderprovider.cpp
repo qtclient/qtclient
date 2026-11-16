@@ -999,8 +999,9 @@ void TWorldMapRenderProvider::addFieldStackCreature(tibia::worldmap::TWorldMapFi
     const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(creatureId);
     if (!row || row->isDisplaced() || row->position() != tile->getPosition())
         return;
-    const QPoint at(dest.x() - elevation, dest.y() - elevation);
     appearances::TAppearanceInstancePtr appearance = tile->appearanceAt(stackIndex);
+    const uint8_t lift = appearance ? appearance->elevation() : elevation;
+    const QPoint at(dest.x() - lift, dest.y() - lift);
     if (!appearance)
         appearance = row->outfitAppearance();
     addCreatureFromOutfitAppearance(appearance, *row, at);
@@ -1111,13 +1112,14 @@ void TWorldMapRenderProvider::addFieldStackItem(tibia::worldmap::TWorldMapField*
                          .index = index };
     }
 
-    const QPoint at(dest.x() - elevation, dest.y() - elevation);
+    // The field gave every object but a top object the elevation of the
+    // objects drawn before it.
+    const uint8_t lift = type->isOnTop() ? 0 : appearance->elevation();
+    const QPoint at(dest.x() - lift, dest.y() - lift);
     const SpriteRecord::Highlight highlight = itemHighlightOf(tile->getPosition(), stackIndex, appearance->id());
-    addItemFromAppearance(appearance, at, highlight, elevation, tile);
+    addItemFromAppearance(appearance, at, highlight, lift, tile);
     m_key = DrawKey{ .group = 2, .x = x, .y = y };
-
-    if (type->hasElevation())
-        elevation = static_cast<uint8_t>(std::min<int>(elevation + type->getElevation(), tibia::config::tileMaxElevation()));
+    elevation = tile->objectElevation();
 }
 
 void TWorldMapRenderProvider::addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance,

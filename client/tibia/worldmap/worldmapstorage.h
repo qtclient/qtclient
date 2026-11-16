@@ -54,6 +54,14 @@ public:
 
     TWorldMapField* fieldAt(const TWorldMapCoordinate& coordinate);
     TWorldMapField* fieldAt(const Position& position);
+    /// The storage holds a field at `coordinate`.
+    bool hasField(const TWorldMapCoordinate& coordinate);
+    /// The field at `coordinate` holds an unpassable object; false without a field.
+    bool hasUnpassableObjectAt(const TWorldMapCoordinate& coordinate);
+    /// The field at `coordinate` holds a bank object; false without a field.
+    bool hasBankAt(const TWorldMapCoordinate& coordinate);
+    /// The field at `coordinate` holds a translucent object; false without a field.
+    bool hasTranslucentAt(const TWorldMapCoordinate& coordinate);
     /// Sole field create path — owns `m_fields` and spatial `tileBlocks`.
     TWorldMapField* getOrCreateField(const Position& position);
     /// Spatial block slot only; does not read `m_fields`.
@@ -63,7 +71,6 @@ public:
     /// Drop blocks outside `isAware`; `onRemoved` runs after block slot is cleared (Map notifies).
     void pruneUnawareSpatialFields(const std::function<bool(const Position&)>& isAware,
                                    const std::function<void(const Position&)>& onRemoved);
-    TCacheForWorldmapStorageLookupMembers* lookupMembers() const { return m_lookupMembers; }
 
     creatures::TCreatureMovementSpeedCalculator& speedCalculator() { return *m_speedCalculator; }
     /// Speed of the field's ground; 255 where there is no ground.
@@ -115,7 +122,6 @@ private:
 
     QHash<quint64, TWorldMapField*> m_fields;
     std::vector<std::unordered_map<uint32_t, TileBlock>> m_spatialFloors;
-    TCacheForWorldmapStorageLookupMembers* m_lookupMembers = nullptr;
     TWorldMapSessionState m_sessionState;
     creatures::TCreatureMovementSpeedCalculator m_ownSpeedCalculator;
     creatures::TCreatureMovementSpeedCalculator* m_speedCalculator = nullptr;
