@@ -54,8 +54,6 @@ endif()
 
 qt_add_executable(launcher
   ${_launcher_sources}
-  "${TIBIA_ROOT}/client/tibia/app/hints.cpp"
-  "${TIBIA_ROOT}/client/tibia/app/hints.h"
 )
 
 # CIP chrome: launcher/upstream (vendored by launcher sync).

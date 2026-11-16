@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/hints.h"
+#include "randomhints.h"
 
 #include <QByteArray>
 #include <QJsonObject>
@@ -23,7 +23,7 @@ class TLauncherFilesystemHelper;
 class TPackage;
 struct TPackageBuild;
 
-using THint = tibia::app::Hint;
+using THint = tibia::shared::Hint;
 
 /// Thrown when the launcher configuration (tibiametadata.json) is unusable.
 class TLauncherConfigurationException : public std::runtime_error

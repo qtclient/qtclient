@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/hints.h"
+#include "randomhints.h"
 
 #include <QByteArray>
 #include <QFile>
@@ -158,7 +158,7 @@ public:
     QVector<CipFile> fetchAssetFiles(const QUrl& assetsUrl, QString* error);
     QVector<CipFile> parseAssetFiles(const QByteArray& body, QString* error) const;
     QString fetchHints(const QUrl& hintsUrl, QString* error);
-    QVector<tibia::app::Hint> fetchHintList(const QUrl& hintsUrl, QString* error);
+    QVector<tibia::shared::Hint> fetchHintList(const QUrl& hintsUrl, QString* error);
 
     /**
      * CIP gap check: true when any package.json file is missing or its unpacked

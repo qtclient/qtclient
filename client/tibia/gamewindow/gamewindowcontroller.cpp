@@ -1,7 +1,7 @@
 #include "gamewindowcontroller.h"
 
 #include "app/clientoptions.h"
-#include "app/hints.h"
+#include "randomhints.h"
 #include "app/launcherenv.h"
 #include "game/boostedcreaturerequestuploader.h"
 #include "game/liveinformationrequestuploader.h"
@@ -252,7 +252,7 @@ void TGameWindowController::onHintDownloadSuccess(const QUrl& Url, const QByteAr
 {
     if (Url != m_hintsUrl)
         return;
-    m_hints = app::parseHints(Data);
+    m_hints = tibia::shared::parseHints(Data);
     selectRandomHintFromCache();
     m_hintsDownloadedAt = static_cast<int>(QDateTime::currentDateTimeUtc().toMSecsSinceEpoch() / 1000);
 }
@@ -267,12 +267,12 @@ void TGameWindowController::onHintDownloadFailed(const QUrl& url)
 
 void TGameWindowController::selectRandomHintFromCache()
 {
-    const std::optional<app::Hint> hint = app::selectHint(m_hints, QDateTime::currentDateTimeUtc());
+    const std::optional<tibia::shared::Hint> hint = tibia::shared::selectHint(m_hints, QDateTime::currentDateTimeUtc());
     if (!hint)
         return;
     setHintAreaTitle(hint->title);
     // qtclient: hint images are served from our CDN.
-    setHintAreaRichText(app::hintHtml(*hint, m_cdnBase));
+    setHintAreaRichText(tibia::shared::hintHtml(*hint, m_cdnBase));
 }
 
 void TGameWindowController::setHintAreaTitle(const QString& title)

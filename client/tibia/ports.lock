@@ -4338,7 +4338,7 @@ sub_1200c5ef45a6	1200c5ef45a67863	ported	gamewindow/monsterbonuseffectsdialogcon
 sub_1205f59ef909	1205f59ef909b26e	tested	creatures/movementdirection.h:reverseStepOffset	test=tests/client/creaturemovement_test.cpp
 sub_12137af55674	12137af55674bd6b	ported	gamewindow/storedialogcontroller.cpp:TTransferCreditsDialogController::TTransferCreditsDialogController
 sub_121cfa22a70f	121cfa22a70f695c	inlined	assets/spritesheet.cpp:SpriteStore::findSheet
-sub_1225b98d1f13	1225b98d1f13ae88	ported	app/hints.cpp:hintDateTime
+sub_1225b98d1f13	1225b98d1f13ae88	ported	shared/src/randomhints.cpp:hintDateTime
 sub_122d3af99bb5	122d3af99bb534c8	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::onPremiumTimeChanged
 sub_1234a2979c15#2	1234a2979c15b96d	inlined	protocol::TProtobufServerMessageTranslator::v15
 sub_12390e1cc87f	12390e1cc87f895c	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
@@ -6647,7 +6647,7 @@ sub_688707013581#6	688707013581bdea	inlined	protocol::TProtobufServerMessageTran
 sub_688707013581#8	688707013581bdea	inlined	protocol::TProtobufServerMessageTranslator::v189
 sub_6889594085e7#4	6889594085e7bbb6	skip	library: std container / struct destructor
 sub_6889594085e7#5	6889594085e7bbb6	skip	library: std container / struct destructor
-sub_689a838fafc7	689a838fafc7d074	ported	app/hints.cpp:styleHintLinks
+sub_689a838fafc7	689a838fafc7d074	ported	shared/src/randomhints.cpp:styleHintLinks
 sub_68aebfdc2c91	68aebfdc2c91bdaa	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::showGameActions
 sub_68b3f61d4831	68b3f61d4831bf0d	ported	config/optionspages.cpp:percentOf
 sub_68c0cd797e69#3	68c0cd797e697365	skip	generated: library template instantiation (unique_ptr reset, std::function swap, QSlotObject impl)
@@ -8255,7 +8255,7 @@ sub_a2a64f37ce4e	a2a64f37ce4e54fa	skip	library: std::sort instantiation for the 
 sub_a2bd929f23a2	a2bd929f23a203c3	skip	generated: compiler-generated destructor pair
 sub_a2c6d3abce3e	a2c6d3abce3eee41	inlined	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterListChanged
 sub_a2fc0c207b95	a2fc0c207b95555e	ported	gamewindow/marketcontroller.cpp:TMarketController::getPriceOrProfitMultistring
-sub_a306e2b5b815	a306e2b5b8151a1b	ported	app/hints.cpp:tibia::app::selectHint
+sub_a306e2b5b815	a306e2b5b8151a1b	ported	shared/src/randomhints.cpp:selectHint
 sub_a317271755ad	a317271755ad88d8	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::requestOwnTeam
 sub_a31d1e0f9220	a31d1e0f92209a78	ported	analysers/impactstorage.cpp:TImpactStorage::computeData
 sub_a3252b79fc1b	a3252b79fc1b54bf	skip	generated: compiler-generated destructor (std::string, std::mutex, shared_ptr<z_stream>)
@@ -9674,7 +9674,7 @@ sub_d418833b32ef#6	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardUnhand
 sub_d418833b32ef#7	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardMouseWheelEventFilter::TDiscardMouseWheelEventFilter
 sub_d418833b32ef#8	d418833b32efd569	ported	input/eventfilters.cpp:TDiscardMouseWheelEventFilter::TDiscardMouseWheelEventFilter
 sub_d419b8c28cad	d419b8c28cad379f	inlined	protocol::TProtobufServerMessageTranslator::v124
-sub_d440ed7fe720	d440ed7fe72080fb	ported	app/hints.cpp:tibia::app::parseHints
+sub_d440ed7fe720	d440ed7fe72080fb	ported	shared/src/randomhints.cpp:parseHints
 sub_d4a336919f23	d4a336919f23750c	tested	config/hotkeyoptions.cpp:writeBindings	test=tests/client/hotkeyoptions_test.cpp
 sub_d4a644d68860	d4a644d68860a638	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onCurrentlyHoveredCreatureChanged
 sub_d4aec58ab5b4#2	d4aec58ab5b440dd	skip	generated: protobuf-generated arena constructors
@@ -10011,7 +10011,7 @@ sub_de1b26e3e341	de1b26e3e3415ffa	skip	library: std::sort / std::stable_sort ins
 sub_de1d24dd041b	de1d24dd041b6ace	ported	gamewindow/characterinfomodels.cpp:TCharacterTitlesInfoQmlData::TCharacterTitlesInfoQmlData
 sub_de285b0cb7fa	de285b0cb7fa1471	skip	generated: moc property getter, provided by the generated cip base
 sub_de2ed7bcb926	de2ed7bcb926293f	tested	shared/src/timelapseclockservice.cpp:TTimeLapseClockService::speed	test=tests/client/timelapseclockservice_test.cpp
-sub_de2f0a6ce4e5	de2f0a6ce4e5334d	ported	app/hints.cpp:parseHint
+sub_de2f0a6ce4e5	de2f0a6ce4e5334d	ported	shared/src/randomhints.cpp:parseHint
 sub_de3891ec4c36	de3891ec4c3698a0	inlined	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry
 sub_de4d2428a434#10	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v25
 sub_de4d2428a434#11	de4d2428a4340ecb	inlined	protocol::TProtobufServerMessageTranslator::v31

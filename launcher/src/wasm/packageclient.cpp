@@ -465,9 +465,9 @@ QString PackageClient::fetchHints(const QUrl& hintsUrl, QString* error)
     return lines.join(QStringLiteral("\n\n"));
 }
 
-QVector<tibia::app::Hint> PackageClient::fetchHintList(const QUrl& hintsUrl, QString* error)
+QVector<tibia::shared::Hint> PackageClient::fetchHintList(const QUrl& hintsUrl, QString* error)
 {
-    return tibia::app::parseHints(get(hintsUrl, error));
+    return tibia::shared::parseHints(get(hintsUrl, error));
 }
 
 bool PackageClient::fileAlreadyInstalled(const CipFile& file, const QString& destDir) const

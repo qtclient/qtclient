@@ -1,4 +1,4 @@
-#include "hints.h"
+#include "randomhints.h"
 
 #include <QDebug>
 #include <QFile>
@@ -8,7 +8,7 @@
 #include <QJsonValue>
 #include <QRandomGenerator>
 
-namespace tibia::app {
+namespace tibia::shared {
 
 namespace {
 

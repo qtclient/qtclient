@@ -19,6 +19,8 @@ add_library(qtclient_shared STATIC
   src/datetimehelper.cpp
   src/datetimehelper.h
   src/downloadpool.cpp
+  src/randomhints.cpp
+  src/randomhints.h
   src/downloadpool.h
   src/executor.cpp
   src/executor.h

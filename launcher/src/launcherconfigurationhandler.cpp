@@ -216,7 +216,7 @@ void TLauncherConfigurationHandler::onConfigurationDownloadFinished(const QUrl& 
     }
     if (m_configuration && url == m_configuration->hintsUrl()) {
         const std::optional<THint> hint =
-            tibia::app::selectHint(tibia::app::parseHints(data), QDateTime::currentDateTimeUtc());
+            tibia::shared::selectHint(tibia::shared::parseHints(data), QDateTime::currentDateTimeUtc());
         if (!hint)
             return;
         m_hint = *hint;

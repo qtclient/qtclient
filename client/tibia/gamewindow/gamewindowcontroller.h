@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include "app/hints.h"
+#include "randomhints.h"
 #include "news/eventsuploader.h"
 
 #include <vector>
@@ -169,7 +169,7 @@ private:
     QPointer<QQuickItem> m_container;
     QPointer<QQuickItem> m_gameWindowItem;
     QUrl m_hintsUrl;
-    QVector<app::Hint> m_hints;
+    QVector<tibia::shared::Hint> m_hints;
     /// Seconds since the epoch of the last hints download.
     int m_hintsDownloadedAt = 0;
     QString m_cdnBase;

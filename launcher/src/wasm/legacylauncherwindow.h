@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/hints.h"
+#include "randomhints.h"
 #include "packageclient.h"
 
 #include <QElapsedTimer>
@@ -62,7 +62,7 @@ private:
     void applyThingsProgressFromJs();
     void layoutSoftStage();
 #endif
-    void applyHint(const QVector<tibia::app::Hint>& hints);
+    void applyHint(const QVector<tibia::shared::Hint>& hints);
     void loadFeed();
     void refresh();
     void setBusy(bool busy, const QString& label);

@@ -955,16 +955,16 @@ void LauncherWindow::onDeleteOrphans()
     refresh();
 }
 
-void LauncherWindow::applyHint(const QVector<tibia::app::Hint>& hints)
+void LauncherWindow::applyHint(const QVector<tibia::shared::Hint>& hints)
 {
-    QVector<tibia::app::Hint> feed = hints;
-    if (!tibia::app::hasRichHints(feed))
-        feed = tibia::app::loadBundledHints();
-    const tibia::app::Hint hint = tibia::app::randomHint(feed);
+    QVector<tibia::shared::Hint> feed = hints;
+    if (!tibia::shared::hasRichHints(feed))
+        feed = tibia::shared::loadBundledHints();
+    const tibia::shared::Hint hint = tibia::shared::randomHint(feed);
     if (hint.richText.isEmpty())
         return;
     m_hintBox->setTitle(hint.title.isEmpty() ? QStringLiteral("Hint") : hint.title);
-    m_news->setHtml(tibia::app::hintHtml(hint, m_client->cdnBase()));
+    m_news->setHtml(tibia::shared::hintHtml(hint, m_client->cdnBase()));
 }
 
 void LauncherWindow::loadFeed()
@@ -1175,7 +1175,7 @@ void LauncherWindow::startAsync()
                 if (!hintsUrl.isValid() && !m_client->cdnBase().isEmpty())
                     hintsUrl = QUrl(m_client->cdnBase() + QStringLiteral("/hints.json"));
                 m_client->getAsync(hintsUrl, [this](const QByteArray& hintsBody, const QString&) {
-                    applyHint(tibia::app::parseHints(hintsBody));
+                    applyHint(tibia::shared::parseHints(hintsBody));
                     refresh();
                     const QString local = localVersion();
                     const bool forceSoft =

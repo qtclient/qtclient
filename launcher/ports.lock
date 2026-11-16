@@ -328,6 +328,7 @@ sub_1195667229bd	1195667229bdffc6	ported	shared/src/jsondocumentuploaderbase.cpp
 sub_1195667229bd#2	1195667229bdffc6	tested	shared/src/jsonhelper.cpp:jsonBool	test=tests/client/sharednet_test.cpp
 sub_1195667229bd#3	1195667229bdffc6	ported	systemsurvey/systemsurveytojsonconverter.cpp:TSystemSurveyToJsonConverter::clientId
 sub_1195667229bd#4	1195667229bdffc6	ported	shared/src/qtconnectionmanager.cpp:TQtConnectionManager::~TQtConnectionManager
+sub_1195667229bd#5	1195667229bdffc6	ported	shared/src/randomhints.cpp:hintDateTime
 sub_1195667229bd#6	1195667229bdffc6	ported	shared/src/timelapseclockservice.cpp:TTimeLapseClockService::TTimeLapseClockService
 sub_11c802574cc0	11c802574cc0c471	ported	packageinstallation.cpp:TPackageInstallation::start
 sub_11cded2ebf20	11cded2ebf20d671	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::retries
@@ -826,6 +827,7 @@ sub_a0ec04652811	a0ec0465281138db	skip	generated: vector<TGpuInformation> / stru
 sub_a16476614987	a16476614987fb9a	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuHasSse2
 sub_a1f1e1bb3cb6	a1f1e1bb3cb6c390	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::numberOfPages	test=tests/client/sharednet_test.cpp
 sub_a234bd7e4403	a234bd7e4403b55f	ported	packagefiledownloader.cpp:urlLess
+sub_a306e2b5b815	a306e2b5b8151a1b	ported	shared/src/randomhints.cpp:selectHint
 sub_a3252b79fc1b	a3252b79fc1b54bf	skip	generated: compiler-generated destructor (std::string, std::mutex, shared_ptr<z_stream>)
 sub_a350b0e723db	a350b0e723db1d3c	ported	shared/src/xteahelper.cpp:TXteaHelper::TXteaHelper
 sub_a3b6c0af759a	a3b6c0af759a0a09	ported	shared/src/downloadpool.cpp:TDownloadPool::appendNocache
@@ -1012,16 +1014,19 @@ sub_cebdf4d36756#2	cebdf4d36756273d	skip	library: CryptoPP StringSource / String
 sub_ced3f2bdcd18	ced3f2bdcd180303	ported	shared/src/rpcserviceconnection.cpp:TRPCServiceConnection::TRPCServiceConnection
 sub_d0304d7bc415	d0304d7bc415b438	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
 sub_d0aa9244635d	d0aa9244635de63b	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_d16f0b9d1585	d16f0b9d15855cdb	ported	launcherapplication.cpp:TLauncherApplication::startSystemSurvey
 sub_d1c818254041#2	d1c818254041ebc3	inlined	package.cpp:TPackageConfiguration::load
 sub_d1c82bd8b6c0	d1c82bd8b6c0a290	tested	shared/src/ringbufferstopwatch.cpp:TRingBufferStopWatch::maximum	test=tests/client/sharednet_test.cpp
 sub_d1d2fbb2a3a3	d1d2fbb2a3a3ef1d	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_d2c0b262bc22	d2c0b262bc2255ed	ported	systemsurvey/systemsurveytojsonconverter.cpp:TSystemSurveyToJsonConverter::gpusToJson
 sub_d3f8843375ce	d3f8843375cec425	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_d42f7abfd6ef	d42f7abfd6ef8339	ported	shared/src/crashhandler.cpp:TCrashHandler::setPassExceptionOn
+sub_d440ed7fe720	d440ed7fe72080fb	ported	shared/src/randomhints.cpp:parseHints
 sub_d5271152b195	d5271152b195ca48	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
 sub_d52c0f437e50	d52c0f437e50d6f8	skip	library: QFuture / QFutureWatcher template
 sub_d5fdbb377e04	d5fdbb377e04a925	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_d66c6dec21d7	d66c6dec21d7a0ae	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::hasNextPage	test=tests/client/sharednet_test.cpp
+sub_d6c9aa1b7ff0	d6c9aa1b7ff02b5b	inlined	launcherapplication.cpp:TLauncherApplication::startSystemSurvey
 sub_d7157c3308f8	d7157c3308f8e250	tested	shared/src/jsonhelper.cpp:jsonDateTime	test=tests/client/sharednet_test.cpp
 sub_d74862a49107	d74862a49107d7df	skip	library: Google Breakpad ExceptionHandler destructor / UninstallHandler
 sub_d7863b1d5d9b	d7863b1d5d9ba53d	ported	systemsurvey/systemsurveyasjsondocumentcreator.cpp:TSystemSurveyAsJsonDocumentCreator::TSystemSurveyAsJsonDocumentCreator
@@ -1057,6 +1062,7 @@ sub_ddbe646a13f4#2	ddbe646a13f460f6	skip	library: CryptoPP XTEA cipher holder (l
 sub_ddd126b4fbb7	ddd126b4fbb70a04	ported	shared/src/jsondocumentuploaderbase.cpp:TJsonDocumentUploaderBase::errorMessage
 sub_ddd295a885a4	ddd295a885a4bba3	skip	dead: unreferenced byte-order helpers: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_de2ed7bcb926	de2ed7bcb926293f	tested	shared/src/timelapseclockservice.cpp:TTimeLapseClockService::speed	test=tests/client/timelapseclockservice_test.cpp
+sub_de2f0a6ce4e5	de2f0a6ce4e5334d	ported	shared/src/randomhints.cpp:parseHint
 sub_deca5c2da6a8	deca5c2da6a83139	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
 sub_deea1477fb4d	deea1477fb4d9d3f	ported	clientpackagelayoutitem.cpp:TClientPackageLayoutItem::TClientPackageLayoutItem
 sub_df17225000bb	df17225000bb0c5c	ported	packageinstallation.cpp:TPackageInstallation::removeFiles
@@ -1081,6 +1087,7 @@ sub_e6c325ea470c	e6c325ea470ca1ef	skip	library: libc++ vector/map/tree internals
 sub_e6db877f4f89	e6db877f4f89d737	skip	generated: moc signal bodies of TRPCServiceClient
 sub_e7676f0ebd95	e7676f0ebd951add	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_e8082de37776	e8082de37776fbbb	skip	generated: compiler-generated destructor (CryptoPP cipher members)
+sub_e8b5ad025626	e8b5ad02562694b7	ported	launcherapplication.cpp:TLauncherApplication::onMainConfigurationLoaded
 sub_e9071ee6211d	e9071ee6211dd089	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::isObject	test=tests/client/jsonvalidator_test.cpp
 sub_e9be9fb3bf45	e9be9fb3bf45c842	skip	generated: rcc resource registration
 sub_e9c78e7f8b98	e9c78e7f8b985943	skip	library: CryptoPP HashFilter constructor, SHA1/SHA256 state init

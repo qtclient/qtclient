@@ -9,7 +9,7 @@
 class QByteArray;
 
 namespace tibia {
-namespace app {
+namespace shared {
 
 /// One entry of hints.json (CIP: shared::THint).
 struct Hint
@@ -34,7 +34,7 @@ std::optional<Hint> selectHint(const QVector<Hint>& hints, const QDateTime& now)
 /// True when at least one hint carries CIP table/img richText (not a string stub).
 bool hasRichHints(const QVector<Hint>& hints);
 
-/// CIP `randomhints.cpp`: one entry from the list.
+/// One entry from the list.
 Hint randomHint(const QVector<Hint>& hints);
 
 /// Point hint <img> sources at our CDN. Files live under /images/news/.
