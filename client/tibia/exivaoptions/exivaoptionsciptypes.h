@@ -29,8 +29,10 @@ class TExivaOptionsProtocolMessageHandler final : public cip::tibia::exivaoption
 public:
     using cip::tibia::exivaoptions::TExivaOptionsProtocolMessageHandler::TExivaOptionsProtocolMessageHandler;
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    /// A suppressed exiva only flashes the chat's exiva button.
+    static void handleExivaSuppressedMessage(const ::tibia::protobuf::protocol::GameserverMessageExivaSuppressed& message);
+    /// The flags replace the stored ones; the listed names join or leave the whitelists.
+    static void handleUpdateExivaOptionsMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateExivaOptions& message);
 };
 
 }

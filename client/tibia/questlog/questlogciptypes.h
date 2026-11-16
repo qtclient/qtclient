@@ -42,9 +42,6 @@ class TQuestLogProtocolMessageHandler final : public cip::tibia::questlog::TQues
 public:
     using cip::tibia::questlog::TQuestLogProtocolMessageHandler::TQuestLogProtocolMessageHandler;
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
-
     /// The quest lines of the quest log, handed to the storage ("onQuestLog").
     static void handleQuestLogMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLog& message);
     /// The parts of one quest line ("onQuestLine": quest line id, parts).

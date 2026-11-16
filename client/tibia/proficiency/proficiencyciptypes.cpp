@@ -18,9 +18,22 @@ namespace {
 /// The resource the proficiency storage follows: lunar ascension orbs.
 constexpr uint32_t LunarAscensionOrbsResource = 73;
 
-/// A weapon's whole record: the XP, the perk picked on each level (the list
-/// grows to the highest level) and the shaped perks.
-void handleWeaponProficiencyMessage(const ::tibia::protobuf::protocol::GameserverMessageWeaponProficiency& message)
+} // namespace
+
+void ownProductSurface(QObject* parent)
+{
+    static bool owned = false;
+    if (owned)
+        return;
+    owned = true;
+    (void)parent;
+}
+
+} // namespace tibia::proficiency
+
+namespace tibia::proficiency {
+
+void TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage(const ::tibia::protobuf::protocol::GameserverMessageWeaponProficiency& message)
 {
     TProficiencyStorage* storage = TProficiencyStorage::instance();
     if (!storage)
@@ -37,8 +50,7 @@ void handleWeaponProficiencyMessage(const ::tibia::protobuf::protocol::Gameserve
     storage->setProficiencyData(static_cast<uint16_t>(message.object_id()), std::move(data));
 }
 
-/// The perks a shaped slot can be reshaped into; every offer sits on the slot.
-void handleShapedPerkReshapeOffersMessage(const ::tibia::protobuf::protocol::GameserverMessageShapedPerkReshapeOffers& message)
+void TProficiencyProtocolMessageHandler::handleShapedPerkReshapeOffersMessage(const ::tibia::protobuf::protocol::GameserverMessageShapedPerkReshapeOffers& message)
 {
     TProficiencyStorage* storage = TProficiencyStorage::instance();
     if (!storage)
@@ -52,10 +64,7 @@ void handleShapedPerkReshapeOffersMessage(const ::tibia::protobuf::protocol::Gam
     storage->setReshapeOffers(std::move(offers));
 }
 
-/// The XP of one weapon; the wielded weapon's also moves the current progress.
-/// The unspent perk flag is only the wielded weapon's (or the notification's
-/// without a weapon).
-void handleWeaponProficiencyNotificationMessage(
+void TProficiencyProtocolMessageHandler::handleWeaponProficiencyNotificationMessage(
     const ::tibia::protobuf::protocol::GameserverMessageWeaponProficiencyNotification& message)
 {
     TProficiencyStorage* storage = TProficiencyStorage::instance();
@@ -71,57 +80,12 @@ void handleWeaponProficiencyNotificationMessage(
                         message.unused_perk());
 }
 
-void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message)
+void TProficiencyProtocolMessageHandler::handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message)
 {
     if (message.resource_type() != LunarAscensionOrbsResource)
         return;
     if (TProficiencyStorage* storage = TProficiencyStorage::instance())
         storage->setLunarAscensionOrbs(static_cast<uint32_t>(message.value()));
-}
-
-} // namespace
-
-void ownProductSurface(QObject* parent)
-{
-    static bool owned = false;
-    if (owned)
-        return;
-    owned = true;
-    (void)parent;
-}
-
-} // namespace tibia::proficiency
-
-namespace tibia::proficiency {
-
-void TProficiencyProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 187:
-        if (shadow->HasExtension(GameserverMessageShapedPerkReshapeOffers::gameserver_message_shaped_perk_reshape_offers))
-            handleShapedPerkReshapeOffersMessage(
-                shadow->GetExtension(GameserverMessageShapedPerkReshapeOffers::gameserver_message_shaped_perk_reshape_offers));
-        break;
-    case 196:
-        if (shadow->HasExtension(GameserverMessageWeaponProficiency::gameserver_message_weapon_proficiency))
-            handleWeaponProficiencyMessage(shadow->GetExtension(GameserverMessageWeaponProficiency::gameserver_message_weapon_proficiency));
-        break;
-    case 92:
-        if (shadow->HasExtension(GameserverMessageWeaponProficiencyNotification::gameserver_message_weapon_proficiency_notification))
-            handleWeaponProficiencyNotificationMessage(
-                shadow->GetExtension(GameserverMessageWeaponProficiencyNotification::gameserver_message_weapon_proficiency_notification));
-        break;
-    case 238:
-        if (shadow->HasExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance))
-            handleResourceBalanceMessage(shadow->GetExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance));
-        break;
-    default:
-        break;
-    }
 }
 
 }

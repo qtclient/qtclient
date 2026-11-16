@@ -15,6 +15,11 @@
 #include "game/playerskillstats.h"
 #include "questlog/questlogciptypes.h"
 #include "effects/effectprotocolmessagehandler.h"
+#include "exivaoptions/exivaoptionsciptypes.h"
+#include "prey/preyciptypes.h"
+#include "proficiency/proficiencyciptypes.h"
+#include "quickloot/quicklootciptypes.h"
+#include "spells/spellsciptypes.h"
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
 #include "sound/soundprotocolmessagehandler.h"
@@ -132,7 +137,7 @@ void TGameSessionBase::install(const bool installed)
 void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessageQueue* queue)
 {
     using Queue = protocol::TProtocolMessageQueue;
-    const auto link = [this, queue](auto signal, const auto* receiver, auto slot) {
+    const auto link = [this, queue](auto signal, auto* receiver, auto slot) {
         m_queueConnections.push_back(connect(queue, signal, receiver, slot));
     };
 
@@ -156,6 +161,33 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedFieldDataMessage, worldmap, &TWorldmapProtocolMessageHandler::handleFieldDataMessage);
     link(&Queue::receivedAmbientLightMessage, worldmap, &TWorldmapProtocolMessageHandler::handleAmbientLightMessage);
     link(&Queue::receivedTibiaTimeMessage, worldmap, &TWorldmapProtocolMessageHandler::handleTibiaTimeMessage);
+
+    // The spell modifications the server announces.
+    link(&Queue::receivedSpellDataModificationMessage, this, &spells::TSpellsProtocolMessageHandler::handleSpellDataModificationMessage);
+
+    using questlog::TQuestLogProtocolMessageHandler;
+    link(&Queue::receivedQuestLogMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLogMessage);
+    link(&Queue::receivedQuestLineMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLineMessage);
+    link(&Queue::receivedTrackedQuestFlagsMessage, this, &TQuestLogProtocolMessageHandler::handleTrackedQuestFlagsMessage);
+
+    using prey::TPreyProtocolMessageHandler;
+    link(&Queue::receivedPreyTimeLeftMessage, this, &TPreyProtocolMessageHandler::handlePreyTimeLeftMessage);
+    link(&Queue::receivedPreyDataMessage, this, &TPreyProtocolMessageHandler::handlePreyDataMessage);
+    link(&Queue::receivedPreyPricesMessage, this, &TPreyProtocolMessageHandler::handlePreyPricesMessage);
+
+    link(&Queue::receivedUpdateManagedContainersMessage, this,
+         &quickloot::TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage);
+    using exivaoptions::TExivaOptionsProtocolMessageHandler;
+    link(&Queue::receivedExivaSuppressedMessage, this, &TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage);
+    link(&Queue::receivedUpdateExivaOptionsMessage, this, &TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage);
+
+    using proficiency::TProficiencyProtocolMessageHandler;
+    link(&Queue::receivedWeaponProficiencyMessage, this, &TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage);
+    link(&Queue::receivedWeaponProficiencyNotificationMessage, this,
+         &TProficiencyProtocolMessageHandler::handleWeaponProficiencyNotificationMessage);
+    link(&Queue::receivedShapedPerkReshapeOffersMessage, this,
+         &TProficiencyProtocolMessageHandler::handleShapedPerkReshapeOffersMessage);
+    link(&Queue::receivedResourceBalanceMessage, this, &TProficiencyProtocolMessageHandler::handleResourceBalanceMessage);
 
     // Host: the live session is reused across logins (CIP builds a new one).
     m_queueConnections.push_back(connect(queue, &Queue::receivedLoginSuccessMessage, worldmap,

@@ -28,36 +28,6 @@ namespace {
 /// The categories the server may assign containers to.
 bool isObjectCategory(const uint32_t category) { return category - 1u < 31u; }
 
-/// Replaces the stored assignments, then the fallback flag. A category outside
-/// the known ones rejects the whole message.
-void handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message)
-{
-    TManagedContainerStorage* storage = TManagedContainerStorage::instance();
-    if (!storage)
-        return;
-    TManagedContainerStorage::Assignments assignments;
-    for (const auto& container : message.containers()) {
-        if (!isObjectCategory(container.category()))
-            return;
-        auto& assignment = assignments[static_cast<int>(container.category())];
-        assignment.lootContainerId = static_cast<uint16_t>(container.loot_container_id());
-        assignment.obtainContainerId = static_cast<uint16_t>(container.obtainer_container_id());
-    }
-    storage->setManagedContainers(assignments);
-    storage->setUseMainBackpackAsFallback(message.fallback_to_main_container());
-}
-
-}
-
-void TManagedContainersProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || opcode != 192
-        || !shadow->HasExtension(GameserverMessageUpdateManagedContainers::gameserver_message_update_managed_containers))
-        return;
-    handleUpdateManagedContainersMessage(
-        shadow->GetExtension(GameserverMessageUpdateManagedContainers::gameserver_message_update_managed_containers));
 }
 
 void TManagedContainersProtocolMessageHandler::setLootContainerFallback(const bool useMainBackpack)
@@ -169,6 +139,23 @@ void TQuickLootGameActionHandler::handleAddToBlackWhitelistStatusAction(const ui
     status->text = qtTrId("iteminfo_maximum_number_of_blacklisted_items");
     status->color = chat::systemWhite();
     input::publish(status);
+}
+
+void TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message)
+{
+    TManagedContainerStorage* storage = TManagedContainerStorage::instance();
+    if (!storage)
+        return;
+    TManagedContainerStorage::Assignments assignments;
+    for (const auto& container : message.containers()) {
+        if (!isObjectCategory(container.category()))
+            return;
+        auto& assignment = assignments[static_cast<int>(container.category())];
+        assignment.lootContainerId = static_cast<uint16_t>(container.loot_container_id());
+        assignment.obtainContainerId = static_cast<uint16_t>(container.obtainer_container_id());
+    }
+    storage->setManagedContainers(assignments);
+    storage->setUseMainBackpackAsFallback(message.fallback_to_main_container());
 }
 
 } // namespace tibia::quickloot

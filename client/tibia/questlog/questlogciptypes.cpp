@@ -404,18 +404,4 @@ void TQuestLogProtocolMessageHandler::handleTrackedQuestFlagsMessage(
     tibia::game::notify("onQuestTracker", questFlags, timestamp, message.full_list(), canTrackAdditionalQuestFlags);
 }
 
-void TQuestLogProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    if (opcode == 208 && shadow->HasExtension(GameserverMessageTrackQuestFlags::gameserver_message_track_quest_flags))
-        handleTrackedQuestFlagsMessage(shadow->GetExtension(GameserverMessageTrackQuestFlags::gameserver_message_track_quest_flags));
-    else if (opcode == 241 && shadow->HasExtension(GameserverMessageQuestLine::gameserver_message_quest_line))
-        handleQuestLineMessage(shadow->GetExtension(GameserverMessageQuestLine::gameserver_message_quest_line));
-    else if (opcode == 240 && shadow->HasExtension(GameserverMessageQuestLog::gameserver_message_quest_log))
-        handleQuestLogMessage(shadow->GetExtension(GameserverMessageQuestLog::gameserver_message_quest_log));
-}
-
 } // namespace tibia::questlog

@@ -13,6 +13,10 @@
 
 #include <cstdint>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageUpdateManagedContainers;
+}
+
 namespace tibia {
 namespace input {
 struct TGameAction;
@@ -28,9 +32,9 @@ class TManagedContainersProtocolMessageHandler final : public cip::tibia::quickl
     Q_OBJECT
 public:
     using cip::tibia::quickloot::TManagedContainersProtocolMessageHandler::TManagedContainersProtocolMessageHandler;
-
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    /// Replaces the stored assignments, then the fallback flag. A category outside
+    /// the known ones rejects the whole message.
+    static void handleUpdateManagedContainersMessage(const ::tibia::protobuf::protocol::GameserverMessageUpdateManagedContainers& message);
     /// The ManagedContainer message's actions.
     enum EManagedContainerAction : uint8_t
     {

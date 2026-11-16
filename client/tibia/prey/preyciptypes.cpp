@@ -86,18 +86,4 @@ void TPreyProtocolMessageHandler::handlePreyPricesMessage(const ::tibia::protobu
                         static_cast<uint8_t>(message.selection_price()));
 }
 
-void TPreyProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    if (opcode == 232 && shadow->HasExtension(GameserverMessagePreyData::gameserver_message_prey_data))
-        handlePreyDataMessage(shadow->GetExtension(GameserverMessagePreyData::gameserver_message_prey_data));
-    else if (opcode == 231 && shadow->HasExtension(GameserverMessagePreyTimeLeft::gameserver_message_prey_time_left))
-        handlePreyTimeLeftMessage(shadow->GetExtension(GameserverMessagePreyTimeLeft::gameserver_message_prey_time_left));
-    else if (opcode == 233 && shadow->HasExtension(GameserverMessagePreyPrices::gameserver_message_prey_prices))
-        handlePreyPricesMessage(shadow->GetExtension(GameserverMessagePreyPrices::gameserver_message_prey_prices));
-}
-
 }

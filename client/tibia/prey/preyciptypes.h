@@ -34,8 +34,6 @@ class TPreyProtocolMessageHandler final : public cip::tibia::prey::TPreyProtocol
 public:
     using cip::tibia::prey::TPreyProtocolMessageHandler::TPreyProtocolMessageHandler;
 public:
-    /// Tip Q→H wire: PreyData, PreyTimeLeft and PreyPrices from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
 
     static void handlePreyTimeLeftMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyTimeLeft& message);
     /// One slot's state; every state also carries the next free reroll and the option.

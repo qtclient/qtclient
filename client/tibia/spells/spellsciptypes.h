@@ -20,9 +20,9 @@ class TSpellsProtocolMessageHandler final : public cip::tibia::spells::TSpellsPr
     Q_OBJECT
 public:
     using cip::tibia::spells::TSpellsProtocolMessageHandler::TSpellsProtocolMessageHandler;
-
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    /// The server's spell data modifications, grouped by spell, replace the
+    /// storage's whole set.
+    static void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
 };
 
 }
