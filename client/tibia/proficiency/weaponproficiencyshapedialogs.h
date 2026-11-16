@@ -12,6 +12,9 @@
 #include <vector>
 
 namespace tibia {
+namespace input {
+struct TGameAction;
+}
 namespace gamewindow {
 class TMessageDialogController;
 }
@@ -44,6 +47,8 @@ public:
     /// CIP .
     void onMessageDialogAccept() override;
     void onResourceBalanceChanged() override;
+    /// OPEN_WEAPON_PROFICIENCY_SHAPE_DIALOG.
+    void handleGameAction(const input::TGameAction& action);
 
 private:
     enum class EConfirm
