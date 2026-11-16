@@ -135,6 +135,35 @@ public:
     int movementGroundSpeed() const;
     /// A bank object lies here.
     bool hasBank() const;
+    /// The creatures on the field, in stack order.
+    std::vector<std::shared_ptr<tibia::creatures::TCreature>> creatures() const;
+    /// An object of the field is a bottom object.
+    bool hasBottom() const;
+    /// An object of the field blocks sight (unsight).
+    bool hasUnsight() const;
+    /// An object of the field is never hidden.
+    bool hasDontHide() const;
+    /// An object of the field is translucent.
+    bool hasTranslucent() const;
+    /// An unpassable object or another unpassable creature stands here.
+    bool blocksMovement() const;
+    /// An object that is no creature cannot be passed.
+    bool hasUnpassableObject() const;
+    /// The field hides the floor below it (updated with the stack).
+    bool isOpaque() const { return m_opaque; }
+    /// Height of the stacked objects in pixels, at most 24 (updated with the stack).
+    uint8_t objectElevation() const { return m_objectElevation; }
+    /// The field blocks sight (updated with the stack).
+    bool blocksSight() const { return m_blocksSight; }
+    /// The light of the highest shining object; intensity 0 without one.
+    Light light() const;
+    /// A type and creature id per stack position (flag scans).
+    struct TStackView
+    {
+        const ThingType* type = nullptr;
+        uint32_t creatureId = 0;
+    };
+    std::vector<TStackView> stackView() const;
     uint8_t getMinimapColorByte();
     int getThingCount() { return static_cast<int>(m_stack.size()); }
     int thingCount() const { return static_cast<int>(m_stack.size()); }
@@ -179,7 +208,12 @@ public:
 
     bool hasElevation(const int elevation = 1) { return m_elevation >= elevation; }
     bool hasFloorChange() const;
-    void notifyAppearanceInstancesChanged() { Q_EMIT appearanceInstancesChanged(this); }
+    void notifyAppearanceInstancesChanged()
+    {
+        updateElevation();
+        updateViewFlags();
+        Q_EMIT appearanceInstancesChanged(this);
+    }
 
 Q_SIGNALS:
     void appearanceInstancesChanged(const TWorldMapField* field);
@@ -192,9 +226,16 @@ private:
     };
     /// The stack entry at `stackIndex` as an object, at its stack position.
     TFieldObject fieldObject(int stackIndex) const;
-    int stackPriorityAt(int stackIndex) const;
-    int stackPriorityFor(const TFieldStackEntry& entry) const;
+    /// Where an object sorts on the stack: 0 bank, 1 clip, 2 bottom, 3 top,
+    /// 4 creature, 5 any other object.
+    static int stackOrder(const TFieldStackEntry& entry);
+    /// The stack position an object without one takes.
+    int insertionIndex(const TFieldStackEntry& entry) const;
     void rebuildAppearanceCache();
+    /// Sets each object's elevation and the hangables' hook side from the stack.
+    void updateElevation();
+    /// Recomputes isOpaque and blocksSight from the stack.
+    void updateViewFlags();
     /// Takes the stack entry at `stackIndex` off the field without touching a
     /// creature's placed-on-field flag (the stack's overflow).
     void eraseStackEntry(int stackIndex);
@@ -226,6 +267,9 @@ private:
     uint8_t m_drawElevation{ 0 };
     uint8_t m_minimapColor{ 0 };
     uint8_t m_elevation{ 0 };
+    bool m_opaque{ false };
+    uint8_t m_objectElevation{ 0 };
+    bool m_blocksSight{ false };
 
     int16_t m_firstCreatureIndex{ -1 };
     int16_t m_lastCreatureIndex{ -1 };

@@ -54,6 +54,14 @@ public:
 
     TWorldMapField* fieldAt(const TWorldMapCoordinate& coordinate);
     TWorldMapField* fieldAt(const Position& position);
+    /// The storage holds a field at `coordinate`.
+    bool hasField(const TWorldMapCoordinate& coordinate);
+    /// The field at `coordinate` holds an unpassable object; false without a field.
+    bool hasUnpassableObjectAt(const TWorldMapCoordinate& coordinate);
+    /// The field at `coordinate` holds a bank object; false without a field.
+    bool hasBankAt(const TWorldMapCoordinate& coordinate);
+    /// The field at `coordinate` holds a translucent object; false without a field.
+    bool hasTranslucentAt(const TWorldMapCoordinate& coordinate);
     /// Sole field create path — owns `m_fields` and spatial `tileBlocks`.
     TWorldMapField* getOrCreateField(const Position& position);
     /// Spatial block slot only; does not read `m_fields`.

@@ -355,4 +355,27 @@ void TWorldMapStorage::moveCreature(creatures::TCreature& creature, const Positi
     creature.move(now, now + duration, origin, direction, elevationFrom, elevationTo);
 }
 
+bool TWorldMapStorage::hasField(const TWorldMapCoordinate& coordinate)
+{
+    return fieldAt(coordinate) != nullptr;
+}
+
+bool TWorldMapStorage::hasUnpassableObjectAt(const TWorldMapCoordinate& coordinate)
+{
+    const TWorldMapField* field = fieldAt(coordinate);
+    return field && field->hasUnpassableObject();
+}
+
+bool TWorldMapStorage::hasBankAt(const TWorldMapCoordinate& coordinate)
+{
+    const TWorldMapField* field = fieldAt(coordinate);
+    return field && field->hasBank();
+}
+
+bool TWorldMapStorage::hasTranslucentAt(const TWorldMapCoordinate& coordinate)
+{
+    const TWorldMapField* field = fieldAt(coordinate);
+    return field && field->hasTranslucent();
+}
+
 }
