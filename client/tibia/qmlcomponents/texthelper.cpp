@@ -39,6 +39,11 @@ QStringList shortcutVariants(const qlonglong number, const bool withPlus)
 
 }
 
+QString thousandShortcutsMultiString(const qlonglong number, const bool withPlus)
+{
+    return shortcutVariants(number, withPlus).join(MultiStringSeparator);
+}
+
 /// CIP .
 QString TTextHelperQmlService::formatNumberWithThousandSeparators(const qlonglong Number)
 {

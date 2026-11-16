@@ -2,6 +2,8 @@
 
 #include "input/gameactionhandlers.h"
 
+#include <algorithm>
+
 namespace tibia::gamewindow {
 
 namespace {
@@ -13,11 +15,10 @@ using A = input::EGameAction;
 TNaggingMessageDialogController::TNaggingMessageDialogController(QObject* parent)
     : TDialogController(QStringLiteral("NaggingMessageDialog.qml"), parent)
 {
-    m_tick.setInterval(1000);
-    connect(&m_tick, &QTimer::timeout, this, &TNaggingMessageDialogController::onTick);
+    m_tick.setInterval(100);
+    connect(&m_tick, &QTimer::timeout, this, &TNaggingMessageDialogController::onRefreshSecondsRemaining);
     input::setActionHandler(A::SHOW_NAGGING_DIALOG, [this](const input::TGameAction& action) {
-        // CIP TGameActionShowNaggingDialog: text body, parameter = countdown
-        // seconds (0 / omitted unlocks OK immediately).
+        // TGameActionShowNaggingDialog: the text and the countdown (seconds).
         showNagging(action.text, action.parameter);
         return true;
     });
@@ -31,21 +32,14 @@ TNaggingMessageDialogController::~TNaggingMessageDialogController()
 
 void TNaggingMessageDialogController::showNagging(const QString& text, const int seconds)
 {
-    m_tick.stop();
     m_messageText = text;
     m_showCountdown = seconds > 0;
-    m_secondsRemaining = m_showCountdown ? seconds : 0;
-    Q_EMIT secondsRemainingChanged();
-    dialog()->destroy();
-    dialog()->create();
-    dialog()->show();
-    // QML enables OK only on secondsRemainingChanged → 0; force that path when
-    // there is no countdown.
-    if (!m_showCountdown) {
-        m_secondsRemaining = 0;
-        Q_EMIT secondsRemainingChanged();
-    } else {
-        m_tick.start();
+    m_durationMs = std::max(0, seconds) * qint64(1000);
+    m_clock.start();
+    m_tick.start();
+    if (!dialog()->item()) {
+        dialog()->create();
+        dialog()->show();
     }
 }
 
@@ -55,16 +49,23 @@ void TNaggingMessageDialogController::requestClose()
     dialog()->close();
 }
 
-void TNaggingMessageDialogController::onTick()
+void TNaggingMessageDialogController::onRefreshSecondsRemaining()
 {
-    if (m_secondsRemaining <= 0) {
+    const qint64 remaining = m_durationMs - m_clock.elapsed();
+    if (remaining <= 0) {
         m_tick.stop();
+        Q_EMIT secondsRemainingChanged();
+        if (m_secondsRemaining == 0)
+            return;
+        m_secondsRemaining = 0;
+        Q_EMIT secondsRemainingChanged();
         return;
     }
-    --m_secondsRemaining;
+    const int seconds = static_cast<int>((remaining + 999) / 1000);
+    if (seconds == m_secondsRemaining)
+        return;
+    m_secondsRemaining = seconds;
     Q_EMIT secondsRemainingChanged();
-    if (m_secondsRemaining <= 0)
-        m_tick.stop();
 }
 
 }

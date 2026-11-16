@@ -5,6 +5,11 @@
 namespace tibia {
 namespace qmlcomponents {
 
+/// The number grouped, then its " k"/"k", " kk"/"kk" and " kkk"/"kkk" forms
+/// from 1,000 / 1,000,000 / 1,000,000,000 on, joined with U+009C; a "+" before
+/// positive numbers when `withPlus`.
+QString thousandShortcutsMultiString(qlonglong number, bool withPlus = false);
+
 /// QML singleton TextHelper (CIP: TTextHelperQmlService, metacall).
 /// Multi strings join their longest-to-shortest variants with U+009C so QML
 /// Text elides to the first one that fits.

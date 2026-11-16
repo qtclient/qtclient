@@ -4,6 +4,7 @@
 
 #include <cip_gen.h>
 
+#include <QElapsedTimer>
 #include <QTimer>
 
 namespace tibia {
@@ -25,9 +26,13 @@ public:
     Q_INVOKABLE void requestClose() override;
 
 private:
-    void onTick();
+    /// The whole seconds left of the countdown, announced when they change;
+    /// the countdown stops at its end.
+    void onRefreshSecondsRemaining();
 
     QTimer m_tick;
+    QElapsedTimer m_clock;
+    qint64 m_durationMs = 0;
 };
 
 }

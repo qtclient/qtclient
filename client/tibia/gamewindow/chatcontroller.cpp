@@ -977,10 +977,8 @@ void TOpenChatChannelDialogController::onOpenChannelFromList(const int rowIndex)
 
 void TOpenChatChannelDialogController::onOpenPrivateChannelTo(const QString& recipient)
 {
-    const QString name = recipient.trimmed();
     dialog()->close();
-    if (!name.isEmpty())
-        Q_EMIT privateChannelChosen(name);
+    Q_EMIT privateChannelChosen(recipient);
 }
 
 // ---------------------------------------------------------------------------
