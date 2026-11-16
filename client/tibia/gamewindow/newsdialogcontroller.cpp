@@ -1,13 +1,14 @@
 #include "newsdialogcontroller.h"
 
 #include "chat/chatchannel.h"
+#include "gamewindow/mousecursorcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "news/newsrequestuploader.h"
 #include "news/newsstorage.h"
 
 #include <QDebug>
-#include <QDesktopServices>
+#include <QFile>
 #include <QHash>
 #include <QUrl>
 
@@ -23,24 +24,15 @@ namespace {
 using EDialogTab = cip::tibia::gamewindow::TNewsDialogController::EDialogTab;
 using A = input::EGameAction;
 
-EDialogTab tabForCategory(const QString& category)
+/// CIP: the stylesheet every entry's text starts with.
+const QString& contentStyle()
 {
-    const QString c = category.trimmed().toUpper();
-    if (c.contains(QLatin1String("CLIENT")))
-        return EDialogTab::ClientFeatures;
-    if (c.contains(QLatin1String("SUPPORT")))
-        return EDialogTab::Support;
-    if (c.contains(QLatin1String("MAJOR")))
-        return EDialogTab::MajorUpdates;
-    // CIP PlayerGuide tab hosts GAME CONTENTS and PLAYER GUIDE articles.
-    if (c.contains(QLatin1String("GAME")) || c.contains(QLatin1String("PLAYER")) || c.contains(QLatin1String("GUIDE")))
-        return EDialogTab::PlayerGuide;
-    return EDialogTab::UsefulInfo;
-}
-
-uint categoryIdOf(const news::NewsItem& item)
-{
-    return item.id > 0 ? uint(item.id) : 0u;
+    static const QString style = [] {
+        QFile file(QStringLiteral(":/css/news.css"));
+        file.open(QIODevice::ReadOnly);
+        return QStringLiteral("<style type=\"text/css\">\n") + QString::fromUtf8(file.readAll()) + QStringLiteral("\n</style>\n");
+    }();
+    return style;
 }
 
 }
@@ -51,11 +43,9 @@ TNewsDialogController::TNewsDialogController(news::TNewsStorage* storage, QObjec
     , m_model(this)
 {
     m_entryModel = &m_model;
-    m_dialogTab = EDialogTab::UsefulInfo;
-    if (m_storage) {
-        connect(m_storage, &news::TNewsStorage::contentsChanged, this, [this] { rebuildFromStorage(); });
-        rebuildFromStorage();
-    }
+    if (m_storage)
+        connect(m_storage, &news::TNewsStorage::contentsChanged, this, &TNewsDialogController::onNewsStorageContentsChanged);
+    onNewsStorageContentsChanged();
 }
 
 void TNewsDialogController::setNewsUploader(news::TNewsRequestUploader* uploader)
@@ -63,44 +53,156 @@ void TNewsDialogController::setNewsUploader(news::TNewsRequestUploader* uploader
     m_uploader = uploader;
 }
 
-QVector<news::NewsItem> TNewsDialogController::itemsForTab(const EDialogTab tab) const
+EDialogTab TNewsDialogController::dialogTab() const
 {
-    QVector<news::NewsItem> out;
-    if (!m_storage)
-        return out;
-    for (const news::NewsItem& item : m_storage->items()) {
-        if (tabForCategory(item.category) == tab)
-            out.push_back(item);
-    }
-    std::stable_sort(out.begin(), out.end(), [](const news::NewsItem& a, const news::NewsItem& b) {
-        if (a.index != b.index)
-            return a.index < b.index;
-        return a.publishDate > b.publishDate;
-    });
-    return out;
+    return static_cast<uint>(m_category) < 5 ? static_cast<EDialogTab>(m_category + 1) : EDialogTab::NoTabInitialState;
 }
 
-void TNewsDialogController::rebuildFromStorage()
+QString TNewsDialogController::headline() const
 {
-    if (!m_storage)
+    const std::optional<news::NewsItem> entry = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
+    return entry ? entry->headline : qtTrId("dummy_unknown");
+}
+
+QString TNewsDialogController::contentText() const
+{
+    const std::optional<news::NewsItem> entry = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
+    return entry ? contentStyle() + entry->message : qtTrId("dummy_unknown");
+}
+
+void TNewsDialogController::handleGameAction(const input::TGameAction& action)
+{
+    switch (action.type) {
+        case A::REFRESH_COMPENDIUM_NEWS:
+            if (m_uploader)
+                m_uploader->requestUpdate();
+            return;
+        case A::OPEN_NEWS_CATEGORY:
+            showDialog();
+            if (m_storage && m_category != action.parameter) {
+                m_category = action.parameter;
+                m_userChoseCategory = true;
+                Q_EMIT selectedCategoryChanged();
+                refresh();
+            }
+            return;
+        case A::OPEN_NEWS_DIALOG:
+            if (action.parameter != 0)
+                selectEntryForOpening(static_cast<uint>(action.parameter));
+            showDialog();
+            return;
+        default:
+            return;
+    }
+}
+
+bool TNewsDialogController::selectEntryForOpening(const uint entryId)
+{
+    const std::optional<news::NewsItem> entry = m_storage ? m_storage->entry(entryId) : std::nullopt;
+    if (!entry)
+        return false;
+    m_category = entry->categoryId();
+    m_pendingEntry = static_cast<uint>(entry->id);
+    return true;
+}
+
+void TNewsDialogController::showDialog()
+{
+    m_userChoseCategory = false;
+    if (m_pendingEntry == 0 && m_storage && m_storage->hasEntries()) {
+        const int category = m_storage->categoryOfNewestUnreadOrNewestEntry();
+        if (m_category != category) {
+            m_category = category;
+            Q_EMIT selectedCategoryChanged();
+        }
+    }
+    refresh();
+    if (dialog()->isShown())
         return;
+    dialog()->create();
+    dialog()->show();
+    if (TMouseCursorController* cursor = TMouseCursorController::instance())
+        cursor->setPointingHand(false);
+}
 
-    const QVector<news::NewsItem> tabItems = itemsForTab(m_dialogTab);
-    m_flatLookup = tabItems;
+void TNewsDialogController::resetCategoryAndSelection()
+{
+    m_category = news::NewsItem::UsefulInfo;
+    m_dialogCategory = 0;
+    m_pendingEntry = 0;
+    setEntries({});
+}
 
+void TNewsDialogController::closeDialog()
+{
+    dialog()->close();
+    resetCategoryAndSelection();
+}
+
+void TNewsDialogController::requestClose()
+{
+    closeDialog();
+}
+
+void TNewsDialogController::onNewsStorageContentsChanged()
+{
+    if (m_pendingEntry == 0 && !m_userChoseCategory && m_storage && m_storage->hasEntries()) {
+        const int category = m_storage->categoryOfNewestUnreadOrNewestEntry();
+        if (m_category != category) {
+            m_category = category;
+            Q_EMIT selectedCategoryChanged();
+        }
+    }
+    refresh();
+}
+
+void TNewsDialogController::selectCategoryWithNewestEntryOrNewestUnreadEntryIfDataAvailableAndCategoryChanged()
+{
+    if (!m_storage || !m_storage->hasEntries())
+        return;
+    const int category = m_storage->categoryOfNewestUnreadOrNewestEntry();
+    if (m_category != category) {
+        m_category = category;
+        Q_EMIT selectedCategoryChanged();
+    }
+}
+
+void TNewsDialogController::setCategory(const int category)
+{
+    if (!m_storage || m_category == category)
+        return;
+    m_category = category;
+    m_userChoseCategory = true;
+    Q_EMIT selectedCategoryChanged();
+    refresh();
+}
+
+void TNewsDialogController::requestTabSwitch(const EDialogTab NewTab)
+{
+    const uint category = static_cast<uint>(NewTab) - 1u;
+    setCategory(category < 5 ? static_cast<int>(category) : news::NewsItem::UsefulInfo);
+}
+
+void TNewsDialogController::refresh()
+{
+    setEntries(m_storage ? m_storage->entriesOfCategory(m_category) : QVector<news::NewsItem>{});
+}
+
+void TNewsDialogController::setEntries(const QVector<news::NewsItem>& entries)
+{
+    // Group headers are rows of their own; an entry of a header in the list
+    // becomes its sub row.
     QVector<news::NewsItem> roots;
     QVector<QVector<news::NewsItem>> children;
     QHash<int, int> headerRow;
-
-    for (const news::NewsItem& item : tabItems) {
+    for (const news::NewsItem& item : entries) {
         if (item.isGroupHeader()) {
-            headerRow.insert(item.id, roots.size());
+            headerRow.insert(item.id, static_cast<int>(roots.size()));
             roots.push_back(item);
             children.push_back({});
         }
     }
-
-    for (const news::NewsItem& item : tabItems) {
+    for (const news::NewsItem& item : entries) {
         if (item.isGroupHeader())
             continue;
         if (item.groupHeaderId > 0 && headerRow.contains(item.groupHeaderId)) {
@@ -110,127 +212,61 @@ void TNewsDialogController::rebuildFromStorage()
         roots.push_back(item);
         children.push_back({});
     }
+    m_model.setRoots(roots, children);
 
-    // No GROUP HEADER rows: each article is a root (flat CIP list still works).
-    if (roots.isEmpty() && !tabItems.isEmpty()) {
-        for (const news::NewsItem& item : tabItems) {
-            if (!item.isGroupHeader()) {
-                roots.push_back(item);
-                children.push_back({});
-            }
+    uint selected = 0;
+    if (const std::optional<news::NewsItem> current = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
+        current && current->categoryId() == m_category)
+        selected = m_dialogCategory;
+    if (!entries.isEmpty()) {
+        if (m_pendingEntry != 0
+            && std::any_of(entries.begin(), entries.end(), [this](const news::NewsItem& item) { return uint(item.id) == m_pendingEntry; })) {
+            selected = m_pendingEntry;
+            m_pendingEntry = 0;
         }
+        if (selected == 0 && m_model.rowCount() > 0)
+            selected = m_model.data(m_model.index(0), TNewsEntryModel::CategoryIdRole).toUInt();
     }
-
-    m_model.setRoots(std::move(roots), std::move(children));
-
-    if (!m_flatLookup.isEmpty()) {
-        const news::NewsItem* first = nullptr;
-        for (const news::NewsItem& item : m_flatLookup) {
-            if (!item.isGroupHeader()) {
-                first = &item;
-                break;
-            }
-        }
-        if (!first)
-            first = &m_flatLookup.constFirst();
-        selectItem(categoryIdOf(*first));
-        Q_EMIT selectedCategoryChanged();
-    } else {
-        m_headline.clear();
-        m_contentText = tr("No news is available right now.");
-        m_dialogCategory = 0;
-        Q_EMIT selectedEntryChanged();
-    }
-}
-
-void TNewsDialogController::selectItem(const uint categoryId)
-{
-    m_dialogCategory = categoryId;
-    const news::NewsItem* item = m_model.itemByCategoryId(categoryId);
-    if (!item) {
-        for (const news::NewsItem& candidate : m_flatLookup) {
-            if (categoryIdOf(candidate) == categoryId) {
-                item = &candidate;
-                break;
-            }
-        }
-    }
-    if (item) {
-        m_headline = item->headline;
-        m_contentText = item->message.isEmpty() ? item->headline : item->message;
-        m_dialogTab = tabForCategory(item->category);
-    }
-    Q_EMIT selectedEntryChanged();
-}
-
-EDialogTab TNewsDialogController::preferredTab() const
-{
-    if (!m_storage)
-        return EDialogTab::UsefulInfo;
-
-    const news::NewsItem* newestUnread = nullptr;
-    const news::NewsItem* newest = nullptr;
-    for (const news::NewsItem& item : m_storage->items()) {
-        if (item.isGroupHeader())
-            continue;
-        if (!newest || item.publishDate > newest->publishDate)
-            newest = &item;
-        if (!item.isRead && (!newestUnread || item.publishDate > newestUnread->publishDate))
-            newestUnread = &item;
-    }
-    if (newestUnread)
-        return tabForCategory(newestUnread->category);
-    if (newest)
-        return tabForCategory(newest->category);
-    return EDialogTab::UsefulInfo;
-}
-
-void TNewsDialogController::showDialog()
-{
-    showDialog(EDialogTab::NoTabInitialState);
-}
-
-void TNewsDialogController::showDialog(const EDialogTab tab)
-{
-    m_dialogTab = tab == EDialogTab::NoTabInitialState ? preferredTab() : tab;
-    Q_EMIT selectedCategoryChanged();
-    rebuildFromStorage();
-    dialog()->show();
-}
-
-void TNewsDialogController::closeDialog()
-{
-    requestClose();
-}
-
-void TNewsDialogController::requestClose()
-{
-    dialog()->close();
-}
-
-void TNewsDialogController::requestTabSwitch(const EDialogTab NewTab)
-{
-    if (m_dialogTab == NewTab)
-        return;
-    m_dialogTab = NewTab;
-    Q_EMIT selectedCategoryChanged();
-    rebuildFromStorage();
+    setDialogCategory(selected);
 }
 
 void TNewsDialogController::setDialogCategory(const uint ID)
 {
-    selectItem(ID);
+    if (m_dialogCategory == ID)
+        return;
+    const std::optional<news::NewsItem> entry = m_storage ? m_storage->entry(ID) : std::nullopt;
+    if (!entry)
+        return;
+    // A group header without text shows its first entry.
+    if (entry->typeId() == -1 && entry->message.isEmpty()) {
+        uint first = 0;
+        for (int row = 0; row < m_model.rowCount(); ++row) {
+            const QModelIndex index = m_model.index(row);
+            if (m_model.data(index, TNewsEntryModel::CategoryIdRole).toUInt() != ID)
+                continue;
+            if (auto* sub = qobject_cast<QAbstractItemModel*>(m_model.data(index, TNewsEntryModel::SubEntryModelRole).value<QObject*>());
+                sub && sub->rowCount() > 0)
+                first = sub->data(sub->index(0, 0), TNewsEntrySortProxyModel::CategoryIdRole).toUInt();
+            break;
+        }
+        setDialogCategory(first);
+        return;
+    }
+    m_userChoseCategory = true;
+    m_dialogCategory = ID;
+    Q_EMIT selectedEntryChanged();
+    m_storage->setEntryRead(static_cast<uint>(entry->id), true);
 }
 
 void TNewsDialogController::linkClicked(const QString& Url)
 {
-    const QUrl url(Url);
-    if (url.isValid())
-        QDesktopServices::openUrl(url);
+    input::publish(std::make_shared<input::TGameActionOpenUrl>(Url));
 }
 
-void TNewsDialogController::linkHoverChanged(bool)
+void TNewsDialogController::linkHoverChanged(const bool IsOverLink)
 {
+    if (TMouseCursorController* cursor = TMouseCursorController::instance())
+        cursor->setPointingHand(IsOverLink);
 }
 
 void TNewsDialogController::onNewsQueryFailed(const QString& ErrorMessage)
@@ -247,16 +283,6 @@ void TNewsDialogController::requestUpdateNewsFromWebsite()
     auto refresh = input::mutableClone(*input::makeAction(A::REFRESH_COMPENDIUM_NEWS));
     refresh->parameter = 1;
     input::publish(refresh);
-}
-
-void TNewsDialogController::selectCategoryWithNewestEntryOrNewestUnreadEntryIfDataAvailableAndCategoryChanged()
-{
-    const EDialogTab tab = preferredTab();
-    if (m_dialogTab == tab)
-        return;
-    m_dialogTab = tab;
-    Q_EMIT selectedCategoryChanged();
-    rebuildFromStorage();
 }
 
 TNewsButtonController* TNewsButtonController::s_instance = nullptr;

@@ -130,34 +130,13 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
     connect(m_newsUploader.get(), &news::TNewsRequestUploader::newsQueryFailed, m_newsDialog.get(),
             &TNewsDialogController::onNewsQueryFailed);
 
-    using ENewsTab = cip::tibia::gamewindow::TNewsDialogController::EDialogTab;
-    input::setActionHandler(A::OPEN_NEWS_DIALOG, [this](const input::TGameAction&) {
-        if (m_newsDialog)
-            m_newsDialog->showDialog();
-        return true;
-    });
-    input::setActionHandler(A::OPEN_NEWS_CATEGORY, [this](const input::TGameAction& action) {
-        if (!m_newsDialog)
+    for (const A type : { A::OPEN_NEWS_DIALOG, A::OPEN_NEWS_CATEGORY, A::REFRESH_COMPENDIUM_NEWS }) {
+        input::setActionHandler(type, [this](const input::TGameAction& action) {
+            if (m_newsDialog)
+                m_newsDialog->handleGameAction(action);
             return true;
-        switch (action.parameter) {
-        case int(ENewsTab::ClientFeatures):
-        case int(ENewsTab::UsefulInfo):
-        case int(ENewsTab::PlayerGuide):
-        case int(ENewsTab::MajorUpdates):
-        case int(ENewsTab::Support):
-            m_newsDialog->showDialog(static_cast<ENewsTab>(action.parameter));
-            break;
-        default:
-            m_newsDialog->showDialog();
-            break;
-        }
-        return true;
-    });
-    input::setActionHandler(A::REFRESH_COMPENDIUM_NEWS, [this](const input::TGameAction&) {
-        if (m_newsUploader)
-            m_newsUploader->requestUpdate();
-        return true;
-    });
+        });
+    }
 }
 
 TGameWindowController::~TGameWindowController()

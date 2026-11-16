@@ -7,6 +7,8 @@
 #include <QString>
 #include <QVector>
 
+#include <optional>
+
 namespace tibia {
 namespace news {
 
@@ -72,6 +74,20 @@ public:
 
     /// The storage of the running client, null before one exists.
     static TNewsStorage* current();
+
+    /// CIP: whether the storage holds any entry.
+    bool hasEntries() const { return !m_items.isEmpty(); }
+    /// CIP: the entry with `id`, if there is one.
+    std::optional<NewsItem> entry(uint id) const;
+    /// CIP: the entries of `category`, by id.
+    QVector<NewsItem> entriesOfCategory(int category) const;
+    /// CIP: among the unlocked entries, the category of the newest unread
+    /// entry, else of the newest entry; useful info when there is none.
+    int categoryOfNewestUnreadOrNewestEntry() const;
+    /// CIP: whether an unlocked entry is unread.
+    bool hasUnreadUnlockedEntry() const;
+    /// CIP: marks the entry read or unread (group headers keep their state).
+    void setEntryRead(uint id, bool read);
 
     /// Prefer CIP `gamenews`; also accepts legacy flat `newsitems`.
     void setFromNewsDocument(const QJsonObject& reply);
