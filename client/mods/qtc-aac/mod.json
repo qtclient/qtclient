@@ -1,0 +1,15 @@
+{
+  "id": "qtc-aac",
+  "name": "qtc-aac login",
+  "version": "1.0.0",
+  "autoload": true,
+  "priority": 50,
+  "QTCLIENT_MOD_API": 1,
+  "description": "Default tip pack — qtc-aac (https://github.com/qtclient/qtc-aac) at http://127.0.0.1:5173. Pages keep their CipSoft paths on loginBase. Product tips replace urls via pack (lower priority).",
+  "urls": {
+    "loginBase": "http://127.0.0.1:5173",
+    "loginPath": "/clientservices/loginservice.php",
+    "clientServicesPath": "/clientservices/clientservices.php",
+    "createAccountPath": "/clientservices/accountcreationclientservices.php"
+  }
+}

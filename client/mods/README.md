@@ -12,11 +12,11 @@ Stock CipSoft is **not** under `mods/` (`upstream/` + `client/tibia/`).
 
 | Pack | Role |
 |------|------|
-| `myaac/` | myAAC login urls (`/login.php`); staged by `make demo-pack` |
+| `qtc-aac/` | [qtc-aac](https://github.com/qtclient/qtc-aac) login urls (`/clientservices/*.php`); staged by `make demo-pack` |
 
 Product packs live out-of-tree (`QTCLIENT_PACK` in the umbrella `.env`).
 `make qtclient client install` STATIC-links via `QTCLIENT_LINKED_PACK` and stages
-tip `mods/<id>`; product urls replace `myaac`.
+tip `mods/<id>`; product urls replace `qtc-aac`.
 DEV builds load pack `qml/` + `overrides/` from the pack source tree
 (F5 / file watch) — see [`docs/mods.md`](../../docs/mods.md).
 

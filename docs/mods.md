@@ -35,7 +35,7 @@ host API table (SDK headers under `include/qtclient/abi/` define the surface).
 | qtclient build | Result |
 |------------|--------|
 | Stock (`--no-mods`) | CIP tip; no packs |
-| Default tip mods | `myaac` FS urls |
+| Default tip mods | `qtc-aac` FS urls |
 | Product (`-DQTCLIENT_LINKED_PACK=`) | stages pack; IdleOT still `ABSORB_INTO_QTCLIENT` until abi peel |
 
 Local product path: `make qtclient client|wasm install`.
@@ -84,7 +84,7 @@ Optional `urls` on `mod.json` merge into `LauncherEnv`.
 
 | Pack | Role |
 |------|------|
-| [`mods/myaac`](../client/mods/myaac/mod.json) | Default tip myAAC |
+| [`mods/qtc-aac`](../client/mods/qtc-aac/mod.json) | Default tip [qtc-aac](https://github.com/qtclient/qtc-aac) |
 | Product `mods/<id>/` | Author pack |
 
 ### WASM

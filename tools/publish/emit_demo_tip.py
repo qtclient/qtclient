@@ -6,9 +6,9 @@ Writes under --out:
   <os>-package.json
   <os>-package.json.version
   <os>-package/          CIP package tree (localfile.lzma + optional unpacked)
-  mods/myaac             default client pack (staged into the client tree)
+  mods/qtc-aac           default client pack (staged into the client tree)
   mods/clientmods+minimap default launcher channel gates
-  release_env.lua        revision only (login URLs from mods/myaac)
+  release_env.lua        revision only (login URLs from mods/qtc-aac)
 
 Usage:
   emit_demo_tip.py --platform macos-arm64 --tree build/engine/QtClient.app \\
@@ -129,7 +129,7 @@ def stage_default_mods(tree: Path, platform: str) -> None:
     mods_root.mkdir(parents=True, exist_ok=True)
 
     for pack_id, src in (
-        ("myaac", OTC / "client" / "mods" / "myaac"),
+        ("qtc-aac", OTC / "client" / "mods" / "qtc-aac"),
     ):
         if not (src / "mod.json").is_file():
             print(f"[demo] warning: missing {src}/mod.json")
@@ -156,7 +156,7 @@ def stage_default_mods(tree: Path, platform: str) -> None:
 
 
 def write_revision_release_env(tree: Path, revision: str) -> None:
-    """Drop release_env.lua with revision only (login URLs live in mods/myaac)."""
+    """Drop release_env.lua with revision only (login URLs live in mods/qtc-aac)."""
     body = (
         "return {\n"
         f'    TIBIA_REVISION = {json.dumps(revision)},\n'

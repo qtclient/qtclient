@@ -461,6 +461,8 @@ int main(int argc, char** argv)
         parser.showHelp();
 
     const auto env = app::LauncherEnv::load(QDir::currentPath());
+    // CIP links (dialogs, translations, Wheel planner) → this deployment's origins.
+    app::PortalUrls::installCipUrlHandler(env);
     if (!parser.isSet(QStringLiteral("preview")) && !parser.isSet(QStringLiteral("replay"))
         && !parser.isSet(QStringLiteral("check-qml")) && !parser.isSet(QStringLiteral("check-hotkeys"))
         && !parser.isSet(QStringLiteral("account"))

@@ -18,9 +18,9 @@ No pack / `--no-mods` → real CipSoft. Login URLs otherwise from the single tip
 
 ## Use a release binary
 
-1. Run [myAAC](https://github.com/slawkens/myaac) + your game server (Crystal, etc.).
+1. Run [qtc-aac](https://github.com/qtclient/qtc-aac) + your game server (Crystal, etc.).
 2. Download the qtclient demo Release for your OS.
-3. Start `./launcher` (sidecar `tibiametadata.json` or set `QTCLIENT_URL`). **Update** pulls CipSoft assets; **Play** uses myAAC login.
+3. Start `./launcher` (sidecar `tibiametadata.json` or set `QTCLIENT_URL`). **Update** pulls CipSoft assets; **Play** uses qtc-aac login.
 
 ```bash
 # optional explicit tip
