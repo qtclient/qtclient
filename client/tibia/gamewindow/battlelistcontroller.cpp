@@ -1,5 +1,6 @@
 #include "battlelistcontroller.h"
 
+#include "chat/chatchannel.h"
 #include "config/sidebaroptions.h"
 #include "creatures/creaturestorage.h"
 #include "creatures/creaturesciptypes.h"
@@ -18,8 +19,6 @@
 #include "protocol/protocolcodes.h"
 
 #include <QGuiApplication>
-#include <QJsonArray>
-#include <QJsonObject>
 #include <QQuickItem>
 
 #include <algorithm>
@@ -35,7 +34,6 @@ using A = input::EGameAction;
 using Filter = BattleListOptions::Filter;
 using Cursor = TMouseCursorController;
 
-constexpr auto OptionsKey = "battleListsOptions";
 constexpr int UpdateIntervalMs = 100;
 /// CIP : the mapper context of a battle list and the party list.
 constexpr int BattleListContext = 1;
@@ -54,16 +52,9 @@ constexpr A ContextMenuOrder[] = {
     A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD,
 };
 
-/// sidebars.json's filter names, in EBattleListWidgetFilterKey order.
-constexpr const char* FilterNames[] = {
-    "hidePlayers",           "hideKnights",       "hidePaladins",           "hideDruids",
-    "hideSorcerers",         "hideMonks",         "hideNPCs",               "hideMonsters",
-    "hideNonSkulledPlayers", "hidePartyMembers",  "hidePlayerSummons",      "hideMembersOfOwnGuild",
-};
-constexpr const char* SortNames[] = {
-    "byAgeAscending",       "byAgeDescending",       "byDistanceAscending", "byDistanceDescending",
-    "byHitpointsAscending", "byHitpointsDescending", "byNameAscending",     "byNameDescending",
-};
+/// EBattleListWidgetFilterKey's keys and the sort keys.
+constexpr int FilterCount = 12;
+constexpr int SortCount = 8;
 /// The configuration menu's sort entries, in Sort order.
 constexpr const char* SortMenuEntries[] = {
     "battlelist_configure_menuentry_sortby_age_ascending",       "battlelist_configure_menuentry_sortby_age_descending",
@@ -92,48 +83,6 @@ QColor outfitColor(const int index) { return colorOf(Outfit::getColor(index)); }
 QString stripIcon(const char* provider, const uint8_t value)
 {
     return value ? QStringLiteral("image://creaturestateflags-%1/%2").arg(QLatin1String(provider)).arg(value - 1) : QString();
-}
-
-BattleListOptions parseOptions(const QJsonObject& json)
-{
-    BattleListOptions o;
-    for (const QJsonValue& value : json.value(QLatin1String("battleListFilters")).toArray()) {
-        for (int i = 0; i < static_cast<int>(std::size(FilterNames)); ++i) {
-            if (value.toString() == QLatin1String(FilterNames[i]))
-                o.filters.insert(static_cast<Filter>(i));
-        }
-    }
-    const QJsonArray sort = json.value(QLatin1String("battleListSortOrder")).toArray();
-    for (int level = 0; level < 2 && level < sort.size(); ++level) {
-        for (int i = 0; i < static_cast<int>(std::size(SortNames)); ++i) {
-            if (sort.at(level).toString() == QLatin1String(SortNames[i]))
-                o.sortOrder[level] = static_cast<BattleListOptions::Sort>(i);
-        }
-    }
-    o.contentHeight = json.value(QLatin1String("contentHeight")).toInt(o.contentHeight);
-    o.contentMaximized = json.value(QLatin1String("contentMaximized")).toBool(o.contentMaximized);
-    o.isPartyView = json.value(QLatin1String("isPartyView")).toBool();
-    o.isPrimary = json.value(QLatin1String("isPrimary")).toBool();
-    o.name = json.value(QLatin1String("name")).toString();
-    o.showFilters = json.value(QLatin1String("showFilters")).toBool();
-    return o;
-}
-
-QJsonObject serializeOptions(const BattleListOptions& o)
-{
-    QJsonArray filters;
-    for (const Filter filter : o.filters)
-        filters.append(QLatin1String(FilterNames[static_cast<int>(filter)]));
-    return {
-        { QStringLiteral("battleListFilters"), filters },
-        { QStringLiteral("battleListSortOrder"), QJsonArray{ QLatin1String(SortNames[o.sortOrder[0]]), QLatin1String(SortNames[o.sortOrder[1]]) } },
-        { QStringLiteral("contentHeight"), o.contentHeight },
-        { QStringLiteral("contentMaximized"), o.contentMaximized },
-        { QStringLiteral("isPartyView"), o.isPartyView },
-        { QStringLiteral("isPrimary"), o.isPrimary },
-        { QStringLiteral("name"), o.name },
-        { QStringLiteral("showFilters"), o.showFilters },
-    };
 }
 
 /// A battle list entry's actions: the creature's, then CONTEXT_MENU.
@@ -470,12 +419,11 @@ QHash<int, QByteArray> TBattleListDataModel::roleNames() const
 
 // ---------------------------------------------------------------------------
 
-TBattleListController::TBattleListController(const int battleListId, TBattleListControllerStorage* storage, QQuickItem* gameWindowItem,
-                                             QQmlEngine* engine, QObject* parent)
+TBattleListController::TBattleListController(const int battleListId, TBattleListControllerStorage* storage, TBattleListDataModel* model,
+                                             QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent)
     : TSidebarWidgetController(gameWindowItem, engine, parent)
     , m_id(battleListId)
     , m_storage(storage)
-    , m_model(this)
     , m_proxy(new TBattleListDataModelSortFilterProxy(this))
     , m_renameDialog(new TGenericEnterTextDialogController(this))
 {
@@ -484,7 +432,7 @@ TBattleListController::TBattleListController(const int battleListId, TBattleList
     m_renameDialog->setDescription(qtTrId("battlelist_rename_text"));
     m_renameDialog->setMaxInputLength(30);
     connect(m_renameDialog, &TGenericEnterTextDialogController::textEntered, this, &TBattleListController::onNewNameEntered);
-    m_proxy->setSourceModel(&m_model);
+    m_proxy->setSourceModel(model);
     m_battleListModel = QVariant::fromValue<QObject*>(m_proxy);
     m_options = storage->options(battleListId);
     m_proxy->setOptions(m_options);
@@ -498,16 +446,9 @@ TBattleListController::TBattleListController(const int battleListId, TBattleList
     connect(item, SIGNAL(currentlyHoveredCreatureChanged(int)), this, SLOT(onCurrentlyHoveredCreatureChanged(int)));
     connect(item, SIGNAL(creatureClicked(int, int, int)), this, SLOT(onCreatureClicked(int, int, int)));
     connect(item, SIGNAL(creatureTargetSelected(int)), this, SLOT(onCreatureTargetSelected(int)));
-    for (const A type : { A::USE_AT_MOUSECURSOR, A::SPELL_AT_MOUSE_CURSOR })
-        m_actionListeners.push_back(input::addActionListener(type, [this](const input::TGameAction& action) { return onAtMouseCursor(action); }));
 }
 
-TBattleListController::~TBattleListController()
-{
-    QObject::disconnect(m_contextMenuClosed);
-    for (const int id : m_actionListeners)
-        input::removeActionListener(id);
-}
+TBattleListController::~TBattleListController() { QObject::disconnect(m_contextMenuClosed); }
 
 void TBattleListController::handleGameAction()
 {
@@ -516,12 +457,12 @@ void TBattleListController::handleGameAction()
 
 void TBattleListController::handleGameActionAtMouseCursor()
 {
-    // USE_AT_MOUSECURSOR reaches onAtMouseCursor through its action listener.
+    // The storage forwards USE_AT_MOUSECURSOR to onAtMouseCursor.
 }
 
 void TBattleListController::handleGameActionCastSpellAtMouseCursor()
 {
-    // SPELL_AT_MOUSE_CURSOR reaches onAtMouseCursor through its action listener.
+    // The storage forwards SPELL_AT_MOUSE_CURSOR to onAtMouseCursor.
 }
 
 bool TBattleListController::onAtMouseCursor(const input::TGameAction& action)
@@ -618,7 +559,17 @@ void TBattleListController::onFilterButtonsVisibleClicked()
 
 void TBattleListController::saveWidgetOptions() { storeOptions(m_options); }
 
-void TBattleListController::onRequestClose() { Q_EMIT battleListClosed(m_id); }
+void TBattleListController::onRequestClose()
+{
+    // The list's options leave its id; the primary and the party list keep
+    // theirs under the ids the sidebar options reserve for them.
+    m_storage->removeOptions(m_id);
+    if (m_options.isPrimary)
+        m_storage->setOptions(config::TSidebarOptions::PrimaryBattleListId, m_options);
+    else if (m_options.isPartyView)
+        m_storage->setOptions(config::TSidebarOptions::PartyBattleListId, m_options);
+    Q_EMIT battleListClosed(m_id);
+}
 
 void TBattleListController::requestOpenSecondaryBattleList()
 {
@@ -772,6 +723,42 @@ void TBattleListController::onCreatureTargetSelected(const int creatureId)
 
 namespace {
 TBattleListControllerStorage* g_battleListStorage = nullptr;
+
+/// The controller struct from the sidebar options' typed record.
+BattleListOptions fromSidebarOptions(const config::TBattleListOptions& o)
+{
+    BattleListOptions options;
+    for (const int filter : o.filters) {
+        if (filter >= 0 && filter < FilterCount)
+            options.filters.insert(static_cast<Filter>(filter));
+    }
+    for (size_t level = 0; level < options.sortOrder.size() && level < o.sortOrder.size(); ++level) {
+        if (o.sortOrder[level] >= 0 && o.sortOrder[level] < SortCount)
+            options.sortOrder[level] = static_cast<BattleListOptions::Sort>(o.sortOrder[level]);
+    }
+    options.contentHeight = o.contentHeight;
+    options.contentMaximized = o.contentMaximized;
+    options.isPartyView = o.isPartyView;
+    options.isPrimary = o.isPrimary;
+    options.name = o.name;
+    options.showFilters = o.showFilters;
+    return options;
+}
+
+config::TBattleListOptions toSidebarOptions(const BattleListOptions& o)
+{
+    config::TBattleListOptions options;
+    for (const Filter filter : o.filters)
+        options.filters.push_back(static_cast<int>(filter));
+    options.sortOrder = { static_cast<int>(o.sortOrder[0]), static_cast<int>(o.sortOrder[1]) };
+    options.contentHeight = o.contentHeight;
+    options.contentMaximized = o.contentMaximized;
+    options.isPartyView = o.isPartyView;
+    options.isPrimary = o.isPrimary;
+    options.name = o.name;
+    options.showFilters = o.showFilters;
+    return options;
+}
 }
 
 TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine,
@@ -780,22 +767,24 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     , m_sidebars(sidebars)
     , m_gameWindowItem(gameWindowItem)
     , m_engine(engine)
+    , m_dataModel(this)
 {
     g_battleListStorage = this;
     m_updateTimer.setInterval(UpdateIntervalMs);
-    connect(&m_updateTimer, &QTimer::timeout, this, &TBattleListControllerStorage::refresh);
+    connect(&m_updateTimer, &QTimer::timeout, this, &TBattleListControllerStorage::onUpdateTimer);
 
-    input::setActionHandler(A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, [this](const input::TGameAction& action) {
-        if (action.instance >= 0 && action.instance < MaxBattleLists && m_options.contains(action.instance))
-            open(action.instance, action.sidebarId);
-        else
-            openSecondary(action.sidebarId);
-        return true;
-    });
-    input::setActionHandler(A::MAKE_BATTLE_LIST_PRIMARY, [this](const input::TGameAction& action) {
-        makePrimary(action.instance);
-        return true;
-    });
+    for (const A type : { A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, A::MAKE_BATTLE_LIST_PRIMARY }) {
+        input::setActionHandler(type, [this](const input::TGameAction& action) {
+            handleGameAction(action);
+            return true;
+        });
+    }
+    // CIP forwards the at-mouse-cursor actions to every list; the hovered one
+    // takes it.
+    for (const A type : { A::USE_AT_MOUSECURSOR, A::SPELL_AT_MOUSE_CURSOR }) {
+        m_actionListeners.push_back(
+            input::addActionListener(type, [this](const input::TGameAction& action) { return handleGameAction(action); }));
+    }
     // The creature storage's selected creature gets its frame; with
     // mouseHighlightTarget on it is also the world map's mouse target,
     // otherwise the mouse target is cleared.
@@ -843,6 +832,8 @@ TBattleListControllerStorage::~TBattleListControllerStorage()
     for (const A type : { A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, A::MAKE_BATTLE_LIST_PRIMARY, A::TEMPORARY_SELECT_CREATURE,
                           A::ATTACK_FIRST_TARGET, A::ATTACK_NEXT_TARGET, A::ATTACK_PREVIOUS_TARGET })
         input::setActionHandler(type, nullptr);
+    for (const int id : m_actionListeners)
+        input::removeActionListener(id);
     for (auto& [id, controller] : m_controllers)
         delete controller;
 }
@@ -854,8 +845,19 @@ TBattleListControllerStorage* TBattleListControllerStorage::instance()
 
 void TBattleListControllerStorage::setSidebarOptions(config::TSidebarOptions* options)
 {
+    if (m_sidebarOptions)
+        disconnect(m_sidebarOptions, nullptr, this, nullptr);
     m_sidebarOptions = options;
-    readOptions();
+    if (!options) {
+        m_loginRampUpFinished = false;
+        return;
+    }
+    // A list follows its options (CIP: each list listens to its id).
+    connect(options, &config::TSidebarOptions::battleListWidgetOptionsChanged, this, [this](const int battleListId) {
+        if (const auto it = m_controllers.find(static_cast<uint8_t>(battleListId));
+            battleListId >= 0 && battleListId < MaxBattleLists && it != m_controllers.end())
+            it->second->applyOptions(this->options(battleListId));
+    });
     for (const auto& [id, controller] : m_controllers)
         controller->applyOptions(this->options(id));
 }
@@ -867,70 +869,26 @@ void TBattleListControllerStorage::setControlScheme(const int controlScheme)
         controller->setControlScheme(controlScheme);
 }
 
-void TBattleListControllerStorage::readOptions()
+BattleListOptions TBattleListControllerStorage::options(const int battleListId) const
 {
-    m_options.clear();
     if (m_sidebarOptions) {
-        const QJsonObject json = m_sidebarOptions->section(QLatin1String(OptionsKey)).toObject();
-        for (auto it = json.begin(); it != json.end(); ++it) {
-            bool ok = false;
-            const int id = it.key().toInt(&ok);
-            if (ok)
-                m_options[id] = parseOptions(it.value().toObject());
-        }
+        const config::TBattleListsOptions& lists = m_sidebarOptions->battleListsOptions();
+        if (const auto it = lists.find(battleListId); it != lists.end())
+            return fromSidebarOptions(it->second);
     }
-    // CIP's defaults: the primary list 0 and the party list.
-    if (std::none_of(m_options.begin(), m_options.end(), [](const auto& entry) { return entry.second.isPrimary; })) {
-        BattleListOptions primary = m_options[0];
-        primary.isPrimary = true;
-        primary.isPartyView = false;
-        m_options[0] = primary;
-    }
-    if (!m_options.contains(PartyListId)) {
-        BattleListOptions party;
-        party.isPartyView = true;
-        m_options[PartyListId] = party;
-    }
-}
-
-void TBattleListControllerStorage::writeOptions()
-{
-    if (!m_sidebarOptions)
-        return;
-    QJsonObject json;
-    for (const auto& [id, options] : m_options)
-        json.insert(QString::number(id), serializeOptions(options));
-    m_sidebarOptions->setSection(QLatin1String(OptionsKey), json);
-}
-
-int TBattleListControllerStorage::primaryId() const
-{
-    for (const auto& [id, options] : m_options) {
-        if (options.isPrimary)
-            return id;
-    }
-    return 0;
-}
-
-const BattleListOptions& TBattleListControllerStorage::options(const int battleListId) const
-{
-    static const BattleListOptions none;
-    const auto it = m_options.find(battleListId);
-    return it != m_options.end() ? it->second : none;
+    return fromSidebarOptions(config::TBattleListOptions{});
 }
 
 void TBattleListControllerStorage::setOptions(const int battleListId, const BattleListOptions& options)
 {
-    m_options[battleListId] = options;
-    if (const auto it = m_controllers.find(battleListId); it != m_controllers.end())
-        it->second->applyOptions(options);
-    writeOptions();
+    if (m_sidebarOptions)
+        m_sidebarOptions->setBattleListOptions(battleListId, toSidebarOptions(options));
 }
 
 void TBattleListControllerStorage::removeOptions(const int battleListId)
 {
-    if (m_options.erase(battleListId))
-        writeOptions();
+    if (m_sidebarOptions)
+        m_sidebarOptions->removeBattleListOptions(battleListId);
 }
 
 bool TBattleListControllerStorage::hasPremium() const
@@ -938,60 +896,180 @@ bool TBattleListControllerStorage::hasPremium() const
     return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
 }
 
-TBattleListController* TBattleListControllerStorage::open(const int battleListId, const uint sidebarId)
+bool TBattleListControllerStorage::findFreeBattleListId(const uint8_t requestedId, uint8_t* battleListId) const
 {
-    if (!m_sidebars)
-        return nullptr;
-    if (!m_options.contains(battleListId)) {
-        BattleListOptions options;
-        options.isPartyView = battleListId == PartyListId;
-        m_options[battleListId] = options;
-        writeOptions();
+    if (requestedId < MaxBattleLists && !m_controllers.contains(requestedId)) {
+        *battleListId = requestedId;
+        return true;
     }
-    TBattleListController* controller = nullptr;
-    if (const auto it = m_controllers.find(battleListId); it != m_controllers.end()) {
-        controller = it->second;
-        m_sidebars->removeWidget(controller->widget());
-    } else {
-        controller = new TBattleListController(battleListId, this, m_gameWindowItem, m_engine);
-        controller->setControlScheme(m_controlScheme);
-        connect(controller, &TBattleListController::battleListClosed, this, [this](const int id) {
-            if (const auto it = m_controllers.find(id); it != m_controllers.end())
-                it->second->removeThisBattleListOptionsIfNotSpecialBattleList();
-            close(id);
-        });
-        connect(controller, &TBattleListController::widgetClosed, this, [this, battleListId] {
-            if (m_controllers.contains(battleListId))
-                close(battleListId);
-        });
-        m_controllers[battleListId] = controller;
+    for (uint8_t id = 0; id < MaxBattleLists; ++id) {
+        if (!m_controllers.contains(id)) {
+            *battleListId = id;
+            return true;
+        }
     }
-    if (sidebarId != TSidebarWidget::NoSidebar && m_sidebars->hasSidebar(sidebarId))
-        m_sidebars->addWidget(sidebarId, controller->widget());
-    else
-        m_sidebars->addWidget(controller->widget());
-    controller->widget()->show();
-    emitVisibility(battleListId, true);
-    refresh();
-    if (!m_updateTimer.isActive())
-        m_updateTimer.start();
-    return controller;
+    return false;
 }
 
-void TBattleListControllerStorage::close(const int battleListId)
+bool TBattleListControllerStorage::acquireBattleListId(const uint8_t requestedId, uint8_t* battleListId) const
+{
+    if (m_controllers.size() >= MaxBattleLists)
+        return false;
+    return findFreeBattleListId(requestedId, battleListId);
+}
+
+void TBattleListControllerStorage::publishStatusLine(const QString& text, const QColor& color)
+{
+    auto status = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
+    status->text = text;
+    status->color = color;
+    input::publish(status);
+}
+
+void TBattleListControllerStorage::maximizeIfLoggedIn(TBattleListController* controller) const
+{
+    if (controller && m_loginRampUpFinished)
+        controller->widget()->maximize();
+}
+
+void TBattleListControllerStorage::openBattleList(const uint8_t sidebarId, const uint8_t requestedId, const bool primary, const bool party)
+{
+    uint8_t battleListId = 0;
+    if (!acquireBattleListId(requestedId, &battleListId)) {
+        publishStatusLine(qtTrId(party ? "battlelist_party_can_not_open_more" : "battlelist_can_not_open_more"), chat::systemWhite());
+        return;
+    }
+    if (m_sidebarOptions && (requestedId == config::TSidebarOptions::PrimaryBattleListId || primary))
+        m_sidebarOptions->makePrimaryBattleList(battleListId);
+    if (m_sidebarOptions && party)
+        m_sidebarOptions->makePartyBattleList(battleListId);
+
+    auto* controller = new TBattleListController(battleListId, this, &m_dataModel, m_gameWindowItem, m_engine);
+    controller->setControlScheme(m_controlScheme);
+    connect(controller, &TBattleListController::battleListClosed, this, &TBattleListControllerStorage::onBattleListClosed,
+            Qt::QueuedConnection);
+    maximizeIfLoggedIn(controller);
+    if (!controller->isPrimary() && !controller->isPartyView() && !hasPremium()) {
+        // Secondary lists are a premium feature.
+        controller->widget()->hide();
+        controller->deleteLater();
+        publishStatusLine(qtTrId("battlelist_need_premium"), QColor(0x18, 0x72, 0xc3));
+        return;
+    }
+    if (m_sidebars)
+        m_sidebars->placeWidget(sidebarId, controller->widget());
+    controller->widget()->show();
+    m_controllers[static_cast<uint8_t>(controller->battleListId())] = controller;
+    if (controller->isPrimary()) {
+        m_primary = controller;
+        Q_EMIT widgetVisible(PrimaryWidgetType);
+    }
+    if (controller->isPartyView()) {
+        m_party = controller;
+        Q_EMIT widgetVisible(PartyWidgetType);
+    }
+    triggerUpdate();
+    if (!m_updateTimer.isActive())
+        m_updateTimer.start();
+}
+
+void TBattleListControllerStorage::togglePrimaryBattleList(const uint8_t sidebarId)
+{
+    if (m_primary)
+        m_primary->onRequestClose();
+    else
+        openBattleList(sidebarId, AnyId, true, false);
+}
+
+void TBattleListControllerStorage::togglePartyBattleList(const uint8_t sidebarId)
+{
+    if (m_party)
+        m_party->onRequestClose();
+    else
+        openBattleList(sidebarId, AnyId, false, true);
+}
+
+bool TBattleListControllerStorage::handleGameAction(const input::TGameAction& action)
+{
+    switch (action.type) {
+        case A::USE_AT_MOUSECURSOR:
+        case A::SPELL_AT_MOUSE_CURSOR: {
+            // Every list sees it; the list with a hovered creature takes it.
+            bool handled = false;
+            for (const auto& [id, controller] : m_controllers)
+                handled |= controller->onAtMouseCursor(action);
+            return handled;
+        }
+        case A::TOGGLE_WIDGET: {
+            // Key bindings carry the widget in instance, older publishers in parameter.
+            const int widgetType = action.instance != 0 ? action.instance : action.parameter;
+            if (widgetType == PrimaryWidgetType)
+                togglePrimaryBattleList(static_cast<uint8_t>(action.sidebarId));
+            else if (widgetType == PartyWidgetType)
+                togglePartyBattleList(static_cast<uint8_t>(action.sidebarId));
+            return true;
+        }
+        case A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR:
+            openBattleList(static_cast<uint8_t>(action.sidebarId), static_cast<uint8_t>(action.instance), false, false);
+            return true;
+        case A::MAKE_BATTLE_LIST_PRIMARY:
+            makePrimary(static_cast<uint8_t>(action.instance));
+            return true;
+        default:
+            return false;
+    }
+}
+
+void TBattleListControllerStorage::makePrimary(const uint8_t battleListId)
+{
+    if (!m_sidebarOptions)
+        return;
+    TBattleListController* previous = m_primary;
+    m_primary = nullptr;
+    Q_EMIT widgetHidden(PrimaryWidgetType);
+    config::TBattleListsOptions lists = m_sidebarOptions->battleListsOptions();
+    for (auto& [id, options] : lists) {
+        options.isPrimary = id == battleListId;
+        if (!options.isPrimary)
+            continue;
+        const auto it = m_controllers.find(battleListId);
+        if (it == m_controllers.end())
+            continue;
+        m_primary = it->second;
+        Q_EMIT widgetVisible(PrimaryWidgetType);
+    }
+    if (m_primary) {
+        m_sidebarOptions->setBattleListsOptions(lists);
+    } else if (previous) {
+        // No open list took the role: the previous primary list keeps it.
+        m_primary = previous;
+        Q_EMIT widgetVisible(PrimaryWidgetType);
+    }
+}
+
+void TBattleListControllerStorage::onBattleListClosed(const int battleListId) { removeBattleList(static_cast<uint8_t>(battleListId), false); }
+
+void TBattleListControllerStorage::removeBattleList(const uint8_t battleListId, const bool saveOptions)
 {
     const auto it = m_controllers.find(battleListId);
     if (it == m_controllers.end())
         return;
     TBattleListController* controller = it->second;
-    if (m_options.contains(battleListId))
+    if (controller == m_primary) {
+        m_primary = nullptr;
+        Q_EMIT widgetHidden(PrimaryWidgetType);
+    }
+    if (controller == m_party) {
+        m_party = nullptr;
+        Q_EMIT widgetHidden(PartyWidgetType);
+    }
+    if (saveOptions)
         controller->saveWidgetOptions();
     m_controllers.erase(it);
     if (m_sidebars)
         m_sidebars->removeWidget(controller->widget());
     controller->widget()->hide();
     controller->deleteLater();
-    emitVisibility(battleListId, false);
     if (m_controllers.empty())
         m_updateTimer.stop();
     Q_EMIT battleListRemovedFromStorage();
@@ -1000,7 +1078,7 @@ void TBattleListControllerStorage::close(const int battleListId)
 void TBattleListControllerStorage::closeAll()
 {
     while (!m_controllers.empty())
-        close(m_controllers.begin()->first);
+        removeBattleList(m_controllers.begin()->first, true);
 }
 
 std::vector<std::pair<int, TSidebarWidget*>> TBattleListControllerStorage::widgets() const
@@ -1011,75 +1089,29 @@ std::vector<std::pair<int, TSidebarWidget*>> TBattleListControllerStorage::widge
     return result;
 }
 
-void TBattleListControllerStorage::emitVisibility(const int battleListId, const bool visible)
-{
-    const BattleListOptions& o = options(battleListId);
-    int type = -1;
-    if (o.isPartyView)
-        type = 2;
-    else if (o.isPrimary)
-        type = 1;
-    if (type < 0)
-        return;
-    if (visible)
-        Q_EMIT widgetVisible(type);
-    else
-        Q_EMIT widgetHidden(type);
-}
-
-void TBattleListControllerStorage::openSecondary(const uint sidebarId)
-{
-    for (int id = 0; id < MaxBattleLists; ++id) {
-        if (!m_options.contains(id)) {
-            open(id, sidebarId);
-            return;
-        }
-    }
-}
-
-void TBattleListControllerStorage::makePrimary(const int battleListId)
-{
-    if (!m_options.contains(battleListId) || battleListId == PartyListId)
-        return;
-    const int previous = primaryId();
-    if (previous == battleListId)
-        return;
-    const bool previousOpen = isOpen(previous);
-    const bool open = isOpen(battleListId);
-    if (previousOpen)
-        emitVisibility(previous, false);
-    m_options[previous].isPrimary = false;
-    m_options[battleListId].isPrimary = true;
-    for (const int id : { previous, battleListId }) {
-        if (const auto it = m_controllers.find(id); it != m_controllers.end())
-            it->second->applyOptions(m_options[id]);
-    }
-    if (open)
-        emitVisibility(battleListId, true);
-    writeOptions();
-}
-
 void TBattleListControllerStorage::setTemporarySelectedCreature(const uint32_t creatureId)
 {
     creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
     if (!storage || creatureId == storage->temporarySelectedID())
         return;
     storage->setTemporarySelectedID(creatureId);
-    refresh();
+    triggerUpdate();
 }
-
-void TBattleListControllerStorage::triggerUpdate() { refresh(); }
 
 void TBattleListControllerStorage::onLoginRampUpFinished()
 {
-    m_visibleOrder.clear();
-    const bool premium = hasPremium();
-    for (const auto& [id, controller] : m_controllers)
-        controller->setPremium(premium);
-    refresh();
+    m_loginRampUpFinished = true;
+    if (!m_sidebarOptions)
+        return;
+    config::TBattleListsOptions lists = m_sidebarOptions->battleListsOptions();
+    std::erase_if(lists, [this](const auto& entry) {
+        const auto& [id, options] = entry;
+        return !m_controllers.contains(static_cast<uint8_t>(id)) && !options.isPrimary && !options.isPartyView;
+    });
+    m_sidebarOptions->setBattleListsOptions(lists);
 }
 
-std::vector<TCreaturePtr> TBattleListControllerStorage::creatures(const BattleListOptions& options) const
+std::vector<TCreaturePtr> TBattleListControllerStorage::battleListCreatures() const
 {
     std::vector<TCreaturePtr> result;
     creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
@@ -1089,28 +1121,17 @@ std::vector<TCreaturePtr> TBattleListControllerStorage::creatures(const BattleLi
     const auto ar = tibia::game::awareRange();
     const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
     for (const TCreaturePtr& creature : storage->spectatorsNear(center, true, range.left, range.right, range.top, range.bottom)) {
-        if (!creature)
+        if (!creature || creature->isLocalPlayer() || creature->isDead())
             continue;
-        const Position pos = creature->position();
-        if (options.isPartyView) {
-            if (!creature->isLocalPlayer() && !isPartyMember(*creature))
+        // Party members wherever they are, the others only inside the view
+        // and placed on a field.
+        if (!isPartyMember(*creature)) {
+            const Position pos = creature->position();
+            if (pos.z != center.z || std::abs(pos.x - center.x) >= range.left || std::abs(pos.y - center.y) >= range.top)
                 continue;
-        } else {
-            // Every living creature but the player: party members wherever
-            // they are, the others only inside the view and placed on a field.
-            if (creature->isLocalPlayer() || creature->isDead())
+            if (!creature->isPlacedOnField())
                 continue;
-            if (!isPartyMember(*creature)) {
-                if (pos.z != center.z)
-                    continue;
-                if (std::abs(pos.x - center.x) >= range.left || std::abs(pos.y - center.y) >= range.top)
-                    continue;
-                if (!creature->isPlacedOnField())
-                    continue;
-            }
         }
-        // Hide-keys run in TBattleListDataModelSortFilterProxy::filterAcceptsRow
-        // (CIP); source model keeps the full spectator set.
         result.push_back(creature);
     }
     return result;
@@ -1174,50 +1195,48 @@ void TBattleListControllerStorage::setCreatureTutorialMarker(const uint32_t crea
 {
     if (m_gameActionHandler)
         m_gameActionHandler->setCreatureTutorialMarker(creatureId, markerId);
-    refresh();
+    triggerUpdate();
 }
 
 void TBattleListControllerStorage::clearCreatureTutorialMarkers()
 {
     if (m_gameActionHandler)
         m_gameActionHandler->clearCreatureTutorialMarkers();
-    refresh();
+    triggerUpdate();
 }
 
-void TBattleListControllerStorage::refresh()
+void TBattleListControllerStorage::triggerUpdate()
 {
-    creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-    if (!tibia::game::hasLocalPlayer() || !storage || m_controllers.empty())
+    if (m_controllers.empty())
         return;
-
+    const std::vector<TCreaturePtr> creatures = battleListCreatures();
     std::set<uint32_t> present;
-    const auto ar = tibia::game::awareRange();
-    const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
-    const Position center = tibia::game::localPlayerPosition();
-    for (const TCreaturePtr& creature : storage->spectatorsNear(center, true, range.left, range.right, range.top, range.bottom)) {
-        if (!creature)
-            continue;
+    for (const TCreaturePtr& creature : creatures) {
         present.insert(creature->creatureId());
         if (!m_visibleOrder.contains(creature->creatureId()))
             m_visibleOrder[creature->creatureId()] = m_nextVisibleOrder++;
     }
     std::erase_if(m_visibleOrder, [&present](const auto& entry) { return !present.contains(entry.first); });
+    std::vector<BattleListEntry> entries;
+    entries.reserve(creatures.size());
+    for (const TCreaturePtr& creature : creatures)
+        entries.push_back(entryOf(creature));
+    m_dataModel.setEntries(std::move(entries));
+}
 
+void TBattleListControllerStorage::onUpdateTimer()
+{
+    triggerUpdate();
     const bool premium = hasPremium();
-    for (const auto& [id, controller] : m_controllers) {
-        std::vector<BattleListEntry> entries;
-        for (const TCreaturePtr& creature : creatures(options(id)))
-            entries.push_back(entryOf(creature));
-        controller->setEntries(std::move(entries));
+    for (const auto& [id, controller] : m_controllers)
         controller->setPremium(premium);
-    }
 }
 
 bool TBattleListControllerStorage::attackFirstTarget()
 {
     const uint32_t targetId = tibia::game::attackingCreatureId();
-    for (const TCreaturePtr& creature : creatures(options(primaryId()))) {
-        if (creature->isNpc() || creature->creatureId() == targetId || creature->isLocalPlayer())
+    for (const TCreaturePtr& creature : battleListCreatures()) {
+        if (creature->isNpc() || creature->creatureId() == targetId)
             continue;
         input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
         return true;
@@ -1227,7 +1246,7 @@ bool TBattleListControllerStorage::attackFirstTarget()
 
 bool TBattleListControllerStorage::attackNextOrPreviousTarget(const bool previous)
 {
-    std::vector<TCreaturePtr> list = creatures(options(primaryId()));
+    std::vector<TCreaturePtr> list = battleListCreatures();
     if (list.empty())
         return true;
     if (previous)
@@ -1238,7 +1257,7 @@ bool TBattleListControllerStorage::attackNextOrPreviousTarget(const bool previou
         it != list.end())
         std::rotate(list.begin(), it + 1, list.end());
     for (const TCreaturePtr& creature : list) {
-        if (creature->isNpc() || creature->creatureId() == targetId || creature->isLocalPlayer())
+        if (creature->isNpc() || creature->creatureId() == targetId)
             continue;
         input::publish(input::makeCreatureAction(A::ATTACK_CREATURE, creature->creatureId()));
         return true;

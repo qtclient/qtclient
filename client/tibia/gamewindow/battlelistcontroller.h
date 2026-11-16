@@ -154,16 +154,19 @@ class TBattleListController final : public TSidebarWidgetController<cip::tibia::
     Q_OBJECT
 
 public:
-    TBattleListController(int battleListId, TBattleListControllerStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
-                          QObject* parent = nullptr);
+    TBattleListController(int battleListId, TBattleListControllerStorage* storage, TBattleListDataModel* model, QQuickItem* gameWindowItem,
+                          QQmlEngine* engine, QObject* parent = nullptr);
     ~TBattleListController() override;
 
     int battleListId() const { return m_id; }
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
     /// The list's options (name, filters, sort order, view) and size.
     void applyOptions(const BattleListOptions& options);
-    void setEntries(std::vector<BattleListEntry> entries) { m_model.setEntries(std::move(entries)); }
     void setPremium(bool premium);
+    /// USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR, forwarded by the storage:
+    /// the hovered entry's TARGET_SELECTED creature takes the object
+    /// (USE_ON_CREATURE) or the spell (Talk aimed, mode 2, at its field).
+    bool onAtMouseCursor(const input::TGameAction& action);
 
     /// The QML properties, read from the list's options.
     bool filterButtonsVisible() const override;
@@ -243,14 +246,9 @@ private:
     /// modifier hints of a left click, and the creature stays selected until
     /// the menu closes.
     void showCreatureContextMenu(const input::TGameActionList& actions);
-    /// USE_AT_MOUSECURSOR and SPELL_AT_MOUSE_CURSOR: the hovered entry's
-    /// TARGET_SELECTED creature takes the object (USE_ON_CREATURE) or the
-    /// spell (Talk aimed, mode 2, at its field).
-    bool onAtMouseCursor(const input::TGameAction& action);
 
     int m_id;
     TBattleListControllerStorage* m_storage;
-    TBattleListDataModel m_model;
     TBattleListDataModelSortFilterProxy* m_proxy = nullptr;
     /// CIP +0xc0: "battlelist_rename" / "battlelist_rename_text", 30
     /// characters, empty text accepted (+0xbc).
@@ -260,18 +258,22 @@ private:
     uint32_t m_hoveredCreature = 0;
     uint32_t m_lockedCreature = 0;
     QMetaObject::Connection m_contextMenuClosed;
-    std::vector<int> m_actionListeners;
 };
 
-/// The open battle lists and their options (CIP: TBattleListControllerStorage,
-/// static meta object , with TBattleListGameActionHandler's attack
-/// first / next / previous target).
+/// The open battle lists (CIP: TBattleListControllerStorage). Battle list ids
+/// are 0..19; one list may be the primary list, one the party list. All lists
+/// share one data model; each list's proxy filters and sorts it by the list's
+/// options, which live in the character's sidebar options.
 class TBattleListControllerStorage final : public cip::tibia::gamewindow::TBattleListControllerStorage
 {
     Q_OBJECT
 public:
-    static constexpr int PartyListId = 253;
     static constexpr int MaxBattleLists = 20;
+    /// A requested id or sidebar of 0xff: the first free one.
+    static constexpr uint8_t AnyId = 0xff;
+    /// CIP's EWidgetType of the primary and the party list.
+    static constexpr int PrimaryWidgetType = 1;
+    static constexpr int PartyWidgetType = 2;
 
     TBattleListControllerStorage(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TBattleListControllerStorage() override;
@@ -283,27 +285,41 @@ public:
     /// Where TEMPORARY_SELECT_CREATURE puts the hovered creature.
     void setWorldMapRenderProvider(qmlcomponents::TWorldMapRenderProvider* provider) { m_worldMapRenderProvider = provider; }
 
-    /// The primary list's id (isPrimary in the options, else 0).
-    int primaryId() const;
-    bool isOpen(int battleListId) const { return m_controllers.contains(battleListId); }
-    /// Opens the list in `sidebarId` (0xff or a missing sidebar: the first
-    /// with room), creating its options if it has none.
-    TBattleListController* open(int battleListId, uint sidebarId);
-    void close(int battleListId);
+    TBattleListController* primaryBattleList() const { return m_primary; }
+    TBattleListController* partyBattleList() const { return m_party; }
+    /// CIP: a new battle list with `requestedId` (taken or 0xff: the first free
+    /// id) in `sidebarId`. A primary or party list takes its options to the new
+    /// id. A list that is neither needs premium; without it the list closes and
+    /// the status line says so. With 20 lists open the status line says that no
+    /// more lists can be opened.
+    void openBattleList(uint8_t sidebarId, uint8_t requestedId, bool primary, bool party);
+    /// CIP: TOGGLE_WIDGET of the primary (1) or the party list (2): an open
+    /// list closes, otherwise it opens in `sidebarId`.
+    void togglePrimaryBattleList(uint8_t sidebarId);
+    void togglePartyBattleList(uint8_t sidebarId);
+    /// CIP: OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, MAKE_BATTLE_LIST_PRIMARY,
+    /// TOGGLE_WIDGET of a battle list, and the at-mouse-cursor actions every
+    /// list sees.
+    bool handleGameAction(const input::TGameAction& action);
+    /// CIP: the list leaves the storage; `saveOptions` first saves its options.
+    void removeBattleList(uint8_t battleListId, bool saveOptions);
+    /// Every list leaves the storage, saving its options.
     void closeAll();
     std::vector<std::pair<int, TSidebarWidget*>> widgets() const;
 
-    const BattleListOptions& options(int battleListId) const;
+    /// The list's options from the sidebar options (defaults when it has none).
+    BattleListOptions options(int battleListId) const;
     void setOptions(int battleListId, const BattleListOptions& options);
     void removeOptions(int battleListId);
-    /// CIP: OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR with a new id.
-    void openSecondary(uint sidebarId);
-    void makePrimary(int battleListId);
+    /// CIP: the list becomes the primary list in the sidebar options.
+    void makePrimary(uint8_t battleListId);
     bool hasPremium() const;
+    TBattleListDataModel* dataModel() { return &m_dataModel; }
 
-    /// The list's creatures, filtered and sorted (CIP: filterDrawCommands and
-    /// ).
-    std::vector<std::shared_ptr<creatures::TCreature>> creatures(const BattleListOptions& options) const;
+    /// The creatures a battle list can show: every creature but the player
+    /// that is alive, party members anywhere, the others in range and placed
+    /// on a field.
+    std::vector<std::shared_ptr<creatures::TCreature>> battleListCreatures() const;
     /// The hovered creature (the creature storage holds it and its frame).
     void setTemporarySelectedCreature(uint32_t creatureId);
 
@@ -317,8 +333,13 @@ public:
     TBattleListGameActionHandler* gameActionHandler() const { return m_gameActionHandler; }
 
 public Q_SLOTS:
+    /// CIP: the shared model takes the draw commands of every creature.
     void triggerUpdate() override;
+    /// CIP: options of lists that are not open and neither primary nor party
+    /// are dropped.
     void onLoginRampUpFinished() override;
+    /// CIP: the list closed itself (it already moved its options).
+    void onBattleListClosed(int battleListId);
 
 Q_SIGNALS:
     /// EWidgetType 1 (primary list) and 2 (party list).
@@ -326,25 +347,35 @@ Q_SIGNALS:
     void widgetHidden(int widgetType);
 
 private:
-    void readOptions();
-    void writeOptions();
-    void refresh();
-    void emitVisibility(int battleListId, bool visible);
+    /// CIP: `requestedId` if it is free, else the lowest free id; false when
+    /// 20 lists are open.
+    bool acquireBattleListId(uint8_t requestedId, uint8_t* battleListId) const;
+    /// The requested id if free, else the lowest free one (0..19); false when
+    /// every id is taken.
+    bool findFreeBattleListId(uint8_t requestedId, uint8_t* battleListId) const;
+    /// CIP: a list opened after login starts maximized.
+    void maximizeIfLoggedIn(TBattleListController* controller) const;
+    static void publishStatusLine(const QString& text, const QColor& color);
     BattleListEntry entryOf(const std::shared_ptr<creatures::TCreature>& creature) const;
+    void onUpdateTimer();
 
     QPointer<TSidebarManager> m_sidebars;
     QQuickItem* m_gameWindowItem;
     QQmlEngine* m_engine;
+    TBattleListDataModel m_dataModel;
     QPointer<config::TSidebarOptions> m_sidebarOptions;
     qmlcomponents::TWorldMapRenderProvider* m_worldMapRenderProvider = nullptr;
-    std::map<int, BattleListOptions> m_options;
-    std::map<int, TBattleListController*> m_controllers;
+    TBattleListController* m_primary = nullptr;
+    TBattleListController* m_party = nullptr;
+    std::map<uint8_t, TBattleListController*> m_controllers;
     std::map<uint32_t, uint> m_visibleOrder;
     uint m_nextVisibleOrder = 1;
     int m_controlScheme = 0;
+    bool m_loginRampUpFinished = false;
     QTimer m_updateTimer;
     TBattleListGameActionHandler* m_gameActionHandler = nullptr;
     std::vector<client::gamecore::Hook> m_hooks;
+    std::vector<int> m_actionListeners;
 };
 
 }
