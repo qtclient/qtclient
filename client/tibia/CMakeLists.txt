@@ -22,6 +22,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 get_filename_component(TIBIA_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+# CipSoft shared:: classes (apps/qtclient/shared) are compiled once into
+# qtclient_shared; every target here sees their headers.
+include_directories("${TIBIA_ROOT}/shared/src")
 include("${TIBIA_ROOT}/cmake/CipSoftDir.cmake")
 include("${TIBIA_ROOT}/cmake/CipCodegen.cmake")
 include("${TIBIA_ROOT}/cmake/CipQmlModule.cmake")
@@ -285,13 +288,9 @@ if(TIBIA_WITH_GAMECORE)
     app/qtplatformwindow.cpp app/qtplatformwindow.h
     chat/chatgameactionhandler.cpp chat/chatgameactionhandler.h
     shared/sharedciptypes.cpp shared/sharedciptypes.h
-    shared/clipboardhelper.cpp shared/clipboardhelper.h
     shared/iodevicereader.cpp shared/iodevicereader.h
     shared/iodevicewriter.cpp shared/iodevicewriter.h
     shared/simplevectorabstractlistmodel.h
-    shared/timelapseclockservice.cpp shared/timelapseclockservice.h
-    shared/jsonvalidator.cpp shared/jsonvalidator.h
-    shared/downloadpool.cpp shared/downloadpool.h
     config/clientsettings.cpp config/clientsettings.h
     config/configciptypes.cpp config/configciptypes.h
     config/runtimegameconfig.cpp config/runtimegameconfig.h

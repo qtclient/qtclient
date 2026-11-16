@@ -1,4 +1,5 @@
 #include "creatures/creaturesciptypes.h"
+#include "colorhelper.h"
 #include "creatures/vipstorage.h"
 #include "exivaoptions/exivaoptionsstorage.h"
 #include "input/gameactionhandlers.h"
@@ -9,7 +10,7 @@
 #include "appearances/appearanceinstance.h"
 #include "app/clientoptions.h"
 #include "creatures/creatureprotocolapply.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include "protocol/protocolciptypes.h"
 #include "protocol/protocolcodes.h"
 
@@ -117,14 +118,14 @@ void TCreatureProtocolMessageHandler::handleCreatureMarksMessage(const uint32_t 
         return;
     switch (kind) {
     case 1:
-        creature->addTimedSquare(colorFromEightBit(static_cast<uint8_t>(value)),
+        creature->addTimedSquare(shared::colorFromEightBit(static_cast<uint8_t>(value)),
                                  static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         break;
     case 2:
         if (static_cast<uint8_t>(value) == 0xff)
             creature->hideStaticSquare();
         else
-            creature->showStaticSquare(colorFromEightBit(static_cast<uint8_t>(value)));
+            creature->showStaticSquare(shared::colorFromEightBit(static_cast<uint8_t>(value)));
         break;
     case 3: {
         if (!m_showAttackAnimation)

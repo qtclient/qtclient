@@ -1,13 +1,12 @@
-#include "shared/timelapseclockservice.h"
+#include "timelapseclockservice.h"
 
-#include "shared/clockservice.h"
 
 namespace tibia::shared {
 
-TTimeLapseClockService::TTimeLapseClockService(std::function<qint64()> nanosecondClock)
-    : m_nanosecondClock(nanosecondClock ? std::move(nanosecondClock) : std::function<qint64()>(&TClockService::nowNanos))
+TTimeLapseClockService::TTimeLapseClockService(std::shared_ptr<IClockService> clockService)
+    : m_clockService(std::move(clockService))
 {
-    const qint64 now = m_nanosecondClock();
+    const qint64 now = m_clockService->nowNanos();
     m_startNanos = now;
     m_lastBaseNanos = now;
 }
@@ -18,7 +17,11 @@ qint64 TTimeLapseClockService::nowMillis() { return nowNanos() / 1000000; }
 
 qint64 TTimeLapseClockService::nowNanos()
 {
-    advance();
+    const qint64 now = m_clockService->nowNanos();
+    const qint64 last = m_lastBaseNanos;
+    m_lastBaseNanos = now;
+    if (m_speed != 0.0)
+        m_elapsedNanos += qint64(m_speed * double(now - last));
     return m_elapsedNanos + m_startNanos;
 }
 
@@ -42,7 +45,11 @@ void TTimeLapseClockService::setSpeed(const double speed)
 {
     if (m_speed == speed)
         return;
-    advance();
+    const qint64 now = m_clockService->nowNanos();
+    const qint64 last = m_lastBaseNanos;
+    m_lastBaseNanos = now;
+    if (m_speed != 0.0)
+        m_elapsedNanos += qint64(m_speed * double(now - last));
     m_speed = speed;
 }
 
@@ -51,14 +58,5 @@ void TTimeLapseClockService::setStartTime(const QDateTime& startTime) { m_startN
 void TTimeLapseClockService::setElapsedNanos(const qint64& elapsedNanos) { m_elapsedNanos = elapsedNanos; }
 
 double TTimeLapseClockService::speed() const { return m_speed; }
-
-void TTimeLapseClockService::advance()
-{
-    const qint64 now = m_nanosecondClock();
-    const qint64 last = m_lastBaseNanos;
-    m_lastBaseNanos = now;
-    if (m_speed != 0.0)
-        m_elapsedNanos += qint64(m_speed * double(now - last));
-}
 
 }

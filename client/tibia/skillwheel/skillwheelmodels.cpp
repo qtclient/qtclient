@@ -29,78 +29,17 @@ QString supremeEffectText(const int mod, const int grade)
 
 }
 
-TPaginationProxyModel::TPaginationProxyModel(const int entriesPerPage, QObject* parent) : cip::shared::TPaginationProxyModel(parent)
+TPaginationProxyModel::TPaginationProxyModel(const int entriesPerPage, QObject* parent)
+    : shared::TPaginationProxyModel(quint8(entriesPerPage))
 {
-    m_entriesPerPage = std::max(1, entriesPerPage);
-    m_currentPage = 1;
-    m_numberOfPages = 1;
-}
-
-void TPaginationProxyModel::setSourceModel(QAbstractItemModel* source)
-{
-    if (sourceModel())
-        disconnect(sourceModel(), nullptr, this, nullptr);
-    cip::shared::TPaginationProxyModel::setSourceModel(source);
-    if (source) {
-        for (auto signal : { &QAbstractItemModel::rowsInserted, &QAbstractItemModel::rowsRemoved })
-            connect(source, signal, this, &TPaginationProxyModel::updatePages);
-        connect(source, &QAbstractItemModel::modelReset, this, &TPaginationProxyModel::updatePages);
-        connect(source, &QAbstractItemModel::layoutChanged, this, &TPaginationProxyModel::updatePages);
-    }
-    updatePages();
-}
-
-void TPaginationProxyModel::setEntriesPerPage(const int v)
-{
-    if (v < 1 || v == m_entriesPerPage)
-        return;
-    m_entriesPerPage = v;
-    updatePages();
-}
-
-void TPaginationProxyModel::setCurrentPage(const int v)
-{
-    const int page = std::clamp(v, 1, std::max(1, m_numberOfPages));
-    if (page == m_currentPage)
-        return;
-    m_currentPage = page;
-    updatePages();
-}
-
-void TPaginationProxyModel::updatePages()
-{
-    const int rows = sourceModel() ? sourceModel()->rowCount() : 0;
-    m_numberOfPages = std::max(1, (rows + m_entriesPerPage - 1) / m_entriesPerPage);
-    m_currentPage = std::clamp(m_currentPage, 1, m_numberOfPages);
-    m_hasPreviousPage = m_currentPage > 1;
-    m_hasNextPage = m_currentPage < m_numberOfPages;
-    beginFilterChange();
-    endFilterChange(QSortFilterProxyModel::Direction::Rows);
-    Q_EMIT paginationDataChanged();
-}
-
-bool TPaginationProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
-{
-    const int first = (m_currentPage - 1) * m_entriesPerPage;
-    return sourceRow >= first && sourceRow < first + m_entriesPerPage;
-}
-
-QVariantMap TPaginationProxyModel::rowData(const QModelIndex& Index)
-{
-    QVariantMap row;
-    if (!Index.isValid() || Index.model() != this)
-        return row;
-    const QHash<int, QByteArray> roles = roleNames();
-    for (auto it = roles.cbegin(); it != roles.cend(); ++it)
-        row.insert(QString::fromUtf8(it.value()), data(Index, it.key()));
-    return row;
+    setParent(parent);
 }
 
 QModelIndex TPaginationProxyModel::showSourceRow(const int sourceRow)
 {
     if (sourceRow < 0)
         return {};
-    setCurrentPage(sourceRow / m_entriesPerPage + 1);
+    setCurrentPage(pageOfRow(sourceRow));
     return mapFromSource(sourceModel()->index(sourceRow, 0));
 }
 

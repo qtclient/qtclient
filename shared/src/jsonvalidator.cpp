@@ -1,4 +1,4 @@
-#include "shared/jsonvalidator.h"
+#include "jsonvalidator.h"
 
 namespace tibia::shared {
 

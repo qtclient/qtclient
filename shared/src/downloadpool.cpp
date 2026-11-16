@@ -1,19 +1,17 @@
-#include "shared/downloadpool.h"
+#include "downloadpool.h"
+
+#include "launcherutils.h"
+#include "qnetworkaccessmanagerwrapper.h"
+#include "qnetworkreplywrapper.h"
 
 #include <QDebug>
 #include <QHostAddress>
 #include <QHostInfo>
-#include <QNetworkAccessManager>
-#ifndef __EMSCRIPTEN__
-#include <QNetworkInterface>
-#endif
 #include <QRandomGenerator64>
-#include <QTcpSocket>
 #include <QTimer>
 
 #include <algorithm>
 #include <chrono>
-#include <climits>
 
 namespace tibia::shared {
 
@@ -21,59 +19,21 @@ namespace {
 
 bool s_preferIPv4 = false;
 
-/// CIP `TLauncherUtils::hasLocalIPv4` (cached): an IPv4 interface that reaches the internet.
-bool hasLocalIPv4()
-{
-    static bool checked = false;
-    static bool result = false;
-    if (checked)
-        return result;
-    result = false;
-#ifdef __EMSCRIPTEN__
-    // qtclient: the browser picks the address family; there are no local
-    // interfaces or raw sockets to probe.
-    checked = true;
-    return result;
-#else
-    const QList<QHostAddress> addresses = QNetworkInterface::allAddresses();
-    for (const QHostAddress& address : addresses) {
-        if (address.protocol() != QAbstractSocket::IPv4Protocol || address == QHostAddress(QHostAddress::LocalHost))
-            continue;
-        qInfo() << "ipv4 interface found";
-        QTcpSocket dns;
-        dns.connectToHost(QStringLiteral("8.8.8.8"), 53, QIODevice::ReadWrite, QAbstractSocket::AnyIPProtocol);
-        bool connected = dns.waitForConnected(750);
-        if (connected) {
-            dns.disconnectFromHost();
-        } else {
-            QTcpSocket web;
-            web.connectToHost(QStringLiteral("1.1.1.1"), 80, QIODevice::ReadWrite, QAbstractSocket::AnyIPProtocol);
-            connected = web.waitForConnected(750);
-            if (connected)
-                web.disconnectFromHost();
-        }
-        if (connected) {
-            qInfo() << "ipv4 connection succeeded";
-            result = true;
-        }
-        break;
-    }
-    qInfo() << "use ipv4: " << (result ? "true" : "false");
-    checked = true;
-    return result;
-#endif
 }
 
-}
-
-TDownloadPool::TDownloadPool(const int maxParallelDownloads, std::shared_ptr<QNetworkAccessManager> networkAccessManager,
-                             QObject* parent)
-    : cip::shared::TDownloadPool(parent)
+TDownloadPool::TDownloadPool(const int maxParallelDownloads,
+    std::shared_ptr<QNetworkAccessManagerWrapper> networkAccessManager, QObject* parent)
+    : QObject(parent)
     , m_networkAccessManager(std::move(networkAccessManager))
     , m_maxParallelDownloads(maxParallelDownloads)
 {
-    if (m_networkAccessManager)
-        m_networkAccessManager->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+    if (!m_networkAccessManager)
+        return;
+    m_networkAccessManager->setRedirectPolicy(QNetworkRequest::NoLessSafeRedirectPolicy);
+    if (isAuthenticationEnabled()) {
+        connect(m_networkAccessManager.get(), &QNetworkAccessManagerWrapper::authenticationRequired, this,
+            &TDownloadPool::onAuthenticationRequired);
+    }
 }
 
 TDownloadPool::~TDownloadPool() = default;
@@ -81,6 +41,16 @@ TDownloadPool::~TDownloadPool() = default;
 void TDownloadPool::setPreferIPv4(const bool preferIPv4)
 {
     s_preferIPv4 = preferIPv4;
+}
+
+bool TDownloadPool::isAuthenticationEnabled()
+{
+    return false;
+}
+
+void TDownloadPool::onAuthenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)
+{
+    m_authenticationHandler.handleAuthenticationRequired(reply, authenticator);
 }
 
 QNetworkRequest TDownloadPool::createRequest(QUrl url)
@@ -91,7 +61,7 @@ QNetworkRequest TDownloadPool::createRequest(QUrl url)
     if (host.isEmpty())
         return request;
     bool http2Allowed = true;
-    if (s_preferIPv4 && hasLocalIPv4()) {
+    if (s_preferIPv4 && TLauncherUtils::hasLocalIPv4()) {
         request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
         const QHostInfo hostInfo = QHostInfo::fromName(host);
         QList<QHostAddress> ipv4Addresses;
@@ -119,16 +89,25 @@ QNetworkRequest TDownloadPool::createRequest(QUrl url)
 void TDownloadPool::removeWaiting(const QUrl& url)
 {
     const auto it = std::find_if(m_waitingDownloads.begin(), m_waitingDownloads.end(),
-                                 [&url](const TWaitingDownload& waiting) { return waiting.url == url; });
+        [&url](const TWaitingDownload& waiting) { return waiting.url == url; });
     if (it != m_waitingDownloads.end())
         m_waitingDownloads.erase(it);
 }
 
+bool TDownloadPool::isWaiting(const QUrl& url) const
+{
+    return std::any_of(m_waitingDownloads.begin(), m_waitingDownloads.end(),
+        [&url](const TWaitingDownload& download) { return download.url == url; });
+}
+
+bool TDownloadPool::isActive(const QUrl& url) const
+{
+    return m_activeDownloads.contains(url);
+}
+
 bool TDownloadPool::isWaitingOrActive(const QUrl& url) const
 {
-    const bool waiting = std::any_of(m_waitingDownloads.begin(), m_waitingDownloads.end(),
-                                     [&url](const TWaitingDownload& download) { return download.url == url; });
-    return waiting || m_activeDownloads.contains(url);
+    return isWaiting(url) || isActive(url);
 }
 
 void TDownloadPool::startWaitingDownloads()
@@ -193,41 +172,41 @@ void TDownloadPool::startDownload(const QUrl& url, const int retries, const qint
     qInfo() << "StartDownload: " << url;
     QNetworkRequest request = createRequest(url);
     request.setTransferTimeout(static_cast<int>(transferTimeoutMs));
-    QNetworkReply* reply = m_networkAccessManager->get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, url, retries]() { onReplyFinished(reply, url, retries); });
-    connect(reply, &QNetworkReply::errorOccurred, this,
-            [this, reply, url, retries]() { onReplyFinished(reply, url, retries); });
-    connect(reply, &QNetworkReply::downloadProgress, this,
-            [this, url](const qint64 bytesReceived, qint64) { Q_EMIT progress(url, bytesReceived); });
+    QNetworkReplyWrapper* reply = m_networkAccessManager->get(request);
+    reply->setUrl(url);
+    reply->setRetries(retries);
+    connect(reply, &QNetworkReplyWrapper::error, this, [this, reply] { onDownloadFinished(reply); });
+    connect(reply, &QNetworkReplyWrapper::finished, this, [this, reply] { onDownloadFinished(reply); });
+    connect(reply, &QNetworkReplyWrapper::progress, this,
+        [this, reply](const qlonglong bytesReceived) { Q_EMIT progress(reply->url(), bytesReceived); });
     m_activeDownloads.insert(url, { reply, retries });
 }
 
-void TDownloadPool::onReplyFinished(QNetworkReply* reply, const QUrl& url, const int retries)
+void TDownloadPool::onDownloadFinished(QNetworkReplyWrapper* reply)
 {
-    const auto active = m_activeDownloads.constFind(url);
-    if (active == m_activeDownloads.cend() || active->retries != retries)
+    const QUrl url = reply->url();
+    const int retries = reply->retries();
+    if (!m_activeDownloads.contains(url) || m_activeDownloads[url].retries != retries)
         return;
-    if (reply->error() != QNetworkReply::NoError) {
+    if (reply->replyError() != QNetworkReply::NoError) {
         const bool hasHost = !url.host(QUrl::FullyDecoded).isEmpty();
         if (retries > 0 && hasHost && m_activeDownloads.contains(url)) {
-            const qint64 transferTimeoutMs = std::clamp<qint64>(reply->request().transferTimeoutAsDuration().count(),
-                                                                 INT_MIN, INT_MAX);
-            QTimer::singleShot(std::chrono::milliseconds(m_retryDelayMs), this, [this, url, retries, transferTimeoutMs]() {
-                const auto pending = m_activeDownloads.constFind(url);
-                if (pending == m_activeDownloads.cend() || pending->retries != retries)
+            const qint64 transferTimeoutMs = reply->transferTimeout();
+            QTimer::singleShot(std::chrono::milliseconds(m_retryDelayMs), this, [this, url, retries, transferTimeoutMs] {
+                if (!m_activeDownloads.contains(url) || m_activeDownloads[url].retries != retries)
                     return;
-                if (m_activeDownloads.remove(url) > 0)
-                    startDownload(url, retries - 1, transferTimeoutMs);
+                if (m_activeDownloads.remove(url) < 1)
+                    return;
+                startDownload(url, retries - 1, transferTimeoutMs);
             });
             return;
         }
     }
-    if (m_activeDownloads.remove(url) < 1)
-        return;
-    if (reply->error() == QNetworkReply::NoError)
+    m_activeDownloads.remove(url);
+    if (reply->replyError() == QNetworkReply::NoError)
         Q_EMIT success(url, reply->readAll());
     else
-        Q_EMIT failed(url, reply->error(), reply->errorString());
+        Q_EMIT failed(url, reply->replyError(), reply->errorString());
     reply->deleteLater();
     startWaitingDownloads();
 }

@@ -25,7 +25,7 @@
 
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/worldmap/worldmapstorage.h>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <tibia/schedule/schedule.h>
 
 StaticText::StaticText()

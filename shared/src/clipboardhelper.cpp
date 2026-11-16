@@ -1,4 +1,4 @@
-#include "shared/clipboardhelper.h"
+#include "clipboardhelper.h"
 
 #include <QCborMap>
 #include <QCborParserError>

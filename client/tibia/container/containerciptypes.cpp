@@ -11,7 +11,7 @@
 #include "tibia/game/gamesession.h"
 #include <tibia/game/gamesession.h>
 
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <QtGlobal>
 #include <format>
 

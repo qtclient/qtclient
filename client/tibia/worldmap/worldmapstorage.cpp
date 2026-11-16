@@ -3,7 +3,7 @@
 #include "worldmap/worldmapfield.h"
 
 #include "creatures/creaturestorage.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 
 #include "client/const.h"
 #include <tibia/config/runtimegameconfig.h>

@@ -13,7 +13,7 @@
 
 #include <client/const.h>
 #include <tibia/config/runtimegameconfig.h>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 
 #include "client/magiceffectopacity.h"
 

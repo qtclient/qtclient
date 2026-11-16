@@ -3,7 +3,7 @@
 #include "appearances/appearanceinstance.h"
 #include <tibia/config/runtimegameconfig.h>
 #include "protocol/protocolcodes.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include "tibia/creatures/attachedeffect.h"
 #include "creatures/walkdebug.h"
 #include "game/playerdata.h"

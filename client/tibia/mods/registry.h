@@ -45,6 +45,8 @@ struct ModUrls {
     std::string loginPath;
     std::string clientServicesPath;
     std::string createAccountPath;
+    /// Crash report upload path (CIP crashReportUrl); empty = no crash reports.
+    std::string crashReportPath;
     std::string assetBase;
     std::string paymentsBase;
     /// QTCLIENT_URL_* page overrides (path or absolute URL).
@@ -53,7 +55,7 @@ struct ModUrls {
     bool empty() const
     {
         return loginBase.empty() && loginPath.empty() && clientServicesPath.empty()
-            && createAccountPath.empty() && assetBase.empty() && paymentsBase.empty()
+            && createAccountPath.empty() && crashReportPath.empty() && assetBase.empty() && paymentsBase.empty()
             && pages.empty();
     }
 };

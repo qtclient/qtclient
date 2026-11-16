@@ -3,7 +3,7 @@
 #include "soundplayback.h"
 
 #include "worldmap/worldmapfield.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <QtGlobal>
 #include <format>
 #include "shared/tibiafilesystemhelper.h"

@@ -27,7 +27,7 @@
 #include "creatures/creaturestorage.h"
 #include "creatures/walkdebug.h"
 #include "worldmap/worldmapfield.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 
 #include <QColor>
 

@@ -4,7 +4,7 @@
 
 #include <tibia/game/gamesession.h>
 #include "shared/sharedciptypes.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include "rsahelper.h"
 
 #include <QCoreApplication>

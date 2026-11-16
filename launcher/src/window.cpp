@@ -1,6 +1,8 @@
 #include "window.h"
 
 #include "brand.h"
+#include "downloadpool.h"
+#include "qnetworkaccessmanagerwrapper.h"
 #include "textbrowserwithnetwork.h"
 
 #include <QCheckBox>
@@ -284,7 +286,12 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
     packageRow->addStretch(1);
 
     // CIP shared::QTextBrowserWithNetwork — remote hint <img> via Network.
-    m_news = new shared::QTextBrowserWithNetwork;
+    // Host: TLauncherMainWindow passes its configuration's retries and
+    // transfer timeout; until that port lands, one try with the pool's
+    // default request timeout.
+    m_hintDownloadPool = std::make_shared<tibia::shared::TDownloadPool>(
+        4, std::make_shared<tibia::shared::QNetworkAccessManagerWrapper>(std::make_shared<QNetworkAccessManager>()));
+    m_news = new tibia::shared::QTextBrowserWithNetwork(m_hintDownloadPool, 0, 1000);
     m_news->setOpenExternalLinks(true);
     m_news->setContextMenuPolicy(Qt::NoContextMenu);
     m_news->setFixedWidth(542);
