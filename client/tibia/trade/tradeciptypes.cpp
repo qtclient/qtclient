@@ -175,11 +175,10 @@ bool TCharacterTradeStorage::hasConfirmationError() const
 
 namespace {
 
-/// The classic price 0xffffffff means "not offered".
-uint32_t npcTradePrice(const uint32_t price)
-{
-    return price == UINT32_MAX ? 0 : price;
-}
+TNPCTradeProtocolMessageHandler* s_npcTradeLive = nullptr;
+
+/// The quest flag currency's resource type.
+constexpr uint32_t QuestFlagCurrencyResource = 60;
 
 template<typename Message>
 std::vector<::tibia::container::TInventorySlot> offerItems(const Message& m)
@@ -193,39 +192,132 @@ std::vector<::tibia::container::TInventorySlot> offerItems(const Message& m)
 
 }
 
+TNPCTradeProtocolMessageHandler::TNPCTradeProtocolMessageHandler(TNPCTradeStorage* storage, QObject* parent)
+    : cip::tibia::trade::TNPCTradeProtocolMessageHandler(parent)
+    , m_storage(storage)
+{
+    s_npcTradeLive = this;
+}
+
+TNPCTradeProtocolMessageHandler::~TNPCTradeProtocolMessageHandler()
+{
+    if (s_npcTradeLive == this)
+        s_npcTradeLive = nullptr;
+}
+
+TNPCTradeProtocolMessageHandler* TNPCTradeProtocolMessageHandler::instance()
+{
+    return s_npcTradeLive;
+}
+
+void TNPCTradeProtocolMessageHandler::sendClose()
+{
+    tibia::game::closeNpcTrade();
+    if (m_storage)
+        m_storage->setTraderInventory({}, {});
+}
+
+void TNPCTradeProtocolMessageHandler::sendLook(const TNPCTradeGood& good)
+{
+    if (good.typeId() != 0)
+        tibia::game::inspectNpcTrade(good.typeId(), good.countOrSubType());
+}
+
+void TNPCTradeProtocolMessageHandler::sendBuy(const TNPCTradeGood& good, const int amount, const bool ignoreCapacity,
+                                              const bool withBackpacks)
+{
+    if (good.typeId() != 0)
+        tibia::game::buyItem(good.typeId(), good.countOrSubType(), static_cast<uint16_t>(amount), ignoreCapacity, withBackpacks);
+}
+
+void TNPCTradeProtocolMessageHandler::sendSell(const TNPCTradeGood& good, const int amount, const bool ignoreEquipped)
+{
+    if (good.typeId() != 0)
+        tibia::game::sellItem(good.typeId(), good.countOrSubType(), static_cast<uint16_t>(amount), ignoreEquipped);
+}
+
+void TNPCTradeProtocolMessageHandler::handleNPCOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageNPCOffer& message)
+{
+    std::vector<TNPCTradeGood> goods;
+    for (const auto& offer : message.offers()) {
+        goods.push_back({ ::tibia::container::TInventorySlot::fromTypeId(static_cast<uint16_t>(offer.object_id()),
+                                                                        static_cast<uint8_t>(offer.data())),
+                          QString::fromStdString(offer.name()), offer.sell_price(), offer.buy_price(), offer.weight() });
+    }
+    if (m_storage)
+        m_storage->setTraderInventory(QString::fromStdString(message.npc_name()), std::move(goods));
+
+    // An object currency other than gold, else a named currency, else gold.
+    constexpr uint16_t GoldCoinTypeId = 3031;
+    std::optional<TNPCTradeStorage::TCurrency> currency;
+    const auto currencyObject = static_cast<uint16_t>(message.currency_object_id());
+    if (message.has_currency_object_id() && currencyObject != 0) {
+        if (currencyObject != GoldCoinTypeId)
+            currency = currencyObject;
+    } else if (message.has_currency_name() && !message.currency_name().empty()) {
+        currency = QString::fromStdString(message.currency_name());
+    }
+    if (m_storage)
+        m_storage->setCurrency(currency);
+    Q_EMIT requestOpenNpcTrade();
+}
+
+void TNPCTradeProtocolMessageHandler::handlePlayerGoodsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerGoods& message)
+{
+    std::map<uint16_t, uint16_t> goods;
+    for (const auto& good : message.goods())
+        goods[static_cast<uint16_t>(good.object_id())] = static_cast<uint16_t>(good.amount());
+    if (m_storage)
+        m_storage->setPlayerGoods(goods);
+}
+
+void TNPCTradeProtocolMessageHandler::handleResourceBalanceMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message)
+{
+    if (message.resource_type() == QuestFlagCurrencyResource && m_storage)
+        m_storage->setQuestFlagCurrencyBalance(message.small_value());
+}
+
+void TNPCTradeProtocolMessageHandler::handleCloseNPCTradeMessage()
+{
+    if (m_storage)
+        m_storage->setTraderInventory({}, {});
+    Q_EMIT requestCloseNpcTrade();
+}
+
+void TNPCTradeProtocolMessageHandler::handleDeadMessage()
+{
+    Q_EMIT requestCloseNpcTrade();
+}
+
 void TNPCTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
+    TNPCTradeProtocolMessageHandler* handler = s_npcTradeLive;
+    if (!handler)
+        return;
     const auto* shadow = protocol::lastShadowServerMessage();
     if (!shadow)
         return;
     switch (opcode) {
     case 122:
-        if (shadow->HasExtension(GameserverMessageNPCOffer::gameserver_message_n_p_c_offer)) {
-            const auto& m = shadow->GetExtension(GameserverMessageNPCOffer::gameserver_message_n_p_c_offer);
-            tibia::game::notify("onOpenNpcTradeHeader", m.npc_name(), static_cast<uint16_t>(m.currency_object_id()),
-                                m.currency_name());
-            std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>> items;
-            items.reserve(static_cast<size_t>(m.offers_size()));
-            for (const auto& offer : m.offers())
-                items.emplace_back(::tibia::container::TInventorySlot::fromTypeId(static_cast<uint16_t>(offer.object_id()),
-                                                                                  static_cast<uint8_t>(offer.data())),
-                                   offer.name(), offer.weight(), npcTradePrice(offer.buy_price()),
-                                   npcTradePrice(offer.sell_price()));
-            tibia::game::processOpenNpcTrade(items);
-        }
+        if (shadow->HasExtension(GameserverMessageNPCOffer::gameserver_message_n_p_c_offer))
+            handler->handleNPCOfferMessage(shadow->GetExtension(GameserverMessageNPCOffer::gameserver_message_n_p_c_offer));
         break;
     case 123:
-        if (shadow->HasExtension(GameserverMessagePlayerGoods::gameserver_message_player_goods)) {
-            std::vector<std::pair<uint16_t, uint16_t>> goods;
-            for (const auto& good : shadow->GetExtension(GameserverMessagePlayerGoods::gameserver_message_player_goods).goods())
-                goods.emplace_back(static_cast<uint16_t>(good.object_id()), static_cast<uint16_t>(good.amount()));
-            // The money comes from the resource balances, not this message.
-            tibia::game::processPlayerGoods(tibia::game::localPlayerTotalMoney(), goods);
-        }
+        if (shadow->HasExtension(GameserverMessagePlayerGoods::gameserver_message_player_goods))
+            handler->handlePlayerGoodsMessage(shadow->GetExtension(GameserverMessagePlayerGoods::gameserver_message_player_goods));
         break;
     case 124:
-        tibia::game::processCloseNpcTrade();
+        handler->handleCloseNPCTradeMessage();
+        break;
+    case 238:
+        if (shadow->HasExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance))
+            handler->handleResourceBalanceMessage(
+                shadow->GetExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance));
+        break;
+    case 40:
+        handler->handleDeadMessage();
         break;
     default:
         break;

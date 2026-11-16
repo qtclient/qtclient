@@ -1065,6 +1065,7 @@ int main(int argc, char** argv)
     window->installEventFilter(&discardMouseButtons);
 
     trade::TNPCTradeStorage npcTrade;
+    trade::TNPCTradeProtocolMessageHandler npcTradeMessages(&npcTrade);
     gamewindow::TNpcDialogController npcDialog(&npcTrade);
     npcDialog.setChatController(&chat);
     gamewindow::TPlayerTradeWidgetManager playerTrade(&sidebarManager, gameWindowItem, engine.get());

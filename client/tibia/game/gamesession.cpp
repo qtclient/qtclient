@@ -628,18 +628,6 @@ void processOpenOutfitWindow(const Outfit& currentOutfit, const std::vector<std:
     tibia::game::notify("onOpenOutfitWindow", currentOutfit, outfitList, mountList, familiarList);
 }
 
-void processOpenNpcTrade(const std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items)
-{
-    gameSessionState().processOpenNpcTrade(items);
-}
-void processPlayerGoods(const uint64_t money, const std::vector<std::pair<uint16_t, uint16_t>>& goods)
-{
-    tibia::game::notify("onPlayerGoods", money, goods);
-}
-void processCloseNpcTrade()
-{
-    tibia::game::notify("onCloseNpcTrade");
-}
 
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items)
 {

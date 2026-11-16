@@ -1,5 +1,7 @@
 #include "npcdialogcontroller.h"
 
+#include "trade/tradeciptypes.h"
+
 #include "chat/chatchannel.h"
 #include "gamewindow/chatcontroller.h"
 
@@ -73,8 +75,10 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
     m_npcOutfit = &m_outfit;
     m_keywordButtonsModel = &m_keywordButtons;
     m_positionAndSize = QRect(-1, -1, 0, 0);
-    connect(storage, &trade::TNPCTradeStorage::requestOpenNpcTrade, this, &TNpcDialogController::onRequestOpenNPCTrade);
-    connect(storage, &trade::TNPCTradeStorage::requestCloseNpcTrade, this, &TNpcDialogController::onRequestCloseNPCTrade);
+    if (trade::TNPCTradeProtocolMessageHandler* messages = trade::TNPCTradeProtocolMessageHandler::instance()) {
+        connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestOpenNpcTrade, this, &TNpcDialogController::onRequestOpenNPCTrade);
+        connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestCloseNpcTrade, this, &TNpcDialogController::onRequestCloseNPCTrade);
+    }
     // CIP / : while the trade has the keyboard the dialog's chat input lets go of it.
     m_tradeFocus.setActive(false);
     connect(&m_tradeFocus, &TUiFocusManager::focusChanged, this, [this] {

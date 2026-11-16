@@ -17,11 +17,6 @@ namespace tibia::trade {
 namespace {
 
 using Args = std::vector<std::any>;
-using OpenTradeItems =
-    std::vector<std::tuple<container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>;
-using PlayerGoods = std::vector<std::pair<uint16_t, uint16_t>>;
-
-constexpr uint16_t GoldCoinTypeId = 3031;
 constexpr int MaxStackableAmount = 10000;
 constexpr int MaxAmount = 100;
 
@@ -113,88 +108,30 @@ TNPCTradeStorage::TNPCTradeStorage(QObject* parent)
     : cip::tibia::trade::TNPCTradeStorage(parent)
 {
     trade::ownProductSurface(this);
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenNpcTradeHeader", [this](GameObject*, const Args& args) {
-        m_pendingNpcName = client::gamecore::argString(args, 0);
-        m_pendingCurrencyTypeId = static_cast<uint16_t>(client::gamecore::argInt(args, 1));
-        m_pendingCurrencyName = client::gamecore::argString(args, 2);
-        return std::any{};
-    });
-    // CIP /.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onOpenNpcTrade", [this](GameObject*, const Args& args) {
-        const auto* items = args.empty() ? nullptr : std::any_cast<OpenTradeItems>(&args[0]);
-        m_goods.clear();
-        if (items) {
-            for (const auto& [slot, name, weight, buy, sell] : *items)
-                m_goods.push_back({ slot, QString::fromStdString(name), sell, buy, weight });
-        }
-        m_npcName = m_pendingNpcName;
-        const uint16_t currency = m_pendingCurrencyTypeId == GoldCoinTypeId ? 0 : m_pendingCurrencyTypeId;
-        const bool currencyChanged = m_currencyTypeId != currency || m_currencyName != m_pendingCurrencyName;
-        m_currencyTypeId = currency;
-        m_currencyName = m_pendingCurrencyName;
-        m_pendingNpcName.clear();
-        m_pendingCurrencyTypeId = 0;
-        m_pendingCurrencyName.clear();
-        m_direction = ENPCTradeDirection::BUY;
-        const bool opened = !m_open;
-        m_open = true;
-        if (currencyChanged)
-            Q_EMIT tradeCurrencyChanged();
-        Q_EMIT traderInventoryChanged();
-        if (opened)
-            Q_EMIT requestOpenNpcTrade();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onPlayerGoods", [this](GameObject*, const Args& args) {
-        m_goldTotal = args.empty() ? 0 : static_cast<uint64_t>(client::gamecore::argInt(args, 0));
-        m_playerGoods.clear();
-        if (const auto* goods = args.size() > 1 ? std::any_cast<PlayerGoods>(&args[1]) : nullptr) {
-            for (const auto& [typeId, count] : *goods) {
-                if (typeId != 0)
-                    m_playerGoods[typeId] += count;
-            }
-        }
-        Q_EMIT playerInventoryChanged();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCloseNpcTrade", [this](GameObject*, const Args&) {
-        if (!m_open)
-            return std::any{};
-        reset();
-        Q_EMIT requestCloseNpcTrade();
-        return std::any{};
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
-            [this]() {
-        if (m_open)
-            Q_EMIT playerInventoryChanged();
-    });
-    // CIP v0xd0: capacity changes refresh the buyable amounts.
+    // Host: the player data CIP's session forwards (capacity, balances,
+    // inventory).
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onFreeCapacityChange", [this](GameObject*, const Args&) {
+        onPlayerDataChanged();
+        return std::any{};
+    });
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this, [this]() {
         if (m_open)
             Q_EMIT playerInventoryChanged();
-        return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onInventoryChange", [this](GameObject*, const Args&) {
         if (m_open)
             Q_EMIT playerInventoryChanged();
         return std::any{};
     });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
-        if (!m_open)
-            return;
-        reset();
-        Q_EMIT requestCloseNpcTrade();
-    });
 }
 
-void TNPCTradeStorage::reset()
+void TNPCTradeStorage::setTraderInventory(const QString& npcName, std::vector<TNPCTradeGood> goods)
 {
-    m_open = false;
-    m_goods.clear();
-    m_playerGoods.clear();
-    m_goldTotal = 0;
+    m_npcName = npcName;
+    m_goods = std::move(goods);
+    m_open = !m_npcName.isEmpty() || !m_goods.empty();
     m_direction = ENPCTradeDirection::BUY;
+    Q_EMIT traderInventoryChanged();
 }
 
 std::vector<TNPCTradeGood> TNPCTradeStorage::goods(const ENPCTradeDirection direction) const
@@ -215,15 +152,47 @@ void TNPCTradeStorage::setDirection(const ENPCTradeDirection direction)
     Q_EMIT traderInventoryChanged();
 }
 
-uint32_t TNPCTradeStorage::freeCapacity() const
+void TNPCTradeStorage::setPlayerGoods(const std::map<uint16_t, uint16_t>& goods)
 {
-    return tibia::game::localPlayerFreeCapacity();
+    if (m_playerGoods == goods)
+        return;
+    m_playerGoods = goods;
+    Q_EMIT playerInventoryChanged();
+}
+
+void TNPCTradeStorage::setCurrency(const std::optional<TCurrency>& currency)
+{
+    if (m_currency == currency)
+        return;
+    m_currency = currency;
+    Q_EMIT tradeCurrencyChanged();
+}
+
+void TNPCTradeStorage::setQuestFlagCurrencyBalance(const int balance)
+{
+    if (m_questFlagCurrencyBalance == balance)
+        return;
+    m_questFlagCurrencyBalance = balance;
+    Q_EMIT questFlagCurrencyBalanceChanged();
+}
+
+void TNPCTradeStorage::onPlayerDataChanged()
+{
+    if (!tibia::game::hasLocalPlayer())
+        return;
+    const uint32_t capacity = tibia::game::localPlayerFreeCapacity();
+    if (capacity == m_freeCapacity)
+        return;
+    m_freeCapacity = capacity;
+    if (m_direction == ENPCTradeDirection::BUY)
+        Q_EMIT traderInventoryChanged();
 }
 
 uint32_t TNPCTradeStorage::ownedCount(const TNPCTradeGood& good, const bool includeEquipped) const
 {
     const uint16_t type = good.typeId();
-    uint32_t count = m_playerGoods.value(type);
+    const auto it = m_playerGoods.find(type);
+    uint32_t count = it == m_playerGoods.end() ? 0 : it->second;
     if (includeEquipped)
         return count;
     uint32_t equipped = 0;
@@ -239,13 +208,13 @@ uint32_t TNPCTradeStorage::ownedCount(const TNPCTradeGood& good, const bool incl
 
 uint64_t TNPCTradeStorage::money() const
 {
-    if (currencyIsItem())
-        return m_playerGoods.value(m_currencyTypeId);
+    if (currencyIsItem()) {
+        const auto it = m_playerGoods.find(currencyTypeId());
+        return it == m_playerGoods.end() ? 0 : it->second;
+    }
     if (currencyIsName())
-        return 0;
-    if (tibia::game::hasLocalPlayer())
-        return tibia::game::localPlayerTotalMoney();
-    return m_goldTotal;
+        return static_cast<uint64_t>(std::max(m_questFlagCurrencyBalance, 0));
+    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerTotalMoney() : 0;
 }
 
 uint64_t TNPCTradeStorage::bankBalance() const
@@ -260,29 +229,28 @@ uint64_t TNPCTradeStorage::inventoryBalance() const
 
 void TNPCTradeStorage::look(const TNPCTradeGood& good) const
 {
-    if (good.typeId() != 0)
-        tibia::game::inspectNpcTrade(good.typeId(), good.countOrSubType());
+    if (TNPCTradeProtocolMessageHandler* handler = TNPCTradeProtocolMessageHandler::instance())
+        handler->sendLook(good);
 }
 
 void TNPCTradeStorage::buy(const TNPCTradeGood& good, const int amount, const bool ignoreCapacity, const bool withBackpacks) const
 {
-    if (good.typeId() != 0)
-        tibia::game::buyItem(good.typeId(), good.countOrSubType(), static_cast<uint16_t>(amount), ignoreCapacity, withBackpacks);
+    if (TNPCTradeProtocolMessageHandler* handler = TNPCTradeProtocolMessageHandler::instance())
+        handler->sendBuy(good, amount, ignoreCapacity, withBackpacks);
 }
 
 void TNPCTradeStorage::sell(const TNPCTradeGood& good, const int amount, const bool ignoreEquipped) const
 {
-    if (good.typeId() != 0)
-        tibia::game::sellItem(good.typeId(), good.countOrSubType(), static_cast<uint16_t>(amount), ignoreEquipped);
+    if (TNPCTradeProtocolMessageHandler* handler = TNPCTradeProtocolMessageHandler::instance())
+        handler->sendSell(good, amount, ignoreEquipped);
 }
 
 void TNPCTradeStorage::close()
 {
     if (!m_open)
         return;
-    tibia::game::closeNpcTrade();
-    reset();
-    Q_EMIT requestCloseNpcTrade();
+    if (TNPCTradeProtocolMessageHandler* handler = TNPCTradeProtocolMessageHandler::instance())
+        handler->sendClose();
 }
 
 }
