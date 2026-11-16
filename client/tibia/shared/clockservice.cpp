@@ -31,10 +31,20 @@ std::atomic<qint64> g_frameMicros{ startup().epochMillis * 1000 };
 
 }
 
-qint64 TClockService::nowMicros()
+qint64 TClockService::nowNanos()
 {
     const TStart& start = startup();
-    return (start.timer.nsecsElapsed() + start.epochMillis * 1000000) / 1000;
+    return start.timer.nsecsElapsed() + start.epochMillis * 1000000;
+}
+
+qint64 TClockService::nowMicros()
+{
+    return nowNanos() / 1000;
+}
+
+QDateTime TClockService::currentDateTime()
+{
+    return QDateTime::currentDateTime();
 }
 
 qint64 TClockService::startMillis()

@@ -32,14 +32,10 @@ struct CipTypedKeep {
     TCrashHandler tCrashHandler;
     TReadOnlyMemoryBlob tReadOnlyMemoryBlob;
     TLZMACompressedReadOnlyMemoryBlob tLzmaBlob;
-    TJsonValueValidator tJsonValueValidator;
-    TJsonObjectValidator tJsonObjectValidator;
-    TJsonArrayValidator tJsonArrayValidator;
     TZlibBaseWrapper tZlibBaseWrapper;
     TZlibInflateWrapper tZlibInflateWrapper;
     TZlibDeflateWrapper tZlibDeflateWrapper;
     TCompressionHelper tCompressionHelper;
-    TTimeLapseClockService tTimeLapseClockService;
     TRingBufferStopWatch tRingBufferStopWatch;
     TQtConnectionManager tQtConnectionManager;
     TCoordinate tCoordinate;
@@ -76,28 +72,6 @@ quint32 TRandomNumberGenerator::bounded(quint32 minInclusive, quint32 maxInclusi
 bool TLocalFileInfo::exists() const
 {
     return QFileInfo::exists(m_path);
-}
-
-bool TJsonValueValidator::isObject(const QByteArray& json)
-{
-    const QJsonDocument doc = QJsonDocument::fromJson(json);
-    return doc.isObject();
-}
-
-bool TJsonValueValidator::isArray(const QByteArray& json)
-{
-    const QJsonDocument doc = QJsonDocument::fromJson(json);
-    return doc.isArray();
-}
-
-bool TJsonObjectValidator::validate(const QByteArray& json)
-{
-    return TJsonValueValidator::isObject(json);
-}
-
-bool TJsonArrayValidator::validate(const QByteArray& json)
-{
-    return TJsonValueValidator::isArray(json);
 }
 
 TRingBufferStopWatch::TRingBufferStopWatch(size_t capacity)
