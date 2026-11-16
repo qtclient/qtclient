@@ -210,15 +210,8 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     // The spell modifications the server announces.
     link(&Queue::receivedSpellDataModificationMessage, this, &spells::TSpellsProtocolMessageHandler::handleSpellDataModificationMessage);
 
-    using market::TMarketProtocolMessageHandler;
-    link(&Queue::receivedMarketEnterMessage, this, &TMarketProtocolMessageHandler::handleMarketEnterMessage);
-    link(&Queue::receivedMarketDetailMessage, this, &TMarketProtocolMessageHandler::handleMarketDetailMessage);
-    link(&Queue::receivedMarketBrowseMessage, this, &TMarketProtocolMessageHandler::handleMarketBrowseMessage);
-
-    using trade::TNPCTradeProtocolMessageHandler;
-    link(&Queue::receivedNPCOfferMessage, this, &TNPCTradeProtocolMessageHandler::handleNPCOfferMessage);
-    link(&Queue::receivedPlayerGoodsMessage, this, &TNPCTradeProtocolMessageHandler::handlePlayerGoodsMessage);
-    link(&Queue::receivedCloseNPCTradeMessage, this, &TNPCTradeProtocolMessageHandler::handleCloseNPCTradeMessage);
+    // Market and NPC trade: their session-owned handlers decode the queue's
+    // messages through their own ingress (registered by the game client).
 
     using questlog::TQuestLogProtocolMessageHandler;
     link(&Queue::receivedQuestLogMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLogMessage);

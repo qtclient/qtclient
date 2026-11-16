@@ -28,6 +28,9 @@ class ProtocolStoreOpenParameters;
 }
 
 namespace tibia {
+namespace market {
+class TMarketStorage;
+}
 namespace store {
 
 using TOfferID = uint32_t;
@@ -313,6 +316,9 @@ public:
     /// Host: the storage the messages fill (CIP passes it to the constructor).
     void setStorage(TStoreStorage* storage) { m_storage = storage; }
     TStoreStorage* storage() const { return m_storage; }
+    /// Host: the market storage the transferable coins go to (CIP passes it
+    /// to the constructor).
+    void setMarketStorage(market::TMarketStorage* storage) { m_marketStorage = storage; }
     const QUrl& imageBaseUrl() const { return m_imageBaseUrl; }
     /// The login message's coin packet size: coins transfer in multiples of it.
     qint64 creditPacketSize() const;
@@ -373,6 +379,7 @@ private:
 
     static TStoreProtocolMessageHandler* s_live;
     TStoreStorage* m_storage = nullptr;
+    market::TMarketStorage* m_marketStorage = nullptr;
     QUrl m_imageBaseUrl;
     bool m_searchRefreshPending = false;
     bool m_refreshOffersAfterPurchase = false;

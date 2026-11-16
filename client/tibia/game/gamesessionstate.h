@@ -89,8 +89,6 @@ public:
     // outfit
 
     // npc trade (Phase 5.0-D: appearance slots / typeId counts — no ItemPtr in notify)
-    static void processOpenNpcTrade(
-        const std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items);
 
     // player trade
     static void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);

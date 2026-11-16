@@ -8,6 +8,9 @@
 #include <QHash>
 #include <QString>
 
+#include <map>
+#include <optional>
+#include <variant>
 #include <vector>
 
 namespace tibia {
@@ -48,70 +51,72 @@ int maximumBuyAmount(const TNPCTradeGood& good, uint64_t money, uint32_t capacit
 /// CIP : the most the player can sell of `owned` objects.
 int maximumSellAmount(const TNPCTradeGood& good, uint32_t owned);
 
-/// The open NPC trade (CIP: TNPCTradeStorage, ctor , vtable
-/// ) fed by CIP's OpenNPCTrade / PlayerGoods / CloseNPCTrade
-/// (CIP's TNPCTradeProtocolMessageHandler).
+/// The NPC trade's data (CIP: TNPCTradeStorage): the trader's goods, the
+/// player's goods, the trade direction and the trade currency. The protocol
+/// handler (TNPCTradeProtocolMessageHandler) fills it.
 class TNPCTradeStorage final : public cip::tibia::trade::TNPCTradeStorage
 {
     Q_OBJECT
 public:
+    /// The trade currency: an object type or a name; none is gold.
+    using TCurrency = std::variant<uint16_t, QString>;
+
     explicit TNPCTradeStorage(QObject* parent = nullptr);
 
+    /// The trader's goods are known (an NPC offer arrived and no close yet).
     bool isOpen() const { return m_open; }
     const QString& npcName() const { return m_npcName; }
 
-    /// v0x68 : the goods the NPC sells (BUY) or buys (SELL).
+    /// CIP: the trader's name and goods; the direction goes back to buying.
+    /// An empty name and no goods close the trade.
+    void setTraderInventory(const QString& npcName, std::vector<TNPCTradeGood> goods);
+    /// CIP: the goods the NPC sells (BUY) or buys (SELL).
     std::vector<TNPCTradeGood> goods(ENPCTradeDirection direction) const;
-    /// v0x88 / v0x90.
+    /// CIP: the player's free capacity in 1/100 oz when it last changed.
+    uint32_t freeCapacity() const { return m_freeCapacity; }
+    /// CIP: the player's objects by type.
+    void setPlayerGoods(const std::map<uint16_t, uint16_t>& goods);
+    /// The player's objects of the good's type, equipped ones only with
+    /// `includeEquipped`.
+    uint32_t ownedCount(const TNPCTradeGood& good, bool includeEquipped) const;
     ENPCTradeDirection direction() const { return m_direction; }
     void setDirection(ENPCTradeDirection direction);
-    /// v0x70: the player's free capacity in 1/100 oz.
-    uint32_t freeCapacity() const;
-    /// v0x80: the player's objects of the good's type, equipped ones only
-    /// with `includeEquipped`.
-    uint32_t ownedCount(const TNPCTradeGood& good, bool includeEquipped) const;
-
-    /// v0xa8 / v0xb0 / v0xb8: a currency other than gold, as an object type
-    /// or a name.
-    bool hasCurrency() const { return currencyIsItem() || currencyIsName(); }
-    bool currencyIsItem() const { return m_currencyTypeId != 0; }
-    bool currencyIsName() const { return m_currencyTypeId == 0 && !m_currencyName.isEmpty(); }
-    uint16_t currencyTypeId() const { return m_currencyTypeId; }
-    const QString& currencyName() const { return m_currencyName; }
-    /// CIP : gold (bank and inventory), the currency objects
-    /// carried, or the named resource.
+    /// CIP: a currency other than gold.
+    void setCurrency(const std::optional<TCurrency>& currency);
+    const std::optional<TCurrency>& currency() const { return m_currency; }
+    bool hasCurrency() const { return m_currency.has_value(); }
+    bool currencyIsItem() const { return hasCurrency() && m_currency->index() == 0; }
+    bool currencyIsName() const { return hasCurrency() && m_currency->index() != 0; }
+    uint16_t currencyTypeId() const { return currencyIsItem() ? std::get<uint16_t>(*m_currency) : 0; }
+    QString currencyName() const { return currencyIsName() ? std::get<QString>(*m_currency) : QString(); }
+    /// CIP: the balance of a named (quest flag) currency.
+    void setQuestFlagCurrencyBalance(int balance);
+    int questFlagCurrencyBalance() const { return m_questFlagCurrencyBalance; }
+    /// CIP: gold (bank and inventory), the currency objects carried, or the
+    /// named currency's balance.
     uint64_t money() const;
     uint64_t bankBalance() const;
     uint64_t inventoryBalance() const;
 
-    /// CIP / /.
+    /// Host: the handler's look / buy / sell / close requests.
     void look(const TNPCTradeGood& good) const;
     void buy(const TNPCTradeGood& good, int amount, bool ignoreCapacity, bool withBackpacks) const;
     void sell(const TNPCTradeGood& good, int amount, bool ignoreEquipped) const;
-    /// Sends CloseNPCTrade and closes the trade without waiting for the
-    /// server's answer.
     void close();
 
-Q_SIGNALS:
-    /// CIP TNPCTradeProtocolMessageHandler::requestOpenNpcTrade /
-    /// requestCloseNpcTrade.
-    void requestOpenNpcTrade();
-    void requestCloseNpcTrade();
+public Q_SLOTS:
+    /// CIP: a capacity change refreshes the buy list.
+    void onPlayerDataChanged();
 
 private:
-    void reset();
-
     bool m_open = false;
     QString m_npcName;
-    QString m_pendingNpcName;
-    uint16_t m_pendingCurrencyTypeId = 0;
-    QString m_pendingCurrencyName;
     std::vector<TNPCTradeGood> m_goods;
     ENPCTradeDirection m_direction = ENPCTradeDirection::BUY;
-    uint16_t m_currencyTypeId = 0;
-    QString m_currencyName;
-    uint64_t m_goldTotal = 0;
-    QHash<uint16_t, uint32_t> m_playerGoods;
+    uint32_t m_freeCapacity = 0;
+    std::map<uint16_t, uint16_t> m_playerGoods;
+    std::optional<TCurrency> m_currency;
+    int m_questFlagCurrencyBalance = 0;
     std::vector<client::gamecore::Hook> m_hooks;
 };
 

@@ -2,6 +2,7 @@
 #include "protocol/protocolciptypes.h"
 #include <protocol.pb.h>
 
+#include "market/marketstorage.h"
 #include "store/storeciptypes.h"
 
 #include <client/const.h>
@@ -764,6 +765,9 @@ void TStoreProtocolMessageHandler::handleCreditBalanceMessage(const GameserverMe
         balance = TStoreBalance{ message.total(), message.transferable(), message.reserved_auction() };
     if (m_storage)
         m_storage->setBalance(balance);
+    // The market trades the transferable coins.
+    if (m_marketStorage)
+        m_marketStorage->setTibiaCoins(balance ? static_cast<uint64_t>(balance->confirmed) : 0);
     // Host: the player's coin resources follow the balance.
     if (balance) {
         tibia::game::localPlayerSetResourceBalance(tibia::client::RESOURE_COIN_NORMAL, static_cast<uint64_t>(balance->total));

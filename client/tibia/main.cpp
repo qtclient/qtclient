@@ -796,7 +796,9 @@ int main(int argc, char** argv)
     gamewindow::TStoreDialogController storeDialog(&storeStorage, &storeMessages);
     gamewindow::TStoreButtonController storeButton(&storeDialog);
     market::TMarketStorage marketStorage;
-    gamewindow::TMarketController marketController(&marketStorage);
+    market::TMarketProtocolMessageHandler marketMessages(&marketStorage);
+    storeMessages.setMarketStorage(&marketStorage);
+    gamewindow::TMarketController marketController(&marketStorage, &marketMessages);
     marketController.setOpenStore([&storeDialog] { storeDialog.open(); });
     gamewindow::TStashDialogController stashDialog;
     QObject::connect(&marketController, &cip::tibia::gamewindow::TDialogControllerBase::dialogClosed, &stashDialog,
@@ -1036,6 +1038,7 @@ int main(int argc, char** argv)
     window->installEventFilter(&discardMouseButtons);
 
     trade::TNPCTradeStorage npcTrade;
+    trade::TNPCTradeProtocolMessageHandler npcTradeMessages(&npcTrade);
     gamewindow::TNpcDialogController npcDialog(&npcTrade);
     npcDialog.setChatController(&chat);
     gamewindow::TPlayerTradeWidgetManager playerTrade(&sidebarManager, gameWindowItem, engine.get());

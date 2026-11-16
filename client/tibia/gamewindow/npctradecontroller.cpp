@@ -1,5 +1,7 @@
 #include "npctradecontroller.h"
 
+#include "trade/tradeciptypes.h"
+
 #include "app/clientoptions.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -246,7 +248,8 @@ TNPCTradeController::TNPCTradeController(trade::TNPCTradeStorage* storage, QObje
     connect(m_confirmation, &TMessageDialogController::acceptClicked, this, &TNPCTradeController::onLargeTradeConfirmed);
 
     // CIP attaches the trade session each time the NPC opens a trade.
-    connect(storage, &trade::TNPCTradeStorage::requestOpenNpcTrade, this, &TNPCTradeController::setTradeStorage);
+    if (trade::TNPCTradeProtocolMessageHandler* messages = trade::TNPCTradeProtocolMessageHandler::instance())
+        connect(messages, &trade::TNPCTradeProtocolMessageHandler::requestOpenNpcTrade, this, &TNPCTradeController::setTradeStorage);
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == OptionsKey)
             onNpcTradeOptionsChanged();

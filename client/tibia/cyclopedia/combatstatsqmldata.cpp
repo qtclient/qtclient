@@ -510,28 +510,131 @@ QObject* TOffenceStatsQmlData::makeSpellBonusHealingFromSkills()
                               this);
 }
 
-TDefenceStatsQmlData::TDefenceStatsQmlData(const CombatStats& stats, QObject* parent)
-    : cip::tibia::cyclopedia::TDefenceStatsQmlData(parent)
+namespace {
+
+using game::IDefenceStatsProvider;
+
+/// CIP: a multiplying part, "* x%".
+QString factorText(const double value)
 {
-    const auto integer = [](const int value) { return englishLocale().toString(value); };
+    return QStringLiteral("* %1%").arg(formatDecimal(value * 100.0, 0, 2));
+}
 
-    m_defence = makeStat(qtTrId("charinfo_defence_value"), qtTrId("charinfo_defence_value_tooltip"),
-                         integer(stats.defence), true, this);
-    m_armorValue = makeStat(qtTrId("charinfo_armor_value"), qtTrId("charinfo_armor_value_tooltip"),
-                            integer(stats.armor), true, this);
-    m_mantraValue = makeStat(qtTrId("charinfo_mantra_value"), qtTrId("charinfo_mantra_value_tooltip"),
-                             integer(stats.mantra), stats.mantra > 0, this);
-    m_mitigation = makeStat(qtTrId("charinfo_mitigation_percent"), qtTrId("charinfo_mitigation_percent_tooltip"),
-                            formatFraction(stats.mitigation, true, true), true, this);
-    m_magicShield = makeStat(qtTrId("magic_shield_capacity_bonus_caption"), QString(), integer(0), false, this);
-    m_dodge = makeStat(qtTrId("dodge"), qtTrId("dodge_tooltip").arg(formatFraction(stats.dodge, false, true)),
-                       formatFraction(stats.dodge, true, true), stats.dodge > 0.0, this);
-    m_damageReflection =
-        makeStat(qtTrId("damage_reflection_amount"), qtTrId("damage_reflection_tooltip").arg(integer(stats.damageReflection)),
-                 integer(stats.damageReflection), stats.damageReflection > 0, this);
+/// The skills widget's PlayerSkills stats: totals only, no source parts.
+class CombatStatsDefenceProvider final : public IDefenceStatsProvider
+{
+public:
+    explicit CombatStatsDefenceProvider(const CombatStats& stats)
+        : m_stats(stats)
+    {}
 
-    for (const auto& [damageType, value] : stats.damageReductions) {
-        const QString name = damageTypeName(damageType);
+    int armor() const override { return m_stats.armor; }
+    int mantra() const override { return m_stats.mantra; }
+    int defence() const override { return m_stats.defence; }
+    std::optional<int> defence(ECombatStatSource) const override { return std::nullopt; }
+    std::optional<int> defenceSkill() const override { return std::nullopt; }
+    double mitigation() const override { return m_stats.mitigation; }
+    std::optional<double> mitigation(ECombatStatSource) const override { return std::nullopt; }
+    std::optional<int> mitigationSkill() const override { return std::nullopt; }
+    std::vector<ElementalResistance> elementalResistances() const override
+    {
+        std::vector<ElementalResistance> result;
+        for (const auto& [damageType, value] : m_stats.damageReductions)
+            result.push_back({ damageType, std::nullopt, value });
+        return result;
+    }
+    std::vector<ElementalResistance> elementalResistanceSources(int) const override { return {}; }
+    uint32_t magicShieldCapacity() const override { return 0; }
+    uint32_t magicShieldCapacityFlat() const override { return 0; }
+    double magicShieldCapacityPercent() const override { return 1.0; }
+    int damageReflection() const override { return m_stats.damageReflection; }
+    double dodge() const override { return m_stats.dodge; }
+    std::optional<double> dodge(ECombatStatSource) const override { return std::nullopt; }
+
+private:
+    CombatStats m_stats;
+};
+
+}
+
+TDefenceStatsQmlData::TDefenceStatsQmlData(const CombatStats& stats, QObject* parent)
+    : TDefenceStatsQmlData(std::make_shared<CombatStatsDefenceProvider>(stats), parent)
+{}
+
+TDefenceStatsQmlData::TDefenceStatsQmlData(std::shared_ptr<game::IDefenceStatsProvider> provider, QObject* parent)
+    : cip::tibia::cyclopedia::TDefenceStatsQmlData(parent)
+    , m_provider(std::move(provider))
+{
+    const std::shared_ptr<IDefenceStatsProvider> shared = m_provider;
+    const IDefenceStatsProvider& p = *m_provider;
+
+    m_defence = makeSourcedStat(qtTrId("charinfo_defence_value"), qtTrId("charinfo_defence_value_tooltip"),
+                                formatInteger(p.defence(), false), true,
+                                statSources<int>([shared](ECombatStatSource s) { return shared->defence(s); }, unsignedInteger,
+                                                 p.defenceSkill()),
+                                this);
+    m_armorValue = makeSourcedStat(qtTrId("charinfo_armor_value"), qtTrId("charinfo_armor_value_tooltip"),
+                                   formatInteger(p.armor(), false), true, {}, this);
+    m_mantraValue = makeSourcedStat(qtTrId("charinfo_mantra_value"), qtTrId("charinfo_mantra_value_tooltip"),
+                                    formatInteger(p.mantra(), false), p.mantra() > 0, {}, this);
+
+    // The defence and skill parts of the mitigation add, the others multiply
+    // (a factor of 1 is no part).
+    std::vector<StatSource> mitigationSources;
+    for (const ECombatStatSource source : { ECombatStatSource::Defence, ECombatStatSource::Skill, ECombatStatSource::Equipment,
+                                            ECombatStatSource::SkillWheel, ECombatStatSource::CombatTactics }) {
+        const std::optional<double> part = p.mitigation(source);
+        if (!part)
+            continue;
+        const int index = static_cast<int>(source);
+        QString name;
+        QString value;
+        if (source == ECombatStatSource::Defence || source == ECombatStatSource::Skill) {
+            value = formatFraction(*part, true, true);
+            const std::optional<int> skill = source == ECombatStatSource::Skill ? p.mitigationSkill() : std::nullopt;
+            name = skill ? skillSourceName(*skill) : sourceName(index);
+        } else {
+            if (*part == 1.0)
+                continue;
+            value = factorText(*part);
+            name = sourceName(index);
+        }
+        mitigationSources.push_back({ name, value, sourceTooltip(index) });
+    }
+    m_mitigation = makeSourcedStat(qtTrId("charinfo_mitigation_percent"), qtTrId("charinfo_mitigation_percent_tooltip"),
+                                   formatFraction(p.mitigation(), true, true), true, std::move(mitigationSources), this);
+
+    std::vector<StatSource> shieldSources;
+    if (p.magicShieldCapacityFlat() != 0)
+        shieldSources.push_back({ qtTrId("magic_shield_capacity_flat_bonus"),
+                                  englishLocale().toString(static_cast<qint64>(p.magicShieldCapacityFlat())), QString() });
+    if (p.magicShieldCapacityPercent() != 1.0)
+        shieldSources.push_back({ qtTrId("magic_shield_capacity_percent_bonus"), factorText(p.magicShieldCapacityPercent()), QString() });
+    QString shieldTooltip;
+    if (!shieldSources.empty()) {
+        shieldTooltip = qtTrId("magic_shield_capacity_tooltip")
+                            .arg(static_cast<qint64>(p.magicShieldCapacityFlat()))
+                            .arg(formatFraction(p.magicShieldCapacityPercent(), false, true));
+    }
+    m_magicShield = makeSourcedStat(qtTrId("magic_shield_capacity_bonus_caption"), shieldTooltip,
+                                    englishLocale().toString(static_cast<qint64>(p.magicShieldCapacity())), p.magicShieldCapacity() > 0,
+                                    std::move(shieldSources), this);
+
+    m_dodge = makeSourcedStat(qtTrId("dodge"), qtTrId("dodge_tooltip").arg(formatFraction(p.dodge(), false, true)),
+                              formatFraction(p.dodge(), true, true), p.dodge() > 0.0,
+                              statSources<double>([shared](ECombatStatSource s) { return shared->dodge(s); }, signedPercent), this);
+    m_damageReflection = makeSourcedStat(qtTrId("damage_reflection_amount"),
+                                         qtTrId("damage_reflection_tooltip").arg(formatInteger(p.damageReflection(), false)),
+                                         formatInteger(p.damageReflection(), false), p.damageReflection() > 0, {}, this);
+
+    for (const IDefenceStatsProvider::ElementalResistance& resistance : p.elementalResistances()) {
+        std::vector<StatSource> sources;
+        for (const IDefenceStatsProvider::ElementalResistance& part : p.elementalResistanceSources(resistance.damageType)) {
+            const int source = part.source ? static_cast<int>(*part.source) : -1;
+            sources.push_back({ sourceName(source), formatFraction(part.value, true, true), sourceTooltip(source) });
+        }
+        const QString name = damageTypeName(resistance.damageType);
+        const double value = resistance.value;
         const QString tooltip = qtTrId(value < 0.0 ? "charinfo_damage_increase_tooltip" : "charinfo_damage_reduction_tooltip")
                                     .arg(name)
                                     .arg(formatFraction(std::fabs(value), false, true))
@@ -539,10 +642,10 @@ TDefenceStatsQmlData::TDefenceStatsQmlData(const CombatStats& stats, QObject* pa
         QString style = QStringLiteral("Dialog");
         if (value > 0.0)
             style = QStringLiteral("ModifierPositive");
-        else if (value < 0.0)
+        if (value < 0.0)
             style = QStringLiteral("ModifierNegative");
-        m_damageReductions.append(makeStat(name, tooltip, formatFraction(value, true, true), true, this,
-                                           { damageTypeIcon(damageType), QString() }, style));
+        m_damageReductions.append(new TQmlStatWithSources(name, tooltip, formatFraction(value, true, true), true, std::move(sources), style,
+                                                          { damageTypeIcon(resistance.damageType), QString() }, this));
     }
 }
 

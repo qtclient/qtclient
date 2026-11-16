@@ -2,6 +2,7 @@
 
 #include "cyclopedia/combatstatsqmldata.h"
 #include "cyclopedia/playermiscstatsprovider.h"
+#include "cyclopedia/playerdefencestatsprovider.h"
 #include "cyclopedia/playeroffencestatsprovider.h"
 #include "game/skillswidgetentrydata.h"
 #include "gamewindow/characterinfomodels.h"
@@ -380,20 +381,6 @@ cyclopedia::CombatStats combinedDefence(const CyclopediaCharacterCombatStats& da
     return defence;
 }
 
-cyclopedia::CombatStats toDefenceStats(const CyclopediaCharacterDefenceStats& data)
-{
-    cyclopedia::CombatStats stats;
-    stats.defence = data.defense;
-    stats.armor = data.armor;
-    if (const game::TPlayerSkillStats* skillStats = game::TPlayerSkillStats::liveInstance())
-        stats.mantra = skillStats->combatStats().mantra;
-    stats.mitigation = data.mitigation;
-    stats.dodge = data.dodgeTotal;
-    stats.damageReflection = data.reflectPhysical;
-    for (const auto& resistance : data.resistances)
-        stats.damageReductions.emplace(resistance.element, resistance.value);
-    return stats;
-}
 
 }
 
@@ -728,7 +715,7 @@ void TCharacterInfoDialogController::updateOffenceStats(const Args& args)
 void TCharacterInfoDialogController::updateDefenceStats(const Args& args)
 {
     if (const auto* data = arg<CyclopediaCharacterDefenceStats>(args, 0))
-        replace(m_defenceStats, static_cast<QObject*>(new cyclopedia::TDefenceStatsQmlData(toDefenceStats(*data), this)));
+        replace(m_defenceStats, static_cast<QObject*>(new cyclopedia::TDefenceStatsQmlData(std::make_shared<cyclopedia::TPlayerDefenceStatsProvider>(*data), this)));
     else if (const auto* combined = arg<CyclopediaCharacterCombatStats>(args, 0))
         replace(m_defenceStats, static_cast<QObject*>(new cyclopedia::TDefenceStatsQmlData(combinedDefence(*combined, args), this)));
     Q_EMIT dataModelChanged();

@@ -446,8 +446,6 @@ void leaveMarket()
         return;
 
     gameclient::sendMarketLeave();
-
-    tibia::game::notify("onMarketLeave");
 }
 
 void lookCreature(uint32_t creatureId, bool isBattleList)

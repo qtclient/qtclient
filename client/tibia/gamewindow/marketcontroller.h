@@ -2,6 +2,7 @@
 
 #include "gamewindow/appearancetypelistmodel.h"
 #include "gamewindow/dialogmanager.h"
+#include "market/marketciptypes.h"
 #include "market/marketstorage.h"
 
 #include <cip_gen.h>
@@ -51,7 +52,7 @@ class TMarketController final : public TDialogController<cip::tibia::market::TMa
 {
     Q_OBJECT
 public:
-    explicit TMarketController(market::TMarketStorage* storage, QObject* parent = nullptr);
+    TMarketController(market::TMarketStorage* storage, market::TMarketProtocolMessageHandler* messages, QObject* parent = nullptr);
     ~TMarketController() override;
 
     /// Unused: the store deeplink publishes OPEN_STORE (kept for the host's call).
@@ -126,11 +127,12 @@ private:
     void setEnableTierAndClassificationSelection(bool enable);
     void setSelectedCategory(int category);
     void setItemProperty(const char* name, const QVariant& value);
-    void setOfferLists(const char* buyProperty, const char* sellProperty, const std::vector<market::TMarketOffer>& offers,
+    void setOfferLists(const char* buyProperty, const char* sellProperty, const market::TMarketOfferList& offers,
                        std::vector<QObject*>& owned);
     uint8_t selectedTier() const { return m_hasSelectedTier ? m_selectedTier : 0; }
 
     QPointer<market::TMarketStorage> m_storage;
+    QPointer<market::TMarketProtocolMessageHandler> m_messages;
     TAppearanceTypeListModel m_model;
     TAppearanceTypeListModelSortFilterProxy m_proxy;
     int m_selectedCategory = -1;

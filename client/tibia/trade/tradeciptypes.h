@@ -3,6 +3,7 @@
 // CIP-named trade surfaces (promoted from cipwire).
 
 #include "client/gamecore.h"
+#include "trade/npctradestorage.h"
 #include "trade/playertradestorage.h"
 #include "shared/cip_typed.h"
 
@@ -24,6 +25,9 @@ class GameserverMessageNPCOffer;
 class GameserverMessagePlayerGoods;
 class GameserverMessageOwnOffer;
 class GameserverMessageCounterOffer;
+class GameserverMessageNPCOffer;
+class GameserverMessagePlayerGoods;
+class GameserverMessageResourceBalance;
 }
 
 namespace tibia {
@@ -121,14 +125,37 @@ private:
     std::vector<TCharacterTradeConditionEntry> m_confirmations;
 };
 
+/// CIP: TNPCTradeProtocolMessageHandler. Fills the NPC trade storage from
+/// the server's trade messages and sends the trade requests.
 class TNPCTradeProtocolMessageHandler final : public cip::tibia::trade::TNPCTradeProtocolMessageHandler
 {
     Q_OBJECT
 public:
-    using cip::tibia::trade::TNPCTradeProtocolMessageHandler::TNPCTradeProtocolMessageHandler;
-    static void handleNPCOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageNPCOffer& NPCOfferMessage);
-    static void handlePlayerGoodsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerGoods& PlayerGoodsMessage);
-    static void handleCloseNPCTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseNPCTrade& CloseNPCTradeMessage);
+    explicit TNPCTradeProtocolMessageHandler(TNPCTradeStorage* storage, QObject* parent = nullptr);
+    ~TNPCTradeProtocolMessageHandler() override;
+
+    /// The live handler (the session owns one).
+    static TNPCTradeProtocolMessageHandler* instance();
+
+    /// CIP: closes the trade; the trader's goods are dropped.
+    void sendClose();
+    void sendLook(const TNPCTradeGood& good);
+    void sendBuy(const TNPCTradeGood& good, int amount, bool ignoreCapacity, bool withBackpacks);
+    void sendSell(const TNPCTradeGood& good, int amount, bool ignoreEquipped);
+
+    /// CIP: the trader's goods and currency, then the trade opens.
+    void handleNPCOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageNPCOffer& message);
+    void handlePlayerGoodsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerGoods& message);
+    /// CIP: the quest flag currency's balance.
+    void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
+    void handleCloseNPCTradeMessage();
+    void handleDeadMessage();
+
+    /// Ingress: applies the protobuf message the queue built for `opcode`.
+    static void onServerMessageEnqueued(int opcode);
+
+private:
+    TNPCTradeStorage* m_storage = nullptr;
 };
 
 class TPlayerTradeGameActionHandler final : public cip::tibia::trade::TPlayerTradeGameActionHandler

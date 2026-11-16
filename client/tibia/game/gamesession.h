@@ -309,10 +309,6 @@ void processOpenOutfitWindow(const Outfit& currentOutfit,
                              const std::vector<std::tuple<uint16_t, std::string, uint8_t, uint8_t>>& outfitList,
                              const std::vector<std::tuple<uint16_t, std::string, uint8_t>>& mountList,
                              const std::vector<std::tuple<uint16_t, std::string>>& familiarList);
-void processOpenNpcTrade(
-    const std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items);
-void processPlayerGoods(uint64_t money, const std::vector<std::pair<uint16_t, uint16_t>>& goods);
-void processCloseNpcTrade();
 void processOwnTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processCounterTrade(std::string_view name, const std::vector<::tibia::container::TInventorySlot>& items);
 void processCloseTrade();

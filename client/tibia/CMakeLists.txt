@@ -455,6 +455,8 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/combatstatsqmldata.cpp cyclopedia/combatstatsqmldata.h
     cyclopedia/playeroffencestatsprovider.cpp cyclopedia/playeroffencestatsprovider.h
     game/offencestatsprovider.h
+    cyclopedia/playerdefencestatsprovider.cpp cyclopedia/playerdefencestatsprovider.h
+    game/defencestatsprovider.h
     cyclopedia/playermiscstatsprovider.cpp cyclopedia/playermiscstatsprovider.h
     game/miscstatsprovider.h
     game/statusbarstorage.cpp game/statusbarstorage.h

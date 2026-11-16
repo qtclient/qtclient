@@ -550,11 +550,6 @@ void TGameSessionState::processEditGuildMessage(const std::string_view text)
 
 
 
-void TGameSessionState::processOpenNpcTrade(
-    const std::vector<std::tuple<tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>>& items)
-{
-    tibia::game::notify("onOpenNpcTrade", items);
-}
 
 
 
