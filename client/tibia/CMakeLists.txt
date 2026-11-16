@@ -403,6 +403,7 @@ if(TIBIA_WITH_GAMECORE)
     input/clickareaeventfilter.cpp input/clickareaeventfilter.h
     input/eventfilters.cpp input/eventfilters.h
     input/domainhandlers.cpp input/domainhandlers.h
+    input/genericgameactionhandler.cpp input/genericgameactionhandler.h
     input/crosshairgameactionhandlers.cpp input/crosshairgameactionhandlers.h
     input/playermovementgameactionhandler.cpp input/playermovementgameactionhandler.h
     input/playermovementinputinterpreter.cpp input/playermovementinputinterpreter.h

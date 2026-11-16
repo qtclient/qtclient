@@ -108,6 +108,8 @@ public:
     void setTracked(uint16_t typeId, bool tracked);
     /// CIP : untracks everything.
     void removeAllTracked();
+    /// CIP's hunting-session reset of the drop tracker: forgets the recent drops.
+    void clearRecentLootDrops();
     const std::deque<TrackedItem>& trackedItems() const { return m_tracked; }
     /// CIP : the first 5 (free) or 50 (premium) entries.
     std::vector<TrackedItem> activeTrackedItems() const;

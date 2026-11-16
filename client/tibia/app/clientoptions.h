@@ -15,8 +15,15 @@ public:
     static ClientOptionsNotifier* instance();
 
 Q_SIGNALS:
-    /// ClientOptions::store changed the option `name`.
+    /// ClientOptions::store changed the option `name`, or a typed
+    /// TClientOptions setter changed it (the client window: its section name).
     void optionChanged(const QString& name);
+
+private:
+    /// Forwards TClientOptions' typed changes and saves the file after them.
+    ClientOptionsNotifier();
+
+    bool m_saveScheduled = false;
 };
 
 /// A JSON view of config::TClientOptions for host and pack code: load() is

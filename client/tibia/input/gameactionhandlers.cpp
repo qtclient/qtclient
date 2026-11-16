@@ -343,20 +343,9 @@ void publish(const TGameActionPtr& action)
     if (const auto it = actionHandlers().find(action->type); it != actionHandlers().end() && it->second(*action))
         return;
     switch (action->type) {
-    case A::SMART_CLICK:
-        publish(action->inner);
-        break;
-    case A::LOOK:
-        if (action->objectClientId && action->position.isValid() && action->stackPosition >= 0)
-            tibia::game::lookMapObject(action->position, action->objectClientId, action->stackPosition);
-        break;
     case A::LOOK_AT_CREATURE:
         if (action->creatureId)
             tibia::game::lookCreature(action->creatureId);
-        break;
-    case A::USE:
-        if (action->objectClientId && action->position.isValid() && action->stackPosition >= 0)
-            tibia::game::useMapObject(action->position, action->objectClientId, action->stackPosition);
         break;
     case A::TRY_TO_EQUIP:
         if (const uint16_t typeId = wireTypeId(*action); typeId != 0) {
@@ -366,12 +355,6 @@ void publish(const TGameActionPtr& action)
             tibia::game::equipItemId(typeId, tier);
         }
         break;
-    case A::OPEN:
-    case A::OPEN_IN_NEW_WINDOW:
-        if (const uint16_t typeId = wireTypeId(*action); typeId != 0 && action->stackPosition >= 0)
-            tibia::game::openAt(action->position, typeId, action->stackPosition,
-                          action->type == A::OPEN ? parentContainerId(*action) : -1);
-        break;
     case A::OPEN_PARENT_CONTAINER:
         if (const int containerId = parentContainerId(*action); containerId >= 0)
             tibia::game::openParentById(containerId);
@@ -380,16 +363,8 @@ void publish(const TGameActionPtr& action)
             tibia::game::openParentContainerFromDepotSearch(action->position);
         }
         break;
-    case A::BROWSE_FIELD:
-        if (action->position.isValid())
-            tibia::game::browseField(action->position);
-        break;
     case A::GATHER_ALL:
         // Handled by TGatherAllGameActionHandler when registered.
-        break;
-    case A::ROTATE_OBJECT:
-        if (action->objectClientId && action->position.isValid() && action->stackPosition >= 0)
-            tibia::game::rotateMapObject(action->position, action->objectClientId, action->stackPosition);
         break;
     case A::INSPECT_OBJECT:
         if (action->position.isValid())
@@ -454,17 +429,8 @@ void publish(const TGameActionPtr& action)
     case A::CANCEL_CROSSHAIR_SPELL:
         finishTargetSelection(nullptr);
         break;
-    case A::TOGGLE_CREATURE_HUDS_VISIBLE:
-    case A::TOGGLE_SOUND:
-        // Handled by TGenericGameActionHandler when registered.
-        break;
     case A::OPEN_LAUNCHER:
         openLauncher();
-        break;
-    case A::WRAP:
-    case A::UNWRAP:
-        if (action->objectClientId && action->position.isValid() && action->stackPosition >= 0)
-            tibia::game::wrapMapObject(action->position, action->objectClientId, action->stackPosition);
         break;
     case A::ATTACK_CREATURE:
         if (action->creatureId)
@@ -501,7 +467,6 @@ void publish(const TGameActionPtr& action)
             tibia::game::mount(!tibia::game::localPlayerOutfit().hasMount());
         break;
     case A::MOVE_OBJECT:
-    case A::MOVE_UP:
         moveObject(*action);
         break;
     case A::SHOW_SPLIT_STACK_DIALOG:
@@ -514,20 +479,6 @@ void publish(const TGameActionPtr& action)
     case A::SET_TACTICS:
         tibia::game::setTactics(action->chase ? tibia::client::ChaseOpponent : tibia::client::DontChase, action->secure,
                           static_cast<tibia::client::PVPModes>(action->pvpMode));
-        break;
-    case A::GOD_TELEPORT:
-        // CIP: TGameActionTeleportToCoordinate -> GameclientMessageTeleport.
-        tibia::game::sendTeleport(action->position);
-        break;
-    case A::REQUEST_RESOURCE_BALANCE:
-        // CIP : GameclientMessageRequestResourceBalance with the action's resource type.
-        tibia::game::requestResourceBalance(static_cast<uint8_t>(action->parameter));
-        break;
-    case A::CONFIGURE_SHOW_OFF_SOCKET:
-        if (const uint16_t typeId = wireTypeId(*action); typeId != 0) {
-            const uint8_t stackpos = action->stackPosition >= 0 ? static_cast<uint8_t>(action->stackPosition) : 0;
-            tibia::game::configureShowOffSocket(action->position, typeId, stackpos);
-        }
         break;
     case A::SET_PLAYER_OUTFIT:
         if (action->outfit.getId() != 0)

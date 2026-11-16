@@ -97,6 +97,7 @@
 #include "input/domainhandlers.h"
 #include "input/eventfilters.h"
 #include "input/gameactionhandlers.h"
+#include "input/genericgameactionhandler.h"
 #include "input/keyboardshortcuthandler.h"
 #include "input/playermovementgameactionhandler.h"
 #include "input/playermovementinputinterpreter.h"
@@ -198,11 +199,15 @@ void applyClientWindowBorderless(QQuickWindow* window, const bool borderless)
 {
     if (!window)
         return;
-    const bool isFrameless = window->flags().testFlag(Qt::FramelessWindowHint);
-    if (borderless == isFrameless)
+    // CipSoft's borderless window is the full-screen window state
+    // (clientWindowIsBorderless; TOGGLE_FULLSCREEN flips it).
+    const bool isFullScreen = window->visibility() == QWindow::FullScreen;
+    if (borderless == isFullScreen)
         return;
-    // CipSoft borderless = frameless windowed chrome (distinct from TOGGLE_FULLSCREEN).
-    window->setFlag(Qt::FramelessWindowHint, borderless);
+    if (borderless)
+        window->showFullScreen();
+    else
+        window->showNormal();
 }
 
 void applyClientWindowBorderlessFromOptions(QQuickWindow* window)
@@ -1014,19 +1019,6 @@ int main(int argc, char** argv)
         optionsDialog.open(action.parameter);
         return true;
     });
-    input::setActionHandler(input::EGameAction::QUIT_GAME, [&gameWindowController](const input::TGameAction&) {
-        gameWindowController.quitPressed();
-        return true;
-    });
-    input::setActionHandler(input::EGameAction::TOGGLE_FULLSCREEN, [window](const input::TGameAction&) {
-        if (!window)
-            return true;
-        if (window->visibility() == QWindow::FullScreen)
-            window->showNormal();
-        else
-            window->showFullScreen();
-        return true;
-    });
     gamewindow::TFPSLatencyIndicatorController fpsLatency;
     fpsLatency.setWindow(window);
     fpsLatency.setFrameDurations(gameClient.frameDurations());
@@ -1054,6 +1046,16 @@ int main(int argc, char** argv)
     input::TPlayerMovementGameActionHandler playerMovementActions;
     input::TClipboardGameActionHandler clipboardActions;
     input::TGenericGameActionHandler genericActions;
+    QObject::connect(&genericActions, &input::TGenericGameActionHandler::publishGameAction, &genericActions,
+                     [](const input::TGameActionPtr& action) { input::publish(action); });
+    QObject::connect(&genericActions, &input::TGenericGameActionHandler::sendQuitGame, &gameClient, [&gameClient] {
+        if (game::TGameserverGameSession* session = gameClient.session())
+            session->requestLogout();
+        else if (game::TSessiondumpGameSession* dump = gameClient.sessiondump())
+            dump->requestLogout();
+    });
+    QObject::connect(&genericActions, &input::TGenericGameActionHandler::showCharacterSelectionDialog, &gameClient,
+                     [&gameClient] { gameClient.openCharacterSelectionForSwitch(); });
     input::TGatherAllGameActionHandler gatherAllActions;
     [[maybe_unused]] input::TGatherAllProtocolMessageHandler gatherAllProtocol;
     // Do not install TDiscardMouseWheelEventFilter on the window: that eats every

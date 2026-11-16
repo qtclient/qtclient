@@ -4,10 +4,14 @@
 #include "config/clientoptions.h"
 
 #include <QStringList>
+#include <QTimer>
 
 namespace tibia::app {
 
 namespace {
+
+/// Set while ClientOptions::store / storeAll write: they announce and save themselves.
+bool g_storing = false;
 
 /// The stored value of a CIP option as JSON.
 QJsonValue optionValue(const config::TClientOptions& options, const QString& name)
@@ -62,7 +66,9 @@ void ClientOptions::store(const QString& name, const QJsonValue& value)
     const QJsonValue before = optionValue(*options, name);
     if (before == value)
         return;
+    g_storing = true;
     setOptionValue(*options, name, value);
+    g_storing = false;
     if (optionValue(*options, name) == before)
         return;
     options->saveToJsonFile();
@@ -74,6 +80,7 @@ void ClientOptions::storeAll(const QJsonObject& changes)
     config::TClientOptions* options = config::TClientOptions::instance();
     const QJsonObject current = options->toJson().object();
     QStringList changed;
+    g_storing = true;
     for (auto section = changes.begin(); section != changes.end(); ++section) {
         if (section.key() == QLatin1String("options")) {
             const QJsonObject values = section->toObject();
@@ -92,11 +99,33 @@ void ClientOptions::storeAll(const QJsonObject& changes)
         if (options->toJson().object().value(section.key()) != current.value(section.key()))
             changed << section.key();
     }
+    g_storing = false;
     if (changed.isEmpty())
         return;
     options->saveToJsonFile();
     for (const QString& name : std::as_const(changed))
         Q_EMIT ClientOptionsNotifier::instance()->optionChanged(name);
+}
+
+ClientOptionsNotifier::ClientOptionsNotifier()
+{
+    config::TClientOptions* options = config::TClientOptions::instance();
+    const auto changed = [this, options](const QString& name) {
+        if (g_storing)
+            return;
+        if (!m_saveScheduled) {
+            m_saveScheduled = true;
+            QTimer::singleShot(0, this, [this, options] {
+                m_saveScheduled = false;
+                options->saveToJsonFile();
+            });
+        }
+        Q_EMIT optionChanged(name);
+    };
+    connect(options, &config::TClientOptions::optionChanged, this,
+            [changed](const config::EClientOption id) { changed(config::TClientOptions::optionName(id)); });
+    connect(options, &config::TClientOptions::clientWindowOptionsChanged, this,
+            [changed] { changed(QStringLiteral("clientWindowOptions")); });
 }
 
 ClientOptionsNotifier* ClientOptionsNotifier::instance()

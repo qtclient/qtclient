@@ -1,6 +1,5 @@
 #include "domainhandlers.h"
 
-#include "app/clientoptions.h"
 #include "app/portalurls.h"
 #include "gameaction.h"
 
@@ -10,7 +9,6 @@
 #include <QClipboard>
 #include <QDesktopServices>
 #include <QGuiApplication>
-#include <QJsonObject>
 #include <QMetaObject>
 #include <QQuickWindow>
 #include <QTimer>
@@ -34,11 +32,6 @@ constexpr std::array<A, 7> ClipboardActions = {
     A::COPY_CHAT_ENTRY_TO_CLIPBOARD,
 };
 
-constexpr std::array<A, 2> GenericActions = {
-    A::TOGGLE_SOUND,
-    A::TOGGLE_CREATURE_HUDS_VISIBLE,
-};
-
 QObject* focusedTextField()
 {
     return QGuiApplication::focusObject();
@@ -58,25 +51,6 @@ void copyFocusedOrActionText(const TGameAction& action)
         text = focusedSelectedText();
     if (!text.isEmpty())
         QGuiApplication::clipboard()->setText(text);
-}
-
-void toggleBoolOption(const QLatin1String name, const bool fallback)
-{
-    const bool current = app::ClientOptions::load().options().value(name).toBool(fallback);
-    app::ClientOptions::store(QString(name), !current);
-}
-
-void toggleSound()
-{
-    const QJsonObject options = app::ClientOptions::load().options();
-    const int master = options.value(QLatin1String("soundMasterVolume")).toInt(100);
-    if (master > 0) {
-        app::ClientOptions::store(QStringLiteral("soundMasterVolumeOld"), master);
-        app::ClientOptions::store(QStringLiteral("soundMasterVolume"), 0);
-    } else {
-        const int restored = options.value(QLatin1String("soundMasterVolumeOld")).toInt(100);
-        app::ClientOptions::store(QStringLiteral("soundMasterVolume"), restored > 0 ? restored : 100);
-    }
 }
 
 bool handleClipboard(const TGameAction& action)
@@ -133,50 +107,6 @@ TClipboardGameActionHandler::~TClipboardGameActionHandler()
 {
     for (const A type : ClipboardActions)
         setActionHandler(type, nullptr);
-}
-
-TGenericGameActionHandler::TGenericGameActionHandler(QObject* parent)
-    : cip::tibia::input::TGenericGameActionHandler(parent)
-{
-    setActionHandler(A::TOGGLE_SOUND, [](const TGameAction&) {
-        toggleSound();
-        return true;
-    });
-    setActionHandler(A::TOGGLE_CREATURE_HUDS_VISIBLE, [](const TGameAction&) {
-        toggleBoolOption(QLatin1String("creatureHudEnabled"), true);
-        return true;
-    });
-}
-
-TGenericGameActionHandler::~TGenericGameActionHandler()
-{
-    for (const A type : GenericActions)
-        setActionHandler(type, nullptr);
-}
-
-void TGenericGameActionHandler::handleToggleFullscreenAction()
-{
-    publish(makeAction(A::TOGGLE_FULLSCREEN));
-}
-
-void TGenericGameActionHandler::handleResetHuntingSessionAction()
-{
-    publish(makeAction(A::RESET_HUNTING_SESSION));
-}
-
-void TGenericGameActionHandler::handleToggleCreatureHudsVisibleGameAction()
-{
-    publish(makeAction(A::TOGGLE_CREATURE_HUDS_VISIBLE));
-}
-
-void TGenericGameActionHandler::handleToggleSoundGameAction()
-{
-    publish(makeAction(A::TOGGLE_SOUND));
-}
-
-void TGenericGameActionHandler::handleToggleFpsLagIndecatorGameAction()
-{
-    publish(makeAction(A::TOGGLE_FPS_LATENCY_INDICATOR));
 }
 
 TGatherAllGameActionHandler::TGatherAllGameActionHandler(QObject* parent)
