@@ -13,11 +13,12 @@
 #include <stdexcept>
 #include <vector>
 
-namespace launcher {
-
-namespace host {
+namespace tibia::shared {
 class TDownloadPool;
 }
+
+namespace launcher {
+
 class TLauncherFilesystemHelper;
 class TPackage;
 struct TPackageBuild;
@@ -68,7 +69,7 @@ class TLauncherConfigurationHandler : public QObject
 {
     Q_OBJECT
 public:
-    TLauncherConfigurationHandler(std::shared_ptr<host::TDownloadPool> downloadPool,
+    TLauncherConfigurationHandler(std::shared_ptr<tibia::shared::TDownloadPool> downloadPool,
                                   std::shared_ptr<TLauncherFilesystemHelper> filesystemHelper);
     ~TLauncherConfigurationHandler() override;
 
@@ -118,7 +119,7 @@ private:
     void mainConfigurationFailed();
     void finishPendingConfiguration(std::vector<TPendingPackageConfiguration>::iterator pending);
 
-    std::shared_ptr<host::TDownloadPool> m_downloadPool;
+    std::shared_ptr<tibia::shared::TDownloadPool> m_downloadPool;
     std::shared_ptr<TLauncherFilesystemHelper> m_filesystemHelper;
     QUrl m_mainConfigurationUrl;
     QTimer m_errorTimer;

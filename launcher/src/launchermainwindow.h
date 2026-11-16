@@ -14,8 +14,9 @@ class QMessageBox;
 class QNetworkAccessManager;
 class QStackedLayout;
 
-namespace shared {
+namespace tibia::shared {
 class QTextBrowserWithNetwork;
+class TDownloadPool;
 }
 
 namespace launcher {
@@ -23,6 +24,7 @@ namespace launcher {
 class TClientPackageLayoutItem;
 class TCloudflareCdnTrace;
 class TInstallationManager;
+class TLauncherFilesystemHelper;
 class TPackage;
 class TPackageInstallation;
 
@@ -35,8 +37,9 @@ public:
     TLauncherMainWindow(const std::vector<std::shared_ptr<TPackage>>& packages,
                         TInstallationManager* installationManager, bool showPackageNames,
                         std::shared_ptr<QNetworkAccessManager> networkAccessManager, bool eulaAccepted,
-                        std::shared_ptr<host::TDownloadPool> downloadPool,
-                        std::shared_ptr<TCloudflareCdnTrace> cdnTrace);
+                        std::shared_ptr<tibia::shared::TDownloadPool> downloadPool,
+                        std::shared_ptr<TCloudflareCdnTrace> cdnTrace,
+                        std::shared_ptr<TLauncherFilesystemHelper> filesystemHelper);
     ~TLauncherMainWindow() override;
 
 Q_SIGNALS:
@@ -69,9 +72,10 @@ private:
     /// Shows why a download failed, with the CDN trace once it is known.
     void showDownloadFailure(const QString& packageName);
 
-    std::shared_ptr<host::TDownloadPool> m_downloadPool;
+    std::shared_ptr<tibia::shared::TDownloadPool> m_downloadPool;
     std::map<int, TClientPackageLayoutItem*> m_items;
-    shared::QTextBrowserWithNetwork* m_hintBrowser = nullptr;
+    tibia::shared::QTextBrowserWithNetwork* m_hintBrowser = nullptr;
+    std::shared_ptr<TLauncherFilesystemHelper> m_filesystemHelper;
     QGroupBox* m_hintBox = nullptr;
     QMessageBox* m_downloadFailureBox = nullptr;
     QStackedLayout* m_pages = nullptr;

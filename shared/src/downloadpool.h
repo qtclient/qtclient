@@ -45,6 +45,8 @@ public:
     /// Pins downloads to one of the host's IPv4 addresses when the machine
     /// reaches the internet over IPv4 (the launcher's switch).
     static void setPreferIPv4(bool preferIPv4);
+    /// `url` with a `nocache=<32 random alphanumerics>` query item (invalid urls unchanged).
+    static QUrl appendNocache(QUrl url);
 
 Q_SIGNALS:
     void success(QUrl url, QByteArray data);

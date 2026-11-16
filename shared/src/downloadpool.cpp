@@ -3,12 +3,14 @@
 #include "launcherutils.h"
 #include "qnetworkaccessmanagerwrapper.h"
 #include "qnetworkreplywrapper.h"
+#include "randomnumbergenerator.h"
 
 #include <QDebug>
 #include <QHostAddress>
 #include <QHostInfo>
 #include <QRandomGenerator64>
 #include <QTimer>
+#include <QUrlQuery>
 
 #include <algorithm>
 #include <chrono>
@@ -51,6 +53,21 @@ bool TDownloadPool::isAuthenticationEnabled()
 void TDownloadPool::onAuthenticationRequired(QNetworkReply* reply, QAuthenticator* authenticator)
 {
     m_authenticationHandler.handleAuthenticationRequired(reply, authenticator);
+}
+
+QUrl TDownloadPool::appendNocache(QUrl url)
+{
+    const QString characters = QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
+    if (!url.isValid())
+        return url;
+    const std::shared_ptr<TRandomNumberGenerator> random = TRandomNumberGenerator::instance();
+    QString value;
+    for (int i = 0; i < 32; ++i)
+        value.append(characters.at(random->getRandomLongLong(0, characters.size() - 1)));
+    QUrlQuery query(url.query());
+    query.addQueryItem(QStringLiteral("nocache"), value);
+    url.setQuery(query.query());
+    return url;
 }
 
 QNetworkRequest TDownloadPool::createRequest(QUrl url)

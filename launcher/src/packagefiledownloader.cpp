@@ -1,6 +1,7 @@
 #include "packagefiledownloader.h"
 
-#include "host/downloadpool.h"
+#include "downloadpool.h"
+#include "qnetworkaccessmanagerwrapper.h"
 #include "launcherfilesystemhelper.h"
 #include "unpack.h"
 
@@ -24,17 +25,17 @@ bool urlLess(const TFileInPackage& file, const QUrl& url)
 
 } // namespace
 
-TPackageFileDownloader::TPackageFileDownloader(std::shared_ptr<host::TDownloadPool> downloadPool,
+TPackageFileDownloader::TPackageFileDownloader(std::shared_ptr<tibia::shared::TDownloadPool> downloadPool,
                                                std::shared_ptr<TLauncherFilesystemHelper> filesystemHelper)
     : m_downloadPool(std::move(downloadPool))
     , m_filesystemHelper(std::move(filesystemHelper))
 {
     m_speedTimer.setInterval(1000);
-    connect(m_downloadPool.get(), &host::TDownloadPool::downloadSucceeded, this,
+    connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::success, this,
             &TPackageFileDownloader::onDownloadCompleted);
-    connect(m_downloadPool.get(), &host::TDownloadPool::downloadFailed, this,
+    connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::failed, this,
             &TPackageFileDownloader::onDownloadFailed);
-    connect(m_downloadPool.get(), &host::TDownloadPool::downloadProgress, this,
+    connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::progress, this,
             &TPackageFileDownloader::onDownloadProgress);
     connect(&m_speedTimer, &QTimer::timeout, this, &TPackageFileDownloader::onMeasureDownloadSpeed);
 }

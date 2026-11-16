@@ -1,6 +1,7 @@
 #include "launcherconfigurationhandler.h"
 
-#include "host/downloadpool.h"
+#include "downloadpool.h"
+#include "qnetworkaccessmanagerwrapper.h"
 #include "launcherfilesystemhelper.h"
 #include "package.h"
 
@@ -55,15 +56,15 @@ void TLauncherConfigurationReader::parse(const QJsonObject& object)
 
 // --- TLauncherConfigurationHandler -------------------------------------------------------
 
-TLauncherConfigurationHandler::TLauncherConfigurationHandler(std::shared_ptr<host::TDownloadPool> downloadPool,
+TLauncherConfigurationHandler::TLauncherConfigurationHandler(std::shared_ptr<tibia::shared::TDownloadPool> downloadPool,
                                                              std::shared_ptr<TLauncherFilesystemHelper> filesystemHelper)
     : m_downloadPool(std::move(downloadPool))
     , m_filesystemHelper(std::move(filesystemHelper))
     , m_mainConfigurationUrl(m_filesystemHelper->launcherConfigurationUrl())
 {
-    connect(m_downloadPool.get(), &host::TDownloadPool::downloadSucceeded, this,
+    connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::success, this,
             &TLauncherConfigurationHandler::onConfigurationDownloadFinished);
-    connect(m_downloadPool.get(), &host::TDownloadPool::downloadFailed, this,
+    connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::failed, this,
             &TLauncherConfigurationHandler::onConfigurationDownloadFailed);
     m_errorTimer.setSingleShot(true);
     m_errorTimer.setInterval(m_filesystemHelper->downloadErrorTimeout());
@@ -124,10 +125,15 @@ void TLauncherConfigurationHandler::downloadPackageConfigurations(bool includeLa
                 continue;
             TPendingPackageConfiguration pending;
             pending.build = build.get();
-            pending.url = build->url;
-            pending.versionUrl = build->versionUrl;
-            pending.assetsUrl = build->assetsUrl;
-            pending.assetsVersionUrl = build->assetsVersionUrl;
+            // The setting busts caches in front of the CDN for the four urls of a build.
+            const bool nocache = m_filesystemHelper->appendNocacheToPackageUrls();
+            const auto packageUrl = [nocache](const QUrl& url) {
+                return nocache ? tibia::shared::TDownloadPool::appendNocache(url) : url;
+            };
+            pending.url = packageUrl(build->url);
+            pending.versionUrl = packageUrl(build->versionUrl);
+            pending.assetsUrl = packageUrl(build->assetsUrl);
+            pending.assetsVersionUrl = packageUrl(build->assetsVersionUrl);
             // Host channels count only with assets (their files install with them).
             if (build->assetsUrl.isValid() && !build->assetsUrl.isEmpty()) {
                 for (const THostChannel& channel : TLauncherFilesystemHelper::enabledHostChannels(*build)) {

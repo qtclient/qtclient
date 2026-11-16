@@ -1,6 +1,7 @@
 #include "cloudflarecdntrace.h"
 
-#include "host/downloadpool.h"
+#include "downloadpool.h"
+#include "qnetworkaccessmanagerwrapper.h"
 
 #include <QStringList>
 
@@ -34,16 +35,16 @@ QString formatCdnTrace(const TCdnTrace& trace)
         .arg(trace.ip);
 }
 
-TCloudflareCdnTrace::TCloudflareCdnTrace(QUrl traceUrl, std::shared_ptr<host::TDownloadPool> downloadPool, int retries,
+TCloudflareCdnTrace::TCloudflareCdnTrace(QUrl traceUrl, std::shared_ptr<tibia::shared::TDownloadPool> downloadPool, int retries,
                                          qint64 transferTimeoutMs)
     : m_traceUrl(std::move(traceUrl))
     , m_downloadPool(std::move(downloadPool))
     , m_retries(retries)
     , m_transferTimeoutMs(transferTimeoutMs)
 {
-    connect(m_downloadPool.get(), &host::TDownloadPool::downloadSucceeded, this,
+    connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::success, this,
             &TCloudflareCdnTrace::onDownloadSuccess);
-    connect(m_downloadPool.get(), &host::TDownloadPool::downloadFailed, this, &TCloudflareCdnTrace::onDownloadFailed);
+    connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::failed, this, &TCloudflareCdnTrace::onDownloadFailed);
 }
 
 TCloudflareCdnTrace::~TCloudflareCdnTrace() = default;

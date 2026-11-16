@@ -720,6 +720,7 @@ sub_872d4faac408#8	872d4faac408f6d5	skip	policy: battleye prerequisites (admin c
 sub_872d4faac408#9	872d4faac408f6d5	skip	policy: battleye prerequisites (admin check, elevated restart, BattlEye install)
 sub_8770b47f27cf	8770b47f27cf1e79	skip	library: libc++ ostream manipulator call (operator<<(ostream&(*)(ostream&)))
 sub_8793e016cebd	8793e016cebdacb4	ported	shared/src/rpcserviceconnection.cpp:TRPCServiceConnection::close
+sub_87a7ee3c8037	87a7ee3c80370a2b	ported	shared/src/downloadpool.cpp:TDownloadPool::setPreferIPv4
 sub_87c5d05f3a5f	87c5d05f3a5fe567	ported	shared/src/colorhelper.cpp:colorFromHsv
 sub_87dfa8f0107d	87dfa8f0107da115	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_8860c8f0819a	8860c8f0819ad41b	inlined	clientpackagelayoutitem.cpp:TClientPackageLayoutItem::onInstallationOrUpdateStarted
@@ -745,6 +746,7 @@ sub_90e890aa8a70	90e890aa8a70851f	tested	shared/src/zlibinflatewrapper.cpp:TZlib
 sub_90e890aa8a70#2	90e890aa8a70851f	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::isInitialized	test=tests/client/sharedio_test.cpp
 sub_91456aaf4614	91456aaf4614d01a	ported	shared/src/readonlymemoryblob.cpp:throwOnFileError
 sub_918fc2d216c1	918fc2d216c173b0	ported	installationmanager.cpp:TInstallationManager::TInstallationManager
+sub_91aead3f952e	91aead3f952e6952	skip	dead: x == 1 predicate with no call site in the corpus and no fixup/pointer to its address (index/fixups.txt)
 sub_92bc4dd0b4f5	92bc4dd0b4f58636	skip	library: libc++ std::string(const char*) constructor
 sub_92d58472ce9c	92d58472ce9cb1a4	ported	launcherapplication.cpp:TLauncherApplication::onDiskAccessFailed
 sub_9307c21cf47d	9307c21cf47d4f34	skip	library: std::vector<QMetaObject::Connection> grow (push_back slow path)
@@ -788,6 +790,7 @@ sub_a1f1e1bb3cb6	a1f1e1bb3cb6c390	tested	shared/src/paginationproxymodel.cpp:TPa
 sub_a234bd7e4403	a234bd7e4403b55f	ported	packagefiledownloader.cpp:urlLess
 sub_a3252b79fc1b	a3252b79fc1b54bf	skip	generated: compiler-generated destructor (std::string, std::mutex, shared_ptr<z_stream>)
 sub_a350b0e723db	a350b0e723db1d3c	ported	shared/src/xteahelper.cpp:TXteaHelper::TXteaHelper
+sub_a3b6c0af759a	a3b6c0af759a0a09	ported	shared/src/downloadpool.cpp:TDownloadPool::appendNocache
 sub_a3c3bdff599d	a3c3bdff599d41b3	ported	package.h:TPackage::name
 sub_a47ea88828e3	a47ea88828e32c19	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
 sub_a48143ce0088	a48143ce00886ee7	skip	library: libc++ std::optional / std::string helpers

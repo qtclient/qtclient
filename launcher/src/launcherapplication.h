@@ -13,11 +13,12 @@
 class QNetworkAccessManager;
 class QSplashScreen;
 
-namespace launcher {
-
-namespace host {
+namespace tibia::shared {
 class TDownloadPool;
 }
+
+namespace launcher {
+
 class TCloudflareCdnTrace;
 class TInstallationManager;
 class TLauncherConfigurationHandler;
@@ -76,7 +77,7 @@ private:
     void setUpLogging(const QString& logFile, qint64 maxSize);
 
     std::shared_ptr<QNetworkAccessManager> m_networkAccessManager;
-    std::shared_ptr<host::TDownloadPool> m_downloadPool;
+    std::shared_ptr<tibia::shared::TDownloadPool> m_downloadPool;
     std::shared_ptr<TLauncherFilesystemHelper> m_filesystemHelper;
     std::shared_ptr<TCloudflareCdnTrace> m_cdnTrace;
     std::unique_ptr<TLauncherConfigurationHandler> m_configurationHandler;

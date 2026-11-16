@@ -7,11 +7,12 @@
 
 #include <memory>
 
-namespace launcher {
-
-namespace host {
+namespace tibia::shared {
 class TDownloadPool;
 }
+
+namespace launcher {
+
 
 /// The fields of a Cloudflare `/cdn-cgi/trace` answer the launcher shows.
 struct TCdnTrace {
@@ -31,7 +32,7 @@ class TCloudflareCdnTrace : public QObject
 {
     Q_OBJECT
 public:
-    TCloudflareCdnTrace(QUrl traceUrl, std::shared_ptr<host::TDownloadPool> downloadPool, int retries,
+    TCloudflareCdnTrace(QUrl traceUrl, std::shared_ptr<tibia::shared::TDownloadPool> downloadPool, int retries,
                         qint64 transferTimeoutMs);
     ~TCloudflareCdnTrace() override;
 
@@ -51,7 +52,7 @@ public Q_SLOTS:
 
 private:
     QUrl m_traceUrl;
-    std::shared_ptr<host::TDownloadPool> m_downloadPool;
+    std::shared_ptr<tibia::shared::TDownloadPool> m_downloadPool;
     int m_retries = 0;
     qint64 m_transferTimeoutMs = 0;
     TCdnTrace m_trace;

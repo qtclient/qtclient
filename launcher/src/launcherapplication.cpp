@@ -2,7 +2,8 @@
 
 #include "brand.h"
 #include "cloudflarecdntrace.h"
-#include "host/downloadpool.h"
+#include "downloadpool.h"
+#include "qnetworkaccessmanagerwrapper.h"
 #include "installationmanager.h"
 #include "launcherconfigurationhandler.h"
 #include "launcherfilesystemhelper.h"
@@ -123,8 +124,10 @@ TLauncherApplication::TLauncherApplication(int& argc, char** argv)
     setApplicationVersion(launcherVersion());
 
     m_networkAccessManager = std::make_shared<QNetworkAccessManager>();
-    m_downloadPool = std::make_shared<host::TDownloadPool>(m_networkAccessManager, 6);
+    m_downloadPool = std::make_shared<tibia::shared::TDownloadPool>(
+        6, std::make_shared<tibia::shared::QNetworkAccessManagerWrapper>(m_networkAccessManager));
     m_filesystemHelper = std::make_shared<TLauncherFilesystemHelper>();
+    tibia::shared::TDownloadPool::setPreferIPv4(m_filesystemHelper->ipV4Mode());
     m_cdnTrace = std::make_shared<TCloudflareCdnTrace>(m_filesystemHelper->cdnDiagnosticsTraceUrl(), m_downloadPool,
                                                        m_filesystemHelper->retries(),
                                                        m_filesystemHelper->configurationTransportTimeout());
@@ -290,7 +293,7 @@ void TLauncherApplication::showMainWindow()
         m_mainWindow = std::make_unique<TLauncherMainWindow>(
             availablePackages(*m_installationManager), m_installationManager.get(),
             m_configurationHandler->showPackageNames(), m_networkAccessManager, m_filesystemHelper->eulaAccepted(),
-            m_downloadPool, m_cdnTrace);
+            m_downloadPool, m_cdnTrace, m_filesystemHelper);
         m_configurationHandler->downloadHints();
         m_mainWindow->setHint(m_configurationHandler->hint());
         connect(m_configurationHandler.get(), &TLauncherConfigurationHandler::hintAreaDataReceived,
@@ -409,7 +412,7 @@ void TLauncherApplication::hostResolveLoginRevision(const QString& fallback, std
             qInfo().noquote() << "Login revision" << revision << "(package version" << fallback << ")";
         then(revision.isEmpty() ? fallback : revision);
     };
-    connections->push_back(connect(m_downloadPool.get(), &host::TDownloadPool::downloadSucceeded, this,
+    connections->push_back(connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::success, this,
                                    [manifest, finish](const QUrl& url, const QByteArray& data) {
                                        if (url != manifest)
                                            return;
@@ -419,7 +422,7 @@ void TLauncherApplication::hostResolveLoginRevision(const QString& fallback, std
                                                   .toString()
                                                   .trimmed());
                                    }));
-    connections->push_back(connect(m_downloadPool.get(), &host::TDownloadPool::downloadFailed, this,
+    connections->push_back(connect(m_downloadPool.get(), &tibia::shared::TDownloadPool::failed, this,
                                    [manifest, finish](const QUrl& url, QNetworkReply::NetworkError, const QString& error) {
                                        if (url != manifest)
                                            return;

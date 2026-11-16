@@ -12,11 +12,12 @@
 #include <memory>
 #include <vector>
 
-namespace launcher {
-
-namespace host {
+namespace tibia::shared {
 class TDownloadPool;
 }
+
+namespace launcher {
+
 class TLauncherFilesystemHelper;
 
 using TFileSize = qint64;
@@ -29,7 +30,7 @@ class TPackageFileDownloader : public QObject
 {
     Q_OBJECT
 public:
-    TPackageFileDownloader(std::shared_ptr<host::TDownloadPool> downloadPool,
+    TPackageFileDownloader(std::shared_ptr<tibia::shared::TDownloadPool> downloadPool,
                            std::shared_ptr<TLauncherFilesystemHelper> filesystemHelper);
     ~TPackageFileDownloader() override;
 
@@ -72,7 +73,7 @@ private:
     TFileSize totalBytes() const;
     void checkFinished();
 
-    std::shared_ptr<host::TDownloadPool> m_downloadPool;
+    std::shared_ptr<tibia::shared::TDownloadPool> m_downloadPool;
     std::shared_ptr<TLauncherFilesystemHelper> m_filesystemHelper;
     QDir m_targetDirectory;
     bool m_downloadFailed = false;

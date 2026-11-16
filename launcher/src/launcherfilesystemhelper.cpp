@@ -183,6 +183,11 @@ QUrl TLauncherFilesystemHelper::cdnDiagnosticsTraceUrl() const
     return QUrl(m_settings->stringValue(kGroupUrls, QStringLiteral("cdnDiagnosticsTrace")));
 }
 
+bool TLauncherFilesystemHelper::appendNocacheToPackageUrls() const
+{
+    return m_settings->boolValue(kGroupUrls, QStringLiteral("appendNocacheToPackageUrls"), false);
+}
+
 QString TLauncherFilesystemHelper::cdnBase()
 {
     return hostCdnBase();

@@ -7,6 +7,7 @@
 #include "launcherselfupdater.h"
 #include "package.h"
 #include "packageinstallation.h"
+#include "launcherfilesystemhelper.h"
 #include "textbrowserwithnetwork.h"
 
 #include <QDebug>
@@ -115,11 +116,13 @@ const char* kSmallLabelStyle = R"(
 TLauncherMainWindow::TLauncherMainWindow(const std::vector<std::shared_ptr<TPackage>>& packages,
                                          TInstallationManager* installationManager, bool showPackageNames,
                                          std::shared_ptr<QNetworkAccessManager> networkAccessManager,
-                                         bool eulaWasAccepted, std::shared_ptr<host::TDownloadPool> downloadPool,
-                                         std::shared_ptr<TCloudflareCdnTrace> cdnTrace)
+                                         bool eulaWasAccepted, std::shared_ptr<tibia::shared::TDownloadPool> downloadPool,
+                                         std::shared_ptr<TCloudflareCdnTrace> cdnTrace,
+                                         std::shared_ptr<TLauncherFilesystemHelper> filesystemHelper)
     : m_downloadPool(std::move(downloadPool))
     , m_networkAccessManager(std::move(networkAccessManager))
     , m_cdnTrace(std::move(cdnTrace))
+    , m_filesystemHelper(std::move(filesystemHelper))
 {
     setWindowTitle(LauncherBrand::instance().productName);
     setWindowFlags(Qt::WindowFlags(0xa005100));
@@ -255,7 +258,8 @@ QWidget* TLauncherMainWindow::createEulaAcceptButton()
 
 QWidget* TLauncherMainWindow::createHintBox()
 {
-    m_hintBrowser = new shared::QTextBrowserWithNetwork(this);
+    m_hintBrowser = new tibia::shared::QTextBrowserWithNetwork(m_downloadPool, m_filesystemHelper->retries(),
+                                                              m_filesystemHelper->configurationTransportTimeout(), this);
     m_hintBrowser->setOpenExternalLinks(true);
     m_hintBrowser->setContextMenuPolicy(Qt::NoContextMenu);
     m_hintBrowser->setFixedWidth(542);

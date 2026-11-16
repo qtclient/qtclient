@@ -1,6 +1,7 @@
 #include "packageinstallation.h"
 
-#include "host/downloadpool.h"
+#include "downloadpool.h"
+#include "qnetworkaccessmanagerwrapper.h"
 #include "launcherfilesystemhelper.h"
 #include "package.h"
 
@@ -42,7 +43,8 @@ TPackageInstallation::TPackageInstallation(std::shared_ptr<TPackage> package,
     : m_package(std::move(package))
     , m_filesystemHelper(std::move(filesystemHelper))
 {
-    auto pool = std::make_shared<host::TDownloadPool>(std::move(networkAccessManager), 6);
+    auto pool = std::make_shared<tibia::shared::TDownloadPool>(
+        6, std::make_shared<tibia::shared::QNetworkAccessManagerWrapper>(std::move(networkAccessManager)));
     m_downloader = new TPackageFileDownloader(pool, m_filesystemHelper);
     connect(m_downloader, &TPackageFileDownloader::packageMetaDataReceived, this,
             &TPackageInstallation::onPackageMetaDataReceived);

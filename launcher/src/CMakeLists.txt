@@ -32,7 +32,6 @@ else()
   set(_launcher_sources
     brand.cpp brand.h
     main.cpp
-    host/downloadpool.cpp host/downloadpool.h
     clientpackagelayoutitem.cpp clientpackagelayoutitem.h
     cloudflarecdntrace.cpp cloudflarecdntrace.h
     installationmanager.cpp installationmanager.h
