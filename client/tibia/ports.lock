@@ -4201,6 +4201,8 @@ sub_23c91f1a75a5#321	23c91f1a75a58fdc	skip	std::shared_ptr / vector library code
 sub_23c91f1a75a5#323	23c91f1a75a58fdc	skip	std container template code
 sub_23c91f1a75a5#341	23c91f1a75a58fdc	skip	std::vector length_error thrower (library)
 sub_23c91f1a75a5#342	23c91f1a75a58fdc	skip	std::vector length_error thrower (library)
+sub_23c91f1a75a5#366	23c91f1a75a58fdc	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
+sub_23c91f1a75a5#367	23c91f1a75a58fdc	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_23c91f1a75a5#58	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#60	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#93	23c91f1a75a58fdc	skip	libc++ std::vector growth
@@ -4943,6 +4945,7 @@ sub_48afefe3e48a#26	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTra
 sub_48afefe3e48a#28	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_48afefe3e48a#30	48afefe3e48aec5b	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_48d41f604671	48d41f604671022b	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onActionRejectTransferClicked
+sub_48e3047d276d	48e3047d276d850c	inlined	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::inVolume
 sub_48e5c3198860	48e5c31988604c3b	ported	config/sidebaroptions.cpp:serializePlayerGuide
 sub_48f0293cbb52	48f0293cbb525795	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::onRequestShowStashMessageDialog
 sub_492f90eda298	492f90eda2980fe9	ported	minimap/minimaptile.cpp:blankImage
@@ -4987,6 +4990,7 @@ sub_4bb5e5d1c764	4bb5e5d1c76498ea	ported	gamewindow/housesinfodialogcontroller.c
 sub_4c02e0d97d38	4c02e0d97d38bd82	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendJoinAggression
 sub_4c0c6c6755d5	4c0c6c6755d5645c	skip	moc property getter, provided by the generated cip base
 sub_4c21d3dae31d	4c21d3dae31de72e	ported	game/skillswidgetentrydata.cpp:fillExperienceGain
+sub_4c3689596cf9	4c3689596cf9b0f6	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_4c510dead2ba	4c510dead2ba6503	skip	compiler-generated destructor
 sub_4c63201194f4	4c63201194f490e2	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::showDialog
 sub_4c803c205e0d	4c803c205e0d81bb	ported	gamewindow/createaccountdialogcontroller.cpp:pvpTypeHelp
@@ -5058,6 +5062,7 @@ sub_4f60a79efffa	4f60a79efffa2f9f	ported	store/storestorage.cpp:TStoreProtocolMe
 sub_4f8d50620468	4f8d50620468f295	ported	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::clearEvents
 sub_4f929e27edef	4f929e27edefdbbf	ported	config/optionspages.cpp:THotkeysOptionsPage::updateHotkeyListModel
 sub_4fa17404474c	4fa17404474c6afb	skip	compiler-generated destructors
+sub_4fbe210e265c	4fbe210e265c52b6	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::TCacheForWorldmapStorageLookupMembers
 sub_4fd3da64f08b	4fd3da64f08b2a37	skip	miniaudio library
 sub_4fe7ecb13d52	4fe7ecb13d52f555	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setAutomaticExtendType
 sub_50180dfc6234	50180dfc6234e61b	ported	skillwheel/skillwheeldata.cpp:largePerkName
@@ -5467,6 +5472,7 @@ sub_5b04adc7f4fb#2	5b04adc7f4fb8bd6	inlined	imbuing/imbuingciptypes.cpp:imbuemen
 sub_5b0b7e60d886	5b0b7e60d886bf7f	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendInspectObject
 sub_5b107abf5957	5b107abf59575dfa	skip	std::map / std::deque / std::vector template instantiation
 sub_5b118fe8da21	5b118fe8da218672	ported	creatures/creaturestorage.cpp:TCreature::showsMovingSprite
+sub_5b382c18017f	5b382c18017fd123	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::storedVolumeHasChanged
 sub_5b455073f7ee	5b455073f7ee7c07	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onActionBidClicked
 sub_5b49dde2589e	5b49dde2589e5a2f	ported	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::updateTitles
 sub_5b7a122686a3	5b7a122686a3fcb0	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::clearBacklog
@@ -5684,6 +5690,7 @@ sub_6756699f8d02	6756699f8d02b0fa	skip	compiler-generated destructor pair
 sub_6756eb06e2b0#8	6756eb06e2b04c8a	inlined	protocol::TProtobufServerMessageTranslator::v172
 sub_6784be96c631#10	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTranslator::v127
 sub_6784be96c631#12	6784be96c6313b35	inlined	protocol::TProtobufServerMessageTranslator::v201
+sub_6799962b2b2d	6799962b2b2d3482	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::informationAtWorldMapCoordinateHasChanged
 sub_67aebdb4db89	67aebdb4db8950d7	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onConfirmationDialogRequested
 sub_67bb02f729b3#2	67bb02f729b30a27	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_67cf0abde087	67cf0abde087e3a9	ported	skillwheel/skillwheeldata.cpp:smallPerkTotal
@@ -7060,6 +7067,7 @@ sub_9fcce92fe779	9fcce92fe779ea49	ported	config/optionspages.cpp:percentOf
 sub_9fd857f4fdd3	9fd857f4fdd3cbcf	skip	compiler-generated destructor pair
 sub_9fe3a3a7b7b4	9fe3a3a7b7b4b56a	skip	std container/shared_ptr template code or compiler-generated copy
 sub_9feece087a71	9feece087a7189f7	ported	gamewindow/imbuingdialogcontroller.cpp:categoryName
+sub_9ff871563ea2	9ff871563ea2c3c3	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::lookup
 sub_a01671970487	a0167197048771dc	ported	gamewindow/chatcontroller.cpp:TChatChannelController::setChatWidth
 sub_a028ddbf252f	a028ddbf252f4464	skip	std container template code
 sub_a03279bef16a	a03279bef16a1074	skip	compiler-generated destructor
@@ -8227,6 +8235,7 @@ sub_d268cc983dfc#2	d268cc983dfc12ba	inlined	friends/friendsciptypes.cpp:TFriends
 sub_d26a7877ad78#2	d26a7877ad7893c7	inlined	protocol::TProtobufServerMessageTranslator::v118
 sub_d26a7877ad78#4	d26a7877ad7893c7	inlined	protocol::TProtobufServerMessageTranslator::v129
 sub_d26efff74c39	d26efff74c391fbc	skip	std::vector copy / growth of store records (library)
+sub_d2ae978b071a	d2ae978b071aa38a	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_d2c47e0c91f4	d2c47e0c91f464bc	ported	gamewindow/bossdifficultyselectiondialogcontroller.cpp:TBossDifficultySelectionDialogController::sendSelection
 sub_d2cdb6947ae2#25	d2cdb6947ae25aa4	skip	moc-generated signal emitter
 sub_d2cdb6947ae2#8	d2cdb6947ae25aa4	skip	moc-generated signal
@@ -8934,6 +8943,7 @@ sub_eea8522628e4#2	eea8522628e4cfac	inlined	protocol::TProtobufServerMessageTran
 sub_eede39bdd9c3	eede39bdd9c3eef8	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::rebuild
 sub_ef0f2a212fe8	ef0f2a212fe88693	skip	Qt/std container template code
 sub_ef305772ee49	ef305772ee49b592	inlined	config/sidebaroptions.h:TPlayerGuideWidgetOptions::operator==
+sub_ef46477c7d08	ef46477c7d08be3e	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_ef49f2bffcdd	ef49f2bffcdd385d	skip	Qt slot-object impl (template-generated)
 sub_ef6d1db9a3e6#10	ef6d1db9a3e68594	inlined	protocol::TProtobufClientMessageTranslator::v103
 sub_efc5b789bed1	efc5b789bed16380	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::requestSearch
@@ -9063,6 +9073,7 @@ sub_f51466cc8731	f51466cc8731436d	skip	compiler-generated destructor pair
 sub_f51ca78d9816	f51ca78d981662b9	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::placeWidget
 sub_f520d90d5790	f520d90d5790d09a	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onAccountCreationStatus
 sub_f58ad2d66834	f58ad2d668348c01	ported	gamewindow/actionbuttoncontroller.h:TActionButtonController::passiveAbilityIconUrl
+sub_f5b999c169aa	f5b999c169aa3cc8	skip	std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)
 sub_f5e5ccfc9f03	f5e5ccfc9f03ccb3	ported	analysers/impactwidgets.cpp:TImpactWidgetController::addGaugeEntries
 sub_f5e6087b4b3f	f5e6087b4b3fad9b	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_f5e73db6d503	f5e73db6d503d854	ported	config/sidebaroptions.cpp:parseDepotSearch
@@ -9150,6 +9161,7 @@ sub_fb5eb2fea4bf	fb5eb2fea4bf98c6	inlined	gamewindow/friendsconfigurationpagecon
 sub_fb6f242cc816	fb6f242cc816ee2e	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::closeSidebarClosestToGamewindow
 sub_fb862e242e86	fb862e242e86532e	ported	config/optionspages.cpp:percentOf
 sub_fba6151b925d	fba6151b925d73f8	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
+sub_fbaebf552152	fbaebf552152e99a	inlined	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::inVolume
 sub_fbb206d17a5b	fbb206d17a5b7e88	skip	compiler-generated destructor pair
 sub_fbbce5be7cf7#6	fbbce5be7cf7fee8	inlined	analysers/itempricestorage.cpp:TItemPriceStorage::npcBuyPrice
 sub_fbd7fe8ee0e0	fbd7fe8ee0e0ad4a	skip	std::sort instantiation for the category list
@@ -9254,6 +9266,8 @@ worldmap::TAmbientLightStorage::v16	6d97cb8a0f879747	ported	worldmap/ambientligh
 worldmap::TAmbientLightStorage::v17	733e4ad48073895a	ported	worldmap/ambientlightstorage.cpp:TAmbientLightStorage::normalizedTibiaTimeOfDay
 worldmap::TAmbientLightStorage::~TAmbientLightStorage	dadedd3fe20189db	skip	compiler-generated destructor pair
 worldmap::TAmbientLightStorage::~TAmbientLightStorage_deleting	32c6a75c162ebaae	skip	compiler-generated destructor pair
+worldmap::TCacheForWorldmapStorageLookupMembers::~TCacheForWorldmapStorageLookupMembers	097457dc45e86dd8	skip	compiler-generated destructor pair
+worldmap::TCacheForWorldmapStorageLookupMembers::~TCacheForWorldmapStorageLookupMembers_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 worldmap::TLightMap::v10	606d006b0a90a2eb	ported	renderer/lightmodel.cpp:buildClassicLightPair
 worldmap::TWorldMapField::v12	05c9b46a10fa2b28	ported	worldmap/worldmapfield.h:TWorldMapField::isEmpty
 worldmap::TWorldMapField::v13	8f028080de4e824e	ported	worldmap/worldmapfield.h:TWorldMapField::coordinate

@@ -71,7 +71,6 @@ public:
     /// Drop blocks outside `isAware`; `onRemoved` runs after block slot is cleared (Map notifies).
     void pruneUnawareSpatialFields(const std::function<bool(const Position&)>& isAware,
                                    const std::function<void(const Position&)>& onRemoved);
-    TCacheForWorldmapStorageLookupMembers* lookupMembers() const { return m_lookupMembers; }
 
     creatures::TCreatureMovementSpeedCalculator& speedCalculator() { return *m_speedCalculator; }
     /// Speed of the field's ground; 255 where there is no ground.
@@ -123,7 +122,6 @@ private:
 
     QHash<quint64, TWorldMapField*> m_fields;
     std::vector<std::unordered_map<uint32_t, TileBlock>> m_spatialFloors;
-    TCacheForWorldmapStorageLookupMembers* m_lookupMembers = nullptr;
     TWorldMapSessionState m_sessionState;
     creatures::TCreatureMovementSpeedCalculator m_ownSpeedCalculator;
     creatures::TCreatureMovementSpeedCalculator* m_speedCalculator = nullptr;

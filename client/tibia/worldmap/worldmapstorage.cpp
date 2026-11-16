@@ -28,7 +28,6 @@ quint64 pack(const Position& pos)
 
 TWorldMapStorage::TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* speedCalculator, QObject* parent)
     : cip::tibia::worldmap::TWorldMapStorage(parent)
-    , m_lookupMembers(new TCacheForWorldmapStorageLookupMembers(this))
     , m_speedCalculator(speedCalculator ? speedCalculator : &m_ownSpeedCalculator)
 {
     ensureSpatialFloorsSized();
