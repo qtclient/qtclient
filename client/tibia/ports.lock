@@ -5651,6 +5651,7 @@ sub_48e5c3198860	48e5c31988604c3b	ported	config/sidebaroptions.cpp:serializePlay
 sub_48f0293cbb52	48f0293cbb525795	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::onRequestShowStashMessageDialog
 sub_48fcdd7b051a	48fcdd7b051adb81	ported	gamewindow/characterinfomodels.cpp:TAchievementInfoController::reset
 sub_491bc0e14328	491bc0e143287fb4	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::isInt	test=tests/client/jsonvalidator_test.cpp
+sub_492ba136ce8d	492ba136ce8d5ce7	ported	shared/src/datetimehelper.cpp:formatTimestamp
 sub_492f90eda298	492f90eda2980fe9	ported	minimap/minimaptile.cpp:blankImage
 sub_494cc4268df0	494cc4268df03852	skip	generated: moc-generated signal body (sendMessage, receivedMessage, clientMessageReadyToProcess)
 sub_495fe63abc53	495fe63abc53b681	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateParameters

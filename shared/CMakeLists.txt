@@ -15,6 +15,8 @@ add_library(qtclient_shared STATIC
   src/crashhandler.h
   src/crashreportsender.cpp
   src/crashreportsender.h
+  src/datetimehelper.cpp
+  src/datetimehelper.h
   src/downloadpool.cpp
   src/downloadpool.h
   src/executor.cpp
