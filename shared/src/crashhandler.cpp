@@ -6,10 +6,18 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
-#include <QUuid>
 
 #include <algorithm>
-#include <csignal>
+
+#if QTCLIENT_HAVE_BREAKPAD
+#if defined(Q_OS_MACOS)
+#include "client/mac/handler/exception_handler.h"
+#elif defined(Q_OS_WIN)
+#include "client/windows/handler/exception_handler.h"
+#else
+#include "client/linux/handler/exception_handler.h"
+#endif
+#endif
 
 namespace tibia::shared {
 
@@ -37,58 +45,66 @@ void writeFile(const QString& path, const QByteArray& data)
 
 }
 
-/// Host stand-in for Breakpad's exception handler: catches the fatal signals
-/// and runs the minidump callback (no minidump is written).
+#if QTCLIENT_HAVE_BREAKPAD
+/// Google Breakpad's in-process exception handler (CipSoft links it), with
+/// the platform's callback forwarded to CipSoft's minidump callback.
 class TCrashHandler::TExceptionHandler
 {
 public:
-    explicit TExceptionHandler(QString dumpPath)
-        : m_dumpPath(std::move(dumpPath))
-        , m_dumpPathUtf8(m_dumpPath.toLocal8Bit())
+    explicit TExceptionHandler(const QString& dumpPath)
     {
-        s_current = this;
-#if !defined(__EMSCRIPTEN__) && !defined(Q_OS_WIN)
-        for (const int signal : FatalSignals) {
-            struct sigaction action = {};
-            action.sa_handler = &TExceptionHandler::onSignal;
-            sigemptyset(&action.sa_mask);
-            action.sa_flags = SA_RESETHAND;
-            sigaction(signal, &action, nullptr);
-        }
+#if defined(Q_OS_MACOS)
+        m_handler = std::make_unique<google_breakpad::ExceptionHandler>(
+            dumpPath.toStdString(), nullptr, &TCrashHandler::minidumpCallback, nullptr, true, nullptr);
+#elif defined(Q_OS_WIN)
+        m_handler = std::make_unique<google_breakpad::ExceptionHandler>(dumpPath.toStdWString(), nullptr,
+            &TExceptionHandler::windowsCallback, nullptr, google_breakpad::ExceptionHandler::HANDLER_ALL);
+#else
+        m_handler = std::make_unique<google_breakpad::ExceptionHandler>(
+            google_breakpad::MinidumpDescriptor(dumpPath.toStdString()), nullptr, &TExceptionHandler::linuxCallback,
+            nullptr, true, -1);
 #endif
-    }
-    ~TExceptionHandler()
-    {
-#if !defined(__EMSCRIPTEN__) && !defined(Q_OS_WIN)
-        for (const int signal : FatalSignals)
-            std::signal(signal, SIG_DFL);
-#endif
-        if (s_current == this)
-            s_current = nullptr;
     }
 
-    /// No minidump writer on this host.
-    bool writeMinidump() { return false; }
+    bool writeMinidump()
+    {
+#if defined(Q_OS_MACOS)
+        return m_handler->WriteMinidump(false);
+#else
+        return m_handler->WriteMinidump();
+#endif
+    }
 
 private:
-#if !defined(__EMSCRIPTEN__) && !defined(Q_OS_WIN)
-    static constexpr int FatalSignals[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT };
+#if defined(Q_OS_WIN)
+    static bool windowsCallback(const wchar_t* dumpPath, const wchar_t* minidumpId, void* context,
+        EXCEPTION_POINTERS*, MDRawAssertionInfo*, const bool succeeded)
+    {
+        const QByteArray directory = QString::fromWCharArray(dumpPath).toLocal8Bit();
+        const QByteArray id = QString::fromWCharArray(minidumpId).toLocal8Bit();
+        return TCrashHandler::minidumpCallback(directory.constData(), id.constData(), context, succeeded);
+    }
+#elif !defined(Q_OS_MACOS)
+    /// Breakpad on Linux names the dump `<directory>/<id>.dmp`.
+    static bool linuxCallback(const google_breakpad::MinidumpDescriptor& descriptor, void* context, const bool succeeded)
+    {
+        const QFileInfo dump(QString::fromLocal8Bit(descriptor.path()));
+        const QByteArray id = dump.completeBaseName().toLocal8Bit();
+        return TCrashHandler::minidumpCallback(descriptor.directory().c_str(), id.constData(), context, succeeded);
+    }
 #endif
 
-    static void onSignal(const int signal)
-    {
-        TExceptionHandler* handler = s_current;
-        if (handler) {
-            const QByteArray id = QUuid::createUuid().toByteArray(QUuid::WithoutBraces);
-            TCrashHandler::minidumpCallback(handler->m_dumpPathUtf8.constData(), id.constData(), nullptr, false);
-        }
-        std::raise(signal);
-    }
-
-    static inline TExceptionHandler* s_current = nullptr;
-    QString m_dumpPath;
-    QByteArray m_dumpPathUtf8;
+    std::unique_ptr<google_breakpad::ExceptionHandler> m_handler;
 };
+#else
+/// Host: no Breakpad on this platform (WASM, mobile); nothing catches crashes.
+class TCrashHandler::TExceptionHandler
+{
+public:
+    explicit TExceptionHandler(const QString&) {}
+    bool writeMinidump() { return false; }
+};
+#endif
 
 TCrashHandler& TCrashHandler::instance()
 {

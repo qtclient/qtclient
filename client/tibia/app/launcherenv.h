@@ -28,8 +28,10 @@ struct LauncherEnv
     QString clientServicesPath;
     /// accountCreationClientServices path.
     QString createAccountPath;
-    /// Crash report upload path (QTCLIENT_CRASH_REPORT_PATH / mod urls.crashReportPath).
-    /// No fallback: without one no crash report leaves the machine.
+    /// CIP `[URLS] crashReportUrl` (CipSoft: <web>/clientservices/crashreceiver.php),
+    /// from QTCLIENT_CRASH_REPORT_PATH / mod urls.crashReportPath, a path under
+    /// loginBase or an absolute URL. No CipSoft fallback: without one no crash
+    /// report leaves the machine.
     QString crashReportPath;
     /// Public asset origin (QTCLIENT_ASSET_BASE), defaulting to https://static.tibia.com.
     QUrl assetBase;

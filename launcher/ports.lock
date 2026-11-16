@@ -346,6 +346,7 @@ sub_13ef27e6e285	13ef27e6e285c40d	skip	library: libc++ vector/map/tree internals
 sub_1406089da185	1406089da18561ef	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
 sub_14724ee2bc6a	14724ee2bc6afc63	ported	shared/src/crashhandler.cpp:TCrashHandler::removeOldLogMessages
 sub_14dae6ebff79	14dae6ebff797e1e	inlined	packagefiledownloader.cpp:TPackageFileDownloader::saveFile
+sub_14724ee2bc6a	14724ee2bc6afc63	tested	shared/src/crashhandler.cpp:TCrashHandler::removeOldLogMessages	test=tests/client/sharednet_test.cpp
 sub_14e4d46b5407	14e4d46b54075b51	skip	library: libc++ std::optional / std::string helpers
 sub_14e6f785afc4	14e6f785afc47e39	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_154a4abb8968	154a4abb89689a76	skip	generated: constructor/destructor thunk
@@ -462,6 +463,7 @@ sub_2be498d8123f#3	2be498d8123f454d	skip	library: QList<QNetworkInterface> / QLi
 sub_2c039e757d1a	2c039e757d1a9172	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_2c041a0ec7b8	2c041a0ec7b899b5	ported	package.cpp:TPackageConfiguration::packageVersion
 sub_2c0924e60878	2c0924e60878cfa5	ported	shared/src/crashhandler.cpp:TCrashHandler::writeMinidump
+sub_2c0924e60878	2c0924e60878cfa5	tested	shared/src/crashhandler.cpp:TCrashHandler::writeMinidump	test=tests/client/sharednet_test.cpp
 sub_2c76d914ce53	2c76d914ce53f86e	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_2cbc9e42b727	2cbc9e42b7275614	inlined	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::QNetworkReplyWrapper
 sub_2cc3166c43c7	2cc3166c43c7496b	skip	generated: destructor
@@ -504,6 +506,7 @@ sub_39b0d726845c	39b0d726845c6564	skip	library: r-lyeh bundle codecs: miniz tinf
 sub_39cbb8bb6c49	39cbb8bb6c491116	ported	shared/src/crashreportsender.cpp:TCrashReportSender::createMultiPart
 sub_3a18297c11fd	3a18297c11fd2cdb	ported	launcherapplication.cpp:TLauncherApplication::TLauncherApplication
 sub_3a19c6e1b2fa	3a19c6e1b2faaa86	inlined	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getOpenGLInformation
+sub_39cbb8bb6c49	39cbb8bb6c491116	tested	shared/src/crashreportsender.cpp:TCrashReportSender::createMultiPart	test=tests/client/sharednet_test.cpp
 sub_3a293831cb08	3a293831cb08537b	tested	shared/src/jsonhelper.cpp:jsonInt	test=tests/client/sharednet_test.cpp
 sub_3a38227db03e	3a38227db03eadc4	skip	generated: destructor
 sub_3a3d6ca4e512	3a3d6ca4e51255b3	skip	generated: destructor
@@ -648,6 +651,7 @@ sub_61ea4144b745	61ea4144b745af9d	ported	launchermainwindow.cpp:TLauncherMainWin
 sub_61f97afdbc52	61f97afdbc52eaec	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_62203b95af07	62203b95af07263b	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::~TZlibDeflateWrapper	test=tests/client/sharedio_test.cpp
 sub_623a4c217bf1	623a4c217bf1567d	inlined	package.cpp:TPackageConfiguration::load
+sub_602b0b978a8a	602b0b978a8ab7fb	tested	shared/src/crashhandler.cpp:TCrashHandler::instance	test=tests/client/sharednet_test.cpp
 sub_623ffc7c8473	623ffc7c84733162	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_626f549526cf	626f549526cfc99d	skip	library: libc++ vector/map/tree internals
 sub_62871225bbad	62871225bbad5568	skip	generated: destructor
@@ -828,6 +832,7 @@ sub_91d95a9e2847	91d95a9e284789ab	skip	dead: no call site in the decompiled corp
 sub_91d95a9e2847#2	91d95a9e284789ab	skip	generated: default constructor of the {size, hash} file-hash record
 sub_92bc4dd0b4f5	92bc4dd0b4f58636	skip	library: libc++ std::string(const char*) constructor
 sub_92d58472ce9c	92d58472ce9cb1a4	ported	launcherapplication.cpp:TLauncherApplication::onDiskAccessFailed
+sub_8fc46f361f9b	8fc46f361f9be434	tested	shared/src/crashhandler.cpp:TCrashHandler::updateLogMessagesAnnotation	test=tests/client/sharednet_test.cpp
 sub_9307c21cf47d	9307c21cf47d4f34	skip	library: std::vector<QMetaObject::Connection> grow (push_back slow path)
 sub_93520930a186	93520930a186d342	inlined	packageinstallation.cpp:TPackageInstallation::start
 sub_93c91c1f5768	93c91c1f57686cf1	skip	library: std::set<TRPCServiceConnection*> node destroy
@@ -939,7 +944,7 @@ sub_b0a26ee98226	b0a26ee98226533a	skip	library: libc++ std::async/std::thread in
 sub_b0a425df67b3	b0a425df67b3e738	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_b11ede8af4e8	b11ede8af4e8da49	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_b15087ae3d2f	b15087ae3d2f6ba5	ported	shared/src/downloadpool.cpp:TDownloadPool::isActive
-sub_b162a8d1a39f	b162a8d1a39fb71f	ported	shared/src/crashhandler.cpp:TCrashHandler::installHandler
+sub_b162a8d1a39f	b162a8d1a39fb71f	tested	shared/src/crashhandler.cpp:TCrashHandler::installHandler	test=tests/client/sharednet_test.cpp
 sub_b1b32ae7a4ac	b1b32ae7a4ac5b48	tested	shared/src/jsonvalidator.cpp:TJsonArrayValidator::first	test=tests/client/jsonvalidator_test.cpp
 sub_b1ca2665cf0d	b1ca2665cf0df264	skip	library: std::vector / QList template code
 sub_b23b8772a1ea	b23b8772a1ea05f5	skip	library: QMap<QString, QVariant> node destructors
@@ -989,6 +994,7 @@ sub_b85a0e5c4938	b85a0e5c49380434	skip	library: QMap<QUrl, TActiveDownload> (std
 sub_b8609b837cb9	b8609b837cb9e247	ported	shared/src/crashhandler.cpp:TCrashHandler::writeCrashFiles
 sub_b8ee162d9f31	b8ee162d9f31b884	skip	library: std::vector copy / length_error throw
 sub_b93534648913	b93534648913bf2b	skip	library: libc++ std::sort (introsort/heap/insertion) instantiation over TFileInPackage
+sub_b8609b837cb9	b8609b837cb9e247	tested	shared/src/crashhandler.cpp:TCrashHandler::writeCrashFiles	test=tests/client/sharednet_test.cpp
 sub_ba79d715467e#2	ba79d715467ef906	skip	library: std::make_unique / construct_at forwarding to the constructor
 sub_baa9831a19d4	baa9831a19d43716	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
 sub_bacb34461c58	bacb34461c5810a9	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
@@ -1010,9 +1016,9 @@ sub_bcccd51b8b15#3	bcccd51b8b153f85	skip	library: r-lyeh bundle: unpack/is_packe
 sub_bcccd51b8b15#9	bcccd51b8b153f85	skip	library: CryptoPP runtime
 sub_bcd30f308704	bcd30f3087043b03	tested	shared/src/colorhelper.cpp:colorFromEightBit	test=tests/client/sharednet_test.cpp
 sub_bcf7807b6a96	bcf7807b6a962475	skip	library: Google Breakpad ExceptionHandler destructor / UninstallHandler
-sub_bd7cfa016a32	bd7cfa016a324732	ported	shared/src/crashhandler.cpp:TCrashHandler::setAnnotation
+sub_bd7cfa016a32	bd7cfa016a324732	tested	shared/src/crashhandler.cpp:TCrashHandler::setAnnotation	test=tests/client/sharednet_test.cpp
 sub_bd7cfa016a32#2	bd7cfa016a324732	ported	shared/src/crashhandler.cpp:TCrashHandler::removeAnnotation
-sub_bd8dbcb34435	bd8dbcb344356400	ported	shared/src/crashhandler.cpp:TCrashHandler::addLogMessage
+sub_bd8dbcb34435	bd8dbcb344356400	tested	shared/src/crashhandler.cpp:TCrashHandler::addLogMessage	test=tests/client/sharednet_test.cpp
 sub_bdcae11a3a71	bdcae11a3a71742c	skip	library: QMap<QString, QVariant> template code
 sub_be50260e858b	be50260e858b6ff0	tested	shared/src/highlighttimer.cpp:THighlightTimer::interval	test=tests/client/sharednet_test.cpp
 sub_be89f65cfadd	be89f65cfaddb21a	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
@@ -1104,6 +1110,7 @@ sub_d7863b1d5d9b	d7863b1d5d9ba53d	ported	systemsurvey/systemsurveyasjsondocument
 sub_d7863b1d5d9b#2	d7863b1d5d9ba53d	ported	systemsurvey/systemsurveyasjsondocumentcreator.cpp:TSystemSurveyAsJsonDocumentCreator::TSystemSurveyAsJsonDocumentCreator
 sub_d7a0edf4f0fb	d7a0edf4f0fb72e1	ported	shared/src/crashreportsender.cpp:TCrashReportSender::send
 sub_d7a7a0f965b9#2	d7a7a0f965b9294c	skip	generated: shared_ptr release / Qt slot object
+sub_d7a0edf4f0fb	d7a0edf4f0fb72e1	tested	shared/src/crashreportsender.cpp:TCrashReportSender::send	test=tests/client/sharednet_test.cpp
 sub_d82acfd0735a	d82acfd0735aa306	ported	shared/src/rpcserviceconnection.cpp:TRPCServiceConnection::onDataReady
 sub_d86bbada087a	d86bbada087a10aa	tested	shared/src/coordinate.h:TCoordinate::operator<	test=tests/client/coordinate_test.cpp
 sub_d8754dab1f8a	d8754dab1f8a514f	skip	library: QList<QNetworkInterface> / QList<QHostAddress> template code
@@ -1157,6 +1164,7 @@ sub_e471d2e9e0a5	e471d2e9e0a5d29e	ported	package.cpp:TPackageConfiguration::asse
 sub_e4b3e0f02f66	e4b3e0f02f66c814	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_e5237c0b267f	e5237c0b267fbd3f	ported	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::isOneShot
 sub_e55af598f8bf	e55af598f8bf702d	ported	shared/src/crashhandler.cpp:TCrashHandler::setSessiondumpProvider
+sub_e55af598f8bf	e55af598f8bf702d	tested	shared/src/crashhandler.cpp:TCrashHandler::setSessiondumpProvider	test=tests/client/sharednet_test.cpp
 sub_e584fdeb2dd1	e584fdeb2dd11c4b	skip	generated: moc signal body TDownloadPool::failed
 sub_e6c325ea470c	e6c325ea470ca1ef	skip	library: libc++ vector/map/tree internals
 sub_e6db877f4f89	e6db877f4f89d737	skip	generated: moc signal bodies of TRPCServiceClient
@@ -1185,12 +1193,13 @@ sub_ee2f5fc042f3	ee2f5fc042f39648	skip	generated: QtPrivate slot object impl (me
 sub_ee2f5fc042f3#2	ee2f5fc042f39648	skip	generated: QtPrivate slot object impl (member-function connection)
 sub_ee2f5fc042f3#3	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_ee2f5fc042f3#4	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
-sub_ee568eb1527e	ee568eb1527e029f	ported	shared/src/crashreportsender.cpp:TCrashReportSender::TCrashReportSender
+sub_ee568eb1527e	ee568eb1527e029f	tested	shared/src/crashreportsender.cpp:TCrashReportSender::TCrashReportSender	test=tests/client/sharednet_test.cpp
 sub_ee8ad351396b	ee8ad351396bf8ae	skip	library: QList<QHostAddress> template code
 sub_ef1591d52e61	ef1591d52e614f57	ported	launcherselfupdater.cpp:TLauncherSelfUpdater::removeBackupFiles
 sub_efdc25ad1a06	efdc25ad1a06291a	ported	systemsurvey/systemsurveytojsonconverter.cpp:TSystemSurveyToJsonConverter::openGLToJson
 sub_efe4deb86027	efe4deb860278073	ported	shared/src/crashhandler.cpp:TCrashHandler::initialize
 sub_f0aebbe73ffa	f0aebbe73ffae967	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_efe4deb86027	efe4deb860278073	tested	shared/src/crashhandler.cpp:TCrashHandler::initialize	test=tests/client/sharednet_test.cpp
 sub_f221f6c4a758	f221f6c4a7580589	ported	shared/src/launcherutils.cpp:TLauncherUtils::hasLocalIPv4
 sub_f2302aedfcc3	f2302aedfcc37819	tested	package.cpp:resolveConfigurationUrl	test=tests/launcher/package_test.cpp
 sub_f23eb3024ce5	f23eb3024ce596b3	skip	generated: moc signal bodies paginationDataChanged / sourceModelChanged
@@ -1264,3 +1273,4 @@ systemsurvey::TSystemSurveyValueRetriever::v6	0589b715e9782cbd	ported	systemsurv
 systemsurvey::TSystemSurveyValueRetriever::v7	ca2072b0cd76d104	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getCpuCounts
 systemsurvey::TSystemSurveyValueRetriever::v8	b3577d41d46f9baf	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::getCpuClockSpeed
 systemsurvey::TSystemSurveyValueRetriever::v9	f2530132c62dcbc6	tested	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::parseDisplaysDataType	test=tests/launcher/systemsurvey_test.cpp
+sub_ff079e3f148d	ff079e3f148dc9f0	tested	shared/src/crashhandler.cpp:TCrashHandler::minidumpCallback	test=tests/client/sharednet_test.cpp

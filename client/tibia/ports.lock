@@ -10458,7 +10458,7 @@ sub_ee2f5fc042f3#2	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls 
 sub_ee2f5fc042f3#3	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_ee2f5fc042f3#4	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_ee5079f06811	ee5079f068112c4e	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onRequestDynamicDataForTownTimerTimeout
-sub_ee568eb1527e	ee568eb1527e029f	ported	shared/src/crashreportsender.cpp:TCrashReportSender::TCrashReportSender
+sub_ee568eb1527e	ee568eb1527e029f	tested	shared/src/crashreportsender.cpp:TCrashReportSender::TCrashReportSender	test=tests/client/sharednet_test.cpp
 sub_ee686499304a	ee686499304acb0b	inlined	gamewindow/containercontroller.cpp:TContainerController::onSlotDragDropped
 sub_ee881c9ef632	ee881c9ef6324e60	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::advertisePremium
 sub_eea1984d670a	eea1984d670a7535	skip	library: SFML/miniaudio library helper, only called from library code

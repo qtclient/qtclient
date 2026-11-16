@@ -17,9 +17,8 @@ namespace shared {
 /// (product, version, time of the crash and the log messages of the last
 /// minute) and the session dump as `<id>.dmp.session`.
 ///
-/// Host: CipSoft installs Google Breakpad's exception handler, which writes
-/// the minidump. qtclient has no minidump writer; its handler catches the
-/// fatal signals and runs the same callback with an unsuccessful minidump.
+/// The minidump is Google Breakpad's (as CipSoft links it) on macOS, Linux and
+/// Windows; other hosts (WASM, mobile) install no handler.
 class TCrashHandler
 {
 public:
@@ -53,6 +52,10 @@ public:
     /// "<file name of minidumpPath>.json".
     static QString annotationsFileName(const QString& minidumpPath);
 
+    /// Breakpad's minidump callback: writes the crash files; true stops the
+    /// exception when the minidump succeeded and it is not passed on.
+    static bool minidumpCallback(const char* dumpDirectory, const char* minidumpId, void* context, bool succeeded);
+
 private:
     class TExceptionHandler;
     struct TLogMessage
@@ -62,10 +65,6 @@ private:
     };
 
     TCrashHandler();
-
-    /// Breakpad's minidump callback: writes the crash files; true stops the
-    /// exception when the minidump succeeded and it is not passed on.
-    static bool minidumpCallback(const char* dumpDirectory, const char* minidumpId, void* context, bool succeeded);
     void installHandler(const QString& dumpPath);
     void writeCrashFiles(const QString& dumpDirectory, const QString& minidumpId);
     /// Drops the log messages older than a minute.
