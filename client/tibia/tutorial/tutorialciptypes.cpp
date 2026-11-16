@@ -41,23 +41,6 @@ void TTutorialProtocolMessageHandler::handleTutorialHintMessage(
     tibia::game::notify("onTutorialHint", id);
 }
 
-void TTutorialProtocolMessageHandler::onServerMessageEnqueued(int opcode)
-{
-
-    switch (opcode) {
-    case 220: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow || !shadow->HasExtension(GameserverMessageTutorialHint::gameserver_message_tutorial_hint))
-            return;
-        handleTutorialHintMessage(
-            shadow->GetExtension(GameserverMessageTutorialHint::gameserver_message_tutorial_hint));
-        break;
-    }
-    default:
-        break;
-    }
-}
-
 void ownProductSurface(QObject* parent)
 {
     static bool owned = false;

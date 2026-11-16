@@ -35,6 +35,7 @@
 #include "quickloot/quicklootciptypes.h"
 #include "spells/spellsciptypes.h"
 #include "taskboard/taskboardciptypes.h"
+#include "tutorial/tutorialciptypes.h"
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
 #include "sound/soundprotocolmessagehandler.h"
@@ -236,6 +237,9 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedPlayerDataBasicMessage, this, &TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage);
     link(&Queue::receivedPremiumTriggerMessage, this, &TPremiumProtocolMessageHandler::handlePremiumTriggerMessage);
 
+    if (auto* tutorial = tutorial::TTutorialProtocolMessageHandler::liveInstance())
+        link(&Queue::receivedTutorialHintMessage, tutorial, &tutorial::TTutorialProtocolMessageHandler::handleTutorialHintMessage);
+
     using prey::TPreyProtocolMessageHandler;
     link(&Queue::receivedPreyTimeLeftMessage, this, &TPreyProtocolMessageHandler::handlePreyTimeLeftMessage);
     link(&Queue::receivedPreyDataMessage, this, &TPreyProtocolMessageHandler::handlePreyDataMessage);
@@ -293,6 +297,10 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
          &TExaltationProtocolMessageHandler::handleExaltationDialogRefreshMessage);
     link(&Queue::receivedExaltationHistoryMessage, this, &TExaltationProtocolMessageHandler::handleExaltationHistoryMessage);
     link(&Queue::receivedExaltationResultMessage, this, &TExaltationProtocolMessageHandler::handleExaltationResultMessage);
+
+    if (auto* bugReport = reporting::TBugReportProtocolMessageHandler::liveInstance())
+        link(&Queue::receivedBugReportsAllowedMessage, bugReport,
+             &reporting::TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage);
 
     using proficiency::TProficiencyProtocolMessageHandler;
     if (auto* spellBook = TSpellBookProtocolMessageHandler::liveInstance())

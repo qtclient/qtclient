@@ -43,25 +43,6 @@ void TBugReportProtocolMessageHandler::handleBugReportsAllowedMessage(
     tibia::game::setCanReportBugs(state == 0);
 }
 
-void TBugReportProtocolMessageHandler::onServerMessageEnqueued(int opcode)
-{
-
-    switch (opcode) {
-    case 26: {
-        const auto* shadow = protocol::lastShadowServerMessage();
-        if (!shadow
-            || !shadow->HasExtension(
-                GameserverMessageBugReportsAllowed::gameserver_message_bug_reports_allowed))
-            return;
-        handleBugReportsAllowedMessage(shadow->GetExtension(
-            GameserverMessageBugReportsAllowed::gameserver_message_bug_reports_allowed));
-        break;
-    }
-    default:
-        break;
-    }
-}
-
 void ownProductSurface(QObject* parent)
 {
     static bool owned = false;

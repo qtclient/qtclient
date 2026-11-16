@@ -42,8 +42,6 @@ public:
     void handleBugReportsAllowedMessage(
         const ::tibia::protobuf::protocol::GameserverMessageBugReportsAllowed& Message);
 
-    /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode);
 };
 
 class TRuleViolationProtocolMessageHandler final : public cip::tibia::reporting::TRuleViolationProtocolMessageHandler
