@@ -15,13 +15,20 @@ public:
     static ClientOptionsNotifier* instance();
 
 Q_SIGNALS:
-    /// ClientOptions::store changed the option `name`.
+    /// ClientOptions::store changed the option `name`, or a typed
+    /// TClientOptions setter changed it (the client window: its section name).
     void optionChanged(const QString& name);
+
+private:
+    /// Forwards TClientOptions' typed changes and saves the file after them.
+    ClientOptionsNotifier();
+
+    bool m_saveScheduled = false;
 };
 
-/// conf/clientoptions.json, CIP's options file (TClientOptions). Defaults are
-/// CIP's own file (cip/conf, embedded at :/conf); the user's copy lives in the
-/// app data dir and overrides them key by key.
+/// A JSON view of config::TClientOptions for host and pack code: load() is
+/// the options as TClientOptions::toJson writes them; store and storeAll go
+/// through its typed setters and save the file.
 class ClientOptions
 {
 public:

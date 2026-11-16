@@ -428,19 +428,13 @@ THotkeySet THotkeyOptions::builtInSet(const QString& name)
 
 void THotkeyOptions::load()
 {
-    const app::ClientOptions clientOptions = app::ClientOptions::load();
-    const QJsonObject options = clientOptions.options();
+    // TClientOptions' load already merged the GlobalShortcuts in.
     THotkeyOptionsData data;
     try {
-        data = THotkeyOptionsData::fromJson(clientOptions.root().value(QLatin1String("hotkeyOptions")).toObject());
+        data = THotkeyOptionsData::fromJson(app::ClientOptions::load().root().value(QLatin1String("hotkeyOptions")).toObject());
     } catch (const std::runtime_error&) {
-        // A section CIP refuses to load (a chat text too long) falls back to
-        // the built-in sets, as a missing one does.
         data = {};
     }
-    data.addGlobalShortcuts(options.value(QLatin1String("rotateWithCtrl")).toBool(),
-                            options.value(QLatin1String("rotateWithShift")).toBool(),
-                            options.value(QLatin1String("rotateWithAlt")).toBool());
     m_sets = std::move(data.hotkeySets);
     m_current = data.currentHotkeySetName;
     m_autoSwitch = data.autoSwitchHotkeyPreset;

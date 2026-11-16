@@ -215,6 +215,13 @@ void TItemInfoStorage::setTracked(const uint16_t typeId, const bool tracked)
     Q_EMIT recentLootDropsChanged();
 }
 
+void TItemInfoStorage::clearRecentLootDrops()
+{
+    m_recentDrops.clear();
+    scheduleExpiry();
+    Q_EMIT recentLootDropsChanged();
+}
+
 void TItemInfoStorage::removeAllTracked()
 {
     m_tracked.clear();

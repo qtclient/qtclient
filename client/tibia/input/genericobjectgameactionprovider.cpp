@@ -181,8 +181,14 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
         use = push(has(&ThingType::isMultiUse) ? A::USE_WITH : A::USE);
     } else {
         use = push(A::OPEN);
-        if (id != tibia::game::supplyStashId())
-            use = push(A::OPEN_IN_NEW_WINDOW);
+        if (id != tibia::game::supplyStashId()) {
+            // A container inside a container opens in its window by default;
+            // anywhere else in a new one.
+            const TGameActionPtr openInNewWindow = push(A::OPEN_IN_NEW_WINDOW);
+            const bool inContainer = position.x == UINT16_MAX && (position.y & 0x40);
+            if (!inContainer)
+                use = openInNewWindow;
+        }
         push(A::OPEN_MANAGE_LOOT_CONTAINER);
     }
     if (id && id == tibia::game::standardRewardChestId())

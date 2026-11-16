@@ -375,6 +375,7 @@ if(TIBIA_WITH_GAMECORE)
     config/specialconditionobject.cpp config/specialconditionobject.h
     config/optionsarchive.cpp config/optionsarchive.h
     config/clientoptiondefaults.cpp config/clientoptiondefaults.h
+    config/clientoptions.cpp config/clientoptions.h
     config/clientoptionsmigration.cpp config/clientoptionsmigration.h
     config/optionspages.cpp config/optionspages.h
     config/hotkeyoptions.cpp config/hotkeyoptions.h
@@ -402,6 +403,7 @@ if(TIBIA_WITH_GAMECORE)
     input/clickareaeventfilter.cpp input/clickareaeventfilter.h
     input/eventfilters.cpp input/eventfilters.h
     input/domainhandlers.cpp input/domainhandlers.h
+    input/genericgameactionhandler.cpp input/genericgameactionhandler.h
     input/crosshairgameactionhandlers.cpp input/crosshairgameactionhandlers.h
     input/playermovementgameactionhandler.cpp input/playermovementgameactionhandler.h
     input/playermovementinputinterpreter.cpp input/playermovementinputinterpreter.h

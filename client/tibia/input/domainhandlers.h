@@ -36,25 +36,6 @@ public:
     TClipboardGameActionHandler& operator=(const TClipboardGameActionHandler&) = delete;
 };
 
-/// CIP input::TGenericGameActionHandler: fullscreen / sound / HUD / FPS /
-/// hunting-session toggles (cip slots handleToggle*).
-class TGenericGameActionHandler final : public cip::tibia::input::TGenericGameActionHandler
-{
-    Q_OBJECT
-public:
-    explicit TGenericGameActionHandler(QObject* parent = nullptr);
-    ~TGenericGameActionHandler() override;
-    TGenericGameActionHandler(const TGenericGameActionHandler&) = delete;
-    TGenericGameActionHandler& operator=(const TGenericGameActionHandler&) = delete;
-
-public Q_SLOTS:
-    void handleToggleFullscreenAction() override;
-    void handleResetHuntingSessionAction() override;
-    void handleToggleCreatureHudsVisibleGameAction() override;
-    void handleToggleSoundGameAction() override;
-    void handleToggleFpsLagIndecatorGameAction() override;
-};
-
 /// CIP input::TGatherAllGameActionHandler: GATHER_ALL → tibia::game::gatherAll.
 class TGatherAllGameActionHandler final : public cip::tibia::input::TGatherAllGameActionHandler
 {

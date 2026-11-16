@@ -1120,22 +1120,6 @@ void TLootAndWasteWidgetController::showTargetDialog()
 // ----------------------------------------------------------------------------------------------
 // TAnalyserWidgets
 
-namespace {
-
-/// SAVE_TEXT_TO_FILE / SAVE_JSON_TO_FILE: `text` into `filePath`, making its folder.
-bool saveToFile(const input::TGameAction& action)
-{
-    if (action.filePath.isEmpty())
-        return true;
-    QDir().mkpath(QFileInfo(action.filePath).absolutePath());
-    QFile file(action.filePath);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        file.write(action.text.toUtf8());
-    return true;
-}
-
-}
-
 TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSidebarWidgetsManager* widgets, QQuickItem* gameWindowItem,
                                    QQmlEngine* engine, std::function<config::TSidebarOptions*()> options, QObject* parent)
     : QObject(parent)
@@ -1189,20 +1173,10 @@ TAnalyserWidgets::TAnalyserWidgets(TAnalyserStorages* storages, gamewindow::TSid
         controller->setSidebarOptions(m_options());
         return controller;
     });
-
-    input::setActionHandler(A::RESET_HUNTING_SESSION, [this](const input::TGameAction&) {
-        m_storages->resetAll();
-        return true;
-    });
-    input::setActionHandler(A::SAVE_TEXT_TO_FILE, saveToFile);
-    input::setActionHandler(A::SAVE_JSON_TO_FILE, saveToFile);
 }
 
 TAnalyserWidgets::~TAnalyserWidgets()
 {
-    input::setActionHandler(A::RESET_HUNTING_SESSION, nullptr);
-    input::setActionHandler(A::SAVE_TEXT_TO_FILE, nullptr);
-    input::setActionHandler(A::SAVE_JSON_TO_FILE, nullptr);
     for (auto& [type, slot] : m_slots)
         delete slot.controller;
 }

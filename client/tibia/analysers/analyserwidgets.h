@@ -390,8 +390,7 @@ private:
 };
 
 /// Owns the analyser widgets while they are open and registers them (EWidgetType 15 .. 22) with
-/// the sidebar widgets manager; also handles RESET_HUNTING_SESSION, SAVE_TEXT_TO_FILE and
-/// SAVE_JSON_TO_FILE.
+/// the sidebar widgets manager.
 class TAnalyserWidgets final : public QObject
 {
     Q_OBJECT

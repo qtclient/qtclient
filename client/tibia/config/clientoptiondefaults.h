@@ -10,14 +10,8 @@ namespace config {
 /// list index of Left Smart-Click (2).
 const QJsonObject& defaultClientOptions();
 
-/// The "options" section as TClientOptions reads it over its defaults, type by
-/// type: a bool, number or string option takes the stored value only when it
-/// has that JSON type. Ints are clamped to [0, INT_MAX], floats to
-/// [0, FLT_MAX]; then frameRateLimit to [10, 200], the light levels and effect
-/// opacities to [0, 1], playerHudArcOpacity to [0.2, 1] and playerHudArcHeight
-/// to [0.1, 1]. A string option not stored as a string reads as empty. Keys
-/// that are no CIP option are kept as stored.
-QJsonObject readClientOptions(const QJsonObject& stored);
+/// CIP's float options; every other numeric option is an int.
+bool isFloatOption(const QString& name);
 
 /// Button-bar ids in EButtons order (ButtonBarButtons), then the pack's
 /// default-enabled shortcuts.
