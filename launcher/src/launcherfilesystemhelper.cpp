@@ -175,8 +175,13 @@ TLauncherFilesystemHelper::TLauncherFilesystemHelper()
 {
     const QString overrideFile =
         QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("launchersettings.ini"));
-    m_settings = std::make_unique<TLauncherSettings>(hostSettingsDefaults(), overrideFile,
-                                                     /*epicDistribution=*/false);
+    m_settings = std::make_unique<TLauncherSettings>(hostSettingsDefaults(), overrideFile, isEpicDistribution());
+}
+
+bool TLauncherFilesystemHelper::isEpicDistribution()
+{
+    const QByteArray channel = readFile(applicationDirectory().filePath(QStringLiteral("distribution.channel")));
+    return QString::fromUtf8(channel).trimmed().compare(QLatin1String("Epic"), Qt::CaseSensitive) == 0;
 }
 
 QUrl TLauncherFilesystemHelper::launcherConfigurationUrl() const

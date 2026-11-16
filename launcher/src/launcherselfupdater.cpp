@@ -6,6 +6,9 @@
 
 #include <QCoreApplication>
 #include <QDebug>
+#include <QDirIterator>
+#include <QFile>
+#include <QFileInfo>
 #include <QHostAddress>
 #include <QUrl>
 
@@ -67,6 +70,7 @@ void TLauncherSelfUpdater::update(const std::shared_ptr<TPackage>& launcherPacka
     const QString targetVersion = configuration ? configuration->packageVersion()
                                                 : QStringLiteral(" invalid package version");
     qDebug() << "Starting Launcher self update from version " << launcherVersion() << " to version" << targetVersion;
+    m_launcherPackage = launcherPackage;
     m_installationManager = std::make_unique<TInstallationManager>(nullptr, m_networkAccessManager, m_filesystemHelper);
     connect(m_installationManager.get(), &TInstallationManager::installationOrUpdateFinished, this,
             &TLauncherSelfUpdater::onInstallationOrUpdateFinished);
@@ -80,8 +84,40 @@ void TLauncherSelfUpdater::onInstallationOrUpdateFinished(TPackageInstallation* 
         Q_EMIT updateDownloadFinishedAndRestartRequired();
         return;
     }
+    // Put the previous launcher executable back.
+    if (m_launcherPackage) {
+        if (const TPackageConfiguration* configuration = m_launcherPackage->configurationForCurrentPlatform();
+            configuration && !configuration->executable().isEmpty()) {
+            const QString executable =
+                TLauncherFilesystemHelper::packageDirectory(*m_launcherPackage).filePath(configuration->executable());
+            restoreBackup(executable);
+        }
+    }
     qCritical() << "Updating Tibia failed: Error" << int(installationInProgress->errorReason());
     Q_EMIT updateFailed();
+}
+
+void TLauncherSelfUpdater::restoreBackup(const QString& path)
+{
+    const QString backup = path + TLauncherFilesystemHelper::backupFileSuffix();
+    const QFileInfo info(backup);
+    if (!info.exists() || !info.isFile())
+        return;
+    if (TLauncherFilesystemHelper::fileExists(path))
+        TLauncherFilesystemHelper::removeFile(path);
+    if (!QFile::rename(backup, path))
+        qCritical() << "Failed to rename file" << backup << "to" << path;
+}
+
+void TLauncherSelfUpdater::removeBackupFiles() const
+{
+    const QString root = TLauncherFilesystemHelper::applicationDirectory().absolutePath();
+    QDirIterator files(root, QDir::Files | QDir::Hidden | QDir::System, QDirIterator::Subdirectories);
+    while (files.hasNext()) {
+        const QString file = files.next();
+        if (file.endsWith(TLauncherFilesystemHelper::backupFileSuffix(), Qt::CaseSensitive))
+            TLauncherFilesystemHelper::removeFile(file);
+    }
 }
 
 } // namespace launcher

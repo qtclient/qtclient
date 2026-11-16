@@ -237,6 +237,7 @@ void TLauncherApplication::onPackageConfigurationDownloadsFinished()
         showSplash(SplashUpdatingLauncher);
         return;
     }
+    m_selfUpdater->removeBackupFiles();
     startPackageManagement();
 }
 
@@ -261,6 +262,18 @@ void TLauncherApplication::startPackageManagement()
 {
     m_installationManager = std::make_unique<TInstallationManager>(m_configurationHandler->configuration(),
                                                                    m_networkAccessManager, m_filesystemHelper);
+    // Packages whose directory holds a FORCE_PATCH marker are updated now.
+    std::vector<std::shared_ptr<TPackage>> forcedPackages;
+    if (m_configurationHandler->configuration()) {
+        for (const std::shared_ptr<TPackage>& package : m_configurationHandler->configuration()->packages()) {
+            QFile marker(TLauncherFilesystemHelper::packageDirectory(*package).absoluteFilePath(
+                TLauncherFilesystemHelper::forcePatchMarkerFileName()));
+            if (marker.exists()) {
+                marker.remove();
+                forcedPackages.push_back(package);
+            }
+        }
+    }
     connect(m_installationManager.get(), &TInstallationManager::allStartedUpdatesFinished, this,
             &TLauncherApplication::onAllStartedUpdatesFinished);
     connect(m_installationManager.get(), &TInstallationManager::diskAccessFailed, this,
@@ -274,8 +287,7 @@ void TLauncherApplication::startPackageManagement()
         m_installationManager->installAutomaticPackages();
         return;
     }
-    const QString patch = m_parser.isSet(m_patchOption) ? m_parser.value(m_patchOption) : QString();
-    if (patch.isEmpty()) {
+    if (!m_parser.isSet(m_patchOption) && forcedPackages.empty()) {
         if (!m_parser.isSet(m_firstLaunchOption)) {
             const std::shared_ptr<TPackage> defaultPackage = m_installationManager->defaultPackage();
             if (defaultPackage && defaultPackage->localStatus() == TPackage::InstalledAndUsable) {
@@ -287,15 +299,19 @@ void TLauncherApplication::startPackageManagement()
         showMainWindow();
         return;
     }
-    const std::shared_ptr<TPackage> package = m_installationManager->packageByExecutable(patch);
+    const std::shared_ptr<TPackage> package =
+        m_installationManager->packageByExecutable(m_parser.value(m_patchOption));
     showMainWindow();
-    if (!package) {
+    if (package)
+        forcedPackages.push_back(package);
+    if (forcedPackages.empty()) {
         QMessageBox::information(m_mainWindow.get(), QStringLiteral("Client patching failed"),
                                  QStringLiteral("Could not determine patch information. Your client might no longer "
                                                 "be supported."));
         return;
     }
-    m_installationManager->installOrUpdate(package);
+    for (const std::shared_ptr<TPackage>& forced : forcedPackages)
+        m_installationManager->installOrUpdate(forced);
 }
 
 static std::vector<std::shared_ptr<TPackage>> availablePackages(const TInstallationManager& manager)

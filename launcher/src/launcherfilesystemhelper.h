@@ -105,6 +105,12 @@ public:
     static QString assetVersionFileName() { return QStringLiteral("assets.json.sha256"); }
     /// Marker file in a package directory that makes it the default client.
     static QString defaultPackageMarkerFileName() { return QStringLiteral("default"); }
+    /// Marker file in a package directory that forces an update of that package on the next start.
+    static QString forcePatchMarkerFileName() { return QStringLiteral("FORCE_PATCH"); }
+    /// Suffix of the copies a self-update keeps of the files it replaces.
+    static QString backupFileSuffix() { return QStringLiteral(".old"); }
+    /// True when `distribution.channel` next to the application reads "Epic".
+    static bool isEpicDistribution();
 
     static bool fileExists(const QString& path);
     static QByteArray readFile(const QString& path);

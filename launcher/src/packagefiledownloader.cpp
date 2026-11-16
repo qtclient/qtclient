@@ -154,6 +154,9 @@ void TPackageFileDownloader::handleDownloadedFile(const QUrl& url, const QByteAr
 void TPackageFileDownloader::saveFile(const TFileInPackage& file, const QByteArray& data)
 {
     const QString path = m_targetDirectory.filePath(file.localFile);
+    // A self-update keeps the replaced file as "<file>.old" until the next start.
+    if (m_updateMode == 1 && TLauncherFilesystemHelper::fileExists(path))
+        TLauncherFilesystemHelper::renameFile(path, path + TLauncherFilesystemHelper::backupFileSuffix());
     if (!TLauncherFilesystemHelper::writeFile(path, data)) {
         qCritical() << "Writing" << path << "failed.";
         m_diskAccessFailed = true;

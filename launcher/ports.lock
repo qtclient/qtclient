@@ -38,6 +38,7 @@ launcher::TLauncherMainWindow::v1@10	39a5a7f752dfeb54	skip	generated: destructor
 launcher::TLauncherMainWindow::v20	ac9644a93eaa8439	ported	launchermainwindow.cpp:TLauncherMainWindow::mouseReleaseEvent
 launcher::TLauncherMainWindow::v22	b9eea057c12beb65	ported	launchermainwindow.cpp:TLauncherMainWindow::mouseMoveEvent
 launcher::TLauncherMainWindow::~TLauncherMainWindow	097457dc45e86dd8	skip	generated: destructor
+launcher::TLauncherSelfUpdater::onInstallationOrUpdateFinished	74041e64f236d059	ported	launcherselfupdater.cpp:TLauncherSelfUpdater::onInstallationOrUpdateFinished
 launcher::TLauncherSelfUpdater::~TLauncherSelfUpdater	aa82bdb026561409	skip	generated: destructor
 launcher::TPackage::~TPackage	097457dc45e86dd8	skip	generated: destructor
 launcher::TPackageFileDownloader::onDownloadCompleted	428afd70683dfabd	ported	packagefiledownloader.cpp:TPackageFileDownloader::onDownloadCompleted
@@ -497,6 +498,7 @@ sub_377ad916ec4a	377ad916ec4ab5dd	skip	generated: shared_ptr release / Qt slot o
 sub_380f7a7f155e	380f7a7f155ed2a0	tested	shared/src/extent.h:TExtent::TExtent	test=tests/client/sharednet_test.cpp
 sub_380f7a7f155e#2	380f7a7f155ed2a0	tested	shared/src/extent.h:TExtent::TExtent	test=tests/client/sharednet_test.cpp
 sub_38cd8b333fdc	38cd8b333fdcd8b6	tested	shared/src/jsonvalidator.cpp:TJsonValueValidator::TJsonValueValidator	test=tests/client/jsonvalidator_test.cpp
+sub_38e818b4f084	38e818b4f084195e	ported	package.h:TPackageConfiguration::parameters
 sub_39921a12c243	39921a12c24341eb	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
 sub_39b0d726845c	39b0d726845c6564	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_39cbb8bb6c49	39cbb8bb6c491116	ported	shared/src/crashreportsender.cpp:TCrashReportSender::createMultiPart
@@ -547,6 +549,7 @@ sub_449de4b0e83c	449de4b0e83cd372	inlined	shared/src/rpcserviceconnection.cpp:TR
 sub_44aa9a4afde0	44aa9a4afde0aac6	skip	library: QMap<QString, QVariant> template code
 sub_44b3b5c31da0	44b3b5c31da0285e	skip	library: QMap<QUrl, TActiveDownload> (std::map) template code
 sub_44dc32fbfa5d	44dc32fbfa5d5efe	skip	library: libc++ std::async/std::thread internals (promise set_value, thread proxy, __thread_struct deleters)
+sub_4502e1f95e22	4502e1f95e221468	ported	launcherapplication.cpp:TLauncherApplication::startPackageManagement
 sub_461c10987b68	461c10987b685038	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_46b5b07c3d88	46b5b07c3d88e299	skip	library: QString::split wrapper
 sub_46fe4ac2e5b1	46fe4ac2e5b1fa11	ported	package.cpp:TPackageConfiguration::TPackageConfiguration
@@ -617,6 +620,7 @@ sub_5b2b229f8861	5b2b229f8861bc4b	ported	package.h:TPackage::localStatus
 sub_5c6a205d7d3c	5c6a205d7d3c8abe	inlined	installationmanager.cpp:fileMatches
 sub_5c910fbf85db	5c910fbf85dbfb2b	skip	library: QMap<QUrl, QVariant> template code
 sub_5d06c8117d90	5d06c8117d90d46a	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_5d424e3b76b6	5d424e3b76b61757	ported	package.h:TPackageConfiguration::files
 sub_5d59e0616af6	5d59e0616af67663	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_5ddb4a18f56d	5ddb4a18f56d908b	ported	launcherconfigurationhandler.cpp:TLauncherConfigurationReader::parse
 sub_5e1db062a28e	5e1db062a28ed788	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
@@ -643,6 +647,7 @@ sub_611a4ebc0ae2	611a4ebc0ae29347	skip	generated: compiler-generated destructor 
 sub_61ea4144b745	61ea4144b745af9d	ported	launchermainwindow.cpp:TLauncherMainWindow::createHintBox
 sub_61f97afdbc52	61f97afdbc52eaec	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_62203b95af07	62203b95af07263b	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::~TZlibDeflateWrapper	test=tests/client/sharedio_test.cpp
+sub_623a4c217bf1	623a4c217bf1567d	inlined	package.cpp:TPackageConfiguration::load
 sub_623ffc7c8473	623ffc7c84733162	skip	library: boost::throw_exception / wrapexcept<std::length_error> (circular_buffer)
 sub_626f549526cf	626f549526cfc99d	skip	library: libc++ vector/map/tree internals
 sub_62871225bbad	62871225bbad5568	skip	generated: destructor
@@ -869,6 +874,7 @@ sub_a15c01528003	a15c01528003a123	skip	library: libc++ std::sort (introsort/heap
 sub_a16476614987	a16476614987fb9a	ported	systemsurvey/systemsurveyvalueretriever.cpp:TSystemSurveyValueRetriever::cpuHasSse2
 sub_a1f1e1bb3cb6	a1f1e1bb3cb6c390	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::numberOfPages	test=tests/client/sharednet_test.cpp
 sub_a234bd7e4403	a234bd7e4403b55f	ported	packagefiledownloader.cpp:urlLess
+sub_a2ea2302c102	a2ea2302c1021717	ported	launcherapplication.cpp:TLauncherApplication::onPackageConfigurationDownloadsFinished
 sub_a306e2b5b815	a306e2b5b8151a1b	ported	shared/src/randomhints.cpp:selectHint
 sub_a3252b79fc1b	a3252b79fc1b54bf	skip	generated: compiler-generated destructor (std::string, std::mutex, shared_ptr<z_stream>)
 sub_a350b0e723db	a350b0e723db1d3c	ported	shared/src/xteahelper.cpp:TXteaHelper::TXteaHelper
@@ -955,6 +961,7 @@ sub_b684a7c6d106	b684a7c6d106ac89	skip	dead: unreferenced time/number formatting
 sub_b69a53e84c93	b69a53e84c93058b	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
 sub_b69a53e84c93#2	b69a53e84c93058b	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
 sub_b77e55e4508a	b77e55e4508ae7d9	tested	shared/src/coordinate.h:TCoordinate::minimum	test=tests/client/coordinate_test.cpp
+sub_b7e058492a66	b7e058492a669874	ported	launcherfilesystemhelper.cpp:TLauncherFilesystemHelper::isEpicDistribution
 sub_b7f12c428f34	b7f12c428f34e10f	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
 sub_b81b740abec1	b81b740abec16ff9	skip	library: QJsonArray::empty() (Qt inline)
 sub_b8249c9e3366	b8249c9e33663f7b	skip	library: std::shared_ptr release
@@ -1027,6 +1034,7 @@ sub_c3741bcc88ff	c3741bcc88ffa1f8	skip	library: libc++ std::sort (introsort/heap
 sub_c3f2d4854e07	c3f2d4854e07db8a	ported	packageinstallation.cpp:TPackageInstallation::onDownloadCompleted
 sub_c4019a5753d6	c4019a5753d6d868	ported	launcherapplication.cpp:TLauncherApplication::onAllStartedUpdatesFinished
 sub_c40711fb05c6	c40711fb05c69caf	skip	library: CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
+sub_c42a164e7a54	c42a164e7a542b85	inlined	launcherfilesystemhelper.cpp:TLauncherFilesystemHelper::isEpicDistribution
 sub_c46f17851da2	c46f17851da2566e	ported	installationmanager.cpp:TInstallationManager::initializeLocalPackageStatus
 sub_c49ad974ce71	c49ad974ce719934	skip	library: libc++ std::optional / std::string helpers
 sub_c49ad974ce71#2	c49ad974ce719934	skip	library: libc++ std::optional / std::string helpers
@@ -1071,6 +1079,7 @@ sub_ce79a8deb74c	ce79a8deb74c8fd8	skip	dead: no call site in the decompiled corp
 sub_cebdf4d36756#2	cebdf4d36756273d	skip	library: CryptoPP StringSource / StringStore / AlgorithmParameters / allocator
 sub_ced3f2bdcd18	ced3f2bdcd180303	ported	shared/src/rpcserviceconnection.cpp:TRPCServiceConnection::TRPCServiceConnection
 sub_d0304d7bc415	d0304d7bc415b438	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_d04544b76a80	d04544b76a80dd7e	ported	package.h:TPackageConfiguration::executable
 sub_d04544b76a80#2	d04544b76a80dd7e	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
 sub_d0aa9244635d	d0aa9244635de63b	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_d16f0b9d1585	d16f0b9d15855cdb	ported	launcherapplication.cpp:TLauncherApplication::startSystemSurvey
@@ -1178,6 +1187,7 @@ sub_ee2f5fc042f3#3	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls 
 sub_ee2f5fc042f3#4	ee2f5fc042f39648	skip	generated: QtPrivate slot object impls (member-function connections)
 sub_ee568eb1527e	ee568eb1527e029f	ported	shared/src/crashreportsender.cpp:TCrashReportSender::TCrashReportSender
 sub_ee8ad351396b	ee8ad351396bf8ae	skip	library: QList<QHostAddress> template code
+sub_ef1591d52e61	ef1591d52e614f57	ported	launcherselfupdater.cpp:TLauncherSelfUpdater::removeBackupFiles
 sub_efdc25ad1a06	efdc25ad1a06291a	ported	systemsurvey/systemsurveytojsonconverter.cpp:TSystemSurveyToJsonConverter::openGLToJson
 sub_efe4deb86027	efe4deb860278073	ported	shared/src/crashhandler.cpp:TCrashHandler::initialize
 sub_f0aebbe73ffa	f0aebbe73ffae967	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
@@ -1218,6 +1228,7 @@ sub_f9ead9a5bf3e	f9ead9a5bf3e0fb6	ported	launcherapplication.cpp:TLauncherApplic
 sub_f9edf84f1a88	f9edf84f1a8802d0	skip	library: CryptoPP StringSource / StringStore / AlgorithmParameters / allocator
 sub_fa56a64fc6f1	fa56a64fc6f150d1	tested	package.cpp:TPackage::statusName	test=tests/launcher/package_test.cpp
 sub_fa85a056b647	fa85a056b6476c0c	skip	dead: no call site in the decompiled corpus and no pointer to its address in index/fixups.txt
+sub_fa85a056b647#2	fa85a056b6476c0c	ported	package.cpp:TPackageConfiguration::TPackageConfiguration
 sub_faaadfc7d891	faaadfc7d8913d91	skip	generated: shared_ptr release / Qt slot object
 sub_fad82605eb1b	fad82605eb1b2439	skip	library: libc++ vector/map/tree internals
 sub_fb2ddecb4a4f	fb2ddecb4a4ffa1c	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)

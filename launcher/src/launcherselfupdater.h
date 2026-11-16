@@ -29,6 +29,8 @@ public:
     /// True when `launcherPackage` is missing or publishes the running version.
     bool isUpToDate(const TPackage* launcherPackage) const;
     void update(const std::shared_ptr<TPackage>& launcherPackage);
+    /// Deletes the "<file>.old" copies a previous self-update left in the application directory.
+    void removeBackupFiles() const;
 
 Q_SIGNALS:
     void updateDownloadFinishedAndRestartRequired();
@@ -39,6 +41,9 @@ public Q_SLOTS:
     void onInstallationOrUpdateFinished(launcher::TPackageInstallation* installationInProgress);
 
 private:
+    /// Puts "<file>.old" back over `path` (a failed self-update).
+    static void restoreBackup(const QString& path);
+    std::shared_ptr<TPackage> m_launcherPackage;
     std::shared_ptr<QNetworkAccessManager> m_networkAccessManager;
     std::shared_ptr<TLauncherFilesystemHelper> m_filesystemHelper;
     std::unique_ptr<TInstallationManager> m_installationManager;
