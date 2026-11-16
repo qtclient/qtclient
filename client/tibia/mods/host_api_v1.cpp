@@ -54,9 +54,7 @@
 #include <unordered_map>
 #include <vector>
 
-#if !defined(QTCLIENT_HOST_BUILD_ID)
-#  define QTCLIENT_HOST_BUILD_ID ""
-#endif
+extern "C" const char qtclient_host_build_id[];
 
 namespace {
 
@@ -1379,7 +1377,7 @@ const QtClientOptionsApiV1 g_optionsApi = {
 
 const QtClientHostApiV1 g_hostApi = {
     .api_version = QTCLIENT_HOST_API_V1_VERSION,
-    .host_build_id = QTCLIENT_HOST_BUILD_ID,
+    .host_build_id = qtclient_host_build_id,
     .register_mod = &abiRegisterMod,
     .register_early_bootstrap = &abiRegisterEarly,
     .set_ensure_mods_hook = &tibia::mods::setEnsureModsHook,

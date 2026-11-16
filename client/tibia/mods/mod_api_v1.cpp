@@ -1,14 +1,12 @@
 #include "qtclient/mod_api_v1.h"
 
-namespace {
+extern "C" const char qtclient_host_build_id[];
 
-#if !defined(QTCLIENT_HOST_BUILD_ID)
-#  define QTCLIENT_HOST_BUILD_ID ""
-#endif
+namespace {
 
 const qtclient::ModApiV1 g_api = {
     .apiVersion = qtclient::ModApiV1::kVersion,
-    .hostBuildId = QTCLIENT_HOST_BUILD_ID,
+    .hostBuildId = qtclient_host_build_id,
     .registerMod = &tibia::mods::registerMod,
     .registerEarlyBootstrap = &tibia::mods::registerEarlyBootstrap,
     .setEnsureModsHook = &tibia::mods::setEnsureModsHook,

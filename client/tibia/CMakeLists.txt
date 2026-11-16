@@ -228,7 +228,12 @@ endif()
 if(NOT _qtclient_host_sha)
   set(_qtclient_host_sha "unknown")
 endif()
-target_compile_definitions(tibia PRIVATE "QTCLIENT_HOST_BUILD_ID=\"${_qtclient_host_sha}\"")
+# One generated TU carries the SHA so the rest of `tibia` stays ccache-hot across commits.
+set(_qtclient_host_build_id_cpp "${CMAKE_CURRENT_BINARY_DIR}/generated/host_build_id.cpp")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/generated")
+file(WRITE "${_qtclient_host_build_id_cpp}"
+  "extern \"C\" const char qtclient_host_build_id[] = \"${_qtclient_host_sha}\";\n")
+target_sources(tibia PRIVATE "${_qtclient_host_build_id_cpp}")
 # Pack install stamps mod.json from this file (matches the binary, not a later git HEAD).
 file(WRITE "${CMAKE_BINARY_DIR}/hostBuildId" "${_qtclient_host_sha}\n")
 # Product identity: stock CipSoft defaults; enabled packs set these via PARENT_SCOPE

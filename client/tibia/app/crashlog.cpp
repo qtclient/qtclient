@@ -31,8 +31,11 @@ void writeLiteral(const char* text)
     if (!text)
         return;
     const auto len = static_cast<ssize_t>(std::strlen(text));
-    if (len > 0)
-        ::write(STDERR_FILENO, text, static_cast<size_t>(len));
+    if (len <= 0)
+        return;
+    // Crash-path I/O is best-effort; ignore short writes / EINTR.
+    const ssize_t written = ::write(STDERR_FILENO, text, static_cast<size_t>(len));
+    (void)written;
 }
 
 void dumpBacktrace()

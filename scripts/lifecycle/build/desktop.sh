@@ -209,6 +209,7 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     -DTIBIA_WASM_GRAPHICS_RCC="$RCC"
     -DWASM_INITIAL_MEMORY="$WASM_INITIAL_MEMORY"
     -DWASM_USE_WASM_EXCEPTIONS=ON
+    -DOPTIONS_ENABLE_CCACHE=ON
     "$_mods_cmake"
     "$_launcher_mods_cmake"
     ${_mods_list_cmake[@]+"${_mods_list_cmake[@]}"}

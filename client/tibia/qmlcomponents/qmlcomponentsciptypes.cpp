@@ -299,7 +299,8 @@ TQmlSortFilterProxyModel::TQmlSortFilterProxyModel(QObject* parent)
 void TQmlSortFilterProxyModel::setFilterCallback(const QJSValue& v)
 {
     cip::tibia::qmlcomponents::TQmlSortFilterProxyModel::setFilterCallback(v);
-    invalidateFilter();
+    beginFilterChange();
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
     refreshCount();
 }
 

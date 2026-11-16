@@ -121,7 +121,7 @@ public:
     bool canBeBought() const override;
     bool canTryOn() const override;
     bool oneOrMoreQuantitiesDisabled() const override;
-    QList<QObject*> cosmeticTokenQuantities() const { return m_cosmeticTokenQuantities; }
+    QList<QObject*> cosmeticTokenQuantities() const override { return m_cosmeticTokenQuantities; }
 
     const TStoreOffer& offer() const { return m_offer; }
     /// The quantity configuration `offerId` is one of.

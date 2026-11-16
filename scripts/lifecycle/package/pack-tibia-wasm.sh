@@ -107,11 +107,7 @@ if [[ -n "$PACK_SRC" && -f "${PACK_SRC}/mod.json" ]]; then
   cp -a "$PACK_SRC" "${OUT}/mods/${pack_id}"
   # Drop linked STATIC archives from the FS tip (absorb path loads from the wasm).
   rm -rf "${OUT}/mods/${pack_id}/lib"
-  (
-    cd "${OUT}/mods/${pack_id}"
-    find . -type f | sed 's|^\./||' | sort
-  ) >"${OUT}/mods/${pack_id}.files"
-  echo "[pack-tibia-wasm] merged pack → ${OUT}/mods/${pack_id} ($(wc -l < "${OUT}/mods/${pack_id}.files" | tr -d ' ') files, brand=$([[ -f ${OUT}/mods/${pack_id}/brand.json ]] && echo yes || echo no))"
+  echo "[pack-tibia-wasm] merged pack → ${OUT}/mods/${pack_id} (brand=$([[ -f ${OUT}/mods/${pack_id}/brand.json ]] && echo yes || echo no))"
 fi
 # Ensure launcher chrome lands even when PACK_SRC was a non-branded tree.
 PACK_ROOT="${QTCLIENT_PACK:-}"
@@ -122,13 +118,35 @@ fi
 if [[ -n "$PACK_ROOT" && -f "$PACK_ROOT/launcher/brand.json" && -d "${OUT}/mods" ]]; then
   bash "$(cd "$(dirname "$0")/.." && pwd)/lib/merge-launcher-brand.sh" \
     --pack "$PACK_ROOT/launcher" --tip "$OUT" || true
+fi
+# Content fingerprint so /play OPFS restages when tip pack bytes change without a
+# wasm stamp bump (brand chrome, QML overrides, …). Same contract as merge-pack-into-tip.
+if [[ -d "${OUT}/mods" ]]; then
   for mid in "${OUT}/mods"/*; do
     [[ -d "$mid" && -f "$mid/mod.json" ]] || continue
     id="$(basename "$mid")"
+    python3 - "$mid" <<'PY'
+import hashlib, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+h = hashlib.sha256()
+for path in sorted(root.rglob("*")):
+    if not path.is_file():
+        continue
+    rel = path.relative_to(root).as_posix()
+    if rel in {".pack.stamp", ".files.manifest"}:
+        continue
+    h.update(rel.encode())
+    h.update(b"\0")
+    h.update(path.read_bytes())
+    h.update(b"\0")
+(root / ".pack.stamp").write_text(h.hexdigest() + "\n")
+PY
     (
       cd "$mid"
       find . -type f | sed 's|^\./||' | sort
     ) >"${OUT}/mods/${id}.files"
+    echo "[pack-tibia-wasm] stamped mods/${id} ($(wc -l < "${OUT}/mods/${id}.files" | tr -d ' ') files)"
   done
 fi
 
