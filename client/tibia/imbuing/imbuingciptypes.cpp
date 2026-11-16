@@ -43,9 +43,47 @@ TImbuement imbuementFromProtocol(const ::tibia::protobuf::protocol::ProtocolImbu
     return imbuement;
 }
 
-/// The whole refresh goes to the storage; the dialog then shows or updates.
-void handleImbuingDialogRefreshMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuingDialogRefresh& message)
+}
+
+void TImbuingProtocolMessageHandler::handleCloseImbuingDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseImbuingDialog&)
 {
+    using namespace ::tibia::protobuf::protocol;
+    if (TImbuingStorage* storage = TImbuingStorage::instance())
+        Q_EMIT storage->requestCloseImbuingDialog();
+}
+
+void TImbuingProtocolMessageHandler::handleImbuementDurationsMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuementDurations& ImbuementDurationsMessage)
+{
+    using namespace ::tibia::protobuf::protocol;
+    std::vector<ImbuementTrackerItem> items;
+    for (const auto& entry : ImbuementDurationsMessage.items()) {
+        ImbuementTrackerItem& item = items.emplace_back(static_cast<uint8_t>(entry.inventory_slot()));
+        const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(entry.item());
+        item.typeId = slot.typeId;
+        item.count = slot.stackable ? slot.count : 1;
+        item.tier = slot.tier;
+        item.fluidOrSubtype = slot.fluidOrSplash ? slot.fluid : 0;
+        item.totalSlots = static_cast<uint8_t>(entry.slots_size());
+        for (int index = 0; index < entry.slots_size(); ++index) {
+            const auto& s = entry.slots(index);
+            if (!s.imbued())
+                continue;
+            ImbuementSlot imbued(static_cast<uint8_t>(index));
+            imbued.name = s.name();
+            imbued.iconId = static_cast<uint16_t>(s.icon_id());
+            imbued.duration = s.duration();
+            imbued.state = s.decaying();
+            item.slots.emplace(static_cast<uint8_t>(index), imbued);
+        }
+    }
+    tibia::game::notify("onUpdateImbuementTracker", items);
+}
+
+void TImbuingProtocolMessageHandler::handleImbuingDialogRefreshMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuingDialogRefresh& message)
+{
+    // product: the pack refreshes its gold-token material status when the choice window opens.
+    if (message.window_type() == tibia::client::IMBUEMENT_WINDOW_CHOICE)
+        tibia::game::notify("onOpenImbuementWindow", static_cast<uint16_t>(0), static_cast<uint32_t>(0));
     TImbuingStorage* storage = TImbuingStorage::instance();
     if (!storage)
         return;
@@ -78,60 +116,12 @@ void handleImbuingDialogRefreshMessage(const ::tibia::protobuf::protocol::Gamese
     Q_EMIT storage->requestShowOrRefreshImbuingDialog();
 }
 
-/// Only the dialog types that report an imbuing result (mask 0xc0f).
-void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message)
+void TImbuingProtocolMessageHandler::handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message)
 {
     TImbuingStorage* storage = TImbuingStorage::instance();
     const uint32_t type = message.dialog_type();
     if (storage && type < 12 && (0xc0fu >> type & 1) != 0)
         Q_EMIT storage->requestShowResultDialog(QString::fromStdString(message.message()));
-}
-
-}
-
-void TImbuingProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    if (opcode == 236 && shadow->HasExtension(GameserverMessageCloseImbuingDialog::gameserver_message_close_imbuing_dialog)) {
-        if (TImbuingStorage* storage = TImbuingStorage::instance())
-            Q_EMIT storage->requestCloseImbuingDialog();
-    }
-    if (opcode == 237 && shadow->HasExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog))
-        handleShowMessageDialogMessage(shadow->GetExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog));
-    if (opcode == 235 && shadow->HasExtension(GameserverMessageImbuingDialogRefresh::gameserver_message_imbuing_dialog_refresh)) {
-        const auto& message = shadow->GetExtension(GameserverMessageImbuingDialogRefresh::gameserver_message_imbuing_dialog_refresh);
-        // product: the pack refreshes its gold-token material status when the choice window opens.
-        if (message.window_type() == tibia::client::IMBUEMENT_WINDOW_CHOICE)
-            tibia::game::notify("onOpenImbuementWindow", static_cast<uint16_t>(0), static_cast<uint32_t>(0));
-        handleImbuingDialogRefreshMessage(message);
-    }
-    if (opcode == 93 && shadow->HasExtension(GameserverMessageImbuementDurations::gameserver_message_imbuement_durations)) {
-        std::vector<ImbuementTrackerItem> items;
-        for (const auto& entry : shadow->GetExtension(GameserverMessageImbuementDurations::gameserver_message_imbuement_durations).items()) {
-            ImbuementTrackerItem& item = items.emplace_back(static_cast<uint8_t>(entry.inventory_slot()));
-            const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(entry.item());
-            item.typeId = slot.typeId;
-            item.count = slot.stackable ? slot.count : 1;
-            item.tier = slot.tier;
-            item.fluidOrSubtype = slot.fluidOrSplash ? slot.fluid : 0;
-            item.totalSlots = static_cast<uint8_t>(entry.slots_size());
-            for (int index = 0; index < entry.slots_size(); ++index) {
-                const auto& s = entry.slots(index);
-                if (!s.imbued())
-                    continue;
-                ImbuementSlot imbued(static_cast<uint8_t>(index));
-                imbued.name = s.name();
-                imbued.iconId = static_cast<uint16_t>(s.icon_id());
-                imbued.duration = s.duration();
-                imbued.state = s.decaying();
-                item.slots.emplace(static_cast<uint8_t>(index), imbued);
-            }
-        }
-        tibia::game::notify("onUpdateImbuementTracker", items);
-    }
 }
 
 } // namespace tibia::imbuing

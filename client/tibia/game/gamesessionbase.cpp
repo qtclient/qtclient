@@ -18,12 +18,16 @@
 #include "dailyreward/dailyrewardciptypes.h"
 #include "effects/effectprotocolmessagehandler.h"
 #include "exaltation/exaltationciptypes.h"
+#include "highscores/highscoresciptypes.h"
+#include "imbuing/imbuingciptypes.h"
+#include "market/marketciptypes.h"
 #include "news/newsciptypes.h"
 #include "exivaoptions/exivaoptionsciptypes.h"
 #include "prey/preyciptypes.h"
 #include "proficiency/proficiencyciptypes.h"
 #include "quickloot/quicklootciptypes.h"
 #include "spells/spellsciptypes.h"
+#include "taskboard/taskboardciptypes.h"
 #include "effects/effectstorage.h"
 #include "effects/numericaleffect.h"
 #include "sound/soundprotocolmessagehandler.h"
@@ -169,6 +173,11 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     // The spell modifications the server announces.
     link(&Queue::receivedSpellDataModificationMessage, this, &spells::TSpellsProtocolMessageHandler::handleSpellDataModificationMessage);
 
+    using market::TMarketProtocolMessageHandler;
+    link(&Queue::receivedMarketEnterMessage, this, &TMarketProtocolMessageHandler::handleMarketEnterMessage);
+    link(&Queue::receivedMarketDetailMessage, this, &TMarketProtocolMessageHandler::handleMarketDetailMessage);
+    link(&Queue::receivedMarketBrowseMessage, this, &TMarketProtocolMessageHandler::handleMarketBrowseMessage);
+
     using questlog::TQuestLogProtocolMessageHandler;
     link(&Queue::receivedQuestLogMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLogMessage);
     link(&Queue::receivedQuestLineMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLineMessage);
@@ -180,6 +189,12 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedPreyTimeLeftMessage, this, &TPreyProtocolMessageHandler::handlePreyTimeLeftMessage);
     link(&Queue::receivedPreyDataMessage, this, &TPreyProtocolMessageHandler::handlePreyDataMessage);
     link(&Queue::receivedPreyPricesMessage, this, &TPreyProtocolMessageHandler::handlePreyPricesMessage);
+
+    using imbuing::TImbuingProtocolMessageHandler;
+    link(&Queue::receivedImbuingDialogRefreshMessage, this, &TImbuingProtocolMessageHandler::handleImbuingDialogRefreshMessage);
+    link(&Queue::receivedShowMessageDialogMessage, this, &TImbuingProtocolMessageHandler::handleShowMessageDialogMessage);
+    link(&Queue::receivedCloseImbuingDialogMessage, this, &TImbuingProtocolMessageHandler::handleCloseImbuingDialogMessage);
+    link(&Queue::receivedImbuementDurationsMessage, this, &TImbuingProtocolMessageHandler::handleImbuementDurationsMessage);
 
     using dailyreward::TDailyRewardProtocolMessageHandler;
     link(&Queue::receivedRestingAreaStateMessage, this, &TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage);
@@ -197,6 +212,8 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     using exivaoptions::TExivaOptionsProtocolMessageHandler;
     link(&Queue::receivedExivaSuppressedMessage, this, &TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage);
     link(&Queue::receivedUpdateExivaOptionsMessage, this, &TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage);
+
+    link(&Queue::receivedHighscoresMessage, this, &highscores::THighscoresProtocolMessageHandler::handleHighscoresMessage);
 
     using bossbestiary::TBossBestiaryProtocolMessageHandler;
     link(&Queue::receivedBossTrackingMessage, this, &TBossBestiaryProtocolMessageHandler::handleBossTrackingMessage);
@@ -220,6 +237,10 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedShapedPerkReshapeOffersMessage, this,
          &TProficiencyProtocolMessageHandler::handleShapedPerkReshapeOffersMessage);
     link(&Queue::receivedResourceBalanceMessage, this, &TProficiencyProtocolMessageHandler::handleResourceBalanceMessage);
+
+    using taskboard::TTaskboardProtocolMessageHandler;
+    link(&Queue::receivedTaskboardMessage, this, &TTaskboardProtocolMessageHandler::handleTaskboardMessage);
+    link(&Queue::receivedSoulSealsDialogMessage, this, &TTaskboardProtocolMessageHandler::handleSoulSealsDialogMessage);
 
     // Host: the live session is reused across logins (CIP builds a new one).
     m_queueConnections.push_back(connect(queue, &Queue::receivedLoginSuccessMessage, worldmap,

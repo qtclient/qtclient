@@ -9,6 +9,12 @@
 #include <QByteArray>
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageMarketBrowse;
+class GameserverMessageMarketDetail;
+class GameserverMessageMarketEnter;
+}
+
 namespace tibia {
 namespace market {
 
@@ -28,9 +34,9 @@ class TMarketProtocolMessageHandler final : public cip::tibia::market::TMarketPr
     Q_OBJECT
 public:
     using cip::tibia::market::TMarketProtocolMessageHandler::TMarketProtocolMessageHandler;
-
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    static void handleMarketDetailMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketDetail& MarketDetailMessage);
+    static void handleMarketBrowseMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketBrowse& MarketBrowseMessage);
+    static void handleMarketEnterMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketEnter& MarketEnterMessage);
 };
 
 }

@@ -428,23 +428,21 @@ void applyShop(const google::protobuf::RepeatedPtrField<ProtocolTaskboardOffer>&
 
 } // namespace
 
-void TTaskboardProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TTaskboardProtocolMessageHandler::handleTaskboardMessage(const ::tibia::protobuf::protocol::GameserverMessageTaskboard& TaskboardMessage)
 {
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    if (opcode == 91 && shadow->HasExtension(GameserverMessageTaskboard::gameserver_message_taskboard)) {
-        const auto& m = shadow->GetExtension(GameserverMessageTaskboard::gameserver_message_taskboard);
-        if (m.board_type() == tibia::client::TASK_BOARD_HUNT_SHOP)
-            applyShop(m.offers());
-        else if (m.board_type() == tibia::client::TASK_BOARD_WEEKLY)
-            applyWeekly(m.weekly());
-        else
-            applyBounty(m.bounty());
-    } else if (opcode == 186 && shadow->HasExtension(GameserverMessageSoulSealsDialog::gameserver_message_soul_seals_dialog)) {
-        const auto& m = shadow->GetExtension(GameserverMessageSoulSealsDialog::gameserver_message_soul_seals_dialog);
-        tibia::game::notify("onSoulsealsData", buildTaskBoardSoulsealEntries(masteredRaceIdSet(m.race_ids())));
-    }
+    const auto& m = TaskboardMessage;
+    if (m.board_type() == tibia::client::TASK_BOARD_HUNT_SHOP)
+        applyShop(m.offers());
+    else if (m.board_type() == tibia::client::TASK_BOARD_WEEKLY)
+        applyWeekly(m.weekly());
+    else
+        applyBounty(m.bounty());
+}
+
+void TTaskboardProtocolMessageHandler::handleSoulSealsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageSoulSealsDialog& SoulSealsDialogMessage)
+{
+    const auto& m = SoulSealsDialogMessage;
+    tibia::game::notify("onSoulsealsData", buildTaskBoardSoulsealEntries(masteredRaceIdSet(m.race_ids())));
 }
 
 void ownProductSurface(QObject* parent)

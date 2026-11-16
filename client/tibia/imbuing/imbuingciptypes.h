@@ -9,6 +9,13 @@
 #include <QByteArray>
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageCloseImbuingDialog;
+class GameserverMessageImbuementDurations;
+class GameserverMessageImbuingDialogRefresh;
+class GameserverMessageShowMessageDialog;
+}
+
 namespace tibia {
 namespace imbuing {
 
@@ -28,9 +35,12 @@ class TImbuingProtocolMessageHandler final : public cip::tibia::imbuing::TImbuin
     Q_OBJECT
 public:
     using cip::tibia::imbuing::TImbuingProtocolMessageHandler::TImbuingProtocolMessageHandler;
-
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    /// The whole refresh goes to the storage; the dialog then shows or updates.
+    static void handleImbuingDialogRefreshMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuingDialogRefresh& message);
+    /// Only the dialog types that report an imbuing result (mask 0xc0f).
+    static void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
+    static void handleCloseImbuingDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseImbuingDialog& CloseImbuingDialogMessage);
+    static void handleImbuementDurationsMessage(const ::tibia::protobuf::protocol::GameserverMessageImbuementDurations& ImbuementDurationsMessage);
 };
 
 }

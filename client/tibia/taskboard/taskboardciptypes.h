@@ -8,6 +8,11 @@
 
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageSoulSealsDialog;
+class GameserverMessageTaskboard;
+}
+
 namespace tibia {
 namespace taskboard {
 
@@ -37,9 +42,8 @@ class TTaskboardProtocolMessageHandler final : public cip::tibia::taskboard::TTa
     Q_OBJECT
 public:
     using cip::tibia::taskboard::TTaskboardProtocolMessageHandler::TTaskboardProtocolMessageHandler;
-
-    /// Taskboard (bounty, weekly, shop) and the soul seals list, from the native message.
-    static void onServerMessageEnqueued(int opcode);
+    static void handleTaskboardMessage(const ::tibia::protobuf::protocol::GameserverMessageTaskboard& TaskboardMessage);
+    static void handleSoulSealsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageSoulSealsDialog& SoulSealsDialogMessage);
 };
 
 class TTaskboardShopStorage final : public cip::tibia::taskboard::TTaskboardShopStorage

@@ -13,6 +13,10 @@
 #include <utility>
 #include <vector>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageHighscores;
+}
+
 namespace tibia {
 namespace highscores {
 
@@ -95,8 +99,8 @@ class THighscoresProtocolMessageHandler final : public cip::tibia::highscores::T
 public:
     using cip::tibia::highscores::THighscoresProtocolMessageHandler::THighscoresProtocolMessageHandler;
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    /// The requested highscore page replaces the storage's state.
+    static void handleHighscoresMessage(const ::tibia::protobuf::protocol::GameserverMessageHighscores& message);
 };
 
 }

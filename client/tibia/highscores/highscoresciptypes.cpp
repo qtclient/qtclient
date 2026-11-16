@@ -58,14 +58,11 @@ THighscoresStorage* THighscoresStorage::liveInstance()
     return g_liveStorage;
 }
 
-void THighscoresProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void THighscoresProtocolMessageHandler::handleHighscoresMessage(const ::tibia::protobuf::protocol::GameserverMessageHighscores& m)
 {
-    using namespace ::tibia::protobuf::protocol;
     THighscoresStorage* storage = THighscoresStorage::liveInstance();
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!storage || !shadow || opcode != 177 || !shadow->HasExtension(GameserverMessageHighscores::gameserver_message_highscores))
+    if (!storage)
         return;
-    const auto& m = shadow->GetExtension(GameserverMessageHighscores::gameserver_message_highscores);
     storage->m_state = static_cast<int>(m.no_data());
     if (storage->m_state != 0) {
         Q_EMIT storage->highScoresError();
