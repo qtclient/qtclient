@@ -76,6 +76,7 @@ QVariant TAppearanceInstanceListModel::data(const QModelIndex& index, const int 
     case TypeIdRole:
         return slot.typeId;
     case CumulativeCountRole:
+        return slot.empty() ? 1u : cumulativeCount(slot);
     case TypeCountRole:
         return slot.empty() ? 0u : cumulativeCount(slot);
     case CountStringRole:
@@ -103,7 +104,8 @@ QVariant TAppearanceInstanceListModel::data(const QModelIndex& index, const int 
 
 QHash<int, QByteArray> TAppearanceInstanceListModel::roleNames() const
 {
-    return {
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles.insert({
         { TypeIdRole, "typeID" },
         { CumulativeCountRole, "cumulativeCount" },
         { TypeCountRole, "typeCount" },
@@ -116,16 +118,23 @@ QHash<int, QByteArray> TAppearanceInstanceListModel::roleNames() const
         { ManagedContainerTooltipRole, "managedContainerTooltip" },
         { UpgradeTierRole, "upgradeTier" },
         { DecoItemObjectIdRole, "decoItemObjectID" },
-    };
+    });
+    return roles;
 }
 
 void TAppearanceInstanceListModel::setMinimumRows(const int rows)
 {
     if (rows == m_minimumRows)
         return;
-    beginResetModel();
+    if (const int count = rowCount(); count > 0) {
+        beginRemoveRows({}, 0, count - 1);
+        endRemoveRows();
+    }
     m_minimumRows = rows;
-    endResetModel();
+    if (const int count = rowCount(); count > 0) {
+        beginInsertRows({}, 0, count - 1);
+        endInsertRows();
+    }
 }
 
 void TAppearanceInstanceListModel::setObjects(std::vector<container::TInventorySlot> objects)
@@ -176,10 +185,8 @@ void TAppearanceInstanceListModel::setExpireOptions(const bool showExpire, const
 
 void TAppearanceInstanceListModel::refreshLootValues()
 {
-    if (m_objects.empty())
-        return;
-    Q_EMIT dataChanged(index(0), index(static_cast<int>(m_objects.size()) - 1),
-                       { LootValueImageUnderItemRole, LootValueImageOverItemRole });
+    if (const int count = rowCount(); count > 0)
+        Q_EMIT dataChanged(index(0), index(count - 1), { LootValueImageUnderItemRole, LootValueImageOverItemRole, AlternativeSlotStringRole });
 }
 
 void TAppearanceInstanceListModel::refreshClocks()

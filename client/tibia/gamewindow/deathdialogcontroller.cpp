@@ -20,9 +20,6 @@ TDeathDialogController::TDeathDialogController(QObject* parent)
     // CIP ctor : setCloseOnButtonClicked(1), setTextCentered(1).
     m_box->setCloseOnButtonClicked(true);
     m_box->setTextCentered(true);
-    m_box->setButtons({
-        new TMessageDialogButton(QStringLiteral("Ok"), Button::OK, QKeySequence(QStringLiteral("Return"))),
-    });
     // CIP routes MessageDialog buttonClicked → onButtonClicked → onLogoutRequested
     // (OK/YES). Do not also hook acceptClicked or logout runs twice.
     connect(m_box, &TDeathMessageDialog::buttonClicked, this,
@@ -39,22 +36,39 @@ TDeathDialogController::TDeathDialogController(QObject* parent)
 
 TDeathDialogController::~TDeathDialogController() = default;
 
+/// The caption and, by death type, the text with the store button's hint; OK, Cancel and
+/// the store button. An unfair death names the share of the penalty that applies.
 void TDeathDialogController::showDeadMessage(const int deathType, const int fairFightFactor,
                                             const bool applicableForSubsequentBlessing)
 {
-    Q_UNUSED(deathType);
-    Q_UNUSED(applicableForSubsequentBlessing);
     closeBox();
     tibia::game::setSceneFrozen(true);
-
-    QString message = QStringLiteral("You are dead.");
-    // OT death packet omits penality when the feature is off; argInt then yields 0.
-    // CIP FairFightFactor maps to the same percent when present.
-    if (fairFightFactor > 0 && fairFightFactor < 100)
-        message += QStringLiteral("\n\nFair fight reduction: %1%.").arg(fairFightFactor);
-    message += QStringLiteral("\n\nClick Ok to leave this character.");
-
-    m_box->showMessage(QStringLiteral("You are dead"), message);
+    m_box->setButtons({
+        new TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))),
+        new TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Escape"))),
+        new TMessageDialogButton(qtTrId("store"), Button::USER_DEFINED, QKeySequence()),
+    });
+    QString storeHint = qtTrId(deathType == 3 ? "death_dialog_store_button_no_loss" : "death_dialog_store_button");
+    if (applicableForSubsequentBlessing)
+        storeHint = qtTrId("death_dialog_store_button_subsequent_blessing");
+    QString text;
+    switch (deathType) {
+    case 0:
+        text = qtTrId("death_dialog_regular_death").arg(storeHint);
+        break;
+    case 1:
+        text = qtTrId("death_dialog_unfair_death").arg(100 - (fairFightFactor & 0xff)).arg(storeHint);
+        break;
+    case 2:
+        text = qtTrId("death_dialog_adventurers_blessing").arg(storeHint);
+        break;
+    case 3:
+        text = qtTrId("death_dialog_no_penalty").arg(storeHint);
+        break;
+    default:
+        return;
+    }
+    m_box->showMessage(qtTrId("death_dialog_caption"), text);
 }
 
 void TDeathDialogController::onRequestOpenDeathDialog(const int deathType, const int fairFightFactor,

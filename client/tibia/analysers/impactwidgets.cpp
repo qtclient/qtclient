@@ -31,8 +31,17 @@ bool isPremiumPlayer()
 
 QString percentString(const double fraction) { return QString::number(fraction * 100.0, 'f', 1); }
 
-/// CIP : a per second value, rounded and cut to 32 bits.
-QString rateString(const double value) { return format::multi(static_cast<quint32>(static_cast<qint64>(std::nearbyint(value)))); }
+/// A per second value, rounded up and cut to 32 bits.
+QString rateString(const double value) { return format::multi(static_cast<quint32>(static_cast<qint64>(std::ceil(value)))); }
+
+/// The store's premium page (OPEN_STORE 1 / 0).
+void openPremiumStore()
+{
+    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
+    action->parameter = 1;
+    action->instance = 0;
+    input::publish(action);
+}
 
 void copyToClipboard(const QString& text)
 {
@@ -66,14 +75,15 @@ void storeContentHeight(Widget* widget, config::TSidebarOptions* options, const 
     options->setSection(QLatin1String(key), json);
 }
 
-/// The graphs' x in minutes: one point per 4 s, or per minute with session values.
+/// The graphs' x in minutes, from -count steps to -1 step: one point per 4 s, or per
+/// minute with session values.
 QVariantList graphPoints(const double* values, const int count, const bool sessionValues)
 {
-    const double step = sessionValues ? 1.0 : 4.0 / 60.0;
+    const float step = static_cast<float>(sessionValues ? 60 : 4) / 60.0f;
     QVariantList points;
     points.reserve(count);
     for (int i = 0; i < count; ++i)
-        points.append(QVector2D(static_cast<float>(-(count - 1 - i) * step), static_cast<float>(values[i])));
+        points.append(QVector2D((static_cast<float>(i) - static_cast<float>(count)) * step, static_cast<float>(values[i])));
     return points;
 }
 
@@ -182,23 +192,24 @@ TImpactWidgetController::TImpactWidgetController(TImpactStorage* storage, QQuick
 {
     m_dpsGraphMaxY = 1.0;
     m_hpsGraphMaxY = 1.0;
-    connect(m_storage, &TImpactStorage::damageValuesChanged, this, &TImpactWidgetController::onDamageValuesChanged);
+    m_damageValuesTimer.setInterval(0);
+    m_damageValuesTimer.setSingleShot(true);
+    connect(&m_damageValuesTimer, &QTimer::timeout, this, &TImpactWidgetController::onDamageValuesChanged);
+    connect(m_storage, &TImpactStorage::damageValuesChanged, &m_damageValuesTimer, qOverload<>(&QTimer::start));
     connect(m_storage, &TImpactStorage::healingValuesChanged, this, &TImpactWidgetController::healingValuesChanged);
-    connect(m_storage, &TImpactStorage::allTimeValuesChanged, this, &TImpactWidgetController::allTimeValuesChanged);
-    connect(m_storage, &TImpactStorage::graphValuesChanged, this, &TImpactWidgetController::onGraphValuesChanged);
     connect(m_storage, &TImpactStorage::sessionLengthChanged, this, &TImpactWidgetController::sessionLengthChanged);
-    connect(m_storage, &TImpactStorage::optionsChanged, this, [this] {
-        onDamageValuesChanged();
-        onGraphValuesChanged();
-        Q_EMIT optionsChanged();
-        Q_EMIT healingValuesChanged();
-        Q_EMIT sessionLengthChanged();
-    });
+    connect(m_storage, &TImpactStorage::optionsChanged, this, &TImpactWidgetController::optionsChanged);
+    connect(m_storage, &TImpactStorage::graphValuesChanged, this, &TImpactWidgetController::onGraphValuesChanged);
+    connect(m_storage, &TImpactStorage::allTimeValuesChanged, this, &TImpactWidgetController::allTimeValuesChanged);
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const std::vector<std::any>&) {
         Q_EMIT optionsChanged();
         return std::any{};
     });
-    updateTypedModel();
+    onDamageValuesChanged();
+    Q_EMIT healingValuesChanged();
+    Q_EMIT sessionLengthChanged();
+    Q_EMIT optionsChanged();
+    Q_EMIT allTimeValuesChanged();
     updateGraphs();
     widget()->createItem(QStringLiteral("ImpactWidget.qml"));
     if (QQuickItem* item = quickItem())
@@ -351,28 +362,28 @@ void TImpactWidgetController::onShowContextMenu()
     connect(menu->addCustomEntry(qtTrId("impact_reset_all_time")), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
         m_storage->resetAllTimeMax();
     });
+    const bool premium = isPremiumPlayer();
     const bool session = m_storage->showSessionValues();
     connect(menu->addCustomEntry(qtTrId(session ? "impact_show_recent_values" : "impact_show_session_values")),
             &gamewindow::TContextMenuEntryItem::triggered, this, [this, session] { m_storage->setShowSessionValues(!session); });
     menu->addCustomSeparator();
-    addGaugeEntries(TImpactStorage::Damage);
-    addGaugeEntries(TImpactStorage::Healing);
+    addGaugeEntries(TImpactStorage::Damage, premium);
+    addGraphEntry(TImpactStorage::Damage, premium);
     menu->addCustomSeparator();
     gamewindow::TContextMenuEntryItem* types = menu->addCustomEntry(qtTrId("impact_show_damage_types"));
     types->setCheckable(true);
     types->setChecked(m_storage->damageTypesVisible());
     connect(types, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) { m_storage->setDamageTypesVisible(checked); });
     menu->addCustomSeparator();
-    addGraphEntry(TImpactStorage::Damage);
-    addGraphEntry(TImpactStorage::Healing);
+    addGaugeEntries(TImpactStorage::Healing, premium);
+    addGraphEntry(TImpactStorage::Healing, premium);
     menu->showCustomMenu();
 }
 
-/// CIP.
-void TImpactWidgetController::addGaugeEntries(const TImpactStorage::Kind kind)
+/// The target entry (premium only) and the checkable gauge entry.
+void TImpactWidgetController::addGaugeEntries(const TImpactStorage::Kind kind, const bool premium)
 {
     auto* menu = gamewindow::TContextMenuController::instance();
-    const bool premium = isPremiumPlayer();
     const bool damage = kind == TImpactStorage::Damage;
     if (premium) {
         connect(menu->addCustomEntry(qtTrId(damage ? "impact_set_dps_target" : "impact_set_hps_target")), &gamewindow::TContextMenuEntryItem::triggered,
@@ -382,19 +393,29 @@ void TImpactWidgetController::addGaugeEntries(const TImpactStorage::Kind kind)
         menu->addCustomEntry(qtTrId(damage ? "impact_show_dps_gauge" : "impact_show_hps_gauge"), premium ? QString() : qtTrId("context_premium_feature"));
     gauge->setCheckable(true);
     gauge->setChecked(m_storage->gaugeVisible(kind) && premium);
-    connect(gauge, &gamewindow::TContextMenuEntryItem::toggled, this, [this, kind](const bool checked) { m_storage->setGaugeVisible(kind, checked); });
+    connect(gauge, &gamewindow::TContextMenuEntryItem::toggled, this,
+            [this, kind](const bool checked) { setVisibleIfPremium(&TImpactStorage::setGaugeVisible, kind, checked); });
 }
 
-/// CIP.
-void TImpactWidgetController::addGraphEntry(const TImpactStorage::Kind kind)
+/// The checkable graph entry.
+void TImpactWidgetController::addGraphEntry(const TImpactStorage::Kind kind, const bool premium)
 {
     auto* menu = gamewindow::TContextMenuController::instance();
-    const bool premium = isPremiumPlayer();
     gamewindow::TContextMenuEntryItem* graph = menu->addCustomEntry(
         qtTrId(kind == TImpactStorage::Damage ? "impact_show_dps_graph" : "impact_show_hps_graph"), premium ? QString() : qtTrId("context_premium_feature"));
     graph->setCheckable(true);
     graph->setChecked(m_storage->graphVisible(kind) && premium);
-    connect(graph, &gamewindow::TContextMenuEntryItem::toggled, this, [this, kind](const bool checked) { m_storage->setGraphVisible(kind, checked); });
+    connect(graph, &gamewindow::TContextMenuEntryItem::toggled, this,
+            [this, kind](const bool checked) { setVisibleIfPremium(&TImpactStorage::setGraphVisible, kind, checked); });
+}
+
+void TImpactWidgetController::setVisibleIfPremium(void (TImpactStorage::*set)(TImpactStorage::Kind, bool), const TImpactStorage::Kind kind,
+                                                  const bool visible)
+{
+    if (isPremiumPlayer())
+        (m_storage->*set)(kind, visible);
+    else
+        openPremiumStore();
 }
 
 void TImpactWidgetController::onShowDpsGaugeContextMenu()
@@ -403,7 +424,7 @@ void TImpactWidgetController::onShowDpsGaugeContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGaugeEntries(TImpactStorage::Damage);
+    addGaugeEntries(TImpactStorage::Damage, isPremiumPlayer());
     menu->showCustomMenu();
 }
 
@@ -413,7 +434,7 @@ void TImpactWidgetController::onShowHpsGaugeContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGaugeEntries(TImpactStorage::Healing);
+    addGaugeEntries(TImpactStorage::Healing, isPremiumPlayer());
     menu->showCustomMenu();
 }
 
@@ -423,7 +444,7 @@ void TImpactWidgetController::onShowDpsGraphContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGraphEntry(TImpactStorage::Damage);
+    addGraphEntry(TImpactStorage::Damage, isPremiumPlayer());
     menu->showCustomMenu();
 }
 
@@ -433,17 +454,29 @@ void TImpactWidgetController::onShowHpsGraphContextMenu()
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGraphEntry(TImpactStorage::Healing);
+    addGraphEntry(TImpactStorage::Healing, isPremiumPlayer());
     menu->showCustomMenu();
 }
 
-void TImpactWidgetController::setDesiredIsDpsGaugeVisible(const bool Visible) { m_storage->setGaugeVisible(TImpactStorage::Damage, Visible); }
+void TImpactWidgetController::setDesiredIsDpsGaugeVisible(const bool Visible)
+{
+    setVisibleIfPremium(&TImpactStorage::setGaugeVisible, TImpactStorage::Damage, Visible);
+}
 
-void TImpactWidgetController::setDesiredIsHpsGaugeVisible(const bool Visible) { m_storage->setGaugeVisible(TImpactStorage::Healing, Visible); }
+void TImpactWidgetController::setDesiredIsHpsGaugeVisible(const bool Visible)
+{
+    setVisibleIfPremium(&TImpactStorage::setGaugeVisible, TImpactStorage::Healing, Visible);
+}
 
-void TImpactWidgetController::setDesiredIsDpsGraphVisible(const bool Visible) { m_storage->setGraphVisible(TImpactStorage::Damage, Visible); }
+void TImpactWidgetController::setDesiredIsDpsGraphVisible(const bool Visible)
+{
+    setVisibleIfPremium(&TImpactStorage::setGraphVisible, TImpactStorage::Damage, Visible);
+}
 
-void TImpactWidgetController::setDesiredIsHpsGraphVisible(const bool Visible) { m_storage->setGraphVisible(TImpactStorage::Healing, Visible); }
+void TImpactWidgetController::setDesiredIsHpsGraphVisible(const bool Visible)
+{
+    setVisibleIfPremium(&TImpactStorage::setGraphVisible, TImpactStorage::Healing, Visible);
+}
 
 /// CIP / : a whole number, negative read as 0.
 void TImpactWidgetController::onDpsTargetValueSelected(const QString& DpsTargetString)
@@ -501,13 +534,10 @@ TDamageInputWidgetController::TDamageInputWidgetController(TDamageInputStorage* 
 {
     connect(m_storage, &TDamageInputStorage::valuesChanged, this, &TDamageInputWidgetController::updateLists);
     connect(m_storage, &TDamageInputStorage::graphChanged, this, &TDamageInputWidgetController::updateGraph);
-    connect(m_storage, &TDamageInputStorage::optionsChanged, this, [this] {
-        updateLists();
-        updateGraph();
-        Q_EMIT widgetConfigurationChanged();
-    });
+    connect(m_storage, &TDamageInputStorage::optionsChanged, this, &TDamageInputWidgetController::widgetConfigurationChanged);
     updateLists();
     updateGraph();
+    Q_EMIT widgetConfigurationChanged();
     widget()->createItem(QStringLiteral("DamageInputWidget.qml"));
     if (QQuickItem* item = quickItem())
         connect(item, &QObject::destroyed, this, &TDamageInputWidgetController::onWidgetQuickItemDestroyed);
@@ -609,8 +639,8 @@ void TDamageInputWidgetController::updateDetail()
             return;
         }
         m_detailedSource.clear();
-        Q_EMIT detailedDamageSourceChanged();
     }
+    Q_EMIT detailedDamageSourceChanged();
     m_fromSource->setEntries({});
 }
 
@@ -841,25 +871,32 @@ qlonglong TPartyHuntWidgetController::totalBalance() const
     return static_cast<qlonglong>(totalGain()) - static_cast<qlonglong>(totalWaste());
 }
 
-/// CIP : the leader resets the group's session and picks the price type; others
-/// clear their local copy.
+/// The leader of the party resets the group's session and, with premium, picks the price
+/// type; a member gets no reset entry; outside a party the local copy is cleared.
 void TPartyHuntWidgetController::requestConfigurationContextMenu()
 {
     auto* menu = gamewindow::TContextMenuController::instance();
     if (!menu)
         return;
     menu->beginCustomMenu();
-    const bool leader = tibia::game::localPlayerId() != 0 && m_storage->leaderId() == tibia::game::localPlayerId();
-    if (leader) {
+    const uint8_t shield = tibia::game::localPlayerShield();
+    const bool inParty = static_cast<uint8_t>(shield - 3) < 8;
+    const bool leader = m_storage->leaderId() == tibia::game::localPlayerId();
+    bool hasEntries = true;
+    if (leader && inParty) {
         connect(menu->addCustomEntry(qtTrId("partyhunt_rest_for_group")), &gamewindow::TContextMenuEntryItem::triggered, this,
                 [] { tibia::game::sendPartyAnalyzerReset(); });
-        connect(menu->addCustomEntry(qtTrId(m_storage->priceType() == 1 ? "partyhunt_set_loot_type_market" : "partyhunt_set_loot_type_leader")),
-                &gamewindow::TContextMenuEntryItem::triggered, this, [] { tibia::game::sendPartyAnalyzerPriceType(); });
-    } else {
+        if (isPremiumPlayer())
+            connect(menu->addCustomEntry(qtTrId(m_storage->priceType() == 0 ? "partyhunt_set_loot_type_leader" : "partyhunt_set_loot_type_market")),
+                    &gamewindow::TContextMenuEntryItem::triggered, this, [] { tibia::game::sendPartyAnalyzerPriceType(); });
+    } else if (!inParty) {
         connect(menu->addCustomEntry(qtTrId("partyhunt_rest_local")), &gamewindow::TContextMenuEntryItem::triggered, this,
                 [this] { m_storage->clear(); });
+    } else {
+        hasEntries = false;
     }
-    menu->addCustomSeparator();
+    if (hasEntries)
+        menu->addCustomSeparator();
     connect(menu->addCustomEntry(qtTrId("copy_to_clipboard")), &gamewindow::TContextMenuEntryItem::triggered, this,
             [this] { copyToClipboard(exportText()); });
     menu->showCustomMenu();
@@ -875,13 +912,14 @@ QString TPartyHuntWidgetController::exportText() const
     line(qtTrId("huntinganalyser_gain"), format::grouped(static_cast<qint64>(totalGain())));
     line(qtTrId("huntinganalyser_waste"), format::grouped(static_cast<qint64>(totalWaste())));
     line(qtTrId("huntinganalyser_gain_waste_sum"), format::grouped(totalBalance()));
+    const auto memberLine = [&lines](const QString& label, const QString& value) { lines.append(QStringLiteral("\t%1: %2").arg(label, value)); };
     for (const TPartyHuntStorage::Member& member : m_storage->members()) {
-        lines.append(member.name);
-        line(QStringLiteral("  ") + qtTrId("huntinganalyser_gain"), format::grouped(member.loot));
-        line(QStringLiteral("  ") + qtTrId("huntinganalyser_waste"), format::grouped(member.supplies));
-        line(QStringLiteral("  ") + qtTrId("huntinganalyser_gain_waste_sum"), format::grouped(member.loot - member.supplies));
-        line(QStringLiteral("  ") + qtTrId("damage"), format::grouped(member.damage));
-        line(QStringLiteral("  ") + qtTrId("healing"), format::grouped(member.healing));
+        lines.append(member.id == m_storage->leaderId() ? QStringLiteral("%1 (Leader)").arg(member.name) : member.name);
+        memberLine(qtTrId("huntinganalyser_gain"), format::grouped(member.loot));
+        memberLine(qtTrId("huntinganalyser_waste"), format::grouped(member.supplies));
+        memberLine(qtTrId("huntinganalyser_gain_waste_sum"), format::grouped(member.loot - member.supplies));
+        memberLine(qtTrId("damage"), format::grouped(member.damage));
+        memberLine(qtTrId("healing"), format::grouped(member.healing));
     }
     return lines.join(QLatin1Char('\n'));
 }

@@ -464,8 +464,8 @@ void THuntingSessionWidgetController::requestConfigurationContextMenu()
     gamewindow::TContextMenuEntryItem* baseXp = menu->addCustomEntry(qtTrId("huntinganalyser_show_base_xp"));
     baseXp->setCheckable(true);
     baseXp->setChecked(showBaseXp());
-    connect(baseXp, &gamewindow::TContextMenuEntryItem::toggled, this,
-            [this](const bool checked) { m_storages->huntingSession()->setShowBaseXp(checked); });
+    connect(baseXp, &gamewindow::TContextMenuEntryItem::triggered, this,
+            [this] { m_storages->huntingSession()->setShowBaseXp(!showBaseXp()); });
     menu->addCustomSeparator();
     connect(menu->addCustomEntry(qtTrId("copy_to_clipboard")), &gamewindow::TContextMenuEntryItem::triggered, this,
             [this] { publishAction(A::COPY_TRUSTED_TEXT_TO_CLIPBOARD, exportText()); });
@@ -997,7 +997,10 @@ void TLootAndWasteWidgetController::onCharacterBasedLootWasteOptionsChanged() { 
 
 QString TLootAndWasteWidgetController::gainWasteValueString() const { return format::multi(m_storage->sums(m_side).lastHour); }
 
-QString TLootAndWasteWidgetController::gainWastePerHourString() const { return format::multi(static_cast<qint64>(gainWastePerHour())); }
+QString TLootAndWasteWidgetController::gainWastePerHourString() const
+{
+    return format::multi(static_cast<qint64>(static_cast<quint64>(gainWastePerHour())));
+}
 
 double TLootAndWasteWidgetController::gainWastePerHour() const { return m_storage->sums(m_side).perHour; }
 
@@ -1027,68 +1030,76 @@ bool TLootAndWasteWidgetController::isGaugeMirrored() const { return m_side == T
 
 QObject* TLootAndWasteWidgetController::displayedItems() const { return m_model; }
 
+/// Reset, then (premium only) the target entry and the gauge and graph switches; free
+/// accounts see the switches marked as a premium feature and get the store instead.
 void TLootAndWasteWidgetController::requestConfigurationContextMenu()
 {
     auto* menu = gamewindow::TContextMenuController::instance();
     if (!menu)
         return;
     menu->beginCustomMenu();
-    connect(menu->addCustomEntry(qtTrId(qPrintable(translationPrefix() + QStringLiteral("reset")))), &gamewindow::TContextMenuEntryItem::triggered,
-            this, [this] {
-                m_maxY = 1.0;
-                m_storage->reset(m_side);
-            });
+    const QString prefix = translationPrefix();
+    connect(menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("reset")))), &gamewindow::TContextMenuEntryItem::triggered, this, [this] {
+        m_storage->reset(m_side);
+        m_maxY = 1.0;
+    });
     menu->addCustomSeparator();
-    addGaugeEntries();
-    addGraphEntry();
+    const bool premium = isPremiumPlayer();
+    if (premium) {
+        connect(menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("set_gauge_target")))), &gamewindow::TContextMenuEntryItem::triggered,
+                this, &TLootAndWasteWidgetController::showTargetDialog);
+    }
+    const QString premiumHint = premium ? QString() : qtTrId("context_premium_feature");
+    gamewindow::TContextMenuEntryItem* gauge = menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("show_gauge"))), premiumHint);
+    gauge->setCheckable(true);
+    gauge->setChecked(m_storage->gaugeVisible(m_side));
+    connect(gauge, &gamewindow::TContextMenuEntryItem::toggled, this, [this, premium](const bool checked) {
+        if (premium)
+            m_storage->setGaugeVisible(m_side, checked);
+        else
+            publishAction(A::OPEN_STORE, {}, 1, 0);
+    });
+    gamewindow::TContextMenuEntryItem* graph = menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("show_graph"))), premiumHint);
+    graph->setCheckable(true);
+    graph->setChecked(m_storage->graphVisible(m_side));
+    connect(graph, &gamewindow::TContextMenuEntryItem::toggled, this, [this, premium](const bool checked) {
+        if (premium)
+            m_storage->setGraphVisible(m_side, checked);
+        else
+            publishAction(A::OPEN_STORE, {}, 1, 0);
+    });
     menu->showCustomMenu();
 }
 
+/// The gauge's own menu: the target entry and the gauge switch.
 void TLootAndWasteWidgetController::requestGaugeContextMenu()
 {
     auto* menu = gamewindow::TContextMenuController::instance();
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGaugeEntries();
+    const QString prefix = translationPrefix();
+    connect(menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("set_gauge_target")))), &gamewindow::TContextMenuEntryItem::triggered, this,
+            &TLootAndWasteWidgetController::showTargetDialog);
+    gamewindow::TContextMenuEntryItem* gauge = menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("show_gauge"))));
+    gauge->setCheckable(true);
+    gauge->setChecked(m_storage->gaugeVisible(m_side));
+    connect(gauge, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) { m_storage->setGaugeVisible(m_side, checked); });
     menu->showCustomMenu();
 }
 
+/// The graph's own menu: the graph switch.
 void TLootAndWasteWidgetController::requestGraphContextMenu()
 {
     auto* menu = gamewindow::TContextMenuController::instance();
     if (!menu)
         return;
     menu->beginCustomMenu();
-    addGraphEntry();
-    menu->showCustomMenu();
-}
-
-void TLootAndWasteWidgetController::addGaugeEntries()
-{
-    auto* menu = gamewindow::TContextMenuController::instance();
-    const bool premium = isPremiumPlayer();
-    const QString prefix = translationPrefix();
-    if (premium) {
-        connect(menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("set_gauge_target")))), &gamewindow::TContextMenuEntryItem::triggered,
-                this, &TLootAndWasteWidgetController::showTargetDialog);
-    }
-    gamewindow::TContextMenuEntryItem* gauge =
-        menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("show_gauge"))), premium ? QString() : qtTrId("context_premium_feature"));
-    gauge->setCheckable(true);
-    gauge->setChecked(m_storage->gaugeVisible(m_side) && premium);
-    connect(gauge, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) { m_storage->setGaugeVisible(m_side, checked); });
-}
-
-void TLootAndWasteWidgetController::addGraphEntry()
-{
-    auto* menu = gamewindow::TContextMenuController::instance();
-    const bool premium = isPremiumPlayer();
-    gamewindow::TContextMenuEntryItem* graph = menu->addCustomEntry(qtTrId(qPrintable(translationPrefix() + QStringLiteral("show_graph"))),
-                                                                    premium ? QString() : qtTrId("context_premium_feature"));
+    gamewindow::TContextMenuEntryItem* graph = menu->addCustomEntry(qtTrId(qPrintable(translationPrefix() + QStringLiteral("show_graph"))));
     graph->setCheckable(true);
-    graph->setChecked(m_storage->graphVisible(m_side) && premium);
+    graph->setChecked(m_storage->graphVisible(m_side));
     connect(graph, &gamewindow::TContextMenuEntryItem::toggled, this, [this](const bool checked) { m_storage->setGraphVisible(m_side, checked); });
+    menu->showCustomMenu();
 }
 
 void TLootAndWasteWidgetController::showTargetDialog()
@@ -1102,7 +1113,7 @@ void TLootAndWasteWidgetController::showTargetDialog()
         connect(m_targetDialog, &gamewindow::TGenericEnterTextDialogController::textEntered, this,
                 &TLootAndWasteWidgetController::onGaugeTargetValueChanged);
     }
-    m_targetDialog->setText(QString::number(m_storage->gaugeTarget(m_side)));
+    m_targetDialog->setText(QString::number(static_cast<int>(m_storage->gaugeTarget(m_side))));
     m_targetDialog->dialog()->show();
 }
 

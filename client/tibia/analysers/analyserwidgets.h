@@ -377,8 +377,6 @@ private Q_SLOTS:
     void onWidgetQuickItemDestroyed();
 
 private:
-    void addGaugeEntries();
-    void addGraphEntry();
     void showTargetDialog();
 
     TGainWasteStorage* m_storage;
