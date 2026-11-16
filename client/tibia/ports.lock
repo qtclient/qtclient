@@ -2118,6 +2118,11 @@ gamewindow::TTransferCreditsDialogController::requestTransfer	199f32d8a741051d	p
 gamewindow::TTransferCreditsDialogController::showDialog	d4a2db923c595e11	ported	gamewindow/storedialogcontroller.cpp:TTransferCreditsDialogController::showDialog
 gamewindow::TTransferCreditsDialogController::~TTransferCreditsDialogController	097457dc45e86dd8	skip	compiler-generated destructor pair
 gamewindow::TTransferCreditsDialogController::~TTransferCreditsDialogController_deleting	79674512666b34e2	skip	compiler-generated destructor pair
+gamewindow::TUnjustifiedPointsWidgetController::connectPlayerKillerModeChangedToDisplayDataChanged	4dc918656653e2fb	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::connectPlayerKillerModeChangedToDisplayDataChanged
+gamewindow::TUnjustifiedPointsWidgetController::displayDataChanged	75ca41b54c14459b	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::progressDay
+gamewindow::TUnjustifiedPointsWidgetController::onPlayerCreatureAddedToCreatureStorage	347fafb20e09cef9	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::onPlayerCreatureAddedToCreatureStorage
+gamewindow::TUnjustifiedPointsWidgetController::onWidgetOptionsChanged	47693d30f577db73	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::progressWeek
+gamewindow::TUnjustifiedPointsWidgetController::saveWidgetOptions	07ca60b6b3222fce	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::fullKillsToNextSkullDay
 gamewindow::TVipWidgetController::handleGameAction	b61846c5962255d7	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::handleAction
 gamewindow::TVipWidgetController::onGroupNameEditedReceived	b22287b8e29620cb	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::onGroupNameEditedReceived
 gamewindow::TVipWidgetController::onGroupNameToAddToVipListReceived	f77f7621f803b887	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetController::onGroupNameToAddToVipListReceived
@@ -4011,6 +4016,7 @@ sub_1a40c9e4620a#6	1a40c9e4620a75c6	skip	std container template code
 sub_1a774b8b2f92	1a774b8b2f925e09	skip	compiler-generated draw command copy / std::vector growth
 sub_1a998e2209b7	1a998e2209b7303e	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_1a9e24246d5e	1a9e24246d5ee8b3	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::movePanelToEnd
+sub_1a9e84dabf11	1a9e84dabf11b18a	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::skullDuration
 sub_1ab8a6bfe7b7	1ab8a6bfe7b73a75	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::THuntingSessionStorage
 sub_1ab8a6bfe7b7#2	1ab8a6bfe7b73a75	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::THuntingSessionStorage
 sub_1ab8db40eba1	1ab8db40eba133d9	skip	std::sort instantiation for the category list
@@ -4400,6 +4406,7 @@ sub_2abe6694639b	2abe6694639bdbc0	ported	gamewindow/characterinfodialogcontrolle
 sub_2ad20525f835	2ad20525f83552e5	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_2ad20525f835#2	2ad20525f83552e5	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::updateNpcData
 sub_2ae074940d81	2ae074940d81f859	ported	analysers/impactwidgets.cpp:TImpactWidgetController::dpsTargetValueString
+sub_2ae1775cfb82	2ae1775cfb82d819	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::openPvpSituationCount
 sub_2ae8fb8409cc	2ae8fb8409cc8bdf	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::queueLevelSpecialPopup
 sub_2af1304bf004	2af1304bf004ba3d	skip	Qt/std container template code
 sub_2af260e163d1	2af260e163d1a5b9	tested	shared/coordinate.h:operator<<	test=tests/client/coordinate_test.cpp
@@ -4983,6 +4990,7 @@ sub_481c661393dc	481c661393dccdf1	inlined	gamewindow/characterinfomodels.cpp:TAc
 sub_483bf90be896#4	483bf90be896eede	ported	teamfinder/teamfinderciptypes.cpp:TTeamStartTimeManager::startImmediately
 sub_483bf90be896#5	483bf90be896eede	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::appearanceID
 sub_483c06cdce06	483c06cdce066723	ported	gamewindow/containercontroller.cpp:TContainerController::update
+sub_484642d31ab1	484642d31ab1fbc9	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::progressMonth
 sub_484fe5c16fab	484fe5c16fabd0af	ported	config/hotkeyoptions.cpp:readSet
 sub_48656aecf265	48656aecf2651598	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::currentWidgetsManagerOptions
 sub_48686e59fd85	48686e59fd852efb	ported	teamfinder/teamfinderciptypes.cpp:TTeamActivity::operator==
@@ -5836,6 +5844,7 @@ sub_6baa0f3e4887#5	6baa0f3e48871dc9	skip	std::set / std::vector assignment, copy
 sub_6bd2c335e7fe	6bd2c335e7fea34d	ported	gamewindow/sidebarpanelsmanager.cpp:TSidebarPanelsManager::TSidebarPanelsManager
 sub_6bddf6ae27e2	6bddf6ae27e2047f	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::closeWidget
 sub_6c09db9be390	6c09db9be39019aa	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendSetOutfit
+sub_6c2b1d170c34	6c2b1d170c34c894	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::fullKillsToNextSkullWeek
 sub_6c347c2b034c	6c347c2b034ca3a1	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketRefreshOffers
 sub_6c909e40ac34	6c909e40ac346ba8	ported	gamewindow/preydialogcontroller.cpp:TPreyData::setMonster
 sub_6c913ac68763	6c913ac68763c2bb	inlined	gamewindow/remainingdialogs.cpp:TShowImageDialogController::setData
@@ -6296,6 +6305,7 @@ sub_837932b7e775#6	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTran
 sub_83815f571796	83815f571796b8d0	inlined	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::itemData
 sub_8382c73d673c	8382c73d673c68cc	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::imbuementFilter
 sub_83a29dfb657b	83a29dfb657b8d9b	ported	gamewindow/appearancetypelistmodel.cpp:TAppearanceTypeListModelSortFilterProxy::setTypeId
+sub_83c24ff1a776	83c24ff1a776a8bd	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::fullKillsToNextSkullMonth
 sub_83c5f33127a6#146	83c5f33127a615cc	inlined	protocol::TProtobufClientMessageTranslator::v114
 sub_83d09776d01a	83d09776d01afc85	inlined	gamewindow/containercontroller.cpp:TContainerController::update
 sub_83f2e57c19fb	83f2e57c19fb2fda	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
@@ -6753,6 +6763,7 @@ sub_91b7d0822caf	91b7d0822caf3a72	ported	app/bootstrap.cpp:configureProcess
 sub_91b7d0822caf#2	91b7d0822caf3a72	ported	app/bootstrap.cpp:configureProcess
 sub_91ded1ba0ffa	91ded1ba0ffafe87	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::handleGameAction
 sub_91ee406a731d	91ee406a731dbcc0	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::centerToPlayer
+sub_920373fe92c1	920373fe92c16b15	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::refresh
 sub_9214266cf2f4	9214266cf2f4e956	skip	libc++ std::vector/std::map instantiation
 sub_9257fd9262cc	9257fd9262cc4b93	ported	analysers/impactwidgets.cpp:TPartyHuntWidgetController::partyMemberModel
 sub_928096b1633c#2	928096b1633c228b	inlined	protocol::TProtobufServerMessageTranslator::v175
@@ -8052,6 +8063,7 @@ sub_c63e9dc63e93#2	c63e9dc63e937298	skip	std::map / std::deque / std::vector tem
 sub_c64d1c861760	c64d1c8617607d35	inlined	assets/spritesheet.cpp:SpriteStore::addSheet
 sub_c64d1c861760#2	c64d1c8617607d35	inlined	assets/spritesheet.cpp:SpriteStore::findSheet
 sub_c654d2c6a9e5	c654d2c6a9e56519	skip	libc++ std::vector/std::map instantiation
+sub_c66546d40d27	c66546d40d271fda	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::refresh
 sub_c66baf069948#6	c66baf0699489bbd	inlined	protocol::TProtobufServerMessageTranslator::v19
 sub_c66eaae8b084	c66eaae8b0844e66	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::lootValueBackgroundUrlSource
 sub_c67c53827a80	c67c53827a80ad11	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
@@ -8760,6 +8772,7 @@ sub_e0b073441789	e0b073441789e6e5	ported	config/sidebaroptions.cpp:serializeBase
 sub_e0d3abc00874	e0d3abc008743040	ported	config/sidebaroptions.cpp:parseBaseOnly
 sub_e0d59894a05e	e0d59894a05e395e	skip	miniaudio library
 sub_e0df6a400b33#2	e0df6a400b33ad9e	skip	moc property getter (generated in cip_gen)
+sub_e0e62bc23aee	e0e62bc23aeebdba	ported	gamewindow/unjustifiedpointswidgetcontroller.cpp:TUnjustifiedPointsWidgetController::TUnjustifiedPointsWidgetController
 sub_e102035a77f1	e102035a77f1e168	ported	gamewindow/imbuingdialogcontroller.cpp:categoryName
 sub_e10ba7c82f6a	e10ba7c82f6a2c85	inlined	screenshot::TScreenshotManager::processReadyScreenshot
 sub_e13902ceb444	e13902ceb4446482	skip	nlohmann::json from_json number/string conversion (third-party template)

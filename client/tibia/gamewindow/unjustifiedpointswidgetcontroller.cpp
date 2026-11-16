@@ -140,18 +140,27 @@ void TUnjustifiedPointsWidgetController::onPlayerCreatureAddedToCreatureStorage(
 void TUnjustifiedPointsWidgetController::refresh()
 {
     const UnjustifiedPoints points = tibia::game::getUnjustifiedPoints();
-    m_progressDay = std::clamp(points.killsDay / 100.0f, 0.0f, 1.0f);
+    // CIP: the progress is the server's percentage, unclamped.
+    m_progressDay = static_cast<float>(points.killsDay * 0.01);
     m_fullKillsToNextSkullDay = points.killsDayRemaining;
-    m_progressWeek = std::clamp(points.killsWeek / 100.0f, 0.0f, 1.0f);
+    m_progressWeek = static_cast<float>(points.killsWeek * 0.01);
     m_fullKillsToNextSkullWeek = points.killsWeekRemaining;
-    m_progressMonth = std::clamp(points.killsMonth / 100.0f, 0.0f, 1.0f);
+    m_progressMonth = static_cast<float>(points.killsMonth * 0.01);
     m_fullKillsToNextSkullMonth = points.killsMonthRemaining;
     m_skullDuration = points.skullTime;
     m_openPvpSituationCount = static_cast<uint>(tibia::game::getOpenPvpSituations());
 
-    const int skull = tibia::game::isOnline() ? tibia::game::localPlayerSkull() : 0;
-    m_currentSkullSource = skullSource(skull);
-    m_nextSkullSource = skullSource(skull > 0 ? std::min(skull + 1, 5) : 3);
+    // CIP: the current skull shows only when it is red or black; the next one
+    // is black after those and red otherwise. Without a player both are empty.
+    m_currentSkullSource.clear();
+    m_nextSkullSource.clear();
+    if (tibia::game::isOnline()) {
+        const int skull = tibia::game::localPlayerSkull();
+        const bool redOrBlack = (skull & 0xfe) == 4;
+        if (redOrBlack)
+            m_currentSkullSource = skullSource(skull);
+        m_nextSkullSource = skullSource(redOrBlack ? 5 : 4);
+    }
     Q_EMIT displayDataChanged();
 }
 
