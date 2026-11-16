@@ -194,7 +194,8 @@ endif()
 target_link_libraries(tibia PRIVATE
   Qt6::Core Qt6::CorePrivate Qt6::Gui Qt6::Network Qt6::Qml Qt6::Quick Qt6::QuickPrivate Qt6::QuickControls2
   tibia_legacycontrolsplugin
-  qmlcomponentsplugin)
+  qmlcomponentsplugin
+  qtclient_shared)
 tibia_link_desktop_webengine(tibia ${TIBIA_USE_WEBENGINE_STUBS})
 # Public HD scaler + mods registry / WorldView / ModLoader; packs via TibiaMods + QtClientMod.
 target_sources(tibia PRIVATE
@@ -288,11 +289,9 @@ if(TIBIA_WITH_GAMECORE)
     shared/iodevicereader.cpp shared/iodevicereader.h
     shared/iodevicewriter.cpp shared/iodevicewriter.h
     shared/simplevectorabstractlistmodel.h
-    shared/xteahelper.cpp shared/xteahelper.h
     shared/timelapseclockservice.cpp shared/timelapseclockservice.h
     shared/jsonvalidator.cpp shared/jsonvalidator.h
     shared/downloadpool.cpp shared/downloadpool.h
-    shared/rsahelper.cpp
     config/clientsettings.cpp config/clientsettings.h
     config/configciptypes.cpp config/configciptypes.h
     config/runtimegameconfig.cpp config/runtimegameconfig.h

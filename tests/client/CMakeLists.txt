@@ -104,8 +104,12 @@ qtclient_add_port_test(client_iodevice_tests
 target_link_libraries(client_iodevice_tests PRIVATE Qt6::Network)
 qtclient_add_port_test(client_xteahelper_tests
     xteahelper_test.cpp
-    ${CMAKE_SOURCE_DIR}/client/tibia/shared/xteahelper.cpp
+    ${CMAKE_SOURCE_DIR}/shared/src/xteahelper.cpp
 )
+target_include_directories(client_xteahelper_tests PRIVATE ${CMAKE_SOURCE_DIR}/shared/src)
+# CIP shared:: I/O classes (qtclient_shared: compression, blobs, hashing, RSA).
+qtclient_add_port_test(shared_io_tests sharedio_test.cpp)
+target_link_libraries(shared_io_tests PRIVATE qtclient_shared)
 qtclient_add_port_test(client_sortedvectorlistmodel_tests sortedvectorlistmodel_test.cpp)
 qtclient_add_port_test(client_simplevectorabstractlistmodel_tests
     simplevectorabstractlistmodel_test.cpp

@@ -9,9 +9,16 @@ shared::TClipboardHelper::v4	472805c042cab6d0	ported	client/tibia/shared/clipboa
 shared::TClipboardHelper::v5	ddeffed4c24bc6f4	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::setJsonObjectAsBase64String
 shared::TClipboardHelper::v6	7561ec3f69b5e0b5	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::convertBase64StringAsJsonObject
 shared::TClipboardHelper::v7	ad01f8d8e86715f1	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::convertJsonObjectToBase64String
+shared::TCompressionHelper::v0	28262085c8e165fb	skip	generated: compiler-generated destructor (TZlibInflateWrapper member)
+shared::TCompressionHelper::v1	ac11833e49aa72c3	skip	generated: compiler-generated destructor (TZlibInflateWrapper member)
+shared::TCompressionHelper::v2	76b3f0c59e4c7bbe	tested	shared/src/compressionhelper.cpp:TCompressionHelper::decompress	test=tests/client/sharedio_test.cpp
+shared::TCompressionHelper::v3	aeaf800cdad6b2be	tested	shared/src/compressionhelper.cpp:TCompressionHelper::init	test=tests/client/sharedio_test.cpp
+shared::TCompressionHelper::v4	d4cd6a5b0dce70d1	tested	shared/src/compressionhelper.cpp:TCompressionHelper::isInitialized	test=tests/client/sharedio_test.cpp
 shared::TCoordinate::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor
 shared::TCoordinate::v1	e9caf669ab302182	skip	generated: compiler-generated destructor
 shared::TCoordinate::v2	be5c33954d406be4	tested	client/tibia/shared/coordinate.h:TCoordinate::operator+	test=tests/client/coordinate_test.cpp
+shared::TDecompressionError::v0	b3f40dd4fff3f23d	tested	shared/src/decompressionerror.cpp:TDecompressionError::~TDecompressionError	test=tests/client/sharedio_test.cpp
+shared::TDecompressionError::v1	ab6f53b036dbb081	tested	shared/src/decompressionerror.cpp:TDecompressionError::~TDecompressionError	test=tests/client/sharedio_test.cpp
 shared::TDownloadPool::v12	94f613a37c4d5d03	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::download
 shared::TDownloadPool::v13	3229a889564b46ec	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::downloadWithPriority
 shared::TDownloadPool::v14	90c456462179bebf	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::setMaxParallelDownloads
@@ -22,30 +29,57 @@ shared::TDownloadPool::v18	ed0a05af12caeb4f	ported	client/tibia/shared/downloadp
 shared::TDownloadPool::~TDownloadPool	097457dc45e86dd8	skip	generated: compiler-generated destructor
 shared::TFileSystemHelper::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor
 shared::TFileSystemHelper::v1	e9caf669ab302182	skip	generated: compiler-generated destructor
-shared::TFileSystemHelper::v10	d60dafd7e7741754	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::getPathInsideDirectory
-shared::TFileSystemHelper::v11	3aa2470e8562c82a	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::forEachFileInDirectory
-shared::TFileSystemHelper::v12	087629e228d625a9	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::getFilesInDirectory
-shared::TFileSystemHelper::v13	4e26b7fc67457a61	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::fileExists
-shared::TFileSystemHelper::v14	104928e83e6a25de	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::directoryExists
-shared::TFileSystemHelper::v15	3ad1715f30576818	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::joinPaths
-shared::TFileSystemHelper::v16	5cb59ef6b3d98d87	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::getOrCreateSubdirectory
-shared::TFileSystemHelper::v17	5221ba1f2a76f82e	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::openSettings
-shared::TFileSystemHelper::v18	07addf832c5a4a5a	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::readJsonFileAsQJsonDocument
-shared::TFileSystemHelper::v19	5b3bcfa2ff64a363	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::readImage
-shared::TFileSystemHelper::v20	5d8caa0bd1eab72b	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::writeImage
-shared::TFileSystemHelper::v3	baf231345abb4742	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::readFile
-shared::TFileSystemHelper::v4	d5a9575b323dce33	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::readFileIfExists
-shared::TFileSystemHelper::v5	afd8cea1b6cc0ce4	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::writeFile
-shared::TFileSystemHelper::v6	9d4edb0229d4f093	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::writeTextFile
-shared::TFileSystemHelper::v7	dc35ad591e1f0033	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::appendTextFile
-shared::TFileSystemHelper::v8	aa843099a29fe341	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::removeFile
-shared::TFileSystemHelper::v9	5a53f643bc260723	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::createDirectory
+shared::TFileSystemHelper::v10	d60dafd7e7741754	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::getPathInsideDirectory
+shared::TFileSystemHelper::v11	3aa2470e8562c82a	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::forEachFileInDirectory
+shared::TFileSystemHelper::v12	087629e228d625a9	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::getFilesInDirectory
+shared::TFileSystemHelper::v13	4e26b7fc67457a61	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::fileExists
+shared::TFileSystemHelper::v14	104928e83e6a25de	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::directoryExists
+shared::TFileSystemHelper::v15	3ad1715f30576818	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::joinPaths
+shared::TFileSystemHelper::v16	5cb59ef6b3d98d87	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::getOrCreateSubdirectory
+shared::TFileSystemHelper::v17	5221ba1f2a76f82e	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::openSettings
+shared::TFileSystemHelper::v18	07addf832c5a4a5a	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::readJsonFileAsQJsonDocument
+shared::TFileSystemHelper::v19	5b3bcfa2ff64a363	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::readImage
+shared::TFileSystemHelper::v2	8fe0ed3781988b54	tested	shared/src/filesystemhelper.cpp:TFileSystemHelper::openReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
+shared::TFileSystemHelper::v20	5d8caa0bd1eab72b	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::writeImage
+shared::TFileSystemHelper::v3	baf231345abb4742	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::readFile
+shared::TFileSystemHelper::v4	d5a9575b323dce33	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::readFileIfExists
+shared::TFileSystemHelper::v5	afd8cea1b6cc0ce4	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::writeFile
+shared::TFileSystemHelper::v6	9d4edb0229d4f093	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::writeTextFile
+shared::TFileSystemHelper::v7	dc35ad591e1f0033	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::appendTextFile
+shared::TFileSystemHelper::v8	aa843099a29fe341	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::removeFile
+shared::TFileSystemHelper::v9	5a53f643bc260723	ported	shared/src/filesystemhelper.cpp:TFileSystemHelper::createDirectory
+shared::THashHelper::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor
+shared::THashHelper::v1	e9caf669ab302182	skip	generated: compiler-generated destructor
+shared::THashHelper::v2	d49b17a08893a3b2	tested	shared/src/hashhelper.cpp:THashHelper::getSha256Hash	test=tests/client/sharedio_test.cpp
+shared::THashHelper::v3	79470adbdcddb8c0	tested	shared/src/hashhelper.cpp:THashHelper::getSha1Hash	test=tests/client/sharedio_test.cpp
+shared::THashHelper::v4	de76ba0fc65a0de1	tested	shared/src/hashhelper.cpp:THashHelper::isSha256Hash	test=tests/client/sharedio_test.cpp
 shared::TJsonArrayValidator::v0	1c78789c6ae86f80	skip	generated: compiler-generated destructor
 shared::TJsonArrayValidator::v1	d9c80c502db082ac	skip	generated: compiler-generated destructor
 shared::TJsonObjectValidator::v0	8db8e8a926d2105f	skip	generated: compiler-generated destructor
 shared::TJsonObjectValidator::v1	ace589f5a3165f73	skip	generated: compiler-generated destructor
 shared::TJsonValueValidator::v0	767b4b8c3fd2c9a4	skip	generated: compiler-generated destructor
 shared::TJsonValueValidator::v1	5619d173686f7527	skip	generated: compiler-generated destructor
+shared::TLZMACompressedReadOnlyMemoryBlob::v0	097457dc45e86dd8	skip	generated: compiler-generated destructor (base TReadOnlyMemoryBlob)
+shared::TLZMACompressedReadOnlyMemoryBlob::v1	79674512666b34e2	skip	generated: compiler-generated destructor (base TReadOnlyMemoryBlob)
+shared::TLZMACompressedReadOnlyMemoryBlob::v2	98ffa73373b1406d	tested	shared/src/lzmacompressedreadonlymemoryblob.cpp:TLZMACompressedReadOnlyMemoryBlob::getData	test=tests/client/sharedio_test.cpp
+shared::TLocalFileInfo::v0	30f98ed2b8d1c834	skip	generated: compiler-generated destructor (QString path)
+shared::TLocalFileInfo::v1	77f8582a0cc0d18e	skip	generated: compiler-generated destructor (QString path)
+shared::TRandomNumberGenerator::v0	872d4faac408f6d5	skip	generated: compiler-generated destructor
+shared::TRandomNumberGenerator::v1	e9caf669ab302182	skip	generated: compiler-generated destructor
+shared::TRandomNumberGenerator::v2	02eaeea4e8207ae8	tested	shared/src/randomnumbergenerator.cpp:TRandomNumberGenerator::getRandomNumber	test=tests/client/sharedio_test.cpp
+shared::TRandomNumberGenerator::v3	61f54ee7b563b795	tested	shared/src/randomnumbergenerator.cpp:TRandomNumberGenerator::getRandomInt	test=tests/client/sharedio_test.cpp
+shared::TRandomNumberGenerator::v4	74b41c536ffff1af	tested	shared/src/randomnumbergenerator.cpp:TRandomNumberGenerator::getRandomUnsignedLong	test=tests/client/sharedio_test.cpp
+shared::TRandomNumberGenerator::v5	61d512651431d03c	tested	shared/src/randomnumbergenerator.cpp:TRandomNumberGenerator::getRandomFloat	test=tests/client/sharedio_test.cpp
+shared::TRandomNumberGenerator::v6	7ed2dcf1ee4a79f1	tested	shared/src/randomnumbergenerator.cpp:TRandomNumberGenerator::getRandomLongLong	test=tests/client/sharedio_test.cpp
+shared::TRandomNumberGenerator::v7	7ed2dcf1ee4a79f1	tested	shared/src/randomnumbergenerator.cpp:TRandomNumberGenerator::getRandomLong	test=tests/client/sharedio_test.cpp
+shared::TReadOnlyMemoryBlob::v0	097457dc45e86dd8	skip	generated: compiler-generated destructor (QString path, QByteArray data)
+shared::TReadOnlyMemoryBlob::v1	79674512666b34e2	skip	generated: compiler-generated destructor (QString path, QByteArray data)
+shared::TReadOnlyMemoryBlob::v2	fbb7941ae6b564d1	tested	shared/src/readonlymemoryblob.cpp:TReadOnlyMemoryBlob::getData	test=tests/client/sharedio_test.cpp
+shared::TReadOnlyMemoryBlob::v3	697079c2d97e2d6b	tested	shared/src/readonlymemoryblob.cpp:TReadOnlyMemoryBlob::getFilePath	test=tests/client/sharedio_test.cpp
+shared::TRsaHelper::v0	097457dc45e86dd8	skip	generated: compiler-generated destructor (CryptoPP RSAFunction + AutoSeededRandomPool members)
+shared::TRsaHelper::v1	79674512666b34e2	skip	generated: compiler-generated destructor (CryptoPP RSAFunction + AutoSeededRandomPool members)
+shared::TRsaHelper::v2	1195667229bdffc6	tested	shared/src/rsahelper.cpp:TRsaHelper::setPublicKey	test=tests/client/sharedio_test.cpp
+shared::TRsaHelper::v3	83e460b3051ccbf4	tested	shared/src/rsahelper.cpp:TRsaHelper::encrypt	test=tests/client/sharedio_test.cpp
 shared::TTimeLapseClockService::v0	5f3d3948d1681070	skip	generated: compiler-generated destructor
 shared::TTimeLapseClockService::v1	2c2985996b181825	skip	generated: compiler-generated destructor
 shared::TTimeLapseClockService::v10	ae9a0b63993ae677	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::setStartTime	test=tests/client/timelapseclockservice_test.cpp
@@ -60,51 +94,304 @@ shared::TTimeLapseClockService::v8	7e9779ce49b62562	tested	client/tibia/shared/t
 shared::TTimeLapseClockService::v9	0a195c52b9cff74d	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::setSpeed	test=tests/client/timelapseclockservice_test.cpp
 shared::TXteaHelper::v0	097457dc45e86dd8	skip	generated: compiler-generated destructor (CryptoPP cipher members)
 shared::TXteaHelper::v1	79674512666b34e2	skip	generated: compiler-generated destructor (CryptoPP cipher members)
-shared::TXteaHelper::v2	564c0d0fd8332fea	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::setKey	test=tests/client/xteahelper_test.cpp
-shared::TXteaHelper::v3	b5286ae7d86979cb	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::key	test=tests/client/xteahelper_test.cpp
-shared::TXteaHelper::v4	8535ee3dd32cd9b6	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::pad	test=tests/client/xteahelper_test.cpp
-shared::TXteaHelper::v5	3c3c2aae23587bbf	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::encrypt	test=tests/client/xteahelper_test.cpp
-shared::TXteaHelper::v6	0e3dcff3a2eaa7de	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::decrypt	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v2	564c0d0fd8332fea	tested	shared/src/xteahelper.cpp:TXteaHelper::setKey	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v3	b5286ae7d86979cb	tested	shared/src/xteahelper.cpp:TXteaHelper::key	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v4	8535ee3dd32cd9b6	tested	shared/src/xteahelper.cpp:TXteaHelper::pad	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v5	3c3c2aae23587bbf	tested	shared/src/xteahelper.cpp:TXteaHelper::encrypt	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v6	0e3dcff3a2eaa7de	tested	shared/src/xteahelper.cpp:TXteaHelper::decrypt	test=tests/client/xteahelper_test.cpp
+shared::TZlibBaseWrapper::v0	a3252b79fc1b54bf	skip	generated: compiler-generated destructor (std::string, std::mutex, shared_ptr<z_stream>)
+shared::TZlibBaseWrapper::v1	c25bcd4c750c2802	skip	generated: compiler-generated destructor (std::string, std::mutex, shared_ptr<z_stream>)
+shared::TZlibDeflateWrapper::v0	097457dc45e86dd8	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::~TZlibDeflateWrapper	test=tests/client/sharedio_test.cpp
+shared::TZlibDeflateWrapper::v1	79674512666b34e2	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::~TZlibDeflateWrapper	test=tests/client/sharedio_test.cpp
+shared::TZlibInflateWrapper::v0	097457dc45e86dd8	ported	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::~TZlibInflateWrapper
+shared::TZlibInflateWrapper::v1	79674512666b34e2	ported	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::~TZlibInflateWrapper
+sub_000854ea5888	000854ea588867b8	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_000854ea5888#2	000854ea588867b8	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_0179fc2bf018	0179fc2bf018501a	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_028d9dcf84e9	028d9dcf84e990b2	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_04ec60429c66	04ec60429c66415e	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_05e3e9ad37b2	05e3e9ad37b2793d	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_073bd719c008	073bd719c0089d40	skip	generated: inlined QCborValue destructor
+sub_09454647cbba	09454647cbbae432	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_097457dc45e8#22	097457dc45e86dd8	skip	generated: std::make_shared<TReadOnlyMemoryBlob> constructor thunk
+sub_097457dc45e8#28	097457dc45e86dd8	skip	generated: TRandomNumberGenerator constructor thunk
+sub_097457dc45e8#33	097457dc45e86dd8	inlined	shared/src/xteahelper.cpp:TXteaHelper::TXteaHelper
+sub_097457dc45e8#71	097457dc45e86dd8	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_097457dc45e8#73	097457dc45e86dd8	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_097457dc45e8#86	097457dc45e86dd8	skip	library: CryptoPP StreamTransformationFilter thunk, RandomPool destructor, std::invalid_argument, std::vector / ostringstream destructors, shared_ptr release
+sub_097457dc45e8#88	097457dc45e86dd8	skip	library: CryptoPP HashFilter constructor, SHA1/SHA256 state init
+sub_0a462d19d2a6	0a462d19d2a66709	skip	library: CryptoPP HashFilter constructor, SHA1/SHA256 state init
+sub_0b19f21f5940	0b19f21f5940085b	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_112e5e7a3fd1	112e5e7a3fd16432	tested	shared/src/localfileinfo.cpp:TLocalFileInfo::getSize	test=tests/client/sharedio_test.cpp
+sub_11d5e26df8da	11d5e26df8da1979	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_12a7994a59e6	12a7994a59e69afb	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_1406089da185	1406089da18561ef	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+sub_14e6f785afc4	14e6f785afc47e39	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_1613ea986dd2	1613ea986dd2c983	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+sub_16d6040f4fbe	16d6040f4fbe9306	tested	shared/src/readonlymemoryblob.cpp:TReadOnlyMemoryBlob::TReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
+sub_16d6040f4fbe#2	16d6040f4fbe9306	tested	shared/src/readonlymemoryblob.cpp:TReadOnlyMemoryBlob::TReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
+sub_17b940e853a4	17b940e853a43456	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
 sub_17e5f5a5ca9d	17e5f5a5ca9d84cd	tested	client/tibia/shared/coordinate.h:TCoordinate::operator!=	test=tests/client/coordinate_test.cpp
+sub_18528b082ca9	18528b082ca9c2da	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_189c347afb06	189c347afb067062	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_1973dbd9a747	1973dbd9a7471fe9	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_1a12962921ea	1a12962921ea0e2e	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+sub_1a40c9e4620a	1a40c9e4620a75c6	skip	library: CryptoPP StreamTransformationFilter thunk, RandomPool destructor, std::invalid_argument, std::vector / ostringstream destructors, shared_ptr release
+sub_1acf5e8cbbae	1acf5e8cbbae1601	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_1ae0b3594ca6	1ae0b3594ca689bc	skip	generated: compiler-generated destructor (QString path, QByteArray data)
 sub_1c78789c6ae8	1c78789c6ae86f80	skip	generated: compiler-generated destructor
 sub_1cb2c1aa4f0e	1cb2c1aa4f0eb4d9	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::TTimeLapseClockService	test=tests/client/timelapseclockservice_test.cpp
+sub_1f09828c1093	1f09828c1093e647	ported	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::end
+sub_204820b9d192	204820b9d192dfa0	skip	library: zlib 1.3.2 inflateEnd
+sub_2272fbafd2c8	2272fbafd2c822fd	tested	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::inflateGrowing	test=tests/client/sharedio_test.cpp
+sub_23c91f1a75a5#2	23c91f1a75a58fdc	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
+sub_23c91f1a75a5#5	23c91f1a75a58fdc	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_23c91f1a75a5#6	23c91f1a75a58fdc	skip	library: libc++ std::vector length_error throw
+sub_23ca18fa3153	23ca18fa315318cb	skip	library: Qt QByteArray operator== (inline)
+sub_23f33f308519	23f33f3085195fb7	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_24b92ee53b87	24b92ee53b87700d	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_26838ffeaa59	26838ffeaa590e98	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isDouble	test=tests/client/jsonvalidator_test.cpp
+sub_2796956ff417	2796956ff417ea7d	skip	library: libc++ std::function bad_function_call throw
+sub_280760dce3d3	280760dce3d3f749	tested	shared/src/lzmacompressedreadonlymemoryblob.cpp:TLZMACompressedReadOnlyMemoryBlob::TLZMACompressedReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
+sub_280760dce3d3#2	280760dce3d3f749	tested	shared/src/lzmacompressedreadonlymemoryblob.cpp:TLZMACompressedReadOnlyMemoryBlob::TLZMACompressedReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
+sub_28262085c8e1	28262085c8e165fb	skip	generated: compiler-generated constructor (vtable install + TZlibInflateWrapper member)
+sub_28262085c8e1#2	28262085c8e165fb	skip	generated: compiler-generated constructor (vtable install + TZlibInflateWrapper member)
+sub_2837893a4709	2837893a4709d454	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_2875a9d83792	2875a9d83792197e	inlined	shared/src/filesystemhelper.cpp:TFileSystemHelper::joinPaths
 sub_2af260e163d1	2af260e163d1a5b9	tested	client/tibia/shared/coordinate.h:operator<<	test=tests/client/coordinate_test.cpp
+sub_2bb3296af36d	2bb3296af36dc8f7	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::getLevel	test=tests/client/sharedio_test.cpp
+sub_2be498d8123f	2be498d8123f454d	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
+sub_2c039e757d1a	2c039e757d1a9172	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_2d235264e367	2d235264e367a192	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_2dc159b99818	2dc159b9981806e3	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_2ffa4390540a	2ffa4390540a1694	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_30f98ed2b8d1	30f98ed2b8d1c834	skip	generated: compiler-generated destructor (QString path)
+sub_314547993827	3145479938273dab	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_336559ce41d4	336559ce41d47f81	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_3468388f952c	3468388f952cd696	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_38cd8b333fdc	38cd8b333fdcd8b6	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::TJsonValueValidator	test=tests/client/jsonvalidator_test.cpp
+sub_39921a12c243	39921a12c24341eb	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_39b0d726845c	39b0d726845c6564	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_3bcbc59d35c6	3bcbc59d35c661da	tested	client/tibia/shared/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
+sub_3c80093e47e0#2	3c80093e47e0db90	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_3d0cb45c6636	3d0cb45c6636b555	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_3d7191b22b6f	3d7191b22b6f3f51	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_3e036c24f248	3e036c24f248acbb	tested	shared/src/zlibdeflatewrapper.h:TZlibDeflateWrapper::TZlibDeflateWrapper	test=tests/client/sharedio_test.cpp
+sub_3e036c24f248#2	3e036c24f248acbb	tested	shared/src/zlibdeflatewrapper.h:TZlibDeflateWrapper::TZlibDeflateWrapper	test=tests/client/sharedio_test.cpp
+sub_3eaafe99c4dc	3eaafe99c4dc566b	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_3eab903a8d3d	3eab903a8d3d7e71	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_3f75e818da1f	3f75e818da1f6b8a	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_3facc23f9e0a	3facc23f9e0a7a22	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_40ba1db62813	40ba1db6281324c5	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_4260da39b479	4260da39b479a261	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_461c10987b68	461c10987b685038	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_4797af37a2a4	4797af37a2a4845f	skip	library: CryptoPP StreamTransformationFilter thunk, RandomPool destructor, std::invalid_argument, std::vector / ostringstream destructors, shared_ptr release
+sub_48d957037987	48d957037987f1a7	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_49125f831334	49125f831334b843	tested	shared/src/readonlymemoryblob.cpp:TReadOnlyMemoryBlob::TReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
 sub_491bc0e14328	491bc0e143287fb4	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isInt	test=tests/client/jsonvalidator_test.cpp
 sub_4b356d808179	4b356d8081794ab4	tested	client/tibia/shared/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
 sub_4b356d808179#2	4b356d8081794ab4	tested	client/tibia/shared/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
+sub_4f226d00036e	4f226d00036e3236	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_4fb62b6f3b63	4fb62b6f3b635e18	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_5105c4ee4032	5105c4ee4032730e	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_511a69494d45	511a69494d45ebff	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_516e6778eff5	516e6778eff52b8a	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_520aa27ea166	520aa27ea166b7e4	skip	library: CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
+sub_522e78cb22ef	522e78cb22efa2f1	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+sub_524040c68beb	524040c68beb57ad	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_531c2ee17c54	531c2ee17c54a551	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_564c5c2cdce7	564c5c2cdce73193	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_576711c6b9d3	576711c6b9d3ce6b	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::value	test=tests/client/jsonvalidator_test.cpp
+sub_5a9f7ea72ec5	5a9f7ea72ec569ac	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_5d06c8117d90	5d06c8117d90d46a	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_5d59e0616af6	5d59e0616af67663	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_5e5192a6129e	5e5192a6129e2413	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
+sub_5ef1c86b6120	5ef1c86b6120bc3a	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
+sub_6026616382fb	6026616382fbe915	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_61038b93150e	61038b93150e7f85	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_6116434b5388	6116434b538833e6	tested	shared/src/compressionhelper.cpp:decompressBundle	test=tests/client/sharedio_test.cpp
+sub_611a4ebc0ae2	611a4ebc0ae29347	skip	generated: compiler-generated destructor (CryptoPP RSAFunction + AutoSeededRandomPool members)
+sub_61f97afdbc52	61f97afdbc52eaec	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_62203b95af07	62203b95af07263b	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::~TZlibDeflateWrapper	test=tests/client/sharedio_test.cpp
+sub_62ba18c9d800	62ba18c9d8009981	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_662d688970d4	662d688970d4755a	ported	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::end
+sub_6748e0511a26	6748e0511a263a10	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
+sub_676dd90076da	676dd90076da15d2	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_6790c72c93ca	6790c72c93cae868	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_67b39dbc8134	67b39dbc8134ad4d	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_67da5211166e	67da5211166e58a6	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_697079c2d97e	697079c2d97e2d6b	tested	shared/src/localfileinfo.cpp:TLocalFileInfo::getFilePath	test=tests/client/sharedio_test.cpp
 sub_699797d1c544	699797d1c5446f74	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::array	test=tests/client/jsonvalidator_test.cpp
+sub_69de9258ee77	69de9258ee775365	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_6ac0ff6cf332	6ac0ff6cf33270f8	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_6d4300dd8428	6d4300dd84283a06	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::TJsonObjectValidator	test=tests/client/jsonvalidator_test.cpp
 sub_6d4300dd8428#2	6d4300dd84283a06	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::TJsonObjectValidator	test=tests/client/jsonvalidator_test.cpp
+sub_6def0ecc643f	6def0ecc643f6a6a	skip	library: zlib 1.3.2 deflateEnd
+sub_6e3a0d3c303b	6e3a0d3c303b33c2	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_706a87457799	706a87457799d6de	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_713c6f5e326a	713c6f5e326aa1c8	inlined	shared/src/filesystemhelper.cpp:TFileSystemHelper::createDirectory
+sub_71ae9a62b739	71ae9a62b739ef0d	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_7320911967df	7320911967df228f	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_73a505708dd7	73a505708dd762c3	ported	shared/src/zlibinflatewrapper.h:TZlibInflateWrapper::TZlibInflateWrapper
+sub_73a505708dd7#2	73a505708dd762c3	ported	shared/src/zlibinflatewrapper.h:TZlibInflateWrapper::TZlibInflateWrapper
+sub_755a9c29bce9	755a9c29bce98cc6	skip	library: libc++ uniform_int_distribution / independent_bits_engine over minstd_rand
+sub_755a9c29bce9#2	755a9c29bce98cc6	skip	library: libc++ uniform_int_distribution / independent_bits_engine over minstd_rand
+sub_7666aa51af76	7666aa51af760f0f	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_7666aa51af76#2	7666aa51af760f0f	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_767b4b8c3fd2	767b4b8c3fd2c9a4	skip	generated: compiler-generated destructor
+sub_780e8e92506c	780e8e92506caaa6	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_79d15562852e	79d15562852eb5e5	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_7a4725f1ab24	7a4725f1ab24ec7b	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_7afc87b6cc70	7afc87b6cc70087a	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_7b737791289d	7b737791289da552	skip	generated: vtable install (compiler-generated constructor)
+sub_7b737791289d#2	7b737791289da552	skip	generated: vtable install (compiler-generated constructor)
+sub_7bb6872abf9a	7bb6872abf9a4331	ported	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::~TZlibInflateWrapper
+sub_7c0c85b3db95	7c0c85b3db95f71c	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_7caface43c17	7caface43c17039f	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_7d6e3744a3cf	7d6e3744a3cf6a8c	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_7e89dfbfcbfd#2	7e89dfbfcbfd4c14	skip	library: CryptoPP HashFilter constructor, SHA1/SHA256 state init
+sub_7f23357f0113	7f23357f0113f615	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_7f71d6bc3e97	7f71d6bc3e97e226	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_7f71d6bc3e97#2	7f71d6bc3e97e226	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
 sub_8161fcdee961#2	8161fcdee96159dd	skip	library: Qt/std container template code
+sub_81ca564e13b9	81ca564e13b95e94	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_827cc3514041	827cc3514041a529	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_832e236ca794	832e236ca7948702	tested	shared/src/localfileinfo.cpp:TLocalFileInfo::getFileName	test=tests/client/sharedio_test.cpp
+sub_83ed3b99a881	83ed3b99a8811bf4	tested	shared/src/randomnumbergenerator.cpp:TRandomNumberGenerator::instance	test=tests/client/sharedio_test.cpp
+sub_844214c83bd9	844214c83bd93a23	skip	dead: unreferenced byte-order helpers: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_84fc52094876	84fc52094876f177	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_859ed0caeba7	859ed0caeba74e0d	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_860e925cc0c2	860e925cc0c27813	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_8729c9a73e63#2	8729c9a73e630d2f	skip	library: CryptoPP StreamTransformationFilter thunk, RandomPool destructor, std::invalid_argument, std::vector / ostringstream destructors, shared_ptr release
+sub_87dfa8f0107d	87dfa8f0107da115	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_8900c59190dd	8900c59190ddf393	skip	library: libc++ uniform_int_distribution / independent_bits_engine over minstd_rand
 sub_8db8e8a926d2	8db8e8a926d2105f	skip	generated: compiler-generated destructor
+sub_8f8034a4fabe	8f8034a4fabe40be	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_90e244c8e74f	90e244c8e74fef73	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_90e890aa8a70	90e890aa8a70851f	tested	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::isInitialized	test=tests/client/sharedio_test.cpp
+sub_90e890aa8a70#2	90e890aa8a70851f	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::isInitialized	test=tests/client/sharedio_test.cpp
+sub_91456aaf4614	91456aaf4614d01a	ported	shared/src/readonlymemoryblob.cpp:throwOnFileError
+sub_92bc4dd0b4f5	92bc4dd0b4f58636	skip	library: libc++ std::string(const char*) constructor
+sub_9699b1fcac2f	9699b1fcac2fd4eb	tested	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::init	test=tests/client/sharedio_test.cpp
+sub_9738c3e79e30	9738c3e79e309fbd	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_98f04bf23c09	98f04bf23c09c317	tested	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::inflate	test=tests/client/sharedio_test.cpp
+sub_9918f7e6653c	9918f7e6653cd4f1	ported	shared/src/randomnumbergenerator.cpp:TRandomNumberGenerator::TRandomNumberGenerator
+sub_9a0011eb6093	9a0011eb6093da86	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_9ba06e6b5d56	9ba06e6b5d564634	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isBool	test=tests/client/jsonvalidator_test.cpp
+sub_9ccdcf91683c	9ccdcf91683cf037	tested	shared/src/lzmacompressedreadonlymemoryblob.cpp:TLZMACompressedReadOnlyMemoryBlob::TLZMACompressedReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
+sub_9ccdcf91683c#2	9ccdcf91683cf037	tested	shared/src/lzmacompressedreadonlymemoryblob.cpp:TLZMACompressedReadOnlyMemoryBlob::TLZMACompressedReadOnlyMemoryBlob	test=tests/client/sharedio_test.cpp
+sub_9f5b78926ae7	9f5b78926ae7532b	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_9f74913c004a	9f74913c004a29b2	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+sub_a3252b79fc1b	a3252b79fc1b54bf	skip	generated: compiler-generated destructor (std::string, std::mutex, shared_ptr<z_stream>)
+sub_a350b0e723db	a350b0e723db1d3c	ported	shared/src/xteahelper.cpp:TXteaHelper::TXteaHelper
+sub_a47ea88828e3	a47ea88828e32c19	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_a4bfe2cb0dc9	a4bfe2cb0dc9ef28	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_a56a8bf1d106	a56a8bf1d1068a10	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_a597f21d78f8	a597f21d78f8a71b	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_a697ac0abd05	a697ac0abd05c5a7	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_a7b3b18142a3	a7b3b18142a3bae4	tested	client/tibia/shared/coordinate.h:TCoordinate::operator-	test=tests/client/coordinate_test.cpp
+sub_a7bf0c3633c7	a7bf0c3633c70a06	skip	library: libc++ uniform_int_distribution / independent_bits_engine over minstd_rand
+sub_a7bf0c3633c7#2	a7bf0c3633c70a06	skip	library: libc++ uniform_int_distribution / independent_bits_engine over minstd_rand
+sub_a7bf0c3633c7#3	a7bf0c3633c70a06	skip	library: libc++ uniform_int_distribution / independent_bits_engine over minstd_rand
+sub_a7db3f788b79	a7db3f788b79f838	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_a858118f4c4a	a858118f4c4af28d	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+sub_a8bdcc53857d	a8bdcc53857d58e2	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_a91de195e07b	a91de195e07b190c	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isString	test=tests/client/jsonvalidator_test.cpp
+sub_a9a792699e46	a9a792699e4623f3	tested	shared/src/localfileinfo.cpp:TLocalFileInfo::TLocalFileInfo	test=tests/client/sharedio_test.cpp
+sub_a9a792699e46#2	a9a792699e4623f3	tested	shared/src/localfileinfo.cpp:TLocalFileInfo::TLocalFileInfo	test=tests/client/sharedio_test.cpp
+sub_ab2d93bb9699	ab2d93bb96992122	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_ac9d966d71de	ac9d966d71defadb	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_ada2f7c73e88	ada2f7c73e880d1e	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_addfa381c1ba	addfa381c1ba3409	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_ade6fcce0799	ade6fcce0799b047	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_ae53ab49b698	ae53ab49b698dbd6	tested	shared/src/zlibbasewrapper.cpp:TZlibBaseWrapper::getLastErrorMessage	test=tests/client/sharedio_test.cpp
 sub_b02e349a7c61	b02e349a7c618aff	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::value	test=tests/client/jsonvalidator_test.cpp
+sub_b0a425df67b3	b0a425df67b3e738	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_b11ede8af4e8	b11ede8af4e8da49	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_b1b32ae7a4ac	b1b32ae7a4ac5b48	tested	client/tibia/shared/jsonvalidator.cpp:TJsonArrayValidator::first	test=tests/client/jsonvalidator_test.cpp
 sub_b26569aea116	b26569aea1161145	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isArray	test=tests/client/jsonvalidator_test.cpp
 sub_b33fd2efb094	b33fd2efb094231b	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::TJsonObjectValidator	test=tests/client/jsonvalidator_test.cpp
+sub_b347204c7b9d#2	b347204c7b9d7bd7	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_b684a7c6d106	b684a7c6d106ac89	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_b77e55e4508a	b77e55e4508ae7d9	tested	client/tibia/shared/coordinate.h:TCoordinate::minimum	test=tests/client/coordinate_test.cpp
+sub_b7f12c428f34	b7f12c428f34e10f	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_b8249c9e3366#4	b8249c9e33663f7b	skip	library: libc++ shared_ptr control-block release
+sub_b8249c9e3366#8	b8249c9e33663f7b	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_b8249c9e3366#9	b8249c9e33663f7b	skip	library: CryptoPP StreamTransformationFilter thunk, RandomPool destructor, std::invalid_argument, std::vector / ostringstream destructors, shared_ptr release
+sub_bacb34461c58	bacb34461c5810a9	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_bb4a1ef5bad3	bb4a1ef5bad32a8c	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::init	test=tests/client/sharedio_test.cpp
+sub_bbaf1d1198fe	bbaf1d1198fe540d	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_bbb4b372d41d	bbb4b372d41d8465	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_bbf1d6c12336#2	bbf1d6c12336e192	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_bbfb44d09e6b	bbfb44d09e6b990e	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_bc866b67970d	bc866b67970d0743	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_bcccd51b8b15#3	bcccd51b8b153f85	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+sub_be89f65cfadd	be89f65cfaddb21a	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_bf673b8e5506	bf673b8e55066fc2	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_bfe5a561f790	bfe5a561f79025fe	skip	library: libc++ uniform_int_distribution / independent_bits_engine over minstd_rand
 sub_c32e96836788	c32e968367880e26	tested	client/tibia/shared/coordinate.h:operator<<	test=tests/client/coordinate_test.cpp
 sub_c358393a99a9	c358393a99a9475d	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isValid	test=tests/client/jsonvalidator_test.cpp
 sub_c358393a99a9#2	c358393a99a9475d	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isValid	test=tests/client/jsonvalidator_test.cpp
 sub_c40711fb05c6	c40711fb05c69caf	skip	library: CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
+sub_c4cde42d60ec	c4cde42d60ec76e5	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_c5399097ef67	c5399097ef67f0fa	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_c7f3bb3493d8	c7f3bb3493d875a3	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_c821383959e2	c821383959e21f7c	tested	shared/src/lzmacompressedreadonlymemoryblob.cpp:TLZMACompressedReadOnlyMemoryBlob::unpack	test=tests/client/sharedio_test.cpp
+sub_c8a9810acc6b	c8a9810acc6beaaf	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_c9230337a2da	c9230337a2da3633	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_c96338bace70	c96338bace701851	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_c9a5a780a79e	c9a5a780a79e5e68	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isType	test=tests/client/jsonvalidator_test.cpp
+sub_cb1cd25012a6	cb1cd25012a6b0b0	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::deflate	test=tests/client/sharedio_test.cpp
+sub_cc6d11900452	cc6d11900452cfa3	ported	shared/src/zlibinflatewrapper.cpp:TZlibInflateWrapper::isOneShot
+sub_cc6d11900452#2	cc6d11900452cfa3	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::getWindowBits	test=tests/client/sharedio_test.cpp
+sub_cc73fbebd3d6	cc73fbebd3d6d402	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
+sub_cca7eccce691	cca7eccce691dfb2	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::deflateInto	test=tests/client/sharedio_test.cpp
 sub_ccfc9ccd2fbf	ccfc9ccd2fbf36c3	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::TJsonValueValidator	test=tests/client/jsonvalidator_test.cpp
 sub_ccfc9ccd2fbf#2	ccfc9ccd2fbf36c3	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::TJsonValueValidator	test=tests/client/jsonvalidator_test.cpp
+sub_d0304d7bc415	d0304d7bc415b438	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_d0aa9244635d	d0aa9244635de63b	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_d1d2fbb2a3a3	d1d2fbb2a3a3ef1d	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_d3f8843375ce	d3f8843375cec425	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_d5271152b195	d5271152b195ca48	skip	library: r-lyeh bundle: unpack/is_packed/vlebit and the codec dispatch (RAW, miniz, LZIP, LZMA SDK, ZPAQ, CSC, Crush) plus std::string internals; replaced by shared/src/bundle.cpp
+sub_d5fdbb377e04	d5fdbb377e04a925	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
 sub_d86bbada087a	d86bbada087a10aa	tested	client/tibia/shared/coordinate.h:TCoordinate::operator<	test=tests/client/coordinate_test.cpp
+sub_d90eb5b368e9	d90eb5b368e93e01	skip	library: CryptoPP StreamTransformationFilter thunk, RandomPool destructor, std::invalid_argument, std::vector / ostringstream destructors, shared_ptr release
 sub_dad695d23de9	dad695d23de97d73	tested	client/tibia/shared/coordinate.h:TCoordinate::maximum	test=tests/client/coordinate_test.cpp
+sub_dae160cc55c8	dae160cc55c8492e	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_dcbb11ca9a6d	dcbb11ca9a6d44f1	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_dd6d1926edc6	dd6d1926edc61b84	skip	generated: compiler-generated constructor (zeroed members, std::mutex init)
+sub_dd6d1926edc6#2	dd6d1926edc61b84	skip	generated: compiler-generated constructor (zeroed members, std::mutex init)
 sub_ddbe646a13f4#2	ddbe646a13f460f6	skip	library: CryptoPP XTEA cipher holder (library)
+sub_ddd295a885a4	ddd295a885a4bba3	skip	dead: unreferenced byte-order helpers: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
 sub_de2ed7bcb926	de2ed7bcb926293f	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::speed	test=tests/client/timelapseclockservice_test.cpp
+sub_deca5c2da6a8	deca5c2da6a83139	skip	library: zlib 1.3.2 (adler32, crc32, inflateInit2_, inflateReset/Reset2, inflate, updatewindow, inflate_fast, inflate_table, fixedtables, zcalloc)
+sub_df5ab3fe3cea	df5ab3fe3cea1ad6	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_e1b0bdcfe31b	e1b0bdcfe31b6698	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_e274d4e122ab	e274d4e122ab6315	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_e330cb5b253a	e330cb5b253a15cf	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_e4b3e0f02f66	e4b3e0f02f66c814	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_e5237c0b267f	e5237c0b267fbd3f	ported	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::isOneShot
+sub_e7676f0ebd95	e7676f0ebd951add	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
 sub_e8082de37776	e8082de37776fbbb	skip	generated: compiler-generated destructor (CryptoPP cipher members)
 sub_e9071ee6211d	e9071ee6211dd089	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isObject	test=tests/client/jsonvalidator_test.cpp
+sub_e9c78e7f8b98	e9c78e7f8b985943	skip	library: CryptoPP HashFilter constructor, SHA1/SHA256 state init
+sub_eb1e1d669cb7	eb1e1d669cb777fc	ported	shared/src/filesystemhelper.cpp:throwFileError
+sub_eb8870b4ad69	eb8870b4ad696eed	tested	shared/src/zlibbasewrapper.cpp:TZlibBaseWrapper::setLastError	test=tests/client/sharedio_test.cpp
+sub_ec2348a44e7b	ec2348a44e7b6cc1	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_ec83f59ee3b4	ec83f59ee3b41c7e	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_ed587ca1d6a5	ed587ca1d6a5ef73	skip	library: CryptoPP Integer (construct from bytes/word, assign, ByteCount, GetByte, operator--, allocators, InvalidArgument)
+sub_f0aebbe73ffa	f0aebbe73ffae967	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_f2a4602f56f1	f2a4602f56f1e672	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
+sub_f2a4602f56f1#2	f2a4602f56f1e672	skip	library: Qt QList<QFileInfo> / libc++ std::vector<TLocalFileInfo> template code
+sub_f468dbfe59a7	f468dbfe59a7a21c	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
+sub_f6c1953b5cf1	f6c1953b5cf1c889	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_f6e33b3e68b4	f6e33b3e68b45976	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_f74dfb48d8fb	f74dfb48d8fbce91	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::getMemLevel	test=tests/client/sharedio_test.cpp
 sub_f764966ac696#3	f764966ac6964e43	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::isValid	test=tests/client/jsonvalidator_test.cpp
 sub_f764966ac696#4	f764966ac6964e43	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::isValid	test=tests/client/jsonvalidator_test.cpp
-sub_f98ceae25008	f98ceae25008c033	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::convertByteOrder	test=tests/client/xteahelper_test.cpp
+sub_f98ceae25008	f98ceae25008c033	tested	shared/src/xteahelper.cpp:TXteaHelper::convertByteOrder	test=tests/client/xteahelper_test.cpp
+sub_fb2ddecb4a4f	fb2ddecb4a4ffa1c	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_fb5ceecc4405	fb5ceecc4405ad2e	skip	library: r-lyeh bundle codecs: miniz tinfl, LZIP (lzlib), LZMA SDK LzmaDec, ZPAQ (libzpaq + JIT), CSC, Crush decoders and their allocators
+sub_fcff2f95b4eb	fcff2f95b4eb7a73	ported	shared/src/compressionhelper.cpp:toByteArray
+sub_fd5ce4ba85e5	fd5ce4ba85e5b3c4	skip	dead: unreferenced time/number formatting helpers: no call in the decompiled corpus outside this set, no pointer fixup (index/fixups.txt)
+sub_fdc0d48117b2	fdc0d48117b2ad40	skip	dead: unreferenced: no call in the decompiled corpus, no pointer fixup (index/fixups.txt)
