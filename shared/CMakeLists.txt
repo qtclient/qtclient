@@ -49,6 +49,14 @@ add_library(qtclient_shared STATIC
   src/qtconnectionwrapper.h
   src/ringbufferstopwatch.cpp
   src/ringbufferstopwatch.h
+  src/rpcserviceclient.cpp
+  src/rpcserviceclient.h
+  src/rpcserviceconnection.cpp
+  src/rpcserviceconnection.h
+  src/rpcserviceerror.cpp
+  src/rpcserviceerror.h
+  src/rpcserviceserver.cpp
+  src/rpcserviceserver.h
   src/singlethreadedlowpriorityexecutor.cpp
   src/singlethreadedlowpriorityexecutor.h
   src/synchronousexecutor.cpp

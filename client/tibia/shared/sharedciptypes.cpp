@@ -28,7 +28,6 @@ struct CipTypedKeep {
     TRandomNumberGenerator tRandomNumberGenerator;
     TLocalFileInfo tLocalFileInfo;
     TDecompressionError tDecompressionError;
-    TRPCServiceError tRpcServiceError;
     TReadOnlyMemoryBlob tReadOnlyMemoryBlob;
     TLZMACompressedReadOnlyMemoryBlob tLzmaBlob;
     TZlibBaseWrapper tZlibBaseWrapper;

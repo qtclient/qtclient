@@ -59,27 +59,6 @@ public:
 // TOptimized1PixelBorderImageProvider — live QQuickImageProvider in
 // imageproviders/optimizedborderimageprovider.h (CipSoft requestImage).
 
-class TRPCServiceClient final : public cip::shared::TRPCServiceClient
-{
-    Q_OBJECT
-public:
-    using cip::shared::TRPCServiceClient::TRPCServiceClient;
-};
-
-class TRPCServiceConnection final : public cip::shared::TRPCServiceConnection
-{
-    Q_OBJECT
-public:
-    using cip::shared::TRPCServiceConnection::TRPCServiceConnection;
-};
-
-class TRPCServiceServer final : public cip::shared::TRPCServiceServer
-{
-    Q_OBJECT
-public:
-    using cip::shared::TRPCServiceServer::TRPCServiceServer;
-};
-
 class TTibiaClipboardHelper final : public ::tibia::CipTyped {
 public:
     TTibiaClipboardHelper() = default;
@@ -140,20 +119,6 @@ class TDecompressionError final : public ::tibia::CipTyped
 {
 public:
     explicit TDecompressionError(QString message = {})
-        : m_message(std::move(message))
-    {
-    }
-    const QString& message() const { return m_message; }
-
-private:
-    QString m_message;
-};
-
-/// CIP `shared::TRPCServiceError`.
-class TRPCServiceError final : public ::tibia::CipTyped
-{
-public:
-    explicit TRPCServiceError(QString message = {})
         : m_message(std::move(message))
     {
     }
