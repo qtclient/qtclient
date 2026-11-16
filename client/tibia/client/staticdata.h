@@ -32,6 +32,7 @@
 #include <string>
 #include <tuple>
 #include <utility>
+#include <array>
 #include <vector>
 
 struct Bounce
@@ -1016,40 +1017,37 @@ struct CyclopediaCharacterOffenceStats
     std::vector<ElementModifier> elementalPierce;
 };
 
+/// The defence stats of the character info message, as CIP's
+/// CharacterInfoDefenceStats: the parts arrays are total first, then the
+/// sources (see TPlayerDefenceStatsProvider).
 struct CyclopediaCharacterDefenceStats
 {
-    double dodgeTotal;
-    double dodgeBase;
-    double dodgeBonus;
-    double dodgeWheel;
-
-    uint32_t magicShieldCapacity;
-    uint16_t magicShieldCapacityFlat;
-    double magicShieldCapacityPercent;
-
-    uint16_t reflectPhysical;
-    uint16_t armor;
-
-    uint16_t defense;
-    uint16_t defenseEquipment;
-    uint8_t defenseSkillType;
-    uint16_t shieldingSkill;
-    uint16_t defenseWheel;
-
-    double mitigation;
-    double mitigationBase;
-    double mitigationEquipment;
-    double mitigationShield;
-    double mitigationWheel;
-    double mitigationCombatTactics;
-
+    /// Kind 4 is an element's total resistance, kinds 0..3 its parts from
+    /// equipment, imbuements, the skill wheel and concoctions.
     struct ElementalResistance
     {
-        uint8_t element;
-        double value;
+        uint8_t kind = 0;
+        uint8_t element = 0;
+        double value = 0;
     };
 
     std::vector<ElementalResistance> resistances;
+    /// Total, equipment, amplification, event bonus, skill wheel.
+    std::array<double, 5> dodge{};
+    uint32_t magicShieldCapacity = 0;
+    uint16_t magicShieldCapacityFlat = 0;
+    double magicShieldCapacityPercent = 0;
+    uint16_t reflectPhysical = 0;
+    uint16_t armor = 0;
+    uint16_t mantra = 0;
+    uint16_t defence = 0;
+    uint16_t defenceEquipment = 0;
+    /// The defence the skill adds, by the protocol's skill type.
+    int16_t defenceSkill = 0;
+    uint16_t defenceWheel = 0;
+    uint8_t defenceSkillType = 0;
+    /// Total, equipment, defence, skill, skill wheel.
+    std::array<double, 5> mitigation{};
 };
 
 struct CyclopediaCharacterMiscStats

@@ -2,6 +2,7 @@
 
 #include <cip_gen.h>
 
+#include "game/defencestatsprovider.h"
 #include "game/miscstatsprovider.h"
 #include "game/offencestatsprovider.h"
 
@@ -125,12 +126,18 @@ private:
     std::shared_ptr<game::IOffenceStatsProvider> m_provider;
 };
 
-/// The defence block (CIP: TDefenceStatsQmlData, ctor).
+/// The defence block of the character info's combat stats (CIP:
+/// TDefenceStatsQmlData). Every stat is built once from the provider.
 class TDefenceStatsQmlData final : public cip::tibia::cyclopedia::TDefenceStatsQmlData
 {
     Q_OBJECT
 public:
+    explicit TDefenceStatsQmlData(std::shared_ptr<game::IDefenceStatsProvider> provider, QObject* parent = nullptr);
+    /// The skills widget's block: the PlayerSkills stats as a provider.
     explicit TDefenceStatsQmlData(const CombatStats& stats, QObject* parent = nullptr);
+
+private:
+    std::shared_ptr<game::IDefenceStatsProvider> m_provider;
 };
 
 /// An active concoction or food of the misc block (CIP: TConcoctionQmlData).

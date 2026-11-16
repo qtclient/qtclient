@@ -716,6 +716,8 @@ cyclopedia::TDamageInputStorage::v13	417cf6444c73e4ca	ported	analysers/impactsto
 cyclopedia::TDamageInputStorage::v14	e8217d022796d1e4	ported	analysers/impactstorage.cpp:TDamageInputStorage::fromJson
 cyclopedia::TDamageInputStorage::~TDamageInputStorage	097457dc45e86dd8	skip	compiler-generated destructor
 cyclopedia::TDamageInputStorage::~TDamageInputStorage_deleting	79674512666b34e2	skip	compiler-generated destructor
+cyclopedia::TDefenceStatsQmlData::~TDefenceStatsQmlData	097457dc45e86dd8	skip	compiler-generated destructor pair
+cyclopedia::TDefenceStatsQmlData::~TDefenceStatsQmlData_deleting	79674512666b34e2	skip	compiler-generated destructor pair
 cyclopedia::TGainWasteStorage::onItemPriceConfigurationChanged	a8d58485fe1485d3	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::onItemPriceConfigurationChanged
 cyclopedia::TGainWasteStorage::onObjectInfosChanged	d6d6c87bf70d81d2	ported	analysers/gainwastestorage.cpp:TGainWasteStorage::onObjectInfosChanged
 cyclopedia::TGainWasteStorage::v12	694198fa349a11c4	ported	analysers/analyserstorages.h:configurationName
@@ -789,6 +791,24 @@ cyclopedia::TMiscStatsQmlData::~TMiscStatsQmlData	097457dc45e86dd8	skip	compiler
 cyclopedia::TMiscStatsQmlData::~TMiscStatsQmlData_deleting	79674512666b34e2	skip	compiler-generated destructor
 cyclopedia::TOffenceStatsQmlData::~TOffenceStatsQmlData	097457dc45e86dd8	skip	compiler-generated destructor
 cyclopedia::TOffenceStatsQmlData::~TOffenceStatsQmlData_deleting	79674512666b34e2	skip	compiler-generated destructor
+cyclopedia::TPlayerDefenceStatsProvider::v0	8e0666fefb213b99	skip	compiler-generated destructor pair
+cyclopedia::TPlayerDefenceStatsProvider::v1	387533d9f0b8eacc	skip	compiler-generated destructor pair
+cyclopedia::TPlayerDefenceStatsProvider::v10	18f7f8a69e7be3e0	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::elementalResistances
+cyclopedia::TPlayerDefenceStatsProvider::v11	63e812f5c2ff7d8a	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::elementalResistanceSources
+cyclopedia::TPlayerDefenceStatsProvider::v12	b06c22283539e479	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::magicShieldCapacity
+cyclopedia::TPlayerDefenceStatsProvider::v13	b06c22283539e479	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::magicShieldCapacityFlat
+cyclopedia::TPlayerDefenceStatsProvider::v14	2685078fa1cf398b	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::magicShieldCapacityPercent
+cyclopedia::TPlayerDefenceStatsProvider::v15	f06bcc22cac53d7a	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::damageReflection
+cyclopedia::TPlayerDefenceStatsProvider::v16	5cfae4910ba27aa7	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::dodge
+cyclopedia::TPlayerDefenceStatsProvider::v17	8e2b3deabb6e7bdb	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::dodge
+cyclopedia::TPlayerDefenceStatsProvider::v2	b3215fa9e06bb77b	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::armor
+cyclopedia::TPlayerDefenceStatsProvider::v3	dfb47ed6ae8ba766	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::mantra
+cyclopedia::TPlayerDefenceStatsProvider::v4	db93e498e044c769	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::defence
+cyclopedia::TPlayerDefenceStatsProvider::v5	8ccc974717b0dfcc	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::defence
+cyclopedia::TPlayerDefenceStatsProvider::v6	763ef07f611b0a31	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::defenceSkill
+cyclopedia::TPlayerDefenceStatsProvider::v7	b28a71b2070e5577	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::mitigation
+cyclopedia::TPlayerDefenceStatsProvider::v8	d47da9f5c195670b	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::mitigation
+cyclopedia::TPlayerDefenceStatsProvider::v9	30e4df1e9c241a09	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::mitigationSkill
 cyclopedia::TPlayerMiscStatsProvider::v0	8e0666fefb213b99	skip	compiler-generated destructor pair
 cyclopedia::TPlayerMiscStatsProvider::v1	387533d9f0b8eacc	skip	compiler-generated destructor pair
 cyclopedia::TPlayerMiscStatsProvider::v10	4c51585805bc6509	ported	cyclopedia/playermiscstatsprovider.cpp:TPlayerMiscStatsProvider::amplification
@@ -3688,6 +3708,7 @@ sub_10ef79046450	10ef790464506d75	ported	gamewindow/characterinfodialogcontrolle
 sub_111a8f80ca29	111a8f80ca29206b	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onConfirmEnableLockPrey
 sub_112d5ea62412	112d5ea62412bccb	skip	compiler-generated destructor of the boss slots data
 sub_112e5e7a3fd1#5	112e5e7a3fd16432	skip	moc property getter (generated in cip_gen)
+sub_112e5e7a3fd1#6	112e5e7a3fd16432	skip	moc property getter, provided by the generated cip base
 sub_112e5e7a3fd1#7	112e5e7a3fd16432	skip	moc property getter (generated in cip_gen)
 sub_113f088a777d	113f088a777d55e6	ported	config/optionspages.cpp:THotkeysOptionsPage::commitRows
 sub_11552a23d879	11552a23d8799a8a	ported	analysers/impactwidgets.cpp:TImpactWidgetController::TImpactWidgetController
@@ -4215,6 +4236,7 @@ sub_23c91f1a75a5#118	23c91f1a75a58fdc	skip	std container internals (map/vector/s
 sub_23c91f1a75a5#120	23c91f1a75a58fdc	inlined	sub_52ca29368333
 sub_23c91f1a75a5#129	23c91f1a75a58fdc	skip	std::map / std::deque / std::vector template instantiation
 sub_23c91f1a75a5#148	23c91f1a75a58fdc	skip	std library template (vector length error, map emplace, vector push_back)
+sub_23c91f1a75a5#149	23c91f1a75a58fdc	skip	Qt/std container template code
 sub_23c91f1a75a5#150	23c91f1a75a58fdc	skip	std library template (vector push_back / length error, std::sort introsort pieces, unique_ptr deleter)
 sub_23c91f1a75a5#152	23c91f1a75a58fdc	skip	std library template (map tree destroy, vector length error)
 sub_23c91f1a75a5#162	23c91f1a75a58fdc	skip	std::vector length error (library)
@@ -4614,6 +4636,7 @@ sub_34e653e93f2e	34e653e93f2eac3e	skip	std library template (vector push_back / 
 sub_3505ef0f3787#2	3505ef0f378739ea	inlined	questlog/questlogciptypes.cpp:TQuestLogStorage::setTrackedQuestFlags
 sub_351030668c7c	351030668c7c928c	tested	config/hotkeyoptions.cpp:THotkeyOptionsData::fromJson	test=tests/client/hotkeyoptions_test.cpp
 sub_351b94d930e8#3	351b94d930e805d0	skip	compiler-generated destructor of the three-string stat source
+sub_351b94d930e8#4	351b94d930e805d0	skip	Qt/std container template code
 sub_3523411ddb02#3	3523411ddb025c2c	skip	shared_ptr copy/release (library)
 sub_3525b8e1c575	3525b8e1c5756138	skip	std::sort instantiation for the category list
 sub_3554cb355755	3554cb3557557df8	inlined	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardDetails
@@ -4789,6 +4812,7 @@ sub_3df0fa20d97d	3df0fa20d97ded89	ported	spells/spellinfostorage.cpp:TSpellInfoS
 sub_3df7fe43e728	3df7fe43e7283c4e	inlined	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage
 sub_3e2aa784c48c	3e2aa784c48c5a59	ported	news/newsstorage.cpp:NewsItem::categoryId
 sub_3e3752d9456a	3e3752d9456a90f0	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendPing
+sub_3e52fc909e61#3	3e52fc909e61cca3	skip	Qt/std container template code
 sub_3e5d1a987da8	3e5d1a987da85292	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendDailyRewardHistory
 sub_3e9694309573#2	3e9694309573b59c	ported	container/qmlitemslotdata.h:TQMLItemSlotData::name
 sub_3e9694309573#3	3e9694309573b59c	inlined	gamewindow/rewardwalldialogcontroller.cpp:TQmlDailyRewardHistoryEntry::TQmlDailyRewardHistoryEntry
@@ -5106,6 +5130,7 @@ sub_4d7e3db39675#7	4d7e3db39675f970	skip	std container / struct destructor
 sub_4da25f5da2a7	4da25f5da2a799cf	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::setHighlight
 sub_4da4407b66c2	4da4407b66c2c2f9	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationForgeDialogController::showDialog
 sub_4dbca733654c	4dbca733654c65a4	skip	std::sort instantiation for the category list
+sub_4dc61ea5c6f0	4dc61ea5c6f07008	inlined	cyclopedia/playerdefencestatsprovider.cpp:resistanceSource
 sub_4dca9ac0e8dc	4dca9ac0e8dc760c	skip	static initializer of header constants
 sub_4dd454b0664b	4dd454b0664b5b5a	skip	std::sort instantiation for the category list
 sub_4dd58c3da997	4dd58c3da997e6de	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
@@ -5442,6 +5467,7 @@ sub_554205d0658b	554205d0658b42ec	inlined	teamfinder/teamfinderciptypes.h:TTeamM
 sub_55582a22f403	55582a22f403bdd5	skip	QList::reserve (library)
 sub_5581414748b1	5581414748b18d3e	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::closeDialog
 sub_5584d91c0a54	5584d91c0a54f3f9	skip	moc property getter (generated in cip_gen)
+sub_5584d91c0a54#2	5584d91c0a54f3f9	skip	moc property getter, provided by the generated cip base
 sub_558f1bf558d7	558f1bf558d7f76d	inlined	analysers/impactwidgets.cpp:TDamageInputWidgetController::maxDpsTakenString
 sub_558f1bf558d7#4	558f1bf558d7f76d	ported	gamewindow/characterinfodialogcontroller.cpp:TKillQmlData::TKillQmlData
 sub_55a1b3e93942#2	55a1b3e93942bb70	inlined	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TMonsterBonusEffectsDialogController::captureContext
@@ -5850,6 +5876,7 @@ sub_6a529ceb3a4b#2	6a529ceb3a4becda	skip	compiler-generated destructor of the di
 sub_6a54d912339a	6a54d912339acdc5	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenChannel
 sub_6a5a383d6f97	6a5a383d6f975230	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::TBattleListDataModelSortFilterProxy
 sub_6a5a383d6f97#2	6a5a383d6f975230	ported	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::TBattleListDataModelSortFilterProxy
+sub_6a5c25b2d00c	6a5c25b2d00c573b	ported	cyclopedia/combatstatsqmldata.cpp:factorText
 sub_6a77d1a8eca6	6a77d1a8eca6df64	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::rebuildListItems
 sub_6a81ce34b0e4	6a81ce34b0e4a1d9	skip	miniaudio library code (miniaudio.h asserts), misattributed
 sub_6a936b127cb3	6a936b127cb3706d	skip	compiler-generated destructor pair
@@ -5938,6 +5965,9 @@ sub_708e53defc6c	708e53defc6c2c4e	ported	gamewindow/rewardwalldialogcontroller.c
 sub_70bab0999be5	70bab0999be55234	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapDialogController::onCreatureClicked
 sub_70ed76ce21ce	70ed76ce21ce7e35	ported	market/marketstorage.cpp:TMarketStorage::mergeOffers
 sub_70f16669b16e	70f16669b16ee270	skip	shared_ptr release (library)
+sub_70f16669b16e#10	70f16669b16ee270	skip	std::shared_ptr release (compiler-generated)
+sub_70f16669b16e#11	70f16669b16ee270	skip	std::shared_ptr release (compiler-generated)
+sub_70f16669b16e#12	70f16669b16ee270	skip	std::shared_ptr release (compiler-generated)
 sub_70f16669b16e#13	70f16669b16ee270	skip	std::shared_ptr release (library)
 sub_70f16669b16e#14	70f16669b16ee270	skip	std::shared_ptr release (library)
 sub_70f16669b16e#15	70f16669b16ee270	skip	std::shared_ptr release (library)
@@ -6188,10 +6218,12 @@ sub_7c9956343f60	7c9956343f60bba9	inlined	skillwheel/skillwheelcontrollers.cpp:T
 sub_7cc9fc38b2b8	7cc9fc38b2b806a4	ported	gamewindow/storedialogcontroller.cpp:sameCategory
 sub_7ce2c2eb96cb	7ce2c2eb96cb7bec	ported	shared/downloadpool.cpp:TDownloadPool::isWaitingOrActive
 sub_7cf7e420b759#2	7cf7e420b75991b6	skip	moc property getter (generated in cip_gen)
+sub_7cf7e420b759#3	7cf7e420b75991b6	skip	moc property getter, provided by the generated cip base
 sub_7cf7e420b759#4	7cf7e420b75991b6	skip	moc property getter (generated in cip_gen)
 sub_7cf7e420b759#8	7cf7e420b75991b6	inlined	gamewindow/marketcontroller.cpp:appendStatistics
 sub_7cf987489504	7cf9874895040c7d	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::showLevelSpecialPopup
 sub_7cfd3752a300	7cfd3752a300836c	ported	proficiency/proficiencystorage.cpp:TProficiencyData::pick
+sub_7d0940e654d1	7d0940e654d168dd	ported	cyclopedia/combatstatsqmldata.cpp:TDefenceStatsQmlData::TDefenceStatsQmlData
 sub_7d13145ad42c#12	7d13145ad42cd336	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onCategoriesChanged
 sub_7d13145ad42c#5	7d13145ad42cd336	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModelSortFilterProxy::setOptions
 sub_7d13145ad42c#7	7d13145ad42cd336	inlined	gamewindow/battlelistcontroller.cpp:BattleListEntry::operator==
@@ -7197,6 +7229,7 @@ sub_9f53ff3eca53	9f53ff3eca530bf3	ported	gamewindow/assignactiondialogs.cpp:TRec
 sub_9f77eee726a4	9f77eee726a4a016	tested	creatures/creaturemovementspeedcalculator.cpp:TCreatureMovementSpeedCalculator::stepDuration	test=tests/client/creaturemovement_test.cpp
 sub_9fa21e4bab34	9fa21e4bab34c52c	ported	renderer/spritetexturecache.cpp:TSpriteTextureCache::removeAll
 sub_9faac4e0be24#2	9faac4e0be245e40	skip	moc property getter (generated in cip_gen)
+sub_9faac4e0be24#3	9faac4e0be245e40	skip	moc property getter, provided by the generated cip base
 sub_9faac4e0be24#5	9faac4e0be245e40	ported	gamewindow/friendsfriendlistpagecontroller.cpp:TFriendsFriendListPageController::friendList
 sub_9faac4e0be24#6	9faac4e0be245e40	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::accountCharacterList
 sub_9fac47bb7323	9fac47bb7323688b	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::TScreenshotManager
@@ -7457,6 +7490,8 @@ sub_acd6ae0e0be1	acd6ae0e0be1f9c9	inlined	exivaoptions/exivaoptionsstorage.cpp:d
 sub_acea65ffb058#3	acea65ffb058f96c	skip	std::vector growth / std::make_shared (library)
 sub_ad1bdf42a6c1	ad1bdf42a6c1e079	ported	cyclopedia/playeroffencestatsprovider.cpp:TPlayerOffenceStatsProvider::TPlayerOffenceStatsProvider
 sub_ad1bdf42a6c1#2	ad1bdf42a6c1e079	ported	cyclopedia/playeroffencestatsprovider.cpp:TPlayerOffenceStatsProvider::TPlayerOffenceStatsProvider
+sub_ad1bdf42a6c1#3	ad1bdf42a6c1e079	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::TPlayerDefenceStatsProvider
+sub_ad1bdf42a6c1#4	ad1bdf42a6c1e079	ported	cyclopedia/playerdefencestatsprovider.cpp:TPlayerDefenceStatsProvider::TPlayerDefenceStatsProvider
 sub_ad1bdf42a6c1#5	ad1bdf42a6c1e079	ported	cyclopedia/playermiscstatsprovider.cpp:TPlayerMiscStatsProvider::TPlayerMiscStatsProvider
 sub_ad1bdf42a6c1#6	ad1bdf42a6c1e079	ported	cyclopedia/playermiscstatsprovider.cpp:TPlayerMiscStatsProvider::TPlayerMiscStatsProvider
 sub_ad296ce9235f	ad296ce9235f1e34	inlined	gamewindow/containercontroller.cpp:TContainerController::update
@@ -7720,6 +7755,7 @@ sub_b8249c9e3366#325	b8249c9e33663f7b	skip	shared_ptr release (compiler-generate
 sub_b8249c9e3366#334	b8249c9e33663f7b	skip	std::shared_ptr release
 sub_b8249c9e3366#339	b8249c9e33663f7b	skip	shared_ptr release (library)
 sub_b8249c9e3366#340	b8249c9e33663f7b	skip	shared_ptr release (library)
+sub_b8249c9e3366#341	b8249c9e33663f7b	skip	std::shared_ptr release (compiler-generated)
 sub_b8249c9e3366#349	b8249c9e33663f7b	skip	std::shared_ptr release (library)
 sub_b8249c9e3366#350	b8249c9e33663f7b	skip	std::shared_ptr release (library)
 sub_b8249c9e3366#395	b8249c9e33663f7b	skip	std::shared_ptr control block
@@ -8149,6 +8185,7 @@ sub_c6c04ebb7497	c6c04ebb7497e0fb	ported	trade/npctradestorage.cpp:buyPrice
 sub_c70ea67fc4f3	c70ea67fc4f36de8	skip	compiler-generated destructor pair
 sub_c7126da1b1e6#2	c7126da1b1e6a741	skip	moc signal emitter
 sub_c7185121b752#2	c7185121b75217a4	skip	moc property getter (generated in cip_gen)
+sub_c7185121b752#3	c7185121b75217a4	skip	moc property getter, provided by the generated cip base
 sub_c7185121b752#6	c7185121b75217a4	ported	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::blacklist
 sub_c7185121b752#7	c7185121b75217a4	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::characterInfoDialogController
 sub_c719ed4c037a	c719ed4c037a02c8	ported	chat/chatchannel.h:TChatChannelIdentifier::isTeamFinderChannel
@@ -8196,6 +8233,7 @@ sub_c928a651c1e6	c928a651c1e6ca29	ported	market/marketstorage.cpp:maximumAmountB
 sub_c93e0412d36f	c93e0412d36f5381	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenMonsterCyclopediaMonsters
 sub_c946aa488a9c	c946aa488a9c12c7	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::bonusIconSmall
 sub_c94d9f36a24c	c94d9f36a24c9b5d	ported	gamewindow/housesinfodialogcontroller.cpp:bidReason
+sub_c95a9524390b	c95a9524390b11fd	skip	moc property getter, provided by the generated cip base
 sub_c97308a7fb45	c97308a7fb45a36b	inlined	gamewindow/imbuingdialogcontroller.cpp:TQmlExistingImbuement::TQmlExistingImbuement
 sub_c97321260f49#2	c97321260f49bc7c	inlined	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::captureContext
 sub_c9941de82721	c9941de827215fe2	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::restingBonusHoverText
@@ -8246,6 +8284,7 @@ sub_cc236db8f549	cc236db8f549ff89	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyc
 sub_cc498a733911	cc498a7339112377	skip	std container/shared_ptr template code or compiler-generated copy
 sub_cc561ae143c1	cc561ae143c11fa6	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_cc68b37ce2d9#2	cc68b37ce2d907ad	skip	moc property getter (generated in cip_gen)
+sub_cc68b37ce2d9#3	cc68b37ce2d907ad	skip	moc property getter, provided by the generated cip base
 sub_cc68b37ce2d9#7	cc68b37ce2d907ad	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::accountBadgeList
 sub_cc911646ddd7	cc911646ddd7dff6	ported	gamewindow/housesinfodialogcontroller.cpp:THousesInfoDialogController::onActionMoveOutClicked
 sub_ccb0816c926f	ccb0816c926f4b16	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::assignSelectedCharm
@@ -8472,6 +8511,7 @@ sub_d70c40dd14ef	d70c40dd14ef91f7	skip	compiler-generated destructor pair
 sub_d70edb5d986f	d70edb5d986f43ca	ported	cyclopedia/combatstatsqmldata.cpp:TOffenceStatsQmlData::makeSpecialCritDamages
 sub_d71125a04a1d	d71125a04a1de54f	ported	gamewindow/mousecursorcontroller.cpp:TMouseCursorController::loadImage
 sub_d71399962a05	d71399962a050ebf	ported	gamewindow/iteminfodialogcontroller.cpp:TItemInfoDialogController::canTrackAdditionalItems
+sub_d729f2d80e9d	d729f2d80e9de06b	skip	compiler-generated destructor pair
 sub_d740153312b4	d740153312b47892	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::requestToggleBestiaryTracking
 sub_d76b031d10b4	d76b031d10b4b439	skip	translation-unit static initializer (misattributed)
 sub_d794c373e7a8	d794c373e7a84400	inlined	gamewindow/friendsinvitespagecontroller.cpp:TFriendsInvitesPageController::showDialogTab
@@ -9080,6 +9120,7 @@ sub_eb596265a7cd	eb596265a7cd0a56	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyc
 sub_eb7c68da5e48	eb7c68da5e488d48	ported	gamewindow/chatcontroller.cpp:TChatChannelController::invalidateSizes
 sub_eb84d118ee55	eb84d118ee558db0	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_eb84d118ee55#2	eb84d118ee558db0	skip	moc property getter (generated in cip_gen)
+sub_eb84d118ee55#3	eb84d118ee558db0	skip	moc property getter, provided by the generated cip base
 sub_eb84d118ee55#4	eb84d118ee558db0	skip	moc property getter (generated in cip_gen)
 sub_eb84d118ee55#6	eb84d118ee558db0	inlined	gamewindow/marketcontroller.cpp:appendStatistics
 sub_ebb93811c4d7#634	ebb93811c4d7c2c0	skip	moc / QMetaType generated

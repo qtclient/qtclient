@@ -285,18 +285,7 @@ private:
     std::vector<TMonsterRace> m_classificationRaces;
 };
 
-/// CipSoft shells for split offence / defence / misc providers (CIP IOffenceStats etc.).
-/// Character Info fills QML from protocol hooks; these keep the last packet for reuse.
-class TPlayerDefenceStatsProvider final : public ::tibia::CipTyped
-{
-public:
-    TPlayerDefenceStatsProvider();
-    const std::optional<CyclopediaCharacterDefenceStats>& last() const { return m_last; }
-
-private:
-    std::vector<client::gamecore::Hook> m_hooks;
-    std::optional<CyclopediaCharacterDefenceStats> m_last;
-};
+// TPlayerDefenceStatsProvider — real implementation in playerdefencestatsprovider.h.
 
 // TPlayerMiscStatsProvider — real implementation in playermiscstatsprovider.h.
 

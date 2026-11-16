@@ -38,7 +38,6 @@ using Args = std::vector<std::any>;
 struct CipTypedKeep {
     TCyclopediaMapGameActionProvider tCyclopediaMapGameActionProvider;
     TGeneralPlayerStatisticsProvider tGeneralPlayerStatisticsProvider;
-    TPlayerDefenceStatsProvider tPlayerDefenceStatsProvider;
 };
 CipTypedKeep& typedKeep()
 {
@@ -57,15 +56,6 @@ TGeneralPlayerStatisticsProvider::TGeneralPlayerStatisticsProvider()
             m_mitigation = *mitigation;
         else if (args.size() > 1)
             m_mitigation = static_cast<double>(client::gamecore::argInt(args, 1));
-        return std::any{};
-    });
-}
-
-TPlayerDefenceStatsProvider::TPlayerDefenceStatsProvider()
-{
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterDefenceStats", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterDefenceStats>(&args[0]))
-            m_last = *data;
         return std::any{};
     });
 }
@@ -345,29 +335,23 @@ CyclopediaCharacterOffenceStats offenceStats(const ::tibia::protobuf::protocol::
 CyclopediaCharacterDefenceStats defenceStats(const ::tibia::protobuf::protocol::ProtocolCharacterInfoDefenceStats& d)
 {
     CyclopediaCharacterDefenceStats data{};
-    data.dodgeTotal = at(d.dodge(), 0);
-    data.dodgeBase = at(d.dodge(), 1);
-    data.dodgeBonus = at(d.dodge(), 2);
-    data.dodgeWheel = at(d.dodge(), 4);
+    for (size_t i = 0; i < data.dodge.size(); ++i)
+        data.dodge[i] = at(d.dodge(), static_cast<int>(i));
     data.magicShieldCapacity = d.magic_shield();
     data.magicShieldCapacityFlat = static_cast<uint16_t>(d.magic_shield_flat());
     data.magicShieldCapacityPercent = d.magic_shield_percent();
     data.reflectPhysical = static_cast<uint16_t>(d.reflect_physical());
     data.armor = static_cast<uint16_t>(d.armor());
-    data.defense = static_cast<uint16_t>(d.defence());
-    data.defenseEquipment = static_cast<uint16_t>(d.defence_equipment());
-    data.defenseSkillType = static_cast<uint8_t>(d.defence_skill_type());
-    data.shieldingSkill = static_cast<uint16_t>(d.shielding());
-    data.defenseWheel = static_cast<uint16_t>(d.defence_wheel());
-    data.mitigation = at(d.mitigation(), 0);
-    data.mitigationBase = at(d.mitigation(), 1);
-    data.mitigationEquipment = at(d.mitigation(), 2);
-    data.mitigationShield = at(d.mitigation(), 3);
-    data.mitigationWheel = at(d.mitigation(), 4);
-    for (const auto& r : d.resistances()) {
-        if (r.kind() == 4) // elemental resistances; the other kinds have no row
-            data.resistances.push_back({ static_cast<uint8_t>(r.element()), r.value() });
-    }
+    data.mantra = static_cast<uint16_t>(d.mantra());
+    data.defence = static_cast<uint16_t>(d.defence());
+    data.defenceEquipment = static_cast<uint16_t>(d.defence_equipment());
+    data.defenceSkillType = static_cast<uint8_t>(d.defence_skill_type());
+    data.defenceSkill = static_cast<int16_t>(d.shielding());
+    data.defenceWheel = static_cast<uint16_t>(d.defence_wheel());
+    for (size_t i = 0; i < data.mitigation.size(); ++i)
+        data.mitigation[i] = at(d.mitigation(), static_cast<int>(i));
+    for (const auto& r : d.resistances())
+        data.resistances.push_back({ static_cast<uint8_t>(r.kind()), static_cast<uint8_t>(r.element()), r.value() });
     return data;
 }
 
