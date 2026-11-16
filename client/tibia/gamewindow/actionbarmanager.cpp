@@ -398,10 +398,10 @@ void TActionBarManager::openSpellDialogFor(TActionBarController* bar, const int 
 bool TActionBarManager::onActionButtonTriggered(const input::TGameAction& action)
 {
     TActionBarController* target = bar(action.actionBarId);
-    if (!target || !tibia::game::isOnline())
-        return true;
-    TActionButtonController* button = target->button(action.actionButtonId);
-    if (!button)
+    TActionButtonController* button = target ? target->button(action.actionButtonId) : nullptr;
+    if (button)
+        button->setIsNewlyUnlocked(false);
+    if (!button || !tibia::game::isOnline())
         return true;
     Setting setting = target->settingAt(action.actionButtonId, -1);
     if (setting.kind == Setting::MULTI_ACTION) {

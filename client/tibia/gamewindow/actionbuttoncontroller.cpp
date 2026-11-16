@@ -467,13 +467,8 @@ QString TActionButtonController::cooldownText(const qint64 remainingMs)
 
 void TActionButtonController::onTriggered()
 {
-    auto action = input::mutableClone(*input::makeAction(A::ACTION_BUTTON_TRIGGERED));
-    action->actionBarId = int(m_actionBarID);
-    action->actionButtonId = int(m_actionButtonID);
-    action->multiActionIndex = m_multiActionIndex;
-    input::publish(action);
-    if (m_isNewlyUnlocked)
-        setIsNewlyUnlocked(false);
+    // A multi-action slot triggers its button, which runs its current slot.
+    input::publish(std::make_shared<input::TGameActionActionButtonTriggered>(int(m_actionBarID), int(m_actionButtonID)));
 }
 
 void TActionButtonController::contextMenuRequested()
