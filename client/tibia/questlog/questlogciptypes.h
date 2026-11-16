@@ -16,6 +16,12 @@
 #include <set>
 #include <vector>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageQuestLog;
+class GameserverMessageQuestLine;
+class GameserverMessageTrackQuestFlags;
+}
+
 namespace tibia {
 namespace questlog {
 
@@ -38,6 +44,14 @@ public:
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
     static void onServerMessageEnqueued(int opcode);
+
+    /// The quest lines of the quest log, handed to the storage ("onQuestLog").
+    static void handleQuestLogMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLog& message);
+    /// The parts of one quest line ("onQuestLine": quest line id, parts).
+    static void handleQuestLineMessage(const ::tibia::protobuf::protocol::GameserverMessageQuestLine& message);
+    /// The tracked quest flags, stamped with the current time ("onQuestTracker": flags,
+    /// timestamp, full list, and on a full list whether more flags can be tracked).
+    static void handleTrackedQuestFlagsMessage(const ::tibia::protobuf::protocol::GameserverMessageTrackQuestFlags& message);
 };
 
 using TQuestLineID = int;

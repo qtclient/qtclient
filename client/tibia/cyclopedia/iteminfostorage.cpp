@@ -124,25 +124,10 @@ TItemInfoStorage::TItemInfoStorage(QObject* parent)
         Q_EMIT classificationsChanged();
         return std::any{};
     });
-    // CIP KillTracking handler builds the drops for
-    // the loot tracking storage .
+    // The kill tracking handler's drops of one kill.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onKillTracker", [this](GameObject*, const Args& args) {
-        const auto* items = args.size() > 2 ? std::any_cast<std::vector<tibia::container::TInventorySlot>>(&args[2]) : nullptr;
-        if (!items)
-            return std::any{};
-        const auto* outfit = args.size() > 1 ? std::any_cast<Outfit>(&args[1]) : nullptr;
-        const QString monsterName = client::gamecore::argString(args, 0);
-        const qint64 now = QDateTime::currentMSecsSinceEpoch();
-        std::vector<DroppedLoot> drops;
-        drops.reserve(items->size());
-        for (const tibia::container::TInventorySlot& slot : *items) {
-            if (slot.empty())
-                continue;
-            const int count = slot.stackable ? std::max(1, static_cast<int>(slot.count)) : 1;
-            drops.push_back({ slot.typeId, count, monsterName, outfit ? *outfit : Outfit{},
-                              now + RecentDropDurationMs, static_cast<quint32>(now / 1000) });
-        }
-        onKill(std::move(drops));
+        if (const auto* drops = args.size() > 2 ? std::any_cast<std::vector<DroppedLoot>>(&args[2]) : nullptr)
+            onKill(*drops);
         return std::any{};
     });
 

@@ -2,12 +2,17 @@
 #include <cmath>
 #include "protocol/protocolciptypes.h"
 #include "client/staticdata.h"
+#include "cyclopedia/bosstiarystorage.h"
+#include "cyclopedia/creaturetrackerstorage.h"
 #include "cyclopedia/iteminfostorage.h"
+#include "game/inspectedobject.h"
 #include "container/containerciptypes.h"
 #include "creatures/creatureprotocolapply.h"
 #include <tibia/assets/thingtype.h>
 #include <tibia/client/outfit.h>
 #include <tibia/game/thingsession_forward.h>
+
+#include <QDateTime>
 
 #include <algorithm>
 #include <map>
@@ -128,6 +133,418 @@ void TCyclopediaProtocolMessageHandler::handleXpChangedMessage(const ::tibia::pr
     tibia::game::notify("onUpdateExperience", message.raw_experience(), message.final_experience());
 }
 
+namespace {
+
+using ::tibia::game::fillInspectedAppearance;
+using ::tibia::game::inspectionDetails;
+
+double at(const google::protobuf::RepeatedField<double>& list, const int index)
+{
+    return index < list.size() ? list.Get(index) : 0.0;
+}
+
+template<typename List>
+std::vector<CyclopediaCharacterOffenceStats::ElementModifier> elementModifiers(const List& list)
+{
+    std::vector<CyclopediaCharacterOffenceStats::ElementModifier> out;
+    for (const auto& e : list)
+        out.push_back({ static_cast<uint8_t>(e.key()), e.value() });
+    return out;
+}
+
+template<typename List>
+std::vector<CyclopediaCharacterOffenceStats::SkillBonus> skillBonuses(const List& list)
+{
+    std::vector<CyclopediaCharacterOffenceStats::SkillBonus> out;
+    for (const auto& e : list)
+        out.push_back({ static_cast<uint8_t>(e.skill_id()), e.first(), e.second() });
+    return out;
+}
+
+CyclopediaCharacterOffenceStats offenceStats(const ::tibia::protobuf::protocol::ProtocolCharacterInfoOffenceStats& o)
+{
+    CyclopediaCharacterOffenceStats data{};
+    data.critChanceTotal = at(o.crit_chance(), 0);
+    data.critChanceEquipament = at(o.crit_chance(), 1);
+    data.critChanceFlat = at(o.crit_chance(), 2);
+    data.critChanceImbuement = at(o.crit_chance(), 3);
+    data.critChanceWheel = at(o.crit_chance(), 4);
+    data.critChanceConcoction = at(o.crit_chance(), 5);
+    data.critChanceEventBonus = at(o.crit_chance(), 6);
+    data.critDamageTotal = at(o.crit_damage(), 0);
+    data.critDamageEquipament = at(o.crit_damage(), 1);
+    data.critDamageFlat = at(o.crit_damage(), 2);
+    data.critDamageImbuement = at(o.crit_damage(), 3);
+    data.critDamageWheel = at(o.crit_damage(), 4);
+    data.critDamageConcoction = at(o.crit_damage(), 5);
+    data.lifeLeechTotal = at(o.life_leech(), 0);
+    data.lifeLeechEquipament = at(o.life_leech(), 1);
+    data.lifeLeechImbuement = at(o.life_leech(), 2);
+    data.lifeLeechWheel = at(o.life_leech(), 3);
+    data.lifeLeechEventBonus = at(o.life_leech(), 4);
+    data.manaLeechTotal = at(o.mana_leech(), 0);
+    data.manaLeechEquipament = at(o.mana_leech(), 1);
+    data.manaLeechImbuement = at(o.mana_leech(), 2);
+    data.manaLeechWheel = at(o.mana_leech(), 3);
+    data.manaLeechEventBonus = at(o.mana_leech(), 4);
+    data.onslaught = at(o.onslaught(), 0);
+    data.onslaughtBase = at(o.onslaught(), 1);
+    data.onslaughtBonus = at(o.onslaught(), 2);
+    data.onslaughtEventBonus = at(o.onslaught(), 3);
+    data.cleavePercent = o.cleave();
+    for (const uint32_t value : o.perfect_shot())
+        data.perfectShotDamage.push_back(static_cast<uint16_t>(value));
+    const auto flat = [&o](const int i) { return static_cast<uint16_t>(i < o.flat_damage_size() ? o.flat_damage(i) : 0); };
+    data.flatDamage = flat(0);
+    data.flatDamageBase = flat(1);
+    data.flatDamageWheel = flat(2);
+    data.weaponAttack = static_cast<uint16_t>(o.weapon_attack());
+    data.weaponFlatModifier = static_cast<uint16_t>(o.weapon_flat_modifier());
+    data.weaponDamage = static_cast<uint16_t>(o.weapon_damage());
+    data.weaponSkillType = static_cast<uint8_t>(o.weapon_skill_type());
+    data.weaponSkillLevel = static_cast<uint16_t>(o.weapon_skill_level());
+    data.weaponSkillModifier = static_cast<uint16_t>(o.weapon_skill_modifier());
+    data.weaponElement = static_cast<uint8_t>(o.weapon_element());
+    data.weaponElementDamage = o.converted_damage();
+    data.weaponElementType = static_cast<uint8_t>(o.converted_element());
+    for (const auto& a : o.accuracy())
+        data.weaponAccuracy.push_back({ static_cast<uint8_t>(a.key()), a.value() });
+    data.damagePowerfulFoes = o.powerful_foes();
+    for (const auto& t : o.specific_targets())
+        data.damageSpecificTargets.push_back({ t.name(), t.value() });
+    data.damageElements = elementModifiers(o.crit_chance_elements());
+    data.offensiveRuneDamage = o.offensive_runes();
+    data.autoAttackDamage = o.auto_attack();
+    data.critDamageElements = elementModifiers(o.crit_damage_elements());
+    data.critDamageOffensiveRunes = o.crit_damage_runes();
+    data.critDamageAutoAttack = o.crit_damage_auto_attack();
+    data.lifeGainHit = static_cast<uint16_t>(o.life_on_hit());
+    data.manaGainHit = static_cast<uint16_t>(o.mana_on_hit());
+    data.lifeGainKill = static_cast<uint16_t>(o.life_on_kill());
+    data.manaGainKill = static_cast<uint16_t>(o.mana_on_kill());
+    data.extraDamageSkills = skillBonuses(o.extra_damage_skills());
+    data.extraDamageSpells = skillBonuses(o.extra_damage_spells());
+    data.extraHealingSpells = skillBonuses(o.extra_healing_spells());
+    data.damageHighHp = o.damage_high_health();
+    data.damageLowHp = o.damage_low_health();
+    data.armorPenetration = o.armor_penetration();
+    data.elementalPierce = elementModifiers(o.elemental_pierce());
+    return data;
+}
+
+CyclopediaCharacterDefenceStats defenceStats(const ::tibia::protobuf::protocol::ProtocolCharacterInfoDefenceStats& d)
+{
+    CyclopediaCharacterDefenceStats data{};
+    data.dodgeTotal = at(d.dodge(), 0);
+    data.dodgeBase = at(d.dodge(), 1);
+    data.dodgeBonus = at(d.dodge(), 2);
+    data.dodgeWheel = at(d.dodge(), 4);
+    data.magicShieldCapacity = d.magic_shield();
+    data.magicShieldCapacityFlat = static_cast<uint16_t>(d.magic_shield_flat());
+    data.magicShieldCapacityPercent = d.magic_shield_percent();
+    data.reflectPhysical = static_cast<uint16_t>(d.reflect_physical());
+    data.armor = static_cast<uint16_t>(d.armor());
+    data.defense = static_cast<uint16_t>(d.defence());
+    data.defenseEquipment = static_cast<uint16_t>(d.defence_equipment());
+    data.defenseSkillType = static_cast<uint8_t>(d.defence_skill_type());
+    data.shieldingSkill = static_cast<uint16_t>(d.shielding());
+    data.defenseWheel = static_cast<uint16_t>(d.defence_wheel());
+    data.mitigation = at(d.mitigation(), 0);
+    data.mitigationBase = at(d.mitigation(), 1);
+    data.mitigationEquipment = at(d.mitigation(), 2);
+    data.mitigationShield = at(d.mitigation(), 3);
+    data.mitigationWheel = at(d.mitigation(), 4);
+    for (const auto& r : d.resistances()) {
+        if (r.kind() == 4) // elemental resistances; the other kinds have no row
+            data.resistances.push_back({ static_cast<uint8_t>(r.element()), r.value() });
+    }
+    return data;
+}
+
+CyclopediaCharacterMiscStats miscStats(const ::tibia::protobuf::protocol::ProtocolCharacterInfoMiscStats& m)
+{
+    CyclopediaCharacterMiscStats data{};
+    data.momentumTotal = at(m.momentum(), 0);
+    data.momentumBase = at(m.momentum(), 1);
+    data.momentumBonus = at(m.momentum(), 2);
+    data.momentumWheel = at(m.momentum(), 3);
+    data.momentumEventBonus = at(m.momentum(), 4);
+    data.dodgeTotal = at(m.dodge(), 0);
+    data.dodgeBase = at(m.dodge(), 1);
+    data.dodgeBonus = at(m.dodge(), 2);
+    data.dodgeWheel = at(m.dodge(), 3);
+    data.damageReflectionTotal = at(m.damage_reflection(), 0);
+    data.damageReflectionBase = at(m.damage_reflection(), 1);
+    data.damageReflectionBonus = at(m.damage_reflection(), 2);
+    data.haveBlesses = static_cast<uint8_t>(m.blessings());
+    data.totalBlesses = static_cast<uint8_t>(m.total_blessings());
+    for (const auto& c : m.concoctions())
+        data.concoctions.push_back({ static_cast<uint16_t>(c.id()), c.duration() });
+    for (const auto& f : m.foods())
+        data.activeFoods.push_back({ static_cast<uint16_t>(f.id()), f.duration() });
+    const auto augments = [](const auto& list) {
+        std::vector<CyclopediaCharacterMiscStats::Augment> out;
+        for (const auto& a : list)
+            out.push_back({ static_cast<uint16_t>(a.spell_id()), static_cast<uint8_t>(a.type()), a.value() });
+        return out;
+    };
+    data.weaponProficiencyAugments = augments(m.proficiency_augments());
+    data.wheelAugments = augments(m.wheel_augments());
+    data.equippedAugments = augments(m.equipped_augments());
+    return data;
+}
+
+std::vector<ItemSummary> itemCounts(
+    const google::protobuf::RepeatedPtrField<::tibia::protobuf::protocol::ProtocolCharacterInfoItemCount>& list)
+{
+    std::vector<ItemSummary> out;
+    for (const auto& e : list)
+        out.push_back({ static_cast<uint16_t>(e.object_id()), static_cast<uint8_t>(e.tier()), e.amount() });
+    return out;
+}
+
+} // namespace
+
+void TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageCyclopediaCharacterInfo& m)
+{
+    const int type = static_cast<int>(m.info_type());
+    if (m.error_code() != 0) {
+        tibia::game::notify("onCyclopediaCharacterInfoError", type, static_cast<int>(m.error_code()));
+        return;
+    }
+    switch (type) {
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_BASEINFORMATION: {
+        const auto& b = m.base();
+        tibia::game::notify("onCyclopediaCharacterBaseInformation", b.name(), b.vocation(), static_cast<uint16_t>(b.level()),
+                            creatures::outfitFromProtocol(b.outfit(), nullptr), b.own_character(), b.title());
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_GENERALSTATS: {
+        const auto& g = m.general();
+        CyclopediaCharacterGeneralStats stats{};
+        stats.experience = g.experience();
+        stats.level = static_cast<uint16_t>(g.level());
+        stats.levelPercent = static_cast<uint16_t>(g.level_percent() / 100);
+        stats.baseExpGain = static_cast<uint16_t>(g.base_xp_gain());
+        stats.lowLevelExpBonus = static_cast<uint16_t>(g.low_level_xp_bonus());
+        stats.XpBoostPercent = static_cast<uint16_t>(g.xp_boost_percent());
+        stats.staminaExpBonus = static_cast<uint16_t>(g.stamina_xp_bonus());
+        stats.XpBoostBonusRemainingTime = static_cast<uint16_t>(g.xp_boost_remaining());
+        stats.canBuyXpBoost = g.can_buy_xp_boost() ? 1 : 0;
+        stats.health = g.health();
+        stats.maxHealth = g.max_health();
+        stats.mana = g.mana();
+        stats.maxMana = g.max_mana();
+        stats.soul = static_cast<uint8_t>(g.soul());
+        stats.staminaMinutes = static_cast<uint16_t>(g.stamina_minutes());
+        stats.regenerationCondition = static_cast<uint16_t>(g.regeneration());
+        stats.offlineTrainingTime = static_cast<uint16_t>(g.offline_training());
+        stats.speed = static_cast<uint16_t>(g.speed());
+        stats.baseSpeed = static_cast<uint16_t>(g.base_speed());
+        stats.capacity = g.capacity();
+        stats.baseCapacity = g.base_capacity();
+        stats.freeCapacity = g.free_capacity();
+        std::vector<std::vector<uint16_t>> skills;
+        for (int i = 0; i < g.skills_size(); ++i) {
+            const auto& s = g.skills(i);
+            if (i == 0) { // the magic level leads the list
+                stats.magicLevel = static_cast<uint16_t>(s.level());
+                stats.baseMagicLevel = static_cast<uint16_t>(s.base_level());
+                stats.loyaltyMagicLevel = static_cast<uint16_t>(s.loyalty_level());
+                stats.magicLevelPercent = static_cast<uint16_t>(s.percent());
+                continue;
+            }
+            skills.push_back({ static_cast<uint16_t>(s.level()), static_cast<uint16_t>(s.base_level()),
+                               static_cast<uint16_t>(s.percent() / 100) });
+        }
+        std::vector<std::tuple<uint8_t, uint16_t>> combats;
+        for (const auto& e : g.specialized_magic_levels())
+            combats.emplace_back(static_cast<uint8_t>(e.element()), static_cast<uint16_t>(e.value()));
+        tibia::game::processCyclopediaCharacterGeneralStats(stats, skills, combats);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS: {
+        tibia::game::notify("onCyclopediaCharacterPagination", type, static_cast<int>(m.current_page()), static_cast<int>(m.page_count()));
+        CyclopediaCharacterRecentDeaths data;
+        for (const auto& d : m.deaths())
+            data.entries.push_back({ d.timestamp(), d.cause() });
+        tibia::game::processCyclopediaCharacterRecentDeaths(data);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_RECENTPVPKILLS: {
+        tibia::game::notify("onCyclopediaCharacterPagination", type, static_cast<int>(m.current_page()), static_cast<int>(m.page_count()));
+        CyclopediaCharacterRecentPvPKills data;
+        for (const auto& k : m.pvp_kills())
+            data.entries.push_back({ k.timestamp(), k.description(), static_cast<uint8_t>(k.status()) });
+        tibia::game::processCyclopediaCharacterRecentPvpKills(data);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_ACHIEVEMENTS: {
+        std::vector<std::tuple<uint16_t, uint32_t, bool, std::string, std::string, uint8_t>> achievements;
+        for (const auto& a : m.achievements())
+            achievements.emplace_back(static_cast<uint16_t>(a.id()), a.timestamp(), a.secret(), a.name(), a.description(),
+                                      static_cast<uint8_t>(a.grade()));
+        tibia::game::notify("onCyclopediaCharacterAchievements", static_cast<int>(m.achievement_points()),
+                            static_cast<int>(m.secret_achievements()), achievements);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_ITEMSUMMARY: {
+        CyclopediaCharacterItemSummary data;
+        data.inventory = itemCounts(m.inventory_items());
+        data.store = itemCounts(m.store_items());
+        data.stash = itemCounts(m.stash_items());
+        data.depot = itemCounts(m.depot_items());
+        data.inbox = itemCounts(m.inbox_items());
+        tibia::game::processCyclopediaCharacterItemSummary(data);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_OUTFITSMOUNTS: {
+        OutfitColorStruct colors{};
+        colors.lookHead = static_cast<uint8_t>(m.outfit_colors().head());
+        colors.lookBody = static_cast<uint8_t>(m.outfit_colors().body());
+        colors.lookLegs = static_cast<uint8_t>(m.outfit_colors().legs());
+        colors.lookFeet = static_cast<uint8_t>(m.outfit_colors().feet());
+        colors.lookMountHead = static_cast<uint8_t>(m.mount_colors().head());
+        colors.lookMountBody = static_cast<uint8_t>(m.mount_colors().body());
+        colors.lookMountLegs = static_cast<uint8_t>(m.mount_colors().legs());
+        colors.lookMountFeet = static_cast<uint8_t>(m.mount_colors().feet());
+        std::vector<CharacterInfoOutfits> outfits;
+        for (const auto& o : m.outfits())
+            outfits.push_back({ static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.addons()),
+                                static_cast<uint8_t>(o.source()), o.current() });
+        std::vector<CharacterInfoMounts> mounts;
+        for (const auto& o : m.mounts())
+            mounts.push_back({ static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.source()), o.current() });
+        std::vector<CharacterInfoFamiliar> familiars;
+        for (const auto& o : m.familiars())
+            familiars.push_back({ static_cast<uint16_t>(o.look_type()), o.name(), static_cast<uint8_t>(o.source()), o.current() });
+        tibia::game::processCyclopediaCharacterAppearances(colors, outfits, mounts, familiars);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_STORESUMMARY: {
+        std::vector<std::tuple<std::string, uint8_t>> blessings;
+        for (const auto& b : m.blessings())
+            blessings.emplace_back(b.name(), static_cast<uint8_t>(b.count()));
+        std::vector<uint16_t> jobs;
+        for (const uint32_t job : m.hireling_jobs())
+            jobs.push_back(static_cast<uint16_t>(job));
+        std::vector<std::tuple<uint16_t, std::string, uint8_t>> houseItems;
+        for (const auto& h : m.house_items())
+            houseItems.emplace_back(static_cast<uint16_t>(h.object_id()), h.name(), static_cast<uint8_t>(h.count()));
+        std::vector<std::tuple<std::string, uint8_t>> hirelingOutfits;
+        for (const auto& o : m.hireling_outfits())
+            hirelingOutfits.emplace_back(o.name(), static_cast<uint8_t>(o.count()));
+        tibia::game::notify("onParseCyclopediaStoreSummary", m.xp_boost_time(), m.daily_xp_boost_time(), blessings,
+                            static_cast<uint8_t>(m.prey_slots()), static_cast<uint8_t>(m.prey_wildcards()), m.weekly_task_expansion(),
+                            static_cast<uint8_t>(m.instant_rewards()), m.charm_expansion(), static_cast<uint8_t>(m.hirelings()), jobs,
+                            houseItems, hirelingOutfits);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_INSPECTION: {
+        CyclopediaCharacterInspection data;
+        data.inspectionType = tibia::client::INSPECT_CYCLOPEDIA;
+        for (const auto& o : m.inspected_objects()) {
+            InspectionInventoryItem entry;
+            entry.slot = static_cast<uint8_t>(o.slot());
+            entry.name = o.name();
+            fillInspectedAppearance(entry, o.item());
+            entry.imbuements.assign(o.imbuement_icons().begin(), o.imbuement_icons().end());
+            entry.descriptions = inspectionDetails(o.details());
+            data.inventoryItems.push_back(std::move(entry));
+        }
+        data.playerName = m.player_name();
+        data.outfit = creatures::outfitFromProtocol(m.outfit(), nullptr);
+        data.playerDescriptions = inspectionDetails(m.player_details());
+        tibia::game::processCyclopediaCharacterInspection(data);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_BADGES: {
+        std::vector<std::tuple<uint32_t, std::string>> badges;
+        for (const auto& b : m.badges())
+            badges.emplace_back(b.id(), b.name());
+        tibia::game::processCyclopediaCharacterGeneralStatsBadge(m.show_account() ? 1 : 0, m.online() ? 1 : 0, m.premium() ? 1 : 0,
+                                                                 m.loyalty_title(), badges);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_TITLES: {
+        std::vector<std::tuple<uint8_t, std::string, std::string, bool, bool>> titles;
+        for (const auto& t : m.titles())
+            titles.emplace_back(static_cast<uint8_t>(t.id()), t.name(), t.description(), t.permanent(), t.unlocked());
+        tibia::game::notify("onCyclopediaCharacterTitles", static_cast<int>(m.current_title()), titles);
+        break;
+    }
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_OFFENCESTATS:
+        tibia::game::processCyclopediaCharacterOffenceStats(offenceStats(m.offence()));
+        break;
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_DEFENCESTATS:
+        tibia::game::processCyclopediaCharacterDefenceStats(defenceStats(m.defence()));
+        break;
+    case tibia::client::CYCLOPEDIA_CHARACTERINFO_MISCSTATS:
+        tibia::game::processCyclopediaCharacterMiscStats(miscStats(m.misc()));
+        break;
+    default:
+        break;
+    }
+}
+
+void TCyclopediaProtocolMessageHandler::handleKillTrackingMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageKillTracking& message)
+{
+    const QString monsterName = QString::fromStdString(message.name());
+    const Outfit outfit = creatures::outfitFromProtocol(message.outfit(), nullptr);
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    std::vector<TItemInfoStorage::DroppedLoot> drops;
+    drops.reserve(static_cast<std::size_t>(message.items_size()));
+    for (const auto& item : message.items()) {
+        const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(item);
+        if (slot.empty())
+            continue;
+        // A cumulative object drops with its count, any other once.
+        const int count = slot.stackable ? std::max(1, static_cast<int>(slot.count)) : 1;
+        drops.push_back({ slot.typeId, count, monsterName, outfit, now + TItemInfoStorage::RecentDropDurationMs,
+                          static_cast<quint32>(now / 1000) });
+    }
+    tibia::game::notify("onKillTracker", message.name(), outfit, drops);
+}
+
+void TCyclopediaProtocolMessageHandler::handleImpactTrackingMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageImpactTracking& message)
+{
+    const auto type = static_cast<uint8_t>(message.type());
+    // Damage dealt splits into its physical part and its elemental part.
+    const auto element = static_cast<uint8_t>(type == 1 ? message.elemental_type() : message.element());
+    tibia::game::notify("onImpactTracker", type, message.amount(), element, message.source(), message.elemental_amount());
+}
+
+void TCyclopediaProtocolMessageHandler::handleItemWastedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemWasted& message)
+{
+    tibia::game::notify("onSupplyTracker", static_cast<uint16_t>(message.object_id()));
+}
+
+void TCyclopediaProtocolMessageHandler::handleItemLootedMessage(const ::tibia::protobuf::protocol::GameserverMessageItemLooted& message)
+{
+    const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(message.item());
+    const uint16_t count = slot.stackable ? slot.count : 1;
+    tibia::game::notify("onLootStats", slot.typeId, count, message.name());
+}
+
+void TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message)
+{
+    switch (message.resource_type()) {
+    case tibia::client::RESOURCE_CHARM:
+    case tibia::client::RESOURCE_MINOR_CHARM:
+    case tibia::client::RESOURCE_MAX_CHARM:
+    case tibia::client::RESOURCE_MAX_MINOR_CHARM:
+        tibia::game::localPlayerSetResourceBalance(static_cast<tibia::client::ResourceTypes_t>(message.resource_type()),
+                                                   static_cast<uint64_t>(static_cast<uint32_t>(message.small_value())));
+        break;
+    default:
+        break;
+    }
+}
+
 void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
@@ -141,7 +558,7 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
         break;
     case 206:
         if (shadow->HasExtension(GameserverMessageItemWasted::gameserver_message_item_wasted))
-            tibia::game::notify("onSupplyTracker", static_cast<uint16_t>(shadow->GetExtension(GameserverMessageItemWasted::gameserver_message_item_wasted).object_id()));
+            handleItemWastedMessage(shadow->GetExtension(GameserverMessageItemWasted::gameserver_message_item_wasted));
         break;
     case 216:
         if (shadow->HasExtension(GameserverMessageMonsterCyclopediaBonusEffects::gameserver_message_monster_cyclopedia_bonus_effects)) {
@@ -172,9 +589,14 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
     case 238:
         if (shadow->HasExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance)) {
             const auto& m = shadow->GetExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance);
-            const auto type = static_cast<tibia::client::ResourceTypes_t>(m.resource_type());
-            tibia::game::localPlayerSetResourceBalance(
-                type, m.has_small_value() ? static_cast<uint64_t>(static_cast<uint32_t>(m.small_value())) : m.value());
+            if (m.resource_type() >= tibia::client::RESOURCE_CHARM && m.resource_type() <= tibia::client::RESOURCE_MAX_MINOR_CHARM) {
+                handleResourceBalanceMessage(m);
+            } else {
+                // The other balances belong to the game session's handlers.
+                const auto type = static_cast<tibia::client::ResourceTypes_t>(m.resource_type());
+                tibia::game::localPlayerSetResourceBalance(
+                    type, m.has_small_value() ? static_cast<uint64_t>(static_cast<uint32_t>(m.small_value())) : m.value());
+            }
         }
         break;
     case 195:
@@ -345,35 +767,20 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
             handleMonsterCyclopediaMessage(shadow->GetExtension(GameserverMessageMonsterCyclopedia::gameserver_message_monster_cyclopedia));
         break;
     case 204:
-        if (shadow->HasExtension(GameserverMessageImpactTracking::gameserver_message_impact_tracking)) {
-            const auto& m = shadow->GetExtension(GameserverMessageImpactTracking::gameserver_message_impact_tracking);
-            const auto type = static_cast<uint8_t>(m.type());
-            // Damage dealt splits into its physical part and its elemental part.
-            const auto element = static_cast<uint8_t>(type == 1 ? m.elemental_type() : m.element());
-            tibia::game::notify("onImpactTracker", type, m.amount(), element, m.source(), m.elemental_amount());
-        }
+        if (shadow->HasExtension(GameserverMessageImpactTracking::gameserver_message_impact_tracking))
+            handleImpactTrackingMessage(shadow->GetExtension(GameserverMessageImpactTracking::gameserver_message_impact_tracking));
         break;
     case 205:
         if (shadow->HasExtension(GameserverMessageMarketStatistics::gameserver_message_market_statistics))
             handleMarketStatisticsMessage(shadow->GetExtension(GameserverMessageMarketStatistics::gameserver_message_market_statistics));
         break;
     case 207:
-        if (shadow->HasExtension(GameserverMessageItemLooted::gameserver_message_item_looted)) {
-            const auto& m = shadow->GetExtension(GameserverMessageItemLooted::gameserver_message_item_looted);
-            const auto slot = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(m.item());
-            const uint16_t count = slot.stackable ? std::max<uint16_t>(1, slot.count) : 1;
-            tibia::game::notify("onLootStats", slot.typeId, count, m.name());
-        }
+        if (shadow->HasExtension(GameserverMessageItemLooted::gameserver_message_item_looted))
+            handleItemLootedMessage(shadow->GetExtension(GameserverMessageItemLooted::gameserver_message_item_looted));
         break;
     case 209:
-        if (shadow->HasExtension(GameserverMessageKillTracking::gameserver_message_kill_tracking)) {
-            const auto& m = shadow->GetExtension(GameserverMessageKillTracking::gameserver_message_kill_tracking);
-            std::vector<::tibia::container::TInventorySlot> items;
-            items.reserve(static_cast<size_t>(m.items_size()));
-            for (const auto& item : m.items())
-                items.push_back(::tibia::container::TInventorySlot::fromProtocolInventoryItem(item));
-            tibia::game::notify("onKillTracker", m.name(), creatures::outfitFromProtocol(m.outfit(), nullptr), items);
-        }
+        if (shadow->HasExtension(GameserverMessageKillTracking::gameserver_message_kill_tracking))
+            handleKillTrackingMessage(shadow->GetExtension(GameserverMessageKillTracking::gameserver_message_kill_tracking));
         break;
     default:
         break;
@@ -605,19 +1012,38 @@ void TCyclopediaProtocolMessageHandler::sendPartyHuntObjectPrices(const std::vec
     protocol::sendGameclientMessage(std::move(message));
 }
 
+void TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageBestiaryTracker& message)
+{
+    const int trackerType = static_cast<int>(message.tracker_type());
+    std::vector<TCreatureTrackerEntry> entries;
+    entries.reserve(static_cast<std::size_t>(message.entries_size()));
+    // The pack contract's rows: race, kills, the three unlock thresholds, completed.
+    std::vector<std::tuple<uint16_t, uint32_t, uint16_t, uint16_t, uint16_t, uint8_t>> rows;
+    for (const auto& e : message.entries()) {
+        rows.emplace_back(static_cast<uint16_t>(e.race_id()), e.kills(), static_cast<uint16_t>(e.first_unlock()),
+                          static_cast<uint16_t>(e.second_unlock()), static_cast<uint16_t>(e.last_unlock()),
+                          static_cast<uint8_t>(e.completed() ? 1 : 0));
+        TCreatureTrackerEntry& entry = entries.emplace_back();
+        entry.raceId = static_cast<uint16_t>(e.race_id());
+        // The monster's or the boss's static race name, each word capitalised.
+        entry.name = capitalizeWords(QString::fromStdString(tibia::game::raceData(static_cast<uint32_t>(entry.raceId)).name));
+        entry.currentKills = e.kills();
+        entry.killsForDetails1 = static_cast<uint16_t>(e.first_unlock());
+        entry.killsForDetails2 = static_cast<uint16_t>(e.second_unlock());
+        entry.killsForDetails3 = static_cast<uint16_t>(e.last_unlock());
+        entry.status = e.completed() ? 1 : 0;
+    }
+    tibia::game::notify("onCreatureTracker", trackerType, entries);
+    tibia::game::notify("onParseCyclopediaTracker", static_cast<uint8_t>(trackerType), rows);
+}
+
 void TBestiaryTrackerProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
     const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || opcode != 185 || !shadow->HasExtension(GameserverMessageBestiaryTracker::gameserver_message_bestiary_tracker))
-        return;
-    const auto& m = shadow->GetExtension(GameserverMessageBestiaryTracker::gameserver_message_bestiary_tracker);
-    std::vector<std::tuple<uint16_t, uint32_t, uint16_t, uint16_t, uint16_t, uint8_t>> entries;
-    for (const auto& e : m.entries())
-        entries.emplace_back(static_cast<uint16_t>(e.race_id()), e.kills(), static_cast<uint16_t>(e.first_unlock()),
-                             static_cast<uint16_t>(e.second_unlock()), static_cast<uint16_t>(e.last_unlock()),
-                             static_cast<uint8_t>(e.completed() ? 1 : 0));
-    tibia::game::notify("onParseCyclopediaTracker", static_cast<uint8_t>(m.tracker_type()), entries);
+    if (shadow && opcode == 185 && shadow->HasExtension(GameserverMessageBestiaryTracker::gameserver_message_bestiary_tracker))
+        handleBestiaryTrackerMessage(shadow->GetExtension(GameserverMessageBestiaryTracker::gameserver_message_bestiary_tracker));
 }
 
 }

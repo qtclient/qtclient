@@ -662,14 +662,6 @@ void processEditList(const uint32_t id, const uint8_t doorId, const std::string_
 {
     tibia::game::notify("onEditList", id, doorId, text);
 }
-void processQuestLog(const std::vector<std::tuple<uint16_t, std::string, bool>>& questList)
-{
-    tibia::game::notify("onQuestLog", questList);
-}
-void processQuestLine(const uint16_t questId, const std::vector<std::tuple<std::string, std::string, uint16_t>>& questMissions)
-{
-    tibia::game::notify("onQuestLine", questId, questMissions);
-}
 
 void processModalDialog(uint32_t id, std::string_view title, std::string_view message,
                         const std::vector<std::tuple<uint8_t, std::string>>& buttonList, uint8_t enterButton,

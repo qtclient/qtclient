@@ -400,23 +400,6 @@ void TQuestLogController::ensureStorage()
     loadStorage();
 }
 
-void TQuestLogController::setQuestLines(const std::vector<std::tuple<uint16_t, std::string, bool>>& lines)
-{
-    std::vector<questlog::TQuestLine> questLines;
-    for (const auto& [id, name, completed] : lines)
-        questLines.push_back({ .id = id, .name = QString::fromStdString(name), .completed = completed, .parts = {} });
-    m_storage.setQuestLines(questLines);
-}
-
-void TQuestLogController::setQuestLineParts(const uint16_t questLineId,
-                                            const std::vector<std::tuple<std::string, std::string, uint16_t>>& missions)
-{
-    std::vector<questlog::TQuestLinePart> parts;
-    for (const auto& [name, description, id] : missions)
-        parts.emplace_back(id, QString::fromStdString(name), QString::fromStdString(description));
-    m_storage.setQuestLineParts(questLineId, parts);
-}
-
 void TQuestLogController::clear()
 {
     dialog()->close();

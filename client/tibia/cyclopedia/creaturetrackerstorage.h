@@ -38,8 +38,11 @@ public:
     bool canTrackMoreMonsters() const { return static_cast<int>(m_monsters.size()) < TrackLimit; }
     bool canTrackMoreBosses() const { return static_cast<int>(m_bosses.size()) < TrackLimit; }
 
+    /// The tracked rows of the bestiary (tracker 0) and of the bosstiary.
+    void setTrackedMonsters(const std::vector<TCreatureTrackerEntry>& entries);
+    void setTrackedBosses(const std::vector<TCreatureTrackerEntry>& entries);
+
 private:
-    void applyTracker(int trackerType, const std::vector<TCreatureTrackerEntry>& entries);
 
     std::vector<client::gamecore::Hook> m_hooks;
     std::vector<TCreatureTrackerEntry> m_monsters;

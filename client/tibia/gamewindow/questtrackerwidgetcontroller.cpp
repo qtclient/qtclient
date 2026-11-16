@@ -93,34 +93,6 @@ bool TQuestTrackerStorage::autoUntrackCompletedQuests() const
     return m_storage->autoUntrackCompletedQuests();
 }
 
-namespace {
-
-questlog::TQuestFlagData flagData(const TQuestTrackerStorage::Entry& entry)
-{
-    return { .questLineId = entry.questLineId,
-             .questLineName = entry.questLineName,
-             .questFlagName = entry.questLinePart,
-             .description = entry.description };
-}
-
-}
-
-void TQuestTrackerStorage::setTrackedQuestFlags(const QList<Entry>& entries, const int remaining)
-{
-    std::map<questlog::TQuestFlagID, questlog::TQuestFlagData> flags;
-    for (const Entry& entry : entries)
-        flags.emplace(questlog::TQuestFlagID(entry.questFlagId), flagData(entry));
-    m_remaining = remaining;
-    m_storage->setCanTrackAdditionalQuestFlags(remaining > 0);
-    m_storage->setTrackedQuestFlags(flags, QDateTime::currentMSecsSinceEpoch(), true);
-}
-
-void TQuestTrackerStorage::updateQuestFlag(const Entry& entry)
-{
-    m_storage->setTrackedQuestFlags({ { questlog::TQuestFlagID(entry.questFlagId), flagData(entry) } },
-                                    QDateTime::currentMSecsSinceEpoch(), false);
-}
-
 void TQuestTrackerStorage::setPinned(const int questFlagId, const bool pinned)
 {
     m_storage->setQuestFlagPinned(questlog::TQuestFlagID(questFlagId), pinned);
@@ -153,7 +125,6 @@ void TQuestTrackerStorage::setOption(const int option, const bool value)
 void TQuestTrackerStorage::clear()
 {
     m_entries.clear();
-    m_remaining = 25;
     Q_EMIT entriesChanged();
 }
 

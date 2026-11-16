@@ -61,7 +61,9 @@ struct TBossSlotsData
     std::vector<TAssignableBoss> assignable;
 };
 
-/// CIP + : the static race name, each word capitalised.
+/// CIP: every word of `name` with its first letter upper-cased; empty words dropped.
+QString capitalizeWords(const QString& name);
+/// CIP: the static race name, each word capitalised.
 QString bossName(int raceId);
 /// CIP .
 QString bossRaritySource(int category);

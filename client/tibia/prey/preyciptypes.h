@@ -8,6 +8,12 @@
 
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessagePreyData;
+class GameserverMessagePreyPrices;
+class GameserverMessagePreyTimeLeft;
+}
+
 namespace tibia {
 namespace prey {
 
@@ -28,8 +34,13 @@ class TPreyProtocolMessageHandler final : public cip::tibia::prey::TPreyProtocol
 public:
     using cip::tibia::prey::TPreyProtocolMessageHandler::TPreyProtocolMessageHandler;
 public:
-    /// Tip Q→H wire: PreyTimeLeft and PreyPrices from `serverMessageEnqueued`.
+    /// Tip Q→H wire: PreyData, PreyTimeLeft and PreyPrices from `serverMessageEnqueued`.
     static void onServerMessageEnqueued(int opcode);
+
+    static void handlePreyTimeLeftMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyTimeLeft& message);
+    /// One slot's state; every state also carries the next free reroll and the option.
+    static void handlePreyDataMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyData& message);
+    static void handlePreyPricesMessage(const ::tibia::protobuf::protocol::GameserverMessagePreyPrices& message);
 };
 
 }
