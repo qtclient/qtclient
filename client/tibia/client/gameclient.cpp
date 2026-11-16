@@ -118,15 +118,15 @@ QString worldRules(int pvpType)
     }
 }
 
-QString premiumStatus(const authentication::PlaySessionData& session)
+QString premiumStatus(const authentication::TPlaySessionData& session)
 {
     // CIP's premium type: 0 free, 1 premium, 2 free premium (premium without
-    // an end date: the product's free-premium worlds). The login reply has no
-    // account state, so the account counts as active.
+    // an end date: the product's free-premium worlds).
     const qint64 seconds = session.premiumUntil - QDateTime::currentSecsSinceEpoch();
     const int premiumType = !session.isPremium ? 0 : seconds <= 0 ? 2 : 1;
     const int days = premiumType == 1 ? static_cast<int>((seconds + 86399) / 86400) : 0;
-    return gamewindow::TCharacterSelectionController::accountStatusText(0, premiumType, days);
+    return gamewindow::TCharacterSelectionController::accountStatusText(static_cast<int>(session.status), premiumType,
+                                                                        days);
 }
 
 /// Pack façade: composition under TGameClient (CIP base is already QObject).
@@ -189,7 +189,7 @@ public:
     QStringList characterNames() const override
     {
         QStringList names;
-        for (const authentication::LoginCharacter& c : m_client->account().characters) {
+        for (const authentication::TCharacter& c : m_client->account().characters) {
             if (!c.name.isEmpty())
                 names.append(c.name);
         }
@@ -692,7 +692,11 @@ void TGameClient::login()
     }
     qCInfo(lcGameClient).noquote() << "logging in" << m_options.account << "at" << env.loginUrl().toString();
     Q_EMIT loginStarted();
-    m_login->login(env.loginUrl(), m_options.account, m_options.password, {}, env.revision);
+    authentication::TLoginRequestData request;
+    request.email = m_options.account;
+    request.password = m_options.password;
+    request.stayLoggedIn = true;
+    m_login->login(env.loginUrl(), request, env.revision);
 }
 
 void TGameClient::abortPendingEnter()
@@ -722,7 +726,7 @@ void TGameClient::submitCredentials(const QString& account, const QString& passw
 void TGameClient::refreshAccount(const QJsonObject& reply)
 {
     authentication::LoginResult result = authentication::TLoginRequestUploader::parse(reply);
-    if (result.characters.isEmpty()) {
+    if (result.characters.empty()) {
         login();
         return;
     }
@@ -757,8 +761,8 @@ void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
         e.torsoColor = outfitColor(c.torsoColor);
         e.legsColor = outfitColor(c.legsColor);
         e.detailColor = outfitColor(c.detailColor);
-        e.firstAddOn = c.addonsFlags & 1;
-        e.secondAddOn = c.addonsFlags & 2;
+        e.firstAddOn = c.firstAddOn;
+        e.secondAddOn = c.secondAddOn;
         e.isMainCharacter = c.isMainCharacter;
         e.isHidden = c.isHidden;
         e.isOnline = c.isOnline;
@@ -785,7 +789,7 @@ void TGameClient::onLoginSuccessful(const authentication::LoginResult& result)
 
 void TGameClient::openCharacterSelectionForSwitch(const QJsonArray& alts)
 {
-    if (m_account.characters.isEmpty())
+    if (m_account.characters.empty())
         return;
     QHash<QString, bool> onlineByName;
     for (const QJsonValue& v : alts) {
@@ -816,8 +820,8 @@ void TGameClient::openCharacterSelectionForSwitch(const QJsonArray& alts)
         e.torsoColor = outfitColor(c.torsoColor);
         e.legsColor = outfitColor(c.legsColor);
         e.detailColor = outfitColor(c.detailColor);
-        e.firstAddOn = c.addonsFlags & 1;
-        e.secondAddOn = c.addonsFlags & 2;
+        e.firstAddOn = c.firstAddOn;
+        e.secondAddOn = c.secondAddOn;
         e.isMainCharacter = c.isMainCharacter;
         e.isHidden = c.isHidden;
         e.isOnline = onlineByName.value(c.name.toLower(), c.isOnline);
@@ -889,7 +893,7 @@ void TGameClient::onCharacterChosen(const gamewindow::CharacterEntry& character)
         return;
     }
 
-    const authentication::LoginCharacter* chosen = nullptr;
+    const authentication::TCharacter* chosen = nullptr;
     for (const auto& c : m_account.characters) {
         if (c.name == character.name) {
             chosen = &c;
@@ -909,8 +913,8 @@ void TGameClient::onCharacterChosen(const gamewindow::CharacterEntry& character)
     credentials.password = m_options.password;
     credentials.sessionKey = m_account.session.sessionKey;
     credentials.worldName = world->name;
-    credentials.host = world->host;
-    credentials.port = world->port;
+    credentials.host = world->host();
+    credentials.port = world->port();
     credentials.characterName = chosen->name;
     if (!m_options.recordTo.isEmpty())
         credentials.recordTo = QFileInfo(m_options.recordTo).absoluteFilePath();
