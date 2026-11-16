@@ -1,7 +1,8 @@
 #pragma once
 
+#include "crashreportdata.h"
+
 #include <QByteArray>
-#include <QJsonDocument>
 #include <QString>
 
 #include <functional>
@@ -22,7 +23,6 @@ namespace shared {
 class TCrashHandler
 {
 public:
-    using TAnnotations = std::map<QString, QString>;
     using TSessiondumpProvider = std::function<QByteArray()>;
 
     static TCrashHandler& instance();
@@ -44,11 +44,7 @@ public:
     void setPassExceptionOn(bool passExceptionOn);
     bool passExceptionOn() const;
 
-    /// Replaces the character name of `annotations` with "xxx".
-    static void anonymize(TAnnotations& annotations);
-    static TAnnotations annotationsFromJson(const QByteArray& json);
-    static QJsonDocument annotationsToJsonDocument(const TAnnotations& annotations);
-    static QByteArray annotationsToJson(const TAnnotations& annotations);
+    const TCrashReportData& annotations() const;
     /// "<file name of minidumpPath>.json".
     static QString annotationsFileName(const QString& minidumpPath);
 
@@ -72,7 +68,7 @@ private:
     void updateLogMessagesAnnotation();
 
     std::unique_ptr<TExceptionHandler> m_exceptionHandler;
-    TAnnotations m_annotations;
+    TCrashReportData m_annotations;
     std::vector<TLogMessage> m_logMessages;
     bool m_passExceptionOn = true;
     TSessiondumpProvider m_sessiondumpProvider;

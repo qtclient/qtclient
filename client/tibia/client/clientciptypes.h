@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QUrl>
+
 // CIP-named client surfaces (promoted from cipwire).
 
 #include "shared/cip_typed.h"
@@ -68,6 +70,19 @@ class TGameApplication final : public TGameApplicationBase
     Q_OBJECT
 public:
     explicit TGameApplication(QObject* parent = nullptr);
+
+    /// CIP: installs the crash handler into the crashdump directory,
+    /// annotates the login host and lets crashes end the process normally.
+    static void setUpCrashHandler(const QUrl& loginUrl);
+    /// CIP: the crash handler for "Tibia Client" <version>.<build>, writing
+    /// into `dumpPath`, annotated with the hardware id, operating system and
+    /// graphics engine.
+    static void initializeCrashHandler(const QString& dumpPath);
+    static void setCrashReportLoginHost(const QString& loginHost);
+    static void setCrashHandlerPassesExceptionOn(bool passExceptionOn);
+    /// CIP: the SHA-1 of a fixed salt and the network interfaces' hardware
+    /// addresses (by interface index), hex; computed once.
+    static QString hardwareId();
 
 public Q_SLOTS:
     void showErrorAsPopupAndCriticalLog(QString ErrorMessage);

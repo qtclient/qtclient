@@ -230,16 +230,17 @@ TEST(JsonHelper, ReadsTypedMembersWithFallbacks)
     EXPECT_EQ(jsonDateTime(object, "t").toSecsSinceEpoch(), 60);
 }
 
-TEST(CrashHandler, AnnotationsRoundTripAndAnonymize)
+TEST(CrashReportData, RoundTripsAndAnonymizes)
 {
-    TCrashHandler::TAnnotations annotations { { "Character", "Knight" }, { "Version", "1.0" } };
-    TCrashHandler::anonymize(annotations);
+    TCrashReportData annotations;
+    annotations["Character"] = QStringLiteral("Knight");
+    annotations["Version"] = QStringLiteral("1.0");
+    annotations.anonymize();
     EXPECT_EQ(annotations["Character"], QStringLiteral("xxx"));
-    const TCrashHandler::TAnnotations parsed =
-        TCrashHandler::annotationsFromJson(TCrashHandler::annotationsToJson(annotations));
-    EXPECT_EQ(parsed, annotations);
-    TCrashHandler::TAnnotations none;
-    TCrashHandler::anonymize(none);
+    const TCrashReportData parsed(annotations.toJson());
+    EXPECT_EQ(parsed.values(), annotations.values());
+    TCrashReportData none;
+    none.anonymize();
     EXPECT_TRUE(none.empty());
     EXPECT_EQ(TCrashHandler::annotationsFileName(QStringLiteral("/tmp/a/b.dmp")), QStringLiteral("b.dmp.json"));
 }
@@ -262,7 +263,7 @@ TEST(CrashHandler, WritesABreakpadMinidumpWithItsSideFiles)
     EXPECT_EQ(dump.read(4), QByteArray("MDMP"));
     QFile annotations(QDir(directory.path()).filePath(dumps.first() + QStringLiteral(".json")));
     ASSERT_TRUE(annotations.open(QIODevice::ReadOnly));
-    const TCrashHandler::TAnnotations parsed = TCrashHandler::annotationsFromJson(annotations.readAll());
+    const TCrashReportData parsed(annotations.readAll());
     EXPECT_EQ(parsed.at(QStringLiteral("ProductName")), QStringLiteral("Tibia"));
     EXPECT_EQ(parsed.at(QStringLiteral("Version")), QStringLiteral("15.11"));
     EXPECT_EQ(parsed.at(QStringLiteral("Character")), QStringLiteral("Knight"));
@@ -292,8 +293,9 @@ TEST(CrashReportSender, PostsCipSoftsMultipartForm)
                 socket->write("HTTP/1.1 201 Created\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
         });
     });
-    auto annotations = std::make_shared<TCrashReportSender::TAnnotations>(
-        TCrashReportSender::TAnnotations { { "Comment", "it broke" }, { "ReportType", "Full" } });
+    auto annotations = std::make_shared<TCrashReportData>();
+    (*annotations)["Comment"] = QStringLiteral("it broke");
+    (*annotations)["ReportType"] = QStringLiteral("Full");
     TCrashReportSender sender(QStringLiteral("/dumps/abc.dmp"), QStringLiteral("/dumps/abc.dmp.session"), annotations);
     const QUrl url(QStringLiteral("http://127.0.0.1:%1/clientservices/crashreceiver.php").arg(server.serverPort()));
     sender.send(QByteArray("MDMP-dump"), QByteArray("session-dump"), url, true);

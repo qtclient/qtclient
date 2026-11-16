@@ -1,5 +1,12 @@
 #include "remainingdialogs.h"
 
+#include <QDateTime>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+
+#include <set>
+
 #include "app/clientoptions.h"
 #include "game/gameciptypes.h"
 #include "game/offlineskilltrainingdata.h"
@@ -489,21 +496,65 @@ TCrashReportDialogController::TCrashReportDialogController(QObject* parent)
     : TDialogController(QStringLiteral("CrashReportDialog.qml"), parent)
 {}
 
-void TCrashReportDialogController::prepare(const QString& minimal, const QString& character, const QString& logs)
+QString TCrashReportDialogController::minimalInformation() const
 {
-    m_minimalInformation = minimal;
-    m_characterName = character;
-    m_logMessages = logs;
+    const std::set<QString> shownKeys = { QStringLiteral("LogMessages"), QStringLiteral("Character") };
+    QStringList lines;
+    for (const auto& [key, value] : m_crashReportData->values()) {
+        if (shownKeys.count(key))
+            lines.append(QStringLiteral("%1: %2").arg(key, value));
+    }
+    return lines.join(QLatin1Char('\n'));
+}
+
+QString TCrashReportDialogController::characterName() const
+{
+    const auto& values = m_crashReportData->values();
+    const auto it = values.find(QStringLiteral("Character"));
+    if (it == values.end())
+        return QString();
+    return values.at(QStringLiteral("Character"));
+}
+
+QString TCrashReportDialogController::logMessages() const
+{
+    QStringList lines;
+    const QJsonObject annotations = m_crashReportData->toJsonDocument().object();
+    const auto logMessages = annotations.constFind(QStringLiteral("LogMessages"));
+    if (logMessages == annotations.constEnd()) {
+        lines.append(qtTrId("crashreport_dialog_no_log_messages"));
+    } else {
+        const QString json = QStringLiteral("{\"%1\": %2}").arg(QStringLiteral("LogMessages"), logMessages->toString(QString()));
+        const QJsonArray messages =
+            QJsonDocument::fromJson(json.toUtf8()).object()[QStringLiteral("LogMessages")].toArray();
+        for (const QJsonValue message : messages) {
+            const QString time = QDateTime::fromSecsSinceEpoch(message.toObject()[QStringLiteral("Timestamp")].toInt(0))
+                                     .toString(QStringLiteral("yyyy-MM-dd, HH:mm:ss"));
+            lines.append(QStringLiteral("%1: %2").arg(time, message.toObject()[QStringLiteral("Message")].toString(QString())));
+        }
+    }
+    return lines.join(QLatin1Char('\n'));
+}
+
+void TCrashReportDialogController::showDialog(std::shared_ptr<tibia::shared::TCrashReportData> CrashReportData)
+{
+    m_crashReportData = std::move(CrashReportData);
+    dialog()->create();
+    dialog()->show();
 }
 
 void TCrashReportDialogController::sendReport(const QString& PlayerComment, const bool FullReport)
 {
-    // CIP CrashReportDialog.qml → sendReport; payload is owned by shared::TCrashReportSender.
-    m_minimalInformation = FullReport ? m_logMessages : m_minimalInformation;
-    if (!PlayerComment.isEmpty())
-        m_logMessages = PlayerComment + QLatin1Char('\n') + m_logMessages;
+    (*m_crashReportData)[QStringLiteral("Comment")] = PlayerComment;
+    QString reportType = QStringLiteral("Full");
+    if (!FullReport) {
+        reportType = QStringLiteral("Minimal");
+        m_crashReportData->erase(QStringLiteral("LogMessages"));
+        m_crashReportData->anonymize();
+    }
+    (*m_crashReportData)[QStringLiteral("ReportType")] = reportType;
     dialog()->close();
-    Q_EMIT dialogClosed();
+    Q_EMIT requestSendCrashReport(FullReport);
 }
 
 TEmergencyDialogController::TEmergencyDialogController(QObject* parent)

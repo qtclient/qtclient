@@ -24,7 +24,7 @@ QHttpPart filePart(const QByteArray& body, const char* name, const QString& path
 }
 
 TCrashReportSender::TCrashReportSender(QString minidumpPath, QString sessiondumpPath,
-    std::shared_ptr<TAnnotations> annotations)
+    std::shared_ptr<TCrashReportData> annotations)
     : QObject(nullptr)
     , m_minidumpPath(std::move(minidumpPath))
     , m_sessiondumpPath(std::move(sessiondumpPath))
@@ -46,7 +46,7 @@ const QString& TCrashReportSender::sessiondumpPath() const
     return m_sessiondumpPath;
 }
 
-const std::shared_ptr<TCrashReportSender::TAnnotations>& TCrashReportSender::annotations() const
+const std::shared_ptr<TCrashReportData>& TCrashReportSender::annotations() const
 {
     return m_annotations;
 }
@@ -70,7 +70,7 @@ std::unique_ptr<QHttpMultiPart> TCrashReportSender::createMultiPart(const QByteA
             multiPart->append(filePart(sessiondump, "sessiondump", m_sessiondumpPath));
     }
     if (m_annotations) {
-        for (const auto& [key, value] : *m_annotations) {
+        for (const auto& [key, value] : m_annotations->values()) {
             QHttpPart part;
             part.setBody(value.toUtf8());
             part.setHeader(QNetworkRequest::ContentTypeHeader, QVariant(QString::fromUtf8("text/plain; charset=utf-8")));

@@ -18,6 +18,7 @@
 #endif
 #ifdef TIBIA_WITH_GAMECORE
 #include "app/qtplatformwindow.h"
+#include "client/clientciptypes.h"
 #include "client/gameclient.h"
 #include "client/gamecore.h"
 #include <client/const.h>
@@ -465,6 +466,10 @@ int main(int argc, char** argv)
         parser.showHelp();
 
     const auto env = app::LauncherEnv::load(QDir::currentPath());
+#ifdef TIBIA_WITH_GAMECORE
+    // CIP TGameApplication: the crash handler is in place before the game starts.
+    client::TGameApplication::setUpCrashHandler(env.loginUrl());
+#endif
     if (!parser.isSet(QStringLiteral("preview")) && !parser.isSet(QStringLiteral("replay"))
         && !parser.isSet(QStringLiteral("check-qml")) && !parser.isSet(QStringLiteral("check-hotkeys"))
         && !parser.isSet(QStringLiteral("account"))
@@ -753,6 +758,13 @@ int main(int argc, char** argv)
 
     gamewindow::TContextMenuController contextMenu(engine.get(), window->contentItem());
     gamewindow::TDialogStackController dialogStack(engine.get(), dialogPlaceholder);
+#ifdef TIBIA_WITH_GAMECORE
+    // CIP TGameClient: a crash dump of the last run offers a crash report.
+    // CipSoft checks at the end of TGameClient's constructor; qtclient's
+    // dialogs need the dialog stack first.
+    if (!preview)
+        gameClient.checkForCrashDump();
+#endif
     // CIP session chrome (WaitDialog, errors, create account/character, keep_renderer).
     // Must run after the dialog stack so MessageDialog / WaitDialog can show.
     std::unique_ptr<app::TSessionBootstrap> sessionBootstrap;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "crashreportdata.h"
+
 #include "client/gamecore.h"
 #include "client/staticdata.h"
 #include "gamewindow/dialogmanager.h"
@@ -189,15 +191,29 @@ private:
     std::function<void(bool)> m_onYes;
 };
 
-/// CIP TCrashReportDialogController — CrashReportDialog.qml (v3).
+/// CIP TCrashReportDialogController — CrashReportDialog.qml: shows a crash
+/// report's annotations and completes them with the player's comment and the
+/// report type before the client sends it.
 class TCrashReportDialogController final : public TDialogController<cip::tibia::gamewindow::TCrashReportDialogController>
 {
     Q_OBJECT
 public:
     explicit TCrashReportDialogController(QObject* parent = nullptr);
 
-    void prepare(const QString& minimal, const QString& character, const QString& logs);
+    /// The LogMessages and Character lines ("key: value"), one per line.
+    QString minimalInformation() const override;
+    QString characterName() const override;
+    /// One "time: message" line per logged message.
+    QString logMessages() const override;
+    /// Comment and ReportType (Full | Minimal; a minimal report drops the log
+    /// messages and the character name), then requestSendCrashReport.
     Q_INVOKABLE void sendReport(const QString& PlayerComment, bool FullReport) override;
+
+public Q_SLOTS:
+    void showDialog(std::shared_ptr<tibia::shared::TCrashReportData> CrashReportData);
+
+private:
+    std::shared_ptr<tibia::shared::TCrashReportData> m_crashReportData;
 };
 
 /// CIP TEmergencyDialogController — ImportantBalancingMessageDialog.qml (v3).

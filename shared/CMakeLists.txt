@@ -14,6 +14,8 @@ add_library(qtclient_shared STATIC
   src/coordinate.h
   src/crashhandler.cpp
   src/crashhandler.h
+  src/crashreportdata.cpp
+  src/crashreportdata.h
   src/crashreportsender.cpp
   src/crashreportsender.h
   src/datetimehelper.cpp

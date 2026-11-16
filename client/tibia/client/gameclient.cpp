@@ -24,6 +24,10 @@
 #include "dailyreward/dailyrewardciptypes.h"
 #include "common/commonciptypes.h"
 #include "client/clientciptypes.h"
+#include "crashreportdata.h"
+#include "crashreportsender.h"
+#include "gamewindow/remainingdialogs.h"
+#include "shared/tibiafilesystemhelper.h"
 #include "config/configciptypes.h"
 #include "bossbestiary/bossbestiaryciptypes.h"
 #include "authentication/authenticationciptypes.h"
@@ -239,6 +243,9 @@ TGameClient::TGameClient(QObject* parent)
     , m_sessiondumpCatalogLoader(this)
     , m_sessiondumpPlayer(this)
 {
+    m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();
+    connect(m_crashReportDialog.get(), &gamewindow::TCrashReportDialogController::requestSendCrashReport, this,
+            &TGameClient::sendCrashReport);
     // Each game session brings its own storages, view and handlers.
     connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TGameClient::bindActiveSession);
     m_gameHost = new GameHostImpl(this);
@@ -1200,4 +1207,36 @@ void TGameClient::fail(const QString& message)
         ensureLoginSurface();
 }
 
+void TGameClient::checkForCrashDump()
+{
+    const shared::TTibiaFileSystemHelper fileSystem;
+    const QString crashDumpFilePath = fileSystem.getLatestCrashDumpFilePath();
+    if (crashDumpFilePath.isEmpty())
+        return;
+    auto crashReportData = std::make_shared<shared::TCrashReportData>(fileSystem.readCrashDumpMetaData(crashDumpFilePath));
+    const QString sessiondumpFileName = shared::TTibiaFileSystemHelper::getCrashDumpSessionFileName(crashDumpFilePath);
+    const QString sessiondumpFilePath =
+        fileSystem.getFilePath(shared::TTibiaFileSystemHelper::DIRECTORY_CRASHDUMP, sessiondumpFileName);
+    m_crashReportSender = std::make_shared<shared::TCrashReportSender>(crashDumpFilePath, sessiondumpFilePath, crashReportData);
+    m_crashReportDialog->showDialog(crashReportData);
 }
+
+void TGameClient::sendCrashReport(const bool SendFullReport)
+{
+    const shared::TTibiaFileSystemHelper fileSystem;
+    QByteArray minidump;
+    QByteArray sessiondump;
+    if (SendFullReport) {
+        minidump = fileSystem.readFileIfExists(m_crashReportSender->minidumpPath());
+        sessiondump = fileSystem.readFileIfExists(m_crashReportSender->sessiondumpPath());
+    }
+    // Host: CipSoft reads [URLS] crashReportUrl; qtclient's comes from the mod
+    // configuration (urls.crashReportPath). Without one nothing is posted.
+    const QUrl crashReportUrl = app::LauncherEnv::load(QDir::currentPath()).crashReportUrl();
+    if (crashReportUrl.isValid())
+        m_crashReportSender->send(minidump, sessiondump, crashReportUrl, SendFullReport);
+    fileSystem.removeCrashDumps();
+}
+
+}
+

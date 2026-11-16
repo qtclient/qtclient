@@ -1,5 +1,7 @@
 #pragma once
 
+#include "crashreportdata.h"
+
 #include <QByteArray>
 #include <QHttpMultiPart>
 #include <QNetworkAccessManager>
@@ -24,14 +26,12 @@ class TCrashReportSender : public QObject
     Q_OBJECT
 
 public:
-    using TAnnotations = std::map<QString, QString>;
-
-    TCrashReportSender(QString minidumpPath, QString sessiondumpPath, std::shared_ptr<TAnnotations> annotations);
+    TCrashReportSender(QString minidumpPath, QString sessiondumpPath, std::shared_ptr<TCrashReportData> annotations);
     ~TCrashReportSender() override;
 
     const QString& minidumpPath() const;
     const QString& sessiondumpPath() const;
-    const std::shared_ptr<TAnnotations>& annotations() const;
+    const std::shared_ptr<TCrashReportData>& annotations() const;
     /// Posts the report to `url`; the dump parts only when `includeDumps`.
     void send(const QByteArray& minidump, const QByteArray& sessiondump, const QUrl& url, bool includeDumps);
 
@@ -45,7 +45,7 @@ private:
     QNetworkAccessManager m_networkAccessManager;
     QString m_minidumpPath;
     QString m_sessiondumpPath;
-    std::shared_ptr<TAnnotations> m_annotations;
+    std::shared_ptr<TCrashReportData> m_annotations;
     std::unique_ptr<QHttpMultiPart> m_multiPart;
 };
 

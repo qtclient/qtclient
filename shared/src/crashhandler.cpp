@@ -1,5 +1,7 @@
 #include "crashhandler.h"
 
+#include "filesystemhelper.h"
+
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -26,22 +28,9 @@ namespace {
 const QString LogMessagesKey = QStringLiteral("LogMessages");
 const QString MessageKey = QStringLiteral("Message");
 const QString TimestampKey = QStringLiteral("Timestamp");
-const QString CharacterKey = QStringLiteral("Character");
 
 /// How long a log message stays in the crash annotations, in seconds.
 constexpr quint32 LogMessageLifetime = 60;
-
-QString joinPaths(const QString& directory, const QString& fileName)
-{
-    return QDir(directory).filePath(fileName);
-}
-
-void writeFile(const QString& path, const QByteArray& data)
-{
-    QFile file(path);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate))
-        file.write(data);
-}
 
 }
 
@@ -196,35 +185,9 @@ bool TCrashHandler::passExceptionOn() const
     return m_passExceptionOn;
 }
 
-void TCrashHandler::anonymize(TAnnotations& annotations)
+const TCrashReportData& TCrashHandler::annotations() const
 {
-    if (annotations.find(CharacterKey) != annotations.end())
-        annotations[CharacterKey] = QStringLiteral("xxx");
-}
-
-TCrashHandler::TAnnotations TCrashHandler::annotationsFromJson(const QByteArray& json)
-{
-    TAnnotations annotations;
-    const QJsonObject object = QJsonDocument::fromJson(json).object();
-    const QStringList keys = object.keys();
-    for (const QString& key : keys)
-        annotations[key] = object[key].toString(QString());
-    return annotations;
-}
-
-QJsonDocument TCrashHandler::annotationsToJsonDocument(const TAnnotations& annotations)
-{
-    QJsonDocument document;
-    QJsonObject object;
-    for (const auto& [key, value] : annotations)
-        object.insert(key, QJsonValue(value));
-    document.setObject(object);
-    return document;
-}
-
-QByteArray TCrashHandler::annotationsToJson(const TAnnotations& annotations)
-{
-    return annotationsToJsonDocument(annotations).toJson(QJsonDocument::Indented);
+    return m_annotations;
 }
 
 QString TCrashHandler::annotationsFileName(const QString& minidumpPath)
@@ -236,14 +199,15 @@ void TCrashHandler::writeCrashFiles(const QString& dumpDirectory, const QString&
 {
     m_annotations[TimestampKey] = QString::number(QDateTime::currentSecsSinceEpoch());
     const QString minidumpFileName = minidumpId + QStringLiteral(".dmp");
-    const QString annotationsPath = joinPaths(dumpDirectory, annotationsFileName(minidumpFileName));
+    const TFileSystemHelper fileSystem;
+    const QString annotationsPath = fileSystem.joinPaths({ dumpDirectory, annotationsFileName(minidumpFileName) });
     removeOldLogMessages();
-    writeFile(annotationsPath, annotationsToJson(m_annotations));
+    fileSystem.writeFile(annotationsPath, m_annotations.toJson());
     if (m_sessiondumpProvider) {
         const QByteArray sessiondump = m_sessiondumpProvider();
         const QString sessiondumpPath =
-            joinPaths(dumpDirectory, QFileInfo(minidumpFileName).fileName() + QStringLiteral(".session"));
-        writeFile(sessiondumpPath, sessiondump);
+            fileSystem.joinPaths({ dumpDirectory, QFileInfo(minidumpFileName).fileName() + QStringLiteral(".session") });
+        fileSystem.writeFile(sessiondumpPath, sessiondump);
     }
 }
 

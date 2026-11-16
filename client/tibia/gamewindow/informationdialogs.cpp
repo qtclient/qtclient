@@ -67,7 +67,6 @@ TInformationDialogs::TInformationDialogs(QObject* parent)
     , m_bosstiaryButton(new TBosstiaryButtonController(this))
 {
     // CIP misc dialogs / overlays kept alive on the information hub (ledger wires).
-    new TCrashReportDialogController(this);
     new TEmergencyDialogController(this);
     new TGameSessionDisconnectReactionController(this);
     new TCinematicSessiondumpPlayerController(this);

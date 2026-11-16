@@ -2,10 +2,23 @@
 
 #include <tibia/game/tgamenotify.h>
 
+#include "app/clientoptions.h"
+#include "client/gameclient.h"
+#include "crashhandler.h"
+#include "shared/tibiafilesystemhelper.h"
+
+#include <QCryptographicHash>
 #include <QEvent>
 #include <QLoggingCategory>
+#ifndef __EMSCRIPTEN__
+#include <QNetworkInterface>
+#endif
+#include <QSysInfo>
 
+#include <algorithm>
 #include <vector>
+
+extern "C" const char qtclient_host_build_id[];
 
 namespace tibia::client {
 
@@ -62,6 +75,62 @@ TGameApplicationBase::TGameApplicationBase(QObject* parent)
 TGameApplication::TGameApplication(QObject* parent)
     : TGameApplicationBase(parent)
 {
+}
+
+void TGameApplication::setUpCrashHandler(const QUrl& loginUrl)
+{
+    const shared::TTibiaFileSystemHelper fileSystem;
+    initializeCrashHandler(fileSystem.getCrashDumpDirectory().absolutePath());
+    setCrashReportLoginHost(loginUrl.host());
+    setCrashHandlerPassesExceptionOn(false);
+}
+
+void TGameApplication::initializeCrashHandler(const QString& dumpPath)
+{
+    shared::TCrashHandler& crashHandler = shared::TCrashHandler::instance();
+    constexpr int clientVersion = TGameClient::ClientVersion;
+    const QString cipVersion =
+        QStringLiteral("%1.%2").arg(clientVersion / 100).arg(clientVersion % 100, 2, 10, QLatin1Char('0'));
+    // Host: CipSoft's build revision is its git sha; qtclient's is the host build id.
+    const QString version = QStringLiteral("%1.%2").arg(cipVersion, QLatin1StringView(qtclient_host_build_id));
+    crashHandler.initialize(QStringLiteral("Tibia Client"), version, dumpPath);
+    crashHandler.setAnnotation(QStringLiteral("HardwareID"), hardwareId());
+    crashHandler.setAnnotation(QStringLiteral("OperatingSystem"), QSysInfo::prettyProductName());
+    // Host: CipSoft annotates its active graphics engine; qtclient's is the renderer option.
+    crashHandler.setAnnotation(QStringLiteral("EngineID"), QString::number(app::ClientOptions::load().rendererIndex()));
+}
+
+void TGameApplication::setCrashReportLoginHost(const QString& loginHost)
+{
+    shared::TCrashHandler::instance().setAnnotation(QStringLiteral("LoginHost"), loginHost);
+}
+
+void TGameApplication::setCrashHandlerPassesExceptionOn(const bool passExceptionOn)
+{
+    shared::TCrashHandler::instance().setPassExceptionOn(passExceptionOn);
+}
+
+QString TGameApplication::hardwareId()
+{
+    static QString hardwareId;
+    if (!hardwareId.isEmpty())
+        return hardwareId;
+    QCryptographicHash hash(QCryptographicHash::Sha1);
+    hash.addData(QStringLiteral("91bb3378-6faa-40dc-8f8b-93b2f1d55e48").toLocal8Bit());
+#ifndef __EMSCRIPTEN__
+    // Host: the browser has no network interfaces to read.
+    QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
+    std::sort(interfaces.begin(), interfaces.end(),
+              [](const QNetworkInterface& a, const QNetworkInterface& b) { return a.index() < b.index(); });
+    for (const QNetworkInterface& networkInterface : interfaces)
+        hash.addData(networkInterface.hardwareAddress().toLocal8Bit());
+#endif
+    const QByteArray hex = hash.result().toHex();
+    if (hex.isEmpty())
+        hardwareId.clear();
+    else
+        hardwareId = QString::fromLatin1(hex);
+    return hardwareId;
 }
 
 void TGameApplication::showErrorAsPopupAndCriticalLog(QString ErrorMessage)

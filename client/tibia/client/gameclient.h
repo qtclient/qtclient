@@ -35,7 +35,11 @@ enum class TCloudflareChallengeError : int;
 namespace tibia {
 namespace gamewindow {
 class TCharacterSelectionController;
+class TCrashReportDialogController;
 struct CharacterEntry;
+}
+namespace shared {
+class TCrashReportSender;
 }
 }
 namespace tibia {
@@ -147,6 +151,11 @@ public:
     void shutdown();
     /// Paces the game by this window's frames.
     void setWindow(QQuickWindow* window);
+    /// CIP: a crash dump of an earlier run opens the crash report dialog
+    /// with its annotations; its sender waits for the player's choice.
+    /// CipSoft calls it at the end of the constructor; qtclient once the
+    /// dialog stack exists.
+    void checkForCrashDump();
 
     gamewindow::TCharacterSelectionController* characterSelection() const { return m_characterSelection.get(); }
     game::TGameserverGameSession* session() const { return m_session.get(); }
@@ -237,6 +246,9 @@ Q_SIGNALS:
     void sessionEmailAvailable(const QString& email);
 
 private:
+    /// CIP: posts the pending crash report to the configured crashReportUrl
+    /// (the dumps only for a full report), then deletes the crash dumps.
+    void sendCrashReport(bool SendFullReport);
     void login();
     void onLoginSuccessful(const authentication::LoginResult& result);
     void onCharacterChosen(const gamewindow::CharacterEntry& character);
@@ -252,6 +264,8 @@ private:
     bool frameSlotReached(qint64 nowMicros);
 
     Options m_options;
+    std::unique_ptr<gamewindow::TCrashReportDialogController> m_crashReportDialog;
+    std::shared_ptr<shared::TCrashReportSender> m_crashReportSender;
     runtime::TGameHost* m_gameHost = nullptr;
     /// Ticks while no frames come (a hidden window).
     QTimer m_idleTick;
