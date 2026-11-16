@@ -13,8 +13,7 @@
 #include "app/portalurls.h"
 #include "app/sessionbootstrap.h"
 #if defined(__EMSCRIPTEN__)
-#include "browser/opfs_file_engine.h"
-#include "browser/wasmfs_opfs_home.h"
+#include "browser/qtclient_opfs_backend.h"
 #endif
 #ifdef TIBIA_WITH_GAMECORE
 #include "app/qtplatformwindow.h"
@@ -115,6 +114,7 @@
 #include <QDirIterator>
 #include <QEvent>
 #include <QEventLoop>
+#include <QFileInfo>
 #include <QSaveFile>
 #include <QGuiApplication>
 #include <QStandardPaths>
@@ -330,12 +330,6 @@ QStringList dataDirs(const QString& explicitDir)
         }
     };
     appendPackageDirs(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation));
-#if defined(__EMSCRIPTEN__)
-    // Match gamecore: portal qtclient is under IdleOT/IdleOT even when Qt defaults
-    // still report Tibia/Tibia AppDataLocation.
-    appendPackageDirs(QStringLiteral("/home/web_user/.local/share/IdleOT/IdleOT"));
-    appendPackageDirs(QStringLiteral("/home/web_user/.local/share/Tibia/Tibia"));
-#endif
     return dirs;
 }
 
@@ -389,25 +383,49 @@ QList<gamewindow::CharacterEntry> previewCharacters()
 
 }
 
+namespace {
+
+/// A pack identity with a displayName replaces CipSoft's AppData identity.
+void applyPackIdentity(const tibia::mods::ModIdentity& id)
+{
+    if (id.displayName.empty())
+        return;
+    QCoreApplication::setApplicationName(QString::fromStdString(id.displayName));
+    QCoreApplication::setOrganizationName(
+        QString::fromStdString(id.organization.empty() ? id.displayName : id.organization));
+    QCoreApplication::setOrganizationDomain(QString::fromStdString(
+        id.organizationDomain.empty() ? std::string("tibia.local") : id.organizationDomain));
+}
+
+}
+
 int main(int argc, char** argv)
 {
+#if defined(__EMSCRIPTEN__)
+    // /home/web_user (AppData, tip packages) and /mods are the origin's OPFS,
+    // served by the portal's qtclient-fs Worker. Mount before anything opens a file.
+    if (!qtclientMountOpfs())
+        qFatal("tibia.wasm: could not mount OPFS at /home/web_user (see the console)");
+#endif
     tibia::app::installCrashLog();
 
-#if defined(__EMSCRIPTEN__)
-    // Tip AppData: Module.qtclientFs (portal JS OPFS Worker) via Qt file engine when
-    // live; WasmFS only scaffolds /home/web_user (skip remount if portal ready).
-    tibiaRegisterQtclientFsFileEngine();
-    if (!tibiaMountWasmfsOpfsHome())
-        qFatal("tibia.wasm: failed to prepare /home/web_user");
-#endif
+    // --no-mods → CipSoft; else all qtclient mods/<id>.
+    for (int i = 1; i < argc; ++i) {
+        if (qstrcmp(argv[i], "--no-mods") == 0)
+            tibia::mods::ModLoader::setSkipLoad(true);
+    }
 
-    // Identity defaults before QApplication; packs may override after ModLoader.
+    // Identity before anything reads AppData: the pack's identity from its
+    // mod.json (as loadAll() will register it), else CipSoft's. Options and
+    // QSettings read before QGuiApplication must use the same folders the app
+    // saves to once packs load.
     QCoreApplication::setApplicationName(QStringLiteral("Tibia"));
     QCoreApplication::setOrganizationName(QStringLiteral("Tibia"));
     QCoreApplication::setOrganizationDomain(QStringLiteral("tibia.local"));
+    applyPackIdentity(tibia::mods::ModLoader::identityBeforeApplication(
+        argc > 0 ? QFileInfo(QString::fromLocal8Bit(argv[0])).absolutePath() : QString()));
 
-    const auto options = app::ClientOptions::load();
-    app::configureProcess(options, rendererFromArgs(argc, argv));
+    app::configureProcess(app::ClientOptions::readStoredFile(), rendererFromArgs(argc, argv));
 
 #if defined(TIBIA_DESKTOP_WEBENGINE)
     QtWebEngineQuick::initialize();
@@ -415,26 +433,14 @@ int main(int argc, char** argv)
 
     QGuiApplication application(argc, argv);
     app::applyBundledMoltenVkIcd();
-    // Runtime packs after QApp. --no-mods → CipSoft; else all qtclient mods/<id>.
-    bool skipMods = false;
-    for (int i = 1; i < argc; ++i) {
-        if (qstrcmp(argv[i], "--no-mods") == 0)
-            skipMods = true;
-    }
-    if (skipMods) {
-        tibia::mods::ModLoader::setSkipLoad(true);
+    // Runtime packs after QApp.
+    if (tibia::mods::ModLoader::skipLoad())
         qInfo("--no-mods: stock CipSoft client (no pack)");
-    } else {
+    else
         tibia::mods::ModLoader::loadAll();
-    }
     tibia::mods::ensureModsRegistered();
-    if (const auto* id = tibia::mods::primaryIdentity(); id && !id->displayName.empty()) {
-        application.setApplicationName(QString::fromStdString(id->displayName));
-        application.setOrganizationName(QString::fromStdString(
-            id->organization.empty() ? id->displayName : id->organization));
-        application.setOrganizationDomain(QString::fromStdString(
-            id->organizationDomain.empty() ? std::string("tibia.local") : id->organizationDomain));
-    }
+    if (const auto* id = tibia::mods::primaryIdentity())
+        applyPackIdentity(*id);
     application.setApplicationDisplayName(QCoreApplication::applicationName());
 
     QCommandLineParser parser;
@@ -871,8 +877,9 @@ int main(int argc, char** argv)
 
     gamewindow::TSidebarPanelsManager sidebarPanels(&sidebarManager, engine.get());
     gamewindow::TSidebarWidgetsManager sidebarWidgets(&sidebarManager, gameWindowItem, engine.get());
-    const int controlScheme = options.options().value(QLatin1String("controlSchemeIndex")).toInt(0);
-    const int lootScheme = options.options().value(QLatin1String("lootSchemeIndex")).toInt(0);
+    const QJsonObject storedOptions = app::ClientOptions::load().options();
+    const int controlScheme = storedOptions.value(QLatin1String("controlSchemeIndex")).toInt(0);
+    const int lootScheme = storedOptions.value(QLatin1String("lootSchemeIndex")).toInt(0);
     gamewindow::TMinimapController* minimapController = sidebarPanels.minimap();
     if (minimapController)
         minimapController->setControlScheme(controlScheme);

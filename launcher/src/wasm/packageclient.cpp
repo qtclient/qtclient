@@ -10,6 +10,7 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -20,7 +21,13 @@
 #include <QNetworkRequest>
 #include <QQueue>
 #include <QSaveFile>
+#include <QLoggingCategory>
 #include <QtConcurrent>
+
+// CipSoft logs every queued file; on /play each line is a console.log (8k+ per
+// asset install, costly in Safari). Off unless QT_LOGGING_RULES enables
+// tibia.launcher.files.debug.
+Q_LOGGING_CATEGORY(lcPackageFiles, "tibia.launcher.files", QtInfoMsg)
 
 #include <functional>
 #include <memory>
@@ -35,7 +42,7 @@ void configureInstallRequest(QNetworkRequest* request)
     request->setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                           QNetworkRequest::NoLessSafeRedirectPolicy);
 #ifndef __EMSCRIPTEN__
-    // AlwaysNetwork adds Cache-Control and forces a CORS preflight. Soft /play
+    // AlwaysNetwork adds Cache-Control and forces a CORS preflight. /play
     // tip is same-origin via /play/tip; PreferNetwork avoids that tripwire.
     request->setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
 #endif
@@ -132,19 +139,6 @@ QUrl PackageClient::tipUrl() const
     return QUrl(QStringLiteral("https://static.tibia.com/launcher/tibiametadata.json"));
 }
 
-bool PackageClient::useCdnContentStore() const
-{
-    // Explicit opt-in for content-addressed /content/ store + /launcher/ rewrite.
-    if (qEnvironmentVariableIntValue("QTCLIENT_CDN_CONTENT_STORE") == 1)
-        return true;
-    if (qEnvironmentVariableIntValue("QTCLIENT_CDN_CONTENT_STORE") == 0)
-        return false;
-    if (m_cdn.isEmpty())
-        return false;
-    const QString host = QUrl(m_cdn).host();
-    return host.contains(QLatin1String("example.invalid")) || host.contains(QLatin1String("qtclient.local"));
-}
-
 void PackageClient::setDataDir(const QString& dir)
 {
     m_dataDir = dir;
@@ -211,9 +205,9 @@ QUrl PackageClient::resolve(const QUrl& base, const QString& url) const
     const QUrl parsed(url);
     if (parsed.isRelative())
         return base.resolved(parsed);
-    // Content-store CDN only: map absolute /launcher/ and /hints.json onto m_cdn.
-    // CIP-faithful tips keep their original host (e.g. static.tibia.com).
-    if (useCdnContentStore() && !m_cdn.isEmpty()) {
+    // The tip's absolute /launcher/ and /hints.json URLs are served from m_cdn
+    // (on /play, the portal's same-origin tip proxy: no cross-origin fetches).
+    if (!m_cdn.isEmpty()) {
         const QString path = parsed.path();
         const int launcher = path.indexOf(QStringLiteral("/launcher/"));
         if (launcher >= 0)
@@ -226,23 +220,7 @@ QUrl PackageClient::resolve(const QUrl& base, const QString& url) const
 
 QUrl PackageClient::fileDownloadUrl(const QUrl& packageUrl, const CipFile& file) const
 {
-    // Content-store: content-addressed /content/<aa>/<packedhash> avoids tip-dir
-    // cache staleness. CIP / foreign tips: resolve files[].url relative to the
-    // package/assets manifest URL (official launcher behaviour).
-    if (useCdnContentStore() && !m_cdn.isEmpty()) {
-        const QString hash = file.packedhash.trimmed().toLower();
-        if (hash.size() == 64) {
-            bool hex = true;
-            for (const QChar c : hash) {
-                if (!c.isDigit() && (c < QLatin1Char('a') || c > QLatin1Char('f'))) {
-                    hex = false;
-                    break;
-                }
-            }
-            if (hex)
-                return QUrl(m_cdn + QLatin1String("/content/") + hash.left(2) + QLatin1Char('/') + hash);
-        }
-    }
+    // CipSoft: files[].url relative to the package / assets manifest URL.
     const QUrl base = packageUrl.adjusted(QUrl::RemoveFilename);
     return base.resolved(QUrl(file.url));
 }
@@ -307,9 +285,8 @@ void PackageClient::getAsync(const QUrl& url, GetCallback done)
     QUrl resolved = url.isRelative() ? url : resolve(QUrl(), url.toString());
     if (resolved.isRelative() && !m_cdn.isEmpty())
         resolved = QUrl(m_cdn).resolved(resolved);
-    // Soft launcher.wasm is NOT -sPROXY_TO_PTHREAD (only tibia game Module is).
-    // Qt's QNetworkReplyWasmImpl already starts emscripten_fetch on the browser
-    // main thread via qwasmglobal::runOnMainThread — use QNAM, not a JS bridge.
+    // Qt's QNetworkReplyWasmImpl starts emscripten_fetch on the browser main
+    // thread — use QNAM, not a JS bridge.
     // Same-origin /play/tip covers CORS/PNA; skip AlwaysNetwork on EMSCRIPTEN so
     // Cache-Control does not force a preflight.
     QNetworkRequest request(resolved);
@@ -485,8 +462,8 @@ bool PackageClient::fileAlreadyInstalled(const CipFile& file, const QString& des
 QVector<CipFile> PackageClient::filesNeedingUpdate(const QVector<CipFile>& files, const QString& destDir) const
 {
     // CipSoft FindFilesInPackageBasedOnHashAndSizeThatNeedUpdate (QtConcurrent).
-    // Soft launcher.wasm links -pthread but not PROXY_TO_PTHREAD: blockingFiltered
-    // deadlocks the Qt thread waiting on the pool (OPFS/QFile work never finishes).
+    // On web Qt runs on the browser main thread, which also serves every file
+    // system call: blocking it on the pool (blockingFiltered) deadlocks.
 #ifdef __EMSCRIPTEN__
     QVector<CipFile> need;
     need.reserve(files.size());
@@ -571,7 +548,7 @@ bool PackageClient::installFiles(const QUrl& packageUrl, const QVector<CipFile>&
     // Match CipSoft tibia-launcher.log: queue first, then pool GETs.
     qInfo().noquote() << QStringLiteral("Starting download of %1 files").arg(downloadCount);
     for (const InstallJob& job : pending)
-        qInfo().noquote() << QStringLiteral("Queued file for download:") << job.url.toString();
+        qCDebug(lcPackageFiles).noquote() << QStringLiteral("Queued file for download:") << job.url.toString();
 
     qint64 donePacked = 0; // committed in this batch
     QHash<QNetworkReply*, qint64> inflightReceived;
@@ -847,6 +824,9 @@ void PackageClient::installFilesAsync(const QUrl& packageUrl, const QVector<CipF
         int downloadCount = 0;
         int finished = 0;
         int inFlight = 0;
+        // Downloaded, still being verified / unpacked / saved. Counts against
+        // kMaxInFlight so finished bodies cannot pile up in memory.
+        int processing = 0;
         qint64 progressBase = 0;
         qint64 spanTotal = 1;
         qint64 donePacked = 0;
@@ -879,7 +859,7 @@ void PackageClient::installFilesAsync(const QUrl& packageUrl, const QVector<CipF
 
     qInfo().noquote() << QStringLiteral("Starting download of %1 files").arg(state->downloadCount);
     for (const InstallJob& job : state->pending)
-        qInfo().noquote() << QStringLiteral("Queued file for download:") << job.url.toString();
+        qCDebug(lcPackageFiles).noquote() << QStringLiteral("Queued file for download:") << job.url.toString();
 
     auto emitAggregate = [this, state](int fileIndex) {
         qint64 live = 0;
@@ -890,9 +870,9 @@ void PackageClient::installFilesAsync(const QUrl& packageUrl, const QVector<CipF
     };
 
     auto pump = std::make_shared<std::function<void()>>();
-    *pump = [this, state, pump, emitAggregate, packageUrl]() {
-        Q_UNUSED(packageUrl);
-        while (!state->failed && state->inFlight < shared::TDownloadPool::kMaxInFlight && !state->pending.isEmpty()) {
+    *pump = [this, state, pump, emitAggregate]() {
+        while (!state->failed && state->inFlight + state->processing < shared::TDownloadPool::kMaxInFlight
+               && !state->pending.isEmpty()) {
             const InstallJob job = state->pending.dequeue();
             QUrl resolved = job.url.isRelative() ? job.url : resolve(QUrl(), job.url.toString());
             if (resolved.isRelative() && !m_cdn.isEmpty())
@@ -935,52 +915,68 @@ void PackageClient::installFilesAsync(const QUrl& packageUrl, const QVector<CipF
                                                                : QStringLiteral("Download failed: ") + errString);
                     return;
                 }
-                // Keep the pool full while this reply unpacks.
-                (*pump)();
-                if (sha256Hex(packed) != job.file.packedhash) {
-                    state->failed = true;
-                    state->pending.clear();
-                    qWarning("packed hash mismatch for %s (%lld bytes)", qUtf8Printable(job.file.localfile),
-                             qint64(packed.size()));
-                    if (state->done)
-                        state->done(false, QStringLiteral("Download failed: ") + job.file.localfile);
-                    return;
-                }
-                QByteArray unpacked;
-                QString unpackError;
-                if (!unpackLzmaAlone(packed, unpacked, &unpackError)) {
-                    state->failed = true;
-                    state->pending.clear();
-                    if (state->done)
-                        state->done(false, unpackError + QStringLiteral(" ") + job.file.url);
-                    return;
-                }
-                if (sha256Hex(unpacked) != job.file.unpackedhash || unpacked.size() != job.file.unpackedsize) {
-                    state->failed = true;
-                    state->pending.clear();
-                    if (state->done)
-                        state->done(false, QStringLiteral("Download failed: ") + job.file.localfile);
-                    return;
-                }
-                QDir().mkpath(QFileInfo(job.destPath).path());
-                QSaveFile out(job.destPath);
-                if (!out.open(QIODevice::WriteOnly) || out.write(unpacked) != unpacked.size() || !out.commit()) {
-                    state->failed = true;
-                    state->pending.clear();
-                    if (state->done)
-                        state->done(false, QStringLiteral("Failed to create folder: '%1'.").arg(job.destPath));
-                    return;
-                }
-                state->donePacked += qMax(job.file.packedsize > 0 ? job.file.packedsize : qint64(packed.size()),
-                                          qint64(0));
-                ++state->finished;
-                emitAggregate(job.ordinal);
-                if (state->finished >= state->downloadCount) {
-                    if (state->done)
-                        state->done(true, {});
-                    return;
-                }
-                (*pump)();
+                ++state->processing;
+                // CipSoft TPackageFileDownloader: verify + unpack off the main
+                // thread, then save on it. Here the main thread is also the one
+                // doing every file system call, so it must not spend its time
+                // hashing and decompressing.
+                struct Unpacked {
+                    QByteArray bytes;
+                    QString error;
+                };
+                auto* watcher = new QFutureWatcher<Unpacked>(this);
+                connect(watcher, &QFutureWatcher<Unpacked>::finished, this,
+                        [state, pump, emitAggregate, job, watcher, packedSize = qint64(packed.size())]() {
+                    watcher->deleteLater();
+                    const Unpacked result = watcher->result();
+                    if (state->failed)
+                        return;
+                    if (!result.error.isEmpty()) {
+                        state->failed = true;
+                        state->pending.clear();
+                        qWarning("%s", qUtf8Printable(result.error));
+                        if (state->done)
+                            state->done(false, QStringLiteral("Download failed: ") + job.file.localfile);
+                        return;
+                    }
+                    // Save on the main thread (QSaveFile, like CipSoft).
+                    QDir().mkpath(QFileInfo(job.destPath).path());
+                    QSaveFile out(job.destPath);
+                    if (!out.open(QIODevice::WriteOnly) || out.write(result.bytes) != result.bytes.size()
+                        || !out.commit()) {
+                        state->failed = true;
+                        state->pending.clear();
+                        if (state->done)
+                            state->done(false, QStringLiteral("Failed to create folder: '%1'.").arg(job.destPath));
+                        return;
+                    }
+                    --state->processing;
+                    state->donePacked += qMax(job.file.packedsize > 0 ? job.file.packedsize : packedSize, qint64(0));
+                    ++state->finished;
+                    emitAggregate(job.ordinal);
+                    if (state->finished >= state->downloadCount) {
+                        if (state->done)
+                            state->done(true, {});
+                        return;
+                    }
+                    (*pump)();
+                });
+                watcher->setFuture(QtConcurrent::run([packed, job]() {
+                    Unpacked out;
+                    if (sha256Hex(packed) != job.file.packedhash) {
+                        out.error = QStringLiteral("packed hash mismatch for %1 (%2 bytes)")
+                                        .arg(job.file.localfile).arg(packed.size());
+                        return out;
+                    }
+                    QString unpackError;
+                    if (!unpackLzmaAlone(packed, out.bytes, &unpackError)) {
+                        out.error = unpackError + QStringLiteral(" ") + job.file.url;
+                        return out;
+                    }
+                    if (sha256Hex(out.bytes) != job.file.unpackedhash || out.bytes.size() != job.file.unpackedsize)
+                        out.error = QStringLiteral("unpacked hash mismatch for %1").arg(job.file.localfile);
+                    return out;
+                }));
             });
         }
     };

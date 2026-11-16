@@ -198,15 +198,9 @@ bool resourcesDirUsable(const QString& cand)
 {
     if (cand.isEmpty())
         return false;
-    // Catalog only — never accept a bare existing dir. On wasm, viaApp
-    // `applicationDirPath../Resources` can exist as an empty MEMFS folder
-    // and would win over qtclient AppData, yielding empty catalog / failed assets.
-    // qtclient-fs QDir::exists on dirs is also flaky on Safari OPFS; the file probe
-    // goes through qtclientFs QFileInfo.
-    if (catalogAt(QDir(cand).filePath(QStringLiteral("assets"))))
-        return true;
-    const std::string abs = cand.toStdString();
-    return tibia::files::data().fileExists(abs + "/assets/catalog-content.json");
+    // Catalog only — never accept a bare existing dir (an empty
+    // `applicationDirPath../Resources` must not win over the AppData package).
+    return catalogAt(QDir(cand).filePath(QStringLiteral("assets")));
 }
 
 bool tryPackageResources(const QString& appData, QString* out)
@@ -247,22 +241,6 @@ QString resolveCipResourcesDir()
     const QString appData = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     if (tryPackageResources(appData, &found))
         return found;
-
-#if defined(__EMSCRIPTEN__)
-    // Portal CIP_APPDATA is IdleOT/IdleOT; stock Qt defaults are Tibia/Tibia until
-    // pack identity applies (or when identity is missing). Probe both absolute
-    // roots so /play qtclient-fs assets resolve either way.
-    const char* wasmAppDataRoots[] = {
-        "/home/web_user/.local/share/IdleOT/IdleOT",
-        "/home/web_user/.local/share/Tibia/Tibia",
-    };
-    for (const char* root : wasmAppDataRoots) {
-        if (appData == QLatin1String(root))
-            continue;
-        if (tryPackageResources(QLatin1String(root), &found))
-            return found;
-    }
-#endif
 
     QString work = QString::fromStdString(tibia::files::data().getWorkDir());
     while (work.endsWith(QLatin1Char('/')) || work.endsWith(QLatin1Char('\\')))

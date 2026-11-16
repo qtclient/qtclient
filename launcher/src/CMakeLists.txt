@@ -16,12 +16,10 @@ set(TIBIA_PRODUCT_BUNDLE_ID "com.tibia.launcher")
 set(TIBIA_PRODUCT_URL "https://www.tibia.com/")
 set(TIBIA_DEFAULT_CDN "")
 set(TIBIA_CLIENT_PACKAGE_DIR "Tibia.app")
-# Kept for fingerprint compatibility; qtclient always embeds upstream chrome only.
-option(QTCLIENT_ENABLE_LAUNCHER_MODS "Deprecated: brand is runtime tip pack" OFF)
 
 if(EMSCRIPTEN)
-  # Browser /play keeps the pre-port launcher (async main thread, OPFS, things
-  # packs) until the CipSoft classes below run under WASM.
+  # Browser /play runs the web launcher (wasm/) until the CipSoft classes
+  # below run under WASM.
   set(_launcher_sources
     brand.cpp brand.h
     wasm/main.cpp
@@ -137,21 +135,13 @@ if(TOGGLE_BIN_FOLDER)
   endif()
 endif()
 
-# Portal qtLoad passes qt.environment (QTCLIENT_* login/CDN). Without ENV on
-# Module, qtloader throwIfEnvUsedButNotExported crashes /play before callMain.
 if(EMSCRIPTEN)
-  set_target_properties(launcher PROPERTIES
-    QT_WASM_EXTRA_EXPORTED_METHODS "ENV,FS")
-  # Same qtclient-fs Qt engine as tibia.wasm — soft QFile → Module.qtclientFs → OPFS.
-  # JSPI + wasm EH (matches Qt -feature-wasm-exceptions / -feature-wasm-jspi).
-  target_sources(launcher PRIVATE
-    "${TIBIA_ROOT}/client/tibia/browser/opfs_file_engine.cpp"
-    "${TIBIA_ROOT}/client/tibia/browser/opfs_file_engine.h")
-  target_link_libraries(launcher PRIVATE Qt6::CorePrivate)
+  # Same browser runtime as tibia.wasm (OPFS-backed WasmFS, JSPI).
+  include("${TIBIA_ROOT}/cmake/QtclientBrowserRuntime.cmake")
+  qtclient_browser_runtime(launcher)
+  # Wasm EH, matching the Qt kit's -feature-wasm-exceptions.
   target_compile_options(launcher PRIVATE "SHELL:-fwasm-exceptions")
   target_link_options(launcher PRIVATE
-    "SHELL:-sJSPI"
     "SHELL:-fwasm-exceptions"
-    "SHELL:-sSUPPORT_LONGJMP=wasm"
-    "SHELL:--post-js=${TIBIA_ROOT}/browser/jspi-wrap-table.js")
+    "SHELL:-sSUPPORT_LONGJMP=wasm")
 endif()

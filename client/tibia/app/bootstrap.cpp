@@ -10,10 +10,6 @@
 #include "qmldisk.h"
 #include "imageproviders/imagestripimageprovider.h"
 
-#if defined(__EMSCRIPTEN__)
-#    include "browser/opfs_file_engine.h"
-#endif
-
 #include <cip_registration.h>
 
 #include <QCoreApplication>
@@ -222,11 +218,11 @@ void applyBundledMoltenVkIcd()
 QString mountGraphicsResources(const QStringList& dirs)
 {
     // Buffer must outlive every qrc:/images reference. Path-based
-    // QResource::registerResource mmap needs a POSIX fd — qtclient-fs QFile has
-    // none on wasm, so always QFile::readAll + registerResource(bytes).
+    // QResource::registerResource maps the file; on wasm that is a full heap
+    // copy anyway, so always QFile::readAll + registerResource(bytes).
     static QByteArray mountedBytes;
     if (!mountedBytes.isEmpty()) {
-        // Already mounted this process (re-entry / soft→game).
+        // Already mounted in this process (re-entry).
         return QStringLiteral("<mounted-buffer>");
     }
 
@@ -244,17 +240,11 @@ QString mountGraphicsResources(const QStringList& dirs)
             QDir(dir).filePath(QStringLiteral("assets/graphics_resources.rcc")),
         };
         for (const QString& file : candidates) {
-            QByteArray bytes;
-#if defined(__EMSCRIPTEN__)
-            bytes = tibiaQtclientFsReadFile(file);
-#endif
-            if (bytes.isEmpty()) {
-                QFile qf(file);
-                if (!qf.open(QIODevice::ReadOnly))
-                    continue;
-                bytes = qf.readAll();
-                qf.close();
-            }
+            QFile qf(file);
+            if (!qf.open(QIODevice::ReadOnly))
+                continue;
+            QByteArray bytes = qf.readAll();
+            qf.close();
             if (bytes.size() < 16)
                 continue;
             mountedBytes = std::move(bytes);

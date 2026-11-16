@@ -3,10 +3,6 @@
 #include "filesystemhelper.h"
 #include "shared/sharedciptypes.h"
 
-#if defined(__EMSCRIPTEN__)
-#    include "browser/opfs_file_engine.h"
-#endif
-
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDir>
@@ -43,24 +39,12 @@ bool qExists(const QString& path, const bool directory)
 bool isDirectory(const std::string& path)
 {
     std::error_code ec;
-    // The browser's tip lives on Module.qtclientFs, which only QFile/QDir see.
-    return std::filesystem::is_directory(path, ec) || QDir(QString::fromStdString(path)).exists();
+    return std::filesystem::is_directory(path, ec);
 }
 
 std::string readBytes(const std::string& path)
 {
     const QString qpath = QString::fromStdString(path);
-#if defined(__EMSCRIPTEN__)
-    // Multi-MB tip assets (appearances.dat, …): one-shot qtclient-fs read. Chunked
-    // QFile::readAll across JSPI suspends corrupted payloads on Chrome/Safari.
-    if (qpath.startsWith(QLatin1String("/home/web_user"))
-        || qpath.startsWith(QLatin1String("/mods"))
-        || qpath.startsWith(QLatin1String("/data"))) {
-        const QByteArray tipBytes = tibiaQtclientFsReadFile(qpath);
-        if (!tipBytes.isEmpty())
-            return std::string(tipBytes.constData(), static_cast<size_t>(tipBytes.size()));
-    }
-#endif
     QFile file(qpath);
     if (!file.open(QIODevice::ReadOnly))
         throw std::runtime_error("unable to open file '" + path + "'");
@@ -508,7 +492,6 @@ bool TTibiaFileSystemHelper::setupUserWriteDir(const std::string& appWriteDirNam
     const std::string dir = QDir(base).filePath(QString::fromStdString(name)).toStdString();
     std::error_code ec;
     std::filesystem::create_directories(dir, ec);
-    QDir().mkpath(QString::fromStdString(dir));
     return setWriteDir(dir);
 }
 

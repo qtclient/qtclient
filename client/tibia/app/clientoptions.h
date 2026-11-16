@@ -33,6 +33,11 @@ class ClientOptions
 {
 public:
     static ClientOptions load();
+    /// The stored clientoptions.json only, for main() before QGuiApplication
+    /// (renderer, vsync, atlas). It leaves config::TClientOptions alone: that
+    /// singleton loads once the app exists, under the pack's AppData identity
+    /// and with an event dispatcher for its option timers.
+    static ClientOptions readStoredFile();
     static QString userFilePath();
     /// Sets one option (TClientOptions' typed setters): a no-op when the
     /// option already holds `value`, else written and announced by optionChanged.

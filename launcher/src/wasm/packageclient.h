@@ -125,7 +125,7 @@ class PackageClient : public QObject
 public:
     explicit PackageClient(QObject* parent = nullptr);
 
-    /** CDN bundle root, no trailing slash (hints / content store). */
+    /** CDN bundle root, no trailing slash (hints / tip URL rewrite). */
     void setCdnBase(const QString& base);
     QString cdnBase() const { return m_cdn; }
 
@@ -224,12 +224,6 @@ Q_SIGNALS:
 private:
     QByteArray get(const QUrl& url, QString* error);
     QUrl resolve(const QUrl& base, const QString& url) const;
-    /**
-     * Product CDN only: rewrite /launcher/ onto m_cdn and fetch
-     * content/<aa>/<packedhash>. Foreign tips (e.g. static.tibia.com) stay
-     * tip-relative — CIP launcher protocol.
-     */
-    bool useCdnContentStore() const;
     QUrl fileDownloadUrl(const QUrl& packageUrl, const CipFile& file) const;
     /**
      * Download pool. progressBase/progressTotal span a multi-phase install
