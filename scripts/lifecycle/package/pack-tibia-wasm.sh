@@ -88,7 +88,7 @@ if [[ -z "$PACK_SRC" ]]; then
     for cand in "$mods_root"/*; do
       [[ -d "$cand" && -f "$cand/mod.json" ]] || continue
       base="$(basename "$cand")"
-      [[ "$base" == myaac || "$base" == clientmods || "$base" == minimap ]] && continue
+      [[ "$base" == qtc-aac || "$base" == clientmods || "$base" == minimap ]] && continue
       [[ -z "$first" ]] && first="$cand"
       if [[ -f "$cand/brand.json" ]]; then
         branded="$cand"

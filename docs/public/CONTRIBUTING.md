@@ -5,7 +5,7 @@
 | Path | Role |
 |------|------|
 | `client/upstream/` | CIP sync output (local only; gitignored in public) |
-| `client/mods/myaac/` · `otclient/` | Stock example packs (login urls; OTC wire) |
+| `client/mods/qtc-aac/` · `otclient/` | Stock example packs (login urls; OTC wire) |
 | `client/mods/<your>/` | Your pack (gitignored; copy/symlink/submodule locally)
 | `launcher/mods/<your>/` | Launcher brand / art pack |
 | `third_party/qt5-cip` | CipSoft Qt sources (submodule, `update = none`) |

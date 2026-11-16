@@ -84,7 +84,7 @@ if(EXISTS "${_hints_json}")
 endif()
 
 # In-tree default mod: lowest-priority launcher settings (no CipSoft urls by default).
-set(_default_mod_json "${TIBIA_ROOT}/client/mods/myaac/mod.json")
+set(_default_mod_json "${TIBIA_ROOT}/client/mods/qtc-aac/mod.json")
 if(EXISTS "${_default_mod_json}")
   set_source_files_properties("${_default_mod_json}" PROPERTIES QT_RESOURCE_ALIAS "mods/default/mod.json")
   list(APPEND _launcher_resources "${_default_mod_json}")

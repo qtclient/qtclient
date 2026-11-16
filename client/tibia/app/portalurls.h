@@ -23,6 +23,22 @@ public:
     static QUrl clientServicesUrl(const QUrl& loginBase,
                                   const QString& clientServicesPath = QStringLiteral("/clientservices/clientservices.php"));
     static void open(const QUrl& url);
+
+    /// Map a CipSoft web URL onto this deployment, keeping path + query (CIP
+    /// [URLS] pages default to www.tibia.com; qtclient serves the same paths
+    /// from the configured origins):
+    ///   www.tibia.com / tibia.com / qt.tibia.com → loginBase
+    ///   static.tibia.com                         → assetBase
+    ///   payments.cipsoft.com                     → paymentsBase (else loginBase)
+    ///   limesurvey.cipsoft.com, www.cipsoft.com  → loginBase
+    /// Any other URL is returned unchanged.
+    static QUrl mapCipUrl(const LauncherEnv& env, const QUrl& url);
+    /// Same, against the env registered by installCipUrlHandler().
+    static QUrl mapCipUrl(const QUrl& url);
+    /// Route every QDesktopServices::openUrl / Qt.openUrlExternally http(s)
+    /// call through mapCipUrl (links in CIP dialogs and translations, the
+    /// Wheel of Destiny planner, …). Call once after LauncherEnv::load.
+    static void installCipUrlHandler(const LauncherEnv& env);
 };
 
 }

@@ -7,7 +7,7 @@ woven into stock `client/tibia`.
 | CipSoft engine | `client/tibia` (+ `upstream/` from sync) | — |
 | Launcher | `launcher/src` | Brand/art via `launcher/mods/<id>` |
 | `upstream/*` / CIP assets | Never commit — `make sync` + `make extract` | Same |
-| Mods API + default packs (`myaac`, `otclient`) | Yes | `mod.json` + linked C++ / FS QML + `mod_api_v1` |
+| Mods API + default packs (`qtc-aac`, `otclient`) | Yes | `mod.json` + linked C++ / FS QML + `mod_api_v1` |
 | Product packs | Not required to build stock | Drop in `mods/<id>/` or umbrella `make qtclient install` (`QTCLIENT_PACK`) |
 
 ## Inplace extension
@@ -32,7 +32,7 @@ Stock-only: `-DQTCLIENT_ENABLE_MODS=OFF`.
 
 ## First-time consumers
 
-Binary: demo Release → `./launcher` (myAAC `http://127.0.0.1/login.php` +
+Binary: demo Release → `./launcher` (qtc-aac `http://127.0.0.1:5173` +
 CipSoft `assetsurl`; see [public/demo-tip.md](public/demo-tip.md)) **or**
 `./qtclient-fetch-assets` → `./client` (BYO Tibia).
 

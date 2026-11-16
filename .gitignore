@@ -42,6 +42,7 @@ vc18/
 /data/sounds/sound-*.ogg
 /data/sounds/sounds-*.dat
 /data/assets/
+/data/aac/
 /data/storeimages/
 # Public CIP-clone spin-out also ignores /upstream/ (builders run make tibia-sync).
 # This private qtclient fork keeps upstream/ tracked for convenience — see docs/open-source.md.
@@ -52,8 +53,8 @@ vc18/
 # Do not commit product packs under client/mods or launcher/mods.
 /client/mods/*
 !/client/mods/README.md
-!/client/mods/myaac/
-!/client/mods/myaac/**
+!/client/mods/qtc-aac/
+!/client/mods/qtc-aac/**
 /launcher/mods/*
 !/launcher/mods/.gitkeep
 !/launcher/mods/clientmods/
