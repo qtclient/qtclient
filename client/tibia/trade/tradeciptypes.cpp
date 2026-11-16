@@ -193,43 +193,36 @@ std::vector<::tibia::container::TInventorySlot> offerItems(const Message& m)
 
 }
 
-void TNPCTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TNPCTradeProtocolMessageHandler::handleNPCOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageNPCOffer& NPCOfferMessage)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::lastShadowServerMessage();
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 122:
-        if (shadow->HasExtension(GameserverMessageNPCOffer::gameserver_message_n_p_c_offer)) {
-            const auto& m = shadow->GetExtension(GameserverMessageNPCOffer::gameserver_message_n_p_c_offer);
-            tibia::game::notify("onOpenNpcTradeHeader", m.npc_name(), static_cast<uint16_t>(m.currency_object_id()),
-                                m.currency_name());
-            std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>> items;
-            items.reserve(static_cast<size_t>(m.offers_size()));
-            for (const auto& offer : m.offers())
-                items.emplace_back(::tibia::container::TInventorySlot::fromTypeId(static_cast<uint16_t>(offer.object_id()),
-                                                                                  static_cast<uint8_t>(offer.data())),
-                                   offer.name(), offer.weight(), npcTradePrice(offer.buy_price()),
-                                   npcTradePrice(offer.sell_price()));
-            tibia::game::processOpenNpcTrade(items);
-        }
-        break;
-    case 123:
-        if (shadow->HasExtension(GameserverMessagePlayerGoods::gameserver_message_player_goods)) {
-            std::vector<std::pair<uint16_t, uint16_t>> goods;
-            for (const auto& good : shadow->GetExtension(GameserverMessagePlayerGoods::gameserver_message_player_goods).goods())
-                goods.emplace_back(static_cast<uint16_t>(good.object_id()), static_cast<uint16_t>(good.amount()));
-            // The money comes from the resource balances, not this message.
-            tibia::game::processPlayerGoods(tibia::game::localPlayerTotalMoney(), goods);
-        }
-        break;
-    case 124:
-        tibia::game::processCloseNpcTrade();
-        break;
-    default:
-        break;
-    }
+    const auto& m = NPCOfferMessage;
+    tibia::game::notify("onOpenNpcTradeHeader", m.npc_name(), static_cast<uint16_t>(m.currency_object_id()),
+                        m.currency_name());
+    std::vector<std::tuple<::tibia::container::TInventorySlot, std::string, uint32_t, uint32_t, uint32_t>> items;
+    items.reserve(static_cast<size_t>(m.offers_size()));
+    for (const auto& offer : m.offers())
+        items.emplace_back(::tibia::container::TInventorySlot::fromTypeId(static_cast<uint16_t>(offer.object_id()),
+                                                                          static_cast<uint8_t>(offer.data())),
+                           offer.name(), offer.weight(), npcTradePrice(offer.buy_price()),
+                           npcTradePrice(offer.sell_price()));
+    tibia::game::processOpenNpcTrade(items);
+}
+
+void TNPCTradeProtocolMessageHandler::handlePlayerGoodsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerGoods& PlayerGoodsMessage)
+{
+    using namespace ::tibia::protobuf::protocol;
+    std::vector<std::pair<uint16_t, uint16_t>> goods;
+    for (const auto& good : PlayerGoodsMessage.goods())
+        goods.emplace_back(static_cast<uint16_t>(good.object_id()), static_cast<uint16_t>(good.amount()));
+    // The money comes from the resource balances, not this message.
+    tibia::game::processPlayerGoods(tibia::game::localPlayerTotalMoney(), goods);
+}
+
+void TNPCTradeProtocolMessageHandler::handleCloseNPCTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseNPCTrade& CloseNPCTradeMessage)
+{
+    using namespace ::tibia::protobuf::protocol;
+tibia::game::processCloseNpcTrade();
 }
 
 TPlayerTradeProtocolMessageHandler* TPlayerTradeProtocolMessageHandler::s_instance = nullptr;
@@ -323,14 +316,9 @@ void ownProductSurface(QObject* parent)
     new TCharacterTradeStorage(parent);
 }
 
-void TCharacterTradeProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageCharacterTradeConfiguration& m)
 {
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || opcode != 128
-        || !shadow->HasExtension(GameserverMessageCharacterTradeConfiguration::gameserver_message_character_trade_configuration))
-        return;
-    const auto& m = shadow->GetExtension(GameserverMessageCharacterTradeConfiguration::gameserver_message_character_trade_configuration);
     switch (m.data_type()) {
     case 0: {
         std::vector<std::tuple<std::string, uint8_t>> conditions;

@@ -420,23 +420,15 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
         using StaticIngress = void (*)(int);
         static constexpr StaticIngress kStaticIngresses[] = {
             &chat::TChatProtocolMessageHandler::onServerMessageEnqueued,
-            &trade::TNPCTradeProtocolMessageHandler::onServerMessageEnqueued,
             &trade::TPlayerTradeProtocolMessageHandler::onServerMessageEnqueued,
             &store::TStoreProtocolMessageHandler::onServerMessageEnqueued,
             &cyclopedia::TCyclopediaProtocolMessageHandler::onServerMessageEnqueued,
-            &creatures::TUnjustifiedPointsProtocolMessageHandler::onServerMessageEnqueued,
-            &creatures::TVipProtocolMessageHandler::onServerMessageEnqueued,
-            &cyclopedia::TBestiaryTrackerProtocolMessageHandler::onServerMessageEnqueued,
             &sound::TSoundProtocolMessageHandler::onServerMessageEnqueued,
             &game::TEditTextProtocolMessageHandler::onServerMessageEnqueued,
             &game::TPremiumProtocolMessageHandler::onServerMessageEnqueued,
-            &reporting::TRuleViolationProtocolMessageHandler::onServerMessageEnqueued,
-            &teamfinder::TTeamFinderProtocolMessageHandler::onServerMessageEnqueued,
             &game::TBlessingsProtocolMessageHandler::onServerMessageEnqueued,
             &game::TServerModalDialogProtocolMessageHandler::onServerMessageEnqueued,
             &game::TBossDifficultySelectionProtocolMessageHandler::onServerMessageEnqueued,
-            &trade::TCharacterTradeProtocolMessageHandler::onServerMessageEnqueued,
-            &friends::TFriendsProtocolMessageHandler::onServerMessageEnqueued,
             &game::TSpellBookProtocolMessageHandler::onServerMessageEnqueued,
         };
         for (const QMetaObject::Connection& connection : m_staticIngressConnections)

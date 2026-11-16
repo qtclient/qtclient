@@ -1038,12 +1038,4 @@ void TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage(
     tibia::game::notify("onParseCyclopediaTracker", static_cast<uint8_t>(trackerType), rows);
 }
 
-void TBestiaryTrackerProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (shadow && opcode == 185 && shadow->HasExtension(GameserverMessageBestiaryTracker::gameserver_message_bestiary_tracker))
-        handleBestiaryTrackerMessage(shadow->GetExtension(GameserverMessageBestiaryTracker::gameserver_message_bestiary_tracker));
-}
-
 }

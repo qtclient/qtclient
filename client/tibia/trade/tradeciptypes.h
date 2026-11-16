@@ -18,6 +18,10 @@
 #include <vector>
 
 namespace tibia::protobuf::protocol {
+class GameserverMessageCharacterTradeConfiguration;
+class GameserverMessageCloseNPCTrade;
+class GameserverMessageNPCOffer;
+class GameserverMessagePlayerGoods;
 class GameserverMessageOwnOffer;
 class GameserverMessageCounterOffer;
 }
@@ -55,7 +59,8 @@ public:
     using cip::tibia::trade::TCharacterTradeProtocolMessageHandler::TCharacterTradeProtocolMessageHandler;
 
     /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    static void handleCharacterTradeConfigurationMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageCharacterTradeConfiguration& message);
 };
 
 /// CipSoft CharacterTradeDialog data from onCharacterTrade* publishes.
@@ -121,9 +126,9 @@ class TNPCTradeProtocolMessageHandler final : public cip::tibia::trade::TNPCTrad
     Q_OBJECT
 public:
     using cip::tibia::trade::TNPCTradeProtocolMessageHandler::TNPCTradeProtocolMessageHandler;
-
-    /// Tip Q→H wire: NPCOffer, PlayerGoods and CloseNPCTrade from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
+    static void handleNPCOfferMessage(const ::tibia::protobuf::protocol::GameserverMessageNPCOffer& NPCOfferMessage);
+    static void handlePlayerGoodsMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerGoods& PlayerGoodsMessage);
+    static void handleCloseNPCTradeMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseNPCTrade& CloseNPCTradeMessage);
 };
 
 class TPlayerTradeGameActionHandler final : public cip::tibia::trade::TPlayerTradeGameActionHandler

@@ -221,9 +221,6 @@ public:
 
     static TFriendsProtocolMessageHandler* instance();
 
-    /// FriendSystemData from the native message.
-    static void onServerMessageEnqueued(int opcode);
-
     void handleFriendSystemDataMessage(const ::tibia::protobuf::protocol::GameserverMessageFriendSystemData& message);
 };
 

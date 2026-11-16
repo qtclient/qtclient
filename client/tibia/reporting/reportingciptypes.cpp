@@ -74,9 +74,12 @@ void ownProductSurface(QObject* parent)
 
 namespace {
 
-/// The text the server sends for a report becomes the REPORT_TEXT action:
-/// its author, the text's edit id and the text itself.
-void handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMessageTextForReport& message)
+/// The server's report message confirms a submitted rule violation report.
+constexpr uint32_t MessageModeReport = 38;
+
+}
+
+void TRuleViolationProtocolMessageHandler::handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMessageTextForReport& message)
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::REPORT_TEXT));
     action->text = QString::fromStdString(message.name());
@@ -85,27 +88,10 @@ void handleTextForReportMessage(const ::tibia::protobuf::protocol::GameserverMes
     input::publish(action);
 }
 
-/// The server's report message confirms a submitted rule violation report.
-constexpr uint32_t MessageModeReport = 38;
-
-void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message)
+void TRuleViolationProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& message)
 {
     if (message.mode() == MessageModeReport)
         tibia::game::notify("onRuleViolationReportConfirmed");
-}
-
-}
-
-void TRuleViolationProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    if (opcode == 180 && shadow->HasExtension(GameserverMessageMessage::gameserver_message_message))
-        handleMessageMessage(shadow->GetExtension(GameserverMessageMessage::gameserver_message_message));
-    if (opcode == 129 && shadow->HasExtension(GameserverMessageTextForReport::gameserver_message_text_for_report))
-        handleTextForReportMessage(shadow->GetExtension(GameserverMessageTextForReport::gameserver_message_text_for_report));
 }
 
 } // namespace tibia::reporting

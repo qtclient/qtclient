@@ -42,8 +42,6 @@ class TBestiaryTrackerProtocolMessageHandler final : public cip::tibia::cycloped
 public:
     using cip::tibia::cyclopedia::TBestiaryTrackerProtocolMessageHandler::TBestiaryTrackerProtocolMessageHandler;
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
     /// The tracked races with their capitalised names ("onCreatureTracker": tracker type,
     /// rows; tracker 0 is the bestiary's, any other the bosstiary's). The raw rows also go
     /// out as "onParseCyclopediaTracker" for packs.

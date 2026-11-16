@@ -11,6 +11,12 @@
 #include "creatures/creaturemovementspeedcalculator.h"
 #include "creatures/creaturestorage.h"
 #include "game/gameciptypes.h"
+#include "trade/tradeciptypes.h"
+#include "teamfinder/teamfinderciptypes.h"
+#include "reporting/reportingciptypes.h"
+#include "friends/friendsciptypes.h"
+#include "cyclopedia/cyclopediaciptypes.h"
+#include "creatures/creaturesciptypes.h"
 #include "game/playerdata.h"
 #include "game/playerskillstats.h"
 #include "questlog/questlogciptypes.h"
@@ -170,6 +176,15 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedAmbientLightMessage, worldmap, &TWorldmapProtocolMessageHandler::handleAmbientLightMessage);
     link(&Queue::receivedTibiaTimeMessage, worldmap, &TWorldmapProtocolMessageHandler::handleTibiaTimeMessage);
 
+    using creatures::TVipProtocolMessageHandler;
+    auto* vip = TVipProtocolMessageHandler::instance();
+    link(&Queue::receivedBuddyDataMessage, vip, &TVipProtocolMessageHandler::handleBuddyData);
+    link(&Queue::receivedBuddyStatusChangeMessage, vip, &TVipProtocolMessageHandler::handleBuddyStatusChange);
+    link(&Queue::receivedBuddyGroupDataMessage, vip, &TVipProtocolMessageHandler::handleBuddyGroupData);
+    using creatures::TUnjustifiedPointsProtocolMessageHandler;
+    link(&Queue::receivedUnjustifiedPointsMessage, this, &TUnjustifiedPointsProtocolMessageHandler::handleUnjustifiedPoints);
+    link(&Queue::receivedPvpSituationsMessage, this, &TUnjustifiedPointsProtocolMessageHandler::handlePvpSituations);
+
     // The spell modifications the server announces.
     link(&Queue::receivedSpellDataModificationMessage, this, &spells::TSpellsProtocolMessageHandler::handleSpellDataModificationMessage);
 
@@ -178,10 +193,19 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedMarketDetailMessage, this, &TMarketProtocolMessageHandler::handleMarketDetailMessage);
     link(&Queue::receivedMarketBrowseMessage, this, &TMarketProtocolMessageHandler::handleMarketBrowseMessage);
 
+    using trade::TNPCTradeProtocolMessageHandler;
+    link(&Queue::receivedNPCOfferMessage, this, &TNPCTradeProtocolMessageHandler::handleNPCOfferMessage);
+    link(&Queue::receivedPlayerGoodsMessage, this, &TNPCTradeProtocolMessageHandler::handlePlayerGoodsMessage);
+    link(&Queue::receivedCloseNPCTradeMessage, this, &TNPCTradeProtocolMessageHandler::handleCloseNPCTradeMessage);
+
     using questlog::TQuestLogProtocolMessageHandler;
     link(&Queue::receivedQuestLogMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLogMessage);
     link(&Queue::receivedQuestLineMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLineMessage);
     link(&Queue::receivedTrackedQuestFlagsMessage, this, &TQuestLogProtocolMessageHandler::handleTrackedQuestFlagsMessage);
+
+    using reporting::TRuleViolationProtocolMessageHandler;
+    link(&Queue::receivedMessageMessage, this, &TRuleViolationProtocolMessageHandler::handleMessageMessage);
+    link(&Queue::receivedTextForReportMessage, this, &TRuleViolationProtocolMessageHandler::handleTextForReportMessage);
 
     link(&Queue::receivedShowGameNewsMessage, this, &news::TNewsProtocolMessageHandler::handleShowGameNewsMessage);
 
@@ -207,13 +231,24 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
          &TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage);
     link(&Queue::receivedShowMessageDialogMessage, this, &TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage);
 
+    link(&Queue::receivedBestiaryTrackerMessage, this,
+         &cyclopedia::TBestiaryTrackerProtocolMessageHandler::handleBestiaryTrackerMessage);
     link(&Queue::receivedUpdateManagedContainersMessage, this,
          &quickloot::TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage);
     using exivaoptions::TExivaOptionsProtocolMessageHandler;
     link(&Queue::receivedExivaSuppressedMessage, this, &TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage);
     link(&Queue::receivedUpdateExivaOptionsMessage, this, &TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage);
 
+    link(&Queue::receivedFriendSystemDataMessage, friends::TFriendsProtocolMessageHandler::instance(),
+         &friends::TFriendsProtocolMessageHandler::handleFriendSystemDataMessage);
     link(&Queue::receivedHighscoresMessage, this, &highscores::THighscoresProtocolMessageHandler::handleHighscoresMessage);
+
+    using teamfinder::TTeamFinderProtocolMessageHandler;
+    auto* teamFinder = TTeamFinderProtocolMessageHandler::instance();
+    link(&Queue::receivedTeamFinderTeamLeaderMessage, teamFinder, &TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage);
+    link(&Queue::receivedTeamFinderTeamMemberMessage, teamFinder, &TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage);
+    link(&Queue::receivedCharacterTradeConfigurationMessage, this,
+         &trade::TCharacterTradeProtocolMessageHandler::handleCharacterTradeConfigurationMessage);
 
     using bossbestiary::TBossBestiaryProtocolMessageHandler;
     link(&Queue::receivedBossTrackingMessage, this, &TBossBestiaryProtocolMessageHandler::handleBossTrackingMessage);

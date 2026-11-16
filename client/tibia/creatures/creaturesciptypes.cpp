@@ -399,32 +399,23 @@ void ownProductSurface(QObject* parent)
 
 namespace tibia::creatures {
 
-void TUnjustifiedPointsProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TUnjustifiedPointsProtocolMessageHandler::handleUnjustifiedPoints(const ::tibia::protobuf::protocol::GameserverMessageUnjustifiedPoints& UnjustifiedPointsMessage)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 183:
-        if (shadow->HasExtension(GameserverMessageUnjustifiedPoints::gameserver_message_unjustified_points)) {
-            const auto& m = shadow->GetExtension(GameserverMessageUnjustifiedPoints::gameserver_message_unjustified_points);
-            tibia::game::setUnjustifiedPoints({ .killsDay = static_cast<uint8_t>(m.day().progress()),
-                                                .killsDayRemaining = static_cast<uint8_t>(m.day().remaining()),
-                                                .killsWeek = static_cast<uint8_t>(m.week().progress()),
-                                                .killsWeekRemaining = static_cast<uint8_t>(m.week().remaining()),
-                                                .killsMonth = static_cast<uint8_t>(m.month().progress()),
-                                                .killsMonthRemaining = static_cast<uint8_t>(m.month().remaining()),
-                                                .skullTime = static_cast<uint8_t>(m.skull_duration()) });
-        }
-        break;
-    case 184:
-        if (shadow->HasExtension(GameserverMessagePvpSituations::gameserver_message_pvp_situations))
-            tibia::game::setOpenPvpSituations(static_cast<uint8_t>(shadow->GetExtension(GameserverMessagePvpSituations::gameserver_message_pvp_situations).open_situations()));
-        break;
-    default:
-        break;
-    }
+    const auto& m = UnjustifiedPointsMessage;
+    tibia::game::setUnjustifiedPoints({ .killsDay = static_cast<uint8_t>(m.day().progress()),
+                                        .killsDayRemaining = static_cast<uint8_t>(m.day().remaining()),
+                                        .killsWeek = static_cast<uint8_t>(m.week().progress()),
+                                        .killsWeekRemaining = static_cast<uint8_t>(m.week().remaining()),
+                                        .killsMonth = static_cast<uint8_t>(m.month().progress()),
+                                        .killsMonthRemaining = static_cast<uint8_t>(m.month().remaining()),
+                                        .skullTime = static_cast<uint8_t>(m.skull_duration()) });
+}
+
+void TUnjustifiedPointsProtocolMessageHandler::handlePvpSituations(const ::tibia::protobuf::protocol::GameserverMessagePvpSituations& PvpSituationsMessage)
+{
+    using namespace ::tibia::protobuf::protocol;
+tibia::game::setOpenPvpSituations(static_cast<uint8_t>(PvpSituationsMessage.open_situations()));
 }
 
 }
@@ -438,47 +429,20 @@ using VipAction = ::tibia::input::EGameAction;
 /// The protocol's buddy status is the EVipState; larger values are invalid.
 constexpr uint32_t MaxBuddyStatus = 5;
 
-TVipProtocolMessageHandler* vipProtocolMessageHandler()
+constexpr VipAction VipGameActions[] = { VipAction::ADD_NEW_VIP,       VipAction::REMOVE_VIP,       VipAction::REQUST_VIP_DATA_UPDATE,
+                                         VipAction::ADD_NEW_VIP_GROUP, VipAction::REMOVE_VIP_GROUP, VipAction::REQUEST_VIP_GROUP_UPDATE };
+}
+
+TVipProtocolMessageHandler* TVipProtocolMessageHandler::instance()
 {
     static auto* handler = new TVipProtocolMessageHandler(TVipStorage::instance(), TVipStorage::instance());
     return handler;
-}
-
-constexpr VipAction VipGameActions[] = { VipAction::ADD_NEW_VIP,       VipAction::REMOVE_VIP,       VipAction::REQUST_VIP_DATA_UPDATE,
-                                         VipAction::ADD_NEW_VIP_GROUP, VipAction::REMOVE_VIP_GROUP, VipAction::REQUEST_VIP_GROUP_UPDATE };
-
 }
 
 TVipProtocolMessageHandler::TVipProtocolMessageHandler(TVipStorage* storage, QObject* parent)
     : cip::tibia::creatures::TVipProtocolMessageHandler(parent)
     , m_storage(storage)
 {
-}
-
-void TVipProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    switch (opcode) {
-    case 210:
-        if (shadow->HasExtension(GameserverMessageBuddyData::gameserver_message_buddy_data))
-            vipProtocolMessageHandler()->handleBuddyData(shadow->GetExtension(GameserverMessageBuddyData::gameserver_message_buddy_data));
-        break;
-    case 211:
-        if (shadow->HasExtension(GameserverMessageBuddyStatusChange::gameserver_message_buddy_status_change))
-            vipProtocolMessageHandler()->handleBuddyStatusChange(
-                shadow->GetExtension(GameserverMessageBuddyStatusChange::gameserver_message_buddy_status_change));
-        break;
-    case 212:
-        if (shadow->HasExtension(GameserverMessageBuddyGroupData::gameserver_message_buddy_group_data))
-            vipProtocolMessageHandler()->handleBuddyGroupData(
-                shadow->GetExtension(GameserverMessageBuddyGroupData::gameserver_message_buddy_group_data));
-        break;
-    default:
-        break;
-    }
 }
 
 void TVipProtocolMessageHandler::handleBuddyData(const ::tibia::protobuf::protocol::GameserverMessageBuddyData& message)

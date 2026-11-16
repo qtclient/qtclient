@@ -140,9 +140,6 @@ public:
     /// Applicants on this list are rejected as soon as they apply.
     void setIgnoreList(chat::TWhiteBlacklist* IgnoreList) { m_ignoreList = IgnoreList; }
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
-
     void handleTeamFinderTeamLeaderMessage(const ::tibia::protobuf::protocol::GameserverMessageTeamFinderTeamLeader& Message);
     void handleTeamFinderTeamMemberMessage(const ::tibia::protobuf::protocol::GameserverMessageTeamFinderTeamMember& Message);
 

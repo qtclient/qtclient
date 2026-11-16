@@ -198,17 +198,6 @@ TFriendsProtocolMessageHandler* TFriendsProtocolMessageHandler::instance()
     return handler;
 }
 
-void TFriendsProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    if (opcode != 116)
-        return;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || !shadow->HasExtension(GameserverMessageFriendSystemData::gameserver_message_friend_system_data))
-        return;
-    instance()->handleFriendSystemDataMessage(
-        shadow->GetExtension(GameserverMessageFriendSystemData::gameserver_message_friend_system_data));
-}
-
 void TFriendsProtocolMessageHandler::handleFriendSystemDataMessage(const GameserverMessageFriendSystemData& message)
 {
     TFriendsStorage* storage = TFriendsStorage::instance();

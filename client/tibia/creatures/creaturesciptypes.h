@@ -74,9 +74,9 @@ class TUnjustifiedPointsProtocolMessageHandler final : public cip::tibia::creatu
     Q_OBJECT
 public:
     using cip::tibia::creatures::TUnjustifiedPointsProtocolMessageHandler::TUnjustifiedPointsProtocolMessageHandler;
-public:
-    /// Tip Q→H wire: PvpSituations from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
+
+    static void handleUnjustifiedPoints(const ::tibia::protobuf::protocol::GameserverMessageUnjustifiedPoints& UnjustifiedPointsMessage);
+    static void handlePvpSituations(const ::tibia::protobuf::protocol::GameserverMessagePvpSituations& PvpSituationsMessage);
 };
 
 class TUnjustifiedPointsStorage final : public cip::tibia::creatures::TUnjustifiedPointsStorage
@@ -118,9 +118,8 @@ class TVipProtocolMessageHandler final : public cip::tibia::creatures::TVipProto
     Q_OBJECT
 public:
     TVipProtocolMessageHandler(TVipStorage* storage, QObject* parent = nullptr);
-
-    /// Tip Q→H wire: the buddy messages from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
+    /// The handler of the VIP storage.
+    static TVipProtocolMessageHandler* instance();
 
     void handleBuddyData(const ::tibia::protobuf::protocol::GameserverMessageBuddyData& message);
     void handleBuddyStatusChange(const ::tibia::protobuf::protocol::GameserverMessageBuddyStatusChange& message);

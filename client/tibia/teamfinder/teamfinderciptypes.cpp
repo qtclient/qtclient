@@ -302,6 +302,30 @@ void TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage(
     } else if (Message.reset() == 1) {
         Q_EMIT ownTeamUpdateAvailable();
     }
+
+    const auto& m = Message;
+    // Product hook: the same message as plain data for packs.
+    TeamFinderLeaderData data;
+    data.reset = m.reset() != 0;
+    if (!data.reset) {
+        const auto& s = m.settings();
+        data.minLevel = static_cast<uint16_t>(s.min_level());
+        data.maxLevel = static_cast<uint16_t>(s.max_level());
+        data.vocationIDs = static_cast<uint8_t>(s.vocations());
+        data.teamSlots = static_cast<uint16_t>(s.team_slots());
+        data.freeSlots = static_cast<uint16_t>(s.free_slots());
+        data.timestamp = s.timestamp();
+        data.teamType = static_cast<uint8_t>(s.type().team_type());
+        data.bossID = static_cast<uint16_t>(s.type().boss_id());
+        data.huntType = static_cast<uint16_t>(s.type().hunt_type());
+        data.huntArea = static_cast<uint16_t>(s.type().hunt_area());
+        data.questID = static_cast<uint16_t>(s.type().quest_id());
+        for (const auto& member : m.members())
+            data.members.push_back({ .guid = member.guid(), .name = member.name(), .level = static_cast<uint16_t>(member.level()),
+                                     .vocation = static_cast<uint8_t>(member.vocation()),
+                                     .status = static_cast<uint8_t>(member.status()) });
+    }
+    tibia::game::processTeamFinderLeader(data);
 }
 
 void TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage(
@@ -318,6 +342,28 @@ void TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage(
     } else if (Message.rate_limited() == 1) {
         Q_EMIT teamLisUpdateAvailable();
     }
+
+    const auto& m = Message;
+    std::vector<TeamFinderListEntry> entries;
+    for (const auto& team : m.teams()) {
+        const auto& s = team.settings();
+        TeamFinderListEntry& entry = entries.emplace_back();
+        entry.leaderGuid = team.leader_guid();
+        entry.leaderName = team.leader_name();
+        entry.minLevel = static_cast<uint16_t>(s.min_level());
+        entry.maxLevel = static_cast<uint16_t>(s.max_level());
+        entry.vocationIDs = static_cast<uint8_t>(s.vocations());
+        entry.teamSlots = static_cast<uint16_t>(s.team_slots());
+        entry.membersCount = static_cast<uint16_t>(s.free_slots());
+        entry.timestamp = s.timestamp();
+        entry.teamType = static_cast<uint8_t>(s.type().team_type());
+        entry.bossID = static_cast<uint16_t>(s.type().boss_id());
+        entry.huntType = static_cast<uint16_t>(s.type().hunt_type());
+        entry.huntArea = static_cast<uint16_t>(s.type().hunt_area());
+        entry.questID = static_cast<uint16_t>(s.type().quest_id());
+        entry.status = static_cast<uint8_t>(team.status());
+    }
+    tibia::game::processTeamFinderList(m.rate_limited() != 0, entries);
 }
 
 void TTeamFinderProtocolMessageHandler::requestOwnTeam()
@@ -734,62 +780,5 @@ QStringList TTeamSettings::validate(const uint32_t AcceptedMembers) const
 
 // ---------------------------------------------------------------------------
 // Ingress
-
-void TTeamFinderProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    if (opcode == 44 && shadow->HasExtension(GameserverMessageTeamFinderTeamLeader::gameserver_message_team_finder_team_leader)) {
-        const auto& m = shadow->GetExtension(GameserverMessageTeamFinderTeamLeader::gameserver_message_team_finder_team_leader);
-        instance()->handleTeamFinderTeamLeaderMessage(m);
-        // Product hook: the same message as plain data for packs.
-        TeamFinderLeaderData data;
-        data.reset = m.reset() != 0;
-        if (!data.reset) {
-            const auto& s = m.settings();
-            data.minLevel = static_cast<uint16_t>(s.min_level());
-            data.maxLevel = static_cast<uint16_t>(s.max_level());
-            data.vocationIDs = static_cast<uint8_t>(s.vocations());
-            data.teamSlots = static_cast<uint16_t>(s.team_slots());
-            data.freeSlots = static_cast<uint16_t>(s.free_slots());
-            data.timestamp = s.timestamp();
-            data.teamType = static_cast<uint8_t>(s.type().team_type());
-            data.bossID = static_cast<uint16_t>(s.type().boss_id());
-            data.huntType = static_cast<uint16_t>(s.type().hunt_type());
-            data.huntArea = static_cast<uint16_t>(s.type().hunt_area());
-            data.questID = static_cast<uint16_t>(s.type().quest_id());
-            for (const auto& member : m.members())
-                data.members.push_back({ .guid = member.guid(), .name = member.name(), .level = static_cast<uint16_t>(member.level()),
-                                         .vocation = static_cast<uint8_t>(member.vocation()),
-                                         .status = static_cast<uint8_t>(member.status()) });
-        }
-        tibia::game::processTeamFinderLeader(data);
-    } else if (opcode == 45 && shadow->HasExtension(GameserverMessageTeamFinderTeamMember::gameserver_message_team_finder_team_member)) {
-        const auto& m = shadow->GetExtension(GameserverMessageTeamFinderTeamMember::gameserver_message_team_finder_team_member);
-        instance()->handleTeamFinderTeamMemberMessage(m);
-        std::vector<TeamFinderListEntry> entries;
-        for (const auto& team : m.teams()) {
-            const auto& s = team.settings();
-            TeamFinderListEntry& entry = entries.emplace_back();
-            entry.leaderGuid = team.leader_guid();
-            entry.leaderName = team.leader_name();
-            entry.minLevel = static_cast<uint16_t>(s.min_level());
-            entry.maxLevel = static_cast<uint16_t>(s.max_level());
-            entry.vocationIDs = static_cast<uint8_t>(s.vocations());
-            entry.teamSlots = static_cast<uint16_t>(s.team_slots());
-            entry.membersCount = static_cast<uint16_t>(s.free_slots());
-            entry.timestamp = s.timestamp();
-            entry.teamType = static_cast<uint8_t>(s.type().team_type());
-            entry.bossID = static_cast<uint16_t>(s.type().boss_id());
-            entry.huntType = static_cast<uint16_t>(s.type().hunt_type());
-            entry.huntArea = static_cast<uint16_t>(s.type().hunt_area());
-            entry.questID = static_cast<uint16_t>(s.type().quest_id());
-            entry.status = static_cast<uint8_t>(team.status());
-        }
-        tibia::game::processTeamFinderList(m.rate_limited() != 0, entries);
-    }
-}
 
 } // namespace tibia::teamfinder
