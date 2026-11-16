@@ -104,6 +104,16 @@ private:
     void rebuildEntries();
     /// CIP .
     void buildCategories();
+
+public:
+    /// The category identifiers of the item lists, in the order the
+    /// drop-downs show them (gold and unsorted sorted in by name).
+    static std::vector<int> categoryIdentifiers();
+    /// A cyclopedia type's list entry, untiered; its NPC filter names are
+    /// the NPCs that buy it.
+    static TAppearanceTypeEntry cyclopediaEntry(const ThingTypePtr& type);
+
+private:
     /// CIP .
     bool categorySupportsTiers(int category) const;
     /// CIP .

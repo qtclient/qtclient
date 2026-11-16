@@ -14,6 +14,7 @@ class TTextStorage;
 namespace container {
 class TContainerStorage;
 class TInventoryContainer;
+class TDepotSearchDetailListStorage;
 class TObjectCountStorage;
 }
 namespace creatures {
@@ -90,6 +91,10 @@ public:
     const std::shared_ptr<container::TInventoryContainer>& inventoryContainer() const { return m_inventoryContainer; }
     /// The player's inventory counts, by type and tier.
     const std::shared_ptr<container::TObjectCountStorage>& objectCountStorage() const { return m_objectCountStorage; }
+    const std::shared_ptr<container::TDepotSearchDetailListStorage>& depotSearchDetailListStorage() const
+    {
+        return m_depotSearchDetailListStorage;
+    }
     const std::shared_ptr<sound::TSoundStorage>& soundStorage() const { return m_soundStorage; }
     const std::shared_ptr<sound::TSoundProtocolMessageHandler>& soundProtocolMessageHandler() const
     {
@@ -128,6 +133,7 @@ private:
     std::shared_ptr<container::TContainerStorage> m_containerStorage;
     std::shared_ptr<container::TInventoryContainer> m_inventoryContainer;
     std::shared_ptr<container::TObjectCountStorage> m_objectCountStorage;
+    std::shared_ptr<container::TDepotSearchDetailListStorage> m_depotSearchDetailListStorage;
     std::shared_ptr<sound::TSoundStorage> m_soundStorage;
     std::shared_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocolMessageHandler;
     std::shared_ptr<chat::TTextStorage> m_textStorage;

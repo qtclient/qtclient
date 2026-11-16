@@ -63,6 +63,9 @@ private:
 /// TContainerProtocolMessageHandler::handleStashMessage) shows or
 /// refreshes it; SpecialContainersAvailable without the stash 
 /// closes it. Also runs the stash game actions.
+/// The NPCs the stash and depot search trader filters offer.
+std::set<QString> traderNames();
+
 class TStashDialogController final : public TDialogController<cip::tibia::gamewindow::TStashDialogController>
 {
     Q_OBJECT

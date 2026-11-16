@@ -243,25 +243,23 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
         if (!shadow || !shadow->HasExtension(GameserverMessageDepotSearchDetailList::gameserver_message_depot_search_detail_list))
             return;
         const auto& m = shadow->GetExtension(GameserverMessageDepotSearchDetailList::gameserver_message_depot_search_detail_list);
-        DepotSearchDetail detail;
-        detail.itemId = static_cast<uint16_t>(m.object().object_id());
-        detail.tier = static_cast<uint8_t>(m.object().tier());
-        detail.depotCount = m.depot_count();
-        for (const auto& item : m.depot_objects()) {
-            const auto slot = TInventorySlot::fromProtocolInventoryItem(item);
-            detail.depotItems.emplace_back(slot.typeId, slot.tier);
-        }
-        detail.inboxCount = m.inbox_count();
-        for (const auto& item : m.inbox_objects()) {
-            const auto slot = TInventorySlot::fromProtocolInventoryItem(item);
-            detail.inboxItems.emplace_back(slot.typeId, slot.tier);
-        }
-        if (m.stash_size() > 0) {
-            detail.hasStash = true;
-            detail.stashItemId = static_cast<uint16_t>(m.stash(0).object_id());
-            detail.stashCount = m.stash(0).amount();
-        }
-        tibia::game::processDepotSearchDetail(detail);
+        const auto typeId = static_cast<uint16_t>(m.object().object_id());
+        const ThingType* type = tibia::game::rawThingType(typeId, ThingCategoryItem);
+        const std::optional<uint8_t> tier =
+            type && type->getClassification() > 0 ? std::optional<uint8_t>(static_cast<uint8_t>(m.object().tier())) : std::nullopt;
+        std::vector<TInventorySlot> depotObjects;
+        for (const auto& item : m.depot_objects())
+            depotObjects.push_back(TInventorySlot::fromProtocolInventoryItem(item));
+        std::vector<TInventorySlot> inboxObjects;
+        for (const auto& item : m.inbox_objects())
+            inboxObjects.push_back(TInventorySlot::fromProtocolInventoryItem(item));
+        TObjectCountStorage::TCounts stash;
+        for (const auto& entry : m.stash())
+            stash[{ static_cast<uint16_t>(entry.object_id()), 0 }] += entry.amount();
+        if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
+            session->depotSearchDetailListStorage()->setDetailList(typeId, tier, std::move(depotObjects), m.depot_count(),
+                                                                   std::move(inboxObjects), m.inbox_count(), stash);
+        tibia::game::processDepotSearchDetail();
         break;
     }
     case 154: {
@@ -288,11 +286,13 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
         const auto* shadow = protocol::lastShadowServerMessage();
         if (!shadow || !shadow->HasExtension(GameserverMessageDepotSearchResult::gameserver_message_depot_search_result))
             return;
-        std::vector<DepotSearchResultItem> items;
+        // The locker's counts, by type and tier (CIP: the session's object counts).
+        TObjectCountStorage::TCounts counts;
         for (const auto& e : shadow->GetExtension(GameserverMessageDepotSearchResult::gameserver_message_depot_search_result).entries())
-            items.push_back({ .itemId = static_cast<uint16_t>(e.object_id()), .tier = static_cast<uint8_t>(e.tier()),
-                              .count = static_cast<uint16_t>(e.count()) });
-        tibia::game::processDepotSearchResults(items);
+            counts[{ static_cast<uint16_t>(e.object_id()), static_cast<uint8_t>(e.tier()) }] += e.count();
+        if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
+            session->objectCountStorage()->setCounts(counts);
+        tibia::game::processDepotSearchResults();
         break;
     }
     case 245: {
@@ -832,6 +832,39 @@ const TInventorySlot& TInventoryContainer::slotAt(const int slotId) const
 bool TInventoryContainer::hasSlot(const int slotId) const
 {
     return slotId >= 0 && slotId < SlotCount && !m_slots[static_cast<size_t>(slotId)].empty();
+}
+
+TDepotSearchDetailListStorage::TDepotSearchDetailListStorage(QObject* parent)
+    : cip::tibia::container::TDepotSearchDetailListStorage(parent)
+    , m_stashCounts(std::make_shared<TObjectCountStorage>())
+{
+}
+
+void TDepotSearchDetailListStorage::clear()
+{
+    m_typeId = 0;
+    m_tier.reset();
+    m_depotObjects.clear();
+    m_depotCount = 0;
+    m_inboxObjects.clear();
+    m_inboxCount = 0;
+    m_stashCounts->clear();
+    Q_EMIT detailListChanged();
+}
+
+void TDepotSearchDetailListStorage::setDetailList(const uint16_t typeId, const std::optional<uint8_t> tier,
+                                                  std::vector<TInventorySlot> depotObjects, const uint32_t depotCount,
+                                                  std::vector<TInventorySlot> inboxObjects, const uint32_t inboxCount,
+                                                  const TObjectCountStorage::TCounts& stashCounts)
+{
+    m_typeId = typeId;
+    m_tier = tier;
+    m_depotObjects = std::move(depotObjects);
+    m_depotCount = depotCount;
+    m_inboxObjects = std::move(inboxObjects);
+    m_inboxCount = inboxCount;
+    m_stashCounts->setCounts(stashCounts);
+    Q_EMIT detailListChanged();
 }
 
 void TObjectCountStorage::setCounts(const TCounts& counts)

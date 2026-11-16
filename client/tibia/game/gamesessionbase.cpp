@@ -54,6 +54,7 @@ void TGameSessionBase::createStorages()
     m_containerStorage = std::make_shared<container::TContainerStorage>();
     m_inventoryContainer = std::make_shared<container::TInventoryContainer>();
     m_objectCountStorage = std::make_shared<container::TObjectCountStorage>();
+    m_depotSearchDetailListStorage = std::make_shared<container::TDepotSearchDetailListStorage>();
     m_soundStorage = std::make_shared<sound::TSoundStorage>();
     m_textStorage = std::make_shared<chat::TTextStorage>();
     m_numericalEffectStorage = std::make_shared<worldmap::TNumericalEffectStorage>();

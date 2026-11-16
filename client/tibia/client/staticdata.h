@@ -220,27 +220,6 @@ struct OutfitMemorialData
     std::vector<std::string> fullTokenOutfitOwners;
 };
 
-struct DepotSearchResultItem
-{
-    uint16_t itemId{ 0 };
-    uint8_t tier{ 0 };
-    uint16_t count{ 0 };
-};
-
-struct DepotSearchDetail
-{
-    uint16_t itemId{ 0 };
-    uint8_t tier{ 0 };
-    uint32_t depotCount{ 0 };
-    /// typeId + tier rows (no ItemPtr)
-    std::vector<std::pair<uint16_t, uint8_t>> depotItems;
-    uint32_t inboxCount{ 0 };
-    std::vector<std::pair<uint16_t, uint8_t>> inboxItems;
-    bool hasStash{ false };
-    uint16_t stashItemId{ 0 };
-    uint32_t stashCount{ 0 };
-};
-
 struct TaskBoardBountyHeaderData
 {
     uint8_t rerollPoints{ 0 };
