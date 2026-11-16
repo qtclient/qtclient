@@ -160,7 +160,6 @@ set(SOURCE_FILES
         tibia/assets/cipbmpimage.cpp
         tibia/shared/clockservice.cpp
         tibia/shared/tibiafilesystemhelper.cpp
-        tibia/shared/filesystemhelper.cpp
         tibia/assets/thingtype.cpp
         tibia/assets/things.cpp
         tibia/game/gamesessionstate.cpp

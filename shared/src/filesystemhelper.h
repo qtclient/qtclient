@@ -1,9 +1,10 @@
 #pragma once
 
-#include "shared/sharedciptypes.h"
+#include "localfileinfo.h"
 
 #include <QByteArray>
 #include <QDir>
+#include <QFile>
 #include <QImage>
 #include <QJsonDocument>
 #include <QSettings>
@@ -16,12 +17,21 @@
 
 namespace tibia::shared {
 
+class TReadOnlyMemoryBlob;
+
+/// Throws std::runtime_error "I/O error on file '<name>': <error>".
+[[noreturn]] void throwFileError(const QFile& file, const QString& error);
+
 /// CIP `shared::TFileSystemHelper`: file and directory I/O used by the
 /// client's path services. Failures throw std::runtime_error.
 class TFileSystemHelper
 {
 public:
     virtual ~TFileSystemHelper() = default;
+
+    /// The file as a blob: `filePath` itself when it ends in ".lzma" or no
+    /// "<filePath>.lzma" exists, else that LZMA file. LZMA blobs unpack on read.
+    virtual std::shared_ptr<TReadOnlyMemoryBlob> openReadOnlyMemoryBlob(const QString& filePath) const;
 
     virtual QByteArray readFile(const QString& filePath) const;
     /// Empty when the file cannot be opened.

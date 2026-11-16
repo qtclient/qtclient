@@ -1,4 +1,6 @@
-#include "shared/filesystemhelper.h"
+#include "filesystemhelper.h"
+
+#include "lzmacompressedreadonlymemoryblob.h"
 
 #include <QBuffer>
 #include <QDebug>
@@ -11,14 +13,23 @@
 
 namespace tibia::shared {
 
-namespace {
-
-[[noreturn]] void throwFileError(const QFile& file, const QString& error)
+void throwFileError(const QFile& file, const QString& error)
 {
     throw std::runtime_error(
         QStringLiteral("I/O error on file '%1': %2").arg(file.fileName(), error).toStdString());
 }
 
+std::shared_ptr<TReadOnlyMemoryBlob> TFileSystemHelper::openReadOnlyMemoryBlob(const QString& filePath) const
+{
+    static const QString LzmaSuffix = QStringLiteral(".lzma");
+    if (fileExists(filePath)) {
+        if (filePath.endsWith(LzmaSuffix))
+            return std::make_shared<TLZMACompressedReadOnlyMemoryBlob>(filePath);
+        return std::make_shared<TReadOnlyMemoryBlob>(filePath);
+    }
+    if (!fileExists(filePath + LzmaSuffix))
+        return std::make_shared<TReadOnlyMemoryBlob>(filePath);
+    return std::make_shared<TLZMACompressedReadOnlyMemoryBlob>(filePath + LzmaSuffix);
 }
 
 QByteArray TFileSystemHelper::readFile(const QString& filePath) const
