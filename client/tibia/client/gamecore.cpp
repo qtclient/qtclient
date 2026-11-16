@@ -5,7 +5,7 @@
 #include <tibia/config/runtimegameconfig.h>
 #include <tibia/assets/loader.h>
 #include <tibia/assets/things.h>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <tibia/schedule/schedule.h>
 #include "shared/tibiafilesystemhelper.h"
 #include <tibia/renderer/texturedeletionqueue.h>
@@ -148,7 +148,7 @@ void poll()
 
 qint64 nowMicros()
 {
-    return shared::TClockService::nowMicros();
+    return shared::TClockService::process()->nowMicros();
 }
 
 void advanceTo(const qint64 micros)
@@ -160,7 +160,7 @@ void advanceTo(const qint64 micros)
     // predicted stamp. Allowing that rewind made DurationTween / foot clocks jump
     // and compressed auto-walk steps while key-hold (real-time v9) stayed smooth.
     shared::TClockService::setFrameMicros(
-        std::max<qint64>({ micros, shared::TClockService::nowMicros(), shared::TClockService::frameMicros() }));
+        std::max<qint64>({ micros, shared::TClockService::process()->nowMicros(), shared::TClockService::frameMicros() }));
 }
 
 void resumeRealTime()

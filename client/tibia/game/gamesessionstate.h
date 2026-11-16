@@ -2,7 +2,7 @@
 
 
 #include <QElapsedTimer>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <tibia/schedule/schedule.h>
 #include <array>
 

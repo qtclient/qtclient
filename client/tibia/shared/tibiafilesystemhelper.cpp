@@ -1,6 +1,6 @@
 #include "shared/tibiafilesystemhelper.h"
 
-#include "shared/filesystemhelper.h"
+#include "filesystemhelper.h"
 #include "shared/sharedciptypes.h"
 
 #if defined(__EMSCRIPTEN__)
@@ -372,7 +372,7 @@ QString TTibiaFileSystemHelper::getAllLicenseTexts() const
     QStringList texts;
     m_fileSystemHelper->forEachFileInDirectory(getThirdPartyLicencesDirectory().absolutePath(),
                                                [this, &texts](const TLocalFileInfo& file) {
-                                                   const QByteArray data = m_fileSystemHelper->readFileIfExists(file.path());
+                                                   const QByteArray data = m_fileSystemHelper->readFileIfExists(file.getFilePath());
                                                    texts.append(QString::fromUtf8(data));
                                                });
     return texts.join(QStringLiteral("\n\n"));

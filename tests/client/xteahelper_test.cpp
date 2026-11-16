@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "shared/xteahelper.h"
+#include "xteahelper.h"
 
 #include <algorithm>
 #include <stdexcept>

@@ -25,7 +25,7 @@
 #include "declarations.h"
 #include "client/eightbitcolor.h"
 
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <QColor>
 #include <deque>
 #include <memory>

@@ -19,8 +19,6 @@ class TCreatureStorage;
 /// An outfit from the protocol: a creature look with colours and addons, an
 /// item, or the invisible effect when both are 0; `mount` adds the mount.
 Outfit outfitFromProtocol(const protobuf::protocol::ProtocolOutfit& outfit, const protobuf::protocol::ProtocolOutfit* mount);
-/// A colour of the protocol's 6×6×6 palette; indices past it are black.
-QColor colorFromEightBit(uint8_t color);
 /// Apply a creature the server describes (new, known or turned on the map, or
 /// one field of a known creature) to the creature storage and the local
 /// player; returns its id, 0 when a known creature is not stored or the

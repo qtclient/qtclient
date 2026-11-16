@@ -12,6 +12,8 @@
 #include <client/const.h>
 #include <tibia/game/gamesession.h>
 #include "network/gameserverpacketprocessor.h"
+#include "network/gameserverconnection.h"
+#include "rsahelper.h"
 #include "shared/sharedciptypes.h"
 
 #include <protocol.pb.h>
@@ -819,13 +821,10 @@ QByteArray serializeStructuredClient(const GameclientMessage& msg, int opcode)
         w.u8(static_cast<uint8_t>(m.challenge_random()));
         if (m.has_product_transport())
             w.string(m.product_transport());
-        const int size = tibia::shared::TRsaHelper::blockSize();
-        const int used = int(w.out.size()) - block;
-        if (size <= 0 || used > size)
-            return {};
-        w.out.append(QByteArray(size - used, '\0'));
-        if (!tibia::shared::TRsaHelper::encrypt(reinterpret_cast<uint8_t*>(w.out.data()) + block, size))
-            return {};
+        // TRsaHelper pads the block with random bytes to the key size.
+        const QByteArray encrypted = tibia::network::loginRsaHelper().encrypt(w.out.mid(block));
+        w.out.truncate(block);
+        w.out.append(encrypted);
         return w.out;
     }
     case 11: {

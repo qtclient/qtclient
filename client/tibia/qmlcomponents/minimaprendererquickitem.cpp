@@ -12,7 +12,7 @@
 #include "minimap/minimaptilestorage.h"
 
 #include <tibia/assets/things.h>
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include "shared/tibiafilesystemhelper.h"
 #include "assets/cipbmpimage.h"
 

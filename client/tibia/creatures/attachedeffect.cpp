@@ -25,7 +25,7 @@
 #include <tibia/config/runtimegameconfig.h>
 #include "tibia/assets/thingtype.h"
 #include "tibia/assets/things.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <tibia/game/thingsession_forward.h>
 
 AttachedEffectPtr AttachedEffect::create(const uint16_t thingId, const ThingCategory category) {

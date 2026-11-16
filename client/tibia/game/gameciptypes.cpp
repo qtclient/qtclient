@@ -15,7 +15,7 @@
 #include "input/gameactionhandlers.h"
 #include "game/cooldownstorage.h"
 #include "game/playerdata.h"
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include "game/playerskillstats.h"
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/gamewindowciptypes.h"
@@ -1002,7 +1002,7 @@ void TPremiumTimeStorage::setPremium(const bool premium, const uint32_t premiumU
 {
     m_premium = premium;
     m_premiumUntil = premiumUntil;
-    m_receivedAt = static_cast<uint32_t>(shared::TClockService::nowMillis() / 1000);
+    m_receivedAt = static_cast<uint32_t>(shared::TClockService::process()->nowMillis() / 1000);
     Q_EMIT premiumTimeChanged();
 }
 

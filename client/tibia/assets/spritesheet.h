@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/clockservice.h"
+#include "clockservice.h"
 #include <QSize>
 #include <QSizeF>
 

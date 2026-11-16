@@ -51,7 +51,6 @@ qt_add_executable(launcher
   ${_launcher_sources}
   "${TIBIA_ROOT}/client/tibia/app/hints.cpp"
   "${TIBIA_ROOT}/client/tibia/app/hints.h"
-  lzma/LzmaDec.c
 )
 
 # CIP chrome: launcher/upstream (vendored by launcher sync).
@@ -87,8 +86,8 @@ endif()
 
 target_include_directories(launcher PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${CMAKE_CURRENT_SOURCE_DIR}/lzma"
   "${CMAKE_CURRENT_SOURCE_DIR}/wasm"
+  "${TIBIA_ROOT}/shared/src/lzma"
   "${TIBIA_ROOT}/client/tibia"
   "${TIBIA_ROOT}/shared/src")
 target_link_libraries(launcher PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent qtclient_shared)

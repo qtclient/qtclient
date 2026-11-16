@@ -2,8 +2,8 @@
 
 namespace tibia::sessiondump {
 
-TSessiondumpProgressClockService::TSessiondumpProgressClockService(std::function<qint64()> nanosecondClock)
-    : TTimeLapseClockService(std::move(nanosecondClock))
+TSessiondumpProgressClockService::TSessiondumpProgressClockService(std::shared_ptr<shared::IClockService> clockService)
+    : TTimeLapseClockService(std::move(clockService))
 {
 }
 
