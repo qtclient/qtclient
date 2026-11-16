@@ -285,7 +285,7 @@ QString numberVariants(const qint64 value)
 
 uint64_t balance(const tibia::client::ResourceTypes_t type)
 {
-    return tibia::game::localPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
+    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
 }
 
 uint64_t totalGold() { return balance(tibia::client::RESOURCE_BANK_BALANCE) + balance(tibia::client::RESOURCE_GOLD_EQUIPPED); }
@@ -294,8 +294,8 @@ int wildcardBalance() { return static_cast<int>(std::min<uint64_t>(balance(tibia
 
 QColor outfitColor(const int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 /// CIP .
@@ -755,12 +755,14 @@ void TPreyPreyPageController::showDialogTab()
 
 void TPreyPreyPageController::hideDialogTab() { m_freeRerollTimer.stop(); }
 
-void TPreyPreyPageController::askToUseWildcards(TMessageDialogController* box, const int price)
+/// Asks to pay `price` wildcards; when the storage says it cannot be paid,
+/// only Cancel.
+void TPreyPreyPageController::askToUseWildcards(TMessageDialogController* box, const int price, const bool possible)
 {
     const int wildcards = m_storage->preyWildcards();
     const QString currency = qtTrId("currency_view_preywildcard_tooltip");
     QString text;
-    if (wildcards < price) {
+    if (!possible) {
         text = qtTrId("prey_confirm_use_prey_wildcard_not_possible").arg(currency);
         box->setButtons(cancelButton());
     } else {
@@ -776,19 +778,17 @@ void TPreyPreyPageController::askToUseWildcards(TMessageDialogController* box, c
 void TPreyPreyPageController::onRequestBonusReroll(const uint preyId)
 {
     m_pendingPreyId = preyId;
-    askToUseWildcards(m_bonusReroll, m_storage->bonusRerollPrice());
+    askToUseWildcards(m_bonusReroll, m_storage->bonusRerollPrice(), m_storage->bonusRerollPossible());
 }
 
 void TPreyPreyPageController::onRequestListReroll(const uint preyId)
 {
     m_pendingPreyId = preyId;
     const prey::TPreyData* data = m_storage->slot(static_cast<int>(preyId));
-    if (!data)
-        return;
     const uint64_t gold = totalGold();
     const auto price = static_cast<uint64_t>(m_storage->listRerollPrice());
     QString text;
-    if (data->nextFreeListReroll() <= QDateTime::currentSecsSinceEpoch()) {
+    if (data && data->nextFreeListReroll() <= QDateTime::currentSecsSinceEpoch()) {
         text = qtTrId("prey_confirm_list_reroll_free");
         m_listReroll->setYesNoButtons();
     } else if (gold >= price) {
@@ -804,7 +804,7 @@ void TPreyPreyPageController::onRequestListReroll(const uint preyId)
 void TPreyPreyPageController::onRequestChoosePrey(const uint preyId)
 {
     m_pendingPreyId = preyId;
-    askToUseWildcards(m_choosePrey, m_storage->choosePreyPrice());
+    askToUseWildcards(m_choosePrey, m_storage->choosePreyPrice(), m_storage->choosePreyPossible());
 }
 
 void TPreyPreyPageController::onRequestChangeAutoExtendType(const uint preyId, const int type)
@@ -877,7 +877,7 @@ void TPreyDialogController::clear()
 void TPreyDialogController::showDialog()
 {
     closeDialog();
-    if (!tibia::game::localPlayer() || !tibia::game::localPlayerHasReachedMain()) {
+    if (!tibia::game::hasLocalPlayer() || !tibia::game::localPlayerHasReachedMain()) {
         m_notOnMain->setButtons(okButton());
         m_notOnMain->showMessage(qtTrId("prey_need_to_reach_main_caption"), qtTrId("prey_need_to_reach_main_text"));
         return;

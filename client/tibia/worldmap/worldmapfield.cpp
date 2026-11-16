@@ -23,15 +23,9 @@
 
 namespace tibia::worldmap {
 
-CreaturePtr TWorldMapField::stackCreature(const TFieldStackEntry& entry) const
-{
-    (void)entry;
-    return nullptr;
-}
-
 int TWorldMapField::stackPriorityFor(const TFieldStackEntry& entry) const
 {
-    // Creature stack slots are always CREATURE priority — no Map CreaturePtr resolve.
+    // A creature slot is always CREATURE priority.
     if (entry.creatureId != 0)
         return CREATURE;
     ThingType* type = entry.appearance ? entry.appearance->thingType() : nullptr;
@@ -213,15 +207,13 @@ namespace
 
 void TWorldMapField::clean()
 {
-    // CIP tile refresh replaces the whole field stack. Do not run LocalPlayerSessionThing
-    // onDisappear/onAppear here — that cancelled walk tweens and could leave
-    // item appearances behind if removeThing short-circuited the erase loop.
+    // CIP tile refresh replaces the whole field stack; the local player's
+    // appear/disappear does not run here (it would cancel its step).
     // The creatures it held leave the field.
     for (const TFieldStackEntry& entry : m_stack) {
         if (entry.creatureId != 0)
             removeCreatureFromField(entry.creatureId);
     }
-    m_highlightThingStackPos = -1;
     m_stack.clear();
     rebuildAppearanceCache();
 
@@ -314,7 +306,6 @@ void TWorldMapField::addAppearance(const appearances::TAppearanceInstancePtr& ap
         stackPos = size;
     }
 
-    markHighlightedThing(Color::white);
 
     // CIP TPatternObjectAppearanceInstance : patterns from field coordinate.
     if (const auto patterned =
@@ -339,7 +330,6 @@ void TWorldMapField::addAppearance(const appearances::TAppearanceInstancePtr& ap
         eraseStackEntry(tibia::config::tileMaxThings());
 
     updateThingStackPos();
-    checkForDetachableThing();
     notifyAppearanceInstancesChanged();
 }
 
@@ -381,7 +371,6 @@ void TWorldMapField::addCreatureId(const uint32_t creatureId, int stackPos)
         stackPos = size;
     }
 
-    markHighlightedThing(Color::white);
 
     TFieldStackEntry entry;
     entry.creatureId = creatureId;
@@ -412,7 +401,6 @@ void TWorldMapField::addCreatureId(const uint32_t creatureId, int stackPos)
         eraseStackEntry(tibia::config::tileMaxThings());
 
     updateThingStackPos();
-    checkForDetachableThing();
     notifyAppearanceInstancesChanged();
 }
 
@@ -447,13 +435,10 @@ bool TWorldMapField::removeCreatureById(const uint32_t creatureId)
 
 void TWorldMapField::eraseStackEntry(const int stackIndex)
 {
-    markHighlightedThing(Color::white);
     m_stack.erase(m_stack.begin() + stackIndex);
     rebuildAppearanceCache();
-    m_highlightThingStackPos = -1;
     recalculateThingFlag();
     updateThingStackPos();
-    checkForDetachableThing();
     notifyAppearanceInstancesChanged();
 }
 
@@ -472,49 +457,6 @@ void TWorldMapField::rebuildCreatureRange()
 
         m_lastCreatureIndex = static_cast<int16_t>(i);
     }
-}
-
-void TWorldMapField::appendSpectators(std::vector<CreaturePtr>& out) const
-{
-    // CreaturePtr spectators are LocalPlayerSessionThing-only; prefer getStoredCreatures / stackCreatureEntries.
-    if (!hasCreatures() || m_lastCreatureIndex == -1)
-        return;
-
-    const auto size = static_cast<int32_t>(m_stack.size());
-    const auto beginOffset = size - 1 - static_cast<int32_t>(m_lastCreatureIndex);
-    const auto endOffset = size - static_cast<int32_t>(m_firstCreatureIndex);
-
-    auto it = m_stack.rbegin() + beginOffset;
-    const auto end = m_stack.rbegin() + endOffset;
-
-    for (; it != end; ++it) {
-        if (it->creatureId == 0)
-            continue;
-        if (const CreaturePtr creature = tibia::game::creatureThingById(it->creatureId))
-            out.emplace_back(creature);
-    }
-}
-
-std::vector<CreaturePtr> TWorldMapField::getCreatures() const
-{
-    std::vector<CreaturePtr> creatures;
-    appendSpectators(creatures);
-    std::ranges::reverse(creatures);
-    return creatures;
-}
-
-std::vector<std::shared_ptr<tibia::creatures::TCreature>> TWorldMapField::getStoredCreatures() const
-{
-    std::vector<std::shared_ptr<tibia::creatures::TCreature>> creatures;
-    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-        for (const auto& entry : m_stack) {
-            if (entry.creatureId == 0)
-                continue;
-            if (std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(entry.creatureId))
-                creatures.push_back(std::move(row));
-        }
-    }
-    return creatures;
 }
 
 std::vector<TStackCreatureEntry> TWorldMapField::stackCreatureEntries() const
@@ -982,50 +924,6 @@ bool TWorldMapField::isPickable() const
     return false;
 }
 
-void TWorldMapField::onAddInMapView()
-{
-    m_drawTopAndCreature = true;
-    if (m_thingTypeFlag & CORRECT_CORPSE) {
-        uint8_t redrawPreviousTopW = 0;
-        uint8_t redrawPreviousTopH = 0;
-
-        for (const auto& entry : m_stack) {
-            if (entry.creatureId != 0)
-                continue;
-            const ThingType* type = entryThingType(entry.appearance);
-            if (!type || !type->isLyingCorpse())
-                continue;
-
-            redrawPreviousTopW = std::max<int>(type->getWidth() - 1, redrawPreviousTopW);
-            redrawPreviousTopH = std::max<int>(type->getHeight() - 1, redrawPreviousTopH);
-        }
-
-        for (int x = -redrawPreviousTopW; x <= 0; ++x) {
-            for (int y = -redrawPreviousTopH; y <= 0; ++y) {
-                if (x == 0 && y == 0)
-                    continue;
-
-                if (TWorldMapField* neighbour = fieldAt(getPosition().translated(x, y)))
-                    neighbour->setDrawTopAndCreature(false);
-            }
-        }
-    }
-}
-
-bool TWorldMapField::hasBlockingCreature() const
-{
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-    for (const auto& entry : m_stack) {
-        if (entry.creatureId == 0)
-            continue;
-        const std::shared_ptr<tibia::creatures::TCreature> row =
-            storage ? storage->creatureAt(entry.creatureId) : nullptr;
-        if (row && !row->isPassable() && !row->isLocalPlayer())
-            return true;
-    }
-    return false;
-}
-
 bool TWorldMapField::hasBlockingBottomItem() const
 {
     for (const auto& entry : m_stack) {
@@ -1055,117 +953,6 @@ bool TWorldMapField::limitsFloorsView(const bool isFreeView)
             && (type->isGround()
                 || (isFreeView ? type->isOnBottom() : type->isOnBottom() && type->blockProjectile())))
             return true;
-    }
-
-    return false;
-}
-
-bool TWorldMapField::checkForDetachableThing(const TileSelectType selectType)
-{
-    const auto& markIfYouNeed = [&] {
-        if (m_selectType == TileSelectType::NONE) return;
-        markHighlightedThing(Color::yellow);
-    };
-
-    m_highlightThingStackPos = -1;
-    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-    int deferredLocalStackPos = -1;
-    for (int i = 0; i < static_cast<int>(m_stack.size()); ++i) {
-        const uint32_t id = m_stack[i].creatureId;
-        if (id == 0)
-            continue;
-        if (storage) {
-            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(id)) {
-                if (row->isLocalPlayer()) {
-                    deferredLocalStackPos = i;
-                    continue;
-                }
-                m_highlightThingStackPos = static_cast<int8_t>(i);
-                markIfYouNeed();
-                return true;
-            }
-        }
-    }
-    if (deferredLocalStackPos >= 0) {
-        m_highlightThingStackPos = static_cast<int8_t>(deferredLocalStackPos);
-        markIfYouNeed();
-        return true;
-    }
-    // Walking creature on this field (ids only — no Map getTopCreature / CreaturePtr).
-    for (auto it = m_walkingCreatureIds.rbegin(); it != m_walkingCreatureIds.rend(); ++it) {
-        const uint32_t id = *it;
-        if (!id || !storage || !storage->creatureAt(id))
-            continue;
-        for (int i = 0; i < static_cast<int>(m_stack.size()); ++i) {
-            if (m_stack[i].creatureId != id)
-                continue;
-            m_highlightThingStackPos = static_cast<int8_t>(i);
-            markIfYouNeed();
-            return true;
-        }
-        markIfYouNeed();
-        return true;
-    }
-
-    const bool isFiltered = selectType != TileSelectType::NO_FILTERED;
-
-    if (hasCommonItem()) {
-        for (int i = 0; i < static_cast<int>(m_stack.size()); ++i) {
-            if (m_stack[i].creatureId != 0)
-                continue;
-            const ThingType* type = entryThingType(m_stack[i].appearance);
-            if (!typeIsCommon(type) || !entryDrawable(m_stack[i].appearance))
-                continue;
-
-            if (isFiltered && type->isIgnoreLook() && !type->isUsable() && !type->hasLight())
-                continue;
-
-            m_highlightThingStackPos = static_cast<int8_t>(i);
-            markIfYouNeed();
-            return true;
-        }
-    }
-
-    if (hasBottomItem()) {
-        for (int i = static_cast<int>(m_stack.size()) - 1; i >= 0; --i) {
-            if (m_stack[i].creatureId != 0)
-                continue;
-            const ThingType* type = entryThingType(m_stack[i].appearance);
-            if (!type || !type->isOnBottom() || !entryDrawable(m_stack[i].appearance))
-                continue;
-
-            if (isFiltered && (type->isIgnoreLook() || type->isFluidContainer()))
-                continue;
-
-            m_highlightThingStackPos = static_cast<int8_t>(i);
-            markIfYouNeed();
-            return true;
-        }
-    }
-
-    if (hasTopItem()) {
-        for (int i = static_cast<int>(m_stack.size()) - 1; i >= 0; --i) {
-            if (m_stack[i].creatureId != 0)
-                break;
-            const ThingType* type = entryThingType(m_stack[i].appearance);
-            if (!type || !type->isOnTop())
-                break;
-            if (!entryDrawable(m_stack[i].appearance))
-                continue;
-
-            if (isFiltered && (type->isIgnoreLook() || type->getLensHelp() == 0))
-                continue;
-
-            m_highlightThingStackPos = static_cast<int8_t>(i);
-            markIfYouNeed();
-            return true;
-        }
-    }
-
-    if (!isFiltered) {
-        m_highlightThingStackPos = static_cast<int8_t>(m_stack.size()) - 1;
-        markIfYouNeed();
-        return true;
     }
 
     return false;
@@ -1281,125 +1068,6 @@ void TWorldMapField::setStackEntryFlag(const TFieldStackEntry& entry)
         return;
     }
     applyStackFlagsFromThingType(entry.appearance ? entry.appearance->thingType() : nullptr);
-}
-
-void TWorldMapField::setMarkedOnStackEntry(const int stackPos, const Color& color)
-{
-    if (stackPos < 0 || stackPos >= static_cast<int>(m_stack.size()))
-        return;
-    if (auto* object = dynamic_cast<appearances::TObjectAppearanceInstance*>(m_stack[stackPos].appearance.get()))
-        object->setMarkedColor(color);
-}
-
-void TWorldMapField::select(const TileSelectType selectType)
-{
-    m_selectType = selectType;
-
-    if (selectType == TileSelectType::NO_FILTERED && !isEmpty()) {
-        checkForDetachableThing(selectType);
-    }
-
-    markHighlightedThing(Color::yellow);
-}
-
-void TWorldMapField::unselect()
-{
-    m_selectType = TileSelectType::NONE;
-
-    markHighlightedThing(Color::white);
-
-    if (m_selectType == TileSelectType::NO_FILTERED)
-        checkForDetachableThing();
-}
-
-bool TWorldMapField::canRender(uint32_t& flags, const Position& cameraPosition, const AwareRange viewPort)
-{
-    const int8_t dz = getPosition().z - cameraPosition.z;
-    const auto& checkPos = getPosition().translated(dz, dz);
-
-    bool draw = true;
-
-    // Check for non-visible tiles on the screen and ignore them
-    {
-        if ((cameraPosition.x - checkPos.x >= viewPort.left) || (checkPos.x - cameraPosition.x == viewPort.right && !hasWideThings() && !hasDisplacement() && !hasThingWithElevation() && m_walkingCreatureIds.empty()))
-            draw = false;
-        else if ((cameraPosition.y - checkPos.y >= viewPort.top) || (checkPos.y - cameraPosition.y == viewPort.bottom && !hasTallThings() && !hasWideThings2() && !hasDisplacement() && !hasThingWithElevation() && m_walkingCreatureIds.empty()))
-            draw = false;
-        else if (((checkPos.x - cameraPosition.x > viewPort.right && (!hasWideThings() || !hasDisplacement() || !hasThingWithElevation())) || (checkPos.y - cameraPosition.y > viewPort.bottom)) && !hasTallThings2())
-            draw = false;
-    }
-
-    if (!draw) {
-        flags &= ~tibia::client::DrawThings;
-        if (!hasLight())
-            flags &= ~tibia::client::DrawLights;
-        if (!hasCreatures())
-            flags &= ~(tibia::client::DrawManaBar | tibia::client::DrawNames | tibia::client::DrawBars);
-    }
-
-    return flags > 0;
-}
-
-void TWorldMapField::drawTexts(Point dest)
-{
-    (void)dest;
-}
-
-
-void TWorldMapField::markHighlightedThing(const Color& color) {
-    if (m_highlightThingStackPos > -1 && m_highlightThingStackPos < static_cast<int8_t>(m_stack.size()))
-        setMarkedOnStackEntry(m_highlightThingStackPos, color);
-}
-
-void TWorldMapField::setText(const std::string& text, Color color)
-{
-    if (!m_text) {
-        m_text = std::make_unique<StaticText>();
-    }
-
-    m_text->setText(text);
-    m_text->setColor(color);
-}
-
-std::string TWorldMapField::getText()
-{
-    return m_text ? m_text->getText() : "";
-}
-
-void TWorldMapField::setTimer(int time, Color color)
-{
-    if (time > 60000) {
-        qWarning("%s", std::format("Max tile timer value is 300000 (300s)!").c_str());
-        return;
-    }
-    m_timer = time + tibia::shared::TClockService::frameMillis();
-    if (!m_timerText) {
-        m_timerText = std::make_unique<StaticText>();
-    }
-
-    m_timerText->setColor(color);
-}
-
-int TWorldMapField::getTimer()
-{
-    return m_timerText ? std::max<int>(0, m_timer - tibia::shared::TClockService::frameMillis()) : 0;
-}
-
-void TWorldMapField::setFill(Color color)
-{
-    m_fill = color;
-}
-
-bool TWorldMapField::canShoot(int distance)
-{
-    const Position playerPos = tibia::game::localPlayerPosition();
-    if (!playerPos.isValid())
-        return false;
-    if (distance > 0 && std::max<int>(std::abs(getPosition().x - playerPos.x), std::abs(getPosition().y - playerPos.y)) > distance)
-        return false;
-    const Position fieldPos = getPosition();
-    return tibia::game::isSightClear({ playerPos.x, playerPos.y, playerPos.z },
-                                    { fieldPos.x, fieldPos.y, fieldPos.z });
 }
 
 bool TWorldMapField::isFullyOpaque() const {

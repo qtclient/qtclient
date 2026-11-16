@@ -29,14 +29,14 @@ QString englishNumber(const qulonglong value) { return QLocale(QLocale::English)
 
 QColor outfitColor(const int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 /// The charm points (major) or minor charm echoes (minor) of the player.
 quint64 charmResource(const bool minor)
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return 0;
     return tibia::game::localPlayerResourceBalance(minor ? tibia::client::RESOURCE_MINOR_CHARM
                                                          : tibia::client::RESOURCE_CHARM);
@@ -236,8 +236,7 @@ void TMonsterBonusEffectsDialogController::refresh()
             break;
         }
     }
-    if (m_storage.hasCharmData())
-        m_pendingCharm.reset();
+    m_pendingCharm.reset();
 }
 
 void TMonsterBonusEffectsDialogController::rebuildBonusEffects()
@@ -248,10 +247,12 @@ void TMonsterBonusEffectsDialogController::rebuildBonusEffects()
         if (charm.isMinor() == minorTab)
             charms.append(charm);
     }
-    std::stable_sort(charms.begin(), charms.end(), [](const TCharm& a, const TCharm& b) {
-        if (a.grade != b.grade)
-            return a.grade > b.grade;
-        return a.name().compare(b.name(), Qt::CaseInsensitive) < 0;
+    // CIP: higher unlock grade first (grades outside 1..3 count as 0), then by name.
+    const auto grade = [](const TCharm& charm) { return charm.grade >= 1 && charm.grade <= 3 ? charm.grade : 0; };
+    std::sort(charms.begin(), charms.end(), [&grade](const TCharm& a, const TCharm& b) {
+        if (grade(a) != grade(b))
+            return grade(a) > grade(b);
+        return a.name().compare(b.name()) < 0;
     });
     QList<QObject*> previous = m_monsterBonusEffects;
     m_monsterBonusEffects.clear();
@@ -263,6 +264,8 @@ void TMonsterBonusEffectsDialogController::rebuildBonusEffects()
     m_numberOfUnlockedCharms = static_cast<int>(
         std::count_if(m_storage.charms().begin(), m_storage.charms().end(), [](const TCharm& charm) { return charm.grade > 0; }));
     Q_EMIT qmlMonsterBonusEffectsChanged();
+    Q_EMIT qmlStoreButtonTooltipChanged();
+    Q_EMIT playerDataChanged();
     deleteAll(previous);
 }
 
@@ -283,7 +286,7 @@ void TMonsterBonusEffectsDialogController::rebuildMonsterInfos()
         races.emplace_back(name, raceId);
     }
     std::sort(races.begin(), races.end(),
-              [](const auto& a, const auto& b) { return a.first.compare(b.first, Qt::CaseInsensitive) < 0; });
+              [](const auto& a, const auto& b) { return a.first.compare(b.first) < 0; });
     for (const auto& [name, raceId] : races)
         m_monsterInfos.append(new TQmlMonsterInfo(raceId, name, this));
     Q_EMIT qmlMonsterInfosChanged();

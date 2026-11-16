@@ -2,15 +2,40 @@
 
 #include <cip_gen.h>
 
+#include <QColor>
+#include <QDate>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QString>
+#include <QTimeZone>
 #include <QUrl>
+
+#include <vector>
 
 class QNetworkAccessManager;
 
 namespace tibia {
 namespace news {
+
+/// One entry of the event schedule (CIP: news::TEventInformation). Dates are
+/// server dates (Europe/Berlin).
+struct TEventInformation
+{
+    QDate startDate;
+    QDate endDate;
+    QString name;
+    QString description;
+    QColor colorLight;
+    QColor colorDark;
+    int displayPriority = 0;
+    bool isSeasonal = false;
+};
+
+/// The server's time zone (CIP: Europe/Berlin).
+QTimeZone serverTimeZone();
+
+/// CIP: the `eventlist` of an eventschedule reply; malformed entries are skipped.
+std::vector<TEventInformation> parseEventSchedule(const QJsonDocument& reply);
 
 /// POSTs `{type:"eventschedule"}` to the portal clientservices multiplex
 /// (CIP: TEventsUploader). The CIP `updated(std::vector<TEventInformation>)`
@@ -25,6 +50,7 @@ public:
     void setClientRevision(const QString& revision) { m_revision = revision; }
 
     QJsonArray eventList() const { return m_eventList; }
+    const std::vector<TEventInformation>& events() const { return m_events; }
     qint64 lastUpdateTimestamp() const { return m_lastUpdateTimestamp; }
 
     void requestUpdate() override;
@@ -39,6 +65,7 @@ private:
     QUrl m_url;
     QString m_revision;
     QJsonArray m_eventList;
+    std::vector<TEventInformation> m_events;
     qint64 m_lastUpdateTimestamp = 0;
 };
 

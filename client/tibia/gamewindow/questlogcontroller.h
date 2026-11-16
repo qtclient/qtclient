@@ -6,10 +6,12 @@
 #include <cip_gen.h>
 
 #include <QPointer>
+#include <QTimer>
 #include <QSet>
 #include <QVariantList>
 
 #include <functional>
+#include <set>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -23,10 +25,8 @@ class MissionBackend;
 namespace tibia {
 namespace gamewindow {
 
-/// Whether a mission name carries the server's "(completed)" marker (CIP).
-bool hasCompletedMarker(const QString& name);
-/// The mission name without the "(completed)" marker (CIP).
-QString stripCompletedMarker(const QString& name);
+using questlog::hasCompletedMarker;
+using questlog::stripCompletedMarker;
 
 /// Quest lines of the quest log (CIP: TQuestLinesModel, roleNames).
 class TQuestLinesModel final : public cip::TQuestLinesModel
@@ -129,8 +129,8 @@ protected:
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 };
 
-/// The quest log, QuestlogDialog.qml (CIP: TQuestLogController, metacall
-/// ). Hidden and pinned lines are kept per character.
+/// The quest log, QuestlogDialog.qml (CIP: TQuestLogController). Its state is
+/// the character's questlog::TQuestLogStorage.
 class TQuestLogController final : public TDialogController<cip::tibia::gamewindow::TQuestLogController>
 {
     Q_OBJECT
@@ -138,19 +138,26 @@ public:
     explicit TQuestLogController(QObject* parent = nullptr);
     ~TQuestLogController() override;
 
-    /// CIP : requests the quest lines and shows the dialog. With
-    /// the 0x10000 bit, the low 16 bits are a quest flag to select along with
-    /// its quest line.
+    /// CIP showDialog(optional<TQuestFlagID>): with the 0x10000 bit, the low 16
+    /// bits are a quest flag to select along with its quest line.
     void showDialog(int parameter = 0);
-    /// The server's quest lines (CIP through the storage).
+    /// The server's quest lines (QuestLog message).
     void setQuestLines(const std::vector<std::tuple<uint16_t, std::string, bool>>& lines);
-    /// The server's missions of one quest line (CIP).
+    /// The server's missions of one quest line (QuestLine message).
     void setQuestLineParts(uint16_t questLineId, const std::vector<std::tuple<std::string, std::string, uint16_t>>& missions);
+    questlog::TQuestLogStorage* questLogStorage() { return &m_storage; }
     /// The tracked missions, shared with the quest tracker widget.
     TQuestTrackerStorage* tracker() { return &m_tracker; }
     /// Loads the per-character file when the logged-in character changed.
     void ensureStorage();
     void clear();
+
+    bool canTrackAdditionalQuestFlags() const override;
+    bool isTracked() const override;
+    qulonglong completedQuestLinesCount() const override;
+    bool showCompleted() const override;
+    qulonglong hiddenQuestLinesCount() const override;
+    bool showHidden() const override;
 
     void closeButtonPressed() override;
     void requestQuestLineDetails(int QuestLineID) override;
@@ -160,11 +167,8 @@ public:
     void setShowCompleted(bool Show) override;
     void setShowHidden(bool Show) override;
 
-    /// CIP .
     Q_INVOKABLE void setHidden(int QuestLineId, bool IsHidden);
-    /// CIP .
     Q_INVOKABLE void setPinned(int QuestLineId, bool IsPinned);
-    /// CIP .
     Q_INVOKABLE void setTrackingOfQuestFlag(int QuestFlagId, bool IsTracked);
 
     /// Product mission for the selected quest line (empty when that line has none).
@@ -179,23 +183,29 @@ Q_SIGNALS:
     void missionChanged();
 
 private:
+    /// CIP slots.
+    void onQuestLinesChanged();
+    void onQuestLinePartsChanged(int questLineId);
+    void onCharacterConfigurationLoaded();
+    void onFilterOptionChanged();
+    /// CIP: closing forgets the selection and resets the list's filter and sorting.
+    void resetSelection();
+    std::set<questlog::TQuestFlagID> trackedQuestFlagIds() const;
+
     QString missionCta() const;
     QString missionProgress() const;
     QVariantList missionChoices() const;
     QString selectedPartName() const;
-    void rebuildLines();
-    void updateTracking();
     void loadStorage();
     void saveStorage();
 
+    QTimer m_questLinesChangedTimer;
+    questlog::TQuestLogStorage m_storage;
+    TQuestTrackerStorage m_tracker;
     TQuestLinesModel m_lines;
     TQuestLinesSortFilterProxyModel m_linesProxy;
     TQuestLinePartsModel m_parts;
     TQuestLinePartsSortFilterProxyModel m_partsProxy;
-    std::vector<std::tuple<uint16_t, std::string, bool>> m_serverLines;
-    QSet<int> m_hiddenLines;
-    QSet<int> m_pinnedLines;
-    TQuestTrackerStorage m_tracker;
     QPointer<mods::MissionBackend> m_missionBackend;
     std::function<void(const QString&)> m_browseOpener;
     quint32 m_characterId = 0;

@@ -254,11 +254,9 @@ void TInformationDialogs::hookQuestLog()
         return std::any{};
     });
 
-    // CIP never sends its stored flags on login (only runs from the tracker game actions);
-    // Crystal keeps none across sessions and only answers a sent list, so remaining stays 0 otherwise.
+    // Loading the character's quest tracking sends its stored flags (CIP onCharacterConfigurationLoaded).
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         m_questLog->ensureStorage();
-        m_questLog->tracker()->sendStored();
     });
 
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onQuestTracker", [this](GameObject*, const Args& args) {

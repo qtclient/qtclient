@@ -120,13 +120,6 @@ public:
     using cip::shared::TCrashReportSender::TCrashReportSender;
 };
 
-class TDownloadPool final : public cip::shared::TDownloadPool
-{
-    Q_OBJECT
-public:
-    using cip::shared::TDownloadPool::TDownloadPool;
-};
-
 class TDynamicResourcesHelper final : public cip::tibia::shared::TDynamicResourcesHelper
 {
     Q_OBJECT
@@ -249,15 +242,6 @@ public:
     TTibiaClipboardHelper() = default;
 };
 
-/// CIP `shared::TClipboardHelper` (v2 setText / v3 text via QGuiApplication::clipboard).
-class TClipboardHelper final : public ::tibia::CipTyped
-{
-public:
-    TClipboardHelper() = default;
-    void setText(const QString& text) const;
-    QString text() const;
-};
-
 /// CIP `shared::THashHelper` — CryptoPP SHA256 in the binary; product uses Qt.
 class THashHelper final : public ::tibia::CipTyped
 {
@@ -297,28 +281,23 @@ public:
     static quint32 bounded(quint32 minInclusive, quint32 maxInclusive);
 };
 
-/// CIP `shared::TLocalFileInfo` — path holder (layout: QString at +0x8).
+/// CIP `shared::TLocalFileInfo`: absolute path (+0x8) and size (+0x20).
 class TLocalFileInfo final : public ::tibia::CipTyped
 {
 public:
     TLocalFileInfo() = default;
-    explicit TLocalFileInfo(QString path)
+    explicit TLocalFileInfo(QString path, qint64 size = 0)
         : m_path(std::move(path))
+        , m_size(size)
     {
     }
     const QString& path() const { return m_path; }
+    qint64 size() const { return m_size; }
     bool exists() const;
 
 private:
     QString m_path;
-};
-
-/// CIP `shared::TFileSystemHelper`.
-class TFileSystemHelper final : public ::tibia::CipTyped
-{
-public:
-    TFileSystemHelper() = default;
-    static bool exists(const QString& path);
+    qint64 m_size = 0;
 };
 
 /// CIP `shared::TDecompressionError`.

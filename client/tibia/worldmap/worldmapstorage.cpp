@@ -26,9 +26,10 @@ quint64 pack(const Position& pos)
 
 }
 
-TWorldMapStorage::TWorldMapStorage(QObject* parent)
+TWorldMapStorage::TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* speedCalculator, QObject* parent)
     : cip::tibia::worldmap::TWorldMapStorage(parent)
     , m_lookupMembers(new TCacheForWorldmapStorageLookupMembers(this))
+    , m_speedCalculator(speedCalculator ? speedCalculator : &m_ownSpeedCalculator)
 {
     ensureSpatialFloorsSized();
     // Size missile floors only — full sessionState().init() calls resetAwareRange →
@@ -349,7 +350,7 @@ void TWorldMapStorage::moveCreature(creatures::TCreature& creature, const Positi
         return;
     }
     const TWorldMapExtent step(target.x - origin.x, target.y - origin.y, target.z - origin.z);
-    const qint64 duration = m_speedCalculator.stepDuration(creature.speed(), step, groundSpeedAt(to));
+    const qint64 duration = m_speedCalculator->stepDuration(creature.speed(), step, groundSpeedAt(to));
     const qint64 now = tibia::shared::TClockService::frameMillis();
     creature.move(now, now + duration, origin, direction, elevationFrom, elevationTo);
 }

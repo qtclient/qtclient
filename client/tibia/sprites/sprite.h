@@ -146,8 +146,6 @@ class TSpritesheetsMetadataManager final : public ::tibia::CipTyped
 {
 public:
     static TSpritesheetsMetadataManager& instance();
-
-    int spritesCount() const;
 };
 
 class TSpritesheetDecompressorSynchronous final : public ::tibia::CipTyped

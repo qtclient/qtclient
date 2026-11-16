@@ -11,6 +11,7 @@
 #include <QQuickItem>
 
 #include <algorithm>
+#include <vector>
 #include <array>
 
 namespace tibia::gamewindow {
@@ -19,7 +20,7 @@ namespace {
 
 using config::SidebarPanelType;
 
-/// CIP DAT_1017da400.
+/// CIP: the panels in their default order.
 constexpr std::array DefaultPanelsOrder = {
     SidebarPanelType::Minimap,
     SidebarPanelType::InventoryStatus,
@@ -99,15 +100,15 @@ void TSidebarPanelsManager::setSidebarOptions(config::TSidebarOptions* options)
     if (m_options)
         disconnect(m_options, nullptr, this, nullptr);
     m_options = options;
+    if (options) {
+        connect(options, &config::TSidebarOptions::sidebarPanelsManagerOptionsChanged, this, &TSidebarPanelsManager::reorderPanelsFromOptions);
+        reorderPanelsFromOptions();
+    }
     if (m_minimap)
         m_minimap->setSidebarOptions(options);
     if (m_inventory)
         m_inventory->setSidebarOptions(options);
     m_buttonBar->setSidebarOptions(options);
-    if (options) {
-        connect(options, &config::TSidebarOptions::sidebarPanelsManagerOptionsChanged, this, &TSidebarPanelsManager::reorderPanelsFromOptions);
-        reorderPanelsFromOptions();
-    }
 }
 
 QQuickItem* TSidebarPanelsManager::panelItem(const SidebarPanelType type) const
@@ -127,10 +128,7 @@ QQuickItem* TSidebarPanelsManager::panelItem(const SidebarPanelType type) const
 
 QList<SidebarPanelType> TSidebarPanelsManager::fullPanelsOrder() const
 {
-    QList<SidebarPanelType> order;
-    for (const SidebarPanelType type : m_options->panelsOrder())
-        if (!order.contains(type))
-            order.append(type);
+    QList<SidebarPanelType> order = m_options->panelsOrder();
     for (const SidebarPanelType type : DefaultPanelsOrder)
         if (!order.contains(type))
             order.append(type);
@@ -141,8 +139,13 @@ void TSidebarPanelsManager::reorderPanelsFromOptions()
 {
     if (!m_options || !m_sidebars)
         return;
-    for (const SidebarPanelType type : fullPanelsOrder())
+    QList<SidebarPanelType> moved;
+    for (const SidebarPanelType type : fullPanelsOrder()) {
+        if (moved.contains(type))
+            continue;
+        moved.append(type);
         m_sidebars->movePanelToEnd(panelItem(type));
+    }
     if (m_premiumPanelItem)
         m_sidebars->movePanelToEnd(m_premiumPanelItem);
 }
@@ -151,19 +154,14 @@ void TSidebarPanelsManager::saveCurrentOpenPanels()
 {
     if (!m_options)
         return;
-    QList<std::pair<int, SidebarPanelType>> panels;
+    std::vector<std::pair<int, SidebarPanelType>> panels;
     for (const SidebarPanelType type : DefaultPanelsOrder)
         if (QQuickItem* item = panelItem(type))
-            panels.append({ item->property("identifier").toInt(), type });
-    std::stable_sort(panels.begin(), panels.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
-
-    // Panels this client does not show yet keep their saved place.
-    QList<SidebarPanelType> order = fullPanelsOrder();
-    qsizetype next = 0;
-    for (SidebarPanelType& slot : order) {
-        if (panelItem(slot))
-            slot = panels[next++].second;
-    }
+            panels.emplace_back(item->property("identifier").toInt(), type);
+    std::sort(panels.begin(), panels.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    QList<SidebarPanelType> order;
+    for (const auto& [identifier, type] : panels)
+        order.append(type);
     m_options->setPanelsOrder(order);
 }
 

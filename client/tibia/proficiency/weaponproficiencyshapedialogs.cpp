@@ -32,14 +32,14 @@ constexpr int KeepCurrentPerk = 3;
 
 int dustBalance()
 {
-    return tibia::game::localPlayer()
+    return tibia::game::hasLocalPlayer()
                ? static_cast<int>(tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_FORGE_DUST))
                : 0;
 }
 
 uint32_t lunarAscensionOrbs()
 {
-    return tibia::game::localPlayer()
+    return tibia::game::hasLocalPlayer()
                ? static_cast<uint32_t>(tibia::game::localPlayerResourceBalance(
                      static_cast<tibia::client::ResourceTypes_t>(LunarAscensionOrbsResource)))
                : 0;
@@ -72,7 +72,7 @@ void requestBalances()
 
 int profession()
 {
-    return tibia::game::localPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
+    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
 }
 
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 /// CIP-neutral pack helpers over qtclient creature storage — spectator / row peels only.
-/// Implementation includes creature storage out-of-line; this header stays free of CreaturePtr.
+/// Implementation includes creature storage out-of-line; this header stays free of TCreature.
 
 #include "mapsession.h"
 
@@ -24,7 +24,7 @@ struct CreatureOutfitInfo {
     uint8_t addons{ 0 };
 };
 
-/// POD spectator / creature row (team HUD / context scan). No CreaturePtr / TCreature.
+/// POD spectator / creature row (team HUD / context scan). No TCreature.
 struct CreatureSnapshot {
     uint32_t id{ 0 };
     std::string name;

@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "worldmap/mapobserver.h"
+#include <tibia/schedule/schedule.h>
 #include "worldmap/pathfindtypes.h"
 #include "worldmap/tileblock.h"
 
@@ -56,12 +57,10 @@ public:
 
     /// A field changed (`creature`: a creature moved on it, not the field content).
     void notificateTileUpdate(const Position& pos, bool creature, tibia::client::Operation operation);
-    void notificateCameraMove(const Point& offset) const;
+    void notificateCameraMove(const QPoint& offset) const;
     /// CIP TWorldmapProtocolMessageHandler + minimap feed both listen.
     void addObserver(MapObserver* observer);
     void removeObserver(MapObserver* observer);
-    /// Legacy single-slot: clears the list then adds `observer` (or clears if null).
-    void setObserver(MapObserver* observer);
     /// Diagnostic counter: opaque add/remove / field clean. Cover *caches* are
     /// cleared per-cell via invalidateCoverCachesFrom — not by this revision.
     uint32_t getCoverRevision() const { return m_coverRevision.load(std::memory_order_relaxed); }
@@ -82,7 +81,7 @@ public:
 
     void setWidth(const uint16_t w) { m_width = w; }
     void setHeight(const uint16_t h) { m_height = h; }
-    Size getSize() { return { m_width, m_height }; }
+    QSize getSize() { return { m_width, m_height }; }
 
     void clean();
     void cleanDynamicThings();
@@ -92,18 +91,12 @@ public:
     /// Place a protocol-decoded item appearance (no ephemeral Item).
     bool placeAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& pos,
                          int16_t stackPos = -1);
-    bool removeThingByPos(const Position& pos, int16_t stackPos);
-
     void addStaticText(const StaticTextPtr& txt, const Position& pos);
     bool removeStaticText(const StaticTextPtr& txt);
 
     void addAnimatedText(const AnimatedTextPtr& txt, const Position& pos);
     bool removeAnimatedText(const AnimatedTextPtr& txt);
-
-    StaticTextPtr getStaticText(const Position& pos) const;
-
     // field / tile related
-    tibia::worldmap::TWorldMapField* createTile(const Position& pos);
     tibia::worldmap::TWorldMapField* getOrCreateTile(const Position& pos);
     /// Prefer `tibia::worldmap::fieldAt` at call sites (storage hash, then spatial fallback).
     tibia::worldmap::TWorldMapField* getTile(const Position& pos);
@@ -115,10 +108,6 @@ public:
     WorldMapFieldList getTiles(int8_t floor = -1);
     void setFieldInBlock(const Position& pos, tibia::worldmap::TWorldMapField* field);
     void cleanTile(const Position& pos);
-
-    void beginGhostMode(float opacity);
-    void endGhostMode();
-
     /// CIP-shaped map item scan hit (appearance/typeId + stack index — no ItemPtr).
     struct TItemHit
     {
@@ -126,14 +115,8 @@ public:
         uint16_t typeId = 0;
         int stackPos = -1;
     };
-
-    std::unordered_map<Position, uint16_t, Position::Hasher> findItemsById(uint16_t clientId, uint32_t max);
     std::vector<TItemHit> findItemsInRange(const Position& center, int rangeX, int rangeY,
                                            const std::vector<uint16_t>& clientIds);
-
-    /// Session LocalPlayerSessionThing only — no Map creature registry (Phase 5.0-B).
-    CreaturePtr getCreatureById(uint32_t id);
-
     /// Takes the creature off the field `fieldPos` names, else off the field it
     /// stands on. `fireLocalDisappear`: DeleteOnMap and unaware fields only.
     bool removeCreatureFromFields(uint32_t creatureId, const Position& fieldPos = {},
@@ -143,24 +126,6 @@ public:
     /// MoveCreature. `byId`: the message names the creature instead of its field and slot.
     bool applyCreatureMove(uint32_t creatureId, const Position& oldPos, int oldStack,
                            const Position& newPos, bool byId);
-
-    std::vector<CreaturePtr> getSpectators(const Position& centerPos, const bool multiFloor)
-    {
-        return getSpectatorsInRangeEx(centerPos, multiFloor, m_awareRange.left, m_awareRange.right, m_awareRange.top, m_awareRange.bottom);
-    }
-
-    std::vector<CreaturePtr> getSightSpectators(const Position& centerPos, const bool multiFloor)
-    {
-        return getSpectatorsInRangeEx(centerPos, multiFloor, m_awareRange.left - 1, m_awareRange.right - 2, m_awareRange.top - 1, m_awareRange.bottom - 2);
-    }
-
-    std::vector<CreaturePtr> getSpectatorsInRange(const Position& centerPos, const bool multiFloor, const int32_t xRange, const int32_t yRange)
-    {
-        return getSpectatorsInRangeEx(centerPos, multiFloor, xRange, xRange, yRange, yRange);
-    }
-
-    std::vector<CreaturePtr> getSpectatorsInRangeEx(const Position& centerPos, bool multiFloor, int32_t minXRange, int32_t maxXRange, int32_t minYRange, int32_t maxYRange);
-
     void setLight(const Light& light);
 
     void setCentralPosition(const Position& centralPosition);
@@ -182,8 +147,13 @@ public:
     void invalidateAllCoverCaches();
     bool isAwareOfPosition(const Position& pos) const { return isAwareOfPosition(pos, m_awareRange); }
     bool isAwareOfPosition(const Position& pos, const AwareRange& awareRange) const;
-
-    void resetLastCamera() const;
+    /// The local player's field as the map last placed it; its creature's
+    /// position takes over once the creature stands somewhere.
+    Position localPlayerPosition() const { return m_localPlayerPosition; }
+    /// A new character session: the player is off the map and has no field yet.
+    void resetLocalPlayer();
+    /// The map placed the local player on `pos` (onPositionChange when it moved).
+    void setLocalPlayerPosition(const Position& pos);
 
     void setAwareRange(const AwareRange& range);
     void resetAwareRange();
@@ -197,10 +167,6 @@ public:
     void addMissileAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance);
     /// Protocol magic effect → field `m_effectAppearances` (no Effect Thing).
     void addEffectAppearance(const tibia::appearances::TAppearanceInstancePtr& appearance, const Position& pos);
-
-    std::vector<AnimatedTextPtr> getAnimatedTexts() { return m_animatedTexts; }
-    std::vector<StaticTextPtr> getStaticTexts() { return m_staticTexts; }
-
     std::tuple<std::vector<tibia::client::Direction>, tibia::client::PathFindResult> findPath(const Position& start, const Position& goal,
                                                                           int maxComplexity, int flags = 0);
     /// `pathMode`: Minimap (strict), Cyclopedia/Travel (CIP 0xfe fog; Travel also 0xff goals).
@@ -231,13 +197,6 @@ public:
     }
     void setWaypointCostFactory(WaypointCostFactory factory);
     void clearWaypointCostFactory();
-
-    void setFloatingEffect(const bool enable) { m_floatingEffect = enable; }
-    bool isDrawingFloatingEffects() { return m_floatingEffect; }
-
-    std::map<std::string, std::tuple<int, int, int, std::string>> findEveryPath(const Position& start, int maxDistance, const std::map<std::string, std::string>& params);
-    std::vector<CreaturePtr> getSpectatorsByPattern(const Position& centerPos, const std::string& pattern, tibia::client::Direction direction);
-
     int getMinimapColor(const Position& pos);
     bool isSightClear(const Position& fromPos, const Position& toPos);
 
@@ -247,10 +206,22 @@ private:
     };
 
     void removeUnawareThings();
+    /// The local player's creature went onto a field: a field it did not
+    /// step to from the last one ends the motion and the walk goal.
+    void localPlayerAppeared();
+    /// The local player's creature left its field; unless it reappears before
+    /// the event loop turns, it counts as off the map and its step stops.
+    void localPlayerDisappeared();
     /// Packed cover-probe flags for one build (see beginCoverProbeBatch).
     uint8_t probeCoverTile(const Position& pos);
 
     std::vector<FloorData> m_floors;
+
+    Position m_localPlayerPosition;
+    /// The field the player left (the jump test); cleared once it stays off the map.
+    Position m_localPlayerLastField;
+    bool m_localPlayerOffMap{ true };
+    tibia::schedule::TScheduledTaskPtr m_localPlayerLeave;
 
     std::vector<AnimatedTextPtr> m_animatedTexts;
     std::vector<StaticTextPtr> m_staticTexts;
@@ -278,7 +249,6 @@ private:
     bool m_coverProbeActive{ false };
     std::unordered_map<Position, uint8_t, Position::Hasher> m_coverProbe;
 
-    bool m_floatingEffect{ true };
 
     /// pathfinder avoid tiles for newFindPath (CIP waypoint/avoid pathfinder subset).
     std::unordered_set<Position, Position::Hasher> m_pathAvoids;

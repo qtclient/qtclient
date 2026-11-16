@@ -56,8 +56,8 @@ QString trackedItemName(const uint16_t typeId)
 
 QColor outfitColor(const int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 QString formatDateTime(const quint32 timestamp)

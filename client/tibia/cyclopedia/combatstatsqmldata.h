@@ -2,7 +2,11 @@
 
 #include <cip_gen.h>
 
+#include "game/miscstatsprovider.h"
+#include "game/offencestatsprovider.h"
+
 #include <map>
+#include <memory>
 #include <vector>
 
 namespace tibia {
@@ -96,15 +100,29 @@ struct CombatStats
     double amplification = 0;
 };
 
-/// The offence block (CIP: TOffenceStatsQmlData, ctor). Filled:
-/// the PlayerSkills stats (crit chance / extra damage, flat damage and
-/// healing, attack value, special attack conversion, life / mana leech,
-/// onslaught); the Cyclopedia-only blocks stay null.
+/// The offence block of the character info's combat stats (CIP:
+/// TOffenceStatsQmlData). Every stat is built once from the provider.
 class TOffenceStatsQmlData final : public cip::tibia::cyclopedia::TOffenceStatsQmlData
 {
     Q_OBJECT
 public:
+    explicit TOffenceStatsQmlData(std::shared_ptr<game::IOffenceStatsProvider> provider, QObject* parent = nullptr);
+    /// The skills widget's block: the PlayerSkills stats as a provider.
     explicit TOffenceStatsQmlData(const CombatStats& stats, QObject* parent = nullptr);
+
+private:
+    /// CIP: the element spells, offensive runes and auto attack crit chances.
+    QObject* makeSpecialCritChances();
+    /// CIP: the same for the crit extra damage.
+    QObject* makeSpecialCritDamages();
+    /// CIP: one row per damage type.
+    QObject* makeElementalPierce();
+    /// CIP: one row per skill; the total is the rounded sum.
+    QObject* makeAutoAttackBonusFromSkills();
+    QObject* makeSpellBonusDamageFromSkills();
+    QObject* makeSpellBonusHealingFromSkills();
+
+    std::shared_ptr<game::IOffenceStatsProvider> m_provider;
 };
 
 /// The defence block (CIP: TDefenceStatsQmlData, ctor).
@@ -115,14 +133,31 @@ public:
     explicit TDefenceStatsQmlData(const CombatStats& stats, QObject* parent = nullptr);
 };
 
-/// The misc block (CIP: TMiscStatsQmlData, ctor). Filled: momentum,
-/// transcendence, amplification; the Cyclopedia-only lists and blessings stay
-/// empty.
+/// An active concoction or food of the misc block (CIP: TConcoctionQmlData).
+class TConcoctionQmlData final : public cip::tibia::cyclopedia::TConcoctionQmlData
+{
+    Q_OBJECT
+public:
+    TConcoctionQmlData(int appearanceTypeId, qlonglong secondsRemaining, const QString& name, QObject* parent = nullptr);
+};
+
+/// The misc block of the character info's combat stats (CIP:
+/// TMiscStatsQmlData). The blessings are read from the provider.
 class TMiscStatsQmlData final : public cip::tibia::cyclopedia::TMiscStatsQmlData
 {
     Q_OBJECT
 public:
+    explicit TMiscStatsQmlData(std::shared_ptr<game::IMiscStatsProvider> provider, QObject* parent = nullptr);
+    /// The skills widget's block: the PlayerSkills stats as a provider.
     explicit TMiscStatsQmlData(const CombatStats& stats, QObject* parent = nullptr);
+
+    int currentBlessings() const override;
+    int maxBlessings() const override;
+    /// CIP: "green" with every blessing, "gold" with some, else "grey".
+    QString blessingButtonColor() const override;
+
+private:
+    std::shared_ptr<game::IMiscStatsProvider> m_provider;
 };
 
 }

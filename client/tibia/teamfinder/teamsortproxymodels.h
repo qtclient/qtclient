@@ -78,6 +78,9 @@ public:
     QHash<int, QByteArray> roleNames() const override;
     /// The own character's name: that member is the leader. Rows are refreshed when it changes.
     void setCharacterName(const QString& Name);
+    /// Keeps the rows sorted by character id and merges `Members` in: changed rows are reported
+    /// changed, new ones inserted and missing ones removed, in runs.
+    void setItems(const std::vector<teamfinder::TTeamMember>& Members) override;
 
 protected:
     QVariant itemData(const teamfinder::TTeamMember& Member, int Role) const override;

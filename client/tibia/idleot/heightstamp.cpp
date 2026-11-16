@@ -151,15 +151,15 @@ StampResult writeHeightStampFrame(const StampFrame& stamp)
     ThingShape shape = creature ? ThingShape::Auto : requested;
     const int width = frame.width();
     const int height = frame.height();
-    const int cellX = width - cellPx + displacement.x * hdScale;
-    const int cellY = height - cellPx + displacement.y * hdScale;
+    const int cellX = width - cellPx + displacement.x() * hdScale;
+    const int cellY = height - cellPx + displacement.y() * hdScale;
     const auto at = [width](const int x, const int y) { return static_cast<size_t>(y) * width + x; };
     const auto encode = [hdScale](const int px) {
         const float logical = static_cast<float>(px) / static_cast<float>(hdScale);
         return static_cast<uint8_t>(std::clamp<int>(static_cast<int>(std::lround(logical * 2.f)), 0, 255));
     };
     const auto putSurface = [&](const int x, const int y, const int top, const int up, const bool figure) {
-        uint8_t* texel = surface.at(origin.x + x, origin.y + y);
+        uint8_t* texel = surface.at(origin.x() + x, origin.y() + y);
         const int wholeTop = std::min<int>(static_cast<int>(std::lround(static_cast<float>(top) / hdScale)), 127);
         texel[0] = 0xFF;
         texel[1] = static_cast<uint8_t>(wholeTop * 2 + (figure ? 1 : 0));
@@ -237,25 +237,25 @@ StampResult writeHeightStampFrame(const StampFrame& stamp)
         };
 
         auto& grouped = reset(scratch.grouped, area);
-        std::vector<std::vector<Point>> groups;
+        std::vector<std::vector<QPoint>> groups;
         int lowestDiagonal = 0;
         int lowestRow = 0;
         forEachDrawn([&](const int x, const int y) {
             if (grouped[at(x, y)] || !isContact(x, y))
                 return;
             auto& group = groups.emplace_back();
-            std::vector<Point> pending{ Point(x, y) };
+            std::vector<QPoint> pending{ QPoint(x, y) };
             grouped[at(x, y)] = 1;
             while (!pending.empty()) {
-                const Point p = pending.back();
+                const QPoint p = pending.back();
                 pending.pop_back();
                 group.push_back(p);
-                lowestDiagonal = std::max(lowestDiagonal, p.x + p.y);
-                lowestRow = std::max(lowestRow, p.y);
+                lowestDiagonal = std::max(lowestDiagonal, p.x() + p.y());
+                lowestRow = std::max(lowestRow, p.y());
                 for (int dy = -1; dy <= 1; ++dy) {
                     for (int dx = -1; dx <= 1; ++dx) {
-                        const int nx = p.x + dx;
-                        const int ny = p.y + dy;
+                        const int nx = p.x() + dx;
+                        const int ny = p.y() + dy;
                         if (nx < 0 || ny < 0 || nx >= width || ny >= height || grouped[at(nx, ny)] || !isContact(nx, ny))
                             continue;
                         grouped[at(nx, ny)] = 1;
@@ -270,24 +270,24 @@ StampResult writeHeightStampFrame(const StampFrame& stamp)
         for (const auto& group : groups) {
             int diagonal = 0;
             int row = 0;
-            Point right(-1, 0);
+            QPoint right(-1, 0);
             for (const auto& p : group) {
-                diagonal = std::max(diagonal, p.x + p.y);
-                row = std::max(row, p.y);
-                if (p.x > right.x || (p.x == right.x && p.y < right.y))
+                diagonal = std::max(diagonal, p.x() + p.y());
+                row = std::max(row, p.y());
+                if (p.x() > right.x() || (p.x() == right.x() && p.y() < right.y()))
                     right = p;
             }
             if (diagonal < lowestDiagonal - diagonalTolerance && row < lowestRow - rowTolerance)
                 continue;
             for (const auto& p : group) {
-                foot[at(p.x, p.y)] = 1;
-                edges.emplace_back(p.x - p.y - 0.5, p.x + p.y + 1.5);
+                foot[at(p.x(), p.y())] = 1;
+                edges.emplace_back(p.x() - p.y() - 0.5, p.x() + p.y() + 1.5);
             }
-            for (int y = right.y; y > 0 && opaque[at(right.x, y - 1)]
-                 && (right.x + 1 >= width || !opaque[at(right.x + 1, y - 1)]);) {
+            for (int y = right.y(); y > 0 && opaque[at(right.x(), y - 1)]
+                 && (right.x() + 1 >= width || !opaque[at(right.x() + 1, y - 1)]);) {
                 --y;
-                foot[at(right.x, y)] = 1;
-                edges.emplace_back(right.x - y + 0.5, right.x + y + 1.5);
+                foot[at(right.x(), y)] = 1;
+                edges.emplace_back(right.x() - y + 0.5, right.x() + y + 1.5);
             }
         }
 
@@ -560,7 +560,7 @@ StampResult writeHeightStampFrame(const StampFrame& stamp)
     const auto writeSpan = [&](const PixelGrid& target, const int blockX, const int blockY, const int top, const int low) {
         for (int by = blockY * hdScale; by < std::min((blockY + 1) * hdScale, stampHeight); ++by) {
             for (int bx = blockX * hdScale; bx < std::min((blockX + 1) * hdScale, stampWidth); ++bx) {
-                uint8_t* texel = target.at(origin.x + bx, origin.y + by);
+                uint8_t* texel = target.at(origin.x() + bx, origin.y() + by);
                 texel[0] = static_cast<uint8_t>(std::max(top, 1));
                 texel[1] = static_cast<uint8_t>(255 - low);
                 texel[2] = creature ? CREATURE_MARK : 0;
@@ -630,7 +630,7 @@ int StampLayout::stampedFrames(const int indexSize, const int textureLayers)
     return textureLayers > 0 ? indexSize / textureLayers : 0;
 }
 
-Size StampLayout::imageSize(const int frames) const
+QSize StampLayout::imageSize(const int frames) const
 {
     if (columns <= 0 || frames <= 0)
         return {};
@@ -638,11 +638,11 @@ Size StampLayout::imageSize(const int frames) const
     return { columns * (frameSize.width() + pad), rows * (frameSize.height() + pad) };
 }
 
-Rect StampLayout::cell(const int frame) const
+QRect StampLayout::cell(const int frame) const
 {
     const int cols = std::max(columns, 1);
-    return { Point(frame % cols * (frameSize.width() + pad), frame / cols * (frameSize.height() + pad)),
-             frameSize + Size(pad) };
+    return { QPoint(frame % cols * (frameSize.width() + pad), frame / cols * (frameSize.height() + pad)),
+             frameSize + QSize(pad, pad) };
 }
 
 // Where a frame's light comes from: its brightest pixels (a flame, glowing coals), weighted by
@@ -651,8 +651,8 @@ Rect StampLayout::cell(const int frame) const
 // those pixels and its rays clear the thing's own footprint. A wall-hung light (`hook` >= 0: 1
 // south wall, 2 east wall, 0 the nearer tile edge) sits just in front of the wall it hangs on,
 // so the room sees it and the wall does not hide it. Anything else keeps height < 0.
-FrameLight findFrameLight(const PixelGrid& sprite, const Rect& frame, const PixelGrid* surface, const Point& origin,
-                          const int hdScale, const int hook, const Point& displacement)
+FrameLight findFrameLight(const PixelGrid& sprite, const QRect& frame, const PixelGrid* surface, const QPoint& origin,
+                          const int hdScale, const int hook, const QPoint& displacement)
 {
     constexpr float LIFT = 4.f;
     constexpr float FRONT = 2.f;
@@ -684,7 +684,7 @@ FrameLight findFrameLight(const PixelGrid& sprite, const Rect& frame, const Pixe
 
     const float scale = static_cast<float>(hdScale);
     const auto upAt = [&](const int x, const int y) {
-        const uint8_t* texel = surface->at(origin.x + x, origin.y + y);
+        const uint8_t* texel = surface->at(origin.x() + x, origin.y() + y);
         return texel[3] ? texel[2] / 2.f : -1.f;
     };
     double total = 0, sumX = 0, sumY = 0, upTotal = 0, sumUp = 0;
@@ -707,12 +707,12 @@ FrameLight findFrameLight(const PixelGrid& sprite, const Rect& frame, const Pixe
     }
     if (total <= 0)
         return light;
-    light.point = PointF(static_cast<float>(sumX / total), static_cast<float>(sumY / total)) / scale;
+    light.point = QPointF(static_cast<float>(sumX / total), static_cast<float>(sumY / total)) / scale;
 
     if (upTotal > 0) {
         const auto up = static_cast<float>(sumUp / upTotal);
         light.shape.ground = up;
-        const PointF ground = light.point + PointF(up, up);
+        const QPointF ground = light.point + QPointF(up, up);
         float reach = 0.f;
         float ownTop = 0.f;
         for (int y = 0; y < height; ++y) {
@@ -720,10 +720,10 @@ FrameLight findFrameLight(const PixelGrid& sprite, const Rect& frame, const Pixe
                 const float pixelUp = luminance[static_cast<size_t>(y) * width + x] >= 0.f ? upAt(x, y) : -1.f;
                 if (pixelUp < 0.f)
                     continue;
-                const float dx = (x + 0.5f) / scale + pixelUp - ground.x;
-                const float dy = (y + 0.5f) / scale + pixelUp - ground.y;
+                const float dx = (x + 0.5f) / scale + pixelUp - ground.x();
+                const float dy = (y + 0.5f) / scale + pixelUp - ground.y();
                 reach = std::max(reach, dx * dx + dy * dy);
-                ownTop = std::max(ownTop, std::floor(surface->at(origin.x + x, origin.y + y)[1] / 2.f));
+                ownTop = std::max(ownTop, std::floor(surface->at(origin.x() + x, origin.y() + y)[1] / 2.f));
             }
         }
         // Above its own rim (a basin's bowl), whose columns would otherwise cut a wedge
@@ -731,10 +731,10 @@ FrameLight findFrameLight(const PixelGrid& sprite, const Rect& frame, const Pixe
         light.shape.height = std::max(up + LIFT, ownTop + OWN_LIFT);
         light.shape.clear = std::clamp(std::sqrt(reach) + CLEAR_MARGIN, CLEAR_MIN, CLEAR_MAX);
     } else if (hook >= 0) {
-        const float right = (width + displacement.x * hdScale) / scale;
-        const float bottom = (height + displacement.y * hdScale) / scale;
-        const float toSouth = bottom - light.point.y;
-        const float toEast = right - light.point.x;
+        const float right = (width + displacement.x() * hdScale) / scale;
+        const float bottom = (height + displacement.y() * hdScale) / scale;
+        const float toSouth = bottom - light.point.y();
+        const float toEast = right - light.point.x();
         const float wall = hook == 1 ? toSouth : hook == 2 ? toEast : std::min(toSouth, toEast);
         light.shape.height = light.shape.ground = std::max(wall, 0.f) + FRONT;
         light.shape.clear = HUNG_CLEAR;

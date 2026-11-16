@@ -563,7 +563,7 @@ int sessIsOnline() { return tibia::game::isOnline() ? 1 : 0; }
 int sessIsDead() { return tibia::game::isDead() ? 1 : 0; }
 int sessIsFrozen() { return tibia::game::isSceneFrozen() ? 1 : 0; }
 void sessSetFrozen(int frozen) { tibia::game::setSceneFrozen(frozen != 0); }
-int sessPlayerPresent() { return tibia::game::localPlayer() ? 1 : 0; }
+int sessPlayerPresent() { return tibia::game::hasLocalPlayer() ? 1 : 0; }
 
 QtClientMapPos sessPlayerMapPos()
 {

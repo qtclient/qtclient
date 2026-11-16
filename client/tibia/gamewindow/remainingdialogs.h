@@ -17,6 +17,7 @@
 #include <QString>
 #include <functional>
 #include <utility>
+#include <tuple>
 #include <vector>
 
 namespace tibia {
@@ -77,6 +78,17 @@ public:
     explicit TCharacterTradeDialogController(QObject* parent = nullptr);
     static TCharacterTradeDialogController* instance();
 
+    QObject* characterData() const override;
+    QObject* auctionConfiguration() const override;
+    QObject* conditionsModel() const override;
+    QObject* highlightsModel() const override;
+    QObject* itemsModel() const override;
+    QObject* confirmationsModel() const override;
+    bool hasUnfulfilledConditions() const override;
+    bool hasConfirmationError() const override;
+    QObject* characterOverviewHighlightsModel() const override;
+    QObject* characterOverviewItemsModel() const override;
+
 public Q_SLOTS:
     void showDialog() override;
     void closeDialog() override;
@@ -91,6 +103,17 @@ public Q_SLOTS:
     void requestConfirmConfiguration() override;
 
 private:
+    /// The auction the player configured: minimum bid, end, items, store
+    /// items and highlights.
+    struct TConfiguration
+    {
+        uint32_t minimumBid = 0;
+        uint32_t auctionEnd = 0;
+        std::vector<std::tuple<uint16_t, uint8_t>> items;
+        std::vector<std::tuple<uint16_t, uint8_t>> storeItems;
+        std::vector<uint16_t> highlights;
+    };
+    TConfiguration configuration() const;
     void onStorageUpdated(trade::TCharacterTradeStorage::DataType dataType);
     void refreshOverviewModels();
     static TCharacterTradeDialogController* s_instance;

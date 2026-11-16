@@ -43,7 +43,7 @@ THitpointManabarController::THitpointManabarController(QObject* parent)
 
 void THitpointManabarController::onPlayerDataChanged()
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return;
     setHitpoints(static_cast<int>(tibia::game::localPlayerHealth()),
                  static_cast<int>(tibia::game::localPlayerMaxHealth()));

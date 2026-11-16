@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Vendor the official Tibia client's UI and API into apps/qtclient/client/upstream.
 
-  sync.py --tibia /path/to/Tibia.app [--msgmap msgmap.jsonl] [--things-dir DIR]
+  sync.py --tibia /path/to/Tibia.app [--msgmap msgmap.jsonl] [--assets-dir DIR]
   sync.py --check
 
 Sync extracts, from the installed client:
@@ -16,7 +16,7 @@ Sync extracts, from the installed client:
   protocol/messages.json        message opcodes (requires --msgmap from TibiaMessageMap.java
                                 whenever the client binary sha changes)
 then writes DRIFT.md against the previous tree, MANIFEST.json and VERSION.json, and
-copies graphics_resources.rcc (runtime art, never committed) into the things pack.
+copies graphics_resources.rcc (runtime art, never committed) into data/assets/.
 
 A new client_sha256 without --msgmap is a hard error so protocol/ cannot silently
 freeze across CIP releases. Raw decompiles stay in gitignored tmp/re/; commit upstream/.
@@ -480,8 +480,8 @@ def main():
                     help="extra pack overrides/ root (in-tree mods + QTCLIENT_PACK are scanned)")
     ap.add_argument("--msgmap", type=Path, help="TibiaMessageMap.java output (JSONL) for protocol/messages.json "
                     "(required when client_sha256 changes)")
-    ap.add_argument("--things-dir", type=Path, help="assets dir for graphics_resources.rcc "
-                    "(default apps/qtclient/data/assets, else data/things/$CLIENT_VERSION)")
+    ap.add_argument("--assets-dir", type=Path, help="assets dir for graphics_resources.rcc "
+                    "(default apps/qtclient/data/assets)")
     ap.add_argument("--check", action="store_true", help="verify the vendored tree (CI)")
     args = ap.parse_args()
 
@@ -528,17 +528,15 @@ def main():
         shutil.copytree(staged, args.out)
     log(f"wrote {args.out} ({'changes: see DRIFT.md' if changed else 'no changes'})")
 
-    assets_default = QTCLIENT_ROOT / "data/assets"
-    things_legacy = QTCLIENT_ROOT / "data/things" / os.environ.get("CLIENT_VERSION", "1533")
-    things = args.things_dir or (assets_default if assets_default.is_dir() else things_legacy)
+    assets = args.assets_dir or QTCLIENT_ROOT / "data/assets"
     rcc = contents / "MacOS/graphics_resources.rcc"
-    if things.is_dir() and rcc.is_file():
+    if assets.is_dir() and rcc.is_file():
         # Engine art stays next to the assets dump for local/dev mounts; CDN
         # ships it in the client package, not assets-current.
-        shutil.copy2(rcc, things / "graphics_resources.rcc")
-        log(f"art: {things / 'graphics_resources.rcc'}")
+        shutil.copy2(rcc, assets / "graphics_resources.rcc")
+        log(f"art: {assets / 'graphics_resources.rcc'}")
     else:
-        log(f"WARN: art not copied (assets dir {things} missing; run make extract first)")
+        log(f"WARN: art not copied (assets dir {assets} missing; run make extract first)")
 
     proto = QTCLIENT_ROOT / "client/tibia/protocol"
     if (args.out / "protocol/messages.json").is_file() and proto.is_dir():

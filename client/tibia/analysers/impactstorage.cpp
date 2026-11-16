@@ -1,4 +1,5 @@
 #include "analysers/analyserstorages.h"
+#include "input/gameactionhandlers.h"
 
 #include <algorithm>
 #include <climits>
@@ -36,6 +37,7 @@ int clampElement(const int element)
 {
     return element >= 0 && element < TImpactStorage::ElementCount ? element : 0;
 }
+
 
 }
 
@@ -101,43 +103,49 @@ void TImpactStorage::fromJson(const QJsonObject& json)
     m_damageTypesVisible = json.value(QLatin1String(KeyDamageTypesVisible)).toBool(true);
     m_allTimeMax[Damage] = std::max(0, json.value(QLatin1String(KeyMaxDamage)).toInt(0));
     m_allTimeMax[Healing] = std::max(0, json.value(QLatin1String(KeyMaxHealing)).toInt(0));
-    emitOptionsChanged();
-    emitAllTimeValuesChanged();
+    Q_EMIT optionsChanged();
+    Q_EMIT allTimeValuesChanged();
 }
 
 void TImpactStorage::shiftRecords(const qint64 nowMs)
 {
     const qint64 shift = nowMs / 1000 - m_lastTime / 1000;
-    if (shift > 0) {
-        for (auto& records : m_records) {
-            if (shift >= RecordCount) {
-                std::fill(records.begin(), records.end(), Record{});
-            } else {
-                std::move(records.begin() + shift, records.end(), records.begin());
-                std::fill(records.end() - shift, records.end(), Record{});
-            }
+    for (auto& records : m_records) {
+        if (shift < 0 || shift >= static_cast<qint64>(records.size())) {
+            std::fill(records.begin(), records.end(), Record{});
+        } else if (shift > 0) {
+            std::move(records.begin() + shift, records.end(), records.begin());
+            std::fill(records.end() - shift, records.end(), Record{});
         }
     }
     m_lastTime = nowMs;
 }
 
+qint64 TImpactStorage::sessionLengthMs() const { return std::max<qint64>(1000, m_lastTime - m_sessionStart); }
+
+qint64 TImpactStorage::windowLengthMs() const { return std::min<qint64>(15000, sessionLengthMs()); }
+
 void TImpactStorage::addDamage(const qint64 primary, const qint64 secondary, const int element, const qint64 nowMs)
 {
     shiftRecords(nowMs);
-    const int e = clampElement(element);
+    const qint64 amount = primary + secondary;
     Record& record = m_records[Damage].back();
-    record[0] += primary + secondary;
+    record[0] += amount;
     record[1] += primary;
-    record[1 + e] += secondary;
+    if (element >= 0 && element < ElementCount)
+        record[static_cast<size_t>(1 + element)] += secondary;
     if (m_sessionStart == 0)
         m_sessionStart = nowMs;
-    Summary& session = m_session[Damage];
-    session.total += primary + secondary;
+    Summary& session = m_data[Damage].session;
+    session.total += amount;
     session.byElement[0] += primary;
-    session.byElement[static_cast<size_t>(e)] += secondary;
-    computeWindow(Damage);
+    if (element >= 0 && element < ElementCount)
+        session.byElement[static_cast<size_t>(element)] += secondary;
+    computeData(Damage);
+    m_hasData = true;
+    Q_EMIT sessionLengthChanged();
     emitDamageValuesChanged();
-    checkAllTimeMax(Damage, primary + secondary);
+    checkAllTimeMax(Damage, amount);
 }
 
 void TImpactStorage::addHealing(const qint64 amount, const qint64 nowMs)
@@ -149,85 +157,97 @@ void TImpactStorage::addHealing(const qint64 amount, const qint64 nowMs)
     record[1 + HealingElement] += amount;
     if (m_sessionStart == 0)
         m_sessionStart = nowMs;
-    Summary& session = m_session[Healing];
+    Summary& session = m_data[Healing].session;
     session.total += amount;
     session.byElement[HealingElement] += amount;
-    computeWindow(Healing);
+    computeData(Healing);
+    m_hasData = true;
+    Q_EMIT sessionLengthChanged();
     emitHealingValuesChanged();
     checkAllTimeMax(Healing, amount);
 }
 
 void TImpactStorage::checkAllTimeMax(const Kind kind, const qint64 hit)
 {
-    if (hit <= m_allTimeMax[kind])
+    // A new strongest hit or heal takes an automatic screenshot.
+    constexpr int ScreenshotParameter[2] = { 50, 51 };
+    if (static_cast<quint64>(m_allTimeMax[kind]) >= static_cast<quint64>(hit))
         return;
     m_allTimeMax[kind] = hit;
     emitAllTimeValuesChanged();
+    auto screenshot = input::mutableClone(*input::makeAction(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT));
+    screenshot->parameter = ScreenshotParameter[kind];
+    input::publish(screenshot);
 }
 
-bool TImpactStorage::computeWindow(const Kind kind)
+bool TImpactStorage::computeData(const Kind kind)
 {
     const std::vector<Record>& records = m_records[kind];
-    Summary window;
-    const size_t first = records.size() - m_weights15.size();
-    double perSecond = 0.0;
-    for (size_t k = 0; k < m_weights15.size(); ++k) {
-        const Record& record = records[first + k];
-        window.total += record[0];
-        for (int e = 0; e < ElementCount; ++e)
-            window.byElement[static_cast<size_t>(e)] += record[static_cast<size_t>(1 + e)];
-        perSecond += m_weights15[k] * static_cast<double>(record[0]);
+    const Data& current = m_data[kind];
+    Data data = current;
+    data.lastHour = {};
+    data.window = {};
+    const auto add = [](Summary& summary, const Record& record) {
+        summary.total += record[0];
+        for (size_t e = 0; e < ElementCount; ++e)
+            summary.byElement[e] += record[1 + e];
+    };
+    // The last hour's and the last 15 seconds' sums, newest first.
+    const size_t size = records.size();
+    const size_t hourStart = size > 3600 ? size - 3600 : 0;
+    const size_t windowStart = size > 15 ? size - 15 : 0;
+    for (size_t i = size; i > hourStart; --i) {
+        const Record& record = records[i - 1];
+        add(data.lastHour, record);
+        if (i - 1 >= windowStart)
+            add(data.window, record);
     }
-    const bool changed = window.total != m_window[kind].total || window.byElement != m_window[kind].byElement || perSecond != m_perSecond[kind];
-    m_window[kind] = window;
-    m_perSecond[kind] = perSecond;
-    m_maxPerSecond[kind] = std::max(m_maxPerSecond[kind], perSecond);
+    data.sessionPerSecond = static_cast<double>(static_cast<quint64>(data.session.total)) / static_cast<double>(sessionLengthMs()) * 1000.0;
+    data.maxSessionPerSecond = std::max(data.maxSessionPerSecond, data.sessionPerSecond);
+    double perSecond = 0.0;
+    if (size >= m_weights15.size()) {
+        const size_t first = size - m_weights15.size();
+        for (size_t k = 0; k < m_weights15.size(); ++k)
+            perSecond += static_cast<double>(static_cast<quint64>(records[first + k][0])) * m_weights15[k];
+    }
+    data.perSecond = perSecond;
+    data.maxPerSecond = std::max(data.maxPerSecond, perSecond);
+    const bool changed = !(data == current);
+    if (changed)
+        m_data[kind] = data;
     return changed;
 }
 
 void TImpactStorage::computeGraph(const Kind kind)
 {
+    // One point per 4 s of the 15 s rate, or per minute of the 15 min rate with session values.
     const std::vector<double>& weights = m_showSessionValues ? m_weights900 : m_weights15;
-    const int step = m_showSessionValues ? SessionGraphStepSeconds : GraphStepSeconds;
+    const qint64 step = m_showSessionValues ? SessionGraphStepSeconds : GraphStepSeconds;
     const std::vector<Record>& records = m_records[kind];
     for (int i = 0; i < GraphPoints; ++i) {
-        const qint64 end = static_cast<qint64>(records.size()) - static_cast<qint64>(GraphPoints - 1 - i) * step;
+        const qint64 end = static_cast<qint64>(records.size()) + static_cast<qint64>(i - (GraphPoints - 1)) * step;
         const qint64 first = end - static_cast<qint64>(weights.size());
         double value = 0.0;
         if (first >= 0) {
             for (size_t k = 0; k < weights.size(); ++k)
-                value += weights[k] * static_cast<double>(records[static_cast<size_t>(first) + k][0]);
+                value += static_cast<double>(static_cast<quint64>(records[static_cast<size_t>(first) + k][0])) * weights[k];
         }
         m_graph[kind][static_cast<size_t>(i)] = value;
     }
 }
 
-double TImpactStorage::sessionPerSecond(const Kind kind) const
-{
-    if (m_sessionStart == 0)
-        return 0.0;
-    const qint64 length = std::max<qint64>(1000, m_lastTime - m_sessionStart);
-    return static_cast<double>(m_session[kind].total) / static_cast<double>(length) * 1000.0;
-}
-
 void TImpactStorage::onTriggerUpdateImpactData(const qint64 currentTimestamp)
 {
-    if ((m_lastTime == 0 || m_lastTime + DataRefreshMs < currentTimestamp) && hasSession()) {
-        shiftRecords(currentTimestamp);
-        if (computeWindow(Damage))
-            emitDamageValuesChanged();
-        if (computeWindow(Healing))
-            emitHealingValuesChanged();
-        Q_EMIT sessionLengthChanged();
-    }
+    shiftRecords(currentTimestamp);
+    if (computeData(Damage))
+        emitDamageValuesChanged();
+    if (computeData(Healing))
+        emitHealingValuesChanged();
+    Q_EMIT sessionLengthChanged();
 }
 
 void TImpactStorage::onTriggerUpdateImpactGraphsValues(const qint64 currentTimestamp)
 {
-    const bool due = m_showSessionValues ? (m_lastGraphUpdate == 0 || currentTimestamp > m_lastGraphUpdate + SessionGraphRefreshMs)
-                                         : (m_lastGraphUpdate == 0 || currentTimestamp > m_lastGraphUpdate + GraphRefreshMs);
-    if (!due || !hasSession())
-        return;
     shiftRecords(currentTimestamp);
     computeGraph(Damage);
     computeGraph(Healing);
@@ -238,21 +258,22 @@ void TImpactStorage::onTriggerUpdateImpactGraphsValues(const qint64 currentTimes
 
 void TImpactStorage::tick(const qint64 nowMs)
 {
-    onTriggerUpdateImpactData(nowMs);
-    onTriggerUpdateImpactGraphsValues(nowMs);
+    if ((m_lastTime == 0 || m_lastTime + DataRefreshMs < nowMs) && hasSession())
+        onTriggerUpdateImpactData(nowMs);
+    const bool graphDue = m_lastGraphUpdate == 0 || (m_showSessionValues ? nowMs > m_lastGraphUpdate + SessionGraphRefreshMs
+                                                                         : nowMs > m_lastGraphUpdate + GraphRefreshMs);
+    if (graphDue && hasSession())
+        onTriggerUpdateImpactGraphsValues(nowMs);
 }
 
 void TImpactStorage::reset()
 {
-    for (auto& records : m_records)
-        std::fill(records.begin(), records.end(), Record{});
-    m_session = {};
-    m_window = {};
-    m_perSecond = {};
-    m_maxPerSecond = {};
+    m_data = {};
+    m_hasData = false;
     for (auto& graph : m_graph)
         graph.fill(0.0);
     m_sessionStart = 0;
+    m_lastTime = 0;
     m_lastGraphUpdate = 0;
     emitDamageValuesChanged();
     emitHealingValuesChanged();
@@ -271,11 +292,11 @@ void TImpactStorage::setShowSessionValues(const bool show)
     if (m_showSessionValues == show)
         return;
     m_showSessionValues = show;
-    if (hasSession()) {
-        computeGraph(Damage);
-        computeGraph(Healing);
-    }
+    m_lastGraphUpdate = 0;
+    for (auto& graph : m_graph)
+        graph.fill(0.0);
     emitOptionsChanged();
+    emitDamageValuesChanged();
     Q_EMIT graphValuesChanged();
 }
 

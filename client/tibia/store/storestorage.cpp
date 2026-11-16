@@ -9,6 +9,7 @@
 #include <QCollator>
 
 #include <algorithm>
+#include <stdexcept>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/tgamenotify.h>
@@ -23,6 +24,14 @@ using Args = std::vector<std::any>;
 QString toQString(const std::string& text)
 {
     return QString::fromUtf8(text);
+}
+
+/// A category's state as the protocol sends it (0 to 3).
+int categoryState(const uint32_t state)
+{
+    if (state < 4)
+        return static_cast<int>(state);
+    throw std::invalid_argument("Invalid enum value");
 }
 
 /// The offer order: popularity (descending) or newest first, ties and
@@ -586,7 +595,7 @@ void TStoreProtocolMessageHandler::handleStoreCategoriesMessage(const Gameserver
     for (const ProtocolStoreCategory& source : message.categories()) {
         TStoreCategory category;
         category.name = toQString(source.name());
-        category.state = static_cast<int>(source.state());
+        category.state = categoryState(source.state());
         for (const std::string& icon : source.icons())
             category.icons.push_back(toQString(icon));
         m_storage->addCategory(category, toQString(source.parent()));

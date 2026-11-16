@@ -41,7 +41,6 @@ TSpriteInSpritesheet TSpritesheetCache::resolve(const uint32_t spriteId, const b
     (void)decompressor;
     (void)threadpool;
     (void)sheets;
-    (void)TSpritesheetsMetadataManager::instance().spritesCount();
 
     SpriteSheet* sheet = sheetForSprite(spriteId, load);
     if (!sheet) {
@@ -102,11 +101,6 @@ TSpritesheetsMetadataManager& TSpritesheetsMetadataManager::instance()
 {
     static TSpritesheetsMetadataManager manager;
     return manager;
-}
-
-int TSpritesheetsMetadataManager::spritesCount() const
-{
-    return tibia::assets::sprites().spritesCount();
 }
 
 bool TSpritesheetDecompressorSynchronous::decompress(SpriteSheet* sheet) const

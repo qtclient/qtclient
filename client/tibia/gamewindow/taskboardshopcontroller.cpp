@@ -32,13 +32,13 @@ uint32_t mapU32(const ShopMap& map, const char* key, const uint32_t fallback = 0
 
 QColor outfitColor(const int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 uint64_t huntingPoints()
 {
-    return tibia::game::localPlayer()
+    return tibia::game::hasLocalPlayer()
                ? tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_TASK_HUNTING)
                : 0;
 }
@@ -111,7 +111,7 @@ void TTaskboardShopController::refreshHuntingTaskPoints()
 
 void TTaskboardShopController::syncPlayerColors()
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return;
     const Outfit& outfit = tibia::game::localPlayerOutfit();
     m_headColor = outfitColor(outfit.getHead());

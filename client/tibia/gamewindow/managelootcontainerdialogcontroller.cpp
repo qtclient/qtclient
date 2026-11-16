@@ -398,7 +398,7 @@ void TManageLootContainerDialogController::applyListFilter()
 
 void TManageLootContainerDialogController::syncPremium()
 {
-    const bool premium = tibia::game::localPlayer() && tibia::game::localPlayerIsPremium();
+    const bool premium = tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
     if (m_isPremium == premium)
         return;
     m_isPremium = premium;

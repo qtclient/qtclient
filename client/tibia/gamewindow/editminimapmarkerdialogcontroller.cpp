@@ -43,7 +43,7 @@ void TEditMinimapMarkerDialogController::showForMarkerAt(const Position& positio
 
 void TEditMinimapMarkerDialogController::showForCurrentPosition()
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return;
     showForMarkerAt(tibia::game::localPlayerPosition());
 }

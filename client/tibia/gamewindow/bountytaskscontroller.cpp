@@ -57,14 +57,14 @@ QString tierIcon(const uint8_t rarity)
 
 uint64_t bountyPoints()
 {
-    return tibia::game::localPlayer()
+    return tibia::game::hasLocalPlayer()
                ? tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BOUNTY_POINTS)
                : 0;
 }
 
 uint64_t rerollTokenBalance()
 {
-    return tibia::game::localPlayer()
+    return tibia::game::hasLocalPlayer()
                ? tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BOUNTY_TASK_REROLL_TOKENS)
                : 0;
 }

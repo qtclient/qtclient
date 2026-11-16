@@ -160,7 +160,7 @@ void TTeamAssemblePageController::showDialogTab()
                                     &TTeamAssemblePageController::onTeamMembersChanged));
     m_connections.push_back(connect(handler, &TTeamFinderProtocolMessageHandler::ownTeamUpdateAvailable, this,
                                     &TTeamAssemblePageController::onOwnTeamUpdateAvailable));
-    const QString characterName = tibia::game::localPlayer() ? QString::fromStdString(tibia::game::localPlayerName()) : QString();
+    const QString characterName = tibia::game::hasLocalPlayer() ? QString::fromStdString(tibia::game::localPlayerName()) : QString();
     onTeamParametersChanged();
     onTeamMembersChanged();
     handler->requestOwnTeam();
@@ -251,7 +251,7 @@ void TTeamAssemblePageController::getPremiumClicked()
 
 uint TTeamAssemblePageController::getLeaderlevel()
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return 2;
     return static_cast<uint16_t>(tibia::game::localPlayerLevel());
 }

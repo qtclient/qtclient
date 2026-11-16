@@ -333,7 +333,7 @@ QColor systemWhite();
 
 /// CIP's chat line: "[hh:mm[:ss] ]name[ (Traded)][ [level]]: text"
 /// as rich text in the entry's colour with a hanging indent.
-QString formatEntry(const TChatEntry& entry, bool timestamps, bool seconds, bool levels);
+QString formatEntry(const TChatEntry& entry, bool timestamps, bool seconds, bool levels, int* plainLength = nullptr);
 
 /// Loot / look rich text: {id|name} (item-value colours when colorizeLootStyle ≠ 0)
 /// then {#rrggbb|text}. Shared by console + map bubbles.

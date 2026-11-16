@@ -40,8 +40,8 @@ QString englishNumber(const qlonglong value) { return QLocale(QLocale::English).
 
 QColor outfitColor(const int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 int pageCount(const size_t entries) { return static_cast<int>(std::ceil(static_cast<double>(entries) / PageSize)); }
@@ -596,21 +596,21 @@ void TMonsterDialogController::viewSelectedCharm(const int charmID)
 void TMonsterDialogController::removeSelectedCharm()
 {
     TQmlMonsterRace* race = singleRace();
-    const TCharm* charm = race ? m_storage.charm(race->selectedCharmID()) : nullptr;
-    if (!charm)
+    if (!race)
         return;
+    m_confirmCharm = race->selectedCharmID();
     m_confirmAction = 1;
-    m_confirmCharm = charm->id;
+    const TCharm* charm = m_storage.charm(m_confirmCharm);
     m_confirmDialog->showMessage(qtTrId("monsters_confirm_unassign_charm_caption"),
-                                 qtTrId("monsters_confirm_unassign_charm").arg(charm->name(), englishNumber(charm->removeCost)));
+                                 qtTrId("monsters_confirm_unassign_charm")
+                                     .arg(charm ? charm->name() : QString())
+                                     .arg(englishNumber(charm ? charm->removeCost : 0)));
 }
 
 void TMonsterDialogController::assignSelectedCharm(const int SelectedCharmID)
 {
-    if (!singleRace() || SelectedCharmID < 0)
-        return;
-    m_confirmAction = 0;
     m_confirmCharm = SelectedCharmID;
+    m_confirmAction = 0;
     const TCharm* charm = m_storage.charm(SelectedCharmID);
     m_confirmDialog->showMessage(qtTrId("monsters_confirm_assign_charm_caption"),
                                  qtTrId("monsters_confirm_assign_charm").arg(charm ? charm->name() : QString()));

@@ -2,7 +2,6 @@
 
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/localplayersessionthing.h>
 #include <tibia/game/tgamenotify.h>
 
 #include <QtMath>
@@ -727,8 +726,6 @@ void TPlayerData::updateBaseSpeed(const uint16_t baseSpeed)
     if (oldBaseSpeed == baseSpeed)
         return;
     notify("onBaseSpeedChange", baseSpeed, oldBaseSpeed);
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->setBaseSpeed(baseSpeed);
 }
 
 void TPlayerData::setRegenerationTime(const uint16_t regenerationTime)

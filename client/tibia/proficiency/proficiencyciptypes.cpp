@@ -61,7 +61,7 @@ void handleWeaponProficiencyNotificationMessage(
     TProficiencyStorage* storage = TProficiencyStorage::instance();
     if (!storage)
         return;
-    const bool isCurrentWeapon = tibia::game::localPlayer()
+    const bool isCurrentWeapon = tibia::game::hasLocalPlayer()
         && message.object_id() == tibia::game::localPlayerInventoryTypeId(tibia::client::InventorySlotLeft);
     storage->setProficiencyExperience(message.experience(), static_cast<uint16_t>(message.object_id()), isCurrentWeapon);
     if (isCurrentWeapon || message.object_id() == 0)

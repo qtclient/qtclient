@@ -268,7 +268,7 @@ std::vector<TImbuementSource> ownedAstralSources(const TImbuingStorage& storage,
 
 bool localPlayerPremium()
 {
-    return tibia::game::localPlayer() && tibia::game::localPlayerIsPremium();
+    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
 }
 
 /// An object type's name with each space-separated word capitalised.

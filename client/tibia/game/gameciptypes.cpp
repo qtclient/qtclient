@@ -1,5 +1,4 @@
 #include "game/gameciptypes.h"
-#include <tibia/game/localplayersessionthing.h>
 #include <utility>
 #include <algorithm>
 #include <tibia/game/thingsession_forward.h>
@@ -10,6 +9,8 @@
 #include "container/containerciptypes.h"
 
 #include "creatures/creaturestorage.h"
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
 #include "game/cooldownstorage.h"
 #include "game/playerdata.h"
 #include "shared/clockservice.h"
@@ -96,6 +97,7 @@ CyclopediaCharacterOffenceStats offenceStats(const ::tibia::protobuf::protocol::
     data.critChanceImbuement = at(o.crit_chance(), 3);
     data.critChanceWheel = at(o.crit_chance(), 4);
     data.critChanceConcoction = at(o.crit_chance(), 5);
+    data.critChanceEventBonus = at(o.crit_chance(), 6);
     data.critDamageTotal = at(o.crit_damage(), 0);
     data.critDamageEquipament = at(o.crit_damage(), 1);
     data.critDamageFlat = at(o.crit_damage(), 2);
@@ -193,6 +195,7 @@ CyclopediaCharacterMiscStats miscStats(const ::tibia::protobuf::protocol::Protoc
     data.momentumBase = at(m.momentum(), 1);
     data.momentumBonus = at(m.momentum(), 2);
     data.momentumWheel = at(m.momentum(), 3);
+    data.momentumEventBonus = at(m.momentum(), 4);
     data.dodgeTotal = at(m.dodge(), 0);
     data.dodgeBase = at(m.dodge(), 1);
     data.dodgeBonus = at(m.dodge(), 2);
@@ -446,7 +449,17 @@ void FPSDropsLogger::ensureDialogStackBound()
 
 void FPSDropsLogger::onDialogVisibleChanged(const bool Visible)
 {
+    if (m_dialogVisible == Visible)
+        return;
     m_dialogVisible = Visible;
+    if (Visible)
+        resetFrameDurations();
+}
+
+void FPSDropsLogger::resetFrameDurations()
+{
+    m_frameDurations.clear();
+    m_frameDurationSum = 0;
 }
 
 FPSDropsLogger* FPSDropsLogger::instance()
@@ -542,7 +555,6 @@ void TGameProtocolMessageHandler::handleSessionDumpStartMessage(
 void TGameProtocolMessageHandler::handlePendingStateEnteredMessage(
     const GameserverMessagePendingStateEntered& /*PendingStateEnteredMessage*/)
 {
-    tibia::game::localPlayerSetPendingGame(true);
     tibia::game::notify("onPendingGame");
     if (network::TGameserverNetworkPacketProcessor::live())
         protocol::gameclient::sendEnterGame();
@@ -583,7 +595,8 @@ void TGameProtocolMessageHandler::handleLoginSuccessMessage(
 
     setCanExivaOptions(LoginSuccessMessage.exiva_options() != 0);
 
-    tibia::game::localPlayerSetId(playerId);
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+        storage->setPlayerID(playerId);
     setServerBeat(serverBeat);
     setCanReportBugs(canReportBugs);
     tibia::game::notify("onLogin");
@@ -696,8 +709,12 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
             switch (m.event_type()) {
             case tibia::client::CLIENT_EVENT_TYPE_SIMPLE:
                 if (small < tibia::client::CLIENT_EVENT_ATTACKSTOPPED) {
-                    if (const auto& player = tibia::game::localPlayer())
-                        player->takeScreenshot(small);
+                    if (tibia::game::hasLocalPlayer()) {
+                        auto action = tibia::input::mutableClone(
+                            *tibia::input::makeAction(tibia::input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT));
+                        action->parameter = static_cast<int>(small);
+                        tibia::input::publish(action);
+                    }
                 } else {
                     tibia::game::notify("onClientEvent", type, static_cast<tibia::client::ClientEvent_t>(small));
                 }
@@ -1166,10 +1183,12 @@ void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
 void TPlayerProtocolMessageHandler::handlePlayerStateMessage(
     const ::tibia::protobuf::protocol::GameserverMessagePlayerState& message)
 {
+    const uint64_t oldStates = tibia::game::localPlayerStates();
     if (TPlayerData* data = TPlayerData::liveInstance())
         data->setStates(std::bitset<30>(message.states() & 0x3fffffff), static_cast<int>(message.counter()));
-    // The player-state icons still read the states from the local player.
     tibia::game::localPlayerSetStatesAndRottenBlood(message.states(), static_cast<uint8_t>(message.counter()));
+    if (const uint64_t states = tibia::game::localPlayerStates(); states != oldStates)
+        tibia::game::notify("onStatesChange", states, oldStates);
 }
 
 void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
@@ -1291,25 +1310,15 @@ void ownProductSurface(QObject* parent)
     new TBlessingsProtocolMessageHandler(parent);
     new TBossDifficultySelectionProtocolMessageHandler(parent);
     new TEditTextProtocolMessageHandler(parent);
-    new TGameActionRouter(parent);
     new TGameEventProtocolMessageHandler(parent);
     {
         auto* handler = new TGameProtocolMessageHandler(parent);
         TGameProtocolMessageHandler::setLiveInstance(handler);
     }
     new TInternalGameActionRouter(parent);
-    new TOutfitDialogStorage(parent);
     new TPassiveAbilityInfoStorage(parent);
-    {
-        auto* playerData = new TPlayerData(parent);
-        TPlayerData::setLiveInstance(playerData);
-    }
     new TPlayerGameActionHandler(parent);
     TPlayerProtocolMessageHandler::setLiveInstance(new TPlayerProtocolMessageHandler(parent));
-    {
-        auto* stats = new TPlayerSkillStats(parent);
-        TPlayerSkillStats::setLiveInstance(stats);
-    }
     new TPremiumProtocolMessageHandler(parent);
     new TPremiumTimeStorage(parent);
     new TServerModalDialogProtocolMessageHandler(parent);

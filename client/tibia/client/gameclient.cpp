@@ -40,6 +40,8 @@
 #include "chat/chatprotocolmessagehandler.h"
 #include "chat/gamemessagehandler.h"
 #include "chat/textstorage.h"
+#include "game/gamesessionbase.h"
+#include "game/tgamenotify.h"
 #include "client/gamecore.h"
 #include "client/magiceffectopacity.h"
 #include "config/sidebaroptions.h"
@@ -99,8 +101,8 @@ namespace {
 
 QColor outfitColor(int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 /// CIP's world type names, by the login service's pvptype.
@@ -118,15 +120,13 @@ QString worldRules(int pvpType)
 
 QString premiumStatus(const authentication::PlaySessionData& session)
 {
-    if (!session.isPremium)
-        return qtTrId("characterselection_status_free");
+    // CIP's premium type: 0 free, 1 premium, 2 free premium (premium without
+    // an end date: the product's free-premium worlds). The login reply has no
+    // account state, so the account counts as active.
     const qint64 seconds = session.premiumUntil - QDateTime::currentSecsSinceEpoch();
-    // Premium without an end date: the product's free-premium worlds.
-    if (seconds <= 0)
-        return qtTrId("characterselection_status_free_premium");
-    const qint64 days = (seconds + 86399) / 86400;
-    const QString left = qtTrId(days == 1 ? "characterselection_status_premiumtime" : "characterselection_status_premiumtime_plural").arg(days);
-    return QStringLiteral("%1 (%2)").arg(qtTrId("characterselection_status_premium"), left);
+    const int premiumType = !session.isPremium ? 0 : seconds <= 0 ? 2 : 1;
+    const int days = premiumType == 1 ? static_cast<int>((seconds + 86399) / 86400) : 0;
+    return gamewindow::TCharacterSelectionController::accountStatusText(0, premiumType, days);
 }
 
 /// Pack façade: composition under TGameClient (CIP base is already QObject).
@@ -239,8 +239,8 @@ TGameClient::TGameClient(QObject* parent)
     , m_sessiondumpCatalogLoader(this)
     , m_sessiondumpPlayer(this)
 {
-    m_worldMapViewport = std::make_unique<worldmap::TWorldMapViewport>();
-    m_worldMapRenderProvider->setViewport(m_worldMapViewport.get());
+    // Each game session brings its own storages, view and handlers.
+    connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TGameClient::bindActiveSession);
     m_gameHost = new GameHostImpl(this);
     connect(this, &TGameClient::mainWindowInitialized, m_gameHost, &runtime::TGameHost::mainWindowInitialized);
     connect(this, &TGameClient::worldLeft, m_gameHost, &runtime::TGameHost::worldLeft);
@@ -385,27 +385,9 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     // Engine objects exist only after init.
     m_opcodes = std::make_unique<network::ExtendedOpcodeRouter>();
     m_dualConnection = std::make_unique<network::TGameserverDualConnection>();
-    m_soundProtocol = std::make_unique<sound::TSoundProtocolMessageHandler>();
-    m_soundStorage = std::make_unique<sound::TSoundStorage>();
-    m_ambientLight = std::make_unique<worldmap::TAmbientLightStorage>();
-    m_worldMapStorage = std::make_unique<worldmap::TWorldMapStorage>();
-    worldmap::TWorldMapStorage::setInstance(m_worldMapStorage.get());
-    // Fresh storage replaces Client::initMap's fallback — finish session init now
-    // that instance is live (aware range / unaware prune need it).
-    m_worldMapStorage->sessionState().init();
-    m_creatureStorage = std::make_unique<creatures::TCreatureStorage>();
-    creatures::TCreatureStorage::setInstance(m_creatureStorage.get());
-    m_containerStorage = std::make_unique<container::TContainerStorage>();
-    container::TContainerStorage::setInstance(m_containerStorage.get());
-    m_inventoryContainer = std::make_unique<container::TInventoryContainer>();
-    container::TInventoryContainer::setInstance(m_inventoryContainer.get());
-    m_worldmapProtocol = std::make_unique<worldmap::TWorldmapProtocolMessageHandler>(m_worldMapStorage.get());
-    m_worldmapProtocol->setViewport(m_worldMapViewport.get());
-    worldmap::TWorldmapProtocolMessageHandler::setLiveInstance(m_worldmapProtocol.get());
     // CIP Q→H: peeled structured opcodes → native handle*Message (skips classic).
+    // The active game session connects its own map and effect handlers.
     if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue()) {
-        connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, m_worldmapProtocol.get(),
-                &worldmap::TWorldmapProtocolMessageHandler::onServerMessageEnqueued);
         if (auto* tutorialHandler = tutorial::TTutorialProtocolMessageHandler::liveInstance()) {
             connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, tutorialHandler,
                     &tutorial::TTutorialProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
@@ -483,27 +465,7 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
                     Qt::UniqueConnection);
         }
     }
-    m_textStorage = std::make_unique<chat::TTextStorage>();
-    // CIP TTextStorage::onPlayerCreatureAddedToGameSession — clear map overlays when own body arrives.
-    if (m_creatureStorage) {
-        connect(m_creatureStorage.get(), &creatures::TCreatureStorage::playerAdded, this,
-                [this](std::weak_ptr<creatures::TCreature> player) {
-                    if (m_textStorage)
-                        m_textStorage->onPlayerCreatureAddedToGameSession(std::move(player));
-                });
-    }
-    m_numericalEffects = std::make_unique<worldmap::TNumericalEffectStorage>();
-    (void)effects::TEffectStorage::instance();
-    m_effectStorage = std::make_unique<effects::TEffectStorage>();
-    m_effectStorage->setNumericalCount([this] { return m_numericalEffects ? m_numericalEffects->effects().size() : size_t(0); });
-    m_effectGameActionHandler = std::make_unique<effects::TEffectGameActionHandler>();
-    m_effectProtocolMessageHandler = std::make_unique<effects::TEffectProtocolMessageHandler>();
-    if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue())
-        connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, m_effectProtocolMessageHandler.get(),
-                &effects::TEffectProtocolMessageHandler::onServerMessageEnqueued);
-    m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*m_textStorage, *m_numericalEffects);
     const QJsonObject clientOptions = app::ClientOptions::load().options();
-    m_messageHandler->setOptions(clientOptions);
     m_frameRateLimitEnabled = clientOptions.value(QLatin1String("frameRateLimitEnabled")).toBool(false);
     m_frameRateLimit = std::clamp(clientOptions.value(QLatin1String("frameRateLimit")).toInt(60), 1, 255);
     const auto applyEffectOpacities = [](const QJsonObject& options) {
@@ -526,7 +488,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             || name == QLatin1String("monsterEffectsOpacity") || name == QLatin1String("monsterBossAreaEffectsOpacity"))
             applyEffectOpacities(options);
     });
-    m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *m_textStorage, *m_numericalEffects);
 
     gamecore::setClientVersion(ClientVersion);
     QString error;
@@ -544,6 +505,7 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             return true;
         }
         m_sessiondump = std::make_unique<game::TSessiondumpGameSession>();
+        m_sessiondump->activate();
         connect(m_sessiondump.get(), &game::TSessiondumpGameSession::connected, this, [] { qCInfo(lcGameClient) << "session dump connected"; });
         connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginSuccessful, this, [] { qCInfo(lcGameClient) << "session dump login accepted"; });
         connect(m_sessiondump.get(), &game::TSessiondumpGameSession::worldEntered, this, &TGameClient::onWorldEntered);
@@ -584,6 +546,7 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
 
     m_session = std::make_unique<game::TGameserverGameSession>();
     game::TGameserverGameSession::setLiveInstance(m_session.get());
+    m_session->activate();
     connect(m_session.get(), &game::TGameserverGameSession::connected, this, [] { qCInfo(lcGameClient) << "game server connected"; });
     connect(m_session.get(), &game::TGameserverGameSession::gameLoginSuccessful, this, [] { qCInfo(lcGameClient) << "game login accepted"; });
     connect(m_session.get(), &game::TGameserverGameSession::worldEntered, this, &TGameClient::onWorldEntered);
@@ -610,8 +573,86 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     return true;
 }
 
+namespace {
+
+game::TGameSessionBase* activeSession()
+{
+    return game::TGameSessionBase::active();
+}
+
+}
+
+worldmap::TWorldMapViewport* TGameClient::worldMapViewport() const
+{
+    return activeSession() ? activeSession()->worldMapViewport().get() : nullptr;
+}
+
+worldmap::TAmbientLightStorage* TGameClient::ambientLight() const
+{
+    return activeSession() ? activeSession()->ambientLightStorage().get() : nullptr;
+}
+
+worldmap::TWorldMapStorage* TGameClient::worldMapStorage() const
+{
+    return activeSession() ? activeSession()->worldMapStorage().get() : nullptr;
+}
+
+creatures::TCreatureStorage* TGameClient::creatureStorage() const
+{
+    return activeSession() ? activeSession()->creatureStorage().get() : nullptr;
+}
+
+container::TContainerStorage* TGameClient::containerStorage() const
+{
+    return activeSession() ? activeSession()->containerStorage().get() : nullptr;
+}
+
+container::TInventoryContainer* TGameClient::inventoryContainer() const
+{
+    return activeSession() ? activeSession()->inventoryContainer().get() : nullptr;
+}
+
+worldmap::TWorldmapProtocolMessageHandler* TGameClient::worldmapProtocol() const
+{
+    return activeSession() ? activeSession()->worldmapProtocolMessageHandler().get() : nullptr;
+}
+
+chat::TTextStorage* TGameClient::textStorage() const
+{
+    return activeSession() ? activeSession()->textStorage().get() : nullptr;
+}
+
+worldmap::TNumericalEffectStorage* TGameClient::numericalEffects() const
+{
+    return activeSession() ? activeSession()->numericalEffectStorage().get() : nullptr;
+}
+
+effects::TEffectStorage* TGameClient::effectStorage() const
+{
+    return activeSession() ? activeSession()->effectStorage().get() : nullptr;
+}
+
+void TGameClient::bindActiveSession()
+{
+    // The updater and the message handler work on one session's texts and effects.
+    m_updater.reset();
+    m_messageHandler.reset();
+    game::TGameSessionBase* session = activeSession();
+    m_worldMapRenderProvider->setViewport(session ? session->worldMapViewport().get() : nullptr);
+    if (m_minimap)
+        m_minimap->setProtocolHandler(worldmapProtocol());
+    if (!session)
+        return;
+    m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage(), *session->numericalEffectStorage());
+    m_messageHandler->setOptions(app::ClientOptions::load().options());
+    m_messageHandler->setIgnoreList(m_messageIgnoreList);
+    m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage(),
+                                                              *session->numericalEffectStorage());
+}
+
 void TGameClient::setMessageIgnoreList(chat::TWhiteBlacklist* list)
 {
+    m_messageIgnoreList = list;
     if (m_messageHandler)
         m_messageHandler->setIgnoreList(list);
     if (auto* teamFinder = teamfinder::TTeamFinderProtocolMessageHandler::instance())
@@ -634,25 +675,8 @@ void TGameClient::shutdown()
     tibia::game::cleanMap();
     m_updater.reset();
     m_messageHandler.reset();
-    m_effectProtocolMessageHandler.reset();
-    m_effectGameActionHandler.reset();
-    m_effectStorage.reset();
-    m_numericalEffects.reset();
-    m_textStorage.reset();
-    m_ambientLight.reset();
-    worldmap::TWorldmapProtocolMessageHandler::setLiveInstance(nullptr);
-    m_worldmapProtocol.reset();
-    worldmap::TWorldMapStorage::setInstance(nullptr);
-    m_worldMapStorage.reset();
-    creatures::TCreatureStorage::setInstance(nullptr);
-    m_creatureStorage.reset();
-    container::TInventoryContainer::setInstance(nullptr);
-    m_inventoryContainer.reset();
-    container::TContainerStorage::setInstance(nullptr);
-    m_containerStorage.reset();
     m_opcodes.reset();
     m_dualConnection.reset();
-    m_soundProtocol.reset();
     m_sessiondump.reset();
     game::TGameserverGameSession::setLiveInstance(nullptr);
     m_session.reset();
@@ -915,6 +939,7 @@ void TGameClient::connectLive(const game::GameserverCredentials& credentials)
         m_session = std::make_unique<game::TGameserverGameSession>();
         game::TGameserverGameSession::setLiveInstance(m_session.get());
     }
+    m_session->activate();
     m_session->connectToGameserver(credentials);
 }
 
@@ -923,11 +948,14 @@ void TGameClient::startTutorialThenLive(const game::GameserverCredentials& live,
     m_pendingLiveCredentials = live;
     m_tutorialCinematic = true;
     m_sessiondump = std::make_unique<game::TSessiondumpGameSession>();
+    m_sessiondump->activate();
     connect(m_sessiondump.get(), &game::TSessiondumpGameSession::worldEntered, this, &TGameClient::onWorldEntered);
     connect(m_sessiondump.get(), &game::TSessiondumpGameSession::gameLoginErrorMessage, this, &TGameClient::fail);
     connect(m_sessiondump.get(), &game::TSessiondumpGameSession::connectionError, this, &TGameClient::fail);
     connect(m_sessiondump.get(), &game::TSessiondumpGameSession::disconnected, this, [this] {
-        m_sessiondump.reset();
+        // The replay ends inside its own signal: delete it once that returns.
+        if (game::TSessiondumpGameSession* dump = m_sessiondump.release())
+            dump->deleteLater();
         if (!m_tutorialCinematic) {
             onWorldLeft();
             return;
@@ -982,7 +1010,7 @@ void TGameClient::onWorldEntered()
         defaultMinimapPath.empty() ? QString() : QString::fromStdString(defaultMinimapPath),
         markersPath.empty() ? QString() : QString::fromStdString(markersPath));
     // The map handler keeps the minimap's floor and fields current.
-    m_minimap->setProtocolHandler(m_worldmapProtocol.get());
+    m_minimap->setProtocolHandler(worldmapProtocol());
     // CIP click-to-walk / minimap GoPath uses Indexed8 waypoint costs (qtclient
     // TWaypointCosts), not OTC WasSeen tile blocks — otherwise far clicks stop mid-path.
     tibia::game::setWaypointCostFactory([this]() -> std::shared_ptr<minimap::TWaypointCosts> {
@@ -1058,10 +1086,10 @@ void TGameClient::onWorldLeft()
     m_minimap.reset();
     m_sidebarOptions->save();
     m_statusbarStorage->save();
-    if (m_textStorage)
-        m_textStorage->clear();
-    if (m_numericalEffects)
-        m_numericalEffects->clear();
+    if (chat::TTextStorage* texts = textStorage())
+        texts->clear();
+    if (worldmap::TNumericalEffectStorage* numerical = numericalEffects())
+        numerical->clear();
     Q_EMIT worldLeft();
     // CIP: after logout return to character selection while the account session remains.
     ensureLoginSurface();
@@ -1149,8 +1177,8 @@ void TGameClient::tick()
     m_inTick = true;
 
     gamecore::poll();
-    if (m_soundStorage)
-        m_soundStorage->poll();
+    if (game::TGameSessionBase* session = game::TGameSessionBase::active())
+        session->soundStorage()->poll();
     m_idleTick.start(tibia::game::isOnline() ? 500 : 100);
     if (m_frameRateLimitEnabled && !frameSlotReached(gamecore::nowMicros())) {
         m_inTick = false;

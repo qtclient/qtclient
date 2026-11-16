@@ -22,7 +22,6 @@
 
 #include "client/const.h"
 #include "protocol/protocolcodes.h"
-#include "framework/stdext/storage.h"
 
 #include <algorithm>
 

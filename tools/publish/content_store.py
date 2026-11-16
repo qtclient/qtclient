@@ -165,7 +165,7 @@ def main() -> int:
     ap.add_argument("--name", required=True, help="list name, e.g. content-web")
     ap.add_argument("--revision", required=True, help="list revision, or 'auto' for a hash of its files")
     ap.add_argument("--engine", required=True)
-    ap.add_argument("--prefix", default="", help="path prefix inside the install, e.g. data/things/1530")
+    ap.add_argument("--prefix", default="", help="path prefix inside the install, e.g. Contents/Resources")
     ap.add_argument("--include", nargs="+", help="top-level names under --root to store (default: all)")
     ap.add_argument("--list", type=Path, help="write the list here instead of <out>/.qtclient/v3/<name>.json")
     ap.add_argument("--no-packs", action="store_true", help="blobs only")

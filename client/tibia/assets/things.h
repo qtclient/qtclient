@@ -3,6 +3,7 @@
 
 #include "thingtype.h"
 
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
@@ -69,7 +70,20 @@ public:
     const std::vector<CyclopediaQuestType>& getCyclopediaQuests() const { return m_cyclopediaQuests; }
     const CyclopediaQuestType* getCyclopediaQuest(uint16_t id) const;
 
-    const ThingTypeList& getProficiencyThings();
+    // Appearance type lookups. A missing category throws std::out_of_range.
+    ThingType* findAppearanceType(ThingCategory category, uint16_t id) const;
+    bool hasAppearanceType(ThingCategory category, uint16_t id) const;
+    /// Throws std::logic_error when the type does not exist.
+    void checkAppearanceType(ThingCategory category, uint16_t id) const;
+    /// Calls `visit` for every type of every category until it returns false.
+    void forEachAppearanceType(const std::function<bool(const ThingType&)>& visit) const;
+
+    // Object lists, in id order.
+    ThingTypeList getMarketObjectTypes() const { return m_marketObjectTypes; }
+    ThingTypeList getNpcSaleObjectTypes() const;
+    ThingTypeList getCyclopediaObjectTypes() const;
+    ThingTypeList getProficiencyObjectTypes() const;
+    ThingTypeList getSkillWheelGemObjectTypes() const { return m_skillWheelGemObjectTypes; }
     std::string getCyclopediaItemName(uint16_t id);
     std::string getProficienciesFile();
 
@@ -90,7 +104,8 @@ public:
     }
 
 private:
-    void buildProficiencyCache();
+    const ThingTypeList& objectTypes() const;
+    void collectObjectLists();
 
     std::unique_ptr<TAppearanceInstanceTracker> m_tracker;
     std::unique_ptr<TAppearanceInstanceGenericStoragesManager> m_storages;
@@ -102,8 +117,8 @@ private:
     std::vector<CyclopediaHouseType> m_cyclopediaHouses;
     std::vector<CyclopediaAchievementType> m_cyclopediaAchievements;
     std::vector<CyclopediaQuestType> m_cyclopediaQuests;
-    ThingTypeList m_proficiencyThingsCache;
-    bool m_proficiencyThingsCacheDirty = true;
+    ThingTypeList m_marketObjectTypes;
+    ThingTypeList m_skillWheelGemObjectTypes;
     bool m_datLoaded = false;
     uint32_t m_supplyStashId = 0;
     uint32_t m_standardRewardChestId = 0;

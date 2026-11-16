@@ -17,7 +17,7 @@ namespace gamewindow {
 /// The application cursor (CIP: TMouseCursorController): the shape of the
 /// topmost region under the mouse unless a flag overrides it, drawn from
 /// graphics_resources' :/cursors images (options mouseAnimatedCursor,
-/// mouseBigCursor, mouseSystemCursor).
+/// mouseBigCursor, mouseSystemCursor). Reloads when the options change.
 class TMouseCursorController : public cip::tibia::gamewindow::TMouseCursorController
 {
     Q_OBJECT
@@ -67,10 +67,15 @@ public:
     int topRegion() const { return m_regions.isEmpty() ? 0 : m_regions.last(); }
     /// The shape shown while `region` is on top.
     void setLayerShape(int region, int shape);
+    /// Crosshair while a target is picked (drag and drop, use-with).
     void setTargetSelection(bool enabled);
     void setLenshelp(bool enabled);
-    /// While an object is dragged the shape stays as it was (CIP +0x61).
-    void setDragging(bool dragging);
+    /// Hands the cursor back to the system while set.
+    void setCursorHidden(bool hidden);
+
+    Q_INVOKABLE void onEnterRegion(int region);
+    Q_INVOKABLE void onExitRegion(int region);
+    void onOptionsChanged();
 
     void setResizeHorizontal(bool enabled) override;
     void setResizeVertical(bool enabled) override;
@@ -79,22 +84,22 @@ public:
     void setPointingHand(bool enabled) override;
     void setOpenContainer(bool enabled) override;
     void setDefaultCursor() override;
-    void onMouseShieldEntered() override { enter(MouseShield); }
-    void onMouseShieldExited() override { exit(MouseShield); }
-    void onMapWindowEntered() override { enter(MapWindow); }
-    void onMapWindowExited() override { exit(MapWindow); }
-    void onMinimapEntered() override { enter(Minimap); }
-    void onMinimapExited() override { exit(Minimap); }
-    void onContainerEntered() override { enter(Container); }
-    void onContainerExited() override { exit(Container); }
-    void onContainerNoDropEntered() override { enter(ContainerNoDrop); }
-    void onContainerNoDropExited() override { exit(ContainerNoDrop); }
-    void onBattleListEntered() override { enter(BattleList); }
-    void onBattleListExited() override { exit(BattleList); }
-    void onTutorialOverlayEntered() override { enter(TutorialOverlay); }
-    void onTutorialOverlayExited() override { exit(TutorialOverlay); }
-    void onCyclopediaMapEntered() override { enter(CyclopediaMap); }
-    void onCyclopediaMapExited() override { exit(CyclopediaMap); }
+    void onMouseShieldEntered() override { onEnterRegion(MouseShield); }
+    void onMouseShieldExited() override { onExitRegion(MouseShield); }
+    void onMapWindowEntered() override { onEnterRegion(MapWindow); }
+    void onMapWindowExited() override { onExitRegion(MapWindow); }
+    void onMinimapEntered() override { onEnterRegion(Minimap); }
+    void onMinimapExited() override { onExitRegion(Minimap); }
+    void onContainerEntered() override { onEnterRegion(Container); }
+    void onContainerExited() override { onExitRegion(Container); }
+    void onContainerNoDropEntered() override { onEnterRegion(ContainerNoDrop); }
+    void onContainerNoDropExited() override { onExitRegion(ContainerNoDrop); }
+    void onBattleListEntered() override { onEnterRegion(BattleList); }
+    void onBattleListExited() override { onExitRegion(BattleList); }
+    void onTutorialOverlayEntered() override { onEnterRegion(TutorialOverlay); }
+    void onTutorialOverlayExited() override { onExitRegion(TutorialOverlay); }
+    void onCyclopediaMapEntered() override { onEnterRegion(CyclopediaMap); }
+    void onCyclopediaMapExited() override { onExitRegion(CyclopediaMap); }
 
 private:
     struct Cursors
@@ -103,31 +108,33 @@ private:
         int fps = 0;
     };
 
-    void loadImages(bool animated, bool big);
+    void loadCursors(const QJsonObject& options);
+    void loadStaticCursors(bool big);
+    void loadAnimatedCursors(bool animated, bool big);
     void loadSystemCursors();
     void loadImage(Shape shape, const QString& path, int hotX, int hotY, int fps, bool big);
     void loadSystemCursor(Shape shape, Qt::CursorShape cursor);
     void copyShape(Shape from, Shape to);
     void setFlag(bool& flag, bool enabled);
-    void enter(int region);
-    void exit(int region);
+    /// The shape set for `region`, Default when none was set.
+    int layerShape(int region) const;
     int currentShape() const;
     void update();
 
-    std::array<Cursors, ShapeCount> m_cursors;
+    QTimer m_timer;
     QList<int> m_regions;
     QMap<int, int> m_layerShapes;
-    QTimer m_timer;
+    std::array<Cursors, ShapeCount> m_cursors;
     const QCursor* m_applied = nullptr;
-    bool m_targetSelection = false;
     bool m_lenshelp = false;
+    bool m_targetSelection = false;
     bool m_resizeHorizontal = false;
     bool m_resizeVertical = false;
     bool m_resizeFDiagonal = false;
     bool m_resizeBDiagonal = false;
     bool m_pointingHand = false;
     bool m_openContainer = false;
-    bool m_dragging = false;
+    bool m_cursorHidden = false;
 };
 
 }

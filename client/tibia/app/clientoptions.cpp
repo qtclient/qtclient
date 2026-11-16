@@ -1,6 +1,7 @@
 #include "clientoptions.h"
 
 #include "config/clientoptiondefaults.h"
+#include "config/clientoptionsmigration.h"
 #include "config/specialconditionsoptions.h"
 
 #include <QDir>
@@ -15,6 +16,7 @@ namespace {
 
 constexpr auto ControlButtonsSection = "controlButtonsOptions";
 constexpr auto SpecialConditionsSection = "specialConditionsOptions";
+constexpr auto VersionKey = "clientOptionsVersion";
 
 }
 
@@ -28,6 +30,28 @@ QJsonObject readObject(const QString& path)
     if (!file.open(QIODevice::ReadOnly))
         return {};
     return QJsonDocument::fromJson(file.readAll()).object();
+}
+
+/// A file that names its clientOptionsVersion is a CIP options file and is
+/// upgraded to the current layout. qtclient's own user file always carries
+/// the current version (see writeUserFile).
+QJsonObject readOptionsFile(const QString& path)
+{
+    QJsonObject root = readObject(path);
+    if (root.contains(QLatin1String(VersionKey)))
+        root = config::clientoptionsmigration::migrate(std::move(root));
+    return root;
+}
+
+bool writeUserFile(const QString& path, QJsonObject root)
+{
+    root.insert(QLatin1String(VersionKey), config::clientoptionsmigration::CurrentVersion);
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly))
+        return false;
+    file.write(QJsonDocument(root).toJson());
+    return file.commit();
 }
 
 QJsonObject merged(QJsonObject base, const QJsonObject& over)
@@ -55,14 +79,14 @@ ClientOptions ClientOptions::load()
     // Code owns the factory defaults TClientOptions resets to: the options
     // map, the button bar and the special conditions. The user file overrides
     // them. The snapshot must not supply those sections.
-    QJsonObject resource = readObject(QStringLiteral(":/conf/clientoptions.json"));
+    QJsonObject resource = readOptionsFile(QStringLiteral(":/conf/clientoptions.json"));
     resource.remove(QLatin1String(ControlButtonsSection));
     resource.remove(QLatin1String(SpecialConditionsSection));
     QJsonObject codeDefaults;
     codeDefaults.insert(QStringLiteral("options"), config::defaultClientOptions());
     codeDefaults.insert(QLatin1String(ControlButtonsSection), config::defaultControlButtonsOptions());
     codeDefaults.insert(QLatin1String(SpecialConditionsSection), config::SpecialConditionsOptions::defaults().toJson());
-    o.m_root = merged(merged(std::move(resource), codeDefaults), readObject(userFilePath()));
+    o.m_root = merged(merged(std::move(resource), codeDefaults), readOptionsFile(userFilePath()));
     o.m_root.insert(QLatin1String(ControlButtonsSection),
                     config::reconcileControlButtons(o.m_root.value(QLatin1String(ControlButtonsSection)).toObject()));
     return o;
@@ -75,16 +99,12 @@ void ClientOptions::store(const QString& name, const QJsonValue& value)
     if (load().options().value(name) == value)
         return;
     const QString path = userFilePath();
-    QJsonObject root = readObject(path);
+    QJsonObject root = readOptionsFile(path);
     QJsonObject options = root.value(QLatin1String("options")).toObject();
     options.insert(name, value);
     root.insert(QLatin1String("options"), options);
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly))
+    if (!writeUserFile(path, std::move(root)))
         return;
-    file.write(QJsonDocument(root).toJson());
-    file.commit();
     Q_EMIT ClientOptionsNotifier::instance()->optionChanged(name);
 }
 
@@ -92,7 +112,7 @@ void ClientOptions::storeAll(const QJsonObject& changes)
 {
     const QJsonObject current = load().root();
     const QString path = userFilePath();
-    QJsonObject root = readObject(path);
+    QJsonObject root = readOptionsFile(path);
     QStringList changed;
     for (auto section = changes.begin(); section != changes.end(); ++section) {
         if (!section->isObject()) {
@@ -123,12 +143,8 @@ void ClientOptions::storeAll(const QJsonObject& changes)
     }
     if (changed.isEmpty())
         return;
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly))
+    if (!writeUserFile(path, std::move(root)))
         return;
-    file.write(QJsonDocument(root).toJson());
-    file.commit();
     for (const QString& name : std::as_const(changed))
         Q_EMIT ClientOptionsNotifier::instance()->optionChanged(name);
 }

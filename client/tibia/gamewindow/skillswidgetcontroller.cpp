@@ -1,4 +1,5 @@
 #include "skillswidgetcontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "analysers/analyserstorages.h"
 #include "client/gamecore.h"
@@ -82,12 +83,15 @@ TSkillsWidgetController::TSkillsWidgetController(QQuickItem* gameWindowItem, QQm
     }
     onPlayerDataChanged();
 
-    m_skillStats = game::TPlayerSkillStats::liveInstance();
-    if (m_skillStats) {
-        connect(m_skillStats, &game::TPlayerSkillStats::playerSkillStatsChanged, this,
-                &TSkillsWidgetController::onPlayerSkillStatsChanged);
-    }
-    onPlayerSkillStatsChanged();
+    // Each game session has its own skill stats.
+    tibia::game::onEachGameSession(this, [this] {
+        m_skillStats = game::TPlayerSkillStats::liveInstance();
+        if (m_skillStats) {
+            connect(m_skillStats, &game::TPlayerSkillStats::playerSkillStatsChanged, this,
+                    &TSkillsWidgetController::onPlayerSkillStatsChanged, Qt::UniqueConnection);
+        }
+        onPlayerSkillStatsChanged();
+    });
 
     widget()->createItem(QStringLiteral("skillswidget.qml"));
     if (QQuickItem* item = quickItem()) {

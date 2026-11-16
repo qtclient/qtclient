@@ -6,6 +6,7 @@
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/draganddropcontroller.h"
 #include "gamewindow/mousecursorcontroller.h"
+#include "gamewindow/remainingdialogs.h"
 #include "input/gameactionhandlers.h"
 #include "input/genericobjectgameactionprovider.h"
 #include "worldmap/worldmapgameactionprovider.h"
@@ -54,6 +55,30 @@ constexpr uint8_t AnySlot = 0xff;
 constexpr auto ShowExpireOption = "showExpireInContainers";
 constexpr auto ShowExpireWhenUnusedOption = "showExpireWhenUnused";
 constexpr auto MoveAllOption = "dragAndDropDefaultActionIsMoveAll";
+constexpr auto MoveToManagedRecursiveOption = "containerMoveToManagedContainerRecursive";
+constexpr auto MoveToManagedRecursiveWarningOption = "containerMoveToManagedContainerRecursiveShowWarningAgain";
+constexpr auto SortBackpacksFirstOption = "containerSortBackpacksFirst";
+constexpr auto SortRecursiveOption = "containerSortRecursive";
+constexpr auto SortRecursiveWarningOption = "containerSortRecursiveShowWarningAgain";
+
+/// The view filter category "others"; 0 shows all.
+constexpr uint32_t OtherFilterCategory = 0xff;
+
+/// The sort types and their label suffixes (container_sortoptions_by_%1).
+constexpr std::pair<uint32_t, const char*> SortTypes[] = {
+    { 0, "name_ascending" },   { 1, "name_descending" },   { 2, "weight_ascending" },     { 3, "weight_descending" },
+    { 4, "expiry_ascending" }, { 5, "expiry_descending" }, { 6, "stack_size_ascending" }, { 7, "stack_size_descending" },
+};
+
+bool option(const char* name)
+{
+    return app::ClientOptions::load().options().value(QLatin1String(name)).toBool();
+}
+
+void toggleOption(const char* name)
+{
+    app::ClientOptions::store(QLatin1String(name), !option(name));
+}
 
 input::TGameActionPtr firstOfType(const input::TGameActionList& actions, const A type)
 {
@@ -64,16 +89,6 @@ input::TGameActionPtr firstOfType(const input::TGameActionList& actions, const A
     return nullptr;
 }
 
-/// CIP : the server's name with every word capitalised.
-QString captionOf(const QString& name)
-{
-    QStringList words = name.split(QLatin1Char(' '));
-    for (QString& word : words) {
-        if (!word.isEmpty())
-            word[0] = word[0].toUpper();
-    }
-    return words.join(QLatin1Char(' '));
-}
 
 }
 
@@ -94,6 +109,9 @@ TContainerController::TContainerController(const int containerId, QQuickItem* ga
         if (name == QLatin1String(ShowExpireOption) || name == QLatin1String(ShowExpireWhenUnusedOption))
             readExpireOptions();
     });
+    if (container::TContainerStorage* storage = container::TContainerStorage::instance())
+        connect(storage, &container::TContainerStorage::manualSortModeChanged, this,
+                &TContainerController::refreshViewOptions);
     m_clockTimer.setInterval(1000);
     connect(&m_clockTimer, &QTimer::timeout, &m_model, &TAppearanceInstanceListModel::refreshClocks);
     m_clockTimer.start();
@@ -170,9 +188,148 @@ void TContainerController::onSidebarDestroyed() { widget()->onSidebarDestroyed()
 void TContainerController::setCursorToResizeVertical(const bool Enabled) { widget()->setCursorToResizeVertical(Enabled); }
 void TContainerController::startContentSizeChangedTimer() { widget()->startContentSizeChangedTimer(); }
 
+TContainerController::~TContainerController() = default;
+
 void TContainerController::onShowConfigurationMenu()
 {
-    // CIP opens view-filter / manual-sort entries; qtclient protocol has none yet.
+    TContextMenuController* menu = TContextMenuController::instance();
+    container::TContainerStorage* storage = container::TContainerStorage::instance();
+    const container::TStoredContainer* row = stored();
+    if (!menu || !storage || !row)
+        return;
+    menu->beginCustomMenu();
+    const auto addEntry = [&](const QString& label, auto&& onTriggered) {
+        TContextMenuEntryItem* item = menu->addCustomEntry(label);
+        connect(item, &TContextMenuEntryItem::triggered, this, std::forward<decltype(onTriggered)>(onTriggered));
+        return item;
+    };
+    // Picking a category stores it and asks the server for the filtered content.
+    const auto setFilter = [this](const uint32_t category) {
+        if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+            storage->setFilterCategory(m_containerId, category);
+            const container::TStoredContainer* row = stored();
+            container::TContainerStorage::requestFilteredContent(m_containerId, row ? row->firstIndex : 0, category);
+        }
+    };
+
+    if (row->hasFilterCategories()) {
+        const uint32_t current = storage->filterCategory(m_containerId);
+        TContextMenuEntryItem* all =
+            addEntry(qtTrId("inventory_store_inbox_filtername_all"), [setFilter] { setFilter(0); });
+        all->setCheckable(true);
+        all->setChecked(current == 0);
+        // The server's categories by name; "others" comes last.
+        std::vector<std::pair<uint32_t, std::string>> categories(row->filterCategories.begin(),
+                                                                 row->filterCategories.end());
+        std::sort(categories.begin(), categories.end(),
+                  [](const auto& left, const auto& right) { return left.second < right.second; });
+        for (const auto& [id, name] : categories) {
+            if (id == OtherFilterCategory)
+                continue;
+            TContextMenuEntryItem* item =
+                addEntry(QString::fromStdString(name), [setFilter, id = id] { setFilter(id); });
+            item->setCheckable(true);
+            item->setChecked(id == current);
+        }
+        if (row->filterCategories.contains(OtherFilterCategory)) {
+            TContextMenuEntryItem* others = addEntry(qtTrId("inventory_store_inbox_filtername_others"),
+                                                     [setFilter] { setFilter(OtherFilterCategory); });
+            others->setCheckable(true);
+            others->setChecked(current == OtherFilterCategory);
+        }
+    }
+    if (row->hasFilterCategories() && (row->sortable || row->contentMovableToManagedContainers))
+        menu->addCustomSeparator();
+
+    if (row->sortable) {
+        for (const auto& [sortType, name] : SortTypes) {
+            const QByteArray label = QStringLiteral("container_sortoptions_by_%1").arg(QLatin1String(name)).toUtf8();
+            addEntry(qtTrId(label.constData()), [this, sortType = sortType] { sortContainer(static_cast<int>(sortType)); });
+        }
+        menu->addCustomSeparator();
+        const auto addOption = [&](const char* label, const char* name) {
+            TContextMenuEntryItem* item = addEntry(qtTrId(label), [name] { toggleOption(name); });
+            item->setCheckable(true);
+            item->setChecked(option(name));
+        };
+        addOption("container_sortoptions_backpacks_first", SortBackpacksFirstOption);
+        addOption("container_sortoptions_recursive", SortRecursiveOption);
+        TContextMenuEntryItem* manualSort = addEntry(qtTrId("container_sortoptions_manual_sort_mode"), [] {
+            if (container::TContainerStorage* storage = container::TContainerStorage::instance())
+                storage->setManualSortMode(!container::TContainerStorage::manualSortMode());
+        });
+        manualSort->setCheckable(true);
+        manualSort->setChecked(manualSortModeActive());
+    }
+
+    if (row->contentMovableToManagedContainers) {
+        if (row->sortable)
+            menu->addCustomSeparator();
+        addEntry(qtTrId("container_move_content_to_managed_containers"), [this] { moveContentToManagedContainers(); });
+        TContextMenuEntryItem* recursive =
+            addEntry(qtTrId("container_move_content_to_managed_containers_recursive"),
+                     [] { toggleOption(MoveToManagedRecursiveOption); });
+        recursive->setCheckable(true);
+        recursive->setChecked(option(MoveToManagedRecursiveOption));
+    }
+    menu->showCustomMenu();
+}
+
+void TContainerController::showConfirmDialog(const char* caption, const char* content,
+                                             std::function<void(bool showAgain)> onYes)
+{
+    m_confirmDialog = std::make_unique<TGenericConfirmWithDontShowAgainDialogController>();
+    m_confirmDialog->configure(qtTrId(caption), qtTrId(content), qtTrId("confirmation_do_not_show_again"), true);
+    m_confirmDialog->setConfirmHandler(std::move(onYes));
+    m_confirmDialog->showDialog();
+}
+
+void TContainerController::sortContainer(const int sortType)
+{
+    const bool backpacksFirst = option(SortBackpacksFirstOption);
+    const bool recursive = option(SortRecursiveOption);
+    const bool warn = option(SortRecursiveWarningOption);
+    if (recursive && warn) {
+        showConfirmDialog("container_confirm_sort_recursive_caption", "container_confirm_sort_recursive",
+                          [id = m_containerId, sortType, backpacksFirst, recursive](const bool showAgain) {
+                              container::TContainerStorage::requestSort(id, static_cast<uint32_t>(sortType),
+                                                                        backpacksFirst, recursive);
+                              app::ClientOptions::store(QLatin1String(SortRecursiveWarningOption), showAgain);
+                          });
+        return;
+    }
+    container::TContainerStorage::requestSort(m_containerId, static_cast<uint32_t>(sortType), backpacksFirst, recursive);
+    app::ClientOptions::store(QLatin1String(SortRecursiveWarningOption), warn);
+}
+
+void TContainerController::moveContentToManagedContainers()
+{
+    const bool recursive = option(MoveToManagedRecursiveOption);
+    const bool warn = option(MoveToManagedRecursiveWarningOption);
+    if (recursive && warn) {
+        showConfirmDialog("container_confirm_move_content_to_managed_containers_recursive_caption",
+                          "container_confirm_move_content_to_managed_containers_recursive",
+                          [id = m_containerId, recursive](const bool showAgain) {
+                              container::TContainerStorage::requestMoveContentToManagedContainers(id, recursive);
+                              app::ClientOptions::store(QLatin1String(MoveToManagedRecursiveWarningOption), showAgain);
+                          });
+        return;
+    }
+    container::TContainerStorage::requestMoveContentToManagedContainers(m_containerId, recursive);
+    app::ClientOptions::store(QLatin1String(MoveToManagedRecursiveWarningOption), warn);
+}
+
+bool TContainerController::manualSortModeActive() const
+{
+    const container::TStoredContainer* row = stored();
+    return row && row->sortable && container::TContainerStorage::manualSortMode();
+}
+
+void TContainerController::refreshViewOptions()
+{
+    const container::TStoredContainer* row = stored();
+    setProperty(m_hasViewFilterOptions, row && row->hasFilterCategories());
+    setProperty(m_isInManualSortMode, manualSortModeActive());
 }
 
 void TContainerController::onWidgetQuickItemDestroyed() {}
@@ -224,32 +381,23 @@ void TContainerController::setIcon(const container::TInventorySlot& slot)
 
 void TContainerController::update(const bool resetScrollView)
 {
-    const container::TStoredContainer* row = stored();
-    if (!row)
+    const std::optional<container::TContainerProperties> properties =
+        container::TContainerRenderProvider::containerProperties(m_containerId, resetScrollView);
+    if (!properties)
         return;
 
-    const int capacity = std::max(1, static_cast<int>(row->capacity));
-    const int size = static_cast<int>(row->size);
-    const int firstIndex = static_cast<int>(row->firstIndex);
-    const bool hasPages = row->hasPages;
-    const bool hasParent = row->hasParent;
-    const bool unlocked = row->unlocked;
-    const bool showSearch = row->showSearch;
-    const int filled = static_cast<int>(row->items.size());
-    const QString& name = row->name;
-    const container::TInventorySlot& icon = row->containerItem;
-
-    const uint pages = hasPages ? (std::max(1, size) + capacity - 1) / capacity : 0;
-    setProperty(m_indexOfFirstVisibleObject, firstIndex);
-    setProperty(m_caption, captionOf(name));
-    setProperty(m_numberOfPages, pages);
-    setProperty(m_currentPage, hasPages ? static_cast<uint>(firstIndex) / static_cast<uint>(capacity) + 1 : 0u);
-    setProperty(m_numberOfContainerSlots, static_cast<uint>(capacity));
-    setProperty(m_numberOfFilledContainerSlots, static_cast<uint>(filled));
-    setProperty(m_levelUpButtonVisible, hasParent);
-    setProperty(m_searchButtonVisible, showSearch);
+    setProperty(m_indexOfFirstVisibleObject, static_cast<int>(properties->indexOfFirstVisibleObject));
+    setProperty(m_tutorialMarkerIDs, properties->tutorialMarkerIDs);
+    setProperty(m_caption, properties->caption);
+    setProperty(m_numberOfPages, properties->numberOfPages);
+    setProperty(m_currentPage, properties->currentPage);
+    setProperty(m_numberOfContainerSlots, properties->numberOfContainerSlots);
+    setProperty(m_numberOfFilledContainerSlots, properties->numberOfFilledContainerSlots);
+    setProperty(m_levelUpButtonVisible, properties->levelUpButtonVisible);
+    setProperty(m_searchButtonVisible, properties->searchButtonVisible);
+    setProperty(m_configButtonVisible, properties->configButtonVisible);
     // The hovered slot's cursor region depends on isUpdatable: leave it before switching.
-    if (unlocked != m_isUpdatable && m_hoveredSlot != -1) {
+    if (properties->isUpdatable != m_isUpdatable && m_hoveredSlot != -1) {
         m_hoveredSlot = -1;
         if (Cursor* cursor = Cursor::instance()) {
             if (m_isUpdatable)
@@ -258,13 +406,15 @@ void TContainerController::update(const bool resetScrollView)
                 cursor->onContainerNoDropExited();
         }
     }
-    setProperty(m_isUpdatable, unlocked);
-    setIcon(icon);
+    setProperty(m_isUpdatable, properties->isUpdatable);
+    setProperty(m_hasPossiblyMorePages, properties->hasPossiblyMorePages);
+    refreshViewOptions();
+    setIcon(properties->containerItem);
 
-    m_model.setMinimumRows(capacity);
-    m_model.setObjects(row->items);
+    m_model.setMinimumRows(std::max<int>(1, static_cast<int>(properties->numberOfContainerSlots)));
+    m_model.setObjects(properties->objects);
 
-    if (resetScrollView && quickItem())
+    if (properties->resetScrollView && quickItem())
         QMetaObject::invokeMethod(quickItem(), "resetScrollView");
     updateMouseCursorForCurrentSlot();
 }

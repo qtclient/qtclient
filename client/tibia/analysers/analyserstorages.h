@@ -115,41 +115,10 @@ private:
     bool m_showBaseXp = false;
 };
 
-/// Item values for the loot and waste analysers (CIP: tibia::cyclopedia::TItemPriceStorage,
-/// vtable). The own values and per-item value sources are the cyclopedia's
-/// (`cyclopedia::TItemInfoStorage`, slots 19 / 26).
-class TItemPriceService final : public QObject
-{
-    Q_OBJECT
-public:
-    explicit TItemPriceService(QObject* parent = nullptr);
+class TItemPriceStorage;
 
-    /// CIP slot 20 : a premium player's own value, else the item's source
-    /// (NPC buy / market) falling back to the other one.
-    qint64 lootPrice(uint16_t itemId) const;
-    /// CIP slot 21 : no own value; NPC sale / market by source, falling back
-    /// to the other one.
-    qint64 wastePrice(uint16_t itemId) const;
-    void setMarketPrices(std::unordered_map<uint16_t, qint64> prices);
-
-Q_SIGNALS:
-    void pricesChanged();
-
-private:
-    /// CIP slot 15 : coins at face value, else the best NPC buy price.
-    qint64 npcBuyPrice(uint16_t itemId) const;
-    /// CIP slot 16 : the best NPC sale price.
-    qint64 npcSalePrice(uint16_t itemId) const;
-    /// CIP slot 17 : the world's market average.
-    qint64 marketPrice(uint16_t itemId) const;
-    /// CIP slot 26 .
-    static int valueSource(uint16_t itemId);
-
-    std::unordered_map<uint16_t, qint64> m_market;
-};
-
-/// Loot and supply analyser storage (CIP: tibia::cyclopedia::TGainWasteStorage, ctor ,
-/// config "gainandwaste").
+/// Loot and supply analyser storage (CIP: tibia::cyclopedia::TGainWasteStorage, config
+/// "gainandwaste"). Items are added as they come; metrics and signals follow on the next tick.
 class TGainWasteStorage final : public cip::tibia::cyclopedia::TGainWasteStorage, public TCharacterConfiguration
 {
     Q_OBJECT
@@ -160,13 +129,18 @@ public:
         Waste = 1
     };
 
+    /// One looted or wasted item type of the session.
     struct Entry
     {
-        qint64 price = 0;
-        quint32 totalCount = 0;
-        quint32 lastHourCount = 0;
         uint16_t itemId = 0;
         QString name;
+        quint64 price = 0;
+        quint32 totalCount = 0;
+        quint32 lastHourCount = 0;
+        /// The newest record already taken off lastHourCount.
+        qint64 lastAgedTimestamp = 0;
+        void addCount(quint32 count);
+        void ageRecord(quint32 count, qint64 timestamp, bool aged);
     };
 
     struct Sums
@@ -186,41 +160,34 @@ public:
         qint64 price = 0;
     };
 
-    TGainWasteStorage(TItemPriceService* prices, QObject* parent = nullptr);
+    TGainWasteStorage(TItemPriceStorage* prices, QObject* parent = nullptr);
 
     QString configurationName() const override { return QStringLiteral("gainandwaste"); }
     QJsonObject toJson() const override;
     void fromJson(const QJsonObject& json) override;
 
-    /// CIP .
     void addLoot(uint16_t itemId, quint32 count, const QString& name, qint64 nowMs);
-    /// CIP .
     void addWaste(uint16_t itemId, quint32 count, qint64 nowMs);
-    /// CIP .
     void tick(qint64 nowMs);
-    /// CIP.
     void reset(Side side);
 
     const Sums& sums(Side side) const { return m_sides[side].sums; }
-    /// The loot / waste widget's items: last hour's counts (CIP), by item id.
+    /// Last hour's counts (loot and waste widgets).
     std::vector<Item> lastHourItems(Side side) const;
-    /// The hunting session's items: session counts (CIP).
+    /// Session counts (hunting session).
     std::vector<Item> sessionItems(Side side) const;
-    /// CIP : 60 points, each the weighted mean of 15 minute bins.
+    /// 60 points, each the weighted mean of 15 minute bins.
     std::vector<double> history(Side side, double& maxY) const;
 
     bool gaugeVisible(Side side) const { return m_sides[side].gaugeVisible; }
     void setGaugeVisible(Side side, bool visible);
     bool graphVisible(Side side) const { return m_sides[side].graphVisible; }
     void setGraphVisible(Side side, bool visible);
-    qint64 gaugeTarget(Side side) const { return m_sides[side].gaugeTarget; }
-    /// CIP.
-    void setGaugeTarget(Side side, qint64 target);
+    double gaugeTarget(Side side) const { return m_sides[side].gaugeTarget; }
+    void setGaugeTarget(Side side, double target);
 
 public Q_SLOTS:
-    /// CIP slot: own/market price configuration changed.
     void onItemPriceConfigurationChanged();
-    /// CIP slot: object appearance infos that affect NPC prices changed.
     void onObjectInfosChanged();
 
 Q_SIGNALS:
@@ -247,22 +214,20 @@ private:
         Sums sums;
         bool gaugeVisible = true;
         bool graphVisible = true;
-        qint64 gaugeTarget = 0;
+        double gaugeTarget = 0;
     };
 
-    /// CIP .
-    void computeMetrics(SideData& side, qint64 nowMs);
-    /// CIP .
+    void computeMetrics(Side side, qint64 nowMs);
     void refreshPrices();
-    qint64 priceOf(Side side, uint16_t itemId) const;
+    std::vector<Item> items(Side side, quint32 Entry::*count) const;
     void emitItemsChanged(Side side);
-    void emitMetricsChanged();
+    void emitMetricsChanged(Side side);
     void emitOptionsChanged();
 
-    QPointer<TItemPriceService> m_prices;
+    QPointer<TItemPriceStorage> m_prices;
     std::vector<double> m_weights;
     std::array<SideData, 2> m_sides;
-    qint64 m_nextTick = 0;
+    qint64 m_nextUpdate = 0;
     bool m_dirty = false;
 };
 
@@ -287,6 +252,20 @@ public:
     {
         qint64 total = 0;
         std::array<qint64, ElementCount> byElement{};
+        bool operator==(const Summary&) const = default;
+    };
+
+    /// The sums and rates of damage or healing.
+    struct Data
+    {
+        Summary lastHour;
+        Summary session;
+        Summary window;
+        double sessionPerSecond = 0;
+        double maxSessionPerSecond = 0;
+        double perSecond = 0;
+        double maxPerSecond = 0;
+        bool operator==(const Data&) const = default;
     };
 
     explicit TImpactStorage(QObject* parent = nullptr);
@@ -295,26 +274,28 @@ public:
     QJsonObject toJson() const override;
     void fromJson(const QJsonObject& json) override;
 
-    /// CIP vt19 .
+    /// Element -1: the secondary amount has no element.
     void addDamage(qint64 primary, qint64 secondary, int element, qint64 nowMs);
-    /// CIP vt20 .
     void addHealing(qint64 amount, qint64 nowMs);
-    /// CIP vt16 .
     void tick(qint64 nowMs);
-    /// CIP vt17 .
     void reset();
-    /// impact_reset_all_time: the persisted strongest hits start over.
+    /// The persisted strongest hits start over.
     void resetAllTimeMax();
 
-    bool hasSession() const { return m_sessionStart != 0; }
-    const Summary& session(Kind kind) const { return m_session[kind]; }
-    /// The last 15 s (CIP).
-    const Summary& window(Kind kind) const { return m_window[kind]; }
+    bool hasSession() const { return m_hasData; }
+    const Summary& lastHour(Kind kind) const { return m_data[kind].lastHour; }
+    const Summary& session(Kind kind) const { return m_data[kind].session; }
+    /// The last 15 s.
+    const Summary& window(Kind kind) const { return m_data[kind].window; }
     /// The 15 s linear-weighted per second value.
-    double perSecond(Kind kind) const { return m_perSecond[kind]; }
-    double maxPerSecond(Kind kind) const { return m_maxPerSecond[kind]; }
-    /// Session total over the session's length (at least 1 s), per second.
-    double sessionPerSecond(Kind kind) const;
+    double perSecond(Kind kind) const { return m_data[kind].perSecond; }
+    double maxPerSecond(Kind kind) const { return m_data[kind].maxPerSecond; }
+    /// Session total over the session's length, per second.
+    double sessionPerSecond(Kind kind) const { return m_data[kind].sessionPerSecond; }
+    /// At least 1 s.
+    qint64 sessionLengthMs() const;
+    /// At most 15 s.
+    qint64 windowLengthMs() const;
     qint64 allTimeMax(Kind kind) const { return m_allTimeMax[kind]; }
     const std::array<double, GraphPoints>& graph(Kind kind) const { return m_graph[kind]; }
 
@@ -349,11 +330,10 @@ Q_SIGNALS:
 private:
     using Record = std::array<qint64, ElementCount + 1>;
 
-    /// CIP : drops whole seconds since the last event or tick.
+    /// Drops whole seconds since the last event or tick.
     void shiftRecords(qint64 nowMs);
-    /// CIP : true if the window changed.
-    bool computeWindow(Kind kind);
-    /// CIP .
+    /// True if the data changed.
+    bool computeData(Kind kind);
     void computeGraph(Kind kind);
     void checkAllTimeMax(Kind kind, qint64 hit);
     void emitDamageValuesChanged();
@@ -361,18 +341,15 @@ private:
     void emitAllTimeValuesChanged();
     void emitOptionsChanged();
 
+    bool m_hasData = false;
+    std::array<Data, 2> m_data;
     std::array<std::vector<Record>, 2> m_records;
-    std::array<Summary, 2> m_session;
-    std::array<Summary, 2> m_window;
-    std::array<double, 2> m_perSecond{};
-    std::array<double, 2> m_maxPerSecond{};
     std::array<std::array<double, GraphPoints>, 2> m_graph{};
     std::array<qint64, 2> m_allTimeMax{};
     std::vector<double> m_weights15;
     std::vector<double> m_weights900;
     qint64 m_sessionStart = 0;
     qint64 m_lastTime = 0;
-    qint64 m_lastDataUpdate = 0;
     qint64 m_lastGraphUpdate = 0;
     bool m_showSessionValues = false;
     std::array<bool, 2> m_gaugeVisible{ true, true };
@@ -479,11 +456,7 @@ class THuntingSessionStorage final : public cip::tibia::cyclopedia::THuntingSess
 {
     Q_OBJECT
 public:
-    struct CaseInsensitiveLess
-    {
-        bool operator()(const QString& a, const QString& b) const { return a.compare(b, Qt::CaseInsensitive) < 0; }
-    };
-    using Kills = std::map<QString, int, CaseInsensitiveLess>;
+    using Kills = std::map<QString, int>;
 
     explicit THuntingSessionStorage(TProgressStorage* progress, QObject* parent = nullptr);
 
@@ -586,7 +559,7 @@ public:
     static qint64 nowMs();
 
     TProgressStorage* progress() { return &m_progress; }
-    TItemPriceService* prices() { return &m_prices; }
+    TItemPriceStorage* prices();
     TGainWasteStorage* gainWaste() { return &m_gainWaste; }
     TImpactStorage* impact() { return &m_impact; }
     TDamageInputStorage* damageInput() { return &m_damageInput; }
@@ -607,7 +580,6 @@ private:
     QString configurationPath(const TCharacterConfiguration& configuration) const;
 
     TProgressStorage m_progress;
-    TItemPriceService m_prices;
     TGainWasteStorage m_gainWaste;
     TImpactStorage m_impact;
     TDamageInputStorage m_damageInput;

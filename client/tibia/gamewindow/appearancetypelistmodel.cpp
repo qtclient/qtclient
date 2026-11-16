@@ -241,10 +241,10 @@ bool TAppearanceTypeListModelSortFilterProxy::filterAcceptsRow(const int sourceR
         return false;
 
     // CIP .
-    if (m_filterByLevel && tibia::game::localPlayer() && tibia::game::localPlayerLevel() < entry.requiredLevel)
+    if (m_filterByLevel && tibia::game::hasLocalPlayer() && tibia::game::localPlayerLevel() < entry.requiredLevel)
         return false;
     if (m_filterByVocation && entry.professions != 0) {
-        const int profession = tibia::game::localPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
+        const int profession = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
         if (profession < 1 || (entry.professions & (1u << (profession - 1))) == 0)
             return false;
     }

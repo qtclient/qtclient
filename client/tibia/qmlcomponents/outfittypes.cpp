@@ -395,35 +395,32 @@ TClipboardHelperQmlService::TClipboardHelperQmlService(QObject* parent)
 
 void TClipboardHelperQmlService::setTextInClipboard(const QString& Text)
 {
-    QGuiApplication::clipboard()->setText(Text);
+    m_clipboardHelper.setTextInClipboard(Text);
 }
 
 QString TClipboardHelperQmlService::getTextFromClipboard()
 {
-    return QGuiApplication::clipboard()->text();
+    return m_clipboardHelper.getTextFromClipboard();
 }
 
 QJsonObject TClipboardHelperQmlService::getBase64StringAsJsonObject()
 {
-    return convertBase64StringAsJsonObject(getTextFromClipboard());
+    return m_clipboardHelper.getBase64StringAsJsonObject();
 }
 
 void TClipboardHelperQmlService::setJsonObjectAsBase64String(const QJsonObject& JsonObject)
 {
-    setTextInClipboard(convertJsonObjectToBase64String(JsonObject));
+    m_clipboardHelper.setJsonObjectAsBase64String(JsonObject);
 }
 
-/// CIP : base64 (no padding) of CBOR.
 QJsonObject TClipboardHelperQmlService::convertBase64StringAsJsonObject(const QString& Base64String)
 {
-    const QByteArray cbor = QByteArray::fromBase64(Base64String.toLocal8Bit(), QByteArray::OmitTrailingEquals);
-    return QCborValue::fromCbor(cbor).toMap().toJsonObject();
+    return m_clipboardHelper.convertBase64StringAsJsonObject(Base64String);
 }
 
-/// CIP .
 QString TClipboardHelperQmlService::convertJsonObjectToBase64String(const QJsonObject& JsonObject)
 {
-    return QString::fromLocal8Bit(QCborValue::fromJsonValue(JsonObject).toCbor().toBase64(QByteArray::OmitTrailingEquals));
+    return m_clipboardHelper.convertJsonObjectToBase64String(JsonObject);
 }
 
 /// CIP : every role of the source row, by role name.

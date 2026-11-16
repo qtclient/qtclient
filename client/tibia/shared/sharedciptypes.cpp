@@ -24,14 +24,12 @@ struct CipTypedKeep {
     TNullExperienceGainChangeTracker tNullExperienceGainChangeTracker;
     TNullExperiencePerHourProvider tNullExperiencePerHourProvider;
     TTibiaClipboardHelper tTibiaClipboardHelper;
-    TClipboardHelper tClipboardHelper;
     THashHelper tHashHelper;
     TRsaHelper tRsaHelper;
     TXteaHelper tXteaHelper;
     TClockService tClockService;
     TRandomNumberGenerator tRandomNumberGenerator;
     TLocalFileInfo tLocalFileInfo;
-    TFileSystemHelper tFileSystemHelper;
     TDecompressionError tDecompressionError;
     TRPCServiceError tRpcServiceError;
     TCrashHandler tCrashHandler;
@@ -67,19 +65,6 @@ void QTextBrowserWithNetwork::onDownloadFinished(QUrl Url, QByteArray Data)
     Q_UNUSED(Data);
 }
 
-void TClipboardHelper::setText(const QString& text) const
-{
-    if (QClipboard* clip = QGuiApplication::clipboard())
-        clip->setText(text);
-}
-
-QString TClipboardHelper::text() const
-{
-    if (QClipboard* clip = QGuiApplication::clipboard())
-        return clip->text();
-    return {};
-}
-
 QByteArray THashHelper::sha256(const QByteArray& data)
 {
     return QCryptographicHash::hash(data, QCryptographicHash::Sha256);
@@ -99,11 +84,6 @@ quint32 TRandomNumberGenerator::bounded(quint32 minInclusive, quint32 maxInclusi
 bool TLocalFileInfo::exists() const
 {
     return QFileInfo::exists(m_path);
-}
-
-bool TFileSystemHelper::exists(const QString& path)
-{
-    return QFileInfo::exists(path);
 }
 
 bool TJsonValueValidator::isObject(const QByteArray& json)

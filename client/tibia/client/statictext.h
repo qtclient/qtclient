@@ -23,10 +23,14 @@
 #pragma once
 
 #include <tibia/schedule/schedule.h>
-#include <framework/global.h>
+#include <QColor>
+#include <deque>
+#include <memory>
+#include <string>
+#include <QPoint>
+#include <QSize>
 
 #include "declarations.h"
-#include <framework/global.h>
 #include <tibia/game/gameobject.h>
 
  // @bindclass
@@ -34,9 +38,6 @@ class StaticText final : public GameObject
 {
 public:
     StaticText();
-
-    void drawText(const Point& dest, const Rect& parentRect);
-
     std::string getName() { return m_name; }
     std::string getText() { return m_text; }
     bool hasText() { return !m_text.empty(); }
@@ -50,10 +51,10 @@ public:
     void setFont(std::string_view fontName);
     bool addMessage(std::string_view name, tibia::client::MessageMode mode, std::string_view text);
 
-    StaticTextPtr asStaticText() { return static_self_cast<StaticText>(); }
+    std::shared_ptr<StaticText> asStaticText() { return std::static_pointer_cast<StaticText>(shared_from_this()); }
 
-    void setColor(const Color& color) { m_color = color; }
-    Color getColor() { return m_color; }
+    void setColor(const QColor& color) { m_color = color; }
+    QColor getColor() { return m_color; }
 
     Position getPosition() const { return m_position; }
     void setPosition(const Position& position) { m_position = position; }
@@ -66,7 +67,7 @@ private:
     std::deque<std::pair<std::string, int64_t>> m_messages;
     std::string m_name;
     tibia::client::MessageMode m_mode{ tibia::client::MessageNone };
-    Color m_color{ Color::white };
+    QColor m_color{ QColor(Qt::white) };
     std::string m_text;
     tibia::schedule::TScheduledTaskPtr m_updateEvent;
     Position m_position;

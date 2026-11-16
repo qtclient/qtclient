@@ -1,5 +1,7 @@
 #include "mousecursorcontroller.h"
 
+#include "app/clientoptions.h"
+
 #include <QDateTime>
 #include <QGuiApplication>
 #include <QPixmap>
@@ -18,16 +20,13 @@ TMouseCursorController::TMouseCursorController(const QJsonObject& options, QObje
     : cip::tibia::gamewindow::TMouseCursorController(parent)
 {
     s_instance = this;
-    if (options.value(QLatin1String("mouseSystemCursor")).toBool(false))
-        loadSystemCursors();
-    else
-        loadImages(options.value(QLatin1String("mouseAnimatedCursor")).toBool(true),
-                   options.value(QLatin1String("mouseBigCursor")).toBool(false));
-
+    loadCursors(options);
+    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
+            [this](const QString&) { onOptionsChanged(); });
     m_timer.setInterval(60);
-    connect(&m_timer, &QTimer::timeout, this, &TMouseCursorController::update);
+    m_timer.setSingleShot(false);
     m_timer.start();
-    update();
+    connect(&m_timer, &QTimer::timeout, this, &TMouseCursorController::update);
 }
 
 TMouseCursorController::~TMouseCursorController()
@@ -41,7 +40,23 @@ TMouseCursorController* TMouseCursorController::instance()
     return s_instance;
 }
 
-void TMouseCursorController::loadImages(const bool animated, const bool big)
+void TMouseCursorController::onOptionsChanged()
+{
+    loadCursors(app::ClientOptions::load().options());
+}
+
+void TMouseCursorController::loadCursors(const QJsonObject& options)
+{
+    if (options.value(QLatin1String("mouseSystemCursor")).toBool(false)) {
+        loadSystemCursors();
+        return;
+    }
+    const bool big = options.value(QLatin1String("mouseBigCursor")).toBool(false);
+    loadStaticCursors(big);
+    loadAnimatedCursors(options.value(QLatin1String("mouseAnimatedCursor")).toBool(true), big);
+}
+
+void TMouseCursorController::loadStaticCursors(const bool big)
 {
     loadImage(Crosshair, QStringLiteral(":/cursors/cursor-crosshair.png"), 9, 9, 0, big);
     loadImage(CrosshairReject, QStringLiteral(":/cursors/cursor-crosshair-reject.png"), 9, 9, 0, big);
@@ -54,7 +69,10 @@ void TMouseCursorController::loadImages(const bool animated, const bool big)
     loadImage(ResizeBDiagonal, QStringLiteral(":/cursors/cursor-resize-diagonal-bltr.png"), 7, 7, 0, big);
     loadImage(Lenshelp, QStringLiteral(":/cursors/cursor-lenshelp.png"), 6, 6, 0, big);
     loadImage(PointingHand, QStringLiteral(":/cursors/cursor-pointinghand.png"), 0, 0, 0, big);
+}
 
+void TMouseCursorController::loadAnimatedCursors(const bool animated, const bool big)
+{
     if (!animated) {
         for (const Shape shape : { Attack, Look, Open, Talk, Use, Walk, QuickLoot })
             copyShape(Default, shape);
@@ -98,8 +116,6 @@ void TMouseCursorController::loadImage(const Shape shape, const QString& path, c
     cursors.fps = fps;
     const int scale = big ? 2 : 1;
     const QPixmap image = QPixmap(path).transformed(QTransform::fromScale(scale, scale));
-    if (image.isNull())
-        return;
     const int x = hotX * scale, y = hotY * scale;
     if (fps < 1) {
         cursors.frames.emplace_back(image, x, y);
@@ -146,33 +162,36 @@ void TMouseCursorController::setOpenContainer(const bool enabled) { setFlag(m_op
 
 void TMouseCursorController::setDefaultCursor()
 {
-    // CIP leaves the diagonal resize flags set.
+    // The diagonal resize flags stay set.
     m_lenshelp = m_targetSelection = m_resizeHorizontal = m_resizeVertical = false;
     m_pointingHand = m_openContainer = false;
-    // Clear map-layer shapes so a MOVE_OBJECT Crosshair cannot linger under a dialog.
-    m_layerShapes.insert(MapWindow, Default);
-    m_layerShapes.insert(Minimap, Default);
-    m_layerShapes.insert(CyclopediaMap, Default);
     update();
 }
 
-void TMouseCursorController::setDragging(const bool dragging)
+void TMouseCursorController::setCursorHidden(const bool hidden)
 {
-    m_dragging = dragging;
+    if (m_cursorHidden == hidden)
+        return;
+    m_cursorHidden = hidden;
     update();
 }
 
-void TMouseCursorController::enter(const int region)
+void TMouseCursorController::onEnterRegion(const int region)
 {
-    m_regions.removeAll(region);
+    m_regions.removeOne(region);
     m_regions.append(region);
     update();
 }
 
-void TMouseCursorController::exit(const int region)
+void TMouseCursorController::onExitRegion(const int region)
 {
-    m_regions.removeAll(region);
+    m_regions.removeOne(region);
     update();
+}
+
+int TMouseCursorController::layerShape(const int region) const
+{
+    return m_layerShapes.value(region, Default);
 }
 
 int TMouseCursorController::currentShape() const
@@ -193,13 +212,19 @@ int TMouseCursorController::currentShape() const
         return PointingHand;
     if (m_openContainer)
         return Open;
-    return m_layerShapes.value(topRegion(), Default);
+    return layerShape(topRegion());
 }
 
 void TMouseCursorController::update()
 {
-    if (m_dragging)
+    if (m_cursorHidden) {
+        if (m_applied) {
+            if (QGuiApplication::overrideCursor())
+                QGuiApplication::restoreOverrideCursor();
+            m_applied = nullptr;
+        }
         return;
+    }
     const int shape = currentShape();
     const Cursors& cursors = m_cursors[shape >= 0 && shape < ShapeCount ? shape : Default];
     const QCursor* cursor = nullptr;

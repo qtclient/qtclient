@@ -41,9 +41,6 @@ enum SpriteMask : uint8_t;
 // core
 class LightView;
 class LightSink;
-/// Retired OTC Map creature (`creature.cpp` deleted). `CreaturePtr` APIs return nullptr only.
-class Creature;
-class LocalPlayerSessionThing;
 class AnimatedText;
 class StaticText;
 class ThingType;
@@ -61,8 +58,6 @@ class TWorldMapField;
 }
 using WorldMapFieldPtr = tibia::worldmap::TWorldMapField*;
 
-using CreaturePtr = std::shared_ptr<Creature>;
-using LocalPlayerSessionThingPtr = std::shared_ptr<LocalPlayerSessionThing>;
 using AnimatedTextPtr = std::shared_ptr<AnimatedText>;
 using StaticTextPtr = std::shared_ptr<StaticText>;
 using ThingTypePtr = std::shared_ptr<ThingType>;

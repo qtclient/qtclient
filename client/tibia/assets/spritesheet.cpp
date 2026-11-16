@@ -1,6 +1,5 @@
 #include "spritesheet.h"
 
-#include <framework/config.h>
 #include "shared/tibiafilesystemhelper.h"
 
 #include "lzma.h"
@@ -12,16 +11,25 @@
 
 namespace {
 
-Size spriteSizeOf(const SpriteLayout layout)
+// A sheet is 384x384 RGBA; the LZMA stream holds a BMP of it (122-byte header).
+constexpr int kBytesInSpriteSheet = 384 * 384 * 4;
+constexpr int kLzmaUncompressedSize = kBytesInSpriteSheet + 122;
+constexpr int kSpriteSheetWidthBytes = 384 * 4;
+
+}
+
+namespace {
+
+QSize spriteSizeOf(const SpriteLayout layout)
 {
-    static const std::array<Size, 36> sizes = {
-        Size(32, 32), Size(32, 64), Size(64, 32), Size(64, 64),
-        Size(32, 96), Size(32, 128), Size(32, 192), Size(32, 384),
-        Size(64, 96), Size(64, 128), Size(64, 192), Size(64, 384),
-        Size(96, 32), Size(96, 64), Size(96, 96), Size(96, 128), Size(96, 192), Size(96, 384),
-        Size(128, 32), Size(128, 64), Size(128, 96), Size(128, 128), Size(128, 192), Size(128, 384),
-        Size(192, 32), Size(192, 64), Size(192, 96), Size(192, 128), Size(192, 192), Size(192, 384),
-        Size(384, 32), Size(384, 64), Size(384, 96), Size(384, 128), Size(384, 192), Size(384, 384)
+    static const std::array<QSize, 36> sizes = {
+        QSize(32, 32), QSize(32, 64), QSize(64, 32), QSize(64, 64),
+        QSize(32, 96), QSize(32, 128), QSize(32, 192), QSize(32, 384),
+        QSize(64, 96), QSize(64, 128), QSize(64, 192), QSize(64, 384),
+        QSize(96, 32), QSize(96, 64), QSize(96, 96), QSize(96, 128), QSize(96, 192), QSize(96, 384),
+        QSize(128, 32), QSize(128, 64), QSize(128, 96), QSize(128, 128), QSize(128, 192), QSize(128, 384),
+        QSize(192, 32), QSize(192, 64), QSize(192, 96), QSize(192, 128), QSize(192, 192), QSize(192, 384),
+        QSize(384, 32), QSize(384, 64), QSize(384, 96), QSize(384, 128), QSize(384, 192), QSize(384, 384)
     };
     const auto index = static_cast<size_t>(layout);
     return index < sizes.size() ? sizes[index] : sizes[0];
@@ -29,14 +37,14 @@ Size spriteSizeOf(const SpriteLayout layout)
 
 }
 
-Size SpriteSheet::getSpriteSize() const
+QSize SpriteSheet::getSpriteSize() const
 {
     return spriteSizeOf(spriteLayout);
 }
 
 int SpriteSheet::getSpritesPerSheet() const
 {
-    const Size& size = getSpriteSize();
+    const QSize& size = getSpriteSize();
     return getColumns() * (SIZE / size.height());
 }
 
@@ -56,12 +64,29 @@ void SpriteStore::clear()
 {
     m_spritesCount = 0;
     m_sheets.clear();
+    {
+        const std::lock_guard lock(m_cacheMutex);
+        m_cachedSheet.reset();
+    }
     m_path.clear();
 }
 
 void SpriteStore::addSheet(const SpriteSheetPtr& sheet)
 {
-    m_sheets.push_back(sheet);
+    if (std::ranges::any_of(m_sheets, [&sheet](const SpriteSheetPtr& stored) { return stored->file == sheet->file; }))
+        throw std::invalid_argument("Spritesheet already stored");
+    const auto at = std::ranges::upper_bound(m_sheets, sheet->firstId, {}, [](const SpriteSheetPtr& stored) { return stored->firstId; });
+    m_sheets.insert(at, sheet);
+}
+
+SpriteSheetPtr SpriteStore::findSheet(const int id)
+{
+    const std::lock_guard lock(m_cacheMutex);
+    if (m_cachedSheet && m_cachedSheet->firstId <= id && id <= m_cachedSheet->lastId)
+        return m_cachedSheet;
+    const auto it = std::ranges::lower_bound(m_sheets, id, {}, [](const SpriteSheetPtr& stored) { return stored->lastId; });
+    m_cachedSheet = it != m_sheets.end() ? *it : nullptr;
+    return m_cachedSheet;
 }
 
 bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
@@ -92,7 +117,7 @@ bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
             return bytes[at++];
         };
 
-        thread_local static std::array<uint8_t, LZMA_UNCOMPRESSED_SIZE> decompressBuffer;
+        thread_local static std::array<uint8_t, kLzmaUncompressedSize> decompressBuffer;
 
         // CIP header: zero padding, u32 constant, a 7-bit varint size, then the LZMA properties.
         while (next() == 0x00)
@@ -112,7 +137,7 @@ bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
         for (uint8_t i = 0; i < 4; ++i)
             dictionarySize += next() << (i * 8);
 
-        constexpr uint32_t maxDictionarySize = std::max<uint32_t>(LZMA_UNCOMPRESSED_SIZE, 1024 * 1024);
+        constexpr uint32_t maxDictionarySize = std::max<uint32_t>(kLzmaUncompressedSize, 1024 * 1024);
         options.dict_size = std::min(dictionarySize, maxDictionarySize);
         at += 8;
         if (at > size)
@@ -139,11 +164,11 @@ bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
 
         const uint8_t* bmpOffsetPtr = decompressBuffer.data() + 10;
         const uint32_t bmpDataOffset = bmpOffsetPtr[0] | (bmpOffsetPtr[1] << 8) | (bmpOffsetPtr[2] << 16) | (bmpOffsetPtr[3] << 24);
-        if (bmpDataOffset + BYTES_IN_SPRITE_SHEET > LZMA_UNCOMPRESSED_SIZE)
+        if (bmpDataOffset + kBytesInSpriteSheet > kLzmaUncompressedSize)
             throw std::runtime_error("sprite sheet image offset out of bounds");
 
         uint8_t* bufferStart = decompressBuffer.data() + bmpDataOffset;
-        for (int i = 0; i < BYTES_IN_SPRITE_SHEET; i += 4) {
+        for (int i = 0; i < kBytesInSpriteSheet; i += 4) {
             std::swap(bufferStart[i], bufferStart[i + 2]);
             const uint32_t rgb = bufferStart[i] | (bufferStart[i + 1] << 8) | (bufferStart[i + 2] << 16);
             if (rgb == 0xFF00FF) {
@@ -155,17 +180,17 @@ bool SpriteStore::loadSheet(const SpriteSheetPtr& sheet) const
         }
 
         constexpr int halfHeight = SpriteSheet::SIZE / 2;
-        uint8_t tempLine[SPRITE_SHEET_WIDTH_BYTES];
+        uint8_t tempLine[kSpriteSheetWidthBytes];
         for (int y = 0; y < halfHeight; ++y) {
-            uint8_t* top = bufferStart + y * SPRITE_SHEET_WIDTH_BYTES;
-            uint8_t* bottom = bufferStart + (SpriteSheet::SIZE - 1 - y) * SPRITE_SHEET_WIDTH_BYTES;
-            std::memcpy(tempLine, top, SPRITE_SHEET_WIDTH_BYTES);
-            std::memcpy(top, bottom, SPRITE_SHEET_WIDTH_BYTES);
-            std::memcpy(bottom, tempLine, SPRITE_SHEET_WIDTH_BYTES);
+            uint8_t* top = bufferStart + y * kSpriteSheetWidthBytes;
+            uint8_t* bottom = bufferStart + (SpriteSheet::SIZE - 1 - y) * kSpriteSheetWidthBytes;
+            std::memcpy(tempLine, top, kSpriteSheetWidthBytes);
+            std::memcpy(top, bottom, kSpriteSheetWidthBytes);
+            std::memcpy(bottom, tempLine, kSpriteSheetWidthBytes);
         }
 
-        sheet->data = std::make_unique<uint8_t[]>(BYTES_IN_SPRITE_SHEET);
-        std::memcpy(sheet->data.get(), bufferStart, BYTES_IN_SPRITE_SHEET);
+        sheet->data = std::make_unique<uint8_t[]>(kBytesInSpriteSheet);
+        std::memcpy(sheet->data.get(), bufferStart, kBytesInSpriteSheet);
         sheet->m_loadingState.store(SpriteLoadState::LOADED, std::memory_order_release);
         return true;
     } catch (const std::exception& e) {
@@ -181,13 +206,9 @@ SpriteSheetPtr SpriteStore::sheetBySpriteId(const int id, bool& loading, const b
     if (id == 0)
         return nullptr;
 
-    const auto it = std::ranges::find_if(m_sheets, [id](const SpriteSheetPtr& sheet) {
-        return sheet && id >= sheet->firstId && id <= sheet->lastId;
-    });
-    if (it == m_sheets.end())
+    const SpriteSheetPtr sheet = findSheet(id);
+    if (!sheet)
         return nullptr;
-
-    const SpriteSheetPtr sheet = *it;
     if (!load) {
         loading = sheet->m_loadingState.load(std::memory_order_acquire) == SpriteLoadState::LOADING;
         return sheet;
@@ -208,7 +229,7 @@ QImage SpriteStore::spriteImage(const int id, bool& loading)
         if (!sheet)
             return {};
 
-        const Size size = sheet->getSpriteSize();
+        const QSize size = sheet->getSpriteSize();
         QImage image(size.width(), size.height(), QImage::Format_RGBA8888);
         uint8_t* pixelData = image.bits();
 
@@ -223,7 +244,7 @@ QImage SpriteStore::spriteImage(const int id, bool& loading)
         const int spriteWidthBytes = size.width() * 4;
         for (int height = size.height() * spriteRow, offset = 0; height < size.height() + spriteRow * size.height(); ++height, ++offset) {
             std::memcpy(&pixelData[offset * spriteWidthBytes],
-                        &sheet->data[(height * SPRITE_SHEET_WIDTH_BYTES) + (spriteColumn * spriteWidthBytes)],
+                        &sheet->data[(height * kSpriteSheetWidthBytes) + (spriteColumn * spriteWidthBytes)],
                         spriteWidthBytes);
         }
         return image;

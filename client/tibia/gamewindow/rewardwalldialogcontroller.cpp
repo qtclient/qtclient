@@ -77,7 +77,7 @@ const TDailyRewardFixedItems* fixedItems(const std::shared_ptr<TDailyReward>& re
 
 bool localPlayerPremium()
 {
-    return tibia::game::localPlayer() && tibia::game::localPlayerIsPremium();
+    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
 }
 
 TMessageDialogButton* okButton(const TMessageDialogController::Button identifier)

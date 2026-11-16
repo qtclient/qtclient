@@ -32,7 +32,7 @@ QString englishNumber(const qulonglong value) { return QLocale(QLocale::English)
 /// The local player's balance of `type`, or nothing outside the game.
 std::optional<qulonglong> balance(const tibia::client::ResourceTypes_t type)
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return std::nullopt;
     return tibia::game::localPlayerResourceBalance(type);
 }
@@ -143,7 +143,7 @@ qulonglong TCyclopediaDialogController::totalGoldBalance() const
 
 QString TCyclopediaDialogController::totalGoldBalanceString() const
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return qtTrId("dummy_unknown");
     qmlcomponents::TTextHelperQmlService textHelper;
     return textHelper.formatNumberWithThousandSeparatorsAndThousandShortcutsAsMultiString(static_cast<qlonglong>(totalGoldBalance()),

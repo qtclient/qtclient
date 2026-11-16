@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game/gamesessionbase.h"
+
 #include "client/gamecore.h"
 
 #include <cip_gen.h>
@@ -31,7 +33,7 @@ namespace game {
 /// - Sibling `.hints` JSON via `TSessiondumpHintsProcessor` (tutorial cues)
 ///
 /// Live `--record` writes the decoded stream from the primary game connection.
-class TSessiondumpGameSession final : public cip::tibia::game::TSessiondumpGameSession
+class TSessiondumpGameSession final : public TGameSessionBase
 {
     Q_OBJECT
 public:

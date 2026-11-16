@@ -23,6 +23,8 @@ public:
 
     /// The game session's storage (an empty one before a session exists).
     static TEffectStorage& instance();
+    /// The active game session's storage (instance() falls back to an empty one).
+    static void setInstance(TEffectStorage* storage);
 
     explicit TEffectStorage(QObject* parent = nullptr);
     ~TEffectStorage() override;

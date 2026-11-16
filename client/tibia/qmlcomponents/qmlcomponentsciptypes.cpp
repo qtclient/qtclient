@@ -1,8 +1,9 @@
 #include "qmlcomponents/qmlcomponentsciptypes.h"
+#include "client/eightbitcolor.h"
 
 #include "qmlcomponents/outfitpalette.h"
 
-#include <framework/util/color.h>
+#include <QColor>
 #include <tibia/assets/thingtype.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -22,15 +23,10 @@ namespace tibia::qmlcomponents {
 
 namespace {
 
-QColor qcolorFromFramework(const Color& c)
-{
-    return QColor::fromRgbF(c.rF(), c.gF(), c.bF(), c.aF());
-}
-
 /// Same thresholds as TCreature::informationColorForHealthPercent (0..100).
 QColor healthColor(const uint8_t healthPercent)
 {
-    static constexpr Color
+    static const QColor
         COLOR1(0x00, 0xBC, 0x00),
         COLOR2(0x50, 0xA1, 0x50),
         COLOR3(0xA1, 0xA1, 0x00),
@@ -38,16 +34,16 @@ QColor healthColor(const uint8_t healthPercent)
         COLOR5(0x91, 0x0F, 0x0F),
         COLOR6(0x85, 0x0C, 0x0C);
     if (healthPercent > 92)
-        return qcolorFromFramework(COLOR1);
+        return COLOR1;
     if (healthPercent > 60)
-        return qcolorFromFramework(COLOR2);
+        return COLOR2;
     if (healthPercent > 30)
-        return qcolorFromFramework(COLOR3);
+        return COLOR3;
     if (healthPercent > 8)
-        return qcolorFromFramework(COLOR4);
+        return COLOR4;
     if (healthPercent > 3)
-        return qcolorFromFramework(COLOR5);
-    return qcolorFromFramework(COLOR6);
+        return COLOR5;
+    return COLOR6;
 }
 
 ThingType* objectType(const int id)
@@ -75,7 +71,7 @@ QColor TColorHelperQmlService::createColorFromEightBitHSV(const int ColorValue)
 
 QColor TColorHelperQmlService::createColorFromEightBitRGB(const int ColorValue)
 {
-    return qcolorFromFramework(Color::from8bit(ColorValue));
+    return tibia::client::colorFromEightBit(ColorValue);
 }
 
 QColor TColorHelperQmlService::createColorForHealthPercent(const float HealthPercentNormalized)

@@ -13,7 +13,7 @@
 #   QTCLIENT_SCREENSHOT    output PNG (default: under TMPDIR)
 #   QTCLIENT_SMOKE_TIMEOUT seconds (default: 30)
 #   QTCLIENT_MIN_PNG_BYTES minimum PNG size (default: 1024)
-#   QTCLIENT_SKIP_IF_NO_THINGS  if 1, exit 0 when data/things is missing (CI)
+#   QTCLIENT_SKIP_IF_NO_ASSETS  if 1, exit 0 when data/assets is missing (CI)
 #   QTCLIENT_SCREENSHOT_BASELINE  optional PNG; when set, require matching IHDR
 #   QTCLIENT_SCREENSHOT_ORACLE    oracle file (default: testdata/.../play-baseline.oracle
 #     when dump is play.cam). Compares IHDR + 8x8 average-hash (max_hamming).
@@ -49,19 +49,19 @@ DUMP="$(resolve_dump)"
 OUT="${QTCLIENT_SCREENSHOT:-${TMPDIR:-/tmp}/tibia-session-dump-smoke.png}"
 TIMEOUT_S="${QTCLIENT_SMOKE_TIMEOUT:-30}"
 MIN_BYTES="${QTCLIENT_MIN_PNG_BYTES:-1024}"
-SKIP_NO_THINGS="${QTCLIENT_SKIP_IF_NO_THINGS:-0}"
+SKIP_NO_ASSETS="${QTCLIENT_SKIP_IF_NO_ASSETS:-0}"
 
 if [[ ! -f "$DUMP" ]]; then
   echo "[session-dump-smoke] missing dump: $DUMP" >&2
   exit 1
 fi
 
-if ! ls "$OTC"/data/things/*/catalog-content.json >/dev/null 2>&1; then
-  if [[ "$SKIP_NO_THINGS" == "1" ]]; then
-    echo "[session-dump-smoke] skip: no things pack (make extract TIBIA=…)"
+if [[ ! -f "$OTC/data/assets/catalog-content.json" ]]; then
+  if [[ "$SKIP_NO_ASSETS" == "1" ]]; then
+    echo "[session-dump-smoke] skip: no CIP assets (make extract TIBIA=…)"
     exit 0
   fi
-  echo "[session-dump-smoke] need a things pack under data/things/<ver>/ (make extract TIBIA=…)" >&2
+  echo "[session-dump-smoke] need CIP assets under data/assets/ (make extract TIBIA=…)" >&2
   exit 1
 fi
 

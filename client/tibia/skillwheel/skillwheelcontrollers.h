@@ -105,8 +105,14 @@ public:
     void clearSelection() override;
     void onNewPresetName(const QString& PresetName) override;
     void clearData() override;
+    void requestCopyExportCodeOrUrlToClipboardClicked(cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier,
+                                                      bool CheckBoxIsChecked) override;
+    void onMessageDialogAcceptClicked();
+    void onMessageDialogDiscardClicked();
+    void savePresetChangesThanSwapPreset();
+    void discardPresetChangesThanSwapPreset();
 
-    /// CIP onApplyClicked: saves the preset and sends the wheel.
+    /// CIP: saves the preset and sends the wheel when it changed.
     void apply();
     /// The close prompt (CIP mode 1); false when nothing to ask.
     bool askToSaveBeforeClose();
@@ -120,13 +126,20 @@ Q_SIGNALS:
     void managePresets(int mode);
 
 private:
+    /// What the page's message box asks (CIP: the box's mode).
+    enum EMessageMode { NoMessage = 0, CloseMessage = 1, SwitchPresetMessage = 3, DeletePresetMessage = 4 };
+
     void onWheelChanged();
     void onInitialData();
     void updateParameters();
+    void showMessage(EMessageMode mode, const QString& caption, const QString& text);
+    void deleteCurrentPreset();
     void updateSummaries();
     void updateInformation();
     void fillTile(cip::tibia::gamewindow::TTileInformation* info, int slot) const;
     void fillLargePerk(cip::tibia::gamewindow::TLargePerkInformation* info, int domain) const;
+    static void clearTile(cip::tibia::gamewindow::TTileInformation* info);
+    static void clearLargePerk(cip::tibia::gamewindow::TLargePerkInformation* info);
     /// CIP : adds `delta` points to a slice if the grid stays valid.
     void changePoints(int slot, int delta);
     static int stepSize(int modifiers);
@@ -146,10 +159,13 @@ private:
     int m_hoveredSlot = -1;
     int m_selectedLargeDomain = -1;
     int m_hoveredLargeDomain = -1;
-    gamewindow::TMessageDialogController* m_switchPreset;
-    gamewindow::TMessageDialogController* m_deletePreset;
+    gamewindow::TMessageDialogController* m_message;
+    gamewindow::TMessageDialogController* m_export;
     gamewindow::TMessageDialogController* m_info;
+    EMessageMode m_messageMode = NoMessage;
     QString m_pendingPreset;
+    /// CIP: the planner page the export code is appended to.
+    QString m_plannerUrl;
 };
 
 /// The Gem Atelier tab, SkillWheelGemAtelierPage.qml (CIP: TGemAtelierPageController).
@@ -302,7 +318,6 @@ private:
     TGemAtelierPageController* m_atelier;
     TFragmentWorkshopPageController* m_workshop;
     gamewindow::TMessageDialogController* m_message;
-    gamewindow::TMessageDialogController* m_closePrompt;
     TSkillWheelPresetManagmentDialogController* m_presetDialog = nullptr;
 };
 

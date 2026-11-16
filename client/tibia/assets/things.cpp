@@ -15,7 +15,6 @@
 #include <QtGlobal>
 #include <format>
 #include "shared/tibiafilesystemhelper.h"
-#include <framework/stdext/string.h>
 
 #include <appearances.pb.h>
 
@@ -253,7 +252,7 @@ void applyFlags(AppearanceRecord& record, const tibia::protobuf::appearances::Ap
     if (flags.translucent())
         addFlag(record, ThingFlagAttrTranslucent);
     if (flags.has_shift()) {
-        record.displacement = Point(static_cast<int>(flags.shift().x()), static_cast<int>(flags.shift().y()));
+        record.displacement = QPoint(static_cast<int>(flags.shift().x()), static_cast<int>(flags.shift().y()));
         addFlag(record, ThingFlagAttrDisplacement);
     }
     if (flags.has_height()) {
@@ -416,9 +415,9 @@ void fillSprites(AppearanceRecord& record, const tibia::protobuf::appearances::A
         if (!sizeSet && spriteInfo.sprite_id_size() > 0) {
             bool loading = false;
             if (const auto sheet = tibia::assets::sprites().sheetBySpriteId(static_cast<int>(spriteInfo.sprite_id(0)), loading, false)) {
-                const Size pixels = sheet->getSpriteSize();
+                const QSize pixels = sheet->getSpriteSize();
                 const int spriteSize = std::max(1, static_cast<int>(tibia::config::spriteSize()));
-                record.size = Size(std::max(1, pixels.width() / spriteSize), std::max(1, pixels.height() / spriteSize));
+                record.size = QSize(std::max(1, pixels.width() / spriteSize), std::max(1, pixels.height() / spriteSize));
                 record.realSize = std::min(255, std::max(pixels.width(), pixels.height()));
                 sizeSet = true;
             }
@@ -609,7 +608,8 @@ void TAppearancesManager::terminate()
     m_cyclopediaHouses.clear();
     m_cyclopediaAchievements.clear();
     m_cyclopediaQuests.clear();
-    m_proficiencyThingsCache.clear();
+    m_marketObjectTypes.clear();
+    m_skillWheelGemObjectTypes.clear();
     m_proficienciesFile.clear();
     m_effectVariants.clear();
     m_datLoaded = false;
@@ -659,7 +659,6 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
         }
         tibia::assets::sprites().setSpritesCount(spritesCount + 1);
         tibia::assets::sprites().setPath(directory);
-        (void)tibia::sprites::TSpritesheetsMetadataManager::instance().spritesCount();
         if (appearancesFile.empty())
             throw std::runtime_error("catalog has no appearances file");
 
@@ -733,8 +732,8 @@ bool TAppearancesManager::loadAppearances(const std::string& directory)
                 things[type->getId()] = std::move(type);
             }
         }
+        collectObjectLists();
         m_datLoaded = true;
-        m_proficiencyThingsCacheDirty = true;
         return true;
     } catch (const std::exception& e) {
         qCritical("%s", std::format("Failed to load '{}' (Appearances): {}", directory, e.what()).c_str());
@@ -875,23 +874,90 @@ const CyclopediaQuestType* TAppearancesManager::getCyclopediaQuest(const uint16_
     return nullptr;
 }
 
-void TAppearancesManager::buildProficiencyCache()
+const ThingTypeList& TAppearancesManager::objectTypes() const
 {
-    m_proficiencyThingsCache.clear();
-    if (ThingCategoryItem < ThingLastCategory) {
-        for (const auto& type : m_thingTypes[ThingCategoryItem]) {
-            if (type && type->getProficiencyId() > 0)
-                m_proficiencyThingsCache.push_back(type);
-        }
-    }
-    m_proficiencyThingsCacheDirty = false;
+    return m_thingTypes[ThingCategoryItem];
 }
 
-const ThingTypeList& TAppearancesManager::getProficiencyThings()
+ThingType* TAppearancesManager::findAppearanceType(const ThingCategory category, const uint16_t id) const
 {
-    if (m_proficiencyThingsCacheDirty)
-        buildProficiencyCache();
-    return m_proficiencyThingsCache;
+    if (category >= ThingLastCategory)
+        throw std::out_of_range("map::at:  key not found");
+    const ThingTypeList& types = m_thingTypes[category];
+    if (id >= types.size() || !types[id] || types[id]->isNull())
+        return nullptr;
+    return types[id].get();
+}
+
+bool TAppearancesManager::hasAppearanceType(const ThingCategory category, const uint16_t id) const
+{
+    return findAppearanceType(category, id) != nullptr;
+}
+
+void TAppearancesManager::checkAppearanceType(const ThingCategory category, const uint16_t id) const
+{
+    if (findAppearanceType(category, id))
+        return;
+    static const char* const names[] = { "OBJECTS", "OUTFITS", "EFFECTS", "MISSILES" };
+    const QString name = category < ThingLastCategory ? QString::fromLatin1(names[category]) : QString();
+    throw std::logic_error(QStringLiteral("The TAppearanceType::ID %1 does not exist in %2!").arg(id).arg(name).toStdString());
+}
+
+void TAppearancesManager::forEachAppearanceType(const std::function<bool(const ThingType&)>& visit) const
+{
+    for (const ThingTypeList& types : m_thingTypes) {
+        for (const ThingTypePtr& type : types) {
+            if (!type || type->isNull())
+                continue;
+            if (!visit(*type))
+                return;
+        }
+    }
+}
+
+// Objects the market trades under their own id, and skill wheel gems.
+void TAppearancesManager::collectObjectLists()
+{
+    m_marketObjectTypes.clear();
+    m_skillWheelGemObjectTypes.clear();
+    for (const ThingTypePtr& type : objectTypes()) {
+        if (!type || type->isNull())
+            continue;
+        if (type->isMarketable() && type->getMarketData().tradeAs == type->getId())
+            m_marketObjectTypes.push_back(type);
+        if (type->hasSkillWheelGem())
+            m_skillWheelGemObjectTypes.push_back(type);
+    }
+}
+
+ThingTypeList TAppearancesManager::getNpcSaleObjectTypes() const
+{
+    ThingTypeList result;
+    for (const ThingTypePtr& type : objectTypes()) {
+        if (type && !type->isNull() && !type->getNpcSaleData().empty())
+            result.push_back(type);
+    }
+    return result;
+}
+
+ThingTypeList TAppearancesManager::getCyclopediaObjectTypes() const
+{
+    ThingTypeList result;
+    for (const ThingTypePtr& type : objectTypes()) {
+        if (type && !type->isNull() && type->hasCyclopediaItem() && type->getCyclopediaType() == type->getId())
+            result.push_back(type);
+    }
+    return result;
+}
+
+ThingTypeList TAppearancesManager::getProficiencyObjectTypes() const
+{
+    ThingTypeList result;
+    for (const ThingTypePtr& type : objectTypes()) {
+        if (type && !type->isNull() && type->hasProficiency())
+            result.push_back(type);
+    }
+    return result;
 }
 
 std::string TAppearancesManager::getCyclopediaItemName(const uint16_t id)

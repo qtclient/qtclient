@@ -1,4 +1,5 @@
 #include "containerstoragecontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "config/sidebaroptions.h"
 #include "container/containerciptypes.h"
@@ -26,12 +27,14 @@ TContainerStorageController::TContainerStorageController(TSidebarManager* sideba
     m_updateTimer.setInterval(0);
     connect(&m_updateTimer, &QTimer::timeout, this, &TContainerStorageController::flushUpdates);
 
-    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-        connect(storage, &container::TContainerStorage::containerUpdated, this,
-                &TContainerStorageController::onContainerUpdated);
-        connect(storage, &container::TContainerStorage::containerRemoved, this,
-                &TContainerStorageController::onContainerClosed);
-    }
+    tibia::game::onEachGameSession(this, [this] {
+        if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+            connect(storage, &container::TContainerStorage::containerUpdated, this,
+                    &TContainerStorageController::onContainerUpdated, Qt::UniqueConnection);
+            connect(storage, &container::TContainerStorage::containerRemoved, this,
+                    &TContainerStorageController::onContainerClosed, Qt::UniqueConnection);
+        }
+    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         clear();
     });
@@ -42,10 +45,9 @@ TContainerStorageController::TContainerStorageController(TSidebarManager* sideba
         m_unplaced.clear();
         return true;
     });
-    input::setActionHandler(input::EGameAction::TOGGLE_MANUAL_SORT_MODE, [this](const input::TGameAction&) {
-        m_manualSort = !m_manualSort;
-        for (const auto& [id, controller] : m_controllers)
-            controller->setManualSortMode(m_manualSort);
+    input::setActionHandler(input::EGameAction::TOGGLE_MANUAL_SORT_MODE, [](const input::TGameAction&) {
+        if (container::TContainerStorage* storage = container::TContainerStorage::instance())
+            storage->setManualSortMode(!container::TContainerStorage::manualSortMode());
         return true;
     });
 }
@@ -103,7 +105,6 @@ void TContainerStorageController::onContainerUpdated(const int containerId, cons
     controller->setControlScheme(m_controlScheme);
     controller->setLootScheme(m_lootScheme);
     controller->setSidebarOptions(m_options);
-    controller->setManualSortMode(m_manualSort);
     controller->update(false);
     m_controllers.emplace(containerId, controller);
     m_queuedWidgets.push_back(containerId);

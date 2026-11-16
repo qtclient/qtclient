@@ -5,7 +5,6 @@
 #include <tibia/game/gamesession.h>
 #include "shared/sharedciptypes.h"
 #include "shared/clockservice.h"
-#include <framework/stdext/math.h>
 
 #include <QCoreApplication>
 #include <QLoggingCategory>

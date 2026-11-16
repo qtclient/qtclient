@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "questlog/questlogciptypes.h"
 
 #include <cip_gen.h>
 
@@ -30,16 +31,13 @@ class MissionBackend;
 namespace tibia {
 namespace gamewindow {
 
-/// The tracked quest flags (CIP: the quest-tracking half of
-/// questlog::TQuestLogStorage, vtable). Pins and the two options
-/// are kept in the quest log's per-character file (CIP keys,).
+/// The tracked quest flags as the quest tracker widget reads them: a view of the
+/// quest-tracking half of questlog::TQuestLogStorage plus the server's remaining
+/// capacity and the request that sends the tracked list.
 class TQuestTrackerStorage final : public QObject
 {
     Q_OBJECT
 public:
-    /// One tracked mission (CIP: 0x68-byte entry, flag , line name
-    /// , part , description , timestamp
-    /// , pinned).
     struct Entry
     {
         int questFlagId = 0;
@@ -51,57 +49,48 @@ public:
         qint64 lastUpdateTimestamp = 0;
     };
 
-    using QObject::QObject;
+    explicit TQuestTrackerStorage(questlog::TQuestLogStorage* storage, QObject* parent = nullptr);
 
     const QList<Entry>& entries() const { return m_entries; }
     QSet<int> trackedIds() const;
-    /// CIP : the tracked flags whose part carries "(completed)".
     QList<int> completedIds() const;
     int remainingTrackable() const { return m_remaining; }
     /// The quest line a tracked flag belongs to, 0 if it is not tracked.
     int questLineOf(int questFlagId) const;
 
-    /// CIP.
-    bool autoTrackNewQuests() const { return m_autoTrackNewQuests; }
-    bool autoUntrackCompletedQuests() const { return m_autoUntrackCompletedQuests; }
+    bool autoTrackNewQuests() const;
+    bool autoUntrackCompletedQuests() const;
 
-    /// CIP : the server's full list replaces the tracked flags;
-    /// new and changed entries get `now` as their update time.
-    void setTrackedQuestFlags(QList<Entry> entries, int remaining);
+    /// The server's full list replaces the tracked flags.
+    void setTrackedQuestFlags(const QList<Entry>& entries, int remaining);
     /// One entry the server updated (TrackQuestFlags without the full-list flag).
-    void updateQuestFlag(Entry entry);
+    void updateQuestFlag(const Entry& entry);
     void setPinned(int questFlagId, bool pinned);
-    /// CIP : adds (or removes) the flags and sends the new list.
+    /// Adds (or removes) the flags and sends the new list.
     void changeTrackedQuestFlags(const QList<int>& ids, bool remove);
-    /// CIP : option 0 auto-track new quests, 1 auto-untrack
-    /// completed ones; sends the list with the new options.
+    /// Option 0 auto-tracks new quests, 1 auto-untracks completed ones; sends the
+    /// list with the new options.
     void setOption(int option, bool value);
     /// Sends the stored flags; the server answers with the full list and the
-    /// remaining capacity, which CIP gets without asking.
+    /// remaining capacity.
     void sendStored() const { sendTracked(trackedIds()); }
     void clear();
-
-    void load(const QJsonObject& root);
-    void save(QJsonObject& root) const;
+    /// Re-reads the storage's flags (after the configuration was loaded).
+    void reload();
 
 Q_SIGNALS:
     void entriesChanged();
     void storageChanged();
-    /// CIP , emitted by : whether the server's full list
-    /// added flags and whether it dropped any.
     void trackedQuestFlagsChanged(bool added, bool removed);
 
 private:
-    /// CIP : GameclientMessageTrackQuestFlags.
+    void rebuildEntries();
     void sendTracked(const QSet<int>& ids) const;
 
+    questlog::TQuestLogStorage* m_storage;
     QList<Entry> m_entries;
-    QSet<int> m_pinned;
-    /// Optimistic until the server's 0xD0 remaining count arrives. 0 made the
-    /// quest-log "show in tracker" checkbox look full even with nothing tracked.
+    /// Optimistic until the server's 0xD0 remaining count arrives.
     int m_remaining = 25;
-    bool m_autoTrackNewQuests = true;
-    bool m_autoUntrackCompletedQuests = true;
 };
 
 /// The quest tracker rows (CIP: list model vtable , roleNames

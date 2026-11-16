@@ -1,4 +1,5 @@
 #include "chatchannel.h"
+#include "game/gamesessionbase.h"
 
 #include "chat/chatgameactionhandler.h"
 #include "creatures/creaturestorage.h"
@@ -6,6 +7,7 @@
 
 #include <tibia/game/tgamenotify.h>
 
+#include <QTextDocumentFragment>
 #include <QRegularExpression>
 #include <QSignalBlocker>
 #include <QSettings>
@@ -222,7 +224,7 @@ TChatChannelStorage::TChatChannelStorage(QObject* parent)
                     &TChatChannelStorage::onPlayerCreatureAddedToCreatureStorage, Qt::UniqueConnection);
         }
     };
-    bindPlayer();
+    tibia::game::onEachGameSession(this, bindPlayer);
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, bindPlayer);
 }
 
@@ -533,9 +535,9 @@ QColor systemWhite()
     return QColor(0xf0, 0xf0, 0xf0);
 }
 
-QString formatEntry(const TChatEntry& entry, const bool timestamps, const bool seconds, const bool levels)
+QString formatEntry(const TChatEntry& entry, const bool timestamps, const bool seconds, const bool levels, int* plainLength)
 {
-    // : the prefix.
+    // The prefix: time, speaker, traded mark and level.
     QString prefix;
     if (timestamps)
         prefix = entry.time.toString(seconds ? QStringLiteral("hh:mm:ss") : QStringLiteral("hh:mm")) + QLatin1Char(' ');
@@ -548,15 +550,17 @@ QString formatEntry(const TChatEntry& entry, const bool timestamps, const bool s
         prefix += QStringLiteral(": ");
     }
 
-    // : the text.
+    // The text: escaped, keyword links for speakers, item colours for loot.
     QString body = entry.text.toHtmlEscaped();
     body.replace(QLatin1Char('\n'), QStringLiteral("<br>\n"));
     if (entry.kind == TChatEntry::Speaker)
         body = keywordLinks(body);
     else if (entry.kind == TChatEntry::Loot)
         body = formatLootRichText(body);
+    if (plainLength)
+        *plainLength = static_cast<int>(prefix.size() + QTextDocumentFragment::fromHtml(body).toPlainText().size());
 
-    // , (10): CIP hanging indent + <font color>.
+    // The entry's colour and a hanging indent of 10.
     return QStringLiteral("<p style=\"margin-left:10px; text-indent:-10px\"><font color=\"%1\">%2%3</font></p>")
         .arg(entry.color.name(), prefix.toHtmlEscaped(), body);
 }

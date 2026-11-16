@@ -57,18 +57,17 @@ void unsubscribeWorldTime(int id);
 int subscribeSessionEnd(std::function<void()> listener);
 void unsubscribeSessionEnd(int id);
 
-LocalPlayerSessionThingPtr localPlayer();
+/// The session has a character: from the login until the logout.
+bool hasLocalPlayer();
+/// The local player's creature (null before the server described it).
+std::shared_ptr<tibia::creatures::TCreature> localPlayerCreature();
 
-
-/// Pack-facing LocalPlayerSessionThing peels — prefer these over `#include <tibia/game/localplayersessionthing.h>`.
-/// Out-of-line so the allowlisted header does not pull the full LocalPlayerSessionThing type.
+/// The local player, read from its creature and the player data.
 Position localPlayerPosition();
 /// Pack-facing position peel (`MapPos` — prefer over `localPlayerPosition` / `Position`).
 MapPos localPlayerMapPos();
 std::string localPlayerName();
 uint32_t localPlayerId();
-/// Retired Map Creature keep-alive (Phase 5.0-B). Always nullptr — use TCreatureStorage + LocalPlayerSessionThing peels.
-CreaturePtr creatureThingById(uint32_t id);
 int localPlayerLevel();
 uint16_t localPlayerLevelPercent();
 uint32_t localPlayerHealth();
@@ -93,7 +92,7 @@ uint32_t localPlayerFreeCapacity();
 uint16_t localPlayerInventoryTypeId(tibia::client::InventorySlot slot);
 uint32_t localPlayerInventoryCount(uint16_t itemId, uint8_t tier = 0);
 /// Pack-facing inventory slot peel (exercise waiting-weapon / backpack scan).
-/// No `TInventorySlot` / LocalPlayerSessionThing in the header.
+/// No `TInventorySlot` in the header.
 struct InventorySlotInfo {
     bool empty{ true };
     uint16_t typeId{ 0 };
@@ -136,10 +135,10 @@ void onLocalPlayerPositionChanged(const Position& position);
 void localPlayerCancelWalk(tibia::client::Direction direction);
 /// The server asks to wait `ms` before the next step.
 
-/// Bless chrome (attention). Matches LocalPlayerSessionThing::getBlessVisualState.
+/// Bless chrome (attention).
 uint8_t localPlayerBlessVisualState();
 
-/// Player state icon bits (EPlayerStateFlag). LocalPlayerSessionThing authority until TPlayerData stores states.
+/// Player state icon bits (EPlayerStateFlag), from the player data.
 uint64_t localPlayerStates();
 uint8_t localPlayerSoul();
 uint16_t localPlayerMagicLevel();
@@ -148,9 +147,12 @@ uint16_t localPlayerMagicLevelPercent();
 std::vector<uint16_t> localPlayerSpells();
 tibia::client::Direction localPlayerDirection();
 bool localPlayerIsSoftDead();
-/// Keep-alive Map Creature → TCreature HUD mirror (Phase 5.0-C).
-void syncLocalPlayerStorageRow(tibia::creatures::TCreature& row);
-void syncLocalPlayerStorageWorldDraw();
+/// Same floor, at most one field away.
+bool isOneStep(const Position& from, const Position& to);
+/// A floor change or a jump: the motion and the walk goal end.
+void localPlayerHandleTeleport();
+/// The local player's step in flight stops where it is.
+void localPlayerStopWalk();
 
 uint8_t localPlayerSkull();
 uint16_t localPlayerBlessings();
@@ -166,7 +168,7 @@ void localPlayerSetInformationChannel(uint32_t durationMs);
 void localPlayerClearInformationChannel();
 void localPlayerSetSoftDead(bool softDead);
 
-/// Outfit for HUD chrome (teamhud). Prefer over LocalPlayerSessionThing::getOutfit.
+/// Outfit for HUD chrome (teamhud).
 Outfit localPlayerOutfit();
 
 bool isOnline();
@@ -355,8 +357,6 @@ void processCyclopediaCharacterDefenceStats(const CyclopediaCharacterDefenceStat
 void processCyclopediaCharacterMiscStats(const CyclopediaCharacterMiscStats& data);
 
 
-void localPlayerSetId(uint32_t id);
-void localPlayerSetPendingGame(bool pending);
 void localPlayerSetMarketAvailable(bool available);
 void localPlayerSetSupplyStashAvailable(bool available);
 
@@ -389,7 +389,6 @@ void localPlayerSetStoreExpBoostPurchasable(bool purchasable);
 void localPlayerSetStatesAndRottenBlood(uint64_t states, uint8_t rottenBloodState);
 void localPlayerSetTotalCapacity(uint32_t totalCapacity);
 void localPlayerSetBaseCapacity(uint32_t baseCapacity);
-void localPlayerSetKnown(bool known);
 
 /// Cyclopedia offence/defence stats (TPlayerSkillStats authority).
 void localPlayerSetFlatDamageHealing(uint16_t flatBonus);

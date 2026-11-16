@@ -23,9 +23,15 @@
 #pragma once
 
 #include "declarations.h"
+#include "client/eightbitcolor.h"
 
 #include "shared/clockservice.h"
-#include <framework/global.h>
+#include <QColor>
+#include <deque>
+#include <memory>
+#include <string>
+#include <QPoint>
+#include <QSize>
 #include <tibia/game/gameobject.h>
 
 // @bindclass
@@ -37,17 +43,16 @@ public:
         setText(text);
         setColor(color);
     }
-
-    void drawText(const Point& dest, const Rect& visibleRect);
-
     void onAppear();
 
-    void setColor(const int color) { m_color = Color::from8bit(color); }
-    void setText(const std::string_view text) { m_text = std::string(text); }
-    void setOffset(const Point& offset) { m_offset = offset; }
+    std::shared_ptr<AnimatedText> asAnimatedText() { return std::static_pointer_cast<AnimatedText>(shared_from_this()); }
 
-    Color getColor() { return m_color; }
-    Point getOffset() { return m_offset; }
+    void setColor(const int color) { m_color = tibia::client::colorFromEightBit(color); }
+    void setText(const std::string_view text) { m_text = std::string(text); }
+    void setOffset(const QPoint& offset) { m_offset = offset; }
+
+    QColor getColor() { return m_color; }
+    QPoint getOffset() { return m_offset; }
     tibia::shared::TFrameStopWatch getTimer() const { return m_animationTimer; }
     std::string getText() const { return m_text; }
 
@@ -55,12 +60,10 @@ public:
     Position getPosition() const { return m_position; }
     void setPosition(const Position& position) { m_position = position; }
 
-    AnimatedTextPtr asAnimatedText() { return static_self_cast<AnimatedText>(); }
-
 private:
-    Color m_color{ Color::white };
+    QColor m_color{ QColor(Qt::white) };
     tibia::shared::TFrameStopWatch m_animationTimer;
     std::string m_text;
-    Point m_offset;
+    QPoint m_offset;
     Position m_position;
 };

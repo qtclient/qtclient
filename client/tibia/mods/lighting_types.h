@@ -5,8 +5,7 @@
 namespace tibia {
 namespace mods {
 
-/// CIP 6³ palette byte → RGB (same formula as framework `Color::from8bit`).
-/// Packs prefer this over `#include <framework/util/color.h>`.
+/// CIP 6³ palette byte → RGB (same formula as `tibia::client::colorFromEightBit`).
 struct ColorRgb {
     uint8_t r = 0;
     uint8_t g = 0;

@@ -13,6 +13,9 @@
 #include <QPointer>
 #include <QTimer>
 
+#include <functional>
+#include <memory>
+
 namespace tibia {
 namespace config {
 class TSidebarOptions;
@@ -22,27 +25,22 @@ class TSidebarOptions;
 namespace tibia {
 namespace gamewindow {
 
+class TGenericConfirmWithDontShowAgainDialogController;
+
 /// One open container's sidebar widget, container.qml (CIP:
-/// TContainerController, vtable). View-filter / manual-sort /
-/// "more pages" stay hidden until qtclient protocol carries those flags; depot
-/// search visibility comes from the open-container search-icon byte.
+/// TContainerController). The configuration menu offers the server's view
+/// filter categories, sorting, manual sort mode and moving the content to the
+/// managed containers.
 class TContainerController final : public TSidebarWidgetController<cip::tibia::gamewindow::TContainerController>
 {
     Q_OBJECT
 public:
     TContainerController(int containerId, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
+    ~TContainerController() override;
 
     int containerId() const { return m_containerId; }
     void setControlScheme(int controlScheme) { m_mapper.setControlScheme(controlScheme); }
     void setLootScheme(int lootScheme) { m_mapper.setLootScheme(lootScheme); }
-    /// CIP TOGGLE_MANUAL_SORT_MODE: orange caption + slot drop markers.
-    void setManualSortMode(bool enabled)
-    {
-        if (m_isInManualSortMode == enabled)
-            return;
-        m_isInManualSortMode = enabled;
-        Q_EMIT containerPropertyChanged();
-    }
     /// CIP : restores the widget's size from the character's
     /// containersOptions and follows them.
     void setSidebarOptions(config::TSidebarOptions* options);
@@ -84,7 +82,7 @@ public Q_SLOTS:
     void saveWidgetOptions() override;
     /// CIP : a closed container forgets its size.
     void removeThisContainersOptions() override;
-    /// CIP config menu — no view-filter / sort options in qtclient protocol.
+    /// The filter, sort and managed-container entries the container supports.
     void onShowConfigurationMenu() override;
     void onRequestMoveToSidebar(int TargetSidebar) override;
     void onSetDragActive(bool Active) override;
@@ -129,6 +127,16 @@ private:
     Position slotPosition(int pageSlot) const;
     void updateMouseCursorForCurrentSlot();
     void readExpireOptions();
+    /// Manual sort mode is on and this container can be sorted.
+    bool manualSortModeActive() const;
+    /// The live filter and manual sort properties.
+    void refreshViewOptions();
+    /// Asks the server to sort the content (confirms a recursive sort first).
+    void sortContainer(int sortType);
+    /// Asks the server to move the content to the managed containers
+    /// (confirms a recursive move first).
+    void moveContentToManagedContainers();
+    void showConfirmDialog(const char* caption, const char* content, std::function<void(bool showAgain)> onYes);
     template <class T>
     void setProperty(T& member, const T& value);
     void setIcon(const container::TInventorySlot& slot);
@@ -140,6 +148,7 @@ private:
     QTimer m_propertyTimer;
     QTimer m_clockTimer;
     int m_hoveredSlot = -1;
+    std::unique_ptr<TGenericConfirmWithDontShowAgainDialogController> m_confirmDialog;
 };
 
 }

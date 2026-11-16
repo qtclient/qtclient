@@ -347,8 +347,8 @@ QColor TOutfitMountSummonSkinsListDataModelSortFilterProxy::color(const int part
 {
     if (m_typeFilter != Outfits && m_typeFilter != Mounts)
         return QColor(Qt::black);
-    const Color c = Outfit::getColor(m_colors[(m_typeFilter == Mounts ? 4 : 0) + part]);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(m_colors[(m_typeFilter == Mounts ? 4 : 0) + part]);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 bool TOutfitMountSummonSkinsListDataModelSortFilterProxy::filterAcceptsRow(const int sourceRow, const QModelIndex& sourceParent) const
@@ -556,63 +556,78 @@ int appearanceSource(const uint8_t type) { return type == 1 ? 1 : type == 2 ? 2 
 
 }
 
+/// CIP: a new proxy (inventory only) per answer, sorted.
+void TCharacterInfoDialogController::updateItemSummary(const Args& args)
+{
+    if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterItemSummary>(&args[0]))
+        replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(mergeItemSummary(*data), this));
+    received(ItemSummary);
+}
+
+/// CIP: a new proxy over the outfits, mounts and summon skins, with the
+/// character's eight colors.
+void TCharacterInfoDialogController::updateOutfitsMounts(const Args& args)
+{
+    if (args.size() < 4)
+        return;
+    const auto* colors = std::any_cast<OutfitColorStruct>(&args[0]);
+    const auto* outfits = std::any_cast<std::vector<CharacterInfoOutfits>>(&args[1]);
+    const auto* mounts = std::any_cast<std::vector<CharacterInfoMounts>>(&args[2]);
+    const auto* familiars = std::any_cast<std::vector<CharacterInfoFamiliar>>(&args[3]);
+    if (!colors || !outfits || !mounts || !familiars)
+        return;
+    std::vector<AppearanceEntry> entries;
+    entries.reserve(outfits->size() + mounts->size() + familiars->size());
+    for (const CharacterInfoOutfits& o : *outfits)
+        entries.push_back({ AppearanceEntry::Outfit, o.lookType, QString::fromStdString(o.name), appearanceSource(o.type),
+                            static_cast<int>(o.isCurrent), o.addons });
+    for (const CharacterInfoMounts& m : *mounts)
+        entries.push_back(
+            { AppearanceEntry::Mount, m.mountId, QString::fromStdString(m.name), appearanceSource(m.type), static_cast<int>(m.isCurrent), 0 });
+    for (const CharacterInfoFamiliar& f : *familiars)
+        entries.push_back({ AppearanceEntry::SummonSkin, f.lookType, QString::fromStdString(f.name), appearanceSource(f.type),
+                            static_cast<int>(f.isCurrent), 0 });
+    const TOutfitMountSummonSkinsListDataModelSortFilterProxy::Colors indexes{ colors->lookHead,      colors->lookBody,
+                                                                               colors->lookLegs,      colors->lookFeet,
+                                                                               colors->lookMountHead, colors->lookMountBody,
+                                                                               colors->lookMountLegs, colors->lookMountFeet };
+    replaceObject(m_outfitMountModel, new TOutfitMountSummonSkinsListDataModelSortFilterProxy(std::move(entries), indexes, this));
+    received(OutfitsMounts);
+}
+
+/// CIP: a new titles object with the current title.
+void TCharacterInfoDialogController::updateTitles(const Args& args)
+{
+    using Wire = std::vector<std::tuple<uint8_t, std::string, std::string, bool, bool>>;
+    if (args.size() < 2)
+        return;
+    const int* current = std::any_cast<int>(&args[0]);
+    const auto* titles = std::any_cast<Wire>(&args[1]);
+    if (!current || !titles)
+        return;
+    std::vector<TitleEntry> entries;
+    entries.reserve(titles->size());
+    for (const auto& [id, name, description, permanent, unlocked] : *titles)
+        entries.push_back({ id, QString::fromStdString(name), QString::fromStdString(description), permanent, unlocked });
+    replaceObject(m_titlesInfo, new TCharacterTitlesInfoQmlData(static_cast<uint8_t>(*current), std::move(entries), this));
+    received(Titles);
+}
+
 void TCharacterInfoDialogController::hookModelEvents()
 {
-    // CIP : a new proxy (inventory only) per answer, sorted.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateCyclopediaCharacterItemSummary", [this](GameObject*, const Args& args) {
-        if (!m_shown)
-            return std::any{};
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterItemSummary>(&args[0]))
-            replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(mergeItemSummary(*data), this));
-        received(ItemSummary);
+        if (m_shown)
+            updateItemSummary(args);
         return std::any{};
     });
-
-    // CIP : a new proxy (outfits, all sources) per answer.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterAppearances", [this](GameObject*, const Args& args) {
-        if (!m_shown || args.size() < 4)
-            return std::any{};
-        const auto* colors = std::any_cast<OutfitColorStruct>(&args[0]);
-        const auto* outfits = std::any_cast<std::vector<CharacterInfoOutfits>>(&args[1]);
-        const auto* mounts = std::any_cast<std::vector<CharacterInfoMounts>>(&args[2]);
-        const auto* familiars = std::any_cast<std::vector<CharacterInfoFamiliar>>(&args[3]);
-        if (!colors || !outfits || !mounts || !familiars)
-            return std::any{};
-        std::vector<AppearanceEntry> entries;
-        entries.reserve(outfits->size() + mounts->size() + familiars->size());
-        for (const CharacterInfoOutfits& o : *outfits)
-            entries.push_back({ AppearanceEntry::Outfit, o.lookType, QString::fromStdString(o.name), appearanceSource(o.type),
-                                static_cast<int>(o.isCurrent), o.addons });
-        for (const CharacterInfoMounts& m : *mounts)
-            entries.push_back(
-                { AppearanceEntry::Mount, m.mountId, QString::fromStdString(m.name), appearanceSource(m.type), static_cast<int>(m.isCurrent), 0 });
-        for (const CharacterInfoFamiliar& f : *familiars)
-            entries.push_back({ AppearanceEntry::SummonSkin, f.lookType, QString::fromStdString(f.name), appearanceSource(f.type),
-                                static_cast<int>(f.isCurrent), 0 });
-        const TOutfitMountSummonSkinsListDataModelSortFilterProxy::Colors indexes{ colors->lookHead,      colors->lookBody,
-                                                                                   colors->lookLegs,      colors->lookFeet,
-                                                                                   colors->lookMountHead, colors->lookMountBody,
-                                                                                   colors->lookMountLegs, colors->lookMountFeet };
-        replaceObject(m_outfitMountModel, new TOutfitMountSummonSkinsListDataModelSortFilterProxy(std::move(entries), indexes, this));
-        received(OutfitsMounts);
+        if (m_shown)
+            updateOutfitsMounts(args);
         return std::any{};
     });
-
-    // CIP .
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterTitles", [this](GameObject*, const Args& args) {
-        using Wire = std::vector<std::tuple<uint8_t, std::string, std::string, bool, bool>>;
-        if (!m_shown || args.size() < 2)
-            return std::any{};
-        const int* current = std::any_cast<int>(&args[0]);
-        const auto* titles = std::any_cast<Wire>(&args[1]);
-        if (!current || !titles)
-            return std::any{};
-        std::vector<TitleEntry> entries;
-        entries.reserve(titles->size());
-        for (const auto& [id, name, description, permanent, unlocked] : *titles)
-            entries.push_back({ id, QString::fromStdString(name), QString::fromStdString(description), permanent, unlocked });
-        replaceObject(m_titlesInfo, new TCharacterTitlesInfoQmlData(static_cast<uint8_t>(*current), std::move(entries), this));
-        received(Titles);
+        if (m_shown)
+            updateTitles(args);
         return std::any{};
     });
 

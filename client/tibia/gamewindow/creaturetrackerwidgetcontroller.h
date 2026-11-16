@@ -6,6 +6,8 @@
 #include <cip_gen.h>
 
 #include <QPointer>
+#include <QSortFilterProxyModel>
+#include <QTimer>
 #include <QString>
 
 #include <vector>
@@ -25,41 +27,79 @@ class TSidebarOptions;
 namespace tibia {
 namespace gamewindow {
 
-/// Rows for CreatureTrackerWidget.qml (CIP: TCreatureTrackerModel).
-class TCreatureTrackerListModel final : public cip::TCreatureTrackerModel
+/// The tracked creatures of one tracker widget (CIP: the anonymous
+/// TCreatureTrackerModel, a TSimpleVectorAbstractListModel of
+/// TCreatureTrackerEntry): kill progress, plus the boss cooldowns.
+class TCreatureTrackerModel final : public cip::TCreatureTrackerModel
 {
     Q_OBJECT
 public:
     enum Role {
-        RaceIdRole = Qt::UserRole + 1,
+        RaceIdRole = 0x101,
         NameRole,
-        CreatureHasCooldownRole,
-        CooldownIsExpiredRole,
-        CooldownEndTextRole,
         CurrentKillsRole,
         KillsForDetails1Role,
         KillsForDetails2Role,
         KillsForDetails3Role,
-        IsFullyUnlockedRole
+        CompletionPercentRole,
+        RemainingKillsRole,
+        IsFullyUnlockedRole,
+        CreatureHasCooldownRole,
+        CooldownIsExpiredRole,
+        CooldownEndRole,
+        CooldownEndTextRole
     };
 
-    struct Row {
+    struct Row
+    {
         cyclopedia::TCreatureTrackerEntry entry;
-        bool creatureHasCooldown = false;
-        bool cooldownIsExpired = false;
-        QString cooldownEndText;
+        /// Unix seconds when the boss cooldown ends.
+        uint cooldownEnd = 0;
+        bool hasCooldown = false;
     };
 
-    explicit TCreatureTrackerListModel(QObject* parent = nullptr);
+    explicit TCreatureTrackerModel(QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setRows(std::vector<Row> rows);
+    void setEntries(const std::vector<cyclopedia::TCreatureTrackerEntry>& entries);
+    std::vector<Row>& rows() { return m_rows; }
+    qint64 currentTime() const { return m_currentTime; }
+    void setCurrentTime(qint64 milliseconds) { m_currentTime = milliseconds; }
+    void notifyCooldownChanged(int row);
 
 private:
     std::vector<Row> m_rows;
+    /// The game time of the last cooldown refresh, in milliseconds.
+    qint64 m_currentTime = 0;
+};
+
+/// The order of the tracked creatures (CIP: the anonymous
+/// TCreatureTrackerSortProxyModel over a TCreatureTrackerModel).
+class TCreatureTrackerSortProxyModel final : public QSortFilterProxyModel
+{
+    Q_OBJECT
+public:
+    enum ESortType { SortByName = 0, SortByPercentage = 1, SortByRemaining = 2 };
+    enum ESortOrder { Ascending = 0, Descending = 1 };
+
+    explicit TCreatureTrackerSortProxyModel(QObject* parent = nullptr);
+
+    TCreatureTrackerModel* source() { return &m_source; }
+    int sortType() const { return m_sortType; }
+    int sortOrder() const { return m_sortOrder; }
+    void setSortType(int sortType);
+    void setSortOrder(int sortOrder);
+
+protected:
+    bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
+
+private:
+    TCreatureTrackerModel m_source;
+    int m_sortType = SortByName;
+    int m_sortOrder = Ascending;
 };
 
 /// CreatureTrackerWidget.qml — one instance per EWidgetMode (Bestiary / Bosstiary).
@@ -109,9 +149,7 @@ Q_SIGNALS:
     void widgetWantsToMoveToSidebar(int targetSidebar, TSidebarWidget* widget);
 
 private Q_SLOTS:
-    /// CIP onTrackedCreaturesChanged — rebuild bestiary / bosstiary rows.
     void onTrackedCreaturesChanged();
-    /// CIP onBossCooldownsChanged — refresh bosstiary cooldown columns.
     void onBossCooldownsChanged();
     /// CIP onWidgetOptionsChanged — persist contentHeight / contentMaximized.
     void onWidgetOptionsChanged();
@@ -119,11 +157,14 @@ private Q_SLOTS:
 
 private:
     void persistOptions();
+    void updateCooldownExpiry();
 
     EWidgetMode m_mode;
     QPointer<cyclopedia::TCreatureTrackerStorage> m_creatures;
     QPointer<bossbestiary::TBossTrackerStorage> m_bosses;
-    TCreatureTrackerListModel* m_model = nullptr;
+    TCreatureTrackerSortProxyModel* m_model = nullptr;
+    /// Stands in for the sidebar manager's per-frame tick.
+    QTimer m_cooldownTimer;
     QPointer<config::TSidebarOptions> m_options;
 };
 

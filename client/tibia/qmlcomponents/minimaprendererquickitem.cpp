@@ -262,7 +262,7 @@ TMinimapRendererQuickItem::TMinimapRendererQuickItem(QQuickItem* parent)
             &TMinimapRendererQuickItem::scheduleUpdate);
     m_playerTimer.setInterval(250);
     connect(&m_playerTimer, &QTimer::timeout, this, [this] {
-        if (!tibia::game::localPlayer())
+        if (!tibia::game::hasLocalPlayer())
             return;
         const Position position = tibia::game::localPlayerPosition();
         if (QPoint(position.x, position.y) != m_playerField || position.z != m_playerLayer)
@@ -673,7 +673,7 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
         }
     }
     m_playerLayer = -1;
-    if (tibia::game::localPlayer()) {
+    if (tibia::game::hasLocalPlayer()) {
         const Position position = tibia::game::localPlayerPosition();
         m_playerField = QPoint(position.x, position.y);
         m_playerLayer = position.z;

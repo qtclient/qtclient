@@ -667,7 +667,7 @@ void TVipWidgetGameActionProvider::setWorldType(const int worldType) { m_worldTy
 ::tibia::input::TGameActionList TVipWidgetGameActionProvider::groupGameActions(const QString& groupName) const
 {
     ::tibia::input::TGameActionList result;
-    if (!tibia::game::localPlayer() || !tibia::game::localPlayerIsPremium())
+    if (!tibia::game::hasLocalPlayer() || !tibia::game::localPlayerIsPremium())
         return result;
     result.push_back(::tibia::input::makeAction(VipAction::OPEN_ADD_VIP_GROUP_DIALOG));
     if (groupName.isEmpty())

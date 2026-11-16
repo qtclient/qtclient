@@ -3,6 +3,8 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 
+#include <QColor>
+
 #include <algorithm>
 
 namespace tibia::gamewindow {
@@ -146,6 +148,47 @@ void TCharacterSelectionController::createCharacterPressed()
 void TCharacterSelectionController::manageAccountPressed()
 {
     input::publish(input::makeAction(input::EGameAction::OPEN_URL_ACCESS_ACCOUNT));
+}
+
+QString TCharacterSelectionController::accountStatusText(const int accountState, const int premiumType, const int premiumDays)
+{
+    if (accountState == 2)
+        return qtTrId("characterselection_status_suspended");
+    if (accountState == 1)
+        return qtTrId("characterselection_status_frozen");
+    return premiumStatusText(premiumType, premiumDays);
+}
+
+QString TCharacterSelectionController::premiumStatusText(const int premiumType, const int premiumDays)
+{
+    if (premiumType == 2)
+        return qtTrId("characterselection_status_free_premium");
+    if (premiumType == 0)
+        return qtTrId("characterselection_status_free");
+    const uint16_t days = static_cast<uint16_t>(premiumDays);
+    QString text = QStringLiteral("%1 (%2%4%3)").arg(qtTrId("characterselection_status_premium"));
+    QString timeLeft;
+    if (days < 14) {
+        // CIP: the remaining days in red.
+        text = text.arg(QStringLiteral("<font color=%1>").arg(QColor(0xf8, 0x60, 0x60).name()));
+        text = text.arg(QStringLiteral("</font>"));
+        timeLeft = days == 1 ? qtTrId("characterselection_status_premiumtime").arg(1)
+                             : qtTrId("characterselection_status_premiumtime_plural").arg(days);
+    } else {
+        text = text.arg(QString()).arg(QString());
+        timeLeft = qtTrId("characterselection_status_premiumtime_plural").arg(days);
+    }
+    return text.arg(timeLeft);
+}
+
+void TCharacterSelectionController::onGetPremiumClicked()
+{
+    input::publish(std::make_shared<input::TGameActionOpenGetPremiumUrl>());
+}
+
+void TCharacterSelectionController::onMorePremiumFeaturesClicked()
+{
+    input::publish(input::makeAction(input::EGameAction::OPEN_URL_PREMIUM_FEATURES));
 }
 
 void TCharacterSelectionController::onCharacterSelectionConfirmed(const QList<int>& SelectedCharacters)

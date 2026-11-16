@@ -190,16 +190,9 @@ void TDragAndDropController::startDrag(const input::TGameActionPtr& action, QObj
     moveIcon();
     QCoreApplication::instance()->installEventFilter(m_filter);
     m_filterInstalled = true;
-    // CipSoft TDragAndDropController::startDrag @ → setDragging
-    // . Crosshair is the MOVE_OBJECT / target shape
-    // (cursorShapeOf); set it on the active region before freezing the cursor
-    // for the drag, otherwise the frozen shape stays Walk/Look and the move
-    // crosshair never appears.
-    if (TMouseCursorController* cursor = TMouseCursorController::instance()) {
-        if (action->type == input::EGameAction::MOVE_OBJECT && cursor->topRegion() != 0)
-            cursor->setLayerShape(cursor->topRegion(), TMouseCursorController::Crosshair);
-        cursor->setDragging(true);
-    }
+    // A drag shows the target-selection crosshair until it finishes.
+    if (TMouseCursorController* cursor = TMouseCursorController::instance())
+        cursor->setTargetSelection(true);
 }
 
 input::TGameActionPtr TDragAndDropController::takeAction()
@@ -218,7 +211,7 @@ void TDragAndDropController::finish()
     QCoreApplication::instance()->removeEventFilter(m_filter);
     m_filterInstalled = false;
     if (TMouseCursorController* cursor = TMouseCursorController::instance())
-        cursor->setDragging(false);
+        cursor->setTargetSelection(false);
     if (m_source) {
         m_source->ungrabMouse();
         m_source = nullptr;

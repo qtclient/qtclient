@@ -1,7 +1,8 @@
 #include "mapsession.h"
 
 #include <client/position.h>
-#include <framework/util/point.h>
+#include <QPoint>
+#include <QPointF>
 #include <tibia/game/gamenotify.h>
 #include <tibia/worldmap/pathfindtypes.h>
 #include <tibia/worldmap/worldmapsessionstate.h>
@@ -215,7 +216,7 @@ void removeMapObserver(::MapObserver* const observer)
 
 void notifyCameraMove(const MapPoint offset)
 {
-    sessionOverlay().notificateCameraMove(Point(offset.x, offset.y));
+    sessionOverlay().notificateCameraMove(QPoint(offset.x, offset.y));
 }
 
 void cleanMap()

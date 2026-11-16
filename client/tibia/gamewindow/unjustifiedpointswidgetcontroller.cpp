@@ -1,4 +1,5 @@
 #include "unjustifiedpointswidgetcontroller.h"
+#include "game/gamesessionbase.h"
 
 #include "config/sidebaroptions.h"
 #include "creatures/creaturestorage.h"
@@ -44,10 +45,13 @@ TUnjustifiedPointsWidgetController::TUnjustifiedPointsWidgetController(QQuickIte
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
             &TUnjustifiedPointsWidgetController::onPlayerCreatureAddedToCreatureStorage);
-    if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
-        connect(storage, &creatures::TCreatureStorage::playerAdded, this,
-                [this](std::weak_ptr<creatures::TCreature>) { onPlayerCreatureAddedToCreatureStorage(); });
-    }
+    tibia::game::onEachGameSession(this, [this] {
+        disconnect(m_playerAdded);
+        if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
+            m_playerAdded = connect(storage, &creatures::TCreatureStorage::playerAdded, this,
+                                    [this](std::weak_ptr<creatures::TCreature>) { onPlayerCreatureAddedToCreatureStorage(); });
+        }
+    });
     connectPlayerKillerModeChangedToDisplayDataChanged();
     widget()->createItem(QStringLiteral("unjustifiedpointswidget.qml"));
     if (QQuickItem* item = quickItem())

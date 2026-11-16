@@ -25,9 +25,12 @@
 // Height stamps: what a thing's art is read as in 3D, for sun shadows and raycast lighting.
 // Depends on nothing but the geometry types, so tools/shadows builds this same source.
 
-#include <framework/util/point.h>
-#include <framework/util/rect.h>
-#include <framework/util/size.h>
+#include <QPoint>
+#include <QPointF>
+#include <QRect>
+#include <QRectF>
+#include <QSize>
+#include <QSizeF>
 
 #include <cstddef>
 #include <cstdint>
@@ -74,19 +77,19 @@ enum class ThingShape : uint8_t
 struct StampFrame
 {
     PixelGrid sprite;
-    Rect frame;        // in sprite
+    QRect frame;        // in sprite
     PixelGrid columns;  // heights standing on each ground pixel
     PixelGrid floating; // those above a gap over the ground-attached ones; without it, columns
                         // keeps only the topmost span
     PixelGrid surface;  // height of each drawn pixel
-    Point origin;      // of the frame's region in columns and surface: its size plus pad
+    QPoint origin;      // of the frame's region in columns and surface: its size plus pad
     int pad{ 0 };
     int cellPx{ 32 };  // texels per tile
     int hdScale{ 1 };  // texels per sprite px
     bool creature{ false };
     bool onTop{ false };
     int elevation{ 0 };
-    Point displacement;
+    QPoint displacement;
     ThingShape shape{ ThingShape::Auto }; // ignored on a creature
 };
 
@@ -105,20 +108,20 @@ StampResult writeHeightStampFrame(const StampFrame& stamp);
 struct StampLayout
 {
     int columns{ 1 };
-    Size frameSize;
+    QSize frameSize;
     int pad{ 0 };
 
     static int stampedFrames(int indexSize, int textureLayers);
-    Size imageSize(int frames) const;
-    Rect cell(int frame) const;
+    QSize imageSize(int frames) const;
+    QRect cell(int frame) const;
 };
 
 struct FrameLight
 {
-    PointF point; // logical px from the frame's top-left
+    QPointF point; // logical px from the frame's top-left
     LightShape shape;
 };
 
 // `surface` is the frame's stamp (nullptr without one); `hook` is -1 unless wall-hung.
-FrameLight findFrameLight(const PixelGrid& sprite, const Rect& frame, const PixelGrid* surface, const Point& origin,
-                          int hdScale, int hook, const Point& displacement);
+FrameLight findFrameLight(const PixelGrid& sprite, const QRect& frame, const PixelGrid* surface, const QPoint& origin,
+                          int hdScale, int hook, const QPoint& displacement);

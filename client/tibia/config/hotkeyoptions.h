@@ -80,6 +80,30 @@ struct THotkeySet
     QJsonObject actionBarExtra;
 };
 
+/// The hotkeyOptions section as a value: the copy the hotkeys options page
+/// edits and hands back on apply (CIP: config::THotkeyOptions).
+struct THotkeyOptionsData
+{
+    QString currentHotkeySetName;
+    bool autoSwitchHotkeyPreset = false;
+    bool showStaticHotkeysFirst = true;
+    std::map<QString, THotkeySet> hotkeySets;
+
+    static THotkeyOptionsData fromJson(const QJsonObject& section);
+    QJsonObject toJson() const;
+
+    THotkeySet* set(const QString& name);
+    void setCurrentSet(const QString& name);
+    /// Keeps a set already named name.
+    void addSet(const QString& name, const THotkeySet& set);
+    void renameSet(const QString& from, const QString& to);
+    void removeSet(const QString& name);
+    /// The bindings of one chat mode of a set.
+    void clearBindings(const QString& setName, bool chatOn);
+    void addBinding(const QString& setName, bool chatOn, const QKeySequence& keys, const TActionSetting& setting);
+    void setBindings(const QString& setName, bool chatOn, const std::vector<THotkeyBinding>& bindings);
+};
+
 /// `conf/clientoptions.json` `hotkeyOptions` (CIP: THotkeyOptions; user file
 /// `<AppData>/conf/clientoptions.json`). Presets round-trip via load/save;
 /// character login may auto-switch to a set named after the character
@@ -98,6 +122,12 @@ public:
 
     /// CIP built-in `hotkeyOptions` (vocation presets + GlobalShortcuts).
     static QJsonObject builtInSection();
+    /// CIP's default hotkey sets by name: each vocation preset with
+    /// GlobalShortcuts' keys merged in, and GlobalShortcuts itself.
+    static QJsonObject builtInSets();
+    /// The built-in set named name: a vocation preset with GlobalShortcuts'
+    /// keys, or GlobalShortcuts alone.
+    static THotkeySet builtInSet(const QString& name);
 
     QString currentSetName() const { return m_current; }
     QStringList setNames() const;

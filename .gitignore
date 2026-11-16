@@ -41,7 +41,6 @@ vc18/
 /data/sounds/catalog-sound.json
 /data/sounds/sound-*.ogg
 /data/sounds/sounds-*.dat
-/data/things/*/
 /data/assets/
 /data/storeimages/
 # Public CIP-clone spin-out also ignores /upstream/ (builders run make tibia-sync).

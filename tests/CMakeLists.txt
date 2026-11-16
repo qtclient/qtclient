@@ -61,4 +61,3 @@ endfunction()
 
 add_subdirectory(client)
 add_subdirectory(map)
-add_subdirectory(stdext)

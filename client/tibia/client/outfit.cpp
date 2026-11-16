@@ -22,7 +22,7 @@
 
 #include "outfit.h"
 
-Color Outfit::getColor(int color)
+QColor Outfit::getColor(int color)
 {
     if (color >= HSI_H_STEPS * HSI_SI_VALUES)
         color = 0;
@@ -72,11 +72,11 @@ Color Outfit::getColor(int color)
     }
 
     if (loc3 == 0)
-        return Color::alpha;
+        return QColor(0, 0, 0, 0);
 
     if (loc2 == 0) {
         const int loc7 = static_cast<int>(loc3 * 255);
-        return Color(loc7, loc7, loc7);
+        return QColor(loc7, loc7, loc7);
     }
 
     float red = 0;
@@ -108,7 +108,7 @@ Color Outfit::getColor(int color)
         green = loc3 * (1 - loc2);
         blue = red - (loc3 - green) * (6 * loc1 - 5);
     }
-    return Color(static_cast<int>(red * 255), static_cast<int>(green * 255), static_cast<int>(blue * 255));
+    return QColor(static_cast<int>(red * 255), static_cast<int>(green * 255), static_cast<int>(blue * 255));
 }
 
 void Outfit::resetClothes()

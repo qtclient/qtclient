@@ -189,8 +189,8 @@ void TCreatureHUDQmlRenderInfo::update(const tibia::creatures::TCreature& stored
     assign(this, m_name, stored.name(), &Info::nameChanged);
     assign(this, m_healthPercent, stored.healthPercent() / 100.0, &Info::healthPercentChanged);
 
-    const Color& base = stored.informationColor();
-    const QColor color = QColor::fromRgbF(base.rF() * lightness, base.gF() * lightness, base.bF() * lightness);
+    const QColor& base = stored.informationColor();
+    const QColor color = QColor::fromRgbF(base.redF() * lightness, base.greenF() * lightness, base.blueF() * lightness);
     if (m_healthColor != color || m_lightness != lightness) {
         m_healthColor = color;
         m_lightness = lightness;

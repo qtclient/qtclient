@@ -34,11 +34,11 @@ TEffectStorage& TEffectStorage::instance()
 TEffectStorage::TEffectStorage(QObject* parent)
     : cip::tibia::effects::TEffectStorage(parent)
 {
-    static bool fallbackMade = false;
-    // The first one is the fallback; later ones belong to a game session.
-    if (fallbackMade)
-        g_current = this;
-    fallbackMade = true;
+}
+
+void TEffectStorage::setInstance(TEffectStorage* storage)
+{
+    g_current = storage;
 }
 
 TEffectStorage::~TEffectStorage()

@@ -1,10 +1,10 @@
+#include "game/gamesessionbase.h"
 #include "gamesession.h"
 
 #include "game/gamesessionstate.h"
 #include "game/playerdata.h"
 #include "game/playerskillstats.h"
 #include <tibia/creatures/creaturestorage.h>
-#include <tibia/game/localplayersessionthing.h>
 #include <tibia/game/mapsession.h>
 #include "input/playermovementintenthandler.h"
 #include "worldmap/worldmapfield.h"
@@ -14,6 +14,8 @@
 #include <tibia/game/sessionhooks.h>
 #include <tibia/game/tgamenotify.h>
 #include <vector>
+#include <cmath>
+#include <limits>
 
 #include "tibia/runtime/host.h"
 #include "tibia/gamewindow/remainingdialogs.h"
@@ -29,6 +31,7 @@
 #include "tibia/assets/thingtype.h"
 #include "tibia/assets/things.h"
 #include "container/containerciptypes.h"
+#include "cyclopedia/cyclopediaciptypes.h"
 #include "creatures/creaturestorage.h"
 #include "creatures/walkdebug.h"
 #include "shared/clockservice.h"
@@ -224,9 +227,36 @@ void unsubscribeSessionEnd(const int id)
     tibia::world::unsubscribeSessionEnd(id);
 }
 
-LocalPlayerSessionThingPtr localPlayer()
+bool hasLocalPlayer()
 {
-    return gameSessionState().getLocalPlayer();
+    return gameSessionState().hasLocalPlayer();
+}
+
+std::shared_ptr<tibia::creatures::TCreature> localPlayerCreature()
+{
+    if (!hasLocalPlayer())
+        return nullptr;
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    return storage ? storage->player() : nullptr;
+}
+
+bool isOneStep(const Position& from, const Position& to)
+{
+    return from.z == to.z && std::abs(from.x - to.x) <= 1 && std::abs(from.y - to.y) <= 1;
+}
+
+void localPlayerHandleTeleport()
+{
+    if (const auto row = localPlayerCreature())
+        row->resetMovement();
+    localPlayerStopAutoWalk();
+    notifyCameraMove({});
+}
+
+void localPlayerStopWalk()
+{
+    if (const auto row = localPlayerCreature(); row && row->isWalking())
+        row->stopMovement();
 }
 
 
@@ -850,7 +880,7 @@ void requestBestiarySearch(const uint16_t raceId)
 {
     if (!canPerformGameAction())
         return;
-    gameclient::sendRequestBestiarySearch(raceId);
+    cyclopedia::TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopediaRace(raceId);
 }
 void openPrivateChannel(const std::string_view receiver)
 {
@@ -911,9 +941,11 @@ void updateTeamFinderMember(const uint32_t memberId, const uint8_t status)
 
 Position localPlayerPosition()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->getPosition();
-    return {};
+    if (!hasLocalPlayer())
+        return {};
+    if (const auto row = localPlayerCreature(); row && row->position().isValid())
+        return row->position();
+    return tibia::worldmap::TWorldMapStorage::ensureStorage()->sessionState().localPlayerPosition();
 }
 
 MapPos localPlayerMapPos()
@@ -926,16 +958,17 @@ std::string localPlayerName()
 {
     if (TPlayerData* data = TPlayerData::liveInstance(); data && !data->characterName().empty())
         return data->characterName();
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->getName();
+    if (hasLocalPlayer())
+        return gameSessionState().getCharacterName();
     return {};
 }
 
 uint32_t localPlayerId()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->getId();
-    return 0;
+    if (!hasLocalPlayer())
+        return 0;
+    tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
+    return storage ? storage->playerID() : 0;
 }
 
 int localPlayerLevel()
@@ -997,8 +1030,8 @@ uint8_t localPlayerVocation()
 
 uint8_t localPlayerShield()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->getShield();
+    if (const auto row = localPlayerCreature())
+        return row->shield();
     return 0;
 }
 
@@ -1025,23 +1058,46 @@ uint32_t localPlayerFreeCapacity()
 
 uint16_t localPlayerInventoryTypeId(const tibia::client::InventorySlot slot)
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->inventorySlot(slot).typeId;
-    return 0;
+    return localPlayerInventorySlot(slot).typeId;
 }
 
 uint32_t localPlayerInventoryCount(const uint16_t itemId, const uint8_t tier)
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->getInventoryCount(itemId, tier);
-    return 0;
+    if (!hasLocalPlayer())
+        return 0;
+    // The server's count of everything the player carries, else the open containers.
+    if (const TGameSessionBase* session = TGameSessionBase::active(); session && !session->objectCountStorage()->counts().empty()) {
+        const auto& counts = session->objectCountStorage();
+        const auto it = counts->counts().find({ itemId, tier });
+        if (it != counts->counts().end())
+            return it->second;
+    }
+    uint64_t total = 0;
+    const auto add = [&](const tibia::container::TInventorySlot& slot) {
+        if (!slot.empty() && slot.typeId == itemId && slot.tier == tier)
+            total += slot.stackable ? std::max<uint16_t>(1, slot.count) : 1;
+    };
+    if (tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance()) {
+        for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot)
+            add(inventory->slotAt(slot));
+    }
+    if (tibia::container::TContainerStorage* storage = tibia::container::TContainerStorage::instance()) {
+        for (const tibia::container::TContainerID containerId : storage->openIds()) {
+            if (const tibia::container::TStoredContainer* row = storage->containerAt(containerId)) {
+                for (const tibia::container::TInventorySlot& slot : row->items)
+                    add(slot);
+            }
+        }
+    }
+    return static_cast<uint32_t>(std::min<uint64_t>(total, std::numeric_limits<uint32_t>::max()));
 }
 
 InventorySlotInfo localPlayerInventorySlot(const tibia::client::InventorySlot slot)
 {
     InventorySlotInfo info;
-    if (const LocalPlayerSessionThingPtr player = localPlayer()) {
-        const tibia::container::TInventorySlot& row = player->inventorySlot(slot);
+    tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance();
+    if (hasLocalPlayer() && inventory) {
+        const tibia::container::TInventorySlot& row = inventory->slotAt(static_cast<int>(slot));
         info.empty = row.empty();
         info.typeId = row.typeId;
         info.stackable = row.stackable;
@@ -1058,11 +1114,8 @@ MapPos inventoryWireMapPos(const tibia::client::InventorySlot slot)
 
 void openLocalPlayerInventory(const tibia::client::InventorySlot slot)
 {
-    const LocalPlayerSessionThingPtr player = localPlayer();
-    if (!player)
-        return;
-    const tibia::container::TInventorySlot& item = player->inventorySlot(slot);
-    if (item.empty())
+    const InventorySlotInfo item = localPlayerInventorySlot(slot);
+    if (item.empty)
         return;
     openAt(inventoryWireMapPos(slot), item.typeId, 0);
 }
@@ -1178,26 +1231,32 @@ uint8_t localPlayerBlessVisualState()
 
 void localPlayerSetInformationChannel(const uint32_t durationMs)
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->setInformationChannel(durationMs);
+    if (const auto row = localPlayerCreature())
+        row->setInformationChannel(durationMs, tibia::shared::TClockService::frameMillis());
 }
 
 void localPlayerClearInformationChannel()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->clearInformationChannel();
+    if (const auto row = localPlayerCreature())
+        row->clearInformationChannel();
 }
 
 void localPlayerSetSoftDead(const bool softDead)
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->setSoftDead(softDead);
+    const auto row = localPlayerCreature();
+    if (!row || row->isSoftDead() == softDead)
+        return;
+    row->setSoftDead(softDead);
+    if (softDead)
+        localPlayerSetHealth(0, localPlayerMaxHealth());
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+        storage->publishCreatureUpdated(row);
 }
 
 Outfit localPlayerOutfit()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->getOutfit();
+    if (const auto row = localPlayerCreature())
+        return row->outfit();
     return {};
 }
 

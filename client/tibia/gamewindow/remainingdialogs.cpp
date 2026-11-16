@@ -17,6 +17,7 @@
 #include <QColor>
 
 #include <algorithm>
+#include <tuple>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -30,8 +31,8 @@ constexpr auto AskBeforeStowOption = "askBeforeStowContainerContent";
 
 QColor outfitColor(const int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 QString vocationName(const uint8_t clientId)
@@ -197,6 +198,56 @@ TCharacterTradeDialogController* TCharacterTradeDialogController::instance()
     return s_instance;
 }
 
+QObject* TCharacterTradeDialogController::characterData() const
+{
+    return m_characterData;
+}
+
+QObject* TCharacterTradeDialogController::auctionConfiguration() const
+{
+    return m_auctionConfiguration;
+}
+
+QObject* TCharacterTradeDialogController::conditionsModel() const
+{
+    return m_conditionsModel;
+}
+
+QObject* TCharacterTradeDialogController::highlightsModel() const
+{
+    return m_highlightsModel;
+}
+
+QObject* TCharacterTradeDialogController::itemsModel() const
+{
+    return m_itemsModel;
+}
+
+QObject* TCharacterTradeDialogController::confirmationsModel() const
+{
+    return m_confirmationsModel;
+}
+
+bool TCharacterTradeDialogController::hasUnfulfilledConditions() const
+{
+    return m_hasUnfulfilledConditions;
+}
+
+bool TCharacterTradeDialogController::hasConfirmationError() const
+{
+    return m_hasConfirmationError;
+}
+
+QObject* TCharacterTradeDialogController::characterOverviewHighlightsModel() const
+{
+    return m_characterOverviewHighlightsModel;
+}
+
+QObject* TCharacterTradeDialogController::characterOverviewItemsModel() const
+{
+    return m_characterOverviewItemsModel;
+}
+
 void TCharacterTradeDialogController::showDialog()
 {
     dialog()->create();
@@ -211,12 +262,12 @@ void TCharacterTradeDialogController::closeDialog()
 
 void TCharacterTradeDialogController::closeButtonClicked()
 {
-    closeDialog();
+    dialog()->close();
 }
 
 void TCharacterTradeDialogController::requestClose()
 {
-    closeDialog();
+    dialog()->close();
 }
 
 void TCharacterTradeDialogController::addHighlight(const int HighlightID)
@@ -243,31 +294,45 @@ void TCharacterTradeDialogController::removeItem(const int ItemID, const int Upg
     refreshOverviewModels();
 }
 
+TCharacterTradeDialogController::TConfiguration TCharacterTradeDialogController::configuration() const
+{
+    TConfiguration configuration;
+    configuration.minimumBid = m_auction ? static_cast<uint32_t>(std::max(0, m_auction->minimumBid())) : 0;
+    configuration.auctionEnd = m_auction ? static_cast<uint32_t>(std::max(0, m_auction->auctionEndTimestamp())) : 0;
+    // Highlight ids past 0xffff are store items (store item id + 0xffff).
+    for (const int id : m_selectedHighlightIds) {
+        const auto value = static_cast<uint32_t>(id);
+        if (value < 0x10000)
+            configuration.highlights.push_back(static_cast<uint16_t>(value));
+        else
+            configuration.storeItems.emplace_back(static_cast<uint16_t>((value + 1) & 0xffff), 0);
+    }
+    for (const QPair<int, int>& item : m_selectedItems)
+        configuration.items.emplace_back(static_cast<uint16_t>(item.first), static_cast<uint8_t>(item.second));
+    return configuration;
+}
+
 void TCharacterTradeDialogController::requestConditions()
 {
     tibia::game::requestCharacterTradeConfiguration(0);
+    m_hasUnfulfilledConditions = true;
+    Q_EMIT hasUnfulfilledConditionsChanged();
 }
 
 void TCharacterTradeDialogController::requestCheckConfiguration()
 {
-    tibia::game::requestCharacterTradeConfiguration(1);
+    const TConfiguration config = configuration();
+    tibia::game::confirmCharacterTradeConfiguration(config.minimumBid, config.auctionEnd, config.items, config.storeItems,
+                                              config.highlights, false);
+    m_hasConfirmationError = true;
+    Q_EMIT hasConfirmationErrorChanged();
 }
 
 void TCharacterTradeDialogController::requestConfirmConfiguration()
 {
-    const int bid = m_auction ? m_auction->minimumBid() : 0;
-    const int endTs = m_auction ? m_auction->auctionEndTimestamp() : 0;
-    std::vector<std::tuple<uint16_t, uint8_t>> items;
-    items.reserve(static_cast<size_t>(m_selectedItems.size()));
-    for (const QPair<int, int>& item : m_selectedItems)
-        items.emplace_back(static_cast<uint16_t>(item.first), static_cast<uint8_t>(item.second));
-    std::vector<uint16_t> highlights;
-    highlights.reserve(static_cast<size_t>(m_selectedHighlightIds.size()));
-    for (const int id : m_selectedHighlightIds)
-        highlights.push_back(static_cast<uint16_t>(id));
-    tibia::game::confirmCharacterTradeConfiguration(static_cast<uint32_t>(std::max(0, bid)),
-                                              static_cast<uint32_t>(std::max(0, endTs)), items, {}, highlights, true);
-    closeDialog();
+    const TConfiguration config = configuration();
+    tibia::game::confirmCharacterTradeConfiguration(config.minimumBid, config.auctionEnd, config.items, config.storeItems,
+                                              config.highlights, true);
 }
 
 void TCharacterTradeDialogController::onStorageUpdated(const trade::TCharacterTradeStorage::DataType dataType)
@@ -890,6 +955,8 @@ TShowSpellBookDialogController::TShowSpellBookDialogController(QObject* parent)
     : TDialogController(QStringLiteral("ShowSpellBookDialog.qml"), parent)
 {
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
+            &TShowSpellBookDialogController::onGameSessionChanged);
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameSessionChanged, this,
             &TShowSpellBookDialogController::onGameSessionChanged);
     onGameSessionChanged();
 }

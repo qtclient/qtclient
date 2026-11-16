@@ -22,8 +22,8 @@ QString englishNumber(const qint64 value)
 
 QColor outfitColor(const int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 /// "yyyy-MM-dd, HH:mm" (with seconds when asked) of a Unix time.

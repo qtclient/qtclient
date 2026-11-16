@@ -35,7 +35,7 @@ SoftHook gameHook(const char* field, F&& f)
 }
 
 TSessiondumpGameSession::TSessiondumpGameSession(QObject* parent)
-    : cip::tibia::game::TSessiondumpGameSession(parent)
+    : TGameSessionBase(parent)
 {
     m_replayTimer.setParent(this);
     m_replayTimer.setSingleShot(true);

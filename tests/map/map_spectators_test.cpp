@@ -59,18 +59,12 @@ TEST(TileSpectators, CreatureIdsTrackStackOrder)
 
     EXPECT_FALSE(tile.hasCreatures());
     EXPECT_TRUE(tile.stackCreatureEntries().empty());
-    EXPECT_TRUE(tile.getCreatures().empty()); // CreaturePtr path empty without LocalPlayerSessionThing
 
     placeCreature(tile, scope.storage(), 1);
     placeCreature(tile, scope.storage(), 2);
     placeCreature(tile, scope.storage(), 3);
 
     EXPECT_EQ((std::vector<uint32_t>{ 1, 2, 3 }), creatureIdsOnField(tile));
-
-    // appendSpectators stays LocalPlayerSessionThing-only (no Map registry).
-    std::vector<CreaturePtr> creaturePtrs;
-    tile.appendSpectators(creaturePtrs);
-    EXPECT_TRUE(creaturePtrs.empty());
 }
 
 TEST(TileSpectators, RemovingCreatureIdsClearsField)

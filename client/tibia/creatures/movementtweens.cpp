@@ -34,7 +34,7 @@ void resumeMovementClock()
     client::gamecore::resumeRealTime();
 }
 
-Point walkOffsetFor(const uint32_t creatureId)
+QPoint walkOffsetFor(const uint32_t creatureId)
 {
     if (!creatureId)
         return {};

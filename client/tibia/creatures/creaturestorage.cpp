@@ -6,7 +6,7 @@
 #include "shared/clockservice.h"
 #include "tibia/creatures/attachedeffect.h"
 #include "creatures/walkdebug.h"
-#include "game/localplayersessionthing.h"
+#include "game/playerdata.h"
 #include "worldmap/worldmapfield.h"
 #include <tibia/game/gamesession.h>
 #include <tibia/worldmap/worldmapstorage.h>
@@ -62,11 +62,6 @@ const QColor& selectedFollowFrameColor()
 {
     static const QColor color = QColor::fromRgb(0x80, 0xff, 0x80, 0xff);
     return color;
-}
-
-QColor toQColor(const Color& color)
-{
-    return QColor(color.r(), color.g(), color.b(), color.a());
 }
 
 } // namespace
@@ -171,14 +166,6 @@ void TCreature::move(const qint64 startMs, const qint64 endMs, const worldmap::T
     m_movementLook = static_cast<uint8_t>(look);
     const qint64 restartAfter = m_movementTween.endTime() + 1000;
     setDirection(static_cast<uint8_t>(look));
-    // Keep the session camera Thing facing the step — otherwise idle
-    // syncWorldDrawFrom used to be the only bridge and could race.
-    if (m_isLocalPlayer) {
-        if (const LocalPlayerSessionThingPtr local = tibia::game::localPlayer()) {
-            if (local->getId() == m_creatureId)
-                local->setDirection(static_cast<tibia::client::Direction>(m_patternX), false);
-        }
-    }
 
     const bool atOrigin = worldmap::TWorldMapCoordinate(m_position) == origin;
     const bool ended = m_movementTween.isFinished();
@@ -244,9 +231,9 @@ void TCreature::update(const qint64 nowMs)
     m_marks.timedSquareShown = nowMs < m_marks.timedSquareEndMs;
     updateCoveredField();
     if (m_isLocalPlayer && walkDebugVerbose()) {
-        const Point offset = walkOffset();
+        const QPoint offset = walkOffset();
         qCDebug(lcWalk) << "frame" << nowMs << "pos" << walkPos(m_position) << "drawn"
-                        << (m_position.x * 32 + offset.x) << (m_position.y * 32 + offset.y) << "moving" << isMoving()
+                        << (m_position.x * 32 + offset.x()) << (m_position.y * 32 + offset.y()) << "moving" << isMoving()
                         << "phase" << m_animationPhase;
     }
 }
@@ -285,11 +272,11 @@ Position TCreature::coveredField() const
                     m_position.y + covered.height + (offset.height > 0 ? 1 : 0), m_position.z);
 }
 
-Point TCreature::walkOffset() const
+QPoint TCreature::walkOffset() const
 {
     const worldmap::TWorldMapExtent covered = m_movementTween.coveredFieldOffset();
     const worldmap::TWorldMapSubfieldExtent offset = m_movementTween.drawOffset();
-    return Point(covered.width * 32 + offset.width, covered.height * 32 + offset.height);
+    return QPoint(covered.width * 32 + offset.width, covered.height * 32 + offset.height);
 }
 
 bool TCreature::isDisplaced() const
@@ -336,25 +323,48 @@ void TCreature::rebuildOutfitAppearance()
         outfitInstance->setOutfitLook(m_outfit, m_patternX);
 }
 
-void TCreature::syncWorldDrawFrom(LocalPlayerSessionThing& player)
+void TCreature::syncLocalPlayerStats()
 {
-    if (!isDisplaced()) {
-        m_position = player.getPosition();
-        // Do not pull facing from the session Thing: move()/CancelWalk update
-        // storage look, while session can lag until turn() runs. Copying session
-        // here snapped the outfit back to an old cardinal after every step.
-        const auto face = static_cast<tibia::client::Direction>(m_patternX);
-        if (face <= tibia::client::West && player.getDirection() != face)
-            player.setDirection(face, false);
-    }
     m_isLocalPlayer = true;
-    m_softDead = tibia::game::localPlayerIsSoftDead();
-    tibia::game::syncLocalPlayerStorageRow(*this);
+    if (tibia::game::TPlayerData* data = tibia::game::TPlayerData::liveInstance()) {
+        m_mana = data->mana();
+        m_maxMana = data->maxMana();
+        m_manaShield = data->manaShield();
+        m_maxManaShield = data->maxManaShield();
+        m_harmony = data->harmony();
+        m_serene = data->serene();
+        m_vocation = data->vocation();
+        if (!data->characterName().empty())
+            m_name = QString::fromStdString(data->characterName());
+    }
 }
 
-Color TCreature::informationColorForHealthPercent(const uint8_t healthPercent)
+void TCreature::setSoftDead(const bool softDead)
 {
-    static constexpr Color
+    if (m_softDead == softDead)
+        return;
+    m_softDead = softDead;
+    if (softDead)
+        m_healthPercent = 0;
+}
+
+void TCreature::setInformationChannel(const uint32_t durationMs, const qint64 nowMs)
+{
+    m_informationChannelStartMs = nowMs;
+    m_informationChannelDurationMs = std::max<uint32_t>(durationMs, 1);
+}
+
+float TCreature::informationChannelProgress(const qint64 nowMs) const
+{
+    if (m_informationChannelDurationMs == 0)
+        return -1.f;
+    const auto elapsed = static_cast<float>(nowMs - m_informationChannelStartMs);
+    return std::min(100.f, elapsed * 100.f / static_cast<float>(m_informationChannelDurationMs));
+}
+
+QColor TCreature::informationColorForHealthPercent(const uint8_t healthPercent)
+{
+    static const QColor
         COLOR1(0x00, 0xBC, 0x00),
         COLOR2(0x50, 0xA1, 0x50),
         COLOR3(0xA1, 0xA1, 0x00),
@@ -505,9 +515,9 @@ void TCreature::hideTargetFrame()
     m_marks.targetFrame.setAlpha(0);
 }
 
-void TCreature::showStaticSquare(const Color& color)
+void TCreature::showStaticSquare(const QColor& color)
 {
-    m_marks.staticSquare = toQColor(color);
+    m_marks.staticSquare = color;
 }
 
 void TCreature::hideStaticSquare()
@@ -515,9 +525,9 @@ void TCreature::hideStaticSquare()
     m_marks.staticSquare.setAlpha(0);
 }
 
-void TCreature::addTimedSquare(const Color& color, const qint64 nowMs)
+void TCreature::addTimedSquare(const QColor& color, const qint64 nowMs)
 {
-    m_marks.timedSquare = toQColor(color);
+    m_marks.timedSquare = color;
     m_marks.timedSquareEndMs = nowMs + tibia::config::volatileSquareDuration();
     m_marks.timedSquareShown = true;
 }
@@ -725,7 +735,7 @@ std::vector<std::shared_ptr<TCreature>> TCreatureStorage::spectatorsNear(const P
                                                                          const int left, const int right,
                                                                          const int top, const int bottom) const
 {
-    // Match Map::getSpectatorsInRangeEx tile walk: inclusive [center - min, center + max].
+    // The rectangle is inclusive: [center - left, center + right] and so on.
     int minZ = center.z;
     int maxZ = center.z;
     if (multiFloor) {
@@ -781,17 +791,12 @@ QList<TCreatureID> TCreatureStorage::creatureIds() const
     return m_creatures.keys();
 }
 
-void TCreatureStorage::syncWorldDrawFrom(LocalPlayerSessionThing& player)
-{
-    const TCreatureID id = player.getId();
-    if (id == 0)
-        return;
-    getOrCreate(id)->syncWorldDrawFrom(player);
-}
-
 void TCreatureStorage::syncLocalPlayerStatsFromMap()
 {
-    tibia::game::syncLocalPlayerStorageWorldDraw();
+    if (const std::shared_ptr<TCreature> row = player()) {
+        row->syncLocalPlayerStats();
+        publishCreatureUpdated(row);
+    }
 }
 
 void TCreatureStorage::notifyPlayerAdded(const std::shared_ptr<TCreature>& player)

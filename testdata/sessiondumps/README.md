@@ -49,7 +49,7 @@ Software-renderer smoke needs image nodes textured before parenting (see
 
 ## Recording a richer dump (pixel oracle)
 
-With Crystal + portal up and a things pack installed:
+With Crystal + portal up and CIP assets extracted (make extract):
 
 ```bash
 make client-start ARGS='--account=EMAIL --password=PW --character=NAME --record=smoke-world.cam --play-for=15'

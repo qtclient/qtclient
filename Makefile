@@ -196,15 +196,13 @@ sync tibia-sync:
 	@test -f "$(SYNC_PY)" || { echo "[sync] missing $(SYNC_PY)"; exit 1; }
 	@python3 "$(SYNC_PY)" \
 		$(if $(TIBIA),--tibia="$(TIBIA)",) \
-		$(if $(MSGMAP),--msgmap="$(MSGMAP)",) \
-		$(if $(CLIENT_VERSION),--things-dir="$(HERE)/data/assets",)
+		$(if $(MSGMAP),--msgmap="$(MSGMAP)",)
 
 extract:
 	@test -f "$(EXTRACT_PY)" || { echo "[extract] missing $(EXTRACT_PY)"; exit 1; }
 	@python3 "$(EXTRACT_PY)" \
 		$(if $(TIBIA),--tibia="$(TIBIA)",) \
 		--assets-dir="$(HERE)/data/assets" \
-		$(if $(CLIENT_VERSION),--client-version="$(CLIENT_VERSION)",) \
 		$(EXTRACT_FLAGS)
 	@python3 "$(HERE)/tools/publish/cli.py" assets things 2>/dev/null || true
 

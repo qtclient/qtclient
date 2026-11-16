@@ -33,7 +33,7 @@ class Outfit
     };
 
 public:
-    static Color getColor(int color);
+    static QColor getColor(int color);
 
     void setId(const uint16_t id) { m_id = id; }
     void setAuxId(const uint16_t id) { m_auxId = id; }
@@ -83,10 +83,10 @@ public:
     bool isItem() const { return m_category == ThingCategoryItem; }
     bool isTemp() const { return m_temp; }
 
-    Color getHeadColor() const { return m_headColor; }
-    Color getBodyColor() const { return m_bodyColor; }
-    Color getLegsColor() const { return m_legsColor; }
-    Color getFeetColor() const { return m_feetColor; }
+    QColor getHeadColor() const { return m_headColor; }
+    QColor getBodyColor() const { return m_bodyColor; }
+    QColor getLegsColor() const { return m_legsColor; }
+    QColor getFeetColor() const { return m_feetColor; }
 
     bool operator==(const Outfit& other) const
     {
@@ -123,8 +123,8 @@ private:
     uint8_t m_mountLegs{ 0 };
     uint8_t m_mountFeet{ 0 };
 
-    Color m_headColor{ Color::white };
-    Color m_bodyColor{ Color::white };
-    Color m_legsColor{ Color::white };
-    Color m_feetColor{ Color::white };
+    QColor m_headColor{ QColor(Qt::white) };
+    QColor m_bodyColor{ QColor(Qt::white) };
+    QColor m_legsColor{ QColor(Qt::white) };
+    QColor m_feetColor{ QColor(Qt::white) };
 };

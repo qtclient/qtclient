@@ -1,6 +1,7 @@
 #pragma once
 
 #include "sound/soundciptypes.h"
+#include "sound/soundmetadatamanager.h"
 
 #include <cip_gen.h>
 

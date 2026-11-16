@@ -93,7 +93,6 @@ private:
     int m_controlScheme = 0;
     int m_lootScheme = 0; // CIP lootSchemeIndex default: Loot: Right
     bool m_loginRampUpFinished = false;
-    bool m_manualSort = false;
     std::map<int, TContainerController*> m_controllers;
     std::vector<int> m_queuedWidgets;
     std::map<int, PendingPlace> m_pendingPlaces;

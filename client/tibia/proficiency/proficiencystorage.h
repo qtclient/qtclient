@@ -31,6 +31,7 @@ struct TProficiencyPerk
     int range = 0;
     double multiplier = 0.0;
     double probability = 0.0;
+    int missileId = 0;
 };
 
 struct TProficiencyLevel
@@ -160,6 +161,7 @@ Q_SIGNALS:
 
 private:
     void loadTables() const;
+    void readTables(const std::string& path) const;
     int reachedLevel(uint16_t typeId, int count) const;
 
     std::unordered_map<uint16_t, TProficiencyData> m_data;

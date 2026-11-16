@@ -300,23 +300,24 @@ class TRecordKeyboardShortcutDialogController final
 {
     Q_OBJECT
 public:
+    /// An action bar button's key: OK writes it to the hotkey options.
     TRecordKeyboardShortcutDialogController(int actionBarId, int buttonId, bool chatModeOn, QObject* parent = nullptr);
-    /// Options-page capture (CIP +0x3a8): OK emits keySequenceSelected, does not write hotkeys.
-    /// `actionName` is the static action id for occupied-key checks (same action is not "occupied").
+    /// The options page's capture: OK only emits keySequenceSelected.
+    /// `actionName` is the action whose own keys are not "occupied".
     TRecordKeyboardShortcutDialogController(const QString& description, const QString& actionName, bool chatModeOn,
                                            const QKeySequence& current, QObject* parent = nullptr);
     ~TRecordKeyboardShortcutDialogController() override;
 
-    /// CIP moc property getters.
     QString keySequence() const override;
     bool keySequenceOccupied() const override;
     bool keySequenceHardcoded() const override;
     QString actionDescription() const override;
     bool chatModeOn() const override;
     bool onlySingleKey() const override;
+    /// The key the dialog was opened with.
+    QKeySequence selectedKeySequence() const { return m_selectedKeys; }
 
 public Q_SLOTS:
-    /// CIP moc showDialog — qtclient constructors seed the same fields, then show.
     void showDialog(bool ChatModeOn, bool OnlySingleKey, const QKeySequence& CurrentKeySequence, const QString& ActionDescription,
                     const std::set<QKeySequence>& OccupiedKeys);
     void onKeySequenceEntered(const QKeySequence& NewKeySequence) override;
@@ -326,15 +327,26 @@ public Q_SLOTS:
     void requestClose() override;
 
 protected:
+    /// Stands in for CIP's key recorder: key presses while the dialog shows.
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
-    int m_actionBarId = 0;
-    int m_buttonId = 0;
-    bool m_bindOnOk = true;
-    QString m_actionName;
+    void initKeyLists();
+    std::set<QKeySequence> occupiedKeys(const QString& ownAction, bool chatModeOn) const;
+    void startRecording();
+    void stopRecording();
+
+    /// The walk keys, which cannot be bound.
+    QList<QKeySequence> m_hardcodedKeys;
+    /// Modifiers alone, which do not make a key.
+    QList<QKeySequence> m_modifierOnlyKeys;
+    bool m_isChatModeOn = false;
+    bool m_isOnlySingleKey = false;
     QKeySequence m_keys;
-    QSet<QKeySequence> m_occupiedKeys;
+    QKeySequence m_selectedKeys;
+    QString m_description;
+    std::set<QKeySequence> m_occupiedKeys;
+    bool m_recording = false;
 };
 
 }

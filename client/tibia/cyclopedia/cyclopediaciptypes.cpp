@@ -2,6 +2,7 @@
 #include <cmath>
 #include "protocol/protocolciptypes.h"
 #include "client/staticdata.h"
+#include "cyclopedia/iteminfostorage.h"
 #include "container/containerciptypes.h"
 #include "creatures/creatureprotocolapply.h"
 #include <tibia/assets/thingtype.h>
@@ -17,6 +18,7 @@
 #include <client/const.h>
 
 #include <any>
+#include <optional>
 #include <vector>
 #include <tibia/game/gamenotify.h>
 
@@ -29,9 +31,7 @@ using Args = std::vector<std::any>;
 struct CipTypedKeep {
     TCyclopediaMapGameActionProvider tCyclopediaMapGameActionProvider;
     TGeneralPlayerStatisticsProvider tGeneralPlayerStatisticsProvider;
-    TPlayerOffenceStatsProvider tPlayerOffenceStatsProvider;
     TPlayerDefenceStatsProvider tPlayerDefenceStatsProvider;
-    TPlayerMiscStatsProvider tPlayerMiscStatsProvider;
 };
 CipTypedKeep& typedKeep()
 {
@@ -54,28 +54,10 @@ TGeneralPlayerStatisticsProvider::TGeneralPlayerStatisticsProvider()
     });
 }
 
-TPlayerOffenceStatsProvider::TPlayerOffenceStatsProvider()
-{
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterOffenceStats", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterOffenceStats>(&args[0]))
-            m_last = *data;
-        return std::any{};
-    });
-}
-
 TPlayerDefenceStatsProvider::TPlayerDefenceStatsProvider()
 {
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterDefenceStats", [this](GameObject*, const Args& args) {
         if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterDefenceStats>(&args[0]))
-            m_last = *data;
-        return std::any{};
-    });
-}
-
-TPlayerMiscStatsProvider::TPlayerMiscStatsProvider()
-{
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterMiscStats", [this](GameObject*, const Args& args) {
-        if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterMiscStats>(&args[0]))
             m_last = *data;
         return std::any{};
     });
@@ -95,6 +77,57 @@ void ownProductSurface(QObject* parent)
 
 namespace tibia::cyclopedia {
 
+void TCyclopediaProtocolMessageHandler::handleMarketStatisticsMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageMarketStatistics& message)
+{
+    // The average prices of untiered objects; a repeated object keeps its last price.
+    std::map<uint16_t, uint64_t> prices;
+    for (const auto& entry : message.entries()) {
+        if (entry.has_tier() && entry.tier() != 0)
+            continue;
+        prices[static_cast<uint16_t>(entry.object_id())] = entry.price();
+    }
+    tibia::game::notify("onItemsPrice", prices);
+}
+
+void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopedia& message)
+{
+    // The classifications in order: name, number of races, known races.
+    std::vector<CyclopediaBestiaryRace> classes;
+    classes.reserve(static_cast<size_t>(message.classes_size()));
+    uint8_t index = 0;
+    for (const auto& c : message.classes()) {
+        CyclopediaBestiaryRace& entry = classes.emplace_back();
+        entry.race = index++;
+        entry.bestClass = c.name();
+        entry.count = static_cast<uint16_t>(c.total());
+        entry.unlockedCount = static_cast<uint16_t>(c.known());
+    }
+    tibia::game::processParseBestiaryRaces(classes);
+}
+
+void TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaNewDetails& message)
+{
+    // monsterCyclopediaNewDetailsForMonster
+    tibia::game::notify("onBestiaryEntryChanged", static_cast<uint16_t>(message.race_id()));
+}
+
+void TCyclopediaProtocolMessageHandler::handleCyclopediaHouseActionResulMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& message)
+{
+    // requestHouseActionResultDialog
+    tibia::game::notify("onCyclopediaHouseAuctionMessage", message.house_id(), static_cast<uint8_t>(message.action_type()),
+                        static_cast<uint8_t>(message.error_code()), message.outbidden());
+}
+
+void TCyclopediaProtocolMessageHandler::handleXpChangedMessage(const ::tibia::protobuf::protocol::GameserverMessageXpChanged& message)
+{
+    // The progress storage stamps the gain with the current time.
+    tibia::game::notify("onUpdateExperience", message.raw_experience(), message.final_experience());
+}
+
 void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
@@ -103,10 +136,8 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
         return;
     switch (opcode) {
     case 175:
-        if (shadow->HasExtension(GameserverMessageXpChanged::gameserver_message_xp_changed)) {
-            const auto& m = shadow->GetExtension(GameserverMessageXpChanged::gameserver_message_xp_changed);
-            tibia::game::notify("onUpdateExperience", m.raw_experience(), m.final_experience());
-        }
+        if (shadow->HasExtension(GameserverMessageXpChanged::gameserver_message_xp_changed))
+            handleXpChangedMessage(shadow->GetExtension(GameserverMessageXpChanged::gameserver_message_xp_changed));
         break;
     case 206:
         if (shadow->HasExtension(GameserverMessageItemWasted::gameserver_message_item_wasted))
@@ -135,7 +166,8 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
         break;
     case 217:
         if (shadow->HasExtension(GameserverMessageMonsterCyclopediaNewDetails::gameserver_message_monster_cyclopedia_new_details))
-            tibia::game::notify("onBestiaryEntryChanged", static_cast<uint16_t>(shadow->GetExtension(GameserverMessageMonsterCyclopediaNewDetails::gameserver_message_monster_cyclopedia_new_details).race_id()));
+            handleMonsterCyclopediaNewDetailsMessage(
+                shadow->GetExtension(GameserverMessageMonsterCyclopediaNewDetails::gameserver_message_monster_cyclopedia_new_details));
         break;
     case 238:
         if (shadow->HasExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance)) {
@@ -146,11 +178,9 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
         }
         break;
     case 195:
-        if (shadow->HasExtension(GameserverMessageCyclopediaHouseActionResult::gameserver_message_cyclopedia_house_action_result)) {
-            const auto& m = shadow->GetExtension(GameserverMessageCyclopediaHouseActionResult::gameserver_message_cyclopedia_house_action_result);
-            tibia::game::notify("onCyclopediaHouseAuctionMessage", m.house_id(), static_cast<uint8_t>(m.action_type()),
-                                static_cast<uint8_t>(m.error_code()), m.outbidden());
-        }
+        if (shadow->HasExtension(GameserverMessageCyclopediaHouseActionResult::gameserver_message_cyclopedia_house_action_result))
+            handleCyclopediaHouseActionResulMessage(
+                shadow->GetExtension(GameserverMessageCyclopediaHouseActionResult::gameserver_message_cyclopedia_house_action_result));
         break;
     case 199:
         if (shadow->HasExtension(GameserverMessageCyclopediaCurrentHouseData::gameserver_message_cyclopedia_current_house_data)) {
@@ -311,18 +341,8 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
         }
         break;
     case 213:
-        if (shadow->HasExtension(GameserverMessageMonsterCyclopedia::gameserver_message_monster_cyclopedia)) {
-            std::vector<CyclopediaBestiaryRace> classes;
-            uint8_t index = 0;
-            for (const auto& c : shadow->GetExtension(GameserverMessageMonsterCyclopedia::gameserver_message_monster_cyclopedia).classes()) {
-                CyclopediaBestiaryRace& entry = classes.emplace_back();
-                entry.race = index++;
-                entry.bestClass = c.name();
-                entry.count = static_cast<uint16_t>(c.total());
-                entry.unlockedCount = static_cast<uint16_t>(c.known());
-            }
-            tibia::game::processParseBestiaryRaces(classes);
-        }
+        if (shadow->HasExtension(GameserverMessageMonsterCyclopedia::gameserver_message_monster_cyclopedia))
+            handleMonsterCyclopediaMessage(shadow->GetExtension(GameserverMessageMonsterCyclopedia::gameserver_message_monster_cyclopedia));
         break;
     case 204:
         if (shadow->HasExtension(GameserverMessageImpactTracking::gameserver_message_impact_tracking)) {
@@ -334,15 +354,8 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
         }
         break;
     case 205:
-        if (shadow->HasExtension(GameserverMessageMarketStatistics::gameserver_message_market_statistics)) {
-            // The average prices of untiered objects.
-            std::map<uint16_t, uint64_t> prices;
-            for (const auto& e : shadow->GetExtension(GameserverMessageMarketStatistics::gameserver_message_market_statistics).entries()) {
-                if (e.tier() == 0)
-                    prices[static_cast<uint16_t>(e.object_id())] = e.price();
-            }
-            tibia::game::notify("onItemsPrice", prices);
-        }
+        if (shadow->HasExtension(GameserverMessageMarketStatistics::gameserver_message_market_statistics))
+            handleMarketStatisticsMessage(shadow->GetExtension(GameserverMessageMarketStatistics::gameserver_message_market_statistics));
         break;
     case 207:
         if (shadow->HasExtension(GameserverMessageItemLooted::gameserver_message_item_looted)) {
@@ -365,6 +378,231 @@ void TCyclopediaProtocolMessageHandler::onServerMessageEnqueued(const int opcode
     default:
         break;
     }
+}
+
+namespace {
+
+using namespace ::tibia::protobuf::protocol;
+
+void sendHouseAction(const uint32_t action, const uint32_t houseId)
+{
+    auto message = protocol::newGameclientMessage(173);
+    auto* m = message->MutableExtension(GameclientMessageCyclopediaHouseAction::gameclient_message_cyclopedia_house_action);
+    m->set_action(action);
+    m->set_house_id(houseId);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void sendMonsterBonusEffectAction(const uint32_t action, const std::optional<uint32_t> charmId, const std::optional<uint32_t> raceId)
+{
+    auto message = protocol::newGameclientMessage(228);
+    auto* m = message->MutableExtension(GameclientMessageMonsterBonusEffectAction::gameclient_message_monster_bonus_effect_action);
+    m->set_action(action);
+    if (charmId)
+        m->set_charm_id(*charmId);
+    if (raceId)
+        m->set_race_id(*raceId);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+}
+
+void TCyclopediaProtocolMessageHandler::sendInspectCyclopediaObject(const uint16_t objectId)
+{
+    auto message = protocol::newGameclientMessage(205);
+    auto* m = message->MutableExtension(GameclientMessageInspectObject::gameclient_message_inspect_object);
+    m->set_inspection_type(tibia::client::INSPECT_CYCLOPEDIA);
+    m->set_object_id(objectId);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendMarketStatistics()
+{
+    protocol::sendGameclientMessage(protocol::newGameclientMessage(209));
+}
+
+void TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopedia()
+{
+    protocol::sendGameclientMessage(protocol::newGameclientMessage(225));
+}
+
+void TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopediaMonsters(const QString& classification)
+{
+    auto message = protocol::newGameclientMessage(226);
+    auto* m = message->MutableExtension(GameclientMessageOpenMonsterCyclopediaMonsters::gameclient_message_open_monster_cyclopedia_monsters);
+    m->set_request_type(0);
+    m->set_category(classification.toStdString());
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopediaMonsters(const std::vector<uint16_t>& raceIds)
+{
+    auto message = protocol::newGameclientMessage(226);
+    auto* m = message->MutableExtension(GameclientMessageOpenMonsterCyclopediaMonsters::gameclient_message_open_monster_cyclopedia_monsters);
+    m->set_request_type(1);
+    m->mutable_race_ids()->Reserve(static_cast<int>(raceIds.size()));
+    for (const uint16_t raceId : raceIds)
+        m->add_race_ids(raceId);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendOpenMonsterCyclopediaRace(const uint32_t raceId)
+{
+    auto message = protocol::newGameclientMessage(227);
+    message->MutableExtension(GameclientMessageOpenMonsterCyclopediaRace::gameclient_message_open_monster_cyclopedia_race)->set_race_id(raceId);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendUnlockCharm(const uint32_t charmId)
+{
+    sendMonsterBonusEffectAction(0, charmId, std::nullopt);
+}
+
+void TCyclopediaProtocolMessageHandler::sendAssignCharm(const uint32_t charmId, const uint32_t raceId)
+{
+    sendMonsterBonusEffectAction(1, charmId, raceId);
+}
+
+void TCyclopediaProtocolMessageHandler::sendRemoveCharm(const uint32_t charmId)
+{
+    sendMonsterBonusEffectAction(2, charmId, std::nullopt);
+}
+
+void TCyclopediaProtocolMessageHandler::sendResetAllCharms()
+{
+    sendMonsterBonusEffectAction(3, std::nullopt, std::nullopt);
+}
+
+void TCyclopediaProtocolMessageHandler::sendRequestMapArea(const uint32_t areaId)
+{
+    auto message = protocol::newGameclientMessage(219);
+    message->MutableExtension(GameclientMessageCyclopediaMapAction::gameclient_message_cyclopedia_map_action)->set_area_id(areaId);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendMapDonation(const uint32_t areaId, const uint64_t amount)
+{
+    auto message = protocol::newGameclientMessage(219);
+    auto* donation = message->MutableExtension(GameclientMessageCyclopediaMapAction::gameclient_message_cyclopedia_map_action)->mutable_donation();
+    donation->set_area_id(areaId);
+    donation->set_amount(static_cast<uint32_t>(amount));
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendResetMapAreaViewpoints(const uint32_t areaId)
+{
+    auto message = protocol::newGameclientMessage(219);
+    message->MutableExtension(GameclientMessageCyclopediaMapAction::gameclient_message_cyclopedia_map_action)->set_reset_area_id(areaId);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendOpenCharacterInfo(const uint32_t characterId, const int infoType)
+{
+    auto message = protocol::newGameclientMessage(229);
+    auto* m = message->MutableExtension(GameclientMessageOpenCyclopediaCharacterInfo::gameclient_message_open_cyclopedia_character_info);
+    m->set_character_id(characterId);
+    m->set_info_type(static_cast<uint32_t>(infoType));
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendOpenCharacterInfo(const uint32_t characterId, const int infoType,
+                                                              const uint32_t entriesPerPage, const uint32_t page)
+{
+    auto message = protocol::newGameclientMessage(229);
+    auto* m = message->MutableExtension(GameclientMessageOpenCyclopediaCharacterInfo::gameclient_message_open_cyclopedia_character_info);
+    m->set_character_id(characterId);
+    m->set_info_type(static_cast<uint32_t>(infoType));
+    m->set_entries_per_page(entriesPerPage);
+    m->set_page(page);
+    protocol::sendGameclientMessage(std::move(message));
+    if (infoType == tibia::client::CYCLOPEDIA_CHARACTERINFO_GENERALSTATS)
+        sendOpenCharacterInfo(characterId, tibia::client::CYCLOPEDIA_CHARACTERINFO_WHEEL);
+}
+
+void TCyclopediaProtocolMessageHandler::sendRequestTownHouses(const QString& town)
+{
+    auto message = protocol::newGameclientMessage(173);
+    auto* m = message->MutableExtension(GameclientMessageCyclopediaHouseAction::gameclient_message_cyclopedia_house_action);
+    m->set_action(0);
+    // "My Houses" asks for no town.
+    m->set_name(town.compare(qtTrId("houses_my_houses_town_name")) == 0 ? std::string() : town.toStdString());
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendHouseBid(const uint32_t houseId, const uint64_t bid)
+{
+    auto message = protocol::newGameclientMessage(173);
+    auto* m = message->MutableExtension(GameclientMessageCyclopediaHouseAction::gameclient_message_cyclopedia_house_action);
+    m->set_action(1);
+    m->set_house_id(houseId);
+    m->set_bid(bid);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendHouseMoveOut(const uint32_t houseId, const uint32_t date)
+{
+    auto message = protocol::newGameclientMessage(173);
+    auto* m = message->MutableExtension(GameclientMessageCyclopediaHouseAction::gameclient_message_cyclopedia_house_action);
+    m->set_action(2);
+    m->set_house_id(houseId);
+    m->set_timestamp(date);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendHouseTransfer(const uint32_t houseId, const uint32_t date, const QString& newOwner,
+                                                          const uint64_t price)
+{
+    auto message = protocol::newGameclientMessage(173);
+    auto* m = message->MutableExtension(GameclientMessageCyclopediaHouseAction::gameclient_message_cyclopedia_house_action);
+    m->set_action(3);
+    m->set_house_id(houseId);
+    m->set_timestamp(date);
+    m->set_name(newOwner.toStdString());
+    m->set_bid(price);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendHouseCancelMoveOut(const uint32_t houseId)
+{
+    sendHouseAction(4, houseId);
+}
+
+void TCyclopediaProtocolMessageHandler::sendHouseCancelTransfer(const uint32_t houseId)
+{
+    sendHouseAction(5, houseId);
+}
+
+void TCyclopediaProtocolMessageHandler::sendHouseAcceptTransfer(const uint32_t houseId)
+{
+    sendHouseAction(6, houseId);
+}
+
+void TCyclopediaProtocolMessageHandler::sendHouseRejectTransfer(const uint32_t houseId)
+{
+    sendHouseAction(7, houseId);
+}
+
+void TCyclopediaProtocolMessageHandler::sendResetPartyHuntAnalyser()
+{
+    auto message = protocol::newGameclientMessage(43);
+    message->MutableExtension(GameclientMessagePartyHuntAnalyser::gameclient_message_party_hunt_analyser)->set_action(0);
+    protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendPartyHuntObjectPrices(const std::vector<uint16_t>& objectIds)
+{
+    if (objectIds.empty())
+        return;
+    auto message = protocol::newGameclientMessage(43);
+    auto* m = message->MutableExtension(GameclientMessagePartyHuntAnalyser::gameclient_message_party_hunt_analyser);
+    m->set_action(2);
+    const TItemInfoStorage* prices = TItemInfoStorage::instance();
+    for (const uint16_t objectId : objectIds) {
+        auto* entry = m->add_prices();
+        entry->set_object_id(objectId);
+        entry->set_price(prices ? static_cast<uint64_t>(prices->lootPrice(objectId)) : 0);
+    }
+    protocol::sendGameclientMessage(std::move(message));
 }
 
 void TBestiaryTrackerProtocolMessageHandler::onServerMessageEnqueued(const int opcode)

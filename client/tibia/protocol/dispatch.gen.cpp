@@ -216,6 +216,1264 @@ void TProtocolMessageQueue::registerServerMessages()
     registerServerMessage(tibia::protobuf::protocol::GameserverMessageTaskboard::gameserver_message_taskboard, &TProtocolMessageQueue::receivedTaskboardMessage);
 }
 
+// Client message slots: each wraps its message in a GameclientMessage of that
+// message's type and enqueues it.
+void TProtocolMessageQueue::sendLogin(const tibia::protobuf::protocol::GameclientMessageLogin& LoginMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(10);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageLogin::gameclient_message_login) = LoginMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendQuitGame(const tibia::protobuf::protocol::GameclientMessageQuitGame& QuitGameMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(20);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageQuitGame::gameclient_message_quit_game) = QuitGameMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendEnterWorld(const tibia::protobuf::protocol::GameclientMessageEnterWorld& EnterWorldMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(15);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageEnterWorld::gameclient_message_enter_world) = EnterWorldMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendConnectionPingBack(const tibia::protobuf::protocol::GameclientMessageConnectionPingBack& PingBackMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(28);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageConnectionPingBack::gameclient_message_connection_ping_back) = PingBackMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendPingBack(const tibia::protobuf::protocol::GameclientMessagePingBack& PingBackMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(30);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessagePingBack::gameclient_message_ping_back) = PingBackMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGoNorth(const tibia::protobuf::protocol::GameclientMessageGoNorth& GoNorthMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(101);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGoNorth::gameclient_message_go_north) = GoNorthMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGoEast(const tibia::protobuf::protocol::GameclientMessageGoEast& GoEastMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(102);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGoEast::gameclient_message_go_east) = GoEastMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGoSouth(const tibia::protobuf::protocol::GameclientMessageGoSouth& GoSouthMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(103);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGoSouth::gameclient_message_go_south) = GoSouthMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGoWest(const tibia::protobuf::protocol::GameclientMessageGoWest& GoWestMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(104);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGoWest::gameclient_message_go_west) = GoWestMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendStop(const tibia::protobuf::protocol::GameclientMessageStop& StopMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(105);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageStop::gameclient_message_stop) = StopMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCancel(const tibia::protobuf::protocol::GameclientMessageCancel& CancelMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(190);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCancel::gameclient_message_cancel) = CancelMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTrackBestiaryRace(const tibia::protobuf::protocol::GameclientMessageTrackBestiaryRace& TrackBestiaryRaceMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(42);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTrackBestiaryRace::gameclient_message_track_bestiary_race) = TrackBestiaryRaceMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendClientCheck(const tibia::protobuf::protocol::GameclientMessageClientCheck& ClientCheckMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(99);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageClientCheck::gameclient_message_client_check) = ClientCheckMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGoNorthEast(const tibia::protobuf::protocol::GameclientMessageGoNorthEast& GoNorthEastMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(106);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGoNorthEast::gameclient_message_go_north_east) = GoNorthEastMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGoSouthEast(const tibia::protobuf::protocol::GameclientMessageGoSouthEast& GoSouthEastMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(107);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGoSouthEast::gameclient_message_go_south_east) = GoSouthEastMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGoSouthWest(const tibia::protobuf::protocol::GameclientMessageGoSouthWest& GoSouthWestMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(108);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGoSouthWest::gameclient_message_go_south_west) = GoSouthWestMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGoNorthWest(const tibia::protobuf::protocol::GameclientMessageGoNorthWest& GoNorthWestMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(109);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGoNorthWest::gameclient_message_go_north_west) = GoNorthWestMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGoPath(const tibia::protobuf::protocol::GameclientMessageGoPath& GoPathMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(100);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGoPath::gameclient_message_go_path) = GoPathMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRotateNorth(const tibia::protobuf::protocol::GameclientMessageRotateNorth& RotateNorthMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(111);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRotateNorth::gameclient_message_rotate_north) = RotateNorthMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRotateEast(const tibia::protobuf::protocol::GameclientMessageRotateEast& RotateEastMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(112);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRotateEast::gameclient_message_rotate_east) = RotateEastMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRotateSouth(const tibia::protobuf::protocol::GameclientMessageRotateSouth& RotateSouthMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(113);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRotateSouth::gameclient_message_rotate_south) = RotateSouthMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRotateWest(const tibia::protobuf::protocol::GameclientMessageRotateWest& RotateWestMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(114);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRotateWest::gameclient_message_rotate_west) = RotateWestMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendMoveObject(const tibia::protobuf::protocol::GameclientMessageMoveObject& MoveObjectMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(120);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageMoveObject::gameclient_message_move_object) = MoveObjectMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendEquipObject(const tibia::protobuf::protocol::GameclientMessageEquipObject& EquipObjectMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(119);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageEquipObject::gameclient_message_equip_object) = EquipObjectMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendToggleWrapState(const tibia::protobuf::protocol::GameclientMessageToggleWrapState& ToggleWrapStateMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(139);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageToggleWrapState::gameclient_message_toggle_wrap_state) = ToggleWrapStateMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTurnObject(const tibia::protobuf::protocol::GameclientMessageTurnObject& TurnObjectMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(133);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTurnObject::gameclient_message_turn_object) = TurnObjectMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendConfigureShowOffSocket(const tibia::protobuf::protocol::GameclientMessageConfigureShowOffSocket& ConfigureShowOffSocketMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(134);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageConfigureShowOffSocket::gameclient_message_configure_show_off_socket) = ConfigureShowOffSocketMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendUseObject(const tibia::protobuf::protocol::GameclientMessageUseObject& UseObjectMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(130);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageUseObject::gameclient_message_use_object) = UseObjectMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendUseTwoObjects(const tibia::protobuf::protocol::GameclientMessageUseTwoObjects& UseTwoObjectsMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(131);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageUseTwoObjects::gameclient_message_use_two_objects) = UseTwoObjectsMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendUseOnCreature(const tibia::protobuf::protocol::GameclientMessageUseOnCreature& UseOnCreatureMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(132);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageUseOnCreature::gameclient_message_use_on_creature) = UseOnCreatureMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendLook(const tibia::protobuf::protocol::GameclientMessageLook& LookMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(140);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageLook::gameclient_message_look) = LookMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendLookAtCreature(const tibia::protobuf::protocol::GameclientMessageLookAtCreature& LookAtCreatureMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(141);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageLookAtCreature::gameclient_message_look_at_creature) = LookAtCreatureMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendInspectPlayer(const tibia::protobuf::protocol::GameclientMessageInspectPlayer& InspectPlayerMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(206);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageInspectPlayer::gameclient_message_inspect_player) = InspectPlayerMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendInspectObject(const tibia::protobuf::protocol::GameclientMessageInspectObject& InspectObjectMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(205);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageInspectObject::gameclient_message_inspect_object) = InspectObjectMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendBlessingsDialog(const tibia::protobuf::protocol::GameclientMessageBlessingsDialog& BlessingsDialogMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(207);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageBlessingsDialog::gameclient_message_blessings_dialog) = BlessingsDialogMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendMarketStatistics(const tibia::protobuf::protocol::GameclientMessageMarketStatistics& MarketStatisticsMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(209);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageMarketStatistics::gameclient_message_market_statistics) = MarketStatisticsMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCloseContainer(const tibia::protobuf::protocol::GameclientMessageCloseContainer& CloseContainerMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(135);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCloseContainer::gameclient_message_close_container) = CloseContainerMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendUpContainer(const tibia::protobuf::protocol::GameclientMessageUpContainer& UpContainerMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(136);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageUpContainer::gameclient_message_up_container) = UpContainerMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSetTactics(const tibia::protobuf::protocol::GameclientMessageSetTactics& SetTacticsMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(160);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSetTactics::gameclient_message_set_tactics) = SetTacticsMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendBrowseField(const tibia::protobuf::protocol::GameclientMessageBrowseField& BrowseFieldMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(203);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageBrowseField::gameclient_message_browse_field) = BrowseFieldMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSeekInContainer(const tibia::protobuf::protocol::GameclientMessageSeekInContainer& SeekInContainerMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(204);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSeekInContainer::gameclient_message_seek_in_container) = SeekInContainerMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTalkMessage(const tibia::protobuf::protocol::GameclientMessageTalk& TalkMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(150);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTalk::gameclient_message_talk) = TalkMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendMarketLeave(const tibia::protobuf::protocol::GameclientMessageMarketLeave& MarketLeaveMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(244);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageMarketLeave::gameclient_message_market_leave) = MarketLeaveMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendMarketBrowse(const tibia::protobuf::protocol::GameclientMessageMarketBrowse& MarketBrowseMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(245);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageMarketBrowse::gameclient_message_market_browse) = MarketBrowseMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendMarketCancel(const tibia::protobuf::protocol::GameclientMessageMarketCancel& MarketCancelMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(247);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageMarketCancel::gameclient_message_market_cancel) = MarketCancelMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendMarketAccept(const tibia::protobuf::protocol::GameclientMessageMarketAccept& MarketAcceptMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(248);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageMarketAccept::gameclient_message_market_accept) = MarketAcceptMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendMarketCreate(const tibia::protobuf::protocol::GameclientMessageMarketCreate& MarketCreateMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(246);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageMarketCreate::gameclient_message_market_create) = MarketCreateMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCloseNPCTrade(const tibia::protobuf::protocol::GameclientMessageCloseNPCTrade& CloseNPCTradeMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(124);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCloseNPCTrade::gameclient_message_close_n_p_c_trade) = CloseNPCTradeMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendLookNPCTrade(const tibia::protobuf::protocol::GameclientMessageLookNPCTrade& LookNPCTradeMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(121);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageLookNPCTrade::gameclient_message_look_n_p_c_trade) = LookNPCTradeMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendBuyObject(const tibia::protobuf::protocol::GameclientMessageBuyObject& BuyObjectMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(122);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageBuyObject::gameclient_message_buy_object) = BuyObjectMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSellObject(const tibia::protobuf::protocol::GameclientMessageSellObject& SellObjectMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(123);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSellObject::gameclient_message_sell_object) = SellObjectMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendAttack(const tibia::protobuf::protocol::GameclientMessageAttack& AttackMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(161);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageAttack::gameclient_message_attack) = AttackMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendFollow(const tibia::protobuf::protocol::GameclientMessageFollow& FollowMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(162);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageFollow::gameclient_message_follow) = FollowMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGetChanneList(const tibia::protobuf::protocol::GameclientMessageGetChannels& GetChannelsMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(151);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGetChannels::gameclient_message_get_channels) = GetChannelsMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGuildMessage(const tibia::protobuf::protocol::GameclientMessageGuildMessage& GuildMessageMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(155);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGuildMessage::gameclient_message_guild_message) = GuildMessageMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendJoinChannel(const tibia::protobuf::protocol::GameclientMessageJoinChannel& JoinChannelMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(152);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageJoinChannel::gameclient_message_join_channel) = JoinChannelMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenChannel(const tibia::protobuf::protocol::GameclientMessageOpenChannel& OpenChannelMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(170);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenChannel::gameclient_message_open_channel) = OpenChannelMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendPrivateChannel(const tibia::protobuf::protocol::GameclientMessagePrivateChannel& PrivateChannelMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(154);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessagePrivateChannel::gameclient_message_private_channel) = PrivateChannelMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCloseNPCChannel(const tibia::protobuf::protocol::GameclientMessageCloseNPCChannel& CloseNPCChannelMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(158);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCloseNPCChannel::gameclient_message_close_n_p_c_channel) = CloseNPCChannelMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendLeaveChannel(const tibia::protobuf::protocol::GameclientMessageLeaveChannel& LeaveChannelMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(153);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageLeaveChannel::gameclient_message_leave_channel) = LeaveChannelMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendInviteToChannel(const tibia::protobuf::protocol::GameclientMessageInviteToChannel& InviteToChannelMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(171);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageInviteToChannel::gameclient_message_invite_to_channel) = InviteToChannelMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendExcludeFromChannel(const tibia::protobuf::protocol::GameclientMessageExcludeFromChannel& ExcludeFromChannelMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(172);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageExcludeFromChannel::gameclient_message_exclude_from_channel) = ExcludeFromChannelMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendMount(const tibia::protobuf::protocol::GameclientMessageMount& MountMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(212);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageMount::gameclient_message_mount) = MountMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendPickObjectToImbue(const tibia::protobuf::protocol::GameclientMessagePickObjectToImbue& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(178);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessagePickObjectToImbue::gameclient_message_pick_object_to_imbue) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendApplyImbuement(const tibia::protobuf::protocol::GameclientMessageApplyImbuement& ApplyImbuementMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(213);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageApplyImbuement::gameclient_message_apply_imbuement) = ApplyImbuementMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendApplyClearingCharm(const tibia::protobuf::protocol::GameclientMessageApplyClearingCharm& ApplyClearingCharmMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(214);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageApplyClearingCharm::gameclient_message_apply_clearing_charm) = ApplyClearingCharmMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCloseImbuingDialog(const tibia::protobuf::protocol::GameclientMessageCloseImbuingDialog& CloseImbuementDialogMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(215);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCloseImbuingDialog::gameclient_message_close_imbuing_dialog) = CloseImbuementDialogMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGetOutfit(const tibia::protobuf::protocol::GameclientMessageGetOutfit& GetOutfitMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(210);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGetOutfit::gameclient_message_get_outfit) = GetOutfitMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSetOutfit(const tibia::protobuf::protocol::GameclientMessageSetOutfit& SetOutfitMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(211);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSetOutfit::gameclient_message_set_outfit) = SetOutfitMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSetCreaturePodiumConfiguration(const tibia::protobuf::protocol::GameclientMessageSetCreaturePodiumConfiguration& SetCreaturePodiumConfigurationMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(159);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSetCreaturePodiumConfiguration::gameclient_message_set_creature_podium_configuration) = SetCreaturePodiumConfigurationMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSetHirelingName(const tibia::protobuf::protocol::GameclientMessageSetHirelingName& SetHirelingNameMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(236);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSetHirelingName::gameclient_message_set_hireling_name) = SetHirelingNameMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendInviteToParty(const tibia::protobuf::protocol::GameclientMessageInviteToParty& InviteToPartyMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(163);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageInviteToParty::gameclient_message_invite_to_party) = InviteToPartyMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendJoinParty(const tibia::protobuf::protocol::GameclientMessageJoinParty& JoinPartyMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(164);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageJoinParty::gameclient_message_join_party) = JoinPartyMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRevokeInvitation(const tibia::protobuf::protocol::GameclientMessageRevokeInvitation& RevokeInvitationMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(165);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRevokeInvitation::gameclient_message_revoke_invitation) = RevokeInvitationMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendPassLeadership(const tibia::protobuf::protocol::GameclientMessagePassLeadership& PassLeadershipMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(166);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessagePassLeadership::gameclient_message_pass_leadership) = PassLeadershipMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendLeaveParty(const tibia::protobuf::protocol::GameclientMessageLeaveParty& LeavePartyMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(167);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageLeaveParty::gameclient_message_leave_party) = LeavePartyMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendShareExperience(const tibia::protobuf::protocol::GameclientMessageShareExperience& ShareExperienceMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(168);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageShareExperience::gameclient_message_share_experience) = ShareExperienceMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendJoinAggression(const tibia::protobuf::protocol::GameclientMessageJoinAggression& JoinAggressionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(142);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageJoinAggression::gameclient_message_join_aggression) = JoinAggressionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendAddBuddy(const tibia::protobuf::protocol::GameclientMessageAddBuddy& AddBuddyMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(220);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageAddBuddy::gameclient_message_add_buddy) = AddBuddyMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRemoveBuddy(const tibia::protobuf::protocol::GameclientMessageRemoveBuddy& RemoveBuddyMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(221);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRemoveBuddy::gameclient_message_remove_buddy) = RemoveBuddyMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendEditBuddy(const tibia::protobuf::protocol::GameclientMessageEditBuddy& EditBuddyMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(222);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageEditBuddy::gameclient_message_edit_buddy) = EditBuddyMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendBuddyGroup(const tibia::protobuf::protocol::GameclientMessageBuddyGroup& BuddyGroupMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(223);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageBuddyGroup::gameclient_message_buddy_group) = BuddyGroupMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenMonsterCyclopedia(const tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopedia& OpenMonsterCyclopediaMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(225);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopedia::gameclient_message_open_monster_cyclopedia) = OpenMonsterCyclopediaMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenMonsterCyclopediaMonsters(const tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaMonsters& OpenMonsterCyclopediaMonstersMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(226);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaMonsters::gameclient_message_open_monster_cyclopedia_monsters) = OpenMonsterCyclopediaMonstersMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenMonsterCyclopediaRace(const tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaRace& OpenMonsterCyclopediaRaceMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(227);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenMonsterCyclopediaRace::gameclient_message_open_monster_cyclopedia_race) = OpenMonsterCyclopediaRaceMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendMonsterBonusEffectAction(const tibia::protobuf::protocol::GameclientMessageMonsterBonusEffectAction& MonsterBonusEffectActionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(228);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageMonsterBonusEffectAction::gameclient_message_monster_bonus_effect_action) = MonsterBonusEffectActionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenCyclopediaCharacterInfo(const tibia::protobuf::protocol::GameclientMessageOpenCyclopediaCharacterInfo& OpenCyclopediaCharacterInfoMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(229);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenCyclopediaCharacterInfo::gameclient_message_open_cyclopedia_character_info) = OpenCyclopediaCharacterInfoMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTradeObject(const tibia::protobuf::protocol::GameclientMessageTradeObject& TradeObjectMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(125);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTradeObject::gameclient_message_trade_object) = TradeObjectMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendLookTrade(const tibia::protobuf::protocol::GameclientMessageLookTrade& LookTradeMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(126);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageLookTrade::gameclient_message_look_trade) = LookTradeMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendAcceptTrade(const tibia::protobuf::protocol::GameclientMessageAcceptTrade& AcceptTradeMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(127);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageAcceptTrade::gameclient_message_accept_trade) = AcceptTradeMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRejectTrade(const tibia::protobuf::protocol::GameclientMessageRejectTrade& RejectTradeMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(128);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRejectTrade::gameclient_message_reject_trade) = RejectTradeMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendFriendSystemAction(const tibia::protobuf::protocol::GameclientMessageFriendSystemAction& FriendSystemActionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(129);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageFriendSystemAction::gameclient_message_friend_system_action) = FriendSystemActionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGetQuestLog(const tibia::protobuf::protocol::GameclientMessageGetQuestLog& GetQuestLogMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(240);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGetQuestLog::gameclient_message_get_quest_log) = GetQuestLogMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGetQuestLine(const tibia::protobuf::protocol::GameclientMessageGetQuestLine& GetQuestLineMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(241);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGetQuestLine::gameclient_message_get_quest_line) = GetQuestLineMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendAnswerModalDialog(const tibia::protobuf::protocol::GameclientMessageAnswerModalDialog& AnswerModalDialogLineMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(249);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageAnswerModalDialog::gameclient_message_answer_modal_dialog) = AnswerModalDialogLineMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRuleViolationReport(const tibia::protobuf::protocol::GameclientMessageRuleViolationReport& RuleViolationReportMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(242);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRuleViolationReport::gameclient_message_rule_violation_report) = RuleViolationReportMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendPing(const tibia::protobuf::protocol::GameclientMessagePing& PingMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(29);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessagePing::gameclient_message_ping) = PingMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendEditText(const tibia::protobuf::protocol::GameclientMessageEditText& EditTextMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(137);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageEditText::gameclient_message_edit_text) = EditTextMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendEditList(const tibia::protobuf::protocol::GameclientMessageEditList& EditListMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(138);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageEditList::gameclient_message_edit_list) = EditListMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendEditGuildMessage(const tibia::protobuf::protocol::GameclientMessageEditGuildMessage& EditGuildMessageMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(156);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageEditGuildMessage::gameclient_message_edit_guild_message) = EditGuildMessageMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRequestStoreCategories(const tibia::protobuf::protocol::GameclientMessageRequestStoreCategories& RequestStoreCategoriesMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(250);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRequestStoreCategories::gameclient_message_request_store_categories) = RequestStoreCategoriesMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRequestStoreOffers(const tibia::protobuf::protocol::GameclientMessageRequestStoreOffers& RequestStoreOffersMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(251);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRequestStoreOffers::gameclient_message_request_store_offers) = RequestStoreOffersMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendBuyStoreOffer(const tibia::protobuf::protocol::GameclientMessageBuyStoreOffer& BuyStoreOfferMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(252);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageBuyStoreOffer::gameclient_message_buy_store_offer) = BuyStoreOfferMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenTransactionHistory(const tibia::protobuf::protocol::GameclientMessageOpenTransactionHistory& OpenTransactionHistoryMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(253);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenTransactionHistory::gameclient_message_open_transaction_history) = OpenTransactionHistoryMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenTransactionDetails(const tibia::protobuf::protocol::GameclientMessageGetTransactionDetails& GetTransactionDetailsMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(201);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGetTransactionDetails::gameclient_message_get_transaction_details) = GetTransactionDetailsMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGetTransactionHistory(const tibia::protobuf::protocol::GameclientMessageGetTransactionHistory& GetTransactionHistoryMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(254);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGetTransactionHistory::gameclient_message_get_transaction_history) = GetTransactionHistoryMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGreet(const tibia::protobuf::protocol::GameclientMessageGreet& GreetMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(238);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGreet::gameclient_message_greet) = GreetMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTransferCurrency(const tibia::protobuf::protocol::GameclientMessageTransferCurrency& TransferCurrencyMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(239);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTransferCurrency::gameclient_message_transfer_currency) = TransferCurrencyMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendBugReport(const tibia::protobuf::protocol::GameclientMessageBugReport& BugReportMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(230);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageBugReport::gameclient_message_bug_report) = BugReportMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGetOfferDescription(const tibia::protobuf::protocol::GameclientMessageGetOfferDescription& GetOfferDescriptionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(232);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGetOfferDescription::gameclient_message_get_offer_description) = GetOfferDescriptionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendStoreEvent(const tibia::protobuf::protocol::GameclientMessageStoreEvent& StoreEventMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(233);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageStoreEvent::gameclient_message_store_event) = StoreEventMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendPreyAction(const tibia::protobuf::protocol::GameclientMessagePreyAction& PreyActionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(235);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessagePreyAction::gameclient_message_prey_action) = PreyActionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRequestResourceBalance(const tibia::protobuf::protocol::GameclientMessageRequestResourceBalance& RequestResourceBalanceMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(237);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRequestResourceBalance::gameclient_message_request_resource_balance) = RequestResourceBalanceMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSecondaryLogin(const tibia::protobuf::protocol::GameclientMessageSecondaryLogin& SecondaryLoginMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(11);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSecondaryLogin::gameclient_message_secondary_login) = SecondaryLoginMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGetObjectInfo(const tibia::protobuf::protocol::GameclientMessageGetObjectInfo& GetObjectInfoMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(243);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGetObjectInfo::gameclient_message_get_object_info) = GetObjectInfoMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTeleport(const tibia::protobuf::protocol::GameclientMessageTeleport& TeleportMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(115);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTeleport::gameclient_message_teleport) = TeleportMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenRewardWall(const tibia::protobuf::protocol::GameclientMessageOpenRewardWall& OpenRewardWallMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(216);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenRewardWall::gameclient_message_open_reward_wall) = OpenRewardWallMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendDailyRewardHistory(const tibia::protobuf::protocol::GameclientMessageDailyRewardHistory& DailyRewardHistoryMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(217);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageDailyRewardHistory::gameclient_message_daily_reward_history) = DailyRewardHistoryMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCollectDailyReward(const tibia::protobuf::protocol::GameclientMessageCollectDailyReward& CollectDailyRewardMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(218);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCollectDailyReward::gameclient_message_collect_daily_reward) = CollectDailyRewardMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTrackQuestFlags(const tibia::protobuf::protocol::GameclientMessageTrackQuestFlags& TrackQuestFlagsMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(208);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTrackQuestFlags::gameclient_message_track_quest_flags) = TrackQuestFlagsMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendQuickLoot(const tibia::protobuf::protocol::GameclientMessageQuickLoot& QuickLootMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(143);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageQuickLoot::gameclient_message_quick_loot) = QuickLootMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendManagedContainer(const tibia::protobuf::protocol::GameclientMessageManagedContainer& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(144);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageManagedContainer::gameclient_message_managed_container) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendQuickLootBlackWhitelist(const tibia::protobuf::protocol::GameclientMessageQuickLootBlackWhitelist& QuickLootBlackWhitelistMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(145);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageQuickLootBlackWhitelist::gameclient_message_quick_loot_black_whitelist) = QuickLootBlackWhitelistMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSetExivaOptions(const tibia::protobuf::protocol::GameclientMessageUpdateExivaOptions& UpdateExivaMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(202);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageUpdateExivaOptions::gameclient_message_update_exiva_options) = UpdateExivaMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendStashAction(const tibia::protobuf::protocol::GameclientMessageStashAction& StashActionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(40);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageStashAction::gameclient_message_stash_action) = StashActionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCyclopediaMapAction(const tibia::protobuf::protocol::GameclientMessageCyclopediaMapAction& CyclopediaMapActionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(219);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCyclopediaMapAction::gameclient_message_cyclopedia_map_action) = CyclopediaMapActionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenDepotSearch(const tibia::protobuf::protocol::GameclientMessageOpenDepotSearch& OpenDepotSearchMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(146);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenDepotSearch::gameclient_message_open_depot_search) = OpenDepotSearchMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCloseDepotSearch(const tibia::protobuf::protocol::GameclientMessageCloseDepotSearch& CloseDepotSearchMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(147);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCloseDepotSearch::gameclient_message_close_depot_search) = CloseDepotSearchMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendDepotSearchType(const tibia::protobuf::protocol::GameclientMessageDepotSearchType& DepotSearchTypeMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(148);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageDepotSearchType::gameclient_message_depot_search_type) = DepotSearchTypeMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenParentContainer(const tibia::protobuf::protocol::GameclientMessageOpenParentContainer& OpenParentContainerMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(149);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenParentContainer::gameclient_message_open_parent_container) = OpenParentContainerMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendDepotSearchRetrieve(const tibia::protobuf::protocol::GameclientMessageDepotSearchRetrieve& DepotSearchRetrieveMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(41);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageDepotSearchRetrieve::gameclient_message_depot_search_retrieve) = DepotSearchRetrieveMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCyclopediaHouseAction(const tibia::protobuf::protocol::GameclientMessageCyclopediaHouseAction& CyclopediaHouseActionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(173);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCyclopediaHouseAction::gameclient_message_cyclopedia_house_action) = CyclopediaHouseActionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenBosstiary(const tibia::protobuf::protocol::GameclientMessageOpenBosstiary& OpenBosstiaryMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(174);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenBosstiary::gameclient_message_open_bosstiary) = OpenBosstiaryMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenBossSlots(const tibia::protobuf::protocol::GameclientMessageOpenBossSlots& OpenBossSlotsMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(175);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenBossSlots::gameclient_message_open_boss_slots) = OpenBossSlotsMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendEditBossSlot(const tibia::protobuf::protocol::GameclientMessageEditBossSlot& EditBossSlotMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(176);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageEditBossSlot::gameclient_message_edit_boss_slot) = EditBossSlotMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendPartyHuntAnalyser(const tibia::protobuf::protocol::GameclientMessagePartyHuntAnalyser& PartyHuntAnalyserMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(43);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessagePartyHuntAnalyser::gameclient_message_party_hunt_analyser) = PartyHuntAnalyserMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendHighscoresMessage(const tibia::protobuf::protocol::GameclientMessageHighscores& HighscoresMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(177);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageHighscores::gameclient_message_highscores) = HighscoresMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendWeaponProficiencyCommandMessage(const tibia::protobuf::protocol::GameclientMessageWeaponProficiencyCommand& WeaponProficiencyCommand)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(179);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageWeaponProficiencyCommand::gameclient_message_weapon_proficiency_command) = WeaponProficiencyCommand;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSoulSealsFightMonsterMessage(const tibia::protobuf::protocol::GameclientMessageSoulSealsFightMonster& SoulSealsFightMonsterMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(186);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSoulSealsFightMonster::gameclient_message_soul_seals_fight_monster) = SoulSealsFightMonsterMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTeamFinderAssembleTeam(const tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam& TeamFinderAssembleTeamMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(44);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTeamFinderAssembleTeam::gameclient_message_team_finder_assemble_team) = TeamFinderAssembleTeamMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTeamFinderJoinTeam(const tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam& TeamFinderJoinTeamMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(45);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTeamFinderJoinTeam::gameclient_message_team_finder_join_team) = TeamFinderJoinTeamMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendCharacterTradeConfiguration(const tibia::protobuf::protocol::GameclientMessageCharacterTradeConfigurationAction& CharacterTradeConfigurationActionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(118);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageCharacterTradeConfigurationAction::gameclient_message_character_trade_configuration_action) = CharacterTradeConfigurationActionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGetTextForReport(const tibia::protobuf::protocol::GameclientMessageGetTextForReport& GetTextForReportMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(157);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGetTextForReport::gameclient_message_get_text_for_report) = GetTextForReportMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendExaltationAction(const tibia::protobuf::protocol::GameclientMessageExaltationAction& ExaltationActionMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(191);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageExaltationAction::gameclient_message_exaltation_action) = ExaltationActionMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendOpenExaltationHistory(const tibia::protobuf::protocol::GameclientMessageOpenExaltationHistory& OpenExaltationHistoryMessage)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(192);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageOpenExaltationHistory::gameclient_message_open_exaltation_history) = OpenExaltationHistoryMessage;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendClientDetails(const tibia::protobuf::protocol::GameclientMessageClientDetails& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(193);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageClientDetails::gameclient_message_client_details) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSetClientOptions(const tibia::protobuf::protocol::GameclientMessageSetClientOptions& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(46);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSetClientOptions::gameclient_message_set_client_options) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGatherAll(const tibia::protobuf::protocol::GameclientMessageGatherAll& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(255);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGatherAll::gameclient_message_gather_all) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendGemAtelier(const tibia::protobuf::protocol::GameclientMessageGemAtelier& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(231);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageGemAtelier::gameclient_message_gem_atelier) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendRequestSkillWheel(const tibia::protobuf::protocol::GameclientMessageRequestSkillWheel& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(97);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageRequestSkillWheel::gameclient_message_request_skill_wheel) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendApplySkillWheel(const tibia::protobuf::protocol::GameclientMessageApplySkillWheel& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(98);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageApplySkillWheel::gameclient_message_apply_skill_wheel) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTrackImbuementsMessage(const tibia::protobuf::protocol::GameclientMessageTrackImbuements& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(96);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTrackImbuements::gameclient_message_track_imbuements) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendContainerActionMessage(const tibia::protobuf::protocol::GameclientMessageContainerAction& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(117);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageContainerAction::gameclient_message_container_action) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendSetVocationMessage(const tibia::protobuf::protocol::GameclientMessageSetVocation& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(110);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageSetVocation::gameclient_message_set_vocation) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendStartOfflineTrainingMessage(const tibia::protobuf::protocol::GameclientMessageStartOfflineTraining& Message)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(116);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageStartOfflineTraining::gameclient_message_start_offline_training) = Message;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendTaskboardCommandMessage(const tibia::protobuf::protocol::GameclientMessageTaskboard& TaskboardCommand)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(95);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageTaskboard::gameclient_message_taskboard) = TaskboardCommand;
+    enqueueGameclientMessage(message);
+}
+
+void TProtocolMessageQueue::sendBossDifficultySelectionChangedMessage(const tibia::protobuf::protocol::GameclientMessageBossDifficultySelection& BossDifficultySelectionCommand)
+{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type(194);
+    *message->MutableExtension(tibia::protobuf::protocol::GameclientMessageBossDifficultySelection::gameclient_message_boss_difficulty_selection) = BossDifficultySelectionCommand;
+    enqueueGameclientMessage(message);
+}
+
 
 // Every CIP server message and the handler that applies it.
 bool isHandledServerMessage(const uint8_t opcode)

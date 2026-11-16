@@ -62,7 +62,7 @@ void TTeamJoinPageController::showDialogTab()
     m_connections.push_back(connect(handler, &teamfinder::TTeamFinderProtocolMessageHandler::teamLisUpdateAvailable, this,
                                     &TTeamJoinPageController::onTeamLisUpdateAvailable));
     // The first time: filter for the own level and vocation; the own character's team shows as led.
-    if (!m_proxy->characterFiltersSet() && tibia::game::localPlayer()) {
+    if (!m_proxy->characterFiltersSet() && tibia::game::hasLocalPlayer()) {
         m_proxy->model()->setCharacterName(QString::fromStdString(tibia::game::localPlayerName()));
         m_proxy->setCharacterFilters(static_cast<uint32_t>(tibia::game::localPlayerLevel()),
                                      static_cast<uint8_t>(tibia::game::localPlayerVocation() % 10));

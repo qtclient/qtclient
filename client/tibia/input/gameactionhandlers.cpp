@@ -223,7 +223,7 @@ void startTalking(const TGameAction& action)
     tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     const std::shared_ptr<tibia::creatures::TCreature> npc =
         storage ? storage->creatureAt(action.creatureId) : nullptr;
-    if (!npc || !tibia::game::localPlayer())
+    if (!npc || !tibia::game::hasLocalPlayer())
         return;
     const Position& from = tibia::game::localPlayerPosition();
     const Position& to = npc->position();
@@ -421,7 +421,7 @@ void publish(const TGameActionPtr& action)
         break;
     case A::LEAVE_PARTY: {
         const uint8_t shield = tibia::game::localPlayerShield();
-        if (tibia::game::localPlayer() && (shield == 1 || shield == 3))
+        if (tibia::game::hasLocalPlayer() && (shield == 1 || shield == 3))
             tibia::game::partyDisband();
         else
             tibia::game::partyLeave();
@@ -493,7 +493,7 @@ void publish(const TGameActionPtr& action)
         tibia::game::mount(false);
         break;
     case A::TOGGLE_MOUNTED:
-        if (tibia::game::localPlayer())
+        if (tibia::game::hasLocalPlayer())
             tibia::game::mount(!tibia::game::localPlayerOutfit().hasMount());
         break;
     case A::MOVE_OBJECT:

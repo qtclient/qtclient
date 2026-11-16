@@ -22,11 +22,15 @@
 
 #pragma once
 
+#include <istream>
+#include <ostream>
+
 #include <numbers>
 #include "const.h"
 
-#include <framework/const.h>
-#include <framework/util/point.h>
+#include <numbers>
+#include <QPoint>
+#include <QPointF>
 
 #include <array>
 #include <format>
@@ -157,7 +161,7 @@ public:
 
     static tibia::client::Direction getDirectionFromPositions(const Position& fromPos, const Position& toPos)
     {
-        const double angle = getAngleFromPositions(fromPos, toPos) * RAD_TO_DEC;
+        const double angle = getAngleFromPositions(fromPos, toPos) * (180.0 / std::numbers::pi);
 
         if (angle >= 360 - 22.5 || angle < 0 + 22.5)
             return tibia::client::East;
@@ -218,8 +222,8 @@ public:
     Position operator-(const Position& other) const { return { x - other.x, y - other.y, static_cast<uint8_t>(z - other.z) }; }
     Position& operator-=(const Position& other) { x -= other.x; y -= other.y; z -= other.z; return *this; }
     // Point conversion(s)
-    Position operator+(const Point& other) const { return { x + other.x, y + other.y, z }; }
-    Position& operator+=(const Point& other) { x += other.x; y += other.y; return *this; }
+    Position operator+(const QPoint& other) const { return { x + other.x(), y + other.y(), z }; }
+    Position& operator+=(const QPoint& other) { x += other.x(); y += other.y(); return *this; }
 
     Position& operator=(const Position& other) = default;
     bool operator==(const Position& other) const { return other.x == x && other.y == y && other.z == z; }

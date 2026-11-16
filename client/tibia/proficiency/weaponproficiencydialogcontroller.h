@@ -13,6 +13,8 @@
 #include <set>
 #include <vector>
 
+struct ItemInspectionData;
+
 namespace tibia {
 namespace gamewindow {
 class TMessageDialogController;
@@ -186,6 +188,10 @@ private:
     /// CIP / : asks to save unsaved perks, then runs `next`.
     void confirmUnsavedChanges(std::function<void()> next);
     void sendItemInfo(uint16_t typeId) const;
+    /// CIP: the inspection reply for the current weapon.
+    void onInspectObjectDataReceived(const ItemInspectionData& data);
+    void onPlayerDataChanged();
+    void onExaltedCurrencyBalanceChanged();
 
     TProficiencyStorage* m_storage;
     TWeaponObjectsModel m_model;

@@ -22,6 +22,10 @@ public:
     qmlcomponents::TSpriteTextureCache& cache() { return *m_cache; }
     const qmlcomponents::TSpriteTextureCache& cache() const { return *m_cache; }
 
+public Q_SLOTS:
+    void onBeforeRenderNewFrame();
+    void onSceneGraphInvalidated();
+
 private:
     std::unique_ptr<qmlcomponents::TSpriteTextureCache> m_cache;
 };

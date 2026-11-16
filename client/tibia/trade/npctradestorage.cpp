@@ -243,7 +243,7 @@ uint64_t TNPCTradeStorage::money() const
         return m_playerGoods.value(m_currencyTypeId);
     if (currencyIsName())
         return 0;
-    if (tibia::game::localPlayer())
+    if (tibia::game::hasLocalPlayer())
         return tibia::game::localPlayerTotalMoney();
     return m_goldTotal;
 }

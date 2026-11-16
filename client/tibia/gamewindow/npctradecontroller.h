@@ -12,6 +12,7 @@
 namespace tibia {
 namespace gamewindow {
 
+class TContextMenuController;
 class TMessageDialogController;
 
 /// The NPC trade options of the context menu (CIP: the options struct read
@@ -131,6 +132,10 @@ public:
     bool currencyIsGold() const override;
     /// CIP .
     bool showNameFilter() const override;
+    QObject* traderInventoryModel() const override;
+    int selectedTypeId() const override;
+    uint selectedLiquidType() const override;
+    int amountPreselected() const override;
 
 public Q_SLOTS:
     /// CIP .
@@ -156,6 +161,11 @@ public:
     Q_INVOKABLE void requestFilterByName(const QString& NameFilter) override;
 
 private:
+    /// Attaches the open trade's storage: signal wiring, proxy reset and
+    /// the first refresh.
+    void setTradeStorage();
+    /// Fills the context menu of a good (look/inspect, sort, options).
+    void buildContextMenu(TContextMenuController* menu, int typeId, uint liquidType);
     /// CIP .
     void refresh();
     /// CIP .
@@ -170,8 +180,8 @@ private:
     /// CIP .
     void updateAmount(bool force);
     void switchDirection(trade::ENPCTradeDirection direction);
-    /// CIP .
-    void trade(int amount);
+    /// Trades the preselected amount of the selected good.
+    void trade();
     void setOptions(const TNPCTradeOptions& options);
 
     QPointer<trade::TNPCTradeStorage> m_storage;
@@ -182,6 +192,7 @@ private:
     QTimer m_refreshTimer;
     uint64_t m_money = 0;
     QPointer<TMessageDialogController> m_confirmation;
+    std::vector<QMetaObject::Connection> m_storageConnections;
 };
 
 }

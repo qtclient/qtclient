@@ -492,47 +492,38 @@ bool TSoundStorage::loadCatalog(const std::string& directory)
             const auto bankBytes = readResource(directory + fileName);
             if (!bankBytes)
                 return false;
-            std::stringstream fileInputStream;
-            fileInputStream.write(bankBytes->data(), static_cast<std::streamsize>(bankBytes->size()));
-            tibia::protobuf::sound::Sounds protobufSounds;
-            if (!protobufSounds.ParseFromIstream(&fileInputStream))
-                return false;
+            // TSoundMetadataManager parses the bank; playback reads its tables.
+            m_soundMetadataManager.initialize(QByteArray::fromStdString(*bankBytes));
 
-            for (const auto& audioFile : protobufSounds.sound())
-                m_files[audioFile.id()] = audioFile.filename();
+            for (const auto& [id, sound] : m_soundMetadataManager.sounds())
+                m_files[id] = sound.fileName.toStdString();
 
-            for (const auto& protobufEffect : protobufSounds.numeric_sound_effect()) {
+            for (const auto& [id, metadata] : m_soundMetadataManager.numericSoundEffects()) {
                 CatalogEffect effect;
-                effect.type = static_cast<int>(protobufEffect.numeric_sound_type());
-                if (protobufEffect.has_simple_sound_effect())
-                    effect.soundId = protobufEffect.simple_sound_effect().sound_id();
-                if (protobufEffect.has_random_sound_effect()) {
-                    for (const uint32_t audioFileId : protobufEffect.random_sound_effect().random_sound_id())
-                        effect.randomSoundId.push_back(audioFileId);
-                }
-                m_effects.emplace(protobufEffect.id(), std::move(effect));
+                effect.type = metadata.numericSoundType;
+                if (const auto* single = std::get_if<TSingleSoundEffectMetadata>(&metadata.sound))
+                    effect.soundId = single->soundId;
+                if (const auto* random = std::get_if<TRandomSoundMetadata>(&metadata.sound))
+                    effect.randomSoundId.assign(random->soundIds.begin(), random->soundIds.end());
+                m_effects.emplace(id, std::move(effect));
             }
 
-            for (const auto& ambient : protobufSounds.ambience_stream()) {
-                m_ambients.emplace(ambient.id(), CatalogAmbient{ ambient.looping_sound_id() });
-            }
+            for (const auto& [id, stream] : m_soundMetadataManager.ambienceStreams())
+                m_ambients.emplace(id, CatalogAmbient{ stream.loopingSoundId });
 
-            for (const auto& objectAmbient : protobufSounds.ambience_object_stream()) {
+            for (const auto& [id, stream] : m_soundMetadataManager.ambienceObjectStreams()) {
                 CatalogObject object;
-                object.maxDistance = objectAmbient.max_sound_distance() > 0
-                    ? objectAmbient.max_sound_distance()
-                    : kObjectDefaultDistance;
-                for (const auto& soundEffect : objectAmbient.sound_effects())
-                    object.countToFile.emplace_back(soundEffect.looping_sound_id(), soundEffect.count());
-                const uint32_t effectId = objectAmbient.id();
+                object.maxDistance = stream.maxSoundDistance;
+                for (const auto& [count, soundId] : stream.loopingSoundIdByCount)
+                    object.countToFile.emplace_back(soundId, count);
                 m_maxObjectDistance = std::max(m_maxObjectDistance, object.maxDistance);
-                for (const auto clientId : objectAmbient.counted_appearance_types())
-                    m_objectsByClientId[clientId].push_back(effectId);
-                m_objects.emplace(effectId, std::move(object));
+                for (const auto clientId : stream.countedAppearanceTypes)
+                    m_objectsByClientId[clientId].push_back(id);
+                m_objects.emplace(id, std::move(object));
             }
 
-            for (const auto& music : protobufSounds.music_template())
-                m_music.emplace(music.id(), CatalogMusic{ music.sound_id() });
+            for (const auto& [id, music] : m_soundMetadataManager.musicTemplates())
+                m_music.emplace(id, CatalogMusic{ music.soundId });
 
             loaded = !m_files.empty();
         }
@@ -1064,7 +1055,7 @@ std::optional<Position> TSoundStorage::listenerPosition() const
 {
     if (!tibia::game::isOnline())
         return std::nullopt;
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return std::nullopt;
     const Position pos = tibia::game::localPlayerPosition();
     if (!pos.isMapPosition())

@@ -1,4 +1,5 @@
 #include "actionbarmanager.h"
+#include "game/gamesessionbase.h"
 
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
@@ -145,11 +146,13 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
         scheduleObjectRefresh();
         return std::any{};
     });
-    if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-        connect(storage, &container::TContainerStorage::containerUpdated, this, [this](container::TContainerID, bool) {
-            scheduleObjectRefresh();
-        });
-    }
+    tibia::game::onEachGameSession(this, [this] {
+        disconnect(m_containerUpdated);
+        if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
+            m_containerUpdated = connect(storage, &container::TContainerStorage::containerUpdated, this,
+                                         [this](container::TContainerID, bool) { scheduleObjectRefresh(); });
+        }
+    });
     // GameserverMessageUnlockedSpells 0x2E (CIP reads u16 count, u16 ids;
     // emits receivedUnlockedSpell per id).
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onUnlockedSpells", [this](GameObject*, const Args& args) {
@@ -272,7 +275,7 @@ void TActionBarManager::onChatModeChanged()
 
 void TActionBarManager::onWorldEntered()
 {
-    if (tibia::game::localPlayer()) {
+    if (tibia::game::hasLocalPlayer()) {
         config::THotkeyOptions::instance()->onCharacterLoggedIn();        // CIP : TRY_TO_SWITCH_HOTKEYSET(character name, no status line).
         auto action = input::mutableClone(*input::makeAction(A::TRY_TO_SWITCH_HOTKEYSET));
         action->text = QString::fromStdString(tibia::game::characterName());
@@ -302,7 +305,7 @@ void TActionBarManager::onReceivedUnlockedSpell(const int spellId)
                 return;
     }
     const bool newlyUnlocked = !spell->premium
-                               || (tibia::game::localPlayer() && tibia::game::localPlayerIsPremium());
+                               || (tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium());
     for (const int actionBarId : { 1, 4, 7, 2, 5, 8, 3, 6, 9 }) {
         for (const auto& group : m_groups) {
             if (!group || group->locked())
@@ -461,7 +464,7 @@ void TActionBarManager::execute(const Setting& setting, const bool autoRepeat)
 
 void TActionBarManager::useObject(const Setting& setting)
 {
-    if (!tibia::game::localPlayer() || setting.objectId <= 0)
+    if (!tibia::game::hasLocalPlayer() || setting.objectId <= 0)
         return;
     const auto id = uint16_t(setting.objectId);
     const auto tier = uint8_t(setting.upgradeTier.value_or(0));

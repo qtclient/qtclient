@@ -1,5 +1,7 @@
 #pragma once
 
+#include "game/gamesessionbase.h"
+
 #include "client/gamecore.h"
 
 #include <cip_gen.h>
@@ -35,7 +37,7 @@ struct GameserverCredentials
 /// Live gameserver session (CIP: TGameserverGameSession). Owns loginWorld,
 /// forceLogout, and cancelLogin on the OTC hub; other queries/actions use
 /// `gamesession` peels. SoftHooks / TGameNotify fan out CIP session signals.
-class TGameserverGameSession final : public cip::tibia::game::TGameserverGameSession
+class TGameserverGameSession final : public TGameSessionBase
 {
     Q_OBJECT
 public:

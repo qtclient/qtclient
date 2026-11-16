@@ -179,7 +179,7 @@ void TStatusBarController::updateFromPlayer()
 {
     Q_EMIT hitpiontManaValuesChanged();
     Q_EMIT comboPointsSereneChanged();
-    const bool showManaShield = tibia::game::localPlayer() && tibia::game::localPlayerIsMagicShieldVocation();
+    const bool showManaShield = tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsMagicShieldVocation();
     if (showManaShield != m_showManaShield) {
         m_showManaShield = showManaShield;
         Q_EMIT showManaShieldChanged();
@@ -214,7 +214,7 @@ int TStatusBarController::comboPoints() const
 }
 bool TStatusBarController::isSerene() const
 {
-    return tibia::game::localPlayer() && tibia::game::localPlayerIsSerene();
+    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsSerene();
 }
 bool TStatusBarController::showPlayerStatesInBar() const { return m_showPlayerStatesInBar; }
 

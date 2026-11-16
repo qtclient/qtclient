@@ -40,7 +40,7 @@ constexpr std::array<int, 2> DialogResources { 70, 73 };
 
 int profession()
 {
-    return tibia::game::localPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
+    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerVocation() % 10 : 0;
 }
 
 bool vocationMatches(const std::vector<uint32_t>& professions)
@@ -161,9 +161,7 @@ QHash<int, QByteArray> TWeaponObjectsModel::roleNames() const
 void TWeaponObjectsModel::rebuild()
 {
     std::vector<TWeaponEntry> entries;
-    for (const ThingTypePtr& type : tibia::game::thingTypes(ThingCategoryItem)) {
-        if (!type || type->getId() == 0 || !type->hasProficiency())
-            continue;
+    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getProficiencyObjectTypes()) {
         TWeaponEntry entry;
         entry.typeId = type->getId();
         entry.name = QString::fromStdString(type->getName());
@@ -266,7 +264,7 @@ bool TWeaponObjectsProxy::filterAcceptsRow(const int sourceRow, const QModelInde
         return false;
     if (!m_weaponTypes.empty() && !m_weaponTypes.contains(static_cast<int>(entry.weaponType)))
         return false;
-    if (m_filterByLevel && tibia::game::localPlayer() && tibia::game::localPlayerLevel() < entry.minimumLevel)
+    if (m_filterByLevel && tibia::game::hasLocalPlayer() && tibia::game::localPlayerLevel() < entry.minimumLevel)
         return false;
     if (m_filterByVocation && !vocationMatches(entry.professions))
         return false;
@@ -351,30 +349,18 @@ TWeaponProficiencyDialogController::TWeaponProficiencyDialogController(TProficie
 
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseItemDetail", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<ItemInspectionData>(&args[0]);
-        if (!data || data->inspectionType != ProficiencyInspection || !dialog()->isShown() || m_currentTypeId == 0)
-            return std::any{};
-        // CIP .
-        QString text = QString::fromStdString(data->name);
-        text += QLatin1Char('\n');
-        QStringList lines;
-        for (const auto& [label, value] : data->descriptions)
-            lines << QStringLiteral("%1: %2").arg(QString::fromStdString(label), QString::fromStdString(value));
-        text += lines.join(QLatin1Char('\n'));
-        m_currentInspectText = text;
-        Q_EMIT currentInspectTextChanged();
+        if (data && dialog()->isShown() && m_currentTypeId != 0)
+            onInspectObjectDataReceived(*data);
         return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onStatesChange", [this](GameObject*, const Args&) {
-        Q_EMIT canEditPerksChanged();
-        updateSelectedPerk();
+        onPlayerDataChanged();
         return std::any{};
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::resourcesBalanceChanged, this,
             [this](qint64, qint64, int type) {
-        if (type == static_cast<int>(tibia::client::RESOURCE_FORGE_DUST)) {
-            Q_EMIT dustInformationChanged();
-            updateSelectedPerk();
-        }
+        if (type == static_cast<int>(tibia::client::RESOURCE_FORGE_DUST))
+            onExaltedCurrencyBalanceChanged();
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_onAccept = m_onDiscard = nullptr;
@@ -477,6 +463,35 @@ void TWeaponProficiencyDialogController::select(const uint16_t typeId)
     const TProficiencyData* server = m_storage->data(typeId);
     m_local = server ? *server : TProficiencyData{};
     rebuildModel();
+}
+
+void TWeaponProficiencyDialogController::onInspectObjectDataReceived(const ItemInspectionData& data)
+{
+    if (data.inspectionType != ProficiencyInspection)
+        return;
+    QString text = QString::fromStdString(data.name);
+    text += QLatin1Char('\n');
+    bool first = true;
+    for (const auto& [label, value] : data.descriptions) {
+        if (!first)
+            text += QLatin1Char('\n');
+        first = false;
+        text += QStringLiteral("%1: %2").arg(QString::fromStdString(label), QString::fromStdString(value));
+    }
+    m_currentInspectText = text;
+    Q_EMIT currentInspectTextChanged();
+}
+
+void TWeaponProficiencyDialogController::onPlayerDataChanged()
+{
+    Q_EMIT canEditPerksChanged();
+    updateSelectedPerk();
+}
+
+void TWeaponProficiencyDialogController::onExaltedCurrencyBalanceChanged()
+{
+    Q_EMIT dustInformationChanged();
+    updateSelectedPerk();
 }
 
 void TWeaponProficiencyDialogController::onProficiencyDataChanged(const uint16_t typeId)
@@ -688,7 +703,7 @@ bool TWeaponProficiencyDialogController::hasEnoughDust() const
     const size_t shaped = m_local.shaped.size();
     if (m_currentTypeId == 0 || shaped >= 2)
         return true;
-    const uint64_t dust = tibia::game::localPlayer()
+    const uint64_t dust = tibia::game::hasLocalPlayer()
                               ? tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_FORGE_DUST)
                               : 0;
     const uint64_t cost = shaped == 0 ? FirstModifyDustCost : SecondModifyDustCost;
@@ -734,21 +749,23 @@ void TWeaponProficiencyDialogController::closeDialog()
 
 QString TWeaponProficiencyDialogController::currentTypeName() const
 {
+    QString name = qtTrId("weapon_proficiency_nothing_selected");
     if (m_currentTypeId != 0 && tibia::game::isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem)) {
         const ThingTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
-        if (type && !type->getName().empty())
-            return QString::fromStdString(type->getName());
+        if (type)
+            name = QString::fromStdString(type->getName());
     }
-    return qtTrId("weapon_proficiency_nothing_selected");
+    return name;
 }
 
 bool TWeaponProficiencyDialogController::currentIsUseRestricted() const
 {
+    // CIP: restricted while nothing is selected or there is no session.
     if (m_currentTypeId == 0 || !tibia::game::isValidDatId(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem))
-        return false;
+        return true;
     const ThingTypePtr type = tibia::game::thingType(static_cast<uint16_t>(m_currentTypeId), ThingCategoryItem);
-    if (!type || !tibia::game::localPlayer())
-        return false;
+    if (!type || !tibia::game::hasLocalPlayer())
+        return true;
     return tibia::game::localPlayerLevel() < type->getMinimumLevel() || !vocationMatches(type->getRestrictVocation());
 }
 
@@ -808,7 +825,7 @@ bool TWeaponProficiencyDialogController::currentProficiencyChanged() const { ret
 
 bool TWeaponProficiencyDialogController::hasPickedPerks() const
 {
-    return std::ranges::any_of(m_local.picks, [](const TPerkPick& pick) { return pick.picked; });
+    return m_currentTypeId != 0 && std::ranges::any_of(m_local.picks, [](const TPerkPick& pick) { return pick.picked; });
 }
 
 QString TWeaponProficiencyDialogController::modifiyDustCost() const

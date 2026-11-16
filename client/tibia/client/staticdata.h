@@ -52,7 +52,7 @@ struct AwareRange
     uint8_t horizontal() const { return left + right + 1; }
     uint8_t vertical() const { return top + bottom + 1; }
 
-    Size dimension() const { return { left * 2 + 1 , top * 2 + 1 }; }
+    QSize dimension() const { return { left * 2 + 1 , top * 2 + 1 }; }
 
     bool operator==(const AwareRange& other) const
     { return left == other.left && top == other.top && right == other.right && bottom == other.bottom; }
@@ -102,9 +102,9 @@ struct CreatureHudOptions
 
 struct MapPosInfo
 {
-    Rect rect;
-    Rect srcRect;
-    Point drawOffset;
+    QRect rect;
+    QRect srcRect;
+    QPoint drawOffset;
     float horizontalStretchFactor;
     float verticalStretchFactor;
     float scaleFactor;
@@ -939,6 +939,7 @@ struct CyclopediaCharacterOffenceStats
     double critChanceImbuement;
     double critChanceWheel;
     double critChanceConcoction;
+    double critChanceEventBonus;
 
     double critDamageTotal;
     double critDamageFlat;
@@ -1057,6 +1058,7 @@ struct CyclopediaCharacterMiscStats
     double momentumBase;
     double momentumBonus;
     double momentumWheel;
+    double momentumEventBonus;
 
     double dodgeTotal;
     double dodgeBase;

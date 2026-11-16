@@ -97,6 +97,17 @@ private:
     void request(int dataType, bool force);
     void sendRequest(int dataType, int page);
     void received(int dataType);
+    /// The pages filled from the server's records (CIP: one per data type).
+    void updateBaseInfo(const Args& args);
+    void updateOffenceStats(const Args& args);
+    void updateDefenceStats(const Args& args);
+    void updateMiscStats(const Args& args);
+    void updateDeaths(const Args& args);
+    void updateKills(const Args& args);
+    void updateStorePurchases(const Args& args);
+    void updateItemSummary(const Args& args);
+    void updateOutfitsMounts(const Args& args);
+    void updateTitles(const Args& args);
     void onErrorReceived(int errorCode);
     void rebuildStatsBlocks();
 

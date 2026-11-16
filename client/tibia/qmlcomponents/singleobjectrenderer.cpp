@@ -190,7 +190,7 @@ void TSingleObjectAppearanceInstanceRenderer::updatePolish()
         const QPoint spriteAt(FieldSize - size.width(), FieldSize - size.height());
         const auto& boxes = m_type->getBoundingBoxes();
         if (m_patternX < static_cast<int>(boxes.size())) {
-            const Rect& box = boxes[m_patternX];
+            const QRect& box = boxes[m_patternX];
             bounds = QRect(box.x(), box.y(), box.width(), box.height());
         } else {
             bounds = QRect(QPoint(), size);

@@ -717,7 +717,7 @@ qint64 experienceForLevel(const qint64 level)
 
 qint64 experienceToNextLevel()
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return 0;
     const int level = tibia::game::localPlayerLevel();
     return std::max<qint64>(0, experienceForLevel(level + 1) - static_cast<qint64>(tibia::game::localPlayerExperience()));
@@ -729,7 +729,7 @@ QString TProgressWidgetController::experiencePointsNeededForNextLevel() const { 
 
 double TProgressWidgetController::playerLevelProgress() const
 {
-    return tibia::game::localPlayer() ? tibia::game::localPlayerLevelPercent() / 100.0 : 0.0;
+    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerLevelPercent() / 100.0 : 0.0;
 }
 
 /// CIP: the XP needed over the XP per minute, below 6000 minutes.
@@ -966,11 +966,7 @@ void TLootAndWasteWidgetController::onWidgetQuickItemDestroyed() {}
 
 void TLootAndWasteWidgetController::saveWidgetOptions() { storeContentHeight(widget(), m_options, lootWasteOptionsKey(m_side)); }
 
-void TLootAndWasteWidgetController::onItemsChanged()
-{
-    if (!m_itemsTimer.isActive())
-        m_itemsTimer.start();
-}
+void TLootAndWasteWidgetController::onItemsChanged() { m_itemsTimer.start(); }
 
 /// The history points: the first at -n, then one per minute ending at 0.
 void TLootAndWasteWidgetController::onItemsMetricsChanged()
@@ -990,7 +986,7 @@ void TLootAndWasteWidgetController::onItemsMetricsChanged()
 void TLootAndWasteWidgetController::onGaugeTargetValueChanged(const QString& TargetValueString)
 {
     bool ok = false;
-    const qint64 value = gaugeDialogNumber(TargetValueString).toLongLong(&ok);
+    const double value = TargetValueString.toDouble(&ok);
     if (ok)
         m_storage->setGaugeTarget(m_side, value);
 }
@@ -1023,9 +1019,9 @@ bool TLootAndWasteWidgetController::isGaugeVisible() const { return m_storage->g
 
 bool TLootAndWasteWidgetController::isGraphVisible() const { return m_storage->graphVisible(m_side) && isPremiumPlayer(); }
 
-double TLootAndWasteWidgetController::gaugeTargetValue() const { return static_cast<double>(m_storage->gaugeTarget(m_side)); }
+double TLootAndWasteWidgetController::gaugeTargetValue() const { return m_storage->gaugeTarget(m_side); }
 
-QString TLootAndWasteWidgetController::gaugeTargetValueString() const { return format::multi(m_storage->gaugeTarget(m_side)); }
+QString TLootAndWasteWidgetController::gaugeTargetValueString() const { return format::multi(static_cast<quint64>(gaugeTargetValue())); }
 
 bool TLootAndWasteWidgetController::isGaugeMirrored() const { return m_side == TGainWasteStorage::Waste; }
 

@@ -30,7 +30,7 @@ using StrMapList = std::vector<StrMap>;
 
 uint64_t resourceBalance(const tibia::client::ResourceTypes_t type)
 {
-    return tibia::game::localPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
+    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
 }
 
 QString formatBalance(const uint64_t value)
@@ -118,7 +118,7 @@ TTaskboardDialogController::~TTaskboardDialogController()
 void TTaskboardDialogController::showDialog(const DialogTab& Tab)
 {
     closeDialog();
-    if (!tibia::game::localPlayer() || !tibia::game::localPlayerHasReachedMain()) {
+    if (!tibia::game::hasLocalPlayer() || !tibia::game::localPlayerHasReachedMain()) {
         m_notOnMain->setButtons({ new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK,
                                                            QKeySequence(QStringLiteral("Return"))) });
         m_notOnMain->showMessage(qtTrId("taskboard_need_to_reach_main_caption"), qtTrId("taskboard_need_to_reach_main_text"));

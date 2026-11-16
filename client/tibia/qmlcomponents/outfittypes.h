@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shared/clipboardhelper.h"
 #include "qmlcomponents/outfitpalette.h"
 
 #include <cip_gen.h>
@@ -96,6 +97,9 @@ public:
     void setJsonObjectAsBase64String(const QJsonObject& JsonObject) override;
     QJsonObject convertBase64StringAsJsonObject(const QString& Base64String) override;
     QString convertJsonObjectToBase64String(const QJsonObject& JsonObject) override;
+
+private:
+    shared::TClipboardHelper m_clipboardHelper;
 };
 
 /// Row access by role name for QML (CIP: THelperProxyModel, metacall).

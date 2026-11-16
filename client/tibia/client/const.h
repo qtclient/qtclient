@@ -1248,11 +1248,6 @@ enum SpriteMask :uint8_t
 };
 
 
-enum class TileSelectType : uint8_t
-{
-    NONE, FILTERED, NO_FILTERED
-};
-
 enum TileThingType : uint32_t
 {
     FULL_GROUND = 1 << 0,

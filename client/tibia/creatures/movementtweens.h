@@ -1,7 +1,8 @@
 #pragma once
 
 #include <client/const.h>
-#include <framework/util/point.h>
+#include <QPoint>
+#include <QPointF>
 
 #include <cstdint>
 
@@ -13,7 +14,7 @@ void advanceAllMovementTweens(int64_t timestampMs);
 void resumeMovementClock();
 
 /// Walk offset for world draw / camera (storage row; 0 if unknown).
-Point walkOffsetFor(uint32_t creatureId);
+QPoint walkOffsetFor(uint32_t creatureId);
 
 }
 }

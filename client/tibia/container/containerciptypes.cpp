@@ -1,4 +1,6 @@
+#include "game/gamesessionbase.h"
 #include "container/containerciptypes.h"
+#include "game/gamesessionstate.h"
 
 #include "appearances/appearanceinstance.h"
 #include "protocol/protocolciptypes.h"
@@ -19,7 +21,6 @@
 
 #include <algorithm>
 #include <tibia/game/thingsession_forward.h>
-#include <tibia/game/localplayersessionthing.h>
 #include <client/staticdata.h>
 #include "cyclopedia/iteminfostorage.h"
 
@@ -97,6 +98,13 @@ void TContainerProtocolMessageHandler::handleContainerMessage(const GameserverMe
                                       ContainerMessage.has_pages(), ContainerMessage.show_search(),
                                       static_cast<uint16_t>(ContainerMessage.container_size()),
                                       static_cast<uint16_t>(ContainerMessage.first_index()));
+    if (TContainerStorage* storage = TContainerStorage::instance()) {
+        std::map<uint32_t, std::string> categories;
+        for (const auto& category : ContainerMessage.categories())
+            categories.emplace(category.id(), category.name());
+        storage->applyView(static_cast<TContainerID>(ContainerMessage.container_id()), ContainerMessage.category(),
+                           std::move(categories), ContainerMessage.is_moveable(), ContainerMessage.is_holding());
+    }
 }
 
 void TContainerProtocolMessageHandler::handleCreateInContainerMessage(
@@ -300,8 +308,9 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
             auto& entry = counts[{ id, tier }];
             entry = static_cast<uint32_t>(std::min<uint64_t>(uint64_t(entry) + e.count(), std::numeric_limits<uint32_t>::max()));
         }
-        if (const auto& localPlayer = tibia::game::localPlayer()) {
-            localPlayer->setInventoryCountCache(std::move(counts));
+        if (tibia::game::hasLocalPlayer()) {
+            if (tibia::game::TGameSessionBase* session = tibia::game::TGameSessionBase::active())
+                session->objectCountStorage()->setCounts(counts);
             tibia::game::notify("updateInventoryItems");
         }
         break;
@@ -511,6 +520,130 @@ void TContainerStorage::applyOpen(const TContainerID id, const uint8_t capacity,
     emitUpdated(id, true);
 }
 
+void TContainerStorage::applyView(const TContainerID id, const uint32_t filterCategory,
+                                  std::map<uint32_t, std::string> filterCategories, const bool sortable,
+                                  const bool contentMovableToManagedContainers)
+{
+    TStoredContainer* row = mutableAt(id);
+    if (!row)
+        return;
+    row->filterCategory = filterCategory;
+    row->filterCategories = std::move(filterCategories);
+    row->sortable = sortable;
+    row->contentMovableToManagedContainers = contentMovableToManagedContainers;
+    emitUpdated(id, false);
+}
+
+std::optional<TContainerProperties> TContainerRenderProvider::containerProperties(const TContainerID id,
+                                                                                 const bool resetScrollView)
+{
+    const TContainerStorage* storage = TContainerStorage::instance();
+    const TStoredContainer* row = storage ? storage->containerAt(id) : nullptr;
+    if (!row)
+        return std::nullopt;
+    TContainerProperties properties;
+    const uint32_t capacity = row->capacity;
+    properties.caption = row->name;
+    if (row->hasPages && capacity != 0) {
+        // Rounded up, at least one page.
+        properties.numberOfPages = std::max<uint32_t>(1, (row->size + capacity - 1) / capacity);
+        properties.currentPage = row->firstIndex / capacity + 1;
+    }
+    properties.numberOfContainerSlots = capacity;
+    properties.numberOfFilledContainerSlots = static_cast<uint32_t>(row->items.size());
+    properties.levelUpButtonVisible = row->hasParent;
+    properties.searchButtonVisible = row->showSearch;
+    properties.isUpdatable = row->unlocked;
+    properties.resetScrollView = resetScrollView;
+    properties.hasPossiblyMorePages = row->size >= 0xffff;
+    properties.objects = row->items;
+    properties.indexOfFirstVisibleObject = row->firstIndex;
+    properties.configButtonVisible = row->hasConfigurationOptions();
+    properties.containerItem = row->containerItem;
+    // The markers of the visible slots, only when one of them has one.
+    QList<int> markers;
+    markers.reserve(static_cast<qsizetype>(capacity));
+    bool anyMarker = false;
+    for (uint32_t index = 0; index < capacity; ++index) {
+        const int marker = row->tutorialMarkerAt(row->firstIndex + index);
+        markers.append(marker);
+        anyMarker = anyMarker || marker != 0;
+    }
+    if (anyMarker)
+        properties.tutorialMarkerIDs = std::move(markers);
+    return properties;
+}
+
+uint32_t TContainerStorage::filterCategory(const TContainerID id) const
+{
+    const TStoredContainer* row = containerAt(id);
+    return row ? row->filterCategory : 0;
+}
+
+void TContainerStorage::setFilterCategory(const TContainerID id, const uint32_t category)
+{
+    if (TStoredContainer* row = mutableAt(id))
+        row->filterCategory = category;
+}
+
+namespace {
+bool g_manualSortMode = false;
+}
+
+bool TContainerStorage::manualSortMode()
+{
+    return g_manualSortMode;
+}
+
+void TContainerStorage::setManualSortMode(const bool enabled)
+{
+    if (g_manualSortMode == enabled)
+        return;
+    g_manualSortMode = enabled;
+    Q_EMIT manualSortModeChanged();
+}
+
+void TContainerStorage::requestFilteredContent(const TContainerID id, const uint16_t index, const uint32_t category)
+{
+    if (!tibia::game::canPerformGameAction())
+        return;
+    auto message = tibia::protocol::newGameclientMessage(204);
+    auto* m = message->MutableExtension(
+        ::tibia::protobuf::protocol::GameclientMessageSeekInContainer::gameclient_message_seek_in_container);
+    m->set_container_id(static_cast<uint32_t>(id));
+    m->set_index(index);
+    m->set_primary_type(category);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void TContainerStorage::requestSort(const TContainerID id, const uint32_t sortType, const bool backpacksFirst,
+                                    const bool recursive)
+{
+    if (!tibia::game::canPerformGameAction())
+        return;
+    auto message = tibia::protocol::newGameclientMessage(117);
+    auto* m = message->MutableExtension(
+        ::tibia::protobuf::protocol::GameclientMessageContainerAction::gameclient_message_container_action);
+    m->set_container_id(static_cast<uint32_t>(id));
+    auto* sort = m->mutable_sort();
+    sort->set_sort_type(sortType);
+    sort->set_first_flag(backpacksFirst);
+    sort->set_second_flag(recursive);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
+void TContainerStorage::requestMoveContentToManagedContainers(const TContainerID id, const bool recursive)
+{
+    if (!tibia::game::canPerformGameAction())
+        return;
+    auto message = tibia::protocol::newGameclientMessage(117);
+    auto* m = message->MutableExtension(
+        ::tibia::protobuf::protocol::GameclientMessageContainerAction::gameclient_message_container_action);
+    m->set_container_id(static_cast<uint32_t>(id));
+    m->set_move_to_managed_containers(recursive);
+    tibia::protocol::sendGameclientMessage(std::move(message));
+}
+
 void TContainerStorage::closeContainer(const TContainerID id)
 {
     if (!m_containers.remove(id))
@@ -699,6 +832,28 @@ const TInventorySlot& TInventoryContainer::slotAt(const int slotId) const
 bool TInventoryContainer::hasSlot(const int slotId) const
 {
     return slotId >= 0 && slotId < SlotCount && !m_slots[static_cast<size_t>(slotId)].empty();
+}
+
+void TObjectCountStorage::setCounts(const TCounts& counts)
+{
+    if (m_counts == counts)
+        return;
+    m_counts = counts;
+    Q_EMIT objectCountsChanged();
+}
+
+void TObjectCountStorage::clear()
+{
+    if (m_counts.empty())
+        return;
+    m_counts.clear();
+    Q_EMIT objectCountsChanged();
+}
+
+uint32_t TObjectCountStorage::count(const uint16_t typeId, const uint8_t tier) const
+{
+    const auto it = m_counts.find({ typeId, tier });
+    return it == m_counts.end() ? 0 : it->second;
 }
 
 } // namespace tibia::container

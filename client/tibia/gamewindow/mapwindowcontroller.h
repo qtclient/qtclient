@@ -40,7 +40,8 @@ public:
     bool classicView() const;
     qreal viewScale() const { return m_viewScale; }
 
-    /// CIP : options 0x4e, 0x59, 0x3d and 0x35 (light needs a GPU renderer).
+    /// The render options: textual effects, antialiasing mode, even-multiple
+    /// scaling and the light map (which needs a GPU renderer).
     void onMapWindowControllerOptionsChanged() override;
     /// CIP .
     void onMapWindowEntered() override;

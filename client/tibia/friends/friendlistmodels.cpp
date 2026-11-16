@@ -11,8 +11,8 @@ namespace {
 
 QColor outfitColor(const uint8_t index)
 {
-    const Color color = Outfit::getColor(index);
-    return QColor(color.r(), color.g(), color.b());
+    const QColor color = Outfit::getColor(index);
+    return QColor(color.red(), color.green(), color.blue());
 }
 
 /// "yyyy-MM-dd, HH:mm:ss" in local time.

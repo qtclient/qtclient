@@ -25,6 +25,23 @@ TSpriteTextureProvider::TSpriteTextureProvider(QQuickWindow* window, const bool 
     : cip::tibia::renderer::TSpriteTextureProvider(parent)
     , m_cache(std::make_unique<qmlcomponents::TSpriteTextureCache>(window, allowEvict))
 {
+    if (!window)
+        return;
+    // Both fire on the render thread, where the cache lives.
+    connect(window, &QQuickWindow::beforeRendering, this, &TSpriteTextureProvider::onBeforeRenderNewFrame,
+            Qt::DirectConnection);
+    connect(window, &QQuickWindow::sceneGraphInvalidated, this, &TSpriteTextureProvider::onSceneGraphInvalidated,
+            Qt::DirectConnection);
+}
+
+void TSpriteTextureProvider::onBeforeRenderNewFrame()
+{
+    m_cache->beginFrame();
+}
+
+void TSpriteTextureProvider::onSceneGraphInvalidated()
+{
+    m_cache->removeAll();
 }
 
 TSpriteTextureProviderManager::TSpriteTextureProviderManager(QObject* parent)

@@ -85,7 +85,7 @@ bool isPartyMember(const TCreature& creature)
 /// The protocol's vocation without its promotion.
 int baseVocation(const TCreature& creature) { return creature.vocation() % 10; }
 
-QColor colorOf(const Color& c) { return QColor(c.r(), c.g(), c.b()); }
+QColor colorOf(const QColor& c) { return QColor(c.red(), c.green(), c.blue()); }
 
 QColor outfitColor(const int index) { return colorOf(Outfit::getColor(index)); }
 
@@ -158,23 +158,128 @@ input::TGameActionPtr findAction(const input::TGameActionList& actions, const A 
 
 // ---------------------------------------------------------------------------
 
+bool BattleListEntry::operator==(const BattleListEntry& other) const
+{
+    // CIP compares the outfit by pointer and the status (icons and marks) as
+    // one record; qtclient carries both by value.
+    return creatureId == other.creatureId && name == other.name && healthPercent == other.healthPercent
+        && frameColors == other.frameColors && statusIcons == other.statusIcons && fiendish == other.fiendish
+        && leader == other.leader && leaderMinion == other.leaderMinion && outfitId == other.outfitId
+        && outfitIsObject == other.outfitIsObject && headColor == other.headColor && torsoColor == other.torsoColor
+        && legsColor == other.legsColor && detailColor == other.detailColor && firstAddOn == other.firstAddOn
+        && secondAddOn == other.secondAddOn && tutorialMarkerId == other.tutorialMarkerId && visibleOrder == other.visibleOrder
+        && distance == other.distance && temporarySelected == other.temporarySelected && manaPercent == other.manaPercent
+        && showMana == other.showMana && inSharedXpDistance == other.inSharedXpDistance && inViewport == other.inViewport
+        && vocation == other.vocation;
+}
+
+QList<int> TBattleListDataModel::changedRoles(const BattleListEntry& current, const BattleListEntry& incoming)
+{
+    QList<int> roles;
+    roles.reserve(15);
+    if (current.creatureId != incoming.creatureId)
+        roles.append(0x101);
+    if (current.name != incoming.name)
+        roles.append(0x102);
+    if (current.temporarySelected != incoming.temporarySelected)
+        roles.append(0x114);
+    // The bar's colour follows its percentage.
+    if (current.healthPercent != incoming.healthPercent) {
+        roles.append(0x103);
+        roles.append(0x104);
+    }
+    if (current.manaPercent != incoming.manaPercent)
+        roles.append(0x105);
+    if (current.showMana != incoming.showMana)
+        roles.append(0x106);
+    if (current.frameColors != incoming.frameColors)
+        roles.append(0x107);
+    if (current.statusIcons != incoming.statusIcons)
+        roles.append(0x108);
+    if (current.outfitId != incoming.outfitId)
+        roles.append(0x109);
+    if (current.outfitIsObject != incoming.outfitIsObject)
+        roles.append(0x10a);
+    if (current.headColor != incoming.headColor)
+        roles.append(0x10b);
+    if (current.torsoColor != incoming.torsoColor)
+        roles.append(0x10c);
+    if (current.legsColor != incoming.legsColor)
+        roles.append(0x10d);
+    if (current.detailColor != incoming.detailColor)
+        roles.append(0x10e);
+    if (current.firstAddOn != incoming.firstAddOn)
+        roles.append(0x10f);
+    if (current.secondAddOn != incoming.secondAddOn)
+        roles.append(0x110);
+    if (current.tutorialMarkerId != incoming.tutorialMarkerId)
+        roles.append(0x111);
+    if (current.visibleOrder != incoming.visibleOrder)
+        roles.append(0x112);
+    if (current.distance != incoming.distance)
+        roles.append(0x113);
+    if (current.inViewport != incoming.inViewport)
+        roles.append(0x115);
+    if (current.inSharedXpDistance != incoming.inSharedXpDistance)
+        roles.append(0x116);
+    if (current.fiendish != incoming.fiendish)
+        roles.append(0x117);
+    if (current.leader != incoming.leader)
+        roles.append(0x118);
+    if (current.leaderMinion != incoming.leaderMinion)
+        roles.append(0x119);
+    if (current.vocation != incoming.vocation)
+        roles.append(0x11a);
+    return roles;
+}
+
 void TBattleListDataModel::setEntries(std::vector<BattleListEntry> entries)
 {
-    const bool sameRows = entries.size() == m_entries.size()
-        && std::equal(entries.begin(), entries.end(), m_entries.begin(),
-                      [](const BattleListEntry& a, const BattleListEntry& b) { return a.creatureId == b.creatureId; });
-    if (!sameRows) {
-        beginResetModel();
-        m_entries = std::move(entries);
-        endResetModel();
-        return;
+    // The rows stay ordered by creature id (the proxy sorts the view): walk
+    // the new entries in that order, keeping, updating, inserting and removing
+    // rows.
+    std::vector<size_t> order(entries.size());
+    for (size_t i = 0; i < order.size(); ++i)
+        order[i] = i;
+    std::sort(order.begin(), order.end(),
+              [&entries](const size_t a, const size_t b) { return entries[a].creatureId < entries[b].creatureId; });
+
+    size_t row = 0;
+    for (size_t next = 0; next < order.size();) {
+        BattleListEntry& incoming = entries[order[next]];
+        if (row < m_entries.size()) {
+            BattleListEntry& current = m_entries[row];
+            if (current.creatureId == incoming.creatureId) {
+                const QList<int> roles = changedRoles(current, incoming);
+                if (current != incoming)
+                    current = std::move(incoming);
+                if (!roles.isEmpty()) {
+                    const QModelIndex changed = index(static_cast<int>(row));
+                    Q_EMIT dataChanged(changed, changed, roles);
+                }
+            } else if (current.creatureId < incoming.creatureId) {
+                beginRemoveRows({}, static_cast<int>(row), static_cast<int>(row));
+                m_entries.erase(m_entries.begin() + static_cast<std::ptrdiff_t>(row));
+                endRemoveRows();
+                continue;
+            } else {
+                beginInsertRows({}, static_cast<int>(row), static_cast<int>(row));
+                m_entries.insert(m_entries.begin() + static_cast<std::ptrdiff_t>(row), std::move(incoming));
+                endInsertRows();
+            }
+        } else {
+            const int end = rowCount();
+            beginInsertRows({}, end, end);
+            m_entries.push_back(std::move(incoming));
+            endInsertRows();
+        }
+        ++row;
+        ++next;
     }
-    for (size_t i = 0; i < entries.size(); ++i) {
-        if (entries[i] == m_entries[i])
-            continue;
-        m_entries[i] = std::move(entries[i]);
-        const QModelIndex row = index(static_cast<int>(i));
-        Q_EMIT dataChanged(row, row);
+    if (row < m_entries.size()) {
+        beginRemoveRows({}, static_cast<int>(row), rowCount() - 1);
+        m_entries.erase(m_entries.begin() + static_cast<std::ptrdiff_t>(row), m_entries.end());
+        endRemoveRows();
     }
 }
 
@@ -182,7 +287,10 @@ int TBattleListDataModel::rowCount(const QModelIndex& parent) const { return par
 
 QVariant TBattleListDataModel::data(const QModelIndex& index, const int role) const
 {
-    if (!index.isValid() || index.row() >= static_cast<int>(m_entries.size()))
+    if (index.row() < 0 || index.column() < 0 || !index.model())
+        return {};
+    // Roles 0x101-0x119; playerVocation (0x11a) has a name but no data.
+    if (index.row() >= rowCount() || static_cast<uint>(role - 0x101) > 0x18)
         return {};
     const BattleListEntry& e = m_entries[index.row()];
     switch (role) {
@@ -211,7 +319,6 @@ QVariant TBattleListDataModel::data(const QModelIndex& index, const int role) co
         case 0x117: return e.fiendish;
         case 0x118: return e.leader;
         case 0x119: return e.leaderMinion;
-        case 0x11a: return e.vocation;
         default: return {};
     }
 }
@@ -828,7 +935,7 @@ void TBattleListControllerStorage::removeOptions(const int battleListId)
 
 bool TBattleListControllerStorage::hasPremium() const
 {
-    return tibia::game::localPlayer() && tibia::game::localPlayerIsPremium();
+    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
 }
 
 TBattleListController* TBattleListControllerStorage::open(const int battleListId, const uint sidebarId)
@@ -976,7 +1083,7 @@ std::vector<TCreaturePtr> TBattleListControllerStorage::creatures(const BattleLi
 {
     std::vector<TCreaturePtr> result;
     creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-    if (!tibia::game::localPlayer() || !storage)
+    if (!tibia::game::hasLocalPlayer() || !storage)
         return result;
     const Position center = tibia::game::localPlayerPosition();
     const auto ar = tibia::game::awareRange();
@@ -1080,7 +1187,7 @@ void TBattleListControllerStorage::clearCreatureTutorialMarkers()
 void TBattleListControllerStorage::refresh()
 {
     creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance();
-    if (!tibia::game::localPlayer() || !storage || m_controllers.empty())
+    if (!tibia::game::hasLocalPlayer() || !storage || m_controllers.empty())
         return;
 
     std::set<uint32_t> present;

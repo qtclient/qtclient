@@ -243,11 +243,6 @@ QString mountGraphicsResources(const QStringList& dirs)
             // Dev extract: flat CIP assets dump.
             QDir(dir).filePath(QStringLiteral("assets/graphics_resources.rcc")),
         };
-        // Legacy: data/things/<version>/graphics_resources.rcc, newest first.
-        const QDir things(QDir(dir).filePath(QStringLiteral("things")));
-        const auto versions = things.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::Reversed);
-        for (const QString& v : versions)
-            candidates << things.filePath(v + QStringLiteral("/graphics_resources.rcc"));
         for (const QString& file : candidates) {
             QByteArray bytes;
 #if defined(__EMSCRIPTEN__)

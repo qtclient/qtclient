@@ -24,12 +24,12 @@ struct AppearanceRecord
     std::string name;
     std::string description;
     uint64_t flags = 0;
-    Size size{ 1, 1 };
-    Point displacement;
+    QSize size{ 1, 1 };
+    QPoint displacement;
     Light light;
     MarketData market{};
     std::vector<NPCData> npcSale;
-    std::vector<Rect> boundingBoxes;
+    std::vector<QRect> boundingBoxes;
     std::vector<uint32_t> sprites;
     std::vector<uint32_t> restrictVocation;
     int numPatternX = 1;
@@ -91,15 +91,15 @@ public:
     int getAnimationPhases() const;
     int getIdleAnimationPhases() const;
 
-    const Size& getSize() const { return m_record.size; }
-    const Point& getDisplacement() const { return m_record.displacement; }
+    const QSize& getSize() const { return m_record.size; }
+    const QPoint& getDisplacement() const { return m_record.displacement; }
     const Light& getLight() const { return m_record.light; }
     const MarketData& getMarketData() const { return m_record.market; }
     const std::vector<NPCData>& getNpcSaleData() const { return m_record.npcSale; }
     int getMeanPrice() const;
 
-    int getDisplacementX() const { return m_record.displacement.x; }
-    int getDisplacementY() const { return m_record.displacement.y; }
+    int getDisplacementX() const { return m_record.displacement.x(); }
+    int getDisplacementY() const { return m_record.displacement.y(); }
     int getElevation() const { return m_record.elevation; }
     uint16_t getGroundSpeed() const { return static_cast<uint16_t>(m_record.groundSpeed); }
     int getMaxTextLength() const { return m_record.maxTextLength; }
@@ -168,9 +168,9 @@ public:
     bool isEffect() const { return m_record.category == ThingCategoryEffect; }
     bool isMissile() const { return m_record.category == ThingCategoryMissile; }
     bool isCreature() const { return m_record.category == ThingCategoryCreature; }
-    bool isTopGround() const { return isGround() && m_record.size.dimension() == 4; }
-    bool isTopGroundBorder() const { return isGroundBorder() && m_record.size.dimension() == 4; }
-    bool isSingleDimension() const { return m_record.size.area() == 1; }
+    bool isTopGround() const { return isGround() && m_record.size.width() + m_record.size.height() == 4; }
+    bool isTopGroundBorder() const { return isGroundBorder() && m_record.size.width() + m_record.size.height() == 4; }
+    bool isSingleDimension() const { return m_record.size.width() * m_record.size.height() == 1; }
     bool isSingleGround() const { return isGround() && isSingleDimension(); }
     bool isSingleGroundBorder() const { return isGroundBorder() && isSingleDimension(); }
     bool isTall(bool useRealSize = false) const;
@@ -190,7 +190,7 @@ public:
     uint16_t getClassification() const { return static_cast<uint16_t>(m_record.upgradeClassification); }
     const std::vector<uint32_t>& getSprites() const { return m_record.sprites; }
     uint32_t getSpriteIndex(int w, int h, int l, int x, int y, int z, int a) const;
-    const std::vector<Rect>& getBoundingBoxes() const { return m_record.boundingBoxes; }
+    const std::vector<QRect>& getBoundingBoxes() const { return m_record.boundingBoxes; }
     float getOpacity() const { return m_record.opacity; }
     std::string getName() const { return m_record.name; }
     std::string getDescription() const { return m_record.description; }

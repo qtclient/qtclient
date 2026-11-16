@@ -1,4 +1,5 @@
 #include "chatprotocolmessagehandler.h"
+#include "game/gamesessionbase.h"
 #include <client/staticdata.h>
 
 #include "app/clientoptions.h"
@@ -318,10 +319,12 @@ TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& st
                 }
             });
     // CIP onPlayerCreatureAddedToCreatureStorage .
-    if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance()) {
-        connect(creatures, &creatures::TCreatureStorage::playerAdded, this,
-                &TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage);
-    }
+    tibia::game::onEachGameSession(this, [this] {
+        if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance()) {
+            connect(creatures, &creatures::TCreatureStorage::playerAdded, this,
+                    &TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage, Qt::UniqueConnection);
+        }
+    });
     onChatProtocolMessageHandlerOptionsChanged();
 }
 

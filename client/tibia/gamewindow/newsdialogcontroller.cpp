@@ -1,10 +1,12 @@
 #include "newsdialogcontroller.h"
 
+#include "chat/chatchannel.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "news/newsrequestuploader.h"
 #include "news/newsstorage.h"
 
+#include <QDebug>
 #include <QDesktopServices>
 #include <QHash>
 #include <QUrl>
@@ -233,17 +235,18 @@ void TNewsDialogController::linkHoverChanged(bool)
 
 void TNewsDialogController::onNewsQueryFailed(const QString& ErrorMessage)
 {
-    m_headline = tr("News");
-    m_contentText = ErrorMessage.isEmpty() ? tr("Could not load news.") : ErrorMessage;
-    Q_EMIT selectedEntryChanged();
+    qWarning() << "News query failed:" << ErrorMessage;
+    auto status = input::mutableClone(*input::makeAction(A::SET_STATUS_LINE));
+    status->text = qtTrId("news_error_text");
+    status->color = chat::systemWhite();
+    input::publish(status);
 }
 
 void TNewsDialogController::requestUpdateNewsFromWebsite()
 {
-    if (m_uploader)
-        m_uploader->requestUpdate();
-    else
-        rebuildFromStorage();
+    auto refresh = input::mutableClone(*input::makeAction(A::REFRESH_COMPENDIUM_NEWS));
+    refresh->parameter = 1;
+    input::publish(refresh);
 }
 
 void TNewsDialogController::selectCategoryWithNewestEntryOrNewestUnreadEntryIfDataAvailableAndCategoryChanged()

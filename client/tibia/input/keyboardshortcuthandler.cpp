@@ -10,9 +10,8 @@
 #include <QKeyEvent>
 #include <QQuickItem>
 #include <QQuickWindow>
-#include <QRegularExpression>
 
-#include <unordered_map>
+#include <map>
 #include <vector>
 #include <tibia/game/gamesession.h>
 
@@ -22,144 +21,168 @@ namespace {
 
 using A = EGameAction;
 
-struct TStaticAction
+/// Sets the one value a table action carries (CIP builds each typed action
+/// with it): the widget for TOGGLE_WIDGET, the bar for TOGGLE_ACTION_BAR, the
+/// mode for SET_PVP_MODE, otherwise TGameAction::parameter.
+TGameActionPtr tableAction(const A type, const int value)
 {
-    A type;
-    /// TOGGLE_WIDGET: the widget (TGameAction::instance); otherwise
-    /// TGameAction::parameter, pvpMode for SET_PVP_MODE.
-    int value = 0;
-};
-
-/// CIP 's table.
-const std::unordered_map<QString, TStaticAction>& staticActions()
-{
-    static const std::unordered_map<QString, TStaticAction> actions{
-        { QStringLiteral("ToggleSkillsWidget"), { A::TOGGLE_WIDGET, 0 } },
-        { QStringLiteral("ToggleBattlelist"), { A::TOGGLE_WIDGET, 1 } },
-        { QStringLiteral("TogglePartyBattlelist"), { A::TOGGLE_WIDGET, 2 } },
-        { QStringLiteral("ToggleVipWidget"), { A::TOGGLE_WIDGET, 3 } },
-        { QStringLiteral("TogglePreyWidget"), { A::TOGGLE_WIDGET, 5 } },
-        { QStringLiteral("ToggleSpellListWidget"), { A::TOGGLE_WIDGET, 6 } },
-        { QStringLiteral("ToggleQuestTrackerWidget"), { A::TOGGLE_WIDGET, 10 } },
-        { QStringLiteral("ToggleBestiaryTrackerWidget"), { A::TOGGLE_WIDGET, 0xb } },
-        { QStringLiteral("ToggleBosstiaryTrackerWidget"), { A::TOGGLE_WIDGET, 0xc } },
-        { QStringLiteral("ToggleBossCooldownsWidget"), { A::TOGGLE_WIDGET, 0xd } },
-        { QStringLiteral("ToggleLootTrackerWidget"), { A::TOGGLE_WIDGET, 0xe } },
-        { QStringLiteral("ToggleXPAnalyserWidget"), { A::TOGGLE_WIDGET, 0xf } },
-        { QStringLiteral("ToggleLootAnalyserWidget"), { A::TOGGLE_WIDGET, 0x10 } },
-        { QStringLiteral("ToggleSupplyAnalyserWidget"), { A::TOGGLE_WIDGET, 0x11 } },
-        { QStringLiteral("ToggleImpactAnalyserWidget"), { A::TOGGLE_WIDGET, 0x12 } },
-        { QStringLiteral("ToggleDamageInputAnalyserWidget"), { A::TOGGLE_WIDGET, 0x13 } },
-        { QStringLiteral("ToggleHuntingSessionAnalyserWidget"), { A::TOGGLE_WIDGET, 0x14 } },
-        { QStringLiteral("ToggleAnalyticsSelectorWidget"), { A::TOGGLE_WIDGET, 0x15 } },
-        { QStringLiteral("PartyHuntAnalyserWidget"), { A::TOGGLE_WIDGET, 0x16 } },
-        { QStringLiteral("ImbuementTrackerWidget"), { A::TOGGLE_WIDGET, 0x17 } },
-        { QStringLiteral("PlayerGuideWidget"), { A::TOGGLE_WIDGET, 0x18 } },
-        { QStringLiteral("OpenSecondaryBattleList"), { A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, 0xff } },
-        { QStringLiteral("ToggleMounted"), { A::TOGGLE_MOUNTED } },
-        { QStringLiteral("RequestOutfitsFromServer"), { A::REQUEST_OUTFITS_FROM_SERVER } },
-        { QStringLiteral("Logout"), { A::QUIT_GAME, 1 } },
-        { QStringLiteral("ShowOptions"), { A::OPEN_OPTIONS_MENU_DIALOG, 0 } },
-        { QStringLiteral("ShowOptionsHotkeys"), { A::OPEN_OPTIONS_MENU_DIALOG, 1 } },
-        { QStringLiteral("SelectAll"), { A::REQUEST_SELECT_ALL_TEXT } },
-        { QStringLiteral("Copy"), { A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD } },
-        { QStringLiteral("ClearOldestMessage"), { A::CLEAR_OLDEST_MESSAGE_FROM_MAPWINDOW } },
-        { QStringLiteral("OpenChannelList"), { A::GET_CHAT_CHANNEL_LIST } },
-        { QStringLiteral("StopPlayer"), { A::STOP_ATTACKING_FOLLOWING_WALKING } },
-        { QStringLiteral("ToggleCreatureHudsVisible"), { A::TOGGLE_CREATURE_HUDS_VISIBLE } },
-        { QStringLiteral("CloseCurrentChannel"), { A::CLOSE_CURRENT_CHAT_CHANNEL } },
-        { QStringLiteral("ToggleShowServermessagesInCurrentChannel"), { A::TOGGLE_SERVER_LOG_SUBSCRIPTION_IN_CURRENT_CHAT_CHANNEL } },
-        { QStringLiteral("NextChannel"), { A::DISPLAY_NEXT_CHAT_CHANNEL_TAB } },
-        { QStringLiteral("PreviousChannel"), { A::DISPLAY_PREVIOUS_CHAT_CHANNEL_TAB } },
-        { QStringLiteral("AttackFirstTarget"), { A::ATTACK_FIRST_TARGET } },
-        { QStringLiteral("AttackNextTarget"), { A::ATTACK_NEXT_TARGET } },
-        { QStringLiteral("AttackPreviousTarget"), { A::ATTACK_PREVIOUS_TARGET } },
-        { QStringLiteral("MinimapFloorUp"), { A::MINIMAP_ONE_FLOOR_UP } },
-        { QStringLiteral("MinimapFloorDown"), { A::MINIMAP_ONE_FLOOR_DOWN } },
-        { QStringLiteral("MinimapZoomIn"), { A::MINIMAP_ZOOM_IN } },
-        { QStringLiteral("MinimapZoomOut"), { A::MINIMAP_ZOOM_OUT } },
-        { QStringLiteral("MinimapScrollNorth"), { A::MINIMAP_SCROLL_NORTH } },
-        { QStringLiteral("MinimapScrollEast"), { A::MINIMAP_SCROLL_EAST } },
-        { QStringLiteral("MinimapScrollSouth"), { A::MINIMAP_SCROLL_SOUTH } },
-        { QStringLiteral("MinimapScrollWest"), { A::MINIMAP_SCROLL_WEST } },
-        { QStringLiteral("MinimapCenter"), { A::MINIMAP_CENTER } },
-        { QStringLiteral("ChangeCharacter"), { A::CHANGE_CHARACTER } },
-        { QStringLiteral("ShowIgnorelist"), { A::OPEN_WHITEBLACKLIST_DIALOG } },
-        { QStringLiteral("ShowExivaOptions"), { A::OPEN_EXIVA_OPTIONS_DIALOG } },
-        { QStringLiteral("NextHotkeyPreset"), { A::SWITCH_TO_NEXT_HOTKEYSET } },
-        { QStringLiteral("PreviousHotkeyPreset"), { A::SWITCH_TO_PREVIOUS_HOTKEYSET } },
-        { QStringLiteral("ToggleFPSLagIndicator"), { A::TOGGLE_FPS_LATENCY_INDICATOR } },
-        { QStringLiteral("Bugreport"), { A::REPORT_BUG_OTHER } },
-        { QStringLiteral("ToggleFullscreen"), { A::TOGGLE_FULLSCREEN } },
-        { QStringLiteral("ShowLenshelp"), { A::LENSHELP_ACTIVATE } },
-        { QStringLiteral("ShowPrey"), { A::OPEN_PREY_DIALOG } },
-        { QStringLiteral("ShowCompendium"), { A::OPEN_NEWS_DIALOG, 0 } },
-        { QStringLiteral("ShowQuestlog"), { A::OPEN_QUESTLOG_DIALOG, 0 } },
-        { QStringLiteral("ShowItemInformation"), { A::OPEN_CYCLOPEDIA, 0 } },
-        { QStringLiteral("ShowBestiary"), { A::OPEN_CYCLOPEDIA, 1 } },
-        { QStringLiteral("ShowCharacterInfo"), { A::OPEN_CYCLOPEDIA, 2 } },
-        { QStringLiteral("ShowCharms"), { A::OPEN_CYCLOPEDIA, 3 } },
-        { QStringLiteral("ShowCyclopediaMap"), { A::OPEN_CYCLOPEDIA, 4 } },
-        { QStringLiteral("ShowCyclopediaMagicalArchive"), { A::OPEN_CYCLOPEDIA, 8 } },
-        { QStringLiteral("OpenRewardWall"), { A::REQUEST_OPEN_REWARD_WALL } },
-        { QStringLiteral("OpenManageLootContainer"), { A::OPEN_MANAGE_LOOT_CONTAINER } },
-        { QStringLiteral("SetPvPModeDove"), { A::SET_PVP_MODE, 0 } },
-        { QStringLiteral("SetPvPModeWhiteHand"), { A::SET_PVP_MODE, 1 } },
-        { QStringLiteral("SetPvPModeYellowHand"), { A::SET_PVP_MODE, 2 } },
-        { QStringLiteral("SetPvPModeRedFist"), { A::SET_PVP_MODE, 3 } },
-        { QStringLiteral("ChatModeOff"), { A::SWITCH_CHAT_MODE, 0 } },
-        { QStringLiteral("ChatModeOn"), { A::SWITCH_CHAT_MODE, 1 } },
-        { QStringLiteral("ChatModeTemporaryOn"), { A::SWITCH_CHAT_MODE, 2 } },
-        { QStringLiteral("PressEnterInChat"), { A::PRESS_ENTER_IN_CHAT } },
-        { QStringLiteral("ToggleActionBar1"), { A::TOGGLE_ACTION_BAR, 1 } },
-        { QStringLiteral("ToggleActionBar2"), { A::TOGGLE_ACTION_BAR, 2 } },
-        { QStringLiteral("ToggleActionBar3"), { A::TOGGLE_ACTION_BAR, 3 } },
-        { QStringLiteral("ToggleLeftActionBar1"), { A::TOGGLE_ACTION_BAR, 4 } },
-        { QStringLiteral("ToggleLeftActionBar2"), { A::TOGGLE_ACTION_BAR, 5 } },
-        { QStringLiteral("ToggleLeftActionBar3"), { A::TOGGLE_ACTION_BAR, 6 } },
-        { QStringLiteral("ToggleRightActionBar1"), { A::TOGGLE_ACTION_BAR, 7 } },
-        { QStringLiteral("ToggleRightActionBar2"), { A::TOGGLE_ACTION_BAR, 8 } },
-        { QStringLiteral("ToggleRightActionBar3"), { A::TOGGLE_ACTION_BAR, 9 } },
-        { QStringLiteral("ToggleBottomActionBars"), { A::TOGGLE_ACTION_BARS, 0 } },
-        { QStringLiteral("ToggleLeftActionBars"), { A::TOGGLE_ACTION_BARS, 1 } },
-        { QStringLiteral("ToggleRightActionBars"), { A::TOGGLE_ACTION_BARS, 2 } },
-        { QStringLiteral("ToggleChaseOpponents"), { A::TOGGLE_CHASE_OPPONENTS } },
-        { QStringLiteral("ToggleSecureMode"), { A::TOGGLE_SECURE_MODE } },
-        { QStringLiteral("ToggleExiaAllowAll"), { A::EXIVA_TOGGLE_ALLOW_EVERYONE } },
-        { QStringLiteral("TakeScreenshot"), { A::TAKE_MANUAL_SCREENSHOT } },
-        { QStringLiteral("FriendList"), { A::OPEN_SOCIAL_DIALOG, 0 } },
-        // CIP OPEN_SOCIAL_DIALOG parameter p opens tab p + 1 (TSocialDialogController).
-        { QStringLiteral("FriendInvites"), { A::OPEN_SOCIAL_DIALOG, 1 } },
-        { QStringLiteral("AccountSearch"), { A::OPEN_SOCIAL_DIALOG, 2 } },
-        { QStringLiteral("Badges"), { A::OPEN_SOCIAL_DIALOG, 3 } },
-        { QStringLiteral("FriendsConfiguration"), { A::OPEN_SOCIAL_DIALOG, 4 } },
-        { QStringLiteral("JoinTeam"), { A::OPEN_SOCIAL_DIALOG, 5 } },
-        { QStringLiteral("AssembleTeam"), { A::OPEN_SOCIAL_DIALOG, 6 } },
-        { QStringLiteral("OpenExaltationForgeDialog"), { A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG } },
-        { QStringLiteral("ToggleSound"), { A::TOGGLE_SOUND } },
-        { QStringLiteral("OpenOwnSkillWheel"), { A::REQUEST_OWN_SKILL_WHEEL } },
-        { QStringLiteral("OpenOwnWeaponProficiencyDialog"), { A::OPEN_WEAPON_PROFICIENCY_DIALOG } },
-        { QStringLiteral("OpenTaskBoardDialog"), { A::OPEN_TASKBOARD_DIALOG } },
-        { QStringLiteral("ShowMinimapMarkerDialogForCurrentPosition"), { A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION } },
-        { QStringLiteral("QuickLootAreaAtPlayer"), { A::QUICK_LOOT_AREA_AT_PLAYER } },
-        { QStringLiteral("ToggleManualSortMode"), { A::TOGGLE_MANUAL_SORT_MODE } },
-    };
-    return actions;
+    auto action = mutableClone(*makeAction(type));
+    switch (type) {
+    case A::TOGGLE_WIDGET:
+        action->instance = value;
+        break;
+    case A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR:
+        action->instance = value;
+        action->sidebarId = 0xff;
+        break;
+    case A::TOGGLE_ACTION_BAR:
+        action->actionBarId = value;
+        break;
+    case A::SET_PVP_MODE:
+        action->pvpMode = value;
+        break;
+    default:
+        action->parameter = value;
+        break;
+    }
+    return action;
 }
 
-/// 's channel openers: OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT with a
-/// channel identifier (THelpChannelIdentifier is server channel 7,
-/// local, server log, NPC,
-/// loot).
-const std::unordered_map<QString, chat::TChatChannelIdentifier>& channelOpeners()
+/// CIP's hotkey action table: action name -> prebuilt game action. The Go*
+/// names map to no action (movement keys reach the movement interpreter).
+const std::map<QString, TGameActionPtr>& actionsByName()
 {
-    using I = chat::TChatChannelIdentifier;
-    static const std::unordered_map<QString, I> openers{
-        { QStringLiteral("OpenHelpChannel"), I::help() },        { QStringLiteral("ShowDefaultChannel"), I{ I::Local } },
-        { QStringLiteral("OpenServerChannel"), I{ I::ServerLog } }, { QStringLiteral("OpenNPCChannel"), I{ I::Npc } },
-        { QStringLiteral("OpenLootChannel"), I{ I::Loot } },
-    };
-    return openers;
+    static const std::map<QString, TGameActionPtr> actions = [] {
+        std::map<QString, TGameActionPtr> map;
+        const auto add = [&map](const QString& name, const A type, const int value) { map.emplace(name, tableAction(type, value)); };
+        const auto channel = [&map](const QString& name, const chat::TChatChannelIdentifier& id) {
+            map.emplace(name, std::make_shared<TGameActionChatChannel>(A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT, id.type, id.id));
+        };
+        add(QStringLiteral("ToggleSkillsWidget"), A::TOGGLE_WIDGET, 0);
+        add(QStringLiteral("ToggleBattlelist"), A::TOGGLE_WIDGET, 1);
+        add(QStringLiteral("TogglePartyBattlelist"), A::TOGGLE_WIDGET, 2);
+        add(QStringLiteral("ToggleVipWidget"), A::TOGGLE_WIDGET, 3);
+        add(QStringLiteral("TogglePreyWidget"), A::TOGGLE_WIDGET, 5);
+        add(QStringLiteral("ToggleSpellListWidget"), A::TOGGLE_WIDGET, 6);
+        add(QStringLiteral("ToggleQuestTrackerWidget"), A::TOGGLE_WIDGET, 10);
+        add(QStringLiteral("ToggleBestiaryTrackerWidget"), A::TOGGLE_WIDGET, 0xb);
+        add(QStringLiteral("ToggleBosstiaryTrackerWidget"), A::TOGGLE_WIDGET, 0xc);
+        add(QStringLiteral("ToggleBossCooldownsWidget"), A::TOGGLE_WIDGET, 0xd);
+        add(QStringLiteral("ToggleLootTrackerWidget"), A::TOGGLE_WIDGET, 0xe);
+        add(QStringLiteral("ToggleXPAnalyserWidget"), A::TOGGLE_WIDGET, 0xf);
+        add(QStringLiteral("ToggleLootAnalyserWidget"), A::TOGGLE_WIDGET, 0x10);
+        add(QStringLiteral("ToggleSupplyAnalyserWidget"), A::TOGGLE_WIDGET, 0x11);
+        add(QStringLiteral("ToggleImpactAnalyserWidget"), A::TOGGLE_WIDGET, 0x12);
+        add(QStringLiteral("ToggleDamageInputAnalyserWidget"), A::TOGGLE_WIDGET, 0x13);
+        add(QStringLiteral("ToggleHuntingSessionAnalyserWidget"), A::TOGGLE_WIDGET, 0x14);
+        add(QStringLiteral("ToggleAnalyticsSelectorWidget"), A::TOGGLE_WIDGET, 0x15);
+        add(QStringLiteral("PartyHuntAnalyserWidget"), A::TOGGLE_WIDGET, 0x16);
+        add(QStringLiteral("ImbuementTrackerWidget"), A::TOGGLE_WIDGET, 0x17);
+        add(QStringLiteral("PlayerGuideWidget"), A::TOGGLE_WIDGET, 0x18);
+        add(QStringLiteral("OpenSecondaryBattleList"), A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, 0xff);
+        add(QStringLiteral("ToggleMounted"), A::TOGGLE_MOUNTED, 0);
+        add(QStringLiteral("RequestOutfitsFromServer"), A::REQUEST_OUTFITS_FROM_SERVER, 0);
+        add(QStringLiteral("Logout"), A::QUIT_GAME, 1);
+        add(QStringLiteral("ShowOptions"), A::OPEN_OPTIONS_MENU_DIALOG, 0);
+        add(QStringLiteral("ShowOptionsHotkeys"), A::OPEN_OPTIONS_MENU_DIALOG, 1);
+        add(QStringLiteral("SelectAll"), A::REQUEST_SELECT_ALL_TEXT, 0);
+        add(QStringLiteral("Copy"), A::REQUEST_COPY_SELECTED_TEXT_TO_CLIPBOARD, 0);
+        add(QStringLiteral("ClearOldestMessage"), A::CLEAR_OLDEST_MESSAGE_FROM_MAPWINDOW, 0);
+        add(QStringLiteral("OpenChannelList"), A::GET_CHAT_CHANNEL_LIST, 0);
+        add(QStringLiteral("StopPlayer"), A::STOP_ATTACKING_FOLLOWING_WALKING, 0);
+        add(QStringLiteral("ToggleCreatureHudsVisible"), A::TOGGLE_CREATURE_HUDS_VISIBLE, 0);
+        add(QStringLiteral("CloseCurrentChannel"), A::CLOSE_CURRENT_CHAT_CHANNEL, 0);
+        add(QStringLiteral("ToggleShowServermessagesInCurrentChannel"), A::TOGGLE_SERVER_LOG_SUBSCRIPTION_IN_CURRENT_CHAT_CHANNEL, 0);
+        add(QStringLiteral("NextChannel"), A::DISPLAY_NEXT_CHAT_CHANNEL_TAB, 0);
+        add(QStringLiteral("PreviousChannel"), A::DISPLAY_PREVIOUS_CHAT_CHANNEL_TAB, 0);
+        add(QStringLiteral("AttackFirstTarget"), A::ATTACK_FIRST_TARGET, 0);
+        add(QStringLiteral("AttackNextTarget"), A::ATTACK_NEXT_TARGET, 0);
+        add(QStringLiteral("AttackPreviousTarget"), A::ATTACK_PREVIOUS_TARGET, 0);
+        add(QStringLiteral("MinimapFloorUp"), A::MINIMAP_ONE_FLOOR_UP, 0);
+        add(QStringLiteral("MinimapFloorDown"), A::MINIMAP_ONE_FLOOR_DOWN, 0);
+        add(QStringLiteral("MinimapZoomIn"), A::MINIMAP_ZOOM_IN, 0);
+        add(QStringLiteral("MinimapZoomOut"), A::MINIMAP_ZOOM_OUT, 0);
+        add(QStringLiteral("MinimapScrollNorth"), A::MINIMAP_SCROLL_NORTH, 0);
+        add(QStringLiteral("MinimapScrollEast"), A::MINIMAP_SCROLL_EAST, 0);
+        add(QStringLiteral("MinimapScrollSouth"), A::MINIMAP_SCROLL_SOUTH, 0);
+        add(QStringLiteral("MinimapScrollWest"), A::MINIMAP_SCROLL_WEST, 0);
+        add(QStringLiteral("MinimapCenter"), A::MINIMAP_CENTER, 0);
+        add(QStringLiteral("ChangeCharacter"), A::CHANGE_CHARACTER, 0);
+        add(QStringLiteral("ShowIgnorelist"), A::OPEN_WHITEBLACKLIST_DIALOG, 0);
+        add(QStringLiteral("ShowExivaOptions"), A::OPEN_EXIVA_OPTIONS_DIALOG, 0);
+        add(QStringLiteral("NextHotkeyPreset"), A::SWITCH_TO_NEXT_HOTKEYSET, 0);
+        add(QStringLiteral("PreviousHotkeyPreset"), A::SWITCH_TO_PREVIOUS_HOTKEYSET, 0);
+        add(QStringLiteral("ToggleFPSLagIndicator"), A::TOGGLE_FPS_LATENCY_INDICATOR, 0);
+        add(QStringLiteral("Bugreport"), A::REPORT_BUG_OTHER, 0);
+        add(QStringLiteral("ToggleFullscreen"), A::TOGGLE_FULLSCREEN, 0);
+        add(QStringLiteral("ShowLenshelp"), A::LENSHELP_ACTIVATE, 0);
+        add(QStringLiteral("ShowPrey"), A::OPEN_PREY_DIALOG, 0);
+        add(QStringLiteral("ShowCompendium"), A::OPEN_NEWS_DIALOG, 0);
+        add(QStringLiteral("ShowQuestlog"), A::OPEN_QUESTLOG_DIALOG, 0);
+        add(QStringLiteral("ShowItemInformation"), A::OPEN_CYCLOPEDIA, 0);
+        add(QStringLiteral("ShowBestiary"), A::OPEN_CYCLOPEDIA, 1);
+        add(QStringLiteral("ShowCharacterInfo"), A::OPEN_CYCLOPEDIA, 2);
+        add(QStringLiteral("ShowCharms"), A::OPEN_CYCLOPEDIA, 3);
+        add(QStringLiteral("ShowCyclopediaMap"), A::OPEN_CYCLOPEDIA, 4);
+        add(QStringLiteral("ShowCyclopediaMagicalArchive"), A::OPEN_CYCLOPEDIA, 8);
+        add(QStringLiteral("OpenRewardWall"), A::REQUEST_OPEN_REWARD_WALL, 0);
+        add(QStringLiteral("OpenManageLootContainer"), A::OPEN_MANAGE_LOOT_CONTAINER, 0);
+        add(QStringLiteral("SetPvPModeDove"), A::SET_PVP_MODE, 0);
+        add(QStringLiteral("SetPvPModeWhiteHand"), A::SET_PVP_MODE, 1);
+        add(QStringLiteral("SetPvPModeYellowHand"), A::SET_PVP_MODE, 2);
+        add(QStringLiteral("SetPvPModeRedFist"), A::SET_PVP_MODE, 3);
+        add(QStringLiteral("ChatModeOff"), A::SWITCH_CHAT_MODE, 0);
+        add(QStringLiteral("ChatModeOn"), A::SWITCH_CHAT_MODE, 1);
+        add(QStringLiteral("ChatModeTemporaryOn"), A::SWITCH_CHAT_MODE, 2);
+        add(QStringLiteral("PressEnterInChat"), A::PRESS_ENTER_IN_CHAT, 0);
+        add(QStringLiteral("ToggleActionBar1"), A::TOGGLE_ACTION_BAR, 1);
+        add(QStringLiteral("ToggleActionBar2"), A::TOGGLE_ACTION_BAR, 2);
+        add(QStringLiteral("ToggleActionBar3"), A::TOGGLE_ACTION_BAR, 3);
+        add(QStringLiteral("ToggleLeftActionBar1"), A::TOGGLE_ACTION_BAR, 4);
+        add(QStringLiteral("ToggleLeftActionBar2"), A::TOGGLE_ACTION_BAR, 5);
+        add(QStringLiteral("ToggleLeftActionBar3"), A::TOGGLE_ACTION_BAR, 6);
+        add(QStringLiteral("ToggleRightActionBar1"), A::TOGGLE_ACTION_BAR, 7);
+        add(QStringLiteral("ToggleRightActionBar2"), A::TOGGLE_ACTION_BAR, 8);
+        add(QStringLiteral("ToggleRightActionBar3"), A::TOGGLE_ACTION_BAR, 9);
+        add(QStringLiteral("ToggleBottomActionBars"), A::TOGGLE_ACTION_BARS, 0);
+        add(QStringLiteral("ToggleLeftActionBars"), A::TOGGLE_ACTION_BARS, 1);
+        add(QStringLiteral("ToggleRightActionBars"), A::TOGGLE_ACTION_BARS, 2);
+        add(QStringLiteral("ToggleChaseOpponents"), A::TOGGLE_CHASE_OPPONENTS, 0);
+        add(QStringLiteral("ToggleSecureMode"), A::TOGGLE_SECURE_MODE, 0);
+        add(QStringLiteral("ToggleExiaAllowAll"), A::EXIVA_TOGGLE_ALLOW_EVERYONE, 0);
+        add(QStringLiteral("TakeScreenshot"), A::TAKE_MANUAL_SCREENSHOT, 0);
+        add(QStringLiteral("FriendList"), A::OPEN_SOCIAL_DIALOG, 0);
+        add(QStringLiteral("FriendInvites"), A::OPEN_SOCIAL_DIALOG, 1);
+        add(QStringLiteral("AccountSearch"), A::OPEN_SOCIAL_DIALOG, 2);
+        add(QStringLiteral("Badges"), A::OPEN_SOCIAL_DIALOG, 3);
+        add(QStringLiteral("FriendsConfiguration"), A::OPEN_SOCIAL_DIALOG, 4);
+        add(QStringLiteral("JoinTeam"), A::OPEN_SOCIAL_DIALOG, 5);
+        add(QStringLiteral("AssembleTeam"), A::OPEN_SOCIAL_DIALOG, 6);
+        add(QStringLiteral("OpenExaltationForgeDialog"), A::REQUEST_OPEN_EXALTATION_FORGE_DIALOG, 0);
+        add(QStringLiteral("ToggleSound"), A::TOGGLE_SOUND, 0);
+        add(QStringLiteral("OpenOwnSkillWheel"), A::REQUEST_OWN_SKILL_WHEEL, 0);
+        add(QStringLiteral("OpenOwnWeaponProficiencyDialog"), A::OPEN_WEAPON_PROFICIENCY_DIALOG, 0);
+        add(QStringLiteral("OpenTaskBoardDialog"), A::OPEN_TASKBOARD_DIALOG, 0);
+        add(QStringLiteral("ShowMinimapMarkerDialogForCurrentPosition"), A::SHOW_MINIMAP_MARKER_DIALOG_FOR_CURRENT_POSITION, 0);
+        add(QStringLiteral("QuickLootAreaAtPlayer"), A::QUICK_LOOT_AREA_AT_PLAYER, 0);
+        add(QStringLiteral("ToggleManualSortMode"), A::TOGGLE_MANUAL_SORT_MODE, 0);
+        using I = chat::TChatChannelIdentifier;
+        channel(QStringLiteral("OpenHelpChannel"), I::help());
+        channel(QStringLiteral("ShowDefaultChannel"), I{ I::Local });
+        channel(QStringLiteral("OpenServerChannel"), I{ I::ServerLog });
+        channel(QStringLiteral("OpenNPCChannel"), I{ I::Npc });
+        channel(QStringLiteral("OpenLootChannel"), I{ I::Loot });
+        for (const char* name : { "GoNorth", "GoWest", "GoSouth", "GoEast", "GoNorthWest", "GoSouthWest", "GoNorthEast", "GoSouthEast" })
+            map.emplace(QLatin1String(name), nullptr);
+        // Action bars 1-9, buttons 1-50.
+        for (int bar = 1; bar <= 9; ++bar) {
+            for (int button = 1; button <= 50; ++button)
+                map.emplace(QStringLiteral("TriggerActionButton_%1.%2").arg(bar).arg(button),
+                            std::make_shared<TGameActionActionButtonTriggered>(bar, button, -1));
+        }
+        return map;
+    }();
+    return actions;
 }
 
 struct TProductAction
@@ -224,37 +247,8 @@ TKeyboardShortcutHandler::~TKeyboardShortcutHandler()
 
 TGameActionPtr TKeyboardShortcutHandler::staticAction(const QString& name)
 {
-    static const QRegularExpression trigger(QStringLiteral("^TriggerActionButton_(\\d+)\\.(\\d+)$"));
-    if (const QRegularExpressionMatch match = trigger.match(name); match.hasMatch()) {
-        return std::make_shared<TGameActionActionButtonTriggered>(match.captured(1).toInt(), match.captured(2).toInt(), -1);
-    }
-    if (const auto opener = channelOpeners().find(name); opener != channelOpeners().end()) {
-        return std::make_shared<TGameActionChatChannel>(A::OPEN_CHAT_CHANNEL_AND_MAKE_CURRENT, opener->second.type,
-                                                       opener->second.id);
-    }
-    const auto it = staticActions().find(name);
-    if (it == staticActions().end())
-        return nullptr;
-    auto action = mutableClone(*makeAction(it->second.type));
-    switch (it->second.type) {
-    case A::TOGGLE_WIDGET:
-        action->instance = it->second.value;
-        break;
-    case A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR:
-        action->instance = it->second.value;
-        action->sidebarId = 0xff;
-        break;
-    case A::TOGGLE_ACTION_BAR:
-        action->actionBarId = it->second.value;
-        break;
-    case A::SET_PVP_MODE:
-        action->pvpMode = it->second.value;
-        break;
-    default:
-        action->parameter = it->second.value;
-        break;
-    }
-    return action;
+    const auto it = actionsByName().find(name);
+    return it == actionsByName().end() ? nullptr : it->second;
 }
 
 void TKeyboardShortcutHandler::addProductAction(const QString& name, const QKeySequence& defaultKeys, std::function<void()> run,
@@ -284,18 +278,11 @@ QList<TKeyboardShortcutHandler::TProductActionInfo> TKeyboardShortcutHandler::pr
 QStringList TKeyboardShortcutHandler::staticActionNames()
 {
     QStringList names;
-    for (const auto& [name, action] : staticActions()) {
+    for (const auto& [name, action] : actionsByName()) {
         Q_UNUSED(action);
-        names << name;
+        if (!name.startsWith(QLatin1String("TriggerActionButton_")))
+            names << name;
     }
-    for (const auto& [name, opener] : channelOpeners()) {
-        Q_UNUSED(opener);
-        names << name;
-    }
-    // CIP : Go* bind in the hotkey set but pass through to movement.
-    for (const char* name : { "GoNorth", "GoEast", "GoSouth", "GoWest", "GoNorthEast", "GoNorthWest", "GoSouthEast", "GoSouthWest" })
-        names << QLatin1String(name);
-    names.removeDuplicates();
     names.sort(Qt::CaseInsensitive);
     return names;
 }

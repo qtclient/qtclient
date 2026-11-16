@@ -618,7 +618,7 @@ void TStoreDialogController::onTransferCoinsReceipientAndAmountSpecified(const Q
 void TStoreDialogController::onPurchaseSuccessNotification(const QString& message)
 {
     m_messageDialog->dialog()->close();
-    if (!m_messages || !tibia::game::localPlayer())
+    if (!m_messages || !tibia::game::hasLocalPlayer())
         return;
     if ((tibia::game::localPlayerStates() & tibia::client::IconSwords) == 0) {
         m_successDialog.showDialog(message.trimmed());

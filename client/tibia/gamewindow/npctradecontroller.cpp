@@ -232,62 +232,77 @@ TNPCTradeController::TNPCTradeController(trade::TNPCTradeStorage* storage, QObje
     m_traderInventoryModel = &m_proxy;
     m_showNameFilter = m_options.showNameFilter;
 
-    m_refreshTimer.setSingleShot(true);
+    connect(&m_proxy, &TTraderInventorySortFilterProxyModel::filterOrSortingChanged, this, &TNPCTradeController::selectedTypeIdChanged);
     m_refreshTimer.setInterval(0);
+    m_refreshTimer.setSingleShot(true);
     connect(&m_refreshTimer, &QTimer::timeout, this, &TNPCTradeController::refresh);
-    connect(&m_proxy, &TTraderInventorySortFilterProxyModel::filterOrSortingChanged, this, [this] {
-        Q_EMIT selectedTypeIdChanged();
-        Q_EMIT selectedLiquidTypeChanged();
-    });
     connect(this, &TNPCTradeController::selectedTypeIdChanged, this, &TNPCTradeController::buyOrSellPriceChanged);
     connect(this, &TNPCTradeController::selectedLiquidTypeChanged, this, &TNPCTradeController::buyOrSellPriceChanged);
     connect(this, &TNPCTradeController::amountPreselectedChanged, this, &TNPCTradeController::buyOrSellPriceChanged);
 
-    connect(storage, &trade::TNPCTradeStorage::traderInventoryChanged, this, [this] { m_refreshTimer.start(); });
-    connect(storage, &trade::TNPCTradeStorage::playerInventoryChanged, this, [this] {
-        onAvailableCurrencyBalanceMightHaveChanged();
-        m_refreshTimer.start();
-    });
-    connect(storage, &trade::TNPCTradeStorage::tradeCurrencyChanged, this, [this] {
-        Q_EMIT currencyChanged();
-        onAvailableCurrencyBalanceMightHaveChanged();
-    });
-    connect(storage, &trade::TNPCTradeStorage::requestOpenNpcTrade, this, [this] {
-        m_selectedTypeId = 0;
-        m_selectedLiquidType = 0;
-        m_amountPreselected = 0;
-        m_proxy.setNameFilter({});
-        Q_EMIT selectedTypeIdChanged();
-        Q_EMIT selectedLiquidTypeChanged();
-        Q_EMIT amountPreselectedChanged();
-        Q_EMIT currencyChanged();
-        m_refreshTimer.start();
-    });
+    m_confirmation = new TMessageDialogController(this);
+    m_confirmation->setYesNoButtons();
+    m_confirmation->setCloseOnButtonClicked(true);
+    connect(m_confirmation, &TMessageDialogController::acceptClicked, this, &TNPCTradeController::onLargeTradeConfirmed);
+
+    // CIP attaches the trade session each time the NPC opens a trade.
+    connect(storage, &trade::TNPCTradeStorage::requestOpenNpcTrade, this, &TNPCTradeController::setTradeStorage);
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == OptionsKey)
             onNpcTradeOptionsChanged();
     });
 }
 
+void TNPCTradeController::setTradeStorage()
+{
+    for (const QMetaObject::Connection& connection : m_storageConnections)
+        disconnect(connection);
+    m_storageConnections.clear();
+    if (m_storage) {
+        trade::TNPCTradeStorage* storage = m_storage;
+        const auto startRefresh = [this] { m_refreshTimer.start(); };
+        m_storageConnections.push_back(connect(storage, &trade::TNPCTradeStorage::playerInventoryChanged, this, startRefresh));
+        m_storageConnections.push_back(connect(storage, &trade::TNPCTradeStorage::traderInventoryChanged, this, startRefresh));
+        m_storageConnections.push_back(connect(storage, &trade::TNPCTradeStorage::tradeCurrencyChanged, this, &TNPCTradeController::currencyChanged));
+        // The player's balance (gold, currency objects, resources).
+        m_storageConnections.push_back(connect(storage, &trade::TNPCTradeStorage::playerInventoryChanged, this, &TNPCTradeController::currencyBalanceChanged));
+        m_storageConnections.push_back(connect(storage, &trade::TNPCTradeStorage::playerInventoryChanged, this,
+                                               &TNPCTradeController::onAvailableCurrencyBalanceMightHaveChanged));
+        Q_EMIT showNameFitlerChanged();
+        m_refreshTimer.start();
+        Q_EMIT currencyChanged();
+        Q_EMIT currencyBalanceChanged();
+    }
+    m_proxy.onNPCTradeOptionsChanged();
+    m_proxy.setNameFilter({});
+}
+
 TNPCTradeController::~TNPCTradeController()
 {
-    if (m_confirmation)
+    if (m_selectedTypeId != 0 || m_selectedLiquidType != 0) {
+        m_selectedTypeId = 0;
+        m_selectedLiquidType = 0;
+        Q_EMIT selectedTypeIdChanged();
+        Q_EMIT selectedLiquidTypeChanged();
+        updateAmount(true);
+    }
+    if (m_confirmation && m_confirmation->dialog())
         m_confirmation->dialog()->close();
 }
 
 QString TNPCTradeController::bankBalance() const
 {
-    return tibia::game::localPlayer() && m_storage ? formatNumber(m_storage->bankBalance()) : QStringLiteral("-");
+    return tibia::game::hasLocalPlayer() && m_storage ? formatNumber(m_storage->bankBalance()) : QStringLiteral("-");
 }
 
 QString TNPCTradeController::inventoryBalance() const
 {
-    return tibia::game::localPlayer() && m_storage ? formatNumber(m_storage->inventoryBalance()) : QStringLiteral("-");
+    return tibia::game::hasLocalPlayer() && m_storage ? formatNumber(m_storage->inventoryBalance()) : QStringLiteral("-");
 }
 
 QString TNPCTradeController::totalBalance() const
 {
-    return formatNumber(m_storage ? m_storage->money() : 0);
+    return formatNumberVariants(m_storage ? m_storage->money() : 0);
 }
 
 bool TNPCTradeController::npcIsBuying() const
@@ -308,7 +323,9 @@ QString TNPCTradeController::buyOrSellPrice() const
 
 int TNPCTradeController::currencyTypeId() const
 {
-    if (!m_storage || !m_storage->hasCurrency())
+    if (!m_storage)
+        return 0;
+    if (!m_storage->hasCurrency())
         return GoldCoinTypeId;
     return m_storage->currencyIsItem() ? m_storage->currencyTypeId() : 0;
 }
@@ -318,17 +335,42 @@ QString TNPCTradeController::currencyName() const
     if (!m_storage || m_storage->currencyIsName())
         return m_storage ? m_storage->currencyName() : QString();
     const ThingTypePtr& type = tibia::game::thingType(static_cast<uint16_t>(currencyTypeId()), ThingCategoryItem);
-    return type ? QString::fromStdString(type->getName()) : QString();
+    if (!type)
+        return {};
+    // Gold is shown with every word capitalised.
+    if (!m_storage->hasCurrency())
+        return QString::fromStdString(tibia::game::formatCreatureName(type->getName()));
+    return QString::fromStdString(type->getName());
 }
 
 bool TNPCTradeController::currencyIsGold() const
 {
-    return !m_storage || !m_storage->hasCurrency();
+    return m_storage && !m_storage->hasCurrency();
 }
 
 bool TNPCTradeController::showNameFilter() const
 {
     return m_options.showNameFilter;
+}
+
+QObject* TNPCTradeController::traderInventoryModel() const
+{
+    return m_traderInventoryModel;
+}
+
+int TNPCTradeController::selectedTypeId() const
+{
+    return m_selectedTypeId;
+}
+
+uint TNPCTradeController::selectedLiquidType() const
+{
+    return m_selectedLiquidType;
+}
+
+int TNPCTradeController::amountPreselected() const
+{
+    return m_amountPreselected;
 }
 
 const TNPCTradeGood* TNPCTradeController::good(const int typeId, const uint liquidType) const
@@ -398,7 +440,6 @@ void TNPCTradeController::refresh()
 
 void TNPCTradeController::onAvailableCurrencyBalanceMightHaveChanged()
 {
-    Q_EMIT currencyBalanceChanged();
     const uint64_t money = m_storage ? m_storage->money() : 0;
     if (money == m_money)
         return;
@@ -438,13 +479,16 @@ void TNPCTradeController::updateAmount(const bool force)
 
 void TNPCTradeController::switchDirection(const ENPCTradeDirection direction)
 {
-    m_selectedTypeId = 0;
-    m_selectedLiquidType = 0;
-    Q_EMIT selectedTypeIdChanged();
-    Q_EMIT selectedLiquidTypeChanged();
-    updateAmount(true);
-    if (m_storage)
-        m_storage->setDirection(direction);
+    if (!m_storage)
+        return;
+    if (m_selectedTypeId != 0 || m_selectedLiquidType != 0) {
+        m_selectedTypeId = 0;
+        m_selectedLiquidType = 0;
+        Q_EMIT selectedTypeIdChanged();
+        Q_EMIT selectedLiquidTypeChanged();
+        updateAmount(true);
+    }
+    m_storage->setDirection(direction);
 }
 
 void TNPCTradeController::switchToBuyItems()
@@ -471,10 +515,18 @@ void TNPCTradeController::traderObjectSelected(const int TypeId, const uint Liqu
 void TNPCTradeController::contextMenuForObject(const int TypeId, const uint LiquidType)
 {
     TContextMenuController* menu = TContextMenuController::instance();
-    if (!menu || !m_storage)
+    if (!menu)
         return;
     menu->beginCustomMenu();
-    if (const TNPCTradeGood* selected = good(TypeId, LiquidType)) {
+    buildContextMenu(menu, TypeId, LiquidType);
+    menu->showCustomMenu();
+}
+
+void TNPCTradeController::buildContextMenu(TContextMenuController* menu, const int typeId, const uint liquidType)
+{
+    if (!m_storage)
+        return;
+    if (const TNPCTradeGood* selected = good(typeId, liquidType)) {
         const TNPCTradeGood copy = *selected;
         connect(menu->addCustomEntry(qtTrId("context_look")), &TContextMenuEntryItem::triggered, this, [this, copy] {
             if (m_storage)
@@ -520,7 +572,6 @@ void TNPCTradeController::contextMenuForObject(const int TypeId, const uint Liqu
     addOption("npc_trade_show_name_filter", m_options.showNameFilter, [](TNPCTradeOptions& o) { o.showNameFilter = !o.showNameFilter; });
     addOption("npc_trade_allow_large_trades_without_warning_context_menue", m_options.allowLargeTradesWithoutWarning,
               [](TNPCTradeOptions& o) { o.allowLargeTradesWithoutWarning = !o.allowLargeTradesWithoutWarning; });
-    menu->showCustomMenu();
 }
 
 void TNPCTradeController::lookSelectedGoods()
@@ -535,34 +586,31 @@ void TNPCTradeController::buyOrSellSelectedGoods(const int Amount)
         return;
     setAmountPreselected(Amount);
     if (Amount <= LargeTradeAmount || m_options.allowLargeTradesWithoutWarning) {
-        trade(Amount);
+        trade();
         return;
     }
-    if (!m_confirmation) {
-        m_confirmation = new TMessageDialogController(this);
-        m_confirmation->setYesNoButtons();
-        m_confirmation->setCloseOnButtonClicked(true);
-        connect(m_confirmation, &TMessageDialogController::acceptClicked, this, &TNPCTradeController::onLargeTradeConfirmed);
-    }
+    if (!m_confirmation)
+        return;
     const bool selling = m_storage && m_storage->direction() == ENPCTradeDirection::SELL;
     const QString verb = qtTrId(selling ? "npc_trade_sell" : "buy").toLower();
-    m_confirmation->showMessageWithCheckBox(qtTrId("warning"), qtTrId("npc_trade_allow_large_trades_without_warning").arg(verb).arg(Amount),
-                                            qtTrId("confirmation_do_not_show_again"), false);
+    m_confirmation->showMessageWithCheckBox(qtTrId("warning"), qtTrId("npc_trade_allow_large_trades_without_warning").arg(verb).arg(m_amountPreselected),
+                                            qtTrId("confirmation_do_not_show_again"), m_options.allowLargeTradesWithoutWarning);
 }
 
 void TNPCTradeController::onLargeTradeConfirmed(const bool DoNotShowDialogAgain)
 {
-    trade(m_amountPreselected);
+    trade();
     TNPCTradeOptions options = m_options;
     options.allowLargeTradesWithoutWarning = DoNotShowDialogAgain;
     setOptions(options);
 }
 
-void TNPCTradeController::trade(const int amount)
+void TNPCTradeController::trade()
 {
     const TNPCTradeGood* selected = selectedGood();
     if (!selected || !m_storage)
         return;
+    const int amount = m_amountPreselected;
     if (m_storage->direction() == ENPCTradeDirection::SELL)
         m_storage->sell(*selected, amount, !m_options.sellEquipped);
     else

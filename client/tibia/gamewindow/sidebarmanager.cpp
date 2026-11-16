@@ -1,6 +1,8 @@
 #include "sidebarmanager.h"
 
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
+#include "input/gameaction.h"
+#include "input/gameactionhandlers.h"
 
 #include <QPointF>
 #include <QQmlComponent>
@@ -146,7 +148,6 @@ void TSidebarManager::setSidebarCount(const Side side, const int count)
     while (current > target)
         removeSidebar(side);
     Q_EMIT numberOfSidebarsChanged(m_sidebars.size());
-    Q_EMIT sidebarMangerOptionsChanged();
 }
 
 void TSidebarManager::addSidebar(const Side side)
@@ -187,9 +188,14 @@ void TSidebarManager::movePanelToEnd(QQuickItem* panel)
 
 void TSidebarManager::addWidget(TSidebarWidget* widget)
 {
-    if (!widget || m_sidebars.empty())
+    if (!widget)
         return;
     const int height = widget->currentHeight();
+    auto sound = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
+    sound->parameter = cip::tibia::qmlcomponents::TSoundHelperService::OPEN_DIALOG_OR_WIDGET;
+    input::publish(sound);
+    if (m_sidebars.empty())
+        return;
     uint target = m_leftCount == 0 ? static_cast<uint>(m_rightCount - 1) : LeftSidebarIdBase - 1 + static_cast<uint>(m_leftCount);
     for (const auto& [id, sidebar] : m_sidebars) {
         if (sidebar->remainingHeight() >= height) {
@@ -217,17 +223,24 @@ void TSidebarManager::addWidget(const uint sidebarId, TSidebarWidget* widget, co
     enqueueWidgetConfigurationChangedToBeEmitted();
 }
 
+void TSidebarManager::placeWidget(const uint sidebarId, TSidebarWidget* widget)
+{
+    if (sidebarId != TSidebarWidget::NoSidebar && hasSidebar(sidebarId))
+        addWidget(sidebarId, widget);
+    else
+        addWidget(widget);
+}
+
 bool TSidebarManager::removeWidget(TSidebarWidget* widget)
 {
     if (!widget)
         return false;
-    for (const auto& [id, sidebar] : m_sidebars) {
-        if (sidebar->removeWidget(widget, false)) {
-            enqueueWidgetConfigurationChangedToBeEmitted();
-            return true;
-        }
-    }
-    return false;
+    TSidebarController* parent = sidebar(widget->parentSidebarId());
+    if (!parent || !parent->removeWidget(widget, false))
+        return false;
+    // qtclient: the widgets manager saves on this instead of on every close.
+    enqueueWidgetConfigurationChangedToBeEmitted();
+    return true;
 }
 
 std::vector<uint> TSidebarManager::sidebarIds() const
@@ -245,11 +258,11 @@ void TSidebarManager::moveWidgetToSidebar(const int targetSidebar, TSidebarWidge
         return;
     for (const auto& [id, sidebar] : m_sidebars) {
         if (sidebar->removeWidget(widget, true)) {
-            addWidget(static_cast<uint>(targetSidebar), widget);
+            placeWidget(static_cast<uint>(targetSidebar), widget);
             return;
         }
     }
-    // Not in a vertical sidebar (e.g. pack horizontal dock): still place.
+    // qtclient: not in a vertical sidebar (pack horizontal dock), still place.
     addWidget(static_cast<uint>(targetSidebar), widget);
 }
 
@@ -263,7 +276,6 @@ void TSidebarManager::openAdditionalSidebar(const QString& position)
 {
     addSidebar(position.compare(QLatin1String("left"), Qt::CaseInsensitive) == 0 ? Left : Right);
     Q_EMIT numberOfSidebarsChanged(m_sidebars.size());
-    Q_EMIT sidebarMangerOptionsChanged();
 }
 
 void TSidebarManager::closeSidebarClosestToGamewindow(const QString& position)
@@ -273,11 +285,12 @@ void TSidebarManager::closeSidebarClosestToGamewindow(const QString& position)
         return;
     removeSidebar(side);
     Q_EMIT numberOfSidebarsChanged(m_sidebars.size());
-    Q_EMIT sidebarMangerOptionsChanged();
 }
 
 void TSidebarManager::onUnusedWidthChanged(const int unusedWidth)
 {
+    if (m_unusedWidth == unusedWidth)
+        return;
     m_unusedWidth = unusedWidth;
     Q_EMIT sidebarMangerOptionsChanged();
 }
@@ -289,6 +302,7 @@ void TSidebarManager::enqueuePanelConfigurationChangedToBeEmitted()
 
 void TSidebarManager::enqueueWidgetConfigurationChangedToBeEmitted()
 {
+    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
     m_widgetConfigurationTimer.start();
 }
 

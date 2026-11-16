@@ -284,9 +284,14 @@ void TOptionsMenuDialogController::setShowAdvancedOptions(const bool Show)
 
 void TOptionsMenuDialogController::requestResetCurrentPageToDefault()
 {
+    // The three hotkey pages share one reset; the warning names them all.
+    QString warning = qtTrId("optionsmenu_reset_current_page_warning");
+    if (m_dialogCategory >= DefaultHotkeys && m_dialogCategory <= CustomHotkeys)
+        warning = qtTrId("optionsmenu_reset_hotkeys_page_warning")
+                      .arg(qtTrId("optionsmenu_individual_hotkeys"), qtTrId("optionsmenu_default_hotkeys"), qtTrId("optionsmenu_action_buttons_hotkeys"));
     m_resetPageMessage->setButtons(okCancelButtons());
     m_resetPageMessage->showMessage(qtTrId("optionsmenu_reset_current_page_caption"),
-                                    qtTrId("optionsmenu_reset_current_page_warning") + QStringLiteral("\n\n") + qtTrId("optionsmenu_reset_confirmation"));
+                                    warning + QStringLiteral("\n\n") + qtTrId("optionsmenu_reset_confirmation"));
 }
 
 void TOptionsMenuDialogController::requestResetAllOptionsToDefault()
@@ -515,17 +520,20 @@ config::TOptionsPage* TOptionsMenuDialogController::pageOf(const EDialogCategori
 
 void TOptionsMenuDialogController::resetCurrentPageToDefault()
 {
-    switch (m_dialogCategory) {
+    resetPageToDefault(m_dialogCategory);
+}
+
+void TOptionsMenuDialogController::resetPageToDefault(const EDialogCategories category)
+{
+    switch (category) {
     case Basic:
         resetBasicPage();
         return;
     case DefaultHotkeys:
     case ActionButtonsHotkeys:
     case CustomHotkeys:
-        // CIP options Reset lives on Basic; qtclient also restores built-in hotkey
-        // presets when this path runs (e.g. Help reset-all callers / tests).
         if (m_hotkeys)
-            m_hotkeys->load({ { QStringLiteral("hotkeyOptions"), config::THotkeyOptions::builtInSection() } });
+            m_hotkeys->resetToDefault();
         return;
     case NoCategoryInitialState:
     case Help:
@@ -533,7 +541,7 @@ void TOptionsMenuDialogController::resetCurrentPageToDefault()
     default:
         break;
     }
-    if (config::TOptionsPage* page = pageOf(m_dialogCategory))
+    if (config::TOptionsPage* page = pageOf(category))
         page->load(defaultSettings());
 }
 
@@ -561,17 +569,13 @@ void TOptionsMenuDialogController::resetBasicPage()
 
 void TOptionsMenuDialogController::resetAllOptionsToDefault()
 {
+    // CIP leaves the hotkey and sound pages as they are.
     const QJsonObject defaults = defaultSettings();
-    // CIP historically skipped sound pages; qtclient resets them too so
-    // Help → Reset all matches user expectation (volume / battle / UI sounds).
-    for (const EDialogCategories category : { Controls, Interface, HUD, Console, GameWindow, ActionBars, ButtonBar, Graphics,
-                                              Effects, Misc, Gameplay, Screenshots, Sound, BattleSounds, UISounds }) {
+    for (const EDialogCategories category :
+         { Controls, Interface, HUD, Console, GameWindow, ActionBars, ButtonBar, Graphics, Effects, Misc, Gameplay, Screenshots }) {
         if (config::TOptionsPage* page = pageOf(category))
             page->load(defaults);
     }
-    // CIP also skipped hotkey pages; qtclient restores built-in vocation presets.
-    if (m_hotkeys)
-        m_hotkeys->load({ { QStringLiteral("hotkeyOptions"), config::THotkeyOptions::builtInSection() } });
 }
 
 void TOptionsMenuDialogController::onResartMessageControllerClicked(const cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier)

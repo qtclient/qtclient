@@ -11,6 +11,10 @@ protobuf/protocol.proto. The signals go into protocolmessagequeue.h (between the
 gen_dispatch.py markers), the registration into dispatch.gen.cpp. A server
 message the queue registers no signal for must be marked "unhandled" in
 handler_map.json, and only those.
+
+The queue's client message slots come from the same contract: one
+`send<Name>(GameclientMessage<Name>)` slot per typed slot in moc.json, which wraps
+its argument in a GameclientMessage of the extension's number and enqueues it.
 """
 
 from __future__ import annotations
@@ -71,7 +75,7 @@ DEFAULT_PROTO = HERE.parent / "protobuf" / "protocol.proto"
 DEFAULT_QUEUE_HEADER = HERE / "protocolmessagequeue.h"
 QUEUE_CLASS = "tibia::protocol::TProtocolMessageQueue"
 PB_NS = "tibia::protobuf::protocol::"
-REGIONS = ("server message types", "server message signals")
+REGIONS = ("server message types", "server message signals", "client message types", "client message slots")
 
 
 def queue_signals(moc_path: Path) -> list[dict]:
@@ -89,8 +93,23 @@ def queue_signals(moc_path: Path) -> list[dict]:
     return out
 
 
-def server_extensions(proto_path: Path) -> dict[str, tuple[str, int]]:
-    """GameserverMessage<Name> -> (extension field declared inside it, number)."""
+def queue_slots(moc_path: Path) -> list[dict]:
+    """The queue's per-message client slots: one GameclientMessage<Name> argument each."""
+    moc = json.loads(moc_path.read_text(encoding="utf-8"))
+    cls = next((c for c in moc if c.get("class") == QUEUE_CLASS), None)
+    if cls is None:
+        raise SystemExit(f"{moc_path}: no {QUEUE_CLASS}")
+    out = []
+    for slot in cls["slots"]:
+        args = slot.get("args") or []
+        if len(args) != 1 or not args[0]["type"].startswith(PB_NS + "GameclientMessage"):
+            continue
+        out.append({"slot": slot["name"], "type": args[0]["type"][len(PB_NS):], "arg": args[0]["name"]})
+    return out
+
+
+def extensions(proto_path: Path, prefix: str) -> dict[str, tuple[str, int]]:
+    """<prefix><Name> -> (extension field declared inside it, number)."""
     out: dict[str, tuple[str, int]] = {}
     current = None
     for line in proto_path.read_text(encoding="utf-8").splitlines():
@@ -98,9 +117,25 @@ def server_extensions(proto_path: Path) -> dict[str, tuple[str, int]]:
         if m:
             current = m.group(1)
             continue
-        m = re.match(r"^\s+optional\s+(GameserverMessage\w+)\s+(\w+)\s*=\s*(\d+)\s*;", line)
+        m = re.match(rf"^\s+optional\s+({prefix}\w+)\s+(\w+)\s*=\s*(\d+)\s*;", line)
         if m and m.group(1) == current:
             out[current] = (m.group(2), int(m.group(3)))
+    return out
+
+
+def server_extensions(proto_path: Path) -> dict[str, tuple[str, int]]:
+    """GameserverMessage<Name> -> (extension field declared inside it, number)."""
+    return extensions(proto_path, "GameserverMessage")
+
+
+def queue_client_slots(moc_path: Path, proto_path: Path) -> list[dict]:
+    exts = extensions(proto_path, "GameclientMessage")
+    out = []
+    for slot in queue_slots(moc_path):
+        if slot["type"] not in exts:
+            raise SystemExit(f"{proto_path}: no extension for {slot['type']} ({slot['slot']})")
+        field, number = exts[slot["type"]]
+        out.append({**slot, "field": field, "number": number})
     return out
 
 
@@ -118,10 +153,12 @@ def queue_registrations(moc_path: Path, proto_path: Path) -> list[dict]:
     return regs
 
 
-def render_queue_header(text: str, regs: list[dict]) -> str:
+def render_queue_header(text: str, regs: list[dict], slots: list[dict]) -> str:
     bodies = {
         REGIONS[0]: [f"class {r['type']};" for r in sorted(regs, key=lambda r: r["type"])],
         REGIONS[1]: [f"    void {r['signal']}(const ::{PB_NS}{r['type']}& {r['arg']});" for r in regs],
+        REGIONS[2]: [f"class {t};" for t in sorted({s['type'] for s in slots})],
+        REGIONS[3]: [f"    void {s['slot']}(const ::{PB_NS}{s['type']}& {s['arg']});" for s in slots],
     }
     for region, lines in bodies.items():
         pat = re.compile(rf"(^[ \t]*// <gen_dispatch\.py: {region}>\n).*?(^[ \t]*// </gen_dispatch\.py: {region}>)",
@@ -130,6 +167,20 @@ def render_queue_header(text: str, regs: list[dict]) -> str:
             raise SystemExit(f"queue header: no '{region}' region")
         text = pat.sub(lambda m: m.group(1) + "".join(l + "\n" for l in lines) + m.group(2), text, count=1)
     return text
+
+
+def render_queue_slots(slots: list[dict]) -> str:
+    out = []
+    for s in slots:
+        out.append(f"""void TProtocolMessageQueue::{s['slot']}(const {PB_NS}{s['type']}& {s['arg']})
+{{
+    auto message = std::make_shared<GameclientMessage>();
+    message->set_type({s['number']});
+    *message->MutableExtension({PB_NS}{s['type']}::{s['field']}) = {s['arg']};
+    enqueueGameclientMessage(message);
+}}
+""")
+    return "\n".join(out)
 
 
 def render_queue_registration(regs: list[dict]) -> str:
@@ -403,7 +454,7 @@ def validate(messages: list[dict], entries: list[dict], server_cpp: Path, client
         raise SystemExit(1)
 
 
-def render(messages: list[dict], entries: list[dict], client_cpp: Path, regs: list[dict]) -> str:
+def render(messages: list[dict], entries: list[dict], client_cpp: Path, regs: list[dict], slots: list[dict]) -> str:
     mapped = index_map(entries)
     sigs = function_signatures(client_cpp.read_text(encoding="utf-8"))
     server_cases: list[str] = []
@@ -446,6 +497,9 @@ def render(messages: list[dict], entries: list[dict], client_cpp: Path, regs: li
 namespace tibia::protocol {{
 
 {render_queue_registration(regs)}
+// Client message slots: each wraps its message in a GameclientMessage of that
+// message's type and enqueues it.
+{render_queue_slots(slots)}
 
 // Every CIP server message and the handler that applies it.
 bool isHandledServerMessage(const uint8_t opcode)
@@ -496,15 +550,16 @@ def main() -> int:
 
     entries = json.loads(args.map.read_text(encoding="utf-8"))
     regs = queue_registrations(args.moc, args.proto)
+    slots = queue_client_slots(args.moc, args.proto)
     validate(messages, entries, args.server, args.client, regs)
     if args.out is None and not args.bootstrap:
         print("protocol dispatch: handlers ok")
         return 0
     if args.out is None:
         return 0
-    text = render(messages, entries, args.client, regs)
+    text = render(messages, entries, args.client, regs, slots)
     header_now = args.queue_header.read_text(encoding="utf-8")
-    header = render_queue_header(header_now, regs)
+    header = render_queue_header(header_now, regs, slots)
     if args.check:
         current = args.out.read_text(encoding="utf-8") if args.out.is_file() else ""
         stale = [p for p, now, want in ((args.out, current, text), (args.queue_header, header_now, header)) if now != want]

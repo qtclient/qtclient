@@ -330,6 +330,8 @@ QString perkAugmentTypeName(const TProficiencyPerk& perk)
     return qtTrId(known ? AugmentTypeIds[perk.augmentType] : "dummy_unknown");
 }
 
+QString perkAugmentValue(const TProficiencyPerk& perk) { return augmentValue(perk); }
+
 TQMLProficiencyPerk::TQMLProficiencyPerk(const int index, const TProficiencyPerk& perk, const bool picked, const bool shaped,
                                          const uint rank, QObject* parent)
     : cip::tibia::gamewindow::TQMLProficiencyPerk(parent)

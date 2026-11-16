@@ -155,23 +155,27 @@ public:
     network::ExtendedOpcodeRouter* opcodes() const { return m_opcodes.get(); }
     qmlcomponents::TWorldMapRenderProvider* worldMapRenderProvider() const { return m_worldMapRenderProvider.get(); }
     /// The view the world map shows: centred by the full map, read by the picker.
-    worldmap::TWorldMapViewport* worldMapViewport() const { return m_worldMapViewport.get(); }
+    worldmap::TWorldMapViewport* worldMapViewport() const;
     /// Pack-facing façade (signals + peels). Same instance for the process lifetime.
     runtime::TGameHost* gameHost() const { return m_gameHost; }
     /// Tick-to-swap durations for the FPS indicator's currentFrameCount.
     worldmap::TFrameDurationRing* frameDurations() const { return m_frameDurations.get(); }
-    worldmap::TAmbientLightStorage* ambientLight() const { return m_ambientLight.get(); }
-    worldmap::TWorldMapStorage* worldMapStorage() const { return m_worldMapStorage.get(); }
-    creatures::TCreatureStorage* creatureStorage() const { return m_creatureStorage.get(); }
-    container::TContainerStorage* containerStorage() const { return m_containerStorage.get(); }
-    container::TInventoryContainer* inventoryContainer() const { return m_inventoryContainer.get(); }
-    worldmap::TWorldmapProtocolMessageHandler* worldmapProtocol() const { return m_worldmapProtocol.get(); }
+    /// The active game session's storages (null while no session is played).
+    worldmap::TAmbientLightStorage* ambientLight() const;
+    worldmap::TWorldMapStorage* worldMapStorage() const;
+    creatures::TCreatureStorage* creatureStorage() const;
+    container::TContainerStorage* containerStorage() const;
+    container::TInventoryContainer* inventoryContainer() const;
+    worldmap::TWorldmapProtocolMessageHandler* worldmapProtocol() const;
     /// Speech bubbles and screen messages; null before start.
-    chat::TTextStorage* textStorage() const { return m_textStorage.get(); }
+    chat::TTextStorage* textStorage() const;
     /// Wire the chat pane's ignore list into map bubbles (CIP handler +0x98).
     void setMessageIgnoreList(chat::TWhiteBlacklist* list);
-    worldmap::TNumericalEffectStorage* numericalEffects() const { return m_numericalEffects.get(); }
-    effects::TEffectStorage* effectStorage() const { return m_effectStorage.get(); }
+    /// The active game session changed: its message handler, frame updater,
+    /// view and minimap feed are rebuilt on it.
+    void bindActiveSession();
+    worldmap::TNumericalEffectStorage* numericalEffects() const;
+    effects::TEffectStorage* effectStorage() const;
     /// The character's sidebars.json, loaded on entering the world.
     config::TSidebarOptions* sidebarOptions() const { return m_sidebarOptions.get(); }
     /// The character's statusBarData.json, loaded on entering the world.
@@ -272,27 +276,14 @@ private:
     std::unique_ptr<game::TGameserverGameSession> m_session;
     std::unique_ptr<game::TSessiondumpGameSession> m_sessiondump;
     std::unique_ptr<network::ExtendedOpcodeRouter> m_opcodes;
-    std::unique_ptr<sound::TSoundProtocolMessageHandler> m_soundProtocol;
-    std::unique_ptr<sound::TSoundStorage> m_soundStorage;
     std::unique_ptr<network::TGameserverDualConnection> m_dualConnection;
-    /// Outlives the render provider and the map handler that refer to it.
-    std::unique_ptr<worldmap::TWorldMapViewport> m_worldMapViewport;
     std::unique_ptr<qmlcomponents::TWorldMapRenderProvider> m_worldMapRenderProvider;
     std::unique_ptr<config::TSidebarOptions> m_sidebarOptions;
     std::unique_ptr<game::TStatusbarStorage> m_statusbarStorage;
-    std::unique_ptr<worldmap::TAmbientLightStorage> m_ambientLight;
-    std::unique_ptr<worldmap::TWorldMapStorage> m_worldMapStorage;
-    std::unique_ptr<creatures::TCreatureStorage> m_creatureStorage;
-    std::unique_ptr<container::TContainerStorage> m_containerStorage;
-    std::unique_ptr<container::TInventoryContainer> m_inventoryContainer;
-    std::unique_ptr<worldmap::TWorldmapProtocolMessageHandler> m_worldmapProtocol;
     /// Queue connections of the static protocol ingresses (reconnected per session).
     std::vector<QMetaObject::Connection> m_staticIngressConnections;
-    std::unique_ptr<chat::TTextStorage> m_textStorage;
-    std::unique_ptr<worldmap::TNumericalEffectStorage> m_numericalEffects;
-    std::unique_ptr<effects::TEffectStorage> m_effectStorage;
-    std::unique_ptr<effects::TEffectGameActionHandler> m_effectGameActionHandler;
-    std::unique_ptr<effects::TEffectProtocolMessageHandler> m_effectProtocolMessageHandler;
+    /// The chat pane's ignore list, applied to each session's message handler.
+    chat::TWhiteBlacklist* m_messageIgnoreList = nullptr;
     std::unique_ptr<chat::TGameMessageHandler> m_messageHandler;
     std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).

@@ -100,7 +100,8 @@ struct BattleListEntry
     /// CIP tutorialMarkerID role 0x111 — set by ADD_GUI_TUTORIAL_MARKER.
     int tutorialMarkerId = 0;
 
-    bool operator==(const BattleListEntry&) const = default;
+    /// CIP's draw command comparison.
+    bool operator==(const BattleListEntry& other) const;
 };
 
 /// battleListModel (CIP: TBattleListDataModel, roles).
@@ -110,8 +111,12 @@ class TBattleListDataModel final : public cip::tibia::gamewindow::TBattleListDat
 public:
     using cip::tibia::gamewindow::TBattleListDataModel::TBattleListDataModel;
 
+    /// CIP's update from TBattleListControllerStorage::triggerUpdate: rows
+    /// change in place, ordered by creature id.
     void setEntries(std::vector<BattleListEntry> entries);
     const std::vector<BattleListEntry>& entries() const { return m_entries; }
+    /// The roles whose data differs between two entries of one creature.
+    static QList<int> changedRoles(const BattleListEntry& current, const BattleListEntry& incoming);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;

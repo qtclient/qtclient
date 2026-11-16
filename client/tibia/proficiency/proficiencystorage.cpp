@@ -10,6 +10,8 @@
 
 #include <algorithm>
 #include <array>
+#include <stdexcept>
+#include <string>
 #include <climits>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/tgamenotify.h>
@@ -50,21 +52,93 @@ const std::array<uint32_t, 10>& tableOf(const uint16_t typeId)
     return DefaultXP;
 }
 
+// JSON fields as CipSoft reads them: a missing key or a non-number throws.
+QJsonValue field(const QJsonObject& json, const char* key)
+{
+    const auto it = json.constFind(QLatin1String(key));
+    if (it == json.constEnd())
+        throw std::out_of_range(std::string("key '") + key + "' not found");
+    return *it;
+}
+
+double real(const QJsonObject& json, const char* key)
+{
+    const QJsonValue value = field(json, key);
+    if (!value.isDouble())
+        throw std::domain_error("type must be number");
+    return value.toDouble();
+}
+
+int integer(const QJsonObject& json, const char* key)
+{
+    const QJsonValue value = field(json, key);
+    if (value.isBool())
+        return value.toBool() ? 1 : 0;
+    if (!value.isDouble())
+        throw std::domain_error("type must be number");
+    return static_cast<int>(static_cast<int64_t>(value.toDouble()));
+}
+
+QString text(const QJsonObject& json, const char* key)
+{
+    const QJsonValue value = field(json, key);
+    if (!value.isString())
+        throw std::domain_error("type must be string");
+    return value.toString();
+}
+
 TProficiencyPerk parsePerk(const QJsonObject& json)
 {
     TProficiencyPerk perk;
-    perk.type = json.value(QLatin1String("Type")).toInt(-1);
-    perk.value = json.value(QLatin1String("Value")).toDouble();
-    perk.skillId = json.value(QLatin1String("SkillId")).toInt();
-    perk.element = json.contains(QLatin1String("DamageType")) ? json.value(QLatin1String("DamageType")).toInt()
-                                                              : json.value(QLatin1String("ElementId")).toInt();
-    perk.augmentType = json.value(QLatin1String("AugmentType")).toInt();
-    perk.spellId = json.value(QLatin1String("SpellId")).toInt();
-    perk.bestiaryId = json.value(QLatin1String("BestiaryId")).toInt();
-    perk.bestiaryName = json.value(QLatin1String("BestiaryName")).toString();
-    perk.range = json.value(QLatin1String("Range")).toInt();
-    perk.multiplier = json.value(QLatin1String("Multiplier")).toDouble();
-    perk.probability = json.value(QLatin1String("Probability")).toDouble();
+    perk.type = static_cast<uint8_t>(integer(json, "Type"));
+    switch (perk.type) {
+    case 0: case 1: case 2:
+    case 18: case 19: case 20: case 21: case 24:
+        perk.value = integer(json, "Value");
+        break;
+    case 3:
+        perk.skillId = integer(json, "SkillId");
+        perk.value = integer(json, "Value");
+        break;
+    case 4:
+        perk.element = integer(json, "DamageType");
+        perk.value = integer(json, "Value");
+        break;
+    case 5:
+        perk.augmentType = integer(json, "AugmentType");
+        perk.spellId = integer(json, "SpellId");
+        perk.value = real(json, "Value");
+        break;
+    case 6:
+        perk.bestiaryId = integer(json, "BestiaryId");
+        perk.bestiaryName = text(json, "BestiaryName");
+        perk.value = real(json, "Value");
+        break;
+    case 9: case 13: case 31:
+        perk.element = integer(json, "ElementId");
+        perk.value = real(json, "Value");
+        break;
+    case 22:
+        perk.value = integer(json, "Value");
+        perk.range = static_cast<uint8_t>(integer(json, "Range"));
+        break;
+    case 25: case 26: case 27:
+        perk.skillId = integer(json, "SkillId");
+        perk.value = real(json, "Value");
+        break;
+    case 32:
+        perk.element = integer(json, "ElementId");
+        perk.multiplier = real(json, "Multiplier");
+        perk.probability = real(json, "Probability");
+        perk.missileId = integer(json, "MissileId");
+        break;
+    case 7: case 8: case 10: case 11: case 12: case 14: case 15: case 16: case 17:
+    case 23: case 28: case 29: case 30: case 33: case 34: case 35:
+        perk.value = real(json, "Value");
+        break;
+    default:
+        throw std::runtime_error("Unknown WeaponPerk type: " + std::to_string(perk.type));
+    }
     return perk;
 }
 
@@ -173,6 +247,16 @@ void TProficiencyStorage::loadTables() const
     if (path.empty())
         return;
     m_tablesLoaded = true;
+    try {
+        readTables(path);
+    } catch (const std::exception& e) {
+        m_tables.clear();
+        qWarning("proficiencies: %s", e.what());
+    }
+}
+
+void TProficiencyStorage::readTables(const std::string& path) const
+{
     const QJsonDocument document = QJsonDocument::fromJson(QByteArray::fromStdString(tibia::files::data().readFileContents(path)));
     for (const QJsonValue& entry : document.array()) {
         const QJsonObject object = entry.toObject();

@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <set>
 #include <vector>
 
 namespace tibia {
@@ -38,6 +39,10 @@ public:
     void setTrader(const QString& trader);
     /// cip::tibia::qmlcomponents::enums::ESortOrder.
     void setSortOrder(int order);
+    int category() const { return m_category; }
+    int sortOrder() const { return m_sortOrder; }
+    /// No name, category -1 (nothing passes) and no trader.
+    void resetFilters();
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
@@ -69,6 +74,7 @@ public:
     void setCategoryFilterIndex(int index) override;
     void setTraderFilterIndex(int index) override;
     void setSortOrder(int order) override;
+    int sortOrder() const override { return m_proxy.sortOrder(); }
 
 public Q_SLOTS:
     /// CIP .
@@ -90,17 +96,33 @@ public Q_SLOTS:
     void onManageLootContainerDialogClosed() override;
 
 private:
+    /// The name and the two filter indices, applied and remembered together.
+    struct Filter
+    {
+        QString name;
+        int categoryIndex = 0;
+        int traderIndex = 0;
+    };
+
     /// CIP TContainerGameActionProvider::v4 for a stash type.
     input::TGameActionList typeActions(uint16_t typeId) const;
     void setContent(std::map<uint16_t, uint32_t> content);
     int count(uint16_t typeId) const;
-    void applyCategory();
-    void applyTrader();
     void persistSortOrder(int order);
+    void applyFilter(const Filter& filter);
+    void saveFilter();
+    /// The categories of the stored types, "all" first.
+    void setCategories(const std::set<int>& categories);
+    /// The NPCs the trader filter offers, "all" first.
+    void setTraders(const std::set<QString>& traders);
+    /// The market or loot container dialog closed after the stash made way for it.
+    void reopenStash();
+    void handleGameAction(const input::TGameAction& action);
 
     std::map<uint16_t, uint32_t> m_content;
     std::vector<int> m_categories;
     QStringList m_traders;
+    Filter m_savedFilter;
     TAppearanceTypeListModel m_model;
     TStashProxyModel m_proxy;
     TMessageDialogController* m_info;

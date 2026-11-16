@@ -22,8 +22,8 @@ namespace {
 
 QColor outfitColor(const int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 }
@@ -31,7 +31,7 @@ QColor outfitColor(const int index)
 void TNpcDialogOutfit::setFromCreatureNamed(const QString& name)
 {
     tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-    if (tibia::game::localPlayer() && storage && !name.isEmpty()) {
+    if (tibia::game::hasLocalPlayer() && storage && !name.isEmpty()) {
         const auto ar = tibia::game::awareRange();
     const AwareRange range{ ar.left, ar.top, ar.right, ar.bottom };
         for (const std::shared_ptr<tibia::creatures::TCreature>& creature :

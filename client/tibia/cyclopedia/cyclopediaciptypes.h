@@ -14,6 +14,14 @@
 #include <optional>
 #include <vector>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageCyclopediaHouseActionResult;
+class GameserverMessageMarketStatistics;
+class GameserverMessageMonsterCyclopedia;
+class GameserverMessageMonsterCyclopediaNewDetails;
+class GameserverMessageXpChanged;
+}
+
 namespace tibia {
 namespace cyclopedia {
 
@@ -38,12 +46,7 @@ public:
     using cip::tibia::cyclopedia::TCharacterInfoStorage::TCharacterInfoStorage;
 };
 
-class TConcoctionQmlData final : public cip::tibia::cyclopedia::TConcoctionQmlData
-{
-    Q_OBJECT
-public:
-    using cip::tibia::cyclopedia::TConcoctionQmlData::TConcoctionQmlData;
-};
+// TConcoctionQmlData — real implementation in combatstatsqmldata.h.
 
 // TCreatureTrackerStorage — real implementation in creaturetrackerstorage.h.
 
@@ -71,6 +74,50 @@ public:
 public:
     /// Tip Q→H wire: XpChanged, ItemWasted, MonsterCyclopediaNewDetails and ResourceBalance from `serverMessageEnqueued`.
     static void onServerMessageEnqueued(int opcode);
+
+    // Slots, one per server message.
+    static void handleMarketStatisticsMessage(const ::tibia::protobuf::protocol::GameserverMessageMarketStatistics& message);
+    static void handleMonsterCyclopediaMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopedia& message);
+    static void handleMonsterCyclopediaNewDetailsMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaNewDetails& message);
+    static void handleCyclopediaHouseActionResulMessage(
+        const ::tibia::protobuf::protocol::GameserverMessageCyclopediaHouseActionResult& message);
+    static void handleXpChangedMessage(const ::tibia::protobuf::protocol::GameserverMessageXpChanged& message);
+
+    // Requests (CipSoft's ICyclopediaProtocol slots).
+    /// Cyclopedia inspection of an object type (InspectObject type 3, no count).
+    static void sendInspectCyclopediaObject(uint16_t objectId);
+    static void sendMarketStatistics();
+    static void sendOpenMonsterCyclopedia();
+    /// The races of a classification.
+    static void sendOpenMonsterCyclopediaMonsters(const QString& classification);
+    /// The races of a search result.
+    static void sendOpenMonsterCyclopediaMonsters(const std::vector<uint16_t>& raceIds);
+    static void sendOpenMonsterCyclopediaRace(uint32_t raceId);
+    /// MonsterBonusEffectAction 0..3: unlock, assign to a race, remove, reset all.
+    static void sendUnlockCharm(uint32_t charmId);
+    static void sendAssignCharm(uint32_t charmId, uint32_t raceId);
+    static void sendRemoveCharm(uint32_t charmId);
+    static void sendResetAllCharms();
+    /// CyclopediaMapAction: an area's data, a donation, resetting an area's viewpoints.
+    static void sendRequestMapArea(uint32_t areaId);
+    static void sendMapDonation(uint32_t areaId, uint64_t amount);
+    static void sendResetMapAreaViewpoints(uint32_t areaId);
+    static void sendOpenCharacterInfo(uint32_t characterId, int infoType);
+    /// Paged form; general stats also request the wheel page.
+    static void sendOpenCharacterInfo(uint32_t characterId, int infoType, uint32_t entriesPerPage, uint32_t page);
+    /// CyclopediaHouseAction 0..7.
+    static void sendRequestTownHouses(const QString& town);
+    static void sendHouseBid(uint32_t houseId, uint64_t bid);
+    static void sendHouseMoveOut(uint32_t houseId, uint32_t date);
+    static void sendHouseTransfer(uint32_t houseId, uint32_t date, const QString& newOwner, uint64_t price);
+    static void sendHouseCancelMoveOut(uint32_t houseId);
+    static void sendHouseCancelTransfer(uint32_t houseId);
+    static void sendHouseAcceptTransfer(uint32_t houseId);
+    static void sendHouseRejectTransfer(uint32_t houseId);
+    /// PartyHuntAnalyser 0 and 2: reset the session; send the loot prices of objects.
+    static void sendResetPartyHuntAnalyser();
+    static void sendPartyHuntObjectPrices(const std::vector<uint16_t>& objectIds);
 };
 
 /// CipSoft cache of the combined Cyclopedia combat-stats packet (also consumed by
@@ -129,27 +176,9 @@ private:
     std::optional<CyclopediaCharacterDefenceStats> m_last;
 };
 
-class TPlayerMiscStatsProvider final : public ::tibia::CipTyped
-{
-public:
-    TPlayerMiscStatsProvider();
-    const std::optional<CyclopediaCharacterMiscStats>& last() const { return m_last; }
+// TPlayerMiscStatsProvider — real implementation in playermiscstatsprovider.h.
 
-private:
-    std::vector<client::gamecore::Hook> m_hooks;
-    std::optional<CyclopediaCharacterMiscStats> m_last;
-};
-
-class TPlayerOffenceStatsProvider final : public ::tibia::CipTyped
-{
-public:
-    TPlayerOffenceStatsProvider();
-    const std::optional<CyclopediaCharacterOffenceStats>& last() const { return m_last; }
-
-private:
-    std::vector<client::gamecore::Hook> m_hooks;
-    std::optional<CyclopediaCharacterOffenceStats> m_last;
-};
+// TPlayerOffenceStatsProvider — real implementation in playeroffencestatsprovider.h.
 
 }
 }

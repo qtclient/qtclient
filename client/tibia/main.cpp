@@ -435,7 +435,7 @@ int main(int argc, char** argv)
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addOption({ QStringLiteral("renderer"), QStringLiteral("auto, software, d3d11, vulkan, opengl, metal, d3d12 or a CIP renderer index."), QStringLiteral("renderer") });
-    parser.addOption({ QStringLiteral("data"), QStringLiteral("Directory with graphics_resources.rcc (or things/<version>/)."), QStringLiteral("dir") });
+    parser.addOption({ QStringLiteral("data"), QStringLiteral("Directory with graphics_resources.rcc."), QStringLiteral("dir") });
     parser.addOption({ QStringLiteral("preview"), QStringLiteral("Show character selection with sample characters.") });
     parser.addOption({ QStringLiteral("screenshot"), QStringLiteral("Save the window to file once it has rendered, then quit."), QStringLiteral("file") });
     parser.addOption({ QStringLiteral("check-qml"), QStringLiteral("Compile every bundled QML file and exit (non-zero on errors).") });
@@ -828,7 +828,7 @@ int main(int argc, char** argv)
     screenshot::TScreenshotManager screenshotManager;
     screenshotManager.configure(window, mapWindowPane);
     const auto takeScreenshot = [&screenshotManager](const input::TGameAction& action) {
-        return screenshotManager.handleScreenshotAction(action);
+        return screenshotManager.handleGameAction(action);
     };
     input::setActionHandler(input::EGameAction::TAKE_MANUAL_SCREENSHOT, takeScreenshot);
     input::setActionHandler(input::EGameAction::TAKE_AUTOMATIC_SCREENSHOT, takeScreenshot);
@@ -1162,6 +1162,14 @@ int main(int argc, char** argv)
     }
 
     QPointer<qmlcomponents::TWorldView> worldView;
+    // A new game session brings its own texts, effects, view and light.
+    QObject::connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, gameWindowItem, [&] {
+        if (worldView)
+            worldView->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
+        informationDialogs.setAmbientLightStorage(gameClient.ambientLight());
+        if (minimapController)
+            minimapController->setAmbientLightStorage(gameClient.ambientLight());
+    });
     QObject::connect(&gameClient, &client::TGameClient::mainWindowInitialized, gameWindowItem, [&] {
         // Show the game window before the heavier binds. A throw later must not
         // leave the login mask hidden and the game window still off.
@@ -1172,6 +1180,8 @@ int main(int argc, char** argv)
                                                           gameClient.numericalEffects());
                 if (!worldView->isBound())
                     qCritical("MapWindowPane has no WorldMap named worldmap");
+            } else {
+                worldView->bindSession(gameClient.textStorage(), gameClient.numericalEffects());
             }
             vipWidget.setSidebarOptions(gameClient.sidebarOptions());
             vipWidget.setWorldType(gameClient.worldType());

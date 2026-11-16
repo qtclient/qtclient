@@ -145,10 +145,8 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   RCC=""
   case "${WASM_PRELOAD_GRAPHICS_RCC:-}" in
     1|ON|on|true|TRUE|yes|YES)
-      RCC="$(ls "$OTC"/data/things/*/graphics_resources.rcc 2>/dev/null | sort | tail -1 || true)"
       # Flat CIP extract (make extract) lands at data/assets/.
-      [[ -z "$RCC" && -f "$OTC/data/assets/graphics_resources.rcc" ]] \
-        && RCC="$OTC/data/assets/graphics_resources.rcc"
+      [[ -f "$OTC/data/assets/graphics_resources.rcc" ]] && RCC="$OTC/data/assets/graphics_resources.rcc"
       if [[ -z "$RCC" ]]; then
         echo "[tibia] WARN: WASM_PRELOAD_GRAPHICS_RCC set but no graphics_resources.rcc (make extract)"
       else

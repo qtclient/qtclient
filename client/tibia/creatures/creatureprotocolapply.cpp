@@ -1,13 +1,13 @@
 #include "creatures/creatureprotocolapply.h"
 
 #include "creatures/creaturestorage.h"
-#include "game/localplayersessionthing.h"
+#include "game/playerdata.h"
 #include "protocol/protocolcodes.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
 
 #include <client/outfit.h>
-#include <framework/util/color.h>
+#include <QColor>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -89,11 +89,11 @@ Outfit outfitFromProtocol(const protobuf::protocol::ProtocolOutfit& look, const 
     return outfit;
 }
 
-Color colorFromEightBit(const uint8_t color)
+QColor colorFromEightBit(const uint8_t color)
 {
     if (color > 215)
-        return Color(0, 0, 0);
-    return Color(color / 36 * 51, color / 6 % 6 * 51, color % 6 * 51);
+        return QColor(0, 0, 0);
+    return QColor(color / 36 * 51, color / 6 % 6 * 51, color % 6 * 51);
 }
 
 void syncFieldStackFor(const uint32_t creatureId)
@@ -194,14 +194,11 @@ uint32_t applyProtocolCreature(const protobuf::protocol::ProtocolCreature& c)
     if (!storage)
         return 0;
     const uint32_t id = c.id();
-    const LocalPlayerSessionThingPtr player = game::localPlayer();
-    // Host: before the login named it, the session takes its own id from the
-    // own character's creature.
-    if (player && !player->getId() && c.kind() == NewCreature && c.type() == Proto::CreatureTypePlayer
-        && c.name() == player->getName()) {
-        player->setId(id);
+    // Host: before the login named it (a replay), the session takes its own id
+    // from the own character's creature.
+    if (game::hasLocalPlayer() && storage->playerID() == 0 && c.kind() == NewCreature
+        && c.type() == Proto::CreatureTypePlayer && c.name() == game::localPlayerName())
         storage->setPlayerID(id);
-    }
 
     // A new creature replaces the one the message names; known and turned
     // creatures (and a new one naming itself) must already be stored.
@@ -229,20 +226,10 @@ uint32_t applyProtocolCreature(const protobuf::protocol::ProtocolCreature& c)
     }
     storage->notifyCreatureUpdated(creature);
 
-    // Host: the session's own character follows its creature.
-    if (player && id == player->getId()) {
-        if (created) {
-            player->setName(c.name());
-            player->setType(creature->creatureType());
-        }
-        if (c.has_master_id())
-            player->setMasterId(c.master_id());
-        if (c.has_direction())
-            player->turn(static_cast<client::Direction>(c.direction()));
-        if (c.has_outfit())
-            player->setOutfit(creature->outfit(), true, false);
-        if ((c.kind() == NewCreature || c.kind() == KnownCreature) && !player->isKnown())
-            game::localPlayerSetKnown(true);
+    // Host: the session's character name follows its creature.
+    if (created && creature->isLocalPlayer() && c.has_name()) {
+        if (game::TPlayerData* data = game::TPlayerData::liveInstance())
+            data->setCharacterName(c.name());
     }
     return id;
 }

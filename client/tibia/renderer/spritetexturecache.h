@@ -50,12 +50,13 @@ inline size_t qHash(const SpriteKey& key, size_t seed = 0) noexcept
 /// Sprite textures of one window, in Qt's shared texture atlas (CIP:
 /// TSpriteTextureCache + TQtTextureAtlasTextureCreator). Render thread only.
 ///
-/// Eviction (CIP: TSpriteTextureCache insert , evict):
-/// atlas textures count against a budget that grows with them until a texture
-/// no longer fits the atlas (or, on OpenGL, past 16M pixels); then the least
-/// recently used fifth of the atlas textures not drawn this frame is dropped,
-/// and so are textures outside the atlas idle for 50 frames. Only caches whose
-/// user calls endFrame after requesting every texture it draws are evicted.
+/// Eviction (CIP: TSpriteTextureCache insert / evict): atlas textures go to the
+/// strong map and count against a budget that grows with them until a texture
+/// no longer fits the atlas (or, on OpenGL, past 16M pixels); that insert evicts
+/// the least recently used fifth of the strong textures not drawn since the
+/// previous endFrame, at most once per frame. Textures outside the atlas live in the weak map and
+/// are dropped after 50 idle frames once the atlas has room again. Only caches
+/// whose user requests every texture it draws each frame are evicted.
 ///
 /// Shared UI caches disable eviction: other widgets may still display a key that
 /// this caller did not touch this frame.
@@ -81,9 +82,15 @@ public:
     /// (CIP OpenGL TEffectWrapper path; unused when worldmap-highlight runs).
     QSGTexture* highlighted(const SpriteKey& key, const QColor& color);
     qsizetype size() const { return m_textures.size(); }
-    /// Every texture drawn this frame was requested: evicts if an insert asked for it
-    /// (and allowEvict). Retires from clear/evict land here.
+    /// The caller asked for every texture it draws. Retired textures from
+    /// clear/evict/remove are deleted after the next swap.
     void endFrame();
+    /// CIP onBeforeRenderNewFrame: next frame, eviction allowed again.
+    void beginFrame();
+    /// CIP REMOVE_SPRITEIDENTIFIER_FROM_CACHE: drop one key from either map.
+    void remove(const SpriteKey& key);
+    /// CIP onSceneGraphInvalidated: drop every key.
+    void removeAll();
     /// Drop every texture (HD mode toggle rebuilds with/without xBR4). Callers must
     /// drop QSG nodes that referenced them first (WorldMap deletes the tree).
     void clear();
@@ -100,6 +107,8 @@ private:
         /// textures outside the atlas (its weak map).
         bool budgeted = false;
     };
+    QSGTexture* lookup(const SpriteKey& key, bool& found);
+    void insert(const SpriteKey& key, const Entry& entry);
     void evict(double share);
     QImage raster(const SpriteKey& key, bool& loading) const;
     void retire(QSGTexture* texture);
@@ -122,9 +131,12 @@ private:
     QVector<QSGTexture*> m_retired;
     QVector<QSGTexture*> m_graveyard;
     uint32_t m_frame = 0;
+    /// CIP: one eviction per frame; reset by beginFrame.
+    bool m_evicted = false;
+    /// Frame of the last endFrame: textures asked for since then are on screen.
+    uint32_t m_heldFrame = 0;
     quint64 m_budgetedPixels = 0;
     quint64 m_budget = 0;
-    bool m_evictPending = false;
     bool m_hdMode = false;
     /// HD rebuild retires every texture while other items still hold those pointers.
     /// Skip the AfterSwap delete for this many endFrame calls so those items can

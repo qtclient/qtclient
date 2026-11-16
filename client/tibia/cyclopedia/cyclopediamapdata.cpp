@@ -1,4 +1,5 @@
 #include "cyclopediamapdata.h"
+#include "game/gamesessionbase.h"
 #include <algorithm>
 
 #include "client/gameclient.h"
@@ -470,13 +471,15 @@ TCyclopediaMapStorage::TCyclopediaMapStorage(QObject* parent)
             onPlayerPositionWasUpdated(worldmap::TWorldMapCoordinate(*position));
         return std::any{};
     });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
+    const auto bindPlayer = [this]() {
         if (creatures::TCreatureStorage* storage = creatures::TCreatureStorage::instance()) {
             connect(storage, &creatures::TCreatureStorage::playerAdded, this,
                     &TCyclopediaMapStorage::onPlayerCreatureAddedToGameSession,
                     static_cast<Qt::ConnectionType>(Qt::UniqueConnection));
         }
-    });
+    };
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, bindPlayer);
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameSessionChanged, this, bindPlayer);
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_mainAreas.clear();
         m_discovered.clear();

@@ -37,31 +37,11 @@ std::optional<int> classificationOf(const uint16_t typeId)
 
 }
 
-void TObjectCounts::set(std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts)
-{
-    m_counts = std::move(counts);
-    Q_EMIT countsChanged();
-}
-
-void TObjectCounts::clear()
-{
-    if (m_counts.empty())
-        return;
-    m_counts.clear();
-    Q_EMIT countsChanged();
-}
-
-uint32_t TObjectCounts::count(const uint16_t typeId, const uint8_t tier) const
-{
-    const auto it = m_counts.find({ typeId, tier });
-    return it == m_counts.end() ? 0 : it->second;
-}
-
-TForgeObjectListModel::TForgeObjectListModel(TObjectCounts* counts, QObject* parent)
+TForgeObjectListModel::TForgeObjectListModel(container::TObjectCountStorage* counts, QObject* parent)
     : cip::tibia::gamewindow::TAppearanceInstanceListModel(parent)
     , m_counts(counts)
 {
-    connect(m_counts, &TObjectCounts::countsChanged, this, &TForgeObjectListModel::onObjectCountsChanged);
+    connect(m_counts, &container::TObjectCountStorage::objectCountsChanged, this, &TForgeObjectListModel::onObjectCountsChanged);
 }
 
 int TForgeObjectListModel::rowCount(const QModelIndex& parent) const
@@ -237,7 +217,7 @@ bool smoothTextureFilteringOption()
 TExaltationForgeFusionPageController::TExaltationForgeFusionPageController(exaltation::TExaltationStorage* storage, QObject* parent)
     : cip::TExaltationForgeFusionPageController(parent)
     , m_storage(storage)
-    , m_counts(new exaltation::TObjectCounts(this))
+    , m_counts(new container::TObjectCountStorage(this))
     , m_fusionObjects(new exaltation::TForgeObjectListModel(m_counts, this))
     , m_resourceObjects(new exaltation::TForgeObjectListModel(m_counts, this))
     , m_fusionProxy(new exaltation::TUpgradeableObjectModel(m_fusionObjects, this))
@@ -421,7 +401,7 @@ void TExaltationForgeFusionPageController::onFusionGroupsChanged()
         }
     }
     m_fusionObjects->setObjects(std::move(objects));
-    m_counts->set(std::move(counts));
+    m_counts->setCounts(std::move(counts));
 }
 
 /// CIP : the other objects of the selected object's groups (a
@@ -469,8 +449,8 @@ void TExaltationForgeFusionPageController::reset()
 TExaltationForgeTransferPageController::TExaltationForgeTransferPageController(exaltation::TExaltationStorage* storage, QObject* parent)
     : cip::TExaltationForgeTransferPageController(parent)
     , m_storage(storage)
-    , m_sourceCounts(new exaltation::TObjectCounts(this))
-    , m_targetCounts(new exaltation::TObjectCounts(this))
+    , m_sourceCounts(new container::TObjectCountStorage(this))
+    , m_targetCounts(new container::TObjectCountStorage(this))
     , m_sourceObjects(new exaltation::TForgeObjectListModel(m_sourceCounts, this))
     , m_targetObjects(new exaltation::TForgeObjectListModel(m_targetCounts, this))
     , m_sourceProxy(new exaltation::TUpgradeableObjectModel(m_sourceObjects, this))
@@ -605,7 +585,7 @@ void TExaltationForgeTransferPageController::sourceSelected(const int TypeID, co
         }
     }
     m_targetObjects->setObjects(std::move(objects));
-    m_targetCounts->set(std::move(counts));
+    m_targetCounts->setCounts(std::move(counts));
     if (m_targetObjectTypeId != 0) {
         m_targetObjectTypeId = 0;
         Q_EMIT targetObjectChanged();
@@ -646,7 +626,7 @@ void TExaltationForgeTransferPageController::onTransferGroupsChanged()
         }
     }
     m_sourceObjects->setObjects(std::move(objects));
-    m_sourceCounts->set(std::move(counts));
+    m_sourceCounts->setCounts(std::move(counts));
 }
 
 /// CIP .

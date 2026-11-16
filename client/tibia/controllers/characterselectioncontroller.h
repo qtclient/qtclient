@@ -60,6 +60,15 @@ public:
     Q_INVOKABLE void createCharacterPressed() override;
     /// CIP: open the account site.
     void manageAccountPressed() override;
+    /// CIP: the account line - frozen (state 1), suspended (state 2), else
+    /// free, free premium (type 2) or premium with the days left, red under 14.
+    static QString accountStatusText(int accountState, int premiumType, int premiumDays);
+    /// CIP: the free / premium part of the account line.
+    static QString premiumStatusText(int premiumType, int premiumDays);
+    /// CIP: OPEN_URL_GET_PREMIUM.
+    void onGetPremiumClicked() override;
+    /// CIP: OPEN_URL_PREMIUM_FEATURES.
+    void onMorePremiumFeaturesClicked() override;
 
 Q_SIGNALS:
     void characterChosen(const tibia::gamewindow::CharacterEntry& character);

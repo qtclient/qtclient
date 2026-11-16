@@ -61,6 +61,11 @@ void TGameNotify::emitGameStarted()
     Q_EMIT gameStarted();
 }
 
+void TGameNotify::emitGameSessionChanged()
+{
+    Q_EMIT gameSessionChanged();
+}
+
 void TGameNotify::emitGameEnded()
 {
     Q_EMIT gameEnded();

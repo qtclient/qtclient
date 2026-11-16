@@ -21,24 +21,6 @@ namespace {
 
 using cip::tibia::qmlcomponents::enums::ESortOrder;
 
-QJsonArray toJsonArray(const QSet<int>& ids)
-{
-    QList<int> sorted(ids.begin(), ids.end());
-    std::ranges::sort(sorted);
-    QJsonArray array;
-    for (const int id : sorted)
-        array.append(id);
-    return array;
-}
-
-QSet<int> fromJsonArray(const QJsonValue& value)
-{
-    QSet<int> ids;
-    for (const QJsonValue& id : value.toArray())
-        ids.insert(id.toInt());
-    return ids;
-}
-
 QJsonObject missionPayload(const mods::MissionBackend* storage, const int questLineId, const int questFlagId,
                            const QString& partName = {})
 {
@@ -83,20 +65,6 @@ QString missionProgressText(const QJsonObject& payload)
 }
 
 
-const QString CompletedMarker = QStringLiteral("(completed)");
-
-}
-
-/// CIP : the server marks a finished mission by "(completed)" in its name.
-bool hasCompletedMarker(const QString& name)
-{
-    return name.contains(CompletedMarker);
-}
-
-/// CIP .
-QString stripCompletedMarker(const QString& name)
-{
-    return QString(name).replace(CompletedMarker, QString()).trimmed();
 }
 
 void TQuestLinesModel::setLines(QList<Line> lines)
@@ -311,18 +279,32 @@ bool TQuestLinePartsSortFilterProxyModel::lessThan(const QModelIndex& left, cons
     return left.data(TQuestLinePartsModel::IdRole).toUInt() < right.data(TQuestLinePartsModel::IdRole).toUInt();
 }
 
+/// CIP: the quest lines model is rebuilt from the storage through a single-shot timer.
 TQuestLogController::TQuestLogController(QObject* parent)
     : TDialogController(QStringLiteral("QuestlogDialog.qml"), parent)
+    , m_tracker(&m_storage)
     , m_linesProxy(&m_lines)
     , m_partsProxy(&m_parts)
 {
     m_questLinesModel = &m_linesProxy;
     m_questPartsModel = &m_partsProxy;
-    m_showCompleted = true;
-    m_linesProxy.setFilterOptions(m_showCompleted, m_showHidden);
-    connect(&m_linesProxy, &TQuestLinesSortFilterProxyModel::sortingChanged, this, &TQuestLogController::saveStorage);
-    connect(&m_tracker, &TQuestTrackerStorage::entriesChanged, this, &TQuestLogController::updateTracking);
-    connect(&m_tracker, &TQuestTrackerStorage::storageChanged, this, &TQuestLogController::saveStorage);
+    m_questLinesChangedTimer.setInterval(0);
+    m_questLinesChangedTimer.setSingleShot(true);
+    connect(&m_questLinesChangedTimer, &QTimer::timeout, this, &TQuestLogController::onQuestLinesChanged);
+    connect(this, &TQuestLogController::selectedQuestLineChanged, this, &TQuestLogController::selectedQuestFlagChanged);
+
+    // CIP connects these when the game session is set.
+    auto* timer = &m_questLinesChangedTimer;
+    connect(&m_storage, &questlog::TQuestLogStorage::questLinesChanged, timer, qOverload<>(&QTimer::start));
+    connect(&m_storage, &questlog::TQuestLogStorage::hiddenQuesLinesChanged, timer, qOverload<>(&QTimer::start));
+    connect(&m_storage, &questlog::TQuestLogStorage::pinnedQuesLinesChanged, timer, qOverload<>(&QTimer::start));
+    connect(&m_storage, &questlog::TQuestLogStorage::questLinesChanged, this, &TQuestLogController::completedQuestLinesCountChanged);
+    connect(&m_storage, &questlog::TQuestLogStorage::hiddenQuesLinesChanged, this, &TQuestLogController::hiddenQuestLinesCountChanged);
+    connect(&m_storage, &questlog::TQuestLogStorage::questLinePartsChanged, this, &TQuestLogController::onQuestLinePartsChanged);
+    connect(&m_storage, &questlog::TQuestLogStorage::trackedQuestFlagsChanged, this, [this] { Q_EMIT trackingChanged(); });
+    connect(&m_storage, &questlog::TQuestLogStorage::filterOptionChanged, this, &TQuestLogController::onFilterOptionChanged);
+    connect(&m_storage, &questlog::TQuestLogStorage::configurationChangedFromUserInput, this, &TQuestLogController::saveStorage);
+    onFilterOptionChanged();
 
     input::setActionHandler(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, [this](const input::TGameAction& action) {
         m_tracker.setOption(action.parameter, action.enable);
@@ -342,36 +324,75 @@ TQuestLogController::~TQuestLogController()
     input::setActionHandler(input::EGameAction::CHANGE_QUESTTRACKER_OPTIONS, nullptr);
     input::setActionHandler(input::EGameAction::CHANGE_TRACKED_QUESTFLAGS, nullptr);
     saveStorage();
+    resetSelection();
 }
 
+bool TQuestLogController::canTrackAdditionalQuestFlags() const
+{
+    return m_storage.canTrackAdditionalQuestFlags();
+}
+
+/// CIP: whether the selected quest flag is tracked.
+bool TQuestLogController::isTracked() const
+{
+    return trackedQuestFlagIds().contains(questlog::TQuestFlagID(m_selectedQuestFlagId));
+}
+
+std::set<questlog::TQuestFlagID> TQuestLogController::trackedQuestFlagIds() const
+{
+    std::set<questlog::TQuestFlagID> ids;
+    for (const questlog::TQuestFlag& flag : m_storage.trackedQuestFlags())
+        ids.insert(flag.id);
+    return ids;
+}
+
+qulonglong TQuestLogController::completedQuestLinesCount() const
+{
+    return m_storage.completedQuestLinesCount();
+}
+
+bool TQuestLogController::showCompleted() const
+{
+    return m_storage.showCompleted();
+}
+
+qulonglong TQuestLogController::hiddenQuestLinesCount() const
+{
+    return m_storage.hiddenQuestLinesCount();
+}
+
+bool TQuestLogController::showHidden() const
+{
+    return m_storage.showHidden();
+}
+
+/// CIP: asks for the quest lines, then selects the flag's quest line or clears both lists.
 void TQuestLogController::showDialog(const int parameter)
 {
     ensureStorage();
     if (tibia::game::isOnline())
         tibia::game::requestQuestLog();
-    const int questFlagId = parameter & 0xffff;
-    const int questLineId = (parameter & 0xff0000) != 0 ? m_tracker.questLineOf(questFlagId) : 0;
-    if (questLineId == 0) {
-        m_selectedQuestLineId = 0;
-        m_selectedQuestFlagId = 0;
+    if ((parameter & 0xff0000) == 0) {
+        m_lines.setLines({});
         m_parts.setParts({});
-        Q_EMIT selectedQuestLineChanged();
-        Q_EMIT selectedQuestFlagChanged();
-        Q_EMIT missionChanged();
+        m_partsProxy.invalidate();
     } else {
-        if (questFlagId != m_selectedQuestFlagId) {
-            m_selectedQuestFlagId = questFlagId;
-            Q_EMIT selectedQuestFlagChanged();
+        const questlog::TQuestFlagID questFlagId = parameter & 0xffff;
+        if (const std::optional<questlog::TQuestLineID> questLineId = m_storage.questLineIdOfQuestFlag(questFlagId)) {
+            if (m_selectedQuestFlagId != questFlagId) {
+                m_selectedQuestFlagId = questFlagId;
+                Q_EMIT trackingChanged();
+                Q_EMIT selectedQuestFlagChanged();
+            }
+            requestQuestLineDetails(*questLineId);
         }
-        requestQuestLineDetails(questLineId);
     }
-    updateTracking();
     dialog()->show();
 }
 
 void TQuestLogController::ensureStorage()
 {
-    const quint32 characterId = tibia::game::localPlayer() ? tibia::game::localPlayerId() : 0;
+    const quint32 characterId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
     if (characterId == m_characterId)
         return;
     saveStorage();
@@ -381,25 +402,19 @@ void TQuestLogController::ensureStorage()
 
 void TQuestLogController::setQuestLines(const std::vector<std::tuple<uint16_t, std::string, bool>>& lines)
 {
-    m_serverLines = lines;
-    rebuildLines();
+    std::vector<questlog::TQuestLine> questLines;
+    for (const auto& [id, name, completed] : lines)
+        questLines.push_back({ .id = id, .name = QString::fromStdString(name), .completed = completed, .parts = {} });
+    m_storage.setQuestLines(questLines);
 }
 
-/// CIP .
 void TQuestLogController::setQuestLineParts(const uint16_t questLineId,
                                             const std::vector<std::tuple<std::string, std::string, uint16_t>>& missions)
 {
-    if (questLineId != m_selectedQuestLineId)
-        return;
-    QList<TQuestLinePartsModel::Part> parts;
-    for (const auto& [name, description, id] : missions) {
-        const QString partName = QString::fromStdString(name);
-        parts.append({ .id = id,
-                       .name = stripCompletedMarker(partName),
-                       .description = QString::fromStdString(description),
-                       .completed = hasCompletedMarker(partName) });
-    }
-    m_parts.setParts(std::move(parts));
+    std::vector<questlog::TQuestLinePart> parts;
+    for (const auto& [name, description, id] : missions)
+        parts.emplace_back(id, QString::fromStdString(name), QString::fromStdString(description));
+    m_storage.setQuestLineParts(questLineId, parts);
 }
 
 void TQuestLogController::clear()
@@ -407,57 +422,137 @@ void TQuestLogController::clear()
     dialog()->close();
     saveStorage();
     m_characterId = 0;
-    m_serverLines.clear();
+    m_storage.clearQuestLines();
+    m_storage.setTrackedQuestFlags({}, 0, true);
     m_lines.setLines({});
     m_parts.setParts({});
     m_tracker.clear();
 }
 
-/// CIP .
-void TQuestLogController::closeButtonPressed()
+/// CIP: the quest lines model from the storage; keeps the selected quest line
+/// when it is still listed, else selects the first one.
+void TQuestLogController::onQuestLinesChanged()
 {
-    dialog()->close();
-    // Closing forgets the selection and resets the quest line list's filter and sorting.
+    const std::set<questlog::TQuestLineID> hidden = m_storage.hiddenQuestLines();
+    const std::set<questlog::TQuestLineID> pinned = m_storage.pinnedQuestLines();
+    QList<TQuestLinesModel::Line> lines;
+    lines.reserve(int(m_storage.questLines().size()));
+    for (const auto& [id, line] : m_storage.questLines()) {
+        lines.append({ .id = line.id,
+                       .name = line.name,
+                       .completed = line.completed,
+                       .hidden = hidden.contains(line.id),
+                       .pinned = pinned.contains(line.id) });
+    }
+    m_lines.setLines(std::move(lines));
+    if (dialog()->isShown()) {
+        if (m_storage.questLines().empty())
+            requestQuestLineDetails(0);
+        else if (!m_storage.questLines().contains(m_selectedQuestLineId))
+            requestQuestLineDetailsFirstInList();
+    }
+    Q_EMIT hiddenQuestLinesCountChanged();
+}
+
+/// CIP: the parts model of the selected quest line; the selected quest flag
+/// follows to the first listed part when it is not one of them.
+void TQuestLogController::onQuestLinePartsChanged(const int questLineId)
+{
+    if (m_selectedQuestLineId != questLineId)
+        return;
+    const std::vector<questlog::TQuestLinePart> parts = m_storage.questLine(m_selectedQuestLineId).parts;
+    QList<TQuestLinePartsModel::Part> rows;
+    rows.reserve(int(parts.size()));
+    for (const questlog::TQuestLinePart& part : parts)
+        rows.append({ .id = part.id, .name = part.name, .description = part.description, .completed = part.completed });
+    m_parts.setParts(std::move(rows));
+    m_partsProxy.invalidate();
+    Q_EMIT missionChanged();
+    if (parts.empty()) {
+        if (m_selectedQuestFlagId != 0) {
+            m_selectedQuestFlagId = 0;
+            Q_EMIT trackingChanged();
+            Q_EMIT selectedQuestFlagChanged();
+        }
+        return;
+    }
+    if (std::ranges::any_of(parts, [this](const questlog::TQuestLinePart& part) { return part.id == m_selectedQuestFlagId; }))
+        return;
+    const QModelIndex first = m_partsProxy.index(0, 0);
+    const int questFlagId = first.isValid() ? first.data(TQuestLinePartsModel::IdRole).toUInt() : 0;
+    if (questFlagId != m_selectedQuestFlagId) {
+        m_selectedQuestFlagId = questFlagId;
+        Q_EMIT trackingChanged();
+        Q_EMIT selectedQuestFlagChanged();
+    }
+}
+
+/// CIP: sends the stored tracked flags once the character's configuration is in.
+void TQuestLogController::onCharacterConfigurationLoaded()
+{
+    QList<int> ids;
+    for (const questlog::TQuestFlag& flag : m_storage.trackedQuestFlags())
+        ids.append(flag.id);
+    m_tracker.changeTrackedQuestFlags(ids, false);
+    onFilterOptionChanged();
+}
+
+void TQuestLogController::onFilterOptionChanged()
+{
+    m_linesProxy.setFilterOptions(m_storage.showCompleted(), m_storage.showHidden());
+    Q_EMIT filterOptionsChanged();
+}
+
+void TQuestLogController::resetSelection()
+{
     m_selectedQuestLineId = 0;
     m_selectedQuestFlagId = 0;
     m_linesProxy.resetFilter();
-    m_linesProxy.setSortOrder(int(cip::tibia::qmlcomponents::enums::ESortOrder::AtoZ));
+    m_linesProxy.setSortOrder(int(ESortOrder::AtoZ));
 }
 
-/// CIP .
+void TQuestLogController::closeButtonPressed()
+{
+    dialog()->close();
+    resetSelection();
+}
+
+/// CIP: asks the server for the quest line's parts and shows the stored ones meanwhile.
 void TQuestLogController::requestQuestLineDetails(const int QuestLineID)
 {
     if (QuestLineID == m_selectedQuestLineId)
         return;
-    if (QuestLineID != 0 && tibia::game::isOnline())
+    if (tibia::game::isOnline())
         tibia::game::requestQuestLine(QuestLineID);
     m_selectedQuestLineId = QuestLineID;
     Q_EMIT selectedQuestLineChanged();
     Q_EMIT missionChanged();
-    m_parts.setParts({});
+    if (m_selectedQuestLineId == 0) {
+        m_parts.setParts({});
+        m_partsProxy.invalidate();
+    }
+    onQuestLinePartsChanged(m_selectedQuestLineId);
     if (m_missionBackend && QuestLineID > 0)
         m_missionBackend->missionLookup(QuestLineID);
 }
 
-/// CIP .
 void TQuestLogController::requestQuestLineDetailsFirstInList()
 {
     const QModelIndex first = m_linesProxy.index(0, 0);
-    requestQuestLineDetails(first.isValid() ? first.data(TQuestLinesModel::IdRole).toInt() : 0);
+    requestQuestLineDetails(first.isValid() ? first.data(TQuestLinesModel::IdRole).toUInt() : 0);
 }
 
-/// CIP .
 void TQuestLogController::selectedQuestFlag(const int QuestFlagID)
 {
     if (QuestFlagID == m_selectedQuestFlagId)
         return;
-    m_selectedQuestFlagId = QuestFlagID;
+    m_selectedQuestFlagId = static_cast<quint16>(QuestFlagID);
+    Q_EMIT trackingChanged();
     Q_EMIT selectedQuestFlagChanged();
     Q_EMIT missionChanged();
-    updateTracking();
 }
 
-/// CIP : toggles the quest tracker widget.
+/// CIP: toggles the quest tracker widget.
 void TQuestLogController::questTrackerButtonPressed()
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::TOGGLE_WIDGET));
@@ -465,53 +560,49 @@ void TQuestLogController::questTrackerButtonPressed()
     input::publish(action);
 }
 
-/// CIP .
 void TQuestLogController::setShowCompleted(const bool Show)
 {
-    if (Show == m_showCompleted)
-        return;
-    m_showCompleted = Show;
-    m_linesProxy.setFilterOptions(m_showCompleted, m_showHidden);
-    saveStorage();
-    Q_EMIT filterOptionsChanged();
+    m_storage.setShowCompleted(Show);
 }
 
-/// CIP .
 void TQuestLogController::setShowHidden(const bool Show)
 {
-    if (Show == m_showHidden)
-        return;
-    m_showHidden = Show;
-    m_linesProxy.setFilterOptions(m_showCompleted, m_showHidden);
-    saveStorage();
-    Q_EMIT filterOptionsChanged();
+    m_storage.setShowHidden(Show);
 }
 
+/// CIP: hiding a quest line while hidden lines are filtered out moves the
+/// selection to the next listed line (or the previous one).
 void TQuestLogController::setHidden(const int QuestLineId, const bool IsHidden)
 {
-    if (IsHidden == m_hiddenLines.contains(QuestLineId))
-        return;
-    if (IsHidden)
-        m_hiddenLines.insert(QuestLineId);
-    else
-        m_hiddenLines.remove(QuestLineId);
-    saveStorage();
-    rebuildLines();
+    if (IsHidden && !m_storage.showHidden()) {
+        int row = 0;
+        for (; row < m_linesProxy.rowCount(); ++row) {
+            if (int(m_linesProxy.index(row, 0).data(TQuestLinesModel::IdRole).toUInt()) == QuestLineId)
+                break;
+        }
+        int questLineId = 0;
+        if (row + 1 < m_linesProxy.rowCount())
+            questLineId = int(m_linesProxy.index(row + 1, 0).data(TQuestLinesModel::IdRole).toUInt());
+        else if (row != 0)
+            questLineId = int(m_linesProxy.index(row - 1, 0).data(TQuestLinesModel::IdRole).toUInt());
+        requestQuestLineDetails(questLineId);
+    }
+    m_storage.setHidden(QuestLineId, IsHidden);
+    Q_EMIT selectedQuestLineChanged();
 }
 
 void TQuestLogController::setPinned(const int QuestLineId, const bool IsPinned)
 {
-    if (IsPinned == m_pinnedLines.contains(QuestLineId))
-        return;
-    if (IsPinned)
-        m_pinnedLines.insert(QuestLineId);
-    else
-        m_pinnedLines.remove(QuestLineId);
-    saveStorage();
-    rebuildLines();
+    m_storage.setPinned(QuestLineId, IsPinned);
+    Q_EMIT selectedQuestLineChanged();
 }
 
-/// CIP: TGameActionChangeTrackedQuestFlags through .
+/// CIP: TGameActionChangeTrackedQuestFlags with the one flag.
+void TQuestLogController::setTrackingOfQuestFlag(const int QuestFlagId, const bool IsTracked)
+{
+    m_tracker.changeTrackedQuestFlags({ QuestFlagId }, !IsTracked);
+}
+
 void TQuestLogController::setMissionBackend(mods::MissionBackend* storage)
 {
     if (m_missionBackend == storage)
@@ -582,66 +673,22 @@ void TQuestLogController::startMission(const QString& taskEntryId)
     m_missionBackend->missionAdvance(key, entryId, m_selectedQuestFlagId);
 }
 
-
-void TQuestLogController::setTrackingOfQuestFlag(const int QuestFlagId, const bool IsTracked)
-{
-    if (IsTracked == m_tracker.trackedIds().contains(QuestFlagId))
-        return;
-    m_tracker.changeTrackedQuestFlags({ QuestFlagId }, !IsTracked);
-}
-
-void TQuestLogController::rebuildLines()
-{
-    QList<TQuestLinesModel::Line> lines;
-    qulonglong completed = 0;
-    qulonglong hidden = 0;
-    for (const auto& [id, name, isCompleted] : m_serverLines) {
-        const bool isHidden = m_hiddenLines.contains(id);
-        completed += isCompleted ? 1 : 0;
-        hidden += isHidden ? 1 : 0;
-        lines.append({ .id = id, .name = QString::fromStdString(name), .completed = isCompleted, .hidden = isHidden,
-                       .pinned = m_pinnedLines.contains(id) });
-    }
-    m_lines.setLines(std::move(lines));
-    if (completed != m_completedQuestLinesCount) {
-        m_completedQuestLinesCount = completed;
-        Q_EMIT completedQuestLinesCountChanged();
-    }
-    if (hidden != m_hiddenQuestLinesCount) {
-        m_hiddenQuestLinesCount = hidden;
-        Q_EMIT hiddenQuestLinesCountChanged();
-    }
-}
-
-void TQuestLogController::updateTracking()
-{
-    const bool tracked = m_selectedQuestFlagId != 0 && m_tracker.trackedIds().contains(m_selectedQuestFlagId);
-    // remaining defaults to 25 until 0xD0 arrives; empty tracker must never look "full".
-    const bool canTrack = m_tracker.remainingTrackable() > 0 || m_tracker.trackedIds().isEmpty();
-    if (tracked == m_isTracked && canTrack == m_canTrackAdditionalQuestFlags)
-        return;
-    m_isTracked = tracked;
-    m_canTrackAdditionalQuestFlags = canTrack;
-    Q_EMIT trackingChanged();
-}
-
+/// The character's "questtracking" configuration, one file per character.
 void TQuestLogController::loadStorage()
 {
-    QJsonObject root;
+    QJsonObject json;
     if (m_characterId != 0) {
-        QFile file(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-                   + QStringLiteral("/characterdata/%1/questLog.json").arg(m_characterId));
+        const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
+                                  + QStringLiteral("/characterdata/%1").arg(m_characterId);
+        QFile file(directory + QStringLiteral("/%1.json").arg(m_storage.configurationName()));
         if (file.open(QIODevice::ReadOnly))
-            root = QJsonDocument::fromJson(file.readAll()).object();
+            json = QJsonDocument::fromJson(file.readAll()).object();
     }
-    m_hiddenLines = fromJsonArray(root.value(QLatin1String("hidden")));
-    m_pinnedLines = fromJsonArray(root.value(QLatin1String("pinned")));
-    m_showCompleted = root.value(QLatin1String("showCompleted")).toBool(true);
-    m_showHidden = root.value(QLatin1String("showHidden")).toBool(false);
-    m_linesProxy.setFilterOptions(m_showCompleted, m_showHidden);
-    m_linesProxy.setSortOrder(root.value(QLatin1String("sortOrder")).toInt(int(ESortOrder::AtoZ)));
-    m_tracker.load(root);
-    Q_EMIT filterOptionsChanged();
+    m_storage.fromJson(json);
+    m_tracker.reload();
+    onQuestLinesChanged();
+    if (m_characterId != 0)
+        onCharacterConfigurationLoaded();
 }
 
 void TQuestLogController::saveStorage()
@@ -649,20 +696,12 @@ void TQuestLogController::saveStorage()
     if (m_characterId == 0)
         return;
     const QString path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)
-                         + QStringLiteral("/characterdata/%1/questLog.json").arg(m_characterId);
+                         + QStringLiteral("/characterdata/%1/%2.json").arg(m_characterId).arg(m_storage.configurationName());
     QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly))
         return;
-    QJsonObject root{
-        { QStringLiteral("hidden"), toJsonArray(m_hiddenLines) },
-        { QStringLiteral("pinned"), toJsonArray(m_pinnedLines) },
-        { QStringLiteral("showCompleted"), m_showCompleted },
-        { QStringLiteral("showHidden"), m_showHidden },
-        { QStringLiteral("sortOrder"), m_linesProxy.sortOrder() },
-    };
-    m_tracker.save(root);
-    file.write(QJsonDocument(root).toJson());
+    file.write(QJsonDocument(m_storage.toJson()).toJson());
     file.commit();
 }
 

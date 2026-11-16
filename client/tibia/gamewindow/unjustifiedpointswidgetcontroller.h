@@ -76,6 +76,8 @@ private Q_SLOTS:
     void onWidgetQuickItemDestroyed();
 
 private:
+    /// The active game session's storage connection.
+    QMetaObject::Connection m_playerAdded;
     void refresh();
 
     std::vector<client::gamecore::Hook> m_hooks;

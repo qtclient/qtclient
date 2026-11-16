@@ -19,7 +19,7 @@ session-end subscribe / `requestBless`),
 `raceOutfit` / `allRaceIds` / quest peels), `game/gamesession.h`
 (`InventorySlotInfo` / `localPlayerInventorySlot`), `game/creaturesession.h`
 (spectator / creature POD peels), and `game/mapsession.h`. Prefer these over
-`gamehub_impl.h` / `assets/things.h` / `creatures/creature.h` — packs use `gamesession.h` peels only (no `localplayersessionthing.h`);
+`gamehub_impl.h` / `assets/things.h` / `creatures/creature.h` — packs use `gamesession.h` peels only;
 keep the Game hub include only for wire helpers. Raycast lighting uses the POD
 `WorldLightingDriver` + `setItemThingShape` / gamesession peels — no tip-deep
 `things.h` / `ThingType&` in product pack raycast TUs. Sprite peels:

@@ -32,12 +32,6 @@ AnimatedText::AnimatedText()
 {
 }
 
-void AnimatedText::drawText(const Point& dest, const Rect& visibleRect)
-{
-    (void)dest; (void)visibleRect;
-}
-
-
 void AnimatedText::onAppear()
 {
     m_animationTimer.restart();

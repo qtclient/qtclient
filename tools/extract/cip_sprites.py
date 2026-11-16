@@ -19,7 +19,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-THINGS_ROOT = ROOT / "apps/qtclient/data/things"
 ASSETS_ROOT = ROOT / "apps/qtclient/data/assets"
 
 SHEET_SIZE = 384
@@ -288,16 +287,9 @@ def apng(w: int, h: int, frames: list[tuple[bytes, int]]) -> bytes:
 # --- paths / revisions ------------------------------------------------------
 
 
-def find_things_dir() -> Path | None:
-    if (ASSETS_ROOT / "catalog-content.json").is_file():
-        return ASSETS_ROOT
-    if not THINGS_ROOT.is_dir():
-        return None
-    versions = sorted(
-        (p for p in THINGS_ROOT.iterdir() if (p / "catalog-content.json").is_file()),
-        key=lambda p: int(p.name) if p.name.isdigit() else -1,
-    )
-    return versions[-1] if versions else None
+def find_assets_dir() -> Path | None:
+    """The CIP-flat assets dump from make extract, or None before one ran."""
+    return ASSETS_ROOT if (ASSETS_ROOT / "catalog-content.json").is_file() else None
 
 
 def things_revision(things: Path, fmt: str) -> str:

@@ -59,6 +59,7 @@ public:
     explicit TChatChannelController(QObject* parent = nullptr);
 
     chat::TChatChannel* channel() const { return m_channel; }
+    /// CIP: the rows go and the new channel's entries come.
     void setChannel(chat::TChatChannel* channel);
 
     /// The entry of a row (row 0 newest), or null.
@@ -69,6 +70,7 @@ public:
     bool hasSelection() const;
 
     int rowCount(const QModelIndex& parent = {}) const override;
+    Qt::ItemFlags flags(const QModelIndex& index) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
@@ -79,8 +81,9 @@ public:
     QString channelName() const override;
 
 public Q_SLOTS:
+    /// CIP: the console's timestamp, seconds and level options.
     void onChatChannelControllerOptionsChanged() override;
-    /// CIP : every line is formatted again.
+    /// CIP: every line is formatted again.
     void onEntryFormatChanged(bool showTimestamp, bool showTimestampSeconds, bool showLevel) override;
 
 public:
@@ -100,38 +103,57 @@ Q_SIGNALS:
     void entryClicked(int row, int mouseButton, int keyboardModifiers);
 
 private:
+    /// One line (CIP's 0x38-byte row): its text, selection and entry id.
     struct Row
     {
         QString html;
-        mutable QString plain;
+        int selectionStart = 0;
+        int selectionEnd = 0;
+        /// Where the selection in this line is anchored.
+        int selectionAnchor = 0;
+        /// The line's length as plain text.
+        int plainLength = 0;
+        uint32_t entryId = 0;
         mutable QSize size;
-        int selectionStart = -1;
-        int selectionEnd = -1;
+        mutable QString plain;
+
+        void clearSelection();
+        void startSelection(int position);
+        /// From the anchor to `position`.
+        void selectToCursor(int position);
+        /// From the line's start (0) or end (1) to `position`.
+        void selectFromSide(int position, int side);
+        void selectWhole();
+        /// From the anchor to the line's end (1: its start).
+        void selectAnchorTo(int side);
     };
 
-    void rebuild();
-    /// The channel's entry ids moved: rows for the entries that left and came.
+    /// CIP: the channel went away.
+    void resetChannel();
     void onIdRangeChanged(uint32_t firstId, uint32_t afterLastId);
-    Row makeRow(const chat::TChatEntry& entry) const;
-    int plainLength(int row) const;
-    void applySelection(int anchorRow, int anchorPos, int focusRow, int focusPos);
-    void clearSelection();
+    void onTutorialMarkerChanged();
+    void clearRows();
+    void removeOldestRow();
+    Row makeRow(const chat::TChatEntry& entry, uint32_t entryId) const;
+    void formatRow(Row& row, const chat::TChatEntry& entry) const;
+    QVariant tutorialMarkerOf(const Row& row) const;
+    QSize sizeOf(const QString& html) const;
+    void emitSelectionChanged(int firstRow, int lastRow);
     void invalidateSizes();
 
     QPointer<chat::TChatChannel> m_channel;
     std::vector<Row> m_rows;
-    /// The entry ids the rows show.
-    uint32_t m_firstEntryId = 0;
-    uint32_t m_afterLastEntryId = 0;
     TChatChannelFilterController m_filter;
     bool m_showTimestamps = true;
     bool m_showTimestampSeconds = true;
     bool m_showLevels = true;
+    /// The selected rows and the one the selection ends in.
+    int m_selectionHigh = 0;
+    int m_selectionLow = 0;
+    int m_selectionFocus = 0;
     int m_width = 0;
     QFont m_font;
     bool m_autoScroll = true;
-    int m_anchorRow = -1;
-    int m_anchorPos = 0;
 };
 
 /// The channel tabs (CIP: TChatChannelTabController, roles 0x101 channelName,
@@ -328,6 +350,9 @@ private:
     void saveChannel(chat::TChatChannel* channel);
     /// CIP / : the name prompt for the channel.
     void openInviteDialog(chat::TChatChannel* channel, bool exclude);
+    /// CIP: the prompt's name is invited to / excluded from its channel.
+    void onPlayerNameToInviteToChatChannelReceived(const QString& playerName);
+    void onPlayerNameToExcludeFromChatChannelReceived(const QString& playerName);
     /// CIP .
     void showRecentlyTraded(const QString& name);
     void addLogMessage(const QString& text);
@@ -337,6 +362,7 @@ private:
     chat::TChatGameActionHandler m_gameActionHandler;
     chat::TChatStorage m_chatStorage;
     chat::TWhiteBlacklist m_blacklist;
+    chat::TChatGameActionProvider m_actionProvider;
     chat::TChatModeManager m_mode;
     std::unique_ptr<chat::TChatProtocolMessageHandler> m_protocol;
     TChatChannelController m_primary;

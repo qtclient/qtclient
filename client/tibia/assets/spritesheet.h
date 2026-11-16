@@ -1,13 +1,15 @@
 #pragma once
 
 #include "shared/clockservice.h"
-#include <framework/util/size.h>
+#include <QSize>
+#include <QSizeF>
 
 #include <QImage>
 
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -71,7 +73,7 @@ public:
     {
     }
 
-    Size getSpriteSize() const;
+    QSize getSpriteSize() const;
     int getSpritesPerSheet() const;
     int getColumns() const { return SIZE / getSpriteSize().width(); }
 
@@ -95,7 +97,10 @@ public:
     void clear();
     void setPath(std::string path) { m_path = std::move(path); }
     const std::string& path() const { return m_path; }
+    /// Keeps sheets sorted by first sprite id; a file added twice throws std::invalid_argument.
     void addSheet(const SpriteSheetPtr& sheet);
+    /// First sheet whose last sprite id is not below `id` (remembers the last hit).
+    SpriteSheetPtr findSheet(int id);
     void setSpritesCount(int count) { m_spritesCount = count; }
     int spritesCount() const { return m_spritesCount; }
 
@@ -107,6 +112,8 @@ public:
 private:
     int m_spritesCount = 0;
     std::vector<SpriteSheetPtr> m_sheets;
+    std::mutex m_cacheMutex;
+    SpriteSheetPtr m_cachedSheet;
     std::string m_path;
 };
 

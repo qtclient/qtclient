@@ -23,7 +23,6 @@
 #include "shared/clockservice.h"
 #include "idleot/stats.h"
 
-#include <framework/stdext/time.h>
 
 #ifndef USE_PRECOMPILED_HEADERS
 #include <iomanip>

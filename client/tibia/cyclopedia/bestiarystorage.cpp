@@ -182,7 +182,7 @@ void TBestiaryStorage::setRaceProgress(const int raceId, const int progress) { m
 
 quint64 TBestiaryStorage::goldBalance()
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return 0;
     return tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_BANK_BALANCE)
            + tibia::game::localPlayerResourceBalance(tibia::client::RESOURCE_GOLD_EQUIPPED);

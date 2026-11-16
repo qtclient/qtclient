@@ -1,4 +1,5 @@
 #include "analysers/analyserstorages.h"
+#include "analysers/itempricestorage.h"
 
 #include <client/staticdata.h>
 
@@ -36,9 +37,7 @@ TAnalyserStorages* s_instance = nullptr;
 THuntingSessionStorage::THuntingSessionStorage(TProgressStorage* progress, QObject* parent)
     : cip::tibia::cyclopedia::THuntingSessionStorage(parent)
     , m_progress(progress)
-{
-    connect(progress, &TProgressStorage::dataChanged, this, &THuntingSessionStorage::experienceChanged);
-}
+{}
 
 void THuntingSessionStorage::emitKillsChanged()
 {
@@ -57,7 +56,7 @@ QJsonObject THuntingSessionStorage::toJson() const { return { { QLatin1String(Ke
 void THuntingSessionStorage::fromJson(const QJsonObject& json)
 {
     m_showBaseXp = json.value(QLatin1String(KeyShowBaseXp)).toBool(false);
-    emitOptionsChanged();
+    Q_EMIT optionsChanged();
 }
 
 void THuntingSessionStorage::tick(const qint64 nowMs)
@@ -80,8 +79,8 @@ void THuntingSessionStorage::reset()
     if (m_progress)
         m_progress->reset();
     m_kills.clear();
-    Q_EMIT sessionLengthChanged();
     Q_EMIT experienceChanged();
+    Q_EMIT sessionLengthChanged();
     emitKillsChanged();
 }
 
@@ -150,7 +149,7 @@ void TPartyHuntStorage::clear()
 
 TAnalyserStorages::TAnalyserStorages(QObject* parent)
     : QObject(parent)
-    , m_gainWaste(&m_prices)
+    , m_gainWaste(TItemPriceStorage::instance())
     , m_huntingSession(&m_progress)
 {
     s_instance = this;
@@ -158,7 +157,7 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this, [this]() {
         resetAll();
         m_partyHunt.clear();
-        if (tibia::game::localPlayer())
+        if (tibia::game::hasLocalPlayer())
             setCharacter(tibia::game::localPlayerId());
         m_timer.start();
     });
@@ -235,25 +234,10 @@ TAnalyserStorages::TAnalyserStorages(QObject* parent)
         return std::any{};
     };
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPartyAnalyzerUpdate", applyPartyAnalyzer);
-    // CIP market statistics (TItemPriceStorage +0x60).
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onItemsPrice", [this](GameObject*, const Args& args) {
-        if (args.empty())
-            return std::any{};
-        const auto* prices = std::any_cast<std::map<uint16_t, uint64_t>>(&args[0]);
-        if (!prices)
-            return std::any{};
-        std::unordered_map<uint16_t, qint64> market;
-        market.reserve(prices->size());
-        for (const auto& [itemId, price] : *prices)
-            market.emplace(itemId, static_cast<qint64>(price));
-        m_prices.setMarketPrices(std::move(market));
-        return std::any{};
-    });
-
     m_timer.setInterval(TickIntervalMs);
     connect(&m_timer, &QTimer::timeout, this, &TAnalyserStorages::tick);
     if (tibia::game::isOnline()) {
-        if (tibia::game::localPlayer())
+        if (tibia::game::hasLocalPlayer())
             setCharacter(tibia::game::localPlayerId());
         m_timer.start();
     }
@@ -267,6 +251,8 @@ TAnalyserStorages::~TAnalyserStorages()
 }
 
 TAnalyserStorages* TAnalyserStorages::instance() { return s_instance; }
+
+TItemPriceStorage* TAnalyserStorages::prices() { return TItemPriceStorage::instance(); }
 
 qint64 TAnalyserStorages::nowMs()
 {

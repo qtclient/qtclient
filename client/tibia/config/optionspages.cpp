@@ -8,6 +8,7 @@
 #include "gamewindow/assignactiondialogs.h"
 #include "gamewindow/buttonbarcontroller.h"
 #include "gamewindow/genericentertextdialogcontroller.h"
+#include "gamewindow/messagedialogcontroller.h"
 #include "input/keyboardshortcuthandler.h"
 
 #include "sound/soundstorage.h"
@@ -863,6 +864,7 @@ QString actionDescription(const QString& action)
 class THotkeyActionRow final : public cip::tibia::config::TTibiaHotkeyActionSettingQmlWrapper
 {
 public:
+    THotkeysOptionsPage::EHotkeyMode mode = THotkeysOptionsPage::DefaultHotkeys;
     TActionSetting setting;
     QKeySequence first;
     QKeySequence second;
@@ -917,7 +919,7 @@ void THotkeysOptionsPage::setHotkeyMode(const EHotkeyMode mode)
         return;
     m_hotkeyMode = mode;
     Q_EMIT hotkeyModeChanged();
-    rebuildModel();
+    updateHotkeyListModel();
 }
 
 void THotkeysOptionsPage::setAutoSwitchHotkeyPreset(const bool v)
@@ -925,7 +927,7 @@ void THotkeysOptionsPage::setAutoSwitchHotkeyPreset(const bool v)
     if (m_autoSwitchHotkeyPreset == v)
         return;
     m_autoSwitchHotkeyPreset = v;
-    m_working.insert(QStringLiteral("autoSwitchHotkeyPreset"), v);
+    m_options.autoSwitchHotkeyPreset = v;
     Q_EMIT autoswitchHotkeyPresetChanged();
 }
 
@@ -943,7 +945,7 @@ void THotkeysOptionsPage::setHotkeySetNamesIndex(const int v)
     if (m_hotkeySetNamesIndex == v || v < 0 || v >= m_hotkeySetNamesModel.size())
         return;
     m_hotkeySetNamesIndex = v;
-    m_working.insert(QStringLiteral("currentHotkeySetName"), currentSetName());
+    m_options.setCurrentSet(m_hotkeySetNamesModel.at(v));
     Q_EMIT hotkeySetsChanged();
     rebuildModel();
 }
@@ -953,13 +955,16 @@ void THotkeysOptionsPage::setNameFilter(const QString& v)
     if (m_nameFilter == v)
         return;
     m_nameFilter = v;
-    rebuildModel();
+    updateHotkeyListModel();
 }
 
-QString THotkeysOptionsPage::currentSetName() const
+void THotkeysOptionsPage::refreshSetNames()
 {
-    return m_hotkeySetNamesIndex >= 0 && m_hotkeySetNamesIndex < m_hotkeySetNamesModel.size() ? m_hotkeySetNamesModel.at(m_hotkeySetNamesIndex)
-                                                                                             : QString();
+    m_hotkeySetNamesModel.clear();
+    for (const auto& [name, set] : m_options.hotkeySets)
+        m_hotkeySetNamesModel << name;
+    m_hotkeySetNamesModel.sort(Qt::CaseInsensitive);
+    m_hotkeySetNamesIndex = std::max(0, int(m_hotkeySetNamesModel.indexOf(currentSetName())));
 }
 
 void THotkeysOptionsPage::load(const QJsonObject& settings)
@@ -970,12 +975,10 @@ void THotkeysOptionsPage::load(const QJsonObject& settings)
         if (section.value(QLatin1String("hotkeySets")).toObject().isEmpty())
             section = THotkeyOptions::instance()->toJson();
     }
-    m_working = section;
-    m_autoSwitchHotkeyPreset = section.value(QLatin1String("autoSwitchHotkeyPreset")).toBool();
-    m_hotkeySetNamesModel = section.value(QLatin1String("hotkeySets")).toObject().keys();
-    m_hotkeySetNamesModel.sort(Qt::CaseInsensitive);
-    const QString current = section.value(QLatin1String("currentHotkeySetName")).toString();
-    m_hotkeySetNamesIndex = std::max(0, int(m_hotkeySetNamesModel.indexOf(current)));
+    m_options = THotkeyOptionsData::fromJson(section);
+    m_autoSwitchHotkeyPreset = m_options.autoSwitchHotkeyPreset;
+    refreshSetNames();
+    m_editRow = nullptr;
     Q_EMIT autoswitchHotkeyPresetChanged();
     Q_EMIT hotkeySetsChanged();
     rebuildModel();
@@ -983,215 +986,210 @@ void THotkeysOptionsPage::load(const QJsonObject& settings)
 
 void THotkeysOptionsPage::apply(QJsonObject& settings) const
 {
-    QJsonObject working = m_working;
-    working.insert(QStringLiteral("autoSwitchHotkeyPreset"), m_autoSwitchHotkeyPreset);
-    working.insert(QStringLiteral("currentHotkeySetName"), currentSetName());
-    settings.insert(QStringLiteral("hotkeyOptions"), working);
-    // Keep the live singleton in sync (CIP apply → TClientOptions setter 0x168).
-    const_cast<THotkeysOptionsPage*>(this)->writeWorkingBindings();
-    THotkeyOptions::instance()->replaceAll(working);
+    auto* self = const_cast<THotkeysOptionsPage*>(this);
+    self->commitRows(false);
+    const QJsonObject section = m_options.toJson();
+    settings.insert(QStringLiteral("hotkeyOptions"), section);
+    // The live hotkeys follow (CIP hands the options to TClientOptions).
+    THotkeyOptions::instance()->replaceAll(section);
+    self->rebuildModel();
 }
 
-void THotkeysOptionsPage::writeWorkingBindings()
+void THotkeysOptionsPage::commitRows(const bool keepUnboundRows)
 {
-    // Keys already live in m_working via rebuild edits.
+    const QString name = currentSetName();
+    m_options.clearBindings(name, m_chatModeOn);
+    for (QObject* object : std::as_const(m_rows)) {
+        const auto* row = static_cast<THotkeyActionRow*>(object);
+        if (row->setting.isEmpty())
+            continue;
+        if (!row->first.isEmpty())
+            m_options.addBinding(name, m_chatModeOn, row->first, row->setting);
+        if (!row->second.isEmpty())
+            m_options.addBinding(name, m_chatModeOn, row->second, row->setting);
+        else if (row->first.isEmpty() && keepUnboundRows)
+            m_options.addBinding(name, m_chatModeOn, QKeySequence(), row->setting);
+    }
 }
 
 void THotkeysOptionsPage::rebuildModel()
 {
-    qDeleteAll(m_hotkeyModel);
     m_hotkeyModel.clear();
+    qDeleteAll(m_rows);
+    m_rows.clear();
+    m_editRow = nullptr;
 
-    const QString setName = currentSetName();
-    const QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-    const QJsonObject setObject = sets.value(setName).toObject();
-    const QJsonArray bindings = setObject.value(m_chatModeOn ? QLatin1String("chatOn") : QLatin1String("chatOff")).toArray();
-
+    // The keys of each action, two per row; a custom setting's keys by setting.
     QHash<QString, QList<QKeySequence>> keysByAction;
-    QList<TActionSetting> customs;
-    for (const QJsonValue& value : bindings) {
-        const QJsonObject object = value.toObject();
-        const QKeySequence keys = QKeySequence::fromString(object.value(QLatin1String("keysequence")).toString(), QKeySequence::PortableText);
-        const TActionSetting setting = TActionSetting::fromJson(object.value(QLatin1String("actionsetting")).toObject());
-        if (setting.kind == TActionSetting::ACTION)
-            keysByAction[setting.action].push_back(keys);
-        else if (!setting.isEmpty())
-            customs.push_back(setting);
+    QStringList actionOrder;
+    std::vector<std::pair<TActionSetting, QList<QKeySequence>>> customs;
+    if (const THotkeySet* set = m_options.set(currentSetName())) {
+        for (const THotkeyBinding& binding : m_chatModeOn ? set->chatOn : set->chatOff) {
+            if (binding.setting.kind == TActionSetting::ACTION) {
+                if (!keysByAction.contains(binding.setting.action))
+                    actionOrder << binding.setting.action;
+                if (!binding.keys.isEmpty())
+                    keysByAction[binding.setting.action] << binding.keys;
+                continue;
+            }
+            auto it = std::find_if(customs.begin(), customs.end(), [&](const auto& entry) { return entry.first == binding.setting; });
+            if (it == customs.end())
+                it = customs.insert(customs.end(), { binding.setting, {} });
+            if (!binding.keys.isEmpty())
+                it->second << binding.keys;
+        }
     }
 
-    auto addRow = [&](const TActionSetting& setting, const QList<QKeySequence>& keys) {
+    const auto addRow = [this](const EHotkeyMode mode, const TActionSetting& setting, const QList<QKeySequence>& keys) {
         auto* row = new THotkeyActionRow(this);
+        row->mode = mode;
         row->setting = setting;
         if (!keys.isEmpty())
             row->first = keys.at(0);
         if (keys.size() > 1)
             row->second = keys.at(1);
         row->sync();
-        const QString filter = m_nameFilter.trimmed();
-        row->matchesFilter = filter.isEmpty()
-            || row->descriptionText().contains(filter, Qt::CaseInsensitive)
-            || row->firstHotkeyText().contains(filter, Qt::CaseInsensitive)
-            || row->secondHotkeyText().contains(filter, Qt::CaseInsensitive);
-        if (row->matchesFilter)
-            m_hotkeyModel.append(row);
-        else
-            delete row;
+        m_rows.append(row);
+    };
+    const auto actionSetting = [](const QString& name) {
+        TActionSetting setting;
+        setting.kind = TActionSetting::ACTION;
+        setting.action = name;
+        return setting;
     };
 
-    if (m_hotkeyMode == DefaultHotkeys) {
-        QStringList names = input::TKeyboardShortcutHandler::staticActionNames();
-        for (const auto& product : input::TKeyboardShortcutHandler::productActions())
-            if (!names.contains(product.name))
-                names << product.name;
-        names.sort(Qt::CaseInsensitive);
-        for (const QString& name : names) {
-            TActionSetting setting;
-            setting.kind = TActionSetting::ACTION;
-            setting.action = name;
-            QList<QKeySequence> keys = keysByAction.value(name);
-            if (keys.isEmpty()) {
-                for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
-                    if (product.name == name && !product.defaultKeys.isEmpty())
-                        keys << product.defaultKeys;
-                }
-            }
-            addRow(setting, keys);
-        }
-    } else if (m_hotkeyMode == ActionButtons) {
-        for (int bar = 1; bar <= 9; ++bar) {
-            for (int button = 1; button <= gamewindow::TActionBarController::ButtonCount; ++button) {
-                TActionSetting setting;
-                setting.kind = TActionSetting::ACTION;
-                setting.action = THotkeyOptions::triggerActionButtonName(bar, button);
-                addRow(setting, keysByAction.value(setting.action));
+    QStringList names = input::TKeyboardShortcutHandler::staticActionNames();
+    for (const auto& product : input::TKeyboardShortcutHandler::productActions())
+        if (!names.contains(product.name))
+            names << product.name;
+    names.sort(Qt::CaseInsensitive);
+    for (const QString& name : names) {
+        QList<QKeySequence> keys = keysByAction.take(name);
+        if (keys.isEmpty()) {
+            for (const auto& product : input::TKeyboardShortcutHandler::productActions()) {
+                if (product.name == name && !product.defaultKeys.isEmpty())
+                    keys << product.defaultKeys;
             }
         }
-    } else {
-        QSet<QString> seen;
-        for (const QJsonValue& value : bindings) {
-            const QJsonObject object = value.toObject();
-            const TActionSetting setting = TActionSetting::fromJson(object.value(QLatin1String("actionsetting")).toObject());
-            if (setting.kind != TActionSetting::ACTION || setting.action.startsWith(QLatin1String("TriggerActionButton_")))
-                continue;
-            if (input::TKeyboardShortcutHandler::staticActionNames().contains(setting.action))
-                continue;
-            if (seen.contains(setting.action))
-                continue;
-            seen.insert(setting.action);
-            addRow(setting, keysByAction.value(setting.action));
-        }
-        for (const TActionSetting& setting : customs)
-            addRow(setting, {});
+        addRow(DefaultHotkeys, actionSetting(name), keys);
     }
+    for (int bar = 1; bar <= 9; ++bar) {
+        for (int button = 1; button <= gamewindow::TActionBarController::ButtonCount; ++button) {
+            const QString name = THotkeyOptions::triggerActionButtonName(bar, button);
+            addRow(ActionButtons, actionSetting(name), keysByAction.take(name));
+        }
+    }
+    for (const QString& name : std::as_const(actionOrder)) {
+        if (keysByAction.contains(name))
+            addRow(CustomHotkeys, actionSetting(name), keysByAction.take(name));
+    }
+    for (const auto& [setting, keys] : customs)
+        addRow(CustomHotkeys, setting, keys);
 
+    updateHotkeyListModel();
+}
+
+void THotkeysOptionsPage::updateHotkeyListModel()
+{
+    m_hotkeyModel.clear();
+    const QString filter = m_nameFilter.trimmed();
+    for (QObject* object : std::as_const(m_rows)) {
+        auto* row = static_cast<THotkeyActionRow*>(object);
+        row->matchesFilter = filter.isEmpty() || row->descriptionText().contains(filter, Qt::CaseInsensitive)
+                          || row->firstHotkeyText().contains(filter, Qt::CaseInsensitive)
+                          || row->secondHotkeyText().contains(filter, Qt::CaseInsensitive);
+        if (row->mode == m_hotkeyMode && row->matchesFilter)
+            m_hotkeyModel.append(row);
+    }
     Q_EMIT hotkeyListModelChanged();
+}
+
+void THotkeysOptionsPage::openPresetDialog(const EPresetTextMode mode, const QString& caption, const QString& description, const QString& text)
+{
+    m_presetTextMode = mode;
+    auto* prompt = new gamewindow::TGenericEnterTextDialogController(this);
+    prompt->setCaption(caption);
+    prompt->setDescription(description);
+    prompt->setMaxInputLength(29);
+    prompt->setText(text);
+    connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, &THotkeysOptionsPage::onPresetTextEntered);
+    prompt->dialog()->show();
 }
 
 void THotkeysOptionsPage::requestAddPreset()
 {
-    QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-    QString suggestion = QStringLiteral("Preset %1").arg(sets.size() + 1);
-    while (sets.contains(suggestion))
-        suggestion += QLatin1Char('a');
-    auto* prompt = new gamewindow::TGenericEnterTextDialogController(this);
-    prompt->setCaption(qtTrId("hotkeyoptions_add_preset"));
-    prompt->setText(suggestion);
-    prompt->setMaxInputLength(32);
-    connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, [this](const QString& entered) {
-        QString name = entered.trimmed();
-        if (name.isEmpty())
-            return;
-        QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-        while (sets.contains(name))
-            name += QLatin1Char('a');
-        sets.insert(name, QJsonObject{ { QStringLiteral("actionBarOptions"), QJsonObject{ { QStringLiteral("mappings"), QJsonArray() } } },
-                                       { QStringLiteral("chatOff"), QJsonArray() },
-                                       { QStringLiteral("chatOn"), QJsonArray() } });
-        m_working.insert(QStringLiteral("hotkeySets"), sets);
-        m_working.insert(QStringLiteral("currentHotkeySetName"), name);
-        m_hotkeySetNamesModel = sets.keys();
-        m_hotkeySetNamesModel.sort(Qt::CaseInsensitive);
-        m_hotkeySetNamesIndex = m_hotkeySetNamesModel.indexOf(name);
-        Q_EMIT hotkeySetsChanged();
-        rebuildModel();
-    });
-    prompt->dialog()->show();
+    openPresetDialog(EPresetTextMode::Add, qtTrId("add_hokey_preset_caption"), qtTrId("new_hokey_preset_name"), QString());
 }
 
 void THotkeysOptionsPage::requestRenameCurrentPreset()
 {
-    const QString oldName = currentSetName();
-    if (oldName.isEmpty())
-        return;
-    auto* prompt = new gamewindow::TGenericEnterTextDialogController(this);
-    prompt->setCaption(qtTrId("rename_hokey_preset_caption"));
-    prompt->setText(oldName);
-    prompt->setMaxInputLength(32);
-    connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, [this, oldName](const QString& entered) {
-        const QString name = entered.trimmed();
-        if (name.isEmpty() || name == oldName)
-            return;
-        QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-        if (sets.contains(name) || !sets.contains(oldName))
-            return;
-        sets.insert(name, sets.take(oldName));
-        m_working.insert(QStringLiteral("hotkeySets"), sets);
-        m_working.insert(QStringLiteral("currentHotkeySetName"), name);
-        m_hotkeySetNamesModel = sets.keys();
-        m_hotkeySetNamesModel.sort(Qt::CaseInsensitive);
-        m_hotkeySetNamesIndex = m_hotkeySetNamesModel.indexOf(name);
-        Q_EMIT hotkeySetsChanged();
-        rebuildModel();
-    });
-    prompt->dialog()->show();
+    openPresetDialog(EPresetTextMode::Rename, qtTrId("rename_hokey_preset_caption"), qtTrId("rename_hokey_preset_text"), currentSetName());
 }
 
 void THotkeysOptionsPage::requestCloneCurrentPreset()
 {
-    const QString oldName = currentSetName();
-    if (oldName.isEmpty())
+    openPresetDialog(EPresetTextMode::Clone, qtTrId("copy_hokey_preset_caption"), qtTrId("new_hokey_preset_name"), QString());
+}
+
+void THotkeysOptionsPage::onPresetTextEntered(const QString& EnteredText)
+{
+    if (EnteredText.isEmpty())
         return;
-    QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-    const QJsonObject source = sets.value(oldName).toObject();
-    QString name = QStringLiteral("%1 copy").arg(oldName);
-    while (sets.contains(name))
-        name += QLatin1Char('a');
-    auto* prompt = new gamewindow::TGenericEnterTextDialogController(this);
-    prompt->setCaption(qtTrId("copy_hokey_preset_caption"));
-    prompt->setText(name);
-    prompt->setMaxInputLength(32);
-    connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, [this, source](const QString& entered) {
-        QString name = entered.trimmed();
-        if (name.isEmpty())
-            return;
-        QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-        while (sets.contains(name))
-            name += QLatin1Char('a');
-        sets.insert(name, source);
-        m_working.insert(QStringLiteral("hotkeySets"), sets);
-        m_working.insert(QStringLiteral("currentHotkeySetName"), name);
-        m_hotkeySetNamesModel = sets.keys();
-        m_hotkeySetNamesModel.sort(Qt::CaseInsensitive);
-        m_hotkeySetNamesIndex = m_hotkeySetNamesModel.indexOf(name);
+    const QString current = currentSetName();
+    switch (m_presetTextMode) {
+    case EPresetTextMode::Rename:
+        m_options.renameSet(current, EnteredText);
+        m_options.setCurrentSet(EnteredText);
+        refreshSetNames();
         Q_EMIT hotkeySetsChanged();
-        rebuildModel();
-    });
-    prompt->dialog()->show();
+        return;
+    case EPresetTextMode::Clone: {
+        const THotkeySet* source = m_options.set(current);
+        m_options.addSet(EnteredText, source ? *source : THotkeySet{});
+        break;
+    }
+    case EPresetTextMode::Add:
+        m_options.addSet(EnteredText, THotkeyOptions::builtInSet(QStringLiteral("GlobalShortcuts")));
+        break;
+    case EPresetTextMode::None:
+        return;
+    }
+    m_options.setCurrentSet(EnteredText);
+    refreshSetNames();
+    Q_EMIT hotkeySetsChanged();
+    rebuildModel();
 }
 
 void THotkeysOptionsPage::requestRemoveCurrentPreset()
 {
-    const QString name = currentSetName();
-    QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-    if (name.isEmpty() || sets.size() <= 1 || !sets.contains(name))
-        return;
-    sets.remove(name);
-    m_working.insert(QStringLiteral("hotkeySets"), sets);
-    m_hotkeySetNamesModel = sets.keys();
-    m_hotkeySetNamesModel.sort(Qt::CaseInsensitive);
-    m_hotkeySetNamesIndex = 0;
-    m_working.insert(QStringLiteral("currentHotkeySetName"), currentSetName());
+    auto* message = new gamewindow::TMessageDialogController(this);
+    message->setCloseOnButtonClicked(true);
+    using Button = gamewindow::TMessageDialogController::Button;
+    message->setButtons({ new gamewindow::TMessageDialogButton(qtTrId("ok"), Button::OK, QKeySequence(QStringLiteral("Return"))),
+                          new gamewindow::TMessageDialogButton(qtTrId("cancel"), Button::CANCEL, QKeySequence(QStringLiteral("Esc"))) });
+    connect(message, &gamewindow::TMessageDialogController::acceptClicked, this, &THotkeysOptionsPage::onMessageDialogConfirmed);
+    message->showMessage(qtTrId("delete_hokey_caption"), qtTrId("delete_hokey_text").arg(currentSetName()));
+}
+
+void THotkeysOptionsPage::onMessageDialogConfirmed()
+{
+    m_options.removeSet(currentSetName());
+    refreshSetNames();
+    if (!m_hotkeySetNamesModel.isEmpty()) {
+        m_hotkeySetNamesIndex = 0;
+        m_options.setCurrentSet(m_hotkeySetNamesModel.first());
+    }
     Q_EMIT hotkeySetsChanged();
+    rebuildModel();
+}
+
+void THotkeysOptionsPage::resetToDefault()
+{
+    static const QStringList Vocations{ QStringLiteral("Knight"), QStringLiteral("Paladin"), QStringLiteral("Sorcerer"), QStringLiteral("Druid"),
+                                        QStringLiteral("Monk") };
+    const QString name = currentSetName();
+    const THotkeySet defaults = THotkeyOptions::builtInSet(Vocations.contains(name) ? name : QStringLiteral("GlobalShortcuts"));
+    m_options.setBindings(name, m_chatModeOn, m_chatModeOn ? defaults.chatOn : defaults.chatOff);
     rebuildModel();
 }
 
@@ -1206,33 +1204,9 @@ void THotkeysOptionsPage::requestEditActionForHotkey(const int HotkeyActionSetti
     prompt->setCaption(qtTrId("optionsmenu_individual_hotkeys"));
     prompt->setText(row->setting.text);
     prompt->setMaxInputLength(255);
-    connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, [this, HotkeyActionSettingIndex](const QString& entered) {
-        if (HotkeyActionSettingIndex < 0 || HotkeyActionSettingIndex >= m_hotkeyModel.size())
-            return;
-        auto* edited = static_cast<THotkeyActionRow*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
-        if (!edited || edited->setting.kind != TActionSetting::TEXT)
-            return;
-        const QString oldText = edited->setting.text;
-        edited->setting.text = entered;
-        edited->sync();
-        const QString setName = currentSetName();
-        QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-        QJsonObject setObject = sets.value(setName).toObject();
-        const QLatin1String mode = m_chatModeOn ? QLatin1String("chatOn") : QLatin1String("chatOff");
-        QJsonArray bindings = setObject.value(mode).toArray();
-        for (int i = 0; i < bindings.size(); ++i) {
-            QJsonObject object = bindings.at(i).toObject();
-            TActionSetting setting = TActionSetting::fromJson(object.value(QLatin1String("actionsetting")).toObject());
-            if (setting.kind == TActionSetting::TEXT && setting.text == oldText) {
-                setting.text = entered;
-                object.insert(QStringLiteral("actionsetting"), setting.toJson());
-                bindings.replace(i, object);
-            }
-        }
-        setObject.insert(mode, bindings);
-        sets.insert(setName, setObject);
-        m_working.insert(QStringLiteral("hotkeySets"), sets);
-        rebuildModel();
+    const bool sendAutomatically = row->setting.sendAutomatically;
+    connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, [this, HotkeyActionSettingIndex, sendAutomatically](const QString& entered) {
+        onTextAssignedToHotkeyAction(HotkeyActionSettingIndex, -1, entered, sendAutomatically);
     });
     prompt->dialog()->show();
 }
@@ -1245,25 +1219,32 @@ void THotkeysOptionsPage::requestAddNewCustomHotkey()
     connect(prompt, &gamewindow::TGenericEnterTextDialogController::textEntered, this, [this](const QString& entered) {
         if (entered.trimmed().isEmpty())
             return;
-        TActionSetting setting;
-        setting.kind = TActionSetting::TEXT;
-        setting.text = entered;
-        setting.sendAutomatically = false;
-        const QString setName = currentSetName();
-        QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-        QJsonObject setObject = sets.value(setName).toObject();
-        const QLatin1String mode = m_chatModeOn ? QLatin1String("chatOn") : QLatin1String("chatOff");
-        QJsonArray bindings = setObject.value(mode).toArray();
-        bindings.append(QJsonObject{ { QStringLiteral("actionsetting"), setting.toJson() },
-                                     { QStringLiteral("keysequence"), QString() } });
-        setObject.insert(mode, bindings);
-        sets.insert(setName, setObject);
-        m_working.insert(QStringLiteral("hotkeySets"), sets);
-        m_hotkeyMode = CustomHotkeys;
-        Q_EMIT hotkeyModeChanged();
-        rebuildModel();
+        setHotkeyMode(CustomHotkeys);
+        onTextAssignedToHotkeyAction(-1, -1, entered, false);
     });
     prompt->dialog()->show();
+}
+
+void THotkeysOptionsPage::onTextAssignedToHotkeyAction(const int HotkeyActionSettingIndex, int, const QString& Text, const bool SendAutomatically)
+{
+    THotkeyActionRow* row = nullptr;
+    const bool added = HotkeyActionSettingIndex == -1 || HotkeyActionSettingIndex >= m_hotkeyModel.size();
+    if (added) {
+        row = new THotkeyActionRow(this);
+        row->mode = CustomHotkeys;
+        m_rows.append(row);
+    } else {
+        row = static_cast<THotkeyActionRow*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
+    }
+    TActionSetting setting;
+    setting.kind = TActionSetting::TEXT;
+    setting.text = Text;
+    setting.sendAutomatically = SendAutomatically;
+    row->setting = setting;
+    row->sync();
+    commitRows(true);
+    if (added)
+        rebuildModel();
 }
 
 void THotkeysOptionsPage::requestEnterNewHotkeyForAction(const int HotkeyActionSettingIndex, const int KeySequenceIndex)
@@ -1273,57 +1254,46 @@ void THotkeysOptionsPage::requestEnterNewHotkeyForAction(const int HotkeyActionS
     auto* row = static_cast<THotkeyActionRow*>(m_hotkeyModel.at(HotkeyActionSettingIndex));
     if (!row || row->setting.isEmpty())
         return;
-    m_editRow = HotkeyActionSettingIndex;
+    m_editRow = row;
     m_editKey = KeySequenceIndex;
     const QKeySequence current = KeySequenceIndex == 0 ? row->first : row->second;
     const QString actionName = row->setting.kind == TActionSetting::ACTION ? row->setting.action : QString();
     auto* dialog = new gamewindow::TRecordKeyboardShortcutDialogController(row->descriptionText(), actionName, m_chatModeOn, current, this);
-    connect(dialog, &gamewindow::TRecordKeyboardShortcutDialogController::keySequenceSelected, this, [this](const QKeySequence& keys) {
-        if (m_editRow < 0 || m_editRow >= m_hotkeyModel.size())
-            return;
-        auto* edited = static_cast<THotkeyActionRow*>(m_hotkeyModel.at(m_editRow));
-        if (!edited || edited->setting.isEmpty())
-            return;
-        QList<QKeySequence> list;
-        if (!edited->first.isEmpty())
-            list << edited->first;
-        if (!edited->second.isEmpty())
-            list << edited->second;
-        while (list.size() <= m_editKey)
-            list << QKeySequence();
-        list[m_editKey] = keys;
-        list.erase(std::remove_if(list.begin(), list.end(), [](const QKeySequence& key) { return key.isEmpty(); }), list.end());
-
-        const TActionSetting target = edited->setting;
-        const QString setName = currentSetName();
-        QJsonObject sets = m_working.value(QLatin1String("hotkeySets")).toObject();
-        QJsonObject setObject = sets.value(setName).toObject();
-        const QLatin1String mode = m_chatModeOn ? QLatin1String("chatOn") : QLatin1String("chatOff");
-        QJsonArray bindings = setObject.value(mode).toArray();
-        QJsonArray next;
-        for (const QJsonValue& value : bindings) {
-            const QJsonObject object = value.toObject();
-            const TActionSetting setting = TActionSetting::fromJson(object.value(QLatin1String("actionsetting")).toObject());
-            const QKeySequence bound = QKeySequence::fromString(object.value(QLatin1String("keysequence")).toString(), QKeySequence::PortableText);
-            if (setting == target)
-                continue;
-            if (list.contains(bound))
-                continue;
-            next.append(object);
-        }
-        for (const QKeySequence& key : list)
-            next.append(QJsonObject{ { QStringLiteral("actionsetting"), target.toJson() },
-                                     { QStringLiteral("keysequence"), key.toString(QKeySequence::PortableText) } });
-        // Custom TEXT/OBJECT rows with no keys still need a placeholder entry so they stay listed.
-        if (list.isEmpty() && target.kind != TActionSetting::ACTION)
-            next.append(QJsonObject{ { QStringLiteral("actionsetting"), target.toJson() },
-                                     { QStringLiteral("keysequence"), QString() } });
-        setObject.insert(mode, next);
-        sets.insert(setName, setObject);
-        m_working.insert(QStringLiteral("hotkeySets"), sets);
-        rebuildModel();
-    });
+    connect(dialog, &gamewindow::TRecordKeyboardShortcutDialogController::keySequenceSelected, this,
+            &THotkeysOptionsPage::onNewKeySequenceSelectedForCurrentHotkeyActionSetting);
     dialog->dialog()->show();
+}
+
+void THotkeysOptionsPage::onNewKeySequenceSelectedForCurrentHotkeyActionSetting(const QKeySequence& NewKeySequence)
+{
+    auto* edited = static_cast<THotkeyActionRow*>(m_editRow);
+    if (!edited || !m_rows.contains(edited))
+        return;
+    // A key runs one action per chat mode: other rows lose it.
+    if (!NewKeySequence.isEmpty()) {
+        for (QObject* object : std::as_const(m_rows)) {
+            auto* row = static_cast<THotkeyActionRow*>(object);
+            bool changed = false;
+            if (row->first == NewKeySequence) {
+                row->first = QKeySequence();
+                changed = true;
+            }
+            if (row->second == NewKeySequence) {
+                row->second = QKeySequence();
+                changed = true;
+            }
+            if (changed)
+                row->sync();
+        }
+    }
+    if (m_editKey == 0)
+        edited->first = NewKeySequence;
+    else if (m_editKey == 1)
+        edited->second = NewKeySequence;
+    else
+        return;
+    edited->sync();
+    commitRows(true);
 }
 
 std::span<const TOptionBinding> actionBarsBindings() { return ActionBarsBindings; }

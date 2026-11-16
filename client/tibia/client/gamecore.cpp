@@ -12,7 +12,6 @@
 #include "mods/registry.h"
 #include "network/gameserverconnection.h"
 #include "sound/soundstorage.h"
-#include <framework/stdext/thread.h>
 
 #include <QCoreApplication>
 #include <QDir>

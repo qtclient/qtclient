@@ -6,6 +6,7 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "qmlcomponents/texthelper.h"
+#include "store/storestorage.h"
 
 #include <client/const.h>
 #include <tibia/assets/thingtype.h>
@@ -19,6 +20,7 @@
 #include <array>
 #include <cmath>
 #include <set>
+#include <stdexcept>
 #include <tibia/game/gamesession.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -75,7 +77,7 @@ uint64_t maximumAmountByFee(const uint64_t gold, const uint64_t price)
 
 uint64_t playerGold()
 {
-    return tibia::game::localPlayer() ? tibia::game::localPlayerTotalMoney() : 0;
+    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerTotalMoney() : 0;
 }
 
 QString typeName(const uint16_t typeId)
@@ -87,9 +89,22 @@ QString typeName(const uint16_t typeId)
     return QString::fromStdString(marketName.empty() ? type->getName() : marketName);
 }
 
+/// "buy" or "sell"; anything else is a programming error.
 int offerType(const QString& offerTypeString)
 {
-    return offerTypeString == QLatin1String("sell") ? tibia::client::MARKETACTION_SELL : tibia::client::MARKETACTION_BUY;
+    if (offerTypeString == QLatin1String("buy"))
+        return tibia::client::MARKETACTION_BUY;
+    if (offerTypeString == QLatin1String("sell"))
+        return tibia::client::MARKETACTION_SELL;
+    throw std::invalid_argument(QStringLiteral("Invalid offer type %1").arg(offerTypeString).toStdString());
+}
+
+/// The fee of an offer: none without a price, and at least one piece's.
+qlonglong offerFee(const int amount, const qlonglong piecePrice)
+{
+    if (piecePrice == 0)
+        return 0;
+    return static_cast<qlonglong>(marketFee(static_cast<uint32_t>(amount + (amount == 0 ? 1 : 0)), static_cast<uint64_t>(piecePrice)));
 }
 
 /// CIP .
@@ -351,9 +366,7 @@ void TMarketController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
     const auto& classTiers = m_storage ? m_storage->classificationTiers() : std::map<int, std::vector<int>>{};
-    for (const ThingTypePtr& type : tibia::game::thingTypes(ThingCategoryItem)) {
-        if (!type || type->getId() == 0 || !type->isMarketable())
-            continue;
+    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getMarketObjectTypes()) {
         const MarketData& market = type->getMarketData();
         TAppearanceTypeEntry entry;
         entry.typeId = type->getId();
@@ -585,11 +598,15 @@ void TMarketController::onMarketCategoryItemSelected(const int AppearanceTypeID,
 
 void TMarketController::onMarketOfferCancel(const int OfferTimestamp, const int OfferIdentifier)
 {
+    if (!m_storage)
+        return;
     tibia::game::cancelMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier));
 }
 
 void TMarketController::onMarketOfferAccept(const int OfferTimestamp, const int OfferIdentifier, const int Amount)
 {
+    if (!m_storage)
+        return;
     tibia::game::acceptMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier), static_cast<uint16_t>(Amount));
 }
 
@@ -625,7 +642,7 @@ void TMarketController::onMarketOfferMaximumAmountRequest(const QString& OfferTy
 void TMarketController::onMarketOfferCreate(const QString& OfferTypeString, const int Amount, const qlonglong PiecePrice,
                                             const bool CreateAnonymousOffer)
 {
-    if (m_selectedType == 0 || Amount <= 0 || PiecePrice <= 0)
+    if (!m_storage)
         return;
     tibia::game::createMarketOffer(static_cast<uint8_t>(offerType(OfferTypeString)), m_selectedType, selectedTier(), static_cast<uint16_t>(Amount),
                              static_cast<uint64_t>(PiecePrice), CreateAnonymousOffer ? 1 : 0);
@@ -682,11 +699,19 @@ void TMarketController::onGetCoinsButtonClicked()
 
 void TMarketController::onStoreDeeplinkClicked()
 {
-    if (m_selectedCategory != RunesCategory && m_selectedCategory != PotionsCategory)
+    // The store's boost page for runes (detail 4) or potions (detail 3).
+    int detail = 0;
+    if (m_selectedCategory == RunesCategory)
+        detail = 4;
+    else if (m_selectedCategory == PotionsCategory)
+        detail = 3;
+    else
         return;
     close(true);
-    if (m_openStore)
-        m_openStore();
+    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
+    action->parameter = store::OPEN_PREMIUM_OR_BOOSTS;
+    action->instance = detail;
+    input::publish(action);
 }
 
 QString TMarketController::getPriceOrProfitMultistring(const int Amount, const qlonglong PiecePrice)
@@ -696,17 +721,15 @@ QString TMarketController::getPriceOrProfitMultistring(const int Amount, const q
 
 QString TMarketController::getMarketFeeMultistring(const int Amount, const qlonglong PiecePrice)
 {
-    if (PiecePrice == 0)
-        return multiString(0);
-    return multiString(static_cast<qlonglong>(marketFee(std::max(Amount, 1), static_cast<uint64_t>(PiecePrice))));
+    return multiString(offerFee(Amount, PiecePrice));
 }
 
 QString TMarketController::getTotalPriceOrProfitMultistring(const QString& OfferTypeString, const int Amount, const qlonglong PiecePrice)
 {
-    qlonglong total = static_cast<qlonglong>(Amount) * PiecePrice;
-    const qlonglong fee = PiecePrice == 0 ? 0 : static_cast<qlonglong>(marketFee(std::max(Amount, 1), static_cast<uint64_t>(PiecePrice)));
-    total = offerType(OfferTypeString) == tibia::client::MARKETACTION_BUY ? total + fee : total - fee;
-    return multiString(total);
+    const qlonglong total = static_cast<qlonglong>(Amount) * PiecePrice;
+    if (offerType(OfferTypeString) == tibia::client::MARKETACTION_BUY)
+        return multiString(total + offerFee(Amount, PiecePrice));
+    return multiString(total - offerFee(Amount, PiecePrice));
 }
 
 void TMarketController::showDialog()

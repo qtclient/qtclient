@@ -2,6 +2,7 @@
 
 // CIP-named game surfaces (promoted from cipwire).
 
+#include <deque>
 #include "client/gamecore.h"
 #include "shared/cip_typed.h"
 
@@ -64,13 +65,20 @@ public:
     /// CIP: suppress drop samples while any stack dialog is visible.
     bool loggingSuppressed() const { return m_dialogVisible; }
 
+    /// Drops the recorded frame durations (CIP: on game session changes).
+    void resetFrameDurations();
+
 public Q_SLOTS:
-    /// CIP moc private slot — qtclient public for stack wiring.
+    /// CIP moc private slot — qtclient public for stack wiring. Showing a
+    /// dialog drops the recorded frame durations.
     void onDialogVisibleChanged(bool Visible);
 
 private:
     void ensureDialogStackBound();
 
+    /// CIP circular buffer of the last 200 frame durations and their sum.
+    std::deque<qint64> m_frameDurations;
+    qint64 m_frameDurationSum = 0;
     bool m_dialogVisible = false;
     bool m_dialogStackBound = false;
     QMetaObject::Connection m_dialogConn;
@@ -186,13 +194,6 @@ public:
 
     /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
     void onServerMessageEnqueued(int opcode);
-};
-
-class TGameSessionBase final : public cip::tibia::game::TGameSessionBase
-{
-    Q_OBJECT
-public:
-    using cip::tibia::game::TGameSessionBase::TGameSessionBase;
 };
 
 class TGameSessionMetaInfo final : public ::tibia::CipTyped {

@@ -24,6 +24,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 
+#include <algorithm>
 #include <atomic>
 #include <QDateTime>
 #include <QJsonArray>
@@ -32,6 +33,8 @@
 #include <QLoggingCategory>
 #include <QQuickItem>
 #include <QQuickWindow>
+#include <QTime>
+#include <QTimeZone>
 #include <tibia/game/gamesession.h>
 
 Q_LOGGING_CATEGORY(lcGameWindow, "tibia.gamewindow")
@@ -51,39 +54,8 @@ constexpr auto RememberEmail = "rememberEmail";
 
 std::atomic_bool g_processExitAllowed{ false };
 
-QString joinEventNames(const QJsonArray& events, const qint64 now, const bool current)
-{
-    QStringList names;
-    for (const auto& value : events) {
-        const QJsonObject e = value.toObject();
-        const qint64 start = e.value(QStringLiteral("startdate")).toInteger();
-        const qint64 end = e.value(QStringLiteral("enddate")).toInteger();
-        const bool isCurrent = start <= now && now <= end;
-        if (isCurrent != current)
-            continue;
-        const QString name = e.value(QStringLiteral("name")).toString();
-        if (!name.isEmpty())
-            names.append(name);
-    }
-    return names.join(QStringLiteral(", "));
-}
-
-QColor parseEventColor(const QJsonObject& e, const char* key, const QColor& fallback)
-{
-    const QString raw = e.value(QLatin1String(key)).toString();
-    if (raw.isEmpty())
-        return fallback;
-    const QColor color(raw.startsWith(QLatin1Char('#')) ? raw : QLatin1Char('#') + raw);
-    return color.isValid() ? color : fallback;
-}
-
-bool eventIsSeasonal(const QJsonObject& e)
-{
-    const QJsonValue v = e.value(QStringLiteral("isseasonal"));
-    if (v.isBool())
-        return v.toBool();
-    return v.toInt() != 0;
-}
+/// CIP: the server save; events start and end with it.
+const QTime ServerSaveTime(10, 0);
 
 }
 
@@ -150,6 +122,11 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
     connect(m_showOffUploader.get(), &game::TShowOffRequestUploader::showOffReceived, this,
             &TGameWindowController::onShowOffReceived);
     connect(m_eventsUploader.get(), &news::TEventsUploader::scheduleUpdated, this, &TGameWindowController::onEventScheduleUpdated);
+    // qtclient: CIP's interval is not recoverable; once a minute catches the server save.
+    m_eventsSchedulePreviewTimer.setInterval(60 * 1000);
+    connect(&m_eventsSchedulePreviewTimer, &QTimer::timeout, this,
+            &TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout);
+    m_eventsSchedulePreviewTimer.start();
     connect(m_newsUploader.get(), &news::TNewsRequestUploader::newsQueryFailed, m_newsDialog.get(),
             &TNewsDialogController::onNewsQueryFailed);
 
@@ -265,19 +242,76 @@ void TGameWindowController::requestDeferredStartScreenServices()
 void TGameWindowController::loadHints()
 {
     const app::LauncherEnv env = app::LauncherEnv::load(QDir::currentPath());
+    m_cdnBase = env.assetBase.toString();
+    m_hintsUrl = QUrl(m_cdnBase + QStringLiteral("/hints.json"));
+    m_hintsDownloadedAt = 0;
+    updateHint();
+}
+
+void TGameWindowController::updateHint()
+{
+    const int now = static_cast<int>(QDateTime::currentDateTimeUtc().toMSecsSinceEpoch() / 1000);
+    if (static_cast<uint>(now - m_hintsDownloadedAt) < 3600) {
+        selectRandomHintFromCache();
+        return;
+    }
+    // CIP queues the download in its TDownloadPool.
     auto* net = new QNetworkAccessManager(this);
-    QNetworkReply* reply = net->get(QNetworkRequest(QUrl(env.assetBase.toString() + QStringLiteral("/hints.json"))));
-    const QString cdn = env.assetBase.toString();
-    connect(reply, &QNetworkReply::finished, this, [this, reply, cdn] {
-        const app::Hint hint = app::randomHint(app::parseHints(reply->readAll()));
+    QNetworkReply* reply = net->get(QNetworkRequest(m_hintsUrl));
+    const QUrl url = m_hintsUrl;
+    connect(reply, &QNetworkReply::finished, this, [this, reply, net, url] {
+        if (reply->error() == QNetworkReply::NoError)
+            onHintDownloadSuccess(url, reply->readAll());
+        else
+            onHintDownloadFailed(url);
         reply->deleteLater();
-        if (hint.richText.isEmpty())
-            return;
-        m_hintAreaTitle = hint.title.isEmpty() ? QStringLiteral("Hint") : hint.title;
-        m_hintAreaRichText = app::hintHtml(hint, cdn);
-        Q_EMIT hintAreaTitleChanged();
-        Q_EMIT hintAreaRichTextChanged();
+        net->deleteLater();
     });
+}
+
+void TGameWindowController::onHintDownloadSuccess(const QUrl& Url, const QByteArray& Data)
+{
+    if (Url != m_hintsUrl)
+        return;
+    m_hints = app::parseHints(Data);
+    selectRandomHintFromCache();
+    m_hintsDownloadedAt = static_cast<int>(QDateTime::currentDateTimeUtc().toMSecsSinceEpoch() / 1000);
+}
+
+void TGameWindowController::onHintDownloadFailed(const QUrl& url)
+{
+    if (url != m_hintsUrl)
+        return;
+    setHintAreaRichText(QString());
+    setHintAreaTitle(QString());
+}
+
+void TGameWindowController::selectRandomHintFromCache()
+{
+    const std::optional<app::Hint> hint = app::selectHint(m_hints, QDateTime::currentDateTimeUtc());
+    if (!hint)
+        return;
+    setHintAreaTitle(hint->title);
+    // qtclient: hint images are served from our CDN.
+    setHintAreaRichText(app::hintHtml(*hint, m_cdnBase));
+}
+
+void TGameWindowController::setHintAreaTitle(const QString& title)
+{
+    const QString value = title.isEmpty() ? qtTrId("hint_area_title") : title;
+    if (value == m_hintAreaTitle)
+        return;
+    m_hintAreaTitle = value;
+    Q_EMIT hintAreaTitleChanged();
+}
+
+void TGameWindowController::setHintAreaRichText(const QString& richText)
+{
+    const QString value = richText.isEmpty() ? qtTrId("default_hint") : richText;
+    if (value == m_hintAreaRichText)
+        return;
+    m_hintAreaRichText = value;
+    Q_EMIT hintAreaRichTextChanged();
 }
 
 void TGameWindowController::onBoostedCreatureReceived()
@@ -326,63 +360,93 @@ void TGameWindowController::onShowOffReceived()
 
 void TGameWindowController::clearEventModels()
 {
-    qDeleteAll(m_eventsScheduleCurrent);
+    const QList<QObject*> current = m_eventsScheduleCurrent;
+    const QList<QObject*> upcoming = m_eventsScheduleUpcoming;
     m_eventsScheduleCurrent.clear();
-    qDeleteAll(m_eventsScheduleUpcoming);
     m_eventsScheduleUpcoming.clear();
+    m_eventsScheduleCurrentSeasonalTooltip.clear();
+    m_eventsScheduleUpcomingSeasonalTooltip.clear();
+    Q_EMIT eventScheduleChanged();
+    qDeleteAll(current);
+    qDeleteAll(upcoming);
 }
 
 void TGameWindowController::onEventScheduleUpdated()
 {
-    const qint64 now = QDateTime::currentSecsSinceEpoch();
-    const QJsonArray events = m_eventsUploader->eventList();
-    const QString currentTooltip = joinEventNames(events, now, true);
-    const QString upcomingTooltip = joinEventNames(events, now, false);
-    if (currentTooltip == m_eventsScheduleCurrentTooltip && upcomingTooltip == m_eventsScheduleUpcomingTooltip)
-        return;
-    clearEventModels();
+    updateEventsSchedulePreview(m_eventsUploader->events());
+    if (m_calendarDialog)
+        m_calendarDialog->setEvents(m_eventsUploader->eventList());
+}
 
-    QStringList seasonalCurrent;
-    QStringList seasonalUpcoming;
-    for (const auto& value : events) {
-        const QJsonObject e = value.toObject();
-        const QString name = e.value(QStringLiteral("name")).toString();
-        if (name.isEmpty())
+void TGameWindowController::updateEventsSchedulePreview(const std::vector<news::TEventInformation>& events)
+{
+    clearEventModels();
+    if (&m_events != &events)
+        m_events = events;
+    m_newEventToday = false;
+    const QDateTime now = QDateTime::currentDateTimeUtc().toTimeZone(news::serverTimeZone());
+    const QDate today = now.date();
+    const bool afterServerSave = ServerSaveTime <= now.time();
+    const QString format = QStringLiteral("<u>%1:</u><br>\n%2");
+    QString currentSeasonal;
+    QString upcomingSeasonal;
+    QString current;
+    QString upcoming;
+    const auto append = [&format](QString& tooltip, const news::TEventInformation& event) {
+        if (!tooltip.isEmpty())
+            tooltip.append(QStringLiteral("<br><br>\n"));
+        tooltip.append(format.arg(event.name).arg(event.description));
+    };
+
+    QDate nextStart;
+    for (const news::TEventInformation& event : m_events) {
+        if (afterServerSave && event.startDate == today)
+            m_newEventToday = true;
+        // An event starting today runs from the server save on.
+        const bool started = event.startDate != today || afterServerSave;
+        if ((today < event.startDate || !started) && (!nextStart.isValid() || nextStart == event.startDate)) {
+            nextStart = event.startDate;
+            if (!event.isSeasonal) {
+                append(upcoming, event);
+                m_eventsScheduleUpcoming.append(new news::TEventQMLEntry(event, false));
+            } else {
+                append(upcomingSeasonal, event);
+            }
+        }
+        const bool ended = event.endDate == today && afterServerSave;
+        if (!started || ended)
             continue;
-        const qint64 start = e.value(QStringLiteral("startdate")).toInteger();
-        const qint64 end = e.value(QStringLiteral("enddate")).toInteger();
-        const bool isCurrent = start <= now && now <= end;
-        const bool startsOrEnds = start <= now && now <= end
-            ? (QDateTime::fromSecsSinceEpoch(start).date() == QDateTime::fromSecsSinceEpoch(now).date()
-               || QDateTime::fromSecsSinceEpoch(end).date() == QDateTime::fromSecsSinceEpoch(now).date())
-            : (QDateTime::fromSecsSinceEpoch(start).date() == QDateTime::fromSecsSinceEpoch(now).date());
-        const QColor primary = parseEventColor(e, "colorlight", QColor(QStringLiteral("#c9a227")));
-        const QColor secondary = parseEventColor(e, "colordark", QColor(QStringLiteral("#6b5a1e")));
-        auto* entry = new news::TEventQMLEntry(name, primary, secondary, startsOrEnds, this);
-        if (isCurrent)
-            m_eventsScheduleCurrent.append(entry);
-        else if (start > now)
-            m_eventsScheduleUpcoming.append(entry);
-        else
-            delete entry;
-        if (eventIsSeasonal(e)) {
-            if (isCurrent)
-                seasonalCurrent.append(name);
-            else if (start > now)
-                seasonalUpcoming.append(name);
+        for (QDate day = event.startDate; day <= event.endDate; day = day.addDays(1)) {
+            if (day != today)
+                continue;
+            if (!event.isSeasonal) {
+                append(current, event);
+                m_eventsScheduleCurrent.append(new news::TEventQMLEntry(event, false));
+            } else {
+                append(currentSeasonal, event);
+            }
         }
     }
 
-    m_eventsScheduleCurrentTooltip = currentTooltip;
-    m_eventsScheduleUpcomingTooltip = upcomingTooltip;
-    m_eventsScheduleCurrentSeasonalTooltip = seasonalCurrent.join(QStringLiteral(", "));
-    m_eventsScheduleUpcomingSeasonalTooltip = seasonalUpcoming.join(QStringLiteral(", "));
-    m_newEventToday = !m_eventsScheduleCurrent.isEmpty();
-    if (m_calendarDialog)
-        m_calendarDialog->setEvents(events);
-    qCInfo(lcGameWindow) << "events current" << m_eventsScheduleCurrent.size() << m_eventsScheduleCurrentTooltip
-                         << "upcoming" << m_eventsScheduleUpcoming.size() << m_eventsScheduleUpcomingTooltip;
+    const auto byPriority = [](const QObject* left, const QObject* right) {
+        return news::TEventQMLEntry::lessThan(static_cast<const news::TEventQMLEntry*>(left),
+                                              static_cast<const news::TEventQMLEntry*>(right));
+    };
+    std::sort(m_eventsScheduleUpcoming.begin(), m_eventsScheduleUpcoming.end(), byPriority);
+    std::sort(m_eventsScheduleCurrent.begin(), m_eventsScheduleCurrent.end(), byPriority);
+    m_eventsScheduleCurrentSeasonalTooltip = currentSeasonal;
+    m_eventsScheduleUpcomingSeasonalTooltip = upcomingSeasonal;
+    m_eventsScheduleCurrentTooltip = current;
+    m_eventsScheduleUpcomingTooltip = upcoming;
     Q_EMIT eventScheduleChanged();
+}
+
+void TGameWindowController::onEventsSchedulePreviewUpdateTimerTimeout()
+{
+    const QTime time = QDateTime::currentDateTimeUtc().toTimeZone(news::serverTimeZone()).time();
+    if (ServerSaveTime <= time && m_beforeServerSave)
+        updateEventsSchedulePreview(m_events);
+    m_beforeServerSave = time < ServerSaveTime;
 }
 
 void TGameWindowController::requestOpenCalendar()

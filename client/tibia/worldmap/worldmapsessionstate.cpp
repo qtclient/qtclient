@@ -28,7 +28,6 @@
 #include "client/animatedtext.h"
 #include "client/const.h"
 #include <tibia/config/runtimegameconfig.h>
-#include "game/localplayersessionthing.h"
 #include "assets/thingtype.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapstorage.h"
@@ -41,22 +40,6 @@
 #include <tibia/schedule/schedule.h>
 
 #include <algorithm>
-
-namespace
-{
-    void cleanNewSpectators(std::vector<CreaturePtr>& creatures, std::unordered_set<uint32_t>& seenIds, const std::size_t startIndex)
-    {
-        auto it = creatures.begin() + startIndex;
-        while (it != creatures.end()) {
-            if (!*it) {
-                it = creatures.erase(it);
-                continue;
-            }
-            ++it;
-        }
-    }
-}
-
 
 namespace {
 
@@ -94,7 +77,7 @@ void TWorldMapSessionState::terminate()
 }
 
 
-void TWorldMapSessionState::notificateCameraMove(const Point&) const
+void TWorldMapSessionState::notificateCameraMove(const QPoint&) const
 {
     // CIP QSG world emit — no OTC draw-pool repaint.
 }
@@ -110,13 +93,6 @@ void TWorldMapSessionState::addObserver(MapObserver* observer)
 void TWorldMapSessionState::removeObserver(MapObserver* observer)
 {
     m_observers.erase(std::remove(m_observers.begin(), m_observers.end(), observer), m_observers.end());
-}
-
-void TWorldMapSessionState::setObserver(MapObserver* observer)
-{
-    m_observers.clear();
-    if (observer)
-        m_observers.push_back(observer);
 }
 
 void TWorldMapSessionState::invalidateCoverCachesFrom(const Position& pos)
@@ -262,7 +238,7 @@ void TWorldMapSessionState::clean()
 
 void TWorldMapSessionState::cleanDynamicThings()
 {
-    // Field + storage first (play path). LocalPlayerSessionThing is a Game session Thing, not a Map registry.
+    // The local player's creature is stored, too.
     if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
         const QList<tibia::creatures::TCreatureID> ids = storage->creatureIds();
         for (const tibia::creatures::TCreatureID id : ids)
@@ -271,8 +247,6 @@ void TWorldMapSessionState::cleanDynamicThings()
             storage->remove(id);
     }
 
-    if (const LocalPlayerSessionThingPtr localPlayer = tibia::game::localPlayer())
-        removeCreatureFromFields(localPlayer->getId());
 
     for (auto& floor : m_floors)
 
@@ -360,13 +334,13 @@ void TWorldMapSessionState::addAnimatedText(const AnimatedTextPtr& txt, const Po
 
         if (!merged) {
             if (prevAnimatedText) {
-                Point offset = prevAnimatedText->getOffset();
+                QPoint offset = prevAnimatedText->getOffset();
                 if (const float t = prevAnimatedText->getTimer().ticksElapsed();
                     t < tibia::config::animatedTextDuration() / 4.0) { // didnt move 12 pixels
                     const int32_t y = 12 - 48 * t / static_cast<float>(tibia::config::animatedTextDuration());
-                    offset += Point(0, y);
+                    offset += QPoint(0, y);
                 }
-                offset.y = std::min<int32_t>(offset.y, 12);
+                offset.ry() = std::min<int32_t>(offset.y(), 12);
                 txt->setOffset(offset);
             }
             m_animatedTexts.emplace_back(txt);
@@ -375,14 +349,6 @@ void TWorldMapSessionState::addAnimatedText(const AnimatedTextPtr& txt, const Po
         txt->setPosition(pos);
         txt->onAppear();
     });
-}
-
-bool TWorldMapSessionState::removeThingByPos(const Position& pos, const int16_t stackPos)
-{
-    if (const auto& tile = getTile(pos))
-        return tile->removeThingAtStackPos(stackPos);
-
-    return false;
 }
 
 bool TWorldMapSessionState::removeStaticText(const StaticTextPtr& txt) {
@@ -401,24 +367,6 @@ bool TWorldMapSessionState::removeAnimatedText(const AnimatedTextPtr& txt) {
 
     m_animatedTexts.erase(it);
     return true;
-}
-
-StaticTextPtr TWorldMapSessionState::getStaticText(const Position& pos) const
-{
-    for (const auto& staticText : m_staticTexts) {
-        // try to combine messages
-        if (staticText->getPosition() == pos)
-            return staticText;
-    }
-
-    return nullptr;
-}
-
-tibia::worldmap::TWorldMapField* TWorldMapSessionState::createTile(const Position& pos)
-{
-    if (!pos.isMapPosition())
-        return nullptr;
-    return tibia::worldmap::TWorldMapStorage::ensureStorage()->getOrCreateField(pos);
 }
 
 tibia::worldmap::TWorldMapField* TWorldMapSessionState::getOrCreateTile(const Position& pos)
@@ -519,28 +467,6 @@ void TWorldMapSessionState::cleanTile(const Position& pos)
 }
 
 
-void TWorldMapSessionState::beginGhostMode(const float) {}
-void TWorldMapSessionState::endGhostMode() {}
-
-std::unordered_map<Position, uint16_t, Position::Hasher> TWorldMapSessionState::findItemsById(const uint16_t clientId, const uint32_t max)
-{
-    std::unordered_map<Position, uint16_t, Position::Hasher> ret;
-    uint32_t count = 0;
-    for (tibia::worldmap::TWorldMapField* tile :
-         tibia::worldmap::TWorldMapStorage::ensureStorage()->spatialFieldList(-1)) {
-        if (unlikely(!tile || tile->isEmpty()))
-            continue;
-        for (const auto& hit : tile->itemHits()) {
-            if (hit.typeId != clientId)
-                continue;
-            ret.emplace(tile->getPosition(), hit.typeId);
-            if (++count >= max)
-                return ret;
-        }
-    }
-
-    return ret;
-}
 
 std::vector<TWorldMapSessionState::TItemHit> TWorldMapSessionState::findItemsInRange(const Position& center, const int rangeX, const int rangeY,
                                                  const std::vector<uint16_t>& clientIds)
@@ -565,19 +491,13 @@ std::vector<TWorldMapSessionState::TItemHit> TWorldMapSessionState::findItemsInR
     return ret;
 }
 
-CreaturePtr TWorldMapSessionState::getCreatureById(const uint32_t id)
-{
-    return tibia::game::creatureThingById(id);
-}
-
 bool TWorldMapSessionState::removeCreatureFromFields(const uint32_t creatureId, const Position& fieldPos,
                                                      const bool fireLocalDisappear)
 {
     if (creatureId == 0)
         return false;
 
-    const LocalPlayerSessionThingPtr local = tibia::game::localPlayer();
-    const bool isLocal = local && creatureId == local->getId();
+    const bool isLocal = creatureId == tibia::game::localPlayerId();
     bool removed = false;
     const auto removeAt = [&](const Position& at) {
         tibia::worldmap::TWorldMapField* tile = at.isValid() ? getTile(at) : nullptr;
@@ -597,7 +517,7 @@ bool TWorldMapSessionState::removeCreatureFromFields(const uint32_t creatureId, 
     }
 
     if (removed && fireLocalDisappear && isLocal)
-        local->onDisappear();
+        localPlayerDisappeared();
 
     return removed;
 }
@@ -618,11 +538,9 @@ bool TWorldMapSessionState::placeCreatureId(const uint32_t creatureId, const Pos
     }
 
     tile->addCreatureId(creatureId, stackPos);
-    const LocalPlayerSessionThingPtr local = tibia::game::localPlayer();
-    if (local && creatureId == local->getId()) {
-        const int placedStack = tile->creatureStackPos(creatureId);
-        local->setPosition(pos, placedStack >= 0 ? placedStack : stackPos);
-        local->onAppear();
+    if (creatureId == tibia::game::localPlayerId()) {
+        setLocalPlayerPosition(pos);
+        localPlayerAppeared();
         notificateTileUpdate(pos, true, tibia::client::OPERATION_ADD);
     } else {
         notificateTileUpdate(pos, false, tibia::client::OPERATION_ADD);
@@ -657,8 +575,7 @@ bool TWorldMapSessionState::applyCreatureMove(const uint32_t creatureId, const P
         elevationFrom = map->elevationAt(oldPos);
         elevationTo = map->elevationAt(newPos);
         fromTile->removeThingAtStackPos(oldStack);
-        const LocalPlayerSessionThingPtr local = tibia::game::localPlayer();
-        notificateTileUpdate(oldPos, local && creatureId == local->getId(), tibia::client::OPERATION_REMOVE);
+        notificateTileUpdate(oldPos, creatureId == tibia::game::localPlayerId(), tibia::client::OPERATION_REMOVE);
         placeCreatureId(creatureId, newPos, -1);
         const auto look = tibia::creatures::lookDirectionAfter(
             static_cast<tibia::creatures::ECreatureLookDirection>(row->patternX()),
@@ -682,10 +599,9 @@ void TWorldMapSessionState::removeUnawareThings()
                 removeCreatureFromFields(id);
         }
     }
-    if (const LocalPlayerSessionThingPtr localPlayer = tibia::game::localPlayer()) {
-        if (localPlayer->getId() != 0 && !isAwareOfPosition(localPlayer->getPosition()))
-            removeCreatureFromFields(localPlayer->getId());
-    }
+    if (const uint32_t localId = tibia::game::localPlayerId();
+        localId != 0 && !isAwareOfPosition(tibia::game::localPlayerPosition()))
+        removeCreatureFromFields(localId);
 
     tibia::schedule::post([=, this] {
         // remove static texts from tiles that we are not aware anymore
@@ -713,6 +629,59 @@ void TWorldMapSessionState::removeUnawareThings()
     m_removingUnawareThings = false;
 }
 
+void TWorldMapSessionState::resetLocalPlayer()
+{
+    if (m_localPlayerLeave) {
+        m_localPlayerLeave->cancel();
+        m_localPlayerLeave = nullptr;
+    }
+    m_localPlayerPosition = {};
+    m_localPlayerLastField = {};
+    m_localPlayerOffMap = true;
+}
+
+void TWorldMapSessionState::setLocalPlayerPosition(const Position& pos)
+{
+    if (m_localPlayerPosition == pos)
+        return;
+    const Position oldPos = m_localPlayerPosition;
+    m_localPlayerPosition = pos;
+    tibia::game::notify("onPositionChange", pos, oldPos);
+    tibia::game::onLocalPlayerPositionChanged(pos);
+}
+
+void TWorldMapSessionState::localPlayerAppeared()
+{
+    if (m_localPlayerLeave) {
+        m_localPlayerLeave->cancel();
+        m_localPlayerLeave = nullptr;
+    }
+    const Position pos = tibia::game::localPlayerPosition();
+    if (m_localPlayerOffMap) {
+        m_localPlayerOffMap = false;
+    } else if (m_localPlayerLastField != pos) {
+        // The first field after the login is no jump.
+        if (m_localPlayerLastField.isValid() && !tibia::game::isOneStep(m_localPlayerLastField, pos))
+            tibia::game::localPlayerHandleTeleport();
+        m_localPlayerLastField = pos;
+    }
+    tibia::game::notify("onCreatureAppear", tibia::game::localPlayerId());
+}
+
+void TWorldMapSessionState::localPlayerDisappeared()
+{
+    if (m_localPlayerLeave)
+        m_localPlayerLeave->cancel();
+    m_localPlayerLastField = tibia::game::localPlayerPosition();
+    tibia::game::notify("onCreatureDisappear", tibia::game::localPlayerId());
+    m_localPlayerLeave = tibia::schedule::post([this] {
+        m_localPlayerOffMap = true;
+        tibia::game::localPlayerStopWalk();
+        m_localPlayerLastField = {};
+        m_localPlayerLeave = nullptr;
+    });
+}
+
 void TWorldMapSessionState::setCentralPosition(const Position& centralPosition)
 {
     if (tibia::game::isSceneFrozen())
@@ -729,74 +698,26 @@ void TWorldMapSessionState::setCentralPosition(const Position& centralPosition)
     // the local player is removed from the map when there are too many creatures on his tile,
     // so there is no enough stackpos to the server send him
     tibia::schedule::post([this] {
-        const auto& localPlayer = tibia::game::localPlayer();
-        if (!localPlayer || localPlayer->getPosition() == m_centralPosition)
+        if (!tibia::game::hasLocalPlayer())
             return;
-
-        if (const auto& tile = localPlayer->getTile()) {
-            if (tile->creatureStackPos(localPlayer->getId()) >= 0)
+        const Position oldPos = tibia::game::localPlayerPosition();
+        if (oldPos == m_centralPosition)
+            return;
+        if (const tibia::worldmap::TWorldMapField* tile = tibia::worldmap::fieldAt(oldPos)) {
+            if (tile->creatureStackPos(tibia::game::localPlayerId()) >= 0)
                 return;
         }
-
-        const auto& oldPos = localPlayer->getPosition();
-        const auto& pos = m_centralPosition;
-        if (oldPos != pos) {
-            if (!localPlayer->isRemoved())
-                localPlayer->onDisappear();
-            localPlayer->setPosition(pos);
-            localPlayer->onAppear();
-            qDebug("%s", std::format("Forced player position update").c_str());
-        }
+        if (!m_localPlayerOffMap)
+            localPlayerDisappeared();
+        setLocalPlayerPosition(m_centralPosition);
+        localPlayerAppeared();
+        qDebug("%s", std::format("Forced player position update").c_str());
     });
 }
 
 void TWorldMapSessionState::setLight(const Light& light)
 {
     m_light = light;
-}
-
-std::vector<CreaturePtr> TWorldMapSessionState::getSpectatorsInRangeEx(const Position& centerPos, const bool multiFloor, const int32_t minXRange, const int32_t maxXRange, const int32_t minYRange, const int32_t maxYRange)
-{
-    // CreaturePtr spectators are LocalPlayerSessionThing-only; gameplay uses TCreatureStorage::spectatorsNear.
-    std::vector<CreaturePtr> creatures;
-    creatures.reserve(1);
-    std::unordered_set<uint32_t> seenIds;
-    seenIds.reserve(1);
-
-    uint8_t minZRange = 0;
-    uint8_t maxZRange = 0;
-
-    if (multiFloor) {
-        minZRange = centerPos.z - getFirstAwareFloor();
-        maxZRange = getLastAwareFloor() - centerPos.z;
-    }
-
-    const int startZ = centerPos.z - minZRange;
-    const int endZ = centerPos.z + maxZRange;
-    const int startY = centerPos.y - minYRange;
-    const int endY = centerPos.y + maxYRange;
-    const int startX = centerPos.x - minXRange;
-    const int endX = centerPos.x + maxXRange;
-
-    const auto appendSpectatorsFromLayer = [&](const int z) {
-        for (int y = startY; y <= endY; ++y) {
-            for (int x = startX; x <= endX; ++x) {
-                const auto tile = getTile(Position(x, y, z));
-                if (!tile || !tile->hasCreatures()) {
-                    continue;
-                }
-
-                const auto sizeBeforeAppend = creatures.size();
-                tile->appendSpectators(creatures);
-                cleanNewSpectators(creatures, seenIds, sizeBeforeAppend);
-            }
-        }
-    };
-
-    for (int z = startZ; z <= endZ; ++z) {
-        appendSpectatorsFromLayer(z);
-    }
-    return creatures;
 }
 
 bool TWorldMapSessionState::isLookPossible(const Position& pos)
@@ -1132,10 +1053,6 @@ std::tuple<std::vector<tibia::client::Direction>, tibia::client::PathFindResult>
         delete it.second;
 
     return ret;
-}
-
-void TWorldMapSessionState::resetLastCamera() const
-{
 }
 
 PathFindResult_ptr TWorldMapSessionState::newFindPath(const Position& start, const Position& goal,
@@ -1494,243 +1411,5 @@ bool TWorldMapSessionState::isSightClear(const Position& fromPos, const Position
     }
 
     return true;
-}
-
-std::map<std::string, std::tuple<int, int, int, std::string>> TWorldMapSessionState::findEveryPath(const Position& start, int maxDistance, const std::map<std::string, std::string>& params)
-{
-    // using Dijkstra's algorithm
-    struct LessNode
-    {
-        bool operator()(Node* a, Node* b) const
-        {
-            return b->totalCost < a->totalCost;
-        }
-    };
-
-    std::map<std::string, std::string>::const_iterator it;
-    it = params.find("ignoreLastCreature");
-    bool ignoreLastCreature = it != params.end() && it->second != "0" && it->second != "";
-    it = params.find("ignoreCreatures");
-    bool ignoreCreatures = it != params.end() && it->second != "0" && it->second != "";
-    it = params.find("ignoreNonPathable");
-    bool ignoreNonPathable = it != params.end() && it->second != "0" && it->second != "";
-    it = params.find("ignoreNonWalkable");
-    bool ignoreNonWalkable = it != params.end() && it->second != "0" && it->second != "";
-    it = params.find("ignoreStairs");
-    bool ignoreStairs = it != params.end() && it->second != "0" && it->second != "";
-    it = params.find("ignoreCost");
-    bool ignoreCost = it != params.end() && it->second != "0" && it->second != "";
-    it = params.find("allowUnseen");
-    bool allowUnseen = it != params.end() && it->second != "0" && it->second != "";
-    it = params.find("allowOnlyVisibleTiles");
-    bool allowOnlyVisibleTiles = it != params.end() && it->second != "0" && it->second != "";
-    it = params.find("marginMin");
-    bool hasMargin = it != params.end();
-    it = params.find("marginMax");
-    hasMargin = hasMargin || (it != params.end());
-
-    Position destPos;
-    it = params.find("destination");
-    if (it != params.end()) {
-        const std::vector<int32_t> pos = splitInts(it->second);
-        if (pos.size() == 3) {
-            destPos = Position(pos[0], pos[1], pos[2]);
-        }
-    }
-
-    Position maxDistanceFromPos;
-    int maxDistanceFrom = 0;
-    it = params.find("maxDistanceFrom");
-    if (it != params.end()) {
-        const std::vector<int32_t> pos = splitInts(it->second);
-        if (pos.size() == 4) {
-            maxDistanceFromPos = Position(pos[0], pos[1], pos[2]);
-            maxDistanceFrom = pos[3];
-        }
-    }
-
-    std::map<std::string, std::tuple<int, int, int, std::string>> ret;
-    std::unordered_map<Position, Node*, Position::Hasher> nodes;
-    std::priority_queue<Node*, std::vector<Node*>, LessNode> searchList;
-
-    const auto softCosts = resolveSoftCosts(nullptr, m_waypointCostFactory);
-
-    Node* initNode = new Node{ 1.f, 0.f, 0.f, start, nullptr, 0, 0 };
-    nodes[start] = initNode;
-    searchList.push(initNode);
-
-    while (!searchList.empty()) {
-        Node* node = searchList.top();
-        searchList.pop();
-        ret[node->pos.toString()] = std::make_tuple(node->totalCost, node->distance,
-                                                    node->prev ? node->prev->pos.getDirectionFromPosition(node->pos) : -1,
-                                                    node->prev ? node->prev->pos.toString() : "");
-        if (node->pos == destPos) {
-            if (hasMargin) {
-                maxDistance = std::min<int>(node->distance + 4, maxDistance);
-            } else {
-                break;
-            }
-        }
-        if (node->distance >= maxDistance)
-            continue;
-        for (int i = -1; i <= 1; ++i) {
-            for (int j = -1; j <= 1; ++j) {
-                if (i == 0 && j == 0)
-                    continue;
-                Position neighbor = node->pos.translated(i, j);
-                if (neighbor.x < 0 || neighbor.y < 0) continue;
-                auto it = nodes.find(neighbor);
-                if (it == nodes.end()) {
-                    bool wasSeen = false;
-                    bool hasCreature = false;
-                    bool isNotWalkable = true;
-                    bool isNotPathable = true;
-                    int mapColor = 0;
-                    int speed = 1000;
-                    if (isAwareOfPosition(neighbor)) {
-                        if (tibia::worldmap::TWorldMapField* tile = getTile(neighbor)) {
-                            wasSeen = true;
-                            hasCreature = tile->hasBlockingCreature();
-                            isNotWalkable = !tile->isWalkable(true);
-                            isNotPathable = !tile->isPathable();
-                            mapColor = tile->getMinimapColorByte();
-                            speed = tile->getGroundSpeed();
-                        }
-                    } else if (!allowOnlyVisibleTiles) {
-                        const uint8_t wc = softCosts->costAt(neighbor.x, neighbor.y, neighbor.z);
-                        const bool softFog = wc == tibia::minimap::TWaypointCosts::UnknownCost;
-                        const bool blocked = wc == tibia::minimap::TWaypointCosts::BlockedCost;
-                        wasSeen = !softFog;
-                        isNotWalkable = blocked || softFog;
-                        isNotPathable = blocked;
-                        mapColor = softCosts->colorIndexAt(neighbor.x, neighbor.y, neighbor.z);
-                        if (isNotWalkable || isNotPathable)
-                            wasSeen = true;
-                        speed = wc <= tibia::minimap::TWaypointCosts::MaxCost
-                            ? static_cast<int>(std::max<uint8_t>(1, wc))
-                            : static_cast<int>(tibia::minimap::TWaypointCosts::UnknownCost);
-                    }
-                    bool hasStairs = isNotPathable && mapColor >= 210 && mapColor <= 213;
-                    bool hasReachedMaxDistance = maxDistanceFrom && maxDistanceFromPos.isValid() && maxDistanceFromPos.distance(neighbor) > maxDistanceFrom;
-                    if ((!wasSeen && !allowUnseen) || (hasStairs && !ignoreStairs && neighbor != destPos) ||
-                        (isNotPathable && !ignoreNonPathable && neighbor != destPos) || (isNotWalkable && !ignoreNonWalkable) ||
-                        hasReachedMaxDistance) {
-                        it = nodes.emplace(neighbor, nullptr).first;
-                    } else if ((hasCreature && !ignoreCreatures)) {
-                        it = nodes.emplace(neighbor, nullptr).first;
-                        if (ignoreLastCreature) {
-                            ret[neighbor.toString()] = std::make_tuple(node->totalCost + 100, node->distance + 1,
-                                                                       node->pos.getDirectionFromPosition(neighbor),
-                                                                       node->pos.toString());
-                        }
-                    } else {
-                        it = nodes.emplace(neighbor,
-                                           new Node{ static_cast<float>(speed), 1e9f, 1e9f, neighbor, node,
-                                                     node->distance + 1, wasSeen ? 0 : 1 })
-                                 .first;
-                    }
-                }
-
-                if (!it->second) {
-                    continue;
-                }
-
-                // CIP : ortho 1× / diag 3× leaving tile cost.
-                const bool ortho = (i == 0 || j == 0);
-                float stepCost = ortho ? node->cost : (node->cost * 3.f);
-                if (ignoreCost)
-                    stepCost = 1.f;
-                const float g = node->pathCost + stepCost;
-                if (g >= it->second->pathCost)
-                    continue;
-                it->second->pathCost = g;
-                it->second->totalCost = g;
-                it->second->prev = node;
-                if (it->second->unseen)
-                    it->second->unseen = node->unseen + 1;
-                it->second->distance = node->distance + 1;
-                searchList.push(it->second);
-            }
-        }
-    }
-
-    for (auto& node : nodes) {
-        if (node.second)
-            delete node.second;
-    }
-
-    return ret;
-}
-
-std::vector<CreaturePtr> TWorldMapSessionState::getSpectatorsByPattern(const Position& centerPos, const std::string& pattern, tibia::client::Direction direction)
-{
-    std::vector<bool> finalPattern(pattern.size(), false);
-    std::vector<CreaturePtr> creatures;
-    int width = 0, height = 0, lineLength = 0, p = 0;
-    for (auto& c : pattern) {
-        lineLength += 1;
-        if (c == '0' || c == '-') {
-            p += 1;
-        } else if (c == '1' || c == '+') {
-            finalPattern[p++] = true;
-        } else if (c == 'N' || c == 'n') {
-            finalPattern[p++] = direction == tibia::client::North;
-        } else if (c == 'E' || c == 'e') {
-            finalPattern[p++] = direction == tibia::client::East;
-        } else if (c == 'W' || c == 'w') {
-            finalPattern[p++] = direction == tibia::client::West;
-        } else if (c == 'S' || c == 's') {
-            finalPattern[p++] = direction == tibia::client::South;
-        } else {
-            lineLength -= 1;
-            if (lineLength > 1) {
-                if (width == 0)
-                    width = lineLength;
-                if (width != lineLength) {
-                    qCritical("%s", std::format("Invalid pattern for getSpectatorsByPattern: {}", pattern).c_str());
-                    return creatures;
-                }
-                height += 1;
-                lineLength = 0;
-            }
-        }
-    }
-    if (lineLength > 0) {
-        if (width == 0)
-            width = lineLength;
-        if (width != lineLength) {
-            qCritical("%s", std::format("Invalid pattern for getSpectatorsByPattern: {}", pattern).c_str());
-            return creatures;
-        }
-        height += 1;
-    }
-    if (width % 2 != 1 || height % 2 != 1) {
-        qCritical("%s", std::format("Invalid pattern for getSpectatorsByPattern, width and height should be odd (height: %i width: %i)", height, width).c_str());
-        return creatures;
-    }
-
-    p = 0;
-    std::unordered_set<uint32_t> seenIds;
-    seenIds.reserve(1);
-    for (int y = centerPos.y - height / 2, endy = centerPos.y + height / 2; y <= endy; ++y) {
-        for (int x = centerPos.x - width / 2, endx = centerPos.x + width / 2; x <= endx; ++x) {
-            const auto enabled = finalPattern[p];
-            ++p;
-            if (!enabled) {
-                continue;
-            }
-
-            const auto tile = getTile(Position(x, y, centerPos.z));
-            if (!tile || !tile->hasCreatures()) {
-                continue;
-            }
-
-            const auto sizeBeforeAppend = creatures.size();
-            tile->appendSpectators(creatures);
-            cleanNewSpectators(creatures, seenIds, sizeBeforeAppend);
-        }
-    }
-    return creatures;
 }
 

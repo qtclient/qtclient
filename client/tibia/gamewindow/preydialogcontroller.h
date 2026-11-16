@@ -307,7 +307,7 @@ private:
     void onRequestChoosePrey(uint preyId);
     void onRequestChangeAutoExtendType(uint preyId, int type);
     /// The wildcard question of a bonus reroll or a bestiary choice.
-    void askToUseWildcards(TMessageDialogController* box, int price);
+    void askToUseWildcards(TMessageDialogController* box, int price, bool possible);
     void emitAll();
 
     prey::TPreyStorage* m_storage;

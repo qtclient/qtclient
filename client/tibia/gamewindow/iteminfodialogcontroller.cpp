@@ -209,9 +209,7 @@ void TItemInfoDialogController::buildCategories()
 void TItemInfoDialogController::rebuildEntries()
 {
     std::vector<TAppearanceTypeEntry> entries;
-    for (const ThingTypePtr& type : tibia::game::thingTypes(ThingCategoryItem)) {
-        if (!type || type->getId() == 0 || type->getCyclopediaType() != type->getId())
-            continue;
+    for (const ThingTypePtr& type : tibia::appearances::TAppearancesManager::instance().getCyclopediaObjectTypes()) {
         TAppearanceTypeEntry entry;
         entry.typeId = type->getId();
         entry.name = QString::fromStdString(type->getName());
@@ -315,6 +313,9 @@ void TItemInfoDialogController::hideDialogTab()
     Q_EMIT disconnectFromControllerRequest();
     m_shown = false;
     m_proxy.setCategoryFilter(-1, false, false, false, false, {}, false);
+    // The list is emptied; showing the tab again reloads it.
+    m_model.reset({});
+    m_entriesBuilt = false;
     m_category = -1;
     m_name.clear();
     setButtons(false, false, false, false);
@@ -449,7 +450,7 @@ bool TItemInfoDialogController::hasWeaponProficiency() const
 
 bool TItemInfoDialogController::isPremium() const
 {
-    return tibia::game::localPlayer() && tibia::game::localPlayerIsPremium();
+    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
 }
 
 int TItemInfoDialogController::primaryLootValueSource() const { return m_typeId ? m_storage->lootValueSource(m_typeId) : 0; }

@@ -54,7 +54,7 @@ public:
     explicit TMarketController(market::TMarketStorage* storage, QObject* parent = nullptr);
     ~TMarketController() override;
 
-    /// What the store deeplink opens (the store dialog).
+    /// Unused: the store deeplink publishes OPEN_STORE (kept for the host's call).
     void setOpenStore(std::function<void()> openStore) { m_openStore = std::move(openStore); }
 
 public Q_SLOTS:

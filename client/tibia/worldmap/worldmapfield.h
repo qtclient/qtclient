@@ -60,9 +60,6 @@ public:
     Position getPosition() const { return m_coordinate.toPosition(); }
     const Position& position() const { return m_positionCache; }
     void syncPositionCache() { m_positionCache = getPosition(); }
-
-    void onAddInMapView();
-
     void clean();
 
     void addWalkingCreature(uint32_t creatureId);
@@ -121,10 +118,6 @@ public:
     void syncCreatureStackAppearance(uint32_t creatureId);
     /// The graphical effects on this field, from the effect storage.
     const std::vector<appearances::TAppearanceInstancePtr>& effectAppearances() const;
-    /// LocalPlayerSessionThing-only CreaturePtr list; Map spectators + tests still call this.
-    std::vector<CreaturePtr> getCreatures() const;
-    /// CipSoft path: creature ids on this field resolved through `TCreatureStorage`.
-    std::vector<std::shared_ptr<tibia::creatures::TCreature>> getStoredCreatures() const;
     std::vector<TStackCreatureEntry> stackCreatureEntries() const;
 
     /// Non-creature stack rows as CIP appearance/typeId hits (no ItemPtr keep-alive).
@@ -161,8 +154,6 @@ public:
     bool isCompletelyCovered(uint8_t firstFloor, bool resetCache = false);
     void invalidateCoverCache() { m_isCompletelyCovered = m_isCovered = 0; }
     bool isLoading() const;
-
-    bool hasBlockingCreature() const;
     bool hasBlockingBottomItem() const;
 
     bool hasEffect() const;
@@ -170,31 +161,16 @@ public:
     bool hasTopGround(const bool ignoreBorder = false) const;
 
     bool hasCreatures() const { return (m_thingTypeFlag & HAS_CREATURE) != 0; }
-    bool hasWalkingCreature() { return !m_walkingCreatureIds.empty(); }
-
-    /// LocalPlayerSessionThing-only CreaturePtr spectators; Map still collects via this path.
-    void appendSpectators(std::vector<CreaturePtr>& out) const;
-
     bool hasTopItem() const { return m_thingTypeFlag & HAS_TOP_ITEM; }
     bool hasCommonItem() const { return m_thingTypeFlag & HAS_COMMON_ITEM; }
     bool hasBottomItem() const { return m_thingTypeFlag & HAS_BOTTOM_ITEM; }
-
-    bool hasIgnoreLook() { return m_thingTypeFlag & IGNORE_LOOK; }
     bool hasDisplacement() const { return m_thingTypeFlag & HAS_DISPLACEMENT; }
     bool hasLight() const { return m_thingTypeFlag & HAS_LIGHT; }
     bool hasTallThings() const { return m_thingTypeFlag & HAS_TALL_THINGS; }
     bool hasWideThings() const { return m_thingTypeFlag & HAS_WIDE_THINGS; }
-    bool hasTallThings2() const { return m_thingTypeFlag & HAS_TALL_THINGS_2; }
-    bool hasWideThings2() const { return m_thingTypeFlag & HAS_WIDE_THINGS_2; }
-    bool hasWall() const { return m_thingTypeFlag & HAS_WALL; }
-
-    bool mustHookSouth() const { return m_thingTypeFlag & HAS_HOOK_SOUTH; }
-    bool mustHookEast() const { return m_thingTypeFlag & HAS_HOOK_EAST; }
-
     bool limitsFloorsView(bool isFreeView = false);
 
     bool canShade() const { return isFullyOpaque() || hasGround() || hasTopGround() || isFullGround(); }
-    bool canRender(uint32_t& flags, const Position& cameraPosition, AwareRange viewPort);
     bool canErase()
     {
         return !isDrawable() && m_minimapColor == 0
@@ -203,26 +179,6 @@ public:
 
     bool hasElevation(const int elevation = 1) { return m_elevation >= elevation; }
     bool hasFloorChange() const;
-
-
-    void select(TileSelectType selectType = TileSelectType::NO_FILTERED);
-    void unselect();
-    bool isSelected() { return m_selectType != TileSelectType::NONE; }
-
-    bool checkForDetachableThing(TileSelectType selectType = TileSelectType::FILTERED);
-
-    void drawTexts(Point dest);
-    void setText(const std::string& text, Color color);
-    std::string getText();
-    void setTimer(int time, Color color);
-    int getTimer();
-    void setFill(Color color);
-    void resetFill() { m_fill = Color::alpha; }
-    bool canShoot(int distance);
-
-    void setDrawTopAndCreature(bool draw) { m_drawTopAndCreature = draw; }
-    bool drawTopAndCreature() const { return m_drawTopAndCreature; }
-
     void notifyAppearanceInstancesChanged() { Q_EMIT appearanceInstancesChanged(this); }
 
 Q_SIGNALS:
@@ -234,8 +190,6 @@ private:
         appearances::TAppearanceInstancePtr appearance;
         uint32_t creatureId{ 0 }; // 0 = item/effect appearance on stack
     };
-
-    CreaturePtr stackCreature(const TFieldStackEntry& entry) const;
     /// The stack entry at `stackIndex` as an object, at its stack position.
     TFieldObject fieldObject(int stackIndex) const;
     int stackPriorityAt(int stackIndex) const;
@@ -251,23 +205,14 @@ private:
     void updateThingStackPos();
 
     void rebuildCreatureRange();
-
-    void setMarkedOnStackEntry(int stackPos, const Color& color);
-
     void recalculateThingFlag();
 
     bool hasThingWithElevation() { return hasElevation() && m_thingTypeFlag & HAS_THING_WITH_ELEVATION; }
-    void markHighlightedThing(const Color& color);
-
     std::vector<uint32_t> m_walkingCreatureIds;
     std::vector<TFieldStackEntry> m_stack;
     std::vector<appearances::TAppearanceInstancePtr> m_appearanceCache;
 
 
-    std::unique_ptr<StaticText> m_timerText;
-    std::unique_ptr<StaticText> m_text;
-    Color m_fill = Color::alpha;
-    int64_t m_timer = 0;
 
     uint32_t m_isCompletelyCovered{ 0 };
     uint32_t m_isCovered{ 0 };
@@ -277,7 +222,6 @@ private:
     TWorldMapCoordinate m_coordinate;
     mutable Position m_positionCache;
 
-    Point m_lastDrawDest;
 
     uint8_t m_drawElevation{ 0 };
     uint8_t m_minimapColor{ 0 };
@@ -286,11 +230,8 @@ private:
     int16_t m_firstCreatureIndex{ -1 };
     int16_t m_lastCreatureIndex{ -1 };
 
-    int8_t m_highlightThingStackPos = -1;
 
-    TileSelectType m_selectType{ TileSelectType::NONE };
 
-    bool m_drawTopAndCreature{ true };
 };
 
 }

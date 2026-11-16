@@ -1,3 +1,4 @@
+#include "game/gamesessionbase.h"
 #include <stdexcept>
 #include "game/gamesessionstate.h"
 #include "tibia/runtime/host.h"
@@ -8,7 +9,6 @@
 
 #include <tibia/creatures/attachedeffect.h>
 #include <tibia/config/runtimegameconfig.h>
-#include <tibia/game/localplayersessionthing.h>
 #include "input/playermovementintenthandler.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -24,6 +24,7 @@
 #include "worldmap/worldmapfield.h"
 #include "container/containerciptypes.h"
 #include "creatures/creaturestorage.h"
+#include "game/playerdata.h"
 #include "creatures/walkdebug.h"
 #include "shared/clockservice.h"
 #include <QStringList>
@@ -161,7 +162,7 @@ void TGameSessionState::createMovementIntent()
 {
     using tibia::input::TPlayerMovementIntentHandler;
     m_movementIntent.reset();
-    if (!m_localPlayer)
+    if (!m_playerPresent)
         return;
     auto options = std::make_shared<TMovementOptions>();
     options->load();
@@ -169,9 +170,9 @@ void TGameSessionState::createMovementIntent()
     env.now = [] { return static_cast<qint64>(tibia::shared::TClockService::frameMillis()); };
     env.player = [this]() -> tibia::creatures::TCreature* {
         tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
-        if (!storage || !m_localPlayer || m_localPlayer->getId() == 0)
+        if (!storage || !m_playerPresent)
             return nullptr;
-        const auto row = storage->creatureAt(m_localPlayer->getId());
+        const auto row = storage->player();
         return row && row->position().isValid() ? row.get() : nullptr;
     };
     env.map = [] { return tibia::worldmap::TWorldMapStorage::ensureStorage(); };
@@ -233,7 +234,7 @@ void TGameSessionState::createMovementIntent()
                          dirs.reserve(path.size());
                          for (const auto direction : path)
                              dirs.push_back(tibia::input::toClientDirection(direction));
-                         tibia::game::notify("onAutoWalk", m_localPlayer, dirs);
+                         tibia::game::notify("onAutoWalk", tibia::game::localPlayerId(), dirs);
                          gameclient::sendAutoWalk(dirs);
                      });
 }
@@ -262,7 +263,11 @@ void TGameSessionState::resetGameStates()
         storage->setFollowID(0);
     }
     m_movementIntent.reset();
-    m_localPlayer = nullptr;
+    m_playerPresent = false;
+    m_marketAvailable = false;
+    m_supplyStashAvailable = false;
+    if (TGameSessionBase* session = TGameSessionBase::active())
+        session->objectCountStorage()->clear();
     m_pingSent = 0;
     m_pingReceived = 0;
     m_unjustifiedPoints = UnjustifiedPoints();
@@ -317,18 +322,26 @@ void TGameSessionState::processDisconnect()
 
 
 
+void TGameSessionState::beginPlayerSession(const std::string_view characterName)
+{
+    m_playerPresent = true;
+    // The login names the own creature.
+    if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance())
+        storage->setPlayerID(0);
+    if (tibia::game::TPlayerData* data = tibia::game::TPlayerData::liveInstance())
+        data->setCharacterName(characterName);
+    tibia::worldmap::TWorldMapStorage::ensureStorage()->sessionState().resetLocalPlayer();
+    createMovementIntent();
+}
+
 void TGameSessionState::processPendingGame()
 {
-    m_localPlayer->setPendingGame(true);
     tibia::game::notify("onPendingGame");
     gameclient::sendEnterGame();
 }
 
 void TGameSessionState::processEnterGame()
 {
-    tibia::schedule::post([localPlayer = m_localPlayer] {
-        localPlayer->setPendingGame(false);
-    });
     tibia::game::notify("onEnterGame");
 }
 
@@ -383,10 +396,7 @@ void TGameSessionState::processCharacterSwitch(const std::string_view characterN
     m_pingReceived = pingReceived;
     tibia::game::cleanMapDynamicThings();
 
-    m_localPlayer = std::make_shared<LocalPlayerSessionThing>();
-    createMovementIntent();
-    m_localPlayer->onCreate();
-    m_localPlayer->setName(characterName);
+    beginPlayerSession(characterName);
     m_characterName = characterName;
 }
 
@@ -513,7 +523,7 @@ void TGameSessionState::processInventoryChange(const uint8_t slot, const tibia::
         }
     }
 
-    // Phase 5.0-D: CIP inventory storage is authority (no LocalPlayerSessionThing ItemPtr array).
+    // The inventory container holds the slots.
     if (tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance()) {
         if (!row.empty())
             inventory->setSlot(slot, row);
@@ -521,8 +531,7 @@ void TGameSessionState::processInventoryChange(const uint8_t slot, const tibia::
             inventory->clearSlot(slot);
     }
 
-    if (m_localPlayer)
-        m_localPlayer->setInventoryItem(static_cast<tibia::client::InventorySlot>(slot));
+    tibia::game::notify("onInventoryChange", static_cast<tibia::client::InventorySlot>(slot));
 }
 
 
@@ -611,10 +620,7 @@ void TGameSessionState::loginWorld(const std::string_view account, const std::st
     // reset the new game state
     resetGameStates();
 
-    m_localPlayer = std::make_shared<LocalPlayerSessionThing>();
-    createMovementIntent();
-    m_localPlayer->onCreate();
-    m_localPlayer->setName(characterName);
+    beginPlayerSession(characterName);
 
     (void)account;
     (void)password;
@@ -642,9 +648,7 @@ void TGameSessionState::startDecodedReplay()
 
     resetGameStates();
 
-    m_localPlayer = std::make_shared<LocalPlayerSessionThing>();
-    createMovementIntent();
-    m_localPlayer->setName("Player");
+    beginPlayerSession("Player");
 
     m_characterName = "Player";
     m_worldName = "Record";
@@ -707,7 +711,7 @@ void TGameSessionState::requestStop()
 
 void TGameSessionState::interruptAutoWalk()
 {
-    if (!m_localPlayer)
+    if (!m_playerPresent)
         return;
     const bool hadPath = m_movementIntent && m_movementIntent->hasGoal();
     tibia::game::localPlayerStopAutoWalk();
@@ -807,7 +811,7 @@ void TGameSessionState::attack(const uint32_t creatureId)
 {
     if (!canPerformGameAction())
         return;
-    if (m_localPlayer && creatureId && creatureId == m_localPlayer->getId())
+    if (creatureId && creatureId == tibia::game::localPlayerId())
         return;
 
     // Attacking the target again stops (CIP's providers pick stop then).
@@ -841,7 +845,7 @@ void TGameSessionState::follow(const uint32_t creatureId)
 {
     if (!canPerformGameAction())
         return;
-    if (m_localPlayer && creatureId && creatureId == m_localPlayer->getId())
+    if (creatureId && creatureId == tibia::game::localPlayerId())
         return;
 
     // Following the target again stops; same rules as attack.
@@ -1102,7 +1106,7 @@ bool TGameSessionState::canPerformGameAction() const
     // - the local player is not dead
     // - we have a game protocol
     // - the game protocol is connected
-    return m_online && m_localPlayer && !m_dead && m_gameConnection && m_gameConnection->isConnected();
+    return m_online && m_playerPresent && !m_dead && m_gameConnection && m_gameConnection->isConnected();
 }
 
 void TGameSessionState::setProtocolVersion(const uint16_t version)

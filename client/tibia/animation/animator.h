@@ -18,14 +18,14 @@ class TWorldMapLinearMovementTween final : public ::tibia::CipTyped
 {
 public:
     TWorldMapLinearMovementTween() = default;
-    TWorldMapLinearMovementTween(Point delta, float durationMs);
+    TWorldMapLinearMovementTween(QPoint delta, float durationMs);
 
-    Point offsetAt(float elapsedMs) const;
+    QPoint offsetAt(float elapsedMs) const;
     float duration() const { return m_duration; }
-    const Point& delta() const { return m_delta; }
+    const QPoint& delta() const { return m_delta; }
 
 private:
-    Point m_delta;
+    QPoint m_delta;
     float m_duration = 0.f;
 };
 

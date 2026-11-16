@@ -14,7 +14,10 @@
 #include "client/staticdata.h"
 #include "container/containerciptypes.h"
 
-#include <framework/global.h>
+#include <QColor>
+#include <QPoint>
+#include <QRect>
+#include <QSize>
 #include "network/gameserverpacketprocessor.h"
 
 namespace tibia::game {
@@ -279,9 +282,12 @@ public:
     bool canExivaOptions() { return m_CanExivaOptions; }
     void setExpertPvpMode(const bool enable) { m_expertPvpMode = enable; }
     bool getExpertPvpMode() { return m_expertPvpMode; }
-    LocalPlayerSessionThingPtr getLocalPlayer() { return m_localPlayer; }
+    /// The session has a character: from the login until the logout.
+    bool hasLocalPlayer() const { return m_playerPresent; }
     tibia::input::TPlayerMovementIntentHandler* movementIntent() { return m_movementIntent.get(); }
     void createMovementIntent();
+    /// A login (or character switch) starts the character's session.
+    void beginPlayerSession(std::string_view characterName);
     std::string getCharacterName() { return m_characterName; }
     std::string getWorldName() { return m_worldName; }
     /// Token from the last ReadyForSecondaryConnection (empty when none).
@@ -340,7 +346,9 @@ public:
 public:
     void setFollowingCreatureId(uint32_t creatureId);
 
-    LocalPlayerSessionThingPtr m_localPlayer;
+    bool m_playerPresent{ false };
+    bool m_marketAvailable{ false };
+    bool m_supplyStashAvailable{ false };
     std::unique_ptr<tibia::input::TPlayerMovementIntentHandler> m_movementIntent;
     uint32_t m_attackingCreatureId{ 0 };
     uint32_t m_followingCreatureId{ 0 };

@@ -61,16 +61,7 @@ for arg in "$@"; do
 done
 
 publish_things() {
-  local src=""
-  if [[ -f "$OTC/data/assets/catalog-content.json" ]]; then
-    src="$OTC/data/assets"
-  elif [[ -f "$OTC/data/things/$VERSION/catalog-content.json" ]]; then
-    src="$OTC/data/things/$VERSION"
-  elif [[ -f "$ROOT/.cache/qtclient/things/catalog-content.json" ]]; then
-    src="$ROOT/.cache/qtclient/things"
-  else
-    src="$OTC/data/assets"
-  fi
+  local src="$OTC/data/assets"
   if [[ ! -f "$src/catalog-content.json" ]]; then
     echo "[assets] missing $src/catalog-content.json — run: make extract" >&2
     exit 1
@@ -151,15 +142,7 @@ publish_things() {
   # CIP: Resources/sounds is a sibling of Resources/assets (not nested under assets).
   # make extract writes the same layout to data/sounds/ (CIP-flat).
   local sounds=""
-  if [[ -f "$src/sounds/catalog-sound.json" ]]; then
-    sounds="$src/sounds"
-  elif [[ -f "$OTC/data/sounds/catalog-sound.json" ]]; then
-    sounds="$OTC/data/sounds"
-  elif [[ -f "$OTC/data/assets/sounds/catalog-sound.json" ]]; then
-    sounds="$OTC/data/assets/sounds"
-  elif [[ -f "$OTC/data/sounds/$VERSION/catalog-sound.json" ]]; then
-    sounds="$OTC/data/sounds/$VERSION"
-  fi
+  [[ -f "$OTC/data/sounds/catalog-sound.json" ]] && sounds="$OTC/data/sounds"
   if [[ -n "$sounds" ]]; then
     mkdir -p "$tree/Contents/Resources/sounds"
     rsync -a "$sounds/" "$tree/Contents/Resources/sounds/"

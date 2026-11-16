@@ -1,5 +1,7 @@
 #include "iteminfostorage.h"
 
+#include "analysers/itempricestorage.h"
+
 #include "cyclopedia/cyclopediaciptypes.h"
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
@@ -45,9 +47,6 @@ const QString TrackerConfiguration = QStringLiteral("itemtracking");
 constexpr int ValuableLootScreenshot = 52;
 /// CIP DAT_1022bc210, the separator colour of coloured names.
 const QString ColouredSeparator = QStringLiteral("{#f0f0f0|, }");
-/// CIP TItemPriceStorage ctor : the loot value level colours.
-const std::array<QColor, 6> LootLevelColours{ QColor(0xf0, 0xf0, 0xf0), QColor(0xaa, 0xaa, 0xaa), QColor(0x00, 0xf0, 0x00),
-                                              QColor(0x20, 0xa0, 0xff), QColor(0xff, 0x68, 0xff), QColor(0xf0, 0xf0, 0x00) };
 
 /// The status line shows plain text: "{#rrggbb|text}" -> "text".
 QString stripColourCodings(QString text)
@@ -77,12 +76,11 @@ QString trackedItemName(const uint16_t typeId)
     return qtTrId("dummy_unknown");
 }
 
-/// CIP : the price ceilings of the loot value levels 0..5.
-constexpr std::array<qint64, 6> LootValueCeilings{ 0, 999, 9999, 99999, 999999, std::numeric_limits<qint64>::max() };
+analysers::TItemPriceStorage* prices() { return analysers::TItemPriceStorage::instance(); }
 
 bool premium()
 {
-    return tibia::game::localPlayer() && tibia::game::localPlayerIsPremium();
+    return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
 }
 
 }
@@ -99,20 +97,13 @@ TItemInfoStorage::TItemInfoStorage(QObject* parent)
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         setCharacter(0);
     });
+    connect(prices(), &analysers::TItemPriceStorage::configurationChangedFromUserInput, this, &TItemInfoStorage::pricesChanged);
+    connect(prices(), &analysers::TItemPriceStorage::marketPricesAvailable, this, &TItemInfoStorage::pricesChanged);
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onPremiumChange", [this](GameObject*, const Args&) {
+        prices()->onPremiumTimeChanged();
         Q_EMIT premiumChanged();
         Q_EMIT pricesChanged();
         Q_EMIT trackingChanged();
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onItemsPrice", [this](GameObject*, const Args& args) {
-        const auto* prices = args.empty() ? nullptr : std::any_cast<std::map<uint16_t, uint64_t>>(&args[0]);
-        if (!prices)
-            return std::any{};
-        m_marketPrices.clear();
-        for (const auto& [typeId, price] : *prices)
-            m_marketPrices.emplace(typeId, static_cast<qint64>(price));
-        Q_EMIT pricesChanged();
         return std::any{};
     });
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onItemInfo", [this](GameObject*, const Args& args) {
@@ -188,98 +179,33 @@ void TItemInfoStorage::applyItemInfo(const std::vector<std::tuple<uint16_t, std:
     Q_EMIT itemInfoChanged();
 }
 
-qint64 TItemInfoStorage::npcBuyPrice(const uint16_t typeId)
-{
-    switch (typeId) {
-        case 3031: return 1;
-        case 3035: return 100;
-        case 3043: return 10000;
-        default: break;
-    }
-    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-    if (!type)
-        return 0;
-    qint64 best = 0;
-    for (const NPCData& npc : type->getNpcSaleData()) {
-        if (npc.currencyObjectTypeId != 0 || !npc.currencyQuestFlagDisplayName.empty())
-            continue;
-        best = std::max<qint64>(best, npc.buyPrice);
-    }
-    return best;
-}
+qint64 TItemInfoStorage::npcBuyPrice(const uint16_t typeId) { return prices()->npcBuyPrice(typeId); }
 
-qint64 TItemInfoStorage::marketPrice(const uint16_t typeId) const
-{
-    const auto it = m_marketPrices.find(typeId);
-    return it == m_marketPrices.end() ? 0 : it->second;
-}
+qint64 TItemInfoStorage::marketPrice(const uint16_t typeId) const { return static_cast<qint64>(prices()->marketPrice(typeId)); }
 
 bool TItemInfoStorage::setCustomPrice(const uint16_t typeId, const int price)
 {
-    if (customPrice(typeId) == price)
+    if (!prices()->setCustomSalePrice(typeId, static_cast<quint32>(price)))
         return false;
-    if (price == 0)
-        m_customPrices.erase(typeId);
-    else
-        m_customPrices[typeId] = price;
     savePrices();
-    Q_EMIT pricesChanged();
     return true;
 }
 
-int TItemInfoStorage::customPrice(const uint16_t typeId) const
-{
-    const auto it = m_customPrices.find(typeId);
-    return it == m_customPrices.end() ? 0 : it->second;
-}
+int TItemInfoStorage::customPrice(const uint16_t typeId) const { return static_cast<int>(prices()->customSalePrice(typeId)); }
 
 bool TItemInfoStorage::setLootValueSource(const uint16_t typeId, const int source)
 {
-    if (lootValueSource(typeId) == source)
+    if (!prices()->setPrimaryLootValueSource(typeId, source))
         return false;
-    m_sources[typeId] = source;
     savePrices();
-    Q_EMIT pricesChanged();
     return true;
 }
 
-int TItemInfoStorage::lootValueSource(const uint16_t typeId) const
-{
-    const auto it = m_sources.find(typeId);
-    return it == m_sources.end() ? NpcValue : it->second;
-}
+int TItemInfoStorage::lootValueSource(const uint16_t typeId) const { return prices()->primaryLootValueSource(typeId); }
 
-qint64 TItemInfoStorage::lootPrice(const uint16_t typeId) const
-{
-    // CIP slot 20 : premium own value, else source with Npc↔market fallback.
-    if (premium()) {
-        if (const int custom = customPrice(typeId); custom != 0)
-            return custom;
-    }
-    switch (lootValueSource(typeId)) {
-        case MarketValue: {
-            if (const qint64 market = marketPrice(typeId))
-                return market;
-            return npcBuyPrice(typeId);
-        }
-        case NpcValue: {
-            if (const qint64 npc = npcBuyPrice(typeId))
-                return npc;
-            return marketPrice(typeId);
-        }
-        default: return 0;
-    }
-}
+qint64 TItemInfoStorage::lootPrice(const uint16_t typeId) const { return static_cast<qint64>(prices()->lootPrice(typeId)); }
 
-int TItemInfoStorage::lootValueLevel(const uint16_t typeId) const
-{
-    const qint64 price = lootPrice(typeId);
-    for (size_t level = 0; level < LootValueCeilings.size(); ++level) {
-        if (price <= LootValueCeilings[level])
-            return static_cast<int>(level);
-    }
-    return static_cast<int>(LootValueCeilings.size()) - 1;
-}
+int TItemInfoStorage::lootValueLevel(const uint16_t typeId) const { return prices()->lootValueLevel(typeId); }
 
 bool TItemInfoStorage::isTracked(const uint16_t typeId) const
 {
@@ -369,9 +295,7 @@ void TItemInfoStorage::setAutoTrackAboveValue(const quint32 value)
 
 QString TItemInfoStorage::colouredItemName(const uint16_t typeId, const QString& name) const
 {
-    // CIP slot 23 : the level's colour.
-    const int level = std::clamp(lootValueLevel(typeId), 0, static_cast<int>(LootLevelColours.size()) - 1);
-    return QStringLiteral("{%1|%2}").arg(LootLevelColours[level].name(), name);
+    return prices()->colouredItemName(typeId, name);
 }
 
 void TItemInfoStorage::setChatStorage(chat::TChatChannelStorage* storage) { m_chat = storage; }
@@ -581,8 +505,6 @@ void TItemInfoStorage::setCharacter(const quint32 characterId)
     // CIP onPlayerCreatureLoaded (vslot 30,): save, then load the new character.
     saveTrackerIfDirty();
     m_characterId = characterId;
-    m_customPrices.clear();
-    m_sources.clear();
     m_tracked.clear();
     m_recentDrops.clear();
     m_expiryTimer.stop();
@@ -592,21 +514,8 @@ void TItemInfoStorage::setCharacter(const quint32 characterId)
     m_lootListType = Blacklist;
     m_lootLists[Blacklist].clear();
     m_lootLists[Whitelist].clear();
+    prices()->fromJson(m_characterId != 0 ? readConfiguration(PricesConfiguration) : QJsonObject{});
     if (m_characterId != 0) {
-        const QJsonObject prices = readConfiguration(PricesConfiguration);
-        const QJsonObject sources = prices.value(QLatin1String("primaryLootValueSources")).toObject();
-        for (auto it = sources.begin(); it != sources.end(); ++it) {
-            const int typeId = it.key().toInt();
-            if (typeId > 0 && typeId <= 0xffff)
-                m_sources[static_cast<uint16_t>(typeId)] = it.value().toString() == QLatin1String("market") ? MarketValue : NpcValue;
-        }
-        const QJsonObject custom = prices.value(QLatin1String("customSalePrices")).toObject();
-        for (auto it = custom.begin(); it != custom.end(); ++it) {
-            const int typeId = it.key().toInt();
-            const int price = it.value().toInt();
-            if (typeId > 0 && typeId <= 0xffff && price != 0)
-                m_customPrices[static_cast<uint16_t>(typeId)] = price;
-        }
         const QJsonObject lootList = readConfiguration(LootListConfiguration);
         m_lootListType = lootList.value(QLatin1String("listType")).toString() == QLatin1String("whitelist") ? Whitelist : Blacklist;
         const auto readList = [&lootList](const char* key, std::set<uint16_t>& list) {
@@ -665,17 +574,7 @@ void TItemInfoStorage::writeConfiguration(const QString& name, const QJsonObject
         file.write(QJsonDocument(object).toJson(QJsonDocument::Indented));
 }
 
-void TItemInfoStorage::savePrices() const
-{
-    QJsonObject sources;
-    for (const auto& [typeId, source] : m_sources)
-        sources.insert(QString::number(typeId), source == MarketValue ? QStringLiteral("market") : QStringLiteral("npc"));
-    QJsonObject custom;
-    for (const auto& [typeId, price] : m_customPrices)
-        custom.insert(QString::number(typeId), price);
-    writeConfiguration(PricesConfiguration, QJsonObject{ { QStringLiteral("primaryLootValueSources"), sources },
-                                                         { QStringLiteral("customSalePrices"), custom } });
-}
+void TItemInfoStorage::savePrices() const { writeConfiguration(PricesConfiguration, prices()->toJson()); }
 
 void TItemInfoStorage::saveLootList() const
 {

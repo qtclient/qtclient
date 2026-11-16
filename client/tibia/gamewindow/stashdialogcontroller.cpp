@@ -63,6 +63,16 @@ QString typeName(ThingType* type)
     return QString::fromStdString(type->isMarketable() && !market.name.empty() ? market.name : type->getName());
 }
 
+/// The NPCs the stash and depot search trader filters offer.
+std::set<QString> traderNames()
+{
+    return { QStringLiteral("Alesar"), QStringLiteral("Alexander"), QStringLiteral("Avan"), QStringLiteral("Brengus"),
+             QStringLiteral("Chondur"), QStringLiteral("Flint"), QStringLiteral("Gnomission"), QStringLiteral("Haroun"),
+             QStringLiteral("Kiru"), QStringLiteral("Lailene"), QStringLiteral("Mugruu"), QStringLiteral("Nah'bob"),
+             QStringLiteral("Rafzan"), QStringLiteral("Rashid"), QStringLiteral("Talila"), QStringLiteral("Tamoril"),
+             QStringLiteral("Tamru"), QStringLiteral("Valindara"), QStringLiteral("Yaman"), QStringLiteral("Tom") };
+}
+
 /// What the NPCs pay for one, the best offer (CIP: the sell value).
 uint32_t sellValue(ThingType* type)
 {
@@ -111,8 +121,19 @@ void TStashProxyModel::setTrader(const QString& trader)
 
 void TStashProxyModel::setSortOrder(const int order)
 {
+    if (m_sortOrder == order)
+        return;
     m_sortOrder = order;
     invalidate();
+}
+
+void TStashProxyModel::resetFilters()
+{
+    beginFilterChange();
+    m_category = -1;
+    m_name.clear();
+    m_trader.clear();
+    endFilterChange(QSortFilterProxyModel::Direction::Rows);
 }
 
 bool TStashProxyModel::filterAcceptsRow(const int sourceRow, const QModelIndex&) const
@@ -183,16 +204,14 @@ TStashDialogController::TStashDialogController(QObject* parent)
     , m_mapper(app::ClientOptions::load().options().value(QLatin1String(ControlSchemeOption)).toInt(0))
 {
     m_stashModel = &m_proxy;
-    const int savedOrder = app::ClientOptions::load().options().value(QLatin1String(StashSortOrderOption)).toInt(static_cast<int>(Order::AtoZ));
-    m_sortOrder = savedOrder;
-    m_proxy.setSortOrder(savedOrder);
     m_info->setCloseOnButtonClicked(true);
-    m_categoryFilterModel = { categoryText(Proxy::AllCategories) };
-    m_traderFilterModel = { qtTrId("stash_no_trader_filter") };
+    setCategories({});
+    setTraders(traderNames());
 
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
         if (name == QLatin1String(ControlSchemeOption))
             m_mapper.setControlScheme(app::ClientOptions::load().options().value(name).toInt(0));
+        onStashOptionsChanged();
     });
 
     input::setActionHandler(A::STASH_RETRIEVE, [](const input::TGameAction& action) {
@@ -281,12 +300,8 @@ TStashDialogController::TStashDialogController(QObject* parent)
         setContent({});
         closeDialog();
     });
-    // Close stash before market opens (context menu or slot click); reopen on market close.
-    m_actionListeners.push_back(input::addActionListener(A::MARKET_BROWSE, [this](const input::TGameAction&) {
-        if (!dialog()->isShown())
-            return false;
-        m_reopenAfterMarket = true;
-        closeDialog();
+    m_actionListeners.push_back(input::addActionListener(A::MARKET_BROWSE, [this](const input::TGameAction& action) {
+        handleGameAction(action);
         return false;
     }));
 }
@@ -314,9 +329,8 @@ void TStashDialogController::setContent(std::map<uint16_t, uint32_t> content)
 
 void TStashDialogController::onStashContentChanged()
 {
-    // CIP: the categories of the stored types and "all weapons", "all" first.
+    // "All weapons" is always offered; the rest are the stored types' categories.
     std::set<int> categories{ Proxy::AllWeaponsCategory };
-    std::set<QString> traders;
     std::vector<TAppearanceTypeEntry> entries;
     entries.reserve(m_content.size());
     for (const auto& [typeId, amount] : m_content) {
@@ -326,81 +340,90 @@ void TStashDialogController::onStashContentChanged()
         if (type) {
             entry.name = typeName(type);
             entry.marketCategory = static_cast<int>(type->getMarketData().category);
-            for (const NPCData& npc : type->getNpcSaleData()) {
-                if (npc.buyPrice > 0)
-                    traders.insert(QString::fromStdString(npc.name));
-            }
         }
         categories.insert(entry.marketCategory);
         entries.push_back(std::move(entry));
     }
     m_model.reset(std::move(entries));
+    setCategories(categories);
+}
 
-    const int selectedCategory = m_categoryFilterIndex > 0 && m_categoryFilterIndex <= static_cast<int>(m_categories.size())
-                                     ? m_categories[m_categoryFilterIndex - 1]
-                                     : Proxy::AllCategories;
-    const QString selectedTrader = m_traderFilterIndex > 0 && m_traderFilterIndex <= m_traders.size() ? m_traders[m_traderFilterIndex - 1] : QString();
-
-    m_categories.assign(categories.begin(), categories.end());
-    std::ranges::sort(m_categories, [](const int a, const int b) {
-        return QString::localeAwareCompare(TQmlObjectCategory::translate(a), TQmlObjectCategory::translate(b)) < 0;
+void TStashDialogController::setCategories(const std::set<int>& categories)
+{
+    const int selected = m_categoryFilterIndex < static_cast<int>(m_categories.size()) ? m_categories[m_categoryFilterIndex] : Proxy::AllCategories;
+    std::vector<int> sorted(categories.begin(), categories.end());
+    std::ranges::sort(sorted, [](const int a, const int b) {
+        return TQmlObjectCategory::translate(a).compare(TQmlObjectCategory::translate(b), Qt::CaseInsensitive) < 0;
     });
-    QStringList categoryNames{ categoryText(Proxy::AllCategories) };
+    sorted.insert(sorted.begin(), Proxy::AllCategories);
+    m_categories = std::move(sorted);
+
+    m_categoryFilterModel.clear();
     for (const int category : m_categories)
-        categoryNames << categoryText(category);
-    m_categoryFilterModel = categoryNames;
+        m_categoryFilterModel << categoryText(category);
     Q_EMIT categoryFilterModelChanged();
 
-    m_traders = QStringList(traders.begin(), traders.end());
-    QStringList traderNames{ qtTrId("stash_no_trader_filter") };
-    for (const QString& trader : std::as_const(m_traders))
-        traderNames << QStringLiteral("%1 %2").arg(qtTrId("bought_by"), trader);
-    m_traderFilterModel = traderNames;
+    const auto it = std::ranges::find(m_categories, selected);
+    m_categoryFilterIndex = it == m_categories.end() ? 0 : static_cast<int>(it - m_categories.begin());
+    Q_EMIT categoryFilterIndexChanged();
+}
+
+void TStashDialogController::setTraders(const std::set<QString>& traders)
+{
+    const QString selected = m_traderFilterIndex < m_traders.size() ? m_traders[m_traderFilterIndex] : qtTrId("all_trader");
+    QStringList sorted(traders.begin(), traders.end());
+    std::sort(sorted.begin(), sorted.end());
+    sorted.prepend(qtTrId("all_trader"));
+    m_traders = sorted;
+
+    m_traderFilterModel.clear();
+    m_traderFilterModel << qtTrId("stash_no_trader_filter");
+    for (qsizetype i = 1; i < m_traders.size(); ++i)
+        m_traderFilterModel << QStringLiteral("%1 %2").arg(qtTrId("bought_by"), m_traders[i]);
     Q_EMIT traderFilterModelChanged();
 
-    const auto category = std::ranges::find(m_categories, selectedCategory);
-    TDialogController::setCategoryFilterIndex(category == m_categories.end() ? 0 : static_cast<int>(category - m_categories.begin()) + 1);
-    TDialogController::setTraderFilterIndex(selectedTrader.isEmpty() ? 0 : static_cast<int>(m_traders.indexOf(selectedTrader)) + 1);
-    applyCategory();
-    applyTrader();
-    m_model.onObjectCountsChanged();
-    m_proxy.invalidate();
-}
-
-void TStashDialogController::applyCategory()
-{
-    const int index = m_categoryFilterIndex;
-    m_proxy.setCategory(index > 0 && index <= static_cast<int>(m_categories.size()) ? m_categories[index - 1] : Proxy::AllCategories);
-}
-
-void TStashDialogController::applyTrader()
-{
-    const int index = m_traderFilterIndex;
-    m_proxy.setTrader(index > 0 && index <= m_traders.size() ? m_traders[index - 1] : QString());
+    const qsizetype index = m_traders.indexOf(selected);
+    m_traderFilterIndex = index < 0 ? 0 : static_cast<int>(index);
+    Q_EMIT traderFilterIndexChanged();
 }
 
 void TStashDialogController::setNameFilter(const QString& name)
 {
-    TDialogController::setNameFilter(name);
-    m_proxy.setNameFilter(name);
+    if (m_nameFilter == name)
+        return;
+    m_nameFilter = name;
+    m_proxy.setNameFilter(m_nameFilter);
+    Q_EMIT nameFilterChanged();
 }
 
 void TStashDialogController::setCategoryFilterIndex(const int index)
 {
-    TDialogController::setCategoryFilterIndex(index);
-    applyCategory();
+    if (m_categoryFilterIndex == index)
+        return;
+    m_categoryFilterIndex = index;
+    m_proxy.setCategory(index < static_cast<int>(m_categories.size()) ? m_categories[index] : Proxy::AllCategories);
+    Q_EMIT categoryFilterIndexChanged();
 }
 
 void TStashDialogController::setTraderFilterIndex(const int index)
 {
-    TDialogController::setTraderFilterIndex(index);
-    applyTrader();
+    if (m_traderFilterIndex == index)
+        return;
+    m_traderFilterIndex = index;
+    // Index 0 is no trader; past the list it falls back to "all traders".
+    QString trader;
+    if (index > 0)
+        trader = index < m_traders.size() ? m_traders[index] : qtTrId("all_trader");
+    m_proxy.setTrader(trader);
+    Q_EMIT traderFilterIndexChanged();
 }
 
 void TStashDialogController::setSortOrder(const int order)
 {
-    TDialogController::setSortOrder(order);
+    if (m_proxy.sortOrder() == order)
+        return;
     m_proxy.setSortOrder(order);
+    Q_EMIT sortOderChanged();
     persistSortOrder(order);
 }
 
@@ -409,32 +432,63 @@ void TStashDialogController::persistSortOrder(const int order)
     app::ClientOptions::store(QLatin1String(StashSortOrderOption), order);
 }
 
+void TStashDialogController::applyFilter(const Filter& filter)
+{
+    setNameFilter(filter.name);
+    if (m_categoryFilterIndex != filter.categoryIndex) {
+        m_categoryFilterIndex = filter.categoryIndex;
+        m_proxy.setCategory(filter.categoryIndex < static_cast<int>(m_categories.size()) ? m_categories[filter.categoryIndex]
+                                                                                            : Proxy::AllCategories);
+        Q_EMIT categoryFilterIndexChanged();
+    }
+    setTraderFilterIndex(filter.traderIndex);
+    m_nameFilter = filter.name;
+    m_categoryFilterIndex = filter.categoryIndex;
+    m_traderFilterIndex = filter.traderIndex;
+}
+
+void TStashDialogController::saveFilter()
+{
+    m_savedFilter = { m_nameFilter, m_categoryFilterIndex, m_traderFilterIndex };
+}
+
 void TStashDialogController::showDialog()
 {
-    if (!dialog()->isShown())
-        dialog()->show();
+    if (m_proxy.category() == -1)
+        m_proxy.setCategory(Proxy::AllCategories);
+    onStashContentChanged();
+    if (dialog()->item())
+        return;
+    dialog()->create();
+    dialog()->show();
+    if (dialog()->isInStack())
+        onStashOptionsChanged();
+    applyFilter(m_savedFilter);
 }
 
 void TStashDialogController::closeDialog()
 {
+    m_info->dialog()->close();
+    saveFilter();
+    applyFilter({});
     dialog()->close();
 }
 
 void TStashDialogController::resetCurrentFilters()
 {
-    setCategoryFilterIndex(0);
-    setTraderFilterIndex(0);
-    setNameFilter(QString());
+    applyFilter({});
 }
 
 void TStashDialogController::resetAllFilters()
 {
-    resetCurrentFilters();
-    setSortOrder(static_cast<int>(Order::AtoZ));
+    applyFilter({});
+    saveFilter();
+    m_proxy.resetFilters();
 }
 
 void TStashDialogController::closeButtonClicked()
 {
+    applyFilter({});
     closeDialog();
 }
 
@@ -487,27 +541,50 @@ void TStashDialogController::slotClicked(const int TypeID, const int MouseButton
 
 void TStashDialogController::requestOpenManageLootContainerDialog()
 {
-    m_reopenAfterManageLoot = true;
-    closeDialog();
+    if (dialog()->isInStack()) {
+        m_reopenAfterManageLoot = true;
+        closeDialog();
+    }
     input::publish(input::makeAction(A::OPEN_MANAGE_LOOT_CONTAINER_STASH));
 }
 
-void TStashDialogController::onStashOptionsChanged() {}
+void TStashDialogController::handleGameAction(const input::TGameAction& action)
+{
+    // The stash makes way for the market and comes back when it closes.
+    if (action.type == A::MARKET_BROWSE && dialog()->isInStack()) {
+        m_reopenAfterMarket = true;
+        closeDialog();
+    }
+}
+
+void TStashDialogController::onStashOptionsChanged()
+{
+    if (!dialog()->isInStack())
+        return;
+    const int order = app::ClientOptions::load().options().value(QLatin1String(StashSortOrderOption)).toInt(static_cast<int>(Order::AtoZ));
+    if (m_proxy.sortOrder() != order) {
+        m_proxy.setSortOrder(order);
+        Q_EMIT sortOderChanged();
+    }
+}
+
+void TStashDialogController::reopenStash()
+{
+    if (!m_reopenAfterMarket && !m_reopenAfterManageLoot)
+        return;
+    m_reopenAfterMarket = false;
+    m_reopenAfterManageLoot = false;
+    input::publish(input::makeAction(A::STASH_REQUEST_REOPEN));
+}
 
 void TStashDialogController::onMarketDialogDialogClosed()
 {
-    if (!m_reopenAfterMarket)
-        return;
-    m_reopenAfterMarket = false;
-    input::publish(input::makeAction(A::STASH_REQUEST_REOPEN));
+    reopenStash();
 }
 
 void TStashDialogController::onManageLootContainerDialogClosed()
 {
-    if (!m_reopenAfterManageLoot)
-        return;
-    m_reopenAfterManageLoot = false;
-    input::publish(input::makeAction(A::STASH_REQUEST_REOPEN));
+    reopenStash();
 }
 
 void TStashDialogController::onRequestShowStashMessageDialog(const QString& Message)

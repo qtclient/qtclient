@@ -34,7 +34,10 @@ class TWorldMapStorage final : public cip::tibia::worldmap::TWorldMapStorage
 {
     Q_OBJECT
 public:
-    explicit TWorldMapStorage(QObject* parent = nullptr);
+    /// `speedCalculator`: the session's (CIP passes it in); the storage keeps
+    /// one of its own when none is given (the fallback storage).
+    explicit TWorldMapStorage(creatures::TCreatureMovementSpeedCalculator* speedCalculator = nullptr,
+                              QObject* parent = nullptr);
     ~TWorldMapStorage() override;
 
     /// CIP session hub (null before/after gameclient install).
@@ -62,7 +65,7 @@ public:
                                    const std::function<void(const Position&)>& onRemoved);
     TCacheForWorldmapStorageLookupMembers* lookupMembers() const { return m_lookupMembers; }
 
-    creatures::TCreatureMovementSpeedCalculator& speedCalculator() { return m_speedCalculator; }
+    creatures::TCreatureMovementSpeedCalculator& speedCalculator() { return *m_speedCalculator; }
     /// Speed of the field's ground; 255 where there is no ground.
     int groundSpeedAt(const Position& position);
     /// Accumulated elevation of the field's items; 0 where there is no field.
@@ -114,7 +117,8 @@ private:
     std::vector<std::unordered_map<uint32_t, TileBlock>> m_spatialFloors;
     TCacheForWorldmapStorageLookupMembers* m_lookupMembers = nullptr;
     TWorldMapSessionState m_sessionState;
-    creatures::TCreatureMovementSpeedCalculator m_speedCalculator;
+    creatures::TCreatureMovementSpeedCalculator m_ownSpeedCalculator;
+    creatures::TCreatureMovementSpeedCalculator* m_speedCalculator = nullptr;
 
     static quint64 key(const Position& pos);
 };

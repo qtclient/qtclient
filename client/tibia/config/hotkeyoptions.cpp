@@ -85,6 +85,89 @@ QJsonObject writeSet(const THotkeySet& set)
 
 }
 
+THotkeyOptionsData THotkeyOptionsData::fromJson(const QJsonObject& section)
+{
+    THotkeyOptionsData data;
+    const QJsonObject sets = section.value(QLatin1String("hotkeySets")).toObject();
+    for (auto it = sets.begin(); it != sets.end(); ++it)
+        data.hotkeySets.emplace(it.key(), readSet(it->toObject()));
+    data.currentHotkeySetName = section.value(QLatin1String("currentHotkeySetName")).toString();
+    if (!data.hotkeySets.contains(data.currentHotkeySetName))
+        data.currentHotkeySetName = data.hotkeySets.empty() ? QString() : data.hotkeySets.begin()->first;
+    data.autoSwitchHotkeyPreset = section.value(QLatin1String("autoSwitchHotkeyPreset")).toBool();
+    data.showStaticHotkeysFirst = section.value(QLatin1String("showStaticHotkeysFirst")).toBool(true);
+    return data;
+}
+
+QJsonObject THotkeyOptionsData::toJson() const
+{
+    QJsonObject sets;
+    for (const auto& [name, set] : hotkeySets)
+        sets.insert(name, writeSet(set));
+    return {
+        { QStringLiteral("autoSwitchHotkeyPreset"), autoSwitchHotkeyPreset },
+        { QStringLiteral("currentHotkeySetName"), currentHotkeySetName },
+        { QStringLiteral("hotkeySets"), sets },
+        { QStringLiteral("showStaticHotkeysFirst"), showStaticHotkeysFirst },
+    };
+}
+
+THotkeySet* THotkeyOptionsData::set(const QString& name)
+{
+    const auto it = hotkeySets.find(name);
+    return it == hotkeySets.end() ? nullptr : &it->second;
+}
+
+void THotkeyOptionsData::setCurrentSet(const QString& name)
+{
+    if (hotkeySets.contains(name))
+        currentHotkeySetName = name;
+}
+
+void THotkeyOptionsData::addSet(const QString& name, const THotkeySet& set)
+{
+    hotkeySets.emplace(name, set);
+}
+
+void THotkeyOptionsData::renameSet(const QString& from, const QString& to)
+{
+    auto node = hotkeySets.extract(from);
+    if (node.empty() || hotkeySets.contains(to)) {
+        if (!node.empty())
+            hotkeySets.insert(std::move(node));
+        return;
+    }
+    node.key() = to;
+    hotkeySets.insert(std::move(node));
+    if (currentHotkeySetName == from)
+        currentHotkeySetName = to;
+}
+
+void THotkeyOptionsData::removeSet(const QString& name)
+{
+    hotkeySets.erase(name);
+    if (currentHotkeySetName == name)
+        currentHotkeySetName.clear();
+}
+
+void THotkeyOptionsData::clearBindings(const QString& setName, const bool chatOn)
+{
+    if (THotkeySet* hotkeySet = set(setName))
+        (chatOn ? hotkeySet->chatOn : hotkeySet->chatOff).clear();
+}
+
+void THotkeyOptionsData::addBinding(const QString& setName, const bool chatOn, const QKeySequence& keys, const TActionSetting& setting)
+{
+    if (THotkeySet* hotkeySet = set(setName))
+        (chatOn ? hotkeySet->chatOn : hotkeySet->chatOff).push_back({ keys, setting });
+}
+
+void THotkeyOptionsData::setBindings(const QString& setName, const bool chatOn, const std::vector<THotkeyBinding>& bindings)
+{
+    if (THotkeySet* hotkeySet = set(setName))
+        (chatOn ? hotkeySet->chatOn : hotkeySet->chatOff) = bindings;
+}
+
 TActionSetting TActionSetting::fromJson(const QJsonObject& json)
 {
     TActionSetting setting;
@@ -169,15 +252,17 @@ THotkeyOptions* THotkeyOptions::instance()
     return options;
 }
 
-QJsonObject THotkeyOptions::builtInSection()
+QJsonObject THotkeyOptions::builtInSets()
 {
     // CIP : vocation presets, each with GlobalShortcuts' keys merged in.
     QFile file(QStringLiteral(":/config/defaulthotkeys.json"));
     if (!file.open(QIODevice::ReadOnly))
         return {};
     QJsonObject sets = QJsonDocument::fromJson(file.readAll()).object().value(QLatin1String("hotkeySets")).toObject();
-    const QJsonObject global = sets.take(QLatin1String("GlobalShortcuts")).toObject();
+    const QJsonObject global = sets.value(QLatin1String("GlobalShortcuts")).toObject();
     for (auto it = sets.begin(); it != sets.end(); ++it) {
+        if (it.key() == QLatin1String("GlobalShortcuts"))
+            continue;
         QJsonObject set = it->toObject();
         for (const QLatin1String mode : { QLatin1String("chatOff"), QLatin1String("chatOn") }) {
             QJsonArray keys = global.value(mode).toArray();
@@ -187,12 +272,30 @@ QJsonObject THotkeyOptions::builtInSection()
         }
         *it = set;
     }
+    return sets;
+}
+
+QJsonObject THotkeyOptions::builtInSection()
+{
+    QJsonObject sets = builtInSets();
+    sets.remove(QLatin1String("GlobalShortcuts"));
     return {
         { QStringLiteral("autoSwitchHotkeyPreset"), true },
         { QStringLiteral("currentHotkeySetName"), sets.isEmpty() ? QString() : sets.begin().key() },
         { QStringLiteral("hotkeySets"), sets },
         { QStringLiteral("showStaticHotkeysFirst"), true },
     };
+}
+
+THotkeySet THotkeyOptions::builtInSet(const QString& name)
+{
+    const QJsonObject sets = builtInSection().value(QLatin1String("hotkeySets")).toObject();
+    if (sets.contains(name))
+        return readSet(sets.value(name).toObject());
+    QFile file(QStringLiteral(":/config/defaulthotkeys.json"));
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    return readSet(QJsonDocument::fromJson(file.readAll()).object().value(QLatin1String("hotkeySets")).toObject().value(QLatin1String("GlobalShortcuts")).toObject());
 }
 
 void THotkeyOptions::load()
@@ -206,28 +309,16 @@ void THotkeyOptions::load()
 
 void THotkeyOptions::readFrom(const QJsonObject& section)
 {
-    m_sets.clear();
-    const QJsonObject sets = section.value(QLatin1String("hotkeySets")).toObject();
-    for (auto it = sets.begin(); it != sets.end(); ++it)
-        m_sets.emplace(it.key(), readSet(it->toObject()));
-    m_current = section.value(QLatin1String("currentHotkeySetName")).toString();
-    if (!m_sets.contains(m_current))
-        m_current = m_sets.empty() ? QString() : m_sets.begin()->first;
-    m_autoSwitch = section.value(QLatin1String("autoSwitchHotkeyPreset")).toBool();
-    m_showStaticFirst = section.value(QLatin1String("showStaticHotkeysFirst")).toBool(true);
+    THotkeyOptionsData data = THotkeyOptionsData::fromJson(section);
+    m_sets = std::move(data.hotkeySets);
+    m_current = data.currentHotkeySetName;
+    m_autoSwitch = data.autoSwitchHotkeyPreset;
+    m_showStaticFirst = data.showStaticHotkeysFirst;
 }
 
 QJsonObject THotkeyOptions::toJson() const
 {
-    QJsonObject sets;
-    for (const auto& [name, set] : m_sets)
-        sets.insert(name, writeSet(set));
-    return {
-        { QStringLiteral("autoSwitchHotkeyPreset"), m_autoSwitch },
-        { QStringLiteral("currentHotkeySetName"), m_current },
-        { QStringLiteral("hotkeySets"), sets },
-        { QStringLiteral("showStaticHotkeysFirst"), m_showStaticFirst },
-    };
+    return THotkeyOptionsData{ m_current, m_autoSwitch, m_showStaticFirst, m_sets }.toJson();
 }
 
 void THotkeyOptions::save()

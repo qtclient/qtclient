@@ -8,7 +8,6 @@
 #include "creatures/creatureprotocolapply.h"
 #include "creatures/creaturestorage.h"
 #include "effects/effectstorage.h"
-#include "game/localplayersessionthing.h"
 #include "minimap/minimaptilestorage.h"
 #include "worldmap/worldmapfield.h"
 #include "worldmap/worldmapviewport.h"
@@ -154,11 +153,11 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
     if (game::isSceneFrozen())
         return;
     const Position position = positionOf(message.coordinate());
-    const LocalPlayerSessionThingPtr player = game::localPlayer();
-    const Position oldPosition = player ? player->getPosition() : Position();
+    const bool hasPlayer = game::hasLocalPlayer();
+    const Position oldPosition = hasPlayer ? game::localPlayerPosition() : Position();
     // The session's first map also places the local player.
-    if (!m_mapKnown && player)
-        player->setPosition(position);
+    if (!m_mapKnown && hasPlayer)
+        map().sessionState().setLocalPlayerPosition(position);
     // The view centres on the map's field, its top-left subfield.
     if (m_viewport)
         m_viewport->setCenter(TWorldMapSubfieldCoordinate::fromField(TWorldMapCoordinate(position), 0, 0));
@@ -167,8 +166,8 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
     if (creatures::TCreatureStorage* creatures = creatures::TCreatureStorage::instance())
         creatures->clearPlacedOnFieldFlags();
     // A jump re-places the view: the step in flight ends before the new map arrives.
-    if (player && oldPosition.isValid() && !game::isOneStep(oldPosition, position))
-        player->handleTeleport();
+    if (hasPlayer && oldPosition.isValid() && !game::isOneStep(oldPosition, position))
+        game::localPlayerHandleTeleport();
     applyArea(message.fields());
     game::updateMapLatency();
     if (!m_mapKnown) {
@@ -176,7 +175,7 @@ void TWorldmapProtocolMessageHandler::handleFullMapMessage(const GameserverMessa
         m_mapKnown = true;
     }
     schedule::post([] { game::notify("onMapDescription"); });
-    game::notify("onTeleport", player, position, oldPosition);
+    game::notify("onTeleport", game::localPlayerId(), position, oldPosition);
 }
 
 void TWorldmapProtocolMessageHandler::handleSlice(const google::protobuf::RepeatedPtrField<ProtocolMapField>& fields,
@@ -213,12 +212,11 @@ void TWorldmapProtocolMessageHandler::changeFloor(const google::protobuf::Repeat
                                                   const Position& center, const Position& from)
 {
     // The step in flight ends; the new floors land around the moved view.
-    const LocalPlayerSessionThingPtr player = game::localPlayer();
-    if (player)
-        player->handleTeleport();
+    if (game::hasLocalPlayer())
+        game::localPlayerHandleTeleport();
     moveKnownArea(center);
     applyArea(fields);
-    game::notify("onTeleport", player, center, from);
+    game::notify("onTeleport", game::localPlayerId(), center, from);
 }
 
 void TWorldmapProtocolMessageHandler::handleTopFloorMessage(const GameserverMessageTopFloor& message)

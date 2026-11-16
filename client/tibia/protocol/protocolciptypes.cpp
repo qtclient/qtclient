@@ -1915,6 +1915,8 @@ void ownProductSurface(QObject* parent)
     // CIP TProtocolClientMessageProcessor: encoded client messages → the game connection.
     QObject::connect(g_messageQueue, &TProtocolMessageQueue::clientMessageEnqueued, g_messageQueue,
                      [](int, const QByteArray& frame) {
+                         if (frame.isEmpty())
+                             return;
                          if (auto* processor = network::TGameserverNetworkPacketProcessor::live())
                              processor->writeClientFrame(frame);
                      });

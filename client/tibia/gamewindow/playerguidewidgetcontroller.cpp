@@ -172,6 +172,7 @@ TPlayerGuideWidgetController::TPlayerGuideWidgetController(news::TNewsStorage* n
     if (m_newsStorage)
         connect(m_newsStorage, &news::TNewsStorage::contentsChanged, this, &TPlayerGuideWidgetController::onNewsStorageContentsChanged);
     connect(game::TGameNotify::instance(), &game::TGameNotify::gameStarted, this, &TPlayerGuideWidgetController::onGameSessionChanged);
+    connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TPlayerGuideWidgetController::onGameSessionChanged);
     if (tibia::game::isOnline())
         onGameSessionChanged();
 }
@@ -413,6 +414,7 @@ TPlayerGuideWidgetManager::TPlayerGuideWidgetManager(QQuickItem* gameWindowItem,
     , m_engine(engine)
 {
     connect(game::TGameNotify::instance(), &game::TGameNotify::gameStarted, this, &TPlayerGuideWidgetManager::onGameStarted);
+    connect(game::TGameNotify::instance(), &game::TGameNotify::gameSessionChanged, this, &TPlayerGuideWidgetManager::onGameStarted);
 }
 
 TPlayerGuideWidgetManager::~TPlayerGuideWidgetManager() { delete m_controller; }

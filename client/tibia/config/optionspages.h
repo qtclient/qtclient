@@ -3,6 +3,7 @@
 #include "shared/cip_typed.h"
 
 #include "config/configciptypes.h"
+#include "config/hotkeyoptions.h"
 
 #include "config/specialconditionsoptions.h"
 
@@ -257,6 +258,10 @@ private:
 /// CIP load / apply / rebuild. Lists
 /// static + product actions (DefaultHotkeys), TriggerActionButton_* (ActionButtons),
 /// and custom bindings (CustomHotkeys).
+/// OptionsPageHotkeys.qml (CIP: THotkeysQMLOptionsPage). The page edits a
+/// copy of the hotkey options (THotkeyOptionsData) and keeps one row per
+/// action of the current set and chat mode; every edit writes the rows back
+/// into the copy, Apply hands the copy to the client options.
 class THotkeysOptionsPage final : public cip::tibia::config::THotkeysQMLOptionsPage, public TOptionsPage
 {
     Q_OBJECT
@@ -271,6 +276,9 @@ public:
 
     void load(const QJsonObject& settings) override;
     void apply(QJsonObject& settings) const override;
+    /// The current set's keys of the current chat mode back to the built-in
+    /// ones of its vocation (GlobalShortcuts for other names).
+    void resetToDefault();
 
     Q_INVOKABLE void requestAddPreset() override;
     Q_INVOKABLE void requestRenameCurrentPreset() override;
@@ -280,13 +288,32 @@ public:
     Q_INVOKABLE void requestEnterNewHotkeyForAction(int HotkeyActionSettingIndex, int KeySequenceIndex) override;
     Q_INVOKABLE void requestAddNewCustomHotkey() override;
 
+public Q_SLOTS:
+    void onPresetTextEntered(const QString& EnteredText);
+    void onMessageDialogConfirmed();
+    void onNewKeySequenceSelectedForCurrentHotkeyActionSetting(const QKeySequence& NewKeySequence);
+    /// HotkeyActionSettingIndex is a row of hotkeyModel; -1 adds a row.
+    void onTextAssignedToHotkeyAction(int HotkeyActionSettingIndex, int MultiActionIndex, const QString& Text, bool SendAutomatically);
+
 private:
+    enum class EPresetTextMode { None = 0, Add = 1, Clone = 2, Rename = 3 };
+
+    /// The rows of the current set and chat mode, then the list model.
     void rebuildModel();
-    void writeWorkingBindings();
-    QString currentSetName() const;
-    QJsonObject m_working;
-    int m_editRow = -1;
+    /// hotkeyModel: the rows of the hotkey mode that match the name filter.
+    void updateHotkeyListModel();
+    /// The rows' keys into the current set's chat mode; rows without keys
+    /// stay when keepUnboundRows.
+    void commitRows(bool keepUnboundRows);
+    void refreshSetNames();
+    void openPresetDialog(EPresetTextMode mode, const QString& caption, const QString& description, const QString& text);
+    QString currentSetName() const { return m_options.currentHotkeySetName; }
+
+    THotkeyOptionsData m_options;
+    QList<QObject*> m_rows;
+    QObject* m_editRow = nullptr;
     int m_editKey = 0;
+    EPresetTextMode m_presetTextMode = EPresetTextMode::None;
 };
 
 }

@@ -91,12 +91,16 @@ public:
 
     /// CIP .
     bool hasSidebar(uint sidebarId) const { return m_sidebars.contains(sidebarId); }
-    /// CIP : the widget goes to the first sidebar with room for it,
-    /// else to the outermost one (the last left sidebar, else the last right).
+    /// CIP: plays the open sound, then the widget goes to the first sidebar
+    /// with room for it, else to the outermost one (the last left sidebar,
+    /// else the last right).
     void addWidget(TSidebarWidget* widget);
-    /// CIP ; `identifier` from TSidebarController::reserveIdentifier.
+    /// CIP: into an existing sidebar; `identifier` from
+    /// TSidebarController::reserveIdentifier.
     void addWidget(uint sidebarId, TSidebarWidget* widget, uint identifier = 0);
-    /// CIP : takes the widget out of the sidebar holding it.
+    /// CIP: into `sidebarId` when it exists, else where addWidget(widget) puts it.
+    void placeWidget(uint sidebarId, TSidebarWidget* widget);
+    /// CIP: takes the widget out of its parent sidebar.
     bool removeWidget(TSidebarWidget* widget);
     /// Sidebar ids, right ones first (0..), then left ones (100..).
     std::vector<uint> sidebarIds() const;
@@ -124,7 +128,7 @@ Q_SIGNALS:
 private:
     static constexpr int MinUnusedWidthForSidebar = 175;
 
-    /// CIP .
+    /// CIP onWidgetWantsToMoveToSidebar.
     void moveWidgetToSidebar(int targetSidebar, TSidebarWidget* widget);
     /// CIP : while a widget is dragged, the other sidebars take it.
     void onWidgetDragChanged(uint sourceSidebar, bool active);

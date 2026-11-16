@@ -73,6 +73,8 @@ public Q_SLOTS:
     void onReceivedUnlockedSpell(int spellId);
 
 private:
+    /// The active game session's storage connection.
+    QMetaObject::Connection m_containerUpdated;
     /// CIP .
     bool onActionButtonTriggered(const input::TGameAction& action);
     void execute(const config::TActionSetting& setting, bool autoRepeat);

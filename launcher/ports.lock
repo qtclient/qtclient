@@ -1,3 +1,40 @@
 # ports.lock: CipSoft functions qtclient has dealt with. Written by
 # tools/re/port.py; checked by `port.py check`. Format and statuses: see port.py.
 # id	fp	status	where
+shared::TClipboardHelper::v0	872d4faac408f6d5	skip	compiler-generated destructor
+shared::TClipboardHelper::v1	e9caf669ab302182	skip	compiler-generated destructor
+shared::TClipboardHelper::v2	03220d30fe342478	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::setTextInClipboard
+shared::TClipboardHelper::v3	ea9ad4e161872047	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::getTextFromClipboard
+shared::TClipboardHelper::v4	472805c042cab6d0	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::getBase64StringAsJsonObject
+shared::TClipboardHelper::v5	ddeffed4c24bc6f4	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::setJsonObjectAsBase64String
+shared::TClipboardHelper::v6	7561ec3f69b5e0b5	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::convertBase64StringAsJsonObject
+shared::TClipboardHelper::v7	ad01f8d8e86715f1	ported	client/tibia/shared/clipboardhelper.cpp:TClipboardHelper::convertJsonObjectToBase64String
+shared::TDownloadPool::v12	94f613a37c4d5d03	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::download
+shared::TDownloadPool::v13	3229a889564b46ec	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::downloadWithPriority
+shared::TDownloadPool::v14	90c456462179bebf	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::setMaxParallelDownloads
+shared::TDownloadPool::v15	b59314347e9826c6	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::maxParallelDownloads
+shared::TDownloadPool::v16	c6adb91a55f8fd28	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::activeDownloads
+shared::TDownloadPool::v17	04062eb14d8a921b	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::pendingDownloads
+shared::TDownloadPool::v18	ed0a05af12caeb4f	ported	client/tibia/shared/downloadpool.cpp:TDownloadPool::setCache
+shared::TDownloadPool::~TDownloadPool	097457dc45e86dd8	skip	compiler-generated destructor
+shared::TFileSystemHelper::v0	872d4faac408f6d5	skip	compiler-generated destructor
+shared::TFileSystemHelper::v1	e9caf669ab302182	skip	compiler-generated destructor
+shared::TFileSystemHelper::v10	d60dafd7e7741754	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::getPathInsideDirectory
+shared::TFileSystemHelper::v11	3aa2470e8562c82a	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::forEachFileInDirectory
+shared::TFileSystemHelper::v12	087629e228d625a9	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::getFilesInDirectory
+shared::TFileSystemHelper::v13	4e26b7fc67457a61	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::fileExists
+shared::TFileSystemHelper::v14	104928e83e6a25de	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::directoryExists
+shared::TFileSystemHelper::v15	3ad1715f30576818	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::joinPaths
+shared::TFileSystemHelper::v16	5cb59ef6b3d98d87	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::getOrCreateSubdirectory
+shared::TFileSystemHelper::v17	5221ba1f2a76f82e	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::openSettings
+shared::TFileSystemHelper::v18	07addf832c5a4a5a	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::readJsonFileAsQJsonDocument
+shared::TFileSystemHelper::v19	5b3bcfa2ff64a363	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::readImage
+shared::TFileSystemHelper::v20	5d8caa0bd1eab72b	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::writeImage
+shared::TFileSystemHelper::v3	baf231345abb4742	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::readFile
+shared::TFileSystemHelper::v4	d5a9575b323dce33	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::readFileIfExists
+shared::TFileSystemHelper::v5	afd8cea1b6cc0ce4	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::writeFile
+shared::TFileSystemHelper::v6	9d4edb0229d4f093	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::writeTextFile
+shared::TFileSystemHelper::v7	dc35ad591e1f0033	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::appendTextFile
+shared::TFileSystemHelper::v8	aa843099a29fe341	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::removeFile
+shared::TFileSystemHelper::v9	5a53f643bc260723	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::createDirectory
+sub_073bd719c008	073bd719c0089d40	skip	inlined QCborValue destructor

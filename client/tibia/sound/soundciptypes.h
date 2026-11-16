@@ -85,13 +85,6 @@ public:
     using cip::tibia::sound::TSoundManager::TSoundManager;
 };
 
-class TSoundMetadataManager final : public cip::tibia::sound::TSoundMetadataManager
-{
-    Q_OBJECT
-public:
-    using cip::tibia::sound::TSoundMetadataManager::TSoundMetadataManager;
-};
-
 class TSoundPlayer final : public cip::tibia::sound::TSoundPlayer
 {
     Q_OBJECT

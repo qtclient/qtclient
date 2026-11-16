@@ -44,14 +44,14 @@ public:
     QQuickItem* inventoryItem() const { return m_inventoryItem; }
 
 public Q_SLOTS:
-    /// CIP : panelsOrder, then the missing default panels, then premium.
+    /// CIP: panelsOrder, then the missing default panels, then premium.
     void reorderPanelsFromOptions() override;
-    /// CIP : the panels sorted by identifier become panelsOrder.
+    /// CIP: the four panels sorted by identifier become panelsOrder.
     void saveCurrentOpenPanels() override;
 
 private:
     QQuickItem* panelItem(config::SidebarPanelType type) const;
-    /// panelsOrder without repeats, then the missing default panels.
+    /// panelsOrder, then the missing default panels.
     QList<config::SidebarPanelType> fullPanelsOrder() const;
 
     QPointer<TSidebarManager> m_sidebars;

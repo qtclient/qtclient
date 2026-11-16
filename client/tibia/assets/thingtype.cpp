@@ -163,7 +163,7 @@ int ThingType::getExactSize(const int layer, const int xPattern, const int yPatt
         return 0;
     if (!m_record.boundingBoxes.empty()) {
         const int index = std::clamp(xPattern, 0, static_cast<int>(m_record.boundingBoxes.size()) - 1);
-        const Rect& box = m_record.boundingBoxes[static_cast<size_t>(index)];
+        const QRect& box = m_record.boundingBoxes[static_cast<size_t>(index)];
         return std::max(box.width(), box.height());
     }
     return m_record.realSize > 0 ? m_record.realSize : tibia::config::spriteSize();

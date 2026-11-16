@@ -32,12 +32,6 @@ StaticText::StaticText()
 {
 }
 
-void StaticText::drawText(const Point& dest, const Rect& parentRect)
-{
-    (void)dest; (void)parentRect;
-}
-
-
 void StaticText::setText(const std::string_view text) { m_text = std::string(text); }
 void StaticText::setFont(const std::string_view) {}
 
@@ -101,7 +95,7 @@ void StaticText::scheduleUpdate()
 
 void StaticText::compose()
 {
-    static constexpr Color
+    static const QColor
         MESSAGE_COLOR1(239, 239, 0),
         MESSAGE_COLOR2(254, 101, 0),
         MESSAGE_COLOR3(95, 247, 247);

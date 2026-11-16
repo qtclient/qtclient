@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config/sidebaroptions.h"
+
 #include <cip_gen.h>
 
 #include <QJsonArray>
@@ -11,12 +13,6 @@
 
 class QQmlEngine;
 class QQuickItem;
-
-namespace tibia {
-namespace config {
-class TSidebarOptions;
-}
-}
 
 namespace tibia {
 namespace gamewindow {
@@ -104,10 +100,11 @@ public:
     static int widgetTypeOf(const QString& name);
 
 public Q_SLOTS:
-    /// CIP .
+    /// CIP: the open widgets become sidebarWidgetsMangerOptions.
     void saveCurrentOpenWidgets() override;
-    /// CIP : closes every widget, then opens the saved ones
-    /// sidebar by sidebar, unless the open widgets already match.
+    /// CIP: unless the open widgets already match the saved ones, closes every
+    /// widget, opens as many sidebars as fit the game window and reopens the
+    /// saved widgets sidebar by sidebar.
     void restoreSidebarConfigurationFromOptions() override;
 
 Q_SIGNALS:
@@ -122,7 +119,8 @@ private:
     TSidebarWidget* currentWidget(int widgetType) const;
     void closeAll();
     QJsonArray serializeSidebar(uint sidebarId) const;
-    uint resolveOpenSidebarId(uint sidebarId) const;
+    /// CIP: the open widgets per sidebar; empty while restoring.
+    config::SidebarWidgetsManagerOptions currentWidgetsManagerOptions() const;
 
     QPointer<TSidebarManager> m_sidebars;
     QQuickItem* m_gameWindowItem;

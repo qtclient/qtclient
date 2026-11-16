@@ -23,17 +23,6 @@ constexpr auto OptionsKey = "questTrackerWidgetOptions";
 /// CIP : OPEN_QUESTLOG_DIALOG's parameter carries a flag when this bit is set.
 constexpr int QuestFlagParameter = 0x10000;
 
-bool sameData(const TQuestTrackerStorage::Entry& left, const TQuestTrackerStorage::Entry& right)
-{
-    return left.questLineId == right.questLineId && left.questLineName == right.questLineName && left.questLinePart == right.questLinePart
-           && left.description == right.description;
-}
-
-bool isPlaceholder(const TQuestTrackerStorage::Entry& entry)
-{
-    return entry.questLineName.isEmpty() && entry.questLinePart.isEmpty() && entry.description.isEmpty();
-}
-
 void openQuestLogAt(const int questFlagId)
 {
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_QUESTLOG_DIALOG));
@@ -43,21 +32,45 @@ void openQuestLogAt(const int questFlagId)
 
 }
 
+TQuestTrackerStorage::TQuestTrackerStorage(questlog::TQuestLogStorage* storage, QObject* parent)
+    : QObject(parent)
+    , m_storage(storage)
+{
+    connect(m_storage, &questlog::TQuestLogStorage::trackedQuestFlagsChanged, this, [this](const bool added, const bool removed) {
+        rebuildEntries();
+        Q_EMIT trackedQuestFlagsChanged(added, removed);
+        Q_EMIT entriesChanged();
+    });
+    connect(m_storage, &questlog::TQuestLogStorage::configurationChangedFromUserInput, this, &TQuestTrackerStorage::storageChanged);
+}
+
+void TQuestTrackerStorage::rebuildEntries()
+{
+    m_entries.clear();
+    for (const questlog::TQuestFlag& flag : m_storage->trackedQuestFlags()) {
+        m_entries.append({ .questFlagId = flag.id,
+                           .questLineId = std::max(flag.data.questLineId, 0),
+                           .questLineName = flag.data.questLineName,
+                           .questLinePart = flag.data.questFlagName,
+                           .description = flag.data.description,
+                           .pinned = flag.pinned,
+                           .lastUpdateTimestamp = flag.lastUpdateTimestamp });
+    }
+}
+
 QSet<int> TQuestTrackerStorage::trackedIds() const
 {
     QSet<int> ids;
-    for (const Entry& entry : m_entries)
-        ids.insert(entry.questFlagId);
+    for (const questlog::TQuestFlag& flag : m_storage->trackedQuestFlags())
+        ids.insert(flag.id);
     return ids;
 }
 
 QList<int> TQuestTrackerStorage::completedIds() const
 {
     QList<int> ids;
-    for (const Entry& entry : m_entries) {
-        if (hasCompletedMarker(entry.questLinePart))
-            ids.append(entry.questFlagId);
-    }
+    for (const questlog::TQuestFlagID id : m_storage->completedTrackedQuestFlagIds())
+        ids.append(id);
     return ids;
 }
 
@@ -70,64 +83,47 @@ int TQuestTrackerStorage::questLineOf(const int questFlagId) const
     return 0;
 }
 
-void TQuestTrackerStorage::setTrackedQuestFlags(QList<Entry> entries, const int remaining)
+bool TQuestTrackerStorage::autoTrackNewQuests() const
 {
-    const qint64 now = QDateTime::currentMSecsSinceEpoch();
-    QSet<int> ids;
-    bool added = false;
-    for (Entry& entry : entries) {
-        ids.insert(entry.questFlagId);
-        entry.pinned = m_pinned.contains(entry.questFlagId);
-        const auto old = std::ranges::find(m_entries, entry.questFlagId, &Entry::questFlagId);
-        added |= old == m_entries.end();
-        if (old == m_entries.end())
-            entry.lastUpdateTimestamp = now;
-        else if (sameData(*old, entry) || isPlaceholder(*old))
-            entry.lastUpdateTimestamp = old->lastUpdateTimestamp;
-        else
-            entry.lastUpdateTimestamp = now;
-    }
-    const bool removed = std::ranges::any_of(m_entries, [&ids](const Entry& entry) { return !ids.contains(entry.questFlagId); });
-    const QSet<int> pinned = m_pinned & ids;
-    const bool pinsChanged = pinned != m_pinned;
-    m_pinned = pinned;
-    m_entries = std::move(entries);
-    m_remaining = remaining;
-    Q_EMIT trackedQuestFlagsChanged(added, removed);
-    Q_EMIT entriesChanged();
-    if (pinsChanged)
-        Q_EMIT storageChanged();
+    return m_storage->autoTrackNewQuests();
 }
 
-void TQuestTrackerStorage::updateQuestFlag(Entry entry)
+bool TQuestTrackerStorage::autoUntrackCompletedQuests() const
 {
-    const auto old = std::ranges::find(m_entries, entry.questFlagId, &Entry::questFlagId);
-    if (old == m_entries.end() || sameData(*old, entry))
-        return;
-    if (entry.questLineId == 0)
-        entry.questLineId = old->questLineId;
-    if (entry.questLineName.isEmpty())
-        entry.questLineName = old->questLineName;
-    entry.pinned = old->pinned;
-    entry.lastUpdateTimestamp = QDateTime::currentMSecsSinceEpoch();
-    *old = std::move(entry);
-    Q_EMIT entriesChanged();
+    return m_storage->autoUntrackCompletedQuests();
+}
+
+namespace {
+
+questlog::TQuestFlagData flagData(const TQuestTrackerStorage::Entry& entry)
+{
+    return { .questLineId = entry.questLineId,
+             .questLineName = entry.questLineName,
+             .questFlagName = entry.questLinePart,
+             .description = entry.description };
+}
+
+}
+
+void TQuestTrackerStorage::setTrackedQuestFlags(const QList<Entry>& entries, const int remaining)
+{
+    std::map<questlog::TQuestFlagID, questlog::TQuestFlagData> flags;
+    for (const Entry& entry : entries)
+        flags.emplace(questlog::TQuestFlagID(entry.questFlagId), flagData(entry));
+    m_remaining = remaining;
+    m_storage->setCanTrackAdditionalQuestFlags(remaining > 0);
+    m_storage->setTrackedQuestFlags(flags, QDateTime::currentMSecsSinceEpoch(), true);
+}
+
+void TQuestTrackerStorage::updateQuestFlag(const Entry& entry)
+{
+    m_storage->setTrackedQuestFlags({ { questlog::TQuestFlagID(entry.questFlagId), flagData(entry) } },
+                                    QDateTime::currentMSecsSinceEpoch(), false);
 }
 
 void TQuestTrackerStorage::setPinned(const int questFlagId, const bool pinned)
 {
-    if (pinned == m_pinned.contains(questFlagId))
-        return;
-    if (pinned)
-        m_pinned.insert(questFlagId);
-    else
-        m_pinned.remove(questFlagId);
-    for (Entry& entry : m_entries) {
-        if (entry.questFlagId == questFlagId)
-            entry.pinned = pinned;
-    }
-    Q_EMIT entriesChanged();
-    Q_EMIT storageChanged();
+    m_storage->setQuestFlagPinned(questlog::TQuestFlagID(questFlagId), pinned);
 }
 
 void TQuestTrackerStorage::changeTrackedQuestFlags(const QList<int>& ids, const bool remove)
@@ -145,9 +141,9 @@ void TQuestTrackerStorage::changeTrackedQuestFlags(const QList<int>& ids, const 
 void TQuestTrackerStorage::setOption(const int option, const bool value)
 {
     if (option == 0)
-        m_autoTrackNewQuests = value;
+        m_storage->setAutoTrackNewQuests(value);
     else if (option == 1)
-        m_autoUntrackCompletedQuests = value;
+        m_storage->setAutoUntrackCompletedQuests(value);
     else
         return;
     Q_EMIT storageChanged();
@@ -157,46 +153,14 @@ void TQuestTrackerStorage::setOption(const int option, const bool value)
 void TQuestTrackerStorage::clear()
 {
     m_entries.clear();
-    m_pinned.clear();
     m_remaining = 25;
-    m_autoTrackNewQuests = true;
-    m_autoUntrackCompletedQuests = true;
     Q_EMIT entriesChanged();
 }
 
-/// CIP : trackedQuests [{id, isPinned}] and the options (both
-/// tracker options default to on).
-void TQuestTrackerStorage::load(const QJsonObject& root)
+void TQuestTrackerStorage::reload()
 {
-    const QJsonObject tracking = root.value(QLatin1String("questtracking")).toObject();
-    m_entries.clear();
-    m_pinned.clear();
-    for (const QJsonValue& value : tracking.value(QLatin1String("trackedQuests")).toArray()) {
-        const QJsonObject object = value.toObject();
-        Entry entry;
-        entry.questFlagId = object.value(QLatin1String("id")).toInt();
-        entry.pinned = object.value(QLatin1String("isPinned")).toBool();
-        if (entry.pinned)
-            m_pinned.insert(entry.questFlagId);
-        m_entries.append(entry);
-    }
-    const QJsonObject options = tracking.value(QLatin1String("options")).toObject();
-    m_autoTrackNewQuests = options.value(QLatin1String("autoTrackNewQuests")).toBool(true);
-    m_autoUntrackCompletedQuests = options.value(QLatin1String("autoUntrackCompletedQuests")).toBool(true);
+    rebuildEntries();
     Q_EMIT entriesChanged();
-}
-
-/// CIP .
-void TQuestTrackerStorage::save(QJsonObject& root) const
-{
-    QJsonArray tracked;
-    for (const Entry& entry : m_entries)
-        tracked.append(QJsonObject{ { QStringLiteral("id"), entry.questFlagId }, { QStringLiteral("isPinned"), entry.pinned } });
-    const QJsonObject options{
-        { QStringLiteral("autoTrackNewQuests"), m_autoTrackNewQuests },
-        { QStringLiteral("autoUntrackCompletedQuests"), m_autoUntrackCompletedQuests },
-    };
-    root.insert(QStringLiteral("questtracking"), QJsonObject{ { QStringLiteral("trackedQuests"), tracked }, { QStringLiteral("options"), options } });
 }
 
 void TQuestTrackerStorage::sendTracked(const QSet<int>& ids) const
@@ -207,7 +171,7 @@ void TQuestTrackerStorage::sendTracked(const QSet<int>& ids) const
     for (const int id : ids)
         sorted.push_back(static_cast<uint16_t>(id));
     std::ranges::sort(sorted);
-    tibia::game::sendRequestTrackerQuestLog(sorted, m_autoTrackNewQuests, m_autoUntrackCompletedQuests);
+    tibia::game::sendRequestTrackerQuestLog(sorted, autoTrackNewQuests(), autoUntrackCompletedQuests());
 }
 
 void TQuestTrackerListModel::setEntries(QList<TQuestTrackerStorage::Entry> entries, const QList<MissionAction>& actions)

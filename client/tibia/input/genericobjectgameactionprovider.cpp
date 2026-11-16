@@ -160,23 +160,26 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
         push(A::OPEN_PREY_DIALOG);
     }
 
-    // qtclient social / party / inspect for players (and CipSoft leave/share on self).
+    if (stored->isPlayer() && !own) {
+        // TGenericChatGameActionProvider, then the bot report by name.
+        actions.push_back(namedCreatureAction(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, name));
+        actions.push_back(namedCreatureAction(A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL, name));
+        actions.push_back(namedCreatureAction(A::REPORT_NAME, name));
+        actions.push_back(namedCreatureAction(isIgnoredName(name) ? A::UNIGNORE_NAME : A::IGNORE_NAME, name));
+        if (!isVipName(name))
+            actions.push_back(namedCreatureAction(A::ADD_NEW_VIP, name));
+        actions.push_back(namedCreatureAction(A::REPORT_BOT, name));
+    }
     if (stored->isPlayer()) {
+        // TPartyGameActionProvider, then TInspectPlayerGameActionProvider.
+        pushPartyActions(actions, *stored, creatureId, selfStored);
         if (!own) {
-            actions.push_back(namedCreatureAction(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, name));
-            actions.push_back(namedCreatureAction(A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL, name));
-            if (!isVipName(name))
-                actions.push_back(namedCreatureAction(A::ADD_NEW_VIP, name));
-            actions.push_back(namedCreatureAction(isIgnoredName(name) ? A::UNIGNORE_NAME : A::IGNORE_NAME, name));
             push(A::INSPECT_PLAYER);
             push(A::ASK_TO_INSPECT_PLAYER);
             push(A::INVITE_TO_INSPECT_PLAYER);
             push(A::ALLOW_INSPECT_PLAYER);
             push(A::REVOKE_INSPECT_PLAYER);
-            actions.push_back(namedCreatureAction(A::REPORT_NAME, name));
-            push(A::REPORT_BOT);
         }
-        pushPartyActions(actions, *stored, creatureId, selfStored);
     }
 
     push(A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD);

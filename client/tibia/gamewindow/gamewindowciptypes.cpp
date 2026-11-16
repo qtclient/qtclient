@@ -755,8 +755,8 @@ const char* const InspectSlotBackgrounds[] = {
 
 QColor inspectOutfitColor(const int index)
 {
-    const Color c = Outfit::getColor(index);
-    return QColor(c.r(), c.g(), c.b());
+    const QColor c = Outfit::getColor(index);
+    return QColor(c.red(), c.green(), c.blue());
 }
 
 class TInspectObjectRow final : public cip::tibia::gamewindow::TInspectObjectQMLData
@@ -973,7 +973,7 @@ void TInspectPlayerDialogController::showPlayer(const CyclopediaCharacterInspect
     player->setFromPlayer(data);
     m_hasDualWielding = leftHandDualWield && rightHandEmpty;
     m_dualWieldingObjectID = leftHandDualWield ? static_cast<int>(leftHandTypeId) : 0;
-    m_isOwnPlayer = tibia::game::localPlayer() && tibia::game::localPlayerId() == data.creatureId;
+    m_isOwnPlayer = tibia::game::hasLocalPlayer() && tibia::game::localPlayerId() == data.creatureId;
     Q_EMIT inspectObjectListChanged();
     m_inspectedPlayerId = data.creatureId;
     dialog()->create();
@@ -1009,7 +1009,7 @@ void TInspectPlayerDialogController::copyToClipboarClicked(const QString& Text)
 
 void TInspectPlayerDialogController::openSkillWheelDialog()
 {
-    if (!tibia::game::localPlayer() || m_inspectObjectList.isEmpty() || m_inspectedPlayerId == 0)
+    if (!tibia::game::hasLocalPlayer() || m_inspectObjectList.isEmpty() || m_inspectedPlayerId == 0)
         return;
     input::publish(std::make_shared<input::TGameActionCreature>(A::REQUEST_SKILL_WHEEL, m_inspectedPlayerId));
 }

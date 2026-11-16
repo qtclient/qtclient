@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render portal item sprites from the OTC things pack (CIP appearances + sprites).
+"""Render portal item sprites from the CIP assets (appearances + sprites).
 
 Every pickupable object (`take` flag) becomes `<dest>/<client id>.png`: the
 first pattern (count 1 / default fluid), all animation phases. Animated items
@@ -12,8 +12,8 @@ slice by `make -C apps/qtclient publish-assets`):
   <dest>/.revision        catalog-content.json sha256[:16] + format
 
 Usage:
-  python3 tools/extract/items.py                     # newest things pack → apps/portal/apps/web/items
-  python3 tools/extract/items.py --things DIR --dest DIR
+  python3 tools/extract/items.py                     # data/assets → apps/portal/apps/web/items
+  python3 tools/extract/items.py --assets DIR --dest DIR
 """
 from __future__ import annotations
 
@@ -25,11 +25,11 @@ try:
         APPEARANCES_OBJECT,
         FLAG_TAKE,
         ROOT,
-        THINGS_ROOT,
+        ASSETS_ROOT,
         SpriteInfo,
         SpriteStore,
         apng,
-        find_things_dir,
+        find_assets_dir,
         load_appearances,
         render_pack,
     )
@@ -38,11 +38,11 @@ except ImportError:
         APPEARANCES_OBJECT,
         FLAG_TAKE,
         ROOT,
-        THINGS_ROOT,
+        ASSETS_ROOT,
         SpriteInfo,
         SpriteStore,
         apng,
-        find_things_dir,
+        find_assets_dir,
         load_appearances,
         render_pack,
     )
@@ -101,12 +101,12 @@ def render_all(things: Path, dest: Path = DEFAULT_DEST) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--things", type=Path, default=None, help="things pack dir (default: newest apps/qtclient/data/things/<ver>)")
+    parser.add_argument("--assets", type=Path, default=None, help="CIP assets dir (default: apps/qtclient/data/assets)")
     parser.add_argument("--dest", type=Path, default=DEFAULT_DEST)
     args = parser.parse_args()
-    things = args.things or find_things_dir()
+    things = args.assets or find_assets_dir()
     if things is None:
-        raise SystemExit(f"no things pack under {THINGS_ROOT} — run: make extract")
+        raise SystemExit(f"no CIP assets under {ASSETS_ROOT} — run: make extract")
     render_all(things.resolve(), args.dest.resolve())
     return 0
 

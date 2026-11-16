@@ -54,7 +54,6 @@ else:
     OTC_DIR = ROOT / "apps/qtclient" if (ROOT / "apps/qtclient").is_dir() else ROOT
 
 HAS_ASSET_PIPELINE = (ROOT / "packages/asset-pipeline").is_dir()
-DEFAULT_CLIENT_VERSION = os.environ.get("CLIENT_VERSION", "1533")
 DEFAULT_ASSETS_DIR = OTC_DIR / "data" / "assets"
 
 # Shared OS defaults (CipSoft package paths).
@@ -214,8 +213,8 @@ def copy_into(dest_dir: Path, src: Path) -> Path:
 def extract_cip(install: dict[str, Path | None], out_dir: Path) -> int:
     """Copy CIP catalogs + official subarea masks into ``data/assets/``.
 
-    Used when ``--skip-things`` still needs catalog blobs for generate.
-    Full extract prefers ``extract_things`` (complete CIP assets tree).
+    Used when ``--skip-assets`` still needs catalog blobs for generate.
+    Full extract prefers ``extract_assets`` (complete CIP assets tree).
     """
     assets = install["assets"]
     assert assets is not None
@@ -265,7 +264,7 @@ def stamp_assets_identifier(assets_dir: Path) -> None:
     """Write assets.json.sha256 next to catalog-content.json for local --data boots.
 
     CipSoft keeps this filename at the package root after launcher install; the
-    game also accepts it beside the catalog (publish_assets / legacy things/).
+    game also accepts it beside the catalog (publish_assets).
     """
     catalog = assets_dir / "catalog-content.json"
     if not catalog.is_file():
@@ -274,16 +273,16 @@ def stamp_assets_identifier(assets_dir: Path) -> None:
     (assets_dir / "assets.json.sha256").write_text(digest + "\n", encoding="utf-8")
 
 
-def extract_things(
+def extract_assets(
     install: dict[str, Path | None],
-    things_dir: Path,
+    assets_dir: Path,
     skip_minimap: bool,
 ) -> None:
     assets = install["assets"]
     assert assets is not None
-    if things_dir.exists():
-        shutil.rmtree(things_dir)
-    things_dir.mkdir(parents=True, exist_ok=True)
+    if assets_dir.exists():
+        shutil.rmtree(assets_dir)
+    assets_dir.mkdir(parents=True, exist_ok=True)
 
     file_count = 0
     mask_count = 0
@@ -291,7 +290,7 @@ def extract_things(
         rel = Path(dirpath).relative_to(assets)
         for name in filenames:
             src = Path(dirpath) / name
-            dest = things_dir / rel / name
+            dest = assets_dir / rel / name
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dest)
             file_count += 1
@@ -301,15 +300,15 @@ def extract_things(
     # CipSoft loads official CIP staticdata field numbers (no OTC remap).
 
     log(
-        f"things → {things_dir} ({file_count} files, {mask_count} subarea masks)"
+        f"assets → {assets_dir} ({file_count} files, {mask_count} subarea masks)"
     )
 
     # Qt UI art pack lives next to the CIP binary (Contents/MacOS), not under
     # assets/. The tibia app mounts this as a resource set at startup.
     graphics_rcc = install.get("graphics_rcc")
     if graphics_rcc and is_file(graphics_rcc):
-        copy_into(things_dir, graphics_rcc)
-        log(f"graphics_resources.rcc → {things_dir / 'graphics_resources.rcc'}")
+        copy_into(assets_dir, graphics_rcc)
+        log(f"graphics_resources.rcc → {assets_dir / 'graphics_resources.rcc'}")
     else:
         log(
             "WARN: graphics_resources.rcc not found under Tibia.app "
@@ -321,7 +320,7 @@ def extract_things(
     resources = install["resources"]
     cip_minimap = resources / "minimap" if resources else None
     if cip_minimap and cip_minimap.is_dir():
-        dest = things_dir / "minimap"
+        dest = assets_dir / "minimap"
         shutil.copytree(cip_minimap, dest)
         log(f"CIP default minimap → {dest} ({len(os.listdir(dest))} files)")
 
@@ -334,7 +333,7 @@ def extract_things(
     if not otmm_py.is_file():
         log("WARN: build-otmm-minimap.py missing; skipped")
         return
-    otmm_dest = things_dir / "minimap.otmm"
+    otmm_dest = assets_dir / "minimap.otmm"
     try:
         subprocess.run(
             [
@@ -358,7 +357,7 @@ def extract_things(
                 [
                     sys.executable,
                     str(markers_py),
-                    f"--dest={things_dir / 'minimap-markers.json'}",
+                    f"--dest={assets_dir / 'minimap-markers.json'}",
                 ],
                 cwd=str(ROOT),
                 check=False,
@@ -474,16 +473,16 @@ def extract_game_tables(install: dict[str, Path | None], assets_dir: Path) -> No
     )
 
 
-def extract_aac_sprites(things_dir: Path) -> None:
-    """Render AAC outfit frames + item sprites from the freshly extracted things pack."""
+def extract_aac_sprites(assets_dir: Path) -> None:
+    """Render AAC outfit frames + item sprites from the freshly extracted assets."""
     if __package__:
         from . import items, outfits
     else:
         import items
         import outfits
 
-    outfits.render_all(things_dir)
-    items.render_all(things_dir)
+    outfits.render_all(assets_dir)
+    items.render_all(assets_dir)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -494,18 +493,13 @@ def main(argv: list[str] | None = None) -> int:
         help="Path to Tibia.app / Contents/Resources / assets/",
     )
     parser.add_argument(
-        "--client-version",
-        default=DEFAULT_CLIENT_VERSION,
-        help=f"Protocol version stamp for sounds/legacy (default: {DEFAULT_CLIENT_VERSION})",
-    )
-    parser.add_argument(
         "--assets-dir",
         type=Path,
         default=DEFAULT_ASSETS_DIR,
         help=f"CIP-flat assets dump (default: {DEFAULT_ASSETS_DIR})",
     )
     parser.add_argument("--skip-cip", action="store_true")
-    parser.add_argument("--skip-things", action="store_true")
+    parser.add_argument("--skip-assets", action="store_true")
     parser.add_argument(
         "--skip-game-tables",
         action="store_true",
@@ -548,16 +542,12 @@ def main(argv: list[str] | None = None) -> int:
         except FileNotFoundError:
             parser.error(usage_hint())
 
-    version = str(args.client_version).strip()
     assets_dir = Path(args.assets_dir).resolve()
     if args.out_dir is not None:
         assets_dir = Path(args.out_dir).resolve()
         log(f"WARN: --out-dir is deprecated; writing CIP assets to {assets_dir}")
     # CipSoft: Resources/{assets,sounds} siblings. Dev --data uses data/{assets,sounds}.
-    if assets_dir.name == "assets":
-        sounds_dir = assets_dir.parent / "sounds"
-    else:
-        sounds_dir = OTC_DIR / "data" / "sounds" / version
+    sounds_dir = assets_dir.parent / "sounds"
 
     install = resolve_tibia_install(tibia)
     log(f"Tibia install: {install['input']}")
@@ -565,14 +555,14 @@ def main(argv: list[str] | None = None) -> int:
     log(f"assets dest: {assets_dir}")
     log(f"sounds dest: {sounds_dir}")
 
-    if not args.skip_things:
-        extract_things(install, assets_dir, skip_minimap=not args.otmm)
+    if not args.skip_assets:
+        extract_assets(install, assets_dir, skip_minimap=not args.otmm)
         stamp_assets_identifier(assets_dir)
     elif not args.skip_cip:
         # Catalog-only fill when the full assets tree is skipped (rare).
         extract_cip(install, assets_dir)
     else:
-        log("CIP catalogs skipped (--skip-things and --skip-cip)")
+        log("CIP catalogs skipped (--skip-assets and --skip-cip)")
 
     if not args.skip_game_tables:
         extract_game_tables(install, assets_dir)

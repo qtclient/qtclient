@@ -42,7 +42,7 @@ QString englishNumber(const qulonglong value) { return QLocale(QLocale::English)
 
 qulonglong balance(const tibia::client::ResourceTypes_t type)
 {
-    return tibia::game::localPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
+    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerResourceBalance(type) : 0;
 }
 
 /// qtclient cyclopedia-map field menu (select / walk). GOD_TELEPORT is Shift+Ctrl only.
@@ -112,17 +112,7 @@ TCyclopediaMapDialogController::TCyclopediaMapDialogController(QObject* parent)
 
     m_confirmDialog->setCloseOnButtonClicked(true);
     m_confirmDialog->setYesNoButtons();
-    connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this, [this] {
-        if (m_resetSubAreaId > 0) {
-            tibia::game::sendCyclopediaMapResetViewpoints(static_cast<uint16_t>(m_resetSubAreaId));
-            m_resetSubAreaId = 0;
-            return;
-        }
-        if (m_donationAreaId > 0 && m_donationAmount > 0)
-            tibia::game::sendCyclopediaMapDonate(static_cast<uint16_t>(m_donationAreaId), static_cast<uint32_t>(m_donationAmount));
-        m_donationAreaId = 0;
-        m_donationAmount = 0;
-    });
+    connect(m_confirmDialog, &TMessageDialogController::acceptClicked, this, &TCyclopediaMapDialogController::onConfirmDialogAccepted);
     // CIP DAT for exploration reward Go Strength shown in the info tooltip.
     m_explorationRewardAmountGoStrength = 25;
 
@@ -293,7 +283,7 @@ void TCyclopediaMapDialogController::onClickAtPixelCoordinate(const int x, const
 
 void TCyclopediaMapDialogController::centerToPlayer()
 {
-    if (!tibia::game::localPlayer() || !m_renderer)
+    if (!tibia::game::hasLocalPlayer() || !m_renderer)
         return;
     const Position position = tibia::game::localPlayerPosition();
     if (!position.isValid())
@@ -318,13 +308,27 @@ void TCyclopediaMapDialogController::centerAt(const Position& position, const fl
 void TCyclopediaMapDialogController::donateMoneyForArea(const int AreaID, const int Value)
 {
     const auto* area = cyclopedia::TCyclopediaMapStaticData::instance().area(AreaID);
-    if (!area || Value <= 0)
+    if (!area)
         return;
     m_resetSubAreaId = 0;
     m_donationAreaId = AreaID;
     m_donationAmount = Value;
     m_confirmDialog->showMessage(qtTrId("cyclopediamap_confirm_donate_caption"),
                                  qtTrId("cyclopediamap_confirm_donate_area").arg(area->name).arg(englishNumber(static_cast<qulonglong>(Value))));
+}
+
+void TCyclopediaMapDialogController::onConfirmDialogAccepted()
+{
+    // CIP: the confirmation is either a viewpoint reset or a donation.
+    if (m_resetSubAreaId > 0) {
+        tibia::game::sendCyclopediaMapResetViewpoints(static_cast<uint16_t>(m_resetSubAreaId));
+        m_resetSubAreaId = 0;
+        return;
+    }
+    if (m_donationAreaId > 0)
+        tibia::game::sendCyclopediaMapDonate(static_cast<uint16_t>(m_donationAreaId), static_cast<uint32_t>(m_donationAmount));
+    m_donationAreaId = 0;
+    m_donationAmount = 0;
 }
 
 void TCyclopediaMapDialogController::confirmResetViewpoints(const int subAreaId)

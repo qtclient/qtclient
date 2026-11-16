@@ -8,7 +8,8 @@
 
 #include <client/declarations.h>
 #include <client/position.h>
-#include <framework/util/point.h>
+#include <QPoint>
+#include <QPointF>
 
 #include <QImage>
 #include <QObject>
@@ -253,16 +254,16 @@ private:
     std::array<uint32_t, 3> creatureMarks(const tibia::creatures::TCreature& creature) const;
     uint8_t firstVisibleFloor() const;
     uint8_t lastVisibleFloor() const;
-    Point toScreen(const Position& pos) const;
+    QPoint toScreen(const Position& pos) const;
     /// The field drawn at light map cell (x, y) of floor z.
     Position lightField(int x, int y, int z) const;
 
     /// Emits every sprite of one field with its CIP sort key.
     void addTile(tibia::worldmap::TWorldMapField* tile, int x, int y);
-    void addTileBelow(tibia::worldmap::TWorldMapField* tile, const Point& dest, uint8_t& elevation);
-    void addTileCreatures(tibia::worldmap::TWorldMapField* tile, const Point& dest, uint8_t elevation);
-    void addTileEffects(tibia::worldmap::TWorldMapField* tile, const Point& dest);
-    void addTileTop(tibia::worldmap::TWorldMapField* tile, const Point& dest);
+    void addTileBelow(tibia::worldmap::TWorldMapField* tile, const QPoint& dest, uint8_t& elevation);
+    void addTileCreatures(tibia::worldmap::TWorldMapField* tile, const QPoint& dest, uint8_t elevation);
+    void addTileEffects(tibia::worldmap::TWorldMapField* tile, const QPoint& dest);
+    void addTileTop(tibia::worldmap::TWorldMapField* tile, const QPoint& dest);
     /// Index of `stackIndex` in the field's draw list.
     static uint8_t drawIndex(const tibia::worldmap::TWorldMapField& tile, int stackIndex);
     /// Draw-grid cell of a field on the current floor.
@@ -273,34 +274,34 @@ private:
     /// slot of a lying object down or right of it.
     DrawKey slotKey(int x, int y, uint8_t layer, uint8_t index) const;
     /// Item layer draw: appearance instance drives ThingType/layers; optional Item for marked/animation.
-    void addFieldStackItem(tibia::worldmap::TWorldMapField* tile, int stackIndex, const Point& dest, uint8_t& elevation);
-    void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
+    void addFieldStackItem(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t& elevation);
+    void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
                                SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight);
-    void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
+    void addItemFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
                                SpriteRecord::Highlight highlight, uint8_t lift, tibia::worldmap::TWorldMapField* tile);
     /// CIP v10: mouse-target tint when stack entry matches hover object id (not creature).
     SpriteRecord::Highlight itemHighlightOf(const Position& field, int stackIndex, uint16_t typeId) const;
-    void addEffectFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const Point& dest,
+    void addEffectFromAppearance(const appearances::TAppearanceInstancePtr& appearance, const QPoint& dest,
                                  uint8_t& elevation);
     /// Draw the show-off socket (podium) creature/outfit on top of the socket item.
     /// World-map creature sprites from field/storage outfit appearance + `TCreature` draw snapshot.
     void addCreatureFromOutfitAppearance(const appearances::TAppearanceInstancePtr& appearance,
-                                         const tibia::creatures::TCreature& creature, const Point& dest);
-    void addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, int stackIndex, const Point& dest, uint8_t elevation);
+                                         const tibia::creatures::TCreature& creature, const QPoint& dest);
+    void addFieldStackCreature(tibia::worldmap::TWorldMapField* tile, int stackIndex, const QPoint& dest, uint8_t elevation);
     void addMissile(const appearances::TAppearanceInstancePtr& appearance);
     /// Effects below this opacity are not shown at all (CIP:).
     /// Opacity itself is baked on the appearance at arrival (CIP).
     static constexpr float MinEffectOpacity = 0.01f;
-    void addSprites(ThingType* type, const Point& dest, int xPattern, int yPattern, int zPattern,
+    void addSprites(ThingType* type, const QPoint& dest, int xPattern, int yPattern, int zPattern,
                     int animationPhase, bool colorize = false, uint32_t colors = 0,
                     SpriteRecord::Highlight highlight = SpriteRecord::NoHighlight, float opacity = 1.f, uint8_t tint = 0);
     /// The creature's attached effects on one side of its outfit (product
     /// Creature::internalDraw): at its walked field, or where it is drawn
     /// (`jumped`) for those following it.
-    void addAttachedEffects(const tibia::creatures::TCreature& stored, const Point& walked, const Point& jumped,
+    void addAttachedEffects(const tibia::creatures::TCreature& stored, const QPoint& walked, const QPoint& jumped,
                             bool onTop);
     SpriteRecord::Highlight highlightOf(uint32_t creatureId) const;
-    void addLight(const Point& center, uint8_t intensity, uint8_t color);
+    void addLight(const QPoint& center, uint8_t intensity, uint8_t color);
     /// CIP TWorldMapRenderProvider::v21: animated field square under the mouse.
     void updateHighlightBaseplate();
 

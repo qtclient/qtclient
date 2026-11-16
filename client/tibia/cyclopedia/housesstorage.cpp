@@ -107,6 +107,8 @@ void THousesStorage::applyStaticHouseData(const quint32 excludedUntil, const std
         setListing(houseId, 0);
     for (const uint32_t houseId : secondList)
         setListing(houseId, 1);
+    // The listing observer refreshes.
+    Q_EMIT houseInformationChanged();
 }
 
 void THousesStorage::applyCurrentHouseData(const std::vector<CyclopediaHouseEntry>& houses)

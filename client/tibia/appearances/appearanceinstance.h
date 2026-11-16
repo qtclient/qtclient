@@ -9,7 +9,7 @@
 #include <client/declarations.h>
 #include <client/position.h>
 #include "shared/clockservice.h"
-#include <framework/util/color.h>
+#include <QColor>
 
 #include <cstdint>
 #include <memory>
@@ -19,7 +19,6 @@
 
 class ThingType;
 class Item;
-class Creature;
 
 // Classic nested braces (qtclient + pack TUs share /FI framework/pch.h).
 namespace tibia {
@@ -80,11 +79,8 @@ public:
 
     bool drawable() const { return m_canDraw; }
     void setDrawable(const bool draw) { m_canDraw = draw; }
-    const Color& markedColor() const { return m_markedColor; }
-    void setMarkedColor(const Color& color) { m_markedColor = color; }
-    Color animatedMarkedColor() const;
-    void setItemColor(const Color& color) { m_itemColor = color; }
-    const Color& itemColor() const { return m_itemColor; }
+    void setItemColor(const QColor& color) { m_itemColor = color; }
+    const QColor& itemColor() const { return m_itemColor; }
     uint8_t patternX() const { return m_patternX; }
     uint8_t patternY() const { return m_patternY; }
     uint8_t patternZ() const { return m_patternZ; }
@@ -102,8 +98,7 @@ protected:
     uint16_t m_count{ 0 };
     uint8_t m_subType{ 0 };
     uint8_t m_tier{ 0 };
-    Color m_markedColor{ Color::white };
-    Color m_itemColor{ Color::white };
+    QColor m_itemColor{ QColor(Qt::white) };
     uint8_t m_patternX{ 0 };
     uint8_t m_patternY{ 0 };
     uint8_t m_patternZ{ 0 };
@@ -341,7 +336,7 @@ public:
     /// Fly from `from` to `to` starting at `nowMs`; returns the flight time in ms.
     float setPath(const Position& from, const Position& to, qint64 nowMs);
     /// The pixel offset from `pathFrom` at the last update.
-    Point flightOffset() const;
+    QPoint flightOffset() const;
     float flightDuration() const { return m_flightDuration; }
     void update(qint64 nowMs) override;
     /// The flight is over (TMissileEffectInstance::v14).
@@ -352,7 +347,7 @@ public:
 private:
     Position m_pathFrom;
     Position m_pathTo;
-    Point m_delta;
+    QPoint m_delta;
     float m_flightDuration{ 0.f };
 };
 

@@ -36,11 +36,11 @@ struct Frame
     ThingShape stamp(const bool creature = false, const ThingShape shape = ThingShape::Auto, const int elevation = 0)
     {
         const auto result = writeHeightStampFrame({ .sprite = spriteGrid(),
-                                .frame = Rect(0, 0, CELL, CELL),
+                                .frame = QRect(0, 0, CELL, CELL),
                                 .columns = { columns.data(), CELL + PAD, CELL + PAD },
                                 .floating = { floating.data(), CELL + PAD, CELL + PAD },
                                 .surface = surfaceGrid(),
-                                .origin = Point(0, 0),
+                                .origin = QPoint(0, 0),
                                 .pad = PAD,
                                 .cellPx = CELL,
                                 .hdScale = 1,
@@ -289,7 +289,7 @@ TEST(HeightStamp, LightFloatsAboveItsFlame)
     }
     f.stamp();
     const PixelGrid surface = f.surfaceGrid();
-    const FrameLight light = findFrameLight(f.spriteGrid(), Rect(0, 0, CELL, CELL), &surface, Point(0, 0), 1, -1, Point());
+    const FrameLight light = findFrameLight(f.spriteGrid(), QRect(0, 0, CELL, CELL), &surface, QPoint(0, 0), 1, -1, QPoint());
 
     EXPECT_FLOAT_EQ(light.point.x, 6.f);
     EXPECT_FLOAT_EQ(light.point.y, 4.f);
@@ -304,7 +304,7 @@ TEST(HeightStamp, HungLightSitsInFrontOfItsWall)
         for (int x = 4; x < 8; ++x)
             f.put(x, y, 255, 240, 160);
     }
-    const FrameLight light = findFrameLight(f.spriteGrid(), Rect(0, 0, CELL, CELL), nullptr, Point(0, 0), 1, 1, Point());
+    const FrameLight light = findFrameLight(f.spriteGrid(), QRect(0, 0, CELL, CELL), nullptr, QPoint(0, 0), 1, 1, QPoint());
 
     EXPECT_FLOAT_EQ(light.shape.height, light.shape.ground);
     EXPECT_GT(light.shape.height, CELL - 4.f) << "a south wall: as far down as the tile's bottom edge";
@@ -346,23 +346,23 @@ TEST(StampLayout, OnlyTheFirstLayerIsStamped)
 TEST(StampLayout, ImageHoldsOnlyTheStampedRows)
 {
     // 2x2-tile frames, 64 texels each, 4 to a texture row; 40 frames in the texture (10 rows).
-    const StampLayout layout{ .columns = 4, .frameSize = Size(64, 64), .pad = 16 };
+    const StampLayout layout{ .columns = 4, .frameSize = QSize(64, 64), .pad = 16 };
     const int frames = StampLayout::stampedFrames(40, 5);
     EXPECT_EQ(frames, 8);
-    EXPECT_EQ(layout.imageSize(frames), Size(4 * 80, 2 * 80));
-    EXPECT_EQ(layout.imageSize(frames + 1), Size(4 * 80, 3 * 80));
-    EXPECT_EQ(layout.imageSize(0), Size());
+    EXPECT_EQ(layout.imageSize(frames), QSize(4 * 80, 2 * 80));
+    EXPECT_EQ(layout.imageSize(frames + 1), QSize(4 * 80, 3 * 80));
+    EXPECT_EQ(layout.imageSize(0), QSize());
 }
 
 TEST(StampLayout, FramesKeepTheirTextureCell)
 {
-    const StampLayout layout{ .columns = 3, .frameSize = Size(32, 64), .pad = 16 };
+    const StampLayout layout{ .columns = 3, .frameSize = QSize(32, 64), .pad = 16 };
     const int frames = 7;
-    const Rect image(Point(), layout.imageSize(frames));
+    const QRect image(QPoint(), layout.imageSize(frames));
     for (int i = 0; i < frames; ++i) {
-        const Rect cell = layout.cell(i);
-        EXPECT_EQ(cell.topLeft(), Point(i % 3 * 48, i / 3 * 80)) << i;
-        EXPECT_EQ(cell.size(), Size(48, 80)) << i;
+        const QRect cell = layout.cell(i);
+        EXPECT_EQ(cell.topLeft(), QPoint(i % 3 * 48, i / 3 * 80)) << i;
+        EXPECT_EQ(cell.size(), QSize(48, 80)) << i;
         EXPECT_TRUE(image.contains(cell.topLeft()) && image.contains(cell.bottomRight())) << i;
         for (int j = 0; j < i; ++j)
             EXPECT_FALSE(cell.intersects(layout.cell(j))) << i << " overlaps " << j;

@@ -368,6 +368,8 @@ TSpellListDataModelSortFilterProxy::TSpellListDataModelSortFilterProxy(QObject* 
     sort(0);
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameStarted, this,
             &TSpellListDataModelSortFilterProxy::onGameSessionChanged);
+    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameSessionChanged, this,
+            &TSpellListDataModelSortFilterProxy::onGameSessionChanged);
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this,
             &TSpellListDataModelSortFilterProxy::onPlayerDataChanged);
     onGameSessionChanged();
@@ -937,56 +939,99 @@ void TAssignPassiveAbilityActionDialogController::onCloseClicked()
 
 TRecordKeyboardShortcutDialogController::TRecordKeyboardShortcutDialogController(const int actionBarId, const int buttonId, const bool chatModeOn, QObject* parent)
     : TDialogController(QStringLiteral("RecordKeyboardShortcutDialog.qml"), parent)
-    , m_actionBarId(actionBarId)
-    , m_buttonId(buttonId)
-    , m_bindOnOk(true)
-    , m_actionName(config::THotkeyOptions::triggerActionButtonName(actionBarId, buttonId))
 {
-    m_chatModeOn = chatModeOn;
-    m_actionDescription = qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId);
-    m_keys = config::THotkeyOptions::instance()->buttonKeys(actionBarId, buttonId, chatModeOn);
-    m_keySequence = m_keys.toString(QKeySequence::NativeText);
+    initKeyLists();
     connect(this, &cip::tibia::gamewindow::TRecordKeyboardShortcutDialogController::dialogClosed, this, &QObject::deleteLater);
-    QCoreApplication::instance()->installEventFilter(this);
+    connect(this, &cip::tibia::gamewindow::TRecordKeyboardShortcutDialogController::keySequenceSelected, this,
+            [actionBarId, buttonId, chatModeOn](const QKeySequence& keys) {
+                config::THotkeyOptions::instance()->setButtonKeys(actionBarId, buttonId, chatModeOn, keys);
+            });
+    showDialog(chatModeOn, false, config::THotkeyOptions::instance()->buttonKeys(actionBarId, buttonId, chatModeOn),
+               qtTrId("actionbar_button_identifier").arg(actionBarId).arg(buttonId),
+               occupiedKeys(config::THotkeyOptions::triggerActionButtonName(actionBarId, buttonId), chatModeOn));
 }
 
 TRecordKeyboardShortcutDialogController::TRecordKeyboardShortcutDialogController(const QString& description, const QString& actionName,
                                                                                  const bool chatModeOn, const QKeySequence& current,
                                                                                  QObject* parent)
     : TDialogController(QStringLiteral("RecordKeyboardShortcutDialog.qml"), parent)
-    , m_bindOnOk(false)
-    , m_actionName(actionName)
 {
-    m_chatModeOn = chatModeOn;
-    m_actionDescription = description;
-    m_keys = current;
-    m_keySequence = m_keys.toString(QKeySequence::NativeText);
+    initKeyLists();
     connect(this, &cip::tibia::gamewindow::TRecordKeyboardShortcutDialogController::dialogClosed, this, &QObject::deleteLater);
-    QCoreApplication::instance()->installEventFilter(this);
-    // Seed occupied/hardcoded flags for the current binding (CIP showDialog path).
-    onKeySequenceEntered(current);
+    showDialog(chatModeOn, false, current, description, occupiedKeys(actionName, chatModeOn));
 }
 
-QString TRecordKeyboardShortcutDialogController::keySequence() const { return m_keySequence; }
-bool TRecordKeyboardShortcutDialogController::keySequenceOccupied() const { return m_keySequenceOccupied; }
-bool TRecordKeyboardShortcutDialogController::keySequenceHardcoded() const { return m_keySequenceHardcoded; }
-QString TRecordKeyboardShortcutDialogController::actionDescription() const { return m_actionDescription; }
-bool TRecordKeyboardShortcutDialogController::chatModeOn() const { return m_chatModeOn; }
-bool TRecordKeyboardShortcutDialogController::onlySingleKey() const { return m_onlySingleKey; }
+/// The walk keys and every modifier combination without a key.
+void TRecordKeyboardShortcutDialogController::initKeyLists()
+{
+    for (const char* key : { "Left", "Right", "Up", "Down", "Num+Left", "Num+Right", "Num+Up", "Num+Down", "Num+PgUp", "Num+PgDown",
+                             "Num+Home", "Num+End" })
+        m_hardcodedKeys.append(QKeySequence(QString::fromLatin1(key)));
+    for (const int modifiers : { 0x10000000, 0x2000000, 0x12000000, 0x8000000, 0x18000000, 0xa000000, 0x1a000000, 0x4000000,
+                                 0x14000000, 0x6000000, 0x16000000, 0xc000000, 0x1c000000, 0xe000000, 0x1e000000 })
+        m_modifierOnlyKeys.append(QKeySequence(QKeyCombination::fromCombined(modifiers)));
+}
+
+/// The keys bound to other actions in the chat mode.
+std::set<QKeySequence> TRecordKeyboardShortcutDialogController::occupiedKeys(const QString& ownAction, const bool chatModeOn) const
+{
+    using Setting = config::TActionSetting;
+    std::set<QKeySequence> keys;
+    const config::THotkeySet& set = config::THotkeyOptions::instance()->currentSet();
+    for (const config::THotkeyBinding& binding : chatModeOn ? set.chatOn : set.chatOff) {
+        if (binding.keys.isEmpty())
+            continue;
+        if (binding.setting.kind == Setting::ACTION && binding.setting.action == ownAction)
+            continue;
+        keys.insert(binding.keys);
+    }
+    return keys;
+}
+
+TRecordKeyboardShortcutDialogController::~TRecordKeyboardShortcutDialogController() { stopRecording(); }
+
+QString TRecordKeyboardShortcutDialogController::keySequence() const
+{
+    return m_keys.toString(QKeySequence::NativeText).replace(QStringLiteral("Backtab"), QStringLiteral("Tab"));
+}
+
+bool TRecordKeyboardShortcutDialogController::keySequenceOccupied() const { return m_occupiedKeys.count(m_keys) != 0; }
+
+bool TRecordKeyboardShortcutDialogController::keySequenceHardcoded() const { return m_hardcodedKeys.contains(m_keys); }
+
+QString TRecordKeyboardShortcutDialogController::actionDescription() const { return m_description; }
+
+bool TRecordKeyboardShortcutDialogController::chatModeOn() const { return m_isChatModeOn; }
+
+bool TRecordKeyboardShortcutDialogController::onlySingleKey() const { return m_isOnlySingleKey; }
 
 void TRecordKeyboardShortcutDialogController::showDialog(const bool ChatModeOn, const bool OnlySingleKey, const QKeySequence& CurrentKeySequence,
                                                          const QString& ActionDescription, const std::set<QKeySequence>& OccupiedKeys)
 {
-    m_chatModeOn = ChatModeOn;
-    m_onlySingleKey = OnlySingleKey;
-    m_actionDescription = ActionDescription;
-    m_occupiedKeys = QSet<QKeySequence>(OccupiedKeys.begin(), OccupiedKeys.end());
-    onKeySequenceEntered(CurrentKeySequence);
+    m_isChatModeOn = ChatModeOn;
+    m_isOnlySingleKey = OnlySingleKey;
+    m_keys = CurrentKeySequence;
+    m_selectedKeys = CurrentKeySequence;
+    m_description = ActionDescription;
+    m_occupiedKeys = OccupiedKeys;
+    dialog()->create();
+    startRecording();
     dialog()->show();
 }
 
-TRecordKeyboardShortcutDialogController::~TRecordKeyboardShortcutDialogController()
+void TRecordKeyboardShortcutDialogController::startRecording()
 {
+    if (m_recording)
+        return;
+    m_recording = true;
+    QCoreApplication::instance()->installEventFilter(this);
+}
+
+void TRecordKeyboardShortcutDialogController::stopRecording()
+{
+    if (!m_recording)
+        return;
+    m_recording = false;
     if (QCoreApplication* app = QCoreApplication::instance())
         app->removeEventFilter(this);
 }
@@ -1009,51 +1054,44 @@ bool TRecordKeyboardShortcutDialogController::eventFilter(QObject* watched, QEve
         break;
     }
     if (!key->isAutoRepeat())
-        // CIP record path: same as — modifiers | key.
         onKeySequenceEntered(QKeySequence(key->modifiers() | Qt::Key(key->key())));
     return true;
 }
 
+/// A single-key dialog keeps the last key of a chord (keypad modifier kept,
+/// others dropped); modifiers alone clear the key.
 void TRecordKeyboardShortcutDialogController::onKeySequenceEntered(const QKeySequence& NewKeySequence)
 {
-    m_keys = NewKeySequence;
-    m_keySequence = NewKeySequence.toString(QKeySequence::NativeText);
-    m_keySequenceHardcoded = NewKeySequence == QKeySequence(Qt::Key_Escape);
-    const Setting* bound = config::THotkeyOptions::instance()->binding(NewKeySequence, m_chatModeOn);
-    const bool occupiedByOtherBinding = bound && !(bound->kind == Setting::ACTION && bound->action == m_actionName);
-    m_keySequenceOccupied = occupiedByOtherBinding || m_occupiedKeys.contains(NewKeySequence);
-    Q_EMIT keySequenceChanged(NewKeySequence);
+    QKeySequence keys = NewKeySequence;
+    if (!keys.isEmpty() && m_isOnlySingleKey)
+        keys = QKeySequence(QKeyCombination::fromCombined(keys[keys.count() - 1].toCombined() & 0x21ffffff));
+    m_keys = m_modifierOnlyKeys.contains(keys) ? QKeySequence() : keys;
+    Q_EMIT keySequenceChanged(m_keys);
 }
 
 void TRecordKeyboardShortcutDialogController::onOkButtonClicked()
 {
-    if (m_keySequenceHardcoded)
-        return;
-    if (m_bindOnOk)
-        config::THotkeyOptions::instance()->setButtonKeys(m_actionBarId, m_buttonId, m_chatModeOn, m_keys);
     Q_EMIT keySequenceSelected(m_keys);
+    stopRecording();
     dialog()->close();
 }
 
 void TRecordKeyboardShortcutDialogController::onClearButtonClicked()
 {
-    m_keys = {};
-    m_keySequence.clear();
-    m_keySequenceOccupied = false;
-    m_keySequenceHardcoded = false;
-    Q_EMIT keySequenceChanged(m_keys);
-    // Commit the empty binding (CIP keeps Clear + OK separate; qtclient applies so
-    // Clear alone removes the hotkey without a second confirm).
-    onOkButtonClicked();
+    Q_EMIT keySequenceSelected(QKeySequence());
+    stopRecording();
+    dialog()->close();
 }
 
 void TRecordKeyboardShortcutDialogController::onCancelButtonClicked()
 {
+    stopRecording();
     dialog()->close();
 }
 
 void TRecordKeyboardShortcutDialogController::requestClose()
 {
+    stopRecording();
     dialog()->close();
 }
 

@@ -60,7 +60,7 @@ QRect opaqueLayoutBounds(ThingType* type, const QPoint& fieldTopLeft, const int 
     if (boxes.empty())
         return {};
     const int index = std::clamp(xPattern, 0, static_cast<int>(boxes.size()) - 1);
-    const Rect& box = boxes[static_cast<size_t>(index)];
+    const QRect& box = boxes[static_cast<size_t>(index)];
     if (box.width() <= 0 || box.height() <= 0)
         return {};
     const QSize size = spriteSizeOf(type);
@@ -469,8 +469,8 @@ void TAppearanceInstanceRenderer::addTransientEffects()
             continue;
         if (effect.kind == TransientEffect::Kind::Missile) {
             const auto* missile = static_cast<const tibia::appearances::TMissileEffectInstance*>(effect.instance.get());
-            const Point offset = missile->flightOffset();
-            addSprites(effect.type, effect.missileFrom + QPoint(offset.x, offset.y), effect.patternX, effect.patternY, 0,
+            const QPoint offset = missile->flightOffset();
+            addSprites(effect.type, effect.missileFrom + QPoint(offset.x(), offset.y()), effect.patternX, effect.patternY, 0,
                        m_animated ? missile->phase() : 0, false, 0);
             continue;
         }
@@ -544,7 +544,7 @@ void TAppearanceInstanceRenderer::addSprites(ThingType* type, const QPoint& fiel
         add(-1, -1, anchor, spriteSizeOf(type));
         return;
     }
-    const Size size = type->getSize();
+    const QSize size = type->getSize();
     for (int h = 0; h < size.height(); ++h) {
         for (int w = 0; w < size.width(); ++w)
             add(w, h, anchor - QPoint(w * FieldSize, h * FieldSize), QSize(FieldSize, FieldSize));

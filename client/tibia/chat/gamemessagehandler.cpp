@@ -196,7 +196,7 @@ void TGameMessageHandler::onTalk(const QString& name, const int mode, const QStr
                 m_texts.addPrivateMessage(name, text, overlayColor(mode));
             break;
         case Spell: {
-            const bool own = tibia::game::localPlayer()
+            const bool own = tibia::game::hasLocalPlayer()
                              && name.compare(QString::fromStdString(tibia::game::localPlayerName()),
                                              Qt::CaseInsensitive)
                                     == 0;

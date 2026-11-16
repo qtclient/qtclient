@@ -125,6 +125,8 @@ public:
 private:
     /// CIP confirm for reset (dialog result type 0 at +0x58).
     void confirmResetViewpoints(int subAreaId);
+    /// CIP: sends the confirmed viewpoint reset or donation.
+    void onConfirmDialogAccepted();
     /// CIP (TAreaData: area or subarea).
     void onAreaClicked(int id, bool isArea);
     /// CIP.

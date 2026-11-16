@@ -283,6 +283,8 @@ if(TIBIA_WITH_GAMECORE)
     app/qtplatformwindow.cpp app/qtplatformwindow.h
     chat/chatgameactionhandler.cpp chat/chatgameactionhandler.h
     shared/sharedciptypes.cpp shared/sharedciptypes.h
+    shared/clipboardhelper.cpp shared/clipboardhelper.h
+    shared/downloadpool.cpp shared/downloadpool.h
     shared/rsahelper.cpp
     config/clientsettings.cpp config/clientsettings.h
     config/configciptypes.cpp config/configciptypes.h
@@ -366,6 +368,7 @@ if(TIBIA_WITH_GAMECORE)
     config/specialconditionobject.cpp config/specialconditionobject.h
     config/optionsarchive.cpp config/optionsarchive.h
     config/clientoptiondefaults.cpp config/clientoptiondefaults.h
+    config/clientoptionsmigration.cpp config/clientoptionsmigration.h
     config/optionspages.cpp config/optionspages.h
     config/hotkeyoptions.cpp config/hotkeyoptions.h
     app/portalurls.cpp app/portalurls.h
@@ -407,12 +410,14 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/optionsmenudialogcontroller.cpp gamewindow/optionsmenudialogcontroller.h
     gamewindow/fpslatencyindicatorcontroller.cpp gamewindow/fpslatencyindicatorcontroller.h
     gamewindow/aboutdialogcontroller.cpp gamewindow/aboutdialogcontroller.h
+    game/gamesessionbase.cpp game/gamesessionbase.h
     game/gameservergamesession.cpp game/gameservergamesession.h
     game/sessiondumpgamesession.cpp game/sessiondumpgamesession.h
     game/sessiondumpdmpd.cpp game/sessiondumpdmpd.h
     tutorial/tutorialciptypes.cpp tutorial/tutorialciptypes.h
     tutorial/sessiondumphintsprocessor.cpp tutorial/sessiondumphintsprocessor.h
     sound/soundprotocolmessagehandler.cpp sound/soundprotocolmessagehandler.h
+    sound/soundmetadatamanager.cpp sound/soundmetadatamanager.h
     sound/soundstorage.cpp sound/soundstorage.h
     sound/miniaudio_impl.cpp
     game/playerstates.cpp game/playerstates.h
@@ -423,6 +428,10 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/cyclopediainterfaces.cpp cyclopedia/cyclopediainterfaces.h
     cyclopedia/creaturetrackerstorage.cpp cyclopedia/creaturetrackerstorage.h
     cyclopedia/combatstatsqmldata.cpp cyclopedia/combatstatsqmldata.h
+    cyclopedia/playeroffencestatsprovider.cpp cyclopedia/playeroffencestatsprovider.h
+    game/offencestatsprovider.h
+    cyclopedia/playermiscstatsprovider.cpp cyclopedia/playermiscstatsprovider.h
+    game/miscstatsprovider.h
     game/statusbarstorage.cpp game/statusbarstorage.h
     gamewindow/appearanceinstancelistmodel.cpp gamewindow/appearanceinstancelistmodel.h
     gamewindow/battlelistcontroller.cpp gamewindow/battlelistcontroller.h
@@ -485,6 +494,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/teamassemblepagecontroller.cpp gamewindow/teamassemblepagecontroller.h
     gamewindow/cipsoftuieventbridge.cpp gamewindow/cipsoftuieventbridge.h
     analysers/analyserstorages.cpp analysers/analyserstorages.h
+    analysers/itempricestorage.cpp analysers/itempricestorage.h
     analysers/progressstorage.cpp analysers/gainwastestorage.cpp analysers/impactstorage.cpp
     analysers/analyserwidgets.cpp analysers/analyserwidgets.h
     analysers/impactwidgets.cpp analysers/impactwidgets.h

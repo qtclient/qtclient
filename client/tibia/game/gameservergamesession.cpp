@@ -9,7 +9,6 @@
 
 #include "game/gamesessionstate.h"
 #include <tibia/game/gamenotify.h>
-#include <tibia/game/localplayersessionthing.h>
 #include <tibia/game/gamesession.h>
 #include <tibia/runtime/host.h>
 #include <tibia/schedule/schedule.h>
@@ -99,8 +98,8 @@ void TGameserverGameSession::wireProcessDeath(const uint8_t deathType, const uin
 {
     TGameSessionState& hub = gameSessionState();
     hub.m_dead = true;
-    if (hub.m_localPlayer)
-        hub.m_localPlayer->stopWalk();
+    if (hub.m_playerPresent)
+        tibia::game::localPlayerStopWalk();
     setSceneFrozen(true);
 
     tibia::game::notify("onDeath", deathType, penality);
@@ -153,7 +152,7 @@ void hubDisconnectNow()
 }
 
 TGameserverGameSession::TGameserverGameSession(QObject* parent)
-    : cip::tibia::game::TGameserverGameSession(parent)
+    : TGameSessionBase(parent)
 {
     game::ownProductSurface(this);
     // The game connection publishes onConnect once the socket is open.

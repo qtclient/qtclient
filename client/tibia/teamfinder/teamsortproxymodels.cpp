@@ -3,6 +3,7 @@
 #include <QDateTime>
 #include <QLocale>
 
+#include <algorithm>
 #include <compare>
 #include <map>
 #include <tuple>
@@ -98,6 +99,114 @@ void TTeamMembersModel::setCharacterName(const QString& Name)
     m_characterName = Name;
     if (rowCount() > 0)
         Q_EMIT dataChanged(index(0, 0), index(rowCount() - 1, 0), { IsLeaderRole });
+}
+
+void TTeamMembersModel::setItems(const std::vector<teamfinder::TTeamMember>& Members)
+{
+    using teamfinder::TTeamMember;
+    const auto byId = [](const TTeamMember& Left, const TTeamMember& Right) { return Left.characterId < Right.characterId; };
+    if (m_items.empty()) {
+        if (Members.empty())
+            return;
+        beginInsertRows({}, 0, static_cast<int>(Members.size()) - 1);
+        m_items = Members;
+        std::sort(m_items.begin(), m_items.end(), byId);
+        endInsertRows();
+        return;
+    }
+    if (Members.empty()) {
+        beginRemoveRows({}, 0, static_cast<int>(m_items.size()) - 1);
+        m_items.clear();
+        endRemoveRows();
+        return;
+    }
+    if (m_items == Members)
+        return;
+
+    // The new members in character id order.
+    std::vector<size_t> order(Members.size());
+    for (size_t i = 0; i < order.size(); ++i)
+        order[i] = i;
+    std::sort(order.begin(), order.end(), [&](const size_t Left, const size_t Right) { return byId(Members[Left], Members[Right]); });
+
+    enum ERun { NONE, CHANGED, INSERTED, REMOVED };
+    ERun run = NONE;
+    size_t position = 0;
+    int changedFirst = -1;
+    int changedLast = -1;
+    int insertAt = -1;
+    std::vector<size_t> inserted;
+    int removedFirst = -1;
+    int removedLast = -1;
+    const auto switchRun = [&](const ERun next) {
+        if (run == next)
+            return;
+        if (run == REMOVED && removedFirst != -1) {
+            beginRemoveRows({}, removedFirst, removedLast);
+            m_items.erase(m_items.begin() + removedFirst, m_items.begin() + removedLast + 1);
+            endRemoveRows();
+            position = static_cast<size_t>(removedFirst);
+            removedFirst = -1;
+            removedLast = -1;
+        } else if (run == INSERTED && insertAt != -1) {
+            beginInsertRows({}, insertAt, insertAt + static_cast<int>(inserted.size()) - 1);
+            for (size_t i = 0; i < inserted.size(); ++i)
+                m_items.insert(m_items.begin() + insertAt + static_cast<std::ptrdiff_t>(i), Members[inserted[i]]);
+            endInsertRows();
+            position += inserted.size();
+            insertAt = -1;
+            inserted.clear();
+        } else if (run == CHANGED && changedFirst != -1) {
+            Q_EMIT dataChanged(index(changedFirst, 0), index(changedLast, 0));
+            changedFirst = -1;
+            changedLast = -1;
+        }
+        run = next;
+    };
+
+    for (size_t i = 0; i < order.size();) {
+        const TTeamMember& member = Members[order[i]];
+        if (position >= m_items.size()) {
+            switchRun(INSERTED);
+            if (insertAt == -1)
+                insertAt = static_cast<int>(position);
+            inserted.push_back(order[i]);
+            ++i;
+            continue;
+        }
+        TTeamMember& current = m_items[position];
+        if (current.characterId == member.characterId) {
+            if (current == member) {
+                switchRun(NONE);
+            } else {
+                switchRun(CHANGED);
+                m_items[position] = member;
+                changedLast = static_cast<int>(position);
+                if (changedFirst == -1)
+                    changedFirst = changedLast;
+            }
+            ++position;
+            ++i;
+        } else if (member.characterId < current.characterId) {
+            switchRun(INSERTED);
+            if (insertAt == -1)
+                insertAt = static_cast<int>(position);
+            inserted.push_back(order[i]);
+            ++i;
+        } else {
+            switchRun(REMOVED);
+            removedLast = static_cast<int>(position);
+            if (removedFirst == -1)
+                removedFirst = removedLast;
+            ++position;
+        }
+    }
+    switchRun(NONE);
+    if (position < m_items.size()) {
+        beginRemoveRows({}, static_cast<int>(position), static_cast<int>(m_items.size()) - 1);
+        m_items.erase(m_items.begin() + static_cast<std::ptrdiff_t>(position), m_items.end());
+        endRemoveRows();
+    }
 }
 
 QVariant TTeamMembersModel::itemData(const teamfinder::TTeamMember& Member, const int Role) const

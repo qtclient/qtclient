@@ -154,13 +154,6 @@ bool TSidebarWidgetsManager::isWidgetOpen(const int widgetType) const
     }
 }
 
-uint TSidebarWidgetsManager::resolveOpenSidebarId(const uint sidebarId) const
-{
-    if (sidebarId != TSidebarWidget::NoSidebar && m_sidebars && m_sidebars->hasSidebar(sidebarId))
-        return sidebarId;
-    return sidebarId;
-}
-
 void TSidebarWidgetsManager::closeAllWidgets()
 {
     closeAll();
@@ -170,13 +163,12 @@ void TSidebarWidgetsManager::openWidget(const int widgetType, const uint sidebar
 {
     if (!m_sidebars)
         return;
-    const uint targetId = resolveOpenSidebarId(sidebarId);
     switch (widgetType) {
         case BattleList:
-            m_battleLists->open(m_battleLists->primaryId(), targetId);
+            m_battleLists->open(m_battleLists->primaryId(), sidebarId);
             return;
         case PartyList:
-            m_battleLists->open(TBattleListControllerStorage::PartyListId, targetId);
+            m_battleLists->open(TBattleListControllerStorage::PartyListId, sidebarId);
             return;
         default:
             break;
@@ -197,10 +189,7 @@ void TSidebarWidgetsManager::openWidget(const int widgetType, const uint sidebar
                 connect(controller, SIGNAL(widgetClosed()), this, SLOT(onRegisteredWidgetClosed()));
         }
     }
-    if (targetId != TSidebarWidget::NoSidebar && m_sidebars->hasSidebar(targetId))
-        m_sidebars->addWidget(targetId, widget);
-    else
-        m_sidebars->addWidget(widget);
+    m_sidebars->placeWidget(sidebarId, widget);
     widget->show();
     Q_EMIT widgetVisible(widgetType);
 }
@@ -243,6 +232,7 @@ void TSidebarWidgetsManager::closeWidget(const int widgetType)
     widget->hide();
     if (const WidgetHooks& hooks = m_widgets[widgetType]; hooks.close)
         hooks.close();
+    saveCurrentOpenWidgets();
     Q_EMIT widgetHidden(widgetType);
 }
 
@@ -330,39 +320,47 @@ QJsonArray TSidebarWidgetsManager::serializeSidebar(const uint sidebarId) const
     return list;
 }
 
-void TSidebarWidgetsManager::saveCurrentOpenWidgets()
+config::SidebarWidgetsManagerOptions TSidebarWidgetsManager::currentWidgetsManagerOptions() const
 {
-    if (!m_options || !m_sidebars || m_restoring)
-        return;
     config::SidebarWidgetsManagerOptions o;
+    if (m_restoring || !m_options || !m_sidebars)
+        return o;
     o.leftSidebarCount = m_sidebars->sidebarCount(TSidebarManager::Left);
     for (const uint id : m_sidebars->sidebarIds())
         o.openWidgetsOrderPerSidebar.append(serializeSidebar(id));
-    m_options->setSidebarWidgetsManagerOptions(o);
+    return o;
+}
+
+void TSidebarWidgetsManager::saveCurrentOpenWidgets()
+{
+    if (m_restoring || !m_options || !m_sidebars)
+        return;
+    m_options->setSidebarWidgetsManagerOptions(currentWidgetsManagerOptions());
 }
 
 void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
 {
-    if (!m_options || !m_sidebars || m_restoring)
+    if (!m_options || !m_sidebars)
         return;
     const config::SidebarWidgetsManagerOptions saved = m_options->sidebarWidgetsManagerOptions();
-    config::SidebarWidgetsManagerOptions current;
-    current.leftSidebarCount = m_sidebars->sidebarCount(TSidebarManager::Left);
-    for (const uint id : m_sidebars->sidebarIds())
-        current.openWidgetsOrderPerSidebar.append(serializeSidebar(id));
-    if (current == saved)
+    if (currentWidgetsManagerOptions() == saved || m_restoring)
         return;
 
     const QScopedValueRollback restoring(m_restoring, true);
     closeAll();
     if (m_containers)
         m_containers->beginRestore();
-    const int right = saved.rightSidebarCount();
+    // CIP: one sidebar takes 176 px next to a 240 px map; when the saved ones
+    // do not fit the game window, only the main sidebar opens.
+    const auto savedCount = static_cast<int>(saved.openWidgetsOrderPerSidebar.size());
+    const int wanted = std::max(1, savedCount);
+    const qreal width = m_gameWindowItem ? m_gameWindowItem->width() : 0.0;
+    const int total = (wanted * 176 + 240 <= width || width <= 0.0) ? wanted : 1;
+    const int left = saved.leftSidebarCount < total ? saved.leftSidebarCount : 0;
+    const int right = total - left;
     m_sidebars->setSidebarCount(TSidebarManager::Right, right);
-    m_sidebars->setSidebarCount(TSidebarManager::Left, saved.leftSidebarCount);
-    for (int i = 0; i < saved.openWidgetsOrderPerSidebar.size(); ++i) {
-        const uint sidebarId = i < right ? static_cast<uint>(i) : TSidebarManager::LeftSidebarIdBase + static_cast<uint>(i - right);
-        const QJsonArray widgets = saved.openWidgetsOrderPerSidebar.at(i).toArray();
+    m_sidebars->setSidebarCount(TSidebarManager::Left, left);
+    const auto restoreSidebar = [this](const uint sidebarId, const QJsonArray& widgets) {
         for (int position = 0; position < widgets.size(); ++position) {
             const QJsonObject entry = widgets.at(position).toObject();
             const int type = widgetTypeOf(entry.value(QLatin1String("type")).toString());
@@ -377,7 +375,11 @@ void TSidebarWidgetsManager::restoreSidebarConfigurationFromOptions()
                 openWidget(type, sidebarId);
             }
         }
-    }
+    };
+    for (int i = 0; i < std::min(savedCount, right); ++i)
+        restoreSidebar(static_cast<uint>(i), saved.openWidgetsOrderPerSidebar.at(i).toArray());
+    for (int i = 0; i < std::min(savedCount - right, left); ++i)
+        restoreSidebar(TSidebarManager::LeftSidebarIdBase + static_cast<uint>(i), saved.openWidgetsOrderPerSidebar.at(right + i).toArray());
     if (m_containers)
         m_containers->endRestore();
 }

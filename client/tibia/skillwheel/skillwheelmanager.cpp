@@ -28,7 +28,7 @@ void publish(const A type) { input::publish(input::makeAction(type)); }
 
 bool hasVocation()
 {
-    if (!tibia::game::localPlayer())
+    if (!tibia::game::hasLocalPlayer())
         return false;
     const int profession = tibia::game::localPlayerVocation() % 10;
     return profession >= 1 && profession <= VocationCount;
@@ -57,7 +57,7 @@ TSkillWheelManager::TSkillWheelManager(QObject* parent)
         return true;
     });
     input::setActionHandler(A::REQUEST_SKILL_WHEEL, [this](const input::TGameAction& action) {
-        if (tibia::game::localPlayer() && action.creatureId == tibia::game::localPlayerId())
+        if (tibia::game::hasLocalPlayer() && action.creatureId == tibia::game::localPlayerId())
             requestOwnWheel();
         else if (action.creatureId != 0)
             tibia::game::openWheel(action.creatureId);
@@ -114,7 +114,7 @@ TSkillWheelManager::~TSkillWheelManager()
 /// the preview (308), none only explains (307).
 void TSkillWheelManager::requestOwnWheel()
 {
-    if (!tibia::game::localPlayer() || tibia::game::localPlayerId() == 0)
+    if (!tibia::game::hasLocalPlayer() || tibia::game::localPlayerId() == 0)
         return;
     if (tibia::game::localPlayerLevel() >= RequiredLevel
         && (tibia::game::localPlayerIsPremium() || !m_sessionPremium)) {
@@ -129,7 +129,7 @@ void TSkillWheelManager::requestOwnWheel()
 void TSkillWheelManager::onServerData(const bool canView)
 {
     if (!canView) {
-        publish(tibia::game::localPlayer() && hasVocation() ? A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
+        publish(tibia::game::hasLocalPlayer() && hasVocation() ? A::OPEN_SKILL_WHEEL_DIALOG_PREVIEW_POSSIBLE_MESSAGE
                                                             : A::OPEN_SKILL_WHEEL_DIALOG_NO_WHEEL_MESSAGE);
         return;
     }

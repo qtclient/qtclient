@@ -143,10 +143,6 @@ endif()
 # Tip-linked engine TUs only (Phase 8.2). OTC host leftovers (application /
 # graphicalapplication / mouse / platform windows / proxy / discord) deleted.
 set(SOURCE_FILES
-        tibia/framework/stdext/math.cpp
-        tibia/framework/stdext/string.cpp
-        tibia/framework/stdext/time.cpp
-        tibia/framework/util/color.cpp
         tibia/client/animatedtext.cpp
         tibia/client/client.cpp
         tibia/idleot/heightstamp.cpp
@@ -164,11 +160,11 @@ set(SOURCE_FILES
         tibia/assets/cipbmpimage.cpp
         tibia/shared/clockservice.cpp
         tibia/shared/tibiafilesystemhelper.cpp
+        tibia/shared/filesystemhelper.cpp
         tibia/assets/thingtype.cpp
         tibia/assets/things.cpp
         tibia/game/gamesessionstate.cpp
         tibia/game/gamesession_forward.cpp
-        tibia/game/localplayersessionthing.cpp
         tibia/worldmap/worldmapsessionstate.cpp
         tibia/worldmap/worldmapfield.cpp
         tibia/creatures/attachedeffect.cpp
@@ -315,13 +311,6 @@ if(MSVC)
   # /FS /Zf are PDB (/Zi) helpers; with /Z7 they are unnecessary and confuse
   # cacheability checks. /MP is fine under Ninja (one TU per cl invocation).
   target_compile_options(qtclient_deps INTERFACE /MP /EHsc /bigobj)
-
-  # MSVC 19.44 ICEs in stdext::safe_cast instantiations with release optimization.
-  set_source_files_properties(
-          PROPERTIES
-            COMPILE_OPTIONS "/Od;/Ob0"
-            SKIP_PRECOMPILE_HEADERS ON
-  )
 
   # Belt-and-suspenders for older CMake / CMP0141 OLD: rewrite flag strings and
   # force Embedded so deps added later do not reintroduce /Zi.

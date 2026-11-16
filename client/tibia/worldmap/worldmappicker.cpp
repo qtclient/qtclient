@@ -100,8 +100,8 @@ uint32_t TWorldMapPicker::creatureAt(const qmlcomponents::TWorldMapRenderProvide
             if (!row)
                 continue;
             // The creature's drawn top-left: its own field plus its walk offset.
-            const Point walk = row->walkOffset();
-            const QPoint pixel = provider.mapPixelOf(row->position()) + QPoint(walk.x, walk.y);
+            const QPoint walk = row->walkOffset();
+            const QPoint pixel = provider.mapPixelOf(row->position()) + QPoint(walk.x(), walk.y());
             if (QRect(pixel, QSize(Provider::FieldSize, Provider::FieldSize)).contains(mapPixel))
                 return found.creatureId;
         }

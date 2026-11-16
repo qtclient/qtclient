@@ -10,9 +10,12 @@
 #include <client/declarations.h>
 #include <client/position.h>
 #include <client/staticdata.h>
-#include <framework/global.h>
+#include <QColor>
+#include <QPoint>
+#include <QRect>
+#include <QSize>
 #include "shared/clockservice.h"
-#include <framework/util/color.h>
+#include <QColor>
 
 #include <QColor>
 #include <QHash>
@@ -30,7 +33,6 @@
 #include <tuple>
 #include <vector>
 
-class LocalPlayerSessionThing;
 class ThingType;
 
 namespace tibia {
@@ -100,7 +102,6 @@ struct TCreatureMarks
 class TCreature final : public cip::tibia::creatures::TCreature
 {
     Q_OBJECT
-    friend class ::LocalPlayerSessionThing;
 
 public:
     explicit TCreature(TCreatureID id = 0, QObject* parent = nullptr);
@@ -161,10 +162,10 @@ public:
     Light light() const { return m_light; }
 
     /// Pixel offset of the drawn creature from its position.
-    Point walkOffset() const;
+    QPoint walkOffset() const;
     /// Field the creature is drawn on while moving (draw order).
     Position coveredField() const;
-    PointF jumpOffset() const { return m_jumpOffset; }
+    QPointF jumpOffset() const { return m_jumpOffset; }
     bool isWalking() const { return isMoving(); }
     bool isUnpassable() const { return m_unpassable; }
     void setUnpassable(bool unpassable) { m_unpassable = unpassable; }
@@ -212,7 +213,7 @@ public:
     uint16_t mountAnimationPhase() const { return m_mountAnimationPhase; }
     /// The standing sequence's phase (an outfit shown as an object, too).
     int idleAnimationPhase() const { return m_outfitIdleAnimator ? m_outfitIdleAnimator->phase() : 0; }
-    Point displacement() const { return m_displacement; }
+    QPoint displacement() const { return m_displacement; }
 
     uint8_t creatureType() const { return m_creatureType; }
     /// The NPC category shown over the creature.
@@ -227,7 +228,7 @@ public:
     bool canBeInspected() const { return (m_inspectionType & 4) >> 2; }
     bool requestsInspection() const { return (m_inspectionType & 8) >> 3; }
 
-    /// Local-player HUD (synced from `LocalPlayerSessionThing` on walk frames and stat packets).
+    /// The local player's HUD values (copied from the player data on stat messages).
     uint32_t mana() const { return m_mana; }
     uint32_t maxMana() const { return m_maxMana; }
     uint32_t manaShield() const { return m_manaShield; }
@@ -236,7 +237,7 @@ public:
     bool isSerene() const { return m_serene; }
     uint8_t vocation() const { return m_vocation; }
     /// The health bar's colour for the creature's health.
-    Color informationColor() const { return informationColorForHealthPercent(m_healthPercent); }
+    QColor informationColor() const { return informationColorForHealthPercent(m_healthPercent); }
     const std::vector<TCreatureIcon>& hudIcons() const { return m_hudIcons; }
     void clearIcons() { m_hudIcons.clear(); }
     void addIcon(const TCreatureIcon& icon) { m_hudIcons.push_back(icon); }
@@ -255,8 +256,16 @@ public:
     /// Freeze the current step where it is.
     void stopMovement() { m_movementTween.stop(); }
 
-    /// Session LocalPlayerSessionThing draw/HUD snapshot (walk offset owned by storage tween).
-    void syncWorldDrawFrom(LocalPlayerSessionThing& player);
+    /// Copies the player data's HUD values onto the local player's creature.
+    void syncLocalPlayerStats();
+    /// Instance death: the creature shows dead while the server keeps it.
+    void setSoftDead(bool softDead);
+    /// A channel bar under the name fills over `durationMs` from `nowMs`, then
+    /// stays full until cleared.
+    void setInformationChannel(uint32_t durationMs, qint64 nowMs);
+    void clearInformationChannel() { m_informationChannelDurationMs = 0; }
+    /// 0-100 while a channel runs; below 0 when none.
+    float informationChannelProgress(qint64 nowMs) const;
 
     /// Protocol writes (storage is authoritative).
     void setName(const QString& name);
@@ -280,10 +289,10 @@ public:
     void setTargetFrame(const QColor& color);
     void hideTargetFrame();
     /// The mark the server keeps on the creature until it clears it.
-    void showStaticSquare(const Color& color);
+    void showStaticSquare(const QColor& color);
     void hideStaticSquare();
     /// A mark shown for a moment from `nowMs`.
-    void addTimedSquare(const Color& color, qint64 nowMs);
+    void addTimedSquare(const QColor& color, qint64 nowMs);
 
 Q_SIGNALS:
     /// Every position write, with the new position.
@@ -291,7 +300,7 @@ Q_SIGNALS:
 
 private:
     void rebuildOutfitAppearance();
-    static Color informationColorForHealthPercent(uint8_t healthPercent);
+    static QColor informationColorForHealthPercent(uint8_t healthPercent);
     void restartWalkAnimators();
     void refreshWalkAnimators();
     void updateCoveredField();
@@ -325,7 +334,7 @@ private:
     uint16_t m_speed{ 0 };
     Light m_light{ 0, 2 };
 
-    PointF m_jumpOffset;
+    QPointF m_jumpOffset;
     Position m_walkingTilePos;
     bool m_hasWalkingTile{ false };
     bool m_unpassable{ false };
@@ -346,7 +355,7 @@ private:
     bool m_mounted{ false };
     uint16_t m_animationPhase{ 0 };
     uint16_t m_mountAnimationPhase{ 0 };
-    Point m_displacement;
+    QPoint m_displacement;
 
     uint8_t m_creatureType{ 0 };
     uint8_t m_icon{ 0 };
@@ -361,6 +370,8 @@ private:
     std::vector<TCreatureIcon> m_hudIcons;
     std::set<uint8_t> m_extraIcons;
     std::vector<AttachedEffectPtr> m_attachedEffects;
+    qint64 m_informationChannelStartMs{ 0 };
+    uint32_t m_informationChannelDurationMs{ 0 };
 
 };
 
@@ -409,20 +420,17 @@ public:
 
     /// CIP DeleteOnMap: leave the field, keep the known-creature row (name/outfit).
     /// Non-local rows clear position so battle list / spectators drop them; the
-    /// LocalPlayerSessionThing session row is never destroyed — KnownCreature reappear does
+    /// local player's creature is never destroyed — KnownCreature reappear does
     /// not resend the name.
     void leaveMap(TCreatureID id);
 
-    /// Creatures whose position is in the aware-range rectangle around `center`
-    /// (same XY/Z bounds as `Map::getSpectatorsInRangeEx`).
+    /// Creatures whose position is in the rectangle around `center` (inclusive;
+    /// `multiFloor`: the floors the player sees from there).
     std::vector<std::shared_ptr<TCreature>> spectatorsNear(const Position& center, bool multiFloor,
                                                            int left, int right, int top, int bottom) const;
 
     /// All registered creature ids (iteration authority for walk advance).
     QList<TCreatureID> creatureIds() const;
-
-    /// Per-frame motion/animation sync for world draw (called from walk advance).
-    void syncWorldDrawFrom(LocalPlayerSessionThing& player);
 
     void notifyPlayerAdded(const std::shared_ptr<TCreature>& player);
     void notifyCreatureUpdated(const std::shared_ptr<TCreature>& creature);
@@ -432,7 +440,7 @@ public:
     void publishCreatureUpdated(const std::shared_ptr<TCreature>& row,
                                 ECreatureUpdateAppearanceType appearanceType = ECreatureUpdateAppearanceType::None);
 
-    /// Push local-player mana/harmony/vocation into storage (stat packets between walk frames).
+    /// Push the local player's mana/harmony/vocation onto its creature (stat messages).
     void syncLocalPlayerStatsFromMap();
 
 Q_SIGNALS:

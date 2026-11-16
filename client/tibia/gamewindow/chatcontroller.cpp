@@ -4,6 +4,7 @@
 #include "app/clientoptions.h"
 #include "client/gameclient.h"
 #include "gamewindow/contextmenucontroller.h"
+#include "gamewindow/gamewindowciptypes.h"
 #include "gamewindow/npcdialogcontroller.h"
 #include "mods/registry.h"
 #include "input/inputciptypes.h"
@@ -23,6 +24,10 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QTextDocument>
+#include <QJsonObject>
+#include <QTextLayout>
+#include <QTextBlock>
+#include <QTextDocumentFragment>
 
 #include <algorithm>
 #include <cmath>
@@ -137,7 +142,7 @@ input::TGameActionPtr textAction(const A type, const QString& text)
 
 int ownLevel()
 {
-    return tibia::game::localPlayer() ? tibia::game::localPlayerLevel() : 0;
+    return tibia::game::hasLocalPlayer() ? tibia::game::localPlayerLevel() : 0;
 }
 
 QString ownName()
@@ -175,61 +180,69 @@ TChatChannelController::TChatChannelController(QObject* parent)
 
 void TChatChannelController::setChannel(chat::TChatChannel* channel)
 {
-    if (m_channel == channel)
+    if (m_channel == channel) {
+        Q_EMIT scrollViewToEnd();
         return;
-    if (m_channel)
+    }
+    if (m_channel) {
         disconnect(m_channel, nullptr, this, nullptr);
-    m_channel = channel;
+        m_channel = nullptr;
+        Q_EMIT chatChannelPropertyChanged();
+        Q_EMIT chatChannelChanged();
+    }
+    clearRows();
     if (channel) {
+        m_channel = channel;
+        onIdRangeChanged(channel->firstEntryId(), channel->afterLastEntryId());
         connect(channel, &TChatChannel::idRangeChanged, this, &TChatChannelController::onIdRangeChanged);
         connect(channel, &TChatChannel::isClosedChanged, this, &TChatChannelController::chatChannelPropertyChanged);
         connect(channel, &TChatChannel::serverLogSubscriptionChanged, this, &TChatChannelController::chatChannelPropertyChanged);
-        connect(channel, &QObject::destroyed, this, [this] {
-            m_channel = nullptr;
-            rebuild();
-            Q_EMIT chatChannelChanged();
-            Q_EMIT chatChannelPropertyChanged();
-        });
+        connect(channel, &TChatChannel::tutorialMarkerChanged, this, &TChatChannelController::onTutorialMarkerChanged);
+        connect(channel, &QObject::destroyed, this, &TChatChannelController::resetChannel);
+        Q_EMIT chatChannelPropertyChanged();
+        Q_EMIT chatChannelChanged();
     }
-    rebuild();
     m_filter.syncFromChannel(canSubscribeToServerLog(), isSubscribedToServerLog(), writesToLocalChat(), canBeClosed(), channelName());
-    Q_EMIT chatChannelChanged();
-    Q_EMIT chatChannelPropertyChanged();
-    Q_EMIT scrollViewToEnd();
+}
+
+void TChatChannelController::resetChannel()
+{
+    if (m_channel) {
+        disconnect(m_channel, nullptr, this, nullptr);
+        m_channel = nullptr;
+        Q_EMIT chatChannelPropertyChanged();
+        Q_EMIT chatChannelChanged();
+    }
+    clearRows();
+    m_filter.syncFromChannel(false, false, true, false, QString());
 }
 
 const chat::TChatEntry* TChatChannelController::entryAt(const int row) const
 {
-    if (!m_channel || row < 0 || row >= static_cast<int>(m_channel->entries().size()))
+    if (!m_channel || row < 0 || row >= rowCount())
         return nullptr;
-    const auto& entries = m_channel->entries();
-    return &entries[entries.size() - 1 - static_cast<size_t>(row)];
+    const uint32_t id = m_rows[static_cast<size_t>(row)].entryId;
+    if (id < m_channel->firstEntryId() || id >= m_channel->afterLastEntryId())
+        return nullptr;
+    return &m_channel->entry(id);
 }
 
 QString TChatChannelController::plainTextAt(const int row) const
 {
-    if (row < 0 || row >= static_cast<int>(m_rows.size()))
+    if (row < 0 || row >= rowCount())
         return {};
     const Row& r = m_rows[static_cast<size_t>(row)];
-    if (r.plain.isNull()) {
-        QTextDocument document;
-        document.setHtml(r.html);
-        r.plain = document.toPlainText();
-    }
+    if (r.plain.isNull())
+        r.plain = QTextDocumentFragment::fromHtml(r.html).toPlainText();
     return r.plain;
-}
-
-int TChatChannelController::plainLength(const int row) const
-{
-    return static_cast<int>(plainTextAt(row).size());
 }
 
 QString TChatChannelController::selectedText() const
 {
     QStringList lines;
-    for (int row = static_cast<int>(m_rows.size()) - 1; row >= 0; --row) {
+    for (int row = rowCount() - 1; row >= 0; --row) {
         const Row& r = m_rows[static_cast<size_t>(row)];
-        if (r.selectionStart < 0 || r.selectionEnd <= r.selectionStart)
+        if (r.selectionEnd <= r.selectionStart)
             continue;
         lines.append(plainTextAt(row).mid(r.selectionStart, r.selectionEnd - r.selectionStart));
     }
@@ -238,7 +251,7 @@ QString TChatChannelController::selectedText() const
 
 bool TChatChannelController::hasSelection() const
 {
-    return std::any_of(m_rows.begin(), m_rows.end(), [](const Row& r) { return r.selectionStart >= 0 && r.selectionEnd > r.selectionStart; });
+    return std::any_of(m_rows.begin(), m_rows.end(), [](const Row& r) { return r.selectionEnd > r.selectionStart; });
 }
 
 int TChatChannelController::rowCount(const QModelIndex& parent) const
@@ -246,9 +259,16 @@ int TChatChannelController::rowCount(const QModelIndex& parent) const
     return parent.isValid() ? 0 : static_cast<int>(m_rows.size());
 }
 
+Qt::ItemFlags TChatChannelController::flags(const QModelIndex& index) const
+{
+    if (index.row() >= 0 && index.column() >= 0 && index.model())
+        return QAbstractListModel::flags(index);
+    return Qt::ItemIsEnabled;
+}
+
 QVariant TChatChannelController::data(const QModelIndex& index, const int role) const
 {
-    if (!index.isValid() || index.row() < 0 || index.row() >= static_cast<int>(m_rows.size()))
+    if (index.row() < 0 || index.row() >= rowCount())
         return {};
     const Row& r = m_rows[static_cast<size_t>(index.row())];
     switch (role) {
@@ -259,26 +279,54 @@ QVariant TChatChannelController::data(const QModelIndex& index, const int role) 
     case SelectionEndRole:
         return r.selectionEnd;
     case TutorialMarkerRole:
-        // CIP ChatOutput treats undefined as "no marker". A sentinel with
-        // startIndex=-1 made QML call positionToRectangle(-1) → QTextCursor warnings.
-        return {};
+        return tutorialMarkerOf(r);
     case DateTimeRole:
-        if (const TChatEntry* entry = entryAt(index.row()))
-            return entry->time;
-        return {};
+        if (!m_channel || r.entryId < m_channel->firstEntryId() || r.entryId >= m_channel->afterLastEntryId())
+            return {};
+        return m_channel->entry(r.entryId).time;
     case Qt::SizeHintRole:
-        if (!r.size.isValid()) {
-            QTextDocument document;
-            document.setDocumentMargin(0);
-            document.setDefaultFont(m_font);
-            document.setHtml(r.html);
-            document.setTextWidth(m_width > 0 ? m_width : -1);
-            r.size = QSize(static_cast<int>(std::ceil(document.size().width())), static_cast<int>(std::ceil(document.size().height())));
-        }
+        if (!r.size.isValid())
+            r.size = sizeOf(r.html);
         return r.size;
     default:
         return {};
     }
+}
+
+QVariant TChatChannelController::tutorialMarkerOf(const Row& row) const
+{
+    // The marker sits on the keyword link whose target is the marked keyword.
+    const std::shared_ptr<chat::TKeywordGuiTutorialMarkerInfo> marker = m_channel ? m_channel->tutorialMarker() : nullptr;
+    if (!marker || marker->entryId != row.entryId)
+        return {};
+    QTextDocument document;
+    document.setTextWidth(m_width);
+    document.setDefaultFont(m_font);
+    document.setDocumentMargin(0);
+    document.setUseDesignMetrics(true);
+    document.setHtml(row.html);
+    const QList<QTextLayout::FormatRange> formats = document.firstBlock().textFormats();
+    for (const QTextLayout::FormatRange& range : formats) {
+        const QString target = range.format.stringProperty(QTextFormat::AnchorHref);
+        if (target.isEmpty() || target.compare(marker->keyword, Qt::CaseInsensitive) != 0)
+            continue;
+        auto* info = new TChatTutorialMarkerRenderInfo(marker->markerId, range.start, static_cast<int>(target.size()));
+        QQmlEngine::setObjectOwnership(info, QQmlEngine::JavaScriptOwnership);
+        return QVariant::fromValue<QObject*>(info);
+    }
+    return {};
+}
+
+QSize TChatChannelController::sizeOf(const QString& html) const
+{
+    QTextDocument document;
+    document.setTextWidth(m_width);
+    document.setDefaultFont(m_font);
+    document.setDocumentMargin(0);
+    document.setUseDesignMetrics(true);
+    document.setHtml(html);
+    const QSizeF size = document.size();
+    return QSize(static_cast<int>(size.width() + 0.5), static_cast<int>(size.height() + 0.5));
 }
 
 QHash<int, QByteArray> TChatChannelController::roleNames() const
@@ -295,7 +343,7 @@ QHash<int, QByteArray> TChatChannelController::roleNames() const
 
 bool TChatChannelController::canSubscribeToServerLog() const
 {
-    return m_channel && m_channel->canSubscribeToServerLog();
+    return m_channel && m_channel->identifier().canBeClosed();
 }
 
 bool TChatChannelController::isSubscribedToServerLog() const
@@ -305,22 +353,36 @@ bool TChatChannelController::isSubscribedToServerLog() const
 
 bool TChatChannelController::writesToLocalChat() const
 {
-    return !m_channel || m_channel->writesToLocalChat();
+    // Local Chat, the Server Log and Loot talk on the map, and so does any
+    // channel the server closed.
+    if (!m_channel)
+        return true;
+    switch (m_channel->identifier().type) {
+    case TChatChannelIdentifier::Local:
+    case TChatChannelIdentifier::ServerLog:
+    case TChatChannelIdentifier::Loot:
+        return true;
+    default:
+        return m_channel->isClosed();
+    }
 }
 
 bool TChatChannelController::canBeClosed() const
 {
-    return m_channel && m_channel->canBeClosed();
+    return m_channel && m_channel->identifier().canBeClosed();
 }
 
 QString TChatChannelController::channelName() const
 {
-    return m_channel ? m_channel->name() : QString();
+    return m_channel ? m_channel->identifier().displayName() : QString();
 }
 
 void TChatChannelController::onChatChannelControllerOptionsChanged()
 {
-    rebuild();
+    const QJsonObject options = app::ClientOptions::load().options();
+    onEntryFormatChanged(options.value(QLatin1String("consoleShowTimestamps")).toBool(true),
+                         options.value(QLatin1String("consoleShowTimestampsSeconds")).toBool(false),
+                         options.value(QLatin1String("consoleShowLevels")).toBool(true));
 }
 
 void TChatChannelController::onEntryFormatChanged(const bool showTimestamp, const bool showTimestampSeconds, const bool showLevel)
@@ -330,136 +392,255 @@ void TChatChannelController::onEntryFormatChanged(const bool showTimestamp, cons
     m_showTimestamps = showTimestamp;
     m_showTimestampSeconds = showTimestampSeconds;
     m_showLevels = showLevel;
-    rebuild();
-}
-
-void TChatChannelController::rebuild()
-{
-    beginResetModel();
-    m_rows.clear();
-    m_anchorRow = -1;
-    m_firstEntryId = m_channel ? m_channel->firstEntryId() : 0;
-    m_afterLastEntryId = m_channel ? m_channel->afterLastEntryId() : 0;
-    if (m_channel) {
-        const auto& entries = m_channel->entries();
-        m_rows.reserve(entries.size());
-        for (auto it = entries.rbegin(); it != entries.rend(); ++it)
-            m_rows.push_back(makeRow(*it));
+    if (!m_channel)
+        return;
+    for (Row& row : m_rows) {
+        if (row.entryId >= m_channel->firstEntryId() && row.entryId < m_channel->afterLastEntryId())
+            formatRow(row, m_channel->entry(row.entryId));
     }
-    endResetModel();
+    if (!m_rows.empty())
+        Q_EMIT dataChanged(index(0), index(rowCount() - 1), { ChatTextRole, Qt::SizeHintRole });
 }
 
-TChatChannelController::Row TChatChannelController::makeRow(const chat::TChatEntry& entry) const
+void TChatChannelController::formatRow(Row& row, const chat::TChatEntry& entry) const
+{
+    row.selectionStart = 0;
+    row.selectionEnd = 0;
+    row.selectionAnchor = 0;
+    row.html = chat::formatEntry(entry, m_showTimestamps, m_showTimestampSeconds, m_showLevels, &row.plainLength);
+    row.plain = QString();
+    row.size = QSize();
+}
+
+TChatChannelController::Row TChatChannelController::makeRow(const chat::TChatEntry& entry, const uint32_t entryId) const
 {
     Row row;
-    row.html = chat::formatEntry(entry, m_showTimestamps, m_showTimestampSeconds, m_showLevels);
+    row.entryId = entryId;
+    formatRow(row, entry);
     return row;
+}
+
+void TChatChannelController::clearRows()
+{
+    m_selectionHigh = 0;
+    m_selectionLow = 0;
+    m_selectionFocus = 0;
+    if (rowCount() == 0)
+        return;
+    beginRemoveRows({}, 0, rowCount() - 1);
+    m_rows.clear();
+    endRemoveRows();
+    Q_EMIT scrollViewToEnd();
+}
+
+void TChatChannelController::removeOldestRow()
+{
+    if (rowCount() <= 0)
+        return;
+    const bool autoScroll = m_autoScroll;
+    const int last = rowCount() - 1;
+    beginRemoveRows({}, last, last);
+    m_rows.pop_back();
+    endRemoveRows();
+    if (autoScroll)
+        Q_EMIT scrollViewToEnd();
 }
 
 void TChatChannelController::onIdRangeChanged(const uint32_t firstId, const uint32_t afterLastId)
 {
-    if (!m_channel || firstId >= m_afterLastEntryId || afterLastId < m_afterLastEntryId) {
-        // Cleared (or a range that does not follow on): every line again.
-        rebuild();
+    if (firstId == afterLastId) {
+        clearRows();
         return;
     }
-    // Oldest lines left: they are the last rows.
-    while (m_firstEntryId < firstId && !m_rows.empty()) {
-        const int last = static_cast<int>(m_rows.size()) - 1;
-        beginRemoveRows({}, last, last);
-        m_rows.pop_back();
-        if (m_anchorRow == last)
-            m_anchorRow = -1;
-        endRemoveRows();
-        ++m_firstEntryId;
-    }
-    m_firstEntryId = firstId;
-    // New lines go on top (row 0 is the newest).
-    if (afterLastId > m_afterLastEntryId) {
-        const int added = static_cast<int>(afterLastId - m_afterLastEntryId);
-        beginInsertRows({}, 0, added - 1);
-        for (uint32_t id = m_afterLastEntryId; id < afterLastId; ++id)
-            m_rows.insert(m_rows.begin(), makeRow(m_channel->entry(id)));
-        if (m_anchorRow >= 0)
-            m_anchorRow += added;
+    if (!m_channel)
+        return;
+    if (rowCount() == 0) {
+        // Row 0 is the newest entry: each one goes in on top.
+        beginInsertRows({}, 0, static_cast<int>(afterLastId - firstId) - 1);
+        for (uint32_t id = firstId; id < afterLastId; ++id)
+            m_rows.insert(m_rows.begin(), makeRow(m_channel->entry(id), id));
         endInsertRows();
-        m_afterLastEntryId = afterLastId;
-        if (m_autoScroll)
+        Q_EMIT scrollViewToEnd();
+        return;
+    }
+    // The oldest rows whose entries left the channel go.
+    const uint32_t oldest = m_rows.back().entryId;
+    if (oldest < firstId) {
+        for (uint32_t count = firstId - oldest; count > 0; --count)
+            removeOldestRow();
+    }
+    // The entries after the newest row come on top, one by one.
+    for (uint32_t id = m_rows.empty() ? firstId : m_rows.front().entryId + 1; id < afterLastId; ++id) {
+        const bool autoScroll = m_autoScroll;
+        beginInsertRows({}, 0, 0);
+        m_rows.insert(m_rows.begin(), makeRow(m_channel->entry(id), id));
+        endInsertRows();
+        if (autoScroll)
             Q_EMIT scrollViewToEnd();
     }
 }
 
-void TChatChannelController::clearSelection()
+void TChatChannelController::onTutorialMarkerChanged()
 {
-    for (size_t row = 0; row < m_rows.size(); ++row) {
-        Row& r = m_rows[row];
-        if (r.selectionStart == -1 && r.selectionEnd == -1)
-            continue;
-        r.selectionStart = -1;
-        r.selectionEnd = -1;
-        const QModelIndex i = index(static_cast<int>(row));
-        Q_EMIT dataChanged(i, i, { SelectionStartRole, SelectionEndRole });
-    }
+    if (rowCount() != 0)
+        Q_EMIT dataChanged(index(0), index(rowCount() - 1), { TutorialMarkerRole });
 }
 
-void TChatChannelController::applySelection(const int anchorRow, const int anchorPos, const int focusRow, const int focusPos)
+void TChatChannelController::emitSelectionChanged(const int firstRow, const int lastRow)
 {
-    // Higher rows are older, so the selection runs from the higher row down.
-    int firstRow = anchorRow;
-    int firstPos = anchorPos;
-    int lastRow = focusRow;
-    int lastPos = focusPos;
-    if (focusRow > anchorRow || (focusRow == anchorRow && focusPos < anchorPos)) {
-        std::swap(firstRow, lastRow);
-        std::swap(firstPos, lastPos);
-    }
-    for (int row = 0; row < static_cast<int>(m_rows.size()); ++row) {
-        int start = -1;
-        int end = -1;
-        if (row <= firstRow && row >= lastRow) {
-            start = row == firstRow ? firstPos : 0;
-            end = row == lastRow ? lastPos : plainLength(row);
-            if (end <= start)
-                start = end = -1;
-        }
-        Row& r = m_rows[static_cast<size_t>(row)];
-        if (r.selectionStart == start && r.selectionEnd == end)
-            continue;
-        r.selectionStart = start;
-        r.selectionEnd = end;
-        const QModelIndex i = index(row);
-        Q_EMIT dataChanged(i, i, { SelectionStartRole, SelectionEndRole });
-    }
+    Q_EMIT dataChanged(index(firstRow), index(lastRow), { SelectionStartRole, SelectionEndRole });
+}
+
+namespace {
+
+/// The direction a selection crosses a row: from the line's start (0) or
+/// towards its end (1).
+enum class ESelectionSide
+{
+    FromStart = 0,
+    ToEnd = 1,
+};
+
+}
+
+void TChatChannelController::Row::clearSelection()
+{
+    selectionStart = 0;
+    selectionEnd = 0;
+}
+
+void TChatChannelController::Row::startSelection(const int position)
+{
+    selectionStart = position;
+    selectionEnd = position;
+    selectionAnchor = position;
+}
+
+void TChatChannelController::Row::selectToCursor(const int position)
+{
+    selectionStart = std::min(position, selectionAnchor);
+    selectionEnd = std::max(position, selectionAnchor);
+}
+
+void TChatChannelController::Row::selectFromSide(const int position, const int side)
+{
+    if (side == static_cast<int>(ESelectionSide::FromStart))
+        selectionAnchor = 0;
+    else if (side == static_cast<int>(ESelectionSide::ToEnd))
+        selectionAnchor = plainLength;
+    selectToCursor(position);
+}
+
+void TChatChannelController::Row::selectWhole()
+{
+    selectionAnchor = 0;
+    selectionStart = std::min(plainLength, 0);
+    selectionEnd = std::max(plainLength, 0);
+}
+
+void TChatChannelController::Row::selectAnchorTo(const int side)
+{
+    if (side == static_cast<int>(ESelectionSide::ToEnd))
+        selectToCursor(0);
+    else if (side == static_cast<int>(ESelectionSide::FromStart))
+        selectToCursor(plainLength);
 }
 
 void TChatChannelController::startNewSelection(const int entryIndex, const int cursorPosition)
 {
-    clearSelection();
-    m_anchorRow = entryIndex;
-    m_anchorPos = cursorPosition;
+    if (m_rows.empty())
+        return;
+    for (int row = m_selectionLow; row <= m_selectionHigh && row < rowCount(); ++row)
+        m_rows[static_cast<size_t>(row)].clearSelection();
+    emitSelectionChanged(m_selectionLow, m_selectionHigh);
+    m_selectionHigh = 0;
+    m_selectionLow = 0;
+    m_selectionFocus = 0;
+    if (entryIndex < 0 || entryIndex >= rowCount())
+        return;
+    m_rows[static_cast<size_t>(entryIndex)].startSelection(cursorPosition);
+    m_selectionHigh = entryIndex;
+    m_selectionLow = entryIndex;
+    m_selectionFocus = entryIndex;
 }
 
 void TChatChannelController::updateSelection(const int entryIndex, const int cursorPosition)
 {
-    if (m_anchorRow < 0 || m_anchorRow >= static_cast<int>(m_rows.size()) || entryIndex < 0 || entryIndex >= static_cast<int>(m_rows.size()))
+    if (entryIndex < 0 || entryIndex >= rowCount() || m_selectionFocus >= rowCount())
         return;
-    applySelection(m_anchorRow, m_anchorPos, entryIndex, cursorPosition);
+    // Rows [low, high] hold the selection; the focus row is the end that moves.
+    // Lower rows are newer.
+    int high = m_selectionHigh;
+    int low = m_selectionLow;
+    const int focus = m_selectionFocus;
+    const auto at = [this](const int row) -> Row& { return m_rows[static_cast<size_t>(row)]; };
+    if (focus == entryIndex) {
+        at(entryIndex).selectToCursor(cursorPosition);
+    } else if (entryIndex < focus) {
+        for (int row = focus; row >= entryIndex; --row) {
+            if (row < m_selectionLow) {
+                if (row == entryIndex)
+                    at(row).selectFromSide(cursorPosition, static_cast<int>(ESelectionSide::FromStart));
+                else
+                    at(row).selectWhole();
+            } else if (row > m_selectionLow) {
+                if (row == entryIndex)
+                    at(row).selectFromSide(cursorPosition, static_cast<int>(ESelectionSide::ToEnd));
+                else
+                    at(row).clearSelection();
+            } else if (entryIndex < m_selectionLow) {
+                at(row).selectAnchorTo(static_cast<int>(ESelectionSide::FromStart));
+            } else {
+                at(row).selectToCursor(cursorPosition);
+            }
+        }
+        if (entryIndex < m_selectionLow)
+            low = entryIndex;
+        if (entryIndex < m_selectionHigh && focus == m_selectionHigh)
+            high = m_selectionLow <= entryIndex ? entryIndex : m_selectionLow;
+    } else {
+        for (int row = focus; row <= entryIndex; ++row) {
+            if (m_selectionHigh < row) {
+                if (row == entryIndex)
+                    at(row).selectFromSide(cursorPosition, static_cast<int>(ESelectionSide::ToEnd));
+                else
+                    at(row).selectWhole();
+            } else if (row < m_selectionHigh) {
+                if (row == entryIndex)
+                    at(row).selectFromSide(cursorPosition, static_cast<int>(ESelectionSide::FromStart));
+                else
+                    at(row).clearSelection();
+            } else if (m_selectionHigh < entryIndex) {
+                at(row).selectAnchorTo(static_cast<int>(ESelectionSide::ToEnd));
+            } else {
+                at(row).selectToCursor(cursorPosition);
+            }
+        }
+        if (m_selectionHigh < entryIndex)
+            high = entryIndex;
+        if (m_selectionLow < entryIndex && focus == m_selectionLow)
+            low = entryIndex <= m_selectionHigh ? entryIndex : m_selectionHigh;
+    }
+    m_selectionHigh = high;
+    m_selectionLow = low;
+    m_selectionFocus = entryIndex;
+    emitSelectionChanged(std::min(entryIndex, focus), std::max(entryIndex, focus));
 }
 
 void TChatChannelController::selectAll()
 {
     if (m_rows.empty())
         return;
-    applySelection(static_cast<int>(m_rows.size()) - 1, 0, 0, plainLength(0));
+    startNewSelection(rowCount() - 1, 0);
+    updateSelection(0, m_rows.front().plainLength);
 }
 
 void TChatChannelController::selectTextPassage(const int entryIndex, const int passageStart, const int passageEnd)
 {
-    if (entryIndex < 0 || entryIndex >= static_cast<int>(m_rows.size()))
+    if (entryIndex < 0 || entryIndex >= rowCount())
         return;
-    m_anchorRow = entryIndex;
-    m_anchorPos = passageStart;
-    applySelection(entryIndex, passageStart, entryIndex, passageEnd);
+    startNewSelection(entryIndex, passageStart);
+    updateSelection(entryIndex, passageEnd);
 }
 
 void TChatChannelController::invalidateSizes()
@@ -467,7 +648,7 @@ void TChatChannelController::invalidateSizes()
     for (Row& r : m_rows)
         r.size = QSize();
     if (!m_rows.empty())
-        Q_EMIT dataChanged(index(0), index(static_cast<int>(m_rows.size()) - 1), { Qt::SizeHintRole });
+        Q_EMIT dataChanged(index(0), index(rowCount() - 1), { Qt::SizeHintRole });
 }
 
 void TChatChannelController::setChatWidth(const int width)
@@ -810,6 +991,18 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     , m_chatItem(chatItem)
     , m_gameActionHandler(this)
     , m_chatStorage(this)
+    , m_actionProvider(
+          m_storage,
+          [this](input::TGameActionList& actions, const QString& name) {
+              actions.push_back(textAction(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, name));
+              if (m_storage.ownChannel())
+                  actions.push_back(textAction(A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL, name));
+              actions.push_back(textAction(A::REPORT_NAME, name));
+              actions.push_back(textAction(m_blacklist.isIgnored(name) ? A::UNIGNORE_NAME : A::IGNORE_NAME, name));
+              if (!isVip(name))
+                  actions.push_back(textAction(A::ADD_NEW_VIP, name));
+          },
+          [] { return app::ClientOptions::load().options().value(QLatin1String("consoleShowJoinLeaveMessages")).toBool(true); })
     , m_tabs(m_storage)
     , m_mapper(app::ClientOptions::load().options().value(QLatin1String("controlSchemeIndex")).toInt(0))
     , m_whiteBlacklistDialog(m_blacklist)
@@ -849,15 +1042,9 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
         prompt->setCaption(qtTrId(exclude ? "chat_exclude_player_caption" : "chat_invite_player_caption"));
         prompt->setDescription(qtTrId("chat_enter_character_name"));
         prompt->setMaxInputLength(29);
-        connect(prompt, &TGenericEnterTextDialogController::textEntered, this, [this, exclude](const QString& text) {
-            const QString name = text.trimmed();
-            if (name.isEmpty() || !m_inviteTarget || !m_inviteTarget->isOwnPrivateChannel())
-                return;
-            if (exclude)
-                tibia::game::excludeFromOwnChannel(name.toStdString());
-            else
-                tibia::game::inviteToOwnChannel(name.toStdString());
-        });
+        connect(prompt, &TGenericEnterTextDialogController::textEntered, this,
+                exclude ? &TChatController::onPlayerNameToExcludeFromChatChannelReceived
+                        : &TChatController::onPlayerNameToInviteToChatChannelReceived);
     }
     m_messageDialog.setButtons(
         { new TMessageDialogButton(qtTrId("ok"), TMessageDialogController::Button::OK, QKeySequence(QStringLiteral("Return"))) });
@@ -1049,8 +1236,10 @@ void TChatController::storeOpenChannels() const
 
 void TChatController::onMessageFiltered()
 {
-    m_ignoredFlash = true;
-    Q_EMIT messageIgnoredFlashChanged();
+    if (!m_ignoredFlash) {
+        m_ignoredFlash = true;
+        Q_EMIT messageIgnoredFlashChanged();
+    }
     m_ignoredFlashTimer.start();
 }
 
@@ -1119,6 +1308,21 @@ void TChatController::saveChannel(chat::TChatChannel* channel)
         m_storage.addServerLogEntry(chat::consoleColor(30), qtTrId("chat_append_contents").arg(name, QDir::toNativeSeparators(path)));
 }
 
+void TChatController::onPlayerNameToInviteToChatChannelReceived(const QString& playerName)
+{
+    // The server channel the prompt was opened for; then the prompt's target goes.
+    if (m_inviteTarget && m_inviteTarget->identifier().type == TChatChannelIdentifier::ChannelId && m_inviteTarget->isOwnPrivateChannel())
+        tibia::game::inviteToOwnChannel(playerName.trimmed().toStdString());
+    m_inviteTarget = nullptr;
+}
+
+void TChatController::onPlayerNameToExcludeFromChatChannelReceived(const QString& playerName)
+{
+    if (m_inviteTarget && m_inviteTarget->identifier().type == TChatChannelIdentifier::ChannelId && m_inviteTarget->isOwnPrivateChannel())
+        tibia::game::excludeFromOwnChannel(playerName.trimmed().toStdString());
+    m_inviteTarget = nullptr;
+}
+
 void TChatController::openInviteDialog(chat::TChatChannel* channel, const bool exclude)
 {
     if (!channel || !channel->isOwnPrivateChannel())
@@ -1182,7 +1386,7 @@ TChatController::EInput TChatController::parseInput(QString& text, QString& reci
     if (space != 2)
         return EInput::Default;
     EInput input = EInput::Default;
-    switch (text.at(1).toLower().unicode()) {
+    switch (text.at(1).unicode()) {
     case 'b': input = EInput::Broadcast; break;
     case 'c': input = EInput::RedChannel; break;
     case 'i': input = EInput::Invite; break;
@@ -1198,6 +1402,7 @@ TChatController::EInput TChatController::parseInput(QString& text, QString& reci
 
 QString TChatController::sendChatMessage(const QString& chatMessage, const int chatVolume)
 {
+    m_mode.onMessageSent();
     return sendChatMessage(chatMessage, chatVolume, false, 0);
 }
 
@@ -1266,7 +1471,9 @@ QString TChatController::sendChatMessage(const QString& chatMessage, const int c
     const TChatChannelIdentifier& identifier = current->identifier();
     switch (input) {
     case EInput::Default:
-        if (current->writesToLocalChat() || isSpell)
+        // The pane's channel talks on the map (or a spell is cast), unless the
+        // line goes to a given channel.
+        if (!target && (m_primary.writesToLocalChat() || isSpell))
             sayInChannel(nullptr, text, volume, spellCastType);
         else
             sayInChannel(current, text, volume);
@@ -1280,13 +1487,13 @@ QString TChatController::sendChatMessage(const QString& chatMessage, const int c
         tibia::game::talkChannel(tibia::client::MessageGamemasterBroadcast, 0, text.toStdString());
         break;
     case EInput::RedChannel:
-        if (identifier.type == TChatChannelIdentifier::ChannelId && !current->writesToLocalChat())
+        if (identifier.type == TChatChannelIdentifier::ChannelId && !m_primary.writesToLocalChat() && !target)
             tibia::game::talkChannel(tibia::client::MessageGamemasterChannel, identifier.id, text.toStdString());
         else
             m_storage.addSystemEntry(current, chat::systemRed(), qtTrId("chat_invalid_channel"));
         break;
     case EInput::Private:
-        if (identifier.type == TChatChannelIdentifier::MessageTo && identifier.name.compare(recipient, Qt::CaseInsensitive) == 0)
+        if (identifier.type == TChatChannelIdentifier::MessageTo && identifier.name == recipient)
             keep.clear();
         sendPrivate(recipient, text, false);
         break;
@@ -1334,7 +1541,10 @@ void TChatController::sendPrivate(const QString& recipient, const QString& text,
 
 void TChatController::sendKeyword(const QString& keyword)
 {
-    setInputText(keyword, true);
+    // The keyword is sent right away, through the game action.
+    auto action = std::make_shared<input::TGameActionSetCurrentChatChannelInputText>(keyword);
+    action->enable = true;
+    input::publish(action);
 }
 
 void TChatController::setInputText(const QString& text, const bool sendDirectly)
@@ -1378,7 +1588,6 @@ void TChatController::pressEnter()
     const QString rest = sendChatMessage(text, volume);
     chatItem->setProperty("currentChatInput", rest);
     chatItem->setProperty("currentSpeechVolumeButtonState", QString());
-    m_mode.onMessageSent();
 }
 
 QString TChatController::getOlderChatInputHistoryEntry()
@@ -1652,87 +1861,40 @@ void TChatController::showEntryMenu(TChatChannelController* model, const int row
     const TChatEntry* entry = model->entryAt(row);
     if (!entry)
         return;
-    // CIP: the provider and TGenericChatGameActionProvider .
-    input::TGameActionList candidates{ input::makeAction(A::CONTEXT_MENU), input::makeAction(A::CHAT_CHANNEL_SELECT_ALL),
-                                       textAction(A::COPY_CHAT_ENTRY_TO_CLIPBOARD, model->plainTextAt(row)) };
-    if (!entry->name.isEmpty())
-        candidates.push_back(textAction(A::COPY_CREATURE_NAME_TO_CLIPBOARD, entry->name));
-    if (model->hasSelection())
-        candidates.push_back(textAction(A::COPY_TEXT_TO_CLIPBOARD, model->selectedText()));
-    if (entry->kind == TChatEntry::System || entry->kind == TChatEntry::Speaker) {
-        auto typo = input::mutableClone(*input::makeAction(A::REPORT_BUG_TYPO));
-        typo->text = entry->name;
-        typo->statement = entry->text;
-        candidates.push_back(std::move(typo));
-    }
-    if (entry->kind == TChatEntry::SpeakerWithLevel && entry->name.compare(m_storage.ownName(), Qt::CaseInsensitive) != 0) {
-        candidates.push_back(textAction(A::OPEN_MESSAGE_TO_CHAT_CHANNEL, entry->name));
-        if (m_storage.ownChannel())
-            candidates.push_back(textAction(A::INVITE_PLAYER_TO_PRIVATE_CHAT_CHANNEL, entry->name));
-        candidates.push_back(textAction(A::REPORT_NAME, entry->name));
-        candidates.push_back(textAction(m_blacklist.isIgnored(entry->name) ? A::UNIGNORE_NAME : A::IGNORE_NAME, entry->name));
-        if (!isVip(entry->name))
-            candidates.push_back(textAction(A::ADD_NEW_VIP, entry->name));
-        auto statement = input::mutableClone(*input::makeAction(A::REPORT_STATEMENT));
-        statement->text = entry->name;
-        statement->statement = entry->text;
-        statement->parameter = static_cast<int>(entry->statementId);
-        candidates.push_back(std::move(statement));
-        if (entry->traded)
-            candidates.push_back(textAction(A::RECENTLY_TRADED, entry->name));
-    }
+    const input::TGameActionList candidates = m_actionProvider.entryGameActions(
+        model->plainTextAt(row), *entry, model->hasSelection() ? model->selectedText() : QString(), ownName(), model == &m_secondary);
     showMenu(candidates, EntryMenuOrder, ChatEntryContext, button, modifiers, model, nullptr);
 }
 
 void TChatController::showTabMenu(chat::TChatChannel* channel, const int button, const int modifiers)
 {
-    // CIP: the provider .
-    input::TGameActionList candidates{ input::makeAction(A::CONTEXT_MENU) };
+    const input::TGameActionList candidates = m_actionProvider.gameActions(channel ? &channel->identifier() : nullptr);
     if (!channel) {
+        // The empty tab bar: every channel to pick as the secondary one.
         auto* menu = TContextMenuController::instance();
         if (!menu || m_mapper.map(candidates, ChatTabContext, static_cast<Qt::MouseButton>(button), modifiers) == nullptr)
             return;
         menu->beginCustomMenu();
-        for (TChatChannel* each : m_storage.channels()) {
+        for (const input::TGameActionPtr& action : candidates) {
+            if (action->type != A::SELECT_CHAT_CHANNEL_AS_SECONDARY)
+                continue;
+            const TChatChannelIdentifier identifier = chat::TChatGameActionProvider::identifierOf(*action);
+            auto labelled = input::mutableClone(*action);
+            labelled->text = identifier.displayName();
             QString shortcut;
-            const QString label = TContextMenuController::labelOf(*textAction(A::SELECT_CHAT_CHANNEL_AS_SECONDARY, each->name()), shortcut);
+            const QString label = TContextMenuController::labelOf(*labelled, shortcut);
             connect(menu->addCustomEntry(label, shortcut), &TContextMenuEntryItem::triggered, this,
-                    [this, target = QPointer<TChatChannel>(each)] { setSecondary(target); });
+                    [this, target = QPointer<TChatChannel>(m_storage.find(identifier))] { setSecondary(target); });
         }
         menu->showCustomMenu();
         return;
     }
-    candidates.push_back(input::makeAction(A::CLEAR_CHAT_CHANNEL));
-    candidates.push_back(input::makeAction(A::SAVE_CHAT_CHANNEL_TO_FILE));
-    if (channel->canBeClosed())
-        candidates.push_back(input::makeAction(A::CLOSE_CHAT_CHANNEL));
-    if (channel->canSubscribeToServerLog())
-        candidates.push_back(input::makeAction(channel->isSubscribedToServerLog() ? A::CHAT_CHANNEL_UNSUBSCRIBE_SERVER_LOG
-                                                                                  : A::CHAT_CHANNEL_SUBSCRIBE_TO_SERVER_LOG));
-    const TChatChannelIdentifier& identifier = channel->identifier();
-    // CIP : invite/exclude only when the channel object is own
-    // (vslot 0xc0). GET_GUILD_MESSAGE is separate: ChannelId + .
-    if (channel->isOwnPrivateChannel()) {
-        candidates.push_back(input::makeAction(A::OPEN_INVITE_TO_CHAT_CHANNEL_DIALOG));
-        candidates.push_back(input::makeAction(A::OPEN_EXCLUDE_FROM_CHAT_CHANNEL_DIALOG));
-    }
-    if (identifier.isGuildChannel())
-        candidates.push_back(input::makeAction(A::GET_GUILD_MESSAGE));
-    if (identifier.isGuildChannel() || identifier.isPartyChannel()) {
-        const bool shown = app::ClientOptions::load().options().value(QLatin1String("consoleShowJoinLeaveMessages")).toBool(true);
-        candidates.push_back(input::makeAction(shown ? A::HIDE_CHANNEL_JOIN_LEAVE_MESSAGES : A::SHOW_CHANNEL_JOIN_LEAVE_MESSAGES));
-    }
-    candidates.push_back(input::makeAction(m_secondary.channel() == channel ? A::HIDE_SECONDARY_CHAT_CHANNEL : A::SHOW_CHAT_CHANNEL_AS_SECONDARY));
-    if (channel->identifier().type != TChatChannelIdentifier::ServerLog)
-        candidates.push_back(input::makeAction(channel->isMuted() ? A::CHAT_CHANNEL_UNMUTE : A::CHAT_CHANNEL_MUTE));
     showMenu(candidates, TabMenuOrder, ChatTabContext, button, modifiers, nullptr, channel);
 }
 
 void TChatController::showMenu(const input::TGameActionList& candidates, const std::span<const input::EGameAction> order, const int context,
                                const int button, const int modifiers, TChatChannelController* model, chat::TChatChannel* channel)
 {
-    // CIP chat::TChatGameActionProvider builds the candidate set for tab/entry menus.
-    (void)chat::TChatGameActionProvider();
     const input::TGameActionPtr picked = m_mapper.map(candidates, context, static_cast<Qt::MouseButton>(button), modifiers);
     if (!picked)
         return;

@@ -212,15 +212,6 @@ void TPatternObjectAppearanceInstance::applyWorldMapCoordinate(const Position& p
                     static_cast<uint8_t>(static_cast<uint32_t>(pos.z) % depth));
 }
 
-Color TObjectAppearanceInstance::animatedMarkedColor() const
-{
-    if (m_markedColor == Color::white)
-        return m_markedColor;
-    Color out = m_markedColor;
-    out.setAlpha(0.1f + std::abs(500 - tibia::shared::TClockService::frameMillis() % 1000) / 1000.0f);
-    return out;
-}
-
 int TObjectAppearanceInstance::calculateAnimationPhase() const
 {
     if (!m_type || m_type->getAnimationPhases() <= 1)
@@ -318,12 +309,12 @@ float TMissileEffectInstance::setPath(const Position& from, const Position& to, 
     m_nowMs = nowMs;
     if (const animation::TAnimationInfo* info = m_type ? m_type->idleAnimation() : nullptr)
         m_animator.emplace(*info, nowMs);
-    m_delta = Point(to.x - from.x, to.y - from.y);
+    m_delta = QPoint(to.x - from.x, to.y - from.y);
     // GRAPHICS/missileFlyDelayMsec per whole unit of the square root of the distance in fields.
     static const qint64 flyDelay = tibia::config::clientSetting(QStringLiteral("GRAPHICS"), QStringLiteral("missileFlyDelayMsec"), 150);
-    const double distance = std::sqrt(static_cast<double>(m_delta.x * m_delta.x + m_delta.y * m_delta.y));
+    const double distance = std::sqrt(static_cast<double>(m_delta.x() * m_delta.x() + m_delta.y() * m_delta.y()));
     m_flightDuration = static_cast<float>(static_cast<qint64>(std::sqrt(distance)) * flyDelay);
-    directionPattern(fieldDirection(m_delta.x, m_delta.y), m_patternX, m_patternY);
+    directionPattern(fieldDirection(m_delta.x(), m_delta.y()), m_patternX, m_patternY);
     m_delta *= tibia::config::spriteSize();
     return m_flightDuration;
 }
@@ -335,7 +326,7 @@ void TMissileEffectInstance::update(const qint64 nowMs)
         m_animator->update(nowMs);
 }
 
-Point TMissileEffectInstance::flightOffset() const
+QPoint TMissileEffectInstance::flightOffset() const
 {
     const tibia::animation::TWorldMapLinearMovementTween tween(m_delta, m_flightDuration);
     return tween.offsetAt(static_cast<float>(std::max<qint64>(0, m_nowMs - m_startMs)));
@@ -542,13 +533,13 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
         const bool mounted = m_outfit.hasMount();
         if (mounted) {
             if (ThingType* mount = tibia::game::rawThingType(m_outfit.getMount(), ThingCategoryCreature)) {
-                dx -= mount->getDisplacement().x;
-                dy -= mount->getDisplacement().y;
+                dx -= mount->getDisplacement().x();
+                dy -= mount->getDisplacement().y();
                 int mountPhase = 0;
                 mountPhase = m_idleAnimators.phaseAt(mount, mount->idleAnimation(), tibia::shared::TClockService::frameMillis());
                 layers.push_back(FigureLayer{ mount, dx, dy, direction, 0, 0, mountPhase, false, 0 });
-                dx += type->getDisplacement().x;
-                dy += type->getDisplacement().y;
+                dx += type->getDisplacement().x();
+                dy += type->getDisplacement().y();
             }
         }
 
@@ -579,7 +570,7 @@ std::vector<TShowOffSocketAppearanceInstance::FigureLayer> TShowOffSocketAppeara
         const int ticks = tibia::config::itemTicksPerFrame();
         phase = static_cast<int>((tibia::shared::TClockService::frameMillis() % (static_cast<long long>(ticks) * phases)) / ticks);
     }
-    layers.push_back(FigureLayer{ type, -type->getDisplacement().x, -type->getDisplacement().y, 0, 0, 0, phase, false, 0 });
+    layers.push_back(FigureLayer{ type, -type->getDisplacement().x(), -type->getDisplacement().y(), 0, 0, 0, phase, false, 0 });
     return layers;
 }
 

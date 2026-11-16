@@ -12,8 +12,6 @@ class TAccountBadgesSortProxyModel final : public ::tibia::CipTyped { public: TA
 class TBossTrackerModel final : public ::tibia::CipTyped { public: TBossTrackerModel() = default; };
 class TBossTrackerSortProxyModel final : public ::tibia::CipTyped { public: TBossTrackerSortProxyModel() = default; };
 class TBossesModel final : public ::tibia::CipTyped { public: TBossesModel() = default; };
-class TCreatureTrackerModel final : public ::tibia::CipTyped { public: TCreatureTrackerModel() = default; };
-class TCreatureTrackerSortProxyModel final : public ::tibia::CipTyped { public: TCreatureTrackerSortProxyModel() = default; };
 class TDuePaymentModel final : public ::tibia::CipTyped { public: TDuePaymentModel() = default; };
 class TFriendListSortProxyModel final : public ::tibia::CipTyped { public: TFriendListSortProxyModel() = default; };
 class TMyException final : public ::tibia::CipTyped { public: TMyException() = default; };

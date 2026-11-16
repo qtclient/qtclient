@@ -6,7 +6,6 @@
 #include <client/staticdata.h>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
-#include <tibia/game/localplayersessionthing.h>
 #include <tibia/game/thingsession_forward.h>
 
 #include <protocol.pb.h>

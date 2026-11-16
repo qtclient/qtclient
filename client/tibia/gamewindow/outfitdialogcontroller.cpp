@@ -287,7 +287,7 @@ void TSelectOutfitDialogController::open(const Outfit& current, QList<TCustomise
     if (dialog()->isShown())
         dialog()->close();
 
-    const quint32 characterId = tibia::game::localPlayer() ? tibia::game::localPlayerId() : 0;
+    const quint32 characterId = tibia::game::hasLocalPlayer() ? tibia::game::localPlayerId() : 0;
     if (characterId != m_characterId) {
         savePresets();
         m_characterId = characterId;
@@ -365,7 +365,7 @@ void TSelectOutfitDialogController::openCharacterInfoSelection(const int outfitI
     Entries mounts;
     Entries summons;
     Outfit current;
-    if (tibia::game::localPlayer())
+    if (tibia::game::hasLocalPlayer())
         current = tibia::game::localPlayerOutfit();
     if (isOutfit) {
         outfits << entry;

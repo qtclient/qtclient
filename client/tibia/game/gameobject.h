@@ -1,6 +1,9 @@
 #pragma once
 
-#include <framework/global.h>
+#include <QColor>
+#include <QPoint>
+#include <QRect>
+#include <QSize>
 #include <tibia/game/gamenotify.h>
 
 #include <memory>

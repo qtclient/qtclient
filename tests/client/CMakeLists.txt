@@ -71,3 +71,12 @@ if(Qt6_FOUND AND TARGET tibia)
     include(GoogleTest)
     gtest_discover_tests(client_gameactionmapper_tests)
 endif()
+
+# CIP TClientOptions' clientOptionsVersion chain; THotkeyOptions' default
+# sets are stubbed in the test.
+find_package(Qt6 REQUIRED COMPONENTS Gui)
+qtclient_add_port_test(client_clientoptionsmigration_tests
+    clientoptionsmigration_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/config/clientoptionsmigration.cpp
+)
+target_link_libraries(client_clientoptionsmigration_tests PRIVATE Qt6::Gui)

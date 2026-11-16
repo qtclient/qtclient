@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gamewindow/dialogmanager.h"
+#include "container/containerciptypes.h"
 #include "exaltation/exaltationstorage.h"
 
 #include <cip_gen.h>
@@ -24,25 +25,6 @@ class TMessageDialogController;
 namespace tibia {
 namespace exaltation {
 
-/// Object counts by type and tier (CIP: container::TObjectCountStorage,
-/// vtable : slot 12 sets them, 13 clears, 16 reads, 0 when absent).
-class TObjectCounts final : public QObject
-{
-    Q_OBJECT
-public:
-    using QObject::QObject;
-
-    void set(std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts);
-    void clear();
-    uint32_t count(uint16_t typeId, uint8_t tier) const;
-
-Q_SIGNALS:
-    void countsChanged();
-
-private:
-    std::map<std::pair<uint16_t, uint8_t>, uint32_t> m_counts;
-};
-
 /// The forge's object slots (CIP: gamewindow::TAppearanceInstanceListModel
 /// with flag +0x7c set, so the count string is the ammo text of the count).
 class TForgeObjectListModel final : public cip::tibia::gamewindow::TAppearanceInstanceListModel
@@ -65,7 +47,7 @@ public:
         DecoItemObjectIdRole,
     };
 
-    TForgeObjectListModel(TObjectCounts* counts, QObject* parent = nullptr);
+    TForgeObjectListModel(container::TObjectCountStorage* counts, QObject* parent = nullptr);
 
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -78,7 +60,7 @@ public Q_SLOTS:
     void onObjectCountsChanged() override;
 
 private:
-    TObjectCounts* m_counts;
+    container::TObjectCountStorage* m_counts;
     std::vector<std::pair<uint16_t, uint8_t>> m_objects;
 };
 
@@ -175,7 +157,7 @@ private:
     void reset();
 
     exaltation::TExaltationStorage* m_storage;
-    exaltation::TObjectCounts* m_counts;
+    container::TObjectCountStorage* m_counts;
     exaltation::TForgeObjectListModel* m_fusionObjects;
     exaltation::TForgeObjectListModel* m_resourceObjects;
     exaltation::TUpgradeableObjectModel* m_fusionProxy;
@@ -222,8 +204,8 @@ private:
     void reset();
 
     exaltation::TExaltationStorage* m_storage;
-    exaltation::TObjectCounts* m_sourceCounts;
-    exaltation::TObjectCounts* m_targetCounts;
+    container::TObjectCountStorage* m_sourceCounts;
+    container::TObjectCountStorage* m_targetCounts;
     exaltation::TForgeObjectListModel* m_sourceObjects;
     exaltation::TForgeObjectListModel* m_targetObjects;
     exaltation::TUpgradeableObjectModel* m_sourceProxy;

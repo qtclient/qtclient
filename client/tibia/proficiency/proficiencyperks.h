@@ -22,6 +22,8 @@ QUrl perkAugmentEffectImageSource(const TProficiencyPerk& perk);
 /// CIP 's spell name and augment type name of a spell augment.
 QString perkAugmentSpellName(const TProficiencyPerk& perk);
 QString perkAugmentTypeName(const TProficiencyPerk& perk);
+/// The signed value text of a spell augment.
+QString perkAugmentValue(const TProficiencyPerk& perk);
 
 /// One perk of a level column (CIP: TQMLProficiencyPerk, vtable , 0x50 bytes).
 /// No Q_OBJECT: a QList<QObject*> delegate model only maps the most-derived

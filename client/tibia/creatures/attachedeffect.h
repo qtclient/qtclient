@@ -25,7 +25,10 @@
 
 #include <optional>
 #include "shared/clockservice.h"
-#include <framework/global.h>
+#include <QColor>
+#include <QPoint>
+#include <QRect>
+#include <QSize>
 #include "client/staticdata.h"
 
 #include <memory>
@@ -35,12 +38,12 @@ class AttachedEffect final : public std::enable_shared_from_this<AttachedEffect>
 public:
     static AttachedEffectPtr create(uint16_t thingId, ThingCategory category);
 
-    void draw(const Point& /*dest*/, bool /*isOnTop*/, LightSink* = nullptr, bool drawThing = true);
-    void drawLight(const Point& /*dest*/, LightSink*);
+    void draw(const QPoint& /*dest*/, bool /*isOnTop*/, LightSink* = nullptr, bool drawThing = true);
+    void drawLight(const QPoint& /*dest*/, LightSink*);
     // The frame draw(dest, isOnTop) shows now, for renderers without the draw pool: its thing
     // frame at dest + offset, at opacity. False when it shows none on that side (or is texture
     // based, a transform, or a loop that just ended). Advances the loop like draw().
-    bool getDrawFrame(bool isOnTop, int& animationPhase, Point& offset, float& opacity);
+    bool getDrawFrame(bool isOnTop, int& animationPhase, QPoint& offset, float& opacity);
 
     uint16_t getId() { return m_id; }
 
@@ -52,8 +55,8 @@ public:
     float getOpacity() { return m_opacity / 100.f; }
     void setOpacity(const float opacity) { m_opacity = opacity * 100u; }
 
-    Size getSize() { return m_size; }
-    void setSize(const Size& s) { m_size = s; }
+    QSize getSize() { return m_size; }
+    void setSize(const QSize& s) { m_size = s; }
 
     bool isHidedOwner() { return m_hideOwner; }
     void setHideOwner(const bool v) { m_hideOwner = v; }
@@ -118,7 +121,7 @@ private:
     struct DirControl
     {
         bool onTop{ false };
-        Point offset;
+        QPoint offset;
     };
 
     int8_t m_loop{ -1 };
@@ -146,7 +149,7 @@ private:
     uint16_t m_thingId{ 0 };
     ThingCategory m_thingCategory{ ThingInvalidCategory };
 
-    Size m_size;
+    QSize m_size;
 
     tibia::shared::TFrameStopWatch m_animationTimer;
     /// The phase clock of the shown appearance, run on `m_animationTimer` and the speed.
@@ -168,8 +171,7 @@ private:
 
     std::vector<AttachedEffectPtr> m_effects;
 
-    Point m_toPoint;
+    QPoint m_toPoint;
 
-    friend class Creature;
     friend class AttachedEffectManager;
 };

@@ -99,7 +99,7 @@ public:
     void requestExportMinimap(const QString& OutputFilename) override;
     /// CIP : the current page from CIP's defaults .
     void resetCurrentPageToDefault() override;
-    /// CIP base pages; qtclient also resets sound pages + built-in hotkeys.
+    /// CIP: every page but the hotkey and sound pages.
     void resetAllOptionsToDefault() override;
     /// CIP : "Restart" publishes OPEN_LAUNCHER.
     void onResartMessageControllerClicked(cip::tibia::gamewindow::TMessageDialogButton::EMessageDialogButtonIdentifier ButtonIdentifier) override;
@@ -121,6 +121,8 @@ private:
     config::THotkeysOptionsPage* m_hotkeys;
 
     config::TOptionsPage* pageOf(EDialogCategories category) const;
+    /// CIP: one page from the defaults (Basic and the hotkey pages their own way).
+    void resetPageToDefault(EDialogCategories category);
     /// CIP : the Basic page's options from the defaults.
     void resetBasicPage();
     /// The options as the pages would write them.

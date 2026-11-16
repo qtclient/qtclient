@@ -52,6 +52,9 @@ public:
     bool isBound() const { return m_worldMap != nullptr; }
     /// Unsets the provider everywhere; call before the provider goes away.
     void unbind();
+    /// The active game session changed: draw its texts and numerical effects,
+    /// and pick in its view (the provider's).
+    void bindSession(const chat::TTextStorage* texts, const worldmap::TNumericalEffectStorage* numericalEffects);
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;

@@ -61,12 +61,12 @@ int getBounce(const Bounce& bounce) {
     return minHeight + (height - std::abs(height - static_cast<int>(bounce.timer.ticksElapsed() / (bounce.speed / 100.f)) % static_cast<int>(height * 2)));
 }
 
-void AttachedEffect::draw(const Point& dest, const bool isOnTop, LightSink* lightView, const bool drawThing) {
+void AttachedEffect::draw(const QPoint& dest, const bool isOnTop, LightSink* lightView, const bool drawThing) {
     (void)dest; (void)isOnTop; (void)lightView; (void)drawThing;
 }
 
 
-bool AttachedEffect::getDrawFrame(const bool isOnTop, int& animationPhase, Point& offset, float& opacity)
+bool AttachedEffect::getDrawFrame(const bool isOnTop, int& animationPhase, QPoint& offset, float& opacity)
 {
     if (m_transform || !m_texturePath.empty())
         return false;
@@ -87,13 +87,15 @@ bool AttachedEffect::getDrawFrame(const bool isOnTop, int& animationPhase, Point
     const auto bounceAt = [](const Bounce& bounce) {
         return bounce.minHeight + (bounce.height - std::abs(bounce.height - static_cast<int>(bounce.timer.ticksElapsed() / (bounce.speed / 100.f)) % static_cast<int>(bounce.height * 2)));
     };
-    offset = Point() - dirControl.offset;
+    offset = QPoint() - dirControl.offset;
     if (!m_toPoint.isNull()) {
         const float fraction = std::min<float>(m_animationTimer.ticksElapsed() / static_cast<float>(m_duration), 1.f);
-        offset += m_toPoint * fraction;
+        offset += QPoint(static_cast<int>(m_toPoint.x() * fraction), static_cast<int>(m_toPoint.y() * fraction));
     }
-    if (m_bounce.height > 0 && m_bounce.speed > 0)
-        offset -= bounceAt(m_bounce);
+    if (m_bounce.height > 0 && m_bounce.speed > 0) {
+        const int bounce = bounceAt(m_bounce);
+        offset -= QPoint(bounce, bounce);
+    }
     opacity = m_opacity < 100 ? getOpacity() : 1.f;
     if (m_fade.height > 0 && m_fade.speed > 0)
         opacity = std::clamp<float>(bounceAt(m_fade) / 100.f, 0.f, 1.f);
@@ -101,7 +103,7 @@ bool AttachedEffect::getDrawFrame(const bool isOnTop, int& animationPhase, Point
     return true;
 }
 
-void AttachedEffect::drawLight(const Point& dest, LightSink* lightView) {
+void AttachedEffect::drawLight(const QPoint& dest, LightSink* lightView) {
     (void)dest; (void)lightView;
 }
 
@@ -156,7 +158,7 @@ int AttachedEffect::getCurrentAnimationPhase()
 void AttachedEffect::setShader(const std::string_view name) { m_shader = std::string{ name }; }
 
 void AttachedEffect::move(const Position& fromPosition, const Position& toPosition) {
-    m_toPoint = Point(toPosition.x - fromPosition.x, toPosition.y - fromPosition.y) * tibia::config::spriteSize();
+    m_toPoint = QPoint(toPosition.x - fromPosition.x, toPosition.y - fromPosition.y) * tibia::config::spriteSize();
     m_animationTimer.restart();
 }
 

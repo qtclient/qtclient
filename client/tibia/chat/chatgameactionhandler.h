@@ -1,5 +1,6 @@
 #pragma once
 
+#include "input/gameaction.h"
 #include "shared/cip_typed.h"
 
 #include <cip_gen.h>
@@ -8,10 +9,14 @@
 #include <QObject>
 #include <QString>
 
+#include <functional>
+
 namespace tibia {
 namespace chat {
 
 struct TChatEntry;
+struct TChatChannelIdentifier;
+class TChatChannelStorage;
 
 /// CIP chat::TChatGameActionHandler — game-action → console / protocol bridge.
 /// Live dispatch is TChatController::handleAction ; this type is
@@ -33,13 +38,35 @@ public:
     using cip::tibia::chat::TChatStorage::TChatStorage;
 };
 
-/// CIP chat::TChatGameActionProvider — context-menu / hotkey action candidates
-/// for a channel (vtable). Menu order lives in TChatController;
-/// constructing this at menu build sites matches CIP ownership.
+/// The chat's game action candidates (CIP: chat::TChatGameActionProvider):
+/// v2 for a channel tab (or the empty tab bar), v3 for an entry of a channel.
 class TChatGameActionProvider final : public ::tibia::CipTyped
 {
 public:
-    TChatGameActionProvider() = default;
+    /// The name actions of a player entry (CIP +0x18, the generic chat
+    /// provider): message, invite, VIP, ignore and report name.
+    using NameActions = std::function<void(::tibia::input::TGameActionList& actions, const QString& name)>;
+    /// The console option that shows join / leave messages (CIP +0x28, option 0x1b).
+    using ShowJoinLeaveMessages = std::function<bool()>;
+
+    TChatGameActionProvider(TChatChannelStorage& storage, NameActions nameActions, ShowJoinLeaveMessages showJoinLeaveMessages);
+
+    /// v2: the tab's actions; without a channel, every open channel to pick as
+    /// the secondary one, by name.
+    ::tibia::input::TGameActionList gameActions(const TChatChannelIdentifier* identifier) const;
+    /// v3: an entry's actions. `entryText` is the line as the pane shows it,
+    /// `selectedText` the selection, `secondaryShown` whether the entry is in
+    /// the secondary pane.
+    ::tibia::input::TGameActionList entryGameActions(const QString& entryText, const TChatEntry& entry, const QString& selectedText,
+                                                     const QString& ownName, bool secondaryShown) const;
+
+    /// The channel a TGameActionChatChannel names.
+    static TChatChannelIdentifier identifierOf(const ::tibia::input::TGameAction& action);
+
+private:
+    TChatChannelStorage& m_storage;
+    NameActions m_nameActions;
+    ShowJoinLeaveMessages m_showJoinLeaveMessages;
 };
 
 /// Builds chat entries (CIP: chat::TClientChatEntryFactory). Every entry

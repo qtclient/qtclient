@@ -173,6 +173,22 @@ void TWorldView::unbind()
         m_numericalEffects->setSources(nullptr, nullptr);
 }
 
+void TWorldView::bindSession(const chat::TTextStorage* texts, const worldmap::TNumericalEffectStorage* numericalEffects)
+{
+    if (!m_provider)
+        return;
+    if (worldmap::TWorldMapViewport* viewport = m_provider->viewport(); viewport && viewport != m_viewport) {
+        m_viewport = viewport;
+        m_actions = std::make_unique<worldmap::TWorldMapGameActionProvider>(*m_provider, *m_viewport);
+        m_viewport->setSize(m_provider->visibleWidth() * TWorldMapRenderProvider::FieldSize,
+                            m_provider->visibleHeight() * TWorldMapRenderProvider::FieldSize);
+    }
+    if (m_speechBubbles)
+        m_speechBubbles->setSources(texts ? m_provider : nullptr, texts);
+    if (m_numericalEffects)
+        m_numericalEffects->setSources(numericalEffects ? m_provider : nullptr, numericalEffects);
+}
+
 void TWorldView::ensureWindowPointerFilter()
 {
     QQuickWindow* window = m_mapWindow ? m_mapWindow->window() : nullptr;

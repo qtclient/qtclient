@@ -5,7 +5,7 @@
 #include "game/playerskillstats.h"
 
 #include <tibia/creatures/creaturestorage.h>
-#include <tibia/game/localplayersessionthing.h>
+#include "game/gamesessionstate.h"
 
 namespace tibia::game {
 namespace {
@@ -19,34 +19,14 @@ void playerDataAuthorityWrite(WriteData&& writeData)
 
 } // namespace
 
-CreaturePtr creatureThingById(const uint32_t id)
-{
-    (void)id;
-    return nullptr;
-}
-
-void localPlayerSetId(const uint32_t id)
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->setId(id);
-}
-
-void localPlayerSetPendingGame(const bool pending)
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->setPendingGame(pending);
-}
-
 void localPlayerSetMarketAvailable(const bool available)
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->setMarketAvailable(available);
+    gameSessionState().m_marketAvailable = available;
 }
 
 void localPlayerSetSupplyStashAvailable(const bool available)
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->setSupplyStashAvailable(available);
+    gameSessionState().m_supplyStashAvailable = available;
 }
 
 void localPlayerSetHealth(const uint32_t health, const uint32_t maxHealth)
@@ -177,9 +157,8 @@ void localPlayerSetStoreExpBoostPurchasable(const bool purchasable)
 
 void localPlayerSetStatesAndRottenBlood(const uint64_t states, const uint8_t rottenBloodState)
 {
+    (void)states;
     playerDataAuthorityWrite([&](TPlayerData& data) { data.setRottenBloodState(rottenBloodState); });
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->setStates(states);
 }
 
 void localPlayerSetTotalCapacity(const uint32_t totalCapacity)
@@ -190,12 +169,6 @@ void localPlayerSetTotalCapacity(const uint32_t totalCapacity)
 void localPlayerSetBaseCapacity(const uint32_t baseCapacity)
 {
     playerDataAuthorityWrite([&](TPlayerData& data) { data.updateBaseCapacity(baseCapacity); });
-}
-
-void localPlayerSetKnown(const bool known)
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->setKnown(known);
 }
 
 void localPlayerSetFlatDamageHealing(const uint16_t flatBonus)
@@ -420,8 +393,8 @@ uint8_t localPlayerRottenBloodState()
 
 uint64_t localPlayerStates()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->getStates();
+    if (TPlayerData* data = TPlayerData::liveInstance())
+        return data->states().flags.to_ullong();
     return 0;
 }
 
@@ -462,28 +435,22 @@ std::vector<uint16_t> localPlayerSpells()
 
 tibia::client::Direction localPlayerDirection()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->getDirection();
+    if (const auto row = localPlayerCreature())
+        return static_cast<tibia::client::Direction>(row->patternX());
     return tibia::client::InvalidDirection;
 }
 
 bool localPlayerIsSoftDead()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->isSoftDead();
+    if (const auto row = localPlayerCreature())
+        return row->isSoftDead();
     return false;
-}
-
-void syncLocalPlayerStorageRow(tibia::creatures::TCreature& row)
-{
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        player->syncStorageRow(row);
 }
 
 uint8_t localPlayerSkull()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->getSkull();
+    if (const auto row = localPlayerCreature())
+        return row->skull();
     return 0;
 }
 
@@ -510,23 +477,25 @@ uint32_t localPlayerTotalCapacity()
 
 bool localPlayerHasEquippedItemId(const uint16_t itemId, const uint8_t tier)
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->hasEquippedItemId(itemId, tier);
+    tibia::container::TInventoryContainer* inventory = tibia::container::TInventoryContainer::instance();
+    if (!hasLocalPlayer() || !inventory)
+        return false;
+    for (int slot = tibia::client::InventorySlotHead; slot < tibia::client::LastInventorySlot; ++slot) {
+        const tibia::container::TInventorySlot& row = inventory->slotAt(slot);
+        if (!row.empty() && row.typeId == itemId && row.tier == tier)
+            return true;
+    }
     return false;
 }
 
 bool localPlayerIsMarketAvailable()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->isMarketAvailable();
-    return false;
+    return hasLocalPlayer() && gameSessionState().m_marketAvailable;
 }
 
 bool localPlayerIsSupplyStashAvailable()
 {
-    if (const LocalPlayerSessionThingPtr player = localPlayer())
-        return player->isSupplyStashAvailable();
-    return false;
+    return hasLocalPlayer() && gameSessionState().m_supplyStashAvailable;
 }
 
 bool localPlayerIsStoreExpBoostPurchasable()

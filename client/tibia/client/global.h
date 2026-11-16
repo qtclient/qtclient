@@ -22,7 +22,10 @@
 
 #pragma once
 
-#include <framework/global.h>
+#include <QColor>
+#include <QPoint>
+#include <QRect>
+#include <QSize>
 
  // widely used headers
 #include "const.h"

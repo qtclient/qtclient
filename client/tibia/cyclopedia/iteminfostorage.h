@@ -187,9 +187,6 @@ private:
     int trackLimit() const;
 
     quint32 m_characterId = 0;
-    std::unordered_map<uint16_t, qint64> m_marketPrices;
-    std::map<uint16_t, int> m_customPrices;
-    std::map<uint16_t, int> m_sources;
     std::deque<TrackedItem> m_tracked;
     std::vector<DroppedLoot> m_recentDrops;
     quint32 m_autoTrackAboveValue = 0;

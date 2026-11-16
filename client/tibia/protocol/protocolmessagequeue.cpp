@@ -1,5 +1,7 @@
 #include "protocol/protocolmessagequeue.h"
 
+#include "protocol/protocolciptypes.h"
+
 #include <protocol.pb.h>
 
 namespace tibia::protocol {
@@ -70,12 +72,15 @@ void TProtocolMessageQueue::enqueueGameserverMessage(const std::shared_ptr<Games
 
 void TProtocolMessageQueue::enqueueGameclientMessage(const std::shared_ptr<GameclientMessage>& message)
 {
-    enqueueGameclientMessage(message, QByteArray());
+    // Host side: the connection writes classic wire bytes, so encode them here.
+    const auto* translator = clientMessageTranslator();
+    enqueueGameclientMessage(message, translator && message ? translator->translateToClassic(*message) : QByteArray());
 }
 
 void TProtocolMessageQueue::enqueueGameclientMessage(const std::shared_ptr<GameclientMessage>& message,
                                                      const QByteArray& wire)
 {
+    ++m_clientCount;
     m_gameclientMessages.emplace_back(message, wire);
     Q_EMIT sendMessage(message);
     if (m_gameclientMessageTimer.interval() == 0) {
@@ -96,8 +101,18 @@ void TProtocolMessageQueue::enqueueServer(std::unique_ptr<GameserverMessage> mes
 
 void TProtocolMessageQueue::enqueueClient(std::unique_ptr<GameclientMessage> message, const QByteArray& wire)
 {
-    ++m_clientCount;
     enqueueGameclientMessage(std::shared_ptr<GameclientMessage>(std::move(message)), wire);
+}
+
+void TProtocolMessageQueue::prepareAndEnqueueGameclientMessage(std::shared_ptr<GameclientMessage> pGameclientMessage,
+                                                               const int GameclientMessageType)
+{
+    pGameclientMessage->set_type(GameclientMessageType);
+    enqueueGameclientMessage(pGameclientMessage);
+}
+
+void TProtocolMessageQueue::handleGameAction(std::shared_ptr<::tibia::input::TGameAction>)
+{
 }
 
 void TProtocolMessageQueue::fireEmitSignalForNewProtocolMessage()

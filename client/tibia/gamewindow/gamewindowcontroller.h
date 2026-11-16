@@ -3,10 +3,16 @@
 #include <cip_gen.h>
 
 #include <QPointer>
+#include <QTimer>
 #include <QString>
 #include <QUrl>
 
 #include <memory>
+
+#include "app/hints.h"
+#include "news/eventsuploader.h"
+
+#include <vector>
 
 class QEvent;
 class QObject;
@@ -112,6 +118,16 @@ public:
     /// CIP gamewindow.qml calendar button → OPEN_CALENDAR_DIALOG.
     void requestOpenCalendar() override;
 
+    /// CIP: a cached hint while the hints are under an hour old, else a new download.
+    void updateHint() override;
+    /// CIP: the hint to show now, from the downloaded hints.
+    void selectRandomHintFromCache() override;
+    void onHintDownloadSuccess(const QUrl& Url, const QByteArray& Data) override;
+    /// CIP: a failed hints download shows the default hint.
+    void onHintDownloadFailed(const QUrl& url);
+    /// CIP: after the server save the preview moves on to the new day.
+    void onEventsSchedulePreviewUpdateTimerTimeout() override;
+
     /// True while Exit was chosen — window close may proceed without re-prompt.
     bool allowWindowClose() const { return m_allowWindowClose; }
     void setAllowWindowClose(bool allow) { m_allowWindowClose = allow; }
@@ -138,16 +154,28 @@ private:
     void requestStartScreenServices();
     void requestDeferredStartScreenServices();
     void loadHints();
+    void setHintAreaTitle(const QString& title);
+    void setHintAreaRichText(const QString& richText);
     void onBoostedCreatureReceived();
     void onLiveInformationReceived();
     void onShowOffReceived();
     void onEventScheduleUpdated();
     void clearEventModels();
+    /// CIP: today's events and the next starting ones, with their tooltips.
+    void updateEventsSchedulePreview(const std::vector<news::TEventInformation>& events);
     void showQuitGameDialog();
     void syncAnthemButton();
 
     QPointer<QQuickItem> m_container;
     QPointer<QQuickItem> m_gameWindowItem;
+    QUrl m_hintsUrl;
+    QVector<app::Hint> m_hints;
+    /// Seconds since the epoch of the last hints download.
+    int m_hintsDownloadedAt = 0;
+    QString m_cdnBase;
+    std::vector<news::TEventInformation> m_events;
+    QTimer m_eventsSchedulePreviewTimer;
+    bool m_beforeServerSave = true;
     bool m_allowWindowClose = false;
     class TMessageDialogController* m_quitDialog = nullptr;
     std::unique_ptr<news::TNewsStorage> m_newsStorage;
