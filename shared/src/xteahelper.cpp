@@ -1,4 +1,4 @@
-#include "shared/xteahelper.h"
+#include "xteahelper.h"
 
 #include <QIODevice>
 #include <QRandomGenerator>
@@ -31,6 +31,8 @@ void writeBigEndian(char* bytes, const uint32_t value)
 TXteaHelper::TXteaHelper(const QDataStream::ByteOrder byteOrder)
     : m_byteOrder(byteOrder)
 {
+    // CipSoft starts with a 16-byte key of unset bytes; zero here.
+    setKey(QByteArray(16, '\0'));
 }
 
 TXteaHelper::~TXteaHelper() = default;
