@@ -120,6 +120,7 @@ publish_things() {
     echo "[assets] WARN: no spells.json (make extract); the spell list stays empty" >&2
   fi
   # Magical Archive previews (CIP :/spells/spells-previews.json).
+  # Required for /play (portal plants extras/ + tip assets) and desktop Magical Archive.
   local previews_tables="$OTC/data/assets/game-tables/spells-previews.json"
   if [[ -f "$assets_dir/spells-previews.json" ]]; then
     :
@@ -128,8 +129,14 @@ publish_things() {
   elif [[ -f "$previews_tables" ]]; then
     cp "$previews_tables" "$assets_dir/spells-previews.json"
   else
-    echo "[assets] WARN: no spells-previews.json (make extract --spells); Magical Archive previews empty" >&2
+    echo "[assets] ERROR: no spells-previews.json — run: make extract EXTRACT_FLAGS=--spells" >&2
+    exit 1
   fi
+  # Loose CDN fallback for /play (portal ensureSpellsExtrasFromCdn).
+  mkdir -p "$SLICE/extras"
+  [[ -f "$assets_dir/spells.json" ]] && cp "$assets_dir/spells.json" "$SLICE/extras/spells.json"
+  cp "$assets_dir/spells-previews.json" "$SLICE/extras/spells-previews.json"
+  echo "[assets] extras/spells*.json → $SLICE/extras"
 
   if command -v shasum >/dev/null 2>&1; then
     shasum -a 256 "$assets_dir/catalog-content.json" | awk '{print $1}' >"$assets_dir/assets.json.sha256"
