@@ -22,6 +22,10 @@ Versioning follows semver for public tags (`vX.Y.Z`).
 
 ### Changed
 
+- Default tip pack `mods/myaac` → `mods/qtc-aac`: login and account pages now
+  point at [qtc-aac](https://github.com/qtclient/qtc-aac)
+  (`http://127.0.0.1:5173/clientservices/*.php`). MyAAC servers can still use
+  `package_desktop.py --login-profile myaac`.
 - Stock core is CIP classic lighting only; product raycast/weather live in
   packs via the WorldView API — no export/scrub pipeline.
 - Product identity and launcher brand resolve from `mod.json` at runtime.

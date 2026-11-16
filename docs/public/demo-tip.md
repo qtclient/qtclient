@@ -1,14 +1,14 @@
-# Demo tip (myAAC + CipSoft assets)
+# Demo tip (qtc-aac + CipSoft assets)
 
-Login comes from the default tip pack [`mods/myaac`](../../client/mods/myaac/mod.json)
-([myAAC](https://github.com/slawkens/myaac) at `http://127.0.0.1/login.php`).
+Login comes from the default tip pack [`mods/qtc-aac`](../../client/mods/qtc-aac/mod.json)
+([qtc-aac](https://github.com/qtclient/qtc-aac) at `http://127.0.0.1:5173`).
 The client speaks the CIP wire (CIP OS ids), so Crystal keeps its CIP layouts.
 Product tips add `mods/<id>` (portal urls); multiple
 autoload packs are supported (identity/urls: lower `priority` wins).
 
 ## Local demo
 
-1. Run [myAAC](https://github.com/slawkens/myaac) so `http://127.0.0.1/login.php` answers CIP JSON (`type: login`).
+1. Run [qtc-aac](https://github.com/qtclient/qtc-aac) so `http://127.0.0.1:5173/clientservices/loginservice.php` answers CIP JSON (`type: login`).
 2. `make stock demo-pack` (or CI demo artifacts).
 3. Point the launcher tip at the emitted `tibiametadata.json`.
 4. **Update** installs our client package + CipSoft `assets-current` (package includes default mods + launcher channel gates).
@@ -28,16 +28,16 @@ export QTCLIENT_LOGIN_BASE=http://127.0.0.1
 export QTCLIENT_LOGIN_PATH=/login.php
 ```
 
-Or edit/reinstall `mods/myaac/mod.json` `urls` — no host rebuild.
+Or edit/reinstall `mods/qtc-aac/mod.json` `urls` — no host rebuild.
 
 ## Product tip
 
 `make qtclient client install` merges product pack FS chrome (portal urls; often
-without `myaac`). Run loads all autoload tip packs. Default launcher mods
+without `qtc-aac`). Run loads all autoload tip packs. Default launcher mods
 (`clientmods`, `minimap`) gate optional CDN channels.
 
 ## Emitter
 
-`emit_demo_tip.py` stages `mods/myaac` and launcher
+`emit_demo_tip.py` stages `mods/qtc-aac` and launcher
 `clientmods`/`minimap` next to the Play binary and writes a
 CipSoft-shaped tip with CipSoft `assetsurl`.

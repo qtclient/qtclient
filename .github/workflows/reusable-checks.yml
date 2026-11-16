@@ -44,7 +44,7 @@ jobs:
           test -f include/qtclient/abi/host_api_v1.h
           test -f include/qtclient/abi/types.h
           grep -q 'QTCLIENT_PACK_SDK_ONLY\|QTCLIENT_PACK_ABI\|ABSORB_INTO_QTCLIENT' cmake/QtClientMod.cmake
-          test -f client/mods/myaac/mod.json
+          test -f client/mods/qtc-aac/mod.json
           test -f launcher/mods/clientmods/launcher.json
           test -f launcher/mods/minimap/launcher.json
           bash -n scripts/lifecycle/lib/stage-default-launcher-mods.sh

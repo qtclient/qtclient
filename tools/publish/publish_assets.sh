@@ -7,12 +7,12 @@
 #                                    added to the web + desktop targets by assemble.py
 #   content/<aa>/<sha256>          — its blobs; packs/<aa>/<sha256>.zip — its zip packs
 #   images/store/                  — CIP store icons (coinImagesURL), from
-#                                    apps/portal/apps/web/static/images/store
+#                                    $QTCAAC_STORE_IMAGES (not shipped here)
 #   images/payment/                — webshop product art (optional placeholders)
 #   assets/store/                  — legacy alias (copied from images/store for old tips)
-#   assets/{outfits,items}/manifest.json — {"revision", "path": "<rev>/"} (portal)
-#   assets/outfits/<rev>/<looktype>/     — outfit frames rendered by `make extract`
-#   assets/items/<rev>/<client id>.png   — item sprites rendered by `make extract`
+#   assets/{outfits,items}/manifest.json — {"revision", "path": "<rev>/"} (qtc-aac)
+#   assets/outfits/<rev>/<looktype>/     — outfit frames (tools/publish/aac/outfits.py)
+#   assets/items/<rev>/<client id>.png   — item sprites + names.json (tools/publish/aac/items.py)
 #   .qtclient/assets.json            — pointer read by the bundle build
 #
 # Assets, outfits and items come from `make extract` on a machine with Tibia,
@@ -28,6 +28,9 @@
 #   TIBIA_ASSETS_SLICE    local output, default ./dist/slices/assets
 #   TIBIA_ASSETS_IMAGE    default ghcr.io/qtclient/cdn-assets (needs `docker login ghcr.io`)
 #   CLIENT_VERSION         protocol stamp for .qtclient metadata (default 1533)
+#   QTCAAC_STORE_IMAGES   store icon tree ({13,32,64,home}/…); required for `store`
+#   QTCAAC_PAYMENT_IMAGES optional webshop art tree
+#   QTCLIENT_AAC_DIR      rendered items/outfits, default <qtclient>/data/aac
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -195,9 +198,9 @@ publish_things() {
 }
 
 publish_store() {
-  local src="$ROOT/apps/portal/apps/web/static/images/store"
-  if [[ ! -d "$src/64" ]]; then
-    echo "[assets] store missing — expected committed $src" >&2
+  local src="${QTCAAC_STORE_IMAGES:-}"
+  if [[ -z "$src" || ! -d "$src/64" ]]; then
+    echo "[assets] store missing — set QTCAAC_STORE_IMAGES to a tree with 13/ 32/ 64/ home/" >&2
     exit 1
   fi
   # CIP path: /images/store/{size}/…
@@ -211,18 +214,18 @@ publish_store() {
     || rsync -aL --delete "$dest/" "$SLICE/assets/store/"
   # Webshop payment art placeholders (CIP /images/payment/).
   mkdir -p "$SLICE/images/payment"
-  if [[ -d "$ROOT/apps/portal/apps/web/static/images/payment" ]]; then
-    rsync -aL --exclude '*.md' "$ROOT/apps/portal/apps/web/static/images/payment/" "$SLICE/images/payment/"
+  if [[ -n "${QTCAAC_PAYMENT_IMAGES:-}" && -d "$QTCAAC_PAYMENT_IMAGES" ]]; then
+    rsync -aL --exclude '*.md' "$QTCAAC_PAYMENT_IMAGES/" "$SLICE/images/payment/"
   fi
   echo "[assets] store → $dest (+ assets/store alias, images/payment)"
 }
 
-# AAC sprite slice rendered by `make extract` (tools/extract/<name>.py) into
-# apps/portal/apps/web/<dir>, published under a revisioned path.
+# AAC sprite slice rendered by tools/publish/aac/<name>.py into
+# $QTCLIENT_AAC_DIR/<name>, published under a revisioned path.
 publish_rendered() {
-  local name="$1" src="$ROOT/apps/portal/apps/web/$2"
+  local name="$1" src="${QTCLIENT_AAC_DIR:-$OTC/data/aac}/$1"
   if [[ ! -f "$src/.revision" ]]; then
-    echo "[assets] $name missing — run: make extract (or python3 tools/extract/$name.py)" >&2
+    echo "[assets] $name missing — run: python3 $OTC/tools/publish/aac/$name.py" >&2
     exit 1
   fi
   local rev
@@ -281,8 +284,8 @@ mkdir -p "$SLICE"
 
 if [[ -z "$ONLY" || "$ONLY" == "things" ]]; then publish_things; fi
 if [[ -z "$ONLY" || "$ONLY" == "store" ]]; then publish_store; fi
-if [[ -z "$ONLY" || "$ONLY" == "outfits" ]]; then publish_rendered outfits outfits_anim; fi
-if [[ -z "$ONLY" || "$ONLY" == "items" ]]; then publish_rendered items items; fi
+if [[ -z "$ONLY" || "$ONLY" == "outfits" ]]; then publish_rendered outfits; fi
+if [[ -z "$ONLY" || "$ONLY" == "items" ]]; then publish_rendered items; fi
 write_pointer
 if [[ "$PUSH" == "1" ]]; then push_image; fi
 
