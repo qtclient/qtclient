@@ -484,10 +484,11 @@ void TActionButtonController::onTargetSelected()
     input::finishTargetSelection(nullptr);
 }
 
-void TActionButtonController::onDragChanged(const bool Dragged)
+void TActionButtonController::onDragChanged(bool)
 {
-    if (Dragged)
-        m_bar->closeOpenMultiActionButtons();
+    // Dragging the button ends its "newly unlocked" marker.
+    if (m_isNewlyUnlocked)
+        setIsNewlyUnlocked(false);
 }
 
 void TActionButtonController::setMultiActionExpanded(const bool v)

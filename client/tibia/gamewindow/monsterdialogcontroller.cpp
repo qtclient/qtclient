@@ -505,33 +505,37 @@ void TMonsterDialogController::requestMonsterSearch(const QString& SearchString)
 
 void TMonsterDialogController::requestClassificationPageSwitch(const int NewPage)
 {
-    const int pages = std::max(1, pageCount(m_classifications.size()));
-    const int page = std::clamp(NewPage, 1, pages);
-    deleteAll(m_monsterClassificationSummary);
-    const size_t end = std::min(m_classifications.size(), static_cast<size_t>(page * PageSize));
-    for (size_t i = static_cast<size_t>((page - 1) * PageSize); i < end; ++i)
-        m_monsterClassificationSummary.append(new TQmlMonsterClassificationSummary(m_classifications[i], this));
-    m_monsterClassificationCurrentPage = page;
-    m_monsterClassificationTotalPages = pages;
+    // The page's entries are rebuilt; a page out of range, or the current
+    // one, leaves the list empty.
+    QList<QObject*> previous;
+    previous.swap(m_monsterClassificationSummary);
+    if (NewPage > 0 && NewPage != m_monsterClassificationCurrentPage && NewPage <= m_monsterClassificationTotalPages) {
+        m_monsterClassificationCurrentPage = NewPage;
+        const size_t end = std::min(m_classifications.size(), static_cast<size_t>(NewPage * PageSize));
+        for (size_t i = static_cast<size_t>((NewPage - 1) * PageSize); i < end; ++i)
+            m_monsterClassificationSummary.append(new TQmlMonsterClassificationSummary(m_classifications[i], this));
+    }
     Q_EMIT qmlMonsterClassificationSummaryChanged();
     Q_EMIT qmlMonsterClassificationPageChanged();
+    deleteAll(previous);
 }
 
 void TMonsterDialogController::requestMonsterPageSwitch(const int NewPage)
 {
-    const int pages = std::max(1, pageCount(m_races.size()));
-    const int page = std::clamp(NewPage, 1, pages);
-    deleteAll(m_monsterRaceSummary);
-    const size_t end = std::min(m_races.size(), static_cast<size_t>(page * PageSize));
-    for (size_t i = static_cast<size_t>((page - 1) * PageSize); i < end; ++i) {
-        const BestiaryOverviewMonsters& race = m_races[i];
-        m_monsterRaceSummary.append(new TQmlMonsterRace(race.id, race.currentLevel, race.creatureAnimusMasteryBonus / 1000.0,
-                                                        m_animusMasteryPoints, nullptr, m_storage, this));
+    QList<QObject*> previous;
+    previous.swap(m_monsterRaceSummary);
+    if (NewPage > 0 && NewPage != m_monsterRacesCurrentPage && NewPage <= m_monsterRacesTotalPages) {
+        m_monsterRacesCurrentPage = NewPage;
+        const size_t end = std::min(m_races.size(), static_cast<size_t>(NewPage * PageSize));
+        for (size_t i = static_cast<size_t>((NewPage - 1) * PageSize); i < end; ++i) {
+            const BestiaryOverviewMonsters& race = m_races[i];
+            m_monsterRaceSummary.append(new TQmlMonsterRace(race.id, race.currentLevel, race.creatureAnimusMasteryBonus / 1000.0,
+                                                            m_animusMasteryPoints, nullptr, m_storage, this));
+        }
     }
-    m_monsterRacesCurrentPage = page;
-    m_monsterRacesTotalPages = pages;
-    Q_EMIT qmlMonsterRaceSummaryChanged();
     Q_EMIT qmlMonsterRacesPageChanged();
+    Q_EMIT qmlMonsterRaceSummaryChanged();
+    deleteAll(previous);
 }
 
 void TMonsterDialogController::onMonsterRaceClicked(const uint MonsterRaceID)
@@ -542,13 +546,7 @@ void TMonsterDialogController::onMonsterRaceClicked(const uint MonsterRaceID)
 
 void TMonsterDialogController::requestSwitchBackToClassificationSummary() { onClassificationSummaryChanged(); }
 
-void TMonsterDialogController::requestSwitchBackToRaceSummary()
-{
-    if (!m_search.isEmpty())
-        requestMonsterSearch(m_search);
-    else
-        tibia::game::requestBestiaryOverview(m_selectedClassification.toStdString());
-}
+void TMonsterDialogController::requestSwitchBackToRaceSummary() { requestClassificationSelection(m_selectedClassification); }
 
 void TMonsterDialogController::requestSwitchToItemInfo(const int AppearanceTypeID)
 {
@@ -634,7 +632,10 @@ void TMonsterDialogController::setDialogState(const DialogState state)
 
 void TMonsterDialogController::onClassificationSummaryChanged()
 {
+    // The page of the selected classification, else the first.
     setDialogState(MonsterClassification);
+    m_monsterClassificationCurrentPage = 0;
+    m_monsterClassificationTotalPages = pageCount(m_classifications.size());
     int page = 1;
     for (size_t i = 0; i < m_classifications.size(); ++i) {
         if (qstr(m_classifications[i].bestClass) == m_selectedClassification) {
@@ -647,7 +648,10 @@ void TMonsterDialogController::onClassificationSummaryChanged()
 
 void TMonsterDialogController::onMonsterRacesChanged()
 {
+    // The page of the selected race, else the first.
     setDialogState(MonsterRaces);
+    m_monsterRacesCurrentPage = 0;
+    m_monsterRacesTotalPages = pageCount(m_races.size());
     int page = 1;
     for (size_t i = 0; i < m_races.size(); ++i) {
         if (m_races[i].id == m_selectedRace) {

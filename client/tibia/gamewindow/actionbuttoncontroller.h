@@ -59,8 +59,10 @@ public:
     EQmlActionButtonType type() const override { return shown()->m_type; }
     EQmlActionButtonProgressType progressType() const override { return shown()->m_progressType; }
     QString spellIconUrl() const override { return shown()->m_spellIconUrl; }
-    QString spellParameters() const override { return shown()->m_spellParameters; }
-    QString text() const override { return shown()->m_text; }
+    /// The shown slot's spell parameters, HTML-escaped; empty unless it casts a spell.
+    QString spellParameters() const override { return shown()->m_type == SPELL ? shown()->m_spellParameters.toHtmlEscaped() : QString(); }
+    /// The shown slot's text, HTML-escaped; empty unless it says a text.
+    QString text() const override { return shown()->m_type == TEXT ? shown()->m_text.toHtmlEscaped() : QString(); }
     uint objectID() const override { return shown()->m_objectID; }
     uint objectCount() const override { return shown()->m_objectCount; }
     uint objectUpgradeTier() const override { return shown()->m_objectUpgradeTier; }

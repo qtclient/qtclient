@@ -72,9 +72,14 @@ public:
     int size() const { return static_cast<int>(m_entries.size()); }
 
 public Q_SLOTS:
+    void onItemPriceVisualizationChanged() override;
+    void onItemTrackingChanged() override;
     void onObjectCountsChanged() override;
+    void onObjectProficiencyXPChanged() override;
 
 private:
+    /// dataChanged over every row for `roles`.
+    void notifyRolesChanged(const QList<int>& roles);
     int count(const TAppearanceTypeEntry& entry) const;
 
     CountProvider m_counts;

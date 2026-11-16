@@ -154,6 +154,7 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
     m_indexOfSelectedClassification = -1;
     m_availableClassifications = { QString() };
     m_inspectTimer.setSingleShot(true);
+    m_lastInspect = QDateTime::currentMSecsSinceEpoch();
     connect(&m_inspectTimer, &QTimer::timeout, this, &TItemInfoDialogController::sendInspect);
 
     connect(m_storage, &cyclopedia::TItemInfoStorage::pricesChanged, this, &TItemInfoDialogController::lootValueChanged);
@@ -161,7 +162,7 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
     connect(m_storage, &cyclopedia::TItemInfoStorage::lootListChanged, this, &TItemInfoDialogController::lootBlackWhitelistChanged);
     connect(m_storage, &cyclopedia::TItemInfoStorage::premiumChanged, this, &TItemInfoDialogController::premiumTimeChanged);
     connect(m_storage, &cyclopedia::TItemInfoStorage::characterChanged, this, [this] {
-        Q_EMIT primaryLootValueSourceChanged();
+        onCharacterDataChanged();
         Q_EMIT premiumTimeChanged();
     });
     connect(m_storage, &cyclopedia::TItemInfoStorage::classificationsChanged, this, [this] {
@@ -175,10 +176,8 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
     });
 
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseItemDetail", [this](GameObject*, const Args& args) {
-        const auto* data = args.empty() ? nullptr : std::any_cast<ItemInspectionData>(&args[0]);
-        if (!data || data->inspectionType != CyclopediaInspection || !m_shown || m_typeId == 0)
-            return std::any{};
-        setInspectData(new TItemInspectData(QString::fromStdString(data->name), m_typeId, data->descriptions, this));
+        if (const auto* data = args.empty() ? nullptr : std::any_cast<ItemInspectionData>(&args[0]))
+            onInspectObjectDataReceived(*data);
         return std::any{};
     });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
@@ -298,11 +297,11 @@ void TItemInfoDialogController::setButtons(const bool level, const bool vocation
 
 void TItemInfoDialogController::showDialogTab()
 {
+    hideDialogTab();
     if (!m_entriesBuilt)
         rebuildEntries();
     m_shown = true;
-    Q_EMIT primaryLootValueSourceChanged();
-    Q_EMIT lootValueChanged();
+    onCharacterDataChanged();
     Q_EMIT premiumTimeChanged();
     setEnableTier(false);
     setClassificationIndex(-1);
@@ -322,7 +321,6 @@ void TItemInfoDialogController::hideDialogTab()
     m_typeId = 0;
     Q_EMIT itemSelectedChanged();
     resetInspect();
-    m_inspectTimer.stop();
 }
 
 void TItemInfoDialogController::requestCategorySelect(const int CategoryIdentifier, const bool FilterByLevel, const bool FilterByVocation,
@@ -378,6 +376,46 @@ void TItemInfoDialogController::resetInspect()
     m_npcBuyData.clear();
     m_npcSellData.clear();
     Q_EMIT npcDataChanged();
+    setSelectedTypeId(0);
+    m_inspectTimer.stop();
+}
+
+void TItemInfoDialogController::setSelectedTypeId(const uint16_t typeId)
+{
+    if (typeId == m_typeId)
+        return;
+    m_typeId = typeId;
+    Q_EMIT lootValueChanged();
+    Q_EMIT trackingChanged();
+    Q_EMIT itemSelectedChanged();
+    Q_EMIT lootBlackWhitelistChanged();
+}
+
+void TItemInfoDialogController::setPrimaryLootValueSource(const int source)
+{
+    if (source == m_primaryLootValueSource)
+        return;
+    m_primaryLootValueSource = source;
+    Q_EMIT primaryLootValueSourceChanged();
+}
+
+void TItemInfoDialogController::onCharacterDataChanged()
+{
+    if (!m_storage->hasCharacter())
+        return;
+    setPrimaryLootValueSource(m_storage->lootValueSource(m_typeId));
+    Q_EMIT lootValueChanged();
+    Q_EMIT trackingChanged();
+    Q_EMIT lootBlackWhitelistChanged();
+}
+
+void TItemInfoDialogController::onInspectObjectDataReceived(const ItemInspectionData& data)
+{
+    // CIP answers only the Cyclopedia's inspections; the details are the
+    // first inspected object, or none.
+    if (data.inspectionType != CyclopediaInspection || !m_shown || m_typeId == 0)
+        return;
+    setInspectData(new TItemInspectData(QString::fromStdString(data.name), m_typeId, data.descriptions, this));
 }
 
 void TItemInfoDialogController::setInspectData(TItemInspectData* data)
@@ -391,22 +429,15 @@ void TItemInfoDialogController::setInspectData(TItemInspectData* data)
 
 void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
 {
-    const auto typeId = static_cast<uint16_t>(std::clamp(AppearanceId, 0, 0xffff));
     resetInspect();
-    m_inspectTimer.stop();
-    if (typeId != m_typeId) {
-        m_typeId = typeId;
-        Q_EMIT lootValueChanged();
-        Q_EMIT trackingChanged();
-        Q_EMIT itemSelectedChanged();
-        Q_EMIT lootBlackWhitelistChanged();
-    }
-    if (m_typeId != 0 && tibia::game::isOnline()) {
+    setSelectedTypeId(static_cast<uint16_t>(AppearanceId));
+    if (tibia::game::isOnline()) {
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         m_inspectTimer.start(static_cast<int>(std::max(InspectMinimumDelay, m_lastInspect + InspectInterval - now)));
+        setPrimaryLootValueSource(m_storage->lootValueSource(m_typeId));
     }
-    Q_EMIT primaryLootValueSourceChanged();
-    updateNpcData();
+    if (itemType(m_typeId))
+        updateNpcData();
 }
 
 void TItemInfoDialogController::sendInspect()
@@ -415,7 +446,6 @@ void TItemInfoDialogController::sendInspect()
         return;
     m_lastInspect = QDateTime::currentMSecsSinceEpoch();
     tibia::game::inspectionObject(tibia::client::INSPECT_CYCLOPEDIA, m_typeId, 1);
-    tibia::game::requestItemInfo(static_cast<uint16_t>(m_typeId), 0, 0);
 }
 
 void TItemInfoDialogController::updateNpcData()
@@ -453,7 +483,7 @@ bool TItemInfoDialogController::isPremium() const
     return tibia::game::hasLocalPlayer() && tibia::game::localPlayerIsPremium();
 }
 
-int TItemInfoDialogController::primaryLootValueSource() const { return m_typeId ? m_storage->lootValueSource(m_typeId) : 0; }
+int TItemInfoDialogController::primaryLootValueSource() const { return m_primaryLootValueSource; }
 
 QString TItemInfoDialogController::userDefinedValueString() const
 {

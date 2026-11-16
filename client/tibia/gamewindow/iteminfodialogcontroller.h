@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/gamecore.h"
+#include <client/staticdata.h>
 #include "gamewindow/appearancetypelistmodel.h"
 
 #include <cip_gen.h>
@@ -112,8 +113,16 @@ private:
     void setEnableTier(bool enable);
     void setClassificationIndex(int index);
     void setButtons(bool level, bool vocation, bool oneHand, bool twoHand);
-    /// CIP : the "loading" details, no NPC data, no type.
+    /// The "loading" details, no NPC data, no type; the inspect request is
+    /// cancelled.
     void resetInspect();
+    /// Emits the type's value, tracking, selection and list signals on a change.
+    void setSelectedTypeId(uint16_t typeId);
+    void setPrimaryLootValueSource(int source);
+    /// The character's item settings changed: the type's loot value source
+    /// again, and its value, tracking and list state.
+    void onCharacterDataChanged();
+    void onInspectObjectDataReceived(const ItemInspectionData& data);
     void setInspectData(TItemInspectData* data);
     /// CIP .
     void updateNpcData();
@@ -126,6 +135,7 @@ private:
     bool m_entriesBuilt = false;
     bool m_shown = false;
     uint16_t m_typeId = 0;
+    int m_primaryLootValueSource = 0;
     int m_category = -1;
     QString m_name;
     bool m_buttons[4] = {};

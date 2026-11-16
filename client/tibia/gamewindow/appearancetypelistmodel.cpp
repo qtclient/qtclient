@@ -117,12 +117,31 @@ void TAppearanceTypeListModel::reset(std::vector<TAppearanceTypeEntry> entries)
     endResetModel();
 }
 
+void TAppearanceTypeListModel::notifyRolesChanged(const QList<int>& roles)
+{
+    if (rowCount() == 0)
+        return;
+    Q_EMIT dataChanged(index(0), index(rowCount() - 1), roles);
+}
+
+void TAppearanceTypeListModel::onItemPriceVisualizationChanged()
+{
+    notifyRolesChanged({ LootvalueImageSourceUnderItem, LootvalueImageSourceOverItem });
+}
+
+void TAppearanceTypeListModel::onItemTrackingChanged()
+{
+    notifyRolesChanged({ HighlightText });
+}
+
 void TAppearanceTypeListModel::onObjectCountsChanged()
 {
-    if (m_entries.empty())
-        return;
-    Q_EMIT dataChanged(index(0), index(static_cast<int>(m_entries.size()) - 1),
-                       { CumulativeCount, TypeCount, CountString, CountAndNameTooltip });
+    notifyRolesChanged({ CumulativeCount, TypeCount, CountString, CountAndNameTooltip });
+}
+
+void TAppearanceTypeListModel::onObjectProficiencyXPChanged()
+{
+    notifyRolesChanged({ ProficiencyXP, ProficiencyLevel });
 }
 
 bool TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(const int category)
