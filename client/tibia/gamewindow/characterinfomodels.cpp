@@ -456,6 +456,18 @@ void TAchievementInfoController::setData(const int points, const int totalSecret
     Q_EMIT achievementsChanged();
 }
 
+void TAchievementInfoController::reset()
+{
+    const QList<QObject*> old = std::exchange(m_achievementList, {});
+    Q_EMIT achievementListChanged();
+    for (QObject* object : old)
+        object->deleteLater();
+    m_sortingCriterion = Name;
+    Q_EMIT sortingCriterionChanged();
+    m_filterCriterion = Discovered;
+    Q_EMIT filterCriterionChanged();
+}
+
 void TAchievementInfoController::setSortingCriterion(const EAchievmentSortingCriteria v)
 {
     if (m_sortingCriterion == v)
@@ -561,7 +573,7 @@ void TCharacterInfoDialogController::updateItemSummary(const Args& args)
 {
     if (const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterItemSummary>(&args[0]))
         replaceObject(m_itemSummary, new TItemSummaryModelSortFilterProxy(mergeItemSummary(*data), this));
-    received(ItemSummary);
+    Q_EMIT dataModelChanged();
 }
 
 /// CIP: a new proxy over the outfits, mounts and summon skins, with the
@@ -592,7 +604,7 @@ void TCharacterInfoDialogController::updateOutfitsMounts(const Args& args)
                                                                                colors->lookMountHead, colors->lookMountBody,
                                                                                colors->lookMountLegs, colors->lookMountFeet };
     replaceObject(m_outfitMountModel, new TOutfitMountSummonSkinsListDataModelSortFilterProxy(std::move(entries), indexes, this));
-    received(OutfitsMounts);
+    Q_EMIT dataModelChanged();
 }
 
 /// CIP: a new titles object with the current title.
@@ -610,45 +622,41 @@ void TCharacterInfoDialogController::updateTitles(const Args& args)
     for (const auto& [id, name, description, permanent, unlocked] : *titles)
         entries.push_back({ id, QString::fromStdString(name), QString::fromStdString(description), permanent, unlocked });
     replaceObject(m_titlesInfo, new TCharacterTitlesInfoQmlData(static_cast<uint8_t>(*current), std::move(entries), this));
-    received(Titles);
+    Q_EMIT dataModelChanged();
 }
 
 void TCharacterInfoDialogController::hookModelEvents()
 {
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateCyclopediaCharacterItemSummary", [this](GameObject*, const Args& args) {
-        if (m_shown)
-            updateItemSummary(args);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterAppearances", [this](GameObject*, const Args& args) {
-        if (m_shown)
-            updateOutfitsMounts(args);
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterTitles", [this](GameObject*, const Args& args) {
-        if (m_shown)
-            updateTitles(args);
-        return std::any{};
-    });
+    const auto storeAs = [this](const int dataType) {
+        return [this, dataType](GameObject*, const Args& args) {
+            store(dataType, args);
+            return std::any{};
+        };
+    };
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onUpdateCyclopediaCharacterItemSummary", storeAs(ItemSummary));
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCyclopediaCharacterAppearances", storeAs(OutfitsMounts));
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterTitles", storeAs(Titles));
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterAchievements", storeAs(Achievements));
+}
 
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onCyclopediaCharacterAchievements", [this](GameObject*, const Args& args) {
-        using Wire = std::vector<std::tuple<uint16_t, uint32_t, bool, std::string, std::string, uint8_t>>;
-        if (!m_shown || args.size() < 3)
-            return std::any{};
-        const int* points = std::any_cast<int>(&args[0]);
-        const int* totalSecret = std::any_cast<int>(&args[1]);
-        const auto* achievements = std::any_cast<Wire>(&args[2]);
-        if (!points || !totalSecret || !achievements)
-            return std::any{};
-        std::vector<AchievementEntry> unlocked;
-        unlocked.reserve(achievements->size());
-        for (const auto& [id, timestamp, secret, name, description, grade] : *achievements)
-            unlocked.push_back({ id, timestamp, secret, QString::fromStdString(name), QString::fromStdString(description), grade });
-        if (auto* controller = dynamic_cast<TAchievementInfoController*>(m_achievementsController))
-            controller->setData(*points, *totalSecret, std::move(unlocked));
-        received(Achievements);
-        return std::any{};
-    });
+/// The achievements controller from the record: points, secret total and the
+/// unlocked achievements.
+void TCharacterInfoDialogController::updateAchievements(const Args& args)
+{
+    using Wire = std::vector<std::tuple<uint16_t, uint32_t, bool, std::string, std::string, uint8_t>>;
+    if (args.size() < 3)
+        return;
+    const int* points = std::any_cast<int>(&args[0]);
+    const int* totalSecret = std::any_cast<int>(&args[1]);
+    const auto* achievements = std::any_cast<Wire>(&args[2]);
+    if (!points || !totalSecret || !achievements)
+        return;
+    std::vector<AchievementEntry> unlocked;
+    unlocked.reserve(achievements->size());
+    for (const auto& [id, timestamp, secret, name, description, grade] : *achievements)
+        unlocked.push_back({ id, timestamp, secret, QString::fromStdString(name), QString::fromStdString(description), grade });
+    if (auto* controller = dynamic_cast<TAchievementInfoController*>(m_achievementsController))
+        controller->setData(*points, *totalSecret, std::move(unlocked));
 }
 
 /// CIP .

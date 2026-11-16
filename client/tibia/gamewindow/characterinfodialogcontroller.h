@@ -7,6 +7,8 @@
 #include <QList>
 #include <QSet>
 
+#include <map>
+#include <set>
 #include <vector>
 
 namespace tibia {
@@ -27,6 +29,7 @@ public:
     /// CIP's character info data types (TCharacterInfoStorage keys).
     enum EDataType {
         NoData = 0,
+        BaseInformation = 0,
         GeneralStats = 1,
         OffenceStats = 2,
         DefenceStats = 3,
@@ -58,8 +61,9 @@ public:
     void setNextDataType(int dataType) { m_nextDataType = dataType; }
     /// CIP (+0x118): whose data is asked for, 0 for the own character.
     void setCharacterId(uint32_t characterId) { m_characterId = characterId; }
-    /// CIP .
     void showDialogTab() override;
+    /// Opens on `dataType`, fetching every record anew.
+    void showDialogTab(int dataType);
     /// CIP .
     void hideDialogTab() override;
 
@@ -96,7 +100,16 @@ private:
     /// already there.
     void request(int dataType, bool force);
     void sendRequest(int dataType, int page);
-    void received(int dataType);
+    /// Keeps a received record and shows it when it is the current page.
+    void store(int dataType, const Args& args);
+    /// Rebuilds the page of `dataType` from its record when it is the
+    /// current page (its old models are released either way).
+    void onCharacterInfoUpdated(int dataType);
+    void clearModels(const std::set<int>& dataTypes);
+    void clearAllModels();
+    void updateAccountInfos();
+    void updateInspection(const Args& args);
+    void updateAchievements(const Args& args);
     /// The pages filled from the server's records (CIP: one per data type).
     void updateBaseInfo(const Args& args);
     void updateOffenceStats(const Args& args);
@@ -122,7 +135,8 @@ private:
     int m_dataType = NoData;
     int m_nextDataType = GeneralStats;
     uint32_t m_characterId = 0;
-    QSet<int> m_received;
+    /// The records received since the page opened, per data type.
+    std::map<int, Args> m_data;
     /// Pagination of the recent deaths / kills (CIP: storage vfunc 0xd8 / 0xe0).
     int m_page[2] = { 1, 1 };
     int m_pages[2] = { 1, 1 };

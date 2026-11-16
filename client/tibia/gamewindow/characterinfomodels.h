@@ -291,6 +291,8 @@ public:
 
     /// CIP case 5.
     void setData(int points, int totalSecret, std::vector<AchievementEntry> unlocked);
+    /// Empties the list and returns to name order over the discovered ones.
+    void reset();
 
     /// CIP.
     void setSortingCriterion(EAchievmentSortingCriteria v) override;
