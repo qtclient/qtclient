@@ -22,6 +22,9 @@
 #include <zlib.h>
 
 namespace tibia {
+namespace shared {
+class TRsaHelper;
+}
 namespace network {
 
 class TGameserverNetworkPacketProcessor;
@@ -54,8 +57,10 @@ bool decryptGameXtea1405(const std::array<uint32_t, 4>& key, QByteArray& body);
 /// to the primary connection so both sockets share one parser.
 void deliverSecondaryDecrypted(uint32_t sequenceWord, QByteArray precursor);
 
-/// Installs the login RSA key (shared::TRsaHelper).
+/// Installs the login RSA key (Crystal's modulus) into loginRsaHelper().
 void installGameServerConnection();
+/// Encrypts the login message's RSA block.
+shared::TRsaHelper& loginRsaHelper();
 
 /// Primary game socket. Desktop: QTcpSocket on a worker thread, bytes queued to
 /// the GUI thread. Browser: WebSocket on the game port. Owns XTEA, sequence,

@@ -1,33 +1,22 @@
-// CIP shared::TRsaHelper: the login message's RSA block (raw modular
-// exponentiation with the public key, no padding).
+#include "rsahelper.h"
 
-#include "shared/sharedciptypes.h"
+#include <QRandomGenerator>
 
 #include <algorithm>
 #include <cstdint>
-#include <string_view>
+#include <stdexcept>
 #include <vector>
 
 namespace tibia::shared {
 
 namespace {
 
-// Little-endian limbs. Login RSA is raw modular exponentiation (no padding).
+// Unsigned big integer, little-endian 32-bit limbs: the stand-in for the
+// CryptoPP::Integer CipSoft links.
 class BigInt
 {
 public:
     std::vector<uint32_t> d;
-
-    static BigInt fromDec(std::string_view text)
-    {
-        BigInt out;
-        for (const char ch : text) {
-            if (ch < '0' || ch > '9')
-                continue;
-            out = add(mulSmall(out, 10), BigInt::fromU32(static_cast<uint32_t>(ch - '0')));
-        }
-        return out;
-    }
 
     static BigInt fromBytes(const uint8_t* data, int size)
     {
@@ -47,6 +36,43 @@ public:
             data[i] = static_cast<uint8_t>(rest.d.empty() ? 0 : (rest.d[0] & 0xff));
             rest = divSmall(rest, 256);
         }
+    }
+
+    /// Bytes needed to store the value.
+    int byteCount() const
+    {
+        return (bitSize() + 7) / 8;
+    }
+
+    /// Byte `index`, counted from the least significant.
+    uint8_t byte(const int index) const
+    {
+        const size_t limb = static_cast<size_t>(index) / 4;
+        if (limb >= d.size())
+            return 0;
+        return static_cast<uint8_t>(d[limb] >> (8 * (index % 4)));
+    }
+
+    bool isOdd() const
+    {
+        return !d.empty() && (d[0] & 1u);
+    }
+
+    static int compare(const BigInt& a, const BigInt& b)
+    {
+        return cmp(a, b);
+    }
+
+    static BigInt one()
+    {
+        return fromU32(1);
+    }
+
+    BigInt minusOne() const
+    {
+        if (d.empty())
+            return {};
+        return sub(*this, fromU32(1));
     }
 
     int bitSize() const
@@ -224,52 +250,50 @@ private:
     }
 };
 
-// Crystal's login RSA modulus; the exponent is 65537.
-constexpr const char* kLoginModulus =
-    "1091201329673994292788609605089955415282375029027981291234687579"
-    "3726629149257644633073969600111060390723088861007265581882535850"
-    "3429057592827629436413108566029093628212635953836686562675849720"
-    "6207862794310902180176810615217550567108238764764442605581471797"
-    "07119674283982419152118103759076030616683978566631413";
-
-BigInt& modulus()
-{
-    static BigInt value;
-    return value;
 }
 
-BigInt& exponent()
+struct TRsaHelper::Key
 {
-    static BigInt value;
-    return value;
+    BigInt modulus;
+    BigInt exponent;
+};
+
+TRsaHelper::TRsaHelper()
+    : m_key(std::make_unique<Key>())
+{
 }
 
+TRsaHelper::~TRsaHelper() = default;
+
+// CryptoPP's RSAFunction::Validate for a public key: n > 1 and odd, e > 1, odd and below n.
+void TRsaHelper::setPublicKey(const QByteArray& modulus)
+{
+    m_key->modulus = BigInt::fromBytes(reinterpret_cast<const uint8_t*>(modulus.constData()), int(modulus.size()));
+    m_key->exponent = BigInt::fromBytes(reinterpret_cast<const uint8_t*>("\x01\x00\x01"), 3);
+    const BigInt& n = m_key->modulus;
+    const BigInt& e = m_key->exponent;
+    const bool valid = BigInt::compare(n, BigInt::one()) > 0 && n.isOdd() && BigInt::compare(e, BigInt::one()) > 0
+        && e.isOdd() && BigInt::compare(e, n) < 0;
+    if (!valid)
+        throw std::runtime_error("Rsa public key validation failed");
 }
 
-void TRsaHelper::installLoginKey()
+// Pads `data` with random bytes to the key's block size, then returns
+// data^e mod n as a big-endian block of that size.
+QByteArray TRsaHelper::encrypt(const QByteArray& data)
 {
-    setPublicKey(kLoginModulus, "65537");
-}
-
-void TRsaHelper::setPublicKey(const std::string_view modulusDecimal, const std::string_view exponentDecimal)
-{
-    modulus() = BigInt::fromDec(modulusDecimal);
-    exponent() = BigInt::fromDec(exponentDecimal);
-}
-
-int TRsaHelper::blockSize()
-{
-    const int bytes = (modulus().bitSize() + 7) / 8;
-    return (bytes / 128) * 128;
-}
-
-bool TRsaHelper::encrypt(uint8_t* block, const int size)
-{
-    if (size <= 0 || size != blockSize())
-        return false;
-    const BigInt encrypted = BigInt::modPow(BigInt::fromBytes(block, size), exponent(), modulus());
-    encrypted.toBytes(block, size);
-    return true;
+    const int blockSize = m_key->modulus.minusOne().byteCount();
+    QByteArray padded = data;
+    while (padded.size() < blockSize)
+        padded.append(char(QRandomGenerator::system()->generate() & 0xff));
+    const BigInt message =
+        BigInt::fromBytes(reinterpret_cast<const uint8_t*>(padded.constData()), int(padded.size()));
+    const BigInt cipher = BigInt::modPow(message, m_key->exponent, m_key->modulus);
+    QByteArray result;
+    result.resize(blockSize);
+    for (int i = 0; i < blockSize; ++i)
+        result[blockSize - 1 - i] = char(cipher.byte(i));
+    return result;
 }
 
 }

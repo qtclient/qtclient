@@ -5,6 +5,7 @@
 #include <tibia/game/gamesession.h>
 #include "shared/sharedciptypes.h"
 #include "shared/clockservice.h"
+#include "rsahelper.h"
 
 #include <QCoreApplication>
 #include <QLoggingCategory>
@@ -621,9 +622,21 @@ void TGameserverNetworkPacketConnection::openWebSocket()
 }
 #endif
 
+shared::TRsaHelper& loginRsaHelper()
+{
+    static shared::TRsaHelper helper;
+    return helper;
+}
+
 void installGameServerConnection()
 {
-    shared::TRsaHelper::installLoginKey();
+    // Crystal's login RSA modulus, big-endian; the exponent is 65537.
+    static const QByteArray LoginModulus = QByteArray::fromHex(
+        "9b646903b45b07ac956568d87353bd7165139dd7940703b03e6dd079399661b4"
+        "a837aa60561d7ccb9452fa0080594909882ab5bca58a1a1b35f8b1059b72b121"
+        "2611c6152ad3dbb3cfbee7adc142a75d3d75971509c321c5c24a5bd51fd460f0"
+        "1b4e15beb0de1930528a5d3f15c1e3cbf5c401d6777e10acaab33dbe8d5b7ff5");
+    loginRsaHelper().setPublicKey(LoginModulus);
 }
 
 }
