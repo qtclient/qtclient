@@ -1,12 +1,15 @@
 #pragma once
 
 #include "config/hotkeyoptions.h"
+#include "input/gameaction.h"
 
 #include <cip_gen.h>
 
 #include <QPointer>
 
 #include <array>
+#include <map>
+#include <memory>
 #include <vector>
 
 class QQmlEngine;
@@ -99,10 +102,35 @@ private:
     bool m_firstVisibleCanBeSaved = true;
 };
 
-/// The bars at one side of the map, HorizontalActionBarContainer.qml or
-/// VerticalActionBarContainer.qml (CIP: TActionBarGroup). Which bars show and
-/// the lock come from the options actionBarsShow*, actionBarShow*N and
-/// actionBar*Locked (CIP ; lock button).
+/// The client options of the action bars (CIP: config::TClientOptions
+/// boolean options 0x0-0xe, read and toggled by id).
+enum class EActionBarOption
+{
+    BottomLocked = 0,
+    LeftLocked = 1,
+    RightLocked = 2,
+    ShowBottomBar1 = 3,
+    ShowBottomBar2 = 4,
+    ShowBottomBar3 = 5,
+    ShowBottomBars = 6,
+    ShowLeftBar1 = 7,
+    ShowLeftBar2 = 8,
+    ShowLeftBar3 = 9,
+    ShowLeftBars = 10,
+    ShowRightBar1 = 11,
+    ShowRightBar2 = 12,
+    ShowRightBar3 = 13,
+    ShowRightBars = 14,
+};
+
+/// Host adapter: the option's value in the client options file.
+bool isActionBarOptionEnabled(EActionBarOption option);
+void setActionBarOptionEnabled(EActionBarOption option, bool enabled);
+
+/// The bars of one side of the game window (CIP: TActionBarGroup). Which
+/// bars exist follows the options: CIP's bimaps tie the side to its group
+/// and lock options and each bar id to its show option; a bar's controller
+/// lives while its option and its group's are on.
 class TActionBarGroup final : public cip::tibia::gamewindow::TActionBarGroup
 {
     Q_OBJECT
@@ -112,26 +140,47 @@ public:
     ~TActionBarGroup() override;
 
     EActionBarPosition position() const { return m_position; }
-    const std::vector<TActionBarController*>& bars() const { return m_bars; }
-    /// The ids of this side's bars (CIP / 85080 / 85180).
+    /// The bars that exist, by id.
+    std::vector<TActionBarController*> bars() const;
+    /// The bar `actionBarId`, if it exists in this group.
+    TActionBarController* bar(uint8_t actionBarId) const;
+    /// The ids of a side's bars (CIP bimaps , , ).
     static std::array<int, 3> barIds(EActionBarPosition position);
-    /// Shows the bars the options ask for.
-    void applyOptions();
+    /// The side whose group manages `actionBarId`; throws for an unknown id.
+    static EActionBarPosition positionOfBar(uint8_t actionBarId);
+    /// The show option of `actionBarId`; throws for an unknown id.
+    static EActionBarOption showOptionOfBar(uint8_t actionBarId);
+    /// Whether this group manages `actionBarId`.
+    bool managesBar(uint8_t actionBarId) const;
+
+    uint actionBarCount() const override { return static_cast<uint>(m_bars.size()); }
+    bool locked() const override;
+
+    /// CIP: TOGGLE_ACTION_BARS of this side and TOGGLE_ACTION_BAR of its
+    /// bars toggle their options.
+    void handleGameAction(const input::TGameAction& action);
 
 public Q_SLOTS:
-    /// Shows the bars the options ask for again.
     void restoreLastAktionBarConfiguration() override;
+    /// Creates the bars whose options are on, destroys the others.
     void onActionBarsOptionsChanged() override;
-    /// Toggles actionBar*Locked.
     void onLockButtonClicked() override;
     void setFirstVisibleButtonIdCanBeSaved(bool CanBeSaved) override;
 
 private:
-    EActionBarPosition m_position;
+    void createActionBar(uint8_t actionBarId);
+    void destroyActionBar(uint8_t actionBarId);
+    void toggleOption(EActionBarOption option);
+
+    TActionBarManager* m_manager;
     QPointer<QQuickItem> m_container;
-    QPointer<QQuickItem> m_barContainer;
     QQmlEngine* m_engine;
-    std::vector<TActionBarController*> m_bars;
+    QQuickItem* m_gameWindowItem;
+    QQuickItem* m_mapWindowPane;
+    QObject* m_buttonsDisplayOptions;
+    EActionBarPosition m_position;
+    bool m_firstVisibleButtonIdCanBeSaved = true;
+    std::map<uint8_t, std::unique_ptr<TActionBarController>> m_bars;
 };
 
 }

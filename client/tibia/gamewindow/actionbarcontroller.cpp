@@ -15,6 +15,7 @@
 #include <QQuickItem>
 
 #include <algorithm>
+#include <stdexcept>
 
 namespace tibia::gamewindow {
 
@@ -23,33 +24,100 @@ namespace {
 using Setting = config::TActionSetting;
 using P = EActionBarPosition;
 
-struct TPositionOptions
-{
-    const char* locked;
-    const char* showGroup;
-    std::array<const char*, 3> showBar;
+/// The option keys of EActionBarOption in the client options file.
+constexpr std::array<const char*, 15> ActionBarOptionKeys{
+    "actionBarBottomLocked", "actionBarLeftLocked",  "actionBarRightLocked", "actionBarShowBottom1", "actionBarShowBottom2",
+    "actionBarShowBottom3",  "actionBarsShowBottom", "actionBarShowLeft1",   "actionBarShowLeft2",   "actionBarShowLeft3",
+    "actionBarsShowLeft",    "actionBarShowRight1",  "actionBarShowRight2",  "actionBarShowRight3",  "actionBarsShowRight",
 };
 
-/// Options 0x0-0xe.
-const TPositionOptions& optionsOf(const P position)
+/// A bimap entry: the left key and the right one.
+template<typename Left, typename Right>
+struct TBimapEntry
 {
-    static const TPositionOptions bottom{ "actionBarBottomLocked", "actionBarsShowBottom", { "actionBarShowBottom1", "actionBarShowBottom2", "actionBarShowBottom3" } };
-    static const TPositionOptions left{ "actionBarLeftLocked", "actionBarsShowLeft", { "actionBarShowLeft1", "actionBarShowLeft2", "actionBarShowLeft3" } };
-    static const TPositionOptions right{ "actionBarRightLocked", "actionBarsShowRight", { "actionBarShowRight1", "actionBarShowRight2", "actionBarShowRight3" } };
+    Left left;
+    Right right;
+};
+
+/// CIP: the side and its group's show option.
+constexpr std::array<TBimapEntry<EActionBarOption, P>, 3> GroupOptions{ {
+    { EActionBarOption::ShowBottomBars, P::ActionBarPositionBottom },
+    { EActionBarOption::ShowLeftBars, P::ActionBarPositionLeft },
+    { EActionBarOption::ShowRightBars, P::ActionBarPositionRight },
+} };
+/// CIP: the side and its lock option.
+constexpr std::array<TBimapEntry<EActionBarOption, P>, 3> LockOptions{ {
+    { EActionBarOption::BottomLocked, P::ActionBarPositionBottom },
+    { EActionBarOption::LeftLocked, P::ActionBarPositionLeft },
+    { EActionBarOption::RightLocked, P::ActionBarPositionRight },
+} };
+/// CIP: each side's bar ids and their show options.
+using TBarOptions = std::array<TBimapEntry<uint8_t, EActionBarOption>, 3>;
+constexpr TBarOptions BottomBarOptions{ { { 1, EActionBarOption::ShowBottomBar1 },
+                                          { 2, EActionBarOption::ShowBottomBar2 },
+                                          { 3, EActionBarOption::ShowBottomBar3 } } };
+constexpr TBarOptions LeftBarOptions{ { { 4, EActionBarOption::ShowLeftBar1 },
+                                        { 5, EActionBarOption::ShowLeftBar2 },
+                                        { 6, EActionBarOption::ShowLeftBar3 } } };
+constexpr TBarOptions RightBarOptions{ { { 7, EActionBarOption::ShowRightBar1 },
+                                         { 8, EActionBarOption::ShowRightBar2 },
+                                         { 9, EActionBarOption::ShowRightBar3 } } };
+
+/// CIP: the bar options of a side; throws for anything else.
+const TBarOptions& barOptionsOf(const P position)
+{
     switch (position) {
+    case P::ActionBarPositionBottom:
+        return BottomBarOptions;
     case P::ActionBarPositionLeft:
-        return left;
+        return LeftBarOptions;
     case P::ActionBarPositionRight:
-        return right;
+        return RightBarOptions;
     default:
-        return bottom;
+        throw std::invalid_argument("Position is not a valid action bar position");
     }
 }
 
-bool option(const QJsonObject& options, const char* name, const bool fallback)
+template<typename Entries, typename Key>
+auto rightOf(const Entries& entries, const Key key)
 {
-    return options.value(QLatin1String(name)).toBool(fallback);
+    for (const auto& entry : entries)
+        if (entry.left == key)
+            return entry.right;
+    throw std::logic_error("bimap<>: invalid key");
 }
+
+template<typename Entries, typename Key>
+auto leftOf(const Entries& entries, const Key key)
+{
+    for (const auto& entry : entries)
+        if (entry.right == key)
+            return entry.left;
+    throw std::logic_error("bimap<>: invalid key");
+}
+
+template<typename Entries>
+bool containsLeft(const Entries& entries, const uint8_t key)
+{
+    return std::ranges::any_of(entries, [key](const auto& entry) { return entry.left == key; });
+}
+
+}
+
+bool isActionBarOptionEnabled(const EActionBarOption option)
+{
+    // Locks default off, the bars on.
+    const bool fallback = option > EActionBarOption::RightLocked;
+    return app::ClientOptions::load().options().value(QLatin1String(ActionBarOptionKeys[size_t(option)])).toBool(fallback);
+}
+
+void setActionBarOptionEnabled(const EActionBarOption option, const bool enabled)
+{
+    app::ClientOptions::store(QLatin1String(ActionBarOptionKeys[size_t(option)]), enabled);
+}
+
+namespace {
+
 
 }
 
@@ -289,89 +357,145 @@ void TActionBarController::setNumVisibleSlots(const int Amount)
 TActionBarGroup::TActionBarGroup(TActionBarManager* manager, const EActionBarPosition position, QQuickItem* container, QQmlEngine* engine,
                                  QQuickItem* gameWindowItem, QQuickItem* mapWindowPane, QObject* buttonsDisplayOptions, QObject* parent)
     : cip::tibia::gamewindow::TActionBarGroup(parent)
-    , m_position(position)
+    , m_manager(manager)
     , m_container(container)
     , m_engine(engine)
+    , m_gameWindowItem(gameWindowItem)
+    , m_mapWindowPane(mapWindowPane)
+    , m_buttonsDisplayOptions(buttonsDisplayOptions)
+    , m_position(position)
 {
-    if (container) {
-        m_barContainer = container->findChild<QQuickItem*>(QStringLiteral("actionBarContainer"));
+    connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
+        if (!name.startsWith(QLatin1String("actionBar")))
+            return;
+        Q_EMIT lockedChanged();
+        onActionBarsOptionsChanged();
+    });
+    if (container)
         container->setProperty("controller", QVariant::fromValue<QObject*>(this));
-    }
-    for (const int id : barIds(position))
-        m_bars.push_back(new TActionBarController(manager, id, position, buttonsDisplayOptions, gameWindowItem, mapWindowPane, this));
-    applyOptions();
 }
 
 TActionBarGroup::~TActionBarGroup()
 {
     if (m_container)
         m_container->setProperty("controller", QVariant::fromValue<QObject*>(nullptr));
-    for (TActionBarController* bar : m_bars)
+    for (const auto& [id, bar] : m_bars)
         bar->destroyItem();
+}
+
+std::vector<TActionBarController*> TActionBarGroup::bars() const
+{
+    std::vector<TActionBarController*> bars;
+    bars.reserve(m_bars.size());
+    for (const auto& [id, bar] : m_bars)
+        bars.push_back(bar.get());
+    return bars;
+}
+
+TActionBarController* TActionBarGroup::bar(const uint8_t actionBarId) const
+{
+    const auto it = m_bars.find(actionBarId);
+    return it == m_bars.end() ? nullptr : it->second.get();
 }
 
 std::array<int, 3> TActionBarGroup::barIds(const EActionBarPosition position)
 {
-    switch (position) {
-    case P::ActionBarPositionLeft:
-        return { 4, 5, 6 };
-    case P::ActionBarPositionRight:
-        return { 7, 8, 9 };
-    default:
-        return { 1, 2, 3 };
-    }
+    const TBarOptions& options = barOptionsOf(position);
+    return { options[0].left, options[1].left, options[2].left };
 }
 
-void TActionBarGroup::applyOptions()
+EActionBarPosition TActionBarGroup::positionOfBar(const uint8_t actionBarId)
 {
-    const QJsonObject options = app::ClientOptions::load().options();
-    const TPositionOptions& names = optionsOf(m_position);
-    const bool groupShown = option(options, names.showGroup, true);
-    uint count = 0;
-    for (size_t i = 0; i < m_bars.size(); ++i) {
-        TActionBarController* bar = m_bars[i];
-        const bool shown = groupShown && option(options, names.showBar[i], true);
-        if (shown) {
-            ++count;
-            if (!bar->item())
-                bar->createItem(m_engine, m_barContainer);
-        } else {
-            bar->destroyItem();
-        }
-    }
-    if (count != m_actionBarCount) {
-        m_actionBarCount = count;
-        Q_EMIT numberOfActionBarsChanged();
-    }
-    const bool locked = option(options, names.locked, false);
-    if (locked != m_locked) {
-        m_locked = locked;
-        Q_EMIT lockedChanged();
-    }
-    for (TActionBarController* bar : m_bars)
-        bar->setLocked(locked);
+    if (containsLeft(BottomBarOptions, actionBarId))
+        return P::ActionBarPositionBottom;
+    if (containsLeft(LeftBarOptions, actionBarId))
+        return P::ActionBarPositionLeft;
+    if (containsLeft(RightBarOptions, actionBarId))
+        return P::ActionBarPositionRight;
+    throw std::invalid_argument("ActionBarID is not valid");
 }
+
+EActionBarOption TActionBarGroup::showOptionOfBar(const uint8_t actionBarId)
+{
+    for (const TBarOptions* options : { &BottomBarOptions, &LeftBarOptions, &RightBarOptions })
+        if (containsLeft(*options, actionBarId))
+            return rightOf(*options, actionBarId);
+    throw std::invalid_argument("ActionbarID is not manged by any TActionBarGroup");
+}
+
+bool TActionBarGroup::managesBar(const uint8_t actionBarId) const { return containsLeft(barOptionsOf(m_position), actionBarId); }
+
+bool TActionBarGroup::locked() const { return isActionBarOptionEnabled(leftOf(LockOptions, m_position)); }
+
+void TActionBarGroup::toggleOption(const EActionBarOption option) { setActionBarOptionEnabled(option, !isActionBarOptionEnabled(option)); }
 
 void TActionBarGroup::onActionBarsOptionsChanged()
 {
-    applyOptions();
+    const bool groupShown = isActionBarOptionEnabled(leftOf(GroupOptions, m_position));
+    const bool barsLocked = locked();
+    for (const auto& [id, option] : barOptionsOf(m_position)) {
+        if (groupShown && isActionBarOptionEnabled(option))
+            createActionBar(id);
+        else
+            destroyActionBar(id);
+    }
+    for (const auto& [id, bar] : m_bars)
+        bar->setLocked(barsLocked);
 }
 
-void TActionBarGroup::restoreLastAktionBarConfiguration()
+void TActionBarGroup::restoreLastAktionBarConfiguration() { onActionBarsOptionsChanged(); }
+
+void TActionBarGroup::createActionBar(const uint8_t actionBarId)
 {
-    onActionBarsOptionsChanged();
+    if (!managesBar(actionBarId) || m_bars.contains(actionBarId))
+        return;
+    QQuickItem* barContainer = m_container ? m_container->findChild<QQuickItem*>(QStringLiteral("actionBarContainer")) : nullptr;
+    if (!barContainer)
+        return;
+    auto bar = std::make_unique<TActionBarController>(m_manager, actionBarId, positionOfBar(actionBarId), m_buttonsDisplayOptions,
+                                                      m_gameWindowItem, m_mapWindowPane, this);
+    bar->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);
+    bar->setLocked(locked());
+    bar->createItem(m_engine, barContainer);
+    if (m_manager) {
+        bar->applyMappings(m_manager->chatOn());
+        bar->refreshObjects();
+    }
+    m_bars.emplace(actionBarId, std::move(bar));
+    Q_EMIT numberOfActionBarsChanged();
 }
 
-void TActionBarGroup::onLockButtonClicked()
+void TActionBarGroup::destroyActionBar(const uint8_t actionBarId)
 {
-    const char* locked = optionsOf(m_position).locked;
-    app::ClientOptions::store(QLatin1String(locked), !option(app::ClientOptions::load().options(), locked, false));
+    if (!managesBar(actionBarId))
+        return;
+    const auto it = m_bars.find(actionBarId);
+    if (it == m_bars.end())
+        return;
+    it->second->destroyItem();
+    m_bars.erase(it);
+    Q_EMIT numberOfActionBarsChanged();
 }
+
+void TActionBarGroup::onLockButtonClicked() { toggleOption(leftOf(LockOptions, m_position)); }
 
 void TActionBarGroup::setFirstVisibleButtonIdCanBeSaved(const bool CanBeSaved)
 {
-    for (TActionBarController* bar : m_bars)
-        bar->setFirstVisibleButtonIdCanBeSaved(CanBeSaved);
+    m_firstVisibleButtonIdCanBeSaved = CanBeSaved;
+    for (const auto& [id, bar] : m_bars)
+        bar->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);
+}
+
+void TActionBarGroup::handleGameAction(const input::TGameAction& action)
+{
+    if (action.type == input::EGameAction::TOGGLE_ACTION_BARS) {
+        if (action.parameter == static_cast<int>(m_position))
+            toggleOption(leftOf(GroupOptions, m_position));
+    } else if (action.type == input::EGameAction::TOGGLE_ACTION_BAR) {
+        const auto actionBarId = static_cast<uint8_t>(action.actionBarId);
+        if (managesBar(actionBarId))
+            toggleOption(showOptionOfBar(actionBarId));
+    }
 }
 
 }
