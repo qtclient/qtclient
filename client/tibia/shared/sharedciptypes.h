@@ -321,29 +321,6 @@ private:
     QByteArray m_compressed;
 };
 
-/// CIP `shared::TJsonValueValidator` / object / array — thin QJson wrappers.
-class TJsonValueValidator final : public ::tibia::CipTyped
-{
-public:
-    TJsonValueValidator() = default;
-    static bool isObject(const QByteArray& json);
-    static bool isArray(const QByteArray& json);
-};
-
-class TJsonObjectValidator final : public ::tibia::CipTyped
-{
-public:
-    TJsonObjectValidator() = default;
-    static bool validate(const QByteArray& json);
-};
-
-class TJsonArrayValidator final : public ::tibia::CipTyped
-{
-public:
-    TJsonArrayValidator() = default;
-    static bool validate(const QByteArray& json);
-};
-
 /// CIP zlib wrappers — game wire inflate lives on `TGameserverNetworkPacketConnection`.
 class TZlibBaseWrapper final : public ::tibia::CipTyped
 {
@@ -364,18 +341,6 @@ class TCompressionHelper final : public ::tibia::CipTyped
 {
 public:
     TCompressionHelper() = default;
-};
-
-/// CIP `shared::TTimeLapseClockService` — offsettable clock over `TClockService`.
-class TTimeLapseClockService final : public ::tibia::CipTyped
-{
-public:
-    TTimeLapseClockService() = default;
-    void setOffsetMicros(qint64 offset) { m_offsetMicros = offset; }
-    qint64 nowMicros() const { return TClockService::nowMicros() + m_offsetMicros; }
-
-private:
-    qint64 m_offsetMicros = 0;
 };
 
 /// CIP `shared::TRingBufferStopWatch` — recent durations (see also worldmap frame ring).

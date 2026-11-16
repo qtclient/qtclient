@@ -2,6 +2,15 @@
 
 #include "tibia/protocol/protocolciptypes.h"
 
+#include "sessiondump/lightweightsessiondumpmessageprocessor.h"
+#include "sessiondump/sessiondumpfactory.h"
+#include "sessiondump/sessiondumpmetadatareader.h"
+#include "sessiondump/sessiondumppacketprocessor.h"
+#include "sessiondump/sessiondumpprocessor.h"
+#include "sessiondump/sessiondumpreader.h"
+#include "shared/iodevicereader.h"
+
+#include <QBuffer>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -10,6 +19,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <functional>
+#include <memory>
 #include <limits>
 
 Q_LOGGING_CATEGORY(lcDmpd, "tibia.sessiondump.dmpd")
@@ -17,24 +28,6 @@ Q_LOGGING_CATEGORY(lcDmpd, "tibia.sessiondump.dmpd")
 namespace tibia::game {
 
 namespace {
-
-uint16_t readU16Be(const QByteArray& b, qsizetype off)
-{
-    return uint16_t((uint8_t(b[off]) << 8) | uint8_t(b[off + 1]));
-}
-
-uint16_t readU16Le(const QByteArray& b, qsizetype off)
-{
-    return uint16_t(uint8_t(b[off]) | (uint16_t(uint8_t(b[off + 1])) << 8));
-}
-
-uint32_t readU32Le(const QByteArray& b, qsizetype off)
-{
-    return uint32_t(uint8_t(b[off]))
-        | (uint32_t(uint8_t(b[off + 1])) << 8)
-        | (uint32_t(uint8_t(b[off + 2])) << 16)
-        | (uint32_t(uint8_t(b[off + 3])) << 24);
-}
 
 bool readProtobufVarint(const QByteArray& data, qsizetype& i, uint64_t& out)
 {
@@ -618,52 +611,67 @@ std::optional<std::vector<uint8_t>> mapSimpleOpcode(uint8_t opcode, const QByteA
     }
 }
 
-bool parseMetadata(const QByteArray& bytes, qsizetype afterPipe, TSessiondumpDmpdHeader& header)
+std::optional<TSessiondumpDmpdFile> readDump(const std::shared_ptr<QIODevice>& device, const bool withMessages)
 {
-    // After `|`: subtype byte, u16le, u8len name, u32le id, u8len name,
-    // u16le, u16le, u16le trailing — then `'p'` stream.
-    qsizetype o = afterPipe;
-    if (o >= bytes.size())
-        return false;
-    ++o; // subtype ('1' observed)
-    if (o + 2 > bytes.size())
-        return false;
-    o += 2; // unknown u16
-    if (o >= bytes.size())
-        return false;
-    const auto nameLen = uint8_t(bytes[o++]);
-    if (o + nameLen > bytes.size())
-        return false;
-    header.characterName = QString::fromUtf8(bytes.constData() + o, nameLen);
-    o += nameLen;
-    if (o + 4 > bytes.size())
-        return false;
-    o += 4; // account / character id
-    if (o >= bytes.size())
-        return false;
-    const auto name2Len = uint8_t(bytes[o++]);
-    if (o + name2Len > bytes.size())
-        return false;
-    o += name2Len;
-    if (o + 6 > bytes.size())
-        return false;
-    o += 4; // two u16s
-    o += 2; // trailing u16 (0x037e observed) before stream
-    // Seek to first 'p' if we overshot / undershot.
-    while (o < bytes.size() && uint8_t(bytes[o]) != 0x70)
-        ++o;
-    if (o >= bytes.size() || uint8_t(bytes[o]) != 0x70)
-        return false;
-    header.streamOffset = o;
-    // World name is not always a clean string in meta; leave empty unless found later.
-    return true;
+    // CIP reads dumps through a TSessiondumpReader on a little-endian TIODeviceReader.
+    const auto ioReader = std::make_shared<shared::TIODeviceReader>(device, QDataStream::LittleEndian);
+    const auto factory = std::make_shared<sessiondump::TSessiondumpFactory>();
+    const auto reader = factory->createReader(ioReader);
+    TSessiondumpDmpdFile dump;
+    try {
+        const sessiondump::TSessiondumpMetadata metadata = reader->metadata();
+        if (!metadata.read)
+            return std::nullopt;
+        dump.header.version = metadata.version;
+        dump.header.headerBytes = 5;
+        dump.header.sessionKey = metadata.sessionKey.toLatin1();
+        dump.header.characterName = metadata.characterName;
+        dump.header.worldName = metadata.worldName;
+        dump.header.streamOffset = qsizetype(reader->metadataReader()->metadataEnd());
+        if (!withMessages)
+            return dump;
+
+        auto collect = [&dump](const sessiondump::TSessiondumpPacketInfo& packet, const sessiondump::TSessiondumpMessageInfo& info,
+                               const std::function<QByteArray()>& body) {
+            if (!info.isServerMessage())
+                return;
+            TSessiondumpDmpdMessage message;
+            message.timestampMs = qint64(packet.timestamp);
+            message.flag = uint8_t(packet.type);
+            message.protobuf = body();
+            if (const auto opcode = protobufOpcode(message.protobuf))
+                message.opcode = *opcode;
+            dump.messages.push_back(std::move(message));
+        };
+        const auto messageProcessor = std::make_shared<sessiondump::TLightweightSessiondumpMessageProcessor>(
+            factory->createMessageReader(ioReader), collect);
+        const auto packetProcessor = factory->createPacketProcessor(factory->createPacketReader(ioReader), messageProcessor);
+        sessiondump::TSessiondumpProcessor processor(reader, packetProcessor);
+        processor.start();
+        while (processor.hasNextPacket())
+            processor.processNextPacket();
+    } catch (const std::exception& e) {
+        qCWarning(lcDmpd) << "dmpd read stopped:" << e.what();
+        if (dump.header.streamOffset == 0)
+            return std::nullopt;
+    }
+    qCInfo(lcDmpd) << "parsed dmpd version" << dump.header.version << "sessionKey len" << dump.header.sessionKey.size()
+                   << "messages" << dump.messages.size() << "character" << dump.header.characterName;
+    return dump;
+}
+
+std::shared_ptr<QIODevice> bufferOf(const QByteArray& bytes)
+{
+    auto buffer = std::make_shared<QBuffer>();
+    buffer->setData(bytes);
+    return buffer;
 }
 
 }
 
 bool isSessiondumpDmpd(const QByteArray& bytes)
 {
-    return bytes.size() >= 4 && std::memcmp(bytes.constData(), "dmpd", 4) == 0;
+    return bytes.size() >= 3 && std::memcmp(bytes.constData(), "dmp", 3) == 0;
 }
 
 bool isSessiondumpDmpdFile(const QString& path)
@@ -671,98 +679,26 @@ bool isSessiondumpDmpdFile(const QString& path)
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly))
         return false;
-    return isSessiondumpDmpd(file.read(4));
+    return isSessiondumpDmpd(file.read(3));
 }
 
 std::optional<TSessiondumpDmpdHeader> parseSessiondumpDmpdHeader(const QByteArray& bytes)
 {
-    if (!isSessiondumpDmpd(bytes) || bytes.size() < 6)
-        return std::nullopt;
-    TSessiondumpDmpdHeader header;
-    header.version = readU16Be(bytes, 4);
-    header.headerBytes = 6;
-    const auto at = bytes.indexOf('@', 6);
-    if (at < 0)
-        return header;
-    const auto pipe = bytes.indexOf('|', at + 1);
-    if (pipe < 0)
-        return header;
-    header.sessionKey = bytes.mid(at + 1, pipe - at - 1);
-    parseMetadata(bytes, pipe + 1, header);
-    return header;
+    const auto dump = readDump(bufferOf(bytes), false);
+    return dump ? std::optional(dump->header) : std::nullopt;
 }
 
 std::optional<TSessiondumpDmpdHeader> parseSessiondumpDmpdHeaderFile(const QString& path)
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
-        return std::nullopt;
-    return parseSessiondumpDmpdHeader(file.readAll());
+    const auto dump = readDump(std::make_shared<QFile>(path), false);
+    return dump ? std::optional(dump->header) : std::nullopt;
 }
 
-std::optional<TSessiondumpDmpdFile> parseSessiondumpDmpd(const QByteArray& bytes)
-{
-    auto header = parseSessiondumpDmpdHeader(bytes);
-    if (!header)
-        return std::nullopt;
-    if (header->streamOffset <= 0 || header->streamOffset >= bytes.size()) {
-        qCWarning(lcDmpd) << "dmpd metadata/stream boundary not found";
-        return std::nullopt;
-    }
-
-    TSessiondumpDmpdFile dump;
-    dump.header = *header;
-    qsizetype off = header->streamOffset;
-    qint64 currentTs = 0;
-    uint8_t currentFlag = 0;
-    uint32_t currentSeq = 0;
-
-    while (off < bytes.size()) {
-        const auto kind = uint8_t(bytes[off]);
-        if (kind == 0x70) {
-            if (off + 10 > bytes.size())
-                break;
-            currentTs = qint64(readU32Le(bytes, off + 1));
-            currentFlag = uint8_t(bytes[off + 5]);
-            currentSeq = readU32Le(bytes, off + 6);
-            off += 10;
-            continue;
-        }
-        if (kind == 0x6d) {
-            if (off + 3 > bytes.size())
-                break;
-            const auto len = readU16Le(bytes, off + 1);
-            if (off + 3 + len > bytes.size())
-                break;
-            const QByteArray payload = bytes.mid(off + 3, len);
-            off += 3 + len;
-            TSessiondumpDmpdMessage msg;
-            msg.timestampMs = currentTs;
-            msg.flag = currentFlag;
-            msg.seq = currentSeq;
-            msg.protobuf = payload;
-            if (const auto op = protobufOpcode(payload))
-                msg.opcode = *op;
-            dump.messages.push_back(std::move(msg));
-            continue;
-        }
-        qCWarning(lcDmpd) << "dmpd stream stopped at offset" << off << "byte" << Qt::hex << kind;
-        break;
-    }
-
-    qCInfo(lcDmpd) << "parsed dmpd version" << dump.header.version
-                    << "sessionKey len" << dump.header.sessionKey.size()
-                    << "messages" << dump.messages.size()
-                    << "character" << dump.header.characterName;
-    return dump;
-}
+std::optional<TSessiondumpDmpdFile> parseSessiondumpDmpd(const QByteArray& bytes) { return readDump(bufferOf(bytes), true); }
 
 std::optional<TSessiondumpDmpdFile> parseSessiondumpDmpdFile(const QString& path)
 {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
-        return std::nullopt;
-    return parseSessiondumpDmpd(file.readAll());
+    return readDump(std::make_shared<QFile>(path), true);
 }
 
 std::deque<DmpdClassicPacket> dmpdToClassicPackets(const TSessiondumpDmpdFile& dump, int* mappedOut, int* skippedOut)

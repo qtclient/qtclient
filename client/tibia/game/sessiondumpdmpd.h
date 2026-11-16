@@ -14,19 +14,11 @@
 namespace tibia {
 namespace game {
 
-/// CIP tutorial / cinematic session-dump container (`dmpd`).
-///
-/// Layout (from `tutorial-sessiondump.dmp` + CIP `TSessiondumpAsyncLoader`):
-/// bytes 0..3   magic `'d''m''p''d'`
-/// bytes 4..5   u16be version (observed `7`)
-/// bytes 6..…   opaque pre-meta until `'@'` + 64-hex session key + `'|'`
-/// then character/world metadata
-/// then repeating:
-/// `'p'` + 9 bytes packet info (u32le millis, u8 flag, u32le seq)
-/// zero or more `'m'` + u16le len + protobuf `GameserverMessage` bytes
-///
-/// Each GameserverMessage starts with protobuf field 1 = opcode (CIP extension
-/// field number). Nested field N==opcode holds the typed payload.
+/// CIP tutorial / cinematic session dump, read through the sessiondump::
+/// readers (TSessiondumpMetadataReader, TSessiondumpPacketReader,
+/// TSessiondumpMessageReader): "dmp" + u16 metadata size, little-endian
+/// metadata, then packets ('p', u32 size, u8 type, u32 timestamp in ms) of
+/// messages ('m' server / 'c' client, u16 length, protobuf GameserverMessage).
 struct TSessiondumpDmpdHeader
 {
     uint16_t version = 0;
@@ -34,15 +26,15 @@ struct TSessiondumpDmpdHeader
     QByteArray sessionKey;
     QString characterName;
     QString worldName;
-    /// Byte offset where the `'p'`/`'m'` stream begins.
+    /// Byte offset where the packets begin (after the metadata).
     qsizetype streamOffset = 0;
 };
 
 struct TSessiondumpDmpdMessage
 {
     qint64 timestampMs = 0;
+    /// The packet type (1 or 2).
     uint8_t flag = 0;
-    uint32_t seq = 0;
     uint8_t opcode = 0;
     /// Full protobuf GameserverMessage bytes (includes field 1 + extension).
     QByteArray protobuf;
@@ -54,7 +46,7 @@ struct TSessiondumpDmpdFile
     QVector<TSessiondumpDmpdMessage> messages;
 };
 
-/// True when `bytes` begins with magic `dmpd`.
+/// True when `bytes` begins with the magic "dmp".
 bool isSessiondumpDmpd(const QByteArray& bytes);
 bool isSessiondumpDmpdFile(const QString& path);
 

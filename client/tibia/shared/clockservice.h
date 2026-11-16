@@ -2,6 +2,7 @@
 
 #include "shared/cip_typed.h"
 
+#include <QDateTime>
 #include <QtGlobal>
 
 namespace tibia {
@@ -14,8 +15,11 @@ class TClockService final : public ::tibia::CipTyped
 {
 public:
     TClockService() = default;
-    /// Epoch microseconds: the start's epoch time plus the time since.
+    /// Epoch nanoseconds: the start's epoch time plus the monotonic time since.
+    static qint64 nowNanos();
+    /// Epoch microseconds, as nowNanos.
     static qint64 nowMicros();
+    static QDateTime currentDateTime();
     /// Epoch milliseconds, as nowMicros.
     static qint64 nowMillis();
     /// The epoch milliseconds the clock started at.

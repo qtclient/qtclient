@@ -288,20 +288,10 @@ private:
     std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).
     sessiondump::TClientSessiondumpRecorder m_sessiondumpRecorder;
-    sessiondump::TLightweightSessiondumpMessageProcessor m_lightweightSessiondumpMessageProcessor;
     sessiondump::TSessiondumpAsyncLoader m_sessiondumpAsyncLoader;
     sessiondump::TSessiondumpCatalogLoader m_sessiondumpCatalogLoader;
-    sessiondump::TSessiondumpFactory m_sessiondumpFactory;
-    sessiondump::TSessiondumpMessageProcessor m_sessiondumpMessageProcessor;
-    sessiondump::TSessiondumpMessageReader m_sessiondumpMessageReader;
-    sessiondump::TSessiondumpMetadataReader m_sessiondumpMetadataReader;
-    sessiondump::TSessiondumpPacketProcessor m_sessiondumpPacketProcessor;
-    sessiondump::TSessiondumpPacketReader m_sessiondumpPacketReader;
     sessiondump::TSessiondumpPlayer m_sessiondumpPlayer;
-    sessiondump::TSessiondumpProcessor m_sessiondumpProcessor;
     sessiondump::TSessiondumpProgressClockService m_sessiondumpProgressClockService;
-    sessiondump::TSessiondumpReader m_sessiondumpReader;
-    sessiondump::TSessiondumpReadersFactory m_sessiondumpReadersFactory;
     authentication::LoginResult m_account;
     std::optional<game::GameserverCredentials> m_pendingLiveCredentials;
     int m_worldType = -1;

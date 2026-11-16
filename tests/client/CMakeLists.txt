@@ -113,3 +113,52 @@ qtclient_add_port_test(client_simplevectorabstractlistmodel_tests
 qtclient_add_port_test(client_coordinate_tests
     coordinate_test.cpp
 )
+qtclient_add_port_test(client_sessiondumpreader_tests
+    sessiondumpreader_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicereader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/lightweightsessiondumpmessageprocessor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumpfactory.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumpmessageprocessor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumpmessagereader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumpmetadatareader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumppacketprocessor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumppacketreader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumpprocessor.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumpreader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumpreadersfactory.cpp
+)
+target_link_libraries(client_sessiondumpreader_tests PRIVATE Qt6::Network)
+target_compile_definitions(client_sessiondumpreader_tests PRIVATE QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
+qtclient_add_port_test(client_timelapseclockservice_tests
+    timelapseclockservice_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/timelapseclockservice.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/clockservice.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/sessiondump/sessiondumpprogressclockservice.cpp
+)
+qtclient_add_port_test(client_jsonvalidator_tests
+    jsonvalidator_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/jsonvalidator.cpp
+)
+
+# CIP tutorial::TSessiondumpHints and its publish-game-action hints (game actions need the generated headers).
+if(Qt6_FOUND AND TARGET tibia)
+    add_executable(client_sessiondumphints_tests
+        sessiondumphints_test.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/shared/jsonvalidator.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintbase.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphintpublishgameaction.cpp
+        ${CMAKE_SOURCE_DIR}/client/tibia/tutorial/sessiondumphints.cpp
+    )
+    set_target_properties(client_sessiondumphints_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
+    target_include_directories(client_sessiondumphints_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/client/tibia
+        ${CMAKE_SOURCE_DIR}/client
+        ${CMAKE_SOURCE_DIR}/include
+        $<TARGET_PROPERTY:tibia,INCLUDE_DIRECTORIES>
+    )
+    target_link_libraries(client_sessiondumphints_tests PRIVATE GTest::gtest GTest::gtest_main Qt6::Core Qt6::Gui)
+    target_compile_definitions(client_sessiondumphints_tests PRIVATE
+        $<TARGET_PROPERTY:tibia,COMPILE_DEFINITIONS>
+        QTCLIENT_TESTDATA_DIR="${CMAKE_SOURCE_DIR}/testdata")
+    gtest_discover_tests(client_sessiondumphints_tests)
+endif()

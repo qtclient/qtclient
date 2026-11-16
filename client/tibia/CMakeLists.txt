@@ -289,6 +289,8 @@ if(TIBIA_WITH_GAMECORE)
     shared/iodevicewriter.cpp shared/iodevicewriter.h
     shared/simplevectorabstractlistmodel.h
     shared/xteahelper.cpp shared/xteahelper.h
+    shared/timelapseclockservice.cpp shared/timelapseclockservice.h
+    shared/jsonvalidator.cpp shared/jsonvalidator.h
     shared/downloadpool.cpp shared/downloadpool.h
     shared/rsahelper.cpp
     config/clientsettings.cpp config/clientsettings.h
@@ -296,6 +298,17 @@ if(TIBIA_WITH_GAMECORE)
     config/runtimegameconfig.cpp config/runtimegameconfig.h
     sound/soundciptypes.cpp sound/soundciptypes.h
     sessiondump/sessiondumpciptypes.cpp sessiondump/sessiondumpciptypes.h
+    sessiondump/lightweightsessiondumpmessageprocessor.cpp sessiondump/lightweightsessiondumpmessageprocessor.h
+    sessiondump/sessiondumpfactory.cpp sessiondump/sessiondumpfactory.h
+    sessiondump/sessiondumpmessageprocessor.cpp sessiondump/sessiondumpmessageprocessor.h
+    sessiondump/sessiondumpmessagereader.cpp sessiondump/sessiondumpmessagereader.h
+    sessiondump/sessiondumpmetadatareader.cpp sessiondump/sessiondumpmetadatareader.h
+    sessiondump/sessiondumppacketprocessor.cpp sessiondump/sessiondumppacketprocessor.h
+    sessiondump/sessiondumppacketreader.cpp sessiondump/sessiondumppacketreader.h
+    sessiondump/sessiondumpprocessor.cpp sessiondump/sessiondumpprocessor.h
+    sessiondump/sessiondumpreader.cpp sessiondump/sessiondumpreader.h
+    sessiondump/sessiondumpreadersfactory.cpp sessiondump/sessiondumpreadersfactory.h
+    sessiondump/sessiondumpprogressclockservice.cpp sessiondump/sessiondumpprogressclockservice.h
     network/networkciptypes.cpp network/networkciptypes.h
     protocol/mapwire.cpp protocol/mapwire.h
     protocol/playerwire.cpp protocol/playerwire.h
@@ -424,6 +437,9 @@ if(TIBIA_WITH_GAMECORE)
     game/sessiondumpgamesession.cpp game/sessiondumpgamesession.h
     game/sessiondumpdmpd.cpp game/sessiondumpdmpd.h
     tutorial/tutorialciptypes.cpp tutorial/tutorialciptypes.h
+    tutorial/sessiondumphintbase.cpp tutorial/sessiondumphintbase.h
+    tutorial/sessiondumphintpublishgameaction.cpp tutorial/sessiondumphintpublishgameaction.h
+    tutorial/sessiondumphints.cpp tutorial/sessiondumphints.h
     tutorial/sessiondumphintsprocessor.cpp tutorial/sessiondumphintsprocessor.h
     sound/soundprotocolmessagehandler.cpp sound/soundprotocolmessagehandler.h
     sound/soundmetadatamanager.cpp sound/soundmetadatamanager.h
