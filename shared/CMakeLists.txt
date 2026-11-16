@@ -37,6 +37,8 @@ add_library(qtclient_shared STATIC
   src/launcherutils.h
   src/networkaccessmanagerauthenticationhandler.cpp
   src/networkaccessmanagerauthenticationhandler.h
+  src/paginationproxymodel.cpp
+  src/paginationproxymodel.h
   src/qnetworkaccessmanagerwrapper.cpp
   src/qnetworkaccessmanagerwrapper.h
   src/qnetworkreplywrapper.cpp

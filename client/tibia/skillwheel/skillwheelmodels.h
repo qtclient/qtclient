@@ -3,6 +3,7 @@
 #include "skillwheel/skillwheelstorage.h"
 
 #include <cip_gen.h>
+#include "paginationproxymodel.h"
 
 #include <QAbstractListModel>
 #include <QSortFilterProxyModel>
@@ -10,26 +11,16 @@
 namespace tibia {
 namespace skillwheel {
 
-/// CIP's TPaginationProxyModel: the rows of one page (1-based) of its source.
-class TPaginationProxyModel final : public cip::shared::TPaginationProxyModel
+/// The skill wheel's pages: CIP's shared::TPaginationProxyModel with a
+/// helper that turns to a source row's page.
+class TPaginationProxyModel final : public shared::TPaginationProxyModel
 {
     Q_OBJECT
 public:
-    explicit TPaginationProxyModel(int entriesPerPage, QObject* parent = nullptr);
-
-    void setSourceModel(QAbstractItemModel* source) override;
-    void setEntriesPerPage(int v) override;
-    void setCurrentPage(int v) override;
-    QVariantMap rowData(const QModelIndex& Index) override;
+    TPaginationProxyModel(int entriesPerPage, QObject* parent);
 
     /// The page holding a source row, then its index in this model.
     QModelIndex showSourceRow(int sourceRow);
-
-protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
-
-private:
-    void updatePages();
 };
 
 /// The revealed gems of the atelier (CIP roles 0x101..0x11a,
