@@ -127,7 +127,6 @@ using ::tibia::protobuf::protocol::GameserverMessageLoginChallenge;
 using ::tibia::protobuf::protocol::GameserverMessageLoginError;
 using ::tibia::protobuf::protocol::GameserverMessageLoginSuccess;
 using ::tibia::protobuf::protocol::GameserverMessageLoginWait;
-using ::tibia::protobuf::protocol::GameserverMessageMarketLeave;
 using ::tibia::protobuf::protocol::GameserverMessagePartyLeft;
 using ::tibia::protobuf::protocol::GameserverMessagePendingStateEntered;
 using ::tibia::protobuf::protocol::GameserverMessagePing;
@@ -646,14 +645,9 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
         tibia::game::notify("onHirelingNameChange", m.creature_id(), m.object_id());
         break;
     }
-    case 247: {
-        // CIP: receivedMarketLeaveMessage only — no handleMarketLeaveMessage.
-        // Same side effects as dispatch MarketLeave (empty pb → onMarketLeave).
-        if (!shadow->HasExtension(GameserverMessageMarketLeave::gameserver_message_market_leave))
-            return;
-        tibia::game::notify("onMarketLeave");
+    case 247:
+        // market::TMarketProtocolMessageHandler handles the market leave.
         break;
-    }
     default:
         break;
     }

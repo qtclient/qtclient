@@ -1,21 +1,54 @@
 #include "market/marketciptypes.h"
-#include <unordered_map>
-#include <ctime>
-#include <string>
-#include <client/const.h>
 
 #include "protocol/protocolciptypes.h"
-#include <cstdint>
-#include <vector>
 
-#include <tibia/game/gamenotify.h>
+#include <client/const.h>
+#include "protocol/protocolcodes.h"
+#include <tibia/game/gamesession.h>
 
 #include <protocol.pb.h>
 
 namespace tibia::market {
 
 namespace {
-} // namespace
+
+using namespace ::tibia::protobuf::protocol;
+
+TMarketProtocolMessageHandler* s_live = nullptr;
+
+QString toQString(const std::string& text)
+{
+    return QString::fromUtf8(text.data(), static_cast<qsizetype>(text.size()));
+}
+
+std::optional<uint8_t> tierOf(const ProtocolTieredObject& object)
+{
+    if (!object.has_tier())
+        return std::nullopt;
+    return static_cast<uint8_t>(object.tier());
+}
+
+/// CIP: the days of a statistics list and their totals.
+TMarketStatistics statisticsFrom(const google::protobuf::RepeatedPtrField<ProtocolMarketTradeStatistics>& list)
+{
+    TMarketStatistics statistics;
+    for (const ProtocolMarketTradeStatistics& source : list) {
+        statistics.add(TMarketTradeStatisticsEntry{ source.transactions(), source.total_price(), source.lowest_price(),
+                                                    source.highest_price() });
+    }
+    statistics.finish();
+    return statistics;
+}
+
+std::vector<TMarketOffer> offersFrom(const google::protobuf::RepeatedPtrField<ProtocolMarketOffer>& list, const EMarketOfferType type)
+{
+    std::vector<TMarketOffer> offers;
+    for (const ProtocolMarketOffer& source : list)
+        offers.push_back(TMarketProtocolMessageHandler::offerFrom(source, type));
+    return offers;
+}
+
+}
 
 void ownProductSurface(QObject* parent)
 {
@@ -26,62 +59,173 @@ void ownProductSurface(QObject* parent)
     (void)parent;
 }
 
+TMarketProtocolMessageHandler::TMarketProtocolMessageHandler(TMarketStorage* storage, QObject* parent)
+    : cip::tibia::market::TMarketProtocolMessageHandler(parent)
+    , m_storage(storage)
+{
+    s_live = this;
+}
+
+TMarketProtocolMessageHandler::~TMarketProtocolMessageHandler()
+{
+    if (s_live == this)
+        s_live = nullptr;
+}
+
+TMarketProtocolMessageHandler* TMarketProtocolMessageHandler::instance()
+{
+    return s_live;
+}
+
+void TMarketProtocolMessageHandler::sendBrowseItem(const uint16_t typeId, const std::optional<uint8_t> tier)
+{
+    if (typeId == 0)
+        return;
+    tibia::game::browseMarket(tibia::client::MARKETREQUEST_ITEM_BROWSE, typeId, tier.value_or(0));
+}
+
+void TMarketProtocolMessageHandler::sendBrowseOwnOffers()
+{
+    tibia::game::browseMarket(tibia::client::MARKETREQUEST_OWN_OFFERS, 0, 0);
+}
+
+void TMarketProtocolMessageHandler::sendBrowseHistory()
+{
+    tibia::game::browseMarket(tibia::client::MARKETREQUEST_OWN_HISTORY, 0, 0);
+}
+
+void TMarketProtocolMessageHandler::sendLeave()
+{
+    tibia::game::leaveMarket();
+}
+
+void TMarketProtocolMessageHandler::sendCancel(const uint32_t timestamp, const uint16_t counter)
+{
+    tibia::game::cancelMarketOffer(timestamp, counter);
+}
+
+void TMarketProtocolMessageHandler::sendAccept(const uint32_t timestamp, const uint16_t counter, const uint32_t amount)
+{
+    tibia::game::acceptMarketOffer(timestamp, counter, static_cast<uint16_t>(amount));
+}
+
+void TMarketProtocolMessageHandler::sendCreate(const EMarketOfferType type, const uint16_t typeId, const std::optional<uint8_t> tier,
+                                               const uint32_t amount, const uint64_t piecePrice, const bool anonymous)
+{
+    tibia::game::createMarketOffer(type == EMarketOfferType::BUY ? 0 : 1, typeId, tier.value_or(0), static_cast<uint16_t>(amount), piecePrice,
+                                   anonymous ? 1 : 0);
+}
+
+void TMarketProtocolMessageHandler::handleMarketEnterMessage(const GameserverMessageMarketEnter& message)
+{
+    container::TObjectCountStorage::TCounts counts;
+    for (const ProtocolDepotSearchEntry& entry : message.depot_objects()) {
+        const auto tier = static_cast<uint8_t>(entry.has_tier() ? entry.tier() : 0);
+        counts[{ static_cast<uint16_t>(entry.object_id()), tier }] = entry.count();
+    }
+    if (m_storage) {
+        m_storage->setActiveOfferCount(static_cast<uint16_t>(message.active_offers()));
+        m_storage->setCounts(counts);
+    }
+    Q_EMIT requestOpenMarketDialog();
+}
+
+void TMarketProtocolMessageHandler::handleMarketDetailMessage(const GameserverMessageMarketDetail& message)
+{
+    TMarketItemDetails details;
+    details.typeId = static_cast<uint16_t>(message.object().object_id());
+    details.tier = tierOf(message.object());
+    for (int i = 0; i < message.descriptions_size() && i < TMarketItemDetails::DescriptionCount; ++i)
+        details.descriptions[static_cast<size_t>(i)] = toQString(message.descriptions(i));
+    details.buy = statisticsFrom(message.buy_statistics());
+    details.sell = statisticsFrom(message.sell_statistics());
+    if (m_storage)
+        m_storage->setItemDetails(details);
+}
+
+void TMarketProtocolMessageHandler::handleMarketLeaveMessage()
+{
+    Q_EMIT requestCloseMarketDialog();
+}
+
+TMarketOffer TMarketProtocolMessageHandler::offerFrom(const ProtocolMarketOffer& source, const EMarketOfferType type)
+{
+    TMarketOffer offer;
+    offer.timestamp = source.timestamp();
+    offer.counter = static_cast<uint16_t>(source.counter());
+    offer.type = type;
+    offer.typeId = static_cast<uint16_t>(source.object().object_id());
+    offer.tier = tierOf(source.object());
+    offer.amount = source.amount();
+    offer.price = source.price();
+    if (source.has_character_name())
+        offer.bidder = toQString(source.character_name());
+    // Only the cancelled, expired and accepted states are sent.
+    if (source.has_state() && source.state() >= 1 && source.state() <= 3)
+        offer.state = static_cast<EMarketOfferState>(source.state());
+    return offer;
+}
+
+void TMarketProtocolMessageHandler::handleMarketBrowseMessage(const GameserverMessageMarketBrowse& message)
+{
+    TMarketOfferList offers;
+    offers.buyOffers = offersFrom(message.buy_offers(), EMarketOfferType::BUY);
+    offers.sellOffers = offersFrom(message.sell_offers(), EMarketOfferType::SELL);
+    if (!m_storage)
+        return;
+    switch (message.request_type()) {
+    case tibia::client::MARKETREQUEST_OWN_HISTORY:
+        m_storage->setHistory(offers);
+        break;
+    case tibia::client::MARKETREQUEST_OWN_OFFERS:
+        m_storage->setOwnOffers(offers);
+        break;
+    case tibia::client::MARKETREQUEST_ITEM_BROWSE:
+        m_storage->setOffers(static_cast<uint16_t>(message.object().object_id()), tierOf(message.object()), offers);
+        break;
+    default:
+        break;
+    }
+}
+
+void TMarketProtocolMessageHandler::handleMessageMessage(const GameserverMessageMessage& message)
+{
+    if (Proto::translateMessageModeFromServer(static_cast<uint8_t>(message.mode())) == tibia::client::MessageMarket)
+        Q_EMIT requestMarketMessageDialog(toQString(message.text()));
+}
+
 void TMarketProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
-    using namespace ::tibia::protobuf::protocol;
+    TMarketProtocolMessageHandler* handler = s_live;
+    if (!handler)
+        return;
     const auto* shadow = protocol::nativeServerMessage(opcode);
     if (!shadow)
         return;
-    if (opcode == 248 && shadow->HasExtension(GameserverMessageMarketDetail::gameserver_message_market_detail)) {
-        const auto& m = shadow->GetExtension(GameserverMessageMarketDetail::gameserver_message_market_detail);
-        // Descriptions by attribute (1-based); an empty one is absent.
-        std::unordered_map<int, std::string> descriptions;
-        for (int i = 0; i < m.descriptions_size(); ++i) {
-            if (!m.descriptions(i).empty())
-                descriptions.try_emplace(i + 1, m.descriptions(i));
-        }
-        constexpr uint32_t DaySeconds = 86400;
-        const uint32_t day = static_cast<uint32_t>((time(nullptr) / 1000) * DaySeconds) - DaySeconds;
-        const auto stats = [day](const auto& list, const uint8_t action) {
-            std::vector<std::vector<uint64_t>> out;
-            for (const auto& s : list)
-                out.push_back({ day, action, s.transactions(), s.total_price(), s.highest_price(), s.lowest_price() });
-            return out;
-        };
-        tibia::game::notify("onMarketDetail", static_cast<uint16_t>(m.object().object_id()), descriptions,
-                            stats(m.buy_statistics(), tibia::client::MARKETACTION_BUY), stats(m.sell_statistics(), tibia::client::MARKETACTION_SELL),
-                            static_cast<uint8_t>(m.object().tier()));
-        return;
+    switch (opcode) {
+    case 246:
+        if (shadow->HasExtension(GameserverMessageMarketEnter::gameserver_message_market_enter))
+            handler->handleMarketEnterMessage(shadow->GetExtension(GameserverMessageMarketEnter::gameserver_message_market_enter));
+        break;
+    case 247:
+        if (shadow->HasExtension(GameserverMessageMarketLeave::gameserver_message_market_leave))
+            handler->handleMarketLeaveMessage();
+        break;
+    case 248:
+        if (shadow->HasExtension(GameserverMessageMarketDetail::gameserver_message_market_detail))
+            handler->handleMarketDetailMessage(shadow->GetExtension(GameserverMessageMarketDetail::gameserver_message_market_detail));
+        break;
+    case 249:
+        if (shadow->HasExtension(GameserverMessageMarketBrowse::gameserver_message_market_browse))
+            handler->handleMarketBrowseMessage(shadow->GetExtension(GameserverMessageMarketBrowse::gameserver_message_market_browse));
+        break;
+    case 180:
+        if (shadow->HasExtension(GameserverMessageMessage::gameserver_message_message))
+            handler->handleMessageMessage(shadow->GetExtension(GameserverMessageMessage::gameserver_message_message));
+        break;
+    default:
+        break;
     }
-    if (opcode == 249 && shadow->HasExtension(GameserverMessageMarketBrowse::gameserver_message_market_browse)) {
-        const auto& m = shadow->GetExtension(GameserverMessageMarketBrowse::gameserver_message_market_browse);
-        // The request type, or the browsed object for an item browse.
-        const auto var = static_cast<uint16_t>(m.request_type() == 3 ? m.object().object_id() : m.request_type());
-        std::vector<std::vector<uint64_t>> offers;
-        std::vector<std::string> names;
-        const auto add = [&](const ProtocolMarketOffer& o, const uint8_t action) {
-            const auto itemId = static_cast<uint16_t>(o.object().object_id());
-            const auto tier = static_cast<uint8_t>(o.object().tier());
-            const auto state = static_cast<uint8_t>(m.request_type() == 1 ? o.state() : tibia::client::OFFER_STATE_ACTIVE);
-            tibia::game::notify("onMarketReadOffer", action, static_cast<uint16_t>(o.amount()), static_cast<uint16_t>(o.counter()), itemId,
-                                o.character_name(), o.price(), state, o.timestamp(), var, tier);
-            offers.push_back({ action, o.amount(), o.counter(), itemId, o.price(), state, o.timestamp(), var, tier });
-            names.push_back(o.character_name());
-        };
-        for (const auto& o : m.buy_offers())
-            add(o, tibia::client::MARKETACTION_BUY);
-        for (const auto& o : m.sell_offers())
-            add(o, tibia::client::MARKETACTION_SELL);
-        tibia::game::notify("onMarketBrowse", offers, names);
-        return;
-    }
-    if (opcode != 246 || !shadow->HasExtension(GameserverMessageMarketEnter::gameserver_message_market_enter))
-        return;
-    const auto& m = shadow->GetExtension(GameserverMessageMarketEnter::gameserver_message_market_enter);
-    std::vector<std::vector<uint16_t>> depotItems;
-    for (const auto& e : m.depot_objects())
-        depotItems.push_back({ static_cast<uint16_t>(e.object_id()), static_cast<uint16_t>(e.tier()), static_cast<uint16_t>(e.count()) });
-    tibia::game::notify("onMarketEnter", depotItems, static_cast<uint8_t>(m.active_offers()), -1, -1);
 }
 
 } // namespace tibia::market

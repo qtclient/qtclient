@@ -31,12 +31,13 @@ namespace {
 using market::TMarketOffer;
 using market::TMarketStatistics;
 
-/// CIP DAT_1077b08f6: the Tibia coin type the market trades.
-constexpr uint16_t TibiaCoinTypeId = 22118;
+using market::TMarketStorage;
+using market::EMarketOfferType;
+using market::EMarketOfferState;
+constexpr uint16_t TibiaCoinTypeId = TMarketStorage::TibiaCoinTypeId;
 /// CIP : the categories with a store deeplink.
 constexpr int PotionsCategory = 10;
 constexpr int RunesCategory = 12;
-constexpr uint64_t MaximumTotalPrice = 999999999999ULL;
 const QLatin1StringView ShowLockerOnlyKey("marketShowLockerOnly");
 
 /// CIP 's order.
@@ -56,23 +57,6 @@ QString multiString(const qlonglong value)
 QString grouped(const uint64_t value)
 {
     return QLocale(QLocale::English).toString(static_cast<qulonglong>(value));
-}
-
-/// CIP : 2.5% of the total, 20 to 2,500,000 gold.
-uint64_t marketFee(const uint64_t amount, const uint64_t price)
-{
-    const auto fee = static_cast<uint64_t>(std::ceil(static_cast<double>(amount * price) * 0.025));
-    return std::max<uint64_t>(20, std::min<uint64_t>(fee, 2500000));
-}
-
-/// CIP : the most pieces whose fee `gold` covers.
-uint64_t maximumAmountByFee(const uint64_t gold, const uint64_t price)
-{
-    if (gold < 20 || price == 0)
-        return 0;
-    if (gold >= 2500000)
-        return 0xffffffff;
-    return static_cast<uint64_t>(static_cast<double>(gold * 100) / (static_cast<double>(price) * 2.5));
 }
 
 uint64_t playerGold()
@@ -104,7 +88,7 @@ qlonglong offerFee(const int amount, const qlonglong piecePrice)
 {
     if (piecePrice == 0)
         return 0;
-    return static_cast<qlonglong>(marketFee(static_cast<uint32_t>(amount + (amount == 0 ? 1 : 0)), static_cast<uint64_t>(piecePrice)));
+    return static_cast<qlonglong>(TMarketStorage::marketFee(static_cast<uint32_t>(amount + (amount == 0 ? 1 : 0)), static_cast<uint64_t>(piecePrice)));
 }
 
 /// CIP .
@@ -156,10 +140,10 @@ QString detailsText(const market::TMarketItemDetails& details)
     } };
     QStringList lines;
     for (const Line& line : Lines) {
-        const auto it = details.descriptions.find(line.attribute);
-        if (it == details.descriptions.end() || it->second.isEmpty())
+        const QString& description = details.description(line.attribute);
+        if (description.isEmpty())
             continue;
-        QString text = qtTrId(line.id).arg(it->second);
+        QString text = qtTrId(line.id).arg(description);
         if (line.attribute == tibia::client::ITEM_DESC_GENERAL)
             text += u'.';
         lines << text;
@@ -189,23 +173,23 @@ TDisplayMarketOffer::TDisplayMarketOffer(const TMarketOffer& offer, const QStrin
     m_terminationTimestampUniqueIdentifier = offer.counter;
     m_bidder = offer.bidder;
     m_itemName = itemName;
-    m_itemNameWithTier = offer.tier >= 1 ? qtTrId("market_name_with_tier").arg(itemName).arg(offer.tier) : itemName;
+    m_itemNameWithTier = offer.tier.value_or(0) >= 1 ? qtTrId("market_name_with_tier").arg(itemName).arg(*offer.tier) : itemName;
     m_amountText = multiString(offer.amount);
     m_piecePriceText = multiString(static_cast<qlonglong>(offer.price));
     m_totalPriceText = multiString(static_cast<qlonglong>(offer.amount * offer.price));
     m_endsAtTime = textHelper().formatDateTime(static_cast<int>(offer.timestamp), true);
     switch (offer.state) {
-    case tibia::client::OFFER_STATE_ACTIVE:
+    case EMarketOfferState::ACTIVE:
         m_auctionStatus = qtTrId("market_status_active");
         break;
-    case tibia::client::OFFER_STATE_CANCELLED:
+    case EMarketOfferState::CANCELLED:
         m_auctionStatus = qtTrId("market_status_canceled");
         break;
-    case tibia::client::OFFER_STATE_EXPIRED:
+    case EMarketOfferState::EXPIRED:
         m_auctionStatus = qtTrId("expired");
         break;
-    case tibia::client::OFFER_STATE_ACCEPTED:
-        m_auctionStatus = qtTrId(offer.type == tibia::client::MARKETACTION_BUY ? "market_status_bought" : "market_status_sold");
+    case EMarketOfferState::ACCEPTED:
+        m_auctionStatus = qtTrId(offer.type == EMarketOfferType::BUY ? "market_status_bought" : "market_status_sold");
         break;
     default:
         m_auctionStatus = QStringLiteral("unknown");
@@ -213,17 +197,17 @@ TDisplayMarketOffer::TDisplayMarketOffer(const TMarketOffer& offer, const QStrin
     }
 
     uint64_t maximum = 0;
-    if (offer.type == tibia::client::MARKETACTION_SELL)
+    if (offer.type == EMarketOfferType::SELL)
         maximum = offer.price == 0 ? 0 : gold / offer.price;
     else
         maximum = static_cast<uint64_t>(std::max(depotCount, 0));
     m_maximumAcceptAmount = static_cast<int>(std::min<uint64_t>(maximum, offer.amount));
 
     const TMarketStatistics& sell = details.sell;
-    if (details.typeId == offer.typeId && sell.transactions > 9 && sell.days > 4) {
+    if (details.typeId == offer.typeId && sell.transactions > 9 && sell.entries.size() > 4) {
         const uint64_t average = sell.total / sell.transactions;
         if (average != 0) {
-            m_isDubious = offer.type != tibia::client::MARKETACTION_BUY ? offer.price >= average + average / 4
+            m_isDubious = offer.type != EMarketOfferType::BUY ? offer.price >= average + average / 4
                                                               : offer.price <= average - average / 4;
         }
     }
@@ -291,10 +275,11 @@ bool TQmlObjectCategory::isHandWeaponCategory()
     return TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(m_categoryIdentifier) && m_categoryIdentifier != 0x10;
 }
 
-TMarketController::TMarketController(market::TMarketStorage* storage, QObject* parent)
+TMarketController::TMarketController(market::TMarketStorage* storage, market::TMarketProtocolMessageHandler* messages, QObject* parent)
     : TDialogController(QStringLiteral("market.qml"), parent)
     , m_storage(storage)
-    , m_model([storage](const uint16_t typeId, const uint8_t tier) { return storage ? storage->objectCount(typeId, tier) : 0; })
+    , m_messages(messages)
+    , m_model([storage](const uint16_t typeId, const uint8_t tier) { return storage ? static_cast<int>(storage->count(typeId, tier)) : 0; })
     , m_proxy(&m_model)
 {
     m_appearanceTypeListModel = QVariant::fromValue<QObject*>(&m_proxy);
@@ -305,13 +290,13 @@ TMarketController::TMarketController(market::TMarketStorage* storage, QObject* p
     m_showLockerOnly = app::ClientOptions::load().options().value(ShowLockerOnlyKey).toBool();
     updateFilterLists();
 
-    connect(storage, &market::TMarketStorage::requestOpenMarketDialog, this, &TMarketController::showDialog);
-    connect(storage, &market::TMarketStorage::requestCloseMarketDialog, this, &TMarketController::closeDialog);
-    connect(storage, &market::TMarketStorage::requestMarketMessageDialog, this, &TMarketController::showMarketMessage);
-    connect(storage, &market::TMarketStorage::itemDetailsChanged, this, &TMarketController::onItemDetailsChanged);
-    connect(storage, &market::TMarketStorage::offersChanged, this, &TMarketController::onOffersChanged);
-    connect(storage, &market::TMarketStorage::historyChanged, this, &TMarketController::onHistoryChanged);
-    connect(storage, &market::TMarketStorage::ownOffersChanged, this, &TMarketController::onOwnOffersChanged);
+    connect(messages, &market::TMarketProtocolMessageHandler::requestOpenMarketDialog, this, &TMarketController::showDialog);
+    connect(messages, &market::TMarketProtocolMessageHandler::requestCloseMarketDialog, this, &TMarketController::closeDialog);
+    connect(messages, &market::TMarketProtocolMessageHandler::requestMarketMessageDialog, this, &TMarketController::showMarketMessage);
+    connect(storage, &market::TMarketStorage::marketItemDetailsChanged, this, &TMarketController::onItemDetailsChanged);
+    connect(storage, &market::TMarketStorage::marketOffersChanged, this, &TMarketController::onOffersChanged);
+    connect(storage, &market::TMarketStorage::marketHistoryChanged, this, &TMarketController::onHistoryChanged);
+    connect(storage, &market::TMarketStorage::marketOwnOffersChanged, this, &TMarketController::onOwnOffersChanged);
     connect(storage, &market::TMarketStorage::activeOfferCountChanged, this, &TMarketController::onActiveOfferCountChanged);
     connect(storage, &market::TMarketStorage::objectCountsChanged, &m_model, &TAppearanceTypeListModel::onObjectCountsChanged);
     connect(storage, &market::TMarketStorage::classificationsChanged, this, [this] {
@@ -323,7 +308,7 @@ TMarketController::TMarketController(market::TMarketStorage* storage, QObject* p
 
     // CIP : browse the object's type, with its tier when it has one.
     input::setActionHandler(input::EGameAction::MARKET_BROWSE, [this](const input::TGameAction& action) {
-        if (!m_storage)
+        if (!m_messages)
             return false;
         uint16_t typeId = static_cast<uint16_t>(action.parameter);
         uint8_t tier = static_cast<uint8_t>(action.instance);
@@ -345,7 +330,8 @@ TMarketController::TMarketController(market::TMarketStorage* storage, QObject* p
         }
         if (typeId == 0)
             return false;
-        m_storage->browseItem(typeId, tier);
+        const ThingTypePtr& browsed = tibia::game::thingType(typeId, ThingCategoryItem);
+        m_messages->sendBrowseItem(typeId, browsed && browsed->getClassification() > 0 ? std::optional<uint8_t>(tier) : std::nullopt);
         return true;
     });
 }
@@ -588,67 +574,50 @@ void TMarketController::onMarketCategoryItemSelected(const int AppearanceTypeID,
     m_selectedType = static_cast<uint16_t>(AppearanceTypeID);
     m_hasSelectedTier = false;
     setItemProperty("selectedAppearanceTypeID", AppearanceTypeID);
-    if (m_selectedType == 0 || !m_storage)
+    if (!m_messages)
         return;
     const ThingTypePtr& type = tibia::game::thingType(m_selectedType, ThingCategoryItem);
     if (type && type->getClassification() > 0) {
         m_hasSelectedTier = true;
         m_selectedTier = static_cast<uint8_t>(QmlUpgradeTier);
     }
-    m_storage->browseItem(m_selectedType, selectedTier());
-    setItemProperty("tradePacketSize", m_selectedType == TibiaCoinTypeId ? m_storage->coinsPacketSize() : 1);
+    if (m_messages)
+        m_messages->sendBrowseItem(m_selectedType, m_hasSelectedTier ? std::optional<uint8_t>(m_selectedTier) : std::nullopt);
+    // Tibia coins trade in the store's packets.
+    setItemProperty("tradePacketSize", m_selectedType == TibiaCoinTypeId && m_storage ? m_storage->coinsPacketSize() : 1);
 }
 
 void TMarketController::onMarketOfferCancel(const int OfferTimestamp, const int OfferIdentifier)
 {
-    if (!m_storage)
-        return;
-    tibia::game::cancelMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier));
+    if (m_messages)
+        m_messages->sendCancel(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier));
 }
 
 void TMarketController::onMarketOfferAccept(const int OfferTimestamp, const int OfferIdentifier, const int Amount)
 {
-    if (!m_storage)
-        return;
-    tibia::game::acceptMarketOffer(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier), static_cast<uint16_t>(Amount));
+    if (m_messages)
+        m_messages->sendAccept(static_cast<uint32_t>(OfferTimestamp), static_cast<uint16_t>(OfferIdentifier), static_cast<uint32_t>(Amount));
 }
 
 void TMarketController::onMarketOfferMaximumAmountRequest(const QString& OfferTypeString, const qlonglong PiecePrice)
 {
-    int maximum = 0;
-    if (m_storage && m_selectedType != 0) {
-        const uint64_t price = PiecePrice > 0 ? static_cast<uint64_t>(PiecePrice) : 0;
-        uint64_t limit = static_cast<uint64_t>(market::TMarketStorage::maximumOfferAmount(m_selectedType));
-        if (price > 0)
-            limit = std::min(limit, MaximumTotalPrice / price);
-        const uint64_t gold = playerGold();
-        if (offerType(OfferTypeString) == tibia::client::MARKETACTION_SELL) {
-            limit = std::min<uint64_t>(limit, static_cast<uint64_t>(std::max(m_storage->objectCount(m_selectedType, selectedTier()), 0)));
-            limit = std::min(limit, maximumAmountByFee(gold, price));
-        } else {
-            uint64_t low = 0;
-            uint64_t high = limit;
-            while (low < high) {
-                const uint64_t mid = (low + high + 1) / 2;
-                if (mid * price + marketFee(mid, price) <= gold)
-                    low = mid;
-                else
-                    high = mid - 1;
-            }
-            limit = low;
-        }
-        maximum = static_cast<int>(limit);
+    uint32_t maximum = 0;
+    if (m_storage) {
+        const auto type = offerType(OfferTypeString) == tibia::client::MARKETACTION_SELL ? EMarketOfferType::SELL : EMarketOfferType::BUY;
+        maximum = m_storage->maximumOfferAmount(m_selectedType, m_hasSelectedTier ? std::optional<uint8_t>(m_selectedTier) : std::nullopt,
+                                                type, PiecePrice > 0 ? static_cast<uint64_t>(PiecePrice) : 0);
     }
-    setItemProperty("maximumOfferCreationAmount", maximum);
+    setItemProperty("maximumOfferCreationAmount", static_cast<int>(maximum));
 }
 
 void TMarketController::onMarketOfferCreate(const QString& OfferTypeString, const int Amount, const qlonglong PiecePrice,
                                             const bool CreateAnonymousOffer)
 {
-    if (!m_storage)
+    if (!m_messages)
         return;
-    tibia::game::createMarketOffer(static_cast<uint8_t>(offerType(OfferTypeString)), m_selectedType, selectedTier(), static_cast<uint16_t>(Amount),
-                             static_cast<uint64_t>(PiecePrice), CreateAnonymousOffer ? 1 : 0);
+    const auto type = offerType(OfferTypeString) == tibia::client::MARKETACTION_SELL ? EMarketOfferType::SELL : EMarketOfferType::BUY;
+    m_messages->sendCreate(type, m_selectedType, m_hasSelectedTier ? std::optional<uint8_t>(m_selectedTier) : std::nullopt,
+                           static_cast<uint32_t>(Amount), static_cast<uint64_t>(PiecePrice), CreateAnonymousOffer);
 }
 
 void TMarketController::onClassificationFilterWasSelected(const int SelectedIndex, const QString&, bool, bool, bool, bool, bool)
@@ -675,14 +644,14 @@ void TMarketController::onTierFilterWasSelected(const int SelectedIndex, const Q
 
 void TMarketController::onMarketHistoryOpened()
 {
-    if (m_storage)
-        m_storage->browseHistory();
+    if (m_messages)
+        m_messages->sendBrowseHistory();
 }
 
 void TMarketController::onMarketOwnOffersOpened()
 {
-    if (m_storage)
-        m_storage->browseOwnOffers();
+    if (m_messages)
+        m_messages->sendBrowseOwnOffers();
 }
 
 void TMarketController::onMarketRefreshOffers()
@@ -755,8 +724,8 @@ void TMarketController::closeDialog()
 
 void TMarketController::close(const bool leave)
 {
-    if (leave && m_storage)
-        m_storage->leave();
+    if (leave && m_messages)
+        m_messages->sendLeave();
     for (const char* name : { "buyOffersModel", "sellOffersModel", "historicBuyOffersModel", "historicSellOffersModel", "ownBuyOffersModel",
                               "ownSellOffersModel" })
         setItemProperty(name, QVariant::fromValue(QList<QObject*>{}));
@@ -794,8 +763,8 @@ void TMarketController::onItemDetailsChanged()
     int row = -1;
     if (m_proxy.rowCount() == 0) {
         m_selectedType = details.typeId;
-        m_hasSelectedTier = details.hasTier;
-        m_selectedTier = details.tier;
+        m_hasSelectedTier = details.tier.has_value();
+        m_selectedTier = details.tier.value_or(0);
         m_proxy.setTypeFilter(m_selectedType);
         m_proxy.applyFilterNow();
         row = m_proxy.rowOf(m_selectedType, selectedTier());
@@ -807,23 +776,26 @@ void TMarketController::onItemDetailsChanged()
         QMetaObject::invokeMethod(dialog()->item(), "setIndexForItemView", Q_ARG(QVariant, row));
 }
 
-void TMarketController::setOfferLists(const char* buyProperty, const char* sellProperty, const std::vector<TMarketOffer>& offers,
+void TMarketController::setOfferLists(const char* buyProperty, const char* sellProperty, const market::TMarketOfferList& offers,
                                       std::vector<QObject*>& owned)
 {
     if (!dialog()->item() || !m_storage)
         return;
     const uint64_t gold = playerGold();
     const market::TMarketItemDetails& details = m_storage->itemDetails();
-    QList<QObject*> buy;
-    QList<QObject*> sell;
     std::vector<QObject*> created;
-    for (const TMarketOffer& offer : offers) {
-        auto* display = new TDisplayMarketOffer(offer, typeName(offer.typeId), gold, m_storage->objectCount(offer.typeId, offer.tier), details);
-        created.push_back(display);
-        (offer.type == tibia::client::MARKETACTION_BUY ? buy : sell) << display;
-    }
-    setItemProperty(buyProperty, QVariant::fromValue(buy));
-    setItemProperty(sellProperty, QVariant::fromValue(sell));
+    const auto display = [&](const std::vector<TMarketOffer>& list) {
+        QList<QObject*> result;
+        for (const TMarketOffer& offer : list) {
+            const auto depotCount = static_cast<int>(offer.tier ? m_storage->count(offer.typeId, *offer.tier) : m_storage->count(offer.typeId));
+            auto* row = new TDisplayMarketOffer(offer, typeName(offer.typeId), gold, depotCount, details);
+            created.push_back(row);
+            result << row;
+        }
+        return result;
+    };
+    setItemProperty(buyProperty, QVariant::fromValue(display(offers.buyOffers)));
+    setItemProperty(sellProperty, QVariant::fromValue(display(offers.sellOffers)));
     for (QObject* object : owned)
         object->deleteLater();
     owned = std::move(created);
@@ -831,14 +803,8 @@ void TMarketController::setOfferLists(const char* buyProperty, const char* sellP
 
 void TMarketController::onOffersChanged()
 {
-    if (!m_storage)
-        return;
-    std::vector<TMarketOffer> shown;
-    for (const TMarketOffer& offer : m_storage->offers()) {
-        if (offer.typeId == m_selectedType)
-            shown.push_back(offer);
-    }
-    setOfferLists("buyOffersModel", "sellOffersModel", shown, m_offerObjects);
+    if (m_storage)
+        setOfferLists("buyOffersModel", "sellOffersModel", m_storage->offers(), m_offerObjects);
 }
 
 void TMarketController::onHistoryChanged()
