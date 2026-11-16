@@ -2,19 +2,19 @@
 # tools/re/port.py; checked by `port.py check`. Format and statuses: see port.py.
 # id	fp	status	where
 (anonymous namespace)::TAccountBadgesModel::v44	009272b83a8c0442	ported	friends/friendlistmodels.cpp:TFriendsAccountBadgesModel::roleNames
-(anonymous namespace)::TAccountBadgesModel::v53	6646714b36459a39	ported	friends/friendlistmodels.cpp:TFriendsAccountBadgesModel::entryData
+(anonymous namespace)::TAccountBadgesModel::v53	6646714b36459a39	ported	friends/friendlistmodels.cpp:TFriendsAccountBadgesModel::itemData
 (anonymous namespace)::TActivitiesModel::v44	923caaaae28bb6c5	ported	teamfinder/teamsortproxymodels.cpp:TActivitiesModel::roleNames
 (anonymous namespace)::TActivitiesModel::v53	900505ffcc9d8d2a	ported	teamfinder/teamsortproxymodels.cpp:TActivitiesModel::itemData
 (anonymous namespace)::TBlacklistModel::v44	9d2c4c91150e3161	ported	friends/friendlistmodels.cpp:TBlacklistModel::roleNames
-(anonymous namespace)::TBlacklistModel::v53	5d208b256d2fb7ec	ported	friends/friendlistmodels.cpp:TBlacklistModel::entryData
+(anonymous namespace)::TBlacklistModel::v53	5d208b256d2fb7ec	ported	friends/friendlistmodels.cpp:TBlacklistModel::itemData
 (anonymous namespace)::TCreatureTrackerModel::v44	5a9f32778e2f319e	ported	gamewindow/creaturetrackerwidgetcontroller.cpp:TCreatureTrackerModel::roleNames
 (anonymous namespace)::TCreatureTrackerModel::v53	04a6aa663cba2b24	ported	gamewindow/creaturetrackerwidgetcontroller.cpp:TCreatureTrackerModel::data
 (anonymous namespace)::TExaltationForgeHistoryPageController::THistoryModel::v44	e60a5d6f9e610761	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::roleNames
-(anonymous namespace)::TExaltationForgeHistoryPageController::THistoryModel::v53	f4b416bd143078d9	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::data
+(anonymous namespace)::TExaltationForgeHistoryPageController::THistoryModel::v53	f4b416bd143078d9	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::itemData
 (anonymous namespace)::TFriendListModel::v44	f0334aaf3bf0d7db	ported	friends/friendlistmodels.cpp:TFriendListModel::roleNames
-(anonymous namespace)::TFriendListModel::v53	79e772f811f2a1ec	ported	friends/friendlistmodels.cpp:TFriendListModel::entryData
+(anonymous namespace)::TFriendListModel::v53	79e772f811f2a1ec	ported	friends/friendlistmodels.cpp:TFriendListModel::itemData
 (anonymous namespace)::TInviteListModel::v44	243742c00af7dea3	ported	friends/friendlistmodels.cpp:TInviteListModel::roleNames
-(anonymous namespace)::TInviteListModel::v53	3a841869c5303801	ported	friends/friendlistmodels.cpp:TInviteListModel::entryData
+(anonymous namespace)::TInviteListModel::v53	3a841869c5303801	ported	friends/friendlistmodels.cpp:TInviteListModel::itemData
 (anonymous namespace)::TSpellListModel::v44	582d9183ad7a2408	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideSpellListModel::roleNames
 (anonymous namespace)::TSpellListModel::v53	44d97b683531b487	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideSpellListModel::data
 (anonymous namespace)::TTeamMembersModel::v44	4a4633eadb6e1479	ported	teamfinder/teamsortproxymodels.cpp:TTeamMembersModel::roleNames
@@ -24,7 +24,7 @@
 (anonymous namespace)::TUnlockedPlayerGuideEntryListModel::v44	49d50e1781b3b859	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideEntryListModel::roleNames
 (anonymous namespace)::TUnlockedPlayerGuideEntryListModel::v53	5133920a4f4347e0	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideEntryListModel::data
 (anonymous namespace)::TVisibilitySettingsModel::v44	73fcc527e5a6655e	ported	friends/friendlistmodels.cpp:TVisibilitySettingsModel::roleNames
-(anonymous namespace)::TVisibilitySettingsModel::v53	42014388131d6c43	ported	friends/friendlistmodels.cpp:TVisibilitySettingsModel::entryData
+(anonymous namespace)::TVisibilitySettingsModel::v53	42014388131d6c43	ported	friends/friendlistmodels.cpp:TVisibilitySettingsModel::itemData
 TExaltationForgeHistoryPageController::onHistoryChanged	071ed70c3ec86b0f	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationForgeHistoryPageController::onHistoryChanged
 TTeamsListSortProxyModel::anouceFilterChanged	50d9a67050fee89c	ported	teamfinder/teamfinderciptypes.cpp:numberOrEmpty
 TTeamsListSortProxyModel::anouceFilterChangedAndEmitfilterchanged	50d9a67050fee89c	ported	teamfinder/teamfinderciptypes.cpp:numberOrEmpty
@@ -1139,7 +1139,7 @@ gamewindow::TAccountBadgesModel::v53	15cc541bd3bd7894	ported	gamewindow/characte
 gamewindow::TAccountBadgesModel::~TAccountBadgesModel	7c93c6054bd2886d	skip	compiler-generated destructor pair
 gamewindow::TAccountBadgesModel::~TAccountBadgesModel_deleting	2a9b42839ecbb8f6	skip	compiler-generated destructor pair
 gamewindow::TAccountCharactersModel::v44	cf8eb7ae8dbafdd3	ported	friends/friendlistmodels.cpp:TAccountCharactersModel::roleNames
-gamewindow::TAccountCharactersModel::v53	504c9dc72592f486	ported	friends/friendlistmodels.cpp:TAccountCharactersModel::entryData
+gamewindow::TAccountCharactersModel::v53	504c9dc72592f486	ported	friends/friendlistmodels.cpp:TAccountCharactersModel::itemData
 gamewindow::TAccountCharactersModel::~TAccountCharactersModel	e20a5671d9f58c01	skip	compiler-generated destructor pair
 gamewindow::TAccountCharactersModel::~TAccountCharactersModel_deleting	6203bc9078c70ce2	skip	compiler-generated destructor pair
 gamewindow::TAchievementInfoController::~TAchievementInfoController	226248c018460340	skip	compiler-generated destructor pair
@@ -2735,38 +2735,140 @@ shared::TFileSystemHelper::v6	9d4edb0229d4f093	ported	shared/filesystemhelper.cp
 shared::TFileSystemHelper::v7	dc35ad591e1f0033	ported	shared/filesystemhelper.cpp:TFileSystemHelper::appendTextFile
 shared::TFileSystemHelper::v8	aa843099a29fe341	ported	shared/filesystemhelper.cpp:TFileSystemHelper::removeFile
 shared::TFileSystemHelper::v9	5a53f643bc260723	ported	shared/filesystemhelper.cpp:TFileSystemHelper::createDirectory
-shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v15	259d2485a66796f5	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::rowCount
-shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v18	2ca84fd322e0a909	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::data
-shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v49	30a39ba1980b9fa9	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::setItems
-shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v50	a569152f23560604	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::clear
-shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v51	da364dbf273981b3	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::items
-shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v52	2e412bfe71764f1f	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::defaultData
+shared::TIODeviceReader::v0	097457dc45e86dd8	tested	shared/iodevicereader.cpp:TIODeviceReader::~TIODeviceReader	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v1	79674512666b34e2	tested	shared/iodevicereader.cpp:TIODeviceReader::~TIODeviceReader	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v10	ebac41a1ce05e3b9	tested	shared/iodevicereader.cpp:TIODeviceReader::readInt8	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v11	e297e9afb0d91ac7	tested	shared/iodevicereader.cpp:TIODeviceReader::readInt16	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v12	cd9e2db453175590	tested	shared/iodevicereader.cpp:TIODeviceReader::readInt32	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v13	e2f67b726eba768f	tested	shared/iodevicereader.cpp:TIODeviceReader::readInt64	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v14	91caae87469c12a2	tested	shared/iodevicereader.cpp:TIODeviceReader::readString8	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v15	6b76b815ace6c5e8	tested	shared/iodevicereader.cpp:TIODeviceReader::readString16	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v16	412bc854b99a5adc	tested	shared/iodevicereader.cpp:TIODeviceReader::readBytes	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v17	702eb97a1f42596c	tested	shared/iodevicereader.cpp:TIODeviceReader::peekBytes	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v18	aeb7c7f8dfb82257	tested	shared/iodevicereader.cpp:TIODeviceReader::readBool	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v19	577e31190751053b	tested	shared/iodevicereader.cpp:TIODeviceReader::readDouble	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v2	45c11a172a4557f7	tested	shared/iodevicereader.cpp:TIODeviceReader::isOpen	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v20	75f4b35dbd257fee	tested	shared/iodevicereader.cpp:TIODeviceReader::bytesAvailable	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v21	6a2637f34b55bb8e	tested	shared/iodevicereader.cpp:TIODeviceReader::hasBytesAvailable	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v22	fb1d8f5a77797aa3	tested	shared/iodevicereader.cpp:TIODeviceReader::atEnd	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v23	14979524609fa555	tested	shared/iodevicereader.cpp:TIODeviceReader::seek	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v24	3cacfad898c5f38b	tested	shared/iodevicereader.cpp:TIODeviceReader::skipTo	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v25	07254f52bbbcd96f	tested	shared/iodevicereader.cpp:TIODeviceReader::pos	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v26	6caa6a6a3a086128	tested	shared/iodevicereader.cpp:TIODeviceReader::size	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v27	f2af0f2814fd4a49	tested	shared/iodevicereader.cpp:TIODeviceReader::ensureBytesAvailable	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v3	af943b88179365f8	tested	shared/iodevicereader.cpp:TIODeviceReader::open	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v4	81e883756c6bcc4c	tested	shared/iodevicereader.cpp:TIODeviceReader::close	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v5	40c61f723ead95ca	tested	shared/iodevicereader.cpp:TIODeviceReader::readUInt8	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v6	b41ca4771007b52f	tested	shared/iodevicereader.cpp:TIODeviceReader::peekUInt8	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v7	2b666a1ba6c6c1f1	tested	shared/iodevicereader.cpp:TIODeviceReader::readUInt16	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v8	657528e29352e74e	tested	shared/iodevicereader.cpp:TIODeviceReader::readUInt32	test=tests/client/iodevice_test.cpp
+shared::TIODeviceReader::v9	f6c3ff346be9cb7b	tested	shared/iodevicereader.cpp:TIODeviceReader::readUInt64	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v0	097457dc45e86dd8	tested	shared/iodevicewriter.cpp:TIODeviceWriter::~TIODeviceWriter	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v1	79674512666b34e2	tested	shared/iodevicewriter.cpp:TIODeviceWriter::~TIODeviceWriter	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v10	91064127f8a1d7db	tested	shared/iodevicewriter.cpp:TIODeviceWriter::writeString16	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v11	8e484c2861624899	tested	shared/iodevicewriter.cpp:TIODeviceWriter::writeRawBytes	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v12	6e954117ddad2584	tested	shared/iodevicewriter.cpp:TIODeviceWriter::writeBool	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v13	07254f52bbbcd96f	tested	shared/iodevicewriter.cpp:TIODeviceWriter::pos	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v14	6caa6a6a3a086128	tested	shared/iodevicewriter.cpp:TIODeviceWriter::size	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v2	45c11a172a4557f7	tested	shared/iodevicewriter.cpp:TIODeviceWriter::isOpen	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v3	af943b88179365f8	tested	shared/iodevicewriter.cpp:TIODeviceWriter::open	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v4	81e883756c6bcc4c	tested	shared/iodevicewriter.cpp:TIODeviceWriter::close	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v5	a66033d4b703787d	tested	shared/iodevicewriter.cpp:TIODeviceWriter::writeUInt8	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v6	f42912daa4c627da	tested	shared/iodevicewriter.cpp:TIODeviceWriter::writeUInt16	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v7	9fbc48da935c2e86	tested	shared/iodevicewriter.cpp:TIODeviceWriter::writeUInt32	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v8	9fbc48da935c2e86	tested	shared/iodevicewriter.cpp:TIODeviceWriter::writeUInt64	test=tests/client/iodevice_test.cpp
+shared::TIODeviceWriter::v9	c7fc10f6e15af8a6	tested	shared/iodevicewriter.cpp:TIODeviceWriter::writeString8	test=tests/client/iodevice_test.cpp
+shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v15	259d2485a66796f5	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v18	2ca84fd322e0a909	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v49	30a39ba1980b9fa9	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v50	a569152f23560604	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
 shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
 shared::TSimpleVectorAbstractListModel<(anonymous namespace)::TActivity>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
-shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v15	f74c58dcdcd91d8a	ported	friends/friendlistmodels.h:TSimpleVectorAbstractListModel::rowCount
-shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v18	7fdd808224c46648	ported	friends/friendlistmodels.h:TSimpleVectorAbstractListModel::data
-shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v49	0295dc51a8ea4b4f	ported	friends/friendlistmodels.h:TSimpleVectorAbstractListModel::setEntries
-shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v50	e41a7f2195302d6e	ported	friends/friendlistmodels.h:TSimpleVectorAbstractListModel::clearEntries
-shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v51	da364dbf273981b3	ported	friends/friendlistmodels.h:TSimpleVectorAbstractListModel::entries
+shared::TSimpleVectorAbstractListModel<tibia::chat::TKeywordButton>::v15	36bc0444b1b22e8f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::chat::TKeywordButton>::v18	4602c09de080010c	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::chat::TKeywordButton>::v49	8a0d1c8822146bb4	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::chat::TKeywordButton>::v50	d007cafaa1704d56	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::chat::TKeywordButton>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::chat::TKeywordButton>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::chat::TKeywordButton>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::chat::TKeywordButton>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::exaltation::TExaltationStorage::THistoryEntry>::v15	4fc4738a7031315a	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::exaltation::TExaltationStorage::THistoryEntry>::v18	13e18b974b6ab417	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::exaltation::TExaltationStorage::THistoryEntry>::v49	cd18b9935b69bdfd	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::exaltation::TExaltationStorage::THistoryEntry>::v50	9ce18d523b72f76e	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::exaltation::TExaltationStorage::THistoryEntry>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::exaltation::TExaltationStorage::THistoryEntry>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::exaltation::TExaltationStorage::THistoryEntry>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::exaltation::TExaltationStorage::THistoryEntry>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountBadge>::v15	4fc4738a7031315a	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountBadge>::v18	60c6fdda88e59c21	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountBadge>::v49	cd18b9935b69bdfd	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountBadge>::v50	9ce18d523b72f76e	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountBadge>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountBadge>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountBadge>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountBadge>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountCharacterListEntry>::v15	09bd9bf0c4146c38	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountCharacterListEntry>::v18	0be6e0af9c906f78	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountCharacterListEntry>::v49	e9117ef0a0382c82	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountCharacterListEntry>::v50	8d5044a968ced814	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountCharacterListEntry>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountCharacterListEntry>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountCharacterListEntry>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TAccountCharacterListEntry>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TBlacklist::TBlacklistEntry>::v15	41b908956e388682	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TBlacklist::TBlacklistEntry>::v18	4b1058c2c4ce0c9c	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TBlacklist::TBlacklistEntry>::v49	a51003c7f89f60ca	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TBlacklist::TBlacklistEntry>::v50	f1bbd8781c80f52e	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TBlacklist::TBlacklistEntry>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TBlacklist::TBlacklistEntry>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TBlacklist::TBlacklistEntry>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TBlacklist::TBlacklistEntry>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v15	f74c58dcdcd91d8a	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v18	7fdd808224c46648	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v49	0295dc51a8ea4b4f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v50	e41a7f2195302d6e	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TFriendList::TFriendEntry>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TInviteList::TInviteListEntry>::v15	d3f601ca0fa90bc0	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TInviteList::TInviteListEntry>::v18	9c85d30d16a07f69	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TInviteList::TInviteListEntry>::v49	f55cb50f6e6b8c11	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TInviteList::TInviteListEntry>::v50	242d1bd8e01a4347	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TInviteList::TInviteListEntry>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TInviteList::TInviteListEntry>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TInviteList::TInviteListEntry>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TInviteList::TInviteListEntry>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TVisibilitySetting>::v15	3d30070b944cee96	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TVisibilitySetting>::v18	c90b0e13c0735a64	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TVisibilitySetting>::v49	8ce9e4e9f02c8c5f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TVisibilitySetting>::v50	d0e7840d36d3437c	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TVisibilitySetting>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TVisibilitySetting>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::friends::TVisibilitySetting>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
+shared::TSimpleVectorAbstractListModel<tibia::friends::TVisibilitySetting>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
 shared::TSimpleVectorAbstractListModel<tibia::gamewindow::WorldData>::v15	8b04efd1d78166b1	ported	gamewindow/createcharacterdialogcontroller.cpp:WorldSelectionModel::rowCount
 shared::TSimpleVectorAbstractListModel<tibia::gamewindow::WorldData>::v18	e4462954c2522516	ported	gamewindow/createcharacterdialogcontroller.cpp:WorldSelectionModel::data
 shared::TSimpleVectorAbstractListModel<tibia::gamewindow::WorldData>::v49	59a15aa327d2037b	ported	gamewindow/createcharacterdialogcontroller.cpp:WorldSelectionModel::setItems
 shared::TSimpleVectorAbstractListModel<tibia::gamewindow::WorldData>::v51	da364dbf273981b3	ported	gamewindow/createcharacterdialogcontroller.h:WorldSelectionModel::items
 shared::TSimpleVectorAbstractListModel<tibia::gamewindow::WorldData>::v52	2e412bfe71764f1f	inlined	gamewindow/createcharacterdialogcontroller.cpp:WorldSelectionModel::data
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v15	d3f601ca0fa90bc0	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::rowCount
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v18	9c85d30d16a07f69	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::data
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v49	f55cb50f6e6b8c11	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::setItems
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v50	f30d4b4901ae8011	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::clear
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v51	da364dbf273981b3	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::items
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v52	2e412bfe71764f1f	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::defaultData
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v15	d3f601ca0fa90bc0	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v18	9c85d30d16a07f69	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v49	f55cb50f6e6b8c11	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v50	f30d4b4901ae8011	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
 shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
 shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamData>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v15	3967640b05fba8c2	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::rowCount
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v18	2d07a64bc0476b75	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::data
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v49	f956a14510d04348	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::setItems
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v50	8ff58b17343391e2	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::clear
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v51	da364dbf273981b3	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::items
-shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v52	2e412bfe71764f1f	ported	teamfinder/teamsortproxymodels.h:TSimpleVectorListModel::defaultData
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v15	3967640b05fba8c2	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::rowCount	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v18	2d07a64bc0476b75	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v49	f956a14510d04348	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v50	8ff58b17343391e2	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::clear	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v51	da364dbf273981b3	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::items	test=tests/client/simplevectorabstractlistmodel_test.cpp
+shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::v52	2e412bfe71764f1f	tested	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::defaultData	test=tests/client/simplevectorabstractlistmodel_test.cpp
 shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::~TSimpleVectorAbstractListModel	7382774637cec697	skip	compiler-generated destructor pair
 shared::TSimpleVectorAbstractListModel<tibia::teamfinder::TTeamMember>::~TSimpleVectorAbstractListModel_deleting	7382774637cec697	skip	compiler-generated destructor pair
 shared::TTibiaFileSystemHelper::v0	e86c1d78dc9ba06b	skip	compiler-generated destructor
@@ -2842,6 +2944,13 @@ shared::TTibiaFileSystemHelper::v71	9d1d90f377e037b9	ported	shared/tibiafilesyst
 shared::TTibiaFileSystemHelper::v72	ae88b7c0e1377b73	ported	shared/tibiafilesystemhelper.cpp:TTibiaFileSystemHelper::readJsonFileOrEmptyObject
 shared::TTibiaFileSystemHelper::v8	3787af63c818695f	ported	shared/tibiafilesystemhelper.cpp:TTibiaFileSystemHelper::getAssetsDirectory
 shared::TTibiaFileSystemHelper::v9	4fbbdb9b1f62aef6	ported	shared/tibiafilesystemhelper.cpp:TTibiaFileSystemHelper::getSoundsDirectory
+shared::TXteaHelper::v0	097457dc45e86dd8	skip	compiler-generated destructor (CryptoPP cipher members)
+shared::TXteaHelper::v1	79674512666b34e2	skip	compiler-generated destructor (CryptoPP cipher members)
+shared::TXteaHelper::v2	564c0d0fd8332fea	tested	shared/xteahelper.cpp:TXteaHelper::setKey	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v3	b5286ae7d86979cb	tested	shared/xteahelper.cpp:TXteaHelper::key	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v4	8535ee3dd32cd9b6	tested	shared/xteahelper.cpp:TXteaHelper::pad	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v5	3c3c2aae23587bbf	tested	shared/xteahelper.cpp:TXteaHelper::encrypt	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v6	0e3dcff3a2eaa7de	tested	shared/xteahelper.cpp:TXteaHelper::decrypt	test=tests/client/xteahelper_test.cpp
 skillwheel::TGridConfiguration::v2	c36fcaa3927c009b	ported	skillwheel/skillwheeldata.cpp:maxPoints
 skillwheel::TGridConfiguration::v3	69d2ed7671fddd43	ported	skillwheel/skillwheeldata.cpp:smallPerk
 skillwheel::TGridConfiguration::v4	b2a518461b25c657	ported	skillwheel/skillwheeldata.cpp:mediumPerk
@@ -2940,6 +3049,7 @@ sub_0068f5732186	0068f57321865b05	inlined	exivaoptions/exivaoptionsstorage.cpp:d
 sub_00891527872e	00891527872e3bcc	ported	creatures/creaturestorage.cpp:TCreature::markOptions
 sub_00891527872e#2	00891527872e3bcc	ported	creatures/creaturestorage.cpp:TCreature::markOptions
 sub_00891527872e#4	00891527872e3bcc	ported	creatures/creaturestorage.cpp:TCreature::markOptions
+sub_00958a57b8d1	00958a57b8d15de7	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems
 sub_00baebbba818#4	00baebbba81803e1	inlined	protocol::TProtobufServerMessageTranslator::v65
 sub_00c36a3580e6	00c36a3580e6f43f	ported	gamewindow/housesinfodialogcontroller.cpp:dateBerlin
 sub_00c84b7f3952	00c84b7f3952c8d1	inlined	animation/phaseanimator.cpp:TAnimator::update
@@ -3111,6 +3221,7 @@ sub_097457dc45e8#558	097457dc45e86dd8	inlined	gamewindow/storedialogcontroller.c
 sub_097457dc45e8#562	097457dc45e86dd8	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onTransactionHistoryChanged
 sub_097457dc45e8#563	097457dc45e86dd8	inlined	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage
 sub_097457dc45e8#784	097457dc45e86dd8	inlined	protocol::TProtobufClientMessageTranslator::v3
+sub_097457dc45e8#990	097457dc45e86dd8	skip	CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
 sub_0981ac7a5eb7	0981ac7a5eb7faf7	inlined	exaltation/exaltationstorage.cpp:TExaltationStorage::setFusionGroups
 sub_098423be88b7	098423be88b7f30d	skip	std container template code
 sub_09899a74de31	09899a74de31234e	skip	misattributed neighbour, not this class
@@ -3662,12 +3773,21 @@ sub_23c91f1a75a5#217	23c91f1a75a58fdc	skip	std::vector length error (library)
 sub_23c91f1a75a5#221	23c91f1a75a58fdc	skip	std::vector/shared_ptr template instantiations
 sub_23c91f1a75a5#230	23c91f1a75a58fdc	skip	std::vector length error (library)
 sub_23c91f1a75a5#248	23c91f1a75a58fdc	skip	std::vector length error (library)
+sub_23c91f1a75a5#250	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
+sub_23c91f1a75a5#251	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
+sub_23c91f1a75a5#252	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
+sub_23c91f1a75a5#253	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
+sub_23c91f1a75a5#259	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
+sub_23c91f1a75a5#261	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
+sub_23c91f1a75a5#263	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#264	23c91f1a75a58fdc	skip	std::vector growth / copy / length_error (library)
 sub_23c91f1a75a5#266	23c91f1a75a58fdc	skip	std::vector growth / copy / length_error (library)
 sub_23c91f1a75a5#269	23c91f1a75a58fdc	skip	std::vector growth / copy / length_error (library)
+sub_23c91f1a75a5#275	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#288	23c91f1a75a58fdc	inlined	gamewindow/playerguidewidgetcontroller.cpp:levelSpecialPopup
 sub_23c91f1a75a5#289	23c91f1a75a58fdc	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::onPlayerLevelUp
 sub_23c91f1a75a5#290	23c91f1a75a58fdc	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::refreshPlayerGuideEntries
+sub_23c91f1a75a5#297	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23c91f1a75a5#3	23c91f1a75a58fdc	skip	std::vector / QList template code
 sub_23c91f1a75a5#316	23c91f1a75a58fdc	skip	std::vector realloc (library)
 sub_23c91f1a75a5#317	23c91f1a75a58fdc	skip	std::vector reserve/realloc (library)
@@ -3675,6 +3795,8 @@ sub_23c91f1a75a5#321	23c91f1a75a58fdc	skip	std::shared_ptr / vector library code
 sub_23c91f1a75a5#323	23c91f1a75a58fdc	skip	std container template code
 sub_23c91f1a75a5#341	23c91f1a75a58fdc	skip	std::vector length_error thrower (library)
 sub_23c91f1a75a5#342	23c91f1a75a58fdc	skip	std::vector length_error thrower (library)
+sub_23c91f1a75a5#58	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
+sub_23c91f1a75a5#60	23c91f1a75a58fdc	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::data
 sub_23d0e799df78	23d0e799df78dd35	ported	teamfinder/teamsortproxymodels.cpp:makeActivity
 sub_23e2bec2fc32	23e2bec2fc321c78	skip	std::map / std::deque / std::vector template instantiation
 sub_23e7642f13a6	23e7642f13a61801	skip	moc property getter, provided by the generated cip base
@@ -3935,6 +4057,7 @@ sub_32de808c7d27#2	32de808c7d27ff77	inlined	friends/friendsciptypes.cpp:TFriends
 sub_32dea18f0cc3	32dea18f0cc31471	skip	translation-unit static initializer (misattributed)
 sub_32ee31bbb220	32ee31bbb22000ab	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::TPlayerTradeObject
 sub_32ee31bbb220#2	32ee31bbb22000ab	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::TPlayerTradeObject
+sub_32f22415c290	32f22415c2902dcf	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems
 sub_330cdd74969f	330cdd74969f91ab	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaNewDetailsMessage
 sub_3314a0648818	3314a0648818a027	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::closeButtonClicked
 sub_331a269e8ec7	331a269e8ec7afb5	ported	gamewindow/questlogcontroller.cpp:TQuestLogController::TQuestLogController
@@ -4076,6 +4199,7 @@ sub_3b2268c87db3#2	3b2268c87db31cad	ported	input/gameaction.h:TGameActionSession
 sub_3b5949c1a4d7	3b5949c1a4d7c971	skip	miniaudio library code (miniaudio.h asserts), misattributed
 sub_3b9998bb8835	3b9998bb88352e7e	ported	gamewindow/editminimapmarkerdialogcontroller.cpp:TEditMinimapMarkerDialogController::showDialog
 sub_3b9d7d6a1c1f	3b9d7d6a1c1fda87	ported	highscores/highscoresciptypes.cpp:THighscoresProtocolMessageHandler::onServerMessageEnqueued
+sub_3ba134cc80dc	3ba134cc80dc98df	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems
 sub_3baf111deb41	3baf111deb41d58f	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::TSpriteTextureProvider
 sub_3bb1b17490f6	3bb1b17490f6e5b7	skip	builds the base TAnimator phase table; walking phases come from the outfit Animator
 sub_3bcc0704ec21	3bcc0704ec216f26	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::requestTabSwitch
@@ -4221,6 +4345,8 @@ sub_44aff71a026f	44aff71a026f0787	ported	game/playerdata.cpp:TPlayerData::schedu
 sub_44b3b5c31da0	44b3b5c31da0285e	skip	Qt/std container template code
 sub_44bdff14bd07	44bdff14bd07a7f1	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::selectPerk
 sub_44bfe4dab174	44bfe4dab1748292	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendFollow
+sub_44ce2a009f33	44ce2a009f33f41b	tested	shared/iodevicereader.cpp:TIODeviceReader::~TIODeviceReader	test=tests/client/iodevice_test.cpp
+sub_44ce2a009f33#2	44ce2a009f33f41b	tested	shared/iodevicewriter.cpp:TIODeviceWriter::~TIODeviceWriter	test=tests/client/iodevice_test.cpp
 sub_44da18ff3e10	44da18ff3e10483a	skip	std::sort instantiation over trade goods (library)
 sub_450d7a7fc1e4	450d7a7fc1e49616	inlined	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
 sub_452dfdbf5d02	452dfdbf5d023c8f	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
@@ -4441,12 +4567,14 @@ sub_51c7abd9eb85#7	51c7abd9eb85ede5	inlined	quickloot/quicklootciptypes.cpp:TQui
 sub_51e5548f5d16	51e5548f5d16bfbe	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendRuleViolationReport
 sub_51f3b3b34ed1#2	51f3b3b34ed17187	skip	moc signal emitter
 sub_520192e4e0e3	520192e4e0e32264	ported	gamewindow/optionsmenudialogcontroller.cpp:TOptionsMenuDialogController::openHelpChannel
+sub_520aa27ea166	520aa27ea166b7e4	skip	CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
 sub_5221a791df71	5221a791df7192a6	skip	moc-generated signal emitter
 sub_52475214d2ed	52475214d2ed07db	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_524bb53ec3c7	524bb53ec3c797be	inlined	chat/chatchannel.h:TChatChannelIdentifier::isGuildChannel
 sub_5268ddcfd7a4	5268ddcfd7a4faa7	ported	gamewindow/monsterdialogcontroller.cpp:TMonsterDialogController::removeSelectedCharm
 sub_527a8a4d9cf5	527a8a4d9cf57b73	ported	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationForgeDialogController::page
 sub_527e243164ce	527e243164ce2303	skip	std vector internals (push_back/realloc/assign/clear)
+sub_5298ce9fb5b5	5298ce9fb5b51890	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems
 sub_529ba173b422	529ba173b422b1ce	inlined	gamewindow/assignactiondialogs.cpp:TSpellListDataModel::data
 sub_529d53a095c4	529d53a095c49327	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTurnObject
 sub_529fafe2940d	529fafe2940db6eb	inlined	gamewindow/housesinfodialogcontroller.cpp:THousesModel::data
@@ -4749,6 +4877,8 @@ sub_591fdb283bc9#450	591fdb283bc999e5	skip	QMetaType construct/copy/destroy help
 sub_5935749cc7e7	5935749cc7e764d7	ported	proficiency/proficiencystorage.cpp:TProficiencyStorage::setProficiencyData
 sub_5935ae28bd83	5935ae28bd839e2a	skip	miniaudio library
 sub_593d44800759	593d44800759ae22	tested	config/clientoptionsmigration.cpp:migrate	test=tests/client/clientoptionsmigration_test.cpp
+sub_59831c24da06	59831c24da065c1e	tested	shared/iodevicereader.cpp:TIODeviceReader::TIODeviceReader	test=tests/client/iodevice_test.cpp
+sub_59831c24da06#2	59831c24da065c1e	tested	shared/iodevicewriter.cpp:TIODeviceWriter::TIODeviceWriter	test=tests/client/iodevice_test.cpp
 sub_598388ff33f9	598388ff33f93466	skip	std::sort instantiation over team members / member indices (library)
 sub_59952c428275	59952c428275e014	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendMarketCancel
 sub_59b1145eaa9a	59b1145eaa9a71fd	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::refreshPlayerGuideEntries
@@ -5416,7 +5546,7 @@ sub_835525f18506	835525f185068637	ported	gamewindow/statusbarcontroller.cpp:TSta
 sub_835de2e6cd81	835de2e6cd81cdd5	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_837932b7e775#4	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTranslator::v88
 sub_837932b7e775#6	837932b7e775c89f	inlined	protocol::TProtobufServerMessageTranslator::v108
-sub_83815f571796	83815f571796b8d0	inlined	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::data
+sub_83815f571796	83815f571796b8d0	inlined	gamewindow/exaltationforgedialogcontroller.cpp:TExaltationHistoryListModel::itemData
 sub_8382c73d673c	8382c73d673c68cc	ported	gamewindow/imbuingdialogcontroller.cpp:TImbuingDialogController::imbuementFilter
 sub_83c5f33127a6#146	83c5f33127a615cc	inlined	protocol::TProtobufClientMessageTranslator::v114
 sub_84110ef0e020	84110ef0e020a82b	inlined	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaButtonController::onCyclopediaButtonClicked
@@ -6533,6 +6663,7 @@ sub_b5e1d5998879	b5e1d5998879605b	ported	exivaoptions/exivaoptionsstorage.cpp:TE
 sub_b60ba77a3158	b60ba77a31589617	skip	std::vector copy / growth of store records (library)
 sub_b60db259bb83	b60db259bb8394c4	skip	SFML/miniaudio library helper, only called from library code
 sub_b67f76756eea	b67f76756eead26c	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendDepotSearchRetrieve
+sub_b6850df0dd7d	b6850df0dd7d7113	inlined	shared/simplevectorabstractlistmodel.h:TSimpleVectorAbstractListModel::setItems
 sub_b6acbbb13220	b6acbbb13220e743	skip	compiler-generated destructor pair
 sub_b6afd94b5fe0	b6afd94b5fe0ab7b	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::good
 sub_b6dca9c9d985	b6dca9c9d9853ab6	ported	gamewindow/preydialogcontroller.cpp:TPreyPreyPageController::onConfirmListReroll
@@ -6945,6 +7076,7 @@ sub_c39502991fa0	c39502991fa0dac5	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_c3b5fd8b0f64	c3b5fd8b0f640ac9	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::closeSidebarClosestToGamewindow
 sub_c3bbec1d63e5	c3bbec1d63e5ea4f	ported	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleXpChangedMessage
 sub_c3e59371c8cc	c3e59371c8cc7044	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::labelOf
+sub_c40711fb05c6	c40711fb05c69caf	skip	CryptoPP StreamTransformationFilter (library; XTEA rounds in shared/xteahelper.cpp)
 sub_c43b32f1c434	c43b32f1c434bb7b	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::onTradeRequestTakeFocus
 sub_c43b32f1c434#2	c43b32f1c434bb7b	ported	gamewindow/npcdialogcontroller.cpp:TNpcDialogController::onTradeRequestReleaseFocus
 sub_c4619106b19e	c4619106b19ecf0f	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardStateHoverText
@@ -7501,6 +7633,7 @@ sub_dd6382ed3305	dd6382ed33057cad	inlined	protocol::TProtobufServerMessageTransl
 sub_dd70c256fbd0	dd70c256fbd04009	inlined	gamewindow/characterinfomodels.cpp:TAchievementInfoController::updateCounts
 sub_dd76dc7a172c	dd76dc7a172c304c	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::clearBacklog
 sub_dda8e4e36212	dda8e4e3621278c2	inlined	gamewindow/bugreportdialogcontroller.cpp:TBugReportDialogController::requestSendBugReport
+sub_ddbe646a13f4#2	ddbe646a13f460f6	skip	CryptoPP XTEA cipher holder (library)
 sub_ddbedce64ba0	ddbedce64ba0d270	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::onApplyClicked
 sub_ddccbebfc064	ddccbebfc0644033	inlined	teamfinder/teamsortproxymodels.cpp:TTeamMembersModel::setItems
 sub_ddd126b4fbb7#7	ddd126b4fbb70a04	inlined	gamewindow/questlogcontroller.cpp:TQuestLogController::onQuestLinePartsChanged
@@ -7775,6 +7908,7 @@ sub_e7f613904a17	e7f613904a177981	inlined	gamewindow/friendsaccountsearchpagecon
 sub_e7f648c8ad0d#3	e7f648c8ad0dbcdb	inlined	config/sidebaroptions.cpp:parsePlayerGuide
 sub_e8075c22c978	e8075c22c9784926	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::TContextMenuController
 sub_e807de94454a	e807de94454a2962	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::selectWorld
+sub_e8082de37776	e8082de37776fbbb	skip	compiler-generated destructor (CryptoPP cipher members)
 sub_e811de8c315a	e811de8c315a1a98	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendTeamFinderAssembleTeam
 sub_e817ae9d50bb	e817ae9d50bbf68a	ported	gamewindow/remainingdialogs.cpp:TCharacterTradeDialogController::removeHighlight
 sub_e817b35a1661	e817b35a1661d211	inlined	proficiency/proficiencyciptypes.cpp:handleWeaponProficiencyMessage
@@ -8015,6 +8149,7 @@ sub_f8ca5dab45f6#2	f8ca5dab45f6fec5	inlined	gamewindow/teamjoinpagecontroller.cp
 sub_f90d3b4c0cc7	f90d3b4c0cc76269	ported	chat/textstorage.cpp:TCreatureSpeechBubble::clearFirstLine
 sub_f919b998c4fd	f919b998c4fde2aa	inlined	gamewindow/storedialogcontroller.cpp:TStoreDialogController::tryOutfitForCurrentOffer
 sub_f9515db0fa1e	f9515db0fa1e2d3a	ported	gamewindow/hitpointmanabarcontroller.cpp:THitpointManabarController::setHitpoints
+sub_f98ceae25008	f98ceae25008c033	tested	shared/xteahelper.cpp:TXteaHelper::convertByteOrder	test=tests/client/xteahelper_test.cpp
 sub_f9a0a702deba#5	f9a0a702deba7f63	inlined	quickloot/managedcontainerstorage.h:TManagedContainerStorage::managedContainers
 sub_f9a50c2bdd79	f9a50c2bdd796f99	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::setSelectedSortOrderIndex
 sub_f9cb681b5d0d#2	f9cb681b5d0dc995	skip	SFML/miniaudio library helper, only called from library code

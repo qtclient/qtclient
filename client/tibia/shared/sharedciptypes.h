@@ -146,16 +146,6 @@ public:
     using cip::shared::THighlightTimer::THighlightTimer;
 };
 
-class TIODeviceReader final : public ::tibia::CipTyped {
-public:
-    TIODeviceReader() = default;
-};
-
-class TIODeviceWriter final : public ::tibia::CipTyped {
-public:
-    TIODeviceWriter() = default;
-};
-
 class TImagestripResponse final : public ::tibia::CipTyped {
 public:
     TImagestripResponse() = default;
@@ -262,14 +252,6 @@ public:
     static int blockSize();
     /// Encrypts one block in place; false when `size` is not blockSize().
     static bool encrypt(uint8_t* block, int size);
-};
-
-/// CIP `shared::TXteaHelper` — wraps game-wire XTEA (`decryptGameXtea1405`).
-class TXteaHelper final : public ::tibia::CipTyped
-{
-public:
-    TXteaHelper() = default;
-    static bool decryptInPlace(const std::array<uint32_t, 4>& key, QByteArray& body);
 };
 
 /// CIP `shared::TRandomNumberGenerator` (uniform int in [min,max]).
@@ -446,15 +428,6 @@ class TQtConnectionManager final : public ::tibia::CipTyped
 {
 public:
     TQtConnectionManager() = default;
-};
-
-/// CIP `shared::TSimpleVectorAbstractListModel<T>` primary template shell.
-/// Concrete QAbstractListModel instantiations live next to their feature models.
-template<typename T>
-class TSimpleVectorAbstractListModel : public ::tibia::CipTyped
-{
-public:
-    TSimpleVectorAbstractListModel() = default;
 };
 
 }

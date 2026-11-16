@@ -31,7 +31,7 @@ void TFriendsConfigurationPageController::updateSettings()
               [](const friends::TVisibilitySetting& left, const friends::TVisibilitySetting& right) {
                   return left.friendGroup > right.friendGroup;
               });
-    m_model->setEntries(settings);
+    m_model->setItems(settings);
 }
 
 QObject* TFriendsConfigurationPageController::friendSettings() const

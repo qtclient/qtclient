@@ -37,4 +37,13 @@ shared::TFileSystemHelper::v6	9d4edb0229d4f093	ported	client/tibia/shared/filesy
 shared::TFileSystemHelper::v7	dc35ad591e1f0033	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::appendTextFile
 shared::TFileSystemHelper::v8	aa843099a29fe341	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::removeFile
 shared::TFileSystemHelper::v9	5a53f643bc260723	ported	client/tibia/shared/filesystemhelper.cpp:TFileSystemHelper::createDirectory
+shared::TXteaHelper::v0	097457dc45e86dd8	skip	compiler-generated destructor (CryptoPP cipher members)
+shared::TXteaHelper::v1	79674512666b34e2	skip	compiler-generated destructor (CryptoPP cipher members)
+shared::TXteaHelper::v2	564c0d0fd8332fea	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::setKey	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v3	b5286ae7d86979cb	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::key	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v4	8535ee3dd32cd9b6	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::pad	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v5	3c3c2aae23587bbf	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::encrypt	test=tests/client/xteahelper_test.cpp
+shared::TXteaHelper::v6	0e3dcff3a2eaa7de	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::decrypt	test=tests/client/xteahelper_test.cpp
 sub_073bd719c008	073bd719c0089d40	skip	inlined QCborValue destructor
+sub_e8082de37776	e8082de37776fbbb	skip	compiler-generated destructor (CryptoPP cipher members)
+sub_f98ceae25008	f98ceae25008c033	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::convertByteOrder	test=tests/client/xteahelper_test.cpp

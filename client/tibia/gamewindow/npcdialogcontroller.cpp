@@ -128,7 +128,7 @@ void TNpcDialogController::onNpcChatWindow(const std::vector<uint32_t>& npcIds, 
     if (m_remote)
         return;
     m_talkPartners = npcIds;
-    m_keywordButtons.setButtons(std::move(buttons));
+    m_keywordButtons.setItems(buttons);
     if (npcIds.empty()) {
         setShowTrade(false);
         dialog()->close();
@@ -230,7 +230,7 @@ void TNpcDialogController::onRequestOpenNPCTrade()
         const QString names = m_storage ? m_storage->npcName() : QString();
         setTalkPartnerNames(names);
         m_outfit.setFromCreatureNamed(names);
-        m_keywordButtons.setButtons({});
+        m_keywordButtons.setItems({});
     }
     setShowTrade(true);
     dialog()->show();
@@ -269,7 +269,7 @@ void TNpcDialogController::openRemoteSession(TRemoteNpcSession session)
 {
     setTalkPartnerNames(session.name);
     m_outfit.setOutfit(session.outfit);
-    m_keywordButtons.setButtons(session.keywordButtons);
+    m_keywordButtons.setItems(session.keywordButtons);
     m_remote = std::move(session);
     dialog()->show();
 }
@@ -279,7 +279,7 @@ void TNpcDialogController::closeRemoteSession()
     if (!m_remote)
         return;
     m_remote.reset();
-    m_keywordButtons.setButtons({});
+    m_keywordButtons.setItems({});
     if (m_showTrade)
         m_trade.onRequestCloseNpcTrade();
     if (dialog()->item())

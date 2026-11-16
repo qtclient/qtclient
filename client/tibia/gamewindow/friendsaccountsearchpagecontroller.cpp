@@ -30,7 +30,7 @@ public:
         : TAccountCharacterListData(parent)
     {
         auto* model = new ::tibia::TAccountCharactersModel(this);
-        model->setEntries(characters);
+        model->setItems(characters);
         m_accountCharactersModel = model;
     }
 };

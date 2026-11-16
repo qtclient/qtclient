@@ -62,7 +62,7 @@ QHash<int, QByteArray> TFriendListModel::roleNames() const
     };
 }
 
-QVariant TFriendListModel::entryData(const friends::TFriendList::TFriendEntry& entry, const int role) const
+QVariant TFriendListModel::itemData(const friends::TFriendList::TFriendEntry& entry, const int role) const
 {
     const friends::TAccountCharacterListEntry& character = entry.character;
     switch (role) {
@@ -119,7 +119,7 @@ bool TFriendListSortProxyModel::setShowFilter(const int showFilter)
 void TFriendListSortProxyModel::setFriendList(const std::vector<friends::TFriendList::TFriendEntry>& friendList)
 {
     beginFilterChange();
-    m_model.setEntries(friendList);
+    m_model.setItems(friendList);
     endFilterChange(Direction::Both);
     invalidate();
 }
@@ -173,7 +173,7 @@ QHash<int, QByteArray> TInviteListModel::roleNames() const
     };
 }
 
-QVariant TInviteListModel::entryData(const friends::TInviteList::TInviteListEntry& entry, const int role) const
+QVariant TInviteListModel::itemData(const friends::TInviteList::TInviteListEntry& entry, const int role) const
 {
     switch (role) {
     case AccountIdRole:
@@ -211,7 +211,7 @@ QHash<int, QByteArray> TBlacklistModel::roleNames() const
     };
 }
 
-QVariant TBlacklistModel::entryData(const friends::TBlacklist::TBlacklistEntry& entry, const int role) const
+QVariant TBlacklistModel::itemData(const friends::TBlacklist::TBlacklistEntry& entry, const int role) const
 {
     switch (role) {
     case AccountIdRole:
@@ -237,7 +237,7 @@ QHash<int, QByteArray> TFriendsAccountBadgesModel::roleNames() const
     };
 }
 
-QVariant TFriendsAccountBadgesModel::entryData(const friends::TAccountBadge& entry, const int role) const
+QVariant TFriendsAccountBadgesModel::itemData(const friends::TAccountBadge& entry, const int role) const
 {
     switch (role) {
     case BadgeIdRole:
@@ -277,7 +277,7 @@ bool TAccountBadgesSortProxyModel::setBadgeFilter(const int badgeFilter)
 void TAccountBadgesSortProxyModel::setBadges(const std::vector<friends::TAccountBadge>& badges)
 {
     beginFilterChange();
-    m_model.setEntries(badges);
+    m_model.setItems(badges);
     endFilterChange(Direction::Both);
 }
 
@@ -317,14 +317,14 @@ QHash<int, QByteArray> TVisibilitySettingsModel::roleNames() const
 
 friends::TVisibilitySetting TVisibilitySettingsModel::everyone() const
 {
-    for (const auto& setting : m_entries) {
+    for (const auto& setting : m_items) {
         if (setting.friendGroup == 0)
             return setting;
     }
     return {};
 }
 
-QVariant TVisibilitySettingsModel::entryData(const friends::TVisibilitySetting& entry, const int role) const
+QVariant TVisibilitySettingsModel::itemData(const friends::TVisibilitySetting& entry, const int role) const
 {
     switch (role) {
     case SettingTypeRole:
@@ -367,7 +367,7 @@ QHash<int, QByteArray> TAccountCharactersModel::roleNames() const
     };
 }
 
-QVariant TAccountCharactersModel::entryData(const friends::TAccountCharacterListEntry& entry, const int role) const
+QVariant TAccountCharactersModel::itemData(const friends::TAccountCharacterListEntry& entry, const int role) const
 {
     switch (role) {
     case CharacterIdRole:

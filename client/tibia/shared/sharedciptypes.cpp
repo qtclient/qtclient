@@ -18,15 +18,12 @@ namespace tibia::shared {
 namespace {
 struct CipTypedKeep {
     TExperienceGainChangeTracker tExperienceGainChangeTracker;
-    TIODeviceReader tIODeviceReader;
-    TIODeviceWriter tIODeviceWriter;
     TImagestripResponse tImagestripResponse;
     TNullExperienceGainChangeTracker tNullExperienceGainChangeTracker;
     TNullExperiencePerHourProvider tNullExperiencePerHourProvider;
     TTibiaClipboardHelper tTibiaClipboardHelper;
     THashHelper tHashHelper;
     TRsaHelper tRsaHelper;
-    TXteaHelper tXteaHelper;
     TClockService tClockService;
     TRandomNumberGenerator tRandomNumberGenerator;
     TLocalFileInfo tLocalFileInfo;
@@ -68,11 +65,6 @@ void QTextBrowserWithNetwork::onDownloadFinished(QUrl Url, QByteArray Data)
 QByteArray THashHelper::sha256(const QByteArray& data)
 {
     return QCryptographicHash::hash(data, QCryptographicHash::Sha256);
-}
-
-bool TXteaHelper::decryptInPlace(const std::array<uint32_t, 4>& key, QByteArray& body)
-{
-    return network::decryptGameXtea1405(key, body);
 }
 
 quint32 TRandomNumberGenerator::bounded(quint32 minInclusive, quint32 maxInclusive)

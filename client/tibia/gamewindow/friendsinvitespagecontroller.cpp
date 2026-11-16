@@ -33,13 +33,13 @@ TFriendsInvitesPageController::TFriendsInvitesPageController(QObject* parent)
 void TFriendsInvitesPageController::updateInviteLists()
 {
     const friends::TInviteList& inviteList = friends::TFriendsStorage::instance()->inviteStorage()->inviteList();
-    m_receivedModel->setEntries(inviteList.received);
-    m_sentModel->setEntries(inviteList.sent);
+    m_receivedModel->setItems(inviteList.received);
+    m_sentModel->setItems(inviteList.sent);
 }
 
 void TFriendsInvitesPageController::updateBlacklist()
 {
-    m_blacklistModel->setEntries(friends::TFriendsStorage::instance()->inviteStorage()->blacklist());
+    m_blacklistModel->setItems(friends::TFriendsStorage::instance()->inviteStorage()->blacklist());
 }
 
 void TFriendsInvitesPageController::disconnectStorage()

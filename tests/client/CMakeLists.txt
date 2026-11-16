@@ -80,3 +80,19 @@ qtclient_add_port_test(client_clientoptionsmigration_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/config/clientoptionsmigration.cpp
 )
 target_link_libraries(client_clientoptionsmigration_tests PRIVATE Qt6::Gui)
+
+# CIP shared::TIODeviceReader / TIODeviceWriter (QAbstractSocket check needs Network).
+find_package(Qt6 REQUIRED COMPONENTS Network)
+qtclient_add_port_test(client_iodevice_tests
+    iodevice_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicereader.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/iodevicewriter.cpp
+)
+target_link_libraries(client_iodevice_tests PRIVATE Qt6::Network)
+qtclient_add_port_test(client_xteahelper_tests
+    xteahelper_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/shared/xteahelper.cpp
+)
+qtclient_add_port_test(client_simplevectorabstractlistmodel_tests
+    simplevectorabstractlistmodel_test.cpp
+)
