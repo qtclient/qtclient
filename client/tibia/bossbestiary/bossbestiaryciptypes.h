@@ -10,6 +10,14 @@
 
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageBossSlots;
+class GameserverMessageBossTracking;
+class GameserverMessageBosstiary;
+class GameserverMessageBosstiaryHighlight;
+class GameserverMessageBosstiaryStaticData;
+}
+
 namespace tibia {
 namespace bossbestiary {
 
@@ -22,9 +30,12 @@ class TBossBestiaryProtocolMessageHandler final : public cip::tibia::bossbestiar
     Q_OBJECT
 public:
     using cip::tibia::bossbestiary::TBossBestiaryProtocolMessageHandler::TBossBestiaryProtocolMessageHandler;
+    static void handleBosstiaryStaticDataMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryStaticData& BosstiaryStaticDataMessage);
+    static void handleBossSlotsMessage(const ::tibia::protobuf::protocol::GameserverMessageBossSlots& BossSlotsMessage);
+    static void handleBosstiaryMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiary& BosstiaryMessage);
+    static void handleBosstiaryHighlightMessage(const ::tibia::protobuf::protocol::GameserverMessageBosstiaryHighlight& BosstiaryHighlightMessage);
+    static void handleBossTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageBossTracking& BossTrackingMessage);
 public:
-    /// Tip Q→H wire: BosstiaryHighlight from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
 };
 
 // TBossTrackerStorage — bosstrackerstorage.h

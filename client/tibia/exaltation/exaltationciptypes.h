@@ -8,6 +8,14 @@
 
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageCloseExaltationDialog;
+class GameserverMessageExaltationBaseData;
+class GameserverMessageExaltationDialogRefresh;
+class GameserverMessageExaltationHistory;
+class GameserverMessageExaltationResult;
+}
+
 namespace tibia {
 namespace exaltation {
 
@@ -27,9 +35,12 @@ class TExaltationProtocolMessageHandler final : public cip::tibia::exaltation::T
     Q_OBJECT
 public:
     using cip::tibia::exaltation::TExaltationProtocolMessageHandler::TExaltationProtocolMessageHandler;
+    static void handleCloseExaltationDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageCloseExaltationDialog& CloseExaltationDialogMessage);
+    static void handleExaltationDialogRefreshMessage(const ::tibia::protobuf::protocol::GameserverMessageExaltationDialogRefresh& ExaltationDialogRefreshMessage);
+    static void handleExaltationBaseDataMessage(const ::tibia::protobuf::protocol::GameserverMessageExaltationBaseData& ExaltationBaseDataMessage);
+    static void handleExaltationResultMessage(const ::tibia::protobuf::protocol::GameserverMessageExaltationResult& ExaltationResultMessage);
+    static void handleExaltationHistoryMessage(const ::tibia::protobuf::protocol::GameserverMessageExaltationHistory& ExaltationHistoryMessage);
 public:
-    /// Tip Q→H wire: ExaltationHistory from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
 };
 
 }

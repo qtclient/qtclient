@@ -14,7 +14,11 @@
 #include "game/playerdata.h"
 #include "game/playerskillstats.h"
 #include "questlog/questlogciptypes.h"
+#include "bossbestiary/bossbestiaryciptypes.h"
+#include "dailyreward/dailyrewardciptypes.h"
 #include "effects/effectprotocolmessagehandler.h"
+#include "exaltation/exaltationciptypes.h"
+#include "news/newsciptypes.h"
 #include "exivaoptions/exivaoptionsciptypes.h"
 #include "prey/preyciptypes.h"
 #include "proficiency/proficiencyciptypes.h"
@@ -170,16 +174,44 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedQuestLineMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLineMessage);
     link(&Queue::receivedTrackedQuestFlagsMessage, this, &TQuestLogProtocolMessageHandler::handleTrackedQuestFlagsMessage);
 
+    link(&Queue::receivedShowGameNewsMessage, this, &news::TNewsProtocolMessageHandler::handleShowGameNewsMessage);
+
     using prey::TPreyProtocolMessageHandler;
     link(&Queue::receivedPreyTimeLeftMessage, this, &TPreyProtocolMessageHandler::handlePreyTimeLeftMessage);
     link(&Queue::receivedPreyDataMessage, this, &TPreyProtocolMessageHandler::handlePreyDataMessage);
     link(&Queue::receivedPreyPricesMessage, this, &TPreyProtocolMessageHandler::handlePreyPricesMessage);
+
+    using dailyreward::TDailyRewardProtocolMessageHandler;
+    link(&Queue::receivedRestingAreaStateMessage, this, &TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage);
+    link(&Queue::receivedOpenRewardWallMessage, this, &TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage);
+    link(&Queue::receivedCloseRewardWallMessage, this, &TDailyRewardProtocolMessageHandler::handleCloseRewardWallMessage);
+    link(&Queue::receivedResourceBalanceMessage, this, &TDailyRewardProtocolMessageHandler::handleResourceBalanceMessage);
+    link(&Queue::receivedDailyRewardBasicMessage, this, &TDailyRewardProtocolMessageHandler::handleDailyRewardBasicMessage);
+    link(&Queue::receivedDailyRewardHistoryMessage, this, &TDailyRewardProtocolMessageHandler::handleDailyRewardHistoryMessage);
+    link(&Queue::receivedDailyRewardCollectionStateMessage, this,
+         &TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage);
+    link(&Queue::receivedShowMessageDialogMessage, this, &TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage);
 
     link(&Queue::receivedUpdateManagedContainersMessage, this,
          &quickloot::TManagedContainersProtocolMessageHandler::handleUpdateManagedContainersMessage);
     using exivaoptions::TExivaOptionsProtocolMessageHandler;
     link(&Queue::receivedExivaSuppressedMessage, this, &TExivaOptionsProtocolMessageHandler::handleExivaSuppressedMessage);
     link(&Queue::receivedUpdateExivaOptionsMessage, this, &TExivaOptionsProtocolMessageHandler::handleUpdateExivaOptionsMessage);
+
+    using bossbestiary::TBossBestiaryProtocolMessageHandler;
+    link(&Queue::receivedBossTrackingMessage, this, &TBossBestiaryProtocolMessageHandler::handleBossTrackingMessage);
+    link(&Queue::receivedBosstiaryHighlightMessage, this, &TBossBestiaryProtocolMessageHandler::handleBosstiaryHighlightMessage);
+    link(&Queue::receivedBosstiaryStaticDataMessage, this, &TBossBestiaryProtocolMessageHandler::handleBosstiaryStaticDataMessage);
+    link(&Queue::receivedBosstiaryMessage, this, &TBossBestiaryProtocolMessageHandler::handleBosstiaryMessage);
+    link(&Queue::receivedBossSlotsMessage, this, &TBossBestiaryProtocolMessageHandler::handleBossSlotsMessage);
+
+    using exaltation::TExaltationProtocolMessageHandler;
+    link(&Queue::receivedExaltationBaseDataMessage, this, &TExaltationProtocolMessageHandler::handleExaltationBaseDataMessage);
+    link(&Queue::receivedCloseExaltationDialogMessage, this, &TExaltationProtocolMessageHandler::handleCloseExaltationDialogMessage);
+    link(&Queue::receivedExaltationDialogRefreshMessage, this,
+         &TExaltationProtocolMessageHandler::handleExaltationDialogRefreshMessage);
+    link(&Queue::receivedExaltationHistoryMessage, this, &TExaltationProtocolMessageHandler::handleExaltationHistoryMessage);
+    link(&Queue::receivedExaltationResultMessage, this, &TExaltationProtocolMessageHandler::handleExaltationResultMessage);
 
     using proficiency::TProficiencyProtocolMessageHandler;
     link(&Queue::receivedWeaponProficiencyMessage, this, &TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage);

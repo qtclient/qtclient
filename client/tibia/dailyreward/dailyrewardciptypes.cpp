@@ -292,15 +292,39 @@ namespace {
 
 using namespace ::tibia::protobuf::protocol;
 
-void handleRestingAreaStateMessage(const GameserverMessageRestingAreaState& message)
+/// One free or premium reward; objects without an appearance are left out.
+void addReward(TDailyRewardStorage& storage, const ProtocolDailyRewardContent& content, const bool premium)
+{
+    std::vector<TDailyRewardFixedItems::TItem> items;
+    for (const ProtocolDailyRewardObject& object : content.objects()) {
+        const auto typeId = static_cast<uint16_t>(object.object_id());
+        const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+        if (!type || type->getId() == 0)
+            continue;
+        items.push_back({ typeId, QString::fromStdString(object.name()), static_cast<uint8_t>(object.amount()) });
+    }
+    storage.addFixedItemsReward(premium, static_cast<int>(content.prey_wildcards()), content.xp_boost_minutes(),
+                                static_cast<int>(content.xp_boost_percent()), static_cast<int>(content.cosmetic_tokens()),
+                                static_cast<int>(content.bounty_reroll_tokens()), std::move(items));
+}
+
+} // namespace
+
+void TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage(const GameserverMessageRestingAreaState& message)
 {
     tibia::game::notify("onRestingAreaState", message.in_resting_area());
 }
 
-/// The wall's state, then OPEN_OR_UPDATE_REWARD_WALL_DIALOG. An unknown
-/// collect state ends the message there (CIP throws).
-void handleOpenRewardWallMessage(TDailyRewardStorage& storage, const GameserverMessageOpenRewardWall& message)
+void TDailyRewardProtocolMessageHandler::handleOpenRewardWallMessage(const GameserverMessageOpenRewardWall& message)
 {
+    // The player states tracker follows the streak level.
+    tibia::game::notify("onOpenRewardWall", static_cast<uint8_t>(message.from_shrine() ? 1 : 0), message.next_reward_time(),
+                        static_cast<uint8_t>(message.day_streak_day()), static_cast<uint8_t>(message.collected()), message.message(),
+                        static_cast<uint16_t>(message.jokers()), message.time_left(), static_cast<uint16_t>(message.streak_level()));
+    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
+    if (!instance)
+        return;
+    TDailyRewardStorage& storage = *instance;
     storage.setNextDailyRewardPosition(static_cast<uint8_t>(message.day_streak_day()));
     storage.setNextRewardTime(message.next_reward_time());
     storage.setUsingRewardShrine(message.from_shrine());
@@ -332,15 +356,17 @@ void handleOpenRewardWallMessage(TDailyRewardStorage& storage, const GameserverM
     publish(A::OPEN_OR_UPDATE_REWARD_WALL_DIALOG);
 }
 
-void handleCloseRewardWallMessage()
+void TDailyRewardProtocolMessageHandler::handleCloseRewardWallMessage(const GameserverMessageCloseRewardWall&)
 {
     publish(A::CLOSE_REWARD_WALL_DIALOG);
 }
 
-/// Instant Reward Access (20), jokers (21), bounty reroll (88) and cosmetic
-/// tokens (89).
-void handleResourceBalanceMessage(TDailyRewardStorage& storage, const GameserverMessageResourceBalance& message)
+void TDailyRewardProtocolMessageHandler::handleResourceBalanceMessage(const GameserverMessageResourceBalance& message)
 {
+    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
+    if (!instance)
+        return;
+    TDailyRewardStorage& storage = *instance;
     switch (message.resource_type()) {
     case tibia::client::RESOURCE_DAILYREWARD_STREAK:
         storage.setInstantRewardAccessAmount(static_cast<int>(message.value()));
@@ -359,25 +385,12 @@ void handleResourceBalanceMessage(TDailyRewardStorage& storage, const Gameserver
     }
 }
 
-/// One free or premium reward; objects without an appearance are left out.
-void addReward(TDailyRewardStorage& storage, const ProtocolDailyRewardContent& content, const bool premium)
+void TDailyRewardProtocolMessageHandler::handleDailyRewardBasicMessage(const GameserverMessageDailyRewardBasic& message)
 {
-    std::vector<TDailyRewardFixedItems::TItem> items;
-    for (const ProtocolDailyRewardObject& object : content.objects()) {
-        const auto typeId = static_cast<uint16_t>(object.object_id());
-        const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
-        if (!type || type->getId() == 0)
-            continue;
-        items.push_back({ typeId, QString::fromStdString(object.name()), static_cast<uint8_t>(object.amount()) });
-    }
-    storage.addFixedItemsReward(premium, static_cast<int>(content.prey_wildcards()), content.xp_boost_minutes(),
-                                static_cast<int>(content.xp_boost_percent()), static_cast<int>(content.cosmetic_tokens()),
-                                static_cast<int>(content.bounty_reroll_tokens()), std::move(items));
-}
-
-/// The streak bonuses, then every day's free and premium reward.
-void handleDailyRewardBasicMessage(TDailyRewardStorage& storage, const GameserverMessageDailyRewardBasic& message)
-{
+    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
+    if (!instance)
+        return;
+    TDailyRewardStorage& storage = *instance;
     storage.clearRewardStreakBonuses();
     for (const uint32_t bonus : message.streak_bonus_thresholds())
         storage.addRewardStreakBonus(static_cast<int>(bonus));
@@ -390,8 +403,12 @@ void handleDailyRewardBasicMessage(TDailyRewardStorage& storage, const Gameserve
     }
 }
 
-void handleDailyRewardHistoryMessage(TDailyRewardStorage& storage, const GameserverMessageDailyRewardHistory& message)
+void TDailyRewardProtocolMessageHandler::handleDailyRewardHistoryMessage(const GameserverMessageDailyRewardHistory& message)
 {
+    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
+    if (!instance)
+        return;
+    TDailyRewardStorage& storage = *instance;
     std::vector<TDailyRewardHistoryEntry> history;
     history.reserve(static_cast<size_t>(message.entries_size()));
     for (const ProtocolDailyRewardHistoryEntry& entry : message.entries())
@@ -400,77 +417,23 @@ void handleDailyRewardHistoryMessage(TDailyRewardStorage& storage, const Gameser
     storage.setHistory(std::move(history));
 }
 
-/// Lights (245) or clears (246) the button bar's reward wall button.
-void handleDailyRewardCollectionStateMessage(TDailyRewardStorage& storage,
-                                             const GameserverMessageDailyRewardCollectionState& message)
+void TDailyRewardProtocolMessageHandler::handleDailyRewardCollectionStateMessage(const GameserverMessageDailyRewardCollectionState& message)
 {
+    TDailyRewardStorage* const instance = TDailyRewardStorage::instance();
+    if (!instance)
+        return;
+    TDailyRewardStorage& storage = *instance;
     publish(message.collected() ? A::DAILY_REWARD_READY_TO_PICK_UP : A::DAILY_REWARD_NOT_COLLECTABLE);
     storage.setDailyRewardReadyToPickUp(message.collected());
 }
 
-/// Message dialog type 40 says the daily rewards are disabled.
-void handleShowMessageDialogMessage(const GameserverMessageShowMessageDialog& message)
+void TDailyRewardProtocolMessageHandler::handleShowMessageDialogMessage(const GameserverMessageShowMessageDialog& message)
 {
     if (message.dialog_type() != 40)
         return;
     auto action = input::mutableClone(*input::makeAction(A::OPEN_REWARD_WALL_DAILY_REWARDS_DISABLED_MESSAGE));
     action->text = QString::fromStdString(message.message());
     input::publish(action);
-}
-
-} // namespace
-
-void TDailyRewardProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow)
-        return;
-    TDailyRewardStorage* storage = TDailyRewardStorage::instance();
-    switch (opcode) {
-    case 226:
-        if (shadow->HasExtension(GameserverMessageOpenRewardWall::gameserver_message_open_reward_wall)) {
-            const auto& m = shadow->GetExtension(GameserverMessageOpenRewardWall::gameserver_message_open_reward_wall);
-            // The player states tracker follows the streak level.
-            tibia::game::notify("onOpenRewardWall", static_cast<uint8_t>(m.from_shrine() ? 1 : 0), m.next_reward_time(),
-                                static_cast<uint8_t>(m.day_streak_day()), static_cast<uint8_t>(m.collected()), m.message(),
-                                static_cast<uint16_t>(m.jokers()), m.time_left(), static_cast<uint16_t>(m.streak_level()));
-            if (storage)
-                handleOpenRewardWallMessage(*storage, m);
-        }
-        break;
-    case 227:
-        if (shadow->HasExtension(GameserverMessageCloseRewardWall::gameserver_message_close_reward_wall))
-            handleCloseRewardWallMessage();
-        break;
-    case 222:
-        if (storage && shadow->HasExtension(GameserverMessageDailyRewardCollectionState::gameserver_message_daily_reward_collection_state))
-            handleDailyRewardCollectionStateMessage(
-                *storage, shadow->GetExtension(GameserverMessageDailyRewardCollectionState::gameserver_message_daily_reward_collection_state));
-        break;
-    case 228:
-        if (storage && shadow->HasExtension(GameserverMessageDailyRewardBasic::gameserver_message_daily_reward_basic))
-            handleDailyRewardBasicMessage(*storage, shadow->GetExtension(GameserverMessageDailyRewardBasic::gameserver_message_daily_reward_basic));
-        break;
-    case 169:
-        if (shadow->HasExtension(GameserverMessageRestingAreaState::gameserver_message_resting_area_state))
-            handleRestingAreaStateMessage(shadow->GetExtension(GameserverMessageRestingAreaState::gameserver_message_resting_area_state));
-        break;
-    case 229:
-        if (storage && shadow->HasExtension(GameserverMessageDailyRewardHistory::gameserver_message_daily_reward_history))
-            handleDailyRewardHistoryMessage(*storage,
-                                            shadow->GetExtension(GameserverMessageDailyRewardHistory::gameserver_message_daily_reward_history));
-        break;
-    case 237:
-        if (shadow->HasExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog))
-            handleShowMessageDialogMessage(shadow->GetExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog));
-        break;
-    case 238:
-        if (storage && shadow->HasExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance))
-            handleResourceBalanceMessage(*storage, shadow->GetExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance));
-        break;
-    default:
-        break;
-    }
 }
 
 }

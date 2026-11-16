@@ -9,6 +9,11 @@
 #include <QByteArray>
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageExivaSuppressed;
+class GameserverMessageUpdateExivaOptions;
+}
+
 namespace tibia {
 namespace exivaoptions {
 

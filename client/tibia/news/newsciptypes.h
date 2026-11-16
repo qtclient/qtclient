@@ -8,6 +8,10 @@
 
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageShowGameNews;
+}
+
 namespace tibia {
 namespace news {
 
@@ -38,9 +42,8 @@ class TNewsProtocolMessageHandler final : public cip::tibia::news::TNewsProtocol
     Q_OBJECT
 public:
     using cip::tibia::news::TNewsProtocolMessageHandler::TNewsProtocolMessageHandler;
+    static void handleShowGameNewsMessage(const ::tibia::protobuf::protocol::GameserverMessageShowGameNews& ShowGameNewsMessage);
 public:
-    /// Tip Q→H wire: ShowGameNews from `serverMessageEnqueued`.
-    static void onServerMessageEnqueued(int opcode);
 };
 
 class TNewsViewsUploader final : public cip::tibia::news::TNewsViewsUploader

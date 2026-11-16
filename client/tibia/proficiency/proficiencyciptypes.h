@@ -8,6 +8,13 @@
 
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageResourceBalance;
+class GameserverMessageShapedPerkReshapeOffers;
+class GameserverMessageWeaponProficiency;
+class GameserverMessageWeaponProficiencyNotification;
+}
+
 namespace tibia {
 namespace proficiency {
 

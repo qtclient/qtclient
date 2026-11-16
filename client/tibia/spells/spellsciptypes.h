@@ -8,6 +8,10 @@
 
 #include <QObject>
 
+namespace tibia::protobuf::protocol {
+class GameserverMessageSpellDataModification;
+}
+
 namespace tibia {
 namespace spells {
 
