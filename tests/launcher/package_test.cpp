@@ -86,6 +86,20 @@ TEST(LauncherPackage, FilesUnpackUnlessMarkedAndExecutableIsFlagged)
     EXPECT_FALSE(configuration.files()[2].unpack);
 }
 
+TEST(LauncherPackage, ParsesFilePatches)
+{
+    TPackageConfiguration configuration("1", "2", QUrl(QStringLiteral("https://c/p/package.json")), QUrl());
+    ASSERT_TRUE(configuration.load(
+        R"({"files":[{"url":"f.lzma","localfile":"f","patches":[{"url":"f.1-2.patch","fromversion":"1","toversion":"2","size":42}]}]})",
+        QByteArray()));
+    ASSERT_EQ(configuration.files()[0].patches.size(), 1u);
+    const TFilePatch& patch = configuration.files()[0].patches[0];
+    EXPECT_EQ(patch.url.toString(), QStringLiteral("https://c/p/f.1-2.patch"));
+    EXPECT_EQ(patch.fromVersion, QStringLiteral("1"));
+    EXPECT_EQ(patch.toVersion, QStringLiteral("2"));
+    EXPECT_EQ(patch.size, 42);
+}
+
 TEST(LauncherPackage, ParsesHostChannelsOfABuild)
 {
     TPackage package(0, QJsonDocument::fromJson(R"({"name":"P","builds":[{"os":"macos","architecture":"arm64",

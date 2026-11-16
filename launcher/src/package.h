@@ -12,6 +12,14 @@
 
 namespace launcher {
 
+/// A delta patch of a file record: turns version `fromVersion` into `toVersion`.
+struct TFilePatch {
+    QUrl url;
+    QString fromVersion;
+    QString toVersion;
+    qint64 size = 0;
+};
+
 /// One file record of package.json / assets.json.
 struct TFileInPackage {
     QUrl url;
@@ -22,6 +30,7 @@ struct TFileInPackage {
     QString unpackedHash;
     bool unpack = false;
     bool executable = false;
+    std::vector<TFilePatch> patches;
 };
 
 /// The package.json + assets.json pair of one build ("package configuration").

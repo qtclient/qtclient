@@ -24,8 +24,10 @@ bool fileMatches(const QString& path, const TFileInPackage& file)
     const QFileInfo info(path);
     if (!info.isFile() || info.size() != size)
         return false;
-    if (expectedHash.isEmpty())
+    if (expectedHash.isEmpty()) {
+        qWarning() << "accessing empty file hash";
         return true;
+    }
     QFile handle(path);
     if (!handle.open(QIODevice::ReadOnly))
         return false;

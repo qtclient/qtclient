@@ -82,6 +82,16 @@ QString TPackageConfiguration::combinedVersion() const
 
 namespace {
 
+TFilePatch parseFilePatch(const QJsonObject& patch, const QUrl& baseUrl)
+{
+    TFilePatch parsed;
+    parsed.url = resolveConfigurationUrl(baseUrl, QUrl(patch.value(QStringLiteral("url")).toString()));
+    parsed.fromVersion = patch.value(QStringLiteral("fromversion")).toString();
+    parsed.toVersion = patch.value(QStringLiteral("toversion")).toString();
+    parsed.size = patch.value(QStringLiteral("size")).toInt();
+    return parsed;
+}
+
 TFileInPackage parseFileInPackage(const QJsonObject& file, const QUrl& baseUrl)
 {
     TFileInPackage parsed;
@@ -94,6 +104,11 @@ TFileInPackage parseFileInPackage(const QJsonObject& file, const QUrl& baseUrl)
     // Files are lzma-packed unless the record says "unpack": false (sprites stay packed).
     parsed.unpack = file.value(QStringLiteral("unpack")).toBool(true);
     parsed.executable = file.value(QStringLiteral("executable")).toBool();
+    // Delta patches are parsed; downloads always fetch the whole file.
+    if (file.value(QStringLiteral("patches")).isArray()) {
+        for (const QJsonValue& patch : file.value(QStringLiteral("patches")).toArray())
+            parsed.patches.push_back(parseFilePatch(patch.toObject(), baseUrl));
+    }
     return parsed;
 }
 
