@@ -173,11 +173,12 @@ TSidebarWidget* TUnjustifiedPointsWidgetManager::open(config::TSidebarOptions* o
     return m_controller->widget();
 }
 
-void TUnjustifiedPointsWidgetManager::close()
+void TUnjustifiedPointsWidgetManager::close(const bool saveWidgetOptions)
 {
     if (!m_controller)
         return;
-    m_controller->saveWidgetOptions();
+    if (saveWidgetOptions)
+        m_controller->saveWidgetOptions();
     m_controller->deleteLater();
     m_controller = nullptr;
 }

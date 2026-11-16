@@ -254,7 +254,7 @@ public:
     /// Makes the widget (if needed) and returns it, for the sidebar manager to place.
     TSidebarWidget* open();
     /// Saves its options and deletes it.
-    void close();
+    void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
     TVipWidgetController* controller() const { return m_controller; }
 

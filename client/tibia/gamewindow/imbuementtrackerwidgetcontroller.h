@@ -174,7 +174,7 @@ public:
     ~TImbuementTrackerWidgetManager() override;
 
     TSidebarWidget* open(config::TSidebarOptions* options);
-    void close();
+    void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
 
 private:

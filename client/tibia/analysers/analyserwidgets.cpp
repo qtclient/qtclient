@@ -1237,6 +1237,13 @@ void TAnalyserWidgets::add(const int widgetType, std::function<Controller*()> ma
                                                   Slot& s = m_slots[widgetType];
                                                   return s.controller ? s.widgetOf(s.controller) : nullptr;
                                               },
+                                              [this, widgetType] {
+                                                  Slot& s = m_slots[widgetType];
+                                                  if (!s.controller)
+                                                      return;
+                                                  s.controller->deleteLater();
+                                                  s.controller = nullptr;
+                                              },
                                           });
 }
 

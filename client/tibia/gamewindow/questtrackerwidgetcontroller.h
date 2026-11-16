@@ -244,7 +244,7 @@ public:
     ~TQuestTrackerWidgetManager() override;
 
     TSidebarWidget* open(config::TSidebarOptions* options);
-    void close();
+    void close(bool saveWidgetOptions = true);
     TSidebarWidget* current() const;
     void setMissionBackend(mods::MissionBackend* storage);
     void setBrowseOpener(std::function<void(const QString& filter)> opener);

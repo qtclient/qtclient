@@ -15,6 +15,9 @@ class QQmlEngine;
 class QQuickItem;
 
 namespace tibia {
+namespace input {
+struct TGameAction;
+}
 namespace gamewindow {
 
 class TBattleListControllerStorage;
@@ -42,6 +45,7 @@ public:
         Vip = 3,
         UnjustifiedPoints = 4,
         Prey = 5,
+        KillTracker = Prey,
         SpellList = 6,
         Container = 8,
         QuestTracker = 10,
@@ -63,13 +67,25 @@ public:
 
     /// A widget another controller owns: `open` returns its widget (made if
     /// needed), which the manager then places; `close` runs once the widget
-    /// has left its sidebar; `current` is the widget while it is open.
+    /// has left its sidebar (the controller saves its widget options and is
+    /// deleted); `current` is the widget while it is open; `discard`, when
+    /// given, deletes the controller without saving its widget options (CIP
+    /// closes every widget that way when the session changes).
     struct WidgetHooks
     {
         std::function<TSidebarWidget*()> open;
         std::function<void()> close;
         std::function<TSidebarWidget*()> current;
+        std::function<void()> discard = {};
     };
+
+    /// Hooks for a qtclient widget manager with open(options) / close(save) / current().
+    template <class Manager, class Open>
+    static WidgetHooks hooksFor(Manager& manager, Open open)
+    {
+        return { std::move(open), [&manager] { manager.close(true); }, [&manager] { return manager.current(); },
+                 [&manager] { manager.close(false); } };
+    }
 
     TSidebarWidgetsManager(TSidebarManager* sidebars, QQuickItem* gameWindowItem, QQmlEngine* engine, QObject* parent = nullptr);
     ~TSidebarWidgetsManager() override;
@@ -87,10 +103,13 @@ public:
     /// Opens the widget in `sidebarId` (0xff or a missing sidebar: the first
     /// with room, or HUD right when hud placement is on).
     void openWidget(int widgetType, uint sidebarId = 0xff);
-    /// The widget saves its options and is deleted (CIP).
-    void closeWidget(int widgetType);
-    /// TOGGLE_WIDGET (CIP).
-    void toggleWidget(int widgetType);
+    /// CIP onWidgetClosed: the widget saves its options when
+    /// `saveWidgetOptions`, is deleted, the open widgets are saved and
+    /// widgetHidden is emitted.
+    void closeWidget(int widgetType, bool saveWidgetOptions = true);
+    /// The CIP per-type toggle: an open widget saves its options and closes,
+    /// a closed one opens in `sidebarId`.
+    void toggleWidget(int widgetType, uint sidebarId = 0xff);
     /// Close every registered widget and battle list (product mode switch).
     void closeAllWidgets();
     /// The open widget's QML root.
@@ -107,6 +126,45 @@ public Q_SLOTS:
     /// saved widgets sidebar by sidebar.
     void restoreSidebarConfigurationFromOptions() override;
 
+    void onToggleSkillsWidget(uint targetSidebarId) { toggleWidget(Skills, targetSidebarId); }
+    void onToggleUnjustifiedPointsWidget(uint targetSidebarId) { toggleWidget(UnjustifiedPoints, targetSidebarId); }
+    void onToggleKillTrackerWidget(uint targetSidebarId) { toggleWidget(KillTracker, targetSidebarId); }
+    void onToggleSpellListWidget(uint targetSidebarId) { toggleWidget(SpellList, targetSidebarId); }
+    void onToggleBossTrackerWidget(uint targetSidebarId) { toggleWidget(BossCooldowns, targetSidebarId); }
+    void onToggleQuestTrackerWidget(uint targetSidebarId) { toggleWidget(QuestTracker, targetSidebarId); }
+    void onToggleLootTrackerWidget(uint targetSidebarId) { toggleWidget(LootTracker, targetSidebarId); }
+    void onToggleLootAnalyserWidget(uint targetSidebarId) { toggleWidget(LootAnalyser, targetSidebarId); }
+    void onToggleWasteAnalyserWidget(uint targetSidebarId) { toggleWidget(WasteAnalyser, targetSidebarId); }
+    void onToggleImpactAnalyserWidget(uint targetSidebarId) { toggleWidget(ImpactAnalyser, targetSidebarId); }
+    void onToggleDamageInputAnalyserWidget(uint targetSidebarId) { toggleWidget(DamageInputAnalyser, targetSidebarId); }
+    /// Free accounts get a status message instead (the analyser's factory publishes it).
+    void onToggleHuntingSessionAnalyserWidget(uint targetSidebarId) { toggleWidget(HuntingSessionAnalyser, targetSidebarId); }
+    void onToggleProgressAnalyserWidget(uint targetSidebarId) { toggleWidget(XpAnalyser, targetSidebarId); }
+    void onToggleAnalyticsSelectorWidget(uint targetSidebarId) { toggleWidget(AnalyticsSelector, targetSidebarId); }
+    void onTogglePartyHuntAnalyserWidget(uint targetSidebarId) { toggleWidget(PartyHuntAnalyser, targetSidebarId); }
+
+    void onSkillsWidgetClosed(bool saveWidgetOptions) { closeWidget(Skills, saveWidgetOptions); }
+    void onUnjustifiedPointsWidgetClosed(bool saveWidgetOptions) { closeWidget(UnjustifiedPoints, saveWidgetOptions); }
+    void onKillTrackerWidgetClosed(bool saveWidgetOptions) { closeWidget(KillTracker, saveWidgetOptions); }
+    void onSpellListWidgetClosed(bool saveWidgetOptions) { closeWidget(SpellList, saveWidgetOptions); }
+    void onBossTrackerWidgetClosed(bool saveWidgetOptions) { closeWidget(BossCooldowns, saveWidgetOptions); }
+    void onQuestTrackerWidgetClosed(bool saveWidgetOptions) { closeWidget(QuestTracker, saveWidgetOptions); }
+    void onLootTrackingWidgetClosed(bool saveWidgetOptions) { closeWidget(LootTracker, saveWidgetOptions); }
+    void onLootAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(LootAnalyser, saveWidgetOptions); }
+    void onWasteAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(WasteAnalyser, saveWidgetOptions); }
+    void onImpactAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(ImpactAnalyser, saveWidgetOptions); }
+    void onDamageInputAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(DamageInputAnalyser, saveWidgetOptions); }
+    void onHuntingSessionAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(HuntingSessionAnalyser, saveWidgetOptions); }
+    void onProgressAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(XpAnalyser, saveWidgetOptions); }
+    void onAnalyticsSelectorWidgetClosed(bool saveWidgetOptions) { closeWidget(AnalyticsSelector, saveWidgetOptions); }
+    void onPartyHuntAnalyserWidgetClosed(bool saveWidgetOptions) { closeWidget(PartyHuntAnalyser, saveWidgetOptions); }
+    void onWidgetClosed(int type, bool saveWidgetOptions) { closeWidget(type, saveWidgetOptions); }
+
+    /// CIP: the imbuement tracker widget subscribes to imbuement durations
+    /// while it is shown (GameclientMessageTrackImbuements).
+    void onWidgetVisible(int widgetType);
+    void onWidgetHidden(int widgetType);
+
 Q_SIGNALS:
     void widgetVisible(int widgetType);
     void widgetHidden(int widgetType);
@@ -117,7 +175,12 @@ private Q_SLOTS:
 
 private:
     TSidebarWidget* currentWidget(int widgetType) const;
+    /// TOGGLE_WIDGET: the widget type's toggle in the action's sidebar.
+    bool handleGameAction(const input::TGameAction& action);
+    /// CIP: on a session change every widget closes without saving its
+    /// options, and one right sidebar remains.
     void closeAll();
+    void closeSkills(bool saveWidgetOptions);
     QJsonArray serializeSidebar(uint sidebarId) const;
     /// CIP: the open widgets per sidebar; empty while restoring.
     config::SidebarWidgetsManagerOptions currentWidgetsManagerOptions() const;

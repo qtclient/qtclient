@@ -876,64 +876,37 @@ int main(int argc, char** argv)
     gamewindow::TBugReportDialogController bugReport;
     gamewindow::TNaggingMessageDialogController naggingDialog;
     gamewindow::TDeathDialogController deathDialog;
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::Vip, { [&vipWidget] { return vipWidget.open(); }, [&vipWidget] { vipWidget.close(); },
-                                                                             [&vipWidget] { return vipWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::Vip, gamewindow::TSidebarWidgetsManager::hooksFor(vipWidget, [&vipWidget] { return vipWidget.open(); }));
     gamewindow::TKillTrackerWidgetManager preyWidget(informationDialogs.prey()->storage(), gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::Prey, { [&] { return preyWidget.open(gameClient.sidebarOptions()); },
-                                                                              [&preyWidget] { preyWidget.close(); }, [&preyWidget] { return preyWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::Prey, gamewindow::TSidebarWidgetsManager::hooksFor(preyWidget, [&] { return preyWidget.open(gameClient.sidebarOptions()); }));
     gamewindow::TQuestTrackerWidgetManager questTrackerWidget(informationDialogs.questLog()->tracker(), gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::QuestTracker,
-                                  { [&] { return questTrackerWidget.open(gameClient.sidebarOptions()); },
-                                    [&questTrackerWidget] { questTrackerWidget.close(); }, [&questTrackerWidget] { return questTrackerWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::QuestTracker, gamewindow::TSidebarWidgetsManager::hooksFor(questTrackerWidget, [&] { return questTrackerWidget.open(gameClient.sidebarOptions()); }));
     gamewindow::TLootTrackingWidgetManager lootTrackingWidget(cyclopedia::TItemInfoStorage::instance(), gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::LootTracker,
-                                  { [&] { return lootTrackingWidget.open(gameClient.sidebarOptions()); }, [&lootTrackingWidget] { lootTrackingWidget.close(); },
-                                    [&lootTrackingWidget] { return lootTrackingWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::LootTracker, gamewindow::TSidebarWidgetsManager::hooksFor(lootTrackingWidget, [&] { return lootTrackingWidget.open(gameClient.sidebarOptions()); }));
     gamewindow::TSpellListWidgetManager spellListWidget(gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::SpellList,
-                                  { [&] { return spellListWidget.open(gameClient.sidebarOptions()); },
-                                    [&spellListWidget] { spellListWidget.close(); },
-                                    [&spellListWidget] { return spellListWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::SpellList, gamewindow::TSidebarWidgetsManager::hooksFor(spellListWidget, [&] { return spellListWidget.open(gameClient.sidebarOptions()); }));
     gamewindow::TUnjustifiedPointsWidgetManager unjustifiedWidget(gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::UnjustifiedPoints,
-                                  { [&] { return unjustifiedWidget.open(gameClient.sidebarOptions()); },
-                                    [&unjustifiedWidget] { unjustifiedWidget.close(); },
-                                    [&unjustifiedWidget] { return unjustifiedWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::UnjustifiedPoints, gamewindow::TSidebarWidgetsManager::hooksFor(unjustifiedWidget, [&] { return unjustifiedWidget.open(gameClient.sidebarOptions()); }));
     gamewindow::TImbuementTrackerWidgetManager imbuementTrackerWidget(gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::ImbuementTracker,
-                                  { [&] { return imbuementTrackerWidget.open(gameClient.sidebarOptions()); },
-                                    [&imbuementTrackerWidget] { imbuementTrackerWidget.close(); },
-                                    [&imbuementTrackerWidget] { return imbuementTrackerWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::ImbuementTracker, gamewindow::TSidebarWidgetsManager::hooksFor(imbuementTrackerWidget, [&] { return imbuementTrackerWidget.open(gameClient.sidebarOptions()); }));
     cyclopedia::TCreatureTrackerStorage creatureTrackerStorage;
     bossbestiary::TBossTrackerStorage bossTrackerStorage;
     using CreatureMode = gamewindow::TCreatureTrackerWidgetController::EWidgetMode;
     gamewindow::TCreatureTrackerWidgetManager bestiaryTrackerWidget(CreatureMode::Bestiary, &creatureTrackerStorage, &bossTrackerStorage,
                                                                     gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::BestiaryTracker,
-                                  { [&] { return bestiaryTrackerWidget.open(gameClient.sidebarOptions()); },
-                                    [&bestiaryTrackerWidget] { bestiaryTrackerWidget.close(); },
-                                    [&bestiaryTrackerWidget] { return bestiaryTrackerWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::BestiaryTracker, gamewindow::TSidebarWidgetsManager::hooksFor(bestiaryTrackerWidget, [&] { return bestiaryTrackerWidget.open(gameClient.sidebarOptions()); }));
     gamewindow::TCreatureTrackerWidgetManager bosstiaryTrackerWidget(CreatureMode::Bosstiary, &creatureTrackerStorage, &bossTrackerStorage,
                                                                      gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::BosstiaryTracker,
-                                  { [&] { return bosstiaryTrackerWidget.open(gameClient.sidebarOptions()); },
-                                    [&bosstiaryTrackerWidget] { bosstiaryTrackerWidget.close(); },
-                                    [&bosstiaryTrackerWidget] { return bosstiaryTrackerWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::BosstiaryTracker, gamewindow::TSidebarWidgetsManager::hooksFor(bosstiaryTrackerWidget, [&] { return bosstiaryTrackerWidget.open(gameClient.sidebarOptions()); }));
     gamewindow::TBossTrackerWidgetManager bossCooldownsWidget(&bossTrackerStorage, gameWindowItem, engine.get());
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::BossCooldowns,
-                                  { [&] { return bossCooldownsWidget.open(gameClient.sidebarOptions()); },
-                                    [&bossCooldownsWidget] { bossCooldownsWidget.close(); },
-                                    [&bossCooldownsWidget] { return bossCooldownsWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::BossCooldowns, gamewindow::TSidebarWidgetsManager::hooksFor(bossCooldownsWidget, [&] { return bossCooldownsWidget.open(gameClient.sidebarOptions()); }));
     // CipSoft DepotSearchWidget (CIP sidebar); owns onDepotSearch* hooks. Product dialog retired.
     qInfo("tibia.boot: before DepotSearchWidget");
     gamewindow::TDepotSearchWidgetManager depotSearchWidget(&sidebarManager, gameWindowItem, engine.get());
     qInfo("tibia.boot: after DepotSearchWidget");
     gamewindow::TPlayerGuideWidgetManager playerGuideWidget(gameWindowItem, engine.get());
     qInfo("tibia.boot: after PlayerGuideWidget");
-    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::PlayerGuide,
-                                  { [&] { return playerGuideWidget.open(gameClient.sidebarOptions()); },
-                                    [&playerGuideWidget] { playerGuideWidget.close(); },
-                                    [&playerGuideWidget] { return playerGuideWidget.current(); } });
+    sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::PlayerGuide, gamewindow::TSidebarWidgetsManager::hooksFor(playerGuideWidget, [&] { return playerGuideWidget.open(gameClient.sidebarOptions()); }));
     // CipSoft subscribers for gem atelier / helpers / RV channel / virtues yellow border.
     qInfo("tibia.boot: before CipSoftUiEventBridge");
     gamewindow::TCipSoftUiEventBridge cipSoftUiEventBridge;

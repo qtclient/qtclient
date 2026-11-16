@@ -396,11 +396,12 @@ TSidebarWidget* TCreatureTrackerWidgetManager::open(config::TSidebarOptions* opt
     return m_controller->widget();
 }
 
-void TCreatureTrackerWidgetManager::close()
+void TCreatureTrackerWidgetManager::close(const bool saveWidgetOptions)
 {
     if (!m_controller)
         return;
-    m_controller->saveWidgetOptions();
+    if (saveWidgetOptions)
+        m_controller->saveWidgetOptions();
     m_controller->deleteLater();
     m_controller = nullptr;
 }
