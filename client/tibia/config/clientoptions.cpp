@@ -5,6 +5,7 @@
 #include "config/hotkeyoptions.h"
 #include "config/specialconditionsoptions.h"
 
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -411,6 +412,35 @@ void TClientOptions::setDeviceCookies(const QList<std::pair<QString, QString>>& 
     m_deviceCookies = cookies;
 }
 
+QString TClientOptions::deviceCookieHash(const QString& key)
+{
+    const QByteArray text = key.toLower().toUtf8();
+    QByteArray salt = QCryptographicHash::hash(text, QCryptographicHash::Sha256);
+    if (salt.size() > 4)
+        salt.resize(4);
+    const QString hex = QString::fromUtf8(QCryptographicHash::hash(salt + text, QCryptographicHash::Sha256).toHex());
+    return hex.size() > 8 ? hex.left(8) : hex;
+}
+
+QString TClientOptions::deviceCookie(const QString& key) const
+{
+    const QString hash = deviceCookieHash(key);
+    for (const auto& [entryHash, cookie] : m_deviceCookies)
+        if (entryHash == hash)
+            return cookie;
+    return {};
+}
+
+void TClientOptions::setDeviceCookie(const QString& key, const QString& cookie)
+{
+    addDeviceCookie(m_deviceCookies, deviceCookieHash(key), cookie);
+}
+
+void TClientOptions::clearDeviceCookies()
+{
+    m_deviceCookies.clear();
+}
+
 void TClientOptions::setHotkeyOptions(const QJsonObject& section)
 {
     if (m_hotkeyOptions == section)
@@ -470,6 +500,55 @@ void TClientOptions::setPinnedCharacters(const std::set<QByteArray>& characters)
 void TClientOptions::setRendererChangeConfirmationRequired(const bool required)
 {
     m_rendererChangeConfirmationRequired = required;
+}
+
+void TClientOptions::setRendererIndex(const int index)
+{
+    setIntOption(EClientOption::rendererIndex, index);
+}
+
+int TClientOptions::antialiasingMode() const
+{
+    return intOption(EClientOption::antialiasingMode);
+}
+
+void TClientOptions::setAntialiasingMode(const int mode)
+{
+    setIntOption(EClientOption::antialiasingMode, mode);
+}
+
+int TClientOptions::colorizeLootStyle() const
+{
+    return intOption(EClientOption::colorizeLootStyle);
+}
+
+void TClientOptions::setColorizeLootStyle(const int style)
+{
+    setIntOption(EClientOption::colorizeLootStyle, style);
+}
+
+void TClientOptions::assignOptionValues(const TClientOptions& other)
+{
+    if (this != &other) {
+        m_bools = other.m_bools;
+        m_ints = other.m_ints;
+        m_floats = other.m_floats;
+        m_strings = other.m_strings;
+    }
+    m_rendererChangeConfirmationRequired = other.m_rendererChangeConfirmationRequired;
+}
+
+bool TClientOptions::optionValuesEqual(const TClientOptions& other) const
+{
+    return m_bools == other.m_bools && m_ints == other.m_ints && m_floats == other.m_floats
+           && m_strings == other.m_strings;
+}
+
+QString TClientOptions::exportToBase64String() const
+{
+    // qCompress prefixes the zlib stream with its 4-byte length.
+    const QByteArray compressed = qCompress(toJson().toJson(QJsonDocument::Compact), 6).mid(4);
+    return QString::fromLatin1(compressed.toBase64());
 }
 
 void TClientOptions::setExtraOption(const QString& name, const QJsonValue& value)
@@ -687,6 +766,8 @@ void TClientOptions::ensureGlobalShortcuts()
 
 void TClientOptions::saveToJsonFile()
 {
+    if (isTemporaryClientOptionsMode())
+        return;
     const QString path = userFilePath();
     QDir().mkpath(QFileInfo(path).absolutePath());
     QSaveFile file(path);

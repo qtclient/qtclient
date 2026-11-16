@@ -95,7 +95,16 @@ public:
     void setControlButtonsOptions(const QJsonObject& section);
     /// deviceCookieOptions: (hash, cookie) pairs, oldest first.
     const QList<std::pair<QString, QString>>& deviceCookies() const { return m_deviceCookies; }
+    /// Replaces the cookies (no signal).
     void setDeviceCookies(const QList<std::pair<QString, QString>>& cookies);
+    /// The cookie stored for `key` (the account), empty when none.
+    QString deviceCookie(const QString& key) const;
+    /// Stores `cookie` for `key`, replacing its old one (the newest last).
+    void setDeviceCookie(const QString& key, const QString& cookie);
+    void clearDeviceCookies();
+    /// A device cookie's key: the first 8 hex digits of
+    /// SHA-256(SHA-256(k)[0..4] + k), k the lower-cased key in UTF-8.
+    static QString deviceCookieHash(const QString& key);
     const QJsonObject& hotkeyOptions() const { return m_hotkeyOptions; }
     void setHotkeyOptions(const QJsonObject& section);
     const TChatOptions& chatOptions() const { return m_chat; }
@@ -113,6 +122,26 @@ public:
 
     bool rendererChangeConfirmationRequired() const { return m_rendererChangeConfirmationRequired; }
     void setRendererChangeConfirmationRequired(bool required);
+
+    void setRendererIndex(int index);
+    int antialiasingMode() const;
+    void setAntialiasingMode(int mode);
+    int colorizeLootStyle() const;
+    void setColorizeLootStyle(int style);
+
+    /// The option values (bool, int, float, string) and the renderer
+    /// confirmation flag of `other`; the sections stay.
+    void assignOptionValues(const TClientOptions& other);
+    /// Whether the bool, int, float and string options equal `other`'s.
+    bool optionValuesEqual(const TClientOptions& other) const;
+
+    /// The options as compact JSON, zlib-compressed (level 6), in base64.
+    QString exportToBase64String() const;
+
+    /// 0: the user's options; 1: the tutorial's, which are not saved.
+    int clientOptionsMode() const { return m_clientOptionsMode; }
+    void setClientOptionsMode(int mode) { m_clientOptionsMode = mode; }
+    bool isTemporaryClientOptionsMode() const { return m_clientOptionsMode != 0; }
 
     /// The options a fresh options file holds.
     void setDefaults();
@@ -184,6 +213,7 @@ private:
 
     QJsonObject m_extraOptions;
     QJsonObject m_extraSections;
+    int m_clientOptionsMode = 0;
     std::array<QTimer, CategoryCount> m_categoryTimers;
 };
 
