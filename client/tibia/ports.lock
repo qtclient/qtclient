@@ -1157,6 +1157,11 @@ game::TPlayerProtocolMessageHandler::v12	d126d9239d28bac3	ported	game/gameciptyp
 game::TPlayerProtocolMessageHandler::v13	6f8f3ec586f4379a	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage
 game::TPlayerProtocolMessageHandler::v14	c8b62de17d931e9c	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePlayerStateMessage
 game::TPlayerProtocolMessageHandler::v19	0d72e5426f0a152e	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleSetTacticsMessage
+game::TPlayerProtocolMessageHandler::v24	ba1243024295f019	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleSpellDelayMessage
+game::TPlayerProtocolMessageHandler::v25	dab3deb9b7bba291	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleSpellGroupDelayMessage
+game::TPlayerProtocolMessageHandler::v26	a4f462564cf41d81	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleMultiUseDelayMessage
+game::TPlayerProtocolMessageHandler::v30	b914086422e821d1	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handleResourceBalanceMessage
+game::TPlayerProtocolMessageHandler::v32	fc410cd6e3c3f66f	ported	game/gameciptypes.cpp:TPlayerProtocolMessageHandler::handlePassiveAbilityDataMessage
 game::TPremiumProtocolMessageHandler::v14	dede7fd03ae7a246	ported	game/gameciptypes.cpp:TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage
 game::TPremiumTimeStorage::v0@10	4cc114a5238006e3	skip	compiler-generated destructor pair
 game::TPremiumTimeStorage::v12	253ee8c1a6ebe7fa	ported	game/gameciptypes.h:TPremiumTimeStorage::isPremium

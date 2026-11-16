@@ -97,12 +97,6 @@ public:
     TCooldown passiveCooldown() const;
     int passiveAbilityId() const;
 
-    /// Protocol durations → end times on the host clock.
-    void applySpellCooldown(int spellId, qint64 durationMs);
-    void applySpellGroupCooldown(int groupId, qint64 durationMs);
-    void applyMultiUseCooldown(qint64 durationMs);
-    void applyPassiveAbilityData(int abilityId, qint64 remainingMs, qint64 totalMs, bool decaying);
-
 private:
     void reset();
 

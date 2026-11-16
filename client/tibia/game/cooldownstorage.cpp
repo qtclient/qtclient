@@ -265,29 +265,6 @@ int TCooldownStorage::passiveAbilityId() const
     return m_passiveAbilityCooldowns.empty() ? 0 : m_passiveAbilityCooldowns.begin()->first;
 }
 
-void TCooldownStorage::applySpellCooldown(const int spellId, const qint64 durationMs)
-{
-    setSpellCooldownEnd(uint16_t(spellId), now() + durationMs);
-}
-
-void TCooldownStorage::applySpellGroupCooldown(const int groupId, const qint64 durationMs)
-{
-    const qint64 time = now();
-    setSpellGroupCooldown(uint8_t(groupId), time, time + durationMs);
-}
-
-void TCooldownStorage::applyMultiUseCooldown(const qint64 durationMs)
-{
-    const qint64 time = now();
-    setMultiUseCooldown(time, time + durationMs);
-}
-
-void TCooldownStorage::applyPassiveAbilityData(const int abilityId, const qint64 remainingMs, const qint64 totalMs,
-                                               const bool decaying)
-{
-    setPassiveAbilityCooldown(uint8_t(abilityId), remainingMs, totalMs, decaying);
-}
-
 void TCooldownStorage::reset()
 {
     m_spellCooldownEnds.clear();

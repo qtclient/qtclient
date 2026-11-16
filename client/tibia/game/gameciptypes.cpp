@@ -523,17 +523,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
             tibia::game::notify("onUnlockedSpells", spellIds);
         }
         break;
-    case 94:
-        if (shadow->HasExtension(GameserverMessagePassiveAbilityData::gameserver_message_passive_ability_data)) {
-            const auto& m = shadow->GetExtension(GameserverMessagePassiveAbilityData::gameserver_message_passive_ability_data);
-            if (m.kind() != 0) // only the cooldown kind drives the action bar
-                break;
-            if (auto* storage = TCooldownStorage::instance())
-                storage->applyPassiveAbilityData(static_cast<int>(m.ability()), m.remaining_ms(), m.total_ms(), m.decaying());
-            else
-                tibia::game::notify("onPassiveData", static_cast<int>(m.ability()), m.remaining_ms(), m.total_ms(), m.decaying());
-        }
-        break;
     case 237:
         if (shadow->HasExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog)) {
             const auto& m = shadow->GetExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog);
@@ -839,6 +828,76 @@ void TPlayerProtocolMessageHandler::handleSetTacticsMessage(
                                       message.secure_mode(), static_cast<tibia::client::PVPModes>(message.pvp_mode()));
 }
 
+void TPlayerProtocolMessageHandler::handleSpellDelayMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageSpellDelay& message)
+{
+    TCooldownStorage* storage = TCooldownStorage::instance();
+    if (!storage)
+        return;
+    const auto spellId = static_cast<uint16_t>(message.spell_id());
+    const qint64 now = TCooldownStorage::now();
+    // No delay ends the spell's cooldown now; a delay only ever extends it.
+    if (message.delay() == 0)
+        storage->setSpellCooldownEnd(spellId, now);
+    else
+        storage->updateSpellCooldownEnd(spellId, now + message.delay());
+}
+
+void TPlayerProtocolMessageHandler::handleSpellGroupDelayMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageSpellGroupDelay& message)
+{
+    if (TCooldownStorage* storage = TCooldownStorage::instance()) {
+        const qint64 now = TCooldownStorage::now();
+        storage->setSpellGroupCooldown(static_cast<uint8_t>(message.group_id()), now, now + message.delay());
+    }
+}
+
+void TPlayerProtocolMessageHandler::handleMultiUseDelayMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageMultiUseDelay& message)
+{
+    if (TCooldownStorage* storage = TCooldownStorage::instance()) {
+        const qint64 now = TCooldownStorage::now();
+        storage->setMultiUseCooldown(now, now + message.delay());
+    }
+}
+
+void TPlayerProtocolMessageHandler::handleResourceBalanceMessage(
+    const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message)
+{
+    // Bank, inventory and guild bank gold; other resources have their own handlers.
+    TPlayerData* data = TPlayerData::liveInstance();
+    if (!data)
+        return;
+    switch (message.resource_type()) {
+    case 0:
+        data->setBankGold(message.value());
+        break;
+    case 1:
+        data->setInventoryGold(message.value());
+        break;
+    case 2:
+        data->setGuildBankGold(message.value());
+        break;
+    default:
+        break;
+    }
+}
+
+void TPlayerProtocolMessageHandler::handlePassiveAbilityDataMessage(
+    const ::tibia::protobuf::protocol::GameserverMessagePassiveAbilityData& message)
+{
+    TCooldownStorage* storage = TCooldownStorage::instance();
+    if (!storage)
+        return;
+    const auto ability = static_cast<uint8_t>(message.ability());
+    // Kind 1 is a counter, kind 0 a cooldown in seconds.
+    if (message.kind() == 1)
+        storage->setPassiveAbilityCounter(ability, message.first_value(), message.second_value());
+    if (message.kind() == 0)
+        storage->setPassiveAbilityCooldown(ability, qint64(message.remaining_ms()) * 1000, qint64(message.total_ms()) * 1000,
+                                           message.decaying());
+}
+
 void TPlayerProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
 {
     using namespace ::tibia::protobuf::protocol;
@@ -897,25 +956,27 @@ void TPlayerProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
         }
         break;
     case 164:
-        if (shadow->HasExtension(GameserverMessageSpellDelay::gameserver_message_spell_delay)) {
-            const auto& m = shadow->GetExtension(GameserverMessageSpellDelay::gameserver_message_spell_delay);
-            if (auto* storage = TCooldownStorage::instance())
-                storage->applySpellCooldown(static_cast<int>(m.spell_id()), m.delay());
-        }
+        if (shadow->HasExtension(GameserverMessageSpellDelay::gameserver_message_spell_delay))
+            handleSpellDelayMessage(shadow->GetExtension(GameserverMessageSpellDelay::gameserver_message_spell_delay));
         break;
     case 165:
-        if (shadow->HasExtension(GameserverMessageSpellGroupDelay::gameserver_message_spell_group_delay)) {
-            const auto& m = shadow->GetExtension(GameserverMessageSpellGroupDelay::gameserver_message_spell_group_delay);
-            if (auto* storage = TCooldownStorage::instance())
-                storage->applySpellGroupCooldown(static_cast<int>(m.group_id()), m.delay());
-        }
+        if (shadow->HasExtension(GameserverMessageSpellGroupDelay::gameserver_message_spell_group_delay))
+            handleSpellGroupDelayMessage(
+                shadow->GetExtension(GameserverMessageSpellGroupDelay::gameserver_message_spell_group_delay));
         break;
     case 166:
-        if (shadow->HasExtension(GameserverMessageMultiUseDelay::gameserver_message_multi_use_delay)) {
-            if (auto* storage = TCooldownStorage::instance())
-                storage->applyMultiUseCooldown(
-                    shadow->GetExtension(GameserverMessageMultiUseDelay::gameserver_message_multi_use_delay).delay());
-        }
+        if (shadow->HasExtension(GameserverMessageMultiUseDelay::gameserver_message_multi_use_delay))
+            handleMultiUseDelayMessage(shadow->GetExtension(GameserverMessageMultiUseDelay::gameserver_message_multi_use_delay));
+        break;
+    case 94:
+        if (shadow->HasExtension(GameserverMessagePassiveAbilityData::gameserver_message_passive_ability_data))
+            handlePassiveAbilityDataMessage(
+                shadow->GetExtension(GameserverMessagePassiveAbilityData::gameserver_message_passive_ability_data));
+        break;
+    case 238:
+        if (shadow->HasExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance))
+            handleResourceBalanceMessage(
+                shadow->GetExtension(GameserverMessageResourceBalance::gameserver_message_resource_balance));
         break;
     case 167:
         if (shadow->HasExtension(GameserverMessageSetTactics::gameserver_message_set_tactics)) {

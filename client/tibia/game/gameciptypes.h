@@ -25,6 +25,11 @@ class GameserverMessagePlayerSkills;
 class GameserverMessagePlayerDataCurrent;
 class GameserverMessagePlayerState;
 class GameserverMessageSetTactics;
+class GameserverMessageSpellDelay;
+class GameserverMessageSpellGroupDelay;
+class GameserverMessageMultiUseDelay;
+class GameserverMessageResourceBalance;
+class GameserverMessagePassiveAbilityData;
 class GameserverMessageLoginError;
 class GameserverMessageLoginSuccess;
 class GameserverMessageLoginWait;
@@ -272,6 +277,11 @@ private:
     void handlePlayerDataCurrentMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataCurrent& message);
     void handlePlayerStateMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerState& message);
     void handleSetTacticsMessage(const ::tibia::protobuf::protocol::GameserverMessageSetTactics& message);
+    void handleSpellDelayMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDelay& message);
+    void handleSpellGroupDelayMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellGroupDelay& message);
+    void handleMultiUseDelayMessage(const ::tibia::protobuf::protocol::GameserverMessageMultiUseDelay& message);
+    void handleResourceBalanceMessage(const ::tibia::protobuf::protocol::GameserverMessageResourceBalance& message);
+    void handlePassiveAbilityDataMessage(const ::tibia::protobuf::protocol::GameserverMessagePassiveAbilityData& message);
 };
 
 class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler
