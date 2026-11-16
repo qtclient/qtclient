@@ -1017,19 +1017,15 @@ void ownProductSurface(QObject* parent)
     new TSpellBookProtocolMessageHandler(parent);
 }
 
-void TEditTextProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TEditTextProtocolMessageHandler::handleEditTextMessage(const GameserverMessageEditText& m)
 {
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (shadow && opcode == 150 && shadow->HasExtension(GameserverMessageEditText::gameserver_message_edit_text)) {
-        const auto& m = shadow->GetExtension(GameserverMessageEditText::gameserver_message_edit_text);
-        const auto item = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(m.object());
-        tibia::game::processEditText(m.edit_id(), item.typeId, static_cast<uint16_t>(m.max_length()), m.text(), m.author(), m.date(),
-                                     m.recently_traded());
-        return;
-    }
-    if (!shadow || opcode != 151 || !shadow->HasExtension(GameserverMessageEditList::gameserver_message_edit_list))
-        return;
-    const auto& m = shadow->GetExtension(GameserverMessageEditList::gameserver_message_edit_list);
+    const auto item = ::tibia::container::TInventorySlot::fromProtocolInventoryItem(m.object());
+    tibia::game::processEditText(m.edit_id(), item.typeId, static_cast<uint16_t>(m.max_length()), m.text(), m.author(), m.date(),
+                                 m.recently_traded());
+}
+
+void TEditTextProtocolMessageHandler::handleEditListMessage(const GameserverMessageEditList& m)
+{
     tibia::game::processEditList(m.list_id(), static_cast<uint8_t>(m.list_type()), m.text());
 }
 
@@ -1095,30 +1091,17 @@ void TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage(
     tibia::game::notify("onPremiumExpiration", message.premium(), message.premium_until());
 }
 
-void TPremiumProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TPremiumProtocolMessageHandler::handlePremiumTriggerMessage(const GameserverMessagePremiumTrigger& m)
 {
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (shadow && opcode == 159
-        && shadow->HasExtension(::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic::gameserver_message_player_data_basic)) {
-        handlePlayerDataBasicMessage(
-            shadow->GetExtension(::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic::gameserver_message_player_data_basic));
-        return;
-    }
-    if (!shadow || opcode != 158 || !shadow->HasExtension(GameserverMessagePremiumTrigger::gameserver_message_premium_trigger))
-        return;
     std::vector<uint8_t> triggers;
-    for (const uint32_t trigger : shadow->GetExtension(GameserverMessagePremiumTrigger::gameserver_message_premium_trigger).triggers())
+    for (const uint32_t trigger : m.triggers())
         triggers.push_back(static_cast<uint8_t>(trigger));
     tibia::game::notify("onPremiumTrigger", triggers);
 }
 
-void TBlessingsProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TBlessingsProtocolMessageHandler::handleBlessingsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessingsDialog& m)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || opcode != 155 || !shadow->HasExtension(GameserverMessageBlessingsDialog::gameserver_message_blessings_dialog))
-        return;
-    const auto& m = shadow->GetExtension(GameserverMessageBlessingsDialog::gameserver_message_blessings_dialog);
     // The dialog derives the backpack and item loss itself (0xff: everything).
     const auto rawLoss = [](const uint32_t loss, const uint32_t tenth) { return static_cast<uint8_t>(tenth == 100 ? 0xff : loss); };
     BlessDialogData data;
@@ -1140,13 +1123,9 @@ void TBlessingsProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
     tibia::game::notify("onUpdateBlessDialog", data);
 }
 
-void TServerModalDialogProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& m)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || opcode != 250 || !shadow->HasExtension(GameserverMessageShowModalDialog::gameserver_message_show_modal_dialog))
-        return;
-    const auto& m = shadow->GetExtension(GameserverMessageShowModalDialog::gameserver_message_show_modal_dialog);
     std::vector<std::tuple<uint8_t, std::string>> buttons;
     for (const auto& b : m.buttons())
         buttons.emplace_back(static_cast<uint8_t>(b.choice_id()), b.text());
@@ -1157,14 +1136,9 @@ void TServerModalDialogProtocolMessageHandler::onServerMessageEnqueued(const int
                                     static_cast<uint8_t>(m.escape_button()), choices, m.priority());
 }
 
-void TBossDifficultySelectionProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
+void TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage(const ::tibia::protobuf::protocol::GameserverMessageBossDifficultySelection& m)
 {
     using namespace ::tibia::protobuf::protocol;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || opcode != 47
-        || !shadow->HasExtension(GameserverMessageBossDifficultySelection::gameserver_message_boss_difficulty_selection))
-        return;
-    const auto& m = shadow->GetExtension(GameserverMessageBossDifficultySelection::gameserver_message_boss_difficulty_selection);
     // The classic wire carries the open part (state 0) and the update part
     // (states 0 and 2) flat in one message: its first u32 is the selection
     // context (proto: lowest_difficulty), the second u16 the lowest difficulty
@@ -1214,18 +1188,6 @@ TSpellBookProtocolMessageHandler::~TSpellBookProtocolMessageHandler()
 }
 
 TSpellBookProtocolMessageHandler* TSpellBookProtocolMessageHandler::liveInstance() { return g_spellBookProtocolMessageHandler; }
-
-void TSpellBookProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
-{
-    using namespace ::tibia::protobuf::protocol;
-    if (opcode != 237 || !g_spellBookProtocolMessageHandler)
-        return;
-    const auto* shadow = protocol::nativeServerMessage(opcode);
-    if (!shadow || !shadow->HasExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog))
-        return;
-    g_spellBookProtocolMessageHandler->handleShowMessageDialogMessage(
-        shadow->GetExtension(GameserverMessageShowMessageDialog::gameserver_message_show_message_dialog));
-}
 
 void TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage(
     const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& Message)

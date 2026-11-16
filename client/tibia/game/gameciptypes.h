@@ -19,6 +19,13 @@
 namespace tibia {
 namespace protobuf {
 namespace protocol {
+class GameserverMessageBlessingsDialog;
+class GameserverMessageBossDifficultySelection;
+class GameserverMessageEditList;
+class GameserverMessageEditText;
+class GameserverMessagePremiumTrigger;
+class GameserverMessageShowModalDialog;
+class GameserverMessageShowMessageDialog;
 class GameserverMessageLoginAdvice;
 class GameserverMessagePlayerDataBasic;
 class GameserverMessagePlayerSkills;
@@ -96,8 +103,7 @@ class TBlessingsProtocolMessageHandler final : public cip::tibia::game::TBlessin
 public:
     using cip::tibia::game::TBlessingsProtocolMessageHandler::TBlessingsProtocolMessageHandler;
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    static void handleBlessingsDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessingsDialog& message);
 };
 
 /// What an update of the boss difficulty dialog carries: the selected
@@ -134,8 +140,7 @@ class TBossDifficultySelectionProtocolMessageHandler final : public cip::tibia::
 public:
     using cip::tibia::game::TBossDifficultySelectionProtocolMessageHandler::TBossDifficultySelectionProtocolMessageHandler;
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    static void handleBossDifficultySelectionMessage(const ::tibia::protobuf::protocol::GameserverMessageBossDifficultySelection& message);
 };
 
 class TEditTextProtocolMessageHandler final : public cip::tibia::game::TEditTextProtocolMessageHandler
@@ -143,9 +148,10 @@ class TEditTextProtocolMessageHandler final : public cip::tibia::game::TEditText
     Q_OBJECT
 public:
     using cip::tibia::game::TEditTextProtocolMessageHandler::TEditTextProtocolMessageHandler;
-
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    /// A text to read or edit (books, letters, signs).
+    static void handleEditTextMessage(const ::tibia::protobuf::protocol::GameserverMessageEditText& message);
+    /// A list to edit (house access lists).
+    static void handleEditListMessage(const ::tibia::protobuf::protocol::GameserverMessageEditList& message);
 };
 
 class TExperienceCalculator final : public ::tibia::CipTyped {
@@ -290,10 +296,8 @@ class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumPr
 public:
     using cip::tibia::game::TPremiumProtocolMessageHandler::TPremiumProtocolMessageHandler;
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
-
-private:
+    /// The premium features the server wants advertised.
+    static void handlePremiumTriggerMessage(const ::tibia::protobuf::protocol::GameserverMessagePremiumTrigger& message);
     /// Hands the premium flag and its end to the premium time storage.
     static void handlePlayerDataBasicMessage(const ::tibia::protobuf::protocol::GameserverMessagePlayerDataBasic& message);
 };
@@ -334,8 +338,7 @@ class TServerModalDialogProtocolMessageHandler final : public cip::tibia::game::
 public:
     using cip::tibia::game::TServerModalDialogProtocolMessageHandler::TServerModalDialogProtocolMessageHandler;
 
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
+    static void handleShowModalDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowModalDialog& message);
 };
 
 class TSessiondumpGameSessionMetaInfo final : public ::tibia::CipTyped {
@@ -344,10 +347,6 @@ public:
 };
 
 }
-}
-
-namespace tibia::protobuf::protocol {
-class GameserverMessageShowMessageDialog;
 }
 
 namespace tibia {
@@ -361,9 +360,6 @@ public:
     explicit TSpellBookProtocolMessageHandler(QObject* parent = nullptr);
     ~TSpellBookProtocolMessageHandler() override;
     static TSpellBookProtocolMessageHandler* liveInstance();
-
-    /// Ingress: applies the protobuf message the queue built for `opcode`.
-    static void onServerMessageEnqueued(int opcode);
 
 public Q_SLOTS:
     /// Only the spell book dialog type: its text and the book's appearance.

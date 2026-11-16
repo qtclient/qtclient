@@ -424,12 +424,6 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
             &store::TStoreProtocolMessageHandler::onServerMessageEnqueued,
             &cyclopedia::TCyclopediaProtocolMessageHandler::onServerMessageEnqueued,
             &sound::TSoundProtocolMessageHandler::onServerMessageEnqueued,
-            &game::TEditTextProtocolMessageHandler::onServerMessageEnqueued,
-            &game::TPremiumProtocolMessageHandler::onServerMessageEnqueued,
-            &game::TBlessingsProtocolMessageHandler::onServerMessageEnqueued,
-            &game::TServerModalDialogProtocolMessageHandler::onServerMessageEnqueued,
-            &game::TBossDifficultySelectionProtocolMessageHandler::onServerMessageEnqueued,
-            &game::TSpellBookProtocolMessageHandler::onServerMessageEnqueued,
         };
         for (const QMetaObject::Connection& connection : m_staticIngressConnections)
             disconnect(connection);

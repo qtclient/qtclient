@@ -203,11 +203,18 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedQuestLineMessage, this, &TQuestLogProtocolMessageHandler::handleQuestLineMessage);
     link(&Queue::receivedTrackedQuestFlagsMessage, this, &TQuestLogProtocolMessageHandler::handleTrackedQuestFlagsMessage);
 
+    link(&Queue::receivedShowModalDialogMessage, this, &TServerModalDialogProtocolMessageHandler::handleShowModalDialogMessage);
     using reporting::TRuleViolationProtocolMessageHandler;
     link(&Queue::receivedMessageMessage, this, &TRuleViolationProtocolMessageHandler::handleMessageMessage);
     link(&Queue::receivedTextForReportMessage, this, &TRuleViolationProtocolMessageHandler::handleTextForReportMessage);
 
+    link(&Queue::receivedEditTextMessage, this, &TEditTextProtocolMessageHandler::handleEditTextMessage);
+    link(&Queue::receivedEditListMessage, this, &TEditTextProtocolMessageHandler::handleEditListMessage);
+
     link(&Queue::receivedShowGameNewsMessage, this, &news::TNewsProtocolMessageHandler::handleShowGameNewsMessage);
+
+    link(&Queue::receivedPlayerDataBasicMessage, this, &TPremiumProtocolMessageHandler::handlePlayerDataBasicMessage);
+    link(&Queue::receivedPremiumTriggerMessage, this, &TPremiumProtocolMessageHandler::handlePremiumTriggerMessage);
 
     using prey::TPreyProtocolMessageHandler;
     link(&Queue::receivedPreyTimeLeftMessage, this, &TPreyProtocolMessageHandler::handlePreyTimeLeftMessage);
@@ -219,6 +226,8 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedShowMessageDialogMessage, this, &TImbuingProtocolMessageHandler::handleShowMessageDialogMessage);
     link(&Queue::receivedCloseImbuingDialogMessage, this, &TImbuingProtocolMessageHandler::handleCloseImbuingDialogMessage);
     link(&Queue::receivedImbuementDurationsMessage, this, &TImbuingProtocolMessageHandler::handleImbuementDurationsMessage);
+
+    link(&Queue::receivedBlessingsDialogMessage, this, &TBlessingsProtocolMessageHandler::handleBlessingsDialogMessage);
 
     using dailyreward::TDailyRewardProtocolMessageHandler;
     link(&Queue::receivedRestingAreaStateMessage, this, &TDailyRewardProtocolMessageHandler::handleRestingAreaStateMessage);
@@ -266,6 +275,9 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     link(&Queue::receivedExaltationResultMessage, this, &TExaltationProtocolMessageHandler::handleExaltationResultMessage);
 
     using proficiency::TProficiencyProtocolMessageHandler;
+    if (auto* spellBook = TSpellBookProtocolMessageHandler::liveInstance())
+        link(&Queue::receivedShowMessageDialogMessage, spellBook, &TSpellBookProtocolMessageHandler::handleShowMessageDialogMessage);
+
     link(&Queue::receivedWeaponProficiencyMessage, this, &TProficiencyProtocolMessageHandler::handleWeaponProficiencyMessage);
     link(&Queue::receivedWeaponProficiencyNotificationMessage, this,
          &TProficiencyProtocolMessageHandler::handleWeaponProficiencyNotificationMessage);
@@ -276,6 +288,9 @@ void TGameSessionBase::connectProtocolMessageHandlers(protocol::TProtocolMessage
     using taskboard::TTaskboardProtocolMessageHandler;
     link(&Queue::receivedTaskboardMessage, this, &TTaskboardProtocolMessageHandler::handleTaskboardMessage);
     link(&Queue::receivedSoulSealsDialogMessage, this, &TTaskboardProtocolMessageHandler::handleSoulSealsDialogMessage);
+
+    link(&Queue::receivedBossDifficultySelectionMessage, this,
+         &TBossDifficultySelectionProtocolMessageHandler::handleBossDifficultySelectionMessage);
 
     // Host: the live session is reused across logins (CIP builds a new one).
     m_queueConnections.push_back(connect(queue, &Queue::receivedLoginSuccessMessage, worldmap,
