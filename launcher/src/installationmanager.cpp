@@ -18,17 +18,20 @@ namespace {
 
 bool fileMatches(const QString& path, const TFileInPackage& file)
 {
+    // Files stored packed ("unpack": false) are described by their packed size and hash.
+    const qint64 size = file.unpack ? file.unpackedSize : file.packedSize;
+    const QString& expectedHash = file.unpack ? file.unpackedHash : file.packedHash;
     const QFileInfo info(path);
-    if (!info.isFile() || info.size() != file.unpackedSize)
+    if (!info.isFile() || info.size() != size)
         return false;
-    if (file.unpackedHash.isEmpty())
+    if (expectedHash.isEmpty())
         return true;
     QFile handle(path);
     if (!handle.open(QIODevice::ReadOnly))
         return false;
     QCryptographicHash hash(QCryptographicHash::Sha256);
     hash.addData(&handle);
-    return QString::fromLatin1(hash.result().toHex()).compare(file.unpackedHash, Qt::CaseInsensitive) == 0;
+    return QString::fromLatin1(hash.result().toHex()).compare(expectedHash, Qt::CaseInsensitive) == 0;
 }
 
 } // namespace

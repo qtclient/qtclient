@@ -91,7 +91,8 @@ TFileInPackage parseFileInPackage(const QJsonObject& file, const QUrl& baseUrl)
     parsed.packedHash = file.value(QStringLiteral("packedhash")).toString();
     parsed.unpackedSize = file.value(QStringLiteral("unpackedsize")).toInt();
     parsed.unpackedHash = file.value(QStringLiteral("unpackedhash")).toString();
-    parsed.unpack = file.value(QStringLiteral("unpack")).toBool();
+    // Files are lzma-packed unless the record says "unpack": false (sprites stay packed).
+    parsed.unpack = file.value(QStringLiteral("unpack")).toBool(true);
     parsed.executable = file.value(QStringLiteral("executable")).toBool();
     return parsed;
 }
@@ -137,6 +138,11 @@ bool TPackageConfiguration::load(const QByteArray& packageMetaData, const QByteA
             for (const QJsonValue& file : assetFiles.toArray())
                 m_files.push_back(parseFileInPackage(file.toObject(), m_assetsUrl.adjusted(QUrl::RemoveFilename)));
         }
+    }
+    // Host: release tips name the executable but do not flag its file record.
+    for (TFileInPackage& file : m_files) {
+        if (!m_executable.isEmpty() && file.localFile == m_executable)
+            file.executable = true;
     }
     std::sort(m_files.begin(), m_files.end(),
               [](const TFileInPackage& a, const TFileInPackage& b) { return a.localFile < b.localFile; });

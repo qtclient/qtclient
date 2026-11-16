@@ -239,6 +239,9 @@ void TLauncherFilesystemHelper::repairMacFrameworkVersions(const QDir& bundle)
 #ifdef Q_OS_MACOS
     // Packages ship file lists without symlinks: Qt frameworks need
     // Versions/Current plus the top-level Resources / Headers / binary links.
+    // The package directory is the bundle, or holds it (IdleOT.app/qtclient.app).
+    for (const QFileInfo& nested : bundle.entryInfoList({QStringLiteral("*.app")}, QDir::Dirs | QDir::NoDotAndDotDot))
+        repairMacFrameworkVersions(QDir(nested.absoluteFilePath()));
     const QDir frameworks(bundle.filePath(QStringLiteral("Contents/Frameworks")));
     if (!frameworks.exists())
         return;
