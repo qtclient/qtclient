@@ -80,3 +80,9 @@ qtclient_add_port_test(client_clientoptionsmigration_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/config/clientoptionsmigration.cpp
 )
 target_link_libraries(client_clientoptionsmigration_tests PRIVATE Qt6::Gui)
+
+# CIP TAuthenticationJsonDocumentHelper: the login service's request and answers.
+qtclient_add_port_test(client_authenticationjsondocumenthelper_tests
+    authenticationjsondocumenthelper_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/authentication/authenticationjsondocumenthelper.cpp
+)

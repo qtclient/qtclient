@@ -88,6 +88,7 @@ qt_add_executable(tibia
   app/packqmlinterceptor.cpp app/packqmlinterceptor.h
   app/qmldisk.cpp app/qmldisk.h
   authentication/loginrequestuploader.cpp authentication/loginrequestuploader.h
+  authentication/authenticationjsondocumenthelper.cpp authentication/authenticationjsondocumenthelper.h
   authentication/cloudflarechallengetypes.h
   authentication/cloudflarechallengecontroller.cpp authentication/cloudflarechallengecontroller.h
   authentication/authenticationprocesscontroller.cpp authentication/authenticationprocesscontroller.h

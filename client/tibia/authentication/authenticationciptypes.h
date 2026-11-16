@@ -18,8 +18,6 @@ void ownProductSurface(QObject* parent);
 
 class TAuthenticationAndEncryptionInfo final : public ::tibia::CipTyped {};
 
-class TAuthenticationJsonDocumentHelper final : public ::tibia::CipTyped {};
-
 class TEmailCodeRequestUploader final : public cip::tibia::authentication::TEmailCodeRequestUploader
 {
     Q_OBJECT

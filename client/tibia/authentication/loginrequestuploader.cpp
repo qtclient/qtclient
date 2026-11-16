@@ -1,6 +1,9 @@
 #include "loginrequestuploader.h"
 
+#include "game/gameciptypes.h"
+
 #include <QDateTime>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -14,9 +17,10 @@ namespace tibia::authentication {
 
 namespace {
 
-// Login service error codes (CIP switch).
-constexpr int ErrorTwoFactorRequired = 6;
-constexpr int ErrorClientOutOfDate = 7;
+/// The client option holding the id of the last important balancing message seen.
+constexpr int LastImportantBalancingMessageOption = 126;
+/// An important balancing message is shown for 28 days after its changes.
+constexpr int ImportantBalancingMessageSeconds = 28 * 24 * 60 * 60;
 
 bool looksLikeCloudflareChallenge(const QNetworkReply* reply, const QByteArray& mitigated)
 {
@@ -31,32 +35,25 @@ bool looksLikeCloudflareChallenge(const QNetworkReply* reply, const QByteArray& 
 
 }
 
-const LoginWorld* LoginResult::world(const int id) const
+const TWorld* LoginResult::world(const int id) const
 {
-    for (const auto& w : worlds)
-        if (w.id == id)
-            return &w;
-    return nullptr;
+    const auto it = worlds.find(id);
+    return it == worlds.end() ? nullptr : &it->second;
 }
 
 TLoginRequestUploader::TLoginRequestUploader(QObject* parent)
     : cip::tibia::authentication::TLoginRequestUploader(parent)
     , m_network(new QNetworkAccessManager(this))
+    , m_helper(std::make_unique<TAuthenticationJsonDocumentHelper>())
 {
     connect(this, &TLoginRequestUploader::finished, this, &TLoginRequestUploader::onFinished);
 }
 
-void TLoginRequestUploader::login(const QUrl& url, const QString& email, const QString& password, const QString& authenticatorToken, const QString& clientRevision)
+TLoginRequestUploader::~TLoginRequestUploader() = default;
+
+void TLoginRequestUploader::login(const QUrl& url, const TLoginRequestData& data, const QString& clientRevision)
 {
-    QJsonObject body{
-        { QStringLiteral("type"), QStringLiteral("login") },
-        { QStringLiteral("email"), email },
-        { QStringLiteral("password"), password },
-        { QStringLiteral("stayloggedin"), true },
-    };
-    if (!authenticatorToken.isEmpty())
-        body.insert(QStringLiteral("token"), authenticatorToken);
-    post(url, body, clientRevision);
+    post(url, m_helper->createLoginRequest(data).object(), clientRevision);
 }
 
 void TLoginRequestUploader::abort()
@@ -120,16 +117,26 @@ void TLoginRequestUploader::post(const QUrl& url, QJsonObject body, const QStrin
             if (reply->error() != QNetworkReply::NoError)
                 Q_EMIT loginFailed(tr("Could not reach the login service: %1").arg(reply->errorString()));
             else
-                Q_EMIT finished(false, {});
+                Q_EMIT loginFailedDueToInvalidServerResponse();
             return;
         }
+        // TJsonDocumentUploaderBase: an answer with an error code is a failed upload.
+        const QJsonObject answer = doc.object();
+        if (answer.contains(QStringLiteral("errorCode"))) {
+            m_errorCode = answer.value(QStringLiteral("errorCode")).toInt();
+            m_errorMessage = answer.value(QStringLiteral("errorMessage")).toString();
+            Q_EMIT finished(false, doc);
+            return;
+        }
+        m_errorCode = 0;
+        m_errorMessage.clear();
         Q_EMIT finished(true, doc);
     });
 }
 
 void TLoginRequestUploader::onCloudflareMitigated(QNetworkReply* Reply, const std::string& MitigatedHeaderValue)
 {
-    Q_UNUSED(MitigatedHeaderValue);
+    m_cloudflareMitigatedHeaderValue = MitigatedHeaderValue;
     m_lastMitigatedUrl = Reply ? Reply->url() : m_lastUrl;
     if (!m_lastMitigatedUrl.isValid())
         m_lastMitigatedUrl = m_lastUrl;
@@ -138,78 +145,87 @@ void TLoginRequestUploader::onCloudflareMitigated(QNetworkReply* Reply, const st
 
 void TLoginRequestUploader::onFinished(const bool UploadSuccessful, const QJsonDocument& ReplyFromServerJD)
 {
-    if (!UploadSuccessful || !ReplyFromServerJD.isObject()) {
-        Q_EMIT loginFailedDueToInvalidServerResponse();
-        return;
-    }
-    const QJsonObject reply = ReplyFromServerJD.object();
+    m_characters.clear();
+    m_worlds.clear();
+    m_session = TPlaySessionData();
+    m_loginTimestamp = static_cast<int>(QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000);
 
-    if (reply.contains(QStringLiteral("errorCode"))) {
-        const int errorCode = reply.value(QStringLiteral("errorCode")).toInt();
-        if (errorCode == ErrorClientOutOfDate)
-            Q_EMIT loginFailedClientOutOfDate();
-        else if (errorCode == ErrorTwoFactorRequired)
+    if (!UploadSuccessful) {
+        switch (m_errorCode) {
+        case ErrorMissingTwoFactorToken:
             Q_EMIT loginFailedDueToMissingTwoFactorToken();
-        else
-            Q_EMIT loginFailed(reply.value(QStringLiteral("errorMessage")).toString());
+            break;
+        case ErrorClientOutOfDate:
+            Q_EMIT loginFailedClientOutOfDate();
+            break;
+        case ErrorMissingEMailLoginCode:
+            m_helper->parseShowResendButton(ReplyFromServerJD.object(), m_showResendButton);
+            Q_EMIT loginFailedDueToMissingEMailLoginCode();
+            break;
+        case ErrorInvalidDeviceCookie:
+            Q_EMIT loginFailedDueToInvalidDeviceCookie();
+            break;
+        case ErrorMissingLoginConfirmation: {
+            m_helper->parseTwoFactorEmailAddresses(ReplyFromServerJD.object(), m_twoFactorEmailAddresses);
+            QString confirmationToken;
+            bool hasPendingCode = false;
+            if (m_helper->parseLoginConfirmation(ReplyFromServerJD.object(), confirmationToken, hasPendingCode))
+                Q_EMIT loginFailedDueToMissingLoginConfirmation(confirmationToken, hasPendingCode);
+            break;
+        }
+        default:
+            Q_EMIT loginFailed(m_errorMessage);
+            break;
+        }
         return;
     }
-    if (!reply.value(QStringLiteral("session")).isObject() || !reply.value(QStringLiteral("playdata")).isObject()) {
-        Q_EMIT loginFailedDueToInvalidServerResponse();
-        return;
+
+    const QJsonObject reply = ReplyFromServerJD.object();
+    m_helper->parsePlayData(reply, m_characters, m_worlds);
+    m_helper->parsePlaySessionData(reply, m_session);
+    if (game::TPremiumTimeStorage* premium = game::TPremiumTimeStorage::liveInstance())
+        premium->setPremium(m_session.isPremium, static_cast<uint32_t>(m_session.premiumUntil));
+
+    QString loginEmail;
+    QString deviceCookie;
+    m_helper->parseLoginEmail(reply, loginEmail);
+    if (m_helper->parseDeviceCookie(reply, deviceCookie) && !deviceCookie.isEmpty() && !loginEmail.isEmpty() && m_options)
+        m_options->setDeviceCookie(loginEmail.toStdString(), deviceCookie);
+
+    TSurveyData survey;
+    if (m_helper->parseSurveyData(reply, survey))
+        m_survey = survey;
+    else
+        m_survey.reset();
+
+    m_characterTradePayments.clear();
+    m_helper->parseCharacterTradePayments(reply, m_characterTradePayments);
+    m_showReturnerNotification = m_helper->parseReturnerNotification(reply);
+    m_showImportantBalancingMessage = false;
+    if (m_options) {
+        QString data;
+        QFile file(QStringLiteral(":/data/ImportantBalancingMessageData.json"));
+        if (file.open(QIODevice::ReadOnly))
+            data = QString::fromUtf8(file.readAll());
+        file.close();
+        const QJsonObject message = QJsonDocument::fromJson(data.toUtf8()).object();
+        const auto id = static_cast<uint32_t>(message.value(QStringLiteral("id")).toInt());
+        const auto now = static_cast<int>(QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000);
+        const int dateOfCurrentChanges = message.value(QStringLiteral("dateOfCurrentChanges")).toInt();
+        if (static_cast<uint32_t>(now - dateOfCurrentChanges) <= ImportantBalancingMessageSeconds
+            && m_options->intOption(LastImportantBalancingMessageOption) < id)
+            m_showImportantBalancingMessage = true;
     }
-    Q_EMIT loginSuccessful(parse(reply));
+
+    Q_EMIT loginSuccessful(LoginResult{ m_session, m_worlds, m_characters });
 }
 
 LoginResult TLoginRequestUploader::parse(const QJsonObject& reply)
 {
+    const TAuthenticationJsonDocumentHelper helper;
     LoginResult result;
-
-    const QJsonObject session = reply.value(QStringLiteral("session")).toObject();
-    result.session.sessionKey = session.value(QStringLiteral("sessionkey")).toString();
-    result.session.premiumUntil = session.value(QStringLiteral("premiumuntil")).toInteger();
-    result.session.isPremium = session.value(QStringLiteral("ispremium")).toBool()
-        || result.session.premiumUntil > QDateTime::currentSecsSinceEpoch();
-
-    const QJsonObject playdata = reply.value(QStringLiteral("playdata")).toObject();
-    for (const auto& value : playdata.value(QStringLiteral("worlds")).toArray()) {
-        const QJsonObject w = value.toObject();
-        LoginWorld world;
-        world.id = w.value(QStringLiteral("id")).toInt();
-        world.name = w.value(QStringLiteral("name")).toString();
-        world.host = w.value(QStringLiteral("externaladdressprotected")).toString(w.value(QStringLiteral("externaladdress")).toString());
-        world.port = w.value(QStringLiteral("externalportprotected")).toInt(w.value(QStringLiteral("externalport")).toInt());
-#ifdef Q_OS_WASM
-        // A browser can only open WebSockets: Crystal's native WS game port.
-        if (const int ws = w.value(QStringLiteral("websocketport")).toInt(); ws > 0)
-            world.port = ws;
-#endif
-        world.previewState = w.value(QStringLiteral("previewstate")).toInt() == 1;
-        world.pvpType = w.value(QStringLiteral("pvptype")).toInt();
-        result.worlds.append(world);
-    }
-
-    for (const auto& value : playdata.value(QStringLiteral("characters")).toArray()) {
-        const QJsonObject c = value.toObject();
-        LoginCharacter character;
-        character.name = c.value(QStringLiteral("name")).toString();
-        character.worldId = c.value(QStringLiteral("worldid")).toInt();
-        character.level = c.value(QStringLiteral("level")).toInt();
-        character.vocation = c.value(QStringLiteral("vocation")).toString();
-        character.outfitId = c.value(QStringLiteral("outfitid")).toInt();
-        character.headColor = c.value(QStringLiteral("headcolor")).toInt();
-        character.torsoColor = c.value(QStringLiteral("torsocolor")).toInt();
-        character.legsColor = c.value(QStringLiteral("legscolor")).toInt();
-        character.detailColor = c.value(QStringLiteral("detailcolor")).toInt();
-        character.addonsFlags = c.value(QStringLiteral("addonsflags")).toInt();
-        character.isMale = c.value(QStringLiteral("ismale")).toBool(true);
-        character.isMainCharacter = c.value(QStringLiteral("ismaincharacter")).toBool();
-        character.isHidden = c.value(QStringLiteral("ishidden")).toBool();
-        character.isOnline = c.value(QStringLiteral("isonline")).toBool();
-        character.tutorial = c.value(QStringLiteral("tutorial")).toBool();
-        character.dailyRewardState = c.value(QStringLiteral("dailyrewardstate")).toInt();
-        result.characters.append(character);
-    }
+    helper.parsePlayData(reply, result.characters, result.worlds);
+    helper.parsePlaySessionData(reply, result.session);
     return result;
 }
 
