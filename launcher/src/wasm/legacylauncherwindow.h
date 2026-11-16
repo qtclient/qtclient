@@ -44,10 +44,6 @@ public:
      * Module (sessionStorage qtclient.play + location.reload). Desktop spawn is unchanged.
      */
     void setInProcessPlayHandler(std::function<void()> handler) { m_inProcessPlay = std::move(handler); }
-#ifdef __EMSCRIPTEN__
-    /** Called from JS after `__qtclientInstallThings` finishes (EM_ASM keepalive). */
-    void onThingsInstallDone(bool ok, bool thenPlay, const QString& version);
-#endif
 
 private:
     enum class LogoState { Classic, Updating, Launching };
@@ -57,10 +53,10 @@ private:
     void acceptEula();
     void setActionSkin(const QString& color, const QString& icon);
     void setLogoState(LogoState state);
+    void applyLogoLink();
 #ifdef __EMSCRIPTEN__
     void resizeEvent(QResizeEvent* event) override;
-    void applyThingsProgressFromJs();
-    void layoutSoftStage();
+    void layoutStage();
 #endif
     void applyHint(const QVector<tibia::shared::Hint>& hints);
     void loadFeed();
@@ -73,13 +69,12 @@ private:
 #ifdef __EMSCRIPTEN__
     void startAsync();
     void installIfNeededAsync(bool thenPlay);
-    /** After engine package: CIP assets stamp + product things packs into OPFS tip. */
-    void installAssetsAndThingsAsync(bool thenPlay);
-    /** After assets/things: optional tip mods + minimap channels, then finish. */
+    /** After the engine package: CIP assets (assets.json), as installIfNeeded does. */
+    void installAssetsAsync(bool thenPlay, const QString& version);
+    /** After assets: optional tip mods + minimap channels, then finish. */
     void installModsThenFinishAsync(bool thenPlay, const QString& version);
     void installMinimapThenFinishAsync(bool thenPlay, const QString& version);
     void finishInstallAsync(bool thenPlay, const QString& version);
-    void installThingsPacksViaJs(bool thenPlay, const QString& version);
 #endif
     void play();
     /// Local DEV: `QTCLIENT_DEV_JSON` desktop.exe (stock --no-mods / tip pack).
@@ -93,7 +88,6 @@ private:
     QString localAssetsStamp() const;
     QString localModsStamp() const;
     QString localMinimapStamp() const;
-    bool thingsPacksStampPresent() const;
     /// True when mods channel off/omitted or local mods.json.sha256 matches remote.
     bool modsStampOk() const;
     /// True when minimap channel off/omitted or local minimap.json.sha256 matches remote.
@@ -140,7 +134,7 @@ private:
     QGroupBox* m_packageBox = nullptr;
     QGroupBox* m_hintBox = nullptr;
 #ifdef __EMSCRIPTEN__
-    QWidget* m_softStage = nullptr;
+    QWidget* m_stage = nullptr;
     QGraphicsView* m_stageView = nullptr;
     QGraphicsProxyWidget* m_stageProxy = nullptr;
 #endif

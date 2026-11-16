@@ -174,10 +174,6 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
   if [[ "${STOCK_HOST:-0}" == "1" || "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
     _mods_cmake=-DQTCLIENT_ENABLE_MODS=OFF
   fi
-  _launcher_mods_cmake=-DQTCLIENT_ENABLE_LAUNCHER_MODS=OFF
-  case "${QTCLIENT_ENABLE_LAUNCHER_MODS:-}" in
-    1|ON|on|true|TRUE|yes|YES) _launcher_mods_cmake=-DQTCLIENT_ENABLE_LAUNCHER_MODS=ON ;;
-  esac
   _mods_list_cmake=()
   if [[ -n "${QTCLIENT_MODS:-}" ]]; then
     _mods_list_cmake=(-DQTCLIENT_MODS="${QTCLIENT_MODS}")
@@ -209,7 +205,6 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     -DWASM_USE_WASM_EXCEPTIONS=ON
     -DOPTIONS_ENABLE_CCACHE=ON
     "$_mods_cmake"
-    "$_launcher_mods_cmake"
     ${_mods_list_cmake[@]+"${_mods_list_cmake[@]}"}
     ${_linked_pack_cmake[@]+"${_linked_pack_cmake[@]}"}
   )
@@ -220,7 +215,6 @@ if [[ "$WASM_BUILD" -eq 1 ]]; then
     echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
     echo "mods-list=${QTCLIENT_MODS:-}"
     echo "linked-pack=${QTCLIENT_LINKED_PACK:-}"
-    echo "launcher-mods=${QTCLIENT_ENABLE_LAUNCHER_MODS:-OFF}"
     printf '%s\n' "${WASM_CMAKE_ARGS[@]}"
     _sha256 "$OTC/vcpkg.json" "$OTC/vcpkg-configuration.json" 2>/dev/null || true
   } | _sha256 | awk '{print $1}'
@@ -376,10 +370,6 @@ _mods_cmake=-DQTCLIENT_ENABLE_MODS=ON
 if [[ "${STOCK_HOST:-0}" == "1" || "${QTCLIENT_ENABLE_MODS:-}" =~ ^(0|OFF|off|false|FALSE)$ ]]; then
   _mods_cmake=-DQTCLIENT_ENABLE_MODS=OFF
 fi
-_launcher_mods_cmake=-DQTCLIENT_ENABLE_LAUNCHER_MODS=OFF
-case "${QTCLIENT_ENABLE_LAUNCHER_MODS:-}" in
-  1|ON|on|true|TRUE|yes|YES) _launcher_mods_cmake=-DQTCLIENT_ENABLE_LAUNCHER_MODS=ON ;;
-esac
 _linked_pack_cmake=()
 if [[ -n "${QTCLIENT_LINKED_PACK:-}" ]]; then
   _linked_pack_cmake=(-DQTCLIENT_LINKED_PACK="${QTCLIENT_LINKED_PACK}")
@@ -395,7 +385,6 @@ FP="$(
     echo "stock-host=${STOCK_HOST:-0}"
     echo "mods=${QTCLIENT_ENABLE_MODS:-ON}"
     echo "linked-pack=${QTCLIENT_LINKED_PACK:-}"
-    echo "launcher-mods=${QTCLIENT_ENABLE_LAUNCHER_MODS:-OFF}"
     _sha256 "$OTC/CMakePresets.json" "$OTC/vcpkg.json" 2>/dev/null || true
   } | _sha256 | awk '{print $1}'
 )"
@@ -407,7 +396,6 @@ if [[ -f "$HELPER" ]]; then
     -DCMAKE_PREFIX_PATH="$QT_DESKTOP" \
     -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
     "$_mods_cmake" \
-    "$_launcher_mods_cmake" \
     ${_linked_pack_cmake[@]+"${_linked_pack_cmake[@]}"}
 else
   cmake --preset "$PRESET" \
@@ -415,7 +403,6 @@ else
     -DCMAKE_PREFIX_PATH="$QT_DESKTOP" \
     -DVCPKG_TARGET_TRIPLET="$VCPKG_TARGET_TRIPLET" \
     "$_mods_cmake" \
-    "$_launcher_mods_cmake" \
     ${_linked_pack_cmake[@]+"${_linked_pack_cmake[@]}"}
 fi
 # Expected qtclient outputs (TOGGLE_BIN_FOLDER=ON) — no multi-path search.

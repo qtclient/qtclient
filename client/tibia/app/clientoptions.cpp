@@ -2,6 +2,10 @@
 
 #include "config/clientoptiondefaults.h"
 #include "config/clientoptions.h"
+#include "config/clientoptionsmigration.h"
+
+#include <QFile>
+#include <QJsonDocument>
 
 #include <QStringList>
 #include <QTimer>
@@ -51,6 +55,15 @@ QJsonObject merged(QJsonObject base, const QJsonObject& over)
 QString ClientOptions::userFilePath()
 {
     return config::TClientOptions::userFilePath();
+}
+
+ClientOptions ClientOptions::readStoredFile()
+{
+    ClientOptions o;
+    QFile file(userFilePath());
+    if (file.open(QIODevice::ReadOnly))
+        o.m_root = config::clientoptionsmigration::migrate(QJsonDocument::fromJson(file.readAll()).object());
+    return o;
 }
 
 ClientOptions ClientOptions::load()

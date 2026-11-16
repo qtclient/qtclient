@@ -823,36 +823,13 @@ if(EMSCRIPTEN)
   target_link_options(tibia PRIVATE
     "SHELL:--post-js=${TIBIA_ROOT}/browser/embind-ignore-dupes.js")
 
-  # Game tip FS: WasmFS scaffolds /home/web_user; durable tip is Module.qtclientFs
-  # (portal OPFS Worker + SAB) via browser/opfs_file_engine (QFile unchanged).
-  # Soft launcher stays classic FS — do not add these flags to the launcher.
-  #
-  # Main-thread Qt + JSPI (no PROXY_TO_PTHREAD): PROXY broke Emval DOM.
-  # Unified Chrome/Safari qtclient-fs: EM_ASYNC_JS + -sJSPI so OPFS SyncAccessHandle
-  # can complete while the main thread yields. Requires wasm EH (not SJLJ).
-  # Do not use Emscripten wasmfs_create_opfs_backend for product tip.
-  target_sources(tibia PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/browser/wasmfs_opfs_home.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/browser/wasmfs_opfs_home.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/browser/opfs_file_engine.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/browser/opfs_file_engine.h")
+  include("${TIBIA_ROOT}/cmake/QtclientBrowserRuntime.cmake")
+  qtclient_browser_runtime(tibia)
   target_link_options(tibia PRIVATE
-    "SHELL:-sWASMFS"
-    # Qt qwasmsocket needs classic SOCKFS callbacks (not pulled in by WasmFS).
-    "SHELL:-lsockfs.js"
     "SHELL:-sOFFSCREEN_FRAMEBUFFER"
     "SHELL:-sENVIRONMENT=web,worker"
-    # Keep the pre-spawned pool tiny: Vite/Electron stalls when createWasm
-    # Atomics.waits on many Worker script fetches (/play). On-demand workers
-    # still spawn later; portal also patches tip glue as a belt-and-suspenders.
-    "SHELL:-sPTHREAD_POOL_SIZE=1"
     "SHELL:-sPTHREAD_POOL_SIZE_STRICT=0"
-    "SHELL:-sALLOW_MEMORY_GROWTH=0"
-    # Lazy qtclient-fs: native suspend across await qtclientFs.*Async (OPFS Worker).
-    # Qt kit with -feature-wasm-jspi also adds -sJSPI; duplicate is harmless.
-    "SHELL:-sJSPI"
-    # Qt Emval/timers re-enter wasm outside main — wrap table entries for JSPI.
-    "SHELL:--post-js=${TIBIA_ROOT}/browser/jspi-wrap-table.js")
+    "SHELL:-sALLOW_MEMORY_GROWTH=0")
 
   # Optional local-dev only: preload graphics RCC into MEMFS.
   # Release /play gets art from the CDN tip + OPFS (do not inflate tibia.data).
@@ -890,15 +867,12 @@ if(EMSCRIPTEN)
         "SHELL:-sSUPPORT_LONGJMP=emscripten")
     endif()
   endif()
-  # ENV/FS: tip AppData is WasmFS OPFS under /home/web_user (no IDBFS).
   # Fixed heap (ALLOW_MEMORY_GROWTH=0 — resizable SAB breaks WebGL). Tip-fs
   # one-shot appearances (~5MB) + RCC (~7MB) + protobuf ThingTypes + QML
   # exceeded 512MB shortly after login mask → OOB; 1024MB still OOB'd under
   # IdleOT pack + login-mask sprite/QML traffic. 1536MB leaves headroom.
   set_target_properties(tibia PROPERTIES
-    QT_WASM_INITIAL_MEMORY "1536MB"
-    QT_WASM_PTHREAD_POOL_SIZE "1"
-    QT_WASM_EXTRA_EXPORTED_METHODS "ENV,FS")
+    QT_WASM_INITIAL_MEMORY "1536MB")
 endif()
 
 # Mobile / HiDPI scaffold (Phase 6): same QML binary; touch + orientation drive

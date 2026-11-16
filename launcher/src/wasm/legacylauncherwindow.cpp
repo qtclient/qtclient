@@ -85,8 +85,8 @@ constexpr int kLogoHeight = 152;
 /// Wide enough for the padded ETA line at Verdana 13 bold (no wrap).
 constexpr int kPackageBoxWidth = 280;
 /// CipSoft stage (TLauncherMainWindow). Browser fills the host and centers this.
-constexpr int kSoftStageWidth = 800;
-constexpr int kSoftStageHeight = 600;
+constexpr int kStageWidth = 800;
+constexpr int kStageHeight = 600;
 
 QString readText(const QString& path)
 {
@@ -197,7 +197,7 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
         resize(s->size());
 #else
     // CipSoft TLauncherMainWindow: fixed 800×600 chrome (browser soft-stage
-    // scales that same layout for mobile — see layoutSoftStage).
+    // scales that same layout for mobile — see layoutStage).
     setFixedSize(800, 600);
 #endif
     auto* central = new QWidget(this);
@@ -401,10 +401,10 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
 #ifdef __EMSCRIPTEN__
     // CipSoft chrome is authored at 800×600. Embed it in a QGraphicsView so
     // narrow/mobile hosts can uniform-scale + center without reflowing CIP metrics.
-    m_softStage = new QWidget;
-    m_softStage->setFixedSize(kSoftStageWidth, kSoftStageHeight);
-    m_softStage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    auto* stageLayout = new QVBoxLayout(m_softStage);
+    m_stage = new QWidget;
+    m_stage->setFixedSize(kStageWidth, kStageHeight);
+    m_stage->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    auto* stageLayout = new QVBoxLayout(m_stage);
     stageLayout->setContentsMargins(0, 0, 0, 0);
     stageLayout->setSpacing(0);
     stageLayout->addLayout(m_stack);
@@ -424,15 +424,15 @@ LauncherWindow::LauncherWindow(PackageClient* client, QWidget* parent)
     auto* scene = new QGraphicsScene(m_stageView);
     scene->setBackgroundBrush(Qt::NoBrush);
     m_stageView->setScene(scene);
-    m_stageProxy = scene->addWidget(m_softStage);
+    m_stageProxy = scene->addWidget(m_stage);
     m_stageProxy->setTransformOriginPoint(0, 0);
     root->addWidget(m_stageView);
-    layoutSoftStage();
+    layoutStage();
     // First layout often runs before Qt WASM assigns the real CSS host size.
-    QTimer::singleShot(0, this, &LauncherWindow::layoutSoftStage);
-    QTimer::singleShot(50, this, &LauncherWindow::layoutSoftStage);
+    QTimer::singleShot(0, this, &LauncherWindow::layoutStage);
+    QTimer::singleShot(50, this, &LauncherWindow::layoutStage);
     if (QScreen* s = screen())
-        connect(s, &QScreen::geometryChanged, this, &LauncherWindow::layoutSoftStage);
+        connect(s, &QScreen::geometryChanged, this, &LauncherWindow::layoutStage);
 #else
     root->addLayout(m_stack);
 #endif
@@ -473,16 +473,16 @@ void LauncherWindow::paintBackground()
                                       : bgPath);
     if (bg.isNull())
         return;
-    if (m_softStage) {
-        QPalette stagePal = m_softStage->palette();
+    if (m_stage) {
+        QPalette stagePal = m_stage->palette();
         stagePal.setBrush(QPalette::Window,
-                          QBrush(bg.scaled(kSoftStageWidth, kSoftStageHeight, Qt::IgnoreAspectRatio,
+                          QBrush(bg.scaled(kStageWidth, kStageHeight, Qt::IgnoreAspectRatio,
                                            Qt::SmoothTransformation)));
-        m_softStage->setAutoFillBackground(true);
-        m_softStage->setPalette(stagePal);
+        m_stage->setAutoFillBackground(true);
+        m_stage->setPalette(stagePal);
     }
     // Letterbox behind the transparent QGraphicsView — same art, host-sized.
-    const QSize target = size().isEmpty() ? QSize(kSoftStageWidth, kSoftStageHeight) : size();
+    const QSize target = size().isEmpty() ? QSize(kStageWidth, kStageHeight) : size();
     QPalette pal = palette();
     pal.setBrush(QPalette::Window,
                  QBrush(bg.scaled(target, Qt::IgnoreAspectRatio, Qt::SmoothTransformation)));
@@ -519,9 +519,9 @@ void LauncherWindow::applyStyle()
 }
 
 #ifdef __EMSCRIPTEN__
-void LauncherWindow::layoutSoftStage()
+void LauncherWindow::layoutStage()
 {
-    if (!m_stageView || !m_stageProxy || !m_softStage)
+    if (!m_stageView || !m_stageProxy || !m_stage)
         return;
     QSize host = m_stageView->viewport()->size();
     // Qt WASM viewport can lag (or report device px) vs the CSS host on mobile
@@ -542,12 +542,12 @@ void LauncherWindow::layoutSoftStage()
         return;
     // Uniform scale to fill the host. Cap upscale at 2× so large tablets are
     // readable without blurring CIP art into mush on desktop-sized browsers.
-    const qreal sx = qreal(host.width()) / qreal(kSoftStageWidth);
-    const qreal sy = qreal(host.height()) / qreal(kSoftStageHeight);
+    const qreal sx = qreal(host.width()) / qreal(kStageWidth);
+    const qreal sy = qreal(host.height()) / qreal(kStageHeight);
     const qreal scale = qMin(qreal(2), qMin(sx, sy));
     m_stageProxy->setScale(scale);
-    const qreal w = kSoftStageWidth * scale;
-    const qreal h = kSoftStageHeight * scale;
+    const qreal w = kStageWidth * scale;
+    const qreal h = kStageHeight * scale;
     m_stageProxy->setPos((host.width() - w) * 0.5, (host.height() - h) * 0.5);
     m_stageView->scene()->setSceneRect(0, 0, host.width(), host.height());
 }
@@ -556,38 +556,22 @@ void LauncherWindow::resizeEvent(QResizeEvent* event)
 {
     QMainWindow::resizeEvent(event);
     paintBackground();
-    layoutSoftStage();
-}
-
-void LauncherWindow::applyThingsProgressFromJs()
-{
-    // Module.qtclientThingsProgress = { label, percent } from __qtclientInstallThings.
-    char* labelPtr = static_cast<char*>(EM_ASM_PTR({
-        var p = Module.qtclientThingsProgress;
-        if (!p || typeof p.label !== 'string')
-            return 0;
-        var s = p.label;
-        var len = lengthBytesUTF8(s) + 1;
-        var buf = _malloc(len);
-        stringToUTF8(s, buf, len);
-        return buf;
-    }));
-    const int percent = EM_ASM_INT({
-        var p = Module.qtclientThingsProgress;
-        if (!p || typeof p.percent !== 'number')
-            return -1;
-        return Math.max(0, Math.min(100, p.percent | 0));
-    });
-    if (labelPtr) {
-        m_status->setText(QString::fromUtf8(labelPtr));
-        free(labelPtr);
-    }
-    if (percent >= 0) {
-        m_progress->show();
-        m_progress->setValue(percent);
-    }
+    layoutStage();
 }
 #endif
+
+void LauncherWindow::applyLogoLink()
+{
+    // CIP: the bottom logo links to the package's logolinktarget (http/https only).
+    if (!m_mark || m_package.logolinktarget.isEmpty())
+        return;
+    const QUrl url(m_package.logolinktarget);
+    if (!url.isValid() || (url.scheme() != QLatin1String("http") && url.scheme() != QLatin1String("https")))
+        return;
+    m_mark->setText(QStringLiteral("<a href=\"%1\"><img src=\"%2\"></a>")
+                        .arg(QString::fromUtf8(url.toEncoded()),
+                             LauncherBrand::instance().chromeUrl(QStringLiteral("CipSoftLogo.png"))));
+}
 
 void LauncherWindow::setActionSkin(const QString& color, const QString& icon)
 {
@@ -647,18 +631,7 @@ QString LauncherWindow::packageDir() const
 
 QString LauncherWindow::localVersion() const
 {
-    const QString ver = readText(QDir(packageDir()).filePath(QStringLiteral("package.json.version")));
-    if (ver.isEmpty())
-        return {};
-#ifdef __EMSCRIPTEN__
-    // Stamp-only installs wrote the version without unpacking files — treat as missing
-    // so Download runs a real install with progress instead of jumping to Play.
-    const QDir dir(packageDir());
-    if (!QFileInfo::exists(dir.filePath(QStringLiteral("tibia.js")))
-        && !QFileInfo::exists(dir.filePath(QStringLiteral("tibia.wasm"))))
-        return {};
-#endif
-    return ver;
+    return readText(QDir(packageDir()).filePath(QStringLiteral("package.json.version")));
 }
 
 QString LauncherWindow::localAssetsStamp() const
@@ -674,12 +647,6 @@ QString LauncherWindow::localModsStamp() const
 QString LauncherWindow::localMinimapStamp() const
 {
     return readText(QDir(packageDir()).filePath(QStringLiteral("minimap.json.sha256")));
-}
-
-bool LauncherWindow::thingsPacksStampPresent() const
-{
-    const QDir tip(packageDir());
-    return QFileInfo::exists(tip.filePath(QStringLiteral(".tibia-sprite-packs")));
 }
 
 bool LauncherWindow::clientModsChannelActive() const
@@ -714,18 +681,13 @@ QString LauncherWindow::installStatusLabel() const
     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
         || localAssetsStamp() == m_remoteAssetsVersion;
     const bool versionOk = m_remoteVersion.isEmpty() || localVersion() == m_remoteVersion;
-#ifdef __EMSCRIPTEN__
-    const bool thingsOk = thingsPacksStampPresent();
-#else
-    const bool thingsOk = true;
-#endif
     // CIP: PackageBeingInstalled (first install) / InstallationInProgress (update)
     // while busy; otherwise PartiallyInstalled until stamps match → InstalledAndUsable.
     if (m_busy) {
         return localVersion().isEmpty() ? QStringLiteral("PackageBeingInstalled")
                                         : QStringLiteral("InstallationInProgress");
     }
-    if (!versionOk || m_hasGaps || !assetsOk || !thingsOk || !modsStampOk() || !minimapStampOk())
+    if (!versionOk || m_hasGaps || !assetsOk || !modsStampOk() || !minimapStampOk())
         return QStringLiteral("PartiallyInstalled");
     return QStringLiteral("InstalledAndUsable");
 }
@@ -884,11 +846,6 @@ void LauncherWindow::refresh()
         && localAssetsStamp() != m_remoteAssetsVersion;
     const bool modsStale = !modsStampOk();
     const bool minimapStale = !minimapStampOk();
-#ifdef __EMSCRIPTEN__
-    const bool thingsStale = !thingsPacksStampPresent();
-#else
-    const bool thingsStale = false;
-#endif
     const bool devPlay = readDevDesktop(nullptr, nullptr, nullptr);
     const QString status = installStatusLabel();
     qCInfo(lcLauncher) << "install status" << status
@@ -898,7 +855,6 @@ void LauncherWindow::refresh()
                        << "assetsStale" << assetsStale
                        << "modsStale" << modsStale
                        << "minimapStale" << minimapStale
-                       << "thingsStale" << thingsStale
                        << "busy" << m_busy
                        << "devPlay" << devPlay
                        << "assetsStamp" << localAssetsStamp()
@@ -906,8 +862,7 @@ void LauncherWindow::refresh()
                        << "modsStamp" << localModsStamp()
                        << "remoteMods" << m_remoteModsVersion
                        << "minimapStamp" << localMinimapStamp()
-                       << "remoteMinimap" << m_remoteMinimapVersion
-                       << "thingsStamp" << thingsPacksStampPresent();
+                       << "remoteMinimap" << m_remoteMinimapVersion;
     if (devPlay) {
         // Local monorepo: Play launches build/<preset>/bin/client (stock --no-mods
         // or tip pack). Tip Download/Update is skipped — use a tip-only
@@ -923,7 +878,7 @@ void LauncherWindow::refresh()
     if (local.isEmpty())
         setActionSkin(QStringLiteral("Blue"), QStringLiteral("Download"));
     else if ((!m_remoteVersion.isEmpty() && local != m_remoteVersion) || m_hasGaps || assetsStale
-             || modsStale || thingsStale)
+             || modsStale)
         setActionSkin(QStringLiteral("Orange"), QStringLiteral("Update"));
     else
         setActionSkin(QStringLiteral("Green"), QStringLiteral("Play"));
@@ -1076,13 +1031,7 @@ void LauncherWindow::start()
     else
         m_package = metadata.packages.first();
     m_hintsUrl = metadata.hintsUrl;
-    if (m_mark && !m_package.logolinktarget.isEmpty()) {
-        const QUrl logoUrl(m_package.logolinktarget);
-        if (logoUrl.isValid() && (logoUrl.scheme() == QLatin1String("http") || logoUrl.scheme() == QLatin1String("https"))) {
-            m_mark->setText(QStringLiteral("<a href=\"%1\"><img src=\":/images/launcher/CipSoftLogo.png\"></a>")
-                                .arg(QString::fromUtf8(logoUrl.toEncoded())));
-        }
-    }
+    applyLogoLink();
     const CipBuild* build = PackageClient::matchBuild(m_package.builds, m_client->hostOs(), m_client->hostArch());
     if (!build) {
         m_news->setPlainText(QStringLiteral("Could not determine patch information. Your client might no longer be supported."));
@@ -1104,7 +1053,7 @@ void LauncherWindow::start()
             break;
         }
     }
-    const bool forceSoft = args.contains(QStringLiteral("--show-launcher"))
+    const bool forceLauncher = args.contains(QStringLiteral("--show-launcher"))
         || qEnvironmentVariableIntValue("QTCLIENT_FORCE_LAUNCHER") == 1;
     const QString local = localVersion();
     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
@@ -1119,7 +1068,7 @@ void LauncherWindow::start()
     }
     // Warm tip → auto-Play (CIP --patch when current). qtclient chrome still used for
     // Update / --show-launcher / QTCLIENT_FORCE_LAUNCHER=1.
-    if (!forceSoft && !m_remoteVersion.isEmpty() && local == m_remoteVersion && !m_hasGaps
+    if (!forceLauncher && !m_remoteVersion.isEmpty() && local == m_remoteVersion && !m_hasGaps
         && assetsOk && modsStampOk() && minimapStampOk()) {
         qInfo("launcher warm tip InstalledAndUsable — auto Play");
         play();
@@ -1150,13 +1099,7 @@ void LauncherWindow::startAsync()
         else
             m_package = metadata.packages.first();
         m_hintsUrl = metadata.hintsUrl;
-        if (m_mark && !m_package.logolinktarget.isEmpty()) {
-            const QUrl logoUrl(m_package.logolinktarget);
-            if (logoUrl.isValid() && (logoUrl.scheme() == QLatin1String("http") || logoUrl.scheme() == QLatin1String("https"))) {
-                m_mark->setText(QStringLiteral("<a href=\"%1\"><img src=\":/images/launcher/CipSoftLogo.png\"></a>")
-                                    .arg(QString::fromUtf8(logoUrl.toEncoded())));
-            }
-        }
+        applyLogoLink();
         const CipBuild* build = PackageClient::matchBuild(m_package.builds, m_client->hostOs(), m_client->hostArch());
         if (!build) {
             m_news->setPlainText(QStringLiteral("Could not determine patch information. Your client might no longer be supported."));
@@ -1178,15 +1121,14 @@ void LauncherWindow::startAsync()
                     applyHint(tibia::shared::parseHints(hintsBody));
                     refresh();
                     const QString local = localVersion();
-                    const bool forceSoft =
+                    const bool forceLauncher =
                         QCoreApplication::arguments().contains(QStringLiteral("--show-launcher"))
                         || qEnvironmentVariableIntValue("QTCLIENT_FORCE_LAUNCHER") == 1;
                     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
                         || localAssetsStamp() == m_remoteAssetsVersion;
-                    const bool thingsOk = thingsPacksStampPresent();
                     // Warm tip → remount game-only (same as qtclient Play / portal auto-skip).
-                    if (!forceSoft && !m_remoteVersion.isEmpty() && local == m_remoteVersion
-                        && !m_hasGaps && assetsOk && thingsOk && modsStampOk() && minimapStampOk()) {
+                    if (!forceLauncher && !m_remoteVersion.isEmpty() && local == m_remoteVersion
+                        && !m_hasGaps && assetsOk && modsStampOk() && minimapStampOk()) {
                         qInfo("launcher wasm warm tip InstalledAndUsable — auto Play remount");
                         play();
                         return;
@@ -1264,84 +1206,40 @@ void LauncherWindow::finishInstallAsync(bool thenPlay, const QString& version)
         play();
 }
 
-void LauncherWindow::installThingsPacksViaJs(bool thenPlay, const QString& version)
+void LauncherWindow::installAssetsAsync(bool thenPlay, const QString& version)
 {
-    // Product sprite zip packs + boot essentials into OPFS tip (Module.FS). No zip in C++.
-    // JS sets Module.qtclientThingsResult; we poll so we need no extra WASM exports.
-    // Pass packageDir so the stamp lands where thingsPacksStampPresent() looks
-    // (must match selected tip directoryname).
-    // After the engine package hits 100%, keep the bar honest during assets/sprites.
-    m_progress->show();
-    m_progress->setValue(0);
+    // CipSoft assets.json (launcher/assets-current) into the package, exactly as
+    // installIfNeeded does on desktop; installAssetsAsync stamps assets.json.sha256.
+    if (m_build.assetsUrl.isEmpty() || m_remoteAssetsVersion.isEmpty()
+        || localAssetsStamp() == m_remoteAssetsVersion) {
+        installModsThenFinishAsync(thenPlay, version);
+        return;
+    }
     m_status->setText(QStringLiteral("Loading assets…"));
-    const QByteArray cdn = m_client->cdnBase().toUtf8();
-    const QByteArray pkg = packageDir().toUtf8();
-    // EM_ASM is a C preprocessor macro: commas outside () split arguments. Prefer
-    // sequential assigns and function(a){return function(b){...}} over {a:1, b:2}.
-    EM_ASM({
-        var cdn = UTF8ToString($0);
-        var packageRoot = UTF8ToString($1);
-        Module.qtclientThingsResult = null;
-        Module.qtclientThingsProgress = {};
-        Module.qtclientThingsProgress.label = 'Loading assets...';
-        Module.qtclientThingsProgress.percent = 0;
-        Promise.resolve()
-            .then(function() {
-                // MODULARIZE keeps FS off window; portal installThings looks at
-                // window.FS / window.Module.FS — publish them before calling.
-                var fs = (typeof FS !== 'undefined') ? FS : (Module && Module.FS);
-                if (fs) {
-                    window.FS = fs;
-                    window.Module = Module;
-                }
-                if (typeof window.__qtclientInstallThings !== 'function')
-                    throw new Error('__qtclientInstallThings is not bound');
-                // Portal callback is (label, percent). Use arguments[] so EM_ASM
-                // never sees a comma-separated parameter list.
-                var progress = function() {
-                    var args = arguments;
-                    // EM_ASM: empty '' is an invalid C character constant — use String().
-                    var lab = args.length > 0 ? args[0] : String();
-                    var pct = args.length > 1 ? args[1] : 0;
-                    Module.qtclientThingsProgress = {};
-                    Module.qtclientThingsProgress.label = String(lab || String());
-                    Module.qtclientThingsProgress.percent = pct | 0;
-                };
-                return window.__qtclientInstallThings(cdn, fs, packageRoot, progress);
-            })
-            .then(function() { Module.qtclientThingsResult = 1; })
-            .catch(function(err) {
-                console.error('[qtclient] things install failed', err);
-                Module.qtclientThingsResult = 0;
-            });
-    }, cdn.constData(), pkg.constData());
-    auto* timer = new QTimer(this);
-    timer->setInterval(100);
-    connect(timer, &QTimer::timeout, this, [this, timer, thenPlay, version]() {
-        applyThingsProgressFromJs();
-        const int result = EM_ASM_INT({
-            if (Module.qtclientThingsResult === null || Module.qtclientThingsResult === undefined)
-                return -1;
-            var r = Module.qtclientThingsResult | 0;
-            Module.qtclientThingsResult = undefined;
-            Module.qtclientThingsProgress = undefined;
-            return r;
-        });
-        if (result < 0)
+    const auto fail = [this](const QString& error) {
+        setBusy(false, {});
+        refresh();
+        m_status->setText(error.isEmpty() ? QStringLiteral("The installation of assets failed.") : error);
+    };
+    m_client->getAsync(m_build.assetsUrl, [this, thenPlay, version, fail](const QByteArray& body, const QString& error) {
+        QString parseError = error;
+        const QVector<CipFile> files = m_client->parseAssetFiles(body, &parseError);
+        if (files.isEmpty()) {
+            fail(parseError);
             return;
-        timer->stop();
-        timer->deleteLater();
-        onThingsInstallDone(result != 0, thenPlay, version);
+        }
+        const QString tip = packageDir();
+        const qint64 batch = m_client->pendingPackedBytes(files, tip);
+        m_client->installAssetsAsync(
+            m_build.assetsUrl, files, m_remoteAssetsVersion, tip,
+            [this, thenPlay, version, fail](bool ok, const QString& installError) {
+                if (ok)
+                    installModsThenFinishAsync(thenPlay, version);
+                else
+                    fail(installError);
+            },
+            0, batch > 0 ? batch : 1);
     });
-    timer->start();
-}
-
-void LauncherWindow::installAssetsAndThingsAsync(bool thenPlay)
-{
-    // Prefer zip packs on web (thousands of per-file lzma assets are too slow).
-    // assets.json.sha256 is stamped in onThingsInstallDone when the remote tip is known.
-    const QString version = m_remoteVersion.isEmpty() ? localVersion() : m_remoteVersion;
-    installThingsPacksViaJs(thenPlay, version);
 }
 
 void LauncherWindow::installModsThenFinishAsync(bool thenPlay, const QString& version)
@@ -1412,58 +1310,38 @@ void LauncherWindow::installMinimapThenFinishAsync(bool thenPlay, const QString&
     });
 }
 
-void LauncherWindow::onThingsInstallDone(bool ok, bool thenPlay, const QString& version)
-{
-    if (!ok) {
-        setBusy(false, {});
-        refresh();
-        m_status->setText(QStringLiteral("The installation of assets failed."));
-        return;
-    }
-    if (!m_remoteAssetsVersion.isEmpty()) {
-        QFile stamp(QDir(packageDir()).filePath(QStringLiteral("assets.json.sha256")));
-        if (stamp.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            stamp.write(m_remoteAssetsVersion.toUtf8());
-            stamp.close();
-        }
-    }
-    installModsThenFinishAsync(thenPlay, version);
-}
-
 void LauncherWindow::installIfNeededAsync(bool thenPlay)
 {
     const QString local = localVersion();
     const bool packageOk = !m_remoteVersion.isEmpty() && local == m_remoteVersion && !m_hasGaps;
     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
         || localAssetsStamp() == m_remoteAssetsVersion;
-    const bool thingsOk = thingsPacksStampPresent();
     const bool modsOk = modsStampOk();
     const bool minimapOk = minimapStampOk();
     qCInfo(lcLauncher) << "installIfNeededAsync"
                        << "thenPlay" << thenPlay
                        << "packageOk" << packageOk
                        << "assetsOk" << assetsOk
-                       << "thingsOk" << thingsOk
                        << "modsOk" << modsOk
                        << "minimapOk" << minimapOk
                        << "local" << local
                        << "remote" << m_remoteVersion;
-    if (packageOk && assetsOk && thingsOk && modsOk && minimapOk) {
+    if (packageOk && assetsOk && modsOk && minimapOk) {
         if (thenPlay)
             play();
         return;
     }
     setBusy(true, {});
     m_timer.start();
-    if (packageOk && assetsOk && thingsOk && (!modsOk || !minimapOk)) {
+    if (packageOk && assetsOk && (!modsOk || !minimapOk)) {
         qCInfo(lcLauncher) << "installIfNeededAsync → mods/minimap only";
         const QString version = m_remoteVersion.isEmpty() ? local : m_remoteVersion;
         installModsThenFinishAsync(thenPlay, version);
         return;
     }
     if (packageOk) {
-        qCInfo(lcLauncher) << "installIfNeededAsync → assets/things (+ mods)";
-        installAssetsAndThingsAsync(thenPlay);
+        qCInfo(lcLauncher) << "installIfNeededAsync → assets (+ mods)";
+        installAssetsAsync(thenPlay, m_remoteVersion.isEmpty() ? local : m_remoteVersion);
         return;
     }
     auto runInstall = [this, thenPlay](const CipPackageDoc& doc, const QString& parseError) {
@@ -1475,7 +1353,7 @@ void LauncherWindow::installIfNeededAsync(bool thenPlay)
             return;
         }
         m_packageDoc = doc;
-        // Engine package into FS tip, then assets/things/mods before Play is ready.
+        // Engine package, then assets / mods / minimap before Play is ready.
         m_client->installPackageAsync(m_build.packageUrl, doc, packageDir(),
                                       [this, thenPlay, version = doc.version](bool ok, const QString& installError) {
                                           if (!ok) {
@@ -1491,7 +1369,7 @@ void LauncherWindow::installIfNeededAsync(bool thenPlay)
                                           }
                                           m_remoteVersion = version;
                                           m_hasGaps = false;
-                                          installAssetsAndThingsAsync(thenPlay);
+                                          installAssetsAsync(thenPlay, version);
                                       });
     };
     if (!m_packageDoc.files.isEmpty() && m_packageDoc.version == m_remoteVersion) {
@@ -1636,12 +1514,7 @@ void LauncherWindow::onAction()
     const QString local = localVersion();
     const bool assetsOk = m_remoteAssetsVersion.isEmpty()
         || localAssetsStamp() == m_remoteAssetsVersion;
-#ifdef __EMSCRIPTEN__
-    const bool thingsOk = thingsPacksStampPresent();
-#else
-    const bool thingsOk = true;
-#endif
-    if (!m_remoteVersion.isEmpty() && local == m_remoteVersion && !m_hasGaps && assetsOk && thingsOk
+    if (!m_remoteVersion.isEmpty() && local == m_remoteVersion && !m_hasGaps && assetsOk
         && modsStampOk() && minimapStampOk())
         play();
 #ifdef __EMSCRIPTEN__

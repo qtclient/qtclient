@@ -147,13 +147,6 @@ QString nativeModulePath(const QString& packDir)
     if (QFile::exists(so))
         return so;
 #endif
-    // Fallback: any libqtclient_mod_* in native/
-    const QStringList entries = native.entryList(QDir::Files);
-    for (const QString& name : entries) {
-        if (name.startsWith(QStringLiteral("libqtclient_mod_"))
-            || name.startsWith(QStringLiteral("qtclient_mod_")))
-            return native.filePath(name);
-    }
     return {};
 }
 
@@ -287,11 +280,13 @@ bool ModLoader::skipLoad()
     return skipLoadFlag();
 }
 
-QStringList ModLoader::tipModsRoots()
+namespace {
+
+QStringList tipModsRootsFor(const QString& appDir)
 {
     QStringList roots;
-    if (QCoreApplication::instance()) {
-        const QDir app(QCoreApplication::applicationDirPath());
+    if (!appDir.isEmpty()) {
+        const QDir app(appDir);
         const QStringList raw = {
             app.filePath(QStringLiteral("mods")),
             app.absoluteFilePath(QStringLiteral("../Resources/mods")),
@@ -306,9 +301,28 @@ QStringList ModLoader::tipModsRoots()
     return roots;
 }
 
-QStringList ModLoader::defaultRoots()
+} // namespace
+
+QStringList ModLoader::tipModsRoots()
 {
-    return tipModsRoots();
+    return QCoreApplication::instance() ? tipModsRootsFor(QCoreApplication::applicationDirPath()) : QStringList{};
+}
+
+ModIdentity ModLoader::identityBeforeApplication(const QString& appDir)
+{
+    if (skipLoad())
+        return {};
+    const QString env = qEnvironmentVariable("QTCLIENT_MODS_DIR");
+    QStringList packs = env.isEmpty() ? collectTipPacks(tipModsRootsFor(appDir)) : collectEnvPacks(env);
+    packs += collectEnvPacks(qEnvironmentVariable("QTCLIENT_EXTRA_MODS_DIR"));
+    ModIdentity best;
+    for (const QString& pack : packs) {
+        PackMeta meta;
+        if (readMeta(pack, &meta) && !meta.identity.displayName.empty()
+            && (best.displayName.empty() || meta.priority < best.priority))
+            best = meta.identity;
+    }
+    return best;
 }
 
 bool ModLoader::loadFromDirectory(const QString& packDir, const ModContext* earlyCtx)

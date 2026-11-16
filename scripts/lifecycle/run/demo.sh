@@ -33,10 +33,9 @@ unset QTCLIENT_LOGIN_PATH QTCLIENT_CLIENTSERVICES_PATH QTCLIENT_CREATE_ACCOUNT_P
 unset QTCLIENT_ASSET_BASE || true
 
 if [[ -f "$TIP_DIR/tibiametadata.json" ]]; then
-  export QTCLIENT_URL="${QTCLIENT_URL:-${QTCLIENT_TIP_URL:-file://$TIP_DIR/tibiametadata.json}}"
+  export QTCLIENT_URL="${QTCLIENT_URL:-file://$TIP_DIR/tibiametadata.json}"
   echo "[demo] tip $QTCLIENT_URL"
-elif [[ -n "${QTCLIENT_URL:-${QTCLIENT_TIP_URL:-}}" ]]; then
-  export QTCLIENT_URL="${QTCLIENT_URL:-$QTCLIENT_TIP_URL}"
+elif [[ -n "${QTCLIENT_URL:-}" ]]; then
   echo "[demo] tip $QTCLIENT_URL"
 else
   echo "[demo] no tip yet — generate with:" >&2

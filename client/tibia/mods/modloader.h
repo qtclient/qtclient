@@ -33,9 +33,12 @@ public:
 
     /// Tip mods roots (applicationDirPath()/mods + macOS Resources siblings).
     static QStringList tipModsRoots();
-
-    /// @deprecated Prefer loadAll() with empty roots.
-    static QStringList defaultRoots();
+    /// The identity loadAll() will register (lowest priority number with a
+    /// displayName), read from mod.json before QGuiApplication exists. main()
+    /// applies it first so every AppData path (client options, QSettings)
+    /// matches the one the app uses after packs load. appDir is the
+    /// executable's directory (applicationDirPath() needs the app).
+    static ModIdentity identityBeforeApplication(const QString& appDir);
 };
 
 }

@@ -17,7 +17,7 @@
 #include <QUrl>
 
 #ifdef __EMSCRIPTEN__
-#include "browser/opfs_file_engine.h"
+#include "browser/qtclient_opfs_backend.h"
 #include <emscripten.h>
 #include <cstdlib>
 #endif
@@ -48,10 +48,7 @@ QString cdnBase()
 
 QUrl tipUrl()
 {
-    // C6: QTCLIENT_URL; accept legacy QTCLIENT_URL for one release.
-    QString tip = qEnvironmentVariable("QTCLIENT_URL");
-    if (tip.isEmpty())
-        tip = qEnvironmentVariable("QTCLIENT_URL");
+    const QString tip = qEnvironmentVariable("QTCLIENT_URL");
     if (!tip.isEmpty())
         return QUrl(tip);
 
@@ -115,27 +112,15 @@ bool autoplay()
 #endif
 }
 
-void mountWebHome()
-{
-#ifdef __EMSCRIPTEN__
-    // Portal mounts OPFS at Cip home before callMain (qtclientPersistentFsMounted).
-    // Never remount IDBFS over that tree — tip packages live on OPFS only.
-    EM_ASM({
-        if (typeof Module !== "undefined" && Module.qtclientPersistentFsMounted)
-            return;
-        if (typeof FS !== "undefined")
-            FS.mkdirTree("/home/web_user");
-    });
-#endif
-}
-
 } // namespace
 
 int main(int argc, char* argv[])
 {
 #ifdef __EMSCRIPTEN__
-    // Portal installs Module.qtclientFs before callMain — register before any tip QFile.
-    tibiaRegisterQtclientFsFileEngine();
+    // /home/web_user (AppData, tip packages) and /mods are the origin's OPFS,
+    // served by the portal's qtclient-fs Worker. Mount before anything opens a file.
+    if (!qtclientMountOpfs())
+        qFatal("launcher.wasm: could not mount OPFS at /home/web_user (see the console)");
 #endif
     QApplication app(argc, argv);
     // Tip mods/<id>/brand.json (unless --no-mods). qtclient CipSoft defaults otherwise.
@@ -153,7 +138,6 @@ int main(int argc, char* argv[])
     QFile pathFile(tibia::app::LauncherEnv::launcherPathFile());
     if (pathFile.open(QIODevice::WriteOnly | QIODevice::Truncate))
         pathFile.write(QCoreApplication::applicationFilePath().toUtf8());
-    mountWebHome();
     if (autoplay())
         return 0;
 
