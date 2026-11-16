@@ -31,6 +31,8 @@ struct LauncherBrand {
     /// Prefer pack images/launcher/<file>, else :/images/launcher/<file>.
     QString chromeUrl(const QString& fileName) const;
     QString chromePath(const QString& fileName) const;
+    /// Path usable in stylesheets / QPixmap: pack image if present, else the qrc one.
+    QString imagePath(const QString& fileName) const;
 };
 
 /// Tip launcher mods (launcher.json capabilities). Stock CIP has neither channel.

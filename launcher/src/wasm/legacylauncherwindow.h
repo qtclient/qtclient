@@ -1,7 +1,7 @@
 #pragma once
 
 #include "app/hints.h"
-#include "package.h"
+#include "packageclient.h"
 
 #include <QElapsedTimer>
 #include <QMainWindow>

@@ -19,16 +19,36 @@ set(TIBIA_CLIENT_PACKAGE_DIR "Tibia.app")
 # Kept for fingerprint compatibility; qtclient always embeds upstream chrome only.
 option(QTCLIENT_ENABLE_LAUNCHER_MODS "Deprecated: brand is runtime tip pack" OFF)
 
+if(EMSCRIPTEN)
+  # Browser /play keeps the pre-port launcher (async main thread, OPFS, things
+  # packs) until the CipSoft classes below run under WASM.
+  set(_launcher_sources
+    brand.cpp brand.h
+    wasm/main.cpp
+    wasm/legacylauncherwindow.cpp wasm/legacylauncherwindow.h
+    wasm/packageclient.cpp wasm/packageclient.h
+    unpack.cpp unpack.h)
+else()
+  set(_launcher_sources
+    brand.cpp brand.h
+    main.cpp
+    host/downloadpool.cpp host/downloadpool.h
+    clientpackagelayoutitem.cpp clientpackagelayoutitem.h
+    cloudflarecdntrace.cpp cloudflarecdntrace.h
+    installationmanager.cpp installationmanager.h
+    launcherapplication.cpp launcherapplication.h
+    launcherconfigurationhandler.cpp launcherconfigurationhandler.h
+    launcherfilesystemhelper.cpp launcherfilesystemhelper.h
+    launchermainwindow.cpp launchermainwindow.h
+    launcherselfupdater.cpp launcherselfupdater.h
+    package.cpp package.h
+    packagefiledownloader.cpp packagefiledownloader.h
+    packageinstallation.cpp packageinstallation.h
+    unpack.cpp unpack.h)
+endif()
+
 qt_add_executable(launcher
-  brand.cpp
-  brand.h
-  main.cpp
-  package.cpp
-  package.h
-  unpack.cpp
-  unpack.h
-  window.cpp
-  window.h
+  ${_launcher_sources}
   "${TIBIA_ROOT}/client/tibia/app/hints.cpp"
   "${TIBIA_ROOT}/client/tibia/app/hints.h"
   lzma/LzmaDec.c
@@ -68,6 +88,7 @@ endif()
 target_include_directories(launcher PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/lzma"
+  "${CMAKE_CURRENT_SOURCE_DIR}/wasm"
   "${TIBIA_ROOT}/client/tibia"
   "${TIBIA_ROOT}/shared/src")
 target_link_libraries(launcher PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent qtclient_shared)

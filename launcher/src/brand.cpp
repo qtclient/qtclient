@@ -193,3 +193,9 @@ QString LauncherBrand::chromeUrl(const QString& fileName) const
         return QUrl::fromLocalFile(disk).toString();
     return QStringLiteral(":/images/launcher/") + fileName;
 }
+
+QString LauncherBrand::imagePath(const QString& fileName) const
+{
+    const QString disk = chromePath(fileName);
+    return disk.isEmpty() ? QStringLiteral(":/images/launcher/") + fileName : disk;
+}

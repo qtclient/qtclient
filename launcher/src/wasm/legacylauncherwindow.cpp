@@ -1,4 +1,4 @@
-#include "window.h"
+#include "legacylauncherwindow.h"
 
 #include "brand.h"
 #include "textbrowserwithnetwork.h"

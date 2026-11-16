@@ -1,261 +1,144 @@
 #pragma once
 
-#include "app/hints.h"
-
 #include <QByteArray>
-#include <QFile>
+#include <QJsonObject>
 #include <QObject>
-#include <QProcessEnvironment>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
-#include <QVector>
 
-#include <functional>
+#include <memory>
+#include <vector>
 
-/**
- * Tip packages[].directoryname for variant `regular` (CipSoft-shaped packages/<name>/).
- * Stock default is CipSoft's `TIBIA_CLIENT_PACKAGE_DIR` (`Tibia.app`).
- * Product tip packs override at runtime via mods/<id>/brand.json
- * (`LauncherBrand::clientPackageDir`). Must match portal PACKAGE_CLIENT.
- */
-#ifndef TIBIA_CLIENT_PACKAGE_DIR
-#define TIBIA_CLIENT_PACKAGE_DIR "Tibia.app"
-#endif
-inline constexpr const char* kClientPackageDir = TIBIA_CLIENT_PACKAGE_DIR;
+namespace launcher {
 
-/** CipSoft tip packages[].variant values. */
-inline constexpr const char* kVariantRegular = "regular";
-inline constexpr const char* kVariantPreview = "preview";
-inline constexpr const char* kVariantTest = "test";
-inline constexpr const char* kVariantBeta = "beta";
-
-/** One CIP package.json / assets.json file record. */
-struct CipFile
-{
-    QString url;
-    QString localfile;
-    QString packedhash;
-    qint64 packedsize = 0;
-    QString unpackedhash;
-    qint64 unpackedsize = 0;
+/// One file record of package.json / assets.json.
+struct TFileInPackage {
+    QUrl url;
+    QString localFile;
+    qint64 packedSize = 0;
+    QString packedHash;
+    qint64 unpackedSize = 0;
+    QString unpackedHash;
+    bool unpack = false;
+    bool executable = false;
 };
 
-struct CipBuild
+/// The package.json + assets.json pair of one build ("package configuration").
+/// Versions are the contents of the build's versionurl / assetsversionurl.
+class TPackageConfiguration
 {
-    QString os;
-    QString architecture;
-    QUrl packageUrl;
+public:
+    TPackageConfiguration(const QByteArray& packageVersion, const QByteArray& assetsVersion, const QUrl& packageUrl,
+                          const QUrl& assetsUrl);
+
+    /// Parses package.json (and assets.json when given). False when either is not JSON.
+    bool load(const QByteArray& packageMetaData, const QByteArray& assetMetaData);
+
+    /// "P<package version> A<assets version>"; "?" for an unknown part.
+    QString combinedVersion() const;
+    QString packageVersion() const;
+    QString assetsVersion() const;
+    int generation() const { return m_generation; }
+    const QString& executable() const { return m_executable; }
+    const QStringList& parameters() const { return m_parameters; }
+    const std::vector<TFileInPackage>& files() const { return m_files; }
+
+private:
+    QUrl m_packageUrl;
+    QUrl m_assetsUrl;
+    QString m_packageVersion;
+    QString m_assetsVersion;
+    int m_generation = 0;
+    QString m_executable;
+    QStringList m_parameters;
+    std::vector<TFileInPackage> m_files;
+};
+
+class TPackage;
+
+enum class EOperatingSystem { Unknown = 0, Windows = 1, MacOS = 2, Linux = 3 };
+/// Bit mask of supported CPU architectures.
+enum EArchitecture : quint8 { ArchitectureI386 = 1, ArchitectureX86_64 = 2, ArchitectureArm64 = 4 };
+
+EOperatingSystem currentOperatingSystem();
+/// Architecture the launcher binary was built for.
+quint8 buildCpuArchitecture();
+/// Architecture of the machine (i386 / x86_64 only).
+quint8 currentCpuArchitecture();
+
+/// One `builds[]` entry of a package.
+struct TPackageBuild {
+    TPackageBuild(TPackage* package, const QJsonObject& build, const QUrl& baseUrl);
+
+    TPackage* package = nullptr;
+    EOperatingSystem os = EOperatingSystem::Unknown;
+    quint8 architectures = 0;
+    QUrl url;
     QUrl versionUrl;
     QUrl assetsUrl;
     QUrl assetsVersionUrl;
-    /// Optional tip pack channel (mods/<id>/ under the client package).
-    /// Same shape as assets: mods.json + mods.json.sha256. Empty = stock CIP.
-    /// Active only when tip has launcher mod capability "clientmods".
-    QUrl modsUrl;
-    QUrl modsVersionUrl;
-    /// Optional minimap channel → Contents/Resources/minimap.
-    /// Active only when tip has launcher mod capability "minimap".
-    QUrl minimapUrl;
-    QUrl minimapVersionUrl;
+    std::unique_ptr<TPackageConfiguration> configuration;
 };
 
-struct CipPackageInfo
-{
-    QString name;
-    QString variant;
-    QString directoryname;
-    QString logolinktarget;
-    bool installautomatically = false;
-    QVector<CipBuild> builds;
-};
+/// Resolves `url` against `base` the way CipSoft's metadata does: absolute urls
+/// stay, relative ones are appended to the base path with exactly one '/'.
+QUrl resolveConfigurationUrl(const QUrl& base, const QUrl& url);
 
-struct CipMetadata
-{
-    QVector<CipBuild> launcherBuilds;
-    QVector<CipPackageInfo> packages;
-    QUrl hintsUrl;
-};
-
-/**
- * Pick packages[] by QTCLIENT_VARIANT (regular|preview|test|beta),
- * then regular, then first. Returns nullptr when the tip has no packages.
- */
-inline const CipPackageInfo* selectPackage(const CipMetadata& metadata)
-{
-    if (metadata.packages.isEmpty())
-        return nullptr;
-    QString want = qEnvironmentVariable("QTCLIENT_VARIANT", QString::fromLatin1(kVariantRegular));
-    want = want.trimmed().toLower();
-    if (want.isEmpty())
-        want = QString::fromLatin1(kVariantRegular);
-    for (const CipPackageInfo& info : metadata.packages) {
-        if (info.variant.toLower() == want)
-            return &info;
-    }
-    for (const CipPackageInfo& info : metadata.packages) {
-        if (info.variant.toLower() == QLatin1String(kVariantRegular))
-            return &info;
-    }
-    return &metadata.packages.first();
-}
-
-struct CipPackageDoc
-{
-    QString version;
-    QString executable;
-    QString generation;
-    QVector<CipFile> files;
-};
-
-class QNetworkAccessManager;
-
-/// CipSoft `shared::TDownloadPool` limits (concurrent GETs while installing).
-namespace shared {
-struct TDownloadPool {
-    static constexpr int kMaxInFlight = 32;
-};
-} // namespace shared
-
-/** CIP launcher protocol: tibiametadata.json, package.json, lzma files.
- *  Mirrors CipSoft package sync + `shared::TDownloadPool` install. */
-class PackageClient : public QObject
+/// A package of tibiametadata.json (the launcher itself or a client).
+class TPackage : public QObject
 {
     Q_OBJECT
-
 public:
-    explicit PackageClient(QObject* parent = nullptr);
+    enum EVariant { VariantUnknown = 0, VariantRegular = 1, VariantPreview = 2, VariantBeta = 3, VariantTest = 4 };
+    enum EStatus { Unknown = 0, NotInstalled = 1, PartiallyInstalled = 2, InstalledAndUsable = 3 };
+    /// Type of the launcher's own package; clients are numbered by position.
+    static constexpr int LauncherPackageType = 0x7fffffff;
 
-    /** CDN bundle root, no trailing slash (hints / content store). */
-    void setCdnBase(const QString& base);
-    QString cdnBase() const { return m_cdn; }
+    TPackage(int type, const QJsonObject& package, const QUrl& baseUrl);
+    ~TPackage() override;
 
-    /**
-     * Full URL to tibiametadata.json. Empty → cdnBase + "/launcher/tibiametadata.json".
-     * Public / CIP-faithful builds set this to https://static.tibia.com/launcher/tibiametadata.json
-     * (or a demo tip) via QTCLIENT_URL.
-     */
-    void setTipUrl(const QUrl& url);
-    QUrl tipUrl() const;
+    int type() const { return m_type; }
+    bool isLauncher() const { return m_type == LauncherPackageType; }
+    const QString& name() const { return m_name; }
+    EVariant variant() const { return m_variant; }
+    const QString& directoryName() const { return m_directoryName; }
+    const QUrl& logoLinkTarget() const { return m_logoLinkTarget; }
+    bool installAutomatically() const { return m_installAutomatically; }
+    bool isDefault() const { return m_isDefault; }
+    void setDefault(bool isDefault) { m_isDefault = isDefault; }
+    /// Set once an installation or update of this package finished in this session.
+    bool isUpToDate() const { return m_upToDate; }
+    void setUpToDate(bool upToDate) { m_upToDate = upToDate; }
+    EStatus localStatus() const { return m_localStatus; }
+    void setLocalStatus(EStatus status);
+    const std::vector<std::unique_ptr<TPackageBuild>>& builds() const { return m_builds; }
 
-    /** App support directory that holds launchermetadata.json and packages/. */
-    void setDataDir(const QString& dir);
-    QString dataDir() const { return m_dataDir; }
+    /// Build for this machine: exact os/arch match for a 32-bit launcher on a
+    /// 64-bit machine, else the first build whose architectures cover the launcher's.
+    TPackageBuild* buildForCurrentPlatform() const;
+    /// Configuration of the current build, or of the first build for this OS.
+    TPackageConfiguration* configurationForCurrentPlatform() const;
 
-    QString hostOs() const;
-    QString hostArch() const;
-
-    CipMetadata fetchMetadata(QString* error);
-    QString fetchVersion(const QUrl& versionUrl, QString* error);
-    CipPackageDoc fetchPackage(const QUrl& packageUrl, QString* error);
-
-    /// Non-blocking GET for the browser main thread (no nested QEventLoop).
-    using GetCallback = std::function<void(const QByteArray& body, const QString& error)>;
-    using InstallCallback = std::function<void(bool ok, const QString& error)>;
-    void getAsync(const QUrl& url, GetCallback done);
-    CipMetadata parseMetadata(const QByteArray& body, QString* error) const;
-    CipPackageDoc parsePackage(const QByteArray& body, QString* error) const;
-    /// Parse CIP assets.json or tip mods.json (`files` array; same shape).
-    QVector<CipFile> fetchAssetFiles(const QUrl& assetsUrl, QString* error);
-    QVector<CipFile> parseAssetFiles(const QByteArray& body, QString* error) const;
-    QString fetchHints(const QUrl& hintsUrl, QString* error);
-    QVector<tibia::app::Hint> fetchHintList(const QUrl& hintsUrl, QString* error);
-
-    /**
-     * CIP gap check: true when any package.json file is missing or its unpacked
-     * sha256/size does not match the installed copy (skip-if-hash-match).
-     */
-    bool hasFileGaps(const CipPackageDoc& doc, const QString& destDir) const;
-
-    /**
-     * Download and unpack every file into destDir. Writes partial.package.json.version
-     * while running, then package.json and package.json.version.
-     */
-    bool installPackage(const QUrl& packageUrl, const CipPackageDoc& doc, const QString& destDir, QString* error,
-                        qint64 progressBase = 0, qint64 progressTotal = -1);
-    /** Same as installPackage, but chains getAsync (required on the WASM main thread). */
-    void installPackageAsync(const QUrl& packageUrl, const CipPackageDoc& doc, const QString& destDir,
-                             InstallCallback done, qint64 progressBase = 0, qint64 progressTotal = -1);
-    bool installAssets(const QUrl& assetsUrl, const QVector<CipFile>& files, const QString& assetsVersion,
-                       const QString& destDir, QString* error, qint64 progressBase = 0, qint64 progressTotal = -1);
-    /** Same as installAssets, but chains getAsync (required on the WASM main thread). */
-    void installAssetsAsync(const QUrl& assetsUrl, const QVector<CipFile>& files, const QString& assetsVersion,
-                            const QString& destDir, InstallCallback done, qint64 progressBase = 0,
-                            qint64 progressTotal = -1);
-    /**
-     * Tip product pack into destDir (localfile paths under mods/<id>/…).
-     * Writes mods.json.sha256. No-op channel when modsUrl is empty.
-     */
-    bool installMods(const QUrl& modsUrl, const QVector<CipFile>& files, const QString& modsVersion,
-                     const QString& destDir, QString* error, qint64 progressBase = 0, qint64 progressTotal = -1);
-    void installModsAsync(const QUrl& modsUrl, const QVector<CipFile>& files, const QString& modsVersion,
-                          const QString& destDir, InstallCallback done, qint64 progressBase = 0,
-                          qint64 progressTotal = -1);
-    /**
-     * Minimap tiles into destDir (localfile under Contents/Resources/minimap/…).
-     * Writes minimap.json.sha256. No-op when minimapUrl is empty.
-     */
-    bool installMinimap(const QUrl& minimapUrl, const QVector<CipFile>& files, const QString& minimapVersion,
-                        const QString& destDir, QString* error, qint64 progressBase = 0, qint64 progressTotal = -1);
-    void installMinimapAsync(const QUrl& minimapUrl, const QVector<CipFile>& files, const QString& minimapVersion,
-                             const QString& destDir, InstallCallback done, qint64 progressBase = 0,
-                             qint64 progressTotal = -1);
-    /** Packed bytes still needed for files not already installed (progress totals). */
-    qint64 pendingPackedBytes(const QVector<CipFile>& files, const QString& destDir) const;
-    /**
-     * CIP deleteFilesFromExistingInstallation: remove files under destDir whose
-     * relative path is not listed in doc.files (skips package markers).
-     * Returns how many files were removed.
-     */
-    int deleteOrphanLocalFiles(const CipPackageDoc& doc, const QString& destDir) const;
-
-    static const CipBuild* matchBuild(const QVector<CipBuild>& builds, const QString& os, const QString& arch);
-    static QString sha256Hex(const QByteArray& data);
-    static QString sha256File(QFile& file);
-    /**
-     * CIP TLauncherFilesystemHelper: ensure each Contents/Frameworks Qt
-     * framework has Versions/Current (symlink to A / first version) after
-     * package extract. No-op off macOS or when Current already exists.
-     */
-    static void ensureMacOsFrameworkVersionsCurrent(const QString& appBundleRoot);
+    static QString statusName(EStatus status);
 
 Q_SIGNALS:
-    void progress(qint64 bytes, qint64 totalBytes, int fileIndex, int fileCount);
+    void localPackageStatusChanged();
 
 private:
-    QByteArray get(const QUrl& url, QString* error);
-    QUrl resolve(const QUrl& base, const QString& url) const;
-    /**
-     * Product CDN only: rewrite /launcher/ onto m_cdn and fetch
-     * content/<aa>/<packedhash>. Foreign tips (e.g. static.tibia.com) stay
-     * tip-relative — CIP launcher protocol.
-     */
-    bool useCdnContentStore() const;
-    QUrl fileDownloadUrl(const QUrl& packageUrl, const CipFile& file) const;
-    /**
-     * Download pool. progressBase/progressTotal span a multi-phase install
-     * (client package then assets) so the bar does not reset to 0 between phases.
-     * progressTotal <= 0 → use this batch's packed byte sum only.
-     */
-    bool installFiles(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir, QString* error,
-                      qint64 progressBase = 0, qint64 progressTotal = -1);
-    void installFilesAsync(const QUrl& packageUrl, const QVector<CipFile>& files, const QString& destDir, int index,
-                           qint64 donePacked, qint64 totalPacked, InstallCallback done);
-    bool writePackageMarkers(const CipPackageDoc& doc, const QString& destDir, QString* error);
-    /** True when localfile already matches unpacked hash/size (CIP skip-if-hash-match). */
-    bool fileAlreadyInstalled(const CipFile& file, const QString& destDir) const;
-    /** CipSoft FindFilesInPackageBasedOnHashAndSizeThatNeedUpdate (QtConcurrent). */
-    QVector<CipFile> filesNeedingUpdate(const QVector<CipFile>& files, const QString& destDir) const;
-    QByteArray getForInstall(const QUrl& url, qint64 donePacked, qint64 totalPacked, int fileIndex, int fileCount,
-                             QString* error);
-
-    QNetworkAccessManager* m_nam = nullptr;
-    QString m_cdn;
-    QUrl m_tipUrl;
-    QString m_dataDir;
-    /** When true, get/getAsync emit progress (install downloads only). */
-    bool m_emitProgress = false;
-    qint64 m_progressDone = 0;
-    qint64 m_progressTotal = 0;
-    int m_progressFileIndex = 0;
-    int m_progressFileCount = 0;
+    int m_type = 0;
+    QString m_name;
+    EVariant m_variant = VariantUnknown;
+    QString m_directoryName;
+    QUrl m_logoLinkTarget;
+    bool m_installAutomatically = false;
+    bool m_upToDate = false;
+    bool m_isDefault = false;
+    std::vector<std::unique_ptr<TPackageBuild>> m_builds;
+    EStatus m_localStatus = Unknown;
 };
+
+/// Readable build label: `"<name>" (<os>/<arch;arch>)`.
+QString describeBuild(const TPackageBuild& build);
+
+} // namespace launcher
