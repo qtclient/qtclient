@@ -58,19 +58,33 @@ public:
     /// CIP names plus Go* (movement pass-through) for DefaultHotkeys mode.
     static QStringList staticActionNames();
 
+    /// TRY_TO_SWITCH_HOTKEYSET, SWITCH_TO_NEXT_HOTKEYSET and
+    /// SWITCH_TO_PREVIOUS_HOTKEYSET; other actions are ignored.
+    static void handleGameAction(const TGameAction& action);
+    /// With auto-switch on, selects the set named action.text when it exists
+    /// and is not current, and announces it (on the status line only when
+    /// action.enable).
+    static void tryToSwitchHotkeySet(const TGameAction& action);
+    /// The set after (before) the current one in name order, wrapping, is
+    /// selected and announced on the status line and in the console.
+    static void switchToNextHotkeySet();
+    static void switchToPreviousHotkeySet();
+
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
     bool handleKey(const QKeyEvent* key);
-    /// CIP's auto-repeat throttle per action type : 3/9 100 ms,
-    /// 4-8 and 235 500 ms, 72 1 s, 97-100 1 ms; anything else does not repeat.
-    bool throttled(const TGameAction& action);
+    /// CIP's auto-repeat throttle, timed per key sequence: USE and
+    /// TRY_TO_EQUIP 100 ms, the USE_WITH..USE_AT_MOUSECURSOR family and
+    /// ACTION_BUTTON_TRIGGERED 500 ms, SET_CURRENT_CHAT_CHANNEL_INPUT_TEXT 1 s,
+    /// MINIMAP_SCROLL_* 1 ms; any other action does not repeat.
+    bool throttled(const TGameAction& action, const QKeySequence& keys);
 
     QPointer<QQuickWindow> m_window;
     QPointer<QQuickItem> m_chatItem;
     std::function<int()> m_chatMode;
-    std::map<int, QElapsedTimer> m_lastRepeat;
+    std::map<QKeySequence, QElapsedTimer> m_lastRepeat;
 };
 
 }

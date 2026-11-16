@@ -87,6 +87,7 @@ ClientOptions ClientOptions::load()
     codeDefaults.insert(QLatin1String(ControlButtonsSection), config::defaultControlButtonsOptions());
     codeDefaults.insert(QLatin1String(SpecialConditionsSection), config::SpecialConditionsOptions::defaults().toJson());
     o.m_root = merged(merged(std::move(resource), codeDefaults), readOptionsFile(userFilePath()));
+    o.m_root.insert(QStringLiteral("options"), config::readClientOptions(o.m_root.value(QLatin1String("options")).toObject()));
     o.m_root.insert(QLatin1String(ControlButtonsSection),
                     config::reconcileControlButtons(o.m_root.value(QLatin1String(ControlButtonsSection)).toObject()));
     return o;
