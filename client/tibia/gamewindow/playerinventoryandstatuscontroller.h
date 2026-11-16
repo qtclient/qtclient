@@ -98,6 +98,8 @@ private:
     void publishTactics();
     bool handleTacticsAction(const input::TGameAction& action);
     void readExpireOptions();
+    /// CIP: the expiry options apply to every slot.
+    void onInventoryOptionsChanged();
 
     QPointer<QQuickItem> m_panel;
     QPointer<config::TSidebarOptions> m_options;

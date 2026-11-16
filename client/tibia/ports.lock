@@ -3433,6 +3433,7 @@ sub_04e2bab2ac6a#2	04e2bab2ac6ad45e	ported	input/gameaction.h:TGameActionSession
 sub_04e47cf703c2	04e47cf703c24c0f	skip	std::sort instantiation (library) with the lower-case name comparator
 sub_0520c57a5dc2	0520c57a5dc22bd1	ported	chat/textstorage.cpp:TTextStorage::TTextStorage
 sub_054371f87d02	054371f87d02eedf	skip	SFML/miniaudio library helper, only called from library code
+sub_054e9813821e	054e9813821e33a6	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onSlotTargetSelected
 sub_0557ab3a92c2	0557ab3a92c27301	skip	Qt/std container template code
 sub_056a24852c40	056a24852c40266b	inlined	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::setWeaponTypeFilter
 sub_0572e48729b8	0572e48729b8f6d1	skip	SFML/miniaudio library helper, only called from library code
@@ -3637,6 +3638,7 @@ sub_0c66c32015ba#2	0c66c32015bae0de	skip	std vector range insert
 sub_0c7b99582d76	0c7b99582d768f05	ported	cyclopedia/combatstatsqmldata.cpp:TOffenceStatsQmlData::makeSpecialCritChances
 sub_0c7bec56518a	0c7bec56518a7430	ported	chat/textstorage.cpp:npcTextDuration
 sub_0c7d4eb8c492	0c7d4eb8c492e81d	ported	gamewindow/sidebarmanager.cpp:TSidebarController::movePanelToEnd
+sub_0c7e6dbc9a98	0c7e6dbc9a98bf32	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onSlotStartDrag
 sub_0c86ac182da9	0c86ac182da9fdbd	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendStashAction
 sub_0cdec366ea69	0cdec366ea69bea3	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_0d144afa6689	0d144afa6689f313	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::openGetCoinsUrl
@@ -4800,6 +4802,7 @@ sub_3ffb16904a27	3ffb16904a27fe6d	tested	animation/animationinfo.h:TAnimationInf
 sub_4002baf20d36	4002baf20d36ded0	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::cosmeticTokenCount
 sub_401b5224a7a3	401b5224a7a38907	skip	compiler-generated destructor pair
 sub_402a20562f3a	402a20562f3ade78	ported	gamewindow/actionbuttoncontroller.cpp:TActionButtonController::tooltipRows
+sub_40333a4e2c31	40333a4e2c315f2b	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onInventoryOptionsChanged
 sub_4056e86fdf85	4056e86fdf85857e	ported	gamewindow/draganddropcontroller.cpp:TDragAndDropController::updateIcon
 sub_405a42cdce24	405a42cdce245e83	skip	std::unordered_map/std::map/std::variant instantiation (libc++)
 sub_405b4313bd8d	405b4313bd8d67c7	ported	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::healingString
@@ -5578,6 +5581,7 @@ sub_5e5173af64c8	5e5173af64c8c6d8	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_5e6c020885da	5e6c020885daea4b	inlined	exivaoptions/exivaoptionsdialogcontroller.cpp:TExivaOptionsDialogController::showDialog
 sub_5e6d45da9b08	5e6d45da9b08da89	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::setKeyboardBlocked
 sub_5e9636ad4c12	5e9636ad4c123d4c	skip	compiler-generated destructor pair
+sub_5e9aafb7bdc1	5e9aafb7bdc10cfd	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onSlotClicked
 sub_5ea6d31f53d2#2	5ea6d31f53d28b8e	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModelSortFilterProxy::sortBy
 sub_5ee0f7516590#3	5ee0f75165907013	skip	Qt slot-object impl (template-generated)
 sub_5ee245e67469	5ee245e67469bd18	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::setGameSessionActive
@@ -6544,6 +6548,7 @@ sub_8b2110b8d911#3	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTran
 sub_8b2110b8d911#4	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTranslator::v174
 sub_8b2110b8d911#5	8b2110b8d911ab8f	inlined	protocol::TProtobufServerMessageTranslator::v174
 sub_8b351da3ffef	8b351da3ffef63d4	ported	config/sidebaroptions.cpp:serializeBase
+sub_8b408db68274	8b408db6827474e2	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onStoreInboxButtonClicked
 sub_8b547d445443	8b547d445443c5d6	ported	analysers/impactwidgets.cpp:TImpactWidgetController::isHpsGraphVisible
 sub_8b55c9bedfc0	8b55c9bedfc06231	ported	gamewindow/vipwidgetcontroller.cpp:TVipWidgetDataModel::onVipStateChanged
 sub_8b579d3509ca	8b579d3509ca1b18	skip	std::deque internals (library)
@@ -7169,6 +7174,7 @@ sub_a0ec04652811#3	a0ec0465281138db	skip	compiler-generated destructor
 sub_a0ec04652811#6	a0ec0465281138db	skip	compiler-generated destructor pair
 sub_a111636b7b9e	a111636b7b9ed665	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleResourceBalanceMessage
 sub_a11591b4e3c2	a11591b4e3c21bbf	ported	gamewindow/chatcontroller.cpp:TChatController::addEntryToChatInputHistory
+sub_a119e27bf324	a119e27bf324b922	ported	gamewindow/playerinventoryandstatuscontroller.cpp:TPlayerInventoryAndStatusController::onSlotDragDropped
 sub_a13306d4d923	a13306d4d923c6dd	inlined	config/optionspages.cpp:THotkeysOptionsPage::requestEnterNewHotkeyForAction
 sub_a1606252e54f	a1606252e54f5141	ported	gamewindow/cooldownbarcontroller.cpp:TCooldownBarController::showIdleSpellGroups
 sub_a1873a1b7dc5	a1873a1b7dc5300a	inlined	gamewindow/marketcontroller.cpp:TMarketController::getTotalPriceOrProfitMultistring
