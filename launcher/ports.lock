@@ -163,7 +163,7 @@ sub_1a3e2e348475#4	1a3e2e348475d66b	skip	generated: shared_ptr release / Qt slot
 sub_1a3e2e348475#5	1a3e2e348475d66b	skip	generated: shared_ptr release / Qt slot object
 sub_1a3e2e348475#6	1a3e2e348475d66b	skip	generated: shared_ptr release / Qt slot object
 sub_1a57fd39c3ad	1a57fd39c3ade7da	skip	library: libc++ vector/map/tree internals
-sub_1a8819448519	1a88194485192dc3	ported	package.cpp:TPackageConfiguration::load
+sub_1a8819448519	1a88194485192dc3	tested	package.cpp:TPackageConfiguration::load	test=tests/launcher/package_test.cpp
 sub_1c78789c6ae8	1c78789c6ae86f80	skip	generated: compiler-generated destructor
 sub_1cb2c1aa4f0e	1cb2c1aa4f0eb4d9	tested	client/tibia/shared/timelapseclockservice.cpp:TTimeLapseClockService::TTimeLapseClockService	test=tests/client/timelapseclockservice_test.cpp
 sub_1e0b3ebc7937	1e0b3ebc7937af56	ported	clientpackagelayoutitem.cpp:formatDownloadSpeed
@@ -208,7 +208,7 @@ sub_3bcbc59d35c6	3bcbc59d35c661da	tested	client/tibia/shared/jsonvalidator.cpp:T
 sub_3cbc7180e2ea	3cbc7180e2ea123f	skip	library: CryptoPP runtime
 sub_3d8e30cc2941	3d8e30cc29410e0e	ported	clientpackagelayoutitem.cpp:TClientPackageLayoutItem::setDefaultChecked
 sub_3ef96d642478	3ef96d642478e440	skip	generated: rcc resource registration
-sub_40a587bd92f7	40a587bd92f78b8d	ported	package.cpp:TPackageConfiguration::combinedVersion
+sub_40a587bd92f7	40a587bd92f78b8d	tested	package.cpp:TPackageConfiguration::combinedVersion	test=tests/launcher/package_test.cpp
 sub_42ef2cb162e7	42ef2cb162e7dc23	skip	generated: destructor
 sub_46b5b07c3d88	46b5b07c3d88e299	skip	library: QString::split wrapper
 sub_46fe4ac2e5b1	46fe4ac2e5b1fa11	ported	package.cpp:TPackageConfiguration::TPackageConfiguration
@@ -247,7 +247,7 @@ sub_66cd9f611cc3	66cd9f611cc3bc57	skip	library: libc++ vector/map/tree internals
 sub_670f0c686e13	670f0c686e13b34f	ported	package.h:TPackage::installAutomatically
 sub_6888bc7769b1	6888bc7769b119d6	skip	library: QFuture / QFutureWatcher template
 sub_699797d1c544	699797d1c5446f74	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::array	test=tests/client/jsonvalidator_test.cpp
-sub_69e90b13f802	69e90b13f8023567	ported	cloudflarecdntrace.cpp:parseCdnTrace
+sub_69e90b13f802	69e90b13f8023567	tested	cloudflarecdntrace.cpp:parseCdnTrace	test=tests/launcher/package_test.cpp
 sub_6c54548a392e	6c54548a392ebb55	ported	launcherapplication.cpp:TLauncherApplication::onDefaultChanged
 sub_6cf13b3b24f1	6cf13b3b24f1b08d	inlined	clientpackagelayoutitem.cpp:TClientPackageLayoutItem::TClientPackageLayoutItem
 sub_6d4300dd8428	6d4300dd84283a06	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::TJsonObjectValidator	test=tests/client/jsonvalidator_test.cpp
@@ -299,7 +299,7 @@ sub_9ba06e6b5d56	9ba06e6b5d564634	tested	client/tibia/shared/jsonvalidator.cpp:T
 sub_9bcc8ff774a3	9bcc8ff774a361fe	ported	launcherconfigurationhandler.cpp:TLauncherConfigurationReader::TLauncherConfigurationReader
 sub_9f231c0c3e1a	9f231c0c3e1abbb8	ported	package.cpp:buildCpuArchitecture
 sub_a03ea5af7130	a03ea5af71301deb	ported	launcherapplication.cpp:TLauncherApplication::onEulaAccepted
-sub_a0e480f3b11e	a0e480f3b11e89a9	ported	package.cpp:TPackageBuild::TPackageBuild
+sub_a0e480f3b11e	a0e480f3b11e89a9	tested	package.cpp:TPackageBuild::TPackageBuild	test=tests/launcher/package_test.cpp
 sub_a234bd7e4403	a234bd7e4403b55f	ported	packagefiledownloader.cpp:urlLess
 sub_a3c3bdff599d	a3c3bdff599d41b3	ported	package.h:TPackage::name
 sub_a5b701cdd6ae	a5b701cdd6ae3bea	ported	launcherselfupdater.cpp:TLauncherSelfUpdater::update
@@ -354,7 +354,7 @@ sub_c998588a8756	c998588a8756fc88	inlined	launcherapplication.cpp:TLauncherAppli
 sub_c9a5a780a79e	c9a5a780a79e5e68	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::isType	test=tests/client/jsonvalidator_test.cpp
 sub_cae712cd8c51	cae712cd8c5165af	ported	packageinstallation.h:TPackageInstallation::setUpdateMode
 sub_cbfc7fbd822e	cbfc7fbd822eb918	skip	generated: destructor
-sub_cc235873a8cf	cc235873a8cf1411	ported	cloudflarecdntrace.cpp:formatCdnTrace
+sub_cc235873a8cf	cc235873a8cf1411	tested	cloudflarecdntrace.cpp:formatCdnTrace	test=tests/launcher/package_test.cpp
 sub_cc6d11900452#3	cc6d11900452cfa3	ported	launcherconfigurationhandler.h:TLauncherConfigurationReader::preventDefaultAutostart
 sub_ccfc9ccd2fbf	ccfc9ccd2fbf36c3	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::TJsonValueValidator	test=tests/client/jsonvalidator_test.cpp
 sub_ccfc9ccd2fbf#2	ccfc9ccd2fbf36c3	tested	client/tibia/shared/jsonvalidator.cpp:TJsonValueValidator::TJsonValueValidator	test=tests/client/jsonvalidator_test.cpp
@@ -381,7 +381,7 @@ sub_e9be9fb3bf45	e9be9fb3bf45c842	skip	generated: rcc resource registration
 sub_ea96b1c5df7f	ea96b1c5df7f8792	ported	launcherapplication.cpp:TLauncherApplication::launchPackage
 sub_eb01a70fe9b5	eb01a70fe9b5551d	skip	library: CryptoPP runtime
 sub_ebc68f957b28#2	ebc68f957b288490	inlined	packagefiledownloader.cpp:TPackageFileDownloader::totalBytes
-sub_f2302aedfcc3	f2302aedfcc37819	ported	package.cpp:resolveConfigurationUrl
+sub_f2302aedfcc3	f2302aedfcc37819	tested	package.cpp:resolveConfigurationUrl	test=tests/launcher/package_test.cpp
 sub_f4e6b8d2f7c2	f4e6b8d2f7c291af	ported	package.h:TPackage::isLauncher
 sub_f4f0c53831ef	f4f0c53831ef3715	ported	launcherapplication.h:TApplicationLock::isLocked
 sub_f5294b0cff55	f5294b0cff55c303	ported	cloudflarecdntrace.cpp:TCloudflareCdnTrace::TCloudflareCdnTrace
@@ -391,7 +391,7 @@ sub_f764966ac696#3	f764966ac6964e43	tested	client/tibia/shared/jsonvalidator.cpp
 sub_f764966ac696#4	f764966ac6964e43	tested	client/tibia/shared/jsonvalidator.cpp:TJsonObjectValidator::isValid	test=tests/client/jsonvalidator_test.cpp
 sub_f98ceae25008	f98ceae25008c033	tested	client/tibia/shared/xteahelper.cpp:TXteaHelper::convertByteOrder	test=tests/client/xteahelper_test.cpp
 sub_f9ead9a5bf3e	f9ead9a5bf3e0fb6	ported	launcherapplication.cpp:TLauncherApplication::hideSplash
-sub_fa56a64fc6f1	fa56a64fc6f150d1	ported	package.cpp:TPackage::statusName
+sub_fa56a64fc6f1	fa56a64fc6f150d1	tested	package.cpp:TPackage::statusName	test=tests/launcher/package_test.cpp
 sub_faaadfc7d891	faaadfc7d8913d91	skip	generated: shared_ptr release / Qt slot object
 sub_fad82605eb1b	fad82605eb1b2439	skip	library: libc++ vector/map/tree internals
 sub_fc1a190661a9	fc1a190661a945f3	ported	launcherapplication.cpp:TLauncherApplication::isOnlyInstance
