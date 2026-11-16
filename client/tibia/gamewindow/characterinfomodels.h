@@ -140,7 +140,7 @@ public:
 protected:
     /// CIP .
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
-    /// CIP : case-sensitive.
+    /// By name, in lower case.
     bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
 
 private:

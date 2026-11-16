@@ -3,6 +3,8 @@
 #include "client/gamecore.h"
 #include "gamewindow/sidebarwidgetcontrollerbase.h"
 
+#include "shared/sortedvectorlistmodel.h"
+
 #include <cip_gen.h>
 
 #include <QPointer>
@@ -28,7 +30,7 @@ namespace gamewindow {
 
 /// CIP `TKillTrackerWidgetController::TTaskMonsterModel` (ledger short name
 /// TTaskMonsterModel) — bounty/weekly task monster rows.
-class TTaskMonsterModel final : public cip::tibia::gamewindow::TKillTrackerWidgetController_TTaskMonsterModel
+class TTaskMonsterModel final : public shared::TSortedVectorListModel<cip::tibia::gamewindow::TKillTrackerWidgetController_TTaskMonsterModel>
 {
     Q_OBJECT
 public:
@@ -44,6 +46,8 @@ public:
     /// One hunting task row (race 0 with no name: none, or any creature).
     struct Entry
     {
+        /// The row's key: rows are kept in this order.
+        uint8_t index = 0;
         uint16_t raceId = 0;
         QString raceName;
         uint16_t amountToHunt = 0;
@@ -56,6 +60,8 @@ public:
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
+    /// Merges the rows by `index`; an existing row with other values is
+    /// copied and reported changed.
     void setEntries(std::vector<Entry> entries);
 
 private:

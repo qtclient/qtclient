@@ -106,6 +106,7 @@ qtclient_add_port_test(client_xteahelper_tests
     xteahelper_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/shared/xteahelper.cpp
 )
+qtclient_add_port_test(client_sortedvectorlistmodel_tests sortedvectorlistmodel_test.cpp)
 qtclient_add_port_test(client_simplevectorabstractlistmodel_tests
     simplevectorabstractlistmodel_test.cpp
 )

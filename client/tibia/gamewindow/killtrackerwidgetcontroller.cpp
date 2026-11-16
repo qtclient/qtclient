@@ -43,7 +43,7 @@ QString raceName(const uint32_t raceId)
 }
 
 TTaskMonsterModel::TTaskMonsterModel(QObject* parent)
-    : cip::tibia::gamewindow::TKillTrackerWidgetController_TTaskMonsterModel(parent)
+    : TSortedVectorListModel(parent)
 {}
 
 int TTaskMonsterModel::rowCount(const QModelIndex& parent) const
@@ -80,9 +80,13 @@ QHash<int, QByteArray> TTaskMonsterModel::roleNames() const
 
 void TTaskMonsterModel::setEntries(std::vector<Entry> entries)
 {
-    beginResetModel();
-    m_entries = std::move(entries);
-    endResetModel();
+    const auto less = [](const Entry& a, const Entry& b) { return a.index < b.index; };
+    const auto sameKey = [](const Entry& a, const Entry& b) { return a.index == b.index; };
+    const auto equal = [](const Entry& a, const Entry& b) {
+        return a.index == b.index && a.raceId == b.raceId && a.raceName == b.raceName && a.amountToHunt == b.amountToHunt
+               && a.amountHunted == b.amountHunted && a.isActive == b.isActive;
+    };
+    mergeSortedItems(m_entries, std::move(entries), less, sameKey, equal);
 }
 
 TKillTrackerWidgetController::TKillTrackerWidgetController(prey::TPreyStorage* storage, QQuickItem* gameWindowItem, QQmlEngine* engine,
@@ -167,6 +171,7 @@ void TKillTrackerWidgetController::applyWeeklyMonsters(const std::vector<std::ma
         entry.amountToHunt = static_cast<uint16_t>(mapU32(row, "total"));
         entry.amountHunted = static_cast<uint16_t>(mapU32(row, "current"));
         entry.isActive = m_weeklyActive;
+        entry.index = static_cast<uint8_t>(entries.size());
         entries.push_back(std::move(entry));
     }
     model->setEntries(std::move(entries));

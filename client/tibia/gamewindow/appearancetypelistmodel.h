@@ -1,8 +1,11 @@
 #pragma once
 
+#include "shared/sortedvectorlistmodel.h"
+
 #include <cip_gen.h>
 
 #include <QCollator>
+#include <QTimer>
 #include <QString>
 #include <QStringList>
 #include <QTimer>
@@ -38,7 +41,7 @@ struct TAppearanceTypeEntry
 
 /// Object types with their counts (CIP: TAppearanceTypeListModel, data
 /// with roles 0x101..0x115, roleNames).
-class TAppearanceTypeListModel final : public cip::tibia::gamewindow::TAppearanceTypeListModel
+class TAppearanceTypeListModel final : public shared::TSortedVectorListModel<cip::tibia::gamewindow::TAppearanceTypeListModel>
 {
     Q_OBJECT
 public:
@@ -74,7 +77,15 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void reset(std::vector<TAppearanceTypeEntry> entries);
+    /// Takes the new types with the fewest row signals: both lists in
+    /// (type, tier) order are merged; rows missing from the new list are
+    /// removed, new ones inserted, kept ones left alone (an entry whose tier
+    /// presence or tier changed is reported changed).
+    void setItems(std::vector<TAppearanceTypeEntry> entries);
+    void reset(std::vector<TAppearanceTypeEntry> entries) { setItems(std::move(entries)); }
+    /// (type, tier) order; an entry without a tier sorts as tier 0.
+    static bool lessThan(const TAppearanceTypeEntry& left, const TAppearanceTypeEntry& right);
+    static bool sameKey(const TAppearanceTypeEntry& left, const TAppearanceTypeEntry& right);
     /// The entry of `row`, or an empty one for a row out of range.
     const TAppearanceTypeEntry& entry(int row) const;
     int size() const { return static_cast<int>(m_entries.size()); }
@@ -84,13 +95,20 @@ public Q_SLOTS:
     void onItemTrackingChanged() override;
     void onObjectCountsChanged() override;
     void onObjectProficiencyXPChanged() override;
+    /// A type's proficiency changed: its roles are announced once the event
+    /// loop runs (several changes in a row are announced together).
+    void onProficiencyDataChanged(uint16_t AppearanceTypeID);
 
 private:
     /// dataChanged over every row for `roles`.
     void notifyRolesChanged(const QList<int>& roles);
     int count(const TAppearanceTypeEntry& entry) const;
 
+    /// Announces the proficiency roles of every row.
+    void onProficiencyTimerTimeout();
+
     CountProvider m_counts;
+    QTimer m_proficiencyTimer;
     std::vector<TAppearanceTypeEntry> m_entries;
 };
 

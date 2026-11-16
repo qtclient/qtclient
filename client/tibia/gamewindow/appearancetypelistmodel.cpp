@@ -2,6 +2,8 @@
 
 
 #include <QLocale>
+
+#include <algorithm>
 #include <tibia/game/gamesession.h>
 
 namespace tibia::gamewindow {
@@ -14,9 +16,13 @@ constexpr int MaximumShownCount = 65000;
 }
 
 TAppearanceTypeListModel::TAppearanceTypeListModel(CountProvider counts, QObject* parent)
-    : cip::tibia::gamewindow::TAppearanceTypeListModel(parent)
+    : TSortedVectorListModel(parent)
     , m_counts(std::move(counts))
-{}
+{
+    m_proficiencyTimer.setInterval(0);
+    m_proficiencyTimer.setSingleShot(true);
+    connect(&m_proficiencyTimer, &QTimer::timeout, this, &TAppearanceTypeListModel::onProficiencyTimerTimeout);
+}
 
 int TAppearanceTypeListModel::rowCount(const QModelIndex& parent) const
 {
@@ -118,11 +124,32 @@ const TAppearanceTypeEntry& TAppearanceTypeListModel::entry(const int row) const
     return m_entries[row];
 }
 
-void TAppearanceTypeListModel::reset(std::vector<TAppearanceTypeEntry> entries)
+namespace {
+
+uint8_t tierKey(const TAppearanceTypeEntry& entry) { return entry.hasTier ? entry.tier : 0; }
+
+}
+
+bool TAppearanceTypeListModel::lessThan(const TAppearanceTypeEntry& left, const TAppearanceTypeEntry& right)
 {
-    beginResetModel();
-    m_entries = std::move(entries);
-    endResetModel();
+    if (left.typeId != right.typeId)
+        return left.typeId < right.typeId;
+    return tierKey(left) < tierKey(right);
+}
+
+bool TAppearanceTypeListModel::sameKey(const TAppearanceTypeEntry& left, const TAppearanceTypeEntry& right)
+{
+    return left.typeId == right.typeId && tierKey(left) == tierKey(right);
+}
+
+void TAppearanceTypeListModel::setItems(std::vector<TAppearanceTypeEntry> entries)
+{
+    // Kept rows are the same type and tier; a row whose tier presence or tier
+    // differs is copied and reported changed.
+    const auto equal = [](const TAppearanceTypeEntry& a, const TAppearanceTypeEntry& b) {
+        return a.typeId == b.typeId && a.hasTier == b.hasTier && (!a.hasTier || a.tier == b.tier);
+    };
+    mergeSortedItems(m_entries, std::move(entries), lessThan, sameKey, equal);
 }
 
 void TAppearanceTypeListModel::notifyRolesChanged(const QList<int>& roles)
@@ -151,6 +178,10 @@ void TAppearanceTypeListModel::onObjectProficiencyXPChanged()
 {
     notifyRolesChanged({ ProficiencyXP, ProficiencyLevel });
 }
+
+void TAppearanceTypeListModel::onProficiencyDataChanged(uint16_t) { m_proficiencyTimer.start(); }
+
+void TAppearanceTypeListModel::onProficiencyTimerTimeout() { notifyRolesChanged({ ProficiencyXP, ProficiencyLevel }); }
 
 bool TAppearanceTypeListModelSortFilterProxy::isHandWeaponCategory(const int category)
 {

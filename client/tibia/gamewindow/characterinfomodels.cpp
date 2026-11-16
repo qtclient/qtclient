@@ -258,7 +258,8 @@ bool TTitlesSortProxyModel::filterAcceptsRow(const int sourceRow, const QModelIn
 bool TTitlesSortProxyModel::lessThan(const QModelIndex& left, const QModelIndex& right) const
 {
     using R = TTitlesModel::Role;
-    return QString::compare(left.data(R::Name).toString(), right.data(R::Name).toString(), Qt::CaseSensitive) < 0;
+    // The names compared in lower case.
+    return QString::compare(left.data(R::Name).toString().toLower(), right.data(R::Name).toString().toLower(), Qt::CaseSensitive) < 0;
 }
 
 TCharacterTitlesInfoQmlData::TCharacterTitlesInfoQmlData(const uint8_t currentTitleId, std::vector<TitleEntry> entries, QObject* parent)

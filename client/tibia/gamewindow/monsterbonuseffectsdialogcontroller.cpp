@@ -4,6 +4,7 @@
 #include "gamewindow/messagedialogcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
+#include "qmlcomponents/texthelper.h"
 
 #include <client/const.h>
 #include <client/outfit.h>
@@ -54,12 +55,12 @@ public:
         m_imageSource = cyclopedia::charmImageSource(charm.id);
         m_isMinor = charm.isMinor();
         const int nextCost = charm.nextGradeCost();
-        m_resourceCostString = englishNumber(nextCost);
+        m_resourceCostString = qmlcomponents::thousandShortcutsMultiString(nextCost);
         m_notEnoughResource = charmResource(m_isMinor) < static_cast<quint64>(nextCost);
-        m_clearCostString = englishNumber(charm.removeCost);
+        m_clearCostString = qmlcomponents::thousandShortcutsMultiString(charm.removeCost);
         m_notEnoughGold = TBestiaryStorage::goldBalance() < charm.removeCost;
         m_unlocked = charm.grade > 0;
-        m_unlockGrade = static_cast<cip::tibia::qmlcomponents::enums::ECharmUnlockGrade>(charm.grade);
+        m_unlockGrade = static_cast<cip::tibia::qmlcomponents::enums::ECharmUnlockGrade>(charm.grade >= 1 && charm.grade <= 3 ? charm.grade : 0);
         m_assigned = charm.raceId != 0;
         m_assignedMonsterRaceID = charm.raceId;
         if (m_assigned) {

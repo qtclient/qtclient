@@ -749,13 +749,15 @@ void TChatChannelTabController::makeCurrent(chat::TChatChannel* channel)
         setCurrentRow(row);
 }
 
-int TChatChannelTabController::rowCount(const QModelIndex& parent) const
+int TChatChannelTabController::rowCount(const QModelIndex&) const
 {
-    return parent.isValid() ? 0 : static_cast<int>(m_rows.size());
+    return static_cast<int>(m_rows.size());
 }
 
 QVariant TChatChannelTabController::data(const QModelIndex& index, const int role) const
 {
+    if (!index.isValid() || index.row() >= rowCount())
+        return {};
     const TChatChannel* channel = channelAt(index.row());
     if (!channel)
         return {};
@@ -768,7 +770,10 @@ QVariant TChatChannelTabController::data(const QModelIndex& index, const int rol
 
 QHash<int, QByteArray> TChatChannelTabController::roleNames() const
 {
-    return { { ChannelNameRole, "channelName" }, { TabHighlightRole, "tabHighlight" } };
+    QHash<int, QByteArray> roles = QAbstractListModel::roleNames();
+    roles[ChannelNameRole] = "channelName";
+    roles[TabHighlightRole] = "tabHighlight";
+    return roles;
 }
 
 uint TChatChannelTabController::highlightOf(const int row) const
@@ -781,22 +786,25 @@ uint TChatChannelTabController::highlightOf(const int row) const
 
 void TChatChannelTabController::setCurrentRow(const int row)
 {
-    TChatChannel* channel = channelAt(row);
-    if (!channel)
+    // A row out of range leaves no tab current.
+    if (row < 0 || row >= rowCount()) {
+        m_currentRowId = -1;
+        Q_EMIT currentRowIdChanged();
+        Q_EMIT currentChannelChanged(nullptr);
         return;
+    }
+    TChatChannel* channel = channelAt(row);
     const int previous = m_currentRowId;
     m_currentRowId = row;
+    if (previous >= 0 && previous < rowCount() && previous != row)
+        Q_EMIT dataChanged(index(previous), index(previous), { TabHighlightRole });
     m_highlights.erase(channel);
     if (auto it = m_flashInfos.find(channel); it != m_flashInfos.end()) {
         it->second->stopFlash();
         m_flashInfos.erase(it);
     }
-    if (previous != row) {
-        if (channelAt(previous))
-            Q_EMIT dataChanged(index(previous), index(previous), { TabHighlightRole });
-        Q_EMIT currentRowIdChanged();
-    }
     Q_EMIT dataChanged(index(row), index(row), { TabHighlightRole });
+    Q_EMIT currentRowIdChanged();
     updateButtonHighlights();
     Q_EMIT currentChannelChanged(channel);
 }
@@ -808,15 +816,17 @@ void TChatChannelTabController::onMakeChannelWithRowIdCurrent(const int rowId)
 
 void TChatChannelTabController::onMakeNextChannelCurrent()
 {
-    const int count = rowCount();
-    if (count > 0)
+    if (m_currentRowId < 0)
+        return;
+    if (const int count = rowCount(); count > 0)
         setCurrentRow((m_currentRowId + 1) % count);
 }
 
 void TChatChannelTabController::onMakePreviousChannelCurrent()
 {
-    const int count = rowCount();
-    if (count > 0)
+    if (m_currentRowId < 0)
+        return;
+    if (const int count = rowCount(); count > 0)
         setCurrentRow((m_currentRowId + count - 1) % count);
 }
 
@@ -977,10 +987,8 @@ void TOpenChatChannelDialogController::onOpenChannelFromList(const int rowIndex)
 
 void TOpenChatChannelDialogController::onOpenPrivateChannelTo(const QString& recipient)
 {
-    const QString name = recipient.trimmed();
     dialog()->close();
-    if (!name.isEmpty())
-        Q_EMIT privateChannelChosen(name);
+    Q_EMIT privateChannelChosen(recipient);
 }
 
 // ---------------------------------------------------------------------------

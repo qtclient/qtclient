@@ -24,18 +24,34 @@ public:
 
     TActionBarController* bar() const { return m_bar; }
     bool isMultiActionChild() const { return m_multiActionIndex >= 0; }
-    const config::TActionSetting& setting() const { return m_setting; }
+    /// Whether this button holds multi-action slots.
+    bool isMultiAction() const { return !m_children.empty(); }
     /// A multi-action button's slot, or null.
     TActionButtonController* multiAction(int index) const
     {
         return index >= 0 && index < int(m_children.size()) ? m_children[size_t(index)] : nullptr;
     }
 
-    /// CIP 's per-button branch: shows `setting`; `hotkey` is the
-    /// key of TriggerActionButton_<bar>.<button> in the current chat mode.
-    void setSetting(const config::TActionSetting& setting, const QKeySequence& hotkey);
-    /// CIP (+0xd8): every key of the button, listed by the tooltip.
-    void setHotkeys(const QList<QKeySequence>& hotkeys) { m_hotkeys = hotkeys; }
+    /// Empties the button: no action, no cooldown, enabled, not newly
+    /// unlocked; its slots are emptied too but kept.
+    void reset();
+    /// Drops the multi-action slots and closes the popup.
+    void clearMultiActions();
+    /// Makes this a multi-action button with `count` empty slots (no-op when
+    /// it has slots already).
+    void createMultiActions(int count);
+    /// The action setters: each one leaves the button as it is when nothing
+    /// changes, otherwise empties it, drops its slots and shows the action.
+    void setSpell(int spellId, const QString& parameters, int castType);
+    void setText(const QString& text, bool sendAutomatically);
+    void setObject(int objectId, int upgradeTier, int liquidType, config::EUseType useType, bool useEquipSmartMode);
+    void setPassiveAbility(int passiveAbility);
+    /// The keys of TriggerActionButton_<bar>.<button>; the first one is shown
+    /// on the button.
+    void setHotkeys(const QList<QKeySequence>& hotkeys);
+    bool sendAutomatically() const { return m_sendAutomatically; }
+    config::EUseType useType() const { return m_useType; }
+    int spellId() const { return m_spellId; }
     /// The object's amount in the inventory and whether it is worn (CIP:
     /// onInventoryChanged).
     void refreshObject();
@@ -47,7 +63,6 @@ public:
     /// whose cooldown ends first by more than min(ping / 2, 400) ms, else the
     /// first unusable one), or null.
     TActionButtonController* currentMultiAction(qint64 now) const;
-    /// CIP 's emptiness test (: the shown type).
     bool isShownEmpty() const { return type() == EMPTY; }
 
     /// CIP : "S.t" below 11 s, "S" below a minute, "M:SS" below
@@ -87,10 +102,12 @@ public Q_SLOTS:
     void contextMenuRequested() override;
     void onTargetSelected() override;
     void onDragChanged(bool Dragged) override;
-    void setMultiActionExpanded(bool v) override;
+
+Q_SIGNALS:
+    /// Asks the bar for this button's context menu (-1: not a slot).
+    void requestContextMenu(uint ButtonId, int MultiActionChild);
 
 private:
-    void clear();
     const TActionButtonController* shown() const { return m_shownSlot ? m_shownSlot : this; }
     /// Re-selects the shown slot; announces a change.
     void refreshShownSlot(qint64 now);
@@ -105,10 +122,13 @@ private:
     void set(T& member, const T& value, bool& changed);
 
     TActionBarController* m_bar;
-    config::TActionSetting m_setting;
-    QKeySequence m_hotkey;
     QList<QKeySequence> m_hotkeys;
     int m_spellId = 0;
+    int m_passiveAbility = 0;
+    bool m_sendAutomatically = false;
+    int m_castType = 0;
+    config::EUseType m_useType = config::EUseType::SelectUseTarget;
+    bool m_useEquipSmartMode = false;
     bool m_showsCooldown = false;
     std::vector<TActionButtonController*> m_children;
     TActionButtonController* m_shownSlot = nullptr;

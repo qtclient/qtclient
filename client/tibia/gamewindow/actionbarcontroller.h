@@ -56,8 +56,9 @@ public:
     void destroyItem();
     QQuickItem* item() const { return m_item; }
 
-    /// CIP : the current hotkey set's mappings.
-    void applyMappings(bool chatOn);
+    /// The button with `buttonId`, or its multi-action slot when
+    /// `multiActionChild` >= 0; null when there is none.
+    TActionButtonController* buttonController(int buttonId, int multiActionChild) const;
     void refreshObjects();
     /// Returns whether a cooldown runs.
     bool refreshCooldowns(qint64 now);
@@ -69,7 +70,6 @@ public:
     /// setMapping, then onHotkeyOptionsChanged).
     void assign(int buttonId, int multiActionIndex, const config::TActionSetting& setting);
     void openAssignDialog(EAssignKind kind, int buttonId, int multiActionIndex);
-    void editHotkey(int buttonId);
     /// CIP insertSpell : puts the spell on the first empty
     /// button scrolled into view and starts its insert animation. Returns
     /// whether a button took it.
@@ -81,6 +81,25 @@ public:
     void setFirstVisibleButtonId(int v) override;
 
 public Q_SLOTS:
+    /// The current hotkey set's mappings of this bar onto its buttons.
+    void onActionBarOptionsChanged() override;
+    /// The keys of each button's TriggerActionButton action in the current
+    /// chat mode.
+    void onHotkeyOptionsChanged() override;
+    /// Assign/edit entries for spell, object and text; for a bar button also
+    /// passive ability, multi-action and hotkey; "clear" when it holds an action.
+    void onRequestContextMenu(uint ButtonId, int MultiActionChild);
+    void onOpenAssignSpellActionDialog(uint ButtonId, int MultiActionChild);
+    void onOpenAssignObjectActionDialog(uint ButtonId, int MultiActionChild);
+    void onOpenAssignTextActionDialog(uint ButtonId, int MultiActionChild);
+    void onOpenAssignPassiveAbilityActionDialog(uint ButtonId);
+    /// Closes the other open multi-action buttons, toggles this one's popup
+    /// and makes its mapping a multi-action one with three slots.
+    void onOpenAssignMultiActionPopup(uint ButtonId);
+    void onAssignHotkey(uint ButtonId);
+    void onClearAction(uint ButtonId, int MultiActionChild);
+    /// Closes every open multi-action button but the given one.
+    void closeOpenMultiActionButtons(int ExceptBarID, int ExceptButtonID);
     /// CIP / : an object dragged onto a button is
     /// assigned with its default use (, Alt held passed on).
     void onDropped(uint ButtonId, int MultiActionIndex) override;
@@ -90,11 +109,14 @@ public Q_SLOTS:
     /// CIP .
     void onSpellIconDropped(uint ButtonId, int SpellEnumId, int MultiActionIndex) override;
     void onSpellIconDropped(uint ButtonId, int SpellEnumId) override;
-    void closeOpenMultiActionButtons() override;
+    void closeOpenMultiActionButtons() override { closeOpenMultiActionButtons(0, 0); }
     /// CIP .
     void setNumVisibleSlots(int Amount) override;
 
 private:
+    /// Shows one setting on a button or slot.
+    void applySetting(TActionButtonController* button, const config::TActionSetting& setting);
+
     TActionBarManager* m_manager;
     std::vector<TActionButtonController*> m_buttons;
     QPointer<QQuickItem> m_item;
