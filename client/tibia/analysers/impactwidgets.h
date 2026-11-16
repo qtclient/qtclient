@@ -9,6 +9,7 @@
 
 #include <QAbstractListModel>
 #include <QPointer>
+#include <QTimer>
 
 #include <vector>
 
@@ -168,12 +169,16 @@ private:
     void updateTypedModel();
     /// CIP .
     void updateGraphs();
-    void addGaugeEntries(TImpactStorage::Kind kind);
-    void addGraphEntry(TImpactStorage::Kind kind);
+    void addGaugeEntries(TImpactStorage::Kind kind, bool premium);
+    void addGraphEntry(TImpactStorage::Kind kind, bool premium);
     void showTargetDialog(TImpactStorage::Kind kind);
+    /// CIP: the visibility setters need premium; free accounts get the store instead.
+    void setVisibleIfPremium(void (TImpactStorage::*set)(TImpactStorage::Kind, bool), TImpactStorage::Kind kind, bool visible);
     double perSecond(TImpactStorage::Kind kind) const;
 
     TImpactStorage* m_storage;
+    /// CIP: damage value changes are coalesced through a zero-interval single shot.
+    QTimer m_damageValuesTimer;
     TDamageTypedModel* m_typedModel;
     QPointer<config::TSidebarOptions> m_options;
     QPointer<gamewindow::TGenericEnterTextDialogController> m_targetDialog;
