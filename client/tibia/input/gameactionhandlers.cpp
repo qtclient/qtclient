@@ -225,10 +225,19 @@ void startTalking(const TGameAction& action)
         storage ? storage->creatureAt(action.creatureId) : nullptr;
     if (!npc || !tibia::game::hasLocalPlayer())
         return;
+    // Within three fields on the floor the local channel opens and the NPC is
+    // greeted; farther away the status line says so.
     const Position& from = tibia::game::localPlayerPosition();
     const Position& to = npc->position();
-    if (from.z != to.z || std::abs(from.x - to.x) >= 4 || std::abs(from.y - to.y) >= 4)
+    if (from.z != to.z || std::abs(from.x - to.x) >= 4 || std::abs(from.y - to.y) >= 4) {
+        auto status = mutableClone(*makeAction(A::SET_STATUS_LINE));
+        status->text = qtTrId("you_are_too_far_away");
+        publish(status);
         return;
+    }
+    auto open = mutableClone(*makeAction(A::OPEN_CHAT_CHANNEL));
+    open->chatChannelType = 0; // TChatChannelIdentifier::Local
+    publish(open);
     tibia::game::greetNpc(action.creatureId);
 }
 
@@ -419,14 +428,9 @@ void publish(const TGameActionPtr& action)
         if (action->creatureId)
             tibia::game::partyPassLeadership(action->creatureId);
         break;
-    case A::LEAVE_PARTY: {
-        const uint8_t shield = tibia::game::localPlayerShield();
-        if (tibia::game::hasLocalPlayer() && (shield == 1 || shield == 3))
-            tibia::game::partyDisband();
-        else
-            tibia::game::partyLeave();
+    case A::LEAVE_PARTY:
+        tibia::game::partyLeave();
         break;
-    }
     case A::SET_SHARED_EXPERIENCE:
         tibia::game::partyShareExperience(action->enable);
         break;

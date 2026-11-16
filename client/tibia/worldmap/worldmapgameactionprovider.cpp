@@ -100,15 +100,16 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     const TGameActionList lookActions = Provider::objectActions(pick.look, pick.field, pick.position);
     const TGameActionList lookList = input::filterActions(lookActions, { A::LOOK, A::INSPECT_OBJECT, A::OPEN_CYCLOPEDIA, A::OPEN_WEAPON_PROFICIENCY_DIALOG, A::LENSHELP_SHOW, A::SMART_CLICK, A::GET_TEXT_FOR_REPORT });
     const TGameActionList lootList = input::filterActions(lookActions, { A::LOOT_ADD_TO_BLACKWHITELIST, A::LOOT_REMOVE_FROM_BLACKWHITELIST });
-    // CIP use-list filter (provider): must include OPEN —
-    // Classic right-click rules prefer OPEN before OPEN_IN_NEW_WINDOW; containers only
-    // emit OPEN (plus OPEN_IN_NEW_WINDOW except supply stash).
+    // On the map a container opens in a new window only: OPEN is not offered.
     const TGameActionList useList = actionsOf(use, pick.field, pick.position,
-                                              { A::USE, A::USE_WITH, A::OPEN, A::OPEN_IN_NEW_WINDOW, A::QUICK_LOOT,
+                                              { A::USE, A::USE_WITH, A::OPEN_IN_NEW_WINDOW, A::QUICK_LOOT,
                                                 A::GATHER_ALL, A::WRAP, A::UNWRAP, A::ROTATE_OBJECT,
                                                 A::CONFIGURE_SHOW_OFF_SOCKET, A::TRADE_ITEM, A::SMART_CLICK,
                                                 A::GET_TEXT_FOR_REPORT });
-    const TGameActionList quickLootList = actionsOf(pick.quickLoot, pick.field, pick.position, { A::QUICK_LOOT });
+    // The quick-loot object adds its own quick loot unless it is the use object.
+    const TGameActionList quickLootList = pick.quickLoot.appearance != use.appearance
+                                              ? actionsOf(pick.quickLoot, pick.field, pick.position, { A::QUICK_LOOT })
+                                              : TGameActionList{};
     const TGameActionList targetList = actionsOf(pick.multiUse, pick.field, pick.position, { A::TARGET_SELECTED });
 
     result.push_back(input::makeObjectAction(A::BROWSE_FIELD, pick.position, -1));
@@ -122,35 +123,7 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     if (pixelCreatureId)
         (void)input::TObjectCreatureGameActionContext(pixelCreatureId);
 
-    // Creature hit-test (TWorldMapPicker::creatureAt): when the cursor is on a creature
-    // sprite, MOVE_OBJECT is that creature — the field's move object prefers items under it.
-    // Always canonicalize from TCreatureStorage::position (same as lookCreature);
-    // walk-offset sprites and pick.creature on the cursor tile must not keep pick.position
-    // as the wire `from` (that yields from==to no-ops / NOTPOSSIBLE).
-    TFieldObject moveTarget = pick.move;
-    Position movePosition = pick.position;
-    const TWorldMapField* moveField = pick.field;
-    if (pixelCreatureId) {
-        moveTarget = {};
-        if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(pixelCreatureId)) {
-                movePosition = row->position();
-                if (TWorldMapStorage* map = TWorldMapStorage::instance()) {
-                    if (TWorldMapField* field = map->fieldAt(movePosition)) {
-                        const int stackPos = field->creatureStackPos(pixelCreatureId);
-                        if (stackPos >= 0) {
-                            moveTarget.stackPosition = stackPos;
-                            moveTarget.creatureId = pixelCreatureId;
-                            moveTarget.appearance = field->appearanceAt(stackPos);
-                            moveField = field;
-                        }
-                    }
-                }
-            }
-        }
-        // Do not fall back to pick.move (item under the creature) when resolve fails.
-    }
-    const TGameActionList moveList = actionsOf(moveTarget, moveField, movePosition, { A::MOVE_OBJECT });
+    const TGameActionList moveList = actionsOf(pick.move, pick.field, pick.position, { A::MOVE_OBJECT });
 
     TGameActionPtr smartClick;
     TGameActionPtr ownLook;

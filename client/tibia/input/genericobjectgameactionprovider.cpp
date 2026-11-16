@@ -4,6 +4,8 @@
 #include "appearances/appearanceinstance.h"
 #include "app/clientoptions.h"
 #include "creatures/creaturestorage.h"
+#include "creatures/inspectplayergameactionprovider.h"
+#include "creatures/partygameactionprovider.h"
 #include "cyclopedia/iteminfostorage.h"
 
 #include "protocol/protocolcodes.h"
@@ -25,19 +27,6 @@ using A = EGameAction;
 bool isPartyMemberShield(const uint8_t shield)
 {
     return shield >= 3 && shield <= 10;
-}
-
-bool isPartyLeaderShield(const uint8_t shield)
-{
-    using S = tibia::client::PlayerShields;
-    return shield == S::ShieldWhiteYellow || shield == S::ShieldYellow || shield == S::ShieldYellowSharedExp
-        || shield == S::ShieldYellowNoSharedExpBlink || shield == S::ShieldYellowNoSharedExp;
-}
-
-bool isSharedExpOn(const uint8_t shield)
-{
-    using S = tibia::client::PlayerShields;
-    return shield == S::ShieldYellowSharedExp || shield == S::ShieldBlueSharedExp;
 }
 
 bool isVipName(const QString& name)
@@ -69,48 +58,6 @@ TGameActionPtr namedCreatureAction(const EGameAction type, const QString& name)
     return std::make_shared<TGameActionCreatureWithName>(type, name);
 }
 
-/// qtclient party offers from local + target shields (storage snapshot at menu build).
-void pushPartyActions(TGameActionList& actions, const tibia::creatures::TCreature& target, const uint32_t creatureId,
-                      const tibia::creatures::TCreature* selfStored)
-{
-    if (!selfStored)
-        return;
-    const auto push = [&](const EGameAction type) { actions.push_back(makeCreatureAction(type, creatureId)); };
-    const uint8_t localShield = selfStored->shield();
-    const uint8_t targetShield = target.shield();
-    using S = tibia::client::PlayerShields;
-
-    if (target.isLocalPlayer()) {
-        if (localShield != S::ShieldNone)
-            push(A::LEAVE_PARTY);
-        if (isPartyLeaderShield(localShield)) {
-            auto shared = mutableClone(*makeAction(A::SET_SHARED_EXPERIENCE));
-            shared->enable = !isSharedExpOn(localShield);
-            actions.push_back(shared);
-        }
-        return;
-    }
-
-    if (!target.isPlayer())
-        return;
-
-    if (localShield == S::ShieldNone) {
-        if (targetShield == S::ShieldWhiteYellow)
-            push(A::JOIN_PARTY);
-        else if (targetShield == S::ShieldNone)
-            push(A::INVITE_TO_PARTY);
-    } else if (isPartyLeaderShield(localShield)) {
-        if (targetShield == S::ShieldNone)
-            push(A::INVITE_TO_PARTY);
-        else if (targetShield == S::ShieldWhiteBlue)
-            push(A::REVOKE_PARTY_INVITATION);
-        else if (targetShield >= S::ShieldBlue && targetShield <= S::ShieldYellowNoSharedExp)
-            push(A::PASS_PARTY_LEADERSHIP);
-    }
-    if (localShield != S::ShieldNone && targetShield == S::ShieldGray)
-        push(A::JOIN_AGGRESSION);
-}
-
 }
 
 bool isHireling(const tibia::creatures::TCreature& stored)
@@ -130,12 +77,6 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
     const auto push = [&](const EGameAction type) { actions.push_back(makeCreatureAction(type, creatureId)); };
     const bool own = stored->isLocalPlayer();
     const bool hireling = isHireling(*stored);
-    const tibia::creatures::TCreature* selfStored = nullptr;
-    if (tibia::game::isOnline() && storage) {
-        const uint32_t selfId = tibia::game::localPlayerId();
-        if (selfId)
-            selfStored = storage->creatureAt(selfId).get();
-    }
     const QString name = stored->name();
 
     const uint32_t attackingId = tibia::game::attackingCreatureId();
@@ -171,15 +112,8 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
         actions.push_back(namedCreatureAction(A::REPORT_BOT, name));
     }
     if (stored->isPlayer()) {
-        // TPartyGameActionProvider, then TInspectPlayerGameActionProvider.
-        pushPartyActions(actions, *stored, creatureId, selfStored);
-        if (!own) {
-            push(A::INSPECT_PLAYER);
-            push(A::ASK_TO_INSPECT_PLAYER);
-            push(A::INVITE_TO_INSPECT_PLAYER);
-            push(A::ALLOW_INSPECT_PLAYER);
-            push(A::REVOKE_INSPECT_PLAYER);
-        }
+        creatures::TPartyGameActionProvider::appendActions(actions, creatureId);
+        creatures::TInspectPlayerGameActionProvider::appendActions(actions, creatureId);
     }
 
     push(A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD);
