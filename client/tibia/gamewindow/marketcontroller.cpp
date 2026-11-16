@@ -95,7 +95,9 @@ qlonglong offerFee(const int amount, const qlonglong piecePrice)
 void appendStatistics(QStringList& lines, const TMarketStatistics& statistics)
 {
     const QString indent = QStringLiteral("  ");
-    const uint64_t average = statistics.transactions == 0 ? 0 : statistics.total / statistics.transactions;
+    const auto average = statistics.transactions == 0
+                             ? uint64_t{ 0 }
+                             : static_cast<uint64_t>(std::floor(static_cast<double>(statistics.total) / statistics.transactions));
     lines << indent + qtTrId("market_stats_number_of_transactions").arg(QString::number(statistics.transactions));
     lines << indent + qtTrId("market_stats_highest_price").arg(grouped(statistics.highest));
     lines << indent + qtTrId("market_stats_average_price").arg(grouped(average));
@@ -781,6 +783,9 @@ void TMarketController::setOfferLists(const char* buyProperty, const char* sellP
 {
     if (!dialog()->item() || !m_storage)
         return;
+    // The views drop the old rows before the new ones are built.
+    setItemProperty(buyProperty, QVariant::fromValue(QList<QObject*>{}));
+    setItemProperty(sellProperty, QVariant::fromValue(QList<QObject*>{}));
     const uint64_t gold = playerGold();
     const market::TMarketItemDetails& details = m_storage->itemDetails();
     std::vector<QObject*> created;
