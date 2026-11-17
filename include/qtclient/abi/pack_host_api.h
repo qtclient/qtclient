@@ -47,7 +47,9 @@ typedef struct QtClientPackHostApiV1 {
     void* (*inventory_panel_item)(void* user);
     void* (*button_bar_panel_item)(void* user);
 
-    /** game::TInternalGameActionRouter* the pack's publishGameAction signals connect to. */
+    /** game::TInternalGameActionRouter* (<qtclient/game/gameactionrouter.h>) the pack's
+     *  publishGameAction signals connect to; null before the game window exists.
+     *  Host API v4+: read it only when api_version >= 4 (older tables end before it). */
     void* (*game_action_router)(void* user);
 } QtClientPackHostApiV1;
 
