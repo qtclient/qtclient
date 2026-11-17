@@ -67,9 +67,26 @@ class TCharacterAuctionConfiguration final : public cip::tibia::gamewindow::TCha
 public:
     explicit TCharacterAuctionConfiguration(QObject* parent = nullptr);
 
-    void setSelectedHighlightCount(int count);
-    void setSelectedItemCount(int count);
+    int selectedHighlightCount() const override { return static_cast<int>(m_highlights.size()); }
+    int selectedItemCount() const override { return static_cast<int>(m_items.size()); }
+    /// The chosen highlight ids (store items: their id + 0xffff).
+    const QSet<int>& highlights() const { return m_highlights; }
+    /// The chosen items: object id and upgrade tier.
+    const QSet<QPair<int, int>>& items() const { return m_items; }
+    void addHighlight(int highlightId);
+    void removeHighlight(int highlightId);
+    void clearHighlights();
+    void addItem(int itemId, int upgradeTier);
+    void removeItem(int itemId, int upgradeTier);
+    void clearItems();
+
     void setAuctionBounds(int minimumBid, int minEnd, int maxEnd);
+    /// Nothing configured or selected.
+    void reset();
+
+private:
+    QSet<int> m_highlights;
+    QSet<QPair<int, int>> m_items;
 };
 
 /// CIP TCharacterTradeDialogController — CharacterTradeDialog.qml.
@@ -126,8 +143,6 @@ private:
     TCharacterTradeNotificationsAbstractListModel* m_confirmations = nullptr;
     TTextualHighlightsAbstractListModel* m_overviewHighlights = nullptr;
     TItemHighlightsAbstractListModel* m_overviewItems = nullptr;
-    QSet<int> m_selectedHighlightIds;
-    QSet<QPair<int, int>> m_selectedItems;
 };
 
 /// CIP TCharacterTradeDuePaymentDialogController.

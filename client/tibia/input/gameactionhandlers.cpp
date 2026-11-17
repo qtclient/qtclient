@@ -524,14 +524,8 @@ void publish(const TGameActionPtr& action)
         tibia::game::requestTransactionDetails(static_cast<uint32_t>(action->instance));
         break;
     case A::OPEN_TRADE_CHARACTER_DIALOG:
-        // CIP → TCharacterTradeDialogController (CharacterTradeDialog.qml); action 0 = conditions.
-        if (gamewindow::TCharacterTradeDialogController* trade =
-                gamewindow::TCharacterTradeDialogController::instance()) {
-            tibia::game::requestCharacterTradeConfiguration(0);
+        if (gamewindow::TCharacterTradeDialogController* trade = gamewindow::TCharacterTradeDialogController::instance())
             trade->showDialog();
-        } else {
-            tibia::game::requestCharacterTradeConfiguration(0);
-        }
         break;
     case A::MINIMAP_ONE_FLOOR_UP:
     case A::MINIMAP_ONE_FLOOR_DOWN:
