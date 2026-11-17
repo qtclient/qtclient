@@ -772,6 +772,7 @@ void THousesInfoDialogController::showOnCyclopediaMap()
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
     action->parameter = 4;
     action->position = Position(house->x, house->y, static_cast<uint8_t>(house->z));
+    action->cyclopediaMapZoom = 0.5f;
     input::publish(action);
 }
 
