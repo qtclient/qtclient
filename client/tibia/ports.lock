@@ -1882,6 +1882,7 @@ gamewindow::TCyclopediaButtonController::~TCyclopediaButtonController	6318309b3c
 gamewindow::TCyclopediaButtonController::~TCyclopediaButtonController_deleting	32793a28e55cd27b	skip	generated: compiler-generated destructor pair
 gamewindow::TCyclopediaCreatureInfo::~TCyclopediaCreatureInfo	96ad80a74675f243	skip	generated: compiler-generated destructor (member teardown only)
 gamewindow::TCyclopediaCreatureInfo::~TCyclopediaCreatureInfo_deleting	01ec7be7f977607f	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
+gamewindow::TCyclopediaCreatureOccurrencesInfo::~TCyclopediaCreatureOccurrencesInfo	e0217ced6785b980	skip	generated: destructor: member teardown only
 gamewindow::TCyclopediaCreatureOccurrencesInfo::~TCyclopediaCreatureOccurrencesInfo_deleting	97a0e245ca66caf3	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TCyclopediaDialogController::v26	f6bb1b15431d97c9	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::showDialog
 gamewindow::TCyclopediaDialogController::v27	a5ef31c68c4090fc	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::captureNavigationBacklogContextIfNeedAndShowDialog
@@ -5851,6 +5852,7 @@ sub_3009bd3a9093	3009bd3a9093d75f	ported	gamewindow/sidebarwidgetsmanager.h:TSid
 sub_30143e822f2e	30143e822f2e5fa0	skip	library: libc++ unordered_map/vector/map/optional/istringstream template code (rehash, emplace, find, copy, destroy)
 sub_30143e822f2e#2	30143e822f2e5fa0	skip	library: libc++ unordered_map/vector/map/optional/istringstream template code (rehash, emplace, find, copy, destroy)
 sub_3015ce76ea93	3015ce76ea9307f0	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::updateWorldPvPTypeFilter
+sub_301d51805221	301d518052219dac	ported	gamewindow/gamewindowciptypes.cpp:TCyclopediaCreatureOccurrencesInfo::setCreatures
 sub_3025c2ede535	3025c2ede53551e0	tested	creatures/movementdirection.h:directionOfStep	test=tests/client/creaturemovement_test.cpp
 sub_3043211b38f3	3043211b38f32a75	inlined	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::exportText
 sub_30458964ddfd	30458964ddfdf43e	ported	gamewindow/battlelistcontroller.cpp:TBattleListController::onCreatureTargetSelected
@@ -5988,6 +5990,7 @@ sub_341a884aeb8a	341a884aeb8a1cd9	ported	gamewindow/characterinfodialogcontrolle
 sub_3431ddca3764	3431ddca376415ac	inlined	worldmap/worldmapfield.cpp:TWorldMapField::light
 sub_34437ff80c96	34437ff80c967a82	skip	generated: compiler-generated destructor pair
 sub_344877006c94	344877006c94978a	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openOutfitDialog
+sub_34595f18fc72	34595f18fc72a01d	skip	library: libc++ std::map tree destroy (recursive node delete)
 sub_34619c22e993	34619c22e9936f60	ported	store/storeciptypes.cpp:TStoreDescriptionManager::clear
 sub_3468388f952c	3468388f952cd696	ported	gamewindow/actionbuttoncontroller.cpp:durationText
 sub_346e83bd1435	346e83bd1435e5d4	skip	library: libc++ std::map tree destroy / find-insert hint
@@ -7138,6 +7141,7 @@ sub_56e899962220	56e8999622200481	skip	data: translation-unit static initializer
 sub_56ea0438e408	56ea0438e4088886	inlined	controllers/characterselectioncontroller.cpp:setCharacters
 sub_56ef08335b32	56ef08335b321dca	inlined	gamewindow/sidebarwidgetcontrollerbase.cpp:TSidebarWidget::createItemFromUrl
 sub_57260bf76336	57260bf7633649f6	ported	gamewindow/characterinfomodels.cpp:TCharacterInfoDialogController::updateOutfitsMounts
+sub_572e245198eb	572e245198eb6b26	ported	gamewindow/gamewindowciptypes.cpp:TCyclopediaCreatureOccurrencesInfo::setCreatures
 sub_572ea5534fb3#2	572ea5534fb3e524	ported	container/qmlitemslotdata.h:TQMLItemSlotData::displayTypeID
 sub_5744152f1cc0	5744152f1cc09aad	inlined	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::requestConfigurationContextMenu
 sub_574e9dce5ddf	574e9dce5ddf0e9b	ported	worldmap/worldmapfield.cpp:TWorldMapField::stackOrder
@@ -10101,6 +10105,7 @@ sub_b7f13190f841	b7f13190f84118cd	skip	generated: atexit registration of a stati
 sub_b7f54e3f819a	b7f54e3f819a6855	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onHomePageChanged
 sub_b7fd6d6434ce	b7fd6d6434cec22a	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_b804a399de46	b804a399de46aec1	ported	cyclopedia/itemtrackingstorage.cpp:TItemTrackingStorage::lootDropsForTrackedItem
+sub_b81c302d33c4	b81c302d33c4db39	ported	gamewindow/gamewindowciptypes.cpp:TCyclopediaCreatureOccurrencesInfo::setCreatures
 sub_b8249c9e3366	b8249c9e33663f7b	skip	library: Qt/std container template code
 sub_b8249c9e3366#10	b8249c9e33663f7b	skip	library: std::shared_ptr control block
 sub_b8249c9e3366#100	b8249c9e33663f7b	skip	generated: std::shared_ptr release (compiler-generated)
@@ -10563,6 +10568,7 @@ sub_bdad446210e1#5	bdad446210e16462	skip	library: std::sort instantiation
 sub_bdcae11a3a71	bdcae11a3a71742c	skip	library: QMap/QVariant template instantiation
 sub_bdd1e96da73c	bdd1e96da73c6f49	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::sidebarIds
 sub_bddbf53ee342	bddbf53ee3424b7d	skip	library: std container template code
+sub_bdeeb20269ad	bdeeb20269ad7cee	skip	library: libc++ std::map tree destroy (recursive node delete)
 sub_be0237a6c667	be0237a6c66745e3	skip	library: std::sort / std::stable_sort instantiation (library)
 sub_be04f99d6c95	be04f99d6c953171	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEditList
 sub_be14815ad083	be14815ad0831c79	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
