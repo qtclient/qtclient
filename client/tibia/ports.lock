@@ -1712,6 +1712,9 @@ gamewindow::TCyclopediaMapDialogController::publishGameAction	3be2687a827e9a1a	s
 gamewindow::TCyclopediaMapDialogController::showNavigationPanelChanged	acd9e9191dbbc1cf	skip	generated: moc property getter, provided by the generated cip base
 gamewindow::TCyclopediaMapDialogController::~TCyclopediaMapDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TCyclopediaMapDialogController::~TCyclopediaMapDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
+gamewindow::TCyclopediaMapSelectionInfoArea::infoChanged	3e9694309573b59c	ported	gamewindow/cyclopediamapdialogcontroller.h:areaName
+gamewindow::TCyclopediaMapSelectionInfoArea::v12	bcccd51b8b153f85	ported	gamewindow/cyclopediamapdialogcontroller.h:selectionType
+gamewindow::TCyclopediaMapSelectionInfoArea::~TCyclopediaMapSelectionInfoArea	11a945549b8147da	skip	generated: destructor body: member teardown
 gamewindow::TCyclopediaMapSelectionInfoArea::~TCyclopediaMapSelectionInfoArea_deleting	81aaf6020bd2db5e	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TCyclopediaMapSelectionInfoPassage::~TCyclopediaMapSelectionInfoPassage_deleting	7969bed63d1523fe	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
 gamewindow::TCyclopediaMapSelectionInfoSubArea::~TCyclopediaMapSelectionInfoSubArea_deleting	7e86eb4ade5fae9f	skip	generated: compiler-generated destructor pair (deleting variant / thunk to the destructor body)
@@ -4203,7 +4206,7 @@ sub_097457dc45e8#393	097457dc45e86dd8	ported	gamewindow/stashdialogcontroller.cp
 sub_097457dc45e8#394	097457dc45e86dd8	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::reopenStash
 sub_097457dc45e8#396	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
 sub_097457dc45e8#397	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
-sub_097457dc45e8#398	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
+sub_097457dc45e8#398	097457dc45e86dd8	skip	generated: std::make_shared forwarding thunk into the constructor
 sub_097457dc45e8#399	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
 sub_097457dc45e8#400	097457dc45e86dd8	skip	generated: forwarding thunk (std::make_shared emplace constructor / destructor tail call into the class body)
 sub_097457dc45e8#402	097457dc45e86dd8	skip	generated: compiler-generated destructor thunks
@@ -5001,6 +5004,7 @@ sub_21e4e90e3f18#6	21e4e90e3f186cdf	ported	gamewindow/rewardwalldialogcontroller
 sub_21e4e90e3f18#9	21e4e90e3f186cdf	inlined	gamewindow/calendardialogcontroller.cpp:TCalendarDialogController::closeDialog
 sub_21ecd2322aff	21ecd2322afffcec	inlined	skillwheel/skillwheeldata.cpp:smallPerkTotal
 sub_21ed886bb3a8	21ed886bb3a89617	tested	sessiondump/sessiondumpmessagereader.h:TSessiondumpMessageInfo::isServerMessage	test=tests/client/sessiondumpreader_test.cpp
+sub_21edbdd3e5d9#4	21edbdd3e5d9453c	ported	gamewindow/cyclopediamapdialogcontroller.h:rejectDonations
 sub_222f777881b2	222f777881b2f15a	skip	generated: compiler-generated destructor
 sub_2233d33ba0fa	2233d33ba0fa8972	ported	creatures/creatureprotocolapply.cpp:playerIconFromProtocol
 sub_2233d33ba0fa#2	2233d33ba0fa8972	ported	creatures/creatureprotocolapply.cpp:creatureIconFromProtocol
@@ -5329,6 +5333,7 @@ sub_2ce5fc5bf4a3	2ce5fc5bf4a3bbbe	ported	config/sidebaroptions.cpp:serializeDepo
 sub_2d0a30c09a20	2d0a30c09a20f0f5	ported	input/gameaction.h:TGameActionClearOldestMessageFromMapwindow::TGameActionClearOldestMessageFromMapwindow
 sub_2d0a30c09a20#2	2d0a30c09a20f0f5	ported	input/gameaction.h:TGameActionClearOldestMessageFromMapwindow::TGameActionClearOldestMessageFromMapwindow
 sub_2d0b410c79da	2d0b410c79da851c	skip	library: miniaudio library code (miniaudio.h asserts), misattributed
+sub_2d0e3d620cf6	2d0e3d620cf654f1	ported	gamewindow/cyclopediamapdialogcontroller.h:percentExplored
 sub_2d1137b53455	2d1137b53455f506	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::~TNPCTradeController
 sub_2d225362710f#2	2d225362710fb731	inlined	protocol::TProtobufServerMessageTranslator::v206
 sub_2d235264e367	2d235264e367a192	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBosstiaryDialogController::requestPreviousPage
@@ -5619,6 +5624,7 @@ sub_38cd8b333fdc	38cd8b333fdcd8b6	tested	shared/src/jsonvalidator.cpp:TJsonValue
 sub_38d17900821c	38d17900821cc0e2	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
 sub_38d2f0a52fd8	38d2f0a52fd8cc04	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::showProcessingOrderMessage
 sub_38d93c23b1f6	38d93c23b1f62298	skip	library: std::vector growth / std::shared_ptr copy and release (library)
+sub_38e818b4f084#2	38e818b4f084195e	ported	gamewindow/cyclopediamapdialogcontroller.h:areaDonationsTooltip
 sub_38f787b6715f	38f787b6715f8909	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendEnterWorld
 sub_3925545a5ff2	3925545a5ff20594	skip	library: libc++ std::vector growth / destroy (library)
 sub_392e79029412#2	392e79029412ec82	skip	generated: moc property getter, provided by the generated cip base
@@ -5690,6 +5696,7 @@ sub_3bcbc59d35c6	3bcbc59d35c661da	tested	shared/src/jsonvalidator.cpp:TJsonArray
 sub_3bcc0704ec21	3bcc0704ec216f26	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::requestTabSwitch
 sub_3be2687a827e	3be2687a827e9a1a	skip	generated: moc property getter (generated in cip_gen)
 sub_3be833237741	3be8332377414c9b	skip	library: miniaudio library
+sub_3bf50eaefee6	3bf50eaefee6d6ee	skip	generated: destructor body: member teardown
 sub_3c26a2ce5850	3c26a2ce585014c3	ported	gamewindow/assignactiondialogs.cpp:TSpellListDataModelSortFilterProxy::setShowOnlyCurrentLevel
 sub_3c41b1677834	3c41b1677834015b	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::showCollectWarning
 sub_3c550cce5c57	3c550cce5c572105	ported	gamewindow/targetselectioncontroller.cpp:TTargetSelectionController::setSelecting
@@ -5726,6 +5733,7 @@ sub_3d7e6fcb72dd#2	3d7e6fcb72ddfa06	ported	gamewindow/cooldownbarcontroller.cpp:
 sub_3d82f1624529	3d82f1624529421e	skip	library: std::sort instantiation
 sub_3da8abf60b10	3da8abf60b10149a	ported	chat/textstorage.cpp:TTextStorage::isInNpcBubbleRange
 sub_3dd06a1c9764	3dd06a1c9764b98e	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onExtraConfirmDialogClickedNotOK
+sub_3ddd908a67f5	3ddd908a67f5c803	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapSelectionInfoArea::setAreaData
 sub_3de29a81badb	3de29a81badbb5e1	inlined	gamewindow/imbuingdialogcontroller.cpp:sortImbuements
 sub_3de29a81badb#2	3de29a81badbb5e1	inlined	gamewindow/imbuingdialogcontroller.cpp:sortImbuements
 sub_3dedb277b115	3dedb277b115e000	skip	generated: compiler-generated destructor pair
@@ -6056,6 +6064,7 @@ sub_4afb220a6d13	4afb220a6d13e3ee	skip	generated: moc signal emitter
 sub_4afb220a6d13#13	4afb220a6d13e3ee	skip	generated: moc-generated signal emitter
 sub_4afb220a6d13#14	4afb220a6d13e3ee	skip	generated: moc-generated signal emitter
 sub_4afb220a6d13#26	4afb220a6d13e3ee	skip	generated: moc-generated signal emitter
+sub_4b0893ab9a78	4b0893ab9a78b09f	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapSelectionInfoArea::areaDonationThreshold
 sub_4b356d808179	4b356d8081794ab4	tested	shared/src/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
 sub_4b356d808179#2	4b356d8081794ab4	tested	shared/src/jsonvalidator.cpp:TJsonArrayValidator::TJsonArrayValidator	test=tests/client/jsonvalidator_test.cpp
 sub_4b42f09296ba	4b42f09296ba1629	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::sendPath
@@ -6472,6 +6481,7 @@ sub_54bdf51fa8c7	54bdf51fa8c7d70b	ported	skillwheel/skillwheelcontrollers.cpp:st
 sub_54d35596d0cb	54d35596d0cb04f5	ported	teamfinder/teamfinderciptypes.cpp:TTeamStartTimeManager::setStartImmediately
 sub_54d3ab8a3cf6	54d3ab8a3cf67175	ported	gamewindow/chatcontroller.cpp:TChatChannelController::selectAll
 sub_54ddcc1cce42	54ddcc1cce4288ea	inlined	gamewindow/friendsconfigurationpagecontroller.cpp:TFriendsConfigurationPageController::setFriendGroupSetting
+sub_54e008cab984	54e008cab9842b29	ported	gamewindow/cyclopediamapdialogcontroller.h:areaData
 sub_5518ceefb13a	5518ceefb13aa67f	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::canEditPerks
 sub_551907509480#2	551907509480b8f3	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_5522f99aaaa8	5522f99aaaa82dfe	skip	generated: compiler-generated destructor pair
@@ -6504,6 +6514,7 @@ sub_567e6034cbb5	567e6034cbb51a60	ported	gamewindow/mousecursorcontroller.cpp:TM
 sub_5683fbc193a2	5683fbc193a22a3a	inlined	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::setFlag
 sub_568757ce8c16	568757ce8c16b558	ported	renderer/worldmaprenderprovider.cpp:TWorldMapRenderProvider::DrawKey::packed
 sub_56a474957591	56a47495759104c2	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeController::rebuildOffer
+sub_56a482c05155	56a482c05155581d	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapSelectionInfoArea::TCyclopediaMapSelectionInfoArea
 sub_56d97e475623	56d97e475623b24b	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendOpenExaltationHistory
 sub_56e1f32d4b77	56e1f32d4b77db00	ported	gamewindow/sidebarwidgetsmanager.h:TSidebarWidgetsManager::onKillTrackerWidgetClosed
 sub_56e401e5eeea#10	56e401e5eeea0e45	skip	generated: moc-generated signal emitter
@@ -7020,6 +7031,7 @@ sub_6b3bd2ce4356	6b3bd2ce4356ff0c	ported	gamewindow/highscoresdialogcontroller.c
 sub_6b40a7922d29	6b40a7922d29b32d	skip	generated: moc property getter, provided by the generated cip base
 sub_6b53c4c884db	6b53c4c884db966e	ported	game/skillswidgetentrydata.cpp:skillDetail
 sub_6b86b8bee918	6b86b8bee91827de	skip	generated: compiler-generated destructor pair
+sub_6b95b311f296	6b95b311f296351e	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapSelectionInfoArea::areaDonationString
 sub_6baa0f3e4887#2	6baa0f3e48871dc9	skip	library: libc++ std::vector growth / destroy (library)
 sub_6baa0f3e4887#5	6baa0f3e48871dc9	skip	library: std::set / std::vector assignment, copy and destruction (library)
 sub_6bd2c335e7fe	6bd2c335e7fea34d	ported	gamewindow/sidebarpanelsmanager.cpp:TSidebarPanelsManager::TSidebarPanelsManager
@@ -8079,6 +8091,7 @@ sub_8f2b36852cc6	8f2b36852cc69beb	ported	protocol/dispatch.gen.cpp:TProtocolMess
 sub_8f340fd7e9db	8f340fd7e9db50c6	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_8f4d7a249555	8f4d7a249555a7d3	ported	analysers/analyserstorages.cpp:THuntingSessionStorage::reset
 sub_8fad20d88fb4	8fad20d88fb4f9ee	inlined	dailyreward/dailyrewardciptypes.cpp:TDailyRewardStorage::addRewardStreakBonus
+sub_8fb6b4bbe6d9	8fb6b4bbe6d96b02	ported	gamewindow/cyclopediamapdialogcontroller.cpp:TCyclopediaMapSelectionInfoArea::percentUnlockedImprovedRespawn
 sub_8fbb15eda14b	8fbb15eda14bb973	ported	teamfinder/teamsortproxymodels.cpp:TTeamMembersModel::setItems
 sub_8fbcf5c62ca1	8fbcf5c62ca1ab1b	skip	library: libc++ std::sort introsort/insertion/sort3 instantiation over the row list
 sub_8fc86143d9fd	8fc86143d9fd3d24	skip	library: libc++ vector/deque internals (library)
@@ -11103,6 +11116,7 @@ sub_f7452b50af70	f7452b50af702d26	ported	gamewindow/calendardialogcontroller.cpp
 sub_f74dfb48d8fb	f74dfb48d8fbce91	tested	shared/src/zlibdeflatewrapper.cpp:TZlibDeflateWrapper::getMemLevel	test=tests/client/sharedio_test.cpp
 sub_f7618bd10c9f#2	f7618bd10c9fe1a5	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideWidgetController::previousUnlockedPlayerGuideEntries
 sub_f7621e35e156	f7621e35e156d375	inlined	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::updateSummaries
+sub_f764966ac696#10	f764966ac6964e43	ported	gamewindow/cyclopediamapdialogcontroller.h:areaID
 sub_f764966ac696#25	f764966ac6964e43	inlined	renderer/spritetexturecache.cpp:TSpriteTextureCache::lookup
 sub_f764966ac696#3	f764966ac6964e43	tested	shared/src/jsonvalidator.cpp:TJsonObjectValidator::isValid	test=tests/client/jsonvalidator_test.cpp
 sub_f764966ac696#4	f764966ac6964e43	tested	shared/src/jsonvalidator.cpp:TJsonObjectValidator::isValid	test=tests/client/jsonvalidator_test.cpp
