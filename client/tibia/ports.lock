@@ -73,6 +73,9 @@ appearances::TAppearanceInstanceFactory::v24	fbb038851d5aaed3	ported	appearances
 appearances::TAppearanceInstanceFactory::v3	b171dac6a3779a65	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createCumulativeObject
 appearances::TAppearanceInstanceFactory::v4	e68ad7dad3e3c935	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createLiquidObject
 appearances::TAppearanceInstanceFactory::v5	2ee4e7209dfbe94e	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createDecoItemKitObject
+appearances::TAppearanceInstanceFactory::v7	bf0d960e0d1909a5	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createFieldEffect
+appearances::TAppearanceInstanceFactory::v8	6ca43f6ca001e4d9	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createDirectionalFieldEffect
+appearances::TAppearanceInstanceFactory::v9	22252a7065a8243d	ported	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::createMissile
 appearances::TAppearanceInstanceGenericStorage::~TAppearanceInstanceGenericStorage	097457dc45e86dd8	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 appearances::TAppearanceInstanceGenericStorage::~TAppearanceInstanceGenericStorage_deleting	79674512666b34e2	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
 appearances::TAppearanceInstanceGenericStoragesManager::~TAppearanceInstanceGenericStoragesManager_deleting	d949e1bc50a3adeb	skip	generated: destructor variants (deleting wrapper / complete-object thunk)
@@ -9074,6 +9077,7 @@ sub_a4c536d9b56e#3	a4c536d9b56ec668	ported	gamewindow/cyclopediadialogcontroller
 sub_a4c536d9b56e#4	a4c536d9b56ec668	ported	gamewindow/cyclopediadialogcontroller.cpp:TCyclopediaDialogController::unlockedMinorCharmEchoesString
 sub_a4c6630aba30	a4c6630aba30b56b	ported	chat/chatgameactionhandler.cpp:TChatGameActionProvider::gameActions
 sub_a4c7011af262	a4c7011af262d16f	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
+sub_a4cf0358a2a5	a4cf0358a2a5da38	inlined	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::makeTracked
 sub_a4de7f54691a	a4de7f54691a23cb	ported	gamewindow/characterinfodialogcontroller.cpp:TCharacterInfoDialogController::openBlessingsDialog
 sub_a4e1e48d67a8	a4e1e48d67a8743a	ported	analysers/impactwidgets.cpp:TDamageInputWidgetController::updateLists
 sub_a4f7e0097573#2	a4f7e00975737d43	inlined	protocol::TProtobufServerMessageTranslator::v195
@@ -10471,6 +10475,7 @@ sub_d0b55c918c44	d0b55c918c44660f	ported	gamewindow/teamassemblepagecontroller.c
 sub_d0b5f4485899	d0b5f44858996685	ported	proficiency/weaponproficiencyshapedialogs.cpp:TWeaponProficiencyShapeDialogController::update
 sub_d0cdcb753977	d0cdcb7539776831	ported	gamewindow/actionbarcontroller.cpp:TActionBarGroup::locked
 sub_d0d20c3c2bf9	d0d20c3c2bf9ccb5	skip	generated: moc property getter, provided by the generated cip base
+sub_d0e3cab87388	d0e3cab87388e7b2	inlined	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::makeTracked
 sub_d0edd7f4745f	d0edd7f4745f0522	ported	chat/chatgameactionhandler.cpp:TClientChatEntryFactory::lootEntry
 sub_d0feb6916245	d0feb6916245b378	inlined	skillwheel/skillwheelcontrollers.cpp:TFragmentWorkshopPageController::TFragmentWorkshopPageController
 sub_d10a28960c60	d10a28960c60dd00	ported	teamfinder/teamfinderciptypes.cpp:TTeamSettings::maxLevel
@@ -11056,6 +11061,7 @@ sub_dff12325b83c	dff12325b83caec5	inlined	market/marketciptypes.cpp:TMarketProto
 sub_dff4519d4cee	dff4519d4cee85f9	inlined	skillwheel/skillwheeldata.cpp:mediumPerkValueText
 sub_e001935629a9	e001935629a93752	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::toggleWidget
 sub_e0044047d7a7	e0044047d7a717af	ported	gamewindow/preydialogcontroller.cpp:TPreyRenderInfo::onMonsterRaceListChanged
+sub_e00c06c68bdf	e00c06c68bdf3f1f	inlined	appearances/appearanceinstance.cpp:TAppearanceInstanceFactory::makeTracked
 sub_e0147eb4204f#2	e0147eb4204f60b3	inlined	protocol::TProtobufServerMessageTranslator::v124
 sub_e01d1a93d39b	e01d1a93d39b9538	ported	gamewindow/managelootcontainerdialogcontroller.cpp:TManageLootContainerDialogController::onLootContainersUpdated
 sub_e0239a74bd4d#4	e0239a74bd4df02e	skip	library: QMap/QList template instantiations

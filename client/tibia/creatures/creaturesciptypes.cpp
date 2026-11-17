@@ -138,9 +138,8 @@ void TCreatureProtocolMessageHandler::handleCreatureMarksMessage(const uint32_t 
         const Position& from = player->position();
         const Position& at = creature->position();
         const int direction = appearances::fieldDirection((at.x - from.x) * 32, (at.y - from.y) * 32);
-        auto effect = std::make_shared<appearances::TDirectionalFieldEffectInstance>(
-            tibia::game::rawThingType(effectId, ThingCategoryEffect));
-        effect->start(at, static_cast<qint64>(tibia::shared::TClockService::frameMillis()), direction);
+        const auto effect = appearances::TAppearanceInstanceFactory::createDirectionalFieldEffect(
+            effectId, at, direction, static_cast<qint64>(tibia::shared::TClockService::frameMillis()));
         tibia::worldmap::TWorldMapStorage::ensureStorage()->addEffectAppearance(effect, at);
         break;
     }

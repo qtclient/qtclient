@@ -489,6 +489,15 @@ public:
     /// upgradeable, deco item kit, else a plain object (a hangable one takes
     /// the hook state of a hangable kind).
     static TAppearanceInstancePtr createObject(const tibia::protocol::TObjectData& object);
+    /// Effect `id` on `field` from `source`, created at `nowMs` and shown `delayMs` later (CIP v7).
+    static std::shared_ptr<TFieldEffectInstance> createFieldEffect(uint16_t id, const Position& field, uint8_t source,
+                                                                   qint64 nowMs, qint64 delayMs = 0);
+    /// Effect `id` on `field` drawn towards `direction` (CIP v8).
+    static std::shared_ptr<TDirectionalFieldEffectInstance> createDirectionalFieldEffect(uint16_t id, const Position& field,
+                                                                                         int direction, qint64 nowMs);
+    /// Missile `id` flying from `from` to `to` (CIP v9).
+    static std::shared_ptr<TMissileEffectInstance> createMissile(uint16_t id, const Position& from, const Position& to,
+                                                                 uint8_t source, qint64 nowMs);
     /// An object drawn as an outfit (an outfit look of an object id).
     static std::shared_ptr<TObjectOutfitAppearanceInstance> createObjectOutfit(uint16_t id);
     /// Creates `T` the way every factory instance is made: the appearance

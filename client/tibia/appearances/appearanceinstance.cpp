@@ -534,6 +534,35 @@ TAppearanceInstanceFactory::createExpireObject(TAppearanceType* type, const int6
                                                         static_cast<int64_t>(tibia::shared::TClockService::frameMillis()));
 }
 
+std::shared_ptr<TFieldEffectInstance> TAppearanceInstanceFactory::createFieldEffect(const uint16_t id, const Position& field,
+                                                                                   const uint8_t source, const qint64 nowMs,
+                                                                                   const qint64 delayMs)
+{
+    auto effect = makeTracked<TFieldEffectInstance>(appearanceType(ThingCategoryEffect, id));
+    effect->setSource(static_cast<tibia::client::MagicEffectSources>(source));
+    effect->start(field, nowMs, delayMs);
+    return effect;
+}
+
+std::shared_ptr<TDirectionalFieldEffectInstance>
+TAppearanceInstanceFactory::createDirectionalFieldEffect(const uint16_t id, const Position& field, const int direction,
+                                                         const qint64 nowMs)
+{
+    auto effect = makeTracked<TDirectionalFieldEffectInstance>(appearanceType(ThingCategoryEffect, id));
+    effect->start(field, nowMs, direction);
+    return effect;
+}
+
+std::shared_ptr<TMissileEffectInstance> TAppearanceInstanceFactory::createMissile(const uint16_t id, const Position& from,
+                                                                                const Position& to, const uint8_t source,
+                                                                                const qint64 nowMs)
+{
+    auto missile = makeTracked<TMissileEffectInstance>(appearanceType(ThingCategoryMissile, id));
+    missile->setSource(static_cast<tibia::client::MagicEffectSources>(source));
+    missile->setPath(from, to, nowMs);
+    return missile;
+}
+
 std::shared_ptr<TObjectOutfitAppearanceInstance> TAppearanceInstanceFactory::createObjectOutfit(const uint16_t id)
 {
     return makeTracked<TObjectOutfitAppearanceInstance>(appearanceType(ThingCategoryItem, id));
