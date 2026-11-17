@@ -319,7 +319,7 @@ jobs:
           QT_PULL_ONLY: '1'
           QT_PULL_WAIT_SECS: '7200'
           QT_PULL_INTERVAL_SECS: '90'
-        # Same as desktop: wait for Qt: build GHCR kits — never compile qtdeclarative here.
+        # Same as desktop: wait for the qtclient/Qt5 kits — never compile Qt here.
         run: bash tools/qt/ci-setup.sh --wasm --pull-only --with-vcpkg --with-deps
 
       - name: Build wasm tip (+ otclient linked default pack)
@@ -342,6 +342,20 @@ jobs:
           fi
           test -f build/tibia-wasm/bin/tibia.wasm
           ccache -s || true
+
+      # The kit's network layer on the web (qtclient/Qt5: fetch QNetworkReply,
+      # browser QWebSocket, JSPI event delivery) against a local server in
+      # headless Chromium. Guards every Qt kit bump.
+      - name: Qt network contract (headless Chromium)
+        env:
+          QT_ROOT: ${{ runner.temp }}/Qt
+        run: |
+          set -euo pipefail
+          bash tests/browser/qt-network/build.sh
+          cd tests/browser/qt-network
+          npm install --no-save --no-package-lock playwright@1.64.1 ws@8.18.3
+          npx playwright install --with-deps chromium
+          node run.mjs out
 
       - name: Save vcpkg + ccache
         if: always()

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Qt network contract</title></head>
+<body>
+<pre id="out">running…</pre>
+<script src="qtnetwork_contract.js"></script>
+<script src="qtloader.js"></script>
+<script>
+  const out = document.getElementById('out');
+  const fail = (text) => { globalThis.qtNetworkContract = { failures: 1, log: text }; };
+  qtLoad({
+    print: (t) => { out.textContent += '\n' + t; },
+    printErr: (t) => { out.textContent += '\n[err] ' + t; },
+    qt: {
+      entryFunction: window.qtnetwork_contract_entry,
+      containerElements: [],
+      onExit: (exit) => { if (exit.crashed) fail('crashed: ' + exit.text); },
+    },
+  }).catch((e) => fail('qtLoad: ' + e));
+</script>
+</body>
+</html>
