@@ -310,6 +310,10 @@ QStringList dataDirs(const QString& explicitDir)
         resources.absolutePath(),
         // Host: monorepo builds run outside a package (`make extract` → data/).
         QDir::current().filePath(QStringLiteral("data")),
+#ifdef __EMSCRIPTEN__
+        // Host: local wasm builds may preload the RCC (WASM_PRELOAD_GRAPHICS_RCC=1).
+        QStringLiteral("/data"),
+#endif
 #ifdef TIBIA_SOURCE_DATA_DIR
         QStringLiteral(TIBIA_SOURCE_DATA_DIR),
 #endif

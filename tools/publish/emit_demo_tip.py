@@ -90,11 +90,11 @@ def pack_file(package_dir: Path, blob: Path, localfile: str) -> dict:
     }
 
 
-def pack_tree(package_dir: Path, tree: Path) -> list[dict]:
+def pack_tree(package_dir: Path, tree: Path, prefix: str = "") -> list[dict]:
     records: list[dict] = []
     files = sorted(p for p in tree.rglob("*") if p.is_file() and not p.is_symlink())
     for index, path in enumerate(files, start=1):
-        rel = path.relative_to(tree).as_posix()
+        rel = prefix + path.relative_to(tree).as_posix()
         if index == 1 or index % 200 == 0 or index == len(files):
             print(f"[demo] pack {index}/{len(files)} {rel}")
         records.append(pack_file(package_dir, path, rel))
@@ -112,9 +112,10 @@ def executable_for(platform: str, tree: Path) -> str:
         if nested.is_file():
             return f"{APP_NAME}.app/Contents/MacOS/{GAME_EXE}"
         return f"Contents/MacOS/{GAME_EXE}"
+    # CipSoft Linux/Windows: the engine under bin/ (bin/client).
     if platform == "windows-x64":
-        return f"{GAME_EXE}.exe"
-    return GAME_EXE
+        return f"bin/{GAME_EXE}.exe"
+    return f"bin/{GAME_EXE}"
 
 
 def _tip_mods_root(tree: Path, platform: str) -> Path:
@@ -208,7 +209,10 @@ def emit_package(
     stage_default_mods(tree, platform)
     write_revision_release_env(tree, revision)
 
-    files = pack_tree(package_dir, tree)
+    # CipSoft layout (docs/reverse-engineering/cip-package-layout.md in the
+    # monorepo): the macOS package is the bundle, Linux/Windows keep the engine
+    # under bin/ with assets/ and sounds/ (CipSoft's assets.json) beside it.
+    files = pack_tree(package_dir, tree, "" if platform == "macos-arm64" else "bin/")
     version = cip_stamp(revision)
     exe = executable_for(platform, tree)
     pkg = {
@@ -235,7 +239,7 @@ def emit_metadata(out: Path, release_base: str, platforms: list[str]) -> Path:
     release_base = release_base.rstrip("/")
     template = json.loads(DEMO_TEMPLATE.read_text()) if DEMO_TEMPLATE.is_file() else {
         "launcher": {"builds": []},
-        "packages": [{"name": "qtclient", "variant": "regular", "directoryname": "QtClient.app",
+        "packages": [{"name": "qtclient", "variant": "regular", "directoryname": "QtClient",
                       "installautomatically": True, "logolinktarget": "", "builds": []}],
         "hints": "https://static.tibia.com/hints.json",
     }
@@ -253,7 +257,8 @@ def emit_metadata(out: Path, release_base: str, platforms: list[str]) -> Path:
             "assetsversionurl": assets_version,
         })
     template["packages"][0]["builds"] = builds
-    template["packages"][0]["directoryname"] = "QtClient.app"
+    # Bare like CipSoft's "Tibia"; the launcher adds .app on macOS.
+    template["packages"][0]["directoryname"] = "QtClient"
     template["packages"][0]["name"] = "qtclient"
     meta = out / "tibiametadata.json"
     meta.write_text(json.dumps(template, indent=2) + "\n")

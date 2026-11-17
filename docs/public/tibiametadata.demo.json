@@ -6,7 +6,7 @@
     {
       "name": "qtclient",
       "variant": "regular",
-      "directoryname": "QtClient.app",
+      "directoryname": "QtClient",
       "installautomatically": true,
       "logolinktarget": "",
       "builds": [
