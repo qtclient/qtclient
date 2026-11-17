@@ -234,10 +234,10 @@ TStashDialogController::TStashDialogController(QObject* parent)
     // and stack position; Crystal stows the whole type for STOW_STACK and
     // the given count for STOW_ITEM.
     const auto stow = [](const input::TObjectGameActionContext& object, const uint8_t mode, const uint32_t amount) {
-        if (object.objectClientId == 0)
+        if (object.objectClientId() == 0)
             return false;
-        tibia::game::stashStowItem(object.position, object.objectClientId, amount,
-                                   static_cast<uint8_t>(std::max(object.stackPosition, 0)), mode);
+        tibia::game::stashStowItem(object.position(), object.objectClientId(), amount,
+                                   static_cast<uint8_t>(std::max(object.stackPosition(), 0)), mode);
         return true;
     };
     input::setActionHandler(A::STASH_STOW_TYPE, [stow](const input::TGameActionStashStowType& action) {

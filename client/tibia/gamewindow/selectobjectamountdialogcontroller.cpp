@@ -78,7 +78,7 @@ bool TSelectObjectAmountDialogController::handleSplitStack(const input::IGameAct
     if (!move || !move->objectClientId())
         return false;
     // Creatures use wire id Proto::Creature — never a stackable item amount.
-    if (move->context().creatureId || move->objectClientId() == Proto::Creature)
+    if (input::creatureOfObject(move->context()))
         return false;
     const int count = move->amount() > 0 ? move->amount() : storageSlotCount(move->position(), move->stackPosition());
     if (count <= 1)

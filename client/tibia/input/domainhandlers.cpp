@@ -94,9 +94,9 @@ void TGatherAllGameActionHandler::handleGameAction(const tibia::input::IGameActi
     if (!pGameAction || pGameAction->gameActionType() != A::GATHER_ALL)
         return;
     const std::optional<TObjectGameActionContext> object = objectContextOf(*pGameAction);
-    if (object && object->objectClientId != 0) {
-        const uint8_t stackpos = object->stackPosition >= 0 ? static_cast<uint8_t>(object->stackPosition) : 0;
-        tibia::game::gatherAll(object->position, object->objectClientId, stackpos);
+    if (object && object->objectClientId() != 0) {
+        const uint8_t stackpos = object->stackPosition() >= 0 ? static_cast<uint8_t>(object->stackPosition()) : 0;
+        tibia::game::gatherAll(object->position(), object->objectClientId(), stackpos);
     }
 }
 

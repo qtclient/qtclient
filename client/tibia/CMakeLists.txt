@@ -581,6 +581,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/storedialogcontroller.cpp gamewindow/storedialogcontroller.h
     gamewindow/bossdifficultyselectiondialogcontroller.cpp gamewindow/bossdifficultyselectiondialogcontroller.h
     input/gameaction.cpp input/gameaction.h
+    input/gameactioncontext.cpp input/gameactioncontext.h
     input/gameactionhandlers.cpp input/gameactionhandlers.h
     input/gameactionmapper.cpp input/gameactionmapper.h
     input/genericobjectgameactionprovider.cpp input/genericobjectgameactionprovider.h

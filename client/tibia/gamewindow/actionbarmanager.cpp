@@ -1,5 +1,6 @@
 #include "actionbarmanager.h"
 #include "game/gamesessionbase.h"
+#include "input/keyboardshortcuthandler.h"
 
 #include "app/clientoptions.h"
 #include "config/clientoptions.h"
@@ -387,52 +388,9 @@ bool TActionBarManager::onActionButtonTriggered(const input::TGameActionActionBu
 
 void TActionBarManager::execute(const Setting& setting)
 {
-    switch (setting.kind) {
-    case Setting::TEXT: {
-        auto text = std::make_shared<input::TGameActionSetCurrentChatChannelInputText>(setting.text, setting.sendAutomatically);
-        if (spells::TSpellInfoStorage::instance()->spellOfText(setting.text))
-            text->setSpell(true, setting.spellCastType);
-        input::publish(text);
-        break;
-    }
-    case Setting::OBJECT:
-        useObject(setting);
-        break;
-    default:
-        break;
-    }
-}
-
-void TActionBarManager::useObject(const Setting& setting)
-{
-    if (!tibia::game::hasLocalPlayer() || setting.objectId <= 0)
-        return;
-    const auto id = uint16_t(setting.objectId);
-    const auto tier = uint8_t(setting.upgradeTier.value_or(0));
-    switch (setting.useType) {
-    case config::EUseType::Use:
-        tibia::game::useInventoryItem(id);
-        break;
-    case config::EUseType::UseOnYourself:
-    case config::EUseType::UseOnTarget:
-    case config::EUseType::SelectUseTarget:
-    case config::EUseType::UseAtMouseCursor: {
-        // CIP cases 1, 2, 3, 5: USE_ON_YOURSELF / USE_ON_TARGET / USE_WITH (crosshair) /
-        // USE_AT_MOUSECURSOR on the object type.
-        A type = A::USE_AT_MOUSECURSOR;
-        switch (setting.useType) {
-        case config::EUseType::UseOnYourself: type = A::USE_ON_YOURSELF; break;
-        case config::EUseType::UseOnTarget: type = A::USE_ON_TARGET; break;
-        case config::EUseType::SelectUseTarget: type = A::USE_WITH; break;
-        default: break;
-        }
-        input::publish(input::makeObjectGameAction(type, {}, -1, static_cast<uint16_t>(id)));
-        break;
-    }
-    case config::EUseType::Equip:
-        tibia::game::equipItemId(id, tier);
-        break;
-    }
+    if (input::IGameActionPtr action = input::TKeyboardShortcutHandler::createGameAction(setting);
+        action && setting.kind != Setting::ACTION)
+        input::publish(action);
 }
 
 bool TActionBarManager::toggleActionBar(const input::IGameAction& action)

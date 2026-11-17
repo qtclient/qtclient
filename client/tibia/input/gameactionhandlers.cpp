@@ -127,30 +127,30 @@ int storageSlotCount(const Position& position, const int stackPosition)
 int moveCount(const TGameActionMoveObject& move)
 {
     const TObjectGameActionContext& action = move.context();
-    if (action.creatureId || action.objectClientId == Proto::Creature)
+    if (creatureOfObject(action))
         return 1;
     if (move.amount() > 0)
         return move.amount();
-    if (action.objectClientId && action.position.isValid())
-        return storageSlotCount(action.position, action.stackPosition);
+    if (action.objectClientId() && action.position().isValid())
+        return storageSlotCount(action.position(), action.stackPosition());
     return 1;
 }
 
 /// Canonical map position + stack for a creature MOVE (CipSoft lookCreature sibling).
-bool resolveCreatureMove(const TObjectGameActionContext& action, Position* from, int* stackPos)
+bool resolveCreatureMove(const uint32_t creatureId, Position* from, int* stackPos)
 {
-    if (!from || !stackPos || !action.creatureId)
+    if (!from || !stackPos || !creatureId)
         return false;
     tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     const std::shared_ptr<tibia::creatures::TCreature> row =
-        storage ? storage->creatureAt(action.creatureId) : nullptr;
+        storage ? storage->creatureAt(creatureId) : nullptr;
     if (!row || !row->position().isValid())
         return false;
     *from = row->position();
     *stackPos = -1;
     if (worldmap::TWorldMapStorage* map = worldmap::TWorldMapStorage::instance()) {
         if (worldmap::TWorldMapField* field = map->fieldAt(*from))
-            *stackPos = field->creatureStackPos(action.creatureId);
+            *stackPos = field->creatureStackPos(creatureId);
     }
     return *stackPos >= 0;
 }
@@ -158,35 +158,35 @@ bool resolveCreatureMove(const TObjectGameActionContext& action, Position* from,
 /// The action's object with the protocol details a client message needs.
 std::optional<tibia::game::TObjectReference> wireObject(const TObjectGameActionContext& action)
 {
-    if (!action.objectClientId || !action.position.isValid() || action.stackPosition < 0)
+    if (!action.objectClientId() || !action.position().isValid() || action.stackPosition() < 0)
         return std::nullopt;
     uint16_t count = 0;
     uint8_t tier = 0;
     uint8_t fluid = 0;
-    if (action.position.x == UINT16_MAX) {
-        if (action.position.y & 0x40) {
+    if (action.position().x == UINT16_MAX) {
+        if (action.position().y & 0x40) {
             if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-                if (const container::TStoredContainer* row = storage->containerAt(action.position.y & 0x3F)) {
+                if (const container::TStoredContainer* row = storage->containerAt(action.position().y & 0x3F)) {
                     const container::TInventorySlot slot =
-                        storage->slotAt(row->id, static_cast<int>(row->firstIndex) + action.stackPosition);
+                        storage->slotAt(row->id, static_cast<int>(row->firstIndex) + action.stackPosition());
                     count = slot.stackable ? slot.count : 0;
                     tier = slot.tier;
                     fluid = slot.fluidOrSplash ? slot.fluid : 0;
                 }
             }
         } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-            const container::TInventorySlot& slot = inventory->slotAt(action.position.y);
+            const container::TInventorySlot& slot = inventory->slotAt(action.position().y);
             count = slot.stackable ? slot.count : 0;
             tier = slot.tier;
             fluid = slot.fluidOrSplash ? slot.fluid : 0;
         }
     }
-    return tibia::game::TObjectReference{ action.objectClientId, action.position, action.stackPosition, count, tier, fluid };
+    return tibia::game::TObjectReference{ action.objectClientId(), action.position(), action.stackPosition(), count, tier, fluid };
 }
 
 uint16_t wireTypeId(const TObjectGameActionContext& action)
 {
-    return action.objectClientId;
+    return action.objectClientId();
 }
 
 void moveObject(const TGameActionMoveObject& move)
@@ -194,16 +194,16 @@ void moveObject(const TGameActionMoveObject& move)
     if (!move.destination())
         return;
     const TObjectGameActionContext& action = move.context();
-    if (action.creatureId || action.objectClientId == Proto::Creature) {
+    if (const uint32_t creatureId = creatureOfObject(action)) {
         Position from;
         int stackPos = -1;
-        if (!resolveCreatureMove(action, &from, &stackPos))
+        if (!resolveCreatureMove(creatureId, &from, &stackPos))
             return;
         tibia::game::moveMapObject(from, static_cast<uint16_t>(Proto::Creature), stackPos, *move.destination(), 1);
         return;
     }
-    if (action.objectClientId && action.position.isValid() && action.stackPosition >= 0)
-        tibia::game::moveMapObject(action.position, action.objectClientId, action.stackPosition, *move.destination(),
+    if (action.objectClientId() && action.position().isValid() && action.stackPosition() >= 0)
+        tibia::game::moveMapObject(action.position(), action.objectClientId(), action.stackPosition(), *move.destination(),
                                    moveCount(move));
 }
 
@@ -211,7 +211,7 @@ void moveObject(const TGameActionMoveObject& move)
 /// that window (CIP: TContainerGameActionHandler).
 int parentContainerId(const TObjectGameActionContext& action)
 {
-    const Position& position = action.position;
+    const Position& position = action.position();
     if (position.x != UINT16_MAX || !(position.y & 0x40))
         return -1;
     const int id = position.y & 0x3F;
@@ -381,8 +381,11 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         break;
     case A::TRY_TO_EQUIP:
         if (const uint16_t typeId = wireTypeId(object); typeId != 0) {
+            // The object's own tier (a hotkey's), else the slot's.
             uint8_t tier = 0;
-            if (const auto wire = wireObject(object))
+            if (const auto* upgradeable = gameActionContextAs<TUpgradeableObjectApperanceTypeGameActionContext>(object.object()))
+                tier = upgradeable->tier();
+            else if (const auto wire = wireObject(object))
                 tier = wire->tier;
             tibia::game::equipItemId(typeId, tier);
         }
@@ -392,15 +395,15 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
             tibia::game::openParentById(containerId);
         else if (wireTypeId(object) != 0) {
             // Depot-search parent: the object's field (CIP open parent from search).
-            tibia::game::openParentContainerFromDepotSearch(object.position);
+            tibia::game::openParentContainerFromDepotSearch(object.position());
         }
         break;
     case A::GATHER_ALL:
         // Handled by TGatherAllGameActionHandler when registered.
         break;
     case A::INSPECT_OBJECT:
-        if (object.position.isValid())
-            tibia::game::inspectionNormalObject(object.position);
+        if (object.position().isValid())
+            tibia::game::inspectionNormalObject(object.position());
         break;
     case A::INSPECT_PLAYER:
     case A::INVITE_TO_INSPECT_PLAYER:

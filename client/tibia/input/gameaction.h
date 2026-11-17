@@ -6,6 +6,8 @@
 #include <client/outfit.h>
 #include <client/position.h>
 
+#include "gameactioncontext.h"
+
 #include <QColor>
 #include <QJsonDocument>
 #include <QRectF>
@@ -431,18 +433,40 @@ public:
     }
 };
 
-/// qtclient's encoding of CIP's location and object action contexts
-/// (TLocationWorldMapGameActionContext / TLocationInventoryGameActionContext /
-/// TLocationContainerWithSlotGameActionContext with TObjectApperanceTypeGameActionContext):
-/// the field (an inventory slot is Position(0xFFFF, slot, 0), a container slot
-/// Position(0xFFFF, 0x40 | container, slot)), the stack position and the item's client id.
-struct TObjectGameActionContext
+/// CIP's location and object context pair of an object action (the two
+/// shared pointers at +0x8 / +0x18 of TGameActionLook, TGameActionUse, ...).
+class TObjectGameActionContext
 {
-    Position position;
-    int stackPosition = -1;
-    uint16_t objectClientId = 0;
-    /// A creature (CIP: TObjectCreatureGameActionContext); 0 for an object.
-    uint32_t creatureId = 0;
+public:
+    TObjectGameActionContext() = default;
+    TObjectGameActionContext(TGameActionContextPtr location, TGameActionContextPtr object)
+        : m_location(std::move(location))
+        , m_object(std::move(object))
+    {
+    }
+    /// From qtclient's classic object position (see locationContextFromPosition):
+    /// an appearance type object, or the creature when `creatureId` is set.
+    TObjectGameActionContext(const Position& position, int stackPosition, uint16_t objectClientId,
+                             uint32_t creatureId = 0);
+
+    const TGameActionContextPtr& location() const { return m_location; }
+    const TGameActionContextPtr& object() const { return m_object; }
+    EGameActionContextType locationType() const
+    {
+        return m_location ? m_location->gameActionContextType() : EGameActionContextType::LOCATION_UNKNOWN;
+    }
+
+    /// The classic position and stack position of the location.
+    Position position() const { return protocolPosition(m_location.get()); }
+    int stackPosition() const { return protocolStackPosition(m_location.get()); }
+    /// The object's appearance type (0 for a creature).
+    uint16_t objectClientId() const { return appearanceTypeIdOf(m_object.get()); }
+    /// The creature (0 for an appearance type object).
+    uint32_t creatureId() const { return input::creatureIdOf(m_object.get()); }
+
+private:
+    TGameActionContextPtr m_location;
+    TGameActionContextPtr m_object;
 };
 
 /// The object actions CIP builds from a location and an object context.
@@ -454,9 +478,11 @@ public:
     {
     }
     const TObjectGameActionContext& context() const { return m_context; }
-    const Position& position() const { return m_context.position; }
-    int stackPosition() const { return m_context.stackPosition; }
-    uint16_t objectClientId() const { return m_context.objectClientId; }
+    const TGameActionContextPtr& location() const { return m_context.location(); }
+    const TGameActionContextPtr& object() const { return m_context.object(); }
+    Position position() const { return m_context.position(); }
+    int stackPosition() const { return m_context.stackPosition(); }
+    uint16_t objectClientId() const { return m_context.objectClientId(); }
 
 private:
     TObjectGameActionContext m_context;
@@ -2772,7 +2798,7 @@ class TGameActionTargetSelected final : public TObjectGameAction
 public:
     using TObjectGameAction::TObjectGameAction;
     EGameAction gameActionType() const override { return EGameAction::TARGET_SELECTED; }
-    uint32_t creatureId() const { return context().creatureId; }
+    uint32_t creatureId() const { return context().creatureId(); }
 };
 using TTargetSelectedPtr = std::shared_ptr<const TGameActionTargetSelected>;
 
@@ -3050,8 +3076,17 @@ private:
 class TGameActionTryToEquip final : public TObjectGameAction
 {
 public:
-    using TObjectGameAction::TObjectGameAction;
+    /// CIP takes the object (type, liquid or tier) and the hotkey's smart mode.
+    explicit TGameActionTryToEquip(const TObjectGameActionContext& object, bool smartMode = false)
+        : TObjectGameAction(object)
+        , m_smartMode(smartMode)
+    {
+    }
     EGameAction gameActionType() const override { return EGameAction::TRY_TO_EQUIP; }
+    bool smartMode() const { return m_smartMode; }
+
+private:
+    bool m_smartMode;
 };
 
 /// CIP input::TGameActionInspectObject (INSPECT_OBJECT).
@@ -3166,6 +3201,11 @@ namespace gameactions {
 IGameActionPtr makeGameAction(EGameAction type);
 /// The object action of `type` on the object (CIP: its location and object contexts).
 IGameActionPtr makeObjectGameAction(EGameAction type, const Position& position, int stackPosition, uint16_t objectClientId = 0);
+IGameActionPtr makeObjectGameAction(EGameAction type, const TObjectGameActionContext& context);
+/// The creature an object context stands for: its creature context, or the
+/// creature at its world map stack position (CIP passes creatures on the map
+/// as their outfit's appearance type); 0 for any other object.
+uint32_t creatureOfObject(const TObjectGameActionContext& object);
 /// The object an action is on (CIP: its location and object contexts); empty for none.
 std::optional<TObjectGameActionContext> objectContextOf(const IGameAction& action);
 IGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);

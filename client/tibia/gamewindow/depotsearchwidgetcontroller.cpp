@@ -641,9 +641,14 @@ input::TGameActionList TDepotSearchWidgetController::slotActions(const int stora
         storageLocation == Inbox ? m_detailList->inboxObjects() : m_detailList->depotObjects();
     if (slotId < 0 || slotId >= static_cast<int>(objects.size()) || objects[static_cast<size_t>(slotId)].empty())
         return {};
+    // CIP: the depot search's depot or inbox item location.
+    const input::TGameActionContextPtr location =
+        storageLocation == Inbox
+            ? input::TGameActionContextPtr(std::make_shared<input::TLocationDepotSearchInboxItemGameActionContext>(slotId))
+            : input::TGameActionContextPtr(std::make_shared<input::TLocationDepotSearchDepotItemGameActionContext>(slotId));
     input::TGameActionList actions{ input::makeGameAction(A::CONTEXT_MENU) };
     for (input::IGameActionPtr& action :
-         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(objects[static_cast<size_t>(slotId)], {}, slotId),
+         input::filterActions(input::TGenericObjectGameActionProvider::objectActions(location, objects[static_cast<size_t>(slotId)]),
                               ObjectContextMenuOrder))
         actions.push_back(std::move(action));
     return actions;

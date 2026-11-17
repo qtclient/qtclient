@@ -95,9 +95,12 @@ public:
     static void switchToNextHotkeySet();
     static void switchToPreviousHotkeySet();
 
+    /// The action a setting runs: a chat text, a static action, or an object
+    /// used in the setting's way (CIP: also the action button handler's); null
+    /// for any other setting.
+    static IGameActionPtr createGameAction(const config::TActionSetting& setting);
+
 private:
-    /// The action a setting runs (a static action, or a chat text), or null.
-    IGameActionPtr createGameAction(const config::TActionSetting& setting) const;
 
     TKeyboardShortcutHandlerEventFilter* m_pEventFilter;
     std::function<int()> m_chatMode;

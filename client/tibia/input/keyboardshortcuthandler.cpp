@@ -233,7 +233,7 @@ void TKeyboardShortcutHandler::onHotkeyOptionsChanged()
     m_pEventFilter->setKeySequences(std::move(keySequences));
 }
 
-IGameActionPtr TKeyboardShortcutHandler::createGameAction(const config::TActionSetting& setting) const
+IGameActionPtr TKeyboardShortcutHandler::createGameAction(const config::TActionSetting& setting)
 {
     switch (setting.kind) {
     case config::TActionSetting::TEXT: {
@@ -244,6 +244,29 @@ IGameActionPtr TKeyboardShortcutHandler::createGameAction(const config::TActionS
     }
     case config::TActionSetting::ACTION:
         return staticAction(setting.action);
+    case config::TActionSetting::OBJECT: {
+        if (setting.objectId <= 0)
+            return nullptr;
+        const auto id = static_cast<uint16_t>(setting.objectId);
+        TGameActionContextPtr object;
+        if (setting.liquidType)
+            object = std::make_shared<TLiquidObjectApperanceTypeGameActionContext>(id, static_cast<uint32_t>(*setting.liquidType));
+        else if (setting.upgradeTier)
+            object = std::make_shared<TUpgradeableObjectApperanceTypeGameActionContext>(id, static_cast<uint8_t>(*setting.upgradeTier));
+        else
+            object = std::make_shared<TObjectApperanceTypeGameActionContext>(id);
+        // An object hotkey uses the object wherever the player has one.
+        const TObjectGameActionContext context{ std::make_shared<TLocationUnknownContext>(), object };
+        switch (setting.useType) {
+        case config::EUseType::Use: return std::make_shared<TGameActionUse>(context);
+        case config::EUseType::UseOnYourself: return std::make_shared<TGameActionUseOnYourself>(context);
+        case config::EUseType::UseOnTarget: return std::make_shared<TGameActionUseOnTarget>(context);
+        case config::EUseType::SelectUseTarget: return std::make_shared<TGameActionUseWith>(context);
+        case config::EUseType::Equip: return std::make_shared<TGameActionTryToEquip>(context, setting.useEquipSmartMode);
+        case config::EUseType::UseAtMouseCursor: return std::make_shared<TGameActionUseAtMouseCursor>(context);
+        }
+        return nullptr;
+    }
     default:
         return nullptr;
     }

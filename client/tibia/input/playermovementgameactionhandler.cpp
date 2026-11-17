@@ -29,7 +29,7 @@ void TPlayerMovementGameActionHandler::handleGameAction(const tibia::input::IGam
     // either lies on the map (not in a container or the inventory).
     const auto onMap = [](const IGameAction& action) {
         const std::optional<TObjectGameActionContext> object = objectContextOf(action);
-        return creatureIdOf(action) == 0 && object && object->position.isValid() && object->position.x != 0xffff;
+        return creatureIdOf(action) == 0 && object && object->position().isValid() && object->position().x != 0xffff;
     };
     switch (pGameAction->gameActionType()) {
     case A::SET_PLAYER_MOVEMENT_INTENT:
@@ -54,7 +54,7 @@ void TPlayerMovementGameActionHandler::handleGameAction(const tibia::input::IGam
     case A::USE_WITH:
         if (const auto* use = gameActionAs<TGameActionUseWith>(pGameAction); use && use->hasTarget()) {
             const TObjectGameActionContext& target = *use->target();
-            const bool targetOnMap = target.creatureId == 0 && target.position.isValid() && target.position.x != 0xffff;
+            const bool targetOnMap = target.creatureId() == 0 && target.position().isValid() && target.position().x != 0xffff;
             if (onMap(*use) || targetOnMap)
                 tibia::game::localPlayerClearMovementGoal();
         }

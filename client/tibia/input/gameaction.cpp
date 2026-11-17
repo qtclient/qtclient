@@ -2,6 +2,8 @@
 
 #include "chat/chatchannel.h"
 #include "protocol/protocolcodes.h"
+#include "worldmap/worldmapfield.h"
+#include "worldmap/worldmapstorage.h"
 
 #include <algorithm>
 
@@ -257,10 +259,34 @@ namespace gameactions {
 
 }
 
+TObjectGameActionContext::TObjectGameActionContext(const Position& position, const int stackPosition,
+                                                   const uint16_t objectClientId, const uint32_t creatureId)
+    : m_location(locationContextFromPosition(position, stackPosition))
+{
+    if (creatureId)
+        m_object = std::make_shared<TObjectCreatureGameActionContext>(creatureId);
+    else if (objectClientId)
+        m_object = std::make_shared<TObjectApperanceTypeGameActionContext>(objectClientId);
+}
+
+uint32_t creatureOfObject(const TObjectGameActionContext& object)
+{
+    if (const uint32_t creatureId = object.creatureId())
+        return creatureId;
+    const auto* field = gameActionContextAs<TLocationWorldMapCoordinateWithStackPositionContext>(object.location());
+    worldmap::TWorldMapStorage* map = field ? worldmap::TWorldMapStorage::instance() : nullptr;
+    worldmap::TWorldMapField* mapField = map ? map->fieldAt(field->coordinate()) : nullptr;
+    return mapField ? mapField->stackCreatureId(field->stackPosition()) : 0;
+}
+
 IGameActionPtr makeObjectGameAction(const EGameAction type, const Position& position, const int stackPosition,
                                     const uint16_t objectClientId)
 {
-    const TObjectGameActionContext context{ position, stackPosition, objectClientId };
+    return makeObjectGameAction(type, TObjectGameActionContext{ position, stackPosition, objectClientId });
+}
+
+IGameActionPtr makeObjectGameAction(const EGameAction type, const TObjectGameActionContext& context)
+{
     switch (type) {
     case EGameAction::LOOK:
         return std::make_shared<TGameActionLook>(context);
@@ -334,7 +360,7 @@ uint32_t creatureIdOf(const IGameAction& action)
     if (const auto* use = dynamic_cast<const TGameActionUseOnCreature*>(&action))
         return use->targetCreatureId();
     if (const auto* object = dynamic_cast<const TObjectGameAction*>(&action))
-        return object->context().creatureId;
+        return object->context().creatureId();
     return 0;
 }
 
@@ -523,10 +549,10 @@ IGameActionPtr finalizeDrop(const IGameActionPtr& move, const Position& destinat
     if (!moved)
         return nullptr;
     const TObjectGameActionContext& object = moved->context();
-    if (moved->moveAll() || object.position == destination)
+    if (moved->moveAll() || object.position() == destination)
         return std::make_shared<TGameActionMoveObject>(object, destination, moved->moveAll(), moved->amount());
-    // Creatures are not stacks — never open the amount dialog for Proto::Creature.
-    if (object.creatureId || object.objectClientId == Proto::Creature)
+    // Creatures are not stacks — never open the amount dialog for one.
+    if (creatureOfObject(object))
         return std::make_shared<TGameActionMoveObject>(object, destination, false, moved->amount());
     if (modifiers & Qt::ShiftModifier)
         return std::make_shared<TGameActionMoveObject>(object, destination, true, moved->amount());

@@ -86,7 +86,6 @@ private:
     /// CIP .
     bool onActionButtonTriggered(const input::TGameActionActionButtonTriggered& action);
     void execute(const config::TActionSetting& setting);
-    void useObject(const config::TActionSetting& setting);
     bool toggleActionBar(const input::IGameAction& action);
     bool toggleActionBars(const input::IGameAction& action);
     void applyMappings();

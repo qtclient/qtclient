@@ -68,8 +68,8 @@ bool TReportViolationController::handleAction(const input::IGameAction& action)
     case A::GET_TEXT_FOR_REPORT:
         if (const auto* request = input::gameActionAs<input::TGameActionGetTextForReport>(&action)) {
             const input::TObjectGameActionContext& object = request->object();
-            tibia::game::requestTextForReport(object.position, object.objectClientId,
-                                              static_cast<uint8_t>(std::max(object.stackPosition, 0)));
+            tibia::game::requestTextForReport(object.position(), object.objectClientId(),
+                                              static_cast<uint8_t>(std::max(object.stackPosition(), 0)));
         }
         return true;
     default:

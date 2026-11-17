@@ -101,7 +101,7 @@ bool TQuickLootGameActionHandler::handleGameAction(const input::IGameAction& pGa
             const input::TObjectGameActionContext& container = select->container();
             P::sendManagedContainer(pGameAction.gameActionType() == A::LOOT_CONTAINER_SELECT ? P::SelectLootContainer
                                                                                               : P::SelectObtainContainer,
-                                    select->category(), container.position, container.objectClientId, container.stackPosition);
+                                    select->category(), container.position(), container.objectClientId(), container.stackPosition());
         }
         return true;
     case A::LOOT_CONTAINER_CLEAR:

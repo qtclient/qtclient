@@ -18,7 +18,7 @@ using CastType = cip::tibia::qmlcomponents::enums::ESpellCastOptionalTargetType;
 
 bool isMapLocated(const TObjectGameActionContext& object)
 {
-    return object.objectClientId && object.position.isValid() && object.stackPosition >= 0 && object.position.x != UINT16_MAX;
+    return object.objectClientId() && object.position().isValid() && object.stackPosition() >= 0 && object.position().x != UINT16_MAX;
 }
 
 /// CIP : GameclientMessageUseOnCreature (object, its location, creature).
@@ -27,27 +27,27 @@ void useOnCreature(const TObjectGameActionContext& object, const uint32_t creatu
     if (!creatureId)
         return;
     if (isMapLocated(object)) {
-        tibia::game::useMapObjectOnCreature(object.position, object.objectClientId, object.stackPosition, creatureId);
+        tibia::game::useMapObjectOnCreature(object.position(), object.objectClientId(), object.stackPosition(), creatureId);
         return;
     }
     // Action-bar / inventory / type-only: inventory use by client id.
-    if (object.objectClientId)
-        tibia::game::useInventoryItemOnCreature(object.objectClientId, creatureId);
+    if (object.objectClientId())
+        tibia::game::useInventoryItemOnCreature(object.objectClientId(), creatureId);
 }
 
 /// The field a crosshair spell aims at (CIP): a creature's, else
 /// a world map field's; container and inventory targets have none.
 Position targetPosition(const TObjectGameActionContext& target)
 {
-    if (target.creatureId) {
+    if (target.creatureId()) {
         if (tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance()) {
-            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(target.creatureId))
+            if (const std::shared_ptr<tibia::creatures::TCreature> row = storage->creatureAt(target.creatureId()))
                 return row->position();
         }
         return {};
     }
-    if (target.position.isValid() && target.position.x != UINT16_MAX)
-        return target.position;
+    if (target.position().isValid() && target.position().x != UINT16_MAX)
+        return target.position();
     return {};
 }
 
@@ -64,15 +64,15 @@ void selectTargetFor(std::function<IGameActionPtr(const TObjectGameActionContext
 /// CIP : GameclientMessageUseTwoObjects (object and target, each with its location).
 void useWith(const TObjectGameActionContext& object, const TObjectGameActionContext& target)
 {
-    if (!object.objectClientId || target.creatureId || !target.objectClientId || !target.position.isValid()
-        || target.stackPosition < 0)
+    if (!object.objectClientId() || target.creatureId() || !target.objectClientId() || !target.position().isValid()
+        || target.stackPosition() < 0)
         return;
     if (isMapLocated(object)) {
-        tibia::game::useWithMapObject(object.position, object.objectClientId, object.stackPosition, target.position,
-                                      target.objectClientId, target.stackPosition);
+        tibia::game::useWithMapObject(object.position(), object.objectClientId(), object.stackPosition(), target.position(),
+                                      target.objectClientId(), target.stackPosition());
         return;
     }
-    tibia::game::useInventoryItemWithMapObject(object.objectClientId, target.position, target.objectClientId, target.stackPosition);
+    tibia::game::useInventoryItemWithMapObject(object.objectClientId(), target.position(), target.objectClientId(), target.stackPosition());
 }
 
 void castAtTarget(const TGameActionTargetedSpell& spell, const TObjectGameActionContext& target)
@@ -152,7 +152,7 @@ void TUseWithGameActionHandler::handleGameAction(const IGameActionPtr pGameActio
                     return std::make_shared<TGameActionUseWith>(object, target);
                 },
                 emitAction);
-        } else if (const uint32_t creatureId = action.target()->creatureId) {
+        } else if (const uint32_t creatureId = action.target()->creatureId()) {
             Q_EMIT publishGameAction(std::make_shared<TGameActionUseOnCreature>(action.context(), creatureId));
         } else {
             useWith(action.context(), *action.target());

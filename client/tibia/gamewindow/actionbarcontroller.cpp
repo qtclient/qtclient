@@ -458,16 +458,16 @@ void TActionBarController::onDropped(const uint ButtonId, const int MultiActionI
     if (!dropped)
         return;
     const input::TObjectGameActionContext& move = dropped->context();
-    uint16_t typeId = move.objectClientId;
+    uint16_t typeId = move.objectClientId();
     uint8_t tier = 0;
-    if (typeId != 0 && move.position.x == UINT16_MAX) {
-        if (move.position.y & 0x40) {
+    if (typeId != 0 && move.position().x == UINT16_MAX) {
+        if (move.position().y & 0x40) {
             if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-                if (const container::TStoredContainer* row = storage->containerAt(move.position.y & 0x3F))
-                    tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + move.stackPosition).tier;
+                if (const container::TStoredContainer* row = storage->containerAt(move.position().y & 0x3F))
+                    tier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + move.stackPosition()).tier;
             }
         } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-            tier = inventory->slotAt(move.position.y).tier;
+            tier = inventory->slotAt(move.position().y).tier;
         }
     }
     if (typeId == 0)

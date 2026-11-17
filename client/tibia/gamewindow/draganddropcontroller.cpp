@@ -182,10 +182,11 @@ void TDragAndDropController::startDrag(const input::TMoveObjectPtr& action, QObj
     m_action = action;
     m_source = qobject_cast<QQuickItem*>(source);
     const input::TObjectGameActionContext& object = action->context();
-    updateIcon(object.objectClientId, object.position, object.stackPosition, object.creatureId);
+    const uint32_t creatureId = input::creatureOfObject(object);
+    updateIcon(creatureId ? 0 : object.objectClientId(), object.position(), object.stackPosition(), creatureId);
     // CipSoft dragApperanceInstanceIcon is a SingleObject item renderer — creatures
     // have no item art under the cursor (looktype-as-typeid would show a random item).
-    const bool creatureDrag = object.creatureId != 0 || object.objectClientId == Proto::Creature;
+    const bool creatureDrag = creatureId != 0;
     if (m_icon)
         m_icon->setVisible(!creatureDrag);
     moveIcon();

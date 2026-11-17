@@ -315,17 +315,17 @@ TMarketController::TMarketController(market::TMarketStorage* storage, market::TM
         const input::TObjectGameActionContext& action = browse.context();
         uint16_t typeId = 0;
         uint8_t tier = browse.tier();
-        if (action.objectClientId) {
-            typeId = action.objectClientId;
+        if (action.objectClientId()) {
+            typeId = action.objectClientId();
             uint8_t slotTier = 0;
-            if (action.position.x == UINT16_MAX) {
-                if (action.position.y & 0x40) {
+            if (action.position().x == UINT16_MAX) {
+                if (action.position().y & 0x40) {
                     if (container::TContainerStorage* storage = container::TContainerStorage::instance()) {
-                        if (const container::TStoredContainer* row = storage->containerAt(action.position.y & 0x3F))
-                            slotTier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + action.stackPosition).tier;
+                        if (const container::TStoredContainer* row = storage->containerAt(action.position().y & 0x3F))
+                            slotTier = storage->slotAt(row->id, static_cast<int>(row->firstIndex) + action.stackPosition()).tier;
                     }
                 } else if (container::TInventoryContainer* inventory = container::TInventoryContainer::instance()) {
-                    slotTier = inventory->slotAt(action.position.y).tier;
+                    slotTier = inventory->slotAt(action.position().y).tier;
                 }
             }
             const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);

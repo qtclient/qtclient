@@ -28,11 +28,10 @@ TGameActionList actionsOf(const TFieldObject& object, const TWorldMapField* fiel
 {
     if (!object)
         return {};
-    // CIP TLocationWorldMapCoordinateWithStackPositionContext for field objects.
-    (void)input::TLocationWorldMapCoordinateWithStackPositionContext(
-        position.x, position.y, position.z, object.stackPosition);
-    if (const uint16_t clientId = object.clientId())
-        (void)input::TObjectApperanceTypeGameActionContext(clientId);
+    // The map menu takes a creature's actions from the creature provider (v4);
+    // of its object actions only the move.
+    if (object.creatureId)
+        return input::filterActions(Provider::objectActions(object, field, position), { A::MOVE_OBJECT });
     return input::filterActions(Provider::objectActions(object, field, position), types);
 }
 
@@ -95,7 +94,8 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     const uint32_t localId = tibia::game::localPlayerId();
     const bool fieldCreatureIsOwn = fieldCreatureId && localId && fieldCreatureId == localId;
 
-    const TGameActionList lookActions = Provider::objectActions(pick.look, pick.field, pick.position);
+    const TGameActionList lookActions =
+        pick.look.creatureId ? TGameActionList{} : Provider::objectActions(pick.look, pick.field, pick.position);
     const TGameActionList lookList = input::filterActions(lookActions, { A::LOOK, A::INSPECT_OBJECT, A::OPEN_CYCLOPEDIA, A::OPEN_WEAPON_PROFICIENCY_DIALOG, A::LENSHELP_SHOW, A::SMART_CLICK, A::GET_TEXT_FOR_REPORT });
     const TGameActionList lootList = input::filterActions(lookActions, { A::LOOT_ADD_TO_BLACKWHITELIST, A::LOOT_REMOVE_FROM_BLACKWHITELIST });
     // On the map a container opens in a new window only: OPEN is not offered.
@@ -116,10 +116,6 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
     const uint32_t pixelCreatureId = TWorldMapPicker::creatureAt(m_provider, m_viewport, mapPixel);
     const TGameActionList creatureActions = Provider::creatureActions(pixelCreatureId);
     result.push_back(input::makeGameAction(A::CONTEXT_MENU));
-    (void)input::TLocationWorldMapGameActionContext(pick.position.x, pick.position.y, pick.position.z);
-    (void)input::TLocationWorldMapCoordinateContext(pick.position.x, pick.position.y, pick.position.z);
-    if (pixelCreatureId)
-        (void)input::TObjectCreatureGameActionContext(pixelCreatureId);
 
     const TGameActionList moveList = actionsOf(pick.move, pick.field, pick.position, { A::MOVE_OBJECT });
 
@@ -179,11 +175,11 @@ TWorldMapGameActionProvider::TMouseTargetObject TWorldMapGameActionProvider::mou
     case A::LOOK: {
         const std::optional<input::TObjectGameActionContext> object = input::objectContextOf(*pGameAction);
         TMouseTargetObject target;
-        target.typeId = object ? object->objectClientId : 0;
+        target.typeId = object ? object->objectClientId() : 0;
         if (!target.typeId)
             return {};
-        target.field = object->position;
-        target.stackPos = object->stackPosition;
+        target.field = object->position();
+        target.stackPos = object->stackPosition();
         return target;
     }
     case A::USE_ON_CREATURE:
