@@ -379,6 +379,7 @@ TGameClient::TGameClient(QObject* parent)
 
 TGameClient::~TGameClient()
 {
+    m_gameWindow.reset();
     input::setActionHandler(input::EGameAction::CHANGE_CHARACTER, nullptr);
     input::setActionHandler(input::EGameAction::CHARACER_SELECTION_AUTO_CLOSE, nullptr);
     shutdown();

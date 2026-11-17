@@ -19,6 +19,8 @@
 #include <vector>
 #include <optional>
 
+class QQmlEngine;
+class QQuickItem;
 class QQuickWindow;
 
 namespace tibia {
@@ -37,6 +39,7 @@ namespace tibia {
 namespace gamewindow {
 class TCharacterSelectionController;
 class TCrashReportDialogController;
+class TGameWindowController;
 struct CharacterEntry;
 }
 namespace shared {
@@ -145,8 +148,30 @@ public:
         QString replay;
     };
 
+    /// What the game window is built in, and how the session starts.
+    struct TGameWindowSetup
+    {
+        QQmlEngine* engine = nullptr;
+        QQuickWindow* window = nullptr;
+        /// clientwindow.qml's placeholder the game window goes into.
+        QQuickItem* placeholder = nullptr;
+        app::LauncherEnv env;
+        /// Character selection with sample characters, no session.
+        bool preview = false;
+        /// The list CharacterSelection.qml shows.
+        gamewindow::TCharacterSelectionController* characterSelection = nullptr;
+        Options options;
+        QString argv0;
+        QString workDir;
+    };
+
     explicit TGameClient(QObject* parent = nullptr);
     ~TGameClient() override;
+
+    /// Creates the game window and its controllers, storages and input
+    /// handlers, connects them and (unless previewing) starts the session.
+    /// False when a QML file does not load or the engine does not start.
+    bool createGameWindow(const TGameWindowSetup& setup);
 
     /// Starts the engine, loads assets and logs in. False when the engine
     /// cannot start (no work dir).
@@ -196,11 +221,8 @@ public:
     config::TActionBarOptions* actionBarOptions() const { return m_actionBarOptions.get(); }
     /// The character's outfit presets.
     game::TOutfitDialogStorage* outfitDialogStorage() const { return m_outfitDialogStorage.get(); }
-    /// Null until createCharacterConfigurationManager.
+    /// Null until the game window exists.
     config::TCharacterConfigurationManager* characterConfigurationManager() const { return m_characterConfigurationManager.get(); }
-    /// Builds the manager of every character configuration storage: the game client's own
-    /// (sidebars, action bars, statusbar, outfit presets) and the given ones.
-    void createCharacterConfigurationManager(config::TCharacterConfigurationManager::TStorages storages);
     /// The session's minimap; null outside the world.
     minimap::TMinimapManager* minimap() const { return m_minimap.get(); }
     /// The chosen world's EWorldType (CIP TGameSessionBase +0x34, set by
@@ -258,6 +280,17 @@ Q_SIGNALS:
     void sessionEmailAvailable(const QString& email);
 
 private:
+    struct TGameWindow;
+    struct TGameWindowDeleter
+    {
+        void operator()(TGameWindow* gameWindow) const;
+    };
+
+    /// Builds the manager of every character configuration storage: the game client's own
+    /// (sidebars, action bars, statusbar, outfit presets) and the given ones.
+    void createCharacterConfigurationManager(config::TCharacterConfigurationManager::TStorages storages);
+    /// Logs the session out; without one, shows the start screen when given.
+    void requestLogoutOrShowStartScreen(gamewindow::TGameWindowController* startScreen);
     /// CIP: posts the pending crash report to the configured crashReportUrl
     /// (the dumps only for a full report), then deletes the crash dumps.
     void sendCrashReport(bool SendFullReport);
@@ -329,6 +362,8 @@ private:
     bool m_sameSocketCharacterSwitch = false;
     /// Logged in once the current character has left the world (CIP switch).
     std::optional<QString> m_pendingCharacter;
+    /// Destroyed first: its objects use the client's storages and session.
+    std::unique_ptr<TGameWindow, TGameWindowDeleter> m_gameWindow;
 };
 
 }

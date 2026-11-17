@@ -373,6 +373,7 @@ if(TIBIA_WITH_GAMECORE)
     gamewindow/reportviolationcontroller.cpp gamewindow/reportviolationcontroller.h
     gamewindow/bugreportdialogcontroller.cpp gamewindow/bugreportdialogcontroller.h
     client/gameclient.cpp client/gameclient.h
+    client/gameclientgamewindow.cpp
     client/gamecore.cpp client/gamecore.h
     client/magiceffectopacity.cpp client/magiceffectopacity.h
     qmlcomponents/qmlcomponentsciptypes.cpp qmlcomponents/qmlcomponentsciptypes.h
