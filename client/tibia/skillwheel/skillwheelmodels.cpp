@@ -339,12 +339,25 @@ QVariantMap TModListModel::rowData(const QModelIndex& Index)
     return row;
 }
 
-int TModListModel::rowOfMod(const bool isBasic, const int modId) const
+
+QModelIndex TModListSortFilterProxyModel::indexOfSupremeMod(const int modId) const
 {
-    for (size_t row = 0; row < m_mods.size(); ++row)
-        if (m_mods[row].basic == isBasic && m_mods[row].mod == modId)
-            return static_cast<int>(row);
-    return -1;
+    for (int row = 0; row < rowCount(); ++row) {
+        const QModelIndex index = this->index(row, 0);
+        if (data(index, TModListModel::ModId) == QVariant(modId) && !data(index, TModListModel::IsBasicMod).toBool())
+            return index;
+    }
+    return {};
+}
+
+QModelIndex TModListSortFilterProxyModel::indexOfBasicMod(const int modId) const
+{
+    for (int row = 0; row < rowCount(); ++row) {
+        const QModelIndex index = this->index(row, 0);
+        if (data(index, TModListModel::ModId) == QVariant(modId) && data(index, TModListModel::IsBasicMod).toBool())
+            return index;
+    }
+    return {};
 }
 
 TModListSortFilterProxyModel::TModListSortFilterProxyModel(TModListModel* source, QObject* parent)

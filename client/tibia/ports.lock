@@ -12775,6 +12775,7 @@ sub_c51f5d61ec17	c51f5d61ec17f6cb	ported	skillwheel/skillwheelcontrollers.cpp:TG
 sub_c52d1e95c4dd	c52d1e95c4dd266a	ported	gamewindow/dialogmanager.cpp:TDialog::setVisibleByStack
 sub_c53062cb5c6d	c53062cb5c6d23ea	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::onDetailListChanged
 sub_c5316a697832#2	c5316a6978325d6c	skip	generated: protobuf-generated message constructor
+sub_c53224ae374e	c53224ae374ee8ca	ported	skillwheel/skillwheelmodels.cpp:TModListSortFilterProxyModel::indexOfSupremeMod
 sub_c54a7f75da54	c54a7f75da5440dc	inlined	appearances/appearancetype.cpp:animationFrom
 sub_c5570e17563a#2	c5570e17563a705a	skip	library: std::sort instantiation (introsort/sort3-5/insertion/heap helpers and their comparators) over the static-data tables
 sub_c558740f151c	c558740f151c5bb7	skip	generated: compiler-generated destructor pair
@@ -14638,6 +14639,7 @@ sub_f54b4a6279bb	f54b4a6279bbfa23	skip	generated: moc property getter, provided 
 sub_f583ecb67b67	f583ecb67b67fe4a	ported	gamewindow/outfitdialogcontroller.cpp:TSelectOutfitDialogController::direction
 sub_f58998b9970a#2	f58998b9970a9c0f	ported	skillwheel/skillwheelmodels.cpp:TModListModel::vocationIndex
 sub_f58ad2d66834	f58ad2d668348c01	ported	gamewindow/actionbuttoncontroller.h:TActionButtonController::passiveAbilityIconUrl
+sub_f5a2c9cf9bc8	f5a2c9cf9bc8cde4	ported	skillwheel/skillwheelmodels.cpp:TModListSortFilterProxyModel::indexOfBasicMod
 sub_f5b149f363e0	f5b149f363e0498a	ported	cyclopedia/characterinfostorage.cpp:TOutfitsMountsSummonSkins::TOutfitsMountsSummonSkins
 sub_f5b149f363e0#2	f5b149f363e0498a	ported	cyclopedia/characterinfostorage.cpp:TOutfitsMountsSummonSkins::TOutfitsMountsSummonSkins
 sub_f5b999c169aa	f5b999c169aa3cc8	skip	library: std::vector<bool>/vector<int> resize and range-check instantiations (host keeps answers in a hash map)

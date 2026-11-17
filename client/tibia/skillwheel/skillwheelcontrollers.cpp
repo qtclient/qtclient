@@ -1472,14 +1472,12 @@ void TFragmentWorkshopPageController::selectMod(const bool isBasicMod, const int
 {
     m_pendingBasic = isBasicMod;
     m_pendingMod = ModID;
-    const int row = m_list->rowOfMod(isBasicMod, ModID);
-    if (row < 0)
-        return;
-    QModelIndex filtered = m_filter->mapFromSource(m_list->index(row, 0));
+    const auto find = [this, isBasicMod, ModID] { return isBasicMod ? m_filter->indexOfBasicMod(ModID) : m_filter->indexOfSupremeMod(ModID); };
+    QModelIndex filtered = find();
     if (!filtered.isValid()) {
         m_filter->setFilterModName(QString());
         setFilterMods(0);
-        filtered = m_filter->mapFromSource(m_list->index(row, 0));
+        filtered = find();
     }
     if (filtered.isValid())
         setSelectedModIndex(m_pages->showSourceRow(filtered.row()));

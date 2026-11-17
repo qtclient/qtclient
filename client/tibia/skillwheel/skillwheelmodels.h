@@ -109,7 +109,6 @@ public:
     void setMods(const std::vector<TModListEntry>& mods);
     void setConfiguration(const TWheel& configuration, const TGrades& basicGrades, const TGrades& supremeGrades);
     const TModListEntry* entry(int row) const;
-    int rowOfMod(bool isBasic, int modId) const;
     /// The configuration's vocation index, 0 without one.
     int vocationIndex() const;
     int basicGrade(int mod) const;
@@ -135,6 +134,9 @@ public:
     int filterMods() const { return m_filterMods; }
     void setFilterMods(int v);
     Q_INVOKABLE QVariantMap rowData(const QModelIndex& Index) override;
+    /// CIP: the first shown row of the supreme / basic mod, an invalid index without one.
+    QModelIndex indexOfSupremeMod(int modId) const;
+    QModelIndex indexOfBasicMod(int modId) const;
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
