@@ -84,7 +84,7 @@ private:
     /// The active game session's storage connection.
     QMetaObject::Connection m_containerUpdated;
     /// CIP .
-    bool onActionButtonTriggered(const input::TGameAction& action);
+    bool onActionButtonTriggered(const input::TGameActionActionButtonTriggered& action);
     void execute(const config::TActionSetting& setting);
     void useObject(const config::TActionSetting& setting);
     bool toggleActionBar(const input::IGameAction& action);

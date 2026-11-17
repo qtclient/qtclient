@@ -120,8 +120,8 @@ void TGenericGameActionHandler::handleGameAction(const tibia::input::IGameAction
         handleToggleFullscreenAction();
         break;
     case A::SMART_CLICK:
-        if (fields && fields->inner)
-            Q_EMIT publishGameAction(fields->inner);
+        if (const IGameActionPtr& inner = static_cast<const TGameActionSmartClick&>(action).innerGameAction())
+            Q_EMIT publishGameAction(inner);
         break;
     case A::REQUEST_RESOURCE_BALANCE:
         handleRequestResourceBalanceAction(static_cast<const TGameActionRequestResourceBalance&>(action));

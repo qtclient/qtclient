@@ -2542,8 +2542,10 @@ input::TGameActionCloseCurrentChatChannel::v2	e9caf669ab302182	skip	generated: c
 input::TGameActionConfigureShowOffSocket::v0	90c0b0b60b12eb9b	ported	input/gameaction.h:TGameActionConfigureShowOffSocket::gameActionType
 input::TGameActionConfigureShowOffSocket::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
 input::TGameActionConfigureShowOffSocket::v2	ecfef4ab08ec57af	skip	generated: compiler-generated destructor pair
+input::TGameActionContextMenu::v0	122336d00a45fcbf	ported	input/gameaction.h:TGameActionContextMenu::gameActionType
 input::TGameActionContextMenu::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionContextMenu::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionContextMenuSeparator::v0	dd4802861a7b5baa	ported	input/gameaction.h:TGameActionContextMenuSeparator::gameActionType
 input::TGameActionContextMenuSeparator::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionContextMenuSeparator::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionCopyChatEntryToClipboard::v1	7b2c7d4716bd76d5	skip	generated: compiler-generated destructor pair
@@ -2679,7 +2681,7 @@ input::TGameActionOpenTradeCharacterDialog::v1	872d4faac408f6d5	skip	generated: 
 input::TGameActionOpenTradeCharacterDialog::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
 input::TGameActionOpenUrl::v1	78a8158a8ae00854	skip	generated: compiler-generated destructor pair
 input::TGameActionOpenUrl::v2	395f2bd87f34c2f5	skip	generated: compiler-generated destructor pair
-input::TGameActionPlayerMovementIntent::v0	2b87e6bbfbc44233	ported	input/gameaction.h:TGameActionPlayerMovementIntent::v0
+input::TGameActionPlayerMovementIntent::v0	2b87e6bbfbc44233	ported	input/gameaction.h:TGameActionPlayerMovementIntent::gameActionType
 input::TGameActionPlayerMovementIntent::v1	5f3d3948d1681070	skip	generated: compiler-generated destructor pair
 input::TGameActionPlayerMovementIntent::v2	2c2985996b181825	skip	generated: compiler-generated destructor pair
 input::TGameActionPlayerTradeItem::v1	7da6e7afa666b74a	skip	generated: compiler-generated destructor pair
@@ -2828,6 +2830,7 @@ input::TGameActionShowSplitStackDialog::v1	7584257adae1ce87	skip	generated: comp
 input::TGameActionShowSplitStackDialog::v2	b8a4077e8e1fc512	skip	generated: compiler-generated destructor pair
 input::TGameActionShowTutorialHint::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
 input::TGameActionShowTutorialHint::v2	e9caf669ab302182	skip	generated: compiler-generated destructor pair
+input::TGameActionSmartClick::v0	5729c58af6fc3bd1	ported	input/gameaction.h:TGameActionSmartClick::gameActionType
 input::TGameActionSmartClick::v1	5f3d3948d1681070	skip	generated: compiler-generated destructor pair
 input::TGameActionSmartClick::v2	2c2985996b181825	skip	generated: compiler-generated destructor pair
 input::TGameActionSortFilterVipList::v1	872d4faac408f6d5	skip	generated: compiler-generated destructor pair
@@ -6372,6 +6375,7 @@ sub_47fc97e153a9	47fc97e153a9424e	skip	generated: compiler-generated destructor 
 sub_480dcc731438	480dcc73143814aa	ported	shared/src/downloadpool.cpp:TDownloadPool::createRequest
 sub_480fb4292f1a	480fb4292f1a4fb4	skip	library: std::vector growth / std::make_shared (library)
 sub_481c661393dc	481c661393dccdf1	inlined	gamewindow/characterinfomodels.cpp:TAchievementInfoController::updateCounts
+sub_483bf90be896#3	483bf90be896eede	ported	input/gameaction.h:TGameActionActionButtonTriggered::autoRepeat
 sub_483bf90be896#4	483bf90be896eede	ported	teamfinder/teamfinderciptypes.cpp:TTeamStartTimeManager::startImmediately
 sub_483bf90be896#5	483bf90be896eede	ported	gamewindow/playertradecontroller.cpp:TPlayerTradeObject::appearanceID
 sub_483c06cdce06	483c06cdce066723	ported	gamewindow/containercontroller.cpp:TContainerController::update
@@ -7811,6 +7815,8 @@ sub_7a2f5746492a#3	7a2f5746492a19e9	inlined	gamewindow/battlelistcontroller.cpp:
 sub_7a2f5746492a#4	7a2f5746492a19e9	inlined	gamewindow/battlelistcontroller.cpp:battleListGameActions
 sub_7a2f5746492a#5	7a2f5746492a19e9	ported	input/gameaction.h:TObjectGameAction::TObjectGameAction
 sub_7a2f5746492a#6	7a2f5746492a19e9	ported	input/gameaction.h:TObjectGameAction::TObjectGameAction
+sub_7a2f5746492a#7	7a2f5746492a19e9	ported	input/gameaction.h:TGameActionSmartClick::TGameActionSmartClick
+sub_7a2f5746492a#8	7a2f5746492a19e9	ported	input/gameaction.h:TGameActionSmartClick::TGameActionSmartClick
 sub_7a2f5b96508f	7a2f5b96508f178f	ported	input/gameaction.h:TGameActionSetCurrentChatChannelInputText::TGameActionSetCurrentChatChannelInputText
 sub_7a2f5b96508f#2	7a2f5b96508f178f	ported	input/gameaction.h:TGameActionSetCurrentChatChannelInputText::TGameActionSetCurrentChatChannelInputText
 sub_7a2fdbcd8f0f#2	7a2fdbcd8f0f3518	inlined	protocol::TProtobufServerMessageTranslator::v124
@@ -8982,6 +8988,8 @@ sub_9a0011eb6093	9a0011eb6093da86	skip	library: r-lyeh bundle codecs: miniz tinf
 sub_9a0ffd5590b2	9a0ffd5590b23418	inlined	gamewindow/teamassemblepagecontroller.cpp:TTeamAssemblePageController::loadActivities
 sub_9a4fe08d12d1	9a4fe08d12d1517e	ported	analysers/analyserstorages.cpp:TPartyHuntStorage::setMembers
 sub_9a55c5fcb2cf	9a55c5fcb2cfc576	skip	data: translation-unit static initializer: string constants, static maps/vectors, typeid names (misattributed)
+sub_9a5969b09267	9a5969b092676466	ported	input/gameaction.h:TGameActionActionButtonTriggered::TGameActionActionButtonTriggered
+sub_9a5969b09267#2	9a5969b092676466	ported	input/gameaction.h:TGameActionActionButtonTriggered::TGameActionActionButtonTriggered
 sub_9a683f305b22	9a683f305b221a31	ported	worldmap/worldmapfield.cpp:TWorldMapField::~TWorldMapField
 sub_9a68d4e636a1	9a68d4e636a1114b	inlined	gamewindow/characterinfomodels.cpp:TAchievementInfoController::updateCounts
 sub_9a772620dd2d	9a772620dd2dfcb1	skip	library: QMap<QUrl, QVariant> template code

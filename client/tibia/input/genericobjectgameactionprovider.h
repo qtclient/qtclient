@@ -24,7 +24,7 @@ public:
     /// only TEMPORARY_SELECT_CREATURE(0).
     static TGameActionList creatureActions(uint32_t creatureId);
     /// v5: the SMART_CLICK on a creature.
-    static TGameActionPtr creatureSmartClick(uint32_t creatureId);
+    static IGameActionPtr creatureSmartClick(uint32_t creatureId);
     /// CIP world-map field stack (appearance + stackpos; creatures from Map registry).
     static TGameActionList objectActions(const worldmap::TFieldObject& object, const worldmap::TWorldMapField* field,
                                          const Position& position);

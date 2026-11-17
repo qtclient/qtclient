@@ -176,7 +176,7 @@ const std::map<QString, IGameActionPtr>& actionsByName()
         for (int bar = 1; bar <= 9; ++bar) {
             for (int button = 1; button <= 50; ++button)
                 map.emplace(QStringLiteral("TriggerActionButton_%1.%2").arg(bar).arg(button),
-                            std::make_shared<TGameActionActionButtonTriggered>(bar, button, -1));
+                            std::make_shared<TGameActionActionButtonTriggered>(static_cast<uint8_t>(bar), button));
         }
         return map;
     }();
@@ -329,13 +329,11 @@ bool TKeyboardShortcutHandler::handleKey(const QKeyEvent* key)
         return false;
     if (key->isAutoRepeat() && throttled(bound->gameActionType(), keys))
         return true;
-    if (const TGameActionPtr fields = unportedGameAction(bound)) {
-        auto action = mutableClone(*fields);
-        action->autoRepeat = key->isAutoRepeat();
-        publish(action);
-    } else {
+    // An action button carries whether the key repeats (CIP +0x14).
+    if (const auto* trigger = gameActionAs<TGameActionActionButtonTriggered>(bound); trigger && key->isAutoRepeat())
+        publish(std::make_shared<TGameActionActionButtonTriggered>(trigger->actionBarId(), trigger->actionButtonId(), true));
+    else
         publish(bound);
-    }
     return true;
 }
 

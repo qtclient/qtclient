@@ -122,7 +122,7 @@ TGameActionList TGenericObjectGameActionProvider::creatureActions(const uint32_t
     return actions;
 }
 
-TGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32_t creatureId)
+IGameActionPtr TGenericObjectGameActionProvider::creatureSmartClick(const uint32_t creatureId)
 {
     tibia::creatures::TCreatureStorage* storage = tibia::creatures::TCreatureStorage::instance();
     const std::shared_ptr<tibia::creatures::TCreature> stored =

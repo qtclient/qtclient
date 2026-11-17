@@ -514,7 +514,7 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
             cursor->setLenshelp(true);
         return true;
     });
-    input::setActionHandler(input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES, [this](const input::TGameAction&) {
+    input::setActionHandler(input::EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES, [this](const input::IGameAction&) {
         if (minimap::TMinimapManager* manager = minimap())
             manager->loadDefaultTilesFromResources();
         return true;

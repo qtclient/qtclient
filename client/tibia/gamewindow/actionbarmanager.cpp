@@ -65,7 +65,7 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
     , m_cooldowns(this)
     , m_crossHair(std::make_unique<input::TCrossHairGameActionHandlers>())
     , m_actionButtonHandler(std::make_unique<input::TActionButtonGameActionHandler>(input::detail::typedGameActionHandler(
-          [this](const input::TGameAction& action) { return onActionButtonTriggered(action); })))
+          [this](const input::TGameActionActionButtonTriggered& action) { return onActionButtonTriggered(action); })))
     , m_targetSelection(new TTargetSelectionController(gameWindowItem, this))
 {
     loadDisplayOptions();
@@ -378,20 +378,20 @@ void TActionBarManager::openSpellDialogFor(TActionBarController* bar, const int 
     (new TAssignSpellActionDialogController(bar, buttonId, multiActionIndex, spellId, this))->dialog()->show();
 }
 
-bool TActionBarManager::onActionButtonTriggered(const input::TGameAction& action)
+bool TActionBarManager::onActionButtonTriggered(const input::TGameActionActionButtonTriggered& action)
 {
-    TActionBarController* target = bar(action.actionBarId);
-    TActionButtonController* button = target ? target->button(action.actionButtonId) : nullptr;
+    TActionBarController* target = bar(action.actionBarId());
+    TActionButtonController* button = target ? target->button(action.actionButtonId()) : nullptr;
     if (button)
         button->setIsNewlyUnlocked(false);
     if (!button || !tibia::game::isOnline())
         return true;
-    Setting setting = target->settingAt(action.actionButtonId, -1);
+    Setting setting = target->settingAt(action.actionButtonId(), -1);
     if (setting.kind == Setting::MULTI_ACTION) {
         // A clicked slot runs itself, the button its current slot.
-        const TActionButtonController* slot = action.multiActionIndex >= 0 ? button->multiAction(action.multiActionIndex)
+        const TActionButtonController* slot = action.multiActionIndex() >= 0 ? button->multiAction(action.multiActionIndex())
                                                                              : button->currentMultiAction(game::TCooldownStorage::now());
-        setting = slot ? target->settingAt(action.actionButtonId, slot->multiActionIndex()) : Setting{};
+        setting = slot ? target->settingAt(action.actionButtonId(), slot->multiActionIndex()) : Setting{};
     }
     execute(setting);
     input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());

@@ -37,11 +37,11 @@ TGameActionList actionsOf(const TFieldObject& object, const TWorldMapField* fiel
     return input::filterActions(Provider::objectActions(object, field, position), types);
 }
 
-TGameActionPtr firstSmartClick(const TGameActionList& actions)
+std::shared_ptr<const input::TGameActionSmartClick> firstSmartClick(const TGameActionList& actions)
 {
     for (const IGameActionPtr& action : actions) {
-        if (action->gameActionType() == A::SMART_CLICK)
-            return input::unportedGameAction(action);
+        if (auto smartClick = std::dynamic_pointer_cast<const input::TGameActionSmartClick>(action))
+            return smartClick;
     }
     return nullptr;
 }
@@ -124,14 +124,14 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
 
     const TGameActionList moveList = actionsOf(pick.move, pick.field, pick.position, { A::MOVE_OBJECT });
 
-    TGameActionPtr smartClick;
-    TGameActionPtr ownLook;
+    std::shared_ptr<const input::TGameActionSmartClick> smartClick;
+    std::shared_ptr<const input::TGameActionSmartClick> ownLook;
     if (pick.position.z != pick.playerFloorPosition.z) {
         smartClick = input::makeSmartClick(input::makeMovementIntent(pick.playerFloorPosition));
     } else {
         if (pixelCreatureId)
             smartClick = firstSmartClick(creatureActions);
-        if (smartClick && smartClick->inner->gameActionType() == A::LOOK_AT_CREATURE && fieldCreatureIsOwn) {
+        if (smartClick && smartClick->innerGameAction()->gameActionType() == A::LOOK_AT_CREATURE && fieldCreatureIsOwn) {
             ownLook = smartClick;
             smartClick = nullptr;
         }
@@ -140,7 +140,7 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
         if (!smartClick)
             smartClick = firstSmartClick(lookList);
     }
-    if (smartClick && smartClick->inner->gameActionType() == A::LOOK) {
+    if (smartClick && smartClick->innerGameAction()->gameActionType() == A::LOOK) {
         const int useDefault = defaultActionOf(use, pick.field);
         const int lookDefault = defaultActionOf(pick.look, pick.field);
         if ((useDefault == 0 || useDefault == 4) && (lookDefault == 0 || lookDefault == 4) && pick.walkability != 1) {
@@ -148,8 +148,8 @@ TGameActionList TWorldMapGameActionProvider::actionsAt(const QPoint& mapPixel) c
         }
     }
     if (ownLook && smartClick && pixelCreatureId && localId && pixelCreatureId == localId) {
-        const TGameActionPtr inner = input::unportedGameAction(smartClick->inner);
-        if (inner && inner->type == A::SET_PLAYER_MOVEMENT_INTENT && inner->position == tibia::game::localPlayerPosition())
+        const auto* walk = input::gameActionAs<input::TGameActionPlayerMovementIntent>(smartClick->innerGameAction());
+        if (walk && walk->target() == tibia::game::localPlayerPosition())
             smartClick = ownLook;
     }
     if (smartClick)
@@ -200,8 +200,8 @@ TWorldMapGameActionProvider::TMouseTargetObject TWorldMapGameActionProvider::mou
         // Creature hover is id-based (see mouseTargetCreatureIdOf).
         return {};
     case A::SMART_CLICK:
-        if (const TGameActionPtr smartClick = input::unportedGameAction(pGameAction))
-            return mouseTargetObjectOf(smartClick->inner);
+        if (const auto* smartClick = input::gameActionAs<input::TGameActionSmartClick>(pGameAction))
+            return mouseTargetObjectOf(smartClick->innerGameAction());
         return {};
     default:
         return {};
@@ -221,6 +221,16 @@ uint32_t TWorldMapGameActionProvider::mouseTargetCreatureIdOf(const input::IGame
             : 0;
     if (const auto* npc = input::gameActionAs<input::TGameActionStartTalkingToNPC>(pGameAction))
         return npc->creatureId();
+    if (const auto* smartClick = input::gameActionAs<input::TGameActionSmartClick>(pGameAction))
+        return mouseTargetCreatureIdOf(smartClick->innerGameAction());
+    if (const auto* walk = input::gameActionAs<input::TGameActionPlayerMovementIntent>(pGameAction)) {
+        TWorldMapStorage* storage = TWorldMapStorage::instance();
+        TWorldMapField* field = storage ? storage->fieldAt(walk->target()) : nullptr;
+        if (!field || field->isEmpty())
+            return 0;
+        const TFieldObject look = field->lookObject();
+        return defaultActionOf(look, field) == PLAYER_ACTION_AUTOWALK_HIGHLIGHT ? look.creatureId : 0;
+    }
     const TGameActionPtr action = input::unportedGameAction(pGameAction);
     if (!action)
         return 0;
@@ -235,16 +245,6 @@ uint32_t TWorldMapGameActionProvider::mouseTargetCreatureIdOf(const input::IGame
     case A::COPY_CREATURE_WITH_ID_NAME_TO_CLIPBOARD:
     case A::START_TALKING_TO_NPC:
         return action->creatureId;
-    case A::SET_PLAYER_MOVEMENT_INTENT: {
-        TWorldMapStorage* storage = TWorldMapStorage::instance();
-        TWorldMapField* field = storage ? storage->fieldAt(action->position) : nullptr;
-        if (!field || field->isEmpty())
-            return 0;
-        const TFieldObject look = field->lookObject();
-        return defaultActionOf(look, field) == PLAYER_ACTION_AUTOWALK_HIGHLIGHT ? look.creatureId : 0;
-    }
-    case A::SMART_CLICK:
-        return mouseTargetCreatureIdOf(action->inner);
     default:
         return 0;
     }
@@ -286,8 +286,8 @@ int TWorldMapGameActionProvider::cursorShapeOf(const input::IGameActionPtr& pGam
     case A::START_TALKING_TO_NPC:
         return Cursor::Talk;
     case A::SMART_CLICK:
-        if (const TGameActionPtr smartClick = input::unportedGameAction(pGameAction))
-            return cursorShapeOf(smartClick->inner);
+        if (const auto* smartClick = input::gameActionAs<input::TGameActionSmartClick>(pGameAction))
+            return cursorShapeOf(smartClick->innerGameAction());
         return Cursor::Default;
     default:
         return Cursor::Default;

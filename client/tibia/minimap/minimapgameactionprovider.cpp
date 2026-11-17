@@ -32,24 +32,24 @@ input::TGameActionList TMinimapGameActionProvider::actionsAt(const Position& coo
 
 input::TGameActionList TMinimapGameActionProvider::fieldActions(const Position& coord) const
 {
-    const input::TGameActionPtr movement = input::makeMovementIntent(coord, 0, false);
+    const auto movement = input::makeMovementIntent(coord, 0, false);
     return {
         movement,
         input::makeSmartClick(movement),
         std::make_shared<input::TGameActionTeleportToCoordinate>(coord),
-        input::makeAction(A::CONTEXT_MENU),
+        std::make_shared<input::TGameActionContextMenu>(),
         std::make_shared<input::TGameActionShowDialogCreateMinimapMarker>(coord),
     };
 }
 
 input::TGameActionList TMinimapGameActionProvider::markerActions(const Position& coord) const
 {
-    const input::TGameActionPtr movement = input::makeMovementIntent(coord, 0, false);
+    const auto movement = input::makeMovementIntent(coord, 0, false);
     return {
         movement,
         input::makeSmartClick(movement),
         std::make_shared<input::TGameActionTeleportToCoordinate>(coord),
-        input::makeAction(A::CONTEXT_MENU),
+        std::make_shared<input::TGameActionContextMenu>(),
         std::make_shared<input::TGameActionShowDialogEditMinimapMarker>(markerData(coord)),
         std::make_shared<input::TGameActionDeleteMinimapMarker>(coord),
     };

@@ -2666,6 +2666,99 @@ public:
 };
 }
 
+
+// ---------------------------------------------------------------------------
+// Menus, smart click, action buttons, movement
+
+/// CIP input::TGameActionContextMenu (CONTEXT_MENU).
+class TGameActionContextMenu final : public IGameAction
+{
+public:
+    EGameAction gameActionType() const override { return EGameAction::CONTEXT_MENU; }
+};
+
+/// CIP input::TGameActionContextMenuSeparator (CONTEXT_MENU_SEPARATOR).
+class TGameActionContextMenuSeparator final : public IGameAction
+{
+public:
+    EGameAction gameActionType() const override { return EGameAction::CONTEXT_MENU_SEPARATOR; }
+};
+
+/// CIP input::TGameActionLoadDefaultMinimapTilesFromResources (LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES).
+class TGameActionLoadDefaultMinimapTilesFromResources final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionLoadDefaultMinimapTilesFromResources()
+        : TGameActionSimple(EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES)
+    {
+    }
+};
+
+/// CIP input::TGameActionSmartClick (SMART_CLICK): the action a click runs.
+class TGameActionSmartClick final : public IGameAction
+{
+public:
+    explicit TGameActionSmartClick(IGameActionPtr innerGameAction)
+        : m_inner(std::move(innerGameAction))
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SMART_CLICK; }
+    const IGameActionPtr& innerGameAction() const { return m_inner; }
+
+private:
+    IGameActionPtr m_inner;
+};
+
+/// CIP input::TGameActionActionButtonTriggered (ACTION_BUTTON_TRIGGERED): bar
+/// (+0xc), button (+0x10), held key repeat (+0x14). qtclient also carries the
+/// multi action slot clicked (-1: the button's current slot).
+class TGameActionActionButtonTriggered final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionActionButtonTriggered(uint8_t actionBarId, int actionButtonId, bool autoRepeat = false, int multiActionIndex = -1)
+        : TGameActionSimple(EGameAction::ACTION_BUTTON_TRIGGERED)
+        , m_actionBarId(actionBarId)
+        , m_actionButtonId(actionButtonId)
+        , m_autoRepeat(autoRepeat)
+        , m_multiActionIndex(multiActionIndex)
+    {
+    }
+    uint8_t actionBarId() const { return m_actionBarId; }
+    int actionButtonId() const { return m_actionButtonId; }
+    bool autoRepeat() const { return m_autoRepeat; }
+    int multiActionIndex() const { return m_multiActionIndex; }
+
+private:
+    uint8_t m_actionBarId;
+    int m_actionButtonId;
+    bool m_autoRepeat;
+    int m_multiActionIndex;
+};
+
+/// CIP input::TGameActionPlayerMovementIntent (SET_PLAYER_MOVEMENT_INTENT): walk to a
+/// field (CIP v4: the TPlayerMovementIntent). qtclient adds the path mode (minimap /
+/// cyclopedia / travel) and whether the path may end on an unwalkable goal (clicks on
+/// the world map or an object; not the minimap or cyclopedia map).
+class TGameActionPlayerMovementIntent final : public IGameAction
+{
+public:
+    TGameActionPlayerMovementIntent(const Position& target, int autoWalkPathMode = 0, bool enterUnwalkableGoal = true)
+        : m_target(target)
+        , m_autoWalkPathMode(autoWalkPathMode)
+        , m_enterUnwalkableGoal(enterUnwalkableGoal)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SET_PLAYER_MOVEMENT_INTENT; }
+    const Position& target() const { return m_target; }
+    int autoWalkPathMode() const { return m_autoWalkPathMode; }
+    bool enterUnwalkableGoal() const { return m_enterUnwalkableGoal; }
+
+private:
+    Position m_target;
+    int m_autoWalkPathMode;
+    bool m_enterUnwalkableGoal;
+};
+
 struct TGameAction;
 class IGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
@@ -2808,17 +2901,6 @@ public:
     explicit TGameActionMoveObject(const TGameAction& other);
 };
 
-/// CIP input::TGameActionPlayerMovementIntent for
-/// SET_PLAYER_MOVEMENT_INTENT.
-class TGameActionPlayerMovementIntent final : public TGameAction
-{
-public:
-    TGameActionPlayerMovementIntent() { type = EGameAction::SET_PLAYER_MOVEMENT_INTENT; }
-    explicit TGameActionPlayerMovementIntent(Position position, int pathMode = 0, bool enterUnwalkableGoal = true);
-    /// CIP `TGameActionPlayerMovementIntent::v0` → action type id `0x2b`.
-    int v0() const { return static_cast<int>(type); }
-};
-
 
 
 
@@ -2838,28 +2920,6 @@ class TGameActionPlayerTradeItem final : public TGameAction
 public:
     TGameActionPlayerTradeItem() { type = EGameAction::TRADE_ITEM; }
     TGameActionPlayerTradeItem(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-
-/// CIP input::TGameActionSmartClick (v0).
-class TGameActionSmartClick final : public TGameAction
-{
-public:
-    TGameActionSmartClick() { type = EGameAction::SMART_CLICK; }
-    explicit TGameActionSmartClick(IGameActionPtr innerAction);
-};
-
-/// CIP input::TGameActionContextMenu (v0).
-class TGameActionContextMenu final : public TGameAction
-{
-public:
-    TGameActionContextMenu() { type = EGameAction::CONTEXT_MENU; }
-};
-
-/// CIP input::TGameActionContextMenuSeparator (v0).
-class TGameActionContextMenuSeparator final : public TGameAction
-{
-public:
-    TGameActionContextMenuSeparator() { type = EGameAction::CONTEXT_MENU_SEPARATOR; }
 };
 
 /// CIP input::TGameActionCrossHairSpell (v0).
@@ -2884,14 +2944,6 @@ public:
     TGameActionUseAtMouseCursor() { type = EGameAction::USE_AT_MOUSECURSOR; }
     TGameActionUseAtMouseCursor(Position position, int stackPosition, uint16_t objectClientId = 0);
     explicit TGameActionUseAtMouseCursor(const TGameAction& other);
-};
-
-/// CIP input::TGameActionActionButtonTriggered .
-class TGameActionActionButtonTriggered final : public TGameAction
-{
-public:
-    TGameActionActionButtonTriggered() { type = EGameAction::ACTION_BUTTON_TRIGGERED; }
-    TGameActionActionButtonTriggered(int actionBarId, int actionButtonId, int multiActionIndex = -1);
 };
 
 
@@ -2931,13 +2983,6 @@ class TGameActionInspectObject final : public TGameAction
 public:
     TGameActionInspectObject() { type = EGameAction::INSPECT_OBJECT; }
     TGameActionInspectObject(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-
-/// CIP input::TGameActionLoadDefaultMinimapTilesFromResources .
-class TGameActionLoadDefaultMinimapTilesFromResources final : public TGameAction
-{
-public:
-    TGameActionLoadDefaultMinimapTilesFromResources() { type = EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES; }
 };
 
 
@@ -3081,8 +3126,8 @@ std::shared_ptr<TGameAction> mutableClone(const IGameAction& action);
 IGameActionPtr makeCreatureAction(EGameAction type, uint32_t creatureId);
 /// The creature an action is on (CIP: the creature classes' v4); 0 for none.
 uint32_t creatureIdOf(const IGameAction& action);
-TGameActionPtr makeMovementIntent(const Position& position, int pathMode = 0, bool enterUnwalkableGoal = true);
-TGameActionPtr makeSmartClick(const IGameActionPtr& inner);
+std::shared_ptr<const TGameActionPlayerMovementIntent> makeMovementIntent(const Position& position, int pathMode = 0, bool enterUnwalkableGoal = true);
+std::shared_ptr<const TGameActionSmartClick> makeSmartClick(const IGameActionPtr& inner);
 
 /// Typed mutable copy: factory dynamic type + field assign (CIP handler reshapes).
 std::shared_ptr<TGameAction> mutableClone(const TGameAction& action);

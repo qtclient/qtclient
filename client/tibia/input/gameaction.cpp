@@ -237,14 +237,6 @@ TGameActionMoveObject::TGameActionMoveObject(const TGameAction& other)
     type = EGameAction::MOVE_OBJECT;
 }
 
-TGameActionPlayerMovementIntent::TGameActionPlayerMovementIntent(Position pos, const int pathMode, const bool enterUnwalkable)
-{
-    type = EGameAction::SET_PLAYER_MOVEMENT_INTENT;
-    position = pos;
-    autoWalkPathMode = pathMode;
-    enterUnwalkableGoal = enterUnwalkable;
-}
-
 TGameActionQuickLoot::TGameActionQuickLoot(Position position, int stackPosition, const uint16_t objectClientId)
 {
     type = EGameAction::QUICK_LOOT;
@@ -257,12 +249,6 @@ TGameActionPlayerTradeItem::TGameActionPlayerTradeItem(Position position, int st
     fillObject(*this, position, stackPosition, objectClientId);
 }
 
-TGameActionSmartClick::TGameActionSmartClick(IGameActionPtr innerAction)
-{
-    type = EGameAction::SMART_CLICK;
-    inner = std::move(innerAction);
-}
-
 TGameActionUseAtMouseCursor::TGameActionUseAtMouseCursor(Position position, int stackPosition, const uint16_t objectClientId)
 {
     type = EGameAction::USE_AT_MOUSECURSOR;
@@ -273,15 +259,6 @@ TGameActionUseAtMouseCursor::TGameActionUseAtMouseCursor(const TGameAction& othe
     : TGameAction(other)
 {
     type = EGameAction::USE_AT_MOUSECURSOR;
-}
-
-TGameActionActionButtonTriggered::TGameActionActionButtonTriggered(const int barId, const int buttonId,
-                                                                   const int multiIndex)
-{
-    type = EGameAction::ACTION_BUTTON_TRIGGERED;
-    actionBarId = barId;
-    actionButtonId = buttonId;
-    multiActionIndex = multiIndex;
 }
 
 
@@ -425,24 +402,12 @@ namespace gameactions {
 TGameActionPtr makeAction(const EGameAction type)
 {
     switch (type) {
-    case EGameAction::SET_PLAYER_MOVEMENT_INTENT:
-        return std::make_shared<TGameActionPlayerMovementIntent>();
-    case EGameAction::CONTEXT_MENU:
-        return std::make_shared<TGameActionContextMenu>();
-    case EGameAction::CONTEXT_MENU_SEPARATOR:
-        return std::make_shared<TGameActionContextMenuSeparator>();
     case EGameAction::CROSSHAIR_SPELL:
         return std::make_shared<TGameActionCrossHairSpell>();
     case EGameAction::SPELL_AT_MOUSE_CURSOR:
         return std::make_shared<TGameActionSpellAtMouseCursor>();
-    case EGameAction::ACTION_BUTTON_TRIGGERED:
-        return std::make_shared<TGameActionActionButtonTriggered>();
-    case EGameAction::SMART_CLICK:
-        return std::make_shared<TGameActionSmartClick>();
     case EGameAction::INSPECT_OBJECT:
         return std::make_shared<TGameActionInspectObject>();
-    case EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES:
-        return std::make_shared<TGameActionLoadDefaultMinimapTilesFromResources>();
     case EGameAction::OPEN_PARENT_CONTAINER:
         return std::make_shared<TGameActionOpenParentContainer>();
     case EGameAction::SHOW_CONFIRM_MOVE_OBJECT_TO_STASH_DIALOG:
@@ -600,6 +565,20 @@ uint32_t creatureIdOf(const IGameAction& action)
 IGameActionPtr makeGameAction(const EGameAction type)
 {
     switch (type) {
+    case EGameAction::CONTEXT_MENU:
+        return std::make_shared<TGameActionContextMenu>();
+    case EGameAction::CONTEXT_MENU_SEPARATOR:
+        return std::make_shared<TGameActionContextMenuSeparator>();
+    case EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES:
+        return std::make_shared<TGameActionLoadDefaultMinimapTilesFromResources>();
+    case EGameAction::TOGGLE_MOUNTED:
+        return std::make_shared<TGameActionToggleMounted>();
+    case EGameAction::GET_CHAT_CHANNEL_LIST:
+        return std::make_shared<TGameActionGetChatChannelList>();
+    case EGameAction::SAVE_SKILL_WHEEL:
+        return std::make_shared<gameactions::TGameActionSaveSkillWheel>();
+    case EGameAction::SHOW_EXALTATION_RESULT_DIALOG:
+        return std::make_shared<TGameActionShowExaltationResultDialog>();
     case EGameAction::ATTACK_FIRST_TARGET:
         return std::make_shared<TGameActionAttackFirstTarget>();
     case EGameAction::ATTACK_NEXT_TARGET:
@@ -722,12 +701,13 @@ IGameActionPtr makeCreatureAction(const EGameAction type, const uint32_t creatur
     return action;
 }
 
-TGameActionPtr makeMovementIntent(const Position& position, const int pathMode, const bool enterUnwalkableGoal)
+std::shared_ptr<const TGameActionPlayerMovementIntent> makeMovementIntent(const Position& position, const int pathMode,
+                                                                          const bool enterUnwalkableGoal)
 {
     return std::make_shared<TGameActionPlayerMovementIntent>(position, pathMode, enterUnwalkableGoal);
 }
 
-TGameActionPtr makeSmartClick(const IGameActionPtr& inner)
+std::shared_ptr<const TGameActionSmartClick> makeSmartClick(const IGameActionPtr& inner)
 {
     return std::make_shared<TGameActionSmartClick>(inner);
 }

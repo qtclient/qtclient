@@ -33,13 +33,12 @@ void TPlayerMovementGameActionHandler::handleGameAction(const tibia::input::IGam
     };
     switch (pGameAction->gameActionType()) {
     case A::SET_PLAYER_MOVEMENT_INTENT:
-        if (const TGameActionPtr action = unportedGameAction(pGameAction)) {
+        if (const auto* walk = gameActionAs<TGameActionPlayerMovementIntent>(pGameAction)) {
             publish(makeGameAction(A::APPLY_AUTOCHASE_SETTING));
             publish(std::make_shared<TGameActionCreature>(A::STOP_FOLLOWING_CREATURE, 0));
-            (void)TPlayerMovementIntent::target(action->position.x, action->position.y, action->position.z);
-            tibia::game::localPlayerAutoWalk(action->position, false,
-                                             static_cast<tibia::client::AutoWalkPathMode>(action->autoWalkPathMode),
-                                             action->enterUnwalkableGoal);
+            tibia::game::localPlayerAutoWalk(walk->target(), false,
+                                             static_cast<tibia::client::AutoWalkPathMode>(walk->autoWalkPathMode()),
+                                             walk->enterUnwalkableGoal());
         }
         break;
     case A::ATTACK_CREATURE:
