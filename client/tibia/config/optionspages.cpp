@@ -782,8 +782,9 @@ void TEffectsOptionsPage::setLightEffects(const bool enabled)
 TControlsOptionsPage::TControlsOptionsPage(QObject* parent)
     : TControlsQMLOptionsPage(parent)
 {
-    m_controlSchemeListModel = controlSchemeListModel();
-    m_lootSchemeListModel = lootSchemeListModel();
+    // Qualified: inside the class these names are the generated getters.
+    m_controlSchemeListModel = config::controlSchemeListModel();
+    m_lootSchemeListModel = config::lootSchemeListModel();
     m_defaultKeyboardDelayMillis = 250;
 }
 
