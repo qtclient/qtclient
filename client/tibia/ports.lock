@@ -3371,6 +3371,7 @@ renderer::TNextFrameUpdater::v0	097457dc45e86dd8	skip	generated: same code as th
 renderer::TNextFrameUpdater::v1	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 renderer::TRenderVolumeProvider::v0	7da6e7afa666b74a	skip	generated: same code as the skipped family: compiler-generated destructor pair
 renderer::TRenderVolumeProvider::v1	ecfef4ab08ec57af	skip	generated: same code as the skipped family: compiler-generated destructor pair
+renderer::TRenderVolumeProvider::v10	ff34c005597d6cca	inlined	renderer/rendervolumeprovider.cpp:TRenderVolumeProvider::firstVisibleFloor
 renderer::TScenegraphNodeProvider::v7	097457dc45e86dd8	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 renderer::TScenegraphNodeProvider::v8	79674512666b34e2	skip	generated: same code as the skipped family: destructor variants (deleting wrapper / complete-object thunk)
 renderer::TSpriteTextureProvider::onBeforeRenderNewFrame	cdce7549e5fd4b77	ported	renderer/spritetextureprovider.cpp:TSpriteTextureProvider::onBeforeRenderNewFrame
@@ -5521,7 +5522,7 @@ sub_328c9a4592bd	328c9a4592bd5fae	skip	generated: std container/shared_ptr templ
 sub_32b60136c8c6	32b60136c8c6e31d	ported	protocol/dispatch.gen.cpp:TProtocolMessageQueue::sendCloseImbuingDialog
 sub_32b6dd8bd0e8	32b6dd8bd0e8df3e	ported	screenshot/screenshotciptypes.cpp:TScreenshotManager::startBacklogTimerIfNeeded
 sub_32cc78de7bee	32cc78de7bee045b	ported	minimap/minimaptile.cpp:blankImage
-sub_32cd757e4b22	32cd757e4b2269a3	ported	worldmap/worldmapviewport.cpp:TWorldMapViewport::firstFloor
+sub_32cd757e4b22	32cd757e4b2269a3	inlined	renderer/rendervolumeprovider.cpp:TRenderVolumeProvider::firstVisibleFloor
 sub_32d19b3aa3f8	32d19b3aa3f80171	ported	gamewindow/chatcontroller.cpp:TChatChannelController::setChatFont
 sub_32d81f4dc03d	32d81f4dc03d2fd6	inlined	spells/spellinfostorage.cpp:TSpellInfoStorage::spellInfo
 sub_32de808c7d27#2	32de808c7d27ff77	inlined	friends/friendsciptypes.cpp:TFriendsProtocolMessageHandler::handleFriendSystemDataMessage
@@ -8183,6 +8184,7 @@ sub_9070749f1a90	9070749f1a902e2f	inlined	market/marketciptypes.cpp:TMarketProto
 sub_909e04dcc5ff	909e04dcc5ffbafe	inlined	gamewindow/reportviolationcontroller.cpp:TReportViolationController::handleAction
 sub_90a670040d82	90a670040d82f579	ported	gamewindow/npctradecontroller.cpp:TNPCTradeController::buildContextMenu
 sub_90b3ceae0756	90b3ceae0756dc30	skip	library: std::sort instantiation for the category list
+sub_90bd3ae669fd	90bd3ae669fdf2d4	ported	renderer/rendervolumeprovider.cpp:TRenderVolumeProvider::firstVisibleFloor
 sub_90c2cfdee104	90c2cfdee1043c50	skip	data: translation-unit static initializer (misattributed)
 sub_90ce38fb78ea	90ce38fb78ea9544	inlined	shared/sortedvectorlistmodel.h:TSortedVectorListModel::mergeSortedItems
 sub_90d3a5d3a0c3	90d3a5d3a0c3024b	inlined	gamewindow/bosstiarydialogcontroller.cpp:TBossSlotInformation::update
