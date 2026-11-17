@@ -105,7 +105,8 @@ void TSpriteSystem::start(const tibia::assets::TContentCatalog& catalog, const Q
         std::make_shared<tibia::assets::TAssetFileSystemHelper>(directory, directory));
     QObject::connect(m_assetLoader.get(), &tibia::assets::TAssetAsyncLoader::assetLoaded, m_spritesheets.get(),
                      [this](const tibia::assets::TAsset& asset, const std::shared_ptr<tibia::shared::TReadOnlyMemoryBlob>& data) {
-                         if (asset.type() == tibia::assets::TAsset::Sprite)
+                         // CIP's asset handler gives sprite and map image files to the spritesheets.
+                         if (asset.type() == tibia::assets::TAsset::Sprite || asset.type() == tibia::assets::TAsset::MapImage)
                              m_spritesheets->addCompressedSpritesheet(asset.file(), data);
                      });
     QObject::connect(m_assetLoader.get(), &tibia::assets::TAssetAsyncLoader::assetLoadError, m_spritesheets.get(),

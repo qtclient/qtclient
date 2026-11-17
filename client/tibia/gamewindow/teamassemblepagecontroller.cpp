@@ -3,7 +3,7 @@
 
 #include "assets/things.h"
 #include "creatures/creaturestorage.h"
-#include "cyclopedia/cyclopediamapdata.h"
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
 #include "game/gameciptypes.h"
 #include "gamewindow/contextmenucontroller.h"
 #include "gamewindow/messagedialogcontroller.h"
@@ -82,20 +82,11 @@ void TTeamAssemblePageController::loadActivities()
     activities.push_back(makeActivity({ .kind = TTeamActivity::Other }, m_resolver));
 
     // Hunting places: each map area (with an "any" entry when it has several subareas) and its subareas.
-    std::vector<const cyclopedia::TCyclopediaMapStaticData::TArea*> areas;
-    for (const auto& area : cyclopedia::TCyclopediaMapStaticData::instance().areas()) {
-        if (!area.isSubarea)
-            areas.push_back(&area);
-    }
-    std::sort(areas.begin(), areas.end(), [](const auto* left, const auto* right) { return left->id < right->id; });
-    for (const auto* area : areas) {
-        std::vector<int> subareas = area->subareaIds;
-        std::sort(subareas.begin(), subareas.end());
-        subareas.erase(std::unique(subareas.begin(), subareas.end()), subareas.end());
-        if (subareas.size() > 1)
-            addHunt(area->id, 0);
-        for (const int subarea : subareas)
-            addHunt(area->id, subarea);
+    for (const auto& [areaId, area] : cyclopedia::TCyclopediaMapStaticDataStorage::instance().areas()) {
+        if (area.subareaIds.size() > 1)
+            addHunt(areaId, 0);
+        for (const quint16 subarea : area.subareaIds)
+            addHunt(areaId, subarea);
     }
 
     std::vector<uint16_t> bosses;

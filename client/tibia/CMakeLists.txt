@@ -558,6 +558,8 @@ if(TIBIA_WITH_GAMECORE)
     cyclopedia/housesstorage.cpp cyclopedia/housesstorage.h
     gamewindow/housesinfodialogcontroller.cpp gamewindow/housesinfodialogcontroller.h
     cyclopedia/cyclopediamapdata.cpp cyclopedia/cyclopediamapdata.h
+    cyclopedia/cyclopediamapstaticdatastorage.cpp cyclopedia/cyclopediamapstaticdatastorage.h
+    cyclopedia/cyclopediamapstaticdatastoragehost.cpp
     gamewindow/cyclopediamapdialogcontroller.cpp gamewindow/cyclopediamapdialogcontroller.h
     gamewindow/magicalarchivedialogcontroller.cpp gamewindow/magicalarchivedialogcontroller.h
     qmlcomponents/worldmapcameraviewport.cpp qmlcomponents/worldmapcameraviewport.h

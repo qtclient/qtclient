@@ -239,3 +239,13 @@ set_target_properties(client_spritesheetmanager_tests PROPERTIES AUTOMOC ON)
 
 # CIP worldmap coordinate helpers and cuboids.
 qtclient_add_port_test(client_worldmapcuboid_tests worldmapcuboid_test.cpp)
+
+# CIP cyclopedia::TCyclopediaMapStaticDataStorage: map.dat areas, files and masks.
+qtclient_add_port_test(client_cyclopediamapstaticdatastorage_tests
+    cyclopediamapstaticdatastorage_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/cyclopedia/cyclopediamapstaticdatastorage.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/cyclopedia/cyclopediamapstaticdatastorage.h
+    ${CMAKE_SOURCE_DIR}/client/tibia/assets/asset.cpp
+)
+target_link_libraries(client_cyclopediamapstaticdatastorage_tests PRIVATE protobuf Qt6::Gui)
+set_target_properties(client_cyclopediamapstaticdatastorage_tests PROPERTIES AUTOMOC ON)

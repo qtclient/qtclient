@@ -67,13 +67,6 @@ public:
 
 class TCyclopediaMapGameActionProvider final : public ::tibia::CipTyped {};
 
-class TCyclopediaMapStaticDataStorage final : public cip::tibia::cyclopedia::TCyclopediaMapStaticDataStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::cyclopedia::TCyclopediaMapStaticDataStorage::TCyclopediaMapStaticDataStorage;
-};
-
 class TCyclopediaProtocolMessageHandler final : public cip::tibia::cyclopedia::TCyclopediaProtocolMessageHandler
 {
     Q_OBJECT

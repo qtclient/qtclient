@@ -19,6 +19,8 @@ public:
         StaticMapData = 6,
         Proficiencies = 7,
         Map = 8,
+        /// A Cyclopedia map image file named by map.dat (no catalog entry).
+        MapImage = 9,
         MapViewerData = 10,
         Sounds = 11,
         Sound = 12,

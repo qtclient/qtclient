@@ -31,6 +31,7 @@ set(TIP_PROTOCOL_PROTO_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(ProtoFiles
 	"${CIP_PROTO_DIR}/appearances.proto"
 	"${CIP_PROTO_DIR}/shared.proto"
+	"${CIP_PROTO_DIR}/map.proto"
 	"${CIP_PROTO_DIR}/sounds.proto"
 	"${CIP_PROTO_DIR}/sounds-common.proto"
 	"${TIP_PROTOCOL_PROTO_DIR}/protocol.proto"

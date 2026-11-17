@@ -7,7 +7,7 @@
 #include "teamfinder/teamfinder_types.h"
 #include "protocol/protocolciptypes.h"
 #include "assets/things.h"
-#include "cyclopedia/cyclopediamapdata.h"
+#include "cyclopedia/cyclopediamapstaticdatastorage.h"
 
 #include <QLocale>
 #include <QTime>
@@ -487,7 +487,7 @@ QString questName(const uint32_t QuestID)
 
 QString TTeamfinderActivityNameResolver::name(const TTeamActivity& Activity) const
 {
-    auto& map = cyclopedia::TCyclopediaMapStaticData::instance();
+    const auto& map = cyclopedia::TCyclopediaMapStaticDataStorage::instance();
     switch (Activity.kind) {
         case TTeamActivity::Boss:
             if (Activity.bossId == 0)
@@ -496,8 +496,8 @@ QString TTeamfinderActivityNameResolver::name(const TTeamActivity& Activity) con
         case TTeamActivity::Hunt: {
             if (Activity.huntType == 0)
                 return qtTrId("teamfinder_unspecified_activity");
-            const auto* area = map.area(Activity.huntArea != 0 ? Activity.huntArea : Activity.huntType);
-            return area ? area->name : QString();
+            return Activity.huntArea != 0 ? map.subAreaName(static_cast<quint16>(Activity.huntArea))
+                                          : map.areaName(static_cast<quint16>(Activity.huntType));
         }
         case TTeamActivity::Quest:
             if (Activity.questId == 0)
@@ -512,8 +512,9 @@ QString TTeamfinderActivityNameResolver::alias(const TTeamActivity& Activity) co
 {
     if (Activity.kind != TTeamActivity::Hunt)
         return QString();
-    const auto* area = cyclopedia::TCyclopediaMapStaticData::instance().area(Activity.huntArea != 0 ? Activity.huntArea : Activity.huntType);
-    return area ? area->alias : QString();
+    const auto& map = cyclopedia::TCyclopediaMapStaticDataStorage::instance();
+    return Activity.huntArea != 0 ? map.subAreaAlias(static_cast<quint16>(Activity.huntArea))
+                                  : map.areaAlias(static_cast<quint16>(Activity.huntType));
 }
 
 // ---------------------------------------------------------------------------
