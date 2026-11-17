@@ -388,21 +388,13 @@ elseif(ANDROID)
 elseif(WASM)
   # Tip-fs OPFS uses EM_ASYNC_JS + JSPI. That needs native wasm EH (SJLJ +
   # JSPI SuspendError on Safari). Qt wasm kit must be built with
-  # -feature-wasm-exceptions -feature-wasm-jspi (`make qt WASM=1 BUILD=1`).
+  # -feature-wasm-exceptions -feature-wasm-jspi (the qtclient/Qt5 wasm kit is).
   option(WASM_USE_WASM_EXCEPTIONS "Use native WebAssembly exception handling" ON)
-  # Absolute path; monorepo build.sh may override with data/ottibia/engine/client/browser/shell.html.
-  set(WASM_SHELL_FILE "${CMAKE_SOURCE_DIR}/browser/shell.html" CACHE FILEPATH
-      "Emscripten --shell-file for the WASM HTML wrapper")
-  # Fixed SAB heap (ALLOW_MEMORY_GROWTH=0 — Chrome WebGL rejects resizable SAB).
-  # Keep in lockstep with client/tibia QT_WASM_INITIAL_MEMORY (1536MB).
-  set(WASM_INITIAL_MEMORY "1610612736" CACHE STRING
-      "Emscripten -sINITIAL_MEMORY= bytes (fixed WASM heap)")
 
-  set(_WASM_LONGJMP_MODE "emscripten")
   # Linked tip: product packs STATIC into tibia (no MAIN_MODULE / host_exports).
+  # Link flags live with the targets (client/tibia, launcher/src).
   set(_WASM_CXX_FLAGS "-O3 -ffast-math -msimd128 -frtti -pthread")
   if(WASM_USE_WASM_EXCEPTIONS)
-    set(_WASM_LONGJMP_MODE "wasm")
     string(APPEND _WASM_CXX_FLAGS " -fwasm-exceptions")
   else()
     string(APPEND _WASM_CXX_FLAGS " -fexceptions")
@@ -441,53 +433,6 @@ elseif(WASM)
 
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${_WASM_CXX_FLAGS}")
 
-  set(WASM_LINK_OPTIONS
-          -sINVOKE_RUN=0
-          -sEXIT_RUNTIME=1
-          -sTEXTDECODER=2
-          -sCASE_INSENSITIVE_FS=1
-          -lidbfs.js
-          -lwebsocket.js
-          # setCanvasElementSize: browserwindow applyShellLayout (Debug ASSERTIONS
-          # abort on typeof Module.setCanvasElementSize when the symbol is missing).
-          -sEXPORTED_RUNTIME_METHODS=ccall,setCanvasElementSize,FS,IDBFS
-          # Must list every key shell.html assigns on Module (Emscripten abort if extra).
-          -sINCOMING_MODULE_JS_API=[locateFile,preRun,postRun,print,printErr,canvas,setStatus,monitorRunDependencies,onAbort]
-          -sFORCE_FILESYSTEM
-          -sMALLOC=dlmalloc
-          "-sSUPPORT_LONGJMP=${_WASM_LONGJMP_MODE}"
-          # Do not pass -sWEBSOCKET_SUBPROTOCOL (empty value is invalid).
-          # The game WebSocket omits the subprotocol so Canary handshakes work.
-          -sOFFSCREENCANVAS_SUPPORT=1
-          -sOFFSCREEN_FRAMEBUFFER
-          -sENVIRONMENT=web,worker
-          -sPROXY_TO_PTHREAD
-          -sFULL_ES2=1
-          -sMIN_WEBGL_VERSION=2
-          -sMAX_WEBGL_VERSION=2
-          -sUSE_PTHREADS=1
-          -sFETCH=1
-          -sPTHREAD_POOL_SIZE=navigator.hardwareConcurrency
-          # Growable WASM memory becomes a resizable SharedArrayBuffer, which
-          # Chrome 149+ refuses to accept as a source for WebGL uploads
-          # ("ArrayBuffer value must not be resizable"). Use a fixed heap.
-          -sALLOW_MEMORY_GROWTH=0
-          -sINITIAL_MEMORY=${WASM_INITIAL_MEMORY}
-          # No --preload-file: the page syncs the runtime tree (content-web, see
-          # deploy/build-browser.sh) into MEMFS in Module.preRun via @qtclient/client-sync.
-          --shell-file=${WASM_SHELL_FILE}
-  )
-
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    list(APPEND WASM_LINK_OPTIONS -sASSERTIONS=1)
-  endif()
-
-  # Note: add_subdirectory(client) runs before client/tibia creates `tibia`, so
-  # these flags are not applied here. Tip wasm link flags live in
-  # client/tibia/CMakeLists.txt (WASMFS+JSPI+OPFS home, FETCH, wasm EH,
-  # embind bootstrap, Qt memory). Soft launcher keeps classic FS (no WASMFS).
-  string(REPLACE ";" " " _WASM_LINK_LOG "${WASM_LINK_OPTIONS}")
-  message(STATUS "WASM link options (qtclient_deps CXX only; see tibia CMake): ${_WASM_LINK_LOG}")
   set(CMAKE_EXECUTABLE_SUFFIX ".html")
 
 else() # Linux / macOS

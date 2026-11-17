@@ -27,9 +27,9 @@
 //  - async ops (lookups, create, list, remove, move, open) need a free main
 //    thread in Safari: the main thread suspends (JSPI) until they finish.
 //  Pthreads block in futex_wait either way.
-// Contract with browser/jspi-runtime.js: the main thread only suspends inside
-// its own activation; a file op from a raw JS→wasm re-entry while main is
-// suspended aborts with both stacks.
+// The main thread only suspends inside its own activation: every browser event
+// reaches wasm through Qt's QWasmSuspendResumeControl (network and WebSockets
+// included, in the qtclient/Qt5 fork), never as a raw JS-to-wasm call.
 
 #include "qtclient_opfs_backend.h"
 
@@ -156,19 +156,6 @@ int slotForThisThread()
     }
 }
 
-EM_JS(void, qtclientFsRequireMainActivation, (int op), {
-    var jspi = Module.qtclientJspi;
-    if (!jspi)
-        abort('qtclient-fs: browser/jspi-runtime.js post-js is not linked');
-    if (jspi.parked > 0) {
-        var msg = 'qtclient-fs op ' + op +
-                  ' called from a JS→wasm re-entry while main is suspended. ' +
-                  'Route that callback through the Qt event loop (browser/jspi-runtime.js).';
-        err(msg + '\n' + new Error().stack);
-        abort(msg);
-    }
-});
-
 // Wake the Worker for a posted request. The main thread holds the Worker
 // object; a pthread cannot reach it, so it rings the Worker's BroadcastChannel
 // (opened once per thread).
@@ -205,8 +192,6 @@ uint32_t g_mainCalls;
 Result call(Op op, std::initializer_list<double> args)
 {
     const bool main = emscripten_is_main_browser_thread();
-    if (main)
-        qtclientFsRequireMainActivation(op);
     const double started = main ? emscripten_get_now() : 0;
     Slot& slot = g_control.slots[slotForThisThread()];
     slot.op = op;
@@ -522,13 +507,6 @@ bool qtclientMountOpfs()
         return false;
     if (wasmfs_create_directory("/home/web_user", 0777, backend) != 0) {
         emscripten_console_errorf("qtclient-fs: mounting /home/web_user failed: %s", strerror(errno));
-        return false;
-    }
-    // Tip packs live at OPFS mods/ (next to the binary's dir "/" on desktop).
-    if (!mkdirIfMissing("/home/web_user/mods"))
-        return false;
-    if (symlink("/home/web_user/mods", "/mods") != 0) {
-        emscripten_console_errorf("qtclient-fs: linking /mods failed: %s", strerror(errno));
         return false;
     }
     EM_ASM({ Module.qtclientFsMounted = 1; });

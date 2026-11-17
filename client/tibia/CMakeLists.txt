@@ -198,6 +198,11 @@ target_link_libraries(tibia PRIVATE
   tibia_legacycontrolsplugin
   qmlcomponentsplugin
   qtclient_shared)
+# Browsers have no TCP: the game connections are QWebSockets on wasm.
+if(EMSCRIPTEN)
+  find_package(Qt6 6.10 REQUIRED COMPONENTS WebSockets)
+  target_link_libraries(tibia PRIVATE Qt6::WebSockets)
+endif()
 tibia_link_desktop_webengine(tibia ${TIBIA_USE_WEBENGINE_STUBS})
 # Public HD scaler + mods registry / WorldView / ModLoader; packs via TibiaMods + QtClientMod.
 target_sources(tibia PRIVATE
@@ -814,7 +819,6 @@ qt_add_resources(tibia tibia_hotkeys PREFIX / BASE "${CMAKE_CURRENT_SOURCE_DIR}"
 if(EMSCRIPTEN)
   # Browser qtclient is the separate Widgets `launcher` target (launcher.wasm).
   # This tip is game-only QML — never embed qtclient / Widgets here.
-  target_link_options(tibia PRIVATE "SHELL:-sFETCH=1")
   # Product packs STATIC-link into this tip — no MAIN_MODULE / host_exports.
 
   # Embind SIOF: register primitives before other dynamic initializers
@@ -850,19 +854,17 @@ if(EMSCRIPTEN)
       message(WARNING "tibia wasm: missing runtime file ${TIBIA_ROOT}/${_rel}")
     endif()
   endforeach()
-  # Net uses Emscripten's websocket.js (Crystal WS :7174).
-  # Match Qt wasm kit EH ABI (wasm-exceptions + SUPPORT_LONGJMP=wasm).
+  # Match Qt wasm kit EH ABI (wasm-exceptions + SUPPORT_LONGJMP=wasm). The game
+  # connections are QWebSockets (Crystal WS :7174), linked above.
   if(TIBIA_WITH_GAMECORE)
     if(WASM_USE_WASM_EXCEPTIONS)
       target_compile_options(tibia PRIVATE "SHELL:-fwasm-exceptions")
       target_link_options(tibia PRIVATE
-        "SHELL:-lwebsocket.js"
         "SHELL:-fwasm-exceptions"
         "SHELL:-sSUPPORT_LONGJMP=wasm")
     else()
       target_compile_options(tibia PRIVATE "SHELL:-fexceptions")
       target_link_options(tibia PRIVATE
-        "SHELL:-lwebsocket.js"
         "SHELL:-fexceptions"
         "SHELL:-sSUPPORT_LONGJMP=emscripten")
     endif()
