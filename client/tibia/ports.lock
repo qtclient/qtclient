@@ -1496,6 +1496,7 @@ gamewindow::TAnalyticsSelectorWidgetController::widgetVisibilityChanged	8b5ac352
 gamewindow::TAnalyticsSelectorWidgetController::~TAnalyticsSelectorWidgetController	cea6821a37a0e02e	skip	generated: compiler-generated destructor pair
 gamewindow::TAnalyticsSelectorWidgetController::~TAnalyticsSelectorWidgetController_deleting	13606269a7a5863b	skip	generated: compiler-generated destructor pair
 gamewindow::TAppearanceInstanceListModel::onItemPriceVisualizationChanged	2197e71ef26f1b66	ported	gamewindow/appearanceinstancelistmodel.cpp:TAppearanceInstanceListModel::refreshLootValues
+gamewindow::TAppearanceInstanceListModel::onObjectCountsChanged	6d677a72be35ffc0	ported	gamewindow/appearanceinstancelistmodel.cpp:TAppearanceInstanceListModel::onObjectCountsChanged
 gamewindow::TAppearanceInstanceListModel::v15	ad083b8e674a8c51	ported	gamewindow/appearanceinstancelistmodel.cpp:TAppearanceInstanceListModel::rowCount
 gamewindow::TAppearanceInstanceListModel::v44	4151550b985bab44	ported	gamewindow/appearanceinstancelistmodel.cpp:TAppearanceInstanceListModel::roleNames
 gamewindow::TAppearanceInstanceListModel::v49	c4818c5b58221878	ported	gamewindow/appearanceinstancelistmodel.cpp:TAppearanceInstanceListModel::setObjects
@@ -4988,6 +4989,7 @@ sub_1557a5d43ee6#2	1557a5d43ee646d1	inlined	friends/friendsciptypes.cpp:TFriends
 sub_1563d7dec021	1563d7dec021aec1	skip	generated: moc property getter (inspectPlayerList), provided by the generated cip base
 sub_15692cbb31ae	15692cbb31aed816	skip	generated: moc property getter, provided by the generated cip base
 sub_15803f2e4f34	15803f2e4f348df2	skip	generated: compiler-generated destructor pair
+sub_15882058bea4	15882058bea4cbaf	ported	gamewindow/appearanceinstancelistmodel.cpp:TAppearanceInstanceListModel::setObjectCountStorage
 sub_15a417656d1e#4	15a417656d1e28f1	skip	library: libc++ vector/deque internals (library)
 sub_15a417656d1e#8	15a417656d1e28f1	skip	library: std::vector reserve/realloc (library)
 sub_15a4533fe3f4	15a4533fe3f4c771	ported	gamewindow/sidebarmanager.cpp:TSidebarController::remainingHeight
@@ -8950,6 +8952,7 @@ sub_91b11264c01f	91b11264c01fb4bb	ported	gamewindow/gamewindowcontroller.cpp:TGa
 sub_91b7d0822caf	91b7d0822caf3a72	ported	app/bootstrap.cpp:configureProcess
 sub_91b7d0822caf#2	91b7d0822caf3a72	ported	app/bootstrap.cpp:configureProcess
 sub_91bc601f7574	91bc601f75743351	inlined	gamewindow/marketcontroller.cpp:detailsText
+sub_91d12b3bd2a5	91d12b3bd2a51b45	ported	gamewindow/appearanceinstancelistmodel.cpp:TAppearanceInstanceListModel::TAppearanceInstanceListModel
 sub_91d2393fc5a3	91d2393fc5a3a272	skip	library: std::sort instantiation over achievements (library)
 sub_91daccf4b821	91daccf4b821bf09	ported	gamewindow/depotsearchwidgetcontroller.cpp:TDepotSearchWidgetController::updateHoverCursor
 sub_91ded1ba0ffa	91ded1ba0ffafe87	ported	gamewindow/stashdialogcontroller.cpp:TStashDialogController::handleGameAction
@@ -11723,6 +11726,7 @@ sub_e13902ceb444	e13902ceb4446482	skip	library: nlohmann::json from_json number/
 sub_e16f987173de	e16f987173de42b5	inlined	animation/phaseanimator.cpp:TAnimator::update
 sub_e1706155bec3	e1706155bec3d6b0	skip	library: libc++ std::vector/std::map instantiation
 sub_e17a5e304af0	e17a5e304af0f577	skip	library: std::vector / std::optional teardown of highlight groups
+sub_e17b5b6e16eb	e17b5b6e16eb269e	ported	gamewindow/appearanceinstancelistmodel.cpp:TAppearanceInstanceListModel::setObjectCountStorage
 sub_e181703e30f5	e181703e30f5db33	ported	teamfinder/teamsortproxymodels.cpp:TTeamsListSortProxyModel::anouceFilterChanged
 sub_e188fb533277	e188fb533277a902	skip	library: std::sort / std::stable_sort instantiation over offers (library; comparator is TOfferSortPredicate)
 sub_e18dee7b7d8f	e18dee7b7d8fb56b	skip	generated: compiler-generated destructor pair

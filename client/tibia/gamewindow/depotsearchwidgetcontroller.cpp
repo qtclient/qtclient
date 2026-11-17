@@ -205,6 +205,8 @@ void TDepotSearchWidgetController::setGameSession(game::TGameSessionBase* sessio
     m_availableNPCs = npcs;
     Q_EMIT availableNPCsChanged();
 
+    for (TAppearanceInstanceListModel* model : { &m_depotModel, &m_inboxModel })
+        model->setObjectCountStorage(session ? session->objectCountStorage().get() : nullptr);
     if (!session) {
         m_searchProxy.resetEntries({});
         m_depotModel.setObjects({});

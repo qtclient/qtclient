@@ -190,6 +190,23 @@ void TAppearanceInstanceListModel::refreshLootValues()
         Q_EMIT dataChanged(index(0), index(count - 1), { LootValueImageUnderItemRole, LootValueImageOverItemRole, AlternativeSlotStringRole });
 }
 
+void TAppearanceInstanceListModel::setObjectCountStorage(container::TObjectCountStorage* counts)
+{
+    QObject::disconnect(m_objectCountsChanged);
+    if (!counts)
+        return;
+    m_objectCountsChanged = connect(counts, &container::TObjectCountStorage::objectCountsChanged, this,
+                                    &TAppearanceInstanceListModel::onObjectCountsChanged);
+    refreshLootValues();
+    onObjectCountsChanged();
+}
+
+void TAppearanceInstanceListModel::onObjectCountsChanged()
+{
+    if (const int count = rowCount(); count > 0)
+        Q_EMIT dataChanged(index(0), index(count - 1), { TypeCountRole, CountStringRole });
+}
+
 void TAppearanceInstanceListModel::refreshClocks()
 {
     if (!m_showExpire)
