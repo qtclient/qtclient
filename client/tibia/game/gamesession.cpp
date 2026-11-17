@@ -1147,7 +1147,8 @@ bool localPlayerAutoWalk(const Position& goal, const bool retry, const tibia::cl
     tibia::input::TPlayerMovementIntentHandler* intent = movementIntent();
     if (!intent || !goal.isValid() || !isOnline())
         return false;
-    intent->walkTo(tibia::worldmap::TWorldMapCoordinate(goal), enterUnwalkableGoal);
+    intent->handleMovementIntent(
+        std::make_shared<tibia::input::TMovementIntentTargetCoordinate>(goal.x, goal.y, goal.z, enterUnwalkableGoal));
     return intent->hasGoal();
 }
 
@@ -1159,13 +1160,13 @@ bool localPlayerAutoWalk(const MapPos goal, const bool retry, const tibia::clien
 void localPlayerHoldDirection(const tibia::client::Direction direction)
 {
     if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent(); intent && isOnline())
-        intent->walkInDirection(tibia::input::toMovementDirection(direction));
+        intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentDirection>(static_cast<int>(direction)));
 }
 
 void localPlayerRotate(const tibia::client::Direction direction)
 {
     if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent(); intent && isOnline() && direction <= tibia::client::West)
-        intent->rotate(static_cast<tibia::creatures::ECreatureLookDirection>(direction));
+        intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentRotate>(static_cast<int>(direction)));
 }
 
 void localPlayerClearMovementGoal()
@@ -1177,7 +1178,7 @@ void localPlayerClearMovementGoal()
 void localPlayerReleaseDirection()
 {
     if (tibia::input::TPlayerMovementIntentHandler* intent = movementIntent())
-        intent->stopIntent();
+        intent->handleMovementIntent(std::make_shared<tibia::input::TMovementIntentStop>());
 }
 
 void localPlayerMovementTick()

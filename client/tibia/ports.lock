@@ -3094,10 +3094,12 @@ input::TPlayerMovementInputInterpreter::~TPlayerMovementInputInterpreter_deletin
 input::TPlayerMovementIntent::v0	7382774637cec697	skip	generated: compiler-generated destructor pair (identical body)
 input::TPlayerMovementIntentHandler::v14	097457dc45e86dd8	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::tick
 input::TPlayerMovementIntentHandler::v15	ced70d9414b8f476	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::onPositionChanged
+input::TPlayerMovementIntentHandler::v16	210527c462225280	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::handleMovementIntent
 input::TPlayerMovementIntentHandler::v17	99ba17c070236ea8	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::onCancelWalk
 input::TPlayerMovementIntentHandler::v18	9e3430d145eb34af	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::sendRotate
 input::TPlayerMovementIntentHandler::v20	fc14ce599074d3c2	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::canStepTowards
 input::TPlayerMovementIntentHandler::v22	cc5fbbc5e3ca13f7	inlined	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::onPositionChanged
+input::TPlayerMovementIntentHandler::v23	9de4a3e81c5f77fd	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::noteIntent
 input::TPlayerMovementIntentHandler::v25	2885fe0db1dcc734	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::predictStep
 input::TPlayerMovementIntentHandler::v26	5d5140f433e7f5ba	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::step
 input::TPlayerMovementIntentHandler::v27	7c3c1977d364e0f6	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::advance
@@ -7144,6 +7146,7 @@ sub_59f8400a96ae	59f8400a96ae3325	ported	skillwheel/skillwheelcontrollers.cpp:TS
 sub_5a0b457c5bdc	5a0b457c5bdca3e4	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::rebuildAvailableOffers
 sub_5a0e3140603c	5a0e3140603c75c2	skip	library: SFML/miniaudio library internals (unoptimised vendored build; callers are sf:: and other library helpers)
 sub_5a16be7efa2e	5a16be7efa2e4631	ported	analysers/analyserwidgets.cpp:THuntingSessionWidgetController::damagePerHourString
+sub_5a226bfade8e	5a226bfade8ed226	inlined	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::step
 sub_5a3033fafeef	5a3033fafeeff053	skip	generated: compiler-generated destructor pair
 sub_5a4199a1982a	5a4199a1982ad5c9	skip	library: Qt/std container template code
 sub_5a465e8434b2	5a465e8434b2539f	ported	gamewindow/cooldownbarcontroller.cpp:isValidSpellIcon
@@ -11442,6 +11445,7 @@ sub_dfc4cc2bb9ca#16	dfc4cc2bb9ca24e1	inlined	protocol::TProtobufServerMessageTra
 sub_dfce5ce5b4a4	dfce5ce5b4a404f6	inlined	proficiency/proficiencycatalogue.cpp:shapePerk
 sub_dfcf2d8e1999	dfcf2d8e1999fdf5	skip	data: static initializer of shared header constants
 sub_dfe3bd7173c2	dfe3bd7173c2a3c7	ported	gamewindow/contextmenucontroller.cpp:TContextMenuController::addSeparator
+sub_dfe9bb459eea	dfe9bb459eea4c90	ported	input/playermovementintenthandler.cpp:TPlayerMovementIntentHandler::holdDirection
 sub_dff12325b83c	dff12325b83caec5	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
 sub_dff4519d4cee	dff4519d4cee85f9	inlined	skillwheel/skillwheeldata.cpp:mediumPerkValueText
 sub_e001935629a9	e001935629a93752	ported	gamewindow/sidebarwidgetsmanager.cpp:TSidebarWidgetsManager::toggleWidget
