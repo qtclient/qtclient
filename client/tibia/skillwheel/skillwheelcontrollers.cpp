@@ -945,7 +945,10 @@ TGemAtelierPageController::TGemAtelierPageController(TSkillWheelStorage* storage
     , m_list(new TInventoryGemListModel(storage, this))
     , m_filter(new TInventoryGemSortFilterProxyModel(storage, this))
     , m_pages(new TPaginationProxyModel(15, this))
+    , m_dismantleConfirm(new gamewindow::TMessageDialogController(this))
 {
+    m_dismantleConfirm->setCloseOnButtonClicked(true);
+    connect(m_dismantleConfirm, &gamewindow::TMessageDialogController::acceptClicked, this, [this] { gemAction(0, m_dismantleGemId); });
     m_filter->setSourceModel(m_list);
     m_pages->setSourceModel(m_filter);
     m_gemInventory = m_pages;
@@ -1050,7 +1053,22 @@ void TGemAtelierPageController::socketOrUnsocketGem(const int GemId, const int V
     m_storage->setCurrentWheel(wheel);
 }
 
-void TGemAtelierPageController::dismantleGem(const int GemId) { gemAction(0, GemId); }
+void TGemAtelierPageController::closeMessageDialog()
+{
+    if (m_dismantleConfirm->dialog()->item())
+        m_dismantleConfirm->dialog()->close();
+}
+
+void TGemAtelierPageController::dismantleGem(const int GemId)
+{
+    // CIP: asks first (Yes with Return, No with Escape).
+    using Button = gamewindow::TMessageDialogController::Button;
+    m_dismantleGemId = GemId;
+    m_dismantleConfirm->setButtons({ new gamewindow::TMessageDialogButton(Button::YES, qtTrId("yes"), 1u),
+                                     new gamewindow::TMessageDialogButton(Button::NO, qtTrId("no"), 2u) });
+    m_dismantleConfirm->showMessage(qtTrId("skill_wheel_atelier_dismantle_confirm_dialog_title"),
+                                    qtTrId("skill_wheel_atelier_dismantle_confirm_dialog_text"));
+}
 void TGemAtelierPageController::revealGem(const int GemQuality) { gemAction(1, GemQuality); }
 void TGemAtelierPageController::reshapeGem(const int GemId, const int ModIdx) { gemAction(2, GemId, ModIdx); }
 void TGemAtelierPageController::toggleGemLock(const int GemId) { gemAction(3, GemId); }
@@ -1385,6 +1403,7 @@ void TSkillWheelDialogController::closeDialog()
         m_workshop->hideDialogTab();
     m_dialogTab = NoTabInitialState;
     Q_EMIT dialogTabChanged();
+    m_atelier->closeMessageDialog();
     m_page->clearData();
     if (m_presetDialog)
         m_presetDialog->dialog()->close();
