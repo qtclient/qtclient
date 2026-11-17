@@ -74,7 +74,8 @@ private:
 
     QPointer<news::TNewsStorage> m_storage;
     QPointer<news::TNewsRequestUploader> m_uploader;
-    TNewsEntryModel m_model;
+    /// The dialog's entry list over the client's news entry model.
+    TNewsEntrySortProxyModel m_entries;
     int m_category = news::NewsItem::UsefulInfo;
     uint m_pendingEntry = 0;
     bool m_userChoseCategory = false;

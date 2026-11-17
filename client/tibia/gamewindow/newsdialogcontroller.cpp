@@ -40,9 +40,9 @@ const QString& contentStyle()
 TNewsDialogController::TNewsDialogController(news::TNewsStorage* storage, QObject* parent)
     : TDialogController(QStringLiteral("NewsDialog.qml"), parent)
     , m_storage(storage)
-    , m_model(this)
+    , m_entries(0, false)
 {
-    m_entryModel = &m_model;
+    m_entryModel = &m_entries;
     if (m_storage)
         connect(m_storage, &news::TNewsStorage::contentsChanged, this, &TNewsDialogController::onNewsStorageContentsChanged);
     onNewsStorageContentsChanged();
@@ -50,7 +50,7 @@ TNewsDialogController::TNewsDialogController(news::TNewsStorage* storage, QObjec
 
 TNewsDialogController::~TNewsDialogController()
 {
-    m_model.setRoots({}, {});
+    setEntries({});
 }
 
 void TNewsDialogController::setNewsUploader(news::TNewsRequestUploader* uploader)
@@ -201,29 +201,28 @@ void TNewsDialogController::refresh()
 
 void TNewsDialogController::setEntries(const QVector<news::NewsItem>& entries)
 {
-    // Group headers are rows of their own; an entry of a header in the list
-    // becomes its sub row.
-    QVector<news::NewsItem> roots;
-    QVector<QVector<news::NewsItem>> children;
-    QHash<int, int> headerRow;
+    std::vector<TAbstractNewsEntry> rows;
+    rows.reserve(static_cast<size_t>(entries.size()));
     for (const news::NewsItem& item : entries) {
-        if (item.isGroupHeader()) {
-            headerRow.insert(item.id, static_cast<int>(roots.size()));
-            roots.push_back(item);
-            children.push_back({});
-        }
+        TAbstractNewsEntry row;
+        row.categoryId = item.id > 0 ? static_cast<uint>(item.id) : 0u;
+        row.headline = item.headline;
+        row.displayFrom = QDateTime::fromSecsSinceEpoch(item.publishDate);
+        row.unlockLevel = static_cast<ushort>(item.unlockLevel);
+        row.isUnlocked = item.unlocked;
+        row.isRead = item.isRead;
+        row.groupHeaderID = item.groupHeaderId > 0 ? static_cast<uint>(item.groupHeaderId) : 0u;
+        row.isGroupHeader = item.typeId() == -1;
+        // A group header lists its entries from the same model.
+        if (row.isGroupHeader)
+            row.subEntryModel = std::make_shared<TNewsEntrySortProxyModel>(row.categoryId, true);
+        rows.push_back(std::move(row));
     }
-    for (const news::NewsItem& item : entries) {
-        if (item.isGroupHeader())
-            continue;
-        if (item.groupHeaderId > 0 && headerRow.contains(item.groupHeaderId)) {
-            children[headerRow.value(item.groupHeaderId)].push_back(item);
-            continue;
-        }
-        roots.push_back(item);
-        children.push_back({});
-    }
-    m_model.setRoots(roots, children);
+    // CIP: the player guide tab shows the newest entries first.
+    m_entries.setNewestFirst(dialogTab() == EDialogTab::PlayerGuide);
+    TNewsEntryModel& model = TNewsEntryModel::instance();
+    model.setEntries(std::move(rows));
+    Q_EMIT model.listUpdated();
 
     uint selected = 0;
     if (const std::optional<news::NewsItem> current = m_storage ? m_storage->entry(m_dialogCategory) : std::nullopt;
@@ -235,8 +234,8 @@ void TNewsDialogController::setEntries(const QVector<news::NewsItem>& entries)
             selected = m_pendingEntry;
             m_pendingEntry = 0;
         }
-        if (selected == 0 && m_model.rowCount() > 0)
-            selected = m_model.data(m_model.index(0), TNewsEntryModel::CategoryIdRole).toUInt();
+        if (selected == 0)
+            selected = m_entries.rowCount() == 0 ? 0u : m_entries.index(0, 0).data(TNewsEntryModel::CategoryIdRole).toUInt();
     }
     setDialogCategory(selected);
 }
@@ -251,13 +250,13 @@ void TNewsDialogController::setDialogCategory(const uint ID)
     // A group header without text shows its first entry.
     if (entry->typeId() == -1 && entry->message.isEmpty()) {
         uint first = 0;
-        for (int row = 0; row < m_model.rowCount(); ++row) {
-            const QModelIndex index = m_model.index(row);
-            if (m_model.data(index, TNewsEntryModel::CategoryIdRole).toUInt() != ID)
+        for (int row = 0; row < m_entries.rowCount(); ++row) {
+            const QModelIndex index = m_entries.index(row, 0);
+            if (index.data(TNewsEntryModel::CategoryIdRole).toUInt() != ID)
                 continue;
-            if (auto* sub = qobject_cast<QAbstractItemModel*>(m_model.data(index, TNewsEntryModel::SubEntryModelRole).value<QObject*>());
+            if (auto* sub = qobject_cast<QAbstractItemModel*>(index.data(TNewsEntryModel::SubEntryModelRole).value<QObject*>());
                 sub && sub->rowCount() > 0)
-                first = sub->data(sub->index(0, 0), TNewsEntrySortProxyModel::CategoryIdRole).toUInt();
+                first = sub->index(0, 0).data(TNewsEntryModel::CategoryIdRole).toUInt();
             break;
         }
         setDialogCategory(first);
