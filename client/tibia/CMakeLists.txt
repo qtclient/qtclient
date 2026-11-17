@@ -251,7 +251,6 @@ set(TIBIA_PRODUCT_NAME "Tibia")
 set(TIBIA_PRODUCT_ORG "CipSoft")
 set(TIBIA_PRODUCT_URL "https://www.tibia.com/")
 set(TIBIA_DEFAULT_CDN "")
-set(TIBIA_CLIENT_PACKAGE_DIR "Tibia.app")
 
 tibia_add_enabled_mods()
 tibia_apply_linked_pack_staging()
@@ -260,8 +259,7 @@ target_compile_definitions(tibia PRIVATE
   "TIBIA_PRODUCT_NAME=\"${TIBIA_PRODUCT_NAME}\""
   "TIBIA_PRODUCT_ORG=\"${TIBIA_PRODUCT_ORG}\""
   "TIBIA_PRODUCT_URL=\"${TIBIA_PRODUCT_URL}\""
-  "TIBIA_DEFAULT_CDN=\"${TIBIA_DEFAULT_CDN}\""
-  "TIBIA_CLIENT_PACKAGE_DIR=\"${TIBIA_CLIENT_PACKAGE_DIR}\"")
+  "TIBIA_DEFAULT_CDN=\"${TIBIA_DEFAULT_CDN}\"")
 
 # Bundle identity: CIP-neutral; product mods override at runtime via primaryIdentity().
 set(_tibia_bundle_id com.tibia.client)

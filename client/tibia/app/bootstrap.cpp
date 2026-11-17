@@ -230,13 +230,9 @@ QString mountGraphicsResources(const QStringList& dirs)
         if (dir.isEmpty())
             continue;
         QStringList candidates{
+            // CipSoft: next to the executable (bin/, Contents/MacOS/).
             QDir(dir).filePath(QStringLiteral("graphics_resources.rcc")),
-            // CIP engine package path (installed client).
-            QDir(dir).filePath(QStringLiteral("Contents/MacOS/graphics_resources.rcc")),
-            // Tip package / CDN things → Contents/Resources/assets (portal OPFS).
-            QDir(dir).filePath(QStringLiteral("Contents/Resources/assets/graphics_resources.rcc")),
-            QDir(dir).filePath(QStringLiteral("Resources/assets/graphics_resources.rcc")),
-            // Dev extract: flat CIP assets dump.
+            // Dev extract: flat CIP assets dump (data/assets/).
             QDir(dir).filePath(QStringLiteral("assets/graphics_resources.rcc")),
         };
         for (const QString& file : candidates) {
@@ -275,9 +271,7 @@ void installUiFonts(const QStringList& dirs)
             continue;
         const QStringList fontDirs{
             QDir(dir).filePath(QStringLiteral("fonts")),
-            // Tip package / CDN things → Contents/Resources/assets/fonts.
-            QDir(dir).filePath(QStringLiteral("Contents/Resources/assets/fonts")),
-            QDir(dir).filePath(QStringLiteral("Resources/assets/fonts")),
+            // Package Resources (and the dev extract): assets/fonts.
             QDir(dir).filePath(QStringLiteral("assets/fonts")),
         };
         for (const QString& fonts : fontDirs) {
