@@ -123,14 +123,9 @@ void TSessionBootstrap::installCreateCharacter(gamewindow::TCreateCharacterDialo
 
 void TSessionBootstrap::wireCreateCharacter()
 {
-    auto* characters = m_client->characterSelection();
-    QObject::disconnect(m_createCharacterRequested);
     QObject::disconnect(m_createCharacterIfEmpty);
     QObject::disconnect(m_characterCreated);
 
-    m_createCharacterRequested =
-        connect(characters, &gamewindow::TCharacterSelectionController::createCharacterRequested, this,
-                &TSessionBootstrap::openCreateCharacter);
     m_createCharacterIfEmpty =
         connect(m_client, &client::TGameClient::characterSelectionRequested, this,
                 &TSessionBootstrap::openCreateCharacterIfAccountEmpty);
@@ -152,7 +147,7 @@ void TSessionBootstrap::wireCreateCharacter()
 
 void TSessionBootstrap::openCreateCharacterIfAccountEmpty()
 {
-    if (m_client->characterSelection()->characters().isEmpty())
+    if (m_client->characterSelection()->characters().empty())
         openCreateCharacter(true);
 }
 

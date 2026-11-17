@@ -67,7 +67,6 @@ private:
     gamewindow::TWaitDialogController* m_loginWait = nullptr;
     gamewindow::TMessageDialogController* m_error = nullptr;
     gamewindow::TMessageDialogController* m_keepRenderer = nullptr;
-    QMetaObject::Connection m_createCharacterRequested;
     QMetaObject::Connection m_createCharacterIfEmpty;
     QMetaObject::Connection m_characterCreated;
 };

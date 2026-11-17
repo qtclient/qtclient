@@ -484,7 +484,6 @@ public:
 class TAccountBadgeListData final : public ::tibia::CipTyped { public: TAccountBadgeListData() = default; };
 class TAccountCharacterListData final : public ::tibia::CipTyped { public: TAccountCharacterListData() = default; };
 class TBossSlotQMLInformation final : public ::tibia::CipTyped { public: TBossSlotQMLInformation() = default; };
-class TCharacterInformationModelData final : public ::tibia::CipTyped { public: TCharacterInformationModelData() = default; };
 class TInspectObjectQMLData final : public ::tibia::CipTyped { public: TInspectObjectQMLData() = default; };
 class TOutfitQMLInformation final : public ::tibia::CipTyped { public: TOutfitQMLInformation() = default; };
 class TQmlAvailableCharmFilter final : public ::tibia::CipTyped { public: TQmlAvailableCharmFilter() = default; };

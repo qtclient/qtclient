@@ -104,6 +104,7 @@ qt_add_executable(tibia
   news/newsstorage.cpp news/newsstorage.h
   news/newsentrymodels.cpp news/newsentrymodels.h
   controllers/characterselectioncontroller.cpp controllers/characterselectioncontroller.h
+  gamewindow/characterinformationmodeldata.cpp gamewindow/characterinformationmodeldata.h
   gamewindow/gamewindowcontroller.cpp gamewindow/gamewindowcontroller.h
   gamewindow/newsdialogcontroller.cpp gamewindow/newsdialogcontroller.h
   gamewindow/calendardialogcontroller.cpp gamewindow/calendardialogcontroller.h
