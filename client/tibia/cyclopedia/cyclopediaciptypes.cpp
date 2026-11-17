@@ -13,6 +13,7 @@
 #include "container/containerciptypes.h"
 #include "creatures/creatureprotocolapply.h"
 #include <tibia/appearances/appearancetype.h>
+#include <tibia/assets/things.h>
 #include <tibia/client/outfit.h>
 #include <tibia/game/thingsession_forward.h>
 
@@ -1108,6 +1109,28 @@ void TCyclopediaProtocolMessageHandler::sendResetPartyHuntAnalyser()
     auto message = protocol::newGameclientMessage(43);
     message->MutableExtension(GameclientMessagePartyHuntAnalyser::gameclient_message_party_hunt_analyser)->set_action(0);
     protocol::sendGameclientMessage(std::move(message));
+}
+
+void TCyclopediaProtocolMessageHandler::sendPartyHuntLootType(const int lootType)
+{
+    auto message = protocol::newGameclientMessage(43);
+    auto* m = message->MutableExtension(GameclientMessagePartyHuntAnalyser::gameclient_message_party_hunt_analyser);
+    m->set_action(1);
+    m->set_price_type(lootType != 0 ? 1 : 0);
+    protocol::sendGameclientMessage(std::move(message));
+    if (lootType != 1)
+        return;
+    constexpr std::size_t BatchSize = 400;
+    std::vector<uint16_t> objectIds;
+    objectIds.reserve(BatchSize);
+    for (const TAppearanceTypePtr& type : appearances::TAppearancesManager::instance().getCyclopediaObjectTypes()) {
+        objectIds.push_back(static_cast<uint16_t>(type->getId()));
+        if (objectIds.size() >= BatchSize) {
+            sendPartyHuntObjectPrices(objectIds);
+            objectIds.clear();
+        }
+    }
+    sendPartyHuntObjectPrices(objectIds);
 }
 
 void TCyclopediaProtocolMessageHandler::sendPartyHuntObjectPrices(const std::vector<uint16_t>& objectIds)

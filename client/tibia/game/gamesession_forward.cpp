@@ -791,13 +791,11 @@ void sendOpenRewardWall()
         return;
     gameclient::sendOpenRewardWall();
 }
-void sendPartyAnalyzerPriceType()
+void sendPartyAnalyzerPriceType(const int lootType)
 {
     if (!canPerformGameAction())
         return;
-
-    // server just toggles between Market/Leader
-    gameclient::sendPartyAnalyzerAction(tibia::client::PartyAnalyzerAction_t::PARTYANALYZERACTION_PRICETYPE);
+    cyclopedia::TCyclopediaProtocolMessageHandler::sendPartyHuntLootType(lootType);
 }
 
 void sendPartyAnalyzerReset()

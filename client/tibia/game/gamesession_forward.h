@@ -227,7 +227,8 @@ void sendForgeBrowseHistoryRequest(uint16_t page);
 
 void sendOpenRewardWall();
 
-void sendPartyAnalyzerPriceType();
+/// The party hunt loot type: 0 market prices, 1 the leader's prices.
+void sendPartyAnalyzerPriceType(int lootType);
 
 void sendPartyAnalyzerReset();
 

@@ -136,6 +136,9 @@ public:
     /// PartyHuntAnalyser 0 and 2: reset the session; send the loot prices of objects.
     static void sendResetPartyHuntAnalyser();
     static void sendPartyHuntObjectPrices(const std::vector<uint16_t>& objectIds);
+    /// The party's loot type (0 market, 1 leader); with the leader's prices the prices of every
+    /// cyclopedia object follow, 400 per message.
+    static void sendPartyHuntLootType(int lootType);
 };
 
 class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage

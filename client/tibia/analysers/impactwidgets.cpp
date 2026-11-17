@@ -895,7 +895,8 @@ void TPartyHuntWidgetController::requestConfigurationContextMenu()
                 [] { tibia::game::sendPartyAnalyzerReset(); });
         if (isPremiumPlayer())
             connect(menu->addCustomEntry(qtTrId(m_storage->priceType() == 0 ? "partyhunt_set_loot_type_leader" : "partyhunt_set_loot_type_market")),
-                    &gamewindow::TContextMenuEntryItem::triggered, this, [] { tibia::game::sendPartyAnalyzerPriceType(); });
+                    &gamewindow::TContextMenuEntryItem::triggered, this,
+                    [this] { tibia::game::sendPartyAnalyzerPriceType(m_storage->priceType() == 0 ? 1 : 0); });
     } else if (!inParty) {
         connect(menu->addCustomEntry(qtTrId("partyhunt_rest_local")), &gamewindow::TContextMenuEntryItem::triggered, this,
                 [this] { m_storage->clear(); });

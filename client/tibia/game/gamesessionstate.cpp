@@ -896,16 +896,6 @@ void TGameSessionState::cancelAttackAndFollow()
 
 
 
-void TGameSessionState::sendPartyAnalyzerPriceValue()
-{
-    if (!canPerformGameAction())
-        return;
-
-    // For now, send empty items vector - the server will handle getting the prices
-    // This matches what the server code expects for PARTYANALYZERACTION_PRICEVALUE
-    gameclient::sendPartyAnalyzerAction(tibia::client::PartyAnalyzerAction_t::PARTYANALYZERACTION_PRICEVALUE);
-}
-
 void TGameSessionState::sendPartyAnalyzerAction(const uint8_t action, const std::vector<std::tuple<uint16_t, uint64_t>>& items)
 {
     if (!canPerformGameAction())
