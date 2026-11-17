@@ -8,9 +8,16 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#if QT_CONFIG(process)
 #include <QProcess>
+#endif
+#include <QSettings>
 #include <QStyleFactory>
 #include <QTimer>
+
+#ifdef Q_OS_WASM
+#include "browser/qtclient_opfs_backend.h"
+#endif
 
 namespace {
 
@@ -18,6 +25,9 @@ namespace {
 /// client directly and waits for it, bypassing the package flow.
 bool autoplay()
 {
+#if !QT_CONFIG(process)
+    return false;
+#else
     if (qEnvironmentVariable("QTCLIENT_AUTOPLAY") != QStringLiteral("1"))
         return false;
     QFile file(qEnvironmentVariable("QTCLIENT_DEV_JSON"));
@@ -45,12 +55,21 @@ bool autoplay()
         return false;
     process.waitForFinished(-1);
     return process.exitStatus() == QProcess::NormalExit;
+#endif
 }
 
 } // namespace
 
 int main(int argc, char* argv[])
 {
+#ifdef Q_OS_WASM
+    // Host: /play — the origin's OPFS is HOME (/home/web_user), served by the
+    // engine's qtclient-fs Worker; mount before anything opens a file. QSettings
+    // as ini files there, as on Linux desktop (wasm defaults to localStorage).
+    if (!qtclientMountOpfs())
+        qFatal("launcher.wasm: could not mount OPFS at /home/web_user (see the console)");
+    QSettings::setDefaultFormat(QSettings::IniFormat);
+#endif
     launcher::TLauncherApplication application(argc, argv);
     if (QStyle* fusion = QStyleFactory::create(QStringLiteral("Fusion")))
         application.setStyle(fusion);

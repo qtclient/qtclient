@@ -66,9 +66,10 @@ private:
 
 class TPackage;
 
-enum class EOperatingSystem { Unknown = 0, Windows = 1, MacOS = 2, Linux = 3 };
+// Host: Web (os "web") and Wasm (architecture "wasm") are the browser build (/play).
+enum class EOperatingSystem { Unknown = 0, Windows = 1, MacOS = 2, Linux = 3, Web = 4 };
 /// Bit mask of supported CPU architectures.
-enum EArchitecture : quint8 { ArchitectureI386 = 1, ArchitectureX86_64 = 2, ArchitectureArm64 = 4 };
+enum EArchitecture : quint8 { ArchitectureI386 = 1, ArchitectureX86_64 = 2, ArchitectureArm64 = 4, ArchitectureWasm = 8 };
 
 EOperatingSystem currentOperatingSystem();
 /// Architecture the launcher binary was built for.

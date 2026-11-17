@@ -1,7 +1,9 @@
 #include "systemsurveytojsonconverter.h"
 
 #include <QCryptographicHash>
+#ifndef Q_OS_WASM
 #include <QNetworkInterface>
+#endif
 
 #include <algorithm>
 
@@ -14,11 +16,13 @@ QString TSystemSurveyToJsonConverter::clientId()
         return clientId;
     QCryptographicHash hash(QCryptographicHash::Sha1);
     hash.addData(QStringLiteral("91bb3378-6faa-40dc-8f8b-93b2f1d55e48").toLocal8Bit());
+#ifndef Q_OS_WASM // Host: no network interfaces on the web (the hash is the salt alone).
     QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
     std::sort(interfaces.begin(), interfaces.end(),
               [](const QNetworkInterface& a, const QNetworkInterface& b) { return a.index() < b.index(); });
     for (const QNetworkInterface& networkInterface : interfaces)
         hash.addData(networkInterface.hardwareAddress().toLocal8Bit());
+#endif
     const QByteArray hex = hash.result().toHex();
     if (hex.isEmpty())
         clientId.clear();

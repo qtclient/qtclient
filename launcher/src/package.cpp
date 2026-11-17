@@ -12,6 +12,9 @@ namespace launcher {
 
 EOperatingSystem currentOperatingSystem()
 {
+#ifdef Q_OS_WASM
+    return EOperatingSystem::Web; // Host: the browser build.
+#endif
     const QString product = QSysInfo::productType();
     if (product.compare(QLatin1String("windows"), Qt::CaseInsensitive) == 0)
         return EOperatingSystem::Windows;
@@ -29,6 +32,8 @@ quint8 buildCpuArchitecture()
         return ArchitectureI386;
     if (arch.compare(QLatin1String("x86_64"), Qt::CaseInsensitive) == 0)
         return ArchitectureX86_64;
+    if (arch.startsWith(QLatin1String("wasm"), Qt::CaseInsensitive))
+        return ArchitectureWasm; // Host: the browser build.
     return arch.compare(QLatin1String("arm64"), Qt::CaseInsensitive) == 0 ? ArchitectureArm64 : 0;
 }
 
@@ -37,6 +42,8 @@ quint8 currentCpuArchitecture()
     const QString arch = QSysInfo::currentCpuArchitecture();
     if (arch.compare(QLatin1String("i386"), Qt::CaseInsensitive) == 0)
         return ArchitectureI386;
+    if (arch.startsWith(QLatin1String("wasm"), Qt::CaseInsensitive))
+        return ArchitectureWasm; // Host: the browser build.
     return arch.compare(QLatin1String("x86_64"), Qt::CaseInsensitive) == 0 ? ArchitectureX86_64 : 0;
 }
 
@@ -174,6 +181,8 @@ TPackageBuild::TPackageBuild(TPackage* owner, const QJsonObject& build, const QU
         os = EOperatingSystem::Windows;
     else if (osName.compare(QLatin1String("macos")) == 0)
         os = EOperatingSystem::MacOS;
+    else if (osName.compare(QLatin1String("web")) == 0)
+        os = EOperatingSystem::Web; // Host: the browser build.
     else
         os = osName.compare(QLatin1String("linux")) == 0 ? EOperatingSystem::Linux : EOperatingSystem::Unknown;
 
@@ -183,6 +192,8 @@ TPackageBuild::TPackageBuild(TPackage* owner, const QJsonObject& build, const QU
         mask += ArchitectureX86_64;
     if (architecture.indexOf(QLatin1String("arm64")) != -1)
         mask += ArchitectureArm64;
+    if (architecture.indexOf(QLatin1String("wasm")) != -1)
+        mask += ArchitectureWasm; // Host: the browser build.
     architectures = mask;
 
     url = resolveConfigurationUrl(baseUrl, QUrl(build.value(QStringLiteral("url")).toString()));
@@ -339,6 +350,9 @@ QString describeBuild(const TPackageBuild& build)
     case EOperatingSystem::Windows:
         os = QStringLiteral("Windows");
         break;
+    case EOperatingSystem::Web:
+        os = QStringLiteral("Web");
+        break;
     default:
         os = QStringLiteral("unknown");
     }
@@ -349,6 +363,8 @@ QString describeBuild(const TPackageBuild& build)
         architectures << QStringLiteral("x86_64");
     if (build.architectures & ArchitectureArm64)
         architectures << QStringLiteral("arm64");
+    if (build.architectures & ArchitectureWasm)
+        architectures << QStringLiteral("wasm");
     const QString architecture = architectures.isEmpty() ? QStringLiteral("unknown") : architectures.join(QLatin1Char(';'));
     return QStringLiteral("\"%1\" (%2/%3)").arg(build.package->name(), os, architecture);
 }

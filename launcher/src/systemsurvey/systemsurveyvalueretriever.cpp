@@ -6,7 +6,9 @@
 #include <QOpenGLContext>
 #include <QOpenGLFunctions>
 #include <QOperatingSystemVersion>
+#if QT_CONFIG(process)
 #include <QProcess>
+#endif
 #include <QScreen>
 #include <QSurfaceFormat>
 #include <QSysInfo>
@@ -353,11 +355,13 @@ std::vector<TGpuInformation> TSystemSurveyValueRetriever::parseDisplaysDataType(
 std::vector<TGpuInformation> TSystemSurveyValueRetriever::getGpuInformation() const
 {
     QByteArray output;
+#if QT_CONFIG(process) // Host: no processes on the web.
     QProcess process;
     process.start(QStringLiteral("system_profiler"),
                   {QStringLiteral("SPDisplaysDataType"), QStringLiteral("-xml")}, QIODevice::ReadWrite);
     if (process.waitForStarted() && process.waitForFinished())
         output = process.readAllStandardOutput();
+#endif
     return parseDisplaysDataType(output);
 }
 
