@@ -13,26 +13,6 @@
 namespace tibia {
 namespace sessiondump {
 
-class TClientSessiondumpRecorder final : public cip::tibia::sessiondump::TClientSessiondumpRecorder
-{
-    Q_OBJECT
-public:
-    using cip::tibia::sessiondump::TClientSessiondumpRecorder::TClientSessiondumpRecorder;
-};
-
-class TSessiondumpAsyncLoader final : public cip::tibia::sessiondump::TSessiondumpAsyncLoader
-{
-    Q_OBJECT
-public:
-    using cip::tibia::sessiondump::TSessiondumpAsyncLoader::TSessiondumpAsyncLoader;
-};
-
-class TSessiondumpPlayer final : public cip::tibia::sessiondump::TSessiondumpPlayer
-{
-    Q_OBJECT
-public:
-    using cip::tibia::sessiondump::TSessiondumpPlayer::TSessiondumpPlayer;
-};
 
 }
 }

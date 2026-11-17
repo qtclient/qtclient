@@ -319,10 +319,7 @@ private:
     std::unique_ptr<chat::TGameMessageHandler> m_messageHandler;
     std::unique_ptr<minimap::TMinimapManager> m_minimap;
     // CIP sessiondump surfaces (live replay is TSessiondumpGameSession).
-    sessiondump::TClientSessiondumpRecorder m_sessiondumpRecorder;
-    sessiondump::TSessiondumpAsyncLoader m_sessiondumpAsyncLoader;
     sessiondump::TSessiondumpCatalogLoader m_sessiondumpCatalogLoader;
-    sessiondump::TSessiondumpPlayer m_sessiondumpPlayer;
     sessiondump::TSessiondumpProgressClockService m_sessiondumpProgressClockService;
     authentication::LoginResult m_account;
     std::optional<game::GameserverCredentials> m_pendingLiveCredentials;

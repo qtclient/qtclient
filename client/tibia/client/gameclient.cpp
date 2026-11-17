@@ -248,11 +248,8 @@ TGameClient::TGameClient(QObject* parent)
     , m_statusbarStorage(std::make_unique<game::TStatusbarStorage>())
     , m_frameDurations(std::make_unique<worldmap::TFrameDurationRing>())
     , m_predictor(std::make_unique<worldmap::TNextFrameTimestampPredictor>())
-    , m_sessiondumpRecorder(this)
-    , m_sessiondumpAsyncLoader(this)
     , m_sessiondumpCatalogLoader(std::make_shared<shared::TDownloadPool>(
           1, std::make_shared<shared::QNetworkAccessManagerWrapper>(std::make_shared<QNetworkAccessManager>())))
-    , m_sessiondumpPlayer(this)
 {
     m_crashReportDialog = std::make_unique<gamewindow::TCrashReportDialogController>();
     connect(m_crashReportDialog.get(), &gamewindow::TCrashReportDialogController::requestSendCrashReport, this,

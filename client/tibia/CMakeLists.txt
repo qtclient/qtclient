@@ -295,6 +295,9 @@ if(TIBIA_WITH_GAMECORE)
     config/runtimegameconfig.cpp config/runtimegameconfig.h
     sound/soundciptypes.cpp sound/soundciptypes.h
     sessiondump/sessiondumpciptypes.cpp sessiondump/sessiondumpciptypes.h
+    sessiondump/sessiondumpasyncloader.cpp sessiondump/sessiondumpasyncloader.h
+    sessiondump/sessiondumpplayer.cpp sessiondump/sessiondumpplayer.h
+    sessiondump/clientsessiondumprecorder.cpp sessiondump/clientsessiondumprecorder.h
     sessiondump/sessiondumpcatalog.cpp sessiondump/sessiondumpcatalog.h
     sessiondump/sessiondumpcatalogloader.cpp sessiondump/sessiondumpcatalogloader.h
     sessiondump/lightweightsessiondumpmessageprocessor.cpp sessiondump/lightweightsessiondumpmessageprocessor.h
@@ -444,6 +447,8 @@ if(TIBIA_WITH_GAMECORE)
     tutorial/sessiondumphintpublishgameaction.cpp tutorial/sessiondumphintpublishgameaction.h
     tutorial/sessiondumphints.cpp tutorial/sessiondumphints.h
     tutorial/sessiondumphintsprocessor.cpp tutorial/sessiondumphintsprocessor.h
+    tutorial/tutorialprogressuploader.cpp tutorial/tutorialprogressuploader.h
+    tutorial/tutorialsessiondumpgameactionhandler.cpp tutorial/tutorialsessiondumpgameactionhandler.h
     sound/soundprotocolmessagehandler.cpp sound/soundprotocolmessagehandler.h
     sound/soundmetadatamanager.cpp sound/soundmetadatamanager.h
     sound/soundstorage.cpp sound/soundstorage.h
