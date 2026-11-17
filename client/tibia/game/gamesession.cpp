@@ -13,8 +13,10 @@
 #include "clockservice.h"
 #include <tibia/game/sessionhooks.h>
 #include <tibia/game/tgamenotify.h>
+#include <algorithm>
 #include <vector>
 #include <cmath>
+#include <QByteArray>
 #include <limits>
 
 #include "tibia/runtime/host.h"
@@ -187,14 +189,53 @@ uint8_t mapSeaFloor()
     return tibia::config::mapSeaFloor();
 }
 
+namespace {
+
+/// Replay / screenshot harness only: `QTCLIENT_DEBUG_WORLD_LIGHT=<intensity>[:<color>]`
+/// pins the world ambient light (session dumps keep whatever time they were recorded at).
+struct DebugWorldLight
+{
+    bool active = false;
+    uint8_t intensity = 0;
+    bool hasColor = false;
+    uint8_t color = 0;
+};
+
+const DebugWorldLight& debugWorldLight()
+{
+    static const DebugWorldLight pinned = [] {
+        DebugWorldLight out;
+        const QByteArray spec = qgetenv("QTCLIENT_DEBUG_WORLD_LIGHT");
+        if (spec.isEmpty())
+            return out;
+        const QList<QByteArray> parts = spec.split(':');
+        bool ok = false;
+        const int intensity = parts.value(0).trimmed().toInt(&ok);
+        if (!ok)
+            return out;
+        out.active = true;
+        out.intensity = static_cast<uint8_t>(std::clamp(intensity, 0, 255));
+        if (parts.size() > 1) {
+            out.hasColor = true;
+            out.color = static_cast<uint8_t>(std::clamp(parts.at(1).trimmed().toInt(), 0, 255));
+        }
+        return out;
+    }();
+    return pinned;
+}
+
+}
+
 uint8_t worldLightIntensity()
 {
-    return worldLight().intensity;
+    const DebugWorldLight& pinned = debugWorldLight();
+    return pinned.active ? pinned.intensity : worldLight().intensity;
 }
 
 uint8_t worldLightColor()
 {
-    return worldLight().color;
+    const DebugWorldLight& pinned = debugWorldLight();
+    return pinned.hasColor ? pinned.color : worldLight().color;
 }
 
 uint32_t mapItemRevision()
