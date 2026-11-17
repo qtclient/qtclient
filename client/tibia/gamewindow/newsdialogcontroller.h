@@ -38,7 +38,7 @@ public:
 
     /// CIP: OPEN_NEWS_DIALOG (an entry id in parameter selects that entry),
     /// OPEN_NEWS_CATEGORY (the category in parameter) and REFRESH_COMPENDIUM_NEWS.
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
     EDialogTab dialogTab() const override;
     QString headline() const override;

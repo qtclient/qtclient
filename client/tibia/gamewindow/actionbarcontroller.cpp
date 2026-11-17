@@ -422,9 +422,7 @@ void TActionBarController::onOpenAssignPassiveAbilityActionDialog(const uint But
 
 void TActionBarController::onOpenAssignMultiActionPopup(const uint ButtonId)
 {
-    auto close = input::mutableClone(*input::makeAction(input::EGameAction::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS));
-    close->actionBarId = m_actionBarId;
-    close->actionButtonId = int(ButtonId);
+    auto close = std::make_shared<input::TGameActionCloseAllMultiActionButtons>(static_cast<uint8_t>(m_actionBarId), int(ButtonId));
     input::publish(close);
     if (TActionButtonController* button = buttonController(int(ButtonId), -1)) {
         button->createMultiActions(int(Setting::MaxMultiActions));
@@ -660,13 +658,13 @@ void TActionBarGroup::setFirstVisibleButtonIdCanBeSaved(const bool CanBeSaved)
         bar->setFirstVisibleButtonIdCanBeSaved(m_firstVisibleButtonIdCanBeSaved);
 }
 
-void TActionBarGroup::handleGameAction(const input::TGameAction& action)
+void TActionBarGroup::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::TOGGLE_ACTION_BARS) {
-        if (action.parameter == static_cast<int>(m_position))
+    if (const auto* bars = input::gameActionAs<input::TGameActionToggleActionBars>(&action)) {
+        if (bars->position() == static_cast<int>(m_position))
             toggleOption(leftOf(GroupOptions, m_position));
-    } else if (action.type == input::EGameAction::TOGGLE_ACTION_BAR) {
-        const auto actionBarId = static_cast<uint8_t>(action.actionBarId);
+    } else if (const auto* bar = input::gameActionAs<input::TGameActionToggleActionBar>(&action)) {
+        const uint8_t actionBarId = bar->actionBarId();
         if (managesBar(actionBarId))
             toggleOption(showOptionOfBar(actionBarId));
     }

@@ -64,8 +64,7 @@ QString newValuesText(const TShapedSlot& slot, const int rank)
 void requestBalances()
 {
     for (const int resource : DialogResources) {
-        auto action = input::mutableClone(*input::makeAction(A::REQUEST_RESOURCE_BALANCE));
-        action->parameter = resource;
+        auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
         input::publish(action);
     }
 }

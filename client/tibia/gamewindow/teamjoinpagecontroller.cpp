@@ -98,8 +98,7 @@ void TTeamJoinPageController::onJoinLeaveTeamClicked(const uint TeamIDRaw, const
 
 void TTeamJoinPageController::getPremiumClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 1;
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
     input::publish(action);
 }
 

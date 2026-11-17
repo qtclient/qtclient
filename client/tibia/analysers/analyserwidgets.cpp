@@ -92,15 +92,6 @@ bool isPremiumPlayer()
     return tibia::game::localPlayerIsPremium();
 }
 
-void publishAction(const A type, const QString& text = {}, const int parameter = 0, const int instance = 0)
-{
-    auto action = input::mutableClone(*input::makeAction(type));
-    action->text = text;
-    action->parameter = parameter;
-    action->instance = instance;
-    input::publish(action);
-}
-
 /// CIP : ADD_SYSTEM_CHAT_MESSAGE in console colour 30.
 void publishSystemMessage(const QString& text)
 {
@@ -262,8 +253,7 @@ void TAnalyticsSelectorWidgetController::onWidgetVisibility(const int widgetType
 
 void TAnalyticsSelectorWidgetController::toggle(const int widgetType)
 {
-    auto action = input::mutableClone(*input::makeAction(A::TOGGLE_WIDGET));
-    action->instance = widgetType;
+    auto action = std::make_shared<input::TGameActionToggleWidget>(widgetType);
     input::publish(action);
 }
 
@@ -282,7 +272,7 @@ void TAnalyticsSelectorWidgetController::huntingSessionAnalyserButtonClicked()
     if (isPremiumPlayer())
         toggle(W::HuntingSessionAnalyser);
     else
-        publishAction(A::OPEN_STORE, {}, 1, 0);
+        input::publish(std::make_shared<input::TGameActionOpenStore>(1));
 }
 
 // ----------------------------------------------------------------------------------------------
@@ -457,7 +447,7 @@ void THuntingSessionWidgetController::requestConfigurationContextMenu()
         return;
     menu->beginCustomMenu();
     connect(menu->addCustomEntry(qtTrId("huntinganalyser_reset_session")), &gamewindow::TContextMenuEntryItem::triggered, this,
-            [] { publishAction(A::RESET_HUNTING_SESSION); });
+            [] { input::publish(input::makeGameAction(A::RESET_HUNTING_SESSION)); });
     menu->addCustomSeparator();
     gamewindow::TContextMenuEntryItem* baseXp = menu->addCustomEntry(qtTrId("huntinganalyser_show_base_xp"));
     baseXp->setCheckable(true);
@@ -1049,7 +1039,7 @@ void TLootAndWasteWidgetController::requestConfigurationContextMenu()
         if (premium)
             m_storage->setGaugeVisible(m_side, checked);
         else
-            publishAction(A::OPEN_STORE, {}, 1, 0);
+            input::publish(std::make_shared<input::TGameActionOpenStore>(1));
     });
     gamewindow::TContextMenuEntryItem* graph = menu->addCustomEntry(qtTrId(qPrintable(prefix + QStringLiteral("show_graph"))), premiumHint);
     graph->setCheckable(true);
@@ -1058,7 +1048,7 @@ void TLootAndWasteWidgetController::requestConfigurationContextMenu()
         if (premium)
             m_storage->setGraphVisible(m_side, checked);
         else
-            publishAction(A::OPEN_STORE, {}, 1, 0);
+            input::publish(std::make_shared<input::TGameActionOpenStore>(1));
     });
     menu->showCustomMenu();
 }

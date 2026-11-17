@@ -321,9 +321,7 @@ void publishPreyAction(const A type, const uint preyId, const int parameter = 0)
 /// CIP store requests: open type 1 (premium) or 3 (an offer).
 void openStore(const int openType, const int offer)
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
-    action->parameter = openType;
-    action->instance = offer;
+    auto action = std::make_shared<input::TGameActionOpenStore>(openType, offer);
     input::publish(action);
 }
 
@@ -891,8 +889,7 @@ void TPreyDialogController::showDialog()
     dialog()->show();
     requestTabSwitch(PreyCreatures);
     for (const int resource : { 0, 1, 10, 0x32 }) {
-        auto action = input::mutableClone(*input::makeAction(A::REQUEST_RESOURCE_BALANCE));
-        action->parameter = resource;
+        auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
         input::publish(action);
     }
 }

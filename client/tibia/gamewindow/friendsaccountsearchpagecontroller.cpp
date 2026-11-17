@@ -285,13 +285,14 @@ void TFriendsAccountSearchPageController::refreshCurrentCharacterInfo()
     m_characterInfo->showDialogTab();
 }
 
-void TFriendsAccountSearchPageController::handleGameAction(const input::TGameAction& action)
+void TFriendsAccountSearchPageController::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type != input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT)
+    const auto* search = input::gameActionAs<input::TGameActionFriendsDialogSearchAccount>(&action);
+    if (!search)
         return;
     showDialogTab();
     setShowLoadingComponent(true);
-    protocol::gameclient::sendFriendSystemSearch(action.text.toStdString());
+    protocol::gameclient::sendFriendSystemSearch(search->characterName().toStdString());
 }
 
 void TFriendsAccountSearchPageController::onClickedInviteAsFriend()

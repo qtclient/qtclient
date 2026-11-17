@@ -60,11 +60,11 @@ public:
 
     /// TRY_TO_SWITCH_HOTKEYSET, SWITCH_TO_NEXT_HOTKEYSET and
     /// SWITCH_TO_PREVIOUS_HOTKEYSET; other actions are ignored.
-    static void handleGameAction(const TGameAction& action);
+    static void handleGameAction(const IGameAction& action);
     /// With auto-switch on, selects the set named action.text when it exists
     /// and is not current, and announces it (on the status line only when
     /// action.enable).
-    static void tryToSwitchHotkeySet(const TGameAction& action);
+    static void tryToSwitchHotkeySet(const TGameActionTryToSwitchHotkeySet& action);
     /// The set after (before) the current one in name order, wrapping, is
     /// selected and announced on the status line and in the console.
     static void switchToNextHotkeySet();

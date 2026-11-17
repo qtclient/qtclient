@@ -225,9 +225,7 @@ void TSkillsWidgetController::onPlayerSkillStatsChanged()
 
 void TSkillsWidgetController::onStoreXpBoostButtonClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 1;
-    action->instance = 1;
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 1);
     input::publish(action);
 }
 

@@ -17,6 +17,7 @@ class QQuickItem;
 namespace tibia {
 namespace input {
 struct TGameAction;
+class IGameAction;
 }
 namespace gamewindow {
 
@@ -176,7 +177,7 @@ private Q_SLOTS:
 private:
     TSidebarWidget* currentWidget(int widgetType) const;
     /// TOGGLE_WIDGET: the widget type's toggle in the action's sidebar.
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     /// CIP: on a session change every widget closes without saving its
     /// options, and one right sidebar remains.
     void closeAll();

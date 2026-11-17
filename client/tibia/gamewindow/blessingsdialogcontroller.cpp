@@ -188,8 +188,7 @@ void TBlessingsDialogController::onPremiumStatusChanged()
 
 void TBlessingsDialogController::requestOpenStoreWithPremiumCategory()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 1;
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
     input::publish(action);
     requestClose();
 }
@@ -199,9 +198,7 @@ void TBlessingsDialogController::requestOpenStoreWithBlessingOffer(const int Ble
     const int offer = blessingStoreOffer(BlessingId);
     if (!offer)
         return;
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 3;
-    action->instance = offer;
+    auto action = std::make_shared<input::TGameActionOpenStore>(3, offer);
     input::publish(action);
     requestClose();
 }

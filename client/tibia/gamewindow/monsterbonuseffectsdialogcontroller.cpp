@@ -382,9 +382,7 @@ QString TMonsterBonusEffectsDialogController::findMonsterNameByRaceID(const int 
 void TMonsterBonusEffectsDialogController::onStoreButtonClicked()
 {
     const bool expansionOrPremium = m_storage.availableCharmSlots() == 0xFF || tibia::game::localPlayerIsPremium();
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
-    action->parameter = expansionOrPremium ? 3 : 1;
-    action->instance = expansionOrPremium ? 3 : -1;
+    auto action = std::make_shared<input::TGameActionOpenStore>(expansionOrPremium ? 3 : 1, expansionOrPremium ? 3 : -1);
     input::publish(action);
 }
 

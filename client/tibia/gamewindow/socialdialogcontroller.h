@@ -17,6 +17,7 @@
 namespace tibia {
 namespace input {
 struct TGameAction;
+class IGameAction;
 }
 namespace gamewindow {
 
@@ -68,7 +69,7 @@ public:
     Q_INVOKABLE void onRefreshButtonClicked() override;
 
 private:
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     cip::tibia::gamewindow::IDialogTabPage* page(EDialogTab tab) const;
     /// Hides the shown page and shows the tab's page.
     void setTab(EDialogTab tab);

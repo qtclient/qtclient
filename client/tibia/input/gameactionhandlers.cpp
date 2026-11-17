@@ -442,7 +442,8 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         tibia::game::partyLeave();
         break;
     case A::SET_SHARED_EXPERIENCE:
-        tibia::game::partyShareExperience(action->enable);
+        if (const auto* shared = gameActionAs<TGameActionSetSharedExperience>(pGameAction))
+            tibia::game::partyShareExperience(shared->enable());
         break;
     case A::REQUEST_DEPOT_SEARCH:
         tibia::game::openDepotSearch();
@@ -515,8 +516,11 @@ void handleUnportedGameAction(const IGameActionPtr& pGameAction)
         tibia::game::stop();
         break;
     case A::SET_TACTICS:
-        tibia::game::setTactics(action->chase ? tibia::client::ChaseOpponent : tibia::client::DontChase, action->secure,
-                          static_cast<tibia::client::PVPModes>(action->pvpMode));
+        if (const auto* set = gameActionAs<TGameActionSetTactics>(pGameAction)) {
+            const TGameActionSetTactics::TTactics& tactics = set->tactics();
+            tibia::game::setTactics(tactics.chase ? tibia::client::ChaseOpponent : tibia::client::DontChase, tactics.secure,
+                                    static_cast<tibia::client::PVPModes>(tactics.pvpMode));
+        }
         break;
     case A::SET_PLAYER_OUTFIT:
         if (action->outfit.getId() != 0)

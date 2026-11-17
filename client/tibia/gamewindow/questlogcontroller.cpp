@@ -525,8 +525,7 @@ void TQuestLogController::selectedQuestFlag(const int QuestFlagID)
 /// CIP: toggles the quest tracker widget.
 void TQuestLogController::questTrackerButtonPressed()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::TOGGLE_WIDGET));
-    action->instance = 10;
+    auto action = std::make_shared<input::TGameActionToggleWidget>(10);
     input::publish(action);
 }
 

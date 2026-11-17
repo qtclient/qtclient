@@ -501,8 +501,9 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     g.exaltationForgeDialog = std::make_unique<gamewindow::TExaltationForgeDialogController>(g.exaltationStorage.get());
     g.storeBalance->setExaltationStorage(g.exaltationStorage.get());
     g.skillWheel = std::make_unique<skillwheel::TSkillWheelManager>();
-    input::setActionHandler(input::EGameAction::OPEN_STORE, [storeDialog](const input::TGameAction& action) {
-        storeDialog->openWith(action.parameter, action.instance, action.text);
+    input::setActionHandler(input::EGameAction::OPEN_STORE, [storeDialog](const input::TGameActionOpenStore& action) {
+        const input::TGameActionOpenStore::TStoreOpenParameters& parameters = action.storeOpenParameters();
+        storeDialog->openWith(parameters.openAction, parameters.detail, parameters.text);
         return true;
     });
     // The daily reward: the session's storage and its game actions (238, 243, 244).
@@ -667,8 +668,8 @@ bool TGameClient::createGameWindow(const TGameWindowSetup& setup)
     optionsDialog->setGameClient(this);
     optionsDialog->setPortalBase(g.env.loginBase);
     g.openWebsiteActions = std::make_unique<input::TOpenWebsiteGameActionHandler>(g.env);
-    input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG, [optionsDialog](const input::TGameAction& action) {
-        optionsDialog->open(action.parameter);
+    input::setActionHandler(input::EGameAction::OPEN_OPTIONS_MENU_DIALOG, [optionsDialog](const input::TGameActionOpenOptionsMenuDialog& action) {
+        optionsDialog->open(action.page());
         return true;
     });
     g.fpsLatency = std::make_unique<gamewindow::TFPSLatencyIndicatorController>();

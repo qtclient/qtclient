@@ -48,7 +48,7 @@ TSocialDialogController::TSocialDialogController(QObject* parent)
     connect(friendsHandler, &friends::TFriendsProtocolMessageHandler::genericFriendSystemError, this,
             &TSocialDialogController::onGenericFriendSystemError);
     for (const auto type : { input::EGameAction::OPEN_SOCIAL_DIALOG, input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT })
-        input::setActionHandler(type, [this](const input::TGameAction& action) { return handleGameAction(action); });
+        input::setActionHandler(type, [this](const input::IGameAction& action) { return handleGameAction(action); });
     if (!g_socialDialog)
         g_socialDialog = this;
 }
@@ -173,13 +173,13 @@ void TSocialDialogController::onGenericFriendSystemError(const QString& errorMes
     showErrorMessage(errorMessage);
 }
 
-bool TSocialDialogController::handleGameAction(const input::TGameAction& action)
+bool TSocialDialogController::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type == input::EGameAction::OPEN_SOCIAL_DIALOG) {
-        // Parameter p opens tab p + 1; anything else the friend list.
-        const int parameter = action.parameter;
-        showDialog(parameter >= 0 && parameter <= 6 ? static_cast<EDialogTab>(parameter + 1) : FriendList);
-    } else if (action.type == input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT) {
+    if (const auto* open = input::gameActionAs<input::TGameActionOpenSocialDialog>(&action)) {
+        // Tab t opens EDialogTab t + 1; anything else the friend list.
+        const int tab = open->tab();
+        showDialog(tab >= 0 && tab <= 6 ? static_cast<EDialogTab>(tab + 1) : FriendList);
+    } else if (action.gameActionType() == input::EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT) {
         setTab(AccountSearch);
     }
     // The account search page runs its own actions (a new search).

@@ -87,8 +87,8 @@ private:
     bool onActionButtonTriggered(const input::TGameAction& action);
     void execute(const config::TActionSetting& setting);
     void useObject(const config::TActionSetting& setting);
-    bool toggleActionBar(const input::TGameAction& action);
-    bool toggleActionBars(const input::TGameAction& action);
+    bool toggleActionBar(const input::IGameAction& action);
+    bool toggleActionBars(const input::IGameAction& action);
     void applyMappings();
     void loadDisplayOptions();
     void scheduleObjectRefresh();

@@ -442,7 +442,7 @@ void TOptionsMenuDialogController::showAboutDialog()
 
 void TOptionsMenuDialogController::showCompendium()
 {
-    publish(EGameAction::OPEN_NEWS_DIALOG);
+    input::publish(std::make_shared<input::TGameActionOpenNewsDialog>());
 }
 
 void TOptionsMenuDialogController::exportArchive(const QString& url, const QList<config::TArchiveEntry>& entries)

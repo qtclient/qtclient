@@ -41,7 +41,7 @@ public:
     void handleRotateAction(const TGameActionRotate& action);
     void handleQuitGameAction();
     void handleChangeCharacterAction();
-    void handleRequestResourceBalanceAction(const TGameAction& action);
+    void handleRequestResourceBalanceAction(const TGameActionRequestResourceBalance& action);
     void handleTeleportToCoordinateAction(const TGameAction& action);
     void handleSaveTextToFile(const TGameActionSaveTextToFile& action);
     void handleSaveJsonDocumentToFile(const TGameActionSaveJsonDocumentToFile& action);

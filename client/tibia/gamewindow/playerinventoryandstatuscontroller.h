@@ -96,7 +96,7 @@ private:
     void requestPvpMode(int mode);
     /// CIP : sends the tactics the panel shows.
     void publishTactics();
-    bool handleTacticsAction(const input::TGameAction& action);
+    bool handleTacticsAction(const input::IGameAction& action);
     void readExpireOptions();
     /// CIP: the expiry options apply to every slot.
     void onInventoryOptionsChanged();

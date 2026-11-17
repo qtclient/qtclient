@@ -10,7 +10,7 @@ TClientOptionsModeSwitcher::TClientOptionsModeSwitcher(TClientOptions* options, 
     : cip::tibia::config::TClientOptionsModeSwitcher(parent)
     , m_options(options)
 {
-    input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, [this](const input::TGameAction& action) {
+    input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, [this](const input::IGameAction& action) {
         handleGameAction(action);
         return true;
     });
@@ -26,11 +26,11 @@ void TClientOptionsModeSwitcher::connectToGameSession(std::function<TSidebarOpti
     m_sidebarOptions = std::move(sidebarOptions);
 }
 
-void TClientOptionsModeSwitcher::handleGameAction(const input::TGameAction& action)
+void TClientOptionsModeSwitcher::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type != input::EGameAction::SWITCH_CLIENTOPTIONS_MODE)
+    if (action.gameActionType() != input::EGameAction::SWITCH_CLIENTOPTIONS_MODE)
         return;
-    switchClientOptionsMode(m_options->clientOptionsMode(), action.parameter);
+    switchClientOptionsMode(m_options->clientOptionsMode(), static_cast<const input::TGameActionSwitchClientOptions&>(action).mode());
 }
 
 void TClientOptionsModeSwitcher::switchClientOptionsMode(const int currentMode, const int requestedMode)

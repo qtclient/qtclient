@@ -182,7 +182,7 @@ public:
 
     /// CIP: TOGGLE_ACTION_BARS of this side and TOGGLE_ACTION_BAR of its
     /// bars toggle their options.
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
 public Q_SLOTS:
     void restoreLastAktionBarConfiguration() override;

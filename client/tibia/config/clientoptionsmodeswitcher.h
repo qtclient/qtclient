@@ -27,7 +27,7 @@ public:
     /// The session's per-character sidebar options (null without a session).
     void connectToGameSession(std::function<TSidebarOptions*()> sidebarOptions);
 
-    void handleGameAction(const input::TGameAction& action);
+    void handleGameAction(const input::IGameAction& action);
 
 private:
     void switchClientOptionsMode(int currentMode, int requestedMode);

@@ -132,18 +132,18 @@ TActionBarManager::TActionBarManager(QQuickItem* gameWindowItem, QQuickItem* map
         return std::any{};
     });
 
-    input::setActionHandler(A::TOGGLE_ACTION_BAR, [this](const input::TGameAction& action) { return toggleActionBar(action); });
-    input::setActionHandler(A::TOGGLE_ACTION_BARS, [this](const input::TGameAction& action) { return toggleActionBars(action); });
+    input::setActionHandler(A::TOGGLE_ACTION_BAR, [this](const input::IGameAction& action) { return toggleActionBar(action); });
+    input::setActionHandler(A::TOGGLE_ACTION_BARS, [this](const input::IGameAction& action) { return toggleActionBars(action); });
     for (const A type : { A::TRY_TO_SWITCH_HOTKEYSET, A::SWITCH_TO_NEXT_HOTKEYSET, A::SWITCH_TO_PREVIOUS_HOTKEYSET })
-        input::setActionHandler(type, [](const input::TGameAction& action) {
+        input::setActionHandler(type, [](const input::IGameAction& action) {
             input::TKeyboardShortcutHandler::handleGameAction(action);
             return true;
         });
-    input::setActionHandler(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameAction& action) {
+    input::setActionHandler(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS, [this](const input::TGameActionCloseAllMultiActionButtons& action) {
         for (const auto& group : m_groups)
             if (group)
                 for (TActionBarController* bar : group->bars())
-                    bar->closeOpenMultiActionButtons(action.actionBarId, action.actionButtonId);
+                    bar->closeOpenMultiActionButtons(action.actionBarId(), action.actionButtonId());
         return true;
     });
     input::setActionHandler(A::REQUEST_ASSIGN_SPELL_TO_ACTION_BUTTON, [this](const input::TGameAction& action) {
@@ -231,8 +231,7 @@ void TActionBarManager::onWorldEntered()
 {
     if (tibia::game::hasLocalPlayer()) {
         config::THotkeyOptions::instance()->onCharacterLoggedIn();        // CIP : TRY_TO_SWITCH_HOTKEYSET(character name, no status line).
-        auto action = input::mutableClone(*input::makeAction(A::TRY_TO_SWITCH_HOTKEYSET));
-        action->text = QString::fromStdString(tibia::game::characterName());
+        auto action = std::make_shared<input::TGameActionTryToSwitchHotkeySet>(QString::fromStdString(tibia::game::characterName()), false);
         input::publish(action);
     }
     applyMappings();
@@ -397,7 +396,7 @@ bool TActionBarManager::onActionButtonTriggered(const input::TGameAction& action
         setting = slot ? target->settingAt(action.actionButtonId, slot->multiActionIndex()) : Setting{};
     }
     execute(setting);
-    input::publish(input::makeGameAction(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS));
+    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
     return true;
 }
 
@@ -453,7 +452,7 @@ void TActionBarManager::useObject(const Setting& setting)
     }
 }
 
-bool TActionBarManager::toggleActionBar(const input::TGameAction& action)
+bool TActionBarManager::toggleActionBar(const input::IGameAction& action)
 {
     for (const auto& group : m_groups)
         if (group)
@@ -461,7 +460,7 @@ bool TActionBarManager::toggleActionBar(const input::TGameAction& action)
     return true;
 }
 
-bool TActionBarManager::toggleActionBars(const input::TGameAction& action)
+bool TActionBarManager::toggleActionBars(const input::IGameAction& action)
 {
     for (const auto& group : m_groups)
         if (group)

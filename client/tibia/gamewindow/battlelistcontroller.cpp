@@ -576,14 +576,11 @@ void TBattleListController::requestOpenSecondaryBattleList()
     // Premium opens a new list in the first sidebar with room, free accounts
     // get the store's premium page.
     if (hasPremiumStatus()) {
-        auto action = input::mutableClone(*input::makeAction(A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR));
-        action->instance = 0xff;
-        action->sidebarId = 0xff;
+        auto action = std::make_shared<input::TGameActionOpenSecondaryBattleListInSpecificSidebar>(static_cast<uint8_t>(0xff), static_cast<uint8_t>(0xff));
         input::publish(action);
         return;
     }
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
-    action->parameter = 1;
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
     input::publish(action);
 }
 
@@ -602,8 +599,7 @@ void TBattleListController::onNewNameEntered(const QString& EnteredName)
 
 void TBattleListController::requestMakePrimary()
 {
-    auto action = input::mutableClone(*input::makeAction(A::MAKE_BATTLE_LIST_PRIMARY));
-    action->instance = m_id;
+    auto action = std::make_shared<input::TGameActionMakeBattleListPrimary>(static_cast<uint8_t>(m_id));
     input::publish(action);
 }
 
@@ -773,7 +769,7 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     connect(&m_updateTimer, &QTimer::timeout, this, &TBattleListControllerStorage::onUpdateTimer);
 
     for (const A type : { A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, A::MAKE_BATTLE_LIST_PRIMARY }) {
-        input::setActionHandler(type, [this](const input::TGameAction& action) {
+        input::setActionHandler(type, [this](const input::IGameAction& action) {
             handleGameAction(action);
             return true;
         });
@@ -782,7 +778,7 @@ TBattleListControllerStorage::TBattleListControllerStorage(TSidebarManager* side
     // takes it.
     for (const A type : { A::USE_AT_MOUSECURSOR, A::SPELL_AT_MOUSE_CURSOR }) {
         m_actionListeners.push_back(
-            input::addActionListener(type, [this](const input::TGameAction& action) { return handleGameAction(action); }));
+            input::addActionListener(type, [this](const input::IGameAction& action) { return handleGameAction(action); }));
     }
     // The creature storage's selected creature gets its frame; with
     // mouseHighlightTarget on it is also the world map's mouse target,
@@ -986,31 +982,35 @@ void TBattleListControllerStorage::togglePartyBattleList(const uint8_t sidebarId
         openBattleList(sidebarId, AnyId, false, true);
 }
 
-bool TBattleListControllerStorage::handleGameAction(const input::TGameAction& action)
+bool TBattleListControllerStorage::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
         case A::USE_AT_MOUSECURSOR:
         case A::SPELL_AT_MOUSE_CURSOR: {
+            const auto* fields = input::gameActionAs<input::TGameAction>(&action);
+            if (!fields)
+                return false;
             // Every list sees it; the list with a hovered creature takes it.
             bool handled = false;
             for (const auto& [id, controller] : m_controllers)
-                handled |= controller->onAtMouseCursor(action);
+                handled |= controller->onAtMouseCursor(*fields);
             return handled;
         }
-        case A::TOGGLE_WIDGET: {
-            // Key bindings carry the widget in instance, older publishers in parameter.
-            const int widgetType = action.instance != 0 ? action.instance : action.parameter;
-            if (widgetType == PrimaryWidgetType)
-                togglePrimaryBattleList(static_cast<uint8_t>(action.sidebarId));
-            else if (widgetType == PartyWidgetType)
-                togglePartyBattleList(static_cast<uint8_t>(action.sidebarId));
+        case A::TOGGLE_WIDGET:
+            if (const auto* toggle = input::gameActionAs<input::TGameActionToggleWidget>(&action)) {
+                if (toggle->widgetType() == PrimaryWidgetType)
+                    togglePrimaryBattleList(toggle->sidebarId());
+                else if (toggle->widgetType() == PartyWidgetType)
+                    togglePartyBattleList(toggle->sidebarId());
+            }
             return true;
-        }
         case A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR:
-            openBattleList(static_cast<uint8_t>(action.sidebarId), static_cast<uint8_t>(action.instance), false, false);
+            if (const auto* open = input::gameActionAs<input::TGameActionOpenSecondaryBattleListInSpecificSidebar>(&action))
+                openBattleList(open->sidebarId(), open->battleListId(), false, false);
             return true;
         case A::MAKE_BATTLE_LIST_PRIMARY:
-            makePrimary(static_cast<uint8_t>(action.instance));
+            if (const auto* primary = input::gameActionAs<input::TGameActionMakeBattleListPrimary>(&action))
+                makePrimary(primary->battleListId());
             return true;
         default:
             return false;

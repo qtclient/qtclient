@@ -159,11 +159,11 @@ TPlayerInventoryAndStatusController::TPlayerInventoryAndStatusController(QObject
     m_clockTimer.start();
 
     using input::setActionHandler;
-    setActionHandler(A::SET_PVP_MODE, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::SET_CHASE_OPPONENTS, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::TOGGLE_CHASE_OPPONENTS, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::TOGGLE_SECURE_MODE, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
-    setActionHandler(A::SET_SECURE_MODE, [this](const input::TGameAction& action) { return handleTacticsAction(action); });
+    setActionHandler(A::SET_PVP_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    setActionHandler(A::SET_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    setActionHandler(A::TOGGLE_CHASE_OPPONENTS, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    setActionHandler(A::TOGGLE_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
+    setActionHandler(A::SET_SECURE_MODE, [this](const input::IGameAction& action) { return handleTacticsAction(action); });
     setActionHandler(A::SHOW_INVENTORY_CAPACITY_WARNING, [this](const input::TGameAction&) {
         if (tibia::game::isOnline() && !tibia::game::localPlayerHasReachedMain())
             Q_EMIT showCapacityWarning();
@@ -410,11 +410,8 @@ void TPlayerInventoryAndStatusController::refreshExpertMode()
 
 void TPlayerInventoryAndStatusController::publishTactics()
 {
-    auto action = input::mutableClone(*input::makeAction(A::SET_TACTICS));
-    action->chase = m_chaseEnabled;
-    action->secure = m_secureModeEnabled;
-    action->pvpMode = m_pvpMode;
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionSetTactics>(
+        input::TGameActionSetTactics::TTactics{ m_chaseEnabled, m_secureModeEnabled, m_pvpMode }));
 }
 
 void TPlayerInventoryAndStatusController::onChaseModeChangeRequested(const bool chaseOpponents)
@@ -459,14 +456,16 @@ void TPlayerInventoryAndStatusController::requestPvpMode(const int mode)
     publishTactics();
 }
 
-bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::TGameAction& action)
+bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
     case A::SET_PVP_MODE:
-        requestPvpMode(action.pvpMode);
+        if (const auto* pvp = input::gameActionAs<input::TGameActionSetPvPMode>(&action))
+            requestPvpMode(pvp->pvpMode());
         break;
     case A::SET_CHASE_OPPONENTS:
-        onChaseModeChangeRequested(action.chase);
+        if (const auto* chase = input::gameActionAs<input::TGameActionSetChaseMode>(&action))
+            onChaseModeChangeRequested(chase->chase());
         break;
     case A::TOGGLE_CHASE_OPPONENTS:
         onToggleChaseMode();
@@ -476,8 +475,9 @@ bool TPlayerInventoryAndStatusController::handleTacticsAction(const input::TGame
         break;
     case A::SET_SECURE_MODE:
         // Unlike the panel's button, the action sends only a change.
-        if (action.secure != m_secureModeEnabled) {
-            onSecureModeEnabledRequested(action.secure);
+        if (const auto* secure = input::gameActionAs<input::TGameActionSetSecureMode>(&action);
+            secure && secure->secure() != m_secureModeEnabled) {
+            onSecureModeEnabledRequested(secure->secure());
             break;
         }
         Q_EMIT secureModeEnabledChanged();

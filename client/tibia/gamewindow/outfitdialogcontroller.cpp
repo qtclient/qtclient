@@ -402,9 +402,7 @@ void TSelectOutfitDialogController::onCancelClicked()
 void TSelectOutfitDialogController::onClickedOpenStoreOffer(const int offerID)
 {
     dialog()->close();
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 4;
-    action->instance = offerID;
+    auto action = std::make_shared<input::TGameActionOpenStore>(4, offerID);
     input::publish(action);
 }
 

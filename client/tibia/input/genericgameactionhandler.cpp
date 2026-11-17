@@ -125,8 +125,7 @@ void TGenericGameActionHandler::handleGameAction(const tibia::input::IGameAction
             Q_EMIT publishGameAction(fields->inner);
         break;
     case A::REQUEST_RESOURCE_BALANCE:
-        if (fields)
-            handleRequestResourceBalanceAction(*fields);
+        handleRequestResourceBalanceAction(static_cast<const TGameActionRequestResourceBalance&>(action));
         break;
     case A::RESET_HUNTING_SESSION:
         handleResetHuntingSessionAction();
@@ -220,9 +219,9 @@ void TGenericGameActionHandler::handleToggleFullscreenAction()
     options->setClientWindowOptions(window);
 }
 
-void TGenericGameActionHandler::handleRequestResourceBalanceAction(const TGameAction& action)
+void TGenericGameActionHandler::handleRequestResourceBalanceAction(const TGameActionRequestResourceBalance& action)
 {
-    tibia::game::requestResourceBalance(static_cast<uint8_t>(action.parameter));
+    tibia::game::requestResourceBalance(static_cast<uint8_t>(action.resourceType()));
 }
 
 void TGenericGameActionHandler::handleTeleportToCoordinateAction(const TGameAction& action)

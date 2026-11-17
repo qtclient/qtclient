@@ -86,11 +86,11 @@ TSidebarWidgetsManager::TSidebarWidgetsManager(TSidebarManager* sidebars, QQuick
 
     connect(this, &TSidebarWidgetsManager::widgetVisible, this, &TSidebarWidgetsManager::onWidgetVisible);
     connect(this, &TSidebarWidgetsManager::widgetHidden, this, &TSidebarWidgetsManager::onWidgetHidden);
-    input::setActionHandler(A::TOGGLE_WIDGET, [this](const input::TGameAction& action) { return handleGameAction(action); });
-    input::setActionHandler(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, [this](const input::TGameAction& action) {
+    input::setActionHandler(A::TOGGLE_WIDGET, [this](const input::IGameAction& action) { return handleGameAction(action); });
+    input::setActionHandler(A::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR, [this](const input::TGameActionOpenContainerInSpecificSidebar& action) {
         if (!m_containers)
             return false;
-        m_containers->openInSidebar(action.instance, action.sidebarId);
+        m_containers->openInSidebar(action.containerId(), action.sidebarId());
         return true;
     });
 }
@@ -247,13 +247,13 @@ void TSidebarWidgetsManager::toggleWidget(const int widgetType, const uint sideb
         openWidget(widgetType, sidebarId);
 }
 
-bool TSidebarWidgetsManager::handleGameAction(const input::TGameAction& action)
+bool TSidebarWidgetsManager::handleGameAction(const input::IGameAction& action)
 {
-    if (action.type != A::TOGGLE_WIDGET)
+    const auto* toggle = input::gameActionAs<input::TGameActionToggleWidget>(&action);
+    if (!toggle)
         return false;
-    // Key bindings carry the widget in instance, older publishers in parameter.
-    const int widgetType = action.instance != 0 ? action.instance : action.parameter;
-    const uint sidebarId = action.sidebarId;
+    const int widgetType = toggle->widgetType();
+    const uint sidebarId = toggle->sidebarId();
     switch (widgetType) {
         case Skills: onToggleSkillsWidget(sidebarId); break;
         case UnjustifiedPoints: onToggleUnjustifiedPointsWidget(sidebarId); break;

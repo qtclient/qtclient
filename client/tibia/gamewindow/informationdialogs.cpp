@@ -239,8 +239,8 @@ void TInformationDialogs::hookTextDialogs()
 
 void TInformationDialogs::hookQuestLog()
 {
-    input::setActionHandler(A::OPEN_QUESTLOG_DIALOG, [this](const input::TGameAction& action) {
-        m_questLog->showDialog(action.parameter);
+    input::setActionHandler(A::OPEN_QUESTLOG_DIALOG, [this](const input::TGameActionOpenQuestLog& action) {
+        m_questLog->showDialog(action.questId());
         return true;
     });
 

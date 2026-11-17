@@ -682,9 +682,7 @@ void TMarketController::onStoreDeeplinkClicked()
     else
         return;
     close(true);
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = store::OPEN_PREMIUM_OR_BOOSTS;
-    action->instance = detail;
+    auto action = std::make_shared<input::TGameActionOpenStore>(store::OPEN_PREMIUM_OR_BOOSTS, detail);
     input::publish(action);
 }
 

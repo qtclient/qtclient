@@ -57,8 +57,7 @@ void TPartyGameActionProvider::appendActions(input::TGameActionList& actions, co
     const game::TPlayerData* playerData = game::TPlayerData::liveInstance();
     if (creature->isLocalPlayer() && player->isInParty() && !(playerData && playerData->isFighting())) {
         if (player->isPartyLeader()) {
-            auto shared = input::mutableClone(*input::makeAction(EGameAction::SET_SHARED_EXPERIENCE));
-            shared->enable = !player->isSharingExperience();
+            auto shared = std::make_shared<input::TGameActionSetSharedExperience>(!player->isSharingExperience());
             actions.push_back(shared);
         }
         actions.push_back(input::makeGameAction(EGameAction::LEAVE_PARTY));

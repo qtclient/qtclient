@@ -25,8 +25,7 @@ constexpr int QuestFlagParameter = 0x10000;
 
 void openQuestLogAt(const int questFlagId)
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_QUESTLOG_DIALOG));
-    action->parameter = QuestFlagParameter | (questFlagId & 0xffff);
+    auto action = std::make_shared<input::TGameActionOpenQuestLog>(QuestFlagParameter | (questFlagId & 0xffff));
     input::publish(action);
 }
 
@@ -452,7 +451,7 @@ void TQuestTrackerWidgetController::onPinnedChanged(const int QuestFlagID, const
 
 void TQuestTrackerWidgetController::requestOpenQuestLogDialog()
 {
-    input::publish(input::makeGameAction(input::EGameAction::OPEN_QUESTLOG_DIALOG));
+    input::publish(std::make_shared<input::TGameActionOpenQuestLog>(0));
 }
 
 void TQuestTrackerWidgetController::requestConfigurationContextMenu()

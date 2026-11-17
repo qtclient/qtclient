@@ -59,11 +59,9 @@ constexpr std::pair<const char*, int> ButtonNames[] = {
     { "taskboard", Buttons::TASKBOARD_DIALOG },
 };
 
-void publish(const A type, const int parameter = 0)
+void publish(const A type)
 {
-    auto action = input::mutableClone(*input::makeAction(type));
-    action->parameter = parameter;
-    input::publish(action);
+    input::publish(input::makeGameAction(type));
 }
 
 struct TProductShortcut {
@@ -408,8 +406,7 @@ void TButtonBarController::onDropdownButtonClicked()
 
 void TButtonBarController::toggleWidget(const int widgetType)
 {
-    auto action = input::mutableClone(*input::makeAction(A::TOGGLE_WIDGET));
-    action->instance = widgetType;
+    auto action = std::make_shared<input::TGameActionToggleWidget>(widgetType);
     input::publish(action);
 }
 
@@ -417,7 +414,7 @@ void TButtonBarController::onSkillButtonClicked() { toggleWidget(W::Skills); }
 void TButtonBarController::onBattleListButtonClicked() { toggleWidget(W::BattleList); }
 void TButtonBarController::onPartyListButtonClicked() { toggleWidget(W::PartyList); }
 void TButtonBarController::onVipWidgetButtonClicked() { toggleWidget(W::Vip); }
-void TButtonBarController::onQuestLogButtonClicked() { publish(A::OPEN_QUESTLOG_DIALOG); }
+void TButtonBarController::onQuestLogButtonClicked() { input::publish(std::make_shared<input::TGameActionOpenQuestLog>(0)); }
 void TButtonBarController::onQuestTrackerButtonClicked() { toggleWidget(W::QuestTracker); }
 void TButtonBarController::onBestiaryTrackerButtonClicked() { toggleWidget(W::BestiaryTracker); }
 void TButtonBarController::onBosstiaryTrackerButtonClicked() { toggleWidget(W::BosstiaryTracker); }
@@ -427,8 +424,8 @@ void TButtonBarController::onPreyDialogButtonClicked() { publish(A::OPEN_PREY_DI
 void TButtonBarController::onSpellListWidgetButtonClicked() { toggleWidget(W::SpellList); }
 void TButtonBarController::onOptionsButtonClicked()
 {
-    publish(A::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS);
-    publish(A::OPEN_OPTIONS_MENU_DIALOG, 0);
+    input::publish(std::make_shared<input::TGameActionCloseAllMultiActionButtons>());
+    input::publish(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(0));
 }
 
 void TButtonBarController::onSwitchCharacterButtonClicked()
@@ -469,7 +466,7 @@ void TButtonBarController::onWeaponProficiencyDialogButtonClicked()
 }
 void TButtonBarController::onTaskboardDialogButtonClicked() { publish(A::OPEN_TASKBOARD_DIALOG); }
 void TButtonBarController::onPlayerGuideWidgetClicked() { toggleWidget(W::PlayerGuide); }
-void TButtonBarController::onManageShortcutsClicked() { publish(A::OPEN_OPTIONS_MENU_DIALOG, 2); }
+void TButtonBarController::onManageShortcutsClicked() { input::publish(std::make_shared<input::TGameActionOpenOptionsMenuDialog>(2)); }
 
 QStringList TButtonBarController::enabledShortcutIds() const
 {
@@ -573,7 +570,7 @@ void TButtonBarController::activateShortcut(const int buttonId)
         if (m_newsButtonController)
             QMetaObject::invokeMethod(m_newsButtonController, "onOpenNewsButtonClicked");
         else
-            input::publish(input::makeGameAction(input::EGameAction::OPEN_NEWS_DIALOG));
+            input::publish(std::make_shared<input::TGameActionOpenNewsDialog>());
         break;
     case B::CYCLOPEDIA_DIALOG:
         if (m_cyclopediaButtonController)

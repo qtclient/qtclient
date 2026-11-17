@@ -1428,6 +1428,336 @@ private:
     bool m_flag;
 };
 
+
+// ---------------------------------------------------------------------------
+// Sidebars, widgets, action bars, tactics, dialog openers
+
+/// qtclient: the CIP classes that carry one value of type `T` at +0xc after
+/// their type (+0x8).
+template<EGameAction Type, typename T>
+class TGameActionWithValue : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionWithValue(T value)
+        : TGameActionSimple(Type)
+        , m_value(value)
+    {
+    }
+
+protected:
+    T m_value;
+};
+
+/// CIP input::TGameActionToggleWidget (TOGGLE_WIDGET): the
+/// gamewindow::TSidebarWidgetsManager widget type, and the sidebar (0xff: any).
+class TGameActionToggleWidget final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionToggleWidget(int widgetType, uint8_t sidebarId = 0xff)
+        : TGameActionSimple(EGameAction::TOGGLE_WIDGET)
+        , m_widgetType(widgetType)
+        , m_sidebarId(sidebarId)
+    {
+    }
+    int widgetType() const { return m_widgetType; }
+    uint8_t sidebarId() const { return m_sidebarId; }
+
+private:
+    int m_widgetType;
+    uint8_t m_sidebarId;
+};
+
+/// CIP input::TGameActionOpenContainerInSpecificSidebar (OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR).
+class TGameActionOpenContainerInSpecificSidebar final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionOpenContainerInSpecificSidebar(uint8_t containerId, uint8_t sidebarId)
+        : TGameActionSimple(EGameAction::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR)
+        , m_containerId(containerId)
+        , m_sidebarId(sidebarId)
+    {
+    }
+    uint8_t containerId() const { return m_containerId; }
+    uint8_t sidebarId() const { return m_sidebarId; }
+
+private:
+    uint8_t m_containerId;
+    uint8_t m_sidebarId;
+};
+
+/// CIP input::TGameActionOpenSecondaryBattleListInSpecificSidebar
+/// (OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR): the list (0xff: a new one)
+/// and the sidebar (0xff: the first with room).
+class TGameActionOpenSecondaryBattleListInSpecificSidebar final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionOpenSecondaryBattleListInSpecificSidebar(uint8_t battleListId, uint8_t sidebarId)
+        : TGameActionSimple(EGameAction::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR)
+        , m_battleListId(battleListId)
+        , m_sidebarId(sidebarId)
+    {
+    }
+    uint8_t battleListId() const { return m_battleListId; }
+    uint8_t sidebarId() const { return m_sidebarId; }
+
+private:
+    uint8_t m_battleListId;
+    uint8_t m_sidebarId;
+};
+
+/// CIP input::TGameActionMakeBattleListPrimary (MAKE_BATTLE_LIST_PRIMARY).
+class TGameActionMakeBattleListPrimary final : public TGameActionWithValue<EGameAction::MAKE_BATTLE_LIST_PRIMARY, uint8_t>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    uint8_t battleListId() const { return m_value; }
+};
+
+/// CIP input::TGameActionToggleActionBar (TOGGLE_ACTION_BAR): the bar.
+class TGameActionToggleActionBar final : public TGameActionWithValue<EGameAction::TOGGLE_ACTION_BAR, uint8_t>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    uint8_t actionBarId() const { return m_value; }
+};
+
+/// CIP input::TGameActionToggleActionBars (TOGGLE_ACTION_BARS): the bars' position.
+class TGameActionToggleActionBars final : public TGameActionWithValue<EGameAction::TOGGLE_ACTION_BARS, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int position() const { return m_value; }
+};
+
+/// CIP input::TGameActionSetTactics (SET_TACTICS): attack mode, chase, secure
+/// mode and PvP mode in one (+0xc, 8 bytes).
+class TGameActionSetTactics final : public gameactions::TGameActionSimple
+{
+public:
+    struct TTactics
+    {
+        bool chase = false;
+        bool secure = false;
+        int pvpMode = 0;
+    };
+    explicit TGameActionSetTactics(TTactics tactics)
+        : TGameActionSimple(EGameAction::SET_TACTICS)
+        , m_tactics(tactics)
+    {
+    }
+    const TTactics& tactics() const { return m_tactics; }
+
+private:
+    TTactics m_tactics;
+};
+
+/// CIP input::TGameActionSetChaseMode (SET_CHASE_OPPONENTS).
+class TGameActionSetChaseMode final : public IGameAction
+{
+public:
+    explicit TGameActionSetChaseMode(bool chase)
+        : m_chase(chase)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SET_CHASE_OPPONENTS; }
+    bool chase() const { return m_chase; }
+
+private:
+    bool m_chase;
+};
+
+/// CIP input::TGameActionSetPvPMode (SET_PVP_MODE).
+class TGameActionSetPvPMode final : public IGameAction
+{
+public:
+    explicit TGameActionSetPvPMode(int pvpMode)
+        : m_pvpMode(pvpMode)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SET_PVP_MODE; }
+    int pvpMode() const { return m_pvpMode; }
+
+private:
+    int m_pvpMode;
+};
+
+/// CIP input::TGameActionSetSecureMode (SET_SECURE_MODE).
+class TGameActionSetSecureMode final : public IGameAction
+{
+public:
+    explicit TGameActionSetSecureMode(bool secure)
+        : m_secure(secure)
+    {
+    }
+    EGameAction gameActionType() const override { return EGameAction::SET_SECURE_MODE; }
+    bool secure() const { return m_secure; }
+
+private:
+    bool m_secure;
+};
+
+/// CIP input::TGameActionSetSharedExperience (SET_SHARED_EXPERIENCE).
+class TGameActionSetSharedExperience final : public TGameActionWithValue<EGameAction::SET_SHARED_EXPERIENCE, bool>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    bool enable() const { return m_value; }
+};
+
+/// CIP input::TGameActionToggleMounted (TOGGLE_MOUNTED).
+class TGameActionToggleMounted final : public IGameAction
+{
+public:
+    EGameAction gameActionType() const override { return EGameAction::TOGGLE_MOUNTED; }
+};
+
+/// CIP input::TGameActionTryToSwitchHotkeySet (TRY_TO_SWITCH_HOTKEYSET): the
+/// set's name, and whether the switch is announced in the status line.
+class TGameActionTryToSwitchHotkeySet final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionTryToSwitchHotkeySet(QString hotkeySetName, bool showStatusLine)
+        : TGameActionSimple(EGameAction::TRY_TO_SWITCH_HOTKEYSET)
+        , m_hotkeySetName(std::move(hotkeySetName))
+        , m_showStatusLine(showStatusLine)
+    {
+    }
+    const QString& hotkeySetName() const { return m_hotkeySetName; }
+    bool showStatusLine() const { return m_showStatusLine; }
+
+private:
+    QString m_hotkeySetName;
+    bool m_showStatusLine;
+};
+
+/// CIP input::TGameActionSwitchClientOptions (SWITCH_CLIENTOPTIONS_MODE).
+class TGameActionSwitchClientOptions final : public TGameActionWithValue<EGameAction::SWITCH_CLIENTOPTIONS_MODE, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int mode() const { return m_value; }
+};
+
+/// CIP input::TGameActionOpenOptionsMenuDialog (OPEN_OPTIONS_MENU_DIALOG): the page.
+class TGameActionOpenOptionsMenuDialog final : public TGameActionWithValue<EGameAction::OPEN_OPTIONS_MENU_DIALOG, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int page() const { return m_value; }
+};
+
+/// qtclient's subset of CIP's store::TStoreOpenParameters: the open action
+/// (store::EStoreOpenAction), its detail (category / offer) and a search text.
+struct TStoreOpenParameters
+{
+    int openAction = 0;
+    int detail = 0;
+    QString text;
+};
+
+/// CIP input::TGameActionOpenStore (OPEN_STORE): the store's open parameters.
+class TGameActionOpenStore final : public gameactions::TGameActionSimple
+{
+public:
+    using TStoreOpenParameters = input::TStoreOpenParameters;
+    TGameActionOpenStore()
+        : TGameActionSimple(EGameAction::OPEN_STORE)
+    {
+    }
+    explicit TGameActionOpenStore(TStoreOpenParameters parameters)
+        : TGameActionSimple(EGameAction::OPEN_STORE)
+        , m_parameters(std::move(parameters))
+    {
+    }
+    explicit TGameActionOpenStore(int openAction, int detail = 0, QString text = {})
+        : TGameActionOpenStore(TStoreOpenParameters{ openAction, detail, std::move(text) })
+    {
+    }
+    const TStoreOpenParameters& storeOpenParameters() const { return m_parameters; }
+
+private:
+    TStoreOpenParameters m_parameters;
+};
+
+/// CIP input::TGameActionOpenNewsDialog (OPEN_NEWS_DIALOG): optionally the
+/// news to show (+0xc) or the category (+0x14).
+class TGameActionOpenNewsDialog final : public gameactions::TGameActionSimple
+{
+public:
+    TGameActionOpenNewsDialog()
+        : TGameActionSimple(EGameAction::OPEN_NEWS_DIALOG)
+    {
+    }
+    std::optional<uint32_t> newsId() const { return m_newsId; }
+    std::optional<uint32_t> category() const { return m_category; }
+    static std::shared_ptr<TGameActionOpenNewsDialog> withNews(uint32_t newsId);
+    static std::shared_ptr<TGameActionOpenNewsDialog> withCategory(uint32_t category);
+
+private:
+    std::optional<uint32_t> m_newsId;
+    std::optional<uint32_t> m_category;
+};
+
+/// CIP input::TGameActionOpenNewsDialogWithCategory (OPEN_NEWS_CATEGORY).
+class TGameActionOpenNewsDialogWithCategory final : public TGameActionWithValue<EGameAction::OPEN_NEWS_CATEGORY, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int category() const { return m_value; }
+};
+
+/// CIP input::TGameActionOpenSocialDialog (OPEN_SOCIAL_DIALOG): the tab.
+class TGameActionOpenSocialDialog final : public TGameActionWithValue<EGameAction::OPEN_SOCIAL_DIALOG, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int tab() const { return m_value; }
+};
+
+/// CIP input::TGameActionOpenQuestLog (OPEN_QUESTLOG_DIALOG): the quest (0: the list).
+class TGameActionOpenQuestLog final : public TGameActionWithValue<EGameAction::OPEN_QUESTLOG_DIALOG, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int questId() const { return m_value; }
+};
+
+/// CIP input::TGameActionRefreshCompendiumNews (REFRESH_COMPENDIUM_NEWS).
+class TGameActionRefreshCompendiumNews final : public TGameActionWithValue<EGameAction::REFRESH_COMPENDIUM_NEWS, bool>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    /// CIP +0xc.
+    bool flag() const { return m_value; }
+};
+
+/// CIP input::TGameActionRequestResourceBalance (REQUEST_RESOURCE_BALANCE): the resource type.
+class TGameActionRequestResourceBalance final : public TGameActionWithValue<EGameAction::REQUEST_RESOURCE_BALANCE, int>
+{
+public:
+    using TGameActionWithValue::TGameActionWithValue;
+    int resourceType() const { return m_value; }
+};
+
+/// CIP input::TGameActionCloseAllMultiActionButtons (CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS):
+/// the bar and button whose multi action list stays as it is.
+class TGameActionCloseAllMultiActionButtons final : public gameactions::TGameActionSimple
+{
+public:
+    explicit TGameActionCloseAllMultiActionButtons(uint8_t actionBarId = 0, int actionButtonId = 0)
+        : TGameActionSimple(EGameAction::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS)
+        , m_actionBarId(actionBarId)
+        , m_actionButtonId(actionButtonId)
+    {
+    }
+    uint8_t actionBarId() const { return m_actionBarId; }
+    int actionButtonId() const { return m_actionButtonId; }
+
+private:
+    uint8_t m_actionBarId;
+    int m_actionButtonId;
+};
+
 struct TGameAction;
 using TGameActionPtr = std::shared_ptr<const TGameAction>;
 using TGameActionList = std::vector<IGameActionPtr>;
@@ -1771,13 +2101,6 @@ public:
 };
 
 
-/// CIP input::TGameActionCloseAllMultiActionButtons .
-class TGameActionCloseAllMultiActionButtons final : public TGameAction
-{
-public:
-    TGameActionCloseAllMultiActionButtons() { type = EGameAction::CLOSE_ALL_OPEN_MULTI_ACTION_BUTTONS; }
-};
-
 
 
 
@@ -1835,11 +2158,20 @@ public:
 
 
 
-/// CIP input::TGameActionFriendsDialogSearchAccount .
-class TGameActionFriendsDialogSearchAccount final : public TGameAction
+/// CIP input::TGameActionFriendsDialogSearchAccount (FRIENDS_DIALOG_SEARCH_ACCOUNT):
+/// the character name to search.
+class TGameActionFriendsDialogSearchAccount final : public gameactions::TGameActionSimple
 {
 public:
-    TGameActionFriendsDialogSearchAccount() { type = EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT; }
+    explicit TGameActionFriendsDialogSearchAccount(QString characterName)
+        : TGameActionSimple(EGameAction::FRIENDS_DIALOG_SEARCH_ACCOUNT)
+        , m_characterName(std::move(characterName))
+    {
+    }
+    const QString& characterName() const { return m_characterName; }
+
+private:
+    QString m_characterName;
 };
 
 
@@ -1858,24 +2190,10 @@ public:
     TGameActionLoadDefaultMinimapTilesFromResources() { type = EGameAction::LOAD_DEFAULT_MINIMAP_TILES_FROM_RESOURCES; }
 };
 
-/// CIP input::TGameActionMakeBattleListPrimary .
-class TGameActionMakeBattleListPrimary final : public TGameAction
-{
-public:
-    TGameActionMakeBattleListPrimary() { type = EGameAction::MAKE_BATTLE_LIST_PRIMARY; }
-};
 
 
 
 
-
-
-/// CIP input::TGameActionOpenContainerInSpecificSidebar .
-class TGameActionOpenContainerInSpecificSidebar final : public TGameAction
-{
-public:
-    TGameActionOpenContainerInSpecificSidebar() { type = EGameAction::OPEN_CONTAINER_IN_SPECIFIC_SIDEBAR; }
-};
 
 
 
@@ -1886,32 +2204,11 @@ public:
     TGameActionOpenLootContainer() { type = EGameAction::LOOT_CONTAINER_OPEN; }
 };
 
-/// CIP input::TGameActionOpenNewsDialog .
-class TGameActionOpenNewsDialog final : public TGameAction
-{
-public:
-    TGameActionOpenNewsDialog() { type = EGameAction::OPEN_NEWS_DIALOG; }
-};
-
-/// CIP input::TGameActionOpenNewsDialogWithCategory .
-class TGameActionOpenNewsDialogWithCategory final : public TGameAction
-{
-public:
-    TGameActionOpenNewsDialogWithCategory() { type = EGameAction::OPEN_NEWS_CATEGORY; }
-};
-
 /// CIP input::TGameActionOpenObtainContainer .
 class TGameActionOpenObtainContainer final : public TGameActionManagedContainer
 {
 public:
     TGameActionOpenObtainContainer() { type = EGameAction::OBTAIN_CONTAINER_OPEN; }
-};
-
-/// CIP input::TGameActionOpenOptionsMenuDialog .
-class TGameActionOpenOptionsMenuDialog final : public TGameAction
-{
-public:
-    TGameActionOpenOptionsMenuDialog() { type = EGameAction::OPEN_OPTIONS_MENU_DIALOG; }
 };
 
 /// CIP input::TGameActionOpenParentContainer .
@@ -1923,40 +2220,12 @@ public:
 };
 
 
-/// CIP input::TGameActionOpenQuestLog .
-class TGameActionOpenQuestLog final : public TGameAction
-{
-public:
-    TGameActionOpenQuestLog() { type = EGameAction::OPEN_QUESTLOG_DIALOG; }
-};
-
-/// CIP input::TGameActionOpenSecondaryBattleListInSpecificSidebar .
-class TGameActionOpenSecondaryBattleListInSpecificSidebar final : public TGameAction
-{
-public:
-    TGameActionOpenSecondaryBattleListInSpecificSidebar() { type = EGameAction::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR; }
-};
-
 /// CIP input::TGameActionOpenShowImageDialog .
 class TGameActionOpenShowImageDialog final : public TGameAction
 {
 public:
     TGameActionOpenShowImageDialog() { type = EGameAction::OPEN_SHOW_IMAGE_DIALOG; }
     explicit TGameActionOpenShowImageDialog(QString text);
-};
-
-/// CIP input::TGameActionOpenSocialDialog .
-class TGameActionOpenSocialDialog final : public TGameAction
-{
-public:
-    TGameActionOpenSocialDialog() { type = EGameAction::OPEN_SOCIAL_DIALOG; }
-};
-
-/// CIP input::TGameActionOpenStore .
-class TGameActionOpenStore final : public TGameAction
-{
-public:
-    TGameActionOpenStore() { type = EGameAction::OPEN_STORE; }
 };
 
 
@@ -1966,13 +2235,6 @@ class TGameActionPreySystem final : public TGameAction
 public:
     TGameActionPreySystem() = default;
     explicit TGameActionPreySystem(EGameAction type);
-};
-
-/// CIP input::TGameActionRefreshCompendiumNews .
-class TGameActionRefreshCompendiumNews final : public TGameAction
-{
-public:
-    TGameActionRefreshCompendiumNews() { type = EGameAction::REFRESH_COMPENDIUM_NEWS; }
 };
 
 
@@ -1990,12 +2252,6 @@ class TGameActionRequestOutfitsFromServer final : public TGameAction
 public:
     TGameActionRequestOutfitsFromServer() { type = EGameAction::REQUEST_OUTFITS_FROM_SERVER; }
     explicit TGameActionRequestOutfitsFromServer(uint32_t creatureId);
-};
-/// CIP input::TGameActionRequestResourceBalance .
-class TGameActionRequestResourceBalance final : public TGameAction
-{
-public:
-    TGameActionRequestResourceBalance() { type = EGameAction::REQUEST_RESOURCE_BALANCE; }
 };
 /// CIP input::TGameActionRequestSearchTypeInDepot .
 class TGameActionRequestSearchTypeInDepot final : public TGameAction
@@ -2051,12 +2307,6 @@ class TGameActionSessiondumpStart final : public TGameAction
 public:
     TGameActionSessiondumpStart() { type = EGameAction::SESSIONDUMP_START; }
 };
-/// CIP input::TGameActionSetChaseMode .
-class TGameActionSetChaseMode final : public TGameAction
-{
-public:
-    TGameActionSetChaseMode() { type = EGameAction::SET_CHASE_OPPONENTS; }
-};
 /// CIP input::TGameActionSetCreaturePodiumConfiguration .
 class TGameActionSetCreaturePodiumConfiguration final : public TGameAction
 {
@@ -2088,35 +2338,11 @@ class TGameActionSetPlayerOutfit final : public TGameAction
 public:
     TGameActionSetPlayerOutfit() { type = EGameAction::SET_PLAYER_OUTFIT; }
 };
-/// CIP input::TGameActionSetPvPMode .
-class TGameActionSetPvPMode final : public TGameAction
-{
-public:
-    TGameActionSetPvPMode() { type = EGameAction::SET_PVP_MODE; }
-};
-/// CIP input::TGameActionSetSecureMode .
-class TGameActionSetSecureMode final : public TGameAction
-{
-public:
-    TGameActionSetSecureMode() { type = EGameAction::SET_SECURE_MODE; }
-};
-/// CIP input::TGameActionSetSharedExperience .
-class TGameActionSetSharedExperience final : public TGameAction
-{
-public:
-    TGameActionSetSharedExperience() { type = EGameAction::SET_SHARED_EXPERIENCE; }
-};
 /// CIP input::TGameActionSetShowOffSocketConfiguration .
 class TGameActionSetShowOffSocketConfiguration final : public TGameAction
 {
 public:
     TGameActionSetShowOffSocketConfiguration() { type = EGameAction::SET_SHOW_OFF_SOCKET_CONFIGURATION; }
-};
-/// CIP input::TGameActionSetTactics .
-class TGameActionSetTactics final : public TGameAction
-{
-public:
-    TGameActionSetTactics() { type = EGameAction::SET_TACTICS; }
 };
 /// CIP input::TGameActionShowConfirmMoveObjectToStashDialog .
 class TGameActionShowConfirmMoveObjectToStashDialog final : public TGameAction
@@ -2201,18 +2427,6 @@ class TGameActionStashStowType final : public TGameAction
 public:
     TGameActionStashStowType() { type = EGameAction::STASH_STOW_TYPE; }
 };
-/// CIP input::TGameActionSwitchClientOptions .
-class TGameActionSwitchClientOptions final : public TGameAction
-{
-public:
-    TGameActionSwitchClientOptions() { type = EGameAction::SWITCH_CLIENTOPTIONS_MODE; }
-    /// The requested options mode (0: the user's, 1: the tutorial's).
-    explicit TGameActionSwitchClientOptions(const int mode)
-    {
-        type = EGameAction::SWITCH_CLIENTOPTIONS_MODE;
-        parameter = mode;
-    }
-};
 /// CIP input::TGameActionTargetSelected .
 class TGameActionTargetSelected final : public TGameAction
 {
@@ -2226,43 +2440,12 @@ class TGameActionTeleportToCoordinate final : public TGameAction
 public:
     TGameActionTeleportToCoordinate() { type = EGameAction::GOD_TELEPORT; }
 };
-/// CIP input::TGameActionToggleActionBar .
-class TGameActionToggleActionBar final : public TGameAction
-{
-public:
-    TGameActionToggleActionBar() { type = EGameAction::TOGGLE_ACTION_BAR; }
-};
-/// CIP input::TGameActionToggleActionBars .
-class TGameActionToggleActionBars final : public TGameAction
-{
-public:
-    TGameActionToggleActionBars() { type = EGameAction::TOGGLE_ACTION_BARS; }
-};
-/// CIP input::TGameActionToggleMounted .
-class TGameActionToggleMounted final : public TGameAction
-{
-public:
-    TGameActionToggleMounted() { type = EGameAction::TOGGLE_MOUNTED; }
-};
-/// CIP input::TGameActionToggleWidget .
-class TGameActionToggleWidget final : public TGameAction
-{
-public:
-    TGameActionToggleWidget() { type = EGameAction::TOGGLE_WIDGET; }
-};
 /// CIP input::TGameActionTryToEquip .
 class TGameActionTryToEquip final : public TGameAction
 {
 public:
     TGameActionTryToEquip() { type = EGameAction::TRY_TO_EQUIP; }
     TGameActionTryToEquip(Position position, int stackPosition, uint16_t objectClientId = 0);
-};
-/// CIP input::TGameActionTryToSwitchHotkeySet .
-class TGameActionTryToSwitchHotkeySet final : public TGameAction
-{
-public:
-    TGameActionTryToSwitchHotkeySet() { type = EGameAction::TRY_TO_SWITCH_HOTKEYSET; }
-    explicit TGameActionTryToSwitchHotkeySet(QString text);
 };
 /// CIP input::TGameActionTutorialHintConfirmed .
 class TGameActionTutorialHintConfirmed final : public TGameAction

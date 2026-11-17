@@ -21,39 +21,28 @@ namespace {
 
 using A = EGameAction;
 
-/// Sets the one value a table action carries (CIP builds each typed action
-/// with it): the widget for TOGGLE_WIDGET, the bar for TOGGLE_ACTION_BAR, the
-/// mode for SET_PVP_MODE, otherwise TGameAction::parameter.
+/// The table action of `type` with its one value (CIP builds each typed action
+/// with it); types without a value are TGameActionSimple.
 IGameActionPtr tableAction(const A type, const int value)
 {
-    if (type == A::OPEN_CYCLOPEDIA)
-        return std::make_shared<TGameActionOpenCyclopedia>(value);
-    if (type == A::SWITCH_CHAT_MODE)
-        return std::make_shared<TGameActionSwitchChatMode>(value);
-    if (type == A::GET_CHAT_CHANNEL_LIST)
-        return std::make_shared<TGameActionGetChatChannelList>();
-    if (type == A::QUIT_GAME)
-        return std::make_shared<TGameActionQuitGame>(value != 0);
-    auto action = mutableClone(*makeAction(type));
     switch (type) {
-    case A::TOGGLE_WIDGET:
-        action->instance = value;
-        break;
+    case A::OPEN_CYCLOPEDIA: return std::make_shared<TGameActionOpenCyclopedia>(value);
+    case A::SWITCH_CHAT_MODE: return std::make_shared<TGameActionSwitchChatMode>(value);
+    case A::GET_CHAT_CHANNEL_LIST: return std::make_shared<TGameActionGetChatChannelList>();
+    case A::QUIT_GAME: return std::make_shared<TGameActionQuitGame>(value != 0);
+    case A::TOGGLE_WIDGET: return std::make_shared<TGameActionToggleWidget>(value);
     case A::OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR:
-        action->instance = value;
-        action->sidebarId = 0xff;
-        break;
-    case A::TOGGLE_ACTION_BAR:
-        action->actionBarId = value;
-        break;
-    case A::SET_PVP_MODE:
-        action->pvpMode = value;
-        break;
-    default:
-        action->parameter = value;
-        break;
+        return std::make_shared<TGameActionOpenSecondaryBattleListInSpecificSidebar>(static_cast<uint8_t>(value), 0xff);
+    case A::TOGGLE_ACTION_BAR: return std::make_shared<TGameActionToggleActionBar>(static_cast<uint8_t>(value));
+    case A::TOGGLE_ACTION_BARS: return std::make_shared<TGameActionToggleActionBars>(value);
+    case A::SET_PVP_MODE: return std::make_shared<TGameActionSetPvPMode>(value);
+    case A::OPEN_OPTIONS_MENU_DIALOG: return std::make_shared<TGameActionOpenOptionsMenuDialog>(value);
+    case A::OPEN_SOCIAL_DIALOG: return std::make_shared<TGameActionOpenSocialDialog>(value);
+    case A::OPEN_QUESTLOG_DIALOG: return std::make_shared<TGameActionOpenQuestLog>(value);
+    case A::OPEN_NEWS_DIALOG: return std::make_shared<TGameActionOpenNewsDialog>();
+    case A::TOGGLE_MOUNTED: return std::make_shared<TGameActionToggleMounted>();
+    default: return makeGameAction(type);
     }
-    return action;
 }
 
 /// CIP's hotkey action table: action name -> prebuilt game action. The Go*
@@ -405,23 +394,27 @@ void switchHotkeySetBy(const int step)
 
 }
 
-void TKeyboardShortcutHandler::handleGameAction(const TGameAction& action)
+void TKeyboardShortcutHandler::handleGameAction(const IGameAction& action)
 {
-    switch (action.type) {
-        case A::TRY_TO_SWITCH_HOTKEYSET: tryToSwitchHotkeySet(action); break;
+    switch (action.gameActionType()) {
+        case A::TRY_TO_SWITCH_HOTKEYSET:
+            if (const auto* trySwitch = gameActionAs<TGameActionTryToSwitchHotkeySet>(&action))
+                tryToSwitchHotkeySet(*trySwitch);
+            break;
         case A::SWITCH_TO_NEXT_HOTKEYSET: switchToNextHotkeySet(); break;
         case A::SWITCH_TO_PREVIOUS_HOTKEYSET: switchToPreviousHotkeySet(); break;
         default: break;
     }
 }
 
-void TKeyboardShortcutHandler::tryToSwitchHotkeySet(const TGameAction& action)
+void TKeyboardShortcutHandler::tryToSwitchHotkeySet(const TGameActionTryToSwitchHotkeySet& action)
 {
     config::THotkeyOptions* hotkeys = config::THotkeyOptions::instance();
-    if (!hotkeys->autoSwitchHotkeyPreset() || !hotkeys->set(action.text) || action.text == hotkeys->currentSetName())
+    const QString& name = action.hotkeySetName();
+    if (!hotkeys->autoSwitchHotkeyPreset() || !hotkeys->set(name) || name == hotkeys->currentSetName())
         return;
-    hotkeys->selectSet(action.text);
-    announceHotkeySet(action.text, action.enable);
+    hotkeys->selectSet(name);
+    announceHotkeySet(name, action.showStatusLine());
 }
 
 void TKeyboardShortcutHandler::switchToNextHotkeySet()

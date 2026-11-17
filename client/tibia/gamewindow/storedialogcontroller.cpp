@@ -1091,9 +1091,7 @@ TStoreButtonController::TStoreButtonController(TStoreDialogController* dialog, Q
 
 void TStoreButtonController::onOpenStoreButtonClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = m_deeplinkAction;
-    action->instance = m_deeplinkDetail;
+    auto action = std::make_shared<input::TGameActionOpenStore>(m_deeplinkAction, m_deeplinkDetail);
     input::publish(action);
     onRequestOpenStoreDialog();
 }

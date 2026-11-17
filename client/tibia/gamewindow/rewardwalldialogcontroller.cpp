@@ -402,18 +402,14 @@ void TRewardWallDialogController::closeButtonClicked() { closeDialog(); }
 /// The store's Instant Reward Access page (useful thing 2).
 void TRewardWallDialogController::getMoreInstantRewardAccessClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
-    action->parameter = 3;
-    action->instance = 2;
+    auto action = std::make_shared<input::TGameActionOpenStore>(3, 2);
     input::publish(action);
 }
 
 /// The store's premium page.
 void TRewardWallDialogController::getPremiumClicked()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_STORE));
-    action->parameter = 1;
-    action->instance = 0;
+    auto action = std::make_shared<input::TGameActionOpenStore>(1, 0);
     input::publish(action);
 }
 

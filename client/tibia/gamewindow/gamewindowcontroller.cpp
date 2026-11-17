@@ -131,7 +131,7 @@ TGameWindowController::TGameWindowController(QQuickItem* container, QObject* par
             &TNewsDialogController::onNewsQueryFailed);
 
     for (const A type : { A::OPEN_NEWS_DIALOG, A::OPEN_NEWS_CATEGORY, A::REFRESH_COMPENDIUM_NEWS }) {
-        input::setActionHandler(type, [this](const input::TGameAction& action) {
+        input::setActionHandler(type, [this](const input::IGameAction& action) {
             if (m_newsDialog)
                 m_newsDialog->handleGameAction(action);
             return true;
@@ -695,8 +695,7 @@ void TGameWindowController::showQuitGameDialog()
 
 void TGameWindowController::optionsPressed()
 {
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_OPTIONS_MENU_DIALOG));
-    action->parameter = 0;
+    auto action = std::make_shared<input::TGameActionOpenOptionsMenuDialog>(0);
     input::publish(action);
 }
 

@@ -431,8 +431,7 @@ void TWeaponProficiencyDialogController::showDialog(const uint16_t typeId)
         }
     }
     for (const int resource : DialogResources) {
-        auto action = input::mutableClone(*input::makeAction(A::REQUEST_RESOURCE_BALANCE));
-        action->parameter = resource;
+        auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
         input::publish(action);
     }
     if (!dialog()->item()) {

@@ -915,8 +915,7 @@ void TExaltationForgeDialogController::showDialog(const bool ReadOnly)
     m_readOnlyMode = ReadOnly;
     if (ReadOnly) {
         for (const int resource : { 0, 1, 0x46, 0x47, 0x48 }) {
-            auto action = input::mutableClone(*input::makeAction(A::REQUEST_RESOURCE_BALANCE));
-            action->parameter = resource;
+            auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
             input::publish(action);
         }
     }

@@ -254,6 +254,8 @@ QString TContextMenuController::labelOf(const input::IGameAction& pGameAction, Q
     }
     if (const char* id = namedLabel(pGameAction.gameActionType()))
         return qtTrId(id).arg(nameOf(pGameAction));
+    if (const auto* shared = input::gameActionAs<input::TGameActionSetSharedExperience>(&pGameAction))
+        return qtTrId(shared->enable() ? "context_shared_exp_on" : "context_shared_exp_off");
     const auto* fields = dynamic_cast<const input::TGameAction*>(&pGameAction);
     if (!fields)
         return QStringLiteral("Unknown Game Action (%1)").arg(static_cast<int>(pGameAction.gameActionType()));
@@ -261,8 +263,6 @@ QString TContextMenuController::labelOf(const input::IGameAction& pGameAction, Q
     switch (action.type) {
     case A::QUICK_LOOT:
         return qtTrId(action.position.x != UINT16_MAX ? "context_loot_all" : "context_loot");
-    case A::SET_SHARED_EXPERIENCE:
-        return qtTrId(action.enable ? "context_shared_exp_on" : "context_shared_exp_off");
     case A::SET_PLAYER_MOVEMENT_INTENT:
         return QStringLiteral("Walk here");
     case A::GOD_TELEPORT:

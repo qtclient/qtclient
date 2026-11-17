@@ -98,9 +98,7 @@ QJsonArray levelArray(const std::set<int>& levels)
 
 void openNewsEntry(const int newsEntryId)
 {
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_NEWS_DIALOG));
-    action->parameter = newsEntryId;
-    input::publish(action);
+    input::publish(input::TGameActionOpenNewsDialog::withNews(static_cast<uint32_t>(newsEntryId)));
 }
 
 }

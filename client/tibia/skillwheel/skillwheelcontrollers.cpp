@@ -1424,7 +1424,7 @@ void TSkillWheelDialogController::onOkClicked()
 
 void TSkillWheelDialogController::onApplyClicked() { m_page->requestSaveCurrentPreset(); }
 void TSkillWheelDialogController::onResetClicked() { m_page->resetSkillGrid(); }
-void TSkillWheelDialogController::getPremiumClicked() { publish(A::OPEN_STORE, 1, 0); }
+void TSkillWheelDialogController::getPremiumClicked() { input::publish(std::make_shared<input::TGameActionOpenStore>(1)); }
 void TSkillWheelDialogController::requestCopyExportCodeToClipboarClicked() { m_page->requestCopyExportCodeToClipboard(); }
 
 /// CIP (308 accepted): an empty wheel of the own vocation.

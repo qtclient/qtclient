@@ -31,11 +31,10 @@ void TSocialButtonController::onSocialButtonClicked()
 {
     // CIP : invite → Invites (param 1), friendship → friend list (0),
     // else team finder JoinTeam (param 5).
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_SOCIAL_DIALOG));
-    action->parameter = m_state == EState::InviteReceived           ? 1
+    auto action = std::make_shared<input::TGameActionOpenSocialDialog>(m_state == EState::InviteReceived           ? 1
                         : m_state == EState::FriendshipEstablished ? 0
                         : m_state == EState::OwnTeamUpdate         ? 6
-                                                                   : 5;
+                                                                   : 5);
     setState(EState::None);
     input::publish(action);
 }

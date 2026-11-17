@@ -300,7 +300,7 @@ public:
     /// CIP: OPEN_SECONDARY_BATTLE_LIST_IN_SPECIFIC_SIDEBAR, MAKE_BATTLE_LIST_PRIMARY,
     /// TOGGLE_WIDGET of a battle list, and the at-mouse-cursor actions every
     /// list sees.
-    bool handleGameAction(const input::TGameAction& action);
+    bool handleGameAction(const input::IGameAction& action);
     /// CIP: the list leaves the storage; `saveOptions` first saves its options.
     void removeBattleList(uint8_t battleListId, bool saveOptions);
     /// Every list leaves the storage, saving its options.

@@ -178,9 +178,7 @@ void TWeeklyTasksController::notifyChanged() { Q_EMIT weeklyTaskDataChanged(); }
 void TWeeklyTasksController::openPermanentWeeklyTaskExpansionUnlockStore()
 {
     // OPEN_STORE open-action 4 jumps to the offer id (Crystal SubActions.WEEKLY_TASK_EXPANSION).
-    auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_STORE));
-    action->parameter = 4;
-    action->instance = 16;
+    auto action = std::make_shared<input::TGameActionOpenStore>(4, 16);
     input::publish(action);
 }
 

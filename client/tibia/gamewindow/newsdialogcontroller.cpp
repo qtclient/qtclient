@@ -70,25 +70,26 @@ QString TNewsDialogController::contentText() const
     return entry ? contentStyle() + entry->message : qtTrId("dummy_unknown");
 }
 
-void TNewsDialogController::handleGameAction(const input::TGameAction& action)
+void TNewsDialogController::handleGameAction(const input::IGameAction& action)
 {
-    switch (action.type) {
+    switch (action.gameActionType()) {
         case A::REFRESH_COMPENDIUM_NEWS:
             if (m_uploader)
                 m_uploader->requestUpdate();
             return;
         case A::OPEN_NEWS_CATEGORY:
             showDialog();
-            if (m_storage && m_category != action.parameter) {
-                m_category = action.parameter;
+            if (const auto* open = input::gameActionAs<input::TGameActionOpenNewsDialogWithCategory>(&action);
+                open && m_storage && m_category != open->category()) {
+                m_category = open->category();
                 m_userChoseCategory = true;
                 Q_EMIT selectedCategoryChanged();
                 refresh();
             }
             return;
         case A::OPEN_NEWS_DIALOG:
-            if (action.parameter != 0)
-                selectEntryForOpening(static_cast<uint>(action.parameter));
+            if (const auto* open = input::gameActionAs<input::TGameActionOpenNewsDialog>(&action); open && open->newsId())
+                selectEntryForOpening(*open->newsId());
             showDialog();
             return;
         default:
@@ -278,8 +279,7 @@ void TNewsDialogController::onNewsQueryFailed(const QString& ErrorMessage)
 
 void TNewsDialogController::requestUpdateNewsFromWebsite()
 {
-    auto refresh = input::mutableClone(*input::makeAction(A::REFRESH_COMPENDIUM_NEWS));
-    refresh->parameter = 1;
+    auto refresh = std::make_shared<input::TGameActionRefreshCompendiumNews>(1 != 0);
     input::publish(refresh);
 }
 
@@ -314,7 +314,7 @@ TNewsButtonController* TNewsButtonController::instance()
 
 void TNewsButtonController::onOpenNewsButtonClicked()
 {
-    input::publish(input::makeGameAction(A::OPEN_NEWS_DIALOG));
+    input::publish(std::make_shared<input::TGameActionOpenNewsDialog>());
     stopHighlight();
 }
 
@@ -332,26 +332,25 @@ void TNewsButtonController::highlight()
 void TNewsButtonController::onShowGameNews(const int newsType, const bool notificationOnly)
 {
     // Refresh portal gamenews so the dialog / unread badges stay current.
-    input::publish(input::makeGameAction(A::REFRESH_COMPENDIUM_NEWS));
+    input::publish(std::make_shared<input::TGameActionRefreshCompendiumNews>(false));
     if (notificationOnly) {
         highlight();
         return;
     }
     using ENewsTab = cip::tibia::gamewindow::TNewsDialogController::EDialogTab;
-    auto action = input::mutableClone(*input::makeAction(A::OPEN_NEWS_CATEGORY));
+    int category = int(ENewsTab::NoTabInitialState);
     switch (newsType) {
     case int(ENewsTab::ClientFeatures):
     case int(ENewsTab::UsefulInfo):
     case int(ENewsTab::PlayerGuide):
     case int(ENewsTab::MajorUpdates):
     case int(ENewsTab::Support):
-        action->parameter = newsType;
+        category = newsType;
         break;
     default:
-        action->parameter = int(ENewsTab::NoTabInitialState);
         break;
     }
-    input::publish(action);
+    input::publish(std::make_shared<input::TGameActionOpenNewsDialogWithCategory>(category));
 }
 
 void TNewsButtonController::stopHighlight()

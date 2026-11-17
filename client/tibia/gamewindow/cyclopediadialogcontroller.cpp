@@ -198,8 +198,7 @@ void TCyclopediaDialogController::showDialog(const DialogTab& Tab)
     closeDialog();
     // CIP asks the server for the charm, bank and inventory balances.
     for (const int resource : { 30, 0, 1 }) {
-        auto action = input::mutableClone(*input::makeAction(A::REQUEST_RESOURCE_BALANCE));
-        action->parameter = resource;
+        auto action = std::make_shared<input::TGameActionRequestResourceBalance>(resource);
         input::publish(action);
     }
     if (!dialog()->isShown())
