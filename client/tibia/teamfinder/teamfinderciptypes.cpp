@@ -1,4 +1,5 @@
 #include "teamfinder/teamfinderciptypes.h"
+#include "cyclopedia/staticcontentinformation.h"
 #include <vector>
 #include <protocol.pb.h>
 #include <tibia/game/gamesession.h>
@@ -478,9 +479,8 @@ QString bossName(const uint16_t BossID)
 
 QString questName(const uint32_t QuestID)
 {
-    if (const auto* quest = tibia::appearances::TAppearancesManager::instance().getCyclopediaQuest(static_cast<uint16_t>(QuestID)))
-        return QString::fromStdString(quest->name);
-    return QString();
+    const int id = static_cast<int>(QuestID);
+    return cyclopedia::hasQuest(id) ? cyclopedia::questName(id) : QString();
 }
 
 } // namespace

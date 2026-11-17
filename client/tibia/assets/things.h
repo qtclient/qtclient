@@ -65,10 +65,8 @@ public:
     const RaceType& getRaceData(uint32_t raceId);
     const RaceList& getAllRaces() const { return m_monsterRaces; }
     RaceList getRacesByName(const std::string& searchString);
-    const std::vector<CyclopediaHouseType>& getCyclopediaHouses() const { return m_cyclopediaHouses; }
-    const std::vector<CyclopediaAchievementType>& getCyclopediaAchievements() const { return m_cyclopediaAchievements; }
-    const std::vector<CyclopediaQuestType>& getCyclopediaQuests() const { return m_cyclopediaQuests; }
-    const CyclopediaQuestType* getCyclopediaQuest(uint16_t id) const;
+    /// The monsters and bosses of the static data.
+    void setRaces(RaceList races);
 
     // Appearance type lookups. A missing category throws std::out_of_range.
     ThingType* findAppearanceType(ThingCategory category, uint16_t id) const;
@@ -114,9 +112,6 @@ private:
     ThingTypeList m_thingTypes[ThingLastCategory];
     ThingTypePtr m_nullThingType;
     RaceList m_monsterRaces;
-    std::vector<CyclopediaHouseType> m_cyclopediaHouses;
-    std::vector<CyclopediaAchievementType> m_cyclopediaAchievements;
-    std::vector<CyclopediaQuestType> m_cyclopediaQuests;
     ThingTypeList m_marketObjectTypes;
     ThingTypeList m_skillWheelGemObjectTypes;
     bool m_datLoaded = false;

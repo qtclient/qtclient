@@ -2,6 +2,8 @@
 
 #include "client/gamecore.h"
 
+#include "cyclopedia/staticcontentinformation.h"
+
 #include <client/staticdata.h>
 
 #include <QHash>
@@ -14,10 +16,15 @@
 namespace tibia {
 namespace cyclopedia {
 
-/// One house of the Cyclopedia (CIP: the 0x140-byte records of THousesStorage
-/// +0x20; static part from staticdata, dynamic part from CurrentHouseData).
-struct THouseRecord
+/// One house of the Cyclopedia (CIP: cyclopedia::THouseInformation, the
+/// records of THousesStorage; static part from the static data, dynamic part
+/// from CurrentHouseData).
+struct THouseInformation
 {
+    THouseInformation() = default;
+    /// An "updating", rentable house of neither house list.
+    explicit THouseInformation(const TStaticHouse& house);
+
     /// EHouseState; 6 (unknown) shows "updating" until the server answers.
     int state = 6;
     bool isRentable = true;
@@ -70,8 +77,19 @@ struct THouseRecord
     /// data, 2: in neither.
     int listing = 2;
 
-    /// Back to "updating" without the auction, rent, transfer and move out data.
+    /// Without the auction, rent, transfer and move out data.
     void clearDynamicData();
+    /// State 6: "updating" until the server answers.
+    void setUnknown();
+    /// State 1: rentable without an auction.
+    void setNoAuction();
+    /// State 0.
+    void setAuction(const QString& bidderName, bool isBidder, quint8 bidDisableReason, quint32 bidEnd, qint64 timeUntilAuctionEnd,
+                    quint64 highestBid, quint64 ownBidLimit);
+    /// State 2.
+    void setRented(const QString& renterName, quint32 paidUntil, bool isOwner, quint8 moveOutDisableReason, quint8 transferDisableReason);
+    /// State 4; only a rented house can be moved out of (throws otherwise).
+    void setMoveOutPending(quint32 moveOutDate, quint8 cancelMoveOutDisableReason);
 };
 
 /// The character's houses (CIP: the storage's +0x50..+0x56, StaticHouseData).
@@ -100,8 +118,8 @@ class THousesStorage final : public QObject
 public:
     explicit THousesStorage(QObject* parent = nullptr);
 
-    const std::vector<THouseRecord>& houses() const { return m_houses; }
-    const THouseRecord* house(quint32 id) const;
+    const std::vector<THouseInformation>& houses() const { return m_houses; }
+    const THouseInformation* house(quint32 id) const;
     /// The unique town names, sorted case-sensitively.
     const QStringList& towns() const { return m_towns; }
     const THouseCharacterInfo& characterInfo() const { return m_characterInfo; }
@@ -152,7 +170,11 @@ Q_SIGNALS:
 
 private:
     void loadStaticHouses();
-    THouseRecord* findHouse(quint32 id);
+    /// Throws unless an update runs.
+    void ensureUpdating() const;
+    /// The house, or a shared stand-in record for an id the static data does
+    /// not name.
+    THouseInformation& findHouse(quint32 id);
     /// The static house data message: the character's houses, the limits
     /// and the two house lists.
     void applyStaticHouseData(quint32 excludedUntil, const std::vector<uint8_t>& counts, const std::vector<uint32_t>& firstList,
@@ -161,7 +183,7 @@ private:
     void applyCurrentHouseData(const std::vector<CyclopediaHouseEntry>& houses);
 
     std::vector<client::gamecore::Hook> m_hooks;
-    std::vector<THouseRecord> m_houses;
+    std::vector<THouseInformation> m_houses;
     QHash<quint32, size_t> m_index;
     QStringList m_towns;
     THouseCharacterInfo m_characterInfo;

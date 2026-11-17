@@ -1,4 +1,5 @@
 #include "characterinfomodels.h"
+#include "cyclopedia/staticcontentinformation.h"
 
 #include "cyclopedia/iteminfostorage.h"
 #include "gamewindow/characterinfodialogcontroller.h"
@@ -419,7 +420,7 @@ TQmlAchievement::TQmlAchievement(const AchievementEntry& entry, QObject* parent)
 namespace {
 
 /// CIP : the static achievements (staticdata).
-const std::vector<CyclopediaAchievementType>& staticAchievements() { return tibia::game::getCyclopediaAchievements(); }
+const std::vector<cyclopedia::TStaticAchievement>& staticAchievements() { return cyclopedia::staticAchievements(); }
 
 }
 
@@ -501,11 +502,11 @@ void TAchievementInfoController::rebuildList()
     if (m_filterCriterion != Locked)
         rows = m_unlocked;
     if (m_filterCriterion != Discovered) {
-        for (const CyclopediaAchievementType& known : staticAchievements()) {
+        for (const cyclopedia::TStaticAchievement& known : staticAchievements()) {
             const bool unlocked =
                 std::any_of(m_unlocked.begin(), m_unlocked.end(), [&known](const AchievementEntry& entry) { return entry.id == known.id; });
             if (!unlocked)
-                rows.push_back({ known.id, 0, false, QString::fromStdString(known.name), QString::fromStdString(known.description), known.grade });
+                rows.push_back({ known.id, 0, false, known.name, known.description, known.grade });
         }
     }
 

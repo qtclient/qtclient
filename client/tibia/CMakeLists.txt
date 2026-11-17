@@ -447,6 +447,7 @@ if(TIBIA_WITH_GAMECORE)
     game/skillswidgetentrydata.cpp game/skillswidgetentrydata.h
     game/offlineskilltrainingdata.cpp game/offlineskilltrainingdata.h
     cyclopedia/cyclopediaciptypes.cpp cyclopedia/cyclopediaciptypes.h
+    cyclopedia/staticcontentinformation.cpp cyclopedia/staticcontentinformation.h
     cyclopedia/cyclopediainterfaces.cpp cyclopedia/cyclopediainterfaces.h
     cyclopedia/creaturetrackerstorage.cpp cyclopedia/creaturetrackerstorage.h
     cyclopedia/combatstatsqmldata.cpp cyclopedia/combatstatsqmldata.h

@@ -1,4 +1,5 @@
 #include "minimaprendererquickitem.h"
+#include "cyclopedia/staticcontentinformation.h"
 
 #include "qmlcomponents/worldmapqmltypes.h"
 
@@ -632,11 +633,10 @@ void TMinimapRendererQuickItem::addMarkers(TDraw& draw)
     }
     // CIP THouseMarkerWorldMapAreaData: house positions from staticdata.dat.
     if (m_showHouses) {
-        for (const CyclopediaHouseType& house : tibia::game::cyclopediaHouses()) {
+        for (const cyclopedia::TStaticHouse& house : cyclopedia::staticHouses()) {
             if (house.position.z != z)
                 continue;
-            addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), house.position.x, house.position.y, z,
-                   QString::fromStdString(house.name));
+            addPin(m_houseIcon, QColor(0xe6, 0x96, 0x2d), house.position.x, house.position.y, z, house.name);
         }
     }
     // User / bundled map flags (CIP TMinimapMarkerStorage owns the layer).

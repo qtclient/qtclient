@@ -1,4 +1,5 @@
 #include "cyclopedia/cyclopediaciptypes.h"
+#include "cyclopedia/staticcontentinformation.h"
 #include <cmath>
 #include "protocol/protocolciptypes.h"
 #include "client/staticdata.h"
@@ -484,14 +485,8 @@ void TCyclopediaProtocolMessageHandler::handleCyclopediaCharacterInfoMessage(
             }
             // A regular achievement takes its texts and grade from the static data; an unknown
             // one is shown as unknown.
-            const auto& all = tibia::game::getCyclopediaAchievements();
-            const auto known = std::lower_bound(all.begin(), all.end(), id,
-                                                [](const CyclopediaAchievementType& entry, const uint16_t key) { return entry.id < key; });
-            if (known != all.end() && known->id == id)
-                achievements.emplace_back(id, a.timestamp(), false, known->name, known->description, known->grade);
-            else
-                achievements.emplace_back(id, a.timestamp(), false, qtTrId("dummy_unknown").toStdString(),
-                                          qtTrId("dummy_unknown").toStdString(), static_cast<uint8_t>(0));
+            const TStaticAchievement known = staticAchievement(id);
+            achievements.emplace_back(id, a.timestamp(), false, known.name.toStdString(), known.description.toStdString(), known.grade);
         }
         tibia::game::notify("onCyclopediaCharacterAchievements", static_cast<int>(m.achievement_points()),
                             static_cast<int>(m.secret_achievements()), achievements);

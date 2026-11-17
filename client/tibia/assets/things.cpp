@@ -6,6 +6,8 @@
 #include "loader.h"
 #include "spritesheet.h"
 
+#include "cyclopedia/staticcontentinformation.h"
+
 #include "appearances/appearanceinstance.h"
 #include "sprites/sprite.h"
 
@@ -605,9 +607,6 @@ void TAppearancesManager::terminate()
         things.clear();
     m_nullThingType.reset();
     m_monsterRaces.clear();
-    m_cyclopediaHouses.clear();
-    m_cyclopediaAchievements.clear();
-    m_cyclopediaQuests.clear();
     m_marketObjectTypes.clear();
     m_skillWheelGemObjectTypes.clear();
     m_proficienciesFile.clear();
@@ -752,50 +751,56 @@ bool TAppearancesManager::loadStaticData(const std::string& directory)
         const auto top = readMessage(reinterpret_cast<const uint8_t*>(bytes.data()),
                                       reinterpret_cast<const uint8_t*>(bytes.data()) + bytes.size());
         const bool official = hasField(top, 6);
-        m_monsterRaces.clear();
-        const auto takeCreatures = [&](const uint32_t field, const bool boss) {
-            for (const auto& entry : top) {
-                if (entry.id == field && entry.blob)
-                    m_monsterRaces.push_back(creatureFrom(entry, boss, official));
-            }
-        };
-        takeCreatures(1, false);
-        takeCreatures(official ? 5 : 4, true);
-
-        m_cyclopediaHouses.clear();
+        const auto text = [](const std::vector<WireField>& fields, const uint32_t id) { return QString::fromStdString(fieldString(fields, id)); };
+        cyclopedia::TStaticContentInformation information;
+        for (const auto& entry : top) {
+            if (!entry.blob)
+                continue;
+            if (entry.id == 1)
+                information.monsters.push_back(creatureFrom(entry, false, official));
+            else if (entry.id == (official ? 5u : 4u))
+                information.bosses.push_back(creatureFrom(entry, true, official));
+        }
+        for (const auto& entry : top) {
+            if (!official || entry.id != 2 || !entry.blob)
+                continue;
+            const auto fields = readMessage(entry.data, entry.data + entry.size);
+            information.monsterClassifications.push_back({ static_cast<quint8>(fieldVarint(fields, 1)), text(fields, 2) });
+        }
+        for (const auto& entry : top) {
+            if (entry.id != (official ? 3u : 2u) || !entry.blob)
+                continue;
+            const auto fields = readMessage(entry.data, entry.data + entry.size);
+            information.achievements.push_back(
+                { static_cast<quint16>(fieldVarint(fields, 1)), static_cast<quint8>(fieldVarint(fields, 4)), text(fields, 2), text(fields, 3) });
+        }
         for (const auto& entry : top) {
             if (entry.id != (official ? 4u : 3u) || !entry.blob)
                 continue;
             const auto fields = readMessage(entry.data, entry.data + entry.size);
             const auto position = subMessage(fields, 6);
-            m_cyclopediaHouses.push_back({ static_cast<uint32_t>(fieldVarint(fields, 1)), fieldString(fields, 2), fieldString(fields, 3),
-                                           static_cast<uint32_t>(fieldVarint(fields, 4)), static_cast<uint32_t>(fieldVarint(fields, 5)),
-                                           Position(static_cast<uint16_t>(fieldVarint(position, 1)), static_cast<uint16_t>(fieldVarint(position, 2)),
-                                                    static_cast<uint8_t>(fieldVarint(position, 3))),
-                                           static_cast<uint32_t>(fieldVarint(fields, 7)), fieldVarint(fields, 8) != 0, fieldString(fields, 9),
-                                           fieldVarint(fields, 10) != 0 });
+            cyclopedia::TStaticHouse house;
+            house.id = static_cast<quint32>(fieldVarint(fields, 1));
+            house.name = text(fields, 2);
+            house.description = text(fields, 3);
+            house.rent = static_cast<quint32>(fieldVarint(fields, 4));
+            house.beds = static_cast<quint8>(fieldVarint(fields, 5));
+            house.position = worldmap::TWorldMapCoordinate(static_cast<int>(fieldVarint(position, 1)), static_cast<int>(fieldVarint(position, 2)),
+                                                           static_cast<int>(fieldVarint(position, 3)));
+            house.size = static_cast<quint16>(fieldVarint(fields, 7));
+            house.isGuildHall = fieldVarint(fields, 8) != 0;
+            house.town = text(fields, 9);
+            house.isShop = fieldVarint(fields, 10) != 0;
+            information.houses.push_back(std::move(house));
         }
-
-        m_cyclopediaAchievements.clear();
-        for (const auto& entry : top) {
-            if (entry.id != (official ? 3u : 2u) || !entry.blob)
-                continue;
-            const auto fields = readMessage(entry.data, entry.data + entry.size);
-            m_cyclopediaAchievements.push_back({ static_cast<uint16_t>(fieldVarint(fields, 1)), fieldString(fields, 2), fieldString(fields, 3),
-                                                 static_cast<uint8_t>(fieldVarint(fields, 4)) });
-        }
-
-        // Official: 6=quests; OTC remap: 5=quests (CIP Team Finder activity list).
-        m_cyclopediaQuests.clear();
+        // Official: 6=quests; OTC remap: 5=quests.
         for (const auto& entry : top) {
             if (entry.id != (official ? 6u : 5u) || !entry.blob)
                 continue;
             const auto fields = readMessage(entry.data, entry.data + entry.size);
-            const auto id = static_cast<uint16_t>(fieldVarint(fields, 1));
-            const auto name = fieldString(fields, 2);
-            if (id && !name.empty())
-                m_cyclopediaQuests.push_back({ id, name });
+            information.quests.push_back({ static_cast<int>(fieldVarint(fields, 1)), text(fields, 2) });
         }
+        cyclopedia::setStaticContentInformation(std::move(information));
         return true;
     } catch (const std::exception& e) {
         qCritical("%s", std::format("Failed to load '{}' (StaticData): {}", directory, e.what()).c_str());
@@ -865,13 +870,9 @@ RaceList TAppearancesManager::getRacesByName(const std::string& searchString)
     return result;
 }
 
-const CyclopediaQuestType* TAppearancesManager::getCyclopediaQuest(const uint16_t id) const
+void TAppearancesManager::setRaces(RaceList races)
 {
-    for (const auto& quest : m_cyclopediaQuests) {
-        if (quest.id == id)
-            return &quest;
-    }
-    return nullptr;
+    m_monsterRaces = std::move(races);
 }
 
 const ThingTypeList& TAppearancesManager::objectTypes() const

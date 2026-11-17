@@ -48,16 +48,6 @@ inline uint16_t resolveEffectId(uint16_t id)
     return tibia::appearances::TAppearancesManager::instance().resolveEffectId(id);
 }
 
-inline const std::vector<CyclopediaHouseType>& cyclopediaHouses()
-{
-    return tibia::appearances::TAppearancesManager::instance().getCyclopediaHouses();
-}
-
-inline const std::vector<CyclopediaAchievementType>& getCyclopediaAchievements()
-{
-    return tibia::appearances::TAppearancesManager::instance().getCyclopediaAchievements();
-}
-
 inline uint16_t stampedLetterId()
 {
     return tibia::appearances::TAppearancesManager::instance().getStampedLetterId();

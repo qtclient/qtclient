@@ -1,4 +1,5 @@
 #include "teamassemblepagecontroller.h"
+#include "cyclopedia/staticcontentinformation.h"
 
 #include "assets/things.h"
 #include "creatures/creaturestorage.h"
@@ -106,8 +107,10 @@ void TTeamAssemblePageController::loadActivities()
     for (const uint16_t boss : bosses)
         addBoss(boss);
 
-    for (const auto& quest : appearances::TAppearancesManager::instance().getCyclopediaQuests())
-        addQuest(quest.id);
+    for (const cyclopedia::TStaticQuest& quest : cyclopedia::staticQuests()) {
+        if (quest.id != 0 && !quest.name.isEmpty())
+            addQuest(static_cast<uint16_t>(quest.id));
+    }
 
     m_activities->setActivities(activities);
 }
