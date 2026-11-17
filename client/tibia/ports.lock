@@ -28,8 +28,12 @@
 (anonymous namespace)::TItemHighlightsAbstractListModel::v53	083d3cd74a86cd34	ported	trade/charactertrademodels.cpp:TItemHighlightsAbstractListModel::data
 (anonymous namespace)::TPresetInfoModel::v44	7a8573f600acfb70	ported	skillwheel/skillwheelmodels.cpp:TPresetInfoModel::roleNames
 (anonymous namespace)::TPresetInfoModel::v53	34b4d0f8781ee57d	ported	skillwheel/skillwheelmodels.cpp:TPresetInfoModel::data
+(anonymous namespace)::TPreyBestiarySelectionModel::v44	50e38fa8c038d2aa	ported	gamewindow/preydialogcontroller.cpp:TPreyBestiarySelectionModel::roleNames
+(anonymous namespace)::TPreyBestiarySelectionModel::v53	4992ec269886222e	ported	gamewindow/preydialogcontroller.cpp:TPreyBestiarySelectionModel::data
 (anonymous namespace)::TQuestLinePartsModel::v44	71f3118032628362	ported	gamewindow/questlogcontroller.cpp:TQuestLinePartsModel::roleNames
+(anonymous namespace)::TQuestLinePartsModel::v53	1a33c88bc14688ed	ported	gamewindow/questlogcontroller.cpp:TQuestLinePartsModel::data
 (anonymous namespace)::TQuestLinesModel::v44	26c9535a774fd7db	ported	gamewindow/questlogcontroller.cpp:TQuestLinesModel::roleNames
+(anonymous namespace)::TQuestLinesModel::v53	6c48d34a9d57e360	ported	gamewindow/questlogcontroller.cpp:TQuestLinesModel::data
 (anonymous namespace)::TShapedPerkOptionsModel::v44	9b55ffed79907c60	ported	proficiency/weaponproficiencyshapedialogs.cpp:TShapedPerkOptionsModel::roleNames
 (anonymous namespace)::TSpellListModel::v44	582d9183ad7a2408	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideSpellListModel::roleNames
 (anonymous namespace)::TSpellListModel::v53	44d97b683531b487	ported	gamewindow/playerguidewidgetcontroller.cpp:TPlayerGuideSpellListModel::data
