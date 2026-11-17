@@ -27,7 +27,6 @@
 #include <QJsonObject>
 #include <QTextLayout>
 #include <QTextBlock>
-#include <QTextDocumentFragment>
 
 #include <algorithm>
 #include <cmath>
@@ -36,6 +35,14 @@
 namespace tibia::gamewindow {
 
 namespace {
+
+/// The plain text of an HTML chat line.
+QString htmlToPlainText(const QString& html)
+{
+    QTextDocument document;
+    document.setHtml(html);
+    return document.toPlainText();
+}
 
 using A = input::EGameAction;
 using chat::TChatChannel;
@@ -233,7 +240,7 @@ QString TChatChannelController::plainTextAt(const int row) const
         return {};
     const Row& r = m_rows[static_cast<size_t>(row)];
     if (r.plain.isNull())
-        r.plain = QTextDocumentFragment::fromHtml(r.html).toPlainText();
+        r.plain = htmlToPlainText(r.html);
     return r.plain;
 }
 
