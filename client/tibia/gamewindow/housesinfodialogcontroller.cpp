@@ -698,6 +698,7 @@ void THousesInfoDialogController::showOnCyclopediaMap()
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
     action->parameter = 4;
     action->position = Position(house->x, house->y, static_cast<uint8_t>(house->z));
+    action->cyclopediaMapZoom = 0.5f;
     input::publish(action);
 }
 
@@ -738,7 +739,9 @@ void THousesInfoDialogController::centerHousePreview()
     if (!house || !m_houseCamera)
         return;
     if (auto* viewport = qobject_cast<qmlcomponents::TWorldMapCameraViewport*>(m_houseCamera.data())) {
-        viewport->setTopAndBottomLayer(m_maximumHouseLayer, m_minimumHouseLayer);
+        // CIP: a house under ground shows layers 8..15, else 0..7.
+        const bool underground = house->z > 7;
+        viewport->setTopAndBottomLayer(underground ? 8 : 0, underground ? 15 : 7);
         viewport->centerAtField(house->x, house->y, house->z);
     } else {
         auto* center = m_houseCamera->centerSubfieldCoordinate();

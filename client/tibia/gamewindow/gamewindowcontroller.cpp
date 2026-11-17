@@ -568,10 +568,13 @@ void TGameWindowController::setAuthenticated(const bool authenticated)
 
 void TGameWindowController::showGameScreen()
 {
-    setAuthenticated(true);
     setScreen(QStringLiteral("INGAME"), false, Qt::black);
     // CIP: the start screen's key filter goes; the game screen is announced.
     QCoreApplication::instance()->removeEventFilter(this);
+    // CIP: the looping sounds play again.
+    auto sound = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
+    sound->pauseLoopingSounds = false;
+    input::publish(sound);
     Q_EMIT gameScreenNowDisplayed();
 }
 

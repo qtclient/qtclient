@@ -100,6 +100,9 @@ public:
     virtual void beforeHide() {}
     virtual void afterShow() {}
     virtual void afterHide() {}
+    /// v19 / v20 (CIP): after the item is made, before it is destroyed.
+    virtual void afterCreate() {}
+    virtual void beforeDestroy() {}
 };
 
 /// What CIP's TDialogControllerBase (ctor) does for a dialog

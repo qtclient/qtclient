@@ -635,26 +635,6 @@ TDialogControllerBase::TDialogControllerBase(QObject* parent)
     : cip::tibia::gamewindow::TDialogControllerBase(parent)
 {}
 
-TDialogControllerWithFocusHandlingBase::TDialogControllerWithFocusHandlingBase(QObject* parent)
-    : cip::tibia::gamewindow::TDialogControllerWithFocusHandlingBase(parent)
-{}
-
-void TDialogControllerWithFocusHandlingBase::takeFocus()
-{
-    if (m_hasFocus)
-        return;
-    m_hasFocus = true;
-    Q_EMIT focusChanged();
-}
-
-void TDialogControllerWithFocusHandlingBase::releaseFocus()
-{
-    if (!m_hasFocus)
-        return;
-    m_hasFocus = false;
-    Q_EMIT focusChanged();
-}
-
 TSidebarPanelControllerBase::TSidebarPanelControllerBase(QObject* parent)
     : cip::tibia::gamewindow::TSidebarPanelControllerBase(parent)
 {}

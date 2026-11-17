@@ -48,15 +48,27 @@ void TWorldMapCameraViewport::setCenterSubfieldCoordinate(cip::tibia::qmlcompone
 
 void TWorldMapCameraViewport::setTopAndBottomLayer(const int TopLayer, const int BottomLayer)
 {
-    m_topLayer = TopLayer;
-    m_bottomLayer = BottomLayer;
+    // The layers lie in 0..15; the bottom one is not above the top one.
+    const int top = std::clamp(TopLayer, 0, 15);
+    const int bottom = std::max(std::min(BottomLayer, 15), top);
+    m_topLayer = top;
+    m_bottomLayer = bottom;
+    // The centre moves into the new layer range.
+    applyCenter(m_centerSubfieldCoordinate->subfieldX(), m_centerSubfieldCoordinate->subfieldY(), m_centerSubfieldCoordinate->z());
     rebuildVolume();
     Q_EMIT viewportChanged();
 }
 
 void TWorldMapCameraViewport::translateToLayer(const int NewLayer)
 {
-    applyCenter(m_centerSubfieldCoordinate->subfieldX(), m_centerSubfieldCoordinate->subfieldY(), NewLayer);
+    // The centre's field seen from another layer: one layer up is one field
+    // further south-east; the position inside the field stays.
+    const int x = m_centerSubfieldCoordinate->subfieldX();
+    const int y = m_centerSubfieldCoordinate->subfieldY();
+    const int z = m_centerSubfieldCoordinate->z();
+    const int fieldX = x / SubfieldsPerField + z - NewLayer;
+    const int fieldY = y / SubfieldsPerField + z - NewLayer;
+    applyCenter(fieldX * SubfieldsPerField + x % SubfieldsPerField, fieldY * SubfieldsPerField + y % SubfieldsPerField, NewLayer);
 }
 
 void TWorldMapCameraViewport::translateByStretchedPixelCoordinate(const QPoint& StretchedPixelCoordinate)
@@ -134,15 +146,19 @@ void TWorldMapCameraViewport::centerAtField(const int x, const int y, const int 
 
 void TWorldMapCameraViewport::applyCenter(const int subfieldX, const int subfieldY, const int z)
 {
+    // A layer outside the camera's range moves the current centre to the
+    // nearest allowed layer instead.
+    const int layer = std::min(std::max(m_topLayer, z), m_bottomLayer);
+    if (layer != z) {
+        translateToLayer(layer);
+        return;
+    }
+    if (m_centerSubfieldCoordinate->subfieldX() == subfieldX && m_centerSubfieldCoordinate->subfieldY() == subfieldY
+        && m_centerSubfieldCoordinate->z() == z)
+        return;
     m_centerSubfieldCoordinate->setSubfieldX(subfieldX);
     m_centerSubfieldCoordinate->setSubfieldY(subfieldY);
     m_centerSubfieldCoordinate->setZ(z);
-    m_topLayer = std::max(m_topLayer, z);
-    m_bottomLayer = std::min(m_bottomLayer, z);
-    if (m_topLayer < z)
-        m_topLayer = z;
-    if (m_bottomLayer > z)
-        m_bottomLayer = z;
     rebuildCorners();
     Q_EMIT viewportChanged();
 }

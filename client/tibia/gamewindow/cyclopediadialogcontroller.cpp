@@ -185,7 +185,7 @@ void TCyclopediaDialogController::hookActions()
             case 4:
                 captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Map);
                 if (action.position.x != 0 || action.position.y != 0 || action.position.z != 0)
-                    m_map->centerAt(action.position, std::numeric_limits<float>::quiet_NaN());
+                    m_map->centerAt(action.position, action.cyclopediaMapZoom);
                 break;
             case 5: captureNavigationBacklogContextIfNeedAndShowDialog(Tab::Houses); break;
             case 6:

@@ -956,6 +956,13 @@ uint32_t localPlayerFreeCapacity()
     return 0;
 }
 
+uint32_t localPlayerFreeCapacityHundredths()
+{
+    if (TPlayerData* data = TPlayerData::liveInstance())
+        return data->freeCapacityHundredths();
+    return 0;
+}
+
 uint16_t localPlayerInventoryTypeId(const tibia::client::InventorySlot slot)
 {
     return localPlayerInventorySlot(slot).typeId;

@@ -772,7 +772,7 @@ void TPlayerProtocolMessageHandler::handlePlayerDataCurrentMessage(
 {
     using tibia::client::ExperienceRate_t;
     tibia::game::localPlayerSetHealth(message.health(), message.max_health());
-    tibia::game::localPlayerSetFreeCapacity(message.free_capacity() / 100);
+    tibia::game::localPlayerSetFreeCapacity(message.free_capacity());
     tibia::game::localPlayerSetExperience(message.experience());
     tibia::game::localPlayerSetLevel(static_cast<uint16_t>(message.level()),
                                      static_cast<uint16_t>(message.level_percent_hundredths()));
