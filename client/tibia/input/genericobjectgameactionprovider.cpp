@@ -6,7 +6,8 @@
 #include "creatures/creaturestorage.h"
 #include "creatures/inspectplayergameactionprovider.h"
 #include "creatures/partygameactionprovider.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/analyserstorages.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 
 #include "protocol/protocolcodes.h"
 #include <tibia/assets/thingtype.h>
@@ -225,10 +226,11 @@ TGameActionList objectActionsImpl(const uint16_t clientId, const appearances::TO
         push(A::OPEN_WEAPON_PROFICIENCY_DIALOG);
     // qtclient loot black/whitelist: menus filter these; handler is ManageLoot.
     if (take && id != 0) {
-        if (cyclopedia::TItemInfoStorage* loot = cyclopedia::TItemInfoStorage::instance()) {
-            if (loot->isLootListed(static_cast<uint16_t>(id)))
+        analysers::TAnalyserStorages* storages = analysers::TAnalyserStorages::instance();
+        if (quickloot::TQuickLootBlackWhitelistStorage* loot = storages ? storages->lootBlackWhitelist() : nullptr) {
+            if (loot->isListed(static_cast<uint16_t>(id)))
                 push(A::LOOT_REMOVE_FROM_BLACKWHITELIST);
-            else if (!loot->isLootListFull())
+            else if (!loot->isListFull())
                 push(A::LOOT_ADD_TO_BLACKWHITELIST);
         }
     }

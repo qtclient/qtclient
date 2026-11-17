@@ -5,7 +5,8 @@
 #include <tibia/assets/things.h>
 
 #include <QDateTime>
-#include <QSet>
+
+#include <stdexcept>
 
 #include <algorithm>
 #include <tibia/game/gamenotify.h>
@@ -28,9 +29,24 @@ QString fromStd(const std::string& text) { return QString::fromStdString(text); 
 
 }
 
-void THouseRecord::clearDynamicData()
+THouseInformation::THouseInformation(const TStaticHouse& house)
+    : id(house.id)
+    , name(house.name)
+    , description(house.description)
+    , size(house.size)
+    , beds(house.beds)
+    , rent(house.rent)
+    , town(house.town)
+    , isGuildHall(house.isGuildHall)
+    , isShop(house.isShop)
+    , x(house.position.x)
+    , y(house.position.y)
+    , z(house.position.z)
 {
-    state = 6;
+}
+
+void THouseInformation::clearDynamicData()
+{
     bidderName.clear();
     isBidder = false;
     bidDisableReason = 0;
@@ -53,6 +69,53 @@ void THouseRecord::clearDynamicData()
     cancelTransferDisableReason = 0;
     moveOutDate = 0;
     cancelMoveOutDisableReason = 0;
+}
+
+void THouseInformation::setUnknown()
+{
+    clearDynamicData();
+    state = 6;
+}
+
+void THouseInformation::setNoAuction()
+{
+    clearDynamicData();
+    state = 1;
+}
+
+void THouseInformation::setAuction(const QString& bidderName_, const bool isBidder_, const quint8 bidDisableReason_, const quint32 bidEnd_,
+                                   const qint64 timeUntilAuctionEnd_, const quint64 highestBid_, const quint64 ownBidLimit_)
+{
+    clearDynamicData();
+    state = 0;
+    bidderName = bidderName_;
+    isBidder = isBidder_;
+    bidDisableReason = bidDisableReason_;
+    bidEnd = bidEnd_;
+    timeUntilAuctionEnd = timeUntilAuctionEnd_;
+    highestBid = highestBid_;
+    ownBidLimit = ownBidLimit_;
+}
+
+void THouseInformation::setRented(const QString& renterName_, const quint32 paidUntil_, const bool isOwner_, const quint8 moveOutDisableReason_,
+                                  const quint8 transferDisableReason_)
+{
+    clearDynamicData();
+    state = 2;
+    renterName = renterName_;
+    paidUntil = paidUntil_;
+    isOwner = isOwner_;
+    moveOutDisableReason = moveOutDisableReason_;
+    transferDisableReason = transferDisableReason_;
+}
+
+void THouseInformation::setMoveOutPending(const quint32 moveOutDate_, const quint8 cancelMoveOutDisableReason_)
+{
+    if (state != 2)
+        throw std::runtime_error("MoveOutPending state must extend rented state");
+    state = 4;
+    moveOutDate = moveOutDate_;
+    cancelMoveOutDisableReason = cancelMoveOutDisableReason_;
 }
 
 THousesStorage::THousesStorage(QObject* parent)
@@ -175,65 +238,42 @@ void THousesStorage::setLimits(const quint8 perWorld, const quint8 perAccount, c
 
 void THousesStorage::setListing(const quint32 houseId, const int listing)
 {
-    if (THouseRecord* house = findHouse(houseId))
-        house->listing = listing;
+    findHouse(houseId).listing = listing;
 }
 
 void THousesStorage::beginUpdate() { m_updating = true; }
 
-void THousesStorage::setRentable(const quint32 houseId, const bool rentable)
+void THousesStorage::ensureUpdating() const
 {
     if (!m_updating)
-        return;
-    if (THouseRecord* house = findHouse(houseId))
-        house->isRentable = rentable;
+        throw std::runtime_error("House update mode not started while updating houses");
+}
+
+void THousesStorage::setRentable(const quint32 houseId, const bool rentable)
+{
+    ensureUpdating();
+    findHouse(houseId).isRentable = rentable;
 }
 
 void THousesStorage::setNoAuction(const quint32 houseId)
 {
-    if (!m_updating)
-        return;
-    if (THouseRecord* house = findHouse(houseId)) {
-        house->clearDynamicData();
-        house->state = 1;
-    }
+    ensureUpdating();
+    findHouse(houseId).setNoAuction();
 }
 
 void THousesStorage::setAuction(const quint32 houseId, const QString& bidderName, const bool isBidder, const quint8 bidDisableReason,
                                 const quint32 bidEnd, const quint64 highestBid, const quint64 ownBidLimit)
 {
-    if (!m_updating)
-        return;
+    ensureUpdating();
     const qint64 now = QDateTime::currentMSecsSinceEpoch() / 1000;
-    THouseRecord* house = findHouse(houseId);
-    if (!house)
-        return;
-    house->clearDynamicData();
-    house->state = 0;
-    house->bidderName = bidderName;
-    house->isBidder = isBidder;
-    house->bidDisableReason = bidDisableReason;
-    house->bidEnd = bidEnd;
-    house->timeUntilAuctionEnd = static_cast<qint64>(bidEnd) - now;
-    house->highestBid = highestBid;
-    house->ownBidLimit = ownBidLimit;
+    findHouse(houseId).setAuction(bidderName, isBidder, bidDisableReason, bidEnd, static_cast<qint64>(bidEnd) - now, highestBid, ownBidLimit);
 }
 
 void THousesStorage::setRented(const quint32 houseId, const QString& renterName, const quint32 paidUntil, const bool isOwner,
                                const quint8 moveOutDisableReason, const quint8 transferDisableReason)
 {
-    if (!m_updating)
-        return;
-    THouseRecord* house = findHouse(houseId);
-    if (!house)
-        return;
-    house->clearDynamicData();
-    house->state = 2;
-    house->renterName = renterName;
-    house->paidUntil = paidUntil;
-    house->isOwner = isOwner;
-    house->moveOutDisableReason = moveOutDisableReason;
-    house->transferDisableReason = transferDisableReason;
+    ensureUpdating();
+    findHouse(houseId).setRented(renterName, paidUntil, isOwner, moveOutDisableReason, transferDisableReason);
 }
 
 void THousesStorage::setTransferPending(const quint32 houseId, const quint32 transferDate, const QString& newOwnerName,
@@ -241,34 +281,25 @@ void THousesStorage::setTransferPending(const quint32 houseId, const quint32 tra
                                        const quint8 acceptTransferDisableReason, const quint8 rejectTransferDisableReason,
                                        const quint8 cancelTransferDisableReason)
 {
-    if (!m_updating)
-        return;
-    THouseRecord* house = findHouse(houseId);
-    // A pending transfer extends a rented house.
-    if (!house || house->state != 2)
-        return;
-    house->state = 3;
-    house->transferDate = transferDate;
-    house->newOwnerName = newOwnerName;
-    house->newOwnerAccepted = newOwnerAccepted;
-    house->transferPrice = transferPrice;
-    house->isNewOwner = isNewOwner;
-    house->acceptTransferDisableReason = acceptTransferDisableReason;
-    house->rejectTransferDisableReason = rejectTransferDisableReason;
-    house->cancelTransferDisableReason = cancelTransferDisableReason;
+    ensureUpdating();
+    THouseInformation& house = findHouse(houseId);
+    if (house.state != 2)
+        throw std::runtime_error("TransferPending state must extend rented state");
+    house.state = 3;
+    house.transferDate = transferDate;
+    house.newOwnerName = newOwnerName;
+    house.newOwnerAccepted = newOwnerAccepted;
+    house.transferPrice = transferPrice;
+    house.isNewOwner = isNewOwner;
+    house.acceptTransferDisableReason = acceptTransferDisableReason;
+    house.rejectTransferDisableReason = rejectTransferDisableReason;
+    house.cancelTransferDisableReason = cancelTransferDisableReason;
 }
 
 void THousesStorage::setMoveOutPending(const quint32 houseId, const quint32 moveOutDate, const quint8 cancelMoveOutDisableReason)
 {
-    if (!m_updating)
-        return;
-    THouseRecord* house = findHouse(houseId);
-    // A pending move out extends a rented house.
-    if (!house || house->state != 2)
-        return;
-    house->state = 4;
-    house->moveOutDate = moveOutDate;
-    house->cancelMoveOutDisableReason = cancelMoveOutDisableReason;
+    ensureUpdating();
+    findHouse(houseId).setMoveOutPending(moveOutDate, cancelMoveOutDisableReason);
 }
 
 void THousesStorage::endUpdate()
@@ -281,42 +312,28 @@ void THousesStorage::endUpdate()
 
 void THousesStorage::loadStaticHouses()
 {
-    const std::vector<CyclopediaHouseType>& houses = tibia::game::cyclopediaHouses();
-    if (houses.empty() || houses.size() == m_houses.size())
-        return;
+    const std::vector<TStaticHouse>& houses = staticHouses();
     m_houses.clear();
     m_index.clear();
+    m_towns.clear();
     m_houses.reserve(houses.size());
-    QSet<QString> towns;
-    for (const CyclopediaHouseType& type : houses) {
-        THouseRecord house;
-        house.id = type.id;
-        house.name = fromStd(type.name);
-        house.description = fromStd(type.description);
-        house.size = static_cast<quint16>(type.size);
-        house.beds = static_cast<quint16>(type.beds);
-        house.rent = type.rent;
-        house.town = fromStd(type.city);
-        house.isGuildHall = type.isGuildHall;
-        house.isShop = type.isShop;
-        house.x = type.position.x;
-        house.y = type.position.y;
-        house.z = type.position.z;
-        towns.insert(house.town);
+    for (const TStaticHouse& house : houses) {
         m_index.insert(house.id, m_houses.size());
-        m_houses.push_back(std::move(house));
+        m_houses.emplace_back(house);
+        m_towns.append(house.town);
+        m_towns.removeDuplicates();
     }
-    m_towns = QStringList(towns.begin(), towns.end());
-    std::sort(m_towns.begin(), m_towns.end());
+    m_towns.sort(Qt::CaseSensitive);
 }
 
-THouseRecord* THousesStorage::findHouse(const quint32 id)
+THouseInformation& THousesStorage::findHouse(const quint32 id)
 {
+    static THouseInformation unknownHouse(TStaticHouse::unknown(0));
     const auto it = m_index.constFind(id);
-    return it == m_index.constEnd() ? nullptr : &m_houses[*it];
+    return it == m_index.constEnd() ? unknownHouse : m_houses[*it];
 }
 
-const THouseRecord* THousesStorage::house(const quint32 id) const
+const THouseInformation* THousesStorage::house(const quint32 id) const
 {
     const auto it = m_index.constFind(id);
     return it == m_index.constEnd() ? nullptr : &m_houses[*it];
@@ -324,8 +341,8 @@ const THouseRecord* THousesStorage::house(const quint32 id) const
 
 void THousesStorage::reset()
 {
-    for (THouseRecord& house : m_houses)
-        house.clearDynamicData();
+    for (THouseInformation& house : m_houses)
+        house.setUnknown();
     Q_EMIT houseInformationChanged();
 }
 

@@ -608,11 +608,9 @@ void TDamageInputWidgetController::updateLists()
 {
     const double total = static_cast<double>(m_storage->total());
     std::vector<TDamageTypedModel::Entry> types;
-    const auto& elements = m_storage->elements();
-    for (int e = 0; e < TDamageInputStorage::ElementCount; ++e) {
-        const qint64 value = elements[static_cast<size_t>(e)];
+    for (const auto& [element, value] : m_storage->elements()) {
         if (value != 0)
-            types.push_back({ e, value, total > 0 ? static_cast<double>(value) / total : 0.0 });
+            types.push_back({ element, value, total > 0 ? static_cast<double>(value) / total : 0.0 });
     }
     m_types->setEntries(std::move(types));
     std::vector<TDamageSourceModel::Entry> sources;
@@ -630,10 +628,9 @@ void TDamageInputWidgetController::updateDetail()
             if (sourceLabel(source.name) != m_detailedSource)
                 continue;
             std::vector<TDamageTypedModel::Entry> entries;
-            for (int e = 0; e < TDamageInputStorage::ElementCount; ++e) {
-                const qint64 value = source.byElement[static_cast<size_t>(e)];
+            for (const auto& [element, value] : source.elements) {
                 if (value != 0 && source.total != 0)
-                    entries.push_back({ e, value, static_cast<double>(value) / static_cast<double>(source.total) });
+                    entries.push_back({ element, value, static_cast<double>(value) / static_cast<double>(source.total) });
             }
             m_fromSource->setEntries(std::move(entries));
             return;

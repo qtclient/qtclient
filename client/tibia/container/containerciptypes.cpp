@@ -22,7 +22,6 @@
 #include <algorithm>
 #include <tibia/game/thingsession_forward.h>
 #include <client/staticdata.h>
-#include "cyclopedia/iteminfostorage.h"
 
 #include <limits>
 #include <map>
@@ -276,10 +275,7 @@ void TContainerProtocolMessageHandler::onServerMessageEnqueued(int opcode)
         std::vector<std::tuple<uint16_t, std::string>> objects;
         for (const auto& o : shadow->GetExtension(GameserverMessageObjectInfo::gameserver_message_object_info).objects())
             objects.emplace_back(static_cast<uint16_t>(o.object_id()), o.description());
-        if (auto* storage = tibia::cyclopedia::TItemInfoStorage::instance())
-            storage->applyItemInfo(objects);
-        else
-            tibia::game::notify("onItemInfo", objects);
+        tibia::game::notify("onItemInfo", objects);
         break;
     }
     case 148: {

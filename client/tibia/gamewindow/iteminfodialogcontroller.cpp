@@ -1,7 +1,11 @@
 #include "iteminfodialogcontroller.h"
 
 #include "app/clientoptions.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/analyserstorages.h"
+#include "analysers/itempricestorage.h"
+#include "config/clientoptions.h"
+#include "cyclopedia/itemtrackingstorage.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"
 #include "gamewindow/marketcontroller.h"
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
@@ -16,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <set>
 #include <tuple>
 #include <tibia/game/gamenotify.h>
 #include <tibia/game/gamesession.h>
@@ -145,7 +150,6 @@ bool TItemInfoDialogController::Context::operator==(const Context& other) const
 
 TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
     : cip::tibia::gamewindow::TItemInfoDialogController(parent)
-    , m_storage(new cyclopedia::TItemInfoStorage(this))
     , m_model([](uint16_t, uint8_t) { return 0; })
     , m_proxy(&m_model)
 {
@@ -157,17 +161,34 @@ TItemInfoDialogController::TItemInfoDialogController(QObject* parent)
     m_lastInspect = QDateTime::currentMSecsSinceEpoch();
     connect(&m_inspectTimer, &QTimer::timeout, this, &TItemInfoDialogController::sendInspect);
 
-    connect(m_storage, &cyclopedia::TItemInfoStorage::pricesChanged, this, &TItemInfoDialogController::lootValueChanged);
-    connect(m_storage, &cyclopedia::TItemInfoStorage::trackingChanged, this, &TItemInfoDialogController::trackingChanged);
-    connect(m_storage, &cyclopedia::TItemInfoStorage::lootListChanged, this, &TItemInfoDialogController::lootBlackWhitelistChanged);
-    connect(m_storage, &cyclopedia::TItemInfoStorage::premiumChanged, this, &TItemInfoDialogController::premiumTimeChanged);
-    connect(m_storage, &cyclopedia::TItemInfoStorage::characterChanged, this, [this] {
-        onCharacterDataChanged();
-        Q_EMIT premiumTimeChanged();
-    });
-    connect(m_storage, &cyclopedia::TItemInfoStorage::classificationsChanged, this, [this] {
+    connect(prices(), &analysers::TItemPriceStorage::configurationChangedFromUserInput, this, &TItemInfoDialogController::lootValueChanged);
+    connect(prices(), &analysers::TItemPriceStorage::marketPricesAvailable, this, &TItemInfoDialogController::lootValueChanged);
+    if (analysers::TAnalyserStorages* container = storages()) {
+        connect(container->itemTracking(), &cyclopedia::TItemTrackingStorage::configurationChangedFromUserInput, this,
+                &TItemInfoDialogController::trackingChanged);
+        connect(container->lootBlackWhitelist(), &quickloot::TQuickLootBlackWhitelistStorage::configurationChangedFromUserInput, this,
+                &TItemInfoDialogController::lootBlackWhitelistChanged);
+        connect(container, &analysers::TAnalyserStorages::premiumTimeChanged, this, [this] {
+            Q_EMIT lootValueChanged();
+            Q_EMIT trackingChanged();
+            Q_EMIT premiumTimeChanged();
+        });
+        connect(container, &analysers::TAnalyserStorages::configurationLoadedForCharacter, this, [this] {
+            onCharacterDataChanged();
+            Q_EMIT premiumTimeChanged();
+        });
+    }
+    m_hooks.emplace_back(tibia::game::kNotifyScope, "forgeData", [this](GameObject*, const Args& args) {
+        const auto* data = args.empty() ? nullptr : std::any_cast<ForgeConfigData>(&args[0]);
+        if (!data)
+            return std::any{};
+        std::set<int> classes;
+        for (const ForgeClassTierPrices& classPrices : data->classPrices)
+            classes.insert(classPrices.classId);
+        m_classifications.assign(classes.begin(), classes.end());
         if (m_enableTierAndClassificationSelection)
             updateAvailableClassifications();
+        return std::any{};
     });
     // CIP connects the option storage to the loot value (its background).
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this, [this](const QString& name) {
@@ -260,7 +281,7 @@ TAppearanceTypeFilter TItemInfoDialogController::currentFilter() const
     TAppearanceTypeFilter filter;
     if (!m_enableTierAndClassificationSelection)
         return filter;
-    const std::vector<int>& classes = m_storage->classifications();
+    const std::vector<int>& classes = m_classifications;
     if (m_indexOfSelectedClassification == 1) {
         filter.classificationMode = 1;
     } else if (m_indexOfSelectedClassification == 0) {
@@ -279,7 +300,7 @@ void TItemInfoDialogController::updateAvailableClassifications()
         classes << QString();
     } else {
         classes << qtTrId("market_filter_class_all") << qtTrId("market_filter_class_none");
-        for (const int classification : m_storage->classifications())
+        for (const int classification : m_classifications)
             classes << qtTrId("market_filter_class").arg(classification);
     }
     m_availableClassifications = classes;
@@ -403,6 +424,22 @@ void TItemInfoDialogController::setSelectedTypeId(const uint16_t typeId)
     Q_EMIT lootBlackWhitelistChanged();
 }
 
+analysers::TAnalyserStorages* TItemInfoDialogController::storages() const { return analysers::TAnalyserStorages::instance(); }
+
+analysers::TItemPriceStorage* TItemInfoDialogController::prices() const { return analysers::TItemPriceStorage::instance(); }
+
+cyclopedia::TItemTrackingStorage* TItemInfoDialogController::itemTracking() const
+{
+    return storages() ? storages()->itemTracking() : nullptr;
+}
+
+quickloot::TQuickLootBlackWhitelistStorage* TItemInfoDialogController::lootBlackWhitelist() const
+{
+    return storages() ? storages()->lootBlackWhitelist() : nullptr;
+}
+
+bool TItemInfoDialogController::hasCharacter() const { return storages() && storages()->hasCharacter(); }
+
 void TItemInfoDialogController::setPrimaryLootValueSource(const int source)
 {
     if (source == m_primaryLootValueSource)
@@ -413,9 +450,9 @@ void TItemInfoDialogController::setPrimaryLootValueSource(const int source)
 
 void TItemInfoDialogController::onCharacterDataChanged()
 {
-    if (!m_storage->hasCharacter())
+    if (!hasCharacter())
         return;
-    setPrimaryLootValueSource(m_storage->lootValueSource(m_typeId));
+    setPrimaryLootValueSource(prices()->primaryLootValueSource(m_typeId));
     Q_EMIT lootValueChanged();
     Q_EMIT trackingChanged();
     Q_EMIT lootBlackWhitelistChanged();
@@ -446,7 +483,7 @@ void TItemInfoDialogController::requestItemSelect(const int AppearanceId)
     if (tibia::game::isOnline()) {
         const qint64 now = QDateTime::currentMSecsSinceEpoch();
         m_inspectTimer.start(static_cast<int>(std::max(InspectMinimumDelay, m_lastInspect + InspectInterval - now)));
-        setPrimaryLootValueSource(m_storage->lootValueSource(m_typeId));
+        setPrimaryLootValueSource(prices()->primaryLootValueSource(m_typeId));
     }
     if (itemType(m_typeId))
         updateNpcData();
@@ -499,46 +536,49 @@ int TItemInfoDialogController::primaryLootValueSource() const { return m_primary
 
 QString TItemInfoDialogController::userDefinedValueString() const
 {
-    return m_typeId ? QString::number(m_storage->customPrice(m_typeId)) : QStringLiteral("0");
+    return m_typeId ? QString::number(prices()->customSalePrice(m_typeId)) : QStringLiteral("0");
 }
 
 QString TItemInfoDialogController::marketValueString() const
 {
-    return m_typeId ? englishNumber(m_storage->marketPrice(m_typeId)) : QStringLiteral("0");
+    return m_typeId ? englishNumber(static_cast<qint64>(prices()->marketPrice(m_typeId))) : QStringLiteral("0");
 }
 
 QString TItemInfoDialogController::lootValueString() const
 {
-    return m_typeId ? englishNumber(m_storage->lootPrice(m_typeId)) : QStringLiteral("0");
+    return m_typeId ? englishNumber(static_cast<qint64>(prices()->lootPrice(m_typeId))) : QStringLiteral("0");
 }
 
 QString TItemInfoDialogController::lootValueBackgroundUrlSource() const
 {
-    if (m_typeId == 0 || !m_storage->hasCharacter())
+    if (m_typeId == 0 || !hasCharacter())
         return {};
-    if (app::ClientOptions::load().options().value(QLatin1String("colorizeLootStyle")).toInt() == 0)
+    if (config::TClientOptions::instance()->colorizeLootStyle() == 0)
         return {};
-    const int level = m_storage->lootValueLevel(m_typeId);
+    const int level = prices()->lootValueLevel(m_typeId);
     if (level == 0)
         return {};
     return QStringLiteral("image://%1/%2").arg(QStringLiteral("containerslot-glowingborders")).arg(level - 1);
 }
 
-bool TItemInfoDialogController::isTracked() const { return m_typeId && m_storage->isTracked(m_typeId); }
+bool TItemInfoDialogController::isTracked() const { return m_typeId && itemTracking() && itemTracking()->isTracked(m_typeId); }
 
-bool TItemInfoDialogController::canTrackAdditionalItems() const { return m_storage->canTrackMore(); }
+bool TItemInfoDialogController::canTrackAdditionalItems() const { return itemTracking() && !itemTracking()->isTrackedItemListFull(); }
 
-bool TItemInfoDialogController::isLootBlackWhitelisted() const { return m_typeId && m_storage->isLootListed(m_typeId); }
+bool TItemInfoDialogController::isLootBlackWhitelisted() const
+{
+    return m_typeId && lootBlackWhitelist() && lootBlackWhitelist()->isListed(m_typeId);
+}
 
-bool TItemInfoDialogController::canBlackWhitelistAdditionalItems() const { return !m_storage->isLootListFull(); }
+bool TItemInfoDialogController::canBlackWhitelistAdditionalItems() const { return lootBlackWhitelist() && !lootBlackWhitelist()->isListFull(); }
 
-int TItemInfoDialogController::blackWhiteListType() const { return m_storage->lootListType(); }
+int TItemInfoDialogController::blackWhiteListType() const { return lootBlackWhitelist() ? lootBlackWhitelist()->listType() : 0; }
 
 void TItemInfoDialogController::requestPrimaryLootValueSelect(const int PrimaryLootValueSource)
 {
-    if (m_typeId == 0 || !m_storage->hasCharacter())
+    if (m_typeId == 0 || !hasCharacter())
         return;
-    m_storage->setLootValueSource(m_typeId, PrimaryLootValueSource);
+    prices()->setPrimaryLootValueSource(m_typeId, PrimaryLootValueSource);
     Q_EMIT lootValueChanged();
 }
 
@@ -550,7 +590,7 @@ void TItemInfoDialogController::requestCustomSaleValue(const QString& CustomSale
     int value = CustomSaleValueText.toInt(&ok);
     if (!ok)
         value = 0;
-    m_storage->setCustomPrice(m_typeId, value);
+    prices()->setCustomSalePrice(m_typeId, static_cast<quint32>(value));
     Q_EMIT lootValueChanged();
 }
 
@@ -563,16 +603,20 @@ void TItemInfoDialogController::requestOpenStoreWithPremiumTime()
 
 void TItemInfoDialogController::requestItemTracking(const bool TrackItem)
 {
-    if (m_typeId != 0)
-        m_storage->setTracked(m_typeId, TrackItem);
+    if (m_typeId != 0 && itemTracking()) {
+        if (TrackItem)
+            itemTracking()->trackItem(m_typeId, false, true);
+        else
+            itemTracking()->untrackItem(m_typeId);
+    }
     Q_EMIT trackingChanged();
 }
 
 void TItemInfoDialogController::requestItemBlackWhitelisting(const bool BlackWhitelistItem)
 {
     // The storage's list change tells QML.
-    if (m_typeId != 0)
-        m_storage->setLootListed(m_typeId, BlackWhitelistItem);
+    if (m_typeId != 0 && lootBlackWhitelist())
+        lootBlackWhitelist()->setListed(m_typeId, BlackWhitelistItem);
 }
 
 void TItemInfoDialogController::onWeaponProficiencyDialogButtonClicked()

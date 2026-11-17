@@ -54,13 +54,6 @@ public:
     static void handleBestiaryTrackerMessage(const ::tibia::protobuf::protocol::GameserverMessageBestiaryTracker& message);
 };
 
-class TCharacterInfoStorage final : public cip::tibia::cyclopedia::TCharacterInfoStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::cyclopedia::TCharacterInfoStorage::TCharacterInfoStorage;
-};
-
 // TConcoctionQmlData — real implementation in combatstatsqmldata.h.
 
 // TCreatureTrackerStorage — real implementation in creaturetrackerstorage.h.
@@ -99,8 +92,8 @@ public:
     /// One race's details, in steps by progress: occurrence and loot from 1, the
     /// characteristics from 2, element modifiers and locations from 3.
     static void handleMonsterCyclopediaRaceMessage(const ::tibia::protobuf::protocol::GameserverMessageMonsterCyclopediaRace& message);
-    /// One kill: its drops, stamped with the current time, go to the loot tracking, the
-    /// monster's name to the hunting session ("onKillTracker": name, outfit, drops).
+    /// One kill: its drops go to the item tracking storage, the monster's name to the
+    /// hunting session.
     static void handleKillTrackingMessage(const ::tibia::protobuf::protocol::GameserverMessageKillTracking& message);
     /// One page of the character info: an error, or the page's data by info type (no
     /// combat stats and no wheel page here).
@@ -177,13 +170,6 @@ class TItemPriceStorage final : public cip::tibia::cyclopedia::TItemPriceStorage
     Q_OBJECT
 public:
     using cip::tibia::cyclopedia::TItemPriceStorage::TItemPriceStorage;
-};
-
-class TItemTrackingStorage final : public cip::tibia::cyclopedia::TItemTrackingStorage
-{
-    Q_OBJECT
-public:
-    using cip::tibia::cyclopedia::TItemTrackingStorage::TItemTrackingStorage;
 };
 
 class TMonsterBonusEffectStorage final : public cip::tibia::cyclopedia::TMonsterBonusEffectStorage

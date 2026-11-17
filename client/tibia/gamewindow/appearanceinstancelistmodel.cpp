@@ -2,7 +2,8 @@
 
 #include "app/clientoptions.h"
 #include "container/containerslotinformation.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "analysers/itempricestorage.h"
+#include "config/clientoptions.h"
 
 namespace tibia::gamewindow {
 
@@ -37,10 +38,9 @@ QString lootValueImageSource(const Slot& slot, const int style)
     // gameWindowShowLootHighlighting (CIP 0x42): master gate for loot-value tint frames.
     if (!app::ClientOptions::load().options().value(QLatin1String("gameWindowShowLootHighlighting")).toBool(true))
         return {};
-    const cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance();
-    if (!prices || prices->colorizeLootStyle() != style)
+    if (config::TClientOptions::instance()->colorizeLootStyle() != style)
         return {};
-    const int level = prices->lootValueLevel(slot.typeId);
+    const int level = analysers::TItemPriceStorage::instance()->lootValueLevel(slot.typeId);
     if (level == 0)
         return {};
     return QStringLiteral("image://%1/%2")
@@ -57,8 +57,9 @@ TAppearanceInstanceListModel::TAppearanceInstanceListModel(QObject* parent)
         if (name == QLatin1String("colorizeLootStyle") || name == QLatin1String("gameWindowShowLootHighlighting"))
             refreshLootValues();
     });
-    if (cyclopedia::TItemInfoStorage* prices = cyclopedia::TItemInfoStorage::instance())
-        connect(prices, &cyclopedia::TItemInfoStorage::pricesChanged, this, &TAppearanceInstanceListModel::refreshLootValues);
+    analysers::TItemPriceStorage* prices = analysers::TItemPriceStorage::instance();
+    connect(prices, &analysers::TItemPriceStorage::configurationChangedFromUserInput, this, &TAppearanceInstanceListModel::refreshLootValues);
+    connect(prices, &analysers::TItemPriceStorage::marketPricesAvailable, this, &TAppearanceInstanceListModel::refreshLootValues);
 }
 
 int TAppearanceInstanceListModel::rowCount(const QModelIndex& parent) const

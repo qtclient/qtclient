@@ -930,8 +930,7 @@ TInspectPlayerDialogController::TInspectPlayerDialogController(QObject* parent)
     : TDialogController(QStringLiteral("InspectPlayerDialog.qml"), parent)
 {
     s_instance = this;
-    // CipSoft Character Info keeps onParseCyclopediaCharacterInspection; look/inspect
-    // packets publish onParseCharacterInspection (and dual-emit the Cyclopedia name).
+    // Look/inspect packets publish onParseCharacterInspection.
     m_hooks.emplace_back(tibia::game::kNotifyScope, "onParseCharacterInspection", [this](GameObject*, const Args& args) {
         const auto* data = args.empty() ? nullptr : std::any_cast<CyclopediaCharacterInspection>(&args[0]);
         if (data)

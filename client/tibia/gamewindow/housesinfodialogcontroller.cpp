@@ -28,7 +28,7 @@ namespace {
 using Button = TMessageDialogController::Button;
 using cyclopedia::THouseCharacterInfo;
 using cyclopedia::THouseLimits;
-using cyclopedia::THouseRecord;
+using cyclopedia::THouseInformation;
 
 constexpr int StateAuctioned = 0;
 constexpr int StateUnoccupied = 1;
@@ -126,7 +126,7 @@ QString bidReason(const int error, const THouseCharacterInfo& info, const THouse
     }
 }
 
-QString shortStatus(const THouseRecord& house)
+QString shortStatus(const THouseInformation& house)
 {
     QStringList parts;
     if (!house.isRentable) {
@@ -150,7 +150,7 @@ QString shortStatus(const THouseRecord& house)
     return parts.join(QLatin1Char(' '));
 }
 
-bool isRented(const THouseRecord& house) { return house.state >= StateRented && house.state <= StateMoveOutPending; }
+bool isRented(const THouseInformation& house) { return house.state >= StateRented && house.state <= StateMoveOutPending; }
 
 /// The floors of each house: the staticmapdata MapFields extent (CIP
 /// per house id; z from the top-left, z + depth - 1).
@@ -311,7 +311,7 @@ QVariant THousesModel::data(const QModelIndex& index, const int role) const
 {
     if (!index.isValid() || index.row() < 0 || index.row() >= rowCount())
         return {};
-    const THouseRecord& house = m_houses[static_cast<size_t>(index.row())];
+    const THouseInformation& house = m_houses[static_cast<size_t>(index.row())];
     const bool auctioned = house.state == StateAuctioned;
     const bool rented = isRented(house);
     const bool transfer = house.state == StateTransferPending;
@@ -365,7 +365,7 @@ QVariant THousesModel::data(const QModelIndex& index, const int role) const
     }
 }
 
-void THousesModel::setHouses(std::vector<THouseRecord> houses)
+void THousesModel::setHouses(std::vector<THouseInformation> houses)
 {
     beginResetModel();
     m_houses = std::move(houses);
@@ -751,7 +751,7 @@ void THousesInfoDialogController::updateHouseLayers(const uint houseId)
 /// CIP: OPEN_CYCLOPEDIA's map tab at the house.
 void THousesInfoDialogController::showOnCyclopediaMap()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     auto action = input::mutableClone(*input::makeAction(input::EGameAction::OPEN_CYCLOPEDIA));
@@ -793,7 +793,7 @@ void THousesInfoDialogController::centerHouse() { centerHousePreview(); }
 
 void THousesInfoDialogController::centerHousePreview()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house || !m_houseCamera)
         return;
     if (auto* viewport = qobject_cast<qmlcomponents::TWorldMapCameraViewport*>(m_houseCamera.data())) {
@@ -821,7 +821,7 @@ void THousesInfoDialogController::confirmAction(const int action, const QString&
 
 void THousesInfoDialogController::onActionBidClicked(const qulonglong Limit)
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -831,7 +831,7 @@ void THousesInfoDialogController::onActionBidClicked(const qulonglong Limit)
 
 void THousesInfoDialogController::onActionMoveOutClicked(const QDate& Date)
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -841,7 +841,7 @@ void THousesInfoDialogController::onActionMoveOutClicked(const QDate& Date)
 
 void THousesInfoDialogController::onActionTransferClicked(const QDate& Date, const QString& NewOwner, const qulonglong Price)
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -854,7 +854,7 @@ void THousesInfoDialogController::onActionTransferClicked(const QDate& Date, con
 
 void THousesInfoDialogController::onActionCancelMoveOutClicked()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -863,7 +863,7 @@ void THousesInfoDialogController::onActionCancelMoveOutClicked()
 
 void THousesInfoDialogController::onActionCancelTransferClicked()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -873,7 +873,7 @@ void THousesInfoDialogController::onActionCancelTransferClicked()
 
 void THousesInfoDialogController::onActionAcceptTransferClicked()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -883,7 +883,7 @@ void THousesInfoDialogController::onActionAcceptTransferClicked()
 
 void THousesInfoDialogController::onActionRejectTransferClicked()
 {
-    const THouseRecord* house = m_storage->house(m_currentHouseId);
+    const THouseInformation* house = m_storage->house(m_currentHouseId);
     if (!house)
         return;
     m_pendingHouseId = m_currentHouseId;
@@ -931,7 +931,7 @@ void THousesInfoDialogController::onHouseActionResult(const quint32 houseId, con
         } else if (action == 6 || action == 7) {
             reason = incomingTransferReason(errorCode);
         } else if (action == 1) {
-            const THouseRecord* house = m_storage->house(houseId);
+            const THouseInformation* house = m_storage->house(houseId);
             reason = bidReason(errorCode, m_storage->characterInfo(), m_storage->limits(), house && house->isGuildHall);
         } else {
             reason = qtTrId("error_code_internal");

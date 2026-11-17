@@ -34,7 +34,7 @@
 #include "gamewindow/dialogmanager.h"
 #include "gamewindow/draganddropcontroller.h"
 #include "gamewindow/cyclopediadialogcontroller.h"
-#include "cyclopedia/iteminfostorage.h"
+#include "cyclopedia/itemtrackingstorage.h"
 #include "gamewindow/informationdialogs.h"
 #include "gamewindow/remainingdialogs.h"
 #include "gamewindow/newsdialogcontroller.h"
@@ -814,6 +814,8 @@ int main(int argc, char** argv)
             Q_EMIT gameWindowController.releaseFocusFromChatInput();
     });
     gamewindow::TSelectObjectAmountDialogController splitStackDialog;
+    // Before the dialogs: the Cyclopedia item page and the loot widgets read its item storages.
+    analysers::TAnalyserStorages analyserStorages;
     gamewindow::TInformationDialogs informationDialogs;
     gamewindow::TDragAndDropController dragAndDrop(window->contentItem(),
                                                    gameWindowItem->findChild<QQuickItem*>(QStringLiteral("dragApperanceInstanceIcon")));
@@ -917,7 +919,7 @@ int main(int argc, char** argv)
     sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::Prey, gamewindow::TSidebarWidgetsManager::hooksFor(preyWidget, [&] { return preyWidget.open(gameClient.sidebarOptions()); }));
     gamewindow::TQuestTrackerWidgetManager questTrackerWidget(informationDialogs.questLog()->tracker(), gameWindowItem, engine.get());
     sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::QuestTracker, gamewindow::TSidebarWidgetsManager::hooksFor(questTrackerWidget, [&] { return questTrackerWidget.open(gameClient.sidebarOptions()); }));
-    gamewindow::TLootTrackingWidgetManager lootTrackingWidget(cyclopedia::TItemInfoStorage::instance(), gameWindowItem, engine.get());
+    gamewindow::TLootTrackingWidgetManager lootTrackingWidget(&analyserStorages, gameWindowItem, engine.get());
     sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::LootTracker, gamewindow::TSidebarWidgetsManager::hooksFor(lootTrackingWidget, [&] { return lootTrackingWidget.open(gameClient.sidebarOptions()); }));
     gamewindow::TSpellListWidgetManager spellListWidget(gameWindowItem, engine.get());
     sidebarWidgets.registerWidget(gamewindow::TSidebarWidgetsManager::SpellList, gamewindow::TSidebarWidgetsManager::hooksFor(spellListWidget, [&] { return spellListWidget.open(gameClient.sidebarOptions()); }));
@@ -947,7 +949,6 @@ int main(int argc, char** argv)
     qInfo("tibia.boot: before CipSoftUiEventBridge");
     gamewindow::TCipSoftUiEventBridge cipSoftUiEventBridge;
     qInfo("tibia.boot: before AnalyserStorages");
-    analysers::TAnalyserStorages analyserStorages;
     qInfo("tibia.boot: before AnalyserWidgets");
     analysers::TAnalyserWidgets analyserWidgets(&analyserStorages, &sidebarWidgets, gameWindowItem, engine.get(),
                                                 [&gameClient] { return gameClient.sidebarOptions(); });
@@ -1034,8 +1035,12 @@ int main(int argc, char** argv)
     gamewindow::TChatController chat(gameWindowItem->findChild<QQuickItem*>(QStringLiteral("chat")), gameClient);
     qInfo("tibia.boot: after ChatController");
     gameClient.setMessageIgnoreList(&chat.ignoreList());
-    if (cyclopedia::TItemInfoStorage* itemInfo = cyclopedia::TItemInfoStorage::instance())
-        itemInfo->setChatStorage(&chat.storage());
+    gameClient.setChatProtocolMessageHandler(chat.protocolHandler());
+    analyserStorages.itemTracking()->setChatStorage(&chat.storage());
+    // The drop tracker announces on the active session's status line.
+    const auto bindItemTrackingTexts = [&analyserStorages, &gameClient] { analyserStorages.itemTracking()->setTextStorage(gameClient.textStorage()); };
+    QObject::connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameSessionChanged, &analyserStorages, bindItemTrackingTexts);
+    bindItemTrackingTexts();
 
     qInfo("tibia.boot: before ActionBarManager");
     gamewindow::TActionBarManager actionBars(gameWindowItem, mapWindowPane, engine.get(), [&chat] { return chat.chatMode(); });

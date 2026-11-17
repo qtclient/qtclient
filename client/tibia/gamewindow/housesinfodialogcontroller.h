@@ -78,12 +78,12 @@ public:
     QVariant data(const QModelIndex& index, int role) const override;
     QHash<int, QByteArray> roleNames() const override;
 
-    void setHouses(std::vector<cyclopedia::THouseRecord> houses);
+    void setHouses(std::vector<cyclopedia::THouseInformation> houses);
     void setCharacterInfo(const cyclopedia::THouseCharacterInfo& info) { m_characterInfo = info; }
     void setLimits(const cyclopedia::THouseLimits& limits) { m_limits = limits; }
 
 private:
-    std::vector<cyclopedia::THouseRecord> m_houses;
+    std::vector<cyclopedia::THouseInformation> m_houses;
     cyclopedia::THouseCharacterInfo m_characterInfo;
     cyclopedia::THouseLimits m_limits;
 };

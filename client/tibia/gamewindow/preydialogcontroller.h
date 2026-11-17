@@ -113,6 +113,18 @@ public:
     bool allDataReceived() const { return m_pendingSlots.empty(); }
     /// CIP : a slot arrived.
     void markReceived(int preyId);
+    /// One slot's data; out-of-range slots are ignored. The state setters
+    /// count the slot as received.
+    void setSlotNextFreeListReroll(int preyId, qint64 seconds);
+    void setSlotTimeLeft(int preyId, int seconds);
+    void setSlotAutomaticExtendType(int preyId, int type);
+    void setSlotLocked(int preyId, int unlockOption);
+    void setSlotInactive(int preyId);
+    void setSlotActive(int preyId, const TPreyBonus& bonus, const TPreyMonster& monster, int timeLeft);
+    void setSlotSelection(int preyId, QList<TPreyMonster> list);
+    void setSlotSelectionChangeMonster(int preyId, const TPreyBonus& bonus, QList<TPreyMonster> list);
+    void setSlotListSelection(int preyId, QList<uint16_t> races);
+    void setSlotWildcardSelection(int preyId, const TPreyBonus& bonus, QList<uint16_t> races);
     void reset();
 
     int listRerollPrice() const { return m_listRerollPrice; }

@@ -588,22 +588,33 @@ void TGameClient::bindActiveSession()
     m_messageHandler.reset();
     game::TGameSessionBase* session = activeSession();
     m_worldMapRenderProvider->setViewport(session ? session->worldMapViewport().get() : nullptr);
+    if (m_chatProtocol) {
+        m_chatProtocol->setTextStorage(session ? session->textStorage().get() : nullptr);
+        m_chatProtocol->setNumericalEffectStorage(session ? session->numericalEffectStorage().get() : nullptr);
+    }
     if (m_minimap)
         m_minimap->setProtocolHandler(worldmapProtocol());
     if (!session)
         return;
-    m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage(), *session->numericalEffectStorage());
+    m_messageHandler = std::make_unique<chat::TGameMessageHandler>(*session->textStorage());
     m_messageHandler->setOptions(app::ClientOptions::load().options());
-    m_messageHandler->setIgnoreList(m_messageIgnoreList);
     m_updater = std::make_unique<renderer::TNextFrameUpdater>(*m_worldMapRenderProvider, *session->textStorage(),
                                                               *session->numericalEffectStorage());
+}
+
+void TGameClient::setChatProtocolMessageHandler(chat::TChatProtocolMessageHandler* handler)
+{
+    m_chatProtocol = handler;
+    if (m_chatProtocol) {
+        m_chatProtocol->setTextStorage(textStorage());
+        game::TGameSessionBase* session = activeSession();
+        m_chatProtocol->setNumericalEffectStorage(session ? session->numericalEffectStorage().get() : nullptr);
+    }
 }
 
 void TGameClient::setMessageIgnoreList(chat::TWhiteBlacklist* list)
 {
     m_messageIgnoreList = list;
-    if (m_messageHandler)
-        m_messageHandler->setIgnoreList(list);
     if (auto* teamFinder = teamfinder::TTeamFinderProtocolMessageHandler::instance())
         teamFinder->setIgnoreList(list);
 }

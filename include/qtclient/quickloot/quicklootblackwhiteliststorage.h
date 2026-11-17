@@ -3,4 +3,4 @@
 /// Pack SDK domain façade.
 
 /// headers when one exists (session.h, mod_registry.h, …).
-#include "cyclopedia/iteminfostorage.h"
+#include "quickloot/quicklootblackwhiteliststorage.h"

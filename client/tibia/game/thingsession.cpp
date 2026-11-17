@@ -1,4 +1,5 @@
 #include "thingsession.h"
+#include "cyclopedia/staticcontentinformation.h"
 
 #include <tibia/assets/things.h>
 #include <tibia/creatures/attachedeffect.h>
@@ -130,10 +131,10 @@ RaceOutfitInfo raceOutfit(const uint32_t raceId)
 std::vector<QuestInfo> allQuestInfos()
 {
     std::vector<QuestInfo> out;
-    for (const CyclopediaQuestType& quest : tibia::appearances::TAppearancesManager::instance().getCyclopediaQuests()) {
+    for (const cyclopedia::TStaticQuest& quest : cyclopedia::staticQuests()) {
         if (quest.id == 0)
             continue;
-        out.push_back({ true, quest.id, quest.name });
+        out.push_back({ true, static_cast<uint16_t>(quest.id), quest.name.toStdString() });
     }
     return out;
 }
@@ -141,10 +142,10 @@ std::vector<QuestInfo> allQuestInfos()
 QuestInfo questInfo(const uint16_t id)
 {
     QuestInfo info;
-    if (const CyclopediaQuestType* quest = tibia::appearances::TAppearancesManager::instance().getCyclopediaQuest(id)) {
+    if (cyclopedia::hasQuest(id)) {
         info.exists = true;
-        info.id = quest->id;
-        info.name = quest->name;
+        info.id = id;
+        info.name = cyclopedia::questName(id).toStdString();
     }
     return info;
 }

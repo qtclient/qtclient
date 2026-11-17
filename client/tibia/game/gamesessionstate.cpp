@@ -196,8 +196,9 @@ void TGameSessionState::createMovementIntent()
     };
     env.playerStates = [] { return static_cast<quint64>(tibia::game::localPlayerStates()); };
     env.showFailure = [](const QString& textId) {
-        const std::string text = qtTrId(textId.toLatin1().constData()).toStdString();
-        tibia::game::notify("onTextMessage", tibia::client::MessageFailure, std::string_view(text));
+        auto status = tibia::input::mutableClone(*tibia::input::makeAction(tibia::input::EGameAction::SET_STATUS_LINE));
+        status->text = qtTrId(textId.toLatin1().constData());
+        tibia::input::publish(status);
     };
     m_movementIntent = std::make_unique<TPlayerMovementIntentHandler>(std::move(env));
     TPlayerMovementIntentHandler* intent = m_movementIntent.get();

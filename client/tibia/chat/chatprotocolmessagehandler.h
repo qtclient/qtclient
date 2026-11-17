@@ -1,6 +1,10 @@
 #pragma once
 
+#include "chat/chatchannel.h"
 #include "client/gamecore.h"
+#include <client/position.h>
+
+#include <QColor>
 
 #include <cip_gen.h>
 
@@ -34,9 +38,14 @@ class GameserverMessageTalk;
 }
 
 namespace tibia {
+namespace worldmap {
+class TNumericalEffectStorage;
+}
 namespace chat {
 
 class TChatChannelStorage;
+class TChatStorage;
+class TTextStorage;
 
 /// The ignore and white lists (CIP: chat::TWhiteBlacklist, vtable slots
 /// 12-36; option section whiteBlacklistOptions). Both lists are kept sorted
@@ -144,11 +153,16 @@ class TChatProtocolMessageHandler final : public cip::tibia::chat::TChatProtocol
 {
     Q_OBJECT
 public:
-    TChatProtocolMessageHandler(TChatChannelStorage& storage, TWhiteBlacklist& blacklist, QObject* parent = nullptr);
+    TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage, TWhiteBlacklist& blacklist,
+                                QObject* parent = nullptr);
     ~TChatProtocolMessageHandler() override;
 
     /// : the console options by CIP name.
     void setOptions(const QJsonObject& options);
+    /// CIP +0x20: the game window's texts (the active session's).
+    void setTextStorage(TTextStorage* textStorage) { m_textStorage = textStorage; }
+    /// CIP +0x10: the game window's numerical effects (the active session's).
+    void setNumericalEffectStorage(worldmap::TNumericalEffectStorage* effects) { m_numericalEffects = effects; }
     /// CIP slots (protobuf args; empty layouts → classic notify remains live apply).
     void handleTalkMessage(const ::tibia::protobuf::protocol::GameserverMessageTalk& TalkMessage);
     void handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& MessageMessage);
@@ -172,28 +186,35 @@ public Q_SLOTS:
     void onPlayerCreatureAddedToCreatureStorage(std::weak_ptr<::tibia::creatures::TCreature> pPlayer);
 
 Q_SIGNALS:
-    /// Tip open-channel dialog list (classic notify path).
-    void channelListReceived(const std::vector<std::pair<uint16_t, QString>>& channels);
     /// A private tab opened for an incoming message.
     void privateChannelOpened(const QString& name);
-    /// CIP moc signal (TChatChannelIdentifierList → qtclient channel pairs).
-    void currentlyAvailableChannels(const std::vector<std::pair<uint16_t, QString>>& ChannelList);
+    /// The channels the open-channel dialog offers.
+    void currentlyAvailableChannels(const std::vector<TChatChannelIdentifier>& ChannelList);
     /// CIP moc signal (shared_ptr arg skipped from cip_gen); qtclient name parity.
     void publishGameAction();
 
 private:
-    void onTalk(const QString& name, int level, int mode, const QString& text, uint16_t channelId, uint32_t statementId);
-    void onTextMessage(int mode, const QString& text);
-    void onChannelTextMessage(int mode, uint16_t channelId, const QString& text);
+    /// Local Chat: yells upper case (CIP volume 2).
+    void addLocalChatEntry(const QString& name, int level, bool traded, uint32_t statementId, int volume, const QColor& color,
+                           const QString& text);
+    /// A private message; opens its tab first when new private messages
+    /// open one.
+    void addPrivateChatEntry(const QString& name, int level, bool traded, uint32_t statementId, const QString& text,
+                             const QColor& color);
+    /// The speech over the creature, when the game window shows messages.
+    void showCreatureSpeech(const QString& name, int mode, const QString& text, const Position& position);
+    /// The loot message on the map and in the loot or server log channel.
+    void handleLootMessageForChannelAndStatusMessage(const QString& text);
+    /// Whether the console options hide this mode's server log line.
+    bool consoleFilters(int mode) const;
     /// .
-    void addPrivateMessage(const QString& name, int level, int mode, const QString& text, uint32_t statementId);
     bool isOwnName(const QString& name) const;
-    /// Whether UI-Sounds chat options allow a CHAT_MESSAGE_ARRIVED for this mode/channel.
-    bool chatArrivedSoundAllowed(int mode, uint16_t channelId) const;
-    /// Whether a console line for this mode/channel may be shown (same *MessagesEnabled keys).
-    bool consoleMessageAllowed(int mode, uint16_t channelId) const;
 
     TChatChannelStorage& m_storage;
+    /// CIP +0x40: the NPC conversation's partners and keyword buttons.
+    TChatStorage& m_chatStorage;
+    TTextStorage* m_textStorage = nullptr;
+    worldmap::TNumericalEffectStorage* m_numericalEffects = nullptr;
     TWhiteBlacklist& m_blacklist;
     std::vector<client::gamecore::Hook> m_hooks;
     /// The console handler the session's channel messages go to.
@@ -209,16 +230,18 @@ private:
     bool m_openPrivateMessagesInNewTab = false;
     bool m_showOwnSpells = true;
     bool m_showOthersSpells = true;
-    /// UI Sounds → chat subcategory (CIP OptionsPageUISounds / option ids 0xad–0xba).
-    bool m_chatSoundsEnabled = true;
-    bool m_partyMessagesEnabled = true;
-    bool m_guildMessagesEnabled = true;
-    bool m_privateMessagesEnabled = true;
-    bool m_npcMessagesEnabled = true;
-    bool m_globalMessagesEnabled = true;
-    bool m_teamFinderMessagesEnabled = true;
-    bool m_raidMessagesEnabled = true;
-    bool m_systemMessagesEnabled = true;
+    /// The game window options (CIP +0x80, +0x83..+0x8a).
+    bool m_showTextualEffects = true;
+    bool m_showMessages = true;
+    bool m_showPrivateMessages = true;
+    bool m_showBoostedCreatureMessages = true;
+    bool m_showOfflineTrainingMessages = true;
+    bool m_showStoreMessages = true;
+    bool m_showPotionMessages = true;
+    bool m_showHotkeyUsageMessages = true;
+    bool m_showLootMessages = true;
+    /// CIP +0x94: the colorizeLootStyle option (nonzero → loot lines in white).
+    int m_colorizeLootStyle = 0;
 };
 
 }

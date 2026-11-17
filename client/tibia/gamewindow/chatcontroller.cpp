@@ -1019,11 +1019,10 @@ TChatController::TChatController(QQuickItem* chatItem, client::TGameClient& game
     own(&m_secondary);
     own(&m_tabs);
     (void)m_gameActionHandler;
-    (void)m_chatStorage;
 
     if (client::gamecore::isRunning()) {
-        m_protocol = std::make_unique<chat::TChatProtocolMessageHandler>(m_storage, m_blacklist);
-        connect(m_protocol.get(), &chat::TChatProtocolMessageHandler::channelListReceived, this, &TChatController::onChannelListReceived);
+        m_protocol = std::make_unique<chat::TChatProtocolMessageHandler>(m_storage, m_chatStorage, m_blacklist);
+        connect(m_protocol.get(), &chat::TChatProtocolMessageHandler::currentlyAvailableChannels, this, &TChatController::onChannelListReceived);
     }
     connect(&m_blacklist, &chat::TWhiteBlacklist::messageFiltered, this, &TChatController::onMessageFiltered);
     m_blacklist.setVipQuery(isVip);
@@ -1350,22 +1349,12 @@ void TChatController::showRecentlyTraded(const QString& name)
     m_messageDialog.showMessage(qtTrId("recently_traded_titel"), qtTrId("recently_traded_text").arg(name));
 }
 
-void TChatController::onChannelListReceived(const std::vector<std::pair<uint16_t, QString>>& channels)
+void TChatController::onChannelListReceived(const std::vector<TChatChannelIdentifier>& channels)
 {
     if (!m_channelListRequested)
         return;
     m_channelListRequested = false;
-    std::vector<TChatChannelIdentifier> list;
-    list.reserve(channels.size() + 2);
-    for (const auto& [id, name] : channels) {
-        if (id == 0xFFFF)
-            list.push_back({ TChatChannelIdentifier::OwnPrivateChannelToOpen, id, name });
-        else
-            list.push_back(TChatChannelIdentifier::channel(id, name));
-    }
-    list.push_back({ TChatChannelIdentifier::Npc });
-    list.push_back({ TChatChannelIdentifier::Loot });
-    m_openDialog.open(list);
+    m_openDialog.open(channels);
 }
 
 void TChatController::requestChannelList()

@@ -92,22 +92,6 @@ TNpcDialogController::TNpcDialogController(trade::TNPCTradeStorage* storage, QOb
         Q_EMIT tradeFocusChanged();
     });
 
-    using Args = std::vector<std::any>;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onNpcChatWindow", [this](GameObject*, const Args& args) {
-        const auto* data = args.empty() ? nullptr : std::any_cast<NpcChatWindowData>(&args[0]);
-        if (!data)
-            return std::any{};
-        std::vector<TNpcKeywordButtonModel::Button> buttons;
-        buttons.reserve(data->buttons.size());
-        for (const NpcButton& button : data->buttons)
-            buttons.push_back({ button.id, QString::fromStdString(button.text) });
-        onNpcChatWindow(data->npcIds, std::move(buttons));
-        return std::any{};
-    });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onNpcChatWindowClose", [this](GameObject*, const Args&) {
-        onNpcChatWindow({}, {});
-        return std::any{};
-    });
     connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::gameEnded, this, [this]() {
         m_talkPartners.clear();
     });
@@ -256,6 +240,10 @@ void TNpcDialogController::setChatController(TChatController* controller)
     controller->setNpcDialog(this);
     chat::TChatChannelStorage* storage = &controller->storage();
     m_chatStorage = storage;
+    chat::TChatStorage* talk = &controller->chatStorage();
+    connect(talk, &chat::TChatStorage::npcTalkPartnersChanged, this,
+            [this, talk] { onNpcChatWindow(talk->npcTalkPartners(), talk->keywordButtons()); });
+    connect(talk, &chat::TChatStorage::keywordButtonsChanged, this, [this, talk] { m_keywordButtons.setItems(talk->keywordButtons()); });
     m_chat = new TChatChannelController(this);
     m_chatChannelModel = QVariant::fromValue<QObject*>(m_chat);
     connect(storage, &chat::TChatChannelStorage::channelAdded, this, &TNpcDialogController::bindNpcChannel);

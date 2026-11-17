@@ -406,7 +406,6 @@ void TGameProtocolMessageHandler::onServerMessageEnqueued(int opcode)
                 }
                 data.playerDescriptions = details(m.player_details());
                 tibia::game::notify("onParseCharacterInspection", data);
-                tibia::game::notify("onParseCyclopediaCharacterInspection", data);
             } else if (m.objects_size() > 0) {
                 const auto& o = m.objects(0);
                 ItemInspectionData data;

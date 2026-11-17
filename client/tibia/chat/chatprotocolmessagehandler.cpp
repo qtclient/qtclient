@@ -4,6 +4,7 @@
 
 #include "app/clientoptions.h"
 #include "chat/chatchannel.h"
+#include "chat/chatgameactionhandler.h"
 #include "client/animatedtext.h"
 #include "protocol/protocolciptypes.h"
 #include "config/clientoptiondefaults.h"
@@ -11,11 +12,14 @@
 #include "input/gameaction.h"
 #include "input/gameactionhandlers.h"
 #include "shared/tibiaurltools.h"
+#include "chat/textstorage.h"
+#include "worldmap/numericaleffectstorage.h"
 
 #include <tibia/game/gamesession.h>
 #include "protocol/protocolcodes.h"
 
 #include <memory>
+#include <stdexcept>
 
 #include <QJsonArray>
 
@@ -71,6 +75,8 @@ enum Mode : int
     Guild = 33,
     PartyManagement = 34,
     Party = 35,
+    MonsterSay = 36,
+    MonsterYell = 37,
     Report = 38,
     HotkeyUse = 39,
     Mana = 43,
@@ -79,6 +85,8 @@ enum Mode : int
     BoostedCreature = 49,
     OfflineTraining = 50,
     Transaction = 51,
+    Potion = 52,
+    Mode53 = 53,
     Mode54 = 54,
 };
 
@@ -275,46 +283,20 @@ void TWhiteBlacklist::setFlags(const bool blacklistActive, const bool whitelistA
     setAllowVips(allowVips);
 }
 
-TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& storage, TWhiteBlacklist& blacklist, QObject* parent)
+TChatProtocolMessageHandler::TChatProtocolMessageHandler(TChatChannelStorage& storage, TChatStorage& chatStorage,
+                                                         TWhiteBlacklist& blacklist, QObject* parent)
     : cip::tibia::chat::TChatProtocolMessageHandler(parent)
     , m_storage(storage)
+    , m_chatStorage(chatStorage)
     , m_blacklist(blacklist)
 {
     s_console = this;
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onTalk", [this](GameObject*, const Args& args) {
-        onTalk(argString(args, 0), static_cast<int>(argInt(args, 1)), protocolMode(args, 2),
-               shared::TTibiaUrlTools::process(argString(args, 3)),
-               static_cast<uint16_t>(argInt(args, 4)), static_cast<uint32_t>(argInt(args, 6)));
-        return std::any();
-    });
-    connect(tibia::game::TGameNotify::instance(), &tibia::game::TGameNotify::textMessage, this,
-            [this](int mode, const QString& text) {
-                onTextMessage(mode, shared::TTibiaUrlTools::process(text));
-            });
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onChannelTextMessage", [this](GameObject*, const Args& args) {
-        onChannelTextMessage(protocolMode(args, 0), static_cast<uint16_t>(argInt(args, 1)),
-                             shared::TTibiaUrlTools::process(argString(args, 2)));
-        return std::any();
-    });
-    // : GameServerChannels → currentlyAvailableChannels.
-    m_hooks.emplace_back(tibia::game::kNotifyScope, "onChannelList", [this](GameObject*, const Args& args) {
-        std::vector<std::pair<uint16_t, QString>> channels;
-        if (!args.empty()) {
-            if (const auto* list = std::any_cast<std::vector<std::tuple<uint16_t, std::string>>>(&args[0])) {
-                for (const auto& [id, name] : *list)
-                    channels.emplace_back(id, QString::fromStdString(name));
-            }
-        }
-        Q_EMIT currentlyAvailableChannels(channels);
-        Q_EMIT channelListReceived(channels);
-        return std::any();
-    });
     // CIP onChatProtocolMessageHandlerOptionsChanged .
     connect(app::ClientOptionsNotifier::instance(), &app::ClientOptionsNotifier::optionChanged, this,
             [this](const QString& name) {
                 if (name.startsWith(QLatin1String("console")) || name.startsWith(QLatin1String("gameWindowShow"))
                     || name == QLatin1String("openNewPrivateMessagesInNewTab") || name.endsWith(QLatin1String("MessagesEnabled"))
-                    || name == QLatin1String("ChatEnabled")) {
+                    || name == QLatin1String("ChatEnabled") || name == QLatin1String("colorizeLootStyle")) {
                     onChatProtocolMessageHandlerOptionsChanged();
                 }
             });
@@ -346,15 +328,18 @@ void TChatProtocolMessageHandler::setOptions(const QJsonObject& options)
     m_openPrivateMessagesInNewTab = option(options, "openNewPrivateMessagesInNewTab");
     m_showOwnSpells = option(options, "gameWindowShowOwnSpells");
     m_showOthersSpells = option(options, "gameWindowShowOthersSpells");
-    m_chatSoundsEnabled = option(options, "ChatEnabled");
-    m_partyMessagesEnabled = option(options, "PartyMessagesEnabled");
-    m_guildMessagesEnabled = option(options, "GuildMessagesEnabled");
-    m_privateMessagesEnabled = option(options, "PrivateMessagesEnabled");
-    m_npcMessagesEnabled = option(options, "NpcMessageseEnabled");
-    m_globalMessagesEnabled = option(options, "GlobalMessagesEnabled");
-    m_teamFinderMessagesEnabled = option(options, "TeamFinderMessagesEnabled");
-    m_raidMessagesEnabled = option(options, "RaidMessagesEnabled");
-    m_systemMessagesEnabled = option(options, "SystemMessagesEnabled");
+    m_showTextualEffects = option(options, "gameWindowShowTextualEffects");
+    m_colorizeLootStyle = options.value(QLatin1String("colorizeLootStyle"))
+                              .toInt(config::defaultClientOptions().value(QLatin1String("colorizeLootStyle")).toInt());
+    m_showMessages = option(options, "gameWindowShowMessages");
+    m_showPrivateMessages = option(options, "gameWindowShowPrivateMessages");
+    m_showBoostedCreatureMessages = option(options, "gameWindowShowBoostedCreatureMessages");
+    m_showOfflineTrainingMessages = option(options, "gameWindowShowOfflineTrainingMessages");
+    m_showStoreMessages = option(options, "gameWindowShowStoreMessages");
+    m_showPotionMessages = option(options, "gameWindowShowPotionMessages");
+    m_showHotkeyUsageMessages = option(options, "gameWindowShowHotkeyUsageMessages");
+    m_showLootMessages = option(options, "gameWindowShowLootMessages");
+    m_storage.setSoundOptions(options);
 }
 
 void TChatProtocolMessageHandler::onChatProtocolMessageHandlerOptionsChanged()
@@ -371,14 +356,330 @@ void TChatProtocolMessageHandler::onPlayerCreatureAddedToCreatureStorage(
         m_storage.setOwnName(player->name());
 }
 
-void TChatProtocolMessageHandler::handleTalkMessage(const ::tibia::protobuf::protocol::GameserverMessageTalk&)
+namespace {
+
+/// CIP's speech volume of a chat message mode.
+int speechVolume(const int mode)
 {
-    // Applied by onServerMessageEnqueued; the console follows the onTalk notify.
+    switch (mode) {
+        case Say: return TCreatureSpeechBubble::Say;
+        case Whisper: return TCreatureSpeechBubble::Whisper;
+        case Yell: return TCreatureSpeechBubble::Yell;
+        case Spell: return TCreatureSpeechBubble::Cast;
+        case MonsterSay:
+        case MonsterYell:
+        case Potion:
+        case Mode53: return TCreatureSpeechBubble::Monster;
+        default:
+            throw std::runtime_error(QStringLiteral("EChatmessageMode %1 has no speech volume!").arg(mode).toStdString());
+    }
 }
 
-void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage&)
+Position speechPosition(const ::tibia::protobuf::protocol::GameserverMessageTalk& message)
 {
-    // Applied by onServerMessageEnqueued; the console follows the onTextMessage / onChannelTextMessage notify.
+    if (!message.has_position())
+        return {};
+    const auto& c = message.position();
+    return Position(static_cast<uint16_t>(c.x()), static_cast<uint16_t>(c.y()), static_cast<uint8_t>(c.z()));
+}
+
+}
+
+void TChatProtocolMessageHandler::handleTalkMessage(const ::tibia::protobuf::protocol::GameserverMessageTalk& TalkMessage)
+{
+    int mode = 0;
+    try {
+        mode = chatMessageMode(TalkMessage.mode());
+    } catch (const std::exception&) {
+        throw std::runtime_error(QStringLiteral("Received invalid chat message mode (%1) while handling talk network message.")
+                                     .arg(TalkMessage.mode())
+                                     .toStdString());
+    }
+    const QString name = QString::fromStdString(TalkMessage.speaker());
+    const QString text = shared::TTibiaUrlTools::process(QString::fromStdString(TalkMessage.text()));
+    const int level = static_cast<uint16_t>(TalkMessage.speaker_level());
+    const uint32_t statementId = TalkMessage.statement_id();
+    const bool traded = TalkMessage.traded();
+    if (!TWhiteBlacklist::isExemptMode(mode) && m_blacklist.isBlacklisted(name))
+        return;
+    switch (mode) {
+        case Yell:
+            if (m_blacklist.filtersYell(name))
+                return;
+            [[fallthrough]];
+        case Say:
+        case Whisper:
+            addLocalChatEntry(name, level, traded, statementId, speechVolume(mode), consoleColor(mode), text);
+            showCreatureSpeech(name, mode, text, speechPosition(TalkMessage));
+            break;
+        case PrivateFrom:
+            if (m_blacklist.filtersPrivateMessage(name))
+                return;
+            addPrivateChatEntry(name, level, traded, statementId, text, consoleColor(mode));
+            if (m_showMessages && m_showPrivateMessages && m_textStorage)
+                m_textStorage->addPrivateMessage(name, text, overlayColor(mode));
+            break;
+        case Channel:
+        case ChannelHighlight:
+        case GamemasterChannel:
+            m_storage.addChannelEntry(consoleColor(mode), static_cast<uint16_t>(TalkMessage.channel_id()), name, text, level, traded,
+                                      statementId);
+            break;
+        case Spell: {
+            addLocalChatEntry(name, level, traded, statementId, speechVolume(mode), consoleColor(mode), text);
+            const bool own = name.toLower() == m_storage.ownName();
+            if (own ? m_showOwnSpells : m_showOthersSpells)
+                showCreatureSpeech(name, mode, text, speechPosition(TalkMessage));
+            break;
+        }
+        case NpcFromStartBlock:
+            if (m_showMessages && m_textStorage) {
+                m_textStorage->setNpcSpeechHeader(name, overlayColor(mode), speechPosition(TalkMessage));
+                m_textStorage->addNpcSpeech(name, text);
+            }
+            m_storage.addNpcChannelEntry(consoleColor(mode), name, text);
+            break;
+        case NpcFrom:
+            if (m_showMessages && m_textStorage)
+                m_textStorage->addNpcSpeech(name, text);
+            m_storage.addNpcChannelEntry(consoleColor(mode), name, text);
+            break;
+        case GamemasterBroadcast:
+        case GamemasterPrivateFrom:
+            m_storage.addBroadcastEntry(consoleColor(mode), name, text, level, traded, statementId);
+            if (m_showMessages && m_textStorage)
+                m_textStorage->addGamemasterMessage(name, text, overlayColor(mode));
+            break;
+        case Game:
+            if (m_showMessages && m_textStorage)
+                m_textStorage->addCenterMessage(text, overlayColor(mode));
+            m_storage.addServerLogEntry(consoleColor(mode), text);
+            break;
+        case MonsterSay:
+        case MonsterYell:
+            showCreatureSpeech(name, mode, text, speechPosition(TalkMessage));
+            break;
+        case Potion:
+            if (m_showPotionMessages)
+                showCreatureSpeech(name, mode, text, speechPosition(TalkMessage));
+            break;
+        case Mode53:
+            showCreatureSpeech(name, mode, text, speechPosition(TalkMessage));
+            if (TChatChannel* local = m_storage.localChat())
+                local->addEntry(TClientChatEntryFactory::systemEntry(consoleColor(mode), text));
+            break;
+        case NpcTo:
+            // Host (IdleOT): quest expeditions send the player's lines to an
+            // NPC; they belong on the NPCs tab with the NPC's replies.
+            m_storage.addNpcChannelEntry(consoleColor(mode), name, text);
+            break;
+        default:
+            break;
+    }
+}
+
+void TChatProtocolMessageHandler::addLocalChatEntry(const QString& name, const int level, const bool traded, const uint32_t statementId,
+                                                    const int volume, const QColor& color, const QString& text)
+{
+    m_storage.addLocalEntry(color, name, volume == TCreatureSpeechBubble::Yell ? text.toUpper() : text, level, traded, statementId);
+}
+
+void TChatProtocolMessageHandler::addPrivateChatEntry(const QString& name, const int level, const bool traded,
+                                                      const uint32_t statementId, const QString& text, const QColor& color)
+{
+    if (m_openPrivateMessagesInNewTab && !m_storage.find(TChatChannelIdentifier::messageTo(name)) && !isOwnName(name)) {
+        m_storage.openPrivateChannel(name, false);
+        Q_EMIT privateChannelOpened(name);
+    }
+    m_storage.addPrivateEntry(color, name, name, text, level, traded, statementId);
+}
+
+void TChatProtocolMessageHandler::showCreatureSpeech(const QString& name, const int mode, const QString& text, const Position& position)
+{
+    const int volume = speechVolume(mode);
+    if (m_showMessages && m_textStorage)
+        m_textStorage->addCreatureSpeech(name, volume, text, overlayColor(mode), position);
+}
+
+namespace {
+
+/// "<name> invites you to …" → name.
+QString invitingName(const QString& text)
+{
+    const qsizetype at = text.indexOf(QLatin1String(" invites you to "));
+    return at == -1 ? QString() : text.mid(0, at);
+}
+
+/// "You have been excluded from the channel <name>'s Channel." → name.
+QString excludingName(const QString& text)
+{
+    static const QLatin1String prefix("You have been excluded from the channel ");
+    const qsizetype start = text.indexOf(prefix);
+    if (start == -1)
+        return {};
+    const qsizetype end = text.indexOf(QLatin1String("'s Channel."));
+    if (end == -1)
+        return {};
+    const qsizetype from = start + prefix.size();
+    return text.mid(from, end - from);
+}
+
+}
+
+void TChatProtocolMessageHandler::handleMessageMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& MessageMessage)
+{
+    int mode = 0;
+    try {
+        mode = chatMessageMode(MessageMessage.mode());
+    } catch (const std::exception&) {
+        throw std::runtime_error(QStringLiteral("Received invalid chat message mode (%1) while handling message network message.")
+                                     .arg(MessageMessage.mode())
+                                     .toStdString());
+    }
+    const QString text = shared::TTibiaUrlTools::process(QString::fromStdString(MessageMessage.text()));
+    const auto statusMessage = [&](const QString& line, const QColor& color) {
+        if (m_textStorage && m_showMessages)
+            m_textStorage->setStatusMessage(line, color, false);
+    };
+    const auto centerMessage = [&] {
+        if (m_textStorage && m_showMessages)
+            m_textStorage->addCenterMessage(text, overlayColor(mode));
+    };
+    const auto lookMessage = [&] {
+        if (m_textStorage && m_showMessages)
+            m_textStorage->setLookMessage(text, overlayColor(mode), false);
+    };
+    const auto numericalEffect = [&](const int64_t value, const uint32_t color) {
+        if (m_numericalEffects && m_showTextualEffects && value != 0 && MessageMessage.has_position())
+            m_numericalEffects->add(Position(static_cast<uint16_t>(MessageMessage.position().x()),
+                                             static_cast<uint16_t>(MessageMessage.position().y()),
+                                             static_cast<uint8_t>(MessageMessage.position().z())),
+                                    value,
+                                    worldmap::TNumericalEffectStorage::colorFrom8bit(static_cast<int>(color)),
+                                    TTextStorage::now());
+    };
+    bool log = false;
+    switch (mode) {
+    case ChannelManagement: {
+        QString name = invitingName(text);
+        if (name.isEmpty())
+            name = excludingName(text);
+        if (TWhiteBlacklist::isExemptMode(mode) || !m_blacklist.isBlacklisted(name))
+            m_storage.addChannelSystemEntry(consoleColor(mode), static_cast<uint16_t>(MessageMessage.channel_id()), text);
+        break;
+    }
+    case Login:
+    case Status:
+        statusMessage(text, overlayColor(mode));
+        log = true;
+        break;
+    case Failure:
+    case Mode54:
+        statusMessage(text, overlayColor(mode));
+        break;
+    case Admin:
+    case Game:
+    case GameHighlight:
+    case Report:
+        centerMessage();
+        log = true;
+        break;
+    case Look:
+    case TradeNpc:
+    case BeyondLast:
+        lookMessage();
+        log = true;
+        break;
+    case DamageDealt:
+    case DamageReceived:
+    case DamageOthers:
+        numericalEffect(MessageMessage.value(), MessageMessage.color());
+        numericalEffect(MessageMessage.second_value(), MessageMessage.second_color());
+        log = true;
+        break;
+    case Heal:
+    case Experience:
+    case HealOthers:
+    case ExperienceOthers:
+    case Mana:
+        numericalEffect(MessageMessage.value(), MessageMessage.color());
+        log = true;
+        break;
+    case Loot:
+        handleLootMessageForChannelAndStatusMessage(text);
+        break;
+    case Guild:
+    case Party:
+        m_storage.addChannelSystemEntry(consoleColor(mode), static_cast<uint16_t>(MessageMessage.channel_id()), text);
+        break;
+    case PartyManagement:
+        m_storage.addChannelSystemEntry(consoleColor(mode), static_cast<uint16_t>(MessageMessage.channel_id()), text);
+        centerMessage();
+        break;
+    case HotkeyUse:
+        if (m_showHotkeyUsageMessages)
+            lookMessage();
+        log = true;
+        break;
+    case Attention:
+        log = true;
+        break;
+    case BoostedCreature:
+        if (m_showBoostedCreatureMessages)
+            centerMessage();
+        log = true;
+        break;
+    case OfflineTraining:
+        if (m_showOfflineTrainingMessages)
+            centerMessage();
+        log = true;
+        break;
+    case Transaction:
+        if (m_showStoreMessages)
+            centerMessage();
+        log = true;
+        break;
+    default:
+        break;
+    }
+    if (log && !consoleFilters(mode))
+        m_storage.addServerLogEntry(consoleColor(mode), text);
+}
+
+void TChatProtocolMessageHandler::handleLootMessageForChannelAndStatusMessage(const QString& text)
+{
+    const QColor color = m_colorizeLootStyle != 0 ? QColor(Qt::white) : overlayColor(Loot);
+    if (m_textStorage && m_showLootMessages && m_showMessages)
+        m_textStorage->setLookMessage(formatLootRichText(text), color, true);
+    if (m_storage.lootChannel() || m_showInfoMessages)
+        m_storage.addLootEntry(color, text);
+}
+
+bool TChatProtocolMessageHandler::consoleFilters(const int mode) const
+{
+    switch (mode) {
+    case Login:
+    case Game:
+        return !m_showEventMessages;
+    case Look:
+    case Loot:
+    case TradeNpc:
+    case HotkeyUse:
+        return !m_showInfoMessages;
+    case DamageDealt:
+    case DamageReceived:
+    case Heal:
+    case Experience:
+    case Status:
+    case Mana:
+        return !m_showStatusMessagesOwn;
+    case DamageOthers:
+    case HealOthers:
+    case ExperienceOthers:
+        return !m_showStatusMessagesOfOthers;
+    default:
+        return false;
+    }
 }
 
 void TChatProtocolMessageHandler::handleOpenChannelMessage(const ::tibia::protobuf::protocol::GameserverMessageOpenChannel& OpenChannelMessage)
@@ -404,9 +705,22 @@ void TChatProtocolMessageHandler::handleCloseChannelMessage(const ::tibia::proto
     m_storage.closeChannelByServer(static_cast<uint16_t>(CloseChannelMessage.channel_id()));
 }
 
-void TChatProtocolMessageHandler::handleChannelsMessage(const ::tibia::protobuf::protocol::GameserverMessageChannels&)
+void TChatProtocolMessageHandler::handleChannelsMessage(const ::tibia::protobuf::protocol::GameserverMessageChannels& ChannelsMessage)
 {
-    // Applied by onServerMessageEnqueued; the console follows the onChannelList notify.
+    // Id 0xffff is the own private channel still to open; the client adds NPCs and Loot.
+    std::vector<TChatChannelIdentifier> channels;
+    channels.reserve(static_cast<size_t>(ChannelsMessage.channels_size()) + 2);
+    for (const auto& channel : ChannelsMessage.channels()) {
+        const auto id = static_cast<uint16_t>(channel.id());
+        const QString name = QString::fromStdString(channel.name());
+        if (id == 0xffff)
+            channels.push_back({ TChatChannelIdentifier::OwnPrivateChannelToOpen, id, name });
+        else
+            channels.push_back(TChatChannelIdentifier::channel(id, name));
+    }
+    channels.push_back({ TChatChannelIdentifier::Npc });
+    channels.push_back({ TChatChannelIdentifier::Loot });
+    Q_EMIT currentlyAvailableChannels(channels);
 }
 
 void TChatProtocolMessageHandler::handlePrivateChannelMessage(const ::tibia::protobuf::protocol::GameserverMessagePrivateChannel& PrivateChannel)
@@ -426,64 +740,26 @@ void TChatProtocolMessageHandler::handleChannelEventMessage(const ::tibia::proto
     m_storage.addChannelSystemEntryIfOpen(systemWhite(), static_cast<uint16_t>(ChannelEvent.channel_id()), text);
 }
 
-void TChatProtocolMessageHandler::handleNpcTalkPartersMessage(const ::tibia::protobuf::protocol::GameserverMessageNpcTalkParters&)
+void TChatProtocolMessageHandler::handleNpcTalkPartersMessage(const ::tibia::protobuf::protocol::GameserverMessageNpcTalkParters& Message)
 {
-    // Empty pb layout — NPC partners land on TChatStorage (controller-owned).
+    if (Message.closed()) {
+        m_chatStorage.setNpcTalkPartners({});
+        m_chatStorage.setKeywordButtons({});
+        return;
+    }
+    const std::vector<uint32_t> npcIds(Message.npc_ids().begin(), Message.npc_ids().end());
+    std::vector<TKeywordButton> buttons;
+    for (const auto& button : Message.buttons()) {
+        // The protocol's button ids are the KEYWORDBUTTONICON_* values.
+        if (button.button_id() > 9)
+            throw std::runtime_error("unhandled enum value");
+        buttons.push_back({ static_cast<int>(button.button_id()), QString::fromStdString(button.text()) });
+    }
+    m_chatStorage.setNpcTalkPartners(npcIds);
+    m_chatStorage.setKeywordButtons(buttons);
 }
 
 namespace {
-
-Position toPosition(const ::tibia::protobuf::protocol::ProtocolCoordinate& c)
-{
-    return Position(static_cast<uint16_t>(c.x()), static_cast<uint16_t>(c.y()), static_cast<uint8_t>(c.z()));
-}
-
-void showNumericalEffect(const tibia::client::MessageMode mode, const Position& pos, const uint64_t value, const uint8_t color)
-{
-    tibia::worldmap::TWorldMapStorage::ensureStorage()->addAnimatedText(
-        std::make_shared<AnimatedText>(std::to_string(value), color), pos);
-    if (value != 0)
-        tibia::game::processNumericalEffect(mode, pos, value, color);
-}
-
-void applyTalk(const ::tibia::protobuf::protocol::GameserverMessageTalk& m)
-{
-    const auto mode = Proto::translateMessageModeFromServer(static_cast<uint8_t>(m.mode()));
-    const Position pos = m.has_position() ? toPosition(m.position()) : Position();
-    tibia::game::processTalk(tibia::game::formatCreatureName(m.speaker()), static_cast<uint16_t>(m.speaker_level()), mode,
-                             m.text(), static_cast<uint16_t>(m.channel_id()), pos, m.statement_id());
-}
-
-void applyMessage(const ::tibia::protobuf::protocol::GameserverMessageMessage& m)
-{
-    const auto mode = Proto::translateMessageModeFromServer(static_cast<uint8_t>(m.mode()));
-    if (m.has_position()) {
-        const Position pos = toPosition(m.position());
-        if (m.has_second_value()) {
-            // Damage: the physical part, then the elemental one; zero parts show nothing.
-            if (m.value() != 0)
-                showNumericalEffect(mode, pos, static_cast<uint64_t>(m.value()), static_cast<uint8_t>(m.color()));
-            if (m.second_value() != 0)
-                showNumericalEffect(mode, pos, static_cast<uint64_t>(m.second_value()),
-                                    static_cast<uint8_t>(m.second_color()));
-        } else {
-            showNumericalEffect(mode, pos, static_cast<uint64_t>(m.value()), static_cast<uint8_t>(m.color()));
-        }
-    }
-    if (m.has_channel_id())
-        tibia::game::notify("onChannelTextMessage", mode, static_cast<uint16_t>(m.channel_id()), m.text());
-    tibia::game::processTextMessage(mode, m.text());
-}
-
-template<typename Message>
-void applyChannelPlayers(const Message& m)
-{
-    // The channel's member lists are read but not shown (as the classic parser did).
-    for (const auto& name : m.joined_players())
-        (void)tibia::game::formatCreatureName(name);
-    for (const auto& name : m.invited_players())
-        (void)tibia::game::formatCreatureName(name);
-}
 
 }
 
@@ -496,35 +772,24 @@ void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
     switch (opcode) {
     case 28:
         if (shadow->HasExtension(GameserverMessageNpcTalkParters::gameserver_message_npc_talk_parters)) {
-            const auto& m = shadow->GetExtension(GameserverMessageNpcTalkParters::gameserver_message_npc_talk_parters);
-            if (m.closed()) {
-                tibia::game::notify("onNpcChatWindowClose");
-                break;
-            }
-            NpcChatWindowData data;
-            data.npcIds.assign(m.npc_ids().begin(), m.npc_ids().end());
-            for (const auto& button : m.buttons())
-                data.buttons.push_back({ .id = static_cast<uint16_t>(button.button_id()), .text = button.text() });
-            tibia::game::notify("onNpcChatWindow", data);
+            if (s_console)
+                s_console->handleNpcTalkPartersMessage(
+                    shadow->GetExtension(GameserverMessageNpcTalkParters::gameserver_message_npc_talk_parters));
         }
         break;
     case 170:
-        if (shadow->HasExtension(GameserverMessageTalk::gameserver_message_talk))
-            applyTalk(shadow->GetExtension(GameserverMessageTalk::gameserver_message_talk));
+        if (shadow->HasExtension(GameserverMessageTalk::gameserver_message_talk) && s_console)
+            s_console->handleTalkMessage(shadow->GetExtension(GameserverMessageTalk::gameserver_message_talk));
         break;
     case 171:
         if (shadow->HasExtension(GameserverMessageChannels::gameserver_message_channels)) {
-            std::vector<std::tuple<uint16_t, std::string>> channels;
-            for (const auto& channel : shadow->GetExtension(GameserverMessageChannels::gameserver_message_channels).channels())
-                channels.emplace_back(static_cast<uint16_t>(channel.id()), channel.name());
-            tibia::game::processChannelList(channels);
+            if (s_console)
+                s_console->handleChannelsMessage(shadow->GetExtension(GameserverMessageChannels::gameserver_message_channels));
         }
         break;
     case 172:
         if (shadow->HasExtension(GameserverMessageOpenChannel::gameserver_message_open_channel)) {
             const auto& m = shadow->GetExtension(GameserverMessageOpenChannel::gameserver_message_open_channel);
-            applyChannelPlayers(m);
-            tibia::game::processOpenChannel(static_cast<uint16_t>(m.channel_id()), m.name());
             if (s_console)
                 s_console->handleOpenChannelMessage(m);
         }
@@ -532,7 +797,6 @@ void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
     case 173:
         if (shadow->HasExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel)) {
             const auto& m = shadow->GetExtension(GameserverMessagePrivateChannel::gameserver_message_private_channel);
-            tibia::game::processOpenPrivateChannel(tibia::game::formatCreatureName(m.name()));
             if (s_console)
                 s_console->handlePrivateChannelMessage(m);
         }
@@ -545,8 +809,6 @@ void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
     case 178:
         if (shadow->HasExtension(GameserverMessageOpenOwnChannel::gameserver_message_open_own_channel)) {
             const auto& m = shadow->GetExtension(GameserverMessageOpenOwnChannel::gameserver_message_open_own_channel);
-            applyChannelPlayers(m);
-            tibia::game::processOpenOwnPrivateChannel(static_cast<uint16_t>(m.channel_id()), m.name());
             if (s_console)
                 s_console->handleOpenOwnChannelMessage(m);
         }
@@ -554,20 +816,24 @@ void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
     case 179:
         if (shadow->HasExtension(GameserverMessageCloseChannel::gameserver_message_close_channel)) {
             const auto& m = shadow->GetExtension(GameserverMessageCloseChannel::gameserver_message_close_channel);
-            tibia::game::processCloseChannel(static_cast<uint16_t>(m.channel_id()));
             if (s_console)
                 s_console->handleCloseChannelMessage(m);
         }
         break;
     case 180:
         if (shadow->HasExtension(GameserverMessageMessage::gameserver_message_message))
-            applyMessage(shadow->GetExtension(GameserverMessageMessage::gameserver_message_message));
+        {
+            const auto& m = shadow->GetExtension(GameserverMessageMessage::gameserver_message_message);
+            if (s_console)
+                s_console->handleMessageMessage(m);
+            // IdleOT host extension: packs observe the server's text messages.
+            tibia::game::notify("onServerTextMessage",
+                                Proto::translateMessageModeFromServer(static_cast<uint8_t>(m.mode())), m.text());
+        }
         break;
     case 243:
         if (shadow->HasExtension(GameserverMessageChannelEvent::gameserver_message_channel_event)) {
             const auto& m = shadow->GetExtension(GameserverMessageChannelEvent::gameserver_message_channel_event);
-            tibia::game::notify("onChannelEvent", static_cast<uint16_t>(m.channel_id()), m.name(),
-                                static_cast<uint8_t>(m.event_type()));
             if (s_console)
                 s_console->handleChannelEventMessage(m);
         }
@@ -577,194 +843,10 @@ void TChatProtocolMessageHandler::onServerMessageEnqueued(const int opcode)
     }
 }
 
-bool TChatProtocolMessageHandler::consoleMessageAllowed(const int mode, const uint16_t channelId) const
-{
-    const TChatChannelIdentifier id = TChatChannelIdentifier::channel(channelId);
-    switch (mode) {
-    case Party:
-    case PartyManagement:
-        return m_partyMessagesEnabled;
-    case Guild:
-        return m_guildMessagesEnabled;
-    case PrivateFrom:
-    case GamemasterPrivateFrom:
-        return m_privateMessagesEnabled;
-    case NpcFromStartBlock:
-    case NpcFrom:
-    case NpcTo:
-        return m_npcMessagesEnabled;
-    case GamemasterBroadcast:
-    case GamemasterChannel:
-        return m_globalMessagesEnabled;
-    case Attention:
-        return m_raidMessagesEnabled;
-    case Channel:
-    case ChannelHighlight:
-        if (id.isPartyChannel())
-            return m_partyMessagesEnabled;
-        if (id.isGuildChannel())
-            return m_guildMessagesEnabled;
-        // Team Finder is CIP channel 5.
-        if (channelId == 5)
-            return m_teamFinderMessagesEnabled;
-        return true;
-    case ChannelManagement:
-    case Admin:
-    case GameHighlight:
-    case Report:
-    case Failure:
-        return m_systemMessagesEnabled;
-    default:
-        return true;
-    }
-}
-
-bool TChatProtocolMessageHandler::chatArrivedSoundAllowed(const int mode, const uint16_t channelId) const
-{
-    return m_chatSoundsEnabled && consoleMessageAllowed(mode, channelId);
-}
-
 bool TChatProtocolMessageHandler::isOwnName(const QString& name) const
 {
     return !name.isEmpty() && name.compare(m_storage.ownName(), Qt::CaseInsensitive) == 0;
 }
 
-void TChatProtocolMessageHandler::onTalk(const QString& name, const int level, const int mode, const QString& text, const uint16_t channelId,
-                                         const uint32_t statementId)
-{
-    // The blacklist unless the mode is exempt, then yells and private
-    // messages; the list reports what it drops.
-    const bool filtered = (!TWhiteBlacklist::isExemptMode(mode) && m_blacklist.isBlacklisted(name))
-                          || (mode == Yell && m_blacklist.filtersYell(name))
-                          || (mode == PrivateFrom && m_blacklist.filtersPrivateMessage(name));
-    if (filtered)
-        return;
-    if (!consoleMessageAllowed(mode, channelId))
-        return;
-    const QColor color = consoleColor(mode);
-    bool arrivedSound = false;
-    switch (mode) {
-    case Say:
-    case Whisper:
-        m_storage.addLocalEntry(color, name, text, level, false, statementId);
-        break;
-    case Yell:
-        // : yelled text is upper case.
-        m_storage.addLocalEntry(color, name, text.toUpper(), level, false, statementId);
-        break;
-    case PrivateFrom:
-        addPrivateMessage(name, level, mode, text, statementId);
-        arrivedSound = !isOwnName(name);
-        break;
-    case Channel:
-    case ChannelHighlight:
-    case GamemasterChannel:
-        m_storage.addChannelEntry(color, channelId, name, text, level, false, statementId);
-        arrivedSound = !isOwnName(name);
-        break;
-    case Spell:
-        if (isOwnName(name) ? m_showOwnSpells : m_showOthersSpells)
-            m_storage.addLocalEntry(color, name, text, level, false, statementId);
-        break;
-    case NpcFromStartBlock:
-    case NpcFrom:
-    case NpcTo:
-        // Player lines to an NPC (mode 12) are not echoed by a typed dialog;
-        // quest expeditions send them, and they belong on the NPCs tab with
-        // the NPC's replies. The dialog pane shows this channel.
-        m_storage.addNpcChannelEntry(color, name, text);
-        arrivedSound = true;
-        break;
-    case GamemasterBroadcast:
-    case GamemasterPrivateFrom:
-        m_storage.addBroadcastEntry(color, name, text, level, false, statementId);
-        arrivedSound = !isOwnName(name);
-        break;
-    case Game:
-        m_storage.addServerLogEntry(color, text);
-        break;
-    default:
-        break;
-    }
-    // CIP / / : SOUND_TRIGGER 0xade (2782).
-    if (arrivedSound && chatArrivedSoundAllowed(mode, channelId)) {
-        auto action = input::mutableClone(*input::makeAction(input::EGameAction::SOUND_TRIGGER));
-        action->parameter = cip::tibia::qmlcomponents::TSoundHelperService::CHAT_MESSAGE_ARRIVED;
-        input::publish(action);
-        Q_EMIT publishGameAction();
-    }
-}
-
-void TChatProtocolMessageHandler::addPrivateMessage(const QString& name, const int level, const int mode, const QString& text,
-                                                    const uint32_t statementId)
-{
-    // : if *(this+0x8f) (openNewPrivateMessagesInNewTab) and the
-    // sender is not own and no messageTo tab exists, open one (makeCurrent=0).
-    if (m_openPrivateMessagesInNewTab && !isOwnName(name) && !m_storage.find(TChatChannelIdentifier::messageTo(name))) {
-        m_storage.open(TChatChannelIdentifier::messageTo(name), false, false);
-        Q_EMIT privateChannelOpened(name);
-    }
-    m_storage.addPrivateEntry(consoleColor(mode), name, name, text, level, false, statementId);
-}
-
-void TChatProtocolMessageHandler::onTextMessage(const int mode, const QString& text)
-{
-    if (!consoleMessageAllowed(mode, 0))
-        return;
-    bool log = false;
-    switch (mode) {
-    case Login:
-    case Game:
-        log = m_showEventMessages && m_systemMessagesEnabled;
-        break;
-    case Admin:
-    case GameHighlight:
-    case Report:
-    case BeyondLast:
-    case BoostedCreature:
-    case OfflineTraining:
-    case Transaction:
-        log = m_systemMessagesEnabled;
-        break;
-    case Attention:
-        log = m_raidMessagesEnabled;
-        break;
-    case Look:
-    case TradeNpc:
-    case HotkeyUse:
-        log = m_showInfoMessages;
-        break;
-    case DamageDealt:
-    case DamageReceived:
-    case Heal:
-    case Experience:
-    case Status:
-    case Mana:
-        log = m_showStatusMessagesOwn;
-        break;
-    case DamageOthers:
-    case HealOthers:
-    case ExperienceOthers:
-        log = m_showStatusMessagesOfOthers;
-        break;
-    case Loot:
-        // .
-        m_storage.addLootEntry(consoleColor(mode), text);
-        break;
-    default:
-        break;
-    }
-    if (log)
-        m_storage.addServerLogEntry(consoleColor(mode), text);
-}
-
-void TChatProtocolMessageHandler::onChannelTextMessage(const int mode, const uint16_t channelId, const QString& text)
-{
-    if (mode == ChannelManagement || mode == Guild || mode == PartyManagement || mode == Party) {
-        if (!consoleMessageAllowed(mode, channelId))
-            return;
-        m_storage.addChannelSystemEntry(consoleColor(mode), channelId, text);
-    }
-}
 
 }

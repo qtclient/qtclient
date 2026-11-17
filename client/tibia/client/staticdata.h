@@ -138,35 +138,6 @@ struct RaceType
     bool notInTeamFinder{ false };
 };
 
-struct CyclopediaHouseType
-{
-    uint32_t id{ 0 };
-    std::string name;
-    std::string description;
-    uint32_t rent{ 0 };
-    uint32_t beds{ 0 };
-    Position position;
-    uint32_t size{ 0 };
-    bool isGuildHall{ false };
-    std::string city;
-    bool isShop{ false };
-};
-
-struct CyclopediaAchievementType
-{
-    uint16_t id{ 0 };
-    std::string name;
-    std::string description;
-    uint8_t grade{ 0 };
-};
-
-/// CIP staticdata Quest (Team Finder / Cyclopedia).
-struct CyclopediaQuestType
-{
-    uint16_t id{ 0 };
-    std::string name;
-};
-
 struct CyclopediaHouseEntry
 {
     uint32_t houseId{ 0 };
@@ -395,18 +366,6 @@ enum KeywordButtonIcon : uint16_t
     KEYWORDBUTTONICON_NO = 8,
     KEYWORDBUTTONICON_BYE = 9,
     KEYWORDBUTTONICON_LAST
-};
-
-struct NpcButton
-{
-    uint16_t id;
-    std::string text;
-};
-
-struct NpcChatWindowData
-{
-    std::vector<uint32_t> npcIds;
-    std::vector<NpcButton> buttons;
 };
 
 struct MarketOffer

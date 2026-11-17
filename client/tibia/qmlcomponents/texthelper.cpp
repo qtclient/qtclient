@@ -1,5 +1,7 @@
 #include "texthelper.h"
 
+#include "chat/chatchannel.h"
+
 #include <QColor>
 #include <QDateTime>
 #include <QLocale>
@@ -187,16 +189,7 @@ QString TTextHelperQmlService::capitalizeEachWordInString(const QString& Text)
 /// CIP / : "{#rrggbb|text}" -> font tags.
 QString TTextHelperQmlService::replaceColorCodingsWithHtmlTags(const QString& TextWithColorCodings)
 {
-    static const QRegularExpression coding(QStringLiteral("\\{(#[0-9a-fA-F]{6})\\|([^\\}]*)\\}"));
-    QString text = TextWithColorCodings;
-    qsizetype from = 0;
-    for (QRegularExpressionMatch match = coding.match(text, from); match.hasMatch(); match = coding.match(text, from)) {
-        const QString html = QStringLiteral("<font color=\"%1\">%2</font>")
-                                 .arg(QColor::fromString(match.captured(1)).name(), match.captured(2));
-        text.replace(match.capturedStart(), match.capturedLength(), html);
-        from = match.capturedStart() + html.size();
-    }
-    return text;
+    return chat::replaceColorCodingsWithHtmlTags(TextWithColorCodings);
 }
 
 /// CIP .

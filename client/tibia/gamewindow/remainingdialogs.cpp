@@ -19,6 +19,7 @@
 #include <client/outfit.h>
 #include <client/staticdata.h>
 #include <tibia/assets/things.h>
+#include <tibia/assets/thingtype.h>
 #include <tibia/game/gamesession.h>
 
 #include <QColor>
@@ -42,28 +43,37 @@ QColor outfitColor(const int index)
     return QColor(c.red(), c.green(), c.blue());
 }
 
-QString vocationName(const uint8_t clientId)
+QString itemNameOf(const uint16_t typeId)
 {
-    switch (clientId % 10) {
-        case 1: return QStringLiteral("Knight");
-        case 2: return QStringLiteral("Paladin");
-        case 3: return QStringLiteral("Sorcerer");
-        case 4: return QStringLiteral("Druid");
-        case 5: return QStringLiteral("Monk");
-        default: return QStringLiteral("None");
+    const ThingTypePtr& type = tibia::game::thingType(typeId, ThingCategoryItem);
+    if (!type || type->getId() == 0)
+        return QString::number(typeId);
+    const MarketData& market = type->getMarketData();
+    return QString::fromStdString(type->isMarketable() && !market.name.empty() ? market.name : type->getName());
+}
+
+QString categoryIconFor(const int category)
+{
+    switch (category) {
+        case 1: return QStringLiteral("/images/icon-yes.png");
+        case 2: return QStringLiteral("/images/icon-exclamationmark.png");
+        default: return QStringLiteral("/images/icon-no.png");
     }
 }
 
-QString worldTypeName(const uint8_t worldType)
+std::vector<trade::TCharacterTradeItemEntry> itemEntries(const std::vector<trade::TCharacterTradeItem>& items)
 {
-    switch (worldType) {
-        case 0: return QStringLiteral("Open PvP");
-        case 1: return QStringLiteral("Optional PvP");
-        case 2: return QStringLiteral("Hardcore PvP");
-        case 3: return QStringLiteral("Retro Open PvP");
-        case 4: return QStringLiteral("Retro Hardcore PvP");
-        default: return {};
+    std::vector<trade::TCharacterTradeItemEntry> rows;
+    rows.reserve(items.size());
+    for (const trade::TCharacterTradeItem& item : items) {
+        trade::TCharacterTradeItemEntry entry;
+        entry.id = item.objectId;
+        entry.upgradeTier = item.tier;
+        entry.amount = static_cast<int>(item.count);
+        entry.name = itemNameOf(item.objectId);
+        rows.push_back(std::move(entry));
     }
+    return rows;
 }
 
 QObject* tradeOutfitConfiguration(const Outfit& outfit, QObject* parent)
@@ -350,13 +360,18 @@ void TCharacterTradeDialogController::onStorageUpdated(const trade::TCharacterTr
 
     switch (dataType) {
         case trade::TCharacterTradeStorage::Conditions: {
+            const trade::TCharacterTradeBasicData& data = storage->basicData();
             auto* character = static_cast<TQMLCharacterData*>(m_characterData);
-            character->setCharacter(storage->characterName(), vocationName(storage->vocationClientId()), storage->characterLevel(),
-                                    worldTypeName(storage->worldType()), tradeOutfitConfiguration(storage->outfit(), character));
-            m_auction->setAuctionBounds(storage->minimumBid(), static_cast<int>(storage->startTimestamp()),
-                                        static_cast<int>(storage->endTimestamp()));
-            m_conditions->setEntries(storage->conditions());
-            const bool unfulfilled = storage->hasUnfulfilledConditions();
+            character->setCharacter(data.name, data.vocation, data.level, data.worldType, tradeOutfitConfiguration(data.outfit, character));
+            m_auction->setAuctionBounds(static_cast<int>(data.minimumBid), static_cast<int>(data.startTime), static_cast<int>(data.endTime));
+            std::vector<trade::TCharacterTradeConditionEntry> conditions;
+            bool unfulfilled = false;
+            for (const trade::TCharacterTradeCondition& condition : data.conditions) {
+                // TibiaEnums.EYesNoWarning: Yes=0 No=1.
+                conditions.push_back({ condition.text, condition.fulfilled ? 0 : 1 });
+                unfulfilled = unfulfilled || !condition.fulfilled;
+            }
+            m_conditions->setEntries(std::move(conditions));
             if (m_hasUnfulfilledConditions != unfulfilled) {
                 m_hasUnfulfilledConditions = unfulfilled;
                 Q_EMIT hasUnfulfilledConditionsChanged();
@@ -366,14 +381,25 @@ void TCharacterTradeDialogController::onStorageUpdated(const trade::TCharacterTr
         }
         case trade::TCharacterTradeStorage::Items:
         case trade::TCharacterTradeStorage::StoreItems:
-            m_items->source()->setEntries(storage->items());
+            m_items->source()->setEntries(
+                itemEntries(dataType == trade::TCharacterTradeStorage::Items ? storage->items() : storage->storeItems()));
             break;
         case trade::TCharacterTradeStorage::Highlights:
-            m_highlights->source()->setEntries(storage->highlights());
+        {
+            std::vector<trade::TCharacterTradeHighlightEntry> highlights;
+            for (const trade::TCharacterTradeHighlightGroup& group : storage->highlights()) {
+                for (const trade::TCharacterTradeHighlightGroup::Entry& highlight : group.entries)
+                    highlights.push_back({ highlight.id, highlight.text, group.name, categoryIconFor(group.category) });
+            }
+            m_highlights->source()->setEntries(std::move(highlights));
+        }
             break;
         case trade::TCharacterTradeStorage::Summary: {
-            m_confirmations->setEntries(storage->confirmations());
-            const bool err = storage->hasConfirmationError();
+            std::vector<trade::TCharacterTradeConditionEntry> confirmations;
+            for (const QString& problem : storage->problems())
+                confirmations.push_back({ problem, 1 });
+            const bool err = !confirmations.empty();
+            m_confirmations->setEntries(std::move(confirmations));
             if (m_hasConfirmationError != err) {
                 m_hasConfirmationError = err;
                 Q_EMIT hasConfirmationErrorChanged();
