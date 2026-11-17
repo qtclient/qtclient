@@ -385,6 +385,7 @@ config::TClientOptions::v59	4a969a894d15f8fe	ported	config/clientoptions.cpp:TCl
 config::TClientOptions::v60	bcea617d9ccde751	ported	config/clientoptions.h:pinnedCharacters
 config::TClientOptions::v61	58c05e75f61e8b8e	ported	config/clientoptions.cpp:TClientOptions::assignOptionValues
 config::TClientOptions::v62	2875863112ce91a8	ported	config/clientoptions.cpp:TClientOptions::load
+config::TClientOptions::v63	de6479a91abd58d0	ported	config/clientoptions.cpp:TClientOptions::loadDefaultClientOptions
 config::TClientOptions::v64	324997417b2a3471	ported	config/clientoptions.cpp:TClientOptions::fromJson
 config::TClientOptions::v65	960bbc36ca59ab2f	ported	config/clientoptions.cpp:TClientOptions::toJson
 config::TClientOptions::v66	2ae9cb0af40bb838	ported	config/clientoptions.cpp:TClientOptions::exportToBase64String
@@ -397,6 +398,8 @@ config::TClientOptions::v72	69ec84a74ca59bc0	ported	config/clientoptions.cpp:TCl
 config::TClientOptions::v73	970ff0dd76357f41	ported	config/clientoptions.cpp:TClientOptions::writeStringOptions
 config::TClientOptions::v74	e9a8a326c13a485b	ported	config/clientoptions.cpp:TClientOptions::readStringOptions
 config::TClientOptions::v77	da6c9276d03b2ae9	ported	config/clientoptions.cpp:TClientOptions::ensureGlobalShortcuts
+config::TClientOptions::v78	fa4142f2fcae9231	ported	config/clientoptions.h:TClientOptions::hasStartupNotice
+config::TClientOptions::v79	033896ee3bac5ae8	ported	config/clientoptions.h:TClientOptions::startupNotice
 config::TClientOptions::v80	58c62d38939f95e9	ported	config/clientoptions.h:isTemporaryClientOptionsMode
 config::TClientOptions::v81	e3fe24fdc2af08cc	ported	config/clientoptions.h:setClientOptionsMode
 config::TClientOptions::v82	49cafc1f8e22900a	ported	config/clientoptions.h:clientOptionsMode
@@ -406,6 +409,8 @@ config::TClientOptions::v85	f1b439571e9110ae	ported	config/clientoptions.cpp:TCl
 config::TClientOptions::v86	29c67b0617eca1fd	ported	config/clientoptions.cpp:TClientOptions::saveToJsonFile
 config::TClientOptions::~TClientOptions	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 config::TClientOptions::~TClientOptions_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
+config::TClientOptionsModeSwitcher::connectToGameSession	a4802afeaf3b8a4b	ported	config/clientoptionsmodeswitcher.cpp:TClientOptionsModeSwitcher::connectToGameSession
+config::TClientOptionsModeSwitcher::handleGameAction	57495c3fbd804a5a	ported	config/clientoptionsmodeswitcher.cpp:TClientOptionsModeSwitcher::handleGameAction
 config::TClientOptionsModeSwitcher::~TClientOptionsModeSwitcher	508e49d0a7ab754c	skip	generated: compiler-generated destructor pair
 config::TClientOptionsModeSwitcher::~TClientOptionsModeSwitcher_deleting	83ab64973aaeb98d	skip	generated: compiler-generated destructor pair
 config::TConsoleQMLOptionsPage::v12	d9cacfaa4afa0a55	ported	config/optionspages.cpp:consoleBindings
@@ -6763,6 +6768,7 @@ sub_59b9d8493eea#2	59b9d8493eea45e4	skip	library: SFML/miniaudio library interna
 sub_59c48ba40202	59c48ba40202be0e	skip	generated: moc property getter (generated in cip_gen)
 sub_59cca3720f2a	59cca3720f2ad04b	tested	shared/src/paginationproxymodel.cpp:TPaginationProxyModel::pageOfRow	test=tests/client/sharednet_test.cpp
 sub_59cca3720f2a#2	59cca3720f2ad04b	ported	gamewindow/monsterbonuseffectsdialogcontroller.cpp:TQmlMonsterBonusEffect::TQmlMonsterBonusEffect
+sub_59e0ef7b5c52	59e0ef7b5c5213dd	ported	input/gameaction.h:TGameActionSwitchClientOptions::TGameActionSwitchClientOptions
 sub_59e8ae135dc1	59e8ae135dc18624	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferMaximumAmountRequest
 sub_59e941f7c4bd	59e941f7c4bdc8d6	ported	shared/src/qnetworkreplywrapper.cpp:QNetworkReplyWrapper::transferTimeout
 sub_59ec81f07c7d	59ec81f07c7d943d	skip	library: miniaudio library
@@ -8774,6 +8780,7 @@ sub_9feece087a71	9feece087a7189f7	ported	gamewindow/imbuingdialogcontroller.cpp:
 sub_9ff871563ea2	9ff871563ea2c3c3	ported	worldmap/cacheforworldmapstoragelookupmembers.cpp:TCacheForWorldmapStorageLookupMembers::lookup
 sub_a01671970487	a0167197048771dc	ported	gamewindow/chatcontroller.cpp:TChatChannelController::setChatWidth
 sub_a01fa81692d3	a01fa81692d3d4d5	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
+sub_a01fc6c856ac	a01fc6c856ac8c57	ported	config/clientoptionsmodeswitcher.cpp:TClientOptionsModeSwitcher::setControlButtonsVisible
 sub_a028ddbf252f	a028ddbf252f4464	skip	library: std container template code
 sub_a03279bef16a	a03279bef16a1074	skip	generated: compiler-generated destructor
 sub_a04e1e4b1523	a04e1e4b15236e5f	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::onCharacterNameChecked
@@ -9993,6 +10000,7 @@ sub_c8be46245372#4	c8be46245372bfd1	inlined	skillwheel/skillwheelcontrollers.cpp
 sub_c8c117b2d3f4	c8c117b2d3f4ebfa	skip	generated: compiler-generated destructor pair
 sub_c8c34b91acfa	c8c34b91acfa0ba4	ported	gamewindow/newsdialogcontroller.cpp:TNewsDialogController::selectEntryForOpening
 sub_c8cdf0c7a0e2	c8cdf0c7a0e2ea82	skip	generated: compiler-generated destructor pair
+sub_c8d35d6cd5af	c8d35d6cd5af6d6d	ported	config/clientoptionsmodeswitcher.cpp:TClientOptionsModeSwitcher::switchClientOptionsMode
 sub_c8d59017c441	c8d59017c4412fbe	ported	skillwheel/skillwheelcontrollers.cpp:TSkillWheelPageController::onLargePerkHovered
 sub_c8db0dd1bde6	c8db0dd1bde67ae7	inlined	gamewindow/battlelistcontroller.cpp:TBattleListDataModel::data
 sub_c8e9e8e33a7a	c8e9e8e33a7a49a2	inlined	skillwheel/skillwheelcontrollers.cpp:TFragmentWorkshopPageController::TFragmentWorkshopPageController
@@ -11540,6 +11548,7 @@ sub_ff71f16a14d7	ff71f16a14d734fa	skip	generated: moc property getter, provided 
 sub_ff810966fd5f	ff810966fd5f0b40	ported	gamewindow/chatcontroller.cpp:TChatChannelController::resetChannel
 sub_ffcb550e4d4c	ffcb550e4d4c246b	ported	gamewindow/marketcontroller.cpp:TMarketController::onMarketOfferAccept
 sub_ffd47c9e6a6a	ffd47c9e6a6abf99	skip	generated: compiler-generated destructor of the optional picked field
+sub_ffe40b7919da	ffe40b7919daec6e	ported	config/clientoptionsmodeswitcher.cpp:TClientOptionsModeSwitcher::TClientOptionsModeSwitcher
 teamfinder::TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage	cb74bcd7c1f2c6a1	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::handleTeamFinderTeamLeaderMessage
 teamfinder::TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage	304e8b744fd51ff9	ported	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage
 teamfinder::TTeamFinderProtocolMessageHandler::~TTeamFinderProtocolMessageHandler	84f2967443bdd9d6	skip	generated: compiler-generated destructor pair

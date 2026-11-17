@@ -176,8 +176,9 @@ public:
     void setClientOptionsMode(int mode) { m_clientOptionsMode = mode; }
     bool isTemporaryClientOptionsMode() const { return m_clientOptionsMode != 0; }
 
-    /// The options a fresh options file holds.
-    void setDefaults();
+    /// The options a fresh options file holds. Mode 1 (the tutorial's
+    /// options) leaves the sound options out.
+    void setDefaults(int mode = 0);
     /// Reads every section `json` holds with the right JSON type over the
     /// current values; the others keep theirs.
     void fromJson(const QJsonObject& json);
@@ -190,6 +191,13 @@ public:
     /// Every hotkey set gains the GlobalShortcuts it lacks; with no set, the
     /// vocation presets (THotkeyOptionsData::addGlobalShortcuts).
     void ensureGlobalShortcuts();
+    /// Reads the tutorial's options (:/tutorial/clientoptions.json) like
+    /// load(), with the mode-1 defaults and without ensureGlobalShortcuts.
+    void loadDefaultClientOptions();
+    /// A notice the game window shows on start (never set by the options
+    /// themselves; false and empty).
+    bool hasStartupNotice() const { return m_hasStartupNotice; }
+    QString startupNotice() const { return m_startupNotice; }
 
     /// Host extension: options and top-level sections no CIP option names,
     /// kept as stored so pack and host settings survive load and save.
@@ -248,6 +256,8 @@ private:
     QJsonObject m_extraOptions;
     QJsonObject m_extraSections;
     int m_clientOptionsMode = 0;
+    bool m_hasStartupNotice = false;
+    QString m_startupNotice;
     std::array<QTimer, CategoryCount> m_categoryTimers;
 };
 

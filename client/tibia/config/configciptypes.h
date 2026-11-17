@@ -67,12 +67,6 @@ public:
     using cip::tibia::config::TCharacterConfigurationManager::TCharacterConfigurationManager;
 };
 
-class TClientOptionsModeSwitcher final : public cip::tibia::config::TClientOptionsModeSwitcher
-{
-    Q_OBJECT
-public:
-    using cip::tibia::config::TClientOptionsModeSwitcher::TClientOptionsModeSwitcher;
-};
 
 class TConsoleQMLOptionsPage : public cip::tibia::config::TConsoleQMLOptionsPage
 {

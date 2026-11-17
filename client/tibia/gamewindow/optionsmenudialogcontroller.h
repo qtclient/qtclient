@@ -2,6 +2,7 @@
 
 #include "client/gamecore.h"
 #include "config/optionsarchive.h"
+#include "config/clientoptionsmodeswitcher.h"
 #include "config/configciptypes.h"
 #include "config/optionspages.h"
 #include "gamewindow/dialogmanager.h"
@@ -57,7 +58,7 @@ public:
     /// product: a product page (category past CIP's) loaded, applied and reset like CIP's own.
     void addProductPage(int category, config::TOptionsPage* page);
     /// The client whose minimap the minimap export saves first (CIP +0xc0).
-    void setGameClient(client::TGameClient* client) { m_gameClient = client; }
+    void setGameClient(client::TGameClient* client);
     /// Portal origin for About / Website (LauncherEnv::loginBase).
     void setPortalBase(const QUrl& loginBase);
 

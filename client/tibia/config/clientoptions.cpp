@@ -4,6 +4,7 @@
 #include "config/clientoptionsmigration.h"
 #include "config/hotkeyoptions.h"
 #include "config/specialconditionsoptions.h"
+#include "shared/tibiafilesystemhelper.h"
 
 #include <QCryptographicHash>
 #include <QDir>
@@ -682,7 +683,7 @@ void TClientOptions::setExtraSection(const QString& name, const QJsonValue& valu
     m_extraSections.insert(name, value);
 }
 
-void TClientOptions::setDefaults()
+void TClientOptions::setDefaults(const int mode)
 {
     m_bools.clear();
     m_ints.clear();
@@ -701,6 +702,15 @@ void TClientOptions::setDefaults()
             m_floats[id] = float(it->toDouble());
         else
             m_ints[id] = it->toInt();
+    }
+    // The tutorial's options have no sound options.
+    if (mode != 0) {
+        for (int id = int(EClientOption::soundAmbienceVolume); id <= int(EClientOption::soundVipEnabled); ++id) {
+            m_bools.erase(EClientOption(id));
+            m_ints.erase(EClientOption(id));
+            m_floats.erase(EClientOption(id));
+            m_strings.erase(EClientOption(id));
+        }
     }
     m_rendererChangeConfirmationRequired = false;
     m_clientWindow = {};
@@ -860,14 +870,27 @@ void TClientOptions::load()
     if (file.open(QIODevice::ReadOnly))
         document = QJsonDocument::fromJson(file.readAll());
     if (document.isEmpty()) {
-        setDefaults();
+        setDefaults(1);
         document = toJson();
     }
     const QJsonObject migrated = clientoptionsmigration::migrate(document.object());
-    setDefaults();
+    setDefaults(0);
     fromJson(migrated);
     announceAllOptions();
     ensureGlobalShortcuts();
+}
+
+void TClientOptions::loadDefaultClientOptions()
+{
+    QJsonDocument document = shared::TTibiaFileSystemHelper().readDefaultClientOptions();
+    if (document.isEmpty()) {
+        setDefaults(1);
+        document = toJson();
+    }
+    const QJsonObject migrated = clientoptionsmigration::migrate(document.object());
+    setDefaults(1);
+    fromJson(migrated);
+    announceAllOptions();
 }
 
 void TClientOptions::ensureGlobalShortcuts()

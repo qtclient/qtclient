@@ -1,5 +1,7 @@
 #include "optionsmenudialogcontroller.h"
 
+#include "config/clientoptions.h"
+
 #include "app/clientoptions.h"
 #include "app/graphicsrestart.h"
 #include "chat/chatchannel.h"
@@ -86,7 +88,7 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
     : TDialogController(QStringLiteral("OptionsMenuDialog.qml"), parent)
     , m_actionBarOptions(this)
     , m_characterConfigurationManager(this)
-    , m_clientOptionsModeSwitcher(this)
+    , m_clientOptionsModeSwitcher(config::TClientOptions::instance(), this)
     , m_optionPageQmlWrapperBase(this)
 {
     (void)m_configBackupException;
@@ -161,10 +163,6 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
         sendTurnTowardsMoveDirection(config::optionValue(app::ClientOptions::load().root(), O::alwaysTurnTowardsMoveDirection).toBool());
     });
 
-    input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, [this](const input::TGameAction&) {
-        setShowAdvancedOptions(!m_showAdvancedOptions);
-        return true;
-    });
 
     m_frameRateTimer.setInterval(1000);
     connect(&m_frameRateTimer, &QTimer::timeout, this, [this] {
@@ -183,8 +181,13 @@ TOptionsMenuDialogController::TOptionsMenuDialogController(QObject* parent)
 
 TOptionsMenuDialogController::~TOptionsMenuDialogController()
 {
-    input::setActionHandler(input::EGameAction::SWITCH_CLIENTOPTIONS_MODE, nullptr);
     disconnect(m_frameConnection);
+}
+
+void TOptionsMenuDialogController::setGameClient(client::TGameClient* client)
+{
+    m_gameClient = client;
+    m_clientOptionsModeSwitcher.connectToGameSession([client] { return client ? client->sidebarOptions() : nullptr; });
 }
 
 TMessageDialogController* TOptionsMenuDialogController::makeMessageDialog()

@@ -386,6 +386,7 @@ if(TIBIA_WITH_GAMECORE)
     config/optionsarchive.cpp config/optionsarchive.h
     config/clientoptiondefaults.cpp config/clientoptiondefaults.h
     config/clientoptions.cpp config/clientoptions.h
+    config/clientoptionsmodeswitcher.cpp config/clientoptionsmodeswitcher.h
     config/clientoptionsmigration.cpp config/clientoptionsmigration.h
     config/optionspages.cpp config/optionspages.h
     config/hotkeyoptions.cpp config/hotkeyoptions.h

@@ -1397,6 +1397,12 @@ class TGameActionSwitchClientOptions final : public TGameAction
 {
 public:
     TGameActionSwitchClientOptions() { type = EGameAction::SWITCH_CLIENTOPTIONS_MODE; }
+    /// The requested options mode (0: the user's, 1: the tutorial's).
+    explicit TGameActionSwitchClientOptions(const int mode)
+    {
+        type = EGameAction::SWITCH_CLIENTOPTIONS_MODE;
+        parameter = mode;
+    }
 };
 /// CIP input::TGameActionTakeAutomaticScreenshot .
 class TGameActionTakeAutomaticScreenshot final : public TGameAction
