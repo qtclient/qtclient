@@ -265,8 +265,10 @@ QString TQmlObjectCategory::translate(const int identifier)
     };
     if (identifier == TAppearanceTypeListModelSortFilterProxy::AllCategories)
         return qtTrId("market_category_all");
-    if (identifier < 0 || identifier >= static_cast<int>(Ids.size()))
+    if (identifier == -1 || identifier == 0x20)
         return qtTrId("market_category_unknown");
+    if (identifier < 0 || identifier >= static_cast<int>(Ids.size()))
+        throw std::runtime_error("translateCategoryIdentifier: unhandled enum value");
     return qtTrId(Ids[identifier]);
 }
 

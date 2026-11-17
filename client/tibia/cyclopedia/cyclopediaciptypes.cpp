@@ -72,7 +72,11 @@ void ownProductSurface(QObject* parent)
 
 QString monsterRaceName(const uint16_t raceId)
 {
-    return capitalizeWords(QString::fromStdString(tibia::game::raceData(raceId).name));
+    // The static monster races, then the bosses; unknown races get a placeholder.
+    const auto& race = tibia::game::raceData(raceId);
+    if (raceId == 0 || race.raceId != raceId)
+        return qtTrId("monsters_unknown_name");
+    return capitalizeWords(QString::fromStdString(race.name));
 }
 
 Outfit monsterRaceAppearance(const uint16_t raceId)

@@ -7746,6 +7746,7 @@ sub_70f16669b16e#6	70f16669b16ee270	skip	library: shared_ptr release (library)
 sub_70f16669b16e#7	70f16669b16ee270	skip	library: shared_ptr release (library)
 sub_70f16669b16e#8	70f16669b16ee270	skip	library: shared_ptr release (library)
 sub_70f16669b16e#9	70f16669b16ee270	skip	library: shared_ptr release (library)
+sub_70f2db88c778	70f2db88c7786824	ported	gamewindow/marketcontroller.cpp:TQmlObjectCategory::translate
 sub_710be0ce0c5b	710be0ce0c5b0124	inlined	gamewindow/creaturetrackerwidgetcontroller.cpp:TCreatureTrackerWidgetController::onBossCooldownsChanged
 sub_710ee82f1ab1	710ee82f1ab1fcda	inlined	protocol::TProtobufServerMessageTranslator::v175
 sub_7126fae0dee7#2	7126fae0dee7249f	skip	library: std::sort instantiation (library)
@@ -8073,6 +8074,8 @@ sub_7c5ef873b610	7c5ef873b6101aa4	ported	gamewindow/createaccountdialogcontrolle
 sub_7c5ef873b610#2	7c5ef873b6101aa4	ported	gamewindow/createcharacterdialogcontroller.cpp:succeeded
 sub_7c6d8d67948f#3	7c6d8d67948fc9ca	inlined	gamewindow/marketcontroller.cpp:detailsText
 sub_7c6e972f194d#2	7c6e972f194d000a	inlined	config/sidebaroptions.cpp:parsePlayerGuide
+sub_7c6ef4251e4d	7c6ef4251e4dcda6	inlined	assets/things.cpp:TAppearancesManager::getRaceData
+sub_7c6ef4251e4d#2	7c6ef4251e4dcda6	inlined	assets/things.cpp:TAppearancesManager::getRaceData
 sub_7c705833e01b#2	7c705833e01b5e02	skip	library: std::sort instantiation (library)
 sub_7c77ab482183	7c77ab48218364d5	skip	library: miniaudio (statically linked via SFML audio): device/backend/resampler/node internals
 sub_7c782a40a2b0	7c782a40a2b0e041	ported	gamewindow/rewardwalldialogcontroller.cpp:TRewardWallDialogController::dailyRewardHoverText
@@ -12050,6 +12053,7 @@ sub_edec52f5db44#17	edec52f5db4466ec	skip	generated: compiler-generated Qt slot-
 sub_edec52f5db44#18	edec52f5db4466ec	skip	generated: Qt slot-object impl (template-generated)
 sub_edec52f5db44#19	edec52f5db4466ec	skip	generated: Qt-generated slot object impl
 sub_edec52f5db44#9	edec52f5db4466ec	skip	generated: Qt-generated slot object impl
+sub_edf1b143fa23	edf1b143fa235aba	ported	cyclopedia/cyclopediaciptypes.cpp:monsterRaceName
 sub_edf31144e5e3	edf31144e5e3ae78	skip	library: miniaudio library code (miniaudio.h asserts), misattributed
 sub_ee03e23c5732#3	ee03e23c57323228	ported	gamewindow/friendsaccountsearchpagecontroller.cpp:TFriendsAccountSearchPageController::showCharacterInfo
 sub_ee05ce4515a8#163	ee05ce4515a88058	skip	library: libc++ runtime/template helper (statically linked library range)
