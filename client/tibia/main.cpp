@@ -116,6 +116,7 @@
 #include <QEventLoop>
 #include <QFileInfo>
 #include <QSaveFile>
+#include <QSettings>
 #include <QGuiApplication>
 #include <QStandardPaths>
 #include <QPointer>
@@ -406,6 +407,9 @@ int main(int argc, char** argv)
     // served by the portal's qtclient-fs Worker. Mount before anything opens a file.
     if (!qtclientMountOpfs())
         qFatal("tibia.wasm: could not mount OPFS at /home/web_user (see the console)");
+    // QSettings on wasm defaults to localStorage; keep settings as ini files in
+    // OPFS (~/.config/<org>/<app>.ini), as Linux desktop does.
+    QSettings::setDefaultFormat(QSettings::IniFormat);
 #endif
     tibia::app::installCrashLog();
 
