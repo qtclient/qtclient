@@ -139,6 +139,8 @@ class TWeaponProficiencyDialogController final
 {
     Q_OBJECT
 public:
+    /// The levels of a weapon's proficiency table.
+    int maxProficiencyLevels() const override;
     explicit TWeaponProficiencyDialogController(TProficiencyStorage* storage, QObject* parent = nullptr);
     ~TWeaponProficiencyDialogController() override;
 

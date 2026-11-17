@@ -2448,11 +2448,17 @@ gamewindow::TVocationSelectionDialogController::~TVocationSelectionDialogControl
 gamewindow::TWaitDialogController::~TWaitDialogController	297d40beb24064ba	skip	generated: compiler-generated destructor pair
 gamewindow::TWaitDialogController::~TWaitDialogController_deleting	99d9d1ec65f57ee8	skip	generated: compiler-generated destructor pair
 gamewindow::TWeaponProficiencyDialogController::canEditPerksChanged	f56376b0fd3d9dd8	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::currentIsUseRestricted
+gamewindow::TWeaponProficiencyDialogController::currentInspectTextChanged	89f653d19e2fecfa	skip	generated: moc property getter, provided by the generated cip base
+gamewindow::TWeaponProficiencyDialogController::currentTypeIdChanged	8798a52c6a3adf6c	skip	generated: moc property getter, provided by the generated cip base
+gamewindow::TWeaponProficiencyDialogController::decorativeSourceChanged	aadf00082e9b6011	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::maxProficiencyLevels
 gamewindow::TWeaponProficiencyDialogController::dustInformationChanged	f5faabe70f939339	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::currentDecorationLevelSource
 gamewindow::TWeaponProficiencyDialogController::proficiencyModelChanged	d6567fa3c5a186b5	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::currentTypeName
+gamewindow::TWeaponProficiencyDialogController::publishGameAction	385edb9a7a511f1e	skip	generated: moc property getter, provided by the generated cip base
 gamewindow::TWeaponProficiencyDialogController::requestClose	72ee868928309b2e	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::requestClose
 gamewindow::TWeaponProficiencyDialogController::selectedPerkChanged	0b4fc1206e7938c6	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::currentDecorationSource
 gamewindow::TWeaponProficiencyDialogController::v14	437cac582d0e15bb	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::closeDialog
+gamewindow::TWeaponProficiencyDialogController::weaponTypeChanged	f88a95003bd47f86	skip	generated: moc property getter, provided by the generated cip base
+gamewindow::TWeaponProficiencyDialogController::xpInformationChanged	7bb50332b9c284c1	skip	generated: moc property getter, provided by the generated cip base
 gamewindow::TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
 gamewindow::TWeaponProficiencyDialogController::~TWeaponProficiencyDialogController_deleting	79674512666b34e2	skip	generated: compiler-generated destructor pair
 gamewindow::TWeaponProficiencyReshapeDialogController::~TWeaponProficiencyReshapeDialogController	097457dc45e86dd8	skip	generated: compiler-generated destructor pair
@@ -5437,6 +5443,7 @@ sub_306d1ba5475c#43	306d1ba5475c61d0	skip	generated: moc-generated signal emitte
 sub_306d1ba5475c#50	306d1ba5475c61d0	skip	generated: moc-generated signal body (sendMessage, receivedMessage, clientMessageReadyToProcess)
 sub_306d1ba5475c#58	306d1ba5475c61d0	skip	generated: moc-generated signal emitter
 sub_306d1ba5475c#60	306d1ba5475c61d0	inlined	worldmap/worldmapstorage.cpp:TWorldMapStorage::setStoredVolume
+sub_308a15179ef9	308a15179ef9ae1a	skip	generated: moc property getter, provided by the generated cip base
 sub_309c404501f5	309c404501f5493e	ported	gamewindow/premiumpanelcontroller.cpp:TPremiumPanelController::canTogglePanel
 sub_30ca8799b235	30ca8799b2353a64	skip	library: std::sort instantiation
 sub_30cfaf9fa6fd	30cfaf9fa6fdfaa1	ported	appearances/appearanceinstance.cpp:TMissileEffectInstance::setPath
@@ -5760,6 +5767,7 @@ sub_3da8abf60b10	3da8abf60b10149a	ported	chat/textstorage.cpp:TTextStorage::isIn
 sub_3dd06a1c9764	3dd06a1c9764b98e	ported	gamewindow/storedialogcontroller.cpp:TStoreDialogController::onExtraConfirmDialogClickedNotOK
 sub_3de29a81badb	3de29a81badbb5e1	inlined	gamewindow/imbuingdialogcontroller.cpp:sortImbuements
 sub_3de29a81badb#2	3de29a81badbb5e1	inlined	gamewindow/imbuingdialogcontroller.cpp:sortImbuements
+sub_3de51d87aaa1	3de51d87aaa124c7	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::onModifyShapeClicked
 sub_3dedb277b115	3dedb277b115e000	skip	generated: compiler-generated destructor pair
 sub_3df0fa20d97d	3df0fa20d97ded89	ported	spells/spellinfostorage.cpp:TSpellInfoStorage::TSpellInfoStorage
 sub_3df7fe43e728	3df7fe43e7283c4e	inlined	teamfinder/teamfinderciptypes.cpp:TTeamFinderProtocolMessageHandler::handleTeamFinderTeamMemberMessage
@@ -7304,6 +7312,7 @@ sub_7794ab98bfd6	7794ab98bfd6d1fd	skip	generated: compiler-generated destructor 
 sub_77a42b987e30#4	77a42b987e30e459	skip	data: translation-unit static initializer (misattributed)
 sub_77a42b987e30#7	77a42b987e30e459	skip	data: translation-unit static initializer (misattributed)
 sub_77a42b987e30#8	77a42b987e30e459	skip	data: translation-unit static initializer (misattributed)
+sub_77c82c88e6aa	77c82c88e6aa075f	inlined	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::TWeaponProficiencyDialogController
 sub_77ca4d10834b	77ca4d10834b2705	tested	creatures/movementdirection.h:lookDirectionAfter	test=tests/client/creaturemovement_test.cpp
 sub_77d5d5df7ecc#2	77d5d5df7eccd406	inlined	cyclopedia/cyclopediaciptypes.cpp:TCyclopediaProtocolMessageHandler::handleMonsterCyclopediaRaceMessage
 sub_77eafe2495a9	77eafe2495a94dbe	ported	gamewindow/createaccountdialogcontroller.cpp:TCreateAccountDialogController::post
@@ -9801,6 +9810,7 @@ sub_c82f3f47ee3c	c82f3f47ee3c1f99	ported	gamewindow/monsterdialogcontroller.cpp:
 sub_c82f62828f43	c82f62828f4364a2	inlined	market/marketciptypes.cpp:TMarketProtocolMessageHandler::handleMarketDetailMessage
 sub_c83bfc99ba27	c83bfc99ba273cbf	ported	gamewindow/mapwindowcontroller.cpp:TMapWindowController::onMapWindowClicked
 sub_c86c94ddaeb0#2	c86c94ddaeb06f7c	skip	library: std::deque / std::variant library code
+sub_c8705d409541	c8705d40954177ce	ported	proficiency/weaponproficiencydialogcontroller.cpp:TWeaponProficiencyDialogController::setFilter
 sub_c87d8149227e	c87d8149227e205e	skip	data: translation-unit static initializer of shared header constants
 sub_c87ee2a8fc42	c87ee2a8fc42c8a0	ported	gamewindow/sidebarmanager.cpp:TSidebarManager::addWidget
 sub_c88b5fb09dac	c88b5fb09dac31b9	skip	library: libc++ exception-guard range destroy (vector relocation)
