@@ -43,6 +43,25 @@ class GameserverMessageLoginSuccess;
 class GameserverMessageLoginWait;
 class GameserverMessagePendingStateEntered;
 class GameserverMessageSessionDumpMarker;
+class GameserverMessageBlessings;
+class GameserverMessageClientCheck;
+class GameserverMessageConfigureCreaturePodium;
+class GameserverMessageDead;
+class GameserverMessageGameEvent;
+class GameserverMessageHirelingNameChange;
+class GameserverMessageInspectionList;
+class GameserverMessageLoginChallenge;
+class GameserverMessageOutfit;
+class GameserverMessageOutfitMemorial;
+class GameserverMessagePing;
+class GameserverMessagePingBack;
+class GameserverMessageReadyForSecondaryConnection;
+class GameserverMessageSnapBack;
+class GameserverMessageSpellDataModification;
+class GameserverMessageStop;
+class GameserverMessageSwitchPreset;
+class GameserverMessageUnlockedSpells;
+class GameserverMessageWorldEntered;
 class GameserverMessageSessionDumpStart;
 class GameserverMessageSessionEndInformation;
 class GameserverMessageShowMultiOfflineTrainingDialog;
@@ -155,11 +174,6 @@ public:
     static void handleEditListMessage(const ::tibia::protobuf::protocol::GameserverMessageEditList& message);
 };
 
-class TExperienceCalculator final : public ::tibia::CipTyped {
-public:
-    TExperienceCalculator() = default;
-};
-
 class TGameActionRouter final : public cip::tibia::game::TGameActionRouter
 {
     Q_OBJECT
@@ -172,6 +186,8 @@ class TGameEventProtocolMessageHandler final : public cip::tibia::game::TGameEve
     Q_OBJECT
 public:
     using cip::tibia::game::TGameEventProtocolMessageHandler::TGameEventProtocolMessageHandler;
+
+    static void handleGameEventMessage(const ::tibia::protobuf::protocol::GameserverMessageGameEvent& message);
 };
 
 /// CIP `game::TGameProtocolMessageHandler` — native Q→H for session dump/end.
@@ -204,8 +220,21 @@ public:
     void handleLoginSuccessMessage(
         const ::tibia::protobuf::protocol::GameserverMessageLoginSuccess& LoginSuccessMessage);
 
-    /// Tip Q→H wire: peel structured opcodes from `serverMessageEnqueued`.
-    void onServerMessageEnqueued(int opcode);
+    void handleLoginAdviceMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginAdvice& message);
+    void handleLoginWaitMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginWait& message);
+    void handleDeadMessage(const ::tibia::protobuf::protocol::GameserverMessageDead& message);
+    void handleReadyForSecondaryConnectionMessage(const ::tibia::protobuf::protocol::GameserverMessageReadyForSecondaryConnection& message);
+    void handleInspectionListMessage(const ::tibia::protobuf::protocol::GameserverMessageInspectionList& message);
+    void handleOutfitMemorialMessage(const ::tibia::protobuf::protocol::GameserverMessageOutfitMemorial& message);
+    void handleUnlockedSpellsMessage(const ::tibia::protobuf::protocol::GameserverMessageUnlockedSpells& message);
+    void handleShowMessageDialogMessage(const ::tibia::protobuf::protocol::GameserverMessageShowMessageDialog& message);
+    void handleClientCheckMessage(const ::tibia::protobuf::protocol::GameserverMessageClientCheck& message);
+    void handleWorldEnteredMessage(const ::tibia::protobuf::protocol::GameserverMessageWorldEntered& message);
+    void handleLoginErrorMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginError& message);
+    void handleLoginChallengeMessage(const ::tibia::protobuf::protocol::GameserverMessageLoginChallenge& message);
+    void handlePingMessage(const ::tibia::protobuf::protocol::GameserverMessagePing& message);
+    void handlePingBackMessage(const ::tibia::protobuf::protocol::GameserverMessagePingBack& message);
+    void handleSpellDataModificationMessage(const ::tibia::protobuf::protocol::GameserverMessageSpellDataModification& message);
 };
 
 class TGameSessionMetaInfo final : public ::tibia::CipTyped {
@@ -289,6 +318,13 @@ public:
     /// The monk's harmony, serenity and virtue spells.
     void handleVocationSpecificPlayerDataMessage(
         const ::tibia::protobuf::protocol::GameserverMessageVocationSpecificPlayerData& message);
+    void handleOutfitMessage(const ::tibia::protobuf::protocol::GameserverMessageOutfit& message);
+    void handleBlessingsMessage(const ::tibia::protobuf::protocol::GameserverMessageBlessings& message);
+    void handleConfigureCreaturePodiumMessage(const ::tibia::protobuf::protocol::GameserverMessageConfigureCreaturePodium& message);
+    void handleSwitchPresetMessage(const ::tibia::protobuf::protocol::GameserverMessageSwitchPreset& message);
+    void handleSnapBackMessage(const ::tibia::protobuf::protocol::GameserverMessageSnapBack& message);
+    void handleStopMessage(const ::tibia::protobuf::protocol::GameserverMessageStop& message);
+    void handleHirelingNameChangeMessage(const ::tibia::protobuf::protocol::GameserverMessageHirelingNameChange& message);
 };
 
 class TPremiumProtocolMessageHandler final : public cip::tibia::game::TPremiumProtocolMessageHandler

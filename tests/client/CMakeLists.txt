@@ -32,6 +32,10 @@ qtclient_add_port_test(client_creaturemovement_tests
     ${CMAKE_SOURCE_DIR}/client/tibia/creatures/creaturemovementtween.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/movingoutfitanimator.cpp
 )
+qtclient_add_port_test(client_experiencecalculator_tests
+    experiencecalculator_test.cpp
+    ${CMAKE_SOURCE_DIR}/client/tibia/game/experiencecalculator.cpp
+)
 qtclient_add_port_test(client_phaseanimator_tests
     phaseanimator_test.cpp
     ${CMAKE_SOURCE_DIR}/client/tibia/animation/phaseanimator.cpp

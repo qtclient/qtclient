@@ -395,23 +395,9 @@ bool TGameClient::start(const QString& argv0, const QString& workDir, const Opti
     // CIP Q→H: peeled structured opcodes → native handle*Message (skips classic).
     // The active game session connects its own map and effect handlers.
     if (protocol::TProtocolMessageQueue* queue = protocol::protocolMessageQueue()) {
-        if (auto* gameHandler = game::TGameProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, gameHandler,
-                    &game::TGameProtocolMessageHandler::onServerMessageEnqueued, Qt::UniqueConnection);
-        }
         if (auto* skillWheelHandler = skillwheel::TSkillWheelProtocolMessageHandler::liveInstance()) {
             connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, skillWheelHandler,
                     &skillwheel::TSkillWheelProtocolMessageHandler::onServerMessageEnqueued,
-                    Qt::UniqueConnection);
-        }
-        if (auto* containerHandler = container::TContainerProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, containerHandler,
-                    &container::TContainerProtocolMessageHandler::onServerMessageEnqueued,
-                    Qt::UniqueConnection);
-        }
-        if (auto* creatureHandler = creatures::TCreatureProtocolMessageHandler::liveInstance()) {
-            connect(queue, &protocol::TProtocolMessageQueue::serverMessageEnqueued, creatureHandler,
-                    &creatures::TCreatureProtocolMessageHandler::onServerMessageEnqueued,
                     Qt::UniqueConnection);
         }
         // Static ingresses take the client as context: drop the previous
